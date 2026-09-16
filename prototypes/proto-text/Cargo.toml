@@ -1,0 +1,11 @@
+[package]
+name = "proto-text"
+version = "0.0.0"
+edition = "2021"
+[dependencies]
+harfrust = "0.13"
+skrifa = "0.47"
+unicode-bidi = "0.3"
+subsetter = "0.2"
+pdf-writer = "0.15"
+lopdf = "0.45"

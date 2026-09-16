@@ -1,0 +1,1132 @@
+[
+  {
+    "filename": "A_un_rome_statute_A-CONF.183-9-AR_word_pdfmaker6.pdf",
+    "classes": "A,G",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/7/74/%D9%86%D8%B8%D8%A7%D9%85_%D8%B1%D9%88%D9%85%D8%A7_%D8%A7%D9%84%D8%A3%D8%B3%D8%A7%D8%B3%D9%8A_%D9%84%D9%84%D9%85%D8%AD%D9%83%D9%85%D8%A9_%D8%A7%D9%84%D8%AC%D9%86%D8%A7%D8%A6%D9%8A%D8%A9_%D8%A7%D9%84%D8%AF%D9%88%D9%84%D9%8A%D8%A9_%28A_CONF.183_9-AR%29.pdf",
+    "source_page": "https://commons.wikimedia.org/wiki/File:%D9%86%D8%B8%D8%A7%D9%85_%D8%B1%D9%88%D9%85%D8%A7_%D8%A7%D9%84%D8%A3%D8%B3%D8%A7%D8%B3%D9%8A_%D9%84%D9%84%D9%85%D8%AD%D9%83%D9%85%D8%A9_%D8%A7%D9%84%D8%AC%D9%86%D8%A7%D8%A6%D9%8A%D8%A9_%D8%A7%D9%84%D8%AF%D9%88%D9%84%D9%8A%D8%A9_(A_CONF.183_9-AR).pdf",
+    "license_or_status": "UN document A/CONF.183/9 (Rome Statute of the ICC, Arabic), public; Commons page tags it Public domain (UN), credit: https://digitallibrary.un.org/record/260261",
+    "sha256": "4236ec7072fea65edd5e2e9f79b4b834c96b9cfda636c9e452a9218f9381ac47",
+    "size_bytes": 570593,
+    "pages_kept": 95,
+    "pages_in_source": 95,
+    "producer": "Acrobat Distiller 6.0 (Windows)",
+    "creator": "(Acrobat PDFMaker 6.0 for Word)",
+    "pdf_version": "1.4",
+    "encrypted": false,
+    "tagged": false,
+    "fonts": [
+      {
+        "base_font": "LGBOBA+Barcode3of9byrequest,BoldItalic",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "TimesNewRoman,Bold",
+        "subtype": "TrueType",
+        "embedded": false,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "LGBNMK+TraditionalArabic",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "LGBNOK+TraditionalArabic",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "TimesNewRoman",
+        "subtype": "TrueType",
+        "embedded": false,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "LGBNPN+TraditionalArabic,Bold",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "LGBNPO+TraditionalArabic,Bold",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "LGBOIO+TraditionalArabic,BoldItalic",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "LGBOJO+TraditionalArabic,BoldItalic",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      }
+    ],
+    "has_acroform": false,
+    "acroform_fields": 0,
+    "image_only": false,
+    "page1_text_len_pdfium": 420,
+    "text_sample": "A المتحـدة الأمــم /CONF.183/9\r\nالمعني للمفوضين الدبلوماسي المتحدة الأمم مؤتمر\r\nدولية جنائية محكمة بإنشاء\r\nإيطاليا ،روما\r\n١٩٩٨ يوليه/تموز ١٧ – يونيه/حزيران ١٥\r\n17 July 1998 \r\nArabic \r\nOriginal: Arabic",
+    "presentation_forms_detected": true,
+    "presentation_forms_evidence": {
+      "pdfminer_chars_first10pages": 8284,
+      "tounicode_cmap_entries": 60,
+      "pypdfium2_note": "pdfium normalizes U+FB50-FDFF/FE70-FEFF to base letters during extraction, so pypdfium2 text never shows them; detection uses pdfminer.six + direct ToUnicode CMap inspection"
+    },
+    "fonts_without_tounicode": [
+      "LGBOBA+Barcode3of9byrequest,BoldItalic",
+      "TimesNewRoman,Bold",
+      "LGBNOK+TraditionalArabic",
+      "TimesNewRoman",
+      "LGBNPO+TraditionalArabic,Bold",
+      "LGBOJO+TraditionalArabic,BoldItalic"
+    ],
+    "notes": "Genuine UN Arabic document: Acrobat PDFMaker 6.0 for Word + Distiller 6.0, 95 pages, Traditional Arabic fonts. Mixed Type0 fonts with ToUnicode and simple TrueType subsets WITHOUT ToUnicode; ToUnicode CMaps map glyphs to Arabic presentation forms (U+FExx), and pdfminer extraction yields thousands of presentation-form characters plus PUA chars on pp.3-5. pdfium normalizes these silently."
+  },
+  {
+    "filename": "A_worldbank_malpass_g7_briefing_AR_word2016_pdftools.pdf",
+    "classes": "A",
+    "source_url": "https://issues.apache.org/jira/secure/attachment/13047734/Malpass-at-the-G7-Leaders-Summit-Media-Briefing-AR.pdf",
+    "source_page": "https://issues.apache.org/jira/browse/PDFBOX-5487 (reporter: Fatemeh Elyasi, 2022-08-04)",
+    "license_or_status": "World Bank press briefing (World Bank publishes under CC BY 4.0 open-content terms); obtained as a public bug-tracker attachment, test-use only",
+    "sha256": "3d1b985bf3b1e24e58a217e69857b04cfa2275f5970977dc53f28446d9a2ff36",
+    "size_bytes": 103458,
+    "pages_kept": 2,
+    "pages_in_source": 2,
+    "producer": "Microsoft® Word 2016 / PDF PT 4.7.24.2 (pdf-tools.com)",
+    "creator": "Microsoft® Word 2016",
+    "pdf_version": "1.4",
+    "encrypted": false,
+    "tagged": false,
+    "fonts": [
+      {
+        "base_font": "Arial-BoldMT",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "BCDEEE+Calibri-Bold",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "Arial-ItalicMT",
+        "subtype": "TrueType",
+        "embedded": false,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "ArialMT",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "ArialMT",
+        "subtype": "TrueType",
+        "embedded": false,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "Helvetica",
+        "subtype": "Type1",
+        "embedded": false,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      }
+    ],
+    "has_acroform": false,
+    "acroform_fields": 0,
+    "image_only": false,
+    "page1_text_len_pdfium": 2385,
+    "text_sample": " إعالمية إحاطة جلسة في مالباس ديفيد الدولي البنك مجموعة رئيس كلمة\r\nالسبع مجموعة زعماء مؤتمر قمة في\r\n06/13/2021\r\n.األسئلة ىَّأتلق أن يسعدني ثم ،كلمة سألقي .اإلنترنت شبكة عبر بكم ألتقي أن يسعدني .الخير ",
+    "presentation_forms_detected": false,
+    "presentation_forms_evidence": {
+      "pdfminer_chars_first10pages": 0,
+      "tounicode_cmap_entries": 0,
+      "pypdfium2_note": "pdfium normalizes U+FB50-FDFF/FE70-FEFF to base letters during extraction, so pypdfium2 text never shows them; detection uses pdfminer.six + direct ToUnicode CMap inspection"
+    },
+    "fonts_without_tounicode": [
+      "BCDEEE+Calibri-Bold",
+      "Arial-ItalicMT",
+      "ArialMT",
+      "Helvetica"
+    ],
+    "notes": "Microsoft Word 2016 export post-processed by \"PDF PT 4.7.24.2 (pdf-tools.com)\" (dual producer string). Arabic in Type0 Arial with ToUnicode; Calibri-Bold TrueType subset and non-embedded Arial-Italic/Helvetica without ToUnicode. Reported symptom (PDFBox): extra whitespace inserted when extracting Arabic text."
+  },
+  {
+    "filename": "A_arwikibooks_mediawiki_guide_word2007.pdf",
+    "classes": "A",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/7/71/%D8%AF%D9%84%D9%8A%D9%84_%D8%A7%D8%B3%D8%AA%D8%AE%D8%AF%D8%A7%D9%85_%D9%85%D9%8A%D8%AF%D9%8A%D8%A7%D9%88%D9%8A%D9%83%D9%8A.pdf",
+    "source_page": "https://commons.wikimedia.org/wiki/File:%D8%AF%D9%84%D9%8A%D9%84_%D8%A7%D8%B3%D8%AA%D8%AE%D8%AF%D8%A7%D9%85_%D9%85%D9%8A%D8%AF%D9%8A%D8%A7%D9%88%D9%8A%D9%83%D9%8A.pdf",
+    "license_or_status": "Public domain per Commons page (original uploader Email4mobile on ar.wikibooks; transferred to Commons)",
+    "sha256": "dfa9419d282c9dca828734608f342bb574847a14a87c4b2e37e4be8a89b818e1",
+    "size_bytes": 3127095,
+    "pages_kept": 50,
+    "pages_in_source": 50,
+    "producer": "Microsoft® Office Word 2007",
+    "creator": "Microsoft® Office Word 2007",
+    "pdf_version": "1.5",
+    "encrypted": false,
+    "tagged": true,
+    "fonts": [
+      {
+        "base_font": "Arial",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "ABCDEE+Calibri",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "ABCDEE+Cambria",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "Times New Roman",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "Arial,Bold",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "ABCDEE+Calibri,Bold",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "Arial",
+        "subtype": "TrueType",
+        "embedded": false,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "Symbol",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "ABCDEE+Calibri",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "ABCDEE+Courier New",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      }
+    ],
+    "has_acroform": false,
+    "acroform_fields": 0,
+    "image_only": false,
+    "page1_text_len_pdfium": 130,
+    "text_sample": " ًكٌاوٌدٌم استخدام لٌدل\r\n1\r\nٙكٚٔاٚذٛي اعرخذاو مٛدن\r\nـحٛانـؼـشت اٚذٛثٛكٚٔ شٕٚذطـ غٚيشـاس\r\n2011 يونيو\r\nالعربية ويكيبيديا تطوير مشاريع",
+    "presentation_forms_detected": false,
+    "presentation_forms_evidence": {
+      "pdfminer_chars_first10pages": 0,
+      "tounicode_cmap_entries": 0,
+      "pypdfium2_note": "pdfium normalizes U+FB50-FDFF/FE70-FEFF to base letters during extraction, so pypdfium2 text never shows them; detection uses pdfminer.six + direct ToUnicode CMap inspection"
+    },
+    "fonts_without_tounicode": [
+      "ABCDEE+Calibri",
+      "ABCDEE+Cambria",
+      "ABCDEE+Calibri,Bold",
+      "Arial",
+      "ABCDEE+Courier New"
+    ],
+    "notes": "Microsoft Office Word 2007 native PDF export, 50 pages, tagged. Page-1 text extraction is visibly garbled (tashkeel-like marks interleaved, e.g. \"ًكٌاوٌدٌم\") and PUA characters appear on pp.2-5; Calibri/Cambria TrueType subsets lack ToUnicode. Good regression case for Word 2007-era Arabic exports."
+  },
+  {
+    "filename": "B_baytalhekma_covid_workplace_guide_indesign_cc2015.pdf",
+    "classes": "B,G",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/f/f4/%D8%AF%D9%84%D9%8A%D9%84_%D8%A7%D9%84%D9%85%D9%88%D8%B8%D9%81%D9%8A%D9%86_%D9%88%D8%A3%D9%85%D8%A7%D9%83%D9%86_%D8%A7%D9%84%D8%B9%D9%85%D9%84_%D9%84%D9%84%D9%88%D9%82%D8%A7%D9%8A%D8%A9_%D9%85%D9%86_%D9%83%D9%88%D8%B1%D9%88%D9%86%D8%A7_%D9%85%D8%AC%D8%A7%D9%86%D8%A7.pdf",
+    "source_page": "https://commons.wikimedia.org/wiki/File:%D8%AF%D9%84%D9%8A%D9%84_%D8%A7%D9%84%D9%85%D9%88%D8%B8%D9%81%D9%8A%D9%86_%D9%88%D8%A3%D9%85%D8%A7%D9%83%D9%86_%D8%A7%D9%84%D8%B9%D9%85%D9%84_%D9%84%D9%84%D9%88%D9%82%D8%A7%D9%8A%D8%A9_%D9%85%D9%86_%D9%83%D9%88%D8%B1%D9%88%D9%86%D8%A7_%D9%85%D8%AC%D8%A7%D9%86%D8%A7.pdf",
+    "license_or_status": "Attribution (CC BY) per Commons page; author Bayt al-Hekma (https://baytalhekma.net/)",
+    "sha256": "381d4592dca8274435a1673cd9342720f6e07cc59a33cd95347adf03d27c7597",
+    "size_bytes": 3003980,
+    "pages_kept": 53,
+    "pages_in_source": 53,
+    "producer": "Adobe PDF Library 15.0",
+    "creator": "Adobe InDesign CC 2015 (Macintosh)",
+    "pdf_version": "1.4",
+    "encrypted": false,
+    "tagged": true,
+    "fonts": [
+      {
+        "base_font": "NNDKYW+TheMixArab-Bold",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "NNDKYW+TheMixArab-Bold",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "NNDKYW+Montserrat-Bold",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "NNDKYW+Arial-BoldMT",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "NNDKYW+ArialMT",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "NNDKYW+Calibri-Bold",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "NNDKYW+Calibri",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "NNDKYW+Arial-BoldMT",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "NNDKYW+ArialMT",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "WinAnsiEncoding"
+      }
+    ],
+    "has_acroform": false,
+    "acroform_fields": 0,
+    "image_only": false,
+    "page1_text_len_pdfium": 207,
+    "text_sample": "دليلالوقايةمنفيروس\r\nإعداد مركز مكافحة الفيروسات والأوبئة بجيانغسو – الصين\r\nبالتعاون مع دار نشر العنقاء التعليمية بجيانغسو\r\nترجمة: أميمة مصطفى\r\nمراجعة: أحمد السعيد\r\nكوفيد19\r\nنسخة مجانية\r\nللموظفين وأماك",
+    "presentation_forms_detected": true,
+    "presentation_forms_evidence": {
+      "pdfminer_chars_first10pages": 138,
+      "tounicode_cmap_entries": 13,
+      "pypdfium2_note": "pdfium normalizes U+FB50-FDFF/FE70-FEFF to base letters during extraction, so pypdfium2 text never shows them; detection uses pdfminer.six + direct ToUnicode CMap inspection"
+    },
+    "fonts_without_tounicode": [],
+    "notes": "Adobe InDesign CC 2015 (Macintosh) / Adobe PDF Library 15.0, 53-page tagged Arabic guide with TheMixArab, Montserrat, Calibri fonts (Type0 + TrueType). Some ToUnicode entries map to presentation forms (138 found by pdfminer in first 8 pages). Typical NGO/publisher InDesign workflow."
+  },
+  {
+    "filename": "B_wmf_welcome_to_wikipedia_arabic_indesign_cs5_p1-5.pdf",
+    "classes": "B",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/4/49/Welcome2WP_Arabic_082310.pdf",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Welcome2WP_Arabic_082310.pdf",
+    "license_or_status": "CC BY-SA 3.0 per Commons page (Wikimedia Foundation Bookshelf project, Arabic translation)",
+    "sha256": "a16c1159c9c2d8099222760253aa0709879ee11c2e5c49846792df7f26d85e17",
+    "size_bytes": 1241325,
+    "pages_kept": 5,
+    "pages_in_source": 20,
+    "producer": "Adobe PDF Library 9.9",
+    "creator": "Adobe InDesign CS5 (7.0)",
+    "pdf_version": "1.4",
+    "encrypted": false,
+    "tagged": false,
+    "fonts": [
+      {
+        "base_font": "YQQHHS+AlBattar",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "MTRNVQ+KacstOne",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "VRAPRY+KacstOne-Bold",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "SCOXBE+ArialMT",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "SPMXBE+TimesNewRomanPSMT",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "KYQBTU+MinionPro-Regular",
+        "subtype": "Type1",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "WinAnsiEncoding"
+      }
+    ],
+    "has_acroform": false,
+    "acroform_fields": 0,
+    "image_only": false,
+    "page1_text_len_pdfium": 107,
+    "text_sample": "ًا يمكن \r\nتخيل عالم\r\nفيه لكل فرد \r\nمطالعة مجموع \r\nمعارف البشرية \r\nكلها.\r\nجيمي ويلز\r\nمرحبا بك في\r\n ويكيبيديا",
+    "presentation_forms_detected": false,
+    "presentation_forms_evidence": {
+      "pdfminer_chars_first10pages": 0,
+      "tounicode_cmap_entries": 0,
+      "pypdfium2_note": "pdfium normalizes U+FB50-FDFF/FE70-FEFF to base letters during extraction, so pypdfium2 text never shows them; detection uses pdfminer.six + direct ToUnicode CMap inspection"
+    },
+    "fonts_without_tounicode": [],
+    "notes": "Adobe InDesign CS5 (7.0) / Adobe PDF Library 9.9, tagged brochure with AlBattar and KacstOne Arabic fonts (Type0 CIDFontType2) plus MinionPro Type1. Original is 20 pages / 6.99 MB; first 5 pages extracted with pikepdf to stay under 5 MB; the structure tree, outlines and named destinations were removed from this copy (they referenced dropped pages and kept 5.7 MB of resources alive), so unlike the source the copy is untagged."
+  },
+  {
+    "filename": "C_lo_bug171737_noto_sans_arabic_extraction_lo26.2_pdf2.0.pdf",
+    "classes": "C,G",
+    "source_url": "https://bugs.documentfoundation.org/attachment.cgi?id=206739 (fetched via REST: https://bugs.documentfoundation.org/rest/bug/attachment/206739)",
+    "source_page": "https://bugs.documentfoundation.org/show_bug.cgi?id=171737 (reporter/attachment creator: dz.wbdev@gmail.com, 2026-04-13)",
+    "license_or_status": "Public bug-tracker attachment, test-use only",
+    "sha256": "595efd606fd835fb7b7696302b0d39cd0b680494610bd7f1a72e8029c18cead9",
+    "size_bytes": 72403,
+    "pages_kept": 1,
+    "pages_in_source": 1,
+    "producer": "LibreOffice 26.2.1.2 (X86_64)",
+    "creator": "Writer",
+    "pdf_version": "2.0",
+    "encrypted": false,
+    "tagged": true,
+    "fonts": [
+      {
+        "base_font": "BAAAAA+LiberationSerif",
+        "subtype": "Type1",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "CAAAAA+Amiri-Regular",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "DAAAAA+NotoSansArabic-Regular",
+        "subtype": "Type1",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "EAAAAA+NotoNaskhArabicUI-Regular",
+        "subtype": "Type1",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "FAAAAA+DejaVuSans",
+        "subtype": "Type1",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      }
+    ],
+    "has_acroform": false,
+    "acroform_fields": 0,
+    "image_only": false,
+    "page1_text_len_pdfium": 1302,
+    "text_sample": "amiri\r\nالآخر وم\tوالي ل\tوالرس والكتب وصفاته بالله الجازم التصديق هو والإيمان\r\nالله رسول عن الحديث ففي ،لذلك تسليمّوال والخضوع الإذعان مع ،والقدر\r\nنَمِؤْتُوَ رِخِلآْا مِوْيَلْوا هِلِسُرُو بهِوكت هِتِكَئ",
+    "presentation_forms_detected": true,
+    "presentation_forms_evidence": {
+      "pdfminer_chars_first10pages": 3,
+      "tounicode_cmap_entries": 3,
+      "pypdfium2_note": "pdfium normalizes U+FB50-FDFF/FE70-FEFF to base letters during extraction, so pypdfium2 text never shows them; detection uses pdfminer.six + direct ToUnicode CMap inspection"
+    },
+    "fonts_without_tounicode": [],
+    "notes": "LibreOffice 26.2.1.2 Writer export, PDF 2.0, tagged. Bug title: \"Arabic text extraction from LibreOffice-exported PDF is badly broken with Noto Sans Arabic\". Five embedded fonts (Amiri, Noto Sans Arabic, Noto Naskh Arabic, Liberation Serif, DejaVu Sans; several as Type1/CFF). ToUnicode maps a ligature to U+FDFA (SAW ligature), so presentation forms are present."
+  },
+  {
+    "filename": "C_lo_bug119606_seventeen_macos_arabic_fonts_lo7.5dev.pdf",
+    "classes": "C",
+    "source_url": "https://bugs.documentfoundation.org/attachment.cgi?id=182459 (fetched via REST: https://bugs.documentfoundation.org/rest/bug/attachment/182459)",
+    "source_page": "https://bugs.documentfoundation.org/show_bug.cgi?id=119606 (bug reporter: vaaydayaasra@gmail.com; attachment \"Test PDF with various fonts\" by khaled@libreoffice.org, Khaled Hosny)",
+    "license_or_status": "Public bug-tracker attachment, test-use only",
+    "sha256": "27547a82c4bd5f991c1d6eaa3dfddc9a3cad81b5616c698ad4b296c010e0ce52",
+    "size_bytes": 249289,
+    "pages_kept": 1,
+    "pages_in_source": 1,
+    "producer": "LibreOfficeDev 7.5",
+    "creator": "Writer",
+    "pdf_version": "1.6",
+    "encrypted": false,
+    "tagged": false,
+    "fonts": [
+      {
+        "base_font": "BAAAAA+29LTZaridSans-Medium",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "KAAAAA+Baghdad",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "LAAAAA+Beirut",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "MAAAAA+BrandoArabic",
+        "subtype": "Type1",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "NAAAAA+Damascus",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "OAAAAA+DINNextLTArabic-Medium",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "PAAAAA+DejaVuSans",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "QAAAAA+DejaVuSansMono",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "RAAAAA+GoogleSansArabic-Regular",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "CAAAAA+AktivGroteskArbc-Regular",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "DAAAAA+AlBayan",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "EAAAAA+AlTarikh",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "FAAAAA+Amiri-Regular",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "GAAAAA+AntiRegular",
+        "subtype": "Type1",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "HAAAAA+ArabicTypesetting",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "IAAAAA+ArefRuqaaRegular",
+        "subtype": "Type1",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      },
+      {
+        "base_font": "JAAAAA+BNazanin",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": ""
+      }
+    ],
+    "has_acroform": false,
+    "acroform_fields": 0,
+    "image_only": false,
+    "page1_text_len_pdfium": 1231,
+    "text_sample": "هُ ْمن ا ِ هَ تُيْ\r\nَتَرشا ا ْ َن\r\nأَو كتاب آالف خمسة بالل ى َ ترشا\r\nهُنْم ا ِ هَتُْي\r\nَ\r\nترَاش ا ْ نَ\r\nأَو كتاب آالف خمسة بالل اشترى َ\r\nهُنِم ا ْ هَتُ ْي\r\nَ\r\nترَاش ا ْ نَأَو كتاب آالف خمسة بالل اشترى",
+    "presentation_forms_detected": false,
+    "presentation_forms_evidence": {
+      "pdfminer_chars_first10pages": 0,
+      "tounicode_cmap_entries": 0,
+      "pypdfium2_note": "pdfium normalizes U+FB50-FDFF/FE70-FEFF to base letters during extraction, so pypdfium2 text never shows them; detection uses pdfminer.six + direct ToUnicode CMap inspection"
+    },
+    "fonts_without_tounicode": [],
+    "notes": "LibreOfficeDev 7.5 Writer export exercising 17 different embedded Arabic fonts on one page (macOS system fonts Baghdad, Beirut, Damascus, DIN Next LT Arabic, 29LT Zarid Sans, Brando Arabic, ...). Excellent font-diversity/shaping stress test; bug context: Arabic text deformed when creating PDF on Linux."
+  },
+  {
+    "filename": "D_gdocs_digital_safety_guide_ar_skia_m130.pdf",
+    "classes": "D,G",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/3/37/%D8%AF%D9%84%D9%8A%D9%84_%D8%A7%D9%84%D8%B3%D9%84%D8%A7%D9%85%D8%A9_%D8%A7%D9%84%D8%B1%D9%82%D9%85%D9%8A%D8%A9_%D9%88%D8%A7%D9%84%D8%AE%D8%B5%D9%88%D8%B5%D9%8A%D8%A9_-_%D8%A8%D8%A7%D9%84%D8%B9%D8%B1%D8%A8%D9%8A_%281%29.docx_%282%29.pdf",
+    "source_page": "https://commons.wikimedia.org/wiki/File:%D8%AF%D9%84%D9%8A%D9%84_%D8%A7%D9%84%D8%B3%D9%84%D8%A7%D9%85%D8%A9_%D8%A7%D9%84%D8%B1%D9%82%D9%85%D9%8A%D8%A9_%D9%88%D8%A7%D9%84%D8%AE%D8%B5%D9%88%D8%B5%D9%8A%D8%A9_-_%D8%A8%D8%A7%D9%84%D8%B9%D8%B1%D8%A8%D9%8A_(1).docx_(2).pdf",
+    "license_or_status": "CC0 per Commons page (uploader Nhatem3, own work)",
+    "sha256": "37e1a06ce236d7c9081be2119650dbacdd36e96f218595b4745f88ca5a6eac91",
+    "size_bytes": 867257,
+    "pages_kept": 15,
+    "pages_in_source": 15,
+    "producer": "Skia/PDF m130 Google Docs Renderer",
+    "creator": "",
+    "pdf_version": "1.4",
+    "encrypted": false,
+    "tagged": false,
+    "fonts": [
+      {
+        "base_font": "AAAAAA+ArialMT",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "BAAAAA+Arial-BoldMT",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "CAAAAA+Arial-ItalicMT",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "",
+        "subtype": "Type3",
+        "embedded": false,
+        "to_unicode": true,
+        "encoding": "dict"
+      },
+      {
+        "base_font": "EAAAAA+SourceSerifPro-Bold",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "FAAAAA+Arial-BoldItalicMT",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      }
+    ],
+    "has_acroform": false,
+    "acroform_fields": 0,
+    "image_only": false,
+    "page1_text_len_pdfium": 1267,
+    "text_sample": "``\r\nالدليل؟ لماذا\r\nةفرعم إن .هثدحي أن يمكن الذي الضرر حجم زاد ،عنك ام شخص اهكلتمي يتلا المعلومات قدر زاد املك\r\nعم والتعامل يقابتسا بشكل التصرف من تمكنك اهيلع حصلوا أين ومن لديهم تكون أن يمكن يتلا المع",
+    "presentation_forms_detected": true,
+    "presentation_forms_evidence": {
+      "pdfminer_chars_first10pages": 6848,
+      "tounicode_cmap_entries": 110,
+      "pypdfium2_note": "pdfium normalizes U+FB50-FDFF/FE70-FEFF to base letters during extraction, so pypdfium2 text never shows them; detection uses pdfminer.six + direct ToUnicode CMap inspection"
+    },
+    "fonts_without_tounicode": [],
+    "notes": "Google Docs export (\"Skia/PDF m130 Google Docs Renderer\"), 15 pages of Arabic; includes a Type3 font alongside CID TrueType subsets. ToUnicode maps to presentation forms (pdfminer finds ~5.9k in 8 pages) and pdfium output shows reversed word fragments. Canonical Google Docs Arabic sample."
+  },
+  {
+    "filename": "D_gdocs_wmf_rapid_funds_guide_ar_skia_m97.pdf",
+    "classes": "D,G",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/4/47/%D8%AF%D9%84%D9%8A%D9%84_%D8%A5%D8%B1%D8%B4%D8%A7%D8%AF%D9%8A_%D9%84%D8%B7%D9%84%D8%A8%D8%A7%D8%AA_%D8%A7%D9%84%D9%85%D9%86%D8%AD_%D8%A7%D9%84%D8%B3%D8%B1%D9%8A%D8%B9%D8%A9_-_Application_Guide_for_Rapid_Funds_-_Arabic.pdf",
+    "source_page": "https://commons.wikimedia.org/wiki/File:%D8%AF%D9%84%D9%8A%D9%84_%D8%A5%D8%B1%D8%B4%D8%A7%D8%AF%D9%8A_%D9%84%D8%B7%D9%84%D8%A8%D8%A7%D8%AA_%D8%A7%D9%84%D9%85%D9%86%D8%AD_%D8%A7%D9%84%D8%B3%D8%B1%D9%8A%D8%B9%D8%A9_-_Application_Guide_for_Rapid_Funds_-_Arabic.pdf",
+    "license_or_status": "CC BY-SA 4.0 per Commons page (Wikimedia Foundation, User:JStephenson (WMF))",
+    "sha256": "459c8869238882f03591fb9a276b95e1f0e083a9dc811f95e08a7f9377e701e0",
+    "size_bytes": 2024859,
+    "pages_kept": 32,
+    "pages_in_source": 32,
+    "producer": "Skia/PDF m97 Google Docs Renderer",
+    "creator": "",
+    "pdf_version": "1.4",
+    "encrypted": false,
+    "tagged": false,
+    "fonts": [
+      {
+        "base_font": "Mirza-Medium",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "Lalezar-Regular",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "Mirza-Regular",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "Mirza-Bold",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "ArialMT",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "Mirza-SemiBold",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "HelveticaNeue",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      }
+    ],
+    "has_acroform": false,
+    "acroform_fields": 0,
+    "image_only": false,
+    "page1_text_len_pdfium": 2395,
+    "text_sample": "،ان\r\nت\r\nسلوم يبوب وباركاو البوعمراوي ا\r\nن\r\nيمساج\r\nن\r\nم ةمد قم الصور\r\nز ن\r\nموك ايديميكيو قيرط\r\nن\r\nع ،ر\r\nفص يعادبلإا اع\r\nش\r\nملا\r\nةعيسرلا حنلماتابلطليداشرإليلد\r\n:ادي\r\nش\r\nاإلر ليلدلا هذا تخدامسا ةي\r\nف\r\nيك",
+    "presentation_forms_detected": true,
+    "presentation_forms_evidence": {
+      "pdfminer_chars_first10pages": 12500,
+      "tounicode_cmap_entries": 84,
+      "pypdfium2_note": "pdfium normalizes U+FB50-FDFF/FE70-FEFF to base letters during extraction, so pypdfium2 text never shows them; detection uses pdfminer.six + direct ToUnicode CMap inspection"
+    },
+    "fonts_without_tounicode": [],
+    "notes": "Google Docs export (\"Skia/PDF m97 Google Docs Renderer\") using Google Fonts Mirza and Lalezar. Text extraction is badly scrambled (letters split across lines, reversed order) and contains Arabic Presentation Forms-A pedagogical marks (U+FBB3-FBB5 range) - a known-broken Arabic sample."
+  },
+  {
+    "filename": "E_commons_tafsir_surat_alnur_pd_scan_p1-3.pdf",
+    "classes": "E",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/3/3d/Tafs%C4%ABr_S%C5%ABrat_al-N%C5%ABr.pdf",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Tafs%C4%ABr_S%C5%ABrat_al-N%C5%ABr.pdf",
+    "license_or_status": "Public domain per Commons page (author Ibn Taymiyyah, d. 1328; scanned printed edition)",
+    "sha256": "d85804668e4ffdf9d64738d90c89fb1efe0d1d11db14f221d3c4d95bed7a8aa6",
+    "size_bytes": 64290,
+    "pages_kept": 3,
+    "pages_in_source": 132,
+    "producer": "itext-paulo-155 (itextpdf.sf.net-lowagie.com)",
+    "creator": "pdftk-java 3.0.9",
+    "pdf_version": "1.6",
+    "encrypted": false,
+    "tagged": false,
+    "fonts": [],
+    "has_acroform": false,
+    "acroform_fields": 0,
+    "image_only": true,
+    "page1_text_len_pdfium": 0,
+    "text_sample": "",
+    "presentation_forms_detected": false,
+    "presentation_forms_evidence": {
+      "pdfminer_chars_first10pages": 0,
+      "tounicode_cmap_entries": 0,
+      "pypdfium2_note": "pdfium normalizes U+FB50-FDFF/FE70-FEFF to base letters during extraction, so pypdfium2 text never shows them; detection uses pdfminer.six + direct ToUnicode CMap inspection"
+    },
+    "fonts_without_tounicode": [],
+    "notes": "Image-only scan of a printed Arabic book, assembled with pdftk-java 3.0.9 / iText (itext-paulo-155). Original 132 pages / 3.45 MB; first 3 pages extracted with pikepdf (document-level outlines/dests dropped if present). No fonts, no text layer: OCR/annotation-over-image test case."
+  },
+  {
+    "filename": "E_commons_qarar193_toshiba_estudio_mfp_scan.pdf",
+    "classes": "E",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/a/a6/%D9%82%D8%B1%D8%A7%D8%B1_193.pdf",
+    "source_page": "https://commons.wikimedia.org/wiki/File:%D9%82%D8%B1%D8%A7%D8%B1_193.pdf",
+    "license_or_status": "CC BY-SA 4.0 per Commons page (uploader Coophousing, own work)",
+    "sha256": "4347884ec710baa434fad4ac883cadf2b2d9ef37a7be56288e9da321fd132657",
+    "size_bytes": 87742,
+    "pages_kept": 4,
+    "pages_in_source": 4,
+    "producer": "SECnvtToPDF V1.0",
+    "creator": "TOSHIBA e-STUDIO4518A",
+    "pdf_version": "1.7",
+    "encrypted": false,
+    "tagged": false,
+    "fonts": [],
+    "has_acroform": false,
+    "acroform_fields": 0,
+    "image_only": true,
+    "page1_text_len_pdfium": 0,
+    "text_sample": "",
+    "presentation_forms_detected": false,
+    "presentation_forms_evidence": {
+      "pdfminer_chars_first10pages": 0,
+      "tounicode_cmap_entries": 0,
+      "pypdfium2_note": "pdfium normalizes U+FB50-FDFF/FE70-FEFF to base letters during extraction, so pypdfium2 text never shows them; detection uses pdfminer.six + direct ToUnicode CMap inspection"
+    },
+    "fonts_without_tounicode": [],
+    "notes": "Real office multifunction-printer output: Producer \"SECnvtToPDF V1.0\", Creator \"TOSHIBA e-STUDIO4518A\", PDF 1.7, 4 image-only pages of a scanned Arabic administrative decision (qarar 193). Represents the most common way Arabic paperwork enters the digital world."
+  },
+  {
+    "filename": "E_ia_bv056_arabic_manuscript_1924_ocr_text_layer.pdf",
+    "classes": "E",
+    "source_url": "https://archive.org/download/bv_056/bv_056_text.pdf",
+    "source_page": "https://archive.org/details/bv_056 (University of Pennsylvania Libraries, \"Notebook of magical formulae\", 1924)",
+    "license_or_status": "Public Domain Mark 1.0 per Internet Archive metadata (http://creativecommons.org/publicdomain/mark/1.0/)",
+    "sha256": "923ca019df9e2dd9cf8a5d1128141a92ee3368427617fc882b35fba7ba3f0c5a",
+    "size_bytes": 843861,
+    "pages_kept": 36,
+    "pages_in_source": 36,
+    "producer": "Internet Archive PDF 1.2.0; including mupdf and pymupdf/skimage",
+    "creator": "Internet Archive",
+    "pdf_version": "1.5",
+    "encrypted": false,
+    "tagged": true,
+    "fonts": [
+      {
+        "base_font": "GlyphLessFont",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      }
+    ],
+    "has_acroform": false,
+    "acroform_fields": 0,
+    "image_only": true,
+    "page1_text_len_pdfium": 0,
+    "text_sample": "",
+    "presentation_forms_detected": false,
+    "presentation_forms_evidence": {
+      "pdfminer_chars_first10pages": 0,
+      "tounicode_cmap_entries": 0,
+      "pypdfium2_note": "pdfium normalizes U+FB50-FDFF/FE70-FEFF to base letters during extraction, so pypdfium2 text never shows them; detection uses pdfminer.six + direct ToUnicode CMap inspection"
+    },
+    "fonts_without_tounicode": [],
+    "notes": "Internet Archive derivative (\"Internet Archive PDF 1.2.0; including mupdf and pymupdf/skim\"), 36 pages, tagged, scanned Arabic manuscript with an invisible OCR text layer in GlyphLessFont (Type0 CIDFontType2 with ToUnicode). Page 1 has no text; Arabic OCR text starts on page 6. Tests hidden-text-layer handling and OCR-quality Arabic."
+  },
+  {
+    "filename": "F_pdfjs15546_rtl_acroform_textfields_arabic_digits_acrobat.pdf",
+    "classes": "F",
+    "source_url": "https://github.com/mozilla/pdf.js/files/9732872/rtl.pdf",
+    "source_page": "https://github.com/mozilla/pdf.js/issues/15546 (\"RTL/LTR text fields and arabic numbers\", 2022-10-07)",
+    "license_or_status": "Public bug-tracker attachment, test-use only",
+    "sha256": "1b3d2d8fa56d26d2a94f96380e03599a0fa73723d831b75eec6e847edcf85122",
+    "size_bytes": 14213,
+    "pages_kept": 1,
+    "pages_in_source": 1,
+    "producer": "Adobe Acrobat Pro DC (64-bit) 22.2.20212",
+    "creator": "Adobe Acrobat Pro DC (64-bit) 22.2.20212",
+    "pdf_version": "1.6",
+    "encrypted": false,
+    "tagged": false,
+    "fonts": [
+      {
+        "base_font": "IQXZGX+MinionPro-Regular",
+        "subtype": "Type0(CIDFontType0)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "KUGOOE+MinionPro-Regular",
+        "subtype": "Type0(CIDFontType0)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "JQRIAG+MinionPro-Regular",
+        "subtype": "Type0(CIDFontType0)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "SLBMIJ+MinionPro-Regular",
+        "subtype": "Type0(CIDFontType0)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      }
+    ],
+    "has_acroform": true,
+    "acroform_fields": 4,
+    "image_only": false,
+    "page1_text_len_pdfium": 120,
+    "text_sample": "RTL Field with arabic numbers\r\nRTL Field with usual numbers\r\nLTR Field with arabic numbers\r\nLTR Field with usual numbers",
+    "presentation_forms_detected": false,
+    "presentation_forms_evidence": {
+      "pdfminer_chars_first10pages": 0,
+      "tounicode_cmap_entries": 0,
+      "pypdfium2_note": "pdfium normalizes U+FB50-FDFF/FE70-FEFF to base letters during extraction, so pypdfium2 text never shows them; detection uses pdfminer.six + direct ToUnicode CMap inspection"
+    },
+    "fonts_without_tounicode": [],
+    "notes": "Adobe Acrobat Pro DC 22.2 form with 4 AcroForm text fields (RTL and LTR fields, values with Arabic-Indic digits). Reported symptom: pdf.js renders RTL fields / Arabic digits incorrectly. Closest AcroForm sample found; no government form with Arabic field labels was directly downloadable."
+  },
+  {
+    "filename": "G_pdfjs_ArabicCIDTrueType_apple_pstopdffilter_no_tounicode.pdf",
+    "classes": "G",
+    "source_url": "https://raw.githubusercontent.com/mozilla/pdf.js/master/test/pdfs/ArabicCIDTrueType.pdf",
+    "source_page": "https://github.com/mozilla/pdf.js/blob/master/test/pdfs/ArabicCIDTrueType.pdf (see https://github.com/mozilla/pdf.js/issues/2141 \"Extracted arabic text ... is wrong\")",
+    "license_or_status": "pdf.js repository test file (repository is Apache-2.0); test-use only",
+    "sha256": "1cad1de912ba29f89a6d8b08bc5b0f84382874ffedab2c8f9e05ef608c265bb1",
+    "size_bytes": 39370,
+    "pages_kept": 1,
+    "pages_in_source": 1,
+    "producer": "Apple pstopdffilter",
+    "creator": "",
+    "pdf_version": "1.3",
+    "encrypted": false,
+    "tagged": false,
+    "fonts": [
+      {
+        "base_font": "NLPEIM+Jeezah",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "NLPEKO+Jeezah",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "NLPEIP+NewBasrahBold",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "NLPEKP+NewBasrahBold",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "NLPEJB+Beirut",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "NLPELB+Beirut",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      },
+      {
+        "base_font": "NLPEJO+DamascusBold",
+        "subtype": "Type0(CIDFontType2)",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "Identity-H"
+      },
+      {
+        "base_font": "NLPELD+DamascusBold",
+        "subtype": "TrueType",
+        "embedded": true,
+        "to_unicode": false,
+        "encoding": "WinAnsiEncoding"
+      }
+    ],
+    "has_acroform": false,
+    "acroform_fields": 0,
+    "image_only": false,
+    "page1_text_len_pdfium": 86,
+    "text_sample": "العربية الخطوط انواع\r\nالعربية الخطوط انواع\r\nالعربية الخطوط انواع\r\nالعربية الخطوط انواع",
+    "presentation_forms_detected": true,
+    "presentation_forms_evidence": {
+      "pdfminer_chars_first10pages": 44,
+      "tounicode_cmap_entries": 12,
+      "pypdfium2_note": "pdfium normalizes U+FB50-FDFF/FE70-FEFF to base letters during extraction, so pypdfium2 text never shows them; detection uses pdfminer.six + direct ToUnicode CMap inspection"
+    },
+    "fonts_without_tounicode": [
+      "NLPEKO+Jeezah",
+      "NLPEKP+NewBasrahBold",
+      "NLPELB+Beirut",
+      "NLPELD+DamascusBold"
+    ],
+    "notes": "Apple \"pstopdffilter\" (macOS print-to-PDF), PDF 1.3: Arabic in Jeezah / New Basrah / Beirut fonts, each present both as Type0 CIDFontType2 (with ToUnicode mapping to presentation forms) and as simple TrueType subsets WITHOUT ToUnicode. Classic worst case for text extraction."
+  },
+  {
+    "filename": "G_wipo_saudi_copyright_law_laserwriter8_distiller5_legacy_encoding.pdf",
+    "classes": "G",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/e/e9/%D9%86%D8%B8%D8%A7%D9%85_%D8%AD%D9%85%D8%A7%D9%8A%D8%A9_%D8%AD%D9%82%D9%88%D9%82_%D8%A7%D9%84%D9%85%D8%A4%D9%84%D9%81_%D8%A8%D8%A7%D9%84%D9%85%D9%85%D9%84%D9%83%D8%A9_%D8%A7%D9%84%D8%B9%D8%B1%D8%A8%D9%8A%D8%A9_%D8%A7%D9%84%D8%B3%D8%B9%D9%88%D8%AF%D9%8A%D8%A9.pdf",
+    "source_page": "https://commons.wikimedia.org/wiki/File:%D9%86%D8%B8%D8%A7%D9%85_%D8%AD%D9%85%D8%A7%D9%8A%D8%A9_%D8%AD%D9%82%D9%88%D9%82_%D8%A7%D9%84%D9%85%D8%A4%D9%84%D9%81_%D8%A8%D8%A7%D9%84%D9%85%D9%85%D9%84%D9%83%D8%A9_%D8%A7%D9%84%D8%B9%D8%B1%D8%A8%D9%8A%D8%A9_%D8%A7%D9%84%D8%B3%D8%B9%D9%88%D8%AF%D9%8A%D8%A9.pdf",
+    "license_or_status": "Public domain per Commons page (Saudi official legal text - Copyright Protection Law; credit WIPO Lex)",
+    "sha256": "b9f243936ebcab769751074030b69094af2d2b569bd2a0312e52ca9e14fd376b",
+    "size_bytes": 135842,
+    "pages_kept": 23,
+    "pages_in_source": 23,
+    "producer": "Acrobat Distiller 5.0.5 (Windows)",
+    "creator": "ÇäæÇÔÑ€ÇäÕÍáê: LaserWriter 8 Z1-8.7.1",
+    "pdf_version": "1.4",
+    "encrypted": false,
+    "tagged": false,
+    "fonts": [
+      {
+        "base_font": "OEEBEI+Harfgeded1",
+        "subtype": "Type1",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "dict"
+      },
+      {
+        "base_font": "OEEBEJ+LotusBol",
+        "subtype": "Type1",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "dict"
+      },
+      {
+        "base_font": "OEEJFJ+YakootLinoBold",
+        "subtype": "Type1",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "dict"
+      },
+      {
+        "base_font": "OEELJM+AlqamuneerEND",
+        "subtype": "Type1",
+        "embedded": true,
+        "to_unicode": true,
+        "encoding": "dict"
+      }
+    ],
+    "has_acroform": false,
+    "acroform_fields": 0,
+    "image_only": false,
+    "page1_text_len_pdfium": 163,
+    "text_sample": "n=\u0001R*« ‚uIŠ W¹ULŠ ÂUE½\r\na¹—UðË © ¥±Ø Â ® r?\u0001— wJK*« Âu???Ýd*« Vłu?0 ÂUEM\u0002« «c?¼ —b??\u0003\r\nÆ ‡¼±¥≤¥Ø∑Ø≤\r\nÆ‡¼±¥≤¥Ø∑Ø≤≤ a¹—UðË ©≥πµπ® r‡‡\u0001— U¼œbŽ w\b ÈdI\u0002« Â√ …b¹d−Ð dA½Ë",
+    "presentation_forms_detected": false,
+    "presentation_forms_evidence": {
+      "pdfminer_chars_first10pages": 0,
+      "tounicode_cmap_entries": 0,
+      "pypdfium2_note": "pdfium normalizes U+FB50-FDFF/FE70-FEFF to base letters during extraction, so pypdfium2 text never shows them; detection uses pdfminer.six + direct ToUnicode CMap inspection"
+    },
+    "fonts_without_tounicode": [],
+    "notes": "Pre-Unicode Arabic workflow: Creator \"LaserWriter 8 Z1-8.7.1\" (Mac OS 9, creator string itself mojibake), Producer \"Acrobat Distiller 5.0.5 (Windows)\". Type1 legacy Arabic fonts (Harfgeded, LotusBold, YakootLinoBold, Alqamuneer) with ToUnicode CMaps that map to Latin/symbol code points, so every extractor returns garbage (\"n=\\x01R*« ‚uIŠ\"). Visually correct, textually hostile."
+  }
+]

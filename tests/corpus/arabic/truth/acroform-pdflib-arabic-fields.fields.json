@@ -1,0 +1,32 @@
+[
+ {
+  "name": "الاسم الكامل",
+  "type": "text",
+  "value": "محمد عبد الله"
+ },
+ {
+  "name": "رقم الهوية",
+  "type": "text",
+  "value": "1098765432"
+ },
+ {
+  "name": "الجنسية",
+  "type": "text",
+  "value": ""
+ },
+ {
+  "name": "البريد الإلكتروني",
+  "type": "text",
+  "value": ""
+ },
+ {
+  "name": "الجنس/ذكر",
+  "type": "checkbox",
+  "value": true
+ },
+ {
+  "name": "الجنس/أنثى",
+  "type": "checkbox",
+  "value": false
+ }
+]

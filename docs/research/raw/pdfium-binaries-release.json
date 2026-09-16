@@ -1,0 +1,287 @@
+{
+ "source": "https://api.github.com/repos/bblanchon/pdfium-binaries/releases/latest",
+ "verified_at": "2026-09-16T03:47:30Z",
+ "tag_name": "chromium/8057",
+ "name": "PDFium 155.0.8057.0",
+ "published_at": "2026-09-14T17:18:55Z",
+ "created_at": "2026-09-14T13:56:17Z",
+ "html_url": "https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium/8057",
+ "assets": [
+  {
+   "name": "pdfium-android-arm.tgz",
+   "size_bytes": 2818477,
+   "download_count": 42,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-android-arm.tgz"
+  },
+  {
+   "name": "pdfium-android-arm64.tgz",
+   "size_bytes": 3382494,
+   "download_count": 54,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-android-arm64.tgz"
+  },
+  {
+   "name": "pdfium-android-x64.tgz",
+   "size_bytes": 3525088,
+   "download_count": 21,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-android-x64.tgz"
+  },
+  {
+   "name": "pdfium-android-x86.tgz",
+   "size_bytes": 3303520,
+   "download_count": 13,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-android-x86.tgz"
+  },
+  {
+   "name": "pdfium-attestation.json",
+   "size_bytes": 18223,
+   "download_count": 6,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-attestation.json"
+  },
+  {
+   "name": "pdfium-ios-catalyst-arm64.tgz",
+   "size_bytes": 3338690,
+   "download_count": 2,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-ios-catalyst-arm64.tgz"
+  },
+  {
+   "name": "pdfium-ios-catalyst-x64.tgz",
+   "size_bytes": 3574563,
+   "download_count": 2,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-ios-catalyst-x64.tgz"
+  },
+  {
+   "name": "pdfium-ios-device-arm64.tgz",
+   "size_bytes": 3304546,
+   "download_count": 19,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-ios-device-arm64.tgz"
+  },
+  {
+   "name": "pdfium-ios-simulator-arm64.tgz",
+   "size_bytes": 3394374,
+   "download_count": 31,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-ios-simulator-arm64.tgz"
+  },
+  {
+   "name": "pdfium-ios-simulator-x64.tgz",
+   "size_bytes": 3574580,
+   "download_count": 11,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-ios-simulator-x64.tgz"
+  },
+  {
+   "name": "pdfium-linux-arm.tgz",
+   "size_bytes": 3374179,
+   "download_count": 4,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-linux-arm.tgz"
+  },
+  {
+   "name": "pdfium-linux-arm64.tgz",
+   "size_bytes": 3662651,
+   "download_count": 175,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-linux-arm64.tgz"
+  },
+  {
+   "name": "pdfium-linux-mips64el.tgz",
+   "size_bytes": 3824900,
+   "download_count": 3,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-linux-mips64el.tgz"
+  },
+  {
+   "name": "pdfium-linux-mipsel.tgz",
+   "size_bytes": 3952380,
+   "download_count": 3,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-linux-mipsel.tgz"
+  },
+  {
+   "name": "pdfium-linux-musl-arm64.tgz",
+   "size_bytes": 7190672,
+   "download_count": 9,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-linux-musl-arm64.tgz"
+  },
+  {
+   "name": "pdfium-linux-musl-x64.tgz",
+   "size_bytes": 7295719,
+   "download_count": 43,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-linux-musl-x64.tgz"
+  },
+  {
+   "name": "pdfium-linux-musl-x86.tgz",
+   "size_bytes": 7244555,
+   "download_count": 3,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-linux-musl-x86.tgz"
+  },
+  {
+   "name": "pdfium-linux-ppc64.tgz",
+   "size_bytes": 4220182,
+   "download_count": 2,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-linux-ppc64.tgz"
+  },
+  {
+   "name": "pdfium-linux-x64.tgz",
+   "size_bytes": 3741565,
+   "download_count": 2261,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-linux-x64.tgz"
+  },
+  {
+   "name": "pdfium-linux-x86.tgz",
+   "size_bytes": 3807031,
+   "download_count": 3,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-linux-x86.tgz"
+  },
+  {
+   "name": "pdfium-mac-arm64.tgz",
+   "size_bytes": 3480513,
+   "download_count": 376,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-mac-arm64.tgz"
+  },
+  {
+   "name": "pdfium-mac-univ.tgz",
+   "size_bytes": 7040179,
+   "download_count": 9,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-mac-univ.tgz"
+  },
+  {
+   "name": "pdfium-mac-x64.tgz",
+   "size_bytes": 3675201,
+   "download_count": 37,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-mac-x64.tgz"
+  },
+  {
+   "name": "pdfium-v8-android-arm.tgz",
+   "size_bytes": 9543258,
+   "download_count": 2,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-android-arm.tgz"
+  },
+  {
+   "name": "pdfium-v8-android-arm64.tgz",
+   "size_bytes": 11503272,
+   "download_count": 2,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-android-arm64.tgz"
+  },
+  {
+   "name": "pdfium-v8-android-x64.tgz",
+   "size_bytes": 12176580,
+   "download_count": 2,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-android-x64.tgz"
+  },
+  {
+   "name": "pdfium-v8-android-x86.tgz",
+   "size_bytes": 11602717,
+   "download_count": 3,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-android-x86.tgz"
+  },
+  {
+   "name": "pdfium-v8-ios-catalyst-arm64.tgz",
+   "size_bytes": 12518354,
+   "download_count": 1,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-ios-catalyst-arm64.tgz"
+  },
+  {
+   "name": "pdfium-v8-ios-catalyst-x64.tgz",
+   "size_bytes": 14300733,
+   "download_count": 1,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-ios-catalyst-x64.tgz"
+  },
+  {
+   "name": "pdfium-v8-ios-device-arm64.tgz",
+   "size_bytes": 12393470,
+   "download_count": 1,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-ios-device-arm64.tgz"
+  },
+  {
+   "name": "pdfium-v8-ios-simulator-arm64.tgz",
+   "size_bytes": 12855004,
+   "download_count": 1,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-ios-simulator-arm64.tgz"
+  },
+  {
+   "name": "pdfium-v8-ios-simulator-x64.tgz",
+   "size_bytes": 14300945,
+   "download_count": 1,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-ios-simulator-x64.tgz"
+  },
+  {
+   "name": "pdfium-v8-linux-arm.tgz",
+   "size_bytes": 12376175,
+   "download_count": 2,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-linux-arm.tgz"
+  },
+  {
+   "name": "pdfium-v8-linux-arm64.tgz",
+   "size_bytes": 13870728,
+   "download_count": 2,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-linux-arm64.tgz"
+  },
+  {
+   "name": "pdfium-v8-linux-x64.tgz",
+   "size_bytes": 14051403,
+   "download_count": 51,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-linux-x64.tgz"
+  },
+  {
+   "name": "pdfium-v8-linux-x86.tgz",
+   "size_bytes": 13755544,
+   "download_count": 2,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-linux-x86.tgz"
+  },
+  {
+   "name": "pdfium-v8-mac-arm64.tgz",
+   "size_bytes": 12922229,
+   "download_count": 4,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-mac-arm64.tgz"
+  },
+  {
+   "name": "pdfium-v8-mac-univ.tgz",
+   "size_bytes": 27174888,
+   "download_count": 4,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-mac-univ.tgz"
+  },
+  {
+   "name": "pdfium-v8-mac-x64.tgz",
+   "size_bytes": 14378483,
+   "download_count": 2,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-mac-x64.tgz"
+  },
+  {
+   "name": "pdfium-v8-win-arm64.tgz",
+   "size_bytes": 11848792,
+   "download_count": 3,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-win-arm64.tgz"
+  },
+  {
+   "name": "pdfium-v8-win-x64.tgz",
+   "size_bytes": 12723966,
+   "download_count": 22,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-win-x64.tgz"
+  },
+  {
+   "name": "pdfium-v8-win-x86.tgz",
+   "size_bytes": 11550332,
+   "download_count": 5,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-v8-win-x86.tgz"
+  },
+  {
+   "name": "pdfium-wasm.tgz",
+   "size_bytes": 2574720,
+   "download_count": 5,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-wasm.tgz"
+  },
+  {
+   "name": "pdfium-win-arm64.tgz",
+   "size_bytes": 3593606,
+   "download_count": 43,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-win-arm64.tgz"
+  },
+  {
+   "name": "pdfium-win-x64.tgz",
+   "size_bytes": 3821600,
+   "download_count": 782,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-win-x64.tgz"
+  },
+  {
+   "name": "pdfium-win-x86.tgz",
+   "size_bytes": 3686985,
+   "download_count": 25,
+   "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8057/pdfium-win-x86.tgz"
+  }
+ ]
+}

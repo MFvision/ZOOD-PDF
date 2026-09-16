@@ -1,0 +1,1423 @@
+[
+ {
+  "file": "generated/acroform-pdflib-arabic-fields.pdf",
+  "size_bytes": 96750,
+  "sha256": "4c2cb4954fccafc0",
+  "pages": 1,
+  "pdf_version": "1.7",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": true,
+  "producer": "pdf-lib (https://github.com/Hopding/pdf-lib)",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "?": {
+    "subtype": "/Type3",
+    "embedded": false,
+    "tounicode": true
+   },
+   "/CAAAAA+AppleSymbols": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "ةصخر ديدجت بلط جذومن / :لماكلا مسالا / :ةيوهلا مقر / :الميلاد خيرات / :ةيسنجلا / :ينورتكلإلا ديربلا / :الجوال مقر / ☐ ىثنأ ☐ رك",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "AcroForm fields with Arabic names/value added by pdf-lib (unshaped appearance = known-bad)",
+  "truth": "truth/acroform-pdflib-arabic-fields.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/chrome-amiri-tashkeel-ligatures.pdf",
+  "size_bytes": 16977,
+  "sha256": "a85899586bd3fe25",
+  "pages": 1,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "/AAAAAA+Amiri-Regular": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "مٌ / لاَ ظَ لُهْجَلْواَ رٌونُ مُ لْعِلْا / ةِبَتَ كْمَلْا فيِ دَ ديِجَلْا بَتَتاَكِلْا / هِ الل / دُ بْعَ أَرَأَرَقَ / وراق ر",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Skia/PDF, Amiri, full tashkeel, lam-alef and Allah ligatures, kashida",
+  "truth": "truth/chrome-amiri-tashkeel-ligatures.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/chrome-cairo-mixed-invoice.pdf",
+  "size_bytes": 93970,
+  "sha256": "b59109a0af023f63",
+  "pages": 1,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "?": {
+    "subtype": "/Type3",
+    "embedded": false,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "ةطسبم ةيبيضر فاتورة / INV-2026-0042 :الفاتورة مقر / ٢٠٢٦ برمتبس ١٦ :خيراتلا / ةينقتلل زود ةكشر :ليمعلا / ليامجلإا رعسلا ةيمك",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Skia/PDF (Chrome print, Google Docs class), Cairo, mixed Arabic/English invoice, Arabic-Indic digits",
+  "truth": "truth/chrome-cairo-mixed-invoice.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/chrome-ibmplex-bidi-stress.pdf",
+  "size_bytes": 22128,
+  "sha256": "4420fcd324cb3077",
+  "pages": 1,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "/AAAAAA+IBMPlexSansArabic-Regular": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": ".12/09/2026 في( ةبيضرلا لماش) / اً / دوالر 45.50 رعسب Amazon رجتم نم بتك 3 دمحأ اشرتى / The word كتاب means book in Arabic,",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Skia/PDF, IBM Plex Sans Arabic, bidi stress (numbers, brackets, URLs, LTR paragraph with Arabic)",
+  "truth": "truth/chrome-ibmplex-bidi-stress.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/chrome-notonaskh-justified-3pages.pdf",
+  "size_bytes": 128831,
+  "sha256": "02f8af965a252723",
+  "pages": 3,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "?": {
+    "subtype": "/Type3",
+    "embedded": false,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "وراق؟ ا / ذ / امل :ول / أ ال لص ف / لا / تخدم / سملا / ز / اهج ىلع / ت / دا / نت / سملا ظفحيو ،باسح / ن / دو لمعي المصدر وح / ت ف / م PD",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Skia/PDF, Noto Naskh Arabic, justified paragraphs, 3 pages",
+  "truth": "truth/chrome-notonaskh-justified-3pages.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/chrome-notosansarabic-form-layout.pdf",
+  "size_bytes": 82904,
+  "sha256": "5a5cd5f4069b9582",
+  "pages": 1,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "?": {
+    "subtype": "/Type3",
+    "embedded": false,
+    "tounicode": true
+   },
+   "/CAAAAA+AppleSymbols": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "ةصخر ديدجت بلط جذومن / :لماكلا مسالا / :ةيوهلا مقر / :الميلاد خيرات / :ةيسنجلا / :ينورتكلإلا ديربلا / :الجوال مقر / ☐ ىثنأ ☐ رك",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Skia/PDF, Noto Sans Arabic, government-form layout (static)",
+  "truth": "truth/chrome-notosansarabic-form-layout.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/chrome-tajawal-persian-urdu-digits.pdf",
+  "size_bytes": 17745,
+  "sha256": "24df76f6d3b4aae3",
+  "pages": 1,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "/AAAAAA+Tajawal-Regular": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/BAAAAA+ScheherazadeNew-Regular": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "آموزش ،یک ،کتاب ،هلاژ ،گچ ،شهوژپ :فارسی زبان / کیوں ،ہے ،نہیں ،بڑا ،ڈاک ،ٹھیک :زبان اردو / ٠١٢٣٤٥٦٧٨٩ :ةيبرع أرقام / ۰۱۲۳۴۵",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Skia/PDF, Tajawal + Scheherazade fallback, Persian/Urdu letters, Eastern digits",
+  "truth": "truth/chrome-tajawal-persian-urdu-digits.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/chrome-windows-arial-tahoma-times.pdf",
+  "size_bytes": 78692,
+  "sha256": "23a109626c373420",
+  "pages": 1,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "/AAAAAA+TimesNewRomanPS-BoldMT": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/BAAAAA+ArialMT": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/CAAAAA+Tahoma-Bold": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/DAAAAA+Tahoma": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "ةطسبم ةيبيرض فاتورة / INV-2026-0042 :الفاتورة رقم / ٢٠٢٦ سبتمبر ١٦ :خيراتلا / ةينقتلل زود ةكرش :العميل / يلامجلإا رعسلا ةيمك",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Skia/PDF, Windows system fonts (Arial, Tahoma, Times New Roman)",
+  "truth": "truth/chrome-windows-arial-tahoma-times.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/coretext-albayan-tashkeel.pdf",
+  "size_bytes": 23001,
+  "sha256": "30cf64d3e15cb2a9",
+  "pages": 1,
+  "pdf_version": "1.3",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "macOS Version 27.0 (Build 26A428) Quartz PDFContext",
+  "creator": "Warraq corpus generator (CoreText)",
+  "fonts": {
+   "/AAAAAB+AlBayan": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   },
+   "/AAAAAC+AlBayan": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/AAAAAD+Helvetica": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   }
+  },
+  "text_sample_pdfium": "ٌمَالَظ ُلْهَْاجلَو ٌورُن ُمْلِعْال / ِةَبَتْكَْامل يِف َيدِدَْاجل َابَتِكْال ِاهلل ُدْبَع َأَرَق / وراق رّمحر في بكم ًمرح",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Quartz PDFContext, Al Bayan, tashkeel",
+  "truth": "truth/coretext-albayan-tashkeel.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/coretext-baghdad-persian-urdu.pdf",
+  "size_bytes": 30453,
+  "sha256": "c78e7e18d2ecae9c",
+  "pages": 1,
+  "pdf_version": "1.3",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "macOS Version 27.0 (Build 26A428) Quartz PDFContext",
+  "creator": "Warraq corpus generator (CoreText)",
+  "fonts": {
+   "/AAAAAB+Baghdad": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   },
+   "/AAAAAC+Baghdad": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/AAAAAE+GeezaPro": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/AAAAAF+Helvetica": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   }
+  },
+  "text_sample_pdfium": "آموزش ،یک ،کتاب ،ژاله ،گچ ،پژوهش :فارسی زبان / کیوں ،ہے ،نہیں ،بڑا ،ڈاک ،ٹھیک :زبان اردو / ٠١٢٣٤٥٦٧٨٩ :عربية أرقام / ۰۱۲۳۴۵",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Quartz PDFContext, Baghdad with system font fallback for Persian/Urdu",
+  "truth": "truth/coretext-baghdad-persian-urdu.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/coretext-geezapro-paragraphs.pdf",
+  "size_bytes": 44755,
+  "sha256": "aa733acb51d55a24",
+  "pages": 3,
+  "pdf_version": "1.3",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "macOS Version 27.0 (Build 26A428) Quartz PDFContext",
+  "creator": "Warraq corpus generator (CoreText)",
+  "fonts": {
+   "/AAAAAB+GeezaPro": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   },
+   "/AAAAAC+GeezaPro": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/AAAAAD+Helvetica": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   }
+  },
+  "text_sample_pdfium": "وراق؟ ملاذا :األول الفصل / املستخدم جهاز على املستندات ويحفظ ،حساب دون يعمل املصدر مفتوح PDF ملفات رّمحر وراق / إلى اليمني",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Quartz PDFContext (Pages/Preview class), Geeza Pro, 3 pages",
+  "truth": "truth/coretext-geezapro-paragraphs.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/coretext-sfarabic-mixed-invoice.pdf",
+  "size_bytes": 25462,
+  "sha256": "9d136f703d5ce90a",
+  "pages": 1,
+  "pdf_version": "1.3",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "macOS Version 27.0 (Build 26A428) Quartz PDFContext",
+  "creator": "Warraq corpus generator (CoreText)",
+  "fonts": {
+   "/AAAAAC+GeezaPro": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/AAAAAD+Helvetica": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   }
+  },
+  "text_sample_pdfium": "مبسطة ضريبية فاتورة / INV-2026-0042 :الفاتورة رقم / ٢٠٢٦ سبتمبر ١٦ :التاريخ / للتقنية زود شركة :العميل / اإلجمالي | السعر | ",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Quartz PDFContext, SF Arabic, mixed invoice",
+  "truth": "truth/coretext-sfarabic-mixed-invoice.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/perf-text-100-pages.pdf",
+  "size_bytes": 116155,
+  "sha256": "02e23c89486c4e45",
+  "pages": 100,
+  "pdf_version": "1.5",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "?": {
+    "subtype": "/Type3",
+    "embedded": false,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "وراق؟ ا / ذ / امل :ول / أ ال لص ف / لا / تخدم / سملا / ز / اهج ىلع / ت / دا / نت / سملا ظفحيو ،باسح / ن / دو لمعي المصدر وح / ت ف / م PD",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Performance: 100 text pages (N8 budget: open < 1 s)",
+  "truth": null,
+  "source": "generated"
+ },
+ {
+  "file": "generated/perf-text-500-pages.pdf",
+  "size_bytes": 121306,
+  "sha256": "3a781df69f978dae",
+  "pages": 500,
+  "pdf_version": "1.5",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "?": {
+    "subtype": "/Type3",
+    "embedded": false,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "وراق؟ ا / ذ / امل :ول / أ ال لص ف / لا / تخدم / سملا / ز / اهج ىلع / ت / دا / نت / سملا ظفحيو ،باسح / ن / دو لمعي المصدر وح / ت ف / م PD",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Performance: 500 text pages (scroll smoothness)",
+  "truth": null,
+  "source": "generated"
+ },
+ {
+  "file": "generated/raw-amiri-cid-identity-tounicode.pdf",
+  "size_bytes": 30393,
+  "sha256": "56399aa4f186e286",
+  "pages": 1,
+  "pdf_version": "1.7",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Warraq corpus generator: gen_raw.py",
+  "creator": "HarfBuzz 12.1.0",
+  "fonts": {
+   "/WARRAQ+Amiri": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "مبسطة ضريبية فاتورة / INV-2026-0042 :الفاتورة رقم / ٢٠٢٦ سبتمبر ١٦ :التاريخ / للتقنية زود شركة :العميل / الإجمالي | السعر | ",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "HarfBuzz-shaped Type0/CIDFontType2 Identity-H with correct ToUnicode (ideal output)",
+  "truth": "truth/raw-amiri-cid-identity-tounicode.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/raw-amiri-cid-no-tounicode.pdf",
+  "size_bytes": 29152,
+  "sha256": "5088a098debd7f63",
+  "pages": 1,
+  "pdf_version": "1.7",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Warraq corpus generator: gen_raw.py",
+  "creator": "HarfBuzz 12.1.0",
+  "fonts": {
+   "/WARRAQ+Amiri": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": false
+   }
+  },
+  "text_sample_pdfium": "۰ފޚྟ݁\u0001۰٭ྟ๤཯ཚ\u00019Aިّ؇ڣ / ᡛᡠᡨᡁᡄᡂᡄᡈᡁᡂᡂᡆᡄ\u0001ᡌ9Aިّ؇ڰܳ7\u0001ܾڢA / rprv\u0001ଫଊ݄ٺྟݿ\u0001qv\u0001ᡌ༂຃A؇ٺܳ7 / ۰ٺگۇٴ٭ይዧ\u0001?XB\u0001ᄎც๤ཇ\u0001ᡌ٭ܭ݄أܳ7 / ሒᇿ؇ᆇᅹ৕৑7\u0001\u000b\u0001ފأݠܳ7\u0001\u000b",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Same glyph runs, NO ToUnicode map",
+  "truth": "truth/raw-amiri-cid-no-tounicode.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/raw-cairo-cid-broken-tounicode.pdf",
+  "size_bytes": 19533,
+  "sha256": "5d9e6cb867c5bbe2",
+  "pages": 1,
+  "pdf_version": "1.7",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Warraq corpus generator: gen_raw.py",
+  "creator": "HarfBuzz 12.1.0",
+  "fonts": {
+   "/WARRAQ+Cairo": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "������������������ / ��������������������������� / ���������������������� / ����������������������� / ����������������������",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "ToUnicode maps every CID to U+FFFD (broken map)",
+  "truth": "truth/raw-cairo-cid-broken-tounicode.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/raw-legacy-symbolic-truetype.pdf",
+  "size_bytes": 26401,
+  "sha256": "c0f9cbb38dfadbdb",
+  "pages": 1,
+  "pdf_version": "1.7",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Warraq corpus generator: gen_raw.py",
+  "creator": "",
+  "fonts": {
+   "/WARRAQ+WarraqLegacyTest": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   }
+  },
+  "text_sample_pdfium": " !\"#$% &#'()%*+,-./ / 0123454635574%8*+,-.9:;%<=+ / >?>@%ABCD#E%F@%8GH+.D:; /  &IJDKL%MNO%PQ(R%8S&CT:; / UV.WXYZ;%[%\\T\":;%[%",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Simple symbolic TrueType, 1-byte codes, presentation-form glyphs in visual order, no ToUnicode (1990s style)",
+  "truth": "truth/raw-legacy-symbolic-truetype.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/reportlab-visual-presentation-forms.pdf",
+  "size_bytes": 25525,
+  "sha256": "d6ecfc9d48d5f99c",
+  "pages": 1,
+  "pdf_version": "1.3",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "ReportLab PDF Library - (opensource)",
+  "creator": "anonymous",
+  "fonts": {
+   "/Helvetica": {
+    "subtype": "/Type1",
+    "embedded": false,
+    "tounicode": false
+   },
+   "/AAAAAA+Amiri-Regular": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "مبسطة ضريبية فاتورة / INV-2026-0042 :الفاتورة رقم / ٢٠٢٦ سبتمبر ١٦ :التاريخ / للتقنية زود شركة :العميل / الإجمالي | السعر | ",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "ReportLab: reshaped presentation forms (U+FBxx/FExx) in visual order with ToUnicode to those forms",
+  "truth": "truth/reportlab-visual-presentation-forms.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/scan-arial-200dpi-bilevel.pdf",
+  "size_bytes": 18399,
+  "sha256": "1528d9803a36317b",
+  "pages": 1,
+  "pdf_version": "1.3",
+  "encrypted": false,
+  "linearized": true,
+  "has_acroform": false,
+  "producer": "",
+  "creator": "",
+  "fonts": {},
+  "text_sample_pdfium": "",
+  "image_only": true,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Image-only scan, 200 dpi, 1-bit (OCR target)",
+  "truth": "truth/scan-arial-200dpi-bilevel.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/scan-notonaskh-300dpi-skewed-jpeg.pdf",
+  "size_bytes": 1666662,
+  "sha256": "9dee918616706904",
+  "pages": 2,
+  "pdf_version": "1.3",
+  "encrypted": false,
+  "linearized": true,
+  "has_acroform": false,
+  "producer": "",
+  "creator": "",
+  "fonts": {},
+  "text_sample_pdfium": "",
+  "image_only": true,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Image-only scan, 300 dpi, skewed 1.3/-0.8 deg, noise, JPEG (OCR target)",
+  "truth": "truth/scan-notonaskh-300dpi-skewed-jpeg.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/variant-arabic-metadata-outlines-annots.pdf",
+  "size_bytes": 133626,
+  "sha256": "8d2f45738b6c3ee1",
+  "pages": 3,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "pikepdf 9.11.0",
+  "creator": "",
+  "fonts": {
+   "?": {
+    "subtype": "/Type3",
+    "embedded": false,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "وراق؟ ا / ذ / امل :ول / أ ال لص ف / لا / تخدم / سملا / ز / اهج ىلع / ت / دا / نت / سملا ظفحيو ،باسح / ن / دو لمعي المصدر وح / ت ف / م PD",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Arabic Info/XMP metadata, outlines, sticky note + highlight annotations, Arabic-named attachment",
+  "truth": "truth/variant-arabic-metadata-outlines-annots.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/variant-encrypted-aes256.pdf",
+  "size_bytes": 134805,
+  "sha256": "c91523af051c0438",
+  "pages": 3,
+  "pdf_version": "1.7",
+  "encrypted": true,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "?": {
+    "subtype": "/Type3",
+    "embedded": false,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "وراق؟ ا / ذ / امل :ول / أ ال لص ف / لا / تخدم / سملا / ز / اهج ىلع / ت / دا / نت / سملا ظفحيو ،باسح / ن / دو لمعي المصدر وح / ت ف / م PD",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "AES-256 (R6) encrypted, user password 'warraq'",
+  "truth": "truth/variant-encrypted-aes256.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/variant-incremental-update.pdf",
+  "size_bytes": 94274,
+  "sha256": "064167f2e8f4485f",
+  "pages": 1,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Warraq incremental update test",
+  "creator": "",
+  "fonts": {
+   "?": {
+    "subtype": "/Type3",
+    "embedded": false,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "ةطسبم ةيبيضر فاتورة / INV-2026-0042 :الفاتورة مقر / ٢٠٢٦ برمتبس ١٦ :خيراتلا / ةينقتلل زود ةكشر :ليمعلا / ليامجلإا رعسلا ةيمك",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Hand-appended incremental update changing the title",
+  "truth": "truth/variant-incremental-update.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/variant-linearized.pdf",
+  "size_bytes": 130475,
+  "sha256": "fd5f9f6025455702",
+  "pages": 3,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": true,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "?": {
+    "subtype": "/Type3",
+    "embedded": false,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "وراق؟ ا / ذ / امل :ول / أ ال لص ف / لا / تخدم / سملا / ز / اهج ىلع / ت / دا / نت / سملا ظفحيو ،باسح / ن / دو لمعي المصدر وح / ت ف / م PD",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Linearized (fast web view)",
+  "truth": "truth/variant-linearized.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/variant-objectstreams-xrefstream.pdf",
+  "size_bytes": 114832,
+  "sha256": "b35ae8384dfa41b8",
+  "pages": 3,
+  "pdf_version": "1.5",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "?": {
+    "subtype": "/Type3",
+    "embedded": false,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "وراق؟ ا / ذ / امل :ول / أ ال لص ف / لا / تخدم / سملا / ز / اهج ىلع / ت / دا / نت / سملا ظفحيو ،باسح / ن / دو لمعي المصدر وح / ت ف / م PD",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Object streams + cross-reference stream",
+  "truth": "truth/variant-objectstreams-xrefstream.txt",
+  "source": "generated"
+ },
+ {
+  "file": "realworld/A_un_rome_statute_A-CONF.183-9-AR_word_pdfmaker6.pdf",
+  "size_bytes": 570593,
+  "sha256": "4236ec7072fea65e",
+  "pages": 95,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": true,
+  "has_acroform": false,
+  "producer": "Acrobat Distiller 6.0 (Windows)",
+  "creator": "(Acrobat PDFMaker 6.0 for Word)",
+  "fonts": {
+   "/LGBOBA+Barcode3of9byrequest,BoldItalic": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   },
+   "/TimesNewRoman,Bold": {
+    "subtype": "/TrueType",
+    "embedded": false,
+    "tounicode": false
+   },
+   "/LGBNMK+TraditionalArabic": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/LGBNOK+TraditionalArabic": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   },
+   "/TimesNewRoman": {
+    "subtype": "/TrueType",
+    "embedded": false,
+    "tounicode": false
+   },
+   "/LGBNPN+TraditionalArabic,Bold": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/LGBNPO+TraditionalArabic,Bold": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   },
+   "/LGBOIO+TraditionalArabic,BoldItalic": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/LGBOJO+TraditionalArabic,BoldItalic": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   }
+  },
+  "text_sample_pdfium": "A المتحـدة الأمــم /CONF.183/9 / المعني للمفوضين الدبلوماسي المتحدة الأمم مؤتمر / دولية جنائية محكمة بإنشاء / إيطاليا ،روما",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "real-world: Genuine UN Arabic document: Acrobat PDFMaker 6.0 for Word + Distiller 6.0, 95 pages, Traditional Arabic fonts. Mixed Type0 fonts with ToUnic",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/7/74/%D9%86%D8%B8%D8%A7%D9%85_%D8%B1%D9%88%D9%85%D8%A7_%D8%A7%D9%84%D8%A3%D8%B3%D8%A7%D8%B3%D9%8A_%D9%84%D9%84%D9%85%D8%AD%D9%83%D9%85%D8%A9_%D8%A7%D9%84%D8%AC%D9%86%D8%A7%D8%A6%D9%8A%D8%A9_%D8%A7%D9%84%D8%AF%D9%88%D9%84%D9%8A%D8%A9_%28A_CONF.183_9-AR%29.pdf",
+  "license": "UN document A/CONF.183/9 (Rome Statute of the ICC, Arabic), public; Commons page tags it Public domain (UN), credit: https://digitallibrary.un.org/record/260261",
+  "truth": null
+ },
+ {
+  "file": "realworld/A_worldbank_malpass_g7_briefing_AR_word2016_pdftools.pdf",
+  "size_bytes": 103458,
+  "sha256": "3d1b985bf3b1e24e",
+  "pages": 2,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": true,
+  "has_acroform": false,
+  "producer": "Microsoft® Word 2016 / PDF PT 4.7.24.2 (pdf-tools.com)",
+  "creator": "Microsoft® Word 2016",
+  "fonts": {
+   "/Arial-BoldMT": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/BCDEEE+Calibri-Bold": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   },
+   "/Arial-ItalicMT": {
+    "subtype": "/TrueType",
+    "embedded": false,
+    "tounicode": false
+   },
+   "/ArialMT": {
+    "subtype": "/TrueType",
+    "embedded": false,
+    "tounicode": false
+   },
+   "/Helvetica": {
+    "subtype": "/Type1",
+    "embedded": false,
+    "tounicode": false
+   }
+  },
+  "text_sample_pdfium": " إعالمية إحاطة جلسة في مالباس ديفيد الدولي البنك مجموعة رئيس كلمة / السبع مجموعة زعماء مؤتمر قمة في / 06/13/2021 / .األسئلة",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "real-world: Microsoft Word 2016 export post-processed by \"PDF PT 4.7.24.2 (pdf-tools.com)\" (dual producer string). Arabic in Type0 Arial with ToUnicode;",
+  "source": "https://issues.apache.org/jira/secure/attachment/13047734/Malpass-at-the-G7-Leaders-Summit-Media-Briefing-AR.pdf",
+  "license": "World Bank press briefing (World Bank publishes under CC BY 4.0 open-content terms); obtained as a public bug-tracker attachment, test-use only",
+  "truth": null
+ },
+ {
+  "file": "realworld/A_arwikibooks_mediawiki_guide_word2007.pdf",
+  "size_bytes": 3127095,
+  "sha256": "dfa9419d282c9dca",
+  "pages": 50,
+  "pdf_version": "1.5",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Microsoft® Office Word 2007",
+  "creator": "Microsoft® Office Word 2007",
+  "fonts": {
+   "/Arial": {
+    "subtype": "/TrueType",
+    "embedded": false,
+    "tounicode": false
+   },
+   "/ABCDEE+Calibri": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   },
+   "/ABCDEE+Cambria": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   },
+   "/Times New Roman": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/Arial,Bold": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/ABCDEE+Calibri,Bold": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   },
+   "/Symbol": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/ABCDEE+Courier New": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   }
+  },
+  "text_sample_pdfium": " ًكٌاوٌدٌم استخدام لٌدل / 1 / ٙكٚٔاٚذٛي اعرخذاو مٛدن / ـحٛانـؼـشت اٚذٛثٛكٚٔ شٕٚذطـ غٚيشـاس / 2011 يونيو / العربية ويكيبيديا ت",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "real-world: Microsoft Office Word 2007 native PDF export, 50 pages, tagged. Page-1 text extraction is visibly garbled (tashkeel-like marks interleaved, ",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/7/71/%D8%AF%D9%84%D9%8A%D9%84_%D8%A7%D8%B3%D8%AA%D8%AE%D8%AF%D8%A7%D9%85_%D9%85%D9%8A%D8%AF%D9%8A%D8%A7%D9%88%D9%8A%D9%83%D9%8A.pdf",
+  "license": "Public domain per Commons page (original uploader Email4mobile on ar.wikibooks; transferred to Commons)",
+  "truth": null
+ },
+ {
+  "file": "realworld/B_baytalhekma_covid_workplace_guide_indesign_cc2015.pdf",
+  "size_bytes": 3003980,
+  "sha256": "381d4592dca82744",
+  "pages": 53,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": true,
+  "has_acroform": false,
+  "producer": "Adobe PDF Library 15.0",
+  "creator": "Adobe InDesign CC 2015 (Macintosh)",
+  "fonts": {
+   "/NNDKYW+Arial-BoldMT": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/NNDKYW+ArialMT": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/NNDKYW+Calibri-Bold": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/NNDKYW+Calibri": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "دليلالوقايةمنفيروس / إعداد مركز مكافحة الفيروسات والأوبئة بجيانغسو – الصين / بالتعاون مع دار نشر العنقاء التعليمية بجيانغس",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "real-world: Adobe InDesign CC 2015 (Macintosh) / Adobe PDF Library 15.0, 53-page tagged Arabic guide with TheMixArab, Montserrat, Calibri fonts (Type0 +",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/f/f4/%D8%AF%D9%84%D9%8A%D9%84_%D8%A7%D9%84%D9%85%D9%88%D8%B8%D9%81%D9%8A%D9%86_%D9%88%D8%A3%D9%85%D8%A7%D9%83%D9%86_%D8%A7%D9%84%D8%B9%D9%85%D9%84_%D9%84%D9%84%D9%88%D9%82%D8%A7%D9%8A%D8%A9_%D9%85%D9%86_%D9%83%D9%88%D8%B1%D9%88%D9%86%D8%A7_%D9%85%D8%AC%D8%A7%D9%86%D8%A7.pdf",
+  "license": "Attribution (CC BY) per Commons page; author Bayt al-Hekma (https://baytalhekma.net/)",
+  "truth": null
+ },
+ {
+  "file": "realworld/B_wmf_welcome_to_wikipedia_arabic_indesign_cs5_p1-5.pdf",
+  "size_bytes": 1241325,
+  "sha256": "a16c1159c9c2d809",
+  "pages": 5,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Adobe PDF Library 9.9",
+  "creator": "Adobe InDesign CS5 (7.0)",
+  "fonts": {
+   "/YQQHHS+AlBattar": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/MTRNVQ+KacstOne": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/VRAPRY+KacstOne-Bold": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/SCOXBE+ArialMT": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/SPMXBE+TimesNewRomanPSMT": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "ًا يمكن  / تخيل عالم / فيه لكل فرد  / مطالعة مجموع  / معارف البشرية  / كلها. / جيمي ويلز / مرحبا بك في /  ويكيبيديا",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "real-world: Adobe InDesign CS5 (7.0) / Adobe PDF Library 9.9, tagged brochure with AlBattar and KacstOne Arabic fonts (Type0 CIDFontType2) plus MinionPr",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/4/49/Welcome2WP_Arabic_082310.pdf",
+  "license": "CC BY-SA 3.0 per Commons page (Wikimedia Foundation Bookshelf project, Arabic translation)",
+  "truth": null
+ },
+ {
+  "file": "realworld/C_lo_bug171737_noto_sans_arabic_extraction_lo26.2_pdf2.0.pdf",
+  "size_bytes": 72403,
+  "sha256": "595efd606fd835fb",
+  "pages": 1,
+  "pdf_version": "2.0",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "",
+  "creator": "",
+  "fonts": {
+   "/BAAAAA+LiberationSerif": {
+    "subtype": "/Type1",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/CAAAAA+Amiri-Regular": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/DAAAAA+NotoSansArabic-Regular": {
+    "subtype": "/Type1",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/EAAAAA+NotoNaskhArabicUI-Regular": {
+    "subtype": "/Type1",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/FAAAAA+DejaVuSans": {
+    "subtype": "/Type1",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "amiri / الآخر وم\tوالي ل\tوالرس والكتب وصفاته بالله الجازم التصديق هو والإيمان / الله رسول عن الحديث ففي ،لذلك تسليمّوال وال",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "real-world: LibreOffice 26.2.1.2 Writer export, PDF 2.0, tagged. Bug title: \"Arabic text extraction from LibreOffice-exported PDF is badly broken with N",
+  "source": "https://bugs.documentfoundation.org/attachment.cgi?id=206739 (fetched via REST: https://bugs.documentfoundation.org/rest/bug/attachment/206739)",
+  "license": "Public bug-tracker attachment, test-use only",
+  "truth": null
+ },
+ {
+  "file": "realworld/C_lo_bug119606_seventeen_macos_arabic_fonts_lo7.5dev.pdf",
+  "size_bytes": 249289,
+  "sha256": "27547a82c4bd5f99",
+  "pages": 1,
+  "pdf_version": "1.6",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "LibreOfficeDev 7.5",
+  "creator": "Writer",
+  "fonts": {
+   "/BAAAAA+29LTZaridSans-Medium": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/KAAAAA+Baghdad": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/LAAAAA+Beirut": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/MAAAAA+BrandoArabic": {
+    "subtype": "/Type1",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/NAAAAA+Damascus": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/OAAAAA+DINNextLTArabic-Medium": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/PAAAAA+DejaVuSans": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/QAAAAA+DejaVuSansMono": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/RAAAAA+GoogleSansArabic-Regular": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/CAAAAA+AktivGroteskArbc-Regular": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/DAAAAA+AlBayan": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/EAAAAA+AlTarikh": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/FAAAAA+Amiri-Regular": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/GAAAAA+AntiRegular": {
+    "subtype": "/Type1",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/HAAAAA+ArabicTypesetting": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/IAAAAA+ArefRuqaaRegular": {
+    "subtype": "/Type1",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/JAAAAA+BNazanin": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "هُ ْمن ا ِ هَ تُيْ / َتَرشا ا ْ َن / أَو كتاب آالف خمسة بالل ى َ ترشا / هُنْم ا ِ هَتُْي / َ / ترَاش ا ْ نَ / أَو كتاب آالف خم",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "real-world: LibreOfficeDev 7.5 Writer export exercising 17 different embedded Arabic fonts on one page (macOS system fonts Baghdad, Beirut, Damascus, DI",
+  "source": "https://bugs.documentfoundation.org/attachment.cgi?id=182459 (fetched via REST: https://bugs.documentfoundation.org/rest/bug/attachment/182459)",
+  "license": "Public bug-tracker attachment, test-use only",
+  "truth": null
+ },
+ {
+  "file": "realworld/D_gdocs_digital_safety_guide_ar_skia_m130.pdf",
+  "size_bytes": 867257,
+  "sha256": "37e1a06ce236d7c9",
+  "pages": 15,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m130 Google Docs Renderer",
+  "creator": "",
+  "fonts": {
+   "/AAAAAA+ArialMT": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/BAAAAA+Arial-BoldMT": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/CAAAAA+Arial-ItalicMT": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "`` / الدليل؟ لماذا / ةفرعم إن .هثدحي أن يمكن الذي الضرر حجم زاد ،عنك ام شخص اهكلتمي يتلا المعلومات قدر زاد املك / عم والتعا",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "real-world: Google Docs export (\"Skia/PDF m130 Google Docs Renderer\"), 15 pages of Arabic; includes a Type3 font alongside CID TrueType subsets. ToUnico",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/3/37/%D8%AF%D9%84%D9%8A%D9%84_%D8%A7%D9%84%D8%B3%D9%84%D8%A7%D9%85%D8%A9_%D8%A7%D9%84%D8%B1%D9%82%D9%85%D9%8A%D8%A9_%D9%88%D8%A7%D9%84%D8%AE%D8%B5%D9%88%D8%B5%D9%8A%D8%A9_-_%D8%A8%D8%A7%D9%84%D8%B9%D8%B1%D8%A8%D9%8A_%281%29.docx_%282%29.pdf",
+  "license": "CC0 per Commons page (uploader Nhatem3, own work)",
+  "truth": null
+ },
+ {
+  "file": "realworld/D_gdocs_wmf_rapid_funds_guide_ar_skia_m97.pdf",
+  "size_bytes": 2024859,
+  "sha256": "459c8869238882f0",
+  "pages": 32,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m97 Google Docs Renderer",
+  "creator": "",
+  "fonts": {
+   "/Mirza-Medium": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/Lalezar-Regular": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/Mirza-Regular": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/Mirza-Bold": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/ArialMT": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/Mirza-SemiBold": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/HelveticaNeue": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "،ان / ت / سلوم يبوب وباركاو البوعمراوي ا / ن / يمساج / ن / م ةمد قم الصور / ز ن / موك ايديميكيو قيرط / ن / ع ،ر / فص يعادبلإا اع / ش",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "real-world: Google Docs export (\"Skia/PDF m97 Google Docs Renderer\") using Google Fonts Mirza and Lalezar. Text extraction is badly scrambled (letters s",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/4/47/%D8%AF%D9%84%D9%8A%D9%84_%D8%A5%D8%B1%D8%B4%D8%A7%D8%AF%D9%8A_%D9%84%D8%B7%D9%84%D8%A8%D8%A7%D8%AA_%D8%A7%D9%84%D9%85%D9%86%D8%AD_%D8%A7%D9%84%D8%B3%D8%B1%D9%8A%D8%B9%D8%A9_-_Application_Guide_for_Rapid_Funds_-_Arabic.pdf",
+  "license": "CC BY-SA 4.0 per Commons page (Wikimedia Foundation, User:JStephenson (WMF))",
+  "truth": null
+ },
+ {
+  "file": "realworld/E_commons_tafsir_surat_alnur_pd_scan_p1-3.pdf",
+  "size_bytes": 64290,
+  "sha256": "d85804668e4ffdf9",
+  "pages": 3,
+  "pdf_version": "1.6",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "itext-paulo-155 (itextpdf.sf.net-lowagie.com)",
+  "creator": "pdftk-java 3.0.9",
+  "fonts": {},
+  "text_sample_pdfium": "",
+  "image_only": true,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "real-world: Image-only scan of a printed Arabic book, assembled with pdftk-java 3.0.9 / iText (itext-paulo-155). Original 132 pages / 3.45 MB; first 3 p",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/3/3d/Tafs%C4%ABr_S%C5%ABrat_al-N%C5%ABr.pdf",
+  "license": "Public domain per Commons page (author Ibn Taymiyyah, d. 1328; scanned printed edition)",
+  "truth": null
+ },
+ {
+  "file": "realworld/E_commons_qarar193_toshiba_estudio_mfp_scan.pdf",
+  "size_bytes": 87742,
+  "sha256": "4347884ec710baa4",
+  "pages": 4,
+  "pdf_version": "1.7",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "SECnvtToPDF V1.0",
+  "creator": "TOSHIBA e-STUDIO4518A",
+  "fonts": {},
+  "text_sample_pdfium": "",
+  "image_only": true,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "real-world: Real office multifunction-printer output: Producer \"SECnvtToPDF V1.0\", Creator \"TOSHIBA e-STUDIO4518A\", PDF 1.7, 4 image-only pages of a sca",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/a/a6/%D9%82%D8%B1%D8%A7%D8%B1_193.pdf",
+  "license": "CC BY-SA 4.0 per Commons page (uploader Coophousing, own work)",
+  "truth": null
+ },
+ {
+  "file": "realworld/E_ia_bv056_arabic_manuscript_1924_ocr_text_layer.pdf",
+  "size_bytes": 843861,
+  "sha256": "923ca019df9e2dd9",
+  "pages": 36,
+  "pdf_version": "1.5",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Internet Archive PDF 1.2.0; including mupdf and pymupdf/skimage",
+  "creator": "Internet Archive",
+  "fonts": {
+   "/GlyphLessFont": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "",
+  "image_only": true,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "real-world: Internet Archive derivative (\"Internet Archive PDF 1.2.0; including mupdf and pymupdf/skim\"), 36 pages, tagged, scanned Arabic manuscript wi",
+  "source": "https://archive.org/download/bv_056/bv_056_text.pdf",
+  "license": "Public Domain Mark 1.0 per Internet Archive metadata (http://creativecommons.org/publicdomain/mark/1.0/)",
+  "truth": null
+ },
+ {
+  "file": "realworld/F_pdfjs15546_rtl_acroform_textfields_arabic_digits_acrobat.pdf",
+  "size_bytes": 14213,
+  "sha256": "1b3d2d8fa56d26d2",
+  "pages": 1,
+  "pdf_version": "1.6",
+  "encrypted": false,
+  "linearized": true,
+  "has_acroform": true,
+  "producer": "Adobe Acrobat Pro DC (64-bit) 22.2.20212",
+  "creator": "Adobe Acrobat Pro DC (64-bit) 22.2.20212",
+  "fonts": {
+   "/IQXZGX+MinionPro-Regular": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/KUGOOE+MinionPro-Regular": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/JQRIAG+MinionPro-Regular": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/SLBMIJ+MinionPro-Regular": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "RTL Field with arabic numbers / RTL Field with usual numbers / LTR Field with arabic numbers / LTR Field with usual numbers",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "real-world: Adobe Acrobat Pro DC 22.2 form with 4 AcroForm text fields (RTL and LTR fields, values with Arabic-Indic digits). Reported symptom: pdf.js r",
+  "source": "https://github.com/mozilla/pdf.js/files/9732872/rtl.pdf",
+  "license": "Public bug-tracker attachment, test-use only",
+  "truth": null
+ },
+ {
+  "file": "realworld/G_pdfjs_ArabicCIDTrueType_apple_pstopdffilter_no_tounicode.pdf",
+  "size_bytes": 39370,
+  "sha256": "1cad1de912ba29f8",
+  "pages": 1,
+  "pdf_version": "1.3",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Apple pstopdffilter",
+  "creator": "",
+  "fonts": {
+   "/NLPEIM+Jeezah": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/NLPEKO+Jeezah": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   },
+   "/NLPEIP+NewBasrahBold": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/NLPEKP+NewBasrahBold": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   },
+   "/NLPEJB+Beirut": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/NLPELB+Beirut": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   },
+   "/NLPEJO+DamascusBold": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/NLPELD+DamascusBold": {
+    "subtype": "/TrueType",
+    "embedded": true,
+    "tounicode": false
+   }
+  },
+  "text_sample_pdfium": "العربية الخطوط انواع / العربية الخطوط انواع / العربية الخطوط انواع / العربية الخطوط انواع",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "real-world: Apple \"pstopdffilter\" (macOS print-to-PDF), PDF 1.3: Arabic in Jeezah / New Basrah / Beirut fonts, each present both as Type0 CIDFontType2 (",
+  "source": "https://raw.githubusercontent.com/mozilla/pdf.js/master/test/pdfs/ArabicCIDTrueType.pdf",
+  "license": "pdf.js repository test file (repository is Apache-2.0); test-use only",
+  "truth": null
+ },
+ {
+  "file": "realworld/G_wipo_saudi_copyright_law_laserwriter8_distiller5_legacy_encoding.pdf",
+  "size_bytes": 135842,
+  "sha256": "b9f243936ebcab76",
+  "pages": 23,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": true,
+  "has_acroform": false,
+  "producer": "Acrobat Distiller 5.0.5 (Windows)",
+  "creator": "ÇäæÇÔÑ€ÇäÕÍáê: LaserWriter 8 Z1-8.7.1",
+  "fonts": {
+   "/OEEBEI+Harfgeded1": {
+    "subtype": "/Type1",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/OEEBEJ+LotusBol": {
+    "subtype": "/Type1",
+    "embedded": true,
+    "tounicode": true
+   },
+   "/OEEJFJ+YakootLinoBold": {
+    "subtype": "/Type1",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "n=\u0001R*« ‚uIŠ W¹ULŠ ÂUE½ / a¹—UðË © ¥±Ø Â ® r?\u0001— wJK*« Âu???Ýd*« Vłu?0 ÂUEM\u0002« «c?¼ —b??\u0003 / Æ ‡¼±¥≤¥Ø∑Ø≤ / Æ‡¼±¥≤¥Ø∑Ø≤≤ a¹—UðË",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "real-world: Pre-Unicode Arabic workflow: Creator \"LaserWriter 8 Z1-8.7.1\" (Mac OS 9, creator string itself mojibake), Producer \"Acrobat Distiller 5.0.5 ",
+  "source": "https://upload.wikimedia.org/wikipedia/commons/e/e9/%D9%86%D8%B8%D8%A7%D9%85_%D8%AD%D9%85%D8%A7%D9%8A%D8%A9_%D8%AD%D9%82%D9%88%D9%82_%D8%A7%D9%84%D9%85%D8%A4%D9%84%D9%81_%D8%A8%D8%A7%D9%84%D9%85%D9%85%D9%84%D9%83%D8%A9_%D8%A7%D9%84%D8%B9%D8%B1%D8%A8%D9%8A%D8%A9_%D8%A7%D9%84%D8%B3%D8%B9%D9%88%D8%AF%D9%8A%D8%A9.pdf",
+  "license": "Public domain per Commons page (Saudi official legal text - Copyright Protection Law; credit WIPO Lex)",
+  "truth": null
+ }
+]

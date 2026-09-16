@@ -1,0 +1,9 @@
+[package]
+name = "proto-hayro"
+version = "0.0.0"
+edition = "2021"
+[dependencies]
+hayro = "0.7"
+hayro-interpret = "0.7"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+serde_json = "1"

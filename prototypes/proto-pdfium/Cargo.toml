@@ -1,0 +1,8 @@
+[package]
+name = "proto-pdfium"
+version = "0.0.0"
+edition = "2021"
+[dependencies]
+pdfium-render = { version = "0.9", default-features = false, features = ["pdfium_latest", "image_latest", "thread_safe"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+serde_json = "1"

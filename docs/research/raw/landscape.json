@@ -1,0 +1,5046 @@
+[
+ {
+  "layer": "Rendering",
+  "name": "pdf.js",
+  "repo": "mozilla/pdf.js",
+  "repo_url": "https://github.com/mozilla/pdf.js",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "GitHub API license.spdx_id (Apache License 2.0)",
+  "language": "JavaScript",
+  "stars": 53878,
+  "forks": 10677,
+  "open_issues": 421,
+  "pushed_at": "2026-09-15T18:28:37Z",
+  "created_at": "2011-04-26T06:32:03Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "PDF Reader in JavaScript",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 285,
+  "arabic_issue_samples": [
+   {
+    "title": "Arabic Text Annotations are reversed in editing mode",
+    "state": "open",
+    "html_url": "https://github.com/mozilla/pdf.js/issues/16978",
+    "created_at": "2023-09-19T04:36:48Z",
+    "type": "issue"
+   },
+   {
+    "title": "RTL/LTR text fields and arabic numbers",
+    "state": "open",
+    "html_url": "https://github.com/mozilla/pdf.js/issues/15546",
+    "created_at": "2022-10-07T10:05:40Z",
+    "type": "issue"
+   },
+   {
+    "title": "Fix floating toolbar positioning to ensure it fits within the viewport",
+    "state": "open",
+    "html_url": "https://github.com/mozilla/pdf.js/pull/21493",
+    "created_at": "2026-06-23T19:56:40Z",
+    "type": "pr"
+   },
+   {
+    "title": "Intermittent failure in the `should keep an ink annotation on a pasted and moved page` reorganize pages integration test",
+    "state": "open",
+    "html_url": "https://github.com/mozilla/pdf.js/issues/21954",
+    "created_at": "2026-09-13T19:15:38Z",
+    "type": "issue"
+   },
+   {
+    "title": "Arabic script, embedded by tesseract-ocr, not handled correctly",
+    "state": "open",
+    "html_url": "https://github.com/mozilla/pdf.js/issues/16754",
+    "created_at": "2023-07-27T08:53:30Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:mozilla/pdf.js arabic OR rtl OR bidi",
+  "wasm_viability": "JavaScript library itself (not WASM); official npm pdfjs-dist. README has no WASM mention.",
+  "bundle_size_notes": "npm pdfjs-dist@6.3.289 unpackedSize 34,781,083 B",
+  "editor_note": "Firefox's built-in PDF editor (annotation/text/ink/stamp editing) lives inside mozilla/pdf.js (see sample issue titles mentioning 'editing mode').",
+  "verified_at": "2026-09-16T03:25:17Z",
+  "sources": [
+   "https://api.github.com/repos/mozilla/pdf.js",
+   "https://api.github.com/search/issues?q=repo%3Amozilla/pdf.js%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Rendering",
+  "name": "PDFium (GitHub mirror of pdfium.googlesource.com)",
+  "repo": "chromium/pdfium",
+  "repo_url": "https://github.com/chromium/pdfium",
+  "license_spdx_github_api": "NOASSERTION",
+  "license_spdx": "BSD-3-Clause AND Apache-2.0 (both texts in LICENSE)",
+  "license_notes": "ARCHIVED GitHub mirror of pdfium.googlesource.com (API archived=true; search result license: NOASSERTION). LICENSE file (230 lines) = a BSD-3-Clause notice ('Copyright 2014 The PDFium Authors' ... 'Neither the name of Google Inc.') followed by the full Apache License 2.0 text, with no sentence in the file stating which applies to which parts; EmbedPDF's README refers to upstream PDFium as Apache-2.0. Mirror last pushed on the date in pushed_at - check freshness vs. googlesource before relying on it.",
+  "language": "C++",
+  "stars": 543,
+  "forks": 115,
+  "open_issues": 5,
+  "pushed_at": "2025-11-19T14:41:54Z",
+  "created_at": "2019-11-11T18:46:42Z",
+  "archived": true,
+  "default_branch": "main",
+  "description": "The PDF library used by the Chromium project",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 0,
+  "arabic_issue_samples": [],
+  "arabic_issue_query": "repo:chromium/pdfium arabic OR rtl OR bidi",
+  "wasm_viability": "Upstream C++ source; official experimental WASM build distributed by bblanchon/pdfium-binaries (pdfium-wasm.tgz) and community npm builds (@embedpdf/pdfium, @hyzyla/pdfium, pdfium-wasm).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:28Z",
+  "sources": [
+   "https://api.github.com/repos/chromium/pdfium",
+   "https://raw.githubusercontent.com/chromium/pdfium/HEAD/LICENSE",
+   "https://api.github.com/search/repositories?q=pdfium&sort=stars&order=desc&per_page=10",
+   "https://api.github.com/search/issues?q=repo%3Achromium/pdfium%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Rendering",
+  "name": "pdfium-binaries",
+  "repo": "bblanchon/pdfium-binaries",
+  "repo_url": "https://github.com/bblanchon/pdfium-binaries",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "GitHub API license.spdx_id (MIT License)",
+  "language": "Shell",
+  "stars": 1473,
+  "forks": 288,
+  "open_issues": 37,
+  "pushed_at": "2026-09-14T17:18:54Z",
+  "created_at": "2017-09-18T16:16:13Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "📰 Binary distribution of PDFium",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 0,
+  "arabic_issue_samples": [],
+  "arabic_issue_query": "repo:bblanchon/pdfium-binaries arabic OR rtl OR bidi",
+  "wasm_viability": "Official experimental WebAssembly build: README lists 'pdfium-wasm.tgz' and NuGet bblanchon.PDFium.WebAssembly ('WebAssembly build is experimental'); see release asset sizes in pdfium-binaries-release.json.",
+  "bundle_size_notes": "release chromium/8057: pdfium-wasm.tgz 2,574,720 B",
+  "verified_at": "2026-09-16T03:25:17Z",
+  "sources": [
+   "https://api.github.com/repos/bblanchon/pdfium-binaries",
+   "https://api.github.com/search/issues?q=repo%3Abblanchon/pdfium-binaries%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Rendering",
+  "name": "pdfium-render",
+  "repo": "ajrcarey/pdfium-render",
+  "repo_url": "https://github.com/ajrcarey/pdfium-render",
+  "license_spdx_github_api": "NOASSERTION",
+  "license_spdx": "MIT OR Apache-2.0",
+  "license_notes": "LICENSE.md: 'Licensed under either of Apache License, Version 2.0 / MIT License at your option'; crates.io pdfium-render license 'MIT OR Apache-2.0'. GitHub API reports NOASSERTION.",
+  "language": "Rust",
+  "stars": 705,
+  "forks": 132,
+  "open_issues": 11,
+  "pushed_at": "2026-08-16T20:58:57Z",
+  "created_at": "2022-01-12T21:00:50Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "A high-level idiomatic Rust wrapper around Pdfium, the C++ PDF library used by the Google Chromium project.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 0,
+  "arabic_issue_samples": [],
+  "arabic_issue_query": "repo:ajrcarey/pdfium-render arabic OR rtl OR bidi",
+  "wasm_viability": "README: 'a Rust application using pdfium-render can be compiled to WASM for running in a browser alongside a WASM-packaged build of Pdfium'; 'When compiling to WASM, packaging an external build of Pdfium as a separate WASM module is essential'.",
+  "bundle_size_notes": "uses external PDFium WASM: release chromium/8057: pdfium-wasm.tgz 2,574,720 B",
+  "crates_io": {
+   "crate": "pdfium-render",
+   "max_version": "0.9.4",
+   "license": "MIT OR Apache-2.0",
+   "downloads": 2363622,
+   "recent_downloads": 1007900,
+   "repository": "https://github.com/ajrcarey/pdfium-render",
+   "updated_at": "2026-09-06T14:41:29.315017Z"
+  },
+  "verified_at": "2026-09-16T03:25:18Z",
+  "sources": [
+   "https://api.github.com/repos/ajrcarey/pdfium-render",
+   "https://raw.githubusercontent.com/ajrcarey/pdfium-render/master/LICENSE.md",
+   "https://crates.io/api/v1/crates/pdfium-render",
+   "https://api.github.com/search/issues?q=repo%3Aajrcarey/pdfium-render%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Rendering",
+  "name": "pypdfium2",
+  "repo": "pypdfium2-team/pypdfium2",
+  "repo_url": "https://github.com/pypdfium2-team/pypdfium2",
+  "license_spdx_github_api": null,
+  "license_spdx": "Apache-2.0 OR BSD-3-Clause",
+  "license_notes": "pyproject.toml header 'SPDX-License-Identifier: Apache-2.0 OR BSD-3-Clause'; README 'Licensing': pypdfium2 Apache-2.0 / BSD-3-Clause, docs and examples CC-BY-4.0; licenses live in LICENSES/ (REUSE layout) so GitHub API license = null. Wraps PDFium binaries (Apache-2.0 upstream per pdfium-binaries).",
+  "language": "Python",
+  "stars": 821,
+  "forks": 50,
+  "open_issues": 3,
+  "pushed_at": "2026-09-09T22:05:06Z",
+  "created_at": "2021-10-23T12:55:36Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Python bindings to PDFium, reasonably cross-platform.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 0,
+  "arabic_issue_samples": [],
+  "arabic_issue_query": "repo:pypdfium2-team/pypdfium2 arabic OR rtl OR bidi",
+  "wasm_viability": "Python binding; README has no WASM mention (not applicable).",
+  "bundle_size_notes": "bundles native pdfium-binaries; release chromium/8057: pdfium-wasm.tgz 2,574,720 B",
+  "verified_at": "2026-09-16T03:25:19Z",
+  "sources": [
+   "https://api.github.com/repos/pypdfium2-team/pypdfium2",
+   "https://raw.githubusercontent.com/pypdfium2-team/pypdfium2/main/pyproject.toml",
+   "https://raw.githubusercontent.com/pypdfium2-team/pypdfium2/main/README.md",
+   "https://raw.githubusercontent.com/pypdfium2-team/pypdfium2/main/LICENSES/Apache-2.0.txt",
+   "https://raw.githubusercontent.com/pypdfium2-team/pypdfium2/main/LICENSES/BSD-3-Clause.txt",
+   "https://api.github.com/search/issues?q=repo%3Apypdfium2-team/pypdfium2%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Rendering",
+  "name": "embed-pdf-viewer",
+  "repo": "embedpdf/embed-pdf-viewer",
+  "repo_url": "https://github.com/embedpdf/embed-pdf-viewer",
+  "license_spdx_github_api": "NOASSERTION",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "Root LICENSE = Apache-2.0 preceded by a 'REPOSITORY LICENSING NOTICE': cloudpdf/server is under the Fair Core License FCL-1.0-ALv2 (README: self-hosting the CloudPDF server requires a valid CloudPDF license; 'Competing Uses' prohibited; each release becomes Apache-2.0 two years after publication). README 'Third-Party Licenses': engine is EmbedPDF Runtime, a fork of PDFium (Apache-2.0). GitHub API reports NOASSERTION because of the mixed notice.",
+  "language": "TypeScript",
+  "stars": 4484,
+  "forks": 308,
+  "open_issues": 224,
+  "pushed_at": "2026-09-15T18:28:12Z",
+  "created_at": "2025-01-18T17:36:05Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "A PDF viewer that seamlessly integrates with any JavaScript project",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 4,
+  "arabic_issue_samples": [
+   {
+    "title": "Font packages should be optional/peer dependencies instead of hard dependencies in @embedpdf/engines",
+    "state": "open",
+    "html_url": "https://github.com/embedpdf/embed-pdf-viewer/issues/615",
+    "created_at": "2026-05-04T11:39:18Z",
+    "type": "issue"
+   },
+   {
+    "title": "Allow page snapping",
+    "state": "open",
+    "html_url": "https://github.com/embedpdf/embed-pdf-viewer/issues/83",
+    "created_at": "2025-08-15T15:39:11Z",
+    "type": "issue"
+   },
+   {
+    "title": "chore: version packages (next) (next)",
+    "state": "closed",
+    "html_url": "https://github.com/embedpdf/embed-pdf-viewer/pull/773",
+    "created_at": "2026-08-21T21:51:55Z",
+    "type": "pr"
+   },
+   {
+    "title": "chore: version packages",
+    "state": "closed",
+    "html_url": "https://github.com/embedpdf/embed-pdf-viewer/pull/363",
+    "created_at": "2025-12-28T15:11:40Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:embedpdf/embed-pdf-viewer arabic OR rtl OR bidi",
+  "wasm_viability": "Official npm @embedpdf/pdfium ('PDFium WebAssembly for the web platform') + @embedpdf/engines; engine is EmbedPDF Runtime (PDFium fork).",
+  "bundle_size_notes": "npm @embedpdf/pdfium@2.15.0 unpackedSize 7,541,172 B; npm @embedpdf/engines@2.15.0 unpackedSize 4,014,315 B",
+  "verified_at": "2026-09-16T03:25:20Z",
+  "sources": [
+   "https://api.github.com/repos/embedpdf/embed-pdf-viewer",
+   "https://raw.githubusercontent.com/embedpdf/embed-pdf-viewer/main/LICENSE",
+   "https://raw.githubusercontent.com/embedpdf/embed-pdf-viewer/main/README.md",
+   "https://api.github.com/search/issues?q=repo%3Aembedpdf/embed-pdf-viewer%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Rendering",
+  "name": "@hyzyla/pdfium",
+  "repo": "hyzyla/pdfium",
+  "repo_url": "https://github.com/hyzyla/pdfium",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "GitHub API: MIT; LICENSE.md is MIT text; npm @hyzyla/pdfium license MIT. README: wraps the WebAssembly build of PDFium from paulocoutinhox/pdfium-lib.",
+  "language": "TypeScript",
+  "stars": 186,
+  "forks": 21,
+  "open_issues": 10,
+  "pushed_at": "2026-06-20T10:48:07Z",
+  "created_at": "2023-06-09T15:14:36Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Typescript wrapper for the PDFium library, works in browser and node.js",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 0,
+  "arabic_issue_samples": [],
+  "arabic_issue_query": "repo:hyzyla/pdfium arabic OR rtl OR bidi",
+  "wasm_viability": "README: 'TypeScript/JavaScript wrapper for the WebAssembly build of PDFium library' (built from paulocoutinhox/pdfium-lib); 'PDFium library is compiled to WebAssembly and bundled with the package'.",
+  "bundle_size_notes": "npm @hyzyla/pdfium@2.1.13 unpackedSize 11,246,019 B",
+  "verified_at": "2026-09-16T03:25:21Z",
+  "sources": [
+   "https://api.github.com/repos/hyzyla/pdfium",
+   "https://raw.githubusercontent.com/hyzyla/pdfium/HEAD/LICENSE.md",
+   "https://registry.npmjs.org/@hyzyla%2Fpdfium",
+   "https://api.github.com/search/issues?q=repo%3Ahyzyla/pdfium%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Rendering",
+  "name": "MuPDF",
+  "repo": "ArtifexSoftware/mupdf",
+  "repo_url": "https://github.com/ArtifexSoftware/mupdf",
+  "license_spdx_github_api": "AGPL-3.0",
+  "license_spdx": "AGPL-3.0-or-later",
+  "license_notes": "COPYING: GNU AGPL v3; README 'LICENSE': 'GNU Affero General Public License ... either version 3 of the License, or (at your option) any later version'. Artifex sells commercial licenses (mupdf.js README badge 'AGPL | Commercial'). STRONG COPYLEFT (AGPL).",
+  "copyleft_flag": true,
+  "language": "C",
+  "stars": 2961,
+  "forks": 498,
+  "open_issues": 14,
+  "pushed_at": "2026-09-15T15:46:59Z",
+  "created_at": "2015-06-24T10:41:35Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "mupdf mirror",
+  "has_issues_enabled": false,
+  "is_fork": false,
+  "arabic_issue_count": 0,
+  "arabic_issue_samples": [],
+  "arabic_issue_query": "repo:ArtifexSoftware/mupdf arabic OR rtl OR bidi",
+  "arabic_issue_note": "GitHub issues are disabled on this repo (mirror); count reflects PRs only / external tracker not searched",
+  "wasm_viability": "Official WASM via MuPDF.js (npm mupdf): README of mupdf.js: 'wraps the MuPDF C engine in WebAssembly'.",
+  "bundle_size_notes": "npm mupdf@1.28.1 unpackedSize 14,324,000 B",
+  "verified_at": "2026-09-16T03:25:22Z",
+  "sources": [
+   "https://api.github.com/repos/ArtifexSoftware/mupdf",
+   "https://raw.githubusercontent.com/ArtifexSoftware/mupdf/master/COPYING",
+   "https://raw.githubusercontent.com/ArtifexSoftware/mupdf/master/README",
+   "https://api.github.com/search/issues?q=repo%3AArtifexSoftware/mupdf%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Rendering",
+  "name": "mupdf.js",
+  "repo": "ArtifexSoftware/mupdf.js",
+  "repo_url": "https://github.com/ArtifexSoftware/mupdf.js",
+  "license_spdx_github_api": "AGPL-3.0",
+  "license_spdx": "AGPL-3.0-or-later",
+  "license_notes": "LICENSE: GNU AGPL v3; README badge 'license AGPL | Commercial'; npm mupdf license 'AGPL-3.0-or-later'. STRONG COPYLEFT (AGPL) + commercial tier.",
+  "copyleft_flag": true,
+  "language": null,
+  "stars": 609,
+  "forks": 50,
+  "open_issues": 11,
+  "pushed_at": "2026-07-01T15:17:26Z",
+  "created_at": "2024-01-22T15:33:12Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "JavaScript bindings for MuPDF",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 0,
+  "arabic_issue_samples": [],
+  "arabic_issue_query": "repo:ArtifexSoftware/mupdf.js arabic OR rtl OR bidi",
+  "wasm_viability": "Official WASM build: README 'wraps the MuPDF C engine in WebAssembly, so the same high-fidelity rendering runs in Node.js, browsers, Bun, and Deno'.",
+  "bundle_size_notes": "npm mupdf@1.28.1 unpackedSize 14,324,000 B",
+  "verified_at": "2026-09-16T03:25:23Z",
+  "sources": [
+   "https://api.github.com/repos/ArtifexSoftware/mupdf.js",
+   "https://raw.githubusercontent.com/ArtifexSoftware/mupdf.js/master/LICENSE",
+   "https://raw.githubusercontent.com/ArtifexSoftware/mupdf.js/master/README.md",
+   "https://registry.npmjs.org/mupdf",
+   "https://api.github.com/search/issues?q=repo%3AArtifexSoftware/mupdf.js%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Rendering",
+  "name": "Poppler",
+  "repo": "https://gitlab.freedesktop.org/poppler/poppler",
+  "license_spdx": "GPL-2.0 / GPL-3.0 (COPYING = GPL v2 text; COPYING3 = GPL v3 text)",
+  "license_notes": "README: 'Poppler is licensed under the GPL, not the LGPL, so programs which call Poppler must be licensed under the GPL as well' and (History section) 'any application using poppler must also be licensed under the GPL ... contact Glyph & Cog for commercial licensing options'. Both COPYING (GPLv2) and COPYING3 (GPLv3) ship in the tree. STRONG COPYLEFT (GPL).",
+  "language": "C++ (not reported by GitLab API in this fetch)",
+  "stars": 72,
+  "forks": 263,
+  "open_issues": null,
+  "pushed_at": "2026-09-16T03:12:24.321Z",
+  "created_at": "2018-08-20T07:04:03.752Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "Poppler, a PDF rendering library (xpdf fork)",
+  "arabic_issue_count": {
+   "gitlab_issue_search_arabic": "6",
+   "gitlab_issue_search_rtl": "13",
+   "gitlab_issue_search_bidi": "0"
+  },
+  "arabic_issue_samples": [
+   {
+    "title": "search unicode string without marks (e.g., Hebrew without nikkud)",
+    "state": "opened",
+    "html_url": "https://gitlab.freedesktop.org/poppler/poppler/-/work_items/1517",
+    "created_at": "2024-09-13T22:41:19.276Z"
+   },
+   {
+    "title": "RTL: Copy/Paste Arabic results in reverse order of Arabic phrases after pasting",
+    "state": "closed",
+    "html_url": "https://gitlab.freedesktop.org/poppler/poppler/-/work_items/53",
+    "created_at": "2018-06-04T05:18:31.000Z"
+   },
+   {
+    "title": "textList() reverse characters order for Arabic",
+    "state": "opened",
+    "html_url": "https://gitlab.freedesktop.org/poppler/poppler/-/work_items/412",
+    "created_at": "2018-02-08T08:33:52.000Z"
+   },
+   {
+    "title": "`libpkcs11-fnmtdnie.so` (Spanish eIDAS) segfaults with any `pdfsig` output",
+    "state": "opened",
+    "html_url": "https://gitlab.freedesktop.org/poppler/poppler/-/work_items/1794",
+    "created_at": "2026-09-13T10:31:41.769Z"
+   },
+   {
+    "title": "pdftops crashes when using the -passfont parameter",
+    "state": "closed",
+    "html_url": "https://gitlab.freedesktop.org/poppler/poppler/-/work_items/1500",
+    "created_at": "2024-07-12T12:20:28.510Z"
+   }
+  ],
+  "arabic_issue_note": "GitLab issue search (three separate term searches; X-Total header), not the GitHub OR-query - counts are not directly comparable",
+  "wasm_viability": "unknown (no official WASM build found in fetched README; not verified)",
+  "bundle_size_notes": "not measured",
+  "github_mirror": "No GitHub mirror of poppler/poppler among the top-10 results of search/repositories?q=poppler (sorted by stars) - results are wrappers/binaries (e.g. oschwartz10612/poppler-windows, Belval/pdf2image). Canonical source: gitlab.freedesktop.org/poppler/poppler.",
+  "copyleft_flag": true,
+  "verified_at": "2026-09-16T03:29:26Z",
+  "sources": [
+   "https://gitlab.freedesktop.org/api/v4/projects/poppler%2Fpoppler",
+   "https://gitlab.freedesktop.org/poppler/poppler/-/raw/master/COPYING",
+   "https://gitlab.freedesktop.org/poppler/poppler/-/raw/master/COPYING3",
+   "https://gitlab.freedesktop.org/poppler/poppler/-/raw/master/README.md",
+   "https://gitlab.freedesktop.org/api/v4/projects/poppler%2Fpoppler/issues?search=arabic&per_page=5&scope=all",
+   "https://gitlab.freedesktop.org/api/v4/projects/poppler%2Fpoppler/issues?search=rtl&per_page=5&scope=all",
+   "https://gitlab.freedesktop.org/api/v4/projects/poppler%2Fpoppler/issues?search=bidi&per_page=5&scope=all"
+  ]
+ },
+ {
+  "layer": "Rendering",
+  "name": "pdf-rs",
+  "repo": "pdf-rs/pdf",
+  "repo_url": "https://github.com/pdf-rs/pdf",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "GitHub API MIT; crates.io pdf MIT.",
+  "language": "Rust",
+  "stars": 1697,
+  "forks": 151,
+  "open_issues": 51,
+  "pushed_at": "2026-07-18T18:07:54Z",
+  "created_at": "2016-12-11T11:00:01Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "Rust library to read, manipulate and write PDF files.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 0,
+  "arabic_issue_samples": [],
+  "arabic_issue_query": "repo:pdf-rs/pdf arabic OR rtl OR bidi",
+  "wasm_viability": "Rust crate; README has no WASM mention (wasm32 support unverified).",
+  "bundle_size_notes": "not measured",
+  "crates_io": {
+   "crate": "pdf",
+   "max_version": "0.10.0",
+   "license": "MIT",
+   "downloads": 606241,
+   "recent_downloads": 69636,
+   "repository": "https://github.com/pdf-rs/pdf",
+   "updated_at": "2026-03-02T14:14:57.885246Z"
+  },
+  "verified_at": "2026-09-16T03:25:24Z",
+  "sources": [
+   "https://api.github.com/repos/pdf-rs/pdf",
+   "https://crates.io/api/v1/crates/pdf",
+   "https://api.github.com/search/issues?q=repo%3Apdf-rs/pdf%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Rendering",
+  "name": "hayro",
+  "repo": "LaurenzV/hayro",
+  "repo_url": "https://github.com/LaurenzV/hayro",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0 OR MIT",
+  "license_notes": "crates.io hayro and hayro-syntax: 'Apache-2.0 OR MIT'; LICENSE-APACHE and LICENSE-MIT present; GitHub API reports Apache-2.0. README: 'An experimental, work-in-progress PDF interpreter and renderer'.",
+  "language": "Rust",
+  "stars": 765,
+  "forks": 75,
+  "open_issues": 50,
+  "pushed_at": "2026-09-08T11:04:55Z",
+  "created_at": "2025-04-22T15:43:23Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "A PDF interpreter and renderer in pure Rust.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 0,
+  "arabic_issue_samples": [],
+  "arabic_issue_query": "repo:LaurenzV/hayro arabic OR rtl OR bidi",
+  "wasm_viability": "Rust crate; README has no WASM mention (wasm32 support unverified).",
+  "bundle_size_notes": "not measured",
+  "crates_io": {
+   "crate": "hayro",
+   "max_version": "0.7.1",
+   "license": "Apache-2.0 OR MIT",
+   "downloads": 2223776,
+   "recent_downloads": 1359500,
+   "repository": "https://github.com/LaurenzV/hayro",
+   "updated_at": "2026-06-05T17:35:23.304289Z"
+  },
+  "verified_at": "2026-09-16T03:25:25Z",
+  "sources": [
+   "https://api.github.com/repos/LaurenzV/hayro",
+   "https://crates.io/api/v1/crates/hayro",
+   "https://crates.io/api/v1/crates/hayro-syntax",
+   "https://raw.githubusercontent.com/LaurenzV/hayro/main/LICENSE-APACHE",
+   "https://raw.githubusercontent.com/LaurenzV/hayro/main/LICENSE-MIT",
+   "https://raw.githubusercontent.com/LaurenzV/hayro/main/README.md",
+   "https://api.github.com/search/issues?q=repo%3ALaurenzV/hayro%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Rendering",
+  "name": "typst",
+  "repo": "typst/typst",
+  "repo_url": "https://github.com/typst/typst",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "GitHub API Apache-2.0; crates.io typst-library Apache-2.0.",
+  "language": "Rust",
+  "stars": 56041,
+  "forks": 1715,
+  "open_issues": 1295,
+  "pushed_at": "2026-09-15T16:10:14Z",
+  "created_at": "2019-09-24T21:41:56Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "A markup-based typesetting system that is powerful and easy to learn.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 166,
+  "arabic_issue_samples": [
+   {
+    "title": "Heading numbering not reversed for RTL languages",
+    "state": "open",
+    "html_url": "https://github.com/typst/typst/issues/8500",
+    "created_at": "2026-06-12T16:29:17Z",
+    "type": "issue"
+   },
+   {
+    "title": "Bullet list secondary marker not ideal in RTL text",
+    "state": "open",
+    "html_url": "https://github.com/typst/typst/issues/8681",
+    "created_at": "2026-07-24T19:39:20Z",
+    "type": "issue"
+   },
+   {
+    "title": "Compiler panic when a `par` contains a `text(dir: rtl)` span ending in a combining mark",
+    "state": "open",
+    "html_url": "https://github.com/typst/typst/issues/8667",
+    "created_at": "2026-07-21T02:33:51Z",
+    "type": "issue"
+   },
+   {
+    "title": "Support RTL Typesetting in Math Mode",
+    "state": "open",
+    "html_url": "https://github.com/typst/typst/issues/7280",
+    "created_at": "2025-10-31T16:49:01Z",
+    "type": "issue"
+   },
+   {
+    "title": "Support for programatic text effects",
+    "state": "open",
+    "html_url": "https://github.com/typst/typst/pull/8844",
+    "created_at": "2026-09-09T05:48:52Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:typst/typst arabic OR rtl OR bidi",
+  "wasm_viability": "README has no WASM mention; community npm ports exist: @myriaddreamin/typst.ts (npm @myriaddreamin/typst.ts@0.7.0 unpackedSize 1,414,268 B) and typst-wasm (npm typst-wasm@1.0.0 unpackedSize 24,465,391 B).",
+  "bundle_size_notes": "npm @myriaddreamin/typst.ts@0.7.0 unpackedSize 1,414,268 B; npm typst-wasm@1.0.0 unpackedSize 24,465,391 B",
+  "crates_io": {
+   "crate": "typst-library",
+   "max_version": "0.15.1",
+   "license": "Apache-2.0",
+   "downloads": 2264825,
+   "recent_downloads": 1020947,
+   "repository": "https://github.com/typst/typst",
+   "updated_at": "2026-07-17T11:19:12.762324Z"
+  },
+  "verified_at": "2026-09-16T03:25:26Z",
+  "sources": [
+   "https://api.github.com/repos/typst/typst",
+   "https://crates.io/api/v1/crates/typst-library",
+   "https://api.github.com/search/issues?q=repo%3Atypst/typst%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "PDF read/write/edit",
+  "name": "qpdf",
+  "repo": "qpdf/qpdf",
+  "repo_url": "https://github.com/qpdf/qpdf",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "GitHub API license.spdx_id (Apache License 2.0)",
+  "language": "C++",
+  "stars": 5417,
+  "forks": 400,
+  "open_issues": 171,
+  "pushed_at": "2026-09-06T17:06:42Z",
+  "created_at": "2012-06-03T17:40:19Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "qpdf: A content-preserving PDF document transformer",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 6,
+  "arabic_issue_samples": [
+   {
+    "title": "Add option for renumbering PDFs",
+    "state": "closed",
+    "html_url": "https://github.com/qpdf/qpdf/issues/939",
+    "created_at": "2023-03-28T00:28:43Z",
+    "type": "issue"
+   },
+   {
+    "title": "Consider adding extraction of roman-numberated and arabic-numberated pages",
+    "state": "closed",
+    "html_url": "https://github.com/qpdf/qpdf/issues/1060",
+    "created_at": "2023-11-02T12:49:20Z",
+    "type": "issue"
+   },
+   {
+    "title": "performance degradation",
+    "state": "closed",
+    "html_url": "https://github.com/qpdf/qpdf/issues/401",
+    "created_at": "2020-02-19T16:13:06Z",
+    "type": "issue"
+   },
+   {
+    "title": "Option to preserve page labels when merging",
+    "state": "closed",
+    "html_url": "https://github.com/qpdf/qpdf/issues/210",
+    "created_at": "2018-06-02T10:45:01Z",
+    "type": "issue"
+   },
+   {
+    "title": "Helper api",
+    "state": "closed",
+    "html_url": "https://github.com/qpdf/qpdf/pull/213",
+    "created_at": "2018-06-18T21:16:46Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:qpdf/qpdf arabic OR rtl OR bidi",
+  "wasm_viability": "README has no WASM mention; community builds on npm: qpdf-wasm (npm qpdf-wasm@0.1.0 unpackedSize 2,317,089 B, Apache-2.0) and @jspawn/qpdf-wasm (npm @jspawn/qpdf-wasm@0.0.2 unpackedSize 1,340,135 B, Apache-2.0), both from jsscheller/qpdf-wasm.",
+  "bundle_size_notes": "npm qpdf-wasm@0.1.0 unpackedSize 2,317,089 B; npm @jspawn/qpdf-wasm@0.0.2 unpackedSize 1,340,135 B",
+  "verified_at": "2026-09-16T03:25:27Z",
+  "sources": [
+   "https://api.github.com/repos/qpdf/qpdf",
+   "https://api.github.com/search/issues?q=repo%3Aqpdf/qpdf%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "PDF read/write/edit",
+  "name": "pdfcpu",
+  "repo": "pdfcpu/pdfcpu",
+  "repo_url": "https://github.com/pdfcpu/pdfcpu",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "GitHub API license.spdx_id (Apache License 2.0)",
+  "language": "Go",
+  "stars": 8838,
+  "forks": 628,
+  "open_issues": 121,
+  "pushed_at": "2026-09-14T10:03:57Z",
+  "created_at": "2017-06-18T17:27:38Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "PDF tooling for Go and the command line.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 4,
+  "arabic_issue_samples": [
+   {
+    "title": "Bump golang.org/x/text from 0.40.0 to 0.42.0",
+    "state": "open",
+    "html_url": "https://github.com/pdfcpu/pdfcpu/pull/1482",
+    "created_at": "2026-09-14T10:03:50Z",
+    "type": "pr"
+   },
+   {
+    "title": "validation: annotDict required entry=Subtype missing",
+    "state": "closed",
+    "html_url": "https://github.com/pdfcpu/pdfcpu/issues/1002",
+    "created_at": "2024-11-22T20:04:00Z",
+    "type": "issue"
+   },
+   {
+    "title": "create: RTL - text inside table object",
+    "state": "closed",
+    "html_url": "https://github.com/pdfcpu/pdfcpu/issues/461",
+    "created_at": "2022-04-29T09:54:29Z",
+    "type": "issue"
+   },
+   {
+    "title": "PDF comments not fully supported",
+    "state": "closed",
+    "html_url": "https://github.com/pdfcpu/pdfcpu/issues/288",
+    "created_at": "2021-02-02T05:25:23Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:pdfcpu/pdfcpu arabic OR rtl OR bidi",
+  "wasm_viability": "Go; README has no WASM mention; community npm pdfcpu-wasm ('pdfcpu compiled to WASM', npm pdfcpu-wasm@0.1.0 unpackedSize 30,146,996 B, MIT).",
+  "bundle_size_notes": "npm pdfcpu-wasm@0.1.0 unpackedSize 30,146,996 B",
+  "signing_note": "README: 'It supports validation, optimization, encryption, signing, document assembly...' and feature bullet 'Validate signature integrity, report signature evidence, and remove signatures'; core command page pdfcpu.io/core/sign.",
+  "signing_issue_search": {
+   "query": "repo:pdfcpu/pdfcpu is:issue sign OR signature OR signing",
+   "total_count": 67,
+   "samples": [
+    {
+     "title": "create signature field (acroform)",
+     "state": "open",
+     "html_url": "https://github.com/pdfcpu/pdfcpu/issues/1456",
+     "created_at": "2026-07-29T13:58:27Z"
+    },
+    {
+     "title": "Add support to flatten filled PDF forms (remove field info after fill)",
+     "state": "open",
+     "html_url": "https://github.com/pdfcpu/pdfcpu/issues/1321",
+     "created_at": "2026-01-09T15:49:58Z"
+    },
+    {
+     "title": "validation: incremental updates with catalog Version",
+     "state": "open",
+     "html_url": "https://github.com/pdfcpu/pdfcpu/issues/1167",
+     "created_at": "2025-05-18T08:54:27Z"
+    },
+    {
+     "title": "validateLegal not supported",
+     "state": "open",
+     "html_url": "https://github.com/pdfcpu/pdfcpu/issues/662",
+     "created_at": "2023-07-26T17:40:34Z"
+    },
+    {
+     "title": "PDF Digital Signature",
+     "state": "closed",
+     "html_url": "https://github.com/pdfcpu/pdfcpu/issues/168",
+     "created_at": "2020-02-20T17:16:45Z"
+    }
+   ]
+  },
+  "verified_at": "2026-09-16T03:25:28Z",
+  "sources": [
+   "https://api.github.com/repos/pdfcpu/pdfcpu",
+   "https://api.github.com/search/issues?q=repo%3Apdfcpu/pdfcpu%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "PDF read/write/edit",
+  "name": "PDFBox",
+  "repo": "apache/pdfbox",
+  "repo_url": "https://github.com/apache/pdfbox",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "GitHub API license.spdx_id (Apache License 2.0)",
+  "language": "Java",
+  "stars": 3119,
+  "forks": 964,
+  "open_issues": 41,
+  "pushed_at": "2026-09-15T12:00:17Z",
+  "created_at": "2009-09-26T08:00:19Z",
+  "archived": false,
+  "default_branch": "trunk",
+  "description": "Mirror of Apache PDFBox",
+  "has_issues_enabled": false,
+  "is_fork": false,
+  "arabic_issue_count": 4,
+  "arabic_issue_samples": [
+   {
+    "title": "Refactoring, separate Bidi from showText, glyphLayoutProcessor.getStringWidth",
+    "state": "closed",
+    "html_url": "https://github.com/apache/pdfbox/pull/493",
+    "created_at": "2026-08-03T21:22:29Z",
+    "type": "pr"
+   },
+   {
+    "title": "PDFBOX-5487: Remove all space characters if contained within the adjacent letters",
+    "state": "closed",
+    "html_url": "https://github.com/apache/pdfbox/pull/155",
+    "created_at": "2023-02-19T10:05:41Z",
+    "type": "pr"
+   },
+   {
+    "title": "PDFBOX-4531: Reverse the order of decomposed Arabic/Hebrew letters",
+    "state": "closed",
+    "html_url": "https://github.com/apache/pdfbox/pull/156",
+    "created_at": "2023-02-22T11:55:22Z",
+    "type": "pr"
+   },
+   {
+    "title": "PDFBOX-4531: Reverse the order of decomposed Arabic letters",
+    "state": "closed",
+    "html_url": "https://github.com/apache/pdfbox/pull/154",
+    "created_at": "2023-02-19T08:12:32Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:apache/pdfbox arabic OR rtl OR bidi",
+  "arabic_issue_note": "GitHub issues are disabled on this repo (mirror); count reflects PRs only / external tracker not searched",
+  "wasm_viability": "Java; not applicable (no WASM mention in README).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:25:29Z",
+  "sources": [
+   "https://api.github.com/repos/apache/pdfbox",
+   "https://api.github.com/search/issues?q=repo%3Aapache/pdfbox%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "PDF read/write/edit",
+  "name": "lopdf",
+  "repo": "J-F-Liu/lopdf",
+  "repo_url": "https://github.com/J-F-Liu/lopdf",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "GitHub API MIT; crates.io lopdf MIT.",
+  "language": "Rust",
+  "stars": 2251,
+  "forks": 295,
+  "open_issues": 86,
+  "pushed_at": "2026-09-12T12:22:29Z",
+  "created_at": "2016-12-13T05:05:53Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "A Rust library for PDF document manipulation.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 3,
+  "arabic_issue_samples": [
+   {
+    "title": "Unexpected behavior using vowels with acute accent and Arabic text",
+    "state": "closed",
+    "html_url": "https://github.com/J-F-Liu/lopdf/issues/282",
+    "created_at": "2024-06-29T18:10:21Z",
+    "type": "issue"
+   },
+   {
+    "title": "Support Non-ASCII Bookmark Title",
+    "state": "closed",
+    "html_url": "https://github.com/J-F-Liu/lopdf/pull/364",
+    "created_at": "2024-12-16T10:18:06Z",
+    "type": "pr"
+   },
+   {
+    "title": "unicode does not show correctly",
+    "state": "closed",
+    "html_url": "https://github.com/J-F-Liu/lopdf/issues/86",
+    "created_at": "2019-11-16T10:40:00Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:J-F-Liu/lopdf arabic OR rtl OR bidi",
+  "wasm_viability": "Rust crate; README feature table references wasm targets ('bundled into the binary on Windows and on any wasm target'; 'wasm_js' feature 'needed for encryption on wasm').",
+  "bundle_size_notes": "not measured",
+  "crates_io": {
+   "crate": "lopdf",
+   "max_version": "0.45.0",
+   "license": "MIT",
+   "downloads": 19460237,
+   "recent_downloads": 9334154,
+   "repository": "https://github.com/J-F-Liu/lopdf.git",
+   "updated_at": "2026-09-08T07:12:36.038640Z"
+  },
+  "verified_at": "2026-09-16T03:25:30Z",
+  "sources": [
+   "https://api.github.com/repos/J-F-Liu/lopdf",
+   "https://crates.io/api/v1/crates/lopdf",
+   "https://api.github.com/search/issues?q=repo%3AJ-F-Liu/lopdf%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "PDF read/write/edit",
+  "name": "pdf-writer",
+  "repo": "typst/pdf-writer",
+  "repo_url": "https://github.com/typst/pdf-writer",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "MIT OR Apache-2.0",
+  "license_notes": "crates.io pdf-writer: 'MIT OR Apache-2.0'; GitHub API reports Apache-2.0.",
+  "language": "Rust",
+  "stars": 741,
+  "forks": 49,
+  "open_issues": 11,
+  "pushed_at": "2026-08-17T08:43:55Z",
+  "created_at": "2020-11-16T22:57:36Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "A step-by-step PDF writer.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 1,
+  "arabic_issue_samples": [
+   {
+    "title": "Annotations, Actions, and more",
+    "state": "closed",
+    "html_url": "https://github.com/typst/pdf-writer/pull/2",
+    "created_at": "2021-07-11T18:37:11Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:typst/pdf-writer arabic OR rtl OR bidi",
+  "wasm_viability": "Rust crate; README has no WASM mention (wasm32 support unverified).",
+  "bundle_size_notes": "not measured",
+  "crates_io": {
+   "crate": "pdf-writer",
+   "max_version": "0.15.0",
+   "license": "MIT OR Apache-2.0",
+   "downloads": 4057086,
+   "recent_downloads": 2028969,
+   "repository": "https://github.com/typst/pdf-writer",
+   "updated_at": "2026-05-27T16:12:00.835379Z"
+  },
+  "verified_at": "2026-09-16T03:25:30Z",
+  "sources": [
+   "https://api.github.com/repos/typst/pdf-writer",
+   "https://crates.io/api/v1/crates/pdf-writer",
+   "https://api.github.com/search/issues?q=repo%3Atypst/pdf-writer%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "PDF read/write/edit",
+  "name": "krilla",
+  "repo": "LaurenzV/krilla",
+  "repo_url": "https://github.com/LaurenzV/krilla",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "MIT OR Apache-2.0",
+  "license_notes": "crates.io krilla: 'MIT OR Apache-2.0'; GitHub API reports Apache-2.0.",
+  "language": "Rust",
+  "stars": 444,
+  "forks": 50,
+  "open_issues": 22,
+  "pushed_at": "2026-09-14T16:52:27Z",
+  "created_at": "2024-07-13T13:58:49Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "A high-level, ergonomic Rust library for creating PDF documents.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 5,
+  "arabic_issue_samples": [
+   {
+    "title": "Proposal: PDF logical text units for better Unicode copy/extraction",
+    "state": "open",
+    "html_url": "https://github.com/LaurenzV/krilla/issues/425",
+    "created_at": "2026-08-18T07:00:16Z",
+    "type": "issue"
+   },
+   {
+    "title": "Complex-script copy is wrong in viewers that ignore /ActualText (Preview, Firefox) — a fix I'd like to offer",
+    "state": "open",
+    "html_url": "https://github.com/LaurenzV/krilla/issues/411",
+    "created_at": "2026-06-21T18:39:37Z",
+    "type": "issue"
+   },
+   {
+    "title": "Write `/ReversedChars` marked content for RTL text",
+    "state": "closed",
+    "html_url": "https://github.com/LaurenzV/krilla/pull/260",
+    "created_at": "2025-09-10T08:57:51Z",
+    "type": "pr"
+   },
+   {
+    "title": "Create Python bindings for krilla",
+    "state": "closed",
+    "html_url": "https://github.com/LaurenzV/krilla/pull/324",
+    "created_at": "2026-01-03T22:46:59Z",
+    "type": "pr"
+   },
+   {
+    "title": "Proper handling of ligatures when creating tagged PDF",
+    "state": "closed",
+    "html_url": "https://github.com/LaurenzV/krilla/issues/302",
+    "created_at": "2025-11-15T06:31:13Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:LaurenzV/krilla arabic OR rtl OR bidi",
+  "wasm_viability": "Rust crate; README has no WASM mention (wasm32 support unverified).",
+  "bundle_size_notes": "not measured",
+  "crates_io": {
+   "crate": "krilla",
+   "max_version": "0.8.2",
+   "license": "MIT OR Apache-2.0",
+   "downloads": 2040845,
+   "recent_downloads": 1265085,
+   "repository": "https://github.com/LaurenzV/krilla",
+   "updated_at": "2026-06-04T14:04:51.081712Z"
+  },
+  "verified_at": "2026-09-16T03:25:31Z",
+  "sources": [
+   "https://api.github.com/repos/LaurenzV/krilla",
+   "https://crates.io/api/v1/crates/krilla",
+   "https://api.github.com/search/issues?q=repo%3ALaurenzV/krilla%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "PDF read/write/edit",
+  "name": "pdf-lib",
+  "repo": "Hopding/pdf-lib",
+  "repo_url": "https://github.com/Hopding/pdf-lib",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "GitHub API license.spdx_id (MIT License)",
+  "language": "TypeScript",
+  "stars": 8632,
+  "forks": 914,
+  "open_issues": 317,
+  "pushed_at": "2024-07-17T12:18:51Z",
+  "created_at": "2017-09-04T14:22:30Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "Create and modify PDF documents in any JavaScript environment",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 11,
+  "arabic_issue_samples": [
+   {
+    "title": "Arabic text with numbers, numbers gets reversed.",
+    "state": "open",
+    "html_url": "https://github.com/Hopding/pdf-lib/issues/1450",
+    "created_at": "2023-04-29T01:38:48Z",
+    "type": "issue"
+   },
+   {
+    "title": "Fetching Annotation Comments added in the pdf. (Arabic, Urdu and Persian language comments)",
+    "state": "open",
+    "html_url": "https://github.com/Hopding/pdf-lib/issues/1697",
+    "created_at": "2024-11-07T13:28:36Z",
+    "type": "issue"
+   },
+   {
+    "title": "Error converting Excel to PDF: PDFDocument.registerFontkit is not a function ",
+    "state": "open",
+    "html_url": "https://github.com/Hopding/pdf-lib/issues/1648",
+    "created_at": "2024-07-04T02:43:25Z",
+    "type": "issue"
+   },
+   {
+    "title": "Error: WinAnsi cannot encode",
+    "state": "closed",
+    "html_url": "https://github.com/Hopding/pdf-lib/issues/548",
+    "created_at": "2020-08-03T20:33:05Z",
+    "type": "issue"
+   },
+   {
+    "title": "RTL fonts (Hebrew) prints numbers **backwards** when entered with text",
+    "state": "closed",
+    "html_url": "https://github.com/Hopding/pdf-lib/issues/1159",
+    "created_at": "2022-02-03T02:56:24Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:Hopding/pdf-lib arabic OR rtl OR bidi",
+  "wasm_viability": "Pure JavaScript/TypeScript (runs in browser natively); not applicable.",
+  "bundle_size_notes": "npm pdf-lib@1.17.1 unpackedSize 19,461,112 B",
+  "verified_at": "2026-09-16T03:25:32Z",
+  "sources": [
+   "https://api.github.com/repos/Hopding/pdf-lib",
+   "https://api.github.com/search/issues?q=repo%3AHopding/pdf-lib%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "PDF read/write/edit",
+  "name": "@cantoo/pdf-lib",
+  "repo": "cantoo-scribe/pdf-lib",
+  "repo_url": "https://github.com/cantoo-scribe/pdf-lib",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "GitHub API license.spdx_id (MIT License)",
+  "language": "TypeScript",
+  "stars": 349,
+  "forks": 72,
+  "open_issues": 13,
+  "pushed_at": "2026-09-11T02:42:02Z",
+  "created_at": "2021-03-11T17:28:58Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "Create and modify PDF documents in any JavaScript environment",
+  "has_issues_enabled": true,
+  "is_fork": true,
+  "arabic_issue_count": 0,
+  "arabic_issue_samples": [],
+  "arabic_issue_query": "repo:cantoo-scribe/pdf-lib arabic OR rtl OR bidi",
+  "wasm_viability": "Pure JavaScript/TypeScript fork of pdf-lib; not applicable.",
+  "bundle_size_notes": "npm @cantoo/pdf-lib@2.11.1 unpackedSize 26,301,363 B",
+  "verified_at": "2026-09-16T03:25:33Z",
+  "sources": [
+   "https://api.github.com/repos/cantoo-scribe/pdf-lib",
+   "https://api.github.com/search/issues?q=repo%3Acantoo-scribe/pdf-lib%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "PDF read/write/edit",
+  "name": "pypdf",
+  "repo": "py-pdf/pypdf",
+  "repo_url": "https://github.com/py-pdf/pypdf",
+  "license_spdx_github_api": "NOASSERTION",
+  "license_spdx": "BSD-3-Clause",
+  "license_notes": "LICENSE: BSD-style text with source/binary redistribution conditions and a non-endorsement clause (3 clauses). GitHub API reports NOASSERTION (non-standard header).",
+  "language": "Python",
+  "stars": 10204,
+  "forks": 1627,
+  "open_issues": 135,
+  "pushed_at": "2026-09-15T11:03:36Z",
+  "created_at": "2012-01-06T17:13:38Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "A pure-python PDF library capable of splitting, merging, cropping, and transforming the pages of PDF files",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 48,
+  "arabic_issue_samples": [
+   {
+    "title": "Fixing Text Extraction Order For Arabic+Digits+Punctuation",
+    "state": "open",
+    "html_url": "https://github.com/py-pdf/pypdf/issues/1629",
+    "created_at": "2023-02-12T20:00:41Z",
+    "type": "issue"
+   },
+   {
+    "title": "MAINT: Skip `test_appearance_stream_rtl` when RTL support is unavailable",
+    "state": "closed",
+    "html_url": "https://github.com/py-pdf/pypdf/pull/3993",
+    "created_at": "2026-08-21T07:52:05Z",
+    "type": "pr"
+   },
+   {
+    "title": "BUG: Arabic-Indic digits are reversed during text extraction",
+    "state": "closed",
+    "html_url": "https://github.com/py-pdf/pypdf/pull/4077",
+    "created_at": "2026-09-13T02:36:13Z",
+    "type": "pr"
+   },
+   {
+    "title": "ENH: _cmap.py: Also parse encoding for embedded CFF Type1 fonts",
+    "state": "closed",
+    "html_url": "https://github.com/py-pdf/pypdf/pull/4032",
+    "created_at": "2026-08-28T13:00:17Z",
+    "type": "pr"
+   },
+   {
+    "title": "ENH: Add ActualText tag when we produce RTL appearance stream",
+    "state": "closed",
+    "html_url": "https://github.com/py-pdf/pypdf/pull/3901",
+    "created_at": "2026-06-25T15:19:59Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:py-pdf/pypdf arabic OR rtl OR bidi",
+  "wasm_viability": "Python; README has no WASM mention (not applicable/unknown).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:25:34Z",
+  "sources": [
+   "https://api.github.com/repos/py-pdf/pypdf",
+   "https://raw.githubusercontent.com/py-pdf/pypdf/main/LICENSE",
+   "https://api.github.com/search/issues?q=repo%3Apy-pdf/pypdf%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "PDF read/write/edit",
+  "name": "pikepdf",
+  "repo": "pikepdf/pikepdf",
+  "repo_url": "https://github.com/pikepdf/pikepdf",
+  "license_spdx_github_api": "MPL-2.0",
+  "license_spdx": "MPL-2.0",
+  "license_notes": "GitHub API: MPL-2.0. WEAK (file-level) COPYLEFT.",
+  "copyleft_flag": true,
+  "language": "Python",
+  "stars": 2799,
+  "forks": 232,
+  "open_issues": 18,
+  "pushed_at": "2026-09-06T17:35:52Z",
+  "created_at": "2017-09-14T20:22:29Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "A Python library for reading and writing PDF, powered by QPDF",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 2,
+  "arabic_issue_samples": [
+   {
+    "title": "AttributeError: 'pikepdf._qpdf.Pdf' object has no attribute 'root'",
+    "state": "closed",
+    "html_url": "https://github.com/pikepdf/pikepdf/issues/370",
+    "created_at": "2022-07-12T13:57:32Z",
+    "type": "issue"
+   },
+   {
+    "title": "[Feature request] Page binding (left/right edge)",
+    "state": "closed",
+    "html_url": "https://github.com/pikepdf/pikepdf/issues/111",
+    "created_at": "2020-07-19T11:11:46Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:pikepdf/pikepdf arabic OR rtl OR bidi",
+  "wasm_viability": "Python + C++ (qpdf); README has no WASM mention (not applicable/unknown).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:25:35Z",
+  "sources": [
+   "https://api.github.com/repos/pikepdf/pikepdf",
+   "https://api.github.com/search/issues?q=repo%3Apikepdf/pikepdf%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "PDF read/write/edit",
+  "name": "PyMuPDF",
+  "repo": "pymupdf/PyMuPDF",
+  "repo_url": "https://github.com/pymupdf/PyMuPDF",
+  "license_spdx_github_api": "AGPL-3.0",
+  "license_spdx": "AGPL-3.0",
+  "license_notes": "GitHub API: AGPL-3.0 (binds MuPDF, which is AGPL with Artifex commercial option). STRONG COPYLEFT (AGPL).",
+  "copyleft_flag": true,
+  "language": "Python",
+  "stars": 10717,
+  "forks": 799,
+  "open_issues": 60,
+  "pushed_at": "2026-09-15T21:06:25Z",
+  "created_at": "2012-10-06T18:54:25Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "PyMuPDF is a high performance Python library for data extraction, analysis, conversion & manipulation of PDF (and other) documents.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 33,
+  "arabic_issue_samples": [
+   {
+    "title": "insert_htmlbox auto base-direction ignores the UAX#9 first-strong rule for mixed RTL+LTR paragraphs",
+    "state": "open",
+    "html_url": "https://github.com/pymupdf/PyMuPDF/issues/5099",
+    "created_at": "2026-08-21T12:32:14Z",
+    "type": "issue"
+   },
+   {
+    "title": "Memory leaking in insert_htmlbox?",
+    "state": "open",
+    "html_url": "https://github.com/pymupdf/PyMuPDF/issues/4727",
+    "created_at": "2025-10-06T04:13:33Z",
+    "type": "issue"
+   },
+   {
+    "title": "Incorrect linewidth in elements returned by Page.get_texttrace()",
+    "state": "closed",
+    "html_url": "https://github.com/pymupdf/PyMuPDF/issues/4902",
+    "created_at": "2026-02-16T05:08:16Z",
+    "type": "issue"
+   },
+   {
+    "title": "some stacked (same position) texts are not extracted",
+    "state": "closed",
+    "html_url": "https://github.com/pymupdf/PyMuPDF/issues/4852",
+    "created_at": "2026-01-02T09:49:15Z",
+    "type": "issue"
+   },
+   {
+    "title": "Problems with unreadable characters",
+    "state": "closed",
+    "html_url": "https://github.com/pymupdf/PyMuPDF/issues/4716",
+    "created_at": "2025-09-29T15:51:40Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:pymupdf/PyMuPDF arabic OR rtl OR bidi",
+  "wasm_viability": "Python; README has no WASM mention (use mupdf.js for WASM).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:25:36Z",
+  "sources": [
+   "https://api.github.com/repos/pymupdf/PyMuPDF",
+   "https://api.github.com/search/issues?q=repo%3Apymupdf/PyMuPDF%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "PDF read/write/edit",
+  "name": "pdfkit",
+  "repo": "foliojs/pdfkit",
+  "repo_url": "https://github.com/foliojs/pdfkit",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "GitHub API license.spdx_id (MIT License)",
+  "language": "JavaScript",
+  "stars": 10704,
+  "forks": 1227,
+  "open_issues": 327,
+  "pushed_at": "2026-09-14T10:24:41Z",
+  "created_at": "2011-07-11T15:12:29Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "A JavaScript PDF generation library for Node and the browser",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 24,
+  "arabic_issue_samples": [
+   {
+    "title": "Right-to-Left (RTL) support for Hebrew and Arabic",
+    "state": "open",
+    "html_url": "https://github.com/foliojs/pdfkit/issues/219",
+    "created_at": "2014-04-05T18:09:09Z",
+    "type": "issue"
+   },
+   {
+    "title": "feat: native RTL text support via Unicode Bidirectional Algorithm",
+    "state": "open",
+    "html_url": "https://github.com/foliojs/pdfkit/pull/1722",
+    "created_at": "2026-05-07T05:47:34Z",
+    "type": "pr"
+   },
+   {
+    "title": "Random extra space in Arabic multiline texts",
+    "state": "open",
+    "html_url": "https://github.com/foliojs/pdfkit/issues/1422",
+    "created_at": "2023-02-24T13:46:52Z",
+    "type": "issue"
+   },
+   {
+    "title": "Support for Zero-Width-Joiner for cursive language like Arabic",
+    "state": "open",
+    "html_url": "https://github.com/foliojs/pdfkit/issues/951",
+    "created_at": "2019-04-08T11:08:27Z",
+    "type": "issue"
+   },
+   {
+    "title": "non-Latin characters, non-BMP characters, symbols missing",
+    "state": "open",
+    "html_url": "https://github.com/foliojs/pdfkit/issues/1251",
+    "created_at": "2021-05-26T16:34:58Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:foliojs/pdfkit arabic OR rtl OR bidi",
+  "wasm_viability": "Pure JavaScript; not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:25:37Z",
+  "sources": [
+   "https://api.github.com/repos/foliojs/pdfkit",
+   "https://api.github.com/search/issues?q=repo%3Afoliojs/pdfkit%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "PDF read/write/edit",
+  "name": "printpdf",
+  "repo": "fschutt/printpdf",
+  "repo_url": "https://github.com/fschutt/printpdf",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "GitHub API MIT; crates.io printpdf MIT.",
+  "language": "Rust",
+  "stars": 1113,
+  "forks": 138,
+  "open_issues": 15,
+  "pushed_at": "2026-09-05T11:47:37Z",
+  "created_at": "2017-05-09T16:42:09Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "Rust / WASM library for reading, writing and rendering PDF",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 4,
+  "arabic_issue_samples": [
+   {
+    "title": "RTL support",
+    "state": "closed",
+    "html_url": "https://github.com/fschutt/printpdf/issues/126",
+    "created_at": "2022-08-25T04:07:04Z",
+    "type": "issue"
+   },
+   {
+    "title": "Text shaping in 0.8.2 doesn't split words at a hyphen",
+    "state": "closed",
+    "html_url": "https://github.com/fschutt/printpdf/issues/239",
+    "created_at": "2025-08-20T14:32:13Z",
+    "type": "issue"
+   },
+   {
+    "title": "Fix ToUnicode cmap using cids instead of unicode",
+    "state": "closed",
+    "html_url": "https://github.com/fschutt/printpdf/pull/242",
+    "created_at": "2025-10-11T02:21:53Z",
+    "type": "pr"
+   },
+   {
+    "title": "Subsetting and shaping on its own worked in 0.7, but does not work in 0.8.2",
+    "state": "closed",
+    "html_url": "https://github.com/fschutt/printpdf/issues/222",
+    "created_at": "2025-05-15T23:10:15Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:fschutt/printpdf arabic OR rtl OR bidi",
+  "wasm_viability": "README: 'See the WASM32 demo live at: https://fschutt.github.io/printpdf'.",
+  "bundle_size_notes": "not measured",
+  "crates_io": {
+   "crate": "printpdf",
+   "max_version": "0.12.8",
+   "license": "MIT",
+   "downloads": 2837797,
+   "recent_downloads": 1290946,
+   "repository": "https://github.com/fschutt/printpdf",
+   "updated_at": "2026-09-05T11:39:26.323924Z"
+  },
+  "verified_at": "2026-09-16T03:25:38Z",
+  "sources": [
+   "https://api.github.com/repos/fschutt/printpdf",
+   "https://crates.io/api/v1/crates/printpdf",
+   "https://api.github.com/search/issues?q=repo%3Afschutt/printpdf%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "PDF read/write/edit",
+  "name": "iText 7 (itext-java)",
+  "repo": "itext/itext-java",
+  "repo_url": "https://github.com/itext/itext-java",
+  "license_spdx_github_api": "NOASSERTION",
+  "license_spdx": "AGPL-3.0-or-later",
+  "license_notes": "LICENSE.md: 'This program is offered under a commercial and under the AGPL license' - AGPL v3 'or (at your option) any later version'; README 'Licensing': 'dual licensed as AGPL/Commercial software'. STRONG COPYLEFT (AGPL) with paid commercial tier. GitHub API reports NOASSERTION.",
+  "copyleft_flag": true,
+  "language": "Java",
+  "stars": 2256,
+  "forks": 474,
+  "open_issues": 77,
+  "pushed_at": "2026-09-14T14:55:10Z",
+  "created_at": "2016-05-03T07:45:39Z",
+  "archived": false,
+  "default_branch": "develop",
+  "description": "iText for Java represents the next level of SDKs for developers that want to take advantage of the benefits PDF can bring. Equipped with a better document engine, high and low-level programming capabilities and the ability to create, edit and enhance PDF documents, iText can be a boon to nearly every workflow.",
+  "has_issues_enabled": false,
+  "is_fork": false,
+  "arabic_issue_count": 0,
+  "arabic_issue_samples": [],
+  "arabic_issue_query": "repo:itext/itext-java arabic OR rtl OR bidi",
+  "arabic_issue_note": "GitHub issues are disabled on this repo (mirror); count reflects PRs only / external tracker not searched",
+  "wasm_viability": "Java; not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:25:39Z",
+  "sources": [
+   "https://api.github.com/repos/itext/itext-java",
+   "https://raw.githubusercontent.com/itext/itext-java/develop/LICENSE.md",
+   "https://raw.githubusercontent.com/itext/itext-java/develop/README.md",
+   "https://api.github.com/search/issues?q=repo%3Aitext/itext-java%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "PDF read/write/edit",
+  "name": "pdfminer.six",
+  "repo": "pdfminer/pdfminer.six",
+  "repo_url": "https://github.com/pdfminer/pdfminer.six",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "GitHub API license.spdx_id (MIT License)",
+  "language": "Python",
+  "stars": 7022,
+  "forks": 1040,
+  "open_issues": 234,
+  "pushed_at": "2026-03-13T13:46:54Z",
+  "created_at": "2014-08-29T14:04:53Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "Community maintained fork of pdfminer - we fathom PDF",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 6,
+  "arabic_issue_samples": [
+   {
+    "title": "Arabic ligatures order issue when extracting text from PDF",
+    "state": "open",
+    "html_url": "https://github.com/pdfminer/pdfminer.six/issues/850",
+    "created_at": "2023-01-30T04:12:47Z",
+    "type": "issue"
+   },
+   {
+    "title": "Supporting RTL Languages",
+    "state": "open",
+    "html_url": "https://github.com/pdfminer/pdfminer.six/issues/515",
+    "created_at": "2020-10-03T08:32:38Z",
+    "type": "issue"
+   },
+   {
+    "title": "Arabic support",
+    "state": "closed",
+    "html_url": "https://github.com/pdfminer/pdfminer.six/pull/1078",
+    "created_at": "2025-01-14T11:30:56Z",
+    "type": "pr"
+   },
+   {
+    "title": "**Order of th text is mixed up and finding them in wrong places:**",
+    "state": "closed",
+    "html_url": "https://github.com/pdfminer/pdfminer.six/issues/557",
+    "created_at": "2020-12-02T10:50:50Z",
+    "type": "issue"
+   },
+   {
+    "title": "Integrates with the python-bidi to apply Bi-directional (BiDi) layout…",
+    "state": "closed",
+    "html_url": "https://github.com/pdfminer/pdfminer.six/pull/516",
+    "created_at": "2020-10-03T08:45:29Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:pdfminer/pdfminer.six arabic OR rtl OR bidi",
+  "wasm_viability": "Python; README has no WASM mention (not applicable/unknown).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:25:40Z",
+  "sources": [
+   "https://api.github.com/repos/pdfminer/pdfminer.six",
+   "https://api.github.com/search/issues?q=repo%3Apdfminer/pdfminer.six%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Text shaping & bidi & fonts",
+  "name": "HarfBuzz",
+  "repo": "harfbuzz/harfbuzz",
+  "repo_url": "https://github.com/harfbuzz/harfbuzz",
+  "license_spdx_github_api": "NOASSERTION",
+  "license_spdx": "MIT-Modern-Variant",
+  "license_notes": "COPYING: 'HarfBuzz is licensed under the so-called \"Old MIT\" license'; its permission paragraph matches the SPDX MIT-Modern-Variant canonical text (compared against spdx.org JSON). Some subdirectories carry their own COPYING. GitHub API reports NOASSERTION.",
+  "language": "C++",
+  "stars": 6083,
+  "forks": 779,
+  "open_issues": 92,
+  "pushed_at": "2026-09-16T03:16:07Z",
+  "created_at": "2012-07-14T19:50:26Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "HarfBuzz text shaping engine",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 255,
+  "arabic_issue_samples": [
+   {
+    "title": "Legacy hebrew cmap aren't supported",
+    "state": "open",
+    "html_url": "https://github.com/harfbuzz/harfbuzz/issues/6159",
+    "created_at": "2026-08-13T21:53:43Z",
+    "type": "issue"
+   },
+   {
+    "title": "[graphite2] Fix cluster values when the buffer was reversed",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/harfbuzz/pull/6051",
+    "created_at": "2026-07-06T07:45:18Z",
+    "type": "pr"
+   },
+   {
+    "title": "[JSTF] Expose extender glyphs via hb_ot_layout_get_extender_glyphs",
+    "state": "open",
+    "html_url": "https://github.com/harfbuzz/harfbuzz/pull/6163",
+    "created_at": "2026-08-16T20:27:58Z",
+    "type": "pr"
+   },
+   {
+    "title": "[arabic] Generate fallback data for Rust",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/harfbuzz/pull/6207",
+    "created_at": "2026-08-24T22:53:25Z",
+    "type": "pr"
+   },
+   {
+    "title": "[arabic] Enable Win1256 fallback on all platforms",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/harfbuzz/pull/6209",
+    "created_at": "2026-08-25T15:43:24Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:harfbuzz/harfbuzz arabic OR rtl OR bidi",
+  "wasm_viability": "Official emscripten build harfbuzzjs (harfbuzz/harfbuzzjs; npm harfbuzzjs npm harfbuzzjs@1.6.1 unpackedSize 1,238,713 B).",
+  "bundle_size_notes": "npm harfbuzzjs@1.6.1 unpackedSize 1,238,713 B",
+  "verified_at": "2026-09-16T03:25:41Z",
+  "sources": [
+   "https://api.github.com/repos/harfbuzz/harfbuzz",
+   "https://raw.githubusercontent.com/harfbuzz/harfbuzz/main/COPYING",
+   "https://spdx.org/licenses/MIT-Modern-Variant.json",
+   "https://api.github.com/search/issues?q=repo%3Aharfbuzz/harfbuzz%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Text shaping & bidi & fonts",
+  "name": "rustybuzz",
+  "repo": "harfbuzz/rustybuzz",
+  "repo_url": "https://github.com/harfbuzz/rustybuzz",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "GitHub API: MIT; crates.io rustybuzz MIT. REPO ARCHIVED - README: 'This project is not developed further, unmaintained, and archived. We recommend that all users switch to HarfRust'.",
+  "language": "Rust",
+  "stars": 667,
+  "forks": 41,
+  "open_issues": 3,
+  "pushed_at": "2026-07-26T17:27:00Z",
+  "created_at": "2020-01-12T16:10:34Z",
+  "archived": true,
+  "default_branch": "main",
+  "description": "A complete harfbuzz's shaping algorithm port to Rust",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 29,
+  "arabic_issue_samples": [
+   {
+    "title": "examples: add `shaped-text2svg` for generating SVGs from shaped Unicode text.",
+    "state": "open",
+    "html_url": "https://github.com/harfbuzz/rustybuzz/pull/70",
+    "created_at": "2023-06-22T18:19:00Z",
+    "type": "pr"
+   },
+   {
+    "title": "Example on how to draw with this",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/rustybuzz/issues/25",
+    "created_at": "2020-12-12T14:40:25Z",
+    "type": "issue"
+   },
+   {
+    "title": "Update READAME.md",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/rustybuzz/pull/141",
+    "created_at": "2024-10-25T14:59:55Z",
+    "type": "pr"
+   },
+   {
+    "title": "RTL shaping output not correct.",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/rustybuzz/issues/132",
+    "created_at": "2024-09-11T18:42:11Z",
+    "type": "issue"
+   },
+   {
+    "title": "Sync with 10.0.1",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/rustybuzz/pull/134",
+    "created_at": "2024-09-25T18:16:33Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:harfbuzz/rustybuzz arabic OR rtl OR bidi",
+  "wasm_viability": "Rust crate (archived); README has no WASM mention.",
+  "bundle_size_notes": "not measured",
+  "crates_io": {
+   "crate": "rustybuzz",
+   "max_version": "0.20.1",
+   "license": "MIT",
+   "downloads": 30140693,
+   "recent_downloads": 9805463,
+   "repository": "https://github.com/harfbuzz/rustybuzz",
+   "updated_at": "2024-11-12T11:53:33.625252Z"
+  },
+  "successor": "harfbuzz/harfrust",
+  "verified_at": "2026-09-16T03:25:42Z",
+  "sources": [
+   "https://api.github.com/repos/harfbuzz/rustybuzz",
+   "https://raw.githubusercontent.com/harfbuzz/rustybuzz/main/README.md",
+   "https://crates.io/api/v1/crates/rustybuzz",
+   "https://api.github.com/search/issues?q=repo%3Aharfbuzz/rustybuzz%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Text shaping & bidi & fonts",
+  "name": "HarfRust (rustybuzz successor)",
+  "repo": "harfbuzz/harfrust",
+  "repo_url": "https://github.com/harfbuzz/harfrust",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "LICENSE: MIT; crates.io harfrust license MIT. Successor to rustybuzz per rustybuzz README.",
+  "language": "Rust",
+  "stars": 301,
+  "forks": 26,
+  "open_issues": 27,
+  "pushed_at": "2026-09-10T18:58:03Z",
+  "created_at": "2024-07-15T16:04:15Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "HarfBuzz port to Rust",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 17,
+  "arabic_issue_samples": [
+   {
+    "title": "Support Arabic fallback shaping",
+    "state": "open",
+    "html_url": "https://github.com/harfbuzz/harfrust/issues/331",
+    "created_at": "2023-01-07T02:34:55Z",
+    "type": "issue"
+   },
+   {
+    "title": "[arabic] Add Win1256 fallback",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/harfrust/pull/456",
+    "created_at": "2026-08-25T15:41:03Z",
+    "type": "pr"
+   },
+   {
+    "title": "[arabic] Synthesize fallback GSUB lookups",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/harfrust/pull/454",
+    "created_at": "2026-08-24T22:13:15Z",
+    "type": "pr"
+   },
+   {
+    "title": "GPOS cursive attachment: attach_chain i16 truncation causes out-of-bounds slice index",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/harfrust/issues/410",
+    "created_at": "2026-08-05T21:04:17Z",
+    "type": "issue"
+   },
+   {
+    "title": "Saturate position arithmetic",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/harfrust/pull/420",
+    "created_at": "2026-08-13T03:06:47Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:harfbuzz/harfrust arabic OR rtl OR bidi",
+  "wasm_viability": "Rust crate; README has no WASM mention (wasm32 support unverified).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:29Z",
+  "sources": [
+   "https://api.github.com/repos/harfbuzz/harfrust",
+   "https://raw.githubusercontent.com/harfbuzz/harfrust/HEAD/LICENSE",
+   "https://crates.io/api/v1/crates/harfrust",
+   "https://api.github.com/search/issues?q=repo%3Aharfbuzz/harfrust%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Text shaping & bidi & fonts",
+  "name": "ttf-parser",
+  "repo": "harfbuzz/ttf-parser",
+  "repo_url": "https://github.com/harfbuzz/ttf-parser",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "MIT OR Apache-2.0",
+  "license_notes": "crates.io ttf-parser: 'MIT OR Apache-2.0'; GitHub API reports Apache-2.0. README: 'no_std/WASM compatible'.",
+  "language": "Rust",
+  "stars": 792,
+  "forks": 88,
+  "open_issues": 5,
+  "pushed_at": "2026-08-06T20:20:40Z",
+  "created_at": "2019-06-09T14:02:47Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "A high-level, safe, zero-allocation TrueType font parser.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 2,
+  "arabic_issue_samples": [
+   {
+    "title": "Parse and Read data from file?",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/ttf-parser/issues/188",
+    "created_at": "2025-04-02T09:08:27Z",
+    "type": "issue"
+   },
+   {
+    "title": "Making some internal fields public and allow serialisation of the OwnedFace type.",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/ttf-parser/issues/103",
+    "created_at": "2022-07-26T21:06:09Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:harfbuzz/ttf-parser arabic OR rtl OR bidi",
+  "wasm_viability": "README: 'no_std/WASM compatible'.",
+  "bundle_size_notes": "not measured",
+  "crates_io": {
+   "crate": "ttf-parser",
+   "max_version": "0.25.1",
+   "license": "MIT OR Apache-2.0",
+   "downloads": 105929169,
+   "recent_downloads": 27865184,
+   "repository": "https://github.com/harfbuzz/ttf-parser",
+   "updated_at": "2024-11-29T19:59:37.395141Z"
+  },
+  "verified_at": "2026-09-16T03:25:43Z",
+  "sources": [
+   "https://api.github.com/repos/harfbuzz/ttf-parser",
+   "https://crates.io/api/v1/crates/ttf-parser",
+   "https://api.github.com/search/issues?q=repo%3Aharfbuzz/ttf-parser%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Text shaping & bidi & fonts",
+  "name": "unicode-bidi",
+  "repo": "servo/unicode-bidi",
+  "repo_url": "https://github.com/servo/unicode-bidi",
+  "license_spdx_github_api": "NOASSERTION",
+  "license_spdx": "MIT OR Apache-2.0",
+  "license_notes": "Cargo.toml license = 'MIT OR Apache-2.0'; LICENSE-MIT and LICENSE-APACHE present; crates.io same. GitHub API reports NOASSERTION.",
+  "language": "Rust",
+  "stars": 87,
+  "forks": 40,
+  "open_issues": 9,
+  "pushed_at": "2026-09-15T18:52:15Z",
+  "created_at": "2015-05-26T17:28:44Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Implementation of the Unicode Bidirection Algorithm in Rust",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 85,
+  "arabic_issue_samples": [
+   {
+    "title": "Fix ParagraphBidiInfo::has_rtl and clarify is_pure_ltr docs",
+    "state": "closed",
+    "html_url": "https://github.com/servo/unicode-bidi/pull/154",
+    "created_at": "2026-09-15T15:55:08Z",
+    "type": "pr"
+   },
+   {
+    "title": "Compute ParagraphBidiInfo::has_rtl from the resolved levels",
+    "state": "closed",
+    "html_url": "https://github.com/servo/unicode-bidi/pull/153",
+    "created_at": "2026-09-10T23:40:59Z",
+    "type": "pr"
+   },
+   {
+    "title": "Potential discrepancy between tests and DerivedBidiClass.txt",
+    "state": "open",
+    "html_url": "https://github.com/servo/unicode-bidi/issues/143",
+    "created_at": "2025-10-13T15:33:27Z",
+    "type": "issue"
+   },
+   {
+    "title": "Reduce / pass in allocations",
+    "state": "open",
+    "html_url": "https://github.com/servo/unicode-bidi/issues/146",
+    "created_at": "2025-10-23T22:34:19Z",
+    "type": "issue"
+   },
+   {
+    "title": "Does default_para_level correspond to TR9#HL1?",
+    "state": "open",
+    "html_url": "https://github.com/servo/unicode-bidi/issues/129",
+    "created_at": "2024-02-24T14:49:38Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:servo/unicode-bidi arabic OR rtl OR bidi",
+  "wasm_viability": "Rust crate; README has no WASM mention (pure Rust; wasm32 unverified).",
+  "bundle_size_notes": "not measured",
+  "crates_io": {
+   "crate": "unicode-bidi",
+   "max_version": "0.3.18",
+   "license": "MIT OR Apache-2.0",
+   "downloads": 502263601,
+   "recent_downloads": 76258834,
+   "repository": "https://github.com/servo/unicode-bidi",
+   "updated_at": "2024-12-16T23:09:47.459625Z"
+  },
+  "verified_at": "2026-09-16T03:25:44Z",
+  "sources": [
+   "https://api.github.com/repos/servo/unicode-bidi",
+   "https://raw.githubusercontent.com/servo/unicode-bidi/main/Cargo.toml",
+   "https://raw.githubusercontent.com/servo/unicode-bidi/main/LICENSE-MIT",
+   "https://raw.githubusercontent.com/servo/unicode-bidi/main/LICENSE-APACHE",
+   "https://crates.io/api/v1/crates/unicode-bidi",
+   "https://api.github.com/search/issues?q=repo%3Aservo/unicode-bidi%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Text shaping & bidi & fonts",
+  "name": "fontkit",
+  "repo": "foliojs/fontkit",
+  "repo_url": "https://github.com/foliojs/fontkit",
+  "license_spdx_github_api": null,
+  "license_spdx": "MIT",
+  "license_notes": "No LICENSE file at repo root (raw LICENSE -> 404; GitHub API license = null). package.json 'license': 'MIT'; npm fontkit@latest license MIT.",
+  "language": "JavaScript",
+  "stars": 1670,
+  "forks": 242,
+  "open_issues": 165,
+  "pushed_at": "2024-08-14T09:31:51Z",
+  "created_at": "2014-11-26T20:54:50Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "An advanced font engine for Node and the browser",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 19,
+  "arabic_issue_samples": [
+   {
+    "title": "Compose canonical decompositions (NFC) in the default shaper",
+    "state": "open",
+    "html_url": "https://github.com/foliojs/fontkit/pull/380",
+    "created_at": "2026-06-15T21:48:15Z",
+    "type": "pr"
+   },
+   {
+    "title": "Problem with TTFGlyph caching for Arabic Presentation Forms ",
+    "state": "open",
+    "html_url": "https://github.com/foliojs/fontkit/issues/342",
+    "created_at": "2024-08-02T13:12:11Z",
+    "type": "issue"
+   },
+   {
+    "title": "UnicodeLayoutEngine.positionGlyphs method doesn't position Hebrew (RTL) words",
+    "state": "open",
+    "html_url": "https://github.com/foliojs/fontkit/issues/39",
+    "created_at": "2016-05-24T12:45:25Z",
+    "type": "issue"
+   },
+   {
+    "title": "Bad glyphs code points produce by layout function with Arabic font",
+    "state": "open",
+    "html_url": "https://github.com/foliojs/fontkit/issues/304",
+    "created_at": "2023-03-08T15:01:13Z",
+    "type": "issue"
+   },
+   {
+    "title": "Mongolian font support in fontkit ????",
+    "state": "open",
+    "html_url": "https://github.com/foliojs/fontkit/issues/222",
+    "created_at": "2020-04-07T13:15:13Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:foliojs/fontkit arabic OR rtl OR bidi",
+  "wasm_viability": "Pure JavaScript ('font engine for Node and the browser'); not applicable.",
+  "bundle_size_notes": "npm fontkit@2.0.4 unpackedSize 5,610,637 B",
+  "verified_at": "2026-09-16T03:25:45Z",
+  "sources": [
+   "https://api.github.com/repos/foliojs/fontkit",
+   "https://raw.githubusercontent.com/foliojs/fontkit/master/package.json",
+   "https://registry.npmjs.org/fontkit",
+   "https://api.github.com/search/issues?q=repo%3Afoliojs/fontkit%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Text shaping & bidi & fonts",
+  "name": "subsetter",
+  "repo": "typst/subsetter",
+  "repo_url": "https://github.com/typst/subsetter",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "MIT OR Apache-2.0",
+  "license_notes": "Cargo.toml license = 'MIT OR Apache-2.0'; LICENSE-APACHE and LICENSE-MIT present; crates.io subsetter 'MIT OR Apache-2.0'. GitHub API reports Apache-2.0 only.",
+  "language": "Rust",
+  "stars": 56,
+  "forks": 10,
+  "open_issues": 0,
+  "pushed_at": "2026-07-23T17:12:03Z",
+  "created_at": "2022-06-04T10:03:41Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Reduces the size and coverage of OpenType fonts.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 0,
+  "arabic_issue_samples": [],
+  "arabic_issue_query": "repo:typst/subsetter arabic OR rtl OR bidi",
+  "wasm_viability": "Rust crate; README has no WASM mention (wasm32 support unverified).",
+  "bundle_size_notes": "not measured",
+  "crates_io": {
+   "crate": "subsetter",
+   "max_version": "0.2.6",
+   "license": "MIT OR Apache-2.0",
+   "downloads": 5525428,
+   "recent_downloads": 3023231,
+   "repository": "https://github.com/typst/subsetter",
+   "updated_at": "2026-06-04T11:19:53.251775Z"
+  },
+  "verified_at": "2026-09-16T03:25:46Z",
+  "sources": [
+   "https://api.github.com/repos/typst/subsetter",
+   "https://raw.githubusercontent.com/typst/subsetter/main/Cargo.toml",
+   "https://crates.io/api/v1/crates/subsetter",
+   "https://api.github.com/search/issues?q=repo%3Atypst/subsetter%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Text shaping & bidi & fonts",
+  "name": "fontations (skrifa/read-fonts)",
+  "repo": "googlefonts/fontations",
+  "repo_url": "https://github.com/googlefonts/fontations",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "MIT OR Apache-2.0",
+  "license_notes": "LICENSE-APACHE and LICENSE-MIT present; crates.io skrifa 'MIT OR Apache-2.0'. GitHub API reports Apache-2.0.",
+  "language": "Rust",
+  "stars": 826,
+  "forks": 75,
+  "open_issues": 240,
+  "pushed_at": "2026-09-16T01:09:26Z",
+  "created_at": "2022-02-04T14:42:21Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Reading and writing font files",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 10,
+  "arabic_issue_samples": [
+   {
+    "title": "[skrifa] Esoteric PUA Arabic encodings not supported",
+    "state": "open",
+    "html_url": "https://github.com/googlefonts/fontations/issues/1399",
+    "created_at": "2025-03-17T21:56:58Z",
+    "type": "issue"
+   },
+   {
+    "title": "[subset] close unicodes over bidi mirror variants",
+    "state": "closed",
+    "html_url": "https://github.com/googlefonts/fontations/pull/1874",
+    "created_at": "2026-05-20T21:00:36Z",
+    "type": "pr"
+   },
+   {
+    "title": "[codegen] capture initial fixed fields in a struct",
+    "state": "closed",
+    "html_url": "https://github.com/googlefonts/fontations/pull/1588",
+    "created_at": "2025-08-06T15:47:51Z",
+    "type": "pr"
+   },
+   {
+    "title": "chore(release): Bump versions",
+    "state": "closed",
+    "html_url": "https://github.com/googlefonts/fontations/pull/1905",
+    "created_at": "2026-06-08T16:41:51Z",
+    "type": "pr"
+   },
+   {
+    "title": "`font-types` 0.11.4 breaks `cosmic-text`",
+    "state": "closed",
+    "html_url": "https://github.com/googlefonts/fontations/issues/1907",
+    "created_at": "2026-06-08T18:05:24Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:googlefonts/fontations arabic OR rtl OR bidi",
+  "wasm_viability": "Rust crates; README has no WASM mention (wasm32 support unverified).",
+  "bundle_size_notes": "not measured",
+  "crates_io": {
+   "crate": "skrifa",
+   "max_version": "0.47.0",
+   "license": "MIT OR Apache-2.0",
+   "downloads": 26250671,
+   "recent_downloads": 13308494,
+   "repository": "https://github.com/googlefonts/fontations",
+   "updated_at": "2026-09-08T19:45:13.945655Z"
+  },
+  "verified_at": "2026-09-16T03:25:47Z",
+  "sources": [
+   "https://api.github.com/repos/googlefonts/fontations",
+   "https://raw.githubusercontent.com/googlefonts/fontations/main/LICENSE-APACHE",
+   "https://raw.githubusercontent.com/googlefonts/fontations/main/LICENSE-MIT",
+   "https://crates.io/api/v1/crates/skrifa",
+   "https://api.github.com/search/issues?q=repo%3Agooglefonts/fontations%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Text shaping & bidi & fonts",
+  "name": "allsorts",
+  "repo": "yeslogic/allsorts",
+  "repo_url": "https://github.com/yeslogic/allsorts",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "GitHub API Apache-2.0; crates.io allsorts Apache-2.0; LICENSE present.",
+  "language": "Rust",
+  "stars": 802,
+  "forks": 27,
+  "open_issues": 29,
+  "pushed_at": "2026-05-13T00:45:42Z",
+  "created_at": "2017-09-04T04:12:12Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "Font parser, shaping engine, and subsetter implemented in Rust",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 8,
+  "arabic_issue_samples": [
+   {
+    "title": "Skipping joiners during GSUB",
+    "state": "open",
+    "html_url": "https://github.com/yeslogic/allsorts/issues/33",
+    "created_at": "2020-10-02T06:35:52Z",
+    "type": "issue"
+   },
+   {
+    "title": "Support for reporting shaping boundaries?",
+    "state": "open",
+    "html_url": "https://github.com/yeslogic/allsorts/issues/29",
+    "created_at": "2020-09-04T06:15:22Z",
+    "type": "issue"
+   },
+   {
+    "title": "Potential infinite loop in GSUB and GPOS execution",
+    "state": "closed",
+    "html_url": "https://github.com/yeslogic/allsorts/issues/48",
+    "created_at": "2021-07-27T14:42:11Z",
+    "type": "issue"
+   },
+   {
+    "title": "Mark-to-mark glyph positioning incorrect",
+    "state": "closed",
+    "html_url": "https://github.com/yeslogic/allsorts/issues/107",
+    "created_at": "2024-05-28T05:05:14Z",
+    "type": "issue"
+   },
+   {
+    "title": "Does `allsorts` shape text in logical or visual order?",
+    "state": "closed",
+    "html_url": "https://github.com/yeslogic/allsorts/issues/70",
+    "created_at": "2022-06-12T22:36:43Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:yeslogic/allsorts arabic OR rtl OR bidi",
+  "wasm_viability": "README: 'prefer the Rust backend for a pure Rust solution when compiling to WASM'.",
+  "bundle_size_notes": "not measured",
+  "crates_io": {
+   "crate": "allsorts",
+   "max_version": "0.17.0",
+   "license": "Apache-2.0",
+   "downloads": 938396,
+   "recent_downloads": 383989,
+   "repository": "https://github.com/yeslogic/allsorts",
+   "updated_at": "2026-05-13T00:48:04.814195Z"
+  },
+  "verified_at": "2026-09-16T03:25:48Z",
+  "sources": [
+   "https://api.github.com/repos/yeslogic/allsorts",
+   "https://crates.io/api/v1/crates/allsorts",
+   "https://raw.githubusercontent.com/yeslogic/allsorts/master/LICENSE",
+   "https://api.github.com/search/issues?q=repo%3Ayeslogic/allsorts%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Text shaping & bidi & fonts",
+  "name": "parley",
+  "repo": "linebender/parley",
+  "repo_url": "https://github.com/linebender/parley",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0 OR MIT",
+  "license_notes": "crates.io parley: 'Apache-2.0 OR MIT'; GitHub API reports Apache-2.0.",
+  "language": "Rust",
+  "stars": 735,
+  "forks": 117,
+  "open_issues": 128,
+  "pushed_at": "2026-09-16T03:10:30Z",
+  "created_at": "2021-06-04T11:05:04Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Rich text layout library",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 112,
+  "arabic_issue_samples": [
+   {
+    "title": "Implement `parley_core` (analysis, shaping, reshaping breaks, vertical text, inline objects)",
+    "state": "open",
+    "html_url": "https://github.com/linebender/parley/pull/634",
+    "created_at": "2026-06-01T01:40:29Z",
+    "type": "pr"
+   },
+   {
+    "title": "Improve white space hanging and justification",
+    "state": "closed",
+    "html_url": "https://github.com/linebender/parley/pull/762",
+    "created_at": "2026-09-03T10:32:59Z",
+    "type": "pr"
+   },
+   {
+    "title": "Hang whitespace according to the `WhiteSpaceCollapse` mode",
+    "state": "open",
+    "html_url": "https://github.com/linebender/parley/pull/817",
+    "created_at": "2026-09-14T15:50:19Z",
+    "type": "pr"
+   },
+   {
+    "title": "Hang whitespace conditionally",
+    "state": "open",
+    "html_url": "https://github.com/linebender/parley/pull/790",
+    "created_at": "2026-09-09T00:37:08Z",
+    "type": "pr"
+   },
+   {
+    "title": "Text editing behavior in BiDi is different between LeftArrow and Ctrl+LeftArrow",
+    "state": "open",
+    "html_url": "https://github.com/linebender/parley/issues/118",
+    "created_at": "2024-09-23T12:14:57Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:linebender/parley arabic OR rtl OR bidi",
+  "wasm_viability": "Rust crate; README has no WASM mention (wasm32 support unverified).",
+  "bundle_size_notes": "not measured",
+  "crates_io": {
+   "crate": "parley",
+   "max_version": "0.11.1",
+   "license": "Apache-2.0 OR MIT",
+   "downloads": 3047939,
+   "recent_downloads": 1703565,
+   "repository": "https://github.com/linebender/parley",
+   "updated_at": "2026-08-16T22:38:30.933315Z"
+  },
+  "verified_at": "2026-09-16T03:25:49Z",
+  "sources": [
+   "https://api.github.com/repos/linebender/parley",
+   "https://crates.io/api/v1/crates/parley",
+   "https://api.github.com/search/issues?q=repo%3Alinebender/parley%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Text shaping & bidi & fonts",
+  "name": "cosmic-text",
+  "repo": "pop-os/cosmic-text",
+  "repo_url": "https://github.com/pop-os/cosmic-text",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "MIT OR Apache-2.0",
+  "license_notes": "crates.io cosmic-text: 'MIT OR Apache-2.0'; GitHub API reports Apache-2.0.",
+  "language": "Rust",
+  "stars": 2148,
+  "forks": 211,
+  "open_issues": 135,
+  "pushed_at": "2026-08-08T23:03:09Z",
+  "created_at": "2022-10-18T18:07:53Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Pure Rust multi-line text handling",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 49,
+  "arabic_issue_samples": [
+   {
+    "title": "BIDI Layout is \"random\"",
+    "state": "open",
+    "html_url": "https://github.com/pop-os/cosmic-text/issues/113",
+    "created_at": "2023-03-26T14:03:42Z",
+    "type": "issue"
+   },
+   {
+    "title": "fix: ellipsized lines incorrectly shifting when wrapped at a space",
+    "state": "open",
+    "html_url": "https://github.com/pop-os/cosmic-text/pull/535",
+    "created_at": "2026-09-03T20:59:40Z",
+    "type": "pr"
+   },
+   {
+    "title": "Bidi behavior of `set_text()` vs. `set_rich_text()`",
+    "state": "open",
+    "html_url": "https://github.com/pop-os/cosmic-text/issues/291",
+    "created_at": "2024-07-25T11:05:11Z",
+    "type": "issue"
+   },
+   {
+    "title": "Performance improvements",
+    "state": "open",
+    "html_url": "https://github.com/pop-os/cosmic-text/issues/308",
+    "created_at": "2024-09-02T04:12:34Z",
+    "type": "issue"
+   },
+   {
+    "title": "Arabic words must never be split by line breaking.",
+    "state": "open",
+    "html_url": "https://github.com/pop-os/cosmic-text/issues/289",
+    "created_at": "2024-07-24T08:03:14Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:pop-os/cosmic-text arabic OR rtl OR bidi",
+  "wasm_viability": "Rust crate; README has no WASM mention (wasm32 support unverified).",
+  "bundle_size_notes": "not measured",
+  "crates_io": {
+   "crate": "cosmic-text",
+   "max_version": "0.19.0",
+   "license": "MIT OR Apache-2.0",
+   "downloads": 8465164,
+   "recent_downloads": 2956962,
+   "repository": "https://github.com/pop-os/cosmic-text",
+   "updated_at": "2026-04-22T19:17:33.337964Z"
+  },
+  "verified_at": "2026-09-16T03:25:50Z",
+  "sources": [
+   "https://api.github.com/repos/pop-os/cosmic-text",
+   "https://crates.io/api/v1/crates/cosmic-text",
+   "https://api.github.com/search/issues?q=repo%3Apop-os/cosmic-text%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Text shaping & bidi & fonts",
+  "name": "ICU4X",
+  "repo": "unicode-org/icu4x",
+  "repo_url": "https://github.com/unicode-org/icu4x",
+  "license_spdx_github_api": "NOASSERTION",
+  "license_spdx": "Unicode-3.0",
+  "license_notes": "LICENSE: 'UNICODE LICENSE V3'; crates.io icu license field 'Unicode-3.0'. GitHub API reports NOASSERTION.",
+  "language": "Rust",
+  "stars": 1861,
+  "forks": 289,
+  "open_issues": 739,
+  "pushed_at": "2026-09-15T21:38:07Z",
+  "created_at": "2020-02-27T00:27:11Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Solving i18n for client-side and resource-constrained environments.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 135,
+  "arabic_issue_samples": [
+   {
+    "title": "BiDi Benchmarks",
+    "state": "open",
+    "html_url": "https://github.com/unicode-org/icu4x/issues/1938",
+    "created_at": "2022-05-24T22:43:41Z",
+    "type": "issue"
+   },
+   {
+    "title": "Add option for including pseudolocales",
+    "state": "open",
+    "html_url": "https://github.com/unicode-org/icu4x/issues/8398",
+    "created_at": "2026-08-18T16:54:04Z",
+    "type": "issue"
+   },
+   {
+    "title": "Replace normalizer bench data with data from https://github.com/unicode-org/test-corpora/",
+    "state": "open",
+    "html_url": "https://github.com/unicode-org/icu4x/issues/6881",
+    "created_at": "2025-08-19T08:58:26Z",
+    "type": "issue"
+   },
+   {
+    "title": "State of Unicode in Rust",
+    "state": "open",
+    "html_url": "https://github.com/unicode-org/icu4x/issues/7274",
+    "created_at": "2025-12-04T13:58:55Z",
+    "type": "issue"
+   },
+   {
+    "title": "Add FFI for BidiAuxiliaryProperties",
+    "state": "open",
+    "html_url": "https://github.com/unicode-org/icu4x/issues/4070",
+    "created_at": "2023-09-21T21:45:08Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:unicode-org/icu4x arabic OR rtl OR bidi",
+  "wasm_viability": "Rust crates; README has no WASM mention (wasm32 support unverified).",
+  "bundle_size_notes": "not measured",
+  "crates_io": {
+   "crate": "icu",
+   "max_version": "2.3.1",
+   "license": "Unicode-3.0",
+   "downloads": 2235909,
+   "recent_downloads": 541750,
+   "repository": "https://github.com/unicode-org/icu4x",
+   "updated_at": "2026-08-20T23:25:51.672349Z"
+  },
+  "verified_at": "2026-09-16T03:25:51Z",
+  "sources": [
+   "https://api.github.com/repos/unicode-org/icu4x",
+   "https://raw.githubusercontent.com/unicode-org/icu4x/main/LICENSE",
+   "https://crates.io/api/v1/crates/icu",
+   "https://api.github.com/search/issues?q=repo%3Aunicode-org/icu4x%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Text shaping & bidi & fonts",
+  "name": "harfbuzzjs",
+  "repo": "harfbuzz/harfbuzzjs",
+  "repo_url": "https://github.com/harfbuzz/harfbuzzjs",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "GitHub API license.spdx_id (MIT License)",
+  "language": "TypeScript",
+  "stars": 286,
+  "forks": 48,
+  "open_issues": 1,
+  "pushed_at": "2026-09-10T04:56:59Z",
+  "created_at": "2019-04-19T14:42:50Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Providing HarfBuzz shaping library for client/server side JavaScript projects",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 10,
+  "arabic_issue_samples": [
+   {
+    "title": "Add Script, Language, and Direction classes",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/harfbuzzjs/pull/205",
+    "created_at": "2026-05-05T22:28:24Z",
+    "type": "pr"
+   },
+   {
+    "title": "Expose constants/enums?",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/harfbuzzjs/issues/69",
+    "created_at": "2023-01-09T07:31:28Z",
+    "type": "issue"
+   },
+   {
+    "title": "Module not found: Can't resolve 'fs' in Next.js Client Component (Turbopack)",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/harfbuzzjs/issues/151",
+    "created_at": "2026-01-27T13:02:39Z",
+    "type": "issue"
+   },
+   {
+    "title": "JS bindings for color needed",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/harfbuzzjs/issues/87",
+    "created_at": "2023-06-20T12:54:05Z",
+    "type": "issue"
+   },
+   {
+    "title": "Compile hbjs.js from harfbuzz.ts",
+    "state": "closed",
+    "html_url": "https://github.com/harfbuzz/harfbuzzjs/issues/99",
+    "created_at": "2024-06-15T21:21:33Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:harfbuzz/harfbuzzjs arabic OR rtl OR bidi",
+  "wasm_viability": "This IS the WASM build of HarfBuzz (README build instructions use emscripten); npm harfbuzzjs npm harfbuzzjs@1.6.1 unpackedSize 1,238,713 B.",
+  "bundle_size_notes": "npm harfbuzzjs@1.6.1 unpackedSize 1,238,713 B",
+  "verified_at": "2026-09-16T03:25:52Z",
+  "sources": [
+   "https://api.github.com/repos/harfbuzz/harfbuzzjs",
+   "https://api.github.com/search/issues?q=repo%3Aharfbuzz/harfbuzzjs%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "OCR",
+  "name": "Tesseract",
+  "repo": "tesseract-ocr/tesseract",
+  "repo_url": "https://github.com/tesseract-ocr/tesseract",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "GitHub API license.spdx_id (Apache License 2.0)",
+  "language": "C++",
+  "stars": 76505,
+  "forks": 10802,
+  "open_issues": 484,
+  "pushed_at": "2026-09-11T05:17:27Z",
+  "created_at": "2014-08-12T18:04:59Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Tesseract Open Source OCR Engine (main repository)",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 211,
+  "arabic_issue_samples": [
+   {
+    "title": "Box File disorder, Arabic Language",
+    "state": "open",
+    "html_url": "https://github.com/tesseract-ocr/tesseract/issues/648",
+    "created_at": "2017-01-10T22:36:37Z",
+    "type": "issue"
+   },
+   {
+    "title": "Arabic words are sometimes reversed in OCR output",
+    "state": "open",
+    "html_url": "https://github.com/tesseract-ocr/tesseract/issues/4544",
+    "created_at": "2026-04-27T03:26:48Z",
+    "type": "issue"
+   },
+   {
+    "title": "Fine Tuning results in wrong transcription",
+    "state": "open",
+    "html_url": "https://github.com/tesseract-ocr/tesseract/issues/2082",
+    "created_at": "2018-11-27T13:50:00Z",
+    "type": "issue"
+   },
+   {
+    "title": "text2image - RTL - Null box at index 0",
+    "state": "open",
+    "html_url": "https://github.com/tesseract-ocr/tesseract/issues/2654",
+    "created_at": "2019-09-17T12:56:59Z",
+    "type": "issue"
+   },
+   {
+    "title": "Arabic Numbers ",
+    "state": "open",
+    "html_url": "https://github.com/tesseract-ocr/tesseract/issues/1193",
+    "created_at": "2017-10-30T11:55:16Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:tesseract-ocr/tesseract arabic OR rtl OR bidi",
+  "wasm_viability": "Community WASM port tesseract.js / tesseract.js-core (npm tesseract.js-core npm tesseract.js-core@6.1.2 unpackedSize 30,606,788 B).",
+  "bundle_size_notes": "npm tesseract.js-core@6.1.2 unpackedSize 30,606,788 B",
+  "verified_at": "2026-09-16T03:25:53Z",
+  "sources": [
+   "https://api.github.com/repos/tesseract-ocr/tesseract",
+   "https://api.github.com/search/issues?q=repo%3Atesseract-ocr/tesseract%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "OCR",
+  "name": "tessdata_best",
+  "repo": "tesseract-ocr/tessdata_best",
+  "repo_url": "https://github.com/tesseract-ocr/tessdata_best",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "GitHub API: Apache-2.0; LICENSE file present (Apache-2.0 length). ara.traineddata present on default branch (HEAD 200, Content-Length 12603724 bytes).",
+  "language": null,
+  "stars": 1586,
+  "forks": 429,
+  "open_issues": 26,
+  "pushed_at": "2024-03-09T10:04:45Z",
+  "created_at": "2017-09-11T17:12:33Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Best (most accurate) trained LSTM models.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 6,
+  "arabic_issue_samples": [
+   {
+    "title": "I’m facing inconsistent digit recognition in Arabic OCR using Tesseract.",
+    "state": "open",
+    "html_url": "https://github.com/tesseract-ocr/tessdata_best/issues/86",
+    "created_at": "2025-12-29T09:44:45Z",
+    "type": "issue"
+   },
+   {
+    "title": "Request for a Good Arabic OCR Model for Tesseract",
+    "state": "open",
+    "html_url": "https://github.com/tesseract-ocr/tessdata_best/issues/83",
+    "created_at": "2024-11-23T17:08:17Z",
+    "type": "issue"
+   },
+   {
+    "title": "Add kur with Arabic unicharset (similar to old tessdata)",
+    "state": "open",
+    "html_url": "https://github.com/tesseract-ocr/tessdata_best/issues/23",
+    "created_at": "2018-03-23T12:08:25Z",
+    "type": "issue"
+   },
+   {
+    "title": "Performance post Fine-Tuning",
+    "state": "open",
+    "html_url": "https://github.com/tesseract-ocr/tessdata_best/issues/53",
+    "created_at": "2020-06-24T09:37:10Z",
+    "type": "issue"
+   },
+   {
+    "title": "unclear/ambiguous language code notation",
+    "state": "open",
+    "html_url": "https://github.com/tesseract-ocr/tessdata_best/issues/68",
+    "created_at": "2022-01-31T11:10:26Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:tesseract-ocr/tessdata_best arabic OR rtl OR bidi",
+  "wasm_viability": "Data files (traineddata), consumable by tesseract.js; ara.traineddata 12603724 bytes.",
+  "bundle_size_notes": "ara.traineddata Content-Length 12603724 bytes (raw.githubusercontent HEAD)",
+  "verified_at": "2026-09-16T03:25:54Z",
+  "sources": [
+   "https://api.github.com/repos/tesseract-ocr/tessdata_best",
+   "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/main/LICENSE",
+   "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/main/ara.traineddata",
+   "https://api.github.com/search/issues?q=repo%3Atesseract-ocr/tessdata_best%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "OCR",
+  "name": "tesseract.js",
+  "repo": "naptha/tesseract.js",
+  "repo_url": "https://github.com/naptha/tesseract.js",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "GitHub API license.spdx_id (Apache License 2.0)",
+  "language": "JavaScript",
+  "stars": 38707,
+  "forks": 2392,
+  "open_issues": 53,
+  "pushed_at": "2026-05-17T04:19:12Z",
+  "created_at": "2015-06-24T02:49:52Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "Pure Javascript OCR for more than 100 Languages 📖🎉🖥",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 10,
+  "arabic_issue_samples": [
+   {
+    "title": "Legacy model does not work for indic and arabic scripts due to Legacy data being removed",
+    "state": "open",
+    "html_url": "https://github.com/naptha/tesseract.js/issues/931",
+    "created_at": "2024-06-17T17:54:20Z",
+    "type": "issue"
+   },
+   {
+    "title": "Support Recognition for the following Currency Symbols",
+    "state": "closed",
+    "html_url": "https://github.com/naptha/tesseract.js/issues/1012",
+    "created_at": "2025-04-03T13:15:45Z",
+    "type": "issue"
+   },
+   {
+    "title": "Version 4 Development and Changes",
+    "state": "closed",
+    "html_url": "https://github.com/naptha/tesseract.js/issues/662",
+    "created_at": "2022-09-17T21:13:23Z",
+    "type": "issue"
+   },
+   {
+    "title": "No works",
+    "state": "closed",
+    "html_url": "https://github.com/naptha/tesseract.js/issues/721",
+    "created_at": "2023-03-10T04:46:40Z",
+    "type": "issue"
+   },
+   {
+    "title": "Uncaught abort() Error displays when using Arabic language  ",
+    "state": "closed",
+    "html_url": "https://github.com/naptha/tesseract.js/issues/146",
+    "created_at": "2017-08-26T13:48:12Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:naptha/tesseract.js arabic OR rtl OR bidi",
+  "wasm_viability": "README: 'works by wrapping a WebAssembly port of Tesseract' (tesseract.js-core); npm tesseract.js npm tesseract.js@7.0.0 unpackedSize 1,411,341 B + tesseract.js-core npm tesseract.js-core@6.1.2 unpackedSize 30,606,788 B.",
+  "bundle_size_notes": "npm tesseract.js@7.0.0 unpackedSize 1,411,341 B; npm tesseract.js-core@6.1.2 unpackedSize 30,606,788 B",
+  "verified_at": "2026-09-16T03:25:55Z",
+  "sources": [
+   "https://api.github.com/repos/naptha/tesseract.js",
+   "https://api.github.com/search/issues?q=repo%3Anaptha/tesseract.js%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "OCR",
+  "name": "OCRmyPDF",
+  "repo": "ocrmypdf/OCRmyPDF",
+  "repo_url": "https://github.com/ocrmypdf/OCRmyPDF",
+  "license_spdx_github_api": "MPL-2.0",
+  "license_spdx": "MPL-2.0",
+  "license_notes": "LICENSE: MPL-2.0 (GitHub API MPL-2.0). WEAK (file-level) COPYLEFT.",
+  "copyleft_flag": true,
+  "language": "Python",
+  "stars": 34771,
+  "forks": 2411,
+  "open_issues": 95,
+  "pushed_at": "2026-09-16T03:18:55Z",
+  "created_at": "2013-12-20T08:26:28Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "OCRmyPDF adds an OCR text layer to scanned PDF files, allowing them to be searched",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 23,
+  "arabic_issue_samples": [
+   {
+    "title": "Under `--redo-ocr`, a fragment of original OCR text was made visible in output",
+    "state": "open",
+    "html_url": "https://github.com/ocrmypdf/OCRmyPDF/issues/734",
+    "created_at": "2021-02-17T10:32:38Z",
+    "type": "issue"
+   },
+   {
+    "title": "Hebrew text seems to be reversed(whole line) on OCR-ed pdf",
+    "state": "closed",
+    "html_url": "https://github.com/ocrmypdf/OCRmyPDF/issues/807",
+    "created_at": "2021-07-14T13:54:33Z",
+    "type": "issue"
+   },
+   {
+    "title": "[Bug]: Documented font-noto homebrew package doesn't exist, noto font cannot be found (macOS)",
+    "state": "closed",
+    "html_url": "https://github.com/ocrmypdf/OCRmyPDF/issues/1722",
+    "created_at": "2026-07-25T13:36:23Z",
+    "type": "issue"
+   },
+   {
+    "title": "NotoSansRegular-Arabic installed, but not spotted.",
+    "state": "closed",
+    "html_url": "https://github.com/ocrmypdf/OCRmyPDF/issues/1652",
+    "created_at": "2026-03-24T00:30:37Z",
+    "type": "issue"
+   },
+   {
+    "title": "Roadmap / wish list: consolidated feature requests and current positions",
+    "state": "open",
+    "html_url": "https://github.com/ocrmypdf/OCRmyPDF/issues/1696",
+    "created_at": "2026-06-09T00:01:48Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:ocrmypdf/OCRmyPDF arabic OR rtl OR bidi",
+  "wasm_viability": "Python CLI/pipeline; README has no WASM mention (not applicable).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:25:56Z",
+  "sources": [
+   "https://api.github.com/repos/ocrmypdf/OCRmyPDF",
+   "https://raw.githubusercontent.com/ocrmypdf/OCRmyPDF/main/LICENSE",
+   "https://api.github.com/search/issues?q=repo%3Aocrmypdf/OCRmyPDF%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "OCR",
+  "name": "PaddleOCR",
+  "repo": "PaddlePaddle/PaddleOCR",
+  "repo_url": "https://github.com/PaddlePaddle/PaddleOCR",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "GitHub API license.spdx_id (Apache License 2.0)",
+  "language": "Python",
+  "stars": 89608,
+  "forks": 11340,
+  "open_issues": 245,
+  "pushed_at": "2026-07-22T11:59:34Z",
+  "created_at": "2020-05-08T10:38:16Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Turn any PDF or image document into structured data for your AI. A powerful, lightweight OCR toolkit that bridges the gap between images/PDFs and LLMs. Supports 100+ languages.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 143,
+  "arabic_issue_samples": [
+   {
+    "title": "arabic_PP-OCRv5_mobile_rec: native aspect-ratio width under-allocates CTC steps for full-width lines (36.7% → 12.9% CER)",
+    "state": "open",
+    "html_url": "https://github.com/PaddlePaddle/PaddleOCR/issues/18349",
+    "created_at": "2026-09-07T18:41:19Z",
+    "type": "issue"
+   },
+   {
+    "title": "feat: add arabic OCR config, dict, and export mode updates",
+    "state": "open",
+    "html_url": "https://github.com/PaddlePaddle/PaddleOCR/pull/17995",
+    "created_at": "2026-05-06T18:48:17Z",
+    "type": "pr"
+   },
+   {
+    "title": "Reduce CER up to 20% under page skew: fix sorted_boxes' 10px threshold bug (7 langs)",
+    "state": "open",
+    "html_url": "https://github.com/PaddlePaddle/PaddleOCR/pull/18351",
+    "created_at": "2026-09-08T09:58:42Z",
+    "type": "pr"
+   },
+   {
+    "title": "build(deps): bump idna from 3.11 to 3.15 in /langchain-paddleocr",
+    "state": "open",
+    "html_url": "https://github.com/PaddlePaddle/PaddleOCR/pull/18050",
+    "created_at": "2026-05-19T22:59:56Z",
+    "type": "pr"
+   },
+   {
+    "title": "VL-1.6模糊图片推理卡死",
+    "state": "open",
+    "html_url": "https://github.com/PaddlePaddle/PaddleOCR/issues/18079",
+    "created_at": "2026-05-29T06:51:37Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:PaddlePaddle/PaddleOCR arabic OR rtl OR bidi",
+  "wasm_viability": "README has no WASM mention; npm @paddle-js-models/ocr exists (npm @paddle-js-models/ocr@4.1.1 unpackedSize 2,914,447 B, ISC) - community/Paddle.js web port.",
+  "bundle_size_notes": "npm @paddle-js-models/ocr@4.1.1 unpackedSize 2,914,447 B",
+  "verified_at": "2026-09-16T03:25:57Z",
+  "sources": [
+   "https://api.github.com/repos/PaddlePaddle/PaddleOCR",
+   "https://api.github.com/search/issues?q=repo%3APaddlePaddle/PaddleOCR%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "OCR",
+  "name": "docTR",
+  "repo": "mindee/doctr",
+  "repo_url": "https://github.com/mindee/doctr",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "GitHub API license.spdx_id (Apache License 2.0)",
+  "language": "Python",
+  "stars": 6347,
+  "forks": 678,
+  "open_issues": 22,
+  "pushed_at": "2026-09-15T12:24:17Z",
+  "created_at": "2021-01-08T16:05:12Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "docTR (Document Text Recognition) - a seamless, high-performing & accessible library for OCR-related tasks powered by Deep Learning. Ongoing development and maintenance by t2k.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 16,
+  "arabic_issue_samples": [
+   {
+    "title": "[detection] model training iteration with extended multilingual dataset",
+    "state": "open",
+    "html_url": "https://github.com/mindee/doctr/issues/1604",
+    "created_at": "2024-05-22T07:34:33Z",
+    "type": "issue"
+   },
+   {
+    "title": "Multilingual support",
+    "state": "open",
+    "html_url": "https://github.com/mindee/doctr/issues/1699",
+    "created_at": "2024-08-20T12:39:20Z",
+    "type": "issue"
+   },
+   {
+    "title": "[reading order] Improve reading order and add exporters",
+    "state": "closed",
+    "html_url": "https://github.com/mindee/doctr/pull/2116",
+    "created_at": "2026-07-23T09:35:43Z",
+    "type": "pr"
+   },
+   {
+    "title": "CRNN Arabic Model training Issue",
+    "state": "closed",
+    "html_url": "https://github.com/mindee/doctr/issues/2019",
+    "created_at": "2025-10-21T17:13:00Z",
+    "type": "issue"
+   },
+   {
+    "title": "add arabic vocabs and some modification for the detection model so the errors are more clear",
+    "state": "closed",
+    "html_url": "https://github.com/mindee/doctr/pull/1957",
+    "created_at": "2025-06-17T08:50:10Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:mindee/doctr arabic OR rtl OR bidi",
+  "wasm_viability": "Python; README has no WASM mention (unknown).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:25:58Z",
+  "sources": [
+   "https://api.github.com/repos/mindee/doctr",
+   "https://api.github.com/search/issues?q=repo%3Amindee/doctr%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "OCR",
+  "name": "surya",
+  "repo": "datalab-to/surya",
+  "repo_url": "https://github.com/datalab-to/surya",
+  "repo_redirected_from": "VikParuchuri/surya",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "Code: Apache-2.0 (LICENSE). README 'Commercial usage': 'The model weights use a modified AI Pubs Open Rail-M license (free for research, personal use, and startups under $5M funding/revenue)'; broader commercial use of weights via datalab.to/pricing. Repo renamed: VikParuchuri/surya -> datalab-to/surya (API redirect).",
+  "copyleft_flag": false,
+  "copyleft_check_note": "code Apache-2.0; weights OpenRAIL-M (not copyleft, but use-restricted)",
+  "language": "Python",
+  "stars": 21392,
+  "forks": 1544,
+  "open_issues": 198,
+  "pushed_at": "2026-09-11T18:43:30Z",
+  "created_at": "2024-01-10T05:17:42Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "OCR, layout analysis, reading order, table recognition in 90+ languages",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 15,
+  "arabic_issue_samples": [
+   {
+    "title": "[FEAT] words_from_chars RTL and LTR adapion",
+    "state": "open",
+    "html_url": "https://github.com/datalab-to/surya/issues/431",
+    "created_at": "2025-08-13T07:15:57Z",
+    "type": "issue"
+   },
+   {
+    "title": "Fine Tuning for Arabic text",
+    "state": "open",
+    "html_url": "https://github.com/datalab-to/surya/issues/294",
+    "created_at": "2025-01-29T07:12:17Z",
+    "type": "issue"
+   },
+   {
+    "title": "Arabic text detection issue with different font sizes",
+    "state": "open",
+    "html_url": "https://github.com/datalab-to/surya/issues/28",
+    "created_at": "2024-02-14T07:42:20Z",
+    "type": "issue"
+   },
+   {
+    "title": "fix(prompts): use [0-9] instead of \\d in the bbox schema pattern (#542)",
+    "state": "open",
+    "html_url": "https://github.com/datalab-to/surya/pull/545",
+    "created_at": "2026-08-08T13:16:22Z",
+    "type": "pr"
+   },
+   {
+    "title": "[BUG: Output]",
+    "state": "open",
+    "html_url": "https://github.com/datalab-to/surya/issues/508",
+    "created_at": "2026-04-27T16:08:13Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:datalab-to/surya arabic OR rtl OR bidi",
+  "wasm_viability": "Python/PyTorch; README has no WASM mention (not applicable).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:25:59Z",
+  "sources": [
+   "https://api.github.com/repos/VikParuchuri/surya",
+   "https://raw.githubusercontent.com/datalab-to/surya/HEAD/LICENSE",
+   "https://raw.githubusercontent.com/datalab-to/surya/HEAD/README.md",
+   "https://api.github.com/search/issues?q=repo%3Adatalab-to/surya%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "OCR",
+  "name": "EasyOCR",
+  "repo": "JaidedAI/EasyOCR",
+  "repo_url": "https://github.com/JaidedAI/EasyOCR",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "GitHub API license.spdx_id (Apache License 2.0)",
+  "language": "Python",
+  "stars": 29993,
+  "forks": 3605,
+  "open_issues": 530,
+  "pushed_at": "2025-12-05T12:23:12Z",
+  "created_at": "2020-03-14T11:46:39Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "Ready-to-use OCR with 80+ supported languages and all popular writing scripts including Latin, Chinese, Arabic, Devanagari, Cyrillic and etc.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 71,
+  "arabic_issue_samples": [
+   {
+    "title": "Detect language in EasyOCR at runtime for multi-language image",
+    "state": "open",
+    "html_url": "https://github.com/JaidedAI/EasyOCR/issues/1207",
+    "created_at": "2024-02-01T20:35:11Z",
+    "type": "issue"
+   },
+   {
+    "title": "Arabic OCR Training problem",
+    "state": "open",
+    "html_url": "https://github.com/JaidedAI/EasyOCR/issues/1423",
+    "created_at": "2025-07-14T08:54:46Z",
+    "type": "issue"
+   },
+   {
+    "title": "problem with arabic lines",
+    "state": "open",
+    "html_url": "https://github.com/JaidedAI/EasyOCR/issues/1338",
+    "created_at": "2024-11-23T18:17:42Z",
+    "type": "issue"
+   },
+   {
+    "title": "new version of python-bidi doesn't have `algorithm` module",
+    "state": "open",
+    "html_url": "https://github.com/JaidedAI/EasyOCR/issues/1285",
+    "created_at": "2024-07-22T09:28:31Z",
+    "type": "issue"
+   },
+   {
+    "title": "Potential license issue",
+    "state": "open",
+    "html_url": "https://github.com/JaidedAI/EasyOCR/issues/845",
+    "created_at": "2022-09-05T19:13:29Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:JaidedAI/EasyOCR arabic OR rtl OR bidi",
+  "wasm_viability": "Python/PyTorch; README has no WASM mention (not applicable).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:26:00Z",
+  "sources": [
+   "https://api.github.com/repos/JaidedAI/EasyOCR",
+   "https://api.github.com/search/issues?q=repo%3AJaidedAI/EasyOCR%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "OCR",
+  "name": "RapidOCR",
+  "repo": "RapidAI/RapidOCR",
+  "repo_url": "https://github.com/RapidAI/RapidOCR",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "GitHub API license.spdx_id (Apache License 2.0)",
+  "language": "Python",
+  "stars": 7841,
+  "forks": 721,
+  "open_issues": 25,
+  "pushed_at": "2026-09-16T02:24:31Z",
+  "created_at": "2021-01-04T08:02:09Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "📄 Awesome OCR multiple programing languages toolkits based on ONNX Runtime, OpenVINO, MNN, PaddlePaddle, TensorRT and PyTorch.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 6,
+  "arabic_issue_samples": [
+   {
+    "title": "Arabic recognition crashes: python-bidi is required at runtime but is not a declared dependency",
+    "state": "open",
+    "html_url": "https://github.com/RapidAI/RapidOCR/issues/719",
+    "created_at": "2026-08-02T20:42:03Z",
+    "type": "issue"
+   },
+   {
+    "title": "Arabic recognition cannot be paired with the multilingual detector — \"Unsupported configuration\"",
+    "state": "open",
+    "html_url": "https://github.com/RapidAI/RapidOCR/issues/720",
+    "created_at": "2026-08-02T20:43:41Z",
+    "type": "issue"
+   },
+   {
+    "title": "rapidocr v3.9.2 中 模型支持的lang_type有些混乱",
+    "state": "open",
+    "html_url": "https://github.com/RapidAI/RapidOCR/issues/729",
+    "created_at": "2026-09-01T02:00:55Z",
+    "type": "issue"
+   },
+   {
+    "title": "feat: update five multi language files",
+    "state": "closed",
+    "html_url": "https://github.com/RapidAI/RapidOCR/pull/619",
+    "created_at": "2025-12-23T14:52:03Z",
+    "type": "pr"
+   },
+   {
+    "title": "RTX 5090 cannot be used for GPU acceleration",
+    "state": "closed",
+    "html_url": "https://github.com/RapidAI/RapidOCR/issues/679",
+    "created_at": "2026-05-29T06:11:35Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:RapidAI/RapidOCR arabic OR rtl OR bidi",
+  "wasm_viability": "Python/ONNX; README has no WASM mention (unknown).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:26:01Z",
+  "sources": [
+   "https://api.github.com/repos/RapidAI/RapidOCR",
+   "https://api.github.com/search/issues?q=repo%3ARapidAI/RapidOCR%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "OCR",
+  "name": "ocrs",
+  "repo": "robertknight/ocrs",
+  "repo_url": "https://github.com/robertknight/ocrs",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "GitHub API license.spdx_id (Apache License 2.0)",
+  "language": "Rust",
+  "stars": 1886,
+  "forks": 90,
+  "open_issues": 21,
+  "pushed_at": "2026-09-13T10:36:19Z",
+  "created_at": "2024-01-02T09:32:23Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Rust library and CLI tool for OCR (extracting text from images)",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 1,
+  "arabic_issue_samples": [
+   {
+    "title": "Bump ureq from 2.9.7 to 2.10.1",
+    "state": "closed",
+    "html_url": "https://github.com/robertknight/ocrs/pull/112",
+    "created_at": "2024-09-02T00:03:03Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:robertknight/ocrs arabic OR rtl OR bidi",
+  "wasm_viability": "README: 'easy to compile and run across a variety of platforms, including WebAssembly'.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:26:02Z",
+  "sources": [
+   "https://api.github.com/repos/robertknight/ocrs",
+   "https://api.github.com/search/issues?q=repo%3Arobertknight/ocrs%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Conversion",
+  "name": "LibreOffice core (mirror)",
+  "repo": "LibreOffice/core",
+  "repo_url": "https://github.com/LibreOffice/core",
+  "license_spdx_github_api": "GPL-3.0",
+  "license_spdx": "MPL-2.0",
+  "license_notes": "GitHub API reports GPL-3.0 because root COPYING is the GPL v3 text; COPYING.MPL (MPL-2.0 text) is also present. libreoffice.org/about-us/licenses: 'LibreOffice is made available subject to the terms of the Mozilla Public License v2.0 ... but also includes software which differs from version to version under a large variety of other Open Source licenses'. README: 'based on copyleft licenses'. GitHub repo is a mirror. COPYLEFT (MPL-2.0 weak copyleft for the main body; some parts GPL/LGPL).",
+  "copyleft_flag": true,
+  "language": "C++",
+  "stars": 4365,
+  "forks": 943,
+  "open_issues": 0,
+  "pushed_at": "2026-09-15T16:12:06Z",
+  "created_at": "2013-10-31T15:46:52Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "Read-only LibreOffice core repo - no pull request (use gerrit instead https://gerrit.libreoffice.org/) - don't download zip, use https://dev-www.libreoffice.org/bundles/  instead",
+  "has_issues_enabled": false,
+  "is_fork": false,
+  "arabic_issue_count": 0,
+  "arabic_issue_samples": [],
+  "arabic_issue_query": "repo:LibreOffice/core arabic OR rtl OR bidi",
+  "arabic_issue_note": "GitHub issues are disabled on this repo (mirror); count reflects PRs only / external tracker not searched",
+  "wasm_viability": "README has no WASM mention; npm 'libreoffice-wasm' does not exist (404). Official WASM build status unverified in this audit.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:26:03Z",
+  "sources": [
+   "https://api.github.com/repos/LibreOffice/core",
+   "https://raw.githubusercontent.com/LibreOffice/core/master/COPYING.MPL",
+   "https://raw.githubusercontent.com/LibreOffice/core/master/COPYING",
+   "https://www.libreoffice.org/about-us/licenses/",
+   "https://raw.githubusercontent.com/LibreOffice/core/master/README.md",
+   "https://api.github.com/search/issues?q=repo%3ALibreOffice/core%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Conversion",
+  "name": "pdf2docx",
+  "repo": "ArtifexSoftware/pdf2docx",
+  "repo_url": "https://github.com/ArtifexSoftware/pdf2docx",
+  "repo_redirected_from": "dothinking/pdf2docx",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "Repo moved: dothinking/pdf2docx -> ArtifexSoftware/pdf2docx (API redirect). README: 'pdf2docx is no longer actively maintained by Artifex' and 'relicensed under the MIT License'; LICENSE: MIT, Copyright (c) 2026 Artifex Software, Inc. NOT copyleft (was flagged for check).",
+  "copyleft_flag": false,
+  "copyleft_check_note": "relicensed MIT (not copyleft)",
+  "language": "Python",
+  "stars": 3519,
+  "forks": 497,
+  "open_issues": 89,
+  "pushed_at": "2026-05-01T10:53:52Z",
+  "created_at": "2019-06-20T07:32:24Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "Open source Python library for converting PDF to DOCX.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 7,
+  "arabic_issue_samples": [
+   {
+    "title": "There is no hebrew support",
+    "state": "open",
+    "html_url": "https://github.com/ArtifexSoftware/pdf2docx/issues/145",
+    "created_at": "2022-06-25T20:35:10Z",
+    "type": "issue"
+   },
+   {
+    "title": "Right to left languages",
+    "state": "open",
+    "html_url": "https://github.com/ArtifexSoftware/pdf2docx/issues/165",
+    "created_at": "2022-10-06T00:08:41Z",
+    "type": "issue"
+   },
+   {
+    "title": "I want to develop it for RTL languages",
+    "state": "open",
+    "html_url": "https://github.com/ArtifexSoftware/pdf2docx/issues/221",
+    "created_at": "2023-08-19T17:31:18Z",
+    "type": "issue"
+   },
+   {
+    "title": "Accuracy checker",
+    "state": "open",
+    "html_url": "https://github.com/ArtifexSoftware/pdf2docx/issues/309",
+    "created_at": "2024-08-26T08:18:32Z",
+    "type": "issue"
+   },
+   {
+    "title": "Unable to convert the arabic content inside the pdf file",
+    "state": "closed",
+    "html_url": "https://github.com/ArtifexSoftware/pdf2docx/issues/320",
+    "created_at": "2024-10-12T08:35:26Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:ArtifexSoftware/pdf2docx arabic OR rtl OR bidi",
+  "wasm_viability": "Python; not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:26:04Z",
+  "sources": [
+   "https://api.github.com/repos/dothinking/pdf2docx",
+   "https://raw.githubusercontent.com/ArtifexSoftware/pdf2docx/HEAD/LICENSE",
+   "https://raw.githubusercontent.com/ArtifexSoftware/pdf2docx/HEAD/README.md",
+   "https://api.github.com/search/issues?q=repo%3AArtifexSoftware/pdf2docx%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Conversion",
+  "name": "docx4j",
+  "repo": "plutext/docx4j",
+  "repo_url": "https://github.com/plutext/docx4j",
+  "license_spdx_github_api": null,
+  "license_spdx": "Apache-2.0",
+  "license_notes": "No root LICENSE/LICENSE.txt (404; GitHub API license = null). pom.xml <license> 'Apache 2' (apache.org/licenses/LICENSE-2.0.txt); README: 'docx4j is published under the Apache License version 2.0'.",
+  "language": "Java",
+  "stars": 2382,
+  "forks": 1230,
+  "open_issues": 204,
+  "pushed_at": "2026-09-16T02:52:50Z",
+  "created_at": "2012-05-11T22:13:30Z",
+  "archived": false,
+  "default_branch": "VERSION_17_1_1",
+  "description": "JAXB-based Java library for Word docx, Powerpoint pptx, and Excel xlsx files",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 10,
+  "arabic_issue_samples": [
+   {
+    "title": "Arabic FO output and w:rPr/w:rtl",
+    "state": "open",
+    "html_url": "https://github.com/plutext/docx4j/issues/111",
+    "created_at": "2014-03-19T06:23:44Z",
+    "type": "issue"
+   },
+   {
+    "title": "TextDirection Issue when replacing ar-en text through Docx4j  in word 2019",
+    "state": "open",
+    "html_url": "https://github.com/plutext/docx4j/issues/521",
+    "created_at": "2022-08-30T19:59:14Z",
+    "type": "issue"
+   },
+   {
+    "title": "[PDF Export] Incorrect BiDi rendering/word ordering for mixed Arabic and English text",
+    "state": "closed",
+    "html_url": "https://github.com/plutext/docx4j/issues/660",
+    "created_at": "2026-02-13T08:55:03Z",
+    "type": "issue"
+   },
+   {
+    "title": "StackOverflowError for custom style with default name",
+    "state": "open",
+    "html_url": "https://github.com/plutext/docx4j/issues/547",
+    "created_at": "2023-04-27T08:06:45Z",
+    "type": "issue"
+   },
+   {
+    "title": "Character is not displayed the same as in word",
+    "state": "open",
+    "html_url": "https://github.com/plutext/docx4j/issues/393",
+    "created_at": "2020-03-25T03:33:30Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:plutext/docx4j arabic OR rtl OR bidi",
+  "wasm_viability": "Java; not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:26:05Z",
+  "sources": [
+   "https://api.github.com/repos/plutext/docx4j",
+   "https://raw.githubusercontent.com/plutext/docx4j/VERSION_17_1_1/pom.xml",
+   "https://raw.githubusercontent.com/plutext/docx4j/VERSION_17_1_1/README.md",
+   "https://api.github.com/search/issues?q=repo%3Aplutext/docx4j%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Conversion",
+  "name": "pandoc",
+  "repo": "jgm/pandoc",
+  "repo_url": "https://github.com/jgm/pandoc",
+  "license_spdx_github_api": "GPL-2.0",
+  "license_spdx": "GPL-2.0-or-later",
+  "license_notes": "COPYRIGHT: 'With the exceptions noted below, this code is released under the GPL, version 2 or later'. STRONG COPYLEFT (GPL). GitHub API reports GPL-2.0.",
+  "copyleft_flag": true,
+  "language": "Haskell",
+  "stars": 46296,
+  "forks": 3972,
+  "open_issues": 1040,
+  "pushed_at": "2026-09-16T03:19:02Z",
+  "created_at": "2010-03-20T20:34:23Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Universal markup converter",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 152,
+  "arabic_issue_samples": [
+   {
+    "title": "Recognition of LTR(Right to Left) Word(s) in a *RTL* document",
+    "state": "open",
+    "html_url": "https://github.com/jgm/pandoc/issues/5558",
+    "created_at": "2019-06-06T18:04:11Z",
+    "type": "issue"
+   },
+   {
+    "title": "Bidi -- rtl attributes on every tag in HTML?",
+    "state": "open",
+    "html_url": "https://github.com/jgm/pandoc/issues/8349",
+    "created_at": "2022-10-04T15:56:36Z",
+    "type": "issue"
+   },
+   {
+    "title": "Reverse word order in author attribute that is written in arabic",
+    "state": "open",
+    "html_url": "https://github.com/jgm/pandoc/issues/8704",
+    "created_at": "2023-03-19T12:05:43Z",
+    "type": "issue"
+   },
+   {
+    "title": "Docx reader: parse bidirectional (left-to-right and right-to-left) text",
+    "state": "open",
+    "html_url": "https://github.com/jgm/pandoc/issues/3147",
+    "created_at": "2016-10-05T12:35:52Z",
+    "type": "issue"
+   },
+   {
+    "title": "RTL (Right-To-Left) latex environment not defined for xelatex",
+    "state": "open",
+    "html_url": "https://github.com/jgm/pandoc/issues/8460",
+    "created_at": "2022-11-28T16:39:48Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:jgm/pandoc arabic OR rtl OR bidi",
+  "wasm_viability": "README: 'a WebAssembly-based online demo (pandoc.org/app)'; community npm pandoc-wasm (npm pandoc-wasm@1.1.0 unpackedSize 58,617,582 B, GPL-2.0-or-later).",
+  "bundle_size_notes": "npm pandoc-wasm@1.1.0 unpackedSize 58,617,582 B",
+  "verified_at": "2026-09-16T03:26:06Z",
+  "sources": [
+   "https://api.github.com/repos/jgm/pandoc",
+   "https://raw.githubusercontent.com/jgm/pandoc/main/COPYRIGHT",
+   "https://raw.githubusercontent.com/jgm/pandoc/main/COPYING.md",
+   "https://api.github.com/search/issues?q=repo%3Ajgm/pandoc%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Conversion",
+  "name": "docx-rs",
+  "repo": "bokuweb/docx-rs",
+  "repo_url": "https://github.com/bokuweb/docx-rs",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "LICENSE: MIT. README advertises the official 'docx-wasm' npm package.",
+  "language": "Rust",
+  "stars": 553,
+  "forks": 118,
+  "open_issues": 70,
+  "pushed_at": "2026-09-05T10:25:01Z",
+  "created_at": "2019-09-11T16:08:49Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": ":memo:  A .docx file writer with Rust/WebAssembly.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 3,
+  "arabic_issue_samples": [
+   {
+    "title": "`level_restart` doesn‘t work as expected",
+    "state": "open",
+    "html_url": "https://github.com/bokuweb/docx-rs/issues/828",
+    "created_at": "2025-06-28T00:25:27Z",
+    "type": "issue"
+   },
+   {
+    "title": "Include language directives? [proposed label: enhancement]",
+    "state": "open",
+    "html_url": "https://github.com/bokuweb/docx-rs/issues/715",
+    "created_at": "2024-05-17T08:36:12Z",
+    "type": "issue"
+   },
+   {
+    "title": "Bidi Support",
+    "state": "closed",
+    "html_url": "https://github.com/bokuweb/docx-rs/pull/801",
+    "created_at": "2025-02-07T02:44:43Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:bokuweb/docx-rs arabic OR rtl OR bidi",
+  "wasm_viability": "Official WASM bindings: README badge/install 'docx-wasm' (npm docx-wasm npm docx-wasm@0.4.23-rc1 unpackedSize 9,684,512 B, MIT).",
+  "bundle_size_notes": "npm docx-wasm@0.4.23-rc1 unpackedSize 9,684,512 B",
+  "verified_at": "2026-09-16T03:47:08Z",
+  "sources": [
+   "https://api.github.com/repos/bokuweb/docx-rs",
+   "https://raw.githubusercontent.com/bokuweb/docx-rs/HEAD/LICENSE",
+   "https://raw.githubusercontent.com/bokuweb/docx-rs/HEAD/README.md",
+   "https://api.github.com/search/issues?q=repo%3Abokuweb/docx-rs%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Conversion",
+  "name": "ONLYOFFICE DocumentServer",
+  "repo": "ONLYOFFICE/DocumentServer",
+  "repo_url": "https://github.com/ONLYOFFICE/DocumentServer",
+  "license_spdx_github_api": "AGPL-3.0",
+  "license_spdx": "AGPL-3.0",
+  "license_notes": "LICENSE: GNU AGPL v3 text (README.md not present at repo root: 404). STRONG COPYLEFT (AGPL).",
+  "copyleft_flag": true,
+  "language": "Shell",
+  "stars": 6906,
+  "forks": 1308,
+  "open_issues": 1140,
+  "pushed_at": "2026-07-22T09:43:52Z",
+  "created_at": "2014-07-05T18:06:30Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "ONLYOFFICE Docs is a free collaborative online office suite comprising viewers and editors for texts, spreadsheets and presentations, forms and PDF, fully compatible with Office Open XML formats: .docx, .xlsx, .pptx and enabling collaborative editing in real time.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 62,
+  "arabic_issue_samples": [
+   {
+    "title": "RTL multi-column layout flows Left-to-Right instead of Right-to-Left (Missing and ignored <w:bidi/> tag)",
+    "state": "open",
+    "html_url": "https://github.com/ONLYOFFICE/DocumentServer/issues/3663",
+    "created_at": "2026-04-15T20:31:48Z",
+    "type": "issue"
+   },
+   {
+    "title": "Incorrect represantation of Arabic fonts",
+    "state": "open",
+    "html_url": "https://github.com/ONLYOFFICE/DocumentServer/issues/3215",
+    "created_at": "2025-04-23T10:37:37Z",
+    "type": "issue"
+   },
+   {
+    "title": "PDF Editor: Arabic font get scrambled when convert from PDF to Document",
+    "state": "open",
+    "html_url": "https://github.com/ONLYOFFICE/DocumentServer/issues/3494",
+    "created_at": "2025-11-07T23:24:20Z",
+    "type": "issue"
+   },
+   {
+    "title": "Add support for Yezidi script language selection",
+    "state": "open",
+    "html_url": "https://github.com/ONLYOFFICE/DocumentServer/issues/3653",
+    "created_at": "2026-04-06T17:55:13Z",
+    "type": "issue"
+   },
+   {
+    "title": "RTL mode: Table is still LTR when it is copied from another program",
+    "state": "open",
+    "html_url": "https://github.com/ONLYOFFICE/DocumentServer/issues/3133",
+    "created_at": "2025-02-18T08:26:47Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:ONLYOFFICE/DocumentServer arabic OR rtl OR bidi",
+  "wasm_viability": "Server-side document server; not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:09Z",
+  "sources": [
+   "https://api.github.com/repos/ONLYOFFICE/DocumentServer",
+   "https://raw.githubusercontent.com/ONLYOFFICE/DocumentServer/HEAD/LICENSE",
+   "https://api.github.com/search/issues?q=repo%3AONLYOFFICE/DocumentServer%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Conversion",
+  "name": "Stirling-PDF",
+  "repo": "Stirling-Tools/Stirling-PDF",
+  "repo_url": "https://github.com/Stirling-Tools/Stirling-PDF",
+  "license_spdx_github_api": "NOASSERTION",
+  "license_spdx": "MIT",
+  "license_notes": "OPEN-CORE (README: 'Stirling PDF is open-core'). Root LICENSE: MIT, Copyright (c) 2025 Stirling PDF Inc., but it enumerates directories licensed separately: app/proprietary, app/saas, engine/, frontend/editor/src/{proprietary,desktop,saas,cloud,prototypes,portal,portal-saas}. app/proprietary/LICENSE = 'Stirling PDF User License': production use only with a valid paid User License subscription; trial/evaluation/minimal use allowed; modifications may not be deployed in production or redistributed. README links 'Server Plan & Enterprise' paid offerings. Not copyleft; not wholly open source. See stirling_license_commit_history in this record for LICENSE-file change dates.",
+  "copyleft_flag": false,
+  "copyleft_check_note": "MIT open-core with proprietary directories (not copyleft)",
+  "language": "TypeScript",
+  "stars": 92266,
+  "forks": 8507,
+  "open_issues": 623,
+  "pushed_at": "2026-09-16T00:30:54Z",
+  "created_at": "2023-01-27T18:22:42Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "#1 PDF Application on GitHub that lets you edit PDFs on any device anywhere",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 44,
+  "arabic_issue_samples": [
+   {
+    "title": "[Feature Request]: Convert PDF from LTR to RTL",
+    "state": "open",
+    "html_url": "https://github.com/Stirling-Tools/Stirling-PDF/issues/2076",
+    "created_at": "2024-10-23T09:38:30Z",
+    "type": "issue"
+   },
+   {
+    "title": "Add Hebrew (he-IL) translation with full RTL support",
+    "state": "open",
+    "html_url": "https://github.com/Stirling-Tools/Stirling-PDF/pull/6435",
+    "created_at": "2026-05-24T13:17:10Z",
+    "type": "pr"
+   },
+   {
+    "title": "[Bug]: when convertin a pdf words are mirrored",
+    "state": "open",
+    "html_url": "https://github.com/Stirling-Tools/Stirling-PDF/issues/3477",
+    "created_at": "2025-05-04T21:01:03Z",
+    "type": "issue"
+   },
+   {
+    "title": "[Bug]: ocrmypdf throws error with png input",
+    "state": "open",
+    "html_url": "https://github.com/Stirling-Tools/Stirling-PDF/issues/7754",
+    "created_at": "2026-08-30T14:59:15Z",
+    "type": "issue"
+   },
+   {
+    "title": "Multilingual classification packs",
+    "state": "open",
+    "html_url": "https://github.com/Stirling-Tools/Stirling-PDF/pull/8027",
+    "created_at": "2026-09-15T14:59:55Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:Stirling-Tools/Stirling-PDF arabic OR rtl OR bidi",
+  "wasm_viability": "Server-side (Java/Spring) web app; not applicable.",
+  "bundle_size_notes": "not measured",
+  "stirling_license_commit_history": [
+   {
+    "date": "2026-07-17T10:16:06Z",
+    "message": "Clarify portal SaaS licensing (#7074)",
+    "sha": "398f473316",
+    "html_url": "https://github.com/Stirling-Tools/Stirling-PDF/commit/398f4733162e5af0f740c97b9a15f31877817980"
+   },
+   {
+    "date": "2026-07-03T13:20:02Z",
+    "message": "Restructure Portal code to be inside Editor (#6857)",
+    "sha": "11ba3814e5",
+    "html_url": "https://github.com/Stirling-Tools/Stirling-PDF/commit/11ba3814e5bae9629eb71fe89fafdd0ec32ef45c"
+   },
+   {
+    "date": "2026-06-17T10:12:05Z",
+    "message": "refactor(fe): share the SaaS PAYG experience with desktop via a cloud/ layer (#6649)",
+    "sha": "cd7264a76a",
+    "html_url": "https://github.com/Stirling-Tools/Stirling-PDF/commit/cd7264a76a139ce9eb0a07348880e89d23ed678e"
+   },
+   {
+    "date": "2026-06-02T16:08:24Z",
+    "message": "Portal (#6391)",
+    "sha": "919f0ade99",
+    "html_url": "https://github.com/Stirling-Tools/Stirling-PDF/commit/919f0ade997ce954128b99ddfa4388ba1d3212ab"
+   },
+   {
+    "date": "2026-05-21T15:05:35Z",
+    "message": "SaaS Consolidation (#6384)",
+    "sha": "9d081d1792",
+    "html_url": "https://github.com/Stirling-Tools/Stirling-PDF/commit/9d081d17924e1f81079d13a25c9b4c72401b4287"
+   },
+   {
+    "date": "2026-04-09T08:21:07Z",
+    "message": "Add prototypes folder to test new functionality in (#6081)",
+    "sha": "cc1604a802",
+    "html_url": "https://github.com/Stirling-Tools/Stirling-PDF/commit/cc1604a80258ce4decdeb2bd74d24f37671d6d38"
+   },
+   {
+    "date": "2026-03-16T11:01:50Z",
+    "message": "Add SaaS AI engine (#5907)",
+    "sha": "c58a6092ec",
+    "html_url": "https://github.com/Stirling-Tools/Stirling-PDF/commit/c58a6092ec5c56e66ccf43d6a422d90fef8a0ac9"
+   },
+   {
+    "date": "2026-03-11T11:53:54Z",
+    "message": "Add SaaS frontend code (#5879)",
+    "sha": "fa8c52b2be",
+    "html_url": "https://github.com/Stirling-Tools/Stirling-PDF/commit/fa8c52b2bedf3ce0921dea5f6a72ddd24f6e6a43"
+   },
+   {
+    "date": "2025-11-27T11:11:53Z",
+    "message": "Update LICENSE with proprietary directory details",
+    "sha": "6f0be94bd6",
+    "html_url": "https://github.com/Stirling-Tools/Stirling-PDF/commit/6f0be94bd6de74ce0decb537530e33b8a16d34e9"
+   },
+   {
+    "date": "2025-07-14T19:53:11Z",
+    "message": "refactor: move modules under app/ directory and update file paths (#3938)",
+    "sha": "299d52c517",
+    "html_url": "https://github.com/Stirling-Tools/Stirling-PDF/commit/299d52c517fcd91de0edcf0cedb4db25b22dd4af"
+   }
+  ],
+  "verified_at": "2026-09-16T03:47:10Z",
+  "sources": [
+   "https://api.github.com/repos/Stirling-Tools/Stirling-PDF",
+   "https://raw.githubusercontent.com/Stirling-Tools/Stirling-PDF/HEAD/LICENSE",
+   "https://raw.githubusercontent.com/Stirling-Tools/Stirling-PDF/HEAD/app/proprietary/LICENSE",
+   "https://raw.githubusercontent.com/Stirling-Tools/Stirling-PDF/HEAD/README.md",
+   "https://api.github.com/search/issues?q=repo%3AStirling-Tools/Stirling-PDF%20arabic%20OR%20rtl%20OR%20bidi&per_page=5",
+   "https://api.github.com/repos/Stirling-Tools/Stirling-PDF/commits?path=LICENSE&per_page=10"
+  ]
+ },
+ {
+  "layer": "Conversion",
+  "name": "marker",
+  "repo": "datalab-to/marker",
+  "repo_url": "https://github.com/datalab-to/marker",
+  "repo_redirected_from": "VikParuchuri/marker",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "Repo renamed: VikParuchuri/marker -> datalab-to/marker (API redirect). Code: Apache-2.0 (LICENSE). README 'Commercial usage': model weights under a modified AI Pubs Open RAIL-M license (free for research, personal use, startups under $5M funding/revenue); commercial weights license via datalab.to/pricing. Depends on surya models (same terms).",
+  "copyleft_flag": false,
+  "copyleft_check_note": "code Apache-2.0; weights OpenRAIL-M (not copyleft, but use-restricted)",
+  "language": "Python",
+  "stars": 39767,
+  "forks": 2874,
+  "open_issues": 471,
+  "pushed_at": "2026-09-13T07:35:22Z",
+  "created_at": "2023-10-30T20:14:08Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "Convert PDF to markdown + JSON quickly with high accuracy",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 5,
+  "arabic_issue_samples": [
+   {
+    "title": " OCR using  Google Cloud Vision",
+    "state": "open",
+    "html_url": "https://github.com/datalab-to/marker/issues/221",
+    "created_at": "2024-07-07T23:32:04Z",
+    "type": "issue"
+   },
+   {
+    "title": "how is the performance on arbic language?",
+    "state": "closed",
+    "html_url": "https://github.com/datalab-to/marker/issues/723",
+    "created_at": "2025-06-02T16:28:47Z",
+    "type": "issue"
+   },
+   {
+    "title": "OCR a PDF, and OCR models' download location",
+    "state": "closed",
+    "html_url": "https://github.com/datalab-to/marker/issues/581",
+    "created_at": "2025-02-25T13:39:41Z",
+    "type": "issue"
+   },
+   {
+    "title": "Query Regarding Support for Additional Languages in Marker",
+    "state": "closed",
+    "html_url": "https://github.com/datalab-to/marker/issues/57",
+    "created_at": "2024-01-04T08:21:47Z",
+    "type": "issue"
+   },
+   {
+    "title": "Please, add suport for spellchecking of more languages - ie. Hunspell",
+    "state": "closed",
+    "html_url": "https://github.com/datalab-to/marker/issues/51",
+    "created_at": "2023-12-27T12:38:56Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:datalab-to/marker arabic OR rtl OR bidi",
+  "wasm_viability": "Python/PyTorch; README has no WASM mention (not applicable).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:11Z",
+  "sources": [
+   "https://api.github.com/repos/VikParuchuri/marker",
+   "https://raw.githubusercontent.com/VikParuchuri/marker/HEAD/LICENSE",
+   "https://raw.githubusercontent.com/VikParuchuri/marker/HEAD/README.md",
+   "https://api.github.com/search/issues?q=repo%3Adatalab-to/marker%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Complete editors / tool suites",
+  "name": "PDF Arranger",
+  "repo": "pdfarranger/pdfarranger",
+  "repo_url": "https://github.com/pdfarranger/pdfarranger",
+  "license_spdx_github_api": "GPL-3.0",
+  "license_spdx": "GPL-3.0",
+  "license_notes": "COPYING is the GNU GPL v3 text ('only' vs 'or-later' not verified from source headers). STRONG COPYLEFT (GPL).",
+  "copyleft_flag": true,
+  "language": "Python",
+  "stars": 5878,
+  "forks": 320,
+  "open_issues": 86,
+  "pushed_at": "2026-09-01T02:16:15Z",
+  "created_at": "2015-10-21T19:30:19Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Small python-gtk application, which helps the user to merge or split PDF documents and rotate, crop and rearrange their pages using an interactive and intuitive graphical interface.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 7,
+  "arabic_issue_samples": [
+   {
+    "title": "Support page labels",
+    "state": "open",
+    "html_url": "https://github.com/pdfarranger/pdfarranger/issues/336",
+    "created_at": "2020-11-28T07:47:15Z",
+    "type": "issue"
+   },
+   {
+    "title": "Right to Left booklets",
+    "state": "open",
+    "html_url": "https://github.com/pdfarranger/pdfarranger/issues/1186",
+    "created_at": "2025-01-16T09:31:10Z",
+    "type": "issue"
+   },
+   {
+    "title": "Add Arabic translation",
+    "state": "closed",
+    "html_url": "https://github.com/pdfarranger/pdfarranger/pull/1108",
+    "created_at": "2024-08-08T04:38:40Z",
+    "type": "pr"
+   },
+   {
+    "title": "suggest to add Arabic language to the program",
+    "state": "closed",
+    "html_url": "https://github.com/pdfarranger/pdfarranger/issues/1116",
+    "created_at": "2024-08-29T18:45:32Z",
+    "type": "issue"
+   },
+   {
+    "title": "Add Ar Translation pdfarranger",
+    "state": "closed",
+    "html_url": "https://github.com/pdfarranger/pdfarranger/issues/1115",
+    "created_at": "2024-08-29T01:28:38Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:pdfarranger/pdfarranger arabic OR rtl OR bidi",
+  "wasm_viability": "Desktop (Python/GTK); not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:12Z",
+  "sources": [
+   "https://api.github.com/repos/pdfarranger/pdfarranger",
+   "https://raw.githubusercontent.com/pdfarranger/pdfarranger/HEAD/COPYING",
+   "https://api.github.com/search/issues?q=repo%3Apdfarranger/pdfarranger%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Complete editors / tool suites",
+  "name": "Xournal++",
+  "repo": "xournalpp/xournalpp",
+  "repo_url": "https://github.com/xournalpp/xournalpp",
+  "license_spdx_github_api": "GPL-2.0",
+  "license_spdx": "GPL-2.0",
+  "license_notes": "LICENSE: GNU GPL v2 text. STRONG COPYLEFT (GPL).",
+  "copyleft_flag": true,
+  "language": "C++",
+  "stars": 15376,
+  "forks": 1126,
+  "open_issues": 1254,
+  "pushed_at": "2026-09-13T06:32:49Z",
+  "created_at": "2013-08-08T20:58:27Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "Xournal++ is a handwriting notetaking software with PDF annotation support. Written in C++ with GTK3, supporting Linux (e.g. Ubuntu, Debian, Arch, SUSE), macOS and Windows 10. Supports pen input from devices such as Wacom Tablets.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 14,
+  "arabic_issue_samples": [
+   {
+    "title": "GUI RTL/LTR",
+    "state": "open",
+    "html_url": "https://github.com/xournalpp/xournalpp/issues/6504",
+    "created_at": "2025-06-28T09:04:11Z",
+    "type": "issue"
+   },
+   {
+    "title": "Right-to-Left UI for Arabic (Currently Arabic is still LTR)",
+    "state": "open",
+    "html_url": "https://github.com/xournalpp/xournalpp/issues/3125",
+    "created_at": "2021-05-23T15:59:00Z",
+    "type": "issue"
+   },
+   {
+    "title": "Change languages names from ISO names to native names",
+    "state": "open",
+    "html_url": "https://github.com/xournalpp/xournalpp/issues/3126",
+    "created_at": "2021-05-23T16:10:45Z",
+    "type": "issue"
+   },
+   {
+    "title": "\"Document Properties\" with List of \"used fonts\" (+ SVG export quality)",
+    "state": "open",
+    "html_url": "https://github.com/xournalpp/xournalpp/issues/6503",
+    "created_at": "2025-06-28T08:54:40Z",
+    "type": "issue"
+   },
+   {
+    "title": "Add wrapping to Text edition",
+    "state": "closed",
+    "html_url": "https://github.com/xournalpp/xournalpp/pull/7553",
+    "created_at": "2026-06-24T20:17:07Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:xournalpp/xournalpp arabic OR rtl OR bidi",
+  "wasm_viability": "Desktop (C++/GTK); README has no WASM mention; not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:13Z",
+  "sources": [
+   "https://api.github.com/repos/xournalpp/xournalpp",
+   "https://raw.githubusercontent.com/xournalpp/xournalpp/HEAD/LICENSE",
+   "https://api.github.com/search/issues?q=repo%3Axournalpp/xournalpp%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Complete editors / tool suites",
+  "name": "Okular",
+  "repo": "KDE/okular",
+  "repo_url": "https://github.com/KDE/okular",
+  "license_spdx_github_api": null,
+  "license_spdx": "GPL-2.0-or-later",
+  "license_notes": "LICENSES/GPL-2.0-or-later.txt present (REUSE layout; root COPYING 404). GitHub repo is a mirror; issue search returned 0 (KDE tracks bugs on bugs.kde.org). STRONG COPYLEFT (GPL).",
+  "copyleft_flag": true,
+  "language": "C++",
+  "stars": 1510,
+  "forks": 183,
+  "open_issues": 0,
+  "pushed_at": "2026-09-16T03:27:24Z",
+  "created_at": "2015-09-18T15:43:52Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "KDE document viewer",
+  "has_issues_enabled": false,
+  "is_fork": false,
+  "arabic_issue_count": 0,
+  "arabic_issue_samples": [],
+  "arabic_issue_query": "repo:KDE/okular arabic OR rtl OR bidi",
+  "arabic_issue_note": "GitHub issues are disabled on this repo (mirror); count reflects PRs only / external tracker not searched",
+  "wasm_viability": "Desktop (Qt/KDE); not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:14Z",
+  "sources": [
+   "https://api.github.com/repos/KDE/okular",
+   "https://raw.githubusercontent.com/KDE/okular/HEAD/LICENSES/GPL-2.0-or-later.txt",
+   "https://api.github.com/search/issues?q=repo%3AKDE/okular%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Complete editors / tool suites",
+  "name": "sioyek",
+  "repo": "ahrm/sioyek",
+  "repo_url": "https://github.com/ahrm/sioyek",
+  "license_spdx_github_api": "GPL-3.0",
+  "license_spdx": "GPL-3.0",
+  "license_notes": "LICENSE: GNU GPL v3 text. STRONG COPYLEFT (GPL).",
+  "copyleft_flag": true,
+  "language": "C",
+  "stars": 9865,
+  "forks": 370,
+  "open_issues": 328,
+  "pushed_at": "2026-08-18T18:16:43Z",
+  "created_at": "2021-07-11T19:35:19Z",
+  "archived": false,
+  "default_branch": "development",
+  "description": "Sioyek is a PDF viewer with a focus on textbooks and research papers",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 12,
+  "arabic_issue_samples": [
+   {
+    "title": "[Feature Request] Make table of contents appear RTL for RTL documents",
+    "state": "open",
+    "html_url": "https://github.com/ahrm/sioyek/issues/1553",
+    "created_at": "2026-02-09T01:19:22Z",
+    "type": "issue"
+   },
+   {
+    "title": "Make highlights respect word selection mode",
+    "state": "open",
+    "html_url": "https://github.com/ahrm/sioyek/pull/742",
+    "created_at": "2023-06-10T10:21:06Z",
+    "type": "pr"
+   },
+   {
+    "title": "[Bug] Search matches across word boundaries in Hebrew/RTL text",
+    "state": "closed",
+    "html_url": "https://github.com/ahrm/sioyek/issues/1551",
+    "created_at": "2026-02-06T00:49:02Z",
+    "type": "issue"
+   },
+   {
+    "title": "[Bug] Support physical key position based keybindings for non-Latin keyboard layouts",
+    "state": "closed",
+    "html_url": "https://github.com/ahrm/sioyek/issues/1550",
+    "created_at": "2026-02-06T00:24:23Z",
+    "type": "issue"
+   },
+   {
+    "title": "disorderd sequence in RTL ligatures",
+    "state": "closed",
+    "html_url": "https://github.com/ahrm/sioyek/issues/1355",
+    "created_at": "2025-04-03T12:21:13Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:ahrm/sioyek arabic OR rtl OR bidi",
+  "wasm_viability": "Desktop (C++/Qt); not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:15Z",
+  "sources": [
+   "https://api.github.com/repos/ahrm/sioyek",
+   "https://raw.githubusercontent.com/ahrm/sioyek/HEAD/LICENSE",
+   "https://api.github.com/search/issues?q=repo%3Aahrm/sioyek%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Complete editors / tool suites",
+  "name": "PDFsam Basic",
+  "repo": "torakiki/pdfsam",
+  "repo_url": "https://github.com/torakiki/pdfsam",
+  "license_spdx_github_api": "AGPL-3.0",
+  "license_spdx": "AGPL-3.0",
+  "license_notes": "LICENSE: GNU AGPL v3; README: 'Since version 3 PDFsam Basic is open source under the GNU Affero General Public License, previous versions are released under GPLv2'. STRONG COPYLEFT (AGPL).",
+  "copyleft_flag": true,
+  "language": "Java",
+  "stars": 4568,
+  "forks": 398,
+  "open_issues": 123,
+  "pushed_at": "2026-08-10T01:05:01Z",
+  "created_at": "2013-09-24T11:06:13Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "PDFsam, a desktop application to split, merge, mix, rotate PDF files and extract pages",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 5,
+  "arabic_issue_samples": [
+   {
+    "title": "Incorrect RTL",
+    "state": "open",
+    "html_url": "https://github.com/torakiki/pdfsam/issues/421",
+    "created_at": "2020-08-28T08:39:33Z",
+    "type": "issue"
+   },
+   {
+    "title": "Merge - Table of contents from file names - RTL not supported",
+    "state": "open",
+    "html_url": "https://github.com/torakiki/pdfsam/issues/664",
+    "created_at": "2024-12-30T08:29:50Z",
+    "type": "issue"
+   },
+   {
+    "title": "Does not  display Arabic letters properly on Ubuntu 23.04",
+    "state": "closed",
+    "html_url": "https://github.com/torakiki/pdfsam/issues/557",
+    "created_at": "2023-09-09T20:57:24Z",
+    "type": "issue"
+   },
+   {
+    "title": "i want to add arabic into the program , can i do that??",
+    "state": "closed",
+    "html_url": "https://github.com/torakiki/pdfsam/issues/276",
+    "created_at": "2018-01-28T16:25:19Z",
+    "type": "issue"
+   },
+   {
+    "title": "Table of contents in Hebrew language",
+    "state": "closed",
+    "html_url": "https://github.com/torakiki/pdfsam/issues/226",
+    "created_at": "2017-03-29T18:28:01Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:torakiki/pdfsam arabic OR rtl OR bidi",
+  "wasm_viability": "Desktop (Java); not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:16Z",
+  "sources": [
+   "https://api.github.com/repos/torakiki/pdfsam",
+   "https://raw.githubusercontent.com/torakiki/pdfsam/HEAD/LICENSE",
+   "https://raw.githubusercontent.com/torakiki/pdfsam/HEAD/README.md",
+   "https://api.github.com/search/issues?q=repo%3Atorakiki/pdfsam%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Digital signatures",
+  "name": "pyHanko",
+  "repo": "MatthiasValvekens/pyHanko",
+  "repo_url": "https://github.com/MatthiasValvekens/pyHanko",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "LICENSE: MIT.",
+  "language": "Python",
+  "stars": 766,
+  "forks": 110,
+  "open_issues": 5,
+  "pushed_at": "2026-09-14T22:32:11Z",
+  "created_at": "2020-08-06T12:48:43Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "pyHanko: sign and stamp PDF files",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 1,
+  "arabic_issue_samples": [
+   {
+    "title": "Bump idna from 3.13 to 3.15",
+    "state": "closed",
+    "html_url": "https://github.com/MatthiasValvekens/pyHanko/pull/707",
+    "created_at": "2026-05-19T23:36:16Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:MatthiasValvekens/pyHanko arabic OR rtl OR bidi",
+  "wasm_viability": "Python; README has no WASM mention (not applicable).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:16Z",
+  "sources": [
+   "https://api.github.com/repos/MatthiasValvekens/pyHanko",
+   "https://raw.githubusercontent.com/MatthiasValvekens/pyHanko/HEAD/LICENSE",
+   "https://api.github.com/search/issues?q=repo%3AMatthiasValvekens/pyHanko%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Digital signatures",
+  "name": "DSS (eSig)",
+  "repo": "esig/dss",
+  "repo_url": "https://github.com/esig/dss",
+  "license_spdx_github_api": "LGPL-2.1",
+  "license_spdx": "LGPL-2.1",
+  "license_notes": "LICENSE: GNU LGPL v2.1; README 'Licenses': 'delivered under the terms of the Lesser General Public License (LGPL), version 2.1'. WEAK COPYLEFT (LGPL).",
+  "copyleft_flag": true,
+  "language": "Java",
+  "stars": 1031,
+  "forks": 411,
+  "open_issues": 3,
+  "pushed_at": "2026-08-28T15:20:41Z",
+  "created_at": "2015-01-30T18:05:50Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "Digital Signature Service : creation, extension and validation of advanced electronic signatures",
+  "has_issues_enabled": false,
+  "is_fork": false,
+  "arabic_issue_count": 0,
+  "arabic_issue_samples": [],
+  "arabic_issue_query": "repo:esig/dss arabic OR rtl OR bidi",
+  "arabic_issue_note": "GitHub issues are disabled on this repo (mirror); count reflects PRs only / external tracker not searched",
+  "wasm_viability": "Java; not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:17Z",
+  "sources": [
+   "https://api.github.com/repos/esig/dss",
+   "https://raw.githubusercontent.com/esig/dss/HEAD/LICENSE",
+   "https://raw.githubusercontent.com/esig/dss/HEAD/README.md",
+   "https://api.github.com/search/issues?q=repo%3Aesig/dss%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Digital signatures",
+  "name": "rustls",
+  "repo": "rustls/rustls",
+  "repo_url": "https://github.com/rustls/rustls",
+  "license_spdx_github_api": "NOASSERTION",
+  "license_spdx": "Apache-2.0 OR ISC OR MIT",
+  "license_notes": "LICENSE-APACHE, LICENSE-ISC and LICENSE-MIT all present (triple license).",
+  "language": "Rust",
+  "stars": 7621,
+  "forks": 895,
+  "open_issues": 86,
+  "pushed_at": "2026-09-16T03:45:33Z",
+  "created_at": "2016-05-02T20:50:44Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "A modern TLS library in Rust",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 2,
+  "arabic_issue_samples": [
+   {
+    "title": "unexpected interaction between tls and softhsm on MacOS Sonoma",
+    "state": "closed",
+    "html_url": "https://github.com/rustls/rustls/issues/1638",
+    "created_at": "2023-11-28T20:53:03Z",
+    "type": "issue"
+   },
+   {
+    "title": "rustls run into CPU 100%",
+    "state": "closed",
+    "html_url": "https://github.com/rustls/rustls/issues/1283",
+    "created_at": "2023-04-22T07:03:24Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:rustls/rustls arabic OR rtl OR bidi",
+  "wasm_viability": "Rust; README has no WASM mention (wasm32 support unverified).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:18Z",
+  "sources": [
+   "https://api.github.com/repos/rustls/rustls",
+   "https://raw.githubusercontent.com/rustls/rustls/HEAD/LICENSE-APACHE",
+   "https://raw.githubusercontent.com/rustls/rustls/HEAD/LICENSE-ISC",
+   "https://raw.githubusercontent.com/rustls/rustls/HEAD/LICENSE-MIT",
+   "https://api.github.com/search/issues?q=repo%3Arustls/rustls%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Digital signatures",
+  "name": "RustCrypto formats (cms, x509-cert)",
+  "repo": "RustCrypto/formats",
+  "repo_url": "https://github.com/RustCrypto/formats",
+  "license_spdx_github_api": null,
+  "license_spdx": "Apache-2.0 OR MIT",
+  "license_notes": "cms/Cargo.toml and x509-cert/Cargo.toml: license = 'Apache-2.0 OR MIT'; per-crate LICENSE-APACHE / LICENSE-MIT files present.",
+  "language": "Rust",
+  "stars": 335,
+  "forks": 187,
+  "open_issues": 65,
+  "pushed_at": "2026-09-14T18:28:04Z",
+  "created_at": "2021-09-13T16:40:25Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "Cryptography-related format encoders/decoders: DER, PEM, PKCS, PKIX",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 0,
+  "arabic_issue_samples": [],
+  "arabic_issue_query": "repo:RustCrypto/formats arabic OR rtl OR bidi",
+  "wasm_viability": "Rust; README has no WASM mention (pure Rust crates; wasm32 unverified).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:19Z",
+  "sources": [
+   "https://api.github.com/repos/RustCrypto/formats",
+   "https://raw.githubusercontent.com/RustCrypto/formats/HEAD/cms/Cargo.toml",
+   "https://raw.githubusercontent.com/RustCrypto/formats/HEAD/x509-cert/Cargo.toml",
+   "https://raw.githubusercontent.com/RustCrypto/formats/HEAD/cms/LICENSE-MIT",
+   "https://raw.githubusercontent.com/RustCrypto/formats/HEAD/cms/LICENSE-APACHE",
+   "https://api.github.com/search/issues?q=repo%3ARustCrypto/formats%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Digital signatures",
+  "name": "pdfsign",
+  "repo": "digitorus/pdfsign",
+  "repo_url": "https://github.com/digitorus/pdfsign",
+  "license_spdx_github_api": "BSD-2-Clause",
+  "license_spdx": "BSD-2-Clause",
+  "license_notes": "LICENSE: 'BSD 2-Clause License, Copyright (c) 2018, Digitorus'. README documents sign/verify CLI incl. DocumentTimestamp cert type.",
+  "language": "Go",
+  "stars": 167,
+  "forks": 50,
+  "open_issues": 9,
+  "pushed_at": "2026-09-14T18:43:07Z",
+  "created_at": "2022-06-29T19:13:58Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Add/verify Advanced Electronic Signature (AES) and Qualified Electronic Signature (QES) in PDF (using pure Go)",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 1,
+  "arabic_issue_samples": [
+   {
+    "title": "chore(deps): bump golang.org/x/text from 0.41.0 to 0.42.0",
+    "state": "open",
+    "html_url": "https://github.com/digitorus/pdfsign/pull/163",
+    "created_at": "2026-09-14T18:43:05Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:digitorus/pdfsign arabic OR rtl OR bidi",
+  "wasm_viability": "Go; README has no WASM mention (unknown).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:20Z",
+  "sources": [
+   "https://api.github.com/repos/digitorus/pdfsign",
+   "https://raw.githubusercontent.com/digitorus/pdfsign/HEAD/LICENSE",
+   "https://raw.githubusercontent.com/digitorus/pdfsign/HEAD/README.md",
+   "https://api.github.com/search/issues?q=repo%3Adigitorus/pdfsign%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "Digital signatures",
+  "name": "OpenSSL",
+  "repo": "openssl/openssl",
+  "repo_url": "https://github.com/openssl/openssl",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "LICENSE.txt: Apache License 2.0.",
+  "language": "C",
+  "stars": 30787,
+  "forks": 11460,
+  "open_issues": 1550,
+  "pushed_at": "2026-09-15T17:33:47Z",
+  "created_at": "2013-01-15T22:34:48Z",
+  "archived": false,
+  "default_branch": "master",
+  "description": "General purpose TLS and crypto library",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 67,
+  "arabic_issue_samples": [
+   {
+    "title": "Address sanitizer finding in test_quic_radix",
+    "state": "closed",
+    "html_url": "https://github.com/openssl/openssl/issues/32420",
+    "created_at": "2026-08-18T14:45:21Z",
+    "type": "issue"
+   },
+   {
+    "title": "DTLS 1.3 SSL Listener CAP pending connections",
+    "state": "closed",
+    "html_url": "https://github.com/openssl/openssl/pull/31980",
+    "created_at": "2026-07-16T14:11:00Z",
+    "type": "pr"
+   },
+   {
+    "title": "Build Error with new configuration BC-64 for Embarcadero-Borland Clang Compiler 64bit",
+    "state": "open",
+    "html_url": "https://github.com/openssl/openssl/issues/26452",
+    "created_at": "2025-01-17T14:12:53Z",
+    "type": "issue"
+   },
+   {
+    "title": "Allow SSL_poll() to signal error when stream transitions to DATA_RECV…",
+    "state": "closed",
+    "html_url": "https://github.com/openssl/openssl/pull/27394",
+    "created_at": "2025-04-15T14:01:06Z",
+    "type": "pr"
+   },
+   {
+    "title": "Use get_last_sys_error() instead of get_last_rtl_error()",
+    "state": "closed",
+    "html_url": "https://github.com/openssl/openssl/pull/6088",
+    "created_at": "2018-04-26T08:03:06Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:openssl/openssl arabic OR rtl OR bidi",
+  "wasm_viability": "C; README has no WASM mention (community emscripten builds not checked).",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:21Z",
+  "sources": [
+   "https://api.github.com/repos/openssl/openssl",
+   "https://raw.githubusercontent.com/openssl/openssl/HEAD/LICENSE.txt",
+   "https://api.github.com/search/issues?q=repo%3Aopenssl/openssl%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "App shells",
+  "name": "Tauri",
+  "repo": "tauri-apps/tauri",
+  "repo_url": "https://github.com/tauri-apps/tauri",
+  "license_spdx_github_api": "Apache-2.0",
+  "license_spdx": "Apache-2.0",
+  "license_notes": "GitHub API license.spdx_id (Apache License 2.0)",
+  "language": "Rust",
+  "stars": 111096,
+  "forks": 3961,
+  "open_issues": 1464,
+  "pushed_at": "2026-09-15T11:02:53Z",
+  "created_at": "2019-07-13T09:09:37Z",
+  "archived": false,
+  "default_branch": "dev",
+  "description": "Build smaller, faster, and more secure desktop and mobile applications with a web frontend.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 65,
+  "arabic_issue_samples": [
+   {
+    "title": "[bug] Page scroll jumps on every keystroke when typing RTL text with spaces",
+    "state": "open",
+    "html_url": "https://github.com/tauri-apps/tauri/issues/15330",
+    "created_at": "2026-05-03T12:46:32Z",
+    "type": "issue"
+   },
+   {
+    "title": "fix(driver): BiDi capability stripping, send keys text field, startup readiness",
+    "state": "open",
+    "html_url": "https://github.com/tauri-apps/tauri/pull/15935",
+    "created_at": "2026-08-29T06:50:26Z",
+    "type": "pr"
+   },
+   {
+    "title": "fix(driver): strip BiDi webSocketUrl capability before forwarding (fix #15415)",
+    "state": "open",
+    "html_url": "https://github.com/tauri-apps/tauri/pull/15605",
+    "created_at": "2026-06-29T10:17:16Z",
+    "type": "pr"
+   },
+   {
+    "title": "tauri-driver v2.0.6: BiDi capabilities not stripped when forwarding to WebKitWebDriver (wdio 9+ rejected)",
+    "state": "open",
+    "html_url": "https://github.com/tauri-apps/tauri/issues/15415",
+    "created_at": "2026-05-18T17:47:31Z",
+    "type": "issue"
+   },
+   {
+    "title": "[feat] Option to include all fully supported languages for NSIS installer",
+    "state": "open",
+    "html_url": "https://github.com/tauri-apps/tauri/issues/12918",
+    "created_at": "2025-03-07T08:59:14Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:tauri-apps/tauri arabic OR rtl OR bidi",
+  "wasm_viability": "App shell (Rust + webview); README has no WASM mention; not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:22Z",
+  "sources": [
+   "https://api.github.com/repos/tauri-apps/tauri",
+   "https://api.github.com/search/issues?q=repo%3Atauri-apps/tauri%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "App shells",
+  "name": "Electron",
+  "repo": "electron/electron",
+  "repo_url": "https://github.com/electron/electron",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "GitHub API license.spdx_id (MIT License)",
+  "language": "C++",
+  "stars": 123087,
+  "forks": 17502,
+  "open_issues": 773,
+  "pushed_at": "2026-09-16T01:59:01Z",
+  "created_at": "2013-04-12T01:47:36Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": ":electron: Build cross-platform desktop apps with JavaScript, HTML, and CSS",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 86,
+  "arabic_issue_samples": [
+   {
+    "title": "Provide API for window controls order",
+    "state": "open",
+    "html_url": "https://github.com/electron/electron/issues/51003",
+    "created_at": "2026-04-13T08:17:04Z",
+    "type": "issue"
+   },
+   {
+    "title": "feat: support per-corner radii in View.setBorderRadius()",
+    "state": "open",
+    "html_url": "https://github.com/electron/electron/pull/53520",
+    "created_at": "2026-09-04T10:22:10Z",
+    "type": "pr"
+   },
+   {
+    "title": "`openDevTools` window mode is inconsistent",
+    "state": "open",
+    "html_url": "https://github.com/electron/electron/issues/45361",
+    "created_at": "2025-01-28T19:24:11Z",
+    "type": "issue"
+   },
+   {
+    "title": "[Feature Request]: per-session opt-out for the Touch ID WebAuthn platform authenticator",
+    "state": "open",
+    "html_url": "https://github.com/electron/electron/issues/52302",
+    "created_at": "2026-07-11T03:20:17Z",
+    "type": "issue"
+   },
+   {
+    "title": "feat: support per-corner radii in View.setBorderRadius()",
+    "state": "open",
+    "html_url": "https://github.com/electron/electron/pull/51472",
+    "created_at": "2026-05-04T14:48:50Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:electron/electron arabic OR rtl OR bidi",
+  "wasm_viability": "App shell; not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:23Z",
+  "sources": [
+   "https://api.github.com/repos/electron/electron",
+   "https://api.github.com/search/issues?q=repo%3Aelectron/electron%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "App shells",
+  "name": "Vite",
+  "repo": "vitejs/vite",
+  "repo_url": "https://github.com/vitejs/vite",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "GitHub API license.spdx_id (MIT License)",
+  "language": "TypeScript",
+  "stars": 82842,
+  "forks": 8744,
+  "open_issues": 774,
+  "pushed_at": "2026-09-16T02:36:06Z",
+  "created_at": "2020-04-21T05:03:57Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Next generation frontend tooling. It's fast!",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 19,
+  "arabic_issue_samples": [
+   {
+    "title": "refactor!: remove `isFileServingAllowed`",
+    "state": "open",
+    "html_url": "https://github.com/vitejs/vite/pull/21449",
+    "created_at": "2026-01-20T07:13:53Z",
+    "type": "pr"
+   },
+   {
+    "title": "fix(deps): update all non-major dependencies",
+    "state": "closed",
+    "html_url": "https://github.com/vitejs/vite/pull/22921",
+    "created_at": "2026-07-13T00:30:37Z",
+    "type": "pr"
+   },
+   {
+    "title": "Value is non of these types",
+    "state": "closed",
+    "html_url": "https://github.com/vitejs/vite/issues/22095",
+    "created_at": "2026-04-01T12:30:36Z",
+    "type": "issue"
+   },
+   {
+    "title": "change in export behaviour need to be made since 6.3.* release",
+    "state": "closed",
+    "html_url": "https://github.com/vitejs/vite/issues/19898",
+    "created_at": "2025-04-20T13:45:14Z",
+    "type": "issue"
+   },
+   {
+    "title": "Export overrides broken in tests with Vite 6.3.0+",
+    "state": "closed",
+    "html_url": "https://github.com/vitejs/vite/issues/19915",
+    "created_at": "2025-04-22T16:33:41Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:vitejs/vite arabic OR rtl OR bidi",
+  "wasm_viability": "Build tool; not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:24Z",
+  "sources": [
+   "https://api.github.com/repos/vitejs/vite",
+   "https://api.github.com/search/issues?q=repo%3Avitejs/vite%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "App shells",
+  "name": "Astro",
+  "repo": "withastro/astro",
+  "repo_url": "https://github.com/withastro/astro",
+  "license_spdx_github_api": "NOASSERTION",
+  "license_spdx": "MIT",
+  "license_notes": "LICENSE: MIT (c) 2021 Fred K. Schott, followed by additional MIT notices for parts of packages/create-astro and packages/astro originating from sveltejs/kit and vitejs/vite - the multi-notice file is why GitHub API reports NOASSERTION.",
+  "language": "TypeScript",
+  "stars": 62603,
+  "forks": 3791,
+  "open_issues": 86,
+  "pushed_at": "2026-09-16T02:20:38Z",
+  "created_at": "2021-03-15T17:19:47Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "The web framework for content-driven websites. ⭐️ Star to support our work!",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 19,
+  "arabic_issue_samples": [
+   {
+    "title": " Blog tags & search, reading time utility & UI redesign — header, dark mode",
+    "state": "closed",
+    "html_url": "https://github.com/withastro/astro/pull/15013",
+    "created_at": "2025-12-13T17:28:41Z",
+    "type": "pr"
+   },
+   {
+    "title": "feat(fonts): jsdocs",
+    "state": "closed",
+    "html_url": "https://github.com/withastro/astro/pull/13600",
+    "created_at": "2025-04-10T16:51:16Z",
+    "type": "pr"
+   },
+   {
+    "title": "html tag attributes getting replaced in layout file - contrary to what docs say",
+    "state": "closed",
+    "html_url": "https://github.com/withastro/astro/issues/12846",
+    "created_at": "2024-12-28T21:40:46Z",
+    "type": "issue"
+   },
+   {
+    "title": "Static generated pages from MDX files includes `.mdx` in rendered page url",
+    "state": "closed",
+    "html_url": "https://github.com/withastro/astro/issues/14070",
+    "created_at": "2025-07-13T02:01:24Z",
+    "type": "issue"
+   },
+   {
+    "title": "Vercel rewrites not working",
+    "state": "closed",
+    "html_url": "https://github.com/withastro/astro/issues/6446",
+    "created_at": "2023-03-07T14:05:15Z",
+    "type": "issue"
+   }
+  ],
+  "arabic_issue_query": "repo:withastro/astro arabic OR rtl OR bidi",
+  "wasm_viability": "Web framework; not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:25Z",
+  "sources": [
+   "https://api.github.com/repos/withastro/astro",
+   "https://raw.githubusercontent.com/withastro/astro/main/LICENSE",
+   "https://api.github.com/search/issues?q=repo%3Awithastro/astro%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "App shells",
+  "name": "Next.js",
+  "repo": "vercel/next.js",
+  "repo_url": "https://github.com/vercel/next.js",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "GitHub API license.spdx_id (MIT License)",
+  "language": "JavaScript",
+  "stars": 142332,
+  "forks": 32040,
+  "open_issues": 3356,
+  "pushed_at": "2026-09-16T03:24:46Z",
+  "created_at": "2016-10-05T23:32:51Z",
+  "archived": false,
+  "default_branch": "canary",
+  "description": "The React Framework",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 93,
+  "arabic_issue_samples": [
+   {
+    "title": "Fix RTL (Arabic/Hebrew) text rendering in OG image generation",
+    "state": "open",
+    "html_url": "https://github.com/vercel/next.js/pull/92111",
+    "created_at": "2026-03-30T17:24:22Z",
+    "type": "pr"
+   },
+   {
+    "title": "next/image fails with an Arabic phrase",
+    "state": "open",
+    "html_url": "https://github.com/vercel/next.js/issues/74897",
+    "created_at": "2025-01-15T02:06:15Z",
+    "type": "issue"
+   },
+   {
+    "title": "ViewTransition not working in rtl app",
+    "state": "open",
+    "html_url": "https://github.com/vercel/next.js/issues/87773",
+    "created_at": "2025-12-24T22:45:09Z",
+    "type": "issue"
+   },
+   {
+    "title": "Turbopack ignores custom Emotion cache during SSR when using @mui/material-nextjs (Pages Router)",
+    "state": "open",
+    "html_url": "https://github.com/vercel/next.js/issues/95834",
+    "created_at": "2026-07-15T21:15:46Z",
+    "type": "issue"
+   },
+   {
+    "title": "feat(next/font): Add font format fallback and declarations per font path",
+    "state": "open",
+    "html_url": "https://github.com/vercel/next.js/pull/69900",
+    "created_at": "2024-09-10T02:36:09Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:vercel/next.js arabic OR rtl OR bidi",
+  "wasm_viability": "Web framework; not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:26Z",
+  "sources": [
+   "https://api.github.com/repos/vercel/next.js",
+   "https://api.github.com/search/issues?q=repo%3Avercel/next.js%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "UI assets",
+  "name": "Fluent UI System Icons",
+  "repo": "microsoft/fluentui-system-icons",
+  "repo_url": "https://github.com/microsoft/fluentui-system-icons",
+  "license_spdx_github_api": "MIT",
+  "license_spdx": "MIT",
+  "license_notes": "LICENSE: MIT.",
+  "language": "HTML",
+  "stars": 10838,
+  "forks": 808,
+  "open_issues": 211,
+  "pushed_at": "2026-09-11T22:56:40Z",
+  "created_at": "2020-05-12T21:05:57Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Fluent System Icons are a collection of familiar, friendly and modern icons from Microsoft.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 71,
+  "arabic_issue_samples": [
+   {
+    "title": "Is the direction of regular icon of \"Text Number List\" wrong?",
+    "state": "open",
+    "html_url": "https://github.com/microsoft/fluentui-system-icons/issues/671",
+    "created_at": "2023-11-07T06:35:36Z",
+    "type": "issue"
+   },
+   {
+    "title": "[Feature](assets): Icon Request: Arrow Import RTL",
+    "state": "open",
+    "html_url": "https://github.com/microsoft/fluentui-system-icons/issues/990",
+    "created_at": "2026-02-24T07:25:33Z",
+    "type": "issue"
+   },
+   {
+    "title": "toggle_right_24_regular directionality flutter (LTR/RTL)",
+    "state": "open",
+    "html_url": "https://github.com/microsoft/fluentui-system-icons/issues/368",
+    "created_at": "2021-11-27T19:48:12Z",
+    "type": "issue"
+   },
+   {
+    "title": "Feature: Support auto-mirroring React icons ",
+    "state": "open",
+    "html_url": "https://github.com/microsoft/fluentui-system-icons/issues/553",
+    "created_at": "2023-03-06T19:39:11Z",
+    "type": "issue"
+   },
+   {
+    "title": "feat(react-icons): add new and updated icons",
+    "state": "closed",
+    "html_url": "https://github.com/microsoft/fluentui-system-icons/pull/1245",
+    "created_at": "2026-09-11T17:40:48Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:microsoft/fluentui-system-icons arabic OR rtl OR bidi",
+  "wasm_viability": "Icon assets; not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:26Z",
+  "sources": [
+   "https://api.github.com/repos/microsoft/fluentui-system-icons",
+   "https://raw.githubusercontent.com/microsoft/fluentui-system-icons/HEAD/LICENSE",
+   "https://api.github.com/search/issues?q=repo%3Amicrosoft/fluentui-system-icons%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "UI assets",
+  "name": "Lucide",
+  "repo": "lucide-icons/lucide",
+  "repo_url": "https://github.com/lucide-icons/lucide",
+  "license_spdx_github_api": "NOASSERTION",
+  "license_spdx": "ISC",
+  "license_notes": "LICENSE: ISC (c) 2026 Lucide Icons and Contributors; the icons derived from Feather (listed in LICENSE) are MIT (c) 2013-present Cole Bemis.",
+  "language": "TypeScript",
+  "stars": 24534,
+  "forks": 1572,
+  "open_issues": 466,
+  "pushed_at": "2026-09-14T19:04:52Z",
+  "created_at": "2020-06-08T15:36:21Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Beautiful & consistent icon toolkit made by the community. Open-source project and a fork of Feather Icons.",
+  "has_issues_enabled": true,
+  "is_fork": false,
+  "arabic_issue_count": 6,
+  "arabic_issue_samples": [
+   {
+    "title": "chore(deps-dev): bump the svelte-deps group with 3 updates",
+    "state": "closed",
+    "html_url": "https://github.com/lucide-icons/lucide/pull/4671",
+    "created_at": "2026-08-06T10:28:23Z",
+    "type": "pr"
+   },
+   {
+    "title": "chore(deps-dev): bump the svelte group in /packages/svelte with 5 updates",
+    "state": "closed",
+    "html_url": "https://github.com/lucide-icons/lucide/pull/4657",
+    "created_at": "2026-08-06T08:07:42Z",
+    "type": "pr"
+   },
+   {
+    "title": "feat: added `pilcrow-left` icon",
+    "state": "closed",
+    "html_url": "https://github.com/lucide-icons/lucide/pull/1667",
+    "created_at": "2023-11-06T23:49:47Z",
+    "type": "pr"
+   },
+   {
+    "title": "feat: added `pilcrow-right` icon",
+    "state": "closed",
+    "html_url": "https://github.com/lucide-icons/lucide/pull/1668",
+    "created_at": "2023-11-07T00:16:47Z",
+    "type": "pr"
+   },
+   {
+    "title": "fix(icons): add table-of-contents icon",
+    "state": "closed",
+    "html_url": "https://github.com/lucide-icons/lucide/pull/2348",
+    "created_at": "2024-07-31T13:31:33Z",
+    "type": "pr"
+   }
+  ],
+  "arabic_issue_query": "repo:lucide-icons/lucide arabic OR rtl OR bidi",
+  "wasm_viability": "Icon assets; not applicable.",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:47:27Z",
+  "sources": [
+   "https://api.github.com/repos/lucide-icons/lucide",
+   "https://raw.githubusercontent.com/lucide-icons/lucide/HEAD/LICENSE",
+   "https://api.github.com/search/issues?q=repo%3Alucide-icons/lucide%20arabic%20OR%20rtl%20OR%20bidi&per_page=5"
+  ]
+ },
+ {
+  "layer": "UI assets",
+  "name": "Google Fonts: Cairo",
+  "repo": "google/fonts (ofl/cairo)",
+  "license_spdx": "OFL-1.1",
+  "license_notes": "METADATA.pb line: license: \"OFL\" (Google Fonts 'OFL' = SIL Open Font License 1.1 directory)",
+  "language": "font",
+  "stars": null,
+  "forks": null,
+  "open_issues": null,
+  "pushed_at": null,
+  "created_at": null,
+  "archived": false,
+  "default_branch": "main",
+  "description": "designer: Mohamed Gaber, Accademia di Belle Arti di Urbino",
+  "arabic_issue_count": null,
+  "arabic_issue_samples": [],
+  "wasm_viability": "not applicable (font files)",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:29:21Z",
+  "sources": [
+   "https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/METADATA.pb"
+  ]
+ },
+ {
+  "layer": "UI assets",
+  "name": "Google Fonts: Amiri",
+  "repo": "google/fonts (ofl/amiri)",
+  "license_spdx": "OFL-1.1",
+  "license_notes": "METADATA.pb line: license: \"OFL\" (Google Fonts 'OFL' = SIL Open Font License 1.1 directory)",
+  "language": "font",
+  "stars": null,
+  "forks": null,
+  "open_issues": null,
+  "pushed_at": null,
+  "created_at": null,
+  "archived": false,
+  "default_branch": "main",
+  "description": "designer: Khaled Hosny, Sebastian Kosch",
+  "arabic_issue_count": null,
+  "arabic_issue_samples": [],
+  "wasm_viability": "not applicable (font files)",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:29:21Z",
+  "sources": [
+   "https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/METADATA.pb"
+  ]
+ },
+ {
+  "layer": "UI assets",
+  "name": "Google Fonts: Noto Naskh Arabic",
+  "repo": "google/fonts (ofl/notonaskharabic)",
+  "license_spdx": "OFL-1.1",
+  "license_notes": "METADATA.pb line: license: \"OFL\" (Google Fonts 'OFL' = SIL Open Font License 1.1 directory)",
+  "language": "font",
+  "stars": null,
+  "forks": null,
+  "open_issues": null,
+  "pushed_at": null,
+  "created_at": null,
+  "archived": false,
+  "default_branch": "main",
+  "description": "designer: Google",
+  "arabic_issue_count": null,
+  "arabic_issue_samples": [],
+  "wasm_viability": "not applicable (font files)",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:29:22Z",
+  "sources": [
+   "https://raw.githubusercontent.com/google/fonts/main/ofl/notonaskharabic/METADATA.pb"
+  ]
+ },
+ {
+  "layer": "UI assets",
+  "name": "Google Fonts: Tajawal",
+  "repo": "google/fonts (ofl/tajawal)",
+  "license_spdx": "OFL-1.1",
+  "license_notes": "METADATA.pb line: license: \"OFL\" (Google Fonts 'OFL' = SIL Open Font License 1.1 directory)",
+  "language": "font",
+  "stars": null,
+  "forks": null,
+  "open_issues": null,
+  "pushed_at": null,
+  "created_at": null,
+  "archived": false,
+  "default_branch": "main",
+  "description": "designer: Boutros Fonts, Mourad Boutros, Soulaf Khalifeh",
+  "arabic_issue_count": null,
+  "arabic_issue_samples": [],
+  "wasm_viability": "not applicable (font files)",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:29:23Z",
+  "sources": [
+   "https://raw.githubusercontent.com/google/fonts/main/ofl/tajawal/METADATA.pb"
+  ]
+ },
+ {
+  "layer": "UI assets",
+  "name": "Google Fonts: IBM Plex Sans Arabic",
+  "repo": "google/fonts (ofl/ibmplexsansarabic)",
+  "license_spdx": "OFL-1.1",
+  "license_notes": "METADATA.pb line: license: \"OFL\" (Google Fonts 'OFL' = SIL Open Font License 1.1 directory)",
+  "language": "font",
+  "stars": null,
+  "forks": null,
+  "open_issues": null,
+  "pushed_at": null,
+  "created_at": null,
+  "archived": false,
+  "default_branch": "main",
+  "description": "designer: Mike Abbink, Bold Monday, Khajag Apelian, Wael Morcos",
+  "arabic_issue_count": null,
+  "arabic_issue_samples": [],
+  "wasm_viability": "not applicable (font files)",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:29:24Z",
+  "sources": [
+   "https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexsansarabic/METADATA.pb"
+  ]
+ },
+ {
+  "layer": "Search: 'pdf editor arabic' (top 5 by stars)",
+  "name": "Hyp4tia/Osh",
+  "repo": "Hyp4tia/Osh",
+  "repo_url": "https://github.com/Hyp4tia/Osh",
+  "license_spdx": "GPL-3.0",
+  "license_notes": "from search/repositories result (license.spdx_id); not cross-checked",
+  "language": "Swift",
+  "stars": 3,
+  "forks": 0,
+  "open_issues": 0,
+  "pushed_at": "2026-09-03T12:33:44Z",
+  "created_at": "2026-08-22T15:22:29Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Osh (ⲱϣ) - Fast, native macOS QuickLook, reader & editor for Markdown, Typst & AI .skill files. Mermaid, KaTeX, offline PDF/Office-to-MD conversion, RTL (Arabic & Hebrew) & multi-format export. Free & open source.",
+  "arabic_issue_count": null,
+  "arabic_issue_samples": [],
+  "arabic_issue_note": "not searched (search budget)",
+  "wasm_viability": "unknown",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:38:27Z",
+  "sources": [
+   "https://api.github.com/search/repositories?q=pdf%20editor%20arabic&sort=stars&order=desc&per_page=5"
+  ]
+ },
+ {
+  "layer": "Search: 'pdf editor arabic' (top 5 by stars)",
+  "name": "ohaigoune-debug/nova-pdf-studio",
+  "repo": "ohaigoune-debug/nova-pdf-studio",
+  "repo_url": "https://github.com/ohaigoune-debug/nova-pdf-studio",
+  "license_spdx": "MIT",
+  "license_notes": "from search/repositories result (license.spdx_id); not cross-checked",
+  "language": "TypeScript",
+  "stars": 1,
+  "forks": 0,
+  "open_issues": 0,
+  "pushed_at": "2026-09-06T07:42:23Z",
+  "created_at": "2026-09-06T07:32:50Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Nova PDF – PDF Editor & Invoice Maker. Local-first, offline OCR, smart invoices, spreadsheet studio, 14 languages.",
+  "arabic_issue_count": null,
+  "arabic_issue_samples": [],
+  "arabic_issue_note": "not searched (search budget)",
+  "wasm_viability": "unknown",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:38:27Z",
+  "sources": [
+   "https://api.github.com/search/repositories?q=pdf%20editor%20arabic&sort=stars&order=desc&per_page=5"
+  ]
+ },
+ {
+  "layer": "Search: 'pdf editor arabic' (top 5 by stars)",
+  "name": "atom-tech9/scripto",
+  "repo": "atom-tech9/scripto",
+  "repo_url": "https://github.com/atom-tech9/scripto",
+  "license_spdx": "MIT",
+  "license_notes": "from search/repositories result (license.spdx_id); not cross-checked",
+  "language": "TypeScript",
+  "stars": 1,
+  "forks": 0,
+  "open_issues": 0,
+  "pushed_at": "2026-09-04T09:34:40Z",
+  "created_at": "2026-07-05T09:36:24Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Scripto — a fast, private, 100% client-side Markdown editor with pixel-perfect paginated PDF export. Offline PWA, RTL/Arabic, 20+ themes.",
+  "arabic_issue_count": null,
+  "arabic_issue_samples": [],
+  "arabic_issue_note": "not searched (search budget)",
+  "wasm_viability": "unknown",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:38:27Z",
+  "sources": [
+   "https://api.github.com/search/repositories?q=pdf%20editor%20arabic&sort=stars&order=desc&per_page=5"
+  ]
+ },
+ {
+  "layer": "Search: 'pdf editor arabic' (top 5 by stars)",
+  "name": "RaqmiShop1/ArabicPdfEditor",
+  "repo": "RaqmiShop1/ArabicPdfEditor",
+  "repo_url": "https://github.com/RaqmiShop1/ArabicPdfEditor",
+  "license_spdx": "none detected",
+  "license_notes": "from search/repositories result (license.spdx_id); not cross-checked",
+  "language": null,
+  "stars": 0,
+  "forks": 0,
+  "open_issues": 0,
+  "pushed_at": "2026-08-25T15:52:42Z",
+  "created_at": "2026-08-25T15:49:17Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": null,
+  "arabic_issue_count": null,
+  "arabic_issue_samples": [],
+  "arabic_issue_note": "not searched (search budget)",
+  "wasm_viability": "unknown",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:38:27Z",
+  "sources": [
+   "https://api.github.com/search/repositories?q=pdf%20editor%20arabic&sort=stars&order=desc&per_page=5"
+  ]
+ },
+ {
+  "layer": "Search: 'pdf editor arabic' (top 5 by stars)",
+  "name": "emrecanuzum/arabic-pdf-editor",
+  "repo": "emrecanuzum/arabic-pdf-editor",
+  "repo_url": "https://github.com/emrecanuzum/arabic-pdf-editor",
+  "license_spdx": "none detected",
+  "license_notes": "from search/repositories result (license.spdx_id); not cross-checked",
+  "language": "Python",
+  "stars": 0,
+  "forks": 0,
+  "open_issues": 0,
+  "pushed_at": "2025-12-07T23:06:39Z",
+  "created_at": "2025-12-06T21:04:15Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": null,
+  "arabic_issue_count": null,
+  "arabic_issue_samples": [],
+  "arabic_issue_note": "not searched (search budget)",
+  "wasm_viability": "unknown",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:38:27Z",
+  "sources": [
+   "https://api.github.com/search/repositories?q=pdf%20editor%20arabic&sort=stars&order=desc&per_page=5"
+  ]
+ },
+ {
+  "layer": "Search: 'rtl pdf' (top 5 by stars)",
+  "name": "omaralalwi/Gpdf",
+  "repo": "omaralalwi/Gpdf",
+  "repo_url": "https://github.com/omaralalwi/Gpdf",
+  "license_spdx": "MIT",
+  "license_notes": "from search/repositories result (license.spdx_id); not cross-checked",
+  "language": "PHP",
+  "stars": 157,
+  "forks": 16,
+  "open_issues": 1,
+  "pushed_at": "2026-08-27T22:51:00Z",
+  "created_at": "2024-05-26T16:54:12Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Gpdf: PHP PDF Generator - HTML to PDF Converter for Laravel & PHP with native Arabic/RTL support, with built-in 17 fonts, and S3 storage. Extends DomPDF to fix Arabic limitations and add advanced features for documents, invoices, and reports. ",
+  "arabic_issue_count": null,
+  "arabic_issue_samples": [],
+  "arabic_issue_note": "not searched (search budget)",
+  "wasm_viability": "unknown",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:38:36Z",
+  "sources": [
+   "https://api.github.com/search/repositories?q=rtl%20pdf&sort=stars&order=desc&per_page=5"
+  ]
+ },
+ {
+  "layer": "Search: 'rtl pdf' (top 5 by stars)",
+  "name": "wmahfoudh/oryx",
+  "repo": "wmahfoudh/oryx",
+  "repo_url": "https://github.com/wmahfoudh/oryx",
+  "license_spdx": "GPL-3.0",
+  "license_notes": "from search/repositories result (license.spdx_id); not cross-checked",
+  "language": "Rust",
+  "stars": 105,
+  "forks": 5,
+  "open_issues": 2,
+  "pushed_at": "2026-09-08T21:17:50Z",
+  "created_at": "2026-07-27T20:30:17Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "A fast, native and beautiful desktop viewer & editor for markdown and code with PDF export and eBooks rendering.",
+  "arabic_issue_count": null,
+  "arabic_issue_samples": [],
+  "arabic_issue_note": "not searched (search budget)",
+  "wasm_viability": "unknown",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:38:36Z",
+  "sources": [
+   "https://api.github.com/search/repositories?q=rtl%20pdf&sort=stars&order=desc&per_page=5"
+  ]
+ },
+ {
+  "layer": "Search: 'rtl pdf' (top 5 by stars)",
+  "name": "iyulab/unpdf",
+  "repo": "iyulab/unpdf",
+  "repo_url": "https://github.com/iyulab/unpdf",
+  "license_spdx": "MIT",
+  "license_notes": "from search/repositories result (license.spdx_id); not cross-checked",
+  "language": "Rust",
+  "stars": 55,
+  "forks": 5,
+  "open_issues": 0,
+  "pushed_at": "2026-09-11T06:47:30Z",
+  "created_at": "2026-01-27T11:14:14Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "High-performance Rust PDF extraction library with Markdown/JSON output, CJK/RTL support, multi-column layout detection, and Python/.NET/CLI bindings.",
+  "arabic_issue_count": null,
+  "arabic_issue_samples": [],
+  "arabic_issue_note": "not searched (search budget)",
+  "wasm_viability": "unknown",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:38:36Z",
+  "sources": [
+   "https://api.github.com/search/repositories?q=rtl%20pdf&sort=stars&order=desc&per_page=5"
+  ]
+ },
+ {
+  "layer": "Search: 'rtl pdf' (top 5 by stars)",
+  "name": "isArman/scientific-fa-translation-skill",
+  "repo": "isArman/scientific-fa-translation-skill",
+  "repo_url": "https://github.com/isArman/scientific-fa-translation-skill",
+  "license_spdx": "MIT",
+  "license_notes": "from search/repositories result (license.spdx_id); not cross-checked",
+  "language": "Python",
+  "stars": 40,
+  "forks": 2,
+  "open_issues": 1,
+  "pushed_at": "2026-09-14T21:14:11Z",
+  "created_at": "2026-08-19T06:28:30Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Cursor skill: academic English → scientific Persian. Print-ready RTL PDFs (XeLaTeX). Linux/macOS.",
+  "arabic_issue_count": null,
+  "arabic_issue_samples": [],
+  "arabic_issue_note": "not searched (search budget)",
+  "wasm_viability": "unknown",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:38:36Z",
+  "sources": [
+   "https://api.github.com/search/repositories?q=rtl%20pdf&sort=stars&order=desc&per_page=5"
+  ]
+ },
+ {
+  "layer": "Search: 'rtl pdf' (top 5 by stars)",
+  "name": "Ho3seinTork/Persian-Text-to-PDF-Converter",
+  "repo": "Ho3seinTork/Persian-Text-to-PDF-Converter",
+  "repo_url": "https://github.com/Ho3seinTork/Persian-Text-to-PDF-Converter",
+  "license_spdx": "MIT",
+  "license_notes": "from search/repositories result (license.spdx_id); not cross-checked",
+  "language": "HTML",
+  "stars": 39,
+  "forks": 10,
+  "open_issues": 2,
+  "pushed_at": "2025-12-08T13:25:18Z",
+  "created_at": "2025-04-19T14:54:35Z",
+  "archived": false,
+  "default_branch": "main",
+  "description": "Convert Persian text to PDF right in your browser. Features: RTL support, auto-removal of */# markers (common in LLM outputs), custom Persian font selection (Vazir, Kalameh), and live preview. Uses jsPDF + html2canvas.",
+  "arabic_issue_count": null,
+  "arabic_issue_samples": [],
+  "arabic_issue_note": "not searched (search budget)",
+  "wasm_viability": "unknown",
+  "bundle_size_notes": "not measured",
+  "verified_at": "2026-09-16T03:38:36Z",
+  "sources": [
+   "https://api.github.com/search/repositories?q=rtl%20pdf&sort=stars&order=desc&per_page=5"
+  ]
+ }
+]

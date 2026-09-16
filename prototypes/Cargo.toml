@@ -1,0 +1,8 @@
+# Phase 0 prototypes. Separate workspace on purpose: these crates exist to
+# measure candidates on the Arabic corpus and are NOT part of the product.
+[workspace]
+resolver = "2"
+members = ["proto-hayro", "proto-pdfium", "proto-text"]
+
+[profile.release]
+debug = 1
