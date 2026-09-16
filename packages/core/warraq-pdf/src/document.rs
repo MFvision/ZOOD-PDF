@@ -1,0 +1,216 @@
+//! Document handle over `lopdf`. The original bytes are kept untouched.
+use crate::{Error, Result};
+use lopdf::{Document, Object, ObjectId};
+
+pub struct PdfDocument {
+    pub(crate) doc: Document,
+    original: Vec<u8>,
+    pages: Vec<ObjectId>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Metadata {
+    pub title: Option<String>,
+    pub author: Option<String>,
+    pub producer: Option<String>,
+    pub creator: Option<String>,
+    pub pages: usize,
+    pub encrypted: bool,
+}
+
+/// Decode a PDF text string (UTF-16BE with BOM, UTF-8 BOM, or PDFDocEncoding≈Latin-1).
+pub fn decode_text_string(bytes: &[u8]) -> String {
+    if bytes.starts_with(&[0xFE, 0xFF]) {
+        let u: Vec<u16> = bytes[2..]
+            .chunks(2)
+            .map(|c| u16::from_be_bytes([c[0], *c.get(1).unwrap_or(&0)]))
+            .collect();
+        String::from_utf16_lossy(&u)
+    } else if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
+        String::from_utf8_lossy(&bytes[3..]).into_owned()
+    } else {
+        bytes.iter().map(|b| *b as char).collect()
+    }
+}
+
+impl PdfDocument {
+    pub fn open(bytes: Vec<u8>, password: Option<&str>) -> Result<Self> {
+        let mut doc = Document::load_mem(&bytes).map_err(|e| Error::Parse(e.to_string()))?;
+        let encrypted = doc.is_encrypted();
+        if encrypted {
+            // lopdf 0.45 cannot decrypt AES-256 (R6) files and drops their objects; the standard
+            // security handler is implemented in Phase 2 (see STATUS). Until then: E_PASSWORD.
+            doc.decrypt(password.unwrap_or(""))
+                .map_err(|_| Error::Password)?;
+            if doc.get_pages().is_empty() {
+                return Err(Error::Password);
+            }
+        }
+        let pages: Vec<ObjectId> = doc.get_pages().into_values().collect();
+        Ok(Self {
+            doc,
+            original: bytes,
+            pages,
+        })
+    }
+
+    pub fn original_bytes(&self) -> &[u8] {
+        &self.original
+    }
+
+    pub fn page_count(&self) -> usize {
+        self.pages.len()
+    }
+
+    pub fn page_id(&self, index: usize) -> Result<ObjectId> {
+        self.pages.get(index).copied().ok_or(Error::Page(index))
+    }
+
+    fn inherited<'a>(&'a self, mut dict: &'a lopdf::Dictionary, key: &[u8]) -> Option<&'a Object> {
+        loop {
+            if let Ok(v) = dict.get(key) {
+                return Some(v);
+            }
+            let parent = dict.get(b"Parent").ok()?.as_reference().ok()?;
+            dict = self.doc.get_dictionary(parent).ok()?;
+        }
+    }
+
+    fn rect(&self, obj: Option<&Object>) -> Option<[f32; 4]> {
+        let arr = match obj? {
+            Object::Reference(id) => self.doc.get_object(*id).ok()?.as_array().ok()?.clone(),
+            o => o.as_array().ok()?.clone(),
+        };
+        if arr.len() != 4 {
+            return None;
+        }
+        let mut r = [0f32; 4];
+        for (i, v) in arr.iter().enumerate() {
+            r[i] = match v {
+                Object::Integer(n) => *n as f32,
+                Object::Real(f) => *f,
+                _ => return None,
+            };
+        }
+        Some([
+            r[0].min(r[2]),
+            r[1].min(r[3]),
+            r[0].max(r[2]),
+            r[1].max(r[3]),
+        ])
+    }
+
+    /// Page size in points after /Rotate, from the CropBox intersected with the MediaBox.
+    pub fn page_size(&self, index: usize) -> Result<(f32, f32)> {
+        let id = self.page_id(index)?;
+        let dict = self
+            .doc
+            .get_dictionary(id)
+            .map_err(|e| Error::Parse(e.to_string()))?;
+        let media = self
+            .rect(self.inherited(dict, b"MediaBox"))
+            .unwrap_or([0.0, 0.0, 612.0, 792.0]);
+        let crop = self.rect(self.inherited(dict, b"CropBox")).unwrap_or(media);
+        let x0 = crop[0].max(media[0]);
+        let y0 = crop[1].max(media[1]);
+        let x1 = crop[2].min(media[2]);
+        let y1 = crop[3].min(media[3]);
+        let (w, h) = ((x1 - x0).max(1.0), (y1 - y0).max(1.0));
+        let rotate = match self.inherited(dict, b"Rotate") {
+            Some(Object::Integer(r)) => ((*r % 360) + 360) % 360,
+            _ => 0,
+        };
+        Ok(if rotate == 90 || rotate == 270 {
+            (h, w)
+        } else {
+            (w, h)
+        })
+    }
+
+    pub fn metadata(&self) -> Metadata {
+        let mut m = Metadata {
+            pages: self.page_count(),
+            encrypted: self.doc.is_encrypted(),
+            ..Default::default()
+        };
+        if let Ok(info) = self
+            .doc
+            .trailer
+            .get(b"Info")
+            .and_then(|o| o.as_reference())
+            .and_then(|id| self.doc.get_dictionary(id))
+        {
+            let get = |k: &[u8]| {
+                info.get(k)
+                    .ok()
+                    .and_then(|o| o.as_str().ok())
+                    .map(decode_text_string)
+            };
+            m.title = get(b"Title");
+            m.author = get(b"Author");
+            m.producer = get(b"Producer");
+            m.creator = get(b"Creator");
+        }
+        m
+    }
+
+    /// Full rewrite of the document (incremental updates come with the edit log in Phase 2).
+    pub fn save_to_vec(&mut self) -> Result<Vec<u8>> {
+        let mut out = Vec::with_capacity(self.original.len() + 4096);
+        self.doc
+            .save_to(&mut out)
+            .map_err(|e| Error::Io(e.to_string()))?;
+        Ok(out)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn corpus(name: &str) -> Vec<u8> {
+        std::fs::read(format!(
+            "{}/../../../tests/corpus/arabic/generated/{name}",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap()
+    }
+
+    #[test]
+    fn opens_pages_sizes_and_metadata_of_corpus_files() {
+        let d = PdfDocument::open(corpus("chrome-notonaskh-justified-3pages.pdf"), None).unwrap();
+        assert_eq!(d.page_count(), 3);
+        let (w, h) = d.page_size(0).unwrap();
+        assert!(
+            (w - 595.0).abs() < 1.5 && (h - 842.0).abs() < 1.5,
+            "A4 expected, got {w}x{h}"
+        );
+        assert_eq!(
+            d.page_size(5).err().map(|e| e.to_string()),
+            Some("E_PAGE: page index 5 out of range".into())
+        );
+        let m = PdfDocument::open(corpus("variant-arabic-metadata-outlines-annots.pdf"), None)
+            .unwrap()
+            .metadata();
+        assert_eq!(m.title.as_deref(), Some("دليل وراق: النسخة التجريبية"));
+        assert_eq!(m.author.as_deref(), Some("فريق وراق"));
+    }
+
+    #[test]
+    #[ignore = "AES-256 (R6) decryption is a Phase 2 deliverable; lopdf 0.45 drops the objects of this file"]
+    fn encrypted_file_needs_the_password() {
+        assert!(matches!(
+            PdfDocument::open(corpus("variant-encrypted-aes256.pdf"), None),
+            Err(Error::Password)
+        ));
+        let d = PdfDocument::open(corpus("variant-encrypted-aes256.pdf"), Some("warraq")).unwrap();
+        assert_eq!(d.page_count(), 3);
+    }
+
+    #[test]
+    fn perf_500_pages_opens_fast() {
+        let t = std::time::Instant::now();
+        let d = PdfDocument::open(corpus("perf-text-500-pages.pdf"), None).unwrap();
+        assert_eq!(d.page_count(), 500);
+        assert!(t.elapsed().as_millis() < 1000, "took {:?}", t.elapsed());
+    }
+}

@@ -1,0 +1,37 @@
+# Warraq core: one Rust workspace compiled natively (desktop, mobile) and to
+# wasm32 (browser extension, web). No feature may exist in only one build.
+[workspace]
+resolver = "2"
+members = ["warraq-text", "warraq-pdf", "warraq-render", "warraq-core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/ORG/warraq"
+
+[workspace.dependencies]
+harfrust = "0.13"
+skrifa = "0.47"
+unicode-bidi = "0.3"
+unicode-normalization = "0.1"
+unicode-script = "0.5"
+subsetter = "0.2"
+pdf-writer = "0.15"
+lopdf = { version = "0.45", default-features = false }
+hayro = "0.7"
+hayro-interpret = "0.7"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.release.package."*"]
+opt-level = 3

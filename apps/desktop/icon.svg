@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Warraq app icon (original artwork, Apache-2.0).
+     A page whose corner folds on the LEFT (the RTL side) and a reed-pen stroke
+     that starts thick on the right and tapers to a point on the left: the
+     direction Arabic is written. The dot above the stroke is a nuqta. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1f7a80"/>
+      <stop offset="1" stop-color="#0a2f3a"/>
+    </linearGradient>
+    <linearGradient id="ink" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#f4b942"/>
+      <stop offset="1" stop-color="#d97b1f"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
+  <!-- page shadow -->
+  <path d="M306 186 H768 a44 44 0 0 1 44 44 V806 a44 44 0 0 1 -44 44 H256 a44 44 0 0 1 -44 -44 V280 Z" fill="#000" opacity="0.22" transform="translate(0 16)"/>
+  <!-- page -->
+  <path d="M306 186 H768 a44 44 0 0 1 44 44 V806 a44 44 0 0 1 -44 44 H256 a44 44 0 0 1 -44 -44 V280 Z" fill="#fbf7ee"/>
+  <!-- folded corner, top-left -->
+  <path d="M306 186 V246 a34 34 0 0 1 -34 34 H212 Z" fill="#e6dcc6"/>
+  <!-- text lines, aligned to the right edge -->
+  <rect x="436" y="332" width="292" height="28" rx="14" fill="#1f7a80" opacity="0.32"/>
+  <rect x="372" y="400" width="356" height="28" rx="14" fill="#1f7a80" opacity="0.32"/>
+  <rect x="486" y="468" width="242" height="28" rx="14" fill="#1f7a80" opacity="0.32"/>
+  <!-- the stroke: thick head on the right, tapering tip on the left -->
+  <path d="M742 640 C 690 590, 590 588, 500 616 C 430 638, 340 654, 244 662 C 340 676, 440 694, 520 690 C 620 686, 700 700, 742 704 A 32 32 0 0 0 742 640 Z" fill="url(#ink)"/>
+  <!-- nuqta -->
+  <circle cx="318" cy="596" r="18" fill="#f4b942"/>
+</svg>

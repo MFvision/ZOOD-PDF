@@ -1,0 +1,91 @@
+/* Design tokens. Light is the default; dark follows the OS unless overridden by data-theme. */
+:root {
+  color-scheme: light dark;
+
+  --font-latin: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-arabic: "Cairo", "Inter", "Segoe UI", "Noto Naskh Arabic", system-ui, sans-serif;
+  --bg-app: #f4f5f7;
+  --bg-panel: #fff;
+  --bg-canvas: #dfe3e8;
+  --bg-hover: #e9ecef;
+  --bg-active: #dde1e6;
+  --bg-elevated: #fff;
+  --fg: #1a1d21;
+  --fg-muted: #5f6772;
+  --border: #d5d9de;
+  --border-strong: #b8bec6;
+  --accent: #0e7c72;
+  --accent-fg: #fff;
+  --accent-soft: rgb(14 124 114 / 12%);
+  --warning-bg: #fff3c4;
+  --warning-fg: #6b4e00;
+  --warning-border: #e8b500;
+  --danger: #b42318;
+  --danger-bg: #fee4e2;
+  --focus: #2563eb;
+  --selection: rgb(37 99 235 / 30%);
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 8%);
+  --shadow-2: 0 8px 24px rgb(0 0 0 / 16%);
+  --page-shadow: 0 1px 4px rgb(0 0 0 / 22%);
+  --radius-s: 4px;
+  --radius-m: 8px;
+  --radius-l: 12px;
+  --menubar-h: 34px;
+  --ribbon-h: 46px;
+  --status-h: 28px;
+  --motion: 150ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-app: #14161a;
+    --bg-panel: #1c1f24;
+    --bg-canvas: #0d0e11;
+    --bg-hover: #2a2e35;
+    --bg-active: #343943;
+    --bg-elevated: #23272e;
+    --fg: #e6e8eb;
+    --fg-muted: #9aa3ad;
+    --border: #2f343c;
+    --border-strong: #454b55;
+    --accent: #2fc3b5;
+    --accent-fg: #06201d;
+    --accent-soft: rgb(47 195 181 / 16%);
+    --warning-bg: #4a3a00;
+    --warning-fg: #ffe38a;
+    --warning-border: #c99a00;
+    --danger: #ff8a80;
+    --danger-bg: #4a1d1a;
+    --focus: #7cb0ff;
+    --selection: rgb(124 176 255 / 35%);
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-2: 0 8px 24px rgb(0 0 0 / 55%);
+    --page-shadow: 0 1px 6px rgb(0 0 0 / 70%);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg-app: #14161a;
+  --bg-panel: #1c1f24;
+  --bg-canvas: #0d0e11;
+  --bg-hover: #2a2e35;
+  --bg-active: #343943;
+  --bg-elevated: #23272e;
+  --fg: #e6e8eb;
+  --fg-muted: #9aa3ad;
+  --border: #2f343c;
+  --border-strong: #454b55;
+  --accent: #2fc3b5;
+  --accent-fg: #06201d;
+  --accent-soft: rgb(47 195 181 / 16%);
+  --warning-bg: #4a3a00;
+  --warning-fg: #ffe38a;
+  --warning-border: #c99a00;
+  --danger: #ff8a80;
+  --danger-bg: #4a1d1a;
+  --focus: #7cb0ff;
+  --selection: rgb(124 176 255 / 35%);
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-2: 0 8px 24px rgb(0 0 0 / 55%);
+  --page-shadow: 0 1px 6px rgb(0 0 0 / 70%);
+}

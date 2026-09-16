@@ -1,0 +1,16 @@
+[package]
+name = "warraq-text"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Warraq core: warraq-text"
+
+[dependencies]
+thiserror.workspace = true
+log.workspace = true
+harfrust.workspace = true
+skrifa.workspace = true
+unicode-bidi.workspace = true
+unicode-normalization.workspace = true
+unicode-script.workspace = true

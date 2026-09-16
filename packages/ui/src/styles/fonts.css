@@ -1,0 +1,17 @@
+/* Bundled OFL fonts (see public/fonts/*-OFL.txt). Cairo covers Arabic, Inter covers Latin. */
+@font-face {
+  font-family: Cairo;
+  src: url("../../public/fonts/Cairo-Variable.ttf") format("truetype");
+  font-weight: 200 1000;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
+}
+
+@font-face {
+  font-family: Inter;
+  src: url("../../public/fonts/Inter-Variable.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}

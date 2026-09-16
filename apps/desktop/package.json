@@ -1,0 +1,16 @@
+{
+  "name": "@warraq/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Warraq desktop shell (Tauri 2) for macOS and Windows; hosts the web UI from apps/web/dist and links warraq-core natively.",
+  "type": "module",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "tauri": "tauri",
+    "icons": "tauri icon ./icon.svg -o ./src-tauri/icons"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4"
+  }
+}

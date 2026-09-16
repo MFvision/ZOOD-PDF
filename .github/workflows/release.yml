@@ -1,0 +1,57 @@
+# Tag `vX.Y.Z` -> run the full CI (same artifacts, same gates) and open a
+# DRAFT GitHub release with the extension zip, the web dist and the unsigned
+# desktop bundles attached. Signing/notarization is a TODO (see docs/ci.md).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  release:
+    name: draft release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check that the tag matches the app versions
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          desktop="$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")"
+          extension="$(node -p "require('./apps/extension/manifest.json').version")"
+          echo "tag=$tag desktop=$desktop extension=$extension"
+          if [ "$tag" != "$desktop" ] || [ "$tag" != "$extension" ]; then
+            echo "::error::tag v$tag does not match apps/desktop/src-tauri/tauri.conf.json ($desktop) or apps/extension/manifest.json ($extension)"
+            exit 1
+          fi
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Collect release files
+        run: |
+          set -eux
+          mkdir -p release
+          cp artifacts/warraq-extension/warraq-extension.zip "release/warraq-extension-${GITHUB_REF_NAME}.zip"
+          (cd artifacts/warraq-web && zip -qr "../../release/warraq-web-${GITHUB_REF_NAME}.zip" .)
+          find artifacts -path 'artifacts/warraq-desktop-*' -type f \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' \) -exec cp {} release/ \;
+          cp artifacts/acid-results/results.json "release/acid-results-${GITHUB_REF_NAME}.json"
+          ls -la release
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          name: Warraq ${{ github.ref_name }}
+          body: |
+            Draft release built by CI from `${{ github.sha }}`.
+
+            **Unsigned builds.** The macOS .dmg and Windows installers are not code-signed or notarized yet (Phase 1); Gatekeeper and SmartScreen will warn. See `apps/desktop/README.md` for the signing TODO.
+          files: release/*

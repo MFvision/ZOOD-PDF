@@ -1,0 +1,6 @@
+# Python packages for the corpus job (tests/acid/run_python.py + merge.py).
+# pypdfium2 5.x is the major the results in tests/acid were produced with.
+pypdfium2>=5,<6
+pikepdf>=9
+fonttools>=4.50
+pillow>=10

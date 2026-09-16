@@ -1,0 +1,100 @@
+/* Continuous page canvas, text layer and thumbnails. */
+.viewer {
+  position: relative;
+  flex: 1;
+  min-block-size: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--bg-canvas);
+}
+
+.viewer:focus-visible {
+  outline-offset: -2px;
+}
+
+.viewer-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: safe center;
+  inline-size: max-content;
+  min-inline-size: 100%;
+}
+
+.page {
+  position: relative;
+  flex: 0 0 auto;
+  background: #fff;
+  box-shadow: var(--page-shadow);
+  scroll-margin-block-start: 24px;
+}
+
+.page-canvas {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  user-select: none;
+}
+
+.text-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  line-height: 1;
+  direction: ltr;
+}
+
+.text-layer span {
+  position: absolute;
+  color: transparent;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0 0;
+}
+
+.text-layer span::selection {
+  color: transparent;
+  background: var(--selection);
+}
+
+.thumbs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  block-size: 100%;
+  padding: 12px;
+  margin: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.thumb {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  padding: 6px;
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: var(--radius-m);
+}
+
+.thumb:hover {
+  background: var(--bg-hover);
+}
+
+.thumb[aria-current="page"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.thumb-canvas {
+  display: block;
+  background: #fff;
+  box-shadow: var(--page-shadow);
+}
+
+.thumb-number {
+  font-size: 12px;
+  color: var(--fg-muted);
+}

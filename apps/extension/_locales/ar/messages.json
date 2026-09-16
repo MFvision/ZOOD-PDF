@@ -1,0 +1,18 @@
+{
+  "extDescription": {
+    "message": "محرِّر PDF مفتوح، بلا حساب، يضع العربية أولًا: افتح ملفاتك واقرأها وحرِّرها داخل المتصفح دون إرسالها إلى أي خادم.",
+    "description": "Extension description shown in the browser's extension list and store listing."
+  },
+  "contextMenuOpen": {
+    "message": "فتح باستخدام ورّاق",
+    "description": "Context-menu item that opens the Warraq viewer."
+  },
+  "actionTitle": {
+    "message": "افتح ورّاق",
+    "description": "Tooltip of the toolbar button."
+  },
+  "viewerTitle": {
+    "message": "ورّاق",
+    "description": "Title of the viewer tab."
+  }
+}

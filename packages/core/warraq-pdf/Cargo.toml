@@ -1,0 +1,15 @@
+[package]
+name = "warraq-pdf"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Warraq core: warraq-pdf"
+
+[dependencies]
+thiserror.workspace = true
+log.workspace = true
+lopdf.workspace = true
+pdf-writer.workspace = true
+subsetter.workspace = true
+warraq-text = { path = "../warraq-text" }

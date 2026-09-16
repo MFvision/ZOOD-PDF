@@ -1,0 +1,84 @@
+//! Warraq desktop shell.
+//!
+//! A thin Tauri 2 host around the shared web UI (`@warraq/ui`, served from
+//! `apps/web/dist`). The host only provides what a browser cannot: native file
+//! dialogs, file reads/writes limited to paths the user picked, OS
+//! drag-and-drop, and commands into the natively linked `warraq-core`.
+
+use serde::Serialize;
+use tauri::{AppHandle, DragDropEvent, Emitter, Manager, Runtime, WindowEvent};
+use tauri_plugin_fs::FsExt;
+
+/// Event sent to the webview when files are dropped on the window.
+/// Payload: [`FileDropPayload`]. Every dropped path is added to the fs scope
+/// before the event is emitted, so `read_file_bytes` accepts it afterwards.
+pub const FILE_DROP_EVENT: &str = "warraq://file-drop";
+
+#[derive(Clone, Serialize)]
+pub struct FileDropPayload {
+    pub paths: Vec<String>,
+}
+
+/// Version of the natively linked core, so the UI can show that the desktop
+/// build and the WASM build carry the same `warraq-core`.
+#[tauri::command]
+fn core_version() -> String {
+    warraq_core::version()
+}
+
+/// Reads a whole file and returns its bytes as a raw IPC response (an
+/// `ArrayBuffer` on the JS side; no JSON array of numbers for multi-megabyte
+/// PDFs). Only paths the user chose through the dialog plugin, or dropped on
+/// the window, are in the fs scope; anything else is refused with `E_SCOPE`.
+#[tauri::command]
+fn read_file_bytes<R: Runtime>(
+    app: AppHandle<R>,
+    path: String,
+) -> Result<tauri::ipc::Response, String> {
+    let path = std::path::PathBuf::from(path);
+    if !path.is_absolute() {
+        return Err(format!(
+            "E_SCOPE: path must be absolute: {}",
+            path.display()
+        ));
+    }
+    if !app.fs_scope().is_allowed(&path) {
+        return Err(format!(
+            "E_SCOPE: {} was not chosen through the file dialog or dropped on the window",
+            path.display()
+        ));
+    }
+    std::fs::read(&path)
+        .map(tauri::ipc::Response::new)
+        .map_err(|e| format!("E_IO: {}: {e}", path.display()))
+}
+
+/// Builds and runs the Tauri application.
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
+        .invoke_handler(tauri::generate_handler![core_version, read_file_bytes])
+        .on_window_event(|window, event| {
+            // Forward OS file drops to the webview, after allowing the dropped
+            // files in the fs scope (a drop is as explicit a choice as a dialog).
+            if let WindowEvent::DragDrop(DragDropEvent::Drop { paths, .. }) = event {
+                let scope = window.app_handle().fs_scope();
+                let files: Vec<String> = paths
+                    .iter()
+                    .filter(|p| p.is_file())
+                    .map(|p| {
+                        if let Err(e) = scope.allow_file(p) {
+                            eprintln!("warraq: cannot allow dropped file {}: {e}", p.display());
+                        }
+                        p.to_string_lossy().into_owned()
+                    })
+                    .collect();
+                if !files.is_empty() {
+                    let _ = window.emit(FILE_DROP_EVENT, FileDropPayload { paths: files });
+                }
+            }
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running Warraq");
+}

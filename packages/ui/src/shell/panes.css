@@ -1,0 +1,139 @@
+/* Collapsible side panes, tabs, resize handles and tool cards. */
+.pane {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  min-block-size: 0;
+  background: var(--bg-panel);
+}
+
+.pane-start {
+  border-inline-end: 1px solid var(--border);
+}
+
+.pane-end {
+  border-inline-start: 1px solid var(--border);
+}
+
+.pane-header {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: space-between;
+  block-size: 40px;
+  padding-inline: 8px;
+  border-block-end: 1px solid var(--border);
+}
+
+.pane-header h2 {
+  font-size: 14px;
+}
+
+.pane-body {
+  flex: 1;
+  min-block-size: 0;
+  overflow: auto;
+}
+
+.pane-tabs {
+  display: flex;
+  gap: 2px;
+}
+
+.pane-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 32px;
+  block-size: 32px;
+  color: var(--fg-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+}
+
+.pane-tab:hover {
+  background: var(--bg-hover);
+}
+
+.pane-tab[aria-selected="true"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.pane-resizer {
+  flex: 0 0 6px;
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+  transition: background-color var(--motion);
+}
+
+.pane-resizer:hover,
+.pane-resizer:focus-visible {
+  background: var(--accent-soft);
+}
+
+.tool-cards {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  margin: 0;
+  list-style: none;
+}
+
+.tool-cards-grid {
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  padding: 0;
+}
+
+.tool-card {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  inline-size: 100%;
+  padding: 10px 12px;
+  text-align: start;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  transition:
+    background-color var(--motion),
+    border-color var(--motion);
+}
+
+.tool-cards-grid .tool-card {
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  min-block-size: 96px;
+  padding: 14px;
+}
+
+.tool-card:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
+.tool-card-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  inline-size: 34px;
+  block-size: 34px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--radius-s);
+}
+
+.tool-panel {
+  padding: 12px;
+}
+
+.tool-panel h3 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 15px;
+}

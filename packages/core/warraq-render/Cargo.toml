@@ -1,0 +1,26 @@
+[package]
+name = "warraq-render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Warraq core: warraq-render"
+
+[dependencies]
+thiserror.workspace = true
+log.workspace = true
+hayro.workspace = true
+hayro-interpret.workspace = true
+skrifa.workspace = true
+warraq-text = { path = "../warraq-text" }
+
+[features]
+default = ["hayro-backend"]
+hayro-backend = []
+pdfium = ["dep:pdfium-render"]
+
+[dependencies.pdfium-render]
+version = "0.9"
+default-features = false
+features = ["pdfium_latest", "image_latest", "thread_safe"]
+optional = true
