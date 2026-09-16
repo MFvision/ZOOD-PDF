@@ -6,6 +6,12 @@ pub struct PdfDocument {
     pub(crate) doc: Document,
     original: Vec<u8>,
     pages: Vec<ObjectId>,
+    /// Highest object id present when the document was opened: everything above
+    /// it was added by us and must go into an incremental update.
+    base_max_id: u32,
+    /// Objects that existed already and that we changed.
+    pub(crate) touched: std::collections::BTreeSet<u32>,
+    pub(crate) was_encrypted: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -47,11 +53,68 @@ impl PdfDocument {
             }
         }
         let pages: Vec<ObjectId> = doc.get_pages().into_values().collect();
+        let base_max_id = doc.max_id;
         Ok(Self {
             doc,
             original: bytes,
             pages,
+            base_max_id,
+            touched: Default::default(),
+            was_encrypted: encrypted,
         })
+    }
+
+    /// Record that an object that already existed in the file was modified.
+    pub fn mark_touched(&mut self, id: ObjectId) {
+        if id.0 <= self.base_max_id {
+            self.touched.insert(id.0);
+        }
+    }
+
+    /// Ids that an incremental update must carry: everything we added plus
+    /// everything we modified.
+    pub fn dirty_ids(&self) -> std::collections::BTreeSet<u32> {
+        let mut ids = self.touched.clone();
+        ids.extend(
+            self.doc
+                .objects
+                .keys()
+                .map(|(n, _)| *n)
+                .filter(|n| *n > self.base_max_id),
+        );
+        ids
+    }
+
+    /// `/Root`, `/Info` and `/ID` of the current trailer, rendered for a new trailer.
+    pub(crate) fn trailer_refs(&self) -> String {
+        let mut s = String::new();
+        if let Ok(Object::Reference(id)) = self.doc.trailer.get(b"Root") {
+            s.push_str(&format!(" /Root {} {} R", id.0, id.1));
+        }
+        if let Ok(Object::Reference(id)) = self.doc.trailer.get(b"Info") {
+            s.push_str(&format!(" /Info {} {} R", id.0, id.1));
+        }
+        if let Ok(Object::Array(a)) = self.doc.trailer.get(b"ID") {
+            let hex: Vec<String> = a
+                .iter()
+                .filter_map(|o| o.as_str().ok())
+                .map(|b| {
+                    format!(
+                        "<{}>",
+                        b.iter().map(|x| format!("{x:02X}")).collect::<String>()
+                    )
+                })
+                .collect();
+            if hex.len() == 2 {
+                s.push_str(&format!(" /ID [{}]", hex.join(" ")));
+            }
+        }
+        s
+    }
+
+    /// Read-only access to the underlying object model (diagnostics and tests).
+    pub fn doc_ref(&self) -> &Document {
+        &self.doc
     }
 
     pub fn original_bytes(&self) -> &[u8] {

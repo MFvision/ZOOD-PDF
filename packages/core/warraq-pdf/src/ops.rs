@@ -7,6 +7,34 @@ use warraq_text::{
     layout_paragraph, Alignment, Direction, LayoutBox, LayoutStyle, ShapedGlyph, Shaper,
 };
 
+/// Mark the page and everything it references by id (content streams, resources,
+/// font dictionaries) as changed, so an incremental save carries them.
+fn mark_page_objects(pdf: &mut PdfDocument, page_id: ObjectId) {
+    pdf.mark_touched(page_id);
+    let mut ids: Vec<ObjectId> = vec![];
+    if let Ok(page) = pdf.doc.get_dictionary(page_id) {
+        for key in [b"Contents".as_ref(), b"Resources".as_ref()] {
+            match page.get(key) {
+                Ok(Object::Reference(id)) => ids.push(*id),
+                Ok(Object::Array(a)) => ids.extend(a.iter().filter_map(|o| o.as_reference().ok())),
+                _ => {}
+            }
+        }
+        if let Ok(res) = page
+            .get(b"Resources")
+            .and_then(|o| o.as_reference())
+            .and_then(|id| pdf.doc.get_dictionary(id))
+        {
+            if let Ok(Object::Reference(id)) = res.get(b"Font") {
+                ids.push(*id);
+            }
+        }
+    }
+    for id in ids {
+        pdf.mark_touched(id);
+    }
+}
+
 /// Register `font_id` under a fresh resource name on the page; returns the name.
 fn add_font_resource(
     pdf: &mut PdfDocument,
@@ -210,6 +238,7 @@ pub fn append_line(
     pdf.doc
         .change_page_content(page_id, content)
         .map_err(|e| Error::Edit(e.to_string()))?;
+    mark_page_objects(pdf, page_id);
     Ok(())
 }
 
@@ -398,6 +427,7 @@ pub fn replace_word(
     pdf.doc
         .change_page_content(page_id, encoded)
         .map_err(|e| Error::Edit(e.to_string()))?;
+    mark_page_objects(pdf, page_id);
     Ok(())
 }
 
@@ -454,6 +484,7 @@ pub fn erase_area(
     pdf.doc
         .change_page_content(page_id, encoded)
         .map_err(|e| Error::Edit(e.to_string()))?;
+    mark_page_objects(pdf, page_id);
     Ok(blanked)
 }
 
@@ -540,6 +571,7 @@ pub fn replace_paragraph(
     pdf.doc
         .change_page_content(page_id, content)
         .map_err(|e| Error::Edit(e.to_string()))?;
+    mark_page_objects(pdf, page_id);
     Ok(lines.len())
 }
 

@@ -389,7 +389,11 @@ pub fn doc_search(
     query: String,
 ) -> Result<Vec<u32>, String> {
     bridge.with_document(handle, move |document| {
-        Ok(document.search(&query).into_iter().map(|i| i as u32).collect())
+        Ok(document
+            .search(&query)
+            .into_iter()
+            .map(|i| i as u32)
+            .collect())
     })
 }
 

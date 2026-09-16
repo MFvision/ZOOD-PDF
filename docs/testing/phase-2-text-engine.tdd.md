@@ -51,3 +51,23 @@ Final run: `warraq-text` 17 passed; `warraq-pdf` 5 passed, 1 ignored; `warraq-re
 Visual proof: `tests/acid/write-tests/reflow-compare.png` (before/after of a justified Arabic page; the replacement keeps shaping, right-to-left flow, Arabic-Indic digits and an embedded Latin run). Regenerate with `cargo run --release -p warraq-core --example reflow_demo -- . <stem> <para-index> "<text>"`.
 
 Totals after this slice: 37 unit tests green (`warraq-text` 22, `warraq-pdf` 11 + 1 ignored, `warraq-render` 1, `warraq-core` 3), clippy clean, `wasm32-unknown-unknown` still compiles.
+
+## Third slice: incremental save
+
+| # | Behavior | Test | RED evidence | GREEN evidence |
+|---|---|---|---|---|
+| 27 | The previous revision's cross-reference style is detected (table vs stream) | `incremental::detects_the_previous_xref_style_of_both_corpus_layouts` | passed first run | ok |
+| 28 | Reals are written as plain decimals and objects serialize exactly | `incremental::reals_are_written_as_plain_decimals`, `objects_round_trip_through_our_serializer` | written because `lopdf`'s writer is private, so we serialize ourselves | ok |
+| 29 | An incremental save keeps the original bytes as a literal prefix and the edit survives reopening, for both xref styles | `incremental::an_incremental_save_keeps_the_original_bytes_as_a_prefix_and_reopens` | `the appended line must be in the reopened revision` — `cargo fmt` had reflowed the call sites so the dirty-object marking was never inserted; only the new font objects were being written | ok after marking the page, its content stream, resources and font dictionary |
+| 30 | Saving with no edits returns the original unchanged | `incremental::saving_without_edits_returns_the_original_unchanged` | passed first run | ok |
+
+Independent verification of an incrementally saved file (`tests/acid/write-tests/reflow-after.pdf`,
+136,539 original bytes + 17,198 appended, 2 revisions):
+
+| Reader | Result |
+|---|---|
+| PDFium 155 (pypdfium2) | 3 pages, page 1 text returned |
+| qpdf 12 (pikepdf) | 3 pages, both revisions intact |
+| PDF.js 6.3 | 3 pages, 1,168 text items |
+
+Totals after this slice: 42 unit tests green (`warraq-text` 22, `warraq-pdf` 16 + 1 ignored, `warraq-render` 1, `warraq-core` 3), clippy clean, wasm32 compiles.

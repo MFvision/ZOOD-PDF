@@ -1,4 +1,4 @@
-import type { CoreRequest, RequestKind, RequestMap, ResultMap } from './protocol';
+import type { RequestKind, RequestMap, ResultMap } from './protocol';
 import type { CoreStatus, DocumentMetadata, PageSize, TextLineData } from './types';
 
 /**

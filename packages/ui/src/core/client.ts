@@ -86,11 +86,9 @@ export class CoreClient {
   ): Promise<ResultMap[K]> {
     const worker = this.worker;
     if (!worker) {
-      return handleTauriRequest<K>({ kind, ...payload } as { kind: K } & RequestMap[K]).catch(
-        (err: unknown) => {
-          throw toClientError(err);
-        },
-      );
+      return handleTauriRequest(kind, payload).catch((err: unknown) => {
+        throw toClientError(err);
+      });
     }
     const id = this.nextId;
     this.nextId += 1;

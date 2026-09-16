@@ -175,8 +175,22 @@ impl Document {
         })
     }
 
-    /// Save the edited document. The bytes handed to `open` are never modified.
+    /// Save the edited document.
+    ///
+    /// Prefers an incremental update, which keeps the bytes handed to `open` as
+    /// the literal prefix of the result, so anything we did not fully understand
+    /// survives and an older reader can still open the previous revision. Falls
+    /// back to a full rewrite when that is impossible (encrypted documents, or a
+    /// file with no usable cross-reference section).
     pub fn save(&mut self) -> Result<Vec<u8>, CoreError> {
+        match self.pdf.save_incremental() {
+            Ok(bytes) => Ok(bytes),
+            Err(_) => Ok(self.pdf.save_to_vec()?),
+        }
+    }
+
+    /// Save by rewriting the whole file (smaller output, no revision history).
+    pub fn save_rewritten(&mut self) -> Result<Vec<u8>, CoreError> {
         Ok(self.pdf.save_to_vec()?)
     }
 

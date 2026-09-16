@@ -53,7 +53,7 @@ The `Renderer` trait keeps both backends behind one API so the swap is a build f
 2. UI asks `render_page(i, scale)` per visible page (tiles later) and draws RGBA into a canvas; thumbnails at scale 0.2.
 3. `text_lines(i)` gives the selection overlay in logical order with per-line geometry.
 4. An edit (Phase 2) creates an operation (`ReplaceText{page, run, old, new}`) → `warraq-pdf` re-shapes the affected paragraph with `warraq-text`, rewrites the content stream and font subsets → the page is re-rendered.
-5. Save = incremental update appended to the original bytes (or full rewrite), then re-opened through the reader to verify round trip.
+5. Save = incremental update appended to the original bytes (`PdfDocument::save_incremental`, verified against PDFium, qpdf and PDF.js), falling back to a full rewrite for encrypted files or files without a usable xref; the result is re-opened through the reader to verify the round trip.
 
 ## Repository layout
 See the README; `prototypes/` (Phase 0) is a separate cargo workspace and is not part of the product build.

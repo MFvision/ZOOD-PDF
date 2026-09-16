@@ -44,7 +44,9 @@ fn point_at_pdfium() {
 }
 
 fn corpus_bytes() -> Vec<u8> {
-    let path = manifest().join("../../../tests/corpus/arabic/generated").join(CORPUS);
+    let path = manifest()
+        .join("../../../tests/corpus/arabic/generated")
+        .join(CORPUS);
     std::fs::read(&path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()))
 }
 
@@ -80,7 +82,10 @@ fn renders_with_native_pdfium_and_reads_arabic_through_the_core_api() {
         bitmap.width,
         bitmap.height
     );
-    assert_eq!(bitmap.rgba.len(), (bitmap.width * bitmap.height * 4) as usize);
+    assert_eq!(
+        bitmap.rgba.len(),
+        (bitmap.width * bitmap.height * 4) as usize
+    );
 
     // The page must carry ink, not just a white rectangle.
     let dark = bitmap
@@ -99,7 +104,10 @@ fn renders_with_native_pdfium_and_reads_arabic_through_the_core_api() {
     let started = Instant::now();
     let text = document.extract_text(0).expect("doc_extract_text");
     let text_ms = started.elapsed().as_secs_f64() * 1000.0;
-    assert!(text.contains(ARABIC_TITLE), "missing {ARABIC_TITLE:?} in:\n{text}");
+    assert!(
+        text.contains(ARABIC_TITLE),
+        "missing {ARABIC_TITLE:?} in:\n{text}"
+    );
 
     let lines = text_lines(document, 0).expect("doc_text_lines");
     assert!(!lines.is_empty());
@@ -111,7 +119,10 @@ fn renders_with_native_pdfium_and_reads_arabic_through_the_core_api() {
     assert_eq!(document.search(ARABIC_TITLE), vec![0]);
 
     let metadata = metadata_json(document, detect_engine()).expect("doc_metadata");
-    assert!(metadata.contains("\"engine\":\"pdfium+hayro\""), "{metadata}");
+    assert!(
+        metadata.contains("\"engine\":\"pdfium+hayro\""),
+        "{metadata}"
+    );
     assert!(metadata.contains("\"pages\":1"), "{metadata}");
 
     println!(
@@ -134,6 +145,8 @@ fn unknown_handles_and_broken_bytes_get_stable_error_codes() {
     // `Document` is not `Debug`, so unwrap the error side explicitly.
     let err = registry.get(7).err().expect("an unknown handle must fail");
     assert!(err.starts_with("E_NOT_FOUND"), "{err}");
-    let err = registry.open(b"not a pdf at all".to_vec(), None).unwrap_err();
+    let err = registry
+        .open(b"not a pdf at all".to_vec(), None)
+        .unwrap_err();
     assert!(err.starts_with("E_PARSE"), "{err}");
 }
