@@ -47,8 +47,18 @@ pub struct Document {
 
 impl Document {
     pub fn open(bytes: Vec<u8>, password: Option<&str>) -> Result<Self, CoreError> {
-        let render = warraq_render::open(bytes.clone(), password)?;
-        let pdf = PdfDocument::open(bytes, password)?;
+        // Our object layer owns encryption: it implements the standard security
+        // handler, the rasterizers do not. So decrypt first and hand the renderer
+        // plaintext, otherwise every encrypted file would fail to render even
+        // though we can read it perfectly well.
+        let pdf = PdfDocument::open(bytes.clone(), password)?;
+        let (render_bytes, render_password) = if pdf.was_encrypted() {
+            let mut plain = PdfDocument::open(bytes, password)?;
+            (plain.save_to_vec()?, None)
+        } else {
+            (bytes, password)
+        };
+        let render = warraq_render::open(render_bytes, render_password)?;
         Ok(Self {
             pdf,
             render,
@@ -229,6 +239,36 @@ mod tests {
     }
 
     #[test]
+    fn every_encrypted_corpus_variant_opens_with_its_password_and_reports_itself_encrypted() {
+        for (name, password) in [
+            ("variant-encrypted-rc4-40.pdf", "warraq"),
+            ("variant-encrypted-rc4-128.pdf", "warraq"),
+            ("variant-encrypted-aes128.pdf", "warraq"),
+            ("variant-encrypted-aes256.pdf", "warraq"),
+            ("variant-encrypted-aes256-owner-only.pdf", ""),
+        ] {
+            let d = Document::open(corpus(name), Some(password))
+                .unwrap_or_else(|e| panic!("{name}: {e}"));
+            assert!(d.page_count() >= 1, "{name}");
+            assert!(
+                d.metadata().encrypted,
+                "{name}: metadata must still say the file was encrypted"
+            );
+            let text = d.extract_text(0).unwrap();
+            // the variants derive from two source documents: the invoice and the prose page
+            assert!(
+                text.contains("فاتورة") || text.contains("وراق"),
+                "{name}: decrypted text looks wrong:\n{text}"
+            );
+            assert!(
+                Document::open(corpus(name), Some("wrong-password")).is_err()
+                    || password.is_empty(),
+                "{name}: a wrong password must fail"
+            );
+        }
+    }
+
+    #[test]
     fn paragraphs_are_detected_and_one_can_be_reflowed_and_saved() {
         const AMIRI: &[u8] = include_bytes!("../../../../tests/fonts/Amiri-Regular.ttf");
         let mut d = Document::open(corpus("chrome-notonaskh-justified-3pages.pdf"), None).unwrap();
@@ -256,6 +296,31 @@ mod tests {
             "reflowed text missing from:\n{text}"
         );
         assert!(before_h > 0.0);
+    }
+
+    /// Regression: a shadda came back one letter late (`حررّها` for `حرّرها`)
+    /// because marks were attached to a base by geometry alone. Found by editing
+    /// a page through the WASM core in a browser and reading it back.
+    #[test]
+    fn text_we_write_comes_back_character_for_character_including_marks() {
+        const AMIRI: &[u8] = include_bytes!("../../../../tests/fonts/Amiri-Regular.ttf");
+        for wanted in [
+            "فقرة حرّرها المتصفح عبر نواة وراق",
+            "الْعِلْمُ نُورٌ وَالْجَهْلُ ظَلَامٌ",
+            "محرّر وراق: إعادة توزيع الأسطر",
+        ] {
+            let mut d =
+                Document::open(corpus("chrome-notonaskh-justified-3pages.pdf"), None).unwrap();
+            d.replace_paragraph(0, 1, wanted, AMIRI).unwrap();
+            let reopened = Document::open(d.save().unwrap(), None).unwrap();
+            let extracted = reopened.extract_text(0).unwrap();
+            let got = extracted
+                .lines()
+                .map(str::to_string)
+                .find(|l| l.contains(wanted.split(' ').next().unwrap()))
+                .unwrap_or_default();
+            assert_eq!(got, wanted, "round trip changed the text");
+        }
     }
 
     #[test]

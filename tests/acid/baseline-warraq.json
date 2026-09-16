@@ -76,8 +76,8 @@
  },
  "chrome-notonaskh-justified-3pages": {
   "open": true,
-  "order_lcs": 0.19,
-  "recall_logical": 0.175,
+  "order_lcs": 0.215,
+  "recall_logical": 0.195,
   "verdict": "garbage(U+FFFD)"
  },
  "chrome-notosansarabic-form-layout": {
@@ -184,12 +184,39 @@
  },
  "variant-arabic-metadata-outlines-annots": {
   "open": true,
-  "order_lcs": 0.19,
-  "recall_logical": 0.175,
+  "order_lcs": 0.215,
+  "recall_logical": 0.195,
   "verdict": "garbage(U+FFFD)"
  },
+ "variant-encrypted-aes128": {
+  "open": true,
+  "order_lcs": 0.956,
+  "recall_logical": 1.0,
+  "verdict": "logical"
+ },
  "variant-encrypted-aes256": {
-  "open": false
+  "open": true,
+  "order_lcs": 0.215,
+  "recall_logical": 0.195,
+  "verdict": "garbage(U+FFFD)"
+ },
+ "variant-encrypted-aes256-owner-only": {
+  "open": true,
+  "order_lcs": 0.956,
+  "recall_logical": 1.0,
+  "verdict": "logical"
+ },
+ "variant-encrypted-rc4-128": {
+  "open": true,
+  "order_lcs": 0.956,
+  "recall_logical": 1.0,
+  "verdict": "logical"
+ },
+ "variant-encrypted-rc4-40": {
+  "open": true,
+  "order_lcs": 0.956,
+  "recall_logical": 1.0,
+  "verdict": "logical"
  },
  "variant-incremental-update": {
   "open": true,
@@ -199,14 +226,14 @@
  },
  "variant-linearized": {
   "open": true,
-  "order_lcs": 0.19,
-  "recall_logical": 0.175,
+  "order_lcs": 0.215,
+  "recall_logical": 0.195,
   "verdict": "garbage(U+FFFD)"
  },
  "variant-objectstreams-xrefstream": {
   "open": true,
-  "order_lcs": 0.19,
-  "recall_logical": 0.175,
+  "order_lcs": 0.215,
+  "recall_logical": 0.195,
   "verdict": "garbage(U+FFFD)"
  }
 }

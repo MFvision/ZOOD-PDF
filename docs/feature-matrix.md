@@ -4,7 +4,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ planned · ❌ out of scope. Targ
 
 | Area | Feature | Tier | D | X | W | Status / notes |
 |---|---|---|---|---|---|---|
-| View | Open, zoom, fit modes, continuous scroll, thumbnails | MVP | 🟡 | 🟡 | 🟡 | Phase 1 skeleton: hayro rasterizer in WASM, PDFium native next |
+| View | Open, zoom, fit modes, continuous scroll, thumbnails | MVP | ✅ | 🟡 | 🟡 | desktop renders with native PDFium; browser builds use the pure-Rust rasterizer by default (ADR-0006) |
 | View | Bookmarks, attachments, layers panes | MVP | ⬜ | ⬜ | ⬜ | pane tabs exist, data binding next |
 | View | Text selection and copy in logical order | MVP | 🟡 | 🟡 | 🟡 | reconstruction engine done; selection overlay in UI |
 | View | Arabic-aware search | MVP | 🟡 | 🟡 | 🟡 | engine done (tashkeel-insensitive, alef/taa/yaa/digits unified); UI find bar |
@@ -12,8 +12,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ planned · ❌ out of scope. Targ
 | Organize | Insert, delete, rotate, reorder, extract, split, merge, crop | MVP | ⬜ | ⬜ | ⬜ | lopdf page-tree ops |
 | Compress | Image downsampling, object streams, font subsetting, presets | MVP | ⬜ | ⬜ | ⬜ | |
 | Fill & Sign | AcroForm fill, draw/type/image signature, initials, dates | MVP | ⬜ | ⬜ | ⬜ | PDFium form rendering; our appearance streams for Arabic |
-| Protect | Open/permissions password, AES-256 | MVP | ⬜ | ⬜ | ⬜ | own standard security handler (lopdf cannot read R6) |
-| Edit PDF | Text edit with reflow (Arabic-correct) | MVP | 🟡 | 🟡 | 🟡 | paragraph detect + reflow + erase + word replace work in the core (`Document::replace_paragraph`); UI editing surface and undo next |
+| Protect | Open password, AES-256 | MVP | 🟡 | 🟡 | 🟡 | **reading** encrypted files works everywhere: own standard security handler (R2–R6, RC4 40/128, AES-128, AES-256), verified against qpdf and RFC/NIST vectors. Writing encryption and permission flags still to do |
+| Edit PDF | Text edit with reflow (Arabic-correct) | MVP | 🟡 | 🟡 | 🟡 | core complete and exposed to JS: paragraph detection, reflow, erase, word replace, incremental save. UI editing surface and undo next |
 | Edit PDF | Images replace/resize/crop, links, headers/footers, watermarks, Bates, page numbers | MVP/v1 | ⬜ | ⬜ | ⬜ | |
 | Scan & OCR | Arabic + English OCR, deskew, cleanup, searchable image PDF | v1 | ⬜ | ⬜ | ⬜ | tesseract.js (X, W), Tesseract native (D) |
 | Export / Create | PDF → Word/Excel/PowerPoint/images/HTML/text; Office/images/HTML → PDF; combine | v1 | ⬜ | ⬜ | ⬜ | images/HTML/text client-side; Office via optional local LibreOffice (D) or opt-in server (W) — **not available in X** |

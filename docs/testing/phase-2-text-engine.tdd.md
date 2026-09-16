@@ -71,3 +71,18 @@ Independent verification of an incrementally saved file (`tests/acid/write-tests
 | PDF.js 6.3 | 3 pages, 1,168 text items |
 
 Totals after this slice: 42 unit tests green (`warraq-text` 22, `warraq-pdf` 16 + 1 ignored, `warraq-render` 1, `warraq-core` 3), clippy clean, wasm32 compiles.
+
+## Fourth slice: decryption, mark attachment and robustness
+
+| # | Behavior | Test | RED evidence | GREEN evidence |
+|---|---|---|---|---|
+| 31 | Mutated corpus files never panic or hang | `robustness::mutated_corpus_files_never_panic_or_hang` | first run flagged a mutated 500-page file at 113 s — investigated and traced to the debug build (the same search is 3.1 s in release), not an algorithmic blowup; the harness now skips the performance fixtures and CI runs it in release | ok, 1.6 s for the whole corpus |
+| 32 | Malformed and empty input is an error, never a panic | `robustness::truncated_and_empty_input_is_rejected_cleanly` | passed first run | ok |
+| 33 | Text we write comes back character for character, marks included | `core::text_we_write_comes_back_character_for_character_including_marks` | `left: "حرر\u{651}ها" right: "حر\u{651}رها"` — found by editing a page through the WASM core **in a browser** and reading it back: the shadda landed one letter late | ok after attaching marks by content adjacency and pen-origin proximity instead of box containment (a shaper emits the mark next to its base at the base's origin; with the offset applied it falls outside that base's advance box) |
+| 34 | Every encrypted variant opens with its password and still reports itself encrypted | `core::every_encrypted_corpus_variant_opens_with_its_password_and_reports_itself_encrypted` | `E_PASSWORD` for all five — the core asked the *rasterizer* to open the file before decrypting it, and no rasterizer implements the security handler | ok: the object layer decrypts first and hands the renderer plaintext; `Metadata::encrypted` now reports the state on disk rather than lopdf's cleared flag |
+
+The decryption handler itself (R2–R6, RC4, AES-128, AES-256, crypt filters, `/EncryptMetadata false`)
+lives in `packages/core/warraq-pdf/src/crypt/` with 34 tests in `warraq-pdf`, verified against
+qpdf/pikepdf file keys, RFC 6229 (RC4) and NIST SP 800-38A (AES-CBC).
+
+Totals: 63 tests green (`warraq-text` 22, `warraq-pdf` 34, `warraq-render` 1, `warraq-core` 5 + 2 robustness (release)), clippy clean, wasm32 compiles.

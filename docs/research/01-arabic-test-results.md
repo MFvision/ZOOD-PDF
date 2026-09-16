@@ -4,7 +4,7 @@
 
 ## 1. Corpus
 
-42 files: 27 generated (with logical-order ground truth) and 15 real-world (Word/PDFMaker, InDesign, LibreOffice, Google Docs/Skia, MFP scans, a 1924 manuscript with an OCR layer, an Acrobat RTL form, and two legacy-encoding files). Corpus v1.1: the Chrome files use static font instances (Skia embeds them as CID fonts, as Google Docs exports do); one file keeps a variable webfont, which Skia embeds as a Type3 font with dots as separate glyphs mapped to U+0000. See `tests/corpus/arabic/README.md` and `manifest.md`. Scoring is word-level after NFKC and mark stripping and separates character order inside words from word order along lines (`tests/acid/score.py`):
+48 files: 27 generated (with logical-order ground truth) and 15 real-world (Word/PDFMaker, InDesign, LibreOffice, Google Docs/Skia, MFP scans, a 1924 manuscript with an OCR layer, an Acrobat RTL form, and two legacy-encoding files). Corpus v1.1: the Chrome files use static font instances (Skia embeds them as CID fonts, as Google Docs exports do); one file keeps a variable webfont, which Skia embeds as a Type3 font with dots as separate glyphs mapped to U+0000. See `tests/corpus/arabic/README.md` and `manifest.md`. Scoring is word-level after NFKC and mark stripping and separates character order inside words from word order along lines (`tests/acid/score.py`):
 
 * **logical** – words intact, order ≥ 0.75 of the truth sequence
 * **words-ok/line-order-visual** – words intact but each line's words come out reversed
@@ -30,10 +30,12 @@ Verdict (word recall logical / reversed, order LCS):
 | `chrome-amiri-tashkeel-ligatures` | garbage (0.37/0.07, 0.12) | garbage (0.30/0.00, 0.28) | ❌ CRASH exit=-11 (signal 11)  | garbage (0.07/0.47, 0.06) | partial (0.50/0.03, 0.50) |
 | `chrome-cairo-mixed-invoice` | partial (0.52/0.41, 0.41) | partial-reversed (0.46/0.54, 0.52) | partial (0.76/0.09, 0.57) | garbage (0.44/0.46, 0.38) | logical (1.00/0.07, 0.96) |
 | `chrome-ibmplex-bidi-stress` | partial (0.58/0.28, 0.40) | garbage (0.46/0.38, 0.36) | partial (0.76/0.01, 0.53) | garbage (0.47/0.36, 0.36) | logical (1.00/0.03, 1.00) |
-| `chrome-notonaskh-justified-3pages` | garbage (0.14/0.37, 0.07) | garbage (0.06/0.03, 0.04) | garbage (0.12/0.01, 0.12) | garbage (0.05/0.07, 0.04) | garbage(U+FFFD) (0.17/0.01, 0.19) |
+| `chrome-nastaliq-urdu-prose` | garbage (0.14/0.00, 0.09) | garbage (0.17/0.06, 0.12) | garbage (0.25/0.00, 0.30) | garbage (0.11/0.08, 0.05) | garbage(U+FFFD) (0.17/0.03, 0.16) |
+| `chrome-notonaskh-justified-3pages` | garbage (0.14/0.37, 0.07) | garbage (0.06/0.03, 0.04) | garbage (0.12/0.01, 0.12) | garbage (0.05/0.07, 0.04) | garbage(U+FFFD) (0.20/0.01, 0.21) |
 | `chrome-notosansarabic-form-layout` | partial-reversed (0.16/0.86, 0.13) | garbage (0.08/0.16, 0.05) | garbage (0.22/0.08, 0.18) | garbage (0.08/0.16, 0.05) | garbage(U+FFFD) (0.19/0.08, 0.20) |
 | `chrome-tajawal-persian-urdu-digits` | partial (0.73/0.27, 0.27) | garbage (0.27/0.30, 0.21) | words-ok/order-scrambled (0.97/0.03, 0.61) | partial-reversed (0.17/0.53, 0.15) | logical (1.00/0.00, 1.00) |
 | `chrome-variablefont-type3-notonaskh-justified` | garbage (0.14/0.36, 0.08) | garbage (0.06/0.03, 0.04) | garbage (0.07/0.01, 0.06) | garbage (0.05/0.07, 0.04) | garbage(U+FFFD) (0.20/0.01, 0.21) |
+| `chrome-vazirmatn-persian-prose` | garbage (0.45/0.43, 0.14) | garbage (0.20/0.43, 0.13) | partial (0.89/0.05, 0.84) | partial-reversed (0.12/0.82, 0.06) | logical (0.93/0.07, 0.89) |
 | `chrome-windows-arial-tahoma-times` | partial (0.65/0.39, 0.41) | garbage (0.46/0.33, 0.52) | partial (0.87/0.09, 0.65) | garbage (0.44/0.37, 0.38) | logical (1.00/0.07, 0.96) |
 | `coretext-albayan-tashkeel` | garbage (0.30/0.30, 0.12) | partial (0.67/0.13, 0.25) | partial (0.63/0.13, 0.62) | partial-reversed (0.13/0.67, 0.03) | logical (1.00/0.00, 1.00) |
 | `coretext-baghdad-persian-urdu` | words-ok/line-order-visual (1.00/0.00, 0.27) | partial (0.87/0.00, 0.27) | logical (0.97/0.00, 0.88) | partial-reversed (0.10/0.83, 0.09) | logical (0.97/0.00, 0.97) |
@@ -46,33 +48,37 @@ Verdict (word recall logical / reversed, order LCS):
 | `reportlab-visual-presentation-forms` | partial (0.82/0.10, 0.40) | logical (1.00/0.05, 0.92) | logical (0.96/0.06, 0.79) | partial-reversed (0.35/0.61, 0.35) | logical (1.00/0.05, 0.97) |
 | `scan-arial-200dpi-bilevel` | image-only (OCR needed) | image-only (OCR needed) | image-only (OCR needed) | image-only (OCR needed) | image-only (OCR needed) |
 | `scan-notonaskh-300dpi-skewed-jpeg` | image-only (OCR needed) | image-only (OCR needed) | image-only (OCR needed) | image-only (OCR needed) | image-only (OCR needed) |
-| `variant-arabic-metadata-outlines-annots` | garbage (0.14/0.37, 0.07) | garbage (0.06/0.03, 0.04) | garbage (0.12/0.01, 0.12) | garbage (0.05/0.07, 0.04) | garbage(U+FFFD) (0.17/0.01, 0.19) |
-| `variant-encrypted-aes256` | garbage (0.14/0.37, 0.07) | garbage (0.06/0.03, 0.04) | garbage (0.12/0.01, 0.12) | ❌ Decryption(PasswordProtected) | ❌ E_PASSWORD: the document is encrypte |
+| `variant-arabic-metadata-outlines-annots` | garbage (0.14/0.37, 0.07) | garbage (0.06/0.03, 0.04) | garbage (0.12/0.01, 0.12) | garbage (0.05/0.07, 0.04) | garbage(U+FFFD) (0.20/0.01, 0.21) |
+| `variant-encrypted-aes128` | ❌ PdfiumError: Failed to load document | ❌ PasswordException: No password given | ❌ ValueError: document closed or encry | ❌ Decryption(PasswordProtected) | logical (1.00/0.07, 0.96) |
+| `variant-encrypted-aes256` | garbage (0.14/0.37, 0.07) | garbage (0.06/0.03, 0.04) | garbage (0.12/0.01, 0.12) | ❌ Decryption(PasswordProtected) | garbage(U+FFFD) (0.20/0.01, 0.21) |
+| `variant-encrypted-aes256-owner-only` | partial (0.52/0.41, 0.41) | partial-reversed (0.46/0.54, 0.52) | partial (0.76/0.09, 0.57) | garbage (0.44/0.46, 0.38) | logical (1.00/0.07, 0.96) |
+| `variant-encrypted-rc4-128` | ❌ PdfiumError: Failed to load document | ❌ PasswordException: No password given | ❌ ValueError: document closed or encry | ❌ Decryption(PasswordProtected) | logical (1.00/0.07, 0.96) |
+| `variant-encrypted-rc4-40` | ❌ PdfiumError: Failed to load document | ❌ PasswordException: No password given | ❌ ValueError: document closed or encry | ❌ Decryption(PasswordProtected) | logical (1.00/0.07, 0.96) |
 | `variant-incremental-update` | partial (0.52/0.41, 0.41) | partial-reversed (0.46/0.54, 0.52) | partial (0.76/0.09, 0.57) | garbage (0.44/0.46, 0.38) | logical (1.00/0.07, 0.96) |
-| `variant-linearized` | garbage (0.14/0.37, 0.07) | garbage (0.06/0.03, 0.04) | garbage (0.12/0.01, 0.12) | garbage (0.05/0.07, 0.04) | garbage(U+FFFD) (0.17/0.01, 0.19) |
-| `variant-objectstreams-xrefstream` | garbage (0.14/0.37, 0.07) | garbage (0.06/0.03, 0.04) | garbage (0.12/0.01, 0.12) | garbage (0.05/0.07, 0.04) | garbage(U+FFFD) (0.17/0.01, 0.19) |
+| `variant-linearized` | garbage (0.14/0.37, 0.07) | garbage (0.06/0.03, 0.04) | garbage (0.12/0.01, 0.12) | garbage (0.05/0.07, 0.04) | garbage(U+FFFD) (0.20/0.01, 0.21) |
+| `variant-objectstreams-xrefstream` | garbage (0.14/0.37, 0.07) | garbage (0.06/0.03, 0.04) | garbage (0.12/0.01, 0.12) | garbage (0.05/0.07, 0.04) | garbage(U+FFFD) (0.20/0.01, 0.21) |
 
-Tally over the 25 truth-scored files:
+Tally over the 28 truth-scored files:
 
-- PDFium (Chrome): garbage 10, partial 8, partial-reversed 2, image-only (OCR needed) 2, words-ok/line-order-visual 1, words-ok/order-scrambled 1, empty 1
-- PDF.js: garbage 14, partial 3, partial-reversed 2, logical 2, image-only (OCR needed) 2, words-ok/order-scrambled 1, empty 1
-- MuPDF (AGPL ref.): garbage 11, partial 7, words-ok/order-scrambled 2, logical 2, image-only (OCR needed) 2, open-failed 1
-- hayro raw glyphs: garbage 13, partial-reversed 7, empty 2, image-only (OCR needed) 2, open-failed 1
-- **Warraq core**: logical 11, garbage(U+FFFD) 8, image-only (OCR needed) 2, partial 1, empty 1, garbage 1, open-failed 1
+- PDFium (Chrome): garbage 12, partial 9, open-failed 3, partial-reversed 2, image-only (OCR needed) 2, words-ok/line-order-visual 1, words-ok/order-scrambled 1, empty 1
+- PDF.js: garbage 16, partial-reversed 3, partial 3, open-failed 3, logical 2, image-only (OCR needed) 2, words-ok/order-scrambled 1, empty 1
+- MuPDF (AGPL ref.): garbage 12, partial 9, open-failed 4, words-ok/order-scrambled 2, logical 2, image-only (OCR needed) 2
+- hayro raw glyphs: garbage 15, partial-reversed 8, open-failed 4, empty 2, image-only (OCR needed) 2
+- **Warraq core**: logical 16, garbage(U+FFFD) 10, image-only (OCR needed) 2, partial 1, empty 1, garbage 1
 
-**Logical-order files: PDFium 0, PDF.js 2, MuPDF 2, Warraq core 11.** No shipping engine returns logical-order Arabic reliably: PDFium reverses characters of Skia/Chrome output and reverses word order of Quartz output; MuPDF swaps adjacent letters inside words when glyph advances are irregular (`رضيبية` for `ضريبية`) and crashed once; PDF.js is the best of the three on well-formed files but still fails Chrome-made and tashkeel-heavy text. The hayro column is the raw glyph stream (visual order, ToUnicode as written by the producer) that the Warraq reconstruction (ADR-0005) starts from. The Warraq core's remaining failures are the files without a usable ToUnicode map (`raw-amiri-cid-no-tounicode`, `raw-cairo-cid-broken-tounicode`, `raw-legacy-symbolic-truetype`), the variable-font Type3 file, and glyphs that Skia maps to U+0000 (contextual forms without cmap entries); glyph-name, outline-matching and OCR fallbacks are Phase 2 work.
+**Logical-order files: PDFium 0, PDF.js 2, MuPDF 2, Warraq core 16.** No shipping engine returns logical-order Arabic reliably: PDFium reverses characters of Skia/Chrome output and reverses word order of Quartz output; MuPDF swaps adjacent letters inside words when glyph advances are irregular (`رضيبية` for `ضريبية`) and crashed once; PDF.js is the best of the three on well-formed files but still fails Chrome-made and tashkeel-heavy text. The hayro column is the raw glyph stream (visual order, ToUnicode as written by the producer) that the Warraq reconstruction (ADR-0005) starts from. The Warraq core's remaining failures are the files without a usable ToUnicode map (`raw-amiri-cid-no-tounicode`, `raw-cairo-cid-broken-tounicode`, `raw-legacy-symbolic-truetype`), the variable-font Type3 file, and glyphs that Skia maps to U+0000 (contextual forms without cmap entries); glyph-name, outline-matching and OCR fallbacks are Phase 2 work.
 
 Real-world files (no ground truth; first characters of page 1 as returned):
 
 | File | Producer | Pres. forms in ToUnicode | PDFium text head | Warraq text head |
 |---|---|---|---|---|
-| `A_un_rome_statute_A-CONF.183-9-AR_word_pdfmaker6` | Acrobat Distiller 6.0 (Windo | yes | A المتحـدة الأمــم /CONF.183/9 ⏎ المعني للمفوضين الدبلوماسي | الأمـمـ المتحدـة  A/CONF.183/9 ⏎ مؤتمر الأمم المتحدة الدبلوم |
+| `A_un_rome_statute_A-CONF.183-9-AR_word_pdfmaker6` | Acrobat Distiller 6.0 (Windo | yes | A المتحـدة الأمــم /CONF.183/9 ⏎ المعني للمفوضين الدبلوماسي | الأمــم المتحـدة  A/CONF.183/9 ⏎ مؤتمر الأمم المتحدة الدبلوم |
 | `A_worldbank_malpass_g7_briefing_AR_word2016_pdftools` | Microsoft® Word 2016 / PDF P | no |  إعالمية إحاطة جلسة في مالباس ديفيد الدولي البنك مجموعة رئيس | d ⏎ ez ⏎ ir ⏎ o ⏎ كلمة رئيس مجموعة البنك الدولي ديفيد مالباس |
-| `A_arwikibooks_mediawiki_guide_word2007` | Microsoft® Office Word 2007 | no |  ًكٌاوٌدٌم استخدام لٌدل ⏎ 1 ⏎ ٙكٚٔاٚذٛي اعرخذاو مٛدن ⏎ ـح | دلٌل استخدام مدٌاٌوكٌ ً ⏎ دنٛم اعرخذاو يذٛأٚكٙٚ ⏎ يشاـسغٚ ذط |
-| `B_baytalhekma_covid_workplace_guide_indesign_cc2015` | Adobe PDF Library 15.0 | yes | دليلالوقايةمنفيروس ⏎ إعداد مركز مكافحة الفيروسات والأوبئة ب |  ⏎ الطبعة الأولى: 1441ه ـ- 2020م ⏎ الناشر: بيت الحكمة للاستث |
+| `A_arwikibooks_mediawiki_guide_word2007` | Microsoft® Office Word 2007 | no |  ًكٌاوٌدٌم استخدام لٌدل ⏎ 1 ⏎ ٙكٚٔاٚذٛي اعرخذاو مٛدن ⏎ ـح | دلٌل استخدام مٌدٌاوٌك ً ⏎ دنٛم اعرخذاو يٛذأٚكٙٚ ⏎ يشـاسٚغ ذط |
+| `B_baytalhekma_covid_workplace_guide_indesign_cc2015` | Adobe PDF Library 15.0 | yes | دليلالوقايةمنفيروس ⏎ إعداد مركز مكافحة الفيروسات والأوبئة ب |  ⏎ الطبعة الأولى: 1441هـ - 2020م ⏎ الناشر: بيت الحكمة للاستث |
 | `B_wmf_welcome_to_wikipedia_arabic_indesign_cs5_p1-5` | Adobe PDF Library 9.9 | no | ًا يمكن  ⏎ تخيل عالم ⏎ فيه لكل فرد  ⏎ مطالعة مجموع  ⏎ مع | تخيل عالمًا يمكن ⏎ فيه لكل فرد ⏎ مطالعة مجموع ⏎ معارف البشري |
 | `C_lo_bug171737_noto_sans_arabic_extraction_lo26.2_pdf2.0` | LibreOffice 26.2.1.2 (X86_64 | yes | amiri ⏎ الآخر وم	والي ل	والرس والكتب وصفاته بالله الجازم ال | am iri ⏎ والإيمان هو التصديق الجازم بالله وصفاته وال�كتب وال |
-| `C_lo_bug119606_seventeen_macos_arabic_fonts_lo7.5dev` | LibreOfficeDev 7.5 | no | هُ ْمن ا ِ هَ تُيْ ⏎ َتَرشا ا ْ َن ⏎ أَو كتاب آالف خمسة با | اشتَرى بلال خمسة آلاف كتاب وأََنَاَ اشْتَرََيتْهُاَ منِهُْ ⏎ |
+| `C_lo_bug119606_seventeen_macos_arabic_fonts_lo7.5dev` | LibreOfficeDev 7.5 | no | هُ ْمن ا ِ هَ تُيْ ⏎ َتَرشا ا ْ َن ⏎ أَو كتاب آالف خمسة با | اشتَرى بلال خمسة آلاف كتاب وَأََنَا اشْتَرََيْتُهَا مِنْهُ ⏎ |
 | `D_gdocs_digital_safety_guide_ar_skia_m130` | Skia/PDF m130 Google Docs Re | yes | `` ⏎ الدليل؟ لماذا ⏎ ةفرعم إن .هثدحي أن يمكن الذي الضرر حج | `` ⏎ لماذا الدليل؟ ⏎ كلما زاد قدر المعلومات التي یمتلكھا شخص |
 | `D_gdocs_wmf_rapid_funds_guide_ar_skia_m97` | Skia/PDF m97 Google Docs Ren | yes | ،ان ⏎ ت ⏎ سلوم يبوب وباركاو البوعمراوي ا ⏎ ن ⏎ يمساج ⏎  | الصور م﮴�دمة مں ﮳حاسم﮵��ا ال﮳�وعمراوي و�را﮳�و ﮳�و﮳�﮵ى مولس�ا |
 | `E_commons_tafsir_surat_alnur_pd_scan_p1-3` | itext-paulo-155 (itextpdf.sf | no |  ⏎  ⏎  |  ⏎  ⏎  |
@@ -103,8 +109,8 @@ All engines expose per-glyph positions; selection *geometry* is available everyw
 
 | File | pdfium | pdfium-rs | pdfjs | mupdf | hayro | warraq |
 |---|---|---|---|---|---|---|
-| `perf-text-100-pages` | 3.5 / 19.5 / 216.4 | 12.9 / 29.6 / – | 135.2 / 1628.6 / 10446.5 | 1.1 / 11.4 / 333.6 | 2.2 / 13.1 / – | 1.2 / 4.4 / 218.4 |
-| `perf-text-500-pages` | 3.7 / 26.5 / 1102.1 | 7.9 / 8.5 / – | 65.4 / 352.9 / 36692.8 | 2.5 / 10.9 / 1495.5 | 5.8 / 13.8 / – | 4.3 / 4.3 / 1113.1 |
+| `perf-text-100-pages` | 5.4 / 43.1 / 702.9 | 5.1 / 3.8 / – | 27.9 / 135.9 / 2177.3 | 2.4 / 23.0 / 898.1 | 1.2 / 13.5 / – | 1.3 / 4.4 / 579.2 |
+| `perf-text-500-pages` | 6.2 / 39.8 / 3166.6 | 5.6 / 4.0 / – | 49.4 / 81.3 / 9796.8 | 4.9 / 23.0 / 5004.1 | 4.1 / 8.7 / – | 3.8 / 4.3 / 2975.8 |
 
 PDFium natively is well inside N8. The Warraq core column is the pure-Rust path (hayro) that also runs in WASM. The 500 MB scanned stress file (`gen_scans.py --large`) has not been run yet.
 

@@ -2,9 +2,11 @@
   "name": "warraq-monorepo",
   "private": true,
   "packageManager": "pnpm@10.34.5",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "build:core": "cd packages/core && wasm-pack build warraq-core --target web --release --out-dir ../../packages/ui/src/core-wasm --out-name warraq_core",
+    "build:core": "wasm-pack build packages/core/warraq-core --target web --release --out-dir ../../ui/src/core-wasm --out-name warraq_core",
     "build": "pnpm -r --filter './packages/**' --filter './apps/**' build",
     "dev:web": "pnpm --filter @warraq/web dev",
     "test": "pnpm -r test",

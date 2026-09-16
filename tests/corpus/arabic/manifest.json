@@ -725,7 +725,7 @@
  {
   "file": "generated/variant-encrypted-aes128.pdf",
   "size_bytes": 78079,
-  "sha256": "d74c2b533de8c83e",
+  "sha256": "fb5350c0b239aac4",
   "pages": 1,
   "pdf_version": "1.6",
   "encrypted": true,
@@ -755,7 +755,7 @@
  {
   "file": "generated/variant-encrypted-aes256-owner-only.pdf",
   "size_bytes": 66252,
-  "sha256": "e49ae1feaac72d45",
+  "sha256": "fd58d2c375fd729c",
   "pages": 1,
   "pdf_version": "1.7",
   "encrypted": true,
@@ -815,7 +815,7 @@
  {
   "file": "generated/variant-encrypted-rc4-128.pdf",
   "size_bytes": 75845,
-  "sha256": "cb47c5d2cd972aad",
+  "sha256": "bb43d8264c96b65c",
   "pages": 1,
   "pdf_version": "1.4",
   "encrypted": true,
@@ -845,7 +845,7 @@
  {
   "file": "generated/variant-encrypted-rc4-40.pdf",
   "size_bytes": 75842,
-  "sha256": "ba592ca6f9e82934",
+  "sha256": "2b2c18620ba91a09",
   "pages": 1,
   "pdf_version": "1.4",
   "encrypted": true,

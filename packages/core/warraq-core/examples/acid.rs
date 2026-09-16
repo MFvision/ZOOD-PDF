@@ -42,10 +42,11 @@ fn main() {
     let mut out = serde_json::Map::new();
     for f in files {
         let stem = f.file_stem().unwrap().to_string_lossy().to_string();
-        let pw = if stem.starts_with("variant-encrypted") {
-            Some("warraq")
-        } else {
-            None
+        // the owner-only variant has an EMPTY user password; the others use "warraq"
+        let pw = match stem.as_str() {
+            "variant-encrypted-aes256-owner-only" => Some(""),
+            s if s.starts_with("variant-encrypted") => Some("warraq"),
+            _ => None,
         };
         let t0 = Instant::now();
         let r = match warraq_core::Document::open(std::fs::read(&f).unwrap(), pw) {

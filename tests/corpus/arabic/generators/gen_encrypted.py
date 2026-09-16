@@ -15,6 +15,11 @@ except the owner-only file, which opens with no password at all (so that the
 variant-encrypted-aes256.pdf (R6, user password "warraq") is written by
 gen_variants.py from the 3-page Noto Naskh file; it is not repeated here.
 
+Every run draws fresh random salts, so the files change and with them the file
+encryption keys. Those keys are the ground truth of
+`warraq-pdf/src/crypt/mod.rs::tests::VECTORS`: this script prints them in the
+form that test expects, and they have to be pasted back after a regeneration.
+
 Usage: python3 gen_encrypted.py <repo-root>
 Then:  python3 build_manifest.py <repo-root>
 """
@@ -71,6 +76,7 @@ OBJECT_STREAMS = {"variant-encrypted-aes256-owner-only"}
 def main() -> None:
     if not SRC.exists():
         raise SystemExit(f"missing source: {SRC} (run gen_chrome.py first)")
+    keys = []
     for stem, kwargs, password in VARIANTS:
         out = GEN / f"{stem}.pdf"
         mode = (
@@ -90,6 +96,7 @@ def main() -> None:
                 f"R={enc.R} V={enc.V} stm={enc.stream_method} str={enc.string_method} "
                 f"bits={enc.bits} pages={len(check.pages)}"
             )
+            keys.append((out.name, password, enc.encryption_key.hex(), len(check.pages)))
         # An empty password must NOT open the files that have a user password,
         # and a wrong password must open none of them.
         for bad in ({"", "wrong"} - {password}):
@@ -99,6 +106,13 @@ def main() -> None:
                 pass
             else:
                 raise SystemExit(f"{out.name} opened with the wrong password {bad!r}")
+
+    print(
+        "\nFile encryption keys, for warraq-pdf/src/crypt/mod.rs::tests::VECTORS\n"
+        "(qpdf's own key for each file; paste these in after a regeneration):\n"
+    )
+    for name, password, key, pages in keys:
+        print(f'    ("{name}", "{password}", "{key}", {pages}),')
 
 
 if __name__ == "__main__":

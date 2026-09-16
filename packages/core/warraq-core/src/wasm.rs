@@ -119,7 +119,11 @@ impl Document {
                 y: p.bbox.1,
                 width: p.bbox.2,
                 height: p.bbox.3,
-                direction: if p.direction == warraq_text::Direction::Rtl { "rtl".into() } else { "ltr".into() },
+                direction: if p.direction == warraq_text::Direction::Rtl {
+                    "rtl".into()
+                } else {
+                    "ltr".into()
+                },
                 alignment: match p.alignment {
                     Alignment::Start => "start",
                     Alignment::End => "end",
@@ -136,8 +140,17 @@ impl Document {
     /// Replace a paragraph with reflowed, shaped text. `font` is a face from the
     /// bundled fallback chain; the returned JSON reports whether a substitution
     /// happened so the UI can warn the user.
-    pub fn replace_paragraph(&mut self, index: usize, para_index: usize, new_text: &str, font: &[u8]) -> Result<String, JsError> {
-        let r = self.0.replace_paragraph(index, para_index, new_text, font).map_err(js_err)?;
+    pub fn replace_paragraph(
+        &mut self,
+        index: usize,
+        para_index: usize,
+        new_text: &str,
+        font: &[u8],
+    ) -> Result<String, JsError> {
+        let r = self
+            .0
+            .replace_paragraph(index, para_index, new_text, font)
+            .map_err(js_err)?;
         serde_json::to_string(&r).map_err(js_err)
     }
 

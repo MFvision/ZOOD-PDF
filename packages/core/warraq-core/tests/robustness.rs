@@ -52,7 +52,12 @@ fn mutate(seed: u64, input: &[u8]) -> Vec<u8> {
             }
         }
         3 => {
-            for kw in [b"xref".as_ref(), b"trailer".as_ref(), b"endobj".as_ref(), b"stream".as_ref()] {
+            for kw in [
+                b"xref".as_ref(),
+                b"trailer".as_ref(),
+                b"endobj".as_ref(),
+                b"stream".as_ref(),
+            ] {
                 if let Some(pos) = out.windows(kw.len()).position(|w| w == kw) {
                     out[pos] = b'X';
                 }
@@ -72,7 +77,11 @@ fn corpus_files() -> Vec<PathBuf> {
     let mut files = vec![];
     for sub in ["generated", "realworld"] {
         if let Ok(rd) = std::fs::read_dir(dir.join(sub)) {
-            let mut v: Vec<PathBuf> = rd.flatten().map(|e| e.path()).filter(|p| p.extension().map(|e| e == "pdf").unwrap_or(false)).collect();
+            let mut v: Vec<PathBuf> = rd
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| p.extension().map(|e| e == "pdf").unwrap_or(false))
+                .collect();
             v.sort();
             files.extend(v);
         }
@@ -117,7 +126,13 @@ fn mutated_corpus_files_never_panic_or_hang() {
         let input = std::fs::read(file).unwrap();
         // large scans and the many-page performance fixtures would dominate the
         // budget without testing anything structural
-        if input.len() > 600_000 || file.file_name().unwrap().to_string_lossy().starts_with("perf-") {
+        if input.len() > 600_000
+            || file
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .starts_with("perf-")
+        {
             continue;
         }
         for seed in 0..6u64 {
@@ -136,15 +151,28 @@ fn mutated_corpus_files_never_panic_or_hang() {
         }
     }
     assert!(panics.is_empty(), "panics on mutated input: {panics:?}");
-    assert!(slowest < budget, "a mutated file took {slowest:?} ({slowest_case}); the parser must stay responsive");
+    assert!(
+        slowest < budget,
+        "a mutated file took {slowest:?} ({slowest_case}); the parser must stay responsive"
+    );
     eprintln!("robustness: slowest mutated case {slowest:?} ({slowest_case})");
 }
 
 #[test]
 fn truncated_and_empty_input_is_rejected_cleanly() {
-    for bytes in [vec![], b"%PDF-1.7".to_vec(), b"%PDF-1.7\n1 0 obj\n<< /Type /Catalog".to_vec(), vec![0u8; 4096]] {
-        let r = catch_unwind(AssertUnwindSafe(|| warraq_core::Document::open(bytes, None)));
+    for bytes in [
+        vec![],
+        b"%PDF-1.7".to_vec(),
+        b"%PDF-1.7\n1 0 obj\n<< /Type /Catalog".to_vec(),
+        vec![0u8; 4096],
+    ] {
+        let r = catch_unwind(AssertUnwindSafe(|| {
+            warraq_core::Document::open(bytes, None)
+        }));
         assert!(r.is_ok(), "opening malformed input must not panic");
-        assert!(r.unwrap().is_err(), "malformed input must be an error, not a document");
+        assert!(
+            r.unwrap().is_err(),
+            "malformed input must be an error, not a document"
+        );
     }
 }

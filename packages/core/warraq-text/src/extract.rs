@@ -57,6 +57,12 @@ fn classify(c: char) -> Class {
     }
 }
 
+/// Glyphs of one line, paired with their index in content order.
+type LineGlyphs<'a> = Vec<(usize, &'a PositionedGlyph)>;
+
+/// A line: baseline y, font size, and its glyphs.
+type Line<'a> = (f32, f32, LineGlyphs<'a>);
+
 /// A base character with the combining marks that follow it in the visual sequence.
 #[derive(Clone, Debug)]
 struct Unit {
@@ -377,9 +383,17 @@ fn glyph_text(g: &PositionedGlyph) -> &str {
 }
 
 pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
-    // unknown glyphs (no ToUnicode, no cmap entry) are kept as U+FFFD so words are not silently merged
-    let mut items: Vec<&PositionedGlyph> = glyphs.iter().filter(|g| g.size > 0.0).collect();
-    if items.is_empty() {
+    // The slice is in CONTENT order, which carries information geometry does not:
+    // a shaper emits a mark immediately next to the base it belongs to (before it
+    // for right-to-left runs, after it for left-to-right ones) and positions it at
+    // that base's pen origin. Attaching by box containment instead gets marks wrong
+    // whenever the offset pushes them just outside their base's advance box.
+    let indexed: Vec<(usize, &PositionedGlyph)> = glyphs
+        .iter()
+        .enumerate()
+        .filter(|(_, g)| g.size > 0.0)
+        .collect();
+    if indexed.is_empty() {
         return vec![];
     }
     let is_mark = |g: &PositionedGlyph| {
@@ -389,71 +403,116 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
             .map(crate::normalize::is_mark_or_control)
             .unwrap_or(false)
     };
-    items.sort_by(|a, b| {
-        a.y.partial_cmp(&b.y)
+    let mut sorted = indexed.clone();
+    sorted.sort_by(|a, b| {
+        a.1.y
+            .partial_cmp(&b.1.y)
             .unwrap_or(std::cmp::Ordering::Equal)
-            .then(a.x.partial_cmp(&b.x).unwrap_or(std::cmp::Ordering::Equal))
+            .then(
+                a.1.x
+                    .partial_cmp(&b.1.x)
+                    .unwrap_or(std::cmp::Ordering::Equal),
+            )
     });
-    // 1. lines from base glyphs
-    let mut lines: Vec<(f32, f32, Vec<&PositionedGlyph>)> = vec![]; // (baseline y, size, glyphs)
-    let mut marks: Vec<&PositionedGlyph> = vec![];
-    for g in items {
+
+    // 1. lines from base glyphs, in reading order down the page
+    let mut lines: Vec<Line> = vec![];
+    let mut marks: LineGlyphs = vec![];
+    for (ci, g) in sorted {
         if is_mark(g) {
-            marks.push(g);
+            marks.push((ci, g));
             continue;
         }
         match lines.last_mut() {
-            Some((y, size, v)) if (g.y - *y).abs() <= 0.55 * size.max(g.size).max(1.0) => v.push(g),
-            _ => lines.push((g.y, g.size, vec![g])),
+            Some((y, size, v)) if (g.y - *y).abs() <= 0.55 * size.max(g.size).max(1.0) => {
+                v.push((ci, g))
+            }
+            _ => lines.push((g.y, g.size, vec![(ci, g)])),
         }
     }
-    // 2. attach marks to a base on the nearest line: the base whose advance box contains the
-    //    mark, else the nearest base center (bases are sorted by x first; indexes refer to that order)
     for (_, _, v) in lines.iter_mut() {
-        v.sort_by(|a, b| a.x.partial_cmp(&b.x).unwrap_or(std::cmp::Ordering::Equal));
+        v.sort_by(|a, b| {
+            a.1.x
+                .partial_cmp(&b.1.x)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
     }
-    let mut attached: Vec<Vec<(usize, &PositionedGlyph)>> = vec![vec![]; lines.len()];
-    for m in marks {
-        let li = lines
+
+    // 2. attach marks: the owning base is content-adjacent and shares the mark's pen origin
+    let mut where_base: std::collections::HashMap<usize, (usize, usize)> = Default::default();
+    for (li, (_, _, v)) in lines.iter().enumerate() {
+        for (pos, (ci, _)) in v.iter().enumerate() {
+            where_base.insert(*ci, (li, pos));
+        }
+    }
+    let mut base_indices: Vec<usize> = where_base.keys().copied().collect();
+    base_indices.sort_unstable();
+    let mut attached: Vec<LineGlyphs> = vec![vec![]; lines.len()];
+    for (ci, m) in marks {
+        let after = base_indices.partition_point(|b| *b < ci);
+        let candidates: Vec<usize> = [
+            after.checked_sub(1).map(|i| base_indices[i]),
+            base_indices.get(after).copied(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        let on_same_line = |bi: &usize| -> bool {
+            let (li, _) = where_base[bi];
+            (lines[li].0 - m.y).abs() <= 0.8 * lines[li].1.max(m.size).max(1.0)
+        };
+        let chosen = candidates
             .iter()
-            .enumerate()
-            .min_by(|(_, a), (_, b)| (a.0 - m.y).abs().partial_cmp(&(b.0 - m.y).abs()).unwrap())
-            .map(|(i, _)| i);
-        if let Some(li) = li {
-            let line = &lines[li].2;
-            let mc = m.x + m.advance / 2.0;
-            let inside = line.iter().position(|b| {
-                b.advance > 0.0
-                    && mc >= b.x - 0.05 * b.size
-                    && mc <= b.x + b.advance + 0.05 * b.size
-            });
-            let bi = inside.unwrap_or_else(|| {
-                line.iter()
+            .filter(|bi| on_same_line(bi))
+            .min_by(|a, b| {
+                let dx = |bi: &usize| {
+                    let (li, pos) = where_base[bi];
+                    (lines[li].2[pos].1.x - m.x).abs()
+                };
+                dx(a)
+                    .partial_cmp(&dx(b))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .copied()
+            // nothing content-adjacent on this line: fall back to the nearest base centre
+            .or_else(|| {
+                let li = lines
+                    .iter()
                     .enumerate()
                     .min_by(|(_, a), (_, b)| {
-                        ((a.x + a.advance / 2.0) - mc)
+                        (a.0 - m.y).abs().partial_cmp(&(b.0 - m.y).abs()).unwrap()
+                    })?
+                    .0;
+                let mc = m.x + m.advance / 2.0;
+                lines[li]
+                    .2
+                    .iter()
+                    .min_by(|a, b| {
+                        ((a.1.x + a.1.advance / 2.0) - mc)
                             .abs()
-                            .partial_cmp(&((b.x + b.advance / 2.0) - mc).abs())
+                            .partial_cmp(&((b.1.x + b.1.advance / 2.0) - mc).abs())
                             .unwrap()
                     })
-                    .map(|(i, _)| i)
-                    .unwrap_or(0)
+                    .map(|(ci, _)| *ci)
             });
-            attached[li].push((bi, m));
+        if let Some(bi) = chosen {
+            let (li, pos) = where_base[&bi];
+            attached[li].push((pos, m));
         }
     }
+
     let mut out = vec![];
     for (li, (y, size, bases)) in lines.into_iter().enumerate() {
         let mut clusters: Vec<Cluster> = bases
             .iter()
-            .map(|g| Cluster {
+            .map(|(_, g)| Cluster {
                 x: g.x,
                 adv: g.advance,
                 text: glyph_text(g).to_string(),
             })
             .collect();
-        for (bi, m) in &attached[li] {
-            if let Some(c) = clusters.get_mut(*bi) {
+        for (pos, m) in &attached[li] {
+            if let Some(c) = clusters.get_mut(*pos) {
                 let t = glyph_text(m);
                 let first = t.chars().next().unwrap_or('\0');
                 let dot =
@@ -493,7 +552,7 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
         };
         // Lines that carry explicit space glyphs only get extra spaces on wide gaps (cells,
         // columns); lines without any get them on word-sized gaps. Advances may be off when
-        // the producer positioned glyphs with metrics of another font instance (Skia + variable fonts).
+        // the producer positioned glyphs with metrics of another font instance.
         let has_space_glyphs = clusters
             .iter()
             .any(|c| c.text.trim().is_empty() && !c.text.is_empty());

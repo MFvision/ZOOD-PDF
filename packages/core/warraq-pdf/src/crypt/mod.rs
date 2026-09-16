@@ -167,7 +167,13 @@ fn decrypt_dictionary(
     id: ObjectId,
     dict: &mut Dictionary,
 ) -> Result<(), CryptError> {
-    for (_, value) in dict.iter_mut() {
+    // The signature blob in a signature dictionary is written after the file is
+    // encrypted and is therefore in the clear (ISO 32000-2 §7.6.2).
+    let signature = dict.has_type(b"Sig") || dict.has_type(b"DocTimeStamp");
+    for (key, value) in dict.iter_mut() {
+        if signature && key.as_slice() == b"Contents" {
+            continue;
+        }
         decrypt_value(handler, file_key, id, value)?;
     }
     Ok(())
@@ -310,24 +316,27 @@ mod tests {
     ///
     /// The keys are ground truth from an independent implementation:
     /// `pikepdf.open(path, password=pw).encryption.encryption_key.hex()`.
+    /// Regenerating the corpus draws new salts and therefore new keys;
+    /// `tests/corpus/arabic/generators/gen_encrypted.py` prints the rows below
+    /// ready to be pasted back in.
     const VECTORS: &[(&str, &str, &str, usize)] = &[
-        ("variant-encrypted-rc4-40.pdf", USER, "d56a77273b", 1),
+        ("variant-encrypted-rc4-40.pdf", USER, "0b57e0e286", 1),
         (
             "variant-encrypted-rc4-128.pdf",
             USER,
-            "30d828b5a8f35c7eca5d8338b5e081a2",
+            "c9678b26d0b263d510318095e4bf8e01",
             1,
         ),
         (
             "variant-encrypted-aes128.pdf",
             USER,
-            "75d590a97a8ed8521790b9e2de2af88f",
+            "321b513cf96b74eb266c57db7a044fd6",
             1,
         ),
         (
             "variant-encrypted-aes256-owner-only.pdf",
             "",
-            "b717b421f3245e63745dc51393f76cbb77e025ff3dff331010967cf5ac1fb26f",
+            "3a66efbaa736b49057374788629c7718cb8a440b673811d937de5800542fc095",
             1,
         ),
         (
@@ -522,6 +531,57 @@ mod tests {
             decrypt_document(&mut doc, ""),
             Err(CryptError::NotEncrypted)
         );
+    }
+
+    /// Two strings that the spec keeps in the clear: the `/Contents` of a
+    /// signature dictionary and everything in the cross-reference stream.
+    #[test]
+    fn strings_the_spec_exempts_are_left_alone() {
+        let name = "variant-encrypted-aes256-owner-only.pdf";
+        let mut doc = loaded(name);
+        let blob = b"not ciphertext".to_vec();
+        let mut sig = Dictionary::new();
+        sig.set("Type", Object::Name(b"Sig".to_vec()));
+        sig.set("Contents", Object::string_literal(blob.clone()));
+        sig.set(
+            "Name",
+            Object::string_literal("encrypted".as_bytes().to_vec()),
+        );
+        let sig_id = doc.add_object(Object::Dictionary(sig));
+
+        let xref_before = doc
+            .objects
+            .values()
+            .find(|o| {
+                o.as_stream()
+                    .map(|s| s.dict.has_type(b"XRef"))
+                    .unwrap_or(false)
+            })
+            .cloned();
+
+        decrypt_document(&mut doc, "").unwrap();
+        let sig = doc.get_dictionary(sig_id).unwrap();
+        assert_eq!(sig.get(b"Contents").and_then(Object::as_str).unwrap(), blob);
+        // Every other string of the same dictionary did go through the cipher.
+        assert_ne!(
+            sig.get(b"Name").and_then(Object::as_str).unwrap(),
+            b"encrypted"
+        );
+        if let Some(before) = xref_before {
+            let after = doc
+                .objects
+                .values()
+                .find(|o| {
+                    o.as_stream()
+                        .map(|s| s.dict.has_type(b"XRef"))
+                        .unwrap_or(false)
+                })
+                .unwrap();
+            assert_eq!(
+                after.as_stream().unwrap().content,
+                before.as_stream().unwrap().content
+            );
+        }
     }
 
     #[test]

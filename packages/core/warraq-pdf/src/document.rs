@@ -139,6 +139,12 @@ impl PdfDocument {
         Ok(doc)
     }
 
+    /// True when the file we opened was encrypted, which stays true after the
+    /// objects have been decrypted in memory (unlike `lopdf`'s own flag).
+    pub fn was_encrypted(&self) -> bool {
+        self.was_encrypted
+    }
+
     pub fn original_bytes(&self) -> &[u8] {
         &self.original
     }
@@ -215,7 +221,7 @@ impl PdfDocument {
     pub fn metadata(&self) -> Metadata {
         let mut m = Metadata {
             pages: self.page_count(),
-            encrypted: self.doc.is_encrypted(),
+            encrypted: self.was_encrypted,
             ..Default::default()
         };
         if let Ok(info) = self
@@ -315,6 +321,15 @@ mod tests {
             // The page tree is readable, i.e. the objects really were decrypted.
             let (w, h) = d.page_size(0).unwrap();
             assert!(w > 100.0 && h > 100.0, "{name}: page is {w}x{h}");
+
+            // A full rewrite of a decrypted document is plaintext: it reopens
+            // with no password at all.
+            let mut d = d;
+            let saved = d.save_to_vec().unwrap();
+            let reopened = PdfDocument::open(saved, None)
+                .unwrap_or_else(|e| panic!("{name} did not survive a rewrite: {e}"));
+            assert_eq!(reopened.page_count(), pages, "{name} (rewritten)");
+            assert!(!reopened.metadata().encrypted, "{name} (rewritten)");
 
             let wrong = PdfDocument::open(corpus(name), Some("not-the-password"));
             assert!(
