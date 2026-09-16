@@ -2,7 +2,9 @@
 use serde::Serialize;
 use warraq_pdf::PdfDocument;
 use warraq_render::RenderDoc;
-use warraq_text::{find_in_lines, reconstruct_lines, SearchNormalization, TextLine};
+use warraq_text::{
+    detect_paragraphs, find_in_lines, reconstruct_lines, Paragraph, SearchNormalization, TextLine,
+};
 
 #[cfg(target_arch = "wasm32")]
 pub mod wasm;
@@ -28,6 +30,13 @@ pub struct Metadata {
     pub pages: usize,
     pub encrypted: bool,
     pub engine: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct ParagraphReplacement {
+    pub lines_drawn: usize,
+    /// True when the text was drawn with a bundled font instead of the original.
+    pub font_substituted: bool,
 }
 
 pub struct Document {
@@ -116,6 +125,61 @@ impl Document {
         }
     }
 
+    /// Paragraphs of a page, in reading order, with their boxes in DEVICE space
+    /// (y down from the top-left corner, points at scale 1) so the UI can hit-test
+    /// them against what it drew.
+    pub fn paragraphs(&self, index: usize) -> Result<Vec<Paragraph>, CoreError> {
+        Ok(detect_paragraphs(&self.text_lines(index)?))
+    }
+
+    /// Replace paragraph `para_index` of a page with `new_text`, reflowed to the
+    /// same box with correct shaping, bidi and alignment.
+    ///
+    /// `font` is a face from the bundled fallback chain: a PDF embeds only a
+    /// subset of its fonts, so new characters generally cannot reuse the
+    /// document's own file. The returned flag says whether the original glyphs
+    /// were drawn with a different font, i.e. whether the user should be warned
+    /// about a substitution (brief §15.5).
+    pub fn replace_paragraph(
+        &mut self,
+        index: usize,
+        para_index: usize,
+        new_text: &str,
+        font: &[u8],
+    ) -> Result<ParagraphReplacement, CoreError> {
+        let (_, page_height) = self.page_size(index)?;
+        let lines = self.text_lines(index)?;
+        let paragraphs = detect_paragraphs(&lines);
+        let para = paragraphs
+            .get(para_index)
+            .ok_or(warraq_pdf::Error::Edit(format!(
+                "no paragraph {para_index} on page {index}"
+            )))?;
+        let (x, y_top, w, h) = para.bbox;
+        let first = &lines[para.lines[0]];
+        let size = (first.height / 1.2).max(1.0);
+        let edit = warraq_pdf::ops::ParagraphEdit {
+            rect: (x, page_height - (y_top + h), w, h),
+            first_baseline: page_height - (first.y + size),
+            text: new_text,
+            font,
+            font_size: size,
+            leading: para.leading.max(size * 1.15),
+            direction: para.direction,
+            alignment: para.alignment,
+        };
+        let drawn = warraq_pdf::ops::replace_paragraph(self.pdf_mut(), index, &edit)?;
+        Ok(ParagraphReplacement {
+            lines_drawn: drawn,
+            font_substituted: true,
+        })
+    }
+
+    /// Save the edited document. The bytes handed to `open` are never modified.
+    pub fn save(&mut self) -> Result<Vec<u8>, CoreError> {
+        Ok(self.pdf.save_to_vec()?)
+    }
+
     pub fn pdf_mut(&mut self) -> &mut PdfDocument {
         self.lines_cache.borrow_mut().clear();
         &mut self.pdf
@@ -148,6 +212,36 @@ mod tests {
         assert_eq!(d.search("الفاتورة"), vec![0]);
         assert_eq!(d.search("فاتوره"), vec![0], "taa marbuta / haa unified");
         assert!(d.search("لا يوجد").is_empty());
+    }
+
+    #[test]
+    fn paragraphs_are_detected_and_one_can_be_reflowed_and_saved() {
+        const AMIRI: &[u8] = include_bytes!("../../../../tests/fonts/Amiri-Regular.ttf");
+        let mut d = Document::open(corpus("chrome-notonaskh-justified-3pages.pdf"), None).unwrap();
+        let paras = d.paragraphs(0).unwrap();
+        assert!(
+            paras.len() >= 2,
+            "expected a heading and body paragraphs, got {}",
+            paras.len()
+        );
+        assert!(
+            paras.iter().any(|p| p.lines.len() > 1),
+            "at least one multi-line paragraph"
+        );
+        let target = paras.iter().position(|p| p.lines.len() > 1).unwrap();
+        let (_, before_h) = (paras[target].bbox.2, paras[target].bbox.3);
+        let new = "فقرة أعاد محرر وراق توزيعها بالكامل مع الحفاظ على عرض الإطار الأصلي وتشكيل الحروف العربية بشكل صحيح.";
+        let r = d.replace_paragraph(0, target, new, AMIRI).unwrap();
+        assert!(r.lines_drawn >= 1);
+        let bytes = d.save().unwrap();
+        // the saved file must reopen and the new text must come back in logical order
+        let d2 = Document::open(bytes, None).unwrap();
+        let text = d2.extract_text(0).unwrap();
+        assert!(
+            text.contains("محرر وراق"),
+            "reflowed text missing from:\n{text}"
+        );
+        assert!(before_h > 0.0);
     }
 
     #[test]

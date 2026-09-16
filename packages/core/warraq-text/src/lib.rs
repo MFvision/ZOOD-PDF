@@ -5,6 +5,7 @@
 pub mod bidi;
 pub mod extract;
 pub mod normalize;
+pub mod paragraph;
 pub mod search;
 pub mod shape;
 
@@ -12,6 +13,9 @@ pub use bidi::{base_direction, visual_runs, Direction, VisualRun};
 pub use extract::{reconstruct_lines, PositionedGlyph, TextLine};
 pub use normalize::{
     fold_presentation_forms, normalize_for_search, strip_marks, SearchNormalization,
+};
+pub use paragraph::{
+    detect_paragraphs, layout_paragraph, Alignment, LaidOutLine, LayoutBox, LayoutStyle, Paragraph,
 };
 pub use search::{find_in_lines, Match};
 pub use shape::{ShapedGlyph, Shaper};

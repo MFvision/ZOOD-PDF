@@ -2,11 +2,13 @@
 pub mod document;
 pub mod fonts;
 pub mod ops;
+pub mod text_walk;
 pub mod tounicode;
 
 pub use document::{Metadata, PdfDocument};
 pub use fonts::{embed_subset_font, FontSubset};
-pub use ops::{append_line, replace_word};
+pub use ops::{append_line, erase_area, replace_paragraph, replace_word};
+pub use text_walk::{locate_show_runs, Matrix, ShowRun};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

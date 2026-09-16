@@ -13,7 +13,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ planned · ❌ out of scope. Targ
 | Compress | Image downsampling, object streams, font subsetting, presets | MVP | ⬜ | ⬜ | ⬜ | |
 | Fill & Sign | AcroForm fill, draw/type/image signature, initials, dates | MVP | ⬜ | ⬜ | ⬜ | PDFium form rendering; our appearance streams for Arabic |
 | Protect | Open/permissions password, AES-256 | MVP | ⬜ | ⬜ | ⬜ | own standard security handler (lopdf cannot read R6) |
-| Edit PDF | Text edit with reflow (Arabic-correct) | MVP | 🟡 | 🟡 | 🟡 | single-word replace + append line work; paragraph reflow next |
+| Edit PDF | Text edit with reflow (Arabic-correct) | MVP | 🟡 | 🟡 | 🟡 | paragraph detect + reflow + erase + word replace work in the core (`Document::replace_paragraph`); UI editing surface and undo next |
 | Edit PDF | Images replace/resize/crop, links, headers/footers, watermarks, Bates, page numbers | MVP/v1 | ⬜ | ⬜ | ⬜ | |
 | Scan & OCR | Arabic + English OCR, deskew, cleanup, searchable image PDF | v1 | ⬜ | ⬜ | ⬜ | tesseract.js (X, W), Tesseract native (D) |
 | Export / Create | PDF → Word/Excel/PowerPoint/images/HTML/text; Office/images/HTML → PDF; combine | v1 | ⬜ | ⬜ | ⬜ | images/HTML/text client-side; Office via optional local LibreOffice (D) or opt-in server (W) — **not available in X** |

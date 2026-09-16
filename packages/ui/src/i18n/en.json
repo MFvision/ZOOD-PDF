@@ -88,6 +88,7 @@
   "status.mockCore": "mock core",
   "status.mockCoreHint": "The WASM core is not built yet; a mock document is shown.",
   "status.core": "Core {version}",
+  "status.coreEngine": "Engine {engine}",
   "status.coreLoading": "Loading core…",
   "find.label": "Find",
   "find.placeholder": "Find in document",

@@ -9,6 +9,8 @@ use serde::Serialize;
 use tauri::{AppHandle, DragDropEvent, Emitter, Manager, Runtime, WindowEvent};
 use tauri_plugin_fs::FsExt;
 
+pub mod core_bridge;
+
 /// Event sent to the webview when files are dropped on the window.
 /// Payload: [`FileDropPayload`]. Every dropped path is added to the fs scope
 /// before the event is emitted, so `read_file_bytes` accepts it afterwards.
@@ -58,7 +60,28 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .invoke_handler(tauri::generate_handler![core_version, read_file_bytes])
+        // Points warraq-render at the bundled PDFium and starts the core thread
+        // before the window can invoke anything (see `core_bridge`).
+        .setup(|app| {
+            let bridge = core_bridge::setup(app.handle());
+            println!("warraq: core engine = {}", bridge.engine());
+            app.manage(bridge);
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            core_version,
+            read_file_bytes,
+            core_bridge::core_engine,
+            core_bridge::doc_open,
+            core_bridge::doc_close,
+            core_bridge::doc_page_count,
+            core_bridge::doc_page_size,
+            core_bridge::doc_render_page,
+            core_bridge::doc_extract_text,
+            core_bridge::doc_text_lines,
+            core_bridge::doc_search,
+            core_bridge::doc_metadata,
+        ])
         .on_window_event(|window, event| {
             // Forward OS file drops to the webview, after allowing the dropped
             // files in the fs scope (a drop is as explicit a choice as a dialog).

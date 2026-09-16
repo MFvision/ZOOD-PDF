@@ -25,8 +25,16 @@ tauri-plugin-fs = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # One core, two builds: the same crate that wasm-pack compiles for the web and
-# the extension is linked natively here (rlib).
-warraq-core = { path = "../../../packages/core/warraq-core" }
+# the extension is linked natively here (rlib). `pdfium` makes the native
+# rasterizer PDFium (ADR-0003/ADR-0006: desktop uses PDFium, browsers stay on
+# the pure-Rust hayro backend).
+warraq-core = { path = "../../../packages/core/warraq-core", features = ["pdfium"] }
+# Direct (same-feature) dependency used only to probe, at runtime, whether the
+# PDFium dynamic library could actually be bound — `warraq_core::Metadata.engine`
+# is a compile-time `cfg!`, so it cannot see the fallback to hayro.
+warraq-render = { path = "../../../packages/core/warraq-render", features = ["pdfium"] }
+# `Direction` (rtl/ltr) for the text-line DTOs.
+warraq-text = { path = "../../../packages/core/warraq-text" }
 
 [profile.release]
 opt-level = 3

@@ -88,6 +88,7 @@
   "status.mockCore": "نواة تجريبية",
   "status.mockCoreHint": "لم تُبنَ نواة WASM بعد؛ يُعرض مستند تجريبي.",
   "status.core": "النواة {version}",
+  "status.coreEngine": "المحرك {engine}",
   "status.coreLoading": "جارٍ تحميل النواة…",
   "find.label": "بحث",
   "find.placeholder": "ابحث في المستند",

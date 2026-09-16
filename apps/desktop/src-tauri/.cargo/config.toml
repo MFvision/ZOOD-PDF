@@ -1,0 +1,5 @@
+# The Xcode shim at /usr/bin/cc refuses to run until the Xcode licence is
+# accepted, so link with the toolchain binary directly (same workaround as
+# packages/core/.cargo/config.toml).
+[target.aarch64-apple-darwin]
+linker = "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang"

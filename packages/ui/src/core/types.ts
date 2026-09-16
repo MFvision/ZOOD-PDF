@@ -47,11 +47,14 @@ export interface CoreModule {
   };
 }
 
-export type CoreKind = 'wasm' | 'mock';
+/** `native` is the desktop host: `warraq-core` linked into Tauri, not WASM. */
+export type CoreKind = 'wasm' | 'mock' | 'native';
 
 export interface CoreStatus {
   kind: CoreKind;
   version: string;
+  /** Rasterizer actually in use, e.g. "pdfium+hayro"; native host only. */
+  engine?: string;
 }
 
 export interface DocumentMetadata {

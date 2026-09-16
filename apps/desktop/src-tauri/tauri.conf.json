@@ -33,6 +33,11 @@
     "category": "Productivity",
     "shortDescription": "Open, account-free, Arabic-first PDF editor",
     "longDescription": "Warraq is an open, account-free, Arabic-first PDF editor. One Rust core, one RTL-first UI, thin hosts for Windows, macOS, browsers and later iOS.",
+    "resources": [
+      "resources/pdfium/LICENSE",
+      "resources/pdfium/VERSION",
+      "resources/pdfium/licenses/*"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

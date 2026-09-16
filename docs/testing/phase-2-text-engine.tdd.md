@@ -34,3 +34,20 @@ Final run: `warraq-text` 17 passed; `warraq-pdf` 5 passed, 1 ignored; `warraq-re
 ## Coverage and gaps
 * Not yet covered: no-ToUnicode fallbacks (glyph names, cmap, OCR), Type3 fonts, vertical text, paragraph/reflow, incremental save, encryption, the ambiguity "items 3" vs "3 items" (needs content-order tie-break).
 * The corpus-wide extraction gate (all 24 truth files scored in CI) is the next test to add.
+
+## Second slice (2026-09-16, later the same day): paragraphs, reflow and editing
+
+| # | Behavior | Test | RED evidence | GREEN evidence |
+|---|---|---|---|---|
+| 19 | Lines group into paragraphs; justification is decided on the body lines, other alignments on all lines | `paragraph::justified_rtl_block_…`, `a_far_away_line_and_a_direction_change…`, `right_aligned_rtl_paragraph…` | `left: Justify right: Start` — a two-line paragraph has a one-line body, so both edges trivially "aligned" | ok after requiring ≥ 3 lines for justification |
+| 20 | Greedy line breaking keeps every line inside the box and pins RTL lines to the right edge | `paragraph::layout_breaks_at_spaces_and_right_aligns_rtl_lines` | passed first run | ok |
+| 21 | Justification stretches spaces on every line but the last | `paragraph::justification_stretches_spaces_on_every_line_but_the_last` | passed first run | ok |
+| 22 | Text-showing operators are located in page space through Tm/Td/TD/T*/'/" and the CTM | `text_walk::*` (3 tests) | passed first run | ok |
+| 23 | A page's leftover transform is reported and invertible | `text_walk::final_ctm_reports_an_unbalanced_page_transform_and_inverts_it` | written after the reflow demo drew text at 0.75× scale in the wrong place: Skia opens pages with `q 0.75 0 0 -0.75 0 842 cm` and never closes it | ok; both append paths now emit the inverse CTM first |
+| 24 | Erasing a box blanks only the runs inside it and leaves the operators in place | `ops::erase_area_blanks_only_the_runs_inside_the_box` | passed first run | ok |
+| 25 | A paragraph can be replaced and reflowed into its own box | `ops::replace_paragraph_reflows_arabic_into_the_box` | passed first run | ok |
+| 26 | The core detects paragraphs, reflows one, saves, and the saved file reads back in logical order | `core::paragraphs_are_detected_and_one_can_be_reflowed_and_saved` | passed first run | ok |
+
+Visual proof: `tests/acid/write-tests/reflow-compare.png` (before/after of a justified Arabic page; the replacement keeps shaping, right-to-left flow, Arabic-Indic digits and an embedded Latin run). Regenerate with `cargo run --release -p warraq-core --example reflow_demo -- . <stem> <para-index> "<text>"`.
+
+Totals after this slice: 37 unit tests green (`warraq-text` 22, `warraq-pdf` 11 + 1 ignored, `warraq-render` 1, `warraq-core` 3), clippy clean, `wasm32-unknown-unknown` still compiles.

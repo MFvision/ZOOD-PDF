@@ -42,6 +42,12 @@ export function StatusBar() {
           <span className="badge badge-warning" title={t('status.mockCoreHint')}>
             {t('status.mockCore')}
           </span>
+        ) : core.engine ? (
+          // Desktop: the rasterizer that actually loaded ("pdfium+hayro", or
+          // "hayro" when the native library was missing). Version in the title.
+          <span className="statusbar-muted" title={t('status.core', { version: core.version })}>
+            {t('status.coreEngine', { engine: core.engine })}
+          </span>
         ) : (
           <span className="statusbar-muted">{t('status.core', { version: core.version })}</span>
         )}

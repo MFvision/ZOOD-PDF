@@ -1,3 +1,4 @@
+import { handleTauriRequest, isTauriHost } from './host-tauri';
 import type { CoreRequest, CoreResponse, RequestKind, RequestMap, ResultMap } from './protocol';
 import type { CoreStatus, DocumentMetadata, OpenedDocumentInfo, PageSize } from './types';
 
@@ -19,12 +20,23 @@ function createDefaultWorker(): Worker {
   return new Worker(new URL('./worker.ts', import.meta.url), { type: 'module', name: 'warraq-core' });
 }
 
+/** Normalizes anything the native host throws into a `CoreClientError`. */
+function toClientError(err: unknown): CoreClientError {
+  if (err instanceof CoreClientError) return err;
+  const message = err instanceof Error ? err.message : String(err);
+  return new CoreClientError(/^(E_[A-Z_]+)/.exec(message)?.[1] ?? 'E_UNKNOWN', message);
+}
+
 /**
- * Typed async client for the core worker. Method names mirror `API.md`;
- * every call returns a Promise and large buffers are transferred, not copied.
+ * Typed async client for the core. Method names mirror `API.md`; every call
+ * returns a Promise and large buffers are transferred, not copied.
+ *
+ * Two hosts, one protocol: in a browser the requests go to the WASM Web Worker;
+ * inside Tauri they go to the natively linked core through `host-tauri.ts`, so
+ * the desktop renders with PDFium and everything else behaves identically.
  */
 export class CoreClient {
-  private readonly worker: Worker;
+  private readonly worker: Worker | null;
   private readonly pending = new Map<number, Pending>();
   private nextId = 1;
   private statusPromise: Promise<CoreStatus> | null = null;
@@ -32,8 +44,11 @@ export class CoreClient {
   private readonly forceMock: boolean;
 
   constructor(options: { worker?: Worker; forceMock?: boolean } = {}) {
-    this.worker = options.worker ?? createDefaultWorker();
     this.forceMock = options.forceMock ?? false;
+    // Desktop: no worker at all — an injected worker or `?core=mock` still wins.
+    const native = !options.worker && !this.forceMock && isTauriHost();
+    this.worker = native ? null : (options.worker ?? createDefaultWorker());
+    if (!this.worker) return;
     this.worker.onmessage = (event: MessageEvent<CoreResponse>) => this.settle(event.data);
     this.worker.onerror = (event) => {
       const message = event.message || 'core worker failed';
@@ -69,17 +84,25 @@ export class CoreClient {
     payload: RequestMap[K],
     transfer: Transferable[] = [],
   ): Promise<ResultMap[K]> {
+    const worker = this.worker;
+    if (!worker) {
+      return handleTauriRequest<K>({ kind, ...payload } as { kind: K } & RequestMap[K]).catch(
+        (err: unknown) => {
+          throw toClientError(err);
+        },
+      );
+    }
     const id = this.nextId;
     this.nextId += 1;
     const message = { id, kind, ...payload } as CoreRequest;
     return new Promise<ResultMap[K]>((resolve, reject) => {
       this.pending.set(id, { resolve: (value) => resolve(value as ResultMap[K]), reject });
-      this.worker.postMessage(message, transfer);
+      worker.postMessage(message, transfer);
     });
   }
 
   terminate(): void {
-    this.worker.terminate();
+    this.worker?.terminate();
     for (const { reject } of this.pending.values()) {
       reject(new CoreClientError('E_WORKER', 'core worker terminated'));
     }
