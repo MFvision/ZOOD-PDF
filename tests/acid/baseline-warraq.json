@@ -1,0 +1,212 @@
+{
+ "A_arwikibooks_mediawiki_guide_word2007": {
+  "open": true
+ },
+ "A_un_rome_statute_A-CONF.183-9-AR_word_pdfmaker6": {
+  "open": true
+ },
+ "A_worldbank_malpass_g7_briefing_AR_word2016_pdftools": {
+  "open": true
+ },
+ "B_baytalhekma_covid_workplace_guide_indesign_cc2015": {
+  "open": true
+ },
+ "B_wmf_welcome_to_wikipedia_arabic_indesign_cs5_p1-5": {
+  "open": true
+ },
+ "C_lo_bug119606_seventeen_macos_arabic_fonts_lo7.5dev": {
+  "open": true
+ },
+ "C_lo_bug171737_noto_sans_arabic_extraction_lo26.2_pdf2.0": {
+  "open": true
+ },
+ "D_gdocs_digital_safety_guide_ar_skia_m130": {
+  "open": true
+ },
+ "D_gdocs_wmf_rapid_funds_guide_ar_skia_m97": {
+  "open": true
+ },
+ "E_commons_qarar193_toshiba_estudio_mfp_scan": {
+  "open": true
+ },
+ "E_commons_tafsir_surat_alnur_pd_scan_p1-3": {
+  "open": true
+ },
+ "E_ia_bv056_arabic_manuscript_1924_ocr_text_layer": {
+  "open": true
+ },
+ "F_pdfjs15546_rtl_acroform_textfields_arabic_digits_acrobat": {
+  "open": true
+ },
+ "G_pdfjs_ArabicCIDTrueType_apple_pstopdffilter_no_tounicode": {
+  "open": true
+ },
+ "G_wipo_saudi_copyright_law_laserwriter8_distiller5_legacy_encoding": {
+  "open": true
+ },
+ "acroform-pdflib-arabic-fields": {
+  "open": true,
+  "order_lcs": 0.205,
+  "recall_logical": 0.189,
+  "verdict": "garbage(U+FFFD)"
+ },
+ "chrome-amiri-tashkeel-ligatures": {
+  "open": true,
+  "order_lcs": 0.5,
+  "recall_logical": 0.5,
+  "verdict": "partial"
+ },
+ "chrome-cairo-mixed-invoice": {
+  "open": true,
+  "order_lcs": 0.956,
+  "recall_logical": 1.0,
+  "verdict": "logical"
+ },
+ "chrome-ibmplex-bidi-stress": {
+  "open": true,
+  "order_lcs": 1.0,
+  "recall_logical": 1.0,
+  "verdict": "logical"
+ },
+ "chrome-nastaliq-urdu-prose": {
+  "open": true,
+  "order_lcs": 0.163,
+  "recall_logical": 0.167,
+  "verdict": "garbage(U+FFFD)"
+ },
+ "chrome-notonaskh-justified-3pages": {
+  "open": true,
+  "order_lcs": 0.19,
+  "recall_logical": 0.175,
+  "verdict": "garbage(U+FFFD)"
+ },
+ "chrome-notosansarabic-form-layout": {
+  "open": true,
+  "order_lcs": 0.205,
+  "recall_logical": 0.189,
+  "verdict": "garbage(U+FFFD)"
+ },
+ "chrome-tajawal-persian-urdu-digits": {
+  "open": true,
+  "order_lcs": 1.0,
+  "recall_logical": 1.0,
+  "verdict": "logical"
+ },
+ "chrome-variablefont-type3-notonaskh-justified": {
+  "open": true,
+  "order_lcs": 0.215,
+  "recall_logical": 0.195,
+  "verdict": "garbage(U+FFFD)"
+ },
+ "chrome-vazirmatn-persian-prose": {
+  "open": true,
+  "order_lcs": 0.889,
+  "recall_logical": 0.929,
+  "verdict": "logical"
+ },
+ "chrome-windows-arial-tahoma-times": {
+  "open": true,
+  "order_lcs": 0.956,
+  "recall_logical": 1.0,
+  "verdict": "logical"
+ },
+ "coretext-albayan-tashkeel": {
+  "open": true,
+  "order_lcs": 1.0,
+  "recall_logical": 1.0,
+  "verdict": "logical"
+ },
+ "coretext-baghdad-persian-urdu": {
+  "open": true,
+  "order_lcs": 0.97,
+  "recall_logical": 0.967,
+  "verdict": "logical"
+ },
+ "coretext-geezapro-paragraphs": {
+  "open": true,
+  "order_lcs": 0.989,
+  "recall_logical": 1.0,
+  "verdict": "logical"
+ },
+ "coretext-sfarabic-mixed-invoice": {
+  "open": true,
+  "order_lcs": 0.956,
+  "recall_logical": 1.0,
+  "verdict": "logical"
+ },
+ "perf-text-100-pages": {
+  "open": true
+ },
+ "perf-text-500-pages": {
+  "open": true
+ },
+ "raw-amiri-cid-identity-tounicode": {
+  "open": true,
+  "order_lcs": 0.933,
+  "recall_logical": 0.959,
+  "verdict": "logical"
+ },
+ "raw-amiri-cid-no-tounicode": {
+  "open": true,
+  "order_lcs": 0.44,
+  "recall_logical": 0.407,
+  "verdict": "garbage(U+FFFD)"
+ },
+ "raw-cairo-cid-broken-tounicode": {
+  "open": true,
+  "order_lcs": 0.0,
+  "recall_logical": 0.0,
+  "verdict": "empty"
+ },
+ "raw-legacy-symbolic-truetype": {
+  "open": true,
+  "order_lcs": 0.007,
+  "recall_logical": 0.008,
+  "verdict": "garbage"
+ },
+ "reportlab-visual-presentation-forms": {
+  "open": true,
+  "order_lcs": 0.97,
+  "recall_logical": 1.0,
+  "verdict": "logical"
+ },
+ "scan-arial-200dpi-bilevel": {
+  "open": true,
+  "order_lcs": 0.0,
+  "recall_logical": 0.0,
+  "verdict": "empty"
+ },
+ "scan-notonaskh-300dpi-skewed-jpeg": {
+  "open": true,
+  "order_lcs": 0.0,
+  "recall_logical": 0.0,
+  "verdict": "empty"
+ },
+ "variant-arabic-metadata-outlines-annots": {
+  "open": true,
+  "order_lcs": 0.19,
+  "recall_logical": 0.175,
+  "verdict": "garbage(U+FFFD)"
+ },
+ "variant-encrypted-aes256": {
+  "open": false
+ },
+ "variant-incremental-update": {
+  "open": true,
+  "order_lcs": 0.956,
+  "recall_logical": 1.0,
+  "verdict": "logical"
+ },
+ "variant-linearized": {
+  "open": true,
+  "order_lcs": 0.19,
+  "recall_logical": 0.175,
+  "verdict": "garbage(U+FFFD)"
+ },
+ "variant-objectstreams-xrefstream": {
+  "open": true,
+  "order_lcs": 0.19,
+  "recall_logical": 0.175,
+  "verdict": "garbage(U+FFFD)"
+ }
+}

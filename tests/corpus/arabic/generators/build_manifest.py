@@ -13,6 +13,8 @@ CATEGORIES = {  # what each generated file is for (the "class" column of the aci
     "chrome-cairo-mixed-invoice": "Skia/PDF (Chrome print, Google Docs class), Cairo, mixed Arabic/English invoice, Arabic-Indic digits",
     "chrome-amiri-tashkeel-ligatures": "Skia/PDF, Amiri, full tashkeel, lam-alef and Allah ligatures, kashida",
     "chrome-notonaskh-justified-3pages": "Skia/PDF, Noto Naskh Arabic (static instance, CID font as in Google Docs exports), justified paragraphs, 3 pages",
+    "chrome-vazirmatn-persian-prose": "Skia/PDF, Vazirmatn (Persian): ZWNJ words, Persian digits and separators, پ چ ژ گ",
+    "chrome-nastaliq-urdu-prose": "Skia/PDF, Noto Nastaliq Urdu: Nastaliq shaping, ٹ ڈ ڑ ں ے ھ, Urdu digits",
     "chrome-variablefont-type3-notonaskh-justified": "Skia/PDF with a VARIABLE webfont: embedded as Type3, dotted letters split into skeleton + dot glyphs mapped to U+0000",
     "chrome-tajawal-persian-urdu-digits": "Skia/PDF, Tajawal + Scheherazade fallback, Persian/Urdu letters, Eastern digits",
     "chrome-windows-arial-tahoma-times": "Skia/PDF, Windows system fonts (Arial, Tahoma, Times New Roman)",

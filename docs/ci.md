@@ -143,3 +143,19 @@ pnpm --filter @warraq/desktop build
 ```
 
 The workflow files are plain YAML; `node` with the `yaml` package (or `actionlint`, if installed) parses them.
+
+## The Arabic extraction ratchet (added 2026-09-16)
+
+The `corpus` job runs our own engine over the corpus (`cargo run -p warraq-core --example acid`)
+and then `tests/acid/gate_warraq.py`, which compares every file against
+`tests/acid/baseline-warraq.json` and fails the build when a file stops opening,
+loses more than 0.05 of word recall or line order, or drops out of the `logical`
+verdict. Improvements are reported but never fail. After an intentional
+improvement, refresh the ratchet with:
+
+```bash
+cargo run --release --manifest-path packages/core/Cargo.toml -p warraq-core --example acid -- .
+python3 tests/acid/gate_warraq.py . --update
+```
+
+and commit the new baseline together with the change that caused it.

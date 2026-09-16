@@ -37,7 +37,7 @@
  {
   "file": "generated/chrome-amiri-tashkeel-ligatures.pdf",
   "size_bytes": 16977,
-  "sha256": "aae99704b04d8797",
+  "sha256": "38e915e2cc8c3aa6",
   "pages": 1,
   "pdf_version": "1.4",
   "encrypted": false,
@@ -62,7 +62,7 @@
  {
   "file": "generated/chrome-cairo-mixed-invoice.pdf",
   "size_bytes": 74586,
-  "sha256": "19a1745617b6966b",
+  "sha256": "28df44f24d9adecd",
   "pages": 1,
   "pdf_version": "1.4",
   "encrypted": false,
@@ -92,7 +92,7 @@
  {
   "file": "generated/chrome-ibmplex-bidi-stress.pdf",
   "size_bytes": 22128,
-  "sha256": "d240bc51aaed0a68",
+  "sha256": "3a4b6a1ba9210d00",
   "pages": 1,
   "pdf_version": "1.4",
   "encrypted": false,
@@ -115,9 +115,34 @@
   "source": "generated"
  },
  {
+  "file": "generated/chrome-nastaliq-urdu-prose.pdf",
+  "size_bytes": 15760,
+  "sha256": "4eb8470eccc90ac6",
+  "pages": 1,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "/AAAAAA+NotoNastaliqUrdu-Regular": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "ے۔ / ہ / ا / ت / جا ھا / یںلک / م / علیقخط ت / نس / اسے ےاور / ہ ناب زی / م / و / ق ی / کنا / ت / کس / ا / پ / اردو / ے ،ں، / ڑ / ، / ڈ / ،ٹفورح",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Skia/PDF, Noto Nastaliq Urdu: Nastaliq shaping, ٹ ڈ ڑ ں ے ھ, Urdu digits",
+  "truth": "truth/chrome-nastaliq-urdu-prose.txt",
+  "source": "generated"
+ },
+ {
   "file": "generated/chrome-notonaskh-justified-3pages.pdf",
   "size_bytes": 136539,
-  "sha256": "19ec2fed7ad51327",
+  "sha256": "e58ff897cc9949ea",
   "pages": 3,
   "pdf_version": "1.4",
   "encrypted": false,
@@ -147,7 +172,7 @@
  {
   "file": "generated/chrome-notosansarabic-form-layout.pdf",
   "size_bytes": 115729,
-  "sha256": "e54446d2418ebfc3",
+  "sha256": "b7c4296e27991590",
   "pages": 1,
   "pdf_version": "1.4",
   "encrypted": false,
@@ -182,7 +207,7 @@
  {
   "file": "generated/chrome-tajawal-persian-urdu-digits.pdf",
   "size_bytes": 17745,
-  "sha256": "1018d2076a878651",
+  "sha256": "34885ff197697b51",
   "pages": 1,
   "pdf_version": "1.4",
   "encrypted": false,
@@ -212,7 +237,7 @@
  {
   "file": "generated/chrome-variablefont-type3-notonaskh-justified.pdf",
   "size_bytes": 128831,
-  "sha256": "1ee76356d21cd032",
+  "sha256": "8c62da2a776ce240",
   "pages": 3,
   "pdf_version": "1.4",
   "encrypted": false,
@@ -235,9 +260,34 @@
   "source": "generated"
  },
  {
+  "file": "generated/chrome-vazirmatn-persian-prose.pdf",
+  "size_bytes": 13865,
+  "sha256": "6df2a04fe8d25d89",
+  "pages": 1,
+  "pdf_version": "1.4",
+  "encrypted": false,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "/AAAAAA+Vazirmatn-Regular": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "تاجیکستان و افغانستان ،ایران در هک تسا ییاپوراودنه زبانهای از یکی یسراف زبان / .دنیوگیم نخس آن هب / شده هتخاس وراق رگشیاری",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Skia/PDF, Vazirmatn (Persian): ZWNJ words, Persian digits and separators, پ چ ژ گ",
+  "truth": "truth/chrome-vazirmatn-persian-prose.txt",
+  "source": "generated"
+ },
+ {
   "file": "generated/chrome-windows-arial-tahoma-times.pdf",
   "size_bytes": 78692,
-  "sha256": "4c4fdc79681b0d66",
+  "sha256": "2fdacb20373d4903",
   "pages": 1,
   "pdf_version": "1.4",
   "encrypted": false,

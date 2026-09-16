@@ -116,6 +116,15 @@ jobs:
         run: python3 tests/acid/merge.py .
       - name: Gate — fail if any corpus file did not open in PDFium
         run: python3 .github/scripts/check_corpus.py .
+      # Our own engine must not regress on Arabic extraction (ADR-0002).
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/core
+      - name: Run the acid test with the Warraq core
+        run: cargo run --release --manifest-path packages/core/Cargo.toml -p warraq-core --example acid -- .
+      - name: Gate — fail if Arabic extraction regressed
+        run: python3 tests/acid/gate_warraq.py .
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -123,6 +132,7 @@ jobs:
           path: |
             tests/acid/results.json
             tests/acid/results-pdfium.json
+            tests/acid/results-warraq.json
             docs/research/raw/acid-scores.md
           if-no-files-found: error
 

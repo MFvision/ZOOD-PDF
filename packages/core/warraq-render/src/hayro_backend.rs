@@ -184,9 +184,56 @@ struct GlyphDevice {
     advance_cache: HashMap<(u32, u32), f32>,
     /// gid → code point from the embedded font's cmap (fallback when ToUnicode is missing or U+0000)
     reverse_cmaps: HashMap<u32, HashMap<u32, char>>,
+    /// gid → text learned by shaping Arabic letters in every joining context with the font's own GSUB
+    shaped_maps: HashMap<u32, HashMap<u32, String>>,
 }
 
 impl GlyphDevice {
+    /// Learn gid → text by shaping each Arabic-script letter isolated, initial, medial and final
+    /// (joined through tatweel) plus the lam-alef pairs, using the embedded font's GSUB. Real
+    /// Google Docs exports keep GSUB in their subsets; Chrome print and Word drop it.
+    fn shaped_text(&mut self, data: &[u8], font: u32, gid: u32) -> Option<String> {
+        let map = self.shaped_maps.entry(font).or_insert_with(|| {
+            let mut map: HashMap<u32, String> = HashMap::new();
+            let Ok(shaper) = warraq_text::Shaper::new(data) else {
+                return map;
+            };
+            let letters: Vec<char> = (0x0620u32..=0x06FF)
+                .filter_map(char::from_u32)
+                .filter(|c| c.is_alphabetic())
+                .collect();
+            let mut probes: Vec<String> = vec![];
+            for l in &letters {
+                probes.push(l.to_string());
+                probes.push(format!("\u{0640}{l}"));
+                probes.push(format!("{l}\u{0640}"));
+                probes.push(format!("\u{0640}{l}\u{0640}"));
+            }
+            for pair in [
+                "لا",
+                "لأ",
+                "لإ",
+                "لآ",
+                "\u{0640}لا",
+                "\u{0640}لأ",
+                "\u{0640}لإ",
+                "\u{0640}لآ",
+            ] {
+                probes.push(pair.to_string());
+            }
+            for probe in probes {
+                for g in shaper.shape_run(&probe, warraq_text::Direction::Rtl) {
+                    let text: String = g.text.chars().filter(|c| *c != '\u{0640}').collect();
+                    if g.gid != 0 && !text.is_empty() {
+                        map.entry(g.gid as u32).or_insert(text);
+                    }
+                }
+            }
+            map
+        });
+        map.get(&gid).cloned()
+    }
+
     fn cmap_char(&mut self, data: &[u8], font: u32, gid: u32) -> Option<char> {
         let rev = self.reverse_cmaps.entry(font).or_insert_with(|| {
             let mut rev: HashMap<u32, char> = HashMap::new();
@@ -272,6 +319,9 @@ impl<'a> Device<'a> for GlyphDevice {
                         let font = *self.font_ids.entry(key).or_insert(next);
                         if text.is_none() {
                             text = self.cmap_char(bytes, font, gid).map(|c| c.to_string());
+                        }
+                        if text.is_none() {
+                            text = self.shaped_text(bytes, font, gid);
                         }
                         let adv = self.advance(bytes, font, gid);
                         if text.is_none() && adv == 0.0 {
