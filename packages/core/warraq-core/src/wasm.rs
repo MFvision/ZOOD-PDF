@@ -28,6 +28,22 @@ pub struct TextLine {
     pub direction: String,
 }
 
+#[wasm_bindgen(getter_with_clone)]
+pub struct ParagraphInfo {
+    /// Index of this paragraph on the page, for `replace_paragraph`.
+    pub index: usize,
+    pub text: String,
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+    pub direction: String,
+    /// "start" | "end" | "center" | "justify"
+    pub alignment: String,
+    pub font_size: f32,
+    pub line_count: usize,
+}
+
 #[wasm_bindgen]
 pub struct Document(crate::Document);
 
@@ -85,5 +101,49 @@ impl Document {
     }
     pub fn metadata(&self) -> String {
         serde_json::to_string(&self.0.metadata()).unwrap_or_else(|_| "{}".into())
+    }
+
+    /// Paragraphs of a page in device space, for hit-testing an editor click.
+    pub fn paragraphs(&self, index: usize) -> Result<Vec<ParagraphInfo>, JsError> {
+        use warraq_text::Alignment;
+        Ok(self
+            .0
+            .paragraphs(index)
+            .map_err(js_err)?
+            .into_iter()
+            .enumerate()
+            .map(|(i, p)| ParagraphInfo {
+                index: i,
+                text: p.text,
+                x: p.bbox.0,
+                y: p.bbox.1,
+                width: p.bbox.2,
+                height: p.bbox.3,
+                direction: if p.direction == warraq_text::Direction::Rtl { "rtl".into() } else { "ltr".into() },
+                alignment: match p.alignment {
+                    Alignment::Start => "start",
+                    Alignment::End => "end",
+                    Alignment::Center => "center",
+                    Alignment::Justify => "justify",
+                }
+                .into(),
+                font_size: p.font_size,
+                line_count: p.lines.len(),
+            })
+            .collect())
+    }
+
+    /// Replace a paragraph with reflowed, shaped text. `font` is a face from the
+    /// bundled fallback chain; the returned JSON reports whether a substitution
+    /// happened so the UI can warn the user.
+    pub fn replace_paragraph(&mut self, index: usize, para_index: usize, new_text: &str, font: &[u8]) -> Result<String, JsError> {
+        let r = self.0.replace_paragraph(index, para_index, new_text, font).map_err(js_err)?;
+        serde_json::to_string(&r).map_err(js_err)
+    }
+
+    /// Bytes of the edited document: an incremental update on top of the
+    /// original wherever that is possible.
+    pub fn save(&mut self) -> Result<Vec<u8>, JsError> {
+        self.0.save().map_err(js_err)
     }
 }

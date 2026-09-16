@@ -121,6 +121,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: packages/core
+      # Every PDF is hostile input: mutated corpus files must not panic or hang.
+      - name: Robustness (mutation harness on stable)
+        run: cargo test --release --manifest-path packages/core/Cargo.toml -p warraq-core --test robustness
       - name: Run the acid test with the Warraq core
         run: cargo run --release --manifest-path packages/core/Cargo.toml -p warraq-core --example acid -- .
       - name: Gate — fail if Arabic extraction regressed

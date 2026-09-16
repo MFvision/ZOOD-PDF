@@ -1,0 +1,29 @@
+# Coverage-guided fuzzing (needs nightly: `cargo +nightly fuzz run open_document`).
+# The stable CI job runs packages/core/warraq-core/tests/robustness.rs instead.
+[package]
+name = "warraq-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+warraq-core = { path = "../warraq-core" }
+
+[[bin]]
+name = "open_document"
+path = "fuzz_targets/open_document.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "extract_text"
+path = "fuzz_targets/extract_text.rs"
+test = false
+doc = false
+
+[profile.release]
+debug = 1

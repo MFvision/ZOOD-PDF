@@ -1,6 +1,6 @@
 # Arabic test corpus
 
-42 PDFs (27 generated, 15 real-world) that exercise everything that goes wrong
+44 PDFs (29 generated, 15 real-world) that exercise everything that goes wrong
 with Arabic in PDF software. Every generated file has a ground-truth text file in
 `truth/` (logical Unicode order, one paragraph or line per line). Real-world files
 carry provenance and license in `realworld/manifest.md`. Structural facts for all
@@ -11,7 +11,7 @@ files are in `manifest.md` / `manifest.json` (rebuild with
 
 | Generator | Files | What it represents |
 |---|---|---|
-| Headless Chrome print-to-PDF (`gen_chrome.py`) | `chrome-*` (8) | Skia/PDF backend, i.e. Google Docs export and Chromium "Save as PDF". Fonts: Cairo, Amiri, Noto Naskh Arabic, Tajawal + Scheherazade fallback, Arial/Tahoma/Times New Roman, IBM Plex Sans Arabic, Noto Sans Arabic. Webfonts are **static instances** (`tests/fonts/static/`, made with fontTools) because Skia embeds variable fonts as Type3; `chrome-variablefont-type3-*` keeps one variable font on purpose. Mixed Arabic/English invoice, full tashkeel with lam-alef/Allah ligatures and kashida, justified 3-page prose, Persian/Urdu and Eastern digits, bidi stress lines, a government-form layout. |
+| Headless Chrome print-to-PDF (`gen_chrome.py`) | `chrome-*` (8) | Skia/PDF backend, i.e. Google Docs export and Chromium "Save as PDF". Fonts: Cairo, Amiri, Noto Naskh Arabic, Tajawal + Scheherazade fallback, Arial/Tahoma/Times New Roman, IBM Plex Sans Arabic, Noto Sans Arabic. Webfonts are **static instances** (`tests/fonts/static/`, made with fontTools) because Skia embeds variable fonts as Type3; `chrome-variablefont-type3-*` keeps one variable font on purpose. Persian (`chrome-vazirmatn-persian-prose`, ZWNJ words and Persian digits) and Urdu (`chrome-nastaliq-urdu-prose`, Nastaliq shaping) are first-class per ADR-0006. Mixed Arabic/English invoice, full tashkeel with lam-alef/Allah ligatures and kashida, justified 3-page prose, Persian/Urdu and Eastern digits, bidi stress lines, a government-form layout. |
 | pdf-lib on the Chrome form (`gen_acroform.mjs`) | `acroform-pdflib-arabic-fields` | AcroForm text fields and checkboxes with Arabic field names and one Arabic value whose appearance stream pdf-lib rendered unshaped (a known-bad appearance our engine must regenerate). |
 | Quartz PDFContext + CoreText (`gen_coretext.swift`) | `coretext-*` (4) | What Pages, Preview, TextEdit and Safari export on macOS: Geeza Pro, Al Bayan, SF Arabic, Baghdad with automatic font fallback. |
 | HarfBuzz + hand-written PDF objects (`gen_raw.py`) | `raw-*` (4) | Ideal Type0/CIDFontType2 output with correct ToUnicode; the same glyph runs with **no** ToUnicode; a ToUnicode that maps everything to U+FFFD; and a 1990s-style symbolic simple TrueType font with 1-byte codes and presentation-form glyphs in visual order. |

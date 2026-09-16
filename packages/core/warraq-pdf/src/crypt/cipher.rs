@@ -29,9 +29,7 @@ pub fn rc4(key: &[u8], data: &[u8]) -> Vec<u8> {
     let mut s: [u8; 256] = core::array::from_fn(|i| i as u8);
     let mut j = 0u8;
     for i in 0..256 {
-        j = j
-            .wrapping_add(s[i])
-            .wrapping_add(key[i % key.len()]);
+        j = j.wrapping_add(s[i]).wrapping_add(key[i % key.len()]);
         s.swap(i, j as usize);
     }
     let (mut i, mut j) = (0u8, 0u8);
@@ -86,14 +84,14 @@ pub fn aes_cbc_decrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>, CryptError> {
         16 => {
             let key: &[u8; 16] = key.try_into().expect("length checked");
             let mut dec = Aes128CbcDec::new(key.into(), iv.into());
-            for chunk in out.chunks_exact_mut(16) {
+            for chunk in out.as_chunks_mut::<16>().0 {
                 dec.decrypt_block(block(chunk));
             }
         }
         32 => {
             let key: &[u8; 32] = key.try_into().expect("length checked");
             let mut dec = Aes256CbcDec::new(key.into(), iv.into());
-            for chunk in out.chunks_exact_mut(16) {
+            for chunk in out.as_chunks_mut::<16>().0 {
                 dec.decrypt_block(block(chunk));
             }
         }
@@ -109,7 +107,7 @@ pub fn aes256_cbc_decrypt_no_padding(key: &[u8; 32], data: &[u8]) -> Vec<u8> {
     let usable = data.len() - data.len() % 16;
     let mut out = data[..usable].to_vec();
     let mut dec = Aes256CbcDec::new(key.into(), (&iv).into());
-    for chunk in out.chunks_exact_mut(16) {
+    for chunk in out.as_chunks_mut::<16>().0 {
         dec.decrypt_block(block(chunk));
     }
     out
@@ -120,7 +118,7 @@ pub fn aes256_cbc_decrypt_no_padding(key: &[u8; 32], data: &[u8]) -> Vec<u8> {
 /// repetitions of a block-aligned string), so nothing needs padding.
 pub fn aes128_cbc_encrypt_in_place(key: &[u8; 16], iv: &[u8; 16], data: &mut [u8]) {
     let mut enc = Aes128CbcEnc::new(key.into(), iv.into());
-    for chunk in data.chunks_exact_mut(16) {
+    for chunk in data.as_chunks_mut::<16>().0 {
         enc.encrypt_block(block(chunk));
     }
 }
@@ -136,8 +134,8 @@ mod tests {
         assert_eq!(
             out,
             [
-                0xb2, 0x39, 0x63, 0x05, 0xf0, 0x3d, 0xc0, 0x27, 0xcc, 0xc3, 0x52, 0x4a, 0x0a,
-                0x11, 0x18, 0xa8
+                0xb2, 0x39, 0x63, 0x05, 0xf0, 0x3d, 0xc0, 0x27, 0xcc, 0xc3, 0x52, 0x4a, 0x0a, 0x11,
+                0x18, 0xa8
             ]
         );
         let key: Vec<u8> = (1..=16).collect();
@@ -145,8 +143,8 @@ mod tests {
         assert_eq!(
             out,
             [
-                0x9a, 0xc7, 0xcc, 0x9a, 0x60, 0x9d, 0x1e, 0xf7, 0xb2, 0x93, 0x28, 0x99, 0xcd,
-                0xe4, 0x1b, 0x97
+                0x9a, 0xc7, 0xcc, 0x9a, 0x60, 0x9d, 0x1e, 0xf7, 0xb2, 0x93, 0x28, 0x99, 0xcd, 0xe4,
+                0x1b, 0x97
             ]
         );
         // RC4 is an involution: encrypting the ciphertext gives the plaintext.

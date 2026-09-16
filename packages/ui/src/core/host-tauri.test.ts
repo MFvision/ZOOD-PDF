@@ -3,7 +3,11 @@ import { CoreClient } from './client';
 import { handleTauriRequest, isTauriHost } from './host-tauri';
 import type { ResultMap } from './protocol';
 
-type Invoke = (cmd: string, args?: unknown, options?: { headers?: Record<string, string> }) => Promise<unknown>;
+type Invoke = (
+  cmd: string,
+  args?: unknown,
+  options?: { headers?: Record<string, string> },
+) => Promise<unknown>;
 
 interface Call {
   cmd: string;
@@ -32,7 +36,9 @@ function fakeHost(overrides: Record<string, unknown> = {}) {
       case 'doc_page_size':
         return Promise.resolve([595, 842]);
       case 'doc_metadata':
-        return Promise.resolve('{"title":"فاتورة","pages":1,"encrypted":false,"engine":"pdfium+hayro"}');
+        return Promise.resolve(
+          '{"title":"فاتورة","pages":1,"encrypted":false,"engine":"pdfium+hayro"}',
+        );
       case 'doc_close':
         return Promise.resolve(true);
       default:

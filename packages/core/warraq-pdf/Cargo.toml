@@ -10,6 +10,13 @@ description = "Warraq core: warraq-pdf"
 thiserror.workspace = true
 log.workspace = true
 lopdf.workspace = true
+# Standard security handler (src/crypt): RustCrypto only, all MIT/Apache-2.0,
+# no OpenSSL. Pinned to the versions lopdf 0.45 already pulls in, so nothing
+# new is added to the dependency graph. RC4 is written out in src/crypt.
+aes = "0.9"
+cbc = "0.2"
+md-5 = "0.11"
+sha2 = "0.11"
 pdf-writer.workspace = true
 subsetter.workspace = true
 warraq-text = { path = "../warraq-text" }

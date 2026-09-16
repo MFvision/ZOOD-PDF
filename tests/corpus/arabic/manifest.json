@@ -723,6 +723,66 @@
   "source": "generated"
  },
  {
+  "file": "generated/variant-encrypted-aes128.pdf",
+  "size_bytes": 78079,
+  "sha256": "d74c2b533de8c83e",
+  "pages": 1,
+  "pdf_version": "1.6",
+  "encrypted": true,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "?": {
+    "subtype": "/Type3",
+    "embedded": false,
+    "tounicode": true
+   },
+   "/AAAAAA+Cairo-Regular": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "ةطسبم ةيبيضر فاتورة / INV-2026-0042 :الفاتورة مقر / ٢٠٢٦ برمتبس ١٦ :خيراتلا / ةينقتلل زود ةكشر :ليمعلا / ليامجلإا رعسلا ةيمك",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "AES-128 (R4, /V 4, /CFM /AESV2) encrypted with /EncryptMetadata false, user password 'warraq'",
+  "truth": "truth/variant-encrypted-aes128.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/variant-encrypted-aes256-owner-only.pdf",
+  "size_bytes": 66252,
+  "sha256": "e49ae1feaac72d45",
+  "pages": 1,
+  "pdf_version": "1.7",
+  "encrypted": true,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "?": {
+    "subtype": "/Type3",
+    "embedded": false,
+    "tounicode": true
+   },
+   "/AAAAAA+Cairo-Regular": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "ةطسبم ةيبيضر فاتورة / INV-2026-0042 :الفاتورة مقر / ٢٠٢٦ برمتبس ١٦ :خيراتلا / ةينقتلل زود ةكشر :ليمعلا / ليامجلإا رعسلا ةيمك",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "AES-256 (R6, /CFM /AESV3) with an EMPTY user password (owner 'warraq-owner'), object streams + xref stream",
+  "truth": "truth/variant-encrypted-aes256-owner-only.txt",
+  "source": "generated"
+ },
+ {
   "file": "generated/variant-encrypted-aes256.pdf",
   "size_bytes": 139452,
   "sha256": "65b7d2cb91e1ad4c",
@@ -750,6 +810,66 @@
   "presentation_forms_in_pdfium_text": false,
   "category": "AES-256 (R6) encrypted, user password 'warraq'",
   "truth": "truth/variant-encrypted-aes256.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/variant-encrypted-rc4-128.pdf",
+  "size_bytes": 75845,
+  "sha256": "cb47c5d2cd972aad",
+  "pages": 1,
+  "pdf_version": "1.4",
+  "encrypted": true,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "?": {
+    "subtype": "/Type3",
+    "embedded": false,
+    "tounicode": true
+   },
+   "/AAAAAA+Cairo-Regular": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "ةطسبم ةيبيضر فاتورة / INV-2026-0042 :الفاتورة مقر / ٢٠٢٦ برمتبس ١٦ :خيراتلا / ةينقتلل زود ةكشر :ليمعلا / ليامجلإا رعسلا ةيمك",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "RC4 128-bit (R3, /V 2) encrypted, user password 'warraq', owner 'warraq-owner'",
+  "truth": "truth/variant-encrypted-rc4-128.txt",
+  "source": "generated"
+ },
+ {
+  "file": "generated/variant-encrypted-rc4-40.pdf",
+  "size_bytes": 75842,
+  "sha256": "ba592ca6f9e82934",
+  "pages": 1,
+  "pdf_version": "1.4",
+  "encrypted": true,
+  "linearized": false,
+  "has_acroform": false,
+  "producer": "Skia/PDF m152",
+  "creator": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "fonts": {
+   "?": {
+    "subtype": "/Type3",
+    "embedded": false,
+    "tounicode": true
+   },
+   "/AAAAAA+Cairo-Regular": {
+    "subtype": "/Type0",
+    "embedded": true,
+    "tounicode": true
+   }
+  },
+  "text_sample_pdfium": "ةطسبم ةيبيضر فاتورة / INV-2026-0042 :الفاتورة مقر / ٢٠٢٦ برمتبس ١٦ :خيراتلا / ةينقتلل زود ةكشر :ليمعلا / ليامجلإا رعسلا ةيمك",
+  "image_only": false,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "RC4 40-bit (R2, /V 1) encrypted, user password 'warraq', owner 'warraq-owner'",
+  "truth": "truth/variant-encrypted-rc4-40.txt",
   "source": "generated"
  },
  {

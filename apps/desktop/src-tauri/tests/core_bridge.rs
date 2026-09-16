@@ -90,7 +90,9 @@ fn renders_with_native_pdfium_and_reads_arabic_through_the_core_api() {
     // The page must carry ink, not just a white rectangle.
     let dark = bitmap
         .rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[0] < 100 && p[1] < 100 && p[2] < 100)
         .count();
     assert!(dark > 500, "only {dark} dark pixels; the page looks blank");

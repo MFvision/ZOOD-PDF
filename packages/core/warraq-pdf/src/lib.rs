@@ -1,4 +1,5 @@
 //! PDF object model, fonts and text operations for Warraq (read, modify, write).
+pub mod crypt;
 pub mod document;
 pub mod fonts;
 pub mod incremental;

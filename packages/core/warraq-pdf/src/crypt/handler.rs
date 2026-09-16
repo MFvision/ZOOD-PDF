@@ -21,9 +21,8 @@ use super::CryptError;
 
 /// The 32-byte padding string of ISO 32000-2, table 24.
 const PAD: [u8; 32] = [
-    0x28, 0xBF, 0x4E, 0x5E, 0x4E, 0x75, 0x8A, 0x41, 0x64, 0x00, 0x4E, 0x56, 0xFF, 0xFA, 0x01,
-    0x08, 0x2E, 0x2E, 0x00, 0xB6, 0xD0, 0x68, 0x3E, 0x80, 0x2F, 0x0C, 0xA9, 0xFE, 0x64, 0x53,
-    0x69, 0x7A,
+    0x28, 0xBF, 0x4E, 0x5E, 0x4E, 0x75, 0x8A, 0x41, 0x64, 0x00, 0x4E, 0x56, 0xFF, 0xFA, 0x01, 0x08,
+    0x2E, 0x2E, 0x00, 0xB6, 0xD0, 0x68, 0x3E, 0x80, 0x2F, 0x0C, 0xA9, 0xFE, 0x64, 0x53, 0x69, 0x7A,
 ];
 
 /// The suffix that algorithm 1 appends to the per-object key of an `/AESV2`
@@ -72,7 +71,13 @@ impl Handler {
     /// other than `/Standard` or a revision we do not implement.
     pub(crate) fn from_document(doc: &Document) -> Result<Self, CryptError> {
         let encrypt = encryption_dictionary(doc)?;
-        let name = |key: &[u8]| encrypt.get(key).and_then(Object::as_name).ok().map(<[u8]>::to_vec);
+        let name = |key: &[u8]| {
+            encrypt
+                .get(key)
+                .and_then(Object::as_name)
+                .ok()
+                .map(<[u8]>::to_vec)
+        };
         let int = |key: &[u8]| encrypt.get(key).and_then(Object::as_i64).ok();
         let bytes = |key: &[u8]| {
             encrypt
@@ -415,13 +420,18 @@ impl Handler {
 /// The `/Encrypt` dictionary, whether it is an indirect reference (the normal
 /// case) or written inline in the trailer.
 fn encryption_dictionary(doc: &Document) -> Result<&Dictionary, CryptError> {
-    let entry = doc.trailer.get(b"Encrypt").map_err(|_| CryptError::NotEncrypted)?;
+    let entry = doc
+        .trailer
+        .get(b"Encrypt")
+        .map_err(|_| CryptError::NotEncrypted)?;
     match entry {
         Object::Reference(id) => doc
             .get_dictionary(*id)
             .map_err(|_| CryptError::Unsupported("/Encrypt points at no dictionary".into())),
         Object::Dictionary(dict) => Ok(dict),
-        _ => Err(CryptError::Unsupported("/Encrypt is not a dictionary".into())),
+        _ => Err(CryptError::Unsupported(
+            "/Encrypt is not a dictionary".into(),
+        )),
     }
 }
 

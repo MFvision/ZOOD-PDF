@@ -12,4 +12,7 @@ All fonts here are licensed under the SIL Open Font License 1.1 (see the
 | IBMPlexSansArabic-Regular.ttf | IBM Plex Sans Arabic | fallback |
 | Tajawal-Regular.ttf | Tajawal | fallback, corpus generation |
 | ScheherazadeNew-Regular.ttf | Scheherazade New | extra coverage test (Quranic marks, Persian/Urdu) |
+| Vazirmatn-Variable.ttf | Vazirmatn | Persian UI and corpus (ADR-0006) |
+| NotoNastaliqUrdu-Variable.ttf | Noto Nastaliq Urdu | Urdu Nastaliq corpus and fallback |
 | Inter-Variable.ttf, NotoSans-Variable.ttf | Inter, Noto Sans | Latin UI and fallback |
+| static/*.ttf | static instances | Skia embeds variable fonts as Type3; the corpus generators use these |

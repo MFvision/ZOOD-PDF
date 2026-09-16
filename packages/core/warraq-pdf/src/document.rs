@@ -1,6 +1,7 @@
 //! Document handle over `lopdf`. The original bytes are kept untouched.
+use crate::crypt::{self, CryptError};
 use crate::{Error, Result};
-use lopdf::{Document, Object, ObjectId};
+use lopdf::{Document, LoadOptions, Object, ObjectId};
 
 pub struct PdfDocument {
     pub(crate) doc: Document,
@@ -41,15 +42,25 @@ pub fn decode_text_string(bytes: &[u8]) -> String {
 
 impl PdfDocument {
     pub fn open(bytes: Vec<u8>, password: Option<&str>) -> Result<Self> {
-        let mut doc = Document::load_mem(&bytes).map_err(|e| Error::Parse(e.to_string()))?;
-        let encrypted = doc.is_encrypted();
+        let password = password.unwrap_or("");
+        // lopdf 0.45 authenticates while it parses and keeps a single object of
+        // any file it cannot open there and then, so encrypted files are loaded
+        // with their ciphertext intact and decrypted by our own standard
+        // security handler; lopdf's stays as the fallback. See `crate::crypt`.
+        let mut doc =
+            crypt::load_preserving_ciphertext(&bytes).map_err(|e| Error::Parse(e.to_string()))?;
+        let encrypted = crypt::is_encrypted(&doc);
         if encrypted {
-            // lopdf 0.45 cannot decrypt AES-256 (R6) files and drops their objects; the standard
-            // security handler is implemented in Phase 2 (see STATUS). Until then: E_PASSWORD.
-            doc.decrypt(password.unwrap_or(""))
-                .map_err(|_| Error::Password)?;
+            match crypt::decrypt_document(&mut doc, password) {
+                Ok(()) => {}
+                Err(CryptError::WrongPassword) => return Err(Error::Password),
+                Err(e) => {
+                    log::warn!("warraq-pdf: {e}; falling back to lopdf's security handler");
+                    doc = Self::load_with_lopdf(&bytes, password)?;
+                }
+            }
             if doc.get_pages().is_empty() {
-                return Err(Error::Password);
+                doc = Self::load_with_lopdf(&bytes, password)?;
             }
         }
         let pages: Vec<ObjectId> = doc.get_pages().into_values().collect();
@@ -115,6 +126,17 @@ impl PdfDocument {
     /// Read-only access to the underlying object model (diagnostics and tests).
     pub fn doc_ref(&self) -> &Document {
         &self.doc
+    }
+
+    /// Last resort for a file our own handler cannot decrypt: let `lopdf`
+    /// authenticate and decrypt while it loads.
+    fn load_with_lopdf(bytes: &[u8], password: &str) -> Result<Document> {
+        let doc = Document::load_mem_with_options(bytes, LoadOptions::with_password(password))
+            .map_err(|_| Error::Password)?;
+        if doc.get_pages().is_empty() {
+            return Err(Error::Password);
+        }
+        Ok(doc)
     }
 
     pub fn original_bytes(&self) -> &[u8] {
@@ -259,7 +281,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "AES-256 (R6) decryption is a Phase 2 deliverable; lopdf 0.45 drops the objects of this file"]
     fn encrypted_file_needs_the_password() {
         assert!(matches!(
             PdfDocument::open(corpus("variant-encrypted-aes256.pdf"), None),
@@ -267,6 +288,48 @@ mod tests {
         ));
         let d = PdfDocument::open(corpus("variant-encrypted-aes256.pdf"), Some("warraq")).unwrap();
         assert_eq!(d.page_count(), 3);
+    }
+
+    /// Every revision and cipher of the standard security handler in the
+    /// corpus: RC4 40-bit (R2), RC4 128-bit (R3), AES-128 with
+    /// `/EncryptMetadata false` (R4) and AES-256 (R6), the last of them with an
+    /// empty user password and its objects inside an object stream.
+    #[test]
+    fn every_encrypted_variant_opens_with_its_password() {
+        let variants = [
+            ("variant-encrypted-rc4-40.pdf", "warraq", 1),
+            ("variant-encrypted-rc4-128.pdf", "warraq", 1),
+            ("variant-encrypted-aes128.pdf", "warraq", 1),
+            ("variant-encrypted-aes256-owner-only.pdf", "", 1),
+            ("variant-encrypted-aes256.pdf", "warraq", 3),
+        ];
+        for (name, password, pages) in variants {
+            let d = PdfDocument::open(corpus(name), Some(password)).unwrap_or_else(|e| {
+                panic!("{name} did not open with its user password: {e}");
+            });
+            assert_eq!(d.page_count(), pages, "{name}");
+            // The owner password opens every one of them as well.
+            let d = PdfDocument::open(corpus(name), Some("warraq-owner"))
+                .unwrap_or_else(|e| panic!("{name} did not open with the owner password: {e}"));
+            assert_eq!(d.page_count(), pages, "{name} (owner password)");
+            // The page tree is readable, i.e. the objects really were decrypted.
+            let (w, h) = d.page_size(0).unwrap();
+            assert!(w > 100.0 && h > 100.0, "{name}: page is {w}x{h}");
+
+            let wrong = PdfDocument::open(corpus(name), Some("not-the-password"));
+            assert!(
+                matches!(wrong, Err(Error::Password)),
+                "{name}: a wrong password gave {:?}",
+                wrong.err().map(|e| e.to_string())
+            );
+        }
+        // No password at all is the same as an empty one: it opens only the
+        // file whose user password is empty.
+        assert!(PdfDocument::open(corpus("variant-encrypted-aes256-owner-only.pdf"), None).is_ok());
+        assert!(matches!(
+            PdfDocument::open(corpus("variant-encrypted-rc4-128.pdf"), None),
+            Err(Error::Password)
+        ));
     }
 
     #[test]

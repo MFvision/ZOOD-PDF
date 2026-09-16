@@ -38,7 +38,9 @@ function invoke(cmd: string, args?: unknown, options?: InvokeOptions): Promise<u
 
 /** Header values must be ASCII, and passwords may be Arabic. */
 function toHex(text: string): string {
-  return Array.from(new TextEncoder().encode(text), (b) => b.toString(16).padStart(2, '0')).join('');
+  return Array.from(new TextEncoder().encode(text), (b) => b.toString(16).padStart(2, '0')).join(
+    '',
+  );
 }
 
 /** `width` u32 LE + `height` u32 LE + RGBA8, as `encode_bitmap` writes it. */
@@ -65,7 +67,8 @@ function toMetadata(json: string, pageCount: number): DocumentMetadata {
 }
 
 async function openDocument(bytes: ArrayBuffer, password?: string): Promise<ResultMap['open']> {
-  const options = password === undefined ? undefined : { headers: { 'x-warraq-password-hex': toHex(password) } };
+  const options =
+    password === undefined ? undefined : { headers: { 'x-warraq-password-hex': toHex(password) } };
   const handle = (await invoke('doc_open', bytes, options)) as number;
   const pageCount = (await invoke('doc_page_count', { handle })) as number;
   const pageSizes: PageSize[] = [];
@@ -83,10 +86,10 @@ async function openDocument(bytes: ArrayBuffer, password?: string): Promise<Resu
  * dynamic library could not be loaded and the core degraded).
  */
 export async function nativeCoreStatus(): Promise<CoreStatus> {
-  const [version, engine] = (await Promise.all([invoke('core_version'), invoke('core_engine')])) as [
-    string,
-    string,
-  ];
+  const [version, engine] = (await Promise.all([
+    invoke('core_version'),
+    invoke('core_engine'),
+  ])) as [string, string];
   return { kind: 'native', version, engine };
 }
 

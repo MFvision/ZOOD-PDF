@@ -292,7 +292,7 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> CoreBridge {
 
 /// Hex-decodes the password header back into a `String`.
 fn decode_password(hex: &str) -> Option<String> {
-    if hex.len() % 2 != 0 {
+    if !hex.len().is_multiple_of(2) {
         return None;
     }
     let bytes: Option<Vec<u8>> = (0..hex.len() / 2)

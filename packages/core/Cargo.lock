@@ -1411,9 +1411,13 @@ dependencies = [
 name = "warraq-pdf"
 version = "0.1.0"
 dependencies = [
+ "aes",
+ "cbc",
  "log",
  "lopdf",
+ "md-5",
  "pdf-writer",
+ "sha2",
  "subsetter",
  "thiserror",
  "warraq-text",

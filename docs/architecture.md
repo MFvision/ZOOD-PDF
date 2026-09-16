@@ -43,7 +43,7 @@ flowchart LR
 ## Rendering backends per target (Phase 1 state)
 | Target | Rasterizer | Status |
 |---|---|---|
-| Desktop (Tauri, native core) | PDFium via pdfium-render (dynamic library from pdfium-binaries), feature `pdfium` of `warraq-render` (tested natively) | the Tauri shell links `warraq-core` natively (`core_version`), but page rendering still goes through the webview's WASM core; native render commands are the next task |
+| Desktop (Tauri, native core) | PDFium via pdfium-render, feature `pdfium` of `warraq-render`; `libpdfium.dylib` is bundled as an app resource and located through `PDFIUM_LIB_DIR` | done: `apps/desktop/src-tauri/src/core_bridge.rs` exposes the whole core API as Tauri commands (pixels travel as a raw IPC body, never JSON) and `packages/ui/src/core/host-tauri.ts` routes the UI to them; `core_engine()` reports the engine that actually bound, so a missing library degrades visibly to hayro |
 | Web / extension (WASM core) | hayro (pure Rust) — shipped in the Phase 1 skeleton (core WASM 1.95 MB gzipped incl. rasterizer) | PDFium WASM shim (pdfium-render ↔ Emscripten module) is the next task; risk #2 in `02-decision.md` |
 
 The `Renderer` trait keeps both backends behind one API so the swap is a build flag, not a code change in the UI.

@@ -11,6 +11,15 @@ export function version(): string;                                       // e.g.
 export class RenderedPage { readonly width: number; readonly height: number; readonly rgba: Uint8Array; free(): void; }
 export class TextLine   { readonly text: string; readonly x: number; readonly y: number; readonly width: number; readonly height: number; readonly direction: "rtl" | "ltr"; free(): void; }
 
+export class ParagraphInfo {
+  readonly index: number; readonly text: string;
+  readonly x: number; readonly y: number; readonly width: number; readonly height: number;
+  readonly direction: "rtl" | "ltr";
+  readonly alignment: "start" | "end" | "center" | "justify";
+  readonly fontSize: number; readonly lineCount: number;
+  free(): void;
+}
+
 export class Document {
   static open(bytes: Uint8Array, password?: string): Document; // throws Error(message) on failure
   page_count(): number;
@@ -20,6 +29,11 @@ export class Document {
   text_lines(index: number): TextLine[];                         // for selection/highlight overlays
   search(query: string): Uint32Array;                            // page indices with Arabic-aware normalization
   metadata(): string;                                            // JSON: {title, author, producer, creator, pages, encrypted}
+
+  // editing (Phase 2)
+  paragraphs(index: number): ParagraphInfo[];                    // device space, same coordinates as text_lines
+  replace_paragraph(index: number, para: number, text: string, font: Uint8Array): string; // JSON {lines_drawn, font_substituted}
+  save(): Uint8Array;                                            // incremental update over the original bytes
   free(): void;
 }
 ```

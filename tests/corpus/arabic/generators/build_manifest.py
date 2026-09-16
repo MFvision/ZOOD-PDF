@@ -8,7 +8,13 @@ from pathlib import Path
 import pikepdf, pypdfium2 as pdfium
 sys.path.insert(0, os.path.dirname(__file__))
 ROOT = Path(sys.argv[1]).resolve() / "tests/corpus/arabic"
-PASSWORDS = {"variant-encrypted-aes256.pdf": "warraq"}
+PASSWORDS = {  # user password needed to open each encrypted file (see gen_encrypted.py)
+    "variant-encrypted-aes256.pdf": "warraq",
+    "variant-encrypted-rc4-40.pdf": "warraq",
+    "variant-encrypted-rc4-128.pdf": "warraq",
+    "variant-encrypted-aes128.pdf": "warraq",
+    "variant-encrypted-aes256-owner-only.pdf": "",  # owner password only: opens with none
+}
 CATEGORIES = {  # what each generated file is for (the "class" column of the acid test)
     "chrome-cairo-mixed-invoice": "Skia/PDF (Chrome print, Google Docs class), Cairo, mixed Arabic/English invoice, Arabic-Indic digits",
     "chrome-amiri-tashkeel-ligatures": "Skia/PDF, Amiri, full tashkeel, lam-alef and Allah ligatures, kashida",
@@ -33,6 +39,10 @@ CATEGORIES = {  # what each generated file is for (the "class" column of the aci
     "scan-notonaskh-300dpi-skewed-jpeg": "Image-only scan, 300 dpi, skewed 1.3/-0.8 deg, noise, JPEG (OCR target)",
     "scan-arial-200dpi-bilevel": "Image-only scan, 200 dpi, 1-bit (OCR target)",
     "variant-encrypted-aes256": "AES-256 (R6) encrypted, user password 'warraq'",
+    "variant-encrypted-rc4-40": "RC4 40-bit (R2, /V 1) encrypted, user password 'warraq', owner 'warraq-owner'",
+    "variant-encrypted-rc4-128": "RC4 128-bit (R3, /V 2) encrypted, user password 'warraq', owner 'warraq-owner'",
+    "variant-encrypted-aes128": "AES-128 (R4, /V 4, /CFM /AESV2) encrypted with /EncryptMetadata false, user password 'warraq'",
+    "variant-encrypted-aes256-owner-only": "AES-256 (R6, /CFM /AESV3) with an EMPTY user password (owner 'warraq-owner'), object streams + xref stream",
     "variant-objectstreams-xrefstream": "Object streams + cross-reference stream",
     "variant-linearized": "Linearized (fast web view)",
     "variant-arabic-metadata-outlines-annots": "Arabic Info/XMP metadata, outlines, sticky note + highlight annotations, Arabic-named attachment",

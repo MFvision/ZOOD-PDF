@@ -159,3 +159,17 @@ python3 tests/acid/gate_warraq.py . --update
 ```
 
 and commit the new baseline together with the change that caused it.
+
+## Fuzzing and robustness
+
+The `corpus` job runs `packages/core/warraq-core/tests/robustness.rs` on stable:
+it mutates every corpus file (truncation, bit flips, corrupted digits, damaged
+`xref`/`trailer`/`stream` keywords, deleted spans) and requires that opening,
+rendering, extracting and searching either succeed or return an error — never
+panic, never exceed the time budget. Failures print the file and seed needed to
+reproduce them.
+
+Coverage-guided fuzzing lives in `packages/core/fuzz/` (targets `open_document`
+and `extract_text`, seeded with the corpus). It needs a nightly toolchain, so it
+belongs in a scheduled job rather than the pull-request path; see
+`packages/core/fuzz/README.md`.
