@@ -11,3 +11,4 @@ consequences, license implications.
 | [0003](ADR-0003-core-stack.md) | Core stack: PDFium for rendering/objects, own Rust text engine, one core native + WASM | accepted at GATE 0 |
 | [0004](ADR-0004-shaping-and-fonts.md) | HarfRust + fontations + unicode-bidi + subsetter + pdf-writer; rustybuzz rejected (archived) | accepted at GATE 0 |
 | [0005](ADR-0005-text-extraction-strategy.md) | Own logical-order text reconstruction; never trust engine text order | accepted at GATE 0 |
+| [0006](ADR-0006-owner-answers-after-gate-0.md) | Browser builds pure Rust by default; Persian/Urdu first-class; name, license, PDFium confirmed | accepted |

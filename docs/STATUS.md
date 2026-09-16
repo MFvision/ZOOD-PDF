@@ -17,11 +17,9 @@
 3. Corpus gate in CI on our own engine (thresholds per file class), PDF.js image rendering re-check in a browser.
 
 ## Decisions needed from the owner
-1. **Product name** — working name *Warraq*; confirm or replace (your `naming-studio` skill can produce a vetted shortlist).
-2. **GitHub organization** — nothing pushed; `gh repo create <org>/warraq --private --source . --push`.
-3. **License** — Apache-2.0 assumed; confirm before first public release.
-4. **Permanent folder** — the repo is in the app's session scratch workspace; pick a folder and I will move it.
-5. **PDFium (C++) as rasterizer** — recommended (ADR-0003); say so if you prefer the pure-Rust path only.
+*Owner replied "yes" on 2026-09-16 (ADR-0006): name Warraq, Apache-2.0 and native PDFium confirmed; browser builds default to pure Rust; Persian/Urdu first-class.*
+1. **GitHub organization** — nothing pushed; `gh repo create <org>/warraq --private --source . --push`.
+2. **Permanent folder** — the repo is in the app's session scratch workspace; pick a folder and I will move it.
 6. **Xcode license** — during this session `/usr/bin/cc` and `/usr/bin/python3` started refusing to run until `sudo xcodebuild -license accept` is executed (needs your password). The build now links through Xcode's clang directly (`packages/core/.cargo/config.toml`, `tools/env.sh`), but Tauri/pdfium-render builds and Python tooling will need the license accepted.
 
 ## Brief items that are impossible, contradictory or inadvisable as stated
