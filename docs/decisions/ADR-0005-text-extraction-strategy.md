@@ -37,3 +37,10 @@ reliably:
   no-ToUnicode/legacy files, which must reach "logical" via glyph names and OCR.
 * PDFium's text page is still used for non-text-critical features (hit testing
   fallback, comparison) but never as the source of copied or searched text.
+
+## Addendum (end of Phase 1, 2026-09-16): what the first implementation taught us
+* **Skia writes U+0000** in ToUnicode for contextual-form glyphs that have no cmap entry, and embeds **variable** webfonts as **Type3** fonts whose dotted letters are split into skeleton + dot glyphs (the dots map to U+0000). Static fonts become CID fonts. The corpus now carries both cases (`chrome-*` static, `chrome-variablefont-type3-*`).
+* **Implemented fallbacks:** U+0000/empty → unknown; unknown glyphs are looked up in the embedded font's cmap (reverse map, preferring letters over presentation forms and private-use codes); still-unknown glyphs become U+FFFD placeholders so words are never silently merged. Presentation forms are folded (NFKC); Persian yeh/kaf written by Skia/Word for Arabic glyphs are restored to Arabic code points when a line has no Persian-specific letters.
+* **CoreText applies bracket pairs (N0)**, so the same logical line can have two different visual glyph orders depending on the producer. The inverse mapping is therefore ambiguous by construction; the reconstruction resolves toward the right-to-left human reading: true bracket pairs split runs, numbers attach to Latin on either side of them within a chain, neutrals between two numbers stay RTL (N1). Content-stream order is the planned tie-breaker.
+* **Marks** attach to the base whose advance box contains them (else the nearest base) and are reordered together with their base as one unit.
+* **Not yet done:** glyph-name fallback (Amiri and Noto have no `post` names), outline matching against bundled fonts, OCR of the rendered line, Type3 dot recomposition, paragraph/alignment detection, and the content-order tie-breaker.

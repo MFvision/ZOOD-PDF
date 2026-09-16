@@ -1,2 +1,6 @@
+# Xcode shims (/usr/bin/cc) refuse to run until the Xcode license is accepted; link with the toolchain binary directly.
+[target.aarch64-apple-darwin]
+linker = "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang"
+
 [target.wasm32-unknown-unknown]
 rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]

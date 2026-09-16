@@ -43,8 +43,8 @@ flowchart LR
 ## Rendering backends per target (Phase 1 state)
 | Target | Rasterizer | Status |
 |---|---|---|
-| Desktop (Tauri, native core) | PDFium via pdfium-render (dynamic library from pdfium-binaries) | built in Phase 0 prototype; wired in Phase 1 |
-| Web / extension (WASM core) | hayro (pure Rust) in the skeleton; PDFium WASM shim is the next task | hayro compiles to wasm32 today; PDFium WASM integration is risk #2 in `02-decision.md` |
+| Desktop (Tauri, native core) | PDFium via pdfium-render (dynamic library from pdfium-binaries), feature `pdfium` of `warraq-render` (tested natively) | the Tauri shell links `warraq-core` natively (`core_version`), but page rendering still goes through the webview's WASM core; native render commands are the next task |
+| Web / extension (WASM core) | hayro (pure Rust) — shipped in the Phase 1 skeleton (core WASM 1.95 MB gzipped incl. rasterizer) | PDFium WASM shim (pdfium-render ↔ Emscripten module) is the next task; risk #2 in `02-decision.md` |
 
 The `Renderer` trait keeps both backends behind one API so the swap is a build flag, not a code change in the UI.
 

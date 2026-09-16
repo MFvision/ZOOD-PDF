@@ -5,9 +5,9 @@
    "pages": 50,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/A_arwikibooks_mediawiki_guide_word2007.jpg",
-   "t_open_ms": 3.0,
-   "t_render_p1_ms": 25.8,
-   "t_text_ms": 12.2,
+   "t_open_ms": 4.3,
+   "t_render_p1_ms": 33.2,
+   "t_text_ms": 52.3,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 3398
@@ -15,11 +15,11 @@
    "text_head": "   ًكٌواٌدٌم مادختسا لٌلد ⏎   ⏎   ٙكٚٔاٚذٛي واذخرعا مٛند ⏎   ⏎  حـٛتشـؼـنا اٚذٛثٛكٚٔ شٕٚـطذ غٚساـش"
   },
   "mupdf": {
-   "t_open_ms": 5.5,
+   "t_open_ms": 4.3,
    "pages": 50,
-   "t_render_p1_ms": 36.1,
+   "t_render_p1_ms": 29.2,
    "shot": "docs/research/screenshots/mupdf/A_arwikibooks_mediawiki_guide_word2007.jpg",
-   "t_text_ms": 10.4,
+   "t_text_ms": 8.0,
    "selectable": true,
    "open": true,
    "score": {
@@ -29,11 +29,11 @@
    "text_head": "دلٌل استخدام  ⏎    ًمٌدٌاوٌك ⏎ 1  ⏎   ⏎   ⏎ ٙدنٛم اعرخذاو يٛذٚأٚك  ⏎   ⏎ يشـاسٚغ ذطـٕٚش ٔٚكٛثٛذٚا انـؼـ"
   },
   "pdfium": {
-   "t_open_ms": 5.3,
+   "t_open_ms": 6.0,
    "pages": 50,
-   "t_render_p1_ms": 8.2,
+   "t_render_p1_ms": 25.1,
    "shot": "docs/research/screenshots/pdfium/A_arwikibooks_mediawiki_guide_word2007.jpg",
-   "t_text_ms": 6.2,
+   "t_text_ms": 14.5,
    "selectable": true,
    "open": true,
    "score": {
@@ -47,9 +47,9 @@
    "pages": 50,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/A_arwikibooks_mediawiki_guide_word2007.jpg",
-   "t_open_ms": 18.0,
-   "t_render_p1_ms": 15.6,
-   "t_text_ms": 10.1,
+   "t_open_ms": 21.8,
+   "t_render_p1_ms": 30.9,
+   "t_text_ms": 35.6,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 3326
@@ -57,11 +57,11 @@
    "text_head": " ًكٌاوٌدٌم استخدام لٌدل\r ⏎ 1\r ⏎ ٙكٚٔاٚذٛي اعرخذاو مٛدن\r ⏎ ـحٛانـؼـشت اٚذٛثٛكٚٔ شٕٚذطـ غٚيشـاس\r ⏎ 2"
   },
   "pdfjs": {
-   "t_open_ms": 13.4,
+   "t_open_ms": 37.1,
    "pages": 50,
-   "t_render_p1_ms": 1091.4,
+   "t_render_p1_ms": 994.3,
    "shot": "docs/research/screenshots/pdfjs/A_arwikibooks_mediawiki_guide_word2007.jpg",
-   "t_text_ms": 143.3,
+   "t_text_ms": 182.2,
    "selectable": true,
    "open": true,
    "score": {
@@ -69,6 +69,20 @@
     "n_extracted_chars": 3180
    },
    "text_head": "دلٌلاستخدام ًمٌدٌاوٌك ⏎ 1 ⏎ ٙ ⏎ دنٛم اعرخذاو يٛذٚأٚك ⏎ يشـاسٚغ ذطـٕٚش ٔٚكٛثٛذٚا انـؼـشتٛـح ⏎ يونيو "
+  },
+  "warraq": {
+   "open": true,
+   "pages": 50,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/A_arwikibooks_mediawiki_guide_word2007.jpg",
+   "t_open_ms": 8.3,
+   "t_render_p1_ms": 9.4,
+   "t_text_ms": 9.4,
+   "score": {
+    "verdict": "no-truth",
+    "n_extracted_chars": 3275
+   },
+   "text_head": "دلٌل استخدام مدٌاٌوكٌ ً ⏎ دنٛم اعرخذاو يذٛأٚكٙٚ ⏎ يشاـسغٚ ذطـ شٕٚ ٔكٚثٛٛذاٚ انـؼـشتٛحـ ⏎ يونيو 2"
   }
  },
  "A_un_rome_statute_A-CONF.183-9-AR_word_pdfmaker6": {
@@ -77,9 +91,9 @@
    "pages": 95,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/A_un_rome_statute_A-CONF.183-9-AR_word_pdfmaker6.jpg",
-   "t_open_ms": 1.5,
-   "t_render_p1_ms": 11.4,
-   "t_text_ms": 5.9,
+   "t_open_ms": 2.0,
+   "t_render_p1_ms": 29.7,
+   "t_text_ms": 10.6,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 2360
@@ -89,9 +103,9 @@
   "mupdf": {
    "t_open_ms": 2.0,
    "pages": 95,
-   "t_render_p1_ms": 17.3,
+   "t_render_p1_ms": 11.7,
    "shot": "docs/research/screenshots/mupdf/A_un_rome_statute_A-CONF.183-9-AR_word_pdfmaker6.jpg",
-   "t_text_ms": 4.9,
+   "t_text_ms": 3.7,
    "selectable": true,
    "open": true,
    "score": {
@@ -101,11 +115,11 @@
    "text_head": "ﺍﻷﻣــﻢ ﺍﳌﺘﺤـﺪﺓ ⏎   ⏎  A/CONF.183/9 ⏎   ⏎  ﻣﺆﲤﺮ ﺍﻷﻣﻢ ﺍﳌﺘﺤﺪﺓ ﺍﻟﺪﺑﻠﻮﻣﺎﺳﻲ ﻟﻠﻤﻔﻮﺿﲔ ﺍﳌﻌﲏ ⏎ ﺑﺈﻧﺸﺎﺀ ﳏﻜﻤﺔ ﺟﻨﺎ"
   },
   "pdfium": {
-   "t_open_ms": 6.3,
+   "t_open_ms": 15.2,
    "pages": 95,
-   "t_render_p1_ms": 2.5,
+   "t_render_p1_ms": 20.5,
    "shot": "docs/research/screenshots/pdfium/A_un_rome_statute_A-CONF.183-9-AR_word_pdfmaker6.jpg",
-   "t_text_ms": 2.5,
+   "t_text_ms": 2.9,
    "selectable": true,
    "open": true,
    "score": {
@@ -119,9 +133,9 @@
    "pages": 95,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/A_un_rome_statute_A-CONF.183-9-AR_word_pdfmaker6.jpg",
-   "t_open_ms": 8.5,
-   "t_render_p1_ms": 3.3,
-   "t_text_ms": 5.3,
+   "t_open_ms": 20.4,
+   "t_render_p1_ms": 19.1,
+   "t_text_ms": 7.0,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 2230
@@ -129,11 +143,11 @@
    "text_head": "A المتحـدة الأمــم /CONF.183/9\r ⏎ المعني للمفوضين الدبلوماسي المتحدة الأمم مؤتمر\r ⏎ دولية جنائ"
   },
   "pdfjs": {
-   "t_open_ms": 2.2,
+   "t_open_ms": 99.3,
    "pages": 95,
-   "t_render_p1_ms": 175.8,
+   "t_render_p1_ms": 2626,
    "shot": "docs/research/screenshots/pdfjs/A_un_rome_statute_A-CONF.183-9-AR_word_pdfmaker6.jpg",
-   "t_text_ms": 116.3,
+   "t_text_ms": 44.5,
    "selectable": true,
    "open": true,
    "score": {
@@ -141,6 +155,20 @@
     "n_extracted_chars": 2167
    },
    "text_head": "ﺍملﺘﺤـﺪﺓ ﺍﻷﻣــﻢ A/CONF.183/9 ⏎ ﺍملﻌين ﻟﻠﻤﻔﻮﺿني ﺍﻟﺪﺑﻠﻮﻣﺎﺳﻲ ﺍملﺘﺤﺪﺓ ﺍﻷﻣﻢ ﻣﺆمتﺮ ⏎  ⏎ ﺩﻭﻟﻴﺔ ﺟﻨﺎﺋﻴﺔ ح"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 95,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/A_un_rome_statute_A-CONF.183-9-AR_word_pdfmaker6.jpg",
+   "t_open_ms": 1.8,
+   "t_render_p1_ms": 2.6,
+   "t_text_ms": 3.6,
+   "score": {
+    "verdict": "no-truth",
+    "n_extracted_chars": 2228
+   },
+   "text_head": "الأمـمـ المتحدـة  A/CONF.183/9 ⏎ مؤتمر الأمم المتحدة الدبلوماسي للمفوضين المعني ⏎ 17 July 1998"
   }
  },
  "A_worldbank_malpass_g7_briefing_AR_word2016_pdftools": {
@@ -149,9 +177,9 @@
    "pages": 2,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/A_worldbank_malpass_g7_briefing_AR_word2016_pdftools.jpg",
-   "t_open_ms": 0.5,
-   "t_render_p1_ms": 16.2,
-   "t_text_ms": 8.1,
+   "t_open_ms": 1.1,
+   "t_render_p1_ms": 197.3,
+   "t_text_ms": 5.6,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 4691
@@ -159,11 +187,11 @@
    "text_head": "d ⏎ e ⏎ zi ⏎ r ⏎ o ⏎ ht ة يملاعإ ةطاحإ ةسلج يف س ابلام ديفيد يلودلا كنبلا ةعومجم س يئر ةملك  ⏎ u ⏎ A  ⏎ er"
   },
   "mupdf": {
-   "t_open_ms": 1.1,
+   "t_open_ms": 0.9,
    "pages": 2,
-   "t_render_p1_ms": 10.7,
+   "t_render_p1_ms": 8.5,
    "shot": "docs/research/screenshots/mupdf/A_worldbank_malpass_g7_briefing_AR_word2016_pdftools.jpg",
-   "t_text_ms": 8.2,
+   "t_text_ms": 5.0,
    "selectable": true,
    "open": true,
    "score": {
@@ -173,11 +201,11 @@
    "text_head": " كلمة رئيس مجموعة البنك الدولي ديفيد مالباس في جلسة إحاطة إعالمية  ⏎ في قمة مؤتمر زعماء مجمو"
   },
   "pdfium": {
-   "t_open_ms": 4.1,
+   "t_open_ms": 16.4,
    "pages": 2,
-   "t_render_p1_ms": 3.4,
+   "t_render_p1_ms": 20.9,
    "shot": "docs/research/screenshots/pdfium/A_worldbank_malpass_g7_briefing_AR_word2016_pdftools.jpg",
-   "t_text_ms": 4.4,
+   "t_text_ms": 4.7,
    "selectable": true,
    "open": true,
    "score": {
@@ -191,9 +219,9 @@
    "pages": 2,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/A_worldbank_malpass_g7_briefing_AR_word2016_pdftools.jpg",
-   "t_open_ms": 7.6,
-   "t_render_p1_ms": 6.0,
-   "t_text_ms": 7.8,
+   "t_open_ms": 12.3,
+   "t_render_p1_ms": 9.8,
+   "t_text_ms": 13.5,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 4598
@@ -201,11 +229,11 @@
    "text_head": " إعالمية إحاطة جلسة في مالباس ديفيد الدولي البنك مجموعة رئيس كلمة\r ⏎ السبع مجموعة زعماء مؤتم"
   },
   "pdfjs": {
-   "t_open_ms": 1.6,
+   "t_open_ms": 3.8,
    "pages": 2,
-   "t_render_p1_ms": 180.4,
+   "t_render_p1_ms": 109.6,
    "shot": "docs/research/screenshots/pdfjs/A_worldbank_malpass_g7_briefing_AR_word2016_pdftools.jpg",
-   "t_text_ms": 141,
+   "t_text_ms": 23.3,
    "selectable": true,
    "open": true,
    "score": {
@@ -213,6 +241,20 @@
     "n_extracted_chars": 4489
    },
    "text_head": "كلمة رئيس مجموعة البنك الدولي ديفيد مالباس في جلسة إحاطة إعالمية ⏎ في قمة مؤتمر زعماء مجموعة"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 2,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/A_worldbank_malpass_g7_briefing_AR_word2016_pdftools.jpg",
+   "t_open_ms": 0.6,
+   "t_render_p1_ms": 5.3,
+   "t_text_ms": 3.5,
+   "score": {
+    "verdict": "no-truth",
+    "n_extracted_chars": 4585
+   },
+   "text_head": "d ⏎ ez ⏎ ir ⏎ o ⏎ كلمة رئيس مجموعة البنك الدولي ديفيد مالباس في جلسة إحاطة إعلامي ة ht ⏎ u ⏎ A ⏎ في قمة "
   }
  },
  "B_baytalhekma_covid_workplace_guide_indesign_cc2015": {
@@ -221,9 +263,9 @@
    "pages": 53,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/B_baytalhekma_covid_workplace_guide_indesign_cc2015.jpg",
-   "t_open_ms": 3.5,
-   "t_render_p1_ms": 601.4,
-   "t_text_ms": 7.4,
+   "t_open_ms": 3.8,
+   "t_render_p1_ms": 991.4,
+   "t_text_ms": 82.2,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 1284
@@ -231,11 +273,11 @@
    "text_head": " ⏎   ⏎   ⏎   ⏎  م2020 - ـه1441 :ىلولأا ةعبطلا  ⏎ ة يفاقثلا تارامثتسلال ةمكحلا تيب :رشانلا  ⏎  م 2020/8"
   },
   "mupdf": {
-   "t_open_ms": 5.1,
+   "t_open_ms": 4.0,
    "pages": 53,
-   "t_render_p1_ms": 98.2,
+   "t_render_p1_ms": 81.6,
    "shot": "docs/research/screenshots/mupdf/B_baytalhekma_covid_workplace_guide_indesign_cc2015.jpg",
-   "t_text_ms": 30.5,
+   "t_text_ms": 29.3,
    "selectable": true,
    "open": true,
    "score": {
@@ -245,11 +287,11 @@
    "text_head": "دﻟﻴﻞ اﻟﻮﻗﺎﻳﺔ ﻣﻦ ﻓﻴﺮوس ⏎ إﻋﺪاد ﻣﺮﻛﺰ ﻣﻜﺎﻓﺤﺔ اﻟﻔﻴﺮوﺳﺎت واﻷوﺑﺌﺔ ﺑﺠﻴﺎﻧﻐﺴﻮ – اﻟﺼﻴﻦ ⏎ ﺑﺎﻟﺘﻌﺎون ﻣﻊ دار"
   },
   "pdfium": {
-   "t_open_ms": 3.1,
+   "t_open_ms": 3.3,
    "pages": 53,
-   "t_render_p1_ms": 115.2,
+   "t_render_p1_ms": 164.2,
    "shot": "docs/research/screenshots/pdfium/B_baytalhekma_covid_workplace_guide_indesign_cc2015.jpg",
-   "t_text_ms": 4.6,
+   "t_text_ms": 5.4,
    "selectable": true,
    "open": true,
    "score": {
@@ -263,9 +305,9 @@
    "pages": 53,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/B_baytalhekma_covid_workplace_guide_indesign_cc2015.jpg",
-   "t_open_ms": 7.3,
-   "t_render_p1_ms": 236.4,
-   "t_text_ms": 15.6,
+   "t_open_ms": 12.0,
+   "t_render_p1_ms": 711.1,
+   "t_text_ms": 18.9,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 1430
@@ -273,11 +315,11 @@
    "text_head": "دليلالوقايةمنفيروس\r ⏎ إعداد مركز مكافحة الفيروسات والأوبئة بجيانغسو – الصين\r ⏎ بالتعاون مع دار"
   },
   "pdfjs": {
-   "t_open_ms": 7.7,
+   "t_open_ms": 147.9,
    "pages": 53,
-   "t_render_p1_ms": 29528.7,
+   "t_render_p1_ms": 53651.1,
    "shot": "docs/research/screenshots/pdfjs/B_baytalhekma_covid_workplace_guide_indesign_cc2015.jpg",
-   "t_text_ms": 570.7,
+   "t_text_ms": 261.1,
    "selectable": true,
    "open": true,
    "score": {
@@ -285,6 +327,20 @@
     "n_extracted_chars": 1387
    },
    "text_head": "ﻓﻴﺮوس ﻣﻦ اﻟﻮﻗﺎﻳﺔ دﻟﻴﻞ ⏎ إﻋﺪاد ﻣﺮﻛﺰ ﻣﻜﺎﻓﺤﺔ اﻟﻔﻴﺮوﺳﺎت واﻷوﺑﺌﺔ ﺑﺠﻴﺎﻧﻐﺴﻮ – اﻟﺼﻴﻦ ⏎  ⏎ ﺑﺎﻟﺘﻌﺎون ﻣﻊ دا"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 53,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/B_baytalhekma_covid_workplace_guide_indesign_cc2015.jpg",
+   "t_open_ms": 6.4,
+   "t_render_p1_ms": 179.8,
+   "t_text_ms": 3.2,
+   "score": {
+    "verdict": "no-truth",
+    "n_extracted_chars": 1204
+   },
+   "text_head": " ⏎ الطبعة الأولى: 1441ه ـ- 2020م ⏎ الناشر: بيت الحكمة للاستثمارات الثقافي ة ⏎ رقم الإيداع:2020/8"
   }
  },
  "B_wmf_welcome_to_wikipedia_arabic_indesign_cs5_p1-5": {
@@ -293,9 +349,9 @@
    "pages": 5,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/B_wmf_welcome_to_wikipedia_arabic_indesign_cs5_p1-5.jpg",
-   "t_open_ms": 1.5,
-   "t_render_p1_ms": 41.4,
-   "t_text_ms": 3.1,
+   "t_open_ms": 8.7,
+   "t_render_p1_ms": 59.2,
+   "t_text_ms": 3.7,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 1948
@@ -303,11 +359,11 @@
    "text_head": " نكمي امًلاع ليخت ⏎  درف لكل هيف ⏎  عومجم ةعلاطم ⏎  ةيرشبلا فراعم ⏎ .اهلك ⏎ زليو يميج ⏎ يف كب ابحرم ⏎ اي"
   },
   "mupdf": {
-   "t_open_ms": 1.3,
+   "t_open_ms": 1.0,
    "pages": 5,
-   "t_render_p1_ms": 35.2,
+   "t_render_p1_ms": 38.7,
    "shot": "docs/research/screenshots/mupdf/B_wmf_welcome_to_wikipedia_arabic_indesign_cs5_p1-5.jpg",
-   "t_text_ms": 5.9,
+   "t_text_ms": 5.8,
    "selectable": true,
    "open": true,
    "score": {
@@ -317,27 +373,27 @@
    "text_head": " تخيل عالمًا يمكن ⏎  فيه لكل فرد ⏎  مطالعة مجموع ⏎  معارف البشرية ⏎ .كلها ⏎ جيمي ويلز ⏎ مرحبا بك في ⏎  و"
   },
   "pdfium": {
-   "t_open_ms": 1.8,
+   "t_open_ms": 2.4,
    "pages": 5,
-   "t_render_p1_ms": 9.5,
+   "t_render_p1_ms": 28.8,
    "shot": "docs/research/screenshots/pdfium/B_wmf_welcome_to_wikipedia_arabic_indesign_cs5_p1-5.jpg",
-   "t_text_ms": 3.2,
+   "t_text_ms": 2.9,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "no-truth",
-    "n_extracted_chars": 1708
+    "n_extracted_chars": 1713
    },
-   "text_head": " يمكن اً\r ⏎ عالم تخيل\r ⏎  فرد لكل فيه\r ⏎  مجموع مطالعة\r ⏎  البشرية معارف\r ⏎ .كلها\r ⏎ ويلز جيمي\r ⏎ في بك "
+   "text_head": "ًا يمكن \r ⏎ تخيل عالم\r ⏎ فيه لكل فرد \r ⏎ مطالعة مجموع \r ⏎ معارف البشرية \r ⏎ كلها.\r ⏎ جيمي ويلز\r ⏎ مرحبا "
   },
   "pdfium-rs": {
    "open": true,
    "pages": 5,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/B_wmf_welcome_to_wikipedia_arabic_indesign_cs5_p1-5.jpg",
-   "t_open_ms": 7.7,
-   "t_render_p1_ms": 18.9,
-   "t_text_ms": 5.1,
+   "t_open_ms": 5.3,
+   "t_render_p1_ms": 99.0,
+   "t_text_ms": 12.1,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 1713
@@ -345,16 +401,30 @@
    "text_head": "ًا يمكن \r ⏎ تخيل عالم\r ⏎ فيه لكل فرد \r ⏎ مطالعة مجموع \r ⏎ معارف البشرية \r ⏎ كلها.\r ⏎ جيمي ويلز\r ⏎ مرحبا "
   },
   "pdfjs": {
-   "t_open_ms": 4.2,
+   "t_open_ms": 5,
    "pages": 5,
-   "t_render_p1_ms": 943.4,
+   "t_render_p1_ms": 482.4,
    "shot": "docs/research/screenshots/pdfjs/B_wmf_welcome_to_wikipedia_arabic_indesign_cs5_p1-5.jpg",
-   "t_text_ms": 59.2,
+   "t_text_ms": 50.9,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 1617
+   },
+   "text_head": "تخيل عالمًا يمكن ⏎ فيه لكل فرد ⏎ مطالعة مجموع ⏎ معارف البشرية ⏎ كلها. ⏎ جيمي ويلز ⏎ مرحبا بك في ⏎ ويكيبي"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 5,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/B_wmf_welcome_to_wikipedia_arabic_indesign_cs5_p1-5.jpg",
+   "t_open_ms": 1.5,
+   "t_render_p1_ms": 12.1,
+   "t_text_ms": 1.9,
+   "score": {
+    "verdict": "no-truth",
+    "n_extracted_chars": 1622
    },
    "text_head": "تخيل عالمًا يمكن ⏎ فيه لكل فرد ⏎ مطالعة مجموع ⏎ معارف البشرية ⏎ كلها. ⏎ جيمي ويلز ⏎ مرحبا بك في ⏎ ويكيبي"
   }
@@ -365,9 +435,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/C_lo_bug119606_seventeen_macos_arabic_fonts_lo7.5dev.jpg",
-   "t_open_ms": 0.6,
-   "t_render_p1_ms": 11.4,
-   "t_text_ms": 2.2,
+   "t_open_ms": 1.0,
+   "t_render_p1_ms": 12.5,
+   "t_text_ms": 6.7,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 999
@@ -375,11 +445,11 @@
    "text_head": "هُْنمِ اهَتُيْتَرََشْا اَنَأَوَ باتك فلاآ ةسمخ للاب ىتَرشا ⏎ هُنْمِ اهتُيرتَشْا انَأََو باتك"
   },
   "mupdf": {
-   "t_open_ms": 1.2,
+   "t_open_ms": 0.8,
    "pages": 1,
-   "t_render_p1_ms": 10.4,
+   "t_render_p1_ms": 5.9,
    "shot": "docs/research/screenshots/mupdf/C_lo_bug119606_seventeen_macos_arabic_fonts_lo7.5dev.jpg",
-   "t_text_ms": 2.5,
+   "t_text_ms": 1.9,
    "selectable": true,
    "open": true,
    "score": {
@@ -389,11 +459,11 @@
    "text_head": "ُاشررتى بالل خمسة آالف كتاب وََأَأنَا اشْ رَترَتَيْتُهَا مِنْه ⏎ ُاشترى بالل خمسة آالف كتاب "
   },
   "pdfium": {
-   "t_open_ms": 5.2,
+   "t_open_ms": 7.9,
    "pages": 1,
-   "t_render_p1_ms": 4.7,
+   "t_render_p1_ms": 23.6,
    "shot": "docs/research/screenshots/pdfium/C_lo_bug119606_seventeen_macos_arabic_fonts_lo7.5dev.jpg",
-   "t_text_ms": 0.9,
+   "t_text_ms": 1.1,
    "selectable": true,
    "open": true,
    "score": {
@@ -407,9 +477,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/C_lo_bug119606_seventeen_macos_arabic_fonts_lo7.5dev.jpg",
-   "t_open_ms": 7.5,
-   "t_render_p1_ms": 9.0,
-   "t_text_ms": 1.8,
+   "t_open_ms": 9.6,
+   "t_render_p1_ms": 15.9,
+   "t_text_ms": 2.9,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 1231
@@ -417,11 +487,11 @@
    "text_head": "هُ ْمن ا ِ هَ تُيْ\r ⏎ َتَرشا ا ْ َن\r ⏎ أَو كتاب آالف خمسة بالل ى َ ترشا\r ⏎ هُنْم ا ِ هَتُْي\r ⏎ َ\r ⏎ "
   },
   "pdfjs": {
-   "t_open_ms": 1.6,
+   "t_open_ms": 4.1,
    "pages": 1,
-   "t_render_p1_ms": 318.1,
+   "t_render_p1_ms": 207.4,
    "shot": "docs/research/screenshots/pdfjs/C_lo_bug119606_seventeen_macos_arabic_fonts_lo7.5dev.jpg",
-   "t_text_ms": 26.1,
+   "t_text_ms": 11.4,
    "selectable": true,
    "open": true,
    "score": {
@@ -429,6 +499,20 @@
     "n_extracted_chars": 1105
    },
    "text_head": "َيْتُهَا مِنْهُرَتَ ْ نَا اشَأََ ى بالل خمسة آالف كتاب ورَت اش ⏎ ُ ⏎  نَا اشْتَرَيْتُهَا مِنْه"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/C_lo_bug119606_seventeen_macos_arabic_fonts_lo7.5dev.jpg",
+   "t_open_ms": 0.8,
+   "t_render_p1_ms": 4.1,
+   "t_text_ms": 1.2,
+   "score": {
+    "verdict": "no-truth",
+    "n_extracted_chars": 1017
+   },
+   "text_head": "اشتَرى بلال خمسة آلاف كتاب وأََنَاَ اشْتَرََيتْهُاَ منِهُْ ⏎ اشترى بلال خمسة آلاف كتاب وَأََ"
   }
  },
  "C_lo_bug171737_noto_sans_arabic_extraction_lo26.2_pdf2.0": {
@@ -437,9 +521,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/C_lo_bug171737_noto_sans_arabic_extraction_lo26.2_pdf2.0.jpg",
-   "t_open_ms": 0.5,
-   "t_render_p1_ms": 11.2,
-   "t_text_ms": 4.7,
+   "t_open_ms": 0.8,
+   "t_render_p1_ms": 15.2,
+   "t_text_ms": 5.7,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 1244
@@ -447,11 +531,11 @@
    "text_head": "amiri ⏎  رخآلا مويلاو لسرلاو بتكلاو هتافصو هللاب مزاجلا قيدصتلا وه ناميإلاو ⏎  هللا لوسر نع ثي"
   },
   "mupdf": {
-   "t_open_ms": 10.7,
+   "t_open_ms": 1.3,
    "pages": 1,
-   "t_render_p1_ms": 12.2,
+   "t_render_p1_ms": 5.9,
    "shot": "docs/research/screenshots/mupdf/C_lo_bug171737_noto_sans_arabic_extraction_lo26.2_pdf2.0.jpg",
-   "t_text_ms": 3.3,
+   "t_text_ms": 2.5,
    "selectable": true,
    "open": true,
    "score": {
@@ -461,11 +545,11 @@
    "text_head": "amiri ⏎ والإيمان هو التصديق الجازم بالله وصفاته وال لكتب والرس\tل والي\tوم الآخر  ⏎ والقدر،  مع "
   },
   "pdfium": {
-   "t_open_ms": 3.1,
+   "t_open_ms": 5.3,
    "pages": 1,
-   "t_render_p1_ms": 3.3,
+   "t_render_p1_ms": 20.8,
    "shot": "docs/research/screenshots/pdfium/C_lo_bug171737_noto_sans_arabic_extraction_lo26.2_pdf2.0.jpg",
-   "t_text_ms": 1.1,
+   "t_text_ms": 1.4,
    "selectable": true,
    "open": true,
    "score": {
@@ -479,9 +563,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/C_lo_bug171737_noto_sans_arabic_extraction_lo26.2_pdf2.0.jpg",
-   "t_open_ms": 5.5,
-   "t_render_p1_ms": 8.0,
-   "t_text_ms": 2.5,
+   "t_open_ms": 8.3,
+   "t_render_p1_ms": 15.8,
+   "t_text_ms": 3.3,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 1302
@@ -489,11 +573,11 @@
    "text_head": "amiri\r ⏎ الآخر وم\tوالي ل\tوالرس والكتب وصفاته بالله الجازم التصديق هو والإيمان\r ⏎ الله رسول عن "
   },
   "pdfjs": {
-   "t_open_ms": 1.4,
+   "t_open_ms": 3.8,
    "pages": 1,
-   "t_render_p1_ms": 379.4,
+   "t_render_p1_ms": 313.9,
    "shot": "docs/research/screenshots/pdfjs/C_lo_bug171737_noto_sans_arabic_extraction_lo26.2_pdf2.0.jpg",
-   "t_text_ms": 62.7,
+   "t_text_ms": 71.1,
    "selectable": true,
    "open": true,
    "score": {
@@ -501,6 +585,20 @@
     "n_extracted_chars": 1514
    },
    "text_head": "amiri ⏎ كتب والرس ل والي وم الآخرل\u0014والإيمان هو التصديق الجازم بالله وصفاته وا ⏎ سليم لذلك، ففي"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/C_lo_bug171737_noto_sans_arabic_extraction_lo26.2_pdf2.0.jpg",
+   "t_open_ms": 0.4,
+   "t_render_p1_ms": 4.3,
+   "t_text_ms": 2.0,
+   "score": {
+    "verdict": "no-truth",
+    "n_extracted_chars": 1334
+   },
+   "text_head": "am iri ⏎ والإيمان هو التصديق الجازم بالله وصفاته وال�كتب والرس��ل والي��وم الآخر ⏎ والقدر، مع "
   }
  },
  "D_gdocs_digital_safety_guide_ar_skia_m130": {
@@ -509,9 +607,9 @@
    "pages": 15,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/D_gdocs_digital_safety_guide_ar_skia_m130.jpg",
-   "t_open_ms": 0.8,
-   "t_render_p1_ms": 17.8,
-   "t_text_ms": 7.9,
+   "t_open_ms": 1.8,
+   "t_render_p1_ms": 29.0,
+   "t_text_ms": 9.5,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 3941
@@ -519,11 +617,11 @@
    "text_head": "`` ⏎ ؟لﯾﻟدﻟااذﺎﻣﻟ ⏎ ﺔﻓرﻌﻣنإ.ﮫﺛدﺣﯾنأنﻛﻣﯾيذﻟاررﺿﻟامﺟﺣداز،كﻧﻋﺎﻣص ﺧﺷﺎﮭﻛﻠﺗﻣﯾﻲﺗﻟاتﺎﻣوﻠﻌﻣﻟاردﻗدازﺎﻣﻠﻛ"
   },
   "mupdf": {
-   "t_open_ms": 7.0,
+   "t_open_ms": 1.5,
    "pages": 15,
-   "t_render_p1_ms": 29.1,
+   "t_render_p1_ms": 16.7,
    "shot": "docs/research/screenshots/mupdf/D_gdocs_digital_safety_guide_ar_skia_m130.jpg",
-   "t_text_ms": 18.2,
+   "t_text_ms": 9.6,
    "selectable": true,
    "open": true,
    "score": {
@@ -533,11 +631,11 @@
    "text_head": "`` ⏎ لماذا ⏎ الدليل؟ ⏎ كلما ⏎ زاد ⏎ قدر ⏎ المعلومات ⏎ التي ⏎ يمتلكها ⏎ شخص ⏎ ما،عنك ⏎ زاد ⏎ حجم ⏎ الضرر ⏎ الذي ⏎ يمكن ⏎ أن"
   },
   "pdfium": {
-   "t_open_ms": 5.1,
+   "t_open_ms": 3.6,
    "pages": 15,
-   "t_render_p1_ms": 12.0,
+   "t_render_p1_ms": 28.2,
    "shot": "docs/research/screenshots/pdfium/D_gdocs_digital_safety_guide_ar_skia_m130.jpg",
-   "t_text_ms": 9.2,
+   "t_text_ms": 9.8,
    "selectable": true,
    "open": true,
    "score": {
@@ -551,9 +649,9 @@
    "pages": 15,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/D_gdocs_digital_safety_guide_ar_skia_m130.jpg",
-   "t_open_ms": 5.9,
-   "t_render_p1_ms": 18.9,
-   "t_text_ms": 16.9,
+   "t_open_ms": 8.5,
+   "t_render_p1_ms": 35.8,
+   "t_text_ms": 31.2,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 4695
@@ -561,11 +659,11 @@
    "text_head": "``\r ⏎ الدليل؟ لماذا\r ⏎ ةفرعم إن .هثدحي أن يمكن الذي الضرر حجم زاد ،عنك ام شخص اهكلتمي يتلا الم"
   },
   "pdfjs": {
-   "t_open_ms": 2.4,
+   "t_open_ms": 12.5,
    "pages": 15,
-   "t_render_p1_ms": 595,
+   "t_render_p1_ms": 616.7,
    "shot": "docs/research/screenshots/pdfjs/D_gdocs_digital_safety_guide_ar_skia_m130.jpg",
-   "t_text_ms": 414.6,
+   "t_text_ms": 667.2,
    "selectable": true,
    "open": true,
    "score": {
@@ -573,6 +671,20 @@
     "n_extracted_chars": 4573
    },
    "text_head": "`` ⏎ ذاﺎﻣﻟ ل؟ﯾﻟدﻟا ⏎ ﺎﻣﻠﻛ زاد درﻗ تﺎﻣوﻠﻌﻣﻟا ﻲﺗﻟا ﺎﮭﻛﻠﺗﻣﯾ صﺧﺷ ﺎﻣ ك،ﻧﻋ زاد مﺟﺣ ررﺿﻟا ذيﻟا نﻛﻣﯾ أ"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 15,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/D_gdocs_digital_safety_guide_ar_skia_m130.jpg",
+   "t_open_ms": 1.6,
+   "t_render_p1_ms": 7.0,
+   "t_text_ms": 5.6,
+   "score": {
+    "verdict": "no-truth",
+    "n_extracted_chars": 4629
+   },
+   "text_head": "`` ⏎ لماذا الدليل؟ ⏎ كلما زاد قدر المعلومات التي یمتلكھا شخص ما عنك، زاد حجم الضرر الذي یمكن أ"
   }
  },
  "D_gdocs_wmf_rapid_funds_guide_ar_skia_m97": {
@@ -581,9 +693,9 @@
    "pages": 32,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/D_gdocs_wmf_rapid_funds_guide_ar_skia_m97.jpg",
-   "t_open_ms": 1.7,
-   "t_render_p1_ms": 44.6,
-   "t_text_ms": 13.3,
+   "t_open_ms": 1.8,
+   "t_render_p1_ms": 68.9,
+   "t_text_ms": 13.4,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 5917
@@ -591,11 +703,11 @@
    "text_head": "،نﺎ\u0000ﺴﻟﻮﻣ ﻰ﮵\u0000﮳ﻮ\u0000﮳ ﻮ\u0000﮳ار\u0000و يواﺮﻤﻋﻮ\u0000﮳ﻟا ﺎ\u0000\u0000﮵ﻤﺳﺎﺣ﮳ ﮟﻣ ﺔﻣﺪ\u0000﮴ﻣ رﻮﺼﻟا ⏎ ﮴ ﮲ ﮲ ⏎ ﺮ\u0000ﻣﻮﻛ ﺎ\u0000﮵ﺪ\u0000﮵ﻤ\u0000﮵ﻜ\u0000﮵و ﻖ"
   },
   "mupdf": {
-   "t_open_ms": 10.2,
+   "t_open_ms": 2.0,
    "pages": 32,
-   "t_render_p1_ms": 104.4,
+   "t_render_p1_ms": 37.0,
    "shot": "docs/research/screenshots/mupdf/D_gdocs_wmf_rapid_funds_guide_ar_skia_m97.jpg",
-   "t_text_ms": 100.6,
+   "t_text_ms": 12.2,
    "selectable": true,
    "open": true,
    "score": {
@@ -605,11 +717,11 @@
    "text_head": "،الصور م ق دمة م ن  ج اسم ي نا ال بوعمراوي واكرا بو  بو ب ي مولس تان ⏎ الم ش اع اإل بداع ي ص"
   },
   "pdfium": {
-   "t_open_ms": 5.3,
+   "t_open_ms": 5.2,
    "pages": 32,
-   "t_render_p1_ms": 15.3,
+   "t_render_p1_ms": 35.9,
    "shot": "docs/research/screenshots/pdfium/D_gdocs_wmf_rapid_funds_guide_ar_skia_m97.jpg",
-   "t_text_ms": 12.7,
+   "t_text_ms": 11.5,
    "selectable": true,
    "open": true,
    "score": {
@@ -623,9 +735,9 @@
    "pages": 32,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/D_gdocs_wmf_rapid_funds_guide_ar_skia_m97.jpg",
-   "t_open_ms": 8.2,
-   "t_render_p1_ms": 26.0,
-   "t_text_ms": 23.0,
+   "t_open_ms": 12.8,
+   "t_render_p1_ms": 48.1,
+   "t_text_ms": 33.4,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 6810
@@ -633,11 +745,11 @@
    "text_head": "،ان\r ⏎ ت\r ⏎ سلوم يبوب وباركاو البوعمراوي ا\r ⏎ ن\r ⏎ يمساج\r ⏎ ن\r ⏎ م ةمد قم الصور\r ⏎ ز ن\r ⏎ موك ايديميكيو قي"
   },
   "pdfjs": {
-   "t_open_ms": 2.8,
+   "t_open_ms": 95.7,
    "pages": 32,
-   "t_render_p1_ms": 654.8,
+   "t_render_p1_ms": 2551.3,
    "shot": "docs/research/screenshots/pdfjs/D_gdocs_wmf_rapid_funds_guide_ar_skia_m97.jpg",
-   "t_text_ms": 508.1,
+   "t_text_ms": 2704.5,
    "selectable": true,
    "open": true,
    "score": {
@@ -645,6 +757,20 @@
     "n_extracted_chars": 6511
    },
    "text_head": "ن،ﺎ﮴\u0000ﺴﻟﻮﻣ ﮵ ﻰ﮳\u0000ﻮ﮳\u0000 ﻮ﮳\u0000را\u0000اوي وﺮﻤﻋﻮ﮳\u0000ﻟا ﺎ﮲\u0000﮵\u0000ﻤﺳﺎ ﮳ﺣ  ⏎ ﮲ ⏎  ںﻣ ﺔﻣﺪ ﮴\u0000ﻣ رﻮﺼﻟا ⏎ ﮲ ⏎ ﺮ﮲\u0000ﻣﻮﻛ ﺎ﮵\u0000ﺪ﮵\u0000ﻤ﮵\u0000"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 32,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/D_gdocs_wmf_rapid_funds_guide_ar_skia_m97.jpg",
+   "t_open_ms": 2.8,
+   "t_render_p1_ms": 15.2,
+   "t_text_ms": 6.7,
+   "score": {
+    "verdict": "no-truth",
+    "n_extracted_chars": 6456
+   },
+   "text_head": "الصور م﮴�دمة مں ﮳حاسم﮵��ا ال﮳�وعمراوي و�را﮳�و ﮳�و﮳�﮵ى مولس�ان، ⏎ ﮲ ﮲ ﮴ ⏎ المساع الإ﮳�داع﮵ى ص﮲�"
   }
  },
  "E_commons_qarar193_toshiba_estudio_mfp_scan": {
@@ -653,8 +779,8 @@
    "pages": 4,
    "selectable": false,
    "shot": "docs/research/screenshots/hayro/E_commons_qarar193_toshiba_estudio_mfp_scan.jpg",
-   "t_open_ms": 0.5,
-   "t_render_p1_ms": 16.9,
+   "t_open_ms": 0.8,
+   "t_render_p1_ms": 24.5,
    "t_text_ms": 0.1,
    "score": {
     "verdict": "no-truth",
@@ -663,11 +789,11 @@
    "text_head": " ⏎  ⏎ "
   },
   "mupdf": {
-   "t_open_ms": 3.7,
+   "t_open_ms": 1.3,
    "pages": 4,
-   "t_render_p1_ms": 20.5,
+   "t_render_p1_ms": 15.5,
    "shot": "docs/research/screenshots/mupdf/E_commons_qarar193_toshiba_estudio_mfp_scan.jpg",
-   "t_text_ms": 3.6,
+   "t_text_ms": 0.6,
    "selectable": false,
    "open": true,
    "score": {
@@ -677,11 +803,11 @@
    "text_head": " ⏎  ⏎ "
   },
   "pdfium": {
-   "t_open_ms": 0.7,
+   "t_open_ms": 0.6,
    "pages": 4,
-   "t_render_p1_ms": 12.2,
+   "t_render_p1_ms": 29.5,
    "shot": "docs/research/screenshots/pdfium/E_commons_qarar193_toshiba_estudio_mfp_scan.jpg",
-   "t_text_ms": 0.3,
+   "t_text_ms": 0.5,
    "selectable": false,
    "open": true,
    "score": {
@@ -695,9 +821,9 @@
    "pages": 4,
    "selectable": false,
    "shot": "docs/research/screenshots/pdfium-rs/E_commons_qarar193_toshiba_estudio_mfp_scan.jpg",
-   "t_open_ms": 1.1,
-   "t_render_p1_ms": 17.9,
-   "t_text_ms": 1.0,
+   "t_open_ms": 1.4,
+   "t_render_p1_ms": 30.7,
+   "t_text_ms": 1.3,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 2
@@ -705,13 +831,27 @@
    "text_head": " ⏎  ⏎ "
   },
   "pdfjs": {
-   "t_open_ms": 1.3,
+   "t_open_ms": 3.5,
    "pages": 4,
-   "t_render_p1_ms": 13.5,
+   "t_render_p1_ms": 213.6,
    "shot": "docs/research/screenshots/pdfjs/E_commons_qarar193_toshiba_estudio_mfp_scan.jpg",
-   "t_text_ms": 1.4,
+   "t_text_ms": 1.9,
    "selectable": false,
    "open": true,
+   "score": {
+    "verdict": "no-truth",
+    "n_extracted_chars": 2
+   },
+   "text_head": " ⏎  ⏎ "
+  },
+  "warraq": {
+   "open": true,
+   "pages": 4,
+   "selectable": false,
+   "shot": "docs/research/screenshots/warraq/E_commons_qarar193_toshiba_estudio_mfp_scan.jpg",
+   "t_open_ms": 0.5,
+   "t_render_p1_ms": 6.1,
+   "t_text_ms": 0.0,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 2
@@ -725,9 +865,9 @@
    "pages": 3,
    "selectable": false,
    "shot": "docs/research/screenshots/hayro/E_commons_tafsir_surat_alnur_pd_scan_p1-3.jpg",
-   "t_open_ms": 0.8,
-   "t_render_p1_ms": 76.2,
-   "t_text_ms": 0.1,
+   "t_open_ms": 1.2,
+   "t_render_p1_ms": 84.0,
+   "t_text_ms": 0.3,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 2
@@ -737,9 +877,9 @@
   "mupdf": {
    "t_open_ms": 1.0,
    "pages": 3,
-   "t_render_p1_ms": 29.0,
+   "t_render_p1_ms": 29.1,
    "shot": "docs/research/screenshots/mupdf/E_commons_tafsir_surat_alnur_pd_scan_p1-3.jpg",
-   "t_text_ms": 0.7,
+   "t_text_ms": 0.6,
    "selectable": false,
    "open": true,
    "score": {
@@ -751,7 +891,7 @@
   "pdfium": {
    "t_open_ms": 0.5,
    "pages": 3,
-   "t_render_p1_ms": 24.6,
+   "t_render_p1_ms": 40.1,
    "shot": "docs/research/screenshots/pdfium/E_commons_tafsir_surat_alnur_pd_scan_p1-3.jpg",
    "t_text_ms": 0.5,
    "selectable": false,
@@ -767,9 +907,9 @@
    "pages": 3,
    "selectable": false,
    "shot": "docs/research/screenshots/pdfium-rs/E_commons_tafsir_surat_alnur_pd_scan_p1-3.jpg",
-   "t_open_ms": 1.4,
-   "t_render_p1_ms": 62.3,
-   "t_text_ms": 0.6,
+   "t_open_ms": 1.5,
+   "t_render_p1_ms": 90.8,
+   "t_text_ms": 0.7,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 2
@@ -777,13 +917,27 @@
    "text_head": " ⏎  ⏎ "
   },
   "pdfjs": {
-   "t_open_ms": 1.2,
+   "t_open_ms": 30.7,
    "pages": 3,
-   "t_render_p1_ms": 3.4,
+   "t_render_p1_ms": 76.6,
    "shot": "docs/research/screenshots/pdfjs/E_commons_tafsir_surat_alnur_pd_scan_p1-3.jpg",
-   "t_text_ms": 2,
+   "t_text_ms": 7,
    "selectable": false,
    "open": true,
+   "score": {
+    "verdict": "no-truth",
+    "n_extracted_chars": 2
+   },
+   "text_head": " ⏎  ⏎ "
+  },
+  "warraq": {
+   "open": true,
+   "pages": 3,
+   "selectable": false,
+   "shot": "docs/research/screenshots/warraq/E_commons_tafsir_surat_alnur_pd_scan_p1-3.jpg",
+   "t_open_ms": 0.5,
+   "t_render_p1_ms": 27.6,
+   "t_text_ms": 0.0,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 2
@@ -797,9 +951,9 @@
    "pages": 36,
    "selectable": false,
    "shot": "docs/research/screenshots/hayro/E_ia_bv056_arabic_manuscript_1924_ocr_text_layer.jpg",
-   "t_open_ms": 1.0,
-   "t_render_p1_ms": 195.4,
-   "t_text_ms": 0.2,
+   "t_open_ms": 1.6,
+   "t_render_p1_ms": 335.8,
+   "t_text_ms": 0.3,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 2
@@ -809,9 +963,9 @@
   "mupdf": {
    "t_open_ms": 1.9,
    "pages": 36,
-   "t_render_p1_ms": 297.8,
+   "t_render_p1_ms": 177.6,
    "shot": "docs/research/screenshots/mupdf/E_ia_bv056_arabic_manuscript_1924_ocr_text_layer.jpg",
-   "t_text_ms": 1.6,
+   "t_text_ms": 1.2,
    "selectable": false,
    "open": true,
    "score": {
@@ -821,11 +975,11 @@
    "text_head": " ⏎  ⏎ "
   },
   "pdfium": {
-   "t_open_ms": 1.2,
+   "t_open_ms": 1.4,
    "pages": 36,
-   "t_render_p1_ms": 104.6,
+   "t_render_p1_ms": 113.8,
    "shot": "docs/research/screenshots/pdfium/E_ia_bv056_arabic_manuscript_1924_ocr_text_layer.jpg",
-   "t_text_ms": 0.6,
+   "t_text_ms": 0.4,
    "selectable": false,
    "open": true,
    "score": {
@@ -839,9 +993,9 @@
    "pages": 36,
    "selectable": false,
    "shot": "docs/research/screenshots/pdfium-rs/E_ia_bv056_arabic_manuscript_1924_ocr_text_layer.jpg",
-   "t_open_ms": 1.5,
-   "t_render_p1_ms": 135.0,
-   "t_text_ms": 0.4,
+   "t_open_ms": 1.9,
+   "t_render_p1_ms": 248.4,
+   "t_text_ms": 0.6,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 2
@@ -849,13 +1003,27 @@
    "text_head": " ⏎  ⏎ "
   },
   "pdfjs": {
-   "t_open_ms": 38.7,
+   "t_open_ms": 87.2,
    "pages": 36,
-   "t_render_p1_ms": 10.4,
+   "t_render_p1_ms": 130.5,
    "shot": "docs/research/screenshots/pdfjs/E_ia_bv056_arabic_manuscript_1924_ocr_text_layer.jpg",
-   "t_text_ms": 173.6,
+   "t_text_ms": 27.9,
    "selectable": false,
    "open": true,
+   "score": {
+    "verdict": "no-truth",
+    "n_extracted_chars": 2
+   },
+   "text_head": " ⏎  ⏎ "
+  },
+  "warraq": {
+   "open": true,
+   "pages": 36,
+   "selectable": false,
+   "shot": "docs/research/screenshots/warraq/E_ia_bv056_arabic_manuscript_1924_ocr_text_layer.jpg",
+   "t_open_ms": 1.5,
+   "t_render_p1_ms": 58.3,
+   "t_text_ms": 0.1,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 2
@@ -869,9 +1037,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/F_pdfjs15546_rtl_acroform_textfields_arabic_digits_acrobat.jpg",
-   "t_open_ms": 0.6,
-   "t_render_p1_ms": 4.8,
-   "t_text_ms": 1.5,
+   "t_open_ms": 0.9,
+   "t_render_p1_ms": 6.4,
+   "t_text_ms": 2.9,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 119
@@ -879,11 +1047,11 @@
    "text_head": "RTL Field with arabic numbers  ⏎ RTL Field with usual numbers ⏎ LTR Field with arabic numbers ⏎ "
   },
   "mupdf": {
-   "t_open_ms": 7.5,
+   "t_open_ms": 1.5,
    "pages": 1,
-   "t_render_p1_ms": 9.7,
+   "t_render_p1_ms": 7.7,
    "shot": "docs/research/screenshots/mupdf/F_pdfjs15546_rtl_acroform_textfields_arabic_digits_acrobat.jpg",
-   "t_text_ms": 1.3,
+   "t_text_ms": 1.0,
    "selectable": true,
    "open": true,
    "score": {
@@ -895,9 +1063,9 @@
   "pdfium": {
    "t_open_ms": 1.1,
    "pages": 1,
-   "t_render_p1_ms": 1.1,
+   "t_render_p1_ms": 17.6,
    "shot": "docs/research/screenshots/pdfium/F_pdfjs15546_rtl_acroform_textfields_arabic_digits_acrobat.jpg",
-   "t_text_ms": 0.2,
+   "t_text_ms": 0.4,
    "selectable": true,
    "open": true,
    "score": {
@@ -911,8 +1079,8 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/F_pdfjs15546_rtl_acroform_textfields_arabic_digits_acrobat.jpg",
-   "t_open_ms": 3.8,
-   "t_render_p1_ms": 3.8,
+   "t_open_ms": 2.8,
+   "t_render_p1_ms": 3.5,
    "t_text_ms": 0.3,
    "score": {
     "verdict": "no-truth",
@@ -921,11 +1089,11 @@
    "text_head": "RTL Field with arabic numbers\r ⏎ RTL Field with usual numbers\r ⏎ LTR Field with arabic numbers"
   },
   "pdfjs": {
-   "t_open_ms": 2.3,
+   "t_open_ms": 2.7,
    "pages": 1,
-   "t_render_p1_ms": 35.4,
+   "t_render_p1_ms": 52.1,
    "shot": "docs/research/screenshots/pdfjs/F_pdfjs15546_rtl_acroform_textfields_arabic_digits_acrobat.jpg",
-   "t_text_ms": 1.2,
+   "t_text_ms": 3.5,
    "selectable": true,
    "open": true,
    "score": {
@@ -933,6 +1101,20 @@
     "n_extracted_chars": 120
    },
    "text_head": "RTL Field with arabic numbers ⏎  ⏎ RTL Field with usual numbers ⏎  ⏎ LTR Field with arabic numbers"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/F_pdfjs15546_rtl_acroform_textfields_arabic_digits_acrobat.jpg",
+   "t_open_ms": 0.6,
+   "t_render_p1_ms": 1.8,
+   "t_text_ms": 0.7,
+   "score": {
+    "verdict": "no-truth",
+    "n_extracted_chars": 117
+   },
+   "text_head": "RTL Field with arabic numbers ⏎ RTL Field with usual numbers ⏎ LTR Field with arabic numbers ⏎ L"
   }
  },
  "G_pdfjs_ArabicCIDTrueType_apple_pstopdffilter_no_tounicode": {
@@ -941,9 +1123,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/G_pdfjs_ArabicCIDTrueType_apple_pstopdffilter_no_tounicode.jpg",
-   "t_open_ms": 0.6,
-   "t_render_p1_ms": 3.2,
-   "t_text_ms": 1.1,
+   "t_open_ms": 0.9,
+   "t_render_p1_ms": 3.6,
+   "t_text_ms": 1.2,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 81
@@ -951,11 +1133,11 @@
    "text_head": "ﺔﻴﺑﺮﻌﻟا طﻮﻄﳋا عاﻮﻧا ⏎ ﺔﻴﺑﺮﻌﻟا طﻮﻄﳋا عاﻮﻧا ⏎ ﺔﻴﺑﺮﻌﻟا طﻮﻄﳋا عاﻮﻧا ⏎ ﺔﻴﺑﺮﻌﻟا طﻮﻄﳋ ا عاﻮﻧا ⏎ "
   },
   "mupdf": {
-   "t_open_ms": 1.1,
+   "t_open_ms": 1.7,
    "pages": 1,
-   "t_render_p1_ms": 6.7,
+   "t_render_p1_ms": 10.3,
    "shot": "docs/research/screenshots/mupdf/G_pdfjs_ArabicCIDTrueType_apple_pstopdffilter_no_tounicode.jpg",
-   "t_text_ms": 1.8,
+   "t_text_ms": 1.2,
    "selectable": true,
    "open": true,
    "score": {
@@ -965,11 +1147,11 @@
    "text_head": "اﻧﻮاع اﳋﻄﻮط اﻟﻌﺮﺑﻴﺔ ⏎ اﻧﻮاع اﳋﻄﻮط اﻟﻌﺮﺑﻴﺔ ⏎ اﻧﻮاع اﳋﻄﻮط اﻟﻌﺮﺑﻴﺔ ⏎ اﻧﻮاع اﳋﻄﻮط اﻟﻌﺮﺑﻴﺔ ⏎ "
   },
   "pdfium": {
-   "t_open_ms": 1.5,
+   "t_open_ms": 1.4,
    "pages": 1,
-   "t_render_p1_ms": 1.3,
+   "t_render_p1_ms": 26.9,
    "shot": "docs/research/screenshots/pdfium/G_pdfjs_ArabicCIDTrueType_apple_pstopdffilter_no_tounicode.jpg",
-   "t_text_ms": 0.1,
+   "t_text_ms": 0.4,
    "selectable": true,
    "open": true,
    "score": {
@@ -983,9 +1165,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/G_pdfjs_ArabicCIDTrueType_apple_pstopdffilter_no_tounicode.jpg",
-   "t_open_ms": 1.7,
-   "t_render_p1_ms": 1.8,
-   "t_text_ms": 0.2,
+   "t_open_ms": 2.7,
+   "t_render_p1_ms": 3.9,
+   "t_text_ms": 0.3,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 86
@@ -993,11 +1175,11 @@
    "text_head": "العربية الخطوط انواع\r ⏎ العربية الخطوط انواع\r ⏎ العربية الخطوط انواع\r ⏎ العربية الخطوط انواع"
   },
   "pdfjs": {
-   "t_open_ms": 1,
+   "t_open_ms": 5.4,
    "pages": 1,
-   "t_render_p1_ms": 31.3,
+   "t_render_p1_ms": 392.4,
    "shot": "docs/research/screenshots/pdfjs/G_pdfjs_ArabicCIDTrueType_apple_pstopdffilter_no_tounicode.jpg",
-   "t_text_ms": 1,
+   "t_text_ms": 2.3,
    "selectable": true,
    "open": true,
    "score": {
@@ -1005,6 +1187,20 @@
     "n_extracted_chars": 83
    },
    "text_head": "اﻟﻌﺮﺑﻴﺔ اخلﻄﻮط اﻧﻮاع ⏎ اﻟﻌﺮﺑﻴﺔ اخلﻄﻮط اﻧﻮاع ⏎ اﻟﻌﺮﺑﻴﺔ اخلﻄﻮط اﻧﻮاع ⏎ اﻟﻌﺮﺑﻴﺔ اخلﻄﻮط اﻧﻮاع"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/G_pdfjs_ArabicCIDTrueType_apple_pstopdffilter_no_tounicode.jpg",
+   "t_open_ms": 0.4,
+   "t_render_p1_ms": 1.4,
+   "t_text_ms": 0.4,
+   "score": {
+    "verdict": "no-truth",
+    "n_extracted_chars": 83
+   },
+   "text_head": "انواع الخطوط العربية ⏎ انواع الخطوط العربية ⏎ انواع الخطوط العربية ⏎ انواع الخطوط العربية"
   }
  },
  "G_wipo_saudi_copyright_law_laserwriter8_distiller5_legacy_encoding": {
@@ -1013,9 +1209,9 @@
    "pages": 23,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/G_wipo_saudi_copyright_law_laserwriter8_distiller5_legacy_encoding.jpg",
-   "t_open_ms": 0.6,
-   "t_render_p1_ms": 4.2,
-   "t_text_ms": 2.4,
+   "t_open_ms": 1.1,
+   "t_render_p1_ms": 5.5,
+   "t_text_ms": 2.7,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 1773
@@ -1023,11 +1219,11 @@
    "text_head": "n=R*« ‚uIŠ W¹ULŠ ÂUE½ ⏎ a¹—UðË © ¥±Ø Â ® r?— wJK*« Âu???Ýd*« Vłu?0 ÂUEM« «c?¼ —b?? ⏎ Æ ‡¼±¥≤¥Ø"
   },
   "mupdf": {
-   "t_open_ms": 2.5,
+   "t_open_ms": 2.3,
    "pages": 23,
-   "t_render_p1_ms": 9.7,
+   "t_render_p1_ms": 8.0,
    "shot": "docs/research/screenshots/mupdf/G_wipo_saudi_copyright_law_laserwriter8_distiller5_legacy_encoding.jpg",
-   "t_text_ms": 5.6,
+   "t_text_ms": 5.8,
    "selectable": true,
    "open": true,
    "score": {
@@ -1037,11 +1233,11 @@
    "text_head": "n=\u0001R*« ‚uIŠ W¹ULŠ ÂUE½ ⏎ a¹—UðË © ¥±Ø Â ® r?\u0001— wJK*« Âu???Ýd*« Vłu?0 ÂUEM\u0002« «c?¼ —b??\u0003 ⏎ Æ ‡¼±"
   },
   "pdfium": {
-   "t_open_ms": 4.5,
+   "t_open_ms": 4.4,
    "pages": 23,
-   "t_render_p1_ms": 1.9,
+   "t_render_p1_ms": 18.0,
    "shot": "docs/research/screenshots/pdfium/G_wipo_saudi_copyright_law_laserwriter8_distiller5_legacy_encoding.jpg",
-   "t_text_ms": 1.7,
+   "t_text_ms": 2.3,
    "selectable": true,
    "open": true,
    "score": {
@@ -1055,9 +1251,9 @@
    "pages": 23,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/G_wipo_saudi_copyright_law_laserwriter8_distiller5_legacy_encoding.jpg",
-   "t_open_ms": 3.6,
-   "t_render_p1_ms": 3.3,
-   "t_text_ms": 3.8,
+   "t_open_ms": 5.0,
+   "t_render_p1_ms": 5.2,
+   "t_text_ms": 4.9,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 1930
@@ -1065,11 +1261,11 @@
    "text_head": "n=\u0001R*« ‚uIŠ W¹ULŠ ÂUE½\r ⏎ a¹—UðË © ¥±Ø Â ® r?\u0001— wJK*« Âu???Ýd*« Vłu?0 ÂUEM\u0002« «c?¼ —b??\u0003\r ⏎ Æ ‡"
   },
   "pdfjs": {
-   "t_open_ms": 1.1,
+   "t_open_ms": 2.7,
    "pages": 23,
-   "t_render_p1_ms": 17.3,
+   "t_render_p1_ms": 23.8,
    "shot": "docs/research/screenshots/pdfjs/G_wipo_saudi_copyright_law_laserwriter8_distiller5_legacy_encoding.jpg",
-   "t_text_ms": 9.9,
+   "t_text_ms": 46,
    "selectable": true,
    "open": true,
    "score": {
@@ -1077,6 +1273,20 @@
     "n_extracted_chars": 1903
    },
    "text_head": "n=\u0001R*« ‚uIŠ W¹ULŠ ÂUE½ ⏎ a¹—UðË © ¥±Ø Â ® r?\u0001— wJK*« Âu???Ýd*« Vłu?0 ÂUEM\u0002« «c?¼ —b??\u0003 ⏎  ⏎ Æ ‡¼"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 23,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/G_wipo_saudi_copyright_law_laserwriter8_distiller5_legacy_encoding.jpg",
+   "t_open_ms": 1.0,
+   "t_render_p1_ms": 1.9,
+   "t_text_ms": 1.5,
+   "score": {
+    "verdict": "no-truth",
+    "n_extracted_chars": 1899
+   },
+   "text_head": "n=�R*« ‚uIŠ W¹ULŠ ÂUE½ ⏎ a¹—UðË © ¥±Ø Â ® r?�— wJK*« Âu???Ýd*« Vłu?0 ÂUEM�« «c?¼ —b??� ⏎ Æ ‡¼±"
   }
  },
  "acroform-pdflib-arabic-fields": {
@@ -1085,26 +1295,26 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/acroform-pdflib-arabic-fields.jpg",
-   "t_open_ms": 1.1,
-   "t_render_p1_ms": 37.5,
-   "t_text_ms": 3.1,
+   "t_open_ms": 27.3,
+   "t_render_p1_ms": 123.9,
+   "t_text_ms": 6.1,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.081,
-    "recall_reversed": 0.135,
+    "recall_reversed": 0.162,
     "order_lcs": 0.051,
     "order_lcs_linerev": 0.103,
     "pres_forms": 89,
     "replacement_chars": 0,
     "n_truth_words": 39,
-    "n_extracted_words": 41
+    "n_extracted_words": 40
    },
-   "text_head": "ﻪ\u0000ﺼ ﺣ\u0000ر ﺪ\u0000\u0000ﺪﺤ\u0000\u0000\u0000 \u0000\u0000ﻠﻃ ح\u0000د\u0000ﻮﻤ\u0000\u0000 ⏎ هللا دبع دمحم :ﻞﻣﺎﻜﻟا ﻢﺳ الا ⏎ 1098765432 :ﻪ\u0000\u0000\u0000ﻮﻬﻟا ﻢ\u0000\u0000ر ⏎ :دال"
+   "text_head": "ﻪ\u0000ﺼ ﺣ\u0000ر ﺪ\u0000\u0000ﺪﺤ\u0000\u0000\u0000 \u0000\u0000ﻠﻃ ح\u0000د\u0000ﻮﻤ\u0000\u0000 ⏎ هللا دبع دمحم :ﻞﻣﺎﻜﻟا ﻢﺳالا ⏎ 1098765432 :ﻪ\u0000\u0000\u0000ﻮﻬﻟا ﻢ\u0000\u0000ر ⏎ :دال\u0000"
   },
   "mupdf": {
-   "t_open_ms": 5.5,
+   "t_open_ms": 5.9,
    "pages": 1,
-   "t_render_p1_ms": 18.8,
+   "t_render_p1_ms": 16.5,
    "shot": "docs/research/screenshots/mupdf/acroform-pdflib-arabic-fields.jpg",
    "t_text_ms": 4.9,
    "selectable": true,
@@ -1113,27 +1323,27 @@
     "verdict": "garbage",
     "recall_logical": 0.216,
     "recall_reversed": 0.081,
-    "order_lcs": 0.154,
-    "order_lcs_linerev": 0.205,
+    "order_lcs": 0.179,
+    "order_lcs_linerev": 0.179,
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 39,
-    "n_extracted_words": 61
+    "n_extracted_words": 60
    },
    "text_head": "ة طل ب  ت ج د يد ر خصجنمو ذ ⏎ :الاسم الكامل ⏎ :ةر قم الهو ي ⏎ :تار ي خ الم يلاد ⏎ :ةال ج نس ي ⏎ : يا"
   },
   "pdfium": {
-   "t_open_ms": 60.8,
+   "t_open_ms": 9.2,
    "pages": 1,
-   "t_render_p1_ms": 110.7,
+   "t_render_p1_ms": 21.4,
    "shot": "docs/research/screenshots/pdfium/acroform-pdflib-arabic-fields.jpg",
-   "t_text_ms": 5.1,
+   "t_text_ms": 3.5,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "partial-reversed",
     "recall_logical": 0.162,
-    "recall_reversed": 0.838,
+    "recall_reversed": 0.865,
     "order_lcs": 0.128,
     "order_lcs_linerev": 0.179,
     "pres_forms": 0,
@@ -1148,13 +1358,13 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/acroform-pdflib-arabic-fields.jpg",
-   "t_open_ms": 9.5,
-   "t_render_p1_ms": 5.7,
-   "t_text_ms": 1.2,
+   "t_open_ms": 22.0,
+   "t_render_p1_ms": 12.6,
+   "t_text_ms": 4.8,
    "score": {
     "verdict": "partial-reversed",
     "recall_logical": 0.162,
-    "recall_reversed": 0.838,
+    "recall_reversed": 0.865,
     "order_lcs": 0.128,
     "order_lcs_linerev": 0.179,
     "pres_forms": 0,
@@ -1165,11 +1375,11 @@
    "text_head": "ةصخر ديدجت بلط جذومن\r ⏎ :لماكلا مسالا\r ⏎ :ةيوهلا مقر\r ⏎ :الميلاد خيرات\r ⏎ :ةيسنجلا\r ⏎ :ينورتكلإلا دي"
   },
   "pdfjs": {
-   "t_open_ms": 460.8,
+   "t_open_ms": 734.1,
    "pages": 1,
-   "t_render_p1_ms": 901.8,
+   "t_render_p1_ms": 1398,
    "shot": "docs/research/screenshots/pdfjs/acroform-pdflib-arabic-fields.jpg",
-   "t_text_ms": 194.4,
+   "t_text_ms": 5731.5,
    "selectable": true,
    "open": true,
    "score": {
@@ -1183,7 +1393,28 @@
     "n_truth_words": 39,
     "n_extracted_words": 37
    },
-   "text_head": "ﻪ\u0000ﺼ\u0000ﺣر ﺪ\u0000\u0000ﺪ \u0000ﺤ\u0000\u0000 \u0000  \u0000ﻠﻃ \u0000 ح \u0000دﻮﻤ\u0000\u0000 ⏎ :ﻞﻣﺎﻜﻟا ﻢﺳالا ⏎ : \u0000ﻪ\u0000\u0000ﻮﻬﻟا ﻢ\u0000\u0000ر ⏎ لاد:\u0000\u0000ﻤﻟا \u0000 ﺢ\u0000\u0000رﺎ\u0000\u0000 ⏎ : \u0000ﻪ\u0000"
+   "text_head": "ﻪ\u0000ﺼ\u0000ﺣر ﺪ\u0000\u0000ﺪ \u0000ﺤ\u0000\u0000 \u0000  \u0000ﻠﻃ \u0000 ح \u0000دﻮﻤ\u0000\u0000 ⏎ :ﻞﻣﺎﻜﻟا ﻢﺳالا ⏎ :\u0000ﻪ\u0000\u0000ﻮﻬﻟا ﻢ\u0000\u0000ر ⏎ لاد:\u0000\u0000ﻤﻟا \u0000 ﺢ\u0000\u0000رﺎ\u0000\u0000 ⏎ :\u0000ﻪ\u0000\u0000ﺴ"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/acroform-pdflib-arabic-fields.jpg",
+   "t_open_ms": 2.0,
+   "t_render_p1_ms": 12.8,
+   "t_text_ms": 4.1,
+   "score": {
+    "verdict": "garbage(U+FFFD)",
+    "recall_logical": 0.189,
+    "recall_reversed": 0.081,
+    "order_lcs": 0.205,
+    "order_lcs_linerev": 0.128,
+    "pres_forms": 0,
+    "replacement_chars": 48,
+    "n_truth_words": 39,
+    "n_extracted_words": 41
+   },
+   "text_head": "�م̇وذح� طل�̣ �ح̈\u0000̣د�د̤ رحص̇ه̈ ⏎ الاسم الكامل: محمد عبد الله ⏎ ر�̈م الهو�ه̈\u0000̤: 1098765432 ⏎ �̈ار�"
   }
  },
  "chrome-amiri-tashkeel-ligatures": {
@@ -1192,9 +1423,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/chrome-amiri-tashkeel-ligatures.jpg",
-   "t_open_ms": 0.6,
-   "t_render_p1_ms": 2.9,
-   "t_text_ms": 0.5,
+   "t_open_ms": 4.5,
+   "t_render_p1_ms": 56.3,
+   "t_text_ms": 0.8,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.067,
@@ -1214,11 +1445,11 @@
    "text_head": ""
   },
   "pdfium": {
-   "t_open_ms": 4.0,
+   "t_open_ms": 0.7,
    "pages": 1,
-   "t_render_p1_ms": 3.0,
+   "t_render_p1_ms": 19.8,
    "shot": "docs/research/screenshots/pdfium/chrome-amiri-tashkeel-ligatures.jpg",
-   "t_text_ms": 0.8,
+   "t_text_ms": 0.7,
    "selectable": true,
    "open": true,
    "score": {
@@ -1239,9 +1470,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/chrome-amiri-tashkeel-ligatures.jpg",
-   "t_open_ms": 1.5,
-   "t_render_p1_ms": 2.0,
-   "t_text_ms": 0.9,
+   "t_open_ms": 3.0,
+   "t_render_p1_ms": 6.6,
+   "t_text_ms": 1.7,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.367,
@@ -1256,11 +1487,11 @@
    "text_head": "مٌ\r ⏎ لاَ ظَ لُهْجَلْواَ رٌونُ مُ لْعِلْا\r ⏎ ةِبَتَ كْمَلْا فيِ دَ ديِجَلْا بَتَتاَكِلْا\r ⏎ هِ ا"
   },
   "pdfjs": {
-   "t_open_ms": 2.3,
+   "t_open_ms": 301.1,
    "pages": 1,
-   "t_render_p1_ms": 292.5,
+   "t_render_p1_ms": 1775.8,
    "shot": "docs/research/screenshots/pdfjs/chrome-amiri-tashkeel-ligatures.jpg",
-   "t_text_ms": 7.7,
+   "t_text_ms": 23.8,
    "selectable": true,
    "open": true,
    "score": {
@@ -1275,6 +1506,27 @@
     "n_extracted_words": 28
    },
    "text_head": "مٌاَ\u0000َ\u0000  ُ \u0000ْ\u0000َ\u0000ْ\u0000اَو ٌ روُ\u0000 ُ \u0000ْ\u0000ِعْلا ⏎ ِ ⏎ ةَبَ\u0000ْكَ\u0000ْ\u0000ي اِف َ \u0000يِدَ\u0000ْ\u0000ا  َ باَ\u0000ِ\u0000ْ لا ِ \u0000ال"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/chrome-amiri-tashkeel-ligatures.jpg",
+   "t_open_ms": 0.5,
+   "t_render_p1_ms": 1.6,
+   "t_text_ms": 0.4,
+   "score": {
+    "verdict": "partial",
+    "recall_logical": 0.5,
+    "recall_reversed": 0.033,
+    "order_lcs": 0.5,
+    "order_lcs_linerev": 0.125,
+    "pres_forms": 0,
+    "replacement_chars": 34,
+    "n_truth_words": 32,
+    "n_extracted_words": 32
+   },
+   "text_head": "العْ�ِ�ْ ُ�وُر ٌواَ�ْ��َ�ْ ُ�َ�اَمٌ ⏎ �رَأَ⃛ �بَدْ ُالل� ِال�ْ�ِابََ ا�ْ�دَيِ� َفيِ ا��ْكَْ�"
   }
  },
  "chrome-cairo-mixed-invoice": {
@@ -1283,33 +1535,33 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/chrome-cairo-mixed-invoice.jpg",
-   "t_open_ms": 0.4,
-   "t_render_p1_ms": 14.4,
-   "t_text_ms": 2.5,
+   "t_open_ms": 0.9,
+   "t_render_p1_ms": 23.0,
+   "t_text_ms": 1.3,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.444,
-    "recall_reversed": 0.426,
+    "recall_reversed": 0.463,
     "order_lcs": 0.382,
     "order_lcs_linerev": 0.294,
     "pres_forms": 133,
     "replacement_chars": 0,
     "n_truth_words": 68,
-    "n_extracted_words": 74
+    "n_extracted_words": 72
    },
-   "text_head": "ﺔﻄﺴ ﺒﻣ ﺔﻴﺒﻳﴐ  ةرﻮﺗﺎﻓ ⏎ INV-2026-0042 :ةرﻮﺗﺎﻔﻟا ﻢﻗر ⏎ ٢٠٢٦ ﱪﻤﺘﺒﺳ ١٦ :ﺦﻳرﺎﺘﻟا ⏎ ﺔﻴﻨﻘﺘﻠﻟ دوز ﺔﻛﴍ  :"
+   "text_head": "ﺔﻄﺴﺒﻣ ﺔﻴﺒﻳﴐ  ةرﻮﺗﺎﻓ ⏎ INV-2026-0042 :ةرﻮﺗﺎﻔﻟا ﻢﻗر ⏎ ٢٠٢٦ ﱪﻤﺘﺒﺳ ١٦ :ﺦﻳرﺎﺘﻟا ⏎ ﺔﻴﻨﻘﺘﻠﻟ دوز ﺔﻛﴍ  :ﻞ"
   },
   "mupdf": {
-   "t_open_ms": 1.0,
+   "t_open_ms": 1.7,
    "pages": 1,
-   "t_render_p1_ms": 17.8,
+   "t_render_p1_ms": 12.2,
    "shot": "docs/research/screenshots/mupdf/chrome-cairo-mixed-invoice.jpg",
-   "t_text_ms": 3.9,
+   "t_text_ms": 2.3,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "partial",
-    "recall_logical": 0.741,
+    "recall_logical": 0.759,
     "recall_reversed": 0.093,
     "order_lcs": 0.574,
     "order_lcs_linerev": 0.397,
@@ -1321,9 +1573,9 @@
    "text_head": "فاتورة رضيبية مبسطة ⏎ INV-2026-0042 :رقم الفاتورة ⏎ ٦٢٠٢ ٦١ سبتمرب :التاريخ ⏎ العميل: رشكة زود ل"
   },
   "pdfium": {
-   "t_open_ms": 6.4,
+   "t_open_ms": 2.5,
    "pages": 1,
-   "t_render_p1_ms": 4.2,
+   "t_render_p1_ms": 18.9,
    "shot": "docs/research/screenshots/pdfium/chrome-cairo-mixed-invoice.jpg",
    "t_text_ms": 0.9,
    "selectable": true,
@@ -1346,8 +1598,8 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/chrome-cairo-mixed-invoice.jpg",
-   "t_open_ms": 7.0,
-   "t_render_p1_ms": 3.3,
+   "t_open_ms": 9.0,
+   "t_render_p1_ms": 5.4,
    "t_text_ms": 1.9,
    "score": {
     "verdict": "partial",
@@ -1363,11 +1615,11 @@
    "text_head": "ةطسبم ةيبيضر فاتورة\r ⏎ INV-2026-0042 :الفاتورة مقر\r ⏎ ٢٠٢٦ برمتبس ١٦ :خيراتلا\r ⏎ ةينقتلل زود ةكش"
   },
   "pdfjs": {
-   "t_open_ms": 3.3,
+   "t_open_ms": 5.3,
    "pages": 1,
-   "t_render_p1_ms": 538.8,
+   "t_render_p1_ms": 3359.7,
    "shot": "docs/research/screenshots/pdfjs/chrome-cairo-mixed-invoice.jpg",
-   "t_text_ms": 50.6,
+   "t_text_ms": 473.1,
    "selectable": true,
    "open": true,
    "score": {
@@ -1382,6 +1634,27 @@
     "n_extracted_words": 69
    },
    "text_head": "ﺔﻄﺴﺒﻣ ﺔﻴﺒﻳرض رةﻮﺗﺎﻓ ⏎ INV-2026-0042 رة:ﻮﺗﺎﻔﻟا ﻢﻗر ⏎ ٢٠٢٦ ربﻤﺘﺒﺳ ١٦ :ﺦﻳرﺎﺘﻟا ⏎ ﺔﻴﻨﻘﺘﻠﻟ زود ﺔﻛرش :"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/chrome-cairo-mixed-invoice.jpg",
+   "t_open_ms": 0.8,
+   "t_render_p1_ms": 3.2,
+   "t_text_ms": 1.7,
+   "score": {
+    "verdict": "logical",
+    "recall_logical": 1.0,
+    "recall_reversed": 0.074,
+    "order_lcs": 0.956,
+    "order_lcs_linerev": 0.294,
+    "pres_forms": 0,
+    "replacement_chars": 0,
+    "n_truth_words": 68,
+    "n_extracted_words": 68
+   },
+   "text_head": "فاتورة ضريبية مبسطة ⏎ رقم الفاتورة: INV-2026-0042 ⏎ التاريخ: ١٦ سبتمبر ٢٠٢٦ ⏎ العميل: شركة زود ل"
   }
  },
  "chrome-ibmplex-bidi-stress": {
@@ -1390,9 +1663,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/chrome-ibmplex-bidi-stress.jpg",
-   "t_open_ms": 0.7,
-   "t_render_p1_ms": 4.4,
-   "t_text_ms": 0.8,
+   "t_open_ms": 1.0,
+   "t_render_p1_ms": 6.9,
+   "t_text_ms": 1.1,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.473,
@@ -1407,9 +1680,9 @@
    "text_head": ".12/09/2026 ﰲ (ﺔﺒﻳﴬ ﻟا ﻞﻣﺎﺷ) ًارﻻود 45.50 ﺮﻌﺴﺑ Amazon ﺮﺠﺘﻣ ﻦﻣ ﺐ ﺘﻛ 3 ﺪﻤﺣأ ىﱰﺷا ⏎ The word بﺎ"
   },
   "mupdf": {
-   "t_open_ms": 0.9,
+   "t_open_ms": 0.8,
    "pages": 1,
-   "t_render_p1_ms": 2.3,
+   "t_render_p1_ms": 2.1,
    "shot": "docs/research/screenshots/mupdf/chrome-ibmplex-bidi-stress.jpg",
    "t_text_ms": 1.2,
    "selectable": true,
@@ -1428,11 +1701,11 @@
    "text_head": ".12/09/2026  دوالرًا (شامل الرضيبة) يف45.50  بسعرAmazon  كتب من متجر3 اشرتى أحمد ⏎ The word "
   },
   "pdfium": {
-   "t_open_ms": 3.4,
+   "t_open_ms": 0.8,
    "pages": 1,
-   "t_render_p1_ms": 2.2,
+   "t_render_p1_ms": 26.0,
    "shot": "docs/research/screenshots/pdfium/chrome-ibmplex-bidi-stress.jpg",
-   "t_text_ms": 1.1,
+   "t_text_ms": 1.0,
    "selectable": true,
    "open": true,
    "score": {
@@ -1453,9 +1726,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/chrome-ibmplex-bidi-stress.jpg",
-   "t_open_ms": 4.1,
-   "t_render_p1_ms": 3.4,
-   "t_text_ms": 1.8,
+   "t_open_ms": 3.3,
+   "t_render_p1_ms": 5.6,
+   "t_text_ms": 2.1,
    "score": {
     "verdict": "partial",
     "recall_logical": 0.581,
@@ -1470,11 +1743,11 @@
    "text_head": ".12/09/2026 في( ةبيضرلا لماش)\r ⏎ اً\r ⏎ دوالر 45.50 رعسب Amazon رجتم نم بتك 3 دمحأ اشرتى\r ⏎ The w"
   },
   "pdfjs": {
-   "t_open_ms": 6.3,
+   "t_open_ms": 26.2,
    "pages": 1,
-   "t_render_p1_ms": 127.9,
+   "t_render_p1_ms": 672.9,
    "shot": "docs/research/screenshots/pdfjs/chrome-ibmplex-bidi-stress.jpg",
-   "t_text_ms": 7.3,
+   "t_text_ms": 154.5,
    "selectable": true,
    "open": true,
    "score": {
@@ -1489,6 +1762,27 @@
     "n_extracted_words": 79
    },
    "text_head": ".12/09/2026 يف (ﺔﺒﻳرضﻟا ﻞﻣﺎﺷ) ً ارﻻدو 45.50 ﺮﻌﺴﺑ Amazon ﺮﺠﺘﻣ ﻦﻣ ﺐﺘﻛ 3 ﺪﻤﺣى أرتﺷا ⏎ The word "
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/chrome-ibmplex-bidi-stress.jpg",
+   "t_open_ms": 0.5,
+   "t_render_p1_ms": 1.9,
+   "t_text_ms": 0.5,
+   "score": {
+    "verdict": "logical",
+    "recall_logical": 1.0,
+    "recall_reversed": 0.027,
+    "order_lcs": 1.0,
+    "order_lcs_linerev": 0.141,
+    "pres_forms": 0,
+    "replacement_chars": 0,
+    "n_truth_words": 78,
+    "n_extracted_words": 78
+   },
+   "text_head": "اشترى أحمد 3 كتب من متجر Amazon بسعر 45.50 دولارا ً(شامل الضريبة) في 12/09/2026. ⏎ The word "
   }
  },
  "chrome-notonaskh-justified-3pages": {
@@ -1497,9 +1791,9 @@
    "pages": 3,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/chrome-notonaskh-justified-3pages.jpg",
-   "t_open_ms": 0.6,
-   "t_render_p1_ms": 58.1,
-   "t_text_ms": 29.1,
+   "t_open_ms": 3.8,
+   "t_render_p1_ms": 26.0,
+   "t_text_ms": 5.8,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.052,
@@ -1509,85 +1803,85 @@
     "pres_forms": 1490,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 564
+    "n_extracted_words": 563
    },
-   "text_head": "؟ٯ\u0000ارو اد\u0000ﺎﻤﻟ :لؤ\u0000لا ﻞﺼ\u0000\u0000ﻟا ⏎ مﺪﺤ\u0000\u0000\u0000ﺴﻤﻟا ر\u0000ﺎﻬﺣ\u0000 ﯽﻠﻋ ٮ\u0000اﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا ﻂ\u0000\u0000\u0000ﺤ\u0000\u0000و ،ٮ\u0000ﺎﺴﺣ ںود ﻞﻤﻌ\u0000\u0000 "
+   "text_head": "؟ٯ\u0000ارو اد\u0000ﺎﻤﻟ :لؤالا ﻞﺼ\u0000\u0000ﻟا ⏎ مﺪﺤ\u0000\u0000\u0000ﺴﻤﻟا ر\u0000ﺎﻬﺣ\u0000 ﯽﻠﻋ ٮ\u0000اﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا ﻂ\u0000\u0000\u0000ﺤ\u0000\u0000و ،ٮ\u0000ﺎﺴﺣ ںود ﻞﻤﻌ\u0000\u0000 "
   },
   "mupdf": {
-   "t_open_ms": 1.0,
+   "t_open_ms": 1.5,
    "pages": 3,
-   "t_render_p1_ms": 30.6,
+   "t_render_p1_ms": 11.6,
    "shot": "docs/research/screenshots/mupdf/chrome-notonaskh-justified-3pages.jpg",
-   "t_text_ms": 43.8,
+   "t_text_ms": 9.3,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "garbage",
-    "recall_logical": 0.071,
+    "recall_logical": 0.117,
     "recall_reversed": 0.006,
-    "order_lcs": 0.063,
-    "order_lcs_linerev": 0.074,
+    "order_lcs": 0.12,
+    "order_lcs_linerev": 0.086,
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 673
+    "n_extracted_words": 649
    },
-   "text_head": "ال ف صل ال أول: لما ذا ورا ق ؟ ⏎ ها ز المس ت خ دمجح ف ظ المس ت ندا ت على ي، وبعمل دو ن حساي "
+   "text_head": "ال فصل ال أول: لما ذا ورا ق ؟ ⏎  م ف توح المصدر  يعمل دو ن حسا ب ، و يح ف ظ المس ت ندا ت على"
   },
   "pdfium": {
-   "t_open_ms": 14.9,
+   "t_open_ms": 3.5,
    "pages": 3,
-   "t_render_p1_ms": 6.6,
+   "t_render_p1_ms": 18.4,
    "shot": "docs/research/screenshots/pdfium/chrome-notonaskh-justified-3pages.jpg",
-   "t_text_ms": 7.3,
+   "t_text_ms": 7.9,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "garbage",
-    "recall_logical": 0.143,
-    "recall_reversed": 0.364,
-    "order_lcs": 0.076,
-    "order_lcs_linerev": 0.11,
+    "recall_logical": 0.136,
+    "recall_reversed": 0.37,
+    "order_lcs": 0.074,
+    "order_lcs_linerev": 0.109,
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 602
+    "n_extracted_words": 595
    },
-   "text_head": "وراق؟ ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لص ف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح\r ⏎ ن"
+   "text_head": "؟\r ⏎ ق\r ⏎ ورا ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لصف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح"
   },
   "pdfium-rs": {
    "open": true,
    "pages": 3,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/chrome-notonaskh-justified-3pages.jpg",
-   "t_open_ms": 10.1,
-   "t_render_p1_ms": 10.5,
-   "t_text_ms": 13.0,
+   "t_open_ms": 9.7,
+   "t_render_p1_ms": 7.1,
+   "t_text_ms": 38.0,
    "score": {
     "verdict": "garbage",
-    "recall_logical": 0.143,
-    "recall_reversed": 0.364,
-    "order_lcs": 0.076,
-    "order_lcs_linerev": 0.11,
+    "recall_logical": 0.136,
+    "recall_reversed": 0.37,
+    "order_lcs": 0.074,
+    "order_lcs_linerev": 0.109,
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 602
+    "n_extracted_words": 595
    },
-   "text_head": "وراق؟ ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لص ف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح\r ⏎ ن"
+   "text_head": "؟\r ⏎ ق\r ⏎ ورا ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لصف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح"
   },
   "pdfjs": {
-   "t_open_ms": 2.2,
+   "t_open_ms": 10.2,
    "pages": 3,
-   "t_render_p1_ms": 1023.7,
+   "t_render_p1_ms": 1595.1,
    "shot": "docs/research/screenshots/pdfjs/chrome-notonaskh-justified-3pages.jpg",
-   "t_text_ms": 233.9,
+   "t_text_ms": 649.1,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.058,
-    "recall_reversed": 0.032,
+    "recall_reversed": 0.026,
     "order_lcs": 0.04,
     "order_lcs_linerev": 0.051,
     "pres_forms": 1435,
@@ -1595,7 +1889,28 @@
     "n_truth_words": 525,
     "n_extracted_words": 561
    },
-   "text_head": "؟ \u0000ٯا ورا \u0000دﺎﻤﻟ ول:ٔ\u0000ال ﻞﺼ \u0000\u0000ﻟا ⏎ مﺪ \u0000ﺤ\u0000\u0000ﺴﻤﻟا \u0000 رﺎﻬ \u0000ﺣ یﻠﻋ \u0000 ٮاﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا \u0000  ﻂ \u0000\u0000ﺤ\u0000 \u0000، و \u0000 ٮﺎ"
+   "text_head": "؟ \u0000ٯا ورا \u0000دﺎﻤﻟ ول:ٔاال ﻞﺼ \u0000\u0000ﻟا ⏎ مﺪ \u0000ﺤ\u0000\u0000ﺴﻤﻟا \u0000 رﺎﻬ \u0000ﺣ یﻠﻋ \u0000 ٮاﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا \u0000  ﻂ \u0000\u0000ﺤ\u0000 \u0000، و \u0000 ٮﺎ"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 3,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/chrome-notonaskh-justified-3pages.jpg",
+   "t_open_ms": 0.6,
+   "t_render_p1_ms": 4.3,
+   "t_text_ms": 6.8,
+   "score": {
+    "verdict": "garbage(U+FFFD)",
+    "recall_logical": 0.175,
+    "recall_reversed": 0.006,
+    "order_lcs": 0.19,
+    "order_lcs_linerev": 0.088,
+    "pres_forms": 0,
+    "replacement_chars": 555,
+    "n_truth_words": 525,
+    "n_extracted_words": 553
+   },
+   "text_head": "ال�ص⃛ل الاؤل: لماد⃛ا وراق؟ ⏎ وراق محرّر مل�̇ات PDF م�̇�̈وح المصدر �̤عمل دون حساب، و�̤ح�̇ط̇ ا"
   }
  },
  "chrome-notosansarabic-form-layout": {
@@ -1604,55 +1919,55 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/chrome-notosansarabic-form-layout.jpg",
-   "t_open_ms": 0.8,
-   "t_render_p1_ms": 12.8,
-   "t_text_ms": 3.8,
+   "t_open_ms": 0.9,
+   "t_render_p1_ms": 81.4,
+   "t_text_ms": 2.3,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.081,
-    "recall_reversed": 0.135,
+    "recall_reversed": 0.162,
     "order_lcs": 0.051,
     "order_lcs_linerev": 0.103,
     "pres_forms": 89,
     "replacement_chars": 0,
     "n_truth_words": 39,
-    "n_extracted_words": 37
+    "n_extracted_words": 36
    },
-   "text_head": "ﻪ\u0000ﺼ ﺣ\u0000ر ﺪ\u0000\u0000ﺪﺤ\u0000\u0000\u0000 \u0000\u0000ﻠﻃ ح\u0000د\u0000ﻮﻤ\u0000\u0000 ⏎ :ﻞﻣﺎﻜﻟا ﻢﺳ الا ⏎ :ﻪ\u0000\u0000\u0000ﻮﻬﻟا ﻢ\u0000\u0000ر ⏎ :دال\u0000\u0000ﻤﻟا ﺢ\u0000\u0000\u0000رﺎ\u0000\u0000 ⏎ :ﻪ\u0000\u0000\u0000ﺴ \u0000\u0000ﺤ"
+   "text_head": "ﻪ\u0000ﺼ ﺣ\u0000ر ﺪ\u0000\u0000ﺪﺤ\u0000\u0000\u0000 \u0000\u0000ﻠﻃ ح\u0000د\u0000ﻮﻤ\u0000\u0000 ⏎ :ﻞﻣﺎﻜﻟا ﻢﺳالا ⏎ :ﻪ\u0000\u0000\u0000ﻮﻬﻟا ﻢ\u0000\u0000ر ⏎ :دال\u0000\u0000ﻤﻟا ﺢ\u0000\u0000\u0000رﺎ\u0000\u0000 ⏎ :ﻪ\u0000\u0000\u0000ﺴ\u0000\u0000ﺤ\u0000ﻟ"
   },
   "mupdf": {
-   "t_open_ms": 1.2,
+   "t_open_ms": 1.0,
    "pages": 1,
-   "t_render_p1_ms": 16.2,
+   "t_render_p1_ms": 12.6,
    "shot": "docs/research/screenshots/mupdf/chrome-notosansarabic-form-layout.jpg",
-   "t_text_ms": 3.6,
+   "t_text_ms": 3.7,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.216,
     "recall_reversed": 0.081,
-    "order_lcs": 0.154,
-    "order_lcs_linerev": 0.205,
+    "order_lcs": 0.179,
+    "order_lcs_linerev": 0.179,
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 39,
-    "n_extracted_words": 57
+    "n_extracted_words": 56
    },
    "text_head": "ة طل ب  ت ج د يد ر خصجنمو ذ ⏎ :الاسم الكامل ⏎ :ةر قم الهو ي ⏎ :تار ي خ الم يلاد ⏎ :ةال ج نس ي ⏎ : يا"
   },
   "pdfium": {
-   "t_open_ms": 11.6,
+   "t_open_ms": 3.3,
    "pages": 1,
-   "t_render_p1_ms": 3.8,
+   "t_render_p1_ms": 18.1,
    "shot": "docs/research/screenshots/pdfium/chrome-notosansarabic-form-layout.jpg",
-   "t_text_ms": 2.1,
+   "t_text_ms": 0.8,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "partial-reversed",
     "recall_logical": 0.162,
-    "recall_reversed": 0.838,
+    "recall_reversed": 0.865,
     "order_lcs": 0.128,
     "order_lcs_linerev": 0.179,
     "pres_forms": 0,
@@ -1667,13 +1982,13 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/chrome-notosansarabic-form-layout.jpg",
-   "t_open_ms": 6.4,
-   "t_render_p1_ms": 2.8,
-   "t_text_ms": 1.3,
+   "t_open_ms": 18.0,
+   "t_render_p1_ms": 6.7,
+   "t_text_ms": 1.8,
    "score": {
     "verdict": "partial-reversed",
     "recall_logical": 0.162,
-    "recall_reversed": 0.838,
+    "recall_reversed": 0.865,
     "order_lcs": 0.128,
     "order_lcs_linerev": 0.179,
     "pres_forms": 0,
@@ -1684,11 +1999,11 @@
    "text_head": "ةصخر ديدجت بلط جذومن\r ⏎ :لماكلا مسالا\r ⏎ :ةيوهلا مقر\r ⏎ :الميلاد خيرات\r ⏎ :ةيسنجلا\r ⏎ :ينورتكلإلا دي"
   },
   "pdfjs": {
-   "t_open_ms": 2,
+   "t_open_ms": 17.2,
    "pages": 1,
-   "t_render_p1_ms": 470.4,
+   "t_render_p1_ms": 853.1,
    "shot": "docs/research/screenshots/pdfjs/chrome-notosansarabic-form-layout.jpg",
-   "t_text_ms": 14.3,
+   "t_text_ms": 11,
    "selectable": true,
    "open": true,
    "score": {
@@ -1702,7 +2017,28 @@
     "n_truth_words": 39,
     "n_extracted_words": 37
    },
-   "text_head": "ﻪ\u0000ﺼ\u0000ﺣر ﺪ\u0000\u0000ﺪ \u0000ﺤ\u0000\u0000 \u0000  \u0000ﻠﻃ \u0000 ح \u0000دﻮﻤ\u0000\u0000 ⏎ :ﻞﻣﺎﻜﻟا ﻢﺳالا ⏎ : \u0000ﻪ\u0000\u0000ﻮﻬﻟا ﻢ\u0000\u0000ر ⏎ لاد:\u0000\u0000ﻤﻟا \u0000 ﺢ\u0000\u0000رﺎ\u0000\u0000 ⏎ : \u0000ﻪ\u0000"
+   "text_head": "ﻪ\u0000ﺼ\u0000ﺣر ﺪ\u0000\u0000ﺪ \u0000ﺤ\u0000\u0000 \u0000  \u0000ﻠﻃ \u0000 ح \u0000دﻮﻤ\u0000\u0000 ⏎ :ﻞﻣﺎﻜﻟا ﻢﺳالا ⏎ :\u0000ﻪ\u0000\u0000ﻮﻬﻟا ﻢ\u0000\u0000ر ⏎ لاد:\u0000\u0000ﻤﻟا \u0000 ﺢ\u0000\u0000رﺎ\u0000\u0000 ⏎ :\u0000ﻪ\u0000\u0000ﺴ"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/chrome-notosansarabic-form-layout.jpg",
+   "t_open_ms": 0.8,
+   "t_render_p1_ms": 5.5,
+   "t_text_ms": 3.6,
+   "score": {
+    "verdict": "garbage(U+FFFD)",
+    "recall_logical": 0.189,
+    "recall_reversed": 0.081,
+    "order_lcs": 0.205,
+    "order_lcs_linerev": 0.128,
+    "pres_forms": 0,
+    "replacement_chars": 48,
+    "n_truth_words": 39,
+    "n_extracted_words": 37
+   },
+   "text_head": "�م̇وذح� طل�̣ �ح̈\u0000̣د�د̤ رحص̇ه̈ ⏎ الاسم الكامل: ⏎ ر�̈م الهو�ه̈\u0000̤: ⏎ �̈ار�ح̇\u0000̤ الم�ل̤اد: ⏎ الح̣�س̇�̤ه"
   }
  },
  "chrome-tajawal-persian-urdu-digits": {
@@ -1711,9 +2047,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/chrome-tajawal-persian-urdu-digits.jpg",
-   "t_open_ms": 0.8,
-   "t_render_p1_ms": 2.6,
-   "t_text_ms": 0.8,
+   "t_open_ms": 1.2,
+   "t_render_p1_ms": 3.9,
+   "t_text_ms": 74.4,
    "score": {
     "verdict": "partial-reversed",
     "recall_logical": 0.167,
@@ -1728,9 +2064,9 @@
    "text_head": "ش زﻮﻣآ ،ک ی ،بﺎﺘک ،ﻪﻟاژ ،چگ ،ﺶ ﻫوژﭘ :یﺳ رﺎﻓ نﺎﺑز ⏎ ںﻮیک ،ےہ ،ںیہﻧ ،اڑﺑ ،ک اڈ ،ک یھٹ :نﺎﺑز ود"
   },
   "mupdf": {
-   "t_open_ms": 1.0,
+   "t_open_ms": 0.9,
    "pages": 1,
-   "t_render_p1_ms": 2.4,
+   "t_render_p1_ms": 2.1,
    "shot": "docs/research/screenshots/mupdf/chrome-tajawal-persian-urdu-digits.jpg",
    "t_text_ms": 1.0,
    "selectable": true,
@@ -1749,11 +2085,11 @@
    "text_head": "یک، آموزش ،کتاب ،ژاله ،گچ ،زبان فارسی: پژوهش ⏎ کیوں ،ہے ،ڈاک، بڑا، نہیں ،ٹھیک :اردو زبان ⏎ ٩٨٧"
   },
   "pdfium": {
-   "t_open_ms": 1.7,
+   "t_open_ms": 1.3,
    "pages": 1,
-   "t_render_p1_ms": 2.8,
+   "t_render_p1_ms": 18.4,
    "shot": "docs/research/screenshots/pdfium/chrome-tajawal-persian-urdu-digits.jpg",
-   "t_text_ms": 1.0,
+   "t_text_ms": 0.7,
    "selectable": true,
    "open": true,
    "score": {
@@ -1774,9 +2110,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/chrome-tajawal-persian-urdu-digits.jpg",
-   "t_open_ms": 2.3,
-   "t_render_p1_ms": 2.2,
-   "t_text_ms": 0.7,
+   "t_open_ms": 3.1,
+   "t_render_p1_ms": 4.8,
+   "t_text_ms": 1.2,
    "score": {
     "verdict": "partial",
     "recall_logical": 0.733,
@@ -1791,11 +2127,11 @@
    "text_head": "آموزش ،یک ،کتاب ،هلاژ ،گچ ،شهوژپ :فارسی زبان\r ⏎ کیوں ،ہے ،نہیں ،بڑا ،ڈاک ،ٹھیک :زبان اردو\r ⏎ ٠"
   },
   "pdfjs": {
-   "t_open_ms": 2.2,
+   "t_open_ms": 4.1,
    "pages": 1,
-   "t_render_p1_ms": 141.7,
+   "t_render_p1_ms": 53.7,
    "shot": "docs/research/screenshots/pdfjs/chrome-tajawal-persian-urdu-digits.jpg",
-   "t_text_ms": 6.2,
+   "t_text_ms": 19.2,
    "selectable": true,
    "open": true,
    "score": {
@@ -1810,6 +2146,155 @@
     "n_extracted_words": 32
    },
    "text_head": "زشﻮﻣ، آیک ب،ﺎﺘک ،ﻪﻟاژ ،گچ ،ﺶﻫوژپ :یﺳرﺎﻓ نﺎﺑز ⏎ ںﻮکی ،ہے ،ہیںﻧ ا،ڑﺑ ،کاڈ ،ٹھیک ن:ﺎﺑاردو ز ⏎ ٠١٢"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/chrome-tajawal-persian-urdu-digits.jpg",
+   "t_open_ms": 0.4,
+   "t_render_p1_ms": 1.5,
+   "t_text_ms": 0.3,
+   "score": {
+    "verdict": "logical",
+    "recall_logical": 1.0,
+    "recall_reversed": 0.0,
+    "order_lcs": 1.0,
+    "order_lcs_linerev": 0.212,
+    "pres_forms": 0,
+    "replacement_chars": 0,
+    "n_truth_words": 33,
+    "n_extracted_words": 33
+   },
+   "text_head": "زبان فارسی: پژوهش، گچ، ژاله، کتاب، یک، آموزش ⏎ اردو زبان: ٹھیک، ڈاک، بڑا، نہیں، ہے، کیوں ⏎ أرق"
+  }
+ },
+ "chrome-variablefont-type3-notonaskh-justified": {
+  "hayro": {
+   "open": true,
+   "pages": 3,
+   "selectable": true,
+   "shot": "docs/research/screenshots/hayro/chrome-variablefont-type3-notonaskh-justified.jpg",
+   "t_open_ms": 2.1,
+   "t_render_p1_ms": 156.0,
+   "t_text_ms": 30.4,
+   "score": {
+    "verdict": "garbage",
+    "recall_logical": 0.052,
+    "recall_reversed": 0.071,
+    "order_lcs": 0.04,
+    "order_lcs_linerev": 0.046,
+    "pres_forms": 1490,
+    "replacement_chars": 0,
+    "n_truth_words": 525,
+    "n_extracted_words": 564
+   },
+   "text_head": "؟ٯ\u0000ارو اد\u0000ﺎﻤﻟ :لؤ\u0000لا ﻞﺼ\u0000\u0000ﻟا ⏎ مﺪﺤ\u0000\u0000\u0000ﺴﻤﻟا ر\u0000ﺎﻬﺣ\u0000 ﯽﻠﻋ ٮ\u0000اﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا ﻂ\u0000\u0000\u0000ﺤ\u0000\u0000و ،ٮ\u0000ﺎﺴﺣ ںود ﻞﻤﻌ\u0000\u0000 "
+  },
+  "mupdf": {
+   "t_open_ms": 0.9,
+   "pages": 3,
+   "t_render_p1_ms": 28.9,
+   "shot": "docs/research/screenshots/mupdf/chrome-variablefont-type3-notonaskh-justified.jpg",
+   "t_text_ms": 38.0,
+   "selectable": true,
+   "open": true,
+   "score": {
+    "verdict": "garbage",
+    "recall_logical": 0.071,
+    "recall_reversed": 0.006,
+    "order_lcs": 0.063,
+    "order_lcs_linerev": 0.074,
+    "pres_forms": 0,
+    "replacement_chars": 0,
+    "n_truth_words": 525,
+    "n_extracted_words": 673
+   },
+   "text_head": "ال ف صل ال أول: لما ذا ورا ق ؟ ⏎ ها ز المس ت خ دمجح ف ظ المس ت ندا ت على ي، وبعمل دو ن حساي "
+  },
+  "pdfium": {
+   "t_open_ms": 4.6,
+   "pages": 3,
+   "t_render_p1_ms": 25.7,
+   "shot": "docs/research/screenshots/pdfium/chrome-variablefont-type3-notonaskh-justified.jpg",
+   "t_text_ms": 6.3,
+   "selectable": true,
+   "open": true,
+   "score": {
+    "verdict": "garbage",
+    "recall_logical": 0.143,
+    "recall_reversed": 0.364,
+    "order_lcs": 0.076,
+    "order_lcs_linerev": 0.11,
+    "pres_forms": 0,
+    "replacement_chars": 0,
+    "n_truth_words": 525,
+    "n_extracted_words": 602
+   },
+   "text_head": "وراق؟ ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لص ف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح\r ⏎ ن"
+  },
+  "pdfium-rs": {
+   "open": true,
+   "pages": 3,
+   "selectable": true,
+   "shot": "docs/research/screenshots/pdfium-rs/chrome-variablefont-type3-notonaskh-justified.jpg",
+   "t_open_ms": 15.2,
+   "t_render_p1_ms": 19.0,
+   "t_text_ms": 16.6,
+   "score": {
+    "verdict": "garbage",
+    "recall_logical": 0.143,
+    "recall_reversed": 0.364,
+    "order_lcs": 0.076,
+    "order_lcs_linerev": 0.11,
+    "pres_forms": 0,
+    "replacement_chars": 0,
+    "n_truth_words": 525,
+    "n_extracted_words": 602
+   },
+   "text_head": "وراق؟ ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لص ف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح\r ⏎ ن"
+  },
+  "pdfjs": {
+   "t_open_ms": 7.6,
+   "pages": 3,
+   "t_render_p1_ms": 648.7,
+   "shot": "docs/research/screenshots/pdfjs/chrome-variablefont-type3-notonaskh-justified.jpg",
+   "t_text_ms": 394.8,
+   "selectable": true,
+   "open": true,
+   "score": {
+    "verdict": "garbage",
+    "recall_logical": 0.058,
+    "recall_reversed": 0.032,
+    "order_lcs": 0.04,
+    "order_lcs_linerev": 0.051,
+    "pres_forms": 1435,
+    "replacement_chars": 0,
+    "n_truth_words": 525,
+    "n_extracted_words": 561
+   },
+   "text_head": "؟ \u0000ٯا ورا \u0000دﺎﻤﻟ ول:ٔ\u0000ال ﻞﺼ \u0000\u0000ﻟا ⏎ مﺪ \u0000ﺤ\u0000\u0000ﺴﻤﻟا \u0000 رﺎﻬ \u0000ﺣ یﻠﻋ \u0000 ٮاﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا \u0000  ﻂ \u0000\u0000ﺤ\u0000 \u0000، و \u0000 ٮﺎ"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 3,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/chrome-variablefont-type3-notonaskh-justified.jpg",
+   "t_open_ms": 0.8,
+   "t_render_p1_ms": 20.2,
+   "t_text_ms": 58.4,
+   "score": {
+    "verdict": "garbage(U+FFFD)",
+    "recall_logical": 0.195,
+    "recall_reversed": 0.006,
+    "order_lcs": 0.215,
+    "order_lcs_linerev": 0.088,
+    "pres_forms": 0,
+    "replacement_chars": 552,
+    "n_truth_words": 525,
+    "n_extracted_words": 554
+   },
+   "text_head": "ال�̇صل ال�ٔول: لماذا وراق؟ ⏎ وراق محرّر مل�̇ات PDF م�̇�̈وح المصدر �̤عمل دون حساب، و�̤ح�̇ط̇ ا"
   }
  },
  "chrome-windows-arial-tahoma-times": {
@@ -1818,8 +2303,8 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/chrome-windows-arial-tahoma-times.jpg",
-   "t_open_ms": 0.7,
-   "t_render_p1_ms": 5.3,
+   "t_open_ms": 1.1,
+   "t_render_p1_ms": 6.5,
    "t_text_ms": 2.8,
    "score": {
     "verdict": "garbage",
@@ -1835,9 +2320,9 @@
    "text_head": "ﺔﻄﺴﺒﻣ ﺔﯿﺒﯾﺮﺿ ةرﻮﺗﺎﻓ ⏎ INV-2026-0042 :ةروﺗﺎﻔﻟا مﻗر ⏎ ٢٠٢٦ رﺑﻣﺗﺑﺳ ١٦ :ﺦﯾرﺎﺗﻟا ⏎ ﺔﯾﻧﻘﺗﻠﻟ دوز ﺔﻛرﺷ :"
   },
   "mupdf": {
-   "t_open_ms": 0.9,
+   "t_open_ms": 0.8,
    "pages": 1,
-   "t_render_p1_ms": 4.2,
+   "t_render_p1_ms": 3.6,
    "shot": "docs/research/screenshots/mupdf/chrome-windows-arial-tahoma-times.jpg",
    "t_text_ms": 1.1,
    "selectable": true,
@@ -1856,11 +2341,11 @@
    "text_head": "فاتورة ضريبية مبسطة ⏎ INV-2026-0042 :رقم الفاتورة ⏎ ٦٢٠٢ ٦١ سبتمبر :التاريخ ⏎ العميل: شركة زود ل"
   },
   "pdfium": {
-   "t_open_ms": 4.9,
+   "t_open_ms": 1.3,
    "pages": 1,
-   "t_render_p1_ms": 7.3,
+   "t_render_p1_ms": 21.2,
    "shot": "docs/research/screenshots/pdfium/chrome-windows-arial-tahoma-times.jpg",
-   "t_text_ms": 1.1,
+   "t_text_ms": 0.9,
    "selectable": true,
    "open": true,
    "score": {
@@ -1881,9 +2366,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/chrome-windows-arial-tahoma-times.jpg",
-   "t_open_ms": 3.0,
-   "t_render_p1_ms": 3.5,
-   "t_text_ms": 1.4,
+   "t_open_ms": 5.3,
+   "t_render_p1_ms": 7.7,
+   "t_text_ms": 2.0,
    "score": {
     "verdict": "partial",
     "recall_logical": 0.648,
@@ -1898,11 +2383,11 @@
    "text_head": "ةطسبم ةيبيرض فاتورة\r ⏎ INV-2026-0042 :الفاتورة رقم\r ⏎ ٢٠٢٦ سبتمبر ١٦ :خيراتلا\r ⏎ ةينقتلل زود ةكر"
   },
   "pdfjs": {
-   "t_open_ms": 20.8,
+   "t_open_ms": 17.3,
    "pages": 1,
-   "t_render_p1_ms": 144.5,
+   "t_render_p1_ms": 131.7,
    "shot": "docs/research/screenshots/pdfjs/chrome-windows-arial-tahoma-times.jpg",
-   "t_text_ms": 7.2,
+   "t_text_ms": 74.2,
    "selectable": true,
    "open": true,
    "score": {
@@ -1917,6 +2402,27 @@
     "n_extracted_words": 69
    },
    "text_head": "ﺔﻄﺴﺒﻣ ﺔﯿﺒﯾﺮﺿ رةﻮﺗﺎﻓ ⏎ INV-2026-0042 ورة:ﺗﺎﻔﻟم اﻗر ⏎ ٢٠٢٦ رﺑﻣﺗﺑﺳ ١٦ :ﺦﯾرﺎﺗﻟا ⏎ ﺔﯾﻧﻘﺗﻠﻟ زود ﺔﻛرﺷ ل"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/chrome-windows-arial-tahoma-times.jpg",
+   "t_open_ms": 0.9,
+   "t_render_p1_ms": 2.1,
+   "t_text_ms": 0.7,
+   "score": {
+    "verdict": "logical",
+    "recall_logical": 1.0,
+    "recall_reversed": 0.074,
+    "order_lcs": 0.956,
+    "order_lcs_linerev": 0.294,
+    "pres_forms": 0,
+    "replacement_chars": 0,
+    "n_truth_words": 68,
+    "n_extracted_words": 68
+   },
+   "text_head": "فاتورة ضريبية مبسطة ⏎ رقم الفاتورة: INV-2026-0042 ⏎ التاريخ: ١٦ سبتمبر ٢٠٢٦ ⏎ العميل: شركة زود ل"
   }
  },
  "coretext-albayan-tashkeel": {
@@ -1925,8 +2431,8 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/coretext-albayan-tashkeel.jpg",
-   "t_open_ms": 0.5,
-   "t_render_p1_ms": 3.9,
+   "t_open_ms": 0.9,
+   "t_render_p1_ms": 11.9,
    "t_text_ms": 2.0,
    "score": {
     "verdict": "partial-reversed",
@@ -1942,11 +2448,11 @@
    "text_head": " ٌمَلاَظ ُلْهَْلجاَو ٌروُن ُمْلِعْلا ⏎  ِةَبَتْكَْلما يِف َديِدَْلجا َباَتِكْلا ِللها ُدْبَع"
   },
   "mupdf": {
-   "t_open_ms": 0.9,
+   "t_open_ms": 0.7,
    "pages": 1,
-   "t_render_p1_ms": 5.7,
+   "t_render_p1_ms": 5.0,
    "shot": "docs/research/screenshots/mupdf/coretext-albayan-tashkeel.jpg",
-   "t_text_ms": 1.0,
+   "t_text_ms": 0.8,
    "selectable": true,
    "open": true,
    "score": {
@@ -1963,11 +2469,11 @@
    "text_head": " ٌالْعِلْمُ نُورٌ وَاجلَْهْلُ ظَالَم ⏎  ِقَرَأَ عَبْدُ اهللِ الْكِتَابَ اجلَْدِيدَ فِي املَْ"
   },
   "pdfium": {
-   "t_open_ms": 11.4,
+   "t_open_ms": 2.3,
    "pages": 1,
-   "t_render_p1_ms": 1.9,
+   "t_render_p1_ms": 20.1,
    "shot": "docs/research/screenshots/pdfium/coretext-albayan-tashkeel.jpg",
-   "t_text_ms": 0.3,
+   "t_text_ms": 0.4,
    "selectable": true,
    "open": true,
    "score": {
@@ -1988,9 +2494,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/coretext-albayan-tashkeel.jpg",
-   "t_open_ms": 3.4,
-   "t_render_p1_ms": 1.9,
-   "t_text_ms": 0.3,
+   "t_open_ms": 8.2,
+   "t_render_p1_ms": 3.2,
+   "t_text_ms": 2.2,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.3,
@@ -2005,11 +2511,11 @@
    "text_head": "ٌمَالَظ ُلْهَْاجلَو ٌورُن ُمْلِعْال\r ⏎ ِةَبَتْكَْامل يِف َيدِدَْاجل َابَتِكْال ِاهلل ُدْبَع "
   },
   "pdfjs": {
-   "t_open_ms": 2.6,
+   "t_open_ms": 16.3,
    "pages": 1,
-   "t_render_p1_ms": 80.1,
+   "t_render_p1_ms": 131.6,
    "shot": "docs/research/screenshots/pdfjs/coretext-albayan-tashkeel.jpg",
-   "t_text_ms": 56.2,
+   "t_text_ms": 28.6,
    "selectable": true,
    "open": true,
    "score": {
@@ -2024,6 +2530,27 @@
     "n_extracted_words": 32
    },
    "text_head": "ظَالَمٌ ُ وَاجلَْهْل ٌ نُور ُ الْعِلْم ⏎  ِ ⏎ املَْكْتَبَة فِي َ اجلَْدِيد َ الْكِتَاب ِ اهلل "
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/coretext-albayan-tashkeel.jpg",
+   "t_open_ms": 0.5,
+   "t_render_p1_ms": 1.7,
+   "t_text_ms": 0.5,
+   "score": {
+    "verdict": "logical",
+    "recall_logical": 1.0,
+    "recall_reversed": 0.0,
+    "order_lcs": 1.0,
+    "order_lcs_linerev": 0.25,
+    "pres_forms": 0,
+    "replacement_chars": 0,
+    "n_truth_words": 32,
+    "n_extracted_words": 32
+   },
+   "text_head": "العْلِمْ ُنوُر ٌواَلجهَْلْ ُظلاَمَ ٌ ⏎ قرَأَ َعبَدْ ُالله ِالكْتِاَب َالجدَْيِد َفيِ المكَْت"
   }
  },
  "coretext-baghdad-persian-urdu": {
@@ -2033,8 +2560,8 @@
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/coretext-baghdad-persian-urdu.jpg",
    "t_open_ms": 0.6,
-   "t_render_p1_ms": 4.5,
-   "t_text_ms": 1.2,
+   "t_render_p1_ms": 5.4,
+   "t_text_ms": 2.6,
    "score": {
     "verdict": "partial-reversed",
     "recall_logical": 0.1,
@@ -2049,11 +2576,11 @@
    "text_head": " شزومآ ،کی ،باتک ،هلاژ ،چگ ،شهوژپ :یسراف نابز ⏎  ںویک ،ےہ ،ںیہن ،اڑب ،کاڈ ،کیھٹ :نابز ودرا ⏎  "
   },
   "mupdf": {
-   "t_open_ms": 0.9,
+   "t_open_ms": 0.8,
    "pages": 1,
-   "t_render_p1_ms": 6.7,
+   "t_render_p1_ms": 4.1,
    "shot": "docs/research/screenshots/mupdf/coretext-baghdad-persian-urdu.jpg",
-   "t_text_ms": 1.0,
+   "t_text_ms": 0.8,
    "selectable": true,
    "open": true,
    "score": {
@@ -2070,11 +2597,11 @@
    "text_head": " زبان فارسی: پژوهش، گچ، ژاله، کتاب، یک، آموزش ⏎  ہے، کیوں ،اردو زبان: ٹھیک، ڈاک، بڑا، نہیں ⏎  "
   },
   "pdfium": {
-   "t_open_ms": 3.9,
+   "t_open_ms": 1.5,
    "pages": 1,
-   "t_render_p1_ms": 11.6,
+   "t_render_p1_ms": 17.8,
    "shot": "docs/research/screenshots/pdfium/coretext-baghdad-persian-urdu.jpg",
-   "t_text_ms": 0.4,
+   "t_text_ms": 0.6,
    "selectable": true,
    "open": true,
    "score": {
@@ -2095,9 +2622,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/coretext-baghdad-persian-urdu.jpg",
-   "t_open_ms": 2.0,
-   "t_render_p1_ms": 2.5,
-   "t_text_ms": 0.5,
+   "t_open_ms": 8.0,
+   "t_render_p1_ms": 3.4,
+   "t_text_ms": 0.6,
    "score": {
     "verdict": "words-ok/line-order-visual",
     "recall_logical": 1.0,
@@ -2112,11 +2639,11 @@
    "text_head": "آموزش ،یک ،کتاب ،ژاله ،گچ ،پژوهش :فارسی زبان\r ⏎ کیوں ،ہے ،نہیں ،بڑا ،ڈاک ،ٹھیک :زبان اردو\r ⏎ ٠"
   },
   "pdfjs": {
-   "t_open_ms": 3,
+   "t_open_ms": 2.5,
    "pages": 1,
-   "t_render_p1_ms": 80.5,
+   "t_render_p1_ms": 245.6,
    "shot": "docs/research/screenshots/pdfjs/coretext-baghdad-persian-urdu.jpg",
-   "t_text_ms": 10.2,
+   "t_text_ms": 24.1,
    "selectable": true,
    "open": true,
    "score": {
@@ -2131,6 +2658,27 @@
     "n_extracted_words": 34
    },
    "text_head": "آموزش یک، کتاب، ژاله، گچ، پژوهش، :فارسی زبان ⏎ کیوں ے،ہ یں،ہن بڑا، ڈاک، یک،ھٹ :زبان اردو ⏎ ۰۱۲"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/coretext-baghdad-persian-urdu.jpg",
+   "t_open_ms": 0.4,
+   "t_render_p1_ms": 1.6,
+   "t_text_ms": 0.6,
+   "score": {
+    "verdict": "logical",
+    "recall_logical": 0.967,
+    "recall_reversed": 0.0,
+    "order_lcs": 0.97,
+    "order_lcs_linerev": 0.212,
+    "pres_forms": 0,
+    "replacement_chars": 0,
+    "n_truth_words": 33,
+    "n_extracted_words": 33
+   },
+   "text_head": "زبان فارسی: پژوهش، گچ، ژاله، کتاب، یک، آموزش ⏎ اردو زبان: ٹھیک، ڈاک، بڑا، نہیں، ہے، کیوں ⏎ أرق"
   }
  },
  "coretext-geezapro-paragraphs": {
@@ -2139,9 +2687,9 @@
    "pages": 3,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/coretext-geezapro-paragraphs.jpg",
-   "t_open_ms": 0.5,
-   "t_render_p1_ms": 12.9,
-   "t_text_ms": 17.6,
+   "t_open_ms": 1.0,
+   "t_render_p1_ms": 15.2,
+   "t_text_ms": 13.3,
    "score": {
     "verdict": "partial-reversed",
     "recall_logical": 0.065,
@@ -2156,11 +2704,11 @@
    "text_head": " ؟قارو اذالم :لولأا لص فلا ⏎  مدختسلما زاهج ىلع تادنتسلما ظفحيو ،باسح نود لمعي ردص لما حوتفم"
   },
   "mupdf": {
-   "t_open_ms": 1.0,
+   "t_open_ms": 0.9,
    "pages": 3,
-   "t_render_p1_ms": 5.6,
+   "t_render_p1_ms": 5.0,
    "shot": "docs/research/screenshots/mupdf/coretext-geezapro-paragraphs.jpg",
-   "t_text_ms": 5.1,
+   "t_text_ms": 4.5,
    "selectable": true,
    "open": true,
    "score": {
@@ -2177,11 +2725,11 @@
    "text_head": "  ملاذا وراق؟:الفصل األول ⏎   مفتوح املصدر يعمل دون حساب، ويحفظ املستندات على جهاز املستخدمP"
   },
   "pdfium": {
-   "t_open_ms": 9.7,
+   "t_open_ms": 2.4,
    "pages": 3,
-   "t_render_p1_ms": 10.8,
+   "t_render_p1_ms": 19.2,
    "shot": "docs/research/screenshots/pdfium/coretext-geezapro-paragraphs.jpg",
-   "t_text_ms": 4.1,
+   "t_text_ms": 3.0,
    "selectable": true,
    "open": true,
    "score": {
@@ -2202,9 +2750,9 @@
    "pages": 3,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/coretext-geezapro-paragraphs.jpg",
-   "t_open_ms": 3.1,
-   "t_render_p1_ms": 5.0,
-   "t_text_ms": 4.8,
+   "t_open_ms": 5.7,
+   "t_render_p1_ms": 13.6,
+   "t_text_ms": 11.5,
    "score": {
     "verdict": "partial",
     "recall_logical": 0.734,
@@ -2219,11 +2767,11 @@
    "text_head": "وراق؟ ملاذا :األول الفصل\r ⏎ املستخدم جهاز على املستندات ويحفظ ،حساب دون يعمل املصدر مفتوح PD"
   },
   "pdfjs": {
-   "t_open_ms": 4.4,
+   "t_open_ms": 3.6,
    "pages": 3,
-   "t_render_p1_ms": 242.7,
+   "t_render_p1_ms": 5709,
    "shot": "docs/research/screenshots/pdfjs/coretext-geezapro-paragraphs.jpg",
-   "t_text_ms": 219.5,
+   "t_text_ms": 690.4,
    "selectable": true,
    "open": true,
    "score": {
@@ -2238,6 +2786,27 @@
     "n_extracted_words": 525
    },
    "text_head": "وراق؟ ملاذا :األول الفصل ⏎ املستخدم جهاز على املستندات ويحفظ حساب، دون يعمل املصدر مفتوح PDF"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 3,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/coretext-geezapro-paragraphs.jpg",
+   "t_open_ms": 1.4,
+   "t_render_p1_ms": 4.8,
+   "t_text_ms": 6.1,
+   "score": {
+    "verdict": "logical",
+    "recall_logical": 1.0,
+    "recall_reversed": 0.006,
+    "order_lcs": 0.989,
+    "order_lcs_linerev": 0.143,
+    "pres_forms": 0,
+    "replacement_chars": 0,
+    "n_truth_words": 525,
+    "n_extracted_words": 525
+   },
+   "text_head": "الفصل الأول: لماذا وراق؟ ⏎ وراق محرّر ملفات PDF مفتوح المصدر يعمل دون حساب، ويحفظ المستندات "
   }
  },
  "coretext-sfarabic-mixed-invoice": {
@@ -2246,9 +2815,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/coretext-sfarabic-mixed-invoice.jpg",
-   "t_open_ms": 0.5,
-   "t_render_p1_ms": 3.8,
-   "t_text_ms": 1.8,
+   "t_open_ms": 0.6,
+   "t_render_p1_ms": 6.5,
+   "t_text_ms": 2.1,
    "score": {
     "verdict": "partial-reversed",
     "recall_logical": 0.426,
@@ -2265,9 +2834,9 @@
   "mupdf": {
    "t_open_ms": 0.8,
    "pages": 1,
-   "t_render_p1_ms": 4.2,
+   "t_render_p1_ms": 3.9,
    "shot": "docs/research/screenshots/mupdf/coretext-sfarabic-mixed-invoice.jpg",
-   "t_text_ms": 1.1,
+   "t_text_ms": 0.9,
    "selectable": true,
    "open": true,
    "score": {
@@ -2284,11 +2853,11 @@
    "text_head": "مبسطة ضريبية فاتورة ⏎ INV-2026-0042 :الفاتورة رقم ⏎ ٦٢٠٢ سبتمبر ٦١ :التاريخ ⏎ للتقنية زود شركة :"
   },
   "pdfium": {
-   "t_open_ms": 3.9,
+   "t_open_ms": 1.6,
    "pages": 1,
-   "t_render_p1_ms": 22.2,
+   "t_render_p1_ms": 18.0,
    "shot": "docs/research/screenshots/pdfium/coretext-sfarabic-mixed-invoice.jpg",
-   "t_text_ms": 0.7,
+   "t_text_ms": 0.6,
    "selectable": true,
    "open": true,
    "score": {
@@ -2309,9 +2878,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/coretext-sfarabic-mixed-invoice.jpg",
-   "t_open_ms": 2.2,
-   "t_render_p1_ms": 2.6,
-   "t_text_ms": 0.6,
+   "t_open_ms": 5.3,
+   "t_render_p1_ms": 5.9,
+   "t_text_ms": 1.0,
    "score": {
     "verdict": "words-ok/order-scrambled",
     "recall_logical": 0.944,
@@ -2326,11 +2895,11 @@
    "text_head": "مبسطة ضريبية فاتورة\r ⏎ INV-2026-0042 :الفاتورة رقم\r ⏎ ٢٠٢٦ سبتمبر ١٦ :التاريخ\r ⏎ للتقنية زود شرك"
   },
   "pdfjs": {
-   "t_open_ms": 42.1,
+   "t_open_ms": 2.6,
    "pages": 1,
-   "t_render_p1_ms": 51.9,
+   "t_render_p1_ms": 138.8,
    "shot": "docs/research/screenshots/pdfjs/coretext-sfarabic-mixed-invoice.jpg",
-   "t_text_ms": 12.7,
+   "t_text_ms": 44.8,
    "selectable": true,
    "open": true,
    "score": {
@@ -2345,6 +2914,27 @@
     "n_extracted_words": 68
    },
    "text_head": "مبسطة ضريبية فاتورة ⏎ INV-2026-0042 :الفاتورة رقم ⏎  ⏎ ٢٠٢٦ سبتمبر ١٦ :التاريخ ⏎  ⏎ للتقنية زود شركة"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/coretext-sfarabic-mixed-invoice.jpg",
+   "t_open_ms": 0.6,
+   "t_render_p1_ms": 2.0,
+   "t_text_ms": 0.6,
+   "score": {
+    "verdict": "logical",
+    "recall_logical": 1.0,
+    "recall_reversed": 0.074,
+    "order_lcs": 0.956,
+    "order_lcs_linerev": 0.279,
+    "pres_forms": 0,
+    "replacement_chars": 0,
+    "n_truth_words": 68,
+    "n_extracted_words": 68
+   },
+   "text_head": "فاتورة ضريبية مبسطة ⏎ رقم الفاتورة: INV-2026-0042 ⏎ التاريخ: ١٦ سبتمبر ٢٠٢٦ ⏎ العميل: شركة زود ل"
   }
  },
  "perf-text-100-pages": {
@@ -2353,73 +2943,88 @@
    "pages": 100,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/perf-text-100-pages.jpg",
-   "t_open_ms": 1.8,
-   "t_render_p1_ms": 79.9,
-   "t_text_ms": 42.0,
+   "t_open_ms": 2.2,
+   "t_render_p1_ms": 13.1,
+   "t_text_ms": 8.3,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 4481
    },
-   "text_head": "؟ٯ\u0000ارو اد\u0000ﺎﻤﻟ :لؤ\u0000لا ﻞﺼ\u0000\u0000ﻟا ⏎ مﺪﺤ\u0000\u0000\u0000ﺴﻤﻟا ر\u0000ﺎﻬﺣ\u0000 ﯽﻠﻋ ٮ\u0000اﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا ﻂ\u0000\u0000\u0000ﺤ\u0000\u0000و ،ٮ\u0000ﺎﺴﺣ ںود ﻞﻤﻌ\u0000\u0000 "
+   "text_head": "؟ٯ\u0000ارو اد\u0000ﺎﻤﻟ :لؤالا ﻞﺼ\u0000\u0000ﻟا ⏎ مﺪﺤ\u0000\u0000\u0000ﺴﻤﻟا ر\u0000ﺎﻬﺣ\u0000 ﯽﻠﻋ ٮ\u0000اﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا ﻂ\u0000\u0000\u0000ﺤ\u0000\u0000و ،ٮ\u0000ﺎﺴﺣ ںود ﻞﻤﻌ\u0000\u0000 "
   },
   "mupdf": {
-   "t_open_ms": 3.8,
+   "t_open_ms": 1.1,
    "pages": 100,
-   "t_render_p1_ms": 37.2,
+   "t_render_p1_ms": 11.4,
    "shot": "docs/research/screenshots/mupdf/perf-text-100-pages.jpg",
-   "t_text_ms": 41.6,
+   "t_text_ms": 9.2,
    "selectable": true,
-   "t_text_all_pages_ms": 1350.8,
+   "t_text_all_pages_ms": 333.6,
    "open": true,
    "score": {
     "verdict": "no-truth",
-    "n_extracted_chars": 4255
+    "n_extracted_chars": 4507
    },
-   "text_head": "ال ف صل ال أول: لما ذا ورا ق ؟ ⏎ ها ز المس ت خ دمجح ف ظ المس ت ندا ت على ي، وبعمل دو ن حساي "
+   "text_head": "ال فصل ال أول: لما ذا ورا ق ؟ ⏎  م ف توح المصدر  يعمل دو ن حسا ب ، و يح ف ظ المس ت ندا ت على"
   },
   "pdfium": {
-   "t_open_ms": 16.1,
+   "t_open_ms": 3.5,
    "pages": 100,
-   "t_render_p1_ms": 8.4,
+   "t_render_p1_ms": 19.5,
    "shot": "docs/research/screenshots/pdfium/perf-text-100-pages.jpg",
-   "t_text_ms": 12.7,
+   "t_text_ms": 8.2,
    "selectable": true,
-   "t_text_all_pages_ms": 253.7,
+   "t_text_all_pages_ms": 216.4,
    "open": true,
    "score": {
     "verdict": "no-truth",
-    "n_extracted_chars": 4510
+    "n_extracted_chars": 4508
    },
-   "text_head": "وراق؟ ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لص ف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح\r ⏎ ن"
+   "text_head": "؟\r ⏎ ق\r ⏎ ورا ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لصف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح"
   },
   "pdfium-rs": {
    "open": true,
    "pages": 100,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/perf-text-100-pages.jpg",
-   "t_open_ms": 8.8,
-   "t_render_p1_ms": 11.2,
-   "t_text_ms": 12.9,
+   "t_open_ms": 12.9,
+   "t_render_p1_ms": 29.6,
+   "t_text_ms": 27.0,
    "score": {
     "verdict": "no-truth",
-    "n_extracted_chars": 4510
+    "n_extracted_chars": 4508
    },
-   "text_head": "وراق؟ ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لص ف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح\r ⏎ ن"
+   "text_head": "؟\r ⏎ ق\r ⏎ ورا ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لصف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح"
   },
   "pdfjs": {
-   "t_open_ms": 74.6,
+   "t_open_ms": 135.2,
    "pages": 100,
-   "t_render_p1_ms": 612.7,
+   "t_render_p1_ms": 1628.6,
    "shot": "docs/research/screenshots/pdfjs/perf-text-100-pages.jpg",
-   "t_text_ms": 205.4,
+   "t_text_ms": 493.7,
    "selectable": true,
-   "t_text_all_pages_ms": 6803.2,
+   "t_text_all_pages_ms": 10446.5,
    "open": true,
    "score": {
     "verdict": "no-truth",
-    "n_extracted_chars": 5122
+    "n_extracted_chars": 5121
    },
-   "text_head": "؟ \u0000ٯا ورا \u0000دﺎﻤﻟ ول:ٔ\u0000ال ﻞﺼ \u0000\u0000ﻟا ⏎ مﺪ \u0000ﺤ\u0000\u0000ﺴﻤﻟا \u0000 رﺎﻬ \u0000ﺣ یﻠﻋ \u0000 ٮاﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا \u0000  ﻂ \u0000\u0000ﺤ\u0000 \u0000، و \u0000 ٮﺎ"
+   "text_head": "؟ \u0000ٯا ورا \u0000دﺎﻤﻟ ول:ٔاال ﻞﺼ \u0000\u0000ﻟا ⏎ مﺪ \u0000ﺤ\u0000\u0000ﺴﻤﻟا \u0000 رﺎﻬ \u0000ﺣ یﻠﻋ \u0000 ٮاﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا \u0000  ﻂ \u0000\u0000ﺤ\u0000 \u0000، و \u0000 ٮﺎ"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 100,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/perf-text-100-pages.jpg",
+   "t_open_ms": 1.2,
+   "t_render_p1_ms": 4.4,
+   "t_text_all_pages_ms": 218.4,
+   "t_text_ms": 7.0,
+   "score": {
+    "verdict": "no-truth",
+    "n_extracted_chars": 4340
+   },
+   "text_head": "ال�ص⃛ل الاؤل: لماد⃛ا وراق؟ ⏎ وراق محرّر مل�̇ات PDF م�̇�̈وح المصدر �̤عمل دون حساب، و�̤ح�̇ط̇ ا"
   }
  },
  "perf-text-500-pages": {
@@ -2428,73 +3033,88 @@
    "pages": 500,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/perf-text-500-pages.jpg",
-   "t_open_ms": 5.2,
-   "t_render_p1_ms": 69.3,
-   "t_text_ms": 42.1,
+   "t_open_ms": 5.8,
+   "t_render_p1_ms": 13.8,
+   "t_text_ms": 19.4,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 4481
    },
-   "text_head": "؟ٯ\u0000ارو اد\u0000ﺎﻤﻟ :لؤ\u0000لا ﻞﺼ\u0000\u0000ﻟا ⏎ مﺪﺤ\u0000\u0000\u0000ﺴﻤﻟا ر\u0000ﺎﻬﺣ\u0000 ﯽﻠﻋ ٮ\u0000اﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا ﻂ\u0000\u0000\u0000ﺤ\u0000\u0000و ،ٮ\u0000ﺎﺴﺣ ںود ﻞﻤﻌ\u0000\u0000 "
+   "text_head": "؟ٯ\u0000ارو اد\u0000ﺎﻤﻟ :لؤالا ﻞﺼ\u0000\u0000ﻟا ⏎ مﺪﺤ\u0000\u0000\u0000ﺴﻤﻟا ر\u0000ﺎﻬﺣ\u0000 ﯽﻠﻋ ٮ\u0000اﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا ﻂ\u0000\u0000\u0000ﺤ\u0000\u0000و ،ٮ\u0000ﺎﺴﺣ ںود ﻞﻤﻌ\u0000\u0000 "
   },
   "mupdf": {
-   "t_open_ms": 3.1,
+   "t_open_ms": 2.5,
    "pages": 500,
-   "t_render_p1_ms": 31.4,
+   "t_render_p1_ms": 10.9,
    "shot": "docs/research/screenshots/mupdf/perf-text-500-pages.jpg",
-   "t_text_ms": 44.1,
+   "t_text_ms": 9.3,
    "selectable": true,
-   "t_text_all_pages_ms": 9277.6,
+   "t_text_all_pages_ms": 1495.5,
    "open": true,
    "score": {
     "verdict": "no-truth",
-    "n_extracted_chars": 4255
+    "n_extracted_chars": 4507
    },
-   "text_head": "ال ف صل ال أول: لما ذا ورا ق ؟ ⏎ ها ز المس ت خ دمجح ف ظ المس ت ندا ت على ي، وبعمل دو ن حساي "
+   "text_head": "ال فصل ال أول: لما ذا ورا ق ؟ ⏎  م ف توح المصدر  يعمل دو ن حسا ب ، و يح ف ظ المس ت ندا ت على"
   },
   "pdfium": {
-   "t_open_ms": 15.6,
+   "t_open_ms": 3.7,
    "pages": 500,
-   "t_render_p1_ms": 6.8,
+   "t_render_p1_ms": 26.5,
    "shot": "docs/research/screenshots/pdfium/perf-text-500-pages.jpg",
-   "t_text_ms": 6.2,
+   "t_text_ms": 8.8,
    "selectable": true,
-   "t_text_all_pages_ms": 1192.5,
+   "t_text_all_pages_ms": 1102.1,
    "open": true,
    "score": {
     "verdict": "no-truth",
-    "n_extracted_chars": 4510
+    "n_extracted_chars": 4508
    },
-   "text_head": "وراق؟ ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لص ف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح\r ⏎ ن"
+   "text_head": "؟\r ⏎ ق\r ⏎ ورا ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لصف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح"
   },
   "pdfium-rs": {
    "open": true,
    "pages": 500,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/perf-text-500-pages.jpg",
-   "t_open_ms": 8.2,
-   "t_render_p1_ms": 10.4,
-   "t_text_ms": 13.3,
+   "t_open_ms": 7.9,
+   "t_render_p1_ms": 8.5,
+   "t_text_ms": 26.3,
    "score": {
     "verdict": "no-truth",
-    "n_extracted_chars": 4510
+    "n_extracted_chars": 4508
    },
-   "text_head": "وراق؟ ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لص ف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح\r ⏎ ن"
+   "text_head": "؟\r ⏎ ق\r ⏎ ورا ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لصف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح"
   },
   "pdfjs": {
-   "t_open_ms": 36,
+   "t_open_ms": 65.4,
    "pages": 500,
-   "t_render_p1_ms": 590.3,
+   "t_render_p1_ms": 352.9,
    "shot": "docs/research/screenshots/pdfjs/perf-text-500-pages.jpg",
-   "t_text_ms": 184.5,
+   "t_text_ms": 284.4,
    "selectable": true,
-   "t_text_all_pages_ms": 35418.6,
+   "t_text_all_pages_ms": 36692.8,
    "open": true,
    "score": {
     "verdict": "no-truth",
-    "n_extracted_chars": 5122
+    "n_extracted_chars": 5121
    },
-   "text_head": "؟ \u0000ٯا ورا \u0000دﺎﻤﻟ ول:ٔ\u0000ال ﻞﺼ \u0000\u0000ﻟا ⏎ مﺪ \u0000ﺤ\u0000\u0000ﺴﻤﻟا \u0000 رﺎﻬ \u0000ﺣ یﻠﻋ \u0000 ٮاﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا \u0000  ﻂ \u0000\u0000ﺤ\u0000 \u0000، و \u0000 ٮﺎ"
+   "text_head": "؟ \u0000ٯا ورا \u0000دﺎﻤﻟ ول:ٔاال ﻞﺼ \u0000\u0000ﻟا ⏎ مﺪ \u0000ﺤ\u0000\u0000ﺴﻤﻟا \u0000 رﺎﻬ \u0000ﺣ یﻠﻋ \u0000 ٮاﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا \u0000  ﻂ \u0000\u0000ﺤ\u0000 \u0000، و \u0000 ٮﺎ"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 500,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/perf-text-500-pages.jpg",
+   "t_open_ms": 4.3,
+   "t_render_p1_ms": 4.3,
+   "t_text_all_pages_ms": 1113.1,
+   "t_text_ms": 7.1,
+   "score": {
+    "verdict": "no-truth",
+    "n_extracted_chars": 4340
+   },
+   "text_head": "ال�ص⃛ل الاؤل: لماد⃛ا وراق؟ ⏎ وراق محرّر مل�̇ات PDF م�̇�̈وح المصدر �̤عمل دون حساب، و�̤ح�̇ط̇ ا"
   }
  },
  "raw-amiri-cid-identity-tounicode": {
@@ -2503,9 +3123,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/raw-amiri-cid-identity-tounicode.jpg",
-   "t_open_ms": 1.0,
-   "t_render_p1_ms": 9.2,
-   "t_text_ms": 1.2,
+   "t_open_ms": 2.4,
+   "t_render_p1_ms": 35.7,
+   "t_text_ms": 1.3,
    "score": {
     "verdict": "partial-reversed",
     "recall_logical": 0.398,
@@ -2520,11 +3140,11 @@
    "text_head": "ةطسبم ةيبيرض ةروتاف ⏎ INV-2026-0042 :ةروتافلا مقر ⏎ ٢٠٢٦ ربمتبس ١٦ :خيراتلا ⏎ ةينقتلل دوز ةكرش :"
   },
   "mupdf": {
-   "t_open_ms": 4.9,
+   "t_open_ms": 2.0,
    "pages": 1,
-   "t_render_p1_ms": 12.1,
+   "t_render_p1_ms": 5.8,
    "shot": "docs/research/screenshots/mupdf/raw-amiri-cid-identity-tounicode.jpg",
-   "t_text_ms": 2.4,
+   "t_text_ms": 1.7,
    "selectable": true,
    "open": true,
    "score": {
@@ -2541,11 +3161,11 @@
    "text_head": "فاتورة ضريبية مبسطة ⏎ INV-2026-0042 :رقم الفاتورة ⏎ التاريخ: ٦١ سبتمبر ٦٢٠٢ ⏎ العميل: شركة زود ل"
   },
   "pdfium": {
-   "t_open_ms": 1.9,
+   "t_open_ms": 1.2,
    "pages": 1,
-   "t_render_p1_ms": 3.6,
+   "t_render_p1_ms": 17.6,
    "shot": "docs/research/screenshots/pdfium/raw-amiri-cid-identity-tounicode.jpg",
-   "t_text_ms": 1.1,
+   "t_text_ms": 1.2,
    "selectable": true,
    "open": true,
    "score": {
@@ -2566,9 +3186,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/raw-amiri-cid-identity-tounicode.jpg",
-   "t_open_ms": 1.6,
-   "t_render_p1_ms": 3.7,
-   "t_text_ms": 1.9,
+   "t_open_ms": 4.8,
+   "t_render_p1_ms": 5.8,
+   "t_text_ms": 10.4,
    "score": {
     "verdict": "partial",
     "recall_logical": 0.854,
@@ -2583,11 +3203,11 @@
    "text_head": "مبسطة ضريبية فاتورة\r ⏎ INV-2026-0042 :الفاتورة رقم\r ⏎ ٢٠٢٦ سبتمبر ١٦ :التاريخ\r ⏎ للتقنية زود شرك"
   },
   "pdfjs": {
-   "t_open_ms": 1.9,
+   "t_open_ms": 3.8,
    "pages": 1,
-   "t_render_p1_ms": 92.2,
+   "t_render_p1_ms": 60.8,
    "shot": "docs/research/screenshots/pdfjs/raw-amiri-cid-identity-tounicode.jpg",
-   "t_text_ms": 6.9,
+   "t_text_ms": 5.9,
    "selectable": true,
    "open": true,
    "score": {
@@ -2602,6 +3222,27 @@
     "n_extracted_words": 152
    },
    "text_head": "فاتورة ضريبية مبسطة ⏎  ⏎ رقم الفاتورة: INV-2026-0042 ⏎  ⏎ التاريخ: ١٦ سبتمبر ٢٠٢٦ ⏎  ⏎ كة زود للتقنيةا"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/raw-amiri-cid-identity-tounicode.jpg",
+   "t_open_ms": 0.5,
+   "t_render_p1_ms": 2.8,
+   "t_text_ms": 0.7,
+   "score": {
+    "verdict": "logical",
+    "recall_logical": 0.959,
+    "recall_reversed": 0.041,
+    "order_lcs": 0.933,
+    "order_lcs_linerev": 0.227,
+    "pres_forms": 0,
+    "replacement_chars": 0,
+    "n_truth_words": 150,
+    "n_extracted_words": 151
+   },
+   "text_head": "فاتورة ضريبية مبسطة ⏎ رقم الفاتورة: INV-2026-0042 ⏎ التاريخ: ١٦ سبتمبر ٢٠٢٦ ⏎ العميل: شركة زود ل"
   }
  },
  "raw-amiri-cid-no-tounicode": {
@@ -2610,9 +3251,9 @@
    "pages": 1,
    "selectable": false,
    "shot": "docs/research/screenshots/hayro/raw-amiri-cid-no-tounicode.jpg",
-   "t_open_ms": 0.5,
-   "t_render_p1_ms": 11.9,
-   "t_text_ms": 1.1,
+   "t_open_ms": 0.7,
+   "t_render_p1_ms": 8.0,
+   "t_text_ms": 1.0,
    "score": {
     "verdict": "empty",
     "recall_logical": 0.0,
@@ -2627,11 +3268,11 @@
    "text_head": ""
   },
   "mupdf": {
-   "t_open_ms": 1.1,
+   "t_open_ms": 1.7,
    "pages": 1,
-   "t_render_p1_ms": 5.5,
+   "t_render_p1_ms": 6.7,
    "shot": "docs/research/screenshots/mupdf/raw-amiri-cid-no-tounicode.jpg",
-   "t_text_ms": 1.8,
+   "t_text_ms": 1.5,
    "selectable": true,
    "open": true,
    "score": {
@@ -2648,11 +3289,11 @@
    "text_head": "۰ޚފྟ݁\u0001۰٭ྟ཯๤ཚ\u00019Aިّ؇ڣ ⏎ ᡛᡠᡨᡁᡄᡂᡄᡈᡁᡂᡂᡆᡄ\u0001ᡌ9Aިّ؇ڰܳ7\u0001ܾڢA ⏎ rprv\u0001ଫଊ݄ٺྟݿ\u0001qv\u0001ᡌ༂຃A؇ٺܳ7 ⏎ ۰٭ٷگٺይዧ\u0001?XB\u0001ᄎც๤ཇ\u0001ᡌ"
   },
   "pdfium": {
-   "t_open_ms": 2.7,
+   "t_open_ms": 1.2,
    "pages": 1,
-   "t_render_p1_ms": 3.3,
+   "t_render_p1_ms": 17.8,
    "shot": "docs/research/screenshots/pdfium/raw-amiri-cid-no-tounicode.jpg",
-   "t_text_ms": 1.1,
+   "t_text_ms": 1.4,
    "selectable": true,
    "open": true,
    "score": {
@@ -2673,9 +3314,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/raw-amiri-cid-no-tounicode.jpg",
-   "t_open_ms": 1.6,
-   "t_render_p1_ms": 3.2,
-   "t_text_ms": 2.0,
+   "t_open_ms": 10.8,
+   "t_render_p1_ms": 13.0,
+   "t_text_ms": 3.5,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.008,
@@ -2690,11 +3331,11 @@
    "text_head": "۰ފޚྟ݁\u0001۰٭ྟ๤཯ཚ\u00019Aިّ؇ڣ\r ⏎ ᡛᡠᡨᡁᡄᡂᡄᡈᡁᡂᡂᡆᡄ\u0001ᡌ9Aިّ؇ڰܳ7\u0001ܾڢA\r ⏎ rprv\u0001ଫଊ݄ٺྟݿ\u0001qv\u0001ᡌ༂຃A؇ٺܳ7\r ⏎ ۰ٺگۇٴ٭ይዧ\u0001?XB\u0001ᄎც"
   },
   "pdfjs": {
-   "t_open_ms": 1.7,
+   "t_open_ms": 1.8,
    "pages": 1,
-   "t_render_p1_ms": 233.9,
+   "t_render_p1_ms": 68.2,
    "shot": "docs/research/screenshots/pdfjs/raw-amiri-cid-no-tounicode.jpg",
-   "t_text_ms": 9.4,
+   "t_text_ms": 9.3,
    "selectable": true,
    "open": true,
    "score": {
@@ -2709,6 +3350,27 @@
     "n_extracted_words": 153
    },
    "text_head": "ྟ཯٭۰\u0001݁ྟފޚ۰ ๤ཚ\u00019Aڣ؇ّި ⏎  ⏎ ᡛᡠᡨᡁᡄᡂᡄᡈᡁᡂᡂᡆᡄ\u0001ᡌ9A7ܳڰ؇ّި\u0001ڢܾA ⏎  ⏎ rprv\u0001ଫଊٺ݄ྟݿ\u0001qv\u0001ᡌ༂຃A؇7ܳٺ ⏎  ⏎ ۰ٺگٷ٭ይዧ\u0001?XB\u0001ᄎც"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/raw-amiri-cid-no-tounicode.jpg",
+   "t_open_ms": 0.4,
+   "t_render_p1_ms": 2.8,
+   "t_text_ms": 0.7,
+   "score": {
+    "verdict": "garbage(U+FFFD)",
+    "recall_logical": 0.407,
+    "recall_reversed": 0.041,
+    "order_lcs": 0.44,
+    "order_lcs_linerev": 0.173,
+    "pres_forms": 0,
+    "replacement_chars": 355,
+    "n_truth_words": 150,
+    "n_extracted_words": 75
+   },
+   "text_head": "����رة ������ ����� ⏎ ر�� ا�����رة: INV-2026-0042 ⏎ ا���ر��: ١٦ ������ ٢٠٢٦ ⏎ ا�����: ���� زود �"
   }
  },
  "raw-cairo-cid-broken-tounicode": {
@@ -2717,9 +3379,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/raw-cairo-cid-broken-tounicode.jpg",
-   "t_open_ms": 0.3,
-   "t_render_p1_ms": 6.8,
-   "t_text_ms": 1.3,
+   "t_open_ms": 0.7,
+   "t_render_p1_ms": 7.7,
+   "t_text_ms": 1.1,
    "score": {
     "verdict": "empty",
     "recall_logical": 0.0,
@@ -2734,11 +3396,11 @@
    "text_head": "����������� ������� ⏎ ��������������������������� ⏎ ���������������������� ⏎ ��������������� ���"
   },
   "mupdf": {
-   "t_open_ms": 1.2,
+   "t_open_ms": 0.7,
    "pages": 1,
-   "t_render_p1_ms": 11.3,
+   "t_render_p1_ms": 5.3,
    "shot": "docs/research/screenshots/mupdf/raw-cairo-cid-broken-tounicode.jpg",
-   "t_text_ms": 1.7,
+   "t_text_ms": 1.4,
    "selectable": true,
    "open": true,
    "score": {
@@ -2755,11 +3417,11 @@
    "text_head": "ƲţœĝƘʚƲƽĝƾȘʚƱŉƶĨĊŴ ⏎ ,@oˀɛəɛɟˀəəɝɛʚʰƱŉƶĨĊųƔĉʚƖƂŉ ⏎ ɅɃɅɉʚǕƗħĝŔʚɄɉʚʰŀƾŉĊħƔĉ ⏎ ƲƽƛƁħƓƔʚŃƵŋʚƲƈǾʚʰƒƽƗ"
   },
   "pdfium": {
-   "t_open_ms": 6.9,
+   "t_open_ms": 1.1,
    "pages": 1,
-   "t_render_p1_ms": 2.2,
+   "t_render_p1_ms": 17.1,
    "shot": "docs/research/screenshots/pdfium/raw-cairo-cid-broken-tounicode.jpg",
-   "t_text_ms": 1.0,
+   "t_text_ms": 1.2,
    "selectable": true,
    "open": true,
    "score": {
@@ -2780,9 +3442,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/raw-cairo-cid-broken-tounicode.jpg",
-   "t_open_ms": 1.4,
-   "t_render_p1_ms": 3.3,
-   "t_text_ms": 1.7,
+   "t_open_ms": 2.4,
+   "t_render_p1_ms": 46.4,
+   "t_text_ms": 4.4,
    "score": {
     "verdict": "empty",
     "recall_logical": 0.0,
@@ -2797,11 +3459,11 @@
    "text_head": "������������������\r ⏎ ���������������������������\r ⏎ ����������������������\r ⏎ �����������������"
   },
   "pdfjs": {
-   "t_open_ms": 2.3,
+   "t_open_ms": 3,
    "pages": 1,
-   "t_render_p1_ms": 39.8,
+   "t_render_p1_ms": 29.8,
    "shot": "docs/research/screenshots/pdfjs/raw-cairo-cid-broken-tounicode.jpg",
-   "t_text_ms": 13.5,
+   "t_text_ms": 15.4,
    "selectable": true,
    "open": true,
    "score": {
@@ -2816,6 +3478,27 @@
     "n_extracted_words": 0
    },
    "text_head": "������������������ ⏎  ⏎ ��������������������������� ⏎  ⏎ ���������������������� ⏎  ⏎ �����������������"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/raw-cairo-cid-broken-tounicode.jpg",
+   "t_open_ms": 0.4,
+   "t_render_p1_ms": 2.5,
+   "t_text_ms": 0.6,
+   "score": {
+    "verdict": "empty",
+    "recall_logical": 0.0,
+    "recall_reversed": 0.0,
+    "order_lcs": 0.0,
+    "order_lcs_linerev": 0.0,
+    "pres_forms": 0,
+    "replacement_chars": 116,
+    "n_truth_words": 150,
+    "n_extracted_words": 0
+   },
+   "text_head": "������� �������������������������������������������� ⏎ � � � � � ⏎ ���������� ����������������"
   }
  },
  "raw-legacy-symbolic-truetype": {
@@ -2824,9 +3507,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/raw-legacy-symbolic-truetype.jpg",
-   "t_open_ms": 0.6,
-   "t_render_p1_ms": 7.7,
-   "t_text_ms": 1.2,
+   "t_open_ms": 0.7,
+   "t_render_p1_ms": 12.8,
+   "t_text_ms": 1.3,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.0,
@@ -2841,11 +3524,11 @@
    "text_head": " !\"#$% &#’()%*+,-./ ⏎ 0123454635574%8*+,-.9:;%<=+ ⏎ >?>@%ABCD#E%F@%8GH+.D:; ⏎  &IJDKL%MNO%PQ(R%8"
   },
   "mupdf": {
-   "t_open_ms": 1.1,
+   "t_open_ms": 1.0,
    "pages": 1,
-   "t_render_p1_ms": 5.1,
+   "t_render_p1_ms": 5.3,
    "shot": "docs/research/screenshots/mupdf/raw-legacy-symbolic-truetype.jpg",
-   "t_text_ms": 1.8,
+   "t_text_ms": 2.1,
    "selectable": true,
    "open": true,
    "score": {
@@ -2857,16 +3540,16 @@
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 150,
-    "n_extracted_words": 107
+    "n_extracted_words": 111
    },
    "text_head": " !\"#$% &#'()%*+,-./ ⏎ 0123454635574%8*+,-.9:;%<=+ ⏎ >?>@%ABCD#E%F@%8GH+.D:; ⏎  &IJDKL%MNO%PQ(R%8"
   },
   "pdfium": {
-   "t_open_ms": 1.0,
+   "t_open_ms": 1.1,
    "pages": 1,
-   "t_render_p1_ms": 1.8,
+   "t_render_p1_ms": 18.5,
    "shot": "docs/research/screenshots/pdfium/raw-legacy-symbolic-truetype.jpg",
-   "t_text_ms": 0.5,
+   "t_text_ms": 0.7,
    "selectable": true,
    "open": true,
    "score": {
@@ -2887,9 +3570,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/raw-legacy-symbolic-truetype.jpg",
-   "t_open_ms": 0.9,
-   "t_render_p1_ms": 3.1,
-   "t_text_ms": 1.1,
+   "t_open_ms": 3.3,
+   "t_render_p1_ms": 9.1,
+   "t_text_ms": 3.1,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.016,
@@ -2904,11 +3587,11 @@
    "text_head": " !\"#$% &#'()%*+,-./\r ⏎ 0123454635574%8*+,-.9:;%<=+\r ⏎ >?>@%ABCD#E%F@%8GH+.D:;\r ⏎  &IJDKL%MNO%PQ("
   },
   "pdfjs": {
-   "t_open_ms": 2.2,
+   "t_open_ms": 17.1,
    "pages": 1,
-   "t_render_p1_ms": 99,
+   "t_render_p1_ms": 67.5,
    "shot": "docs/research/screenshots/pdfjs/raw-legacy-symbolic-truetype.jpg",
-   "t_text_ms": 12.9,
+   "t_text_ms": 7,
    "selectable": true,
    "open": true,
    "score": {
@@ -2923,6 +3606,27 @@
     "n_extracted_words": 111
    },
    "text_head": "!\"#$% &#'()%*+,-./ ⏎  ⏎ 0123454635574%8*+,-.9:;%<=+ ⏎  ⏎ >?>@%ABCD#E%F@%8GH+.D:; ⏎  ⏎ &IJDKL%MNO%PQ(R%"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/raw-legacy-symbolic-truetype.jpg",
+   "t_open_ms": 0.5,
+   "t_render_p1_ms": 2.9,
+   "t_text_ms": 0.8,
+   "score": {
+    "verdict": "garbage",
+    "recall_logical": 0.008,
+    "recall_reversed": 0.016,
+    "order_lcs": 0.007,
+    "order_lcs_linerev": 0.007,
+    "pres_forms": 0,
+    "replacement_chars": 0,
+    "n_truth_words": 150,
+    "n_extracted_words": 83
+   },
+   "text_head": "!\"#$% &#’()%*+,-./ ⏎ 0123454635574%8*+,-.9:;%<=+ ⏎ >?>@%ABCD#E%F@%8GH+.D:; ⏎ &IJDKL%MNO%PQ(R%8S&"
   }
  },
  "reportlab-visual-presentation-forms": {
@@ -2931,9 +3635,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/reportlab-visual-presentation-forms.jpg",
-   "t_open_ms": 0.4,
-   "t_render_p1_ms": 4.2,
-   "t_text_ms": 1.3,
+   "t_open_ms": 0.7,
+   "t_render_p1_ms": 9.9,
+   "t_text_ms": 1.4,
    "score": {
     "verdict": "partial-reversed",
     "recall_logical": 0.349,
@@ -2948,11 +3652,11 @@
    "text_head": "ﺔﻄﺴﺒﻣ ﺔﻴﺒﻳﺮﺿ ﺓﺭﻮﺗﺎﻓ ⏎ INV-2026-0042 :ﺓﺭﻮﺗﺎﻔﻟﺍ ﻢﻗﺭ ⏎ ٢٠٢٦ ﺮﺒﻤﺘﺒﺳ ١٦ :ﺦﻳﺭﺎﺘﻟﺍ ⏎ ﺔﻴﻨﻘﺘﻠﻟ ﺩﻭﺯ ﺔﻛﺮﺷ :"
   },
   "mupdf": {
-   "t_open_ms": 1.8,
+   "t_open_ms": 0.6,
    "pages": 1,
-   "t_render_p1_ms": 6.7,
+   "t_render_p1_ms": 6.4,
    "shot": "docs/research/screenshots/mupdf/reportlab-visual-presentation-forms.jpg",
-   "t_text_ms": 1.4,
+   "t_text_ms": 1.2,
    "selectable": true,
    "open": true,
    "score": {
@@ -2969,11 +3673,11 @@
    "text_head": "ﻓﺎﺗﻮﺭﺓ ﺿﺮﻳﺒﻴﺔ ﻣﺒﺴﻄﺔ ⏎ INV-2026-0042 :ﺭﻗﻢ ﺍﻟﻔﺎﺗﻮﺭﺓ ⏎ ﺍﻟﺘﺎﺭﻳﺦ: ٦١ ﺳﺒﺘﻤﺒﺮ ٦٢٠٢ ⏎ ﺍﻟﻌﻤﻴﻞ: ﺷﺮﻛﺔ ﺯﻭﺩ ﻟ"
   },
   "pdfium": {
-   "t_open_ms": 226.5,
+   "t_open_ms": 201.4,
    "pages": 1,
-   "t_render_p1_ms": 1.8,
+   "t_render_p1_ms": 19.0,
    "shot": "docs/research/screenshots/pdfium/reportlab-visual-presentation-forms.jpg",
-   "t_text_ms": 0.3,
+   "t_text_ms": 0.5,
    "selectable": true,
    "open": true,
    "score": {
@@ -2994,9 +3698,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/reportlab-visual-presentation-forms.jpg",
-   "t_open_ms": 331.8,
-   "t_render_p1_ms": 2.9,
-   "t_text_ms": 0.6,
+   "t_open_ms": 517.5,
+   "t_render_p1_ms": 6.1,
+   "t_text_ms": 0.9,
    "score": {
     "verdict": "partial",
     "recall_logical": 0.819,
@@ -3011,11 +3715,11 @@
    "text_head": "مبسطة ضريبية فاتورة\r ⏎ INV-2026-0042 :الفاتورة رقم\r ⏎ ٢٠٢٦ سبتمبر ١٦ :التاريخ\r ⏎ للتقنية زود شرك"
   },
   "pdfjs": {
-   "t_open_ms": 1.7,
+   "t_open_ms": 4.9,
    "pages": 1,
-   "t_render_p1_ms": 32.6,
+   "t_render_p1_ms": 72,
    "shot": "docs/research/screenshots/pdfjs/reportlab-visual-presentation-forms.jpg",
-   "t_text_ms": 5.5,
+   "t_text_ms": 6.9,
    "selectable": true,
    "open": true,
    "score": {
@@ -3030,6 +3734,27 @@
     "n_extracted_words": 100
    },
    "text_head": "ﻓﺎﺗﻮﺭﺓ ﺿﺮﻳﺒﻴﺔ ﻣﺒﺴﻄﺔ ⏎  ⏎ ﺭﻗﻢ ﺍﻟﻔﺎﺗﻮﺭﺓ: INV-2026-0042 ⏎  ⏎ ﺍﻟﺘﺎﺭﻳﺦ: ١٦ ﺳﺒﺘﻤﺒﺮ ٢٠٢٦ ⏎  ⏎ ﺍﻟﻌﻤﻴﻞ: ﺷﺮﻛﺔ ﺯﻭ"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/reportlab-visual-presentation-forms.jpg",
+   "t_open_ms": 0.5,
+   "t_render_p1_ms": 2.2,
+   "t_text_ms": 0.6,
+   "score": {
+    "verdict": "logical",
+    "recall_logical": 1.0,
+    "recall_reversed": 0.048,
+    "order_lcs": 0.97,
+    "order_lcs_linerev": 0.27,
+    "pres_forms": 0,
+    "replacement_chars": 0,
+    "n_truth_words": 100,
+    "n_extracted_words": 100
+   },
+   "text_head": "فاتورة ضريبية مبسطة ⏎ رقم الفاتورة: INV-2026-0042 ⏎ التاريخ: ١٦ سبتمبر ٢٠٢٦ ⏎ العميل: شركة زود ل"
   }
  },
  "scan-arial-200dpi-bilevel": {
@@ -3038,8 +3763,8 @@
    "pages": 1,
    "selectable": false,
    "shot": "docs/research/screenshots/hayro/scan-arial-200dpi-bilevel.jpg",
-   "t_open_ms": 0.5,
-   "t_render_p1_ms": 120.0,
+   "t_open_ms": 1.1,
+   "t_render_p1_ms": 131.9,
    "t_text_ms": 0.1,
    "score": {
     "verdict": "image-only (OCR needed)",
@@ -3048,11 +3773,11 @@
    "text_head": ""
   },
   "mupdf": {
-   "t_open_ms": 1.1,
+   "t_open_ms": 0.6,
    "pages": 1,
-   "t_render_p1_ms": 15.4,
+   "t_render_p1_ms": 13.1,
    "shot": "docs/research/screenshots/mupdf/scan-arial-200dpi-bilevel.jpg",
-   "t_text_ms": 0.3,
+   "t_text_ms": 0.2,
    "selectable": false,
    "open": true,
    "score": {
@@ -3062,9 +3787,9 @@
    "text_head": ""
   },
   "pdfium": {
-   "t_open_ms": 3.4,
+   "t_open_ms": 0.2,
    "pages": 1,
-   "t_render_p1_ms": 116.0,
+   "t_render_p1_ms": 26.2,
    "shot": "docs/research/screenshots/pdfium/scan-arial-200dpi-bilevel.jpg",
    "t_text_ms": 0.1,
    "selectable": false,
@@ -3080,8 +3805,8 @@
    "pages": 1,
    "selectable": false,
    "shot": "docs/research/screenshots/pdfium-rs/scan-arial-200dpi-bilevel.jpg",
-   "t_open_ms": 0.8,
-   "t_render_p1_ms": 14.7,
+   "t_open_ms": 1.0,
+   "t_render_p1_ms": 32.5,
    "t_text_ms": 0.1,
    "score": {
     "verdict": "image-only (OCR needed)",
@@ -3090,13 +3815,27 @@
    "text_head": ""
   },
   "pdfjs": {
-   "t_open_ms": 1.6,
+   "t_open_ms": 4.6,
    "pages": 1,
-   "t_render_p1_ms": 311.3,
+   "t_render_p1_ms": 145.7,
    "shot": "docs/research/screenshots/pdfjs/scan-arial-200dpi-bilevel.jpg",
-   "t_text_ms": 3.1,
+   "t_text_ms": 2.2,
    "selectable": false,
    "open": true,
+   "score": {
+    "verdict": "image-only (OCR needed)",
+    "n_extracted_words": 0
+   },
+   "text_head": ""
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": false,
+   "shot": "docs/research/screenshots/warraq/scan-arial-200dpi-bilevel.jpg",
+   "t_open_ms": 0.4,
+   "t_render_p1_ms": 26.3,
+   "t_text_ms": 0.0,
    "score": {
     "verdict": "image-only (OCR needed)",
     "n_extracted_words": 0
@@ -3111,7 +3850,7 @@
    "selectable": false,
    "shot": "docs/research/screenshots/hayro/scan-notonaskh-300dpi-skewed-jpeg.jpg",
    "t_open_ms": 1.6,
-   "t_render_p1_ms": 48.1,
+   "t_render_p1_ms": 54.6,
    "t_text_ms": 0.2,
    "score": {
     "verdict": "image-only (OCR needed)",
@@ -3120,11 +3859,11 @@
    "text_head": " ⏎ "
   },
   "mupdf": {
-   "t_open_ms": 1.3,
+   "t_open_ms": 1.0,
    "pages": 2,
-   "t_render_p1_ms": 30.7,
+   "t_render_p1_ms": 19.3,
    "shot": "docs/research/screenshots/mupdf/scan-notonaskh-300dpi-skewed-jpeg.jpg",
-   "t_text_ms": 0.6,
+   "t_text_ms": 0.3,
    "selectable": false,
    "open": true,
    "score": {
@@ -3134,9 +3873,9 @@
    "text_head": " ⏎ "
   },
   "pdfium": {
-   "t_open_ms": 1.3,
+   "t_open_ms": 1.1,
    "pages": 2,
-   "t_render_p1_ms": 25.1,
+   "t_render_p1_ms": 39.4,
    "shot": "docs/research/screenshots/pdfium/scan-notonaskh-300dpi-skewed-jpeg.jpg",
    "t_text_ms": 0.7,
    "selectable": false,
@@ -3153,8 +3892,8 @@
    "selectable": false,
    "shot": "docs/research/screenshots/pdfium-rs/scan-notonaskh-300dpi-skewed-jpeg.jpg",
    "t_open_ms": 2.4,
-   "t_render_p1_ms": 35.4,
-   "t_text_ms": 1.3,
+   "t_render_p1_ms": 68.0,
+   "t_text_ms": 1.8,
    "score": {
     "verdict": "image-only (OCR needed)",
     "n_extracted_words": 0
@@ -3162,13 +3901,27 @@
    "text_head": " ⏎ "
   },
   "pdfjs": {
-   "t_open_ms": 2.8,
+   "t_open_ms": 3.3,
    "pages": 2,
-   "t_render_p1_ms": 18829.6,
+   "t_render_p1_ms": 23900.6,
    "shot": "docs/research/screenshots/pdfjs/scan-notonaskh-300dpi-skewed-jpeg.jpg",
-   "t_text_ms": 28.2,
+   "t_text_ms": 14.6,
    "selectable": false,
    "open": true,
+   "score": {
+    "verdict": "image-only (OCR needed)",
+    "n_extracted_words": 0
+   },
+   "text_head": " ⏎ "
+  },
+  "warraq": {
+   "open": true,
+   "pages": 2,
+   "selectable": false,
+   "shot": "docs/research/screenshots/warraq/scan-notonaskh-300dpi-skewed-jpeg.jpg",
+   "t_open_ms": 1.9,
+   "t_render_p1_ms": 16.4,
+   "t_text_ms": 0.0,
    "score": {
     "verdict": "image-only (OCR needed)",
     "n_extracted_words": 0
@@ -3182,9 +3935,9 @@
    "pages": 3,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/variant-arabic-metadata-outlines-annots.jpg",
-   "t_open_ms": 0.5,
-   "t_render_p1_ms": 69.5,
-   "t_text_ms": 36.9,
+   "t_open_ms": 1.0,
+   "t_render_p1_ms": 14.9,
+   "t_text_ms": 7.1,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.052,
@@ -3194,85 +3947,85 @@
     "pres_forms": 1490,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 564
+    "n_extracted_words": 563
    },
-   "text_head": "؟ٯ\u0000ارو اد\u0000ﺎﻤﻟ :لؤ\u0000لا ﻞﺼ\u0000\u0000ﻟا ⏎ مﺪﺤ\u0000\u0000\u0000ﺴﻤﻟا ر\u0000ﺎﻬﺣ\u0000 ﯽﻠﻋ ٮ\u0000اﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا ﻂ\u0000\u0000\u0000ﺤ\u0000\u0000و ،ٮ\u0000ﺎﺴﺣ ںود ﻞﻤﻌ\u0000\u0000 "
+   "text_head": "؟ٯ\u0000ارو اد\u0000ﺎﻤﻟ :لؤالا ﻞﺼ\u0000\u0000ﻟا ⏎ مﺪﺤ\u0000\u0000\u0000ﺴﻤﻟا ر\u0000ﺎﻬﺣ\u0000 ﯽﻠﻋ ٮ\u0000اﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا ﻂ\u0000\u0000\u0000ﺤ\u0000\u0000و ،ٮ\u0000ﺎﺴﺣ ںود ﻞﻤﻌ\u0000\u0000 "
   },
   "mupdf": {
-   "t_open_ms": 10.0,
+   "t_open_ms": 2.6,
    "pages": 3,
-   "t_render_p1_ms": 45.6,
+   "t_render_p1_ms": 17.6,
    "shot": "docs/research/screenshots/mupdf/variant-arabic-metadata-outlines-annots.jpg",
-   "t_text_ms": 56.9,
+   "t_text_ms": 9.5,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "garbage",
-    "recall_logical": 0.071,
+    "recall_logical": 0.117,
     "recall_reversed": 0.006,
-    "order_lcs": 0.063,
-    "order_lcs_linerev": 0.074,
+    "order_lcs": 0.12,
+    "order_lcs_linerev": 0.086,
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 673
+    "n_extracted_words": 649
    },
-   "text_head": "ال ف صل ال أول: لما ذا ورا ق ؟ ⏎ ها ز المس ت خ دمجح ف ظ المس ت ندا ت على ي، وبعمل دو ن حساي "
+   "text_head": "ال فصل ال أول: لما ذا ورا ق ؟ ⏎  م ف توح المصدر  يعمل دو ن حسا ب ، و يح ف ظ المس ت ندا ت على"
   },
   "pdfium": {
-   "t_open_ms": 5.4,
+   "t_open_ms": 3.8,
    "pages": 3,
-   "t_render_p1_ms": 11.1,
+   "t_render_p1_ms": 31.7,
    "shot": "docs/research/screenshots/pdfium/variant-arabic-metadata-outlines-annots.jpg",
-   "t_text_ms": 6.2,
+   "t_text_ms": 7.7,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "garbage",
-    "recall_logical": 0.143,
-    "recall_reversed": 0.364,
-    "order_lcs": 0.076,
-    "order_lcs_linerev": 0.11,
+    "recall_logical": 0.136,
+    "recall_reversed": 0.37,
+    "order_lcs": 0.074,
+    "order_lcs_linerev": 0.109,
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 602
+    "n_extracted_words": 595
    },
-   "text_head": "وراق؟ ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لص ف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح\r ⏎ ن"
+   "text_head": "؟\r ⏎ ق\r ⏎ ورا ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لصف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح"
   },
   "pdfium-rs": {
    "open": true,
    "pages": 3,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/variant-arabic-metadata-outlines-annots.jpg",
-   "t_open_ms": 9.4,
-   "t_render_p1_ms": 11.6,
-   "t_text_ms": 10.5,
+   "t_open_ms": 17.6,
+   "t_render_p1_ms": 13.6,
+   "t_text_ms": 26.7,
    "score": {
     "verdict": "garbage",
-    "recall_logical": 0.143,
-    "recall_reversed": 0.364,
-    "order_lcs": 0.076,
-    "order_lcs_linerev": 0.11,
+    "recall_logical": 0.136,
+    "recall_reversed": 0.37,
+    "order_lcs": 0.074,
+    "order_lcs_linerev": 0.109,
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 602
+    "n_extracted_words": 595
    },
-   "text_head": "وراق؟ ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لص ف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح\r ⏎ ن"
+   "text_head": "؟\r ⏎ ق\r ⏎ ورا ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لصف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح"
   },
   "pdfjs": {
-   "t_open_ms": 11.4,
+   "t_open_ms": 3.7,
    "pages": 3,
-   "t_render_p1_ms": 1102.5,
+   "t_render_p1_ms": 269.6,
    "shot": "docs/research/screenshots/pdfjs/variant-arabic-metadata-outlines-annots.jpg",
-   "t_text_ms": 1164.3,
+   "t_text_ms": 414.1,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.058,
-    "recall_reversed": 0.032,
+    "recall_reversed": 0.026,
     "order_lcs": 0.04,
     "order_lcs_linerev": 0.051,
     "pres_forms": 1435,
@@ -3280,7 +4033,28 @@
     "n_truth_words": 525,
     "n_extracted_words": 561
    },
-   "text_head": "؟ \u0000ٯا ورا \u0000دﺎﻤﻟ ول:ٔ\u0000ال ﻞﺼ \u0000\u0000ﻟا ⏎ مﺪ \u0000ﺤ\u0000\u0000ﺴﻤﻟا \u0000 رﺎﻬ \u0000ﺣ یﻠﻋ \u0000 ٮاﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا \u0000  ﻂ \u0000\u0000ﺤ\u0000 \u0000، و \u0000 ٮﺎ"
+   "text_head": "؟ \u0000ٯا ورا \u0000دﺎﻤﻟ ول:ٔاال ﻞﺼ \u0000\u0000ﻟا ⏎ مﺪ \u0000ﺤ\u0000\u0000ﺴﻤﻟا \u0000 رﺎﻬ \u0000ﺣ یﻠﻋ \u0000 ٮاﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا \u0000  ﻂ \u0000\u0000ﺤ\u0000 \u0000، و \u0000 ٮﺎ"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 3,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/variant-arabic-metadata-outlines-annots.jpg",
+   "t_open_ms": 0.7,
+   "t_render_p1_ms": 4.4,
+   "t_text_ms": 6.7,
+   "score": {
+    "verdict": "garbage(U+FFFD)",
+    "recall_logical": 0.175,
+    "recall_reversed": 0.006,
+    "order_lcs": 0.19,
+    "order_lcs_linerev": 0.088,
+    "pres_forms": 0,
+    "replacement_chars": 555,
+    "n_truth_words": 525,
+    "n_extracted_words": 553
+   },
+   "text_head": "ال�ص⃛ل الاؤل: لماد⃛ا وراق؟ ⏎ وراق محرّر مل�̇ات PDF م�̇�̈وح المصدر �̤عمل دون حساب، و�̤ح�̇ط̇ ا"
   }
  },
  "variant-encrypted-aes256": {
@@ -3290,80 +4064,80 @@
    "text_head": ""
   },
   "mupdf": {
-   "t_open_ms": 38.5,
+   "t_open_ms": 29.3,
    "pages": 3,
-   "t_render_p1_ms": 39.8,
+   "t_render_p1_ms": 18.0,
    "shot": "docs/research/screenshots/mupdf/variant-encrypted-aes256.jpg",
-   "t_text_ms": 51.9,
+   "t_text_ms": 10.7,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "garbage",
-    "recall_logical": 0.071,
+    "recall_logical": 0.117,
     "recall_reversed": 0.006,
-    "order_lcs": 0.063,
-    "order_lcs_linerev": 0.074,
+    "order_lcs": 0.12,
+    "order_lcs_linerev": 0.086,
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 673
+    "n_extracted_words": 649
    },
-   "text_head": "ال ف صل ال أول: لما ذا ورا ق ؟ ⏎ ها ز المس ت خ دمجح ف ظ المس ت ندا ت على ي، وبعمل دو ن حساي "
+   "text_head": "ال فصل ال أول: لما ذا ورا ق ؟ ⏎  م ف توح المصدر  يعمل دو ن حسا ب ، و يح ف ظ المس ت ندا ت على"
   },
   "pdfium": {
-   "t_open_ms": 10.7,
+   "t_open_ms": 7.6,
    "pages": 3,
-   "t_render_p1_ms": 6.0,
+   "t_render_p1_ms": 17.7,
    "shot": "docs/research/screenshots/pdfium/variant-encrypted-aes256.jpg",
-   "t_text_ms": 6.0,
+   "t_text_ms": 7.8,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "garbage",
-    "recall_logical": 0.143,
-    "recall_reversed": 0.364,
-    "order_lcs": 0.076,
-    "order_lcs_linerev": 0.11,
+    "recall_logical": 0.136,
+    "recall_reversed": 0.37,
+    "order_lcs": 0.074,
+    "order_lcs_linerev": 0.109,
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 602
+    "n_extracted_words": 595
    },
-   "text_head": "وراق؟ ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لص ف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح\r ⏎ ن"
+   "text_head": "؟\r ⏎ ق\r ⏎ ورا ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لصف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح"
   },
   "pdfium-rs": {
    "open": true,
    "pages": 3,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/variant-encrypted-aes256.jpg",
-   "t_open_ms": 18.4,
-   "t_render_p1_ms": 10.6,
-   "t_text_ms": 15.1,
+   "t_open_ms": 61.2,
+   "t_render_p1_ms": 29.8,
+   "t_text_ms": 516.2,
    "score": {
     "verdict": "garbage",
-    "recall_logical": 0.143,
-    "recall_reversed": 0.364,
-    "order_lcs": 0.076,
-    "order_lcs_linerev": 0.11,
+    "recall_logical": 0.136,
+    "recall_reversed": 0.37,
+    "order_lcs": 0.074,
+    "order_lcs_linerev": 0.109,
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 602
+    "n_extracted_words": 595
    },
-   "text_head": "وراق؟ ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لص ف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح\r ⏎ ن"
+   "text_head": "؟\r ⏎ ق\r ⏎ ورا ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لصف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح"
   },
   "pdfjs": {
-   "t_open_ms": 836.9,
+   "t_open_ms": 425.6,
    "pages": 3,
-   "t_render_p1_ms": 1371.8,
+   "t_render_p1_ms": 271.1,
    "shot": "docs/research/screenshots/pdfjs/variant-encrypted-aes256.jpg",
-   "t_text_ms": 548.9,
+   "t_text_ms": 370.8,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.058,
-    "recall_reversed": 0.032,
+    "recall_reversed": 0.026,
     "order_lcs": 0.04,
     "order_lcs_linerev": 0.051,
     "pres_forms": 1435,
@@ -3371,7 +4145,12 @@
     "n_truth_words": 525,
     "n_extracted_words": 561
    },
-   "text_head": "؟ \u0000ٯا ورا \u0000دﺎﻤﻟ ول:ٔ\u0000ال ﻞﺼ \u0000\u0000ﻟا ⏎ مﺪ \u0000ﺤ\u0000\u0000ﺴﻤﻟا \u0000 رﺎﻬ \u0000ﺣ یﻠﻋ \u0000 ٮاﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا \u0000  ﻂ \u0000\u0000ﺤ\u0000 \u0000، و \u0000 ٮﺎ"
+   "text_head": "؟ \u0000ٯا ورا \u0000دﺎﻤﻟ ول:ٔاال ﻞﺼ \u0000\u0000ﻟا ⏎ مﺪ \u0000ﺤ\u0000\u0000ﺴﻤﻟا \u0000 رﺎﻬ \u0000ﺣ یﻠﻋ \u0000 ٮاﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا \u0000  ﻂ \u0000\u0000ﺤ\u0000 \u0000، و \u0000 ٮﺎ"
+  },
+  "warraq": {
+   "error": "E_PASSWORD: the document is encrypted; password missing or wrong",
+   "open": false,
+   "text_head": ""
   }
  },
  "variant-incremental-update": {
@@ -3380,33 +4159,33 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/variant-incremental-update.jpg",
-   "t_open_ms": 0.5,
-   "t_render_p1_ms": 19.5,
-   "t_text_ms": 8.2,
+   "t_open_ms": 0.9,
+   "t_render_p1_ms": 10.1,
+   "t_text_ms": 1.3,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.444,
-    "recall_reversed": 0.426,
+    "recall_reversed": 0.463,
     "order_lcs": 0.382,
     "order_lcs_linerev": 0.294,
     "pres_forms": 133,
     "replacement_chars": 0,
     "n_truth_words": 68,
-    "n_extracted_words": 74
+    "n_extracted_words": 72
    },
-   "text_head": "ﺔﻄﺴ ﺒﻣ ﺔﻴﺒﻳﴐ  ةرﻮﺗﺎﻓ ⏎ INV-2026-0042 :ةرﻮﺗﺎﻔﻟا ﻢﻗر ⏎ ٢٠٢٦ ﱪﻤﺘﺒﺳ ١٦ :ﺦﻳرﺎﺘﻟا ⏎ ﺔﻴﻨﻘﺘﻠﻟ دوز ﺔﻛﴍ  :"
+   "text_head": "ﺔﻄﺴﺒﻣ ﺔﻴﺒﻳﴐ  ةرﻮﺗﺎﻓ ⏎ INV-2026-0042 :ةرﻮﺗﺎﻔﻟا ﻢﻗر ⏎ ٢٠٢٦ ﱪﻤﺘﺒﺳ ١٦ :ﺦﻳرﺎﺘﻟا ⏎ ﺔﻴﻨﻘﺘﻠﻟ دوز ﺔﻛﴍ  :ﻞ"
   },
   "mupdf": {
-   "t_open_ms": 1.9,
+   "t_open_ms": 2.2,
    "pages": 1,
-   "t_render_p1_ms": 20.8,
+   "t_render_p1_ms": 14.0,
    "shot": "docs/research/screenshots/mupdf/variant-incremental-update.jpg",
-   "t_text_ms": 6.0,
+   "t_text_ms": 2.5,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "partial",
-    "recall_logical": 0.741,
+    "recall_logical": 0.759,
     "recall_reversed": 0.093,
     "order_lcs": 0.574,
     "order_lcs_linerev": 0.397,
@@ -3418,11 +4197,11 @@
    "text_head": "فاتورة رضيبية مبسطة ⏎ INV-2026-0042 :رقم الفاتورة ⏎ ٦٢٠٢ ٦١ سبتمرب :التاريخ ⏎ العميل: رشكة زود ل"
   },
   "pdfium": {
-   "t_open_ms": 5.4,
+   "t_open_ms": 3.4,
    "pages": 1,
-   "t_render_p1_ms": 2.0,
+   "t_render_p1_ms": 17.2,
    "shot": "docs/research/screenshots/pdfium/variant-incremental-update.jpg",
-   "t_text_ms": 0.6,
+   "t_text_ms": 0.8,
    "selectable": true,
    "open": true,
    "score": {
@@ -3443,9 +4222,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/variant-incremental-update.jpg",
-   "t_open_ms": 8.9,
-   "t_render_p1_ms": 3.5,
-   "t_text_ms": 1.3,
+   "t_open_ms": 15.1,
+   "t_render_p1_ms": 29.8,
+   "t_text_ms": 2.3,
    "score": {
     "verdict": "partial",
     "recall_logical": 0.519,
@@ -3460,11 +4239,11 @@
    "text_head": "ةطسبم ةيبيضر فاتورة\r ⏎ INV-2026-0042 :الفاتورة مقر\r ⏎ ٢٠٢٦ برمتبس ١٦ :خيراتلا\r ⏎ ةينقتلل زود ةكش"
   },
   "pdfjs": {
-   "t_open_ms": 1.6,
+   "t_open_ms": 4.1,
    "pages": 1,
-   "t_render_p1_ms": 308,
+   "t_render_p1_ms": 333.3,
    "shot": "docs/research/screenshots/pdfjs/variant-incremental-update.jpg",
-   "t_text_ms": 6.9,
+   "t_text_ms": 56.6,
    "selectable": true,
    "open": true,
    "score": {
@@ -3479,6 +4258,27 @@
     "n_extracted_words": 69
    },
    "text_head": "ﺔﻄﺴﺒﻣ ﺔﻴﺒﻳرض رةﻮﺗﺎﻓ ⏎ INV-2026-0042 رة:ﻮﺗﺎﻔﻟا ﻢﻗر ⏎ ٢٠٢٦ ربﻤﺘﺒﺳ ١٦ :ﺦﻳرﺎﺘﻟا ⏎ ﺔﻴﻨﻘﺘﻠﻟ زود ﺔﻛرش :"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 1,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/variant-incremental-update.jpg",
+   "t_open_ms": 0.7,
+   "t_render_p1_ms": 3.2,
+   "t_text_ms": 1.7,
+   "score": {
+    "verdict": "logical",
+    "recall_logical": 1.0,
+    "recall_reversed": 0.074,
+    "order_lcs": 0.956,
+    "order_lcs_linerev": 0.294,
+    "pres_forms": 0,
+    "replacement_chars": 0,
+    "n_truth_words": 68,
+    "n_extracted_words": 68
+   },
+   "text_head": "فاتورة ضريبية مبسطة ⏎ رقم الفاتورة: INV-2026-0042 ⏎ التاريخ: ١٦ سبتمبر ٢٠٢٦ ⏎ العميل: شركة زود ل"
   }
  },
  "variant-linearized": {
@@ -3487,9 +4287,9 @@
    "pages": 3,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/variant-linearized.jpg",
-   "t_open_ms": 1.0,
-   "t_render_p1_ms": 97.7,
-   "t_text_ms": 28.6,
+   "t_open_ms": 0.8,
+   "t_render_p1_ms": 12.6,
+   "t_text_ms": 7.7,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.052,
@@ -3499,85 +4299,85 @@
     "pres_forms": 1490,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 564
+    "n_extracted_words": 563
    },
-   "text_head": "؟ٯ\u0000ارو اد\u0000ﺎﻤﻟ :لؤ\u0000لا ﻞﺼ\u0000\u0000ﻟا ⏎ مﺪﺤ\u0000\u0000\u0000ﺴﻤﻟا ر\u0000ﺎﻬﺣ\u0000 ﯽﻠﻋ ٮ\u0000اﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا ﻂ\u0000\u0000\u0000ﺤ\u0000\u0000و ،ٮ\u0000ﺎﺴﺣ ںود ﻞﻤﻌ\u0000\u0000 "
+   "text_head": "؟ٯ\u0000ارو اد\u0000ﺎﻤﻟ :لؤالا ﻞﺼ\u0000\u0000ﻟا ⏎ مﺪﺤ\u0000\u0000\u0000ﺴﻤﻟا ر\u0000ﺎﻬﺣ\u0000 ﯽﻠﻋ ٮ\u0000اﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا ﻂ\u0000\u0000\u0000ﺤ\u0000\u0000و ،ٮ\u0000ﺎﺴﺣ ںود ﻞﻤﻌ\u0000\u0000 "
   },
   "mupdf": {
-   "t_open_ms": 1.0,
+   "t_open_ms": 0.8,
    "pages": 3,
-   "t_render_p1_ms": 37.4,
+   "t_render_p1_ms": 13.9,
    "shot": "docs/research/screenshots/mupdf/variant-linearized.jpg",
-   "t_text_ms": 59.9,
+   "t_text_ms": 11.9,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "garbage",
-    "recall_logical": 0.071,
+    "recall_logical": 0.117,
     "recall_reversed": 0.006,
-    "order_lcs": 0.063,
-    "order_lcs_linerev": 0.074,
+    "order_lcs": 0.12,
+    "order_lcs_linerev": 0.086,
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 673
+    "n_extracted_words": 649
    },
-   "text_head": "ال ف صل ال أول: لما ذا ورا ق ؟ ⏎ ها ز المس ت خ دمجح ف ظ المس ت ندا ت على ي، وبعمل دو ن حساي "
+   "text_head": "ال فصل ال أول: لما ذا ورا ق ؟ ⏎  م ف توح المصدر  يعمل دو ن حسا ب ، و يح ف ظ المس ت ندا ت على"
   },
   "pdfium": {
-   "t_open_ms": 4.8,
+   "t_open_ms": 3.7,
    "pages": 3,
-   "t_render_p1_ms": 6.0,
+   "t_render_p1_ms": 18.0,
    "shot": "docs/research/screenshots/pdfium/variant-linearized.jpg",
-   "t_text_ms": 5.8,
+   "t_text_ms": 7.7,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "garbage",
-    "recall_logical": 0.143,
-    "recall_reversed": 0.364,
-    "order_lcs": 0.076,
-    "order_lcs_linerev": 0.11,
+    "recall_logical": 0.136,
+    "recall_reversed": 0.37,
+    "order_lcs": 0.074,
+    "order_lcs_linerev": 0.109,
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 602
+    "n_extracted_words": 595
    },
-   "text_head": "وراق؟ ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لص ف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح\r ⏎ ن"
+   "text_head": "؟\r ⏎ ق\r ⏎ ورا ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لصف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح"
   },
   "pdfium-rs": {
    "open": true,
    "pages": 3,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/variant-linearized.jpg",
-   "t_open_ms": 8.9,
-   "t_render_p1_ms": 11.4,
-   "t_text_ms": 13.6,
+   "t_open_ms": 99.8,
+   "t_render_p1_ms": 11.7,
+   "t_text_ms": 32.1,
    "score": {
     "verdict": "garbage",
-    "recall_logical": 0.143,
-    "recall_reversed": 0.364,
-    "order_lcs": 0.076,
-    "order_lcs_linerev": 0.11,
+    "recall_logical": 0.136,
+    "recall_reversed": 0.37,
+    "order_lcs": 0.074,
+    "order_lcs_linerev": 0.109,
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 602
+    "n_extracted_words": 595
    },
-   "text_head": "وراق؟ ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لص ف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح\r ⏎ ن"
+   "text_head": "؟\r ⏎ ق\r ⏎ ورا ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لصف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح"
   },
   "pdfjs": {
-   "t_open_ms": 2,
+   "t_open_ms": 80.5,
    "pages": 3,
-   "t_render_p1_ms": 414.7,
+   "t_render_p1_ms": 1339.2,
    "shot": "docs/research/screenshots/pdfjs/variant-linearized.jpg",
-   "t_text_ms": 226.5,
+   "t_text_ms": 376.9,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.058,
-    "recall_reversed": 0.032,
+    "recall_reversed": 0.026,
     "order_lcs": 0.04,
     "order_lcs_linerev": 0.051,
     "pres_forms": 1435,
@@ -3585,7 +4385,28 @@
     "n_truth_words": 525,
     "n_extracted_words": 561
    },
-   "text_head": "؟ \u0000ٯا ورا \u0000دﺎﻤﻟ ول:ٔ\u0000ال ﻞﺼ \u0000\u0000ﻟا ⏎ مﺪ \u0000ﺤ\u0000\u0000ﺴﻤﻟا \u0000 رﺎﻬ \u0000ﺣ یﻠﻋ \u0000 ٮاﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا \u0000  ﻂ \u0000\u0000ﺤ\u0000 \u0000، و \u0000 ٮﺎ"
+   "text_head": "؟ \u0000ٯا ورا \u0000دﺎﻤﻟ ول:ٔاال ﻞﺼ \u0000\u0000ﻟا ⏎ مﺪ \u0000ﺤ\u0000\u0000ﺴﻤﻟا \u0000 رﺎﻬ \u0000ﺣ یﻠﻋ \u0000 ٮاﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا \u0000  ﻂ \u0000\u0000ﺤ\u0000 \u0000، و \u0000 ٮﺎ"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 3,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/variant-linearized.jpg",
+   "t_open_ms": 0.7,
+   "t_render_p1_ms": 4.2,
+   "t_text_ms": 6.7,
+   "score": {
+    "verdict": "garbage(U+FFFD)",
+    "recall_logical": 0.175,
+    "recall_reversed": 0.006,
+    "order_lcs": 0.19,
+    "order_lcs_linerev": 0.088,
+    "pres_forms": 0,
+    "replacement_chars": 555,
+    "n_truth_words": 525,
+    "n_extracted_words": 553
+   },
+   "text_head": "ال�ص⃛ل الاؤل: لماد⃛ا وراق؟ ⏎ وراق محرّر مل�̇ات PDF م�̇�̈وح المصدر �̤عمل دون حساب، و�̤ح�̇ط̇ ا"
   }
  },
  "variant-objectstreams-xrefstream": {
@@ -3594,9 +4415,9 @@
    "pages": 3,
    "selectable": true,
    "shot": "docs/research/screenshots/hayro/variant-objectstreams-xrefstream.jpg",
-   "t_open_ms": 0.6,
-   "t_render_p1_ms": 83.4,
-   "t_text_ms": 42.2,
+   "t_open_ms": 1.1,
+   "t_render_p1_ms": 18.1,
+   "t_text_ms": 6.9,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.052,
@@ -3606,85 +4427,85 @@
     "pres_forms": 1490,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 564
+    "n_extracted_words": 563
    },
-   "text_head": "؟ٯ\u0000ارو اد\u0000ﺎﻤﻟ :لؤ\u0000لا ﻞﺼ\u0000\u0000ﻟا ⏎ مﺪﺤ\u0000\u0000\u0000ﺴﻤﻟا ر\u0000ﺎﻬﺣ\u0000 ﯽﻠﻋ ٮ\u0000اﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا ﻂ\u0000\u0000\u0000ﺤ\u0000\u0000و ،ٮ\u0000ﺎﺴﺣ ںود ﻞﻤﻌ\u0000\u0000 "
+   "text_head": "؟ٯ\u0000ارو اد\u0000ﺎﻤﻟ :لؤالا ﻞﺼ\u0000\u0000ﻟا ⏎ مﺪﺤ\u0000\u0000\u0000ﺴﻤﻟا ر\u0000ﺎﻬﺣ\u0000 ﯽﻠﻋ ٮ\u0000اﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا ﻂ\u0000\u0000\u0000ﺤ\u0000\u0000و ،ٮ\u0000ﺎﺴﺣ ںود ﻞﻤﻌ\u0000\u0000 "
   },
   "mupdf": {
-   "t_open_ms": 1.4,
+   "t_open_ms": 1.1,
    "pages": 3,
-   "t_render_p1_ms": 48.2,
+   "t_render_p1_ms": 13.4,
    "shot": "docs/research/screenshots/mupdf/variant-objectstreams-xrefstream.jpg",
-   "t_text_ms": 50.9,
+   "t_text_ms": 9.7,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "garbage",
-    "recall_logical": 0.071,
+    "recall_logical": 0.117,
     "recall_reversed": 0.006,
-    "order_lcs": 0.063,
-    "order_lcs_linerev": 0.074,
+    "order_lcs": 0.12,
+    "order_lcs_linerev": 0.086,
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 673
+    "n_extracted_words": 649
    },
-   "text_head": "ال ف صل ال أول: لما ذا ورا ق ؟ ⏎ ها ز المس ت خ دمجح ف ظ المس ت ندا ت على ي، وبعمل دو ن حساي "
+   "text_head": "ال فصل ال أول: لما ذا ورا ق ؟ ⏎  م ف توح المصدر  يعمل دو ن حسا ب ، و يح ف ظ المس ت ندا ت على"
   },
   "pdfium": {
-   "t_open_ms": 4.7,
+   "t_open_ms": 3.4,
    "pages": 3,
-   "t_render_p1_ms": 6.0,
+   "t_render_p1_ms": 18.5,
    "shot": "docs/research/screenshots/pdfium/variant-objectstreams-xrefstream.jpg",
-   "t_text_ms": 6.0,
+   "t_text_ms": 7.8,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "garbage",
-    "recall_logical": 0.143,
-    "recall_reversed": 0.364,
-    "order_lcs": 0.076,
-    "order_lcs_linerev": 0.11,
+    "recall_logical": 0.136,
+    "recall_reversed": 0.37,
+    "order_lcs": 0.074,
+    "order_lcs_linerev": 0.109,
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 602
+    "n_extracted_words": 595
    },
-   "text_head": "وراق؟ ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لص ف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح\r ⏎ ن"
+   "text_head": "؟\r ⏎ ق\r ⏎ ورا ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لصف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح"
   },
   "pdfium-rs": {
    "open": true,
    "pages": 3,
    "selectable": true,
    "shot": "docs/research/screenshots/pdfium-rs/variant-objectstreams-xrefstream.jpg",
-   "t_open_ms": 10.3,
-   "t_render_p1_ms": 12.0,
-   "t_text_ms": 14.1,
+   "t_open_ms": 14.9,
+   "t_render_p1_ms": 13.7,
+   "t_text_ms": 24.8,
    "score": {
     "verdict": "garbage",
-    "recall_logical": 0.143,
-    "recall_reversed": 0.364,
-    "order_lcs": 0.076,
-    "order_lcs_linerev": 0.11,
+    "recall_logical": 0.136,
+    "recall_reversed": 0.37,
+    "order_lcs": 0.074,
+    "order_lcs_linerev": 0.109,
     "pres_forms": 0,
     "replacement_chars": 0,
     "n_truth_words": 525,
-    "n_extracted_words": 602
+    "n_extracted_words": 595
    },
-   "text_head": "وراق؟ ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لص ف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح\r ⏎ ن"
+   "text_head": "؟\r ⏎ ق\r ⏎ ورا ا\r ⏎ ذ\r ⏎ امل :ول\r ⏎ أ ال لصف\r ⏎ لا\r ⏎ تخدم\r ⏎ سملا\r ⏎ ز\r ⏎ اهج ىلع\r ⏎ ت\r ⏎ دا\r ⏎ نت\r ⏎ سملا ظفحيو ،باسح"
   },
   "pdfjs": {
-   "t_open_ms": 4.3,
+   "t_open_ms": 17.7,
    "pages": 3,
-   "t_render_p1_ms": 394.6,
+   "t_render_p1_ms": 278.6,
    "shot": "docs/research/screenshots/pdfjs/variant-objectstreams-xrefstream.jpg",
-   "t_text_ms": 347.3,
+   "t_text_ms": 105.2,
    "selectable": true,
    "open": true,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.058,
-    "recall_reversed": 0.032,
+    "recall_reversed": 0.026,
     "order_lcs": 0.04,
     "order_lcs_linerev": 0.051,
     "pres_forms": 1435,
@@ -3692,7 +4513,28 @@
     "n_truth_words": 525,
     "n_extracted_words": 561
    },
-   "text_head": "؟ \u0000ٯا ورا \u0000دﺎﻤﻟ ول:ٔ\u0000ال ﻞﺼ \u0000\u0000ﻟا ⏎ مﺪ \u0000ﺤ\u0000\u0000ﺴﻤﻟا \u0000 رﺎﻬ \u0000ﺣ یﻠﻋ \u0000 ٮاﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا \u0000  ﻂ \u0000\u0000ﺤ\u0000 \u0000، و \u0000 ٮﺎ"
+   "text_head": "؟ \u0000ٯا ورا \u0000دﺎﻤﻟ ول:ٔاال ﻞﺼ \u0000\u0000ﻟا ⏎ مﺪ \u0000ﺤ\u0000\u0000ﺴﻤﻟا \u0000 رﺎﻬ \u0000ﺣ یﻠﻋ \u0000 ٮاﺪ\u0000\u0000\u0000\u0000ﺴﻤﻟا \u0000  ﻂ \u0000\u0000ﺤ\u0000 \u0000، و \u0000 ٮﺎ"
+  },
+  "warraq": {
+   "open": true,
+   "pages": 3,
+   "selectable": true,
+   "shot": "docs/research/screenshots/warraq/variant-objectstreams-xrefstream.jpg",
+   "t_open_ms": 0.6,
+   "t_render_p1_ms": 4.3,
+   "t_text_ms": 6.8,
+   "score": {
+    "verdict": "garbage(U+FFFD)",
+    "recall_logical": 0.175,
+    "recall_reversed": 0.006,
+    "order_lcs": 0.19,
+    "order_lcs_linerev": 0.088,
+    "pres_forms": 0,
+    "replacement_chars": 555,
+    "n_truth_words": 525,
+    "n_extracted_words": 553
+   },
+   "text_head": "ال�ص⃛ل الاؤل: لماد⃛ا وراق؟ ⏎ وراق محرّر مل�̇ات PDF م�̇�̈وح المصدر �̤عمل دون حساب، و�̤ح�̇ط̇ ا"
   }
  }
 }

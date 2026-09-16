@@ -12,7 +12,8 @@ PASSWORDS = {"variant-encrypted-aes256.pdf": "warraq"}
 CATEGORIES = {  # what each generated file is for (the "class" column of the acid test)
     "chrome-cairo-mixed-invoice": "Skia/PDF (Chrome print, Google Docs class), Cairo, mixed Arabic/English invoice, Arabic-Indic digits",
     "chrome-amiri-tashkeel-ligatures": "Skia/PDF, Amiri, full tashkeel, lam-alef and Allah ligatures, kashida",
-    "chrome-notonaskh-justified-3pages": "Skia/PDF, Noto Naskh Arabic, justified paragraphs, 3 pages",
+    "chrome-notonaskh-justified-3pages": "Skia/PDF, Noto Naskh Arabic (static instance, CID font as in Google Docs exports), justified paragraphs, 3 pages",
+    "chrome-variablefont-type3-notonaskh-justified": "Skia/PDF with a VARIABLE webfont: embedded as Type3, dotted letters split into skeleton + dot glyphs mapped to U+0000",
     "chrome-tajawal-persian-urdu-digits": "Skia/PDF, Tajawal + Scheherazade fallback, Persian/Urdu letters, Eastern digits",
     "chrome-windows-arial-tahoma-times": "Skia/PDF, Windows system fonts (Arial, Tahoma, Times New Roman)",
     "chrome-ibmplex-bidi-stress": "Skia/PDF, IBM Plex Sans Arabic, bidi stress (numbers, brackets, URLs, LTR paragraph with Arabic)",

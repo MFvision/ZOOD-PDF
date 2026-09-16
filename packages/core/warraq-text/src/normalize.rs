@@ -4,7 +4,7 @@ use unicode_normalization::UnicodeNormalization;
 /// Tashkeel, tatweel and bidi controls that never matter for search.
 pub fn is_mark_or_control(c: char) -> bool {
     matches!(c,
-        '\u{064B}'..='\u{065F}' | '\u{0670}' | '\u{06D6}'..='\u{06ED}' | '\u{0640}' |
+        '\u{064B}'..='\u{065F}' | '\u{0670}' | '\u{06D6}'..='\u{06ED}' | '\u{0640}' | '\u{0300}'..='\u{036F}' | '\u{20D0}'..='\u{20FF}' |
         '\u{200B}'..='\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}' | '\u{FEFF}')
 }
 

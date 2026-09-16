@@ -158,7 +158,9 @@ fn reorder_units(units: Vec<Unit>) -> (String, Direction) {
     // Latin-attached kind of each member (RTL base): a number joins Latin text when a Latin member
     // is on either side of it within a chain that contains no RTL letter and no bracket (bracket
     // pairs take the embedding direction, UAX #9 N0, so they split chains).
-    let is_bracket = |u: &Unit| u.chars.len() == 1 && mirror_bracket(u.chars[0]) != u.chars[0];
+    // only true bracket pairs (UAX #9 BD14/BD15) split chains; < > and quotation marks do not
+    let is_bracket =
+        |u: &Unit| u.chars.len() == 1 && matches!(u.chars[0], '(' | ')' | '[' | ']' | '{' | '}');
     let mut latin_kind: Vec<bool> = units.iter().map(|u| u.class == Class::Ltr).collect();
     for forward in [true, false] {
         let mut attached = false;
@@ -289,6 +291,73 @@ pub fn normalize_persian_letters(s: &str) -> String {
         .collect()
 }
 
+/// Recompose a skeleton letter followed by combining dot marks (see the render crate) into the
+/// dotted letter: ٮ + dot below = ب, ٯ + two dots above = ق, ه + two dots above = ة, ...
+pub fn recompose_dots(cluster: &str) -> String {
+    let chars: Vec<char> = cluster.chars().collect();
+    if chars.len() < 2 {
+        return cluster.to_string();
+    }
+    let dots = |c: char| match c {
+        '\u{0307}' => Some((true, 1)),
+        '\u{0308}' => Some((true, 2)),
+        '\u{20DB}' => Some((true, 3)),
+        '\u{0323}' => Some((false, 1)),
+        '\u{0324}' => Some((false, 2)),
+        '\u{20E8}' => Some((false, 3)),
+        _ => None,
+    };
+    let mut out = String::with_capacity(cluster.len());
+    let mut i = 0;
+    while i < chars.len() {
+        let base = chars[i];
+        let mut j = i + 1;
+        let mut letter = base;
+        while j < chars.len() {
+            if let Some((above, n)) = dots(chars[j]) {
+                letter = match (letter, above, n) {
+                    ('ٮ', false, 1) => 'ب',
+                    ('ٮ', true, 2) => 'ت',
+                    ('ٮ', true, 3) => 'ث',
+                    ('ٮ', true, 1) | ('ں', true, 1) => 'ن',
+                    ('ٮ', false, 2) | ('ى', false, 2) => 'ي',
+                    ('ٮ', false, 3) => 'پ',
+                    ('ح', true, 1) => 'خ',
+                    ('ح', false, 1) => 'ج',
+                    ('ح', false, 3) => 'چ',
+                    ('د', true, 1) => 'ذ',
+                    ('ر', true, 1) => 'ز',
+                    ('ر', true, 3) => 'ژ',
+                    ('س', true, 3) => 'ش',
+                    ('ص', true, 1) => 'ض',
+                    ('ط', true, 1) => 'ظ',
+                    ('ع', true, 1) => 'غ',
+                    ('ڡ', true, 1) => 'ف',
+                    ('ڡ', true, 3) => 'ڤ',
+                    ('ٯ', true, 2) => 'ق',
+                    ('ه', true, 2) => 'ة',
+                    ('ک', true, 1) | ('ك', true, 1) => 'ك',
+                    (other, _, _) => {
+                        out.push(other);
+                        out.push(chars[j]);
+                        letter = '\0';
+                        j += 1;
+                        continue;
+                    }
+                };
+                j += 1;
+            } else {
+                break;
+            }
+        }
+        if letter != '\0' {
+            out.push(letter);
+        }
+        i = j;
+    }
+    out
+}
+
 struct Cluster {
     x: f32,
     adv: f32,
@@ -297,18 +366,26 @@ struct Cluster {
 
 /// Group glyphs into lines, order clusters by position, attach marks, and
 /// convert each line to logical order.
+const PLACEHOLDER: &str = "\u{FFFD}";
+
+/// Text of a glyph, or the placeholder when the producer gave it none.
+fn glyph_text(g: &PositionedGlyph) -> &str {
+    g.text
+        .as_deref()
+        .filter(|t| !t.is_empty())
+        .unwrap_or(PLACEHOLDER)
+}
+
 pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
-    let mut items: Vec<&PositionedGlyph> = glyphs
-        .iter()
-        .filter(|g| g.text.as_ref().map(|t| !t.is_empty()).unwrap_or(false))
-        .collect();
+    // unknown glyphs (no ToUnicode, no cmap entry) are kept as U+FFFD so words are not silently merged
+    let mut items: Vec<&PositionedGlyph> = glyphs.iter().filter(|g| g.size > 0.0).collect();
     if items.is_empty() {
         return vec![];
     }
     let is_mark = |g: &PositionedGlyph| {
-        g.text
-            .as_ref()
-            .and_then(|t| t.chars().next())
+        glyph_text(g)
+            .chars()
+            .next()
             .map(crate::normalize::is_mark_or_control)
             .unwrap_or(false)
     };
@@ -372,13 +449,37 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
             .map(|g| Cluster {
                 x: g.x,
                 adv: g.advance,
-                text: g.text.clone().unwrap_or_default(),
+                text: glyph_text(g).to_string(),
             })
             .collect();
         for (bi, m) in &attached[li] {
             if let Some(c) = clusters.get_mut(*bi) {
-                c.text.push_str(m.text.as_deref().unwrap_or(""));
+                let t = glyph_text(m);
+                let first = t.chars().next().unwrap_or('\0');
+                let dot =
+                    t.chars().count() == 1 && matches!(first, '\u{0307}' | '\u{0308}' | '\u{20DB}');
+                if !dot {
+                    c.text.push_str(t);
+                    continue;
+                }
+                // recovered dot glyphs sit clearly above or below the baseline (y grows downwards);
+                // a blob on the baseline is a small letter form, not a dot
+                let dy = m.y - y;
+                if dy.abs() < 0.08 * size {
+                    c.text.push('\u{FFFD}');
+                } else if dy > 0.0 {
+                    c.text.push(match first {
+                        '\u{0307}' => '\u{0323}',
+                        '\u{0308}' => '\u{0324}',
+                        _ => '\u{20E8}',
+                    });
+                } else {
+                    c.text.push(first);
+                }
             }
+        }
+        for c in clusters.iter_mut() {
+            c.text = recompose_dots(&c.text);
         }
         // 3. visual string with spaces on gaps
         let median_adv = {
@@ -525,6 +626,17 @@ mod tests {
             font: 0,
         }];
         assert_eq!(reconstruct_lines(&pres)[0].text, "لا");
+    }
+
+    #[test]
+    fn skeleton_letters_with_combining_dots_recompose() {
+        assert_eq!(recompose_dots("ٮ\u{0323}"), "ب");
+        assert_eq!(recompose_dots("ٯ\u{0308}"), "ق");
+        assert_eq!(recompose_dots("ه\u{0308}"), "ة");
+        assert_eq!(recompose_dots("ڡ\u{0307}"), "ف");
+        assert_eq!(recompose_dots("س\u{20DB}"), "ش");
+        assert_eq!(recompose_dots("ب\u{064E}"), "ب\u{064E}"); // real marks untouched
+        assert_eq!(recompose_dots("ا"), "ا");
     }
 
     #[test]

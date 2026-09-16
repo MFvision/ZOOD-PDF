@@ -11,11 +11,152 @@ use hayro_interpret::{
     InterpreterSettings, Paint, PathDrawMode, SoftMask,
 };
 use skrifa::instance::{LocationRef, Size};
+use skrifa::outline::{DrawSettings, OutlinePen};
 use skrifa::raw::TableProvider;
 use skrifa::{GlyphId, MetadataProvider};
 use std::collections::HashMap;
 use std::sync::Arc;
 use warraq_text::PositionedGlyph;
+
+/// Accumulates the bounding box of an outline (font units).
+#[derive(Default)]
+struct BoundsPen {
+    min: (f32, f32),
+    max: (f32, f32),
+    any: bool,
+}
+
+impl BoundsPen {
+    fn add(&mut self, x: f32, y: f32) {
+        if !self.any {
+            self.min = (x, y);
+            self.max = (x, y);
+            self.any = true;
+        } else {
+            self.min = (self.min.0.min(x), self.min.1.min(y));
+            self.max = (self.max.0.max(x), self.max.1.max(y));
+        }
+    }
+}
+
+impl OutlinePen for BoundsPen {
+    fn move_to(&mut self, x: f32, y: f32) {
+        self.add(x, y);
+    }
+    fn line_to(&mut self, x: f32, y: f32) {
+        self.add(x, y);
+    }
+    fn quad_to(&mut self, cx0: f32, cy0: f32, x: f32, y: f32) {
+        self.add(cx0, cy0);
+        self.add(x, y);
+    }
+    fn curve_to(&mut self, cx0: f32, cy0: f32, cx1: f32, cy1: f32, x: f32, y: f32) {
+        self.add(cx0, cy0);
+        self.add(cx1, cy1);
+        self.add(x, y);
+    }
+    fn close(&mut self) {}
+}
+
+/// Records the device-space bounding box of everything drawn into it (Type3 glyph procedures).
+#[derive(Default)]
+struct BoundsDevice {
+    min: (f64, f64),
+    max: (f64, f64),
+    any: bool,
+}
+
+impl BoundsDevice {
+    fn add_rect(&mut self, r: Rect) {
+        for (x, y) in [(r.x0, r.y0), (r.x1, r.y1)] {
+            if !self.any {
+                self.min = (x, y);
+                self.max = (x, y);
+                self.any = true;
+            } else {
+                self.min = (self.min.0.min(x), self.min.1.min(y));
+                self.max = (self.max.0.max(x), self.max.1.max(y));
+            }
+        }
+    }
+}
+
+impl<'a> Device<'a> for BoundsDevice {
+    fn set_soft_mask(&mut self, _: Option<SoftMask<'a>>) {}
+    fn set_blend_mode(&mut self, _: BlendMode) {}
+    fn draw_path(&mut self, path: &BezPath, transform: Affine, _: &Paint<'a>, _: &PathDrawMode) {
+        use hayro::vello_cpu::kurbo::Shape;
+        let mut p = path.clone();
+        p.apply_affine(transform);
+        self.add_rect(p.bounding_box());
+    }
+    fn push_clip_path(&mut self, _: &ClipPath) {}
+    fn push_transparency_group(&mut self, _: f32, _: Option<SoftMask<'a>>, _: BlendMode) {}
+    fn draw_glyph(
+        &mut self,
+        _: &Glyph<'a>,
+        _: Affine,
+        _: Affine,
+        _: &Paint<'a>,
+        _: &GlyphDrawMode,
+    ) {
+    }
+    fn draw_image(&mut self, _: Image<'a, '_>, transform: Affine) {
+        self.add_rect(transform.transform_rect_bbox(Rect::new(0.0, 0.0, 1.0, 1.0)));
+    }
+    fn pop_clip_path(&mut self) {}
+    fn pop_transparency_group(&mut self) {}
+}
+
+/// Classify a small blob (bounds in em units, y up) as a combining dot mark; see `dot_mark_from_outline`.
+fn dot_mark_from_bounds(w: f32, h: f32) -> Option<char> {
+    if h > 0.22 || w > 0.45 || h < 0.03 {
+        return None;
+    }
+    // above-variant by count; `warraq-text` flips to the below-variant from the glyph's position
+    Some(
+        match if w < 0.17 {
+            1
+        } else if h > 0.6 * w {
+            3
+        } else {
+            2
+        } {
+            1 => '\u{0307}',
+            2 => '\u{0308}',
+            _ => '\u{20DB}',
+        },
+    )
+}
+
+/// Fonts such as Noto Naskh Arabic build dotted letters from a skeleton glyph plus separate
+/// dot glyphs; producers map the dots to nothing. Classify a text-less, zero-advance glyph by its
+/// outline: a dot-sized blob above or below the baseline becomes a combining dot mark
+/// (U+0307/U+0308/U+20DB above, U+0323/U+0324/U+20E8 below) which `warraq-text` recomposes.
+fn dot_mark_from_outline(data: &[u8], gid: u32) -> Option<(char, (f32, f32))> {
+    let f = skrifa::FontRef::new(data).ok()?;
+    let upem = f.head().ok()?.units_per_em() as f32;
+    let outline = f.outline_glyphs().get(GlyphId::new(gid))?;
+    let mut pen = BoundsPen::default();
+    outline
+        .draw(
+            DrawSettings::unhinted(Size::unscaled(), LocationRef::default()),
+            &mut pen,
+        )
+        .ok()?;
+    if !pen.any {
+        return None;
+    }
+    let (w, h) = (
+        (pen.max.0 - pen.min.0) / upem,
+        (pen.max.1 - pen.min.1) / upem,
+    );
+    let center = (
+        (pen.min.0 + pen.max.0) / 2.0 / upem,
+        (pen.min.1 + pen.max.1) / 2.0 / upem,
+    );
+    dot_mark_from_bounds(w, h).map(|m| (m, center))
+}
 
 pub struct HayroDoc {
     pdf: Pdf,
@@ -47,14 +188,14 @@ struct GlyphDevice {
 
 impl GlyphDevice {
     fn cmap_char(&mut self, data: &[u8], font: u32, gid: u32) -> Option<char> {
-        if !self.reverse_cmaps.contains_key(&font) {
+        let rev = self.reverse_cmaps.entry(font).or_insert_with(|| {
             let mut rev: HashMap<u32, char> = HashMap::new();
             if let Ok(f) = skrifa::FontRef::new(data) {
                 for (cp, g) in f.charmap().mappings() {
                     if let Some(ch) = char::from_u32(cp) {
                         // prefer real letters over private-use and presentation forms
+                        let pua = |c: char| ('\u{E000}'..='\u{F8FF}').contains(&c);
                         let better = |old: char, new: char| -> bool {
-                            let pua = |c: char| ('\u{E000}'..='\u{F8FF}').contains(&c);
                             (pua(old) && !pua(new))
                                 || (warraq_text::normalize::is_presentation_form(old)
                                     && !warraq_text::normalize::is_presentation_form(new)
@@ -69,12 +210,9 @@ impl GlyphDevice {
                     }
                 }
             }
-            self.reverse_cmaps.insert(font, rev);
-        }
-        self.reverse_cmaps
-            .get(&font)
-            .and_then(|m| m.get(&gid))
-            .copied()
+            rev
+        });
+        rev.get(&gid).copied()
     }
 
     fn advance(&mut self, data: &[u8], font: u32, gid: u32) -> f32 {
@@ -107,7 +245,7 @@ impl<'a> Device<'a> for GlyphDevice {
         glyph: &Glyph<'a>,
         transform: Affine,
         glyph_transform: Affine,
-        _: &Paint<'a>,
+        paint: &Paint<'a>,
         _: &GlyphDrawMode,
     ) {
         let t = transform * glyph_transform;
@@ -122,6 +260,7 @@ impl<'a> Device<'a> for GlyphDevice {
                 BfString::String(st) => st,
             })
             .filter(|t| !t.is_empty() && !t.chars().all(|c| c == '\0'));
+        let mut center: Option<(f32, f32)> = None;
         let (font, gid, adv) = match glyph {
             Glyph::Outline(g) => {
                 let gid = g.glyph_id().to_u32();
@@ -134,16 +273,70 @@ impl<'a> Device<'a> for GlyphDevice {
                         if text.is_none() {
                             text = self.cmap_char(bytes, font, gid).map(|c| c.to_string());
                         }
-                        (font, gid, self.advance(bytes, font, gid) * size)
+                        let adv = self.advance(bytes, font, gid);
+                        if text.is_none() && adv == 0.0 {
+                            if let Some((m, (cx, cy))) = dot_mark_from_outline(bytes, gid) {
+                                text = Some(m.to_string());
+                                // glyph units are 1/1000 em in text space: map the center through the glyph transform
+                                let p = t * hayro::vello_cpu::kurbo::Point::new(
+                                    cx as f64 * 1000.0,
+                                    cy as f64 * 1000.0,
+                                );
+                                center = Some((p.x as f32, p.y as f32));
+                            }
+                        }
+                        (font, gid, adv * size)
                     }
                     None => (u32::MAX, gid, 0.0),
                 }
             }
-            Glyph::Type3(_) => (u32::MAX, 0, 0.0),
+            Glyph::Type3(g) => {
+                let mut b = BoundsDevice::default();
+                g.interpret(&mut b, transform, glyph_transform, paint);
+                if b.any && size > 0.0 {
+                    let (w, h) = (
+                        ((b.max.0 - b.min.0) as f32) / size,
+                        ((b.max.1 - b.min.1) as f32) / size,
+                    );
+                    if text.is_none() {
+                        if let Some(m) = dot_mark_from_bounds(w, h) {
+                            text = Some(m.to_string());
+                            center = Some((
+                                ((b.min.0 + b.max.0) / 2.0) as f32,
+                                ((b.min.1 + b.max.1) / 2.0) as f32,
+                            ));
+                        }
+                    }
+                    let is_dot = text
+                        .as_ref()
+                        .map(|t| {
+                            t.chars().all(warraq_text::normalize::is_mark_or_control)
+                                || matches!(
+                                    t.as_str(),
+                                    "\u{0307}"
+                                        | "\u{0308}"
+                                        | "\u{20DB}"
+                                        | "\u{0323}"
+                                        | "\u{0324}"
+                                        | "\u{20E8}"
+                                )
+                        })
+                        .unwrap_or(false);
+                    // Type3 fonts carry no metrics here: estimate the advance from the drawn width
+                    let adv = if is_dot {
+                        0.0
+                    } else {
+                        (b.max.0 - b.min.0) as f32 * 1.12
+                    };
+                    (u32::MAX, 0, adv)
+                } else {
+                    (u32::MAX, 0, 0.0)
+                }
+            }
         };
         self.glyphs.push(PositionedGlyph {
-            x: c[4] as f32,
-            y: c[5] as f32,
+            x: center.map(|p| p.0).unwrap_or(c[4] as f32),
+            y: center.map(|p| p.1).unwrap_or(c[5] as f32),
             size,
             advance: adv,
             text,

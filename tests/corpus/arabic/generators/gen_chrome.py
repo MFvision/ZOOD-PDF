@@ -17,14 +17,16 @@ HTML = GEN / "html"; OUT = REPO / "tests/corpus/arabic/generated"; TRUTH = REPO 
 for d in (HTML, OUT, TRUTH): d.mkdir(parents=True, exist_ok=True)
 
 FONT_FACES = """
-@font-face{font-family:'Cairo';src:url('/tests/fonts/Cairo-Variable.ttf')}
+@font-face{font-family:'Cairo';src:url('/tests/fonts/static/Cairo-Regular-static.ttf')}
+@font-face{font-family:'Cairo Variable';src:url('/tests/fonts/Cairo-Variable.ttf')}
 @font-face{font-family:'Amiri';src:url('/tests/fonts/Amiri-Regular.ttf')}
-@font-face{font-family:'Noto Naskh Arabic';src:url('/tests/fonts/NotoNaskhArabic-Variable.ttf')}
-@font-face{font-family:'Noto Sans Arabic';src:url('/tests/fonts/NotoSansArabic-Variable.ttf')}
+@font-face{font-family:'Noto Naskh Arabic';src:url('/tests/fonts/static/NotoNaskhArabic-Regular-static.ttf')}
+@font-face{font-family:'Noto Naskh Arabic Variable';src:url('/tests/fonts/NotoNaskhArabic-Variable.ttf')}
+@font-face{font-family:'Noto Sans Arabic';src:url('/tests/fonts/static/NotoSansArabic-Regular-static.ttf')}
 @font-face{font-family:'Tajawal';src:url('/tests/fonts/Tajawal-Regular.ttf')}
 @font-face{font-family:'IBM Plex Sans Arabic';src:url('/tests/fonts/IBMPlexSansArabic-Regular.ttf')}
 @font-face{font-family:'Scheherazade New';src:url('/tests/fonts/ScheherazadeNew-Regular.ttf')}
-@font-face{font-family:'Inter';src:url('/tests/fonts/Inter-Variable.ttf')}
+@font-face{font-family:'Inter';src:url('/tests/fonts/static/Inter-Regular-static.ttf')}
 """
 BASE_CSS = "@page{size:A4;margin:15mm} body{direction:rtl;text-align:right;line-height:1.9;font-size:14pt;margin:0} h1{font-size:22pt} p{margin:0 0 8pt} table{border-collapse:collapse;width:100%} td,th{border:1px solid #444;padding:4pt 8pt} .ltr{direction:ltr;text-align:left}"
 
@@ -77,6 +79,8 @@ FILES = {
     "chrome-windows-arial-tahoma-times": (page("فاتورة", invoice_body(), "Arial,Tahoma,'Times New Roman',sans-serif", "h1{font-family:'Times New Roman'} table{font-family:Tahoma}"), T.INVOICE),
     "chrome-ibmplex-bidi-stress": (page("ثنائي الاتجاه", bidi_body(), "'IBM Plex Sans Arabic','Inter',sans-serif"), T.BIDI_STRESS),
     "chrome-notosansarabic-form-layout": (page("نموذج", form_body(), "'Noto Sans Arabic','Inter',sans-serif"), T.FORM),
+    # variable webfont: Skia embeds it as a Type3 font with dots as separate glyphs mapped to U+0000
+    "chrome-variablefont-type3-notonaskh-justified": (page("فصول", paragraphs_body(), "'Noto Naskh Arabic Variable',serif"), paragraphs_truth()),
 }
 
 for name, (doc, truth) in FILES.items():

@@ -26,9 +26,10 @@ Source plan: brief §5 (global text engine) and ADR-0004/0005. Runner: `cargo te
 | 14 | Append a shaped Arabic line to a Chrome page | `ops::append_line_adds_shaped_text_to_a_chrome_page` | passed first run | ok |
 | 15 | hayro backend renders and yields glyphs with advances and font size | `hayro_backend::renders_and_extracts_glyphs_with_advances` | compile errors (kurbo type paths, `BfString`, glyph API) then ok | ok |
 | 16 | Core extracts logical text from the ideal file and searches with normalization | `core::extracts_logical_order_text_from_the_ideal_corpus_file` | passed first run | ok |
+| 18 | Skeleton letters + recovered dot marks recompose (ٮ+dot below=ب, ٯ+two dots=ق, ه+two dots=ة) | `extract::skeleton_letters_with_combining_dots_recompose` | written after measuring Noto Naskh Arabic Type3 output; passed first run | ok |
 | 17 | Core reads a Chrome/Skia file (presentation-form ToUnicode, visual glyph order) logically | `core::chrome_skia_file_with_presentation_form_tounicode_reads_logically` | `فاتورة ضريبية مب س طة` (advance mismatch with a variable font instance) | ok after the space-glyph-aware gap rule |
 
-Final run: `warraq-text` 16 passed; `warraq-pdf` 5 passed, 1 ignored; `warraq-render` 1 passed; `warraq-core` 2 passed. `cargo clippy --all-targets -- -D warnings` clean.
+Final run: `warraq-text` 17 passed; `warraq-pdf` 5 passed, 1 ignored; `warraq-render` 1 passed; `warraq-core` 2 passed. `cargo clippy --all-targets -- -D warnings` clean.
 
 ## Coverage and gaps
 * Not yet covered: no-ToUnicode fallbacks (glyph names, cmap, OCR), Type3 fonts, vertical text, paragraph/reflow, incremental save, encryption, the ambiguity "items 3" vs "3 items" (needs content-order tie-break).
