@@ -138,8 +138,10 @@ impl Document {
     }
 
     /// Replace a paragraph with reflowed, shaped text. `font` is a face from the
-    /// bundled fallback chain; the returned JSON reports whether a substitution
-    /// happened so the UI can warn the user.
+    /// bundled fallback chain. The returned JSON reports whether a substitution
+    /// happened, whether the text had to be shrunk to fit its box and whether it
+    /// still overflows, so the UI can warn the user instead of silently spoiling
+    /// the page.
     pub fn replace_paragraph(
         &mut self,
         index: usize,

@@ -431,6 +431,18 @@ pub fn replace_word(
     Ok(())
 }
 
+/// Outcome of a paragraph replacement.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Replacement {
+    pub lines_drawn: usize,
+    /// The size actually used, which may be smaller than requested.
+    pub font_size: f32,
+    /// True when the text had to be shrunk to fit the box.
+    pub shrunk: bool,
+    /// True when it still does not fit and runs past the box: the caller should warn.
+    pub overflowed: bool,
+}
+
 /// What to draw in place of an existing paragraph.
 pub struct ParagraphEdit<'a> {
     /// The paragraph box in PDF user space (x of the left edge, y of the BOTTOM edge, width, height).
@@ -494,10 +506,29 @@ pub fn replace_paragraph(
     pdf: &mut PdfDocument,
     page_index: usize,
     edit: &ParagraphEdit<'_>,
-) -> Result<usize> {
+) -> Result<Replacement> {
     erase_area(pdf, page_index, edit.rect)?;
     let shaper = Shaper::new(edit.font).map_err(|e| Error::Font(e.to_string()))?;
-    let (x0, _, w, _) = edit.rect;
+    let (x0, _, w, box_height) = edit.rect;
+    // Replacement text is rarely the same length as what it replaces. Rather than
+    // letting it run into whatever is below, shrink it to fit the box the user
+    // pointed at — and say so when even the smallest size still does not fit.
+    let (font_size, leading, shrunk, overflowed) = {
+        let (mut size, mut lead) = (edit.font_size, edit.leading);
+        let fits = |size: f32, lead: f32| -> bool {
+            let area = LayoutBox { left: x0, right: x0 + w, first_baseline: edit.first_baseline };
+            let style = LayoutStyle { font_size: size, leading: -lead, direction: edit.direction, alignment: edit.alignment };
+            let lines = layout_paragraph(&shaper, edit.text, &area, &style).len().max(1);
+            (lines as f32 - 1.0) * lead + size <= box_height + 0.5
+        };
+        let mut steps = 0;
+        while !fits(size, lead) && size > edit.font_size * 0.6 {
+            size *= 0.95;
+            lead *= 0.95;
+            steps += 1;
+        }
+        (size, lead, steps > 0, !fits(size, lead))
+    };
     // lines run DOWN the page, so the baseline step is negative in PDF user space
     let area = LayoutBox {
         left: x0,
@@ -506,13 +537,13 @@ pub fn replace_paragraph(
     };
     let style = LayoutStyle {
         font_size: edit.font_size,
-        leading: -edit.leading,
+        leading: -leading,
         direction: edit.direction,
         alignment: edit.alignment,
     };
     let lines = layout_paragraph(&shaper, edit.text, &area, &style);
     if lines.is_empty() {
-        return Ok(0);
+        return Ok(Replacement { lines_drawn: 0, font_size, shrunk, overflowed });
     }
     let all: Vec<ShapedGlyph> = lines
         .iter()
@@ -572,7 +603,7 @@ pub fn replace_paragraph(
         .change_page_content(page_id, content)
         .map_err(|e| Error::Edit(e.to_string()))?;
     mark_page_objects(pdf, page_id);
-    Ok(lines.len())
+    Ok(Replacement { lines_drawn: lines.len(), font_size, shrunk, overflowed })
 }
 
 #[cfg(test)]
@@ -653,10 +684,11 @@ mod tests {
             direction: Direction::Rtl,
             alignment: Alignment::Start,
         };
-        let n = replace_paragraph(&mut d, 0, &edit).unwrap();
+        let r = replace_paragraph(&mut d, 0, &edit).unwrap();
         assert!(
-            n >= 2,
-            "expected the text to reflow onto several lines, got {n}"
+            r.lines_drawn >= 2,
+            "expected the text to reflow onto several lines, got {}",
+            r.lines_drawn
         );
         let bytes = d.save_to_vec().unwrap();
         let d2 = PdfDocument::open(bytes, None).unwrap();

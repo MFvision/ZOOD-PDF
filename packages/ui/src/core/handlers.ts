@@ -121,14 +121,21 @@ function paragraphs(doc: CoreDocument, index: number): ResultMap['paragraphs'] {
 /** `{lines_drawn, font_substituted}` from the core, in UI casing. */
 export function parseReplaceResult(json: string): ReplaceParagraphResult {
   try {
-    const parsed = JSON.parse(json) as { lines_drawn?: unknown; font_substituted?: unknown };
+    const parsed = JSON.parse(json) as {
+      lines_drawn?: unknown;
+      font_substituted?: unknown;
+      shrunk?: unknown;
+      overflowed?: unknown;
+    };
     return {
       linesDrawn: typeof parsed.lines_drawn === 'number' ? parsed.lines_drawn : 0,
       fontSubstituted: parsed.font_substituted === true,
+      shrunk: parsed.shrunk === true,
+      overflowed: parsed.overflowed === true,
     };
   } catch {
     // An unreadable answer must not look like "the original font was kept".
-    return { linesDrawn: 0, fontSubstituted: true };
+    return { linesDrawn: 0, fontSubstituted: true, shrunk: false, overflowed: false };
   }
 }
 

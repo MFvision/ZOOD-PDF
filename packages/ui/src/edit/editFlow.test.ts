@@ -95,7 +95,7 @@ describe('paragraph editing over the worker protocol', () => {
       text: 'نصٌّ جديد',
       font: FONT,
     }).result as ResultMap['replace_paragraph'];
-    expect(result).toEqual({ linesDrawn: 4, fontSubstituted: true });
+    expect(result).toEqual({ linesDrawn: 4, fontSubstituted: true, shrunk: false, overflowed: false });
     expect(calls).toEqual([{ page: 1, para: 0, text: 'نصٌّ جديد', fontBytes: 128 }]);
   });
 
@@ -158,6 +158,8 @@ describe('replace_paragraph result parsing', () => {
   it('reads the core JSON', () => {
     expect(parseReplaceResult('{"lines_drawn":3,"font_substituted":false}')).toEqual({
       linesDrawn: 3,
+      shrunk: false,
+      overflowed: false,
       fontSubstituted: false,
     });
   });

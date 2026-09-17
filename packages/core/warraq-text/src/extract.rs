@@ -10,6 +10,10 @@ use unicode_normalization::UnicodeNormalization;
 pub struct PositionedGlyph {
     pub x: f32,
     pub y: f32,
+    /// Rotation of the text's baseline, in radians. Real documents put rotated
+    /// runs beside horizontal ones (sidebars, stamps, table headers); mixing them
+    /// into the same line would corrupt both.
+    pub angle: f32,
     pub size: f32,
     /// Horizontal advance in the same units as `x`; 0 when unknown.
     pub advance: f32,
@@ -403,31 +407,42 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
             .map(crate::normalize::is_mark_or_control)
             .unwrap_or(false)
     };
-    let mut sorted = indexed.clone();
-    sorted.sort_by(|a, b| {
-        a.1.y
-            .partial_cmp(&b.1.y)
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then(
-                a.1.x
-                    .partial_cmp(&b.1.x)
-                    .unwrap_or(std::cmp::Ordering::Equal),
-            )
-    });
+    // Glyphs are grouped per baseline angle, each in its own frame, so a rotated
+    // sidebar (real documents put them beside the text) never joins a horizontal
+    // paragraph and stretches its box. A sixteenth of a turn is fine enough:
+    // text is almost always axis-aligned or at a deliberate slant.
+    const SECTOR: f32 = std::f32::consts::TAU / 16.0;
+    let bucket = |a: f32| (a / SECTOR).round() as i32;
+    // position along and across the baseline of a run at angle `a`
+    let frame = |g: &PositionedGlyph, a: f32| -> (f32, f32) {
+        let (s, c) = (-a).sin_cos();
+        (g.x * c - g.y * s, g.x * s + g.y * c)
+    };
+    let mut angles: Vec<i32> = indexed.iter().map(|(_, g)| bucket(g.angle)).collect();
+    angles.sort_unstable();
+    angles.dedup();
 
-    // 1. lines from base glyphs, in reading order down the page
+    // 1. lines from base glyphs, in reading order down each run's own axis
     let mut lines: Vec<Line> = vec![];
     let mut marks: LineGlyphs = vec![];
-    for (ci, g) in sorted {
-        if is_mark(g) {
-            marks.push((ci, g));
-            continue;
-        }
-        match lines.last_mut() {
-            Some((y, size, v)) if (g.y - *y).abs() <= 0.55 * size.max(g.size).max(1.0) => {
-                v.push((ci, g))
+    for b in angles {
+        let angle = b as f32 * SECTOR;
+        let mut sorted: Vec<(usize, &PositionedGlyph)> = indexed.iter().copied().filter(|(_, g)| bucket(g.angle) == b).collect();
+        sorted.sort_by(|a, b| {
+            let (ax, ay) = frame(a.1, angle);
+            let (bx, by) = frame(b.1, angle);
+            ay.partial_cmp(&by).unwrap_or(std::cmp::Ordering::Equal).then(ax.partial_cmp(&bx).unwrap_or(std::cmp::Ordering::Equal))
+        });
+        for (ci, g) in sorted {
+            if is_mark(g) {
+                marks.push((ci, g));
+                continue;
             }
-            _ => lines.push((g.y, g.size, vec![(ci, g)])),
+            let (_, gy) = frame(g, angle);
+            match lines.last_mut() {
+                Some((y, size, v)) if (gy - *y).abs() <= 0.55 * size.max(g.size).max(1.0) => v.push((ci, g)),
+                _ => lines.push((gy, g.size, vec![(ci, g)])),
+            }
         }
     }
     for (_, _, v) in lines.iter_mut() {
@@ -457,13 +472,18 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
         .into_iter()
         .flatten()
         .collect();
+        let is_space = |bi: &usize| -> bool {
+            let (li, pos) = where_base[bi];
+            glyph_text(lines[li].2[pos].1).trim().is_empty()
+        };
         let on_same_line = |bi: &usize| -> bool {
             let (li, _) = where_base[bi];
             (lines[li].0 - m.y).abs() <= 0.8 * lines[li].1.max(m.size).max(1.0)
         };
+        // a combining mark belongs to a letter, never to a space
         let chosen = candidates
             .iter()
-            .filter(|bi| on_same_line(bi))
+            .filter(|bi| on_same_line(bi) && !is_space(bi))
             .min_by(|a, b| {
                 let dx = |bi: &usize| {
                     let (li, pos) = where_base[bi];
@@ -608,6 +628,7 @@ mod tests {
             .map(|(i, c)| PositionedGlyph {
                 x: i as f32 * 10.0,
                 y,
+                angle: 0.0,
                 size: 10.0,
                 advance: 10.0,
                 text: Some(c.to_string()),
@@ -667,6 +688,7 @@ mod tests {
         g.push(PositionedGlyph {
             x: 22.0,
             y: 96.0,
+            angle: 0.0,
             size: 10.0,
             advance: 0.0,
             text: Some("\u{064E}".into()),
@@ -678,6 +700,7 @@ mod tests {
         let pres = vec![PositionedGlyph {
             x: 0.0,
             y: 0.0,
+            angle: 0.0,
             size: 10.0,
             advance: 10.0,
             text: Some("\u{FEFB}".into()),
@@ -704,6 +727,7 @@ mod tests {
             PositionedGlyph {
                 x: 0.0,
                 y: 0.0,
+                angle: 0.0,
                 size: 10.0,
                 advance: 10.0,
                 text: Some("a".into()),
@@ -713,6 +737,7 @@ mod tests {
             PositionedGlyph {
                 x: 30.0,
                 y: 0.0,
+                angle: 0.0,
                 size: 10.0,
                 advance: 10.0,
                 text: Some("b".into()),

@@ -133,6 +133,10 @@ export interface ParagraphData {
 
 /** Parsed result of `replace_paragraph`. */
 export interface ReplaceParagraphResult {
+  /** The text had to be shrunk to fit the paragraph's box. */
+  shrunk?: boolean;
+  /** It still runs past the box: the user should be warned. */
+  overflowed?: boolean;
   linesDrawn: number;
   /**
    * The original face could not be reused and a bundled one was embedded.

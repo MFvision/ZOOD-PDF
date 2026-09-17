@@ -37,6 +37,12 @@ pub struct ParagraphReplacement {
     pub lines_drawn: usize,
     /// True when the text was drawn with a bundled font instead of the original.
     pub font_substituted: bool,
+    /// True when the text had to be shrunk to fit the paragraph's box.
+    pub shrunk: bool,
+    /// True when it still runs past the box; the user should be warned.
+    pub overflowed: bool,
+    /// The size actually used.
+    pub font_size: f32,
 }
 
 pub struct Document {
@@ -178,10 +184,14 @@ impl Document {
             direction: para.direction,
             alignment: para.alignment,
         };
-        let drawn = warraq_pdf::ops::replace_paragraph(self.pdf_mut(), index, &edit)?;
+        let r = warraq_pdf::ops::replace_paragraph(self.pdf_mut(), index, &edit)?;
+        self.refresh_after_edit()?;
         Ok(ParagraphReplacement {
-            lines_drawn: drawn,
+            lines_drawn: r.lines_drawn,
             font_substituted: true,
+            shrunk: r.shrunk,
+            overflowed: r.overflowed,
+            font_size: r.font_size,
         })
     }
 
@@ -207,6 +217,18 @@ impl Document {
     pub fn pdf_mut(&mut self) -> &mut PdfDocument {
         self.lines_cache.borrow_mut().clear();
         &mut self.pdf
+    }
+
+    /// Rebuild the rasterizer from the edited document.
+    ///
+    /// The renderer is built from bytes, so after an edit it still describes the
+    /// document as it was opened. Every mutating operation must call this, or the
+    /// user would edit a page and see no change until they saved and reopened.
+    pub fn refresh_after_edit(&mut self) -> Result<(), CoreError> {
+        let bytes = self.pdf.save_to_vec()?;
+        self.render = warraq_render::open(bytes, None)?;
+        self.lines_cache.borrow_mut().clear();
+        Ok(())
     }
 }
 
@@ -256,6 +278,22 @@ mod tests {
             text.contains('\u{FFFD}'),
             "placeholders should remain for glyphs we cannot identify"
         );
+    }
+
+    /// Regression: the rasterizer is built from bytes, so an edit used to leave it
+    /// describing the document as opened — the user saw nothing change until they
+    /// saved and reopened. Found by the editing UI.
+    #[test]
+    fn an_edit_is_visible_in_the_very_next_render_and_paragraph_read() {
+        const AMIRI: &[u8] = include_bytes!("../../../../tests/fonts/Amiri-Regular.ttf");
+        let mut d = Document::open(corpus("chrome-notonaskh-justified-3pages.pdf"), None).unwrap();
+        let before: u64 = d.render_page(0, 0.4).unwrap().rgba.iter().map(|b| *b as u64).sum();
+        let new_text = "نص بديل قصير";
+        d.replace_paragraph(0, 1, new_text, AMIRI).unwrap();
+        let after: u64 = d.render_page(0, 0.4).unwrap().rgba.iter().map(|b| *b as u64).sum();
+        assert_ne!(before, after, "the page must look different immediately after an edit");
+        assert!(d.extract_text(0).unwrap().contains(new_text), "the new text must be readable without saving first");
+        assert!(d.paragraphs(0).unwrap().iter().any(|p| p.text.contains(new_text)), "paragraph boxes must be refreshed too");
     }
 
     #[test]

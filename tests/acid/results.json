@@ -76,13 +76,13 @@
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/A_arwikibooks_mediawiki_guide_word2007.jpg",
    "t_open_ms": 10.0,
-   "t_render_p1_ms": 10.2,
-   "t_text_ms": 10.0,
+   "t_render_p1_ms": 10.1,
+   "t_text_ms": 9.9,
    "score": {
     "verdict": "no-truth",
-    "n_extracted_chars": 3276
+    "n_extracted_chars": 3272
    },
-   "text_head": "دلٌل استخدام مٌدٌاوٌك ً ⏎ دنٛم اعرخذاو يٛذأٚكٙٚ ⏎ يشـاسٚغ ذطٕـ شٚ كٚٔثٛٛذاٚ انـؼـشتٛحـ ⏎ يونيو 2"
+   "text_head": "دلٌل استخدام مٌدٌاوٌكً ⏎ دنٛم اعرخذاو يٛذأٚكٙٚ ⏎ يشـاسٚغ ذطٕـ شٚ كٚٔثٛٛذاٚ انـؼـشتٛحـ ⏎ يونيو 20"
   }
  },
  "A_un_rome_statute_A-CONF.183-9-AR_word_pdfmaker6": {
@@ -247,14 +247,14 @@
    "pages": 2,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/A_worldbank_malpass_g7_briefing_AR_word2016_pdftools.jpg",
-   "t_open_ms": 0.6,
-   "t_render_p1_ms": 5.9,
+   "t_open_ms": 0.5,
+   "t_render_p1_ms": 5.7,
    "t_text_ms": 3.6,
    "score": {
     "verdict": "no-truth",
-    "n_extracted_chars": 4585
+    "n_extracted_chars": 4516
    },
-   "text_head": "d ⏎ ez ⏎ ir ⏎ o ⏎ كلمة رئيس مجموعة البنك الدولي ديفيد مالباس في جلسة إحاطة إعلامي ة ht ⏎ u ⏎ A ⏎ في قمة "
+   "text_head": "كلمة رئيس مجموعة البنك الدولي ديفيد مالباس في جلسة إحاطة إعلامي ة ⏎ في قمة مؤتمر زعماء مجموع"
   }
  },
  "B_baytalhekma_covid_workplace_guide_indesign_cc2015": {
@@ -333,9 +333,9 @@
    "pages": 53,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/B_baytalhekma_covid_workplace_guide_indesign_cc2015.jpg",
-   "t_open_ms": 8.2,
-   "t_render_p1_ms": 185.7,
-   "t_text_ms": 3.6,
+   "t_open_ms": 8.4,
+   "t_render_p1_ms": 184.8,
+   "t_text_ms": 3.5,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 1204
@@ -419,8 +419,8 @@
    "pages": 5,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/B_wmf_welcome_to_wikipedia_arabic_indesign_cs5_p1-5.jpg",
-   "t_open_ms": 1.8,
-   "t_render_p1_ms": 12.4,
+   "t_open_ms": 1.6,
+   "t_render_p1_ms": 13.2,
    "t_text_ms": 2.1,
    "score": {
     "verdict": "no-truth",
@@ -507,7 +507,7 @@
    "shot": "docs/research/screenshots/warraq/C_lo_bug119606_seventeen_macos_arabic_fonts_lo7.5dev.jpg",
    "t_open_ms": 0.9,
    "t_render_p1_ms": 4.5,
-   "t_text_ms": 14.8,
+   "t_text_ms": 15.3,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 1017
@@ -593,7 +593,7 @@
    "shot": "docs/research/screenshots/warraq/C_lo_bug171737_noto_sans_arabic_extraction_lo26.2_pdf2.0.jpg",
    "t_open_ms": 0.6,
    "t_render_p1_ms": 4.7,
-   "t_text_ms": 6.7,
+   "t_text_ms": 6.9,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 1334
@@ -677,7 +677,7 @@
    "pages": 15,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/D_gdocs_digital_safety_guide_ar_skia_m130.jpg",
-   "t_open_ms": 2.1,
+   "t_open_ms": 2.0,
    "t_render_p1_ms": 7.8,
    "t_text_ms": 6.0,
    "score": {
@@ -763,8 +763,8 @@
    "pages": 32,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/D_gdocs_wmf_rapid_funds_guide_ar_skia_m97.jpg",
-   "t_open_ms": 3.2,
-   "t_render_p1_ms": 17.2,
+   "t_open_ms": 3.4,
+   "t_render_p1_ms": 17.5,
    "t_text_ms": 17.0,
    "score": {
     "verdict": "no-truth",
@@ -849,8 +849,8 @@
    "pages": 4,
    "selectable": false,
    "shot": "docs/research/screenshots/warraq/E_commons_qarar193_toshiba_estudio_mfp_scan.jpg",
-   "t_open_ms": 0.5,
-   "t_render_p1_ms": 6.9,
+   "t_open_ms": 0.4,
+   "t_render_p1_ms": 7.0,
    "t_text_ms": 0.0,
    "score": {
     "verdict": "no-truth",
@@ -935,9 +935,9 @@
    "pages": 3,
    "selectable": false,
    "shot": "docs/research/screenshots/warraq/E_commons_tafsir_surat_alnur_pd_scan_p1-3.jpg",
-   "t_open_ms": 1.3,
-   "t_render_p1_ms": 27.9,
-   "t_text_ms": 0.0,
+   "t_open_ms": 0.8,
+   "t_render_p1_ms": 27.7,
+   "t_text_ms": 0.1,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 2
@@ -1021,8 +1021,8 @@
    "pages": 36,
    "selectable": false,
    "shot": "docs/research/screenshots/warraq/E_ia_bv056_arabic_manuscript_1924_ocr_text_layer.jpg",
-   "t_open_ms": 2.1,
-   "t_render_p1_ms": 64.3,
+   "t_open_ms": 1.9,
+   "t_render_p1_ms": 64.6,
    "t_text_ms": 0.1,
    "score": {
     "verdict": "no-truth",
@@ -1107,9 +1107,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/F_pdfjs15546_rtl_acroform_textfields_arabic_digits_acrobat.jpg",
-   "t_open_ms": 0.7,
-   "t_render_p1_ms": 2.4,
-   "t_text_ms": 0.9,
+   "t_open_ms": 0.8,
+   "t_render_p1_ms": 2.3,
+   "t_text_ms": 0.8,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 117
@@ -1193,7 +1193,7 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/G_pdfjs_ArabicCIDTrueType_apple_pstopdffilter_no_tounicode.jpg",
-   "t_open_ms": 0.6,
+   "t_open_ms": 0.5,
    "t_render_p1_ms": 1.9,
    "t_text_ms": 0.5,
    "score": {
@@ -1279,7 +1279,7 @@
    "pages": 23,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/G_wipo_saudi_copyright_law_laserwriter8_distiller5_legacy_encoding.jpg",
-   "t_open_ms": 1.1,
+   "t_open_ms": 1.4,
    "t_render_p1_ms": 2.4,
    "t_text_ms": 1.6,
    "score": {
@@ -1400,9 +1400,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/acroform-pdflib-arabic-fields.jpg",
-   "t_open_ms": 2.3,
-   "t_render_p1_ms": 15.3,
-   "t_text_ms": 8.7,
+   "t_open_ms": 2.6,
+   "t_render_p1_ms": 15.5,
+   "t_text_ms": 8.6,
    "score": {
     "verdict": "garbage(U+FFFD)",
     "recall_logical": 0.189,
@@ -1512,8 +1512,8 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/chrome-amiri-tashkeel-ligatures.jpg",
-   "t_open_ms": 0.5,
-   "t_render_p1_ms": 2.0,
+   "t_open_ms": 0.4,
+   "t_render_p1_ms": 1.9,
    "t_text_ms": 4.1,
    "score": {
     "verdict": "partial",
@@ -1640,9 +1640,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/chrome-cairo-mixed-invoice.jpg",
-   "t_open_ms": 0.7,
+   "t_open_ms": 0.9,
    "t_render_p1_ms": 3.7,
-   "t_text_ms": 2.0,
+   "t_text_ms": 1.9,
    "score": {
     "verdict": "logical",
     "recall_logical": 1.0,
@@ -1768,8 +1768,8 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/chrome-ibmplex-bidi-stress.jpg",
-   "t_open_ms": 0.5,
-   "t_render_p1_ms": 2.2,
+   "t_open_ms": 0.7,
+   "t_render_p1_ms": 2.3,
    "t_text_ms": 0.6,
    "score": {
     "verdict": "logical",
@@ -1897,7 +1897,7 @@
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/chrome-nastaliq-urdu-prose.jpg",
    "t_open_ms": 0.4,
-   "t_render_p1_ms": 2.0,
+   "t_render_p1_ms": 1.9,
    "t_text_ms": 4.1,
    "score": {
     "verdict": "garbage(U+FFFD)",
@@ -2024,9 +2024,9 @@
    "pages": 3,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/chrome-notonaskh-justified-3pages.jpg",
-   "t_open_ms": 0.8,
-   "t_render_p1_ms": 4.8,
-   "t_text_ms": 19.7,
+   "t_open_ms": 0.7,
+   "t_render_p1_ms": 4.9,
+   "t_text_ms": 19.6,
    "score": {
     "verdict": "garbage(U+FFFD)",
     "recall_logical": 0.195,
@@ -2154,7 +2154,7 @@
    "shot": "docs/research/screenshots/warraq/chrome-notosansarabic-form-layout.jpg",
    "t_open_ms": 0.7,
    "t_render_p1_ms": 5.7,
-   "t_text_ms": 7.8,
+   "t_text_ms": 7.9,
    "score": {
     "verdict": "garbage(U+FFFD)",
     "recall_logical": 0.189,
@@ -2281,7 +2281,7 @@
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/chrome-tajawal-persian-urdu-digits.jpg",
    "t_open_ms": 0.6,
-   "t_render_p1_ms": 1.9,
+   "t_render_p1_ms": 1.8,
    "t_text_ms": 0.4,
    "score": {
     "verdict": "logical",
@@ -2409,8 +2409,8 @@
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/chrome-variablefont-type3-notonaskh-justified.jpg",
    "t_open_ms": 0.9,
-   "t_render_p1_ms": 25.3,
-   "t_text_ms": 69.4,
+   "t_render_p1_ms": 25.5,
+   "t_text_ms": 71.1,
    "score": {
     "verdict": "garbage(U+FFFD)",
     "recall_logical": 0.195,
@@ -2536,7 +2536,7 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/chrome-vazirmatn-persian-prose.jpg",
-   "t_open_ms": 1.0,
+   "t_open_ms": 0.4,
    "t_render_p1_ms": 2.0,
    "t_text_ms": 0.4,
    "score": {
@@ -2665,7 +2665,7 @@
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/chrome-windows-arial-tahoma-times.jpg",
    "t_open_ms": 0.6,
-   "t_render_p1_ms": 2.6,
+   "t_render_p1_ms": 2.8,
    "t_text_ms": 0.9,
    "score": {
     "verdict": "logical",
@@ -2792,9 +2792,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/coretext-albayan-tashkeel.jpg",
-   "t_open_ms": 0.4,
+   "t_open_ms": 0.6,
    "t_render_p1_ms": 2.2,
-   "t_text_ms": 0.5,
+   "t_text_ms": 0.6,
    "score": {
     "verdict": "logical",
     "recall_logical": 1.0,
@@ -2920,7 +2920,7 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/coretext-baghdad-persian-urdu.jpg",
-   "t_open_ms": 0.6,
+   "t_open_ms": 0.8,
    "t_render_p1_ms": 2.1,
    "t_text_ms": 0.7,
    "score": {
@@ -3048,9 +3048,9 @@
    "pages": 3,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/coretext-geezapro-paragraphs.jpg",
-   "t_open_ms": 0.3,
+   "t_open_ms": 0.4,
    "t_render_p1_ms": 5.4,
-   "t_text_ms": 6.4,
+   "t_text_ms": 6.5,
    "score": {
     "verdict": "logical",
     "recall_logical": 1.0,
@@ -3176,9 +3176,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/coretext-sfarabic-mixed-invoice.jpg",
-   "t_open_ms": 0.2,
-   "t_render_p1_ms": 2.5,
-   "t_text_ms": 0.8,
+   "t_open_ms": 0.3,
+   "t_render_p1_ms": 2.4,
+   "t_text_ms": 0.7,
    "score": {
     "verdict": "logical",
     "recall_logical": 1.0,
@@ -3273,9 +3273,9 @@
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/perf-text-100-pages.jpg",
    "t_open_ms": 1.4,
-   "t_render_p1_ms": 5.1,
-   "t_text_all_pages_ms": 613.1,
-   "t_text_ms": 19.5,
+   "t_render_p1_ms": 5.0,
+   "t_text_all_pages_ms": 617.0,
+   "t_text_ms": 19.9,
    "score": {
     "verdict": "no-truth",
     "n_extracted_chars": 4304
@@ -3362,9 +3362,9 @@
    "pages": 500,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/perf-text-500-pages.jpg",
-   "t_open_ms": 5.0,
-   "t_render_p1_ms": 5.0,
-   "t_text_all_pages_ms": 3129.9,
+   "t_open_ms": 3.9,
+   "t_render_p1_ms": 4.9,
+   "t_text_all_pages_ms": 3142.3,
    "t_text_ms": 19.3,
    "score": {
     "verdict": "no-truth",
@@ -3484,8 +3484,8 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/raw-amiri-cid-identity-tounicode.jpg",
-   "t_open_ms": 1.0,
-   "t_render_p1_ms": 3.3,
+   "t_open_ms": 0.5,
+   "t_render_p1_ms": 3.4,
    "t_text_ms": 0.8,
    "score": {
     "verdict": "logical",
@@ -3612,9 +3612,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/raw-amiri-cid-no-tounicode.jpg",
-   "t_open_ms": 0.7,
+   "t_open_ms": 0.4,
    "t_render_p1_ms": 3.2,
-   "t_text_ms": 6.0,
+   "t_text_ms": 6.1,
    "score": {
     "verdict": "partial",
     "recall_logical": 0.602,
@@ -3740,8 +3740,8 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/raw-cairo-cid-broken-tounicode.jpg",
-   "t_open_ms": 0.6,
-   "t_render_p1_ms": 3.1,
+   "t_open_ms": 0.4,
+   "t_render_p1_ms": 3.0,
    "t_text_ms": 0.7,
    "score": {
     "verdict": "empty",
@@ -3868,9 +3868,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/raw-legacy-symbolic-truetype.jpg",
-   "t_open_ms": 0.6,
-   "t_render_p1_ms": 3.4,
-   "t_text_ms": 0.9,
+   "t_open_ms": 0.4,
+   "t_render_p1_ms": 3.3,
+   "t_text_ms": 0.8,
    "score": {
     "verdict": "garbage",
     "recall_logical": 0.008,
@@ -3996,9 +3996,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/reportlab-visual-presentation-forms.jpg",
-   "t_open_ms": 0.6,
-   "t_render_p1_ms": 2.7,
-   "t_text_ms": 0.7,
+   "t_open_ms": 0.5,
+   "t_render_p1_ms": 2.6,
+   "t_text_ms": 0.6,
    "score": {
     "verdict": "logical",
     "recall_logical": 1.0,
@@ -4089,8 +4089,8 @@
    "pages": 1,
    "selectable": false,
    "shot": "docs/research/screenshots/warraq/scan-arial-200dpi-bilevel.jpg",
-   "t_open_ms": 0.6,
-   "t_render_p1_ms": 28.3,
+   "t_open_ms": 0.3,
+   "t_render_p1_ms": 27.9,
    "t_text_ms": 0.0,
    "score": {
     "verdict": "image-only (OCR needed)",
@@ -4175,8 +4175,8 @@
    "pages": 2,
    "selectable": false,
    "shot": "docs/research/screenshots/warraq/scan-notonaskh-300dpi-skewed-jpeg.jpg",
-   "t_open_ms": 1.9,
-   "t_render_p1_ms": 17.8,
+   "t_open_ms": 1.5,
+   "t_render_p1_ms": 17.6,
    "t_text_ms": 0.0,
    "score": {
     "verdict": "image-only (OCR needed)",
@@ -4296,9 +4296,9 @@
    "pages": 3,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/variant-arabic-metadata-outlines-annots.jpg",
-   "t_open_ms": 1.1,
+   "t_open_ms": 0.8,
    "t_render_p1_ms": 5.0,
-   "t_text_ms": 18.7,
+   "t_text_ms": 19.3,
    "score": {
     "verdict": "garbage(U+FFFD)",
     "recall_logical": 0.195,
@@ -4472,9 +4472,9 @@
    "pages": 3,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/variant-encrypted-aes256.jpg",
-   "t_open_ms": 2.6,
-   "t_render_p1_ms": 4.8,
-   "t_text_ms": 18.8,
+   "t_open_ms": 2.4,
+   "t_render_p1_ms": 4.9,
+   "t_text_ms": 18.9,
    "score": {
     "verdict": "garbage(U+FFFD)",
     "recall_logical": 0.195,
@@ -4584,9 +4584,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/variant-encrypted-aes256-owner-only.jpg",
-   "t_open_ms": 2.1,
+   "t_open_ms": 2.2,
    "t_render_p1_ms": 3.7,
-   "t_text_ms": 2.0,
+   "t_text_ms": 1.9,
    "score": {
     "verdict": "logical",
     "recall_logical": 1.0,
@@ -4650,7 +4650,7 @@
    "shot": "docs/research/screenshots/warraq/variant-encrypted-rc4-128.jpg",
    "t_open_ms": 1.5,
    "t_render_p1_ms": 3.8,
-   "t_text_ms": 1.8,
+   "t_text_ms": 2.0,
    "score": {
     "verdict": "logical",
     "recall_logical": 1.0,
@@ -4712,9 +4712,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/variant-encrypted-rc4-40.jpg",
-   "t_open_ms": 2.1,
-   "t_render_p1_ms": 3.7,
-   "t_text_ms": 1.8,
+   "t_open_ms": 1.5,
+   "t_render_p1_ms": 3.8,
+   "t_text_ms": 1.9,
    "score": {
     "verdict": "logical",
     "recall_logical": 1.0,
@@ -4840,9 +4840,9 @@
    "pages": 1,
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/variant-incremental-update.jpg",
-   "t_open_ms": 0.7,
+   "t_open_ms": 0.9,
    "t_render_p1_ms": 3.6,
-   "t_text_ms": 1.8,
+   "t_text_ms": 1.9,
    "score": {
     "verdict": "logical",
     "recall_logical": 1.0,
@@ -4970,7 +4970,7 @@
    "shot": "docs/research/screenshots/warraq/variant-linearized.jpg",
    "t_open_ms": 0.7,
    "t_render_p1_ms": 4.9,
-   "t_text_ms": 19.0,
+   "t_text_ms": 19.1,
    "score": {
     "verdict": "garbage(U+FFFD)",
     "recall_logical": 0.195,
@@ -5097,8 +5097,8 @@
    "selectable": true,
    "shot": "docs/research/screenshots/warraq/variant-objectstreams-xrefstream.jpg",
    "t_open_ms": 0.7,
-   "t_render_p1_ms": 5.0,
-   "t_text_ms": 19.3,
+   "t_render_p1_ms": 4.9,
+   "t_text_ms": 19.4,
    "score": {
     "verdict": "garbage(U+FFFD)",
     "recall_logical": 0.195,

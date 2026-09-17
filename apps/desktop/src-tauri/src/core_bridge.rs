@@ -69,6 +69,12 @@ impl Registry {
             .ok_or_else(|| format!("E_NOT_FOUND: document {handle} is not open"))
     }
 
+    pub fn get_mut(&mut self, handle: u32) -> Result<&mut Document, String> {
+        self.documents
+            .get_mut(&handle)
+            .ok_or_else(|| format!("E_NOT_FOUND: document {handle} is not open"))
+    }
+
     /// Dropping the document frees the PDFium and hayro state behind it.
     pub fn close(&mut self, handle: u32) -> bool {
         self.documents.remove(&handle).is_some()
@@ -147,6 +153,14 @@ impl CoreBridge {
         job: impl FnOnce(&Document) -> Result<T, String> + Send + 'static,
     ) -> Result<T, String> {
         self.call(move |registry| registry.get(handle).and_then(job))?
+    }
+
+    fn with_document_mut<T: Send + 'static>(
+        &self,
+        handle: u32,
+        job: impl FnOnce(&mut Document) -> Result<T, String> + Send + 'static,
+    ) -> Result<T, String> {
+        self.call(move |registry| registry.get_mut(handle).and_then(job))?
     }
 }
 
@@ -440,4 +454,91 @@ mod tests {
         assert_eq!(&encoded[4..8], &1u32.to_le_bytes());
         assert_eq!(encoded.len(), 8 + 8);
     }
+}
+
+/* --------------------------------------------------------- editing commands */
+
+/// JSON twin of `warraq_text::Paragraph`, matching `ParagraphData` in the UI,
+/// which is camelCase on the JavaScript side.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ParagraphDto {
+    pub index: usize,
+    pub text: String,
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+    pub direction: &'static str,
+    pub alignment: &'static str,
+    pub font_size: f32,
+    pub line_count: usize,
+}
+
+#[tauri::command(async)]
+pub fn doc_paragraphs(
+    bridge: State<'_, CoreBridge>,
+    handle: u32,
+    index: u32,
+) -> Result<Vec<ParagraphDto>, String> {
+    bridge.with_document(handle, move |document| {
+        let paragraphs = document
+            .paragraphs(index as usize)
+            .map_err(|e| e.to_string())?;
+        Ok(paragraphs
+            .into_iter()
+            .enumerate()
+            .map(|(i, p)| ParagraphDto {
+                index: i,
+                text: p.text,
+                x: p.bbox.0,
+                y: p.bbox.1,
+                width: p.bbox.2,
+                height: p.bbox.3,
+                direction: if p.direction == warraq_text::Direction::Rtl {
+                    "rtl"
+                } else {
+                    "ltr"
+                },
+                alignment: match p.alignment {
+                    warraq_text::Alignment::Start => "start",
+                    warraq_text::Alignment::End => "end",
+                    warraq_text::Alignment::Center => "center",
+                    warraq_text::Alignment::Justify => "justify",
+                },
+                font_size: p.font_size,
+                line_count: p.lines.len(),
+            })
+            .collect())
+    })
+}
+
+#[tauri::command(async)]
+pub fn doc_replace_paragraph(
+    bridge: State<'_, CoreBridge>,
+    handle: u32,
+    index: u32,
+    para: u32,
+    text: String,
+    font: Vec<u8>,
+) -> Result<String, String> {
+    bridge.with_document_mut(handle, move |document| {
+        let r = document
+            .replace_paragraph(index as usize, para as usize, &text, &font)
+            .map_err(|e| e.to_string())?;
+        serde_json::to_string(&r).map_err(|e| e.to_string())
+    })
+}
+
+/// Saved bytes travel as a raw IPC body, like rendered pixels: JSON would
+/// balloon a megabyte-scale PDF into an array of numbers.
+#[tauri::command(async)]
+pub fn doc_save(
+    bridge: State<'_, CoreBridge>,
+    handle: u32,
+) -> Result<tauri::ipc::Response, String> {
+    let bytes = bridge.with_document_mut(handle, move |document| {
+        document.save().map_err(|e| e.to_string())
+    })?;
+    Ok(tauri::ipc::Response::new(bytes))
 }

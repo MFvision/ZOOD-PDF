@@ -435,9 +435,12 @@ impl<'a> Device<'a> for GlyphDevice {
                 }
             }
         };
+        // baseline direction of this run; device y grows downwards, so negate
+        let angle = -(c[1] as f32).atan2(c[0] as f32);
         self.glyphs.push(PositionedGlyph {
             x: center.map(|p| p.0).unwrap_or(c[4] as f32),
             y: center.map(|p| p.1).unwrap_or(c[5] as f32),
+            angle,
             size,
             advance: adv,
             text,
