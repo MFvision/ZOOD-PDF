@@ -24,6 +24,23 @@ Every one of the 48 corpus files opens. 63 tests green, clippy clean, `wasm32-un
 * **Phase 2** — bidi with a W5 repair, HarfRust shaping conformant with HarfBuzz, Arabic search normalization, logical-order reconstruction with cmap/GSUB/dot-recomposition fallbacks, paragraph detection and reflow, content-stream text location, erase and replace, subset font embedding with correct ToUnicode, incremental save, the standard security handler, and the robustness harness.
 * **ADR-0006** recorded your answers: name, license and native PDFium confirmed; browser builds default to the pure-Rust rasterizer; Persian and Urdu first-class (corpus and fonts added).
 
+## What the interface actually offers, counted
+
+Stated because it was not, and a person met thirteen tool cards that looked
+alike when only one of them did anything.
+
+| | |
+| --- | --- |
+| Tools in the pane | 13 |
+| Tools that do something | **1** — Edit. Every other card now says *Later* on its face, and opens a panel that says which phase it belongs to |
+| What Edit does | replace the text of a paragraph, reflowed and reshaped; add a line of new text where you click, at a size you choose; undo and redo a replacement |
+| What Edit does not do | add an image, change the font family or the size of text already on the page, move or delete anything, and it cannot undo an *added* line |
+
+The engine underneath is not a mock-up — the Arabic reading, reflow, font
+subsetting, incremental save and encryption are real and measured — but the
+shell around it advertised far more than it delivered, and that is a product
+defect regardless of what the engine can do.
+
 ## Next (in order)
 1. **Paragraph breaks**: consecutive body paragraphs with uniform spacing still merge into one. Needs indentation and spacing analysis, not just line proximity.
 2. **OCR** for scanned pages (Tesseract: `tesseract.js` in the browser, native on desktop), which also gives the last extraction fallback and makes the two scanned corpus files searchable.

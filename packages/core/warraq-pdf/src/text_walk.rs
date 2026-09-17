@@ -106,6 +106,24 @@ pub fn final_ctm(ops: &[Operation]) -> Matrix {
     ctm
 }
 
+/// How many `q` a content stream leaves unclosed.
+///
+/// The dangling save carries more than a transform. A clip path set inside the
+/// same `q` survives too, and it silently swallows anything drawn afterwards:
+/// on a Chrome-generated page, appended text simply never appeared, in the
+/// render or in the extracted text. Popping the stack restores both.
+pub fn unbalanced_q(ops: &[Operation]) -> usize {
+    let mut depth = 0usize;
+    for op in ops {
+        match op.operator.as_str() {
+            "q" => depth += 1,
+            "Q" => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+    }
+    depth
+}
+
 /// Locate every text-showing operator (`Tj`, `TJ`, `'`, `"`) in page space.
 ///
 /// Glyph advances are not computed (that needs the font's widths); the origin,

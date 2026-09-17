@@ -174,6 +174,18 @@ export function handleRequest(runtime: CoreRuntime, request: CoreRequest): Handl
     }
     case 'paragraphs':
       return plain(paragraphs(getDocument(runtime, request.doc), request.index));
+    case 'add_text': {
+      const doc = getDocument(runtime, request.doc);
+      doc.add_text(
+        request.index,
+        request.x,
+        request.y,
+        request.size,
+        request.text,
+        new Uint8Array(request.font),
+      );
+      return plain(null);
+    }
     case 'replace_paragraph': {
       const doc = getDocument(runtime, request.doc);
       const json = doc.replace_paragraph(

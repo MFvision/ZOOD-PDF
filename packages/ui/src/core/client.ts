@@ -17,7 +17,10 @@ export class CoreClientError extends Error {
 }
 
 function createDefaultWorker(): Worker {
-  return new Worker(new URL('./worker.ts', import.meta.url), { type: 'module', name: 'warraq-core' });
+  return new Worker(new URL('./worker.ts', import.meta.url), {
+    type: 'module',
+    name: 'warraq-core',
+  });
 }
 
 /** Normalizes anything the native host throws into a `CoreClientError`. */
@@ -52,7 +55,8 @@ export class CoreClient {
     this.worker.onmessage = (event: MessageEvent<CoreResponse>) => this.settle(event.data);
     this.worker.onerror = (event) => {
       const message = event.message || 'core worker failed';
-      for (const { reject } of this.pending.values()) reject(new CoreClientError('E_WORKER', message));
+      for (const { reject } of this.pending.values())
+        reject(new CoreClientError('E_WORKER', message));
       this.pending.clear();
     };
   }
@@ -182,6 +186,27 @@ export class RemoteDocument {
     return this.client.request(
       'replace_paragraph',
       { doc: this.id, index, para, text, font: buffer as ArrayBuffer },
+      [buffer as ArrayBuffer],
+    );
+  }
+
+  /**
+   * Draw a new line of text at a point on the page, in points from its
+   * top-left corner. `x` is where the line starts, so Arabic grows leftwards
+   * from it.
+   */
+  add_text(
+    index: number,
+    x: number,
+    y: number,
+    size: number,
+    text: string,
+    font: Uint8Array,
+  ): Promise<ResultMap['add_text']> {
+    const buffer = font.buffer.slice(font.byteOffset, font.byteOffset + font.byteLength);
+    return this.client.request(
+      'add_text',
+      { doc: this.id, index, x, y, size, text, font: buffer as ArrayBuffer },
       [buffer as ArrayBuffer],
     );
   }

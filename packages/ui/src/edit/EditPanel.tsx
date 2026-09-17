@@ -1,4 +1,4 @@
-import { Pencil, Redo2, Undo2 } from 'lucide-react';
+import { Pencil, Redo2, TextCursorInput, Undo2 } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useT } from '../i18n/useT';
@@ -13,7 +13,7 @@ export function EditPanel() {
   const dispatch = useAppDispatch();
   const { undoEdit, redoEdit } = useServices();
   const hasDocument = state.view === 'viewer' && state.document !== null;
-  const { stack, active, busy } = state.edit;
+  const { stack, active, busy, placing, addSize } = state.edit;
   const mod = modKeyLabel();
 
   return (
@@ -35,6 +35,32 @@ export function EditPanel() {
       </div>
       <div className="edit-panel-actions">
         <IconButton
+          label={t('edit.addText')}
+          icon={<Icon of={TextCursorInput} />}
+          showLabel
+          pressed={placing}
+          disabled={!hasDocument}
+          onClick={() => dispatch({ type: 'EDIT_PLACE', placing: !placing })}
+        />
+        <label className="edit-size">
+          {t('edit.addSize')}
+          <select
+            value={addSize}
+            disabled={!hasDocument}
+            onChange={(event) =>
+              dispatch({ type: 'EDIT_ADD_SIZE', size: Number(event.target.value) })
+            }
+          >
+            {[10, 12, 14, 18, 24, 32].map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="edit-panel-actions">
+        <IconButton
           label={t('edit.undo')}
           icon={<Icon of={Undo2} mirror />}
           showLabel
@@ -52,6 +78,7 @@ export function EditPanel() {
       <ul className="edit-panel-hints">
         <li>{t('edit.hintClick')}</li>
         <li>{t('edit.hintKeys', { mod })}</li>
+        <li>{t('edit.hintAdd')}</li>
         <li>{t('edit.hintFont')}</li>
       </ul>
     </div>

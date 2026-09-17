@@ -195,6 +195,41 @@ impl Document {
         })
     }
 
+    /// Draw `text` on a page at a point the reader chose, in the bundled `font`.
+    ///
+    /// `x` and `y` are UI coordinates — points from the top-left corner of the
+    /// page, the same frame `paragraphs` reports — because that is what the
+    /// interface hit-tests against. `x` is where the line *starts*: the left
+    /// edge of a Latin run and the right edge of an Arabic one, so in both
+    /// scripts the text grows away from the point that was clicked. `y` is the
+    /// top of the line, not its baseline.
+    ///
+    /// Everything hard already lives in `ops::append_line`: shaping, the
+    /// subset, the embedded font and its ToUnicode. This only places it.
+    pub fn add_text(
+        &mut self,
+        index: usize,
+        x: f32,
+        y: f32,
+        size: f32,
+        text: &str,
+        font: &[u8],
+    ) -> Result<(), CoreError> {
+        if text.trim().is_empty() {
+            return Err(warraq_pdf::Error::Edit("there is no text to add".into()).into());
+        }
+        if !(size.is_finite() && size > 0.0) {
+            return Err(warraq_pdf::Error::Edit(format!("font size {size} is not usable")).into());
+        }
+        // `page_size` is also the page check: an index out of range fails here.
+        let (_, page_height) = self.page_size(index)?;
+        // PDF y grows upwards from the bottom, and `append_line` wants a baseline.
+        let baseline = page_height - y - size;
+        warraq_pdf::ops::append_line(self.pdf_mut(), index, text, font, size, x, baseline)?;
+        self.refresh_after_edit()?;
+        Ok(())
+    }
+
     /// Save the edited document.
     ///
     /// Prefers an incremental update, which keeps the bytes handed to `open` as
@@ -317,6 +352,62 @@ mod tests {
                 .iter()
                 .any(|p| p.text.contains(new_text)),
             "paragraph boxes must be refreshed too"
+        );
+    }
+
+    /// Adding text is the first Edit capability beyond replacing a paragraph.
+    /// The engine already shapes, subsets and embeds; the core only has to place
+    /// the line, and an Arabic run has to grow leftwards from the chosen point.
+    ///
+    /// The margin matters. Text dropped within a few points of an existing
+    /// baseline is read back as part of *that* line, because it is one — which
+    /// is right for a word in another font mid-sentence, and is why this places
+    /// the note in the bottom margin like a person would.
+    #[test]
+    fn text_added_in_the_margin_is_readable_and_shows_up_immediately() {
+        const AMIRI: &[u8] = include_bytes!("../../../../tests/fonts/Amiri-Regular.ttf");
+        let ink = |d: &Document| -> u64 {
+            d.render_page(0, 0.4)
+                .unwrap()
+                .rgba
+                .iter()
+                .map(|b| *b as u64)
+                .sum()
+        };
+        let added = "ملاحظة مضافة";
+        for name in [
+            "raw-amiri-cid-identity-tounicode.pdf",
+            "chrome-notonaskh-justified-3pages.pdf",
+        ] {
+            let mut d = Document::open(corpus(name), None).unwrap();
+            let (width, height) = d.page_size(0).unwrap();
+            let before = ink(&d);
+            d.add_text(0, width * 0.7, height - 48.0, 14.0, added, AMIRI)
+                .unwrap();
+            assert_ne!(
+                before,
+                ink(&d),
+                "{name}: the page must change straight away"
+            );
+            assert!(
+                d.extract_text(0).unwrap().contains(added),
+                "{name}: added text must be readable without saving first"
+            );
+            let reopened = Document::open(d.save().unwrap(), None).unwrap();
+            assert!(
+                reopened.extract_text(0).unwrap().contains(added),
+                "{name}: and it must survive the save"
+            );
+        }
+
+        let mut d = Document::open(corpus("raw-amiri-cid-identity-tounicode.pdf"), None).unwrap();
+        assert!(
+            d.add_text(0, 10.0, 10.0, 12.0, "   ", AMIRI).is_err(),
+            "blank text is a mistake, not an empty edit"
+        );
+        assert!(
+            d.add_text(99, 10.0, 10.0, 12.0, "x", AMIRI).is_err(),
+            "a page that does not exist must fail, not panic"
         );
     }
 

@@ -48,6 +48,11 @@ export interface CoreDocument {
   /** `[width_pt, height_pt]` after /Rotate. */
   page_size(index: number): Float32Array;
   render_page(index: number, scale: number): RenderedPage;
+  /**
+   * Draws one line of new text at a point, in page points from the top-left
+   * corner. `x` is where the line starts, so Arabic grows leftwards from it.
+   */
+  add_text(index: number, x: number, y: number, size: number, text: string, font: Uint8Array): void;
   /** Logical-order text, lines joined by "\n". */
   extract_text(index: number): string;
   text_lines(index: number): TextLine[];
@@ -95,12 +100,7 @@ export interface DocumentMetadata {
 
 /** Stable error codes from API.md plus the ones the client adds. */
 export type CoreErrorCode =
-  | 'E_PARSE'
-  | 'E_PASSWORD'
-  | 'E_RENDER'
-  | 'E_NOT_FOUND'
-  | 'E_WORKER'
-  | 'E_UNKNOWN';
+  'E_PARSE' | 'E_PASSWORD' | 'E_RENDER' | 'E_NOT_FOUND' | 'E_WORKER' | 'E_UNKNOWN';
 
 export interface CoreError {
   code: CoreErrorCode | string;

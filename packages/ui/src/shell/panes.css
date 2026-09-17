@@ -115,6 +115,37 @@
   border-color: var(--border-strong);
 }
 
+.tool-cards-note {
+  margin: 0;
+  padding: 12px 12px 0;
+  color: var(--text-muted);
+  font-size: var(--font-s);
+}
+
+/* An unbuilt tool stays reachable and readable, but never looks ready. */
+.tool-card-pending {
+  border-style: dashed;
+}
+
+.tool-card-pending .tool-card-icon,
+.tool-card-pending .tool-card-name {
+  opacity: 0.65;
+}
+
+.tool-card-name {
+  flex: 1 1 auto;
+}
+
+.tool-card-later {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  color: var(--text-muted);
+  font-size: var(--font-xs, 11px);
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
 .tool-card-icon {
   display: inline-flex;
   flex: 0 0 auto;

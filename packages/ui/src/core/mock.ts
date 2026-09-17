@@ -70,6 +70,8 @@ function textLines(index: number): TextLine[] {
 export const MOCK_PARAGRAPHS_PER_PAGE = 2;
 
 class MockDocument implements CoreDocument {
+  /** Lines added through `add_text`, so a test can see what was asked for. */
+  private readonly added: { index: number; x: number; y: number; size: number; text: string }[] = [];
   /** `page:paragraph` → replacement text, so the mock reflects committed edits. */
   private readonly edits = new Map<string, string>();
   private revision = 0;
@@ -145,6 +147,15 @@ class MockDocument implements CoreDocument {
     this.revision += 1;
     // The mock has no real font table, so it always reports a substitution.
     return JSON.stringify({ lines_drawn: text.length === 0 ? 0 : 3, font_substituted: true });
+  }
+
+  add_text(index: number, x: number, y: number, size: number, text: string, font: Uint8Array): void {
+    assertPage(index);
+    if (text.trim().length === 0) throw mockError('E_EDIT', 'there is no text to add');
+    if (!(size > 0)) throw mockError('E_EDIT', `font size ${size} is not usable`);
+    if (font.byteLength === 0) throw mockError('E_RENDER', 'no font supplied');
+    this.added.push({ index, x, y, size, text });
+    this.revision += 1;
   }
 
   save(): Uint8Array {

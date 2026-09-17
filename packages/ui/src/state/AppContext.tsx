@@ -43,6 +43,8 @@ export interface AppServices {
   clearRecent: () => void;
   /** Replaces a paragraph and records it on the undo stack. */
   commitParagraph: (entry: EditEntry) => Promise<void>;
+  /** Draws a new line of text at a point on a page, in page points. */
+  addText: (page: number, x: number, y: number, size: number, text: string) => Promise<void>;
   /** Re-applies the previous text of the last edit. */
   undoEdit: () => Promise<void>;
   /** Re-applies the text that was undone. */
@@ -252,6 +254,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  /**
+   * A new line of text where the user pointed. Unlike a paragraph replacement
+   * this is not recorded on the undo stack — the stack replays replacements,
+   * and there is no paragraph here to replay — so the panel says so plainly
+   * instead of offering an Undo that would do nothing.
+   */
+  const addText = useCallback(
+    async (page: number, x: number, y: number, size: number, text: string) => {
+      const doc = documentRef.current;
+      if (!doc || stateRef.current.edit.busy) return;
+      if (text.trim().length === 0) {
+        dispatch({ type: 'EDIT_CANCEL' });
+        return;
+      }
+      dispatch({ type: 'EDIT_BUSY', busy: true });
+      try {
+        const font = await loadEditFont();
+        await doc.add_text(page, x, y, size, text, font);
+        dispatch({ type: 'EDIT_ADDED', page });
+      } catch {
+        dispatch({ type: 'EDIT_BUSY', busy: false });
+        dispatch({ type: 'DOCUMENT_FAILED', error: 'edit.failed' });
+      }
+    },
+    [],
+  );
+
   const commitParagraph = useCallback(
     async (entry: EditEntry) => {
       if (entry.after === entry.before) {
@@ -320,6 +349,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       requestOpenFile,
       clearRecent,
       commitParagraph,
+      addText,
       undoEdit,
       redoEdit,
       saveDocument,
@@ -334,6 +364,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       requestOpenFile,
       clearRecent,
       commitParagraph,
+      addText,
       undoEdit,
       redoEdit,
       saveDocument,

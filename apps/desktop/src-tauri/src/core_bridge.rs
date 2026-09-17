@@ -554,6 +554,26 @@ pub fn doc_replace_paragraph(
     })
 }
 
+/// `Document.add_text(page, x, y, size, text, font)`.
+#[tauri::command(async)]
+#[allow(clippy::too_many_arguments)]
+pub fn doc_add_text(
+    bridge: State<'_, CoreBridge>,
+    handle: u32,
+    index: u32,
+    x: f32,
+    y: f32,
+    size: f32,
+    text: String,
+    font: Vec<u8>,
+) -> Result<(), String> {
+    bridge.with_document_mut(handle, move |document| {
+        document
+            .add_text(index as usize, x, y, size, &text, &font)
+            .map_err(|e| e.to_string())
+    })
+}
+
 /// Saved bytes travel as a raw IPC body, like rendered pixels: JSON would
 /// balloon a megabyte-scale PDF into an array of numbers.
 #[tauri::command(async)]

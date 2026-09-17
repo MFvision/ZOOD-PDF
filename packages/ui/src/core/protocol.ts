@@ -24,6 +24,16 @@ export interface RequestMap {
   metadata: { doc: number };
   paragraphs: { doc: number; index: number };
   replace_paragraph: { doc: number; index: number; para: number; text: string; font: ArrayBuffer };
+  /** A new line of text at a point, in page points from the top-left corner. */
+  add_text: {
+    doc: number;
+    index: number;
+    x: number;
+    y: number;
+    size: number;
+    text: string;
+    font: ArrayBuffer;
+  };
   save: { doc: number };
   free: { doc: number };
 }
@@ -40,6 +50,7 @@ export interface ResultMap {
   metadata: DocumentMetadata;
   paragraphs: ParagraphData[];
   replace_paragraph: ReplaceParagraphResult;
+  add_text: null;
   /** Owns its buffer so it can be transferred and wrapped in a Blob. */
   save: Uint8Array<ArrayBuffer>;
   free: null;
@@ -52,8 +63,7 @@ export type CoreRequest = {
 }[RequestKind];
 
 export type CoreResponse =
-  | { id: number; ok: true; result: unknown }
-  | { id: number; ok: false; error: CoreError };
+  { id: number; ok: true; result: unknown } | { id: number; ok: false; error: CoreError };
 
 export interface HandledResult {
   result: unknown;

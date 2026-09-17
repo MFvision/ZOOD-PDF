@@ -31,6 +31,12 @@ export interface EditState {
   fontSubstituted: boolean;
   /** A core call is in flight; the editor and the undo buttons wait for it. */
   busy: boolean;
+  /** Waiting for the click that says where new text should go. */
+  placing: boolean;
+  /** Where that text will start, in page points from the top-left corner. */
+  adding: { page: number; x: number; y: number } | null;
+  /** Points, chosen in the panel before placing. */
+  addSize: number;
 }
 
 export interface AppState {
@@ -86,6 +92,10 @@ export type AppAction =
   | { type: 'EDIT_MODE'; active: boolean }
   | { type: 'EDIT_OPEN'; page: number; paragraphIndex: number }
   | { type: 'EDIT_CANCEL' }
+  | { type: 'EDIT_PLACE'; placing: boolean }
+  | { type: 'EDIT_ADD_AT'; page: number; x: number; y: number }
+  | { type: 'EDIT_ADD_SIZE'; size: number }
+  | { type: 'EDIT_ADDED'; page: number }
   | { type: 'EDIT_BUSY'; busy: boolean }
   | { type: 'EDIT_APPLIED'; entry: EditEntry; fontSubstituted: boolean }
   | { type: 'EDIT_STEPPED'; stack: EditStack; page: number; fontSubstituted: boolean }
@@ -111,6 +121,9 @@ export function createEditState(): EditState {
     pageRevisions: {},
     fontSubstituted: false,
     busy: false,
+    placing: false,
+    adding: null,
+    addSize: 14,
   };
 }
 
@@ -125,6 +138,8 @@ function bumpRevision(edit: EditState, page: number, fontSubstituted: boolean): 
     ...edit,
     editing: null,
     busy: false,
+    placing: false,
+    adding: null,
     revision: edit.revision + 1,
     pageRevisions: { ...edit.pageRevisions, [page]: (edit.pageRevisions[page] ?? 0) + 1 },
     fontSubstituted: edit.fontSubstituted || fontSubstituted,
@@ -229,20 +244,30 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'SET_THEME':
       return { ...state, theme: action.theme };
     case 'TOGGLE_LEFT_PANE':
-      return { ...state, leftPane: { ...state.leftPane, open: action.open ?? !state.leftPane.open } };
+      return {
+        ...state,
+        leftPane: { ...state.leftPane, open: action.open ?? !state.leftPane.open },
+      };
     case 'SET_LEFT_TAB':
       return { ...state, leftPane: { ...state.leftPane, tab: action.tab, open: true } };
     case 'SET_LEFT_WIDTH':
       return { ...state, leftPane: { ...state.leftPane, width: clampPaneWidth(action.width) } };
     case 'TOGGLE_RIGHT_PANE':
-      return { ...state, rightPane: { ...state.rightPane, open: action.open ?? !state.rightPane.open } };
+      return {
+        ...state,
+        rightPane: { ...state.rightPane, open: action.open ?? !state.rightPane.open },
+      };
     case 'SET_RIGHT_WIDTH':
       return { ...state, rightPane: { ...state.rightPane, width: clampPaneWidth(action.width) } };
     case 'SET_ACTIVE_TOOL':
       // Picking the Edit tool is what "enter Edit mode" means; leaving it exits.
       return {
         ...state,
-        rightPane: { ...state.rightPane, activeTool: action.tool, open: action.tool ? true : state.rightPane.open },
+        rightPane: {
+          ...state.rightPane,
+          activeTool: action.tool,
+          open: action.tool ? true : state.rightPane.open,
+        },
         edit:
           action.tool === 'edit'
             ? { ...state.edit, active: true }
@@ -255,7 +280,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'FIND_QUERY':
       return { ...state, find: { ...state.find, query: action.query, searched: false } };
     case 'FIND_RESULTS': {
-      const next = { ...state, find: { ...state.find, matches: action.matches, cursor: 0, searched: true } };
+      const next = {
+        ...state,
+        find: { ...state.find, matches: action.matches, cursor: 0, searched: true },
+      };
       return action.matches.length > 0 ? scrollTo(next, (action.matches[0] ?? 0) + 1) : next;
     }
     case 'FIND_STEP':
@@ -265,7 +293,11 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'EDIT_MODE':
       return {
         ...state,
-        edit: { ...state.edit, active: action.active, editing: action.active ? state.edit.editing : null },
+        edit: {
+          ...state.edit,
+          active: action.active,
+          editing: action.active ? state.edit.editing : null,
+        },
         rightPane: action.active
           ? { ...state.rightPane, activeTool: 'edit', open: true }
           : state.rightPane,
@@ -280,7 +312,32 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         },
       };
     case 'EDIT_CANCEL':
-      return { ...state, edit: { ...state.edit, editing: null, busy: false } };
+      return {
+        ...state,
+        edit: { ...state.edit, editing: null, busy: false, placing: false, adding: null },
+      };
+    case 'EDIT_PLACE':
+      // Arming placement closes any open paragraph editor: one at a time.
+      return {
+        ...state,
+        edit: { ...state.edit, placing: action.placing, adding: null, editing: null },
+      };
+    case 'EDIT_ADD_AT':
+      return {
+        ...state,
+        edit: {
+          ...state.edit,
+          placing: false,
+          adding: { page: action.page, x: action.x, y: action.y },
+        },
+      };
+    case 'EDIT_ADD_SIZE':
+      return { ...state, edit: { ...state.edit, addSize: action.size } };
+    case 'EDIT_ADDED':
+      // Added text is not on the undo stack: the stack replays paragraph
+      // replacements, and there is no paragraph here to replay. The panel says
+      // so rather than offering an Undo that would quietly do nothing.
+      return { ...state, edit: bumpRevision(state.edit, action.page, false) };
     case 'EDIT_BUSY':
       return { ...state, edit: { ...state.edit, busy: action.busy } };
     case 'EDIT_APPLIED':
@@ -294,7 +351,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'EDIT_STEPPED':
       return {
         ...state,
-        edit: { ...bumpRevision(state.edit, action.page, action.fontSubstituted), stack: action.stack },
+        edit: {
+          ...bumpRevision(state.edit, action.page, action.fontSubstituted),
+          stack: action.stack,
+        },
       };
     case 'EDIT_NOTICE_DISMISSED':
       return { ...state, edit: { ...state.edit, fontSubstituted: false } };

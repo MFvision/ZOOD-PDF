@@ -137,6 +137,25 @@ impl Document {
             .collect())
     }
 
+    /// Draw a new line of text at a point on the page, in the bundled `font`.
+    ///
+    /// `x` and `y` are points from the top-left corner — the same frame
+    /// `paragraphs` reports — and `x` is where the line starts, so an Arabic
+    /// run grows leftwards from it and a Latin one rightwards.
+    pub fn add_text(
+        &mut self,
+        index: usize,
+        x: f32,
+        y: f32,
+        size: f32,
+        text: &str,
+        font: &[u8],
+    ) -> Result<(), JsError> {
+        self.0
+            .add_text(index, x, y, size, text, font)
+            .map_err(js_err)
+    }
+
     /// Replace a paragraph with reflowed, shaped text. `font` is a face from the
     /// bundled fallback chain. The returned JSON reports whether a substitution
     /// happened, whether the text had to be shrunk to fit its box and whether it

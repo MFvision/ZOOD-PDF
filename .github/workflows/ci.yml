@@ -79,6 +79,10 @@ jobs:
         run: pnpm -r lint
       - name: Test every package
         run: pnpm -r test
+      # vitest does not typecheck and eslint does not either; `build` in the
+      # shared UI package is `tsc --noEmit`, and nothing was running it.
+      - name: Typecheck the shared packages
+        run: pnpm -r --filter './packages/**' build
       - name: Build the web host
         run: pnpm --filter @warraq/web build
       - name: Build the extension (dist + zip)

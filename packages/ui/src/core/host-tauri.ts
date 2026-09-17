@@ -301,6 +301,17 @@ async function dispatch(message: HostRequest): Promise<unknown> {
       })) as string;
       return parseReplaceResult(json);
     }
+    case 'add_text':
+      await invoke('doc_add_text', {
+        handle: message.doc,
+        index: message.index,
+        x: message.x,
+        y: message.y,
+        size: message.size,
+        text: message.text,
+        font: Array.from(new Uint8Array(message.font)),
+      });
+      return null;
     case 'save': {
       // The bytes come back as a raw IPC body, like `doc_render_page`.
       const body = (await invoke('doc_save', { handle: message.doc })) as ArrayBuffer;

@@ -43,6 +43,7 @@ function recordingModule(substituted: boolean): { module: CoreModule; calls: Rep
     search: () => Uint32Array.of(),
     metadata: () => '{"pages":3,"encrypted":false}',
     paragraphs: () => texts.map((text, index) => paragraph(index, text)),
+    add_text: () => undefined,
     replace_paragraph: (page, para, text, font) => {
       calls.push({ page, para, text, fontBytes: font.byteLength });
       texts[para] = text;

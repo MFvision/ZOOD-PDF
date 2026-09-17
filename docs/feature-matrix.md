@@ -13,6 +13,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ planned · ❌ out of scope. Targ
 | Compress | Image downsampling, object streams, font subsetting, presets | MVP | ⬜ | ⬜ | ⬜ | |
 | Fill & Sign | AcroForm fill, draw/type/image signature, initials, dates | MVP | ⬜ | ⬜ | ⬜ | PDFium form rendering; our appearance streams for Arabic |
 | Protect | Open password, AES-256 | MVP | 🟡 | 🟡 | 🟡 | **reading** encrypted files works everywhere: own standard security handler (R2–R6, RC4 40/128, AES-128, AES-256), verified against qpdf and RFC/NIST vectors. Writing encryption and permission flags still to do |
+| Edit PDF | Add a line of text where you click | MVP | ✅ | ✅ | ✅ | shaped, subset and embedded like any replacement, with a chosen size; RTL grows leftwards from the point. Not on the undo stack yet |
 | Edit PDF | Text edit with reflow (Arabic-correct) | MVP | ✅ | ✅ | ✅ | click a paragraph, edit in place, undo/redo, save. GATE 2 passed on a real Word export and a scan (`docs/gate-2.md`); Acrobat verification still outstanding |
 | Edit PDF | Images replace/resize/crop, links, headers/footers, watermarks, Bates, page numbers | MVP/v1 | ⬜ | ⬜ | ⬜ | |
 | Scan & OCR | Arabic + English OCR, deskew, cleanup, searchable image PDF | v1 | ⬜ | ⬜ | ⬜ | tesseract.js (X, W), Tesseract native (D) |

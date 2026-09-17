@@ -108,12 +108,24 @@ fn add_font_resource(
     Ok(name)
 }
 
-/// Operators that undo the transform a page's content stream leaves in effect, so
-/// that appended drawing happens in plain PDF user space.
-fn reset_ctm_ops(pdf: &PdfDocument, page_id: ObjectId) -> Vec<Operation> {
+/// Operators that restore the graphics state a page's content stream leaves
+/// dangling, so appended drawing happens in plain PDF user space.
+///
+/// These must be emitted *before* the caller's own `q`, because they pop the
+/// page's stack, not ours. Closing the dangling saves is what also drops any
+/// clip path still in effect — undoing the transform alone is not enough, and
+/// text appended to a clipped page was invisible until this was fixed.
+fn reset_state_ops(pdf: &PdfDocument, page_id: ObjectId) -> Vec<Operation> {
     let Ok(content) = Content::decode(&pdf.doc.get_page_content(page_id)) else {
         return vec![];
     };
+    let depth = crate::text_walk::unbalanced_q(&content.operations);
+    if depth > 0 {
+        return std::iter::repeat_with(|| Operation::new("Q", vec![]))
+            .take(depth)
+            .collect();
+    }
+    // Balanced, but a `cm` outside any `q` still applies.
     let ctm = crate::text_walk::final_ctm(&content.operations);
     if ctm == crate::text_walk::Matrix::IDENTITY {
         return vec![];
@@ -166,8 +178,8 @@ pub fn append_line(
         x_edge
     };
     // glyphs with offsets (marks, cursive attachment) are positioned individually
-    let mut ops = vec![Operation::new("q", vec![])];
-    ops.extend(reset_ctm_ops(pdf, page_id));
+    let mut ops = reset_state_ops(pdf, page_id);
+    ops.push(Operation::new("q", vec![]));
     ops.push(Operation::new("BT", vec![]));
     ops.push(Operation::new(
         "Tf",
@@ -569,8 +581,8 @@ pub fn replace_paragraph(
     let font_id = embed_subset_font(&mut pdf.doc, &shaper, &subset, "WarraqReflow");
     let page_id = pdf.page_id(page_index)?;
     let name = add_font_resource(pdf, page_id, font_id)?;
-    let mut ops = vec![Operation::new("q", vec![])];
-    ops.extend(reset_ctm_ops(pdf, page_id));
+    let mut ops = reset_state_ops(pdf, page_id);
+    ops.push(Operation::new("q", vec![]));
     ops.push(Operation::new("BT", vec![]));
     ops.push(Operation::new(
         "Tf",

@@ -113,3 +113,61 @@
   background: var(--warning-bg);
   border: 1px solid var(--warning-border);
 }
+
+/* Placing new text ------------------------------------------------------- */
+
+/* While Add text is armed, the whole page is the target: the click says where
+   the line starts, so nothing else on the page should take it first. */
+.edit-place-target {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border: 1px dashed var(--accent);
+}
+
+.add-text-editor {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  gap: 6px;
+
+  /* The point that was clicked is where the text starts, so the box hangs from
+     it rather than being centred on it. */
+  min-inline-size: 220px;
+  max-inline-size: 320px;
+  padding: 8px;
+  background: var(--bg-panel);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-m, 0 6px 20px rgb(0 0 0 / 18%));
+  transform: translateY(-100%);
+}
+
+.add-text-input {
+  inline-size: 100%;
+  padding: 6px 8px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+}
+
+.add-text-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.add-text-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-xs, 11px);
+}
+
+.edit-size {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: var(--font-s);
+}
