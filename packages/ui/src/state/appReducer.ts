@@ -323,10 +323,18 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         edit: { ...state.edit, editing: null, busy: false, placing: false, adding: null },
       };
     case 'EDIT_PLACE':
-      // Arming placement closes any open paragraph editor: one at a time.
+      // Arming placement closes any open paragraph editor: one at a time. It
+      // also turns Edit mode on, because the overlay that takes the click only
+      // exists in Edit mode — without this the button is a dead click.
       return {
         ...state,
-        edit: { ...state.edit, placing: action.placing, adding: null, editing: null },
+        edit: {
+          ...state.edit,
+          placing: action.placing,
+          active: action.placing || state.edit.active,
+          adding: null,
+          editing: null,
+        },
       };
     case 'EDIT_ADD_AT':
       return {

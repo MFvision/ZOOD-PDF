@@ -121,6 +121,10 @@
 .edit-place-target {
   position: absolute;
   inset: 0;
+
+  /* Above the paragraph hit targets: while placing, the click is about a point
+     on the page, not about the paragraph that happens to be under it. */
+  z-index: 3;
   cursor: crosshair;
   background: color-mix(in srgb, var(--accent) 6%, transparent);
   border: 1px dashed var(--accent);

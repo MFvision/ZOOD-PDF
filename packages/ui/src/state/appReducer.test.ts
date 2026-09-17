@@ -45,7 +45,9 @@ describe('appReducer', () => {
     const state = appReducer(withDocument(), { type: 'SCROLL_TO_PAGE', page: 42 });
     expect(state.currentPage).toBe(3);
     expect(state.scrollRequest?.page).toBe(3);
-    expect(appReducer(createInitialState(), { type: 'SCROLL_TO_PAGE', page: 2 }).scrollRequest).toBeNull();
+    expect(
+      appReducer(createInitialState(), { type: 'SCROLL_TO_PAGE', page: 2 }).scrollRequest,
+    ).toBeNull();
   });
 
   it('cycles through find results', () => {
@@ -76,7 +78,9 @@ describe('appReducer edit state', () => {
     expect(state.edit.active).toBe(true);
     state = appReducer(state, { type: 'SET_ACTIVE_TOOL', tool: 'organize' });
     expect(state.edit.active).toBe(false);
-    expect(appReducer(state, { type: 'EDIT_MODE', active: true }).rightPane.activeTool).toBe('edit');
+    expect(appReducer(state, { type: 'EDIT_MODE', active: true }).rightPane.activeTool).toBe(
+      'edit',
+    );
   });
 
   it('opens and cancels the in-place editor', () => {
@@ -87,7 +91,11 @@ describe('appReducer edit state', () => {
   });
 
   it('a commit records the entry and bumps the page revision only for that page', () => {
-    const state = appReducer(withDocument(), { type: 'EDIT_APPLIED', entry, fontSubstituted: false });
+    const state = appReducer(withDocument(), {
+      type: 'EDIT_APPLIED',
+      entry,
+      fontSubstituted: false,
+    });
     expect(state.edit.stack.entries).toEqual([entry]);
     expect(state.edit.stack.cursor).toBe(1);
     expect(state.edit.revision).toBe(1);
@@ -123,7 +131,11 @@ describe('appReducer edit state', () => {
   });
 
   it('forgets the history when another document is opened', () => {
-    const edited = appReducer(withDocument(), { type: 'EDIT_APPLIED', entry, fontSubstituted: true });
+    const edited = appReducer(withDocument(), {
+      type: 'EDIT_APPLIED',
+      entry,
+      fontSubstituted: true,
+    });
     const reopened = appReducer(edited, { type: 'DOCUMENT_OPENED', document: doc });
     expect(reopened.edit.stack.entries).toHaveLength(0);
     expect(reopened.edit.revision).toBe(0);
@@ -143,7 +155,9 @@ describe('pdfFileName', () => {
 
 describe('sanitizePreferences', () => {
   it('drops invalid stored values', () => {
-    expect(sanitizePreferences({ lang: 'xx', theme: 'dark', leftPaneWidth: -3, leftTab: 'layers' })).toEqual({
+    expect(
+      sanitizePreferences({ lang: 'xx', theme: 'dark', leftPaneWidth: -3, leftTab: 'layers' }),
+    ).toEqual({
       lang: undefined,
       theme: 'dark',
       leftPaneOpen: undefined,
@@ -153,5 +167,24 @@ describe('sanitizePreferences', () => {
       rightPaneWidth: undefined,
     });
     expect(sanitizePreferences('garbage')).toEqual({});
+  });
+});
+
+describe('placing new text', () => {
+  it('turns Edit mode on, because the overlay that takes the click lives there', () => {
+    const state = appReducer(createInitialState(), { type: 'EDIT_PLACE', placing: true });
+    expect(state.edit.placing).toBe(true);
+    expect(state.edit.active).toBe(true);
+  });
+
+  it('remembers the point until the line is drawn or dropped', () => {
+    let state = appReducer(createInitialState(), { type: 'EDIT_PLACE', placing: true });
+    state = appReducer(state, { type: 'EDIT_ADD_AT', page: 2, x: 120, y: 340 });
+    expect(state.edit.adding).toEqual({ page: 2, x: 120, y: 340 });
+    expect(state.edit.placing).toBe(false);
+    expect(appReducer(state, { type: 'EDIT_CANCEL' }).edit.adding).toBeNull();
+    const drawn = appReducer(state, { type: 'EDIT_ADDED', page: 2 });
+    expect(drawn.edit.adding).toBeNull();
+    expect(drawn.edit.pageRevisions[2]).toBe(1);
   });
 });
