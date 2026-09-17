@@ -19,7 +19,11 @@ fn corpus_files() -> Vec<PathBuf> {
     let mut files = vec![];
     for sub in ["generated", "realworld"] {
         if let Ok(rd) = std::fs::read_dir(dir.join(sub)) {
-            let mut v: Vec<PathBuf> = rd.flatten().map(|e| e.path()).filter(|p| p.extension().map(|e| e == "pdf").unwrap_or(false)).collect();
+            let mut v: Vec<PathBuf> = rd
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| p.extension().map(|e| e == "pdf").unwrap_or(false))
+                .collect();
             v.sort();
             files.extend(v);
         }
@@ -48,18 +52,27 @@ fn thumbnail(path: &Path) -> Option<(usize, Vec<u8>)> {
     }
     let height = (bh * WIDTH).div_ceil(bw.max(1));
     let mut out = vec![0u8; WIDTH * height];
-    for (y, row) in out.chunks_exact_mut(WIDTH).enumerate() {
+    for (y, row) in out.as_chunks_mut::<WIDTH>().0.iter_mut().enumerate() {
         for (x, cell) in row.iter_mut().enumerate() {
             // average the source block that maps to this cell
-            let (x0, x1) = (x * bw / WIDTH, ((x + 1) * bw / WIDTH).max(x * bw / WIDTH + 1).min(bw));
-            let (y0, y1) = (y * bh / height, ((y + 1) * bh / height).max(y * bh / height + 1).min(bh));
+            let (x0, x1) = (
+                x * bw / WIDTH,
+                ((x + 1) * bw / WIDTH).max(x * bw / WIDTH + 1).min(bw),
+            );
+            let (y0, y1) = (
+                y * bh / height,
+                ((y + 1) * bh / height).max(y * bh / height + 1).min(bh),
+            );
             let mut sum = 0u32;
             let mut n = 0u32;
             for sy in y0..y1 {
                 for sx in x0..x1 {
                     let i = (sy * bw + sx) * 4;
                     // luminance of the premultiplied-over-white pixel
-                    sum += (bmp.rgba[i] as u32 * 299 + bmp.rgba[i + 1] as u32 * 587 + bmp.rgba[i + 2] as u32 * 114) / 1000;
+                    sum += (bmp.rgba[i] as u32 * 299
+                        + bmp.rgba[i + 1] as u32 * 587
+                        + bmp.rgba[i + 2] as u32 * 114)
+                        / 1000;
                     n += 1;
                 }
             }
@@ -85,7 +98,12 @@ fn every_corpus_page_renders_the_same_as_its_golden() {
             panic!("{stem}: page 1 could not be rendered");
         };
         // a tiny header keeps the geometry honest: a page that changes shape must fail
-        let mut blob = vec![(WIDTH >> 8) as u8, WIDTH as u8, (height >> 8) as u8, height as u8];
+        let mut blob = vec![
+            (WIDTH >> 8) as u8,
+            WIDTH as u8,
+            (height >> 8) as u8,
+            height as u8,
+        ];
         blob.extend_from_slice(&thumb);
         let path = golden_dir.join(format!("{stem}.gray"));
         if update {
@@ -101,9 +119,16 @@ fn every_corpus_page_renders_the_same_as_its_golden() {
             changed.push(format!("{stem}: page geometry changed"));
             continue;
         }
-        let diff: f32 = reference[4..].iter().zip(blob[4..].iter()).map(|(a, b)| (*a as f32 - *b as f32).abs()).sum::<f32>() / (thumb.len() as f32);
+        let diff: f32 = reference[4..]
+            .iter()
+            .zip(blob[4..].iter())
+            .map(|(a, b)| (*a as f32 - *b as f32).abs())
+            .sum::<f32>()
+            / (thumb.len() as f32);
         if diff > TOLERANCE {
-            changed.push(format!("{stem}: mean difference {diff:.2} grey levels (tolerance {TOLERANCE})"));
+            changed.push(format!(
+                "{stem}: mean difference {diff:.2} grey levels (tolerance {TOLERANCE})"
+            ));
         }
     }
     if update {
@@ -111,6 +136,10 @@ fn every_corpus_page_renders_the_same_as_its_golden() {
         return;
     }
     assert!(missing.is_empty(), "no golden reference for: {missing:?} — run UPDATE_GOLDEN=1 cargo test -p warraq-core --test golden");
-    assert!(changed.is_empty(), "rendering changed:\n  {}", changed.join("\n  "));
+    assert!(
+        changed.is_empty(),
+        "rendering changed:\n  {}",
+        changed.join("\n  ")
+    );
     assert!(checked > 40, "only {checked} pages were compared");
 }

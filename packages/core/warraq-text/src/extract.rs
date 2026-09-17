@@ -427,11 +427,17 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
     let mut marks: LineGlyphs = vec![];
     for b in angles {
         let angle = b as f32 * SECTOR;
-        let mut sorted: Vec<(usize, &PositionedGlyph)> = indexed.iter().copied().filter(|(_, g)| bucket(g.angle) == b).collect();
+        let mut sorted: Vec<(usize, &PositionedGlyph)> = indexed
+            .iter()
+            .copied()
+            .filter(|(_, g)| bucket(g.angle) == b)
+            .collect();
         sorted.sort_by(|a, b| {
             let (ax, ay) = frame(a.1, angle);
             let (bx, by) = frame(b.1, angle);
-            ay.partial_cmp(&by).unwrap_or(std::cmp::Ordering::Equal).then(ax.partial_cmp(&bx).unwrap_or(std::cmp::Ordering::Equal))
+            ay.partial_cmp(&by)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(ax.partial_cmp(&bx).unwrap_or(std::cmp::Ordering::Equal))
         });
         for (ci, g) in sorted {
             if is_mark(g) {
@@ -440,7 +446,9 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
             }
             let (_, gy) = frame(g, angle);
             match lines.last_mut() {
-                Some((y, size, v)) if (gy - *y).abs() <= 0.55 * size.max(g.size).max(1.0) => v.push((ci, g)),
+                Some((y, size, v)) if (gy - *y).abs() <= 0.55 * size.max(g.size).max(1.0) => {
+                    v.push((ci, g))
+                }
                 _ => lines.push((gy, g.size, vec![(ci, g)])),
             }
         }

@@ -287,13 +287,37 @@ mod tests {
     fn an_edit_is_visible_in_the_very_next_render_and_paragraph_read() {
         const AMIRI: &[u8] = include_bytes!("../../../../tests/fonts/Amiri-Regular.ttf");
         let mut d = Document::open(corpus("chrome-notonaskh-justified-3pages.pdf"), None).unwrap();
-        let before: u64 = d.render_page(0, 0.4).unwrap().rgba.iter().map(|b| *b as u64).sum();
+        let before: u64 = d
+            .render_page(0, 0.4)
+            .unwrap()
+            .rgba
+            .iter()
+            .map(|b| *b as u64)
+            .sum();
         let new_text = "نص بديل قصير";
         d.replace_paragraph(0, 1, new_text, AMIRI).unwrap();
-        let after: u64 = d.render_page(0, 0.4).unwrap().rgba.iter().map(|b| *b as u64).sum();
-        assert_ne!(before, after, "the page must look different immediately after an edit");
-        assert!(d.extract_text(0).unwrap().contains(new_text), "the new text must be readable without saving first");
-        assert!(d.paragraphs(0).unwrap().iter().any(|p| p.text.contains(new_text)), "paragraph boxes must be refreshed too");
+        let after: u64 = d
+            .render_page(0, 0.4)
+            .unwrap()
+            .rgba
+            .iter()
+            .map(|b| *b as u64)
+            .sum();
+        assert_ne!(
+            before, after,
+            "the page must look different immediately after an edit"
+        );
+        assert!(
+            d.extract_text(0).unwrap().contains(new_text),
+            "the new text must be readable without saving first"
+        );
+        assert!(
+            d.paragraphs(0)
+                .unwrap()
+                .iter()
+                .any(|p| p.text.contains(new_text)),
+            "paragraph boxes must be refreshed too"
+        );
     }
 
     #[test]

@@ -1,6 +1,6 @@
 # STATUS — Warraq
 
-*Updated 2026-09-16, end of the first session: Phase 0 complete, Phase 1 complete, Phase 2 well advanced.*
+*Updated 2026-09-17: Phase 0 and Phase 1 complete, Phase 2 complete through GATE 2.*
 
 ## Where the product stands
 
@@ -8,10 +8,12 @@
 |---|---|
 | Open, render, thumbnails, zoom, search | works on desktop (native PDFium), web and extension (pure Rust) |
 | Arabic text **reading** in logical order | 16 of the truth-scored corpus files, against 2 for PDF.js, 2 for MuPDF, 0 for PDFium |
-| Arabic text **editing** with reflow | works: detect paragraph → erase → re-shape → redraw, exposed to JS |
+| Arabic text **editing** with reflow | works end to end: click a paragraph in the app, edit it, undo/redo, save. GATE 2 passed (`docs/gate-2.md`) |
 | Encrypted files | read everywhere: R2–R6, RC4 40/128, AES-128, AES-256 |
 | Saving | incremental update; the opened bytes stay as the literal prefix |
 | Hostile input | mutation harness on every pull request; cargo-fuzz targets ready for nightly |
+| Visual regressions | golden renders of all 48 corpus pages gated in CI |
+| No-mapping files | characters recovered from glyph shapes, at 100 % precision on held-out fonts |
 
 Every one of the 48 corpus files opens. 63 tests green, clippy clean, `wasm32-unknown-unknown` compiles, core WASM 2.50 MB gzipped (budget 8 MB).
 
@@ -22,11 +24,11 @@ Every one of the 48 corpus files opens. 63 tests green, clippy clean, `wasm32-un
 * **ADR-0006** recorded your answers: name, license and native PDFium confirmed; browser builds default to the pure-Rust rasterizer; Persian and Urdu first-class (corpus and fonts added).
 
 ## Next (in order)
-1. **UI editing surface**: click a paragraph, edit it, undo/redo, and the font-substitution warning. The core API is ready and exposed (`paragraphs`, `replace_paragraph`, `save`).
-2. **PDFium WASM shim** so the web build can optionally use PDFium for form and annotation fidelity.
-3. **Remaining extraction gaps**: glyph-shape matching against bundled fonts for files with no usable ToUnicode (the Skia/Noto Type3 case and Nastaliq Urdu), then OCR of the rendered line as the last resort.
-4. **GATE 2 demo** on a Word-exported and a scanned Arabic file, verified in Acrobat (needs a machine with Acrobat installed).
-5. Golden render tests in CI; PDF.js image rendering re-check in a browser; the 500 MB scan stress run.
+1. **Paragraph breaks**: consecutive body paragraphs with uniform spacing still merge into one. Needs indentation and spacing analysis, not just line proximity.
+2. **OCR** for scanned pages (Tesseract: `tesseract.js` in the browser, native on desktop), which also gives the last extraction fallback and makes the two scanned corpus files searchable.
+3. **PDFium WASM shim** so the web build can optionally use PDFium for form and annotation fidelity.
+4. **Reading order for rotated runs** (sidebars come out reversed) and **Nastaliq Urdu**, which does not decompose into per-letter shapes.
+5. Thumbnails do not re-render after an edit (the page canvas does); writing encryption; the 500 MB scan stress run; Acrobat verification on a machine that has it.
 
 ## Decisions needed from you
 1. **GitHub organization** — nothing has been pushed: `gh repo create <org>/warraq --private --source . --push`.

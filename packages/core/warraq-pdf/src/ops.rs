@@ -516,9 +516,20 @@ pub fn replace_paragraph(
     let (font_size, leading, shrunk, overflowed) = {
         let (mut size, mut lead) = (edit.font_size, edit.leading);
         let fits = |size: f32, lead: f32| -> bool {
-            let area = LayoutBox { left: x0, right: x0 + w, first_baseline: edit.first_baseline };
-            let style = LayoutStyle { font_size: size, leading: -lead, direction: edit.direction, alignment: edit.alignment };
-            let lines = layout_paragraph(&shaper, edit.text, &area, &style).len().max(1);
+            let area = LayoutBox {
+                left: x0,
+                right: x0 + w,
+                first_baseline: edit.first_baseline,
+            };
+            let style = LayoutStyle {
+                font_size: size,
+                leading: -lead,
+                direction: edit.direction,
+                alignment: edit.alignment,
+            };
+            let lines = layout_paragraph(&shaper, edit.text, &area, &style)
+                .len()
+                .max(1);
             (lines as f32 - 1.0) * lead + size <= box_height + 0.5
         };
         let mut steps = 0;
@@ -543,7 +554,12 @@ pub fn replace_paragraph(
     };
     let lines = layout_paragraph(&shaper, edit.text, &area, &style);
     if lines.is_empty() {
-        return Ok(Replacement { lines_drawn: 0, font_size, shrunk, overflowed });
+        return Ok(Replacement {
+            lines_drawn: 0,
+            font_size,
+            shrunk,
+            overflowed,
+        });
     }
     let all: Vec<ShapedGlyph> = lines
         .iter()
@@ -603,7 +619,12 @@ pub fn replace_paragraph(
         .change_page_content(page_id, content)
         .map_err(|e| Error::Edit(e.to_string()))?;
     mark_page_objects(pdf, page_id);
-    Ok(Replacement { lines_drawn: lines.len(), font_size, shrunk, overflowed })
+    Ok(Replacement {
+        lines_drawn: lines.len(),
+        font_size,
+        shrunk,
+        overflowed,
+    })
 }
 
 #[cfg(test)]
