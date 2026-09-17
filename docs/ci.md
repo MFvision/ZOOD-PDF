@@ -173,3 +173,20 @@ Coverage-guided fuzzing lives in `packages/core/fuzz/` (targets `open_document`
 and `extract_text`, seeded with the corpus). It needs a nightly toolchain, so it
 belongs in a scheduled job rather than the pull-request path; see
 `packages/core/fuzz/README.md`.
+
+## Golden renders
+
+`packages/core/warraq-core/tests/golden.rs` renders page 1 of every corpus file and
+compares it with a reference in `tests/golden/`. References are 160 px wide, 8-bit
+grey blobs with a four-byte geometry header, so the whole corpus costs under 2 MB
+while still catching a moved line, a missing glyph or a blank page. Comparison is
+by mean absolute difference (tolerance 2 grey levels out of 255), which survives
+the last-bit differences between CPUs but not a visible change; a changed page
+geometry fails outright.
+
+After an intended rendering change, refresh and commit the references together
+with the change that caused them:
+
+```bash
+UPDATE_GOLDEN=1 cargo test --manifest-path packages/core/Cargo.toml -p warraq-core --test golden
+```

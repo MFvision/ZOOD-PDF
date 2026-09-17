@@ -122,6 +122,9 @@ jobs:
         with:
           workspaces: packages/core
       # Every PDF is hostile input: mutated corpus files must not panic or hang.
+      # Golden renders: every corpus page must keep looking the same.
+      - name: Golden renders
+        run: cargo test --release --manifest-path packages/core/Cargo.toml -p warraq-core --test golden
       - name: Robustness (mutation harness on stable)
         run: cargo test --release --manifest-path packages/core/Cargo.toml -p warraq-core --test robustness
       - name: Run the acid test with the Warraq core
