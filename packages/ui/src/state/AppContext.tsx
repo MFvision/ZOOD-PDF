@@ -1,6 +1,23 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
 import type { ChangeEvent, Dispatch, ReactNode } from 'react';
 import { getSharedCoreClient } from '../core/client';
+import {
+  isTauriHost,
+  onNativeFileDrop,
+  pickPdfFile,
+  savePdfFile,
+  takeStartupFile,
+} from '../core/host-tauri';
+import type { PickedFile } from '../core/host-tauri';
 import type { CoreClient, RemoteDocument } from '../core/client';
 import { loadEditFont } from '../edit/editFont';
 import { redo as redoStack, undo as undoStack } from '../edit/editStack';
@@ -10,7 +27,7 @@ import { appReducer, createInitialState } from './appReducer';
 import type { AppAction, AppState } from './appReducer';
 import { readPreferences, writePreferences } from './preferences';
 import { addRecent, clearRecent as clearStoredRecent, readRecent } from './recent';
-import { downloadPdf } from './saveFile';
+import { downloadPdf, pdfFileName } from './saveFile';
 
 export interface AppServices {
   client: CoreClient;
@@ -21,7 +38,7 @@ export interface AppServices {
   /** Opens the first PDF in a drop or picker selection. */
   openFiles: (files: ArrayLike<File>) => Promise<void>;
   closeDocument: () => void;
-  /** Shows the native file picker (`<input type="file">`). */
+  /** Shows the file picker: the native panel on desktop, `<input type="file">` in a browser. */
   requestOpenFile: () => void;
   clearRecent: () => void;
   /** Replaces a paragraph and records it on the undo stack. */
@@ -38,6 +55,11 @@ const StateContext = createContext<AppState | null>(null);
 const DispatchContext = createContext<Dispatch<AppAction> | null>(null);
 const ServicesContext = createContext<AppServices | null>(null);
 
+/** A file the desktop host read for us, in the shape the open path expects. */
+function toFile(picked: PickedFile): File {
+  return new File([picked.bytes], picked.name, { type: 'application/pdf' });
+}
+
 export function isPdfFile(file: File): boolean {
   return file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
 }
@@ -50,7 +72,9 @@ function errorKeyFor(err: unknown): TKey {
 const TOAST_MS = 3000;
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(appReducer, undefined, () => createInitialState(readPreferences()));
+  const [state, dispatch] = useReducer(appReducer, undefined, () =>
+    createInitialState(readPreferences()),
+  );
   const [document, setDocument] = useState<RemoteDocument | null>(null);
   const [recent, setRecent] = useState<string[]>(() => readRecent());
   const documentRef = useRef<RemoteDocument | null>(null);
@@ -132,7 +156,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
         setRecent(addRecent(file.name));
       } catch (err) {
-        if (sequence === openSequence.current) dispatch({ type: 'DOCUMENT_FAILED', error: errorKeyFor(err) });
+        if (sequence === openSequence.current)
+          dispatch({ type: 'DOCUMENT_FAILED', error: errorKeyFor(err) });
       }
     },
     [client],
@@ -155,9 +180,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'DOCUMENT_CLOSED' });
   }, []);
 
+  /**
+   * A browser opens the hidden `<input type="file">`; the desktop webview
+   * ignores that element entirely, so it goes through the native open panel.
+   * A failure here used to be invisible — the click simply did nothing — so
+   * it now reports itself like any other failed open.
+   */
   const requestOpenFile = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
+    if (!isTauriHost()) {
+      fileInputRef.current?.click();
+      return;
+    }
+    void (async () => {
+      try {
+        const picked = await pickPdfFile();
+        if (!picked) return;
+        await openFile(toFile(picked));
+      } catch {
+        dispatch({ type: 'DOCUMENT_FAILED', error: 'error.open' });
+      }
+    })();
+  }, [openFile]);
+
+  // A file named on the command line, opened once. The host hands it over
+  // only the first time it is asked, so a reload does not reopen it.
+  useEffect(() => {
+    let cancelled = false;
+    void takeStartupFile()
+      .then((picked) => {
+        if (picked && !cancelled) void openFile(toFile(picked));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [openFile]);
+
+  /**
+   * Under Tauri the OS drop is swallowed natively and re-emitted by the host,
+   * so the shell's HTML5 `drop` listener never fires. In a browser this is a
+   * no-op and that listener is the only one.
+   */
+  useEffect(() => onNativeFileDrop((files) => void openFiles(files.map(toFile))), [openFiles]);
 
   const clearRecent = useCallback(() => {
     clearStoredRecent();
@@ -206,7 +270,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const taken = next(stateRef.current.edit.stack);
       if (!taken) return;
       const { change, stack } = taken;
-      const fontSubstituted = await replaceParagraph(change.page, change.paragraphIndex, change.text);
+      const fontSubstituted = await replaceParagraph(
+        change.page,
+        change.paragraphIndex,
+        change.text,
+      );
       if (fontSubstituted === null) return;
       dispatch({ type: 'EDIT_STEPPED', stack, page: change.page, fontSubstituted });
     },
@@ -222,7 +290,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!doc || !name) return;
     try {
       const bytes = await doc.save();
-      downloadPdf(bytes, name);
+      if (isTauriHost()) {
+        // Cancelling the panel is not a failure, and not a save either.
+        if (!(await savePdfFile(bytes, pdfFileName(name)))) return;
+      } else {
+        downloadPdf(bytes, name);
+      }
       dispatch({ type: 'DOCUMENT_SAVED' });
       dispatch({ type: 'TOAST', key: 'file.saved' });
     } catch {

@@ -1,11 +1,5 @@
 import type { RequestKind, RequestMap, ResultMap } from './protocol';
-import type {
-  CoreStatus,
-  DocumentMetadata,
-  PageSize,
-  ParagraphData,
-  TextLineData,
-} from './types';
+import type { CoreStatus, DocumentMetadata, PageSize, ParagraphData, TextLineData } from './types';
 import { parseReplaceResult } from './handlers';
 
 /**
@@ -29,6 +23,8 @@ type Invoke = (cmd: string, args?: unknown, options?: InvokeOptions) => Promise<
 
 interface TauriInternals {
   invoke: Invoke;
+  /** Registers a JS function the Rust side can call back by number. */
+  transformCallback: (callback: (payload: never) => void, once?: boolean) => number;
 }
 
 function internals(): TauriInternals | null {
@@ -52,6 +48,152 @@ function toHex(text: string): string {
   return Array.from(new TextEncoder().encode(text), (b) => b.toString(16).padStart(2, '0')).join(
     '',
   );
+}
+
+/* ------------------------------------------------------------ native files */
+
+/**
+ * The desktop shell cannot reach files the way the web build does. WKWebView
+ * ignores `<input type="file">` unless the host implements the open panel, and
+ * a `<a download>` click goes nowhere because wry registers no download
+ * handler — both fail silently, which is how the first desktop build shipped
+ * unable to open anything at all. So the dialog and fs plugins do the work
+ * instead, exactly the four permissions
+ * `apps/desktop/src-tauri/capabilities/default.json` grants.
+ *
+ * The payloads below mirror `tauri-plugin-dialog`'s `OpenDialogOptions` /
+ * `SaveDialogOptions` and `tauri-plugin-fs`'s `read_file` / `write_file`. The
+ * open panel adds the picked path to the fs scope, which is what then lets
+ * `read_file` see it; nothing is readable that the user did not choose.
+ */
+
+const PDF_FILTER = [{ name: 'PDF', extensions: ['pdf'] }];
+
+/** Last segment of a native path, for the window title and the recent list. */
+function baseName(path: string): string {
+  const parts = path.split(/[\\/]/);
+  return parts[parts.length - 1] || path;
+}
+
+/** `read_file` answers with a raw body; tolerate a plain byte array as well. */
+function toArrayBuffer(body: unknown): ArrayBuffer {
+  if (body instanceof ArrayBuffer) return body;
+  if (ArrayBuffer.isView(body)) {
+    return body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) as ArrayBuffer;
+  }
+  if (Array.isArray(body)) return new Uint8Array(body).buffer;
+  throw new Error('E_READ: unexpected file body');
+}
+
+export interface PickedFile {
+  name: string;
+  bytes: ArrayBuffer;
+}
+
+/** Native open panel, then the bytes. `null` when the user cancels. */
+export async function pickPdfFile(): Promise<PickedFile | null> {
+  const picked = await invoke('plugin:dialog|open', {
+    options: { multiple: false, directory: false, filters: PDF_FILTER },
+  });
+  if (typeof picked !== 'string') return null;
+  return { name: baseName(picked), bytes: toArrayBuffer(await readFile(picked)) };
+}
+
+/**
+ * `read_file_bytes` is the host's own command rather than `plugin:fs|read_file`
+ * because it says plainly why a path was refused (`E_SCOPE`). Both read the
+ * same scope: the dialog and the drop handler put the chosen paths in it.
+ */
+function readFile(path: string): Promise<unknown> {
+  return invoke('read_file_bytes', { path });
+}
+
+/**
+ * A PDF named on the command line (`warraq-desktop report.pdf`), claimed once
+ * at boot. `null` in a browser and whenever there is nothing waiting.
+ */
+export async function takeStartupFile(): Promise<PickedFile | null> {
+  if (!internals()) return null;
+  const path = await invoke('startup_file');
+  if (typeof path !== 'string') return null;
+  return { name: baseName(path), bytes: toArrayBuffer(await readFile(path)) };
+}
+
+/* --------------------------------------------------------- dropped on the app */
+
+/** Emitted by `apps/desktop/src-tauri/src/lib.rs` after an OS drag-and-drop. */
+export const FILE_DROP_EVENT = 'warraq://file-drop';
+
+interface DropEvent {
+  payload?: { paths?: string[] };
+}
+
+/**
+ * Subscribes to files dropped on the window, and returns the unsubscribe.
+ *
+ * The webview never sees the OS drop: Tauri swallows it at the native level
+ * and re-emits it as this event, so the HTML5 `drop` listener the web build
+ * relies on is silent here — which is why dropping a PDF on the first desktop
+ * build did nothing whatsoever. Outside Tauri this is a no-op and the web
+ * listener does the work.
+ */
+export function onNativeFileDrop(onFiles: (files: PickedFile[]) => void): () => void {
+  const host = internals();
+  if (!host) return () => {};
+
+  const handler = host.transformCallback(((event: DropEvent) => {
+    const paths = event?.payload?.paths ?? [];
+    void Promise.all(
+      paths.map(async (path) => ({
+        name: baseName(path),
+        bytes: toArrayBuffer(await readFile(path)),
+      })),
+    )
+      .then((files) => {
+        if (files.length > 0) onFiles(files);
+      })
+      .catch(() => {});
+  }) as (payload: never) => void);
+
+  let stop: (() => void) | null = null;
+  let cancelled = false;
+  void invoke('plugin:event|listen', {
+    event: FILE_DROP_EVENT,
+    target: { kind: 'Any' },
+    handler,
+  })
+    .then((id) => {
+      // A failed unlisten is not actionable — the window is going away — but an
+      // unhandled rejection would still surface in the app.
+      const unlisten = () =>
+        void invoke('plugin:event|unlisten', { event: FILE_DROP_EVENT, eventId: id }).catch(
+          () => {},
+        );
+      if (cancelled) unlisten();
+      else stop = unlisten;
+    })
+    .catch(() => {});
+
+  return () => {
+    cancelled = true;
+    stop?.();
+  };
+}
+
+/**
+ * Native save panel, then the write. `false` when the user cancels, which is
+ * not an error and must not be reported as a failed save.
+ *
+ * Header values are ASCII, so the path is percent-encoded — `write_file`
+ * percent-decodes it, which is what keeps an Arabic filename intact.
+ */
+export async function savePdfFile(bytes: Uint8Array, suggestedName: string): Promise<boolean> {
+  const path = await invoke('plugin:dialog|save', {
+    options: { defaultPath: suggestedName, filters: PDF_FILTER },
+  });
+  if (typeof path !== 'string') return false;
+  await invoke('plugin:fs|write_file', bytes, { headers: { path: encodeURIComponent(path) } });
+  return true;
 }
 
 /** `width` u32 LE + `height` u32 LE + RGBA8, as `encode_bitmap` writes it. */

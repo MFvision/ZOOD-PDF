@@ -25,6 +25,15 @@ process is local — no account, no sign-in, nothing leaves the Mac.
 WebKit comes from the system, so unlike the Windows host there is no runtime to
 install alongside the app.
 
+## Building it yourself, without the script
+
+Use `tauri build`, not `cargo build`. A bare `cargo build --release` leaves the
+`custom-protocol` feature off, and `tauri` then compiles in dev mode: the app it
+produces navigates to the dev server named in `build.devUrl` instead of the
+interface compiled into it, so it opens an empty window on any machine where
+that server is not running. `cargo build --release --features custom-protocol`
+is the equivalent if you need cargo directly.
+
 ## What gets installed
 
 One self-contained `Warraq.app`. The UI is compiled into the executable, so the
@@ -41,6 +50,25 @@ Warraq.app/Contents/
 PDFium is the rasterizer on desktop (ADR-0003, narrowed by ADR-0006). If the
 library cannot be bound at startup the host falls back to the pure-Rust hayro
 backend rather than failing, and reports which engine it got.
+
+## Opening a PDF
+
+Three ways, all local:
+
+* **File → Open**, the toolbar button, or ⌘O — the native open panel.
+* **Drag a PDF onto the window.**
+* **`/Applications/Warraq.app/Contents/MacOS/warraq-desktop report.pdf`** from a
+  terminal. Double-clicking a PDF in Finder does *not* open Warraq yet: the
+  bundle claims no document types, which is a deliberate omission — an editor
+  should not take over the system PDF handler without being asked.
+
+Only files you choose this way are readable. The open panel, the save panel and
+a drop each add that one path to the host's file scope; nothing else on the
+disk is reachable from the interface.
+
+`WARRAQ_DEBUG=1` makes the host print what the interface asked the core to do
+(`opened #1, 116722 bytes, 3 page(s)`), which is how the desktop build is
+smoke-tested without a person at the screen.
 
 ## Signing
 

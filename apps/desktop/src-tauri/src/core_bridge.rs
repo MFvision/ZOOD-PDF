@@ -304,6 +304,19 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> CoreBridge {
 
 /* ------------------------------------------------------------------ commands */
 
+/// Prints what the UI asked the core to do, when `WARRAQ_DEBUG` is set.
+///
+/// The desktop shell cannot be watched the way the web build can — there is no
+/// console to read — so this is how a maintainer without a screen confirms
+/// that a document really reached the core and really came back as pixels.
+/// Local stdout only: nothing is written to disk and nothing leaves the
+/// machine, which is the same rule as everywhere else in Warraq.
+pub fn debug_log(message: impl std::fmt::Display) {
+    if std::env::var_os("WARRAQ_DEBUG").is_some() {
+        println!("warraq: {message}");
+    }
+}
+
 /// Hex-decodes the password header back into a `String`.
 fn decode_password(hex: &str) -> Option<String> {
     if !hex.len().is_multiple_of(2) {
@@ -330,7 +343,13 @@ pub fn doc_open(bridge: State<'_, CoreBridge>, request: Request<'_>) -> Result<u
         .get(PASSWORD_HEADER)
         .and_then(|value| value.to_str().ok())
         .and_then(decode_password);
-    bridge.call(move |registry| registry.open(bytes, password.as_deref()))?
+    let size = bytes.len();
+    let handle = bridge.call(move |registry| registry.open(bytes, password.as_deref()))??;
+    let pages = bridge
+        .with_document(handle, |document| Ok(document.page_count()))
+        .unwrap_or(0);
+    debug_log(format!("opened #{handle}, {size} bytes, {pages} page(s)"));
+    Ok(handle)
 }
 
 #[tauri::command(async)]
@@ -371,6 +390,10 @@ pub fn doc_render_page(
             .map(|bitmap| encode_bitmap(&bitmap))
             .map_err(|e| e.to_string())
     })?;
+    debug_log(format!(
+        "rendered #{handle} page {index} at {scale}x, {} bytes",
+        body.len()
+    ));
     Ok(Response::new(body))
 }
 
@@ -420,6 +443,7 @@ pub fn doc_metadata(bridge: State<'_, CoreBridge>, handle: u32) -> Result<String
 /// The rasterizer actually in use, shown in the UI's status bar.
 #[tauri::command]
 pub fn core_engine(bridge: State<'_, CoreBridge>) -> String {
+    debug_log("the UI asked which engine it got");
     bridge.engine().to_string()
 }
 

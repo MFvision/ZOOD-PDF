@@ -6,8 +6,8 @@
   "build": {
     "devUrl": "http://localhost:5173",
     "frontendDist": "../../web/dist",
-    "beforeDevCommand": "pnpm --filter @warraq/web dev",
-    "beforeBuildCommand": "pnpm --filter @warraq/web build"
+    "beforeDevCommand": "pnpm --filter @warraq/web dev:tauri",
+    "beforeBuildCommand": "pnpm --filter @warraq/web build:tauri"
   },
   "app": {
     "withGlobalTauri": false,
@@ -24,7 +24,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost; font-src 'self'; object-src 'none'"
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
     }
   },
   "bundle": {

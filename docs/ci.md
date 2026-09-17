@@ -61,11 +61,17 @@ pnpm + Node 22, Rust stable, `wasm-pack`, `Swatinem/rust-cache` for both `packag
 `apps/desktop/src-tauri`. macOS runners already have Xcode/CLT and Windows runners MSVC + WebView2; the Linux
 apt step is guarded by `runner.os == 'Linux'` and only matters when ubuntu joins the matrix.
 
-1. `pnpm install --frozen-lockfile`, `pnpm build:core`, `pnpm --filter @warraq/web build`
-2. `cargo fmt --check` on the desktop crate
-3. `pnpm --filter @warraq/desktop build` → `tauri build`, **unsigned** (no signing identity, no notarization;
-   the `beforeBuildCommand` rebuilds the web host so `apps/web/dist` is always current)
-4. Artifact `warraq-desktop-<os>`: `.dmg` on macOS, `.msi` + NSIS `-setup.exe` on Windows, from
+1. `pnpm install --frozen-lockfile`, `pnpm build:core`
+2. `cargo fmt --check` and `cargo clippy --all-targets -D warnings` on the desktop crate
+3. `cargo test` on the desktop crate — the native core through the host's own registry, plus the
+   host contract in `tests/desktop_contract.rs`: the permissions the UI invokes, the
+   `custom-protocol` feature without which a bundled build opens an empty window, and the frontend
+   script that strips the document's own CSP. **Dev profile on purpose**: the release profile sets
+   `panic = "abort"` so nothing unwinds through PDFium's FFI, and a test harness needs unwinding.
+4. `pnpm --filter @warraq/desktop build` → `tauri build`, **unsigned** (no signing identity, no notarization;
+   the `beforeBuildCommand` builds the web host in `tauri` mode, so `apps/web/dist` is always
+   current *and* carries no policy of its own)
+5. Artifact `warraq-desktop-<os>`: `.dmg` on macOS, `.msi` + NSIS `-setup.exe` on Windows, from
    `apps/desktop/src-tauri/target/release/bundle/`
 
 ## Making the corpus (and everything else) block merges

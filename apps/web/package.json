@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:tauri": "vite --mode tauri",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "build:tauri": "tsc --noEmit -p tsconfig.json && vite build --mode tauri",
     "preview": "vite preview --port 4173 --strictPort",
     "lint": "eslint .",
     "test": "vitest run"

@@ -14,9 +14,10 @@ export function pdfFileName(name: string): string {
 }
 
 /**
- * TODO(desktop): under Tauri this should offer a native save dialog through the
- * host instead of a browser download. The web path works there today because
- * the webview handles object URLs, so the feature is not blocked on it.
+ * Browsers only. The claim that this also worked under Tauri was wrong: wry
+ * registers no download handler, so the link click did nothing at all and the
+ * app reported a save that never happened. The desktop path is
+ * `savePdfFile` in `core/host-tauri.ts`, chosen in `AppContext.saveDocument`.
  */
 export function downloadPdf(bytes: Uint8Array<ArrayBuffer>, name: string): void {
   const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));

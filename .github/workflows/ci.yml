@@ -182,10 +182,16 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build the WASM core (needed by the web UI)
         run: pnpm build:core
-      - name: Build the web host (frontendDist of the desktop shell)
-        run: pnpm --filter @warraq/web build
       - name: cargo fmt (desktop crate)
         run: cargo fmt --check --manifest-path apps/desktop/src-tauri/Cargo.toml
+      - name: clippy (desktop crate)
+        run: cargo clippy --all-targets --manifest-path apps/desktop/src-tauri/Cargo.toml -- -D warnings
+      # These cover the host contract: the permissions the UI invokes, the
+      # custom-protocol feature a bundled build needs, and the native core.
+      # `tauri build` below produces the frontend it embeds.
+      - name: cargo test (desktop crate)
+        # Dev profile on purpose: the release profile aborts on panic.
+        run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
       - name: tauri build (unsigned)
         run: pnpm --filter @warraq/desktop build
         env:

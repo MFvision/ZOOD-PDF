@@ -5,8 +5,11 @@
 //! dialogs, file reads/writes limited to paths the user picked, OS
 //! drag-and-drop, and commands into the natively linked `warraq-core`.
 
+use std::path::PathBuf;
+use std::sync::Mutex;
+
 use serde::Serialize;
-use tauri::{AppHandle, DragDropEvent, Emitter, Manager, Runtime, WindowEvent};
+use tauri::{AppHandle, DragDropEvent, Emitter, Manager, Runtime, State, WindowEvent};
 use tauri_plugin_fs::FsExt;
 
 pub mod core_bridge;
@@ -19,6 +22,20 @@ pub const FILE_DROP_EVENT: &str = "warraq://file-drop";
 #[derive(Clone, Serialize)]
 pub struct FileDropPayload {
     pub paths: Vec<String>,
+}
+
+/// A PDF named on the command line: `warraq-desktop report.pdf`. It is handed
+/// to the UI once, when it boots, and is also the only way to exercise the
+/// whole desktop path — window, webview, core — without a person at the
+/// screen, which is what `WARRAQ_DEBUG=1` then reports on stdout.
+struct StartupFile(Mutex<Option<String>>);
+
+/// The startup file, consumed on the first call so a reload does not reopen it.
+#[tauri::command]
+fn startup_file(state: State<'_, StartupFile>) -> Option<String> {
+    let path = state.0.lock().ok().and_then(|mut slot| slot.take());
+    core_bridge::debug_log(format!("startup file = {path:?}"));
+    path
 }
 
 /// Version of the natively linked core, so the UI can show that the desktop
@@ -45,13 +62,23 @@ fn read_file_bytes<R: Runtime>(
         ));
     }
     if !app.fs_scope().is_allowed(&path) {
-        return Err(format!(
+        let refused = format!(
             "E_SCOPE: {} was not chosen through the file dialog or dropped on the window",
             path.display()
-        ));
+        );
+        core_bridge::debug_log(&refused);
+        return Err(refused);
     }
-    std::fs::read(&path)
-        .map(tauri::ipc::Response::new)
+    let read = std::fs::read(&path);
+    core_bridge::debug_log(format!(
+        "read {} -> {}",
+        path.display(),
+        match &read {
+            Ok(bytes) => format!("{} bytes", bytes.len()),
+            Err(e) => e.to_string(),
+        }
+    ));
+    read.map(tauri::ipc::Response::new)
         .map_err(|e| format!("E_IO: {}: {e}", path.display()))
 }
 
@@ -66,11 +93,29 @@ pub fn run() {
             let bridge = core_bridge::setup(app.handle());
             println!("warraq: core engine = {}", bridge.engine());
             app.manage(bridge);
+
+            // A file named on the command line is as explicit a choice as one
+            // picked in the dialog, so it joins the same scope.
+            let startup = std::env::args_os()
+                .skip(1)
+                .map(PathBuf::from)
+                .find(|path| path.is_file());
+            if let Some(path) = &startup {
+                if let Err(e) = app.fs_scope().allow_file(path) {
+                    eprintln!("warraq: cannot allow {}: {e}", path.display());
+                }
+            }
+            core_bridge::debug_log(format!("command line file = {startup:?}"));
+
+            app.manage(StartupFile(Mutex::new(
+                startup.map(|path| path.to_string_lossy().into_owned()),
+            )));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             core_version,
             read_file_bytes,
+            startup_file,
             core_bridge::core_engine,
             core_bridge::doc_open,
             core_bridge::doc_close,

@@ -14,7 +14,7 @@
 | Hostile input | mutation harness on every pull request; cargo-fuzz targets ready for nightly |
 | Visual regressions | golden renders of all 48 corpus pages gated in CI |
 | No-mapping files | characters recovered from glyph shapes, at 100 % precision on held-out fonts |
-| Installed on this Mac | `/Applications/Warraq.app`, built from this tree — `scripts/install-macos.sh`, documented in `docs/install-macos.md` |
+| Installed on this Mac | `/Applications/Warraq.app`, built from this tree — `scripts/install-macos.sh`, documented in `docs/install-macos.md`. Opens a PDF, renders every page, both thumbnails and full size |
 
 Every one of the 48 corpus files opens. 63 tests green, clippy clean, `wasm32-unknown-unknown` compiles, core WASM 2.50 MB gzipped (budget 8 MB).
 
@@ -36,9 +36,35 @@ Every one of the 48 corpus files opens. 63 tests green, clippy clean, `wasm32-un
 2. **Permanent folder** — the repository still lives in this session's scratch workspace and will be removed with the session. Name a folder and I will move it.
 3. **Xcode license** — `/usr/bin/cc` and the system `python3` refuse to run until `sudo xcodebuild -license accept` (needs your password). Builds work because they are pointed at Xcode's clang directly.
 
+## Fixed after the first install, 2026-09-17
+
+The desktop app shipped unable to do anything at all, and the four causes are
+worth keeping written down because each one failed **silently**.
+
+1. **The crate never declared Tauri's `custom-protocol` feature**, so every
+   build — including the bundled one — was a development build. It pointed the
+   window at `build.devUrl`, a dev server that does not run on a user's
+   machine, and the window came up empty. Pinned by
+   `tests/desktop_contract.rs`.
+2. **The open command clicked a hidden `<input type="file">`**, which WKWebView
+   ignores unless the host implements the panel. It now calls the native one.
+3. **Drag-and-drop listened for the DOM `drop` event.** Tauri catches the OS
+   drop before the webview sees it and re-emits it; the host had always done
+   so and nothing was listening.
+4. **Save clicked a download link**, which a webview also ignores — it reported
+   a save that never wrote a file. It now opens the native save panel.
+
+A fifth would have surfaced next: the document carried its own
+Content-Security-Policy, which a browser enforces *alongside* the one Tauri
+serves, and the intersection would have cut the interface off from its own
+host. The desktop bundle now leaves that policy to `tauri.conf.json`
+(`apps/web/src/csp.test.ts`).
+
 ## Known gaps, stated plainly
+* **Dragging a file over the desktop window gives no highlight.** The host catches the OS drag before the webview sees it, and only the drop is forwarded, not the hover. The drop itself works; the invitation to drop does not appear.
+* **Finder does not offer Warraq for a PDF.** The bundle claims no document types on purpose — an editor should not take over the system PDF handler unasked. Open from inside the app, or pass the path on the command line.
 * **The macOS build is ad hoc signed, not notarised.** It runs on the machine that built it. Copied to any other Mac it will be refused until that user clears the quarantine flag by hand, because notarising needs a paid Apple Developer account. Nothing in the build is broken by this; it is a distribution decision, not a defect.
-* **The installed app has not been looked at.** The Claude desktop app has no Screen Recording permission on this Mac, so no screenshot of the window is possible. What is verified is that the app launches, binds the bundled PDFium (`core engine = pdfium+hayro`), starts WebKit and completes a page load — all from the system log. The interface itself was last seen in the browser build.
+* **Nobody has looked at the installed window.** The Claude desktop app has no Screen Recording permission on this Mac, so no screenshot is possible. What is verified, from the host's own log, is the whole chain behind the glass: the interface boots, asks the host which engine it got, claims the file named on the command line, reads it through the file scope, opens it in the core and renders every page at both thumbnail and full scale. What that does not prove is what the pixels look like, or that the open and save panels behave once a person clicks them.
 * **Nastaliq Urdu** extraction is still garbage: cascading Nastaliq ligatures do not reverse-map from glyphs the way Naskh does. Needs shape matching or OCR.
 * **Ten corpus files** come back with U+FFFD placeholders where a glyph has no usable ToUnicode, cmap or GSUB evidence. Placeholders are deliberate: words are never silently merged.
 * **Writing encryption** is not implemented (reading only), so an encrypted file must currently be saved as a plaintext rewrite.

@@ -15,6 +15,23 @@ publish = false
 name = "warraq_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+# `src/main.rs` is a five-line shim around `run()`. Building a test harness for
+# it makes rustc pick between the hashed and unhashed rlibs a `staticlib` +
+# `rlib` library leaves side by side, which fails with E0460 — and there is
+# nothing in the shim to test anyway.
+[[bin]]
+name = "warraq-desktop"
+path = "src/main.rs"
+test = false
+
+[features]
+# Required for any build that is not `tauri dev`. `tauri` reads this feature to
+# decide between the dev server and the assets compiled into the binary: with it
+# off, a bundled app opens an empty window pointed at `build.devUrl`, which is
+# not running. `tauri build` turns it on; a bare `cargo build` does not, so a
+# binary built that way is only ever good for `tauri dev`.
+custom-protocol = ["tauri/custom-protocol"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -39,5 +56,8 @@ warraq-text = { path = "../../../packages/core/warraq-text" }
 [profile.release]
 opt-level = 3
 lto = "thin"
+# A panic must never unwind through PDFium's FFI boundary, which is undefined
+# behaviour. The cost is that `cargo test --release` cannot work — a test
+# harness needs unwinding — so the desktop tests run in the dev profile.
 panic = "abort"
 strip = true

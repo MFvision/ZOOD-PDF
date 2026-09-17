@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CoreClient } from './client';
-import { handleTauriRequest, isTauriHost } from './host-tauri';
+import {
+  FILE_DROP_EVENT,
+  handleTauriRequest,
+  isTauriHost,
+  onNativeFileDrop,
+  pickPdfFile,
+  savePdfFile,
+  takeStartupFile,
+} from './host-tauri';
 import type { ResultMap } from './protocol';
 
 type Invoke = (
@@ -16,6 +24,9 @@ interface Call {
 }
 
 /** Stand-in for the commands in `apps/desktop/src-tauri/src/core_bridge.rs`. */
+/** Callbacks the fake host handed out, in registration order. */
+const callbacks: ((payload: unknown) => void)[] = [];
+
 function fakeHost(overrides: Record<string, unknown> = {}) {
   const calls: Call[] = [];
   const invoke: Invoke = (cmd, args, options) => {
@@ -45,7 +56,15 @@ function fakeHost(overrides: Record<string, unknown> = {}) {
         return Promise.reject(new Error(`E_UNKNOWN: ${cmd}`));
     }
   };
-  (globalThis as { __TAURI_INTERNALS__?: { invoke: Invoke } }).__TAURI_INTERNALS__ = { invoke };
+  const transformCallback = (callback: (payload: never) => void) => {
+    callbacks.push(callback as (payload: unknown) => void);
+    return callbacks.length;
+  };
+  (
+    globalThis as {
+      __TAURI_INTERNALS__?: { invoke: Invoke; transformCallback: typeof transformCallback };
+    }
+  ).__TAURI_INTERNALS__ = { invoke, transformCallback };
   return calls;
 }
 
@@ -60,6 +79,7 @@ function bitmapBody(width: number, height: number): ArrayBuffer {
 }
 
 afterEach(() => {
+  callbacks.length = 0;
   delete (globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
   vi.restoreAllMocks();
 });
@@ -155,5 +175,119 @@ describe('CoreClient host selection', () => {
     const client = new CoreClient({ worker: worker as unknown as Worker });
     void client.request('page_count', { doc: 1 });
     expect(worker.postMessage).toHaveBeenCalledOnce();
+  });
+});
+
+/**
+ * The webview ignores the browser file plumbing the web build uses, so the
+ * desktop shell has to go through the dialog and fs plugins. These lock the
+ * payloads to what `tauri-plugin-dialog` and `tauri-plugin-fs` actually
+ * deserialize; getting them wrong fails silently, which is exactly how this
+ * shipped broken the first time.
+ */
+describe('native file dialogs', () => {
+  const PDF = [{ name: 'PDF', extensions: ['pdf'] }];
+
+  it('opens the native panel filtered to PDFs and reads the picked file', async () => {
+    const calls = fakeHost({
+      'plugin:dialog|open': '/Users/me/تقرير سنوي.pdf',
+      read_file_bytes: new Uint8Array([0x25, 0x50, 0x44, 0x46]).buffer,
+    });
+    const picked = await pickPdfFile();
+    expect(picked?.name).toBe('تقرير سنوي.pdf');
+    expect(new Uint8Array(picked?.bytes ?? new ArrayBuffer(0))).toEqual(
+      new Uint8Array([0x25, 0x50, 0x44, 0x46]),
+    );
+    expect(calls.find((c) => c.cmd === 'plugin:dialog|open')?.args).toEqual({
+      options: { multiple: false, directory: false, filters: PDF },
+    });
+    expect(calls.find((c) => c.cmd === 'read_file_bytes')?.args).toEqual({
+      path: '/Users/me/تقرير سنوي.pdf',
+    });
+  });
+
+  it('returns null when the open panel is cancelled', async () => {
+    const calls = fakeHost({ 'plugin:dialog|open': null });
+    expect(await pickPdfFile()).toBeNull();
+    expect(calls.some((c) => c.cmd === 'read_file_bytes')).toBe(false);
+  });
+
+  it('accepts a byte array from a host that does not send a raw body', async () => {
+    fakeHost({ 'plugin:dialog|open': '/tmp/a.pdf', read_file_bytes: [0x25, 0x50] });
+    const picked = await pickPdfFile();
+    expect(new Uint8Array(picked?.bytes ?? new ArrayBuffer(0))).toEqual(
+      new Uint8Array([0x25, 0x50]),
+    );
+  });
+
+  it('writes through the save panel, with the path percent-encoded in a header', async () => {
+    const calls = fakeHost({
+      'plugin:dialog|save': '/Users/me/تقرير.pdf',
+      'plugin:fs|write_file': null,
+    });
+    const bytes = new Uint8Array([1, 2, 3]);
+    expect(await savePdfFile(bytes, 'تقرير.pdf')).toBe(true);
+    expect(calls.find((c) => c.cmd === 'plugin:dialog|save')?.args).toEqual({
+      options: { defaultPath: 'تقرير.pdf', filters: PDF },
+    });
+    const write = calls.find((c) => c.cmd === 'plugin:fs|write_file');
+    expect(write?.args).toBe(bytes);
+    expect(write?.options?.headers).toEqual({ path: encodeURIComponent('/Users/me/تقرير.pdf') });
+  });
+
+  it('reports a cancelled save without writing anything', async () => {
+    const calls = fakeHost({ 'plugin:dialog|save': null });
+    expect(await savePdfFile(new Uint8Array([1]), 'x.pdf')).toBe(false);
+    expect(calls.some((c) => c.cmd === 'plugin:fs|write_file')).toBe(false);
+  });
+});
+
+describe('native drag and drop', () => {
+  it('reads every dropped path the host reports', async () => {
+    const calls = fakeHost({
+      'plugin:event|listen': 4,
+      read_file_bytes: new Uint8Array([0x25, 0x50]).buffer,
+    });
+    const dropped: string[] = [];
+    const stop = onNativeFileDrop((files) => dropped.push(...files.map((f) => f.name)));
+
+    expect(calls.find((c) => c.cmd === 'plugin:event|listen')?.args).toMatchObject({
+      event: FILE_DROP_EVENT,
+      target: { kind: 'Any' },
+      handler: 1,
+    });
+
+    callbacks[0]?.({ payload: { paths: ['/Users/me/عقد.pdf'] } });
+    await vi.waitFor(() => expect(dropped).toEqual(['عقد.pdf']));
+    expect(calls.find((c) => c.cmd === 'read_file_bytes')?.args).toEqual({
+      path: '/Users/me/عقد.pdf',
+    });
+
+    stop();
+    await vi.waitFor(() =>
+      expect(calls.find((c) => c.cmd === 'plugin:event|unlisten')?.args).toEqual({
+        event: FILE_DROP_EVENT,
+        eventId: 4,
+      }),
+    );
+  });
+
+  it('does nothing in a browser, where the HTML5 drop listener works', () => {
+    expect(onNativeFileDrop(() => {})).toBeInstanceOf(Function);
+  });
+});
+
+describe('startup file', () => {
+  it('opens a PDF named on the command line', async () => {
+    fakeHost({ startup_file: '/tmp/تقرير.pdf', read_file_bytes: new Uint8Array([0x25]).buffer });
+    const picked = await takeStartupFile();
+    expect(picked?.name).toBe('تقرير.pdf');
+  });
+
+  it('is null when nothing was passed, and in a browser', async () => {
+    fakeHost({ startup_file: null });
+    expect(await takeStartupFile()).toBeNull();
+    delete (globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
+    expect(await takeStartupFile()).toBeNull();
   });
 });
