@@ -4,7 +4,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ planned · ❌ out of scope. Targ
 
 | Area | Feature | Tier | D | X | W | Status / notes |
 |---|---|---|---|---|---|---|
-| View | Open, zoom, fit modes, continuous scroll, thumbnails | MVP | ✅ | 🟡 | 🟡 | desktop renders with native PDFium; browser builds use the pure-Rust rasterizer by default (ADR-0006) |
+| View | Open, zoom, fit modes, continuous scroll, thumbnails | MVP | ✅ | 🟡 | 🟡 | desktop renders with native PDFium; browser builds use the pure-Rust rasterizer by default (ADR-0006). On desktop the file comes in through the native open panel, an OS drop or a path on the command line, and goes out through the native save panel — a webview ignores the browser equivalents |
 | View | Bookmarks, attachments, layers panes | MVP | ⬜ | ⬜ | ⬜ | pane tabs exist, data binding next |
 | View | Text selection and copy in logical order | MVP | 🟡 | 🟡 | 🟡 | reconstruction engine done; selection overlay in UI |
 | View | Arabic-aware search | MVP | 🟡 | 🟡 | 🟡 | engine done (tashkeel-insensitive, alef/taa/yaa/digits unified); UI find bar |

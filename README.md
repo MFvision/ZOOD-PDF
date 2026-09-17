@@ -9,4 +9,7 @@ Windows, macOS, Chromium extensions, the web and later iPad/iPhone.
 * Optional, independent OneDrive / Google Drive connectors.
 * License-clean foundation (see `docs/research/00-landscape.md`).
 
+To run it on a Mac: `./scripts/install-macos.sh` builds Warraq and installs it into
+`/Applications` — see `docs/install-macos.md`.
+
 See `docs/STATUS.md` for the current state and `docs/decisions/` for ADRs.
