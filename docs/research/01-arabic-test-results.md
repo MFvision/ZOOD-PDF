@@ -27,7 +27,7 @@ Verdict (word recall logical / reversed, order LCS):
 | File | PDFium (Chrome) | PDF.js | MuPDF (AGPL ref.) | hayro raw glyphs | **Warraq core** |
 |---|---|---|---|---|---|
 | `acroform-pdflib-arabic-fields` | partial-reversed (0.16/0.86, 0.13) | garbage (0.08/0.16, 0.05) | garbage (0.22/0.08, 0.18) | garbage (0.08/0.16, 0.05) | garbage(U+FFFD) (0.19/0.08, 0.20) |
-| `chrome-amiri-tashkeel-ligatures` | garbage (0.37/0.07, 0.12) | garbage (0.30/0.00, 0.28) | ❌ CRASH exit=-11 (signal 11)  | garbage (0.07/0.47, 0.06) | partial (0.50/0.03, 0.50) |
+| `chrome-amiri-tashkeel-ligatures` | garbage (0.37/0.07, 0.12) | garbage (0.30/0.00, 0.28) | ❌ CRASH exit=-11 (signal 11)  | garbage (0.07/0.47, 0.06) | partial (0.63/0.03, 0.62) |
 | `chrome-cairo-mixed-invoice` | partial (0.52/0.41, 0.41) | partial-reversed (0.46/0.54, 0.52) | partial (0.76/0.09, 0.57) | garbage (0.44/0.46, 0.38) | logical (1.00/0.07, 0.96) |
 | `chrome-ibmplex-bidi-stress` | partial (0.58/0.28, 0.40) | garbage (0.46/0.38, 0.36) | partial (0.76/0.01, 0.53) | garbage (0.47/0.36, 0.36) | logical (1.00/0.03, 1.00) |
 | `chrome-nastaliq-urdu-prose` | garbage (0.14/0.00, 0.09) | garbage (0.17/0.06, 0.12) | garbage (0.25/0.00, 0.30) | garbage (0.11/0.08, 0.05) | garbage(U+FFFD) (0.17/0.03, 0.16) |
@@ -42,7 +42,7 @@ Verdict (word recall logical / reversed, order LCS):
 | `coretext-geezapro-paragraphs` | partial (0.73/0.02, 0.13) | partial (0.79/0.01, 0.13) | partial (0.72/0.01, 0.64) | partial-reversed (0.07/0.65, 0.04) | logical (1.00/0.01, 0.99) |
 | `coretext-sfarabic-mixed-invoice` | words-ok/order-scrambled (0.94/0.07, 0.52) | words-ok/order-scrambled (0.94/0.07, 0.52) | words-ok/order-scrambled (0.91/0.11, 0.52) | partial-reversed (0.43/0.56, 0.46) | logical (1.00/0.07, 0.96) |
 | `raw-amiri-cid-identity-tounicode` | partial (0.85/0.06, 0.43) | logical (0.94/0.04, 0.90) | partial (0.79/0.05, 0.58) | partial-reversed (0.40/0.58, 0.38) | logical (0.96/0.04, 0.93) |
-| `raw-amiri-cid-no-tounicode` | garbage (0.01/0.01, 0.01) | garbage (0.01/0.01, 0.01) | garbage (0.01/0.01, 0.01) | empty (0.00/0.00, 0.00) | garbage(U+FFFD) (0.41/0.04, 0.44) |
+| `raw-amiri-cid-no-tounicode` | garbage (0.01/0.01, 0.01) | garbage (0.01/0.01, 0.01) | garbage (0.01/0.01, 0.01) | empty (0.00/0.00, 0.00) | partial (0.60/0.05, 0.62) |
 | `raw-cairo-cid-broken-tounicode` | empty (0.00/0.00, 0.00) | empty (0.00/0.00, 0.00) | garbage (0.00/0.00, 0.00) | empty (0.00/0.00, 0.00) | empty (0.00/0.00, 0.00) |
 | `raw-legacy-symbolic-truetype` | garbage (0.02/0.02, 0.03) | garbage (0.02/0.02, 0.03) | garbage (0.02/0.02, 0.03) | garbage (0.00/0.00, 0.00) | garbage (0.01/0.02, 0.01) |
 | `reportlab-visual-presentation-forms` | partial (0.82/0.10, 0.40) | logical (1.00/0.05, 0.92) | logical (0.96/0.06, 0.79) | partial-reversed (0.35/0.61, 0.35) | logical (1.00/0.05, 0.97) |
@@ -64,7 +64,7 @@ Tally over the 28 truth-scored files:
 - PDF.js: garbage 16, partial-reversed 3, partial 3, open-failed 3, logical 2, image-only (OCR needed) 2, words-ok/order-scrambled 1, empty 1
 - MuPDF (AGPL ref.): garbage 12, partial 9, open-failed 4, words-ok/order-scrambled 2, logical 2, image-only (OCR needed) 2
 - hayro raw glyphs: garbage 15, partial-reversed 8, open-failed 4, empty 2, image-only (OCR needed) 2
-- **Warraq core**: logical 16, garbage(U+FFFD) 10, image-only (OCR needed) 2, partial 1, empty 1, garbage 1
+- **Warraq core**: logical 16, garbage(U+FFFD) 9, partial 2, image-only (OCR needed) 2, empty 1, garbage 1
 
 **Logical-order files: PDFium 0, PDF.js 2, MuPDF 2, Warraq core 16.** No shipping engine returns logical-order Arabic reliably: PDFium reverses characters of Skia/Chrome output and reverses word order of Quartz output; MuPDF swaps adjacent letters inside words when glyph advances are irregular (`رضيبية` for `ضريبية`) and crashed once; PDF.js is the best of the three on well-formed files but still fails Chrome-made and tashkeel-heavy text. The hayro column is the raw glyph stream (visual order, ToUnicode as written by the producer) that the Warraq reconstruction (ADR-0005) starts from. The Warraq core's remaining failures are the files without a usable ToUnicode map (`raw-amiri-cid-no-tounicode`, `raw-cairo-cid-broken-tounicode`, `raw-legacy-symbolic-truetype`), the variable-font Type3 file, and glyphs that Skia maps to U+0000 (contextual forms without cmap entries); glyph-name, outline-matching and OCR fallbacks are Phase 2 work.
 
@@ -109,8 +109,8 @@ All engines expose per-glyph positions; selection *geometry* is available everyw
 
 | File | pdfium | pdfium-rs | pdfjs | mupdf | hayro | warraq |
 |---|---|---|---|---|---|---|
-| `perf-text-100-pages` | 5.4 / 43.1 / 702.9 | 5.1 / 3.8 / – | 27.9 / 135.9 / 2177.3 | 2.4 / 23.0 / 898.1 | 1.2 / 13.5 / – | 1.3 / 4.4 / 579.2 |
-| `perf-text-500-pages` | 6.2 / 39.8 / 3166.6 | 5.6 / 4.0 / – | 49.4 / 81.3 / 9796.8 | 4.9 / 23.0 / 5004.1 | 4.1 / 8.7 / – | 3.8 / 4.3 / 2975.8 |
+| `perf-text-100-pages` | 5.4 / 43.1 / 702.9 | 5.1 / 3.8 / – | 27.9 / 135.9 / 2177.3 | 2.4 / 23.0 / 898.1 | 1.2 / 13.5 / – | 1.4 / 5.1 / 613.1 |
+| `perf-text-500-pages` | 6.2 / 39.8 / 3166.6 | 5.6 / 4.0 / – | 49.4 / 81.3 / 9796.8 | 4.9 / 23.0 / 5004.1 | 4.1 / 8.7 / – | 5.0 / 5.0 / 3129.9 |
 
 PDFium natively is well inside N8. The Warraq core column is the pure-Rust path (hayro) that also runs in WASM. The 500 MB scanned stress file (`gen_scans.py --large`) has not been run yet.
 

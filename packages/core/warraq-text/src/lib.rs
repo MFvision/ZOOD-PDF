@@ -4,6 +4,7 @@
 //! Everything here is pure Rust and compiles to native and wasm32 identically.
 pub mod bidi;
 pub mod extract;
+pub mod glyphshape;
 pub mod normalize;
 pub mod paragraph;
 pub mod search;
@@ -11,6 +12,7 @@ pub mod shape;
 
 pub use bidi::{base_direction, visual_runs, Direction, VisualRun};
 pub use extract::{reconstruct_lines, PositionedGlyph, TextLine};
+pub use glyphshape::{best_match, Descriptor, Form, MarkCluster, ShapeSampler, MAX_DISTANCE};
 pub use normalize::{
     fold_presentation_forms, normalize_for_search, strip_marks, SearchNormalization,
 };

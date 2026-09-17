@@ -1,0 +1,115 @@
+/* Edit mode: paragraph hit targets, the in-place editor and the tools panel. */
+
+/*
+ * Page geometry is a property of the document, not of the UI language, so the
+ * layer resolves logical properties against ltr whatever <html dir> says —
+ * exactly like the selectable text layer above it.
+ */
+.edit-layer {
+  position: absolute;
+  inset: 0;
+  direction: ltr;
+}
+
+.edit-box {
+  position: absolute;
+  padding: 0;
+  cursor: text;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  transition: background-color var(--motion), border-color var(--motion);
+}
+
+.edit-box:hover:not(:disabled),
+.edit-box:focus-visible {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.edit-box:disabled {
+  cursor: default;
+}
+
+/* While Edit mode is on, the selection layer must not swallow the clicks. */
+.page-editing .text-layer {
+  pointer-events: none;
+}
+
+.paragraph-editor {
+  position: absolute;
+  z-index: 5;
+}
+
+.paragraph-editor-area {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  padding: 2px;
+  color: var(--fg);
+  background: var(--bg-panel);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-s);
+  box-shadow: var(--shadow-2);
+  resize: none;
+}
+
+.paragraph-editor-area:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.paragraph-editor-actions {
+  position: absolute;
+  inset-block-start: calc(100% + 6px);
+  inset-inline-end: 0;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding-block: 4px;
+  padding-inline: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-2);
+}
+
+.paragraph-editor-hint {
+  padding-inline-end: 4px;
+  font-size: 12px;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.edit-panel-intro {
+  color: var(--fg-muted);
+}
+
+.edit-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block-start: 12px;
+}
+
+.edit-panel-hints {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-block-start: 16px;
+  padding-inline-start: 18px;
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+
+.banner-warning {
+  color: var(--warning-fg);
+  background: var(--warning-bg);
+  border-block-end-color: var(--warning-border);
+}
+
+.statusbar-edited {
+  color: var(--warning-fg);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+}

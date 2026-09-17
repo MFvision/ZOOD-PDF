@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { canRedo, canUndo } from '../edit/editStack';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import type { ThemeMode } from '../state/preferences';
 import { useT } from '../i18n/useT';
@@ -38,6 +39,7 @@ export function useMenuModel(): MenuModel[] {
   const t = useT();
   const hasDocument = state.view === 'viewer' && state.document !== null;
   const mod = modKeyLabel();
+  const edit = state.edit;
 
   return useMemo<MenuModel[]>(() => {
     const themeItem = (theme: ThemeMode, label: string): MenuItemModel => ({
@@ -53,7 +55,13 @@ export function useMenuModel(): MenuModel[] {
         label: t('menu.file'),
         items: [
           { id: 'open', label: t('file.open'), shortcut: `${mod}+O`, onSelect: services.requestOpenFile },
-          { id: 'save', label: t('file.save'), shortcut: `${mod}+S`, disabled: true },
+          {
+            id: 'save',
+            label: t('file.save'),
+            shortcut: `${mod}+S`,
+            disabled: !hasDocument,
+            onSelect: () => void services.saveDocument(),
+          },
           {
             id: 'close',
             label: t('file.close'),
@@ -67,7 +75,30 @@ export function useMenuModel(): MenuModel[] {
         id: 'edit',
         label: t('menu.edit'),
         items: [
-          { id: 'find', label: t('edit.find'), shortcut: `${mod}+F`, disabled: !hasDocument, onSelect: () => dispatch({ type: 'FIND_OPEN' }) },
+          {
+            id: 'undo',
+            label: t('edit.undo'),
+            shortcut: `${mod}+Z`,
+            disabled: !hasDocument || edit.busy || !canUndo(edit.stack),
+            onSelect: () => void services.undoEdit(),
+          },
+          {
+            id: 'redo',
+            label: t('edit.redo'),
+            shortcut: `${mod}+Shift+Z`,
+            disabled: !hasDocument || edit.busy || !canRedo(edit.stack),
+            onSelect: () => void services.redoEdit(),
+          },
+          {
+            id: 'edit-mode',
+            label: t('edit.mode'),
+            role: 'menuitemcheckbox',
+            checked: edit.active,
+            disabled: !hasDocument,
+            separatorBefore: true,
+            onSelect: () => dispatch({ type: 'EDIT_MODE', active: !edit.active }),
+          },
+          { id: 'find', label: t('edit.find'), shortcut: `${mod}+F`, disabled: !hasDocument, separatorBefore: true, onSelect: () => dispatch({ type: 'FIND_OPEN' }) },
           {
             id: 'goto',
             label: t('edit.goToPage'),
@@ -111,5 +142,5 @@ export function useMenuModel(): MenuModel[] {
         ],
       },
     ];
-  }, [state.theme, state.zoomMode, state.leftPane.open, state.rightPane.open, hasDocument, dispatch, services, t, mod]);
+  }, [state.theme, state.zoomMode, state.leftPane.open, state.rightPane.open, edit, hasDocument, dispatch, services, t, mod]);
 }

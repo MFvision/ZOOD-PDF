@@ -6,14 +6,18 @@ import {
   MoveHorizontal,
   PanelLeft,
   PanelRight,
+  Pencil,
+  Redo2,
   Save,
   Search,
+  Undo2,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useToolbarKeyboard } from '../components/useToolbarKeyboard';
+import { canRedo, canUndo } from '../edit/editStack';
 import { useI18n } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { findTool } from '../tools/tools';
@@ -30,12 +34,18 @@ export function Ribbon() {
   const hasDocument = state.view === 'viewer' && state.document !== null;
   const total = state.document?.pageCount ?? 0;
   const activeTool = state.rightPane.activeTool ? findTool(state.rightPane.activeTool) : undefined;
+  const { stack: editStack, active: editActive, busy: editBusy } = state.edit;
 
   return (
     <div className="ribbon" role="toolbar" aria-label={t('ribbon.label')} onKeyDown={onKeyDown}>
       <div className="ribbon-group">
         <IconButton label={t('file.open')} icon={<Icon of={FolderOpen} />} showLabel onClick={services.requestOpenFile} />
-        <IconButton label={t('file.save')} icon={<Icon of={Save} />} disabled />
+        <IconButton
+          label={t('file.save')}
+          icon={<Icon of={Save} />}
+          disabled={!hasDocument}
+          onClick={() => void services.saveDocument()}
+        />
       </div>
       {hasDocument && (
         <>
@@ -80,6 +90,29 @@ export function Ribbon() {
             pressed={state.find.open}
             onClick={() => dispatch({ type: state.find.open ? 'FIND_CLOSE' : 'FIND_OPEN' })}
           />
+          <div className="ribbon-sep" />
+          {/* Edit mode plus its history; the buttons say whether there is anything to undo. */}
+          <div className="ribbon-group">
+            <IconButton
+              label={t('edit.mode')}
+              icon={<Icon of={Pencil} />}
+              showLabel
+              pressed={editActive}
+              onClick={() => dispatch({ type: 'EDIT_MODE', active: !editActive })}
+            />
+            <IconButton
+              label={t('edit.undo')}
+              icon={<Icon of={Undo2} mirror />}
+              disabled={editBusy || !canUndo(editStack)}
+              onClick={() => void services.undoEdit()}
+            />
+            <IconButton
+              label={t('edit.redo')}
+              icon={<Icon of={Redo2} mirror />}
+              disabled={editBusy || !canRedo(editStack)}
+              onClick={() => void services.redoEdit()}
+            />
+          </div>
         </>
       )}
       {activeTool && (

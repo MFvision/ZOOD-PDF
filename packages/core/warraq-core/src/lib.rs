@@ -238,6 +238,26 @@ mod tests {
         assert!(d.search("لا يوجد").is_empty());
     }
 
+    /// A subset font with no ToUnicode, no usable cmap and no GSUB is the hardest
+    /// case in the corpus: the only evidence left is the shape of each glyph.
+    #[test]
+    fn a_file_with_no_tounicode_is_still_partly_readable_from_glyph_shapes() {
+        let d = Document::open(corpus("raw-amiri-cid-no-tounicode.pdf"), None).unwrap();
+        let text = d.extract_text(0).unwrap();
+        for word in ["فاتورة", "الفاتورة", "العميل"] {
+            assert!(
+                text.contains(word),
+                "expected {word:?} to be recovered from glyph shapes, got:\n{text}"
+            );
+        }
+        // recovery is deliberately conservative: unknown glyphs stay as placeholders
+        // rather than being guessed at, so some are expected to remain
+        assert!(
+            text.contains('\u{FFFD}'),
+            "placeholders should remain for glyphs we cannot identify"
+        );
+    }
+
     #[test]
     fn every_encrypted_corpus_variant_opens_with_its_password_and_reports_itself_encrypted() {
         for (name, password) in [

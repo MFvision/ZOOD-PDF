@@ -44,3 +44,36 @@ reliably:
 * **CoreText applies bracket pairs (N0)**, so the same logical line can have two different visual glyph orders depending on the producer. The inverse mapping is therefore ambiguous by construction; the reconstruction resolves toward the right-to-left human reading: true bracket pairs split runs, numbers attach to Latin on either side of them within a chain, neutrals between two numbers stay RTL (N1). Content-stream order is the planned tie-breaker.
 * **Marks** attach to the base whose advance box contains them (else the nearest base) and are reordered together with their base as one unit.
 * **Not yet done:** glyph-name fallback (Amiri and Noto have no `post` names), outline matching against bundled fonts, OCR of the rendered line, Type3 dot recomposition, paragraph/alignment detection, and the content-order tie-breaker.
+
+
+## Addendum 2: glyph-shape recovery (2026-09-17)
+
+The last rung of the ladder is implemented (`warraq-text::glyphshape`,
+`warraq-render::shape_recover`). A glyph that ToUnicode, the font `cmap` and GSUB
+all fail to identify is described by a signature of its outline and compared with
+prototypes built from six bundled OFL faces in their four joining forms.
+
+* **Signature**: a 4×4 zoning grid over the glyph's own bounding box, its aspect,
+  how far it descends below the baseline, and the dot marks on each side
+  (relative area and spread). Fonts merge adjacent dots into a single contour, so
+  counting contours does not work; area and spread do.
+* **Grid size was measured, not assumed**: 6×6 describes the typeface rather than
+  the letter and precision on held-out fonts fell from ~100 % to 24–34 %.
+* **Tuned for precision, never recall.** At the chosen threshold (0.11) every
+  answer was correct on three fonts that contributed no prototypes (IBM Plex Sans
+  Arabic, Noto Sans Arabic, Amiri Bold); a looser threshold started returning
+  wrong letters. A wrong letter in the user's text is worse than a placeholder.
+* **Skeleton fonts are excluded.** A face that builds dotted letters from a bare
+  skeleton plus separate dot glyphs (Noto Naskh as Skia subsets it) presents
+  skeletons that genuinely resemble several undotted letters. Such a face is
+  recognised by two facts together — dots had to be recovered from unidentified
+  glyphs, *and* most of its letters are unidentified too — and is left alone. A
+  normal font whose tashkeel merely lacked a mapping satisfies only the first.
+* **Effect**: the hardest corpus file (`raw-amiri-cid-no-tounicode`: no ToUnicode,
+  subset cmap, GSUB stripped) went from unreadable to readable, word recall 0.41 → 0.60.
+* The prototype table is 34 KB of generated data (`shape_prototypes.bin`,
+  rebuilt with `cargo run --example build_shapes -- <repo>`), so nothing carries
+  font files at runtime.
+
+Still open: OCR of the rendered line for the remaining unknowns, and Nastaliq
+(Urdu), whose cascading ligatures do not decompose into per-letter shapes at all.

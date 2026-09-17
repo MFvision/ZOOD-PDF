@@ -17,6 +17,43 @@ use skrifa::{GlyphId, MetadataProvider};
 use std::collections::HashMap;
 use std::sync::Arc;
 use warraq_text::PositionedGlyph;
+use warraq_text::{best_match, Descriptor, ShapeSampler, MAX_DISTANCE};
+
+/// Feeds an outline into a [`ShapeSampler`] so an unidentified glyph can be
+/// recognised by its shape (the last rung of the extraction ladder, ADR-0005).
+#[derive(Default)]
+struct SamplePen(ShapeSampler);
+
+impl OutlinePen for SamplePen {
+    fn move_to(&mut self, x: f32, y: f32) {
+        self.0.move_to(x, y);
+    }
+    fn line_to(&mut self, x: f32, y: f32) {
+        self.0.line_to(x, y);
+    }
+    fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
+        self.0.quad_to(cx, cy, x, y);
+    }
+    fn curve_to(&mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) {
+        self.0.curve_to(c1x, c1y, c2x, c2y, x, y);
+    }
+    fn close(&mut self) {}
+}
+
+/// Signature of an embedded glyph's outline, for shape recognition.
+fn outline_descriptor(data: &[u8], gid: u32) -> Option<Descriptor> {
+    let f = skrifa::FontRef::new(data).ok()?;
+    let upem = f.head().ok()?.units_per_em() as f32;
+    let outline = f.outline_glyphs().get(GlyphId::new(gid))?;
+    let mut pen = SamplePen::default();
+    outline
+        .draw(
+            DrawSettings::unhinted(Size::unscaled(), LocationRef::default()),
+            &mut pen,
+        )
+        .ok()?;
+    pen.0.finish(upem)
+}
 
 /// Accumulates the bounding box of an outline (font units).
 #[derive(Default)]
@@ -186,6 +223,12 @@ struct GlyphDevice {
     reverse_cmaps: HashMap<u32, HashMap<u32, char>>,
     /// gid → text learned by shaping Arabic letters in every joining context with the font's own GSUB
     shaped_maps: HashMap<u32, HashMap<u32, String>>,
+    /// font id → its bytes, kept for the shape-recovery pass
+    font_data: HashMap<u32, Vec<u8>>,
+    /// Fonts where a dot had to be RECOVERED from an unidentified glyph, which is
+    /// what marks a face that builds dotted letters from a skeleton plus dots.
+    /// A font whose marks came from its own ToUnicode or cmap is not one of these.
+    skeleton_fonts: std::collections::HashSet<u32>,
 }
 
 impl GlyphDevice {
@@ -323,10 +366,17 @@ impl<'a> Device<'a> for GlyphDevice {
                         if text.is_none() {
                             text = self.shaped_text(bytes, font, gid);
                         }
+                        if text.is_none() {
+                            // leave it unknown here; `shape_recover` decides after the whole
+                            // page is known, because whether shape matching is safe depends on
+                            // whether this font draws dots as separate glyphs
+                            self.font_data.entry(font).or_insert_with(|| bytes.to_vec());
+                        }
                         let adv = self.advance(bytes, font, gid);
                         if text.is_none() && adv == 0.0 {
                             if let Some((m, (cx, cy))) = dot_mark_from_outline(bytes, gid) {
                                 text = Some(m.to_string());
+                                self.skeleton_fonts.insert(font);
                                 // glyph units are 1/1000 em in text space: map the center through the glyph transform
                                 let p = t * hayro::vello_cpu::kurbo::Point::new(
                                     cx as f64 * 1000.0,
@@ -351,6 +401,7 @@ impl<'a> Device<'a> for GlyphDevice {
                     if text.is_none() {
                         if let Some(m) = dot_mark_from_bounds(w, h) {
                             text = Some(m.to_string());
+                            self.skeleton_fonts.insert(u32::MAX);
                             center = Some((
                                 ((b.min.0 + b.max.0) / 2.0) as f32,
                                 ((b.min.1 + b.max.1) / 2.0) as f32,
@@ -397,6 +448,56 @@ impl<'a> Device<'a> for GlyphDevice {
     fn draw_image(&mut self, _: Image<'a, '_>, _: Affine) {}
     fn pop_clip_path(&mut self) {}
     fn pop_transparency_group(&mut self) {}
+}
+
+/// Recover characters for glyphs that nothing else identified.
+///
+/// Runs once the whole page is collected, because whether shape matching is safe
+/// depends on the font. A face that builds dotted letters from a skeleton plus
+/// separate dot glyphs (Noto Naskh among them) presents bare skeletons that
+/// genuinely resemble several undotted letters, and guessing would put a wrong
+/// letter in the user's text. Such a face is recognised by two things together:
+/// dots had to be recovered from unidentified glyphs, AND most of its letters are
+/// unidentified as well. A normal font whose tashkeel merely lacked a mapping
+/// satisfies only the first, and is still worth matching.
+fn shape_recover(
+    glyphs: &mut [PositionedGlyph],
+    font_data: &HashMap<u32, Vec<u8>>,
+    recovered_dot_fonts: &std::collections::HashSet<u32>,
+) {
+    let mut bases: HashMap<u32, (usize, usize)> = HashMap::new(); // font -> (unidentified, total)
+    for g in glyphs.iter().filter(|g| g.advance > 0.0) {
+        let e = bases.entry(g.font).or_insert((0, 0));
+        e.1 += 1;
+        if g.text.is_none() {
+            e.0 += 1;
+        }
+    }
+    let skeleton = |font: u32| -> bool {
+        recovered_dot_fonts.contains(&font)
+            && bases
+                .get(&font)
+                .map(|(unknown, total)| *total > 0 && *unknown * 2 > *total)
+                .unwrap_or(false)
+    };
+    let mut cache: HashMap<(u32, u32), Option<String>> = HashMap::new();
+    for g in glyphs.iter_mut() {
+        if g.text.is_some() || skeleton(g.font) {
+            continue;
+        }
+        let Some(data) = font_data.get(&g.font) else {
+            continue;
+        };
+        let (font, gid) = (g.font, g.gid);
+        g.text = cache
+            .entry((font, gid))
+            .or_insert_with(|| {
+                outline_descriptor(data, gid)
+                    .and_then(|d| best_match(&d, MAX_DISTANCE))
+                    .map(|(ch, _, _)| ch.to_string())
+            })
+            .clone();
+    }
 }
 
 impl RenderDoc for HayroDoc {
@@ -456,7 +557,9 @@ impl RenderDoc for HayroDoc {
         );
         let mut dev = GlyphDevice::default();
         interpret_page(page, &mut ctx, &mut dev);
-        Ok(dev.glyphs)
+        let mut glyphs = dev.glyphs;
+        shape_recover(&mut glyphs, &dev.font_data, &dev.skeleton_fonts);
+        Ok(glyphs)
     }
 }
 

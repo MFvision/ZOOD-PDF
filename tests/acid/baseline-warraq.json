@@ -52,8 +52,8 @@
  },
  "chrome-amiri-tashkeel-ligatures": {
   "open": true,
-  "order_lcs": 0.5,
-  "recall_logical": 0.5,
+  "order_lcs": 0.625,
+  "recall_logical": 0.633,
   "verdict": "partial"
  },
  "chrome-cairo-mixed-invoice": {
@@ -148,9 +148,9 @@
  },
  "raw-amiri-cid-no-tounicode": {
   "open": true,
-  "order_lcs": 0.44,
-  "recall_logical": 0.407,
-  "verdict": "garbage(U+FFFD)"
+  "order_lcs": 0.62,
+  "recall_logical": 0.602,
+  "verdict": "partial"
  },
  "raw-cairo-cid-broken-tounicode": {
   "open": true,

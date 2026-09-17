@@ -7,6 +7,8 @@ interface TextOverlayProps {
   index: number;
   /** CSS px per PDF point at the current zoom. */
   scale: number;
+  /** The page's edit counter; a change re-reads the lines. */
+  revision?: number;
 }
 
 /**
@@ -15,7 +17,7 @@ interface TextOverlayProps {
  * Geometry is physical page space, hence the `direction: ltr` container;
  * each line carries its own `dir`.
  */
-export function TextOverlay({ document, index, scale }: TextOverlayProps) {
+export function TextOverlay({ document, index, scale, revision = 0 }: TextOverlayProps) {
   const [lines, setLines] = useState<TextLineData[] | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -32,7 +34,7 @@ export function TextOverlay({ document, index, scale }: TextOverlayProps) {
     return () => {
       cancelled = true;
     };
-  }, [document, index]);
+  }, [document, index, revision]);
 
   // Stretch each span to the width the core measured (offsetWidth ignores transforms).
   useLayoutEffect(() => {

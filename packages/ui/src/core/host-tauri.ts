@@ -1,10 +1,21 @@
 import type { RequestKind, RequestMap, ResultMap } from './protocol';
-import type { CoreStatus, DocumentMetadata, PageSize, TextLineData } from './types';
+import type {
+  CoreStatus,
+  DocumentMetadata,
+  PageSize,
+  ParagraphData,
+  TextLineData,
+} from './types';
+import { parseReplaceResult } from './handlers';
 
 /**
  * Desktop host adapter: routes the core protocol to the natively linked
  * `warraq-core` through Tauri commands (`apps/desktop/src-tauri/src/core_bridge.rs`)
  * instead of the WASM Web Worker.
+ *
+ * The editing commands (`doc_paragraphs`, `doc_replace_paragraph`, `doc_save`)
+ * follow the same naming as the read-only ones; `apps/desktop` registers them
+ * on the Rust side, which is the lead's file, not this package's.
  *
  * Same API, different rasterizer: PDFium natively, hayro in the browser
  * (ADR-0003, narrowed by ADR-0006). Browsers never reach this file — the check
@@ -132,6 +143,28 @@ async function dispatch(message: HostRequest): Promise<unknown> {
       const pageCount = (await invoke('doc_page_count', { handle: message.doc })) as number;
       const json = (await invoke('doc_metadata', { handle: message.doc })) as string;
       return toMetadata(json, pageCount);
+    }
+    case 'paragraphs':
+      return (await invoke('doc_paragraphs', {
+        handle: message.doc,
+        index: message.index,
+      })) as ParagraphData[];
+    case 'replace_paragraph': {
+      const json = (await invoke('doc_replace_paragraph', {
+        handle: message.doc,
+        index: message.index,
+        para: message.para,
+        text: message.text,
+        font: Array.from(new Uint8Array(message.font)),
+      })) as string;
+      return parseReplaceResult(json);
+    }
+    case 'save': {
+      // The bytes come back as a raw IPC body, like `doc_render_page`.
+      const body = (await invoke('doc_save', { handle: message.doc })) as ArrayBuffer;
+      const bytes = new Uint8Array(new ArrayBuffer(body.byteLength));
+      bytes.set(new Uint8Array(body));
+      return bytes;
     }
     case 'free':
       await invoke('doc_close', { handle: message.doc });

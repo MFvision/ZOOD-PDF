@@ -1,13 +1,16 @@
 import { useT } from '../i18n/useT';
 import { useAppDispatch, useAppState } from '../state/AppContext';
+import { hasUnsavedEdits } from '../state/appReducer';
 import { ZoomSelect } from './ZoomSelect';
 
 /** Bottom status bar: page x of n (opens "Go to page"), zoom, view mode, core badge. */
 export function StatusBar() {
-  const { document, currentPage, core } = useAppState();
+  const state = useAppState();
+  const { document, currentPage, core } = state;
   const dispatch = useAppDispatch();
   const t = useT();
   const pageText = document ? t('status.page', { current: currentPage, total: document.pageCount }) : null;
+  const edited = document !== null && hasUnsavedEdits(state);
 
   return (
     <footer className="statusbar" aria-label={t('status.label')}>
@@ -23,6 +26,11 @@ export function StatusBar() {
           </>
         ) : (
           <span className="statusbar-muted">{t('status.noDocument')}</span>
+        )}
+        {edited && (
+          <span className="badge statusbar-edited" title={t('status.editedHint')}>
+            {t('status.edited')}
+          </span>
         )}
       </div>
       <div className="statusbar-group">

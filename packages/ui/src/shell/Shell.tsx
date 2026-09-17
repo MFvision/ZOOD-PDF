@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { CircleAlert, Loader, Upload, X } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
+import { FontNotice } from '../edit/FontNotice';
 import { HomeScreen } from '../home/HomeScreen';
 import { useT } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
@@ -42,6 +43,7 @@ export function Shell() {
           <IconButton label={t('error.dismiss')} icon={<Icon of={X} />} onClick={() => dispatch({ type: 'ERROR_DISMISSED' })} />
         </div>
       )}
+      <FontNotice />
       {state.loadingName && (
         <div className="banner" role="status">
           <Icon of={Loader} className="spin" />

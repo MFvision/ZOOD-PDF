@@ -68,6 +68,8 @@ const SHORTCUT_ROWS: ReadonlyArray<{ keys: string; labelKey: TKey }> = [
   { keys: 'Mod+O', labelKey: 'shortcuts.open' },
   { keys: 'Mod+S', labelKey: 'shortcuts.save' },
   { keys: 'Mod+F', labelKey: 'shortcuts.find' },
+  { keys: 'Mod+Z', labelKey: 'shortcuts.undo' },
+  { keys: 'Mod+Shift+Z', labelKey: 'shortcuts.redo' },
   { keys: 'Mod+=', labelKey: 'shortcuts.zoomIn' },
   { keys: 'Mod+-', labelKey: 'shortcuts.zoomOut' },
   { keys: 'Mod+0', labelKey: 'shortcuts.fitPage' },

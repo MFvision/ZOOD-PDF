@@ -1,5 +1,12 @@
 import type { CoreRequest, HandledResult, ResultMap } from './protocol';
-import type { CoreDocument, CoreError, CoreModule, CoreStatus, DocumentMetadata } from './types';
+import type {
+  CoreDocument,
+  CoreError,
+  CoreModule,
+  CoreStatus,
+  DocumentMetadata,
+  ReplaceParagraphResult,
+} from './types';
 
 /** Pure request handling shared by the worker and by tests. */
 export interface CoreRuntime {
@@ -92,6 +99,47 @@ function textLines(doc: CoreDocument, index: number): ResultMap['text_lines'] {
   });
 }
 
+function paragraphs(doc: CoreDocument, index: number): ResultMap['paragraphs'] {
+  return doc.paragraphs(index).map((para) => {
+    const data = {
+      index: para.index,
+      text: para.text,
+      x: para.x,
+      y: para.y,
+      width: para.width,
+      height: para.height,
+      direction: para.direction,
+      alignment: para.alignment,
+      fontSize: para.font_size,
+      lineCount: para.line_count,
+    };
+    para.free();
+    return data;
+  });
+}
+
+/** `{lines_drawn, font_substituted}` from the core, in UI casing. */
+export function parseReplaceResult(json: string): ReplaceParagraphResult {
+  try {
+    const parsed = JSON.parse(json) as { lines_drawn?: unknown; font_substituted?: unknown };
+    return {
+      linesDrawn: typeof parsed.lines_drawn === 'number' ? parsed.lines_drawn : 0,
+      fontSubstituted: parsed.font_substituted === true,
+    };
+  } catch {
+    // An unreadable answer must not look like "the original font was kept".
+    return { linesDrawn: 0, fontSubstituted: true };
+  }
+}
+
+function saveDocument(doc: CoreDocument): HandledResult {
+  const bytes = doc.save();
+  // Copy out of WASM memory so the buffer can be transferred to the UI thread.
+  const owned = new Uint8Array(new ArrayBuffer(bytes.byteLength));
+  owned.set(bytes);
+  return { result: owned, transfer: [owned.buffer] };
+}
+
 export function handleRequest(runtime: CoreRuntime, request: CoreRequest): HandledResult {
   const plain = (result: unknown): HandledResult => ({ result, transfer: [] });
   switch (request.kind) {
@@ -117,6 +165,20 @@ export function handleRequest(runtime: CoreRuntime, request: CoreRequest): Handl
       const doc = getDocument(runtime, request.doc);
       return plain(parseMetadata(doc.metadata(), doc.page_count()));
     }
+    case 'paragraphs':
+      return plain(paragraphs(getDocument(runtime, request.doc), request.index));
+    case 'replace_paragraph': {
+      const doc = getDocument(runtime, request.doc);
+      const json = doc.replace_paragraph(
+        request.index,
+        request.para,
+        request.text,
+        new Uint8Array(request.font),
+      );
+      return plain(parseReplaceResult(json));
+    }
+    case 'save':
+      return saveDocument(getDocument(runtime, request.doc));
     case 'free': {
       const doc = runtime.documents.get(request.doc);
       doc?.free();

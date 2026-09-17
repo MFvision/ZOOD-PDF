@@ -35,12 +35,12 @@ export interface ToolDefinition {
   id: ToolId;
   labelKey: TKey;
   icon: LucideIcon;
-  /** Phase 1 implements none of the tools; each opens a "coming later" panel. */
+  /** Unimplemented tools open a "coming later" panel instead of a real one. */
   implemented: boolean;
 }
 
 export const TOOLS: readonly ToolDefinition[] = [
-  { id: 'edit', labelKey: 'tool.edit', icon: Pencil, implemented: false },
+  { id: 'edit', labelKey: 'tool.edit', icon: Pencil, implemented: true },
   { id: 'organize', labelKey: 'tool.organize', icon: LayoutGrid, implemented: false },
   { id: 'comment', labelKey: 'tool.comment', icon: MessageSquare, implemented: false },
   { id: 'fillSign', labelKey: 'tool.fillSign', icon: PenLine, implemented: false },

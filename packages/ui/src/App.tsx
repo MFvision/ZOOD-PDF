@@ -5,6 +5,7 @@ import './styles/components.css';
 import './shell/shell.css';
 import './shell/panes.css';
 import './viewer/viewer.css';
+import './edit/edit.css';
 import './home/home.css';
 import { I18nProvider } from './i18n/I18nProvider';
 import type { Lang } from './i18n/messages';

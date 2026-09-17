@@ -162,6 +162,35 @@ export class RemoteDocument {
     return this.client.request('metadata', { doc: this.id });
   }
 
+  /** Editable paragraphs of a page, in the device space of `text_lines`. */
+  paragraphs(index: number): Promise<ResultMap['paragraphs']> {
+    return this.client.request('paragraphs', { doc: this.id, index });
+  }
+
+  /**
+   * Reflows paragraph `para` of page `index` to `text`, shaped with `font`.
+   * The font bytes are copied, never transferred, so the caller can keep and
+   * reuse the one bundled face across every edit.
+   */
+  replace_paragraph(
+    index: number,
+    para: number,
+    text: string,
+    font: Uint8Array,
+  ): Promise<ResultMap['replace_paragraph']> {
+    const buffer = font.buffer.slice(font.byteOffset, font.byteOffset + font.byteLength);
+    return this.client.request(
+      'replace_paragraph',
+      { doc: this.id, index, para, text, font: buffer as ArrayBuffer },
+      [buffer as ArrayBuffer],
+    );
+  }
+
+  /** Edited bytes: an incremental update over the original wherever possible. */
+  save(): Promise<ResultMap['save']> {
+    return this.client.request('save', { doc: this.id });
+  }
+
   free(): Promise<void> {
     if (this.freed) return Promise.resolve();
     this.freed = true;

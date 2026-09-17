@@ -86,3 +86,27 @@ lives in `packages/core/warraq-pdf/src/crypt/` with 34 tests in `warraq-pdf`, ve
 qpdf/pikepdf file keys, RFC 6229 (RC4) and NIST SP 800-38A (AES-CBC).
 
 Totals: 63 tests green (`warraq-text` 22, `warraq-pdf` 34, `warraq-render` 1, `warraq-core` 5 + 2 robustness (release)), clippy clean, wasm32 compiles.
+
+## Fifth slice: glyph-shape recovery
+
+| # | Behavior | Test | RED evidence | GREEN evidence |
+|---|---|---|---|---|
+| 35 | An outline signature is scale and position independent, and different shapes are far apart | `glyphshape::a_signature_is_scale_and_position_independent`, `different_shapes_are_far_apart` | passed first run | ok |
+| 36 | A prototype record survives quantization | `glyphshape::a_record_survives_the_round_trip` | passed first run | ok |
+| 37 | The generated prototype table is present and self-consistent | `glyphshape::the_generated_prototype_table_is_present_and_matches_itself` | `prototype table looks empty: 0` before the generator existed | ok, 1232 prototypes from 6 faces |
+| 38 | A file with no ToUnicode, no usable cmap and no GSUB is still partly readable | `core::a_file_with_no_tounicode_is_still_partly_readable_from_glyph_shapes` | the file read as placeholders only | ok: word recall 0.41 → 0.60 |
+
+Held-out accuracy (fonts that contributed no prototypes), measured with
+`cargo run --example eval_shapes -- <repo>`:
+
+| Font | Answered | Correct | Precision |
+|---|---|---|---|
+| IBM Plex Sans Arabic | 8 / 112 | 8 | 100 % |
+| Noto Sans Arabic | 10 / 112 | 10 | 100 % |
+| Amiri Bold | 46 / 112 | 46 | 100 % |
+
+The extraction ratchet caught a regression while this was being tuned (five files
+derived from the Noto Naskh page lost 0.05 recall) and the fix — excluding
+skeleton-plus-dots faces — was driven by that failure.
+
+Totals: 69 tests green, clippy clean, wasm32 compiles.

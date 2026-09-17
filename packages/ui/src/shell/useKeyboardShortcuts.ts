@@ -6,7 +6,12 @@ const isZoomInKey = (event: KeyboardEvent) =>
 const isZoomOutKey = (event: KeyboardEvent) =>
   event.key === '-' || event.code === 'Minus' || event.code === 'NumpadSubtract';
 
-/** Global shortcuts documented in SHORTCUTS.md. Ctrl and Cmd are interchangeable. */
+/**
+ * Global shortcuts documented in SHORTCUTS.md. Ctrl and Cmd are interchangeable.
+ *
+ * The paragraph editor stops Escape and Mod+Enter before they reach here, and
+ * undo/redo are no-ops on an empty stack, so typing inside it is unaffected.
+ */
 export function useKeyboardShortcuts(): void {
   const state = useAppState();
   const dispatch = useAppDispatch();
@@ -36,6 +41,9 @@ export function useKeyboardShortcuts(): void {
         if (key === 'n' && hasDocument) {
           event.preventDefault();
           dispatch({ type: 'DIALOG', dialog: 'goto' });
+        } else if (key === 'z' && hasDocument) {
+          event.preventDefault();
+          void services.redoEdit();
         } else if (isZoomInKey(event) && hasDocument) {
           event.preventDefault();
           dispatch({ type: 'ZOOM_IN' });
@@ -46,8 +54,12 @@ export function useKeyboardShortcuts(): void {
         event.preventDefault();
         services.requestOpenFile();
       } else if (key === 's') {
+        // Always swallowed, so the browser's own "save page" never appears.
         event.preventDefault();
-        dispatch({ type: 'TOAST', key: 'file.saveLater' });
+        if (hasDocument) void services.saveDocument();
+      } else if (key === 'z' && hasDocument) {
+        event.preventDefault();
+        void services.undoEdit();
       } else if (key === 'f' && hasDocument) {
         event.preventDefault();
         dispatch({ type: 'FIND_OPEN' });

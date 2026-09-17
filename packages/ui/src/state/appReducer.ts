@@ -1,5 +1,7 @@
 import type { TKey } from '../i18n/messages';
 import type { CoreStatus, DocumentMetadata, PageSize } from '../core/types';
+import { applyEdit, EMPTY_EDIT_STACK } from '../edit/editStack';
+import type { EditEntry, EditStack } from '../edit/editStack';
 import type { ToolId } from '../tools/tools';
 import type { LeftTab, Preferences, ThemeMode } from './preferences';
 import { clampZoom, nextZoomStep, previousZoomStep } from './zoom';
@@ -11,6 +13,24 @@ export interface DocumentInfo {
   pageCount: number;
   pageSizes: readonly PageSize[];
   metadata: DocumentMetadata;
+}
+
+export interface EditState {
+  /** Edit mode: paragraphs are outlined on hover and open an in-place editor. */
+  active: boolean;
+  /** The paragraph whose editor is open, if any (`page` is 0-based). */
+  editing: { page: number; paragraphIndex: number } | null;
+  stack: EditStack;
+  /** Bumped by every applied change, including undo and redo. */
+  revision: number;
+  /** `revision` at the last save; a difference is what "edited" means. */
+  savedRevision: number;
+  /** Per-page nonce: only the page that changed re-renders and re-reads boxes. */
+  pageRevisions: Readonly<Record<number, number>>;
+  /** Brief §15.5: the bundled face was substituted and the user must be told. */
+  fontSubstituted: boolean;
+  /** A core call is in flight; the editor and the undo buttons wait for it. */
+  busy: boolean;
 }
 
 export interface AppState {
@@ -31,6 +51,7 @@ export interface AppState {
   /** Consumed by the viewer; the nonce makes repeated requests distinct. */
   scrollRequest: { page: number; nonce: number } | null;
   core: CoreStatus | null;
+  edit: EditState;
 }
 
 export type AppAction =
@@ -61,7 +82,15 @@ export type AppAction =
   | { type: 'FIND_QUERY'; query: string }
   | { type: 'FIND_RESULTS'; matches: number[] }
   | { type: 'FIND_STEP'; delta: 1 | -1 }
-  | { type: 'DIALOG'; dialog: AppState['dialog'] };
+  | { type: 'DIALOG'; dialog: AppState['dialog'] }
+  | { type: 'EDIT_MODE'; active: boolean }
+  | { type: 'EDIT_OPEN'; page: number; paragraphIndex: number }
+  | { type: 'EDIT_CANCEL' }
+  | { type: 'EDIT_BUSY'; busy: boolean }
+  | { type: 'EDIT_APPLIED'; entry: EditEntry; fontSubstituted: boolean }
+  | { type: 'EDIT_STEPPED'; stack: EditStack; page: number; fontSubstituted: boolean }
+  | { type: 'EDIT_NOTICE_DISMISSED' }
+  | { type: 'DOCUMENT_SAVED' };
 
 export const PANE_MIN_WIDTH = 160;
 export const PANE_MAX_WIDTH = 560;
@@ -70,6 +99,36 @@ const DEFAULT_RIGHT_WIDTH = 280;
 
 export function clampPaneWidth(width: number): number {
   return Math.min(PANE_MAX_WIDTH, Math.max(PANE_MIN_WIDTH, Math.round(width)));
+}
+
+export function createEditState(): EditState {
+  return {
+    active: false,
+    editing: null,
+    stack: EMPTY_EDIT_STACK,
+    revision: 0,
+    savedRevision: 0,
+    pageRevisions: {},
+    fontSubstituted: false,
+    busy: false,
+  };
+}
+
+/** True while the document holds edits that have not been written to disk. */
+export function hasUnsavedEdits(state: AppState): boolean {
+  return state.edit.revision !== state.edit.savedRevision;
+}
+
+/** Records one applied change: a new revision for the document and for `page`. */
+function bumpRevision(edit: EditState, page: number, fontSubstituted: boolean): EditState {
+  return {
+    ...edit,
+    editing: null,
+    busy: false,
+    revision: edit.revision + 1,
+    pageRevisions: { ...edit.pageRevisions, [page]: (edit.pageRevisions[page] ?? 0) + 1 },
+    fontSubstituted: edit.fontSubstituted || fontSubstituted,
+  };
 }
 
 export function createInitialState(prefs: Preferences = {}): AppState {
@@ -97,6 +156,7 @@ export function createInitialState(prefs: Preferences = {}): AppState {
     dialog: null,
     scrollRequest: null,
     core: null,
+    edit: createEditState(),
   };
 }
 
@@ -130,6 +190,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         currentPage: 1,
         scrollRequest: null,
         find: { ...state.find, matches: [], cursor: 0, searched: false },
+        edit: { ...createEditState(), active: state.edit.active },
       };
     case 'DOCUMENT_FAILED':
       return { ...state, loadingName: null, error: action.error };
@@ -141,6 +202,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         currentPage: 1,
         scrollRequest: null,
         find: { open: false, query: '', matches: [], cursor: 0, searched: false },
+        edit: createEditState(),
       };
     case 'ERROR_DISMISSED':
       return { ...state, error: null };
@@ -177,9 +239,14 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'SET_RIGHT_WIDTH':
       return { ...state, rightPane: { ...state.rightPane, width: clampPaneWidth(action.width) } };
     case 'SET_ACTIVE_TOOL':
+      // Picking the Edit tool is what "enter Edit mode" means; leaving it exits.
       return {
         ...state,
         rightPane: { ...state.rightPane, activeTool: action.tool, open: action.tool ? true : state.rightPane.open },
+        edit:
+          action.tool === 'edit'
+            ? { ...state.edit, active: true }
+            : { ...state.edit, active: false, editing: null },
       };
     case 'FIND_OPEN':
       return { ...state, find: { ...state.find, open: true } };
@@ -195,6 +262,44 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return findStep(state, action.delta);
     case 'DIALOG':
       return { ...state, dialog: action.dialog };
+    case 'EDIT_MODE':
+      return {
+        ...state,
+        edit: { ...state.edit, active: action.active, editing: action.active ? state.edit.editing : null },
+        rightPane: action.active
+          ? { ...state.rightPane, activeTool: 'edit', open: true }
+          : state.rightPane,
+      };
+    case 'EDIT_OPEN':
+      return {
+        ...state,
+        edit: {
+          ...state.edit,
+          active: true,
+          editing: { page: action.page, paragraphIndex: action.paragraphIndex },
+        },
+      };
+    case 'EDIT_CANCEL':
+      return { ...state, edit: { ...state.edit, editing: null, busy: false } };
+    case 'EDIT_BUSY':
+      return { ...state, edit: { ...state.edit, busy: action.busy } };
+    case 'EDIT_APPLIED':
+      return {
+        ...state,
+        edit: {
+          ...bumpRevision(state.edit, action.entry.page, action.fontSubstituted),
+          stack: applyEdit(state.edit.stack, action.entry),
+        },
+      };
+    case 'EDIT_STEPPED':
+      return {
+        ...state,
+        edit: { ...bumpRevision(state.edit, action.page, action.fontSubstituted), stack: action.stack },
+      };
+    case 'EDIT_NOTICE_DISMISSED':
+      return { ...state, edit: { ...state.edit, fontSubstituted: false } };
+    case 'DOCUMENT_SAVED':
+      return { ...state, edit: { ...state.edit, savedRevision: state.edit.revision } };
     default:
       return state;
   }

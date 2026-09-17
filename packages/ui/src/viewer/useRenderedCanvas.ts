@@ -18,6 +18,9 @@ export function drawRgba(canvas: HTMLCanvasElement, page: RenderedPageData): voi
  * Renders `document` page `index` at `scale` into the canvas while `active`.
  * With `releaseWhenInactive` the bitmap is dropped when the page leaves the
  * neighbourhood of the viewport so memory stays bounded on long documents.
+ *
+ * `revision` is the page's edit counter: bumping it re-renders the same page at
+ * the same scale, which is how a committed edit reaches the canvas.
  */
 export function useRenderedCanvas(
   canvasRef: RefObject<HTMLCanvasElement | null>,
@@ -26,6 +29,7 @@ export function useRenderedCanvas(
   scale: number,
   active: boolean,
   releaseWhenInactive: boolean,
+  revision = 0,
 ): void {
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -52,5 +56,5 @@ export function useRenderedCanvas(
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [canvasRef, document, index, scale, active, releaseWhenInactive]);
+  }, [canvasRef, document, index, scale, active, releaseWhenInactive, revision]);
 }

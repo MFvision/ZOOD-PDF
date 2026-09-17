@@ -4,7 +4,9 @@ import type {
   DocumentMetadata,
   OpenedDocumentInfo,
   PageSize,
+  ParagraphData,
   RenderedPageData,
+  ReplaceParagraphResult,
   TextLineData,
 } from './types';
 
@@ -20,6 +22,9 @@ export interface RequestMap {
   text_lines: { doc: number; index: number };
   search: { doc: number; query: string };
   metadata: { doc: number };
+  paragraphs: { doc: number; index: number };
+  replace_paragraph: { doc: number; index: number; para: number; text: string; font: ArrayBuffer };
+  save: { doc: number };
   free: { doc: number };
 }
 
@@ -33,6 +38,10 @@ export interface ResultMap {
   text_lines: TextLineData[];
   search: number[];
   metadata: DocumentMetadata;
+  paragraphs: ParagraphData[];
+  replace_paragraph: ReplaceParagraphResult;
+  /** Owns its buffer so it can be transferred and wrapped in a Blob. */
+  save: Uint8Array<ArrayBuffer>;
   free: null;
 }
 

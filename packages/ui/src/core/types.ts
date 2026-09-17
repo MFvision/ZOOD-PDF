@@ -25,6 +25,24 @@ export interface TextLine {
   free(): void;
 }
 
+export type TextAlignment = 'start' | 'end' | 'center' | 'justify';
+
+/** One editable paragraph, in the same device space as `TextLine`. */
+export interface ParagraphInfo {
+  /** Index of the paragraph on its page; the handle for `replace_paragraph`. */
+  readonly index: number;
+  readonly text: string;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly direction: TextDirection;
+  readonly alignment: TextAlignment;
+  readonly font_size: number;
+  readonly line_count: number;
+  free(): void;
+}
+
 export interface CoreDocument {
   page_count(): number;
   /** `[width_pt, height_pt]` after /Rotate. */
@@ -37,6 +55,15 @@ export interface CoreDocument {
   search(query: string): Uint32Array;
   /** JSON: {title, author, producer, creator, pages, encrypted}. */
   metadata(): string;
+
+  /* Editing (Phase 2). */
+
+  /** Editable paragraphs of a page, in device space. */
+  paragraphs(index: number): ParagraphInfo[];
+  /** Reflows and reshapes the paragraph; returns JSON `{lines_drawn, font_substituted}`. */
+  replace_paragraph(index: number, para: number, text: string, font: Uint8Array): string;
+  /** Edited bytes: an incremental update over the original wherever possible. */
+  save(): Uint8Array;
   free(): void;
 }
 
@@ -89,6 +116,29 @@ export interface TextLineData {
   width: number;
   height: number;
   direction: TextDirection;
+}
+
+export interface ParagraphData {
+  index: number;
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  direction: TextDirection;
+  alignment: TextAlignment;
+  fontSize: number;
+  lineCount: number;
+}
+
+/** Parsed result of `replace_paragraph`. */
+export interface ReplaceParagraphResult {
+  linesDrawn: number;
+  /**
+   * The original face could not be reused and a bundled one was embedded.
+   * Brief §15.5: the user is always told, never silently corrupted.
+   */
+  fontSubstituted: boolean;
 }
 
 export interface RenderedPageData {

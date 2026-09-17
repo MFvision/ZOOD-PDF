@@ -2,11 +2,15 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import type { ChangeEvent, Dispatch, ReactNode } from 'react';
 import { getSharedCoreClient } from '../core/client';
 import type { CoreClient, RemoteDocument } from '../core/client';
+import { loadEditFont } from '../edit/editFont';
+import { redo as redoStack, undo as undoStack } from '../edit/editStack';
+import type { EditEntry, StackStep } from '../edit/editStack';
 import type { TKey } from '../i18n/messages';
 import { appReducer, createInitialState } from './appReducer';
 import type { AppAction, AppState } from './appReducer';
 import { readPreferences, writePreferences } from './preferences';
 import { addRecent, clearRecent as clearStoredRecent, readRecent } from './recent';
+import { downloadPdf } from './saveFile';
 
 export interface AppServices {
   client: CoreClient;
@@ -20,6 +24,14 @@ export interface AppServices {
   /** Shows the native file picker (`<input type="file">`). */
   requestOpenFile: () => void;
   clearRecent: () => void;
+  /** Replaces a paragraph and records it on the undo stack. */
+  commitParagraph: (entry: EditEntry) => Promise<void>;
+  /** Re-applies the previous text of the last edit. */
+  undoEdit: () => Promise<void>;
+  /** Re-applies the text that was undone. */
+  redoEdit: () => Promise<void>;
+  /** `save()` plus a download of `<original-name>.pdf`. */
+  saveDocument: () => Promise<void>;
 }
 
 const StateContext = createContext<AppState | null>(null);
@@ -42,9 +54,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [document, setDocument] = useState<RemoteDocument | null>(null);
   const [recent, setRecent] = useState<string[]>(() => readRecent());
   const documentRef = useRef<RemoteDocument | null>(null);
+  // Async work reads the latest state through this ref, never a stale closure.
+  const stateRef = useRef(state);
   const openSequence = useRef(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const client = useMemo(() => getSharedCoreClient(), []);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
     let cancelled = false;
@@ -146,6 +164,72 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setRecent([]);
   }, []);
 
+  /**
+   * One call per applied change, shared by commit, undo and redo: the core is
+   * always asked for the same thing — "this paragraph now reads like this".
+   * `busy` keeps a second click from racing the first, and a failure leaves the
+   * stack untouched so the UI never claims an edit the document does not have.
+   */
+  const replaceParagraph = useCallback(
+    async (page: number, paragraphIndex: number, text: string): Promise<boolean | null> => {
+      const doc = documentRef.current;
+      if (!doc || stateRef.current.edit.busy) return null;
+      dispatch({ type: 'EDIT_BUSY', busy: true });
+      try {
+        const font = await loadEditFont();
+        const result = await doc.replace_paragraph(page, paragraphIndex, text, font);
+        return result.fontSubstituted;
+      } catch {
+        dispatch({ type: 'EDIT_BUSY', busy: false });
+        dispatch({ type: 'DOCUMENT_FAILED', error: 'edit.failed' });
+        return null;
+      }
+    },
+    [],
+  );
+
+  const commitParagraph = useCallback(
+    async (entry: EditEntry) => {
+      if (entry.after === entry.before) {
+        dispatch({ type: 'EDIT_CANCEL' });
+        return;
+      }
+      const fontSubstituted = await replaceParagraph(entry.page, entry.paragraphIndex, entry.after);
+      if (fontSubstituted === null) return;
+      dispatch({ type: 'EDIT_APPLIED', entry, fontSubstituted });
+    },
+    [replaceParagraph],
+  );
+
+  const step = useCallback(
+    async (next: (stack: AppState['edit']['stack']) => StackStep | null) => {
+      const taken = next(stateRef.current.edit.stack);
+      if (!taken) return;
+      const { change, stack } = taken;
+      const fontSubstituted = await replaceParagraph(change.page, change.paragraphIndex, change.text);
+      if (fontSubstituted === null) return;
+      dispatch({ type: 'EDIT_STEPPED', stack, page: change.page, fontSubstituted });
+    },
+    [replaceParagraph],
+  );
+
+  const undoEdit = useCallback(() => step(undoStack), [step]);
+  const redoEdit = useCallback(() => step(redoStack), [step]);
+
+  const saveDocument = useCallback(async () => {
+    const doc = documentRef.current;
+    const name = stateRef.current.document?.name;
+    if (!doc || !name) return;
+    try {
+      const bytes = await doc.save();
+      downloadPdf(bytes, name);
+      dispatch({ type: 'DOCUMENT_SAVED' });
+      dispatch({ type: 'TOAST', key: 'file.saved' });
+    } catch {
+      dispatch({ type: 'DOCUMENT_FAILED', error: 'file.saveFailed' });
+    }
+  }, []);
+
   const onFileInput = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) void openFiles(files);
@@ -153,8 +237,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const services = useMemo<AppServices>(
-    () => ({ client, document, recent, openFile, openFiles, closeDocument, requestOpenFile, clearRecent }),
-    [client, document, recent, openFile, openFiles, closeDocument, requestOpenFile, clearRecent],
+    () => ({
+      client,
+      document,
+      recent,
+      openFile,
+      openFiles,
+      closeDocument,
+      requestOpenFile,
+      clearRecent,
+      commitParagraph,
+      undoEdit,
+      redoEdit,
+      saveDocument,
+    }),
+    [
+      client,
+      document,
+      recent,
+      openFile,
+      openFiles,
+      closeDocument,
+      requestOpenFile,
+      clearRecent,
+      commitParagraph,
+      undoEdit,
+      redoEdit,
+      saveDocument,
+    ],
   );
 
   return (

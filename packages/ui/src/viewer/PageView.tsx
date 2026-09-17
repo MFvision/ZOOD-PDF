@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { cx } from '../components/cx';
 import type { RemoteDocument } from '../core/client';
 import type { PageSize } from '../core/types';
+import { EditLayer } from '../edit/EditLayer';
+import { pageScale } from '../edit/geometry';
 import { useT } from '../i18n/useT';
-import { PT_TO_CSS_PX } from '../state/zoom';
+import { useAppState } from '../state/AppContext';
 import { TextOverlay } from './TextOverlay';
 import { useRenderedCanvas } from './useRenderedCanvas';
 import type { SharedObserver } from './useSharedObserver';
@@ -21,6 +24,7 @@ interface PageViewProps {
 /** One page: a DPR-sized canvas plus the selectable text layer, rendered only near the viewport. */
 export function PageView({ document, index, size, zoom, dpr, near, visible, onVisibility }: PageViewProps) {
   const t = useT();
+  const { edit } = useAppState();
   const ref = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isNear, setNear] = useState(false);
@@ -39,19 +43,21 @@ export function PageView({ document, index, size, zoom, dpr, near, visible, onVi
     };
   }, [near, visible, index, onVisibility]);
 
-  const cssScale = PT_TO_CSS_PX * zoom;
-  useRenderedCanvas(canvasRef, document, index, cssScale * dpr, isNear, true);
+  const cssScale = pageScale(zoom);
+  const pageRevision = edit.pageRevisions[index] ?? 0;
+  useRenderedCanvas(canvasRef, document, index, cssScale * dpr, isNear, true, pageRevision);
 
   return (
     <section
       ref={ref}
-      className="page"
+      className={cx('page', edit.active && 'page-editing')}
       data-page={index + 1}
       aria-label={t('viewer.page', { page: index + 1 })}
       style={{ inlineSize: size[0] * cssScale, blockSize: size[1] * cssScale }}
     >
       <canvas ref={canvasRef} className="page-canvas" />
-      {isNear && <TextOverlay document={document} index={index} scale={cssScale} />}
+      {isNear && <TextOverlay document={document} index={index} scale={cssScale} revision={pageRevision} />}
+      {isNear && edit.active && <EditLayer document={document} index={index} scale={cssScale} />}
     </section>
   );
 }
