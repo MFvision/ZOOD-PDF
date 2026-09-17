@@ -33,8 +33,8 @@ alike when only one of them did anything.
 | --- | --- |
 | Tools in the pane | 13 |
 | Tools that do something | **1** — Edit. Every other card now says *Later* on its face, and opens a panel that says which phase it belongs to |
-| What Edit does | replace the text of a paragraph, reflowed and reshaped; add a line of new text where you click, at a size you choose; undo and redo a replacement |
-| What Edit does not do | add an image, change the font family or the size of text already on the page, move or delete anything, and it cannot undo an *added* line |
+| What Edit does | replace the text of a paragraph, reflowed and reshaped; add a line of new text where you click; choose the face (Amiri, Cairo, Inter) and the size an edit is drawn with; undo and redo a replacement |
+| What Edit does not do | add an image, restyle text already on the page without retyping it, move or delete anything, and it cannot undo an *added* line |
 
 The engine underneath is not a mock-up — the Arabic reading, reflow, font
 subsetting, incremental save and encryption are real and measured — but the

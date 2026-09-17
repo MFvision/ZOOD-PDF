@@ -1,4 +1,6 @@
 import type { TKey } from '../i18n/messages';
+import { DEFAULT_EDIT_FONT } from '../edit/editFont';
+import type { EditFontId } from '../edit/editFont';
 import type { CoreStatus, DocumentMetadata, PageSize } from '../core/types';
 import { applyEdit, EMPTY_EDIT_STACK } from '../edit/editStack';
 import type { EditEntry, EditStack } from '../edit/editStack';
@@ -37,6 +39,8 @@ export interface EditState {
   adding: { page: number; x: number; y: number } | null;
   /** Points, chosen in the panel before placing. */
   addSize: number;
+  /** The bundled face an edit is shaped with. */
+  font: EditFontId;
 }
 
 export interface AppState {
@@ -95,6 +99,7 @@ export type AppAction =
   | { type: 'EDIT_PLACE'; placing: boolean }
   | { type: 'EDIT_ADD_AT'; page: number; x: number; y: number }
   | { type: 'EDIT_ADD_SIZE'; size: number }
+  | { type: 'EDIT_FONT'; font: EditFontId }
   | { type: 'EDIT_ADDED'; page: number }
   | { type: 'EDIT_BUSY'; busy: boolean }
   | { type: 'EDIT_APPLIED'; entry: EditEntry; fontSubstituted: boolean }
@@ -124,6 +129,7 @@ export function createEditState(): EditState {
     placing: false,
     adding: null,
     addSize: 14,
+    font: DEFAULT_EDIT_FONT,
   };
 }
 
@@ -333,6 +339,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       };
     case 'EDIT_ADD_SIZE':
       return { ...state, edit: { ...state.edit, addSize: action.size } };
+    case 'EDIT_FONT':
+      return { ...state, edit: { ...state.edit, font: action.font } };
     case 'EDIT_ADDED':
       // Added text is not on the undo stack: the stack replays paragraph
       // replacements, and there is no paragraph here to replay. The panel says

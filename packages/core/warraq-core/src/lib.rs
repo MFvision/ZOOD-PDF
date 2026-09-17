@@ -411,6 +411,39 @@ mod tests {
         );
     }
 
+    /// Every face the interface offers has to survive shaping, subsetting and
+    /// embedding — including the variable ones, which carry tables a subsetter
+    /// can trip over. The panel may only offer what this proves.
+    #[test]
+    fn each_bundled_face_can_draw_and_be_read_back() {
+        let added = "ملاحظة بخط مختلف";
+        for face in [
+            "Amiri-Regular.ttf",
+            "Cairo-Variable.ttf",
+            "Inter-Variable.ttf",
+        ] {
+            let font = std::fs::read(format!(
+                "{}/../../../tests/fonts/{face}",
+                env!("CARGO_MANIFEST_DIR")
+            ))
+            .unwrap();
+            let mut d =
+                Document::open(corpus("raw-amiri-cid-identity-tounicode.pdf"), None).unwrap();
+            let (width, height) = d.page_size(0).unwrap();
+            let text = if face.starts_with("Inter") {
+                "Added note"
+            } else {
+                added
+            };
+            d.add_text(0, width * 0.7, height - 48.0, 14.0, text, &font)
+                .unwrap_or_else(|e| panic!("{face}: {e}"));
+            assert!(
+                d.extract_text(0).unwrap().contains(text),
+                "{face}: text drawn with this face must be readable"
+            );
+        }
+    }
+
     #[test]
     fn every_encrypted_corpus_variant_opens_with_its_password_and_reports_itself_encrypted() {
         for (name, password) in [

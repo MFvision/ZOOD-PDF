@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import type { ParagraphData } from '../core/types';
 import { useT } from '../i18n/useT';
-import { EDIT_FONT_NAME } from './editFont';
+import { useAppState } from '../state/AppContext';
+import { editFontName } from './editFont';
 import { paragraphRect } from './geometry';
 
 interface ParagraphEditorProps {
@@ -25,8 +26,17 @@ interface ParagraphEditorProps {
  *
  * Escape cancels, Mod+Enter commits, and so does clicking anywhere outside.
  */
-export function ParagraphEditor({ paragraph, scale, busy, onCommit, onCancel }: ParagraphEditorProps) {
+export function ParagraphEditor({
+  paragraph,
+  scale,
+  busy,
+  onCommit,
+  onCancel,
+}: ParagraphEditorProps) {
   const t = useT();
+  // The preview is shaped in the face the commit will use, so what is typed
+  // looks like what will be drawn.
+  const { font } = useAppState().edit;
   const [text, setText] = useState(paragraph.text);
   const containerRef = useRef<HTMLDivElement>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
@@ -81,7 +91,8 @@ export function ParagraphEditor({ paragraph, scale, busy, onCommit, onCancel }: 
   };
 
   const rect = paragraphRect(paragraph, scale);
-  const lineHeight = paragraph.lineCount > 0 ? (paragraph.height / paragraph.lineCount) * scale : undefined;
+  const lineHeight =
+    paragraph.lineCount > 0 ? (paragraph.height / paragraph.lineCount) * scale : undefined;
 
   return (
     <div
@@ -107,7 +118,7 @@ export function ParagraphEditor({ paragraph, scale, busy, onCommit, onCancel }: 
         spellCheck={false}
         style={{
           textAlign: paragraph.alignment,
-          fontFamily: `${EDIT_FONT_NAME}, Cairo, Inter, serif`,
+          fontFamily: `${editFontName(font)}, Amiri, Cairo, Inter, serif`,
           fontSize: paragraph.fontSize * scale,
           lineHeight: lineHeight === undefined ? undefined : `${lineHeight}px`,
         }}

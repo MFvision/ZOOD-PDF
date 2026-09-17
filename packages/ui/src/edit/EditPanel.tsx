@@ -4,6 +4,7 @@ import { IconButton } from '../components/IconButton';
 import { useT } from '../i18n/useT';
 import { modKeyLabel } from '../shell/menuModel';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
+import { EDIT_FONTS } from './editFont';
 import { canRedo, canUndo } from './editStack';
 
 /** Tools-pane panel for the Edit tool: the mode switch, undo/redo and the rules. */
@@ -13,7 +14,7 @@ export function EditPanel() {
   const dispatch = useAppDispatch();
   const { undoEdit, redoEdit } = useServices();
   const hasDocument = state.view === 'viewer' && state.document !== null;
-  const { stack, active, busy, placing, addSize } = state.edit;
+  const { stack, active, busy, placing, addSize, font } = state.edit;
   const mod = modKeyLabel();
 
   return (
@@ -42,6 +43,25 @@ export function EditPanel() {
           disabled={!hasDocument}
           onClick={() => dispatch({ type: 'EDIT_PLACE', placing: !placing })}
         />
+        <label className="edit-size">
+          {t('edit.font')}
+          <select
+            value={font}
+            disabled={!hasDocument}
+            onChange={(event) =>
+              dispatch({
+                type: 'EDIT_FONT',
+                font: event.target.value as (typeof EDIT_FONTS)[number]['id'],
+              })
+            }
+          >
+            {EDIT_FONTS.map((face) => (
+              <option key={face.id} value={face.id}>
+                {face.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="edit-size">
           {t('edit.addSize')}
           <select

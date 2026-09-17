@@ -242,7 +242,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!doc || stateRef.current.edit.busy) return null;
       dispatch({ type: 'EDIT_BUSY', busy: true });
       try {
-        const font = await loadEditFont();
+        const font = await loadEditFont(stateRef.current.edit.font);
         const result = await doc.replace_paragraph(page, paragraphIndex, text, font);
         return result.fontSubstituted;
       } catch {
@@ -270,7 +270,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       dispatch({ type: 'EDIT_BUSY', busy: true });
       try {
-        const font = await loadEditFont();
+        const font = await loadEditFont(stateRef.current.edit.font);
         await doc.add_text(page, x, y, size, text, font);
         dispatch({ type: 'EDIT_ADDED', page });
       } catch {
