@@ -17,10 +17,10 @@ export function LeftPane() {
   const { t } = useI18n();
 
   return (
-    <aside className="pane pane-start" style={{ inlineSize: leftPane.width }} aria-label={t('pane.left.title')}>
+    <aside className="pane pane-start sidebar" style={{ inlineSize: leftPane.width }} aria-label={t('pane.left.title')}>
       <div className="pane-header">
         <h2>{t('pane.thumbnails')}</h2>
-        <IconButton label={t('pane.close')} icon={<Icon of={X} />} onClick={() => dispatch({ type: 'TOGGLE_LEFT_PANE', open: false })} />
+        <IconButton className="pane-close" label={t('pane.close')} icon={<Icon of={X} />} onClick={() => dispatch({ type: 'TOGGLE_LEFT_PANE', open: false })} />
       </div>
       <div className="pane-body">
         <ThumbnailList />

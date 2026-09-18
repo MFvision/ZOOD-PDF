@@ -1,11 +1,11 @@
 import { readFileSync, statSync } from 'node:fs';
 import { expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { INVOICE, chooseTool, corpus, embedDocument, openPdf, test } from './helpers';
+import { INVOICE, chooseTool, corpus, documentStatus, embedDocument, openPdf, test } from './helpers';
 
 const SCAN = corpus('generated/scan-notonaskh-300dpi-skewed-jpeg.pdf');
 const panel = (page: Page) => page.locator('.pane-end');
-const statusBar = (page: Page) => page.getByRole('contentinfo', { name: 'Status bar' });
+const statusBar = (page: Page) => documentStatus(page);
 
 test.describe('Compress makes a smaller copy and leaves the open file alone', () => {
   test('a 300 dpi scan, downsampled to 150 dpi: saved smaller, and it opens', async ({ page, stayLocal: _ }) => {

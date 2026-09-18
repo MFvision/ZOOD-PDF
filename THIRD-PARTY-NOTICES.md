@@ -30,6 +30,7 @@ licence text (`scripts/rust-licenses.mjs`).
 | Lucide (`lucide-react`) | ISC | icons |
 | fflate | MIT | zip and deflate for Export (the Word file, page images, PNG compression) |
 | React, Vite, Tauri | MIT / MIT / Apache-2.0 OR MIT | UI and app shells |
+| muda (Tauri's menu library, already inside Tauri) | Apache-2.0 OR MIT | named directly only in the desktop tests, to parse the macOS menu bar's shortcuts as Tauri does |
 | `objc2`, `objc2-foundation`, `objc2-app-kit`, `objc2-pdf-kit` (macOS desktop) | MIT; Zlib OR Apache-2.0 OR MIT | Print, through PDFKit and the system print sheet |
 | `cssparser`, `cssparser-macros`, `selectors`, `dtoa-short`, `option-ext` (pulled in by Tauri, desktop only, unmodified; source on crates.io) | MPL-2.0 | Tauri's HTML handling and settings paths |
 

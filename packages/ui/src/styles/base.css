@@ -14,17 +14,37 @@ body,
 
 body {
   overflow: hidden;
-  font-family: var(--font-latin);
-  font-size: 14px;
-  line-height: 1.45;
-  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: var(--text-body);
+  font-optical-sizing: auto;
+  line-height: var(--leading-body);
+  letter-spacing: var(--track-body);
+  color: var(--label);
   text-align: start;
-  background: var(--bg-app);
+  background: var(--window-background);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizelegibility;
+
+  /* A desktop app: the chrome is not text to select, and taps do not flash. */
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
-:lang(ar) {
-  font-family: var(--font-arabic);
+/* What is content stays selectable. */
+input,
+textarea,
+[contenteditable="true"],
+.selectable,
+.tool-panel p,
+.dialog-body p {
+  user-select: text;
+}
+
+/* Arabic reads better with a little more room between lines. */
+:lang(ar) body,
+body:lang(ar) {
+  line-height: 1.5;
 }
 
 button,
@@ -32,22 +52,28 @@ input,
 select,
 textarea {
   font: inherit;
+  letter-spacing: inherit;
   color: inherit;
 }
 
+/* Apple platforms use the arrow cursor for buttons; only links get the hand. */
 button {
-  cursor: pointer;
+  cursor: default;
 }
 
 button:disabled,
 [aria-disabled="true"] {
-  cursor: not-allowed;
-  opacity: 0.5;
+  cursor: default;
+  opacity: 0.4;
 }
 
 :focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
+  outline: 3px solid var(--focus);
+  outline-offset: 1px;
+}
+
+::selection {
+  background: var(--selection);
 }
 
 h1,
@@ -55,6 +81,27 @@ h2,
 h3 {
   margin: 0;
   font-weight: 600;
+}
+
+h1 {
+  font-size: var(--text-large-title);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--track-large-title);
+}
+
+h2 {
+  font-size: var(--text-title3);
+  letter-spacing: var(--track-title3);
+}
+
+h3 {
+  font-size: var(--text-headline);
+}
+
+/* Lucide's strokes, thinned towards the weight of the system's symbols. */
+.lucide {
+  flex: none;
+  stroke-width: var(--icon-stroke);
 }
 
 /* Icons that imply a direction (back, next, sidebar sides) flip in RTL. */
@@ -74,17 +121,21 @@ h3 {
   border: 0;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --motion: 0ms;
-  }
+/* Scroll bars as the system draws them: thin, rounded, inset. */
+* {
+  scrollbar-color: var(--tertiary-label) transparent;
+  scrollbar-width: thin;
+}
 
+/*
+ * Reduced motion does not mean no feedback: nothing slides, scales or springs
+ * (components swap their travel for a short cross-fade, see motion.css), and
+ * scrolling jumps instead of gliding.
+ */
+@media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
   }
 }

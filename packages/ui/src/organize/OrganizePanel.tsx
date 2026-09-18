@@ -19,6 +19,7 @@ import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
+import { Stepper } from '../components/Stepper';
 import type { TKey } from '../i18n/messages';
 import { useT } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
@@ -95,14 +96,7 @@ export function OrganizePanel() {
   const margin = (edge: keyof typeof cut, labelKey: TKey) => (
     <label className="field">
       <span>{t(labelKey)}</span>
-      <input
-        className="text-input"
-        type="number"
-        min={0}
-        step={1}
-        value={cut[edge]}
-        onChange={(event) => setCut({ ...cut, [edge]: Math.max(0, Number(event.target.value) || 0) })}
-      />
+      <Stepper min={0} step={1} value={cut[edge]} onChange={(value) => setCut({ ...cut, [edge]: value })} />
     </label>
   );
 

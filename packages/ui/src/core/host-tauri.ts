@@ -241,6 +241,72 @@ export function onNativeFileDrag(onDrag: (at: DropPoint | null) => void): () => 
   }) as (payload: never) => void);
 }
 
+/* ------------------------------------------------------------- menu bar */
+
+/** Emitted by `apps/desktop/src-tauri/src/menu.rs` when an item of the macOS menu bar is chosen. */
+export const MENU_EVENT = 'warraq://menu';
+
+/** One item of the macOS menu bar, as `menu.rs` builds it (`MenuSpec` there). */
+export interface NativeMenuItem {
+  id: string;
+  label: string;
+  accelerator?: string;
+  enabled: boolean;
+  /** Present on check and radio items only. */
+  checked?: boolean;
+  separatorBefore: boolean;
+}
+
+export interface NativeMenu {
+  id: string;
+  label: string;
+  items: NativeMenuItem[];
+}
+
+/** The system items the host adds itself, in the interface's language. */
+export interface NativeMenuLabels {
+  appName: string;
+  services: string;
+  hide: string;
+  hideOthers: string;
+  showAll: string;
+  quit: string;
+  window: string;
+  minimize: string;
+  zoom: string;
+  bringAllToFront: string;
+  fullscreen: string;
+  closeWindow: string;
+  cut: string;
+  copy: string;
+  paste: string;
+  selectAll: string;
+}
+
+export interface NativeMenuSpec {
+  labels: NativeMenuLabels;
+  menus: NativeMenu[];
+}
+
+/**
+ * Hands the menu bar to the macOS host: built the first time and whenever a
+ * label or an item changes, otherwise only enabled and checked are updated.
+ * A no-op in a browser.
+ */
+export function setNativeMenu(spec: NativeMenuSpec): Promise<void> {
+  if (!internals()) return Promise.resolve();
+  return invoke('set_menu', { spec }).then(() => undefined);
+}
+
+/** Subscribes to items chosen in the macOS menu bar (their ids). Returns the unsubscribe. */
+export function onNativeMenu(onItem: (id: string) => void): () => void {
+  const host = internals();
+  if (!host) return () => {};
+  return listen(host, MENU_EVENT, ((event: { payload?: unknown }) => {
+    if (typeof event?.payload === 'string') onItem(event.payload);
+  }) as (payload: never) => void);
+}
+
 /**
  * Native save panel for one kind of file, then the write. `false` when the
  * user cancels, which is not an error and must not be reported as a failed

@@ -1,7 +1,9 @@
+import { ChevronRight } from 'lucide-react';
 import { cx } from '../components/cx';
 import { Icon } from '../components/Icon';
 import { useT } from '../i18n/useT';
 import { useAppDispatch } from '../state/AppContext';
+import { ToolIcon } from './ToolIcon';
 import { TOOLS } from './tools';
 
 /**
@@ -30,11 +32,10 @@ export function ToolCards({ layout }: { layout: 'list' | 'grid' }) {
               className={cx('tool-card', !tool.implemented && 'tool-card-pending')}
               onClick={() => dispatch({ type: 'SET_ACTIVE_TOOL', tool: tool.id })}
             >
-              <span className="tool-card-icon">
-                <Icon of={tool.icon} size={20} />
-              </span>
+              <ToolIcon tool={tool} size={layout === 'grid' ? 'large' : 'regular'} />
               <span className="tool-card-name">{t(tool.labelKey)}</span>
               {!tool.implemented && <span className="tool-card-later">{t('tool.later')}</span>}
+              {layout === 'list' && <Icon of={ChevronRight} size={14} mirror className="tool-card-chevron" />}
             </button>
           </li>
         ))}

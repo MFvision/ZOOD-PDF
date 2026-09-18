@@ -1,92 +1,95 @@
+/* The home screen: the document chooser the app opens on. */
 .home {
   flex: 1;
   min-block-size: 0;
-  padding: 32px 24px;
+  padding-block: var(--space-9) var(--space-10);
+  padding-inline: var(--space-8);
   overflow: auto;
 }
 
 .home-inner {
   display: flex;
   flex-direction: column;
-  gap: 32px;
-  max-inline-size: 960px;
+  gap: var(--space-9);
+  max-inline-size: 1040px;
   margin-inline: auto;
 }
 
+.home-hero {
+  display: flex;
+  gap: var(--space-6);
+  align-items: center;
+}
+
+.home-icon {
+  flex: none;
+  filter: drop-shadow(0 2px 6px rgb(0 0 0 / 14%));
+}
+
+.home-hero-text {
+  flex: 1;
+  min-inline-size: 0;
+}
+
 .home-hero h1 {
-  font-size: 30px;
-  color: var(--accent);
+  font-size: var(--text-large-title);
+  font-weight: 700;
 }
 
 .home-hero p {
-  margin: 4px 0 0;
-  color: var(--fg-muted);
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-title3);
+  color: var(--secondary-label);
+  letter-spacing: var(--track-title3);
 }
 
-.home-section h2 {
+.home-open.icon-btn-primary {
+  flex: none;
+  block-size: 30px;
+  padding-inline: var(--space-5) var(--space-6);
+  border-radius: var(--radius-capsule);
+}
+
+.home-section {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.home-section-header {
+  display: flex;
+  align-items: baseline;
   justify-content: space-between;
-  margin-block-end: 12px;
-  font-size: 16px;
+  padding-block-end: var(--space-3);
+  border-block-end: 0.5px solid var(--separator);
+}
+
+.home-section-header h2 {
+  font-size: var(--text-title3);
+  font-weight: 700;
 }
 
 .home-note {
-  margin: 8px 0 0;
-  font-size: 12px;
-  color: var(--fg-muted);
+  margin: 0;
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
 }
 
-.dropzone {
+.home-privacy {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  gap: var(--space-3);
   align-items: center;
   justify-content: center;
-  inline-size: 100%;
-  min-block-size: 180px;
-  padding: 24px;
-  color: var(--fg-muted);
-  background: var(--bg-panel);
-  border: 2px dashed var(--border-strong);
-  border-radius: var(--radius-l);
-  transition:
-    border-color var(--motion),
-    background-color var(--motion);
+  margin: 0;
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
 }
 
-.dropzone:hover,
-.dropzone:focus-visible {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-}
-
-.dropzone strong {
-  font-size: 18px;
-  color: var(--fg);
-}
-
-.cloud-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-block-start: 12px;
-}
-
-.cloud-btn {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  padding: 8px 14px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
-}
-
-.recent-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+/* ---- Recent files, as pages in a grid ---------------------------------------- */
+.recent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: var(--space-7) var(--space-6);
   padding: 0;
   margin: 0;
   list-style: none;
@@ -94,21 +97,129 @@
 
 .recent-item {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: var(--space-4);
   align-items: center;
   inline-size: 100%;
-  padding: 8px 12px;
-  text-align: start;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
+  padding: var(--space-3);
+  color: var(--label);
+  text-align: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-12);
+  transition: background-color var(--duration-quick) var(--ease-out);
 }
 
 .recent-item:hover {
-  background: var(--bg-hover);
+  background: var(--quaternary-fill);
 }
 
-.recent-empty {
-  margin: 0;
-  color: var(--fg-muted);
+.recent-item:active {
+  background: var(--tertiary-fill);
+  transition-duration: 0ms;
+}
+
+/* A page: paper, in the proportion of A4, with a soft shadow. */
+.recent-page {
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  max-inline-size: 120px;
+  aspect-ratio: 1 / 1.414;
+  overflow: hidden;
+  color: var(--tertiary-label);
+  background: var(--page-white);
+  border-radius: 3px;
+  box-shadow: var(--shadow-page);
+  transition: transform var(--duration-regular) var(--spring);
+}
+
+.recent-page img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.recent-item:hover .recent-page {
+  transform: translateY(-2px);
+}
+
+.recent-name {
+  display: -webkit-box;
+  max-inline-size: 100%;
+  overflow: hidden;
+  font-size: var(--text-callout);
+  line-height: 1.3;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+
+/* The first tile opens a file, or takes one dropped on it. */
+.dropzone-page {
+  color: var(--accent);
+  background: transparent;
+  border: 1.5px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: none;
+}
+
+.dropzone:hover .dropzone-page {
+  background: var(--accent-soft);
+}
+
+.dropzone .recent-name {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  -webkit-line-clamp: unset;
+}
+
+.dropzone strong {
+  font-weight: 600;
+}
+
+.dropzone-or {
+  color: var(--secondary-label);
+}
+
+@media (width <= 640px) {
+  .home {
+    padding-block: var(--space-7) var(--space-9);
+    padding-inline: var(--space-6);
+  }
+
+  .home-inner {
+    gap: var(--space-8);
+  }
+
+  .home-hero {
+    flex-wrap: wrap;
+    gap: var(--space-5);
+  }
+
+  .home-icon {
+    inline-size: 52px;
+    block-size: 52px;
+  }
+
+  .home-open.icon-btn-primary {
+    inline-size: 100%;
+    justify-content: center;
+  }
+
+  .recent-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-5) var(--space-3);
+  }
+
+  .tool-cards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  .tool-cards-grid .tool-card {
+    min-block-size: 84px;
+    padding: var(--space-5);
+  }
 }

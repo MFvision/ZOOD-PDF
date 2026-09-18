@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
+import { isEditable } from './menuModel';
 
 const isZoomInKey = (event: KeyboardEvent) =>
   event.key === '=' || event.key === '+' || event.code === 'Equal' || event.code === 'NumpadAdd';
@@ -42,6 +43,14 @@ export function useKeyboardShortcuts(): void {
       if (!mod || event.altKey) return;
       const key = event.key.toLowerCase();
 
+      // In a text field Undo and Redo are the typing's. Handled here, not left
+      // to the browser, so the macOS menu bar's Undo never runs on top of it.
+      if (key === 'z' && isEditable(event.composedPath()[0] as Element)) {
+        event.preventDefault();
+        document.execCommand(event.shiftKey ? 'redo' : 'undo');
+        return;
+      }
+
       if (event.shiftKey) {
         if (key === 'n' && hasDocument) {
           event.preventDefault();
@@ -55,7 +64,10 @@ export function useKeyboardShortcuts(): void {
         }
         return;
       }
-      if (key === 'o') {
+      if (key === ',' || event.code === 'Comma') {
+        event.preventDefault();
+        dispatch({ type: 'DIALOG', dialog: 'settings' });
+      } else if (key === 'o') {
         event.preventDefault();
         services.requestOpenFile();
       } else if (key === 's') {

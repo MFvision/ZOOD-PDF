@@ -166,6 +166,46 @@ export function watch(registry: PluginRegistry, { onPage, onHistory }: EmbedWatc
   return () => subscriptions.forEach((unsubscribe) => unsubscribe?.());
 }
 
+interface Zoom {
+  requestZoom(level: number | 'fit-page' | 'fit-width' | 'automatic'): void;
+  getState(): { zoomLevel?: unknown; currentZoomLevel?: number };
+  onZoomChange: Hook<{ newZoom: number; level: unknown }>;
+}
+
+/** EmbedPDF's zoom as the toolbar shows it: the scale, and whether it is fitted. */
+export interface EmbedZoom {
+  scale: number;
+  mode: 'custom' | 'fit-page' | 'fit-width';
+}
+
+const zoomMode = (level: unknown): EmbedZoom['mode'] =>
+  level === 'fit-page' || level === 'fit-width' ? level : 'custom';
+
+/** Follows EmbedPDF's zoom — now, and whenever it changes. Returns the unsubscribe. */
+export function watchZoom(registry: PluginRegistry, onZoom: (zoom: EmbedZoom) => void): Unsubscribe {
+  const zoom = capability<Zoom>(registry, 'zoom');
+  if (!zoom) return () => {};
+  const read = () => {
+    try {
+      const state = zoom.getState();
+      if (typeof state.currentZoomLevel === 'number') onZoom({ scale: state.currentZoomLevel, mode: zoomMode(state.zoomLevel) });
+    } catch {
+      /* no document yet */
+    }
+  };
+  const subscriptions = [
+    zoom.onZoomChange(({ newZoom, level }) => onZoom({ scale: newZoom, mode: zoomMode(level) })),
+    capability<DocumentManager>(registry, 'document-manager')?.onActiveDocumentChanged(read),
+  ];
+  read();
+  return () => subscriptions.forEach((unsubscribe) => unsubscribe?.());
+}
+
+/** Sets EmbedPDF's zoom to a scale (1 is 100 %). */
+export function setZoom(registry: PluginRegistry, scale: number): void {
+  capability<Zoom>(registry, 'zoom')?.requestZoom(scale);
+}
+
 /**
  * Follows `pendingRedactionCount`: now, whenever the marks change, and when
  * another document becomes active. Returns the unsubscribe.
