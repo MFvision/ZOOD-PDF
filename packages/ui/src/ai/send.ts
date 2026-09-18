@@ -1,6 +1,13 @@
 import { requestFor } from './preflight';
 import type { Preflight } from './preflight';
-import { CLAUDE_HOST, claudeAnswer, httpFailure, localAnswer, providerMessage } from './providers';
+import {
+  CLAUDE_HOST,
+  claudeAnswer,
+  httpFailure,
+  localAnswer,
+  providerMessage,
+  replyStream,
+} from './providers';
 import type { Answer, Failure } from './providers';
 
 export type Outcome = { ok: true; answer: Answer } | { ok: false; failure: Failure };
@@ -41,6 +48,8 @@ export function watchPolicy(): PolicyWatch {
 
 export interface SendOptions {
   fetch?: typeof fetch;
+  /** The answer so far, as it streams in; `thinking` while the model thinks before it writes. */
+  onText?: (text: string, thinking: boolean) => void;
   watch?: () => PolicyWatch;
   /** Waits for a policy report, which the browser delivers as a task of its own after the failure. */
   settle?: () => Promise<void>;
@@ -94,6 +103,45 @@ export async function send(
     );
   } finally {
     policy.stop();
+  }
+  // A streamed answer, read as it is written. A server that ignores
+  // `stream` and answers in one piece is read the way it answers.
+  const type = response.headers.get('content-type') ?? '';
+  if (response.ok && response.body && !type.includes('application/json')) {
+    const stream = replyStream(
+      settings.provider,
+      settings.provider === 'local' ? settings.api : 'openai',
+    );
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let dropped = false;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        stream.push(decoder.decode(value, { stream: true }));
+        options.onText?.(stream.text(), stream.thinking());
+      }
+      stream.push(decoder.decode());
+      stream.end();
+    } catch {
+      dropped = !signal.aborted;
+    }
+    const text = stream.text();
+    // Stopped, or cut: what had arrived is kept, and said to be incomplete.
+    if (signal.aborted || dropped) {
+      if (text.trim().length > 0) return { ok: true, answer: { text, cutOff: true } };
+      if (signal.aborted) return fail({ kind: 'cancelled' });
+      return fail(
+        settings.provider === 'claude'
+          ? { kind: 'offline', host: CLAUDE_HOST }
+          : { kind: 'localDown', url: settings.base },
+      );
+    }
+    const error = stream.error();
+    if (error) return fail({ kind: 'other', status: response.status, message: error });
+    if (text.trim().length === 0) return fail({ kind: 'empty' });
+    return { ok: true, answer: { text, cutOff: stream.cutOff() } };
   }
   let json: unknown = null;
   try {

@@ -204,6 +204,50 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     expect(text).toContain('from Arabic into English');
   });
 
+  test('a streamed answer is read as it arrives, and its citations work', async ({
+    page,
+    stayLocal: _,
+  }) => {
+    const event = (e: object) => `event: x\ndata: ${JSON.stringify(e)}\n\n`;
+    const text = (t: string) =>
+      event({ type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: t } });
+    const toClaude = await answer(page, ANTHROPIC, () => ({
+      status: 200,
+      headers: { 'access-control-allow-origin': '*' },
+      contentType: 'text/event-stream',
+      body: [
+        event({ type: 'message_start', message: { id: 'msg_e2e' } }),
+        event({
+          type: 'content_block_start',
+          index: 0,
+          content_block: { type: 'thinking', thinking: '' },
+        }),
+        event({
+          type: 'content_block_delta',
+          index: 0,
+          delta: { type: 'thinking_delta', thinking: 'Reading.' },
+        }),
+        event({ type: 'content_block_stop', index: 0 }),
+        event({ type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } }),
+        text('ملخص '),
+        text('بالبث [p. 2].'),
+        event({ type: 'message_delta', delta: { stop_reason: 'end_turn' } }),
+        event({ type: 'message_stop' }),
+      ].join(''),
+    }));
+    await page.goto('/');
+    await openPdf(page, WORD_EXPORT);
+    const ai = await claudeFor(page, 'Summarize');
+    await ai.getByRole('button', { name: 'Review what will be sent' }).click();
+    await preflight(page).getByRole('button', { name: 'Send to Anthropic' }).click();
+    await expect(reply(page)).toContainText('ملخص بالبث');
+    await expect(reply(page)).not.toContainText('Reading.');
+    expect(toClaude).toHaveLength(1);
+    expect((toClaude[0] as Request).postDataJSON()).toMatchObject({ stream: true });
+    await reply(page).getByRole('button', { name: /2/ }).click();
+    await expect.poll(() => embedPage(page)).toBe(2);
+  });
+
   test('a wrong key is named as the wrong key', async ({ page, stayLocal: _ }) => {
     const toClaude = await answer(page, ANTHROPIC, () =>
       json(
@@ -267,7 +311,7 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
       messages: { role: string; content: string }[];
     };
     expect(body.model).toBe('gemma3');
-    expect(body.stream).toBe(false);
+    expect(body.stream).toBe(true);
     expect(body.messages.map((message) => message.role)).toEqual(['system', 'user']);
     expect(body.messages[1]?.content).toContain('صباح الخير');
     expect(body.options.num_ctx).toBeGreaterThanOrEqual(4096);

@@ -25,5 +25,5 @@ Status legend: ✅ done · 🟡 partial · ⬜ planned · ❌ out of scope. Targ
 | Accessibility | Tags, reading order, alt text, checker | v2 | ⬜ | ⬜ | ⬜ | |
 | Action Wizard | Batch processing | v2 | ⬜ | ⬜ | ⬜ | |
 | Print production | PDF/A & PDF/X conversion + validation, preflight light | v2 | ⬜ | ⬜ | ⬜ | krilla for PDF/A output |
-| AI | Summarize, chat, translate, OCR post-correction, smart fill, PII suggestions, table extraction | v1 | 🟡 | 🟡 | 🟡 | summarize, ask, translate with a bring-your-own Anthropic key or a local model (Ollama, LM Studio); nothing sent before Send, the exact text shown first, answers cite pages (e2e with both providers faked); OCR post-correction, smart fill, PII and tables not yet |
+| AI | Summarize, chat, translate, OCR post-correction, smart fill, PII suggestions, table extraction | v1 | 🟡 | 🟡 | 🟡 | summarize, ask, translate with a bring-your-own Anthropic key or a local model (Ollama, LM Studio); nothing sent before Send, the exact text shown first, answers streamed as they are written and citing pages (e2e with both providers faked, streamed and whole); OCR post-correction, smart fill, PII and tables not yet |
 | Cloud | OneDrive and Google Drive connectors (independent) | v1 | ⬜ | ⬜ | ⬜ | Phase 5 |

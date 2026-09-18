@@ -105,6 +105,8 @@ export function AiPanel() {
   const [sending, setSending] = useState(false);
   const [failure, setFailure] = useState<{ failure: Failure; provider: ProviderId } | null>(null);
   const [result, setResult] = useState<Result | null>(null);
+  /** The answer as it streams in, and whether the model is still thinking before it. */
+  const [partial, setPartial] = useState<{ text: string; thinking: boolean } | null>(null);
   const [copied, setCopied] = useState<'no' | 'yes' | 'failed'>('no');
   const abortRef = useRef<AbortController | null>(null);
   // Bumped by every change of what would be sent, so a review still reading
@@ -255,9 +257,13 @@ export function AiPanel() {
     abortRef.current = controller;
     setSending(true);
     setFailure(null);
-    const outcome = await send(sent, key.trim(), controller.signal);
+    setPartial({ text: '', thinking: false });
+    const outcome = await send(sent, key.trim(), controller.signal, {
+      onText: (text, thinking) => setPartial({ text, thinking }),
+    });
     if (abortRef.current === controller) abortRef.current = null;
     setSending(false);
+    setPartial(null);
     if (outcome.ok) {
       setResult({
         documentId: sent.documentId,
@@ -610,13 +616,27 @@ export function AiPanel() {
       {sending && (
         <div className="ai-status" role="status">
           <Icon of={Loader} className="spin" />
-          <span>{t('ai.waiting')}</span>
+          <span>
+            {t(partial?.text ? 'ai.arriving' : partial?.thinking ? 'ai.thinking' : 'ai.waiting')}
+          </span>
           <IconButton
             label={t('ai.stop')}
             icon={<Icon of={Square} />}
             showLabel
             onClick={() => abortRef.current?.abort()}
           />
+        </div>
+      )}
+      {sending && partial?.text && (
+        // As it is written; read out once, whole, when it is done.
+        <div className="ai-answer-text ai-streaming" aria-live="off">
+          {partial.text.split('\n').map((line, index) =>
+            line.trim().length === 0 ? null : (
+              <p key={index} dir="auto">
+                {line}
+              </p>
+            ),
+          )}
         </div>
       )}
       {failed && (

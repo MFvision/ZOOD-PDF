@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
   CLAUDE_MAX_TOKENS,
-  LOCAL_REPLY_TOKENS,
   claudeAnswer,
   claudeRequest,
   httpFailure,
+  LOCAL_REPLY_TOKENS,
   localAddress,
   localAnswer,
   localContext,
   localRequest,
   providerMessage,
+  replyStream,
 } from './providers';
 
 const KEY = 'sk-ant-api03-not-a-real-key-0123456789';
@@ -33,6 +34,7 @@ describe('the request to Claude', () => {
       max_tokens: CLAUDE_MAX_TOKENS,
       system: 'Rules.',
       messages: [{ role: 'user', content: prompt.user }],
+      stream: true,
     });
   });
 
@@ -51,7 +53,7 @@ describe('the request to Claude', () => {
 });
 
 describe('the request to a local model', () => {
-  it("is Ollama's /api/chat, in one piece, with room for the whole prompt", () => {
+  it("is Ollama's /api/chat, streamed, with room for the whole prompt", () => {
     const request = localRequest('ollama', 'http://localhost:11434', 'gemma3', prompt);
     expect(request.url).toBe('http://localhost:11434/api/chat');
     expect(request.headers).toEqual({ 'content-type': 'application/json' });
@@ -61,7 +63,7 @@ describe('the request to a local model', () => {
         { role: 'system', content: 'Rules.' },
         { role: 'user', content: prompt.user },
       ],
-      stream: false,
+      stream: true,
       options: { num_ctx: localContext(prompt), num_predict: LOCAL_REPLY_TOKENS },
     });
   });
@@ -73,7 +75,7 @@ describe('the request to a local model', () => {
         { role: 'system', content: 'Rules.' },
         { role: 'user', content: prompt.user },
       ],
-      stream: false,
+      stream: true,
     };
     const plain = localRequest('openai', 'http://127.0.0.1:11434', 'qwen2.5', prompt);
     expect(plain.url).toBe('http://127.0.0.1:11434/v1/chat/completions');
@@ -215,5 +217,96 @@ describe('a failure', () => {
       status: 401,
       message: 'unauthorized',
     });
+  });
+});
+
+/** Feeds `text` to a fresh stream in pieces of `size`, cutting lines and events anywhere. */
+function streamed(
+  provider: 'claude' | 'local',
+  api: 'ollama' | 'openai',
+  text: string,
+  size: number,
+) {
+  const stream = replyStream(provider, api);
+  for (let at = 0; at < text.length; at += size) stream.push(text.slice(at, at + size));
+  stream.end();
+  return stream;
+}
+
+const sse = (events: object[]) =>
+  events.map((e) => `event: x\ndata: ${JSON.stringify(e)}\n\n`).join('');
+
+describe('streamed replies', () => {
+  const claudeEvents = sse([
+    { type: 'message_start', message: { id: 'msg' } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '' } },
+    {
+      type: 'content_block_delta',
+      index: 0,
+      delta: { type: 'thinking_delta', thinking: 'Let me read.' },
+    },
+    { type: 'content_block_stop', index: 0 },
+    { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'صباح ' } },
+    { type: 'ping' },
+    { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'الخير [p. 1].' } },
+    { type: 'message_delta', delta: { stop_reason: 'max_tokens' } },
+    { type: 'message_stop' },
+  ]);
+
+  it("reads Claude's events however they are cut, without its thinking", () => {
+    for (const size of [1, 7, 64, claudeEvents.length]) {
+      const stream = streamed('claude', 'openai', claudeEvents, size);
+      expect(stream.text(), `pieces of ${size}`).toBe('صباح الخير [p. 1].');
+      expect(stream.cutOff()).toBe(true);
+      expect(stream.error()).toBeNull();
+    }
+  });
+
+  it('says the model is thinking until its answer begins', () => {
+    const stream = replyStream('claude', 'openai');
+    stream.push(claudeEvents.slice(0, claudeEvents.indexOf('content_block_stop')));
+    expect(stream.thinking()).toBe(true);
+    expect(stream.text()).toBe('');
+    stream.push(claudeEvents.slice(claudeEvents.indexOf('content_block_stop')));
+    expect(stream.thinking()).toBe(false);
+  });
+
+  it('passes on an error event in the middle of the stream', () => {
+    const stream = streamed(
+      'claude',
+      'openai',
+      sse([{ type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } }]),
+      5,
+    );
+    expect(stream.error()).toBe('Overloaded');
+  });
+
+  it("reads Ollama's lines of JSON, and drops a local model's reasoning", () => {
+    const lines = [
+      { message: { content: '<think>hmm' } },
+      { message: { content: '</think>ملخص ' } },
+      { message: { content: 'محلي' }, done: false },
+      { message: { content: '' }, done: true, done_reason: 'length' },
+    ]
+      .map((line) => JSON.stringify(line))
+      .join('\n');
+    for (const size of [3, lines.length]) {
+      const stream = streamed('local', 'ollama', lines, size);
+      expect(stream.text()).toBe('ملخص محلي');
+      expect(stream.cutOff()).toBe(true);
+    }
+  });
+
+  it("reads an OpenAI-compatible server's events up to [DONE]", () => {
+    const text =
+      sse([
+        { choices: [{ delta: { role: 'assistant' } }] },
+        { choices: [{ delta: { content: 'LM ' } }] },
+        { choices: [{ delta: { content: 'Studio' }, finish_reason: 'stop' }] },
+      ]) + 'data: [DONE]\n\n';
+    const stream = streamed('local', 'openai', text, 4);
+    expect(stream.text()).toBe('LM Studio');
+    expect(stream.cutOff()).toBe(false);
   });
 });

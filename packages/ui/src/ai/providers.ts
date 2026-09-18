@@ -26,8 +26,8 @@ export const CLAUDE_MODELS = [
 export const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-5';
 /**
  * The reply's cap, thinking included (Sonnet 5 and Opus 5 think by default).
- * A request is answered in one piece, and this keeps it to minutes; a reply
- * that reaches the cap is marked as cut off rather than passed off as whole.
+ * The answer is shown as it streams in; one that reaches the cap is marked as
+ * cut off rather than passed off as whole.
  */
 export const CLAUDE_MAX_TOKENS = 16_000;
 
@@ -84,6 +84,8 @@ export function claudeRequest(key: string, model: string, prompt: Prompt): Provi
       max_tokens: CLAUDE_MAX_TOKENS,
       system: prompt.system,
       messages: [{ role: 'user', content: prompt.user }],
+      // The answer is shown as it is written, not after a silence.
+      stream: true,
     }),
   };
 }
@@ -145,7 +147,7 @@ export function localRequest(
   if (api === 'openai') {
     // An OpenAI-compatible base is often given with its /v1 already.
     const url = /\/v1$/.test(base) ? `${base}/chat/completions` : `${base}/v1/chat/completions`;
-    return { url, headers, body: JSON.stringify({ model, messages, stream: false }) };
+    return { url, headers, body: JSON.stringify({ model, messages, stream: true }) };
   }
   return {
     url: `${base}/api/chat`,
@@ -153,7 +155,7 @@ export function localRequest(
     body: JSON.stringify({
       model,
       messages,
-      stream: false,
+      stream: true,
       options: { num_ctx: localContext(prompt), num_predict: LOCAL_REPLY_TOKENS },
     }),
   };
@@ -193,6 +195,110 @@ export function localAnswer(api: LocalApi, json: unknown): Answer | null {
   }
   if (typeof content !== 'string') return null;
   return { text: content.replace(THINKING, '').trim(), cutOff };
+}
+
+/**
+ * A streamed reply, read as it arrives: Anthropic's server-sent events,
+ * Ollama's lines of JSON, or an OpenAI-compatible server's events. `push`
+ * takes the text as it comes, cut anywhere; `text` is the answer so far.
+ */
+export interface ReplyStream {
+  push(chunk: string): void;
+  /** The stream has ended: what is left in the buffer is the last unit. */
+  end(): void;
+  /** The answer so far, without thinking or a local model's reasoning. */
+  text(): string;
+  /** Thinking has begun and no answer yet: something is happening. */
+  thinking(): boolean;
+  cutOff(): boolean;
+  /** The provider's own words, when it reported a failure mid-stream. */
+  error(): string | null;
+}
+
+export function replyStream(provider: ProviderId, api: LocalApi): ReplyStream {
+  let buffer = '';
+  let answer = '';
+  let thinking = false;
+  let cutOff = false;
+  let error: string | null = null;
+  // Server-sent events end at a blank line; Ollama's objects at a newline.
+  const separator = provider === 'local' && api === 'ollama' ? '\n' : '\n\n';
+  const handle = (unit: string) => {
+    if (provider === 'local' && api === 'ollama') {
+      const json = parse(unit);
+      if (!json) return;
+      const reply = json as {
+        message?: { content?: unknown };
+        done_reason?: unknown;
+        error?: unknown;
+      };
+      if (typeof reply.message?.content === 'string') answer += reply.message.content;
+      if (reply.done_reason === 'length') cutOff = true;
+      if (typeof reply.error === 'string') error = reply.error;
+      return;
+    }
+    const data = unit
+      .split('\n')
+      .filter((line) => line.startsWith('data:'))
+      .map((line) => line.slice(5).trimStart())
+      .join('\n');
+    if (data === '' || data === '[DONE]') return;
+    const json = parse(data);
+    if (!json) return;
+    if (provider === 'claude') {
+      const event = json as {
+        type?: unknown;
+        content_block?: { type?: unknown };
+        delta?: { type?: unknown; text?: unknown; stop_reason?: unknown };
+        error?: { message?: unknown };
+      };
+      if (event.type === 'content_block_start' && event.content_block?.type === 'thinking')
+        thinking = true;
+      if (event.delta?.type === 'text_delta' && typeof event.delta.text === 'string')
+        answer += event.delta.text;
+      if (event.type === 'message_delta') {
+        const stop = event.delta?.stop_reason;
+        if (stop === 'max_tokens' || stop === 'model_context_window_exceeded') cutOff = true;
+      }
+      if (event.type === 'error')
+        error = typeof event.error?.message === 'string' ? event.error.message : 'error';
+      return;
+    }
+    const choice = (
+      json as { choices?: { delta?: { content?: unknown }; finish_reason?: unknown }[] }
+    ).choices?.[0];
+    if (typeof choice?.delta?.content === 'string') answer += choice.delta.content;
+    if (choice?.finish_reason === 'length') cutOff = true;
+    const failed = providerMessage(json);
+    if (failed) error = failed;
+  };
+  return {
+    push(chunk) {
+      buffer += chunk.replace(/\r\n/g, '\n');
+      let at = buffer.indexOf(separator);
+      while (at >= 0) {
+        handle(buffer.slice(0, at));
+        buffer = buffer.slice(at + separator.length);
+        at = buffer.indexOf(separator);
+      }
+    },
+    end() {
+      if (buffer.trim().length > 0) handle(buffer);
+      buffer = '';
+    },
+    text: () => (provider === 'local' ? answer.replace(THINKING, '').trim() : answer),
+    thinking: () => thinking && answer.length === 0,
+    cutOff: () => cutOff,
+    error: () => error,
+  };
+}
+
+function parse(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 /** The provider's own words for a failure — Anthropic's, Ollama's or an OpenAI-style server's shape. */

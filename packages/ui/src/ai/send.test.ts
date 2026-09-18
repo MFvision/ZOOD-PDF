@@ -170,3 +170,92 @@ describe('the policy watch', () => {
     }
   });
 });
+
+/** A reply that streams `chunks` — and, like fetch, fails its body when the request is aborted; `hold` leaves it open. */
+function streamingHarness(chunks: string[], type = 'text/event-stream', hold = false) {
+  const seen: string[] = [];
+  const options: SendOptions = {
+    fetch: async (_url, init) => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          const encoder = new TextEncoder();
+          for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+          if (!hold) controller.close();
+          init?.signal?.addEventListener('abort', () =>
+            controller.error(new DOMException('aborted', 'AbortError')),
+          );
+        },
+      });
+      return new Response(body, { headers: { 'content-type': type } });
+    },
+    watch: () => ({ refused: () => false, stop: () => undefined }),
+    settle: async () => undefined,
+    onText: (text) => seen.push(text),
+  };
+  return { seen, options };
+}
+
+const event = (e: object) => `event: x\ndata: ${JSON.stringify(e)}\n\n`;
+const delta = (text: string) =>
+  event({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text } });
+
+describe('a streamed answer', () => {
+  it('is shown as it arrives, and returned whole', async () => {
+    const { seen, options } = streamingHarness([
+      event({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }),
+      delta('صباح '),
+      delta('الخير'),
+      event({ type: 'message_delta', delta: { stop_reason: 'end_turn' } }),
+    ]);
+    const outcome = await send(claude, KEY, new AbortController().signal, options);
+    expect(outcome).toEqual({ ok: true, answer: { text: 'صباح الخير', cutOff: false } });
+    expect(seen).toContain('صباح ');
+    expect(seen.at(-1)).toBe('صباح الخير');
+  });
+
+  it('keeps what had arrived when Stop is pressed, marked as cut off', async () => {
+    const controller = new AbortController();
+    const { options } = streamingHarness([delta('نصف الجواب')], 'text/event-stream', true);
+    const pending = send(claude, KEY, controller.signal, {
+      ...options,
+      onText: (text) => {
+        if (text.length > 0) controller.abort();
+      },
+    });
+    expect(await pending).toEqual({ ok: true, answer: { text: 'نصف الجواب', cutOff: true } });
+  });
+
+  it('is cancelled, not empty, when Stop comes before any of it', async () => {
+    const controller = new AbortController();
+    const { options } = streamingHarness([event({ type: 'ping' })], 'text/event-stream', true);
+    const pending = send(claude, KEY, controller.signal, {
+      ...options,
+      onText: () => controller.abort(),
+    });
+    expect(await pending).toEqual({ ok: false, failure: { kind: 'cancelled' } });
+  });
+
+  it("reads Ollama's lines as they come", async () => {
+    const { options } = streamingHarness(
+      [
+        '{"message":{"content":"ملخص "}}\n{"message":{"con',
+        'tent":"محلي"},"done":true,"done_reason":"stop"}\n',
+      ],
+      'application/x-ndjson',
+    );
+    const outcome = await send(local, '', new AbortController().signal, options);
+    expect(outcome).toEqual({ ok: true, answer: { text: 'ملخص محلي', cutOff: false } });
+  });
+
+  it('says why when the provider reports an error in the middle of it', async () => {
+    const { options } = streamingHarness([
+      delta('بدأ'),
+      event({ type: 'error', error: { message: 'Overloaded' } }),
+    ]);
+    const outcome = await send(claude, KEY, new AbortController().signal, options);
+    expect(outcome).toEqual({
+      ok: false,
+      failure: { kind: 'other', status: 200, message: 'Overloaded' },
+    });
+  });
+});
