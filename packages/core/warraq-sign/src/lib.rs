@@ -106,6 +106,8 @@ impl HashAlg {
             .find(|h| h.oid() == *oid)
     }
 
+    /// The digest's length in bytes (never empty, so no `is_empty`).
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(self) -> usize {
         match self {
             HashAlg::Sha1 => 20,
@@ -136,4 +138,103 @@ impl HashAlg {
 /// Upper-case hex, as PDF writes the VRI keys and a person reads a serial.
 pub fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02X}")).collect()
+}
+
+/// Standard base64 (RFC 4648), for a certificate carried in JSON.
+pub fn base64(bytes: &[u8]) -> String {
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let n = (chunk[0] as u32) << 16
+            | (*chunk.get(1).unwrap_or(&0) as u32) << 8
+            | *chunk.get(2).unwrap_or(&0) as u32;
+        for i in 0..4 {
+            if i <= chunk.len() {
+                out.push(ALPHABET[(n >> (18 - 6 * i) & 63) as usize] as char);
+            } else {
+                out.push('=');
+            }
+        }
+    }
+    out
+}
+
+/// Decodes base64, skipping whitespace; `None` on anything else.
+pub fn unbase64(text: &str) -> Option<Vec<u8>> {
+    let mut out = Vec::with_capacity(text.len() * 3 / 4);
+    let (mut acc, mut bits) = (0u32, 0u32);
+    for c in text.bytes() {
+        let v = match c {
+            b'A'..=b'Z' => c - b'A',
+            b'a'..=b'z' => c - b'a' + 26,
+            b'0'..=b'9' => c - b'0' + 52,
+            b'+' => 62,
+            b'/' => 63,
+            b'=' => break,
+            c if c.is_ascii_whitespace() => continue,
+            _ => return None,
+        } as u32;
+        acc = (acc << 6) | v;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((acc >> bits) as u8);
+            acc &= (1 << bits) - 1;
+        }
+    }
+    Some(out)
+}
+
+/// The certificates in a file a person chose: DER, PEM (one or several), or
+/// a PKCS#7 "certificates only" bundle (.p7b, .p7c).
+pub fn certificates_in(file: &[u8]) -> Vec<Vec<u8>> {
+    let text = String::from_utf8_lossy(file);
+    if text.contains("-----BEGIN CERTIFICATE-----") {
+        return text
+            .split("-----BEGIN CERTIFICATE-----")
+            .skip(1)
+            .filter_map(|block| block.split("-----END CERTIFICATE-----").next())
+            .filter_map(unbase64)
+            .filter(|der| chain::Cert::parse(der).is_ok())
+            .collect();
+    }
+    if let Ok(der) = asn1::first_der(file) {
+        if chain::Cert::parse(der).is_ok() {
+            return vec![der.to_vec()];
+        }
+        if let Ok(p) = cms::parse(der) {
+            return p.certs;
+        }
+    }
+    Vec::new()
+}
+
+#[cfg(test)]
+mod base64_tests {
+    #[test]
+    fn encodes_and_decodes_as_rfc_4648_says() {
+        for (plain, coded) in [
+            ("", ""),
+            ("f", "Zg=="),
+            ("fo", "Zm8="),
+            ("foobar", "Zm9vYmFy"),
+        ] {
+            assert_eq!(super::base64(plain.as_bytes()), coded);
+            assert_eq!(super::unbase64(coded).unwrap(), plain.as_bytes());
+        }
+        assert!(super::unbase64("Zm9v!").is_none());
+    }
+
+    #[test]
+    fn certificates_are_found_in_der_and_pem_files() {
+        let dir = format!(
+            "{}/../../../tests/fixtures/signatures",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let der = std::fs::read(format!("{dir}/root-rsa.cer")).unwrap();
+        assert_eq!(super::certificates_in(&der), vec![der.clone()]);
+        let pem = std::fs::read(format!("{dir}/root-rsa.pem")).unwrap();
+        assert_eq!(super::certificates_in(&pem), vec![der]);
+        assert!(super::certificates_in(b"%PDF-1.7").is_empty());
+    }
 }

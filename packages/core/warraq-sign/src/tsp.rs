@@ -57,8 +57,13 @@ pub fn request(hash: HashAlg, imprint: &[u8]) -> Result<Request> {
 
 /// The token in a `TimeStampResp`, after checking the authority granted it
 /// and that it stamps `imprint` (and echoes `nonce`, when one was sent).
-pub fn token_from_response(response: &[u8], imprint: &[u8], nonce: Option<&[u8]>) -> Result<Vec<u8>> {
-    let (resp, _) = read(response).map_err(|_| SignError::Tsa("the answer is not a timestamp response".into()))?;
+pub fn token_from_response(
+    response: &[u8],
+    imprint: &[u8],
+    nonce: Option<&[u8]>,
+) -> Result<Vec<u8>> {
+    let (resp, _) = read(response)
+        .map_err(|_| SignError::Tsa("the answer is not a timestamp response".into()))?;
     let parts = children(resp.value)?;
     let status = parts
         .first()
@@ -70,7 +75,9 @@ pub fn token_from_response(response: &[u8], imprint: &[u8], nonce: Option<&[u8]>
         .ok_or_else(|| SignError::Tsa("the answer has no status".into()))?;
     // granted (0) or grantedWithMods (1)
     if status > 1 {
-        return Err(SignError::Tsa(format!("the authority refused the request (status {status})")));
+        return Err(SignError::Tsa(format!(
+            "the authority refused the request (status {status})"
+        )));
     }
     let token = parts
         .get(1)
@@ -83,7 +90,9 @@ pub fn token_from_response(response: &[u8], imprint: &[u8], nonce: Option<&[u8]>
     }
     if let Some(nonce) = nonce {
         if info.nonce.as_deref() != Some(nonce) {
-            return Err(SignError::Tsa("the token does not answer this request (nonce)".into()));
+            return Err(SignError::Tsa(
+                "the token does not answer this request (nonce)".into(),
+            ));
         }
     }
     Ok(token)
@@ -110,7 +119,8 @@ pub fn token_info(token: &[u8]) -> Result<TokenInfo> {
         .econtent
         .as_deref()
         .ok_or_else(|| SignError::Tsa("the token has no content".into()))?;
-    let tst = x509_tsp::TstInfo::from_der(content).map_err(|e| SignError::Tsa(format!("TSTInfo: {e}")))?;
+    let tst = x509_tsp::TstInfo::from_der(content)
+        .map_err(|e| SignError::Tsa(format!("TSTInfo: {e}")))?;
     let hash = HashAlg::from_oid(&tst.message_imprint.hash_algorithm.oid)
         .ok_or_else(|| SignError::Tsa("unsupported imprint digest".into()))?;
     Ok(TokenInfo {
@@ -147,7 +157,10 @@ pub fn check_token(token: &[u8], extra: &[Cert]) -> Result<TokenCheck> {
     let (signature_ok, purpose_ok, problem, authority) = match &signer {
         Some(cert) => {
             let c = cms::check(&info.parsed, cert, &info.parsed.digest.digest(&content));
-            let ok = c.digest_ok && c.signature_ok && c.content_type_ok && c.cert_binding_ok != Some(false);
+            let ok = c.digest_ok
+                && c.signature_ok
+                && c.content_type_ok
+                && c.cert_binding_ok != Some(false);
             (
                 ok,
                 cert.extended_key_usage().contains(&oids::KP_TIME_STAMPING),
@@ -195,16 +208,23 @@ pub(crate) mod tests {
         let (req, _) = read(request_der).unwrap();
         let parts = children(req.value).unwrap();
         let imprint = parts[1].raw.to_vec();
-        let nonce = parts.iter().find(|p| p.tag == 0x02 && p.raw != [2, 1, 1]).map(|p| p.raw.to_vec());
-        let time = der::asn1::GeneralizedTime::from_unix_duration(std::time::Duration::from_secs(at as u64))
-            .unwrap()
-            .to_der()
-            .unwrap();
+        let nonce = parts
+            .iter()
+            .find(|p| p.tag == 0x02 && p.raw != [2, 1, 1])
+            .map(|p| p.raw.to_vec());
+        let time = der::asn1::GeneralizedTime::from_unix_duration(std::time::Duration::from_secs(
+            at as u64,
+        ))
+        .unwrap()
+        .to_der()
+        .unwrap();
         let tst = wrap(
             0x30,
             &[
                 vec![0x02, 0x01, 0x01],
-                const_oid::ObjectIdentifier::new_unwrap("1.2.3.4.1").to_der().unwrap(),
+                const_oid::ObjectIdentifier::new_unwrap("1.2.3.4.1")
+                    .to_der()
+                    .unwrap(),
                 imprint,
                 vec![0x02, 0x02, 0x10, 0x01],
                 time,
@@ -252,7 +272,8 @@ pub(crate) mod tests {
         let imprint = HashAlg::Sha256.digest(b"hello\n");
         for name in ["digicert", "sectigo", "freetsa"] {
             let resp = fixture(&format!("real-tsa/{name}.tsr"));
-            let token = token_from_response(&resp, &imprint, None).unwrap_or_else(|e| panic!("{name}: {e}"));
+            let token = token_from_response(&resp, &imprint, None)
+                .unwrap_or_else(|e| panic!("{name}: {e}"));
             let check = check_token(&token, &[]).unwrap_or_else(|e| panic!("{name}: {e}"));
             assert!(check.signature_ok, "{name}: {:?}", check.problem);
             assert!(check.purpose_ok, "{name}");

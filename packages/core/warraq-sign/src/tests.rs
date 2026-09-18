@@ -89,12 +89,19 @@ fn openssl_verifies(bytes: &[u8], root_pem: &str) -> Option<bool> {
         .map(|p| u8::from_str_radix(std::str::from_utf8(p).unwrap(), 16).unwrap())
         .collect();
     let der = crate::asn1::first_der(&raw).unwrap().to_vec();
-    let dir = std::env::temp_dir().join(format!("warraq-cms-{}-{}", std::process::id(), bytes.len()));
+    let dir =
+        std::env::temp_dir().join(format!("warraq-cms-{}-{}", std::process::id(), bytes.len()));
     std::fs::create_dir_all(&dir).ok()?;
     std::fs::write(dir.join("sig.der"), der).ok()?;
-    std::fs::write(dir.join("data.bin"), [&bytes[..br[1]], &bytes[br[2]..br[2] + br[3]]].concat()).ok()?;
+    std::fs::write(
+        dir.join("data.bin"),
+        [&bytes[..br[1]], &bytes[br[2]..br[2] + br[3]]].concat(),
+    )
+    .ok()?;
     let out = Command::new("openssl")
-        .args(["cms", "-verify", "-binary", "-inform", "DER", "-purpose", "any"])
+        .args([
+            "cms", "-verify", "-binary", "-inform", "DER", "-purpose", "any",
+        ])
         .arg("-in")
         .arg(dir.join("sig.der"))
         .arg("-content")
@@ -120,23 +127,40 @@ fn an_arabic_file_signed_with_each_key_type_verifies_and_openssl_agrees() {
         ("signer-ec.p12", Padding::Pkcs1v15),
         ("signer-ec384-legacy.p12", Padding::Pkcs1v15),
     ] {
-        let o = SignOptions { padding, ..options(true) };
+        let o = SignOptions {
+            padding,
+            ..options(true)
+        };
         let signed = sign_with(original.clone(), None, p12, &o);
         assert!(signed.starts_with(&original), "{p12}: incremental");
-        let root = if p12.contains("ec") { "root-ec.cer" } else { "root-rsa.cer" };
+        let root = if p12.contains("ec") {
+            "root-ec.cer"
+        } else {
+            "root-rsa.cer"
+        };
 
         // Untrusted until the TEST root is trusted; intact either way.
         let r = verify(&signed, None, &[]);
         assert_eq!(r.signatures.len(), 1);
         let s = &r.signatures[0];
         assert_eq!(s.status, "untrusted", "{p12}: {:?}", s.problems);
-        assert!(s.integrity.byte_range_ok && s.integrity.digest_ok && s.integrity.signature_ok, "{p12}");
+        assert!(
+            s.integrity.byte_range_ok && s.integrity.digest_ok && s.integrity.signature_ok,
+            "{p12}"
+        );
         assert!(s.integrity.covers_whole_file);
         assert!(s.visible);
         assert_eq!(s.reason.as_deref(), Some("الموافقة على العقد"));
         let r = verify(&signed, None, &[root]);
-        assert_eq!(r.signatures[0].status, "valid", "{p12}: {:?}", r.signatures[0].problems);
-        assert_eq!(r.signatures[0].claimed_time.as_deref(), Some("2026-09-19T17:00:00Z"));
+        assert_eq!(
+            r.signatures[0].status, "valid",
+            "{p12}: {:?}",
+            r.signatures[0].problems
+        );
+        assert_eq!(
+            r.signatures[0].claimed_time.as_deref(),
+            Some("2026-09-19T17:00:00Z")
+        );
         if p12 == "signer-rsa-legacy.p12" {
             assert_eq!(r.signatures[0].signed_by, "محمد التجريبي (TEST)");
         }
@@ -145,7 +169,11 @@ fn an_arabic_file_signed_with_each_key_type_verifies_and_openssl_agrees() {
         let doc = PdfDocument::open(signed.clone(), None).unwrap();
         assert_eq!(doc.page_count(), 3);
 
-        let pem = if p12.contains("ec") { "root-ec.pem" } else { "root-rsa.pem" };
+        let pem = if p12.contains("ec") {
+            "root-ec.pem"
+        } else {
+            "root-rsa.pem"
+        };
         match openssl_verifies(&signed, pem) {
             Some(ok) => assert!(ok, "{p12}: openssl cms -verify refused it"),
             None => eprintln!("openssl not found: the independent check was skipped"),
@@ -153,23 +181,29 @@ fn an_arabic_file_signed_with_each_key_type_verifies_and_openssl_agrees() {
         // And refuses it once a signed byte changes.
         let mut tampered = signed.clone();
         tampered[200] ^= 1;
-        assert_eq!(openssl_verifies(&tampered, pem), Some(false).filter(|_| openssl_verifies(&signed, pem).is_some()), "{p12}");
+        if let Some(ok) = openssl_verifies(&tampered, pem) {
+            assert!(!ok, "{p12}: openssl accepted a changed file");
+        }
     }
 }
 
 #[test]
 fn one_changed_byte_makes_the_signature_invalid() {
-    let signed = sign_with(corpus("generated/chrome-cairo-mixed-invoice.pdf"), None, "signer-ec.p12", &options(false));
+    let signed = sign_with(
+        corpus("generated/chrome-cairo-mixed-invoice.pdf"),
+        None,
+        "signer-ec.p12",
+        &options(false),
+    );
     let doc = PdfDocument::open(signed.clone(), None).unwrap();
     let br = doc.signature_fields()[0].value.clone().unwrap().byte_range;
     for at in [100usize, br[1] as usize - 20, br[2] as usize + 5] {
         let mut tampered = signed.clone();
         tampered[at] ^= 0x01;
         let r = verify(&tampered, None, &["root-ec.cer"]);
-        match r.signatures.first() {
-            Some(s) => assert_eq!(s.status, "invalid", "byte {at}: {:?}", s.integrity),
-            // A byte in the xref can leave no readable signature at all.
-            None => {}
+        // (A byte in the xref could leave no readable signature at all.)
+        if let Some(s) = r.signatures.first() {
+            assert_eq!(s.status, "invalid", "byte {at}: {:?}", s.integrity);
         }
     }
 }
@@ -177,12 +211,28 @@ fn one_changed_byte_makes_the_signature_invalid() {
 #[test]
 fn a_protected_file_is_signed_encrypted_and_verifies_with_its_password() {
     let original = corpus("generated/variant-encrypted-aes256.pdf");
-    let signed = sign_with(original.clone(), Some("warraq"), "signer-rsa-aes.p12", &options(true));
+    let signed = sign_with(
+        original.clone(),
+        Some("warraq"),
+        "signer-rsa-aes.p12",
+        &options(true),
+    );
     assert!(signed.starts_with(&original));
-    assert!(PdfDocument::open(signed.clone(), None).is_err(), "still protected");
+    assert!(
+        PdfDocument::open(signed.clone(), None).is_err(),
+        "still protected"
+    );
     let r = verify(&signed, Some("warraq"), &["root-rsa.cer"]);
-    assert_eq!(r.signatures[0].status, "valid", "{:?}", r.signatures[0].problems);
-    assert_eq!(r.signatures[0].location.as_deref(), Some("الرياض"), "strings sealed and read back");
+    assert_eq!(
+        r.signatures[0].status, "valid",
+        "{:?}",
+        r.signatures[0].problems
+    );
+    assert_eq!(
+        r.signatures[0].location.as_deref(),
+        Some("الرياض"),
+        "strings sealed and read back"
+    );
 }
 
 /// Changes a form field's value in an update, as another program would.
@@ -193,8 +243,9 @@ fn fill_first_text_field(bytes: Vec<u8>, value: &str) -> Vec<u8> {
         .objects
         .iter()
         .find(|(_, o)| {
-            o.as_dict()
-                .is_ok_and(|d| d.get(b"FT").ok().and_then(|f| f.as_name().ok()) == Some(b"Tx") && d.has(b"T"))
+            o.as_dict().is_ok_and(|d| {
+                d.get(b"FT").ok().and_then(|f| f.as_name().ok()) == Some(b"Tx") && d.has(b"T")
+            })
         })
         .map(|(id, _)| *id)
         .expect("a text field");
@@ -217,31 +268,77 @@ fn filling_a_form_after_signing_is_allowed_unless_the_fields_are_locked() {
     let s = &r.signatures[0];
     assert!(!s.integrity.covers_whole_file);
     assert_eq!(s.status, "valid", "{:?}", s.changes);
-    assert!(s.changes.iter().any(|c| c.kind == "formFill" && c.allowed), "{:?}", s.changes);
+    assert!(
+        s.changes.iter().any(|c| c.kind == "formFill" && c.allowed),
+        "{:?}",
+        s.changes
+    );
 
-    let locked = sign_with(form, None, "signer-rsa-legacy.p12", &SignOptions { lock_fields: true, ..options(true) });
+    let locked = sign_with(
+        form,
+        None,
+        "signer-rsa-legacy.p12",
+        &SignOptions {
+            lock_fields: true,
+            ..options(true)
+        },
+    );
     let filled = fill_first_text_field(locked, "قيمة جديدة");
     let s = &verify(&filled, None, &["root-rsa.cer"]).signatures[0];
     assert_eq!(s.status, "modified", "{:?}", s.changes);
-    assert!(s.changes.iter().any(|c| c.kind == "lockedField" && !c.allowed));
+    assert!(s
+        .changes
+        .iter()
+        .any(|c| c.kind == "lockedField" && !c.allowed));
 }
 
 #[test]
 fn drawing_on_a_page_after_signing_is_found() {
-    let signed = sign_with(corpus("generated/chrome-cairo-mixed-invoice.pdf"), None, "signer-rsa-legacy.p12", &options(false));
+    let signed = sign_with(
+        corpus("generated/chrome-cairo-mixed-invoice.pdf"),
+        None,
+        "signer-rsa-legacy.p12",
+        &options(false),
+    );
     let mut doc = PdfDocument::open(signed, None).unwrap();
-    warraq_pdf::append_line(&mut doc, 0, "سطر أضيف بعد التوقيع", AMIRI, 12.0, 300.0, 60.0).unwrap();
+    warraq_pdf::append_line(
+        &mut doc,
+        0,
+        "سطر أضيف بعد التوقيع",
+        AMIRI,
+        12.0,
+        300.0,
+        60.0,
+    )
+    .unwrap();
     let edited = doc.save_incremental().unwrap();
     let s = &verify(&edited, None, &["root-rsa.cer"]).signatures[0];
     assert_eq!(s.status, "modified");
-    assert!(s.changes.iter().any(|c| c.kind == "pageContent" && !c.allowed), "{:?}", s.changes);
-    assert!(s.integrity.digest_ok && s.integrity.signature_ok, "what it signed is intact");
+    assert!(
+        s.changes
+            .iter()
+            .any(|c| c.kind == "pageContent" && !c.allowed),
+        "{:?}",
+        s.changes
+    );
+    assert!(
+        s.integrity.digest_ok && s.integrity.signature_ok,
+        "what it signed is intact"
+    );
 }
 
 #[test]
 fn a_certified_file_forbids_what_its_level_forbids_and_a_second_signature_is_listed() {
     let form = corpus("generated/acroform-pdflib-arabic-fields.pdf");
-    let certified = sign_with(form, None, "signer-ec.p12", &SignOptions { certify: Some(2), ..options(false) });
+    let certified = sign_with(
+        form,
+        None,
+        "signer-ec.p12",
+        &SignOptions {
+            certify: Some(2),
+            ..options(false)
+        },
+    );
     let r = verify(&certified, None, &["root-ec.cer"]);
     assert_eq!(r.certified, Some(2));
     assert_eq!(r.signatures[0].kind, "certification");
@@ -249,8 +346,15 @@ fn a_certified_file_forbids_what_its_level_forbids_and_a_second_signature_is_lis
     let twice = sign_with(certified, None, "signer-rsa-legacy.p12", &options(true));
     let r = verify(&twice, None, &["root-ec.cer", "root-rsa.cer"]);
     assert_eq!(r.signatures.len(), 2);
-    assert_eq!(r.signatures[0].status, "valid", "{:?}", r.signatures[0].changes);
-    assert!(r.signatures[0].changes.iter().any(|c| c.kind == "signatures" && c.allowed));
+    assert_eq!(
+        r.signatures[0].status, "valid",
+        "{:?}",
+        r.signatures[0].changes
+    );
+    assert!(r.signatures[0]
+        .changes
+        .iter()
+        .any(|c| c.kind == "signatures" && c.allowed));
     assert_eq!(r.signatures[1].status, "valid");
 
     // Under P=1 nothing may be signed after.
@@ -258,7 +362,10 @@ fn a_certified_file_forbids_what_its_level_forbids_and_a_second_signature_is_lis
         corpus("generated/chrome-cairo-mixed-invoice.pdf"),
         None,
         "signer-ec.p12",
-        &SignOptions { certify: Some(1), ..options(false) },
+        &SignOptions {
+            certify: Some(1),
+            ..options(false)
+        },
     );
     let id = pkcs12::open(&fixture("signer-rsa-legacy.p12"), "warraq-test").unwrap();
     let mut doc = PdfDocument::open(strict, None).unwrap();
@@ -270,8 +377,16 @@ fn a_signature_timestamp_is_requested_embedded_and_verified() {
     let original = corpus("generated/chrome-cairo-mixed-invoice.pdf");
     let id = pkcs12::open(&fixture("signer-rsa-aes.p12"), "warraq-test").unwrap();
     let mut doc = PdfDocument::open(original, None).unwrap();
-    let o = SignOptions { timestamp: true, ..options(true) };
-    let Signed::NeedsTimestamp { prepared, cms, request } = pades::sign(&mut doc, &id.signer, &o).unwrap() else {
+    let o = SignOptions {
+        timestamp: true,
+        ..options(true)
+    };
+    let Signed::NeedsTimestamp {
+        prepared,
+        cms,
+        request,
+    } = pades::sign(&mut doc, &id.signer, &o).unwrap()
+    else {
         panic!("a timestamp was asked for");
     };
     // What the authority is sent is a digest, nothing of the document.
@@ -290,13 +405,23 @@ fn a_signature_timestamp_is_requested_embedded_and_verified() {
 
 #[test]
 fn a_document_timestamp_covers_the_file_after_its_signature() {
-    let signed = sign_with(corpus("generated/chrome-cairo-mixed-invoice.pdf"), None, "signer-ec.p12", &options(false));
+    let signed = sign_with(
+        corpus("generated/chrome-cairo-mixed-invoice.pdf"),
+        None,
+        "signer-ec.p12",
+        &options(false),
+    );
     let mut doc = PdfDocument::open(signed, None).unwrap();
     let (prepared, request) = pades::prepare_doc_timestamp(&mut doc).unwrap();
-    let stamped = pades::finish_doc_timestamp(prepared, &request, &answer(&request, NOW + 60)).unwrap();
+    let stamped =
+        pades::finish_doc_timestamp(prepared, &request, &answer(&request, NOW + 60)).unwrap();
     let r = verify(&stamped, None, &["root-ec.cer", "root-rsa.cer"]);
     assert_eq!(r.signatures.len(), 2);
-    assert_eq!(r.signatures[0].status, "valid", "{:?}", r.signatures[0].changes);
+    assert_eq!(
+        r.signatures[0].status, "valid",
+        "{:?}",
+        r.signatures[0].changes
+    );
     assert!(r.signatures[0].changes.iter().all(|c| c.allowed));
     let ts = &r.signatures[1];
     assert_eq!(ts.kind, "timestamp");
@@ -306,11 +431,23 @@ fn a_document_timestamp_covers_the_file_after_its_signature() {
 
 #[test]
 fn validation_data_is_fetched_for_the_chain_and_kept_in_the_file() {
-    let signed = sign_with(corpus("generated/chrome-cairo-mixed-invoice.pdf"), None, "signer-rsa-legacy.p12", &options(false));
+    let signed = sign_with(
+        corpus("generated/chrome-cairo-mixed-invoice.pdf"),
+        None,
+        "signer-rsa-legacy.p12",
+        &options(false),
+    );
     let trust = trusting(&["root-rsa.cer"]);
     let fetches = pades::fetches(&signed, None, &trust, NOW).unwrap();
     let urls: Vec<&str> = fetches.iter().map(|f| f.url.as_str()).collect();
-    assert_eq!(urls, ["http://ocsp.warraq.test/intermediate-rsa", "http://ocsp.warraq.test/root"], "{fetches:?}");
+    assert_eq!(
+        urls,
+        [
+            "http://ocsp.warraq.test/intermediate-rsa",
+            "http://ocsp.warraq.test/root"
+        ],
+        "{fetches:?}"
+    );
     assert!(fetches.iter().all(|f| f.kind == "ocsp" && f.body.is_some()));
 
     // The answers the responders would give; a stray one is rejected.
@@ -331,12 +468,23 @@ fn validation_data_is_fetched_for_the_chain_and_kept_in_the_file() {
     assert!(s.revocation.embedded);
     assert_eq!(s.revocation.status, "good");
     assert_eq!(r.dss.ocsps, 2);
-    assert!(s.changes.iter().all(|c| c.kind == "validationData" && c.allowed), "{:?}", s.changes);
+    assert!(
+        s.changes
+            .iter()
+            .all(|c| c.kind == "validationData" && c.allowed),
+        "{:?}",
+        s.changes
+    );
 }
 
 #[test]
 fn a_certificate_revoked_before_signing_makes_the_signature_invalid() {
-    let signed = sign_with(corpus("generated/chrome-cairo-mixed-invoice.pdf"), None, "revoked-rsa.p12", &options(false));
+    let signed = sign_with(
+        corpus("generated/chrome-cairo-mixed-invoice.pdf"),
+        None,
+        "revoked-rsa.p12",
+        &options(false),
+    );
     let trust = trusting(&["root-rsa.cer"]);
     let mut doc = PdfDocument::open(signed, None).unwrap();
     let answers = vec![("ocsp".to_string(), fixture("revoked-rsa.ocsp"))];
@@ -348,10 +496,15 @@ fn a_certificate_revoked_before_signing_makes_the_signature_invalid() {
 
 #[test]
 fn a_file_without_signatures_reports_none_and_garbage_contents_are_invalid() {
-    let r = verify(&corpus("generated/chrome-cairo-mixed-invoice.pdf"), None, &[]);
+    let r = verify(
+        &corpus("generated/chrome-cairo-mixed-invoice.pdf"),
+        None,
+        &[],
+    );
     assert!(r.signatures.is_empty() && r.certified.is_none());
     // A prepared file whose room holds nothing is an invalid signature, not a crash.
-    let mut doc = PdfDocument::open(corpus("generated/chrome-cairo-mixed-invoice.pdf"), None).unwrap();
+    let mut doc =
+        PdfDocument::open(corpus("generated/chrome-cairo-mixed-invoice.pdf"), None).unwrap();
     let (prepared, _) = pades::prepare_doc_timestamp(&mut doc).unwrap();
     let r = verify(&prepared, None, &[]);
     assert_eq!(r.signatures[0].status, "invalid");

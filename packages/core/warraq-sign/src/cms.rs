@@ -40,7 +40,12 @@ fn signing_certificate_v2(cert: &Cert, hash: HashAlg) -> Result<Vec<u8>> {
         id.extend(hash.algorithm().to_der().map_err(cms_err)?);
     }
     id.extend(wrap(0x04, &hash.digest(&cert.der)));
-    let serial = cert.parsed.tbs_certificate.serial_number.to_der().map_err(cms_err)?;
+    let serial = cert
+        .parsed
+        .tbs_certificate
+        .serial_number
+        .to_der()
+        .map_err(cms_err)?;
     let general_names = wrap(0x30, &wrap(0xa4, &cert.issuer));
     id.extend(wrap(0x30, &[general_names, serial].concat()));
     Ok(wrap(0x30, &wrap(0x30, &wrap(0x30, &id))))
@@ -65,7 +70,10 @@ pub fn sig_alg_for(signer: &dyn Signer, hash: HashAlg, padding: Padding) -> SigA
     match signer.key_kind() {
         crate::keys::KeyKind::Rsa { .. } => match padding {
             Padding::Pkcs1v15 => SigAlg::RsaPkcs1(hash),
-            Padding::Pss => SigAlg::RsaPss { hash, salt: hash.len() },
+            Padding::Pss => SigAlg::RsaPss {
+                hash,
+                salt: hash.len(),
+            },
         },
         _ => SigAlg::Ecdsa(hash),
     }
@@ -89,7 +97,12 @@ pub fn sign(signer: &dyn Signer, content: &Content) -> Result<Vec<u8>> {
     let alg = sig_alg_for(signer, content.hash, content.padding);
 
     let digest_alg = content.hash.algorithm().to_der().map_err(cms_err)?;
-    let serial = cert.parsed.tbs_certificate.serial_number.to_der().map_err(cms_err)?;
+    let serial = cert
+        .parsed
+        .tbs_certificate
+        .serial_number
+        .to_der()
+        .map_err(cms_err)?;
     let signer_info = wrap(
         0x30,
         &[
@@ -110,7 +123,11 @@ pub fn sign(signer: &dyn Signer, content: &Content) -> Result<Vec<u8>> {
     let certs: Vec<Vec<u8>> = std::iter::once(signer.certificate().to_vec())
         .chain(signer.chain().iter().cloned())
         .collect();
-    let version = if content.econtent_type == oids::DATA { 1 } else { 3 };
+    let version = if content.econtent_type == oids::DATA {
+        1
+    } else {
+        3
+    };
     let signed_data = wrap(
         0x30,
         &[
@@ -172,7 +189,10 @@ fn tag_is(tlv: &Tlv, tag: u8, what: &str) -> Result<()> {
     if tlv.tag == tag {
         Ok(())
     } else {
-        Err(SignError::Cms(format!("{what}: unexpected tag {:#x}", tlv.tag)))
+        Err(SignError::Cms(format!(
+            "{what}: unexpected tag {:#x}",
+            tlv.tag
+        )))
     }
 }
 
@@ -192,7 +212,9 @@ fn time_value(tlv: &Tlv) -> Option<i64> {
         0x17 => der::asn1::UtcTime::from_der(tlv.raw)
             .ok()
             .map(|t| t.to_unix_duration().as_secs() as i64),
-        0x18 => der::asn1::GeneralizedTime::from_der(tlv.raw).ok().map(|t| generalized_unix(&t)),
+        0x18 => der::asn1::GeneralizedTime::from_der(tlv.raw)
+            .ok()
+            .map(|t| generalized_unix(&t)),
         _ => None,
     }
 }
@@ -206,7 +228,9 @@ pub fn parse(der: &[u8]) -> Result<Parsed> {
     if oid_at(parts.first())? != oids::SIGNED_DATA {
         return Err(SignError::Cms("not a SignedData".into()));
     }
-    let wrapper = parts.get(1).ok_or_else(|| SignError::Cms("no content".into()))?;
+    let wrapper = parts
+        .get(1)
+        .ok_or_else(|| SignError::Cms("no content".into()))?;
     tag_is(wrapper, 0xa0, "content")?;
     let (sd, _) = read(wrapper.value)?;
     tag_is(&sd, 0x30, "SignedData")?;
@@ -297,9 +321,14 @@ pub fn parse(der: &[u8]) -> Result<Parsed> {
         }
         i += 1;
     }
-    let (alg_oid, alg_params) = algorithm(f.get(i).ok_or_else(|| SignError::Cms("no algorithm".into()))?)?;
+    let (alg_oid, alg_params) = algorithm(
+        f.get(i)
+            .ok_or_else(|| SignError::Cms("no algorithm".into()))?,
+    )?;
     parsed.sig_alg = SigAlg::from_identifier(&alg_oid, alg_params.as_deref(), Some(digest))?;
-    let sig = f.get(i + 1).ok_or_else(|| SignError::Cms("no signature".into()))?;
+    let sig = f
+        .get(i + 1)
+        .ok_or_else(|| SignError::Cms("no signature".into()))?;
     tag_is(sig, 0x04, "signature")?;
     parsed.signature = sig.value.to_vec();
     if let Some(unsigned) = f.get(i + 2).filter(|u| u.tag == 0xa1) {
@@ -321,7 +350,12 @@ pub fn parse(der: &[u8]) -> Result<Parsed> {
 fn read_signed_attribute(attr: &Tlv, parsed: &mut Parsed) -> Result<()> {
     let p = children(attr.value)?;
     let oid = oid_at(p.first())?;
-    let Some(value) = p.get(1).map(|v| children(v.value)).transpose()?.and_then(|v| v.into_iter().next()) else {
+    let Some(value) = p
+        .get(1)
+        .map(|v| children(v.value))
+        .transpose()?
+        .and_then(|v| v.into_iter().next())
+    else {
         return Ok(());
     };
     match oid {
@@ -347,7 +381,12 @@ fn read_signed_attribute(attr: &Tlv, parsed: &mut Parsed) -> Result<()> {
                         let (oid, _) = algorithm(alg)?;
                         let hash = HashAlg::from_oid(&oid)
                             .ok_or_else(|| SignError::Cms(format!("ESS hash {oid}")))?;
-                        (hash, parts.get(1).ok_or_else(|| SignError::Cms("ESS hash".into()))?)
+                        (
+                            hash,
+                            parts
+                                .get(1)
+                                .ok_or_else(|| SignError::Cms("ESS hash".into()))?,
+                        )
                     }
                     (false, Some(h)) => (HashAlg::Sha256, h),
                     _ => return Ok(()),
@@ -363,7 +402,10 @@ fn read_signed_attribute(attr: &Tlv, parsed: &mut Parsed) -> Result<()> {
                 let Some(list) = children(part.value)?.into_iter().next() else {
                     continue;
                 };
-                let items: Vec<Vec<u8>> = children(list.value)?.into_iter().map(|t| t.raw.to_vec()).collect();
+                let items: Vec<Vec<u8>> = children(list.value)?
+                    .into_iter()
+                    .map(|t| t.raw.to_vec())
+                    .collect();
                 match part.tag {
                     0xa0 => parsed.archived.crls.extend(items),
                     0xa1 => parsed.archived.ocsps.extend(items),
@@ -380,7 +422,8 @@ fn read_signed_attribute(attr: &Tlv, parsed: &mut Parsed) -> Result<()> {
 pub fn find_signer<'a>(parsed: &Parsed, certs: &'a [Cert]) -> Option<&'a Cert> {
     certs.iter().find(|c| match &parsed.sid {
         SignerId::IssuerSerial { issuer, serial } => {
-            c.issuer == *issuer && c.parsed.tbs_certificate.serial_number.as_bytes() == serial.as_slice()
+            c.issuer == *issuer
+                && c.parsed.tbs_certificate.serial_number.as_bytes() == serial.as_slice()
         }
         SignerId::KeyId(id) => c
             .parsed
@@ -428,7 +471,12 @@ pub fn check(parsed: &Parsed, signer: &Cert, content_digest: &[u8]) -> Check {
         }
         None => {
             // No signed attributes: the signature is over the content digest.
-            let r = crate::keys::verify_digest(&signer.spki, parsed.sig_alg, content_digest, &parsed.signature);
+            let r = crate::keys::verify_digest(
+                &signer.spki,
+                parsed.sig_alg,
+                content_digest,
+                &parsed.signature,
+            );
             out.digest_ok = r.is_ok();
             r
         }
@@ -442,7 +490,11 @@ pub fn check(parsed: &Parsed, signer: &Cert, content_digest: &[u8]) -> Check {
 
 /// The certificates a `SignedData` carries, parsed (unparsable ones skipped).
 pub fn certificates(parsed: &Parsed) -> Vec<Cert> {
-    parsed.certs.iter().filter_map(|d| Cert::parse(d).ok()).collect()
+    parsed
+        .certs
+        .iter()
+        .filter_map(|d| Cert::parse(d).ok())
+        .collect()
 }
 
 /// `cms` with `token` added to its signer as a signature timestamp
@@ -451,9 +503,16 @@ pub fn certificates(parsed: &Parsed) -> Vec<Cert> {
 pub fn add_timestamp(cms: &[u8], token: &[u8]) -> Result<Vec<u8>> {
     let (info, _) = read(cms)?;
     let parts = children(info.value)?;
-    let (sd, _) = read(parts.get(1).ok_or_else(|| SignError::Cms("no content".into()))?.value)?;
+    let (sd, _) = read(
+        parts
+            .get(1)
+            .ok_or_else(|| SignError::Cms("no content".into()))?
+            .value,
+    )?;
     let mut fields: Vec<Vec<u8>> = children(sd.value)?.iter().map(|t| t.raw.to_vec()).collect();
-    let infos = fields.pop().ok_or_else(|| SignError::Cms("no signers".into()))?;
+    let infos = fields
+        .pop()
+        .ok_or_else(|| SignError::Cms("no signers".into()))?;
     let (infos, _) = read(&infos)?;
     let info = children(infos.value)?
         .into_iter()
@@ -469,7 +528,11 @@ pub fn add_timestamp(cms: &[u8], token: &[u8]) -> Result<Vec<u8>> {
     fields.push(wrap(0x31, &wrap(0x30, &f.concat())));
     Ok(wrap(
         0x30,
-        &[parts[0].raw.to_vec(), wrap(0xa0, &wrap(0x30, &fields.concat()))].concat(),
+        &[
+            parts[0].raw.to_vec(),
+            wrap(0xa0, &wrap(0x30, &fields.concat())),
+        ]
+        .concat(),
     ))
 }
 
@@ -513,7 +576,10 @@ mod tests {
             .unwrap();
             let parsed = parse(&der).unwrap();
             assert_eq!(parsed.certs.len(), 3, "{file}");
-            assert!(parsed.signing_time.is_none(), "PAdES: no signing-time attribute");
+            assert!(
+                parsed.signing_time.is_none(),
+                "PAdES: no signing-time attribute"
+            );
             let certs = certificates(&parsed);
             let signer = find_signer(&parsed, &certs).expect("signer certificate");
             assert_eq!(signer.der, id.signer.certificate());
@@ -527,7 +593,10 @@ mod tests {
             let stamped = add_timestamp(&der, &wrap(0x30, &[0x05, 0x00])).unwrap();
             let again = parse(&stamped).unwrap();
             assert_eq!(again.timestamps.len(), 1);
-            assert!(check(&again, signer, &digest).signature_ok, "{file}: still verifies");
+            assert!(
+                check(&again, signer, &digest).signature_ok,
+                "{file}: still verifies"
+            );
         }
     }
 }

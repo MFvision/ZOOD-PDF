@@ -140,7 +140,12 @@ impl Prepared {
         let [0, start, end, rest] = numbers[..] else {
             return Err(Error::Edit("a malformed prepared signature".into()));
         };
-        if end > bytes.len() || start >= end || end + rest != bytes.len() || bytes[start] != b'<' || bytes[end - 1] != b'>' {
+        if end > bytes.len()
+            || start >= end
+            || end + rest != bytes.len()
+            || bytes[start] != b'<'
+            || bytes[end - 1] != b'>'
+        {
             return Err(Error::Edit("a malformed prepared signature".into()));
         }
         if bytes[start + 1..end - 1].iter().any(|b| *b != b'0') {
@@ -288,7 +293,11 @@ impl PdfDocument {
                 .ok()
                 .map(|o| self.deref_obj(o))
                 .and_then(|o| o.as_array().ok())
-                .map(|a| a.iter().filter_map(|n| self.deref_obj(n).as_i64().ok()).collect())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|n| self.deref_obj(n).as_i64().ok())
+                        .collect()
+                })
                 .unwrap_or_default(),
             name: self.text_of(dict, b"Name"),
             reason: self.text_of(dict, b"Reason"),
@@ -313,7 +322,11 @@ impl PdfDocument {
                 .ok()
                 .map(|p| self.deref_obj(p))
                 .and_then(|p| p.as_dict().ok());
-            match r.get(b"TransformMethod").ok().and_then(|m| m.as_name().ok()) {
+            match r
+                .get(b"TransformMethod")
+                .ok()
+                .and_then(|m| m.as_name().ok())
+            {
                 Some(b"DocMDP") => {
                     let p = params
                         .and_then(|p| p.get(b"P").ok())
@@ -335,7 +348,8 @@ impl PdfDocument {
             let Ok(dict) = self.doc.get_dictionary(*page) else {
                 continue;
             };
-            if let Some(Object::Array(items)) = dict.get(b"Annots").ok().map(|a| self.deref_obj(a)) {
+            if let Some(Object::Array(items)) = dict.get(b"Annots").ok().map(|a| self.deref_obj(a))
+            {
                 for item in items {
                     if let Ok(id) = item.as_reference() {
                         out.entry(id).or_insert(i);
@@ -349,10 +363,19 @@ impl PdfDocument {
     /// Every signature field in the form, signed or not, in field order.
     pub fn signature_fields(&self) -> Vec<SigField> {
         let mut out = Vec::new();
-        let Ok(catalog) = self.catalog_id().and_then(|id| self.doc.get_dictionary(id).map_err(|e| Error::Parse(e.to_string()))) else {
+        let Ok(catalog) = self.catalog_id().and_then(|id| {
+            self.doc
+                .get_dictionary(id)
+                .map_err(|e| Error::Parse(e.to_string()))
+        }) else {
             return out;
         };
-        let Some(form) = catalog.get(b"AcroForm").ok().map(|f| self.deref_obj(f)).and_then(|f| f.as_dict().ok()) else {
+        let Some(form) = catalog
+            .get(b"AcroForm")
+            .ok()
+            .map(|f| self.deref_obj(f))
+            .and_then(|f| f.as_dict().ok())
+        else {
             return out;
         };
         let pages = self.annotation_pages();
@@ -413,17 +436,24 @@ impl PdfDocument {
             if ft.as_deref() != Some(b"Sig") {
                 continue;
             }
-            let widget = if dict.has_type(b"Annot") || dict.get(b"Subtype").ok().and_then(|s| s.as_name().ok()) == Some(b"Widget") {
+            let widget = if dict.has_type(b"Annot")
+                || dict.get(b"Subtype").ok().and_then(|s| s.as_name().ok()) == Some(b"Widget")
+            {
                 Some(id)
             } else {
                 kids.first().copied()
             };
-            let (page, rect) = match widget.and_then(|w| self.doc.get_dictionary(w).ok().map(|d| (w, d))) {
-                Some((w, wd)) => (pages.get(&w).copied(), self.rect(wd.get(b"Rect").ok())),
-                None => (None, None),
-            };
+            let (page, rect) =
+                match widget.and_then(|w| self.doc.get_dictionary(w).ok().map(|d| (w, d))) {
+                    Some((w, wd)) => (pages.get(&w).copied(), self.rect(wd.get(b"Rect").ok())),
+                    None => (None, None),
+                };
             let value = match dict.get(b"V").ok() {
-                Some(Object::Reference(v)) => self.doc.get_dictionary(*v).ok().map(|d| self.sig_dict(Some(*v), d)),
+                Some(Object::Reference(v)) => self
+                    .doc
+                    .get_dictionary(*v)
+                    .ok()
+                    .map(|d| self.sig_dict(Some(*v), d)),
                 Some(Object::Dictionary(d)) => Some(self.sig_dict(None, d)),
                 _ => None,
             };
@@ -461,8 +491,13 @@ impl PdfDocument {
     /// The page's crop box and rotation.
     fn page_frame(&self, page: usize) -> Result<([f32; 4], i64)> {
         let id = self.page_id(page)?;
-        let dict = self.doc.get_dictionary(id).map_err(|e| Error::Parse(e.to_string()))?;
-        let media = self.rect(self.inherited(dict, b"MediaBox")).unwrap_or([0.0, 0.0, 612.0, 792.0]);
+        let dict = self
+            .doc
+            .get_dictionary(id)
+            .map_err(|e| Error::Parse(e.to_string()))?;
+        let media = self
+            .rect(self.inherited(dict, b"MediaBox"))
+            .unwrap_or([0.0, 0.0, 612.0, 792.0]);
         let crop = self.rect(self.inherited(dict, b"CropBox")).unwrap_or(media);
         let rotate = match self.inherited(dict, b"Rotate") {
             Some(Object::Integer(r)) => ((*r % 360) + 360) % 360,
@@ -483,7 +518,9 @@ impl PdfDocument {
                 ));
             }
         }
-        if matches!(spec.kind, SigKind::Certification(_)) && existing.iter().any(|f| f.value.is_some()) {
+        if matches!(spec.kind, SigKind::Certification(_))
+            && existing.iter().any(|f| f.value.is_some())
+        {
             return Err(Error::Edit(
                 "E_SIGN_CERTIFY_FIRST: only the first signature can certify a file".into(),
             ));
@@ -491,12 +528,13 @@ impl PdfDocument {
         let catalog_id = self.catalog_id()?;
         let target = match &spec.field {
             Some(name) => {
-                let field = existing
-                    .iter()
-                    .find(|f| &f.name == name)
-                    .ok_or_else(|| Error::Edit(format!("E_SIGN_FIELD: no signature field {name}")))?;
+                let field = existing.iter().find(|f| &f.name == name).ok_or_else(|| {
+                    Error::Edit(format!("E_SIGN_FIELD: no signature field {name}"))
+                })?;
                 if field.value.is_some() {
-                    return Err(Error::Edit(format!("E_SIGN_FIELD: {name} is already signed")));
+                    return Err(Error::Edit(format!(
+                        "E_SIGN_FIELD: {name} is already signed"
+                    )));
                 }
                 Some(field.clone())
             }
@@ -507,10 +545,17 @@ impl PdfDocument {
         let mut sig = Dictionary::new();
         sig.set(
             "Type",
-            Object::Name(if spec.kind == SigKind::DocTimeStamp { b"DocTimeStamp".to_vec() } else { b"Sig".to_vec() }),
+            Object::Name(if spec.kind == SigKind::DocTimeStamp {
+                b"DocTimeStamp".to_vec()
+            } else {
+                b"Sig".to_vec()
+            }),
         );
         sig.set("Filter", Object::Name(b"Adobe.PPKLite".to_vec()));
-        sig.set("SubFilter", Object::Name(spec.sub_filter.as_bytes().to_vec()));
+        sig.set(
+            "SubFilter",
+            Object::Name(spec.sub_filter.as_bytes().to_vec()),
+        );
         sig.set(
             "ByteRange",
             Object::Array(vec![
@@ -520,7 +565,10 @@ impl PdfDocument {
                 Object::Integer(PLACEHOLDER),
             ]),
         );
-        sig.set("Contents", Object::String(vec![0; spec.contents_size], StringFormat::Hexadecimal));
+        sig.set(
+            "Contents",
+            Object::String(vec![0; spec.contents_size], StringFormat::Hexadecimal),
+        );
         if spec.kind != SigKind::DocTimeStamp {
             for (key, value) in [
                 ("Name", &spec.name),
@@ -548,8 +596,12 @@ impl PdfDocument {
                 "Type" => "TransformParams", "Action" => "Include", "V" => "1.2",
                 "Fields" => fields.iter().map(|f| text_string(f)).collect::<Vec<_>>(),
             }),
-            Some(_) => Some(dictionary! { "Type" => "TransformParams", "Action" => "All", "V" => "1.2" }),
-            None if spec.lock_fields => Some(dictionary! { "Type" => "TransformParams", "Action" => "All", "V" => "1.2" }),
+            Some(_) => {
+                Some(dictionary! { "Type" => "TransformParams", "Action" => "All", "V" => "1.2" })
+            }
+            None if spec.lock_fields => {
+                Some(dictionary! { "Type" => "TransformParams", "Action" => "All", "V" => "1.2" })
+            }
             None => None,
         };
         if let Some(params) = lock.clone() {
@@ -592,11 +644,17 @@ impl PdfDocument {
 
         match &target {
             Some(field) => {
-                let fd = self.doc.get_dictionary_mut(field.field).map_err(|e| Error::Parse(e.to_string()))?;
+                let fd = self
+                    .doc
+                    .get_dictionary_mut(field.field)
+                    .map_err(|e| Error::Parse(e.to_string()))?;
                 fd.set("V", Object::Reference(sig_id));
                 self.mark_touched(field.field);
                 if let (Some(ap), Some(w)) = (appearance, field.widget) {
-                    let wd = self.doc.get_dictionary_mut(w).map_err(|e| Error::Parse(e.to_string()))?;
+                    let wd = self
+                        .doc
+                        .get_dictionary_mut(w)
+                        .map_err(|e| Error::Parse(e.to_string()))?;
                     wd.set("AP", dictionary! { "N" => ap });
                     self.mark_touched(w);
                 }
@@ -617,7 +675,10 @@ impl PdfDocument {
                     widget.set("AP", dictionary! { "N" => ap });
                 }
                 if spec.lock_fields && spec.kind != SigKind::DocTimeStamp {
-                    widget.set("Lock", dictionary! { "Type" => "SigFieldLock", "Action" => "All" });
+                    widget.set(
+                        "Lock",
+                        dictionary! { "Type" => "SigFieldLock", "Action" => "All" },
+                    );
                 }
                 let widget_id = self.doc.add_object(widget);
                 self.add_to_form(catalog_id, widget_id)?;
@@ -625,7 +686,10 @@ impl PdfDocument {
             }
         }
         if let SigKind::Certification(_) = spec.kind {
-            let catalog = self.doc.get_dictionary_mut(catalog_id).map_err(|e| Error::Parse(e.to_string()))?;
+            let catalog = self
+                .doc
+                .get_dictionary_mut(catalog_id)
+                .map_err(|e| Error::Parse(e.to_string()))?;
             catalog.set("Perms", dictionary! { "DocMDP" => sig_id });
             self.mark_touched(catalog_id);
         }
@@ -637,7 +701,9 @@ impl PdfDocument {
             .ok_or_else(|| Error::Edit("the signature placeholder was not written".into()))?;
         let zeros = vec![b'0'; spec.contents_size * 2];
         let hole = find_from(&bytes, &zeros, update_start)
-            .filter(|at| *at > 0 && bytes[at - 1] == b'<' && bytes.get(at + zeros.len()) == Some(&b'>'))
+            .filter(|at| {
+                *at > 0 && bytes[at - 1] == b'<' && bytes.get(at + zeros.len()) == Some(&b'>')
+            })
             .ok_or_else(|| Error::Edit("the signature's room was not written".into()))?;
         let (start, end) = (hole - 1, hole + zeros.len() + 1);
         let mut prepared = Prepared { bytes, start, end };
@@ -677,7 +743,10 @@ impl PdfDocument {
     }
 
     fn add_to_form(&mut self, catalog_id: ObjectId, field: ObjectId) -> Result<()> {
-        let catalog = self.doc.get_dictionary(catalog_id).map_err(|e| Error::Parse(e.to_string()))?;
+        let catalog = self
+            .doc
+            .get_dictionary(catalog_id)
+            .map_err(|e| Error::Parse(e.to_string()))?;
         match catalog.get(b"AcroForm").ok().cloned() {
             Some(Object::Reference(form_id)) => {
                 let fields = self
@@ -690,10 +759,16 @@ impl PdfDocument {
                         items.push(Object::Reference(field));
                         self.mark_touched(array_id);
                     }
-                    let form = self.doc.get_dictionary_mut(form_id).map_err(|e| Error::Parse(e.to_string()))?;
+                    let form = self
+                        .doc
+                        .get_dictionary_mut(form_id)
+                        .map_err(|e| Error::Parse(e.to_string()))?;
                     form.set("SigFlags", SIG_FLAGS);
                 } else {
-                    let form = self.doc.get_dictionary_mut(form_id).map_err(|e| Error::Parse(e.to_string()))?;
+                    let form = self
+                        .doc
+                        .get_dictionary_mut(form_id)
+                        .map_err(|e| Error::Parse(e.to_string()))?;
                     let mut items = match form.get(b"Fields") {
                         Ok(Object::Array(a)) => a.clone(),
                         _ => Vec::new(),
@@ -707,13 +782,22 @@ impl PdfDocument {
             Some(Object::Dictionary(mut form)) => {
                 let mut items = match form.get(b"Fields") {
                     Ok(Object::Array(a)) => a.clone(),
-                    Ok(Object::Reference(id)) => self.doc.get_object(*id).ok().and_then(|o| o.as_array().ok()).cloned().unwrap_or_default(),
+                    Ok(Object::Reference(id)) => self
+                        .doc
+                        .get_object(*id)
+                        .ok()
+                        .and_then(|o| o.as_array().ok())
+                        .cloned()
+                        .unwrap_or_default(),
                     _ => Vec::new(),
                 };
                 items.push(Object::Reference(field));
                 form.set("Fields", items);
                 form.set("SigFlags", SIG_FLAGS);
-                let catalog = self.doc.get_dictionary_mut(catalog_id).map_err(|e| Error::Parse(e.to_string()))?;
+                let catalog = self
+                    .doc
+                    .get_dictionary_mut(catalog_id)
+                    .map_err(|e| Error::Parse(e.to_string()))?;
                 catalog.set("AcroForm", form);
                 self.mark_touched(catalog_id);
             }
@@ -722,7 +806,10 @@ impl PdfDocument {
                     "Fields" => vec![Object::Reference(field)],
                     "SigFlags" => SIG_FLAGS,
                 });
-                let catalog = self.doc.get_dictionary_mut(catalog_id).map_err(|e| Error::Parse(e.to_string()))?;
+                let catalog = self
+                    .doc
+                    .get_dictionary_mut(catalog_id)
+                    .map_err(|e| Error::Parse(e.to_string()))?;
                 catalog.set("AcroForm", form);
                 self.mark_touched(catalog_id);
             }
@@ -731,7 +818,10 @@ impl PdfDocument {
     }
 
     fn add_annotation(&mut self, page_id: ObjectId, annot: ObjectId) -> Result<()> {
-        let page = self.doc.get_dictionary(page_id).map_err(|e| Error::Parse(e.to_string()))?;
+        let page = self
+            .doc
+            .get_dictionary(page_id)
+            .map_err(|e| Error::Parse(e.to_string()))?;
         match page.get(b"Annots").ok().cloned() {
             Some(Object::Reference(array_id)) => {
                 if let Ok(Object::Array(items)) = self.doc.get_object_mut(array_id) {
@@ -739,16 +829,25 @@ impl PdfDocument {
                     self.mark_touched(array_id);
                     return Ok(());
                 }
-                let page = self.doc.get_dictionary_mut(page_id).map_err(|e| Error::Parse(e.to_string()))?;
+                let page = self
+                    .doc
+                    .get_dictionary_mut(page_id)
+                    .map_err(|e| Error::Parse(e.to_string()))?;
                 page.set("Annots", vec![Object::Reference(annot)]);
             }
             Some(Object::Array(mut items)) => {
                 items.push(Object::Reference(annot));
-                let page = self.doc.get_dictionary_mut(page_id).map_err(|e| Error::Parse(e.to_string()))?;
+                let page = self
+                    .doc
+                    .get_dictionary_mut(page_id)
+                    .map_err(|e| Error::Parse(e.to_string()))?;
                 page.set("Annots", items);
             }
             _ => {
-                let page = self.doc.get_dictionary_mut(page_id).map_err(|e| Error::Parse(e.to_string()))?;
+                let page = self
+                    .doc
+                    .get_dictionary_mut(page_id)
+                    .map_err(|e| Error::Parse(e.to_string()))?;
                 page.set("Annots", vec![Object::Reference(annot)]);
             }
         }
@@ -759,7 +858,13 @@ impl PdfDocument {
     /// The appearance of a visible signature, `w` × `h` points: the picture
     /// (if any) at the start of the box, the lines beside it, Arabic shaped
     /// and aligned to the right, every line read back as written.
-    fn signature_appearance(&mut self, a: &SigAppearance, w: f32, h: f32, matrix: Option<[f32; 6]>) -> Result<ObjectId> {
+    fn signature_appearance(
+        &mut self,
+        a: &SigAppearance,
+        w: f32,
+        h: f32,
+        matrix: Option<[f32; 6]>,
+    ) -> Result<ObjectId> {
         const PAD: f32 = 3.0;
         let shaper = Shaper::new(a.font).map_err(|e| Error::Font(e.to_string()))?;
         let lines: Vec<(String, Vec<ShapedGlyph>)> = a
@@ -773,7 +878,9 @@ impl PdfDocument {
                 (l, g)
             })
             .collect();
-        let rtl = lines.first().is_some_and(|(l, _)| base_direction(l) == Direction::Rtl);
+        let rtl = lines
+            .first()
+            .is_some_and(|(l, _)| base_direction(l) == Direction::Rtl);
         let mut ops: Vec<Operation> = vec![Operation::new("q", vec![])];
         let mut resources = Dictionary::new();
 
@@ -782,10 +889,21 @@ impl PdfDocument {
         let mut text_x1 = w - PAD;
         if let Some(image) = &a.image {
             let pixels = image.width as usize * image.height as usize;
-            if image.width == 0 || image.height == 0 || image.width > 4096 || image.height > 4096 || image.rgba.len() != pixels * 4 {
-                return Err(Error::Edit("E_SIGN_IMAGE: the signature picture is not usable".into()));
+            if image.width == 0
+                || image.height == 0
+                || image.width > 4096
+                || image.height > 4096
+                || image.rgba.len() != pixels * 4
+            {
+                return Err(Error::Edit(
+                    "E_SIGN_IMAGE: the signature picture is not usable".into(),
+                ));
             }
-            let area = if lines.is_empty() { w - 2.0 * PAD } else { (w - 2.0 * PAD) * 0.4 };
+            let area = if lines.is_empty() {
+                w - 2.0 * PAD
+            } else {
+                (w - 2.0 * PAD) * 0.4
+            };
             let scale = (area / image.width as f32).min((h - 2.0 * PAD) / image.height as f32);
             let (iw, ih) = (image.width as f32 * scale, image.height as f32 * scale);
             let ix = if rtl { w - PAD - iw } else { PAD };
@@ -795,7 +913,11 @@ impl PdfDocument {
             } else {
                 text_x0 = ix + iw + PAD;
             }
-            let rgb: Vec<u8> = image.rgba.chunks(4).flat_map(|p| [p[0], p[1], p[2]]).collect();
+            let rgb: Vec<u8> = image
+                .rgba
+                .chunks(4)
+                .flat_map(|p| [p[0], p[1], p[2]])
+                .collect();
             let alpha: Vec<u8> = image.rgba.chunks(4).map(|p| p[3]).collect();
             let mut smask = Stream::new(
                 dictionary! {
@@ -818,31 +940,50 @@ impl PdfDocument {
             resources.set("XObject", dictionary! { "Im1" => img });
             ops.extend([
                 Operation::new("q", vec![]),
-                Operation::new("cm", [iw, 0.0, 0.0, ih, ix, iy].into_iter().map(Object::Real).collect()),
+                Operation::new(
+                    "cm",
+                    [iw, 0.0, 0.0, ih, ix, iy]
+                        .into_iter()
+                        .map(Object::Real)
+                        .collect(),
+                ),
                 Operation::new("Do", vec![Object::Name(b"Im1".to_vec())]),
                 Operation::new("Q", vec![]),
             ]);
         }
 
         if !lines.is_empty() {
-            let glyphs: Vec<ShapedGlyph> = lines.iter().flat_map(|(_, g)| g.iter().cloned()).collect();
+            let glyphs: Vec<ShapedGlyph> =
+                lines.iter().flat_map(|(_, g)| g.iter().cloned()).collect();
             let subset = FontSubset::build(a.font, &shaper, &glyphs)?;
             let font = embed_subset_font(&mut self.doc, &shaper, &subset, "WarraqSignature");
             resources.set("Font", dictionary! { "F1" => font });
-            let widths: Vec<f32> = lines.iter().map(|(_, g)| g.iter().map(|g| g.x_advance).sum::<f32>() / 1000.0).collect();
+            let widths: Vec<f32> = lines
+                .iter()
+                .map(|(_, g)| g.iter().map(|g| g.x_advance).sum::<f32>() / 1000.0)
+                .collect();
             let avail_w = (text_x1 - text_x0).max(1.0);
             let widest = widths.iter().copied().fold(0.0f32, f32::max).max(0.01);
             let n = lines.len() as f32;
-            let size = (avail_w / widest).min((h - 2.0 * PAD) / (n * 1.25)).clamp(3.0, 14.0);
+            let size = (avail_w / widest)
+                .min((h - 2.0 * PAD) / (n * 1.25))
+                .clamp(3.0, 14.0);
             let leading = size * 1.25;
             let block = leading * n;
             let mut y = (h + block) / 2.0 - size;
             ops.push(Operation::new("BT", vec![]));
             ops.push(Operation::new("g", vec![0.into()]));
-            ops.push(Operation::new("Tf", vec![Object::Name(b"F1".to_vec()), Object::Real(size)]));
+            ops.push(Operation::new(
+                "Tf",
+                vec![Object::Name(b"F1".to_vec()), Object::Real(size)],
+            ));
             for ((text, g), width) in lines.iter().zip(&widths) {
                 let line_rtl = base_direction(text) == Direction::Rtl;
-                let x = if line_rtl { text_x1 - width * size } else { text_x0 };
+                let x = if line_rtl {
+                    text_x1 - width * size
+                } else {
+                    text_x0
+                };
                 show_line(
                     &mut ops,
                     &subset,
@@ -859,14 +1000,19 @@ impl PdfDocument {
             ops.push(Operation::new("ET", vec![]));
         }
         ops.push(Operation::new("Q", vec![]));
-        let content = Content { operations: ops }.encode().map_err(|e| Error::Edit(e.to_string()))?;
+        let content = Content { operations: ops }
+            .encode()
+            .map_err(|e| Error::Edit(e.to_string()))?;
         let mut dict = dictionary! {
             "Type" => "XObject", "Subtype" => "Form",
             "BBox" => vec![Object::Real(0.0), Object::Real(0.0), Object::Real(w), Object::Real(h)],
             "Resources" => resources,
         };
         if let Some(m) = matrix.filter(|m| *m != [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]) {
-            dict.set("Matrix", m.iter().map(|v| Object::Real(*v)).collect::<Vec<_>>());
+            dict.set(
+                "Matrix",
+                m.iter().map(|v| Object::Real(*v)).collect::<Vec<_>>(),
+            );
         }
         let mut stream = Stream::new(dict, content);
         let _ = stream.compress();
@@ -879,8 +1025,17 @@ impl PdfDocument {
     /// `/Contents`) which of them are its own.
     pub fn add_dss(&mut self, data: &DssData) -> Result<DssAdded> {
         let catalog_id = self.catalog_id()?;
-        let catalog = self.doc.get_dictionary(catalog_id).map_err(|e| Error::Parse(e.to_string()))?;
-        let old = catalog.get(b"DSS").ok().map(|d| self.deref_obj(d)).and_then(|d| d.as_dict().ok()).cloned().unwrap_or_default();
+        let catalog = self
+            .doc
+            .get_dictionary(catalog_id)
+            .map_err(|e| Error::Parse(e.to_string()))?;
+        let old = catalog
+            .get(b"DSS")
+            .ok()
+            .map(|d| self.deref_obj(d))
+            .and_then(|d| d.as_dict().ok())
+            .cloned()
+            .unwrap_or_default();
         let existing = |key: &[u8]| -> Vec<(ObjectId, Vec<u8>)> {
             old.get(key)
                 .ok()
@@ -892,7 +1047,11 @@ impl PdfDocument {
                         .filter_map(|i| i.as_reference().ok())
                         .filter_map(|id| {
                             let s = self.doc.get_object(id).ok()?.as_stream().ok()?;
-                            let bytes = if s.dict.has(b"Filter") { s.decompressed_content().ok()? } else { s.content.clone() };
+                            let bytes = if s.dict.has(b"Filter") {
+                                s.decompressed_content().ok()?
+                            } else {
+                                s.content.clone()
+                            };
                             Some((id, bytes))
                         })
                         .collect()
@@ -924,9 +1083,14 @@ impl PdfDocument {
         if added.certs + added.ocsps + added.crls == 0 && data.vri.is_empty() {
             return Ok(added);
         }
-        let refs = |list: &Vec<(ObjectId, Vec<u8>)>| -> Vec<Object> { list.iter().map(|(id, _)| Object::Reference(*id)).collect() };
+        let refs = |list: &Vec<(ObjectId, Vec<u8>)>| -> Vec<Object> {
+            list.iter().map(|(id, _)| Object::Reference(*id)).collect()
+        };
         let find = |list: &Vec<(ObjectId, Vec<u8>)>, wanted: &[Vec<u8>]| -> Vec<Object> {
-            list.iter().filter(|(_, b)| wanted.contains(b)).map(|(id, _)| Object::Reference(*id)).collect()
+            list.iter()
+                .filter(|(_, b)| wanted.contains(b))
+                .map(|(id, _)| Object::Reference(*id))
+                .collect()
         };
         let mut dss = Dictionary::new();
         dss.set("Type", Object::Name(b"DSS".to_vec()));
@@ -936,7 +1100,13 @@ impl PdfDocument {
                 dss.set(*name, refs(list));
             }
         }
-        let mut vri = old.get(b"VRI").ok().map(|v| self.deref_obj(v)).and_then(|v| v.as_dict().ok()).cloned().unwrap_or_default();
+        let mut vri = old
+            .get(b"VRI")
+            .ok()
+            .map(|v| self.deref_obj(v))
+            .and_then(|v| v.as_dict().ok())
+            .cloned()
+            .unwrap_or_default();
         for entry in &data.vri {
             let mut e = Dictionary::new();
             for (key, list, wanted) in [
@@ -955,7 +1125,10 @@ impl PdfDocument {
             dss.set("VRI", vri);
         }
         let dss_id = self.doc.add_object(dss);
-        let catalog = self.doc.get_dictionary_mut(catalog_id).map_err(|e| Error::Parse(e.to_string()))?;
+        let catalog = self
+            .doc
+            .get_dictionary_mut(catalog_id)
+            .map_err(|e| Error::Parse(e.to_string()))?;
         catalog.set("DSS", Object::Reference(dss_id));
         self.mark_touched(catalog_id);
         Ok(added)
@@ -965,10 +1138,19 @@ impl PdfDocument {
     /// and revocation lists, as stored.
     pub fn dss(&self) -> DssData {
         let mut out = DssData::default();
-        let Some(catalog) = self.catalog_id().ok().and_then(|id| self.doc.get_dictionary(id).ok()) else {
+        let Some(catalog) = self
+            .catalog_id()
+            .ok()
+            .and_then(|id| self.doc.get_dictionary(id).ok())
+        else {
             return out;
         };
-        let Some(dss) = catalog.get(b"DSS").ok().map(|d| self.deref_obj(d)).and_then(|d| d.as_dict().ok()) else {
+        let Some(dss) = catalog
+            .get(b"DSS")
+            .ok()
+            .map(|d| self.deref_obj(d))
+            .and_then(|d| d.as_dict().ok())
+        else {
             return out;
         };
         for (key, into) in [
@@ -976,10 +1158,20 @@ impl PdfDocument {
             (b"OCSPs".as_slice(), &mut out.ocsps),
             (b"CRLs".as_slice(), &mut out.crls),
         ] {
-            let items = dss.get(key).ok().map(|a| self.deref_obj(a)).and_then(|a| a.as_array().ok()).cloned().unwrap_or_default();
+            let items = dss
+                .get(key)
+                .ok()
+                .map(|a| self.deref_obj(a))
+                .and_then(|a| a.as_array().ok())
+                .cloned()
+                .unwrap_or_default();
             for item in items.iter().take(10_000) {
                 if let Ok(s) = self.deref_obj(item).as_stream() {
-                    let bytes = if s.dict.has(b"Filter") { s.decompressed_content().ok() } else { Some(s.content.clone()) };
+                    let bytes = if s.dict.has(b"Filter") {
+                        s.decompressed_content().ok()
+                    } else {
+                        Some(s.content.clone())
+                    };
                     into.extend(bytes);
                 }
             }
@@ -989,7 +1181,11 @@ impl PdfDocument {
 }
 
 fn unique_field_name(existing: &[SigField], kind: SigKind) -> String {
-    let stem = if kind == SigKind::DocTimeStamp { "Timestamp" } else { "Signature" };
+    let stem = if kind == SigKind::DocTimeStamp {
+        "Timestamp"
+    } else {
+        "Signature"
+    };
     (1..)
         .map(|n| format!("{stem}{n}"))
         .find(|name| !existing.iter().any(|f| &f.name == name))
@@ -1084,7 +1280,10 @@ impl ChangeKind {
             ChangeKind::Signatures => doc_mdp != Some(1) || only_timestamps,
             ChangeKind::FormFill => doc_mdp != Some(1),
             ChangeKind::Comments => matches!(doc_mdp, None | Some(3)),
-            ChangeKind::PageContent | ChangeKind::Document | ChangeKind::SignatureAltered | ChangeKind::LockedField => false,
+            ChangeKind::PageContent
+            | ChangeKind::Document
+            | ChangeKind::SignatureAltered
+            | ChangeKind::LockedField => false,
         }
     }
 }
@@ -1129,13 +1328,18 @@ fn roles(pdf: &PdfDocument) -> BTreeMap<ObjectId, (Role, Option<String>)> {
         };
         // An annotation that is a form field's widget belongs to the form;
         // a signature field and what hangs from it, to the signatures.
-        let is_sig = |d: &Dictionary| d.get(b"FT").ok().and_then(|f| f.as_name().ok()) == Some(b"Sig");
+        let is_sig =
+            |d: &Dictionary| d.get(b"FT").ok().and_then(|f| f.as_name().ok()) == Some(b"Sig");
         let (role, field) = match (&dict, pushed) {
             (Some(d), Role::Annotation)
                 if d.get(b"Subtype").ok().and_then(|s| s.as_name().ok()) == Some(b"Widget") =>
             {
                 (
-                    if is_sig(d) { Role::Signature } else { Role::Form },
+                    if is_sig(d) {
+                        Role::Signature
+                    } else {
+                        Role::Form
+                    },
                     pdf.text_of(d, b"T").or(field),
                 )
             }
@@ -1161,8 +1365,10 @@ fn roles(pdf: &PdfDocument) -> BTreeMap<ObjectId, (Role, Option<String>)> {
         for (key, value) in dict.iter() {
             let k = key.as_slice();
             // Back-links: following them would give a parent its child's role.
-            if matches!(k, b"Parent" | b"P" | b"Prev" | b"Next" | b"First" | b"Last" | b"Dest" | b"D")
-                && role != Role::Document
+            if matches!(
+                k,
+                b"Parent" | b"P" | b"Prev" | b"Next" | b"First" | b"Last" | b"Dest" | b"D"
+            ) && role != Role::Document
                 && role != Role::Catalog
             {
                 continue;
@@ -1188,7 +1394,12 @@ fn roles(pdf: &PdfDocument) -> BTreeMap<ObjectId, (Role, Option<String>)> {
 /// Annotations in the `then` list and not in `now` (each an `/Annots` array,
 /// or a reference to one): a comment removed, or — no less serious than
 /// changing the page — a form field's or a signature's widget.
-fn removed_annotations(signed: &PdfDocument, current: &PdfDocument, then: Option<&Object>, now: Option<&Object>) -> Vec<ChangeKind> {
+fn removed_annotations(
+    signed: &PdfDocument,
+    current: &PdfDocument,
+    then: Option<&Object>,
+    now: Option<&Object>,
+) -> Vec<ChangeKind> {
     let refs = |doc: &PdfDocument, o: Option<&Object>| -> BTreeSet<ObjectId> {
         let o = match o {
             Some(Object::Reference(id)) => doc.doc.get_object(*id).ok(),
@@ -1220,7 +1431,11 @@ fn removed_annotations(signed: &PdfDocument, current: &PdfDocument, then: Option
 
 fn storage_only(object: &Object) -> bool {
     matches!(
-        object.as_stream().ok().and_then(|s| s.dict.get(b"Type").ok()).and_then(|t| t.as_name().ok()),
+        object
+            .as_stream()
+            .ok()
+            .and_then(|s| s.dict.get(b"Type").ok())
+            .and_then(|t| t.as_name().ok()),
         Some(b"XRef" | b"ObjStm")
     )
 }
@@ -1237,7 +1452,13 @@ impl PdfDocument {
             ..Changes::default()
         };
         let mut add = |kind: ChangeKind| *changes.kinds.entry(kind).or_insert(0) += 1;
-        let ids: BTreeSet<ObjectId> = self.doc.objects.keys().chain(signed.doc.objects.keys()).copied().collect();
+        let ids: BTreeSet<ObjectId> = self
+            .doc
+            .objects
+            .keys()
+            .chain(signed.doc.objects.keys())
+            .copied()
+            .collect();
         let mut new_sigs = 0usize;
         let mut new_timestamps = 0usize;
         for id in ids {
@@ -1253,18 +1474,28 @@ impl PdfDocument {
             let role_now = ours.get(&id).cloned();
             let role_then = theirs.get(&id).cloned();
             let (role, field) = match (role_now, role_then) {
-                (Some(a), Some(b)) => if a.0 <= b.0 { a } else { b },
+                (Some(a), Some(b)) => {
+                    if a.0 <= b.0 {
+                        a
+                    } else {
+                        b
+                    }
+                }
                 (Some(a), None) | (None, Some(a)) => a,
                 // Nothing reaches it: not part of the document either way.
                 (None, None) => continue,
             };
             match role {
                 Role::Catalog => {
-                    let (Some(a), Some(b)) = (now.and_then(|o| o.as_dict().ok()), then.and_then(|o| o.as_dict().ok())) else {
+                    let (Some(a), Some(b)) = (
+                        now.and_then(|o| o.as_dict().ok()),
+                        then.and_then(|o| o.as_dict().ok()),
+                    ) else {
                         add(ChangeKind::Document);
                         continue;
                     };
-                    let keys: BTreeSet<Vec<u8>> = a.iter().chain(b.iter()).map(|(k, _)| k.clone()).collect();
+                    let keys: BTreeSet<Vec<u8>> =
+                        a.iter().chain(b.iter()).map(|(k, _)| k.clone()).collect();
                     for key in keys {
                         if a.get(&key).ok() == b.get(&key).ok() {
                             continue;
@@ -1280,7 +1511,10 @@ impl PdfDocument {
                 }
                 Role::Pages => {
                     // A page whose only change is its annotations list.
-                    let (Some(a), Some(b)) = (now.and_then(|o| o.as_dict().ok()), then.and_then(|o| o.as_dict().ok())) else {
+                    let (Some(a), Some(b)) = (
+                        now.and_then(|o| o.as_dict().ok()),
+                        then.and_then(|o| o.as_dict().ok()),
+                    ) else {
                         add(ChangeKind::PageContent);
                         continue;
                     };
@@ -1293,14 +1527,21 @@ impl PdfDocument {
                     }
                     // What the annotations list gained is judged by those
                     // annotations themselves; what it lost, here.
-                    for kind in removed_annotations(signed, self, b.get(b"Annots").ok(), a.get(b"Annots").ok()) {
+                    for kind in removed_annotations(
+                        signed,
+                        self,
+                        b.get(b"Annots").ok(),
+                        a.get(b"Annots").ok(),
+                    ) {
                         add(kind);
                     }
                 }
                 Role::PageContent => add(ChangeKind::PageContent),
                 Role::Document => add(ChangeKind::Document),
                 Role::Annotation => {
-                    if now.is_some_and(|o| o.as_array().is_ok()) || then.is_some_and(|o| o.as_array().is_ok()) {
+                    if now.is_some_and(|o| o.as_array().is_ok())
+                        || then.is_some_and(|o| o.as_array().is_ok())
+                    {
                         // An /Annots array: judged by its members.
                         for kind in removed_annotations(signed, self, then, now) {
                             add(kind);
@@ -1310,7 +1551,10 @@ impl PdfDocument {
                     add(ChangeKind::Comments)
                 }
                 Role::Form => {
-                    if field.as_deref().is_some_and(|f| locks.iter().any(|l| l.locks(f))) {
+                    if field
+                        .as_deref()
+                        .is_some_and(|f| locks.iter().any(|l| l.locks(f)))
+                    {
                         add(ChangeKind::LockedField);
                     } else {
                         add(ChangeKind::FormFill);
@@ -1347,10 +1591,17 @@ mod tests {
     const AMIRI: &[u8] = include_bytes!("../../../../tests/fonts/Amiri-Regular.ttf");
 
     fn corpus(name: &str) -> Vec<u8> {
-        std::fs::read(format!("{}/../../../tests/corpus/arabic/{name}", env!("CARGO_MANIFEST_DIR"))).unwrap()
+        std::fs::read(format!(
+            "{}/../../../tests/corpus/arabic/{name}",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap()
     }
 
-    fn spec<'a>(appearance: Option<SigAppearance<'a>>, rect: Option<[f32; 4]>) -> SignatureSpec<'a> {
+    fn spec<'a>(
+        appearance: Option<SigAppearance<'a>>,
+        rect: Option<[f32; 4]>,
+    ) -> SignatureSpec<'a> {
         SignatureSpec {
             field: None,
             page: 0,
@@ -1370,16 +1621,31 @@ mod tests {
 
     #[test]
     fn a_prepared_signature_leaves_exactly_its_contents_out_of_the_byte_range() {
-        for name in ["generated/chrome-cairo-mixed-invoice.pdf", "generated/variant-objectstreams-xrefstream.pdf"] {
+        for name in [
+            "generated/chrome-cairo-mixed-invoice.pdf",
+            "generated/variant-objectstreams-xrefstream.pdf",
+        ] {
             let original = corpus(name);
             let mut doc = PdfDocument::open(original.clone(), None).unwrap();
             let appearance = SigAppearance {
-                lines: vec!["وقّعه: محمد التجريبي".into(), "2026-09-18 20:00 +03:00".into()],
+                lines: vec![
+                    "وقّعه: محمد التجريبي".into(),
+                    "2026-09-18 20:00 +03:00".into(),
+                ],
                 font: AMIRI,
-                image: Some(SigImage { width: 2, height: 1, rgba: vec![0, 0, 0, 255, 255, 255, 255, 0] }),
+                image: Some(SigImage {
+                    width: 2,
+                    height: 1,
+                    rgba: vec![0, 0, 0, 255, 255, 255, 255, 0],
+                }),
             };
-            let mut prepared = doc.prepare_signature(&spec(Some(appearance), Some([300.0, 700.0, 520.0, 780.0]))).unwrap();
-            assert!(prepared.bytes.starts_with(&original), "{name}: an incremental update");
+            let mut prepared = doc
+                .prepare_signature(&spec(Some(appearance), Some([300.0, 700.0, 520.0, 780.0])))
+                .unwrap();
+            assert!(
+                prepared.bytes.starts_with(&original),
+                "{name}: an incremental update"
+            );
             let [a, b, c, d] = prepared.byte_range();
             assert_eq!(a, 0);
             assert_eq!(c + d, prepared.bytes.len());
@@ -1387,7 +1653,10 @@ mod tests {
             assert_eq!(prepared.bytes[c - 1], b'>');
             assert!(String::from_utf8_lossy(&prepared.bytes[b - 12..b]).contains("/Contents"));
             let text = String::from_utf8_lossy(&prepared.bytes[original.len()..]).into_owned();
-            assert!(text.contains(&format!("/ByteRange [0 {b} {c} {d}")), "{name}");
+            assert!(
+                text.contains(&format!("/ByteRange [0 {b} {c} {d}")),
+                "{name}"
+            );
             prepared.embed(&[0x30, 0x03, 0x02, 0x01, 0x07]).unwrap();
             assert!(prepared.embed(&vec![1; 9000]).is_err(), "does not fit");
 
@@ -1403,7 +1672,14 @@ mod tests {
             assert_eq!(v.name.as_deref(), Some("محمد التجريبي"));
             assert_eq!(v.byte_range, vec![a as i64, b as i64, c as i64, d as i64]);
             // And the host can find the room again.
-            let again = Prepared::find(PdfDocument::open(original.clone(), None).unwrap().prepare_signature(&spec(None, None)).unwrap().bytes).unwrap();
+            let again = Prepared::find(
+                PdfDocument::open(original.clone(), None)
+                    .unwrap()
+                    .prepare_signature(&spec(None, None))
+                    .unwrap()
+                    .bytes,
+            )
+            .unwrap();
             assert!(again.capacity() >= 8192);
         }
     }
@@ -1414,11 +1690,19 @@ mod tests {
         let mut doc = PdfDocument::open(original.clone(), Some("warraq")).unwrap();
         let prepared = doc.prepare_signature(&spec(None, None)).unwrap();
         assert!(prepared.bytes.starts_with(&original));
-        assert!(matches!(PdfDocument::open(prepared.bytes.clone(), None), Err(Error::Password)));
+        assert!(matches!(
+            PdfDocument::open(prepared.bytes.clone(), None),
+            Err(Error::Password)
+        ));
         let back = PdfDocument::open(prepared.bytes.clone(), Some("warraq")).unwrap();
         let v = back.signature_fields().remove(0).value.unwrap();
         assert_eq!(v.name.as_deref(), Some("محمد التجريبي"), "strings decrypt");
-        assert!(prepared.bytes[prepared.start + 1..prepared.end - 1].iter().all(|b| *b == b'0'), "Contents in the clear");
+        assert!(
+            prepared.bytes[prepared.start + 1..prepared.end - 1]
+                .iter()
+                .all(|b| *b == b'0'),
+            "Contents in the clear"
+        );
     }
 
     #[test]
@@ -1436,18 +1720,40 @@ mod tests {
 
         // Filling a field after certifying with P=2 is allowed; drawing on the page is not.
         let mut edited = PdfDocument::open(prepared.bytes.clone(), None).unwrap();
-        crate::ops::append_line(&mut edited, 0, "سطر أضيف بعد التوقيع", AMIRI, 12.0, 300.0, 40.0).unwrap();
+        crate::ops::append_line(
+            &mut edited,
+            0,
+            "سطر أضيف بعد التوقيع",
+            AMIRI,
+            12.0,
+            300.0,
+            40.0,
+        )
+        .unwrap();
         let after = PdfDocument::open(edited.save_incremental().unwrap(), None).unwrap();
         let changes = after.changes_since(&signed, &[]);
-        assert!(changes.kinds.contains_key(&ChangeKind::PageContent), "{:?}", changes.kinds);
+        assert!(
+            changes.kinds.contains_key(&ChangeKind::PageContent),
+            "{:?}",
+            changes.kinds
+        );
         assert!(!ChangeKind::PageContent.allowed(Some(2), false));
 
         // A DSS added later is validation data, allowed even under P=1.
         let mut ltv = PdfDocument::open(prepared.bytes.clone(), None).unwrap();
-        ltv.add_dss(&DssData { certs: vec![vec![0x30, 0x00]], ..DssData::default() }).unwrap();
+        ltv.add_dss(&DssData {
+            certs: vec![vec![0x30, 0x00]],
+            ..DssData::default()
+        })
+        .unwrap();
         let after = PdfDocument::open(ltv.save_incremental().unwrap(), None).unwrap();
         let changes = after.changes_since(&signed, &[]);
-        assert_eq!(changes.kinds.keys().copied().collect::<Vec<_>>(), [ChangeKind::ValidationData], "{:?}", changes.kinds);
+        assert_eq!(
+            changes.kinds.keys().copied().collect::<Vec<_>>(),
+            [ChangeKind::ValidationData],
+            "{:?}",
+            changes.kinds
+        );
         assert!(ChangeKind::ValidationData.allowed(Some(1), false));
         assert_eq!(after.dss().certs, vec![vec![0x30, 0x00]]);
     }

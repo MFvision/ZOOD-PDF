@@ -129,7 +129,10 @@ mod tests {
         for off in [0, 180, -330] {
             assert_eq!(parse_pdf_date(&pdf_date(unix, off)), Some(unix));
         }
-        assert_eq!(parse_pdf_date("D:2026"), Some(days_from_civil(2026, 1, 1) * 86_400));
+        assert_eq!(
+            parse_pdf_date("D:2026"),
+            Some(days_from_civil(2026, 1, 1) * 86_400)
+        );
         assert_eq!(parse_pdf_date("D:20261340"), None);
         assert_eq!(parse_pdf_date("yesterday"), None);
     }

@@ -27,6 +27,10 @@ pub enum CoreError {
     Args(String),
     #[error("E_UNKNOWN_OP: no tool operation called {0}")]
     UnknownOp(String),
+    /// Signing and verifying (`warraq_sign`), with their own codes:
+    /// `E_P12_PASSWORD`, `E_P12`, `E_TSA`, `E_SIGN`, …
+    #[error("{0}")]
+    Sign(String),
 }
 
 #[derive(Debug, Clone, Serialize)]

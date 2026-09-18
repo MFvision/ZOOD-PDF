@@ -15,6 +15,7 @@ pub mod file;
 pub mod forms;
 pub mod ocr;
 pub mod pages;
+pub mod signatures;
 
 /// What a tool operation answers: JSON for the UI, and bytes beside it.
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -63,6 +64,7 @@ pub fn call_static(op: &str, args: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, C
         Some(("forms", name)) => forms::call_static(name, args, blobs),
         Some(("ocr", name)) => ocr::call_static(name, args, blobs),
         Some(("pages", name)) => pages::call_static(name, args, blobs),
+        Some(("signatures", name)) => signatures::call_static(name, args, blobs),
         _ => Err(CoreError::UnknownOp(op.into())),
     }
 }

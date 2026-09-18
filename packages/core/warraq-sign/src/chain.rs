@@ -10,7 +10,8 @@ use der::{Decode, Encode};
 use x509_cert::certificate::{CertificateInner, Raw};
 use x509_cert::ext::pkix::name::{DistributionPointName, GeneralName};
 use x509_cert::ext::pkix::{
-    AuthorityInfoAccessSyntax, BasicConstraints, CrlDistributionPoints, ExtendedKeyUsage, KeyUsage, KeyUsages,
+    AuthorityInfoAccessSyntax, BasicConstraints, CrlDistributionPoints, ExtendedKeyUsage, KeyUsage,
+    KeyUsages,
 };
 
 use crate::asn1::{children, read};
@@ -48,7 +49,8 @@ pub(crate) fn directory_string(tag: u8, value: &[u8]) -> String {
         // UniversalString
         0x1c => value
             .chunks(4)
-            .filter_map(|c| (c.len() == 4).then(|| u32::from_be_bytes([c[0], c[1], c[2], c[3]])))
+            .filter(|c| c.len() == 4)
+            .map(|c| u32::from_be_bytes([c[0], c[1], c[2], c[3]]))
             .filter_map(char::from_u32)
             .collect(),
         // TeletexString, read as Latin-1
@@ -98,7 +100,10 @@ impl Cert {
             der: der.to_vec(),
             subject: tbs_c.subject.to_der().map_err(crate::cms_err)?,
             issuer: tbs_c.issuer.to_der().map_err(crate::cms_err)?,
-            spki: tbs_c.subject_public_key_info.to_der().map_err(crate::cms_err)?,
+            spki: tbs_c
+                .subject_public_key_info
+                .to_der()
+                .map_err(crate::cms_err)?,
             tbs,
             parsed,
         })
@@ -156,7 +161,10 @@ impl Cert {
     pub fn may_sign_documents(&self) -> bool {
         match self.extension::<KeyUsage>(&oids::EXT_KEY_USAGE) {
             None => true,
-            Some(ku) => ku.0.contains(KeyUsages::DigitalSignature) || ku.0.contains(KeyUsages::NonRepudiation),
+            Some(ku) => {
+                ku.0.contains(KeyUsages::DigitalSignature)
+                    || ku.0.contains(KeyUsages::NonRepudiation)
+            }
         }
     }
 
@@ -193,7 +201,9 @@ impl Cert {
 
     /// Where the issuer publishes its revocation list.
     pub fn crl_urls(&self) -> Vec<String> {
-        let Some(points) = self.extension::<CrlDistributionPoints>(&oids::EXT_CRL_DISTRIBUTION_POINTS) else {
+        let Some(points) =
+            self.extension::<CrlDistributionPoints>(&oids::EXT_CRL_DISTRIBUTION_POINTS)
+        else {
             return Vec::new();
         };
         points
@@ -380,7 +390,10 @@ pub fn build(leaf: &Cert, pool: &[Cert], store: &TrustStore, at: i64) -> ChainRe
                 root: current.common_name(),
             };
         }
-        let candidates: Vec<&Cert> = pool.iter().filter(|c| c.subject == current.issuer).collect();
+        let candidates: Vec<&Cert> = pool
+            .iter()
+            .filter(|c| c.subject == current.issuer)
+            .collect();
         match candidates
             .iter()
             .find(|c| current.signed_by(&c.spki) && !path.iter().any(|p| p.der == c.der))
@@ -511,9 +524,18 @@ mod tests {
                 missing: "Warraq TEST Intermediate CA RSA".into()
             }
         );
-        assert_eq!(leaf.ocsp_urls(), ["http://ocsp.warraq.test/intermediate-rsa"]);
-        assert_eq!(leaf.crl_urls(), ["http://crl.warraq.test/intermediate-rsa.crl"]);
-        assert_eq!(leaf.ca_issuer_urls(), ["http://ca.warraq.test/intermediate-rsa.cer"]);
+        assert_eq!(
+            leaf.ocsp_urls(),
+            ["http://ocsp.warraq.test/intermediate-rsa"]
+        );
+        assert_eq!(
+            leaf.crl_urls(),
+            ["http://crl.warraq.test/intermediate-rsa.crl"]
+        );
+        assert_eq!(
+            leaf.ca_issuer_urls(),
+            ["http://ca.warraq.test/intermediate-rsa.cer"]
+        );
         assert!(TrustStore::mozilla().anchors.len() > 100);
     }
 }

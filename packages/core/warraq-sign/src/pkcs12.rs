@@ -56,7 +56,10 @@ fn integer(tlv: &Tlv) -> Result<u64> {
 
 fn octets<'a>(tlv: &Tlv<'a>) -> Result<&'a [u8]> {
     if tlv.tag != 0x04 {
-        return Err(bad(format!("expected an OCTET STRING, found tag {:#x}", tlv.tag)));
+        return Err(bad(format!(
+            "expected an OCTET STRING, found tag {:#x}",
+            tlv.tag
+        )));
     }
     Ok(tlv.value)
 }
@@ -78,7 +81,14 @@ fn block_size(hash: HashAlg) -> usize {
 
 /// RFC 7292 appendix B.2: `n` bytes of key material for purpose `id` (1 key,
 /// 2 IV, 3 MAC key).
-pub(crate) fn kdf(hash: HashAlg, password: &[u8], salt: &[u8], iterations: u64, id: u8, n: usize) -> Vec<u8> {
+pub(crate) fn kdf(
+    hash: HashAlg,
+    password: &[u8],
+    salt: &[u8],
+    iterations: u64,
+    id: u8,
+    n: usize,
+) -> Vec<u8> {
     let (u, v) = (hash.len(), block_size(hash));
     let fill = |src: &[u8]| -> Vec<u8> {
         if src.is_empty() {
@@ -114,8 +124,12 @@ pub(crate) fn kdf(hash: HashAlg, password: &[u8], salt: &[u8], iterations: u64, 
 }
 
 fn hmac(hash: HashAlg, key: &[u8], data: &[u8]) -> Vec<u8> {
-    fn run<D: digest::Digest + digest::core_api::BlockSizeUser>(key: &[u8], data: &[u8]) -> Vec<u8> {
-        let mut mac = <SimpleHmac<D> as hmac::digest::KeyInit>::new_from_slice(key).expect("any key length");
+    fn run<D: digest::Digest + digest::core_api::BlockSizeUser>(
+        key: &[u8],
+        data: &[u8],
+    ) -> Vec<u8> {
+        let mut mac =
+            <SimpleHmac<D> as hmac::digest::KeyInit>::new_from_slice(key).expect("any key length");
         mac.update(data);
         mac.finalize().into_bytes().to_vec()
     }
@@ -150,7 +164,11 @@ fn decrypt(alg: &Tlv, password: &str, data: &[u8]) -> Result<Vec<u8>> {
             .decrypt(password.as_bytes(), data)
             .map_err(|_| SignError::P12Password);
     }
-    let params = inside(fields.get(1).ok_or_else(|| bad("PBE parameters"))?, 0x30, "PBE parameters")?;
+    let params = inside(
+        fields.get(1).ok_or_else(|| bad("PBE parameters"))?,
+        0x30,
+        "PBE parameters",
+    )?;
     let salt = octets(params.first().ok_or_else(|| bad("salt"))?)?;
     let iterations = params.get(1).map(integer).transpose()?.unwrap_or(1).max(1);
     if iterations > MAX_ITERATIONS {
@@ -161,16 +179,24 @@ fn decrypt(alg: &Tlv, password: &str, data: &[u8]) -> Result<Vec<u8>> {
     let iv = kdf(HashAlg::Sha1, &pw, salt, iterations, 2, 8);
     let fail = |_| SignError::P12Password;
     match oid {
-        o if o == oids::PBE_SHA1_3DES => cbc::Decryptor::<des::TdesEde3>::new_from_slices(&key(24), &iv)
-            .map_err(bad)?
-            .decrypt_padded_vec_mut::<Pkcs7>(data)
-            .map_err(fail),
-        o if o == oids::PBE_SHA1_2DES => cbc::Decryptor::<des::TdesEde2>::new_from_slices(&key(16), &iv)
-            .map_err(bad)?
-            .decrypt_padded_vec_mut::<Pkcs7>(data)
-            .map_err(fail),
+        o if o == oids::PBE_SHA1_3DES => {
+            cbc::Decryptor::<des::TdesEde3>::new_from_slices(&key(24), &iv)
+                .map_err(bad)?
+                .decrypt_padded_vec_mut::<Pkcs7>(data)
+                .map_err(fail)
+        }
+        o if o == oids::PBE_SHA1_2DES => {
+            cbc::Decryptor::<des::TdesEde2>::new_from_slices(&key(16), &iv)
+                .map_err(bad)?
+                .decrypt_padded_vec_mut::<Pkcs7>(data)
+                .map_err(fail)
+        }
         o if o == oids::PBE_SHA1_RC2_40 || o == oids::PBE_SHA1_RC2_128 => {
-            let (len, bits) = if o == oids::PBE_SHA1_RC2_40 { (5, 40) } else { (16, 128) };
+            let (len, bits) = if o == oids::PBE_SHA1_RC2_40 {
+                (5, 40)
+            } else {
+                (16, 128)
+            };
             let rc2 = rc2::Rc2::new_with_eff_key_len(&key(len), bits);
             cbc::Decryptor::<rc2::Rc2>::inner_iv_slice_init(rc2, &iv)
                 .map_err(bad)?
@@ -234,7 +260,9 @@ fn read_safe_contents(bytes: &[u8], password: &str, found: &mut Found, depth: u8
         let (id, name) = bag_attributes(parts.get(2))?;
         match kind {
             k if k == oids::BAG_KEY => {
-                found.keys.push((id, name, PrivateKey::from_pkcs8_der(value.raw)?));
+                found
+                    .keys
+                    .push((id, name, PrivateKey::from_pkcs8_der(value.raw)?));
             }
             k if k == oids::BAG_SHROUDED_KEY => {
                 let fields = inside(&value, 0x30, "encrypted key")?;
@@ -259,7 +287,9 @@ fn read_safe_contents(bytes: &[u8], password: &str, found: &mut Found, depth: u8
                     .ok_or_else(|| bad("certificate"))?;
                 found.certs.push((id, octets(&cert)?.to_vec()));
             }
-            k if k == oids::BAG_SAFE_CONTENTS => read_safe_contents(value.raw, password, found, depth + 1)?,
+            k if k == oids::BAG_SAFE_CONTENTS => {
+                read_safe_contents(value.raw, password, found, depth + 1)?
+            }
             _ => {}
         }
     }
@@ -284,10 +314,19 @@ pub(crate) fn cert_spki(cert: &[u8]) -> Option<Vec<u8>> {
 /// terminating zero).
 fn check_mac(mac_data: &Tlv, auth_safe: &[u8], password: &str) -> Result<()> {
     let fields = inside(mac_data, 0x30, "MAC")?;
-    let digest_info = inside(fields.first().ok_or_else(|| bad("MAC"))?, 0x30, "MAC digest")?;
-    let alg = inside(digest_info.first().ok_or_else(|| bad("MAC algorithm"))?, 0x30, "MAC algorithm")?;
+    let digest_info = inside(
+        fields.first().ok_or_else(|| bad("MAC"))?,
+        0x30,
+        "MAC digest",
+    )?;
+    let alg = inside(
+        digest_info.first().ok_or_else(|| bad("MAC algorithm"))?,
+        0x30,
+        "MAC algorithm",
+    )?;
     let oid = oid_of(alg.first().ok_or_else(|| bad("MAC algorithm"))?)?;
-    let hash = HashAlg::from_oid(&oid).ok_or_else(|| bad(format!("MAC algorithm {oid} (PBMAC1?)")))?;
+    let hash =
+        HashAlg::from_oid(&oid).ok_or_else(|| bad(format!("MAC algorithm {oid} (PBMAC1?)")))?;
     let expected = octets(digest_info.get(1).ok_or_else(|| bad("MAC value"))?)?;
     let salt = octets(fields.get(1).ok_or_else(|| bad("MAC salt"))?)?;
     let iterations = fields.get(2).map(integer).transpose()?.unwrap_or(1).max(1);
@@ -315,11 +354,18 @@ pub fn open(pfx: &[u8], password: &str) -> Result<Identity> {
     if fields.first().map(integer).transpose()? != Some(3) {
         return Err(bad("not a PKCS#12 version 3 file"));
     }
-    let content_info = inside(fields.get(1).ok_or_else(|| bad("no content"))?, 0x30, "content")?;
+    let content_info = inside(
+        fields.get(1).ok_or_else(|| bad("no content"))?,
+        0x30,
+        "content",
+    )?;
     if oid_of(content_info.first().ok_or_else(|| bad("content type"))?)? != oids::DATA {
         return Err(bad("public-key integrity mode is not supported"));
     }
-    let wrapped = children(inside_tag(content_info.get(1).ok_or_else(|| bad("content"))?, 0xa0)?)?;
+    let wrapped = children(inside_tag(
+        content_info.get(1).ok_or_else(|| bad("content"))?,
+        0xa0,
+    )?)?;
     let auth_safe = octets(wrapped.first().ok_or_else(|| bad("content"))?)?;
     if let Some(mac) = fields.get(2) {
         check_mac(mac, auth_safe, password)?;
@@ -330,13 +376,20 @@ pub fn open(pfx: &[u8], password: &str) -> Result<Identity> {
     for info in inside(&safe, 0x30, "authenticated safe")? {
         let parts = inside(&info, 0x30, "content info")?;
         let kind = oid_of(parts.first().ok_or_else(|| bad("content info"))?)?;
-        let body = children(inside_tag(parts.get(1).ok_or_else(|| bad("content info"))?, 0xa0)?)?;
+        let body = children(inside_tag(
+            parts.get(1).ok_or_else(|| bad("content info"))?,
+            0xa0,
+        )?)?;
         let body = body.first().ok_or_else(|| bad("content info"))?;
         if kind == oids::DATA {
             read_safe_contents(octets(body)?, password, &mut found, 0)?;
         } else if kind == oids::ENCRYPTED_DATA {
             let data = inside(body, 0x30, "encrypted data")?;
-            let eci = inside(data.get(1).ok_or_else(|| bad("encrypted data"))?, 0x30, "encrypted content")?;
+            let eci = inside(
+                data.get(1).ok_or_else(|| bad("encrypted data"))?,
+                0x30,
+                "encrypted content",
+            )?;
             let (Some(alg), Some(content)) = (eci.get(1), eci.get(2)) else {
                 return Err(bad("encrypted content"));
             };
@@ -410,9 +463,26 @@ mod tests {
     fn the_key_derivation_matches_rfc_7292_as_openssl_implements_it() {
         // `openssl`'s PKCS12_key_gen_uni test vector: "smeg", salt
         // 0A58CF64530D823F, 1 iteration, ID 1, 24 bytes.
-        let key = kdf(HashAlg::Sha1, &bmp_password("smeg"), &[0x0A, 0x58, 0xCF, 0x64, 0x53, 0x0D, 0x82, 0x3F], 1, 1, 24);
-        assert_eq!(crate::hex(&key), "8AAAE6297B6CB04642AB5B077851284EB7128F1A2A7FBCA3");
-        let iv = kdf(HashAlg::Sha1, &bmp_password("smeg"), &[0x0A, 0x58, 0xCF, 0x64, 0x53, 0x0D, 0x82, 0x3F], 1, 2, 8);
+        let key = kdf(
+            HashAlg::Sha1,
+            &bmp_password("smeg"),
+            &[0x0A, 0x58, 0xCF, 0x64, 0x53, 0x0D, 0x82, 0x3F],
+            1,
+            1,
+            24,
+        );
+        assert_eq!(
+            crate::hex(&key),
+            "8AAAE6297B6CB04642AB5B077851284EB7128F1A2A7FBCA3"
+        );
+        let iv = kdf(
+            HashAlg::Sha1,
+            &bmp_password("smeg"),
+            &[0x0A, 0x58, 0xCF, 0x64, 0x53, 0x0D, 0x82, 0x3F],
+            1,
+            2,
+            8,
+        );
         assert_eq!(crate::hex(&iv), "79993DFE048D3B76");
     }
 
@@ -428,11 +498,23 @@ mod tests {
             let id = open(&fixture(file), "warraq-test").unwrap_or_else(|e| panic!("{file}: {e}"));
             assert_eq!(id.signer.key_kind(), kind, "{file}");
             let leaf = file.split(['-', '.']).take(2).collect::<Vec<_>>().join("-");
-            let leaf = if leaf == "signer-ec384" || leaf == "signer-ec" { leaf } else { "signer-rsa".into() };
-            assert_eq!(id.signer.certificate(), fixture(&format!("{leaf}.cer")), "{file}");
+            let leaf = if leaf == "signer-ec384" || leaf == "signer-ec" {
+                leaf
+            } else {
+                "signer-rsa".into()
+            };
+            assert_eq!(
+                id.signer.certificate(),
+                fixture(&format!("{leaf}.cer")),
+                "{file}"
+            );
             assert_eq!(id.signer.chain().len(), 2, "{file}: intermediate and root");
             // Nearest first: the intermediate, then the root.
-            let root = if file.contains("ec") { "root-ec.cer" } else { "root-rsa.cer" };
+            let root = if file.contains("ec") {
+                "root-ec.cer"
+            } else {
+                "root-rsa.cer"
+            };
             assert_eq!(id.signer.chain()[1], fixture(root), "{file}");
         }
     }
@@ -440,7 +522,10 @@ mod tests {
     #[test]
     fn a_wrong_password_is_said_so_and_garbage_is_refused() {
         for file in ["signer-rsa-legacy.p12", "signer-rsa-aes.p12"] {
-            assert!(matches!(open(&fixture(file), "wrong"), Err(SignError::P12Password)), "{file}");
+            assert!(
+                matches!(open(&fixture(file), "wrong"), Err(SignError::P12Password)),
+                "{file}"
+            );
         }
         assert!(matches!(open(b"not a p12", "x"), Err(SignError::P12(_))));
         let mut cut = fixture("signer-ec.p12");

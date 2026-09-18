@@ -79,7 +79,8 @@ impl PrivateKey {
             .map_err(|e| SignError::Key(format!("not a PKCS#8 key: {e}")))?;
         let oid = info.algorithm.oid;
         if oid == oids::RSA_ENCRYPTION {
-            let key = RsaPrivateKey::from_pkcs8_der(der).map_err(|e| SignError::Key(e.to_string()))?;
+            let key =
+                RsaPrivateKey::from_pkcs8_der(der).map_err(|e| SignError::Key(e.to_string()))?;
             return Ok(Self::Rsa(Box::new(key)));
         }
         if oid == oids::EC_PUBLIC_KEY {
@@ -150,7 +151,9 @@ impl PrivateKey {
                     (Padding::Pss, HashAlg::Sha512) => {
                         key.sign_with_rng(&mut OsRng, Pss::new_with_salt::<Sha512>(64), digest)
                     }
-                    (_, HashAlg::Sha1) => return Err(SignError::Sign("SHA-1 is not signed with".into())),
+                    (_, HashAlg::Sha1) => {
+                        return Err(SignError::Sign("SHA-1 is not signed with".into()))
+                    }
                 };
                 signed.map_err(|e| fail(&e))
             }
@@ -223,11 +226,19 @@ impl SigAlg {
             SigAlg::RsaPss { hash, salt } => {
                 let hash_id = wrap(
                     0x30,
-                    &[hash.oid().to_der().map_err(crate::cms_err)?, vec![0x05, 0x00]].concat(),
+                    &[
+                        hash.oid().to_der().map_err(crate::cms_err)?,
+                        vec![0x05, 0x00],
+                    ]
+                    .concat(),
                 );
                 let mgf = wrap(
                     0x30,
-                    &[oids::MGF1.to_der().map_err(crate::cms_err)?, hash_id.clone()].concat(),
+                    &[
+                        oids::MGF1.to_der().map_err(crate::cms_err)?,
+                        hash_id.clone(),
+                    ]
+                    .concat(),
                 );
                 let salt = der::asn1::Int::new(&(salt as u32).to_be_bytes())
                     .and_then(|i| i.to_der())
@@ -274,7 +285,11 @@ impl SigAlg {
             o if o == oids::ECDSA_SHA512 => SigAlg::Ecdsa(HashAlg::Sha512),
             o if o == oids::EC_PUBLIC_KEY => SigAlg::Ecdsa(need()?),
             o if o == oids::RSASSA_PSS => pss_params(params.unwrap_or(&[]))?,
-            o => return Err(SignError::Cms(format!("signature algorithm {o} is not supported"))),
+            o => {
+                return Err(SignError::Cms(format!(
+                    "signature algorithm {o} is not supported"
+                )))
+            }
         })
     }
 }
@@ -294,9 +309,11 @@ fn pss_params(der: &[u8]) -> Result<SigAlg> {
                         .into_iter()
                         .next()
                         .ok_or_else(|| SignError::Cms("empty PSS hash".into()))?;
-                    let oid = const_oid::ObjectIdentifier::from_der(oid_tlv.raw).map_err(crate::cms_err)?;
-                    hash = HashAlg::from_oid(&oid)
-                        .ok_or_else(|| SignError::Cms(format!("PSS hash {oid} is not supported")))?;
+                    let oid = const_oid::ObjectIdentifier::from_der(oid_tlv.raw)
+                        .map_err(crate::cms_err)?;
+                    hash = HashAlg::from_oid(&oid).ok_or_else(|| {
+                        SignError::Cms(format!("PSS hash {oid} is not supported"))
+                    })?;
                 }
                 0xa2 => {
                     let (int, _) = read(field.value)?;
@@ -321,7 +338,9 @@ pub fn verify_digest(spki: &[u8], alg: SigAlg, digest: &[u8], signature: &[u8]) 
     match alg {
         SigAlg::RsaPkcs1(h) | SigAlg::RsaPss { hash: h, .. } => {
             if key_oid != oids::RSA_ENCRYPTION && key_oid != oids::RSASSA_PSS {
-                return Err(SignError::Cms("an RSA signature with a key that is not RSA".into()));
+                return Err(SignError::Cms(
+                    "an RSA signature with a key that is not RSA".into(),
+                ));
             }
             let key = RsaPublicKey::from_public_key_der(spki).map_err(crate::cms_err)?;
             let r = match alg {
@@ -332,10 +351,18 @@ pub fn verify_digest(spki: &[u8], alg: SigAlg, digest: &[u8], signature: &[u8]) 
                     HashAlg::Sha512 => key.verify(Pkcs1v15Sign::new::<Sha512>(), digest, signature),
                 },
                 SigAlg::RsaPss { salt, .. } => match h {
-                    HashAlg::Sha1 => key.verify(Pss::new_with_salt::<Sha1>(salt), digest, signature),
-                    HashAlg::Sha256 => key.verify(Pss::new_with_salt::<Sha256>(salt), digest, signature),
-                    HashAlg::Sha384 => key.verify(Pss::new_with_salt::<Sha384>(salt), digest, signature),
-                    HashAlg::Sha512 => key.verify(Pss::new_with_salt::<Sha512>(salt), digest, signature),
+                    HashAlg::Sha1 => {
+                        key.verify(Pss::new_with_salt::<Sha1>(salt), digest, signature)
+                    }
+                    HashAlg::Sha256 => {
+                        key.verify(Pss::new_with_salt::<Sha256>(salt), digest, signature)
+                    }
+                    HashAlg::Sha384 => {
+                        key.verify(Pss::new_with_salt::<Sha384>(salt), digest, signature)
+                    }
+                    HashAlg::Sha512 => {
+                        key.verify(Pss::new_with_salt::<Sha512>(salt), digest, signature)
+                    }
                 },
                 SigAlg::Ecdsa(_) => unreachable!(),
             };
@@ -343,19 +370,25 @@ pub fn verify_digest(spki: &[u8], alg: SigAlg, digest: &[u8], signature: &[u8]) 
         }
         SigAlg::Ecdsa(_) => {
             if key_oid != oids::EC_PUBLIC_KEY {
-                return Err(SignError::Cms("an ECDSA signature with a key that is not EC".into()));
+                return Err(SignError::Cms(
+                    "an ECDSA signature with a key that is not EC".into(),
+                ));
             }
             let curve = info.algorithm.parameters_oid().map_err(crate::cms_err)?;
             if curve == oids::SECP256R1 {
-                let key = p256::ecdsa::VerifyingKey::from_public_key_der(spki).map_err(crate::cms_err)?;
+                let key =
+                    p256::ecdsa::VerifyingKey::from_public_key_der(spki).map_err(crate::cms_err)?;
                 let sig = p256::ecdsa::Signature::from_der(signature).map_err(|e| bad(&e))?;
                 key.verify_prehash(digest, &sig).map_err(|e| bad(&e))
             } else if curve == oids::SECP384R1 {
-                let key = p384::ecdsa::VerifyingKey::from_public_key_der(spki).map_err(crate::cms_err)?;
+                let key =
+                    p384::ecdsa::VerifyingKey::from_public_key_der(spki).map_err(crate::cms_err)?;
                 let sig = p384::ecdsa::Signature::from_der(signature).map_err(|e| bad(&e))?;
                 key.verify_prehash(digest, &sig).map_err(|e| bad(&e))
             } else {
-                Err(SignError::Cms(format!("elliptic curve {curve} is not supported")))
+                Err(SignError::Cms(format!(
+                    "elliptic curve {curve} is not supported"
+                )))
             }
         }
     }

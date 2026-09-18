@@ -46,7 +46,12 @@ fn issuer_key(issuer: &(impl IssuerKey + ?Sized)) -> Vec<u8> {
 /// what CAs' responders answer from cache and what can be sent by GET.
 pub fn ocsp_request(cert: &Cert, issuer: &(impl IssuerKey + ?Sized)) -> Result<Vec<u8>> {
     let hash = HashAlg::Sha1;
-    let serial = cert.parsed.tbs_certificate.serial_number.to_der().map_err(cms_err)?;
+    let serial = cert
+        .parsed
+        .tbs_certificate
+        .serial_number
+        .to_der()
+        .map_err(cms_err)?;
     let cert_id = wrap(
         0x30,
         &[
@@ -91,14 +96,20 @@ fn bad(what: impl std::fmt::Display) -> SignError {
 fn basic(response: &[u8]) -> Result<(x509_ocsp::BasicOcspResponse, Vec<u8>)> {
     let resp = x509_ocsp::OcspResponse::from_der(crate::asn1::first_der(response)?).map_err(bad)?;
     if resp.response_status != x509_ocsp::OcspResponseStatus::Successful {
-        return Err(bad(format!("the responder answered {:?}", resp.response_status)));
+        return Err(bad(format!(
+            "the responder answered {:?}",
+            resp.response_status
+        )));
     }
     let bytes = resp.response_bytes.ok_or_else(|| bad("an empty answer"))?;
     if bytes.response_type != oids::OCSP_BASIC {
         return Err(bad("not a basic OCSP answer"));
     }
     let raw = bytes.response.as_bytes().to_vec();
-    Ok((x509_ocsp::BasicOcspResponse::from_der(&raw).map_err(bad)?, raw))
+    Ok((
+        x509_ocsp::BasicOcspResponse::from_der(&raw).map_err(bad)?,
+        raw,
+    ))
 }
 
 /// Whether `response` is an OCSP answer about `cert` from `issuer`.
@@ -111,7 +122,11 @@ pub fn ocsp_is_about(response: &[u8], cert: &Cert, issuer: &(impl IssuerKey + ?S
     })
 }
 
-fn cert_id_matches(id: &x509_ocsp::CertId, cert: &Cert, issuer: &(impl IssuerKey + ?Sized)) -> bool {
+fn cert_id_matches(
+    id: &x509_ocsp::CertId,
+    cert: &Cert,
+    issuer: &(impl IssuerKey + ?Sized),
+) -> bool {
     let Some(hash) = HashAlg::from_oid(&id.hash_algorithm.oid) else {
         return false;
     };
@@ -121,7 +136,11 @@ fn cert_id_matches(id: &x509_ocsp::CertId, cert: &Cert, issuer: &(impl IssuerKey
 }
 
 /// Checks an OCSP answer about `cert`, issued by `issuer`.
-pub fn check_ocsp(response: &[u8], cert: &Cert, issuer: &(impl IssuerKey + ?Sized)) -> Result<OcspCheck> {
+pub fn check_ocsp(
+    response: &[u8],
+    cert: &Cert,
+    issuer: &(impl IssuerKey + ?Sized),
+) -> Result<OcspCheck> {
     let (basic_resp, der) = basic(response)?;
     let single = basic_resp
         .tbs_response_data
@@ -153,12 +172,17 @@ pub fn check_ocsp(response: &[u8], cert: &Cert, issuer: &(impl IssuerKey + ?Size
         .filter_map(|c| c.to_der().ok())
         .collect();
     let signature_ok = verify_message(issuer.spki(), sig_alg, &tbs, signature).is_ok()
-        || certs.iter().filter_map(|d| Cert::parse(d).ok()).any(|responder| {
-            responder.issuer == issuer.subject()
-                && responder.signed_by(issuer.spki())
-                && responder.extended_key_usage().contains(&oids::KP_OCSP_SIGNING)
-                && verify_message(&responder.spki, sig_alg, &tbs, signature).is_ok()
-        });
+        || certs
+            .iter()
+            .filter_map(|d| Cert::parse(d).ok())
+            .any(|responder| {
+                responder.issuer == issuer.subject()
+                    && responder.signed_by(issuer.spki())
+                    && responder
+                        .extended_key_usage()
+                        .contains(&oids::KP_OCSP_SIGNING)
+                    && verify_message(&responder.spki, sig_alg, &tbs, signature).is_ok()
+            });
     Ok(OcspCheck {
         status,
         produced_at: generalized_unix(&basic_resp.tbs_response_data.produced_at.0),
@@ -199,7 +223,13 @@ pub fn check_crl(crl: &[u8], cert: &Cert, issuer: &(impl IssuerKey + ?Sized)) ->
     let alg = &list.signature_algorithm;
     let params = alg.parameters.as_ref().and_then(|p| p.to_der().ok());
     let sig_alg = SigAlg::from_identifier(&alg.oid, params.as_deref(), None)?;
-    let signature_ok = verify_message(issuer.spki(), sig_alg, &tbs, list.signature.as_bytes().unwrap_or(&[])).is_ok();
+    let signature_ok = verify_message(
+        issuer.spki(),
+        sig_alg,
+        &tbs,
+        list.signature.as_bytes().unwrap_or(&[]),
+    )
+    .is_ok();
     let serial = cert.parsed.tbs_certificate.serial_number.as_bytes();
     let revoked_at = list
         .tbs_cert_list
@@ -210,7 +240,11 @@ pub fn check_crl(crl: &[u8], cert: &Cert, issuer: &(impl IssuerKey + ?Sized)) ->
         .map(|r| crate::time::x509_unix(&r.revocation_date));
     Ok(CrlCheck {
         this_update: crate::time::x509_unix(&list.tbs_cert_list.this_update),
-        next_update: list.tbs_cert_list.next_update.as_ref().map(crate::time::x509_unix),
+        next_update: list
+            .tbs_cert_list
+            .next_update
+            .as_ref()
+            .map(crate::time::x509_unix),
         signature_ok,
         revoked_at,
     })
@@ -237,10 +271,26 @@ mod tests {
         let good = check_ocsp(&fixture("signer-rsa.ocsp"), &leaf, &issuer).unwrap();
         assert_eq!(good.status, Status::Good);
         assert!(good.signature_ok);
-        let revoked = check_ocsp(&fixture("revoked-rsa.ocsp"), &cert("revoked-rsa.cer"), &issuer).unwrap();
-        assert!(matches!(revoked.status, Status::Revoked { .. }), "{:?}", revoked.status);
-        assert!(check_ocsp(&fixture("revoked-rsa.ocsp"), &leaf, &issuer).is_err(), "about another certificate");
-        assert!(ocsp_is_about(&fixture("signer-ec.ocsp"), &cert("signer-ec.cer"), &cert("intermediate-ec.cer")));
+        let revoked = check_ocsp(
+            &fixture("revoked-rsa.ocsp"),
+            &cert("revoked-rsa.cer"),
+            &issuer,
+        )
+        .unwrap();
+        assert!(
+            matches!(revoked.status, Status::Revoked { .. }),
+            "{:?}",
+            revoked.status
+        );
+        assert!(
+            check_ocsp(&fixture("revoked-rsa.ocsp"), &leaf, &issuer).is_err(),
+            "about another certificate"
+        );
+        assert!(ocsp_is_about(
+            &fixture("signer-ec.ocsp"),
+            &cert("signer-ec.cer"),
+            &cert("intermediate-ec.cer")
+        ));
         // A request asks about exactly that certificate, the way openssl does.
         let req = ocsp_request(&leaf, &issuer).unwrap();
         assert!(x509_ocsp::OcspRequest::from_der(&req).is_ok());

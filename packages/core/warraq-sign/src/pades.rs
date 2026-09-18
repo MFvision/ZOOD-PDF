@@ -8,7 +8,8 @@
 //! ([`prepare_doc_timestamp`]).
 use serde::Serialize;
 use warraq_pdf::signature::{
-    DssData, FieldLock, Prepared, SigAppearance, SigDict, SigImage, SigKind, SignatureSpec, VriEntry,
+    DssData, FieldLock, Prepared, SigAppearance, SigDict, SigImage, SigKind, SignatureSpec,
+    VriEntry,
 };
 use warraq_pdf::PdfDocument;
 
@@ -64,7 +65,8 @@ pub enum Signed {
 /// attributes, a margin, and a timestamp token when one will be added —
 /// observed from public authorities at up to 7.7 KB.
 fn contents_size(signer: &dyn Signer, timestamp: bool) -> usize {
-    let certs: usize = signer.certificate().len() + signer.chain().iter().map(Vec::len).sum::<usize>();
+    let certs: usize =
+        signer.certificate().len() + signer.chain().iter().map(Vec::len).sum::<usize>();
     let signature = match signer.key_kind() {
         crate::keys::KeyKind::Rsa { bits } => bits / 8,
         _ => 128,
@@ -148,11 +150,18 @@ fn request_imprint(request: &[u8]) -> Result<(HashAlg, Vec<u8>)> {
 
 /// Adds the authority's answer to a signature waiting for its timestamp,
 /// and writes the signature into the file.
-pub fn finish(prepared: Vec<u8>, signature: &[u8], request: &[u8], response: &[u8]) -> Result<Vec<u8>> {
+pub fn finish(
+    prepared: Vec<u8>,
+    signature: &[u8],
+    request: &[u8],
+    response: &[u8],
+) -> Result<Vec<u8>> {
     let (hash, imprint) = request_imprint(request)?;
     let value = cms::parse(signature)?.signature;
     if hash.digest(&value) != imprint {
-        return Err(SignError::Tsa("the request is not for this signature".into()));
+        return Err(SignError::Tsa(
+            "the request is not for this signature".into(),
+        ));
     }
     let token = tsp::token_from_response(response, &imprint, request_nonce(request)?.as_deref())?;
     let stamped = cms::add_timestamp(signature, &token)?;
@@ -230,6 +239,9 @@ pub struct SignatureReport {
     pub problems: Vec<String>,
     /// Where the signed revision ends.
     pub revision_end: usize,
+    /// When the signer is not trusted: the certificate at the top of its
+    /// path (base64 DER), which the person may choose to trust.
+    pub trust_candidate: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -316,7 +328,7 @@ fn contents_at(bytes: &[u8], br: &[i64]) -> Option<(Vec<u8>, usize)> {
         return None;
     }
     let hexits = &bytes[b + 1..c - 1];
-    if hexits.len() % 2 != 0 || !hexits.iter().all(u8::is_ascii_hexdigit) {
+    if !hexits.len().is_multiple_of(2) || !hexits.iter().all(u8::is_ascii_hexdigit) {
         return None;
     }
     let decoded = hexits
@@ -353,7 +365,12 @@ fn issuer_of<'a>(path: &'a [Cert], i: usize, trust: &'a TrustStore) -> Option<&'
 }
 
 /// Revocation status of `cert` (issued by `issuer`) from the data given.
-fn revocation_of(cert: &Cert, issuer: Option<&dyn IssuerKey>, ocsps: &[Vec<u8>], crls: &[Vec<u8>]) -> RevocationReport {
+fn revocation_of(
+    cert: &Cert,
+    issuer: Option<&dyn IssuerKey>,
+    ocsps: &[Vec<u8>],
+    crls: &[Vec<u8>],
+) -> RevocationReport {
     let mut out = RevocationReport {
         embedded: !ocsps.is_empty() || !crls.is_empty(),
         status: "notChecked".into(),
@@ -400,7 +417,12 @@ fn revocation_of(cert: &Cert, issuer: Option<&dyn IssuerKey>, ocsps: &[Vec<u8>],
 
 /// Verifies every signature in `bytes` (opened with `password`), trusting
 /// `trust`, at `now` (Unix seconds).
-pub fn verify(bytes: &[u8], password: Option<&str>, trust: &TrustStore, now: i64) -> Result<Report> {
+pub fn verify(
+    bytes: &[u8],
+    password: Option<&str>,
+    trust: &TrustStore,
+    now: i64,
+) -> Result<Report> {
     let doc = PdfDocument::open(bytes.to_vec(), password)?;
     let fields = doc.signature_fields();
     let dss = doc.dss();
@@ -411,12 +433,24 @@ pub fn verify(bytes: &[u8], password: Option<&str>, trust: &TrustStore, now: i64
             ocsps: dss.ocsps.len(),
             crls: dss.crls.len(),
         },
-        empty_fields: fields.iter().filter(|f| f.value.is_none()).map(|f| f.name.clone()).collect(),
+        empty_fields: fields
+            .iter()
+            .filter(|f| f.value.is_none())
+            .map(|f| f.name.clone())
+            .collect(),
         ..Report::default()
     };
-    let mut signed: Vec<(&warraq_pdf::signature::SigField, &SigDict)> =
-        fields.iter().filter_map(|f| f.value.as_ref().map(|v| (f, v))).collect();
-    signed.sort_by_key(|(_, v)| v.byte_range.get(2).zip(v.byte_range.get(3)).map(|(c, d)| c + d).unwrap_or(0));
+    let mut signed: Vec<(&warraq_pdf::signature::SigField, &SigDict)> = fields
+        .iter()
+        .filter_map(|f| f.value.as_ref().map(|v| (f, v)))
+        .collect();
+    signed.sort_by_key(|(_, v)| {
+        v.byte_range
+            .get(2)
+            .zip(v.byte_range.get(3))
+            .map(|(c, d)| c + d)
+            .unwrap_or(0)
+    });
     let certified = report.certified;
     let dss_certs = certs_of(&dss.certs);
     let mut locks: Vec<FieldLock> = Vec::new();
@@ -426,9 +460,15 @@ pub fn verify(bytes: &[u8], password: Option<&str>, trust: &TrustStore, now: i64
             locks.push(lock.clone());
         }
         if let Some(fields) = &field.lock {
-            locks.push(if fields.is_empty() { FieldLock::All } else { FieldLock::Include(fields.clone()) });
+            locks.push(if fields.is_empty() {
+                FieldLock::All
+            } else {
+                FieldLock::Include(fields.clone())
+            });
         }
-        let visible = field.rect.is_some_and(|r| r[2] - r[0] > 1.0 && r[3] - r[1] > 1.0);
+        let visible = field
+            .rect
+            .is_some_and(|r| r[2] - r[0] > 1.0 && r[3] - r[1] > 1.0);
         let mut r = SignatureReport {
             field: field.name.clone(),
             kind: if sig.doc_timestamp || sig.sub_filter == RFC3161 {
@@ -460,6 +500,7 @@ pub fn verify(bytes: &[u8], password: Option<&str>, trust: &TrustStore, now: i64
             changes: Vec::new(),
             problems: Vec::new(),
             revision_end: 0,
+            trust_candidate: None,
         };
         let Some((contents, end)) = contents_at(bytes, &sig.byte_range) else {
             r.problems.push("byteRange".into());
@@ -480,9 +521,11 @@ pub fn verify(bytes: &[u8], password: Option<&str>, trust: &TrustStore, now: i64
         // The revision it signed must hold this very signature.
         let revision = PdfDocument::open(bytes[..end].to_vec(), password).ok();
         let in_revision = revision.as_ref().is_some_and(|rev| {
-            rev.signature_fields()
-                .iter()
-                .any(|f| f.value.as_ref().is_some_and(|v| v.byte_range == sig.byte_range))
+            rev.signature_fields().iter().any(|f| {
+                f.value
+                    .as_ref()
+                    .is_some_and(|v| v.byte_range == sig.byte_range)
+            })
         });
         if !in_revision {
             r.integrity.byte_range_ok = false;
@@ -512,17 +555,28 @@ pub fn verify(bytes: &[u8], password: Option<&str>, trust: &TrustStore, now: i64
 /// The final word on a signature, from what was found.
 fn status_of(r: &SignatureReport) -> &'static str {
     let i = &r.integrity;
-    if !i.byte_range_ok || !i.digest_ok || !i.signature_ok || r.revocation.status == "revoked" && r.problems.iter().any(|p| p == "revokedBeforeSigning") {
+    if !i.byte_range_ok
+        || !i.digest_ok
+        || !i.signature_ok
+        || r.revocation.status == "revoked"
+            && r.problems.iter().any(|p| p == "revokedBeforeSigning")
+    {
         return "invalid";
     }
-    if r.problems.iter().any(|p| p == "certBinding" || p == "noSigner" || p == "notValidAtSigning") {
+    if r.problems
+        .iter()
+        .any(|p| p == "certBinding" || p == "noSigner" || p == "notValidAtSigning")
+    {
         return "invalid";
     }
     if r.changes.iter().any(|c| !c.allowed) {
         return "modified";
     }
     let trusted = r.chain.as_ref().is_some_and(|c| c.trusted());
-    if !trusted || r.revocation.status == "revoked" || r.timestamp.as_ref().is_some_and(|t| !t.valid) {
+    if !trusted
+        || r.revocation.status == "revoked"
+        || r.timestamp.as_ref().is_some_and(|t| !t.valid)
+    {
         return "untrusted";
     }
     "valid"
@@ -589,7 +643,9 @@ fn check_signature(
         // adbe.pkcs7.sha1 signs the SHA-1 of the bytes as its content.
         let digest = if sig.sub_filter == "adbe.pkcs7.sha1" {
             match &parsed.econtent {
-                Some(content) if *content == HashAlg::Sha1.digest_parts(parts) => parsed.digest.digest(content),
+                Some(content) if *content == HashAlg::Sha1.digest_parts(parts) => {
+                    parsed.digest.digest(content)
+                }
                 _ => Vec::new(),
             }
         } else {
@@ -609,10 +665,14 @@ fn check_signature(
             match tsp::check_token(token, dss_certs) {
                 Ok(t) => {
                     let stamps_this = t.info.hash.digest(&parsed.signature) == t.info.imprint;
-                    let tsa_chain = t
-                        .signer
-                        .as_ref()
-                        .map(|c| chain::build(c, &[cms::certificates(&t.info.parsed), dss_certs.to_vec()].concat(), trust, t.info.gen_time));
+                    let tsa_chain = t.signer.as_ref().map(|c| {
+                        chain::build(
+                            c,
+                            &[cms::certificates(&t.info.parsed), dss_certs.to_vec()].concat(),
+                            trust,
+                            t.info.gen_time,
+                        )
+                    });
                     let valid = t.signature_ok && stamps_this;
                     if valid {
                         signing_time = t.info.gen_time;
@@ -647,6 +707,9 @@ fn check_signature(
             r.problems.push("revokedBeforeSigning".into());
         }
     }
+    if !chain.trusted() {
+        r.trust_candidate = chain.path.last().map(|c| crate::base64(&c.der));
+    }
     r.chain = Some(chain);
     signing_time
 }
@@ -667,7 +730,12 @@ pub struct Fetch {
 }
 
 /// The certificate paths of every signature and timestamp in the file.
-fn paths(doc: &PdfDocument, bytes: &[u8], trust: &TrustStore, now: i64) -> Vec<(Vec<u8>, Vec<Cert>)> {
+fn paths(
+    doc: &PdfDocument,
+    bytes: &[u8],
+    trust: &TrustStore,
+    now: i64,
+) -> Vec<(Vec<u8>, Vec<Cert>)> {
     let dss_certs = certs_of(&doc.dss().certs);
     let mut out = Vec::new();
     for field in doc.signature_fields() {
@@ -706,7 +774,12 @@ fn paths(doc: &PdfDocument, bytes: &[u8], trust: &TrustStore, now: i64) -> Vec<(
 /// for every certificate in their paths, an OCSP answer from its issuer (or
 /// failing that the issuer's revocation list), and an issuer certificate a
 /// path is missing.
-pub fn fetches(bytes: &[u8], password: Option<&str>, trust: &TrustStore, now: i64) -> Result<Vec<Fetch>> {
+pub fn fetches(
+    bytes: &[u8],
+    password: Option<&str>,
+    trust: &TrustStore,
+    now: i64,
+) -> Result<Vec<Fetch>> {
     let doc = PdfDocument::open(bytes.to_vec(), password)?;
     let mut out: Vec<Fetch> = Vec::new();
     let mut push = |f: Fetch| {
@@ -730,7 +803,9 @@ pub fn fetches(bytes: &[u8], password: Option<&str>, trust: &TrustStore, now: i6
                             body: Some(body),
                         }),
                         _ => {
-                            if let Some(url) = cert.crl_urls().into_iter().find(|u| u.starts_with("http")) {
+                            if let Some(url) =
+                                cert.crl_urls().into_iter().find(|u| u.starts_with("http"))
+                            {
                                 push(Fetch {
                                     url,
                                     kind: "crl",
@@ -742,7 +817,11 @@ pub fn fetches(bytes: &[u8], password: Option<&str>, trust: &TrustStore, now: i6
                     }
                 }
                 None => {
-                    if let Some(url) = cert.ca_issuer_urls().into_iter().find(|u| u.starts_with("http")) {
+                    if let Some(url) = cert
+                        .ca_issuer_urls()
+                        .into_iter()
+                        .find(|u| u.starts_with("http"))
+                    {
                         push(Fetch {
                             url,
                             kind: "certificate",
@@ -798,8 +877,13 @@ pub fn add_validation(
             if last.self_issued() || path.len() > 12 {
                 break;
             }
-            match extra.iter().find(|c| c.subject == last.issuer && last.signed_by(&c.spki)) {
-                Some(issuer) if !path.iter().any(|p| p.der == issuer.der) => path.push(issuer.clone()),
+            match extra
+                .iter()
+                .find(|c| c.subject == last.issuer && last.signed_by(&c.spki))
+            {
+                Some(issuer) if !path.iter().any(|p| p.der == issuer.der) => {
+                    path.push(issuer.clone())
+                }
                 _ => break,
             }
         }
@@ -809,20 +893,27 @@ pub fn add_validation(
         };
         for (i, cert) in path.iter().enumerate() {
             vri.certs.push(cert.der.clone());
-            let Some(issuer) = issuer_of(&path, i, trust)
-                .or_else(|| dss_certs.iter().find(|c| c.subject == cert.issuer).map(|c| c as &dyn IssuerKey))
-            else {
+            let Some(issuer) = issuer_of(&path, i, trust).or_else(|| {
+                dss_certs
+                    .iter()
+                    .find(|c| c.subject == cert.issuer)
+                    .map(|c| c as &dyn IssuerKey)
+            }) else {
                 continue;
             };
             for (n, (kind, der)) in answers.iter().enumerate() {
                 let ok = match kind.as_str() {
-                    "ocsp" => revocation::check_ocsp(der, cert, issuer).is_ok_and(|c| c.signature_ok),
+                    "ocsp" => {
+                        revocation::check_ocsp(der, cert, issuer).is_ok_and(|c| c.signature_ok)
+                    }
                     "crl" => revocation::check_crl(der, cert, issuer).is_ok_and(|c| c.signature_ok),
                     _ => false,
                 };
                 if ok {
                     accepted[n] = true;
-                    let raw = crate::asn1::first_der(der).map(<[u8]>::to_vec).unwrap_or_else(|_| der.clone());
+                    let raw = crate::asn1::first_der(der)
+                        .map(<[u8]>::to_vec)
+                        .unwrap_or_else(|_| der.clone());
                     if kind == "ocsp" {
                         vri.ocsps.push(raw);
                     } else {
