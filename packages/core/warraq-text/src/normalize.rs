@@ -81,10 +81,16 @@ impl Default for SearchNormalization {
 pub fn normalize_char(c: char, opts: &SearchNormalization) -> String {
     let mut s = String::new();
     if is_presentation_form(c) {
-        for f in c.to_string().nfkc() {
-            s.push_str(&normalize_char(f, opts));
+        // Only a character NFKC changes is folded: the ornate parentheses and
+        // U+FEFF are in these blocks with no other form, and recursing on
+        // them never ended.
+        let folded: String = c.to_string().nfkc().collect();
+        if folded.chars().ne(std::iter::once(c)) {
+            for f in folded.chars() {
+                s.push_str(&normalize_char(f, opts));
+            }
+            return s;
         }
-        return s;
     }
     if opts.ignore_marks && is_mark_or_control(c) {
         return s;
@@ -131,6 +137,19 @@ pub fn normalize_for_search(s: &str, opts: &SearchNormalization) -> (String, Vec
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn characters_in_the_presentation_blocks_that_fold_to_themselves_are_kept() {
+        // Ornate parentheses around Quranic text, and the byte order mark: in
+        // the blocks, with no other form. Folding them recursed forever.
+        let opts = SearchNormalization::default();
+        assert_eq!(normalize_char('\u{FD3E}', &opts), "\u{FD3E}");
+        assert_eq!(normalize_char('\u{FD3F}', &opts), "\u{FD3F}");
+        assert_eq!(normalize_char('\u{FEFF}', &opts), "", "a mark, ignored");
+        let (text, map) = normalize_for_search("\u{FD3F}بسم الله\u{FD3E}", &opts);
+        assert_eq!(text, "\u{FD3F}بسم الله\u{FD3E}");
+        assert_eq!(map.len(), text.chars().count());
+    }
 
     #[test]
     fn presentation_forms_fold_to_logical_letters() {

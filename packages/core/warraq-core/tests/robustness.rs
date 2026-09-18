@@ -176,3 +176,20 @@ fn truncated_and_empty_input_is_rejected_cleanly() {
         );
     }
 }
+
+#[test]
+fn searching_for_any_character_of_the_arabic_presentation_blocks_returns() {
+    // A query is typed by a person, or pasted from a Quran text: the ornate
+    // parentheses and U+FEFF once overflowed the stack, which aborts the
+    // process rather than panicking.
+    let bytes = std::fs::read(format!(
+        "{}/../../../tests/corpus/arabic/generated/chrome-notonaskh-justified-3pages.pdf",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    let doc = warraq_core::Document::open(bytes, None).unwrap();
+    for c in ('\u{FB50}'..='\u{FDFF}').chain('\u{FE70}'..='\u{FEFF}') {
+        let _ = doc.search(&c.to_string());
+        let _ = doc.search(&format!("{c}الله{c}"));
+    }
+}
