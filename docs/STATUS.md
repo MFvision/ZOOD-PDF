@@ -62,7 +62,7 @@ so on its face.
 
 ## Next (in order)
 1. **Print on Windows and Linux** desktop builds (macOS prints through PDFKit).
-3. Paragraph breaks between uniformly spaced body paragraphs; Nastaliq Urdu extraction; the 500 MB scan stress run; Acrobat verification on a machine that has it.
+2. Paragraph breaks between uniformly spaced body paragraphs; Nastaliq Urdu extraction; the 500 MB scan stress run; Acrobat verification on a machine that has it.
 
 ## Decisions needed from you
 1. **GitHub organization** — nothing has been pushed: `gh repo create <org>/warraq --private --source . --push`.
