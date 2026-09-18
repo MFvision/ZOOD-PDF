@@ -23,7 +23,11 @@ export function Dialog({ open, title, onClose, children }: DialogProps) {
     openRef.current = open;
     const element = ref.current;
     if (!element) return;
-    if (open && !element.open) element.showModal();
+    if (open && !element.open) {
+      element.showModal();
+      // showModal focuses the first control, the close box; a field wants the caret.
+      element.querySelector<HTMLElement>('[autofocus], input:not([type="hidden"]), textarea, select')?.focus();
+    }
     else if (!open && element.open) element.close();
   }, [open]);
 

@@ -1,15 +1,24 @@
-/* Shell layout, menu bar, ribbon, find bar, status bar, overlays. */
+/* The window: menu bar (browser), unified toolbar, find bar, overlays. */
 .shell {
+  --sheet-top: calc(var(--menubar-h) + var(--toolbar-h));
+
   position: relative;
-  display: grid;
-  grid-template-rows: auto auto auto auto 1fr auto;
+  display: flex;
+  flex-direction: column;
   block-size: 100%;
   min-block-size: 0;
-  background: var(--bg-app);
+  background: var(--window-background);
+}
+
+/* The macOS app: the system draws the menu bar, the toolbar is the title bar. */
+.shell[data-native-menu] {
+  --sheet-top: var(--toolbar-h);
 }
 
 .shell-body {
+  position: relative;
   display: flex;
+  flex: 1 1 auto;
   min-block-size: 0;
   overflow: hidden;
 }
@@ -21,59 +30,68 @@
   flex-direction: column;
   min-inline-size: 0;
   min-block-size: 0;
+  background: var(--under-page-background);
+}
+
+.shell[data-view="home"] .shell-main {
+  background: var(--window-background);
 }
 
 /* The file is on its way between the two engines (AppState.switching). */
 .switching {
   display: flex;
   flex: 1;
-  gap: 10px;
+  gap: var(--space-4);
   align-items: center;
   justify-content: center;
-  color: var(--fg-muted);
-  background: var(--bg-canvas);
+  color: var(--secondary-label);
+  background: var(--under-page-background);
 }
 
 .switching-over {
   position: absolute;
   inset: 0;
   z-index: 5;
-  background: color-mix(in srgb, var(--bg-canvas) 85%, transparent);
+  background: color-mix(in srgb, var(--under-page-background) 80%, transparent);
+  backdrop-filter: var(--blur-thin);
 }
 
+/* ---- Menu bar (browser and extension; the macOS app uses the system's) ---- */
 .menubar {
+  position: relative;
+  z-index: 30;
   display: flex;
-  gap: 2px;
+  flex: none;
+  gap: 0;
   align-items: center;
   block-size: var(--menubar-h);
-  padding-inline: 8px;
-  background: var(--bg-panel);
-  border-block-end: 1px solid var(--border);
-}
-
-.menubar-brand {
-  margin-inline-end: 10px;
-  font-weight: 700;
-  color: var(--accent);
+  padding-inline: var(--space-4);
+  font-size: var(--text-body);
+  background: var(--toolbar-background);
+  backdrop-filter: var(--blur-regular);
+  border-block-end: 0.5px solid var(--separator);
 }
 
 .menubar-end {
   display: flex;
-  gap: 8px;
+  gap: var(--space-4);
   align-items: center;
   margin-inline-start: auto;
 }
 
 .menubar-lang {
   display: inline-flex;
-  gap: 6px;
+  gap: var(--space-3);
   align-items: center;
-  color: var(--fg-muted);
+  color: var(--secondary-label);
 }
 
-.select-compact {
-  block-size: 24px;
-  font-size: 12px;
+.menubar-lang .select {
+  block-size: 18px;
+  min-block-size: 18px;
+  font-size: var(--text-callout);
+  background-color: transparent;
+  box-shadow: none;
 }
 
 .menu {
@@ -81,53 +99,73 @@
 }
 
 .menu-button {
-  block-size: 26px;
-  padding-inline: 10px;
+  block-size: 20px;
+  padding-inline: var(--space-4);
+  color: var(--label);
   background: transparent;
   border: 0;
-  border-radius: var(--radius-s);
+  border-radius: 5px;
+}
+
+.menu-button-app {
+  font-weight: 700;
 }
 
 .menu-button:hover,
 .menu-button[aria-expanded="true"] {
-  background: var(--bg-hover);
+  background: var(--fill);
 }
 
 .menu-list {
   position: absolute;
-  inset-block-start: 100%;
+  inset-block-start: calc(100% + 3px);
   inset-inline-start: 0;
   z-index: 40;
-  min-inline-size: 240px;
-  padding: 4px;
-  margin-block-start: 2px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
-  box-shadow: var(--shadow-2);
+  min-inline-size: 236px;
+  padding: 5px;
+  background: var(--elevated-background);
+  backdrop-filter: var(--blur-thick);
+  border-radius: var(--radius-10);
+  box-shadow: var(--shadow-popover);
 }
 
 .menu-item {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
   inline-size: 100%;
-  padding-block: 6px;
-  padding-inline: 8px;
+  min-block-size: 22px;
+  padding-block: 2px;
+  padding-inline: var(--space-2) var(--space-4);
+  font-size: var(--text-body);
+  color: var(--label);
   text-align: start;
   background: transparent;
   border: 0;
-  border-radius: var(--radius-s);
+  border-radius: 5px;
 }
 
+.menu-item[aria-disabled="true"] {
+  color: var(--tertiary-label);
+  opacity: 1;
+}
+
+/* The system's menu highlight: the accent, with white text. */
 .menu-item:hover:not([aria-disabled="true"]),
 .menu-item:focus-visible {
-  background: var(--bg-hover);
-  outline-offset: -2px;
+  color: var(--accent-contrast);
+  background: var(--accent);
+  outline: 0;
+}
+
+.menu-item:hover:not([aria-disabled="true"]) .menu-item-shortcut,
+.menu-item:focus-visible .menu-item-shortcut {
+  color: inherit;
 }
 
 .menu-item-check {
   display: inline-flex;
+  justify-content: center;
   inline-size: 16px;
 }
 
@@ -136,171 +174,423 @@
 }
 
 .menu-item-shortcut {
+  padding-inline-start: var(--space-6);
   font-family: inherit;
-  font-size: 12px;
-  color: var(--fg-muted);
+  font-size: var(--text-body);
+  color: var(--secondary-label);
+  letter-spacing: 0.04em;
   direction: ltr;
 }
 
 .menu-separator {
   block-size: 1px;
-  margin-block: 4px;
-  background: var(--border);
+  margin-block: 5px;
+  margin-inline: var(--space-4);
+  background: var(--separator);
 }
 
-.ribbon {
+/* ---- Unified toolbar ------------------------------------------------------- */
+.toolbar {
+  position: relative;
+  z-index: 20;
   display: flex;
-  gap: 4px;
+  flex: none;
+  gap: var(--space-5);
   align-items: center;
-  block-size: var(--ribbon-h);
-  padding-inline: 8px;
-  overflow-x: auto;
-  background: var(--bg-panel);
-  border-block-end: 1px solid var(--border);
+  block-size: var(--toolbar-h);
+  padding-inline: var(--space-5);
+  background: var(--toolbar-background);
+  backdrop-filter: var(--blur-regular);
+  border-block-end: 0.5px solid var(--separator);
 }
 
-.ribbon-group {
+/* Room for the traffic lights, which macOS keeps on the left in either
+   reading direction (tauri.conf.json places them in this strip). */
+.toolbar[data-native-chrome] {
+  padding-inline-start: var(--traffic-lights);
+}
+
+[dir="rtl"] .toolbar[data-native-chrome] {
+  padding-inline: var(--space-5) var(--traffic-lights);
+}
+
+.toolbar-leading,
+.toolbar-center,
+.toolbar-trailing {
   display: flex;
-  flex: 0 0 auto;
-  gap: 2px;
+  gap: var(--space-4);
   align-items: center;
+  min-inline-size: 0;
 }
 
-.ribbon-sep {
-  flex: 0 0 1px;
-  block-size: 24px;
-  margin-inline: 6px;
-  background: var(--border);
+.toolbar-leading {
+  flex: 1 1 0;
 }
 
-.ribbon-spacer {
-  flex: 1;
+.toolbar-center {
+  flex: none;
+  justify-content: center;
 }
 
-.ribbon-context {
-  display: flex;
-  gap: 6px;
+.toolbar-trailing {
+  /* Grows like the leading side, so the middle stays centred, but never
+     narrower than its controls. */
+  flex: 1 0 auto;
+  justify-content: flex-end;
+}
+
+/* The home screen names the app in large type: the toolbar need not. */
+.shell[data-view="home"] .toolbar-title {
+  visibility: hidden;
+}
+
+/* A group of controls on one glass capsule, as toolbars group them now. */
+.toolbar-group {
+  display: inline-flex;
+  flex: none;
+  gap: 0;
   align-items: center;
-  block-size: 30px;
-  padding-inline: 12px;
-  margin-inline-start: 8px;
-  font-weight: 600;
+  block-size: 32px;
+  padding: 2px;
+  background: var(--glass);
+  border-radius: var(--radius-capsule);
+  box-shadow:
+    0 0.5px 1.5px rgb(0 0 0 / 10%),
+    0 0 0 0.5px var(--separator),
+    inset 0 0.5px 0 var(--glass-edge);
+}
+
+.toolbar .icon-btn {
+  min-inline-size: 32px;
+  block-size: 28px;
+  padding-inline: var(--space-3);
+  color: var(--label);
+  border-radius: var(--radius-capsule);
+}
+
+.toolbar .icon-btn .lucide {
+  inline-size: 17px;
+  block-size: 17px;
+}
+
+.toolbar .icon-btn[aria-pressed="true"] {
   color: var(--accent);
-  white-space: nowrap;
-  background: var(--accent-soft);
-  border-radius: 999px;
+  background: var(--secondary-fill);
 }
 
+.toolbar .icon-btn:disabled {
+  color: var(--tertiary-label);
+  opacity: 1;
+}
+
+.toolbar-tool-picker {
+  gap: var(--space-3);
+  padding-inline: var(--space-4) var(--space-3);
+  font-weight: 500;
+}
+
+.toolbar-tool-name {
+  max-inline-size: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toolbar .toolbar-chevron {
+  inline-size: 12px;
+  block-size: 12px;
+  color: var(--secondary-label);
+}
+
+/* The title and, under it, the page and whether the file is edited. */
+.toolbar-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  justify-content: center;
+  min-inline-size: 0;
+  padding-inline: var(--space-2);
+  line-height: 1.2;
+}
+
+.toolbar-title-name {
+  overflow: hidden;
+  font-size: var(--text-headline);
+  font-weight: 700;
+  color: var(--label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbar-subtitle {
+  overflow: hidden;
+  font-size: var(--text-subheadline);
+  color: var(--secondary-label);
+  letter-spacing: var(--track-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbar-title .badge {
+  align-self: flex-start;
+  margin-block-start: 2px;
+}
+
+/* Page n of m, inside its capsule. */
 .page-input-wrap {
   display: inline-flex;
-  gap: 4px;
+  gap: var(--space-2);
   align-items: center;
+  padding-inline: var(--space-2);
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+  font-variant-numeric: tabular-nums;
 }
 
-.page-input {
-  inline-size: 60px;
+.page-input.text-input {
+  inline-size: calc(2ch + 12px);
+  min-inline-size: 30px;
+  block-size: 22px;
+  padding-inline: var(--space-2);
+  font-size: var(--text-callout);
   text-align: center;
+  background: var(--content-background);
 }
 
 .page-total {
-  color: var(--fg-muted);
   white-space: nowrap;
 }
 
-.findbar {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  padding-block: 6px;
-  padding-inline: 12px;
-  background: var(--bg-panel);
-  border-block-end: 1px solid var(--border);
+/* The zoom pop-up: the percentage, a native list under it. */
+.toolbar-zoom-value {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 52px;
+  block-size: 28px;
+  padding-inline: var(--space-3);
+  font-size: var(--text-callout);
+  font-weight: 500;
+  color: var(--label);
+  font-variant-numeric: tabular-nums;
+  border-radius: var(--radius-capsule);
 }
 
-.findbar-input {
-  inline-size: min(360px, 50vw);
+.toolbar-zoom-value:hover {
+  background: var(--tertiary-fill);
+}
+
+.toolbar-zoom-value select {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  opacity: 0;
+}
+
+.toolbar-zoom-value:has(select:focus-visible) {
+  outline: 3px solid var(--focus);
+}
+
+/* ---- Tool gallery (the toolbar's tool picker) ------------------------------- */
+.tool-gallery-popover {
+  padding: var(--space-4);
+}
+
+.tool-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 108px);
+  gap: var(--space-2);
+}
+
+.tool-gallery-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: flex-start;
+  padding-block: var(--space-5) var(--space-4);
+  padding-inline: var(--space-2);
+  font-size: var(--text-callout);
+  line-height: 1.25;
+  color: var(--label);
+  text-align: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-10);
+  transition: background-color var(--duration-quick) var(--ease-out);
+}
+
+.tool-gallery-item:hover {
+  background: var(--tertiary-fill);
+}
+
+.tool-gallery-item:active {
+  background: var(--fill);
+  transition-duration: 0ms;
+}
+
+.tool-gallery-item[aria-checked="true"] {
+  background: var(--accent-soft);
+}
+
+.tool-gallery-item:focus-visible {
+  outline-offset: -2px;
+}
+
+/* A tool's glyph on its coloured tile. */
+.tool-icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 26px;
+  block-size: 26px;
+  color: #fff;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tool-color) 82%, white), var(--tool-color));
+  border-radius: 7px;
+  box-shadow:
+    0 0.5px 1px rgb(0 0 0 / 18%),
+    inset 0 0.5px 0 rgb(255 255 255 / 25%);
+}
+
+.tool-icon .lucide {
+  stroke-width: 1.9;
+}
+
+.tool-icon-small {
+  inline-size: 20px;
+  block-size: 20px;
+  border-radius: 5px;
+}
+
+.tool-icon-large {
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: 10px;
+}
+
+/* ---- Find bar, the system browser's: under the toolbar, full width ---------- */
+.findbar {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  min-block-size: 38px;
+  padding-block: var(--space-2);
+  padding-inline: var(--space-5);
+  background: var(--toolbar-background);
+  backdrop-filter: var(--blur-regular);
+  border-block-end: 0.5px solid var(--separator);
+  animation: findbar-in var(--duration-regular) var(--spring) both;
+}
+
+@keyframes findbar-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.findbar-input.text-input {
+  inline-size: min(320px, 50vw);
+  block-size: 24px;
+  padding-inline-start: 26px;
+  background-color: var(--content-background);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238e8e93' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 8px center;
+  border-radius: var(--radius-capsule);
+}
+
+[dir="rtl"] .findbar-input.text-input {
+  background-position: right 8px center;
+}
+
+.findbar .icon-btn {
+  block-size: 24px;
+  min-inline-size: 24px;
 }
 
 .findbar-status {
-  padding-inline: 6px;
-  color: var(--fg-muted);
+  padding-inline: var(--space-3);
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+  font-variant-numeric: tabular-nums;
 }
 
-.statusbar {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  block-size: var(--status-h);
-  padding-inline: 12px;
-  font-size: 12px;
-  background: var(--bg-panel);
-  border-block-start: 1px solid var(--border);
-}
-
-.statusbar-group {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.statusbar-end {
+.findbar > .icon-btn:last-child {
   margin-inline-start: auto;
 }
 
-.statusbar-btn {
-  block-size: 22px;
-  padding-inline: 6px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-s);
-}
-
-.statusbar-btn:hover {
-  background: var(--bg-hover);
-}
-
-.statusbar-muted {
-  color: var(--fg-muted);
-}
-
+/* ---- Drop overlay: a material over the window, one or two targets ---------- */
 .drop-overlay {
   position: absolute;
   inset: 0;
   z-index: 50;
   display: flex;
-  flex-direction: column;
-  gap: 12px;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--accent);
+  padding: var(--space-8);
   pointer-events: none;
-  background: color-mix(in srgb, var(--bg-app) 85%, transparent);
-  border: 3px dashed var(--accent);
+  background: color-mix(in srgb, var(--window-background) 55%, transparent);
+  backdrop-filter: var(--blur-thick);
+  animation: overlay-in var(--duration-regular) var(--ease-out) both;
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.drop-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  align-items: center;
+  padding: var(--space-9) var(--space-10);
+  color: var(--accent);
+  text-align: center;
+  background: var(--elevated-background);
+  border-radius: var(--radius-16);
+  box-shadow: var(--shadow-sheet);
+  animation: drop-card-in var(--duration-regular) var(--spring) both;
+}
+
+.drop-card p {
+  margin: 0;
+  font-size: var(--text-title2);
+  font-weight: 600;
+  color: var(--label);
+  letter-spacing: var(--track-title2);
+}
+
+@keyframes drop-card-in {
+  from {
+    transform: scale(0.96);
+  }
 }
 
 .drop-overlay-split {
-  flex-direction: row;
-  gap: 16px;
-  padding: 24px;
-  border: none;
-  background: color-mix(in srgb, var(--bg-app) 70%, transparent);
-  backdrop-filter: blur(12px) saturate(160%);
+  gap: var(--space-6);
+  align-items: stretch;
 }
 
 .drop-zone {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-4);
   align-items: center;
   justify-content: center;
-  align-self: stretch;
-  padding: 24px;
+  min-inline-size: 0;
+  padding: var(--space-8);
+  color: var(--label);
   text-align: center;
-  border: 2px dashed color-mix(in srgb, var(--accent) 45%, transparent);
-  border-radius: 16px;
-  transition: background-color 120ms ease-out, border-color 120ms ease-out, transform 160ms ease-out;
+  background: var(--elevated-background);
+  border-radius: var(--radius-16);
+  box-shadow: var(--shadow-popover);
+  transition:
+    background-color var(--duration-quick) var(--ease-out),
+    box-shadow var(--duration-quick) var(--ease-out),
+    transform var(--duration-regular) var(--spring);
 }
 
 .drop-zone:first-child {
@@ -309,73 +599,134 @@
 
 .drop-zone-open {
   flex: 1;
-  color: var(--text-secondary, var(--text));
 }
 
+.drop-zone-icon {
+  display: grid;
+  place-items: center;
+  inline-size: 60px;
+  block-size: 60px;
+  margin-block-end: var(--space-2);
+  color: var(--secondary-label);
+  background: var(--secondary-fill);
+  border-radius: 50%;
+  transition:
+    background-color var(--duration-quick) var(--ease-out),
+    color var(--duration-quick) var(--ease-out);
+}
+
+/* The target the file would land on: lifted, and in the accent. */
 .drop-zone.is-active {
-  border-style: solid;
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent);
-  transform: scale(1.01);
+  background: color-mix(in srgb, var(--accent) 10%, var(--grouped-background));
+  box-shadow:
+    0 0 0 2px var(--accent),
+    var(--shadow-sheet);
+  transform: scale(1.012);
+}
+
+.drop-zone.is-active .drop-zone-icon {
+  color: var(--accent-contrast);
+  background: var(--accent);
 }
 
 .drop-zone p {
   margin: 0;
-  font-size: 19px;
+  font-size: var(--text-title2);
+  font-weight: 600;
+  letter-spacing: var(--track-title2);
 }
 
-.drop-zone span {
-  max-inline-size: 28ch;
-  font-size: 13px;
-  font-weight: 400;
-  opacity: 0.8;
+.drop-zone > span:last-child {
+  max-inline-size: 30ch;
+  font-size: var(--text-body);
+  color: var(--secondary-label);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .drop-zone {
-    transition: none;
-  }
-
-  .drop-zone.is-active {
-    transform: none;
-  }
-}
-
-.spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
+/* ---- Dialog contents ------------------------------------------------------------- */
 .shortcuts-table {
   inline-size: 100%;
+  font-size: var(--text-body);
   border-collapse: collapse;
 }
 
-.shortcuts-table th,
-.shortcuts-table td {
-  padding-block: 6px;
-  padding-inline: 4px;
+.shortcuts-table th {
+  padding-block: 0 var(--space-3);
+  font-size: var(--text-callout);
+  font-weight: 500;
+  color: var(--secondary-label);
   text-align: start;
-  border-block-end: 1px solid var(--border);
+}
+
+.shortcuts-table td {
+  padding-block: 5px;
+  padding-inline: 0 var(--space-4);
+  text-align: start;
+  border-block-start: 0.5px solid var(--separator);
 }
 
 .shortcuts-table kbd {
-  padding-block: 2px;
-  padding-inline: 6px;
   font-family: inherit;
-  font-size: 12px;
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-s);
+  font-size: var(--text-body);
+  color: var(--secondary-label);
+  letter-spacing: 0.05em;
 }
 
-/* The EmbedPDF view fills the document area; it brings its own toolbar. */
+.about {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.about p {
+  margin-block: 0 var(--space-4);
+}
+
+.about-icon {
+  margin-block-end: var(--space-4);
+}
+
+.about-name {
+  font-size: var(--text-title1);
+  font-weight: 700;
+  letter-spacing: var(--track-title1);
+}
+
+.about-tagline {
+  color: var(--secondary-label);
+}
+
+.about-version {
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+  font-variant-numeric: tabular-nums;
+}
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  padding-block: var(--space-2);
+  padding-inline: var(--space-5);
+  background: var(--grouped-background);
+  border-radius: var(--radius-10);
+  box-shadow: 0 0 0 0.5px var(--separator);
+}
+
+.settings-row {
+  display: flex;
+  gap: var(--space-5);
+  align-items: center;
+  justify-content: space-between;
+  min-block-size: 44px;
+}
+
+.settings-row + .settings-row {
+  border-block-start: 0.5px solid var(--separator);
+}
+
+/* ---- The document view ------------------------------------------------------------ */
+
+/* EmbedPDF fills the document area; its own bars are themed in embedTheme.ts. */
 .embed-viewer {
   display: block;
   inline-size: 100%;
@@ -389,4 +740,63 @@
 
 .embed-host[hidden] {
   display: none;
+}
+
+/* ---- Narrow windows: an iPad, then a phone ------------------------------------------- */
+@media (width <= 900px) {
+  .toolbar {
+    gap: var(--space-4);
+  }
+
+  .toolbar-tool-name {
+    display: none;
+  }
+
+  .toolbar-zoom {
+    display: none;
+  }
+}
+
+@media (width <= 640px) {
+  .shell {
+    --toolbar-h: 48px;
+  }
+
+  .toolbar {
+    gap: var(--space-3);
+    padding-inline: var(--space-4);
+  }
+
+  .toolbar-center,
+  .toolbar-chevron {
+    display: none;
+  }
+
+  .toolbar-trailing,
+  .toolbar-leading {
+    gap: var(--space-3);
+  }
+
+  .toolbar-trailing {
+    flex: 0 0 auto;
+  }
+
+  /* A phone keeps the essentials: the sidebar, the title, the tools and save.
+     Find, the markup bar and the inspector are in the menus and the sheet. */
+  .toolbar-optional {
+    display: none;
+  }
+
+  .menubar-lang {
+    display: none;
+  }
+
+  .drop-overlay-split {
+    flex-direction: column;
+  }
+
+  .tool-gallery {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    inline-size: calc(100vw - 48px);
+  }
 }

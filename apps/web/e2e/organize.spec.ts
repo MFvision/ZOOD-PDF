@@ -6,6 +6,7 @@ import {
   WORD_EXPORT,
   chooseTool,
   corpus,
+  documentStatus,
   embedDocument,
   embedTiles,
   enterEditText,
@@ -21,7 +22,7 @@ const tile = (page: Page, n: number) =>
   grid(page).getByRole('option', { name: `Page ${n}`, exact: true });
 const control = (page: Page, name: string) =>
   page.locator('.pane-end').getByRole('button', { name, exact: true });
-const statusBar = (page: Page) => page.getByRole('contentinfo', { name: 'Status bar' });
+const statusBar = (page: Page) => documentStatus(page);
 
 /** The start of page `n`'s text, as Warraq's own reader sees it in Edit text. */
 async function pageStart(page: Page, n: number): Promise<string> {

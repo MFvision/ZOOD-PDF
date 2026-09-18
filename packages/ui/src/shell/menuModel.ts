@@ -7,6 +7,13 @@ import { TOOLS } from '../tools/tools';
 export interface MenuItemModel {
   id: string;
   label: string;
+  /**
+   * The key combination, written once for every host: `Mod` is ⌘ on Apple
+   * platforms and Ctrl elsewhere ("Mod+Shift+Z", "F4"). The web menu shows it
+   * as the platform writes it; the macOS menu bar turns it into an accelerator.
+   */
+  keys?: string;
+  /** `keys` as this platform writes it: "⇧⌘Z", "Ctrl+Shift+Z". */
   shortcut?: string;
   disabled?: boolean;
   checked?: boolean;
@@ -26,15 +33,78 @@ export function isApplePlatform(): boolean {
   return /Mac|iPhone|iPad|iPod/.test(navigator.platform ?? '');
 }
 
+/**
+ * The macOS app, where the system's own menu bar is used instead of the one
+ * drawn in the page (`apps/desktop/src-tauri/src/menu.rs`).
+ */
+export function hasNativeMenuBar(): boolean {
+  return isTauriHost() && isApplePlatform();
+}
+
 /** Human-readable modifier for shortcut hints. */
 export function modKeyLabel(): string {
   return isApplePlatform() ? '⌘' : 'Ctrl';
 }
 
+const APPLE_GLYPHS: Record<string, string> = { Ctrl: '⌃', Alt: '⌥', Shift: '⇧', Mod: '⌘' };
+const APPLE_ORDER = ['Ctrl', 'Alt', 'Shift', 'Mod'];
+
+/**
+ * `keys` as the platform writes it. Apple platforms put the modifier glyphs
+ * first, in the system's fixed order (⌃⌥⇧⌘), with no separators: "⇧⌘Z".
+ * Everyone else spells them out: "Ctrl+Shift+Z".
+ */
+export function formatShortcut(keys: string, apple = isApplePlatform()): string {
+  const parts = keys.split('+').filter(Boolean);
+  // "Mod+=" splits into ["Mod", "="]; "Mod+Shift++" would not occur.
+  const key = parts.pop() ?? '';
+  if (!apple) return [...parts.map((part) => (part === 'Mod' ? 'Ctrl' : part)), key].join('+');
+  const modifiers = APPLE_ORDER.filter((name) => parts.includes(name)).map((name) => APPLE_GLYPHS[name]);
+  return `${modifiers.join('')}${key.length === 1 ? key.toUpperCase() : key}`;
+}
+
+/** `keys` as a Tauri accelerator: "Mod+Shift+Z" → "CmdOrCtrl+Shift+Z". */
+export function toAccelerator(keys: string): string {
+  return keys
+    .split('+')
+    .filter(Boolean)
+    .map((part) => (part === 'Mod' ? 'CmdOrCtrl' : part))
+    .join('+');
+}
+
+/** A text field, text area or editable element: where Undo means the typing. */
+export function isEditable(element: Element | null | undefined): boolean {
+  if (!element) return false;
+  if (element instanceof HTMLTextAreaElement) return !element.readOnly;
+  if (element instanceof HTMLInputElement) return !element.readOnly && !/^(checkbox|radio|button|submit|range|color|file)$/.test(element.type);
+  return element instanceof HTMLElement && element.isContentEditable;
+}
+
+/**
+ * Undo and Redo from a menu: the typing in the field that has the focus, as
+ * the system's own Undo would, or else the document's history. (From the page's
+ * menu bar the focus is on the menu, so this is always the document; from the
+ * macOS menu bar the focus stays where the person was typing.)
+ */
+function undoOrRedo(which: 'undo' | 'redo', document: () => void): void {
+  if (typeof globalThis.document !== 'undefined' && isEditable(globalThis.document.activeElement)) {
+    globalThis.document.execCommand(which);
+    return;
+  }
+  document();
+}
+
+const withShortcut = (item: MenuItemModel): MenuItemModel =>
+  item.keys ? { ...item, shortcut: formatShortcut(item.keys) } : item;
+
 /**
  * Built on every render, not memoized: the checks on Fit width, Fit page and
  * the navigation pane read EmbedPDF's own state, which React does not see
  * change, and a menu re-renders the moment it opens.
+ *
+ * The same model draws the menu bar in the page (browser, extension, Windows)
+ * and the macOS menu bar, so an item enables, checks and runs the same way in
+ * both.
  */
 export function useMenuModel(): MenuModel[] {
   const state = useAppState();
@@ -44,7 +114,6 @@ export function useMenuModel(): MenuModel[] {
   const hasDocument = state.view === 'viewer' && state.document !== null;
   // The page grid has no zoom, find or thumbnails: those would do nothing there.
   const organizing = hasDocument && state.rightPane.activeTool === 'organize';
-  const mod = modKeyLabel();
   const edit = state.edit;
 
   const themeItem = (theme: ThemeMode, label: string): MenuItemModel => ({
@@ -54,16 +123,31 @@ export function useMenuModel(): MenuModel[] {
     checked: state.theme === theme,
     onSelect: () => dispatch({ type: 'SET_THEME', theme }),
   });
-  return [
+  const menus: MenuModel[] = [
+    {
+      // The application menu: the app's name, bold, first in the bar.
+      id: 'app',
+      label: t('app.name'),
+      items: [
+        { id: 'about', label: t('help.about'), onSelect: () => dispatch({ type: 'DIALOG', dialog: 'about' }) },
+        {
+          id: 'settings',
+          label: t('settings.open'),
+          keys: 'Mod+,',
+          separatorBefore: true,
+          onSelect: () => dispatch({ type: 'DIALOG', dialog: 'settings' }),
+        },
+      ],
+    },
     {
       id: 'file',
       label: t('menu.file'),
       items: [
-        { id: 'open', label: t('file.open'), shortcut: `${mod}+O`, onSelect: services.requestOpenFile },
+        { id: 'open', label: t('file.open'), keys: 'Mod+O', onSelect: services.requestOpenFile },
         {
           id: 'save',
           label: t('file.save'),
-          shortcut: `${mod}+S`,
+          keys: 'Mod+S',
           disabled: !hasDocument,
           onSelect: () => void services.saveDocument(),
         },
@@ -72,7 +156,7 @@ export function useMenuModel(): MenuModel[] {
               {
                 id: 'print',
                 label: t('file.print'),
-                shortcut: `${mod}+P`,
+                keys: 'Mod+P',
                 disabled: !services.canPrint,
                 onSelect: () => services.viewCommand('print'),
               },
@@ -94,16 +178,16 @@ export function useMenuModel(): MenuModel[] {
         {
           id: 'undo',
           label: t('edit.undo'),
-          shortcut: `${mod}+Z`,
+          keys: 'Mod+Z',
           disabled: !hasDocument || !services.canUndo,
-          onSelect: () => services.viewCommand('undo'),
+          onSelect: () => undoOrRedo('undo', () => services.viewCommand('undo')),
         },
         {
           id: 'redo',
           label: t('edit.redo'),
-          shortcut: `${mod}+Shift+Z`,
+          keys: 'Mod+Shift+Z',
           disabled: !hasDocument || !services.canRedo,
-          onSelect: () => services.viewCommand('redo'),
+          onSelect: () => undoOrRedo('redo', () => services.viewCommand('redo')),
         },
         {
           id: 'edit-mode',
@@ -114,11 +198,11 @@ export function useMenuModel(): MenuModel[] {
           separatorBefore: true,
           onSelect: () => dispatch({ type: 'EDIT_MODE', active: !edit.active }),
         },
-        { id: 'find', label: t('edit.find'), shortcut: `${mod}+F`, disabled: !hasDocument || organizing, separatorBefore: true, onSelect: () => services.viewCommand('find') },
+        { id: 'find', label: t('edit.find'), keys: 'Mod+F', disabled: !hasDocument || organizing, separatorBefore: true, onSelect: () => services.viewCommand('find') },
         {
           id: 'goto',
           label: t('edit.goToPage'),
-          shortcut: `${mod}+Shift+N`,
+          keys: 'Mod+Shift+N',
           disabled: !hasDocument,
           onSelect: () => dispatch({ type: 'DIALOG', dialog: 'goto' }),
         },
@@ -128,13 +212,13 @@ export function useMenuModel(): MenuModel[] {
       id: 'view',
       label: t('menu.view'),
       items: [
-        { id: 'zoom-in', label: t('view.zoomIn'), shortcut: `${mod}+=`, disabled: !hasDocument || organizing, onSelect: () => services.viewCommand('zoom-in') },
-        { id: 'zoom-out', label: t('view.zoomOut'), shortcut: `${mod}+-`, disabled: !hasDocument || organizing, onSelect: () => services.viewCommand('zoom-out') },
-        { id: 'fit-width', label: t('view.fitWidth'), shortcut: `${mod}+1`, role: 'menuitemradio', checked: hasDocument && services.viewCommandOn('fit-width'), disabled: !hasDocument || organizing, onSelect: () => services.viewCommand('fit-width') },
-        { id: 'fit-page', label: t('view.fitPage'), shortcut: `${mod}+0`, role: 'menuitemradio', checked: hasDocument && services.viewCommandOn('fit-page'), disabled: !hasDocument || organizing, onSelect: () => services.viewCommand('fit-page') },
+        { id: 'zoom-in', label: t('view.zoomIn'), keys: 'Mod+=', disabled: !hasDocument || organizing, onSelect: () => services.viewCommand('zoom-in') },
+        { id: 'zoom-out', label: t('view.zoomOut'), keys: 'Mod+-', disabled: !hasDocument || organizing, onSelect: () => services.viewCommand('zoom-out') },
+        { id: 'fit-width', label: t('view.fitWidth'), keys: 'Mod+1', role: 'menuitemradio', checked: hasDocument && services.viewCommandOn('fit-width'), disabled: !hasDocument || organizing, onSelect: () => services.viewCommand('fit-width') },
+        { id: 'fit-page', label: t('view.fitPage'), keys: 'Mod+0', role: 'menuitemradio', checked: hasDocument && services.viewCommandOn('fit-page'), disabled: !hasDocument || organizing, onSelect: () => services.viewCommand('fit-page') },
         { id: 'actual', label: t('view.actualSize'), disabled: !hasDocument || organizing, onSelect: () => services.viewCommand('actual-size') },
-        { id: 'left-pane', label: t('view.leftPane'), shortcut: 'F4', role: 'menuitemcheckbox', checked: hasDocument && services.viewCommandOn('sidebar'), disabled: !hasDocument || organizing, separatorBefore: true, onSelect: () => services.viewCommand('sidebar') },
-        { id: 'right-pane', label: t('view.rightPane'), shortcut: 'Shift+F4', role: 'menuitemcheckbox', checked: state.rightPane.open, onSelect: () => dispatch({ type: 'TOGGLE_RIGHT_PANE' }) },
+        { id: 'left-pane', label: t('view.leftPane'), keys: 'F4', role: 'menuitemcheckbox', checked: hasDocument && services.viewCommandOn('sidebar'), disabled: !hasDocument || organizing, separatorBefore: true, onSelect: () => services.viewCommand('sidebar') },
+        { id: 'right-pane', label: t('view.rightPane'), keys: 'Shift+F4', role: 'menuitemcheckbox', checked: state.rightPane.open, onSelect: () => dispatch({ type: 'TOGGLE_RIGHT_PANE' }) },
         { ...themeItem('system', `${t('theme.label')}: ${t('theme.system')}`), separatorBefore: true },
         themeItem('light', `${t('theme.label')}: ${t('theme.light')}`),
         themeItem('dark', `${t('theme.label')}: ${t('theme.dark')}`),
@@ -146,16 +230,16 @@ export function useMenuModel(): MenuModel[] {
       items: TOOLS.map((tool) => ({
         id: `tool-${tool.id}`,
         label: t(tool.labelKey),
+        role: 'menuitemradio' as const,
+        checked: state.rightPane.activeTool === tool.id,
         onSelect: () => dispatch({ type: 'SET_ACTIVE_TOOL', tool: tool.id }),
       })),
     },
     {
       id: 'help',
       label: t('menu.help'),
-      items: [
-        { id: 'shortcuts', label: t('help.shortcuts'), onSelect: () => dispatch({ type: 'DIALOG', dialog: 'shortcuts' }) },
-        { id: 'about', label: t('help.about'), onSelect: () => dispatch({ type: 'DIALOG', dialog: 'about' }) },
-      ],
+      items: [{ id: 'shortcuts', label: t('help.shortcuts'), onSelect: () => dispatch({ type: 'DIALOG', dialog: 'shortcuts' }) }],
     },
   ];
+  return menus.map((menu) => ({ ...menu, items: menu.items.map(withShortcut) }));
 }

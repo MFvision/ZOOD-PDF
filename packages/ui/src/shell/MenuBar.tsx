@@ -49,13 +49,11 @@ export function MenuBar() {
 
   return (
     <div ref={barRef} className="menubar" role="menubar" aria-label={t('menu.label')} onKeyDown={onKeyDown}>
-      <span className="menubar-brand" aria-hidden="true">
-        {t('app.name')}
-      </span>
       {menus.map((menu) => (
         <MenuDropdown
           key={menu.id}
           menu={menu}
+          app={menu.id === 'app'}
           open={openId === menu.id}
           onToggle={() => setOpenId(openId === menu.id ? null : menu.id)}
           onHover={() => {

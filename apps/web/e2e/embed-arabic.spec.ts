@@ -19,6 +19,17 @@ const modeTab = (page: Page, name: string) =>
 const embedButton = (page: Page, name: string) =>
   page.locator('embedpdf-container').getByRole('button', { name, exact: true });
 
+/**
+ * Shows EmbedPDF's own bar — its mode tabs, page settings and document menu —
+ * from Warraq's toolbar, where it is kept as the markup toolbar (hidden until
+ * asked for, since the rest of what it had is in Warraq's toolbar).
+ */
+async function showMarkupBar(page: Page, name: 'Markup toolbar' | 'شريط أدوات التعليق') {
+  const toggle = page.getByRole('toolbar').getByRole('button', { name, exact: true });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+}
+
 /** Warraq's Language selector in the menu bar, named in the language on screen. */
 const language = (page: Page, name: 'Language' | 'اللغة') =>
   page.getByRole('menubar').getByRole('combobox', { name });
@@ -65,15 +76,16 @@ test.describe("EmbedPDF's own interface speaks Warraq's language", () => {
   }) => {
     await page.goto('/');
     await openPdf(page, INVOICE);
+    await showMarkupBar(page, 'Markup toolbar');
     await expect(modeTabs(page)).toHaveText(MODES.en);
     const before = await embedI18n(page);
     expect(before.locale).toBe('en');
 
     await language(page, 'Language').selectOption({ label: 'العربية' });
     await expect(modeTabs(page)).toHaveText(MODES.ar);
-    await expect(embedButton(page, 'تكبير')).toBeVisible();
+    await expect(embedButton(page, 'إعدادات الصفحة')).toBeVisible();
     await expect(embedButton(page, 'قائمة المستند')).toBeVisible();
-    await expect(embedButton(page, 'Zoom In')).toHaveCount(0);
+    await expect(embedButton(page, 'Page Settings')).toHaveCount(0);
 
     const arabic = await embedI18n(page);
     expect(arabic.locale).toBe('ar');
@@ -98,8 +110,8 @@ test.describe("EmbedPDF's own interface speaks Warraq's language", () => {
 
     await language(page, 'اللغة').selectOption({ label: 'English' });
     await expect(modeTabs(page)).toHaveText(MODES.en);
-    await expect(embedButton(page, 'Zoom In')).toBeVisible();
-    await expect(embedButton(page, 'تكبير')).toHaveCount(0);
+    await expect(embedButton(page, 'Page Settings')).toBeVisible();
+    await expect(embedButton(page, 'إعدادات الصفحة')).toHaveCount(0);
     const english = await embedI18n(page);
     expect(english.locale).toBe('en');
     expect(english.documentId).toBe(before.documentId);
@@ -112,6 +124,7 @@ test.describe("EmbedPDF's own interface speaks Warraq's language", () => {
     await page.goto('/');
     await language(page, 'Language').selectOption({ label: 'العربية' });
     await openPdf(page, INVOICE);
+    await showMarkupBar(page, 'شريط أدوات التعليق');
     await expect(modeTabs(page)).toHaveText(MODES.ar);
     expect((await embedI18n(page)).locale).toBe('ar');
   });
@@ -120,6 +133,7 @@ test.describe("EmbedPDF's own interface speaks Warraq's language", () => {
     await page.goto('/');
     await language(page, 'Language').selectOption({ label: 'العربية' });
     await openPdf(page, INVOICE);
+    await showMarkupBar(page, 'شريط أدوات التعليق');
     const box = await pageBox(page);
     const area = await page.evaluate(() => {
       const scroller = document.querySelector('embedpdf-container')?.shadowRoot?.querySelector('.bg-bg-app');
