@@ -1,9 +1,16 @@
 import { Fragment, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { ArrowLeftRight, FileDown, FilePlus2, GitCompare, LocateFixed, LockKeyhole } from 'lucide-react';
+import {
+  ArrowLeftRight,
+  FileDown,
+  FilePlus2,
+  GitCompare,
+  LocateFixed,
+  LockKeyhole,
+} from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
-import type { CoreClient } from '../core/client';
+import type { CoreClient, RemoteDocument } from '../core/client';
 import { isTauriHost, pickPdfFile } from '../core/host-tauri';
 import { useI18n } from '../i18n/useT';
 import type { Direction, TKey, TParams } from '../i18n/messages';
@@ -17,6 +24,8 @@ import type { CompareOptions } from './normalize';
 import { comparisonReport, isolate } from './report';
 import { findRevisions } from './revisions';
 import type { Revision } from './revisions';
+import { visualChanges } from './visual';
+import type { Box, Raster } from './visual';
 import './compare.css';
 
 type Translate = (key: TKey, params?: TParams) => string;
@@ -38,8 +47,17 @@ interface OtherFile {
 
 /** One side of a comparison: which version it is, and the text of its pages. */
 interface Version {
-  is: { kind: 'open'; name: string } | { kind: 'revision'; number: number; name: string } | { kind: 'file'; name: string };
+  is:
+    | { kind: 'open'; name: string }
+    | { kind: 'revision'; number: number; name: string }
+    | { kind: 'file'; name: string };
   pages: string[];
+}
+
+/** A page that looks different: its number, and a picture of it with the changes outlined. */
+interface Look {
+  page: number;
+  picture: string;
 }
 
 interface Texts {
@@ -49,17 +67,97 @@ interface Texts {
   newer: Version;
   /** Which side is the open document, the one Go to page moves through. */
   open: 'older' | 'newer';
+  /** The pages that look different, pictured as the open document has them; null if that could not be compared. */
+  looks: Look[] | null;
+}
+
+/** One side of a comparison, as bytes to open. */
+interface Side {
+  bytes: ArrayBuffer;
+  password?: string;
+}
+
+/** Pages are drawn this wide, in pixels, to compare how they look: enough for a tick or a stamp. */
+const LOOK_WIDTH = 480;
+
+/** A render with its changes outlined, as a PNG. */
+function pictureOf(raster: Raster, boxes: Box[]): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = raster.width;
+  canvas.height = raster.height;
+  const context = canvas.getContext('2d');
+  if (!context) return '';
+  context.putImageData(
+    new ImageData(new Uint8ClampedArray(raster.rgba), raster.width, raster.height),
+    0,
+    0,
+  );
+  context.lineWidth = 3;
+  context.strokeStyle = '#d92d20';
+  context.fillStyle = 'rgba(217, 45, 32, 0.12)';
+  for (const box of boxes) {
+    const [x, y, w, h] = [
+      box.x * raster.width,
+      box.y * raster.height,
+      box.w * raster.width,
+      box.h * raster.height,
+    ];
+    context.fillRect(x, y, w, h);
+    context.strokeRect(x - 1.5, y - 1.5, w + 3, h + 3);
+  }
+  return canvas.toDataURL('image/png');
+}
+
+/**
+ * Every page both versions have, drawn and compared (`visual.ts`): the pages
+ * that look different, pictured as `pictured` has them. One pair at a time,
+ * so a long document never holds more than two renders.
+ */
+async function compareLooks(
+  client: CoreClient,
+  older: Side,
+  newer: Side,
+  pictured: 'older' | 'newer',
+): Promise<Look[]> {
+  const a = await client.open(older.bytes.slice(0), older.password);
+  try {
+    const b = await client.open(newer.bytes.slice(0), newer.password);
+    try {
+      const width = (doc: RemoteDocument, index: number) => doc.pageSizes[index]?.[0] ?? 612;
+      const looks: Look[] = [];
+      for (let index = 0; index < Math.min(a.pageCount, b.pageCount); index += 1) {
+        const before = await a.render_page(index, LOOK_WIDTH / width(a, index));
+        const after = await b.render_page(index, LOOK_WIDTH / width(b, index));
+        const boxes = visualChanges(before, after);
+        if (boxes.length > 0)
+          looks.push({
+            page: index + 1,
+            picture: pictureOf(pictured === 'older' ? before : after, boxes),
+          });
+      }
+      return looks;
+    } finally {
+      void b.free();
+    }
+  } finally {
+    void a.free();
+  }
 }
 
 /**
  * Every page's text by Warraq's own reading (`extract_text`: logical order,
  * so Arabic compares as it is read, not as PDFium lays it out).
  */
-async function readPages(client: CoreClient, bytes: ArrayBuffer, password?: string): Promise<string[]> {
+async function readPages(
+  client: CoreClient,
+  bytes: ArrayBuffer,
+  password?: string,
+): Promise<string[]> {
   const doc = await client.open(bytes, password);
   try {
     const pages: string[] = [];
-    for (let index = 0; index < doc.pageCount; index += 1) pages.push(await doc.extract_text(index));
+    for (let index = 0; index < doc.pageCount; index += 1)
+      pages.push(await doc.extract_text(index));
     return pages;
   } finally {
     void doc.free();
@@ -67,7 +165,11 @@ async function readPages(client: CoreClient, bytes: ArrayBuffer, password?: stri
 }
 
 /** A file's page count, or `locked` when it needs a password it was not given. */
-async function probe(client: CoreClient, bytes: ArrayBuffer, password?: string): Promise<number | 'locked'> {
+async function probe(
+  client: CoreClient,
+  bytes: ArrayBuffer,
+  password?: string,
+): Promise<number | 'locked'> {
   try {
     const doc = await client.open(bytes.slice(0), password);
     const pages = doc.pageCount;
@@ -127,12 +229,15 @@ export function ComparePanel() {
   const services = useServices();
   const { client, documentBytes: bytes, documentPassword: password } = services;
   const [source, setSource] = useState<'revision' | 'file'>('revision');
-  const [found, setFound] = useState<{ bytes: ArrayBuffer; revisions: Revision[] | null } | null>(null);
+  const [found, setFound] = useState<{ bytes: ArrayBuffer; revisions: Revision[] | null } | null>(
+    null,
+  );
   const [chosen, setChosen] = useState<number | null>(null);
   const [other, setOther] = useState<OtherFile | null>(null);
   const [options, setOptions] = useState<CompareOptions>(EXACT);
   const [busy, setBusy] = useState(false);
   const [texts, setTexts] = useState<Texts | null>(null);
+  const [view, setView] = useState<'text' | 'looks'>('text');
   const inputRef = useRef<HTMLInputElement>(null);
   const ids = useId();
 
@@ -168,10 +273,19 @@ export function ComparePanel() {
   const earlier = revisions?.slice(0, -1) ?? [];
   const selected = earlier.find((revision) => revision.number === chosen) ?? earlier.at(-1);
   const shown = texts && texts.bytes === bytes ? texts : null;
-  const result = useMemo(() => (shown ? comparePages(shown.older.pages, shown.newer.pages, options) : null), [shown, options]);
+  const result = useMemo(
+    () => (shown ? comparePages(shown.older.pages, shown.newer.pages, options) : null),
+    [shown, options],
+  );
 
-  const ready = state.view === 'viewer' && state.document !== null && bytes !== null && !busy && state.switching === null;
-  const canCompare = ready && (source === 'revision' ? selected !== undefined : other !== null && !other.locked);
+  const ready =
+    state.view === 'viewer' &&
+    state.document !== null &&
+    bytes !== null &&
+    !busy &&
+    state.switching === null;
+  const canCompare =
+    ready && (source === 'revision' ? selected !== undefined : other !== null && !other.locked);
 
   /** A version as a sentence of the interface, its file name isolated for bidi. */
   const nameOf = (version: Version) =>
@@ -189,13 +303,41 @@ export function ComparePanel() {
       // The open file as it stands now, with whatever either engine has changed.
       const current = await services.currentFileBytes();
       if (!current) throw new Error('E_NOT_FOUND: no open file');
-      const open: Version = { is: { kind: 'open', name }, pages: await readPages(client, current, password) };
+      // Copies to read: the core takes over the buffers it is given, and the
+      // pages are drawn from these bytes afterwards.
+      const open: Version = {
+        is: { kind: 'open', name },
+        pages: await readPages(client, current.slice(0), password),
+      };
+      const looks = (older: Side, newer: Side, pictured: 'older' | 'newer') =>
+        compareLooks(client, older, newer, pictured).catch(() => null);
       if (source === 'revision' && selected) {
-        const pages = await readPages(client, bytes.slice(0, selected.length), password);
-        setTexts({ bytes, older: { is: { kind: 'revision', number: selected.number, name }, pages }, newer: open, open: 'newer' });
+        const earlierBytes = bytes.slice(0, selected.length);
+        const pages = await readPages(client, earlierBytes.slice(0), password);
+        setTexts({
+          bytes,
+          older: { is: { kind: 'revision', number: selected.number, name }, pages },
+          newer: open,
+          open: 'newer',
+          looks: await looks(
+            { bytes: earlierBytes, password },
+            { bytes: current, password },
+            'newer',
+          ),
+        });
       } else if (source === 'file' && other && !other.locked) {
         const pages = await readPages(client, other.bytes.slice(0), other.password);
-        setTexts({ bytes, older: open, newer: { is: { kind: 'file', name: other.name }, pages }, open: 'older' });
+        setTexts({
+          bytes,
+          older: open,
+          newer: { is: { kind: 'file', name: other.name }, pages },
+          open: 'older',
+          looks: await looks(
+            { bytes: current, password },
+            { bytes: other.bytes, password: other.password },
+            'older',
+          ),
+        });
       }
     } catch {
       dispatch({ type: 'DOCUMENT_FAILED', error: 'compare.failed' });
@@ -215,7 +357,15 @@ export function ComparePanel() {
       }
       setOther(
         pages === 'locked'
-          ? { name, bytes: data, pages: null, locked: true, password: undefined, typed: '', wrong: false }
+          ? {
+              name,
+              bytes: data,
+              pages: null,
+              locked: true,
+              password: undefined,
+              typed: '',
+              wrong: false,
+            }
           : { name, bytes: data, pages, locked: false, password: used, typed: '', wrong: false },
       );
     } catch {
@@ -260,7 +410,15 @@ export function ComparePanel() {
   };
 
   const swap = () =>
-    setTexts((current) => current && { ...current, older: current.newer, newer: current.older, open: current.open === 'older' ? 'newer' : 'older' });
+    setTexts(
+      (current) =>
+        current && {
+          ...current,
+          older: current.newer,
+          newer: current.older,
+          open: current.open === 'older' ? 'newer' : 'older',
+        },
+    );
 
   const saveReport = () => {
     if (!result || !shown) return;
@@ -272,6 +430,7 @@ export function ComparePanel() {
       date: new Intl.DateTimeFormat(lang, { dateStyle: 'long' }).format(new Date()),
       lang,
       t,
+      looks: shown.looks ?? [],
     });
     void services
       .saveReport(html, comparisonFileName(state.document?.name ?? 'document'))
@@ -279,7 +438,8 @@ export function ComparePanel() {
   };
 
   const openPages = shown ? shown[shown.open].pages.length : 0;
-  const swappable = shown !== null && (shown.older.is.kind === 'file' || shown.newer.is.kind === 'file');
+  const swappable =
+    shown !== null && (shown.older.is.kind === 'file' || shown.newer.is.kind === 'file');
 
   return (
     <div className="tool-panel">
@@ -293,11 +453,21 @@ export function ComparePanel() {
       <fieldset className="compare-choice" disabled={!ready}>
         <legend>{t('compare.source')}</legend>
         <label className="compare-option">
-          <input type="radio" name={`${ids}-source`} checked={source === 'revision'} onChange={() => setSource('revision')} />
+          <input
+            type="radio"
+            name={`${ids}-source`}
+            checked={source === 'revision'}
+            onChange={() => setSource('revision')}
+          />
           <span>{t('compare.sourceRevision')}</span>
         </label>
         <label className="compare-option">
-          <input type="radio" name={`${ids}-source`} checked={source === 'file'} onChange={() => setSource('file')} />
+          <input
+            type="radio"
+            name={`${ids}-source`}
+            checked={source === 'file'}
+            onChange={() => setSource('file')}
+          />
           <span>{t('compare.sourceFile')}</span>
         </label>
       </fieldset>
@@ -329,7 +499,9 @@ export function ComparePanel() {
                 />
                 <span className="compare-option-text">
                   <span>{t('compare.revision', { n: revision.number })}</span>
-                  <span className="compare-option-note">{t('compare.pages', { count: revision.pages ?? 0 })}</span>
+                  <span className="compare-option-note">
+                    {t('compare.pages', { count: revision.pages ?? 0 })}
+                  </span>
                 </span>
               </label>
             ))}
@@ -340,7 +512,13 @@ export function ComparePanel() {
       {source === 'file' && (
         <>
           <div className="tool-actions">
-            <IconButton label={t('compare.choose')} icon={<Icon of={FilePlus2} />} showLabel disabled={!ready} onClick={choose} />
+            <IconButton
+              label={t('compare.choose')}
+              icon={<Icon of={FilePlus2} />}
+              showLabel
+              disabled={!ready}
+              onClick={choose}
+            />
           </div>
           <input
             ref={inputRef}
@@ -358,7 +536,11 @@ export function ComparePanel() {
                   {other.name}
                 </span>
                 <span className="compare-file-pages">
-                  {other.locked ? <Icon of={LockKeyhole} /> : t('compare.pages', { count: other.pages ?? 0 })}
+                  {other.locked ? (
+                    <Icon of={LockKeyhole} />
+                  ) : (
+                    t('compare.pages', { count: other.pages ?? 0 })
+                  )}
                 </span>
               </div>
               {other.locked && (
@@ -388,7 +570,11 @@ export function ComparePanel() {
                       {t('password.wrong')}
                     </p>
                   )}
-                  <button type="submit" className="icon-btn icon-btn-labeled" disabled={other.typed.length === 0}>
+                  <button
+                    type="submit"
+                    className="icon-btn icon-btn-labeled"
+                    disabled={other.typed.length === 0}
+                  >
                     {t('compare.unlock')}
                   </button>
                 </form>
@@ -451,37 +637,116 @@ export function ComparePanel() {
                 <li>{t('compare.wordsRemoved', { count: result.removed })}</li>
               </ul>
             )}
+            {shown.looks === null ? (
+              <p>{t('compare.looksFailed')}</p>
+            ) : shown.looks.length === 0 ? (
+              <p>{t('compare.looksNone')}</p>
+            ) : result.changed.length === 0 ? (
+              <p>{t('compare.looksHint', { count: shown.looks.length })}</p>
+            ) : (
+              <p>{t('compare.looksCount', { count: shown.looks.length })}</p>
+            )}
           </div>
           {result.olderPages !== result.newerPages && (
             <p className="tool-panel-note">
-              {t('compare.pageCountsDiffer', { older: result.olderPages, newer: result.newerPages })}
+              {t('compare.pageCountsDiffer', {
+                older: result.olderPages,
+                newer: result.newerPages,
+              })}
             </p>
           )}
           <div className="tool-actions">
-            <IconButton label={t('compare.save')} icon={<Icon of={FileDown} />} showLabel onClick={saveReport} />
-            {swappable && <IconButton label={t('compare.swap')} icon={<Icon of={ArrowLeftRight} />} showLabel onClick={swap} />}
+            <IconButton
+              label={t('compare.save')}
+              icon={<Icon of={FileDown} />}
+              showLabel
+              onClick={saveReport}
+            />
+            {swappable && (
+              <IconButton
+                label={t('compare.swap')}
+                icon={<Icon of={ArrowLeftRight} />}
+                showLabel
+                onClick={swap}
+              />
+            )}
           </div>
-          {result.changed.map((change) => (
-            <article key={change.page} className="compare-page" aria-labelledby={`${ids}-page-${change.page}`}>
-              <div className="compare-page-head">
-                <h4 id={`${ids}-page-${change.page}`}>{t('compare.page', { page: change.page })}</h4>
-                {change.page <= openPages && (
-                  <IconButton
-                    label={t('compare.goTo', { page: change.page })}
-                    icon={<Icon of={LocateFixed} />}
-                    showLabel
-                    onClick={() => services.goToPage(change.page)}
-                  />
-                )}
-              </div>
-              <p className="compare-page-words">{t('compare.pageWords', { added: change.added, removed: change.removed })}</p>
-              {!change.inOlder && <p className="tool-panel-note">{t('compare.onlyNewer')}</p>}
-              {!change.inNewer && <p className="tool-panel-note">{t('compare.onlyOlder')}</p>}
-              {change.passages.map((passage, index) => (
-                <PassageText key={index} passage={passage} t={t} dir={dir} />
-              ))}
-            </article>
-          ))}
+          <fieldset className="compare-choice">
+            <legend>{t('compare.view')}</legend>
+            <label className="compare-option">
+              <input
+                type="radio"
+                name={`${ids}-view`}
+                checked={view === 'text'}
+                onChange={() => setView('text')}
+              />
+              <span>{t('compare.viewText')}</span>
+            </label>
+            <label className="compare-option">
+              <input
+                type="radio"
+                name={`${ids}-view`}
+                checked={view === 'looks'}
+                onChange={() => setView('looks')}
+              />
+              <span>{t('compare.viewLooks')}</span>
+            </label>
+          </fieldset>
+          {view === 'looks' &&
+            (shown.looks ?? []).map((look) => (
+              <article
+                key={look.page}
+                className="compare-page"
+                aria-labelledby={`${ids}-look-${look.page}`}
+              >
+                <div className="compare-page-head">
+                  <h4 id={`${ids}-look-${look.page}`}>{t('compare.page', { page: look.page })}</h4>
+                  {look.page <= openPages && (
+                    <IconButton
+                      label={t('compare.goTo', { page: look.page })}
+                      icon={<Icon of={LocateFixed} />}
+                      showLabel
+                      onClick={() => services.goToPage(look.page)}
+                    />
+                  )}
+                </div>
+                <img
+                  className="compare-look"
+                  src={look.picture}
+                  alt={t('compare.lookAlt', { page: look.page })}
+                />
+              </article>
+            ))}
+          {view === 'text' &&
+            result.changed.map((change) => (
+              <article
+                key={change.page}
+                className="compare-page"
+                aria-labelledby={`${ids}-page-${change.page}`}
+              >
+                <div className="compare-page-head">
+                  <h4 id={`${ids}-page-${change.page}`}>
+                    {t('compare.page', { page: change.page })}
+                  </h4>
+                  {change.page <= openPages && (
+                    <IconButton
+                      label={t('compare.goTo', { page: change.page })}
+                      icon={<Icon of={LocateFixed} />}
+                      showLabel
+                      onClick={() => services.goToPage(change.page)}
+                    />
+                  )}
+                </div>
+                <p className="compare-page-words">
+                  {t('compare.pageWords', { added: change.added, removed: change.removed })}
+                </p>
+                {!change.inOlder && <p className="tool-panel-note">{t('compare.onlyNewer')}</p>}
+                {!change.inNewer && <p className="tool-panel-note">{t('compare.onlyOlder')}</p>}
+                {change.passages.map((passage, index) => (
+                  <PassageText key={index} passage={passage} t={t} dir={dir} />
+                ))}
+              </article>
+            ))}
         </section>
       )}
     </div>

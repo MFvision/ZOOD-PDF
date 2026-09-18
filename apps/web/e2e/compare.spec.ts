@@ -1,7 +1,18 @@
 import { readFileSync } from 'node:fs';
 import { expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { WORD_EXPORT, chooseTool, corpus, embedPage, enterEditText, openPdf, test } from './helpers';
+import {
+  WORD_EXPORT,
+  annotationTypes,
+  chooseTool,
+  corpus,
+  embedPage,
+  enterEditText,
+  openPdf,
+  pageBox,
+  test,
+  useAction,
+} from './helpers';
 
 const THREE = corpus('generated/chrome-notonaskh-justified-3pages.pdf');
 /** The same three pages, encrypted with the password "warraq". */
@@ -10,8 +21,10 @@ const LOCKED = corpus('generated/variant-encrypted-aes256.pdf');
 const panel = (page: Page) => page.locator('.pane-end');
 const results = (page: Page) => panel(page).getByRole('region', { name: 'Comparison results' });
 const summary = (page: Page) => results(page).getByRole('status');
-const compareButton = (page: Page) => panel(page).getByRole('button', { name: 'Compare', exact: true });
-const revisionList = (page: Page) => panel(page).getByRole('group', { name: 'Revisions of this file' });
+const compareButton = (page: Page) =>
+  panel(page).getByRole('button', { name: 'Compare', exact: true });
+const revisionList = (page: Page) =>
+  panel(page).getByRole('group', { name: 'Revisions of this file' });
 
 /** What the tests type over the Word export's title, a paragraph of two lines. */
 const SENTENCE = 'هذه جملة جديدة كتبها اختبار المقارنة';
@@ -48,7 +61,9 @@ test.describe('Compare shows what changed in the text, for Arabic', () => {
     await page.goto('/');
     await openPdf(page, saved);
     await chooseTool(page, 'Compare');
-    await expect(panel(page).getByRole('radio', { name: 'An earlier revision of it' })).toBeChecked();
+    await expect(
+      panel(page).getByRole('radio', { name: 'An earlier revision of it' }),
+    ).toBeChecked();
     // Every save before the edit is offered, and the latest one is chosen.
     await expect(revisionList(page).getByRole('radio').last()).toBeChecked();
     await expect(revisionList(page)).toContainText(/Revision \d+ is the file as it stands now\./);
@@ -57,7 +72,9 @@ test.describe('Compare shows what changed in the text, for Arabic', () => {
     await expect(summary(page)).toContainText('Pages changed: 1');
     await expect(summary(page)).toContainText('Words added: 6');
     await expect(results(page).getByRole('heading', { name: 'Page 1', exact: true })).toBeVisible();
-    await expect(results(page).getByRole('heading', { name: 'Page 2', exact: true })).toHaveCount(0);
+    await expect(results(page).getByRole('heading', { name: 'Page 2', exact: true })).toHaveCount(
+      0,
+    );
     await expect(results(page).locator('ins', { hasText: SENTENCE })).toHaveCount(1);
     await expect(results(page).locator('del', { hasText: TITLE_WORDS })).toHaveCount(1);
     // Each passage finds its own direction: Arabic runs right to left.
@@ -85,10 +102,16 @@ test.describe('Compare shows what changed in the text, for Arabic', () => {
     expect(html).toMatch(new RegExp(`<ins><span[^>]*>added: </span>${SENTENCE}<`));
     expect(html).toMatch(new RegExp(`<del><span[^>]*>removed: </span>[^<]*${TITLE_WORDS}`));
     expect(html).toContain('<p dir="auto">');
-    expect(html).not.toMatch(/<script|\ssrc=|\shref=/i);
+    expect(html).not.toMatch(/<script|\shref=/i);
+    // Its only pictures are its own: the pages that look different, drawn into it.
+    for (const [, src] of html.matchAll(/\ssrc="([^"]*)"/g))
+      expect(src).toMatch(/^data:image\/png;base64,/);
   });
 
-  test('the original against the saved edit chosen as another PDF: the same change', async ({ page, stayLocal: _ }) => {
+  test('the original against the saved edit chosen as another PDF: the same change', async ({
+    page,
+    stayLocal: _,
+  }) => {
     const saved = await editAndSave(page, WORD_EXPORT, SENTENCE, 'chosen');
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
@@ -114,7 +137,10 @@ test.describe('Compare shows what changed in the text, for Arabic', () => {
     await expect(results(page).locator('ins', { hasText: TITLE_WORDS })).toHaveCount(1);
   });
 
-  test('with diacritics ignored, a version that differs only in tashkeel shows no change', async ({ page, stayLocal: _ }) => {
+  test('with diacritics ignored, a version that differs only in tashkeel shows no change', async ({
+    page,
+    stayLocal: _,
+  }) => {
     const plain = await editAndSave(page, WORD_EXPORT, SENTENCE, 'plain');
     const marked = await editAndSave(page, plain, WITH_TASHKEEL, 'tashkeel');
     await page.goto('/');
@@ -129,11 +155,18 @@ test.describe('Compare shows what changed in the text, for Arabic', () => {
     await expect(results(page).locator('ins', { hasText: 'جُمْلَةٌ' })).toHaveCount(1);
     // …and with diacritics ignored there is none.
     await panel(page).getByRole('checkbox', { name: 'Ignore diacritics and tatweel' }).check();
-    await expect(summary(page)).toHaveText('No differences in the text.');
+    await expect(summary(page)).toContainText('No differences in the text.');
+    // The marks are drawn, though: the page does look different.
+    await expect(summary(page)).toContainText(
+      'The words are the same, but some pages look different (pages: 1)',
+    );
     await expect(results(page).locator('.compare-page')).toHaveCount(0);
   });
 
-  test('another PDF behind a password is asked for, and the same text encrypted is no change', async ({ page, stayLocal: _ }) => {
+  test('another PDF behind a password is asked for, and the same text encrypted is no change', async ({
+    page,
+    stayLocal: _,
+  }) => {
     await page.goto('/');
     await openPdf(page, THREE);
     await chooseTool(page, 'Compare');
@@ -151,6 +184,61 @@ test.describe('Compare shows what changed in the text, for Arabic', () => {
     await expect(file).toContainText('Pages: 3');
 
     await compareButton(page).click();
-    await expect(summary(page)).toHaveText('No differences in the text.');
+    await expect(summary(page)).toContainText('No differences in the text.');
+    await expect(summary(page)).toContainText('No page looks different.');
+  });
+
+  test('a drawing, which the text cannot show, is found by how the page looks', async ({
+    page,
+    stayLocal: _,
+  }) => {
+    // A freehand drawing on page 1 of the three pages, saved.
+    await page.goto('/');
+    await openPdf(page, THREE);
+    await chooseTool(page, 'Comment');
+    await useAction(page, 'Draw');
+    const box = await pageBox(page);
+    await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.4);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.7, box.y + box.height * 0.5, { steps: 15 });
+    await page.mouse.up();
+    await expect.poll(() => annotationTypes(page)).toContain(15);
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('toolbar').getByRole('button', { name: 'Save' }).click(),
+    ]);
+    const drawn = 'test-results/compare-drawn.pdf';
+    await download.saveAs(drawn);
+
+    await page.goto('/');
+    await openPdf(page, drawn);
+    await chooseTool(page, 'Compare');
+    await panel(page).getByRole('radio', { name: 'Another PDF' }).check();
+    await panel(page).locator('input[type="file"]').setInputFiles(THREE);
+    await compareButton(page).click();
+    await expect(summary(page)).toContainText('No differences in the text.');
+    await expect(summary(page)).toContainText(
+      'The words are the same, but some pages look different (pages: 1)',
+    );
+
+    await results(page).getByRole('radio', { name: 'Appearance' }).check();
+    await expect(results(page).getByRole('heading', { name: 'Page 1', exact: true })).toBeVisible();
+    await expect(results(page).getByRole('heading', { name: 'Page 2', exact: true })).toHaveCount(
+      0,
+    );
+    const picture = results(page).getByRole('img', {
+      name: 'Page 1, with what looks different outlined',
+    });
+    await expect
+      .poll(() => picture.evaluate((img: HTMLImageElement) => img.naturalWidth))
+      .toBeGreaterThan(100);
+
+    const [report] = await Promise.all([
+      page.waitForEvent('download'),
+      results(page).getByRole('button', { name: 'Save the comparison' }).click(),
+    ]);
+    const html = readFileSync(await report.path(), 'utf8');
+    expect(html).toContain('Pages that look different');
+    expect(html).toContain('<img src="data:image/png;base64,');
   });
 });

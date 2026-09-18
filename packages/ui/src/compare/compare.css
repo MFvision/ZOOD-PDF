@@ -178,3 +178,12 @@
   background: var(--accent-soft);
   border-radius: 2px;
 }
+
+/* Appearance: a page as the open document has it, its changes outlined in red. */
+.compare-look {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+}

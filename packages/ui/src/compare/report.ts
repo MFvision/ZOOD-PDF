@@ -13,7 +13,12 @@ export interface ReportInput {
   date: string;
   lang: Lang;
   t: (key: TKey, params?: TParams) => string;
+  /** The pages that look different, as PNG pictures with the changes outlined. */
+  looks?: readonly { page: number; picture: string }[];
 }
+
+/** Only a PNG the panel drew goes into the report: nothing else can pass for one. */
+const PICTURE = /^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/;
 
 /**
  * A name set inside a sentence of the interface — "report.pdf (open now)",
@@ -26,7 +31,13 @@ export function isolate(name: string): string {
   return `⁨${name}⁩`;
 }
 
-const ESCAPES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const ESCAPES: Readonly<Record<string, string>> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
 
 /** Text as HTML text or attribute value: nothing in a document's words can become markup. */
 export function escapeHtml(text: string): string {
@@ -51,6 +62,8 @@ dd { margin: 0; }
 .muted { color: #5f6772; }
 del { color: #8a1c12; background: #fee4e2; text-decoration: line-through; text-decoration-thickness: 2px; }
 ins { color: #0b4d47; background: #d9f2ef; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 0.2em; }
+figure { margin: 1rem 0; }
+figure img { display: block; max-inline-size: 100%; border: 1px solid #d5d9de; }
 .sr-only { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (prefers-color-scheme: dark) {
   body { color: #e6e8eb; background: #14161a; }
@@ -69,8 +82,10 @@ ins { color: #0b4d47; background: #d9f2ef; text-decoration: underline; text-deco
 function passageHtml(passage: Passage, input: ReportInput): string {
   const labelDir = directionOf(input.lang);
   // The spaces live inside the hidden labels, so no line runs under a space.
-  const opening = (key: TKey) => `<span class="sr-only" dir="${labelDir}">${escapeHtml(input.t(key))} </span>`;
-  const closing = (key: TKey) => `<span class="sr-only" dir="${labelDir}"> ${escapeHtml(input.t(key))}</span>`;
+  const opening = (key: TKey) =>
+    `<span class="sr-only" dir="${labelDir}">${escapeHtml(input.t(key))} </span>`;
+  const closing = (key: TKey) =>
+    `<span class="sr-only" dir="${labelDir}"> ${escapeHtml(input.t(key))}</span>`;
   const parts = passage.parts.map((part) => {
     const text = escapeHtml(part.text);
     if (part.kind === 'same') return text;
@@ -108,8 +123,10 @@ export function comparisonReport(input: ReportInput): string {
       '</ul>',
     );
   }
-  if (options.ignoreMarks) body.push(`<p class="muted">${escapeHtml(t('compare.reportMarks'))}</p>`);
-  if (options.unifyLetters) body.push(`<p class="muted">${escapeHtml(t('compare.reportLetters'))}</p>`);
+  if (options.ignoreMarks)
+    body.push(`<p class="muted">${escapeHtml(t('compare.reportMarks'))}</p>`);
+  if (options.unifyLetters)
+    body.push(`<p class="muted">${escapeHtml(t('compare.reportLetters'))}</p>`);
   if (comparison.olderPages !== comparison.newerPages) {
     body.push(
       `<p class="muted">${escapeHtml(t('compare.pageCountsDiffer', { older: comparison.olderPages, newer: comparison.newerPages }))}</p>`,
@@ -124,6 +141,17 @@ export function comparisonReport(input: ReportInput): string {
     if (!change.inOlder) body.push(`<p class="muted">${escapeHtml(t('compare.onlyNewer'))}</p>`);
     if (!change.inNewer) body.push(`<p class="muted">${escapeHtml(t('compare.onlyOlder'))}</p>`);
     for (const passage of change.passages) body.push(passageHtml(passage, input));
+    body.push('</section>');
+  }
+  const looks = (input.looks ?? []).filter((look) => PICTURE.test(look.picture));
+  if (looks.length > 0) {
+    body.push('<section>', `<h2>${escapeHtml(t('compare.reportLooks'))}</h2>`);
+    for (const look of looks) {
+      const label = escapeHtml(t('compare.lookAlt', { page: look.page }));
+      body.push(
+        `<figure><img src="${look.picture}" alt="${label}"><figcaption class="muted">${escapeHtml(t('compare.page', { page: look.page }))}</figcaption></figure>`,
+      );
+    }
     body.push('</section>');
   }
   body.push(

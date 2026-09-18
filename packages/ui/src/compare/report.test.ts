@@ -76,6 +76,30 @@ describe('the comparison report', () => {
     expect(escapeHtml(`<>&"'`)).toBe('&lt;&gt;&amp;&quot;&#39;');
   });
 
+  it('shows the pages that look different as pictures, and takes nothing else for one', () => {
+    const t = (key: TKey, params?: TParams) => translate('en', key, params);
+    const html = comparisonReport({
+      comparison: comparePages([TITLE], [TITLE], EXACT),
+      options: EXACT,
+      older: 'a.pdf',
+      newer: 'b.pdf',
+      date: '18 September 2026',
+      lang: 'en',
+      t,
+      looks: [
+        { page: 2, picture: 'data:image/png;base64,iVBORw0KGgo=' },
+        { page: 3, picture: 'https://example.com/x.png' },
+        { page: 4, picture: 'data:image/png;base64,AAA="><script>alert(1)</script>' },
+      ],
+    });
+    expect(html).toContain('Pages that look different');
+    expect(html).toContain(
+      '<img src="data:image/png;base64,iVBORw0KGgo=" alt="Page 2, with what looks different outlined">',
+    );
+    expect(html.match(/<img /g)).toHaveLength(1);
+    expect(html).not.toMatch(/https?:|<script/i);
+  });
+
   it('says so when nothing changed, and which options were on', () => {
     const plain = report([SENTENCE], [SENTENCE], 'ar', { ignoreMarks: true, unifyLetters: true });
     expect(plain).toContain(`<p>${translate('ar', 'compare.noChanges')}</p>`);
