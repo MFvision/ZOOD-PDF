@@ -11,6 +11,11 @@ const MODES = {
 /** The tab strip inside EmbedPDF's shadow root; role locators reach into it. */
 const modeTabs = (page: Page) =>
   page.locator('embedpdf-container').getByRole('tablist').getByRole('button');
+const modeTab = (page: Page, name: string) =>
+  page
+    .locator('embedpdf-container')
+    .getByRole('tablist')
+    .getByRole('button', { name, exact: true });
 const embedButton = (page: Page, name: string) =>
   page.locator('embedpdf-container').getByRole('button', { name, exact: true });
 
@@ -48,7 +53,6 @@ async function embedI18n(page: Page) {
       available: i18n.getAvailableLocales(),
       englishKeys: english.length,
       missingInArabic: english.filter((key) => !arabic.includes(key)),
-      notInEnglish: arabic.filter((key) => !english.includes(key)),
       documentId: manager.getActiveDocumentId(),
     };
   });
@@ -82,10 +86,15 @@ test.describe("EmbedPDF's own interface speaks Warraq's language", () => {
     // upgrade that adds keys fails here until the translation catches up.
     expect(arabic.englishKeys).toBeGreaterThan(250);
     expect(arabic.missingInArabic).toEqual([]);
-    expect(arabic.notInEnglish).toEqual([]);
     // Switched live: the same document is still open, not reloaded.
     expect(arabic.documentId).toBe(before.documentId);
     expect(await embedTiles(page)).toBeGreaterThan(0);
+
+    // A string EmbedPDF's own English lacks: there, this button is named
+    // "form.toggleFillMode".
+    await modeTab(page, 'نموذج').click();
+    await expect(embedButton(page, 'تعبئة حقول النموذج')).toBeVisible();
+    await modeTab(page, 'عرض').click();
 
     await language(page, 'اللغة').selectOption({ label: 'English' });
     await expect(modeTabs(page)).toHaveText(MODES.en);

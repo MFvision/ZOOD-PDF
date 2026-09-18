@@ -18,7 +18,7 @@ import type { EmbedTranslations } from './en';
  * placeholder gets no plural rules, and Arabic needs a different noun form
  * for 1, 2, 3–10 and 11 and up.
  */
-const arabicTranslations: EmbedTranslations = {
+export const arabicTranslations: EmbedTranslations = {
   search: {
     placeholder: 'بحث',
     caseSensitive: 'مطابقة حالة الأحرف',
@@ -409,9 +409,66 @@ const arabicTranslations: EmbedTranslations = {
   },
 };
 
+/**
+ * Strings EmbedPDF 2.15.1's interface asks for that its English locale does
+ * not have, so its English shows a fallback built into the code ("Field
+ * Name", "Read Only") or the key itself: the Form toolbar's fill button is
+ * named "form.toggleFillMode". Here they are Arabic. Kept apart from the
+ * translation above, which stays key for key with the English.
+ */
+export const arabicBeyondEnglish = {
+  annotation: {
+    lineEndings: 'نهايات الخط',
+    link: 'رابط',
+    widgetEdit: 'خصائص الحقل',
+  },
+  form: {
+    combobox: 'قائمة منسدلة',
+    radiobutton: 'زر اختيار',
+    toggleFillMode: 'تعبئة حقول النموذج',
+    properties: 'الخصائص',
+    fieldName: 'اسم الحقل',
+    defaultValue: 'القيمة الافتراضية',
+    maxLength: 'الحد الأقصى للأحرف',
+    readOnly: 'للقراءة فقط',
+    required: 'مطلوب',
+    multiline: 'متعدد الأسطر',
+    comb: 'خانة لكل حرف',
+    multiSelect: 'تحديد متعدد',
+    options: 'الخيارات',
+    addOption: 'إضافة خيار',
+    removeOption: 'إزالة',
+  },
+  selection: {
+    copyToClipboard: 'نسخ',
+  },
+  signature: {
+    ink: 'توقيع مرسوم',
+    stamp: 'ختم توقيع',
+  },
+  stamp: {
+    rubberStamp: 'ختم',
+  },
+  tabs: {
+    overflowMenu: 'أوضاع أخرى',
+  },
+};
+
+type Translations = Locale['translations'];
+
+function merge(base: Translations, extra: Translations): Translations {
+  const out: Translations = { ...base };
+  for (const [key, value] of Object.entries(extra)) {
+    const current = out[key];
+    out[key] =
+      typeof value === 'object' && typeof current === 'object' ? merge(current, value) : value;
+  }
+  return out;
+}
+
 /** The locale Warraq adds to EmbedPDF, beside its own ten. */
 export const arabic: Locale = {
   code: 'ar',
   name: 'العربية',
-  translations: arabicTranslations,
+  translations: merge(arabicTranslations, arabicBeyondEnglish),
 };

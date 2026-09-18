@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arabic } from './ar';
+import { arabic, arabicBeyondEnglish, arabicTranslations } from './ar';
 import { englishTranslations } from './en';
 
 type Tree = { [key: string]: string | Tree };
@@ -19,27 +19,40 @@ const placeholders = (text: string) =>
   [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort();
 
 const english = flatten(englishTranslations);
-const arabicStrings = flatten(arabic.translations as Tree);
+const translation = flatten(arabicTranslations);
+const beyond = flatten(arabicBeyondEnglish);
+const registered = flatten(arabic.translations as Tree);
 
 describe("EmbedPDF's Arabic locale", () => {
   it('has exactly the keys of its English locale', () => {
-    const missing = [...english.keys()].filter((key) => !arabicStrings.has(key));
-    const extra = [...arabicStrings.keys()].filter((key) => !english.has(key));
+    const missing = [...english.keys()].filter((key) => !translation.has(key));
+    const extra = [...translation.keys()].filter((key) => !english.has(key));
     expect(missing, 'English keys with no Arabic').toEqual([]);
     expect(extra, 'Arabic keys English does not have').toEqual([]);
-    expect(arabicStrings.size).toBe(english.size);
+    expect(translation.size).toBe(english.size);
   });
 
   it('keeps every placeholder of the English string, and adds none', () => {
     for (const [key, text] of english) {
-      expect(placeholders(arabicStrings.get(key) ?? ''), key).toEqual(placeholders(text));
+      expect(placeholders(translation.get(key) ?? ''), key).toEqual(placeholders(text));
     }
   });
 
+  it('adds only strings the English lacks, never a second word for one it has', () => {
+    for (const key of beyond.keys()) expect(english.has(key), key).toBe(false);
+    expect(beyond.size).toBe(23);
+  });
+
+  it('registers the translation and those strings together, unchanged', () => {
+    expect(registered.size).toBe(translation.size + beyond.size);
+    for (const [key, text] of [...translation, ...beyond])
+      expect(registered.get(key), key).toBe(text);
+  });
+
   it('leaves no string empty or still in English', () => {
-    for (const [key, text] of arabicStrings) {
+    for (const [key, text] of registered) {
       expect(text.trim(), key).not.toBe('');
-      expect(text, key).toMatch(/[؀-ۿ]/);
+      expect(text, key).toMatch(/\p{Script=Arabic}/u);
     }
   });
 

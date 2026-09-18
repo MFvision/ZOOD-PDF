@@ -9,7 +9,7 @@
  * of the i18n plugin's default `locales` in dist/embedpdf-cl9qiF45.js. The
  * package exports none of its locales, so it cannot be imported. On an
  * EmbedPDF upgrade, copy it again: the e2e spec `embed-arabic.spec.ts` fails
- * when the running English and the Arabic have different keys.
+ * when the running English has a key the Arabic lacks.
  *
  * MIT License
  *
