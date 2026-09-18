@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { ocrModels } from '../../packages/ui/vite/ocrModels';
 
 // Builds viewer.html (which mounts @warraq/ui) into dist/. The UI's worker and
 // the WASM core are emitted as extension files under dist/assets/, so the
@@ -11,7 +12,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
   base: './',
-  plugins: [react()],
+  plugins: [react(), ocrModels()],
   build: {
     outDir: 'dist',
     emptyOutDir: true,

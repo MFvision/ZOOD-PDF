@@ -9,7 +9,7 @@ use warraq_text::{
 
 /// Mark the page and everything it references by id (content streams, resources,
 /// font dictionaries) as changed, so an incremental save carries them.
-fn mark_page_objects(pdf: &mut PdfDocument, page_id: ObjectId) {
+pub(crate) fn mark_page_objects(pdf: &mut PdfDocument, page_id: ObjectId) {
     pdf.mark_touched(page_id);
     let mut ids: Vec<ObjectId> = vec![];
     if let Ok(page) = pdf.doc.get_dictionary(page_id) {
@@ -36,7 +36,7 @@ fn mark_page_objects(pdf: &mut PdfDocument, page_id: ObjectId) {
 }
 
 /// Register `font_id` under a fresh resource name on the page; returns the name.
-fn add_font_resource(
+pub(crate) fn add_font_resource(
     pdf: &mut PdfDocument,
     page_id: ObjectId,
     font_id: ObjectId,
@@ -115,7 +115,7 @@ fn add_font_resource(
 /// page's stack, not ours. Closing the dangling saves is what also drops any
 /// clip path still in effect — undoing the transform alone is not enough, and
 /// text appended to a clipped page was invisible until this was fixed.
-fn reset_state_ops(pdf: &PdfDocument, page_id: ObjectId) -> Vec<Operation> {
+pub(crate) fn reset_state_ops(pdf: &PdfDocument, page_id: ObjectId) -> Vec<Operation> {
     let Ok(content) = Content::decode(&pdf.doc.get_page_content(page_id)) else {
         return vec![];
     };

@@ -1,6 +1,7 @@
 import { Icon } from '../components/Icon';
 import { CombinePanel } from '../combine/CombinePanel';
 import { CompressPanel } from '../compress/CompressPanel';
+import { OcrPanel } from '../ocr/OcrPanel';
 import { EditPanel } from '../edit/EditPanel';
 import { OrganizePanel } from '../organize/OrganizePanel';
 import { useT } from '../i18n/useT';
@@ -15,6 +16,7 @@ export function ToolPanel({ tool }: { tool: ToolDefinition }) {
   if (tool.id === 'organize') return <OrganizePanel />;
   if (tool.id === 'combine') return <CombinePanel />;
   if (tool.id === 'compress') return <CompressPanel />;
+  if (tool.id === 'ocr') return <OcrPanel />;
   if (tool.actions && tool.actions.length > 0) return <EmbedToolPanel tool={tool} />;
   return (
     <div className="tool-panel">

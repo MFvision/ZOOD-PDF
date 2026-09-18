@@ -230,3 +230,35 @@ fn compress_keeps_every_page_s_text_and_shrinks_a_scan() {
     assert_eq!(json(&reply)["refused"], "protected");
     assert!(reply.blobs.is_empty());
 }
+
+#[test]
+fn ocr_text_layer_is_read_back_by_warraq_s_own_reader() {
+    let font = std::fs::read(format!(
+        "{}/../../../tests/fonts/Amiri-Regular.ttf",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    let scan = corpus("generated/scan-arial-200dpi-bilevel.pdf");
+    assert_eq!(
+        Document::open(scan.clone(), None)
+            .unwrap()
+            .extract_text(0)
+            .unwrap()
+            .trim(),
+        ""
+    );
+    let args = r#"{"pages":[{"index":0,"words":[
+        {"text":"مرحبا","bbox":[300,100,380,120]},
+        {"text":"بالعالم","bbox":[210,100,290,120]},
+        {"text":"Warraq","bbox":[72,140,150,156]}]}]}"#;
+    let reply = call_static("ocr.add_text_layer", args, vec![scan.clone(), font]).unwrap();
+    assert_eq!(json(&reply)["words"], 3);
+    assert!(reply.blobs[0].starts_with(&scan));
+    let text = Document::open(reply.blobs[0].clone(), None)
+        .unwrap()
+        .extract_text(0)
+        .unwrap();
+    for word in ["مرحبا", "بالعالم", "Warraq"] {
+        assert!(text.contains(word), "{word} in {text:?}");
+    }
+}

@@ -33,6 +33,20 @@ import { addRecent, clearRecent as clearStoredRecent, readRecent } from './recen
 import { isPdf, namedLikePdf } from './pdfFile';
 import { combinedFileName, downloadPdf, extractedFileName, pdfFileName } from './saveFile';
 import { findTool } from '../tools/tools';
+import type { OcrLanguage } from '../ocr/engine';
+import { readPages } from '../ocr/run';
+import type { OcrProgress, OcrScope } from '../ocr/run';
+
+/** What Scan & OCR did. */
+export interface OcrOutcome {
+  /** Pages given a text layer. */
+  pages: number;
+  words: number;
+  /** Pages that already had Warraq's text layer. */
+  skipped: number;
+  /** Tesseract's mean confidence over the words it read, 0–100. */
+  confidence: number;
+}
 
 /** How much Compress may trade: `imageDpi` downsamples images (lossy); absent keeps them. */
 export interface CompressChoice {
@@ -129,6 +143,16 @@ export interface AppServices {
   compressFile: (options: CompressChoice) => Promise<CompressResult>;
   /** Saves bytes as a new PDF beside the open one (the native panel on desktop). */
   saveCopy: (bytes: ArrayBuffer, name: string) => Promise<boolean>;
+  /**
+   * Scan & OCR: reads the scanned pages with Tesseract and writes what it read
+   * into the file as an invisible text layer, which then reopens in both views.
+   */
+  recognizeText: (
+    languages: readonly OcrLanguage[],
+    scope: OcrScope,
+    onProgress: (progress: OcrProgress) => void,
+    signal?: AbortSignal,
+  ) => Promise<OcrOutcome>;
   clearRecent: () => void;
   /** Replaces a paragraph and records it on the undo stack. */
   commitParagraph: (entry: EditEntry) => Promise<void>;
@@ -739,6 +763,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
+  /**
+   * The open file, replaced by `bytes` in both engines — for a change made to
+   * the whole file outside either view, such as a text layer. It counts as an
+   * edit, so the file is marked changed until it is saved.
+   */
+  const replaceCurrentFile = useCallback(
+    async (bytes: ArrayBuffer) => {
+      const opened = await client.open(bytes.slice(0), passwordRef.current);
+      void documentRef.current?.free();
+      documentRef.current = opened;
+      setDocument(opened);
+      setDocumentBytes(bytes);
+      dispatch({ type: 'DOCUMENT_RESHAPED', pageCount: opened.pageCount, pageSizes: opened.pageSizes, selection: [] });
+    },
+    [client],
+  );
+
+  const recognizeText = useCallback(
+    async (
+      languages: readonly OcrLanguage[],
+      scope: OcrScope,
+      onProgress: (progress: OcrProgress) => void,
+      signal?: AbortSignal,
+    ): Promise<OcrOutcome> => {
+      const bytes = await currentFileBytes();
+      if (!bytes) throw new Error('E_NOT_FOUND: no open file');
+      const reading = await client.open(bytes.slice(0), passwordRef.current);
+      let pages: Awaited<ReturnType<typeof readPages>>;
+      try {
+        pages = await readPages(reading, languages, scope, onProgress, signal);
+      } finally {
+        void reading.free();
+      }
+      const read = pages.filter((page) => page.words.length > 0);
+      const confidence = read.length ? read.reduce((sum, page) => sum + page.confidence, 0) / read.length : 0;
+      if (read.length === 0 || signal?.aborted) return { pages: 0, words: 0, skipped: 0, confidence };
+      const font = await loadEditFont('amiri');
+      const { result, blobs } = await client.callStatic<{ pages: number; words: number; skipped: number }>(
+        'ocr.add_text_layer',
+        { password: passwordRef.current ?? null, pages: read.map(({ index, words }) => ({ index, words })) },
+        [bytes, font.slice().buffer],
+      );
+      if (result.pages > 0 && blobs[0]) await replaceCurrentFile(blobs[0]);
+      return { ...result, confidence };
+    },
+    [client, currentFileBytes, replaceCurrentFile],
+  );
+
   const organizing = state.rightPane.activeTool === 'organize' && state.document !== null;
 
   const viewCommand = useCallback(
@@ -865,6 +937,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       combineFiles,
       compressFile,
       saveCopy,
+      recognizeText,
       clearRecent,
       commitParagraph,
       addText,
@@ -900,6 +973,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       combineFiles,
       compressFile,
       saveCopy,
+      recognizeText,
       clearRecent,
       commitParagraph,
       addText,

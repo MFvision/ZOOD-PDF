@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
+import { ocrModels } from '../../packages/ui/vite/ocrModels';
 
 /**
  * The dev server injects an inline React Fast Refresh preamble, which the strict
@@ -49,7 +50,7 @@ export function stripMetaCsp(): Plugin {
 }
 
 export default defineConfig(({ command, mode }) => ({
-  plugins: [react(), devCspNonce(), ...(mode === 'tauri' ? [stripMetaCsp()] : [])],
+  plugins: [react(), devCspNonce(), ocrModels(), ...(mode === 'tauri' ? [stripMetaCsp()] : [])],
   html: command === 'serve' ? { cspNonce: devNonce } : undefined,
   server: { port: 5173, strictPort: true },
   preview: { port: 4173, strictPort: true },

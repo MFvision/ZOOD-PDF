@@ -19,9 +19,15 @@
     "@embedpdf/models": "2.15.1",
     "@embedpdf/pdfium": "2.15.1",
     "@embedpdf/react-pdf-viewer": "2.15.1",
+    "@tesseract.js-data/ara": "1.0.0",
+    "@tesseract.js-data/eng": "1.0.0",
+    "@tesseract.js-data/fas": "1.0.0",
+    "@tesseract.js-data/urd": "1.0.0",
     "lucide-react": "^1.46.0",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "tesseract.js": "7.0.0",
+    "tesseract.js-core": "6.1.2"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",

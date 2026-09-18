@@ -12,6 +12,7 @@ use crate::{CoreError, Document};
 
 pub mod compress;
 pub mod forms;
+pub mod ocr;
 pub mod pages;
 
 /// What a tool operation answers: JSON for the UI, and bytes beside it.
@@ -58,6 +59,7 @@ pub fn call_static(op: &str, args: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, C
     match op.split_once('.') {
         Some(("compress", name)) => compress::call_static(name, args, blobs),
         Some(("forms", name)) => forms::call_static(name, args, blobs),
+        Some(("ocr", name)) => ocr::call_static(name, args, blobs),
         Some(("pages", name)) => pages::call_static(name, args, blobs),
         _ => Err(CoreError::UnknownOp(op.into())),
     }

@@ -131,7 +131,8 @@ export const TOOLS: readonly ToolDefinition[] = [
   },
   { id: 'export', labelKey: 'tool.export', icon: FileOutput, implemented: false },
   { id: 'compare', labelKey: 'tool.compare', icon: GitCompare, implemented: false },
-  { id: 'ocr', labelKey: 'tool.ocr', icon: ScanText, implemented: false },
+  // Tesseract in the page, a text layer by Warraq's core (`ocr.add_text_layer`).
+  { id: 'ocr', labelKey: 'tool.ocr', icon: ScanText, implemented: true },
   // Warraq's core (`pages.combine`): PDFium's importer breaks form fields (ADR-0008).
   { id: 'combine', labelKey: 'tool.combine', icon: Combine, implemented: true },
   // Warraq's core (`compress.file`): a smaller copy, written from scratch.
