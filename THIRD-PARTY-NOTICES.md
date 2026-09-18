@@ -15,4 +15,5 @@ research-only tools such as PyMuPDF, pikepdf and uharfbuzz are not shipped).
 | tesseract.js / Tesseract, tessdata_best | Apache-2.0 | OCR |
 | Amiri, Cairo, Noto Naskh Arabic, Noto Sans Arabic, IBM Plex Sans Arabic, Tajawal, Scheherazade New, Inter, Noto Sans | SIL OFL-1.1 | bundled fallback and UI fonts |
 | Fluent UI System Icons or Lucide | MIT / ISC | icons |
+| fflate | MIT | zip and deflate for Export (the Word file, page images, PNG compression) |
 | React, Vite, Tauri | MIT / MIT / Apache-2.0 OR MIT | UI and app shells |
