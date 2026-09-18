@@ -288,6 +288,11 @@
   box-shadow: none;
 }
 
+.tool-actions > .icon-btn:not(.icon-btn-primary):disabled,
+.tool-actions > .icon-btn:not(.icon-btn-primary):disabled .lucide {
+  color: var(--tertiary-label);
+}
+
 .tool-actions > .icon-btn:not(.icon-btn-primary) > span {
   min-inline-size: 0;
   overflow-wrap: anywhere;

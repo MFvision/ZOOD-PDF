@@ -25,6 +25,8 @@ async function start(page: Page, lang: 'en' | 'ar', theme: Theme, size = { width
   await page.emulateMedia({ colorScheme: theme });
   await page.addInitScript(
     ([l]) => {
+      // Once per test: the script also runs in frames the viewer makes later.
+      if (localStorage.getItem('warraq.recent')) return;
       localStorage.setItem('warraq.preferences', JSON.stringify({ lang: l, theme: 'system' }));
       localStorage.setItem('warraq.recent', JSON.stringify(['التقرير السنوي ٢٠٢٥.pdf', 'Quarterly review.pdf', 'عقد الإيجار.pdf', 'Invoice 0412.pdf']));
     },
@@ -42,13 +44,26 @@ async function shoot(page: Page, name: string) {
   await page.screenshot({ path: `${OUT}${name}.png` });
 }
 
+/** Opens two real files and closes them, so the recent grid shows their first pages. */
+async function withRecents(page: Page, close: string) {
+  await openPdf(page, INVOICE);
+  // With a file open EmbedPDF has file fields of its own: Warraq's is the hidden one.
+  await page.locator('input.sr-only[type="file"]').setInputFiles(THREE_PAGES);
+  await expect(page.getByRole('toolbar')).toContainText('chrome-notonaskh-justified-3pages.pdf');
+  await page.getByRole('menubar').getByRole('menuitem', { name: close.split('|')[0], exact: true }).click();
+  await page.getByRole('menuitem', { name: close.split('|')[1] }).click();
+  await expect(page.locator('.recent-page img').first()).toBeVisible();
+}
+
 test('home, English, light', async ({ page, stayLocal: _ }) => {
   await start(page, 'en', 'light');
+  await withRecents(page, 'File|Close document');
   await shoot(page, 'home-en-light');
 });
 
 test('home, Arabic, dark', async ({ page, stayLocal: _ }) => {
   await start(page, 'ar', 'dark');
+  await withRecents(page, 'ملف|إغلاق المستند');
   await shoot(page, 'home-ar-dark');
 });
 

@@ -101,6 +101,29 @@ button:active:not(:disabled) { background-color: var(--fill); transition-duratio
 .rounded-xl, .rounded-2xl { border-radius: var(--radius-12); }
 .shadow-lg, .shadow-xl, .shadow-2xl { box-shadow: var(--shadow-popover); }
 input, select, textarea { border-radius: var(--radius-6); }
+/* The mode tabs (View, Annotate, Shapes…) as a segmented control. */
+[data-epdf-i="mode-tabs"] {
+  gap: 0;
+  padding: 2px;
+  background: var(--secondary-fill);
+  border-radius: var(--radius-8);
+}
+[data-epdf-i="mode-tabs"] button {
+  height: 24px;
+  padding: 0 12px;
+  font-size: var(--text-callout);
+  font-weight: 500;
+  color: var(--label);
+  border: 0;
+  border-radius: var(--radius-6);
+}
+[data-epdf-i="mode-tabs"] button.text-accent {
+  background: var(--control-background);
+  box-shadow: var(--shadow-control);
+}
+[data-epdf-i="mode-tabs"] button:hover:not(.text-accent) { background: var(--tertiary-fill); }
+/* Its bar reads as a second row of the window's toolbar. */
+.border-b.bg-bg-surface { background: var(--toolbar-background); }
 /* Hairlines, as thin as the rest of the window's. */
 .border-b, .border-t, .border-l, .border-r { border-color: var(--separator); }
 `;

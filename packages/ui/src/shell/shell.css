@@ -504,9 +504,14 @@
   background-position: right 8px center;
 }
 
-.findbar .icon-btn {
+.findbar .icon-btn,
+.findbar .icon-btn-labeled {
   block-size: 24px;
+  min-block-size: 24px;
   min-inline-size: 24px;
+  color: var(--label);
+  background: transparent;
+  box-shadow: none;
 }
 
 .findbar-status {

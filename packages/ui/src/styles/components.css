@@ -143,7 +143,8 @@
 }
 
 /* ---- Pop-up button ------------------------------------------------------------ */
-.select {
+.select,
+.tool-panel select:not([multiple], [size]) {
   block-size: var(--control-h-small);
   min-block-size: var(--control-h-small);
   padding-block: 0;
@@ -161,11 +162,13 @@
   box-shadow: var(--shadow-control);
 }
 
-[dir="rtl"] .select {
+[dir="rtl"] .select,
+[dir="rtl"] .tool-panel select:not([multiple], [size]) {
   background-position: left 4px center;
 }
 
-.select:hover:not(:disabled) {
+.select:hover:not(:disabled),
+.tool-panel select:not([multiple], [size]):hover:not(:disabled) {
   background-color: color-mix(in srgb, var(--control-background) 94%, var(--label));
 }
 
@@ -379,6 +382,16 @@ input[type="checkbox"].switch:checked::after {
   text-align: end;
 }
 
+/* Under a label, the stepper takes the row. */
+.field .stepper {
+  display: flex;
+}
+
+.field .stepper .text-input {
+  flex: 1;
+  inline-size: auto;
+}
+
 .stepper-buttons {
   display: inline-flex;
   flex-direction: column;
@@ -494,6 +507,26 @@ input[type="checkbox"].switch:checked::after {
   .dialog[open]::backdrop {
     opacity: 0;
   }
+}
+
+.dialog:focus-visible {
+  outline: 0;
+}
+
+/* The close box: a small round button, quiet until pointed at. */
+.dialog-header .icon-btn {
+  min-inline-size: 22px;
+  block-size: 22px;
+  padding: 0;
+  color: var(--secondary-label);
+  background: var(--secondary-fill);
+  border-radius: 50%;
+}
+
+.dialog-header .icon-btn .lucide {
+  inline-size: 13px;
+  block-size: 13px;
+  stroke-width: 2.2;
 }
 
 .dialog-header {
