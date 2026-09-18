@@ -58,7 +58,10 @@ export function Shell() {
           </>
         )}
         <main className="shell-main">{isViewer ? <Viewer /> : <HomeScreen />}</main>
-        {state.rightPane.open && (
+        {/* On the home screen the grid already lists every tool, so the pane
+            only appears once a tool is chosen — otherwise the same thirteen
+            cards were shown twice, side by side. */}
+        {state.rightPane.open && (isViewer || state.rightPane.activeTool !== null) && (
           <>
             <PaneResizer side="end" width={state.rightPane.width} onResize={(width) => dispatch({ type: 'SET_RIGHT_WIDTH', width })} />
             <RightPane />

@@ -4,7 +4,8 @@ import { WORD_EXPORT, ink, openPdf } from './helpers';
 test.describe('the interface does what it shows', () => {
   test('the tool list admits which tools are not built yet', async ({ page }) => {
     await page.goto('/');
-    // The home grid; the tools pane repeats the same list beside it.
+    // One list, not two: the tools pane used to repeat the grid beside it.
+    await expect(page.locator('.tool-card')).toHaveCount(13);
     const grid = page.locator('.tool-cards-grid');
     await expect(grid.locator('.tool-card')).toHaveCount(13);
     // Tripwire: when a tool is built, this number has to change with it.
