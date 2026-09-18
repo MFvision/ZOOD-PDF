@@ -627,5 +627,10 @@
   "signatures.token.pin": "رمز PIN",
   "signatures.token.list": "اقرأ البطاقة",
   "signatures.token.certificate": "الشهادة",
-  "signatures.token.note": "لا يغادر المفتاح البطاقة؛ لا يُرسَل إليها إلا البصمة المراد توقيعها."
+  "signatures.token.note": "لا يغادر المفتاح البطاقة؛ لا يُرسَل إليها إلا البصمة المراد توقيعها.",
+  "signatures.sign.certificate": "الشهادة",
+  "signatures.sign.placement": "على الصفحة",
+  "signatures.sign.about": "السبب والمكان",
+  "signatures.sign.options": "الخيارات",
+  "signatures.sign.time": "الوقت الموثوق"
 }

@@ -627,5 +627,10 @@
   "signatures.token.pin": "PIN",
   "signatures.token.list": "Read the card",
   "signatures.token.certificate": "Certificate",
-  "signatures.token.note": "The key never leaves the card: only the digest to be signed is sent to it."
+  "signatures.token.note": "The key never leaves the card: only the digest to be signed is sent to it.",
+  "signatures.sign.certificate": "Certificate",
+  "signatures.sign.placement": "On the page",
+  "signatures.sign.about": "Reason and place",
+  "signatures.sign.options": "Options",
+  "signatures.sign.time": "Trusted time"
 }

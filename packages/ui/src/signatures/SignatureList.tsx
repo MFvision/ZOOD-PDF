@@ -193,8 +193,8 @@ function TrustedList() {
     }
   };
   return (
-    <section className="signatures-section">
-      <p className="signature-subhead">{t('signatures.trust.title')}</p>
+    <fieldset>
+        <legend>{t('signatures.trust.title')}</legend>
       {trusted.length === 0 ? (
         <p className="tool-panel-note">{t('signatures.trust.none')}</p>
       ) : (
@@ -217,7 +217,7 @@ function TrustedList() {
         </p>
       )}
       <p className="tool-panel-note">{t('signatures.trust.note')}</p>
-    </section>
+    </fieldset>
   );
 }
 
@@ -234,10 +234,10 @@ function Validation() {
   if (!report || report.signatures.length === 0) return null;
   if (!canReachAuthorities()) {
     return (
-      <section className="signatures-section">
-        <p className="signature-subhead">{t('signatures.ltv.title')}</p>
+      <fieldset>
+        <legend>{t('signatures.ltv.title')}</legend>
         <p className="tool-panel-note">{t('signatures.ltv.webNote')}</p>
-      </section>
+      </fieldset>
     );
   }
   const run = async (what: 'ltv' | 'timestamp') => {
@@ -267,8 +267,8 @@ function Validation() {
     }
   };
   return (
-    <section className="signatures-section">
-      <p className="signature-subhead">{t('signatures.ltv.title')}</p>
+    <fieldset>
+        <legend>{t('signatures.ltv.title')}</legend>
       <p className="tool-panel-note">{t('signatures.ltv.note')}</p>
       <div className="tool-actions">
         <IconButton
@@ -299,7 +299,7 @@ function Validation() {
           {t('signatures.error.network', { detail: failure })}
         </p>
       )}
-    </section>
+    </fieldset>
   );
 }
 

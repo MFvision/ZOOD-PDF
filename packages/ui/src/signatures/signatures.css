@@ -1,119 +1,71 @@
-/* Digital signatures: the banner, the panel's list and its signing form. */
+/*
+ * Digital signatures: the banner under the toolbar, the inspector's list of
+ * signatures and its signing form. Built from the shared panel classes
+ * (fieldset groups, .tool-actions, .segmented, .field); only what is its
+ * own is here, in tokens.
+ */
 
-.signature-banner.signature-valid {
-  color: var(--accent);
-  background: var(--accent-soft);
+/* The banner is a quiet strip; the shield says how things stand. */
+.signature-banner.signature-valid > .lucide {
+  color: var(--green);
 }
 
-.signature-banner.signature-untrusted,
-.signature-warning {
-  color: var(--warning-fg);
-  background: var(--warning-bg);
-  border-block-end-color: var(--warning-border);
+.signature-banner.signature-untrusted > .lucide,
+.signature-warning > .lucide {
+  color: var(--orange);
 }
 
-.signature-banner.signature-modified,
-.signature-banner.signature-invalid {
-  color: var(--danger);
-  background: var(--danger-bg);
+.signature-banner.signature-modified > .lucide,
+.signature-banner.signature-invalid > .lucide {
+  color: var(--destructive);
 }
 
 .signatures-tabs {
   display: flex;
-  gap: 4px;
-  padding: 3px;
-  margin-block: 8px 12px;
-  background: var(--bg-hover);
-  border-radius: var(--radius-m);
 }
 
-.signatures-tab {
-  flex: 1;
-  padding-block: 6px;
-  padding-inline: 8px;
-  color: var(--fg-muted);
-  font: inherit;
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-s);
-  cursor: pointer;
-}
-
-.signatures-tab[aria-selected="true"] {
-  color: var(--fg);
-  background: var(--bg-panel);
-  box-shadow: var(--shadow-1);
-}
-
-.signatures-section {
+/* Each tab's contents: a column like the panel itself. */
+.signatures-panel [role="tabpanel"],
+.sign-form,
+.signature-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-block: 10px;
-  border-block-start: 1px solid var(--border);
+  gap: var(--space-5);
 }
 
-.signatures-choice {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 0;
-  margin: 0 0 8px;
-  border: 0;
-}
-
-.signatures-check {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
+/* One signature: a grouped card, its shield in the status colour. */
 .signature-card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 10px;
-  margin-block-end: 10px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-inline-start-width: 4px;
-  border-radius: var(--radius-m);
+  gap: var(--space-2);
+  padding: var(--space-5);
+  background: var(--grouped-background);
+  border-radius: var(--radius-10);
+  box-shadow: 0 0 0 0.5px var(--separator);
 }
 
-.signature-card p {
-  margin: 0;
-}
-
-.signature-card.signature-valid {
-  border-inline-start-color: var(--accent);
-}
-
-.signature-card.signature-untrusted {
-  border-inline-start-color: var(--warning-border);
-}
-
-.signature-card.signature-modified,
-.signature-card.signature-invalid {
-  border-inline-start-color: var(--danger);
+.signature-card + .signature-card {
+  margin-block-start: var(--space-4);
 }
 
 .signature-card-head {
   display: flex;
-  gap: 6px;
+  gap: var(--space-3);
   align-items: center;
+  font-weight: 600;
 }
 
-.signature-valid .signature-card-head {
-  color: var(--accent);
+.signature-valid .signature-card-head > .lucide {
+  color: var(--green);
 }
 
-.signature-untrusted .signature-card-head {
-  color: var(--warning-fg);
+.signature-untrusted .signature-card-head > .lucide {
+  color: var(--orange);
 }
 
-.signature-modified .signature-card-head,
-.signature-invalid .signature-card-head {
-  color: var(--danger);
+.signature-modified .signature-card-head > .lucide,
+.signature-invalid .signature-card-head > .lucide {
+  color: var(--destructive);
 }
 
 .signature-signer {
@@ -124,63 +76,58 @@
 .signature-changes,
 .signature-checks,
 .signature-problems {
-  padding-inline-start: 0;
-  margin-block: 6px 0;
-  font-size: var(--font-s);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0;
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-callout);
   list-style: none;
 }
 
-.signature-chain {
-  padding-inline-start: 18px;
-  margin: 4px 0;
-  font-size: var(--font-s);
+.check-ok > span:first-child {
+  color: var(--green);
 }
 
-.check-ok > span {
-  color: var(--accent);
-}
-
-.check-bad {
-  color: var(--danger);
-}
-
+.check-bad,
 .signature-problems {
-  color: var(--danger);
+  color: var(--destructive);
 }
 
-.signature-details summary {
-  margin-block-start: 6px;
-  color: var(--fg-muted);
+.signature-details > summary {
+  margin-block-start: var(--space-2);
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
   cursor: pointer;
 }
 
-.signature-subhead {
-  margin-block: 8px 2px;
-  font-weight: 600;
+.signature-chain {
+  padding-inline-start: var(--space-6);
+  margin: var(--space-2) 0;
+  font-size: var(--text-callout);
 }
 
-.signature-identity {
+.signature-subhead {
+  font-size: var(--text-callout);
+  font-weight: 600;
+  color: var(--secondary-label);
+}
+
+.signature-identity,
+.signature-outcome {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px;
-  background: var(--accent-soft);
-  border-radius: var(--radius-m);
-}
-
-.signature-outcome {
-  padding: 8px;
-  margin-block: 8px;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-5);
   white-space: pre-line;
-  background: var(--accent-soft);
-  border-radius: var(--radius-m);
-}
-
-.signature-outcome p {
-  margin: 0;
+  background: var(--secondary-fill);
+  border-radius: var(--radius-8);
 }
 
 .signatures-trusted {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
   padding: 0;
   margin: 0;
   list-style: none;
@@ -188,9 +135,16 @@
 
 .signatures-trusted li {
   display: flex;
-  gap: 6px;
+  gap: var(--space-3);
   align-items: center;
   justify-content: space-between;
+}
+
+/* The page, small, to draw where a visible signature goes. */
+.rect-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 .rect-picker-page {
@@ -200,8 +154,8 @@
   overflow: hidden;
   touch-action: none;
   cursor: crosshair;
-  background: #fff;
-  box-shadow: var(--page-shadow);
+  background: var(--content-background);
+  box-shadow: var(--shadow-page);
 }
 
 .rect-picker-canvas {
@@ -212,8 +166,8 @@
 
 .rect-picker-box {
   position: absolute;
-  background: var(--accent-soft);
-  border: 2px dashed var(--accent);
-  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1.5px dashed var(--accent);
+  border-radius: var(--radius-6);
   pointer-events: none;
 }

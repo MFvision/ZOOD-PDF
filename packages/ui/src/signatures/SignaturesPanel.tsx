@@ -30,11 +30,11 @@ export function SignaturesPanel() {
         <p className="tool-panel-note">{t('tool.openFirst')}</p>
       ) : (
         <>
-          <div className="signatures-tabs" role="tablist" aria-label={t('tool.certificates')}>
-            <button type="button" role="tab" aria-selected={tab === 'list'} className="signatures-tab" onClick={() => setTab('list')}>
+          <div className="segmented signatures-tabs" role="tablist" aria-label={t('tool.certificates')}>
+            <button type="button" role="tab" aria-selected={tab === 'list'} className="segmented-item" onClick={() => setTab('list')}>
               {t('signatures.tab.list', { count })}
             </button>
-            <button type="button" role="tab" aria-selected={tab === 'sign'} className="signatures-tab" onClick={() => setTab('sign')}>
+            <button type="button" role="tab" aria-selected={tab === 'sign'} className="segmented-item" onClick={() => setTab('sign')}>
               {t('signatures.tab.sign')}
             </button>
           </div>

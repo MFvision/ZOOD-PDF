@@ -192,19 +192,22 @@ export function SignForm({ onSigned }: { onSigned: () => void }) {
         </p>
       )}
       {desktop && (
-        <fieldset className="signatures-choice">
+        <fieldset>
           <legend>{t('signatures.sign.source')}</legend>
           <label>
-            <input type="radio" name="sign-source" checked={source === 'file'} onChange={() => setSource('file')} /> {t('signatures.sign.fromFile')}
+            <input type="radio" name="sign-source" checked={source === 'file'} onChange={() => setSource('file')} />
+            <span>{t('signatures.sign.fromFile')}</span>
           </label>
           <label>
-            <input type="radio" name="sign-source" checked={source === 'token'} onChange={() => setSource('token')} /> {t('signatures.sign.fromToken')}
+            <input type="radio" name="sign-source" checked={source === 'token'} onChange={() => setSource('token')} />
+            <span>{t('signatures.sign.fromToken')}</span>
           </label>
         </fieldset>
       )}
 
       {source === 'file' ? (
-        <section className="signatures-section">
+        <fieldset>
+          <legend>{t('signatures.sign.certificate')}</legend>
           <label className="field">
             <span>{t('signatures.sign.p12')}</span>
             <input
@@ -218,7 +221,11 @@ export function SignForm({ onSigned }: { onSigned: () => void }) {
               }}
             />
           </label>
-          {p12 && <p className="tool-panel-note" dir="auto">{p12.name}</p>}
+          {p12 && (
+            <p className="tool-panel-note" dir="auto">
+              {p12.name}
+            </p>
+          )}
           <label className="field">
             <span>{t('signatures.sign.p12Password')}</span>
             <input
@@ -255,9 +262,10 @@ export function SignForm({ onSigned }: { onSigned: () => void }) {
               {!identity.canSign && <span className="field-error">{t('signatures.problem.keyUsage')}</span>}
             </div>
           )}
-        </section>
+        </fieldset>
       ) : (
-        <section className="signatures-section">
+        <fieldset>
+          <legend>{t('signatures.sign.fromToken')}</legend>
           <label className="field">
             <span>{t('signatures.token.module')}</span>
             <input className="text-input" dir="ltr" spellCheck={false} placeholder="/usr/local/lib/opensc-pkcs11.so" value={module} onChange={(event) => setModule(event.target.value)} />
@@ -288,10 +296,11 @@ export function SignForm({ onSigned }: { onSigned: () => void }) {
             </label>
           )}
           <p className="tool-panel-note">{t('signatures.token.note')}</p>
-        </section>
+        </fieldset>
       )}
 
-      <section className="signatures-section">
+      <fieldset>
+        <legend>{t('signatures.sign.placement')}</legend>
         {report && report.emptyFields.length > 0 && (
           <label className="field">
             <span>{t('signatures.sign.field')}</span>
@@ -306,8 +315,9 @@ export function SignForm({ onSigned }: { onSigned: () => void }) {
           </label>
         )}
         {!field && (
-          <label className="signatures-check">
-            <input type="checkbox" checked={visible} onChange={(event) => setVisible(event.target.checked)} /> {t('signatures.sign.visible')}
+          <label>
+            <input type="checkbox" checked={visible} onChange={(event) => setVisible(event.target.checked)} />
+            <span>{t('signatures.sign.visible')}</span>
           </label>
         )}
         {visible && !field && (
@@ -336,13 +346,16 @@ export function SignForm({ onSigned }: { onSigned: () => void }) {
               <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void chooseImage(event.target.files?.[0])} />
             </label>
             {image && (
-              <IconButton label={t('signatures.sign.removeImage')} icon={<Icon of={Trash2} />} showLabel onClick={() => setImage(null)} />
+              <div className="tool-actions">
+                <IconButton label={t('signatures.sign.removeImage')} icon={<Icon of={Trash2} />} showLabel onClick={() => setImage(null)} />
+              </div>
             )}
           </>
         )}
-      </section>
+      </fieldset>
 
-      <section className="signatures-section">
+      <fieldset>
+        <legend>{t('signatures.sign.about')}</legend>
         <label className="field">
           <span>{t('signatures.sign.reason')}</span>
           <input className="text-input" dir="auto" value={reason} onChange={(event) => setReason(event.target.value)} />
@@ -355,9 +368,10 @@ export function SignForm({ onSigned }: { onSigned: () => void }) {
           <span>{t('signatures.sign.contact')}</span>
           <input className="text-input" dir="auto" value={contact} onChange={(event) => setContact(event.target.value)} />
         </label>
-      </section>
+      </fieldset>
 
-      <section className="signatures-section">
+      <fieldset>
+        <legend>{t('signatures.sign.options')}</legend>
         <label className="field">
           <span>{t('signatures.sign.kind')}</span>
           <select className="select" value={kind} onChange={(event) => setKind(event.target.value as typeof kind)}>
@@ -374,28 +388,32 @@ export function SignForm({ onSigned }: { onSigned: () => void }) {
           </select>
         </label>
         {alreadySigned && <p className="tool-panel-note">{t('signatures.sign.certifyFirstNote')}</p>}
-        <label className="signatures-check">
-          <input type="checkbox" checked={lock} onChange={(event) => setLock(event.target.checked)} /> {t('signatures.sign.lock')}
+        <label>
+          <input type="checkbox" checked={lock} onChange={(event) => setLock(event.target.checked)} />
+          <span>{t('signatures.sign.lock')}</span>
         </label>
         {identity?.rsa && source === 'file' && (
-          <label className="signatures-check">
-            <input type="checkbox" checked={pss} onChange={(event) => setPss(event.target.checked)} /> {t('signatures.sign.pss')}
+          <label>
+            <input type="checkbox" checked={pss} onChange={(event) => setPss(event.target.checked)} />
+            <span>{t('signatures.sign.pss')}</span>
           </label>
         )}
-      </section>
+      </fieldset>
 
-      <section className="signatures-section">
+      <fieldset>
+        <legend>{t('signatures.sign.time')}</legend>
         {canReachAuthorities() ? (
           <>
-            <label className="signatures-check">
-              <input type="checkbox" checked={timestamp} onChange={(event) => setTimestamp(event.target.checked)} /> {t('signatures.sign.timestamp')}
+            <label>
+              <input type="checkbox" checked={timestamp} onChange={(event) => setTimestamp(event.target.checked)} />
+              <span>{t('signatures.sign.timestamp')}</span>
             </label>
             {timestamp && <AuthorityPicker value={authority} onChange={setAuthority} />}
           </>
         ) : (
           <p className="tool-panel-note">{t('signatures.sign.timestampWeb')}</p>
         )}
-      </section>
+      </fieldset>
 
       <div className="tool-actions">
         <IconButton
