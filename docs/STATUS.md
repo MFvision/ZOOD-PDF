@@ -178,6 +178,12 @@ test that fails without its fix.
    of joining the list: every drop opened its first file. A panel can now
    claim the window's drops — Combine does, and the drop overlay says what
    will happen — on the web and on desktop alike.
+18. **Edit text's navigation pane still promised a later phase**: four of its
+   five tabs — bookmarks, attachments, layers, comments — only said so.
+   They are gone; the pane is the page thumbnails (EmbedPDF's own sidebar
+   has the outline and the comments). The tool list no longer says "0 tools
+   are not built yet", and a test fails if anything on screen promises a
+   later phase.
 
 ## Known gaps, stated plainly
 * **Deleted pages stay in the file's earlier revision**, like every incremental change, until a clean copy is written; extracting pages writes one. Bookmarks and links that pointed at a deleted page are left pointing nowhere in the open file.

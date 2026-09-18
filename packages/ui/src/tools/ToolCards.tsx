@@ -7,10 +7,10 @@ import { TOOLS } from './tools';
 /**
  * Tool cards shown in the tools pane (list) and on the home screen (grid).
  *
- * Twelve of the thirteen tools do nothing yet. They used to look exactly like
- * the one that works, so the only way to find out was to click — which is a
- * promise the app cannot keep. Each unbuilt tool now says so on its face, and
- * the count is stated once above them.
+ * Every tool works. When one did not, it looked exactly like those that did,
+ * so the only way to find out was to click — a promise the app could not
+ * keep. A tool that is not built says so on its face, and how many there are
+ * is stated once above the cards; with none, nothing is said.
  */
 export function ToolCards({ layout }: { layout: 'list' | 'grid' }) {
   const t = useT();
@@ -18,7 +18,7 @@ export function ToolCards({ layout }: { layout: 'list' | 'grid' }) {
   const pending = TOOLS.filter((tool) => !tool.implemented).length;
   return (
     <>
-      <p className="tool-cards-note">{t('tool.notYet', { n: String(pending) })}</p>
+      {pending > 0 && <p className="tool-cards-note">{t('tool.notYet', { n: String(pending) })}</p>}
       <ul
         className={cx('tool-cards', layout === 'grid' && 'tool-cards-grid')}
         aria-label={t('tool.cards')}

@@ -2,7 +2,10 @@ import { expect } from '@playwright/test';
 import { WORD_EXPORT, enterEditText, ink, openPdf, test } from './helpers';
 
 test.describe('the interface does what it shows', () => {
-  test('every tool on the list is built: none is marked Later', async ({ page, stayLocal: _stayLocal }) => {
+  test('every tool on the list is built: none is marked Later', async ({
+    page,
+    stayLocal: _stayLocal,
+  }) => {
     await page.goto('/');
     // One list, not two: the tools pane used to repeat the grid beside it.
     await expect(page.locator('.tool-card')).toHaveCount(13);
@@ -13,14 +16,34 @@ test.describe('the interface does what it shows', () => {
     await expect(grid.locator('.tool-card-pending .tool-card-later')).toHaveCount(0);
   });
 
-  test('opens an Arabic Word export and puts readable text on the page', async ({ page, stayLocal: _stayLocal }) => {
+  test('nothing on screen promises a later phase, in the viewer or in Edit text', async ({
+    page,
+    stayLocal: _stayLocal,
+  }) => {
+    await page.goto('/');
+    await openPdf(page, WORD_EXPORT);
+    await expect(page.getByText(/later phase|coming soon|not built yet/i)).toHaveCount(0);
+    await enterEditText(page);
+    const navigation = page.getByRole('complementary', { name: 'Navigation' });
+    await expect(navigation).toContainText('Thumbnails');
+    await expect(navigation.getByRole('tab'), 'no tabs that only say "later"').toHaveCount(0);
+    await expect(page.getByText(/later phase|coming soon|not built yet/i)).toHaveCount(0);
+  });
+
+  test('opens an Arabic Word export and puts readable text on the page', async ({
+    page,
+    stayLocal: _stayLocal,
+  }) => {
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
     const first = await enterEditText(page);
     await expect(first.locator('.text-layer')).toContainText('صباح الخير');
   });
 
-  test('replaces a paragraph and the new text is on the page', async ({ page, stayLocal: _stayLocal }) => {
+  test('replaces a paragraph and the new text is on the page', async ({
+    page,
+    stayLocal: _stayLocal,
+  }) => {
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
     const first = await enterEditText(page);
