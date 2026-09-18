@@ -281,7 +281,7 @@ pub fn locate_pdfium<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
         )));
         candidates.push(PathBuf::from(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../../../tools/pdfium/mac/lib"
+            "/../../../.tools/pdfium/mac/lib"
         )));
     }
     candidates.into_iter().find(|dir| has_library(dir))

@@ -31,7 +31,7 @@ fn point_at_pdfium() {
         }
         let candidates = [
             manifest().join("resources/pdfium"),
-            manifest().join("../../../../tools/pdfium/mac/lib"),
+            manifest().join("../../../.tools/pdfium/mac/lib"),
         ];
         let dir = candidates
             .iter()

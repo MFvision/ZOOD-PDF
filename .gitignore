@@ -11,3 +11,6 @@ tests/corpus/**/generated-large/
 # secrets
 .env
 .env.*
+
+# Local toolchain helpers for this machine (see .tools/env.sh); never committed.
+.tools/

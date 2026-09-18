@@ -123,7 +123,7 @@ sets `PDFIUM_LIB_DIR` to the first directory that actually holds the library:
 1. `$PDFIUM_LIB_DIR`, if it is already set — **that always wins**, so you can point the app at another build:
    `PDFIUM_LIB_DIR=/path/to/lib pnpm --filter @warraq/desktop dev`
 2. the bundled resource (`Warraq.app/Contents/Resources/resources/pdfium/`)
-3. debug builds only: `src-tauri/resources/pdfium/`, then the session's `tools/pdfium/mac/lib/` — so
+3. debug builds only: `src-tauri/resources/pdfium/`, then `.tools/pdfium/mac/lib/` at the repository root — so
    `tauri dev` works before anything has been bundled
 
 If none of them binds, the core degrades to the pure-Rust renderer on its own; nothing crashes and
