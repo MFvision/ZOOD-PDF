@@ -187,13 +187,15 @@ test.describe('Export saves the document in other formats, Arabic in reading ord
     await openPdf(page, INVOICE);
     await chooseTool(page, 'Redact');
     await useAction(page, 'Mark an area');
-    // The invoice's title, number and date sit in the top fifth of the page.
-    await drag(page, [0.02, 0.03], [0.98, 0.16]);
-    await expect.poll(() => pendingRedactions(page)).toBeGreaterThan(0);
-
-    // Marked is not redacted, and Export says so before anything is exported.
     await chooseTool(page, 'Export');
     const warning = panel(page).getByText('Some marked areas have not been applied yet.', { exact: false });
+    await expect(warning).toHaveCount(0);
+
+    // The viewer is still marking areas with Export open. The invoice's title,
+    // number and date sit in the top fifth of the page; marked is not redacted,
+    // and Export says so as soon as the mark is there.
+    await drag(page, [0.02, 0.03], [0.98, 0.16]);
+    await expect.poll(() => pendingRedactions(page)).toBeGreaterThan(0);
     await expect(warning).toBeVisible();
 
     await chooseTool(page, 'Redact');

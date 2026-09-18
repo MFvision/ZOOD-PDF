@@ -30,8 +30,6 @@ export function ExportPanel() {
   // Set when this copy needs a password the app does not have: one set in Protect.
   const [locked, setLocked] = useState<{ wrong: boolean } | null>(null);
   const [password, setPassword] = useState('');
-  // Read when the panel opens; marks cannot be made while it is open.
-  const [pending] = useState(() => services.pendingRedactions());
   // A different file starts afresh: no password asked for, nothing exported yet.
   const documentId = state.document?.id ?? null;
   const [shownFor, setShownFor] = useState(documentId);
@@ -175,7 +173,7 @@ export function ExportPanel() {
           {t('export.noText')}
         </p>
       )}
-      {pending > 0 && <p className="export-alert">{t('export.pendingRedactions')}</p>}
+      {services.pendingRedactions > 0 && <p className="export-alert">{t('export.pendingRedactions')}</p>}
     </div>
   );
 }
