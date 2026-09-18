@@ -6,13 +6,24 @@ import type { CompareOptions } from './normalize';
 export interface ReportInput {
   comparison: Comparison;
   options: CompareOptions;
-  /** The two versions, named as the panel names them. */
+  /** The two versions, named as the panel names them: sentences of the interface, file names isolated. */
   older: string;
   newer: string;
   /** When the comparison was made, already written for `lang`. */
   date: string;
   lang: Lang;
   t: (key: TKey, params?: TParams) => string;
+}
+
+/**
+ * A name set inside a sentence of the interface — "report.pdf (open now)",
+ * "المراجعة 1 من report.pdf" — as a bidi isolate (FSI … PDI): its own letters
+ * decide its direction, and the sentence keeps the interface's. Without it a
+ * Latin file name at the start turned an Arabic sentence left to right and
+ * put its parentheses at the wrong ends.
+ */
+export function isolate(name: string): string {
+  return `⁨${name}⁩`;
 }
 
 const ESCAPES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -23,7 +34,7 @@ export function escapeHtml(text: string): string {
 }
 
 /**
- * The report's own look: inline, because it must open anywhere with nothing
+ * The report's look: inline, because it must open anywhere with nothing
  * fetched. Logical properties, so it mirrors in Arabic; `del` and `ins` differ
  * by line — struck through or underlined — not by colour alone.
  */
@@ -80,8 +91,8 @@ export function comparisonReport(input: ReportInput): string {
   const body: string[] = [
     `<h1>${title}</h1>`,
     '<dl>',
-    `<dt>${escapeHtml(t('compare.older'))}</dt><dd dir="auto">${escapeHtml(input.older)}</dd>`,
-    `<dt>${escapeHtml(t('compare.newer'))}</dt><dd dir="auto">${escapeHtml(input.newer)}</dd>`,
+    `<dt>${escapeHtml(t('compare.older'))}</dt><dd>${escapeHtml(input.older)}</dd>`,
+    `<dt>${escapeHtml(t('compare.newer'))}</dt><dd>${escapeHtml(input.newer)}</dd>`,
     '</dl>',
   ];
   if (comparison.olderWords + comparison.newerWords === 0) {

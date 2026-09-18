@@ -3,20 +3,22 @@ import { translate } from '../i18n/messages';
 import type { Lang, TKey, TParams } from '../i18n/messages';
 import { comparePages } from './comparison';
 import { EXACT } from './normalize';
-import { comparisonReport, escapeHtml } from './report';
+import { comparisonReport, escapeHtml, isolate } from './report';
 
 const SENTENCE = 'هذه جملة جديدة كتبها اختبار المقارنة';
 const TITLE = 'كلمة رئيس مجموعة البنك الدولي';
 
 function report(older: string[], newer: string[], lang: Lang = 'ar', options = EXACT) {
+  const t = (key: TKey, params?: TParams) => translate(lang, key, params);
   return comparisonReport({
     comparison: comparePages(older, newer, options),
     options,
-    older: 'تقرير.pdf (المراجعة 1)',
-    newer: 'تقرير.pdf',
+    // As the panel names them.
+    older: t('compare.revisionOf', { n: 1, name: isolate('report.pdf') }),
+    newer: t('compare.openNow', { name: isolate('report.pdf') }),
     date: '18 سبتمبر 2026',
     lang,
-    t: (key: TKey, params?: TParams) => translate(lang, key, params),
+    t,
   });
 }
 
@@ -45,8 +47,13 @@ describe('the comparison report', () => {
     expect(html).toContain('<li>Words added: 6</li>');
     expect(html).toContain('<li>Words removed: 5</li>');
     expect(html).toContain('<h2>Page 1</h2>');
-    // The version names can be in any script: each finds its own direction too.
-    expect(html).toContain('<dd dir="auto">تقرير.pdf</dd>');
+  });
+
+  it('keeps each version name in the report’s direction, the file name isolated inside it', () => {
+    // A Latin file name first no longer turns an Arabic sentence left to right.
+    expect(report([TITLE], [SENTENCE], 'ar')).toContain('<dd>⁨report.pdf⁩ (المفتوح الآن)</dd>');
+    expect(report([TITLE], [SENTENCE], 'en')).toContain('<dd>Revision 1 of ⁨report.pdf⁩</dd>');
+    expect(isolate('تقرير.pdf')).toBe('⁨تقرير.pdf⁩');
   });
 
   it('escapes every word of the documents and their names', () => {
@@ -63,8 +70,8 @@ describe('the comparison report', () => {
     expect(html).not.toContain('<b>old');
     expect(html).toContain('&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; &#39;q&#39;');
     expect(html).toContain('&lt;b&gt;old&lt;/b&gt;');
-    expect(html).toContain('<dd dir="auto">&lt;i&gt;a&lt;/i&gt;.pdf</dd>');
-    expect(html).toContain('<dd dir="auto">b &amp; &quot;c&quot;.pdf</dd>');
+    expect(html).toContain('<dd>&lt;i&gt;a&lt;/i&gt;.pdf</dd>');
+    expect(html).toContain('<dd>b &amp; &quot;c&quot;.pdf</dd>');
     expect(html).toContain('&lt;now&gt;');
     expect(escapeHtml(`<>&"'`)).toBe('&lt;&gt;&amp;&quot;&#39;');
   });
