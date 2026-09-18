@@ -219,6 +219,12 @@ function errorKeyFor(err: unknown): TKey {
 }
 
 const TOAST_MS = 3000;
+/**
+ * The largest file whose saves are kept as an update of it: the core holds
+ * both copies at once to compare them (`file.rebase`), and past this a
+ * browser tab runs short of memory.
+ */
+const REBASE_LIMIT = 150 * 1024 * 1024;
 
 /** EmbedPDF's ink commitDelay (800 ms) plus a margin; see `bytesFromEmbed`. */
 const INK_SETTLE_MS = 1000;
@@ -524,6 +530,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [client],
   );
 
+  // The bytes EmbedPDF was given, and whether redaction marks were made on
+  // them since: saves are kept as an update of those bytes, but not after a
+  // redaction, whose point is that nothing under it survives anywhere.
+  const embedBytesRef = useRef<ArrayBuffer | null>(null);
+  const redactedRef = useRef(false);
+  useEffect(() => {
+    embedBytesRef.current = documentBytes;
+    redactedRef.current = false;
+  }, [documentBytes]);
+  useEffect(() => {
+    if (pendingRedactions > 0) redactedRef.current = true;
+  }, [pendingRedactions]);
+
+  /**
+   * EmbedPDF's save — PDFium writes a file whole — kept as an update of the
+   * bytes it opened (`file.rebase`): what was signed stays signed, and a file
+   * nothing was done to comes back as it was. Not after a redaction, nor for
+   * a very large file, nor when the protection changed (the core says so);
+   * then the rewrite is the file, as before.
+   */
+  const keepOwnBytes = useCallback(
+    async (rewritten: ArrayBuffer): Promise<ArrayBuffer> => {
+      const own = embedBytesRef.current;
+      if (!own || redactedRef.current || own.byteLength > REBASE_LIMIT) return rewritten;
+      try {
+        const { result, blobs } = await client.callStatic<{ rebased: boolean }>(
+          'file.rebase',
+          { password: passwordRef.current ?? null },
+          [own.slice(0), rewritten.slice(0)],
+        );
+        return result.rebased && blobs[0] ? blobs[0] : rewritten;
+      } catch {
+        return rewritten;
+      }
+    },
+    [client],
+  );
+
   const bytesFromEmbed = useCallback(async (): Promise<ArrayBuffer | null> => {
     const registry = embedRef.current;
     if (!registry) return null;
@@ -579,7 +623,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SWITCH_ENGINE', direction: warraqOwns ? 'in' : 'out' });
     void (async () => {
       if (warraqOwns) {
-        const bytes = await bytesFromEmbed();
+        // Kept as an update of the file's own bytes, so Warraq's edits are
+        // appended after them too.
+        const rewritten = await bytesFromEmbed();
+        const bytes = rewritten && (await keepOwnBytes(rewritten));
         const name = stateRef.current.document?.name;
         if (!bytes || !name) {
           done();
@@ -619,7 +666,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       switchInFlight.current = false;
       dispatch({ type: 'DOCUMENT_FAILED', error: 'error.open' });
     });
-  }, [warraqOwns, bytesFromEmbed, client]);
+  }, [warraqOwns, bytesFromEmbed, keepOwnBytes, client]);
 
   const clearRecent = useCallback(() => {
     clearStoredRecent();
@@ -1047,7 +1094,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Whichever view is current holds the latest file: EmbedPDF's carries its
       // annotations and redactions, Warraq's its Arabic edits.
       const fromEmbed = warraqOwnsDocument(stateRef.current) ? null : await bytesFromEmbed();
-      const bytes = fromEmbed ? new Uint8Array(fromEmbed) : await doc.save();
+      const bytes = fromEmbed ? new Uint8Array(await keepOwnBytes(fromEmbed)) : await doc.save();
       if (isTauriHost()) {
         // Cancelling the panel is not a failure, and not a save either.
         if (!(await savePdfFile(bytes, pdfFileName(name)))) return;
@@ -1059,7 +1106,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch {
       dispatch({ type: 'DOCUMENT_FAILED', error: 'file.saveFailed' });
     }
-  }, [bytesFromEmbed]);
+  }, [bytesFromEmbed, keepOwnBytes]);
 
   const onFileInput = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;

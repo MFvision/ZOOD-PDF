@@ -142,6 +142,14 @@ pub struct Sealer {
     entry: Object,
 }
 
+impl Sealer {
+    /// Whether `other` seals with the same key: the same protection, the
+    /// same passwords, whoever wrote the file.
+    pub(crate) fn same_key(&self, other: &Sealer) -> bool {
+        self.file_key == other.file_key
+    }
+}
+
 impl std::fmt::Debug for Sealer {
     // Never print the key.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

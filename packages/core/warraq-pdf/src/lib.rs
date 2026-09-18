@@ -9,6 +9,7 @@ pub mod marked;
 pub mod ocr;
 pub mod ops;
 pub mod pages;
+mod rebase;
 mod show;
 pub mod text_walk;
 pub mod tounicode;

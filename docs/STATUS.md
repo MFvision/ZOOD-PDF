@@ -16,7 +16,7 @@
 | Arabic text **reading** in logical order | 16 of the truth-scored corpus files, against 2 for PDF.js, 2 for MuPDF, 0 for PDFium |
 | Arabic text **editing** with reflow | works end to end: click a paragraph in the app, edit it, undo/redo, save. GATE 2 passed (`docs/gate-2.md`) |
 | Encrypted files | read everywhere: R2–R6, RC4 40/128, AES-128, AES-256 |
-| Saving | incremental update; the opened bytes stay as the literal prefix |
+| Saving | incremental update; the opened bytes stay as the literal prefix — for EmbedPDF's changes too (below), except after a redaction or a change of password, which are written whole |
 | Hostile input | mutation harness on every pull request; cargo-fuzz targets ready for nightly |
 | Visual regressions | golden renders of all 48 corpus pages gated in CI |
 | No-mapping files | characters recovered from glyph shapes, at 100 % precision on held-out fonts |
@@ -62,7 +62,7 @@ so on its face.
 
 ## Next (in order)
 1. **Print on Windows and Linux** desktop builds (macOS prints through PDFKit).
-2. Nastaliq Urdu extraction; the 500 MB scan stress run; Acrobat verification on a machine that has it.
+2. Nastaliq Urdu extraction; Acrobat verification on a machine that has it.
 
 ## Decisions needed from you
 1. **GitHub organization** — nothing has been pushed: `gh repo create <org>/warraq --private --source . --push`.
@@ -208,6 +208,20 @@ test that fails without its fix.
    single 26-line block. A column's lines now part after a short line that
    finishes a sentence, and before a line indented from a full one — eight
    paragraphs of two to seven lines there, the rest of the corpus as it was.
+24. **Save through EmbedPDF rewrote the whole file**, even with nothing
+   changed: PDFium writes a document whole, so the file's own bytes — and
+   any signature over them — were gone after a comment, a filled field, or
+   nothing at all. PDFium keeps every object's number, so the objects it
+   wrote differently are the changes: they are now appended to the file's
+   own bytes as an update (`file.rebase`), on Save and on the way into Edit
+   text, and a file nothing was done to saves byte for byte as it was. After
+   a redaction the file is still written whole — an update would leave the
+   redacted text in the revision before it — and so is a password added,
+   changed or taken off. Stress run, 2026-09-18, Chrome: a 409 MB scan of
+   100 pages opens and draws its first page in 3.2 s, reaches page 100 in
+   0.15 s and saves in 8.6 s (most of it EmbedPDF copying the bytes out one
+   at a time); files over 150 MB are saved whole, since the core would hold
+   both copies at once.
 
 ## Known gaps, stated plainly
 * **Deleted pages stay in the file's earlier revision**, like every incremental change, until a clean copy is written; extracting pages writes one. Bookmarks and links that pointed at a deleted page are left pointing nowhere in the open file.

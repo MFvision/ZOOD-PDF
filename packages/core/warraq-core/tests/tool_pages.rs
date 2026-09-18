@@ -233,6 +233,41 @@ fn trim_margins_cuts_to_what_is_printed_and_leaves_a_blank_page_alone() {
 }
 
 #[test]
+fn file_rebase_keeps_the_file_s_own_bytes_under_another_engine_s_changes() {
+    let fixture = |name: &str| {
+        std::fs::read(format!(
+            "{}/../../../tests/fixtures/rewrites/{name}",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap()
+    };
+    let original = corpus(THREE);
+    let reply = call_static(
+        "file.rebase",
+        "{}",
+        vec![original.clone(), fixture("three-square.pdf")],
+    )
+    .unwrap();
+    assert_eq!(json(&reply)["rebased"], true);
+    assert!(reply.blobs[0].starts_with(&original));
+    assert_eq!(
+        texts(&Document::open(reply.blobs[0].clone(), None).unwrap()),
+        texts(&Document::open(original, None).unwrap())
+    );
+
+    // A password taken off cannot be an update: the rewrite is the file.
+    let locked = corpus("generated/variant-encrypted-aes256.pdf");
+    let reply = call_static(
+        "file.rebase",
+        r#"{"password":"warraq"}"#,
+        vec![locked, fixture("aes256-unprotected.pdf")],
+    )
+    .unwrap();
+    assert_eq!(json(&reply)["rebased"], false);
+    assert!(reply.blobs.is_empty());
+}
+
+#[test]
 fn combine_needs_no_open_document() {
     let three = corpus(THREE);
     let word = corpus("realworld/A_worldbank_malpass_g7_briefing_AR_word2016_pdftools.pdf");
