@@ -132,5 +132,25 @@ test.describe('each tool changes the file, not just the screen', () => {
     await expect(first.locator('.text-layer')).toContainText('العميل');
     // Edit text reopens EmbedPDF's copy, which is still protected.
     await expect(page.locator('.banner-error')).toHaveCount(0);
+
+    // A text edit, saved: the file keeps its password and carries the edit.
+    await first.locator('.edit-box').first().click();
+    const area = first.locator('.paragraph-editor-area');
+    const replacement = 'نص عدّله وراق في ملف محمي';
+    await area.fill(replacement);
+    await area.press('ControlOrMeta+Enter');
+    await expect(first.locator('.text-layer')).toContainText(replacement);
+    const edited = await save(page);
+    expect(edited.text).toMatch(/\/Encrypt/);
+    expect(edited.text).not.toContain('beginbfchar');
+
+    await page.goto('/');
+    await page.locator('input[type="file"]').setInputFiles(edited.path);
+    await expect(prompt).toBeVisible();
+    await prompt.getByLabel('Password').fill(password);
+    await prompt.getByRole('button', { name: 'Open' }).click();
+    await expect.poll(() => embedTiles(page)).toBeGreaterThan(0);
+    const reopened = await enterEditText(page);
+    await expect(reopened.locator('.text-layer')).toContainText(replacement);
   });
 });

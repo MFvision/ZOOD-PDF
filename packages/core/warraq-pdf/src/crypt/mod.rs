@@ -84,7 +84,8 @@ pub fn load_preserving_ciphertext(bytes: &[u8]) -> lopdf::Result<Document> {
 
 /// Decrypt every string and stream of `doc` in place with `password`, expand
 /// any object streams that were still encrypted, and drop `/Encrypt` from the
-/// trailer. Afterwards the document is plaintext and can be saved as such.
+/// trailer. Afterwards the document is plaintext and can be saved as such;
+/// the returned [`Sealer`] writes updates that stay encrypted instead.
 ///
 /// `password` is tried as the user password first and then as the owner
 /// password; an empty string covers the common "encrypted, but opens without a
@@ -96,14 +97,15 @@ pub fn load_preserving_ciphertext(bytes: &[u8]) -> lopdf::Result<Document> {
 /// [`CryptError::WrongPassword`] if the password is neither of the two, and
 /// [`CryptError::Unsupported`] for a handler this module does not implement —
 /// the document is then left untouched.
-pub fn decrypt_document(doc: &mut Document, password: &str) -> Result<(), CryptError> {
+pub fn decrypt_document(doc: &mut Document, password: &str) -> Result<Sealer, CryptError> {
     let handler = Handler::from_document(doc)?;
     let file_key = handler.authenticate(password)?;
-    let encrypt_id = doc
+    let entry = doc
         .trailer
         .get(b"Encrypt")
-        .ok()
-        .and_then(|entry| entry.as_reference().ok());
+        .cloned()
+        .map_err(|_| CryptError::NotEncrypted)?;
+    let encrypt_id = entry.as_reference().ok();
 
     let ids: Vec<ObjectId> = doc.objects.keys().copied().collect();
     for id in ids {
@@ -112,7 +114,7 @@ pub fn decrypt_document(doc: &mut Document, password: &str) -> Result<(), CryptE
             continue;
         }
         if let Some(object) = doc.objects.get_mut(&id) {
-            decrypt_value(&handler, &file_key, id, object)?;
+            crypt_value(&handler, &file_key, id, object, Direction::Decrypt)?;
         }
     }
 
@@ -122,26 +124,99 @@ pub fn decrypt_document(doc: &mut Document, password: &str) -> Result<(), CryptE
     if let Some(id) = encrypt_id {
         doc.objects.remove(&id);
     }
-    Ok(())
+    Ok(Sealer {
+        handler,
+        file_key,
+        entry,
+    })
 }
 
-/// Decrypt one object, recursing into arrays and dictionaries: encryption
-/// applies to every string and stream, wherever it is nested.
-fn decrypt_value(
+/// What it takes to write an update that stays encrypted: the security
+/// handler, the file key the password unlocked, and the trailer's `/Encrypt`
+/// entry as it was. An update sealed with it is read with the same passwords
+/// and has the same permissions as the file it extends, because it uses the
+/// same key and names the same `/Encrypt` dictionary.
+pub struct Sealer {
+    handler: Handler,
+    file_key: Vec<u8>,
+    entry: Object,
+}
+
+impl std::fmt::Debug for Sealer {
+    // Never print the key.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Sealer { .. }")
+    }
+}
+
+impl Sealer {
+    /// `object`, with its strings and streams encrypted as object `id`'s.
+    pub fn seal(&self, id: ObjectId, object: &Object) -> Result<Object, CryptError> {
+        let mut sealed = object.clone();
+        crypt_value(
+            &self.handler,
+            &self.file_key,
+            id,
+            &mut sealed,
+            Direction::Encrypt,
+        )?;
+        Ok(sealed)
+    }
+
+    /// The `/Encrypt` entry an update's trailer must carry.
+    pub fn trailer_entry(&self) -> &Object {
+        &self.entry
+    }
+}
+
+/// Which way [`crypt_value`] turns strings and streams.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Direction {
+    Decrypt,
+    Encrypt,
+}
+
+fn crypt_bytes(
+    handler: &Handler,
+    file_key: &[u8],
+    id: ObjectId,
+    method: Method,
+    data: &[u8],
+    direction: Direction,
+) -> Result<Vec<u8>, CryptError> {
+    match direction {
+        Direction::Decrypt => handler.decrypt(file_key, id, method, data),
+        Direction::Encrypt => handler.encrypt(file_key, id, method, data),
+    }
+}
+
+/// Decrypt or encrypt one object, recursing into arrays and dictionaries:
+/// encryption applies to every string and stream, wherever it is nested. One
+/// traversal for both directions, so what is left in the clear on the way in
+/// is left in the clear on the way out.
+fn crypt_value(
     handler: &Handler,
     file_key: &[u8],
     id: ObjectId,
     object: &mut Object,
+    direction: Direction,
 ) -> Result<(), CryptError> {
     match object {
         Object::Array(items) => {
             for item in items {
-                decrypt_value(handler, file_key, id, item)?;
+                crypt_value(handler, file_key, id, item, direction)?;
             }
         }
-        Object::Dictionary(dict) => decrypt_dictionary(handler, file_key, id, dict)?,
+        Object::Dictionary(dict) => crypt_dictionary(handler, file_key, id, dict, direction)?,
         Object::String(content, _) => {
-            *content = handler.decrypt(file_key, id, handler.string_method(), content)?;
+            *content = crypt_bytes(
+                handler,
+                file_key,
+                id,
+                handler.string_method(),
+                content,
+                direction,
+            )?;
         }
         Object::Stream(stream) => {
             // The cross-reference stream is never encrypted, and neither are
@@ -150,9 +225,10 @@ fn decrypt_value(
                 return Ok(());
             }
             let method = stream_method(handler, &stream.dict);
-            decrypt_dictionary(handler, file_key, id, &mut stream.dict)?;
+            crypt_dictionary(handler, file_key, id, &mut stream.dict, direction)?;
             if method != Method::Identity {
-                let content = handler.decrypt(file_key, id, method, &stream.content)?;
+                let content =
+                    crypt_bytes(handler, file_key, id, method, &stream.content, direction)?;
                 stream.set_content(content);
             }
         }
@@ -161,11 +237,12 @@ fn decrypt_value(
     Ok(())
 }
 
-fn decrypt_dictionary(
+fn crypt_dictionary(
     handler: &Handler,
     file_key: &[u8],
     id: ObjectId,
     dict: &mut Dictionary,
+    direction: Direction,
 ) -> Result<(), CryptError> {
     // The signature blob in a signature dictionary is written after the file is
     // encrypted and is therefore in the clear (ISO 32000-2 §7.6.2).
@@ -174,7 +251,7 @@ fn decrypt_dictionary(
         if signature && key.as_slice() == b"Contents" {
             continue;
         }
-        decrypt_value(handler, file_key, id, value)?;
+        crypt_value(handler, file_key, id, value, direction)?;
     }
     Ok(())
 }
@@ -528,8 +605,8 @@ mod tests {
         assert_eq!(doc.get_pages().len(), 1);
         let mut doc = doc;
         assert_eq!(
-            decrypt_document(&mut doc, ""),
-            Err(CryptError::NotEncrypted)
+            decrypt_document(&mut doc, "").err(),
+            Some(CryptError::NotEncrypted)
         );
     }
 

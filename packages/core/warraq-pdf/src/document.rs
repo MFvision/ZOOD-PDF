@@ -13,6 +13,9 @@ pub struct PdfDocument {
     /// Objects that existed already and that we changed.
     pub(crate) touched: std::collections::BTreeSet<u32>,
     pub(crate) was_encrypted: bool,
+    /// Writes updates to an encrypted file that stay encrypted; `None` for a
+    /// plaintext file, or one only `lopdf`'s own handler could open.
+    pub(crate) sealer: Option<crypt::Sealer>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -50,9 +53,10 @@ impl PdfDocument {
         let mut doc =
             crypt::load_preserving_ciphertext(&bytes).map_err(|e| Error::Parse(e.to_string()))?;
         let encrypted = crypt::is_encrypted(&doc);
+        let mut sealer = None;
         if encrypted {
             match crypt::decrypt_document(&mut doc, password) {
-                Ok(()) => {}
+                Ok(found) => sealer = Some(found),
                 Err(CryptError::WrongPassword) => return Err(Error::Password),
                 Err(e) => {
                     log::warn!("warraq-pdf: {e}; falling back to lopdf's security handler");
@@ -61,6 +65,7 @@ impl PdfDocument {
             }
             if doc.get_pages().is_empty() {
                 doc = Self::load_with_lopdf(&bytes, password)?;
+                sealer = None;
             }
         }
         let pages: Vec<ObjectId> = doc.get_pages().into_values().collect();
@@ -72,6 +77,7 @@ impl PdfDocument {
             base_max_id,
             touched: Default::default(),
             was_encrypted: encrypted,
+            sealer,
         })
     }
 
@@ -86,6 +92,7 @@ impl PdfDocument {
             base_max_id,
             touched: Default::default(),
             was_encrypted: false,
+            sealer: None,
         }
     }
 

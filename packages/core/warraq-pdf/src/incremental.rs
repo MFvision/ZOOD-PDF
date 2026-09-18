@@ -162,14 +162,17 @@ fn runs(ids: &BTreeSet<u32>) -> Vec<(u32, Vec<u32>)> {
 impl PdfDocument {
     /// Append the objects changed since `open` to the original bytes.
     ///
-    /// Returns `Error::Edit` when the document was encrypted (its objects are in
-    /// memory as plaintext, so appending them to an encrypted original would
-    /// produce a file no reader could make sense of) or when the original has no
-    /// usable cross-reference section.
+    /// An encrypted file stays encrypted: its objects are plaintext in memory,
+    /// so each one appended is encrypted again with the file's own key, and the
+    /// new trailer names the same `/Encrypt` dictionary — the update opens with
+    /// the same passwords and keeps the same permissions. Only a file that
+    /// `lopdf`'s handler had to open (no [`crate::crypt::Sealer`]) cannot be
+    /// updated, and neither can an original with no usable cross-reference
+    /// section; both return `Error::Edit`.
     pub fn save_incremental(&mut self) -> Result<Vec<u8>> {
-        if self.was_encrypted {
+        if self.was_encrypted && self.sealer.is_none() {
             return Err(Error::Edit(
-                "an encrypted document must be saved as a full rewrite".into(),
+                "this encrypted document can only be saved as a full rewrite".into(),
             ));
         }
         let (prev, style) = previous_xref(self.original_bytes())
@@ -194,6 +197,16 @@ impl PdfDocument {
             let Ok(object) = self.doc.get_object((*id, gen)) else {
                 continue;
             };
+            let sealed;
+            let object = match &self.sealer {
+                Some(sealer) => {
+                    sealed = sealer
+                        .seal((*id, gen), object)
+                        .map_err(|e| Error::Edit(e.to_string()))?;
+                    &sealed
+                }
+                None => object,
+            };
             offsets.push((*id, gen, out.len()));
             out.extend_from_slice(&serialize((*id, gen), object)?);
         }
@@ -203,7 +216,13 @@ impl PdfDocument {
         let written: BTreeSet<u32> = offsets.iter().map(|(id, _, _)| *id).collect();
         let max_id = written.iter().copied().max().unwrap_or(0);
         let size = self.doc.max_id.max(max_id) + 1;
-        let trailer_refs = self.trailer_refs();
+        let mut trailer_refs = self.trailer_refs();
+        if let Some(sealer) = &self.sealer {
+            let mut entry = Vec::new();
+            write_object(&mut entry, sealer.trailer_entry());
+            trailer_refs.push_str(" /Encrypt ");
+            trailer_refs.push_str(&String::from_utf8_lossy(&entry));
+        }
         let xref_offset = out.len();
         match style {
             XrefStyle::Table => {
@@ -307,6 +326,99 @@ mod tests {
             previous_xref(&corpus("variant-objectstreams-xrefstream.pdf")).map(|(_, s)| s),
             Some(XrefStyle::Stream)
         );
+    }
+
+    fn utf16be(text: &str) -> Vec<u8> {
+        let mut out = vec![0xFE, 0xFF];
+        out.extend(text.encode_utf16().flat_map(u16::to_be_bytes));
+        out
+    }
+
+    fn set_title(d: &mut PdfDocument, title: &str) {
+        let value = Object::String(utf16be(title), StringFormat::Hexadecimal);
+        match d.doc.trailer.get(b"Info").and_then(Object::as_reference) {
+            Ok(id) => {
+                d.doc.get_dictionary_mut(id).unwrap().set("Title", value);
+                d.mark_touched(id);
+            }
+            Err(_) => {
+                let id = d.doc.add_object(Dictionary::from_iter([("Title", value)]));
+                d.doc.trailer.set("Info", Object::Reference(id));
+            }
+        }
+    }
+
+    /// Every cipher and revision in the corpus: RC4 40 and 128 (R2, R3),
+    /// AES-128 (R4, metadata in the clear) and AES-256 (R6), one of them with
+    /// an empty user password. The update must be as protected as the file.
+    #[test]
+    fn an_encrypted_file_stays_encrypted_through_an_incremental_save() {
+        let variants = [
+            ("variant-encrypted-rc4-40.pdf", "warraq"),
+            ("variant-encrypted-rc4-128.pdf", "warraq"),
+            ("variant-encrypted-aes128.pdf", "warraq"),
+            ("variant-encrypted-aes256.pdf", "warraq"),
+            ("variant-encrypted-aes256-owner-only.pdf", ""),
+        ];
+        let title = "عنوان كتبه وراق في ملف محمي";
+        for (name, password) in variants {
+            let original = corpus(name);
+            let mut d = PdfDocument::open(original.clone(), Some(password)).unwrap();
+            crate::ops::append_line(&mut d, 0, "سطر في ملف محمي", AMIRI, 12.0, 300.0, 40.0)
+                .unwrap();
+            set_title(&mut d, title);
+            let bytes = d
+                .save_incremental()
+                .unwrap_or_else(|e| panic!("{name}: {e}"));
+            assert!(
+                bytes.starts_with(&original),
+                "{name}: the opened bytes stay the prefix"
+            );
+            let update = &bytes[original.len()..];
+            assert!(
+                !update.windows(4).any(|w| w == &utf16be(title)[2..6]),
+                "{name}: the title is not in the clear"
+            );
+            if !password.is_empty() {
+                assert!(
+                    matches!(PdfDocument::open(bytes.clone(), None), Err(Error::Password)),
+                    "{name}: still needs its password"
+                );
+            }
+            for key in [password, "warraq-owner"] {
+                let back = PdfDocument::open(bytes.clone(), Some(key))
+                    .unwrap_or_else(|e| panic!("{name} with {key:?}: {e}"));
+                let meta = back.metadata();
+                assert!(meta.encrypted, "{name}");
+                assert_eq!(meta.title.as_deref(), Some(title), "{name} with {key:?}");
+                // The appended content stream decrypts to drawing operators.
+                let page = back.doc.get_dictionary(back.page_id(0).unwrap()).unwrap();
+                let last = match page.get(b"Contents").unwrap() {
+                    Object::Array(items) => items.last().unwrap().as_reference().unwrap(),
+                    other => other.as_reference().unwrap(),
+                };
+                let content = back
+                    .doc
+                    .get_object(last)
+                    .unwrap()
+                    .as_stream()
+                    .unwrap()
+                    .decompressed_content()
+                    .unwrap_or_else(|_| {
+                        back.doc
+                            .get_object(last)
+                            .unwrap()
+                            .as_stream()
+                            .unwrap()
+                            .content
+                            .clone()
+                    });
+                assert!(
+                    content.windows(2).any(|w| w == b"Tf"),
+                    "{name}: the new line's stream reads as operators"
+                );
+            }
+        }
     }
 
     #[test]

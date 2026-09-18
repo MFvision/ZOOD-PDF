@@ -4690,6 +4690,7 @@ version = "0.1.0"
 dependencies = [
  "aes",
  "cbc",
+ "getrandom 0.4.3",
  "log",
  "lopdf",
  "md-5",

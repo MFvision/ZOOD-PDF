@@ -11,6 +11,7 @@ use super::CryptError;
 type Aes128CbcDec = cbc::Decryptor<aes::Aes128>;
 type Aes256CbcDec = cbc::Decryptor<aes::Aes256>;
 type Aes128CbcEnc = cbc::Encryptor<aes::Aes128>;
+type Aes256CbcEnc = cbc::Encryptor<aes::Aes256>;
 
 /// An AES block is 16 bytes whatever the key size, so one helper serves both.
 fn block(bytes: &mut [u8]) -> &mut aes::cipher::Block<aes::Aes128> {
@@ -98,6 +99,39 @@ pub fn aes_cbc_decrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>, CryptError> {
         n => return Err(CryptError::Unsupported(format!("AES key of {n} bytes"))),
     }
     Ok(strip_padding(out))
+}
+
+/// Encrypt a string or stream for writing with AES-CBC: PKCS#7 padding, and
+/// the initialisation vector in front of the ciphertext, which is how
+/// [`aes_cbc_decrypt`] and every other reader expect it (ISO 32000-2 §7.6.3).
+///
+/// `key` must be 16 bytes (`/AESV2`) or 32 bytes (`/AESV3`); `iv` must be
+/// fresh and unpredictable for each string or stream.
+pub fn aes_cbc_encrypt(key: &[u8], iv: &[u8; 16], data: &[u8]) -> Result<Vec<u8>, CryptError> {
+    let pad = 16 - data.len() % 16;
+    let mut body = data.to_vec();
+    body.extend(std::iter::repeat_n(pad as u8, pad));
+    match key.len() {
+        16 => {
+            let key: &[u8; 16] = key.try_into().expect("length checked");
+            let mut enc = Aes128CbcEnc::new(key.into(), iv.into());
+            for chunk in body.as_chunks_mut::<16>().0 {
+                enc.encrypt_block(block(chunk));
+            }
+        }
+        32 => {
+            let key: &[u8; 32] = key.try_into().expect("length checked");
+            let mut enc = Aes256CbcEnc::new(key.into(), iv.into());
+            for chunk in body.as_chunks_mut::<16>().0 {
+                enc.encrypt_block(block(chunk));
+            }
+        }
+        n => return Err(CryptError::Unsupported(format!("AES key of {n} bytes"))),
+    }
+    let mut out = Vec::with_capacity(16 + body.len());
+    out.extend_from_slice(iv);
+    out.extend_from_slice(&body);
+    Ok(out)
 }
 
 /// AES-256-CBC with a zero IV and no padding, used by algorithm 2.A to unwrap

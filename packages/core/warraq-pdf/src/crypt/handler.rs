@@ -400,6 +400,29 @@ impl Handler {
         key
     }
 
+    /// Encrypt one string or stream that belongs to object `id`, for writing:
+    /// the inverse of [`Handler::decrypt`], with a fresh random IV for AES.
+    pub(crate) fn encrypt(
+        &self,
+        file_key: &[u8],
+        id: ObjectId,
+        method: Method,
+        data: &[u8],
+    ) -> Result<Vec<u8>, CryptError> {
+        let key = self.object_key(file_key, id, method);
+        match method {
+            Method::Identity => Ok(data.to_vec()),
+            Method::Rc4 => Ok(cipher::rc4(&key, data)),
+            Method::Aes128 | Method::Aes256 => {
+                let mut iv = [0u8; 16];
+                getrandom::fill(&mut iv).map_err(|e| {
+                    CryptError::Unsupported(format!("no source of randomness for AES: {e}"))
+                })?;
+                cipher::aes_cbc_encrypt(&key, &iv, data)
+            }
+        }
+    }
+
     /// Decrypt one string or stream that belongs to object `id`.
     pub(crate) fn decrypt(
         &self,

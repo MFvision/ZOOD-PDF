@@ -53,12 +53,11 @@ it and checks the change is in the file, not just on the screen. The *Later*
 cards open a panel that says so; a count on the tool list says how many.
 
 ## Next (in order)
-1. **Keep a protected file's password through Edit text.** EmbedPDF's own saves keep it; Warraq's core writes an encrypted file back as plaintext, so a text edit currently drops the password. The core will write with the file's own security handler (same key, same `/Encrypt`, same `/ID`), incrementally.
-2. **Arabic in form fields and comments.** Arabic typed into a form field is stored but not drawn by the saved file (see Known gaps). Warraq's shaping and font subsetting will generate those appearances (ADR-0007).
-3. **The desktop app's missing file panels.** EmbedPDF's screenshot, insert image, attachment and signature upload use a file input or a download link, which the macOS webview ignores, so they are hidden there for now; Warraq's own Open and Save already go through the native panels, and these will too. Print needs the system print dialog.
-4. **Arabic for EmbedPDF's toolbar.** It ships ten languages, none of them Arabic; Warraq will supply the translation and switch it with the app's language.
-5. **Scan & OCR** (Tesseract, Arabic, Persian, Urdu), **Export**, **Compress**, **Compare** and **AI** (bring-your-own key or local, only on an explicit click); **split** and **insert from another file** in Organize; dropping files onto the Combine list.
-6. Paragraph breaks between uniformly spaced body paragraphs; Nastaliq Urdu extraction; the 500 MB scan stress run; Acrobat verification on a machine that has it.
+1. **Arabic in form fields and comments.** Arabic typed into a form field is stored but not drawn by the saved file (see Known gaps). Warraq's shaping and font subsetting will generate those appearances (ADR-0007).
+2. **The desktop app's missing file panels.** EmbedPDF's screenshot, insert image, attachment and signature upload use a file input or a download link, which the macOS webview ignores, so they are hidden there for now; Warraq's own Open and Save already go through the native panels, and these will too. Print needs the system print dialog.
+3. **Arabic for EmbedPDF's toolbar.** It ships ten languages, none of them Arabic; Warraq will supply the translation and switch it with the app's language.
+4. **Scan & OCR** (Tesseract, Arabic, Persian, Urdu), **Export**, **Compress**, **Compare** and **AI** (bring-your-own key or local, only on an explicit click); **split** and **insert from another file** in Organize; dropping files onto the Combine list.
+5. Paragraph breaks between uniformly spaced body paragraphs; Nastaliq Urdu extraction; the 500 MB scan stress run; Acrobat verification on a machine that has it.
 
 ## Decisions needed from you
 1. **GitHub organization** — nothing has been pushed: `gh repo create <org>/warraq --private --source . --push`.
@@ -120,12 +119,17 @@ test that fails without its fix.
    Handing the file between engines takes a moment; an edit made in it was
    silently lost. The screen now says the file is on its way, and nothing can
    be edited until it has arrived.
-8. **The e2e suite could test someone else's app.** It reused any server on
+8. **A protected file lost its password when saved after a text edit or a
+   page change.** Warraq's core decrypts a file to edit it and wrote it back as
+   plaintext. It now keeps the file's key and seals everything it appends with
+   it, naming the same `/Encrypt`: the update opens with the same passwords
+   and keeps the same permissions. Checked on every cipher in the corpus (RC4
+   40 and 128, AES-128, AES-256) by Warraq and, independently, by PDFium.
+9. **The e2e suite could test someone else's app.** It reused any server on
    the usual preview port, and another project on this Mac had one running.
    It now starts its own on a port of its own and refuses to share.
 
 ## Known gaps, stated plainly
-* **A protected file loses its password when saved after a text edit or a page change** — next on the list. Saves after comments, form filling or redaction keep it.
 * **Deleted pages stay in the file's earlier revision**, like every incremental change, until a clean copy is written; extracting pages writes one. Bookmarks and links that pointed at a deleted page are left pointing nowhere in the open file.
 * **EmbedPDF's toolbar is in English only**, in both languages of the app.
 * **On desktop, EmbedPDF's print, screenshot, insert image and attachment are hidden**: the macOS webview ignores file inputs, download links and the browser's print, and they rely on them. Its signature dialog still shows an Upload tab that does nothing there; Draw and Type work. Everything the tool panels offer works on desktop.
