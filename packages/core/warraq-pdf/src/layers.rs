@@ -258,11 +258,13 @@ impl PdfDocument {
     fn view_usage_holder(&self, layer: ObjectId) -> Option<ObjectId> {
         let group = self.doc.get_dictionary(layer).ok()?;
         match group.get(b"Usage").ok()? {
-            Object::Reference(usage) => match self.doc.get_dictionary(*usage).ok()?.get(b"View").ok()? {
-                Object::Reference(view) => Some(*view),
-                Object::Dictionary(_) => Some(*usage),
-                _ => None,
-            },
+            Object::Reference(usage) => {
+                match self.doc.get_dictionary(*usage).ok()?.get(b"View").ok()? {
+                    Object::Reference(view) => Some(*view),
+                    Object::Dictionary(_) => Some(*usage),
+                    _ => None,
+                }
+            }
             Object::Dictionary(usage) => match usage.get(b"View").ok()? {
                 Object::Reference(view) => Some(*view),
                 Object::Dictionary(_) => Some(layer),
@@ -285,7 +287,9 @@ impl PdfDocument {
         let view: Option<&mut Dictionary> = if dict.has(b"ViewState") {
             Some(dict)
         } else if dict.has(b"View") {
-            dict.get_mut(b"View").ok().and_then(|v| v.as_dict_mut().ok())
+            dict.get_mut(b"View")
+                .ok()
+                .and_then(|v| v.as_dict_mut().ok())
         } else {
             dict.get_mut(b"Usage")
                 .ok()
@@ -362,7 +366,10 @@ impl PdfDocument {
         let theirs = theirs.clone();
         // Each layer's own view state too, as the file had it.
         for layer in self.ref_list(props, b"OCGs") {
-            let (Some(ours), Some(original)) = (self.view_usage_holder(layer), other.view_usage_holder(layer)) else {
+            let (Some(ours), Some(original)) = (
+                self.view_usage_holder(layer),
+                other.view_usage_holder(layer),
+            ) else {
                 continue;
             };
             if ours != original {
