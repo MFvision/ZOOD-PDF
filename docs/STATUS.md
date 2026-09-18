@@ -62,7 +62,7 @@ so on its face.
 
 ## Next (in order)
 1. **Print on Windows and Linux** desktop builds (macOS prints through PDFKit).
-2. Paragraph breaks between uniformly spaced body paragraphs; Nastaliq Urdu extraction; the 500 MB scan stress run; Acrobat verification on a machine that has it.
+2. Nastaliq Urdu extraction; the 500 MB scan stress run; Acrobat verification on a machine that has it.
 
 ## Decisions needed from you
 1. **GitHub organization** — nothing has been pushed: `gh repo create <org>/warraq --private --source . --push`.
@@ -203,6 +203,11 @@ test that fails without its fix.
    at 8°, 92 % at 5° — and the invisible text is written turned back with
    the page, so it lies over the words. Warraq's reader follows a run's own
    slant within a few degrees of level, so those lines read in order.
+23. **Paragraphs set with no space between them were one paragraph**: the
+   World Bank speech's body came to Edit text, Export and the AI tool as a
+   single 26-line block. A column's lines now part after a short line that
+   finishes a sentence, and before a line indented from a full one — eight
+   paragraphs of two to seven lines there, the rest of the corpus as it was.
 
 ## Known gaps, stated plainly
 * **Deleted pages stay in the file's earlier revision**, like every incremental change, until a clean copy is written; extracting pages writes one. Bookmarks and links that pointed at a deleted page are left pointing nowhere in the open file.
