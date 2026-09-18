@@ -5,7 +5,9 @@ import pdfiumWasmUrl from '@embedpdf/pdfium/pdfium.wasm?url';
 import { useEffect, useMemo, useRef } from 'react';
 import standardStamps from '../../public/stamps/en/manifest.json';
 import { isTauriHost, uiLog } from '../core/host-tauri';
+import type { Lang } from '../i18n/messages';
 import { disabledCategories } from './embedControl';
+import { setEmbedLanguage } from './embedLanguage';
 
 /**
  * The document view: EmbedPDF (Apache-2.0/MIT) — PDFium compiled to WASM, with
@@ -54,6 +56,8 @@ export interface EmbedViewerProps {
   /** The password Warraq unlocked the file with, so it is asked for once. */
   password?: string;
   theme: 'light' | 'dark' | 'system';
+  /** Warraq's language; EmbedPDF's own toolbar, menus and dialogs follow it. */
+  lang: Lang;
   /** The plugin registry, once the viewer is ready — Warraq's hook into it. */
   onRegistry?: (registry: PluginRegistry) => void;
   /** EmbedPDF could not open the bytes: the view would otherwise sit empty, silently. */
@@ -93,9 +97,10 @@ function documentManager(registry: PluginRegistry): DocumentManager | null {
   return plugin?.provides?.() ?? null;
 }
 
-export function EmbedViewer({ bytes, name, password, theme, onRegistry, onError, onOpened }: EmbedViewerProps) {
+export function EmbedViewer({ bytes, name, password, theme, lang, onRegistry, onError, onOpened }: EmbedViewerProps) {
   const registryRef = useRef<PluginRegistry | null>(null);
   const openedRef = useRef<string | null>(null);
+  const langRef = useRef(lang);
 
   // Built once: a new config object would tear the whole viewer down.
   const config = useMemo<PDFViewerConfig>(() => {
@@ -113,6 +118,11 @@ export function EmbedViewer({ bytes, name, password, theme, onRegistry, onError,
       disabledCategories: disabledCategories(isTauriHost()),
       tabBar: 'never',
       theme: { preference: theme },
+      // Only the fallback: its ten locales stay, and Arabic is added beside
+      // them once the viewer is ready (embedLanguage.ts). A key a later
+      // EmbedPDF adds before the Arabic has it then reads in English, not as
+      // its raw name.
+      i18n: { fallbackLocale: 'en' },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -146,6 +156,13 @@ export function EmbedViewer({ bytes, name, password, theme, onRegistry, onError,
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reopen on new bytes only
   }, [bytes]);
 
+  // Switching Warraq's language switches EmbedPDF's through its i18n plugin,
+  // live: a new config would tear the viewer down.
+  useEffect(() => {
+    langRef.current = lang;
+    if (registryRef.current) setEmbedLanguage(registryRef.current, lang);
+  }, [lang]);
+
   return (
     <PDFViewer
       className="embed-viewer"
@@ -153,6 +170,9 @@ export function EmbedViewer({ bytes, name, password, theme, onRegistry, onError,
       onReady={(registry) => {
         uiLog('embedpdf ready');
         registryRef.current = registry;
+        // Before the document opens, so its toolbar is never drawn in the
+        // wrong language first: EmbedPDF shows it only once one is open.
+        setEmbedLanguage(registry, langRef.current);
         onRegistry?.(registry);
         void open(registry, bytes, name, password);
       }}

@@ -4,7 +4,7 @@ import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { FontNotice } from '../edit/FontNotice';
 import { HomeScreen } from '../home/HomeScreen';
-import { useT } from '../i18n/useT';
+import { useI18n } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { EmbedViewer } from '../embed/EmbedViewer';
 import { OrganizeView } from '../organize/OrganizeView';
@@ -25,7 +25,7 @@ export function Shell() {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const services = useServices();
-  const t = useT();
+  const { t, lang } = useI18n();
   useKeyboardShortcuts();
 
   const onFiles = useCallback((files: FileList) => void services.openFiles(files), [services]);
@@ -75,6 +75,7 @@ export function Shell() {
                 name={state.document?.name ?? 'document.pdf'}
                 password={services.documentPassword}
                 theme={state.theme}
+                lang={lang}
                 onRegistry={services.attachEmbed}
                 onError={() => dispatch({ type: 'DOCUMENT_FAILED', error: 'error.open' })}
                 onOpened={services.embedOpened}
