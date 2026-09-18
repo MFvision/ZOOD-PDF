@@ -23,7 +23,11 @@ type Message = { key: TKey; params?: TParams };
 
 const numbers = new Intl.NumberFormat('en-US');
 
-const TASKS: Record<TaskKind, TKey> = { summarize: 'ai.summarize', ask: 'ai.ask', translate: 'ai.translate' };
+const TASKS: Record<TaskKind, TKey> = {
+  summarize: 'ai.summarize',
+  ask: 'ai.ask',
+  translate: 'ai.translate',
+};
 
 function failureMessage(failure: Failure, provider: ProviderId): Message {
   switch (failure.kind) {
@@ -38,7 +42,10 @@ function failureMessage(failure: Failure, provider: ProviderId): Message {
     case 'denied':
       return { key: 'ai.denied' };
     case 'model':
-      return { key: provider === 'claude' ? 'ai.modelMissingClaude' : 'ai.modelMissingLocal', params: { model: failure.model } };
+      return {
+        key: provider === 'claude' ? 'ai.modelMissingClaude' : 'ai.modelMissingLocal',
+        params: { model: failure.model },
+      };
     case 'tooLarge':
       return { key: 'ai.tooLarge' };
     case 'server':
@@ -50,7 +57,10 @@ function failureMessage(failure: Failure, provider: ProviderId): Message {
     case 'localDown':
       return { key: 'ai.localDown', params: { url: failure.url } };
     case 'blocked':
-      return { key: provider === 'claude' ? 'ai.blockedClaude' : 'ai.blockedLocal', params: { url: failure.url } };
+      return {
+        key: provider === 'claude' ? 'ai.blockedClaude' : 'ai.blockedLocal',
+        params: { url: failure.url },
+      };
     case 'empty':
       return { key: 'ai.empty' };
     case 'cancelled':
@@ -110,7 +120,8 @@ export function AiPanel() {
   }, [copied]);
 
   // In Arabic text a range such as 1–2 reads backwards unless it is isolated as left-to-right.
-  const pageList = (pages: readonly number[]) => (dir === 'rtl' ? `\u2066${formatPages(pages)}\u2069` : formatPages(pages));
+  const pageList = (pages: readonly number[]) =>
+    dir === 'rtl' ? `\u2066${formatPages(pages)}\u2069` : formatPages(pages);
 
   const documentId = state.document?.id ?? null;
   const pageCount = state.document?.pageCount ?? 0;
@@ -122,8 +133,12 @@ export function AiPanel() {
 
   const address = localAddress(settings.localUrl);
   const claude = settings.provider === 'claude';
-  const addressProblem: TKey | null = claude || address.ok ? null : address.reason === 'notLocal' ? 'ai.notLocal' : 'ai.invalidUrl';
-  const otherPort = !claude && address.ok && !(LOCAL_ALLOWED_ORIGINS as readonly string[]).includes(new URL(address.base).origin);
+  const addressProblem: TKey | null =
+    claude || address.ok ? null : address.reason === 'notLocal' ? 'ai.notLocal' : 'ai.invalidUrl';
+  const otherPort =
+    !claude &&
+    address.ok &&
+    !(LOCAL_ALLOWED_ORIGINS as readonly string[]).includes(new URL(address.base).origin);
   const missing: TKey | null =
     claude && key.trim().length === 0
       ? 'ai.needKey'
@@ -132,7 +147,8 @@ export function AiPanel() {
         : task === 'ask' && question.trim().length === 0
           ? 'ai.needQuestion'
           : null;
-  const canReview = hasDocument && missing === null && addressProblem === null && reading === null && !sending;
+  const canReview =
+    hasDocument && missing === null && addressProblem === null && reading === null && !sending;
 
   /** Any change of what would be sent makes the preflight, and what went wrong with it, stale. */
   const changed = () => {
@@ -165,14 +181,28 @@ export function AiPanel() {
     if (!canReview || documentId === null) return;
     let target: ProviderSettings;
     if (claude) target = { provider: 'claude', model: settings.claudeModel };
-    else if (address.ok) target = { provider: 'local', api: settings.localApi, base: address.base, model: settings.localModel.trim() };
+    else if (address.ok)
+      target = {
+        provider: 'local',
+        api: settings.localApi,
+        base: address.base,
+        model: settings.localModel.trim(),
+      };
     else return;
     const aiTask: AiTask =
-      task === 'ask' ? { kind: 'ask', question } : task === 'translate' ? { kind: 'translate', to: translateTo } : { kind: 'summarize' };
+      task === 'ask'
+        ? { kind: 'ask', question }
+        : task === 'translate'
+          ? { kind: 'translate', to: translateTo }
+          : { kind: 'summarize' };
     const budget = budgetFor(target.provider, task);
     const current = state.currentPage;
     const pagesOf = (count: number) =>
-      task !== 'translate' ? pageRange(1, count, count) : scope === 'current' ? pageRange(current, current, count) : pageRange(Number(from) || 1, Number(to) || 1, count);
+      task !== 'translate'
+        ? pageRange(1, count, count)
+        : scope === 'current'
+          ? pageRange(current, current, count)
+          : pageRange(Number(from) || 1, Number(to) || 1, count);
     setPreflight(null);
     setResult(null);
     setFailure(null);
@@ -190,9 +220,16 @@ export function AiPanel() {
         setNotice({ key: 'ai.readFailed' });
         return;
       }
-      const next = preflightFor(target, aiTask, read.budgeted, { lang, pageCount: read.pageCount, budget });
+      const next = preflightFor(target, aiTask, read.budgeted, {
+        lang,
+        pageCount: read.pageCount,
+        budget,
+      });
       if (next.pages.length === 0 && next.left.length > 0) {
-        setNotice({ key: 'ai.nothingFits', params: { page: next.left[0] ?? 1, budget: numbers.format(budget) } });
+        setNotice({
+          key: 'ai.nothingFits',
+          params: { page: next.left[0] ?? 1, budget: numbers.format(budget) },
+        });
       } else if (next.empty) {
         setNotice({ key: 'ai.noText' });
       } else {
@@ -216,7 +253,13 @@ export function AiPanel() {
     if (abortRef.current === controller) abortRef.current = null;
     setSending(false);
     if (outcome.ok) {
-      setResult({ documentId: sent.documentId, answer: outcome.answer, model: sent.settings.model, pages: sent.pages, pageCount: sent.pageCount });
+      setResult({
+        documentId: sent.documentId,
+        answer: outcome.answer,
+        model: sent.settings.model,
+        pages: sent.pages,
+        pageCount: sent.pageCount,
+      });
       setCopied('no');
       setPreflight(null);
     } else {
@@ -247,7 +290,12 @@ export function AiPanel() {
         <legend>{t('ai.provider')}</legend>
         {(['claude', 'local'] as const).map((provider) => (
           <label key={provider} className="ai-choice">
-            <input type="radio" name="ai-provider" checked={settings.provider === provider} onChange={() => update({ provider })} />
+            <input
+              type="radio"
+              name="ai-provider"
+              checked={settings.provider === provider}
+              onChange={() => update({ provider })}
+            />
             {t(provider === 'claude' ? 'ai.claude' : 'ai.local')}
           </label>
         ))}
@@ -268,17 +316,32 @@ export function AiPanel() {
             />
           </label>
           <label className="ai-choice">
-            <input type="checkbox" checked={remember} onChange={(event) => onRemember(event.target.checked)} />
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(event) => onRemember(event.target.checked)}
+            />
             {t('ai.remember')}
           </label>
           <p className="tool-panel-note">{t('ai.rememberNote')}</p>
           {storeFailed && <p className="tool-panel-note">{t('ai.rememberFailed')}</p>}
           <div className="tool-actions">
-            <IconButton label={t('ai.forget')} icon={<Icon of={X} />} showLabel disabled={key.length === 0 && !remember} onClick={onForget} />
+            <IconButton
+              label={t('ai.forget')}
+              icon={<Icon of={X} />}
+              showLabel
+              disabled={key.length === 0 && !remember}
+              onClick={onForget}
+            />
           </div>
           <label className="field">
             <span>{t('ai.model')}</span>
-            <select className="select" dir="ltr" value={settings.claudeModel} onChange={(event) => update({ claudeModel: event.target.value })}>
+            <select
+              className="select"
+              dir="ltr"
+              value={settings.claudeModel}
+              onChange={(event) => update({ claudeModel: event.target.value })}
+            >
               {CLAUDE_MODELS.map((model) => (
                 <option key={model} value={model}>
                   {model}
@@ -305,12 +368,18 @@ export function AiPanel() {
           {otherPort && <p className="tool-panel-note">{t('ai.portNote')}</p>}
           <label className="field">
             <span>{t('ai.localApi')}</span>
-            <select className="select" value={settings.localApi} onChange={(event) => update({ localApi: event.target.value as LocalApi })}>
+            <select
+              className="select"
+              value={settings.localApi}
+              onChange={(event) => update({ localApi: event.target.value as LocalApi })}
+            >
               <option value="ollama">{t('ai.apiOllama')}</option>
               <option value="openai">{t('ai.apiOpenai')}</option>
             </select>
           </label>
-          {settings.localApi === 'openai' && <p className="tool-panel-note">{t('ai.openaiNote')}</p>}
+          {settings.localApi === 'openai' && (
+            <p className="tool-panel-note">{t('ai.openaiNote')}</p>
+          )}
           <label className="field">
             <span>{t('ai.localModel')}</span>
             <input
@@ -439,7 +508,13 @@ export function AiPanel() {
 
       {!documentOpen && <p className="tool-panel-note">{t('tool.openFirst')}</p>}
       <div className="tool-actions">
-        <IconButton label={t('ai.review')} icon={<Icon of={FileSearch} />} showLabel disabled={!canReview} onClick={() => void review()} />
+        <IconButton
+          label={t('ai.review')}
+          icon={<Icon of={FileSearch} />}
+          showLabel
+          disabled={!canReview}
+          onClick={() => void review()}
+        />
       </div>
       {hasDocument && missing && <p className="tool-panel-note">{t(missing)}</p>}
       {reading !== null && reading > 0 && (
@@ -471,7 +546,12 @@ export function AiPanel() {
             </div>
             <div>
               <dt>{t('ai.pages')}</dt>
-              <dd>{t('ai.pagesOf', { pages: pageList(shownPreflight.pages), total: shownPreflight.pageCount })}</dd>
+              <dd>
+                {t('ai.pagesOf', {
+                  pages: pageList(shownPreflight.pages),
+                  total: shownPreflight.pageCount,
+                })}
+              </dd>
             </div>
             <div>
               <dt>{t('ai.characters')}</dt>
@@ -480,24 +560,43 @@ export function AiPanel() {
           </dl>
           {shownPreflight.left.length > 0 && (
             <p className="ai-warning">
-              {t('ai.leftOut', { pages: pageList(shownPreflight.left), budget: numbers.format(shownPreflight.budget) })}
+              {t('ai.leftOut', {
+                pages: pageList(shownPreflight.left),
+                budget: numbers.format(shownPreflight.budget),
+              })}
             </p>
           )}
-          {shownPreflight.task.kind === 'ask' && <p className="tool-panel-note">{t('ai.questionSent')}</p>}
-          <details className="ai-exact" open={showText} onToggle={(event) => setShowText(event.currentTarget.open)}>
+          {shownPreflight.task.kind === 'ask' && (
+            <p className="tool-panel-note">{t('ai.questionSent')}</p>
+          )}
+          <details
+            className="ai-exact"
+            open={showText}
+            onToggle={(event) => setShowText(event.currentTarget.open)}
+          >
             <summary>{t('ai.showText')}</summary>
-            {showText && <pre>{`${shownPreflight.prompt.system}\n\n${shownPreflight.prompt.user}`}</pre>}
+            {showText && (
+              <pre>{`${shownPreflight.prompt.system}\n\n${shownPreflight.prompt.user}`}</pre>
+            )}
           </details>
           <div className="tool-actions">
             <IconButton
-              label={t(shownPreflight.settings.provider === 'claude' ? 'ai.sendClaude' : 'ai.sendLocal')}
+              label={t(
+                shownPreflight.settings.provider === 'claude' ? 'ai.sendClaude' : 'ai.sendLocal',
+              )}
               icon={<Icon of={Send} mirror />}
               showLabel
               variant="primary"
               disabled={sending}
               onClick={() => void go()}
             />
-            <IconButton label={t('ai.discard')} icon={<Icon of={X} />} showLabel disabled={sending} onClick={changed} />
+            <IconButton
+              label={t('ai.discard')}
+              icon={<Icon of={X} />}
+              showLabel
+              disabled={sending}
+              onClick={changed}
+            />
           </div>
         </section>
       )}
@@ -506,7 +605,12 @@ export function AiPanel() {
         <div className="ai-status" role="status">
           <Icon of={Loader} className="spin" />
           <span>{t('ai.waiting')}</span>
-          <IconButton label={t('ai.stop')} icon={<Icon of={Square} />} showLabel onClick={() => abortRef.current?.abort()} />
+          <IconButton
+            label={t('ai.stop')}
+            icon={<Icon of={Square} />}
+            showLabel
+            onClick={() => abortRef.current?.abort()}
+          />
         </div>
       )}
       {failed && (
@@ -544,7 +648,9 @@ export function AiPanel() {
             )}
           </div>
           {shownResult.answer.cutOff && <p className="ai-warning">{t('ai.cutOff')}</p>}
-          <p className="tool-panel-note">{t('ai.answerFrom', { model: shownResult.model, pages: pageList(shownResult.pages) })}</p>
+          <p className="tool-panel-note">
+            {t('ai.answerFrom', { model: shownResult.model, pages: pageList(shownResult.pages) })}
+          </p>
           <div className="tool-actions">
             <IconButton
               label={t(copied === 'yes' ? 'ai.copied' : 'ai.copy')}

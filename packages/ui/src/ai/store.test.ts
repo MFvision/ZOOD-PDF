@@ -75,7 +75,9 @@ describe('the API key', () => {
 describe('the panel settings', () => {
   it('come back checked, so a corrupted entry cannot break the panel', () => {
     expect(sanitizeSettings(null)).toEqual(DEFAULT_SETTINGS);
-    expect(sanitizeSettings({ provider: 'openai', claudeModel: 'gpt-9', localApi: 'grpc', localUrl: 7 })).toEqual(DEFAULT_SETTINGS);
+    expect(
+      sanitizeSettings({ provider: 'openai', claudeModel: 'gpt-9', localApi: 'grpc', localUrl: 7 }),
+    ).toEqual(DEFAULT_SETTINGS);
     const chosen = {
       provider: 'local',
       claudeModel: 'claude-opus-5',
@@ -87,6 +89,12 @@ describe('the panel settings', () => {
   });
 
   it('never include the key', () => {
-    expect(Object.keys(DEFAULT_SETTINGS).sort()).toEqual(['claudeModel', 'localApi', 'localModel', 'localUrl', 'provider']);
+    expect(Object.keys(DEFAULT_SETTINGS).sort()).toEqual([
+      'claudeModel',
+      'localApi',
+      'localModel',
+      'localUrl',
+      'provider',
+    ]);
   });
 });

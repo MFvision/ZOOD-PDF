@@ -5,9 +5,7 @@ import type { Prompt } from './providers';
 
 /** What the person asked for: the three actions of the AI panel. */
 export type AiTask =
-  | { kind: 'summarize' }
-  | { kind: 'ask'; question: string }
-  | { kind: 'translate'; to: Lang };
+  { kind: 'summarize' } | { kind: 'ask'; question: string } | { kind: 'translate'; to: Lang };
 
 const LANGUAGE: Record<Lang, string> = { ar: 'Modern Standard Arabic', en: 'English' };
 
@@ -28,7 +26,9 @@ const SYSTEM = [
 
 /** The pages, tagged with their numbers so the model can cite them. */
 export function documentText(pages: readonly PageText[]): string {
-  const body = pages.map(({ page, text }) => `<page number="${page}">\n${text}\n</page>`).join('\n');
+  const body = pages
+    .map(({ page, text }) => `<page number="${page}">\n${text}\n</page>`)
+    .join('\n');
   return `<document>\n${body}\n</document>`;
 }
 
@@ -54,7 +54,11 @@ export interface PromptContext {
 }
 
 /** Exactly what is sent, besides the provider's own fields: the rules, the pages, the request. */
-export function buildPrompt(task: AiTask, pages: readonly PageText[], { lang, pageCount, left }: PromptContext): Prompt {
+export function buildPrompt(
+  task: AiTask,
+  pages: readonly PageText[],
+  { lang, pageCount, left }: PromptContext,
+): Prompt {
   const parts = [documentText(pages)];
   if (left.length > 0) {
     parts.push(

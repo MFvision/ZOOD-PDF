@@ -18,7 +18,9 @@ const PART = new RegExp(`[${DIGIT}]+|[\\-–—]|[,،]`, 'gu');
 
 /** Arabic-Indic and Persian digits read as the numbers they are. */
 function toNumber(digits: string): number {
-  const western = digits.replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660)).replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06f0));
+  const western = digits
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06f0));
   return Number(western);
 }
 

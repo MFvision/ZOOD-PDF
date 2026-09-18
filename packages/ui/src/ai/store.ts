@@ -1,5 +1,10 @@
 import { readJson, writeJson } from '../state/preferences';
-import { CLAUDE_MODELS, DEFAULT_CLAUDE_MODEL, LOCAL_DEFAULT_MODEL, LOCAL_DEFAULT_URL } from './providers';
+import {
+  CLAUDE_MODELS,
+  DEFAULT_CLAUDE_MODEL,
+  LOCAL_DEFAULT_MODEL,
+  LOCAL_DEFAULT_URL,
+} from './providers';
 import type { LocalApi, ProviderId } from './providers';
 
 /**

@@ -55,7 +55,12 @@ const settleDefault = () => new Promise<void>((resolve) => setTimeout(resolve, 5
  * address can name the site it was opened from), and no redirect is
  * followed: the text goes to the host the preflight named, or nowhere.
  */
-export async function send(preflight: Preflight, key: string, signal: AbortSignal, options: SendOptions = {}): Promise<Outcome> {
+export async function send(
+  preflight: Preflight,
+  key: string,
+  signal: AbortSignal,
+  options: SendOptions = {},
+): Promise<Outcome> {
   const { settings } = preflight;
   const request = requestFor(preflight, key);
   const fail = (failure: Failure): Outcome => ({ ok: false, failure });
@@ -77,9 +82,16 @@ export async function send(preflight: Preflight, key: string, signal: AbortSigna
     if (signal.aborted) return fail({ kind: 'cancelled' });
     await (options.settle ?? settleDefault)();
     if (policy.refused(request.url)) {
-      return fail({ kind: 'blocked', url: settings.provider === 'claude' ? CLAUDE_HOST : settings.base });
+      return fail({
+        kind: 'blocked',
+        url: settings.provider === 'claude' ? CLAUDE_HOST : settings.base,
+      });
     }
-    return fail(settings.provider === 'claude' ? { kind: 'offline', host: CLAUDE_HOST } : { kind: 'localDown', url: settings.base });
+    return fail(
+      settings.provider === 'claude'
+        ? { kind: 'offline', host: CLAUDE_HOST }
+        : { kind: 'localDown', url: settings.base },
+    );
   } finally {
     policy.stop();
   }
@@ -90,8 +102,12 @@ export async function send(preflight: Preflight, key: string, signal: AbortSigna
     /* no JSON: the status alone has to explain it */
   }
   if (signal.aborted) return fail({ kind: 'cancelled' });
-  if (!response.ok) return fail(httpFailure(settings.provider, response.status, providerMessage(json), settings.model));
-  const answer = settings.provider === 'claude' ? claudeAnswer(json) : localAnswer(settings.api, json);
+  if (!response.ok)
+    return fail(
+      httpFailure(settings.provider, response.status, providerMessage(json), settings.model),
+    );
+  const answer =
+    settings.provider === 'claude' ? claudeAnswer(json) : localAnswer(settings.api, json);
   if (!answer || answer.text.trim().length === 0) return fail({ kind: 'empty' });
   return { ok: true, answer };
 }

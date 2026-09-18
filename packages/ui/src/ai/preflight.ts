@@ -41,7 +41,12 @@ export interface PreflightContext {
   budget: number;
 }
 
-export function preflightFor(settings: ProviderSettings, task: AiTask, budgeted: Budgeted, context: PreflightContext): Preflight {
+export function preflightFor(
+  settings: ProviderSettings,
+  task: AiTask,
+  budgeted: Budgeted,
+  context: PreflightContext,
+): Preflight {
   const { sent, left, characters } = budgeted;
   return {
     settings,

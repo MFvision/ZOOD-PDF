@@ -1,7 +1,19 @@
 import { readFileSync } from 'node:fs';
 import { expect } from '@playwright/test';
 import type { Locator, Page, Request } from '@playwright/test';
-import { INVOICE, WORD_EXPORT, answer, chooseTool, embedPage, openPdf, pageBox, pendingRedactions, refuse, test, useAction } from './helpers';
+import {
+  INVOICE,
+  WORD_EXPORT,
+  answer,
+  chooseTool,
+  embedPage,
+  openPdf,
+  pageBox,
+  pendingRedactions,
+  refuse,
+  test,
+  useAction,
+} from './helpers';
 import type { Reply } from './helpers';
 
 /**
@@ -45,14 +57,20 @@ async function readWithWarraq(file: string): Promise<string[]> {
   await core.default({ module_or_path: readFileSync(new URL('warraq_core_bg.wasm', root)) });
   const doc = core.Document.open(new Uint8Array(readFileSync(file)));
   try {
-    return Array.from({ length: doc.page_count() as number }, (_, index) => doc.extract_text(index) as string);
+    return Array.from(
+      { length: doc.page_count() as number },
+      (_, index) => doc.extract_text(index) as string,
+    );
   } finally {
     doc.free();
   }
 }
 
 /** What the person does before anything can be sent: Claude, their key, an action. */
-async function claudeFor(page: Page, action: 'Summarize' | 'Ask a question' | 'Translate'): Promise<Locator> {
+async function claudeFor(
+  page: Page,
+  action: 'Summarize' | 'Ask a question' | 'Translate',
+): Promise<Locator> {
   await chooseTool(page, 'AI');
   const ai = panel(page);
   await ai.getByRole('radio', { name: /^Claude/ }).check();
@@ -72,7 +90,9 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     page,
     stayLocal: _,
   }) => {
-    const toClaude = await answer(page, ANTHROPIC, () => claudeSays('A briefing on an uneven recovery [p. 1] and on climate finance [p. 2].'));
+    const toClaude = await answer(page, ANTHROPIC, () =>
+      claudeSays('A briefing on an uneven recovery [p. 1] and on climate finance [p. 2].'),
+    );
     const toLocal = await answer(page, OLLAMA, () => json({ error: 'not expected' }, 500));
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
@@ -98,15 +118,25 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     const request = toClaude[0] as Request;
     expect(request.method()).toBe('POST');
     expect(request.url()).toBe('https://api.anthropic.com/v1/messages');
-    const body = request.postDataJSON() as { model: string; max_tokens: number; system: string; messages: { role: string; content: string }[] };
+    const body = request.postDataJSON() as {
+      model: string;
+      max_tokens: number;
+      system: string;
+      messages: { role: string; content: string }[];
+    };
     expect(body.model).toBe('claude-sonnet-5');
     expect(body.messages).toHaveLength(1);
     const text = sentText(request);
     // Logical order, as Warraq reads it; PDFium's reader returns this Arabic reversed.
     expect(text).toContain('صباح الخير');
     // Page by page, exactly what Warraq's reader gives, and as many characters as the preflight said.
-    pages.forEach((pageText, index) => expect(text).toContain(`<page number="${index + 1}">\n${pageText}\n</page>`));
-    const inPages = [...text.matchAll(/<page number="\d+">\n([\s\S]*?)\n<\/page>/g)].reduce((sum, match) => sum + (match[1]?.length ?? 0), 0);
+    pages.forEach((pageText, index) =>
+      expect(text).toContain(`<page number="${index + 1}">\n${pageText}\n</page>`),
+    );
+    const inPages = [...text.matchAll(/<page number="\d+">\n([\s\S]*?)\n<\/page>/g)].reduce(
+      (sum, match) => sum + (match[1]?.length ?? 0),
+      0,
+    );
     expect(inPages).toBe(characters);
 
     // The key goes in x-api-key and nowhere else: not the URL, not the body, not another header.
@@ -122,8 +152,13 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     expect(await page.evaluate(() => JSON.stringify({ ...localStorage }))).not.toContain(KEY);
   });
 
-  test('Ask: the answer cites its pages, and a citation goes to its page', async ({ page, stayLocal: _ }) => {
-    const toClaude = await answer(page, ANTHROPIC, () => claudeSays('خطة العمل المناخية مذكورة في الصفحة الثانية [p. 2].'));
+  test('Ask: the answer cites its pages, and a citation goes to its page', async ({
+    page,
+    stayLocal: _,
+  }) => {
+    const toClaude = await answer(page, ANTHROPIC, () =>
+      claudeSays('خطة العمل المناخية مذكورة في الصفحة الثانية [p. 2].'),
+    );
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
     const ai = await claudeFor(page, 'Ask a question');
@@ -149,7 +184,9 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
   });
 
   test('Translate sends only the pages chosen', async ({ page, stayLocal: _ }) => {
-    const toClaude = await answer(page, ANTHROPIC, () => claudeSays('[p. 1]\nGood morning. I am pleased to meet you online.'));
+    const toClaude = await answer(page, ANTHROPIC, () =>
+      claudeSays('[p. 1]\nGood morning. I am pleased to meet you online.'),
+    );
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
     const ai = await claudeFor(page, 'Translate');
@@ -169,14 +206,23 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
 
   test('a wrong key is named as the wrong key', async ({ page, stayLocal: _ }) => {
     const toClaude = await answer(page, ANTHROPIC, () =>
-      json({ type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' }, request_id: 'req_e2e' }, 401),
+      json(
+        {
+          type: 'error',
+          error: { type: 'authentication_error', message: 'invalid x-api-key' },
+          request_id: 'req_e2e',
+        },
+        401,
+      ),
     );
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
     const ai = await claudeFor(page, 'Summarize');
     await ai.getByRole('button', { name: 'Review what will be sent' }).click();
     await preflight(page).getByRole('button', { name: 'Send to Anthropic' }).click();
-    await expect(ai.getByRole('alert')).toContainText('Anthropic did not accept this API key (401)');
+    await expect(ai.getByRole('alert')).toContainText(
+      'Anthropic did not accept this API key (401)',
+    );
     expect(toClaude).toHaveLength(1);
     await expect(reply(page)).toHaveCount(0);
   });
@@ -214,7 +260,12 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     expect(toLocal).toHaveLength(1);
     const request = toLocal[0] as Request;
     expect(request.url()).toBe('http://localhost:11434/api/chat');
-    const body = request.postDataJSON() as { model: string; stream: boolean; options: { num_ctx: number }; messages: { role: string; content: string }[] };
+    const body = request.postDataJSON() as {
+      model: string;
+      stream: boolean;
+      options: { num_ctx: number };
+      messages: { role: string; content: string }[];
+    };
     expect(body.model).toBe('gemma3');
     expect(body.stream).toBe(false);
     expect(body.messages.map((message) => message.role)).toEqual(['system', 'user']);
@@ -226,7 +277,10 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     expect(request.postData()).not.toContain(KEY);
   });
 
-  test('a local address the security policy does not allow is named as such', async ({ page, stayLocal: _ }) => {
+  test('a local address the security policy does not allow is named as such', async ({
+    page,
+    stayLocal: _,
+  }) => {
     const through = await refuse(page, 'http://localhost:11435/');
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
@@ -237,7 +291,9 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     await expect(ai.getByText('connect only to port 11434')).toBeVisible();
     await ai.getByRole('button', { name: 'Review what will be sent' }).click();
     await preflight(page).getByRole('button', { name: 'Send to the local model' }).click();
-    await expect(ai.getByRole('alert')).toContainText("This build's security policy does not allow connecting to http://localhost:11435");
+    await expect(ai.getByRole('alert')).toContainText(
+      "This build's security policy does not allow connecting to http://localhost:11435",
+    );
     expect(through).toHaveLength(0);
   });
 
@@ -245,7 +301,9 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     page,
     stayLocal: _,
   }) => {
-    const toClaude = await answer(page, ANTHROPIC, () => claudeSays('An invoice for a customer [p. 1].'));
+    const toClaude = await answer(page, ANTHROPIC, () =>
+      claudeSays('An invoice for a customer [p. 1].'),
+    );
     await page.goto('/');
     await openPdf(page, INVOICE);
     await chooseTool(page, 'Redact');
@@ -281,7 +339,10 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     expect(text).toContain('العميل');
   });
 
-  test('the key is remembered only when asked, and "Forget the key" removes it', async ({ page, stayLocal: _ }) => {
+  test('the key is remembered only when asked, and "Forget the key" removes it', async ({
+    page,
+    stayLocal: _,
+  }) => {
     const stored = () => page.evaluate(() => localStorage.getItem('warraq.ai.anthropicKey'));
     await page.goto('/');
     await page.locator('.tool-cards-grid .tool-card', { hasText: 'AI' }).click();

@@ -18,7 +18,11 @@ export type ProviderId = 'claude' | 'local';
 /** The Messages API (`POST /v1/messages`, version 2023-06-01). */
 export const CLAUDE_ENDPOINT = 'https://api.anthropic.com/v1/messages';
 export const CLAUDE_HOST = 'api.anthropic.com';
-export const CLAUDE_MODELS = ['claude-sonnet-5', 'claude-opus-5', 'claude-haiku-4-5-20251001'] as const;
+export const CLAUDE_MODELS = [
+  'claude-sonnet-5',
+  'claude-opus-5',
+  'claude-haiku-4-5-20251001',
+] as const;
 export const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-5';
 /**
  * The reply's cap, thinking included (Sonnet 5 and Opus 5 think by default).
@@ -79,7 +83,8 @@ export function claudeRequest(key: string, model: string, prompt: Prompt): Provi
 
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
 
-export type LocalAddress = { ok: true; base: string } | { ok: false; reason: 'invalid' | 'notLocal' };
+export type LocalAddress =
+  { ok: true; base: string } | { ok: false; reason: 'invalid' | 'notLocal' };
 
 /**
  * The base address of a local model server, or why it cannot be one. "Local"
@@ -93,7 +98,13 @@ export function localAddress(input: string): LocalAddress {
   } catch {
     return { ok: false, reason: 'invalid' };
   }
-  if ((url.protocol !== 'http:' && url.protocol !== 'https:') || url.username || url.password || url.search || url.hash) {
+  if (
+    (url.protocol !== 'http:' && url.protocol !== 'https:') ||
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash
+  ) {
     return { ok: false, reason: 'invalid' };
   }
   if (!LOOPBACK.has(url.hostname)) return { ok: false, reason: 'notLocal' };
@@ -113,7 +124,12 @@ export function localContext(prompt: Prompt): number {
 }
 
 /** The request to a local server at `base` (from `localAddress`). It carries no key: there is none. */
-export function localRequest(api: LocalApi, base: string, model: string, prompt: Prompt): ProviderRequest {
+export function localRequest(
+  api: LocalApi,
+  base: string,
+  model: string,
+  prompt: Prompt,
+): ProviderRequest {
   const messages = [
     { role: 'system', content: prompt.system },
     { role: 'user', content: prompt.user },
@@ -144,7 +160,11 @@ export function claudeAnswer(json: unknown): Answer | null {
     .filter((block) => block?.type === 'text' && typeof block.text === 'string')
     .map((block) => block.text as string)
     .join('');
-  return { text, cutOff: reply.stop_reason === 'max_tokens' || reply.stop_reason === 'model_context_window_exceeded' };
+  return {
+    text,
+    cutOff:
+      reply.stop_reason === 'max_tokens' || reply.stop_reason === 'model_context_window_exceeded',
+  };
 }
 
 /** Reasoning some local models write before their answer, which is not the answer. */
@@ -154,7 +174,9 @@ export function localAnswer(api: LocalApi, json: unknown): Answer | null {
   let content: unknown;
   let cutOff: boolean;
   if (api === 'openai') {
-    const choice = (json as { choices?: { message?: { content?: unknown }; finish_reason?: unknown }[] } | null)?.choices?.[0];
+    const choice = (
+      json as { choices?: { message?: { content?: unknown }; finish_reason?: unknown }[] } | null
+    )?.choices?.[0];
     content = choice?.message?.content;
     cutOff = choice?.finish_reason === 'length';
   } else {
@@ -192,7 +214,12 @@ export type Failure =
   | { kind: 'cancelled' };
 
 /** An HTTP error from `provider`, with its message when it gave one. */
-export function httpFailure(provider: ProviderId, status: number, message: string | null, model: string): Failure {
+export function httpFailure(
+  provider: ProviderId,
+  status: number,
+  message: string | null,
+  model: string,
+): Failure {
   if (status === 401 && provider === 'claude') return { kind: 'key' };
   if (status === 402) return { kind: 'billing' };
   if (status === 403 && provider === 'claude') return { kind: 'denied' };

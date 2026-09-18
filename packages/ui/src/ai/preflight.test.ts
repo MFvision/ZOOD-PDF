@@ -4,7 +4,12 @@ import type { ProviderSettings } from './preflight';
 
 const KEY = 'sk-ant-api03-not-a-real-key-0123456789';
 const claude: ProviderSettings = { provider: 'claude', model: 'claude-sonnet-5' };
-const local: ProviderSettings = { provider: 'local', api: 'ollama', base: 'http://localhost:11434', model: 'gemma3' };
+const local: ProviderSettings = {
+  provider: 'local',
+  api: 'ollama',
+  base: 'http://localhost:11434',
+  model: 'gemma3',
+};
 const read = {
   sent: [
     { page: 1, text: 'صباح الخير. يسعدني أن ألتقي بكم.' },
@@ -26,7 +31,9 @@ describe('the preflight', () => {
     expect(preflight.characters).toBe(44);
     expect(preflight.budget).toBe(150_000);
     expect(preflight.empty).toBe(false);
-    expect(preflightFor(local, { kind: 'summarize' }, read, context).destination).toBe('http://localhost:11434');
+    expect(preflightFor(local, { kind: 'summarize' }, read, context).destination).toBe(
+      'http://localhost:11434',
+    );
   });
 
   it('holds exactly the pages it names, in logical order, tagged for citing', () => {
@@ -42,14 +49,22 @@ describe('the preflight', () => {
   });
 
   it('carries the question, or the language to translate into', () => {
-    const asked = preflightFor(claude, { kind: 'ask', question: '  What is the date?  ' }, read, context);
+    const asked = preflightFor(
+      claude,
+      { kind: 'ask', question: '  What is the date?  ' },
+      read,
+      context,
+    );
     expect(asked.prompt.user).toContain('Question: What is the date?\n');
     expect(asked.task).toEqual({ kind: 'ask', question: '  What is the date?  ' });
-    const translated = preflightFor(claude, { kind: 'translate', to: 'en' }, read, { ...context, budget: 20_000 });
+    const translated = preflightFor(claude, { kind: 'translate', to: 'en' }, read, {
+      ...context,
+      budget: 20_000,
+    });
     expect(translated.prompt.user).toContain('from Arabic into English');
-    expect(preflightFor(claude, { kind: 'translate', to: 'ar' }, read, context).prompt.user).toContain(
-      'from English into Modern Standard Arabic',
-    );
+    expect(
+      preflightFor(claude, { kind: 'translate', to: 'ar' }, read, context).prompt.user,
+    ).toContain('from English into Modern Standard Arabic');
   });
 
   it('knows when the pages hold no text to send', () => {
