@@ -12,6 +12,8 @@ pub mod tools;
 pub mod wasm;
 
 pub use tools::{call_static, Reply};
+/// Whether an address is one a link may open (`http`, `https`, `mailto`).
+pub use warraq_pdf::allowed_uri;
 
 pub fn version() -> String {
     env!("CARGO_PKG_VERSION").to_string()

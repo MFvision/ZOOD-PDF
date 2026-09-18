@@ -6,6 +6,7 @@ import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { FontNotice } from '../edit/FontNotice';
 import { HomeScreen } from '../home/HomeScreen';
+import { LinkConfirmDialog } from '../links/LinkConfirmDialog';
 import { useI18n } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { EmbedViewer } from '../embed/EmbedViewer';
@@ -124,6 +125,7 @@ export function Shell() {
       <PasswordDialog />
       <ShortcutsDialog />
       <AboutDialog />
+      <LinkConfirmDialog />
       {state.toast && (
         <div className="toast" role="status">
           {t(state.toast.key)}

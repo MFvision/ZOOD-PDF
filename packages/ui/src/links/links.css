@@ -1,0 +1,10 @@
+/* The address a link would open: whole, readable, and breakable anywhere. */
+.link-address {
+  padding-block: 8px;
+  padding-inline: 10px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+  background: var(--bg-hover);
+  border-radius: var(--radius-s);
+}

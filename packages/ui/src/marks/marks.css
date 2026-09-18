@@ -1,0 +1,159 @@
+/* Page marks: the kind, its settings, the preview and the marks in the file. */
+.marks-sections {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  margin-block: 12px;
+}
+
+.marks-section {
+  min-block-size: 32px;
+  padding-inline: 8px;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+}
+
+.marks-section[aria-checked="true"] {
+  color: var(--accent-fg);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.marks-section:disabled {
+  opacity: 0.5;
+}
+
+.marks-changing {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: 4px;
+  padding-inline: 10px 4px;
+  margin: 0 0 8px;
+  background: var(--bg-hover);
+  border-radius: var(--radius-s);
+}
+
+.marks-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 8px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.marks-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-inline-size: 0;
+  font-size: 0.9em;
+}
+
+.marks-field .select,
+.marks-field .text-input {
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+.marks-field-wide,
+.marks-choice,
+.marks-tokens,
+.marks-form > .tool-panel-note,
+.marks-form > .field-error {
+  grid-column: 1 / -1;
+}
+
+.marks-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.marks-choice label,
+.marks-check {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.marks-color {
+  inline-size: 100%;
+  block-size: 30px;
+  padding: 2px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+}
+
+.marks-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  font-size: 0.9em;
+}
+
+.marks-token {
+  padding-block: 2px;
+  padding-inline: 8px;
+  color: var(--fg);
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.marks-preview {
+  margin-block: 14px 0;
+  margin-inline: 0;
+}
+
+.marks-preview canvas {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  box-shadow: var(--shadow-1, none);
+}
+
+.marks-list h4 {
+  margin-block: 16px 6px;
+  font-size: 14px;
+}
+
+.marks-list ul {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.marks-item {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding-block: 6px;
+  padding-inline: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+}
+
+.marks-item-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.marks-item-text .tool-panel-note {
+  margin: 0;
+}

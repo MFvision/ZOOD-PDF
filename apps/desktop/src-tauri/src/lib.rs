@@ -71,6 +71,38 @@ fn ui_log(message: String) {
     core_bridge::debug_log(format!("ui: {message}"));
 }
 
+/// Opens a web or e-mail address in the system's browser or mail app, once
+/// the person has confirmed it in the interface (`links/openLink.ts`). The
+/// address is checked again here — only `http`, `https` and `mailto` — and
+/// handed to the system's opener as one argument, never through a shell.
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    let url = url.trim().to_string();
+    if !warraq_core::allowed_uri(&url) {
+        return Err("E_LINK: only web and e-mail addresses are opened".into());
+    }
+    let mut child = opener(&url)
+        .spawn()
+        .map_err(|e| format!("E_LINK: {e}"))?;
+    // Reaped once the opener hands the address over and exits.
+    std::thread::spawn(move || {
+        let _ = child.wait();
+    });
+    Ok(())
+}
+
+fn opener(url: &str) -> std::process::Command {
+    #[cfg(target_os = "macos")]
+    let (program, before): (&str, &[&str]) = ("/usr/bin/open", &[]);
+    #[cfg(target_os = "windows")]
+    let (program, before): (&str, &[&str]) = ("rundll32", &["url.dll,FileProtocolHandler"]);
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let (program, before): (&str, &[&str]) = ("xdg-open", &[]);
+    let mut command = std::process::Command::new(program);
+    command.args(before).arg(url);
+    command
+}
+
 /// Version of the natively linked core, so the UI can show that the desktop
 /// build and the WASM build carry the same `warraq-core`.
 #[tauri::command]
@@ -147,6 +179,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             core_version,
+            open_url,
             read_file_bytes,
             startup_file,
             ui_log,

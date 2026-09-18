@@ -309,3 +309,32 @@ fn bad_arguments_are_errors_not_panics() {
     }
     assert!(call_static("marks.list", "{}", vec![b"%PDF-1.7 junk".to_vec()]).is_err());
 }
+
+#[test]
+fn a_mark_being_changed_takes_the_place_of_the_old_one() {
+    let pdf = add(
+        &corpus(THREE),
+        json!({ "kind": "watermark", "text": "مسودة", "size": 40 }),
+        &[0, 1],
+    );
+    let reply = call_static(
+        "marks.add",
+        &json!({
+            "mark": { "kind": "watermark", "text": "نهائي", "size": 40 },
+            "pages": [1, 2],
+            "replace": false,
+            "replaceIds": [1],
+            "fontBlob": 1,
+        })
+        .to_string(),
+        vec![pdf, AMIRI.to_vec()],
+    )
+    .unwrap();
+    let pdf = reply.blobs.into_iter().next().unwrap();
+    let listed = value(&call_static("marks.list", "{}", vec![pdf.clone()]).unwrap());
+    let marks = listed["marks"].as_array().unwrap();
+    assert_eq!(marks.len(), 1, "{listed}");
+    assert_eq!(marks[0]["pages"], json!([1, 2]));
+    assert_eq!(marks[0]["spec"]["text"], "نهائي");
+    assert!(!marks_text(&pdf, 0).0.contains("مسودة"));
+}

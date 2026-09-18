@@ -210,6 +210,10 @@ struct Add {
     font_blob: Option<usize>,
     #[serde(default)]
     image_blob: Option<usize>,
+    /// Marks this one takes the place of — a mark being changed — taken off
+    /// every page first.
+    #[serde(default)]
+    replace_ids: Vec<u32>,
     /// Preview only: the page to draw, and at what scale.
     #[serde(default)]
     page: usize,
@@ -255,6 +259,9 @@ fn marked(a: &Add, blobs: &[Vec<u8>], preview: bool) -> Result<(PdfDocument, u32
     let mark = spec.into_mark(json, blob(a.image_blob).cloned())?;
     let mut doc = PdfDocument::open(pdf.clone(), a.password.as_deref())?;
     let font = blob(a.font_blob).map(Vec::as_slice);
+    if !a.replace_ids.is_empty() {
+        doc.remove_marks(&a.replace_ids, &[])?;
+    }
     if preview {
         doc.preview_mark(&mark, &a.pages, font, a.replace, a.page)?;
         return Ok((doc, 0));

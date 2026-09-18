@@ -6,7 +6,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import standardStamps from '../../public/stamps/en/manifest.json';
 import { isTauriHost, uiLog } from '../core/host-tauri';
 import type { Lang } from '../i18n/messages';
-import { disabledCategories } from './embedControl';
+import { requestOpenLink } from '../links/openLink';
+import { capability, disabledCategories } from './embedControl';
 import { setEmbedLanguage } from './embedLanguage';
 import { installRtlStyles } from './embedRtl';
 
@@ -93,6 +94,23 @@ function reportDrawn(name: string): void {
   check();
 }
 
+/** What EmbedPDF's annotation plugin says a link click came to (`NavigateEvent`). */
+interface NavigateEvent {
+  result: { outcome: string; uri?: string };
+}
+
+/**
+ * A click on a link to an address, in EmbedPDF's view, asks before it opens —
+ * as in Warraq's own. `autoOpenLinks: false` stops the viewer opening it; the
+ * plugin still says where the link goes, and that goes to the question.
+ */
+function watchEmbedLinks(registry: PluginRegistry): void {
+  const annotation = capability<{ onNavigate?: (listener: (event: NavigateEvent) => void) => unknown }>(registry, 'annotation');
+  annotation?.onNavigate?.((event) => {
+    if (event.result.outcome === 'uri' && event.result.uri) requestOpenLink(event.result.uri);
+  });
+}
+
 function documentManager(registry: PluginRegistry): DocumentManager | null {
   const plugin = registry.getPlugin('document-manager') as { provides?: () => DocumentManager } | null;
   return plugin?.provides?.() ?? null;
@@ -126,6 +144,10 @@ export function EmbedViewer({ bytes, name, password, theme, lang, onRegistry, on
       // EmbedPDF adds before the Arabic has it then reads in English, not as
       // its raw name.
       i18n: { fallbackLocale: 'en' },
+      // A link to an address is not opened by the viewer: Warraq asks first
+      // (`links/openLink.ts`, through `onNavigate` below). Links to a page of
+      // the file still go there.
+      annotations: { autoOpenLinks: false },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -185,6 +207,7 @@ export function EmbedViewer({ bytes, name, password, theme, lang, onRegistry, on
         // Before the document opens, so its toolbar is never drawn in the
         // wrong language first: EmbedPDF shows it only once one is open.
         setEmbedLanguage(registry, langRef.current);
+        watchEmbedLinks(registry);
         onRegistry?.(registry);
         void open(registry, bytes, name, password);
       }}
