@@ -97,6 +97,8 @@ div[style*="transform-origin"][style*="background-color"] {
 /* Buttons: the system's plates and radii, feedback on the press. */
 button { border-radius: var(--radius-6); transition: background-color var(--duration-quick) var(--ease-out); }
 button:active:not(:disabled) { background-color: var(--fill); transition-duration: 0ms; }
+/* Its line icons, at the weight of the toolbar's. */
+button svg { stroke-width: var(--icon-stroke); }
 .rounded-md, .rounded-lg { border-radius: var(--radius-8); }
 .rounded-xl, .rounded-2xl { border-radius: var(--radius-12); }
 .shadow-lg, .shadow-xl, .shadow-2xl { box-shadow: var(--shadow-popover); }
