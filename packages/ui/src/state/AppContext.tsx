@@ -26,7 +26,8 @@ import type { AppAction, AppState } from './appReducer';
 import { readPreferences, writePreferences } from './preferences';
 import { addRecent, clearRecent as clearStoredRecent, readRecent } from './recent';
 import { isPdf, namedLikePdf } from './pdfFile';
-import { combinedFileName, downloadPdf, extractedFileName, pdfFileName, saveBytes } from './saveFile';
+import { combinedFileName, downloadPdf, extractedFileName, pdfFileName, saveBytes, splitArchiveName } from './saveFile';
+import { zipSync } from 'fflate';
 import { findTool } from '../tools/tools';
 import type { OcrLanguage } from '../ocr/engine';
 import { readPages } from '../ocr/run';
@@ -70,7 +71,10 @@ export interface CombineInput {
 }
 
 /** The page changes of Organize pages (`warraq-core/src/tools/pages.rs`). */
-export type OrganizeOp = 'rotate' | 'reorder' | 'delete' | 'insert_blank';
+export type OrganizeOp = 'rotate' | 'reorder' | 'delete' | 'insert_blank' | 'insert_file';
+
+/** What became of inserting another file's pages. */
+export type InsertOutcome = 'inserted' | 'locked' | 'wrongPassword' | 'failed';
 
 /** What a page change answers: the document's new shape. */
 interface PageShape {
@@ -126,10 +130,22 @@ export interface AppServices {
   canPrint: boolean;
   /** Brings a page (one-based) to the top of the view on screen. */
   goToPage: (page: number) => void;
-  /** Organize pages: one change to the pages of the open document. */
-  organizePages: (op: OrganizeOp, args: object, selectAfter: (pageCount: number) => number[]) => Promise<void>;
+  /** Organize pages: one change to the pages of the open document; `blobs` go with it to the core. `false` if it failed. */
+  organizePages: (
+    op: OrganizeOp,
+    args: object,
+    selectAfter: (pageCount: number) => number[],
+    blobs?: ArrayBuffer[],
+  ) => Promise<boolean>;
   /** Organize pages: the chosen pages as a new file, saved beside the open one. */
   extractPages: (pages: number[]) => Promise<void>;
+  /**
+   * Organize pages: every page of another PDF, inserted at `at` (0 is first),
+   * as one change that can be undone. A protected file needs its password.
+   */
+  insertPagesFromFile: (file: { name: string; bytes: ArrayBuffer }, at: number, password?: string) => Promise<InsertOutcome>;
+  /** Organize pages: the document as several files, `parts` of its pages each, saved as one zip; `false` if cancelled. */
+  splitDocument: (parts: number[][], word: string) => Promise<boolean>;
   /** The open file as it stands now, with whatever either engine has changed. */
   currentFileBytes: () => Promise<ArrayBuffer | null>;
   /** Areas marked for redaction in the EmbedPDF view and not yet applied: their text is still in the file. */
@@ -210,6 +226,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [pendingRedactions, setPendingRedactions] = useState(0);
   const syncedRevision = useRef(0);
   const wasWarraqs = useRef(false);
+  /** A switch between the engines is being carried out (the effect below). */
+  const switchInFlight = useRef(false);
   // Organize pages: the file as it was before each change, for undo and redo.
   const organizeHistory = useRef<{ undo: Uint8Array[]; redo: Uint8Array[] }>({ undo: [], redo: [] });
   const [organizeSteps, setOrganizeSteps] = useState({ undo: 0, redo: 0 });
@@ -394,7 +412,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   /** EmbedPDF opened a file: a switch back to it is complete. */
   const embedOpened = useCallback(() => {
-    if (stateRef.current.switching === 'out') dispatch({ type: 'SWITCH_DONE' });
+    if (stateRef.current.switching !== 'out') return;
+    switchInFlight.current = false;
+    dispatch({ type: 'SWITCH_DONE' });
   }, []);
 
   const runEmbedCommand = useCallback((command: string) => {
@@ -504,8 +524,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * about one document.
    */
   useEffect(() => {
-    if (wasWarraqs.current === warraqOwns) return;
+    if (wasWarraqs.current === warraqOwns) {
+      // The reducer marks a switch the moment ownership changes; one that
+      // changed back before this ran has nothing to carry out.
+      if (!switchInFlight.current && stateRef.current.switching !== null) dispatch({ type: 'SWITCH_DONE' });
+      return;
+    }
     wasWarraqs.current = warraqOwns;
+    switchInFlight.current = true;
+    const done = () => {
+      switchInFlight.current = false;
+      dispatch({ type: 'SWITCH_DONE' });
+    };
     organizeHistory.current = { undo: [], redo: [] };
     setOrganizeSteps({ undo: 0, redo: 0 });
     // The switch takes a moment — EmbedPDF finishes a stroke and writes the
@@ -517,7 +547,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const bytes = await bytesFromEmbed();
         const name = stateRef.current.document?.name;
         if (!bytes || !name) {
-          dispatch({ type: 'SWITCH_DONE' });
+          done();
           return;
         }
         // EmbedPDF's copy keeps the file's protection, so it needs the password
@@ -538,19 +568,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
         // DOCUMENT_OPENED starts the edit history again.
         syncedRevision.current = 0;
-        dispatch({ type: 'SWITCH_DONE' });
+        done();
         return;
       }
       const doc = documentRef.current;
       if (!doc || stateRef.current.edit.revision === syncedRevision.current) {
-        dispatch({ type: 'SWITCH_DONE' });
+        done();
         return;
       }
       const saved = await doc.save();
       syncedRevision.current = stateRef.current.edit.revision;
       // Done when EmbedPDF has opened these bytes: `embedOpened`.
       setDocumentBytes(saved.buffer.slice(saved.byteOffset, saved.byteOffset + saved.byteLength));
-    })().catch(() => dispatch({ type: 'DOCUMENT_FAILED', error: 'error.open' }));
+    })().catch(() => {
+      switchInFlight.current = false;
+      dispatch({ type: 'DOCUMENT_FAILED', error: 'error.open' });
+    });
   }, [warraqOwns, bytesFromEmbed, client]);
 
   const clearRecent = useCallback(() => {
@@ -652,21 +685,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * is kept first, so the change can be undone byte for byte.
    */
   const organizePages = useCallback(
-    async (op: OrganizeOp, args: object, selectAfter: (pageCount: number) => number[]) => {
+    async (op: OrganizeOp, args: object, selectAfter: (pageCount: number) => number[], blobs: ArrayBuffer[] = []) => {
       const doc = documentRef.current;
-      if (!doc || stateRef.current.organize.busy) return;
+      if (!doc || stateRef.current.organize.busy) return false;
       dispatch({ type: 'ORGANIZE_BUSY', busy: true });
       try {
         const before = await doc.save();
-        const { result } = await doc.call<PageShape>(`pages.${op}`, args);
+        const { result } = await doc.call<PageShape>(`pages.${op}`, args, blobs);
         const history = organizeHistory.current;
         history.undo = [...history.undo, before].slice(-ORGANIZE_HISTORY);
         history.redo = [];
         rememberSteps();
         dispatch({ type: 'DOCUMENT_RESHAPED', pageCount: result.pageCount, pageSizes: result.pageSizes, selection: selectAfter(result.pageCount) });
+        return true;
       } catch {
         dispatch({ type: 'ORGANIZE_BUSY', busy: false });
         dispatch({ type: 'DOCUMENT_FAILED', error: 'organize.failed' });
+        return false;
       }
     },
     [],
@@ -716,6 +751,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'TOAST', key: 'organize.extracted' });
     } catch {
       dispatch({ type: 'DOCUMENT_FAILED', error: 'organize.failed' });
+    }
+  }, []);
+
+  const insertPagesFromFile = useCallback(
+    async (file: { name: string; bytes: ArrayBuffer }, at: number, password?: string): Promise<InsertOutcome> => {
+      // Opened once first: how many pages come in, and whether it is locked.
+      let pages: number;
+      try {
+        const probe = await client.open(file.bytes.slice(0), password);
+        pages = probe.pageCount;
+        void probe.free();
+      } catch (error) {
+        if ((error as { code?: string } | null)?.code !== 'E_PASSWORD') return 'failed';
+        return password ? 'wrongPassword' : 'locked';
+      }
+      const done = await organizePages(
+        'insert_file',
+        { at, password: password ?? null },
+        () => Array.from({ length: pages }, (_, k) => at + k),
+        [file.bytes.slice(0)],
+      );
+      return done ? 'inserted' : 'failed';
+    },
+    [client, organizePages],
+  );
+
+  /** Every part through `pages.extract`, then one zip: one save, whatever the host. */
+  const splitDocument = useCallback(async (parts: number[][], word: string): Promise<boolean> => {
+    const doc = documentRef.current;
+    const name = stateRef.current.document?.name;
+    if (!doc || !name || parts.length === 0) return false;
+    try {
+      const files: Record<string, Uint8Array> = {};
+      for (const part of parts) {
+        const { blobs } = await doc.call<{ pageCount: number }>('pages.extract', { pages: part });
+        files[extractedFileName(name, part)] = new Uint8Array(blobs[0] ?? new ArrayBuffer(0));
+      }
+      // Stored, not deflated: the parts are PDFs, already compressed inside.
+      const zip = zipSync(files, { level: 0 });
+      const saved = await saveBytes(zip, splitArchiveName(name, word), {
+        mime: 'application/zip',
+        filter: { name: 'ZIP', extensions: ['zip'] },
+      });
+      if (saved) dispatch({ type: 'TOAST', key: 'organize.splitDone' });
+      return saved;
+    } catch {
+      dispatch({ type: 'DOCUMENT_FAILED', error: 'organize.failed' });
+      return false;
     }
   }, []);
 
@@ -948,6 +1031,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       goToPage,
       organizePages,
       extractPages,
+      insertPagesFromFile,
+      splitDocument,
       currentFileBytes,
       pendingRedactions,
       combineFiles,
@@ -986,6 +1071,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       goToPage,
       organizePages,
       extractPages,
+      insertPagesFromFile,
+      splitDocument,
       currentFileBytes,
       pendingRedactions,
       combineFiles,

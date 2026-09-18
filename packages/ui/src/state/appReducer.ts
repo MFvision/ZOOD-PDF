@@ -236,7 +236,28 @@ function findStep(state: AppState, delta: 1 | -1): AppState {
   return scrollTo({ ...state, find: { ...state.find, cursor: next } }, page);
 }
 
+/**
+ * The engine switch is marked in the same change that moves the document from
+ * one engine to the other, not an effect later: for one frame the panels
+ * otherwise offered their controls on the copy about to be replaced, and a
+ * click then raced the switch.
+ */
 export function appReducer(state: AppState, action: AppAction): AppState {
+  const next = reduce(state, action);
+  const owner = warraqOwnsDocument(next);
+  if (
+    action.type !== 'SWITCH_ENGINE' &&
+    action.type !== 'SWITCH_DONE' &&
+    state.document !== null &&
+    next.document !== null &&
+    warraqOwnsDocument(state) !== owner
+  ) {
+    return { ...next, switching: owner ? 'in' : 'out' };
+  }
+  return next;
+}
+
+function reduce(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'DOCUMENT_LOADING':
       // A password prompt stays up while its answer is tried.

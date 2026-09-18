@@ -31,6 +31,11 @@ export function pagesArchiveName(name: string, word: string): string {
   return `${documentStem(name)} (${word}).zip`;
 }
 
+/** The zip of a document split into parts: `report (split).zip`, `word` in the interface's language. */
+export function splitArchiveName(name: string, word: string): string {
+  return `${documentStem(name)} (${word}).zip`;
+}
+
 /** One page image in that zip, numbered to sort in page order: `report-03.png` of twelve. */
 export function pageImageName(name: string, page: number, total: number): string {
   return `${documentStem(name)}-${String(page).padStart(String(total).length, '0')}.png`;

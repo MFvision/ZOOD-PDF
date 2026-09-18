@@ -3,20 +3,35 @@ import {
   ArrowUp,
   Check,
   CheckCheck,
+  FileInput,
   FileOutput,
   FilePlus2,
   LayoutGrid,
   Redo2,
   RotateCcw,
   RotateCw,
+  Scissors,
   Trash2,
   Undo2,
 } from 'lucide-react';
+import { useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
+import type { TKey } from '../i18n/messages';
 import { useT } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { orderStepping, positionsAfter, selectionAfterDelete } from './selection';
+import { describeParts, splitAt, splitEvery } from './split';
+
+/** A file chosen for inserting that needs its password first. */
+interface Locked {
+  name: string;
+  bytes: ArrayBuffer;
+  at: number;
+  password: string;
+  wrong: boolean;
+}
 
 /**
  * Organize pages, the controls: every button changes the file through
@@ -39,6 +54,37 @@ export function OrganizePanel() {
     const order = orderStepping(count, pages, step);
     if (order) void services.organizePages('reorder', { order }, () => positionsAfter(order, pages));
   };
+
+  // Insert pages from a file: after the last selected page, or at the end.
+  const chooser = useRef<HTMLInputElement>(null);
+  const [locked, setLocked] = useState<Locked | null>(null);
+  const [insertNote, setInsertNote] = useState<TKey | null>(null);
+  const insertAt = pages.length > 0 ? last + 1 : count;
+  const insert = async (file: { name: string; bytes: ArrayBuffer }, at: number, password?: string) => {
+    setInsertNote(null);
+    const outcome = await services.insertPagesFromFile(file, at, password);
+    if (outcome === 'inserted') {
+      setLocked(null);
+      dispatch({ type: 'TOAST', key: 'organize.inserted' });
+    } else if (outcome === 'locked') {
+      setLocked({ ...file, at, password: '', wrong: false });
+    } else if (outcome === 'wrongPassword') {
+      setLocked((entry) => entry && { ...entry, wrong: true });
+    } else {
+      setLocked(null);
+      setInsertNote('organize.insertFailed');
+    }
+  };
+  const chosen = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (file) await insert({ name: file.name, bytes: await file.arrayBuffer() }, insertAt);
+  };
+
+  // Split into files: every so many pages, or at each selected page.
+  const [splitMode, setSplitMode] = useState<'every' | 'selected'>('every');
+  const [splitSize, setSplitSize] = useState(1);
+  const parts = splitMode === 'every' ? splitEvery(count, splitSize) : splitAt(count, pages);
 
   return (
     <div className="tool-panel">
@@ -105,6 +151,13 @@ export function OrganizePanel() {
           onClick={() => void services.extractPages(pages)}
         />
         <IconButton
+          label={t('organize.insertFile')}
+          icon={<Icon of={FileInput} />}
+          showLabel
+          disabled={!ready}
+          onClick={() => chooser.current?.click()}
+        />
+        <IconButton
           label={t('organize.selectAll')}
           icon={<Icon of={CheckCheck} />}
           showLabel
@@ -133,6 +186,101 @@ export function OrganizePanel() {
           onClick={() => dispatch({ type: 'SET_ACTIVE_TOOL', tool: null })}
         />
       </div>
+      <input
+        ref={chooser}
+        type="file"
+        accept="application/pdf,.pdf"
+        hidden
+        onChange={(event) => void chosen(event)}
+      />
+      <p className="tool-panel-note">{t('organize.insertWhere')}</p>
+      {insertNote && (
+        <p className="field-error" role="alert">
+          {t(insertNote)}
+        </p>
+      )}
+      {locked && (
+        <form
+          className="combine-unlock"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void insert(locked, locked.at, locked.password);
+          }}
+        >
+          <label className="field">
+            <span>{t('organize.insertPassword', { name: locked.name })}</span>
+            <input
+              className="text-input"
+              type="password"
+              dir="auto"
+              autoComplete="off"
+              value={locked.password}
+              onChange={(event) => setLocked({ ...locked, password: event.target.value, wrong: false })}
+            />
+          </label>
+          {locked.wrong && (
+            <p className="field-error" role="alert">
+              {t('password.wrong')}
+            </p>
+          )}
+          <div className="tool-actions">
+            <button type="submit" className="icon-btn icon-btn-labeled" disabled={!ready || locked.password.length === 0}>
+              {t('organize.insert')}
+            </button>
+            <button type="button" className="icon-btn icon-btn-labeled" onClick={() => setLocked(null)}>
+              {t('password.cancel')}
+            </button>
+          </div>
+        </form>
+      )}
+      <fieldset className="organize-split">
+        <legend>{t('organize.split')}</legend>
+        <div className="organize-split-choice">
+          <input
+            id="organize-split-every"
+            type="radio"
+            name="organize-split"
+            checked={splitMode === 'every'}
+            onChange={() => setSplitMode('every')}
+          />
+          <label htmlFor="organize-split-every">{t('organize.splitEvery')}</label>
+          <input
+            className="text-input organize-split-size"
+            type="number"
+            min={1}
+            max={Math.max(1, count)}
+            value={splitSize}
+            aria-label={t('organize.splitSize')}
+            disabled={splitMode !== 'every'}
+            onChange={(event) => setSplitSize(Math.max(1, Math.floor(Number(event.target.value)) || 1))}
+          />
+          <span>{t('organize.splitPages')}</span>
+        </div>
+        <div className="organize-split-choice">
+          <input
+            id="organize-split-selected"
+            type="radio"
+            name="organize-split"
+            checked={splitMode === 'selected'}
+            onChange={() => setSplitMode('selected')}
+          />
+          <label htmlFor="organize-split-selected">{t('organize.splitSelected')}</label>
+        </div>
+        {parts.length > 1 ? (
+          <p className="tool-panel-note">
+            {t('organize.splitParts', { count: parts.length })} <bdi dir="ltr">{describeParts(parts)}</bdi>
+          </p>
+        ) : (
+          <p className="tool-panel-note">{t('organize.splitOne')}</p>
+        )}
+        <IconButton
+          label={t('organize.splitRun')}
+          icon={<Icon of={Scissors} />}
+          showLabel
+          disabled={!ready || parts.length < 2}
+          onClick={() => void services.splitDocument(parts, t('organize.splitWord'))}
+        />
+      </fieldset>
       {pages.length > 0 && pages.length >= count && <p className="tool-panel-note">{t('organize.keepOne')}</p>}
       <p className="tool-panel-note">{t('organize.hint')}</p>
       <p className="tool-panel-note">{t('organize.saveNote')}</p>

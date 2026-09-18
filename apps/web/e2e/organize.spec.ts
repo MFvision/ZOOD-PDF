@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs';
+import { unzipSync } from 'fflate';
 import { expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { chooseTool, corpus, embedDocument, embedTiles, enterEditText, openPdf, test } from './helpers';
+import { WORD_EXPORT, chooseTool, corpus, embedDocument, embedTiles, enterEditText, openPdf, test } from './helpers';
 
 const THREE = corpus('generated/chrome-notonaskh-justified-3pages.pdf');
+const LOCKED = corpus('generated/variant-encrypted-aes256.pdf');
 
 const grid = (page: Page) => page.getByRole('listbox', { name: 'Pages' });
 const tile = (page: Page, n: number) => grid(page).getByRole('option', { name: `Page ${n}`, exact: true });
@@ -12,8 +14,10 @@ const statusBar = (page: Page) => page.getByRole('contentinfo', { name: 'Status 
 
 /** The start of page `n`'s text, as Warraq's own reader sees it in Edit text. */
 async function pageStart(page: Page, n: number): Promise<string> {
-  const layer = page.locator(`section[data-page="${n}"] .text-layer`);
-  await layer.scrollIntoViewIfNeeded();
+  // A page's text layer is only made once the page is near the view.
+  const section = page.locator(`section[data-page="${n}"]`);
+  await section.scrollIntoViewIfNeeded();
+  const layer = section.locator('.text-layer');
   await expect(layer).not.toBeEmpty();
   return ((await layer.textContent()) ?? '').replace(/\s+/g, ' ').trim().slice(0, 24);
 }
@@ -117,5 +121,94 @@ test.describe('Organize pages changes the file, not just the grid', () => {
     await enterEditText(page);
     expect(await pageStart(page, 1)).toBe(original[0]);
     expect(await pageStart(page, 2)).toBe(original[2]);
+  });
+
+  test('pages from another file go in after the selected page, and the saved file has them there', async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    await openPdf(page, THREE);
+    await enterEditText(page);
+    const original = [await pageStart(page, 1), await pageStart(page, 2), await pageStart(page, 3)];
+
+    await chooseTool(page, 'Organize pages');
+    await tile(page, 1).click();
+    const [chooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      control(page, 'Insert pages from a file').click(),
+    ]);
+    await chooser.setFiles(WORD_EXPORT);
+    await expect(grid(page).getByRole('option')).toHaveCount(5);
+    // The two pages that came in are the ones selected.
+    await expect(tile(page, 2)).toHaveAttribute('aria-selected', 'true');
+    await expect(tile(page, 3)).toHaveAttribute('aria-selected', 'true');
+    await expect(tile(page, 4)).toHaveAttribute('aria-selected', 'false');
+
+    await control(page, 'Done').click();
+    await expect(statusBar(page)).toContainText('Page 1 of 5');
+    const saved = await saveAs(page, 'inserted');
+    await page.goto('/');
+    await openPdf(page, saved);
+    await enterEditText(page);
+    expect(await pageStart(page, 1)).toBe(original[0]);
+    await page.locator('section[data-page="2"]').scrollIntoViewIfNeeded();
+    await expect(page.locator('section[data-page="2"] .text-layer')).toContainText('صباح الخير');
+    expect(await pageStart(page, 4)).toBe(original[1]);
+    expect(await pageStart(page, 5)).toBe(original[2]);
+  });
+
+  test('a protected file asks for its password before its pages go in', async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    await openPdf(page, THREE);
+    await chooseTool(page, 'Organize pages');
+    const [chooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      control(page, 'Insert pages from a file').click(),
+    ]);
+    await chooser.setFiles(LOCKED);
+    const panel = page.locator('.pane-end');
+    const password = panel.getByLabel('is protected. Enter its password to insert its pages.');
+    await expect(password).toBeVisible();
+    await password.fill('not it');
+    await panel.getByRole('button', { name: 'Insert', exact: true }).click();
+    await expect(panel.getByRole('alert')).toContainText('That password did not open the file');
+    await expect(grid(page).getByRole('option')).toHaveCount(3);
+    await password.fill('warraq');
+    await panel.getByRole('button', { name: 'Insert', exact: true }).click();
+    await expect(grid(page).getByRole('option')).toHaveCount(6);
+    await expect(password).toHaveCount(0);
+  });
+
+  test('split into files: every page, or at the selected pages, saved as one zip of the parts', async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    await openPdf(page, THREE);
+    await chooseTool(page, 'Organize pages');
+    const panel = page.locator('.pane-end');
+    await expect(panel).toContainText('3 files, pages: 1, 2, 3');
+    const split = async (name: string) => {
+      const [download] = await Promise.all([page.waitForEvent('download'), control(page, 'Split and save').click()]);
+      expect(download.suggestedFilename()).toBe('chrome-notonaskh-justified-3pages (split).zip');
+      const path = `test-results/${name}.zip`;
+      await download.saveAs(path);
+      const parts = unzipSync(new Uint8Array(readFileSync(path)));
+      for (const bytes of Object.values(parts)) expect(Buffer.from(bytes.subarray(0, 5)).toString('latin1')).toBe('%PDF-');
+      return Object.keys(parts).sort();
+    };
+    expect(await split('split-every')).toEqual([
+      'chrome-notonaskh-justified-3pages (1).pdf',
+      'chrome-notonaskh-justified-3pages (2).pdf',
+      'chrome-notonaskh-justified-3pages (3).pdf',
+    ]);
+
+    await panel.getByLabel('Pages in each file').fill('2');
+    await expect(panel).toContainText('2 files, pages: 1–2, 3');
+
+    await tile(page, 2).click();
+    await panel.getByLabel('A new file at each selected page').check();
+    await expect(panel).toContainText('2 files, pages: 1, 2–3');
+    expect(await split('split-selected')).toEqual([
+      'chrome-notonaskh-justified-3pages (1).pdf',
+      'chrome-notonaskh-justified-3pages (2-3).pdf',
+    ]);
+    // The open file is as it was.
+    await expect(grid(page).getByRole('option')).toHaveCount(3);
   });
 });

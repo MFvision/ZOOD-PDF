@@ -271,6 +271,16 @@ describe('switching engines', () => {
     expect(state.switching).toBeNull();
   });
 
+  it('starts the moment the document changes engine, not a frame later', () => {
+    const organizing = appReducer(withDocument(), { type: 'SET_ACTIVE_TOOL', tool: 'organize' });
+    expect(organizing.switching).toBe('in');
+    const settled = appReducer(organizing, { type: 'SWITCH_DONE' });
+    expect(appReducer(settled, { type: 'SET_ACTIVE_TOOL', tool: null }).switching).toBe('out');
+    expect(appReducer(settled, { type: 'SET_ACTIVE_TOOL', tool: 'edit' }).switching, 'Organize to Edit: one engine').toBeNull();
+    expect(appReducer(withDocument(), { type: 'SET_ACTIVE_TOOL', tool: 'comment' }).switching).toBeNull();
+    expect(appReducer(createInitialState(), { type: 'SET_ACTIVE_TOOL', tool: 'organize' }).switching, 'no document').toBeNull();
+  });
+
   it('never stays in flight after a failure or a close', () => {
     const inFlight = appReducer(withDocument(), { type: 'SWITCH_ENGINE', direction: 'out' });
     expect(appReducer(inFlight, { type: 'DOCUMENT_FAILED', error: 'error.open' }).switching).toBeNull();
