@@ -1,0 +1,219 @@
+/* Digital signatures: the banner, the panel's list and its signing form. */
+
+.signature-banner.signature-valid {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.signature-banner.signature-untrusted,
+.signature-warning {
+  color: var(--warning-fg);
+  background: var(--warning-bg);
+  border-block-end-color: var(--warning-border);
+}
+
+.signature-banner.signature-modified,
+.signature-banner.signature-invalid {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.signatures-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  margin-block: 8px 12px;
+  background: var(--bg-hover);
+  border-radius: var(--radius-m);
+}
+
+.signatures-tab {
+  flex: 1;
+  padding-block: 6px;
+  padding-inline: 8px;
+  color: var(--fg-muted);
+  font: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+}
+
+.signatures-tab[aria-selected="true"] {
+  color: var(--fg);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-1);
+}
+
+.signatures-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-block: 10px;
+  border-block-start: 1px solid var(--border);
+}
+
+.signatures-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  margin: 0 0 8px;
+  border: 0;
+}
+
+.signatures-check {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.signature-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  margin-block-end: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-inline-start-width: 4px;
+  border-radius: var(--radius-m);
+}
+
+.signature-card p {
+  margin: 0;
+}
+
+.signature-card.signature-valid {
+  border-inline-start-color: var(--accent);
+}
+
+.signature-card.signature-untrusted {
+  border-inline-start-color: var(--warning-border);
+}
+
+.signature-card.signature-modified,
+.signature-card.signature-invalid {
+  border-inline-start-color: var(--danger);
+}
+
+.signature-card-head {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.signature-valid .signature-card-head {
+  color: var(--accent);
+}
+
+.signature-untrusted .signature-card-head {
+  color: var(--warning-fg);
+}
+
+.signature-modified .signature-card-head,
+.signature-invalid .signature-card-head {
+  color: var(--danger);
+}
+
+.signature-signer {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.signature-changes,
+.signature-checks,
+.signature-problems {
+  padding-inline-start: 0;
+  margin-block: 6px 0;
+  font-size: var(--font-s);
+  list-style: none;
+}
+
+.signature-chain {
+  padding-inline-start: 18px;
+  margin: 4px 0;
+  font-size: var(--font-s);
+}
+
+.check-ok > span {
+  color: var(--accent);
+}
+
+.check-bad {
+  color: var(--danger);
+}
+
+.signature-problems {
+  color: var(--danger);
+}
+
+.signature-details summary {
+  margin-block-start: 6px;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.signature-subhead {
+  margin-block: 8px 2px;
+  font-weight: 600;
+}
+
+.signature-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  background: var(--accent-soft);
+  border-radius: var(--radius-m);
+}
+
+.signature-outcome {
+  padding: 8px;
+  margin-block: 8px;
+  white-space: pre-line;
+  background: var(--accent-soft);
+  border-radius: var(--radius-m);
+}
+
+.signature-outcome p {
+  margin: 0;
+}
+
+.signatures-trusted {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.signatures-trusted li {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rect-picker-page {
+  position: relative;
+  max-inline-size: 100%;
+  margin-inline: auto;
+  overflow: hidden;
+  touch-action: none;
+  cursor: crosshair;
+  background: #fff;
+  box-shadow: var(--page-shadow);
+}
+
+.rect-picker-canvas {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.rect-picker-box {
+  position: absolute;
+  background: var(--accent-soft);
+  border: 2px dashed var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+}

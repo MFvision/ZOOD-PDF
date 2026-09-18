@@ -60,6 +60,26 @@ pub(crate) fn same(a: &Object, b: &Object) -> bool {
     }
 }
 
+/// `same`, but blind to an annotation name (`/NM`) the other engine made
+/// up: EmbedPDF gives every annotation that has none a fresh one when it
+/// opens a file, and writes it back on save. Kept, that name alone was an
+/// update after a signature on every save of a signed file — a signature
+/// widget "modified" by nothing the person did. A name the file already had
+/// and that was changed is still a change.
+fn same_but_made_up_names(ours: &Object, theirs: &Object) -> bool {
+    if same(ours, theirs) {
+        return true;
+    }
+    match (ours, theirs) {
+        (Object::Dictionary(x), Object::Dictionary(y)) if !x.has(b"NM") && y.has(b"NM") => {
+            let mut y = y.clone();
+            y.remove(b"NM");
+            *x == y
+        }
+        _ => false,
+    }
+}
+
 impl PdfDocument {
     /// Whether `other` is protected the same way: neither is, or both are
     /// sealed with the same key.
@@ -95,7 +115,7 @@ impl PdfDocument {
                 .doc
                 .objects
                 .get(id)
-                .is_some_and(|ours| same(ours, object))
+                .is_some_and(|ours| same_but_made_up_names(ours, object))
             {
                 continue;
             }
@@ -116,6 +136,7 @@ impl PdfDocument {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lopdf::dictionary;
 
     fn read(path: &str) -> Vec<u8> {
         std::fs::read(format!("{}/../../../{path}", env!("CARGO_MANIFEST_DIR"))).unwrap()
@@ -196,6 +217,24 @@ mod tests {
             squares(&PdfDocument::open(saved, Some("warraq")).unwrap()),
             1
         );
+    }
+
+    #[test]
+    fn a_name_made_up_for_an_annotation_is_not_a_change_but_a_changed_one_is() {
+        let ours = Object::Dictionary(dictionary! { "Subtype" => "Widget", "FT" => "Sig" });
+        let named = Object::Dictionary(dictionary! {
+            "Subtype" => "Widget", "FT" => "Sig", "NM" => Object::string_literal("1ffdae9e"),
+        });
+        assert!(same_but_made_up_names(&ours, &named));
+        assert!(!same(&ours, &named), "the verifier still sees it");
+        let renamed = Object::Dictionary(dictionary! {
+            "Subtype" => "Widget", "FT" => "Sig", "NM" => Object::string_literal("other"),
+        });
+        assert!(!same_but_made_up_names(&named, &renamed));
+        let moved = Object::Dictionary(dictionary! {
+            "Subtype" => "Widget", "FT" => "Tx", "NM" => Object::string_literal("1ffdae9e"),
+        });
+        assert!(!same_but_made_up_names(&ours, &moved));
     }
 
     #[test]

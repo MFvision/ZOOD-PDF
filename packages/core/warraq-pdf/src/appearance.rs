@@ -286,6 +286,17 @@ impl PdfDocument {
             .and_then(|ap| ap.as_dict().ok().and_then(|d| d.get(b"N").ok().cloned()))
             .map(|n| self.resolve(&n))
             .and_then(|n| n.as_stream().ok().cloned());
+        // Already drawn by Warraq, for this very text: nothing to redraw. So
+        // saving twice changes nothing the second time, and a signed form is
+        // not touched after its signature.
+        let drawn = old
+            .as_ref()
+            .and_then(|s| s.dict.get(b"WarraqText").ok())
+            .and_then(|t| t.as_str().ok())
+            .map(decode_text_string);
+        if drawn.as_deref() == Some(text.as_str()) {
+            return None;
+        }
         let rect = numbers(&self.resolve(dict.get(b"Rect").ok()?))?;
         let (w, h) = ((rect[2] - rect[0]).abs(), (rect[3] - rect[1]).abs());
         if w < 1.0 || h < 1.0 {
@@ -448,6 +459,8 @@ impl PdfDocument {
             dict.set("Matrix", matrix.clone());
         }
         dict.set("Resources", resources);
+        // What this appearance draws, so the next pass knows it is current.
+        dict.set("WarraqText", crate::signature::text_string(&job.text));
         let mut stream = Stream::new(dict, content);
         let _ = stream.compress();
         Ok(stream)
@@ -845,6 +858,18 @@ mod tests {
             drawn.contains('م') && drawn.contains('ح') && drawn.contains('د'),
             "{drawn}"
         );
+    }
+
+    /// Saving a file whose Arabic is already drawn must change nothing — a
+    /// signed form would otherwise gain an update after its signature.
+    #[test]
+    fn what_was_drawn_once_is_not_drawn_again() {
+        let mut doc = PdfDocument::open(corpus(PDFLIB_FORM), None).unwrap();
+        assert_eq!(doc.fix_arabic_appearances(AMIRI).unwrap().fields, 1);
+        let saved = doc.save_incremental().unwrap();
+        let mut again = PdfDocument::open(saved.clone(), None).unwrap();
+        assert_eq!(again.fix_arabic_appearances(AMIRI).unwrap().fields, 0);
+        assert_eq!(again.save_incremental().unwrap(), saved);
     }
 
     #[test]

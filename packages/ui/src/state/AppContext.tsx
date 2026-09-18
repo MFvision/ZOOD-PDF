@@ -178,6 +178,14 @@ export interface AppServices {
   splitDocument: (parts: number[][], word: string) => Promise<boolean>;
   /** The open file as it stands now, with whatever either engine has changed. */
   currentFileBytes: () => Promise<ArrayBuffer | null>;
+  /**
+   * The same, with EmbedPDF's changes kept as an update of the file's own
+   * bytes (`file.rebase`) — for work appended to the file that must not
+   * rewrite what came before it: a signature, and the signatures before it.
+   */
+  settledFileBytes: () => Promise<ArrayBuffer | null>;
+  /** The open file replaced by `bytes` in both engines (a signature added); a change until saved. */
+  replaceFile: (bytes: ArrayBuffer) => Promise<void>;
   /** Areas marked for redaction in the EmbedPDF view and not yet applied: their text is still in the file. */
   pendingRedactions: number;
   /** Combine files: one new file of every page of `files`, in order, opened in place of the current one. */
@@ -905,6 +913,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return saved ? saved.buffer.slice(saved.byteOffset, saved.byteOffset + saved.byteLength) : null;
   }, [bytesFromEmbed]);
 
+  const settledFileBytes = useCallback(async (): Promise<ArrayBuffer | null> => {
+    if (warraqOwnsDocument(stateRef.current)) return currentFileBytes();
+    const rewritten = await bytesFromEmbed();
+    return rewritten ? keepOwnBytes(rewritten) : null;
+  }, [bytesFromEmbed, currentFileBytes, keepOwnBytes]);
+
   const combineFiles = useCallback(
     async (files: readonly CombineInput[]) => {
       if (files.length < 2) return;
@@ -1162,6 +1176,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       insertPagesFromFile,
       splitDocument,
       currentFileBytes,
+      settledFileBytes,
+      replaceFile: replaceCurrentFile,
       pendingRedactions,
       combineFiles,
       compressFile,
@@ -1206,6 +1222,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       insertPagesFromFile,
       splitDocument,
       currentFileBytes,
+      settledFileBytes,
+      replaceCurrentFile,
       pendingRedactions,
       combineFiles,
       compressFile,

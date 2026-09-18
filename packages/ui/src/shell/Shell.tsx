@@ -10,6 +10,7 @@ import { useI18n } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { EmbedViewer } from '../embed/EmbedViewer';
 import { OrganizeView } from '../organize/OrganizeView';
+import { SignatureBanner } from '../signatures/SignatureBanner';
 import { Viewer } from '../viewer/Viewer';
 import { AboutDialog, GoToPageDialog, PasswordDialog, ShortcutsDialog } from './Dialogs';
 import { FindBar } from './FindBar';
@@ -61,6 +62,7 @@ export function Shell() {
         </div>
       )}
       <FontNotice />
+      <SignatureBanner />
       {state.loadingName && (
         <div className="banner" role="status">
           <Icon of={Loader} className="spin" />
