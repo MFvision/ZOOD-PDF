@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { strFromU8, unzipSync, unzlibSync } from 'fflate';
-import { INVOICE, WORD_EXPORT, chooseTool, corpus, openPdf, pageBox, pendingRedactions, test, useAction } from './helpers';
+import { INVOICE, WORD_EXPORT, chooseTool, corpus, enterEditText, openPdf, pageBox, pendingRedactions, test, useAction } from './helpers';
 
 const HUNDRED_PAGES = corpus('generated/perf-text-100-pages.pdf');
 const WORD_NAME = 'A_worldbank_malpass_g7_briefing_AR_word2016_pdftools';
@@ -132,7 +132,7 @@ test.describe('Export saves the document in other formats, Arabic in reading ord
     expect(xml).toMatch(/<w:p><w:pPr><w:bidi\/><\/w:pPr><w:r><w:rPr>(<w:sz w:val="\d+"\/><w:szCs w:val="\d+"\/>)?<w:rtl\/><\/w:rPr><w:t xml:space="preserve">صباح الخير\./);
     expect(xml.match(/<w:pageBreakBefore\/>/g)).toHaveLength(1);
     expect(xml).not.toContain(GREETING_VISUAL);
-    // The date is the one left-to-right paragraph on the page: no w:bidi on it.
+    // The date reads left to right: no w:bidi and no w:rtl on it.
     expect(xml).toContain('<w:p><w:r><w:rPr><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr><w:t xml:space="preserve">06/13/2021</w:t></w:r></w:p>');
 
     // Page images: one PNG per page in one zip, drawn at the chosen resolution.
@@ -215,6 +215,23 @@ test.describe('Export saves the document in other formats, Arabic in reading ord
     const png = await exportAs(page, 'Page images (.png)', '72 dpi');
     expect(png.name).toBe('raw-amiri-cid-identity-tounicode.png');
     expect(readPng(png.bytes).ink).toBeGreaterThan(1000);
+  });
+
+  test("a paragraph rewritten in Warraq's editor is exported as rewritten", async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    await openPdf(page, WORD_EXPORT);
+    const first = await enterEditText(page);
+    await first.locator('.edit-box').first().click();
+    const area = first.locator('.paragraph-editor-area');
+    const replacement = 'فقرة جديدة كتبها الاختبار';
+    await area.fill(replacement);
+    await area.press(process.platform === 'darwin' ? 'Meta+Enter' : 'Control+Enter');
+    await expect(first.locator('.text-layer')).toContainText(replacement);
+    // Leaving the editor hands the file back to EmbedPDF; Export waits for it.
+    await chooseTool(page, 'Export');
+    const xml = strFromU8(unzipSync((await exportAs(page, 'Word (.docx), text only')).bytes)['word/document.xml']!);
+    expect(xml).toContain(replacement);
+    expect(xml).not.toContain('كلمة رئيس مجموعة البنك الدولي');
   });
 
   test('a file protected in this session asks for its new password, then exports', async ({ page, stayLocal: _ }) => {
