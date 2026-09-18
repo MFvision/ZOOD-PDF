@@ -188,13 +188,15 @@ impl PdfDocument {
         mut dict: &'a lopdf::Dictionary,
         key: &[u8],
     ) -> Option<&'a Object> {
-        loop {
+        // Bounded: a hostile file can make its `/Parent` chain a loop.
+        for _ in 0..64 {
             if let Ok(v) = dict.get(key) {
                 return Some(v);
             }
             let parent = dict.get(b"Parent").ok()?.as_reference().ok()?;
             dict = self.doc.get_dictionary(parent).ok()?;
         }
+        None
     }
 
     pub(crate) fn rect(&self, obj: Option<&Object>) -> Option<[f32; 4]> {

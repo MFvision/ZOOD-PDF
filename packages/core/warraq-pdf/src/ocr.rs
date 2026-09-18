@@ -54,10 +54,6 @@ const SIZE_OF_BOX: f32 = 0.9;
 /// Where the baseline sits, as a share of the box height up from its bottom.
 const BASELINE_UP: f32 = 0.22;
 
-fn parse(e: impl std::fmt::Display) -> Error {
-    Error::Parse(e.to_string())
-}
-
 impl PdfDocument {
     /// Whether page `index` already carries a text layer from Warraq.
     pub fn has_ocr_layer(&self, index: usize) -> Result<bool> {
@@ -168,97 +164,6 @@ impl PdfDocument {
         }
         Ok(report)
     }
-
-    /// How the page as shown maps onto its user space: its crop box and turn.
-    fn display_frame(&self, index: usize) -> Result<Frame> {
-        let id = self.page_id(index)?;
-        let dict = self.doc.get_dictionary(id).map_err(parse)?;
-        let rect = |key: &[u8]| {
-            let mut value = dict.get(key).ok().cloned();
-            let mut node = dict.get(b"Parent").ok().and_then(|p| p.as_reference().ok());
-            while value.is_none() {
-                let parent = self.doc.get_dictionary(node?).ok()?;
-                value = parent.get(key).ok().cloned();
-                node = parent
-                    .get(b"Parent")
-                    .ok()
-                    .and_then(|p| p.as_reference().ok());
-            }
-            let value = match value? {
-                Object::Reference(r) => self.doc.get_object(r).ok()?.clone(),
-                other => other,
-            };
-            let v: Vec<f32> = value
-                .as_array()
-                .ok()?
-                .iter()
-                .filter_map(|n| n.as_float().ok())
-                .collect();
-            (v.len() == 4).then(|| {
-                [
-                    v[0].min(v[2]),
-                    v[1].min(v[3]),
-                    v[0].max(v[2]),
-                    v[1].max(v[3]),
-                ]
-            })
-        };
-        let media = rect(b"MediaBox").unwrap_or([0.0, 0.0, 612.0, 792.0]);
-        let crop = rect(b"CropBox").unwrap_or(media);
-        Ok(Frame {
-            crop: [
-                crop[0].max(media[0]),
-                crop[1].max(media[1]),
-                crop[2].min(media[2]),
-                crop[3].min(media[3]),
-            ],
-            turn: self.page_rotation(index)?,
-        })
-    }
-}
-
-/// The crop box `[x0, y0, x1, y1]` in user space, and the page's `/Rotate`.
-struct Frame {
-    crop: [f32; 4],
-    turn: i64,
-}
-
-impl Frame {
-    /// User space of a point given from the top-left of the page as shown.
-    fn user(&self, x: f32, y: f32) -> (f32, f32) {
-        let [cx0, cy0, cx1, cy1] = self.crop;
-        match self.turn {
-            90 => (cx0 + y, cy0 + x),
-            180 => (cx1 - x, cy0 + y),
-            270 => (cx1 - y, cy1 - x),
-            _ => (cx0 + x, cy1 - y),
-        }
-    }
-
-    /// The matrix that turns user space `degrees` counter-clockwise, as the
-    /// page is shown, about the centre of its crop box. A turn looks the
-    /// same way round in user space whatever the page's own `/Rotate`: both
-    /// are rotations, and neither mirrors.
-    fn turn_about_centre(&self, degrees: f32) -> [f32; 6] {
-        let [x0, y0, x1, y1] = self.crop;
-        let (cx, cy) = ((x0 + x1) / 2.0, (y0 + y1) / 2.0);
-        let (s, c) = degrees.to_radians().sin_cos();
-        [c, s, -s, c, cx - (c * cx - s * cy), cy - (s * cx + c * cy)]
-    }
-
-    /// A text matrix that writes left to right along the page as shown,
-    /// starting at (`x`, `baseline`) there, stretched by `stretch`.
-    fn text_matrix(&self, x: f32, baseline: f32, stretch: f32) -> [f32; 6] {
-        // Along the line, and up, in user space, for each turn.
-        let (along, up) = match self.turn {
-            90 => ((0.0, 1.0), (-1.0, 0.0)),
-            180 => ((-1.0, 0.0), (0.0, -1.0)),
-            270 => ((0.0, -1.0), (1.0, 0.0)),
-            _ => ((1.0, 0.0), (0.0, 1.0)),
-        };
-        let (e, f) = self.user(x, baseline);
-        [along.0 * stretch, along.1 * stretch, up.0, up.1, e, f]
-    }
 }
 
 #[cfg(test)]
@@ -290,20 +195,6 @@ mod tests {
                 bbox: [72.0, 140.0, 150.0, 156.0],
             },
         ]
-    }
-
-    #[test]
-    fn a_frame_maps_the_page_as_shown_onto_user_space_for_every_turn() {
-        let crop = [0.0, 0.0, 600.0, 800.0];
-        let at = |turn, x, y| Frame { crop, turn }.user(x, y);
-        // The top-left corner as shown.
-        assert_eq!(at(0, 0.0, 0.0), (0.0, 800.0));
-        assert_eq!(at(90, 0.0, 0.0), (0.0, 0.0));
-        assert_eq!(at(180, 0.0, 0.0), (600.0, 0.0));
-        assert_eq!(at(270, 0.0, 0.0), (600.0, 800.0));
-        // Shown 90° turned, the page is 800 wide: its top-right corner is the
-        // user-space top-left.
-        assert_eq!(at(90, 800.0, 0.0), (0.0, 800.0));
     }
 
     #[test]

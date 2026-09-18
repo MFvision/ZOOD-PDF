@@ -30,7 +30,7 @@ console_error_panic_hook = "0.1"
 js-sys = "0.3"
 
 [dev-dependencies]
-image = { version = "0.25", default-features = false, features = ["jpeg"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = ["-Oz", "--all-features"]

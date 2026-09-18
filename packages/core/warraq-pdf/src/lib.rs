@@ -4,11 +4,18 @@ pub mod compress;
 pub mod crypt;
 pub mod document;
 pub mod fonts;
+mod frame;
+pub mod images;
 pub mod incremental;
+mod lex;
+pub mod links;
 pub mod marked;
+pub mod marks;
 pub mod ocr;
 pub mod ops;
 pub mod pages;
+mod pagework;
+pub mod picture;
 mod rebase;
 mod show;
 pub mod text_walk;
@@ -18,7 +25,13 @@ pub use appearance::{needs_shaping, AppearanceReport};
 pub use compress::{CompressOptions, CompressReport, Refusal};
 pub use document::{Metadata, PdfDocument};
 pub use fonts::{embed_subset_font, FontSubset};
+pub use images::PlacedImage;
 pub use incremental::{previous_xref, XrefStyle};
+pub use links::{allowed_uri, LinkInfo, LinkTarget};
+pub use marks::{
+    Anchor, Digits, HAlign, MarkContent, MarkInfo, MarkKind, NumberFormat, PageMark, SlotDirection,
+    VAlign,
+};
 pub use ocr::{OcrPage, OcrReport, OcrWord};
 pub use ops::{append_line, erase_area, replace_paragraph, replace_word};
 pub use pages::{combine, Margins};
