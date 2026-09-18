@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { strFromU8, unzipSync, unzlibSync } from 'fflate';
-import { INVOICE, WORD_EXPORT, chooseTool, corpus, enterEditText, openPdf, pageBox, pendingRedactions, test, useAction } from './helpers';
+import { INVOICE, WORD_EXPORT, annotationTypes, chooseTool, corpus, enterEditText, openPdf, pageBox, pendingRedactions, test, useAction } from './helpers';
 
 const HUNDRED_PAGES = corpus('generated/perf-text-100-pages.pdf');
 const WORD_NAME = 'A_worldbank_malpass_g7_briefing_AR_word2016_pdftools';
@@ -38,6 +38,8 @@ interface Png {
   dpi: number | null;
   /** Pixels darker than mid-grey: zero means nothing was drawn. */
   ink: number;
+  /** Strongly red pixels, as EmbedPDF draws ink by default. */
+  red: number;
 }
 
 /** The PNG predictor of filter type 4. */
@@ -85,8 +87,12 @@ function readPng(png: Uint8Array): Png {
     }
   }
   let ink = 0;
-  for (let i = 0; i < pixels.length; i += channels) if (pixels[i]! < 128) ink += 1;
-  return { width, height, dpi, ink };
+  let red = 0;
+  for (let i = 0; i < pixels.length; i += channels) {
+    if (pixels[i]! < 128) ink += 1;
+    if (channels >= 3 && pixels[i]! > 180 && pixels[i + 1]! < 110 && pixels[i + 2]! < 110) red += 1;
+  }
+  return { width, height, dpi, ink, red };
 }
 
 /** One continuous stroke across the page, between fractions of its size. */
@@ -217,6 +223,20 @@ test.describe('Export saves the document in other formats, Arabic in reading ord
     const png = await exportAs(page, 'Page images (.png)', '72 dpi');
     expect(png.name).toBe('raw-amiri-cid-identity-tounicode.png');
     expect(readPng(png.bytes).ink).toBeGreaterThan(1000);
+  });
+
+  test('page images show what was drawn in the viewer', async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    await openPdf(page, INVOICE);
+    await chooseTool(page, 'Export');
+    expect(readPng((await exportAs(page, 'Page images (.png)', '72 dpi')).bytes).red).toBe(0);
+    await chooseTool(page, 'Comment');
+    await useAction(page, 'Draw');
+    await drag(page, [0.1, 0.9], [0.9, 0.95]);
+    // The ink tool turns the stroke into a drawing 800 ms after it ends.
+    await expect.poll(() => annotationTypes(page), { message: 'the stroke became a drawing' }).toContain(15);
+    await chooseTool(page, 'Export');
+    expect(readPng((await exportAs(page, 'Page images (.png)', '72 dpi')).bytes).red).toBeGreaterThan(100);
   });
 
   test("a paragraph rewritten in Warraq's editor is exported as rewritten", async ({ page, stayLocal: _ }) => {
