@@ -18,6 +18,10 @@ struct Word {
 struct Page {
     index: usize,
     words: Vec<Word>,
+    /// Degrees counter-clockwise the scan is turned; its words' boxes are in
+    /// the page straightened by it.
+    #[serde(default)]
+    angle: f32,
 }
 
 #[derive(Deserialize)]
@@ -44,6 +48,7 @@ pub fn call_static(name: &str, json: &str, blobs: Vec<Vec<u8>>) -> Result<Reply,
                 .into_iter()
                 .map(|p| warraq_pdf::OcrPage {
                     index: p.index,
+                    angle: p.angle,
                     words: p
                         .words
                         .into_iter()

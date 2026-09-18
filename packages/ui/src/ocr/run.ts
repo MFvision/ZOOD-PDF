@@ -1,5 +1,6 @@
 import type { RemoteDocument } from '../core/client';
 import { drawRgba } from '../viewer/useRenderedCanvas';
+import { skewAngle, straighten } from './deskew';
 import { startRecognizer } from './engine';
 import type { OcrLanguage, ReadWord } from './engine';
 
@@ -12,11 +13,13 @@ export interface OcrProgress {
   of: number;
 }
 
-/** A page's words, boxes in points from the page's top-left as shown. */
+/** A page's words, boxes in points from the page's top-left as shown — straightened, when it was crooked. */
 export interface OcrPageWords {
   index: number;
   words: { text: string; bbox: [number, number, number, number] }[];
   confidence: number;
+  /** Degrees counter-clockwise the scan was turned: it was read straightened by this. */
+  angle: number;
 }
 
 /** Tesseract reads best at about 300 dpi; a page is drawn at that, within reason. */
@@ -30,12 +33,23 @@ export function renderScale(size: readonly [number, number]): number {
   return longest > LONGEST_SIDE_PX ? (scale * LONGEST_SIDE_PX) / longest : scale;
 }
 
-/** Words read in pixels, as boxes in points. */
-export function toPoints(words: readonly ReadWord[], scale: number): OcrPageWords['words'] {
-  return words.map((word) => ({
-    text: word.text,
-    bbox: word.bbox.map((v) => v / scale) as [number, number, number, number],
-  }));
+/**
+ * Words read in pixels, as boxes in points; read off a straightened page,
+ * less where the page begins in the larger image it was turned into.
+ */
+export function toPoints(
+  words: readonly ReadWord[],
+  scale: number,
+  offset: readonly [number, number] = [0, 0],
+): OcrPageWords['words'] {
+  const [dx, dy] = offset;
+  return words.map((word) => {
+    const [x0, y0, x1, y1] = word.bbox;
+    return {
+      text: word.text,
+      bbox: [(x0 - dx) / scale, (y0 - dy) / scale, (x1 - dx) / scale, (y1 - dy) / scale],
+    };
+  });
 }
 
 /**
@@ -63,10 +77,18 @@ export async function readPages(
       if (signal?.aborted) break;
       onProgress({ page: k + 1, of: targets.length });
       const scale = renderScale(doc.pageSizes[index] ?? [612, 792]);
-      drawRgba(canvas, await doc.render_page(index, scale));
-      const words = await recognizer.read(canvas);
-      const confidence = words.length ? words.reduce((s, w) => s + w.confidence, 0) / words.length : 0;
-      pages.push({ index, words: toPoints(words, scale), confidence });
+      const render = await doc.render_page(index, scale);
+      drawRgba(canvas, render);
+      // A crooked scan is read straightened; its words come back in the
+      // straightened page, and the text layer is turned back over it.
+      const angle = skewAngle(render);
+      const straight = angle === 0 ? null : straighten(canvas, angle);
+      const words = await recognizer.read(straight?.canvas ?? canvas);
+      if (straight) straight.canvas.width = straight.canvas.height = 0;
+      const confidence = words.length
+        ? words.reduce((s, w) => s + w.confidence, 0) / words.length
+        : 0;
+      pages.push({ index, words: toPoints(words, scale, straight?.offset), confidence, angle });
     }
   } finally {
     await recognizer.stop();

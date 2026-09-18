@@ -511,7 +511,24 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
     let mut line_angles: Vec<f32> = vec![];
     let mut marks: LineGlyphs = vec![];
     for b in angles {
-        let angle = b as f32 * SECTOR;
+        // The frame turns by the run's own slant — the median of its glyphs'
+        // — not the sector's middle: a crooked scan's text layer, turned with
+        // it, keeps its lines apart only along its real slant. Within half a
+        // degree of the middle the middle is kept, so straight text, and
+        // text turned by a whole quarter, read exactly as they always have.
+        let middle = b as f32 * SECTOR;
+        let mut slants: Vec<f32> = indexed
+            .iter()
+            .filter(|(_, g)| bucket(g.angle) == b)
+            .map(|(_, g)| g.angle)
+            .collect();
+        slants.sort_by(f32::total_cmp);
+        let slant = slants.get(slants.len() / 2).copied().unwrap_or(middle);
+        let angle = if (slant - middle).abs() < 0.5f32.to_radians() {
+            middle
+        } else {
+            slant
+        };
         let mut sorted: Vec<(usize, &PositionedGlyph)> = indexed
             .iter()
             .copied()
@@ -903,6 +920,41 @@ mod tests {
         assert_eq!(recompose_dots("س\u{20DB}"), "ش");
         assert_eq!(recompose_dots("ب\u{064E}"), "ب\u{064E}"); // real marks untouched
         assert_eq!(recompose_dots("ا"), "ا");
+    }
+
+    #[test]
+    fn lines_slanting_a_few_degrees_read_along_their_slant() {
+        // Two lines of letters, 8° counter-clockwise (y grows down): across
+        // the width each drifts two lines' height, so read level they mix.
+        let slant = 8f32.to_radians();
+        let line = |text: &str, y0: f32| -> Vec<PositionedGlyph> {
+            text.chars()
+                .enumerate()
+                .map(|(i, c)| {
+                    let along = i as f32 * 30.0;
+                    PositionedGlyph {
+                        x: 100.0 + along * slant.cos(),
+                        y: y0 - along * slant.sin(),
+                        angle: slant,
+                        size: 12.0,
+                        advance: 10.0,
+                        text: Some(c.to_string()),
+                        gid: 1,
+                        font: 0,
+                    }
+                })
+                .collect()
+        };
+        let mut glyphs = line("abcdefghijklmn", 300.0);
+        glyphs.extend(line("opqrstuvwxyz", 324.0));
+        let lines: Vec<String> = reconstruct_lines(&glyphs)
+            .into_iter()
+            .map(|l| l.text)
+            .collect();
+        assert_eq!(
+            lines,
+            ["a b c d e f g h i j k l m n", "o p q r s t u v w x y z"]
+        );
     }
 
     #[test]

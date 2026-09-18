@@ -674,6 +674,25 @@
   "source": "generated"
  },
  {
+  "file": "generated/scan-notonaskh-300dpi-crooked-8deg-jpeg.pdf",
+  "size_bytes": 838677,
+  "sha256": "c30fec12a91b3593",
+  "pages": 1,
+  "pdf_version": "1.3",
+  "encrypted": false,
+  "linearized": true,
+  "has_acroform": false,
+  "producer": "",
+  "creator": "",
+  "fonts": {},
+  "text_sample_pdfium": "",
+  "image_only": true,
+  "presentation_forms_in_pdfium_text": false,
+  "category": "Image-only scan, 300 dpi, 8 deg crooked, noise, JPEG (OCR straightening target)",
+  "truth": "truth/scan-notonaskh-300dpi-crooked-8deg-jpeg.txt",
+  "source": "generated"
+ },
+ {
   "file": "generated/scan-notonaskh-300dpi-skewed-jpeg.pdf",
   "size_bytes": 1666860,
   "sha256": "163bb45003d1de90",

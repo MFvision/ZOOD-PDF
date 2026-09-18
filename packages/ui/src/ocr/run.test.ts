@@ -12,4 +12,13 @@ describe('reading scanned pages', () => {
     const words = toPoints([{ text: 'مرحبا', bbox: [300, 150, 600, 225], confidence: 91 }], 3);
     expect(words).toEqual([{ text: 'مرحبا', bbox: [100, 50, 200, 75] }]);
   });
+
+  it('places words read off a straightened page where that page begins in its larger image', () => {
+    const words = toPoints(
+      [{ text: 'مرحبا', bbox: [330, 180, 630, 255], confidence: 91 }],
+      3,
+      [30, 30],
+    );
+    expect(words).toEqual([{ text: 'مرحبا', bbox: [100, 50, 200, 75] }]);
+  });
 });

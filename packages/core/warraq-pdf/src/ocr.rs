@@ -31,6 +31,11 @@ pub struct OcrWord {
 pub struct OcrPage {
     pub index: usize,
     pub words: Vec<OcrWord>,
+    /// How far the scan is turned, in degrees counter-clockwise as shown.
+    /// Its words were read off it straightened, and their boxes are in that
+    /// straightened page; the layer is turned back by this about the page's
+    /// centre, so it lies over the crooked words.
+    pub angle: f32,
 }
 
 /// What a text layer run wrote.
@@ -99,6 +104,16 @@ impl PdfDocument {
             let name = add_font_resource(self, page_id, font_id)?;
             let mut ops = reset_state_ops(self, page_id);
             ops.push(Operation::new("q", vec![]));
+            if page.angle != 0.0 {
+                ops.push(Operation::new(
+                    "cm",
+                    frame
+                        .turn_about_centre(page.angle)
+                        .iter()
+                        .map(|v| Object::Real(*v))
+                        .collect(),
+                ));
+            }
             ops.push(Operation::new("BMC", vec![Object::Name(MARK.to_vec())]));
             ops.push(Operation::new("BT", vec![]));
             ops.push(Operation::new("Tr", vec![3.into()]));
@@ -220,6 +235,17 @@ impl Frame {
         }
     }
 
+    /// The matrix that turns user space `degrees` counter-clockwise, as the
+    /// page is shown, about the centre of its crop box. A turn looks the
+    /// same way round in user space whatever the page's own `/Rotate`: both
+    /// are rotations, and neither mirrors.
+    fn turn_about_centre(&self, degrees: f32) -> [f32; 6] {
+        let [x0, y0, x1, y1] = self.crop;
+        let (cx, cy) = ((x0 + x1) / 2.0, (y0 + y1) / 2.0);
+        let (s, c) = degrees.to_radians().sin_cos();
+        [c, s, -s, c, cx - (c * cx - s * cy), cy - (s * cx + c * cy)]
+    }
+
     /// A text matrix that writes left to right along the page as shown,
     /// starting at (`x`, `baseline`) there, stretched by `stretch`.
     fn text_matrix(&self, x: f32, baseline: f32, stretch: f32) -> [f32; 6] {
@@ -290,6 +316,7 @@ mod tests {
                 &[OcrPage {
                     index: 0,
                     words: words(),
+                    angle: 0.0,
                 }],
                 AMIRI,
             )
@@ -322,6 +349,7 @@ mod tests {
                 &[OcrPage {
                     index: 0,
                     words: words(),
+                    angle: 0.0,
                 }],
                 AMIRI,
             )

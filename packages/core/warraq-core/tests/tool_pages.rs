@@ -364,6 +364,65 @@ fn compress_keeps_every_page_s_text_and_shrinks_a_scan() {
 }
 
 #[test]
+fn a_text_layer_turned_with_a_crooked_scan_reads_line_by_line() {
+    // Words read off a scan straightened by 8°: two lines across the page,
+    // in the straightened page's frame. Turned back over the crooked page,
+    // each line drifts several lines' height from end to end.
+    let font = std::fs::read(format!(
+        "{}/../../../tests/fonts/Amiri-Regular.ttf",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    let scan = corpus("generated/scan-arial-200dpi-bilevel.pdf");
+    let (w, _) = Document::open(scan.clone(), None)
+        .unwrap()
+        .page_size(0)
+        .unwrap();
+    let line = |top: f32, words: &[&str]| -> Vec<Value> {
+        let step = (w - 144.0) / words.len() as f32;
+        words
+            .iter()
+            .enumerate()
+            .map(|(k, word)| {
+                let x0 = 72.0 + k as f32 * step;
+                serde_json::json!({ "text": format!("{word} "), "bbox": [x0, top, x0 + step * 0.8, top + 14.0] })
+            })
+            .collect()
+    };
+    let words: Vec<Value> = line(100.0, &["one", "two", "three", "four", "five", "six"])
+        .into_iter()
+        .chain(line(
+            124.0,
+            &["alpha", "beta", "gamma", "delta", "epsilon", "zeta"],
+        ))
+        .collect();
+    let args = serde_json::json!({ "pages": [{ "index": 0, "angle": 8.0, "words": words }] });
+    let reply = call_static("ocr.add_text_layer", &args.to_string(), vec![scan, font]).unwrap();
+    let doc = Document::open(reply.blobs[0].clone(), None).unwrap();
+    let text = doc.extract_text(0).unwrap();
+    let lines: Vec<&str> = text
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .collect();
+    assert_eq!(
+        lines,
+        [
+            "one two three four five six",
+            "alpha beta gamma delta epsilon zeta"
+        ]
+    );
+    // Turned, and the right way: counter-clockwise about the page's centre,
+    // as the scan is, which takes a line above the centre to the left — by
+    // its distance from the centre times sin 8°, some 40 points here.
+    let first = &doc.text_lines(0).unwrap()[0];
+    assert!(
+        first.x + first.width / 2.0 < w / 2.0 - 20.0,
+        "moved left about the centre: {first:?}"
+    );
+}
+
+#[test]
 fn ocr_text_layer_is_read_back_by_warraq_s_own_reader() {
     let font = std::fs::read(format!(
         "{}/../../../tests/fonts/Amiri-Regular.ttf",

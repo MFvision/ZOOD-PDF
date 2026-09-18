@@ -9,7 +9,9 @@ const outcome = (page: Page) => panel(page).locator('[role="status"]').last();
 /** How many of the truth's Arabic words the text layer holds. */
 function share(text: string, name: string): number {
   const truth = readFileSync(`../../tests/corpus/arabic/truth/${name}.txt`, 'utf8');
-  const words = [...new Set(truth.split(/[\s|:،.()—؟]+/).filter((w) => /[؀-ۿ]/.test(w) && w.length >= 3))];
+  const words = [
+    ...new Set(truth.split(/[\s|:،.()—؟]+/).filter((w) => /[؀-ۿ]/.test(w) && w.length >= 3)),
+  ];
   return words.filter((w) => text.includes(w)).length / words.length;
 }
 
@@ -35,7 +37,10 @@ async function saveAs(page: Page, path: string): Promise<Buffer> {
 test.describe('Scan & OCR gives scanned pages a text layer, on this device', () => {
   test.setTimeout(300_000);
 
-  test('a 300 dpi Arabic scan reads almost word for word, and the layer is saved', async ({ page, stayLocal: _ }) => {
+  test('a 300 dpi Arabic scan reads almost word for word, and the layer is saved', async ({
+    page,
+    stayLocal: _,
+  }) => {
     const name = 'scan-notonaskh-300dpi-skewed-jpeg';
     const text = await recognize(page, name);
     // Measured 130 of 138 (94 %); diacritics are what it misses.
@@ -47,12 +52,26 @@ test.describe('Scan & OCR gives scanned pages a text layer, on this device', () 
     await page.goto('/');
     await openPdf(page, 'test-results/ocr-saved.pdf');
     const reopened = await enterEditText(page);
-    expect(share((await reopened.locator('.text-layer').textContent()) ?? '', name)).toBeGreaterThan(0.85);
+    expect(
+      share((await reopened.locator('.text-layer').textContent()) ?? '', name),
+    ).toBeGreaterThan(0.85);
 
     // A second run finds nothing left to read.
     await chooseTool(page, 'Scan & OCR');
     await panel(page).getByRole('button', { name: 'Recognize text', exact: true }).click();
     await expect(outcome(page)).toContainText('No page needed recognizing');
+  });
+
+  test('a scan 8° crooked is straightened before it is read, and its lines read in order', async ({
+    page,
+    stayLocal: _,
+  }) => {
+    const name = 'scan-notonaskh-300dpi-crooked-8deg-jpeg';
+    const text = await recognize(page, name);
+    // Measured 127 of 137 (93 %) straightened; read as it was, 77 (56 %).
+    expect(share(text, name)).toBeGreaterThan(0.85);
+    // The layer is turned back with the page: a line comes back whole, in order.
+    expect(text.replace(/\s+/g, ' ')).toContain('المصدر يعمل دون حساب');
   });
 
   test('a 200 dpi black-and-white scan of an invoice', async ({ page, stayLocal: _ }) => {

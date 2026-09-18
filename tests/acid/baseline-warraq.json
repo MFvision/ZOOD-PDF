@@ -176,6 +176,12 @@
   "recall_logical": 0.0,
   "verdict": "empty"
  },
+ "scan-notonaskh-300dpi-crooked-8deg-jpeg": {
+  "open": true,
+  "order_lcs": 0.0,
+  "recall_logical": 0.0,
+  "verdict": "empty"
+ },
  "scan-notonaskh-300dpi-skewed-jpeg": {
   "open": true,
   "order_lcs": 0.0,

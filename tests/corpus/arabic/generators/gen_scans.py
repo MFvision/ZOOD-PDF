@@ -29,6 +29,13 @@ print("ok ", out.name, out.stat().st_size, "bytes")
 truth = [T.HEADINGS[0]] + T.PARAGRAPHS + [T.HEADINGS[1]] + T.PARAGRAPHS
 (TRUTH / "scan-notonaskh-300dpi-skewed-jpeg.txt").write_text("\n".join(truth) + "\n", encoding="utf-8")
 
+# A page scanned 8 degrees crooked: read as it is, Tesseract got 56 % of its
+# words; straightened first (packages/ui/src/ocr/deskew.ts), 93 %.
+crooked = [degrade(render("chrome-notonaskh-justified-3pages.pdf", 0, 300), angle=8, noise=9, blur=0.6, jpeg_q=55)]
+out = GEN / "scan-notonaskh-300dpi-crooked-8deg-jpeg.pdf"; out.write_bytes(img2pdf.convert(crooked, title="Scanned Arabic test, 8 degrees crooked (300 dpi)"))
+print("ok ", out.name, out.stat().st_size, "bytes")
+(TRUTH / "scan-notonaskh-300dpi-crooked-8deg-jpeg.txt").write_text("\n".join([T.HEADINGS[0]] + T.PARAGRAPHS) + "\n", encoding="utf-8")
+
 bw = bilevel(render("chrome-windows-arial-tahoma-times.pdf", 0, 200).rotate(0.5, resample=Image.BICUBIC, fillcolor=255))
 out = GEN / "scan-arial-200dpi-bilevel.pdf"; out.write_bytes(img2pdf.convert([bw], title="Scanned Arabic invoice (200 dpi, 1-bit)"))
 print("ok ", out.name, out.stat().st_size, "bytes")

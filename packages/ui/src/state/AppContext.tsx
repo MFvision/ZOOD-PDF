@@ -926,7 +926,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const font = await loadEditFont('amiri');
       const { result, blobs } = await client.callStatic<{ pages: number; words: number; skipped: number }>(
         'ocr.add_text_layer',
-        { password: passwordRef.current ?? null, pages: read.map(({ index, words }) => ({ index, words })) },
+        { password: passwordRef.current ?? null, pages: read.map(({ index, words, angle }) => ({ index, words, angle })) },
         [bytes, font.slice().buffer],
       );
       if (result.pages > 0 && blobs[0]) await replaceCurrentFile(blobs[0]);
