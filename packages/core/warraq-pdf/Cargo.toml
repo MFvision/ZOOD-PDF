@@ -21,6 +21,11 @@ sha2 = "0.11"
 # written (src/crypt). Already in the graph through lopdf; the browser build
 # gets its `wasm_js` backend from warraq-core.
 getrandom = "0.4"
+# Compress (src/compress.rs): the best Flate level, and JPEG for downsampled
+# images. Both already in the graph through hayro; `jpeg` only turns on the
+# encoder next to the decoder hayro already has.
+flate2 = "1"
+image = { version = "0.25", default-features = false, features = ["jpeg"] }
 pdf-writer.workspace = true
 subsetter.workspace = true
 warraq-text = { path = "../warraq-text" }

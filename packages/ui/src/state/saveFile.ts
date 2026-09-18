@@ -31,6 +31,11 @@ export function extractedFileName(name: string, pages: readonly number[]): strin
   return `${base} (${runs.join(', ')}).pdf`;
 }
 
+/** The name of a smaller copy: `report (compressed).pdf`, whatever the language. */
+export function compressedFileName(name: string): string {
+  return `${pdfFileName(name).replace(/\.pdf$/i, '')} (compressed).pdf`;
+}
+
 /** The name of a file made of several: the first one's, and how many more: `report + 2.pdf`. */
 export function combinedFileName(names: readonly string[]): string {
   const base = pdfFileName(names[0] ?? '').replace(/\.pdf$/i, '');

@@ -34,6 +34,25 @@ import { isPdf, namedLikePdf } from './pdfFile';
 import { combinedFileName, downloadPdf, extractedFileName, pdfFileName } from './saveFile';
 import { findTool } from '../tools/tools';
 
+/** How much Compress may trade: `imageDpi` downsamples images (lossy); absent keeps them. */
+export interface CompressChoice {
+  imageDpi?: number;
+  jpegQuality?: number;
+}
+
+/** What Compress did, and the smaller copy; or why it would not. */
+export type CompressResult =
+  | { refused: 'protected' | 'signed' }
+  | {
+      bytes: ArrayBuffer;
+      before: number;
+      after: number;
+      images: number;
+      duplicates: number;
+      unused: number;
+      unchanged: boolean;
+    };
+
 /** One file for Combine files; `password` for a protected one. */
 export interface CombineInput {
   name: string;
@@ -106,6 +125,10 @@ export interface AppServices {
   currentFileBytes: () => Promise<ArrayBuffer | null>;
   /** Combine files: one new file of every page of `files`, in order, opened in place of the current one. */
   combineFiles: (files: readonly CombineInput[]) => Promise<void>;
+  /** Compress: a smaller copy of the file as it stands now; the open one is not changed. */
+  compressFile: (options: CompressChoice) => Promise<CompressResult>;
+  /** Saves bytes as a new PDF beside the open one (the native panel on desktop). */
+  saveCopy: (bytes: ArrayBuffer, name: string) => Promise<boolean>;
   clearRecent: () => void;
   /** Replaces a paragraph and records it on the undo stack. */
   commitParagraph: (entry: EditEntry) => Promise<void>;
@@ -693,6 +716,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [client, openFile],
   );
 
+  const compressFile = useCallback(
+    async (options: CompressChoice): Promise<CompressResult> => {
+      const bytes = await currentFileBytes();
+      if (!bytes) throw new Error('E_NOT_FOUND: no open file');
+      type Answer = Omit<Extract<CompressResult, { bytes: ArrayBuffer }>, 'bytes'> | { refused: 'protected' | 'signed' };
+      const { result, blobs } = await client.callStatic<Answer>(
+        'compress.file',
+        { password: passwordRef.current ?? null, ...options },
+        [bytes],
+      );
+      if ('refused' in result) return result;
+      return { ...result, bytes: blobs[0] ?? new ArrayBuffer(0) };
+    },
+    [client, currentFileBytes],
+  );
+
+  const saveCopy = useCallback(async (bytes: ArrayBuffer, name: string): Promise<boolean> => {
+    const data = new Uint8Array(bytes);
+    if (isTauriHost()) return savePdfFile(data, name);
+    downloadPdf(data, name);
+    return true;
+  }, []);
+
   const organizing = state.rightPane.activeTool === 'organize' && state.document !== null;
 
   const viewCommand = useCallback(
@@ -817,6 +863,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       extractPages,
       currentFileBytes,
       combineFiles,
+      compressFile,
+      saveCopy,
       clearRecent,
       commitParagraph,
       addText,
@@ -850,6 +898,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       extractPages,
       currentFileBytes,
       combineFiles,
+      compressFile,
+      saveCopy,
       clearRecent,
       commitParagraph,
       addText,

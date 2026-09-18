@@ -10,6 +10,7 @@ use serde::Serialize;
 
 use crate::{CoreError, Document};
 
+pub mod compress;
 pub mod forms;
 pub mod pages;
 
@@ -55,6 +56,7 @@ pub fn call(
 
 pub fn call_static(op: &str, args: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
     match op.split_once('.') {
+        Some(("compress", name)) => compress::call_static(name, args, blobs),
         Some(("forms", name)) => forms::call_static(name, args, blobs),
         Some(("pages", name)) => pages::call_static(name, args, blobs),
         _ => Err(CoreError::UnknownOp(op.into())),

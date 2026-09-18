@@ -1,0 +1,41 @@
+/* Compress: the three levels, and what came of it. */
+.compress-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0;
+  margin: 0 0 12px;
+  border: 0;
+}
+
+.compress-levels legend {
+  margin-block-end: 8px;
+  font-weight: 600;
+}
+
+.compress-level {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.compress-level > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.compress-level-note {
+  font-size: 0.9em;
+  color: var(--fg-muted);
+}
+
+.compress-result {
+  margin-block: 12px;
+}
+
+.compress-sizes {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}

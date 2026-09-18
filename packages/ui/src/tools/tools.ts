@@ -134,7 +134,8 @@ export const TOOLS: readonly ToolDefinition[] = [
   { id: 'ocr', labelKey: 'tool.ocr', icon: ScanText, implemented: false },
   // Warraq's core (`pages.combine`): PDFium's importer breaks form fields (ADR-0008).
   { id: 'combine', labelKey: 'tool.combine', icon: Combine, implemented: true },
-  { id: 'compress', labelKey: 'tool.compress', icon: Shrink, implemented: false },
+  // Warraq's core (`compress.file`): a smaller copy, written from scratch.
+  { id: 'compress', labelKey: 'tool.compress', icon: Shrink, implemented: true },
   {
     id: 'prepareForm',
     labelKey: 'tool.prepareForm',

@@ -4690,7 +4690,9 @@ version = "0.1.0"
 dependencies = [
  "aes",
  "cbc",
+ "flate2",
  "getrandom 0.4.3",
+ "image",
  "log",
  "lopdf",
  "md-5",

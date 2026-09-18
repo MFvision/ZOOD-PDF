@@ -1,6 +1,6 @@
 # STATUS — Warraq
 
-*Updated 2026-09-18: the interface is rebuilt on EmbedPDF (ADR-0007); eight of the thirteen tools work end to end, each proven by a test that clicks through it, saves the file and reopens it.*
+*Updated 2026-09-18: the interface is rebuilt on EmbedPDF (ADR-0007); nine of the thirteen tools work end to end, each proven by a test that clicks through it, saves the file and reopens it.*
 
 ## Where the product stands
 
@@ -10,6 +10,7 @@
 | Comment, fill & sign, prepare form, redact, protect | work end to end through EmbedPDF's plugins, in all three hosts; see the count below |
 | Organize pages | rotate, reorder (drag or buttons), delete, insert a blank page, extract pages to a new file, undo and redo — Warraq's core, as incremental updates (ADR-0008) |
 | Combine files | several PDFs into one new file, in the order listed, form fields and all; protected files with their password — Warraq's core (ADR-0008) |
+| Compress | a smaller copy, written from scratch: unused objects dropped, duplicate streams shared, everything recompressed, and — only if chosen — images larger than a page needs downsampled to 150 or 96 dpi. Refuses protected and signed files rather than silently stripping their protection or breaking the signature |
 | Protected files | open everywhere after a password prompt; one prompt unlocks the file for both engines |
 | Arabic text **reading** in logical order | 16 of the truth-scored corpus files, against 2 for PDF.js, 2 for MuPDF, 0 for PDFium |
 | Arabic text **editing** with reflow | works end to end: click a paragraph in the app, edit it, undo/redo, save. GATE 2 passed (`docs/gate-2.md`) |
@@ -36,11 +37,12 @@ alike when only one of them did anything.
 | | |
 | --- | --- |
 | Tools in the pane | 13 |
-| Tools that work | **8** — Edit, Organize pages, Combine, Comment, Fill & sign, Prepare form, Redact, Protect |
-| Tools marked *Later* on their face | 5 — Export, Compare, Scan & OCR, Compress, AI |
+| Tools that work | **9** — Edit, Organize pages, Combine, Compress, Comment, Fill & sign, Prepare form, Redact, Protect |
+| Tools marked *Later* on their face | 4 — Export, Compare, Scan & OCR, AI |
 | Edit (Warraq's engine) | replace the text of a paragraph, reflowed and reshaped; add a line of new text where you click; choose the face (Amiri, Cairo, Inter) and size; undo and redo a replacement |
 | Organize pages (Warraq's engine) | a grid of every page: select (click, Shift, Cmd/Ctrl), drag to reorder or move earlier/later, rotate either way, delete (never the last page), insert a blank page, extract the selection as a new file; undo and redo; keyboard throughout, mirrored in Arabic |
 | Combine (Warraq's engine) | add files (the open one comes first), reorder or remove them, unlock protected ones; the result opens in place, to save where you choose. The files chosen are not changed |
+| Compress (Warraq's engine) | three levels — without losing anything, smaller images (150 dpi), smallest (96 dpi) — then save the smaller copy beside the open file or open it in its place; says when a file is already as small as it gets |
 | Comment (EmbedPDF) | highlight, underline, strike out, sticky note, text box, freehand drawing, rectangle, arrow, link |
 | Fill & sign (EmbedPDF) | type into a form's fields, draw or type a signature and place it, place a stamp |
 | Prepare form (EmbedPDF) | add text fields, checkboxes, radio buttons, drop-downs and list boxes as real AcroForm fields |
@@ -54,7 +56,7 @@ cards open a panel that says so; a count on the tool list says how many.
 
 ## Next (in order)
 1. **The desktop app's missing file panels.** EmbedPDF's screenshot, insert image, attachment and signature upload use a file input or a download link, which the macOS webview ignores, so they are hidden there for now; Warraq's own Open and Save already go through the native panels, and these will too. Print needs the system print dialog.
-2. **Scan & OCR** (Tesseract, Arabic, Persian, Urdu), **Export**, **Compress**, **Compare** and **AI** (bring-your-own key or local, only on an explicit click); **split** and **insert from another file** in Organize; dropping files onto the Combine list.
+2. **Scan & OCR** (Tesseract, Arabic, Persian, Urdu), **Export**, **Compare** and **AI** (bring-your-own key or local, only on an explicit click); **split** and **insert from another file** in Organize; dropping files onto the Combine list.
 3. Paragraph breaks between uniformly spaced body paragraphs; Nastaliq Urdu extraction; the 500 MB scan stress run; Acrobat verification on a machine that has it.
 
 ## Decisions needed from you

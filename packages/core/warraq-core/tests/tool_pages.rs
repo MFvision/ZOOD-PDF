@@ -196,3 +196,37 @@ fn forms_fix_appearances_draws_arabic_values_and_keeps_protection() {
     .unwrap();
     assert!(Document::open(reply.blobs[0].clone(), None).is_err());
 }
+
+#[test]
+fn compress_keeps_every_page_s_text_and_shrinks_a_scan() {
+    let word = corpus("realworld/A_un_rome_statute_A-CONF.183-9-AR_word_pdfmaker6.pdf");
+    let reply = call_static("compress.file", "{}", vec![word.clone()]).unwrap();
+    let answer = json(&reply);
+    assert_eq!(answer["before"], word.len());
+    let out = Document::open(reply.blobs[0].clone(), None).unwrap();
+    let original = Document::open(word, None).unwrap();
+    assert_eq!(
+        texts(&out),
+        texts(&original),
+        "not one character of text lost"
+    );
+
+    let scan = corpus("generated/scan-notonaskh-300dpi-skewed-jpeg.pdf");
+    let reply = call_static(
+        "compress.file",
+        r#"{"imageDpi":150,"jpegQuality":75}"#,
+        vec![scan.clone()],
+    )
+    .unwrap();
+    let answer = json(&reply);
+    assert_eq!(answer["images"], 2);
+    assert!(
+        answer["after"].as_u64().unwrap() * 2 < scan.len() as u64,
+        "{answer}"
+    );
+
+    let locked = corpus("generated/variant-encrypted-aes256.pdf");
+    let reply = call_static("compress.file", r#"{"password":"warraq"}"#, vec![locked]).unwrap();
+    assert_eq!(json(&reply)["refused"], "protected");
+    assert!(reply.blobs.is_empty());
+}

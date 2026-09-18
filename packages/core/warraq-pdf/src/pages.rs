@@ -396,7 +396,7 @@ impl PdfDocument {
 
     /// A copy of this document to build a new file from: same objects, no
     /// original bytes, no record of changes.
-    fn detached_copy(&self) -> PdfDocument {
+    pub(crate) fn detached_copy(&self) -> PdfDocument {
         PdfDocument::from_parts(self.doc.clone(), self.pages.clone())
     }
 
@@ -440,7 +440,7 @@ impl PdfDocument {
     }
 
     /// Drops every object that cannot be reached from the trailer.
-    fn prune_unreachable(&mut self) {
+    pub(crate) fn prune_unreachable(&mut self) {
         let mut reachable = HashSet::new();
         let mut queue: VecDeque<ObjectId> = VecDeque::new();
         for (_, value) in self.doc.trailer.iter() {
