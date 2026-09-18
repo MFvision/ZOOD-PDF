@@ -1,6 +1,6 @@
 # STATUS — Warraq
 
-*Updated 2026-09-18: the interface is rebuilt on EmbedPDF (ADR-0007); ten of the thirteen tools work end to end, each proven by a test that clicks through it, saves the file and reopens it.*
+*Updated 2026-09-18: the interface is rebuilt on EmbedPDF (ADR-0007); eleven of the thirteen tools work end to end, each proven by a test that clicks through it, saves the file and reopens it.*
 
 ## Where the product stands
 
@@ -38,11 +38,12 @@ alike when only one of them did anything.
 | | |
 | --- | --- |
 | Tools in the pane | 13 |
-| Tools that work | **10** — Edit, Organize pages, Combine, Compress, Scan & OCR, Comment, Fill & sign, Prepare form, Redact, Protect |
-| Tools marked *Later* on their face | 3 — Export, Compare, AI |
+| Tools that work | **11** — Edit, Organize pages, Combine, Compress, Scan & OCR, Export, Comment, Fill & sign, Prepare form, Redact, Protect |
+| Tools marked *Later* on their face | 2 — Compare, AI (both being built) |
 | Edit (Warraq's engine) | replace the text of a paragraph, reflowed and reshaped; add a line of new text where you click; choose the face (Amiri, Cairo, Inter) and size; undo and redo a replacement |
 | Organize pages (Warraq's engine) | a grid of every page: select (click, Shift, Cmd/Ctrl), drag to reorder or move earlier/later, rotate either way, delete (never the last page), insert a blank page, extract the selection as a new file; undo and redo; keyboard throughout, mirrored in Arabic |
 | Combine (Warraq's engine) | add files (the open one comes first), reorder or remove them, unlock protected ones; the result opens in place, to save where you choose. The files chosen are not changed |
+| Export (Warraq's engine) | Word (.docx, text only: paragraphs, direction and alignment, not layout), plain text, Markdown, a self-contained web page, and page images (PNG, zipped). Built from Warraq's own reading of the file as it stands now — a redaction applied in the viewer never reaches an export; unapplied marks are warned about |
 | Scan & OCR (Tesseract + Warraq's engine) | choose the languages on the page and whether to read only pages without text; progress page by page, and a stop button; the result reports words read and Tesseract's confidence. Nothing is sent anywhere; the models are bundled |
 | Compress (Warraq's engine) | three levels — without losing anything, smaller images (150 dpi), smallest (96 dpi) — then save the smaller copy beside the open file or open it in its place; says when a file is already as small as it gets |
 | Comment (EmbedPDF) | highlight, underline, strike out, sticky note, text box, freehand drawing, rectangle, arrow, link |
@@ -58,7 +59,7 @@ cards open a panel that says so; a count on the tool list says how many.
 
 ## Next (in order)
 1. **The desktop app's missing file panels.** EmbedPDF's screenshot, insert image, attachment and signature upload use a file input or a download link, which the macOS webview ignores, so they are hidden there for now; Warraq's own Open and Save already go through the native panels, and these will too. Print needs the system print dialog.
-2. **Export**, **Compare** and **AI** (bring-your-own key or local, only on an explicit click); **split** and **insert from another file** in Organize; dropping files onto the Combine list.
+2. **Compare** and **AI** (bring-your-own key or local, only on an explicit click); **split** and **insert from another file** in Organize; dropping files onto the Combine list.
 3. Paragraph breaks between uniformly spaced body paragraphs; Nastaliq Urdu extraction; the 500 MB scan stress run; Acrobat verification on a machine that has it.
 
 ## Decisions needed from you

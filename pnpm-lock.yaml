@@ -109,6 +109,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.1.1
         version: 6.1.1(vite@8.3.0(@types/node@22.20.3))
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -145,6 +148,9 @@ importers:
       '@tesseract.js-data/urd':
         specifier: 1.0.0
         version: 1.0.0
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       lucide-react:
         specifier: ^1.46.0
         version: 1.46.0(react@19.3.0)

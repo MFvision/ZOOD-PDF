@@ -29,6 +29,12 @@ interface History {
 
 interface DocumentManager {
   onActiveDocumentChanged: Hook<unknown>;
+  getActiveDocumentId(): string | null;
+}
+
+interface Redaction {
+  forDocument(documentId: string): { getState(): { pendingCount?: number } };
+  onStateChange: Hook<unknown>;
 }
 
 /** One plugin's capability, or undefined when the viewer does not have it. */
@@ -96,6 +102,21 @@ export function scrollToPage(registry: PluginRegistry, page: number): void {
 }
 
 /**
+ * Areas and text marked for redaction but not yet applied. Until they are
+ * applied they are only marks: the text under them is still in the file.
+ */
+function pendingRedactionCount(registry: PluginRegistry): number {
+  const id = capability<DocumentManager>(registry, 'document-manager')?.getActiveDocumentId();
+  if (!id) return 0;
+  try {
+    return Number(capability<Redaction>(registry, 'redaction')?.forDocument(id).getState().pendingCount ?? 0);
+  } catch {
+    // No document loaded in the plugin yet: nothing is marked.
+    return 0;
+  }
+}
+
+/**
  * Switches EmbedPDF's keyboard shortcuts on or off, keeping `disabled` off
  * either way.
  *
@@ -141,5 +162,19 @@ export function watch(registry: PluginRegistry, { onPage, onHistory }: EmbedWatc
     capability<DocumentManager>(registry, 'document-manager')?.onActiveDocumentChanged(readHistory),
   ];
   readHistory();
+  return () => subscriptions.forEach((unsubscribe) => unsubscribe?.());
+}
+
+/**
+ * Follows `pendingRedactionCount`: now, whenever the marks change, and when
+ * another document becomes active. Returns the unsubscribe.
+ */
+export function watchPendingRedactions(registry: PluginRegistry, onCount: (count: number) => void): Unsubscribe {
+  const read = () => onCount(pendingRedactionCount(registry));
+  const subscriptions = [
+    capability<Redaction>(registry, 'redaction')?.onStateChange(read),
+    capability<DocumentManager>(registry, 'document-manager')?.onActiveDocumentChanged(read),
+  ];
+  read();
   return () => subscriptions.forEach((unsubscribe) => unsubscribe?.());
 }

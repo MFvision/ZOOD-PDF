@@ -20,7 +20,7 @@ import {
 import type { PickedFile } from '../core/host-tauri';
 import type { CoreClient, RemoteDocument } from '../core/client';
 import type { PluginRegistry } from '@embedpdf/react-pdf-viewer';
-import { EMBED_COMMANDS, capability, commandActive, disabledCategories, runCommand, scrollToPage, setKeyboard, watch } from '../embed/embedControl';
+import { EMBED_COMMANDS, capability, commandActive, disabledCategories, runCommand, scrollToPage, setKeyboard, watch, watchPendingRedactions } from '../embed/embedControl';
 import type { ViewCommand } from '../embed/embedControl';
 import { loadEditFont } from '../edit/editFont';
 import { canRedo as canRedoStack, canUndo as canUndoStack, redo as redoStack, undo as undoStack } from '../edit/editStack';
@@ -137,6 +137,8 @@ export interface AppServices {
   extractPages: (pages: number[]) => Promise<void>;
   /** The open file as it stands now, with whatever either engine has changed. */
   currentFileBytes: () => Promise<ArrayBuffer | null>;
+  /** Areas marked for redaction in the EmbedPDF view and not yet applied: their text is still in the file. */
+  pendingRedactions: number;
   /** Combine files: one new file of every page of `files`, in order, opened in place of the current one. */
   combineFiles: (files: readonly CombineInput[]) => Promise<void>;
   /** Compress: a smaller copy of the file as it stands now; the open one is not changed. */
@@ -208,6 +210,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const embedRef = useRef<PluginRegistry | null>(null);
   const [embed, setEmbed] = useState<PluginRegistry | null>(null);
   const [embedHistory, setEmbedHistory] = useState({ canUndo: false, canRedo: false });
+  const [pendingRedactions, setPendingRedactions] = useState(0);
   const syncedRevision = useRef(0);
   const wasWarraqs = useRef(false);
   // Organize pages: the file as it was before each change, for undo and redo.
@@ -420,6 +423,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (embed) setKeyboard(embed, !warraqOwns, disabledCategories(isTauriHost()));
   }, [embed, warraqOwns]);
+
+  // Marks not yet applied, for Export to warn about while they are there.
+  useEffect(() => (embed ? watchPendingRedactions(embed, setPendingRedactions) : undefined), [embed]);
 
   // Choosing a tool puts the view in that tool's mode — Annotate, Form, Redact —
   // so the toolbar matches the panel the person just opened.
@@ -934,6 +940,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       organizePages,
       extractPages,
       currentFileBytes,
+      pendingRedactions,
       combineFiles,
       compressFile,
       saveCopy,
@@ -970,6 +977,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       organizePages,
       extractPages,
       currentFileBytes,
+      pendingRedactions,
       combineFiles,
       compressFile,
       saveCopy,
