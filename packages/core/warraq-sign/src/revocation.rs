@@ -10,26 +10,48 @@ use crate::keys::{verify_message, SigAlg};
 use crate::time::generalized_unix;
 use crate::{cms_err, oids, HashAlg, Result, SignError};
 
-fn issuer_key(issuer: &Cert) -> Vec<u8> {
-    issuer
-        .parsed
-        .tbs_certificate
-        .subject_public_key_info
-        .subject_public_key
-        .raw_bytes()
-        .to_vec()
+/// What a certificate's issuer is known by: its name and its key. A
+/// certificate has them, and so does a trust anchor with no certificate.
+pub trait IssuerKey {
+    fn subject(&self) -> &[u8];
+    fn spki(&self) -> &[u8];
+}
+
+impl IssuerKey for Cert {
+    fn subject(&self) -> &[u8] {
+        &self.subject
+    }
+    fn spki(&self) -> &[u8] {
+        &self.spki
+    }
+}
+
+impl IssuerKey for crate::chain::Anchor {
+    fn subject(&self) -> &[u8] {
+        &self.subject
+    }
+    fn spki(&self) -> &[u8] {
+        &self.spki
+    }
+}
+
+/// The issuer's public key bits, which OCSP identifies it by.
+fn issuer_key(issuer: &(impl IssuerKey + ?Sized)) -> Vec<u8> {
+    spki::SubjectPublicKeyInfoRef::from_der(issuer.spki())
+        .map(|k| k.subject_public_key.raw_bytes().to_vec())
+        .unwrap_or_default()
 }
 
 /// An `OCSPRequest` for `cert` (issued by `issuer`), unsigned, no nonce —
 /// what CAs' responders answer from cache and what can be sent by GET.
-pub fn ocsp_request(cert: &Cert, issuer: &Cert) -> Result<Vec<u8>> {
+pub fn ocsp_request(cert: &Cert, issuer: &(impl IssuerKey + ?Sized)) -> Result<Vec<u8>> {
     let hash = HashAlg::Sha1;
     let serial = cert.parsed.tbs_certificate.serial_number.to_der().map_err(cms_err)?;
     let cert_id = wrap(
         0x30,
         &[
             hash.algorithm().to_der().map_err(cms_err)?,
-            wrap(0x04, &hash.digest(&issuer.subject)),
+            wrap(0x04, &hash.digest(issuer.subject())),
             wrap(0x04, &hash.digest(&issuer_key(issuer))),
             serial,
         ]
@@ -80,7 +102,7 @@ fn basic(response: &[u8]) -> Result<(x509_ocsp::BasicOcspResponse, Vec<u8>)> {
 }
 
 /// Whether `response` is an OCSP answer about `cert` from `issuer`.
-pub fn ocsp_is_about(response: &[u8], cert: &Cert, issuer: &Cert) -> bool {
+pub fn ocsp_is_about(response: &[u8], cert: &Cert, issuer: &(impl IssuerKey + ?Sized)) -> bool {
     basic(response).is_ok_and(|(b, _)| {
         b.tbs_response_data
             .responses
@@ -89,17 +111,17 @@ pub fn ocsp_is_about(response: &[u8], cert: &Cert, issuer: &Cert) -> bool {
     })
 }
 
-fn cert_id_matches(id: &x509_ocsp::CertId, cert: &Cert, issuer: &Cert) -> bool {
+fn cert_id_matches(id: &x509_ocsp::CertId, cert: &Cert, issuer: &(impl IssuerKey + ?Sized)) -> bool {
     let Some(hash) = HashAlg::from_oid(&id.hash_algorithm.oid) else {
         return false;
     };
     id.serial_number.as_bytes() == cert.parsed.tbs_certificate.serial_number.as_bytes()
-        && id.issuer_name_hash.as_bytes() == hash.digest(&issuer.subject)
+        && id.issuer_name_hash.as_bytes() == hash.digest(issuer.subject())
         && id.issuer_key_hash.as_bytes() == hash.digest(&issuer_key(issuer))
 }
 
 /// Checks an OCSP answer about `cert`, issued by `issuer`.
-pub fn check_ocsp(response: &[u8], cert: &Cert, issuer: &Cert) -> Result<OcspCheck> {
+pub fn check_ocsp(response: &[u8], cert: &Cert, issuer: &(impl IssuerKey + ?Sized)) -> Result<OcspCheck> {
     let (basic_resp, der) = basic(response)?;
     let single = basic_resp
         .tbs_response_data
@@ -130,10 +152,10 @@ pub fn check_ocsp(response: &[u8], cert: &Cert, issuer: &Cert) -> Result<OcspChe
         .flatten()
         .filter_map(|c| c.to_der().ok())
         .collect();
-    let signature_ok = verify_message(&issuer.spki, sig_alg, &tbs, signature).is_ok()
+    let signature_ok = verify_message(issuer.spki(), sig_alg, &tbs, signature).is_ok()
         || certs.iter().filter_map(|d| Cert::parse(d).ok()).any(|responder| {
-            responder.issuer == issuer.subject
-                && responder.signed_by(&issuer.spki)
+            responder.issuer == issuer.subject()
+                && responder.signed_by(issuer.spki())
                 && responder.extended_key_usage().contains(&oids::KP_OCSP_SIGNING)
                 && verify_message(&responder.spki, sig_alg, &tbs, signature).is_ok()
         });
@@ -163,10 +185,10 @@ pub fn crl_issuer(crl: &[u8]) -> Result<Vec<u8>> {
 }
 
 /// Checks a revocation list from `issuer` for `cert`.
-pub fn check_crl(crl: &[u8], cert: &Cert, issuer: &Cert) -> Result<CrlCheck> {
+pub fn check_crl(crl: &[u8], cert: &Cert, issuer: &(impl IssuerKey + ?Sized)) -> Result<CrlCheck> {
     let raw = crate::asn1::first_der(crl)?;
     let list = CertificateList::from_der(raw).map_err(bad)?;
-    if list.tbs_cert_list.issuer.to_der().map_err(bad)? != issuer.subject {
+    if list.tbs_cert_list.issuer.to_der().map_err(bad)? != issuer.subject() {
         return Err(bad("the list is from another issuer"));
     }
     let (outer, _) = read(raw)?;
@@ -177,7 +199,7 @@ pub fn check_crl(crl: &[u8], cert: &Cert, issuer: &Cert) -> Result<CrlCheck> {
     let alg = &list.signature_algorithm;
     let params = alg.parameters.as_ref().and_then(|p| p.to_der().ok());
     let sig_alg = SigAlg::from_identifier(&alg.oid, params.as_deref(), None)?;
-    let signature_ok = verify_message(&issuer.spki, sig_alg, &tbs, list.signature.as_bytes().unwrap_or(&[])).is_ok();
+    let signature_ok = verify_message(issuer.spki(), sig_alg, &tbs, list.signature.as_bytes().unwrap_or(&[])).is_ok();
     let serial = cert.parsed.tbs_certificate.serial_number.as_bytes();
     let revoked_at = list
         .tbs_cert_list

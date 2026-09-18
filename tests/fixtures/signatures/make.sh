@@ -128,6 +128,6 @@ ocsp intermediate-rsa root-rsa intermediate-rsa.ocsp
 for c in root-rsa intermediate-rsa signer-rsa revoked-rsa tsa-rsa root-ec intermediate-ec signer-ec signer-ec384; do
   openssl x509 -in "work/$c.pem" -outform DER -out "$c.cer"
 done
-cp work/tsa-rsa.pem tsa-rsa.pem; cp work/tsa-rsa.key tsa-rsa.key; cp work/root-rsa.pem root-rsa.pem
+cp work/tsa-rsa.pem tsa-rsa.pem; cp work/tsa-rsa.key tsa-rsa.key; cp work/root-rsa.pem root-rsa.pem; cp work/root-ec.pem root-ec.pem
 rm -rf work
 echo "TEST PKI regenerated in $(pwd)"

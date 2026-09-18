@@ -36,7 +36,7 @@ fn decoded(stream: &lopdf::Stream) -> Option<Vec<u8>> {
 /// dictionary, bar how it is stored, and its bytes — as stored when they
 /// are stored alike, and decoded when not: PDFium compresses a stream it
 /// finds uncompressed.
-fn same(a: &Object, b: &Object) -> bool {
+pub(crate) fn same(a: &Object, b: &Object) -> bool {
     match (a, b) {
         (Object::Stream(x), Object::Stream(y)) => {
             let bare = |d: &Dictionary| {

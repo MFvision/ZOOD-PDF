@@ -11,6 +11,7 @@ pub mod ops;
 pub mod pages;
 mod rebase;
 mod show;
+pub mod signature;
 pub mod text_walk;
 pub mod tounicode;
 

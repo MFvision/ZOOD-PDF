@@ -24,6 +24,8 @@ pub mod oids;
 pub mod pades;
 pub mod pkcs12;
 pub mod revocation;
+#[cfg(test)]
+mod tests;
 pub mod time;
 pub mod tsp;
 
