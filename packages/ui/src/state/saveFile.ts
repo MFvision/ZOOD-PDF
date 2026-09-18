@@ -1,3 +1,6 @@
+import { isTauriHost, saveFileAs } from '../core/host-tauri';
+import type { FileFilter } from '../core/host-tauri';
+
 /**
  * Handing the edited bytes back to the user.
  *
@@ -11,6 +14,26 @@ export function pdfFileName(name: string): string {
   const trimmed = name.trim();
   if (trimmed.length === 0) return 'document.pdf';
   return /\.pdf$/i.test(trimmed) ? trimmed : `${trimmed}.pdf`;
+}
+
+/** The document's name without its ".pdf": "تقرير" from "تقرير.pdf". */
+export function documentStem(name: string): string {
+  return pdfFileName(name).replace(/\.pdf$/i, '');
+}
+
+/** An export named after its document: `report.pdf` → `report.docx`. */
+export function exportFileName(name: string, extension: string): string {
+  return `${documentStem(name)}.${extension}`;
+}
+
+/** The zip of a document's page images: `report (pages).zip`, `word` in the interface's language. */
+export function pagesArchiveName(name: string, word: string): string {
+  return `${documentStem(name)} (${word}).zip`;
+}
+
+/** One page image in that zip, numbered to sort in page order: `report-03.png` of twelve. */
+export function pageImageName(name: string, page: number, total: number): string {
+  return `${documentStem(name)}-${String(page).padStart(String(total).length, '0')}.png`;
 }
 
 /**
@@ -41,14 +64,14 @@ export function combinedFileName(names: readonly string[]): string {
  * Browsers only. The claim that this also worked under Tauri was wrong: wry
  * registers no download handler, so the link click did nothing at all and the
  * app reported a save that never happened. The desktop path is
- * `savePdfFile` in `core/host-tauri.ts`, chosen in `AppContext.saveDocument`.
+ * `saveFileAs` in `core/host-tauri.ts`; `saveBytes` chooses between them.
  */
-export function downloadPdf(bytes: Uint8Array<ArrayBuffer>, name: string): void {
-  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+export function downloadFile(bytes: Uint8Array<ArrayBuffer>, name: string, type: string): void {
+  const url = URL.createObjectURL(new Blob([bytes], { type }));
   try {
     const link = document.createElement('a');
     link.href = url;
-    link.download = pdfFileName(name);
+    link.download = name;
     link.rel = 'noopener';
     document.body.append(link);
     link.click();
@@ -58,4 +81,25 @@ export function downloadPdf(bytes: Uint8Array<ArrayBuffer>, name: string): void 
     // download; one turn of the event loop is enough and still bounded.
     setTimeout(() => URL.revokeObjectURL(url), 0);
   }
+}
+
+/** `downloadFile` for a PDF, named `<original-name>.pdf`. */
+export function downloadPdf(bytes: Uint8Array<ArrayBuffer>, name: string): void {
+  downloadFile(bytes, pdfFileName(name), 'application/pdf');
+}
+
+/** What a file is: its media type for a download, its kind for the desktop save panel. */
+export interface FileKind {
+  mime: string;
+  filter: FileFilter;
+}
+
+/**
+ * Gives the person a file: the native save panel on desktop, a download in a
+ * browser. `false` when they cancelled the panel, which is not a failure.
+ */
+export async function saveBytes(bytes: Uint8Array<ArrayBuffer>, name: string, kind: FileKind): Promise<boolean> {
+  if (isTauriHost()) return saveFileAs(bytes, name, kind.filter);
+  downloadFile(bytes, name, kind.mime);
+  return true;
 }

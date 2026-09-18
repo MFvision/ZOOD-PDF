@@ -78,7 +78,14 @@ function toHex(text: string): string {
  * `read_file` see it; nothing is readable that the user did not choose.
  */
 
-const PDF_FILTER = [{ name: 'PDF', extensions: ['pdf'] }];
+/** One kind of file in a native open or save panel: its name there, and its extensions. */
+export interface FileFilter {
+  name: string;
+  extensions: string[];
+}
+
+const PDF: FileFilter = { name: 'PDF', extensions: ['pdf'] };
+const PDF_FILTER = [PDF];
 
 /** Last segment of a native path, for the window title and the recent list. */
 function baseName(path: string): string {
@@ -203,19 +210,25 @@ export function onNativeFileDrop(onFiles: (files: PickedFile[]) => void): () => 
 }
 
 /**
- * Native save panel, then the write. `false` when the user cancels, which is
- * not an error and must not be reported as a failed save.
+ * Native save panel for one kind of file, then the write. `false` when the
+ * user cancels, which is not an error and must not be reported as a failed
+ * save.
  *
  * Header values are ASCII, so the path is percent-encoded — `write_file`
  * percent-decodes it, which is what keeps an Arabic filename intact.
  */
-export async function savePdfFile(bytes: Uint8Array, suggestedName: string): Promise<boolean> {
+export async function saveFileAs(bytes: Uint8Array, suggestedName: string, filter: FileFilter): Promise<boolean> {
   const path = await invoke('plugin:dialog|save', {
-    options: { defaultPath: suggestedName, filters: PDF_FILTER },
+    options: { defaultPath: suggestedName, filters: [filter] },
   });
   if (typeof path !== 'string') return false;
   await invoke('plugin:fs|write_file', bytes, { headers: { path: encodeURIComponent(path) } });
   return true;
+}
+
+/** `saveFileAs` for a PDF. */
+export function savePdfFile(bytes: Uint8Array, suggestedName: string): Promise<boolean> {
+  return saveFileAs(bytes, suggestedName, PDF);
 }
 
 /** `width` u32 LE + `height` u32 LE + RGBA8, as `encode_bitmap` writes it. */
