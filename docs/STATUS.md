@@ -53,11 +53,9 @@ it and checks the change is in the file, not just on the screen. The *Later*
 cards open a panel that says so; a count on the tool list says how many.
 
 ## Next (in order)
-1. **Arabic in form fields and comments.** Arabic typed into a form field is stored but not drawn by the saved file (see Known gaps). Warraq's shaping and font subsetting will generate those appearances (ADR-0007).
-2. **The desktop app's missing file panels.** EmbedPDF's screenshot, insert image, attachment and signature upload use a file input or a download link, which the macOS webview ignores, so they are hidden there for now; Warraq's own Open and Save already go through the native panels, and these will too. Print needs the system print dialog.
-3. **Arabic for EmbedPDF's toolbar.** It ships ten languages, none of them Arabic; Warraq will supply the translation and switch it with the app's language.
-4. **Scan & OCR** (Tesseract, Arabic, Persian, Urdu), **Export**, **Compress**, **Compare** and **AI** (bring-your-own key or local, only on an explicit click); **split** and **insert from another file** in Organize; dropping files onto the Combine list.
-5. Paragraph breaks between uniformly spaced body paragraphs; Nastaliq Urdu extraction; the 500 MB scan stress run; Acrobat verification on a machine that has it.
+1. **The desktop app's missing file panels.** EmbedPDF's screenshot, insert image, attachment and signature upload use a file input or a download link, which the macOS webview ignores, so they are hidden there for now; Warraq's own Open and Save already go through the native panels, and these will too. Print needs the system print dialog.
+2. **Scan & OCR** (Tesseract, Arabic, Persian, Urdu), **Export**, **Compress**, **Compare** and **AI** (bring-your-own key or local, only on an explicit click); **split** and **insert from another file** in Organize; dropping files onto the Combine list.
+3. Paragraph breaks between uniformly spaced body paragraphs; Nastaliq Urdu extraction; the 500 MB scan stress run; Acrobat verification on a machine that has it.
 
 ## Decisions needed from you
 1. **GitHub organization** — nothing has been pushed: `gh repo create <org>/warraq --private --source . --push`.
@@ -125,15 +123,26 @@ test that fails without its fix.
    it, naming the same `/Encrypt`: the update opens with the same passwords
    and keeps the same permissions. Checked on every cipher in the corpus (RC4
    40 and 128, AES-128, AES-256) by Warraq and, independently, by PDFium.
-9. **The e2e suite could test someone else's app.** It reused any server on
+9. **Arabic typed into a form field or a text box was not drawn in the saved
+   file.** PDFium stores the value but writes its appearance with Helvetica,
+   which has no Arabic, so most readers showed the field empty. Warraq now
+   redraws those appearances as the file leaves EmbedPDF — shaped, in an
+   embedded subset of Amiri, with a ToUnicode — keeping the border and
+   background PDFium drew, and grows a text box that is too small for its
+   text, as Acrobat does. Checked in PDFium's own renderer.
+10. **EmbedPDF's toolbar was English in an Arabic app.** It ships ten
+   languages and no Arabic; Warraq adds a complete Arabic translation and
+   switches it with the Language selector, and keeps its pages centred and
+   its controls mirrored right to left.
+11. **The e2e suite could test someone else's app.** It reused any server on
    the usual preview port, and another project on this Mac had one running.
    It now starts its own on a port of its own and refuses to share.
 
 ## Known gaps, stated plainly
 * **Deleted pages stay in the file's earlier revision**, like every incremental change, until a clean copy is written; extracting pages writes one. Bookmarks and links that pointed at a deleted page are left pointing nowhere in the open file.
-* **EmbedPDF's toolbar is in English only**, in both languages of the app.
+* **A few of EmbedPDF's strings are English in any language**: they are written into its code, not its translations — its loading screens, some text-style tooltips, and default options it writes into new list fields ("Option 1–3").
 * **On desktop, EmbedPDF's print, screenshot, insert image and attachment are hidden**: the macOS webview ignores file inputs, download links and the browser's print, and they rely on them. Its signature dialog still shows an Upload tab that does nothing there; Draw and Type work. Everything the tool panels offer works on desktop.
-* **Arabic typed into a form field is not drawn by the saved file.** The value is stored and EmbedPDF shows it, but PDFium writes the field's appearance with no text in it (checked: `BT … ET` and nothing between), so a viewer that shows the stored appearance — most do — shows the field empty. Comment text boxes use the same appearance code and are next to check. Warraq will generate these appearances with its own shaping (Next, item 2).
+* **Another app that redraws a field can undo the Arabic.** Warraq writes each Arabic field and text box's appearance itself; a program that regenerates appearances when you edit the field there (Chrome's viewer, some others) may draw it again with a font that has no Arabic.
 * **Dragging a file over the desktop window gives no highlight.** The host catches the OS drag before the webview sees it, and only the drop is forwarded, not the hover. The drop itself works; the invitation to drop does not appear.
 * **Finder does not offer Warraq for a PDF.** The bundle claims no document types on purpose — an editor should not take over the system PDF handler unasked. Open from inside the app, or pass the path on the command line.
 * **The macOS build is ad hoc signed, not notarised.** It runs on the machine that built it. Copied to any other Mac it will be refused until that user clears the quarantine flag by hand, because notarising needs a paid Apple Developer account. Nothing in the build is broken by this; it is a distribution decision, not a defect.

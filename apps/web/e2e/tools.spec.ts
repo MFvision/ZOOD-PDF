@@ -53,6 +53,26 @@ test.describe('each tool changes the file, not just the screen', () => {
     await expect.poll(() => annotationTypes(page)).toContain(15);
   });
 
+  test('Comment: Arabic in a text box is drawn into the saved file, not left blank', async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    await openPdf(page, INVOICE);
+    await chooseTool(page, 'Comment');
+    await useAction(page, 'Text box');
+    const box = await pageBox(page);
+    await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+    const note = 'ملاحظة عربية على الهامش';
+    await page.keyboard.type(note);
+    await page.mouse.click(box.x + box.width * 0.1, box.y + box.height * 0.95);
+    await expect.poll(() => annotationTypes(page)).toContain(3);
+    const saved = await save(page);
+    // Warraq's shaping drew it, in a face it embedded (PDFium alone draws nothing).
+    expect(saved.text).toContain('/WarraqAr');
+    expect(saved.text).toContain('WarraqArabic');
+    await page.goto('/');
+    await openPdf(page, saved.path);
+    await expect.poll(() => annotationTypes(page)).toContain(3);
+  });
+
   test('Redact: marked text is gone from the saved file, the rest is intact', async ({ page, stayLocal: _ }) => {
     await page.goto('/');
     await openPdf(page, INVOICE);
@@ -101,6 +121,23 @@ test.describe('each tool changes the file, not just the screen', () => {
     await page.goto('/');
     await openPdf(page, saved.path);
     await expect.poll(() => fieldValues(page)).toContain('Warraq 123');
+  });
+
+  test('Fill & sign: an Arabic value is drawn into the saved file, not left blank', async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    await openPdf(page, ARABIC_FORM);
+    await chooseTool(page, 'Fill & sign');
+    await action(page, 'Fill form fields').click();
+    const field = page.locator('embedpdf-container input[name="Text3"]');
+    await field.click();
+    const value = 'مرحبا بالعالم';
+    await field.fill(value);
+    await field.press('Tab');
+    const saved = await save(page);
+    expect(saved.text).toContain('/WarraqAr');
+    await page.goto('/');
+    await openPdf(page, saved.path);
+    await expect.poll(() => fieldValues(page)).toContain(value);
   });
 
   test('Protect: the saved file needs its password, and Warraq opens it with one', async ({ page, stayLocal: _ }) => {

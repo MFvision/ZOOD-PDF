@@ -150,3 +150,49 @@ fn unknown_operations_and_bad_arguments_say_so() {
         .unwrap_err();
     assert!(range.to_string().starts_with("E_PAGE"), "{range}");
 }
+
+#[test]
+fn forms_fix_appearances_draws_arabic_values_and_keeps_protection() {
+    let font = std::fs::read(format!(
+        "{}/../../../tests/fonts/Amiri-Regular.ttf",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    // pdf-lib's Arabic form: one field holds Arabic.
+    let form = corpus("generated/acroform-pdflib-arabic-fields.pdf");
+    let reply = call_static(
+        "forms.fix_appearances",
+        "{}",
+        vec![form.clone(), font.clone()],
+    )
+    .unwrap();
+    assert_eq!(json(&reply)["fields"], 1);
+    assert!(reply.blobs[0].starts_with(&form), "an incremental update");
+    // Nothing to fix: the file comes back as it was.
+    let plain = corpus(THREE);
+    let reply = call_static(
+        "forms.fix_appearances",
+        "{}",
+        vec![plain.clone(), font.clone()],
+    )
+    .unwrap();
+    assert_eq!(json(&reply)["fields"], 0);
+    assert_eq!(reply.blobs[0], plain);
+    // A protected file needs its password, and stays protected.
+    let locked = corpus("generated/variant-encrypted-aes256.pdf");
+    assert!(call_static(
+        "forms.fix_appearances",
+        "{}",
+        vec![locked.clone(), font.clone()]
+    )
+    .unwrap_err()
+    .to_string()
+    .starts_with("E_PASSWORD"));
+    let reply = call_static(
+        "forms.fix_appearances",
+        r#"{"password":"warraq"}"#,
+        vec![locked, font],
+    )
+    .unwrap();
+    assert!(Document::open(reply.blobs[0].clone(), None).is_err());
+}

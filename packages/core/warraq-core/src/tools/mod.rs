@@ -10,6 +10,7 @@ use serde::Serialize;
 
 use crate::{CoreError, Document};
 
+pub mod forms;
 pub mod pages;
 
 /// What a tool operation answers: JSON for the UI, and bytes beside it.
@@ -54,6 +55,7 @@ pub fn call(
 
 pub fn call_static(op: &str, args: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
     match op.split_once('.') {
+        Some(("forms", name)) => forms::call_static(name, args, blobs),
         Some(("pages", name)) => pages::call_static(name, args, blobs),
         _ => Err(CoreError::UnknownOp(op.into())),
     }

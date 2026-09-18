@@ -391,6 +391,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * nothing in the file. Found by the end-to-end suite. So pending work is
    * committed first and the bytes come from EmbedPDF's own export plugin.
    */
+  /**
+   * The file with Arabic drawn where PDFium drew nothing (ADR-0007): PDFium
+   * stores Arabic typed into a form field or a text box but writes its
+   * appearance with a font that has no Arabic, so the saved file shows the
+   * field empty. Warraq's core redraws those appearances, as an incremental
+   * update sealed with the file's own key. A file with nothing to redraw comes
+   * back as it was, and a failure never costs the save.
+   */
+  const withArabicAppearances = useCallback(
+    async (bytes: ArrayBuffer): Promise<ArrayBuffer> => {
+      try {
+        const font = await loadEditFont('amiri');
+        const { blobs } = await client.callStatic<{ fields: number; comments: number }>(
+          'forms.fix_appearances',
+          { password: passwordRef.current ?? null },
+          [bytes.slice(0), font.slice().buffer],
+        );
+        return blobs[0] ?? bytes;
+      } catch {
+        return bytes;
+      }
+    },
+    [client],
+  );
+
   const bytesFromEmbed = useCallback(async (): Promise<ArrayBuffer | null> => {
     const registry = embedRef.current;
     if (!registry) return null;
@@ -411,12 +436,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await scope?.commit().toPromise().catch(() => undefined);
     }
     const exporter = provides<{ saveAsCopy: () => Task<ArrayBuffer> }>('export');
-    if (exporter) return exporter.saveAsCopy().toPromise();
+    if (exporter) return withArabicAppearances(await exporter.saveAsCopy().toPromise());
     const active = provides<{ getActiveDocument(): unknown }>('document-manager')?.getActiveDocument();
     if (!active) return null;
     const engine = registry.getEngine() as unknown as { saveAsCopy(document: unknown): Task<ArrayBuffer> };
-    return engine.saveAsCopy(active).toPromise();
-  }, []);
+    return withArabicAppearances(await engine.saveAsCopy(active).toPromise());
+  }, [withArabicAppearances]);
 
   /**
    * The handover between the two engines. Opening Edit text or Organize pages,

@@ -1,4 +1,5 @@
 //! PDF object model, fonts and text operations for Warraq (read, modify, write).
+pub mod appearance;
 pub mod crypt;
 pub mod document;
 pub mod fonts;
@@ -8,6 +9,7 @@ pub mod pages;
 pub mod text_walk;
 pub mod tounicode;
 
+pub use appearance::{needs_shaping, AppearanceReport};
 pub use document::{Metadata, PdfDocument};
 pub use fonts::{embed_subset_font, FontSubset};
 pub use incremental::{previous_xref, XrefStyle};

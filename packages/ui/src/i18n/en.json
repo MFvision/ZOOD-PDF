@@ -196,7 +196,7 @@
   "theme.system": "System",
   "thumbs.label": "Page thumbnails",
   "tool.ai": "AI",
-  "tool.arabicDrawNote": "Arabic typed into text boxes and form fields is saved in the file, but is not yet drawn on the page. Warraq's own Arabic drawing is being connected to fix this.",
+  "tool.arabicDrawNote": "Arabic typed into text boxes and form fields is drawn into the saved file by Warraq's own Arabic engine, shaped and in an embedded face, where PDFium alone would leave it blank.",
   "tool.back": "Back to all tools",
   "tool.cards": "Tool cards",
   "tool.combine": "Combine",

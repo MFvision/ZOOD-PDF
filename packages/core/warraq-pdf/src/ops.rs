@@ -140,7 +140,11 @@ fn reset_state_ops(pdf: &PdfDocument, page_id: ObjectId) -> Vec<Operation> {
 }
 
 /// TJ array items for shaped glyphs (visual order), correcting each advance to the shaped one.
-fn tj_items(subset: &FontSubset, shaper: &Shaper, glyphs: &[ShapedGlyph]) -> Vec<Object> {
+pub(crate) fn tj_items(
+    subset: &FontSubset,
+    shaper: &Shaper,
+    glyphs: &[ShapedGlyph],
+) -> Vec<Object> {
     let mut items = vec![];
     for g in glyphs {
         items.push(Object::String(
