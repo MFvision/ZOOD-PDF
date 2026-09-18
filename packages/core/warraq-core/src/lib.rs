@@ -444,6 +444,26 @@ mod tests {
         }
     }
 
+    /// Regression, on the document where it was found: the World Bank Word
+    /// export carries "Public Disclosure Authorized" up its margin, and every
+    /// rotated run used to come back mirrored ("cilbuP…"). Found by the
+    /// end-to-end suite, in the label of an edit box.
+    #[test]
+    fn the_rotated_margin_note_of_a_real_word_export_reads_forwards() {
+        let bytes = std::fs::read(format!(
+            "{}/../../../tests/corpus/arabic/realworld/A_worldbank_malpass_g7_briefing_AR_word2016_pdftools.pdf",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        let d = Document::open(bytes, None).unwrap();
+        let text = d.extract_text(0).unwrap();
+        assert!(
+            text.contains("Public Disclosure Authorized"),
+            "the margin note should read forwards, got:\n{text}"
+        );
+        assert!(!text.contains("cilbuP"), "no mirrored runs:\n{text}");
+    }
+
     #[test]
     fn every_encrypted_corpus_variant_opens_with_its_password_and_reports_itself_encrypted() {
         for (name, password) in [

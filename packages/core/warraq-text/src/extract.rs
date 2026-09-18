@@ -413,9 +413,14 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
     // text is almost always axis-aligned or at a deliberate slant.
     const SECTOR: f32 = std::f32::consts::TAU / 16.0;
     let bucket = |a: f32| (a / SECTOR).round() as i32;
-    // position along and across the baseline of a run at angle `a`
+    // Position along and across the baseline of a run at angle `a`, in that
+    // run's own frame: x grows in reading order along the baseline, y grows down
+    // the page as the run sees it. `a` is y-up (the renderer negates it) while
+    // these coordinates are y-down, so the rotation is by +a. It used to be by
+    // -a, which mirrored every rotated run: a sidebar read "cilbuP" for "Public".
+    // For horizontal text (a = 0) this is the identity, so nothing else moves.
     let frame = |g: &PositionedGlyph, a: f32| -> (f32, f32) {
-        let (s, c) = (-a).sin_cos();
+        let (s, c) = a.sin_cos();
         (g.x * c - g.y * s, g.x * s + g.y * c)
     };
     let mut angles: Vec<i32> = indexed.iter().map(|(_, g)| bucket(g.angle)).collect();
@@ -424,6 +429,8 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
 
     // 1. lines from base glyphs, in reading order down each run's own axis
     let mut lines: Vec<Line> = vec![];
+    // the angle of each line, parallel to `lines`
+    let mut line_angles: Vec<f32> = vec![];
     let mut marks: LineGlyphs = vec![];
     for b in angles {
         let angle = b as f32 * SECTOR;
@@ -439,24 +446,36 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
                 .unwrap_or(std::cmp::Ordering::Equal)
                 .then(ax.partial_cmp(&bx).unwrap_or(std::cmp::Ordering::Equal))
         });
+        // A new angle never continues the previous angle's last line: the two
+        // `y`s are measured in different frames and only coincide by accident.
+        let first_line_of_angle = lines.len();
         for (ci, g) in sorted {
             if is_mark(g) {
                 marks.push((ci, g));
                 continue;
             }
             let (_, gy) = frame(g, angle);
+            let continuing = lines.len() > first_line_of_angle;
             match lines.last_mut() {
-                Some((y, size, v)) if (gy - *y).abs() <= 0.55 * size.max(g.size).max(1.0) => {
+                Some((y, size, v))
+                    if continuing && (gy - *y).abs() <= 0.55 * size.max(g.size).max(1.0) =>
+                {
                     v.push((ci, g))
                 }
-                _ => lines.push((gy, g.size, vec![(ci, g)])),
+                _ => {
+                    lines.push((gy, g.size, vec![(ci, g)]));
+                    line_angles.push(angle);
+                }
             }
         }
     }
-    for (_, _, v) in lines.iter_mut() {
+    // Along each line's own baseline. Screen x only works for horizontal text:
+    // every glyph of a vertical line has the same one.
+    for ((_, _, v), angle) in lines.iter_mut().zip(&line_angles) {
         v.sort_by(|a, b| {
-            a.1.x
-                .partial_cmp(&b.1.x)
+            frame(a.1, *angle)
+                .0
+                .partial_cmp(&frame(b.1, *angle).0)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
     }
@@ -486,7 +505,8 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
         };
         let on_same_line = |bi: &usize| -> bool {
             let (li, _) = where_base[bi];
-            (lines[li].0 - m.y).abs() <= 0.8 * lines[li].1.max(m.size).max(1.0)
+            (lines[li].0 - frame(m, line_angles[li]).1).abs()
+                <= 0.8 * lines[li].1.max(m.size).max(1.0)
         };
         // a combining mark belongs to a letter, never to a space
         let chosen = candidates
@@ -495,7 +515,8 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
             .min_by(|a, b| {
                 let dx = |bi: &usize| {
                     let (li, pos) = where_base[bi];
-                    (lines[li].2[pos].1.x - m.x).abs()
+                    let a = line_angles[li];
+                    (frame(lines[li].2[pos].1, a).0 - frame(m, a).0).abs()
                 };
                 dx(a)
                     .partial_cmp(&dx(b))
@@ -507,8 +528,10 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
                 let li = lines
                     .iter()
                     .enumerate()
-                    .min_by(|(_, a), (_, b)| {
-                        (a.0 - m.y).abs().partial_cmp(&(b.0 - m.y).abs()).unwrap()
+                    .min_by(|(ai, a), (bi, b)| {
+                        let da = (a.0 - frame(m, line_angles[*ai]).1).abs();
+                        let db = (b.0 - frame(m, line_angles[*bi]).1).abs();
+                        da.partial_cmp(&db).unwrap()
                     })?
                     .0;
                 let mc = m.x + m.advance / 2.0;
@@ -530,11 +553,12 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
     }
 
     let mut out = vec![];
-    for (li, (y, size, bases)) in lines.into_iter().enumerate() {
+    for (li, ((y, size, bases), angle)) in lines.into_iter().zip(line_angles).enumerate() {
         let mut clusters: Vec<Cluster> = bases
             .iter()
             .map(|(_, g)| Cluster {
-                x: g.x,
+                // along the baseline, so word gaps are measured the way the run reads
+                x: frame(g, angle).0,
                 adv: g.advance,
                 text: glyph_text(g).to_string(),
             })
@@ -551,7 +575,7 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
                 }
                 // recovered dot glyphs sit clearly above or below the baseline (y grows downwards);
                 // a blob on the baseline is a small letter form, not a dot
-                let dy = m.y - y;
+                let dy = frame(m, angle).1 - y;
                 if dy.abs() < 0.08 * size {
                     c.text.push('\u{FFFD}');
                 } else if dy > 0.0 {
@@ -612,12 +636,31 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
             .last()
             .map(|c| c.x + c.adv.max(median_adv))
             .unwrap_or(x0);
+        // Horizontal lines keep exactly the box they always had. A rotated line
+        // reports where it sits on the page, which is what hit-testing and the
+        // text layer need, rather than coordinates in its own frame.
+        let (bx, by, bw, bh) = if angle == 0.0 {
+            (x0, y - size, x1 - x0, size * 1.2)
+        } else {
+            let xs = bases.iter().map(|(_, g)| g.x);
+            let ys = bases.iter().map(|(_, g)| g.y);
+            let (min_x, max_x) =
+                xs.fold((f32::MAX, f32::MIN), |(lo, hi), v| (lo.min(v), hi.max(v)));
+            let (min_y, max_y) =
+                ys.fold((f32::MAX, f32::MIN), |(lo, hi), v| (lo.min(v), hi.max(v)));
+            (
+                min_x - size,
+                min_y - size,
+                max_x - min_x + 2.0 * size,
+                max_y - min_y + 2.0 * size,
+            )
+        };
         out.push(TextLine {
             text,
-            x: x0,
-            y: y - size,
-            width: x1 - x0,
-            height: size * 1.2,
+            x: bx,
+            y: by,
+            width: bw,
+            height: bh,
             direction,
         });
     }
@@ -644,6 +687,61 @@ mod tests {
                 font: 0,
             })
             .collect()
+    }
+
+    /// A run turned a quarter turn, as sidebars and table headers are. `up`
+    /// reads bottom-to-top (device y falls along the text), otherwise top-to-
+    /// bottom. `angle` is what the renderer records: the baseline direction in
+    /// y-up terms, so a run climbing the screen is +π/2.
+    fn rotated_run(text: &str, x: f32, start_y: f32, up: bool) -> Vec<PositionedGlyph> {
+        let step = if up { -10.0 } else { 10.0 };
+        let angle = if up {
+            std::f32::consts::FRAC_PI_2
+        } else {
+            -std::f32::consts::FRAC_PI_2
+        };
+        text.chars()
+            .enumerate()
+            .map(|(i, c)| PositionedGlyph {
+                x,
+                y: start_y + i as f32 * step,
+                angle,
+                size: 10.0,
+                advance: 10.0,
+                text: Some(c.to_string()),
+                gid: 0,
+                font: 0,
+            })
+            .collect()
+    }
+
+    /// Regression: the World Bank Word export's margin note read
+    /// "cilbuPrusolcsiD…" — every rotated run came out backwards, because the
+    /// run's own frame was mirrored and the line was then re-sorted by screen x,
+    /// which is the same for every glyph of a vertical line.
+    #[test]
+    fn a_run_turned_a_quarter_turn_reads_forwards_in_both_directions() {
+        for up in [true, false] {
+            let lines = reconstruct_lines(&rotated_run("Public Disclosure", 30.0, 600.0, up));
+            let texts: Vec<&str> = lines.iter().map(|l| l.text.as_str()).collect();
+            assert_eq!(texts, ["Public Disclosure"], "up={up}");
+        }
+    }
+
+    /// Two margin notes side by side are two lines, read in order across the
+    /// margin — and neither may borrow glyphs from horizontal body text that
+    /// happens to sit at the same coordinate in its own frame.
+    #[test]
+    fn rotated_lines_stay_apart_from_each_other_and_from_body_text() {
+        let mut glyphs = rotated_run("Authorized", 30.0, 600.0, true);
+        glyphs.extend(rotated_run("Public", 45.0, 600.0, true));
+        glyphs.extend(glyphs_from_visual("body text", 30.0));
+        let lines = reconstruct_lines(&glyphs);
+        let texts: Vec<&str> = lines.iter().map(|l| l.text.as_str()).collect();
+        assert!(texts.contains(&"Authorized"), "{texts:?}");
+        assert!(texts.contains(&"Public"), "{texts:?}");
+        assert!(texts.contains(&"body text"), "{texts:?}");
+        assert_eq!(lines.len(), 3, "{texts:?}");
     }
 
     const LINES: &[&str] = &[

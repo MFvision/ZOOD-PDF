@@ -45,7 +45,7 @@ defect regardless of what the engine can do.
 1. **Paragraph breaks**: consecutive body paragraphs with uniform spacing still merge into one. Needs indentation and spacing analysis, not just line proximity.
 2. **OCR** for scanned pages (Tesseract: `tesseract.js` in the browser, native on desktop), which also gives the last extraction fallback and makes the two scanned corpus files searchable.
 3. **PDFium WASM shim** so the web build can optionally use PDFium for form and annotation fidelity.
-4. **Reading order for rotated runs** (sidebars come out reversed) and **Nastaliq Urdu**, which does not decompose into per-letter shapes.
+4. **Nastaliq Urdu**, which does not decompose into per-letter shapes. (Rotated runs — sidebars that read backwards — were fixed on 2026-09-18.)
 5. Thumbnails do not re-render after an edit (the page canvas does); writing encryption; the 500 MB scan stress run; Acrobat verification on a machine that has it.
 
 ## Decisions needed from you
