@@ -11,13 +11,7 @@ import {
 import type { ChangeEvent, Dispatch, ReactNode } from 'react';
 import { getSharedCoreClient } from '../core/client';
 import { installDesktopFileBridge } from '../core/desktopFiles';
-import {
-  isTauriHost,
-  onNativeFileDrop,
-  pickPdfFile,
-  savePdfFile,
-  takeStartupFile,
-} from '../core/host-tauri';
+import { isTauriHost, onNativeFileDrop, pickPdfFile, savePdfFile, takeStartupFile } from '../core/host-tauri';
 import type { PickedFile } from '../core/host-tauri';
 import type { CoreClient, RemoteDocument } from '../core/client';
 import type { PluginRegistry } from '@embedpdf/react-pdf-viewer';
@@ -32,7 +26,7 @@ import type { AppAction, AppState } from './appReducer';
 import { readPreferences, writePreferences } from './preferences';
 import { addRecent, clearRecent as clearStoredRecent, readRecent } from './recent';
 import { isPdf, namedLikePdf } from './pdfFile';
-import { combinedFileName, downloadPdf, extractedFileName, pdfFileName } from './saveFile';
+import { combinedFileName, downloadPdf, extractedFileName, pdfFileName, saveBytes } from './saveFile';
 import { findTool } from '../tools/tools';
 import type { OcrLanguage } from '../ocr/engine';
 import { readPages } from '../ocr/run';
@@ -156,6 +150,8 @@ export interface AppServices {
     onProgress: (progress: OcrProgress) => void,
     signal?: AbortSignal,
   ) => Promise<OcrOutcome>;
+  /** Saves an HTML page — Compare's report — the same way; `false` if the panel was cancelled. */
+  saveReport: (html: string, name: string) => Promise<boolean>;
   clearRecent: () => void;
   /** Replaces a paragraph and records it on the undo stack. */
   commitParagraph: (entry: EditEntry) => Promise<void>;
@@ -821,6 +817,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [client, currentFileBytes, replaceCurrentFile],
   );
 
+  const saveReport = useCallback(
+    (html: string, name: string): Promise<boolean> =>
+      saveBytes(new TextEncoder().encode(html), name, {
+        mime: 'text/html;charset=utf-8',
+        filter: { name: 'HTML', extensions: ['html'] },
+      }),
+    [],
+  );
+
   const organizing = state.rightPane.activeTool === 'organize' && state.document !== null;
 
   const viewCommand = useCallback(
@@ -949,6 +954,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       compressFile,
       saveCopy,
       recognizeText,
+      saveReport,
       clearRecent,
       commitParagraph,
       addText,
@@ -986,6 +992,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       compressFile,
       saveCopy,
       recognizeText,
+      saveReport,
       clearRecent,
       commitParagraph,
       addText,

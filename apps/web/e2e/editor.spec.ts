@@ -2,15 +2,15 @@ import { expect } from '@playwright/test';
 import { WORD_EXPORT, enterEditText, ink, openPdf, test } from './helpers';
 
 test.describe('the interface does what it shows', () => {
-  test('the tool list admits which tools are not built yet', async ({ page, stayLocal: _stayLocal }) => {
+  test('every tool on the list is built: none is marked Later', async ({ page, stayLocal: _stayLocal }) => {
     await page.goto('/');
     // One list, not two: the tools pane used to repeat the grid beside it.
     await expect(page.locator('.tool-card')).toHaveCount(13);
     const grid = page.locator('.tool-cards-grid');
     await expect(grid.locator('.tool-card')).toHaveCount(13);
     // Tripwire: when a tool is built, this number has to change with it.
-    await expect(grid.locator('.tool-card-pending')).toHaveCount(1);
-    await expect(grid.locator('.tool-card-pending .tool-card-later')).toHaveCount(1);
+    await expect(grid.locator('.tool-card-pending')).toHaveCount(0);
+    await expect(grid.locator('.tool-card-pending .tool-card-later')).toHaveCount(0);
   });
 
   test('opens an Arabic Word export and puts readable text on the page', async ({ page, stayLocal: _stayLocal }) => {

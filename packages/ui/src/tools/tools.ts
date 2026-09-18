@@ -131,7 +131,8 @@ export const TOOLS: readonly ToolDefinition[] = [
   },
   // Warraq's own engine: PDFium reads Arabic in visual order, the core in reading order.
   { id: 'export', labelKey: 'tool.export', icon: FileOutput, implemented: true },
-  { id: 'compare', labelKey: 'tool.compare', icon: GitCompare, implemented: false },
+  // Warraq's own reading (`extract_text`, logical order), diffed word by word.
+  { id: 'compare', labelKey: 'tool.compare', icon: GitCompare, implemented: true },
   // Tesseract in the page, a text layer by Warraq's core (`ocr.add_text_layer`).
   { id: 'ocr', labelKey: 'tool.ocr', icon: ScanText, implemented: true },
   // Warraq's core (`pages.combine`): PDFium's importer breaks form fields (ADR-0008).

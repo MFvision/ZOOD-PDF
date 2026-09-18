@@ -59,6 +59,11 @@ export function compressedFileName(name: string): string {
   return `${pdfFileName(name).replace(/\.pdf$/i, '')} (compressed).pdf`;
 }
 
+/** The name of Compare's report on a file: `report (comparison).html`, whatever the language. */
+export function comparisonFileName(name: string): string {
+  return `${pdfFileName(name).replace(/\.pdf$/i, '')} (comparison).html`;
+}
+
 /** The name of a file made of several: the first one's, and how many more: `report + 2.pdf`. */
 export function combinedFileName(names: readonly string[]): string {
   const base = pdfFileName(names[0] ?? '').replace(/\.pdf$/i, '');
