@@ -2,14 +2,25 @@ import { readFileSync } from 'node:fs';
 import { unzipSync } from 'fflate';
 import { expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { WORD_EXPORT, chooseTool, corpus, embedDocument, embedTiles, enterEditText, openPdf, test } from './helpers';
+import {
+  WORD_EXPORT,
+  chooseTool,
+  corpus,
+  embedDocument,
+  embedTiles,
+  enterEditText,
+  openPdf,
+  test,
+} from './helpers';
 
 const THREE = corpus('generated/chrome-notonaskh-justified-3pages.pdf');
 const LOCKED = corpus('generated/variant-encrypted-aes256.pdf');
 
 const grid = (page: Page) => page.getByRole('listbox', { name: 'Pages' });
-const tile = (page: Page, n: number) => grid(page).getByRole('option', { name: `Page ${n}`, exact: true });
-const control = (page: Page, name: string) => page.locator('.pane-end').getByRole('button', { name, exact: true });
+const tile = (page: Page, n: number) =>
+  grid(page).getByRole('option', { name: `Page ${n}`, exact: true });
+const control = (page: Page, name: string) =>
+  page.locator('.pane-end').getByRole('button', { name, exact: true });
 const statusBar = (page: Page) => page.getByRole('contentinfo', { name: 'Status bar' });
 
 /** The start of page `n`'s text, as Warraq's own reader sees it in Edit text. */
@@ -33,7 +44,10 @@ async function saveAs(page: Page, name: string): Promise<string> {
 }
 
 test.describe('Organize pages changes the file, not just the grid', () => {
-  test('move, rotate, delete, insert, undo and redo; the saved file has the new pages', async ({ page, stayLocal: _ }) => {
+  test('move, rotate, delete, insert, undo and redo; the saved file has the new pages', async ({
+    page,
+    stayLocal: _,
+  }) => {
     await page.goto('/');
     await openPdf(page, THREE);
     await enterEditText(page);
@@ -95,7 +109,10 @@ test.describe('Organize pages changes the file, not just the grid', () => {
     expect(box && box.width > box.height, 'the first page stays turned').toBe(true);
   });
 
-  test('extracting chosen pages writes a new file and leaves the open one alone', async ({ page, stayLocal: _ }) => {
+  test('extracting chosen pages writes a new file and leaves the open one alone', async ({
+    page,
+    stayLocal: _,
+  }) => {
     await page.goto('/');
     await openPdf(page, THREE);
     await enterEditText(page);
@@ -123,7 +140,10 @@ test.describe('Organize pages changes the file, not just the grid', () => {
     expect(await pageStart(page, 2)).toBe(original[2]);
   });
 
-  test('pages from another file go in after the selected page, and the saved file has them there', async ({ page, stayLocal: _ }) => {
+  test('pages from another file go in after the selected page, and the saved file has them there', async ({
+    page,
+    stayLocal: _,
+  }) => {
     await page.goto('/');
     await openPdf(page, THREE);
     await enterEditText(page);
@@ -155,7 +175,10 @@ test.describe('Organize pages changes the file, not just the grid', () => {
     expect(await pageStart(page, 5)).toBe(original[2]);
   });
 
-  test('a protected file asks for its password before its pages go in', async ({ page, stayLocal: _ }) => {
+  test('a protected file asks for its password before its pages go in', async ({
+    page,
+    stayLocal: _,
+  }) => {
     await page.goto('/');
     await openPdf(page, THREE);
     await chooseTool(page, 'Organize pages');
@@ -177,19 +200,26 @@ test.describe('Organize pages changes the file, not just the grid', () => {
     await expect(password).toHaveCount(0);
   });
 
-  test('split into files: every page, or at the selected pages, saved as one zip of the parts', async ({ page, stayLocal: _ }) => {
+  test('split into files: every page, or at the selected pages, saved as one zip of the parts', async ({
+    page,
+    stayLocal: _,
+  }) => {
     await page.goto('/');
     await openPdf(page, THREE);
     await chooseTool(page, 'Organize pages');
     const panel = page.locator('.pane-end');
     await expect(panel).toContainText('3 files, pages: 1, 2, 3');
     const split = async (name: string) => {
-      const [download] = await Promise.all([page.waitForEvent('download'), control(page, 'Split and save').click()]);
+      const [download] = await Promise.all([
+        page.waitForEvent('download'),
+        control(page, 'Split and save').click(),
+      ]);
       expect(download.suggestedFilename()).toBe('chrome-notonaskh-justified-3pages (split).zip');
       const path = `test-results/${name}.zip`;
       await download.saveAs(path);
       const parts = unzipSync(new Uint8Array(readFileSync(path)));
-      for (const bytes of Object.values(parts)) expect(Buffer.from(bytes.subarray(0, 5)).toString('latin1')).toBe('%PDF-');
+      for (const bytes of Object.values(parts))
+        expect(Buffer.from(bytes.subarray(0, 5)).toString('latin1')).toBe('%PDF-');
       return Object.keys(parts).sort();
     };
     expect(await split('split-every')).toEqual([
@@ -210,5 +240,31 @@ test.describe('Organize pages changes the file, not just the grid', () => {
     ]);
     // The open file is as it was.
     await expect(grid(page).getByRole('option')).toHaveCount(3);
+  });
+
+  test('in the page grid, Go to page picks that page, and View offers nothing that would do nothing', async ({
+    page,
+    stayLocal: _,
+  }) => {
+    await page.goto('/');
+    await openPdf(page, THREE);
+    await chooseTool(page, 'Organize pages');
+    await expect(grid(page).getByRole('option')).toHaveCount(3);
+    const menu = (name: string) =>
+      page.getByRole('menubar').getByRole('menuitem', { name, exact: true });
+
+    await menu('Edit').click();
+    await page.getByRole('menuitem', { name: 'Go to page…' }).click();
+    await page.getByLabel('Page number (1–3)').fill('3');
+    await page.getByRole('button', { name: 'Go', exact: true }).click();
+    await expect(tile(page, 3)).toHaveAttribute('aria-selected', 'true');
+    await expect(tile(page, 1)).toHaveAttribute('aria-selected', 'false');
+
+    await menu('View').click();
+    // A menu item's name carries its shortcut: "Zoom in ⌘+=".
+    for (const name of [/^Zoom in/, /^Zoom out/, /^Actual size/]) {
+      await expect(page.getByRole('menuitem', { name })).toBeDisabled();
+    }
+    await page.keyboard.press('Escape');
   });
 });

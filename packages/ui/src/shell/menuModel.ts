@@ -42,6 +42,8 @@ export function useMenuModel(): MenuModel[] {
   const services = useServices();
   const t = useT();
   const hasDocument = state.view === 'viewer' && state.document !== null;
+  // The page grid has no zoom, find or thumbnails: those would do nothing there.
+  const organizing = hasDocument && state.rightPane.activeTool === 'organize';
   const mod = modKeyLabel();
   const edit = state.edit;
 
@@ -112,7 +114,7 @@ export function useMenuModel(): MenuModel[] {
           separatorBefore: true,
           onSelect: () => dispatch({ type: 'EDIT_MODE', active: !edit.active }),
         },
-        { id: 'find', label: t('edit.find'), shortcut: `${mod}+F`, disabled: !hasDocument, separatorBefore: true, onSelect: () => services.viewCommand('find') },
+        { id: 'find', label: t('edit.find'), shortcut: `${mod}+F`, disabled: !hasDocument || organizing, separatorBefore: true, onSelect: () => services.viewCommand('find') },
         {
           id: 'goto',
           label: t('edit.goToPage'),
@@ -126,12 +128,12 @@ export function useMenuModel(): MenuModel[] {
       id: 'view',
       label: t('menu.view'),
       items: [
-        { id: 'zoom-in', label: t('view.zoomIn'), shortcut: `${mod}+=`, disabled: !hasDocument, onSelect: () => services.viewCommand('zoom-in') },
-        { id: 'zoom-out', label: t('view.zoomOut'), shortcut: `${mod}+-`, disabled: !hasDocument, onSelect: () => services.viewCommand('zoom-out') },
-        { id: 'fit-width', label: t('view.fitWidth'), shortcut: `${mod}+1`, role: 'menuitemradio', checked: hasDocument && services.viewCommandOn('fit-width'), disabled: !hasDocument, onSelect: () => services.viewCommand('fit-width') },
-        { id: 'fit-page', label: t('view.fitPage'), shortcut: `${mod}+0`, role: 'menuitemradio', checked: hasDocument && services.viewCommandOn('fit-page'), disabled: !hasDocument, onSelect: () => services.viewCommand('fit-page') },
-        { id: 'actual', label: t('view.actualSize'), disabled: !hasDocument, onSelect: () => services.viewCommand('actual-size') },
-        { id: 'left-pane', label: t('view.leftPane'), shortcut: 'F4', role: 'menuitemcheckbox', checked: hasDocument && services.viewCommandOn('sidebar'), disabled: !hasDocument, separatorBefore: true, onSelect: () => services.viewCommand('sidebar') },
+        { id: 'zoom-in', label: t('view.zoomIn'), shortcut: `${mod}+=`, disabled: !hasDocument || organizing, onSelect: () => services.viewCommand('zoom-in') },
+        { id: 'zoom-out', label: t('view.zoomOut'), shortcut: `${mod}+-`, disabled: !hasDocument || organizing, onSelect: () => services.viewCommand('zoom-out') },
+        { id: 'fit-width', label: t('view.fitWidth'), shortcut: `${mod}+1`, role: 'menuitemradio', checked: hasDocument && services.viewCommandOn('fit-width'), disabled: !hasDocument || organizing, onSelect: () => services.viewCommand('fit-width') },
+        { id: 'fit-page', label: t('view.fitPage'), shortcut: `${mod}+0`, role: 'menuitemradio', checked: hasDocument && services.viewCommandOn('fit-page'), disabled: !hasDocument || organizing, onSelect: () => services.viewCommand('fit-page') },
+        { id: 'actual', label: t('view.actualSize'), disabled: !hasDocument || organizing, onSelect: () => services.viewCommand('actual-size') },
+        { id: 'left-pane', label: t('view.leftPane'), shortcut: 'F4', role: 'menuitemcheckbox', checked: hasDocument && services.viewCommandOn('sidebar'), disabled: !hasDocument || organizing, separatorBefore: true, onSelect: () => services.viewCommand('sidebar') },
         { id: 'right-pane', label: t('view.rightPane'), shortcut: 'Shift+F4', role: 'menuitemcheckbox', checked: state.rightPane.open, onSelect: () => dispatch({ type: 'TOGGLE_RIGHT_PANE' }) },
         { ...themeItem('system', `${t('theme.label')}: ${t('theme.system')}`), separatorBefore: true },
         themeItem('light', `${t('theme.label')}: ${t('theme.light')}`),

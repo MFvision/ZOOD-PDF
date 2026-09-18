@@ -97,6 +97,18 @@ export function OrganizeView() {
   // A deletion can leave the focus past the last page.
   const focus = Math.max(0, Math.min(focusAt, count - 1));
 
+  // Go to page: that page's tile, scrolled to and chosen — for requests made
+  // here, not one left over from the view before.
+  const request = state.scrollRequest;
+  const seenRequest = useRef(request?.nonce ?? 0);
+  useEffect(() => {
+    if (!request || request.nonce <= seenRequest.current) return;
+    seenRequest.current = request.nonce;
+    gridRef.current?.querySelector<HTMLElement>(`[data-page="${request.page}"]`)?.scrollIntoView({ block: 'nearest' });
+    setFocus(request.page - 1);
+    dispatch({ type: 'ORGANIZE_SELECT', index: request.page - 1, how: 'only' });
+  }, [request, dispatch]);
+
   if (!document || !info) return null;
 
   const pick = (index: number, how: SelectHow) => {
