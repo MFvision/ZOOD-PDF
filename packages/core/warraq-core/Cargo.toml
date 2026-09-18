@@ -14,6 +14,9 @@ serde_json.workspace = true
 warraq-text = { path = "../warraq-text" }
 warraq-pdf = { path = "../warraq-pdf" }
 warraq-render = { path = "../warraq-render" }
+# Search-and-redact's patterns (src/tools/patterns.rs): matching in linear
+# time, so no pattern and no page can make it run away. MIT/Apache-2.0.
+regex = { version = "1", default-features = false, features = ["std", "unicode", "perf-cache", "perf-dfa"] }
 
 [lib]
 crate-type = ["cdylib", "rlib"]

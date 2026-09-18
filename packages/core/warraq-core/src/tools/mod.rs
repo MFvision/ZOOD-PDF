@@ -15,6 +15,9 @@ pub mod file;
 pub mod forms;
 pub mod ocr;
 pub mod pages;
+pub mod panes;
+pub mod patterns;
+pub mod redact;
 
 /// What a tool operation answers: JSON for the UI, and bytes beside it.
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -52,6 +55,7 @@ pub fn call(
 ) -> Result<Reply, CoreError> {
     match op.split_once('.') {
         Some(("pages", name)) => pages::call(doc, name, args, blobs),
+        Some(("redact", name)) => redact::call(doc, name, args, blobs),
         _ => Err(CoreError::UnknownOp(op.into())),
     }
 }
@@ -63,6 +67,10 @@ pub fn call_static(op: &str, args: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, C
         Some(("forms", name)) => forms::call_static(name, args, blobs),
         Some(("ocr", name)) => ocr::call_static(name, args, blobs),
         Some(("pages", name)) => pages::call_static(name, args, blobs),
+        Some(("redact", name)) => redact::call_static(name, args, blobs),
+        Some(("attachments", name)) => panes::attachments(name, args, blobs),
+        Some(("layers", name)) => panes::layers(name, args, blobs),
+        Some(("outline", name)) => panes::outline(name, args, blobs),
         _ => Err(CoreError::UnknownOp(op.into())),
     }
 }

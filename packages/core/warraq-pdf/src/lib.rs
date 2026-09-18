@@ -1,13 +1,17 @@
 //! PDF object model, fonts and text operations for Warraq (read, modify, write).
 pub mod appearance;
+pub mod attachments;
 pub mod compress;
 pub mod crypt;
 pub mod document;
 pub mod fonts;
+pub mod hidden;
 pub mod incremental;
+pub mod layers;
 pub mod marked;
 pub mod ocr;
 pub mod ops;
+pub mod outline;
 pub mod pages;
 mod rebase;
 mod show;
@@ -15,12 +19,16 @@ pub mod text_walk;
 pub mod tounicode;
 
 pub use appearance::{needs_shaping, AppearanceReport};
+pub use attachments::{Attachment, AttachmentPlace};
 pub use compress::{CompressOptions, CompressReport, Refusal};
 pub use document::{Metadata, PdfDocument};
 pub use fonts::{embed_subset_font, FontSubset};
+pub use hidden::{Finding, Hidden, HiddenReport};
 pub use incremental::{previous_xref, XrefStyle};
+pub use layers::{Layer, LayerNode, Layers};
 pub use ocr::{OcrPage, OcrReport, OcrWord};
 pub use ops::{append_line, erase_area, replace_paragraph, replace_word};
+pub use outline::Bookmark;
 pub use pages::{combine, Margins};
 pub use text_walk::{locate_show_runs, Matrix, ShowRun};
 
