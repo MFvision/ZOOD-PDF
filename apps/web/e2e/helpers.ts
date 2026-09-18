@@ -1,5 +1,5 @@
 import { expect, test as base } from '@playwright/test';
-import type { Locator, Page } from '@playwright/test';
+import type { Locator, Page, Request, Route } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 
 export const corpus = (name: string): string =>
@@ -34,10 +34,32 @@ interface EmbedPlugin {
 type EmbedElement = { registry: Promise<EmbedRegistry> };
 
 /**
+ * Addresses outside the app that a test deals with itself, per page: those it
+ * answers (`answer`) and those it expects the app's own policy to refuse
+ * (`refuse`). `stayLocal` lets exactly these through.
+ */
+const handled = new WeakMap<Page, { answered: string[]; refused: string[] }>();
+
+function handledOn(page: Page): { answered: string[]; refused: string[] } {
+  let entry = handled.get(page);
+  if (!entry) {
+    entry = { answered: [], refused: [] };
+    handled.set(page, entry);
+  }
+  return entry;
+}
+
+const under = (prefixes: readonly string[] | undefined, url: string) => (prefixes ?? []).some((prefix) => url.startsWith(prefix));
+
+/**
  * Every test fails if anything leaves the app, or if the app asks for a file
  * it does not have. EmbedPDF reaches for jsDelivr and Google Fonts out of the
  * box; Warraq must not (N1, N7). A request the CSP blocks, or one that comes
  * back 404, is also a feature that silently does not work.
+ *
+ * The one exception is what a test answers itself (`answer`) — the AI tool's
+ * providers, faked so no request reaches Anthropic or a local model — and
+ * what it expects the policy to refuse (`refuse`). Anything else still fails.
  */
 export const test = base.extend<{ stayLocal: string[] }>({
   stayLocal: async ({ page, baseURL }, use) => {
@@ -45,21 +67,70 @@ export const test = base.extend<{ stayLocal: string[] }>({
     const home = new URL(baseURL ?? 'http://127.0.0.1').origin;
     page.on('request', (request) => {
       const url = request.url();
+      const own = handled.get(page);
+      if (under(own?.answered, url) || under(own?.refused, url)) return;
       if (!url.startsWith(`${home}/`) && !/^(blob|data):/.test(url)) outside.push(url);
     });
     // EmbedPDF's Arabic fallback font and its stamps were 404s once.
     page.on('response', (response) => {
+      // A test's own error reply — a 401 for a wrong key, say — is what it tests.
+      if (under(handled.get(page)?.answered, response.url())) return;
       if (response.status() >= 400) outside.push(`${response.status()} ${response.url()}`);
     });
     page.on('console', (message) => {
-      if (message.type() === 'error' && /Content Security Policy/.test(message.text()) && !/frame-ancestors/.test(message.text())) {
-        outside.push(`blocked by CSP: ${message.text().slice(0, 160)}`);
+      const text = message.text();
+      if (message.type() === 'error' && /Content Security Policy/.test(text) && !/frame-ancestors/.test(text)) {
+        if ((handled.get(page)?.refused ?? []).some((prefix) => text.includes(prefix))) return;
+        outside.push(`blocked by CSP: ${text.slice(0, 160)}`);
       }
     });
     await use(outside);
     expect(outside, 'no request may leave the app, and none may go unanswered').toEqual([]);
   },
 });
+
+/** What `answer` replies with: the options of `route.fulfill`. */
+export type Reply = Parameters<Route['fulfill']>[0];
+
+/**
+ * Answers every request under `prefix` from the test itself — it never
+ * reaches the real host — and returns the requests as they come, so the test
+ * can read exactly what the app sent. `stayLocal` allows these, and only these.
+ */
+export async function answer(page: Page, prefix: string, reply: (request: Request) => Reply | Promise<Reply>): Promise<Request[]> {
+  const seen: Request[] = [];
+  handledOn(page).answered.push(prefix);
+  await page.route(
+    (url) => url.href.startsWith(prefix),
+    async (route) => {
+      seen.push(route.request());
+      try {
+        await route.fulfill(await reply(route.request()));
+      } catch {
+        await route.abort();
+      }
+    },
+  );
+  return seen;
+}
+
+/**
+ * The app's own security policy is expected to refuse `prefix`: the refusal
+ * is what the test checks, not a leak. Whatever does get past it is stopped
+ * here and returned, for the test to show there was none.
+ */
+export async function refuse(page: Page, prefix: string): Promise<Request[]> {
+  const through: Request[] = [];
+  handledOn(page).refused.push(prefix);
+  await page.route(
+    (url) => url.href.startsWith(prefix),
+    async (route) => {
+      through.push(route.request());
+      await route.abort();
+    },
+  );
+  return through;
+}
 
 /** Dark pixels on a page canvas, sampled; zero means nothing was drawn. */
 export async function ink(canvas: Locator): Promise<number> {
