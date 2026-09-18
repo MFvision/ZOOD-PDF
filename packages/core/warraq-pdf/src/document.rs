@@ -183,7 +183,11 @@ impl PdfDocument {
         self.pages.get(index).copied().ok_or(Error::Page(index))
     }
 
-    fn inherited<'a>(&'a self, mut dict: &'a lopdf::Dictionary, key: &[u8]) -> Option<&'a Object> {
+    pub(crate) fn inherited<'a>(
+        &'a self,
+        mut dict: &'a lopdf::Dictionary,
+        key: &[u8],
+    ) -> Option<&'a Object> {
         loop {
             if let Ok(v) = dict.get(key) {
                 return Some(v);
@@ -193,7 +197,7 @@ impl PdfDocument {
         }
     }
 
-    fn rect(&self, obj: Option<&Object>) -> Option<[f32; 4]> {
+    pub(crate) fn rect(&self, obj: Option<&Object>) -> Option<[f32; 4]> {
         let arr = match obj? {
             Object::Reference(id) => self.doc.get_object(*id).ok()?.as_array().ok()?.clone(),
             o => o.as_array().ok()?.clone(),

@@ -79,7 +79,7 @@ export interface CombineInput {
 }
 
 /** The page changes of Organize pages (`warraq-core/src/tools/pages.rs`). */
-export type OrganizeOp = 'rotate' | 'reorder' | 'delete' | 'insert_blank' | 'insert_file';
+export type OrganizeOp = 'rotate' | 'reorder' | 'delete' | 'insert_blank' | 'insert_file' | 'crop' | 'trim_margins';
 
 /** A panel that takes the files dropped on the window, and what the drop overlay says it does. */
 export interface DropTarget {

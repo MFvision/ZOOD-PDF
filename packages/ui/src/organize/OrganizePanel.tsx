@@ -3,6 +3,7 @@ import {
   ArrowUp,
   Check,
   CheckCheck,
+  Crop,
   FileInput,
   FileOutput,
   FilePlus2,
@@ -80,6 +81,30 @@ export function OrganizePanel() {
     event.target.value = '';
     if (file) await insert({ name: file.name, bytes: await file.arrayBuffer() }, insertAt);
   };
+
+  // Crop: the selected pages, or every page when none is selected.
+  const cropPages = pages.length > 0 ? pages : Array.from({ length: count }, (_, k) => k);
+  const [cut, setCut] = useState({ top: 0, bottom: 0, left: 0, right: 0 });
+  const points = (mm: number) => (mm * 72) / 25.4;
+  const sizes = state.document?.pageSizes ?? [];
+  const cropFits = cropPages.every((index) => {
+    const [w, h] = sizes[index] ?? [0, 0];
+    return w - points(cut.left + cut.right) >= 18 && h - points(cut.top + cut.bottom) >= 18;
+  });
+  const cutting = cut.top + cut.bottom + cut.left + cut.right > 0;
+  const margin = (edge: keyof typeof cut, labelKey: TKey) => (
+    <label className="field">
+      <span>{t(labelKey)}</span>
+      <input
+        className="text-input"
+        type="number"
+        min={0}
+        step={1}
+        value={cut[edge]}
+        onChange={(event) => setCut({ ...cut, [edge]: Math.max(0, Number(event.target.value) || 0) })}
+      />
+    </label>
+  );
 
   // Split into files: every so many pages, or at each selected page.
   const [splitMode, setSplitMode] = useState<'every' | 'selected'>('every');
@@ -233,6 +258,51 @@ export function OrganizePanel() {
           </div>
         </form>
       )}
+      <fieldset className="organize-split">
+        <legend>{t('organize.crop')}</legend>
+        <p className="tool-panel-note">{t('organize.cropWhich')}</p>
+        <IconButton
+          label={t('organize.cropTrim')}
+          icon={<Icon of={Crop} />}
+          showLabel
+          disabled={!ready}
+          onClick={() => void services.organizePages('trim_margins', { pages: cropPages, padding: 6 }, () => pages)}
+        />
+        <div className="organize-crop-margins" role="group" aria-label={t('organize.cropMargins')}>
+          {margin('top', 'organize.cropTop')}
+          {margin('bottom', 'organize.cropBottom')}
+          {margin('left', 'organize.cropLeft')}
+          {margin('right', 'organize.cropRight')}
+        </div>
+        {!cropFits && (
+          <p className="field-error" role="alert">
+            {t('organize.cropTooMuch')}
+          </p>
+        )}
+        <IconButton
+          label={t('organize.cropRun')}
+          icon={<Icon of={Crop} />}
+          showLabel
+          disabled={!ready || !cutting || !cropFits}
+          onClick={() =>
+            void services
+              .organizePages(
+                'crop',
+                {
+                  pages: cropPages,
+                  margins: {
+                    top: points(cut.top),
+                    right: points(cut.right),
+                    bottom: points(cut.bottom),
+                    left: points(cut.left),
+                  },
+                },
+                () => pages,
+              )
+              .then((done) => done && setCut({ top: 0, bottom: 0, left: 0, right: 0 }))
+          }
+        />
+      </fieldset>
       <fieldset className="organize-split">
         <legend>{t('organize.split')}</legend>
         <div className="organize-split-choice">

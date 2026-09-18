@@ -20,6 +20,19 @@ fn parse(e: impl std::fmt::Display) -> Error {
     Error::Parse(e.to_string())
 }
 
+/// How much to cut from each edge of a page, in points, as the page is shown
+/// (after its turn). A negative margin cuts nothing: a crop never adds.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct Margins {
+    pub top: f32,
+    pub right: f32,
+    pub bottom: f32,
+    pub left: f32,
+}
+
+/// A crop narrower or shorter than this leaves nothing to read.
+const MIN_CROPPED: f32 = 18.0;
+
 impl PdfDocument {
     /// The root `/Pages` node.
     fn pages_root(&self) -> Result<ObjectId> {
@@ -283,6 +296,58 @@ impl PdfDocument {
         // the last range. Without labels every viewer numbers pages 1..n.
         if let Ok(catalog) = self.doc.catalog_mut() {
             catalog.remove(b"PageLabels");
+        }
+        Ok(())
+    }
+
+    /// Crops the pages at `indices` by `margins`, as each is shown: its
+    /// `/CropBox` is narrowed from the edges the margins are on once the
+    /// page's turn is undone, as an update of this file. Nothing changes when
+    /// the margins would leave any of them less than a strip.
+    pub fn crop_pages(&mut self, indices: &[usize], margins: Margins) -> Result<()> {
+        let cut = |v: f32| v.max(0.0);
+        let (t, r, b, l) = (
+            cut(margins.top),
+            cut(margins.right),
+            cut(margins.bottom),
+            cut(margins.left),
+        );
+        let mut boxes = Vec::new();
+        for index in self.page_set(indices)? {
+            let id = self.page_id(index)?;
+            let dict = self.doc.get_dictionary(id).map_err(parse)?;
+            let media = self
+                .rect(self.inherited(dict, b"MediaBox"))
+                .unwrap_or([0.0, 0.0, 612.0, 792.0]);
+            let crop = self.rect(self.inherited(dict, b"CropBox")).unwrap_or(media);
+            let [x0, y0, x1, y1] = [
+                crop[0].max(media[0]),
+                crop[1].max(media[1]),
+                crop[2].min(media[2]),
+                crop[3].min(media[3]),
+            ];
+            // Which user-space edge is shown at the top, right, bottom, left.
+            let cropped = match self.page_rotation(index)? {
+                90 => [x0 + t, y0 + l, x1 - b, y1 - r],
+                180 => [x0 + r, y0 + t, x1 - l, y1 - b],
+                270 => [x0 + b, y0 + r, x1 - t, y1 - l],
+                _ => [x0 + l, y0 + b, x1 - r, y1 - t],
+            };
+            if cropped[2] - cropped[0] < MIN_CROPPED || cropped[3] - cropped[1] < MIN_CROPPED {
+                return Err(Error::Edit(format!(
+                    "those margins leave nothing of page {}",
+                    index + 1
+                )));
+            }
+            boxes.push((id, cropped));
+        }
+        for (id, cropped) in boxes {
+            let page = self.doc.get_dictionary_mut(id).map_err(parse)?;
+            page.set(
+                "CropBox",
+                cropped.iter().map(|v| Object::Real(*v)).collect::<Vec<_>>(),
+            );
+            self.mark_touched(id);
         }
         Ok(())
     }
@@ -756,6 +821,73 @@ mod tests {
             (corpus("generated/variant-encrypted-aes256.pdf"), None),
         ]);
         assert!(matches!(wrong, Err(Error::Password)));
+    }
+
+    fn crop_box(doc: &PdfDocument, index: usize) -> [f32; 4] {
+        let dict = doc.doc.get_dictionary(doc.page_id(index).unwrap()).unwrap();
+        doc.rect(dict.get(b"CropBox").ok()).expect("a crop box")
+    }
+
+    #[test]
+    fn cropping_cuts_each_margin_from_the_edge_it_is_shown_at_for_every_turn() {
+        // Top 10, right 20, bottom 30, left 40, as the page is shown.
+        let margins = Margins {
+            top: 10.0,
+            right: 20.0,
+            bottom: 30.0,
+            left: 40.0,
+        };
+        for turn in [0, 90, 180, 270] {
+            let mut doc = PdfDocument::open(corpus(THREE), None).unwrap();
+            doc.rotate_pages(&[0], turn / 90).unwrap();
+            let (w, h) = doc.page_size(0).unwrap();
+            let other = doc.page_size(1).unwrap();
+            let [x0, y0, x1, y1] = {
+                let d = doc.doc.get_dictionary(doc.page_id(0).unwrap()).unwrap();
+                doc.rect(doc.inherited(d, b"MediaBox")).unwrap()
+            };
+            doc.crop_pages(&[0], margins).unwrap();
+            let (w2, h2) = doc.page_size(0).unwrap();
+            assert!(
+                (w2 - (w - 60.0)).abs() < 0.01,
+                "turn {turn}: width {w} -> {w2}"
+            );
+            assert!(
+                (h2 - (h - 40.0)).abs() < 0.01,
+                "turn {turn}: height {h} -> {h2}"
+            );
+            // Which user-space edge each margin comes off: the shown top is
+            // user space's top unturned, its left turned 90°, its bottom at
+            // 180°, its right at 270°.
+            let expected = match turn {
+                90 => [x0 + 10.0, y0 + 40.0, x1 - 30.0, y1 - 20.0],
+                180 => [x0 + 20.0, y0 + 10.0, x1 - 40.0, y1 - 30.0],
+                270 => [x0 + 30.0, y0 + 20.0, x1 - 10.0, y1 - 40.0],
+                _ => [x0 + 40.0, y0 + 30.0, x1 - 20.0, y1 - 10.0],
+            };
+            let got = crop_box(&doc, 0);
+            assert!(
+                got.iter().zip(expected).all(|(a, b)| (a - b).abs() < 0.01),
+                "turn {turn}: {got:?} != {expected:?}"
+            );
+            let back = reopen(&mut doc);
+            assert!((back.page_size(0).unwrap().0 - w2).abs() < 0.01);
+            assert_eq!(back.page_size(1).unwrap(), other, "only the chosen page");
+        }
+    }
+
+    #[test]
+    fn a_crop_that_leaves_nothing_is_refused_and_changes_nothing() {
+        let mut doc = PdfDocument::open(corpus(THREE), None).unwrap();
+        let (w, _) = doc.page_size(0).unwrap();
+        let wide = Margins {
+            left: w / 2.0,
+            right: w / 2.0,
+            ..Margins::default()
+        };
+        assert!(matches!(doc.crop_pages(&[0, 1], wide), Err(Error::Edit(_))));
+        assert_eq!(doc.page_size(0).unwrap().0, w);
+        assert!(doc.crop_pages(&[9], Margins::default()).is_err());
     }
 
     #[test]

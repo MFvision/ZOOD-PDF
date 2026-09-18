@@ -20,7 +20,7 @@ pub use fonts::{embed_subset_font, FontSubset};
 pub use incremental::{previous_xref, XrefStyle};
 pub use ocr::{OcrPage, OcrReport, OcrWord};
 pub use ops::{append_line, erase_area, replace_paragraph, replace_word};
-pub use pages::combine;
+pub use pages::{combine, Margins};
 pub use text_walk::{locate_show_runs, Matrix, ShowRun};
 
 #[derive(Debug, thiserror::Error)]

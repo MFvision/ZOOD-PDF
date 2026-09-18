@@ -33,6 +33,22 @@ async function pageStart(page: Page, n: number): Promise<string> {
   return ((await layer.textContent()) ?? '').replace(/\s+/g, ' ').trim().slice(0, 24);
 }
 
+/** Each page's size in points, as shown, as Warraq's own core reads `file` — run here in Node. */
+async function pageSizes(file: string): Promise<[number, number][]> {
+  const root = new URL('../../../packages/ui/src/core-wasm/', import.meta.url);
+  const core = await import(new URL('warraq_core.js', root).href);
+  await core.default({ module_or_path: readFileSync(new URL('warraq_core_bg.wasm', root)) });
+  const doc = core.Document.open(new Uint8Array(readFileSync(file)));
+  try {
+    return Array.from({ length: doc.page_count() as number }, (_, index) => {
+      const [w, h] = doc.page_size(index) as Float32Array;
+      return [Math.round(w!), Math.round(h!)];
+    });
+  } finally {
+    doc.free();
+  }
+}
+
 async function saveAs(page: Page, name: string): Promise<string> {
   const [download] = await Promise.all([
     page.waitForEvent('download'),
@@ -266,5 +282,41 @@ test.describe('Organize pages changes the file, not just the grid', () => {
       await expect(page.getByRole('menuitem', { name })).toBeDisabled();
     }
     await page.keyboard.press('Escape');
+  });
+
+  test('crop by margins, or trim the white away; the saved pages are that size', async ({
+    page,
+    stayLocal: _,
+  }) => {
+    const [w, h] = (await pageSizes(THREE))[0]!;
+    await page.goto('/');
+    await openPdf(page, THREE);
+    await chooseTool(page, 'Organize pages');
+    const panel = page.locator('.pane-end');
+    // 10 mm off the top and bottom of page 1, 20 mm off its sides.
+    await tile(page, 1).click();
+    await panel.getByLabel('Top', { exact: true }).fill('10');
+    await panel.getByLabel('Bottom', { exact: true }).fill('10');
+    await panel.getByLabel('Left', { exact: true }).fill('20');
+    await panel.getByLabel('Right', { exact: true }).fill('20');
+    await control(page, 'Crop').click();
+    await expect(panel.getByLabel('Top', { exact: true })).toHaveValue('0');
+    // Page 3's white trimmed away.
+    await tile(page, 3).click();
+    await control(page, 'Trim white margins').click();
+    // Too much is refused before it is tried.
+    await panel.getByLabel('Left', { exact: true }).fill('150');
+    await panel.getByLabel('Right', { exact: true }).fill('150');
+    await expect(panel.getByRole('alert')).toContainText('would leave nothing of a page');
+    await expect(control(page, 'Crop')).toBeDisabled();
+
+    await control(page, 'Done').click();
+    await expect(statusBar(page)).toContainText('Page 1 of 3');
+    const saved = await saveAs(page, 'cropped');
+    const sizes = await pageSizes(saved);
+    const mm = (n: number) => (n * 72) / 25.4;
+    expect(sizes[0]).toEqual([Math.round(w - mm(40)), Math.round(h - mm(20))]);
+    expect(sizes[1]).toEqual([w, h]);
+    expect(sizes[2]![0] < w - 40 && sizes[2]![1] < h - 40, `trimmed to ${sizes[2]}`).toBe(true);
   });
 });

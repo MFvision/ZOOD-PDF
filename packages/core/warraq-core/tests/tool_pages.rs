@@ -159,6 +159,80 @@ fn insert_file_opens_a_protected_file_with_its_password_and_keeps_the_open_one_p
 }
 
 #[test]
+fn crop_cuts_margins_as_shown_and_keeps_the_text() {
+    let mut doc = Document::open(corpus(THREE), None).unwrap();
+    let text = texts(&doc);
+    let (w, h) = doc.page_size(0).unwrap();
+    let reply = doc
+        .call(
+            "pages.crop",
+            r#"{"pages":[0],"margins":{"top":10,"right":20,"bottom":30,"left":40}}"#,
+            vec![],
+        )
+        .unwrap();
+    let size = &json(&reply)["pageSizes"][0];
+    assert_eq!(
+        (
+            size[0].as_f64().unwrap() as f32,
+            size[1].as_f64().unwrap() as f32
+        ),
+        (w - 60.0, h - 40.0)
+    );
+    let mut back = reopen(&mut doc);
+    assert_eq!(back.page_size(0).unwrap(), (w - 60.0, h - 40.0));
+    assert_eq!(
+        texts(&back)[1..],
+        text[1..],
+        "the other pages are as they were"
+    );
+    assert!(back
+        .call(
+            "pages.crop",
+            r#"{"pages":[0],"margins":{"top":900,"right":0,"bottom":0,"left":0}}"#,
+            vec![]
+        )
+        .is_err());
+}
+
+#[test]
+fn trim_margins_cuts_to_what_is_printed_and_leaves_a_blank_page_alone() {
+    let mut doc = Document::open(corpus(THREE), None).unwrap();
+    let (w, h) = doc.page_size(0).unwrap();
+    doc.call("pages.insert_blank", r#"{"at":3,"like":0}"#, vec![])
+        .unwrap();
+    let reply = doc
+        .call(
+            "pages.trim_margins",
+            r#"{"pages":[0,3],"padding":6}"#,
+            vec![],
+        )
+        .unwrap();
+    let sizes = &json(&reply)["pageSizes"];
+    let (tw, th) = (
+        sizes[0][0].as_f64().unwrap() as f32,
+        sizes[0][1].as_f64().unwrap() as f32,
+    );
+    assert!(
+        tw < w - 40.0 && th < h - 40.0,
+        "{w}x{h} trimmed to {tw}x{th}"
+    );
+    assert_eq!(
+        (
+            sizes[3][0].as_f64().unwrap() as f32,
+            sizes[3][1].as_f64().unwrap() as f32
+        ),
+        (w, h),
+        "nothing printed: nothing to trim to"
+    );
+    let before = texts(&Document::open(corpus(THREE), None).unwrap());
+    assert_eq!(
+        texts(&reopen(&mut doc))[0],
+        before[0],
+        "the text is all still there"
+    );
+}
+
+#[test]
 fn combine_needs_no_open_document() {
     let three = corpus(THREE);
     let word = corpus("realworld/A_worldbank_malpass_g7_briefing_AR_word2016_pdftools.pdf");
