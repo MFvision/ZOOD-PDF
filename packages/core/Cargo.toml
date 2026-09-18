@@ -2,7 +2,7 @@
 # wasm32 (browser extension, web). No feature may exist in only one build.
 [workspace]
 resolver = "2"
-members = ["warraq-text", "warraq-pdf", "warraq-render", "warraq-core"]
+members = ["warraq-text", "warraq-pdf", "warraq-render", "warraq-sign", "warraq-core"]
 
 [workspace.package]
 version = "0.1.0"
