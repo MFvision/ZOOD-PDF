@@ -10,6 +10,7 @@ import {
 } from 'react';
 import type { ChangeEvent, Dispatch, ReactNode } from 'react';
 import { getSharedCoreClient } from '../core/client';
+import { installDesktopFileBridge } from '../core/desktopFiles';
 import {
   isTauriHost,
   onNativeFileDrop,
@@ -225,6 +226,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+
+  // Desktop only: file inputs and download links through the native panels.
+  useEffect(() => installDesktopFileBridge(), []);
 
   useEffect(() => {
     let cancelled = false;

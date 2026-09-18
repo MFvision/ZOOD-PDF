@@ -58,7 +58,7 @@ it and checks the change is in the file, not just on the screen. The *Later*
 cards open a panel that says so; a count on the tool list says how many.
 
 ## Next (in order)
-1. **The desktop app's missing file panels.** EmbedPDF's screenshot, insert image, attachment and signature upload use a file input or a download link, which the macOS webview ignores, so they are hidden there for now; Warraq's own Open and Save already go through the native panels, and these will too. Print needs the system print dialog.
+1. **Print in the desktop app**, through the system print dialog: the macOS webview has no browser print, so EmbedPDF's Print is hidden there.
 2. **Compare** and **AI** (bring-your-own key or local, only on an explicit click); **split** and **insert from another file** in Organize; dropping files onto the Combine list.
 3. Paragraph breaks between uniformly spaced body paragraphs; Nastaliq Urdu extraction; the 500 MB scan stress run; Acrobat verification on a machine that has it.
 
@@ -142,11 +142,19 @@ test that fails without its fix.
 11. **The e2e suite could test someone else's app.** It reused any server on
    the usual preview port, and another project on this Mac had one running.
    It now starts its own on a port of its own and refuses to share.
+12. **EmbedPDF's screenshot, insert image, attachment and signature upload
+   were hidden on desktop**, because they choose or save a file through a file
+   input or a download link, which the macOS webview ignores. On desktop both
+   now go through the native open and save panels (`core/desktopFiles.ts`),
+   the way Warraq's own Open and Save do; a download is read from the blob the
+   page made rather than fetched, so the security policy is unchanged. Tested
+   in Chrome against a stand-in for the host, in the ways EmbedPDF does it
+   (`e2e/desktop-files.spec.ts`).
 
 ## Known gaps, stated plainly
 * **Deleted pages stay in the file's earlier revision**, like every incremental change, until a clean copy is written; extracting pages writes one. Bookmarks and links that pointed at a deleted page are left pointing nowhere in the open file.
 * **A few of EmbedPDF's strings are English in any language**: they are written into its code, not its translations — its loading screens, some text-style tooltips, and default options it writes into new list fields ("Option 1–3").
-* **On desktop, EmbedPDF's print, screenshot, insert image and attachment are hidden**: the macOS webview ignores file inputs, download links and the browser's print, and they rely on them. Its signature dialog still shows an Upload tab that does nothing there; Draw and Type work. Everything the tool panels offer works on desktop.
+* **On desktop, EmbedPDF's Print is hidden**: the macOS webview has no browser print. Its file buttons (screenshot, insert image, attachment, signature upload) go through the native panels; that is tested against a stand-in for the host, not yet clicked in the installed window.
 * **Another app that redraws a field can undo the Arabic.** Warraq writes each Arabic field and text box's appearance itself; a program that regenerates appearances when you edit the field there (Chrome's viewer, some others) may draw it again with a font that has no Arabic.
 * **Dragging a file over the desktop window gives no highlight.** The host catches the OS drag before the webview sees it, and only the drop is forwarded, not the hover. The drop itself works; the invitation to drop does not appear.
 * **Finder does not offer Warraq for a PDF.** The bundle claims no document types on purpose — an editor should not take over the system PDF handler unasked. Open from inside the app, or pass the path on the command line.

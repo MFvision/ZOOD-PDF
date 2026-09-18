@@ -5,6 +5,7 @@ import {
   handleTauriRequest,
   isTauriHost,
   onNativeFileDrop,
+  pickFiles,
   pickPdfFile,
   saveFileAs,
   savePdfFile,
@@ -205,6 +206,29 @@ describe('native file dialogs', () => {
     expect(calls.find((c) => c.cmd === 'read_file_bytes')?.args).toEqual({
       path: '/Users/me/تقرير سنوي.pdf',
     });
+  });
+
+  it('picks any kind of file, one or several, with the filters it is given', async () => {
+    const calls = fakeHost({
+      'plugin:dialog|open': ['/Users/me/توقيع.png', '/Users/me/scan.jpg'],
+      read_file_bytes: new Uint8Array([0x89, 0x50]).buffer,
+    });
+    const filters = [{ name: 'png, jpg', extensions: ['png', 'jpg'] }];
+    const picked = await pickFiles(filters, true);
+    expect(picked.map((f) => f.name)).toEqual(['توقيع.png', 'scan.jpg']);
+    expect(new Uint8Array(picked[0]!.bytes)).toEqual(new Uint8Array([0x89, 0x50]));
+    expect(calls[0]?.args).toEqual({ options: { multiple: true, directory: false, filters } });
+    expect(calls.filter((c) => c.cmd === 'read_file_bytes').map((c) => c.args)).toEqual([
+      { path: '/Users/me/توقيع.png' },
+      { path: '/Users/me/scan.jpg' },
+    ]);
+  });
+
+  it('picks nothing when the panel is cancelled, or a single path when one is chosen', async () => {
+    fakeHost({ 'plugin:dialog|open': null });
+    expect(await pickFiles([], false)).toEqual([]);
+    fakeHost({ 'plugin:dialog|open': '/Users/me/notes.txt', read_file_bytes: new ArrayBuffer(3) });
+    expect((await pickFiles([], false)).map((f) => f.name)).toEqual(['notes.txt']);
   });
 
   it('returns null when the open panel is cancelled', async () => {

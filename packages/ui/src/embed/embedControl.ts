@@ -77,11 +77,12 @@ export const EMBED_COMMANDS: Record<ViewCommand, string> = {
 export const WARRAQ_OWNS = ['document-open', 'document-close', 'document-export'];
 
 /**
- * What the desktop webview cannot do for EmbedPDF yet: it ignores file inputs,
- * download links and the browser's print, and these commands rely on them.
- * Hidden there, rather than left as buttons that do nothing.
+ * What the desktop webview cannot do for EmbedPDF yet: the browser's print.
+ * Hidden there, rather than left as a button that does nothing. (File inputs
+ * and download links it also ignores go through the native panels:
+ * `core/desktopFiles.ts`.)
  */
-export const DESKTOP_CANNOT = ['document-print', 'document-capture', 'capture', 'insert-image', 'insert-attachment'];
+export const DESKTOP_CANNOT = ['document-print'];
 
 /** The EmbedPDF command categories switched off in this host. */
 export function disabledCategories(desktop: boolean): string[] {

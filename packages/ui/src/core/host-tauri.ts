@@ -117,15 +117,24 @@ export async function pickPdfFile(): Promise<PickedFile | null> {
   return { name: baseName(picked), bytes: toArrayBuffer(await readFile(picked)) };
 }
 
-/** Several PDFs at once, from the native open panel (Combine files). */
-export async function pickPdfFiles(): Promise<PickedFile[]> {
+/** Any files the native open panel allows through `filters` (none: every file). */
+export async function pickFiles(filters: FileFilter[], multiple: boolean): Promise<PickedFile[]> {
   const picked = await invoke('plugin:dialog|open', {
-    options: { multiple: true, directory: false, filters: PDF_FILTER },
+    options: { multiple, directory: false, filters },
   });
-  const paths = Array.isArray(picked) ? picked.filter((p): p is string => typeof p === 'string') : [];
+  const paths = Array.isArray(picked)
+    ? picked.filter((p): p is string => typeof p === 'string')
+    : typeof picked === 'string'
+      ? [picked]
+      : [];
   const files: PickedFile[] = [];
   for (const path of paths) files.push({ name: baseName(path), bytes: toArrayBuffer(await readFile(path)) });
   return files;
+}
+
+/** Several PDFs at once, from the native open panel (Combine files). */
+export function pickPdfFiles(): Promise<PickedFile[]> {
+  return pickFiles(PDF_FILTER, true);
 }
 
 /**
