@@ -29,6 +29,11 @@ interface History {
 
 interface DocumentManager {
   onActiveDocumentChanged: Hook<unknown>;
+  getActiveDocumentId(): string | null;
+}
+
+interface Redaction {
+  forDocument(documentId: string): { getState(): { pendingCount?: number } };
 }
 
 /** One plugin's capability, or undefined when the viewer does not have it. */
@@ -93,6 +98,21 @@ export function commandActive(registry: PluginRegistry, id: string): boolean {
 
 export function scrollToPage(registry: PluginRegistry, page: number): void {
   capability<Scroll>(registry, 'scroll')?.scrollToPage({ pageNumber: page });
+}
+
+/**
+ * Areas and text marked for redaction but not yet applied. Until they are
+ * applied they are only marks: the text under them is still in the file.
+ */
+export function pendingRedactionCount(registry: PluginRegistry): number {
+  const id = capability<DocumentManager>(registry, 'document-manager')?.getActiveDocumentId();
+  if (!id) return 0;
+  try {
+    return Number(capability<Redaction>(registry, 'redaction')?.forDocument(id).getState().pendingCount ?? 0);
+  } catch {
+    // No document loaded in the plugin yet: nothing is marked.
+    return 0;
+  }
 }
 
 /**

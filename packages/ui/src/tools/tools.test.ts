@@ -12,12 +12,12 @@ import { TOOLS } from './tools';
 describe('the tool list tells the truth about itself', () => {
   it('marks exactly the tools that do something', () => {
     const working = TOOLS.filter((tool) => tool.implemented).map((tool) => tool.id);
-    // Edit, Organize and Combine are Warraq's own (ADR-0008); five run on EmbedPDF (ADR-0007).
-    expect(working).toEqual(['edit', 'organize', 'comment', 'fillSign', 'protect', 'redact', 'combine', 'prepareForm']);
+    // Edit, Organize, Export and Combine are Warraq's own (ADR-0008); five run on EmbedPDF (ADR-0007).
+    expect(working).toEqual(['edit', 'organize', 'comment', 'fillSign', 'protect', 'redact', 'export', 'combine', 'prepareForm']);
   });
 
   it('gives every working EmbedPDF tool real controls, named in both languages', () => {
-    const warraqs = ['edit', 'organize', 'combine'];
+    const warraqs = ['edit', 'organize', 'export', 'combine'];
     for (const tool of TOOLS.filter((candidate) => !warraqs.includes(candidate.id) && candidate.implemented)) {
       expect(tool.actions?.length, `${tool.id} has controls`).toBeGreaterThan(0);
       for (const action of tool.actions ?? []) {

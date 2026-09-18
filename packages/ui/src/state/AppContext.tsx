@@ -20,7 +20,7 @@ import {
 import type { PickedFile } from '../core/host-tauri';
 import type { CoreClient, RemoteDocument } from '../core/client';
 import type { PluginRegistry } from '@embedpdf/react-pdf-viewer';
-import { EMBED_COMMANDS, capability, commandActive, disabledCategories, runCommand, scrollToPage, setKeyboard, watch } from '../embed/embedControl';
+import { EMBED_COMMANDS, capability, commandActive, disabledCategories, pendingRedactionCount, runCommand, scrollToPage, setKeyboard, watch } from '../embed/embedControl';
 import type { ViewCommand } from '../embed/embedControl';
 import { loadEditFont } from '../edit/editFont';
 import { canRedo as canRedoStack, canUndo as canUndoStack, redo as redoStack, undo as undoStack } from '../edit/editStack';
@@ -104,6 +104,8 @@ export interface AppServices {
   extractPages: (pages: number[]) => Promise<void>;
   /** The open file as it stands now, with whatever either engine has changed. */
   currentFileBytes: () => Promise<ArrayBuffer | null>;
+  /** Areas marked for redaction in the EmbedPDF view and not yet applied: still in the file. */
+  pendingRedactions: () => number;
   /** Combine files: one new file of every page of `files`, in order, opened in place of the current one. */
   combineFiles: (files: readonly CombineInput[]) => Promise<void>;
   clearRecent: () => void;
@@ -647,6 +649,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return saved ? saved.buffer.slice(saved.byteOffset, saved.byteOffset + saved.byteLength) : null;
   }, [bytesFromEmbed]);
 
+  const pendingRedactions = useCallback(() => (embedRef.current ? pendingRedactionCount(embedRef.current) : 0), []);
+
   const combineFiles = useCallback(
     async (files: readonly CombineInput[]) => {
       if (files.length < 2) return;
@@ -791,6 +795,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       organizePages,
       extractPages,
       currentFileBytes,
+      pendingRedactions,
       combineFiles,
       clearRecent,
       commitParagraph,
@@ -824,6 +829,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       organizePages,
       extractPages,
       currentFileBytes,
+      pendingRedactions,
       combineFiles,
       clearRecent,
       commitParagraph,

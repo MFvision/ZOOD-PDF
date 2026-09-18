@@ -129,7 +129,8 @@ export const TOOLS: readonly ToolDefinition[] = [
       { command: 'redaction:clear-all', labelKey: 'action.clearRedactions', icon: EyeOff },
     ],
   },
-  { id: 'export', labelKey: 'tool.export', icon: FileOutput, implemented: false },
+  // Warraq's own engine: PDFium reads Arabic in visual order, the core in reading order.
+  { id: 'export', labelKey: 'tool.export', icon: FileOutput, implemented: true },
   { id: 'compare', labelKey: 'tool.compare', icon: GitCompare, implemented: false },
   { id: 'ocr', labelKey: 'tool.ocr', icon: ScanText, implemented: false },
   // Warraq's core (`pages.combine`): PDFium's importer breaks form fields (ADR-0008).

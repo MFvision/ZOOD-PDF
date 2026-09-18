@@ -1,6 +1,7 @@
 import { Icon } from '../components/Icon';
 import { CombinePanel } from '../combine/CombinePanel';
 import { EditPanel } from '../edit/EditPanel';
+import { ExportPanel } from '../export/ExportPanel';
 import { OrganizePanel } from '../organize/OrganizePanel';
 import { useT } from '../i18n/useT';
 import { ComingLater } from './ComingLater';
@@ -13,6 +14,7 @@ export function ToolPanel({ tool }: { tool: ToolDefinition }) {
   if (tool.id === 'edit') return <EditPanel />;
   if (tool.id === 'organize') return <OrganizePanel />;
   if (tool.id === 'combine') return <CombinePanel />;
+  if (tool.id === 'export') return <ExportPanel />;
   if (tool.actions && tool.actions.length > 0) return <EmbedToolPanel tool={tool} />;
   return (
     <div className="tool-panel">
