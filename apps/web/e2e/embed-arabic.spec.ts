@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { INVOICE, embedTiles, openPdf, test } from './helpers';
+import { INVOICE, embedTiles, openPdf, pageBox, test } from './helpers';
 
 /** EmbedPDF's mode tabs, as its own toolbar names them in each language. */
 const MODES = {
@@ -114,5 +114,25 @@ test.describe("EmbedPDF's own interface speaks Warraq's language", () => {
     await openPdf(page, INVOICE);
     await expect(modeTabs(page)).toHaveText(MODES.ar);
     expect((await embedI18n(page)).locale).toBe('ar');
+  });
+
+  test('in Arabic the page stays centred, and the toolbar still reads right to left', async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    await language(page, 'Language').selectOption({ label: 'العربية' });
+    await openPdf(page, INVOICE);
+    const box = await pageBox(page);
+    const area = await page.evaluate(() => {
+      const scroller = document.querySelector('embedpdf-container')?.shadowRoot?.querySelector('.bg-bg-app');
+      const rect = scroller?.getBoundingClientRect();
+      return rect ? { x: rect.x, width: rect.width } : null;
+    });
+    expect(area, 'EmbedPDF 2.15.1 keeps its pages in .bg-bg-app').not.toBeNull();
+    const offCentre = Math.abs(box.x + box.width / 2 - (area!.x + area!.width / 2));
+    // A scrollbar is the only thing allowed to pull it aside.
+    expect(offCentre).toBeLessThan(12);
+    // The mode tabs run right to left: the first one is the rightmost.
+    const first = await modeTab(page, MODES.ar[0]!).boundingBox();
+    const last = await modeTab(page, MODES.ar[MODES.ar.length - 1]!).boundingBox();
+    expect(first!.x).toBeGreaterThan(last!.x);
   });
 });

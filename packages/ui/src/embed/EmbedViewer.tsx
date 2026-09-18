@@ -8,6 +8,7 @@ import { isTauriHost, uiLog } from '../core/host-tauri';
 import type { Lang } from '../i18n/messages';
 import { disabledCategories } from './embedControl';
 import { setEmbedLanguage } from './embedLanguage';
+import { installRtlStyles } from './embedRtl';
 
 /**
  * The document view: EmbedPDF (Apache-2.0/MIT) — PDFium compiled to WASM, with
@@ -167,6 +168,7 @@ export function EmbedViewer({ bytes, name, password, theme, lang, onRegistry, on
     <PDFViewer
       className="embed-viewer"
       config={config}
+      onInit={(container) => installRtlStyles(container.shadowRoot)}
       onReady={(registry) => {
         uiLog('embedpdf ready');
         registryRef.current = registry;
