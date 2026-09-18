@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { Dialog } from '../components/Dialog';
 import { useT } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
-import { useAppDispatch, useAppState } from '../state/AppContext';
+import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { modKeyLabel } from './menuModel';
 
 function GoToPageForm({ total, initialPage, onGo, onCancel }: { total: number; initialPage: number; onGo: (page: number) => void; onCancel: () => void }) {
@@ -43,6 +43,7 @@ function GoToPageForm({ total, initialPage, onGo, onCancel }: { total: number; i
 export function GoToPageDialog() {
   const { dialog, document, currentPage } = useAppState();
   const dispatch = useAppDispatch();
+  const { goToPage } = useServices();
   const t = useT();
   const open = dialog === 'goto' && document !== null;
   const close = () => dispatch({ type: 'DIALOG', dialog: null });
@@ -55,10 +56,70 @@ export function GoToPageDialog() {
           initialPage={currentPage}
           onCancel={close}
           onGo={(page) => {
-            dispatch({ type: 'SCROLL_TO_PAGE', page });
+            goToPage(page);
             close();
           }}
         />
+      )}
+    </Dialog>
+  );
+}
+
+function PasswordForm({ wrong, onOpen, onCancel }: { wrong: boolean; onOpen: (password: string) => void; onCancel: () => void }) {
+  const t = useT();
+  const [value, setValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (value.length > 0) onOpen(value);
+  };
+
+  return (
+    <form onSubmit={submit}>
+      {wrong && (
+        <p className="field-error" role="alert">
+          {t('password.wrong')}
+        </p>
+      )}
+      <label className="field">
+        <span>{t('password.label')}</span>
+        {/* Passwords may be Arabic, and are typed in their own direction. */}
+        <input ref={inputRef} className="text-input" type="password" dir="auto" autoComplete="off" value={value} onChange={(event) => setValue(event.target.value)} />
+      </label>
+      <div className="dialog-actions">
+        <button type="button" className="icon-btn icon-btn-labeled" onClick={onCancel}>
+          {t('password.cancel')}
+        </button>
+        <button type="submit" className="icon-btn icon-btn-labeled icon-btn-primary" disabled={value.length === 0}>
+          {t('password.open')}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * A protected file asks for its password instead of failing to open. Warraq's
+ * core and EmbedPDF both get it, so it is asked for once; it lives in memory
+ * only, for as long as the file is open.
+ */
+export function PasswordDialog() {
+  const { passwordPrompt } = useAppState();
+  const { unlockFile, cancelUnlock } = useServices();
+  const t = useT();
+  return (
+    <Dialog open={passwordPrompt !== null} title={t('password.title')} onClose={cancelUnlock}>
+      {passwordPrompt && (
+        <>
+          <p>{t('password.body', { name: passwordPrompt.name })}</p>
+          {/* A new form per attempt: the field starts empty after a wrong one. */}
+          <PasswordForm key={String(passwordPrompt.wrong)} wrong={passwordPrompt.wrong} onOpen={unlockFile} onCancel={cancelUnlock} />
+        </>
       )}
     </Dialog>
   );
@@ -73,7 +134,8 @@ const SHORTCUT_ROWS: ReadonlyArray<{ keys: string; labelKey: TKey }> = [
   { keys: 'Mod+=', labelKey: 'shortcuts.zoomIn' },
   { keys: 'Mod+-', labelKey: 'shortcuts.zoomOut' },
   { keys: 'Mod+0', labelKey: 'shortcuts.fitPage' },
-  { keys: 'Mod+1', labelKey: 'shortcuts.actualSize' },
+  { keys: 'Mod+1', labelKey: 'shortcuts.fitWidth' },
+  { keys: 'Mod+P', labelKey: 'shortcuts.print' },
   { keys: 'Mod+Shift+N', labelKey: 'shortcuts.goToPage' },
   { keys: 'F4', labelKey: 'shortcuts.leftPane' },
   { keys: 'Shift+F4', labelKey: 'shortcuts.rightPane' },
@@ -83,8 +145,10 @@ const SHORTCUT_ROWS: ReadonlyArray<{ keys: string; labelKey: TKey }> = [
 export function ShortcutsDialog() {
   const { dialog } = useAppState();
   const dispatch = useAppDispatch();
+  const { canPrint } = useServices();
   const t = useT();
   const mod = modKeyLabel();
+  const rows = SHORTCUT_ROWS.filter((row) => row.labelKey !== 'shortcuts.print' || canPrint);
   return (
     <Dialog open={dialog === 'shortcuts'} title={t('shortcuts.title')} onClose={() => dispatch({ type: 'DIALOG', dialog: null })}>
       <table className="shortcuts-table">
@@ -95,7 +159,7 @@ export function ShortcutsDialog() {
           </tr>
         </thead>
         <tbody>
-          {SHORTCUT_ROWS.map((row) => (
+          {rows.map((row) => (
             <tr key={row.keys}>
               <td>
                 <kbd dir="ltr">{row.keys.replace('Mod', mod)}</kbd>

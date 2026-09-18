@@ -2,22 +2,34 @@
 
 Shortcuts are the same in Arabic and English. `Mod` is `Cmd` on macOS and `Ctrl` elsewhere.
 
+They act on the view on screen: EmbedPDF (ADR-0007) while you read, comment,
+fill, redact or protect, and Warraq's own view while **Edit text** is on
+(`viewCommand` in `state/AppContext.tsx`). EmbedPDF listens for most of these
+keys itself while it is showing and takes them first, so each runs once; while
+Warraq's editor is up, every EmbedPDF shortcut is switched off, because
+EmbedPDF stays mounted underneath and would otherwise answer keys meant for
+the editor (`setKeyboard` in `embed/embedControl.ts`).
+
 | Keys | Action | Notes |
 |---|---|---|
-| `Mod+O` | Open a file | Shows the native file picker (`<input type="file">`). |
-| `Mod+S` | Save | Calls `Document.save()` and downloads `<original-name>.pdf` (a Blob and an object URL, revoked straight after). Always prevents the browser's own save dialog. Under Tauri this still uses the download path; a native save dialog is a TODO. |
-| `Mod+F` | Find | Opens the find bar; searching calls `Document.search` in the core worker. `Esc` closes it. |
-| `Mod+Z` | Undo the last text edit | Calls `replace_paragraph` with the paragraph's previous text. Disabled when the stack is empty. |
-| `Mod+Shift+Z` | Redo the undone edit | Calls `replace_paragraph` with the text that was undone. A new edit after an undo truncates the redo branch. |
-| `Mod+=` / `Mod++` | Zoom in | Steps through 25, 33, 50, 67, 75, 100, 125, 150, 200, 300, 400 %. |
-| `Mod+-` | Zoom out | Same steps downwards. |
-| `Mod+0` | Fit page | Whole page visible; recomputed when the window resizes. |
-| `Mod+1` | Actual size | 100 % (1 pt = 96/72 CSS px). |
-| `Mod+Shift+N` | Go to page | Opens the "Go to page" dialog. Chrome and Edge reserve this combination for a new private window, so the page indicator in the status bar and the Edit menu offer the same dialog. |
-| `F4` | Toggle the navigation (thumbnails) pane | Only while a document is open. |
+| `Mod+O` | Open a file | Warraq's picker (the native panel on desktop). EmbedPDF's own Open is switched off: a file opened there was one Warraq did not know it had. A protected file asks for its password. |
+| `Mod+S` | Save | Whichever view is showing holds the latest file: EmbedPDF's copy carries comments, fields, redactions and protection; Warraq's its text edits. Native save panel on desktop, a download in a browser. Always prevents the browser's own save dialog. |
+| `Mod+P` | Print | EmbedPDF's print, in a browser and the extension. Not offered on desktop yet: the app has no route to the system print dialog. |
+| `Mod+F` | Find | EmbedPDF's search panel; Warraq's find bar in Edit text. `Esc` closes it. |
+| `Mod+Z` | Undo the last change | EmbedPDF's history (comments, fields, redaction marks); Warraq's edit stack in Edit text. |
+| `Mod+Shift+Z` | Redo | Also `Ctrl+Y` on Windows and Linux while EmbedPDF is showing. |
+| `Mod+=` / `Mod++` | Zoom in | |
+| `Mod+-` | Zoom out | |
+| `Mod+0` | Fit page | |
+| `Mod+1` | Fit width | EmbedPDF's meaning for the key, now Warraq's too, so it does the same in both views. Actual size is in the View menu. |
+| `Mod+Shift+N` | Go to page | Opens the "Go to page" dialog, which scrolls the view on screen. Chrome and Edge reserve this combination for a new private window, so the page indicator in the status bar and the Edit menu offer the same dialog. |
+| `F4` | Toggle the page thumbnails | EmbedPDF's sidebar, or Warraq's navigation pane in Edit text. Only while a document is open. |
 | `Shift+F4` | Toggle the tools pane | |
 | `Esc` | Close the find bar or the open dialog/menu | |
-| `Enter` in the page box | Go to the typed page | Ribbon page box. |
+
+While EmbedPDF is showing it also has keys of its own: `←`/`→` and `Mod+[`/`Mod+]`
+turn the page, `H` and `P` switch between the hand and the pointer, `Mod+C` copies
+the selected text, and `F11` goes full screen.
 
 ## Edit mode
 

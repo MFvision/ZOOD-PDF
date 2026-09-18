@@ -293,3 +293,19 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-s);
 }
+
+/* The EmbedPDF view fills the document area; it brings its own toolbar. */
+.embed-viewer {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.embed-host {
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.embed-host[hidden] {
+  display: none;
+}

@@ -1,28 +1,29 @@
-import { expect, test } from '@playwright/test';
-import { WORD_EXPORT, ink, openPdf } from './helpers';
+import { expect } from '@playwright/test';
+import { WORD_EXPORT, enterEditText, ink, openPdf, test } from './helpers';
 
 test.describe('the interface does what it shows', () => {
-  test('the tool list admits which tools are not built yet', async ({ page }) => {
+  test('the tool list admits which tools are not built yet', async ({ page, stayLocal: _stayLocal }) => {
     await page.goto('/');
     // One list, not two: the tools pane used to repeat the grid beside it.
     await expect(page.locator('.tool-card')).toHaveCount(13);
     const grid = page.locator('.tool-cards-grid');
     await expect(grid.locator('.tool-card')).toHaveCount(13);
     // Tripwire: when a tool is built, this number has to change with it.
-    await expect(grid.locator('.tool-card-pending')).toHaveCount(12);
-    await expect(grid.locator('.tool-card-pending .tool-card-later')).toHaveCount(12);
+    await expect(grid.locator('.tool-card-pending')).toHaveCount(7);
+    await expect(grid.locator('.tool-card-pending .tool-card-later')).toHaveCount(7);
   });
 
-  test('opens an Arabic Word export and puts readable text on the page', async ({ page }) => {
+  test('opens an Arabic Word export and puts readable text on the page', async ({ page, stayLocal: _stayLocal }) => {
     await page.goto('/');
-    const first = await openPdf(page, WORD_EXPORT);
+    await openPdf(page, WORD_EXPORT);
+    const first = await enterEditText(page);
     await expect(first.locator('.text-layer')).toContainText('صباح الخير');
   });
 
-  test('replaces a paragraph and the new text is on the page', async ({ page }) => {
+  test('replaces a paragraph and the new text is on the page', async ({ page, stayLocal: _stayLocal }) => {
     await page.goto('/');
-    const first = await openPdf(page, WORD_EXPORT);
-    await page.getByRole('toolbar').getByRole('button', { name: 'Edit text' }).click();
+    await openPdf(page, WORD_EXPORT);
+    const first = await enterEditText(page);
     await first.locator('.edit-box').first().click();
     const area = first.locator('.paragraph-editor-area');
     await expect(area).toBeVisible();
@@ -32,10 +33,10 @@ test.describe('the interface does what it shows', () => {
     await expect(first.locator('.text-layer')).toContainText(replacement);
   });
 
-  test('adds a line of text where you click', async ({ page }) => {
+  test('adds a line of text where you click', async ({ page, stayLocal: _stayLocal }) => {
     await page.goto('/');
-    const first = await openPdf(page, WORD_EXPORT);
-    await page.getByRole('toolbar').getByRole('button', { name: 'Edit text' }).click();
+    await openPdf(page, WORD_EXPORT);
+    const first = await enterEditText(page);
     // The control lives in the Edit panel of the tools pane.
     await page.getByRole('button', { name: 'Add text' }).click();
     const target = first.locator('.edit-place-target');
@@ -53,11 +54,11 @@ test.describe('the interface does what it shows', () => {
     await expect(first.locator('.text-layer')).toContainText(note);
   });
 
-  test('saves a file that reopens with the edit in it', async ({ page }) => {
+  test('saves a file that reopens with the edit in it', async ({ page, stayLocal: _stayLocal }) => {
     await page.goto('/');
-    const first = await openPdf(page, WORD_EXPORT);
+    await openPdf(page, WORD_EXPORT);
+    const first = await enterEditText(page);
     const before = await ink(first.locator('canvas.page-canvas'));
-    await page.getByRole('toolbar').getByRole('button', { name: 'Edit text' }).click();
     await first.locator('.edit-box').first().click();
     const area = first.locator('.paragraph-editor-area');
     const replacement = 'نص محفوظ في الملف';
@@ -75,7 +76,8 @@ test.describe('the interface does what it shows', () => {
     expect(saved).toBeTruthy();
 
     await page.goto('/');
-    const reopened = await openPdf(page, saved as string);
+    await openPdf(page, saved as string);
+    const reopened = await enterEditText(page);
     await expect(reopened.locator('.text-layer')).toContainText(replacement);
   });
 });

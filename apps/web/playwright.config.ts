@@ -11,6 +11,9 @@ import { defineConfig } from '@playwright/test';
  *
  * A tool is not done until a spec here proves it through the interface.
  */
+const PORT = 4391;
+const ORIGIN = `http://127.0.0.1:${PORT}`;
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 120_000,
@@ -19,17 +22,20 @@ export default defineConfig({
   workers: 1,
   reporter: [['list']],
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL: ORIGIN,
     channel: 'chrome',
     headless: true,
     locale: 'en-US',
     acceptDownloads: true,
     viewport: { width: 1400, height: 1000 },
   },
+  // Its own port on an explicit address, and never a server it did not start:
+  // with `reuseExistingServer` another project's dev server on the usual
+  // preview port once answered instead, and the run tested someone else's app.
   webServer: {
-    command: 'pnpm preview',
-    url: 'http://localhost:4173',
-    reuseExistingServer: true,
+    command: `pnpm exec vite preview --host 127.0.0.1 --port ${PORT} --strictPort`,
+    url: ORIGIN,
+    reuseExistingServer: false,
     timeout: 60_000,
   },
 });

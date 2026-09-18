@@ -104,6 +104,15 @@
   gap: 6px;
 }
 
+.field-error {
+  margin-block: 0 12px;
+  padding-block: 8px;
+  padding-inline: 12px;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-radius: var(--radius-m);
+}
+
 .toast {
   position: absolute;
   inset-block-end: calc(var(--status-h) + 12px);

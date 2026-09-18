@@ -29,12 +29,19 @@ Ubuntu, Node 22 through `actions/setup-node`, pnpm through `pnpm/action-setup` (
 1. `pnpm install --frozen-lockfile`
 2. `pnpm build:core` — wasm-pack builds `warraq-core` into `packages/ui/src/core-wasm/`
 3. `pnpm -r lint` and `pnpm -r test` — every workspace package that defines the script
-   (`@warraq/ui`, `@warraq/web`, `@warraq/extension`)
+   (`@warraq/ui`, `@warraq/web`, `@warraq/extension`); `pnpm -r --filter './packages/**' build` typechecks the
+   shared UI, which neither vitest nor eslint does
 4. `pnpm --filter @warraq/web build` and `pnpm --filter @warraq/extension build`
-5. `pnpm --filter @warraq/extension check` — `scripts/check-manifest.mjs` (required keys, minimal permissions,
+5. `pnpm --filter @warraq/web e2e` — Playwright in the Google Chrome the runner already has (no browser download),
+   against `vite preview` on `127.0.0.1:4391`, a port of its own that it never shares with a server it did not
+   start. `apps/web/e2e` clicks through the interface the way a person does: every working tool changes a real
+   file that is saved and reopened, the menus act on the view on screen, and the built extension is loaded
+   into Chrome through DevTools (`Extensions.loadUnpacked`) and opens an Arabic PDF. Every test fails if a
+   request leaves the machine, the CSP blocks one, or a file the app asks for comes back 4xx/5xx
+6. `pnpm --filter @warraq/extension check` — `scripts/check-manifest.mjs` (required keys, minimal permissions,
    CSP, locales, no inline scripts) and `scripts/pack-chrome.mjs` (Chrome headless `--pack-extension` on a copy of
    `dist/`; Chrome prints the manifest error and produces no `.crx` when the manifest is invalid)
-6. Artifacts: `warraq-extension` (`apps/extension/dist/warraq-extension.zip`) and `warraq-web` (`apps/web/dist`)
+7. Artifacts: `warraq-extension` (`apps/extension/dist/warraq-extension.zip`) and `warraq-web` (`apps/web/dist`)
 
 ### `corpus` — the Arabic acid test on PDFium
 

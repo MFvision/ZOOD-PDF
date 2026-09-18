@@ -15,15 +15,25 @@ interface DialogProps {
 /** Native <dialog>: focus trapping, Escape handling and the backdrop come for free. */
 export function Dialog({ open, title, onClose, children }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const openRef = useRef(open);
   const titleId = useId();
   const t = useT();
 
   useEffect(() => {
+    openRef.current = open;
     const element = ref.current;
     if (!element) return;
     if (open && !element.open) element.showModal();
     else if (!open && element.open) element.close();
   }, [open]);
+
+  // The native `close` event also fires, a task later, when this component
+  // closes the dialog because `open` went false. Passing that on as the
+  // person's close made the password prompt cancel the retry that had just
+  // reopened it. Only a close nobody asked for through `open` is reported.
+  const onNativeClose = () => {
+    if (openRef.current) onClose();
+  };
 
   const onBackdropClick = (event: MouseEvent<HTMLDialogElement>) => {
     if (event.target === ref.current) onClose();
@@ -38,7 +48,7 @@ export function Dialog({ open, title, onClose, children }: DialogProps) {
   };
 
   return (
-    <dialog ref={ref} className="dialog" aria-labelledby={titleId} onClose={onClose} onClick={onBackdropClick} onKeyDown={onKeyDown}>
+    <dialog ref={ref} className="dialog" aria-labelledby={titleId} onClose={onNativeClose} onClick={onBackdropClick} onKeyDown={onKeyDown}>
       <div className="dialog-header">
         <h2 id={titleId}>{title}</h2>
         <IconButton label={t('dialog.close')} icon={<Icon of={X} />} onClick={onClose} />

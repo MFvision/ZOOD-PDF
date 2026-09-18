@@ -49,6 +49,11 @@ export function Ribbon() {
       </div>
       {hasDocument && (
         <>
+          {/* Page, zoom, find and undo drive Warraq's own viewer, which shows only
+              in Edit text; EmbedPDF's toolbar has its own. Shown elsewhere they
+              would be buttons that do nothing. */}
+          {editActive && (
+          <>
           <div className="ribbon-sep" />
           <div className="ribbon-group">
             <IconButton
@@ -90,6 +95,8 @@ export function Ribbon() {
             pressed={state.find.open}
             onClick={() => dispatch({ type: state.find.open ? 'FIND_CLOSE' : 'FIND_OPEN' })}
           />
+          </>
+          )}
           <div className="ribbon-sep" />
           {/* Edit mode plus its history; the buttons say whether there is anything to undo. */}
           <div className="ribbon-group">
@@ -100,18 +107,22 @@ export function Ribbon() {
               pressed={editActive}
               onClick={() => dispatch({ type: 'EDIT_MODE', active: !editActive })}
             />
-            <IconButton
-              label={t('edit.undo')}
-              icon={<Icon of={Undo2} mirror />}
-              disabled={editBusy || !canUndo(editStack)}
-              onClick={() => void services.undoEdit()}
-            />
-            <IconButton
-              label={t('edit.redo')}
-              icon={<Icon of={Redo2} mirror />}
-              disabled={editBusy || !canRedo(editStack)}
-              onClick={() => void services.redoEdit()}
-            />
+            {editActive && (
+              <>
+                <IconButton
+                  label={t('edit.undo')}
+                  icon={<Icon of={Undo2} mirror />}
+                  disabled={editBusy || !canUndo(editStack)}
+                  onClick={() => void services.undoEdit()}
+                />
+                <IconButton
+                  label={t('edit.redo')}
+                  icon={<Icon of={Redo2} mirror />}
+                  disabled={editBusy || !canRedo(editStack)}
+                  onClick={() => void services.redoEdit()}
+                />
+              </>
+            )}
           </div>
         </>
       )}

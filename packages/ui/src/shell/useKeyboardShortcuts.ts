@@ -9,6 +9,11 @@ const isZoomOutKey = (event: KeyboardEvent) =>
 /**
  * Global shortcuts documented in SHORTCUTS.md. Ctrl and Cmd are interchangeable.
  *
+ * They act on the view on screen (`viewCommand`). EmbedPDF also listens for
+ * most of these while it is showing and takes the key first, so each runs
+ * once; the ones it has no key for — F4, Mod+Shift+N — arrive here and are
+ * handed to it.
+ *
  * The paragraph editor stops Escape and Mod+Enter before they reach here, and
  * undo/redo are no-ops on an empty stack, so typing inside it is unaffected.
  */
@@ -31,7 +36,7 @@ export function useKeyboardShortcuts(): void {
       if (event.key === 'F4' && !mod && !event.altKey) {
         event.preventDefault();
         if (event.shiftKey) dispatch({ type: 'TOGGLE_RIGHT_PANE' });
-        else if (hasDocument) dispatch({ type: 'TOGGLE_LEFT_PANE' });
+        else if (hasDocument) services.viewCommand('sidebar');
         return;
       }
       if (!mod || event.altKey) return;
@@ -43,10 +48,10 @@ export function useKeyboardShortcuts(): void {
           dispatch({ type: 'DIALOG', dialog: 'goto' });
         } else if (key === 'z' && hasDocument) {
           event.preventDefault();
-          void services.redoEdit();
+          services.viewCommand('redo');
         } else if (isZoomInKey(event) && hasDocument) {
           event.preventDefault();
-          dispatch({ type: 'ZOOM_IN' });
+          services.viewCommand('zoom-in');
         }
         return;
       }
@@ -59,22 +64,27 @@ export function useKeyboardShortcuts(): void {
         if (hasDocument) void services.saveDocument();
       } else if (key === 'z' && hasDocument) {
         event.preventDefault();
-        void services.undoEdit();
+        services.viewCommand('undo');
       } else if (key === 'f' && hasDocument) {
         event.preventDefault();
-        dispatch({ type: 'FIND_OPEN' });
+        services.viewCommand('find');
       } else if (isZoomInKey(event) && hasDocument) {
         event.preventDefault();
-        dispatch({ type: 'ZOOM_IN' });
+        services.viewCommand('zoom-in');
       } else if (isZoomOutKey(event) && hasDocument) {
         event.preventDefault();
-        dispatch({ type: 'ZOOM_OUT' });
+        services.viewCommand('zoom-out');
       } else if ((key === '0' || event.code === 'Numpad0') && hasDocument) {
         event.preventDefault();
-        dispatch({ type: 'SET_ZOOM_MODE', mode: 'fit-page' });
+        services.viewCommand('fit-page');
       } else if ((key === '1' || event.code === 'Numpad1') && hasDocument) {
+        // Fit width, as EmbedPDF has it: one meaning for the key in both views.
         event.preventDefault();
-        dispatch({ type: 'SET_ZOOM', zoom: 1 });
+        services.viewCommand('fit-width');
+      } else if (key === 'p' && hasDocument) {
+        // Never the browser's print of the whole window.
+        event.preventDefault();
+        if (services.canPrint) services.viewCommand('print');
       }
     };
     window.addEventListener('keydown', onKeyDown);

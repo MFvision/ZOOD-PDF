@@ -6,8 +6,9 @@ import { FontNotice } from '../edit/FontNotice';
 import { HomeScreen } from '../home/HomeScreen';
 import { useT } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
+import { EmbedViewer } from '../embed/EmbedViewer';
 import { Viewer } from '../viewer/Viewer';
-import { AboutDialog, GoToPageDialog, ShortcutsDialog } from './Dialogs';
+import { AboutDialog, GoToPageDialog, PasswordDialog, ShortcutsDialog } from './Dialogs';
 import { FindBar } from './FindBar';
 import { LeftPane } from './LeftPane';
 import { MenuBar } from './MenuBar';
@@ -30,12 +31,15 @@ export function Shell() {
   const dragging = useFileDrop(onFiles);
 
   const isViewer = state.view === 'viewer';
+  // EmbedPDF shows the document (ADR-0007); Warraq's own viewer takes over in
+  // Edit text, where its paragraph and add-text overlays are the point.
+  const warraqView = isViewer && !services.embedShowing;
 
   return (
     <div className="shell">
       <MenuBar />
       <Ribbon />
-      {isViewer && state.find.open && <FindBar />}
+      {warraqView && state.find.open && <FindBar />}
       {state.error && (
         <div className="banner banner-error" role="alert">
           <Icon of={CircleAlert} />
@@ -51,13 +55,29 @@ export function Shell() {
         </div>
       )}
       <div className="shell-body">
-        {isViewer && state.leftPane.open && (
+        {warraqView && state.leftPane.open && (
           <>
             <LeftPane />
             <PaneResizer side="start" width={state.leftPane.width} onResize={(width) => dispatch({ type: 'SET_LEFT_WIDTH', width })} />
           </>
         )}
-        <main className="shell-main">{isViewer ? <Viewer /> : <HomeScreen />}</main>
+        <main className="shell-main">
+          {!isViewer && <HomeScreen />}
+          {/* EmbedPDF stays mounted under Warraq's editor, so switching into Edit
+              text keeps its engine, its state and the handover source alive. */}
+          {isViewer && services.documentBytes !== null && (
+            <div className="embed-host" hidden={warraqView}>
+              <EmbedViewer
+                bytes={services.documentBytes}
+                name={state.document?.name ?? 'document.pdf'}
+                password={services.documentPassword}
+                theme={state.theme}
+                onRegistry={services.attachEmbed}
+              />
+            </div>
+          )}
+          {warraqView && <Viewer />}
+        </main>
         {/* On the home screen the grid already lists every tool, so the pane
             only appears once a tool is chosen — otherwise the same thirteen
             cards were shown twice, side by side. */}
@@ -70,6 +90,7 @@ export function Shell() {
       </div>
       <StatusBar />
       <GoToPageDialog />
+      <PasswordDialog />
       <ShortcutsDialog />
       <AboutDialog />
       {state.toast && (

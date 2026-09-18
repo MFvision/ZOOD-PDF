@@ -58,6 +58,8 @@ export interface AppState {
   rightPane: { open: boolean; width: number; activeTool: ToolId | null };
   find: { open: boolean; query: string; matches: number[]; cursor: number; searched: boolean };
   dialog: 'goto' | 'shortcuts' | 'about' | null;
+  /** A file that needs a password to open; `wrong` after a failed attempt. */
+  passwordPrompt: { name: string; wrong: boolean } | null;
   /** Consumed by the viewer; the nonce makes repeated requests distinct. */
   scrollRequest: { page: number; nonce: number } | null;
   core: CoreStatus | null;
@@ -69,6 +71,8 @@ export type AppAction =
   | { type: 'DOCUMENT_OPENED'; document: DocumentInfo }
   | { type: 'DOCUMENT_FAILED'; error: TKey }
   | { type: 'DOCUMENT_CLOSED' }
+  | { type: 'PASSWORD_NEEDED'; name: string; wrong: boolean }
+  | { type: 'PASSWORD_CANCELLED' }
   | { type: 'ERROR_DISMISSED' }
   | { type: 'TOAST'; key: TKey }
   | { type: 'TOAST_CLEARED' }
@@ -175,6 +179,7 @@ export function createInitialState(prefs: Preferences = {}): AppState {
     },
     find: { open: false, query: '', matches: [], cursor: 0, searched: false },
     dialog: null,
+    passwordPrompt: null,
     scrollRequest: null,
     core: null,
     edit: createEditState(),
@@ -200,6 +205,7 @@ function findStep(state: AppState, delta: 1 | -1): AppState {
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'DOCUMENT_LOADING':
+      // A password prompt stays up while its answer is tried.
       return { ...state, loadingName: action.name, error: null };
     case 'DOCUMENT_OPENED':
       return {
@@ -208,13 +214,18 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         document: action.document,
         loadingName: null,
         error: null,
+        passwordPrompt: null,
         currentPage: 1,
         scrollRequest: null,
         find: { ...state.find, matches: [], cursor: 0, searched: false },
         edit: { ...createEditState(), active: state.edit.active },
       };
     case 'DOCUMENT_FAILED':
-      return { ...state, loadingName: null, error: action.error };
+      return { ...state, loadingName: null, error: action.error, passwordPrompt: null };
+    case 'PASSWORD_NEEDED':
+      return { ...state, loadingName: null, error: null, passwordPrompt: { name: action.name, wrong: action.wrong } };
+    case 'PASSWORD_CANCELLED':
+      return { ...state, passwordPrompt: null };
     case 'DOCUMENT_CLOSED':
       return {
         ...state,

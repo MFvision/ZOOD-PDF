@@ -1,5 +1,5 @@
 import { useT } from '../i18n/useT';
-import { useAppDispatch, useAppState } from '../state/AppContext';
+import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { hasUnsavedEdits } from '../state/appReducer';
 import { ZoomSelect } from './ZoomSelect';
 
@@ -8,6 +8,7 @@ export function StatusBar() {
   const state = useAppState();
   const { document, currentPage, core } = state;
   const dispatch = useAppDispatch();
+  const { embedShowing } = useServices();
   const t = useT();
   const pageText = document ? t('status.page', { current: currentPage, total: document.pageCount }) : null;
   const edited = document !== null && hasUnsavedEdits(state);
@@ -34,7 +35,8 @@ export function StatusBar() {
         )}
       </div>
       <div className="statusbar-group">
-        {document && (
+        {/* This picker zooms Warraq's own view; EmbedPDF's zoom box is in its toolbar. */}
+        {document && !embedShowing && (
           <>
             <span className="statusbar-muted">{t('status.zoom')}</span>
             <ZoomSelect compact />

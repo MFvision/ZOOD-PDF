@@ -85,15 +85,17 @@ jobs:
         run: pnpm -r --filter './packages/**' build
       - name: Build the web host
         run: pnpm --filter @warraq/web build
+      # Built before the click-through, which loads it into Chrome.
+      - name: Build the extension (dist + zip)
+        run: pnpm --filter @warraq/extension build
       # The interface, clicked through in the Google Chrome the runner already
-      # has. Everything the first desktop build shipped broken passed the unit
+      # has — the web build, and the extension loaded through DevTools.
+      # Everything the first desktop build shipped broken passed the unit
       # tests; a tool is not done until a spec in apps/web/e2e proves it.
       - name: End-to-end click-through
         run: pnpm --filter @warraq/web e2e
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
-      - name: Build the extension (dist + zip)
-        run: pnpm --filter @warraq/extension build
       - name: Validate the extension (manifest keys + Chrome --pack-extension)
         run: pnpm --filter @warraq/extension check
       - uses: actions/upload-artifact@v4

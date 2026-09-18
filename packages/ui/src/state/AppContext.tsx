@@ -19,8 +19,11 @@ import {
 } from '../core/host-tauri';
 import type { PickedFile } from '../core/host-tauri';
 import type { CoreClient, RemoteDocument } from '../core/client';
+import type { PluginRegistry } from '@embedpdf/react-pdf-viewer';
+import { EMBED_COMMANDS, capability, commandActive, disabledCategories, runCommand, scrollToPage, setKeyboard, watch } from '../embed/embedControl';
+import type { ViewCommand } from '../embed/embedControl';
 import { loadEditFont } from '../edit/editFont';
-import { redo as redoStack, undo as undoStack } from '../edit/editStack';
+import { canRedo as canRedoStack, canUndo as canUndoStack, redo as redoStack, undo as undoStack } from '../edit/editStack';
 import type { EditEntry, StackStep } from '../edit/editStack';
 import type { TKey } from '../i18n/messages';
 import { appReducer, createInitialState } from './appReducer';
@@ -29,18 +32,54 @@ import { readPreferences, writePreferences } from './preferences';
 import { addRecent, clearRecent as clearStoredRecent, readRecent } from './recent';
 import { isPdf, namedLikePdf } from './pdfFile';
 import { downloadPdf, pdfFileName } from './saveFile';
+import { findTool } from '../tools/tools';
 
 export interface AppServices {
   client: CoreClient;
   /** Live handle of the open document (not serializable, so it lives outside the reducer). */
   document: RemoteDocument | null;
+  /**
+   * The document's current bytes, for the EmbedPDF view (ADR-0007). A new
+   * buffer by identity means the file changed and the view reopens it.
+   */
+  documentBytes: ArrayBuffer | null;
+  /** The password the open file was unlocked with, for the EmbedPDF view. Memory only. */
+  documentPassword: string | undefined;
   recent: string[];
-  openFile: (file: File) => Promise<void>;
+  /** Opens a PDF; a protected one asks for its password (`passwordPrompt`) first. */
+  openFile: (file: File, password?: string) => Promise<void>;
+  /** Tries the protected file again with this password. */
+  unlockFile: (password: string) => void;
+  cancelUnlock: () => void;
   /** Opens the first PDF in a drop or picker selection. */
   openFiles: (files: ArrayLike<File>) => Promise<void>;
   closeDocument: () => void;
   /** Shows the file picker: the native panel on desktop, `<input type="file">` in a browser. */
   requestOpenFile: () => void;
+  /** Called by the EmbedPDF view once its plugin registry is ready. */
+  attachEmbed: (registry: PluginRegistry) => void;
+  /** Runs one of the EmbedPDF viewer's registered commands (ADR-0007). */
+  runEmbedCommand: (command: string) => void;
+  /**
+   * Whether EmbedPDF is the view on screen; Warraq's own takes over while
+   * editing text. Menus, shortcuts and the status bar act on whichever this
+   * says — before, they always drove Warraq's view, and did nothing visible
+   * while EmbedPDF showed the page.
+   */
+  embedShowing: boolean;
+  /** Zoom, fit, find, the page sidebar, print, undo and redo, on the view on screen. */
+  viewCommand: (command: ViewCommand) => void;
+  /** Whether a toggle — fit width, fit page, the sidebar — is on in the view on screen. */
+  viewCommandOn: (command: ViewCommand) => boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  /**
+   * EmbedPDF prints through the browser's print dialog. The desktop app has no
+   * route to the system one yet, so it offers no Print rather than a dead one.
+   */
+  canPrint: boolean;
+  /** Brings a page (one-based) to the top of the view on screen. */
+  goToPage: (page: number) => void;
   clearRecent: () => void;
   /** Replaces a paragraph and records it on the undo stack. */
   commitParagraph: (entry: EditEntry) => Promise<void>;
@@ -73,13 +112,31 @@ function errorKeyFor(err: unknown): TKey {
 
 const TOAST_MS = 3000;
 
+/** EmbedPDF's ink commitDelay (800 ms) plus a margin; see `bytesFromEmbed`. */
+const INK_SETTLE_MS = 1000;
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, undefined, () =>
     createInitialState(readPreferences()),
   );
   const [document, setDocument] = useState<RemoteDocument | null>(null);
+  const [documentBytes, setDocumentBytes] = useState<ArrayBuffer | null>(null);
+  const [documentPassword, setDocumentPassword] = useState<string | undefined>(undefined);
+  const passwordRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    passwordRef.current = documentPassword;
+  }, [documentPassword]);
+  // The protected file waiting for its password.
+  const lockedFile = useRef<File | null>(null);
   const [recent, setRecent] = useState<string[]>(() => readRecent());
   const documentRef = useRef<RemoteDocument | null>(null);
+  // The EmbedPDF view's registry (ADR-0007): the document as it holds it —
+  // annotations, redactions, filled fields — is read back through its engine.
+  const embedRef = useRef<PluginRegistry | null>(null);
+  const [embed, setEmbed] = useState<PluginRegistry | null>(null);
+  const [embedHistory, setEmbedHistory] = useState({ canUndo: false, canRedo: false });
+  const syncedRevision = useRef(0);
+  const wasEditing = useRef(false);
   // Async work reads the latest state through this ref, never a stale closure.
   const stateRef = useRef(state);
   const openSequence = useRef(0);
@@ -128,7 +185,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [toastNonce]);
 
   const openFile = useCallback(
-    async (file: File) => {
+    async (file: File, password?: string) => {
       // By content, not by name: see `pdfFile.ts`.
       if (!(await isPdf(file))) {
         dispatch({ type: 'DOCUMENT_FAILED', error: 'error.notPdf' });
@@ -139,14 +196,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'DOCUMENT_LOADING', name: file.name });
       try {
         const bytes = await file.arrayBuffer();
-        const opened = await client.open(bytes);
+        // Kept before the core takes `bytes` over (it is transferred to the worker).
+        const kept = bytes.slice(0);
+        const opened = await client.open(bytes, password);
         if (sequence !== openSequence.current) {
           void opened.free();
           return;
         }
+        lockedFile.current = null;
         void documentRef.current?.free();
         documentRef.current = opened;
         setDocument(opened);
+        setDocumentPassword(password);
+        setDocumentBytes(kept);
         dispatch({
           type: 'DOCUMENT_OPENED',
           document: {
@@ -159,12 +221,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
         setRecent(addRecent(file.name));
       } catch (err) {
-        if (sequence === openSequence.current)
-          dispatch({ type: 'DOCUMENT_FAILED', error: errorKeyFor(err) });
+        if (sequence !== openSequence.current) return;
+        if (errorKeyFor(err) === 'error.password') {
+          // Not a failure: ask, and keep the file for the answer.
+          lockedFile.current = file;
+          dispatch({ type: 'PASSWORD_NEEDED', name: file.name, wrong: password !== undefined });
+          return;
+        }
+        dispatch({ type: 'DOCUMENT_FAILED', error: errorKeyFor(err) });
       }
     },
     [client],
   );
+
+  const unlockFile = useCallback(
+    (password: string) => {
+      if (lockedFile.current) void openFile(lockedFile.current, password);
+    },
+    [openFile],
+  );
+
+  const cancelUnlock = useCallback(() => {
+    lockedFile.current = null;
+    dispatch({ type: 'PASSWORD_CANCELLED' });
+  }, []);
 
   const openFiles = useCallback(
     async (files: ArrayLike<File>) => {
@@ -180,6 +260,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void documentRef.current?.free();
     documentRef.current = null;
     setDocument(null);
+    setDocumentBytes(null);
+    setDocumentPassword(undefined);
     dispatch({ type: 'DOCUMENT_CLOSED' });
   }, []);
 
@@ -225,6 +307,124 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * no-op and that listener is the only one.
    */
   useEffect(() => onNativeFileDrop((files) => void openFiles(files.map(toFile))), [openFiles]);
+
+  const attachEmbed = useCallback((registry: PluginRegistry) => {
+    embedRef.current = registry;
+    setEmbed(registry);
+  }, []);
+
+  const runEmbedCommand = useCallback((command: string) => {
+    if (embedRef.current) runCommand(embedRef.current, command);
+  }, []);
+
+  const embedShowing = state.view === 'viewer' && documentBytes !== null && !state.edit.active;
+  const embedShowingRef = useRef(embedShowing);
+  useEffect(() => {
+    embedShowingRef.current = embedShowing;
+  }, [embedShowing]);
+
+  // The status bar and Go to page follow the page EmbedPDF shows, and the Edit
+  // menu what its history can undo.
+  useEffect(() => {
+    if (!embed) return;
+    return watch(embed, {
+      onPage: (page) => {
+        if (!stateRef.current.edit.active) dispatch({ type: 'SET_CURRENT_PAGE', page });
+      },
+      onHistory: setEmbedHistory,
+    });
+  }, [embed]);
+
+  useEffect(() => {
+    if (embed) setKeyboard(embed, !state.edit.active, disabledCategories(isTauriHost()));
+  }, [embed, state.edit.active]);
+
+  // Choosing a tool puts the view in that tool's mode — Annotate, Form, Redact —
+  // so the toolbar matches the panel the person just opened.
+  const activeTool = state.rightPane.activeTool;
+  useEffect(() => {
+    const mode = activeTool ? findTool(activeTool)?.mode : undefined;
+    if (mode && !stateRef.current.edit.active) runEmbedCommand(mode);
+  }, [activeTool, runEmbedCommand]);
+
+  /**
+   * The document exactly as EmbedPDF holds it, or null without a view.
+   *
+   * EmbedPDF keeps new annotations as pending ("commitState: new") until they
+   * are committed to the engine. Reading the engine directly — the first
+   * version of this did — saved the file without them: a drawing on screen,
+   * nothing in the file. Found by the end-to-end suite. So pending work is
+   * committed first and the bytes come from EmbedPDF's own export plugin.
+   */
+  const bytesFromEmbed = useCallback(async (): Promise<ArrayBuffer | null> => {
+    const registry = embedRef.current;
+    if (!registry) return null;
+    type Task<T> = { toPromise(): Promise<T> };
+    const provides = <T,>(id: string): T | undefined => capability<T>(registry, id);
+    // EmbedPDF's ink tool gathers strokes and writes them 800 ms after the last
+    // one (its commitDelay), so several strokes become one drawing. Putting the
+    // tool down before then discards them — a first attempt at this did exactly
+    // that — so while a drawing tool is active, Save waits the strokes out.
+    const id = provides<{ getActiveDocumentId(): string | null }>('document-manager')?.getActiveDocumentId();
+    if (id) {
+      const scope = provides<{
+        forDocument(documentId: string): { getActiveTool(): unknown; commit(): Task<boolean> };
+      }>('annotation')?.forDocument(id);
+      const tool = scope?.getActiveTool();
+      const toolId = typeof tool === 'string' ? tool : (tool as { id?: string } | null)?.id;
+      if (toolId && /ink/i.test(toolId)) await new Promise((resolve) => setTimeout(resolve, INK_SETTLE_MS));
+      await scope?.commit().toPromise().catch(() => undefined);
+    }
+    const exporter = provides<{ saveAsCopy: () => Task<ArrayBuffer> }>('export');
+    if (exporter) return exporter.saveAsCopy().toPromise();
+    const active = provides<{ getActiveDocument(): unknown }>('document-manager')?.getActiveDocument();
+    if (!active) return null;
+    const engine = registry.getEngine() as unknown as { saveAsCopy(document: unknown): Task<ArrayBuffer> };
+    return engine.saveAsCopy(active).toPromise();
+  }, []);
+
+  /**
+   * The handover between the two views. Entering Edit text, Warraq's engine
+   * takes the file exactly as EmbedPDF holds it, so nothing done there is lost;
+   * leaving it, EmbedPDF reopens Warraq's edits. Bytes are the only contract
+   * between them, which is what keeps two engines honest about one document.
+   */
+  useEffect(() => {
+    const editing = state.edit.active;
+    if (wasEditing.current === editing) return;
+    wasEditing.current = editing;
+    void (async () => {
+      if (editing) {
+        const bytes = await bytesFromEmbed();
+        const name = stateRef.current.document?.name;
+        if (!bytes || !name) return;
+        // EmbedPDF's copy keeps the file's protection, so it needs the password
+        // too; without it this open failed and the editor showed a stale copy.
+        const opened = await client.open(bytes, passwordRef.current);
+        void documentRef.current?.free();
+        documentRef.current = opened;
+        setDocument(opened);
+        dispatch({
+          type: 'DOCUMENT_OPENED',
+          document: {
+            id: opened.id,
+            name,
+            pageCount: opened.pageCount,
+            pageSizes: opened.pageSizes,
+            metadata: opened.info,
+          },
+        });
+        // DOCUMENT_OPENED starts the edit history again.
+        syncedRevision.current = 0;
+        return;
+      }
+      const doc = documentRef.current;
+      if (!doc || stateRef.current.edit.revision === syncedRevision.current) return;
+      const saved = await doc.save();
+      syncedRevision.current = stateRef.current.edit.revision;
+      setDocumentBytes(saved.buffer.slice(saved.byteOffset, saved.byteOffset + saved.byteLength));
+    })().catch(() => dispatch({ type: 'DOCUMENT_FAILED', error: 'error.open' }));
+  }, [state.edit.active, bytesFromEmbed, client]);
 
   const clearRecent = useCallback(() => {
     clearStoredRecent();
@@ -314,12 +514,67 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const undoEdit = useCallback(() => step(undoStack), [step]);
   const redoEdit = useCallback(() => step(redoStack), [step]);
 
+  const viewCommand = useCallback(
+    (command: ViewCommand) => {
+      const registry = embedRef.current;
+      if (registry && embedShowingRef.current) {
+        runCommand(registry, EMBED_COMMANDS[command]);
+        return;
+      }
+      switch (command) {
+        case 'zoom-in':
+          return dispatch({ type: 'ZOOM_IN' });
+        case 'zoom-out':
+          return dispatch({ type: 'ZOOM_OUT' });
+        case 'fit-page':
+        case 'fit-width':
+          return dispatch({ type: 'SET_ZOOM_MODE', mode: command });
+        case 'actual-size':
+          return dispatch({ type: 'SET_ZOOM', zoom: 1 });
+        case 'find':
+          return dispatch({ type: 'FIND_OPEN' });
+        case 'sidebar':
+          return dispatch({ type: 'TOGGLE_LEFT_PANE' });
+        case 'undo':
+          return void undoEdit();
+        case 'redo':
+          return void redoEdit();
+        case 'print':
+          // EmbedPDF prints; the menu offers Print only while it is on screen.
+          return;
+      }
+    },
+    [undoEdit, redoEdit],
+  );
+
+  const viewCommandOn = useCallback((command: ViewCommand): boolean => {
+    const registry = embedRef.current;
+    if (registry && embedShowingRef.current) return commandActive(registry, EMBED_COMMANDS[command]);
+    const current = stateRef.current;
+    if (command === 'fit-page' || command === 'fit-width') return current.zoomMode === command;
+    if (command === 'sidebar') return current.leftPane.open;
+    return false;
+  }, []);
+
+  const goToPage = useCallback((page: number) => {
+    const registry = embedRef.current;
+    if (registry && embedShowingRef.current) scrollToPage(registry, page);
+    else dispatch({ type: 'SCROLL_TO_PAGE', page });
+  }, []);
+
+  const canUndo = embedShowing ? embedHistory.canUndo : !state.edit.busy && canUndoStack(state.edit.stack);
+  const canRedo = embedShowing ? embedHistory.canRedo : !state.edit.busy && canRedoStack(state.edit.stack);
+  const canPrint = embedShowing && !isTauriHost();
+
   const saveDocument = useCallback(async () => {
     const doc = documentRef.current;
     const name = stateRef.current.document?.name;
     if (!doc || !name) return;
     try {
-      const bytes = await doc.save();
+      // Whichever view is current holds the latest file: EmbedPDF's carries its
+      // annotations and redactions, Warraq's its Arabic edits.
+      const fromEmbed = stateRef.current.edit.active ? null : await bytesFromEmbed();
+      const bytes = fromEmbed ? new Uint8Array(fromEmbed) : await doc.save();
       if (isTauriHost()) {
         // Cancelling the panel is not a failure, and not a save either.
         if (!(await savePdfFile(bytes, pdfFileName(name)))) return;
@@ -331,7 +586,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch {
       dispatch({ type: 'DOCUMENT_FAILED', error: 'file.saveFailed' });
     }
-  }, []);
+  }, [bytesFromEmbed]);
 
   const onFileInput = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -343,11 +598,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => ({
       client,
       document,
+      documentBytes,
+      documentPassword,
       recent,
       openFile,
+      unlockFile,
+      cancelUnlock,
       openFiles,
       closeDocument,
       requestOpenFile,
+      attachEmbed,
+      runEmbedCommand,
+      embedShowing,
+      viewCommand,
+      viewCommandOn,
+      canUndo,
+      canRedo,
+      canPrint,
+      goToPage,
       clearRecent,
       commitParagraph,
       addText,
@@ -358,11 +626,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [
       client,
       document,
+      documentBytes,
+      documentPassword,
       recent,
       openFile,
+      unlockFile,
+      cancelUnlock,
       openFiles,
       closeDocument,
       requestOpenFile,
+      attachEmbed,
+      runEmbedCommand,
+      embedShowing,
+      viewCommand,
+      viewCommandOn,
+      canUndo,
+      canRedo,
+      canPrint,
+      goToPage,
       clearRecent,
       commitParagraph,
       addText,

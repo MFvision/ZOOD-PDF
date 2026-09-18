@@ -1,6 +1,26 @@
 import {
+  ArrowUpRight,
+  CheckSquare,
+  CircleDot,
   ClipboardList,
   Combine,
+  Eraser,
+  FileSignature,
+  Highlighter,
+  ListChecks,
+  Link,
+  LockKeyhole,
+  MessageSquarePlus,
+  PenTool,
+  RectangleHorizontal,
+  ScanLine,
+  SquareDashedMousePointer,
+  Stamp,
+  Strikethrough,
+  TextCursorInput,
+  Type,
+  Underline,
+  ChevronDownSquare,
   EyeOff,
   FileOutput,
   GitCompare,
@@ -31,27 +51,102 @@ export type ToolId =
   | 'prepareForm'
   | 'ai';
 
+/**
+ * One control in a tool's panel: an EmbedPDF command (ADR-0007), run through
+ * its commands plugin. The ids are the ones the viewer registers — listed at
+ * runtime, not guessed — so a button here is never a dead one.
+ */
+export interface ToolAction {
+  command: string;
+  labelKey: TKey;
+  icon: LucideIcon;
+}
+
 export interface ToolDefinition {
   id: ToolId;
   labelKey: TKey;
   icon: LucideIcon;
   /** Unimplemented tools open a "coming later" panel instead of a real one. */
   implemented: boolean;
+  /** The EmbedPDF mode the tool switches the view to when it is chosen. */
+  mode?: string;
+  /** What the tool's panel offers, each one a working command. */
+  actions?: readonly ToolAction[];
 }
 
 export const TOOLS: readonly ToolDefinition[] = [
   { id: 'edit', labelKey: 'tool.edit', icon: Pencil, implemented: true },
   { id: 'organize', labelKey: 'tool.organize', icon: LayoutGrid, implemented: false },
-  { id: 'comment', labelKey: 'tool.comment', icon: MessageSquare, implemented: false },
-  { id: 'fillSign', labelKey: 'tool.fillSign', icon: PenLine, implemented: false },
-  { id: 'protect', labelKey: 'tool.protect', icon: Shield, implemented: false },
-  { id: 'redact', labelKey: 'tool.redact', icon: EyeOff, implemented: false },
+  {
+    id: 'comment',
+    labelKey: 'tool.comment',
+    icon: MessageSquare,
+    implemented: true,
+    mode: 'mode:annotate',
+    actions: [
+      { command: 'annotation:add-highlight', labelKey: 'action.highlight', icon: Highlighter },
+      { command: 'annotation:add-underline', labelKey: 'action.underline', icon: Underline },
+      { command: 'annotation:add-strikeout', labelKey: 'action.strikeout', icon: Strikethrough },
+      { command: 'annotation:add-comment', labelKey: 'action.note', icon: MessageSquarePlus },
+      { command: 'annotation:add-text', labelKey: 'action.textBox', icon: Type },
+      { command: 'annotation:add-ink', labelKey: 'action.draw', icon: PenTool },
+      { command: 'annotation:add-rectangle', labelKey: 'action.rectangle', icon: RectangleHorizontal },
+      { command: 'annotation:add-arrow', labelKey: 'action.arrow', icon: ArrowUpRight },
+      { command: 'annotation:add-link', labelKey: 'action.link', icon: Link },
+    ],
+  },
+  {
+    id: 'fillSign',
+    labelKey: 'tool.fillSign',
+    icon: PenLine,
+    implemented: true,
+    mode: 'mode:form',
+    actions: [
+      { command: 'form:toggle-fill-mode', labelKey: 'action.fillForm', icon: TextCursorInput },
+      { command: 'signature:create', labelKey: 'action.createSignature', icon: FileSignature },
+      { command: 'insert:add-signature', labelKey: 'action.placeSignature', icon: PenLine },
+      { command: 'insert:add-rubber-stamp', labelKey: 'action.stamp', icon: Stamp },
+    ],
+  },
+  {
+    id: 'protect',
+    labelKey: 'tool.protect',
+    icon: Shield,
+    implemented: true,
+    actions: [{ command: 'document:protect', labelKey: 'action.setPassword', icon: LockKeyhole }],
+  },
+  {
+    id: 'redact',
+    labelKey: 'tool.redact',
+    icon: EyeOff,
+    implemented: true,
+    mode: 'mode:redact',
+    actions: [
+      { command: 'redaction:redact-text', labelKey: 'action.redactText', icon: ScanLine },
+      { command: 'redaction:redact-area', labelKey: 'action.redactArea', icon: SquareDashedMousePointer },
+      { command: 'redaction:apply-all', labelKey: 'action.applyRedactions', icon: Eraser },
+      { command: 'redaction:clear-all', labelKey: 'action.clearRedactions', icon: EyeOff },
+    ],
+  },
   { id: 'export', labelKey: 'tool.export', icon: FileOutput, implemented: false },
   { id: 'compare', labelKey: 'tool.compare', icon: GitCompare, implemented: false },
   { id: 'ocr', labelKey: 'tool.ocr', icon: ScanText, implemented: false },
   { id: 'combine', labelKey: 'tool.combine', icon: Combine, implemented: false },
   { id: 'compress', labelKey: 'tool.compress', icon: Shrink, implemented: false },
-  { id: 'prepareForm', labelKey: 'tool.prepareForm', icon: ClipboardList, implemented: false },
+  {
+    id: 'prepareForm',
+    labelKey: 'tool.prepareForm',
+    icon: ClipboardList,
+    implemented: true,
+    mode: 'mode:form',
+    actions: [
+      { command: 'form:add-textfield', labelKey: 'action.textField', icon: TextCursorInput },
+      { command: 'form:add-checkbox', labelKey: 'action.checkbox', icon: CheckSquare },
+      { command: 'form:add-radio', labelKey: 'action.radio', icon: CircleDot },
+      { command: 'form:add-select', labelKey: 'action.dropdown', icon: ChevronDownSquare },
+      { command: 'form:add-listbox', labelKey: 'action.listbox', icon: ListChecks },
+    ],
+  },
   { id: 'ai', labelKey: 'tool.ai', icon: Sparkles, implemented: false },
 ];
 

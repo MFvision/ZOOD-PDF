@@ -36,4 +36,11 @@ export default tseslint.config(
     files: ['**/*.{js,mjs,cjs}', '**/vite.config.ts', '**/vitest.config.ts'],
     languageOptions: { globals: { ...globals.node } },
   },
+  {
+    // Playwright specs: no React here, and a fixture hands its value on through
+    // a callback Playwright names `use`, which the hooks rule mistakes for React's.
+    files: ['apps/web/e2e/**/*.ts', '**/playwright.config.ts'],
+    rules: { 'react-hooks/rules-of-hooks': 'off' },
+    languageOptions: { globals: { ...globals.node } },
+  },
 );

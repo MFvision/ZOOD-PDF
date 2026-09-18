@@ -168,3 +168,19 @@
   align-items: center;
   font-size: 15px;
 }
+
+.tool-actions {
+  display: grid;
+  gap: 6px;
+  margin-block: 12px;
+}
+
+.tool-actions .icon-button {
+  justify-content: flex-start;
+}
+
+.tool-panel-note {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-s);
+}

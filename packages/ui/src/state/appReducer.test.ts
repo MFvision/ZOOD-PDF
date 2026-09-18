@@ -188,3 +188,28 @@ describe('placing new text', () => {
     expect(drawn.edit.pageRevisions[2]).toBe(1);
   });
 });
+
+describe('opening a file that has a password', () => {
+  it('asks for the password instead of reporting a failure', () => {
+    const loading = appReducer(createInitialState(), { type: 'DOCUMENT_LOADING', name: 'locked.pdf' });
+    const asked = appReducer(loading, { type: 'PASSWORD_NEEDED', name: 'locked.pdf', wrong: false });
+    expect(asked.passwordPrompt).toEqual({ name: 'locked.pdf', wrong: false });
+    expect(asked.loadingName).toBeNull();
+    expect(asked.error).toBeNull();
+  });
+
+  it('stays up while the password is tried, and says so when it was wrong', () => {
+    const asked = appReducer(createInitialState(), { type: 'PASSWORD_NEEDED', name: 'locked.pdf', wrong: false });
+    const trying = appReducer(asked, { type: 'DOCUMENT_LOADING', name: 'locked.pdf' });
+    expect(trying.passwordPrompt).toEqual({ name: 'locked.pdf', wrong: false });
+    const wrong = appReducer(trying, { type: 'PASSWORD_NEEDED', name: 'locked.pdf', wrong: true });
+    expect(wrong.passwordPrompt?.wrong).toBe(true);
+  });
+
+  it('closes when the person cancels, the file opens, or it fails for another reason', () => {
+    const asked = appReducer(createInitialState(), { type: 'PASSWORD_NEEDED', name: 'locked.pdf', wrong: false });
+    expect(appReducer(asked, { type: 'PASSWORD_CANCELLED' }).passwordPrompt).toBeNull();
+    expect(appReducer(asked, { type: 'DOCUMENT_OPENED', document: doc }).passwordPrompt).toBeNull();
+    expect(appReducer(asked, { type: 'DOCUMENT_FAILED', error: 'error.open' }).passwordPrompt).toBeNull();
+  });
+});
