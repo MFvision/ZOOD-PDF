@@ -95,6 +95,21 @@ export function scrollToPage(registry: PluginRegistry, page: number): void {
   capability<Scroll>(registry, 'scroll')?.scrollToPage({ pageNumber: page });
 }
 
+interface Redaction {
+  forDocument(documentId: string): { getState(): { pendingCount?: number } };
+}
+
+/**
+ * Text and areas marked for redaction but not applied yet. Until they are
+ * applied, what they cover is still in the file — and in its text.
+ */
+export function countPendingRedactions(registry: PluginRegistry): number {
+  const id = capability<{ getActiveDocumentId(): string | null }>(registry, 'document-manager')?.getActiveDocumentId();
+  const redaction = capability<Redaction>(registry, 'redaction');
+  if (!id || !redaction) return 0;
+  return Number(redaction.forDocument(id).getState().pendingCount ?? 0);
+}
+
 /**
  * Switches EmbedPDF's keyboard shortcuts on or off, keeping `disabled` off
  * either way.

@@ -1,3 +1,4 @@
+import { AiPanel } from '../ai/AiPanel';
 import { Icon } from '../components/Icon';
 import { CombinePanel } from '../combine/CombinePanel';
 import { EditPanel } from '../edit/EditPanel';
@@ -13,6 +14,7 @@ export function ToolPanel({ tool }: { tool: ToolDefinition }) {
   if (tool.id === 'edit') return <EditPanel />;
   if (tool.id === 'organize') return <OrganizePanel />;
   if (tool.id === 'combine') return <CombinePanel />;
+  if (tool.id === 'ai') return <AiPanel />;
   if (tool.actions && tool.actions.length > 0) return <EmbedToolPanel tool={tool} />;
   return (
     <div className="tool-panel">
