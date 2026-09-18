@@ -1,11 +1,19 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { CLAUDE_ENDPOINT, LOCAL_ALLOWED_ORIGINS, LOCAL_DEFAULT_URL } from '@warraq/ui/src/ai/providers';
 import { stripMetaCsp } from '../vite.config';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
+/**
+ * The only places the app may connect to besides itself: the AI tool's two
+ * providers — Anthropic's API, for a person's own key, and Ollama's port on
+ * this computer. Nothing is sent to them until the person presses Send.
+ */
+const AI_SOURCES = 'https://api.anthropic.com http://localhost:11434 http://127.0.0.1:11434';
+
 const EXPECTED_CSP =
-  "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+  `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' ${AI_SOURCES}; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`;
 
 describe('apps/web index.html', () => {
   it('ships the strict Content-Security-Policy', () => {
@@ -74,6 +82,22 @@ describe('the desktop policy replaces the document one', () => {
   });
 
   it('lets the desktop reach its own IPC, which the document policy cannot know about', () => {
-    expect(directives(desktopCsp).get('connect-src')).toBe("'self' ipc: http://ipc.localhost");
+    expect(directives(desktopCsp).get('connect-src')).toBe(`'self' ipc: http://ipc.localhost ${AI_SOURCES}`);
+  });
+});
+
+describe('the AI tool can reach its providers, and nothing else is opened up', () => {
+  it('adds the same sources to both policies, and only these', () => {
+    const extra = (connect: string | undefined, own: string[]) =>
+      (connect ?? '').split(' ').filter((source) => !own.includes(source));
+    expect(extra(directives(EXPECTED_CSP).get('connect-src'), ["'self'"])).toEqual(AI_SOURCES.split(' '));
+    expect(extra(directives(desktopCsp).get('connect-src'), ["'self'", 'ipc:', 'http://ipc.localhost'])).toEqual(
+      AI_SOURCES.split(' '),
+    );
+  });
+
+  it('allows exactly the addresses the tool uses by default', () => {
+    expect(AI_SOURCES.split(' ')).toEqual([new URL(CLAUDE_ENDPOINT).origin, ...LOCAL_ALLOWED_ORIGINS]);
+    expect(LOCAL_ALLOWED_ORIGINS).toContain(new URL(LOCAL_DEFAULT_URL).origin);
   });
 });
