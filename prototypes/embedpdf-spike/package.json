@@ -1,0 +1,14 @@
+{
+  "name": "embedpdf-spike",
+  "private": true,
+  "description": "Runs EmbedPDF's PDFium engine against the Arabic corpus: form fill, FreeText, redaction, AES-256, merge. See docs/research/03-embedpdf-spike.md.",
+  "type": "module",
+  "scripts": {
+    "spike": "node spike.mjs && FALLBACK=1 node spike.mjs"
+  },
+  "dependencies": {
+    "@embedpdf/engines": "2.15.1",
+    "@embedpdf/models": "2.15.1",
+    "@embedpdf/pdfium": "2.15.1"
+  }
+}

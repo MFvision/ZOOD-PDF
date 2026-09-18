@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { init } from '@embedpdf/pdfium';
+import { PdfiumNative, createNodeFontLoader, FontCharset } from '@embedpdf/engines/pdfium';
+const pdfium = await init({ wasmBinary: fs.readFileSync('node_modules/@embedpdf/pdfium/dist/pdfium.wasm') });
+const engine = new PdfiumNative(pdfium, { fontFallback: { fonts: { [FontCharset.ARABIC]: 'NotoNaskhArabic-Regular.ttf' }, fontLoader: createNodeFontLoader(fs, path, 'node_modules/@embedpdf/fonts-arabic/fonts') } });
+const ab = (b) => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
+const saved = fs.readFileSync('out-fallback/A-form.pdf');
+const doc = await engine.openDocumentBuffer({ id: 'r', content: ab(saved) }).toPromise();
+const widgets = await engine.getPageAnnoWidgets(doc, doc.pages[0]).toPromise();
+console.log('values after reopen:', JSON.stringify(widgets.map((w) => [w.field?.name, w.field?.value]), null, 0));
+const raw = saved.toString('latin1');
+console.log('/V entries:', (raw.match(/\/V\s*(\([^)]{0,60}\)|<[0-9A-Fa-f]{0,80}>)/g) || []).slice(0, 4));
+console.log('NeedAppearances:', /NeedAppearances\s+true/.test(raw));
+console.log('bytes:', saved.length, 'original:', fs.statSync('/Users/mohammedalghammas/Developer/warraq/tests/corpus/arabic/realworld/F_pdfjs15546_rtl_acroform_textfields_arabic_digits_acrobat.pdf').size);

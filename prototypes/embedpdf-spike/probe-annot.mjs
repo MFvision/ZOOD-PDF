@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+import { init } from '@embedpdf/pdfium';
+import { PdfiumNative } from '@embedpdf/engines/pdfium';
+const pdfium = await init({ wasmBinary: fs.readFileSync('node_modules/@embedpdf/pdfium/dist/pdfium.wasm') });
+const engine = new PdfiumNative(pdfium, { fontFallback: null });
+const b = fs.readFileSync('out-fallback/B-freetext.pdf');
+const doc = await engine.openDocumentBuffer({ id: 'r', content: b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) }).toPromise();
+const annots = await engine.getPageAnnotations(doc, doc.pages[0]).toPromise();
+console.log(JSON.stringify(annots.filter((a) => a.type === 3).map((a) => ({ id: a.id, rect: a.rect, contents: a.contents, font: a.fontFamily, size: a.fontSize }))));
+const raw = b.toString('latin1');
+const i = raw.indexOf('/FreeText');
+console.log('FreeText dict:', raw.slice(Math.max(0, i - 40), i + 400).replace(/[\x00-\x08\x0e-\x1f\x7f-\xff]/g, '.'));
