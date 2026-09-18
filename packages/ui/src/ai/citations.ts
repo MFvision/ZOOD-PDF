@@ -9,7 +9,7 @@
 
 export type Piece = { kind: 'text'; text: string } | { kind: 'page'; page: number };
 
-const DIGIT = '0-9٠-٩۰-۹';
+const DIGIT = '0-9\u0660-\u0669\u06F0-\u06F9';
 const CITATION = new RegExp(
   `[\\[(]\\s*(?:pp?\\.?|pages?|ص\\.?|صفحة|الصفحة|صفحات|الصفحات)\\s*([${DIGIT}][${DIGIT}\\s,،\\-–—]*?)\\s*[\\])]`,
   'giu',
@@ -18,7 +18,7 @@ const PART = new RegExp(`[${DIGIT}]+|[\\-–—]|[,،]`, 'gu');
 
 /** Arabic-Indic and Persian digits read as the numbers they are. */
 function toNumber(digits: string): number {
-  const western = digits.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660)).replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0));
+  const western = digits.replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660)).replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06f0));
   return Number(western);
 }
 

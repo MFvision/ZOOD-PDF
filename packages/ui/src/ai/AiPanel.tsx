@@ -86,8 +86,8 @@ export function AiPanel() {
   const [question, setQuestion] = useState('');
   const [translateTo, setTranslateTo] = useState<Lang>(lang);
   const [scope, setScope] = useState<'current' | 'range'>('current');
-  const [from, setFrom] = useState(1);
-  const [to, setTo] = useState(1);
+  const [from, setFrom] = useState('1');
+  const [to, setTo] = useState('1');
   const [reading, setReading] = useState<number | null>(null);
   const [notice, setNotice] = useState<Message | null>(null);
   const [preflight, setPreflight] = useState<(Preflight & { documentId: number }) | null>(null);
@@ -110,11 +110,12 @@ export function AiPanel() {
   }, [copied]);
 
   // In Arabic text a range such as 1–2 reads backwards unless it is isolated as left-to-right.
-  const pageList = (pages: readonly number[]) => (dir === 'rtl' ? `⁦${formatPages(pages)}⁩` : formatPages(pages));
+  const pageList = (pages: readonly number[]) => (dir === 'rtl' ? `\u2066${formatPages(pages)}\u2069` : formatPages(pages));
 
   const documentId = state.document?.id ?? null;
   const pageCount = state.document?.pageCount ?? 0;
-  const hasDocument = state.view === 'viewer' && documentId !== null && state.switching === null;
+  const documentOpen = state.view === 'viewer' && documentId !== null;
+  const hasDocument = documentOpen && state.switching === null;
   // A preflight or answer belongs to the document it was made from.
   const shownPreflight = preflight && preflight.documentId === documentId ? preflight : null;
   const shownResult = result && result.documentId === documentId ? result : null;
@@ -171,19 +172,19 @@ export function AiPanel() {
     const budget = budgetFor(target.provider, task);
     const current = state.currentPage;
     const pagesOf = (count: number) =>
-      task !== 'translate' ? pageRange(1, count, count) : scope === 'current' ? pageRange(current, current, count) : pageRange(from, to, count);
+      task !== 'translate' ? pageRange(1, count, count) : scope === 'current' ? pageRange(current, current, count) : pageRange(Number(from) || 1, Number(to) || 1, count);
     setPreflight(null);
     setResult(null);
     setFailure(null);
     setNotice(null);
     setShowText(false);
-    // Marked but not applied, a redaction still leaves its text in the file.
-    if (services.pendingRedactions() > 0) {
-      setNotice({ key: 'ai.redactPending' });
-      return;
-    }
     setReading(0);
     try {
+      // Marked but not applied, a redaction still leaves its text in the file.
+      if (services.pendingRedactions() > 0) {
+        setNotice({ key: 'ai.redactPending' });
+        return;
+      }
       const read = await readDocument(services, pagesOf, budget, setReading);
       if (!read) {
         setNotice({ key: 'ai.readFailed' });
@@ -411,7 +412,7 @@ export function AiPanel() {
                     max={Math.max(1, pageCount)}
                     value={from}
                     onChange={(event) => {
-                      setFrom(Number(event.target.value) || 1);
+                      setFrom(event.target.value);
                       changed();
                     }}
                   />
@@ -425,7 +426,7 @@ export function AiPanel() {
                     max={Math.max(1, pageCount)}
                     value={to}
                     onChange={(event) => {
-                      setTo(Number(event.target.value) || 1);
+                      setTo(event.target.value);
                       changed();
                     }}
                   />
@@ -436,7 +437,7 @@ export function AiPanel() {
         </div>
       )}
 
-      {!hasDocument && <p className="tool-panel-note">{t('tool.openFirst')}</p>}
+      {!documentOpen && <p className="tool-panel-note">{t('tool.openFirst')}</p>}
       <div className="tool-actions">
         <IconButton label={t('ai.review')} icon={<Icon of={FileSearch} />} showLabel disabled={!canReview} onClick={() => void review()} />
       </div>
