@@ -13,6 +13,7 @@ use tauri::{AppHandle, DragDropEvent, Emitter, Manager, Runtime, State, WindowEv
 use tauri_plugin_fs::FsExt;
 
 pub mod core_bridge;
+pub mod print;
 
 /// Event sent to the webview when files are dropped on the window.
 /// Payload: [`FileDropPayload`]. Every dropped path is added to the fs scope
@@ -140,6 +141,8 @@ pub fn run() {
             core_bridge::doc_add_text,
             core_bridge::doc_save,
             core_bridge::core_call,
+            print::print_available,
+            print::print_pdf,
         ])
         .on_window_event(|window, event| {
             // Forward OS file drops to the webview, after allowing the dropped

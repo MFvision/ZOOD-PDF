@@ -61,7 +61,7 @@ keeps the count of *Later* cards at zero; a tool not built would have to say
 so on its face.
 
 ## Next (in order)
-1. **Print in the desktop app**, through the system print dialog: the macOS webview has no browser print, so EmbedPDF's Print is hidden there.
+1. **Print on Windows and Linux** desktop builds (macOS prints through PDFKit).
 2. **Crop** in Organize; dropping files onto the Combine list; a visual diff in Compare; streamed AI replies.
 3. Paragraph breaks between uniformly spaced body paragraphs; Nastaliq Urdu extraction; the 500 MB scan stress run; Acrobat verification on a machine that has it.
 
@@ -168,11 +168,17 @@ test that fails without its fix.
 15. **Shrink-to-fit never shrank the text.** An edit too long for its box
    reported a smaller size but was drawn at the old one with tighter lines,
    and ran out of the box; it is drawn at the size it fitted at.
+16. **The desktop app could not print.** The macOS webview has no print for
+   a page's content, and a webview's print would print the app around the
+   document. File → Print now hands the file as it stands to PDFKit, which
+   prints it in the system print sheet on Warraq's window: vector pages,
+   scaled to the paper, a protected file with its password, and a file that
+   forbids printing refused, as Acrobat does.
 
 ## Known gaps, stated plainly
 * **Deleted pages stay in the file's earlier revision**, like every incremental change, until a clean copy is written; extracting pages writes one. Bookmarks and links that pointed at a deleted page are left pointing nowhere in the open file.
 * **A few of EmbedPDF's strings are English in any language**: they are written into its code, not its translations — its loading screens, some text-style tooltips, and default options it writes into new list fields ("Option 1–3").
-* **On desktop, EmbedPDF's Print is hidden**: the macOS webview has no browser print. Its file buttons (screenshot, insert image, attachment, signature upload) go through the native panels; that is tested against a stand-in for the host, not yet clicked in the installed window.
+* **On desktop, EmbedPDF's own Print button is hidden**; File → Print (Cmd+P) prints the file as it stands through PDFKit and the system print sheet on macOS — tested by printing the corpus into a PDF through the same operation, not yet with a person at a printer. Windows and Linux builds do not offer Print yet. EmbedPDF's file buttons (screenshot, insert image, attachment, signature upload) go through the native panels; that is tested against a stand-in for the host, not yet clicked in the installed window.
 * **Another app that redraws a field can undo the Arabic.** Warraq writes each Arabic field and text box's appearance itself; a program that regenerates appearances when you edit the field there (Chrome's viewer, some others) may draw it again with a font that has no Arabic.
 * **Dragging a file over the desktop window gives no highlight.** The host catches the OS drag before the webview sees it, and only the drop is forwarded, not the hover. The drop itself works; the invitation to drop does not appear.
 * **Finder does not offer Warraq for a PDF.** The bundle claims no document types on purpose — an editor should not take over the system PDF handler unasked. Open from inside the app, or pass the path on the command line.

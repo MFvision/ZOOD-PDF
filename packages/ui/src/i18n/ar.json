@@ -360,6 +360,8 @@
   "password.open": "فتح",
   "password.title": "كلمة المرور مطلوبة",
   "password.wrong": "لم تفتح كلمة المرور هذه الملف. حاول مرة أخرى.",
+  "print.failed": "تعذّرت طباعة الملف.",
+  "print.forbidden": "لا يسمح هذا الملف بالطباعة.",
   "ribbon.context": "الأداة النشطة: {tool}",
   "ribbon.label": "شريط الأدوات",
   "shortcuts.action": "الإجراء",

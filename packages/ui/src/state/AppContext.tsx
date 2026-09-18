@@ -11,7 +11,15 @@ import {
 import type { ChangeEvent, Dispatch, ReactNode } from 'react';
 import { getSharedCoreClient } from '../core/client';
 import { installDesktopFileBridge } from '../core/desktopFiles';
-import { isTauriHost, onNativeFileDrop, pickPdfFile, savePdfFile, takeStartupFile } from '../core/host-tauri';
+import {
+  isTauriHost,
+  onNativeFileDrop,
+  pickPdfFile,
+  printAvailable,
+  printPdf,
+  savePdfFile,
+  takeStartupFile,
+} from '../core/host-tauri';
 import type { PickedFile } from '../core/host-tauri';
 import type { CoreClient, RemoteDocument } from '../core/client';
 import type { PluginRegistry } from '@embedpdf/react-pdf-viewer';
@@ -911,10 +919,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const organizing = state.rightPane.activeTool === 'organize' && state.document !== null;
 
+  // Desktop print: the host says whether it can (PDFKit, macOS).
+  const [nativePrint, setNativePrint] = useState(false);
+  useEffect(() => {
+    if (isTauriHost()) void printAvailable().then(setNativePrint, () => setNativePrint(false));
+  }, []);
+
+  const printFile = useCallback(async () => {
+    const bytes = await currentFileBytes();
+    if (!bytes) return;
+    try {
+      await printPdf(bytes, passwordRef.current);
+    } catch (error) {
+      const forbidden = String(error).includes('E_PRINT_FORBIDDEN');
+      dispatch({ type: 'DOCUMENT_FAILED', error: forbidden ? 'print.forbidden' : 'print.failed' });
+    }
+  }, [currentFileBytes]);
+
   const viewCommand = useCallback(
     (command: ViewCommand) => {
       // Mid-switch neither engine holds the current file.
       if (stateRef.current.switching) return;
+      // The desktop prints the file itself, with the system's print sheet.
+      if (command === 'print' && isTauriHost()) {
+        void printFile();
+        return;
+      }
       if (stateRef.current.rightPane.activeTool === 'organize') {
         // The page grid has no zoom or find; undo and redo are its own.
         if (command === 'undo' || command === 'redo') void organizeStep(command);
@@ -948,7 +978,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return;
       }
     },
-    [undoEdit, redoEdit, organizeStep],
+    [undoEdit, redoEdit, organizeStep, printFile],
   );
 
   const viewCommandOn = useCallback((command: ViewCommand): boolean => {
@@ -976,7 +1006,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     : embedShowing
       ? embedHistory.canRedo
       : !state.edit.busy && canRedoStack(state.edit.stack);
-  const canPrint = embedShowing && !isTauriHost();
+  // A browser prints through EmbedPDF while it is on screen; the desktop
+  // prints the file itself, from either view, once no switch is under way.
+  const canPrint = isTauriHost()
+    ? nativePrint && state.view === 'viewer' && state.document !== null && state.switching === null
+    : embedShowing;
 
   const saveDocument = useCallback(async () => {
     const doc = documentRef.current;

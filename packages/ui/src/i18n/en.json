@@ -360,6 +360,8 @@
   "password.open": "Open",
   "password.title": "Password required",
   "password.wrong": "That password did not open the file. Try again.",
+  "print.failed": "The file could not be printed.",
+  "print.forbidden": "This file does not allow printing.",
   "ribbon.context": "Active tool: {tool}",
   "ribbon.label": "Tool ribbon",
   "shortcuts.action": "Action",

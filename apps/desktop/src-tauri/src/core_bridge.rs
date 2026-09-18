@@ -377,6 +377,15 @@ fn decode_password(hex: &str) -> Option<String> {
     String::from_utf8(bytes?).ok()
 }
 
+/// The password a request carries in its header, if any (`doc_open`, `print_pdf`).
+pub(crate) fn password_from(request: &Request<'_>) -> Option<String> {
+    request
+        .headers()
+        .get(PASSWORD_HEADER)
+        .and_then(|value| value.to_str().ok())
+        .and_then(decode_password)
+}
+
 /// `Document.open(bytes, password?)`. The PDF arrives as the raw request body
 /// (an `ArrayBuffer` on the JS side), never as a JSON array of numbers.
 #[tauri::command(async)]
@@ -387,11 +396,7 @@ pub fn doc_open(bridge: State<'_, CoreBridge>, request: Request<'_>) -> Result<u
             return Err("E_PARSE: doc_open expects the PDF bytes as the raw request body".into())
         }
     };
-    let password = request
-        .headers()
-        .get(PASSWORD_HEADER)
-        .and_then(|value| value.to_str().ok())
-        .and_then(decode_password);
+    let password = password_from(&request);
     let size = bytes.len();
     let handle = bridge.call(move |registry| registry.open(bytes, password.as_deref()))??;
     let pages = bridge

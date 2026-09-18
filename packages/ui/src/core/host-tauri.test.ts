@@ -7,6 +7,8 @@ import {
   onNativeFileDrop,
   pickFiles,
   pickPdfFile,
+  printAvailable,
+  printPdf,
   saveFileAs,
   savePdfFile,
   takeStartupFile,
@@ -279,6 +281,32 @@ describe('native file dialogs', () => {
     const write = calls.find((c) => c.cmd === 'plugin:fs|write_file');
     expect(write?.args).toBe(bytes);
     expect(write?.options?.headers).toEqual({ path: encodeURIComponent('/Users/me/تقرير (الصفحات).zip') });
+  });
+});
+
+describe('printing', () => {
+  it('sends the file as the raw body, and its password hex-encoded', async () => {
+    const calls = fakeHost({ print_pdf: null });
+    const bytes = new Uint8Array([0x25, 0x50, 0x44, 0x46]).buffer;
+    await printPdf(bytes, 'سر');
+    const print = calls.find((c) => c.cmd === 'print_pdf');
+    expect(print?.args).toBe(bytes);
+    expect(print?.options?.headers).toEqual({ 'x-warraq-password-hex': 'd8b3d8b1' });
+    await printPdf(bytes);
+    expect(calls.filter((c) => c.cmd === 'print_pdf')[1]?.options).toBeUndefined();
+  });
+
+  it("passes on the host's reason when it cannot print", async () => {
+    fakeHost({ print_pdf: new Error('E_PRINT_FORBIDDEN: this file does not allow printing') });
+    await expect(printPdf(new ArrayBuffer(4))).rejects.toThrow('E_PRINT_FORBIDDEN');
+  });
+
+  it('is offered only where the host says it can, and never in a browser', async () => {
+    expect(await printAvailable()).toBe(false);
+    fakeHost({ print_available: true });
+    expect(await printAvailable()).toBe(true);
+    fakeHost({ print_available: false });
+    expect(await printAvailable()).toBe(false);
   });
 });
 

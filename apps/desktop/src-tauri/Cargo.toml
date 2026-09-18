@@ -53,6 +53,20 @@ warraq-render = { path = "../../../packages/core/warraq-render", features = ["pd
 # `Direction` (rtl/ltr) for the text-line DTOs.
 warraq-text = { path = "../../../packages/core/warraq-text" }
 
+# Print (src/print.rs): PDFKit prints the PDF itself in the system's print
+# sheet. The same objc2 family Tauri already links (MIT OR Apache-2.0 OR Zlib).
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSData", "NSDictionary", "NSString", "NSURL"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSPrintInfo", "NSPrintOperation", "NSResponder", "NSView", "NSWindow"] }
+objc2-pdf-kit = { version = "0.3", default-features = false, features = ["std", "PDFDocument", "objc2-app-kit"] }
+
+# A test that prints through PDFKit into a file: AppKit wants the main thread,
+# which only a test without the harness runs on.
+[[test]]
+name = "print"
+harness = false
+
 [profile.release]
 opt-level = 3
 lto = "thin"

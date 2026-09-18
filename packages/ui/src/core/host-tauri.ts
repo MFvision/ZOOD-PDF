@@ -235,6 +235,24 @@ export async function saveFileAs(bytes: Uint8Array, suggestedName: string, filte
   return true;
 }
 
+/** Whether the desktop host can print (PDFKit, on macOS): the interface offers Print only then. */
+export async function printAvailable(): Promise<boolean> {
+  if (!internals()) return false;
+  return (await invoke('print_available')) === true;
+}
+
+/**
+ * Opens the system print sheet for `bytes` — the file as it stands — with its
+ * password, if it has one, in the header `doc_open` reads. Rejects with the
+ * host's reason: `E_PASSWORD`, `E_PRINT_FORBIDDEN` (the file does not allow
+ * printing), `E_PRINT`.
+ */
+export async function printPdf(bytes: ArrayBuffer, password?: string): Promise<void> {
+  const options =
+    password === undefined ? undefined : { headers: { 'x-warraq-password-hex': toHex(password) } };
+  await invoke('print_pdf', bytes, options);
+}
+
 /** `saveFileAs` for a PDF. */
 export function savePdfFile(bytes: Uint8Array, suggestedName: string): Promise<boolean> {
   return saveFileAs(bytes, suggestedName, PDF);
