@@ -287,6 +287,31 @@ impl PdfDocument {
         Ok(())
     }
 
+    /// Inserts every page of `other` at position `at` (0 puts them first,
+    /// `page_count()` last), with everything they use and their form fields,
+    /// as an update of this file. Returns how many pages came in.
+    pub fn insert_document(&mut self, other: &PdfDocument, at: usize) -> Result<usize> {
+        let before = self.pages.len();
+        if at > before {
+            return Err(Error::Page(at));
+        }
+        self.append_document(other)?;
+        let added = self.pages.len() - before;
+        let order: Vec<usize> = (0..at)
+            .chain(before..before + added)
+            .chain(at..before)
+            .collect();
+        self.reorder_pages(&order)?;
+        // Appending changed the catalog in place (the form, the page labels),
+        // which an update has to carry like any other change.
+        if let Ok(Object::Reference(root)) = self.doc.trailer.get(b"Root") {
+            let root = *root;
+            self.mark_touched(root);
+        }
+        self.drop_unreachable_additions();
+        Ok(added)
+    }
+
     /// `other`'s top-level form fields, renumbered by `map`, added to this
     /// document's `/AcroForm`, renamed where a name is already taken: fields
     /// with the same name are one field in PDF and would share their value.
@@ -439,8 +464,8 @@ impl PdfDocument {
         }
     }
 
-    /// Drops every object that cannot be reached from the trailer.
-    pub(crate) fn prune_unreachable(&mut self) {
+    /// Every object the trailer reaches.
+    fn reachable(&self) -> HashSet<ObjectId> {
         let mut reachable = HashSet::new();
         let mut queue: VecDeque<ObjectId> = VecDeque::new();
         for (_, value) in self.doc.trailer.iter() {
@@ -454,7 +479,30 @@ impl PdfDocument {
                 collect_references(object, &mut queue);
             }
         }
+        reachable
+    }
+
+    /// Drops every object that cannot be reached from the trailer.
+    pub(crate) fn prune_unreachable(&mut self) {
+        let reachable = self.reachable();
         self.doc.objects.retain(|id, _| reachable.contains(id));
+    }
+
+    /// Drops objects added since the file was opened that nothing reaches —
+    /// another file's catalog and page tree, brought along by an insert — so
+    /// an update does not carry them. What the file had stays as it was.
+    fn drop_unreachable_additions(&mut self) {
+        let reachable = self.reachable();
+        let added: Vec<ObjectId> = self
+            .doc
+            .objects
+            .keys()
+            .copied()
+            .filter(|id| self.is_addition(*id) && !reachable.contains(id))
+            .collect();
+        for id in added {
+            self.doc.objects.remove(&id);
+        }
     }
 }
 
@@ -708,6 +756,44 @@ mod tests {
             (corpus("generated/variant-encrypted-aes256.pdf"), None),
         ]);
         assert!(matches!(wrong, Err(Error::Password)));
+    }
+
+    #[test]
+    fn inserting_a_file_puts_its_pages_at_the_position_as_an_update() {
+        let mut doc = PdfDocument::open(corpus(THREE), None).unwrap();
+        let before = contents(&doc);
+        let form =
+            PdfDocument::open(corpus("generated/acroform-pdflib-arabic-fields.pdf"), None).unwrap();
+        let theirs = form.page_count();
+        assert_eq!(doc.insert_document(&form, 1).unwrap(), theirs);
+        let after = contents(&doc);
+        assert_eq!(after.len(), 3 + theirs);
+        assert_eq!(after[0], before[0]);
+        assert_eq!(after[1 + theirs..], before[1..]);
+        // Only what the new pages use comes along, not the other file's catalog.
+        let catalogs = doc
+            .doc
+            .objects
+            .values()
+            .filter(|o| {
+                o.as_dict()
+                    .ok()
+                    .and_then(|d| d.get(b"Type").ok())
+                    .and_then(|t| t.as_name().ok())
+                    == Some(b"Catalog".as_slice())
+            })
+            .count();
+        assert_eq!(catalogs, 1);
+        let back = reopen(&mut doc);
+        assert_eq!(back.page_count(), 3 + theirs);
+        assert!(
+            back.doc.catalog().unwrap().has(b"AcroForm"),
+            "their fields join this file's form, in the update"
+        );
+        assert!(matches!(
+            doc.insert_document(&form, 99),
+            Err(Error::Page(99))
+        ));
     }
 
     #[test]

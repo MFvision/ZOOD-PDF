@@ -103,6 +103,11 @@ impl PdfDocument {
         }
     }
 
+    /// Whether `id` was added since the file was opened, rather than read from it.
+    pub(crate) fn is_addition(&self, id: ObjectId) -> bool {
+        id.0 > self.base_max_id
+    }
+
     /// Ids that an incremental update must carry: everything we added plus
     /// everything we modified.
     pub fn dirty_ids(&self) -> std::collections::BTreeSet<u32> {

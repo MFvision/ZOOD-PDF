@@ -101,6 +101,64 @@ fn extract_returns_a_new_file_and_leaves_the_open_one_alone() {
 }
 
 #[test]
+fn insert_file_puts_another_file_s_pages_at_the_position_with_their_text() {
+    let mut doc = Document::open(corpus(THREE), None).unwrap();
+    let before = texts(&doc);
+    let other_bytes = corpus("realworld/A_worldbank_malpass_g7_briefing_AR_word2016_pdftools.pdf");
+    let other = texts(&Document::open(other_bytes.clone(), None).unwrap());
+    let reply = doc
+        .call("pages.insert_file", r#"{"at":1}"#, vec![other_bytes])
+        .unwrap();
+    assert_eq!(json(&reply)["pageCount"], 3 + other.len());
+    let expected: Vec<String> = [&before[..1], &other[..], &before[1..]].concat();
+    assert_eq!(texts(&doc), expected);
+    assert_eq!(texts(&reopen(&mut doc)), expected);
+}
+
+#[test]
+fn insert_file_opens_a_protected_file_with_its_password_and_keeps_the_open_one_protected() {
+    let locked = corpus("generated/variant-encrypted-aes256.pdf");
+    let mut plain = Document::open(corpus(THREE), None).unwrap();
+    assert!(plain
+        .call("pages.insert_file", r#"{"at":0}"#, vec![locked.clone()])
+        .is_err());
+    assert_eq!(
+        plain.page_count(),
+        3,
+        "a file that did not open changes nothing"
+    );
+    plain
+        .call(
+            "pages.insert_file",
+            r#"{"at":0,"password":"warraq"}"#,
+            vec![locked.clone()],
+        )
+        .unwrap();
+    assert_eq!(plain.page_count(), 6);
+
+    // Into a protected file: the new pages are encrypted with the rest.
+    let mut doc = Document::open(locked, Some("warraq")).unwrap();
+    let n = doc.page_count();
+    let three = corpus(THREE);
+    doc.call(
+        "pages.insert_file",
+        &format!(r#"{{"at":{n}}}"#),
+        vec![three.clone()],
+    )
+    .unwrap();
+    let saved = doc.save().unwrap();
+    assert!(
+        Document::open(saved.clone(), None).is_err(),
+        "still protected"
+    );
+    let back = Document::open(saved, Some("warraq")).unwrap();
+    assert_eq!(
+        texts(&back)[n..],
+        texts(&Document::open(three, None).unwrap())[..]
+    );
+}
+
+#[test]
 fn combine_needs_no_open_document() {
     let three = corpus(THREE);
     let word = corpus("realworld/A_worldbank_malpass_g7_briefing_AR_word2016_pdftools.pdf");

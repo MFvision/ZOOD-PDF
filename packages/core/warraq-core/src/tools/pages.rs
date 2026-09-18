@@ -1,5 +1,5 @@
 //! Organize pages and Combine files: rotate, reorder, delete, insert a blank
-//! page, extract pages into a new file, combine files. The page structure is
+//! page or another file's pages, extract pages into a new file, combine files. The page structure is
 //! edited in Warraq's object layer (`warraq_pdf::pages`), so every change is an
 //! incremental update of the open file; extract and combine write new files.
 use serde::{Deserialize, Serialize};
@@ -34,6 +34,15 @@ struct InsertBlank {
     like: usize,
 }
 
+#[derive(Deserialize)]
+struct InsertFile {
+    /// 0 puts the pages first, the page count last.
+    at: usize,
+    /// The inserted file's, when it has one.
+    #[serde(default)]
+    password: Option<String>,
+}
+
 #[derive(Deserialize, Default)]
 struct Combine {
     /// One per file, in order; null for a file without a password.
@@ -63,7 +72,7 @@ pub fn call(
     doc: &mut Document,
     name: &str,
     json: &str,
-    _blobs: Vec<Vec<u8>>,
+    blobs: Vec<Vec<u8>>,
 ) -> Result<Reply, CoreError> {
     match name {
         "rotate" => {
@@ -81,6 +90,14 @@ pub fn call(
         "insert_blank" => {
             let a: InsertBlank = args(json)?;
             doc.pdf_mut().insert_blank_page(a.at, a.like)?;
+        }
+        "insert_file" => {
+            let a: InsertFile = args(json)?;
+            let bytes = blobs.into_iter().next().ok_or_else(|| {
+                CoreError::Args("pages.insert_file needs the file's bytes".into())
+            })?;
+            let other = warraq_pdf::PdfDocument::open(bytes, a.password.as_deref())?;
+            doc.pdf_mut().insert_document(&other, a.at)?;
         }
         "extract" => {
             let a: Pages = args(json)?;
