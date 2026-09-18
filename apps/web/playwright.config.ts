@@ -11,7 +11,8 @@ import { defineConfig } from '@playwright/test';
  *
  * A tool is not done until a spec here proves it through the interface.
  */
-const PORT = 4391;
+// WARRAQ_E2E_PORT lets two checkouts (say, a worktree) run the suite at once.
+const PORT = Number(process.env.WARRAQ_E2E_PORT ?? 4391);
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
