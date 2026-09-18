@@ -27,6 +27,7 @@ import { appReducer, createInitialState } from './appReducer';
 import type { AppAction, AppState } from './appReducer';
 import { readPreferences, writePreferences } from './preferences';
 import { addRecent, clearRecent as clearStoredRecent, readRecent } from './recent';
+import { isPdf, namedLikePdf } from './pdfFile';
 import { downloadPdf, pdfFileName } from './saveFile';
 
 export interface AppServices {
@@ -62,9 +63,8 @@ function toFile(picked: PickedFile): File {
   return new File([picked.bytes], picked.name, { type: 'application/pdf' });
 }
 
-export function isPdfFile(file: File): boolean {
-  return file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
-}
+/** A dropped or picked file whose name or type says PDF; see `pdfFile.ts`. */
+export const isPdfFile = namedLikePdf;
 
 function errorKeyFor(err: unknown): TKey {
   const code = (err as { code?: string } | null)?.code;
@@ -129,7 +129,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const openFile = useCallback(
     async (file: File) => {
-      if (!isPdfFile(file)) {
+      // By content, not by name: see `pdfFile.ts`.
+      if (!(await isPdf(file))) {
         dispatch({ type: 'DOCUMENT_FAILED', error: 'error.notPdf' });
         return;
       }
