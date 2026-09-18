@@ -152,7 +152,8 @@ export const TOOLS: readonly ToolDefinition[] = [
       { command: 'form:add-listbox', labelKey: 'action.listbox', icon: ListChecks },
     ],
   },
-  { id: 'ai', labelKey: 'tool.ai', icon: Sparkles, implemented: false },
+  // Warraq's own: the person's Anthropic key or a local model, only on Send (`ai/AiPanel.tsx`).
+  { id: 'ai', labelKey: 'tool.ai', icon: Sparkles, implemented: true },
 ];
 
 export function findTool(id: ToolId): ToolDefinition | undefined {

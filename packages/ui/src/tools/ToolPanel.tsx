@@ -1,3 +1,4 @@
+import { AiPanel } from '../ai/AiPanel';
 import { Icon } from '../components/Icon';
 import { CombinePanel } from '../combine/CombinePanel';
 import { CompressPanel } from '../compress/CompressPanel';
@@ -19,6 +20,7 @@ export function ToolPanel({ tool }: { tool: ToolDefinition }) {
   if (tool.id === 'compress') return <CompressPanel />;
   if (tool.id === 'ocr') return <OcrPanel />;
   if (tool.id === 'export') return <ExportPanel />;
+  if (tool.id === 'ai') return <AiPanel />;
   if (tool.actions && tool.actions.length > 0) return <EmbedToolPanel tool={tool} />;
   return (
     <div className="tool-panel">

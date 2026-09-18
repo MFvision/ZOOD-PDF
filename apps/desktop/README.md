@@ -152,11 +152,13 @@ PDFIUM_LIB_DIR=/path/to/lib cargo test           # or point it somewhere else
 ### Content Security Policy
 
 `tauri.conf.json` carries the web app's CSP (`default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; …;
-object-src 'none'`) with one addition, `connect-src 'self' ipc: http://ipc.localhost`. Those two sources are
+object-src 'none'`) with one addition, `ipc: http://ipc.localhost` in `connect-src`. Those two sources are
 Tauri's in-process IPC loopback (custom `ipc://localhost` scheme on macOS/Linux, `http://ipc.localhost` on
 Windows), not network origins; without them Tauri's IPC falls back to `postMessage` and every binary response
 (`read_file_bytes`) is JSON-encoded byte by byte. Tauri also appends the nonce/hash of its own injected scripts
-at runtime.
+at runtime. Like the web app's, `connect-src` also names the AI tool's providers — `https://api.anthropic.com`
+and Ollama's port on this computer, `http://localhost:11434 http://127.0.0.1:11434` — which receive a
+document's text only when the person presses Send in that tool.
 
 ## Signing and notarization — TODO
 
