@@ -985,10 +985,14 @@ impl PdfDocument {
             head.push_str(&draw(p));
         }
         head.push_str("q\n");
-        let mut open = 0usize;
+        // Counted over the page's streams as one: a `q` in one may be closed
+        // by a `Q` in the next.
+        let mut joined = Vec::new();
         for id in &theirs {
-            open += open_saves(&self.stream_bytes(*id).unwrap_or_default());
+            joined.extend(self.stream_bytes(*id).unwrap_or_default());
+            joined.push(b'\n');
         }
+        let open = open_saves(&joined);
         let mut tail = "Q\n".repeat(open + 1);
         for p in marks.iter().filter(|p| p.front) {
             tail.push_str(&draw(p));
@@ -1143,7 +1147,7 @@ pub(crate) fn upright(doc: &PdfDocument, index: usize) -> crate::text_walk::Matr
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     const AMIRI: &[u8] = include_bytes!("../../../../tests/fonts/Amiri-Regular.ttf");

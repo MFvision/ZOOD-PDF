@@ -58,6 +58,20 @@ Tool operations (`warraq-core/src/tools`), all answering JSON plus bytes:
 | `pages.insert_file` | `{at: number, password?: string}` + the other file (its pages go in at `at`, with their form fields) | `{pageCount, pageSizes}` |
 | `pages.extract` | `{pages: number[]}` (in that order) | `{pageCount}` + the new file |
 | `pages.combine` (static) | `{passwords?: (string\|null)[]}` + one blob per file | `{pageCount}` + the new file |
+| `marks.add` (static) | `{password?, mark, pages?: number[], replace?: bool (default true), replaceIds?: number[], fontBlob?, imageBlob?}` + the PDF, then the font and/or the PNG/JPEG at those blob indices. `mark`: `{kind: "watermark"\|"header"\|"footer"\|"pageNumber"\|"bates", text?, imageWidth?, position?: "topLeft"…"bottomRight"\|"center"\|"tiled", slots?: [start, centre, end], direction?: "auto"\|"rtl"\|"ltr", format?: "plain"\|"ofTotal"\|"pageOfEnglish"\|"pageOfArabic"\|"roman", start?, skipFirst?, prefix?, suffix?, width?, size?, color?: "#rrggbb", opacity?, rotation?, marginX?, marginY?, front?, numerals?: "western"\|"arabic", date?, fileName?, modified?}`; tokens `{page}` `{pages}` `{date}` `{file}` | `{id}` + the file with the mark, as an incremental update |
+| `marks.preview` (static) | as `marks.add`, plus `{page, scale}` | `{width, height}` + RGBA of that page with the mark |
+| `marks.list` (static) | `{password?}` + the PDF | `{marks: [{id, kind, front, spec, pages}]}` (`spec` is the `mark` it was made with) |
+| `marks.remove` (static) | `{password?, ids?: number[], pages?: number[]}` (empty: all) + the PDF | `{removed}` + the file |
+| `marks.text` (static) | `{password?, page}` + the PDF | `{marks, page}`: what the page's artifacts say, and what the page says without them |
+| `images.list` | `{page}` (also static, with `password?` + the PDF) | `{images: [{id, matrix, clip, pixels, inline, inForm, shared}]}`; `matrix` takes the unit square onto the page as shown (points, y down) |
+| `images.add` | `{page, matrix}` + the PNG/JPEG | `{id}` |
+| `images.transform` | `{page, id, matrix, clip?: [u0, v0, u1, v1]}` | `{images}` |
+| `images.replace` | `{page, id}` + the PNG/JPEG (fitted inside what showed) | `{images}` |
+| `images.delete` | `{page, id}` | `{images}` |
+| `links.list` | `{page}` (also static) | `{links: [{id, rect: [x, y, w, h], to: {uri} \| {page} \| {}}]}` |
+| `links.add` | `{page, rect, to: {uri} \| {page}}` (only `http`, `https`, `mailto`) | `{links, id}` |
+| `links.update` | `{page, id, rect?, to?}` | `{links}` |
+| `links.remove` | `{page, id}` | `{links}` |
 
 Errors add `E_ARGS` (arguments that do not parse) and `E_UNKNOWN_OP`.
 

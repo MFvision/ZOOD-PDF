@@ -416,6 +416,12 @@ fn usable(m: Matrix) -> bool {
 
 impl PdfDocument {
     fn find_images(&self, index: usize) -> Result<(Vec<Found>, Matrix)> {
+        self.walk_images(index, None)
+    }
+
+    /// The pictures of the page's first `streams` content streams (all of
+    /// them when `None`), and the transform in effect after them.
+    fn walk_images(&self, index: usize, streams: Option<usize>) -> Result<(Vec<Found>, Matrix)> {
         let page_id = self.page_id(index)?;
         let resources: Vec<&Dictionary> = self.page_resources(page_id).into_iter().collect();
         let mut walker = Walker {
@@ -427,8 +433,9 @@ impl PdfDocument {
             ctm: Matrix::IDENTITY,
             stack: Vec::new(),
         };
-        for id in self.content_ids(page_id) {
-            walker.stream(id, &resources, &mut state, 0, Holder::Page);
+        let ids = self.content_ids(page_id);
+        for id in ids.iter().take(streams.unwrap_or(ids.len())) {
+            walker.stream(*id, &resources, &mut state, 0, Holder::Page);
         }
         Ok((walker.found, state.ctm))
     }
@@ -573,7 +580,9 @@ impl PdfDocument {
                     s.dict.get(b"WarraqMarks").and_then(Object::as_name).ok() == Some(b"After")
                 })
         });
-        let (_, base) = self.find_images(index)?;
+        // The transform in effect where the new stream goes: after the
+        // page's content, before the marks' closing stream.
+        let (_, base) = self.walk_images(index, after_marks)?;
         let base = if usable(base) { base } else { Matrix::IDENTITY };
         let op = format!("{} Do", name_text(&name)).into_bytes();
         let stream = self.new_stream(Dictionary::new(), wrap(&op, base, placement, FULL)?);
@@ -830,5 +839,43 @@ mod tests {
         doc.replace_image(0, &images[1].id.clone(), &png(8, 8))
             .unwrap();
         assert_eq!(doc.list_images(0).unwrap()[1].pixels, (8, 8));
+    }
+
+    /// Chrome leaves a transform in effect after its content, and page marks
+    /// close the page's state again after it: a picture placed on such a
+    /// page goes between the two, under the page's transform, and still
+    /// lands where it was asked to — in front of the page, behind the marks.
+    #[test]
+    fn a_picture_placed_on_a_marked_page_lands_where_it_was_asked() {
+        const AMIRI: &[u8] = include_bytes!("../../../../tests/fonts/Amiri-Regular.ttf");
+        let mut doc =
+            PdfDocument::open(corpus("chrome-notonaskh-justified-3pages.pdf"), None).unwrap();
+        let mark = crate::marks::tests::mark(
+            crate::MarkKind::Footer,
+            crate::MarkContent::Band {
+                slots: ["x".into(), String::new(), String::new()],
+                direction: crate::SlotDirection::Ltr,
+            },
+        );
+        doc.add_mark(&mark, &[0], Some(AMIRI), true).unwrap();
+        let at = [100.0, 0.0, 0.0, -50.0, 72.0, 122.0];
+        doc.add_image(0, at, &png(4, 2)).unwrap();
+        let listed = doc.list_images(0).unwrap();
+        assert!(close(listed[0].matrix, at), "{:?}", listed[0].matrix);
+        let page = doc.page_id(0).unwrap();
+        let ids = doc.content_ids(page);
+        let last = doc
+            .doc
+            .get_object(*ids.last().unwrap())
+            .unwrap()
+            .as_stream()
+            .unwrap();
+        assert!(
+            last.dict.has(b"WarraqMarks"),
+            "the marks still close the page"
+        );
+        // Taking the mark off keeps the picture.
+        doc.remove_marks(&[], &[]).unwrap();
+        assert!(close(doc.list_images(0).unwrap()[0].matrix, at));
     }
 }
