@@ -14,3 +14,6 @@ tests/corpus/**/generated-large/
 
 # Local toolchain helpers for this machine (see .tools/env.sh); never committed.
 .tools/
+
+# Agent worktrees (Claude Code); each is its own checkout.
+.claude/worktrees/

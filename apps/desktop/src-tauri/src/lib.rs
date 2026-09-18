@@ -38,6 +38,14 @@ fn startup_file(state: State<'_, StartupFile>) -> Option<String> {
     path
 }
 
+/// A line from the interface into the `WARRAQ_DEBUG` log: what EmbedPDF did in
+/// the webview — a document opened, pages drawn, an error — which the host
+/// cannot see for itself. Silent unless `WARRAQ_DEBUG` is set.
+#[tauri::command]
+fn ui_log(message: String) {
+    core_bridge::debug_log(format!("ui: {message}"));
+}
+
 /// Version of the natively linked core, so the UI can show that the desktop
 /// build and the WASM build carry the same `warraq-core`.
 #[tauri::command]
@@ -116,6 +124,7 @@ pub fn run() {
             core_version,
             read_file_bytes,
             startup_file,
+            ui_log,
             core_bridge::core_engine,
             core_bridge::doc_open,
             core_bridge::doc_close,

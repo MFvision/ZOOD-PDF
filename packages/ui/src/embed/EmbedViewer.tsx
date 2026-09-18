@@ -4,7 +4,7 @@ import type { PDFViewerConfig, PluginRegistry } from '@embedpdf/react-pdf-viewer
 import pdfiumWasmUrl from '@embedpdf/pdfium/pdfium.wasm?url';
 import { useEffect, useMemo, useRef } from 'react';
 import standardStamps from '../../public/stamps/en/manifest.json';
-import { isTauriHost } from '../core/host-tauri';
+import { isTauriHost, uiLog } from '../core/host-tauri';
 import { disabledCategories } from './embedControl';
 
 /**
@@ -65,6 +65,25 @@ interface DocumentManager {
   closeDocument(documentId: string): { toPromise(): Promise<void> };
 }
 
+/**
+ * Desktop only: says in the host's `WARRAQ_DEBUG` log whether EmbedPDF drew
+ * any pages — the one thing the host cannot see, on a machine where nobody
+ * can look at the window for it.
+ */
+function reportDrawn(name: string): void {
+  if (!isTauriHost()) return;
+  const started = performance.now();
+  const check = () => {
+    const root = document.querySelector('embedpdf-container')?.shadowRoot;
+    const drawn = root ? [...root.querySelectorAll('img')].filter((img) => img.naturalWidth > 0).length : 0;
+    const elapsed = Math.round(performance.now() - started);
+    if (drawn > 0) uiLog(`embedpdf drew ${drawn} tiles of ${name} in ${elapsed} ms`);
+    else if (elapsed > 15_000) uiLog(`embedpdf drew nothing of ${name} in 15 s`);
+    else setTimeout(check, 250);
+  };
+  check();
+}
+
 function documentManager(registry: PluginRegistry): DocumentManager | null {
   const plugin = registry.getPlugin('document-manager') as { provides?: () => DocumentManager } | null;
   return plugin?.provides?.() ?? null;
@@ -102,10 +121,16 @@ export function EmbedViewer({ bytes, name, password, theme, onRegistry }: EmbedV
       openedRef.current = null;
     }
     // A copy: the engine may take the buffer over, and Warraq keeps its own.
-    const response = await manager
-      .openDocumentBuffer({ buffer: current.slice(0), name: currentName, password: currentPassword, autoActivate: true })
-      .toPromise();
-    openedRef.current = response.documentId;
+    try {
+      const response = await manager
+        .openDocumentBuffer({ buffer: current.slice(0), name: currentName, password: currentPassword, autoActivate: true })
+        .toPromise();
+      openedRef.current = response.documentId;
+      uiLog(`embedpdf opened ${currentName}`);
+      reportDrawn(currentName);
+    } catch (error) {
+      uiLog(`embedpdf could not open ${currentName}: ${JSON.stringify(error)}`);
+    }
   };
 
   // A different document, or new bytes after a Warraq edit, reopens it.
@@ -119,6 +144,7 @@ export function EmbedViewer({ bytes, name, password, theme, onRegistry }: EmbedV
       className="embed-viewer"
       config={config}
       onReady={(registry) => {
+        uiLog('embedpdf ready');
         registryRef.current = registry;
         onRegistry?.(registry);
         void open(registry, bytes, name, password);

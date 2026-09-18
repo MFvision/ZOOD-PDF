@@ -43,6 +43,16 @@ function invoke(cmd: string, args?: unknown, options?: InvokeOptions): Promise<u
   return host.invoke(cmd, args, options);
 }
 
+/**
+ * Tells the desktop host's `WARRAQ_DEBUG` log what happened in the webview
+ * (the host prints nothing unless that is set). A no-op in a browser; never
+ * fails the caller.
+ */
+export function uiLog(message: string): void {
+  if (!isTauriHost()) return;
+  invoke('ui_log', { message }).catch(() => undefined);
+}
+
 /** Header values must be ASCII, and passwords may be Arabic. */
 function toHex(text: string): string {
   return Array.from(new TextEncoder().encode(text), (b) => b.toString(16).padStart(2, '0')).join(
