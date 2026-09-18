@@ -22,8 +22,15 @@ impl FontSubset {
         for g in &gids {
             remap.remap(*g);
         }
+        // A glyph that stands alone for its text somewhere is mapped to that
+        // text; the first glyph of a longer cluster only when nothing else
+        // claimed it. Its other glyphs have no text of their own, and a word
+        // they are in is marked with `/ActualText` where it is shown (show.rs).
         let mut tounicode = BTreeMap::new();
-        for g in glyphs {
+        let clusters = warraq_text::clusters(glyphs);
+        let (single, longer): (Vec<_>, Vec<_>) = clusters.iter().partition(|c| c.len() == 1);
+        for cluster in single.into_iter().chain(longer) {
+            let g = &glyphs[cluster.start];
             if !g.text.is_empty() {
                 tounicode
                     .entry(remap.get(g.gid).unwrap_or(0))

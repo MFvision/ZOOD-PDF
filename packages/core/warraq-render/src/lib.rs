@@ -28,6 +28,16 @@ pub struct Bitmap {
     pub rgba: Vec<u8>,
 }
 
+/// The marked-content sequences glyphs were drawn in (`BMC`/`BDC` … `EMC`):
+/// each sequence's tag, in the order they began, and for each glyph the
+/// sequences it is inside, outermost first. The sequences' properties —
+/// `/ActualText` among them — are the document's to read (`warraq-pdf`).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct MarkedGlyphs {
+    pub tags: Vec<Vec<u8>>,
+    pub inside: Vec<Vec<u32>>,
+}
+
 pub trait RenderDoc {
     fn page_count(&self) -> usize;
     /// Page size in points after rotation.
@@ -35,6 +45,11 @@ pub trait RenderDoc {
     fn render(&self, index: usize, scale: f32) -> Result<Bitmap, RenderError>;
     /// Positioned glyphs of a page in content order (page space, y down, points).
     fn glyphs(&self, index: usize) -> Result<Vec<PositionedGlyph>, RenderError>;
+    /// `glyphs`, with the marked-content sequences each was drawn in.
+    fn marked_glyphs(
+        &self,
+        index: usize,
+    ) -> Result<(Vec<PositionedGlyph>, MarkedGlyphs), RenderError>;
 }
 
 pub fn open(bytes: Vec<u8>, password: Option<&str>) -> Result<Box<dyn RenderDoc>, RenderError> {

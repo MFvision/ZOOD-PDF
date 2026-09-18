@@ -18,7 +18,7 @@ use warraq_text::{base_direction, Direction, ShapedGlyph, Shaper};
 
 use crate::document::decode_text_string;
 use crate::fonts::{embed_subset_font, FontSubset};
-use crate::ops::tj_items;
+use crate::show::{show_line, ShownLine};
 use crate::{Error, PdfDocument, Result};
 
 /// What a pass redrew.
@@ -621,9 +621,9 @@ fn layout(shaper: &Shaper, job: &Job) -> (f32, Vec<Line>) {
     (size, lines)
 }
 
-/// One line as text operators: runs of glyphs in a TJ array from a text
-/// matrix at their start; a glyph moved by the shaper (a mark, a cursive
-/// attachment) placed on its own, as `append_line` does on a page.
+/// One line as text operators, as `append_line` writes one on a page
+/// (show.rs): runs of glyphs, a moved glyph on its own, and a word its
+/// glyphs do not spell marked with its text.
 fn draw_line(
     ops: &mut Vec<Operation>,
     line: &Line,
@@ -631,56 +631,17 @@ fn draw_line(
     subset: &FontSubset,
     shaper: &Shaper,
 ) {
-    let at = |x: f32, y: f32| {
-        Operation::new(
-            "Tm",
-            vec![
-                1.into(),
-                0.into(),
-                0.into(),
-                1.into(),
-                Object::Real(x),
-                Object::Real(y),
-            ],
-        )
-    };
-    let mut pen = line.x;
-    let mut run: Vec<ShapedGlyph> = Vec::new();
-    let mut run_x = pen;
-    let flush = |ops: &mut Vec<Operation>, run: &mut Vec<ShapedGlyph>, x: f32| {
-        if !run.is_empty() {
-            ops.push(at(x, line.y));
-            ops.push(Operation::new(
-                "TJ",
-                vec![Object::Array(tj_items(subset, shaper, run))],
-            ));
-            run.clear();
-        }
-    };
-    for glyph in &line.glyphs {
-        if glyph.x_offset != 0.0 || glyph.y_offset != 0.0 {
-            flush(ops, &mut run, run_x);
-            ops.push(at(
-                pen + glyph.x_offset * size / 1000.0,
-                line.y + glyph.y_offset * size / 1000.0,
-            ));
-            ops.push(Operation::new(
-                "TJ",
-                vec![Object::Array(tj_items(
-                    subset,
-                    shaper,
-                    std::slice::from_ref(glyph),
-                ))],
-            ));
-        } else {
-            if run.is_empty() {
-                run_x = pen;
-            }
-            run.push(glyph.clone());
-        }
-        pen += glyph.x_advance * size / 1000.0;
-    }
-    flush(ops, &mut run, run_x);
+    show_line(
+        ops,
+        subset,
+        shaper,
+        &ShownLine {
+            glyphs: &line.glyphs,
+            matrix: [1.0, 0.0, 0.0, 1.0, line.x, line.y],
+            size,
+            space_stretch: 0.0,
+        },
+    );
 }
 
 #[cfg(test)]

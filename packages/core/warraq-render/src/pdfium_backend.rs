@@ -86,4 +86,10 @@ impl RenderDoc for PdfiumDoc {
     fn glyphs(&self, index: usize) -> Result<Vec<PositionedGlyph>, RenderError> {
         self.text.glyphs(index)
     }
+    fn marked_glyphs(
+        &self,
+        index: usize,
+    ) -> Result<(Vec<PositionedGlyph>, crate::MarkedGlyphs), RenderError> {
+        self.text.marked_glyphs(index)
+    }
 }

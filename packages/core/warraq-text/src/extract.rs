@@ -22,6 +22,84 @@ pub struct PositionedGlyph {
     pub font: u32,
 }
 
+/// Glyphs drawn inside a marked-content sequence with `/ActualText` stand
+/// for that text instead of their own (PDF 2.0 §14.9.4): each such run
+/// becomes one glyph, carrying the text, spanning where the run was drawn.
+///
+/// `inside[i]` lists the sequences glyph `i` was drawn in, outermost first,
+/// and `texts[k]` is sequence `k`'s `/ActualText`; the outermost text wins, as
+/// a replacement covers everything inside it. An empty text says the glyphs
+/// say nothing, and they are dropped. A run that does not sit on one line
+/// keeps its own glyphs: its text would have nowhere to go.
+pub fn with_actual_text(
+    glyphs: Vec<PositionedGlyph>,
+    inside: &[Vec<u32>],
+    texts: &[Option<String>],
+) -> Vec<PositionedGlyph> {
+    let span_of = |i: usize| -> Option<u32> {
+        inside
+            .get(i)?
+            .iter()
+            .copied()
+            .find(|k| matches!(texts.get(*k as usize), Some(Some(_))))
+    };
+    // Glyph indices of each span, in drawing order.
+    let mut runs: std::collections::BTreeMap<u32, Vec<usize>> = Default::default();
+    for i in 0..glyphs.len() {
+        if let Some(k) = span_of(i) {
+            runs.entry(k).or_default().push(i);
+        }
+    }
+    let mut replaced: std::collections::HashMap<usize, Option<PositionedGlyph>> =
+        Default::default();
+    for (k, members) in &runs {
+        let text = texts[*k as usize].clone().unwrap_or_default();
+        let run: Vec<&PositionedGlyph> = members.iter().map(|&i| &glyphs[i]).collect();
+        let base = run
+            .iter()
+            .find(|g| g.advance > 0.0)
+            .copied()
+            .unwrap_or(run[0]);
+        if run
+            .iter()
+            .any(|g| (g.y - base.y).abs() > base.size.max(1.0) * 1.5)
+        {
+            continue;
+        }
+        let merged = (!text.is_empty()).then(|| {
+            let (left, right) = if base.angle.abs() < 0.01 {
+                let left = run.iter().map(|g| g.x).fold(f32::INFINITY, f32::min);
+                let right = run
+                    .iter()
+                    .map(|g| g.x + g.advance)
+                    .fold(f32::NEG_INFINITY, f32::max);
+                (left, right)
+            } else {
+                (base.x, base.x + run.iter().map(|g| g.advance).sum::<f32>())
+            };
+            PositionedGlyph {
+                x: left,
+                advance: (right - left).max(0.0),
+                text: Some(text),
+                ..base.clone()
+            }
+        });
+        // The run's text goes where its first glyph was drawn; the rest go.
+        replaced.insert(members[0], merged);
+        for &i in &members[1..] {
+            replaced.insert(i, None);
+        }
+    }
+    glyphs
+        .into_iter()
+        .enumerate()
+        .filter_map(|(i, g)| match replaced.remove(&i) {
+            Some(merged) => merged,
+            None => Some(g),
+        })
+        .collect()
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct TextLine {
     pub text: String,
@@ -825,6 +903,48 @@ mod tests {
         assert_eq!(recompose_dots("س\u{20DB}"), "ش");
         assert_eq!(recompose_dots("ب\u{064E}"), "ب\u{064E}"); // real marks untouched
         assert_eq!(recompose_dots("ا"), "ا");
+    }
+
+    #[test]
+    fn a_run_with_actual_text_reads_as_that_text() {
+        // Amiri's الخير: the kha is two glyphs, the second without text.
+        let glyph = |x: f32, text: Option<&str>| PositionedGlyph {
+            x,
+            y: 100.0,
+            angle: 0.0,
+            size: 12.0,
+            advance: 5.0,
+            text: text.map(str::to_string),
+            gid: 1,
+            font: 0,
+        };
+        let glyphs = vec![
+            glyph(0.0, Some("ر")),
+            glyph(5.0, Some("ي")),
+            glyph(10.0, Some("خ")),
+            glyph(15.0, None),
+            glyph(20.0, Some("ل")),
+            glyph(25.0, Some("ا")),
+            glyph(40.0, Some("في")),
+        ];
+        let inside = vec![vec![0], vec![0], vec![0], vec![0], vec![0], vec![0], vec![]];
+        let texts = vec![Some("الخير".to_string())];
+        let out = with_actual_text(glyphs.clone(), &inside, &texts);
+        assert_eq!(out.len(), 2);
+        assert_eq!(out[0].text.as_deref(), Some("الخير"));
+        assert_eq!(
+            (out[0].x, out[0].advance),
+            (0.0, 30.0),
+            "the whole word's width"
+        );
+        let lines = reconstruct_lines(&out);
+        assert_eq!(lines[0].text, "في الخير");
+
+        // Without the text, the glyphs are read as they are.
+        assert_eq!(with_actual_text(glyphs.clone(), &inside, &[None]), glyphs);
+        // An empty text: decoration, not read at all.
+        let dropped = with_actual_text(glyphs, &inside, &[Some(String::new())]);
+        assert_eq!(dropped.len(), 1);
     }
 
     #[test]

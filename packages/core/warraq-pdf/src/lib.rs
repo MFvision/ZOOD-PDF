@@ -5,9 +5,11 @@ pub mod crypt;
 pub mod document;
 pub mod fonts;
 pub mod incremental;
+pub mod marked;
 pub mod ocr;
 pub mod ops;
 pub mod pages;
+mod show;
 pub mod text_walk;
 pub mod tounicode;
 

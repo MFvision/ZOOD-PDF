@@ -150,6 +150,21 @@ test that fails without its fix.
    page made rather than fetched, so the security policy is unchanged. Tested
    in Chrome against a stand-in for the host, in the ways EmbedPDF does it
    (`e2e/desktop-files.spec.ts`).
+13. **Search crashed on ﴾ ﴿ and U+FEFF.** Folding the Arabic presentation
+   forms recursed on characters that have no other form, and overflowed the
+   stack. Every character of those blocks is now searched for in a test.
+14. **Text written in Amiri did not read back as typed** (found by Compare):
+   Amiri draws kha, and lam before kaf, with two glyphs, and only the first
+   carried text, so edits read back as ال�خير and للكن — in Warraq's reader,
+   in EmbedPDF's search and in copy. A word whose glyphs do not spell it now
+   carries its text as `/ActualText` (PDF 2.0 §14.9.4), in edits, added
+   text, form appearances and the OCR layer; PDFium finds every such word,
+   checked against it directly. Warraq's own reader honours `/ActualText`
+   too, which also fixed Chrome-made Arabic PDFs: ten corpus files went from
+   garbled or partial to exact (`tests/acid`, baseline raised).
+15. **Shrink-to-fit never shrank the text.** An edit too long for its box
+   reported a smaller size but was drawn at the old one with tighter lines,
+   and ran out of the box; it is drawn at the size it fitted at.
 
 ## Known gaps, stated plainly
 * **Deleted pages stay in the file's earlier revision**, like every incremental change, until a clean copy is written; extracting pages writes one. Bookmarks and links that pointed at a deleted page are left pointing nowhere in the open file.

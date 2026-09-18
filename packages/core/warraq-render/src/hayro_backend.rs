@@ -1,5 +1,5 @@
 //! Pure-Rust backend on `hayro` (raster) and `hayro-interpret` (glyph device).
-use crate::{Bitmap, RenderDoc, RenderError};
+use crate::{Bitmap, MarkedGlyphs, RenderDoc, RenderError};
 use hayro::vello_cpu::kurbo::{Affine, BezPath, Rect};
 use hayro::{render, RenderCache, RenderSettings};
 use hayro_interpret::font::Glyph;
@@ -217,6 +217,9 @@ impl HayroDoc {
 #[derive(Default)]
 struct GlyphDevice {
     glyphs: Vec<PositionedGlyph>,
+    /// The marked-content sequences begun so far, and the ones open now.
+    marked: MarkedGlyphs,
+    open: Vec<u32>,
     font_ids: HashMap<usize, u32>,
     advance_cache: HashMap<(u32, u32), f32>,
     /// gid → code point from the embedded font's cmap (fallback when ToUnicode is missing or U+0000)
@@ -437,6 +440,7 @@ impl<'a> Device<'a> for GlyphDevice {
         };
         // baseline direction of this run; device y grows downwards, so negate
         let angle = -(c[1] as f32).atan2(c[0] as f32);
+        self.marked.inside.push(self.open.clone());
         self.glyphs.push(PositionedGlyph {
             x: center.map(|p| p.0).unwrap_or(c[4] as f32),
             y: center.map(|p| p.1).unwrap_or(c[5] as f32),
@@ -451,6 +455,13 @@ impl<'a> Device<'a> for GlyphDevice {
     fn draw_image(&mut self, _: Image<'a, '_>, _: Affine) {}
     fn pop_clip_path(&mut self) {}
     fn pop_transparency_group(&mut self) {}
+    fn begin_marked_content(&mut self, tag: &[u8], _mcid: Option<i32>) {
+        self.open.push(self.marked.tags.len() as u32);
+        self.marked.tags.push(tag.to_vec());
+    }
+    fn end_marked_content(&mut self) {
+        self.open.pop();
+    }
 }
 
 /// Recover characters for glyphs that nothing else identified.
@@ -544,6 +555,13 @@ impl RenderDoc for HayroDoc {
     }
 
     fn glyphs(&self, index: usize) -> Result<Vec<PositionedGlyph>, RenderError> {
+        Ok(self.marked_glyphs(index)?.0)
+    }
+
+    fn marked_glyphs(
+        &self,
+        index: usize,
+    ) -> Result<(Vec<PositionedGlyph>, MarkedGlyphs), RenderError> {
         let page = self
             .pdf
             .pages()
@@ -562,7 +580,7 @@ impl RenderDoc for HayroDoc {
         interpret_page(page, &mut ctx, &mut dev);
         let mut glyphs = dev.glyphs;
         shape_recover(&mut glyphs, &dev.font_data, &dev.skeleton_fonts);
-        Ok(glyphs)
+        Ok((glyphs, dev.marked))
     }
 }
 

@@ -3,7 +3,8 @@ use serde::Serialize;
 use warraq_pdf::PdfDocument;
 use warraq_render::RenderDoc;
 use warraq_text::{
-    detect_paragraphs, find_in_lines, reconstruct_lines, Paragraph, SearchNormalization, TextLine,
+    detect_paragraphs, find_in_lines, reconstruct_lines, with_actual_text, Paragraph,
+    SearchNormalization, TextLine,
 };
 
 pub mod tools;
@@ -102,7 +103,21 @@ impl Document {
         if let Some(l) = self.lines_cache.borrow().get(&index) {
             return Ok(l.clone());
         }
-        let glyphs = self.render.glyphs(index)?;
+        let (glyphs, marked) = self.render.marked_glyphs(index)?;
+        // Glyphs inside `/ActualText` read as that text — when the document's
+        // own list of the page's sequences matches, tag for tag, the one the
+        // renderer met; otherwise as they are.
+        let glyphs = match self.pdf.marked_content(index) {
+            Some(sequences)
+                if sequences.len() == marked.tags.len()
+                    && sequences.iter().zip(&marked.tags).all(|(s, t)| &s.tag == t) =>
+            {
+                let texts: Vec<Option<String>> =
+                    sequences.into_iter().map(|s| s.actual_text).collect();
+                with_actual_text(glyphs, &marked.inside, &texts)
+            }
+            _ => glyphs,
+        };
         let lines = reconstruct_lines(&glyphs);
         self.lines_cache.borrow_mut().insert(index, lines.clone());
         Ok(lines)
@@ -546,6 +561,9 @@ mod tests {
             "فقرة حرّرها المتصفح عبر نواة وراق",
             "الْعِلْمُ نُورٌ وَالْجَهْلُ ظَلَامٌ",
             "محرّر وراق: إعادة توزيع الأسطر",
+            // Amiri draws kha, and lam before kaf, with two glyphs; the second
+            // has no text. These came back as ال�خير and للكن (found by Compare).
+            "صباح الخير لكن الكثير يتركَّز هنا",
         ] {
             let mut d =
                 Document::open(corpus("chrome-notonaskh-justified-3pages.pdf"), None).unwrap();

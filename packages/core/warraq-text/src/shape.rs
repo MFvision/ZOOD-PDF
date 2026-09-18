@@ -17,9 +17,27 @@ pub enum ShapeError {
 pub struct ShapedGlyph {
     pub gid: u16,
     pub text: String,
+    /// Where the glyph's cluster starts in the text that was shaped, in
+    /// bytes: the reading order of glyphs laid out in visual order.
+    pub offset: usize,
     pub x_advance: f32,
     pub x_offset: f32,
     pub y_offset: f32,
+}
+
+/// The clusters of a shaped line, as ranges of its glyphs: a glyph carrying
+/// text, then the glyphs after it that carry none. That is how `shape_run`
+/// hands out a cluster's text — to its first glyph — and a cluster's glyphs
+/// are adjacent at the cluster level it shapes with.
+pub fn clusters(glyphs: &[ShapedGlyph]) -> Vec<std::ops::Range<usize>> {
+    let mut out: Vec<std::ops::Range<usize>> = Vec::new();
+    for (i, g) in glyphs.iter().enumerate() {
+        match out.last_mut() {
+            Some(last) if g.text.is_empty() => last.end = i + 1,
+            _ => out.push(i..i + 1),
+        }
+    }
+    out
 }
 
 pub struct Shaper<'a> {
@@ -133,6 +151,7 @@ impl<'a> Shaper<'a> {
                 ShapedGlyph {
                     gid: i.glyph_id as u16,
                     text: cluster_text,
+                    offset: c,
                     x_advance: p.x_advance as f32 * scale,
                     x_offset: p.x_offset as f32 * scale,
                     y_offset: p.y_offset as f32 * scale,
@@ -145,7 +164,15 @@ impl<'a> Shaper<'a> {
     pub fn shape_line(&self, line: &str) -> Vec<ShapedGlyph> {
         let mut out = vec![];
         for run in visual_runs(line) {
-            out.extend(self.shape_run(&line[run.range.clone()], run.direction));
+            let start = run.range.start;
+            out.extend(
+                self.shape_run(&line[run.range.clone()], run.direction)
+                    .into_iter()
+                    .map(|g| ShapedGlyph {
+                        offset: g.offset + start,
+                        ..g
+                    }),
+            );
         }
         out
     }
@@ -195,6 +222,28 @@ mod tests {
             .map(|g| g.gid)
             .collect();
         assert_eq!(bla, vec![3080, 3075, 1611]);
+    }
+
+    #[test]
+    fn some_amiri_letters_are_clusters_of_two_glyphs() {
+        // Lam before kaf, and kha, are drawn with two glyphs; the second
+        // carries no text of its own, so it has to be read with the first.
+        let s = Shaper::new(AMIRI).unwrap();
+        for (word, letter) in [("لكن", "ل"), ("الخير", "خ")] {
+            let glyphs = s.shape_run(word, Direction::Rtl);
+            let two: Vec<_> = clusters(&glyphs)
+                .into_iter()
+                .filter(|r| r.len() > 1)
+                .collect();
+            assert_eq!(two.len(), 1, "{word}");
+            assert_eq!(glyphs[two[0].start].text, letter);
+            let text: String = glyphs.iter().map(|g| g.text.as_str()).collect();
+            assert_eq!(
+                text.chars().rev().collect::<String>(),
+                word,
+                "every letter once"
+            );
+        }
     }
 
     #[test]

@@ -46,15 +46,15 @@
  },
  "acroform-pdflib-arabic-fields": {
   "open": true,
-  "order_lcs": 0.205,
-  "recall_logical": 0.189,
-  "verdict": "garbage(U+FFFD)"
+  "order_lcs": 1.0,
+  "recall_logical": 1.0,
+  "verdict": "logical"
  },
  "chrome-amiri-tashkeel-ligatures": {
   "open": true,
-  "order_lcs": 0.625,
-  "recall_logical": 0.633,
-  "verdict": "partial"
+  "order_lcs": 0.875,
+  "recall_logical": 0.9,
+  "verdict": "logical"
  },
  "chrome-cairo-mixed-invoice": {
   "open": true,
@@ -70,21 +70,21 @@
  },
  "chrome-nastaliq-urdu-prose": {
   "open": true,
-  "order_lcs": 0.163,
-  "recall_logical": 0.167,
-  "verdict": "garbage(U+FFFD)"
+  "order_lcs": 0.535,
+  "recall_logical": 0.611,
+  "verdict": "partial"
  },
  "chrome-notonaskh-justified-3pages": {
   "open": true,
-  "order_lcs": 0.215,
-  "recall_logical": 0.195,
-  "verdict": "garbage(U+FFFD)"
+  "order_lcs": 0.989,
+  "recall_logical": 1.0,
+  "verdict": "logical"
  },
  "chrome-notosansarabic-form-layout": {
   "open": true,
-  "order_lcs": 0.205,
-  "recall_logical": 0.189,
-  "verdict": "garbage(U+FFFD)"
+  "order_lcs": 1.0,
+  "recall_logical": 1.0,
+  "verdict": "logical"
  },
  "chrome-tajawal-persian-urdu-digits": {
   "open": true,
@@ -94,9 +94,9 @@
  },
  "chrome-variablefont-type3-notonaskh-justified": {
   "open": true,
-  "order_lcs": 0.215,
-  "recall_logical": 0.195,
-  "verdict": "garbage(U+FFFD)"
+  "order_lcs": 0.989,
+  "recall_logical": 1.0,
+  "verdict": "logical"
  },
  "chrome-vazirmatn-persian-prose": {
   "open": true,
@@ -118,8 +118,8 @@
  },
  "coretext-baghdad-persian-urdu": {
   "open": true,
-  "order_lcs": 0.97,
-  "recall_logical": 0.967,
+  "order_lcs": 1.0,
+  "recall_logical": 1.0,
   "verdict": "logical"
  },
  "coretext-geezapro-paragraphs": {
@@ -184,9 +184,9 @@
  },
  "variant-arabic-metadata-outlines-annots": {
   "open": true,
-  "order_lcs": 0.215,
-  "recall_logical": 0.195,
-  "verdict": "garbage(U+FFFD)"
+  "order_lcs": 0.989,
+  "recall_logical": 1.0,
+  "verdict": "logical"
  },
  "variant-encrypted-aes128": {
   "open": true,
@@ -196,9 +196,9 @@
  },
  "variant-encrypted-aes256": {
   "open": true,
-  "order_lcs": 0.215,
-  "recall_logical": 0.195,
-  "verdict": "garbage(U+FFFD)"
+  "order_lcs": 0.989,
+  "recall_logical": 1.0,
+  "verdict": "logical"
  },
  "variant-encrypted-aes256-owner-only": {
   "open": true,
@@ -226,14 +226,14 @@
  },
  "variant-linearized": {
   "open": true,
-  "order_lcs": 0.215,
-  "recall_logical": 0.195,
-  "verdict": "garbage(U+FFFD)"
+  "order_lcs": 0.989,
+  "recall_logical": 1.0,
+  "verdict": "logical"
  },
  "variant-objectstreams-xrefstream": {
   "open": true,
-  "order_lcs": 0.215,
-  "recall_logical": 0.195,
-  "verdict": "garbage(U+FFFD)"
+  "order_lcs": 0.989,
+  "recall_logical": 1.0,
+  "verdict": "logical"
  }
 }

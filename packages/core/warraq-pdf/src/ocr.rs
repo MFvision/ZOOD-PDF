@@ -14,7 +14,8 @@ use lopdf::Object;
 use warraq_text::{ShapedGlyph, Shaper};
 
 use crate::fonts::{embed_subset_font, FontSubset};
-use crate::ops::{add_font_resource, mark_page_objects, reset_state_ops, tj_items};
+use crate::ops::{add_font_resource, mark_page_objects, reset_state_ops};
+use crate::show::{show_line, ShownLine};
 use crate::{Error, PdfDocument, Result};
 
 /// A word the recogniser read, and where: its box in points from the page's
@@ -115,22 +116,23 @@ impl PdfDocument {
                     1.0
                 };
                 let baseline = bottom.max(top) - height * BASELINE_UP;
-                let [a, b, c, d, e, f] = frame.text_matrix(x0.min(x1), baseline, stretch);
                 ops.push(Operation::new(
                     "Tf",
                     vec![Object::Name(name.clone()), Object::Real(size)],
                 ));
-                ops.push(Operation::new(
-                    "Tm",
-                    [a, b, c, d, e, f]
-                        .iter()
-                        .map(|v| Object::Real(*v))
-                        .collect(),
-                ));
-                ops.push(Operation::new(
-                    "TJ",
-                    vec![Object::Array(tj_items(&subset, &shaper, glyphs))],
-                ));
+                // Invisible, but read: a word its glyphs do not spell carries
+                // its text, so it is found by search like any other (show.rs).
+                show_line(
+                    &mut ops,
+                    &subset,
+                    &shaper,
+                    &ShownLine {
+                        glyphs,
+                        matrix: frame.text_matrix(x0.min(x1), baseline, stretch),
+                        size,
+                        space_stretch: 0.0,
+                    },
+                );
                 report.words += 1;
             }
             ops.push(Operation::new("ET", vec![]));

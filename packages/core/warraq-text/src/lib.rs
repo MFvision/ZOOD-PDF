@@ -11,7 +11,9 @@ pub mod search;
 pub mod shape;
 
 pub use bidi::{base_direction, visual_runs, Direction, VisualRun};
-pub use extract::{reconstruct_lines, PositionedGlyph, TextLine};
+pub use extract::{
+    clusters_to_logical, reconstruct_lines, with_actual_text, PositionedGlyph, TextLine,
+};
 pub use glyphshape::{best_match, Descriptor, Form, MarkCluster, ShapeSampler, MAX_DISTANCE};
 pub use normalize::{
     fold_presentation_forms, normalize_for_search, strip_marks, SearchNormalization,
@@ -20,4 +22,4 @@ pub use paragraph::{
     detect_paragraphs, layout_paragraph, Alignment, LaidOutLine, LayoutBox, LayoutStyle, Paragraph,
 };
 pub use search::{find_in_lines, Match};
-pub use shape::{ShapedGlyph, Shaper};
+pub use shape::{clusters, ShapedGlyph, Shaper};

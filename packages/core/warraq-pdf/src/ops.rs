@@ -1,5 +1,6 @@
 //! Text operations on existing pages: append a shaped line, replace a word.
 use crate::fonts::{embed_subset_font, FontSubset};
+use crate::show::{show_line, ShownLine};
 use crate::{Error, PdfDocument, Result};
 use lopdf::content::{Content, Operation};
 use lopdf::{Object, ObjectId, StringFormat};
@@ -181,7 +182,6 @@ pub fn append_line(
     } else {
         x_edge
     };
-    // glyphs with offsets (marks, cursive attachment) are positioned individually
     let mut ops = reset_state_ops(pdf, page_id);
     ops.push(Operation::new("q", vec![]));
     ops.push(Operation::new("BT", vec![]));
@@ -189,59 +189,17 @@ pub fn append_line(
         "Tf",
         vec![Object::Name(name), Object::Real(size)],
     ));
-    let mut pen = x;
-    let mut chunk: Vec<ShapedGlyph> = vec![];
-    let mut chunk_x = x;
-    let flush = |ops: &mut Vec<Operation>, chunk: &mut Vec<ShapedGlyph>, chunk_x: f32| {
-        if !chunk.is_empty() {
-            ops.push(Operation::new(
-                "Tm",
-                vec![
-                    1.into(),
-                    0.into(),
-                    0.into(),
-                    1.into(),
-                    Object::Real(chunk_x),
-                    Object::Real(y),
-                ],
-            ));
-            ops.push(Operation::new(
-                "TJ",
-                vec![Object::Array(tj_items(&subset, &shaper, chunk))],
-            ));
-            chunk.clear();
-        }
-    };
-    for g in &glyphs {
-        if g.x_offset != 0.0 || g.y_offset != 0.0 {
-            flush(&mut ops, &mut chunk, chunk_x);
-            ops.push(Operation::new(
-                "Tm",
-                vec![
-                    1.into(),
-                    0.into(),
-                    0.into(),
-                    1.into(),
-                    Object::Real(pen + g.x_offset * size / 1000.0),
-                    Object::Real(y + g.y_offset * size / 1000.0),
-                ],
-            ));
-            ops.push(Operation::new(
-                "Tj",
-                vec![Object::String(
-                    subset.cid(g.gid).to_be_bytes().to_vec(),
-                    StringFormat::Hexadecimal,
-                )],
-            ));
-        } else {
-            if chunk.is_empty() {
-                chunk_x = pen;
-            }
-            chunk.push(g.clone());
-        }
-        pen += g.x_advance * size / 1000.0;
-    }
-    flush(&mut ops, &mut chunk, chunk_x);
+    show_line(
+        &mut ops,
+        &subset,
+        &shaper,
+        &ShownLine {
+            glyphs: &glyphs,
+            matrix: [1.0, 0.0, 0.0, 1.0, x, y],
+            size,
+            space_stretch: 0.0,
+        },
+    );
     ops.push(Operation::new("ET", vec![]));
     ops.push(Operation::new("Q", vec![]));
     let mut content = pdf.doc.get_page_content(page_id);
@@ -562,8 +520,10 @@ pub fn replace_paragraph(
         right: x0 + w,
         first_baseline: edit.first_baseline,
     };
+    // The size it fitted at, not the size asked for: shrinking only the
+    // leading, as this once did, still ran the text out of its box.
     let style = LayoutStyle {
-        font_size: edit.font_size,
+        font_size,
         leading: -leading,
         direction: edit.direction,
         alignment: edit.alignment,
@@ -590,37 +550,20 @@ pub fn replace_paragraph(
     ops.push(Operation::new("BT", vec![]));
     ops.push(Operation::new(
         "Tf",
-        vec![Object::Name(name), Object::Real(edit.font_size)],
+        vec![Object::Name(name), Object::Real(font_size)],
     ));
     for line in &lines {
-        ops.push(Operation::new(
-            "Tm",
-            vec![
-                1.into(),
-                0.into(),
-                0.into(),
-                1.into(),
-                Object::Real(line.x),
-                Object::Real(line.y),
-            ],
-        ));
-        let mut items: Vec<Object> = vec![];
-        for g in &line.glyphs {
-            items.push(Object::String(
-                subset.cid(g.gid).to_be_bytes().to_vec(),
-                StringFormat::Hexadecimal,
-            ));
-            // PDF advances by the glyph's own width; correct it to the shaped advance,
-            // and widen spaces by the justification stretch (a negative TJ adds advance)
-            let mut adj = shaper.advance(g.gid) - g.x_advance;
-            if g.text == " " {
-                adj -= line.space_stretch;
-            }
-            if adj.abs() > 0.01 {
-                items.push(Object::Real(adj));
-            }
-        }
-        ops.push(Operation::new("TJ", vec![Object::Array(items)]));
+        show_line(
+            &mut ops,
+            &subset,
+            &shaper,
+            &ShownLine {
+                glyphs: &line.glyphs,
+                matrix: [1.0, 0.0, 0.0, 1.0, line.x, line.y],
+                size: font_size,
+                space_stretch: line.space_stretch,
+            },
+        );
     }
     ops.push(Operation::new("ET", vec![]));
     ops.push(Operation::new("Q", vec![]));
