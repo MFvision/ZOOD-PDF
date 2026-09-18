@@ -81,9 +81,7 @@ fn open_url(url: String) -> Result<(), String> {
     if !warraq_core::allowed_uri(&url) {
         return Err("E_LINK: only web and e-mail addresses are opened".into());
     }
-    let mut child = opener(&url)
-        .spawn()
-        .map_err(|e| format!("E_LINK: {e}"))?;
+    let mut child = opener(&url).spawn().map_err(|e| format!("E_LINK: {e}"))?;
     // Reaped once the opener hands the address over and exits.
     std::thread::spawn(move || {
         let _ = child.wait();
