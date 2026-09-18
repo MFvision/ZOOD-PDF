@@ -189,6 +189,7 @@
   "compress.unchanged": "This file is already as small as it gets at this level. Nothing was changed.",
   "compress.working": "Compressing…",
   "dialog.close": "Close",
+  "drop.combine": "Drop PDFs to add them to the list",
   "drop.overlay": "Drop the PDF to open it",
   "edit.addLabel": "New text",
   "edit.addNoUndo": "Added text cannot be undone yet. Close without saving to discard it.",

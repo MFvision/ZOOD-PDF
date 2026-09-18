@@ -81,6 +81,12 @@ export interface CombineInput {
 /** The page changes of Organize pages (`warraq-core/src/tools/pages.rs`). */
 export type OrganizeOp = 'rotate' | 'reorder' | 'delete' | 'insert_blank' | 'insert_file';
 
+/** A panel that takes the files dropped on the window, and what the drop overlay says it does. */
+export interface DropTarget {
+  label: TKey;
+  take: (files: File[]) => void;
+}
+
 /** What became of inserting another file's pages. */
 export type InsertOutcome = 'inserted' | 'locked' | 'wrongPassword' | 'failed';
 
@@ -107,6 +113,12 @@ export interface AppServices {
   /** Tries the protected file again with this password. */
   unlockFile: (password: string) => void;
   cancelUnlock: () => void;
+  /** Files dropped on the window: to the panel that claimed drops, if any, or opened. */
+  dropFiles: (files: ArrayLike<File>) => void;
+  /** A panel claims the window's drops while it is open (`null` gives them back); Combine adds them to its list. */
+  claimDrops: (target: DropTarget | null) => void;
+  /** What the drop overlay says a drop will do. */
+  dropLabel: TKey;
   /** Opens the first PDF in a drop or picker selection. */
   openFiles: (files: ArrayLike<File>) => Promise<void>;
   closeDocument: () => void;
@@ -360,6 +372,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [openFile],
   );
 
+  const dropTarget = useRef<DropTarget | null>(null);
+  const [dropLabel, setDropLabel] = useState<TKey>('drop.overlay');
+  const claimDrops = useCallback((target: DropTarget | null) => {
+    dropTarget.current = target;
+    setDropLabel(target?.label ?? 'drop.overlay');
+  }, []);
+  const dropFiles = useCallback(
+    (files: ArrayLike<File>) => {
+      const list = Array.from(files);
+      if (dropTarget.current) dropTarget.current.take(list);
+      else void openFiles(list);
+    },
+    [openFiles],
+  );
+
   const closeDocument = useCallback(() => {
     openSequence.current += 1;
     void documentRef.current?.free();
@@ -411,7 +438,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * so the shell's HTML5 `drop` listener never fires. In a browser this is a
    * no-op and that listener is the only one.
    */
-  useEffect(() => onNativeFileDrop((files) => void openFiles(files.map(toFile))), [openFiles]);
+  useEffect(() => onNativeFileDrop((files) => dropFiles(files.map(toFile))), [dropFiles]);
 
   const attachEmbed = useCallback((registry: PluginRegistry) => {
     embedRef.current = registry;
@@ -1051,6 +1078,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unlockFile,
       cancelUnlock,
       openFiles,
+      dropFiles,
+      claimDrops,
+      dropLabel,
       closeDocument,
       requestOpenFile,
       attachEmbed,
@@ -1091,6 +1121,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unlockFile,
       cancelUnlock,
       openFiles,
+      dropFiles,
+      claimDrops,
+      dropLabel,
       closeDocument,
       requestOpenFile,
       attachEmbed,

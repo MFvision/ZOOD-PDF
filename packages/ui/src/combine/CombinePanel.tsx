@@ -89,9 +89,7 @@ export function CombinePanel() {
       .catch(() => dispatch({ type: 'DOCUMENT_FAILED', error: 'combine.unreadable' }));
   };
 
-  const onInput = async (event: ChangeEvent<HTMLInputElement>) => {
-    const files = [...(event.target.files ?? [])];
-    event.target.value = '';
+  const addFiles = async (files: File[]) => {
     const pdfs: { name: string; bytes: ArrayBuffer }[] = [];
     for (const file of files) {
       if (await isPdf(file)) pdfs.push({ name: file.name, bytes: await file.arrayBuffer() });
@@ -99,6 +97,25 @@ export function CombinePanel() {
     }
     await add(pdfs);
   };
+
+  const onInput = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = [...(event.target.files ?? [])];
+    event.target.value = '';
+    await addFiles(files);
+  };
+
+  // Files dropped on the window while the list is open join it, rather than
+  // replacing the document they were meant to be combined with.
+  const takeDrop = useRef(addFiles);
+  useEffect(() => {
+    takeDrop.current = addFiles;
+  });
+  useEffect(() => {
+    services.claimDrops({ label: 'drop.combine', take: (files) => void takeDrop.current(files) });
+    return () => services.claimDrops(null);
+    // Claimed once for as long as the panel is open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const unlock = async (key: number) => {
     const entry = entries.find((e) => e.key === key);

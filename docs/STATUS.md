@@ -62,7 +62,7 @@ so on its face.
 
 ## Next (in order)
 1. **Print on Windows and Linux** desktop builds (macOS prints through PDFKit).
-2. **Crop** in Organize; dropping files onto the Combine list; a visual diff in Compare; streamed AI replies.
+2. **Crop** in Organize; a visual diff in Compare; streamed AI replies.
 3. Paragraph breaks between uniformly spaced body paragraphs; Nastaliq Urdu extraction; the 500 MB scan stress run; Acrobat verification on a machine that has it.
 
 ## Decisions needed from you
@@ -174,6 +174,10 @@ test that fails without its fix.
    prints it in the system print sheet on Warraq's window: vector pages,
    scaled to the paper, a protected file with its password, and a file that
    forbids printing refused, as Acrobat does.
+17. **Files dropped while Combine was open replaced the document** instead
+   of joining the list: every drop opened its first file. A panel can now
+   claim the window's drops — Combine does, and the drop overlay says what
+   will happen — on the web and on desktop alike.
 
 ## Known gaps, stated plainly
 * **Deleted pages stay in the file's earlier revision**, like every incremental change, until a clean copy is written; extracting pages writes one. Bookmarks and links that pointed at a deleted page are left pointing nowhere in the open file.

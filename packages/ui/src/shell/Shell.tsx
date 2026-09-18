@@ -28,7 +28,7 @@ export function Shell() {
   const { t, lang } = useI18n();
   useKeyboardShortcuts();
 
-  const onFiles = useCallback((files: FileList) => void services.openFiles(files), [services]);
+  const onFiles = useCallback((files: FileList) => services.dropFiles(files), [services]);
   const dragging = useFileDrop(onFiles);
 
   const isViewer = state.view === 'viewer';
@@ -122,7 +122,7 @@ export function Shell() {
       {dragging && (
         <div className="drop-overlay" aria-hidden="true">
           <Icon of={Upload} size={40} />
-          <p>{t('drop.overlay')}</p>
+          <p>{t(services.dropLabel)}</p>
         </div>
       )}
     </div>
