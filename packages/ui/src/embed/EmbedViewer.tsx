@@ -100,6 +100,8 @@ function documentManager(registry: PluginRegistry): DocumentManager | null {
 
 export function EmbedViewer({ bytes, name, password, theme, lang, onRegistry, onError, onOpened }: EmbedViewerProps) {
   const registryRef = useRef<PluginRegistry | null>(null);
+  /** EmbedPDF's element: its theme is set on it, not through the config it started with. */
+  const containerRef = useRef<{ setTheme(preference: EmbedViewerProps['theme']): void } | null>(null);
   const openedRef = useRef<string | null>(null);
   const langRef = useRef(lang);
 
@@ -157,6 +159,11 @@ export function EmbedViewer({ bytes, name, password, theme, lang, onRegistry, on
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reopen on new bytes only
   }, [bytes]);
 
+  // Warraq's theme, followed live: the config's theme is only the first one.
+  useEffect(() => {
+    containerRef.current?.setTheme(theme);
+  }, [theme]);
+
   // Switching Warraq's language switches EmbedPDF's through its i18n plugin,
   // live: a new config would tear the viewer down.
   useEffect(() => {
@@ -168,7 +175,10 @@ export function EmbedViewer({ bytes, name, password, theme, lang, onRegistry, on
     <PDFViewer
       className="embed-viewer"
       config={config}
-      onInit={(container) => installRtlStyles(container.shadowRoot)}
+      onInit={(container) => {
+        containerRef.current = container;
+        installRtlStyles(container.shadowRoot);
+      }}
       onReady={(registry) => {
         uiLog('embedpdf ready');
         registryRef.current = registry;

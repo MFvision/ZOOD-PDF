@@ -184,6 +184,9 @@ test that fails without its fix.
    has the outline and the comments). The tool list no longer says "0 tools
    are not built yet", and a test fails if anything on screen promises a
    later phase.
+19. **EmbedPDF's view kept the theme it started with**: choosing Dark or
+   Light in the View menu changed Warraq's chrome but not the page view
+   until a reload. The view now follows it live (e2e).
 
 ## Known gaps, stated plainly
 * **Deleted pages stay in the file's earlier revision**, like every incremental change, until a clean copy is written; extracting pages writes one. Bookmarks and links that pointed at a deleted page are left pointing nowhere in the open file.

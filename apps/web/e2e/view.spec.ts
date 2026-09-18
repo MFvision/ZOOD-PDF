@@ -18,13 +18,17 @@ import {
 
 const THREE_PAGES = corpus('generated/chrome-notonaskh-justified-3pages.pdf');
 
-const menu = (page: Page, name: string) => page.getByRole('menubar').getByRole('menuitem', { name, exact: true });
+const menu = (page: Page, name: string) =>
+  page.getByRole('menubar').getByRole('menuitem', { name, exact: true });
 const statusBar = (page: Page) => page.getByRole('contentinfo', { name: 'Status bar' });
 
 // Warraq's menus, shortcuts and status bar once drove only its own viewer, and
 // did nothing visible while EmbedPDF showed the page. These prove they reach it.
 test.describe('the menus act on the page on screen', () => {
-  test('Go to page and Zoom in move the view, and the status bar follows it', async ({ page, stayLocal: _ }) => {
+  test('Go to page and Zoom in move the view, and the status bar follows it', async ({
+    page,
+    stayLocal: _,
+  }) => {
     await page.goto('/');
     await openPdf(page, THREE_PAGES);
     await expect(statusBar(page)).toContainText('Page 1 of 3');
@@ -42,13 +46,19 @@ test.describe('the menus act on the page on screen', () => {
     await expect.poll(() => embedZoom(page)).toBeGreaterThan(before);
   });
 
-  test('Cmd/Ctrl+O opens the file in Warraq, not in EmbedPDF behind its back', async ({ page, stayLocal: _ }) => {
+  test('Cmd/Ctrl+O opens the file in Warraq, not in EmbedPDF behind its back', async ({
+    page,
+    stayLocal: _,
+  }) => {
     await page.goto('/');
     await openPdf(page, THREE_PAGES);
     // With the focus in the view, where EmbedPDF's own Open used to take the key.
     const box = await pageBox(page);
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.keyboard.press('ControlOrMeta+O')]);
+    const [chooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.keyboard.press('ControlOrMeta+O'),
+    ]);
     await chooser.setFiles(INVOICE);
     await expect(statusBar(page)).toContainText('Page 1 of 1');
   });
@@ -71,7 +81,10 @@ test.describe('the menus act on the page on screen', () => {
     await expect.poll(() => annotationTypes(page)).not.toContain(15);
   });
 
-  test('while editing text, Cmd/Ctrl+Z undoes the edit on screen, not a hidden drawing', async ({ page, stayLocal: _ }) => {
+  test('while editing text, Cmd/Ctrl+Z undoes the edit on screen, not a hidden drawing', async ({
+    page,
+    stayLocal: _,
+  }) => {
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
     await chooseTool(page, 'Comment');
@@ -99,5 +112,27 @@ test.describe('the menus act on the page on screen', () => {
     // Handed back and reopened — a new document — with the drawing in it.
     await expect.poll(async () => (await embedDocument(page)).id).not.toBe(before.id);
     await expect.poll(() => annotationTypes(page)).toContain(15);
+  });
+
+  test('the page view follows the theme chosen in the View menu, without a reload', async ({
+    page,
+    stayLocal: _,
+  }) => {
+    await page.goto('/');
+    await openPdf(page, THREE_PAGES);
+    const preference = () =>
+      page.evaluate(
+        () =>
+          (
+            document.querySelector('embedpdf-container') as unknown as {
+              themePreference: string;
+            } | null
+          )?.themePreference,
+      );
+    for (const theme of ['Dark', 'Light', 'System']) {
+      await menu(page, 'View').click();
+      await page.getByRole('menuitemradio', { name: `Theme: ${theme}` }).click();
+      await expect.poll(preference).toBe(theme.toLowerCase());
+    }
   });
 });
