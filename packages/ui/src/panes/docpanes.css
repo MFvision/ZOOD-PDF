@@ -1,0 +1,142 @@
+/* The document panes of the navigation pane: bookmarks, attachments, layers. */
+.docpane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-block-end: 12px;
+}
+
+.docpane-note {
+  margin: 0;
+  padding: 8px 12px 0;
+  color: var(--fg-muted);
+  font-size: 0.9em;
+}
+
+.docpane-list {
+  padding: 4px 0;
+  margin: 0;
+  list-style: none;
+}
+
+.docpane-list ul {
+  padding-inline-start: 16px;
+  margin: 0;
+  list-style: none;
+}
+
+.docpane-row {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  padding-inline-end: 8px;
+}
+
+.docpane-twisty {
+  display: inline-flex;
+  flex: 0 0 20px;
+  align-items: center;
+  justify-content: center;
+  block-size: 24px;
+  padding: 0;
+  color: var(--fg-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+}
+
+button.docpane-twisty:hover {
+  background: var(--bg-hover);
+}
+
+.docpane-link {
+  display: inline-flex;
+  flex: 1;
+  gap: 4px;
+  align-items: center;
+  min-inline-size: 0;
+  padding: 4px 6px;
+  color: inherit;
+  text-align: start;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+  overflow-wrap: anywhere;
+}
+
+.docpane-link:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.docpane-link:disabled {
+  color: var(--fg-muted);
+}
+
+.docpane-file {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 8px 8px 8px 12px;
+  border-block-end: 1px solid var(--border);
+}
+
+.docpane-file > svg {
+  flex: 0 0 auto;
+  margin-block-start: 3px;
+  color: var(--fg-muted);
+}
+
+.docpane-file-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.docpane-file-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.docpane-file-meta {
+  color: var(--fg-muted);
+  font-size: 0.85em;
+  overflow-wrap: anywhere;
+}
+
+.docpane-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-end;
+  padding-inline: 12px;
+}
+
+.docpane-actions .field {
+  flex: 1 1 100%;
+}
+
+.docpane-layers li {
+  padding-block: 1px;
+}
+
+.docpane-layer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.docpane-layer:hover {
+  background: var(--bg-hover);
+}
+
+.docpane-group > bdi {
+  display: block;
+  padding: 6px 12px 2px;
+  color: var(--fg-muted);
+  font-weight: 600;
+}

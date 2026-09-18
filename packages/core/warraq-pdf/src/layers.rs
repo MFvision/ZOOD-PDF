@@ -236,12 +236,71 @@ impl PdfDocument {
                 off.push(Object::Reference(id));
             }
         }
+        // A layer's own "shown on screen" usage state (`/Usage /View
+        // /ViewState`) is followed by PDFium before the configuration, so
+        // where a layer has one it is set to match.
+        for id in on.iter().filter_map(|o| o.as_reference().ok()) {
+            self.set_view_state(id, true);
+        }
+        for id in off.iter().filter_map(|o| o.as_reference().ok()) {
+            self.set_view_state(id, false);
+        }
         let mut config = self.oc_config().cloned().unwrap_or_default();
         config.set("BaseState", Object::Name(b"ON".to_vec()));
         config.set("ON", Object::Array(on));
         config.set("OFF", Object::Array(off));
         self.set_oc_config(config)?;
         Ok(true)
+    }
+
+    /// The object holding a layer's `/Usage /View` dictionary, and whether
+    /// it is the layer itself (the dictionaries inline) or its own object.
+    fn view_usage_holder(&self, layer: ObjectId) -> Option<ObjectId> {
+        let group = self.doc.get_dictionary(layer).ok()?;
+        match group.get(b"Usage").ok()? {
+            Object::Reference(usage) => match self.doc.get_dictionary(*usage).ok()?.get(b"View").ok()? {
+                Object::Reference(view) => Some(*view),
+                Object::Dictionary(_) => Some(*usage),
+                _ => None,
+            },
+            Object::Dictionary(usage) => match usage.get(b"View").ok()? {
+                Object::Reference(view) => Some(*view),
+                Object::Dictionary(_) => Some(layer),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// Sets a layer's `/ViewState`, where it has one.
+    fn set_view_state(&mut self, layer: ObjectId, on: bool) {
+        let Some(holder) = self.view_usage_holder(layer) else {
+            return;
+        };
+        let state = Object::Name(if on { b"ON".to_vec() } else { b"OFF".to_vec() });
+        let Ok(dict) = self.doc.get_dictionary_mut(holder) else {
+            return;
+        };
+        // The view dictionary is the holder itself, or inline in it.
+        let view: Option<&mut Dictionary> = if dict.has(b"ViewState") {
+            Some(dict)
+        } else if dict.has(b"View") {
+            dict.get_mut(b"View").ok().and_then(|v| v.as_dict_mut().ok())
+        } else {
+            dict.get_mut(b"Usage")
+                .ok()
+                .and_then(|u| u.as_dict_mut().ok())
+                .and_then(|u| u.get_mut(b"View").ok())
+                .and_then(|v| v.as_dict_mut().ok())
+        };
+        let Some(view) = view else {
+            return;
+        };
+        if !view.has(b"ViewState") || view.get(b"ViewState").ok() == Some(&state) {
+            return;
+        }
+        view.set("ViewState", state);
+        self.mark_touched(holder);
     }
 
     /// Replaces the default configuration, wherever it is held.
@@ -297,10 +356,25 @@ impl PdfDocument {
     /// on a copy that was shown with other choices. Objects keep their
     /// numbers across the engines, so the layers are the same ones.
     pub fn restore_layer_visibility(&mut self, other: &PdfDocument) -> Result<()> {
-        let (Some(_), Some(theirs)) = (self.oc_properties(), other.oc_config()) else {
+        let (Some(props), Some(theirs)) = (self.oc_properties(), other.oc_config()) else {
             return Ok(());
         };
         let theirs = theirs.clone();
+        // Each layer's own view state too, as the file had it.
+        for layer in self.ref_list(props, b"OCGs") {
+            let (Some(ours), Some(original)) = (self.view_usage_holder(layer), other.view_usage_holder(layer)) else {
+                continue;
+            };
+            if ours != original {
+                continue;
+            }
+            if let Ok(object) = other.doc.get_object(original) {
+                if self.doc.get_object(ours).ok() != Some(object) {
+                    self.doc.objects.insert(ours, object.clone());
+                    self.mark_touched(ours);
+                }
+            }
+        }
         self.set_oc_config(theirs)
     }
 }
@@ -375,11 +449,31 @@ mod tests {
             [false, true, true, true],
             "the locked layer keeps its state"
         );
+        // PDFium follows a layer's own view state first: it follows too.
+        let watermark = crate::hidden::parse_object_key(&ids[2]).unwrap();
+        let view_state = |doc: &PdfDocument| {
+            doc.doc
+                .get_dictionary(watermark)
+                .unwrap()
+                .get_deref(b"Usage", &doc.doc)
+                .unwrap()
+                .as_dict()
+                .unwrap()
+                .get_deref(b"View", &doc.doc)
+                .unwrap()
+                .as_dict()
+                .unwrap()
+                .get(b"ViewState")
+                .unwrap()
+                .clone()
+        };
+        assert_eq!(view_state(&shown), Object::Name(b"ON".to_vec()));
 
         let mut back = shown;
         back.restore_layer_visibility(&original).unwrap();
         let states: Vec<bool> = back.layers().layers.iter().map(|l| l.visible).collect();
         assert_eq!(states, [true, true, false, true]);
+        assert_eq!(view_state(&back), Object::Name(b"OFF".to_vec()));
         assert!(!PdfDocument::open(
             std::fs::read(format!(
                 "{}/../../../tests/corpus/arabic/generated/raw-amiri-cid-identity-tounicode.pdf",

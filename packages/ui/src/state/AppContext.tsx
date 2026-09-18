@@ -22,8 +22,9 @@ import {
 import type { PickedFile } from '../core/host-tauri';
 import type { CoreClient, RemoteDocument } from '../core/client';
 import type { PluginRegistry } from '@embedpdf/react-pdf-viewer';
-import { EMBED_COMMANDS, capability, commandActive, disabledCategories, runCommand, scrollToPage, setKeyboard, watch, watchPendingRedactions } from '../embed/embedControl';
-import type { ViewCommand } from '../embed/embedControl';
+import { EMBED_COMMANDS, addRedactionMarks, capability, commandActive, disabledCategories, runCommand, scrollToPage, setKeyboard, watch, watchPendingRedactions } from '../embed/embedControl';
+import type { RedactionMark, ViewCommand } from '../embed/embedControl';
+import { uuidV4 } from '@embedpdf/models';
 import { loadEditFont } from '../edit/editFont';
 import { canRedo as canRedoStack, canUndo as canUndoStack, redo as redoStack, undo as undoStack } from '../edit/editStack';
 import type { EditEntry, StackStep } from '../edit/editStack';
@@ -136,8 +137,8 @@ export interface AppServices {
   requestOpenFile: () => void;
   /** Called by the EmbedPDF view once its plugin registry is ready. */
   attachEmbed: (registry: PluginRegistry) => void;
-  /** Called by the EmbedPDF view each time it has opened a file. */
-  embedOpened: () => void;
+  /** Called by the EmbedPDF view each time it has opened a file, with the bytes it opened. */
+  embedOpened: (bytes?: ArrayBuffer) => void;
   /** Runs one of the EmbedPDF viewer's registered commands (ADR-0007). */
   runEmbedCommand: (command: string) => void;
   /**
@@ -180,6 +181,28 @@ export interface AppServices {
   currentFileBytes: () => Promise<ArrayBuffer | null>;
   /** Areas marked for redaction in the EmbedPDF view and not yet applied: their text is still in the file. */
   pendingRedactions: number;
+  /**
+   * Search-and-redact: pending redaction marks in the EmbedPDF view, one per
+   * match, over its glyph boxes; its Apply removes what is under them.
+   * Returns how many were marked.
+   */
+  markForRedaction: (marks: readonly RedactionMark[]) => number;
+  /**
+   * The file as it stands — what either engine has changed, kept as an update
+   * of the file's own bytes where it can be — with its own layer visibility,
+   * not the one the view shows. What the document panes read and change.
+   */
+  readFile: () => Promise<ArrayBuffer | null>;
+  /** The open file, replaced by `bytes` in both views: a change made outside them (attachments, hidden information). */
+  replaceFile: (bytes: ArrayBuffer) => Promise<void>;
+  /** The layers the view shows by choice, by id; null while it shows the file's own visibility. */
+  layersShown: readonly string[] | null;
+  /** Shows exactly these layers, in a copy the view draws; the file is not changed. */
+  showLayers: (visible: readonly string[]) => Promise<void>;
+  /** Makes the layers shown now the file's own visibility, to be saved with it. */
+  keepLayerVisibility: () => void;
+  /** Back to the layer visibility the file has itself. */
+  resetLayers: () => Promise<void>;
   /** Combine files: one new file of every page of `files`, in order, opened in place of the current one. */
   combineFiles: (files: readonly CombineInput[]) => Promise<void>;
   /** Compress: a smaller copy of the file as it stands now; the open one is not changed. */
@@ -260,6 +283,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [embed, setEmbed] = useState<PluginRegistry | null>(null);
   const [embedHistory, setEmbedHistory] = useState({ canUndo: false, canRedo: false });
   const [pendingRedactions, setPendingRedactions] = useState(0);
+  // Layers shown by choice (the Layers pane): the view draws a copy whose
+  // default configuration shows them, and the file keeps its own until the
+  // person keeps these with it. `layerOwnRef` is the file with its own.
+  const layerOwnRef = useRef<ArrayBuffer | null>(null);
+  const layersShownRef = useRef<readonly string[] | null>(null);
+  const [layersShown, setLayersShown] = useState<readonly string[] | null>(null);
+  const forgetLayerView = useCallback(() => {
+    layerOwnRef.current = null;
+    layersShownRef.current = null;
+    setLayersShown(null);
+  }, []);
+  // The page to come back to when the view reopens a copy of the same file.
+  const returnToPage = useRef<number | null>(null);
   const syncedRevision = useRef(0);
   const wasWarraqs = useRef(false);
   /** A switch between the engines is being carried out (the effect below). */
@@ -342,6 +378,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setDocument(opened);
         setDocumentPassword(password);
         setDocumentBytes(kept);
+        forgetLayerView();
         dispatch({
           type: 'DOCUMENT_OPENED',
           document: {
@@ -364,7 +401,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'DOCUMENT_FAILED', error: errorKeyFor(err) });
       }
     },
-    [client],
+    [client, forgetLayerView],
   );
 
   const unlockFile = useCallback(
@@ -422,8 +459,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setDocument(null);
     setDocumentBytes(null);
     setDocumentPassword(undefined);
+    forgetLayerView();
     dispatch({ type: 'DOCUMENT_CLOSED' });
-  }, []);
+  }, [forgetLayerView]);
 
   /**
    * A browser opens the hidden `<input type="file">`; the desktop webview
@@ -467,7 +505,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /** EmbedPDF opened a file: a switch back to it is complete. */
-  const embedOpened = useCallback(() => {
+  // The bytes EmbedPDF last opened, and who waits for it to catch up with
+  // new ones: until it has, what it would hand over is the file before.
+  const embedHolds = useRef<ArrayBuffer | null>(null);
+  const embedWaiters = useRef<(() => void)[]>([]);
+
+  const embedOpened = useCallback((bytes?: ArrayBuffer) => {
+    if (bytes) {
+      embedHolds.current = bytes;
+      embedWaiters.current.splice(0).forEach((wake) => wake());
+    }
+    const page = returnToPage.current;
+    returnToPage.current = null;
+    // A copy of the same file, reopened: back to where the person was.
+    if (page !== null && page > 1 && embedRef.current) {
+      const registry = embedRef.current;
+      setTimeout(() => scrollToPage(registry, page), 0);
+    }
     if (stateRef.current.switching !== 'out') return;
     switchInFlight.current = false;
     dispatch({ type: 'SWITCH_DONE' });
@@ -584,6 +638,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const bytesFromEmbed = useCallback(async (): Promise<ArrayBuffer | null> => {
+    // New bytes were just handed to the view (a change made outside it, a
+    // copy with other layers shown): wait until it has them open, or it
+    // would hand back the file as it was before. Bounded: a view that
+    // cannot open them says so itself.
+    const deadline = Date.now() + 20_000;
+    while (embedBytesRef.current && embedHolds.current !== embedBytesRef.current && Date.now() < deadline) {
+      await new Promise<void>((wake) => {
+        embedWaiters.current.push(wake);
+        setTimeout(wake, 250);
+      });
+    }
     const registry = embedRef.current;
     if (!registry) return null;
     type Task<T> = { toPromise(): Promise<T> };
@@ -899,11 +964,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  /**
+   * `bytes` with the layer visibility the file has itself, while the view
+   * shows other layers by choice (`showLayers`): the view's choice is not
+   * written into the file until the person keeps it. As an update of the
+   * file's own bytes, unless a redaction means it must be written whole.
+   */
+  const withOwnLayers = useCallback(
+    async (bytes: ArrayBuffer): Promise<ArrayBuffer> => {
+      const own = layerOwnRef.current;
+      if (!own) return bytes;
+      const rebase = !redactedRef.current && own.byteLength <= REBASE_LIMIT;
+      const { blobs } = await client.callStatic<{ rebased: boolean }>(
+        'layers.restore',
+        { password: passwordRef.current ?? null, rebase },
+        [own.slice(0), bytes.slice(0)],
+      );
+      return blobs[0] ?? bytes;
+    },
+    [client],
+  );
+
   const currentFileBytes = useCallback(async (): Promise<ArrayBuffer | null> => {
-    if (!warraqOwnsDocument(stateRef.current)) return bytesFromEmbed();
-    const saved = await documentRef.current?.save();
-    return saved ? saved.buffer.slice(saved.byteOffset, saved.byteOffset + saved.byteLength) : null;
-  }, [bytesFromEmbed]);
+    let bytes: ArrayBuffer | null;
+    if (!warraqOwnsDocument(stateRef.current)) bytes = await bytesFromEmbed();
+    else {
+      const saved = await documentRef.current?.save();
+      bytes = saved ? saved.buffer.slice(saved.byteOffset, saved.byteOffset + saved.byteLength) : null;
+    }
+    return bytes && withOwnLayers(bytes);
+  }, [bytesFromEmbed, withOwnLayers]);
+
+  const readFile = useCallback(async (): Promise<ArrayBuffer | null> => {
+    let bytes: ArrayBuffer | null;
+    if (warraqOwnsDocument(stateRef.current)) {
+      const saved = await documentRef.current?.save();
+      bytes = saved ? saved.buffer.slice(saved.byteOffset, saved.byteOffset + saved.byteLength) : null;
+    } else {
+      const rewritten = await bytesFromEmbed();
+      bytes = rewritten && (await keepOwnBytes(rewritten));
+    }
+    return bytes && withOwnLayers(bytes);
+  }, [bytesFromEmbed, keepOwnBytes, withOwnLayers]);
+
+  const markForRedaction = useCallback((marks: readonly RedactionMark[]): number => {
+    const registry = embedRef.current;
+    if (!registry || !embedShowingRef.current) return 0;
+    const added = addRedactionMarks(registry, marks, uuidV4);
+    const first = marks.find((mark) => mark.rects.length > 0);
+    if (added > 0 && first) scrollToPage(registry, first.page + 1);
+    return added;
+  }, []);
 
   const combineFiles = useCallback(
     async (files: readonly CombineInput[]) => {
@@ -956,15 +1067,72 @@ export function AppProvider({ children }: { children: ReactNode }) {
    */
   const replaceCurrentFile = useCallback(
     async (bytes: ArrayBuffer) => {
-      const opened = await client.open(bytes.slice(0), passwordRef.current);
+      // With layers shown by choice, the new file is shown the same way.
+      let shown = bytes;
+      const visible = layersShownRef.current;
+      if (layerOwnRef.current && visible) {
+        const { blobs } = await client
+          .callStatic('layers.show', { password: passwordRef.current ?? null, visible }, [bytes.slice(0)])
+          .catch(() => ({ blobs: [] as ArrayBuffer[] }));
+        if (blobs[0]) {
+          layerOwnRef.current = bytes;
+          shown = blobs[0];
+        } else forgetLayerView();
+      }
+      const opened = await client.open(shown.slice(0), passwordRef.current);
       void documentRef.current?.free();
       documentRef.current = opened;
       setDocument(opened);
-      setDocumentBytes(bytes);
+      returnToPage.current = stateRef.current.currentPage;
+      // At once, not when the effect runs: a read straight after this must
+      // wait for the view to open these (`bytesFromEmbed`).
+      embedBytesRef.current = shown;
+      setDocumentBytes(shown);
       dispatch({ type: 'DOCUMENT_RESHAPED', pageCount: opened.pageCount, pageSizes: opened.pageSizes, selection: [] });
     },
-    [client],
+    [client, forgetLayerView],
   );
+
+  /**
+   * Layers are view state (the Layers pane): the view is given a copy whose
+   * default configuration shows exactly `visible`, made by the core from the
+   * file as it stands, and the file keeps its own visibility — it is put
+   * back on everything that leaves the app — until the person keeps these.
+   */
+  const showLayers = useCallback(
+    async (visible: readonly string[]) => {
+      if (warraqOwnsDocument(stateRef.current) || stateRef.current.switching) return;
+      const own = await readFile();
+      if (!own) return;
+      const { blobs } = await client.callStatic('layers.show', { password: passwordRef.current ?? null, visible }, [own.slice(0)]);
+      if (!blobs[0]) return;
+      layerOwnRef.current = own;
+      layersShownRef.current = [...visible];
+      setLayersShown([...visible]);
+      returnToPage.current = stateRef.current.currentPage;
+      embedBytesRef.current = blobs[0];
+      setDocumentBytes(blobs[0]);
+    },
+    [client, readFile],
+  );
+
+  /** The layers shown now become the file's own: it is changed, to be saved. */
+  const keepLayerVisibility = useCallback(() => {
+    if (!layerOwnRef.current) return;
+    forgetLayerView();
+    const open = stateRef.current.document;
+    if (open) dispatch({ type: 'DOCUMENT_RESHAPED', pageCount: open.pageCount, pageSizes: open.pageSizes, selection: [] });
+  }, [forgetLayerView]);
+
+  const resetLayers = useCallback(async () => {
+    if (!layerOwnRef.current) return;
+    const own = await readFile();
+    forgetLayerView();
+    if (!own) return;
+    returnToPage.current = stateRef.current.currentPage;
+    embedBytesRef.current = own;
+    setDocumentBytes(own);
+  }, [readFile, forgetLayerView]);
 
   const recognizeText = useCallback(
     async (
@@ -1109,7 +1277,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Whichever view is current holds the latest file: EmbedPDF's carries its
       // annotations and redactions, Warraq's its Arabic edits.
       const fromEmbed = warraqOwnsDocument(stateRef.current) ? null : await bytesFromEmbed();
-      const bytes = fromEmbed ? new Uint8Array(await keepOwnBytes(fromEmbed)) : await doc.save();
+      const own = fromEmbed ? await keepOwnBytes(fromEmbed) : null;
+      // Layers shown by choice are the view's, not the file's.
+      const bytes = own
+        ? new Uint8Array(await withOwnLayers(own))
+        : layerOwnRef.current
+          ? new Uint8Array(await withOwnLayers(new Uint8Array(await doc.save()).slice().buffer))
+          : await doc.save();
       if (isTauriHost()) {
         // Cancelling the panel is not a failure, and not a save either.
         if (!(await savePdfFile(bytes, pdfFileName(name)))) return;
@@ -1121,7 +1295,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch {
       dispatch({ type: 'DOCUMENT_FAILED', error: 'file.saveFailed' });
     }
-  }, [bytesFromEmbed, keepOwnBytes]);
+  }, [bytesFromEmbed, keepOwnBytes, withOwnLayers]);
 
   const onFileInput = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -1163,6 +1337,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       splitDocument,
       currentFileBytes,
       pendingRedactions,
+      markForRedaction,
+      readFile,
+      replaceFile: replaceCurrentFile,
+      layersShown,
+      showLayers,
+      keepLayerVisibility,
+      resetLayers,
       combineFiles,
       compressFile,
       saveCopy,
@@ -1207,6 +1388,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       splitDocument,
       currentFileBytes,
       pendingRedactions,
+      markForRedaction,
+      readFile,
+      replaceCurrentFile,
+      layersShown,
+      showLayers,
+      keepLayerVisibility,
+      resetLayers,
       combineFiles,
       compressFile,
       saveCopy,

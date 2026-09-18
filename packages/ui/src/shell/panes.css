@@ -29,6 +29,14 @@
   font-size: 14px;
 }
 
+.pane-title {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .pane-body {
   flex: 1;
   min-block-size: 0;

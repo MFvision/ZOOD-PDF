@@ -1,0 +1,116 @@
+/* Redact: find and redact, and remove hidden information, under the marking tools. */
+.redact-section {
+  border-block-start: 1px solid var(--border);
+}
+
+.redact-form {
+  display: grid;
+  gap: 8px;
+}
+
+.redact-form .tool-actions {
+  margin-block: 4px 0;
+}
+
+.redact-patterns,
+.redact-hidden {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.redact-patterns legend,
+.redact-hidden legend {
+  margin-block-end: 6px;
+  font-weight: 600;
+}
+
+.redact-check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.redact-check input {
+  margin-block-start: 3px;
+}
+
+.redact-pattern {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.redact-results {
+  margin-block-start: 12px;
+}
+
+.redact-results-head {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.redact-results-head strong {
+  flex: 1;
+}
+
+.redact-list {
+  display: grid;
+  gap: 2px;
+  max-block-size: 320px;
+  padding: 0;
+  margin: 8px 0 0;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+}
+
+.redact-match {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 4px 8px;
+  align-items: baseline;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.redact-match:hover {
+  background: var(--bg-hover);
+}
+
+.redact-match .badge {
+  grid-column: 3;
+  justify-self: start;
+}
+
+.redact-match-page {
+  color: var(--fg-muted);
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.redact-match-context {
+  overflow-wrap: anywhere;
+}
+
+.redact-match-context mark {
+  color: inherit;
+  background: var(--danger-bg);
+  border-radius: 2px;
+}
+
+.redact-finding > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.redact-finding-details {
+  color: var(--fg-muted);
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}

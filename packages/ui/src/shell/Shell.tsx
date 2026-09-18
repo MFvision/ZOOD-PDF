@@ -47,6 +47,15 @@ export function Shell() {
   const warraqView = isViewer && !services.embedShowing;
   // Organize shows every page in its grid; the thumbnails and find bar are for reading.
   const organizing = isViewer && state.rightPane.activeTool === 'organize';
+  // The navigation pane: in Warraq's view with the pages; beside EmbedPDF's
+  // (whose own sidebar has the pages) while a document pane — bookmarks,
+  // attachments, layers — is chosen.
+  const navigation =
+    isViewer &&
+    state.document !== null &&
+    !organizing &&
+    state.leftPane.open &&
+    (warraqView || state.leftPane.tab !== 'thumbnails');
 
   return (
     <div className="shell">
@@ -68,9 +77,9 @@ export function Shell() {
         </div>
       )}
       <div className="shell-body">
-        {warraqView && !organizing && state.leftPane.open && (
+        {navigation && (
           <>
-            <LeftPane />
+            <LeftPane reading={!warraqView} />
             <PaneResizer side="start" width={state.leftPane.width} onResize={(width) => dispatch({ type: 'SET_LEFT_WIDTH', width })} />
           </>
         )}

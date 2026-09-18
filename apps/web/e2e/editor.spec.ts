@@ -26,7 +26,14 @@ test.describe('the interface does what it shows', () => {
     await enterEditText(page);
     const navigation = page.getByRole('complementary', { name: 'Navigation' });
     await expect(navigation).toContainText('Thumbnails');
-    await expect(navigation.getByRole('tab'), 'no tabs that only say "later"').toHaveCount(0);
+    // Every tab opens a pane that works (e2e/panes.spec.ts); none only says "later".
+    const tabs = navigation.getByRole('tab');
+    await expect(tabs).toHaveCount(4);
+    for (const name of ['Thumbnails', 'Bookmarks', 'Attachments', 'Layers']) {
+      await navigation.getByRole('tab', { name }).click();
+      await expect(navigation.getByRole('heading', { name })).toBeVisible();
+      await expect(page.getByText(/later phase|coming soon|not built yet/i)).toHaveCount(0);
+    }
     await expect(page.getByText(/later phase|coming soon|not built yet/i)).toHaveCount(0);
   });
 
