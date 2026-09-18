@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
+import { notices } from '../../packages/ui/vite/notices';
 import { ocrModels } from '../../packages/ui/vite/ocrModels';
 
 /**
@@ -50,11 +51,17 @@ export function stripMetaCsp(): Plugin {
 }
 
 export default defineConfig(({ command, mode }) => ({
-  plugins: [react(), devCspNonce(), ocrModels(), ...(mode === 'tauri' ? [stripMetaCsp()] : [])],
+  plugins: [react(), devCspNonce(), ocrModels(), notices(), ...(mode === 'tauri' ? [stripMetaCsp()] : [])],
   html: command === 'serve' ? { cspNonce: devNonce } : undefined,
   server: { port: 5173, strictPort: true },
   preview: { port: 4173, strictPort: true },
-  build: { outDir: 'dist', target: 'es2022', sourcemap: false },
+  build: {
+    outDir: 'dist',
+    target: 'es2022',
+    sourcemap: false,
+    // The bundled packages' licences, beside those `notices()` adds.
+    license: { fileName: 'licenses/THIRD-PARTY-LICENSES.md' },
+  },
   worker: { format: 'es' },
   resolve: { dedupe: ['react', 'react-dom'] },
 }));

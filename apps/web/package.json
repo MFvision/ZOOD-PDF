@@ -8,7 +8,7 @@
     "dev": "vite",
     "dev:tauri": "vite --mode tauri",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
-    "build:tauri": "tsc --noEmit -p tsconfig.json && vite build --mode tauri",
+    "build:tauri": "tsc --noEmit -p tsconfig.json && vite build --mode tauri && node ../../scripts/rust-licenses.mjs dist/licenses/RUST-CRATES.md",
     "preview": "vite preview --port 4173 --strictPort",
     "lint": "eslint .",
     "test": "vitest run",
