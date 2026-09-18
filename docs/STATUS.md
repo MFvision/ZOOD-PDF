@@ -20,7 +20,7 @@
 | Hostile input | mutation harness on every pull request; cargo-fuzz targets ready for nightly |
 | Visual regressions | golden renders of all 48 corpus pages gated in CI |
 | No-mapping files | characters recovered from glyph shapes, at 100 % precision on held-out fonts |
-| Installed on this Mac | `/Applications/Warraq.app`, built from this tree — `scripts/install-macos.sh`, documented in `docs/install-macos.md`. Opens a PDF, renders every page, both thumbnails and full size |
+| Installed on this Mac | `/Applications/ورّاق.app`, built from this tree — `scripts/install-macos.sh`, documented in `docs/install-macos.md`. Opens a PDF, renders every page, both thumbnails and full size |
 
 Every one of the 48 corpus files opens. 63 tests green, clippy clean, `wasm32-unknown-unknown` compiles, core WASM 2.50 MB gzipped (budget 8 MB).
 

@@ -15,7 +15,9 @@ set -eu
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
 dest=${1:-/Applications}
-app_name="Warraq.app"
+app_name="ورّاق.app"
+# Installs before the name was written in Arabic were called this.
+old_name="Warraq.app"
 built="$repo/apps/desktop/src-tauri/target/release/bundle/macos/$app_name"
 
 die() { printf 'install-macos: %s\n' "$1" >&2; exit 1; }
@@ -41,6 +43,11 @@ fi
 # files that this version no longer ships.
 rm -rf "$dest/$app_name"
 cp -R "$built" "$dest/$app_name"
+# The same app under its old name would sit beside it; only ours is removed.
+old="$dest/$old_name"
+if [ -d "$old" ] && [ "$(defaults read "$old/Contents/Info" CFBundleIdentifier 2>/dev/null)" = "app.warraq.desktop" ]; then
+    rm -rf "$old"
+fi
 
 # The build is signed ad hoc by the linker, which is enough to launch locally
 # but not enough for Gatekeeper to vouch for it on another Mac. Clearing the

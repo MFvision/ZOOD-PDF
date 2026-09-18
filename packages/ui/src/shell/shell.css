@@ -280,6 +280,68 @@
   border: 3px dashed var(--accent);
 }
 
+.drop-overlay-split {
+  flex-direction: row;
+  gap: 16px;
+  padding: 24px;
+  border: none;
+  background: color-mix(in srgb, var(--bg-app) 70%, transparent);
+  backdrop-filter: blur(12px) saturate(160%);
+}
+
+.drop-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  padding: 24px;
+  text-align: center;
+  border: 2px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 16px;
+  transition: background-color 120ms ease-out, border-color 120ms ease-out, transform 160ms ease-out;
+}
+
+.drop-zone:first-child {
+  flex: 2;
+}
+
+.drop-zone-open {
+  flex: 1;
+  color: var(--text-secondary, var(--text));
+}
+
+.drop-zone.is-active {
+  border-style: solid;
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  transform: scale(1.01);
+}
+
+.drop-zone p {
+  margin: 0;
+  font-size: 19px;
+}
+
+.drop-zone span {
+  max-inline-size: 28ch;
+  font-size: 13px;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drop-zone {
+    transition: none;
+  }
+
+  .drop-zone.is-active {
+    transform: none;
+  }
+}
+
 .spin {
   animation: spin 1s linear infinite;
 }

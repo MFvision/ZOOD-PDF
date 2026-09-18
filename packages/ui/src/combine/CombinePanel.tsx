@@ -67,18 +67,6 @@ export function CombinePanel() {
     setEntries((list) => [...list, ...added]);
   };
 
-  // Combining from an open file starts with that file, as it stands now.
-  useEffect(() => {
-    if (seeded.current || !state.document) return;
-    seeded.current = true;
-    const name = state.document.name;
-    void services.currentFileBytes().then((bytes) => {
-      if (bytes) void add([{ name, bytes, password: services.documentPassword }]);
-    });
-    // Once, when the panel opens.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const choose = () => {
     if (!isTauriHost()) {
       inputRef.current?.click();
@@ -103,6 +91,22 @@ export function CombinePanel() {
     event.target.value = '';
     await addFiles(files);
   };
+
+  // Combining from an open file starts with that file, as it stands now, and
+  // then the files dropped on it, if a drop is what opened the panel.
+  useEffect(() => {
+    if (seeded.current) return;
+    seeded.current = true;
+    const dropped = services.takeCombineDrop();
+    const name = state.document?.name;
+    void (async () => {
+      const bytes = name !== undefined ? await services.currentFileBytes() : null;
+      if (name !== undefined && bytes) await add([{ name, bytes, password: services.documentPassword }]);
+      if (dropped.length > 0) await addFiles(dropped);
+    })();
+    // Once, when the panel opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Files dropped on the window while the list is open join it, rather than
   // replacing the document they were meant to be combined with.

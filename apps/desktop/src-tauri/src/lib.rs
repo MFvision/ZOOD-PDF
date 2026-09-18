@@ -20,9 +20,33 @@ pub mod print;
 /// before the event is emitted, so `read_file_bytes` accepts it afterwards.
 pub const FILE_DROP_EVENT: &str = "warraq://file-drop";
 
+/// Event sent while files are dragged over the window, so the interface can
+/// show where they would go: the webview sees none of the HTML drag events.
+/// Payload: [`FileDragPayload`].
+pub const FILE_DRAG_EVENT: &str = "warraq://file-drag";
+
 #[derive(Clone, Serialize)]
 pub struct FileDropPayload {
     pub paths: Vec<String>,
+    /// Where the files were let go, in CSS pixels from the webview's corner.
+    pub x: f64,
+    pub y: f64,
+}
+
+#[derive(Clone, Serialize)]
+pub struct FileDragPayload {
+    /// `over` while files are over the window (with where), `leave` when they
+    /// have gone.
+    pub kind: &'static str,
+    pub x: f64,
+    pub y: f64,
+}
+
+/// A drag position in CSS pixels: Tauri reports it in physical ones.
+fn logical<R: Runtime>(window: &tauri::Window<R>, at: &tauri::PhysicalPosition<f64>) -> (f64, f64) {
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let at = at.to_logical::<f64>(scale);
+    (at.x, at.y)
 }
 
 /// A PDF named on the command line: `warraq-desktop report.pdf`. It is handed
@@ -147,21 +171,51 @@ pub fn run() {
         .on_window_event(|window, event| {
             // Forward OS file drops to the webview, after allowing the dropped
             // files in the fs scope (a drop is as explicit a choice as a dialog).
-            if let WindowEvent::DragDrop(DragDropEvent::Drop { paths, .. }) = event {
-                let scope = window.app_handle().fs_scope();
-                let files: Vec<String> = paths
-                    .iter()
-                    .filter(|p| p.is_file())
-                    .map(|p| {
-                        if let Err(e) = scope.allow_file(p) {
-                            eprintln!("warraq: cannot allow dropped file {}: {e}", p.display());
-                        }
-                        p.to_string_lossy().into_owned()
-                    })
-                    .collect();
-                if !files.is_empty() {
-                    let _ = window.emit(FILE_DROP_EVENT, FileDropPayload { paths: files });
+            let WindowEvent::DragDrop(drag) = event else {
+                return;
+            };
+            match drag {
+                DragDropEvent::Enter { position, .. } | DragDropEvent::Over { position } => {
+                    let (x, y) = logical(window, position);
+                    let _ = window.emit(FILE_DRAG_EVENT, FileDragPayload { kind: "over", x, y });
                 }
+                DragDropEvent::Leave => {
+                    let _ = window.emit(
+                        FILE_DRAG_EVENT,
+                        FileDragPayload {
+                            kind: "leave",
+                            x: 0.0,
+                            y: 0.0,
+                        },
+                    );
+                }
+                DragDropEvent::Drop { paths, position } => {
+                    let _ = window.emit(
+                        FILE_DRAG_EVENT,
+                        FileDragPayload {
+                            kind: "leave",
+                            x: 0.0,
+                            y: 0.0,
+                        },
+                    );
+                    let scope = window.app_handle().fs_scope();
+                    let files: Vec<String> = paths
+                        .iter()
+                        .filter(|p| p.is_file())
+                        .map(|p| {
+                            if let Err(e) = scope.allow_file(p) {
+                                eprintln!("warraq: cannot allow dropped file {}: {e}", p.display());
+                            }
+                            p.to_string_lossy().into_owned()
+                        })
+                        .collect();
+                    if !files.is_empty() {
+                        let (x, y) = logical(window, position);
+                        let _ =
+                            window.emit(FILE_DROP_EVENT, FileDropPayload { paths: files, x, y });
+                    }
+                }
+                _ => {}
             }
         })
         .run(tauri::generate_context!())

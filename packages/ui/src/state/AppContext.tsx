@@ -13,7 +13,6 @@ import { getSharedCoreClient } from '../core/client';
 import { installDesktopFileBridge } from '../core/desktopFiles';
 import {
   isTauriHost,
-  onNativeFileDrop,
   pickPdfFile,
   printAvailable,
   printPdf,
@@ -82,6 +81,9 @@ export interface CombineInput {
 export type OrganizeOp = 'rotate' | 'reorder' | 'delete' | 'insert_blank' | 'insert_file' | 'crop' | 'trim_margins';
 
 /** A panel that takes the files dropped on the window, and what the drop overlay says it does. */
+/** What a drop on an open document is for: joining it, or replacing it. */
+export type DropIntent = 'combine' | 'open';
+
 export interface DropTarget {
   label: TKey;
   take: (files: File[]) => void;
@@ -113,12 +115,20 @@ export interface AppServices {
   /** Tries the protected file again with this password. */
   unlockFile: (password: string) => void;
   cancelUnlock: () => void;
-  /** Files dropped on the window: to the panel that claimed drops, if any, or opened. */
-  dropFiles: (files: ArrayLike<File>) => void;
+  /**
+   * Files dropped on the window. A tool that claimed drops takes them; else,
+   * with `combine`, they join the open file in Combine, and otherwise the PDF
+   * opens — several PDFs with nothing open go to Combine together.
+   */
+  dropFiles: (files: ArrayLike<File>, intent?: DropIntent) => void;
+  /** Files a drop sent to Combine, taken (once) by the panel as it opens. */
+  takeCombineDrop: () => File[];
   /** A panel claims the window's drops while it is open (`null` gives them back); Combine adds them to its list. */
   claimDrops: (target: DropTarget | null) => void;
   /** What the drop overlay says a drop will do. */
   dropLabel: TKey;
+  /** A tool has claimed the window's drops. */
+  dropClaimed: boolean;
   /** Opens the first PDF in a drop or picker selection. */
   openFiles: (files: ArrayLike<File>) => Promise<void>;
   closeDocument: () => void;
@@ -384,11 +394,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dropTarget.current = target;
     setDropLabel(target?.label ?? 'drop.overlay');
   }, []);
+  const combineDrop = useRef<File[]>([]);
+  const takeCombineDrop = useCallback(() => combineDrop.current.splice(0), []);
   const dropFiles = useCallback(
-    (files: ArrayLike<File>) => {
+    (files: ArrayLike<File>, intent?: DropIntent) => {
       const list = Array.from(files);
-      if (dropTarget.current) dropTarget.current.take(list);
-      else void openFiles(list);
+      if (dropTarget.current) {
+        dropTarget.current.take(list);
+        return;
+      }
+      const pdfs = list.filter(isPdfFile);
+      const open = stateRef.current.document !== null;
+      if (pdfs.length > 0 && ((open && intent !== 'open') || (!open && pdfs.length > 1))) {
+        combineDrop.current = pdfs;
+        dispatch({ type: 'SET_ACTIVE_TOOL', tool: 'combine' });
+        return;
+      }
+      void openFiles(list);
     },
     [openFiles],
   );
@@ -438,13 +460,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [openFile]);
-
-  /**
-   * Under Tauri the OS drop is swallowed natively and re-emitted by the host,
-   * so the shell's HTML5 `drop` listener never fires. In a browser this is a
-   * no-op and that listener is the only one.
-   */
-  useEffect(() => onNativeFileDrop((files) => dropFiles(files.map(toFile))), [dropFiles]);
 
   const attachEmbed = useCallback((registry: PluginRegistry) => {
     embedRef.current = registry;
@@ -1126,8 +1141,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cancelUnlock,
       openFiles,
       dropFiles,
+      takeCombineDrop,
       claimDrops,
       dropLabel,
+      dropClaimed: dropLabel !== 'drop.overlay',
       closeDocument,
       requestOpenFile,
       attachEmbed,
@@ -1169,6 +1186,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cancelUnlock,
       openFiles,
       dropFiles,
+      takeCombineDrop,
       claimDrops,
       dropLabel,
       closeDocument,

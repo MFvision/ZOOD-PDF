@@ -162,8 +162,41 @@ export async function takeStartupFile(): Promise<PickedFile | null> {
 /** Emitted by `apps/desktop/src-tauri/src/lib.rs` after an OS drag-and-drop. */
 export const FILE_DROP_EVENT = 'warraq://file-drop';
 
+/** Emitted while files are dragged over the window; the webview sees no HTML drag events. */
+export const FILE_DRAG_EVENT = 'warraq://file-drag';
+
+/** Where on the page, in CSS pixels, files are over or were let go. */
+export interface DropPoint {
+  x: number;
+  y: number;
+}
+
 interface DropEvent {
-  payload?: { paths?: string[] };
+  payload?: { paths?: string[]; x?: number; y?: number };
+}
+
+interface DragEvent {
+  payload?: { kind?: 'over' | 'leave'; x?: number; y?: number };
+}
+
+/** Listens to a host event until the returned function is called. */
+function listen(host: TauriInternals, event: string, handle: (payload: never) => void): () => void {
+  const handler = host.transformCallback(handle);
+  let stop: (() => void) | null = null;
+  let cancelled = false;
+  void invoke('plugin:event|listen', { event, target: { kind: 'Any' }, handler })
+    .then((id) => {
+      // A failed unlisten is not actionable — the window is going away — but an
+      // unhandled rejection would still surface in the app.
+      const unlisten = () => void invoke('plugin:event|unlisten', { event, eventId: id }).catch(() => {});
+      if (cancelled) unlisten();
+      else stop = unlisten;
+    })
+    .catch(() => {});
+  return () => {
+    cancelled = true;
+    stop?.();
+  };
 }
 
 /**
@@ -175,12 +208,13 @@ interface DropEvent {
  * build did nothing whatsoever. Outside Tauri this is a no-op and the web
  * listener does the work.
  */
-export function onNativeFileDrop(onFiles: (files: PickedFile[]) => void): () => void {
+export function onNativeFileDrop(onFiles: (files: PickedFile[], at: DropPoint | null) => void): () => void {
   const host = internals();
   if (!host) return () => {};
-
-  const handler = host.transformCallback(((event: DropEvent) => {
+  return listen(host, FILE_DROP_EVENT, ((event: DropEvent) => {
     const paths = event?.payload?.paths ?? [];
+    const { x, y } = event?.payload ?? {};
+    const at = typeof x === 'number' && typeof y === 'number' ? { x, y } : null;
     void Promise.all(
       paths.map(async (path) => ({
         name: baseName(path),
@@ -188,34 +222,23 @@ export function onNativeFileDrop(onFiles: (files: PickedFile[]) => void): () => 
       })),
     )
       .then((files) => {
-        if (files.length > 0) onFiles(files);
+        if (files.length > 0) onFiles(files, at);
       })
       .catch(() => {});
   }) as (payload: never) => void);
+}
 
-  let stop: (() => void) | null = null;
-  let cancelled = false;
-  void invoke('plugin:event|listen', {
-    event: FILE_DROP_EVENT,
-    target: { kind: 'Any' },
-    handler,
-  })
-    .then((id) => {
-      // A failed unlisten is not actionable — the window is going away — but an
-      // unhandled rejection would still surface in the app.
-      const unlisten = () =>
-        void invoke('plugin:event|unlisten', { event: FILE_DROP_EVENT, eventId: id }).catch(
-          () => {},
-        );
-      if (cancelled) unlisten();
-      else stop = unlisten;
-    })
-    .catch(() => {});
-
-  return () => {
-    cancelled = true;
-    stop?.();
-  };
+/**
+ * Subscribes to files being dragged over the window: `at` while they are
+ * over it, `null` once they have left or been dropped.
+ */
+export function onNativeFileDrag(onDrag: (at: DropPoint | null) => void): () => void {
+  const host = internals();
+  if (!host) return () => {};
+  return listen(host, FILE_DRAG_EVENT, ((event: DragEvent) => {
+    const { kind, x, y } = event?.payload ?? {};
+    onDrag(kind === 'over' && typeof x === 'number' && typeof y === 'number' ? { x, y } : null);
+  }) as (payload: never) => void);
 }
 
 /**

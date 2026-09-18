@@ -36,12 +36,12 @@ is the equivalent if you need cargo directly.
 
 ## What gets installed
 
-One self-contained `Warraq.app`. The UI is compiled into the executable, so the
+One self-contained `ورّاق.app`. The UI is compiled into the executable, so the
 bundle does not read anything from the source tree and the repository can be
 moved or deleted afterwards.
 
 ```
-Warraq.app/Contents/
+ورّاق.app/Contents/
   MacOS/warraq-desktop            the Rust host and the whole core
   Resources/icon.icns
   Resources/resources/pdfium/     libpdfium.dylib + its licences
@@ -57,7 +57,7 @@ Three ways, all local:
 
 * **File → Open**, the toolbar button, or ⌘O — the native open panel.
 * **Drag a PDF onto the window.**
-* **`/Applications/Warraq.app/Contents/MacOS/warraq-desktop report.pdf`** from a
+* **`/Applications/ورّاق.app/Contents/MacOS/warraq-desktop report.pdf`** from a
   terminal. Double-clicking a PDF in Finder does *not* open Warraq yet: the
   bundle claims no document types, which is a deliberate omission — an editor
   should not take over the system PDF handler without being asked.
@@ -83,7 +83,7 @@ not an installation step.
 ## Uninstalling
 
 ```sh
-rm -rf /Applications/Warraq.app
+rm -rf /Applications/ورّاق.app
 rm -rf ~/Library/WebKit/app.warraq.desktop
 rm -rf "$HOME/Library/Application Support/app.warraq.desktop"
 ```

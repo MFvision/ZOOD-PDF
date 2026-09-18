@@ -1,5 +1,7 @@
-import { useCallback } from 'react';
-import { CircleAlert, Loader, Upload, X } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { CircleAlert, Combine, FileText, Loader, Upload, X } from 'lucide-react';
+import type { DropPoint } from '../core/host-tauri';
+import type { DropIntent } from '../state/AppContext';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { FontNotice } from '../edit/FontNotice';
@@ -28,8 +30,16 @@ export function Shell() {
   const { t, lang } = useI18n();
   useKeyboardShortcuts();
 
-  const onFiles = useCallback((files: FileList) => services.dropFiles(files), [services]);
-  const dragging = useFileDrop(onFiles);
+  // With a document open (and no tool taking drops), the overlay is two
+  // targets: combine with it — the default — or open in its place.
+  const [openZone, setOpenZone] = useState<HTMLDivElement | null>(null);
+  const onFiles = useCallback(
+    (files: File[], at: DropPoint | null) => services.dropFiles(files, intentAt(at, openZone)),
+    [services, openZone],
+  );
+  const { dragging, at } = useFileDrop(onFiles);
+  const split = state.document !== null && !services.dropClaimed;
+  const intent = intentAt(at, openZone);
 
   const isViewer = state.view === 'viewer';
   // EmbedPDF shows the document (ADR-0007); Warraq's own viewer takes over in
@@ -119,12 +129,34 @@ export function Shell() {
           {t(state.toast.key)}
         </div>
       )}
-      {dragging && (
+      {dragging && !split && (
         <div className="drop-overlay" aria-hidden="true">
           <Icon of={Upload} size={40} />
           <p>{t(services.dropLabel)}</p>
         </div>
       )}
+      {dragging && split && (
+        <div className="drop-overlay drop-overlay-split" aria-hidden="true">
+          <div className={`drop-zone${intent === 'combine' ? ' is-active' : ''}`}>
+            <Icon of={Combine} size={36} />
+            <p>{t('drop.combineWith', { name: state.document?.name ?? '' })}</p>
+            <span>{t('drop.combineHint')}</span>
+          </div>
+          <div ref={setOpenZone} className={`drop-zone drop-zone-open${intent === 'open' ? ' is-active' : ''}`}>
+            <Icon of={FileText} size={28} />
+            <p>{t('drop.openInstead')}</p>
+            <span>{t('drop.openHint')}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+/** Which target of the split overlay the pointer is over: Combine unless it is on Open. */
+function intentAt(at: DropPoint | null, openZone: HTMLElement | null): DropIntent {
+  const box = openZone?.getBoundingClientRect();
+  if (!at || !box) return 'combine';
+  const inside = at.x >= box.left && at.x <= box.right && at.y >= box.top && at.y <= box.bottom;
+  return inside ? 'open' : 'combine';
 }

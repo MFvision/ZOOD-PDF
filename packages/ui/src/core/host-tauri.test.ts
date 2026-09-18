@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CoreClient } from './client';
 import {
+  FILE_DRAG_EVENT,
   FILE_DROP_EVENT,
   handleTauriRequest,
   isTauriHost,
+  onNativeFileDrag,
   onNativeFileDrop,
   pickFiles,
   pickPdfFile,
@@ -317,7 +319,11 @@ describe('native drag and drop', () => {
       read_file_bytes: new Uint8Array([0x25, 0x50]).buffer,
     });
     const dropped: string[] = [];
-    const stop = onNativeFileDrop((files) => dropped.push(...files.map((f) => f.name)));
+    const where: unknown[] = [];
+    const stop = onNativeFileDrop((files, at) => {
+      dropped.push(...files.map((f) => f.name));
+      where.push(at);
+    });
 
     expect(calls.find((c) => c.cmd === 'plugin:event|listen')?.args).toMatchObject({
       event: FILE_DROP_EVENT,
@@ -325,8 +331,9 @@ describe('native drag and drop', () => {
       handler: 1,
     });
 
-    callbacks[0]?.({ payload: { paths: ['/Users/me/عقد.pdf'] } });
+    callbacks[0]?.({ payload: { paths: ['/Users/me/عقد.pdf'], x: 120, y: 80 } });
     await vi.waitFor(() => expect(dropped).toEqual(['عقد.pdf']));
+    expect(where).toEqual([{ x: 120, y: 80 }]);
     expect(calls.find((c) => c.cmd === 'read_file_bytes')?.args).toEqual({
       path: '/Users/me/عقد.pdf',
     });
@@ -338,6 +345,20 @@ describe('native drag and drop', () => {
         eventId: 4,
       }),
     );
+  });
+
+  it('reports where files are dragged, and when they leave', async () => {
+    const calls = fakeHost({ 'plugin:event|listen': 5 });
+    const seen: unknown[] = [];
+    const stop = onNativeFileDrag((at) => seen.push(at));
+    const handler = callbacks.at(-1);
+    expect(calls.find((c) => c.cmd === 'plugin:event|listen')?.args).toMatchObject({
+      event: FILE_DRAG_EVENT,
+    });
+    handler?.({ payload: { kind: 'over', x: 10.5, y: 20 } });
+    handler?.({ payload: { kind: 'leave', x: 0, y: 0 } });
+    expect(seen).toEqual([{ x: 10.5, y: 20 }, null]);
+    stop();
   });
 
   it('does nothing in a browser, where the HTML5 drop listener works', () => {
