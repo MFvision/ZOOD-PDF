@@ -513,7 +513,7 @@
   "redact.hidden.kind.metadata": "خصائص المستند وبياناته الوصفية",
   "redact.hidden.kind.scripts": "البرامج النصية والإجراءات",
   "redact.hidden.kind.attachments": "الملفات المرفقة",
-  "redact.hidden.kind.comments": "التعليقات والتعليمات",
+  "redact.hidden.kind.comments": "التعليقات والعلامات",
   "redact.hidden.kind.forms": "حقول النماذج وبياناتها (يُرسم مظهرها في الصفحة)",
   "redact.hidden.kind.hiddenLayers": "الطبقات المخفية وما ترسمه",
   "redact.hidden.kind.bookmarks": "الإشارات المرجعية",

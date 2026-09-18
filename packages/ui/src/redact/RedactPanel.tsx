@@ -162,11 +162,9 @@ function FindAndRedact() {
                   <input type="checkbox" checked={chosen.has(index)} onChange={() => toggle(index)} />
                   <span className="redact-match-page">{t('redact.search.page', { page: match.page + 1 })}</span>
                   <bdi className="redact-match-context" dir="auto">
-                    {match.before && '…'}
                     {match.before}
                     <mark>{match.text}</mark>
                     {match.after}
-                    {match.after && '…'}
                   </bdi>
                   <span className="badge">{t(`redact.kind.${match.kind}` as TKey)}</span>
                 </label>
