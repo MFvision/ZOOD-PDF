@@ -2,10 +2,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CoreClient } from './client';
 import {
   FILE_DROP_EVENT,
+  HTML_FILTER,
   handleTauriRequest,
   isTauriHost,
   onNativeFileDrop,
   pickPdfFile,
+  saveNativeFile,
   savePdfFile,
   takeStartupFile,
 } from './host-tauri';
@@ -239,6 +241,23 @@ describe('native file dialogs', () => {
     const calls = fakeHost({ 'plugin:dialog|save': null });
     expect(await savePdfFile(new Uint8Array([1]), 'x.pdf')).toBe(false);
     expect(calls.some((c) => c.cmd === 'plugin:fs|write_file')).toBe(false);
+  });
+
+  it('saves other kinds of file the same way, offering their own type', async () => {
+    const calls = fakeHost({
+      'plugin:dialog|save': '/Users/me/تقرير (comparison).html',
+      'plugin:fs|write_file': null,
+    });
+    const bytes = new TextEncoder().encode('<!doctype html>');
+    expect(await saveNativeFile(bytes, 'تقرير (comparison).html', HTML_FILTER)).toBe(true);
+    expect(calls.find((c) => c.cmd === 'plugin:dialog|save')?.args).toEqual({
+      options: { defaultPath: 'تقرير (comparison).html', filters: [{ name: 'HTML', extensions: ['html'] }] },
+    });
+    const write = calls.find((c) => c.cmd === 'plugin:fs|write_file');
+    expect(write?.args).toBe(bytes);
+    expect(write?.options?.headers).toEqual({
+      path: encodeURIComponent('/Users/me/تقرير (comparison).html'),
+    });
   });
 });
 

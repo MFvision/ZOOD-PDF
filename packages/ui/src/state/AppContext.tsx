@@ -11,9 +11,11 @@ import {
 import type { ChangeEvent, Dispatch, ReactNode } from 'react';
 import { getSharedCoreClient } from '../core/client';
 import {
+  HTML_FILTER,
   isTauriHost,
   onNativeFileDrop,
   pickPdfFile,
+  saveNativeFile,
   savePdfFile,
   takeStartupFile,
 } from '../core/host-tauri';
@@ -31,7 +33,7 @@ import type { AppAction, AppState } from './appReducer';
 import { readPreferences, writePreferences } from './preferences';
 import { addRecent, clearRecent as clearStoredRecent, readRecent } from './recent';
 import { isPdf, namedLikePdf } from './pdfFile';
-import { combinedFileName, downloadPdf, extractedFileName, pdfFileName } from './saveFile';
+import { combinedFileName, downloadFile, downloadPdf, extractedFileName, pdfFileName } from './saveFile';
 import { findTool } from '../tools/tools';
 
 /** How much Compress may trade: `imageDpi` downsamples images (lossy); absent keeps them. */
@@ -129,6 +131,8 @@ export interface AppServices {
   compressFile: (options: CompressChoice) => Promise<CompressResult>;
   /** Saves bytes as a new PDF beside the open one (the native panel on desktop). */
   saveCopy: (bytes: ArrayBuffer, name: string) => Promise<boolean>;
+  /** Saves an HTML page — Compare's report — the same way; `false` if the panel was cancelled. */
+  saveReport: (html: string, name: string) => Promise<boolean>;
   clearRecent: () => void;
   /** Replaces a paragraph and records it on the undo stack. */
   commitParagraph: (entry: EditEntry) => Promise<void>;
@@ -739,6 +743,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
+  const saveReport = useCallback(async (html: string, name: string): Promise<boolean> => {
+    const data = new TextEncoder().encode(html);
+    if (isTauriHost()) return saveNativeFile(data, name, HTML_FILTER);
+    downloadFile(data, name, 'text/html;charset=utf-8');
+    return true;
+  }, []);
+
   const organizing = state.rightPane.activeTool === 'organize' && state.document !== null;
 
   const viewCommand = useCallback(
@@ -865,6 +876,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       combineFiles,
       compressFile,
       saveCopy,
+      saveReport,
       clearRecent,
       commitParagraph,
       addText,
@@ -900,6 +912,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       combineFiles,
       compressFile,
       saveCopy,
+      saveReport,
       clearRecent,
       commitParagraph,
       addText,

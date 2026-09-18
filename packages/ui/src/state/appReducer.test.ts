@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { appReducer, createInitialState, hasUnsavedEdits, PANE_MAX_WIDTH, warraqOwnsDocument } from './appReducer';
 import type { AppState, DocumentInfo } from './appReducer';
 import { MAX_ZOOM, MIN_ZOOM } from './zoom';
-import { combinedFileName, extractedFileName, pdfFileName } from './saveFile';
+import { combinedFileName, comparisonFileName, extractedFileName, pdfFileName } from './saveFile';
 import { sanitizePreferences } from './preferences';
 
 const doc: DocumentInfo = {
@@ -150,6 +150,11 @@ describe('pdfFileName', () => {
     expect(pdfFileName('report.PDF')).toBe('report.PDF');
     expect(pdfFileName('notes')).toBe('notes.pdf');
     expect(pdfFileName('  ')).toBe('document.pdf');
+  });
+
+  it('names a comparison report after the file, as an HTML page', () => {
+    expect(comparisonFileName('فاتورة.pdf')).toBe('فاتورة (comparison).html');
+    expect(comparisonFileName('notes')).toBe('notes (comparison).html');
   });
 });
 

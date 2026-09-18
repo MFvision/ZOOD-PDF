@@ -36,6 +36,11 @@ export function compressedFileName(name: string): string {
   return `${pdfFileName(name).replace(/\.pdf$/i, '')} (compressed).pdf`;
 }
 
+/** The name of Compare's report on a file: `report (comparison).html`, whatever the language. */
+export function comparisonFileName(name: string): string {
+  return `${pdfFileName(name).replace(/\.pdf$/i, '')} (comparison).html`;
+}
+
 /** The name of a file made of several: the first one's, and how many more: `report + 2.pdf`. */
 export function combinedFileName(names: readonly string[]): string {
   const base = pdfFileName(names[0] ?? '').replace(/\.pdf$/i, '');
@@ -46,14 +51,19 @@ export function combinedFileName(names: readonly string[]): string {
  * Browsers only. The claim that this also worked under Tauri was wrong: wry
  * registers no download handler, so the link click did nothing at all and the
  * app reported a save that never happened. The desktop path is
- * `savePdfFile` in `core/host-tauri.ts`, chosen in `AppContext.saveDocument`.
+ * `saveNativeFile` in `core/host-tauri.ts`, chosen in `AppContext`.
  */
 export function downloadPdf(bytes: Uint8Array<ArrayBuffer>, name: string): void {
-  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+  downloadFile(bytes, pdfFileName(name), 'application/pdf');
+}
+
+/** `downloadPdf` for any kind of file: `name` is used as it is. Browsers only. */
+export function downloadFile(bytes: Uint8Array<ArrayBuffer>, name: string, type: string): void {
+  const url = URL.createObjectURL(new Blob([bytes], { type }));
   try {
     const link = document.createElement('a');
     link.href = url;
-    link.download = pdfFileName(name);
+    link.download = name;
     link.rel = 'noopener';
     document.body.append(link);
     link.click();

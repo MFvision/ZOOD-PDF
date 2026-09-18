@@ -78,7 +78,15 @@ function toHex(text: string): string {
  * `read_file` see it; nothing is readable that the user did not choose.
  */
 
-const PDF_FILTER = [{ name: 'PDF', extensions: ['pdf'] }];
+/** A choice in the native panel's file-type menu, as `tauri-plugin-dialog` reads it. */
+export interface FileFilter {
+  name: string;
+  extensions: string[];
+}
+
+const PDF_FILTER: FileFilter[] = [{ name: 'PDF', extensions: ['pdf'] }];
+/** Compare's report. */
+export const HTML_FILTER: FileFilter[] = [{ name: 'HTML', extensions: ['html'] }];
 
 /** Last segment of a native path, for the window title and the recent list. */
 function baseName(path: string): string {
@@ -209,13 +217,22 @@ export function onNativeFileDrop(onFiles: (files: PickedFile[]) => void): () => 
  * Header values are ASCII, so the path is percent-encoded — `write_file`
  * percent-decodes it, which is what keeps an Arabic filename intact.
  */
-export async function savePdfFile(bytes: Uint8Array, suggestedName: string): Promise<boolean> {
+export async function saveNativeFile(
+  bytes: Uint8Array,
+  suggestedName: string,
+  filters: readonly FileFilter[],
+): Promise<boolean> {
   const path = await invoke('plugin:dialog|save', {
-    options: { defaultPath: suggestedName, filters: PDF_FILTER },
+    options: { defaultPath: suggestedName, filters },
   });
   if (typeof path !== 'string') return false;
   await invoke('plugin:fs|write_file', bytes, { headers: { path: encodeURIComponent(path) } });
   return true;
+}
+
+/** `saveNativeFile` for a PDF: the panel offers PDF as the file type. */
+export function savePdfFile(bytes: Uint8Array, suggestedName: string): Promise<boolean> {
+  return saveNativeFile(bytes, suggestedName, PDF_FILTER);
 }
 
 /** `width` u32 LE + `height` u32 LE + RGBA8, as `encode_bitmap` writes it. */
