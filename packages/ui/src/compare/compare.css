@@ -1,0 +1,180 @@
+/* Compare: which two versions, the options, and what changed between them.
+   Logical properties throughout, so the pane mirrors in Arabic. */
+.compare-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin: 12px 0 0;
+  border: 0;
+}
+
+.compare-choice legend {
+  margin-block-end: 8px;
+  font-weight: 600;
+}
+
+.compare-option {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.compare-option input {
+  flex: none;
+  margin-block-start: 4px;
+}
+
+.compare-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.compare-option-note {
+  margin: 0;
+  font-size: 0.9em;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+}
+
+.compare-alone {
+  padding-block: 8px;
+  padding-inline: 12px;
+  margin: 12px 0 0;
+  background: var(--bg-hover);
+  border-radius: var(--radius-m);
+}
+
+.compare-file {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+}
+
+.compare-file-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.compare-file-name {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compare-file-pages {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+}
+
+.compare-unlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.compare-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-block-start: 16px;
+}
+
+.compare-results {
+  padding-block-start: 12px;
+  margin-block-start: 16px;
+  border-block-start: 1px solid var(--border);
+}
+
+.compare-versions {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 8px;
+  margin: 0 0 8px;
+}
+
+.compare-versions dt {
+  color: var(--fg-muted);
+}
+
+.compare-versions dd {
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.compare-summary ul {
+  padding-inline-start: 18px;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.compare-summary p {
+  margin: 0;
+  font-weight: 600;
+}
+
+.compare-page {
+  padding: 10px;
+  margin-block-start: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+}
+
+.compare-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.compare-page-head h4 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.compare-page-words {
+  margin: 4px 0 0;
+  font-size: 0.9em;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+}
+
+.compare-passage {
+  margin: 8px 0 0;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+
+/* Struck through or underlined: the two differ by line, not only by colour. */
+.compare-removed {
+  color: var(--danger);
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  background: var(--danger-bg);
+  border-radius: 2px;
+}
+
+/* The text keeps the body colour: the accent on its own tint is under 4.5:1. */
+.compare-added {
+  color: var(--fg);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  background: var(--accent-soft);
+  border-radius: 2px;
+}

@@ -130,7 +130,8 @@ export const TOOLS: readonly ToolDefinition[] = [
     ],
   },
   { id: 'export', labelKey: 'tool.export', icon: FileOutput, implemented: false },
-  { id: 'compare', labelKey: 'tool.compare', icon: GitCompare, implemented: false },
+  // Warraq's own reading (`extract_text`, logical order), diffed word by word.
+  { id: 'compare', labelKey: 'tool.compare', icon: GitCompare, implemented: true },
   { id: 'ocr', labelKey: 'tool.ocr', icon: ScanText, implemented: false },
   // Warraq's core (`pages.combine`): PDFium's importer breaks form fields (ADR-0008).
   { id: 'combine', labelKey: 'tool.combine', icon: Combine, implemented: true },
