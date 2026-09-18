@@ -107,6 +107,9 @@ export function AiPanel() {
   const [result, setResult] = useState<Result | null>(null);
   const [copied, setCopied] = useState<'no' | 'yes' | 'failed'>('no');
   const abortRef = useRef<AbortController | null>(null);
+  // Bumped by every change of what would be sent, so a review still reading
+  // when the person changed their mind does not show the old choice as current.
+  const generation = useRef(0);
   const preflightId = useId();
   const answerId = useId();
 
@@ -152,6 +155,7 @@ export function AiPanel() {
 
   /** Any change of what would be sent makes the preflight, and what went wrong with it, stale. */
   const changed = () => {
+    generation.current += 1;
     setPreflight(null);
     setNotice(null);
     setFailure(null);
@@ -209,6 +213,7 @@ export function AiPanel() {
     setNotice(null);
     setShowText(false);
     setReading(0);
+    const ticket = generation.current;
     try {
       // Marked but not applied, a redaction still leaves its text in the file.
       if (services.pendingRedactions() > 0) {
@@ -216,6 +221,7 @@ export function AiPanel() {
         return;
       }
       const read = await readDocument(services, pagesOf, budget, setReading);
+      if (ticket !== generation.current) return;
       if (!read) {
         setNotice({ key: 'ai.readFailed' });
         return;
