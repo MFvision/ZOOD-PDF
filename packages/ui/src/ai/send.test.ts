@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { preflightFor } from './preflight';
 import type { ProviderSettings } from './preflight';
-import { send } from './send';
+import { send, watchPolicy } from './send';
 import type { SendOptions } from './send';
 
 const KEY = 'sk-ant-api03-not-a-real-key-0123456789';
@@ -77,11 +77,11 @@ describe('sending', () => {
   });
 
   it('tells an address the security policy refused from one that did not answer', async () => {
-    const other = preflightFor({ ...localSettings, base: 'http://localhost:9' }, { kind: 'summarize' }, read, context);
+    const other = preflightFor({ ...localSettings, base: 'http://localhost:11435' }, { kind: 'summarize' }, read, context);
     const refused = harness(() => Promise.reject(new TypeError('Failed to fetch')), true);
     expect(await send(other, '', new AbortController().signal, refused.options)).toEqual({
       ok: false,
-      failure: { kind: 'blocked', url: 'http://localhost:9' },
+      failure: { kind: 'blocked', url: 'http://localhost:11435' },
     });
   });
 
@@ -97,5 +97,29 @@ describe('sending', () => {
   it('says so when the model returns nothing', async () => {
     const { options } = harness(async () => json({ type: 'message', content: [], stop_reason: 'end_turn' }));
     expect(await send(claude, KEY, new AbortController().signal, options)).toEqual({ ok: false, failure: { kind: 'empty' } });
+  });
+});
+
+describe('the policy watch', () => {
+  it('hears a connection the policy refused to that address, and nothing else', () => {
+    const target = new EventTarget();
+    Object.defineProperty(globalThis, 'document', { configurable: true, value: target });
+    try {
+      const refusal = (effectiveDirective: string, blockedURI: string) =>
+        Object.assign(new Event('securitypolicyviolation'), { effectiveDirective, blockedURI });
+      const watch = watchPolicy();
+      target.dispatchEvent(refusal('img-src', 'http://localhost:11435/logo.png'));
+      expect(watch.refused('http://localhost:11435/api/chat')).toBe(false);
+      target.dispatchEvent(refusal('connect-src', 'http://localhost:11435/api/chat'));
+      expect(watch.refused('http://localhost:11435/api/chat')).toBe(true);
+      expect(watch.refused('https://api.anthropic.com/v1/messages')).toBe(false);
+      watch.stop();
+      const after = watchPolicy();
+      after.stop();
+      target.dispatchEvent(refusal('connect-src', 'http://localhost:11435/api/chat'));
+      expect(after.refused('http://localhost:11435/api/chat')).toBe(false);
+    } finally {
+      Reflect.deleteProperty(globalThis, 'document');
+    }
   });
 });

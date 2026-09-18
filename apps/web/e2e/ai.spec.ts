@@ -227,17 +227,17 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
   });
 
   test('a local address the security policy does not allow is named as such', async ({ page, stayLocal: _ }) => {
-    const through = await refuse(page, 'http://localhost:9/');
+    const through = await refuse(page, 'http://localhost:11435/');
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
     await chooseTool(page, 'AI');
     const ai = panel(page);
     await ai.getByRole('radio', { name: 'A local model on this computer' }).check();
-    await ai.getByLabel('Server address').fill('http://localhost:9');
+    await ai.getByLabel('Server address').fill('http://localhost:11435');
     await expect(ai.getByText('connect only to port 11434')).toBeVisible();
     await ai.getByRole('button', { name: 'Review what will be sent' }).click();
     await preflight(page).getByRole('button', { name: 'Send to the local model' }).click();
-    await expect(ai.getByRole('alert')).toContainText("This build's security policy does not allow connecting to http://localhost:9");
+    await expect(ai.getByRole('alert')).toContainText("This build's security policy does not allow connecting to http://localhost:11435");
     expect(through).toHaveLength(0);
   });
 
