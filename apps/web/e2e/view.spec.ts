@@ -6,6 +6,7 @@ import {
   annotationTypes,
   chooseTool,
   corpus,
+  documentStatus,
   embedDocument,
   embedPage,
   embedZoom,
@@ -20,7 +21,7 @@ const THREE_PAGES = corpus('generated/chrome-notonaskh-justified-3pages.pdf');
 
 const menu = (page: Page, name: string) =>
   page.getByRole('menubar').getByRole('menuitem', { name, exact: true });
-const statusBar = (page: Page) => page.getByRole('contentinfo', { name: 'Status bar' });
+const statusBar = (page: Page) => documentStatus(page);
 
 // Warraq's menus, shortcuts and status bar once drove only its own viewer, and
 // did nothing visible while EmbedPDF showed the page. These prove they reach it.

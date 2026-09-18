@@ -1,91 +1,322 @@
-/* Design tokens. Light is the default; dark follows the OS unless overridden by data-theme. */
+/*
+ * Design tokens — the one place colours, type, space, radii, depth and motion
+ * are defined. Modelled on macOS's semantic colours (windowBackgroundColor,
+ * labelColor, separatorColor, controlAccentColor…), so a surface names what it
+ * is, not what colour it happens to be. docs/design/README.md explains each.
+ *
+ * Light is the default; dark follows the OS unless <html data-theme> overrides
+ * it. Increased contrast and reduced transparency are honoured at the end.
+ *
+ * The names under "Compatibility" are the tokens panels were written against
+ * before this system; they map onto it, so every panel follows the new look.
+ */
 :root {
   color-scheme: light dark;
 
-  --font-latin: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-arabic: "Cairo", "Inter", "Segoe UI", "Noto Naskh Arabic", system-ui, sans-serif;
-  --bg-app: #f4f5f7;
-  --bg-panel: #fff;
-  --bg-canvas: #dfe3e8;
-  --bg-hover: #e9ecef;
-  --bg-active: #dde1e6;
-  --bg-elevated: #fff;
-  --fg: #1a1d21;
-  --fg-muted: #5f6772;
-  --border: #d5d9de;
-  --border-strong: #b8bec6;
-  --accent: #0e7c72;
-  --accent-fg: #fff;
-  --accent-soft: rgb(14 124 114 / 12%);
-  --warning-bg: #fff3c4;
-  --warning-fg: #6b4e00;
-  --warning-border: #e8b500;
-  --danger: #b42318;
-  --danger-bg: #fee4e2;
-  --focus: #2563eb;
-  --selection: rgb(37 99 235 / 30%);
-  --shadow-1: 0 1px 2px rgb(0 0 0 / 8%);
-  --shadow-2: 0 8px 24px rgb(0 0 0 / 16%);
-  --page-shadow: 0 1px 4px rgb(0 0 0 / 22%);
-  --radius-s: 4px;
-  --radius-m: 8px;
-  --radius-l: 12px;
-  --menubar-h: 34px;
-  --ribbon-h: 46px;
-  --status-h: 28px;
-  --motion: 150ms;
+  /* ---- Type ------------------------------------------------------------ */
+
+  /* The platform face first: SF Pro and SF Arabic on Apple devices, Segoe UI
+     on Windows. Cairo (Arabic) and Inter (Latin) are bundled for the rest. */
+  --font-ui: system-ui, -apple-system, "BlinkMacSystemFont", "Segoe UI", "Cairo", "Inter", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Menlo", "Consolas", monospace;
+
+  /* macOS text styles: size / line height. */
+  --text-large-title: 26px;
+  --text-title1: 22px;
+  --text-title2: 17px;
+  --text-title3: 15px;
+  --text-headline: 13px;
+  --text-body: 13px;
+  --text-callout: 12px;
+  --text-subheadline: 11px;
+  --text-footnote: 10px;
+  --leading-tight: 1.15;
+  --leading-body: 1.38;
+
+  /* Tracking is size-specific (SF's tables, in em). Arabic is never tracked:
+     spacing letters apart breaks the joins (see :lang(ar) below). */
+  --track-large-title: -0.022em;
+  --track-title1: -0.018em;
+  --track-title2: -0.012em;
+  --track-title3: -0.008em;
+  --track-body: -0.006em;
+  --track-small: 0.004em;
+
+  /* ---- Space (4-pt grid) ---------------------------------------------- */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-7: 20px;
+  --space-8: 24px;
+  --space-9: 32px;
+  --space-10: 48px;
+
+  /* ---- Radii ------------------------------------------------------------ */
+  --radius-6: 6px;
+  --radius-8: 8px;
+  --radius-10: 10px;
+  --radius-12: 12px;
+  --radius-16: 16px;
+  --radius-capsule: 999px;
+
+  /* ---- Metrics ------------------------------------------------------------ */
+  --control-h: 28px;
+  --control-h-small: 22px;
+  --toolbar-h: 52px;
+  --menubar-h: 26px;
+  --traffic-lights: 84px;
+  --icon-stroke: 1.6;
+
+  /* ---- Accent -------------------------------------------------------------- */
+
+  /* System blue, or the colour chosen in System Settings where the engine
+     exposes it (CSS `AccentColor`: Safari, so the macOS app). */
+  --accent: #007aff;
+  --accent-contrast: #fff;
+
+  /* ---- Colours: light ------------------------------------------------------ */
+  --window-background: #f5f5f7;
+  --toolbar-background: rgb(246 246 248 / 82%);
+  --sidebar-background: rgb(236 236 240 / 78%);
+  --content-background: #fff;
+  --under-page-background: #e6e6ea;
+  --grouped-background: #fff;
+  --elevated-background: rgb(252 252 253 / 86%);
+  --control-background: #fff;
+  --control-border: rgb(0 0 0 / 12%);
+  --glass: rgb(255 255 255 / 70%);
+  --glass-edge: rgb(255 255 255 / 80%);
+  --label: rgb(0 0 0 / 85%);
+  --secondary-label: rgb(0 0 0 / 50%);
+  --tertiary-label: rgb(0 0 0 / 26%);
+  --quaternary-label: rgb(0 0 0 / 10%);
+  --separator: rgb(0 0 0 / 10%);
+  --opaque-separator: #d9d9dd;
+  --fill: rgb(0 0 0 / 10%);
+  --secondary-fill: rgb(0 0 0 / 7%);
+  --tertiary-fill: rgb(0 0 0 / 5%);
+  --quaternary-fill: rgb(0 0 0 / 3%);
+  --red: #ff3b30;
+  --orange: #ff9500;
+  --yellow: #fc0;
+  --green: #34c759;
+  --destructive: var(--red);
+  --scrim: rgb(0 0 0 / 22%);
+  --page-white: #fff;
+
+  /* ---- Depth ------------------------------------------------------------------ */
+  --shadow-control: 0 0.5px 1px rgb(0 0 0 / 14%), 0 0 0 0.5px rgb(0 0 0 / 6%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 10%), 0 0 0 0.5px rgb(0 0 0 / 5%);
+  --shadow-popover: 0 10px 30px rgb(0 0 0 / 16%), 0 2px 6px rgb(0 0 0 / 8%), 0 0 0 0.5px rgb(0 0 0 / 12%);
+  --shadow-sheet: 0 24px 60px rgb(0 0 0 / 22%), 0 4px 14px rgb(0 0 0 / 10%), 0 0 0 0.5px rgb(0 0 0 / 14%);
+  --shadow-page: 0 1px 3px rgb(0 0 0 / 12%), 0 4px 14px rgb(0 0 0 / 8%);
+
+  /* ---- Materials -------------------------------------------------------------- */
+  --blur-thin: blur(12px) saturate(170%);
+  --blur-regular: blur(24px) saturate(180%);
+  --blur-thick: blur(40px) saturate(190%);
+
+  /* ---- Motion ----------------------------------------------------------------- */
+
+  /* Only interaction feedback moves. Critically damped (no overshoot); the
+     spring curve is a linear() sample of damping 1, response 0.35 s. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.64, 0, 0.78, 0);
+  --spring: linear(0, 0.157 4.8%, 0.438 11.1%, 0.66 17.8%, 0.806 24.5%, 0.897 31.2%, 0.95 38%, 0.978 45%, 0.992 53%, 0.998 62%, 1);
+  --duration-press: 90ms;
+  --duration-quick: 160ms;
+  --duration-regular: 260ms;
+  --duration-sheet: 340ms;
+
+  /* ---- Compatibility: the names panels were written against ------------------- */
+  --font-latin: var(--font-ui);
+  --font-arabic: var(--font-ui);
+  --bg-app: var(--window-background);
+  --bg-panel: var(--content-background);
+  --bg-canvas: var(--under-page-background);
+  --bg-hover: var(--tertiary-fill);
+  --bg-active: var(--fill);
+  --bg-elevated: var(--grouped-background);
+  --fg: var(--label);
+  --fg-muted: var(--secondary-label);
+  --text: var(--label);
+  --text-muted: var(--secondary-label);
+  --text-secondary: var(--secondary-label);
+  --border: var(--separator);
+  --border-strong: var(--control-border);
+  --accent-fg: var(--accent-contrast);
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --focus: color-mix(in srgb, var(--accent) 55%, transparent);
+  --selection: color-mix(in srgb, var(--accent) 28%, transparent);
+  --danger: var(--destructive);
+  --danger-bg: color-mix(in srgb, var(--red) 12%, transparent);
+  --warning-bg: color-mix(in srgb, var(--yellow) 22%, var(--content-background));
+  --warning-fg: #6e4b00;
+  --warning-border: color-mix(in srgb, var(--orange) 55%, transparent);
+  --shadow-1: var(--shadow-small);
+  --shadow-2: var(--shadow-popover);
+  --page-shadow: var(--shadow-page);
+  --radius-s: var(--radius-6);
+  --radius-m: var(--radius-8);
+  --radius-l: var(--radius-12);
+  --font-s: var(--text-callout);
+  --font-xs: var(--text-subheadline);
+  --motion: var(--duration-quick);
+  --ribbon-h: var(--toolbar-h);
+  --status-h: 0px;
 }
 
+@supports (color: AccentColor) {
+  :root {
+    --accent: AccentColor;
+    --accent-contrast: AccentColorText;
+  }
+}
+
+/* The dark palette, shared by "follow the system" and the explicit choice. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg-app: #14161a;
-    --bg-panel: #1c1f24;
-    --bg-canvas: #0d0e11;
-    --bg-hover: #2a2e35;
-    --bg-active: #343943;
-    --bg-elevated: #23272e;
-    --fg: #e6e8eb;
-    --fg-muted: #9aa3ad;
-    --border: #2f343c;
-    --border-strong: #454b55;
-    --accent: #2fc3b5;
-    --accent-fg: #06201d;
-    --accent-soft: rgb(47 195 181 / 16%);
-    --warning-bg: #4a3a00;
-    --warning-fg: #ffe38a;
-    --warning-border: #c99a00;
-    --danger: #ff8a80;
-    --danger-bg: #4a1d1a;
-    --focus: #7cb0ff;
-    --selection: rgb(124 176 255 / 35%);
-    --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
-    --shadow-2: 0 8px 24px rgb(0 0 0 / 55%);
-    --page-shadow: 0 1px 6px rgb(0 0 0 / 70%);
+    --accent: #0a84ff;
+    --window-background: #242426;
+    --toolbar-background: rgb(40 40 42 / 82%);
+    --sidebar-background: rgb(34 34 36 / 76%);
+    --content-background: #1c1c1e;
+    --under-page-background: #161618;
+    --grouped-background: #2c2c2e;
+    --elevated-background: rgb(44 44 46 / 86%);
+    --control-background: rgb(255 255 255 / 12%);
+    --control-border: rgb(255 255 255 / 10%);
+    --glass: rgb(58 58 60 / 62%);
+    --glass-edge: rgb(255 255 255 / 12%);
+    --label: rgb(255 255 255 / 88%);
+    --secondary-label: rgb(235 235 245 / 58%);
+    --tertiary-label: rgb(235 235 245 / 28%);
+    --quaternary-label: rgb(235 235 245 / 14%);
+    --separator: rgb(255 255 255 / 10%);
+    --opaque-separator: #38383a;
+    --fill: rgb(255 255 255 / 16%);
+    --secondary-fill: rgb(255 255 255 / 11%);
+    --tertiary-fill: rgb(255 255 255 / 8%);
+    --quaternary-fill: rgb(255 255 255 / 5%);
+    --red: #ff453a;
+    --orange: #ff9f0a;
+    --yellow: #ffd60a;
+    --green: #30d158;
+    --scrim: rgb(0 0 0 / 45%);
+    --warning-fg: #ffd98a;
+    --shadow-control: 0 0.5px 1px rgb(0 0 0 / 30%), inset 0 0.5px 0 rgb(255 255 255 / 8%);
+    --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(255 255 255 / 6%);
+    --shadow-popover: 0 12px 34px rgb(0 0 0 / 45%), 0 2px 6px rgb(0 0 0 / 30%), 0 0 0 0.5px rgb(255 255 255 / 12%);
+    --shadow-sheet: 0 24px 64px rgb(0 0 0 / 55%), 0 0 0 0.5px rgb(255 255 255 / 12%);
+    --shadow-page: 0 1px 3px rgb(0 0 0 / 50%), 0 6px 18px rgb(0 0 0 / 35%);
   }
 }
 
 :root[data-theme="dark"] {
-  --bg-app: #14161a;
-  --bg-panel: #1c1f24;
-  --bg-canvas: #0d0e11;
-  --bg-hover: #2a2e35;
-  --bg-active: #343943;
-  --bg-elevated: #23272e;
-  --fg: #e6e8eb;
-  --fg-muted: #9aa3ad;
-  --border: #2f343c;
-  --border-strong: #454b55;
-  --accent: #2fc3b5;
-  --accent-fg: #06201d;
-  --accent-soft: rgb(47 195 181 / 16%);
-  --warning-bg: #4a3a00;
-  --warning-fg: #ffe38a;
-  --warning-border: #c99a00;
-  --danger: #ff8a80;
-  --danger-bg: #4a1d1a;
-  --focus: #7cb0ff;
-  --selection: rgb(124 176 255 / 35%);
-  --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
-  --shadow-2: 0 8px 24px rgb(0 0 0 / 55%);
-  --page-shadow: 0 1px 6px rgb(0 0 0 / 70%);
+  --accent: #0a84ff;
+  --window-background: #242426;
+  --toolbar-background: rgb(40 40 42 / 82%);
+  --sidebar-background: rgb(34 34 36 / 76%);
+  --content-background: #1c1c1e;
+  --under-page-background: #161618;
+  --grouped-background: #2c2c2e;
+  --elevated-background: rgb(44 44 46 / 86%);
+  --control-background: rgb(255 255 255 / 12%);
+  --control-border: rgb(255 255 255 / 10%);
+  --glass: rgb(58 58 60 / 62%);
+  --glass-edge: rgb(255 255 255 / 12%);
+  --label: rgb(255 255 255 / 88%);
+  --secondary-label: rgb(235 235 245 / 58%);
+  --tertiary-label: rgb(235 235 245 / 28%);
+  --quaternary-label: rgb(235 235 245 / 14%);
+  --separator: rgb(255 255 255 / 10%);
+  --opaque-separator: #38383a;
+  --fill: rgb(255 255 255 / 16%);
+  --secondary-fill: rgb(255 255 255 / 11%);
+  --tertiary-fill: rgb(255 255 255 / 8%);
+  --quaternary-fill: rgb(255 255 255 / 5%);
+  --red: #ff453a;
+  --orange: #ff9f0a;
+  --yellow: #ffd60a;
+  --green: #30d158;
+  --scrim: rgb(0 0 0 / 45%);
+  --warning-fg: #ffd98a;
+  --shadow-control: 0 0.5px 1px rgb(0 0 0 / 30%), inset 0 0.5px 0 rgb(255 255 255 / 8%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(255 255 255 / 6%);
+  --shadow-popover: 0 12px 34px rgb(0 0 0 / 45%), 0 2px 6px rgb(0 0 0 / 30%), 0 0 0 0.5px rgb(255 255 255 / 12%);
+  --shadow-sheet: 0 24px 64px rgb(0 0 0 / 55%), 0 0 0 0.5px rgb(255 255 255 / 12%);
+  --shadow-page: 0 1px 3px rgb(0 0 0 / 50%), 0 6px 18px rgb(0 0 0 / 35%);
+}
+
+/* The system accent, where there is one, beats the blue above in both themes. */
+@supports (color: AccentColor) {
+  :root:root {
+    --accent: AccentColor;
+  }
+}
+
+/* Arabic is joined script: tracking it apart breaks the letters. */
+:root:lang(ar) {
+  --track-large-title: 0;
+  --track-title1: 0;
+  --track-title2: 0;
+  --track-title3: 0;
+  --track-body: 0;
+  --track-small: 0;
+}
+
+/* Increase contrast: solid surfaces, stronger lines and labels. */
+@media (prefers-contrast: more) {
+  :root {
+    --toolbar-background: var(--window-background);
+    --sidebar-background: var(--window-background);
+    --elevated-background: var(--grouped-background);
+    --glass: var(--control-background);
+    --separator: rgb(0 0 0 / 35%);
+    --control-border: rgb(0 0 0 / 45%);
+    --secondary-label: rgb(0 0 0 / 70%);
+    --tertiary-label: rgb(0 0 0 / 50%);
+    --focus: var(--accent);
+  }
+
+  :root[data-theme="dark"] {
+    --separator: rgb(255 255 255 / 40%);
+    --control-border: rgb(255 255 255 / 50%);
+    --secondary-label: rgb(255 255 255 / 75%);
+    --tertiary-label: rgb(255 255 255 / 55%);
+  }
+}
+
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --separator: rgb(255 255 255 / 40%);
+    --control-border: rgb(255 255 255 / 50%);
+    --secondary-label: rgb(255 255 255 / 75%);
+    --tertiary-label: rgb(255 255 255 / 55%);
+  }
+}
+
+/* Reduce transparency: every material becomes its solid colour. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --toolbar-background: var(--window-background);
+    --sidebar-background: var(--window-background);
+    --elevated-background: var(--grouped-background);
+    --glass: var(--grouped-background);
+    --blur-thin: none;
+    --blur-regular: none;
+    --blur-thick: none;
+  }
+}
+
+/* Reduce motion: nothing travels; changes cross-fade quickly instead. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --spring: linear(0, 1);
+    --duration-sheet: 160ms;
+    --duration-regular: 160ms;
+  }
 }

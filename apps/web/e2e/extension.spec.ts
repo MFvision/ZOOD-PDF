@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, expect, test } from '@playwright/test';
-import { WORD_EXPORT, embedTiles } from './helpers';
+import { WORD_EXPORT, documentStatus, embedTiles } from './helpers';
 
 const DIST = fileURLToPath(new URL('../../extension/dist', import.meta.url));
 const CHROME =
@@ -52,7 +52,7 @@ test('the extension viewer opens an Arabic PDF, and its AI tool needs no host pe
     await page.goto(`chrome-extension://${id}/viewer.html`);
     await page.locator('input[type="file"]').setInputFiles(WORD_EXPORT);
     await expect.poll(() => embedTiles(page)).toBeGreaterThan(0);
-    await expect(page.getByRole('contentinfo', { name: 'Status bar' })).toContainText('Page 1 of 2');
+    await expect(documentStatus(page)).toContainText('Page 1 of 2');
 
     // The AI tool from the extension's own page, which has no host permissions:
     // its policy restricts scripts, not connections, and Anthropic's API allows

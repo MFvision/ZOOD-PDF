@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Dialog } from '../components/Dialog';
-import { useT } from '../i18n/useT';
-import type { TKey } from '../i18n/messages';
+import { APP_ICON } from '../components/appIcon';
+import { useI18n, useT } from '../i18n/useT';
+import type { Lang, TKey } from '../i18n/messages';
+import type { ThemeMode } from '../state/preferences';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
-import { modKeyLabel } from './menuModel';
+import { formatShortcut } from './menuModel';
 
 function GoToPageForm({ total, initialPage, onGo, onCancel }: { total: number; initialPage: number; onGo: (page: number) => void; onCancel: () => void }) {
   const t = useT();
@@ -147,7 +149,6 @@ export function ShortcutsDialog() {
   const dispatch = useAppDispatch();
   const { canPrint } = useServices();
   const t = useT();
-  const mod = modKeyLabel();
   const rows = SHORTCUT_ROWS.filter((row) => row.labelKey !== 'shortcuts.print' || canPrint);
   return (
     <Dialog open={dialog === 'shortcuts'} title={t('shortcuts.title')} onClose={() => dispatch({ type: 'DIALOG', dialog: null })}>
@@ -162,7 +163,7 @@ export function ShortcutsDialog() {
           {rows.map((row) => (
             <tr key={row.keys}>
               <td>
-                <kbd dir="ltr">{row.keys.replace('Mod', mod)}</kbd>
+                <kbd dir="ltr">{row.keys === 'Esc' ? 'Esc' : formatShortcut(row.keys)}</kbd>
               </td>
               <td>{t(row.labelKey)}</td>
             </tr>
@@ -178,16 +179,96 @@ export function AboutDialog() {
   const { dialog, core } = useAppState();
   const dispatch = useAppDispatch();
   const t = useT();
+  const engine =
+    core?.kind === 'mock' ? t('status.mockCore') : core?.engine ? t('status.coreEngine', { engine: core.engine }) : null;
   return (
     <Dialog open={dialog === 'about'} title={t('help.about')} onClose={() => dispatch({ type: 'DIALOG', dialog: null })}>
-      <p>
-        <strong>{t('app.name')}</strong> — {t('app.tagline')}
-      </p>
-      <p>{t('about.body')}</p>
-      <p className="home-note">
-        {t('app.phase')}
-        {core ? ` · ${core.kind === 'mock' ? t('status.mockCore') : t('status.core', { version: core.version })}` : ''}
-      </p>
+      <div className="about">
+        <img className="about-icon" src={APP_ICON} alt="" width={96} height={96} />
+        <p className="about-name">{t('app.name')}</p>
+        <p className="about-tagline">{t('app.tagline')}</p>
+        <p>{t('about.body')}</p>
+        <p className="about-version">
+          {t('app.phase')}
+          {core && core.kind !== 'mock' ? ` · ${t('status.core', { version: core.version })}` : ''}
+          {engine ? ` · ${engine}` : ''}
+        </p>
+      </div>
+    </Dialog>
+  );
+}
+
+/** One choice of the settings, as a segmented control (a radio group). */
+function Segmented<T extends string>({
+  id,
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: T;
+  options: ReadonlyArray<{ value: T; label: string }>;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="settings-row">
+      <span className="settings-label" id={id}>
+        {label}
+      </span>
+      <div className="segmented" role="radiogroup" aria-labelledby={id}>
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={option.value === value}
+            className="segmented-item"
+            onClick={() => onChange(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Settings (⌘,): the interface language and the appearance. On the macOS app
+ * this is where the language is chosen, since the menu bar drawn in the page
+ * — which carries the language selector in a browser — is the system's there.
+ */
+export function SettingsDialog() {
+  const { dialog, theme } = useAppState();
+  const dispatch = useAppDispatch();
+  const { t, lang, setLang } = useI18n();
+  return (
+    <Dialog open={dialog === 'settings'} title={t('settings.title')} onClose={() => dispatch({ type: 'DIALOG', dialog: null })}>
+      <div className="settings">
+        <Segmented<Lang>
+          id="settings-language"
+          label={t('lang.label')}
+          value={lang}
+          options={[
+            { value: 'ar', label: t('lang.ar') },
+            { value: 'en', label: t('lang.en') },
+          ]}
+          onChange={setLang}
+        />
+        <Segmented<ThemeMode>
+          id="settings-theme"
+          label={t('theme.label')}
+          value={theme}
+          options={[
+            { value: 'system', label: t('theme.system') },
+            { value: 'light', label: t('theme.light') },
+            { value: 'dark', label: t('theme.dark') },
+          ]}
+          onChange={(next) => dispatch({ type: 'SET_THEME', theme: next })}
+        />
+      </div>
     </Dialog>
   );
 }

@@ -23,7 +23,14 @@ export function Dialog({ open, title, onClose, children }: DialogProps) {
     openRef.current = open;
     const element = ref.current;
     if (!element) return;
-    if (open && !element.open) element.showModal();
+    if (open && !element.open) {
+      element.showModal();
+      // showModal focuses the first control, the close box: a field wants the
+      // caret instead, and a sheet with none takes the focus itself, so Tab
+      // starts from its top and nothing wears a focus ring it was not given.
+      const field = element.querySelector<HTMLElement>('[autofocus], input:not([type="hidden"]), textarea, select');
+      (field ?? element).focus();
+    }
     else if (!open && element.open) element.close();
   }, [open]);
 
@@ -48,7 +55,7 @@ export function Dialog({ open, title, onClose, children }: DialogProps) {
   };
 
   return (
-    <dialog ref={ref} className="dialog" aria-labelledby={titleId} onClose={onNativeClose} onClick={onBackdropClick} onKeyDown={onKeyDown}>
+    <dialog ref={ref} className="dialog" tabIndex={-1} aria-labelledby={titleId} onClose={onNativeClose} onClick={onBackdropClick} onKeyDown={onKeyDown}>
       <div className="dialog-header">
         <h2 id={titleId}>{title}</h2>
         <IconButton label={t('dialog.close')} icon={<Icon of={X} />} onClick={onClose} />

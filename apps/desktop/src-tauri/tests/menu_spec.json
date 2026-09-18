@@ -1,0 +1,83 @@
+{
+  "labels": {
+    "appName": "ورّاق",
+    "services": "Services",
+    "hide": "Hide ورّاق",
+    "hideOthers": "Hide Others",
+    "showAll": "Show All",
+    "quit": "Quit ورّاق",
+    "window": "Window",
+    "minimize": "Minimize",
+    "zoom": "Zoom",
+    "bringAllToFront": "Bring All to Front",
+    "fullscreen": "Enter Full Screen",
+    "closeWindow": "Close Window",
+    "cut": "Cut",
+    "copy": "Copy",
+    "paste": "Paste",
+    "selectAll": "Select All"
+  },
+  "menus": [
+    {
+      "id": "app",
+      "label": "ورّاق",
+      "items": [
+        { "id": "about", "label": "About ورّاق", "enabled": true, "separatorBefore": false },
+        { "id": "settings", "label": "Settings…", "accelerator": "CmdOrCtrl+,", "enabled": true, "separatorBefore": true }
+      ]
+    },
+    {
+      "id": "file",
+      "label": "File",
+      "items": [
+        { "id": "open", "label": "Open…", "accelerator": "CmdOrCtrl+O", "enabled": true, "separatorBefore": false },
+        { "id": "save", "label": "Save", "accelerator": "CmdOrCtrl+S", "enabled": false, "separatorBefore": false },
+        { "id": "print", "label": "Print…", "accelerator": "CmdOrCtrl+P", "enabled": false, "separatorBefore": false },
+        { "id": "close", "label": "Close document", "enabled": false, "separatorBefore": true }
+      ]
+    },
+    {
+      "id": "edit",
+      "label": "Edit",
+      "items": [
+        { "id": "undo", "label": "Undo", "accelerator": "CmdOrCtrl+Z", "enabled": false, "separatorBefore": false },
+        { "id": "redo", "label": "Redo", "accelerator": "CmdOrCtrl+Shift+Z", "enabled": false, "separatorBefore": false },
+        { "id": "edit-mode", "label": "Edit text", "enabled": false, "checked": false, "separatorBefore": true },
+        { "id": "find", "label": "Find…", "accelerator": "CmdOrCtrl+F", "enabled": false, "separatorBefore": true },
+        { "id": "goto", "label": "Go to page…", "accelerator": "CmdOrCtrl+Shift+N", "enabled": false, "separatorBefore": false }
+      ]
+    },
+    {
+      "id": "view",
+      "label": "View",
+      "items": [
+        { "id": "zoom-in", "label": "Zoom in", "accelerator": "CmdOrCtrl+=", "enabled": false, "separatorBefore": false },
+        { "id": "zoom-out", "label": "Zoom out", "accelerator": "CmdOrCtrl+-", "enabled": false, "separatorBefore": false },
+        { "id": "fit-width", "label": "Fit width", "accelerator": "CmdOrCtrl+1", "enabled": false, "checked": false, "separatorBefore": false },
+        { "id": "fit-page", "label": "Fit page", "accelerator": "CmdOrCtrl+0", "enabled": false, "checked": false, "separatorBefore": false },
+        { "id": "actual", "label": "Actual size", "enabled": false, "separatorBefore": false },
+        { "id": "left-pane", "label": "Navigation pane", "accelerator": "F4", "enabled": false, "checked": false, "separatorBefore": true },
+        { "id": "right-pane", "label": "Tools pane", "accelerator": "Shift+F4", "enabled": true, "checked": true, "separatorBefore": false },
+        { "id": "theme-system", "label": "Theme: System", "enabled": true, "checked": true, "separatorBefore": true },
+        { "id": "theme-light", "label": "Theme: Light", "enabled": true, "checked": false, "separatorBefore": false },
+        { "id": "theme-dark", "label": "Theme: Dark", "enabled": true, "checked": false, "separatorBefore": false }
+      ]
+    },
+    {
+      "id": "tools",
+      "label": "Tools",
+      "items": [
+        { "id": "tool-edit", "label": "Edit", "enabled": true, "checked": false, "separatorBefore": false },
+        { "id": "tool-organize", "label": "Organize pages", "enabled": true, "checked": false, "separatorBefore": false },
+        { "id": "tool-compress", "label": "Compress", "enabled": true, "checked": false, "separatorBefore": false }
+      ]
+    },
+    {
+      "id": "help",
+      "label": "Help",
+      "items": [
+        { "id": "shortcuts", "label": "Keyboard shortcuts", "enabled": true, "separatorBefore": false }
+      ]
+    }
+  ]
+}
