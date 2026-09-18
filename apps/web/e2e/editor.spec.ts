@@ -9,8 +9,8 @@ test.describe('the interface does what it shows', () => {
     const grid = page.locator('.tool-cards-grid');
     await expect(grid.locator('.tool-card')).toHaveCount(13);
     // Tripwire: when a tool is built, this number has to change with it.
-    await expect(grid.locator('.tool-card-pending')).toHaveCount(7);
-    await expect(grid.locator('.tool-card-pending .tool-card-later')).toHaveCount(7);
+    await expect(grid.locator('.tool-card-pending')).toHaveCount(5);
+    await expect(grid.locator('.tool-card-pending .tool-card-later')).toHaveCount(5);
   });
 
   test('opens an Arabic Word export and puts readable text on the page', async ({ page, stayLocal: _stayLocal }) => {

@@ -1,5 +1,6 @@
 import type { CoreRequest, HandledResult, ResultMap } from './protocol';
 import type {
+  CallReply,
   CoreDocument,
   CoreError,
   CoreModule,
@@ -147,6 +148,22 @@ function saveDocument(doc: CoreDocument): HandledResult {
   return { result: owned, transfer: [owned.buffer] };
 }
 
+/** Copies a tool's reply out of WASM memory into buffers that can be transferred. */
+function callReply(reply: CallReply): HandledResult {
+  try {
+    const blobs = reply.blobs.map((blob) => {
+      const bytes = blob as Uint8Array;
+      const owned = new Uint8Array(new ArrayBuffer(bytes.byteLength));
+      owned.set(bytes);
+      return owned.buffer;
+    });
+    const result: ResultMap['call'] = { json: reply.json, blobs };
+    return { result, transfer: blobs };
+  } finally {
+    reply.free();
+  }
+}
+
 export function handleRequest(runtime: CoreRuntime, request: CoreRequest): HandledResult {
   const plain = (result: unknown): HandledResult => ({ result, transfer: [] });
   switch (request.kind) {
@@ -198,6 +215,14 @@ export function handleRequest(runtime: CoreRuntime, request: CoreRequest): Handl
     }
     case 'save':
       return saveDocument(getDocument(runtime, request.doc));
+    case 'call': {
+      const blobs = request.blobs.map((blob) => new Uint8Array(blob));
+      return callReply(
+        request.doc === null
+          ? runtime.module.call_static(request.op, request.args, blobs)
+          : getDocument(runtime, request.doc).call(request.op, request.args, blobs),
+      );
+    }
     case 'free': {
       const doc = runtime.documents.get(request.doc);
       doc?.free();

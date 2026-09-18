@@ -1,4 +1,5 @@
 import type { RequestKind, RequestMap, ResultMap } from './protocol';
+import { decodeFrame, encodeFrame } from './frame';
 import type { CoreStatus, DocumentMetadata, PageSize, ParagraphData, TextLineData } from './types';
 import { parseReplaceResult } from './handlers';
 
@@ -107,6 +108,17 @@ export async function pickPdfFile(): Promise<PickedFile | null> {
   });
   if (typeof picked !== 'string') return null;
   return { name: baseName(picked), bytes: toArrayBuffer(await readFile(picked)) };
+}
+
+/** Several PDFs at once, from the native open panel (Combine files). */
+export async function pickPdfFiles(): Promise<PickedFile[]> {
+  const picked = await invoke('plugin:dialog|open', {
+    options: { multiple: true, directory: false, filters: PDF_FILTER },
+  });
+  const paths = Array.isArray(picked) ? picked.filter((p): p is string => typeof p === 'string') : [];
+  const files: PickedFile[] = [];
+  for (const path of paths) files.push({ name: baseName(path), bytes: toArrayBuffer(await readFile(path)) });
+  return files;
 }
 
 /**
@@ -261,6 +273,12 @@ type HostRequest = { [K in RequestKind]: { kind: K } & RequestMap[K] }[RequestKi
 
 async function dispatch(message: HostRequest): Promise<unknown> {
   switch (message.kind) {
+    case 'call': {
+      const headers: Record<string, string> = { 'x-warraq-op': message.op };
+      if (message.doc !== null) headers['x-warraq-handle'] = String(message.doc);
+      const reply = (await invoke('core_call', encodeFrame(message.args, message.blobs), { headers })) as ArrayBuffer;
+      return decodeFrame(reply);
+    }
     case 'init':
       return nativeCoreStatus();
     case 'open':

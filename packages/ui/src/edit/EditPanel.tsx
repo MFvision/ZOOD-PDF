@@ -13,7 +13,8 @@ export function EditPanel() {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const { undoEdit, redoEdit } = useServices();
-  const hasDocument = state.view === 'viewer' && state.document !== null;
+  // Mid-switch the editor does not have the file yet (`state.switching`).
+  const hasDocument = state.view === 'viewer' && state.document !== null && state.switching === null;
   const { stack, active, busy, placing, addSize, font } = state.edit;
   const mod = modKeyLabel();
 

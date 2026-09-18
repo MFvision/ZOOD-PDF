@@ -26,13 +26,29 @@ import { loadEditFont } from '../edit/editFont';
 import { canRedo as canRedoStack, canUndo as canUndoStack, redo as redoStack, undo as undoStack } from '../edit/editStack';
 import type { EditEntry, StackStep } from '../edit/editStack';
 import type { TKey } from '../i18n/messages';
-import { appReducer, createInitialState } from './appReducer';
+import { appReducer, createInitialState, warraqOwnsDocument } from './appReducer';
 import type { AppAction, AppState } from './appReducer';
 import { readPreferences, writePreferences } from './preferences';
 import { addRecent, clearRecent as clearStoredRecent, readRecent } from './recent';
 import { isPdf, namedLikePdf } from './pdfFile';
-import { downloadPdf, pdfFileName } from './saveFile';
+import { combinedFileName, downloadPdf, extractedFileName, pdfFileName } from './saveFile';
 import { findTool } from '../tools/tools';
+
+/** One file for Combine files; `password` for a protected one. */
+export interface CombineInput {
+  name: string;
+  bytes: ArrayBuffer;
+  password?: string;
+}
+
+/** The page changes of Organize pages (`warraq-core/src/tools/pages.rs`). */
+export type OrganizeOp = 'rotate' | 'reorder' | 'delete' | 'insert_blank';
+
+/** What a page change answers: the document's new shape. */
+interface PageShape {
+  pageCount: number;
+  pageSizes: [number, number][];
+}
 
 export interface AppServices {
   client: CoreClient;
@@ -58,6 +74,8 @@ export interface AppServices {
   requestOpenFile: () => void;
   /** Called by the EmbedPDF view once its plugin registry is ready. */
   attachEmbed: (registry: PluginRegistry) => void;
+  /** Called by the EmbedPDF view each time it has opened a file. */
+  embedOpened: () => void;
   /** Runs one of the EmbedPDF viewer's registered commands (ADR-0007). */
   runEmbedCommand: (command: string) => void;
   /**
@@ -80,6 +98,14 @@ export interface AppServices {
   canPrint: boolean;
   /** Brings a page (one-based) to the top of the view on screen. */
   goToPage: (page: number) => void;
+  /** Organize pages: one change to the pages of the open document. */
+  organizePages: (op: OrganizeOp, args: object, selectAfter: (pageCount: number) => number[]) => Promise<void>;
+  /** Organize pages: the chosen pages as a new file, saved beside the open one. */
+  extractPages: (pages: number[]) => Promise<void>;
+  /** The open file as it stands now, with whatever either engine has changed. */
+  currentFileBytes: () => Promise<ArrayBuffer | null>;
+  /** Combine files: one new file of every page of `files`, in order, opened in place of the current one. */
+  combineFiles: (files: readonly CombineInput[]) => Promise<void>;
   clearRecent: () => void;
   /** Replaces a paragraph and records it on the undo stack. */
   commitParagraph: (entry: EditEntry) => Promise<void>;
@@ -136,7 +162,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [embed, setEmbed] = useState<PluginRegistry | null>(null);
   const [embedHistory, setEmbedHistory] = useState({ canUndo: false, canRedo: false });
   const syncedRevision = useRef(0);
-  const wasEditing = useRef(false);
+  const wasWarraqs = useRef(false);
+  // Organize pages: the file as it was before each change, for undo and redo.
+  const organizeHistory = useRef<{ undo: Uint8Array[]; redo: Uint8Array[] }>({ undo: [], redo: [] });
+  const [organizeSteps, setOrganizeSteps] = useState({ undo: 0, redo: 0 });
   // Async work reads the latest state through this ref, never a stale closure.
   const stateRef = useRef(state);
   const openSequence = useRef(0);
@@ -313,11 +342,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setEmbed(registry);
   }, []);
 
+  /** EmbedPDF opened a file: a switch back to it is complete. */
+  const embedOpened = useCallback(() => {
+    if (stateRef.current.switching === 'out') dispatch({ type: 'SWITCH_DONE' });
+  }, []);
+
   const runEmbedCommand = useCallback((command: string) => {
     if (embedRef.current) runCommand(embedRef.current, command);
   }, []);
 
-  const embedShowing = state.view === 'viewer' && documentBytes !== null && !state.edit.active;
+  const warraqOwns = warraqOwnsDocument(state);
+  const embedShowing = state.view === 'viewer' && documentBytes !== null && !warraqOwns;
   const embedShowingRef = useRef(embedShowing);
   useEffect(() => {
     embedShowingRef.current = embedShowing;
@@ -329,22 +364,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!embed) return;
     return watch(embed, {
       onPage: (page) => {
-        if (!stateRef.current.edit.active) dispatch({ type: 'SET_CURRENT_PAGE', page });
+        if (!warraqOwnsDocument(stateRef.current)) dispatch({ type: 'SET_CURRENT_PAGE', page });
       },
       onHistory: setEmbedHistory,
     });
   }, [embed]);
 
   useEffect(() => {
-    if (embed) setKeyboard(embed, !state.edit.active, disabledCategories(isTauriHost()));
-  }, [embed, state.edit.active]);
+    if (embed) setKeyboard(embed, !warraqOwns, disabledCategories(isTauriHost()));
+  }, [embed, warraqOwns]);
 
   // Choosing a tool puts the view in that tool's mode — Annotate, Form, Redact —
   // so the toolbar matches the panel the person just opened.
   const activeTool = state.rightPane.activeTool;
   useEffect(() => {
     const mode = activeTool ? findTool(activeTool)?.mode : undefined;
-    if (mode && !stateRef.current.edit.active) runEmbedCommand(mode);
+    if (mode && !warraqOwnsDocument(stateRef.current)) runEmbedCommand(mode);
   }, [activeTool, runEmbedCommand]);
 
   /**
@@ -384,20 +419,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
-   * The handover between the two views. Entering Edit text, Warraq's engine
-   * takes the file exactly as EmbedPDF holds it, so nothing done there is lost;
-   * leaving it, EmbedPDF reopens Warraq's edits. Bytes are the only contract
-   * between them, which is what keeps two engines honest about one document.
+   * The handover between the two engines. Opening Edit text or Organize pages,
+   * Warraq's engine takes the file exactly as EmbedPDF holds it, so nothing
+   * done there is lost; closing them, EmbedPDF reopens Warraq's changes. Bytes
+   * are the only contract between them, which is what keeps two engines honest
+   * about one document.
    */
   useEffect(() => {
-    const editing = state.edit.active;
-    if (wasEditing.current === editing) return;
-    wasEditing.current = editing;
+    if (wasWarraqs.current === warraqOwns) return;
+    wasWarraqs.current = warraqOwns;
+    organizeHistory.current = { undo: [], redo: [] };
+    setOrganizeSteps({ undo: 0, redo: 0 });
+    // The switch takes a moment — EmbedPDF finishes a stroke and writes the
+    // file, Warraq parses it — and until it is done neither engine's old copy
+    // may pass for the current one: an edit made there was silently lost.
+    dispatch({ type: 'SWITCH_ENGINE', direction: warraqOwns ? 'in' : 'out' });
     void (async () => {
-      if (editing) {
+      if (warraqOwns) {
         const bytes = await bytesFromEmbed();
         const name = stateRef.current.document?.name;
-        if (!bytes || !name) return;
+        if (!bytes || !name) {
+          dispatch({ type: 'SWITCH_DONE' });
+          return;
+        }
         // EmbedPDF's copy keeps the file's protection, so it needs the password
         // too; without it this open failed and the editor showed a stale copy.
         const opened = await client.open(bytes, passwordRef.current);
@@ -416,15 +460,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
         // DOCUMENT_OPENED starts the edit history again.
         syncedRevision.current = 0;
+        dispatch({ type: 'SWITCH_DONE' });
         return;
       }
       const doc = documentRef.current;
-      if (!doc || stateRef.current.edit.revision === syncedRevision.current) return;
+      if (!doc || stateRef.current.edit.revision === syncedRevision.current) {
+        dispatch({ type: 'SWITCH_DONE' });
+        return;
+      }
       const saved = await doc.save();
       syncedRevision.current = stateRef.current.edit.revision;
+      // Done when EmbedPDF has opened these bytes: `embedOpened`.
       setDocumentBytes(saved.buffer.slice(saved.byteOffset, saved.byteOffset + saved.byteLength));
     })().catch(() => dispatch({ type: 'DOCUMENT_FAILED', error: 'error.open' }));
-  }, [state.edit.active, bytesFromEmbed, client]);
+  }, [warraqOwns, bytesFromEmbed, client]);
 
   const clearRecent = useCallback(() => {
     clearStoredRecent();
@@ -514,8 +563,122 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const undoEdit = useCallback(() => step(undoStack), [step]);
   const redoEdit = useCallback(() => step(redoStack), [step]);
 
+  /** The last ten states of the file before a page change, and the undone ones. */
+  const ORGANIZE_HISTORY = 10;
+  const rememberSteps = () =>
+    setOrganizeSteps({ undo: organizeHistory.current.undo.length, redo: organizeHistory.current.redo.length });
+
+  /**
+   * One page change (`pages.rotate`, `reorder`, `delete`, `insert_blank`) on
+   * the document Warraq's engine holds, then its new shape. The file as it was
+   * is kept first, so the change can be undone byte for byte.
+   */
+  const organizePages = useCallback(
+    async (op: OrganizeOp, args: object, selectAfter: (pageCount: number) => number[]) => {
+      const doc = documentRef.current;
+      if (!doc || stateRef.current.organize.busy) return;
+      dispatch({ type: 'ORGANIZE_BUSY', busy: true });
+      try {
+        const before = await doc.save();
+        const { result } = await doc.call<PageShape>(`pages.${op}`, args);
+        const history = organizeHistory.current;
+        history.undo = [...history.undo, before].slice(-ORGANIZE_HISTORY);
+        history.redo = [];
+        rememberSteps();
+        dispatch({ type: 'DOCUMENT_RESHAPED', pageCount: result.pageCount, pageSizes: result.pageSizes, selection: selectAfter(result.pageCount) });
+      } catch {
+        dispatch({ type: 'ORGANIZE_BUSY', busy: false });
+        dispatch({ type: 'DOCUMENT_FAILED', error: 'organize.failed' });
+      }
+    },
+    [],
+  );
+
+  /** Undo or redo a page change: the file goes back to the bytes it had. */
+  const organizeStep = useCallback(
+    async (direction: 'undo' | 'redo') => {
+      const doc = documentRef.current;
+      const history = organizeHistory.current;
+      const target = history[direction].at(-1);
+      if (!doc || !target || stateRef.current.organize.busy) return;
+      dispatch({ type: 'ORGANIZE_BUSY', busy: true });
+      try {
+        const current = await doc.save();
+        const opened = await client.open(target.slice(), passwordRef.current);
+        history[direction] = history[direction].slice(0, -1);
+        const other = direction === 'undo' ? 'redo' : 'undo';
+        history[other] = [...history[other], current].slice(-ORGANIZE_HISTORY);
+        rememberSteps();
+        void doc.free();
+        documentRef.current = opened;
+        setDocument(opened);
+        dispatch({ type: 'DOCUMENT_RESHAPED', pageCount: opened.pageCount, pageSizes: opened.pageSizes, selection: [] });
+      } catch {
+        dispatch({ type: 'ORGANIZE_BUSY', busy: false });
+        dispatch({ type: 'DOCUMENT_FAILED', error: 'organize.failed' });
+      }
+    },
+    [client],
+  );
+
+  /** A new file of the chosen pages, saved beside the open one; the open file is untouched. */
+  const extractPages = useCallback(async (pages: number[]) => {
+    const doc = documentRef.current;
+    const name = stateRef.current.document?.name;
+    if (!doc || !name || pages.length === 0) return;
+    try {
+      const { blobs } = await doc.call<{ pageCount: number }>('pages.extract', { pages });
+      const bytes = new Uint8Array(blobs[0] ?? new ArrayBuffer(0));
+      const fileName = extractedFileName(name, pages);
+      if (isTauriHost()) {
+        if (!(await savePdfFile(bytes, fileName))) return;
+      } else {
+        downloadPdf(bytes, fileName);
+      }
+      dispatch({ type: 'TOAST', key: 'organize.extracted' });
+    } catch {
+      dispatch({ type: 'DOCUMENT_FAILED', error: 'organize.failed' });
+    }
+  }, []);
+
+  const currentFileBytes = useCallback(async (): Promise<ArrayBuffer | null> => {
+    if (!warraqOwnsDocument(stateRef.current)) return bytesFromEmbed();
+    const saved = await documentRef.current?.save();
+    return saved ? saved.buffer.slice(saved.byteOffset, saved.byteOffset + saved.byteLength) : null;
+  }, [bytesFromEmbed]);
+
+  const combineFiles = useCallback(
+    async (files: readonly CombineInput[]) => {
+      if (files.length < 2) return;
+      try {
+        // Copies: the core takes the buffers over, and the list keeps its own.
+        const { result, blobs } = await client.callStatic<{ pageCount: number }>(
+          'pages.combine',
+          { passwords: files.map((file) => file.password ?? null) },
+          files.map((file) => file.bytes.slice(0)),
+        );
+        const bytes = blobs[0];
+        if (!bytes || result.pageCount < 1) throw new Error('E_EDIT: nothing combined');
+        dispatch({ type: 'SET_ACTIVE_TOOL', tool: null });
+        await openFile(new File([bytes], combinedFileName(files.map((file) => file.name)), { type: 'application/pdf' }));
+      } catch {
+        dispatch({ type: 'DOCUMENT_FAILED', error: 'combine.failed' });
+      }
+    },
+    [client, openFile],
+  );
+
+  const organizing = state.rightPane.activeTool === 'organize' && state.document !== null;
+
   const viewCommand = useCallback(
     (command: ViewCommand) => {
+      // Mid-switch neither engine holds the current file.
+      if (stateRef.current.switching) return;
+      if (stateRef.current.rightPane.activeTool === 'organize') {
+        // The page grid has no zoom or find; undo and redo are its own.
+        if (command === 'undo' || command === 'redo') void organizeStep(command);
+        return;
+      }
       const registry = embedRef.current;
       if (registry && embedShowingRef.current) {
         runCommand(registry, EMBED_COMMANDS[command]);
@@ -544,7 +707,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return;
       }
     },
-    [undoEdit, redoEdit],
+    [undoEdit, redoEdit, organizeStep],
   );
 
   const viewCommandOn = useCallback((command: ViewCommand): boolean => {
@@ -562,8 +725,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     else dispatch({ type: 'SCROLL_TO_PAGE', page });
   }, []);
 
-  const canUndo = embedShowing ? embedHistory.canUndo : !state.edit.busy && canUndoStack(state.edit.stack);
-  const canRedo = embedShowing ? embedHistory.canRedo : !state.edit.busy && canRedoStack(state.edit.stack);
+  const canUndo = organizing
+    ? !state.organize.busy && organizeSteps.undo > 0
+    : embedShowing
+      ? embedHistory.canUndo
+      : !state.edit.busy && canUndoStack(state.edit.stack);
+  const canRedo = organizing
+    ? !state.organize.busy && organizeSteps.redo > 0
+    : embedShowing
+      ? embedHistory.canRedo
+      : !state.edit.busy && canRedoStack(state.edit.stack);
   const canPrint = embedShowing && !isTauriHost();
 
   const saveDocument = useCallback(async () => {
@@ -573,7 +744,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       // Whichever view is current holds the latest file: EmbedPDF's carries its
       // annotations and redactions, Warraq's its Arabic edits.
-      const fromEmbed = stateRef.current.edit.active ? null : await bytesFromEmbed();
+      const fromEmbed = warraqOwnsDocument(stateRef.current) ? null : await bytesFromEmbed();
       const bytes = fromEmbed ? new Uint8Array(fromEmbed) : await doc.save();
       if (isTauriHost()) {
         // Cancelling the panel is not a failure, and not a save either.
@@ -608,6 +779,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       closeDocument,
       requestOpenFile,
       attachEmbed,
+      embedOpened,
       runEmbedCommand,
       embedShowing,
       viewCommand,
@@ -616,6 +788,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       canRedo,
       canPrint,
       goToPage,
+      organizePages,
+      extractPages,
+      currentFileBytes,
+      combineFiles,
       clearRecent,
       commitParagraph,
       addText,
@@ -636,6 +812,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       closeDocument,
       requestOpenFile,
       attachEmbed,
+      embedOpened,
       runEmbedCommand,
       embedShowing,
       viewCommand,
@@ -644,6 +821,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       canRedo,
       canPrint,
       goToPage,
+      organizePages,
+      extractPages,
+      currentFileBytes,
+      combineFiles,
       clearRecent,
       commitParagraph,
       addText,

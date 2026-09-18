@@ -7,6 +7,8 @@ import type { EditEntry, EditStack } from '../edit/editStack';
 import type { ToolId } from '../tools/tools';
 import type { LeftTab, Preferences, ThemeMode } from './preferences';
 import { clampZoom, nextZoomStep, previousZoomStep } from './zoom';
+import { NO_SELECTION, clampSelection, select, selectAll } from '../organize/selection';
+import type { SelectHow, Selection } from '../organize/selection';
 import type { ZoomMode } from './zoom';
 
 export interface DocumentInfo {
@@ -43,6 +45,14 @@ export interface EditState {
   font: EditFontId;
 }
 
+export interface OrganizeState {
+  selection: Selection;
+  /** Bumped by every page change, undo and redo: the grid redraws on it. */
+  revision: number;
+  /** A page change is in flight; the controls wait for it. */
+  busy: boolean;
+}
+
 export interface AppState {
   view: 'home' | 'viewer';
   document: DocumentInfo | null;
@@ -64,6 +74,13 @@ export interface AppState {
   scrollRequest: { page: number; nonce: number } | null;
   core: CoreStatus | null;
   edit: EditState;
+  organize: OrganizeState;
+  /**
+   * The file is on its way between the engines: `in` to Warraq's, `out` back to
+   * EmbedPDF. Until it arrives, the view shows neither engine's old copy as if
+   * it were current, and nothing can be edited.
+   */
+  switching: 'in' | 'out' | null;
 }
 
 export type AppAction =
@@ -72,6 +89,13 @@ export type AppAction =
   | { type: 'DOCUMENT_FAILED'; error: TKey }
   | { type: 'DOCUMENT_CLOSED' }
   | { type: 'PASSWORD_NEEDED'; name: string; wrong: boolean }
+  | { type: 'SWITCH_ENGINE'; direction: 'in' | 'out' }
+  | { type: 'SWITCH_DONE' }
+  | { type: 'ORGANIZE_SELECT'; index: number; how: SelectHow }
+  | { type: 'ORGANIZE_SELECT_ALL' }
+  | { type: 'ORGANIZE_BUSY'; busy: boolean }
+  /** The open document changed shape (Organize): new pages, and what to select. */
+  | { type: 'DOCUMENT_RESHAPED'; pageCount: number; pageSizes: readonly PageSize[]; selection: number[] }
   | { type: 'PASSWORD_CANCELLED' }
   | { type: 'ERROR_DISMISSED' }
   | { type: 'TOAST'; key: TKey }
@@ -183,7 +207,17 @@ export function createInitialState(prefs: Preferences = {}): AppState {
     scrollRequest: null,
     core: null,
     edit: createEditState(),
+    organize: { selection: NO_SELECTION, revision: 0, busy: false },
+    switching: null,
   };
+}
+
+/**
+ * Warraq's own engine holds the document — Edit text or Organize pages is
+ * open — and EmbedPDF steps aside until it is handed back (ADR-0007).
+ */
+export function warraqOwnsDocument(state: AppState): boolean {
+  return state.edit.active || state.rightPane.activeTool === 'organize';
 }
 
 function scrollTo(state: AppState, page: number): AppState {
@@ -221,7 +255,11 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         edit: { ...createEditState(), active: state.edit.active },
       };
     case 'DOCUMENT_FAILED':
-      return { ...state, loadingName: null, error: action.error, passwordPrompt: null };
+      return { ...state, loadingName: null, error: action.error, passwordPrompt: null, switching: null };
+    case 'SWITCH_ENGINE':
+      return { ...state, switching: action.direction };
+    case 'SWITCH_DONE':
+      return { ...state, switching: null };
     case 'PASSWORD_NEEDED':
       return { ...state, loadingName: null, error: null, passwordPrompt: { name: action.name, wrong: action.wrong } };
     case 'PASSWORD_CANCELLED':
@@ -229,6 +267,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'DOCUMENT_CLOSED':
       return {
         ...state,
+        switching: null,
         view: 'home',
         document: null,
         currentPage: 1,
@@ -289,7 +328,30 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           action.tool === 'edit'
             ? { ...state.edit, active: true }
             : { ...state.edit, active: false, editing: null },
+        organize:
+          action.tool === 'organize' && state.rightPane.activeTool !== 'organize'
+            ? { ...state.organize, selection: NO_SELECTION }
+            : state.organize,
       };
+    case 'ORGANIZE_SELECT':
+      return { ...state, organize: { ...state.organize, selection: select(state.organize.selection, action.index, action.how) } };
+    case 'ORGANIZE_SELECT_ALL':
+      return { ...state, organize: { ...state.organize, selection: selectAll(state.document?.pageCount ?? 0) } };
+    case 'ORGANIZE_BUSY':
+      return { ...state, organize: { ...state.organize, busy: action.busy } };
+    case 'DOCUMENT_RESHAPED': {
+      if (!state.document) return state;
+      const selection = clampSelection({ pages: action.selection, anchor: action.selection[0] ?? null }, action.pageCount);
+      return {
+        ...state,
+        document: { ...state.document, pageCount: action.pageCount, pageSizes: action.pageSizes },
+        currentPage: Math.min(state.currentPage, Math.max(1, action.pageCount)),
+        organize: { selection, revision: state.organize.revision + 1, busy: false },
+        // A page change is an edit: the file must be handed back and saved. The
+        // text-edit history goes: its entries name pages by position.
+        edit: { ...state.edit, stack: EMPTY_EDIT_STACK, editing: null, revision: state.edit.revision + 1 },
+      };
+    }
     case 'FIND_OPEN':
       return { ...state, find: { ...state.find, open: true } };
     case 'FIND_CLOSE':

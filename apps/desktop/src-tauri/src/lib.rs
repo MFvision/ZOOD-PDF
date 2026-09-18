@@ -139,6 +139,7 @@ pub fn run() {
             core_bridge::doc_replace_paragraph,
             core_bridge::doc_add_text,
             core_bridge::doc_save,
+            core_bridge::core_call,
         ])
         .on_window_event(|window, event| {
             // Forward OS file drops to the webview, after allowing the dropped

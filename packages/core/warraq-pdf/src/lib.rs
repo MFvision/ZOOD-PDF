@@ -4,6 +4,7 @@ pub mod document;
 pub mod fonts;
 pub mod incremental;
 pub mod ops;
+pub mod pages;
 pub mod text_walk;
 pub mod tounicode;
 
@@ -11,6 +12,7 @@ pub use document::{Metadata, PdfDocument};
 pub use fonts::{embed_subset_font, FontSubset};
 pub use incremental::{previous_xref, XrefStyle};
 pub use ops::{append_line, erase_area, replace_paragraph, replace_word};
+pub use pages::combine;
 pub use text_walk::{locate_show_runs, Matrix, ShowRun};
 
 #[derive(Debug, thiserror::Error)]

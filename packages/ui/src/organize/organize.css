@@ -1,0 +1,82 @@
+/* Organize pages: the grid of page tiles. Logical properties throughout, so
+   the grid, the drop marker and the page numbers mirror in Arabic. */
+.organize-grid {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-content: flex-start;
+  min-block-size: 0;
+  padding: 24px;
+  overflow: auto;
+  background: var(--bg-canvas);
+}
+
+.organize-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  min-inline-size: 150px;
+  min-block-size: 180px;
+  padding: 8px;
+  cursor: grab;
+  border: 2px solid transparent;
+  border-radius: var(--radius-m);
+}
+
+.organize-tile:hover {
+  background: var(--accent-soft);
+}
+
+.organize-tile:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.organize-tile.is-selected {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.organize-canvas {
+  display: block;
+  background: #fff;
+  box-shadow: var(--page-shadow);
+}
+
+.organize-number {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+}
+
+.organize-tile.is-selected .organize-number {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* Where dragged pages will land: a bar on the tile's leading or trailing edge. */
+.organize-tile.drop-before::before,
+.organize-tile.drop-after::after {
+  position: absolute;
+  inset-block: 8px;
+  inline-size: 4px;
+  content: "";
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.organize-tile.drop-before::before {
+  inset-inline-start: -13px;
+}
+
+.organize-tile.drop-after::after {
+  inset-inline-end: -13px;
+}
+
+.organize-count {
+  margin-block: 0 12px;
+  font-variant-numeric: tabular-nums;
+}

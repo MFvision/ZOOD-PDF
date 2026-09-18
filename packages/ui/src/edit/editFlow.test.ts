@@ -50,9 +50,15 @@ function recordingModule(substituted: boolean): { module: CoreModule; calls: Rep
       return JSON.stringify({ lines_drawn: 4, font_substituted: substituted });
     },
     save: () => new TextEncoder().encode(`%PDF edits:${calls.length}`),
+    call: () => {
+      throw new Error('E_UNKNOWN_OP: not in this test');
+    },
     free: () => undefined,
   };
-  return { module: { version: () => 'test-0', Document: { open: () => document } }, calls };
+  const call_static = () => {
+    throw new Error('E_UNKNOWN_OP: not in this test');
+  };
+  return { module: { version: () => 'test-0', Document: { open: () => document }, call_static }, calls };
 }
 
 function openWith(module: CoreModule) {

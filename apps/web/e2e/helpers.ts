@@ -28,7 +28,7 @@ interface EmbedRegistry {
 }
 interface EmbedPlugin {
   getActiveDocumentId(): string;
-  getActiveDocument(): { pages: unknown[] } | null;
+  getActiveDocument(): { id?: string; pages: unknown[] } | null;
   forDocument(id: string): { getState(): Record<string, unknown>; getActiveMode(): string; getCurrentPage(): number };
 }
 type EmbedElement = { registry: Promise<EmbedRegistry> };
@@ -209,5 +209,18 @@ export async function embedZoom(page: Page): Promise<number> {
     const registry = await (document.querySelector('embedpdf-container') as unknown as EmbedElement).registry;
     const id = registry.getPlugin('document-manager')?.provides?.().getActiveDocumentId() ?? '';
     return Number(registry.getPlugin('zoom')?.provides?.().forDocument(id).getState().currentZoomLevel ?? 0);
+  });
+}
+
+/**
+ * The document EmbedPDF has active: its id and page count. After Warraq hands
+ * a changed file back, a new id is the proof that EmbedPDF really reopened it
+ * and is not still showing the file from before.
+ */
+export async function embedDocument(page: Page): Promise<{ id: string; pages: number }> {
+  return page.evaluate(async () => {
+    const registry = await (document.querySelector('embedpdf-container') as unknown as EmbedElement).registry;
+    const manager = registry.getPlugin('document-manager')?.provides?.();
+    return { id: manager?.getActiveDocumentId() ?? '', pages: manager?.getActiveDocument()?.pages.length ?? 0 };
   });
 }

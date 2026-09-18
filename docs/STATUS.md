@@ -1,6 +1,6 @@
 # STATUS — Warraq
 
-*Updated 2026-09-18: the interface is rebuilt on EmbedPDF (ADR-0007); six of the thirteen tools work end to end, each proven by a test that clicks through it, saves the file and reopens it.*
+*Updated 2026-09-18: the interface is rebuilt on EmbedPDF (ADR-0007); eight of the thirteen tools work end to end, each proven by a test that clicks through it, saves the file and reopens it.*
 
 ## Where the product stands
 
@@ -8,6 +8,8 @@
 |---|---|
 | Open, render, thumbnails, zoom, search | EmbedPDF — PDFium compiled to WebAssembly (MIT) — on web, desktop and extension; Warraq's own engine (native PDFium on desktop, pure Rust in browsers) takes over in Edit text |
 | Comment, fill & sign, prepare form, redact, protect | work end to end through EmbedPDF's plugins, in all three hosts; see the count below |
+| Organize pages | rotate, reorder (drag or buttons), delete, insert a blank page, extract pages to a new file, undo and redo — Warraq's core, as incremental updates (ADR-0008) |
+| Combine files | several PDFs into one new file, in the order listed, form fields and all; protected files with their password — Warraq's core (ADR-0008) |
 | Protected files | open everywhere after a password prompt; one prompt unlocks the file for both engines |
 | Arabic text **reading** in logical order | 16 of the truth-scored corpus files, against 2 for PDF.js, 2 for MuPDF, 0 for PDFium |
 | Arabic text **editing** with reflow | works end to end: click a paragraph in the app, edit it, undo/redo, save. GATE 2 passed (`docs/gate-2.md`) |
@@ -34,9 +36,11 @@ alike when only one of them did anything.
 | | |
 | --- | --- |
 | Tools in the pane | 13 |
-| Tools that work | **6** — Edit, Comment, Fill & sign, Prepare form, Redact, Protect |
-| Tools marked *Later* on their face | 7 — Organize pages, Combine, Export, Compare, Scan & OCR, Compress, AI |
+| Tools that work | **8** — Edit, Organize pages, Combine, Comment, Fill & sign, Prepare form, Redact, Protect |
+| Tools marked *Later* on their face | 5 — Export, Compare, Scan & OCR, Compress, AI |
 | Edit (Warraq's engine) | replace the text of a paragraph, reflowed and reshaped; add a line of new text where you click; choose the face (Amiri, Cairo, Inter) and size; undo and redo a replacement |
+| Organize pages (Warraq's engine) | a grid of every page: select (click, Shift, Cmd/Ctrl), drag to reorder or move earlier/later, rotate either way, delete (never the last page), insert a blank page, extract the selection as a new file; undo and redo; keyboard throughout, mirrored in Arabic |
+| Combine (Warraq's engine) | add files (the open one comes first), reorder or remove them, unlock protected ones; the result opens in place, to save where you choose. The files chosen are not changed |
 | Comment (EmbedPDF) | highlight, underline, strike out, sticky note, text box, freehand drawing, rectangle, arrow, link |
 | Fill & sign (EmbedPDF) | type into a form's fields, draw or type a signature and place it, place a stamp |
 | Prepare form (EmbedPDF) | add text fields, checkboxes, radio buttons, drop-downs and list boxes as real AcroForm fields |
@@ -53,7 +57,7 @@ cards open a panel that says so; a count on the tool list says how many.
 2. **Arabic in form fields and comments.** Arabic typed into a form field is stored but not drawn by the saved file (see Known gaps). Warraq's shaping and font subsetting will generate those appearances (ADR-0007).
 3. **The desktop app's missing file panels.** EmbedPDF's screenshot, insert image, attachment and signature upload use a file input or a download link, which the macOS webview ignores, so they are hidden there for now; Warraq's own Open and Save already go through the native panels, and these will too. Print needs the system print dialog.
 4. **Arabic for EmbedPDF's toolbar.** It ships ten languages, none of them Arabic; Warraq will supply the translation and switch it with the app's language.
-5. **Organize pages and Combine** (reorder, rotate, delete, insert, extract, split, merge), then **Scan & OCR** (Tesseract, Arabic, Persian, Urdu), **Export**, **Compress**, **Compare** and **AI** (bring-your-own key or local, only on an explicit click).
+5. **Scan & OCR** (Tesseract, Arabic, Persian, Urdu), **Export**, **Compress**, **Compare** and **AI** (bring-your-own key or local, only on an explicit click); **split** and **insert from another file** in Organize; dropping files onto the Combine list.
 6. Paragraph breaks between uniformly spaced body paragraphs; Nastaliq Urdu extraction; the 500 MB scan stress run; Acrobat verification on a machine that has it.
 
 ## Decisions needed from you
@@ -105,12 +109,24 @@ test that fails without its fix.
    saved one, Warraq could not reopen its own output. There is a password
    prompt now, and Edit text reopens such a file with its password instead of
    failing behind the scenes.
-6. **The e2e suite could test someone else's app.** It reused any server on
+6. **Closing Edit text never reopened the file in EmbedPDF.** Closing the old
+   document fired EmbedPDF's "active document changed"; Warraq's listener then
+   asked it what could be undone with no document active, that threw inside
+   EmbedPDF's close, and the close never finished, so the edited file never
+   opened and the old one stayed on screen. The listener no longer throws, the
+   new file opens before the old one closes, and the tests check that EmbedPDF
+   shows a new document with the new page count.
+7. **Mid-switch, the editor showed the previous copy and took edits on it.**
+   Handing the file between engines takes a moment; an edit made in it was
+   silently lost. The screen now says the file is on its way, and nothing can
+   be edited until it has arrived.
+8. **The e2e suite could test someone else's app.** It reused any server on
    the usual preview port, and another project on this Mac had one running.
    It now starts its own on a port of its own and refuses to share.
 
 ## Known gaps, stated plainly
-* **A protected file loses its password when saved after a text edit** — next on the list. Saves without a text edit keep it.
+* **A protected file loses its password when saved after a text edit or a page change** — next on the list. Saves after comments, form filling or redaction keep it.
+* **Deleted pages stay in the file's earlier revision**, like every incremental change, until a clean copy is written; extracting pages writes one. Bookmarks and links that pointed at a deleted page are left pointing nowhere in the open file.
 * **EmbedPDF's toolbar is in English only**, in both languages of the app.
 * **On desktop, EmbedPDF's print, screenshot, insert image and attachment are hidden**: the macOS webview ignores file inputs, download links and the browser's print, and they rely on them. Its signature dialog still shows an Upload tab that does nothing there; Draw and Type work. Everything the tool panels offer works on desktop.
 * **Arabic typed into a form field is not drawn by the saved file.** The value is stored and EmbedPDF shows it, but PDFium writes the field's appearance with no text in it (checked: `BT … ET` and nothing between), so a viewer that shows the stored appearance — most do — shows the field empty. Comment text boxes use the same appearance code and are next to check. Warraq will generate these appearances with its own shaping (Next, item 2).

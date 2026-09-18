@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { appReducer, createInitialState, hasUnsavedEdits, PANE_MAX_WIDTH } from './appReducer';
+import { appReducer, createInitialState, hasUnsavedEdits, PANE_MAX_WIDTH, warraqOwnsDocument } from './appReducer';
 import type { AppState, DocumentInfo } from './appReducer';
 import { MAX_ZOOM, MIN_ZOOM } from './zoom';
-import { pdfFileName } from './saveFile';
+import { combinedFileName, extractedFileName, pdfFileName } from './saveFile';
 import { sanitizePreferences } from './preferences';
 
 const doc: DocumentInfo = {
@@ -211,5 +211,71 @@ describe('opening a file that has a password', () => {
     expect(appReducer(asked, { type: 'PASSWORD_CANCELLED' }).passwordPrompt).toBeNull();
     expect(appReducer(asked, { type: 'DOCUMENT_OPENED', document: doc }).passwordPrompt).toBeNull();
     expect(appReducer(asked, { type: 'DOCUMENT_FAILED', error: 'error.open' }).passwordPrompt).toBeNull();
+  });
+});
+
+describe('organizing pages', () => {
+  const inOrganize = () => appReducer(withDocument(), { type: 'SET_ACTIVE_TOOL', tool: 'organize' });
+
+  it('hands the document to Warraq’s engine while Organize or Edit is open', () => {
+    expect(warraqOwnsDocument(withDocument())).toBe(false);
+    expect(warraqOwnsDocument(inOrganize())).toBe(true);
+    expect(warraqOwnsDocument(appReducer(withDocument(), { type: 'SET_ACTIVE_TOOL', tool: 'edit' }))).toBe(true);
+    expect(warraqOwnsDocument(appReducer(inOrganize(), { type: 'SET_ACTIVE_TOOL', tool: 'comment' }))).toBe(false);
+  });
+
+  it('selects with clicks and starts empty each time Organize opens', () => {
+    let state = inOrganize();
+    expect(state.organize.selection.pages).toEqual([]);
+    state = appReducer(state, { type: 'ORGANIZE_SELECT', index: 0, how: 'only' });
+    state = appReducer(state, { type: 'ORGANIZE_SELECT', index: 2, how: 'range' });
+    expect(state.organize.selection.pages).toEqual([0, 1, 2]);
+    state = appReducer(state, { type: 'SET_ACTIVE_TOOL', tool: 'comment' });
+    state = appReducer(state, { type: 'SET_ACTIVE_TOOL', tool: 'organize' });
+    expect(state.organize.selection.pages).toEqual([]);
+    expect(appReducer(state, { type: 'ORGANIZE_SELECT_ALL' }).organize.selection.pages).toEqual([0, 1, 2]);
+  });
+
+  it('takes the document’s new shape after a change, and redraws', () => {
+    const state = appReducer(
+      appReducer(inOrganize(), { type: 'ORGANIZE_SELECT', index: 2, how: 'only' }),
+      { type: 'DOCUMENT_RESHAPED', pageCount: 2, pageSizes: [[842, 595], [595, 842]], selection: [1] },
+    );
+    expect(state.document?.pageCount).toBe(2);
+    expect(state.document?.pageSizes[0]).toEqual([842, 595]);
+    expect(state.organize.selection.pages).toEqual([1]);
+    expect(state.organize.revision).toBeGreaterThan(inOrganize().organize.revision);
+    expect(state.currentPage).toBeLessThanOrEqual(2);
+    expect(hasUnsavedEdits(state)).toBe(true);
+  });
+});
+
+describe('extractedFileName', () => {
+  it('names the new file after the pages it holds, counted from one', () => {
+    expect(extractedFileName('report.pdf', [1, 3, 4, 5])).toBe('report (2, 4-6).pdf');
+    expect(extractedFileName('تقرير.pdf', [0])).toBe('تقرير (1).pdf');
+    expect(extractedFileName('scan', [2, 1, 1])).toBe('scan (2-3).pdf');
+  });
+});
+
+describe('switching engines', () => {
+  it('is in flight from the first step until the other engine has the file', () => {
+    let state = appReducer(withDocument(), { type: 'SWITCH_ENGINE', direction: 'in' });
+    expect(state.switching).toBe('in');
+    state = appReducer(state, { type: 'SWITCH_DONE' });
+    expect(state.switching).toBeNull();
+  });
+
+  it('never stays in flight after a failure or a close', () => {
+    const inFlight = appReducer(withDocument(), { type: 'SWITCH_ENGINE', direction: 'out' });
+    expect(appReducer(inFlight, { type: 'DOCUMENT_FAILED', error: 'error.open' }).switching).toBeNull();
+    expect(appReducer(inFlight, { type: 'DOCUMENT_CLOSED' }).switching).toBeNull();
+  });
+});
+
+describe('combinedFileName', () => {
+  it('is the first file’s name and how many more', () => {
+    expect(combinedFileName(['report.pdf', 'annex.pdf', 'scan.pdf'])).toBe('report + 2.pdf');
+    expect(combinedFileName(['عقد.pdf', 'ملحق.pdf'])).toBe('عقد + 1.pdf');
   });
 });

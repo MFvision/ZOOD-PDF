@@ -34,9 +34,28 @@ export class Document {
   paragraphs(index: number): ParagraphInfo[];                    // device space, same coordinates as text_lines
   replace_paragraph(index: number, para: number, text: string, font: Uint8Array): string; // JSON {lines_drawn, font_substituted}
   save(): Uint8Array;                                            // incremental update over the original bytes
+
+  // tool operations (ADR-0008): one entry point for every tool's work
+  call(op: string, args: string, blobs: Uint8Array[]): CallReply; // op "<tool>.<operation>", args JSON
   free(): void;
 }
+
+export interface CallReply { readonly json: string; readonly blobs: Uint8Array[]; free(): void }
+export function call_static(op: string, args: string, blobs: Uint8Array[]): CallReply; // no open document
 ```
+
+Tool operations (`warraq-core/src/tools`), all answering JSON plus bytes:
+
+| op | args | answer |
+|---|---|---|
+| `pages.rotate` | `{pages: number[], quarterTurns: number}` (1 = 90° clockwise) | `{pageCount, pageSizes}` |
+| `pages.reorder` | `{order: number[]}` (`order[k]` = current index of the page that becomes page k) | `{pageCount, pageSizes}` |
+| `pages.delete` | `{pages: number[]}` (never every page) | `{pageCount, pageSizes}` |
+| `pages.insert_blank` | `{at: number, like: number}` (size and rotation of page `like`) | `{pageCount, pageSizes}` |
+| `pages.extract` | `{pages: number[]}` (in that order) | `{pageCount}` + the new file |
+| `pages.combine` (static) | `{passwords?: (string\|null)[]}` + one blob per file | `{pageCount}` + the new file |
+
+Errors add `E_ARGS` (arguments that do not parse) and `E_UNKNOWN_OP`.
 
 Rules: every method is synchronous and pure; the host puts the module in a
 Web Worker (extension: offscreen document). Errors are `Error` objects with an

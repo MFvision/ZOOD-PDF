@@ -56,6 +56,10 @@ export interface EmbedViewerProps {
   theme: 'light' | 'dark' | 'system';
   /** The plugin registry, once the viewer is ready — Warraq's hook into it. */
   onRegistry?: (registry: PluginRegistry) => void;
+  /** EmbedPDF could not open the bytes: the view would otherwise sit empty, silently. */
+  onError?: () => void;
+  /** EmbedPDF has opened the bytes it was given. */
+  onOpened?: () => void;
 }
 
 interface DocumentManager {
@@ -89,7 +93,7 @@ function documentManager(registry: PluginRegistry): DocumentManager | null {
   return plugin?.provides?.() ?? null;
 }
 
-export function EmbedViewer({ bytes, name, password, theme, onRegistry }: EmbedViewerProps) {
+export function EmbedViewer({ bytes, name, password, theme, onRegistry, onError, onOpened }: EmbedViewerProps) {
   const registryRef = useRef<PluginRegistry | null>(null);
   const openedRef = useRef<string | null>(null);
 
@@ -116,21 +120,24 @@ export function EmbedViewer({ bytes, name, password, theme, onRegistry }: EmbedV
   const open = async (registry: PluginRegistry, current: ArrayBuffer, currentName: string, currentPassword?: string) => {
     const manager = documentManager(registry);
     if (!manager) return;
-    if (openedRef.current) {
-      await manager.closeDocument(openedRef.current).toPromise().catch(() => undefined);
-      openedRef.current = null;
-    }
-    // A copy: the engine may take the buffer over, and Warraq keeps its own.
+    // The new file first, then the old one closed: the view is never without a
+    // document, and a close that fails cannot keep the new file out.
+    const previous = openedRef.current;
     try {
+      // A copy: the engine may take the buffer over, and Warraq keeps its own.
       const response = await manager
         .openDocumentBuffer({ buffer: current.slice(0), name: currentName, password: currentPassword, autoActivate: true })
         .toPromise();
       openedRef.current = response.documentId;
       uiLog(`embedpdf opened ${currentName}`);
       reportDrawn(currentName);
+      onOpened?.();
     } catch (error) {
       uiLog(`embedpdf could not open ${currentName}: ${JSON.stringify(error)}`);
+      onError?.();
+      return;
     }
+    if (previous) await manager.closeDocument(previous).toPromise().catch(() => undefined);
   };
 
   // A different document, or new bytes after a Warraq edit, reopens it.

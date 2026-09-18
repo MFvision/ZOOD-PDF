@@ -51,6 +51,39 @@ fn js_err(e: impl std::fmt::Display) -> JsError {
     JsError::new(&e.to_string())
 }
 
+/// A tool operation's answer: JSON, and bytes beside it (`Uint8Array`s).
+#[wasm_bindgen(getter_with_clone)]
+pub struct CallReply {
+    pub json: String,
+    pub blobs: js_sys::Array,
+}
+
+fn blobs_in(blobs: &js_sys::Array) -> Vec<Vec<u8>> {
+    blobs
+        .iter()
+        .map(|blob| js_sys::Uint8Array::new(&blob).to_vec())
+        .collect()
+}
+
+fn reply_out(reply: crate::Reply) -> CallReply {
+    let blobs = js_sys::Array::new();
+    for blob in &reply.blobs {
+        blobs.push(&js_sys::Uint8Array::from(blob.as_slice()));
+    }
+    CallReply {
+        json: reply.json,
+        blobs,
+    }
+}
+
+/// A tool operation that needs no open document, such as combining files.
+#[wasm_bindgen]
+pub fn call_static(op: &str, args: &str, blobs: js_sys::Array) -> Result<CallReply, JsError> {
+    crate::call_static(op, args, blobs_in(&blobs))
+        .map(reply_out)
+        .map_err(js_err)
+}
+
 #[wasm_bindgen]
 impl Document {
     pub fn open(bytes: &[u8], password: Option<String>) -> Result<Document, JsError> {
@@ -179,5 +212,19 @@ impl Document {
     /// original wherever that is possible.
     pub fn save(&mut self) -> Result<Vec<u8>, JsError> {
         self.0.save().map_err(js_err)
+    }
+
+    /// One entry point for tool operations (`warraq-core/src/tools`): `op`
+    /// names it ("pages.rotate"), `args` is JSON, `blobs` carries bytes.
+    pub fn call(
+        &mut self,
+        op: &str,
+        args: &str,
+        blobs: js_sys::Array,
+    ) -> Result<CallReply, JsError> {
+        self.0
+            .call(op, args, blobs_in(&blobs))
+            .map(reply_out)
+            .map_err(js_err)
     }
 }

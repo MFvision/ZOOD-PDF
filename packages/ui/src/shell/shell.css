@@ -15,11 +15,30 @@
 }
 
 .shell-main {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
   min-inline-size: 0;
   min-block-size: 0;
+}
+
+/* The file is on its way between the two engines (AppState.switching). */
+.switching {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
+  background: var(--bg-canvas);
+}
+
+.switching-over {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: color-mix(in srgb, var(--bg-canvas) 85%, transparent);
 }
 
 .menubar {

@@ -1,0 +1,50 @@
+/* Combine files: the list of files, in the order their pages will follow. */
+.combine-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin-block: 0 12px;
+  list-style: none;
+}
+
+.combine-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+}
+
+.combine-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.combine-name {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combine-pages {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+}
+
+.combine-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.combine-unlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

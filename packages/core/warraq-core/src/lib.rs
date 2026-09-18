@@ -6,8 +6,11 @@ use warraq_text::{
     detect_paragraphs, find_in_lines, reconstruct_lines, Paragraph, SearchNormalization, TextLine,
 };
 
+pub mod tools;
 #[cfg(target_arch = "wasm32")]
 pub mod wasm;
+
+pub use tools::{call_static, Reply};
 
 pub fn version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
@@ -19,6 +22,10 @@ pub enum CoreError {
     Pdf(#[from] warraq_pdf::Error),
     #[error("{0}")]
     Render(#[from] warraq_render::RenderError),
+    #[error("E_ARGS: {0}")]
+    Args(String),
+    #[error("E_UNKNOWN_OP: no tool operation called {0}")]
+    UnknownOp(String),
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -228,6 +235,11 @@ impl Document {
         warraq_pdf::ops::append_line(self.pdf_mut(), index, text, font, size, x, baseline)?;
         self.refresh_after_edit()?;
         Ok(())
+    }
+
+    /// One entry point for tool operations; see [`tools`].
+    pub fn call(&mut self, op: &str, args: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
+        tools::call(self, op, args, blobs)
     }
 
     /// Save the edited document.

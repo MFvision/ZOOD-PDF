@@ -36,6 +36,12 @@ export interface RequestMap {
   };
   save: { doc: number };
   free: { doc: number };
+  /**
+   * A tool operation (`warraq-core/src/tools`): `op` is "<tool>.<operation>",
+   * `args` JSON, `blobs` bytes; `doc` is null for one that needs no open
+   * document, such as combining files.
+   */
+  call: { doc: number | null; op: string; args: string; blobs: ArrayBuffer[] };
 }
 
 export interface ResultMap {
@@ -54,6 +60,7 @@ export interface ResultMap {
   /** Owns its buffer so it can be transferred and wrapped in a Blob. */
   save: Uint8Array<ArrayBuffer>;
   free: null;
+  call: { json: string; blobs: ArrayBuffer[] };
 }
 
 export type RequestKind = keyof RequestMap;

@@ -6,9 +6,10 @@ import {
   annotationTypes,
   chooseTool,
   corpus,
+  embedDocument,
   embedPage,
-  enterEditText,
   embedZoom,
+  enterEditText,
   openPdf,
   pageBox,
   test,
@@ -83,6 +84,7 @@ test.describe('the menus act on the page on screen', () => {
     await expect.poll(() => annotationTypes(page)).toContain(15);
 
     // EmbedPDF stays mounted under the editor; its Cmd+Z used to win.
+    const before = await embedDocument(page);
     const first = await enterEditText(page);
     await first.locator('.edit-box').first().click();
     const area = first.locator('.paragraph-editor-area');
@@ -94,6 +96,8 @@ test.describe('the menus act on the page on screen', () => {
     await expect(first.locator('.text-layer')).not.toContainText(replacement);
 
     await page.getByRole('toolbar').getByRole('button', { name: 'Edit text' }).click();
+    // Handed back and reopened — a new document — with the drawing in it.
+    await expect.poll(async () => (await embedDocument(page)).id).not.toBe(before.id);
     await expect.poll(() => annotationTypes(page)).toContain(15);
   });
 });

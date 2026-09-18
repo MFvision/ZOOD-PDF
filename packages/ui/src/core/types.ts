@@ -69,6 +69,16 @@ export interface CoreDocument {
   replace_paragraph(index: number, para: number, text: string, font: Uint8Array): string;
   /** Edited bytes: an incremental update over the original wherever possible. */
   save(): Uint8Array;
+  /** One entry point for tool operations: `op` "<tool>.<operation>", JSON `args`, bytes in `blobs`. */
+  call(op: string, args: string, blobs: unknown[]): CallReply;
+  free(): void;
+}
+
+/** A tool operation's answer, as the WASM core returns it. */
+export interface CallReply {
+  readonly json: string;
+  /** `Uint8Array`s, in WASM memory until copied out. */
+  readonly blobs: unknown[];
   free(): void;
 }
 
@@ -77,6 +87,8 @@ export interface CoreModule {
   Document: {
     open(bytes: Uint8Array, password?: string): CoreDocument;
   };
+  /** A tool operation that needs no open document (`warraq-core/src/tools`). */
+  call_static(op: string, args: string, blobs: unknown[]): CallReply;
 }
 
 /** `native` is the desktop host: `warraq-core` linked into Tauri, not WASM. */

@@ -7,6 +7,12 @@ interface Pending {
   reject: (error: Error) => void;
 }
 
+/** What a tool operation answers: its JSON, parsed, and any bytes beside it. */
+export interface ToolReply<T> {
+  result: T;
+  blobs: ArrayBuffer[];
+}
+
 export class CoreClientError extends Error {
   readonly code: string;
   constructor(code: string, message: string) {
@@ -81,6 +87,15 @@ export class CoreClient {
       buffer as ArrayBuffer,
     ]);
     return new RemoteDocument(this, info);
+  }
+
+  /**
+   * A tool operation that needs no open document, such as combining files.
+   * `blobs` are transferred to the core; pass copies of what the caller keeps.
+   */
+  async callStatic<T>(op: string, args: unknown = {}, blobs: ArrayBuffer[] = []): Promise<ToolReply<T>> {
+    const reply = await this.request('call', { doc: null, op, args: JSON.stringify(args), blobs }, blobs);
+    return { result: JSON.parse(reply.json) as T, blobs: reply.blobs };
   }
 
   request<K extends RequestKind>(
@@ -214,6 +229,16 @@ export class RemoteDocument {
   /** Edited bytes: an incremental update over the original wherever possible. */
   save(): Promise<ResultMap['save']> {
     return this.client.request('save', { doc: this.id });
+  }
+
+  /**
+   * A tool operation on this document (`warraq-core/src/tools`): `op` is
+   * "<tool>.<operation>", `args` becomes JSON. `blobs` are transferred to the
+   * core, so the caller no longer owns them; pass copies of what it keeps.
+   */
+  async call<T>(op: string, args: unknown = {}, blobs: ArrayBuffer[] = []): Promise<ToolReply<T>> {
+    const reply = await this.client.request('call', { doc: this.id, op, args: JSON.stringify(args), blobs }, blobs);
+    return { result: JSON.parse(reply.json) as T, blobs: reply.blobs };
   }
 
   free(): Promise<void> {

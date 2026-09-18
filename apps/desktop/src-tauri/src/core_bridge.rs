@@ -44,6 +44,11 @@ const PDFIUM_LIB_FILE: &str = "libpdfium.so";
 /// are ASCII-only, and Arabic passwords must survive the trip.
 const PASSWORD_HEADER: &str = "x-warraq-password-hex";
 
+/// Headers of `core_call`: the tool operation, and the open document's handle
+/// (absent for an operation that needs none, such as combining files).
+const OP_HEADER: &str = "x-warraq-op";
+const HANDLE_HEADER: &str = "x-warraq-handle";
+
 /* ------------------------------------------------------------------ registry */
 
 /// Open documents by handle. Owned by the core thread; see the module note.
@@ -204,6 +209,50 @@ pub fn encode_bitmap(bitmap: &Bitmap) -> Vec<u8> {
     out.extend_from_slice(&bitmap.height.to_le_bytes());
     out.extend_from_slice(&bitmap.rgba);
     out
+}
+
+/// The body of `core_call`, both ways, as one frame: a u32 LE length and the
+/// JSON, a u32 LE count of blobs, then each blob as a u32 LE length and its
+/// bytes. PDFs travel as raw bytes, never as JSON arrays of numbers.
+pub fn encode_frame(json: &str, blobs: &[Vec<u8>]) -> Vec<u8> {
+    let size = 8 + json.len() + blobs.iter().map(|b| 4 + b.len()).sum::<usize>();
+    let mut out = Vec::with_capacity(size);
+    out.extend_from_slice(&(json.len() as u32).to_le_bytes());
+    out.extend_from_slice(json.as_bytes());
+    out.extend_from_slice(&(blobs.len() as u32).to_le_bytes());
+    for blob in blobs {
+        out.extend_from_slice(&(blob.len() as u32).to_le_bytes());
+        out.extend_from_slice(blob);
+    }
+    out
+}
+
+pub fn decode_frame(bytes: &[u8]) -> Result<(String, Vec<Vec<u8>>), String> {
+    fn take<'a>(bytes: &'a [u8], at: &mut usize, n: usize) -> Result<&'a [u8], String> {
+        let end = at
+            .checked_add(n)
+            .filter(|&end| end <= bytes.len())
+            .ok_or("E_ARGS: the request frame is cut short")?;
+        let slice = &bytes[*at..end];
+        *at = end;
+        Ok(slice)
+    }
+    fn length(bytes: &[u8], at: &mut usize) -> Result<usize, String> {
+        let raw = take(bytes, at, 4)?;
+        Ok(u32::from_le_bytes([raw[0], raw[1], raw[2], raw[3]]) as usize)
+    }
+    let mut at = 0;
+    let json_len = length(bytes, &mut at)?;
+    let json = std::str::from_utf8(take(bytes, &mut at, json_len)?)
+        .map_err(|_| "E_ARGS: the request's JSON is not UTF-8")?
+        .to_string();
+    let count = length(bytes, &mut at)?;
+    let mut blobs = Vec::with_capacity(count.min(64));
+    for _ in 0..count {
+        let n = length(bytes, &mut at)?;
+        blobs.push(take(bytes, &mut at, n)?.to_vec());
+    }
+    Ok((json, blobs))
 }
 
 /// `metadata(): string` from `API.md`, with `engine` corrected to the engine
@@ -440,6 +489,47 @@ pub fn doc_metadata(bridge: State<'_, CoreBridge>, handle: u32) -> Result<String
     bridge.with_document(handle, move |document| metadata_json(document, engine))
 }
 
+/// One entry point for tool operations (`warraq-core/src/tools`). The op and
+/// the handle come as headers, the arguments and any bytes as one raw frame
+/// ([`encode_frame`]), and the answer goes back the same way.
+#[tauri::command(async)]
+pub fn core_call(bridge: State<'_, CoreBridge>, request: Request<'_>) -> Result<Response, String> {
+    let header = |name: &str| {
+        request
+            .headers()
+            .get(name)
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_string)
+    };
+    let op = header(OP_HEADER).ok_or("E_ARGS: core_call needs the x-warraq-op header")?;
+    let handle = match header(HANDLE_HEADER) {
+        Some(text) => Some(
+            text.parse::<u32>()
+                .map_err(|_| "E_ARGS: x-warraq-handle is not a number")?,
+        ),
+        None => None,
+    };
+    let (args, blobs) = match request.body() {
+        InvokeBody::Raw(bytes) => decode_frame(bytes)?,
+        InvokeBody::Json(_) => return Err("E_ARGS: core_call expects a raw frame".into()),
+    };
+    let label = op.clone();
+    let reply = match handle {
+        Some(handle) => bridge.with_document_mut(handle, move |document| {
+            document.call(&op, &args, blobs).map_err(|e| e.to_string())
+        })?,
+        None => bridge.call(move |_| {
+            warraq_core::call_static(&op, &args, blobs).map_err(|e| e.to_string())
+        })??,
+    };
+    debug_log(format!(
+        "{label} on {}: {} blob(s) back",
+        handle.map_or("no document".into(), |h| format!("#{h}")),
+        reply.blobs.len()
+    ));
+    Ok(Response::new(encode_frame(&reply.json, &reply.blobs)))
+}
+
 /// The rasterizer actually in use, shown in the UI's status bar.
 #[tauri::command]
 pub fn core_engine(bridge: State<'_, CoreBridge>) -> String {
@@ -450,6 +540,31 @@ pub fn core_engine(bridge: State<'_, CoreBridge>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_frame_round_trips_json_and_blobs() {
+        let blobs = vec![b"%PDF-1.7 one".to_vec(), Vec::new(), vec![0u8, 255, 7]];
+        let frame = encode_frame(r#"{"pages":[1]}"#, &blobs);
+        assert_eq!(
+            decode_frame(&frame).unwrap(),
+            (r#"{"pages":[1]}"#.to_string(), blobs)
+        );
+        assert_eq!(
+            decode_frame(&encode_frame("", &[])).unwrap(),
+            (String::new(), vec![])
+        );
+    }
+
+    #[test]
+    fn a_short_frame_is_refused_not_read_past() {
+        let frame = encode_frame("{}", &[vec![1, 2, 3]]);
+        for cut in 0..frame.len() {
+            assert!(decode_frame(&frame[..cut]).is_err(), "cut at {cut}");
+        }
+        let mut lying = encode_frame("{}", &[]);
+        lying[6..10].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert!(decode_frame(&lying).is_err());
+    }
 
     #[test]
     fn probe_pdf_is_a_readable_one_page_document() {

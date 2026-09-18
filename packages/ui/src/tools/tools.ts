@@ -76,7 +76,8 @@ export interface ToolDefinition {
 
 export const TOOLS: readonly ToolDefinition[] = [
   { id: 'edit', labelKey: 'tool.edit', icon: Pencil, implemented: true },
-  { id: 'organize', labelKey: 'tool.organize', icon: LayoutGrid, implemented: false },
+  // Warraq's own engine: EmbedPDF 2.15 cannot move or rotate pages.
+  { id: 'organize', labelKey: 'tool.organize', icon: LayoutGrid, implemented: true },
   {
     id: 'comment',
     labelKey: 'tool.comment',
@@ -131,7 +132,8 @@ export const TOOLS: readonly ToolDefinition[] = [
   { id: 'export', labelKey: 'tool.export', icon: FileOutput, implemented: false },
   { id: 'compare', labelKey: 'tool.compare', icon: GitCompare, implemented: false },
   { id: 'ocr', labelKey: 'tool.ocr', icon: ScanText, implemented: false },
-  { id: 'combine', labelKey: 'tool.combine', icon: Combine, implemented: false },
+  // Warraq's core (`pages.combine`): PDFium's importer breaks form fields (ADR-0008).
+  { id: 'combine', labelKey: 'tool.combine', icon: Combine, implemented: true },
   { id: 'compress', labelKey: 'tool.compress', icon: Shrink, implemented: false },
   {
     id: 'prepareForm',

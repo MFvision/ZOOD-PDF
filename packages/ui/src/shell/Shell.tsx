@@ -7,6 +7,7 @@ import { HomeScreen } from '../home/HomeScreen';
 import { useT } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { EmbedViewer } from '../embed/EmbedViewer';
+import { OrganizeView } from '../organize/OrganizeView';
 import { Viewer } from '../viewer/Viewer';
 import { AboutDialog, GoToPageDialog, PasswordDialog, ShortcutsDialog } from './Dialogs';
 import { FindBar } from './FindBar';
@@ -34,12 +35,14 @@ export function Shell() {
   // EmbedPDF shows the document (ADR-0007); Warraq's own viewer takes over in
   // Edit text, where its paragraph and add-text overlays are the point.
   const warraqView = isViewer && !services.embedShowing;
+  // Organize shows every page in its grid; the thumbnails and find bar are for reading.
+  const organizing = isViewer && state.rightPane.activeTool === 'organize';
 
   return (
     <div className="shell">
       <MenuBar />
       <Ribbon />
-      {warraqView && state.find.open && <FindBar />}
+      {warraqView && !organizing && state.find.open && <FindBar />}
       {state.error && (
         <div className="banner banner-error" role="alert">
           <Icon of={CircleAlert} />
@@ -55,7 +58,7 @@ export function Shell() {
         </div>
       )}
       <div className="shell-body">
-        {warraqView && state.leftPane.open && (
+        {warraqView && !organizing && state.leftPane.open && (
           <>
             <LeftPane />
             <PaneResizer side="start" width={state.leftPane.width} onResize={(width) => dispatch({ type: 'SET_LEFT_WIDTH', width })} />
@@ -73,10 +76,27 @@ export function Shell() {
                 password={services.documentPassword}
                 theme={state.theme}
                 onRegistry={services.attachEmbed}
+                onError={() => dispatch({ type: 'DOCUMENT_FAILED', error: 'error.open' })}
+                onOpened={services.embedOpened}
               />
             </div>
           )}
-          {warraqView && <Viewer />}
+          {/* Mid-switch, the engine that is taking over does not have the file
+              yet: show that, not its previous copy. */}
+          {state.switching === 'in' ? (
+            <div className="switching" role="status" aria-busy="true">
+              <Icon of={Loader} className="spin" />
+              <span>{t('switching.in')}</span>
+            </div>
+          ) : (
+            warraqView && (organizing ? <OrganizeView /> : <Viewer />)
+          )}
+          {state.switching === 'out' && (
+            <div className="switching switching-over" role="status" aria-busy="true">
+              <Icon of={Loader} className="spin" />
+              <span>{t('switching.out')}</span>
+            </div>
+          )}
         </main>
         {/* On the home screen the grid already lists every tool, so the pane
             only appears once a tool is chosen — otherwise the same thirteen

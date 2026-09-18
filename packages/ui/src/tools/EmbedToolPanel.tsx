@@ -2,6 +2,7 @@ import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useT } from '../i18n/useT';
 import { useAppState, useServices } from '../state/AppContext';
+import { warraqOwnsDocument } from '../state/appReducer';
 import type { ToolDefinition } from './tools';
 
 /**
@@ -13,7 +14,8 @@ export function EmbedToolPanel({ tool }: { tool: ToolDefinition }) {
   const t = useT();
   const state = useAppState();
   const { runEmbedCommand } = useServices();
-  const ready = state.view === 'viewer' && state.document !== null && !state.edit.active;
+  const ready =
+    state.view === 'viewer' && state.document !== null && !warraqOwnsDocument(state) && state.switching === null;
 
   return (
     <div className="tool-panel">

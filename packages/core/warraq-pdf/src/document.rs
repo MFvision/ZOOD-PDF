@@ -6,7 +6,7 @@ use lopdf::{Document, LoadOptions, Object, ObjectId};
 pub struct PdfDocument {
     pub(crate) doc: Document,
     original: Vec<u8>,
-    pages: Vec<ObjectId>,
+    pub(crate) pages: Vec<ObjectId>,
     /// Highest object id present when the document was opened: everything above
     /// it was added by us and must go into an incremental update.
     base_max_id: u32,
@@ -73,6 +73,20 @@ impl PdfDocument {
             touched: Default::default(),
             was_encrypted: encrypted,
         })
+    }
+
+    /// A document assembled in memory, to be written as a new file (see
+    /// `pages.rs`): no original bytes, and nothing recorded as changed.
+    pub(crate) fn from_parts(doc: Document, pages: Vec<ObjectId>) -> Self {
+        let base_max_id = doc.max_id;
+        Self {
+            doc,
+            original: Vec::new(),
+            pages,
+            base_max_id,
+            touched: Default::default(),
+            was_encrypted: false,
+        }
     }
 
     /// Record that an object that already existed in the file was modified.

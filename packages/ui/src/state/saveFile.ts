@@ -14,6 +14,30 @@ export function pdfFileName(name: string): string {
 }
 
 /**
+ * The name of a file made of some pages of `name`: `report (2, 4-6).pdf`.
+ * Page numbers are one-based, as a person counts them; consecutive runs
+ * become ranges.
+ */
+export function extractedFileName(name: string, pages: readonly number[]): string {
+  const base = pdfFileName(name).replace(/\.pdf$/i, '');
+  const numbers = [...new Set(pages)].sort((a, b) => a - b).map((p) => p + 1);
+  const runs: string[] = [];
+  for (let i = 0; i < numbers.length; ) {
+    let j = i;
+    while (j + 1 < numbers.length && numbers[j + 1] === numbers[j]! + 1) j += 1;
+    runs.push(j > i ? `${numbers[i]}-${numbers[j]}` : `${numbers[i]}`);
+    i = j + 1;
+  }
+  return `${base} (${runs.join(', ')}).pdf`;
+}
+
+/** The name of a file made of several: the first one's, and how many more: `report + 2.pdf`. */
+export function combinedFileName(names: readonly string[]): string {
+  const base = pdfFileName(names[0] ?? '').replace(/\.pdf$/i, '');
+  return names.length > 1 ? `${base} + ${names.length - 1}.pdf` : `${base}.pdf`;
+}
+
+/**
  * Browsers only. The claim that this also worked under Tauri was wrong: wry
  * registers no download handler, so the link click did nothing at all and the
  * app reported a save that never happened. The desktop path is

@@ -122,7 +122,18 @@ export interface EmbedWatchers {
 /** Follows the page on screen and what can be undone. Returns the unsubscribe. */
 export function watch(registry: PluginRegistry, { onPage, onHistory }: EmbedWatchers): Unsubscribe {
   const history = capability<History>(registry, 'history');
-  const readHistory = () => onHistory({ canUndo: history?.canUndo() ?? false, canRedo: history?.canRedo() ?? false });
+  const readHistory = () => {
+    // With no document active — between closing one file and opening the
+    // next — EmbedPDF's history throws. Thrown from inside its own event, that
+    // stopped the close from ever finishing, and the next file never opened.
+    let state = { canUndo: false, canRedo: false };
+    try {
+      state = { canUndo: history?.canUndo() ?? false, canRedo: history?.canRedo() ?? false };
+    } catch {
+      /* nothing to undo without a document */
+    }
+    onHistory(state);
+  };
   const subscriptions = [
     capability<Scroll>(registry, 'scroll')?.onPageChange(({ pageNumber }) => onPage(pageNumber)),
     history?.onHistoryChange(readHistory),
