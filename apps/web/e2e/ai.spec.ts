@@ -277,6 +277,41 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     expect(request.postData()).not.toContain(KEY);
   });
 
+  test('LM Studio, through its OpenAI-compatible interface, is reached on its own port', async ({
+    page,
+    stayLocal: _,
+  }) => {
+    const toLmStudio = await answer(page, 'http://localhost:1234/', () =>
+      json({
+        id: 'chatcmpl-e2e',
+        object: 'chat.completion',
+        model: 'qwen2.5',
+        choices: [
+          {
+            index: 0,
+            message: { role: 'assistant', content: 'ملخص من LM Studio [p. 1].' },
+            finish_reason: 'stop',
+          },
+        ],
+      }),
+    );
+    await page.goto('/');
+    await openPdf(page, WORD_EXPORT);
+    await chooseTool(page, 'AI');
+    const ai = panel(page);
+    await ai.getByRole('radio', { name: 'A local model on this computer' }).check();
+    await ai.getByLabel('Interface').selectOption('openai');
+    await ai.getByLabel('Server address').fill('http://localhost:1234/v1');
+    await ai.getByLabel('Model name').fill('qwen2.5');
+    await expect(ai.getByText('connect only to ports')).toHaveCount(0);
+    await ai.getByRole('button', { name: 'Review what will be sent' }).click();
+    await preflight(page).getByRole('button', { name: 'Send to the local model' }).click();
+    // Past the security policy, which would have stopped it before the network.
+    await expect(reply(page)).toContainText('ملخص من LM Studio');
+    expect(toLmStudio).toHaveLength(1);
+    expect((toLmStudio[0] as Request).url()).toBe('http://localhost:1234/v1/chat/completions');
+  });
+
   test('a local address the security policy does not allow is named as such', async ({
     page,
     stayLocal: _,
@@ -288,7 +323,9 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     const ai = panel(page);
     await ai.getByRole('radio', { name: 'A local model on this computer' }).check();
     await ai.getByLabel('Server address').fill('http://localhost:11435');
-    await expect(ai.getByText('connect only to port 11434')).toBeVisible();
+    await expect(
+      ai.getByText('connect only to ports 11434 (Ollama) and 1234 (LM Studio)'),
+    ).toBeVisible();
     await ai.getByRole('button', { name: 'Review what will be sent' }).click();
     await preflight(page).getByRole('button', { name: 'Send to the local model' }).click();
     await expect(ai.getByRole('alert')).toContainText(

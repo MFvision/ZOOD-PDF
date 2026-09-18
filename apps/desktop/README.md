@@ -157,8 +157,9 @@ Tauri's in-process IPC loopback (custom `ipc://localhost` scheme on macOS/Linux,
 Windows), not network origins; without them Tauri's IPC falls back to `postMessage` and every binary response
 (`read_file_bytes`) is JSON-encoded byte by byte. Tauri also appends the nonce/hash of its own injected scripts
 at runtime. Like the web app's, `connect-src` also names the AI tool's providers — `https://api.anthropic.com`
-and Ollama's port on this computer, `http://localhost:11434 http://127.0.0.1:11434` — which receive a
-document's text only when the person presses Send in that tool.
+and the ports Ollama and LM Studio listen on, on this computer, `http://localhost:11434 http://127.0.0.1:11434
+http://localhost:1234 http://127.0.0.1:1234` — which receive a document's text only when the person presses Send
+in that tool.
 
 ## Signing and notarization — TODO
 

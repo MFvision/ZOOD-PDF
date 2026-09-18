@@ -31,10 +31,17 @@ export const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-5';
  */
 export const CLAUDE_MAX_TOKENS = 16_000;
 
-/** Ollama's own address. The app's security policy allows this port and no other. */
+/** Ollama's own address. The app's security policy allows it and LM Studio's, and no other port. */
 export const LOCAL_DEFAULT_URL = 'http://localhost:11434';
+/** LM Studio's server, which speaks the OpenAI-compatible API. */
+export const LM_STUDIO_URL = 'http://localhost:1234/v1';
 /** What the web and desktop policies add to `connect-src` for a local model (`apps/web/src/csp.test.ts`). */
-export const LOCAL_ALLOWED_ORIGINS = ['http://localhost:11434', 'http://127.0.0.1:11434'] as const;
+export const LOCAL_ALLOWED_ORIGINS = [
+  'http://localhost:11434',
+  'http://127.0.0.1:11434',
+  'http://localhost:1234',
+  'http://127.0.0.1:1234',
+] as const;
 export const LOCAL_DEFAULT_MODEL = 'gemma3';
 export type LocalApi = 'ollama' | 'openai';
 /** Room kept for a local model's reply, in tokens. */
