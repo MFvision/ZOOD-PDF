@@ -10,7 +10,7 @@ pub mod paragraph;
 pub mod search;
 pub mod shape;
 
-pub use bidi::{base_direction, visual_runs, Direction, VisualRun};
+pub use bidi::{base_direction, visual_runs, visual_runs_in, Direction, VisualRun};
 pub use extract::{
     clusters_to_logical, clusters_to_logical_mapped, reconstruct_lines, with_actual_text,
     PositionedGlyph, TextLine,

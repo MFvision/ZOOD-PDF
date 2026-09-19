@@ -24,9 +24,15 @@ getrandom = "0.4"
 # Compress (src/compress.rs): the best Flate level, and JPEG for downsampled
 # images. Both already in the graph through hayro; `jpeg` only turns on the
 # encoder next to the decoder hayro already has. `png` decodes the pictures a
-# person places (src/picture.rs); `png` was already in the lock file.
+# person places (src/picture.rs); `png` was already in the lock file. `gif`,
+# `bmp` and `webp` read the other pictures Create turns into pages (gif and
+# image-webp are MIT or Apache-2.0).
 flate2 = "1"
-image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "bmp", "webp"] }
+# TIFF pages (src/tiff.rs): fax strips (hayro-ccitt) and LZW (weezl), both
+# already in the graph through hayro, MIT or Apache-2.0.
+hayro-ccitt = "0.3"
+weezl = "0.2"
 pdf-writer.workspace = true
 subsetter.workspace = true
 warraq-text = { path = "../warraq-text" }
