@@ -1,11 +1,11 @@
 {
   "labels": {
-    "appName": "ورّاق",
+    "appName": "محرر PDF",
     "services": "Services",
-    "hide": "Hide ورّاق",
+    "hide": "Hide ⁧محرر PDF⁩",
     "hideOthers": "Hide Others",
     "showAll": "Show All",
-    "quit": "Quit ورّاق",
+    "quit": "Quit ⁧محرر PDF⁩",
     "window": "Window",
     "minimize": "Minimize",
     "zoom": "Zoom",
@@ -20,9 +20,9 @@
   "menus": [
     {
       "id": "app",
-      "label": "ورّاق",
+      "label": "محرر PDF",
       "items": [
-        { "id": "about", "label": "About ورّاق", "enabled": true, "separatorBefore": false },
+        { "id": "about", "label": "About ⁧محرر PDF⁩", "enabled": true, "separatorBefore": false },
         { "id": "settings", "label": "Settings…", "accelerator": "CmdOrCtrl+,", "enabled": true, "separatorBefore": true }
       ]
     },

@@ -1,4 +1,4 @@
-/* ورّاق: the formatted value in Arabic-Indic digits, with the Arabic decimal,
+/* محرر PDF: the formatted value in Arabic-Indic digits, with the Arabic decimal,
    thousands and percent signs. A separator is one only before a digit, so the
    dot of "ر.س" stays a dot. */
 function Warraq_Digits() {
