@@ -21,6 +21,7 @@ name serials or dates may need the same update.
 | `tsa-rsa.p12`, `tsa-rsa.pem`, `tsa-rsa.key` | A TEST timestamp authority (extended key usage timeStamping), for the stand-in authority the tests run |
 | `*.crl` | Each CA's revocation list (the intermediate RSA one lists `revoked-rsa`) |
 | `*.ocsp` | OCSP answers signed by the issuing CA: `good` for the signers and the RSA intermediate, `revoked` for `revoked-rsa` |
+| `empty-signature-field.pdf` | The Cairo invoice with one empty signature field, "التوقيع", as Prepare form makes it (`forms.create`, kind `signature`): the e2e signs into it |
 | `real-tsa/` | `hello.txt`, the request made for it (`hello.tsq`), and three public authorities' answers (DigiCert, Sectigo, FreeTSA), fetched once on 2026-09-18, so a real token is checked without the network |
 
 The certificates name OCSP and CRL addresses under `warraq.test`, a name that

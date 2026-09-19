@@ -9,9 +9,10 @@ import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { AuthorityPicker } from './AuthorityPicker';
-import { TIMESTAMP_AUTHORITIES, appearanceLines } from './model';
-import { RectPicker, defaultRect } from './RectPicker';
-import type { ShownRect } from './RectPicker';
+import { TIMESTAMP_AUTHORITIES, appearanceLines, isolate } from './model';
+import { RectPicker } from './RectPicker';
+import { defaultRect } from './rect';
+import type { ShownRect } from './rect';
 import { useSignatures } from './SignaturesContext';
 import { canReachAuthorities, decodeSignatureImage, withTimestamp } from './sign';
 import type { SignReply, SignatureImage } from './sign';
@@ -37,6 +38,8 @@ function errorKey(error: unknown): TKey {
   if (message.includes('E_SIGN_CERTIFY_FIRST')) return 'signatures.error.certifyFirst';
   if (message.includes('E_SIGN_CERTIFIED')) return 'signatures.error.certified';
   if (message.includes('E_PKCS11_PIN')) return 'signatures.error.pin';
+  if (message.includes('E_PKCS11_LOGIN')) return 'signatures.error.tokenLogin';
+  if (message.includes('E_SIGNED_TOO_LARGE')) return 'signatures.error.tooLarge';
   if (message.includes('E_PKCS11')) return 'signatures.error.token';
   if (message.includes('E_NET') || message.includes('E_TSA')) return 'signatures.error.timestamp';
   return 'signatures.error.failed';
@@ -148,7 +151,9 @@ export function SignForm({ onSigned }: { onSigned: () => void }) {
         offsetMinutes: -now.getTimezoneOffset(),
         certify: kind === 'approval' ? null : Number(kind),
         lockFields: lock,
-        pss,
+        // RSA-PSS is offered for a certificate file only; a tick made there
+        // does not follow the person to a card.
+        pss: source === 'file' && pss,
         timestamp: timestamp && canReachAuthorities(),
       };
       const extra = [font.slice().buffer, ...(visible && image ? [image.rgba.slice(0)] : [])];
@@ -253,8 +258,10 @@ export function SignForm({ onSigned }: { onSigned: () => void }) {
           </div>
           {identity && (
             <div className="signature-identity" role="status">
-              <strong>{identity.name}</strong>
-              <span className="tool-panel-note">{t('signatures.detail.issuedBy', { issuer: identity.issuer })}</span>
+              <strong>
+                <bdi>{identity.name}</bdi>
+              </strong>
+              <span className="tool-panel-note">{t('signatures.detail.issuedBy', { issuer: isolate(identity.issuer) })}</span>
               <span className="tool-panel-note">
                 {identity.key} · {t('signatures.detail.validUntil', { date: new Date(identity.notAfter).toLocaleDateString(lang === 'ar' ? 'ar' : 'en-GB') })}
               </span>
@@ -289,13 +296,14 @@ export function SignForm({ onSigned }: { onSigned: () => void }) {
               <select className="select" value={tokenCert} onChange={(event) => setTokenCert(Number(event.target.value))}>
                 {tokenCerts.map((c, i) => (
                   <option key={`${c.slot}-${c.id}`} value={i}>
-                    {c.name} — {c.issuer}
+                    {isolate(c.name)} — {isolate(c.issuer)}
                   </option>
                 ))}
               </select>
             </label>
           )}
           <p className="tool-panel-note">{t('signatures.token.note')}</p>
+          <p className="tool-panel-note">{t('signatures.token.untested')}</p>
         </fieldset>
       )}
 
@@ -308,7 +316,7 @@ export function SignForm({ onSigned }: { onSigned: () => void }) {
               <option value="">{t('signatures.sign.newField')}</option>
               {report.emptyFields.map((name) => (
                 <option key={name} value={name}>
-                  {name}
+                  {isolate(name)}
                 </option>
               ))}
             </select>
@@ -417,7 +425,7 @@ export function SignForm({ onSigned }: { onSigned: () => void }) {
 
       <div className="tool-actions">
         <IconButton
-          label={busy === 'sign' ? t('signatures.working') : signer ? t('signatures.sign.goAs', { name: signer }) : t('signatures.sign.go')}
+          label={busy === 'sign' ? t('signatures.working') : signer ? t('signatures.sign.goAs', { name: isolate(signer) }) : t('signatures.sign.go')}
           icon={<Icon of={busy === 'sign' ? Loader : PenLine} />}
           showLabel
           variant="primary"

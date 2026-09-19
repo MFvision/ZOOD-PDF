@@ -11,6 +11,7 @@
 }
 
 .signature-banner.signature-untrusted > .lucide,
+.signature-banner.signature-unchecked > .lucide,
 .signature-warning > .lucide {
   color: var(--orange);
 }
@@ -59,8 +60,14 @@
   color: var(--green);
 }
 
-.signature-untrusted .signature-card-head > .lucide {
+.signature-untrusted .signature-card-head > .lucide,
+.signature-unchecked .signature-card-head > .lucide {
   color: var(--orange);
+}
+
+/* Why it is not simply valid, under the status: said, not only marked. */
+.signature-reason {
+  font-size: var(--text-callout);
 }
 
 .signature-modified .signature-card-head > .lucide,
