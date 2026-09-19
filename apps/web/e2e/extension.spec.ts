@@ -79,7 +79,11 @@ test('the extension viewer opens an Arabic PDF, and its AI tool needs no host pe
     expect(errors).toEqual([]);
     await browser.close();
   } finally {
+    // Chrome keeps writing its profile for a moment after the signal; the
+    // directory goes once it has exited, with retries for late writes.
+    const exited = new Promise((resolve) => chrome.once('exit', resolve));
     chrome.kill();
-    rmSync(profile, { recursive: true, force: true });
+    await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 5_000))]);
+    rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   }
 });

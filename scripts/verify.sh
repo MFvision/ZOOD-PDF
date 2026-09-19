@@ -25,14 +25,20 @@ run coretest cargo test --manifest-path packages/core/Cargo.toml
 # CI's Arabic extraction gate; the results file carries timings, so it is put back.
 acid() { cp tests/acid/results-warraq.json "$logs/acid-keep.json"; cargo run --release --manifest-path packages/core/Cargo.toml -p warraq-core --example acid -- . >/dev/null && python3 tests/acid/gate_warraq.py .; local s=$?; cp "$logs/acid-keep.json" tests/acid/results-warraq.json; return $s; }
 run acid acid
-run deskfmt cargo fmt --check --manifest-path apps/desktop/src-tauri/Cargo.toml
-run deskclippy cargo clippy --all-targets --manifest-path apps/desktop/src-tauri/Cargo.toml -- -D warnings
-run desktest cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
+# The desktop app is a cargo workspace of its own. In a target directory
+# shared with the core workspace (CARGO_TARGET_DIR), both write the same
+# unhashed deps/libwarraq_core.rlib — warraq-core is a cdylib too — and the
+# desktop then links the core workspace's copy and fails with "multiple
+# different versions of crate". A subdirectory of its own keeps them apart.
+desk() { if [ -n "$CARGO_TARGET_DIR" ]; then CARGO_TARGET_DIR="$CARGO_TARGET_DIR/desktop" "$@"; else "$@"; fi; }
+run deskfmt desk cargo fmt --check --manifest-path apps/desktop/src-tauri/Cargo.toml
+run deskclippy desk cargo clippy --all-targets --manifest-path apps/desktop/src-tauri/Cargo.toml -- -D warnings
+run desktest desk cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 [ "$1" = "--no-e2e" ] || run e2e pnpm --filter @warraq/web e2e
-grep -hE "Tests +[0-9]+" "$logs/verify-unit.log"
-grep -hE "^test result" "$logs/verify-coretest.log" | awk '{p+=$4; f+=$6} END {print "core tests passed:", p, "failed:", f}'
-grep -hE "^test result" "$logs/verify-desktest.log" | awk '{p+=$4; f+=$6} END {print "desktop tests passed:", p, "failed:", f}'
-[ -f "$logs/verify-e2e.log" ] && grep -hE "passed|failed" "$logs/verify-e2e.log" | tail -2
-grep -hE "^checked" "$logs/verify-acid.log"
+grep -ahE "Tests +[0-9]+" "$logs/verify-unit.log"
+grep -ahE "^test result" "$logs/verify-coretest.log" | awk '{p+=$4; f+=$6} END {print "core tests passed:", p, "failed:", f}'
+grep -ahE "^test result" "$logs/verify-desktest.log" | awk '{p+=$4; f+=$6} END {print "desktop tests passed:", p, "failed:", f}'
+[ -f "$logs/verify-e2e.log" ] && grep -ahE "passed|failed" "$logs/verify-e2e.log" | tail -2
+grep -ahE "^checked" "$logs/verify-acid.log"
 echo "logs in $logs"
 echo "VERDICT $([ $fail -eq 0 ] && echo GREEN || echo RED)"

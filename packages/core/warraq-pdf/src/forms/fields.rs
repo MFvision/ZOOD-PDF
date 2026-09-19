@@ -201,14 +201,14 @@ pub(crate) fn text_string(text: &str) -> Object {
 }
 
 impl PdfDocument {
-    fn resolved(&self, value: &Object) -> Object {
+    fn form_value(&self, value: &Object) -> Object {
         match value {
             Object::Reference(id) => self.doc.get_object(*id).cloned().unwrap_or(Object::Null),
             other => other.clone(),
         }
     }
 
-    fn catalog_id(&self) -> Result<ObjectId> {
+    fn root_id(&self) -> Result<ObjectId> {
         self.doc
             .trailer
             .get(b"Root")
@@ -219,17 +219,17 @@ impl PdfDocument {
     /// The `/AcroForm` dictionary, resolved.
     pub(crate) fn acroform(&self) -> Option<Dictionary> {
         let form = self.doc.catalog().ok()?.get(b"AcroForm").ok()?;
-        self.resolved(form).as_dict().ok().cloned()
+        self.form_value(form).as_dict().ok().cloned()
     }
 
     /// The text of a JavaScript action, or None for any other action.
     fn javascript(&self, action: &Object) -> Option<String> {
-        let action = self.resolved(action);
+        let action = self.form_value(action);
         let dict = action.as_dict().ok()?;
         if dict.get(b"S").ok()?.as_name().ok()? != b"JavaScript" {
             return None;
         }
-        let js = self.resolved(dict.get(b"JS").ok()?);
+        let js = self.form_value(dict.get(b"JS").ok()?);
         let bytes = match &js {
             Object::String(bytes, _) => bytes.clone(),
             Object::Stream(stream) => stream
@@ -266,7 +266,7 @@ impl PdfDocument {
                 .get_dictionary(*page)
                 .ok()
                 .and_then(|p| p.get(b"Annots").ok())
-                .map(|a| self.resolved(a));
+                .map(|a| self.form_value(a));
             for item in annots
                 .as_ref()
                 .and_then(|a| a.as_array().ok())
@@ -282,7 +282,7 @@ impl PdfDocument {
                 .get_dictionary(*page)
                 .ok()
                 .and_then(|p| p.get(b"AA").ok())
-                .map(|a| self.resolved(a))
+                .map(|a| self.form_value(a))
             {
                 if let Ok(aa) = aa.as_dict() {
                     for (key, action) in aa.iter() {
@@ -296,7 +296,7 @@ impl PdfDocument {
         let form = self.acroform();
         if let Some(form) = &form {
             let mut seen = HashSet::new();
-            let fields = form.get(b"Fields").ok().map(|f| self.resolved(f));
+            let fields = form.get(b"Fields").ok().map(|f| self.form_value(f));
             for item in fields
                 .as_ref()
                 .and_then(|f| f.as_array().ok())
@@ -316,7 +316,7 @@ impl PdfDocument {
                     );
                 }
             }
-            let order = form.get(b"CO").ok().map(|c| self.resolved(c));
+            let order = form.get(b"CO").ok().map(|c| self.form_value(c));
             for item in order
                 .as_ref()
                 .and_then(|c| c.as_array().ok())
@@ -382,7 +382,7 @@ impl PdfDocument {
                 note(notes, Place::Open, b"open", &js);
             }
         }
-        if let Some(aa) = catalog.get(b"AA").ok().map(|a| self.resolved(a)) {
+        if let Some(aa) = catalog.get(b"AA").ok().map(|a| self.form_value(a)) {
             if let Ok(aa) = aa.as_dict() {
                 for (key, action) in aa.iter() {
                     if let Some(js) = self.javascript(action) {
@@ -394,7 +394,7 @@ impl PdfDocument {
         let tree = catalog
             .get(b"Names")
             .ok()
-            .map(|n| self.resolved(n))
+            .map(|n| self.form_value(n))
             .and_then(|n| {
                 n.as_dict()
                     .ok()
@@ -408,13 +408,13 @@ impl PdfDocument {
                 if visited > 1000 || depth > 16 || notes.len() >= MAX_NOTES {
                     break;
                 }
-                let node = self.resolved(&node);
+                let node = self.form_value(&node);
                 let Ok(dict) = node.as_dict() else { continue };
-                if let Some(names) = dict.get(b"Names").ok().map(|n| self.resolved(n)) {
+                if let Some(names) = dict.get(b"Names").ok().map(|n| self.form_value(n)) {
                     if let Ok(pairs) = names.as_array() {
                         for pair in pairs.chunks(2) {
                             if let [key, action] = pair {
-                                let key = self.resolved(key);
+                                let key = self.form_value(key);
                                 let name = key.as_str().map(decode_text_string).unwrap_or_default();
                                 if let Some(js) = self.javascript(action) {
                                     note(notes, Place::Document, name.as_bytes(), &js);
@@ -423,7 +423,7 @@ impl PdfDocument {
                         }
                     }
                 }
-                if let Some(kids) = dict.get(b"Kids").ok().map(|k| self.resolved(k)) {
+                if let Some(kids) = dict.get(b"Kids").ok().map(|k| self.form_value(k)) {
                     for kid in kids.as_array().into_iter().flatten() {
                         stack.push((kid.clone(), depth + 1));
                     }
@@ -443,7 +443,7 @@ impl PdfDocument {
             }
             let dict = self.doc.get_dictionary(node).ok()?;
             if let Ok(t) = dict.get(b"T") {
-                if let Ok(bytes) = self.resolved(t).as_str() {
+                if let Ok(bytes) = self.form_value(t).as_str() {
                     parts.push(decode_text_string(bytes));
                 }
             }
@@ -474,7 +474,7 @@ impl PdfDocument {
         let partial = dict
             .get(b"T")
             .ok()
-            .map(|t| self.resolved(t))
+            .map(|t| self.form_value(t))
             .and_then(|t| t.as_str().ok().map(decode_text_string));
         let name = match (&partial, prefix.is_empty()) {
             (Some(p), true) => p.clone(),
@@ -485,7 +485,7 @@ impl PdfDocument {
         let kids: Vec<ObjectId> = dict
             .get(b"Kids")
             .ok()
-            .map(|k| self.resolved(k))
+            .map(|k| self.form_value(k))
             .and_then(|k| k.as_array().ok().cloned())
             .unwrap_or_default()
             .iter()
@@ -549,7 +549,7 @@ impl PdfDocument {
                     &js,
                 );
             }
-            if let Some(aa) = w.get(b"AA").ok().map(|a| self.resolved(a)) {
+            if let Some(aa) = w.get(b"AA").ok().map(|a| self.form_value(a)) {
                 if let Ok(aa) = aa.as_dict() {
                     for (key, action) in aa.iter() {
                         if matches!(key.as_slice(), b"K" | b"F" | b"V" | b"C") {
@@ -591,7 +591,7 @@ impl PdfDocument {
             tooltip: dict
                 .get(b"TU")
                 .ok()
-                .map(|t| self.resolved(t))
+                .map(|t| self.form_value(t))
                 .and_then(|t| t.as_str().ok().map(decode_text_string)),
             read_only: here.flags & FLAG_READ_ONLY != 0,
             widgets,
@@ -605,7 +605,7 @@ impl PdfDocument {
     /// The object id of the terminal field called `name`.
     pub(crate) fn field_id(&self, name: &str) -> Option<ObjectId> {
         let form = self.acroform()?;
-        let fields = form.get(b"Fields").ok().map(|f| self.resolved(f))?;
+        let fields = form.get(b"Fields").ok().map(|f| self.form_value(f))?;
         let mut stack: Vec<(ObjectId, usize)> = fields
             .as_array()
             .ok()?
@@ -627,7 +627,7 @@ impl PdfDocument {
             let kids: Vec<ObjectId> = dict
                 .get(b"Kids")
                 .ok()
-                .map(|k| self.resolved(k))
+                .map(|k| self.form_value(k))
                 .and_then(|k| k.as_array().ok().cloned())
                 .unwrap_or_default()
                 .iter()
@@ -727,7 +727,7 @@ impl PdfDocument {
     /// The `/AcroForm` as its own object, made so if it is not; with the
     /// fonts new fields name in its `/DR`.
     fn acroform_id(&mut self) -> Result<ObjectId> {
-        let catalog = self.catalog_id()?;
+        let catalog = self.root_id()?;
         let held = self
             .doc
             .catalog()
@@ -1147,7 +1147,7 @@ impl PdfDocument {
             dict.remove(b"XFA");
         }
         self.mark_touched(id);
-        let catalog = self.catalog_id()?;
+        let catalog = self.root_id()?;
         if let Ok(dict) = self.doc.get_dictionary_mut(catalog) {
             if dict.remove(b"NeedsRendering").is_some() {
                 self.mark_touched(catalog);
@@ -1170,19 +1170,19 @@ impl Inherited {
     fn with(&self, doc: &PdfDocument, dict: &Dictionary) -> Self {
         let mut next = self.clone();
         if let Ok(ft) = dict.get(b"FT") {
-            if let Ok(name) = doc.resolved(ft).as_name() {
+            if let Ok(name) = doc.form_value(ft).as_name() {
                 next.kind = Some(name.to_vec());
             }
         }
         if let Ok(ff) = dict.get(b"Ff") {
-            if let Ok(flags) = doc.resolved(ff).as_i64() {
+            if let Ok(flags) = doc.form_value(ff).as_i64() {
                 next.flags = flags;
             }
         }
         if let Ok(v) = dict.get(b"V") {
-            next.value = Some(doc.resolved(v));
+            next.value = Some(doc.form_value(v));
         }
-        if let Some(aa) = dict.get(b"AA").ok().map(|a| doc.resolved(a)) {
+        if let Some(aa) = dict.get(b"AA").ok().map(|a| doc.form_value(a)) {
             if let Ok(aa) = aa.as_dict() {
                 for key in [b"K".as_slice(), b"F", b"V", b"C"] {
                     if let Some(js) = aa.get(key).ok().and_then(|a| doc.javascript(a)) {
@@ -1693,7 +1693,7 @@ mod tests {
             ("S", Object::Name(b"JavaScript".to_vec())),
             ("JS", Object::string_literal("app.alert('hello')")),
         ]));
-        let catalog = doc.catalog_id().unwrap();
+        let catalog = doc.root_id().unwrap();
         doc.doc
             .get_dictionary_mut(catalog)
             .unwrap()
@@ -1734,7 +1734,7 @@ mod tests {
             .unwrap()
             .set("XFA", Object::Array(vec![]));
         assert_eq!(doc.form().xfa, Xfa::Static);
-        let catalog = doc.catalog_id().unwrap();
+        let catalog = doc.root_id().unwrap();
         doc.doc
             .get_dictionary_mut(catalog)
             .unwrap()

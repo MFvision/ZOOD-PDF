@@ -108,6 +108,55 @@ pub struct TextLine {
     pub width: f32,
     pub height: f32,
     pub direction: Direction,
+    /// Where each char of `text` was drawn along the line, left to right on
+    /// the page: `(x0, x1)` in the same space as `x`. Empty when unknown (a
+    /// turned line), so a caller falls back to the line's own box. A mark
+    /// shares its letter's box, and a ligature's letters share the ligature's.
+    pub spans: Vec<(f32, f32)>,
+}
+
+/// The text of a line as `reconstruct_lines` reports it — composed (NFC),
+/// Persian letters restored to Arabic where the line is Arabic, trimmed —
+/// with each char's box from `drawn`, the box of the visual cluster it came
+/// from. Composition joins a letter with its marks, so a composed char keeps
+/// its letter's box; were a composition ever to reach across letters, the
+/// spans come back empty rather than wrong.
+fn finish_line(mapped: &[(char, usize)], drawn: &[(f32, f32)]) -> (String, Vec<(f32, f32)>) {
+    let raw: String = mapped.iter().map(|(c, _)| *c).collect();
+    let whole: String = raw.nfc().collect();
+    // Composed a letter at a time: each starter with the marks after it.
+    let mut pieces: Vec<(String, usize)> = vec![];
+    for &(c, src) in mapped {
+        let starter = unicode_normalization::char::canonical_combining_class(c) == 0;
+        match pieces.last_mut() {
+            Some((piece, _)) if !starter => piece.push(c),
+            _ => pieces.push((c.to_string(), src)),
+        }
+    }
+    let mut composed = String::with_capacity(whole.len());
+    let mut spans = vec![];
+    for (piece, src) in &pieces {
+        let box_ = drawn.get(*src).copied().unwrap_or((0.0, 0.0));
+        for c in piece.nfc() {
+            composed.push(c);
+            spans.push(box_);
+        }
+    }
+    let known = composed == whole;
+    // Restoring Arabic letters maps char for char.
+    let restored = normalize_persian_letters(&whole);
+    let lead = restored.chars().take_while(|c| c.is_whitespace()).count();
+    let text = restored.trim().to_string();
+    let spans = if known && restored.chars().count() == spans.len() {
+        spans
+            .into_iter()
+            .skip(lead)
+            .take(text.chars().count())
+            .collect()
+    } else {
+        vec![]
+    };
+    (text, spans)
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -158,6 +207,9 @@ type Line<'a> = (f32, f32, LineGlyphs<'a>);
 #[derive(Clone, Debug)]
 struct Unit {
     chars: Vec<char>,
+    /// The visual cluster each char came from, parallel to `chars`: where it
+    /// was drawn, for boxes around logical ranges (search and redact).
+    srcs: Vec<usize>,
     class: Class,
 }
 
@@ -170,21 +222,25 @@ fn units(visual: &[char]) -> Vec<Unit> {
 /// join the preceding unit.
 fn units_from_clusters(clusters: &[String]) -> Vec<Unit> {
     let mut out: Vec<Unit> = vec![];
-    for text in clusters {
+    for (k, text) in clusters.iter().enumerate() {
         let chars: Vec<char> = text.chars().collect();
         if chars.is_empty() {
             continue;
         }
+        let srcs = vec![k; chars.len()];
         let is_mark = crate::normalize::is_mark_or_control(chars[0]);
         match out.last_mut() {
-            Some(u) if is_mark => u.chars.extend(chars),
+            Some(u) if is_mark => {
+                u.chars.extend(chars);
+                u.srcs.extend(srcs);
+            }
             _ => {
                 let class = chars
                     .iter()
                     .map(|c| classify(*c))
                     .find(|c| *c != Class::Neutral)
                     .unwrap_or(Class::Neutral);
-                out.push(Unit { chars, class })
+                out.push(Unit { chars, srcs, class })
             }
         }
     }
@@ -193,15 +249,23 @@ fn units_from_clusters(clusters: &[String]) -> Vec<Unit> {
 
 /// Reverse a visual char sequence into logical order.
 pub fn visual_to_logical(visual: &[char]) -> (String, Direction) {
-    reorder_units(units(visual))
+    let (chars, direction) = reorder_units(units(visual));
+    (chars.into_iter().map(|(c, _)| c).collect(), direction)
 }
 
 /// Reverse a visual sequence of clusters into logical order.
 pub fn clusters_to_logical(clusters: &[String]) -> (String, Direction) {
+    let (chars, direction) = clusters_to_logical_mapped(clusters);
+    (chars.into_iter().map(|(c, _)| c).collect(), direction)
+}
+
+/// `clusters_to_logical`, each logical char paired with the index of the
+/// visual cluster it came from.
+pub fn clusters_to_logical_mapped(clusters: &[String]) -> (Vec<(char, usize)>, Direction) {
     reorder_units(units_from_clusters(clusters))
 }
 
-fn reorder_units(units: Vec<Unit>) -> (String, Direction) {
+fn reorder_units(units: Vec<Unit>) -> (Vec<(char, usize)>, Direction) {
     // Base direction of a visual line: the logical start of an RTL paragraph is its RIGHT end,
     // so the rightmost strong letter decides; a line without RTL letters is LTR. ("The word كتاب"
     // is the known ambiguity: geometry and content order refine this in reconstruct_lines.)
@@ -321,16 +385,29 @@ fn reorder_units(units: Vec<Unit>) -> (String, Direction) {
             i += 1;
         }
     }
-    let mirror = |u: &Unit| -> Vec<char> { u.chars.iter().map(|c| mirror_bracket(*c)).collect() };
-    let mut out: Vec<char> = Vec::with_capacity(units.len() * 2);
+    let own = |u: &Unit| -> Vec<(char, usize)> {
+        u.chars
+            .iter()
+            .copied()
+            .zip(u.srcs.iter().copied())
+            .collect()
+    };
+    let mirror = |u: &Unit| -> Vec<(char, usize)> {
+        u.chars
+            .iter()
+            .map(|c| mirror_bracket(*c))
+            .zip(u.srcs.iter().copied())
+            .collect()
+    };
+    let mut out: Vec<(char, usize)> = Vec::with_capacity(units.len() * 2);
     match base {
         Direction::Rtl => {
             // reverse everything (mirroring brackets outside embedded runs), then restore embedded LTR runs
-            let mut rev: Vec<(Vec<char>, bool)> = units
+            let mut rev: Vec<(Vec<(char, usize)>, bool)> = units
                 .iter()
                 .zip(member.iter())
                 .rev()
-                .map(|(u, m)| (if *m { u.chars.clone() } else { mirror(u) }, *m))
+                .map(|(u, m)| (if *m { own(u) } else { mirror(u) }, *m))
                 .collect();
             let mut k = 0;
             while k < rev.len() {
@@ -362,13 +439,13 @@ fn reorder_units(units: Vec<Unit>) -> (String, Direction) {
                     }
                     k = e;
                 } else {
-                    out.extend(units[k].chars.iter().copied());
+                    out.extend(own(&units[k]));
                     k += 1;
                 }
             }
         }
     }
-    (out.into_iter().collect(), base)
+    (out, base)
 }
 
 /// Skia and Word often map the shared yeh/kaf glyphs of Arabic fonts to the Persian code points
@@ -719,6 +796,9 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
             .any(|c| c.text.trim().is_empty() && !c.text.is_empty());
         let gap_threshold = if has_space_glyphs { 0.7 } else { 0.25 } * size.max(1.0);
         let mut visual: Vec<String> = vec![];
+        // Where each entry of `visual` was drawn, along the baseline: a
+        // cluster its own advance, an inserted space the gap it stands for.
+        let mut drawn: Vec<(f32, f32)> = vec![];
         let mut prev_end: Option<f32> = None;
         for c in &clusters {
             if let Some(pe) = prev_end {
@@ -728,18 +808,22 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
                     && !c.text.starts_with(' ')
                 {
                     visual.push(" ".to_string());
+                    drawn.push((pe, c.x));
                 }
             }
             visual.push(fold_presentation_forms(&c.text));
-            prev_end = Some(c.x + if c.adv > 0.0 { c.adv } else { median_adv });
+            let end = c.x + if c.adv > 0.0 { c.adv } else { median_adv };
+            drawn.push((c.x, end));
+            prev_end = Some(end);
         }
-        let (logical, direction) = clusters_to_logical(&visual);
-        let text: String = normalize_persian_letters(&logical.nfc().collect::<String>())
-            .trim()
-            .to_string();
+        let (mapped, direction) = clusters_to_logical_mapped(&visual);
+        let (text, spans) = finish_line(&mapped, &drawn);
         if text.is_empty() || text.chars().all(|c| c == '\u{FFFD}') {
             continue;
         }
+        // Boxes along a turned baseline are in the run's own frame, not the
+        // page's: only horizontal lines report them.
+        let spans = if angle == 0.0 { spans } else { vec![] };
         let x0 = clusters.first().map(|c| c.x).unwrap_or(0.0);
         let x1 = clusters
             .last()
@@ -771,6 +855,7 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
             width: bw,
             height: bh,
             direction,
+            spans,
         });
     }
     out
@@ -870,6 +955,46 @@ mod tests {
         "استخدم الاختصار Ctrl+S للحفظ ثم اضغط File > Save As.",
         "زبان فارسی: پژوهش، گچ، ژاله، کتاب، یک، آموزش",
     ];
+
+    /// Search-and-redact marks the glyphs a logical range was drawn with:
+    /// each char of a line knows where it sits, in either direction, and a
+    /// word's box is the union of its letters'.
+    #[test]
+    fn every_char_of_a_line_knows_where_it_was_drawn() {
+        let lines = reconstruct_lines(&glyphs_from_visual("abc de", 100.0));
+        assert_eq!(lines[0].text, "abc de");
+        assert_eq!(lines[0].spans[0], (0.0, 10.0));
+        assert_eq!(lines[0].spans[4], (40.0, 50.0));
+
+        // Right to left: the first logical letter is the rightmost glyph.
+        let lines = reconstruct_lines(&glyphs_from_visual(&to_visual("كتب جديد"), 100.0));
+        assert_eq!(lines[0].text, "كتب جديد");
+        let spans = &lines[0].spans;
+        assert_eq!(spans.len(), "كتب جديد".chars().count());
+        assert_eq!(spans[0], (70.0, 80.0), "ك is drawn last, at the right");
+        assert_eq!(spans[2], (50.0, 60.0));
+        assert_eq!(
+            spans[4],
+            (30.0, 40.0),
+            "the second word starts left of the space"
+        );
+
+        // A mark keeps its letter's box, and the text stays composed.
+        let mut g = glyphs_from_visual(&to_visual("كتب"), 100.0);
+        g.push(PositionedGlyph {
+            x: 2.0,
+            y: 96.0,
+            angle: 0.0,
+            size: 10.0,
+            advance: 0.0,
+            text: Some("\u{064E}".into()),
+            gid: 0,
+            font: 0,
+        });
+        let lines = reconstruct_lines(&g);
+        assert_eq!(lines[0].spans.len(), lines[0].text.chars().count());
+        assert_eq!(lines[0].spans.last(), Some(&(0.0, 10.0)));
+    }
 
     #[test]
     fn visual_to_logical_round_trips_every_corpus_line() {

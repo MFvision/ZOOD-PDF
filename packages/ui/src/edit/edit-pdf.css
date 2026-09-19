@@ -1,0 +1,130 @@
+/*
+ * Edit PDF: the picture and link layers over the page, with handles like a
+ * drawing program's. The panel itself is built from the inspector's shared
+ * pieces (.segmented, fieldset groups, .tool-actions); only the hints list
+ * is its own.
+ */
+.edit-kinds {
+  display: flex;
+}
+
+.edit-pdf-hints {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-inline-start: var(--space-6);
+  margin: 0;
+  font-size: var(--text-callout);
+  line-height: 1.45;
+  color: var(--secondary-label);
+}
+
+.edit-pdf-link-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.edit-pdf-link-form .text-input {
+  inline-size: 100%;
+}
+
+/* Page geometry is physical: the layer is left to right whatever the UI's language. */
+.edit-pdf-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  direction: ltr;
+  touch-action: none;
+}
+
+.edit-pdf-links {
+  cursor: crosshair;
+}
+
+.edit-pdf-box {
+  position: absolute;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  border: 1px dashed color-mix(in srgb, var(--accent) 70%, transparent);
+  border-radius: 1px;
+}
+
+.edit-pdf-box:hover:not(:disabled),
+.edit-pdf-box:focus-visible {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  outline: none;
+}
+
+.edit-pdf-box[data-selected] {
+  cursor: move;
+  border-style: solid;
+  border-color: var(--accent);
+}
+
+.edit-pdf-box[data-shared] {
+  cursor: not-allowed;
+  border-color: var(--tertiary-label);
+}
+
+.edit-pdf-link {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.edit-pdf-handles {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.edit-pdf-outline {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.edit-pdf-whole {
+  fill: color-mix(in srgb, var(--label) 12%, transparent);
+  stroke: var(--secondary-label);
+  stroke-dasharray: 4 3;
+}
+
+.edit-pdf-handle {
+  cursor: pointer;
+  pointer-events: all;
+  fill: var(--control-background);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.edit-pdf-crop-handle {
+  fill: var(--accent);
+}
+
+.edit-pdf-link-handle {
+  position: absolute;
+  inline-size: 10px;
+  block-size: 10px;
+  cursor: pointer;
+  background: var(--control-background);
+  border: 1.5px solid var(--accent);
+  border-radius: 2px;
+}
+
+.edit-pdf-place {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.edit-pdf-draft {
+  position: absolute;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1.5px dashed var(--accent);
+}

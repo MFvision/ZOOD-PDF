@@ -154,6 +154,13 @@ impl PdfDocument {
         &self.doc
     }
 
+    /// The object model, to change directly — tests that play another
+    /// program editing a signed file. Whatever existed and is changed must
+    /// be passed to [`Self::mark_touched`] to be saved.
+    pub fn doc_mut(&mut self) -> &mut Document {
+        &mut self.doc
+    }
+
     /// Last resort for a file our own handler cannot decrypt: let `lopdf`
     /// authenticate and decrypt while it loads.
     fn load_with_lopdf(bytes: &[u8], password: &str) -> Result<Document> {
@@ -188,13 +195,15 @@ impl PdfDocument {
         mut dict: &'a lopdf::Dictionary,
         key: &[u8],
     ) -> Option<&'a Object> {
-        loop {
+        // Bounded: a hostile file can make its `/Parent` chain a loop.
+        for _ in 0..64 {
             if let Ok(v) = dict.get(key) {
                 return Some(v);
             }
             let parent = dict.get(b"Parent").ok()?.as_reference().ok()?;
             dict = self.doc.get_dictionary(parent).ok()?;
         }
+        None
     }
 
     pub(crate) fn rect(&self, obj: Option<&Object>) -> Option<[f32; 4]> {

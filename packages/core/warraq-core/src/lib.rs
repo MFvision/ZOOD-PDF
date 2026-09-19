@@ -12,6 +12,8 @@ pub mod tools;
 pub mod wasm;
 
 pub use tools::{call_static, Reply};
+/// Whether an address is one a link may open (`http`, `https`, `mailto`).
+pub use warraq_pdf::allowed_uri;
 
 pub fn version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
@@ -27,6 +29,10 @@ pub enum CoreError {
     Args(String),
     #[error("E_UNKNOWN_OP: no tool operation called {0}")]
     UnknownOp(String),
+    /// Signing and verifying (`warraq_sign`), with their own codes:
+    /// `E_P12_PASSWORD`, `E_P12`, `E_TSA`, `E_SIGN`, …
+    #[error("{0}")]
+    Sign(String),
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -103,15 +109,63 @@ impl Document {
         if let Some(l) = self.lines_cache.borrow().get(&index) {
             return Ok(l.clone());
         }
-        let lines = reconstruct_lines(&self.glyphs(index)?);
+        let lines = self.read_lines(index, false)?;
         self.lines_cache.borrow_mut().insert(index, lines.clone());
         Ok(lines)
     }
 
-    /// A page's glyphs as the reader takes them: positioned, with their text,
-    /// and a run marked with `/ActualText` as that text.
+    /// A page's glyphs as the reader takes them — positioned, with their
+    /// text, a run marked with `/ActualText` as that text — its artifacts
+    /// left out, as `text_lines` leaves them out.
     pub fn glyphs(&self, index: usize) -> Result<Vec<warraq_text::PositionedGlyph>, CoreError> {
+        self.read_glyphs(index, false)
+    }
+
+    /// The text of the page's artifacts only — its page marks, running
+    /// heads, page numbers — which `text_lines` leaves out.
+    pub fn artifact_lines(&self, index: usize) -> Result<Vec<TextLine>, CoreError> {
+        self.read_lines(index, true)
+    }
+
+    /// The page's lines, read from either what it says or its artifacts.
+    ///
+    /// What is marked `/Artifact` (PDF 2.0 §14.8.2.2) is not part of the
+    /// page's text: a watermark across the middle, a header, a page number.
+    /// Mixed in, a diagonal DRAFT splits every line it crosses and a running
+    /// head reads as the first sentence of each page, so the reader — and
+    /// with it search, Export, Compare and Edit — keeps them apart.
+    fn read_lines(&self, index: usize, artifacts: bool) -> Result<Vec<TextLine>, CoreError> {
+        Ok(reconstruct_lines(&self.read_glyphs(index, artifacts)?))
+    }
+
+    /// The glyphs `read_lines` reads.
+    fn read_glyphs(
+        &self,
+        index: usize,
+        artifacts: bool,
+    ) -> Result<Vec<warraq_text::PositionedGlyph>, CoreError> {
         let (glyphs, marked) = self.render.marked_glyphs(index)?;
+        let artifact: Vec<bool> = marked.tags.iter().map(|t| t == b"Artifact").collect();
+        let (glyphs, inside): (Vec<_>, Vec<_>) = glyphs
+            .into_iter()
+            .zip(
+                marked
+                    .inside
+                    .iter()
+                    .cloned()
+                    .chain(std::iter::repeat(vec![])),
+            )
+            .filter(|(_, seqs)| {
+                let is = seqs
+                    .iter()
+                    .any(|k| artifact.get(*k as usize).copied().unwrap_or(false));
+                is == artifacts
+            })
+            .unzip();
+        let marked = warraq_render::MarkedGlyphs {
+            tags: marked.tags,
+            inside,
+        };
         // Glyphs inside `/ActualText` read as that text — when the document's
         // own list of the page's sequences matches, tag for tag, the one the
         // renderer met; otherwise as they are.

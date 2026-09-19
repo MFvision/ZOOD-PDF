@@ -3,6 +3,9 @@ import { cx } from '../components/cx';
 import type { RemoteDocument } from '../core/client';
 import type { PageSize } from '../core/types';
 import { EditLayer } from '../edit/EditLayer';
+import { useEditPdf } from '../edit/editPdf';
+import { ImageLayer } from '../edit/ImageLayer';
+import { LinkLayer } from '../edit/LinkLayer';
 import { pageScale } from '../edit/geometry';
 import { useT } from '../i18n/useT';
 import { useAppState } from '../state/AppContext';
@@ -25,6 +28,8 @@ interface PageViewProps {
 export function PageView({ document, index, size, zoom, dpr, near, visible, onVisibility }: PageViewProps) {
   const t = useT();
   const { edit } = useAppState();
+  // Edit PDF: text, pictures or links — each its own layer over the page.
+  const { kind } = useEditPdf();
   const ref = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isNear, setNear] = useState(false);
@@ -57,7 +62,9 @@ export function PageView({ document, index, size, zoom, dpr, near, visible, onVi
     >
       <canvas ref={canvasRef} className="page-canvas" />
       {isNear && <TextOverlay document={document} index={index} scale={cssScale} revision={pageRevision} />}
-      {isNear && edit.active && <EditLayer document={document} index={index} scale={cssScale} />}
+      {isNear && edit.active && kind === 'text' && <EditLayer document={document} index={index} scale={cssScale} />}
+      {isNear && edit.active && kind === 'images' && <ImageLayer document={document} index={index} scale={cssScale} />}
+      {isNear && edit.active && kind === 'links' && <LinkLayer document={document} index={index} scale={cssScale} />}
     </section>
   );
 }
