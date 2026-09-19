@@ -820,7 +820,8 @@ fn op_ranges(bytes: &[u8]) -> Option<Vec<(usize, usize, String)>> {
                                     && bytes.get(i + k + 2).is_none_or(|c| white(*c))
                             })?
                             .0;
-                        let data = i + id + 3;
+                        // Past the end when `ID` ends the stream: then there is no image.
+                        let data = (i + id + 3).min(n);
                         let ei = bytes[data..]
                             .windows(2)
                             .enumerate()
@@ -2061,6 +2062,9 @@ mod tests {
         let decoded = Content::decode(src).unwrap().operations;
         assert_eq!(decoded.len(), ranges.len());
         assert!(op_ranges(b"(unterminated Tj").is_none());
+        // An image that ends at `ID`, or never ends: no answer, and no panic.
+        assert!(op_ranges(b"BI /W 1 ID").is_none());
+        assert!(op_ranges(b"BI /W 1 ID \x00\x01").is_none());
     }
 
     #[test]
