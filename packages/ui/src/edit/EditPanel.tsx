@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Image as ImageIcon, Link2, Pencil, Redo2, TextCursorInput, Type, Undo2 } from 'lucide-react';
+import { Pencil, Redo2, TextCursorInput, Undo2 } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useT } from '../i18n/useT';
@@ -43,18 +43,17 @@ export function EditPanel() {
         <Icon of={Pencil} />
         {t('tool.edit')}
       </h3>
-      <div className="edit-kinds" role="radiogroup" aria-label={t('editPdf.kind')}>
+      <div className="segmented edit-kinds" role="radiogroup" aria-label={t('editPdf.kind')}>
         {(['text', 'images', 'links'] as const).map((option) => (
           <button
             key={option}
             type="button"
             role="radio"
             aria-checked={kind === option}
-            className="edit-kind"
+            className="segmented-item"
             disabled={!hasDocument}
             onClick={() => chooseKind(option)}
           >
-            <Icon of={option === 'text' ? Type : option === 'images' ? ImageIcon : Link2} />
             {t(`editPdf.kind.${option}`)}
           </button>
         ))}

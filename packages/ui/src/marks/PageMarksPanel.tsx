@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Layers, Pencil, Trash, X } from 'lucide-react';
+import { ImagePlus, Layers, Pencil, Trash, X } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
+import { Stepper } from '../components/Stepper';
 import { EDIT_FONTS, loadEditFont } from '../edit/editFont';
 import type { EditFontId } from '../edit/editFont';
 import { useI18n } from '../i18n/useT';
@@ -33,9 +34,10 @@ const TOKEN_LABELS: Record<(typeof TOKENS)[number], TKey> = {
 /** How long the controls must hold still before the preview is drawn again. */
 const PREVIEW_DELAY_MS = 350;
 
-function Field({ label, children, wide }: { label: string; children: ReactNode; wide?: boolean }) {
+/** A label above its control. */
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className={wide ? 'marks-field marks-field-wide' : 'marks-field'}>
+    <label className="field">
       <span>{label}</span>
       {children}
     </label>
@@ -261,14 +263,7 @@ export function PageMarksPanel() {
 
   const numberField = (key: keyof MarkForm, label: TKey, min: number, max: number) => (
     <Field label={t(label)}>
-      <input
-        className="text-input"
-        type="number"
-        min={min}
-        max={max}
-        value={form[key] as number}
-        onChange={(e) => set(key, Math.min(max, Math.max(min, Number(e.target.value) || 0)) as never)}
-      />
+      <Stepper min={min} max={max} value={form[key] as number} onChange={(value) => set(key, value as never)} />
     </Field>
   );
 
@@ -301,28 +296,24 @@ export function PageMarksPanel() {
         <Icon of={Layers} />
         {t('tool.pageMarks')}
       </h3>
-      {state.document === null ? (
-        <p className="tool-panel-note">{t('tool.openFirst')}</p>
-      ) : (
-        <p className="tool-panel-note">{t('marks.intro')}</p>
-      )}
+      <p className="tool-panel-note">{state.document === null ? t('tool.openFirst') : t('marks.intro')}</p>
 
-      <div className="marks-sections" role="radiogroup" aria-label={t('marks.kind')}>
+      <fieldset disabled={disabled}>
+        <legend>{t('marks.kind')}</legend>
         {SECTIONS.map((section) => (
-          <button
-            key={section}
-            type="button"
-            role="radio"
-            aria-checked={form.section === section}
-            className="marks-section"
-            // A mark being changed stays its own kind.
-            disabled={disabled || (changing !== null && form.section !== section)}
-            onClick={() => set('section', section)}
-          >
-            {t(`marks.section.${section}` as TKey)}
-          </button>
+          <label key={section}>
+            <input
+              type="radio"
+              name="marks-kind"
+              checked={form.section === section}
+              // A mark being changed stays its own kind.
+              disabled={changing !== null && form.section !== section}
+              onChange={() => set('section', section)}
+            />
+            <span>{t(`marks.section.${section}` as TKey)}</span>
+          </label>
         ))}
-      </div>
+      </fieldset>
 
       {changing && (
         <p className="marks-changing" role="status">
@@ -331,78 +322,84 @@ export function PageMarksPanel() {
         </p>
       )}
 
-      <fieldset className="marks-form" disabled={disabled}>
-        {form.section === 'watermark' && (
-          <>
-            <div className="marks-choice" role="radiogroup" aria-label={t('marks.source')}>
-              {(['text', 'picture'] as const).map((source) => (
-                <label key={source}>
-                  <input type="radio" name="marks-source" checked={form.watermarkSource === source} onChange={() => set('watermarkSource', source)} />
-                  {t(source === 'text' ? 'marks.sourceText' : 'marks.sourcePicture')}
-                </label>
-              ))}
-            </div>
+      {form.section === 'watermark' && (
+        <>
+          <fieldset disabled={disabled}>
+            <legend>{t('marks.source')}</legend>
+            {(['text', 'picture'] as const).map((source) => (
+              <label key={source}>
+                <input type="radio" name="marks-source" checked={form.watermarkSource === source} onChange={() => set('watermarkSource', source)} />
+                <span>{t(source === 'text' ? 'marks.sourceText' : 'marks.sourcePicture')}</span>
+              </label>
+            ))}
             {form.watermarkSource === 'text' ? (
-              <>
-                <Field label={t('marks.text')} wide>
-                  <input className="text-input" dir="auto" value={form.watermarkText} placeholder={t('marks.textPlaceholder')} onChange={(e) => set('watermarkText', e.target.value)} />
-                </Field>
-                {numberField('watermarkSize', 'marks.size', 6, 400)}
-                {fontSelect}
-              </>
+              <Field label={t('marks.text')}>
+                <input className="text-input" dir="auto" value={form.watermarkText} placeholder={t('marks.textPlaceholder')} onChange={(e) => set('watermarkText', e.target.value)} />
+              </Field>
             ) : (
               <>
-                <div className="marks-field marks-field-wide">
-                  <input
-                    ref={pictureInput}
-                    type="file"
-                    accept="image/png,image/jpeg,.png,.jpg,.jpeg"
-                    className="sr-only"
-                    aria-label={t('marks.picture')}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      e.target.value = '';
-                      if (file) setPicture({ name: file.name, bytes: await file.arrayBuffer() });
-                    }}
-                  />
-                  <button type="button" className="icon-btn icon-btn-labeled" onClick={() => pictureInput.current?.click()}>
-                    {picture ? t('marks.pictureChosen', { name: picture.name }) : t('marks.picture')}
-                  </button>
-                </div>
-                {numberField('imageWidth', 'marks.imageWidth', 5, 100)}
+                <input
+                  ref={pictureInput}
+                  type="file"
+                  accept="image/png,image/jpeg,.png,.jpg,.jpeg"
+                  className="sr-only"
+                  aria-label={t('marks.picture')}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    if (file) setPicture({ name: file.name, bytes: await file.arrayBuffer() });
+                  }}
+                />
+                <button type="button" className="icon-btn icon-btn-labeled" onClick={() => pictureInput.current?.click()}>
+                  <Icon of={ImagePlus} />
+                  <span>{picture ? t('marks.pictureChosen', { name: picture.name }) : t('marks.picture')}</span>
+                </button>
               </>
             )}
-            {positionSelect('watermarkPosition', [...POSITIONS, 'tiled'])}
-            {numberField('rotation', 'marks.rotation', -180, 180)}
-            {numberField('opacity', 'marks.opacity', 5, 100)}
-            {form.watermarkSource === 'text' && (
-              <Field label={t('marks.color')}>
-                <input className="marks-color" type="color" value={form.color} onChange={(e) => set('color', e.target.value)} />
-              </Field>
-            )}
-            <div className="marks-choice" role="radiogroup" aria-label={t('marks.layer')}>
-              {([true, false] as const).map((front) => (
-                <label key={String(front)}>
-                  <input type="radio" name="marks-layer" checked={form.front === front} onChange={() => set('front', front)} />
-                  {t(front ? 'marks.front' : 'marks.behind')}
-                </label>
-              ))}
+          </fieldset>
+          <fieldset disabled={disabled}>
+            <legend>{t('marks.look')}</legend>
+            <div className="marks-grid">
+              {form.watermarkSource === 'text' ? (
+                <>
+                  {numberField('watermarkSize', 'marks.size', 6, 400)}
+                  {fontSelect}
+                  <Field label={t('marks.color')}>
+                    <input className="marks-color" type="color" value={form.color} onChange={(e) => set('color', e.target.value)} />
+                  </Field>
+                </>
+              ) : (
+                numberField('imageWidth', 'marks.imageWidth', 5, 100)
+              )}
+              {numberField('opacity', 'marks.opacity', 5, 100)}
+              {numberField('rotation', 'marks.rotation', -180, 180)}
+              {positionSelect('watermarkPosition', [...POSITIONS, 'tiled'])}
             </div>
-          </>
-        )}
+            {([true, false] as const).map((front) => (
+              <label key={String(front)}>
+                <input type="radio" name="marks-layer" checked={form.front === front} onChange={() => set('front', front)} />
+                <span>{t(front ? 'marks.front' : 'marks.behind')}</span>
+              </label>
+            ))}
+          </fieldset>
+        </>
+      )}
 
-        {form.section === 'band' && (
-          <>
-            <div className="marks-choice" role="radiogroup" aria-label={t('marks.band')}>
-              {(['header', 'footer'] as const).map((band) => (
-                <label key={band}>
-                  <input type="radio" name="marks-band" checked={form.band === band} onChange={() => set('band', band)} />
-                  {t(band === 'header' ? 'marks.header' : 'marks.footer')}
-                </label>
-              ))}
-            </div>
+      {form.section === 'band' && (
+        <>
+          <fieldset disabled={disabled}>
+            <legend>{t('marks.band')}</legend>
+            {(['header', 'footer'] as const).map((band) => (
+              <label key={band}>
+                <input type="radio" name="marks-band" checked={form.band === band} onChange={() => set('band', band)} />
+                <span>{t(band === 'header' ? 'marks.header' : 'marks.footer')}</span>
+              </label>
+            ))}
+          </fieldset>
+          <fieldset disabled={disabled}>
+            <legend>{t('marks.slots')}</legend>
             {(['marks.slotStart', 'marks.slotCenter', 'marks.slotEnd'] as const).map((label, index) => (
-              <Field key={label} label={t(label)} wide>
+              <Field key={label} label={t(label)}>
                 <input
                   className="text-input"
                   dir="auto"
@@ -427,28 +424,36 @@ export function PageMarksPanel() {
               ))}
             </div>
             <p className="tool-panel-note">{t('marks.slotsHint')}</p>
-            <Field label={t('marks.direction')}>
-              <select className="select" value={form.direction} onChange={(e) => set('direction', e.target.value as MarkForm['direction'])}>
-                <option value="auto">{t('marks.directionAuto')}</option>
-                <option value="rtl">{t('marks.directionRtl')}</option>
-                <option value="ltr">{t('marks.directionLtr')}</option>
-              </select>
-            </Field>
-            <Field label={t('marks.calendar')}>
-              <select className="select" value={form.calendar} onChange={(e) => set('calendar', e.target.value as MarkForm['calendar'])}>
-                <option value="gregorian">{t('marks.gregorian')}</option>
-                <option value="hijri">{t('marks.hijri')}</option>
-              </select>
-            </Field>
-            {numeralsSelect}
-            {numberField('size', 'marks.size', 5, 72)}
-            {numberField('margin', 'marks.margin', 0, 200)}
-            {fontSelect}
-          </>
-        )}
+          </fieldset>
+          <fieldset disabled={disabled}>
+            <legend>{t('marks.look')}</legend>
+            <div className="marks-grid">
+              <Field label={t('marks.direction')}>
+                <select className="select" value={form.direction} onChange={(e) => set('direction', e.target.value as MarkForm['direction'])}>
+                  <option value="auto">{t('marks.directionAuto')}</option>
+                  <option value="rtl">{t('marks.directionRtl')}</option>
+                  <option value="ltr">{t('marks.directionLtr')}</option>
+                </select>
+              </Field>
+              <Field label={t('marks.calendar')}>
+                <select className="select" value={form.calendar} onChange={(e) => set('calendar', e.target.value as MarkForm['calendar'])}>
+                  <option value="gregorian">{t('marks.gregorian')}</option>
+                  <option value="hijri">{t('marks.hijri')}</option>
+                </select>
+              </Field>
+              {numeralsSelect}
+              {fontSelect}
+              {numberField('size', 'marks.size', 5, 72)}
+              {numberField('margin', 'marks.margin', 0, 200)}
+            </div>
+          </fieldset>
+        </>
+      )}
 
-        {form.section === 'pageNumber' && (
-          <>
+      {form.section === 'pageNumber' && (
+        <fieldset disabled={disabled}>
+          <legend>{t('marks.numbering')}</legend>
+          <div className="marks-grid">
             <Field label={t('marks.format')}>
               <select className="select" value={form.numberFormat} onChange={(e) => set('numberFormat', e.target.value as MarkForm['numberFormat'])}>
                 {(['plain', 'ofTotal', 'pageOfEnglish', 'pageOfArabic', 'roman'] as const).map((format) => (
@@ -458,21 +463,24 @@ export function PageMarksPanel() {
                 ))}
               </select>
             </Field>
-            {positionSelect('numberPosition', EDGE_POSITIONS)}
-            {numberField('startNumber', 'marks.start', 0, 99999)}
-            <label className="marks-check marks-field-wide">
-              <input type="checkbox" checked={form.skipFirst} onChange={(e) => set('skipFirst', e.target.checked)} />
-              {t('marks.skipFirst')}
-            </label>
             {numeralsSelect}
+            {numberField('startNumber', 'marks.start', 0, 99999)}
+            {positionSelect('numberPosition', EDGE_POSITIONS)}
             {numberField('size', 'marks.size', 5, 72)}
             {numberField('margin', 'marks.margin', 0, 200)}
             {fontSelect}
-          </>
-        )}
+          </div>
+          <label>
+            <input type="checkbox" checked={form.skipFirst} onChange={(e) => set('skipFirst', e.target.checked)} />
+            <span>{t('marks.skipFirst')}</span>
+          </label>
+        </fieldset>
+      )}
 
-        {form.section === 'bates' && (
-          <>
+      {form.section === 'bates' && (
+        <fieldset disabled={disabled}>
+          <legend>{t('marks.numbering')}</legend>
+          <div className="marks-grid">
             <Field label={t('marks.prefix')}>
               <input className="text-input" dir="auto" value={form.batesPrefix} onChange={(e) => set('batesPrefix', e.target.value)} />
             </Field>
@@ -485,10 +493,13 @@ export function PageMarksPanel() {
             {numberField('size', 'marks.size', 5, 72)}
             {numberField('margin', 'marks.margin', 0, 200)}
             {fontSelect}
-          </>
-        )}
+          </div>
+        </fieldset>
+      )}
 
-        <Field label={t('marks.pages')} wide>
+      <fieldset disabled={disabled}>
+        <legend>{t('marks.pages')}</legend>
+        <Field label={t('marks.pagesLabel')}>
           <input
             className="text-input"
             dir="ltr"
@@ -527,28 +538,30 @@ export function PageMarksPanel() {
       </div>
       <p className="tool-panel-note">{t('marks.replaceNote')}</p>
 
-      <section className="marks-list" aria-label={t('marks.inFile')}>
-        <h4>{t('marks.inFile')}</h4>
+      <fieldset className="marks-list">
+        <legend>{t('marks.inFile')}</legend>
         {loaded && marks.length === 0 && <p className="tool-panel-note">{t('marks.none')}</p>}
-        <ul>
-          {marks.map((mark) => (
-            <li key={mark.id} className="marks-item">
-              <span className="marks-item-text">
-                <strong>{t(`marks.kind.${mark.kind}` as TKey)}</strong>
-                <span dir="auto">{summary(mark, t)}</span>
-                <span className="tool-panel-note">{t('marks.onPages', { pages: pagesLabel(mark.pages) })}</span>
-              </span>
-              <IconButton label={t('marks.change')} icon={<Icon of={Pencil} />} disabled={disabled} onClick={() => startChange(mark)} />
-              <IconButton label={t('marks.remove')} icon={<Icon of={Trash} />} disabled={disabled} onClick={() => void remove([mark.id])} />
-            </li>
-          ))}
-        </ul>
-        {marks.length > 1 && (
-          <div className="tool-actions">
-            <IconButton label={t('marks.removeAll')} icon={<Icon of={Trash} />} showLabel disabled={disabled} onClick={() => void remove([])} />
-          </div>
+        {marks.length > 0 && (
+          <ul>
+            {marks.map((mark) => (
+              <li key={mark.id} className="marks-item">
+                <span className="marks-item-text">
+                  <strong>{t(`marks.kind.${mark.kind}` as TKey)}</strong>
+                  <span dir="auto">{summary(mark, t)}</span>
+                  <span className="tool-panel-note">{t('marks.onPages', { pages: pagesLabel(mark.pages) })}</span>
+                </span>
+                <IconButton label={t('marks.change')} icon={<Icon of={Pencil} />} disabled={disabled} onClick={() => startChange(mark)} />
+                <IconButton label={t('marks.remove')} icon={<Icon of={Trash} />} disabled={disabled} onClick={() => void remove([mark.id])} />
+              </li>
+            ))}
+          </ul>
         )}
-      </section>
+      </fieldset>
+      {marks.length > 1 && (
+        <div className="tool-actions">
+          <IconButton label={t('marks.removeAll')} icon={<Icon of={Trash} />} showLabel disabled={disabled} onClick={() => void remove([])} />
+        </div>
+      )}
     </div>
   );
 }

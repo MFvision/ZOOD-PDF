@@ -1,28 +1,32 @@
-/* Edit PDF: the kind switch, the picture and link layers, and their inspectors. */
+/*
+ * Edit PDF: the picture and link layers over the page, with handles like a
+ * drawing program's. The panel itself is built from the inspector's shared
+ * pieces (.segmented, fieldset groups, .tool-actions); only the hints list
+ * is its own.
+ */
 .edit-kinds {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  margin-block: 10px 12px;
+  display: flex;
 }
 
-.edit-kind {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  justify-content: center;
-  min-block-size: 32px;
-  padding-inline: 6px;
-  color: var(--fg);
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-s);
+.edit-pdf-hints {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-inline-start: var(--space-6);
+  margin: 0;
+  font-size: var(--text-callout);
+  line-height: 1.45;
+  color: var(--secondary-label);
 }
 
-.edit-kind[aria-checked="true"] {
-  color: var(--accent-fg);
-  background: var(--accent);
-  border-color: var(--accent);
+.edit-pdf-link-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.edit-pdf-link-form .text-input {
+  inline-size: 100%;
 }
 
 /* Page geometry is physical: the layer is left to right whatever the UI's language. */
@@ -61,7 +65,7 @@
 
 .edit-pdf-box[data-shared] {
   cursor: not-allowed;
-  border-color: var(--fg-muted);
+  border-color: var(--tertiary-label);
 }
 
 .edit-pdf-link {
@@ -84,15 +88,15 @@
 }
 
 .edit-pdf-whole {
-  fill: color-mix(in srgb, var(--fg) 12%, transparent);
-  stroke: var(--fg-muted);
+  fill: color-mix(in srgb, var(--label) 12%, transparent);
+  stroke: var(--secondary-label);
   stroke-dasharray: 4 3;
 }
 
 .edit-pdf-handle {
   cursor: pointer;
   pointer-events: all;
-  fill: var(--bg-elevated);
+  fill: var(--control-background);
   stroke: var(--accent);
   stroke-width: 1.5;
 }
@@ -106,8 +110,9 @@
   inline-size: 10px;
   block-size: 10px;
   cursor: pointer;
-  background: var(--bg-elevated);
+  background: var(--control-background);
   border: 1.5px solid var(--accent);
+  border-radius: 2px;
 }
 
 .edit-pdf-place {
@@ -122,40 +127,4 @@
   pointer-events: none;
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   border: 1.5px dashed var(--accent);
-}
-
-.edit-pdf-pending,
-.edit-pdf-inspector {
-  padding-block: 8px;
-  padding-inline: 10px;
-  margin-block: 8px;
-  background: var(--bg-hover);
-  border-radius: var(--radius-s);
-}
-
-.edit-pdf-pending p,
-.edit-pdf-inspector p {
-  margin-block: 0 8px;
-}
-
-.edit-pdf-inspector h4 {
-  margin-block: 0 8px;
-  font-size: 14px;
-}
-
-.edit-pdf-link-form {
-  display: grid;
-  gap: 8px;
-}
-
-.edit-pdf-choice {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-}
-
-.edit-pdf-choice label {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
 }

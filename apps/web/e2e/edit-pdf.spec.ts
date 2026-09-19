@@ -179,7 +179,7 @@ test.describe('Edit PDF: pictures and links, like a drawing program, saved into 
 
     // Drawn, then given an Arabic address.
     await drag(page, at(100, 100), at(400, 160));
-    await expect(p.getByRole('region', { name: 'New link' })).toBeVisible();
+    await expect(p.getByRole('group', { name: 'New link' })).toBeVisible();
     await p.getByRole('textbox', { name: 'Address' }).fill('https://example.org/دليل');
     await p.getByRole('button', { name: 'Add the link' }).click();
     await expect(first.locator('.edit-pdf-link')).toHaveCount(1);
