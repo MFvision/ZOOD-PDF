@@ -102,6 +102,21 @@ interface PageShape {
   pageSizes: [number, number][];
 }
 
+/** How a file is opened. */
+export interface OpenOptions {
+  /** `false` keeps it out of the home screen's recent files (a cloud file is listed with its drive). */
+  recent?: boolean;
+}
+
+/**
+ * Where Save writes instead of this device, while something claims it: a
+ * file opened from a cloud drive goes back to that drive (`cloud/`).
+ */
+export interface SaveTarget {
+  /** Writes `bytes`. `saved` marks the file saved and shows `toast`; otherwise it stays edited. */
+  save: (bytes: Uint8Array<ArrayBuffer>, name: string) => Promise<{ saved: true; toast: TKey } | { saved: false }>;
+}
+
 export interface AppServices {
   client: CoreClient;
   /** Live handle of the open document (not serializable, so it lives outside the reducer). */
@@ -121,7 +136,9 @@ export interface AppServices {
   documentPassword: string | undefined;
   recent: string[];
   /** Opens a PDF; a protected one asks for its password (`passwordPrompt`) first. */
-  openFile: (file: File, password?: string) => Promise<void>;
+  openFile: (file: File, password?: string, options?: OpenOptions) => Promise<void>;
+  /** The File the open document came from, by identity (null with none open): who opened it can tell it is theirs. */
+  openedFile: File | null;
   /** Tries the protected file again with this password. */
   unlockFile: (password: string) => void;
   cancelUnlock: () => void;
@@ -272,8 +289,14 @@ export interface AppServices {
   undoEdit: () => Promise<void>;
   /** Re-applies the text that was undone. */
   redoEdit: () => Promise<void>;
-  /** `save()` plus a download of `<original-name>.pdf`. */
+  /** `save()` plus a download of `<original-name>.pdf` — or, while a `SaveTarget` claims Save, to it. */
   saveDocument: () => Promise<void>;
+  /** Save to this device (a download, or the native save panel), whatever claims Save. */
+  saveToDevice: () => Promise<void>;
+  /** The bytes Save writes: the file as it stands, kept as an update of its own bytes where it can be. */
+  bytesForSave: () => Promise<Uint8Array<ArrayBuffer> | null>;
+  /** Where Save writes while `target` claims it; `null` gives Save back to the device. */
+  claimSave: (target: SaveTarget | null) => void;
 }
 
 const StateContext = createContext<AppState | null>(null);
@@ -321,8 +344,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     passwordRef.current = documentPassword;
   }, [documentPassword]);
-  // The protected file waiting for its password.
+  // The protected file waiting for its password, and how it was being opened.
   const lockedFile = useRef<File | null>(null);
+  const lockedOptions = useRef<OpenOptions | undefined>(undefined);
+  const [openedFile, setOpenedFile] = useState<File | null>(null);
   const [recent, setRecent] = useState<string[]>(() => readRecent());
   const documentRef = useRef<RemoteDocument | null>(null);
   // The EmbedPDF view's registry (ADR-0007): the document as it holds it —
@@ -419,7 +444,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [toastNonce]);
 
   const openFile = useCallback(
-    async (file: File, password?: string) => {
+    async (file: File, password?: string, options?: OpenOptions) => {
       // By content, not by name: see `pdfFile.ts`.
       if (!(await isPdf(file))) {
         dispatch({ type: 'DOCUMENT_FAILED', error: 'error.notPdf' });
@@ -438,11 +463,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return;
         }
         lockedFile.current = null;
+        lockedOptions.current = undefined;
         void documentRef.current?.free();
         documentRef.current = opened;
         setDocument(opened);
         setDocumentPassword(password);
         setDocumentBytes(kept);
+        setOpenedFile(file);
         forgetLayerView();
         dispatch({
           type: 'DOCUMENT_OPENED',
@@ -454,12 +481,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
             metadata: opened.info,
           },
         });
-        setRecent(addRecent(file.name));
+        if (options?.recent !== false) setRecent(addRecent(file.name));
       } catch (err) {
         if (sequence !== openSequence.current) return;
         if (errorKeyFor(err) === 'error.password') {
           // Not a failure: ask, and keep the file for the answer.
           lockedFile.current = file;
+          lockedOptions.current = options;
           dispatch({ type: 'PASSWORD_NEEDED', name: file.name, wrong: password !== undefined });
           return;
         }
@@ -471,13 +499,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const unlockFile = useCallback(
     (password: string) => {
-      if (lockedFile.current) void openFile(lockedFile.current, password);
+      if (lockedFile.current) void openFile(lockedFile.current, password, lockedOptions.current);
     },
     [openFile],
   );
 
   const cancelUnlock = useCallback(() => {
     lockedFile.current = null;
+    lockedOptions.current = undefined;
     dispatch({ type: 'PASSWORD_CANCELLED' });
   }, []);
 
@@ -553,6 +582,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setDocument(null);
     setDocumentBytes(null);
     setDocumentPassword(undefined);
+    setOpenedFile(null);
     forgetLayerView();
     dispatch({ type: 'DOCUMENT_CLOSED' });
   }, [forgetLayerView]);
@@ -1380,34 +1410,60 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ? nativePrint && state.view === 'viewer' && state.document !== null && state.switching === null
     : embedShowing;
 
-  const saveDocument = useCallback(async () => {
+  const bytesForSave = useCallback(async (): Promise<Uint8Array<ArrayBuffer> | null> => {
     const doc = documentRef.current;
-    const name = stateRef.current.document?.name;
-    if (!doc || !name) return;
-    try {
-      // Whichever view is current holds the latest file: EmbedPDF's carries its
-      // annotations and redactions, Warraq's its Arabic edits.
-      const fromEmbed = warraqOwnsDocument(stateRef.current) ? null : await bytesFromEmbed();
-      const own = fromEmbed ? await keepOwnBytes(fromEmbed) : null;
-      // Layers shown by choice are the view's, not the file's.
-      const bytes = own
-        ? new Uint8Array(await withOwnLayers(own))
-        : layerOwnRef.current
-          ? new Uint8Array(await withOwnLayers(new Uint8Array(await doc.save()).slice().buffer))
-          : await doc.save();
-      if (isTauriHost()) {
-        // Cancelling the panel is not a failure, and not a save either.
-        if (!(await savePdfFile(bytes, pdfFileName(name)))) return;
-      } else {
-        downloadPdf(bytes, name);
-      }
-      dispatch({ type: 'DOCUMENT_SAVED' });
-      dispatch({ type: 'TOAST', key: 'file.saved' });
-    } catch (error) {
-      const tooLarge = String(error instanceof Error ? error.message : error).includes('E_SIGNED_TOO_LARGE');
-      dispatch({ type: 'DOCUMENT_FAILED', error: tooLarge ? 'signatures.error.tooLarge' : 'file.saveFailed' });
-    }
+    if (!doc) return null;
+    // Whichever view is current holds the latest file: EmbedPDF's carries its
+    // annotations and redactions, Warraq's its Arabic edits.
+    const fromEmbed = warraqOwnsDocument(stateRef.current) ? null : await bytesFromEmbed();
+    const own = fromEmbed ? await keepOwnBytes(fromEmbed) : null;
+    // Layers shown by choice are the view's, not the file's.
+    return own
+      ? new Uint8Array(await withOwnLayers(own))
+      : layerOwnRef.current
+        ? new Uint8Array(await withOwnLayers(new Uint8Array(await doc.save()).slice().buffer))
+        : doc.save();
   }, [bytesFromEmbed, keepOwnBytes, withOwnLayers]);
+
+  // A file opened from a cloud drive is saved back to it (`cloud/`).
+  const saveTarget = useRef<SaveTarget | null>(null);
+  const claimSave = useCallback((target: SaveTarget | null) => {
+    saveTarget.current = target;
+  }, []);
+
+  const save = useCallback(
+    async (toDevice: boolean) => {
+      const name = stateRef.current.document?.name;
+      if (!documentRef.current || !name) return;
+      try {
+        const bytes = await bytesForSave();
+        if (!bytes) return;
+        const target = toDevice ? null : saveTarget.current;
+        if (target) {
+          const outcome = await target.save(bytes, name);
+          if (!outcome.saved) return;
+          dispatch({ type: 'DOCUMENT_SAVED' });
+          dispatch({ type: 'TOAST', key: outcome.toast });
+          return;
+        }
+        if (isTauriHost()) {
+          // Cancelling the panel is not a failure, and not a save either.
+          if (!(await savePdfFile(bytes, pdfFileName(name)))) return;
+        } else {
+          downloadPdf(bytes, name);
+        }
+        // A copy on the device of a file that lives in a drive is not that file saved.
+        if (!toDevice || !saveTarget.current) dispatch({ type: 'DOCUMENT_SAVED' });
+        dispatch({ type: 'TOAST', key: 'file.saved' });
+      } catch (error) {
+        const tooLarge = String(error instanceof Error ? error.message : error).includes('E_SIGNED_TOO_LARGE');
+        dispatch({ type: 'DOCUMENT_FAILED', error: tooLarge ? 'signatures.error.tooLarge' : 'file.saveFailed' });
+      }
+    },
+    [bytesForSave],
+  );
+  const saveDocument = useCallback(() => save(false), [save]);
+  const saveToDevice = useCallback(() => save(true), [save]);
 
   const onFileInput = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files ? [...event.target.files] : [];
@@ -1431,6 +1487,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       documentPassword,
       recent,
       openFile,
+      openedFile,
       unlockFile,
       cancelUnlock,
       openFiles,
@@ -1481,6 +1538,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       undoEdit,
       redoEdit,
       saveDocument,
+      saveToDevice,
+      bytesForSave,
+      claimSave,
     }),
     [
       client,
@@ -1490,6 +1550,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       documentPassword,
       recent,
       openFile,
+      openedFile,
       unlockFile,
       cancelUnlock,
       openFiles,
@@ -1539,6 +1600,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       undoEdit,
       redoEdit,
       saveDocument,
+      saveToDevice,
+      bytesForSave,
+      claimSave,
     ],
   );
 

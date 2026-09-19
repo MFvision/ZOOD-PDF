@@ -40,7 +40,7 @@ interface GraphItem {
   file?: { mimeType?: string };
   folder?: { childCount?: number };
   package?: unknown;
-  parentReference?: { driveId?: string; id?: string; path?: string };
+  parentReference?: { driveId?: string; id?: string; name?: string; path?: string };
   remoteItem?: GraphItem;
   '@microsoft.graph.downloadUrl'?: string;
 }
@@ -129,6 +129,7 @@ function savedOf(item: GraphItem, fallback: ItemRef): Saved {
     name: item.name,
     version: item.eTag ?? '',
     parentKey: item.parentReference?.id ? oneDriveKey({ driveId: ref.driveId, itemId: item.parentReference.id }) : null,
+    parentName: item.parentReference?.name ?? null,
   };
 }
 

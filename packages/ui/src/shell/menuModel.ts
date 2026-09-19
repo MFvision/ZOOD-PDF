@@ -1,3 +1,4 @@
+import { useCloud } from '../cloud/CloudContext';
 import { isTauriHost } from '../core/host-tauri';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import type { ThemeMode } from '../state/preferences';
@@ -110,6 +111,7 @@ export function useMenuModel(): MenuModel[] {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const services = useServices();
+  const cloud = useCloud();
   const t = useT();
   const hasDocument = state.view === 'viewer' && state.document !== null;
   // The page grid has no zoom, find or thumbnails: those would do nothing there.
@@ -144,13 +146,30 @@ export function useMenuModel(): MenuModel[] {
       label: t('menu.file'),
       items: [
         { id: 'open', label: t('file.open'), keys: 'Mod+O', onSelect: services.requestOpenFile },
+        // The cloud drives this build offers (none: no item at all).
+        ...cloud.providers.map((provider) => ({
+          id: `cloud-open-${provider}`,
+          label: t(provider === 'onedrive' ? 'cloud.menu.open.onedrive' : 'cloud.menu.open.gdrive'),
+          onSelect: () => cloud.startOpen(provider),
+        })),
         {
           id: 'save',
           label: t('file.save'),
           keys: 'Mod+S',
           disabled: !hasDocument,
+          ...(cloud.providers.length > 0 ? { separatorBefore: true } : {}),
           onSelect: () => void services.saveDocument(),
         },
+        ...cloud.providers.map((provider) => ({
+          id: `cloud-save-${provider}`,
+          label: t(provider === 'onedrive' ? 'cloud.menu.saveTo.onedrive' : 'cloud.menu.saveTo.gdrive'),
+          disabled: !hasDocument,
+          onSelect: () => cloud.startSaveAs(provider),
+        })),
+        // A file from a drive saves back to it; this keeps a copy here too.
+        ...(cloud.binding && hasDocument
+          ? [{ id: 'save-device', label: t('cloud.menu.saveToDevice'), onSelect: () => void services.saveToDevice() }]
+          : []),
         ...(services.canPrint || !isTauriHost()
           ? [
               {

@@ -40,6 +40,8 @@ export interface Saved {
   version: string;
   /** Its folder, when the drive says (a copy is offered there). */
   parentKey: string | null;
+  /** That folder's name, when the drive says. */
+  parentName?: string | null;
 }
 
 export interface Opened extends Saved {

@@ -1,3 +1,4 @@
+import { CALLBACK_CHANNEL, CALLBACK_MESSAGE, CALLBACK_PAGE } from './callback';
 import { CloudError, kindOf } from './errors';
 import { authorizeUrl, paramsOf, readCallback } from './oauth';
 import type { AuthServer, Callback } from './oauth';
@@ -18,12 +19,6 @@ export interface SignedIn {
 }
 
 /* ----------------------------------------------------------- the browser */
-
-/** The page the pop-up comes back to (`apps/web/public/oauth-callback.html`). */
-export const CALLBACK_PAGE = 'oauth-callback.html';
-/** What that page says, on this channel and to its opener. */
-export const CALLBACK_CHANNEL = 'warraq-oauth';
-export const CALLBACK_MESSAGE = 'warraq:oauth';
 
 export const SIGN_IN_TIMEOUT_MS = 10 * 60 * 1000;
 

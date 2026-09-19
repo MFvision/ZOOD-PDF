@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { CLAUDE_ENDPOINT, LM_STUDIO_URL, LOCAL_ALLOWED_ORIGINS, LOCAL_DEFAULT_URL } from '@warraq/ui/src/ai/providers';
 import { stripMetaCsp } from '../vite.config';
+import { cloudConfig, oneDriveSources, shippedConfig, withCloudSources } from '../../../packages/ui/vite/cloudConfig';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
@@ -101,5 +102,53 @@ describe('the AI tool can reach its providers, and nothing else is opened up', (
     expect(AI_SOURCES.split(' ')).toEqual([new URL(CLAUDE_ENDPOINT).origin, ...LOCAL_ALLOWED_ORIGINS]);
     expect(LOCAL_ALLOWED_ORIGINS).toContain(new URL(LOCAL_DEFAULT_URL).origin);
     expect(LOCAL_ALLOWED_ORIGINS).toContain(new URL(LM_STUDIO_URL).origin);
+  });
+});
+
+describe('the cloud drives reach exactly their own hosts, and only in a build that offers them', () => {
+  const ONEDRIVE = [
+    'https://login.microsoftonline.com',
+    'https://graph.microsoft.com',
+    'https://*.1drv.com',
+    'https://*.sharepoint.com',
+    'https://*.microsoftpersonalcontent.com',
+  ];
+  const APP = '0b3f6a2e-1c1d-4c55-9d5e-2a9f5e0c1d22';
+  const GOOGLE = '123456789012-abcdefghijklmnop.apps.googleusercontent.com';
+
+  it('leaves the policy as it is when no drive is configured', () => {
+    expect(withCloudSources(html, {})).toBe(html);
+    expect(withCloudSources(html, { gdrive: { clientId: GOOGLE } })).toBe(html);
+  });
+
+  it('adds OneDrive’s hosts to connect-src, and changes nothing else, when OneDrive is configured', () => {
+    const csp = /Content-Security-Policy" content="([^"]*)"/.exec(withCloudSources(html, { onedrive: { clientId: APP, tenant: 'common' } }))?.[1] ?? '';
+    const cloud = directives(csp);
+    for (const [name, sources] of directives(EXPECTED_CSP)) if (name !== 'connect-src') expect(cloud.get(name)).toBe(sources);
+    expect(cloud.get('connect-src')).toBe(`'self' ${AI_SOURCES} ${ONEDRIVE.join(' ')}`);
+    expect(oneDriveSources()).toEqual(ONEDRIVE);
+  });
+
+  it('ships no Google Drive to a browser, and the desktop policy names no drive: the host sends those requests', () => {
+    const both = { onedrive: { clientId: APP, tenant: 'common' }, gdrive: { clientId: GOOGLE } };
+    expect(shippedConfig(both, 'production')).toEqual({ onedrive: both.onedrive });
+    expect(shippedConfig(both, 'tauri')).toEqual(both);
+    expect(desktopCsp).not.toMatch(/microsoft|1drv|sharepoint|googleapis/);
+  });
+
+  it('fails a build whose client ID cannot be an app’s, and ships none when none is set', () => {
+    expect(() => cloudConfig('production', { WARRAQ_ONEDRIVE_CLIENT_ID: 'not-a-guid' })).toThrow(/GUID/);
+    const defined = (env: Record<string, string>) =>
+      JSON.parse((cloudConfig('production', env).config as () => { define: Record<string, string> })().define.__WARRAQ_CLOUD__ ?? '') as unknown;
+    expect(defined({ WARRAQ_ONEDRIVE_CLIENT_ID: APP })).toEqual({ onedrive: { clientId: APP, tenant: 'common' } });
+    expect(defined({})).toEqual({});
+  });
+
+  it('gives the sign-in window’s return page a policy of its own: its one script, and nothing reached', () => {
+    const callback = readFileSync(new URL('../oauth-callback.html', import.meta.url), 'utf8');
+    expect(callback).toContain(
+      `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" />`,
+    );
+    expect(callback).toContain('<meta name="referrer" content="no-referrer" />');
   });
 });

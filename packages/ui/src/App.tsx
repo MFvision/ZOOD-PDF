@@ -7,6 +7,8 @@ import './shell/panes.css';
 import './viewer/viewer.css';
 import './edit/edit.css';
 import './home/home.css';
+import './cloud/cloud.css';
+import { CloudProvider } from './cloud/CloudContext';
 import { I18nProvider } from './i18n/I18nProvider';
 import type { Lang } from './i18n/messages';
 import { FormRuntimeProvider } from './forms/FormRuntime';
@@ -24,11 +26,13 @@ export function App({ initialLang }: AppProps) {
   return (
     <I18nProvider initialLang={initialLang}>
       <AppProvider>
-        <SignaturesProvider>
-          <FormRuntimeProvider>
-            <Shell />
-          </FormRuntimeProvider>
-        </SignaturesProvider>
+        <CloudProvider>
+          <SignaturesProvider>
+            <FormRuntimeProvider>
+              <Shell />
+            </FormRuntimeProvider>
+          </SignaturesProvider>
+        </CloudProvider>
       </AppProvider>
     </I18nProvider>
   );

@@ -1,0 +1,263 @@
+/* The cloud drives: the home screen's section and the sheets (docs/design/README.md). */
+
+/* ---- Home: the drives, as a grouped list --------------------------------------- */
+.cloud-drives {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  list-style: none;
+  background: var(--grouped-background);
+  border-radius: var(--radius-10);
+  box-shadow: var(--shadow-small);
+}
+
+.cloud-drive {
+  display: flex;
+  gap: var(--space-5);
+  align-items: center;
+  padding-block: var(--space-4);
+  padding-inline: var(--space-5);
+}
+
+.cloud-drive + .cloud-drive {
+  border-block-start: 0.5px solid var(--separator);
+}
+
+.cloud-drive-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 32px;
+  block-size: 32px;
+  color: var(--accent);
+  background: var(--quaternary-fill);
+  border-radius: var(--radius-8);
+}
+
+.cloud-drive-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.cloud-drive-text span {
+  overflow: hidden;
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cloud-drive-actions {
+  display: flex;
+  flex: none;
+  gap: var(--space-5);
+  align-items: center;
+}
+
+/* A drive file among the recent pages: a small cloud in its corner. */
+.cloud-badge {
+  position: absolute;
+  inset-block-end: var(--space-2);
+  inset-inline-end: var(--space-2);
+  display: grid;
+  place-items: center;
+  inline-size: 20px;
+  block-size: 20px;
+  color: var(--accent);
+  background: var(--elevated-background);
+  border-radius: var(--radius-capsule);
+  box-shadow: var(--shadow-control);
+}
+
+.recent-page:has(.cloud-badge) {
+  position: relative;
+}
+
+/* ---- Sheets -------------------------------------------------------------------- */
+.cloud-sheet,
+.cloud-browser {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.cloud-sheet p,
+.cloud-browser p {
+  margin: 0;
+}
+
+.cloud-note {
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+}
+
+.cloud-stay {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.cloud-stay label {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.cloud-status {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+}
+
+.cloud-account-line,
+.cloud-path-line {
+  display: flex;
+  gap: var(--space-4);
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+}
+
+.cloud-search {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  color: var(--secondary-label);
+}
+
+.cloud-search .text-input {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.cloud-path {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  padding: 0;
+  margin: 0;
+  font-size: var(--text-callout);
+  list-style: none;
+}
+
+.cloud-path li {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  color: var(--tertiary-label);
+}
+
+.cloud-path [aria-current='location'] {
+  font-weight: 600;
+  color: var(--label);
+}
+
+/* The listing: an inset grouped list that scrolls inside the sheet. */
+.cloud-list {
+  max-block-size: min(46vh, 360px);
+  padding: 0;
+  margin: 0;
+  overflow: auto;
+  list-style: none;
+  background: var(--grouped-background);
+  border-radius: var(--radius-10);
+  box-shadow: var(--shadow-small);
+}
+
+.cloud-list:empty {
+  display: none;
+}
+
+.cloud-list li + li {
+  border-block-start: 0.5px solid var(--separator);
+}
+
+.cloud-row {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  inline-size: 100%;
+  padding-block: var(--space-3);
+  padding-inline: var(--space-5);
+  color: var(--label);
+  text-align: start;
+  background: transparent;
+  border: 0;
+}
+
+.cloud-row:hover:not(:disabled) {
+  background: var(--quaternary-fill);
+}
+
+.cloud-row:active:not(:disabled) {
+  background: var(--tertiary-fill);
+  transition-duration: 0ms;
+}
+
+.cloud-row:disabled {
+  color: var(--tertiary-label);
+}
+
+.cloud-row > svg:first-child {
+  flex: none;
+  color: var(--accent);
+}
+
+.cloud-row:disabled > svg:first-child {
+  color: var(--tertiary-label);
+}
+
+.cloud-row-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.cloud-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cloud-row-detail {
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+}
+
+.cloud-row-detail:empty {
+  display: none;
+}
+
+.cloud-more {
+  align-self: center;
+}
+
+.cloud-browser .field-error {
+  display: flex;
+  gap: var(--space-4);
+  align-items: baseline;
+}
+
+.cloud-browser .dialog-actions {
+  flex-wrap: wrap;
+}
+
+@media (width <= 640px) {
+  .cloud-drive {
+    flex-wrap: wrap;
+  }
+
+  .cloud-drive-actions {
+    justify-content: flex-end;
+    inline-size: 100%;
+  }
+}

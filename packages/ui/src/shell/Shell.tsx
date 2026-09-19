@@ -4,6 +4,7 @@ import type { DropPoint } from '../core/host-tauri';
 import type { DropIntent } from '../state/AppContext';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
+import { CloudSheets } from '../cloud/CloudSheets';
 import { FontNotice } from '../edit/FontNotice';
 import { HomeScreen } from '../home/HomeScreen';
 import { useRecentThumbnail } from '../home/useRecentThumbnail';
@@ -177,6 +178,7 @@ export function Shell() {
         <AboutDialog />
         <SettingsDialog />
         <LinkConfirmDialog />
+        <CloudSheets />
         {state.toast && (
           <div key={state.toast.nonce} className="toast" role="status">
             {t(state.toast.key)}
