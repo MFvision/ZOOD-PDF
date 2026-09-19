@@ -281,6 +281,15 @@ mod tests {
             serde_json::json!({ "query": "الْمَكْتَبَةِ" }),
         );
         assert_eq!(texts(&voweled), ["الْمَكْتَبَةِ"]);
+        // Amiri's kaf–taa–alef, read in the order it is drawn: every كتاب,
+        // with its tanween or its article.
+        let book = reply(
+            &mut doc,
+            "view.search",
+            serde_json::json!({ "query": "كتاب" }),
+        );
+        // (the alef after tanween fath is not the word's, and stays out of the hit)
+        assert_eq!(texts(&book), ["كِتَابَ", "كِتَابً", "كِتَابٌ", "كِتَابٍ"]);
         let r = &hit["rects"][0];
         assert!(r["width"].as_f64().unwrap() > 5.0 && r["height"].as_f64().unwrap() > 5.0);
     }

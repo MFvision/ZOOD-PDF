@@ -1,12 +1,13 @@
 # STATUS — Warraq
 
-*Updated 2026-09-19: the interface is rebuilt on EmbedPDF (ADR-0007); all fifteen tools work end to end, each proven by a test that clicks through it, saves the file and reopens it — Digital signature (PAdES sign, verify, timestamps, validation data) the latest.*
+*Updated 2026-09-19: the interface is rebuilt on EmbedPDF (ADR-0007); all fifteen tools work end to end, each proven by a test that clicks through it, saves the file and reopens it — Digital signature (PAdES sign, verify, timestamps, validation data) the latest. Since then: search and copy in the page view answer with Warraq's reader, the web app installs and works offline, Windows and Linux print by pages, EmbedPDF's interface is Arabic throughout, and Nastaliq Urdu reads exactly.*
 
 ## Where the product stands
 
 | Capability | State |
 |---|---|
-| Open, render, thumbnails, zoom, search | EmbedPDF — PDFium compiled to WebAssembly (MIT) — on web, desktop and extension; Warraq's own engine (native PDFium on desktop, pure Rust in browsers) takes over in Edit text |
+| Open, render, thumbnails, zoom | EmbedPDF — PDFium compiled to WebAssembly (MIT) — on web, desktop and extension; Warraq's own engine (native PDFium on desktop, pure Rust in browsers) takes over in Edit text |
+| Search and copy in the page view | EmbedPDF's search panel (Cmd+F), its highlights, next and previous, and its Copy, answered by Warraq's reader: Arabic found with or without diacritics, alef, taa marbuta, yaa and digit forms unified, case and whole words on request; what is selected copies in logical order. PDFium, on the corpus's three-page Naskh file, found none of the seven "وراق" this finds, and copied a Chrome-made form backwards |
 | Comment, fill & sign, prepare form, redact, protect | work end to end through EmbedPDF's plugins, in all three hosts; see the count below |
 | Prepare form | Warraq's core finds where a flat form expects writing — underscore and dot runs, empty table cells, drawn boxes, lines to sign on, check boxes — names each field from its Arabic or English label and types it (text, check box, date, Hijri date, signature); the proposals are drawn on the page to adjust, then created as real AcroForm fields. Formats (numbers with SAR and Arabic-Indic digits, percent, dates, Umm al-Qura Hijri dates), ranges and calculations (sum, product, average, min, max, or arithmetic typed over field names) are written as the built-in JavaScript every form reader runs, and run inside Warraq by its own interpreter of exactly that subset — no JavaScript engine, no eval. Measured below |
 | Page marks | watermarks (text or a picture), headers and footers with page, date (Gregorian or Hijri) and file tokens, page numbers and Bates numbers, drawn by Warraq's core with Arabic shaped, previewed on the page before they are applied, and listed to change or take off — the page's own content is never touched (form XObjects tagged as artifacts, round the page's streams) |
@@ -19,7 +20,7 @@
 | Scan & OCR | Tesseract (Apache-2.0) reads scanned pages on the device — Arabic, English, Persian, Urdu (Naskh) — and Warraq's core writes what it read as an invisible, shaped text layer, so the page can be searched, selected and copied while it looks as it did. Measured on the corpus: 130 of 138 Arabic words of a 300 dpi scan (the misses carry diacritics), 20 of 30 of a 200 dpi black-and-white invoice (Tesseract skips its table rows) |
 | Compress | a smaller copy, written from scratch: unused objects dropped, duplicate streams shared, everything recompressed, and — only if chosen — images larger than a page needs downsampled to 150 or 96 dpi. Refuses protected and signed files rather than silently stripping their protection or breaking the signature |
 | Protected files | open everywhere after a password prompt; one prompt unlocks the file for both engines |
-| Arabic text **reading** in logical order | 16 of the truth-scored corpus files, against 2 for PDF.js, 2 for MuPDF, 0 for PDFium |
+| Arabic text **reading** in logical order | 26 of the 32 truth-scored corpus files (2026-09-19, the Nastaliq page and the Amiri tashkeel page among them), against 2 for PDF.js, 2 for MuPDF, 0 for PDFium, scored the same way (`tests/acid/score.py`) |
 | Arabic text **editing** with reflow | works end to end: click a paragraph in the app, edit it, undo/redo, save. GATE 2 passed (`docs/gate-2.md`) |
 | Encrypted files | read everywhere: R2–R6, RC4 40/128, AES-128, AES-256 |
 | Saving | incremental update; the opened bytes stay as the literal prefix — for EmbedPDF's changes too (below), except after a redaction or a change of password, which are written whole |
@@ -27,6 +28,8 @@
 | Visual regressions | golden renders of all 48 corpus pages gated in CI |
 | No-mapping files | characters recovered from glyph shapes, at 100 % precision on held-out fonts |
 | Installed on this Mac | `/Applications/ورّاق.app`, built from this tree — `scripts/install-macos.sh`, documented in `docs/install-macos.md`. Opens a PDF, renders every page, both thumbnails and full size |
+| Print | macOS: PDFKit prints the file itself, vectors and all. Windows and Linux: each page drawn by Warraq's core at 300 dpi and printed through the webview's own dialog — proven in Chrome, not yet run on either system (below). Browsers: the file through the browser's PDF viewer, which the page's security policy had been blocking without a word |
+| Install and offline (phones too) | the web app installs from the browser under its Arabic name, and after one visit opens and works with no network: a service worker keeps the app's own files — never a document. On phones and tablets every control is a 44-point target. Native iOS and Android apps are not built: the tools they need are not on this Mac (Decisions, below) |
 
 Every one of the 48 corpus files opens. 63 tests green, clippy clean, `wasm32-unknown-unknown` compiles, core WASM 2.50 MB gzipped (budget 8 MB).
 
@@ -128,16 +131,21 @@ reduced transparency and reduced motion honoured.
 | Dialogs and overlays | Dialogs are sheets. Popovers come out of their trigger. Toasts are a HUD. The find bar sits under the toolbar. The drop overlay is a material with one or two targets. Settings (⌘,) holds language and appearance |
 | EmbedPDF | Themed with Warraq's tokens by reference. Its duplicated sidebar, zoom and search buttons and its floating page field (except on a phone) are gone. The rest of its bar is the markup toolbar, shown from Warraq's toolbar |
 | macOS app | The title bar is merged into the toolbar, with the traffic lights in it. The toolbar drags the window and a double click zooms it. The system menu bar is built from the page's own menu model, in the interface language, and enables and checks items as the page does. A shortcut the page handles never runs its menu item too |
-| Narrow windows | On a tablet the toolbar condenses. On a phone the inspector is a sheet, the sidebar floats over the page, and nothing scrolls sideways |
+| Narrow windows | On a tablet the toolbar condenses. On a phone the inspector is a sheet, the sidebar floats over the page, and nothing scrolls sideways. On a touch screen (`pointer: coarse`) the controls, rows, toolbar and menu bar grow to 44-point targets; the look is the same |
 | App icon | New original artwork (`scripts/icon/make_icon.py`): a calligraphic و on a sheet of paper. Desktop and extension icons are regenerated from it |
 
 ## Next (in order)
-1. **Print on Windows and Linux** desktop builds (macOS prints through PDFKit).
-2. Nastaliq Urdu extraction; Acrobat verification on a machine that has it.
+1. **Run the Windows and Linux builds on those systems**: print by pages, the drop targets and the NSIS installer have been built for them in code only — nothing of them has run here.
+2. **Phone apps**: once the tools below are installed, `tauri ios init` / `tauri android init`, then the host's desktop-only parts (below) for a phone. The installable web app covers phones meanwhile.
+3. Nastaliq Urdu in files without a ToUnicode map; Acrobat verification on a machine that has it.
 
 ## Decisions needed from you
 1. **GitHub organization** — nothing has been pushed: `gh repo create <org>/warraq --private --source . --push`.
 2. **Xcode license** — `/usr/bin/cc` and the system `python3` refuse to run until `sudo xcodebuild -license accept` (needs your password). Builds work because they are pointed at Xcode's clang directly.
+3. **Phone apps (Tauri 2 mobile)** — tried on 2026-09-19 and stopped, as it should, at tools this Mac does not have. What they need, all installs outside this project:
+   * **iOS**: `tauri ios init` added the iOS Rust targets (`aarch64-apple-ios`, `aarch64-apple-ios-sim`, `x86_64-apple-ios`, user-level, through rustup) and then tried to install **xcodegen** with Homebrew, which is not installed. Steps: accept the Xcode licence (item 2); install Homebrew, then `brew install xcodegen cocoapods`; an Apple development team for signing (`APPLE_DEVELOPMENT_TEAM`, or `bundle > iOS > developmentTeam` in `tauri.conf.json`; a free Apple ID works for a simulator and your own phone); then `pnpm --filter @warraq/desktop tauri ios init`.
+   * **Android**: `tauri android init` found no Android SDK. Steps: Android Studio (or the command-line tools) with the SDK, the NDK and a JDK 17; set `ANDROID_HOME`, `NDK_HOME` and `JAVA_HOME`; `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`; then `pnpm --filter @warraq/desktop tauri android init`.
+   * Prepared here: `run()` is the mobile entry point (`#[cfg_attr(mobile, tauri::mobile_entry_point)]`) and the bundle names iOS 15 and Android API 26 as the lowest. Still to do in the host for a phone: the menu bar, `print_webview`, the drop events and the external opener are desktop APIs and need `#[cfg(desktop)]`; PDFium is bundled as a macOS dylib, and a phone needs its own PDFium build or the pure-Rust hayro renderer the browsers use; PKCS#11 smart cards do not apply.
 
 ## Fixed after the first install, 2026-09-17
 
@@ -305,6 +313,42 @@ test that fails without its fix.
    `.pdf` in its name joins as well. Windows builds make only the NSIS
    installer, which can write the Arabic name ورّاق (WiX's code page cannot);
    not yet built on Windows.
+26. **Print in a browser did nothing.** EmbedPDF prints by putting the file,
+   as a blob, in a hidden frame for the browser's PDF viewer, and the page's
+   policy (`default-src 'self'`) refused the frame: the print dialog never
+   came and nothing said so. `frame-src blob:` lets exactly that through
+   (e2e: the frame opens in Chrome's PDF viewer, no policy error).
+27. **Search and copy in the page view were PDFium's**, which reads most
+   Arabic files out of order: the search found nothing a person could see,
+   and Copy pasted words backwards or as presentation forms. They now answer
+   with Warraq's reader (`embed/embedText.ts`, the core's `view.search` and
+   `view.text`); e2e: seven hits where PDFium finds none, with and without
+   the shadda, next and previous across pages; a copied page equals the
+   corpus's truth file.
+28. **EmbedPDF showed English under the Arabic interface** where its code
+   writes the words instead of asking its translations: the loading screens,
+   the text-style tooltips, a comment's missing date and its American date
+   format, the stroke unit, the swatch for no colour, a signature's colours, a
+   new list field's options, and search's next and previous, which had no name
+   at all. Each is now looked up in Warraq's table as the bundle is built
+   (`packages/ui/vite/embedPatches.ts`); a build fails if one no longer
+   matches. New comments no longer record EmbedPDF's "Guest" as their author.
+   e2e: every state of EmbedPDF — loading, each mode, menus, comments, text
+   style, stamps, signature, a new drop-down, redaction, print, security,
+   screenshot, search, sidebar — has no Latin word but the document's own and
+   font names.
+29. **The tool gallery ran off a phone's screen.** A popover was placed by its
+   box as measured while it was still scaled down for its opening animation,
+   so it landed too far along; it is placed by its layout size now (e2e at
+   390 points wide).
+30. **كتاب read as "كاتب" in Amiri** (found by the page view's search, which
+   could not find it): Amiri kerns the alef of its kaf–taa–alef ligature
+   under the taa, so the alef's origin sits right of the taa although it is
+   drawn to its left. Within a run of touching glyphs drawn in one
+   direction, a glyph that steps back by less than half the narrower advance
+   now keeps its drawn order; the corpus's Amiri tashkeel page went from
+   0.90 to 1.0, and a LibreOffice page's Aref Ruqaa lam–alef was fixed by the
+   same rule.
 
 ## Known gaps, stated plainly
 * **Prepare form — what is and is not proven.** Detection is measured on Chrome-printed forms and the corpus (above); forms made in Word, InDesign or by hand-coded generators have not been labelled, and a scanned form gets no proposals at all — its boxes and lines are pixels, not drawing. On a page that is no form, a table with an empty column gets proposals. The proposals are drawn over EmbedPDF's pages by reading its page layout (2.15.1); if the view is turned with EmbedPDF's own rotate, they are drawn unturned. Signature fields are real, empty signature fields for a digital signature (Digital signature signs into an empty field the form has; that has not yet been tried on one Prepare form made); Fill & sign places a drawn signature anywhere, over them too.
@@ -322,15 +366,17 @@ test that fails without its fix.
 * **RSA signing uses the `rsa` 0.9 crate**, which carries the RUSTSEC-2023-0071 (Marvin) timing advisory; Warraq signs with blinding, locally, where no one can time it from outside, and never decrypts with RSA.
 * **A signed file over 150 MB is written whole when it is saved from the viewer** (the existing limit on `file.rebase`, which holds both copies in memory), and that breaks its signatures. Below that size the signed bytes are kept exactly.
 * **Page marks and pictures: what is not done.** A picture drawn by a form XObject that is used in more than one place is shown but not offered for editing — changing it would change every place. Changing a picture watermark needs the picture chosen again (the file keeps the picture, not its source). Text edits made after a mark in Edit text join the page's content streams into one (lopdf's `change_page_content`); the marks still come off, but the page is then no longer byte-identical to the original — the edit changed it anyway. Marks drawn by other programs (Acrobat's own headers, say) are not listed: only Warraq's carry the private data that says what they are.
-* **Artifacts leave Warraq's reading, not PDFium's.** Warraq's reader (Edit text, search in the editor, Export, Compare, AI) leaves a page's artifacts — watermarks, running heads, page numbers, from any producer — out of its text; the corpus gate is unchanged by it. EmbedPDF's own search and selection (PDFium) still include them.
+* **Artifacts leave Warraq's reading, not PDFium's.** Warraq's reader (Edit text, search, Export, Compare, AI, Copy) leaves a page's artifacts — watermarks, running heads, page numbers, from any producer — out of its text; the corpus gate is unchanged by it. The search in the page view keeps what PDFium alone finds where Warraq's reader found nothing, so a running head is still found; Copy takes PDFium's text where Warraq's reader has nothing under the selection.
+* **Search and copy in the page view — what is still PDFium's.** The selection itself is: what a drag highlights follows PDFium's order of characters, which on some Chrome-made Arabic files jumps about the line, and Copy then gives Warraq's reading of exactly the highlighted glyphs — in logical order, but only those. A selection with no Arabic script copies PDFium's text, which reads Latin well. The search reads the file as Warraq opened it; after a redaction is applied in the view it reads the view's copy instead, so removed text is not found. A word Warraq's reader gets wrong is not found either (it was the Amiri kaf–taa–alef ligature, now fixed; ten corpus files still have unreadable glyphs, below).
 * **In EmbedPDF's view a click on a link selects it**, as its annotation tools are unlocked; its *Go to Link* then follows it — an address only after Warraq's question, a page of the file at once. On desktop the confirmed address goes to the system's opener through a new host command (`open_url`); that is covered by the web e2e with the browser's own `window.open`, not yet clicked in the installed window.
 * **Remove hidden information does not find everything that could hide text**: it finds text drawn invisibly (as an OCR layer is), in white, or off the page, on the pages themselves; text under an image, text cut away by a clipping path, and hidden text inside reused drawings (form XObjects) are not detected. A protected file is refused rather than written without its password: take the password off first. A signed file can be cleaned, and its signature stops being valid (the report says so).
 * **Removing an attachment is an update**, like every change Warraq appends: the file's earlier revision still holds the attachment until the file is written whole — Remove hidden information does that, and the pane says so.
 * **Showing or hiding a layer reopens the view** on a copy of the file: EmbedPDF's own undo history starts again (the changes themselves are kept), and it comes back to the page that was on screen. Layers are switched in the reading view only; in Edit text the Layers tab lists them. A layer's print and export states are shown, not edited.
 * **EmbedPDF's own sidebar keeps its outline** beside Warraq's navigation pane: two lists of the same bookmarks in the reading view.
 * **Deleted pages stay in the file's earlier revision**, like every incremental change, until a clean copy is written; extracting pages writes one. Bookmarks and links that pointed at a deleted page are left pointing nowhere in the open file.
-* **A few of EmbedPDF's strings are English in any language**: they are written into its code, not its translations — its loading screens, some text-style tooltips, and default options it writes into new list fields ("Option 1–3").
-* **On desktop, EmbedPDF's own Print button is hidden**; File → Print (Cmd+P) prints the file as it stands through PDFKit and the system print sheet on macOS — tested by printing the corpus into a PDF through the same operation, not yet with a person at a printer. Windows and Linux builds do not offer Print yet. EmbedPDF's file buttons (screenshot, insert image, attachment, signature upload) go through the native panels; that is tested against a stand-in for the host, not yet clicked in the installed window.
+* **What stays in Latin script inside EmbedPDF in Arabic**: the names of the standard fonts in its font picker (Helvetica, Courier, Times — names, not words), the names it gives new form fields (`Combobox_fcacab1a`: the file's own data, which the person can rename), and a colour swatch's code (`#FF8D00`). Its strings written in code are patched at build time (`vite/embedPatches.ts`, not `pnpm patch`: the bundle is three minified lines, and a patch of it would be two copies of a 1.1 MB line); a new EmbedPDF version fails the build until every patch matches again. The e2e walks the states listed in fix 28; a state it does not open could still hold an English string.
+* **Print — what was and was not run.** On desktop, EmbedPDF's own Print button is hidden; File → Print (Cmd+P) prints the file as it stands. macOS prints through PDFKit and the system print sheet — tested by printing the corpus into a PDF through the same operation, not yet with a person at a printer. **Windows and Linux print by pages** (`print/printPages.ts`, the host's `print_webview`): the pages are pictures at 300 dpi, not vectors — sharp on paper, but a long file is a large print job and is drawn first (a banner counts the pages, with a stop button). That path was run in Chrome, printed to a PDF by the e2e (three pages, each the page's own size, one 300 dpi picture, nothing else of the app), and on macOS its host command compiles and its mode is unit-tested (`WARRAQ_PRINT=pages` takes it there). It has **not** been run on Windows or Linux: neither system is here, and the desktop crate cannot be compiled for them on this Mac — `ring` needs the Windows SDK's C headers and `tauri-winres` an `llvm-rc`, and Linux needs GTK and WebKitGTK's development files. What did check for Windows (`cargo check --keep-going --target x86_64-pc-windows-msvc`): Tauri, wry, its WebView2 bindings and Warraq's core. Printing a PDF with its vectors on Windows through WebView2's own PDF viewer (as a browser does) may well work, but it could not be tried, so it is not what ships. A file that forbids printing is refused on every path, as Acrobat refuses it. EmbedPDF's file buttons (screenshot, insert image, attachment, signature upload) go through the native panels; that is tested against a stand-in for the host, not yet clicked in the installed window.
+* **The installable web app — what is limited.** Tesseract and its language models (about 20 MB) are kept the first time Scan & OCR fetches them, not at install: OCR works offline only after it has been used once online. A new version installs beside the old one and takes over once no window still runs the old one. The OS does not yet offer ورّاق to open a PDF from outside the app (no file handler is declared: it would be a promise the app has not been tested to keep). The installed app is tested in desktop Chrome at phone size with touch emulated, not on a phone; Safari on iOS, which installs web apps its own way and may clear their storage, has not been tried.
 * **Another app that redraws a field can undo the Arabic.** Warraq writes each Arabic field and text box's appearance itself; a program that regenerates appearances when you edit the field there (Chrome's viewer, some others) may draw it again with a font that has no Arabic.
 * **Finder does not offer Warraq for a PDF.** The bundle claims no document types on purpose — an editor should not take over the system PDF handler unasked. Open from inside the app, or pass the path on the command line.
 * **The macOS build is ad hoc signed, not notarised.** It runs on the machine that built it. Copied to any other Mac it will be refused until that user clears the quarantine flag by hand, because notarising needs a paid Apple Developer account. Nothing in the build is broken by this; it is a distribution decision, not a defect.
@@ -345,7 +391,7 @@ test that fails without its fix.
   webview's text fields, never the document's history. The app's item undoes the document, or the typing
   when a text field has the focus. Cut, Copy, Paste and Select All are the system's.
 * **OCR reads diacritics poorly and skips some table rows**; crooked scans are straightened first, but there is no cleanup of stains or shadows; Nastaliq Urdu cannot be recognised usefully on the device at all. Recognition in the desktop app has not been watched yet (it runs in the same webview that draws the pages).
-* **Nastaliq Urdu** extraction is still garbage: cascading Nastaliq ligatures do not reverse-map from glyphs the way Naskh does. Needs shape matching or OCR.
+* **Nastaliq Urdu** now reads exactly where the file maps its glyphs: the corpus's Chrome-made Nastaliq page went from recall 0.61 / order 0.56 to 1.0 / 1.0 (`tests/acid`, baseline raised), with no other truth-scored file changing a byte. Nastaliq lifts each word's letters up to an em above the line, which split every line into fragments; a joining letter touching its neighbour is now read on that letter's baseline. Not done: a Nastaliq file with no ToUnicode map — Noto Nastaliq draws ب ت ث ن ی پ ٹ from one skeleton plus separate dots, which the glyph-to-letter fallback cannot express (65 of 170 glyphs right), and producers that subset the font drop the table it reads. Two leftovers in real-world files: a false space in "مع ظم" (Wikibooks) and diacritics out of order in "وَأَناَ اشْترََيْتهُاَ" (a LibreOffice page).
 * **Ten corpus files** come back with U+FFFD placeholders where a glyph has no usable ToUnicode, cmap or GSUB evidence. Placeholders are deliberate: words are never silently merged.
 * **SASLprep** is not applied to R5/R6 passwords; ASCII passwords are exact.
 * **Line breaking** is greedy at spaces; full UAX #14 (ICU) is a later refinement.
