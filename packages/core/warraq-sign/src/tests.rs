@@ -14,21 +14,21 @@ use crate::pades::{self, Report, SignOptions, Signed};
 use crate::pkcs12;
 use crate::tsp::tests::answer;
 
-const AMIRI: &[u8] = include_bytes!("../../../../tests/fonts/Amiri-Regular.ttf");
+pub(crate) const AMIRI: &[u8] = include_bytes!("../../../../tests/fonts/Amiri-Regular.ttf");
 /// 2026-09-19 20:00 in Riyadh, a day after the TEST PKI was made.
-const NOW: i64 = 1_789_750_800 + 86_400;
+pub(crate) const NOW: i64 = 1_789_750_800 + 86_400;
 
-fn repo(path: &str) -> PathBuf {
+pub(crate) fn repo(path: &str) -> PathBuf {
     PathBuf::from(format!("{}/../../../{path}", env!("CARGO_MANIFEST_DIR")))
 }
-fn fixture(name: &str) -> Vec<u8> {
+pub(crate) fn fixture(name: &str) -> Vec<u8> {
     std::fs::read(repo(&format!("tests/fixtures/signatures/{name}"))).unwrap()
 }
-fn corpus(name: &str) -> Vec<u8> {
+pub(crate) fn corpus(name: &str) -> Vec<u8> {
     std::fs::read(repo(&format!("tests/corpus/arabic/{name}"))).unwrap()
 }
 
-fn options(visible: bool) -> SignOptions {
+pub(crate) fn options(visible: bool) -> SignOptions {
     SignOptions {
         field: None,
         page: 0,
@@ -53,7 +53,12 @@ fn options(visible: bool) -> SignOptions {
     }
 }
 
-fn sign_with(pdf: Vec<u8>, password: Option<&str>, p12: &str, o: &SignOptions) -> Vec<u8> {
+pub(crate) fn sign_with(
+    pdf: Vec<u8>,
+    password: Option<&str>,
+    p12: &str,
+    o: &SignOptions,
+) -> Vec<u8> {
     let id = pkcs12::open(&fixture(p12), "warraq-test").unwrap();
     let mut doc = PdfDocument::open(pdf, password).unwrap();
     match pades::sign(&mut doc, &id.signer, o).unwrap() {
@@ -62,7 +67,7 @@ fn sign_with(pdf: Vec<u8>, password: Option<&str>, p12: &str, o: &SignOptions) -
     }
 }
 
-fn trusting(roots: &[&str]) -> TrustStore {
+pub(crate) fn trusting(roots: &[&str]) -> TrustStore {
     let mut store = TrustStore::mozilla();
     for r in roots {
         store.add_user(&fixture(r)).unwrap();
@@ -70,7 +75,7 @@ fn trusting(roots: &[&str]) -> TrustStore {
     store
 }
 
-fn verify(bytes: &[u8], password: Option<&str>, roots: &[&str]) -> Report {
+pub(crate) fn verify(bytes: &[u8], password: Option<&str>, roots: &[&str]) -> Report {
     pades::verify(bytes, password, &trusting(roots), NOW + 60).unwrap()
 }
 
@@ -236,7 +241,7 @@ fn a_protected_file_is_signed_encrypted_and_verifies_with_its_password() {
 }
 
 /// Changes a form field's value in an update, as another program would.
-fn fill_first_text_field(bytes: Vec<u8>, value: &str) -> Vec<u8> {
+pub(crate) fn fill_first_text_field(bytes: Vec<u8>, value: &str) -> Vec<u8> {
     let mut doc = PdfDocument::open(bytes, None).unwrap();
     let id = doc
         .doc_ref()

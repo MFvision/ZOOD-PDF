@@ -1,11 +1,30 @@
 //! Certificates, the path from a signer's up to one that is trusted, and
-//! what is trusted: Mozilla's root store (the `webpki-roots` data) and the
-//! certificates the person chose to trust on this device.
+//! what is trusted for what.
 //!
-//! Mozilla's store is the roots browsers trust for web sites. Many document
-//! signing authorities chain to one of them; national and qualified ones
-//! often do not, and the person adds those themselves. Name constraints and
-//! certificate policies are not checked.
+//! **Who signs a document** is vouched for only by a certificate the person
+//! chose to trust on this device (their organisation's or their country's
+//! certification authority, or a signer's own certificate). Mozilla's root
+//! store (the `webpki-roots` data) is the list browsers trust *for web
+//! sites*: its authorities check that someone controls a domain, not who a
+//! person is, and anyone can get a certificate under them for free. A path
+//! that ends there is reported as such (`Trust::WebRoot`) and does not make
+//! a signer trusted — Acrobat, likewise, does not take the system's web
+//! roots as signers unless told to.
+//!
+//! **A timestamp authority** may be trusted through Mozilla's roots: its
+//! certificate must be for timestamping (RFC 3161's extended key usage), as
+//! must every CA above it that restricts its purposes, and it vouches for a
+//! time, not for a person.
+//!
+//! Along the path: each issuer must be a CA (basic constraints, and key
+//! usage `keyCertSign` when it has one) within its path length; the leaf's
+//! key must be allowed to sign; and its extended key usage, when it has one,
+//! must allow the purpose — for documents `anyExtendedKeyUsage`,
+//! `emailProtection`, `id-kp-documentSigning` (RFC 9336), Adobe's Authentic
+//! Documents (1.2.840.113583.1.1.5) or Microsoft's Document Signing — and so
+//! must every CA's on the way up that restricts it. A certificate the person
+//! trusted itself is exempt from the purpose check: that is their choice.
+//! Name constraints and certificate policies are not checked.
 use der::{Decode, Encode};
 use x509_cert::certificate::{CertificateInner, Raw};
 use x509_cert::ext::pkix::name::{DistributionPointName, GeneralName};
@@ -152,6 +171,59 @@ impl Cert {
             .is_some_and(|b| b.ca)
     }
 
+    /// Whether it may issue certificates: a CA, and — when it has a key
+    /// usage — one that includes `keyCertSign`.
+    pub fn may_issue(&self) -> bool {
+        self.is_ca()
+            && self
+                .extension::<KeyUsage>(&oids::EXT_KEY_USAGE)
+                .is_none_or(|ku| ku.0.contains(KeyUsages::KeyCertSign))
+    }
+
+    /// How many CAs may stand below it (basic constraints' `pathLenConstraint`).
+    pub fn path_len(&self) -> Option<u32> {
+        self.extension::<BasicConstraints>(&oids::EXT_BASIC_CONSTRAINTS)
+            .and_then(|b| b.path_len_constraint.map(u32::from))
+    }
+
+    /// Whether it says anything about being a CA or not.
+    fn has_basic_constraints(&self) -> bool {
+        self.parsed
+            .tbs_certificate
+            .extensions
+            .as_ref()
+            .is_some_and(|e| e.iter().any(|e| e.extn_id == oids::EXT_BASIC_CONSTRAINTS))
+    }
+
+    fn restricts_purposes(&self) -> bool {
+        self.extension::<ExtendedKeyUsage>(&oids::EXT_EXTENDED_KEY_USAGE)
+            .is_some()
+    }
+
+    /// Whether its extended key usage allows `purpose`. Without one, a
+    /// certificate may sign documents (RFC 5280) but is no timestamp
+    /// authority (RFC 3161 requires the purpose).
+    pub fn allows(&self, purpose: Purpose) -> bool {
+        match self.extension::<ExtendedKeyUsage>(&oids::EXT_EXTENDED_KEY_USAGE) {
+            None => purpose == Purpose::Documents,
+            Some(eku) => eku.0.iter().any(|oid| purpose.accepts(oid)),
+        }
+    }
+
+    /// Whether its extended key usage names web servers.
+    pub fn for_web_servers(&self) -> bool {
+        self.extended_key_usage().contains(&oids::KP_SERVER_AUTH)
+    }
+
+    /// The digest its issuer signed it with.
+    pub fn signature_hash(&self) -> Option<crate::HashAlg> {
+        let alg = &self.parsed.signature_algorithm;
+        let params = alg.parameters.as_ref().and_then(|p| p.to_der().ok());
+        match SigAlg::from_identifier(&alg.oid, params.as_deref(), None).ok()? {
+            SigAlg::RsaPkcs1(h) | SigAlg::Ecdsa(h) | SigAlg::RsaPss { hash: h, .. } => Some(h),
+        }
+    }
+
     pub fn self_issued(&self) -> bool {
         self.subject == self.issuer
     }
@@ -290,6 +362,32 @@ pub struct CertSummary {
     pub ca: bool,
 }
 
+/// What a certificate is trusted for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Purpose {
+    /// Signing documents: a PDF signature's signer.
+    Documents,
+    /// Timestamping: the authority behind a timestamp token.
+    Timestamps,
+}
+
+impl Purpose {
+    /// Whether an extended key usage allows this purpose.
+    fn accepts(self, oid: &const_oid::ObjectIdentifier) -> bool {
+        *oid == oids::ANY_EXTENDED_KEY_USAGE
+            || match self {
+                Purpose::Documents => [
+                    oids::KP_EMAIL_PROTECTION,
+                    oids::KP_DOCUMENT_SIGNING,
+                    oids::ADOBE_AUTHENTIC_DOCUMENTS,
+                    oids::MS_DOCUMENT_SIGNING,
+                ]
+                .contains(oid),
+                Purpose::Timestamps => *oid == oids::KP_TIME_STAMPING,
+            }
+    }
+}
+
 /// A certificate that is trusted without anything above it.
 #[derive(Clone)]
 pub struct Anchor {
@@ -300,6 +398,25 @@ pub struct Anchor {
     pub user: bool,
     /// The certificate itself, for an anchor the person added.
     pub cert: Option<Vec<u8>>,
+    /// It may issue certificates: a root, or a CA the person trusted — not a
+    /// signer's own certificate the person trusted.
+    pub issues: bool,
+    pub path_len: Option<u32>,
+}
+
+impl Anchor {
+    /// One of Mozilla's roots, known by its name and key.
+    pub fn web_root(subject: Vec<u8>, spki: Vec<u8>) -> Self {
+        Self {
+            name: display_name(&subject),
+            subject,
+            spki,
+            user: false,
+            cert: None,
+            issues: true,
+            path_len: None,
+        }
+    }
 }
 
 #[derive(Clone, Default)]
@@ -318,28 +435,28 @@ impl TrustStore {
         let anchors = webpki_roots::TLS_SERVER_ROOTS
             .iter()
             .map(|a| {
-                let subject = sequence(a.subject.as_ref());
-                Anchor {
-                    name: display_name(&subject),
-                    subject,
-                    spki: sequence(a.subject_public_key_info.as_ref()),
-                    user: false,
-                    cert: None,
-                }
+                Anchor::web_root(
+                    sequence(a.subject.as_ref()),
+                    sequence(a.subject_public_key_info.as_ref()),
+                )
             })
             .collect();
         Self { anchors }
     }
 
-    /// A certificate the person trusts, as an anchor.
+    /// A certificate the person trusts, as an anchor. It issues others only
+    /// if it is a CA — or an old root that says nothing either way.
     pub fn add_user(&mut self, der: &[u8]) -> Result<()> {
         let cert = Cert::parse(der)?;
+        let issues = cert.may_issue() || (cert.self_issued() && !cert.has_basic_constraints());
         self.anchors.push(Anchor {
             name: cert.common_name(),
             subject: cert.subject.clone(),
             spki: cert.spki.clone(),
             user: true,
             cert: Some(der.to_vec()),
+            issues,
+            path_len: cert.path_len(),
         });
         Ok(())
     }
@@ -355,10 +472,17 @@ impl TrustStore {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(tag = "state", rename_all = "camelCase")]
 pub enum Trust {
-    /// The path ends at a trusted certificate.
+    /// The path ends at a certificate trusted for the purpose: one the
+    /// person trusts (`user`), or — for a timestamp authority only — one of
+    /// Mozilla's roots.
     Trusted { anchor: String, user: bool },
+    /// It ends at one of Mozilla's roots, which browsers trust for web
+    /// sites: that does not say who signed a document.
+    WebRoot { anchor: String },
     /// It ends at a root nobody here trusts.
     UntrustedRoot { root: String },
+    /// A certificate on it may not issue the one below it.
+    Broken { name: String },
     /// A certificate above could not be found.
     Incomplete { missing: String },
 }
@@ -373,33 +497,52 @@ pub struct ChainReport {
     /// Every certificate on the path was valid at the time asked about.
     pub valid_at_time: bool,
     /// Problem codes: `expired:<name>`, `notYetValid:<name>`, `notCa:<name>`,
-    /// `keyUsage`, `issuerSignature:<name>`.
+    /// `pathLen:<name>`, `keyUsage`, `eku` (`eku:web` for a web server's),
+    /// `ekuCa:<name>`, `issuerSignature:<name>`, `weakHash:<name>`.
     pub problems: Vec<String>,
+    /// The leaf, and every CA above it that restricts purposes, allow the
+    /// one asked about (or the person trusted the leaf itself).
+    pub purpose_ok: bool,
     /// DER of the path (not serialised), for revocation checks.
     #[serde(skip)]
     pub path: Vec<Cert>,
 }
 
 impl ChainReport {
+    /// Trusted for the purpose it was built for.
     pub fn trusted(&self) -> bool {
-        matches!(self.trust, Trust::Trusted { .. })
+        matches!(self.trust, Trust::Trusted { .. }) && self.purpose_ok
     }
 }
 
 /// The path from `leaf` up through `pool` to a trust anchor, checked at
-/// `at` (Unix seconds): each signature, each validity period, and that each
-/// certificate that issues another is a CA.
-pub fn build(leaf: &Cert, pool: &[Cert], store: &TrustStore, at: i64) -> ChainReport {
+/// `at` (Unix seconds) for `purpose`: each signature, each validity period,
+/// that each issuer may issue (a CA, within its path length), that the
+/// leaf's key may sign, and that the purposes allow `purpose`.
+pub fn build(
+    leaf: &Cert,
+    pool: &[Cert],
+    store: &TrustStore,
+    at: i64,
+    purpose: Purpose,
+) -> ChainReport {
     let mut path = vec![leaf.clone()];
     let mut problems = Vec::new();
+    // Whether an issuer with `path_len` may have `below` CAs under it.
+    let within = |path_len: Option<u32>, below: usize| path_len.is_none_or(|n| below <= n as usize);
+    // The person trusted the leaf itself.
+    let mut exact = false;
     let trust = loop {
         let current = path.last().expect("never empty");
+        // The CAs on the path under the issuer about to be found (the leaf is none).
+        let below = path.len() - 1;
         if path.len() > 12 {
             break Trust::Incomplete {
                 missing: current.issuer_name(),
             };
         }
         if let Some(anchor) = store.user_exact(&current.der) {
+            exact = path.len() == 1;
             break Trust::Trusted {
                 anchor: anchor.name.clone(),
                 user: true,
@@ -410,9 +553,21 @@ pub fn build(leaf: &Cert, pool: &[Cert], store: &TrustStore, at: i64) -> ChainRe
             .iter()
             .find(|a| a.subject == current.issuer && current.signed_by(&a.spki))
         {
-            break Trust::Trusted {
-                anchor: anchor.name.clone(),
-                user: anchor.user,
+            if !anchor.issues || !within(anchor.path_len, below) {
+                let code = if anchor.issues { "pathLen" } else { "notCa" };
+                problems.push(format!("{code}:{}", anchor.name));
+                break Trust::Broken {
+                    name: anchor.name.clone(),
+                };
+            }
+            break match (anchor.user, purpose) {
+                (true, _) | (false, Purpose::Timestamps) => Trust::Trusted {
+                    anchor: anchor.name.clone(),
+                    user: anchor.user,
+                },
+                (false, Purpose::Documents) => Trust::WebRoot {
+                    anchor: anchor.name.clone(),
+                },
             };
         }
         if current.self_issued() {
@@ -429,10 +584,21 @@ pub fn build(leaf: &Cert, pool: &[Cert], store: &TrustStore, at: i64) -> ChainRe
             .find(|c| current.signed_by(&c.spki) && !path.iter().any(|p| p.der == c.der))
         {
             Some(issuer) => {
-                if !issuer.is_ca() {
-                    problems.push(format!("notCa:{}", issuer.common_name()));
+                let issuer = (*issuer).clone();
+                // A certificate that may not issue signed the one below it:
+                // the path is forged or broken, however high it would reach.
+                if !issuer.may_issue() || !within(issuer.path_len(), below) {
+                    let code = if issuer.may_issue() {
+                        "pathLen"
+                    } else {
+                        "notCa"
+                    };
+                    let name = issuer.common_name();
+                    problems.push(format!("{code}:{name}"));
+                    path.push(issuer);
+                    break Trust::Broken { name };
                 }
-                path.push((*issuer).clone());
+                path.push(issuer);
             }
             None => {
                 if !candidates.is_empty() {
@@ -457,11 +623,38 @@ pub fn build(leaf: &Cert, pool: &[Cert], store: &TrustStore, at: i64) -> ChainRe
     if !leaf.may_sign_documents() {
         problems.push("keyUsage".into());
     }
+    // What the certificates are for: the leaf's purposes, and those of every
+    // CA above it that restricts them. A leaf the person trusted itself is
+    // their own decision about it.
+    let mut purpose_ok = true;
+    if !exact {
+        if !leaf.allows(purpose) {
+            purpose_ok = false;
+            problems.push(if leaf.for_web_servers() {
+                "eku:web".into()
+            } else {
+                "eku".into()
+            });
+        }
+        for ca in path.iter().skip(1) {
+            if ca.restricts_purposes() && !ca.allows(purpose) {
+                purpose_ok = false;
+                problems.push(format!("ekuCa:{}", ca.common_name()));
+            }
+        }
+    }
+    // SHA-1 under the anchor: a collision could have made any of them.
+    for cert in &path {
+        if !cert.self_issued() && cert.signature_hash() == Some(crate::HashAlg::Sha1) {
+            problems.push(format!("weakHash:{}", cert.common_name()));
+        }
+    }
     ChainReport {
         certs: path.iter().map(Cert::summary).collect(),
         trust,
         valid_at_time: valid,
         problems,
+        purpose_ok,
         path,
     }
 }
@@ -515,7 +708,13 @@ mod tests {
         let leaf = fixture("signer-rsa.cer");
         assert_eq!(leaf.common_name(), "محمد التجريبي (TEST)");
         let pool = [fixture("intermediate-rsa.cer"), fixture("root-rsa.cer")];
-        let report = build(&leaf, &pool, &TrustStore::mozilla(), NOW);
+        let report = build(
+            &leaf,
+            &pool,
+            &TrustStore::mozilla(),
+            NOW,
+            Purpose::Documents,
+        );
         assert_eq!(report.certs.len(), 3);
         assert_eq!(
             report.trust,
@@ -527,7 +726,7 @@ mod tests {
 
         let mut store = TrustStore::mozilla();
         store.add_user(&fixture("root-rsa.cer").der).unwrap();
-        let report = build(&leaf, &pool[..1], &store, NOW);
+        let report = build(&leaf, &pool[..1], &store, NOW, Purpose::Documents);
         assert!(report.trusted(), "{:?}", report.trust);
         assert_eq!(report.certs.len(), 2, "the root came from the trust list");
     }
@@ -536,10 +735,22 @@ mod tests {
     fn ec_chains_verify_and_time_is_checked() {
         let leaf = fixture("signer-ec384.cer");
         let pool = [fixture("root-ec.cer"), fixture("intermediate-ec.cer")];
-        let report = build(&leaf, &pool, &TrustStore::default(), NOW);
+        let report = build(
+            &leaf,
+            &pool,
+            &TrustStore::default(),
+            NOW,
+            Purpose::Documents,
+        );
         assert_eq!(report.certs.len(), 3, "{:?}", report.problems);
         assert!(report.problems.is_empty(), "{:?}", report.problems);
-        let old = build(&leaf, &pool, &TrustStore::default(), 1_000_000_000);
+        let old = build(
+            &leaf,
+            &pool,
+            &TrustStore::default(),
+            1_000_000_000,
+            Purpose::Documents,
+        );
         assert!(!old.valid_at_time);
         assert!(old.problems.iter().any(|p| p.starts_with("notYetValid:")));
     }
@@ -547,7 +758,7 @@ mod tests {
     #[test]
     fn a_missing_intermediate_is_reported_and_urls_are_read() {
         let leaf = fixture("signer-rsa.cer");
-        let report = build(&leaf, &[], &TrustStore::mozilla(), NOW);
+        let report = build(&leaf, &[], &TrustStore::mozilla(), NOW, Purpose::Documents);
         assert_eq!(
             report.trust,
             Trust::Incomplete {

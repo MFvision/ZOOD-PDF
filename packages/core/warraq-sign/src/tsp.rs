@@ -95,6 +95,16 @@ pub fn token_from_response(
             ));
         }
     }
+    // Its own signature, by a certificate for timestamping: a token altered
+    // on the way (some authorities answer over plain http) is refused here,
+    // not written into the signature. Whether the authority is trusted is
+    // for the verifier to say.
+    let check = check_token(&token, &[])?;
+    if !check.signature_ok || !check.purpose_ok {
+        return Err(SignError::Tsa(
+            "the token's own signature does not verify".into(),
+        ));
+    }
     Ok(token)
 }
 
@@ -263,6 +273,11 @@ pub(crate) mod tests {
         // Another request's nonce, or another imprint, is refused.
         assert!(token_from_response(&resp, &imprint, Some(&[1, 2, 3])).is_err());
         assert!(token_from_response(&resp, &[0; 32], None).is_err());
+        // So is a token altered on the way: its signature's last byte.
+        let mut altered = resp.clone();
+        *altered.last_mut().unwrap() ^= 1;
+        let refused = token_from_response(&altered, &imprint, Some(&req.nonce)).unwrap_err();
+        assert!(refused.to_string().contains("does not verify"), "{refused}");
     }
 
     /// Answers from three public authorities, fetched once for "hello\n"

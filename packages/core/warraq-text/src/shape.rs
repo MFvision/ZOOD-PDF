@@ -274,4 +274,32 @@ mod tests {
         assert!(s.covers("مرحبا Warraq 123"));
         assert!(!s.covers("你好"));
     }
+
+    #[test]
+    fn a_date_marked_left_to_right_keeps_its_order_and_sign_in_arabic() {
+        // A visible signature's date line: without the mark, the date splits
+        // into three runs and the zone's sign lands after it ("03:00+").
+        let s = Shaper::new(AMIRI).unwrap();
+        let g = s.shape_line("التاريخ: \u{200E}2026-09-19 20:05 +03:00");
+        let text: String = g.iter().map(|g| g.text.as_str()).collect();
+        assert!(
+            text.trim_start_matches('\u{200E}')
+                .starts_with("2026-09-19 20:05 +03:00"),
+            "visual order: {text:?}"
+        );
+        // Unmarked, the same line is drawn as the review found it.
+        let bare: String = s
+            .shape_line("التاريخ: 2026-09-19 20:05 +03:00")
+            .iter()
+            .map(|g| g.text.as_str())
+            .collect();
+        assert!(bare.starts_with("03:00+"), "{bare:?}");
+        // The mark itself draws nothing.
+        let mark: f32 = g
+            .iter()
+            .filter(|g| g.text.contains('\u{200E}'))
+            .map(|g| g.x_advance)
+            .sum();
+        assert_eq!(mark, 0.0);
+    }
 }

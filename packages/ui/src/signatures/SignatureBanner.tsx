@@ -4,7 +4,7 @@ import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useT } from '../i18n/useT';
 import { useAppDispatch, useAppState } from '../state/AppContext';
-import { STATUS_KEY, editWarning, overallStatus } from './model';
+import { STATUS_KEY, editWarning, isolate, overallStatus } from './model';
 import type { SignatureStatus } from './model';
 import { useSignatures } from './SignaturesContext';
 import './signatures.css';
@@ -14,6 +14,7 @@ export const STATUS_ICON: Record<SignatureStatus, LucideIcon> = {
   untrusted: ShieldQuestion,
   modified: ShieldAlert,
   invalid: ShieldX,
+  unchecked: ShieldQuestion,
 };
 
 /**
@@ -30,12 +31,14 @@ export function SignatureBanner() {
   if (!report || !status || state.view !== 'viewer') return null;
   const signatures = report.signatures;
   const first = signatures[0];
-  const onPanel = state.rightPane.activeTool === 'certificates';
+  // The list is showing only while the inspector is open on it: closed with
+  // its button, the banner's way back to the list returns.
+  const onPanel = state.rightPane.open && state.rightPane.activeTool === 'certificates';
   const warning = editWarning(report, state.rightPane.activeTool);
   const headline =
     signatures.length === 1 && first
       ? t(first.kind === 'certification' ? 'signatures.banner.certifiedBy' : first.kind === 'timestamp' ? 'signatures.banner.timestamped' : 'signatures.banner.signedBy', {
-          name: first.signedBy,
+          name: isolate(first.signedBy || t('signatures.detail.unknownSigner')),
         })
       : t('signatures.banner.many', { count: signatures.length });
   return (
