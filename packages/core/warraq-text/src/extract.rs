@@ -858,10 +858,15 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
             let (li, pos) = where_base[bi];
             glyph_text(lines[li].2[pos].1).trim().is_empty()
         };
+        // Near the line's baseline, or near the letter's own: a cascade lifts
+        // a letter an em and more above its line, and its marks with it.
         let on_same_line = |bi: &usize| -> bool {
-            let (li, _) = where_base[bi];
-            (lines[li].0 - frame(m, line_angles[li]).1).abs()
-                <= 0.8 * lines[li].1.max(m.size).max(1.0)
+            let (li, pos) = where_base[bi];
+            let a = line_angles[li];
+            let reach = 0.8 * lines[li].1.max(m.size).max(1.0);
+            let my = frame(m, a).1;
+            (lines[li].0 - my).abs() <= reach
+                || (frame(lines[li].2[pos].1, a).1 - my).abs() <= reach
         };
         // a combining mark belongs to a letter, never to a space
         let chosen = candidates
@@ -929,9 +934,11 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
                     c.text.push_str(t);
                     continue;
                 }
-                // recovered dot glyphs sit clearly above or below the baseline (y grows downwards);
-                // a blob on the baseline is a small letter form, not a dot
-                let dy = frame(m, angle).1 - y;
+                // recovered dot glyphs sit clearly above or below their letter's baseline (y grows
+                // downwards), which a cascade may have lifted off the line's; a blob on the
+                // baseline is a small letter form, not a dot
+                let base_y = bases.get(*pos).map(|(_, b)| frame(b, angle).1).unwrap_or(y);
+                let dy = frame(m, angle).1 - base_y;
                 if dy.abs() < 0.08 * size {
                     c.text.push('\u{FFFD}');
                 } else if dy > 0.0 {
@@ -1428,6 +1435,58 @@ mod tests {
         let mut g = nastaliq_line(&first, 73.5, 0.2, false);
         g.extend(nastaliq_line(&second, 73.5 + 1.4 * 16.0, 0.2, false));
         assert_eq!(texts(&g), [first.join(" "), second.join(" ")]);
+    }
+
+    /// A mark belongs to the letter it sits on, however high a cascade has
+    /// lifted that letter. Measured from the line's baseline, a zabar on the
+    /// first letter of a long word sat nearer the line above, and went there.
+    #[test]
+    fn a_mark_on_a_letter_high_in_a_cascade_stays_with_that_letter() {
+        let first = ["اردو", "پاکستان"];
+        let second = ["اسے", "نستعلیق"];
+        let mut g = nastaliq_line(&first, 73.5, 0.2, false);
+        let mut below = nastaliq_line(&second, 73.5 + 2.0 * 16.0, 0.2, false);
+        let top = below
+            .iter()
+            .position(|g| g.text.as_deref() == Some("ن"))
+            .unwrap();
+        let n = below[top].clone();
+        // Drawn just before its letter, as a shaper orders a right-to-left run.
+        below.insert(
+            top,
+            PositionedGlyph {
+                x: n.x + 1.0,
+                y: n.y - 0.45 * 16.0,
+                advance: 0.0,
+                text: Some("\u{064E}".into()),
+                ..n
+            },
+        );
+        g.extend(below);
+        assert_eq!(texts(&g), [first.join(" "), "اسے نَستعلیق".to_string()]);
+    }
+
+    /// A dot recovered from a skeleton font is read above or below the
+    /// letter it belongs to, not the line: under a letter lifted by a
+    /// cascade it is still above the baseline, and ٮ read as ن, not ب.
+    #[test]
+    fn a_dot_under_a_lifted_letter_is_read_below_it() {
+        let glyph = |x: f32, y: f32, advance: f32, text: &str| PositionedGlyph {
+            x,
+            y,
+            angle: 0.0,
+            size: 16.0,
+            advance,
+            text: Some(text.to_string()),
+            gid: 1,
+            font: 0,
+        };
+        let g = vec![
+            glyph(100.0, 100.0, 5.0, "د"),
+            glyph(106.0, 94.4, 0.0, "\u{0307}"),
+            glyph(105.0, 90.4, 5.0, "ٮ"),
+        ];
+        assert_eq!(texts(&g), ["بد"]);
     }
 
     /// Only letters of a joining script that touch climb with their word:
