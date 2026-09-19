@@ -2057,6 +2057,7 @@ dependencies = [
  "image",
  "js-sys",
  "log",
+ "lopdf",
  "regex",
  "serde",
  "serde_json",

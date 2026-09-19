@@ -83,8 +83,10 @@ pub fn sign(doc: &mut PdfDocument, signer: &dyn Signer, o: &SignOptions) -> Resu
         field: o.field.clone(),
         page: o.page,
         rect: o.rect,
-        appearance: match (&o.font, o.rect) {
-            (Some(font), Some(_)) => Some(SigAppearance {
+        // Drawn where the person drew, or in the field chosen (which has a
+        // box of its own; an invisible one stays invisible).
+        appearance: match (&o.font, o.rect.is_some() || o.field.is_some()) {
+            (Some(font), true) => Some(SigAppearance {
                 lines: o.lines.clone(),
                 font,
                 image: o.image.clone(),

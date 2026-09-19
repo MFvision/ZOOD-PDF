@@ -155,6 +155,17 @@ impl Prepared {
     }
 }
 
+/// The matrix that turns an appearance drawn upright to match a page turned
+/// by `rotate` degrees.
+fn rotation_matrix(rotate: i64) -> [f32; 6] {
+    match rotate {
+        90 => [0.0, 1.0, -1.0, 0.0, 0.0, 0.0],
+        180 => [-1.0, 0.0, 0.0, -1.0, 0.0, 0.0],
+        270 => [0.0, -1.0, 1.0, 0.0, 0.0, 0.0],
+        _ => [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+    }
+}
+
 fn find_from(haystack: &[u8], needle: &[u8], from: usize) -> Option<usize> {
     haystack
         .get(from..)?
@@ -680,9 +691,13 @@ impl PdfDocument {
         let page = target.as_ref().and_then(|f| f.page).unwrap_or(spec.page);
         let page_id = self.page_id(page)?;
         let (rect, matrix) = match (&target, spec.rect) {
+            // The field's own box, in the page's space; its appearance is
+            // drawn upright as the page is shown.
             (Some(f), _) if f.rect.is_some() => {
-                let r = f.rect.unwrap_or_default();
-                (r, None)
+                let [x0, y0, x1, y1] = f.rect.unwrap_or_default();
+                let r = [x0.min(x1), y0.min(y1), x0.max(x1), y0.max(y1)];
+                let (_, rotate) = self.page_frame(page)?;
+                (r, Some(rotation_matrix(rotate)))
             }
             (_, Some(shown)) => {
                 let (r, m) = self.signature_rect(page, shown)?;
@@ -795,13 +810,7 @@ impl PdfDocument {
         let (a, b) = map(shown[0], shown[1]);
         let (c, d) = map(shown[2], shown[3]);
         let rect = [a.min(c), b.min(d), a.max(c), b.max(d)];
-        let matrix = match rotate {
-            90 => [0.0, 1.0, -1.0, 0.0, 0.0, 0.0],
-            180 => [-1.0, 0.0, 0.0, -1.0, 0.0, 0.0],
-            270 => [0.0, -1.0, 1.0, 0.0, 0.0, 0.0],
-            _ => [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-        };
-        Ok((rect, matrix))
+        Ok((rect, rotation_matrix(rotate)))
     }
 
     fn add_to_form(&mut self, catalog_id: ObjectId, field: ObjectId) -> Result<()> {
@@ -1562,12 +1571,43 @@ const FIELD_STRUCTURE: [&[u8]; 12] = [
     b"FT", b"Ff", b"Rect", b"F", b"Kids", b"T", b"Subtype", b"Type", b"AA", b"A", b"Opt", b"Parent",
 ];
 
+/// Whether two values say the same, numbers to within a hundredth of a
+/// point: writers round reals differently (this one to five places), and a
+/// widget rewritten with its value must not look moved.
+fn alike(a: &Object, b: &Object, depth: usize) -> bool {
+    if depth > 16 {
+        return a == b;
+    }
+    match (a, b) {
+        (Object::Integer(_) | Object::Real(_), Object::Integer(_) | Object::Real(_)) => {
+            match (a.as_float(), b.as_float()) {
+                (Ok(x), Ok(y)) => (x - y).abs() < 0.01,
+                _ => false,
+            }
+        }
+        (Object::Array(x), Object::Array(y)) => {
+            x.len() == y.len() && x.iter().zip(y).all(|(p, q)| alike(p, q, depth + 1))
+        }
+        (Object::Dictionary(x), Object::Dictionary(y)) => dicts_alike(x, y, depth + 1),
+        _ => a == b,
+    }
+}
+
+fn dicts_alike(a: &Dictionary, b: &Dictionary, depth: usize) -> bool {
+    a.len() == b.len()
+        && a.iter()
+            .all(|(k, v)| b.get(k).is_ok_and(|w| alike(v, w, depth)))
+}
+
 /// The keys whose values differ between two dictionaries.
 fn changed_keys(a: &Dictionary, b: &Dictionary) -> BTreeSet<Vec<u8>> {
     a.iter()
         .chain(b.iter())
         .map(|(k, _)| k.clone())
-        .filter(|k| a.get(k).ok() != b.get(k).ok())
+        .filter(|k| match (a.get(k).ok(), b.get(k).ok()) {
+            (Some(x), Some(y)) => !alike(x, y, 0),
+            (x, y) => x != y,
+        })
         .collect()
 }
 
@@ -1845,7 +1885,7 @@ impl Compare<'_> {
         let mut before = b.clone();
         others.remove(b"Annots");
         before.remove(b"Annots");
-        if others != before {
+        if !dicts_alike(&others, &before, 0) {
             self.add(ChangeKind::PageContent);
         }
         let (x, y) = (
@@ -2262,5 +2302,62 @@ mod tests {
         );
         assert!(ChangeKind::ValidationData.allowed(Some(1), false));
         assert_eq!(after.dss().certs, vec![vec![0x30, 0x00]]);
+    }
+
+    /// A file whose catalog carries `key` → `value`, as an update.
+    fn with_catalog_entry(key: &str, value: impl FnOnce(&mut PdfDocument) -> Object) -> Vec<u8> {
+        let mut doc =
+            PdfDocument::open(corpus("generated/chrome-cairo-mixed-invoice.pdf"), None).unwrap();
+        let value = value(&mut doc);
+        let root = doc.catalog_id().unwrap();
+        doc.doc.get_dictionary_mut(root).unwrap().set(key, value);
+        doc.mark_touched(root);
+        doc.save_incremental().unwrap()
+    }
+
+    #[test]
+    fn validation_data_that_inflates_without_end_is_not_inflated() {
+        // 64 MB of zeros, stored as some 64 KB: one piece of "validation
+        // data" past what one may be read to. A signed file is checked the
+        // moment it opens.
+        let bytes = with_catalog_entry("DSS", |doc| {
+            let mut bomb = Stream::new(Dictionary::new(), vec![0; 64 << 20]);
+            bomb.compress().unwrap();
+            assert!(bomb.content.len() < 1 << 20);
+            let bomb = doc.doc.add_object(bomb);
+            let small = doc
+                .doc
+                .add_object(Stream::new(Dictionary::new(), vec![0x30, 0x00]));
+            Object::Dictionary(dictionary! {
+                "Certs" => vec![Object::Reference(bomb), Object::Reference(small)],
+            })
+        });
+        let doc = PdfDocument::open(bytes, None).unwrap();
+        assert_eq!(
+            doc.dss().certs,
+            vec![vec![0x30, 0x00]],
+            "the bomb is skipped"
+        );
+    }
+
+    #[test]
+    fn a_file_referring_to_one_big_object_again_and_again_is_walked_once() {
+        // 200 000 references to one 4 MB stream: copied at each reference,
+        // as the walk once did, that is 800 GB.
+        let bytes = with_catalog_entry("Junk", |doc| {
+            let big = doc
+                .doc
+                .add_object(Stream::new(Dictionary::new(), vec![7; 4 << 20]));
+            Object::Array(vec![Object::Reference(big); 200_000])
+        });
+        let doc = PdfDocument::open(bytes, None).unwrap();
+        let started = std::time::Instant::now();
+        let changes = doc.changes_since(&doc, &[]);
+        assert!(changes.kinds.is_empty());
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(10),
+            "{:?}",
+            started.elapsed()
+        );
     }
 }

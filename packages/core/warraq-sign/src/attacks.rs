@@ -524,3 +524,213 @@ fn a_document_timestamp_after_a_no_changes_certification_is_permitted() {
     );
     assert_eq!(r.signatures[1].kind, "timestamp");
 }
+
+// ------------------------------------------------------------------- time
+
+/// Signs with the P-256 TEST signer and a signature timestamp the TEST
+/// authority (under the RSA root) gives at `at`.
+fn sign_timestamped(at: i64) -> Vec<u8> {
+    let id = crate::pkcs12::open(&fixture("signer-ec.p12"), "warraq-test").unwrap();
+    let mut doc = PdfDocument::open(corpus(INVOICE), None).unwrap();
+    let o = SignOptions {
+        timestamp: true,
+        ..options(false)
+    };
+    let pades::Signed::NeedsTimestamp {
+        prepared,
+        cms,
+        request,
+    } = pades::sign(&mut doc, &id.signer, &o).unwrap()
+    else {
+        panic!("a timestamp was asked for");
+    };
+    let answer = crate::tsp::tests::answer(&request, at);
+    pades::finish(prepared, &cms, &request, &answer).unwrap()
+}
+
+#[test]
+fn a_timestamp_from_an_authority_nobody_trusts_is_not_relied_on() {
+    // A token anyone could make, dated where the signer's certificate has
+    // long expired: were its time relied on, the signature would be judged
+    // then.
+    let signed = sign_timestamped(2_840_140_800); // 2060
+    let s = &check(&signed, &trusting(&["root-ec.cer"])).signatures[0];
+    let t = s.timestamp.as_ref().expect("the token is read");
+    assert!(t.valid && !t.trusted, "{t:?}");
+    assert_eq!(
+        s.status, "valid",
+        "judged now, not in 2060: {:?}",
+        s.problems
+    );
+}
+
+#[test]
+fn an_expired_certificate_is_not_proven_without_a_trusted_time() {
+    const IN_2050: i64 = 2_524_608_000;
+    let plain = sign_with(corpus(INVOICE), None, "signer-ec.p12", &options(false));
+    let s = &pades::verify(&plain, None, &trusting(&["root-ec.cer"]), IN_2050)
+        .unwrap()
+        .signatures[0];
+    // The signer's clock said 2026; nothing proves it.
+    assert_eq!(s.status, "untrusted", "{:?}", s.problems);
+    assert!(has(s, "noProofOfTime"), "{:?}", s.problems);
+    // A trusted timestamp from 2026 does.
+    let stamped = sign_timestamped(NOW + 5);
+    let s = &pades::verify(
+        &stamped,
+        None,
+        &trusting(&["root-ec.cer", "root-rsa.cer"]),
+        IN_2050,
+    )
+    .unwrap()
+    .signatures[0];
+    assert!(s.timestamp.as_ref().is_some_and(|t| t.trusted));
+    assert_eq!(s.status, "valid", "{:?}", s.problems);
+}
+
+#[test]
+fn a_sha1_signature_is_not_trusted() {
+    use warraq_pdf::signature::{SigKind, SignatureSpec};
+    let id = crate::pkcs12::open(&fixture("signer-ec.p12"), "warraq-test").unwrap();
+    let mut doc = PdfDocument::open(corpus(INVOICE), None).unwrap();
+    let mut prepared = doc
+        .prepare_signature(&SignatureSpec {
+            field: None,
+            page: 0,
+            rect: None,
+            appearance: None,
+            name: None,
+            reason: None,
+            location: None,
+            contact: None,
+            time: Some("D:20260919200000+03'00'".into()),
+            sub_filter: pades::CADES,
+            kind: SigKind::Approval,
+            lock_fields: false,
+            contents_size: 8192,
+        })
+        .unwrap();
+    let hash = crate::HashAlg::Sha1;
+    let digest = hash.digest_parts(&prepared.signed_parts());
+    let cms = crate::cms::sign(
+        &id.signer,
+        &crate::cms::Content {
+            econtent_type: crate::oids::DATA,
+            econtent: None,
+            digest: &digest,
+            hash,
+            padding: crate::keys::Padding::Pkcs1v15,
+            extra_signed: vec![],
+        },
+    )
+    .unwrap();
+    prepared.embed(&cms).unwrap();
+    let s = &check(&prepared.bytes, &trusting(&["root-ec.cer"])).signatures[0];
+    assert!(
+        s.integrity.digest_ok && s.integrity.signature_ok,
+        "{:?}",
+        s.integrity
+    );
+    assert_eq!(s.status, "untrusted", "{:?}", s.problems);
+    assert!(has(s, "weakHash"), "{:?}", s.problems);
+}
+
+// ------------------------------------------------------------ field locks
+
+/// A form with a field `person` whose kids are `person.name` and
+/// `person.city`, and an empty signature field `Approval` whose `/Lock` is
+/// `lock`. Returns the file and the two kids' objects.
+fn locked_form(lock: Dictionary) -> (Vec<u8>, ObjectId, ObjectId) {
+    let mut doc = PdfDocument::open(corpus(INVOICE), None).unwrap();
+    let page = doc.page_id(0).unwrap();
+    let kid = |doc: &mut PdfDocument, name: &str, y: i64| {
+        doc.doc_mut().add_object(dictionary! {
+            "Type" => "Annot", "Subtype" => "Widget", "FT" => "Tx", "T" => Object::string_literal(name),
+            "V" => Object::string_literal(""), "P" => page,
+            "Rect" => vec![100.into(), y.into(), 300.into(), (y + 20).into()],
+        })
+    };
+    let name = kid(&mut doc, "name", 600);
+    let city = kid(&mut doc, "city", 560);
+    let person = doc.doc_mut().add_object(dictionary! {
+        "T" => Object::string_literal("person"),
+        "Kids" => vec![Object::Reference(name), Object::Reference(city)],
+    });
+    for k in [name, city] {
+        doc.doc_mut()
+            .get_dictionary_mut(k)
+            .unwrap()
+            .set("Parent", person);
+    }
+    let sig = doc.doc_mut().add_object(dictionary! {
+        "Type" => "Annot", "Subtype" => "Widget", "FT" => "Sig", "T" => Object::string_literal("Approval"),
+        "Rect" => vec![0.into(), 0.into(), 0.into(), 0.into()], "P" => page, "Lock" => lock,
+    });
+    let form = doc.doc_mut().add_object(dictionary! {
+        "Fields" => vec![Object::Reference(person), Object::Reference(sig)],
+    });
+    let root = doc
+        .doc_ref()
+        .trailer
+        .get(b"Root")
+        .unwrap()
+        .as_reference()
+        .unwrap();
+    doc.doc_mut()
+        .get_dictionary_mut(root)
+        .unwrap()
+        .set("AcroForm", form);
+    doc.mark_touched(root);
+    for w in [name, city, sig] {
+        push_to_page(&mut doc, w);
+    }
+    (doc.save_incremental().unwrap(), name, city)
+}
+
+fn fill(bytes: &[u8], id: ObjectId, value: &str) -> Vec<u8> {
+    let mut doc = PdfDocument::open(bytes.to_vec(), None).unwrap();
+    doc.doc_mut()
+        .get_dictionary_mut(id)
+        .unwrap()
+        .set("V", Object::string_literal(value));
+    doc.mark_touched(id);
+    doc.save_incremental().unwrap()
+}
+
+#[test]
+fn a_fields_lock_keeps_its_action_and_is_matched_by_full_name() {
+    use warraq_pdf::signature::FieldLock;
+    let exclude = dictionary! {
+        "Type" => "SigFieldLock", "Action" => "Exclude",
+        "Fields" => vec![Object::string_literal("person.city")],
+    };
+    let include = dictionary! {
+        "Type" => "SigFieldLock", "Action" => "Include",
+        "Fields" => vec![Object::string_literal("person.name")],
+    };
+    for (lock, expected) in [
+        (exclude, FieldLock::Exclude(vec!["person.city".into()])),
+        (include, FieldLock::Include(vec!["person.name".into()])),
+    ] {
+        let (form, name, city) = locked_form(lock);
+        let o = SignOptions {
+            field: Some("Approval".into()),
+            ..options(false)
+        };
+        let signed = sign_with(form, None, "signer-rsa-legacy.p12", &o);
+        // What the signature itself says it locks: the field's lock, as is.
+        let doc = PdfDocument::open(signed.clone(), None).unwrap();
+        let field = doc
+            .signature_fields()
+            .into_iter()
+            .find(|f| f.name == "Approval")
+            .unwrap();
+        assert_eq!(field.value.unwrap().field_mdp, Some(expected.clone()));
+        // Both locks leave person.city free and hold person.name.
+        let s = &trusting_rsa(&fill(&signed, city, "الرياض")).signatures[0];
+        assert_eq!(s.status, "valid", "{expected:?}: {:?}", s.changes);
+        let s = &trusting_rsa(&fill(&signed, name, "محمد")).signatures[0];
+        assert_eq!(s.status, "modified", "{expected:?}: {:?}", s.changes);
+        assert!(change(s, "lockedField").is_some(), "{:?}", s.changes);
+    }
+}
