@@ -137,6 +137,8 @@ export interface AppServices {
   requestOpenFile: () => void;
   /** Called by the EmbedPDF view once its plugin registry is ready. */
   attachEmbed: (registry: PluginRegistry) => void;
+  /** EmbedPDF's plugin registry once it is ready: the toolbar reads its zoom. */
+  embedRegistry: PluginRegistry | null;
   /** Called by the EmbedPDF view each time it has opened a file, with the bytes it opened. */
   embedOpened: (bytes?: ArrayBuffer) => void;
   /** Runs one of the EmbedPDF viewer's registered commands (ADR-0007). */
@@ -1322,6 +1324,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       closeDocument,
       requestOpenFile,
       attachEmbed,
+      embedRegistry: embed,
       embedOpened,
       runEmbedCommand,
       embedShowing,
@@ -1373,6 +1376,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       closeDocument,
       requestOpenFile,
       attachEmbed,
+      embed,
       embedOpened,
       runEmbedCommand,
       embedShowing,

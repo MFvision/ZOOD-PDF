@@ -9,6 +9,7 @@ import type { Lang } from '../i18n/messages';
 import { disabledCategories } from './embedControl';
 import { setEmbedLanguage } from './embedLanguage';
 import { installRtlStyles } from './embedRtl';
+import { EMBED_COLORS, installThemeStyles, removeDuplicatedChrome, showMarkupBar } from './embedTheme';
 
 /**
  * The document view: EmbedPDF (Apache-2.0/MIT) — PDFium compiled to WASM, with
@@ -59,6 +60,8 @@ export interface EmbedViewerProps {
   theme: 'light' | 'dark' | 'system';
   /** Warraq's language; EmbedPDF's own toolbar, menus and dialogs follow it. */
   lang: Lang;
+  /** Whether EmbedPDF's main bar (modes, page settings, comments) is showing. */
+  markupBar?: boolean;
   /** The plugin registry, once the viewer is ready — Warraq's hook into it. */
   onRegistry?: (registry: PluginRegistry) => void;
   /** EmbedPDF could not open the bytes: the view would otherwise sit empty, silently. */
@@ -98,12 +101,13 @@ function documentManager(registry: PluginRegistry): DocumentManager | null {
   return plugin?.provides?.() ?? null;
 }
 
-export function EmbedViewer({ bytes, name, password, theme, lang, onRegistry, onError, onOpened }: EmbedViewerProps) {
+export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = false, onRegistry, onError, onOpened }: EmbedViewerProps) {
   const registryRef = useRef<PluginRegistry | null>(null);
   /** EmbedPDF's element: its theme is set on it, not through the config it started with. */
   const containerRef = useRef<{ setTheme(preference: EmbedViewerProps['theme']): void } | null>(null);
   const openedRef = useRef<string | null>(null);
   const langRef = useRef(lang);
+  const markupRef = useRef(markupBar);
 
   // Built once: a new config object would tear the whole viewer down.
   const config = useMemo<PDFViewerConfig>(() => {
@@ -120,7 +124,8 @@ export function EmbedViewer({ bytes, name, password, theme, lang, onRegistry, on
       stamp: { manifests: [], libraries: [STANDARD_STAMPS] },
       disabledCategories: disabledCategories(isTauriHost()),
       tabBar: 'never',
-      theme: { preference: theme },
+      // Warraq's tokens by reference: see embedTheme.ts.
+      theme: { preference: theme, light: EMBED_COLORS, dark: EMBED_COLORS },
       // Only the fallback: its ten locales stay, and Arabic is added beside
       // them once the viewer is ready (embedLanguage.ts). A key a later
       // EmbedPDF adds before the Arabic has it then reads in English, not as
@@ -142,6 +147,7 @@ export function EmbedViewer({ bytes, name, password, theme, lang, onRegistry, on
         .openDocumentBuffer({ buffer: current.slice(0), name: currentName, password: currentPassword, autoActivate: true })
         .toPromise();
       openedRef.current = response.documentId;
+      showMarkupBar(registry, markupRef.current);
       uiLog(`embedpdf opened ${currentName}`);
       reportDrawn(currentName);
       onOpened?.(current);
@@ -164,6 +170,12 @@ export function EmbedViewer({ bytes, name, password, theme, lang, onRegistry, on
     containerRef.current?.setTheme(theme);
   }, [theme]);
 
+  // The markup bar, shown and hidden from Warraq's toolbar.
+  useEffect(() => {
+    markupRef.current = markupBar;
+    if (registryRef.current) showMarkupBar(registryRef.current, markupBar);
+  }, [markupBar]);
+
   // Switching Warraq's language switches EmbedPDF's through its i18n plugin,
   // live: a new config would tear the viewer down.
   useEffect(() => {
@@ -178,6 +190,7 @@ export function EmbedViewer({ bytes, name, password, theme, lang, onRegistry, on
       onInit={(container) => {
         containerRef.current = container;
         installRtlStyles(container.shadowRoot);
+        installThemeStyles(container.shadowRoot);
       }}
       onReady={(registry) => {
         uiLog('embedpdf ready');
@@ -185,6 +198,7 @@ export function EmbedViewer({ bytes, name, password, theme, lang, onRegistry, on
         // Before the document opens, so its toolbar is never drawn in the
         // wrong language first: EmbedPDF shows it only once one is open.
         setEmbedLanguage(registry, langRef.current);
+        removeDuplicatedChrome(registry);
         onRegistry?.(registry);
         void open(registry, bytes, name, password);
       }}

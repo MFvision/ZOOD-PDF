@@ -16,7 +16,9 @@ import './redact.css';
 /**
  * Redact: EmbedPDF's own marking and applying (ADR-0007), and two things it
  * does not do, by Warraq's core — find and redact, with the Arabic-aware
- * search and ready-made patterns, and Remove hidden information.
+ * search and ready-made patterns, and Remove hidden information. Those two
+ * are sections of the inspector with headings of their own (an `h4`: the
+ * inspector hides a panel's leading `h3`, which its header already shows).
  */
 export function RedactPanel({ tool }: { tool: ToolDefinition }) {
   return (
@@ -105,10 +107,10 @@ function FindAndRedact() {
 
   return (
     <section className="tool-panel redact-section" aria-labelledby="redact-search-title">
-      <h3 id="redact-search-title">
+      <h4 id="redact-search-title" className="redact-title">
         <Icon of={FileSearch} />
         {t('redact.search.title')}
-      </h3>
+      </h4>
       <form className="redact-form" onSubmit={(event) => void search(event)}>
         <label className="field">
           <span>{t('redact.search.query')}</span>
@@ -264,10 +266,10 @@ function HiddenInformation() {
 
   return (
     <section className="tool-panel redact-section" aria-labelledby="redact-hidden-title">
-      <h3 id="redact-hidden-title">
+      <h4 id="redact-hidden-title" className="redact-title">
         <Icon of={ShieldCheck} />
         {t('redact.hidden.title')}
-      </h3>
+      </h4>
       <p className="tool-panel-note">{t('redact.hidden.intro')}</p>
       <div className="tool-actions">
         <IconButton

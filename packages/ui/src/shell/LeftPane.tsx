@@ -41,28 +41,29 @@ export function LeftPane({ reading }: { reading: boolean }) {
     dispatch(reading ? { type: 'SET_LEFT_TAB', tab: 'thumbnails' } : { type: 'TOGGLE_LEFT_PANE', open: false });
 
   return (
-    <aside className="pane pane-start" style={{ inlineSize: leftPane.width }} aria-label={t('pane.left.title')}>
+    <aside className="pane pane-start sidebar" style={{ inlineSize: leftPane.width }} aria-label={t('pane.left.title')}>
       <div className="pane-header">
-        <div className="pane-tabs" role="tablist" aria-label={t('pane.tabs')}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              id={`left-tab-${tab.id}`}
-              className="pane-tab"
-              aria-selected={tab.id === active.id}
-              aria-controls="left-tab-panel"
-              aria-label={t(tab.label)}
-              title={t(tab.label)}
-              onClick={() => dispatch({ type: 'SET_LEFT_TAB', tab: tab.id })}
-            >
-              <Icon of={tab.icon} size={16} />
-            </button>
-          ))}
-        </div>
-        <h2 className="pane-title">{t(active.label)}</h2>
-        <IconButton label={t('pane.close')} icon={<Icon of={X} />} onClick={close} />
+        <h2>{t(active.label)}</h2>
+        <IconButton className="pane-close" label={t('pane.close')} icon={<Icon of={X} />} onClick={close} />
+      </div>
+      {/* The panes as a segmented control, the way a source list switches views. */}
+      <div className="segmented sidebar-tabs" role="tablist" aria-label={t('pane.tabs')}>
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            id={`left-tab-${tab.id}`}
+            className="segmented-item"
+            aria-selected={tab.id === active.id}
+            aria-controls="left-tab-panel"
+            aria-label={t(tab.label)}
+            title={t(tab.label)}
+            onClick={() => dispatch({ type: 'SET_LEFT_TAB', tab: tab.id })}
+          >
+            <Icon of={tab.icon} size={15} />
+          </button>
+        ))}
       </div>
       <div className="pane-body" role="tabpanel" id="left-tab-panel" aria-labelledby={`left-tab-${active.id}`}>
         {active.id === 'thumbnails' && <ThumbnailList />}

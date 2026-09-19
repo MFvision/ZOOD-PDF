@@ -104,6 +104,121 @@ fn the_crate_declares_custom_protocol() {
     );
 }
 
+fn repo_file(relative: &str) -> String {
+    let path = manifest().join("../../..").join(relative);
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()))
+}
+
+/// On macOS the toolbar is the title bar: the window draws no title of its
+/// own, the content runs under the title bar, and the traffic lights sit in
+/// the toolbar's strip — inside the room the UI leaves for them
+/// (`--traffic-lights` in styles/tokens.css).
+#[test]
+fn the_window_merges_its_title_bar_with_the_toolbar() {
+    let config = json("tauri.conf.json");
+    let main = config["app"]["windows"]
+        .as_array()
+        .expect("windows array")
+        .iter()
+        .find(|w| w["label"] == "main")
+        .expect("a window labelled main")
+        .clone();
+    assert_eq!(
+        main["titleBarStyle"], "Overlay",
+        "the content must run under the title bar"
+    );
+    assert_eq!(
+        main["hiddenTitle"], true,
+        "the toolbar shows the document's title, not the window"
+    );
+
+    let x = main["trafficLightPosition"]["x"]
+        .as_f64()
+        .expect("trafficLightPosition.x");
+    let y = main["trafficLightPosition"]["y"]
+        .as_f64()
+        .expect("trafficLightPosition.y");
+    let tokens = repo_file("packages/ui/src/styles/tokens.css");
+    let px = |name: &str| -> f64 {
+        let line = tokens
+            .lines()
+            .find(|line| line.trim_start().starts_with(&format!("{name}:")))
+            .unwrap_or_else(|| panic!("tokens.css defines {name}"));
+        line.split(':')
+            .nth(1)
+            .unwrap()
+            .trim()
+            .trim_end_matches(';')
+            .trim_end_matches("px")
+            .parse()
+            .unwrap()
+    };
+    // Three 14-pt buttons 20 pt apart: the last ends 54 pt after the first starts.
+    assert!(
+        x + 54.0 + 8.0 <= px("--traffic-lights"),
+        "the toolbar leaves {} pt for traffic lights that end at {} pt",
+        px("--traffic-lights"),
+        x + 54.0
+    );
+    // Centred in the toolbar: a 14-pt button whose top is y points down.
+    let toolbar = px("--toolbar-h");
+    assert!(
+        ((y + 7.0) - toolbar / 2.0).abs() <= 1.0,
+        "the traffic lights ({y}) are not centred in the {toolbar}-pt toolbar"
+    );
+}
+
+/// The toolbar drags the window — everywhere but on a control — and a double
+/// click on it zooms the window, which is Tauri's drag region with the
+/// permission to start a drag.
+#[test]
+fn the_toolbar_drags_the_window() {
+    let capability = json("capabilities/default.json");
+    let granted: Vec<&str> = capability["permissions"]
+        .as_array()
+        .expect("permissions array")
+        .iter()
+        .filter_map(|value| value.as_str())
+        .collect();
+    assert!(
+        granted.contains(&"core:window:allow-start-dragging"),
+        "without it a press on the toolbar moves nothing"
+    );
+    let toolbar = repo_file("packages/ui/src/shell/Toolbar.tsx");
+    assert!(
+        toolbar.contains(r#"data-tauri-drag-region="deep""#),
+        "the toolbar must be a deep drag region (its controls still take clicks)"
+    );
+}
+
+/// The menu bar is built from the UI's model and sends its items back: the
+/// command is registered, menu events are forwarded, and both sides use the
+/// same event name.
+#[test]
+fn the_menu_bar_reaches_the_ui() {
+    let lib = std::fs::read_to_string(manifest().join("src/lib.rs")).expect("lib.rs");
+    assert!(
+        lib.contains("menu::set_menu"),
+        "the UI's set_menu command is not registered"
+    );
+    assert!(
+        lib.contains("on_menu_event"),
+        "menu events are not forwarded to the page"
+    );
+    assert!(
+        lib.contains(".manage(menu::MenuState"),
+        "set_menu needs its state"
+    );
+    let host = repo_file("packages/ui/src/core/host-tauri.ts");
+    assert!(
+        host.contains(&format!(
+            "MENU_EVENT = '{}'",
+            warraq_desktop_lib::menu::MENU_EVENT
+        )),
+        "host-tauri.ts listens for a different menu event than menu.rs sends"
+    );
+}
+
 /// The bundled UI must come from the build that strips the document's own
 /// Content-Security-Policy; see `apps/web/src/csp.test.ts` for why.
 #[test]

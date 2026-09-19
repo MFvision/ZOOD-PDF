@@ -5,6 +5,7 @@ import {
   WORD_EXPORT,
   chooseTool,
   corpus,
+  documentStatus,
   embedDocument,
   enterEditText,
   openPdf,
@@ -17,7 +18,7 @@ const LOCKED = corpus('generated/variant-encrypted-aes256.pdf');
 const panel = (page: Page) => page.locator('.pane-end');
 const files = (page: Page) =>
   panel(page).getByRole('list', { name: 'Files to combine' }).getByRole('listitem');
-const statusBar = (page: Page) => page.getByRole('contentinfo', { name: 'Status bar' });
+const statusBar = (page: Page) => documentStatus(page);
 
 /** The start of page `n`'s text, as Warraq's own reader sees it in Edit text. */
 async function pageStart(page: Page, n: number): Promise<string> {
