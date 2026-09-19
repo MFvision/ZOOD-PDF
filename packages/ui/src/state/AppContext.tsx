@@ -38,7 +38,8 @@ import { appReducer, createInitialState, warraqOwnsDocument } from './appReducer
 import type { AppAction, AppState } from './appReducer';
 import { readJson, readPreferences, writePreferences } from './preferences';
 import { drawPages, mountSheet } from '../print/printPages';
-import { addRecent, clearRecent as clearStoredRecent, readRecent } from './recent';
+import { keepFirstPage } from '../home/recentPicture';
+import { addRecent, clearRecent as clearStoredRecent, forgetRecentThumbnail, readRecent } from './recent';
 import { isPdf, namedLikePdf } from './pdfFile';
 import { combinedFileName, downloadPdf, extractedFileName, pdfFileName, saveBytes, splitArchiveName } from './saveFile';
 import { zipSync } from 'fflate';
@@ -341,6 +342,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // The protected file waiting for its password.
   const lockedFile = useRef<File | null>(null);
   const [recent, setRecent] = useState<string[]>(() => readRecent());
+  // Something was marked for redaction in the open file: the home screen keeps
+  // no picture of its first page until it is opened again (home/recentPicture.ts).
+  const pictureBlocked = useRef(false);
   const documentRef = useRef<RemoteDocument | null>(null);
   // The EmbedPDF view's registry (ADR-0007): the document as it holds it —
   // annotations, redactions, filled fields — is read back through its engine.
@@ -472,6 +476,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           },
         });
         setRecent(addRecent(file.name));
+        pictureBlocked.current = false;
+        void keepFirstPage(file.name, opened, password, () => !pictureBlocked.current);
       } catch (err) {
         if (sequence !== openSequence.current) return;
         if (errorKeyFor(err) === 'error.password') {
@@ -703,7 +709,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     redactedRef.current = false;
   }, [documentBytes]);
   useEffect(() => {
-    if (pendingRedactions > 0) redactedRef.current = true;
+    if (pendingRedactions === 0) return;
+    redactedRef.current = true;
+    // Nor a picture of what is under the marks on the home screen.
+    pictureBlocked.current = true;
+    const name = stateRef.current.document?.name;
+    if (name) forgetRecentThumbnail(name);
   }, [pendingRedactions]);
 
   const withArabicAppearances = useCallback(
@@ -1492,6 +1503,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       } else {
         downloadPdf(bytes, name);
       }
+      // The saved file may not look like the picture the home screen kept of
+      // it: a page gone, a password set, a redaction applied. Taken again
+      // when the file is next opened (home/recentPicture.ts).
+      forgetRecentThumbnail(name);
       dispatch({ type: 'DOCUMENT_SAVED' });
       dispatch({ type: 'TOAST', key: 'file.saved' });
     } catch (error) {

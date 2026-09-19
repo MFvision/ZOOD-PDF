@@ -196,3 +196,63 @@ fn searching_for_any_character_of_the_arabic_presentation_blocks_returns() {
         let _ = doc.search(&format!("{c}الله{c}"));
     }
 }
+
+/// A one-page PDF whose page is `side` points square, with a correct xref.
+fn page_of_side(side: u32) -> Vec<u8> {
+    let objects = [
+        "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_string(),
+        format!("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {side} {side}] >>"),
+    ];
+    let mut out = b"%PDF-1.7\n".to_vec();
+    let mut offsets = vec![];
+    for (i, body) in objects.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n{body}\nendobj\n", i + 1).as_bytes());
+    }
+    let xref = out.len();
+    out.extend_from_slice(
+        format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).as_bytes(),
+    );
+    for offset in offsets {
+        out.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n",
+            objects.len() + 1
+        )
+        .as_bytes(),
+    );
+    out
+}
+
+/// A page's size is read from the file. The home screen draws page 1 of every
+/// file opened, so a `/MediaBox` of a million points asked for gigabytes the
+/// moment the file opened: a trap that aborts the WebAssembly core. Past the
+/// pixel budget a render is refused with an error before anything is allocated.
+#[test]
+fn a_page_too_large_to_draw_is_refused_not_allocated() {
+    // 170 000 pt at the smallest scale is 8 500 × 8 500 pixels: past the budget.
+    for side in [170_000, 1_400_000] {
+        let doc = warraq_core::Document::open(page_of_side(side), None).expect("the file opens");
+        let started = Instant::now();
+        let drawn = catch_unwind(AssertUnwindSafe(|| doc.render_page(0, 0.05)))
+            .unwrap_or_else(|_| panic!("a {side} pt page panicked"));
+        let error = drawn.err().map(|e| e.to_string()).unwrap_or_default();
+        assert!(
+            error.starts_with("E_RENDER"),
+            "a {side} pt page must be refused, got {error:?}"
+        );
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "refused at once, not after drawing"
+        );
+    }
+    // A page of an ordinary size still draws, at the largest scale the app asks for.
+    let doc = warraq_core::Document::open(page_of_side(842), None).unwrap();
+    let page = doc
+        .render_page(0, 8.0)
+        .expect("an A4-sized page at 8× is within the budget");
+    assert_eq!((page.width, page.height), (6736, 6736));
+}

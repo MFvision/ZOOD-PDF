@@ -6,7 +6,6 @@ import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { FontNotice } from '../edit/FontNotice';
 import { HomeScreen } from '../home/HomeScreen';
-import { useRecentThumbnail } from '../home/useRecentThumbnail';
 import { LinkConfirmDialog } from '../links/LinkConfirmDialog';
 import { useI18n } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
@@ -42,7 +41,6 @@ export function Shell() {
   const nativeMenu = hasNativeMenuBar();
   useKeyboardShortcuts();
   useNativeMenu(nativeMenu);
-  useRecentThumbnail();
 
   const [markupOn, setMarkupOn] = useState(readMarkupBar);
   const markupBar = useMemo(
