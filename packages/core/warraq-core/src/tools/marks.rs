@@ -347,7 +347,7 @@ pub fn call_static(name: &str, json: &str, blobs: Vec<Vec<u8>>) -> Result<Reply,
                     .join("\n")
             };
             Reply::of(&serde_json::json!({
-                "marks": join(doc.artifact_lines(a.page)?),
+                "marks": join(doc.mark_lines(a.page)?),
                 "page": join(doc.text_lines(a.page)?),
             }))
         }
