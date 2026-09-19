@@ -36,8 +36,9 @@ flowchart LR
 | Crate | Responsibility | Key dependencies |
 |---|---|---|
 | `warraq-text` | Unicode bidi (UAX #9), OpenType shaping, script/direction itemization, font fallback chain (bundled OFL fonts + user fonts), Arabic-aware normalization and search, logical-order reconstruction from positioned glyphs | harfrust, skrifa, unicode-bidi, unicode-normalization, unicode-script |
-| `warraq-pdf` | Document model over `lopdf` (read/modify/incremental save), font embedding and subsetting with ToUnicode, text object writing/editing, page operations, encryption (later), signatures (later) | lopdf, pdf-writer, subsetter |
+| `warraq-pdf` | Document model over `lopdf` (read/modify/incremental save), font embedding and subsetting with ToUnicode, text object writing/editing, page operations, the standard security handler, signature fields and `/DSS` | lopdf, pdf-writer, subsetter |
 | `warraq-render` | `Renderer` trait with `Pdfium` (native + WASM shim) and `Hayro` (pure Rust) backends; page bitmaps; glyph device for extraction | pdfium-render (feature), hayro, hayro-interpret |
+| `warraq-sign` | PDF digital signatures (PAdES B-B/T/LT/LTA): PKCS#12, CMS SignedData, RFC 3161, OCSP/CRL, certificate paths against Mozilla's roots and the person's own, and the verifier; the PDF side (fields, `/ByteRange`, appearances, `/DSS`, changes after signing) is `warraq-pdf::signature`. Pure functions over bytes: the host sends and fetches | RustCrypto (`cms`, `x509-cert`, `rsa`, `p256`, `p384`, `pkcs5`…), `webpki-roots` |
 | `warraq-core` | Façade used by hosts; `wasm-bindgen` exports mirroring `API.md`; error codes | all of the above |
 
 ## Rendering backends per target (Phase 1 state)

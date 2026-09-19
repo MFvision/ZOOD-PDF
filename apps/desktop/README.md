@@ -25,6 +25,7 @@ apps/desktop/
     └── src/
         ├── lib.rs           # host commands and the file-drop forwarder
         ├── menu.rs          # the macOS menu bar, built from the UI's menu model (docs/design/README.md)
+        ├── signing.rs       # the only network requests (timestamps, OCSP/CRLs, on a click) and PKCS#11 smart cards
         └── core_bridge.rs   # doc_* commands over the in-process document registry
 ```
 
