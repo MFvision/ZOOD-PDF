@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ChangeEvent } from 'react';
 import { ArrowDown, ArrowUp, FilePlus2, FileUp, X } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
-import { isTauriHost, pickFiles } from '../core/host-tauri';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
-import { CREATE_ACCEPT, CREATE_EXTENSIONS, DEFAULT_CREATE_OPTIONS, createKind, createPdf } from './createPdf';
+import type { OcrOutcome } from '../state/AppContext';
+import { DEFAULT_CREATE_OPTIONS, createKind, createPdf } from './createPdf';
 import type { CreateKind, CreateOptions, CreateReport } from './createPdf';
+import { recognizeFile } from '../ocr/run';
 import { appCreateEnvironment } from './environment';
 import './create.css';
 
@@ -30,7 +30,11 @@ const KIND_NAMES: Record<CreateKind, TKey> = {
   image: 'create.kind.image',
 };
 
-type Status = { kind: 'idle' } | { kind: 'working' } | { kind: 'reading'; page: number; of: number } | { kind: 'done'; name: string; report: CreateReport };
+type Status =
+  | { kind: 'idle' }
+  | { kind: 'working' }
+  | { kind: 'reading'; page: number; of: number }
+  | { kind: 'done'; name: string; report: CreateReport; read?: OcrOutcome };
 
 /**
  * Create PDF: Word, Excel and PowerPoint files, web pages, Markdown, text,
@@ -52,7 +56,6 @@ export function CreatePanel() {
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   // Files that are no kind Create reads, named so the person knows which.
   const [refused, setRefused] = useState<string[]>([]);
-  const inputRef = useRef<HTMLInputElement>(null);
   const nextKey = useRef(1);
   const busy = status.kind === 'working' || status.kind === 'reading';
 
@@ -78,34 +81,26 @@ export function CreatePanel() {
         chosen,
         appCreateEnvironment(services.client),
       );
-      setStatus({ kind: 'done', name: result.name, report: result.report });
-      await services.openFiles([new File([result.bytes], result.name, { type: 'application/pdf' })]);
-      if (thenRead && list.some((e) => e.kind === 'image')) await readPictures(result.name, result.report);
+      let bytes = result.bytes;
+      let read: OcrOutcome | undefined;
+      // Scan & OCR on the pictures, before the file opens: it opens with its text layer.
+      if (thenRead && list.some((e) => e.kind === 'image')) {
+        setStatus({ kind: 'reading', page: 0, of: 0 });
+        try {
+          const recognized = await recognizeFile(services.client, bytes, undefined, ['ara', 'eng'], 'blank', (p) =>
+            setStatus({ kind: 'reading', page: p.page, of: p.of }),
+          );
+          ({ bytes, ...read } = recognized);
+        } catch {
+          dispatch({ type: 'DOCUMENT_FAILED', error: 'ocr.failed' });
+        }
+      }
+      setStatus({ kind: 'done', name: result.name, report: result.report, read });
+      await services.openFiles([new File([bytes], result.name, { type: 'application/pdf' })]);
     } catch {
       setStatus({ kind: 'idle' });
       dispatch({ type: 'DOCUMENT_FAILED', error: 'create.failed' });
     }
-  };
-
-  // What is on screen now, for work that outlives the render it began in.
-  const latest = useRef({ services, name: state.document?.name, ready: false });
-  useEffect(() => {
-    latest.current = { services, name: state.document?.name, ready: state.view === 'viewer' && state.switching === null };
-  });
-
-  /** Scan & OCR on the pictures just made into pages, once their file is open in the view. */
-  const readPictures = async (name: string, report: CreateReport) => {
-    for (let k = 0; k < 200 && !(latest.current.ready && latest.current.name === name); k += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-    if (latest.current.name !== name) return;
-    setStatus({ kind: 'reading', page: 0, of: 0 });
-    try {
-      await latest.current.services.recognizeText(['ara', 'eng'], 'blank', (p) => setStatus({ kind: 'reading', page: p.page, of: p.of }));
-    } catch {
-      dispatch({ type: 'DOCUMENT_FAILED', error: 'ocr.failed' });
-    }
-    setStatus({ kind: 'done', name, report });
   };
 
   const add = async (files: readonly { name: string; bytes: ArrayBuffer }[]) => {
@@ -146,22 +141,6 @@ export function CreatePanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const choose = () => {
-    if (!isTauriHost()) {
-      inputRef.current?.click();
-      return;
-    }
-    void pickFiles([{ name: t('tool.create'), extensions: CREATE_EXTENSIONS }], true)
-      .then((picked) => add(picked))
-      .catch(() => dispatch({ type: 'DOCUMENT_FAILED', error: 'create.failed' }));
-  };
-
-  const onInput = async (event: ChangeEvent<HTMLInputElement>) => {
-    const files = [...(event.target.files ?? [])];
-    event.target.value = '';
-    await add(await Promise.all(files.map(async (f) => ({ name: f.name, bytes: await f.arrayBuffer() }))));
-  };
-
   const move = (index: number, step: -1 | 1) =>
     setEntries((list) => {
       const target = index + step;
@@ -183,18 +162,8 @@ export function CreatePanel() {
       </h3>
       <p className="tool-panel-note">{t('create.intro')}</p>
       <div className="tool-actions">
-        <IconButton label={t('create.add')} icon={<Icon of={FileUp} />} showLabel disabled={busy} onClick={choose} />
+        <IconButton label={t('create.add')} icon={<Icon of={FileUp} />} showLabel disabled={busy} onClick={services.requestCreateFiles} />
       </div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept={CREATE_ACCEPT}
-        multiple
-        className="sr-only"
-        tabIndex={-1}
-        aria-hidden="true"
-        onChange={(event) => void onInput(event)}
-      />
       {entries.length > 0 && (
         <ol className="create-list" aria-label={t('create.list')}>
           {entries.map((entry, index) => (
@@ -293,6 +262,13 @@ export function CreatePanel() {
       {report && report.missingGlyphs > 0 && <p className="export-alert">{t('create.missingGlyphs', { count: report.missingGlyphs })}</p>}
       {report && report.picturesLeftOut > 0 && <p className="export-alert">{t('create.picturesLeftOut', { count: report.picturesLeftOut })}</p>}
       {report?.truncated && <p className="export-alert">{t('create.truncated')}</p>}
+      {status.kind === 'done' && status.read && (
+        <p className="tool-panel-note" role="status">
+          {status.read.pages > 0
+            ? t('ocr.done', { pages: status.read.pages, words: status.read.words, confidence: Math.round(status.read.confidence) })
+            : t('ocr.nothing')}
+        </p>
+      )}
       <p className="tool-panel-note">{t('create.fidelity')}</p>
     </div>
   );

@@ -1,4 +1,4 @@
-import { withRuns } from './blocks';
+import { dominantDirection, withRuns } from './blocks';
 import type { Block, BlockAlign, ReadDocument, SourcePicture, TableCell, TextBlock, TextRun } from './blocks';
 import { decodeText } from './text';
 
@@ -255,16 +255,17 @@ export function readMarkdown(bytes: Uint8Array): ReadDocument {
     if (line.includes('|') && divider !== undefined && /^\s*\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)*\|?\s*$/.test(divider)) {
       flush();
       const head = cells(line);
+      const body: string[][] = [];
+      i += 2;
+      while (i < lines.length && lines[i]!.includes('|') && lines[i]!.trim() !== '') body.push(cells(lines[i++]!));
+      // GitHub's colons are left and right on the page: in an Arabic table, right is where a line starts.
+      const rtl = dominantDirection([{ type: 'text', text: [...head, ...body.flat()].map(plain).join(' ') }]) === 'rtl';
+      const [left, right]: BlockAlign[] = rtl ? ['end', 'start'] : ['start', 'end'];
       const aligns: (BlockAlign | undefined)[] = cells(divider).map((d) =>
-        d.startsWith(':') && d.endsWith(':') ? 'center' : d.endsWith(':') ? 'end' : d.startsWith(':') ? 'start' : undefined,
+        d.startsWith(':') && d.endsWith(':') ? 'center' : d.endsWith(':') ? right : d.startsWith(':') ? left : undefined,
       );
       const rows: TableCell[][] = [head.map((text, k) => ({ text: plain(text), bold: true, align: aligns[k] }))];
-      i += 2;
-      while (i < lines.length && lines[i]!.includes('|') && lines[i]!.trim() !== '') {
-        const row = cells(lines[i]!);
-        rows.push(head.map((_, k) => ({ text: plain(row[k] ?? ''), align: aligns[k] })));
-        i += 1;
-      }
+      for (const row of body) rows.push(head.map((_, k) => ({ text: plain(row[k] ?? ''), align: aligns[k] })));
       for (const row of rows) for (const cell of row) if (cell.align === undefined) delete cell.align;
       blocks.push({ type: 'table', rows, headerRows: 1, size: 10 });
       continue;

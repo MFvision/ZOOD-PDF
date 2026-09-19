@@ -11,9 +11,10 @@ import {
 import type { ChangeEvent, Dispatch, ReactNode } from 'react';
 import { getSharedCoreClient } from '../core/client';
 import { installDesktopFileBridge } from '../core/desktopFiles';
-import { CREATE_EXTENSIONS } from '../create/createPdf';
+import { CREATE_ACCEPT, CREATE_EXTENSIONS } from '../create/createPdf';
 import {
   isTauriHost,
+  pickFiles,
   pickPdfFile,
   printAvailable,
   printPdf,
@@ -39,7 +40,7 @@ import { combinedFileName, downloadPdf, extractedFileName, pdfFileName, saveByte
 import { zipSync } from 'fflate';
 import { findTool } from '../tools/tools';
 import type { OcrLanguage } from '../ocr/engine';
-import { readPages } from '../ocr/run';
+import { recognizeFile } from '../ocr/run';
 import type { OcrProgress, OcrScope } from '../ocr/run';
 
 /** What Scan & OCR did. */
@@ -144,6 +145,12 @@ export interface AppServices {
   closeDocument: () => void;
   /** Shows the file picker: the native panel on desktop, `<input type="file">` in a browser. */
   requestOpenFile: () => void;
+  /**
+   * Create PDF's picker: Word, Excel, PowerPoint, web pages, text and
+   * pictures, several at once, which then go to `startCreate`. The same
+   * hidden input as Open, so the page never has two.
+   */
+  requestCreateFiles: () => void;
   /** Called by the EmbedPDF view once its plugin registry is ready. */
   attachEmbed: (registry: PluginRegistry) => void;
   /** EmbedPDF's plugin registry once it is ready: the toolbar reads its zoom. */
@@ -333,6 +340,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const stateRef = useRef(state);
   const openSequence = useRef(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // What the hidden input was last opened for: Open (a PDF) or Create PDF (anything it reads).
+  const inputPurpose = useRef<'open' | 'create'>('open');
+  const pickFor = (purpose: 'open' | 'create') => {
+    const input = fileInputRef.current;
+    if (!input) return;
+    inputPurpose.current = purpose;
+    input.accept = purpose === 'create' ? CREATE_ACCEPT : 'application/pdf,.pdf';
+    input.multiple = purpose === 'create';
+    input.click();
+  };
+
   const client = useMemo(() => getSharedCoreClient(), []);
 
   useEffect(() => {
@@ -495,6 +513,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [openFiles, startCreate],
   );
 
+  const requestCreateFiles = useCallback(() => {
+    if (!isTauriHost()) {
+      pickFor('create');
+      return;
+    }
+    void pickFiles([{ name: 'PDF', extensions: CREATE_EXTENSIONS }], true)
+      .then((picked) => startCreate(picked.map((file) => new File([file.bytes], file.name))))
+      .catch(() => dispatch({ type: 'DOCUMENT_FAILED', error: 'create.failed' }));
+  }, [startCreate]);
+
   const closeDocument = useCallback(() => {
     openSequence.current += 1;
     void documentRef.current?.free();
@@ -514,7 +542,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    */
   const requestOpenFile = useCallback(() => {
     if (!isTauriHost()) {
-      fileInputRef.current?.click();
+      pickFor('open');
       return;
     }
     void (async () => {
@@ -1192,24 +1220,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ): Promise<OcrOutcome> => {
       const bytes = await currentFileBytes();
       if (!bytes) throw new Error('E_NOT_FOUND: no open file');
-      const reading = await client.open(bytes.slice(0), passwordRef.current);
-      let pages: Awaited<ReturnType<typeof readPages>>;
-      try {
-        pages = await readPages(reading, languages, scope, onProgress, signal);
-      } finally {
-        void reading.free();
-      }
-      const read = pages.filter((page) => page.words.length > 0);
-      const confidence = read.length ? read.reduce((sum, page) => sum + page.confidence, 0) / read.length : 0;
-      if (read.length === 0 || signal?.aborted) return { pages: 0, words: 0, skipped: 0, confidence };
-      const font = await loadEditFont('amiri');
-      const { result, blobs } = await client.callStatic<{ pages: number; words: number; skipped: number }>(
-        'ocr.add_text_layer',
-        { password: passwordRef.current ?? null, pages: read.map(({ index, words, angle }) => ({ index, words, angle })) },
-        [bytes, font.slice().buffer],
-      );
-      if (result.pages > 0 && blobs[0]) await replaceCurrentFile(blobs[0]);
-      return { ...result, confidence };
+      const { bytes: read, ...outcome } = await recognizeFile(client, bytes, passwordRef.current, languages, scope, onProgress, signal);
+      if (outcome.pages > 0) await replaceCurrentFile(read);
+      return outcome;
     },
     [client, currentFileBytes, replaceCurrentFile],
   );
@@ -1347,9 +1360,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [bytesFromEmbed, keepOwnBytes, withOwnLayers]);
 
   const onFileInput = (event: ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files && files.length > 0) void openFiles(files);
+    const files = event.target.files ? [...event.target.files] : [];
+    const purpose = inputPurpose.current;
+    // Back to Open's picker, whatever this one was for.
+    inputPurpose.current = 'open';
+    event.target.accept = 'application/pdf,.pdf';
+    event.target.multiple = false;
     event.target.value = '';
+    if (files.length === 0) return;
+    if (purpose === 'create') startCreate(files);
+    else void openFiles(files);
   };
 
   const services = useMemo<AppServices>(
@@ -1372,6 +1392,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dropClaimed: dropLabel !== 'drop.overlay',
       closeDocument,
       requestOpenFile,
+      requestCreateFiles,
       attachEmbed,
       embedRegistry: embed,
       embedOpened,
@@ -1427,6 +1448,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dropLabel,
       closeDocument,
       requestOpenFile,
+      requestCreateFiles,
       attachEmbed,
       embed,
       embedOpened,

@@ -166,7 +166,7 @@ describe('a web page', () => {
     const [table] = tables(page.blocks);
     expect(table).toMatchObject({ headerRows: 1 });
     expect(table!.rows[2]![0]).toMatchObject({ text: 'كل الأدوات تعمل محليًا', span: 2 });
-    expect(find(page.blocks, 'warraq --version')).toMatchObject({ preserve: true, text: 'warraq --version\n0.1.0' });
+    expect(find(page.blocks, 'warraq --version')).toMatchObject({ preserve: true, text: 'warraq --version\n0.1.0', dir: 'ltr' });
     expect(find(page.blocks, 'An English paragraph')!.dir).toBe('ltr');
   });
 
@@ -198,7 +198,9 @@ describe('Markdown, text and CSV', () => {
     expect(find(md.blocks, 'خطوة ثانية')!.marker).toBe('2.');
     const [table] = tables(md.blocks);
     expect(table!.rows.map((r) => r.map((c) => c.text))).toEqual([['المدينة', 'القراء'], ['الرياض', '1,250'], ['جدة', '٩٨٠']]);
-    expect(table!.rows[1]![1]!.align).toBe('end');
+    // `--:` is the right of the page: in this Arabic table, the start of a line.
+    expect(table!.rows[1]![1]!.align).toBe('start');
+    expect(table!.rows[1]![0]!.align).toBe('end');
     expect(find(md.blocks, 'code block')).toMatchObject({ preserve: true });
     expect(find(md.blocks, 'اقتباس')!.indent).toBeGreaterThan(0);
     expect(md.blocks.some((b) => b.type === 'rule')).toBe(true);

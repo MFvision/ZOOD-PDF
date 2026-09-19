@@ -455,7 +455,10 @@ class Reader {
         const level = Number(name[1]) - 1;
         extra = { size: HEADING[level], bold: true, keepWithNext: true, spaceBefore: 10, spaceAfter: 6 };
       } else if (name === 'pre') {
-        extra = { preserve: true, size: 9.5, shade: '#f2f2f4', spaceBefore: 4, spaceAfter: 8, dir: context.dir === 'auto' ? 'ltr' : context.dir };
+        // Code reads left to right, whatever the page around it, unless it says otherwise.
+        const own = (node.attrs.dir ?? '').toLowerCase();
+        context = { ...context, dir: own === 'rtl' ? 'rtl' : 'ltr', align: undefined };
+        extra = { preserve: true, size: 9.5, shade: '#f2f2f4', spaceBefore: 4, spaceAfter: 8 };
       } else if (name === 'blockquote') {
         context = { ...context, quote: context.quote + 1 };
       } else if (name === 'ul' || name === 'ol' || name === 'menu' || name === 'dir') {

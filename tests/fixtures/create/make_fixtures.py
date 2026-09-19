@@ -501,9 +501,22 @@ def make_pictures():
     print("wrote scan-2pages.tiff grey-lzw.tiff photo-rotated.jpg picture.webp picture.gif picture.bmp")
 
 
+def make_scan():
+    """The corpus's 200 dpi invoice scan as a fax TIFF, for reading after creating (its truth is in the corpus)."""
+    import fitz  # PyMuPDF, only to take the picture out of the corpus file
+
+    corpus = os.path.join(HERE, "..", "..", "corpus", "arabic", "generated", "scan-arial-200dpi-bilevel.pdf")
+    doc = fitz.open(corpus)
+    picture = doc.extract_image(doc[0].get_images(full=True)[0][0])
+    image = Image.open(io.BytesIO(picture["image"])).convert("1")
+    image.save(os.path.join(HERE, "scan-invoice.tiff"), compression="group4", dpi=(200, 200))
+    print("wrote scan-invoice.tiff")
+
+
 if __name__ == "__main__":
     make_docx()
     make_xlsx()
     make_pptx()
     make_text_files()
     make_pictures()
+    make_scan()
