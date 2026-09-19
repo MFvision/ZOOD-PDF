@@ -205,7 +205,7 @@
   "drop.combineHint": "The dropped PDFs join it in Combine, where you choose the order",
   "drop.openInstead": "Open instead",
   "drop.openHint": "Shows the dropped file in place of this one",
-  "drop.overlay": "Drop the PDF to open it",
+  "drop.overlay": "Drop a PDF to open it — several PDFs go to Combine together",
   "edit.addLabel": "New text",
   "edit.addNoUndo": "Added text cannot be undone yet. Close without saving to discard it.",
   "edit.addPlaceholder": "Type the line",

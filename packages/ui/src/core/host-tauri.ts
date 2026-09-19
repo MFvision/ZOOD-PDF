@@ -26,6 +26,8 @@ interface TauriInternals {
   invoke: Invoke;
   /** Registers a JS function the Rust side can call back by number. */
   transformCallback: (callback: (payload: never) => void, once?: boolean) => number;
+  /** Forgets a callback registered with `transformCallback` (Tauri 2's core script). */
+  unregisterCallback?: (id: number) => void;
 }
 
 function internals(): TauriInternals | null {
@@ -205,6 +207,9 @@ function listen(host: TauriInternals, event: string, handle: (payload: never) =>
   return () => {
     cancelled = true;
     stop?.();
+    // The callback would otherwise stay registered — and keep whatever its
+    // closure holds alive — for as long as the window is open.
+    host.unregisterCallback?.(handler);
   };
 }
 
