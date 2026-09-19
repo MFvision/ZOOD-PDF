@@ -44,7 +44,7 @@ struct Find {
 
 /// A box on a page, in points from the top-left corner of the page as it is
 /// stored — before its `/Rotate` — which is how the viewer places marks.
-#[derive(Serialize, Clone, Copy, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 pub struct Rect {
     pub x: f32,
     pub y: f32,
@@ -125,6 +125,35 @@ fn bounds(quads: &[Quad]) -> Rect {
     }
 }
 
+/// Each char of `line`, its box in the page's shown space: where the reader
+/// placed it (`char_places`), else an even share of the line's box — good
+/// enough to tell which chars a selection covers (the view's copy), never
+/// used to mark anything for redaction.
+pub(crate) fn char_rects(line: &TextLine) -> Vec<Rect> {
+    let n = line.text.chars().count();
+    let places = char_places(line);
+    if places.len() == n {
+        return places.iter().map(|(_, _, quad)| bounds(&[*quad])).collect();
+    }
+    let step = line.width / n.max(1) as f32;
+    (0..n)
+        .map(|i| {
+            // Right to left, the first char is at the right.
+            let k = if line.direction == warraq_text::Direction::Rtl {
+                n - 1 - i
+            } else {
+                i
+            };
+            Rect {
+                x: line.x + step * k as f32,
+                y: line.y,
+                width: step,
+                height: line.height,
+            }
+        })
+        .collect()
+}
+
 /// The boxes chars `start..end` of `line` were drawn in, in the page's shown
 /// space: one for each stretch of the line that holds only matched chars —
 /// so a word is one box even where its glyphs' advances leave a gap, and a
@@ -133,7 +162,7 @@ fn bounds(quads: &[Quad]) -> Rect {
 /// a stretch of a slanting line is cut into boxes short enough that each
 /// reaches past the letters by no more than a quarter of their height:
 /// never over the next line, nor far along the one it is on.
-fn match_boxes(line: &TextLine, start: usize, end: usize) -> Vec<Rect> {
+pub(crate) fn match_boxes(line: &TextLine, start: usize, end: usize) -> Vec<Rect> {
     let mut chars: Vec<(f32, f32, Quad, bool)> = char_places(line)
         .into_iter()
         .enumerate()

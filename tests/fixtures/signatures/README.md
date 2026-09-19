@@ -21,8 +21,24 @@ name serials or dates may need the same update.
 | `tsa-rsa.p12`, `tsa-rsa.pem`, `tsa-rsa.key` | A TEST timestamp authority (extended key usage timeStamping), for the stand-in authority the tests run |
 | `*.crl` | Each CA's revocation list (the intermediate RSA one lists `revoked-rsa`) |
 | `*.ocsp` | OCSP answers signed by the issuing CA: `good` for the signers and the RSA intermediate, `revoked` for `revoked-rsa` |
+| `empty-signature-field.pdf` | The Cairo invoice with one empty signature field, "التوقيع", as Prepare form makes it (`forms.create`, kind `signature`): the e2e signs into it |
 | `real-tsa/` | `hello.txt`, the request made for it (`hello.tsq`), and three public authorities' answers (DigiCert, Sectigo, FreeTSA), fetched once on 2026-09-18, so a real token is checked without the network |
 
 The certificates name OCSP and CRL addresses under `warraq.test`, a name that
 never resolves: a test that fetches them fails loudly rather than reaching
 anyone.
+
+## `hostile/` — certificates a verifier must not accept as a document signer
+
+`hostile/make.sh` makes a separate set under a root of its own (`hostile-root`,
+EC P-256; keys public, password `warraq-test`), for the tests in
+`packages/core/warraq-sign/src/attacks.rs`:
+
+| File | What it is |
+| --- | --- |
+| `hostile-root.cer` | The root. The tests hold it either as one of Mozilla's roots would be (trusted for web sites) or as a root the person trusts |
+| `web-ca.cer`, `web-server.cer` / `.p12` | A web-server CA (extended key usage serverAuth, as Mozilla's policy has them) and a domain-validated web-server certificate for `attacker.warraq.test` — what anyone can get for free |
+| `forged.p12` | A certificate in the name "وزارة المالية" that the web-server certificate "issued" with its own key (it is no CA) |
+| `docs-ca.cer`, `docs-signer.cer` / `.p12` | A document-signing CA (emailProtection, id-kp-documentSigning) and a signer under it |
+| `keyenc-signer.p12` | A signer whose key usage allows only encryption |
+| `nested-signer.p12` | A signer under a CA that the `pathlen:0` document CA may not have issued |

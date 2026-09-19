@@ -454,6 +454,47 @@ export const arabicBeyondEnglish = {
   },
 };
 
+/**
+ * Strings EmbedPDF writes into its code rather than asking its translations
+ * for — its loading screens, the text-style tooltips, the search panel's
+ * next and previous, a signature's colours, a new list field's options —
+ * by their English. Its bundle is patched to look each one up here as it is
+ * built into Warraq (`vite/embedPatches.ts`); a test fails when a patched
+ * string has no Arabic.
+ */
+export const arabicHardCoded: Record<string, string> = {
+  'Initializing PDF engine...': 'جارٍ تشغيل محرّك العرض…',
+  'Initializing plugins...': 'جارٍ تجهيز أدوات العرض…',
+  'Previous result': 'النتيجة السابقة',
+  'Next result': 'النتيجة التالية',
+  'Align left': 'محاذاة إلى اليسار',
+  'Align center': 'توسيط أفقي',
+  'Align right': 'محاذاة إلى اليمين',
+  'Align top': 'محاذاة إلى الأعلى',
+  'Align middle': 'توسيط عمودي',
+  'Align bottom': 'محاذاة إلى الأسفل',
+  Bold: 'غامق',
+  Italic: 'مائل',
+  Left: 'يسار',
+  Center: 'وسط',
+  Right: 'يمين',
+  Attachment: 'مرفق',
+  'Captured PDF area': 'المنطقة الملتقطة من الصفحة',
+  Black: 'أسود',
+  Blue: 'أزرق',
+  Red: 'أحمر',
+  'Option 1': 'الخيار 1',
+  'Option 2': 'الخيار 2',
+  'Option 3': 'الخيار 3',
+  'Option ': 'الخيار ',
+  'Set zoom': 'نسبة التكبير',
+  '(no date)': '(دون تاريخ)',
+  Guest: 'ضيف',
+  transparent: 'بلا لون',
+  // After a number: "1 بكسل".
+  px: ' بكسل',
+};
+
 type Translations = Locale['translations'];
 
 function merge(base: Translations, extra: Translations): Translations {

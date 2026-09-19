@@ -8,6 +8,7 @@ import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { useAppState, useServices } from '../state/AppContext';
 import { saveBytes } from '../state/saveFile';
+import { SignedChangeNote } from '../signatures/SignedChangeNote';
 import { sizeText } from './tree';
 import './docpanes.css';
 
@@ -168,6 +169,7 @@ export function AttachmentsPane() {
           ))}
         </ul>
       )}
+      <SignedChangeNote warning="signatures.warn.document" />
       <div className="docpane-actions">
         <label className="field">
           <span>{t('attachments.description')}</span>

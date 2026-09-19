@@ -1,20 +1,62 @@
 //! Print: the file as it stands, through the system's print panel.
 //!
-//! A webview's own print prints the app around the document, and the macOS
-//! webview offers none to a page at all. So on macOS the host prints the PDF
-//! itself, with PDFKit: vector pages scaled to the paper, in the standard
-//! print sheet on Warraq's window. Elsewhere there is no print yet, and the
-//! interface does not offer one (`print_available`).
+//! A webview's own print prints the app around the document. So on macOS
+//! the host prints the PDF itself, with PDFKit: vector pages scaled to the
+//! paper, in the standard print sheet on Warraq's window (`print_pdf`).
+//!
+//! Windows and Linux have no PDFKit. There the interface lays the pages out
+//! for print itself — each page drawn by Warraq's core at print resolution,
+//! one to a sheet of paper, the rest of the app hidden by its print style
+//! sheet (`packages/ui/src/print/printPages.ts`) — and the host opens the
+//! webview's own print dialog on that (`print_webview`): WebView2's on
+//! Windows, WebKitGTK's (GTK's) on Linux. On macOS the same path is taken
+//! when `WARRAQ_PRINT=pages` is set, so it can be run here too.
 
 use tauri::ipc::{InvokeBody, Request};
 use tauri::{Runtime, WebviewWindow};
 
 use crate::core_bridge::password_from;
 
-/// Whether this build can print: the interface offers Print only then.
+/// How this build prints: `pdfkit` (macOS: the host prints the PDF), or
+/// `pages` (the interface lays the pages out and the webview prints them).
+pub fn mode() -> &'static str {
+    mode_for(
+        cfg!(target_os = "macos"),
+        std::env::var("WARRAQ_PRINT").ok().as_deref(),
+    )
+}
+
+/// `mode` on a platform with or without PDFKit, run with `WARRAQ_PRINT` = `forced`.
+pub fn mode_for(pdfkit: bool, forced: Option<&str>) -> &'static str {
+    if pdfkit && forced != Some("pages") {
+        "pdfkit"
+    } else {
+        "pages"
+    }
+}
+
+/// Whether this build can print: every desktop build can, one way or the other.
 #[tauri::command]
 pub fn print_available() -> bool {
-    cfg!(target_os = "macos")
+    true
+}
+
+/// Which way this build prints (`mode`).
+#[tauri::command]
+pub fn print_mode() -> &'static str {
+    mode()
+}
+
+/// Opens the webview's print dialog on what the interface laid out for
+/// print: the pages, its print style sheet hiding everything else. wry
+/// prints a webview on every platform — WebView2's `window.print()` on
+/// Windows, a GTK print operation of the WebKitGTK view on Linux, the
+/// WKWebView's own print operation on macOS, whose `window.print()` does
+/// nothing.
+#[tauri::command]
+pub fn print_webview<R: Runtime>(window: WebviewWindow<R>) -> Result<(), String> {
+    crate::core_bridge::debug_log(format!("print the laid-out pages ({})", mode()));
+    window.print().map_err(|e| format!("E_PRINT: {e}"))
 }
 
 /// Opens the print sheet for the PDF in the raw request body — the file as it
@@ -122,5 +164,24 @@ pub mod mac {
         received
             .recv()
             .map_err(|_| "E_PRINT: the print sheet did not open".to_string())?
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// PDFKit where there is one; the laid-out pages elsewhere, and on macOS
+    /// on request — which is how that path is run on this Mac.
+    #[test]
+    fn prints_with_pdfkit_on_macos_and_the_pages_elsewhere() {
+        assert_eq!(mode_for(true, None), "pdfkit");
+        assert_eq!(mode_for(true, Some("pdfkit")), "pdfkit");
+        assert_eq!(mode_for(true, Some("pages")), "pages");
+        assert_eq!(mode_for(false, None), "pages");
+        assert_eq!(mode_for(false, Some("pdfkit")), "pages");
+        assert!(print_available());
+        #[cfg(not(target_os = "macos"))]
+        assert_eq!(mode(), "pages");
     }
 }

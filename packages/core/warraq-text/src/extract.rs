@@ -569,6 +569,8 @@ struct Cluster {
     x: f32,
     adv: f32,
     text: String,
+    /// Index of its base glyph in content order.
+    ci: usize,
 }
 
 /// Group glyphs into lines, order clusters by position, attach marks, and
@@ -581,6 +583,132 @@ fn glyph_text(g: &PositionedGlyph) -> &str {
         .as_deref()
         .filter(|t| !t.is_empty())
         .unwrap_or(PLACEHOLDER)
+}
+
+/// True for a glyph that may be attached cursively to its neighbours: a letter
+/// of a joining script, or a glyph nothing identified, read as part of the
+/// word it touches.
+fn joins_cursively(g: &PositionedGlyph) -> bool {
+    use unicode_script::{Script, UnicodeScript};
+    match g.text.as_deref().and_then(|t| t.chars().next()) {
+        None => true,
+        Some(c) => {
+            c == '\u{0640}'
+                || (c.is_alphabetic()
+                    && matches!(
+                        c.script(),
+                        Script::Arabic | Script::Syriac | Script::Nko | Script::Mandaic
+                    ))
+        }
+    }
+}
+
+/// The baseline each glyph of a run is read on, for grouping it into lines.
+///
+/// Most text is drawn glyph by glyph on its baseline, and a glyph's own `y`
+/// is that baseline. Nastaliq is not: cursive attachment sets each word down
+/// on the baseline only at its last letter, on the left, and climbs every
+/// letter to the right of it higher, to more than an em at the first. Grouped
+/// by their own `y`, the tops of the long words fell out of their line (the
+/// corpus's Urdu page read "ہ س نستعل ہ" as a line of its own), and with
+/// tighter leading they would fall into the line above.
+///
+/// `run` is one angle's glyphs in content order, each with its position in
+/// that angle's frame. Glyphs drawn one after the other whose boxes touch
+/// along the baseline are one stretch of pen; within it, left to right, a
+/// letter of a joining script that touches the letter on its left, is not
+/// below that letter's baseline and climbs no more than a step a letter can,
+/// is read on that letter's baseline. Anything else — spaces, digits, Latin
+/// raised for a superscript, a cell of a table a gap away — keeps its own.
+fn cascade_baselines(run: &[((f32, f32), &PositionedGlyph)]) -> Vec<f32> {
+    let mut base: Vec<f32> = run.iter().map(|((_, y), _)| *y).collect();
+    let slack = |a: &PositionedGlyph, b: &PositionedGlyph| 0.15 * a.size.max(b.size).max(1.0);
+    let touch = |i: usize, j: usize| -> bool {
+        let (((ix, _), a), ((jx, _), b)) = (run[i], run[j]);
+        let s = slack(a, b);
+        a.advance > 0.0 && b.advance > 0.0 && ix <= jx + b.advance + s && jx <= ix + a.advance + s
+    };
+    let mut start = 0;
+    while start < run.len() {
+        let mut end = start + 1;
+        while end < run.len() && touch(end - 1, end) {
+            end += 1;
+        }
+        let mut stretch: Vec<usize> = (start..end).collect();
+        stretch.sort_by(|a, b| run[*a].0 .0.total_cmp(&run[*b].0 .0));
+        for w in stretch.windows(2) {
+            let (left, right) = (w[0], w[1]);
+            let (((lx, ly), l), ((rx, ry), r)) = (run[left], run[right]);
+            let size = l.size.max(r.size).max(1.0);
+            let climbs = l.font == r.font
+                && (l.size - r.size).abs() <= 0.1 * size
+                && joins_cursively(l)
+                && joins_cursively(r)
+                && rx <= lx + l.advance + slack(l, r)
+                && (ry - ly).abs() <= size
+                && ry <= base[left] + 0.25 * size
+                && ry >= base[left] - 2.0 * size;
+            if climbs {
+                base[right] = base[left];
+            }
+        }
+        start = end;
+    }
+    base
+}
+
+/// Where each glyph of a line stands along it, for putting the line in
+/// visual order: its own position along the baseline, except where the order
+/// it was drawn in says otherwise by a kerning slip.
+///
+/// A font may kern a narrow letter in under its neighbour: Amiri draws the
+/// alef of كتابا to the taa's left, yet puts its origin a third of a point to
+/// the taa's right, and read by origin the word came back "كاتبا". Producers
+/// draw a stretch of pen in one direction — visual order, left to right, or
+/// logical, right to left — so a glyph that steps back against that
+/// direction by less than half the narrower advance was drawn after its
+/// neighbour on purpose, and is put just after it. A whole glyph back is a
+/// real change of direction (a number drawn forwards in a line drawn
+/// backwards) and is left alone.
+///
+/// `drawn` is the line's glyphs in content order: content index, position
+/// along the baseline, advance, size. `consecutive` says whether two content
+/// indices follow each other among all the page's letters.
+fn reading_keys(
+    drawn: &[(usize, f32, f32, f32)],
+    consecutive: &dyn Fn(usize, usize) -> bool,
+) -> Vec<f32> {
+    let mut keys: Vec<f32> = drawn.iter().map(|g| g.1).collect();
+    let touch = |a: &(usize, f32, f32, f32), b: &(usize, f32, f32, f32)| {
+        let slack = 0.15 * a.3.max(b.3).max(1.0);
+        a.2 > 0.0 && b.2 > 0.0 && a.1 <= b.1 + b.2 + slack && b.1 <= a.1 + a.2 + slack
+    };
+    let mut start = 0;
+    while start < drawn.len() {
+        let mut end = start + 1;
+        while end < drawn.len()
+            && consecutive(drawn[end - 1].0, drawn[end].0)
+            && touch(&drawn[end - 1], &drawn[end])
+        {
+            end += 1;
+        }
+        let run = &drawn[start..end];
+        let size = run.iter().map(|g| g.3).fold(1.0, f32::max);
+        let span = run[run.len() - 1].1 - run[0].1;
+        // Only a stretch long enough to have a direction has one.
+        if run.len() >= 3 && span.abs() >= 0.5 * size {
+            let d = span.signum();
+            for i in start + 1..end {
+                let back = (keys[i - 1] - drawn[i].1) * d;
+                let narrower = drawn[i - 1].2.min(drawn[i].2);
+                if back > 0.0 && back <= 0.5 * narrower && back <= 0.2 * size {
+                    keys[i] = keys[i - 1] + d * 1e-3;
+                }
+            }
+        }
+        start = end;
+    }
+    keys
 }
 
 pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
@@ -648,27 +776,34 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
         } else {
             slant
         };
-        let mut sorted: Vec<(usize, &PositionedGlyph)> = indexed
+        let by_position = |a: &(f32, f32), b: &(f32, f32)| {
+            a.1.partial_cmp(&b.1)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal))
+        };
+        let (mut angle_marks, bases): (LineGlyphs, LineGlyphs) = indexed
             .iter()
             .copied()
             .filter(|(_, g)| bucket(g.angle) == b)
+            .partition(|(_, g)| is_mark(g));
+        angle_marks.sort_by(|a, b| by_position(&frame(a.1, angle), &frame(b.1, angle)));
+        marks.extend(angle_marks);
+        // Bases go down the page by the baseline they are read on, which is
+        // their own `y` except in a cascade (see `cascade_baselines`).
+        let framed: Vec<((f32, f32), &PositionedGlyph)> =
+            bases.iter().map(|(_, g)| (frame(g, angle), *g)).collect();
+        let baselines = cascade_baselines(&framed);
+        let mut sorted: Vec<(usize, &PositionedGlyph, (f32, f32))> = bases
+            .iter()
+            .zip(&framed)
+            .zip(baselines)
+            .map(|(((ci, g), ((x, _), _)), y)| (*ci, *g, (*x, y)))
             .collect();
-        sorted.sort_by(|a, b| {
-            let (ax, ay) = frame(a.1, angle);
-            let (bx, by) = frame(b.1, angle);
-            ay.partial_cmp(&by)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then(ax.partial_cmp(&bx).unwrap_or(std::cmp::Ordering::Equal))
-        });
+        sorted.sort_by(|a, b| by_position(&a.2, &b.2));
         // A new angle never continues the previous angle's last line: the two
         // `y`s are measured in different frames and only coincide by accident.
         let first_line_of_angle = lines.len();
-        for (ci, g) in sorted {
-            if is_mark(g) {
-                marks.push((ci, g));
-                continue;
-            }
-            let (_, gy) = frame(g, angle);
+        for (ci, g, (_, gy)) in sorted {
             let continuing = lines.len() > first_line_of_angle;
             match lines.last_mut() {
                 Some((y, size, v))
@@ -692,6 +827,40 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
                 .partial_cmp(&frame(b.1, *angle).0)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
+    }
+    // Then by where each glyph stands in the order it was drawn in, where
+    // that differs from its origin by a kerning slip (see `reading_keys`).
+    let mut all_bases: Vec<usize> = lines
+        .iter()
+        .flat_map(|(_, _, v)| v.iter().map(|(ci, _)| *ci))
+        .collect();
+    all_bases.sort_unstable();
+    let consecutive = |a: usize, b: usize| {
+        let next = all_bases.partition_point(|c| *c <= a);
+        all_bases.get(next) == Some(&b)
+    };
+    for ((_, _, v), angle) in lines.iter_mut().zip(&line_angles) {
+        let mut drawn: Vec<usize> = (0..v.len()).collect();
+        drawn.sort_by_key(|i| v[*i].0);
+        let along: Vec<(usize, f32, f32, f32)> = drawn
+            .iter()
+            .map(|i| {
+                let (ci, g) = v[*i];
+                (ci, frame(g, *angle).0, g.advance, g.size)
+            })
+            .collect();
+        let keys = reading_keys(&along, &consecutive);
+        let mut key_of = vec![0f32; v.len()];
+        for (k, i) in drawn.into_iter().enumerate() {
+            key_of[i] = keys[k];
+        }
+        let mut order: Vec<usize> = (0..v.len()).collect();
+        order.sort_by(|a, b| {
+            key_of[*a]
+                .partial_cmp(&key_of[*b])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        *v = order.into_iter().map(|i| v[i]).collect();
     }
 
     // 2. attach marks: the owning base is content-adjacent and shares the mark's pen origin
@@ -717,10 +886,15 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
             let (li, pos) = where_base[bi];
             glyph_text(lines[li].2[pos].1).trim().is_empty()
         };
+        // Near the line's baseline, or near the letter's own: a cascade lifts
+        // a letter an em and more above its line, and its marks with it.
         let on_same_line = |bi: &usize| -> bool {
-            let (li, _) = where_base[bi];
-            (lines[li].0 - frame(m, line_angles[li]).1).abs()
-                <= 0.8 * lines[li].1.max(m.size).max(1.0)
+            let (li, pos) = where_base[bi];
+            let a = line_angles[li];
+            let reach = 0.8 * lines[li].1.max(m.size).max(1.0);
+            let my = frame(m, a).1;
+            (lines[li].0 - my).abs() <= reach
+                || (frame(lines[li].2[pos].1, a).1 - my).abs() <= reach
         };
         // a combining mark belongs to a letter, never to a space
         let chosen = candidates
@@ -770,11 +944,12 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
     for (li, ((y, size, bases), angle)) in lines.into_iter().zip(line_angles).enumerate() {
         let mut clusters: Vec<Cluster> = bases
             .iter()
-            .map(|(_, g)| Cluster {
+            .map(|(ci, g)| Cluster {
                 // along the baseline, so word gaps are measured the way the run reads
                 x: frame(g, angle).0,
                 adv: g.advance,
                 text: glyph_text(g).to_string(),
+                ci: *ci,
             })
             .collect();
         for (pos, m) in &attached[li] {
@@ -787,9 +962,11 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
                     c.text.push_str(t);
                     continue;
                 }
-                // recovered dot glyphs sit clearly above or below the baseline (y grows downwards);
-                // a blob on the baseline is a small letter form, not a dot
-                let dy = frame(m, angle).1 - y;
+                // recovered dot glyphs sit clearly above or below their letter's baseline (y grows
+                // downwards), which a cascade may have lifted off the line's; a blob on the
+                // baseline is a small letter form, not a dot
+                let base_y = bases.get(*pos).map(|(_, b)| frame(b, angle).1).unwrap_or(y);
+                let dy = frame(m, angle).1 - base_y;
                 if dy.abs() < 0.08 * size {
                     c.text.push('\u{FFFD}');
                 } else if dy > 0.0 {
@@ -828,7 +1005,42 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
         // cluster its own advance, an inserted space the gap it stands for.
         let mut drawn: Vec<(f32, f32)> = vec![];
         let mut prev_end: Option<f32> = None;
+        // A space the pen did not move past is no gap between words: Word
+        // draws some with the next letter on top of them, or hangs a
+        // paragraph's last one over its full stop, and read on whichever side
+        // they sort to they split a word. What says so is the glyph drawn
+        // just after the space: it starts where the space starts (or, drawn
+        // leftwards, ends where it ends), and covers it. A letter drawn
+        // before a space may overhang it by its kerning (Amiri's ك in the
+        // editor's own text), and a later run may overlap it (a number set
+        // in another font): neither moved the pen back, and the space stays.
+        let is_space = |c: &Cluster| !c.text.is_empty() && c.text.trim().is_empty();
+        let at: std::collections::HashMap<usize, usize> = clusters
+            .iter()
+            .enumerate()
+            .map(|(k, c)| (c.ci, k))
+            .collect();
+        let pen_stayed = |c: &Cluster| -> bool {
+            let after = all_bases.partition_point(|b| *b <= c.ci);
+            let Some(o) = all_bases
+                .get(after)
+                .and_then(|ci| at.get(ci))
+                .map(|k| &clusters[*k])
+            else {
+                return false;
+            };
+            let same_place = 0.25 * c.adv;
+            !is_space(o)
+                && o.adv > 0.0
+                && c.adv > 0.0
+                && ((o.x - c.x).abs() <= same_place
+                    || ((o.x + o.adv) - (c.x + c.adv)).abs() <= same_place)
+                && (c.x + c.adv).min(o.x + o.adv) - c.x.max(o.x) >= 0.8 * c.adv
+        };
         for c in &clusters {
+            if is_space(c) && pen_stayed(c) {
+                continue;
+            }
             if let Some(pe) = prev_end {
                 let gap = c.x - pe;
                 if gap > gap_threshold
@@ -1212,6 +1424,288 @@ mod tests {
         // An empty text: decoration, not read at all.
         let dropped = with_actual_text(glyphs, &inside, &[Some(String::new())]);
         assert_eq!(dropped.len(), 1);
+    }
+
+    /// A line set in Nastaliq, as Chrome draws Noto Nastaliq Urdu: each word
+    /// sits on the baseline only at its last letter, on the left, and every
+    /// letter to the right of it is attached higher, `rise` ems a letter, up
+    /// to the word's first letter. Spaces sit on the baseline. The glyphs come
+    /// in visual order, left to right, unless `logical` draws them the way a
+    /// right-to-left producer may: first letter first.
+    fn nastaliq_line(
+        words: &[&str],
+        baseline: f32,
+        rise: f32,
+        logical: bool,
+    ) -> Vec<PositionedGlyph> {
+        let size = 16.0;
+        let glyph = |x: f32, y: f32, advance: f32, text: &str| PositionedGlyph {
+            x,
+            y,
+            angle: 0.0,
+            size,
+            advance,
+            text: Some(text.to_string()),
+            gid: 1,
+            font: 0,
+        };
+        let mut out = vec![];
+        let mut x = 100.0;
+        for (w, word) in words.iter().rev().enumerate() {
+            if w > 0 {
+                out.push(glyph(x, baseline, 3.0, " "));
+                x += 3.0;
+            }
+            for (k, letter) in word.chars().rev().enumerate() {
+                out.push(glyph(
+                    x,
+                    baseline - k as f32 * rise * size,
+                    5.0,
+                    &letter.to_string(),
+                ));
+                x += 5.0;
+            }
+        }
+        if logical {
+            out.reverse();
+        }
+        out
+    }
+
+    fn texts(glyphs: &[PositionedGlyph]) -> Vec<String> {
+        reconstruct_lines(glyphs)
+            .into_iter()
+            .map(|l| l.text)
+            .collect()
+    }
+
+    /// The corpus's Urdu page: a word climbs well over an em from its
+    /// baseline, and read by each glyph's own height the top of every long
+    /// word fell out of its line into a line of its own ("ہ س نستعل ہ").
+    #[test]
+    fn a_nastaliq_word_climbing_from_its_baseline_stays_in_its_line() {
+        let first = ["اردو", "پاکستان", "کی", "قومی", "زبان"];
+        let second = ["اسے", "نستعلیق", "خط", "میں"];
+        for logical in [false, true] {
+            let mut g = nastaliq_line(&first, 73.5, 0.3, logical);
+            g.extend(nastaliq_line(&second, 73.5 + 2.6 * 16.0, 0.3, logical));
+            assert_eq!(
+                texts(&g),
+                [first.join(" "), second.join(" ")],
+                "logical={logical}"
+            );
+        }
+        let lines = reconstruct_lines(&nastaliq_line(&second, 73.5, 0.3, false));
+        assert_eq!(
+            lines[0].y,
+            73.5 - 16.0,
+            "the line's box stands on its baseline"
+        );
+    }
+
+    /// Set tighter, the top of a word on one line comes within half an em of
+    /// the baseline above it; it still belongs to the word it is part of.
+    #[test]
+    fn a_nastaliq_cascade_does_not_join_the_line_above() {
+        let first = ["اردو", "پاکستان", "کی", "قومی", "زبان"];
+        let second = ["اسے", "نستعلیق", "خط", "میں"];
+        let mut g = nastaliq_line(&first, 73.5, 0.2, false);
+        g.extend(nastaliq_line(&second, 73.5 + 1.4 * 16.0, 0.2, false));
+        assert_eq!(texts(&g), [first.join(" "), second.join(" ")]);
+    }
+
+    /// A mark belongs to the letter it sits on, however high a cascade has
+    /// lifted that letter. Measured from the line's baseline, a zabar on the
+    /// first letter of a long word sat nearer the line above, and went there.
+    #[test]
+    fn a_mark_on_a_letter_high_in_a_cascade_stays_with_that_letter() {
+        let first = ["اردو", "پاکستان"];
+        let second = ["اسے", "نستعلیق"];
+        let mut g = nastaliq_line(&first, 73.5, 0.2, false);
+        let mut below = nastaliq_line(&second, 73.5 + 2.0 * 16.0, 0.2, false);
+        let top = below
+            .iter()
+            .position(|g| g.text.as_deref() == Some("ن"))
+            .unwrap();
+        let n = below[top].clone();
+        // Drawn just before its letter, as a shaper orders a right-to-left run.
+        below.insert(
+            top,
+            PositionedGlyph {
+                x: n.x + 1.0,
+                y: n.y - 0.45 * 16.0,
+                advance: 0.0,
+                text: Some("\u{064E}".into()),
+                ..n
+            },
+        );
+        g.extend(below);
+        assert_eq!(texts(&g), [first.join(" "), "اسے نَستعلیق".to_string()]);
+    }
+
+    /// A dot recovered from a skeleton font is read above or below the
+    /// letter it belongs to, not the line: under a letter lifted by a
+    /// cascade it is still above the baseline, and ٮ read as ن, not ب.
+    #[test]
+    fn a_dot_under_a_lifted_letter_is_read_below_it() {
+        let glyph = |x: f32, y: f32, advance: f32, text: &str| PositionedGlyph {
+            x,
+            y,
+            angle: 0.0,
+            size: 16.0,
+            advance,
+            text: Some(text.to_string()),
+            gid: 1,
+            font: 0,
+        };
+        let g = vec![
+            glyph(100.0, 100.0, 5.0, "د"),
+            glyph(106.0, 94.4, 0.0, "\u{0307}"),
+            glyph(105.0, 90.4, 5.0, "ٮ"),
+        ];
+        assert_eq!(texts(&g), ["بد"]);
+    }
+
+    /// Only letters of a joining script that touch climb with their word:
+    /// two table cells apart, or a raised Latin word, keep their own lines.
+    #[test]
+    fn raised_text_that_is_not_a_cascade_keeps_its_own_line() {
+        let run = |text: &str, x0: f32, y: f32| -> Vec<PositionedGlyph> {
+            text.chars()
+                .enumerate()
+                .map(|(i, c)| PositionedGlyph {
+                    x: x0 + i as f32 * 10.0,
+                    y,
+                    angle: 0.0,
+                    size: 16.0,
+                    advance: 10.0,
+                    text: Some(c.to_string()),
+                    gid: 1,
+                    font: 0,
+                })
+                .collect()
+        };
+        // a cell to the right, 16 units away and raised 0.7 em
+        let mut g = run(&to_visual("كتاب"), 100.0, 100.0);
+        g.extend(run(&to_visual("قلم"), 156.0, 100.0 - 0.7 * 16.0));
+        assert_eq!(texts(&g), ["قلم", "كتاب"]);
+        // a Latin word touching the one before it, raised 0.7 em
+        let mut g = run("base", 100.0, 100.0);
+        g.extend(run("up", 140.0, 100.0 - 0.7 * 16.0));
+        assert_eq!(texts(&g), ["up", "base"]);
+    }
+
+    /// Amiri kerns the alef of كتابا in under the taa: the alef is drawn to
+    /// the taa's left but its origin sits a third of a point to the right of
+    /// the taa's, and read by origin the word came back "كاتبا". The order the
+    /// glyphs were drawn in has them right, whichever way the producer drew.
+    #[test]
+    fn a_letter_kerned_under_its_neighbour_keeps_the_order_it_was_drawn_in() {
+        // Chrome's glyphs for "كِتَابًا،" (from the corpus), left to right.
+        let glyph = |x: f32, advance: f32, text: &str| PositionedGlyph {
+            x,
+            y: 351.0,
+            angle: 0.0,
+            size: 19.99,
+            advance,
+            text: Some(text.to_string()),
+            gid: 1,
+            font: 0,
+        };
+        let drawn = vec![
+            glyph(376.57, 7.38, "،"),
+            glyph(383.95, 4.58, "ا"),
+            glyph(386.28, 7.94, "ب\u{064B}"),
+            glyph(394.22, 4.58, "ا"),
+            glyph(393.86, 9.32, "ت\u{064E}"),
+            glyph(400.88, 9.28, "ك\u{0650}"),
+        ];
+        assert_eq!(texts(&drawn), ["كِتَابًا،"]);
+        let mut logical = drawn.clone();
+        logical.reverse();
+        assert_eq!(texts(&logical), ["كِتَابًا،"]);
+    }
+
+    /// A number drawn left to right inside a line drawn right to left steps
+    /// back a whole digit at a time: that is its order, not a kerning slip.
+    #[test]
+    fn a_number_drawn_forwards_inside_a_line_drawn_backwards_reads_as_before() {
+        let visual = to_visual("عدد 12 كتاب");
+        let mut g = glyphs_from_visual(&visual, 100.0);
+        // Drawn in logical order: the Arabic right to left, the digits left to right.
+        let digits: Vec<usize> = (0..g.len())
+            .filter(|i| {
+                g[*i]
+                    .text
+                    .as_deref()
+                    .is_some_and(|t| t.chars().all(|c| c.is_ascii_digit()))
+            })
+            .collect();
+        let mut order: Vec<usize> = (0..g.len()).rev().collect();
+        let first = order.iter().position(|i| digits.contains(i)).unwrap();
+        order[first..first + digits.len()].reverse();
+        g = order.into_iter().map(|i| g[i].clone()).collect();
+        assert_eq!(texts(&g), ["عدد 12 كتاب"]);
+    }
+
+    /// Word leaves space glyphs drawn on top of letters (the World Bank
+    /// briefing's "فضلا", a paragraph's hanging space over its full stop).
+    /// Sorted to one side of the letter or the other, each read as a gap
+    /// inside a word ("وف ضلا", "وفض لا"); a space under a letter is none.
+    #[test]
+    fn a_space_drawn_over_a_letter_is_not_a_gap() {
+        let glyph = |x: f32, advance: f32, text: &str| PositionedGlyph {
+            x,
+            y: 555.79,
+            angle: 0.0,
+            size: 13.56,
+            advance,
+            text: Some(text.to_string()),
+            gid: 1,
+            font: 0,
+        };
+        let before = vec![
+            glyph(500.19, 7.13, "ع"),
+            glyph(492.0, 8.19, "ن"),
+            glyph(507.27, 3.77, " "),
+            glyph(510.99, 8.14, "لا"),
+        ];
+        for over in [519.34, 519.10] {
+            let mut g = before.clone();
+            g.extend([
+                glyph(over, 3.77, " "),
+                glyph(519.22, 11.47, "ض"),
+                glyph(530.73, 3.63, "ف"),
+                glyph(534.36, 5.86, "و"),
+            ]);
+            assert_eq!(texts(&g), ["وفضلا عن"], "space at {over}");
+        }
+        // The Wikibooks guide's "عام 2001": the space after عام is drawn
+        // inside the advance of the number's last digit, which another run
+        // drew later. The pen did move past that space: it is a gap.
+        let mut g = vec![
+            glyph(205.74, 3.73, "م"),
+            glyph(209.57, 2.53, "ا"),
+            glyph(212.20, 5.81, "ع"),
+        ];
+        g.insert(0, glyph(202.63, 3.07, " "));
+        for (i, d) in "2001".chars().enumerate() {
+            g.push(glyph(183.67 + 5.52 * i as f32, 5.60, &d.to_string()));
+        }
+        g.push(glyph(177.59, 2.70, "ب"));
+        g.push(glyph(180.23, 3.07, " "));
+        assert_eq!(texts(&g), ["عام 2001 ب"]);
+        // What Warraq's own editor writes in Amiri: كتبها ends in a ك kerned
+        // three points into the space after it, so the ك's advance covers
+        // most of that space, but the pen moved past it before جديدة.
+        let g = vec![
+            glyph(488.38, 2.93, "ت"),
+            glyph(491.31, 7.91, "ك"),
+            glyph(496.29, 3.50, " "),
+            glyph(499.79, 4.43, "ة"),
+            glyph(504.22, 5.77, "د"),
+        ];
+        assert_eq!(texts(&g), ["دة كت"]);
     }
 
     #[test]

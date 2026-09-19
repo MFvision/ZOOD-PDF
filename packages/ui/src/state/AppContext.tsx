@@ -17,15 +17,18 @@ import {
   pickFiles,
   pickPdfFile,
   printAvailable,
+  printMode,
   printPdf,
+  printWebview,
   savePdfFile,
   takeStartupFile,
 } from '../core/host-tauri';
 import type { PickedFile } from '../core/host-tauri';
 import type { CoreClient, RemoteDocument } from '../core/client';
 import type { PluginRegistry } from '@embedpdf/react-pdf-viewer';
-import { EMBED_COMMANDS, addRedactionMarks, capability, commandActive, disabledCategories, runCommand, scrollToPage, setKeyboard, watch, watchPendingRedactions } from '../embed/embedControl';
+import { EMBED_COMMANDS, addRedactionMarks, capability, commandActive, disabledCategories, printAllowed, runCommand, scrollToPage, setKeyboard, watch, watchPendingRedactions } from '../embed/embedControl';
 import type { RedactionMark, ViewCommand } from '../embed/embedControl';
+import { installViewText } from '../embed/embedText';
 import { uuidV4 } from '@embedpdf/models';
 import { loadEditFont } from '../edit/editFont';
 import { canRedo as canRedoStack, canUndo as canUndoStack, redo as redoStack, undo as undoStack } from '../edit/editStack';
@@ -33,12 +36,14 @@ import type { EditEntry, StackStep } from '../edit/editStack';
 import type { TKey } from '../i18n/messages';
 import { appReducer, createInitialState, warraqOwnsDocument } from './appReducer';
 import type { AppAction, AppState } from './appReducer';
-import { readPreferences, writePreferences } from './preferences';
+import { readJson, readPreferences, writePreferences } from './preferences';
+import { drawPages, mountSheet } from '../print/printPages';
 import { addRecent, clearRecent as clearStoredRecent, readRecent } from './recent';
 import { isPdf, namedLikePdf } from './pdfFile';
 import { combinedFileName, downloadPdf, extractedFileName, pdfFileName, saveBytes, splitArchiveName } from './saveFile';
 import { zipSync } from 'fflate';
 import { findTool } from '../tools/tools';
+import { keepPolicy, mentionsSignature } from '../signatures/marker';
 import type { OcrLanguage } from '../ocr/engine';
 import { recognizeFile } from '../ocr/run';
 import type { OcrProgress, OcrScope } from '../ocr/run';
@@ -95,6 +100,15 @@ export interface DropTarget {
 /** What became of inserting another file's pages. */
 export type InsertOutcome = 'inserted' | 'locked' | 'wrongPassword' | 'failed';
 
+/** How Print prints: the host prints the file (PDFKit), EmbedPDF does, or the pages are laid out here. */
+export type PrintWay = 'pdfkit' | 'embed' | 'pages';
+
+/** Pages drawn so far for printing by pages, of how many. */
+export interface PrintProgress {
+  done: number;
+  total: number;
+}
+
 /** What a page change answers: the document's new shape. */
 interface PageShape {
   pageCount: number;
@@ -110,6 +124,12 @@ export interface AppServices {
    * buffer by identity means the file changed and the view reopens it.
    */
   documentBytes: ArrayBuffer | null;
+  /**
+   * The file's own bytes as the view was given them: `documentBytes`, or —
+   * while the view shows other layers by choice — the file with its own
+   * layer visibility, not the view's copy. What its signatures are checked on.
+   */
+  fileBytes: ArrayBuffer | null;
   /** The password the open file was unlocked with, for the EmbedPDF view. Memory only. */
   documentPassword: string | undefined;
   recent: string[];
@@ -177,6 +197,10 @@ export interface AppServices {
    * route to the system one yet, so it offers no Print rather than a dead one.
    */
   canPrint: boolean;
+  /** Printing by pages: how far drawing the pages for print has come; null when nothing is being prepared. */
+  printing: PrintProgress | null;
+  /** Stops preparing a print by pages. */
+  cancelPrint: () => void;
   /** Brings a page (one-based) to the top of the view on screen. */
   goToPage: (page: number) => void;
   /** Organize pages: one change to the pages of the open document; `blobs` go with it to the core. `false` if it failed. */
@@ -330,20 +354,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // default configuration shows them, and the file keeps its own until the
   // person keeps these with it. `layerOwnRef` is the file with its own.
   const layerOwnRef = useRef<ArrayBuffer | null>(null);
+  // The same, for what renders from it (`fileBytes`).
+  const [layerOwn, setLayerOwn] = useState<ArrayBuffer | null>(null);
   // A redaction was marked since `layerOwnRef` was taken: its bytes still
   // hold what the redaction removes, so nothing may be kept as an update of
   // them. Unlike `redactedRef` below, which follows the bytes the view was
   // given, a switch of engines or a replaced view does not clear it: only
   // taking new own bytes does.
   const layerOwnRedactedRef = useRef(false);
+  const keepLayerOwn = useCallback((bytes: ArrayBuffer | null) => {
+    layerOwnRef.current = bytes;
+    layerOwnRedactedRef.current = false;
+    setLayerOwn(bytes);
+  }, []);
   const layersShownRef = useRef<readonly string[] | null>(null);
   const [layersShown, setLayersShown] = useState<readonly string[] | null>(null);
   const forgetLayerView = useCallback(() => {
-    layerOwnRef.current = null;
-    layerOwnRedactedRef.current = false;
+    keepLayerOwn(null);
     layersShownRef.current = null;
     setLayersShown(null);
-  }, []);
+  }, [keepLayerOwn]);
   // The page to come back to when the view reopens a copy of the same file.
   const returnToPage = useRef<number | null>(null);
   const syncedRevision = useRef(0);
@@ -672,23 +702,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * update sealed with the file's own key. A file with nothing to redraw comes
    * back as it was, and a failure never costs the save.
    */
-  const withArabicAppearances = useCallback(
-    async (bytes: ArrayBuffer): Promise<ArrayBuffer> => {
-      try {
-        const font = await loadEditFont('amiri');
-        const { blobs } = await client.callStatic<{ fields: number; comments: number }>(
-          'forms.fix_appearances',
-          { password: passwordRef.current ?? null },
-          [bytes.slice(0), font.slice().buffer],
-        );
-        return blobs[0] ?? bytes;
-      } catch {
-        return bytes;
-      }
-    },
-    [client],
-  );
-
   // The bytes EmbedPDF was given, and whether redaction marks were made on
   // them since: saves are kept as an update of those bytes, but not after a
   // redaction, whose point is that nothing under it survives anywhere.
@@ -705,17 +718,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [pendingRedactions]);
 
+  const withArabicAppearances = useCallback(
+    async (bytes: ArrayBuffer): Promise<ArrayBuffer> => {
+      try {
+        const font = await loadEditFont('amiri');
+        // The file as the view opened it: when it is signed, only what
+        // changed since is redrawn — a third party's appearances redrawn
+        // after the signature would show it changed on every save.
+        const opened = embedBytesRef.current;
+        const { blobs } = await client.callStatic<{ fields: number; comments: number }>(
+          'forms.fix_appearances',
+          { password: passwordRef.current ?? null },
+          [bytes.slice(0), font.slice().buffer, ...(opened && opened.byteLength <= REBASE_LIMIT ? [opened.slice(0)] : [])],
+        );
+        return blobs[0] ?? bytes;
+      } catch {
+        return bytes;
+      }
+    },
+    [client],
+  );
+
   /**
    * EmbedPDF's save — PDFium writes a file whole — kept as an update of the
    * bytes it opened (`file.rebase`): what was signed stays signed, and a file
    * nothing was done to comes back as it was. Not after a redaction, nor for
-   * a very large file, nor when the protection changed (the core says so);
-   * then the rewrite is the file, as before.
+   * a very large unsigned file, nor when the protection changed (the core
+   * says so); then the rewrite is the file, as before. A large signed file is
+   * kept as an update all the same, and if even that cannot be done the save
+   * is refused (`E_SIGNED_TOO_LARGE`) rather than written over its signatures.
    */
   const keepOwnBytes = useCallback(
     async (rewritten: ArrayBuffer): Promise<ArrayBuffer> => {
       const own = embedBytesRef.current;
-      if (!own || redactedRef.current || own.byteLength > REBASE_LIMIT) return rewritten;
+      if (!own) return rewritten;
+      const policy = keepPolicy(own.byteLength, REBASE_LIMIT, redactedRef.current, () => mentionsSignature(own));
+      if (policy === 'rewrite') return rewritten;
       try {
         const { result, blobs } = await client.callStatic<{ rebased: boolean }>(
           'file.rebase',
@@ -724,6 +762,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
         return result.rebased && blobs[0] ? blobs[0] : rewritten;
       } catch {
+        if (policy === 'rebaseOrRefuse') throw new Error('E_SIGNED_TOO_LARGE: the signed file could not be kept as an update');
         return rewritten;
       }
     },
@@ -767,6 +806,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const engine = registry.getEngine() as unknown as { saveAsCopy(document: unknown): Task<ArrayBuffer> };
     return withArabicAppearances(await engine.saveAsCopy(active).toPromise());
   }, [withArabicAppearances]);
+
+  // EmbedPDF's search and copy read the file through Warraq's engine, which
+  // reads Arabic in logical order where PDFium does not (embed/embedText.ts).
+  useEffect(() => {
+    if (!embed) return;
+    return installViewText(embed, {
+      own: () => (warraqOwnsDocument(stateRef.current) || stateRef.current.switching ? null : documentRef.current),
+      fromView: bytesFromEmbed,
+      open: (bytes) => client.open(bytes, passwordRef.current),
+    });
+  }, [embed, bytesFromEmbed, client]);
 
   /**
    * The handover between the two engines. Opening Edit text or Organize pages,
@@ -1114,8 +1164,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const fileBytesForChange = useCallback(async (): Promise<ArrayBuffer | null> => {
     if (warraqOwnsDocument(stateRef.current)) return currentFileBytes();
     const rewritten = await bytesFromEmbed();
-    return rewritten ? keepOwnBytes(rewritten) : null;
-  }, [currentFileBytes, bytesFromEmbed, keepOwnBytes]);
+    // With the file's own layer visibility: a signature (or a mark) made now
+    // must not take in the layers the view shows by choice.
+    return rewritten ? withOwnLayers(await keepOwnBytes(rewritten)) : null;
+  }, [currentFileBytes, bytesFromEmbed, keepOwnBytes, withOwnLayers]);
 
   const combineFiles = useCallback(
     async (files: readonly CombineInput[]) => {
@@ -1176,8 +1228,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           .callStatic('layers.show', { password: passwordRef.current ?? null, visible }, [bytes.slice(0)])
           .catch(() => ({ blobs: [] as ArrayBuffer[] }));
         if (blobs[0]) {
-          layerOwnRef.current = bytes;
-          layerOwnRedactedRef.current = false;
+          keepLayerOwn(bytes);
           shown = blobs[0];
         } else forgetLayerView();
       }
@@ -1198,7 +1249,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         keepEditHistory: options.textUnchanged === true,
       });
     },
-    [client, forgetLayerView],
+    [client, forgetLayerView, keepLayerOwn],
   );
 
   /**
@@ -1214,15 +1265,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!own) return;
       const { blobs } = await client.callStatic('layers.show', { password: passwordRef.current ?? null, visible }, [own.slice(0)]);
       if (!blobs[0]) return;
-      layerOwnRef.current = own;
-      layerOwnRedactedRef.current = false;
+      keepLayerOwn(own);
       layersShownRef.current = [...visible];
       setLayersShown([...visible]);
       returnToPage.current = stateRef.current.currentPage;
       embedBytesRef.current = blobs[0];
       setDocumentBytes(blobs[0]);
     },
-    [client, readFile],
+    [client, readFile, keepLayerOwn],
   );
 
   /** The layers shown now become the file's own: it is changed, to be saved. */
@@ -1285,13 +1335,73 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const organizing = state.rightPane.activeTool === 'organize' && state.document !== null;
 
-  // Desktop print: the host says whether it can (PDFKit, macOS).
+  // Desktop print: the host says whether it can, and how — PDFKit prints the
+  // file itself on macOS; elsewhere the pages are laid out here for the
+  // webview to print (print/printPages.ts). A browser prints through
+  // EmbedPDF, or by pages when `warraq.print` is "pages" (how that path is
+  // tested in a browser).
   const [nativePrint, setNativePrint] = useState(false);
+  const [printWay, setPrintWay] = useState<PrintWay>(() =>
+    !isTauriHost() && readJson<string>('warraq.print', '') === 'pages' ? 'pages' : 'embed',
+  );
   useEffect(() => {
-    if (isTauriHost()) void printAvailable().then(setNativePrint, () => setNativePrint(false));
+    if (!isTauriHost()) return;
+    void printAvailable().then(setNativePrint, () => setNativePrint(false));
+    void printMode().then(setPrintWay, () => setPrintWay('pdfkit'));
   }, []);
 
+  const [printing, setPrinting] = useState<PrintProgress | null>(null);
+  const printAbort = useRef<AbortController | null>(null);
+  const printUndo = useRef<(() => void) | null>(null);
+
+  const cancelPrint = useCallback(() => printAbort.current?.abort(), []);
+  // Another file, or none: what was being drawn for print is not it any more.
+  useEffect(() => () => printAbort.current?.abort(), [document]);
+
+  const printByPages = useCallback(async () => {
+    if (printAbort.current) return;
+    const registry = embedRef.current;
+    if (registry && !printAllowed(registry)) {
+      dispatch({ type: 'DOCUMENT_FAILED', error: 'print.forbidden' });
+      return;
+    }
+    const abort = new AbortController();
+    printAbort.current = abort;
+    printUndo.current?.();
+    printUndo.current = null;
+    let reading: RemoteDocument | null = null;
+    try {
+      const bytes = await currentFileBytes();
+      if (!bytes) return;
+      reading = await client.open(bytes, passwordRef.current);
+      setPrinting({ done: 0, total: reading.pageCount });
+      const pages = await drawPages(reading, (done, total) => setPrinting({ done, total }), abort.signal);
+      const undo = await mountSheet(pages);
+      printUndo.current = undo;
+      // The sheet goes when printing is over: the dialog closed, printed or not.
+      window.addEventListener(
+        'afterprint',
+        () => {
+          if (printUndo.current !== undo) return;
+          undo();
+          printUndo.current = null;
+        },
+        { once: true },
+      );
+      setPrinting(null);
+      if (isTauriHost()) await printWebview();
+      else window.print();
+    } catch (error) {
+      if ((error as Error)?.name !== 'AbortError') dispatch({ type: 'DOCUMENT_FAILED', error: 'print.failed' });
+    } finally {
+      void reading?.free();
+      printAbort.current = null;
+      setPrinting(null);
+    }
+  }, [client, currentFileBytes]);
+
   const printFile = useCallback(async () => {
+    if (printWay === 'pages') return printByPages();
     const bytes = await currentFileBytes();
     if (!bytes) return;
     try {
@@ -1300,14 +1410,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const forbidden = String(error).includes('E_PRINT_FORBIDDEN');
       dispatch({ type: 'DOCUMENT_FAILED', error: forbidden ? 'print.forbidden' : 'print.failed' });
     }
-  }, [currentFileBytes]);
+  }, [currentFileBytes, printWay, printByPages]);
 
   const viewCommand = useCallback(
     (command: ViewCommand) => {
       // Mid-switch neither engine holds the current file.
       if (stateRef.current.switching) return;
-      // The desktop prints the file itself, with the system's print sheet.
-      if (command === 'print' && isTauriHost()) {
+      // The desktop prints the file itself, or its pages laid out for print,
+      // in the system's print dialog — from either view.
+      if (command === 'print' && (isTauriHost() || printWay === 'pages')) {
         void printFile();
         return;
       }
@@ -1344,7 +1455,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return;
       }
     },
-    [undoEdit, redoEdit, organizeStep, printFile],
+    [undoEdit, redoEdit, organizeStep, printFile, printWay],
   );
 
   const viewCommandOn = useCallback((command: ViewCommand): boolean => {
@@ -1373,9 +1484,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ? embedHistory.canRedo
       : !state.edit.busy && canRedoStack(state.edit.stack);
   // A browser prints through EmbedPDF while it is on screen; the desktop
-  // prints the file itself, from either view, once no switch is under way.
-  const canPrint = isTauriHost()
-    ? nativePrint && state.view === 'viewer' && state.document !== null && state.switching === null
+  // prints the file (or its pages), from either view, once no switch is
+  // under way and no print is being prepared.
+  const printsItself = isTauriHost() ? nativePrint : printWay === 'pages';
+  const canPrint = printsItself
+    ? state.view === 'viewer' && state.document !== null && state.switching === null && printing === null
     : embedShowing;
 
   const saveDocument = useCallback(async () => {
@@ -1401,8 +1514,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       dispatch({ type: 'DOCUMENT_SAVED' });
       dispatch({ type: 'TOAST', key: 'file.saved' });
-    } catch {
-      dispatch({ type: 'DOCUMENT_FAILED', error: 'file.saveFailed' });
+    } catch (error) {
+      const tooLarge = String(error instanceof Error ? error.message : error).includes('E_SIGNED_TOO_LARGE');
+      dispatch({ type: 'DOCUMENT_FAILED', error: tooLarge ? 'signatures.error.tooLarge' : 'file.saveFailed' });
     }
   }, [bytesFromEmbed, keepOwnBytes, withOwnLayers]);
 
@@ -1424,6 +1538,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       client,
       document,
       documentBytes,
+      fileBytes: layerOwn ?? documentBytes,
       documentPassword,
       recent,
       openFile,
@@ -1450,6 +1565,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       canUndo,
       canRedo,
       canPrint,
+      printing,
+      cancelPrint,
       goToPage,
       organizePages,
       extractPages,
@@ -1482,6 +1599,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       client,
       document,
       documentBytes,
+      layerOwn,
       documentPassword,
       recent,
       openFile,
@@ -1507,6 +1625,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       canUndo,
       canRedo,
       canPrint,
+      printing,
+      cancelPrint,
       goToPage,
       organizePages,
       extractPages,

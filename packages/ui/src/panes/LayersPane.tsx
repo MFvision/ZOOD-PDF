@@ -5,6 +5,7 @@ import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useT } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
+import { SignedChangeNote } from '../signatures/SignedChangeNote';
 import { switched } from './tree';
 import type { Layer, LayerNode } from './tree';
 import './docpanes.css';
@@ -114,6 +115,7 @@ export function LayersPane() {
         {nodes(found.order, 0)}
       </ul>
       {!embedShowing && <p className="docpane-note">{t('layers.readingOnly')}</p>}
+      {layersShown !== null && <SignedChangeNote warning="signatures.warn.layers" />}
       {layersShown !== null && (
         <div className="docpane-actions">
           <IconButton

@@ -805,3 +805,37 @@
     inline-size: calc(100vw - 48px);
   }
 }
+
+/* ---- Touch: 44-point targets (the metrics are in styles/tokens.css) ---------------- */
+@media (pointer: coarse) {
+  .shell {
+    --toolbar-h: 60px;
+  }
+
+  .menu-button {
+    block-size: 44px;
+    padding-inline: var(--space-5);
+  }
+
+  .menu-item {
+    min-block-size: 44px;
+  }
+
+  .menubar-lang .select {
+    block-size: 36px;
+    min-block-size: 36px;
+  }
+
+  .toolbar-group {
+    block-size: 48px;
+  }
+
+  .toolbar .icon-btn {
+    min-inline-size: 44px;
+    block-size: 44px;
+  }
+
+  .tool-gallery-item {
+    min-block-size: 88px;
+  }
+}

@@ -148,6 +148,8 @@ fn token_err(e: TokenError) -> String {
         ) => {
             format!("E_PKCS11_PIN: {e}")
         }
+        // A key that wants the PIN again for its signature (see `pkcs11_sign`).
+        TokenError::Pkcs11(RvError::UserNotLoggedIn, _) => format!("E_PKCS11_LOGIN: {e}"),
         other => format!("E_PKCS11: {other}"),
     }
 }
@@ -214,29 +216,50 @@ fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-/// The certificates on every token the module sees, after the PIN.
+/// Which slots' certificates to read, and whether to log in first: none —
+/// certificates are public objects — unless nothing is listed without and
+/// there is exactly one token, the only one the PIN can be for. A PIN tried
+/// on every slot burnt a retry on each slot with a PIN of its own
+/// (authentication and signing, on one card) and listed nothing when the
+/// first refused it.
+fn login_to_list(listed_without: usize, tokens: usize, pin: &str) -> bool {
+    listed_without == 0 && tokens == 1 && !pin.is_empty()
+}
+
+/// The certificates on every token the module sees.
 #[tauri::command(async)]
 pub fn pkcs11_certificates(request: Request<'_>) -> Result<String, String> {
     let path = percent_decoded(&header(&request, "x-warraq-module").ok_or("E_ARGS: no module")?)?;
     let pin = hex_decoded(&header(&request, "x-warraq-pin-hex").unwrap_or_default())?;
     let pkcs11 = module(&path)?;
-    let mut listed = Vec::new();
-    for slot in pkcs11.get_slots_with_token().map_err(token_err)? {
-        let session = pkcs11.open_ro_session(slot).map_err(token_err)?;
-        login(&session, &pin)?;
-        for (id, label, der) in certificates(&session)? {
-            let Ok(cert) = Cert::parse(&der) else {
-                continue;
-            };
-            listed.push(serde_json::json!({
-                "slot": slot.id(),
-                "id": hex(&id),
-                "label": label,
-                "name": cert.common_name(),
-                "issuer": cert.issuer_name(),
-                "notAfter": warraq_sign::time::iso(cert.not_after()),
-            }));
+    let slots = pkcs11.get_slots_with_token().map_err(token_err)?;
+    let mut found: Vec<(u64, TokenCert)> = Vec::new();
+    for slot in &slots {
+        let session = pkcs11.open_ro_session(*slot).map_err(token_err)?;
+        for cert in certificates(&session)? {
+            found.push((slot.id(), cert));
         }
+    }
+    if let (true, Some(slot)) = (login_to_list(found.len(), slots.len(), &pin), slots.first()) {
+        let session = pkcs11.open_ro_session(*slot).map_err(token_err)?;
+        login(&session, &pin)?;
+        for cert in certificates(&session)? {
+            found.push((slot.id(), cert));
+        }
+    }
+    let mut listed = Vec::new();
+    for (slot, (id, label, der)) in found {
+        let Ok(cert) = Cert::parse(&der) else {
+            continue;
+        };
+        listed.push(serde_json::json!({
+            "slot": slot,
+            "id": hex(&id),
+            "label": label,
+            "name": cert.common_name(),
+            "issuer": cert.issuer_name(),
+            "notAfter": warraq_sign::time::iso(cert.not_after()),
+        }));
     }
     debug_log(format!("pkcs11: {} certificate(s) in {path}", listed.len()));
     serde_json::to_string(&listed).map_err(|e| e.to_string())
@@ -398,6 +421,19 @@ pub fn pkcs11_sign(request: Request<'_>) -> Result<Response, String> {
         .into_iter()
         .next()
         .ok_or("E_PKCS11: no private key beside that certificate")?;
+    // A key that asks for the PIN again for every signature
+    // (CKA_ALWAYS_AUTHENTICATE: a PIV card's signing key, many national eID
+    // qualified keys) needs a context-specific login between C_SignInit and
+    // C_Sign, which the PKCS#11 binding does not expose for one-part
+    // signing. Said plainly, rather than failing at C_Sign as if the card
+    // were not there.
+    let asks_again = session
+        .get_attributes(key, &[AttributeType::AlwaysAuthenticate])
+        .ok()
+        .is_some_and(|attrs| attrs.contains(&Attribute::AlwaysAuthenticate(true)));
+    if asks_again {
+        return Err("E_PKCS11_LOGIN: the key asks for the PIN for each signature".into());
+    }
     let cert = Cert::parse(&der).map_err(|e| e.to_string())?;
     // The other certificates on the card, nearest first: often its CA's.
     let others: Vec<Vec<u8>> = certs
@@ -632,6 +668,23 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn listing_a_card_tries_the_pin_nowhere_it_could_be_wrong() {
+        assert!(
+            !login_to_list(2, 1, "1234"),
+            "certificates were found without it"
+        );
+        assert!(!login_to_list(0, 2, "1234"), "two tokens: whose PIN is it?");
+        assert!(!login_to_list(0, 1, ""), "no PIN given");
+        assert!(login_to_list(0, 1, "1234"));
+        // A key that wants its PIN again is said to, not taken for a missing card.
+        let again = token_err(TokenError::Pkcs11(
+            RvError::UserNotLoggedIn,
+            cryptoki::context::Function::Sign,
+        ));
+        assert!(again.starts_with("E_PKCS11_LOGIN"), "{again}");
     }
 
     /// A software key playing the card, through the very path a card's
