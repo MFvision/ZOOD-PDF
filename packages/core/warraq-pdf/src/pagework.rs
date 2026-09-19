@@ -5,8 +5,11 @@ use lopdf::{Dictionary, Object, ObjectId, Stream};
 
 use crate::{Error, PdfDocument, Result};
 
-/// A content stream is not decoded past this many bytes.
-pub(crate) const MAX_STREAM: usize = 256 * 1024 * 1024;
+/// A content stream is not decoded past this many bytes (as `hidden`).
+pub(crate) const MAX_STREAM: usize = 64 * 1024 * 1024;
+/// Nor all of one page's streams together, read for its marks: a
+/// `/Contents` may list the same stream many times over.
+pub(crate) const MAX_PAGE_CONTENT: usize = 256 * 1024 * 1024;
 
 fn parse(e: impl std::fmt::Display) -> Error {
     Error::Parse(e.to_string())
@@ -50,12 +53,45 @@ impl PdfDocument {
             .get_object(id)
             .and_then(Object::as_stream)
             .map_err(parse)?;
-        if stream.dict.get(b"Filter").is_err() {
-            return Ok(stream.content.clone());
-        }
         stream
             .decompressed_content_with_limit(MAX_STREAM)
             .map_err(|e| Error::Edit(format!("a content stream could not be decoded: {e}")))
+    }
+
+    /// A stream's decoded bytes if they are no more than `limit`: `None`
+    /// for what is not a stream or cannot be decoded, an error for one that
+    /// is longer.
+    pub(crate) fn stream_bytes_within(
+        &self,
+        id: ObjectId,
+        limit: usize,
+    ) -> Result<Option<Vec<u8>>> {
+        let Ok(stream) = self.doc.get_object(id).and_then(Object::as_stream) else {
+            return Ok(None);
+        };
+        match stream.decompressed_content_with_limit(limit) {
+            Ok(bytes) => Ok(Some(bytes)),
+            Err(lopdf::Error::Decompress(lopdf::DecompressError::MemoryLimitExceeded {
+                ..
+            })) => Err(Error::Edit("a content stream is too long to read".into())),
+            Err(_) => Ok(None),
+        }
+    }
+
+    /// The depth of `q` the page's streams `ids` leave open, counted over
+    /// them as one — a `q` in one may be closed by a `Q` in the next — and
+    /// read one at a time, keeping nothing.
+    pub(crate) fn open_saves_in(&self, ids: &[ObjectId]) -> Result<usize> {
+        let mut depth = 0usize;
+        let mut left = MAX_PAGE_CONTENT;
+        for id in ids {
+            let Some(bytes) = self.stream_bytes_within(*id, left.min(MAX_STREAM))? else {
+                continue;
+            };
+            left -= bytes.len();
+            depth = saves_after(depth, &bytes);
+        }
+        Ok(depth)
     }
 
     /// Writes new bytes into an existing stream, compressed, keeping the
@@ -151,10 +187,10 @@ impl PdfDocument {
     }
 }
 
-/// The depth of `q` a content stream leaves open.
-pub(crate) fn open_saves(content: &[u8]) -> usize {
-    let mut depth = 0usize;
-    for op in crate::lex::lex(content) {
+/// The depth of `q` open after `content`, from `depth` open before it.
+/// Read an operation at a time: nothing of the stream is kept.
+pub(crate) fn saves_after(mut depth: usize, content: &[u8]) -> usize {
+    for op in crate::lex::ops(content) {
         if op.is("q") {
             depth += 1;
         } else if op.is("Q") {
@@ -162,6 +198,12 @@ pub(crate) fn open_saves(content: &[u8]) -> usize {
         }
     }
     depth
+}
+
+/// The depth of `q` a content stream leaves open.
+#[cfg(test)]
+pub(crate) fn open_saves(content: &[u8]) -> usize {
+    saves_after(0, content)
 }
 
 /// A number as content-stream text: short, and never in exponent form.

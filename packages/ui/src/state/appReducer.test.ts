@@ -104,6 +104,16 @@ describe('appReducer edit state', () => {
     expect(state.edit.busy).toBe(false);
   });
 
+  it('a picture or link change goes on the same stack as text, after it', () => {
+    let state = appReducer(withDocument(), { type: 'EDIT_APPLIED', entry, fontSubstituted: false });
+    state = appReducer(state, { type: 'EDIT_FILE_CHANGED', page: 2, snapshot: 4 });
+    expect(state.edit.stack.entries).toEqual([entry, { page: 2, snapshot: 4 }]);
+    expect(state.edit.stack.cursor).toBe(2);
+    expect(state.edit.pageRevisions).toEqual({ 1: 1, 2: 1 });
+    expect(state.edit.busy).toBe(false);
+    expect(hasUnsavedEdits(state)).toBe(true);
+  });
+
   it('shows the font notice until it is dismissed, and never un-shows it by itself', () => {
     let state = appReducer(withDocument(), { type: 'EDIT_APPLIED', entry, fontSubstituted: true });
     expect(state.edit.fontSubstituted).toBe(true);
@@ -188,7 +198,7 @@ describe('placing new text', () => {
     expect(state.edit.adding).toEqual({ page: 2, x: 120, y: 340 });
     expect(state.edit.placing).toBe(false);
     expect(appReducer(state, { type: 'EDIT_CANCEL' }).edit.adding).toBeNull();
-    const drawn = appReducer(state, { type: 'EDIT_ADDED', page: 2 });
+    const drawn = appReducer(state, { type: 'EDIT_FILE_CHANGED', page: 2, snapshot: 1 });
     expect(drawn.edit.adding).toBeNull();
     expect(drawn.edit.pageRevisions[2]).toBe(1);
   });

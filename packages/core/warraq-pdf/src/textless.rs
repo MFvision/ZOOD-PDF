@@ -12,7 +12,7 @@
 //! it shows.
 use lopdf::{Object, ObjectId};
 
-use crate::lex::{lex, Operand};
+use crate::lex::{ops, Operand};
 use crate::{PdfDocument, Result};
 
 /// How a page's own streams show their text.
@@ -32,11 +32,11 @@ impl TextShown {
 /// `content` without its text-showing operators; `tr` carries the render
 /// mode across a page's streams, and `shown` counts what was cut.
 fn strip(content: &[u8], tr: &mut Vec<i64>, shown: &mut TextShown) -> Option<Vec<u8>> {
-    let ops = lex(content);
     let mut out = Vec::with_capacity(content.len());
     let mut at = 0;
     let mut changed = false;
-    for op in &ops {
+    // One operation at a time; the lexer's ranges lie inside `content`, in order.
+    for op in ops(content) {
         let current = tr.last().copied().unwrap_or(0);
         let name = op.operator.as_slice();
         match name {
@@ -197,7 +197,7 @@ mod tests {
         let bare = PdfDocument::open(bare, None).unwrap();
         assert_eq!(bare.page_count(), doc.page_count());
         let content = bare.doc.get_page_content(bare.page_id(0).unwrap());
-        let ops = lex(&content);
+        let ops: Vec<_> = ops(&content).collect();
         assert!(ops
             .iter()
             .all(|op| !matches!(op.operator.as_slice(), b"Tj" | b"TJ" | b"'" | b"\"")));

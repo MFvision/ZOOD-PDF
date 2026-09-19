@@ -117,7 +117,7 @@ fn search(doc: &Document, a: Search) -> Result<Reply, CoreError> {
     let mut hits: Vec<Hit> = vec![];
     let mut total = 0usize;
     for page in 0..doc.page_count() {
-        let lines = doc.text_lines(page)?;
+        let lines = doc.all_lines(page)?;
         let shown = doc.page_size(page)?;
         let rotation = doc.pdf.page_rotation(page).unwrap_or(0);
         let texts: Vec<String> = lines.iter().map(|l| l.text.clone()).collect();
@@ -197,7 +197,7 @@ fn text(doc: &Document, a: Selected) -> Result<Reply, CoreError> {
         .into_iter()
         .filter(|b| [b.x, b.y, b.width, b.height].iter().all(|v| v.is_finite()))
         .collect();
-    let lines = doc.text_lines(a.page)?;
+    let lines = doc.all_lines(a.page)?;
     let shown = doc.page_size(a.page)?;
     let rotation = doc.pdf.page_rotation(a.page).unwrap_or(0);
     let read: Vec<String> = lines

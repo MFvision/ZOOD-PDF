@@ -496,6 +496,38 @@ pub(crate) mod tests {
         out
     }
 
+    /// A phone photo: stored landscape, 40 × 20 — red on the left, blue on
+    /// the right — with an EXIF orientation of 6, "turn a quarter clockwise
+    /// to show": seen upright it is 20 × 40, red on top.
+    pub(crate) fn turned_photo() -> Vec<u8> {
+        let image = image::RgbImage::from_fn(40, 20, |x, _| {
+            if x < 20 {
+                image::Rgb([230, 20, 20])
+            } else {
+                image::Rgb([20, 20, 230])
+            }
+        });
+        let exif = b"II\x2a\x00\x08\x00\x00\x00\x01\x00\x12\x01\x03\x00\x01\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00";
+        let mut out = Vec::new();
+        let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, 95);
+        image::ImageEncoder::set_exif_metadata(&mut encoder, exif.to_vec()).unwrap();
+        encoder.encode_image(&image).unwrap();
+        out
+    }
+
+    #[test]
+    fn a_turned_photo_is_stored_as_it_is_and_said_to_be_turned() {
+        let bytes = turned_photo();
+        let info = picture_info(&bytes).unwrap();
+        assert_eq!((info.width, info.height, info.orientation), (40, 20, 6));
+        assert_eq!(info.shown(), (20, 40));
+        let mut doc = Document::with_version("1.7");
+        let picture = add_picture(&mut doc, &bytes).unwrap();
+        assert_eq!((picture.width, picture.height), (40, 20));
+        let stream = doc.get_object(picture.id).unwrap().as_stream().unwrap();
+        assert_eq!(stream.content, bytes, "no loss: the JPEG goes in as it is");
+    }
+
     #[test]
     fn a_png_becomes_a_flate_image_with_its_transparency_as_a_mask() {
         let mut doc = Document::with_version("1.7");

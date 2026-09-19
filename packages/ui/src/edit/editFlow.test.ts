@@ -4,6 +4,7 @@ import { createMockModule } from '../core/mock';
 import type { ResultMap } from '../core/protocol';
 import type { CoreDocument, CoreModule, ParagraphInfo, RenderedPage, TextLine } from '../core/types';
 import { applyEdit, EMPTY_EDIT_STACK, redo, undo } from './editStack';
+import type { EditChange } from './editStack';
 
 /**
  * The edit path end to end, with the core mocked at the module boundary: no
@@ -118,11 +119,13 @@ describe('paragraph editing over the worker protocol', () => {
     let stack = applyEdit(EMPTY_EDIT_STACK, entry);
 
     const back = undo(stack)!;
-    replace(back.change.page, back.change.paragraphIndex, back.change.text);
+    const undone = back.change as EditChange;
+    replace(undone.page, undone.paragraphIndex, undone.text);
     stack = back.stack;
 
     const forward = redo(stack)!;
-    replace(forward.change.page, forward.change.paragraphIndex, forward.change.text);
+    const redone = forward.change as EditChange;
+    replace(redone.page, redone.paragraphIndex, redone.text);
 
     expect(calls.map((call) => call.text)).toEqual([
       'نصٌّ مستبدل',
