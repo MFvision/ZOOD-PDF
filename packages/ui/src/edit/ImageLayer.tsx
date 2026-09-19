@@ -106,7 +106,18 @@ export function ImageLayer({ document, index, scale }: LayerProps) {
     else setDrag({ ...drag, clip: crop(drag.image.matrix, drag.image.clip, drag.handle, point) });
   };
 
-  const onKey = (event: KeyboardEvent<HTMLButtonElement>, image: PageImage) => {
+  /**
+   * Keys act on the picked picture only — Tab onto another and Enter picks
+   * it — and never while a change is in flight. The box is not disabled
+   * meanwhile (`aria-disabled`): a disabled button loses the focus, and the
+   * second arrow press would scroll the page instead of moving it again.
+   */
+  const onKey = (event: KeyboardEvent<HTMLButtonElement>, image: PageImage, picked: boolean) => {
+    if (!picked || image.shared) return;
+    if (edit.busy) {
+      if (event.key.startsWith('Arrow') || event.key === 'Delete' || event.key === 'Backspace') event.preventDefault();
+      return;
+    }
     const step = event.shiftKey ? NUDGE * 10 : NUDGE;
     const moves: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
     const move = moves[event.key];
@@ -143,12 +154,15 @@ export function ImageLayer({ document, index, scale }: LayerProps) {
             aria-pressed={isSelected}
             aria-label={t(image.shared ? 'editPdf.imageShared' : 'editPdf.imageLabel', { n: k + 1, w: image.pixels[0], h: image.pixels[1] })}
             title={image.shared ? t('editPdf.imageSharedNote') : undefined}
-            disabled={edit.busy || pdf.pending !== null}
+            aria-disabled={edit.busy || pdf.pending !== null || undefined}
             style={{ insetInlineStart: box.x * scale, insetBlockStart: box.y * scale, inlineSize: box.width * scale, blockSize: box.height * scale }}
-            onClick={() => updateEditPdf({ image: { page: index, index: k }, link: null })}
-            onKeyDown={(event) => !image.shared && onKey(event, image)}
+            onClick={() => {
+              if (edit.busy || pdf.pending !== null) return;
+              updateEditPdf({ image: { page: index, index: k }, link: null });
+            }}
+            onKeyDown={(event) => onKey(event, image, isSelected)}
             onPointerDown={(event) => {
-              if (!isSelected || image.shared || pdf.cropping || event.button !== 0) return;
+              if (!isSelected || image.shared || pdf.cropping || edit.busy || event.button !== 0) return;
               event.currentTarget.parentElement?.setPointerCapture(event.pointerId);
               setDrag({ kind: 'move', from: at(event), image, matrix: image.matrix });
             }}

@@ -51,7 +51,7 @@
   border-radius: 1px;
 }
 
-.edit-pdf-box:hover:not(:disabled),
+.edit-pdf-box:hover:not(:disabled, [aria-disabled="true"]),
 .edit-pdf-box:focus-visible {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   outline: none;

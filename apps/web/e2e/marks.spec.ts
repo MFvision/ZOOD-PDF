@@ -180,6 +180,70 @@ test.describe('Page marks are drawn into the file, read back in Arabic, and come
     }
   });
 
+  test('chosen before a file is open, the panel works; numbers are typed; the preview is drawn once; summaries say what is drawn', async ({ page, stayLocal: _ }) => {
+    // Every `marks.preview` the panel sends to the core, counted as it goes.
+    await page.addInitScript(() => {
+      const w = window as unknown as { previews: number };
+      w.previews = 0;
+      const post = Worker.prototype.postMessage;
+      Worker.prototype.postMessage = function (this: Worker, message: unknown, ...rest: unknown[]) {
+        if ((message as { op?: string } | null)?.op === 'marks.preview') w.previews += 1;
+        return (post as (...args: unknown[]) => void).call(this, message, ...rest);
+      } as typeof Worker.prototype.postMessage;
+    });
+    const previews = () => page.evaluate(() => (window as unknown as { previews: number }).previews);
+
+    // The tool first, from the home screen's gallery, then the file: the
+    // panel must not stay disabled.
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Page marks', exact: true }).click();
+    const p = panel(page);
+    await expect(p.getByRole('heading', { name: 'Page marks' })).toBeVisible();
+    await openPdf(page, THREE);
+    await expect(p.getByText('This file has no marks from ورّاق yet.')).toBeVisible({ timeout: 20_000 });
+    await p.getByRole('textbox', { name: 'Text' }).fill('DRAFT');
+    await expect(p.locator('.marks-preview canvas')).toBeVisible();
+    // Left alone, the preview is not drawn again and again.
+    await page.waitForTimeout(1_500);
+    const settled = await previews();
+    await page.waitForTimeout(2_500);
+    expect(await previews()).toBe(settled);
+
+    // Typed a key at a time: 12 stays 12 in a field that starts at 6, and a
+    // negative angle can be typed.
+    const size = p.getByLabel('Size (pt)');
+    await size.selectText();
+    await size.pressSequentially('12');
+    await expect(size).toHaveValue('12');
+    const rotation = p.getByLabel('Rotation (°)');
+    await rotation.selectText();
+    await rotation.pressSequentially('-30');
+    await expect(rotation).toHaveValue('-30');
+    await rotation.press('Tab');
+    await expect(size).toHaveValue('12');
+    await expect(rotation).toHaveValue('-30');
+    // Out of range, it settles to the nearest end when left.
+    await size.selectText();
+    await size.pressSequentially('3');
+    await size.press('Tab');
+    await expect(size).toHaveValue('6');
+
+    // Page-number formats are labelled in the digits that will be drawn.
+    await p.getByRole('radio', { name: 'Page numbers' }).click();
+    const format = p.getByLabel('Format');
+    await expect(format.locator('option[value="pageOfArabic"]')).toHaveText('صفحة 1 من 9');
+    await p.getByLabel('Digits').selectOption('arabic');
+    await expect(format.locator('option[value="pageOfArabic"]')).toHaveText('صفحة ١ من ٩');
+
+    // A Bates mark from 41 is listed from 41.
+    await p.getByRole('radio', { name: 'Bates numbers' }).click();
+    await p.getByLabel('Prefix').fill('WRQ-');
+    await p.getByLabel('Start at').fill('41');
+    await p.getByRole('button', { name: 'Apply' }).click();
+    await expect(p.locator('.marks-item')).toHaveCount(1);
+    await expect(p.locator('.marks-item')).toContainText('WRQ-000041');
+  });
+
   test('a picture as a watermark, behind an English page, drawn by PDFium', async ({ page, stayLocal: _ }) => {
     await page.goto('/');
     await openPdf(page, ENGLISH);

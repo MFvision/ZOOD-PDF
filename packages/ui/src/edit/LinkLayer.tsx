@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import type { PointerEvent } from 'react';
+import type { KeyboardEvent, PointerEvent } from 'react';
 import type { RemoteDocument } from '../core/client';
 import { useT } from '../i18n/useT';
+import { displayUrl } from '../links/openLink';
 import { useAppState } from '../state/AppContext';
 import { updateEditPdf, useEditPdf } from './editPdf';
 import type { PageLink } from './editPdf';
@@ -78,10 +79,37 @@ export function LinkLayer({ document, index, scale }: LayerProps) {
   const style = (r: Rect) => ({ insetInlineStart: r.x * scale, insetBlockStart: r.y * scale, inlineSize: r.width * scale, blockSize: r.height * scale });
   const selectedId = pdf.link?.page === index ? pdf.link.id : null;
 
+  /**
+   * The picked link from the keyboard: the arrows move it a point (ten with
+   * Shift), with Alt they move its right or bottom edge instead, and Delete
+   * takes it off. Never while a change is in flight.
+   */
+  const onKey = (event: KeyboardEvent<HTMLButtonElement>, link: PageLink) => {
+    if (selectedId !== link.id) return;
+    const arrows: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    const arrow = arrows[event.key];
+    const remove = event.key === 'Delete' || event.key === 'Backspace';
+    if (!arrow && !remove) return;
+    event.preventDefault();
+    if (edit.busy) return;
+    if (remove) {
+      void actions.removeLink(index, link.id).then((done) => done && updateEditPdf({ link: null }));
+      return;
+    }
+    const step = event.shiftKey ? 10 : 1;
+    const [dx, dy] = [arrow![0] * step, arrow![1] * step];
+    const [x, y, width, height] = link.rect;
+    const next: PageLink['rect'] = event.altKey
+      ? [x, y, Math.max(4, width + dx), Math.max(4, height + dy)]
+      : [x + dx, y + dy, width, height];
+    void actions.updateLink(index, link.id, next);
+  };
+
   return (
     <div
       className="edit-pdf-layer edit-pdf-links"
       ref={layer}
+      role="group"
       aria-label={t('editPdf.linksLayer')}
       onPointerDown={(event) => {
         if (event.target !== layer.current || event.button !== 0 || edit.busy) return;
@@ -105,16 +133,20 @@ export function LinkLayer({ document, index, scale }: LayerProps) {
             aria-pressed={isSelected}
             aria-label={
               link.to.uri !== undefined
-                ? t('editPdf.linkToUri', { n: k + 1, uri: link.to.uri })
+                ? t('editPdf.linkToUri', { n: k + 1, uri: displayUrl(link.to.uri) })
                 : link.to.page !== undefined
                   ? t('editPdf.linkToPage', { n: k + 1, page: link.to.page + 1 })
                   : t('editPdf.linkElsewhere', { n: k + 1 })
             }
-            disabled={edit.busy}
+            aria-disabled={edit.busy || undefined}
             style={style(moving)}
-            onClick={() => updateEditPdf({ link: { page: index, id: link.id }, draft: null, image: null })}
+            onClick={() => {
+              if (edit.busy) return;
+              updateEditPdf({ link: { page: index, id: link.id }, draft: null, image: null });
+            }}
+            onKeyDown={(event) => onKey(event, link)}
             onPointerDown={(event) => {
-              if (!isSelected || event.button !== 0) return;
+              if (!isSelected || edit.busy || event.button !== 0) return;
               layer.current?.setPointerCapture(event.pointerId);
               setDrag({ kind: 'move', from: at(event), link, handle: null, rect: asRect(link.rect) });
             }}

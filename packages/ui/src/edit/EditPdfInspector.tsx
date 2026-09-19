@@ -4,7 +4,7 @@ import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { Stepper } from '../components/Stepper';
 import { useT } from '../i18n/useT';
-import { requestOpenLink } from '../links/openLink';
+import { displayUrl, isOpenableUrl, requestOpenLink } from '../links/openLink';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { pictureSize, pictureType, selectedImage, selectedLink, updateEditPdf, useEditPdf } from './editPdf';
 import type { LinkTo } from './editPdf';
@@ -171,17 +171,22 @@ function LinkForm({
 }) {
   const t = useT();
   const [kind, setKind] = useState<'uri' | 'page'>(initial.page !== undefined ? 'page' : 'uri');
-  const [uri, setUri] = useState(initial.uri ?? 'https://');
+  // Shown in letters (an Arabic path, say); the core encodes it again.
+  const shown = initial.uri !== undefined ? displayUrl(initial.uri) : 'https://';
+  const [uri, setUri] = useState(shown);
   const [page, setPage] = useState((initial.page ?? 0) + 1);
   const pageOk = Number.isInteger(page) && page >= 1 && page <= pages;
-  const uriOk = /^(https?:\/\/[^\s/]+|mailto:\S+@\S+)/i.test(uri.trim());
+  const uriOk = /^(https?:\/\/[^\s/]+|mailto:\S+@\S+)/i.test(uri.trim()) && isOpenableUrl(uri);
   const valid = kind === 'uri' ? uriOk : pageOk;
   return (
     <form
       className="edit-pdf-link-form"
       onSubmit={(event) => {
         event.preventDefault();
-        if (valid) onSave(kind === 'uri' ? { uri: uri.trim() } : { page: page - 1 });
+        if (!valid) return;
+        // Unchanged, it goes back exactly as the file had it.
+        const address = initial.uri !== undefined && uri === shown ? initial.uri : uri.trim();
+        onSave(kind === 'uri' ? { uri: address } : { page: page - 1 });
       }}
     >
       <fieldset>
@@ -247,12 +252,24 @@ export function LinksInspector() {
     );
   }
   if (!link || !pdf.link) {
+    // Without a pointer: a link area in the middle of the page on screen,
+    // to point somewhere and then move and size from the keyboard.
+    const addHere = () => {
+      const index = Math.min(Math.max(0, state.currentPage - 1), pages - 1);
+      const [width, height] = state.document?.pageSizes[index] ?? [595, 842];
+      const [w, h] = [Math.min(200, width / 2), 24];
+      updateEditPdf({ draft: { page: index, rect: [(width - w) / 2, (height - h) / 2, w, h] }, link: null, image: null });
+    };
     return (
       <>
         <p className="tool-panel-note">{t('editPdf.pickLink')}</p>
+        <div className="tool-actions">
+          <IconButton label={t('editPdf.addLinkHere')} icon={<Icon of={Link2} />} showLabel disabled={busy} onClick={addHere} />
+        </div>
         <ul className="edit-pdf-hints">
           <li>{t('editPdf.hintDrawLink')}</li>
           <li>{t('editPdf.hintMoveLink')}</li>
+          <li>{t('editPdf.hintLinkKeys')}</li>
         </ul>
       </>
     );
