@@ -12,6 +12,7 @@ use serde::Serialize;
 use tauri::{AppHandle, DragDropEvent, Emitter, Manager, Runtime, State, WindowEvent};
 use tauri_plugin_fs::FsExt;
 
+pub mod batch;
 pub mod core_bridge;
 pub mod menu;
 pub mod print;
@@ -71,6 +72,19 @@ fn startup_file(state: State<'_, StartupFile>) -> Option<String> {
 #[tauri::command]
 fn ui_log(message: String) {
     core_bridge::debug_log(format!("ui: {message}"));
+}
+
+/// A check the interface runs by itself once the startup file is open, named
+/// by `WARRAQ_SELFCHECK` and only with `WARRAQ_DEBUG` set: `ocr` reads the
+/// file with Scan & OCR, `ocr-clean` cleans it up first. It is how
+/// recognition inside this webview — Tesseract's worker and WebAssembly
+/// under the host's security policy — is checked from the log, without a
+/// person at the screen. `None` in every ordinary run.
+#[tauri::command]
+fn debug_selfcheck() -> Option<String> {
+    std::env::var_os("WARRAQ_DEBUG")?;
+    let check = std::env::var("WARRAQ_SELFCHECK").ok()?;
+    matches!(check.as_str(), "ocr" | "ocr-clean").then_some(check)
 }
 
 /// Opens a web or e-mail address in the system's browser or mail app, once
@@ -183,6 +197,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             core_version,
+            debug_selfcheck,
             open_url,
             read_file_bytes,
             startup_file,
@@ -208,6 +223,8 @@ pub fn run() {
             signing::pkcs11_certificates,
             signing::pkcs11_sign,
             menu::set_menu,
+            batch::batch_list_folder,
+            batch::batch_write,
         ])
         .on_window_event(|window, event| {
             // Forward OS file drops to the webview, after allowing the dropped

@@ -39,7 +39,9 @@ import { zipSync } from 'fflate';
 import { findTool } from '../tools/tools';
 import type { OcrLanguage } from '../ocr/engine';
 import { readPages } from '../ocr/run';
-import type { OcrProgress, OcrScope } from '../ocr/run';
+import type { OcrProgress, OcrScope, ReadOptions } from '../ocr/run';
+import { writeTextLayer } from '../ocr/layer';
+import { runSelfCheck } from '../ocr/selfCheck';
 
 /** What Scan & OCR did. */
 export interface OcrOutcome {
@@ -50,6 +52,9 @@ export interface OcrOutcome {
   skipped: number;
   /** Tesseract's mean confidence over the words it read, 0–100. */
   confidence: number;
+  /** Pages whose scan was replaced by the cleaned-up one, and pages that kept theirs. */
+  images?: number;
+  imagesKept?: number;
 }
 
 /** How much Compress may trade: `imageDpi` downsamples images (lossy); absent keeps them. */
@@ -221,14 +226,16 @@ export interface AppServices {
   /** Saves bytes as a new PDF beside the open one (the native panel on desktop). */
   saveCopy: (bytes: ArrayBuffer, name: string) => Promise<boolean>;
   /**
-   * Scan & OCR: reads the scanned pages with Tesseract and writes what it read
-   * into the file as an invisible text layer, which then reopens in both views.
+   * Scan & OCR: reads the scanned pages with Tesseract — cleaned up first, as
+   * `options` say — and writes what it read into the file as an invisible
+   * text layer, which then reopens in both views.
    */
   recognizeText: (
     languages: readonly OcrLanguage[],
     scope: OcrScope,
     onProgress: (progress: OcrProgress) => void,
     signal?: AbortSignal,
+    options?: ReadOptions,
   ) => Promise<OcrOutcome>;
   /** Saves an HTML page — Compare's report — the same way; `false` if the panel was cancelled. */
   saveReport: (html: string, name: string) => Promise<boolean>;
@@ -1157,30 +1164,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
       scope: OcrScope,
       onProgress: (progress: OcrProgress) => void,
       signal?: AbortSignal,
+      options?: ReadOptions,
     ): Promise<OcrOutcome> => {
-      const bytes = await currentFileBytes();
+      // The layer is an update of the file's own bytes, not of PDFium's
+      // rewrite of them: a signature over them stays whole.
+      const bytes = await fileBytesForChange();
       if (!bytes) throw new Error('E_NOT_FOUND: no open file');
       const reading = await client.open(bytes.slice(0), passwordRef.current);
       let pages: Awaited<ReturnType<typeof readPages>>;
       try {
-        pages = await readPages(reading, languages, scope, onProgress, signal);
+        pages = await readPages(reading, languages, scope, onProgress, signal, options);
       } finally {
         void reading.free();
       }
       const read = pages.filter((page) => page.words.length > 0);
       const confidence = read.length ? read.reduce((sum, page) => sum + page.confidence, 0) / read.length : 0;
       if (read.length === 0 || signal?.aborted) return { pages: 0, words: 0, skipped: 0, confidence };
-      const font = await loadEditFont('amiri');
-      const { result, blobs } = await client.callStatic<{ pages: number; words: number; skipped: number }>(
-        'ocr.add_text_layer',
-        { password: passwordRef.current ?? null, pages: read.map(({ index, words, angle }) => ({ index, words, angle })) },
-        [bytes, font.slice().buffer],
-      );
-      if (result.pages > 0 && blobs[0]) await replaceCurrentFile(blobs[0]);
-      return { ...result, confidence };
+      const written = await writeTextLayer(client, bytes, passwordRef.current, read);
+      if (written.report.pages > 0 && written.bytes) await replaceCurrentFile(written.bytes);
+      return { ...written.report, confidence };
     },
-    [client, currentFileBytes, replaceCurrentFile],
+    [client, fileBytesForChange, replaceCurrentFile],
   );
+
+  // Desktop diagnostics only (`ocr/selfCheck.ts`): once the first document
+  // is open in the view, the host may ask for Scan & OCR to be run on it.
+  const selfChecked = useRef(false);
+  useEffect(() => {
+    if (selfChecked.current || !state.document || state.switching || !embed) return;
+    selfChecked.current = true;
+    void runSelfCheck({ recognizeText, client, currentFileBytes, documentPassword: passwordRef.current });
+  }, [state.document, state.switching, embed, recognizeText, client, currentFileBytes]);
 
   const saveReport = useCallback(
     (html: string, name: string): Promise<boolean> =>

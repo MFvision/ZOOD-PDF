@@ -101,10 +101,18 @@ fn flate_image(doc: &mut Document, image: image::DynamicImage) -> Result<Picture
     } else {
         (image.to_rgb8().into_raw(), "DeviceRGB")
     };
+    // A black-and-white picture — a cleaned-up scan — at one bit a pixel:
+    // an eighth of the data, and Flate does better still on it.
+    let bilevel = grey && smask.is_none() && pixels.iter().all(|p| *p == 0 || *p == 255);
+    let (pixels, bits) = if bilevel {
+        (pack_bits(&pixels, width as usize), 1)
+    } else {
+        (pixels, 8)
+    };
     let mut dict = dictionary! {
         "Type" => "XObject", "Subtype" => "Image",
         "Width" => width as i64, "Height" => height as i64,
-        "ColorSpace" => space, "BitsPerComponent" => 8,
+        "ColorSpace" => space, "BitsPerComponent" => bits,
     };
     if let Some(mask) = smask {
         dict.set("SMask", Object::Reference(mask));
@@ -116,6 +124,26 @@ fn flate_image(doc: &mut Document, image: image::DynamicImage) -> Result<Picture
         width,
         height,
     })
+}
+
+/// Grey pixels that are all 0 or 255 as rows of bits, most significant first,
+/// each row padded to a whole byte (ISO 32000-1 §8.9.3): 1 is white.
+fn pack_bits(pixels: &[u8], width: usize) -> Vec<u8> {
+    if width == 0 {
+        return Vec::new();
+    }
+    let stride = width.div_ceil(8);
+    let mut out = Vec::with_capacity(stride * (pixels.len() / width));
+    for row in pixels.chunks(width) {
+        let start = out.len();
+        out.resize(start + stride, 0);
+        for (x, p) in row.iter().enumerate() {
+            if *p == 255 {
+                out[start + x / 8] |= 0x80 >> (x % 8);
+            }
+        }
+    }
+    out
 }
 
 fn decode(bytes: &[u8], format: image::ImageFormat) -> Result<image::DynamicImage> {
@@ -213,6 +241,40 @@ pub(crate) mod tests {
             stream.dict.get(b"ColorSpace").unwrap().as_name().unwrap(),
             b"DeviceRGB"
         );
+    }
+
+    #[test]
+    fn a_black_and_white_picture_is_kept_at_one_bit_a_pixel() {
+        // 10 wide: rows of two bytes, the last one padded.
+        let image = image::GrayImage::from_fn(10, 3, |x, _| {
+            image::Luma([if x % 3 == 0 { 0 } else { 255 }])
+        });
+        let mut bytes = Vec::new();
+        image::DynamicImage::ImageLuma8(image)
+            .write_to(
+                &mut std::io::Cursor::new(&mut bytes),
+                image::ImageFormat::Png,
+            )
+            .unwrap();
+        let mut doc = Document::with_version("1.7");
+        let picture = add_picture(&mut doc, &bytes).unwrap();
+        let stream = doc.get_object(picture.id).unwrap().as_stream().unwrap();
+        assert_eq!(
+            stream
+                .dict
+                .get(b"BitsPerComponent")
+                .unwrap()
+                .as_i64()
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            stream.dict.get(b"ColorSpace").unwrap().as_name().unwrap(),
+            b"DeviceGray"
+        );
+        let data = stream.decompressed_content().unwrap();
+        // x = 0, 3, 6, 9 black: 0110 1101 10 then padding.
+        assert_eq!(data, [0b0110_1101, 0b1000_0000].repeat(3));
     }
 
     #[test]
