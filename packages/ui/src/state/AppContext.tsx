@@ -459,10 +459,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dropTarget.current.take(list);
         return;
       }
-      const pdfs = list.filter(isPdfFile);
+      // Combine reads each file's first bytes, so a PDF without `.pdf` in its
+      // name joins too, and anything else is refused there, by name — rather
+      // than replacing the open document.
       const open = stateRef.current.document !== null;
-      if (pdfs.length > 0 && ((open && intent !== 'open') || (!open && pdfs.length > 1))) {
-        combineDrop.current = pdfs;
+      if (list.length > 0 && ((open && intent !== 'open') || (!open && list.length > 1))) {
+        combineDrop.current = list;
         dispatch({ type: 'SET_ACTIVE_TOOL', tool: 'combine' });
         return;
       }
