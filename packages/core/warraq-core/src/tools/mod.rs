@@ -14,6 +14,7 @@ pub mod accessibility;
 pub mod compress;
 pub mod file;
 pub mod forms;
+pub mod forms_eval;
 pub mod images;
 pub mod links;
 pub mod marks;

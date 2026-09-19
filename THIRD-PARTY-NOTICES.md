@@ -34,6 +34,7 @@ licence text (`scripts/rust-licenses.mjs`).
 | Amiri, Cairo, Inter, Noto Naskh Arabic | SIL OFL-1.1 | bundled edit, UI and fallback fonts (the corpus in `tests/` uses more, which are not shipped) |
 | Compact-ICC-Profiles by Clinton Ingram: `sRGB-v2-magic.icc`, `CGATS001Compat-v2-micro.icc` (`packages/core/warraq-pdf/assets/icc/`, copied from krilla and hayro-interpret, which ship the same files) | CC0-1.0 | Standards: the sRGB output intent of PDF/A copies, and what device RGB and CMYK mean in PDF/A and PDF/X copies |
 | Lucide (`lucide-react`) | ISC | icons |
+| The Umm al-Qura month lengths for 1356–1500 AH (`warraq-pdf/src/forms/hijri.rs` and `js/hijri-*.js`), read from ICU's Islamic Umm al-Qura calendar through Node's `Intl` (`tests/fixtures/forms/umalqura.mjs`) | Unicode License v3 (ICU data) | Hijri dates in Prepare form |
 | fflate | MIT | zip and deflate for Export (the Word file, page images, PNG compression) |
 | React, Vite, Tauri | MIT / MIT / Apache-2.0 OR MIT | UI and app shells |
 | muda (Tauri's menu library, already inside Tauri) | Apache-2.0 OR MIT | named directly only in the desktop tests, to parse the macOS menu bar's shortcuts as Tauri does |

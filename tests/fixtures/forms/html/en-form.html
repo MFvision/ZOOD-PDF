@@ -1,0 +1,29 @@
+<!doctype html><html lang="en" dir="ltr"><head><meta charset="utf-8"><style>
+@font-face{font-family:'Noto Naskh Arabic';src:url('../../../fonts/static/NotoNaskhArabic-Regular-static.ttf')}
+@font-face{font-family:'Noto Sans Arabic';src:url('../../../fonts/static/NotoSansArabic-Regular-static.ttf')}
+@font-face{font-family:'Amiri';src:url('../../../fonts/Amiri-Regular.ttf')}
+@font-face{font-family:'Cairo';src:url('../../../fonts/static/Cairo-Regular-static.ttf')}
+@font-face{font-family:'Inter';src:url('../../../fonts/static/Inter-Regular-static.ttf')}
+@page { size: A4; margin: 0 }
+html, body { margin: 0 }
+body { padding: 15mm; font-family: 'Inter', 'Inter', sans-serif; font-size: 12pt; line-height: 2.1 }
+h1 { font-size: 18pt; margin: 0 0 10pt }
+table { border-collapse: collapse; width: 100% }
+td, th { border: 0.75pt solid #333; padding: 3pt 6pt; height: 24pt; font-weight: normal; text-align: start }
+.box { display: inline-block; border: 0.75pt solid #333; vertical-align: middle }
+.check { display: inline-block; width: 11pt; height: 11pt; border: 0.75pt solid #333; vertical-align: middle; margin: 0 4pt }
+.line { border-bottom: 0.75pt solid #333; height: 26pt }
+
+</style></head><body><h1>Membership application</h1>
+<p>Full name: <span data-field="Full name" data-type="text">____________________________________</span></p>
+<p>Date of birth: <span data-field="Date of birth" data-type="date">___/___/_____</span>&nbsp;&nbsp; Phone: <span data-field="Phone" data-type="text">___________________</span></p>
+<table>
+<tr><th style="width:30%">Email</th><td data-field="Email" data-type="text"></td></tr>
+<tr><th>Address</th><td data-field="Address" data-type="text"></td></tr>
+</table>
+<p>Membership: <span data-field="Membership/Annual" data-type="checkbox">☐</span> Annual <span data-field="Membership/Lifetime" data-type="checkbox">☐</span> Lifetime</p>
+<p><span class="check" data-field="I agree to the terms" data-type="checkbox"></span> I agree to the terms</p>
+<div style="margin-top:28pt; width: 40%">
+<div class="line" data-field="Signature" data-type="signature"></div>
+<div>Signature</div>
+</div></body></html>

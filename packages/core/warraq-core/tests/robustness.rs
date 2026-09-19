@@ -107,6 +107,9 @@ fn exercise(bytes: Vec<u8>) -> Duration {
                 let _ = doc.search("العربية");
             }
             let _ = doc.metadata();
+            // Prepare form reads the page's lines and the form's scripts.
+            let _ = doc.detect_fields(&[0]);
+            let _ = doc.form();
         }
     }));
     t.elapsed()
