@@ -74,6 +74,15 @@ export function Shell() {
   // On the home screen the gallery already lists every tool, so the inspector
   // only appears once a tool is chosen.
   const inspector = state.rightPane.open && (isViewer || state.rightPane.activeTool !== null);
+  // The navigation pane: in Warraq's view with the pages; beside EmbedPDF's
+  // (whose own sidebar has the pages) while a document pane — bookmarks,
+  // attachments, layers — is chosen.
+  const navigation =
+    isViewer &&
+    state.document !== null &&
+    !organizing &&
+    state.leftPane.open &&
+    (warraqView || state.leftPane.tab !== 'thumbnails');
 
   return (
     <MarkupBarContext.Provider value={markupBar}>
@@ -96,9 +105,9 @@ export function Shell() {
           </div>
         )}
         <div className="shell-body" data-tool={state.rightPane.activeTool ?? undefined}>
-          {warraqView && !organizing && state.leftPane.open && (
+          {navigation && (
             <>
-              <LeftPane />
+              <LeftPane reading={!warraqView} />
               <PaneResizer side="start" width={state.leftPane.width} onResize={(width) => dispatch({ type: 'SET_LEFT_WIDTH', width })} />
             </>
           )}

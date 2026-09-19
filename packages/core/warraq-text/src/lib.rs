@@ -12,7 +12,8 @@ pub mod shape;
 
 pub use bidi::{base_direction, visual_runs, Direction, VisualRun};
 pub use extract::{
-    clusters_to_logical, reconstruct_lines, with_actual_text, PositionedGlyph, TextLine,
+    clusters_to_logical, clusters_to_logical_mapped, reconstruct_lines, with_actual_text,
+    PositionedGlyph, TextLine,
 };
 pub use glyphshape::{best_match, Descriptor, Form, MarkCluster, ShapeSampler, MAX_DISTANCE};
 pub use normalize::{

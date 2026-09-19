@@ -67,8 +67,8 @@ export interface EmbedViewerProps {
   onRegistry?: (registry: PluginRegistry) => void;
   /** EmbedPDF could not open the bytes: the view would otherwise sit empty, silently. */
   onError?: () => void;
-  /** EmbedPDF has opened the bytes it was given. */
-  onOpened?: () => void;
+  /** EmbedPDF has opened the bytes it was given (these, by identity). */
+  onOpened?: (bytes: ArrayBuffer) => void;
 }
 
 interface DocumentManager {
@@ -172,7 +172,7 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
       showMarkupBar(registry, markupRef.current);
       uiLog(`embedpdf opened ${currentName}`);
       reportDrawn(currentName);
-      onOpened?.();
+      onOpened?.(current);
     } catch (error) {
       uiLog(`embedpdf could not open ${currentName}: ${JSON.stringify(error)}`);
       onError?.();

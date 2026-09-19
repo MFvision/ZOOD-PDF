@@ -72,6 +72,15 @@ Tool operations (`warraq-core/src/tools`), all answering JSON plus bytes:
 | `links.add` | `{page, rect, to: {uri} \| {page}}` (only `http`, `https`, `mailto`) | `{links, id}` |
 | `links.update` | `{page, id, rect?, to?}` | `{links}` |
 | `links.remove` | `{page, id}` | `{links}` |
+| `redact.find` | `{query?: string, patterns?: ("email"\|"phone"\|"nationalId"\|"iban"\|"card"\|"date")[], custom?: string, pages?: number[]}` — words Arabic-aware as `search`; `custom` is a Rust `regex` (≤ 1000 chars, compiled within size limits) | `{matches: [{page, text, before, after, kind, rects: [{x, y, width, height}]}], total}` — rects are the glyph boxes in points from the top-left of the page as stored (before `/Rotate`); at most 5000 listed |
+| `redact.inspect` (static) | `{password?}` + the file | `{findings: [{kind, count, details}], revisions, unreachable, signed, protected}`; kinds: metadata, scripts, attachments, comments, forms, hiddenLayers, bookmarks, thumbnails, privateData, links, hiddenText |
+| `redact.scrub` (static) | `{password?, remove: kind[]}` + the file | `{size}` + the file written whole without them, with no earlier revision and nothing unreferenced; `{refused: "protected"}` for a protected file |
+| `outline.list` (static) | `{password?}` + the file | `{bookmarks: [{title, depth, page \| null, open, children}]}` |
+| `attachments.list` / `.get` (static) | `{password?, key?}` + the file | `{attachments: [{key, name, description, size, mime, page \| null}]}` / `{name, size}` + the attachment's bytes (never opened) |
+| `attachments.add` / `.remove` (static) | `{password?, name, description?}` + the file + the new file / `{password?, key}` + the file | the file with it, or without it, as an update |
+| `layers.list` (static) | `{password?}` + the file | `{layers: [{id, name, visible, locked, print, export}], order: [{id \| label, children}]}` |
+| `layers.show` (static) | `{password?, visible: id[]}` + the file | a copy whose default configuration shows exactly those (locked layers keep theirs), as an update |
+| `layers.restore` (static) | `{password?, rebase?: bool}` + the file with its own visibility + the same file as it stands | the second with the first's visibility — as an update of the first when `rebase` |
 
 Errors add `E_ARGS` (arguments that do not parse) and `E_UNKNOWN_OP`.
 

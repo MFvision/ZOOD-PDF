@@ -1,0 +1,186 @@
+/*
+ * The sidebar's document panes: bookmarks, attachments, layers. Rows sit on
+ * the source-list material as the thumbnails do; the attachments are a
+ * grouped inset list, as the inspector's sections are.
+ */
+.docpane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-2) var(--space-5) var(--space-8);
+}
+
+.docpane-note {
+  margin: 0;
+  padding: var(--space-3) var(--space-5) 0;
+  font-size: var(--text-callout);
+  line-height: 1.45;
+  color: var(--secondary-label);
+}
+
+.docpane > .docpane-note {
+  padding: 0;
+}
+
+.docpane-note .lucide {
+  vertical-align: -1px;
+}
+
+.docpane-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.docpane-list ul {
+  padding-inline-start: var(--space-6);
+  margin: 0;
+  list-style: none;
+}
+
+/* Bookmarks: a source list, indented by level. */
+.docpane-list[role="tree"]:not(.docpane-layers) {
+  padding: var(--space-2) var(--space-3) var(--space-8);
+}
+
+.docpane-row {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.docpane-twisty {
+  display: inline-flex;
+  flex: 0 0 20px;
+  align-items: center;
+  justify-content: center;
+  block-size: 24px;
+  padding: 0;
+  color: var(--secondary-label);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-6);
+}
+
+button.docpane-twisty:active {
+  background: var(--fill);
+}
+
+.docpane-link {
+  display: inline-flex;
+  flex: 1;
+  gap: var(--space-2);
+  align-items: center;
+  min-inline-size: 0;
+  min-block-size: 26px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-body);
+  color: var(--label);
+  text-align: start;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-6);
+  overflow-wrap: anywhere;
+}
+
+.docpane-link:hover:not(:disabled) {
+  background: var(--quaternary-fill);
+}
+
+.docpane-link:active:not(:disabled) {
+  background: var(--fill);
+  transition-duration: 0s;
+}
+
+.docpane-link:disabled {
+  color: var(--tertiary-label);
+}
+
+/* Attachments: a grouped inset list, one file a row, divided by hairlines. */
+.docpane-files {
+  overflow: hidden;
+  background: var(--grouped-background);
+  border-radius: var(--radius-10);
+  box-shadow: 0 0 0 0.5px var(--separator);
+}
+
+.docpane-file {
+  position: relative;
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-4) var(--space-3) var(--space-4) var(--space-5);
+}
+
+.docpane-file + .docpane-file::before {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 36px 0;
+  block-size: 0.5px;
+  content: "";
+  background: var(--separator);
+}
+
+.docpane-file > .lucide {
+  flex: none;
+  margin-block-start: 2px;
+  color: var(--accent);
+}
+
+.docpane-file-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.docpane-file-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.docpane-file-meta {
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.docpane-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
+}
+
+.docpane-actions .field {
+  flex: 1 1 100%;
+}
+
+/* Layers: a checkbox a row, the order tree indented. */
+.docpane-layers li {
+  padding-block: 1px;
+}
+
+.docpane-layer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  min-block-size: 26px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-6);
+}
+
+.docpane-layer:hover {
+  background: var(--quaternary-fill);
+}
+
+.docpane-group > bdi {
+  display: block;
+  padding: var(--space-4) var(--space-3) var(--space-1);
+  font-size: var(--text-subheadline);
+  font-weight: 600;
+  color: var(--secondary-label);
+}

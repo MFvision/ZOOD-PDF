@@ -32,8 +32,30 @@ interface DocumentManager {
   getActiveDocumentId(): string | null;
 }
 
+/** A box on a page in EmbedPDF's terms: points from the top-left of the page as stored. */
+interface EmbedRect {
+  origin: { x: number; y: number };
+  size: { width: number; height: number };
+}
+
+/** One redaction mark, as EmbedPDF's redaction plugin takes it (`RedactionItem`). */
+interface RedactionItem {
+  id: string;
+  page: number;
+  rect: EmbedRect;
+  kind: 'text';
+  rects: EmbedRect[];
+  text?: string;
+  source: 'annotation';
+  markColor: string;
+  redactionColor: string;
+}
+
 interface Redaction {
-  forDocument(documentId: string): { getState(): { pendingCount?: number } };
+  forDocument(documentId: string): {
+    getState(): { pendingCount?: number };
+    addPending(items: RedactionItem[]): void;
+  };
   onStateChange: Hook<unknown>;
 }
 
@@ -115,6 +137,63 @@ function pendingRedactionCount(registry: PluginRegistry): number {
     // No document loaded in the plugin yet: nothing is marked.
     return 0;
   }
+}
+
+/** A box on a page, in points from the top-left corner of the page as stored (before `/Rotate`). */
+export interface PageBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Something to redact: the boxes its glyphs were drawn in, on one page (zero-based). */
+export interface RedactionMark {
+  page: number;
+  text: string;
+  rects: PageBox[];
+}
+
+const toRect = (box: PageBox): EmbedRect => ({ origin: { x: box.x, y: box.y }, size: { width: box.width, height: box.height } });
+
+/** The smallest box around `boxes`. */
+export function unionBox(boxes: readonly PageBox[]): PageBox {
+  const x0 = Math.min(...boxes.map((b) => b.x));
+  const y0 = Math.min(...boxes.map((b) => b.y));
+  const x1 = Math.max(...boxes.map((b) => b.x + b.width));
+  const y1 = Math.max(...boxes.map((b) => b.y + b.height));
+  return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+}
+
+/**
+ * Pending redaction marks in the EmbedPDF view, one per match, over exactly
+ * the glyph boxes given — what its own "Mark text" makes from a selection, so
+ * its Apply removes what is under them. Returns how many were added.
+ */
+export function addRedactionMarks(
+  registry: PluginRegistry,
+  marks: readonly RedactionMark[],
+  newId: () => string,
+): number {
+  const id = capability<DocumentManager>(registry, 'document-manager')?.getActiveDocumentId();
+  const scope = id ? capability<Redaction>(registry, 'redaction')?.forDocument(id) : undefined;
+  if (!scope) return 0;
+  const items: RedactionItem[] = marks
+    .filter((mark) => mark.rects.length > 0)
+    .map((mark) => ({
+      id: newId(),
+      page: mark.page,
+      rect: toRect(unionBox(mark.rects)),
+      kind: 'text',
+      rects: mark.rects.map(toRect),
+      text: mark.text,
+      source: 'annotation',
+      // EmbedPDF's own redaction tool's colours: red while marked, black once applied.
+      markColor: '#E44234',
+      redactionColor: '#000000',
+    }));
+  if (items.length > 0) scope.addPending(items);
+  return items.length;
 }
 
 /**
