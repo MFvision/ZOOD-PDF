@@ -721,3 +721,29 @@ fn a_created_arabic_table_is_found_again_with_its_merged_cell() {
     assert_eq!(rows[2][1]["columns"], 2);
     assert!(rows[2][2].is_null());
 }
+
+#[test]
+fn a_fax_tiff_from_a_real_encoder_reads_black_on_white() {
+    // libtiff's Group 4 (through Pillow): a 400 x 200 page at 200 dpi, a
+    // black frame 4 pixels wide 20 in from the edge, white inside.
+    let tiff = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../tests/fixtures/create/scan-2pages.tiff"
+    ))
+    .unwrap();
+    let reply = call_static("create.images", r#"{"paper":"own"}"#, vec![tiff]).unwrap();
+    assert_eq!(value(&reply)["pages"], 2);
+    let pdf = &reply.blobs[0];
+    let doc = Document::open(pdf.clone(), None).unwrap();
+    let (w, h) = doc.page_size(0).unwrap();
+    assert!((w - 144.0).abs() < 0.5 && (h - 72.0).abs() < 0.5, "{w} x {h}");
+    // Drawn at four times its size: 576 x 288 pixels, the frame 5.8 wide.
+    let bitmap = doc.render_page(0, 4.0).unwrap();
+    let at = |fx: f32, fy: f32| {
+        let (x, y) = ((bitmap.width as f32 * fx) as u32, (bitmap.height as f32 * fy) as u32);
+        bitmap.rgba[((y * bitmap.width + x) * 4) as usize]
+    };
+    assert!(at(0.75, 0.5) > 200, "inside the frame is white");
+    assert!(at(0.01, 0.5) > 200, "outside the frame is white");
+    assert!(at(21.5 / 400.0, 0.5) < 80, "the frame is black");
+}
