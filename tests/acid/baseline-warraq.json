@@ -70,9 +70,9 @@
  },
  "chrome-nastaliq-urdu-prose": {
   "open": true,
-  "order_lcs": 0.535,
-  "recall_logical": 0.611,
-  "verdict": "partial"
+  "order_lcs": 1.0,
+  "recall_logical": 1.0,
+  "verdict": "logical"
  },
  "chrome-notonaskh-justified-3pages": {
   "open": true,
@@ -100,7 +100,7 @@
  },
  "chrome-vazirmatn-persian-prose": {
   "open": true,
-  "order_lcs": 0.889,
+  "order_lcs": 0.921,
   "recall_logical": 0.929,
   "verdict": "logical"
  },

@@ -555,6 +555,78 @@ fn glyph_text(g: &PositionedGlyph) -> &str {
         .unwrap_or(PLACEHOLDER)
 }
 
+/// True for a glyph that may be attached cursively to its neighbours: a letter
+/// of a joining script, or a glyph nothing identified, read as part of the
+/// word it touches.
+fn joins_cursively(g: &PositionedGlyph) -> bool {
+    use unicode_script::{Script, UnicodeScript};
+    match g.text.as_deref().and_then(|t| t.chars().next()) {
+        None => true,
+        Some(c) => {
+            c == '\u{0640}'
+                || (c.is_alphabetic()
+                    && matches!(
+                        c.script(),
+                        Script::Arabic | Script::Syriac | Script::Nko | Script::Mandaic
+                    ))
+        }
+    }
+}
+
+/// The baseline each glyph of a run is read on, for grouping it into lines.
+///
+/// Most text is drawn glyph by glyph on its baseline, and a glyph's own `y`
+/// is that baseline. Nastaliq is not: cursive attachment sets each word down
+/// on the baseline only at its last letter, on the left, and climbs every
+/// letter to the right of it higher, to more than an em at the first. Grouped
+/// by their own `y`, the tops of the long words fell out of their line (the
+/// corpus's Urdu page read "ہ س نستعل ہ" as a line of its own), and with
+/// tighter leading they would fall into the line above.
+///
+/// `run` is one angle's glyphs in content order, each with its position in
+/// that angle's frame. Glyphs drawn one after the other whose boxes touch
+/// along the baseline are one stretch of pen; within it, left to right, a
+/// letter of a joining script that touches the letter on its left, is not
+/// below that letter's baseline and climbs no more than a step a letter can,
+/// is read on that letter's baseline. Anything else — spaces, digits, Latin
+/// raised for a superscript, a cell of a table a gap away — keeps its own.
+fn cascade_baselines(run: &[((f32, f32), &PositionedGlyph)]) -> Vec<f32> {
+    let mut base: Vec<f32> = run.iter().map(|((_, y), _)| *y).collect();
+    let slack = |a: &PositionedGlyph, b: &PositionedGlyph| 0.15 * a.size.max(b.size).max(1.0);
+    let touch = |i: usize, j: usize| -> bool {
+        let (((ix, _), a), ((jx, _), b)) = (run[i], run[j]);
+        let s = slack(a, b);
+        a.advance > 0.0 && b.advance > 0.0 && ix <= jx + b.advance + s && jx <= ix + a.advance + s
+    };
+    let mut start = 0;
+    while start < run.len() {
+        let mut end = start + 1;
+        while end < run.len() && touch(end - 1, end) {
+            end += 1;
+        }
+        let mut stretch: Vec<usize> = (start..end).collect();
+        stretch.sort_by(|a, b| run[*a].0 .0.total_cmp(&run[*b].0 .0));
+        for w in stretch.windows(2) {
+            let (left, right) = (w[0], w[1]);
+            let (((lx, ly), l), ((rx, ry), r)) = (run[left], run[right]);
+            let size = l.size.max(r.size).max(1.0);
+            let climbs = l.font == r.font
+                && (l.size - r.size).abs() <= 0.1 * size
+                && joins_cursively(l)
+                && joins_cursively(r)
+                && rx <= lx + l.advance + slack(l, r)
+                && (ry - ly).abs() <= size
+                && ry <= base[left] + 0.25 * size
+                && ry >= base[left] - 2.0 * size;
+            if climbs {
+                base[right] = base[left];
+            }
+        }
+        start = end;
+    }
+    base
+}
+
 pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
     // The slice is in CONTENT order, which carries information geometry does not:
     // a shaper emits a mark immediately next to the base it belongs to (before it
@@ -620,27 +692,34 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
         } else {
             slant
         };
-        let mut sorted: Vec<(usize, &PositionedGlyph)> = indexed
+        let by_position = |a: &(f32, f32), b: &(f32, f32)| {
+            a.1.partial_cmp(&b.1)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal))
+        };
+        let (mut angle_marks, bases): (LineGlyphs, LineGlyphs) = indexed
             .iter()
             .copied()
             .filter(|(_, g)| bucket(g.angle) == b)
+            .partition(|(_, g)| is_mark(g));
+        angle_marks.sort_by(|a, b| by_position(&frame(a.1, angle), &frame(b.1, angle)));
+        marks.extend(angle_marks);
+        // Bases go down the page by the baseline they are read on, which is
+        // their own `y` except in a cascade (see `cascade_baselines`).
+        let framed: Vec<((f32, f32), &PositionedGlyph)> =
+            bases.iter().map(|(_, g)| (frame(g, angle), *g)).collect();
+        let baselines = cascade_baselines(&framed);
+        let mut sorted: Vec<(usize, &PositionedGlyph, (f32, f32))> = bases
+            .iter()
+            .zip(&framed)
+            .zip(baselines)
+            .map(|(((ci, g), ((x, _), _)), y)| (*ci, *g, (*x, y)))
             .collect();
-        sorted.sort_by(|a, b| {
-            let (ax, ay) = frame(a.1, angle);
-            let (bx, by) = frame(b.1, angle);
-            ay.partial_cmp(&by)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then(ax.partial_cmp(&bx).unwrap_or(std::cmp::Ordering::Equal))
-        });
+        sorted.sort_by(|a, b| by_position(&a.2, &b.2));
         // A new angle never continues the previous angle's last line: the two
         // `y`s are measured in different frames and only coincide by accident.
         let first_line_of_angle = lines.len();
-        for (ci, g) in sorted {
-            if is_mark(g) {
-                marks.push((ci, g));
-                continue;
-            }
-            let (_, gy) = frame(g, angle);
+        for (ci, g, (_, gy)) in sorted {
             let continuing = lines.len() > first_line_of_angle;
             match lines.last_mut() {
                 Some((y, size, v))
@@ -1138,6 +1217,123 @@ mod tests {
         // An empty text: decoration, not read at all.
         let dropped = with_actual_text(glyphs, &inside, &[Some(String::new())]);
         assert_eq!(dropped.len(), 1);
+    }
+
+    /// A line set in Nastaliq, as Chrome draws Noto Nastaliq Urdu: each word
+    /// sits on the baseline only at its last letter, on the left, and every
+    /// letter to the right of it is attached higher, `rise` ems a letter, up
+    /// to the word's first letter. Spaces sit on the baseline. The glyphs come
+    /// in visual order, left to right, unless `logical` draws them the way a
+    /// right-to-left producer may: first letter first.
+    fn nastaliq_line(
+        words: &[&str],
+        baseline: f32,
+        rise: f32,
+        logical: bool,
+    ) -> Vec<PositionedGlyph> {
+        let size = 16.0;
+        let glyph = |x: f32, y: f32, advance: f32, text: &str| PositionedGlyph {
+            x,
+            y,
+            angle: 0.0,
+            size,
+            advance,
+            text: Some(text.to_string()),
+            gid: 1,
+            font: 0,
+        };
+        let mut out = vec![];
+        let mut x = 100.0;
+        for (w, word) in words.iter().rev().enumerate() {
+            if w > 0 {
+                out.push(glyph(x, baseline, 3.0, " "));
+                x += 3.0;
+            }
+            for (k, letter) in word.chars().rev().enumerate() {
+                out.push(glyph(
+                    x,
+                    baseline - k as f32 * rise * size,
+                    5.0,
+                    &letter.to_string(),
+                ));
+                x += 5.0;
+            }
+        }
+        if logical {
+            out.reverse();
+        }
+        out
+    }
+
+    fn texts(glyphs: &[PositionedGlyph]) -> Vec<String> {
+        reconstruct_lines(glyphs)
+            .into_iter()
+            .map(|l| l.text)
+            .collect()
+    }
+
+    /// The corpus's Urdu page: a word climbs well over an em from its
+    /// baseline, and read by each glyph's own height the top of every long
+    /// word fell out of its line into a line of its own ("ہ س نستعل ہ").
+    #[test]
+    fn a_nastaliq_word_climbing_from_its_baseline_stays_in_its_line() {
+        let first = ["اردو", "پاکستان", "کی", "قومی", "زبان"];
+        let second = ["اسے", "نستعلیق", "خط", "میں"];
+        for logical in [false, true] {
+            let mut g = nastaliq_line(&first, 73.5, 0.3, logical);
+            g.extend(nastaliq_line(&second, 73.5 + 2.6 * 16.0, 0.3, logical));
+            assert_eq!(
+                texts(&g),
+                [first.join(" "), second.join(" ")],
+                "logical={logical}"
+            );
+        }
+        let lines = reconstruct_lines(&nastaliq_line(&second, 73.5, 0.3, false));
+        assert_eq!(
+            lines[0].y,
+            73.5 - 16.0,
+            "the line's box stands on its baseline"
+        );
+    }
+
+    /// Set tighter, the top of a word on one line comes within half an em of
+    /// the baseline above it; it still belongs to the word it is part of.
+    #[test]
+    fn a_nastaliq_cascade_does_not_join_the_line_above() {
+        let first = ["اردو", "پاکستان", "کی", "قومی", "زبان"];
+        let second = ["اسے", "نستعلیق", "خط", "میں"];
+        let mut g = nastaliq_line(&first, 73.5, 0.2, false);
+        g.extend(nastaliq_line(&second, 73.5 + 1.4 * 16.0, 0.2, false));
+        assert_eq!(texts(&g), [first.join(" "), second.join(" ")]);
+    }
+
+    /// Only letters of a joining script that touch climb with their word:
+    /// two table cells apart, or a raised Latin word, keep their own lines.
+    #[test]
+    fn raised_text_that_is_not_a_cascade_keeps_its_own_line() {
+        let run = |text: &str, x0: f32, y: f32| -> Vec<PositionedGlyph> {
+            text.chars()
+                .enumerate()
+                .map(|(i, c)| PositionedGlyph {
+                    x: x0 + i as f32 * 10.0,
+                    y,
+                    angle: 0.0,
+                    size: 16.0,
+                    advance: 10.0,
+                    text: Some(c.to_string()),
+                    gid: 1,
+                    font: 0,
+                })
+                .collect()
+        };
+        // a cell to the right, 16 units away and raised 0.7 em
+        let mut g = run(&to_visual("كتاب"), 100.0, 100.0);
+        g.extend(run(&to_visual("قلم"), 156.0, 100.0 - 0.7 * 16.0));
+        assert_eq!(texts(&g), ["قلم", "كتاب"]);
+        // a Latin word touching the one before it, raised 0.7 em
+        let mut g = run("base", 100.0, 100.0);
+        g.extend(run("up", 140.0, 100.0 - 0.7 * 16.0));
+        assert_eq!(texts(&g), ["up", "base"]);
     }
 
     #[test]
