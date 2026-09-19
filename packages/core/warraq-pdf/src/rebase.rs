@@ -23,10 +23,15 @@ fn storage_only(object: &Object) -> bool {
     )
 }
 
-/// A stream's bytes as they read: decoded, when it is stored encoded.
-fn decoded(stream: &lopdf::Stream) -> Option<Vec<u8>> {
+/// The most a stream is decoded to, to compare it: past this, two streams
+/// stored differently count as different (and the update keeps a copy).
+const MAX_COMPARED: usize = 128 << 20;
+
+/// A stream's bytes as they read: decoded, when it is stored encoded, up to
+/// `limit`.
+fn decoded(stream: &lopdf::Stream, limit: usize) -> Option<Vec<u8>> {
     if stream.dict.has(b"Filter") {
-        stream.decompressed_content().ok()
+        stream.decompressed_content_with_limit(limit).ok()
     } else {
         Some(stream.content.clone())
     }
@@ -37,6 +42,14 @@ fn decoded(stream: &lopdf::Stream) -> Option<Vec<u8>> {
 /// are stored alike, and decoded when not: PDFium compresses a stream it
 /// finds uncompressed.
 pub(crate) fn same(a: &Object, b: &Object) -> bool {
+    let mut unbounded = usize::MAX;
+    same_within(a, b, &mut unbounded)
+}
+
+/// `same`, decoding no more than `budget` bytes in all (what is decoded is
+/// taken off it): a hostile file's streams can inflate without end, and a
+/// signature check runs on every file that opens.
+pub(crate) fn same_within(a: &Object, b: &Object, budget: &mut usize) -> bool {
     match (a, b) {
         (Object::Stream(x), Object::Stream(y)) => {
             let bare = |d: &Dictionary| {
@@ -54,7 +67,16 @@ pub(crate) fn same(a: &Object, b: &Object) -> bool {
             if stored_alike && x.content == y.content {
                 return true;
             }
-            matches!((decoded(x), decoded(y)), (Some(p), Some(q)) if p == q)
+            let limit = MAX_COMPARED.min(*budget);
+            let Some(p) = decoded(x, limit) else {
+                return false;
+            };
+            *budget = budget.saturating_sub(p.len());
+            let Some(q) = decoded(y, limit.min(*budget)) else {
+                return false;
+            };
+            *budget = budget.saturating_sub(q.len());
+            p == q
         }
         _ => a == b,
     }

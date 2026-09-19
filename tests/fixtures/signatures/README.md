@@ -26,3 +26,18 @@ name serials or dates may need the same update.
 The certificates name OCSP and CRL addresses under `warraq.test`, a name that
 never resolves: a test that fetches them fails loudly rather than reaching
 anyone.
+
+## `hostile/` — certificates a verifier must not accept as a document signer
+
+`hostile/make.sh` makes a separate set under a root of its own (`hostile-root`,
+EC P-256; keys public, password `warraq-test`), for the tests in
+`packages/core/warraq-sign/src/attacks.rs`:
+
+| File | What it is |
+| --- | --- |
+| `hostile-root.cer` | The root. The tests hold it either as one of Mozilla's roots would be (trusted for web sites) or as a root the person trusts |
+| `web-ca.cer`, `web-server.cer` / `.p12` | A web-server CA (extended key usage serverAuth, as Mozilla's policy has them) and a domain-validated web-server certificate for `attacker.warraq.test` — what anyone can get for free |
+| `forged.p12` | A certificate in the name "وزارة المالية" that the web-server certificate "issued" with its own key (it is no CA) |
+| `docs-ca.cer`, `docs-signer.cer` / `.p12` | A document-signing CA (emailProtection, id-kp-documentSigning) and a signer under it |
+| `keyenc-signer.p12` | A signer whose key usage allows only encryption |
+| `nested-signer.p12` | A signer under a CA that the `pathlen:0` document CA may not have issued |

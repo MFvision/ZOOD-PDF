@@ -17,6 +17,8 @@
 //! request built here, sent by the host only when the person asks, and an
 //! answer handed back; the rest is pure functions over bytes.
 pub mod asn1;
+#[cfg(test)]
+mod attacks;
 pub mod chain;
 pub mod cms;
 pub mod keys;
