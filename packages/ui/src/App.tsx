@@ -9,6 +9,7 @@ import './edit/edit.css';
 import './home/home.css';
 import { I18nProvider } from './i18n/I18nProvider';
 import type { Lang } from './i18n/messages';
+import { FormRuntimeProvider } from './forms/FormRuntime';
 import { Shell } from './shell/Shell';
 import { AppProvider } from './state/AppContext';
 
@@ -22,7 +23,9 @@ export function App({ initialLang }: AppProps) {
   return (
     <I18nProvider initialLang={initialLang}>
       <AppProvider>
-        <Shell />
+        <FormRuntimeProvider>
+          <Shell />
+        </FormRuntimeProvider>
       </AppProvider>
     </I18nProvider>
   );

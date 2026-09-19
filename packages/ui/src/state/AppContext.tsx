@@ -200,6 +200,14 @@ export interface AppServices {
   ) => Promise<OcrOutcome>;
   /** Saves an HTML page — Compare's report — the same way; `false` if the panel was cancelled. */
   saveReport: (html: string, name: string) => Promise<boolean>;
+  /**
+   * A core operation on the file as it stands (`op` is static: the file goes
+   * in, with the bundled Amiri after it when `font`), its answer opened in
+   * place in both engines — Prepare form's fields and calculations. The file
+   * goes in as an update of the bytes it was opened with, so what they held
+   * stays as it was. Resolves to the operation's answer.
+   */
+  transformFile: <T>(op: string, args: object, options?: { font?: boolean }) => Promise<{ result: T; changed: boolean }>;
   clearRecent: () => void;
   /** Replaces a paragraph and records it on the undo stack. */
   commitParagraph: (entry: EditEntry) => Promise<void>;
@@ -999,6 +1007,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [client, currentFileBytes, replaceCurrentFile],
   );
 
+  const transformFile = useCallback(
+    async <T,>(op: string, args: object, options: { font?: boolean } = {}): Promise<{ result: T; changed: boolean }> => {
+      const fromEmbed = warraqOwnsDocument(stateRef.current) ? null : await bytesFromEmbed();
+      const bytes = fromEmbed ? await keepOwnBytes(fromEmbed) : await currentFileBytes();
+      if (!bytes) throw new Error('E_NOT_FOUND: no open file');
+      const blobs = [bytes];
+      if (options.font) blobs.push((await loadEditFont('amiri')).slice().buffer);
+      const { result, blobs: out } = await client.callStatic<T>(op, { password: passwordRef.current ?? null, ...args }, blobs);
+      const next = out[0];
+      if (next) await replaceCurrentFile(next);
+      return { result, changed: next !== undefined };
+    },
+    [client, bytesFromEmbed, keepOwnBytes, currentFileBytes, replaceCurrentFile],
+  );
+
   const saveReport = useCallback(
     (html: string, name: string): Promise<boolean> =>
       saveBytes(new TextEncoder().encode(html), name, {
@@ -1171,6 +1194,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       saveCopy,
       recognizeText,
       saveReport,
+      transformFile,
       clearRecent,
       commitParagraph,
       addText,
@@ -1216,6 +1240,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       saveCopy,
       recognizeText,
       saveReport,
+      transformFile,
       clearRecent,
       commitParagraph,
       addText,

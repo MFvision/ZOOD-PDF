@@ -919,7 +919,11 @@ impl PdfDocument {
                 }
                 kind => {
                     dict.set("FT", Object::Name(b"Tx".to_vec()));
-                    dict.set("DA", Object::string_literal("/Helv 0 Tf 0 g"));
+                    // A size the box holds, not 0 ("fit"): viewers that edit
+                    // a field in place (EmbedPDF among them) take the size
+                    // literally, and at 0 nothing typed shows or is kept.
+                    let size = (h * 0.6).clamp(7.0, 12.0).round();
+                    dict.set("DA", Object::string_literal(format!("/Helv {size} Tf 0 g")));
                     dict.set("Q", Object::Integer(if field.rtl { 2 } else { 0 }));
                     let n = self.doc.add_object(empty_appearance(w, h, true, matrix));
                     dict.set("AP", Dictionary::from_iter([("N", Object::Reference(n))]));

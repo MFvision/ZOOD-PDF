@@ -1,0 +1,229 @@
+/* Prepare form: the panel's lists, and the proposals drawn over the pages.
+   Tokens only; logical properties throughout, so the panel mirrors in Arabic. */
+
+/* A heading over an action list, as a grouped section's legend reads. */
+.form-section-title {
+  margin: var(--space-6) 0 calc(-1 * var(--space-2));
+  font-size: var(--text-callout);
+  font-weight: 600;
+  color: var(--secondary-label);
+}
+
+/* Detection's proposals: type, name and remove, one row each. */
+.proposal-list ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-block-size: 320px;
+  padding: 0;
+  margin: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.proposal-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 7.5em) minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-1);
+  border-radius: var(--radius-6);
+}
+
+.proposal-list li.is-selected {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.proposal-list .text-input {
+  min-inline-size: 0;
+}
+
+.proposal-list .text-input[aria-invalid='true'] {
+  box-shadow: 0 0 0 1.5px var(--destructive);
+}
+
+/* The calculation editor. */
+.range-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.calc-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-block-size: 180px;
+  overflow: auto;
+}
+
+.tool-panel .calc-editor .select,
+.tool-panel fieldset > .select,
+.tool-panel fieldset > .text-input {
+  inline-size: 100%;
+}
+
+/* Notices: an XFA form, scripts not run. */
+.form-notice {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--text-callout);
+  line-height: 1.45;
+  color: var(--label);
+  background: var(--grouped-background);
+  border-radius: var(--radius-10);
+  box-shadow: 0 0 0 0.5px var(--separator);
+}
+
+.form-notice > .lucide {
+  flex: 0 0 auto;
+  color: var(--orange);
+}
+
+.form-notice > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.form-scripts {
+  display: block;
+}
+
+.form-scripts summary {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  cursor: default;
+}
+
+.form-scripts summary .lucide {
+  color: var(--orange);
+}
+
+.form-scripts ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 0;
+  margin: var(--space-4) 0 0;
+  list-style: none;
+}
+
+.form-scripts li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.form-script-where {
+  font-weight: 600;
+}
+
+.form-scripts code {
+  display: block;
+  max-block-size: 5.5em;
+  padding: var(--space-2) var(--space-3);
+  overflow: hidden;
+  font-size: var(--text-subheadline);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  background: var(--quaternary-fill);
+  border-radius: var(--radius-6);
+}
+
+/*
+ * Proposals over the pages. The layer covers EmbedPDF's scrolling area and
+ * places each box in page geometry, which is physical — left to right in
+ * any language — so the layer itself is left to right; each name inside
+ * still reads in its own direction.
+ */
+.proposal-layer {
+  position: absolute;
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+  direction: ltr;
+}
+
+.proposal {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: move;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1.5px solid var(--accent);
+  border-radius: 2px;
+}
+
+.proposal-checkbox {
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  border-color: var(--green);
+}
+
+.proposal-signature {
+  background: color-mix(in srgb, var(--orange) 12%, transparent);
+  border-color: var(--orange);
+}
+
+.proposal-date,
+.proposal-hijri {
+  border-style: dashed;
+}
+
+.proposal:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.proposal.is-selected {
+  z-index: 1;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-width: 2px;
+}
+
+.proposal-name {
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-start: -1.5px;
+  max-inline-size: 220px;
+  padding: 0 var(--space-2);
+  overflow: hidden;
+  font-size: var(--text-subheadline);
+  line-height: 16px;
+  color: var(--label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  background: var(--elevated-background);
+  border-radius: 3px 3px 0 0;
+  box-shadow: 0 0 0 0.5px var(--separator);
+  opacity: 0;
+}
+
+.proposal:hover .proposal-name,
+.proposal.is-selected .proposal-name,
+.proposal:focus-visible .proposal-name {
+  opacity: 1;
+}
+
+/* Resizes from the far corner; shown on the chosen proposal. */
+.proposal-handle {
+  position: absolute;
+  inset-block-end: -5px;
+  inset-inline-end: -5px;
+  display: none;
+  inline-size: 10px;
+  block-size: 10px;
+  cursor: nwse-resize;
+  background: var(--control-background);
+  border: 1.5px solid var(--accent);
+  border-radius: 50%;
+}
+
+.proposal.is-selected .proposal-handle {
+  display: block;
+}

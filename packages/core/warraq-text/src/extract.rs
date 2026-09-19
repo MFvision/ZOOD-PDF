@@ -120,11 +120,20 @@ enum Class {
 
 fn classify(c: char) -> Class {
     use unicode_script::{Script, UnicodeScript};
+    // The Arabic decimal and thousands separators are part of the number they
+    // sit in (UAX #9 class AN, as the digits are): read as letters, they cut
+    // "٧٥٫٠٠" in two and turned it round as "٠٠٫٧٥".
     if c.is_ascii_digit()
         || ('\u{0660}'..='\u{0669}').contains(&c)
         || ('\u{06F0}'..='\u{06F9}').contains(&c)
+        || c == '\u{066B}'
+        || c == '\u{066C}'
     {
         return Class::Num;
+    }
+    // The Arabic percent sign ends a number as `%` does (UAX #9 class ET).
+    if c == '\u{066A}' {
+        return Class::Neutral;
     }
     if crate::normalize::is_mark_or_control(c) {
         return Class::Neutral;
@@ -229,7 +238,12 @@ fn reorder_units(units: Vec<Unit>) -> (String, Direction) {
                 && unicode_bidi::bidi_class(u.chars[0]) == unicode_bidi::BidiClass::ET
         };
         for i in 0..n {
-            if units[i].class == Class::Num {
+            // W5 joins a terminator to a European number only: beside
+            // Arabic-Indic digits (class AN) `٪` and `%` stay neutral.
+            let european = !units[i].chars.iter().any(|c| {
+                ('\u{0660}'..='\u{0669}').contains(c) || matches!(c, '\u{066B}' | '\u{066C}')
+            });
+            if units[i].class == Class::Num && european {
                 let mut j = i + 1;
                 while j < n && is_et(&units[j]) {
                     member[j] = true;
@@ -850,6 +864,8 @@ mod tests {
         "The word كتاب means book in Arabic, and مكتبة means library.",
         "رقم الهاتف: +966 50 123 4567",
         "نسبة النمو (12.5%) مقارنة بـ (10%) العام الماضي",
+        "المجموع ٧٥٫٠٠ ر.س",
+        "الإجمالي: ١٬٥٠٠٫٥٠ ر.س شاملًا ١٥٪ ضريبة",
         "قال: «مرحباً» ثم غادر.",
         "استخدم الاختصار Ctrl+S للحفظ ثم اضغط File > Save As.",
         "زبان فارسی: پژوهش، گچ، ژاله، کتاب، یک، آموزش",
