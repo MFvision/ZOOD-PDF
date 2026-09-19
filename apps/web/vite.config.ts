@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
+import { embedPatches, embedPatchesForDeps } from '../../packages/ui/vite/embedPatches';
 import { notices } from '../../packages/ui/vite/notices';
 import { ocrModels } from '../../packages/ui/vite/ocrModels';
 
@@ -51,7 +52,8 @@ export function stripMetaCsp(): Plugin {
 }
 
 export default defineConfig(({ command, mode }) => ({
-  plugins: [react(), devCspNonce(), ocrModels(), notices(), ...(mode === 'tauri' ? [stripMetaCsp()] : [])],
+  plugins: [react(), devCspNonce(), embedPatches(), ocrModels(), notices(), ...(mode === 'tauri' ? [stripMetaCsp()] : [])],
+  optimizeDeps: { rolldownOptions: { plugins: [embedPatchesForDeps()] } },
   html: command === 'serve' ? { cspNonce: devNonce } : undefined,
   server: { port: 5173, strictPort: true },
   preview: { port: 4173, strictPort: true },
