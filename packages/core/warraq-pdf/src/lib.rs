@@ -35,7 +35,7 @@ pub use attachments::{Attachment, AttachmentPlace};
 pub use compress::{CompressOptions, CompressReport, Refusal};
 pub use document::{Metadata, PdfDocument};
 pub use fonts::{embed_subset_font, FontSubset};
-pub use hidden::{Finding, Hidden, HiddenReport};
+pub use hidden::{Detail, Finding, Hidden, HiddenReport};
 pub use images::PlacedImage;
 pub use incremental::{previous_xref, XrefStyle};
 pub use layers::{Layer, LayerNode, Layers};

@@ -113,6 +113,34 @@ pub struct TextLine {
     /// turned line), so a caller falls back to the line's own box. A mark
     /// shares its letter's box, and a ligature's letters share the ligature's.
     pub spans: Vec<(f32, f32)>,
+    /// For a turned line — text on a page turned by `/Rotate`, up a margin,
+    /// a crooked scan's text layer — where its chars were drawn, in the
+    /// run's own frame; `None` for a level line, which has `spans`.
+    pub turned: Option<Turned>,
+}
+
+/// Where a turned line's chars were drawn, in its run's own frame: turned
+/// by `angle` from the page, `x` along the baseline in reading order, `y`
+/// across it, down the page as the run sees it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Turned {
+    /// The frame's angle, in radians, as `PositionedGlyph::angle` gives it.
+    pub angle: f32,
+    /// The baseline, across the run.
+    pub baseline: f32,
+    /// The size of the line's first glyph.
+    pub size: f32,
+    /// Each char's `(x0, x1)` along the baseline, as `spans` for a level
+    /// line; empty when unknown.
+    pub spans: Vec<(f32, f32)>,
+}
+
+impl Turned {
+    /// A point of the frame back on the page (y down).
+    pub fn on_page(&self, x: f32, y: f32) -> (f32, f32) {
+        let (s, c) = self.angle.sin_cos();
+        (x * c + y * s, y * c - x * s)
+    }
 }
 
 /// The text of a line as `reconstruct_lines` reports it — composed (NFC),
@@ -822,8 +850,18 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
             continue;
         }
         // Boxes along a turned baseline are in the run's own frame, not the
-        // page's: only horizontal lines report them.
-        let spans = if angle == 0.0 { spans } else { vec![] };
+        // page's: a turned line reports them with that frame.
+        let (spans, turned) = if angle == 0.0 {
+            (spans, None)
+        } else {
+            let turned = Turned {
+                angle,
+                baseline: y,
+                size,
+                spans,
+            };
+            (vec![], Some(turned))
+        };
         let x0 = clusters.first().map(|c| c.x).unwrap_or(0.0);
         let x1 = clusters
             .last()
@@ -856,6 +894,7 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
             height: bh,
             direction,
             spans,
+            turned,
         });
     }
     out
@@ -907,6 +946,41 @@ mod tests {
                 font: 0,
             })
             .collect()
+    }
+
+    /// A turned line says where each of its chars was drawn, in its run's
+    /// frame: turned back onto the page, each box lies on its own glyph,
+    /// along the run and across its baseline.
+    #[test]
+    fn a_turned_line_places_each_char_on_its_glyph() {
+        for up in [true, false] {
+            let glyphs = rotated_run("Public", 30.0, 600.0, up);
+            let lines = reconstruct_lines(&glyphs);
+            assert_eq!(lines.len(), 1);
+            let line = &lines[0];
+            assert!(line.spans.is_empty(), "no level spans for a turned line");
+            let turned = line.turned.as_ref().expect("a turned line knows its frame");
+            assert_eq!(turned.spans.len(), 6);
+            for (k, g) in glyphs.iter().enumerate() {
+                let (x0, x1) = turned.spans[k];
+                // The middle of the char's box, half way up its letters.
+                let (x, y) = turned.on_page((x0 + x1) / 2.0, turned.baseline - 0.4 * turned.size);
+                // A glyph's box runs from its origin along the run; the
+                // letters stand to the left of a run going up, to the right
+                // of one going down.
+                let along = if up { -5.0 } else { 5.0 };
+                let across = if up { -4.0 } else { 4.0 };
+                assert!(
+                    (y - (g.y + along)).abs() < 0.5 && (x - (g.x + across)).abs() < 0.5,
+                    "up {up}, char {k}: ({x}, {y}) against the glyph at ({}, {})",
+                    g.x,
+                    g.y
+                );
+            }
+        }
+        // Level lines keep their spans, and no frame.
+        let level = reconstruct_lines(&glyphs_from_visual("Level", 100.0));
+        assert!(level[0].turned.is_none() && level[0].spans.len() == 5);
     }
 
     /// Regression: the World Bank Word export's margin note read

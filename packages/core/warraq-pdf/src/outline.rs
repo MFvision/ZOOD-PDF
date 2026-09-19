@@ -18,6 +18,10 @@ pub struct Bookmark {
     /// The page it goes to, zero-based; `None` for one that goes elsewhere
     /// (a web address, another file) or nowhere.
     pub page: Option<usize>,
+    /// It goes outside the file: a web address, another file, a file
+    /// attached to this one, a program. One with no page that does not is a
+    /// heading, going nowhere.
+    pub outside: bool,
     /// Shown open: its children are listed below it.
     pub open: bool,
     pub children: usize,
@@ -81,10 +85,12 @@ impl PdfDocument {
                     .ok()
                     .and_then(|d| d.get(b"Next").and_then(|n| n.as_reference()).ok());
             }
+            let page = self.bookmark_page(item, &pages, &named);
             out.push(Bookmark {
                 title: title.trim().to_string(),
                 depth,
-                page: self.bookmark_page(item, &pages, &named),
+                page,
+                outside: page.is_none() && self.goes_outside(item),
                 open: count > 0,
                 children,
             });
@@ -121,6 +127,22 @@ impl PdfDocument {
             }
         }
         out
+    }
+
+    /// A bookmark's action takes the reader outside the file.
+    fn goes_outside(&self, item: &Dictionary) -> bool {
+        let Some(action) = item
+            .get(b"A")
+            .ok()
+            .and_then(|a| self.doc.dereference(a).ok())
+            .and_then(|(_, a)| a.as_dict().ok())
+        else {
+            return false;
+        };
+        matches!(
+            action.get(b"S").and_then(|s| s.as_name()),
+            Ok(b"URI" | b"GoToR" | b"GoToE" | b"Launch")
+        )
     }
 
     /// The page a bookmark goes to: its `/Dest`, or its GoTo action's.
@@ -199,7 +221,9 @@ mod tests {
         assert_eq!(marks.len(), 2);
         assert_eq!(marks[0].title, "BOOKMARK-SECRET");
         assert_eq!(marks[0].page, Some(0));
+        assert!(!marks[0].outside);
         assert_eq!(marks[1].page, None, "a web address is not a page");
+        assert!(marks[1].outside, "it goes outside the file");
         let arabic =
             read("corpus/arabic/generated/variant-arabic-metadata-outlines-annots.pdf").bookmarks();
         assert!(!arabic.is_empty());
@@ -209,5 +233,56 @@ mod tests {
             "{arabic:#?}"
         );
         assert!(arabic.iter().all(|b| b.page.is_some()), "{arabic:#?}");
+    }
+
+    /// An entry that only heads others goes nowhere — it does not go
+    /// outside the file — and neither does one whose action is a script.
+    #[test]
+    fn a_heading_goes_nowhere_and_only_an_address_or_a_file_goes_outside() {
+        let bytes = crate::hidden::tests::file_of(&[
+            (
+                1,
+                "<< /Type /Catalog /Pages 2 0 R /Outlines 4 0 R >>".into(),
+            ),
+            (2, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".into()),
+            (
+                3,
+                "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>".into(),
+            ),
+            (4, "<< /Type /Outlines /First 5 0 R /Last 5 0 R >>".into()),
+            (
+                5,
+                "<< /Title (Part one) /Parent 4 0 R /First 6 0 R /Last 8 0 R /Count 3 >>".into(),
+            ),
+            (
+                6,
+                "<< /Title (Chapter) /Parent 5 0 R /Next 7 0 R /Dest [3 0 R /Fit] >>".into(),
+            ),
+            (
+                7,
+                "<< /Title (Other file) /Parent 5 0 R /Prev 6 0 R /Next 8 0 R \
+                 /A << /S /GoToR /F (other.pdf) /D [0 /Fit] >> >>"
+                    .into(),
+            ),
+            (
+                8,
+                "<< /Title (Script) /Parent 5 0 R /Prev 7 0 R /A << /S /JavaScript /JS (1) >> >>"
+                    .into(),
+            ),
+        ]);
+        let marks = PdfDocument::open(bytes, None).unwrap().bookmarks();
+        let seen: Vec<(&str, Option<usize>, bool)> = marks
+            .iter()
+            .map(|b| (b.title.as_str(), b.page, b.outside))
+            .collect();
+        assert_eq!(
+            seen,
+            [
+                ("Part one", None, false),
+                ("Chapter", Some(0), false),
+                ("Other file", None, true),
+                ("Script", None, false),
+            ]
+        );
     }
 }

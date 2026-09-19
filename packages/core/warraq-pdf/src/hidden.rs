@@ -88,14 +88,29 @@ impl Hidden {
     }
 }
 
+/// One line of what a finding holds, for a person to read — in their own
+/// language: the interface words the core's own terms, and shows what
+/// comes from the file as the file gives it.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Detail {
+    /// One of the core's own words, and how many: `white` (3), `XMP` (1).
+    Word(&'static str, usize),
+    /// A kind of annotation by its PDF name (`Highlight`), and how many.
+    Subtype(String, usize),
+    /// A document property: its key as the file names it, and its value.
+    Property(String, String),
+    /// A name from the file itself: an attachment's, a layer's, an address.
+    Name(String),
+}
+
 /// One kind of hidden information the file carries.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Finding {
     pub kind: Hidden,
     /// How many: entries, annotations, layers, runs of text.
     pub count: usize,
-    /// What they are, a line each, for a person to read (at most a few).
-    pub details: Vec<String>,
+    /// What they are, a line each (at most a few).
+    pub details: Vec<Detail>,
 }
 
 /// What `hidden_report` found.
@@ -291,42 +306,180 @@ impl PdfDocument {
             .collect()
     }
 
-    /// Layers switched off in the default configuration (`/D`).
+    /// A layer's own "shown on screen" state (`/Usage /View /ViewState`).
+    fn view_state(&self, layer: &Dictionary) -> Option<bool> {
+        let usage = self.resolve_dict(layer.get(b"Usage").ok())?;
+        let view = self.resolve_dict(usage.get(b"View").ok())?;
+        match name_of(view.get(b"ViewState").ok())? {
+            b"OFF" => Some(false),
+            _ => Some(true),
+        }
+    }
+
+    /// Layers not shown on screen, as PDFium — the engine the view draws
+    /// pages with — decides (`CPDF_OCContext::LoadOCGState`): a layer's own
+    /// view state first, then, for a layer the file lists, the default
+    /// configuration (`/D`); a layer the file does not list is shown unless
+    /// its own view state says otherwise.
     pub(crate) fn off_layers(&self) -> BTreeSet<ObjectId> {
         let mut off = BTreeSet::new();
         let Ok(catalog) = self.doc.catalog() else {
             return off;
         };
-        let Some(props) = self.resolve_dict(catalog.get(b"OCProperties").ok()) else {
-            return off;
-        };
+        let props = self.resolve_dict(catalog.get(b"OCProperties").ok());
         let all: Vec<ObjectId> = props
-            .get(b"OCGs")
-            .ok()
+            .and_then(|p| p.get(b"OCGs").ok())
             .and_then(|o| self.deref(o))
             .and_then(|o| o.as_array().ok())
             .map(|a| a.iter().filter_map(|o| o.as_reference().ok()).collect())
             .unwrap_or_default();
-        let Some(config) = self.resolve_dict(props.get(b"D").ok()) else {
-            return off;
-        };
-        let ids = |key: &[u8]| -> Vec<ObjectId> {
+        let config = props.and_then(|p| self.resolve_dict(p.get(b"D").ok()));
+        let ids = |key: &[u8]| -> HashSet<ObjectId> {
             config
-                .get(key)
-                .ok()
+                .and_then(|c| c.get(key).ok())
                 .and_then(|o| self.deref(o))
                 .and_then(|o| o.as_array().ok())
                 .map(|a| a.iter().filter_map(|o| o.as_reference().ok()).collect())
                 .unwrap_or_default()
         };
-        if name_of(config.get(b"BaseState").ok()) == Some(b"OFF") {
-            off.extend(all.iter().copied());
+        let base = config.is_none_or(|c| name_of(c.get(b"BaseState").ok()) != Some(b"OFF"));
+        let (on, off_list) = (ids(b"ON"), ids(b"OFF"));
+        for &id in all.iter().take(MAX_ENTRIES) {
+            let Ok(layer) = self.doc.get_dictionary(id) else {
+                continue;
+            };
+            let shown = self.view_state(layer).unwrap_or_else(|| {
+                config.is_none() || ((base || on.contains(&id)) && !off_list.contains(&id))
+            });
+            if !shown {
+                off.insert(id);
+            }
         }
-        for id in ids(b"ON") {
-            off.remove(&id);
+        // Layers the file does not list, off by their own view state.
+        for (id, object) in &self.doc.objects {
+            if let Ok(d) = object.as_dict() {
+                if d.has_type(b"OCG") && self.view_state(d) == Some(false) {
+                    off.insert(*id);
+                }
+            }
         }
-        off.extend(ids(b"OFF"));
         off
+    }
+
+    /// Whether optional content `o` — a layer, or a membership dictionary
+    /// (OCMD) — is shown when the layers in `off` are not, as PDFium
+    /// decides it: a membership dictionary by its expression (`/VE`), or by
+    /// its policy (`/P`, AnyOn unless it says) over the layers it lists — a
+    /// single layer given alone by that layer's own state. Anything that is
+    /// neither is shown.
+    fn oc_shown(&self, o: &Object, off: &BTreeSet<ObjectId>, depth: usize) -> bool {
+        if depth > MAX_DEPTH {
+            return false;
+        }
+        let Ok((id, target)) = self.doc.dereference(o) else {
+            return true;
+        };
+        let Ok(d) = target.as_dict() else {
+            return true;
+        };
+        if !d.has_type(b"OCMD") {
+            return !id.is_some_and(|id| off.contains(&id));
+        }
+        if let Some(ve) = d
+            .get(b"VE")
+            .ok()
+            .and_then(|v| self.deref(v))
+            .and_then(|v| v.as_array().ok())
+        {
+            return self.ve_shown(ve, off, depth + 1);
+        }
+        let Ok(ocgs) = d.get(b"OCGs") else {
+            return true;
+        };
+        match self.doc.dereference(ocgs) {
+            Ok((_, Object::Dictionary(_))) => self.oc_shown(ocgs, off, depth + 1),
+            Ok((_, Object::Array(items))) => {
+                let policy = name_of(d.get(b"P").ok()).unwrap_or(b"AnyOn");
+                let mut seen = false;
+                for item in items.iter().take(MAX_ENTRIES) {
+                    let Ok((item_id, Object::Dictionary(_))) = self.doc.dereference(item) else {
+                        continue;
+                    };
+                    seen = true;
+                    let shown = !item_id.is_some_and(|i| off.contains(&i));
+                    match (policy, shown) {
+                        (b"AnyOn", true) | (b"AnyOff", false) => return true,
+                        (b"AllOn", false) | (b"AllOff", true) => return false,
+                        _ => {}
+                    }
+                }
+                !seen || matches!(policy, b"AllOn" | b"AllOff")
+            }
+            _ => true,
+        }
+    }
+
+    /// A visibility expression (`/VE`): `[/And …]`, `[/Or …]` or `[/Not x]`
+    /// over layers and expressions; anything else hides (PDFium's reading).
+    fn ve_shown(&self, ve: &[Object], off: &BTreeSet<ObjectId>, depth: usize) -> bool {
+        if depth > MAX_DEPTH {
+            return false;
+        }
+        let operand = |o: &Object| -> Option<bool> {
+            match self.deref(o)? {
+                Object::Dictionary(_) => Some(self.oc_shown(o, off, depth + 1)),
+                Object::Array(inner) => Some(self.ve_shown(inner, off, depth + 1)),
+                _ => None,
+            }
+        };
+        match name_of(ve.first()) {
+            Some(b"Not") => ve.get(1).and_then(operand).is_some_and(|shown| !shown),
+            Some(op @ (b"And" | b"Or")) => {
+                let mut value = None;
+                for item in ve.iter().skip(1).take(MAX_ENTRIES) {
+                    let Some(shown) = operand(item) else {
+                        continue;
+                    };
+                    value = Some(match value {
+                        None => shown,
+                        Some(v) if op == b"Or" => v || shown,
+                        Some(v) => v && shown,
+                    });
+                }
+                value.unwrap_or(false)
+            }
+            _ => false,
+        }
+    }
+
+    /// The layers optional content `o` depends on: itself, or those a
+    /// membership dictionary lists or names in its expression.
+    fn oc_members(&self, o: &Object, out: &mut BTreeSet<ObjectId>, depth: usize) {
+        if depth > MAX_DEPTH {
+            return;
+        }
+        let (id, target) = match o {
+            Object::Reference(id) => match self.doc.get_object(*id) {
+                Ok(target) => (Some(*id), target),
+                Err(_) => return,
+            },
+            other => (None, other),
+        };
+        match target {
+            Object::Dictionary(d) if d.has_type(b"OCMD") => {
+                for key in [b"OCGs".as_slice(), b"VE"] {
+                    if let Ok(v) = d.get(key) {
+                        self.oc_members(v, out, depth + 1);
+                    }
+                }
+            }
+            Object::Dictionary(_) => out.extend(id),
+            Object::Array(a) => a
+                .iter()
+                .take(MAX_ENTRIES)
+                .for_each(|v| self.oc_members(v, out, depth + 1)),
+            _ => {}
+        }
     }
 
     /// The name of a layer, as a person reads it.
@@ -357,7 +510,7 @@ impl PdfDocument {
             .filter(|id| !reachable.contains(id))
             .count();
 
-        let mut add = |kind: Hidden, count: usize, details: Vec<String>| {
+        let mut add = |kind: Hidden, count: usize, details: Vec<Detail>| {
             if count > 0 {
                 report.findings.push(Finding {
                     kind,
@@ -378,10 +531,9 @@ impl PdfDocument {
                     .map(decode_text_string)
                     .unwrap_or_default();
                 if !text.trim().is_empty() {
-                    details.push(format!(
-                        "{}: {}",
-                        String::from_utf8_lossy(key),
-                        truncate(text.trim(), 80)
+                    details.push(Detail::Property(
+                        String::from_utf8_lossy(key).into_owned(),
+                        truncate(text.trim(), 80),
                     ));
                 }
             }
@@ -395,7 +547,7 @@ impl PdfDocument {
             });
         }
         if !xmp.is_empty() {
-            details.push(format!("XMP ({})", xmp.len()));
+            details.push(Detail::Word("XMP", xmp.len()));
         }
         add(Hidden::Metadata, details.len(), details);
 
@@ -406,40 +558,47 @@ impl PdfDocument {
             .unwrap_or(0);
         let opens = catalog.is_some_and(|c| c.has(b"OpenAction"));
         let (mut automatic, mut active) = (0usize, 0usize);
+        // An action that runs something: written in place, or — as actions
+        // usually are — an object of its own, with or without `/Type`.
+        let runs = |o: &Object| match self.deref(o) {
+            Some(Object::Dictionary(action)) => {
+                name_of(action.get(b"S").ok()).is_some_and(|s| ACTIVE_ACTIONS.contains(&s))
+            }
+            _ => false,
+        };
         for object in self.doc.objects.values() {
             visit_dicts(object, 0, &mut |d| {
                 if d.has(b"AA") {
                     automatic += 1;
                 }
-                if let Some(action) = d.get(b"A").ok().and_then(|a| a.as_dict().ok()) {
-                    if name_of(action.get(b"S").ok()).is_some_and(|s| ACTIVE_ACTIONS.contains(&s)) {
-                        active += 1;
+                if d.get(b"A").is_ok_and(runs) {
+                    active += 1;
+                }
+                // What an action runs after itself (`/Next`): one action or
+                // a list of them, each with a chain of its own.
+                if d.has(b"S") {
+                    match d.get(b"Next").ok().and_then(|n| self.deref(n)) {
+                        Some(Object::Array(chain)) => {
+                            active += chain.iter().take(MAX_ENTRIES).filter(|a| runs(a)).count()
+                        }
+                        Some(_) if d.get(b"Next").is_ok_and(runs) => active += 1,
+                        _ => {}
                     }
                 }
             });
         }
-        // An `/A` held as its own object is counted where it is.
-        for object in self.doc.objects.values() {
-            if let Ok(d) = object.as_dict() {
-                if d.has_type(b"Action")
-                    && name_of(d.get(b"S").ok()).is_some_and(|s| ACTIVE_ACTIONS.contains(&s))
-                {
-                    active += 1;
-                }
-            }
-        }
         let mut details = vec![];
         if js > 0 {
-            details.push(format!("JavaScript ({js})"));
+            details.push(Detail::Word("JavaScript", js));
         }
         if opens {
-            details.push("OpenAction".into());
+            details.push(Detail::Word("OpenAction", 1));
         }
         if automatic > 0 {
-            details.push(format!("AA ({automatic})"));
+            details.push(Detail::Word("AA", automatic));
         }
         if active > 0 {
-            details.push(format!("Actions ({active})"));
+            details.push(Detail::Word("Actions", active));
         }
         add(
             Hidden::Scripts,
@@ -495,31 +654,35 @@ impl PdfDocument {
                 }
             }
         }
-        add(Hidden::Attachments, attached.len(), attached);
+        add(
+            Hidden::Attachments,
+            attached.len(),
+            attached.into_iter().map(Detail::Name).collect(),
+        );
         let count = comments.values().sum();
         add(
             Hidden::Comments,
             count,
             comments
                 .into_iter()
-                .map(|(k, n)| format!("{k} ({n})"))
+                .map(|(k, n)| Detail::Subtype(k, n))
                 .collect(),
         );
         let acroform = catalog.and_then(|c| self.resolve_dict(c.get(b"AcroForm").ok()));
         let xfa = acroform.is_some_and(|f| f.has(b"XFA"));
         let mut details = vec![];
         if widgets > 0 {
-            details.push(format!("Fields ({widgets})"));
+            details.push(Detail::Word("Fields", widgets));
         }
         if xfa {
-            details.push("XFA".into());
+            details.push(Detail::Word("XFA", 1));
         }
         add(Hidden::Forms, widgets + usize::from(xfa), details);
 
-        let off: Vec<String> = self
+        let off: Vec<Detail> = self
             .off_layers()
             .into_iter()
-            .map(|id| self.layer_name(id))
+            .map(|id| Detail::Name(self.layer_name(id)))
             .collect();
         add(Hidden::HiddenLayers, off.len(), off);
 
@@ -543,7 +706,11 @@ impl PdfDocument {
         }
         add(Hidden::PrivateData, pieces, vec![]);
 
-        add(Hidden::Links, links, uris);
+        add(
+            Hidden::Links,
+            links,
+            uris.into_iter().map(Detail::Name).collect(),
+        );
 
         let (mut invisible, mut white, mut off_page) = (0usize, 0usize, 0usize);
         for index in 0..self.pages.len() {
@@ -558,14 +725,14 @@ impl PdfDocument {
             }
         }
         let mut details = vec![];
-        if invisible > 0 {
-            details.push(format!("invisible ({invisible})"));
-        }
-        if white > 0 {
-            details.push(format!("white ({white})"));
-        }
-        if off_page > 0 {
-            details.push(format!("offPage ({off_page})"));
+        for (word, count) in [
+            ("invisible", invisible),
+            ("white", white),
+            ("offPage", off_page),
+        ] {
+            if count > 0 {
+                details.push(Detail::Word(word, count));
+            }
         }
         add(Hidden::HiddenText, invisible + white + off_page, details);
         report
@@ -623,11 +790,18 @@ impl PdfDocument {
         count
     }
 
+    /// A page's operators, or `None` when a stream of its content cannot be
+    /// decoded. Every stream or none: lopdf's own reading of a page falls
+    /// back to a stream's raw bytes when it cannot decode it, and garbage
+    /// read as operators would be written back as the page.
     fn page_ops(&self, page_id: ObjectId) -> Option<Vec<Operation>> {
-        let bytes = self
-            .doc
-            .get_page_content_with_limit(page_id, MAX_CONTENT)
-            .ok()?;
+        let mut bytes = vec![];
+        for id in self.doc.get_page_contents(page_id) {
+            let stream = self.doc.get_object(id).ok()?.as_stream().ok()?;
+            let limit = MAX_CONTENT.saturating_sub(bytes.len());
+            bytes.extend(stream.decompressed_content_with_limit(limit).ok()?);
+            bytes.push(b'\n');
+        }
         Content::decode(&bytes).ok().map(|c| c.operations)
     }
 
@@ -641,7 +815,59 @@ impl PdfDocument {
             .rect(self.inherited(dict, b"MediaBox"))
             .unwrap_or([0.0, 0.0, 612.0, 792.0]);
         let crop = self.rect(self.inherited(dict, b"CropBox")).unwrap_or(media);
-        Some(find_hidden_runs(&ops, crop))
+        Some(find_hidden_runs(&ops, crop, &self.xobject_boxes(page_id)))
+    }
+
+    /// What each drawing a page names covers, in the space it is drawn in:
+    /// a picture its unit square, a form its box through its own matrix.
+    fn xobject_boxes(&self, page_id: ObjectId) -> std::collections::HashMap<Vec<u8>, [f32; 4]> {
+        let mut out = std::collections::HashMap::new();
+        let Some(xobjects) = self
+            .page_resources(page_id)
+            .and_then(|r| self.resolve_dict(r.get(b"XObject").ok()))
+        else {
+            return out;
+        };
+        for (name, x) in xobjects.iter().take(MAX_ENTRIES) {
+            let Some(stream) = self.deref(x).and_then(|x| x.as_stream().ok()) else {
+                continue;
+            };
+            let covered = match name_of(stream.dict.get(b"Subtype").ok()) {
+                Some(b"Image") => Some([0.0, 0.0, 1.0, 1.0]),
+                Some(b"Form") => self.rect(stream.dict.get(b"BBox").ok()).map(|b| {
+                    let m = stream
+                        .dict
+                        .get(b"Matrix")
+                        .ok()
+                        .and_then(|o| o.as_array().ok())
+                        .filter(|a| a.len() == 6)
+                        .map(|a| {
+                            let mut v = [0f32; 6];
+                            for (i, o) in a.iter().enumerate() {
+                                v[i] = o.as_float().unwrap_or(0.0);
+                            }
+                            Matrix(v)
+                        })
+                        .unwrap_or(Matrix::IDENTITY);
+                    let corners = [
+                        m.apply(b[0], b[1]),
+                        m.apply(b[2], b[1]),
+                        m.apply(b[0], b[3]),
+                        m.apply(b[2], b[3]),
+                    ];
+                    let mut r = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
+                    for (x, y) in corners {
+                        r = [r[0].min(x), r[1].min(y), r[2].max(x), r[3].max(y)];
+                    }
+                    r
+                }),
+                _ => None,
+            };
+            if let Some(covered) = covered {
+                out.insert(name.clone(), covered);
+            }
+        }
+        out
     }
 
     /// A copy of this document without what `remove` names, written whole:
@@ -654,22 +880,26 @@ impl PdfDocument {
             ));
         }
         let mut copy = self.detached_copy();
+        // What is taken off the pages: annotations, and the fields behind
+        // widgets. Nothing may still reach them afterwards (see `unreach`).
+        let mut gone: HashSet<ObjectId> = HashSet::new();
         // Content first, while the layers and fields it refers to are there.
         if remove.contains(&Hidden::HiddenText) {
             copy.remove_hidden_text();
         }
         if remove.contains(&Hidden::HiddenLayers) {
-            copy.remove_hidden_layers();
+            gone.extend(copy.remove_hidden_layers());
         }
         if remove.contains(&Hidden::Forms) {
-            copy.flatten_forms();
+            gone.extend(copy.flatten_forms());
         }
-        copy.remove_annotations(|subtype| {
+        gone.extend(copy.remove_annotations(|subtype| {
             (remove.contains(&Hidden::Comments)
                 && !matches!(subtype, b"Widget" | b"Link" | b"FileAttachment"))
                 || (remove.contains(&Hidden::Attachments) && subtype == b"FileAttachment")
                 || (remove.contains(&Hidden::Links) && subtype == b"Link")
-        });
+        }));
+        copy.unreach(&gone);
         if remove.contains(&Hidden::Metadata) {
             copy.doc.trailer.remove(b"Info");
             copy.strip_keys(&[b"Metadata"]);
@@ -725,7 +955,11 @@ impl PdfDocument {
         }
     }
 
-    /// Removes every `/A` whose action type is one of `kinds`.
+    /// Removes every action whose type is one of `kinds`, wherever it sits:
+    /// a link's or a bookmark's `/A`, an entry of a chain run after another
+    /// action (`/Next`), an automatic action — written in place, or an
+    /// object of its own (with or without `/Type`) that nothing then
+    /// refers to. An action it would have led on to goes with it.
     fn strip_actions(&mut self, kinds: &[&[u8]]) {
         let is_kind =
             |d: &Dictionary| name_of(d.get(b"S").ok()).is_some_and(|s| kinds.contains(&s));
@@ -737,18 +971,110 @@ impl PdfDocument {
             .filter(|(_, o)| o.as_dict().is_ok_and(is_kind))
             .map(|(id, _)| *id)
             .collect();
+        let is_action = |o: &Object| match o {
+            Object::Dictionary(d) => is_kind(d),
+            Object::Reference(id) => own.contains(id),
+            _ => false,
+        };
+        fn strip(o: &mut Object, is_action: &dyn Fn(&Object) -> bool, depth: usize) {
+            if depth > MAX_DEPTH {
+                return;
+            }
+            let dict = match o {
+                Object::Dictionary(d) => d,
+                Object::Stream(s) => &mut s.dict,
+                Object::Array(items) => {
+                    // Anywhere else in a list, an action is left as null, so
+                    // pairs (a name tree's) keep their places.
+                    for item in items.iter_mut() {
+                        if is_action(item) {
+                            *item = Object::Null;
+                        } else {
+                            strip(item, is_action, depth + 1);
+                        }
+                    }
+                    return;
+                }
+                _ => return,
+            };
+            let dropped: Vec<Vec<u8>> = dict
+                .iter()
+                .filter(|(_, v)| is_action(v))
+                .map(|(k, _)| k.clone())
+                .collect();
+            for key in dropped {
+                dict.remove(&key);
+            }
+            // A chain of actions keeps those that stay, in their order.
+            if dict.has(b"S") {
+                if let Ok(Object::Array(chain)) = dict.get_mut(b"Next") {
+                    chain.retain(|a| !is_action(a));
+                    if chain.is_empty() {
+                        dict.remove(b"Next");
+                    }
+                }
+            }
+            for (_, v) in dict.iter_mut() {
+                strip(v, is_action, depth + 1);
+            }
+        }
+        for object in self.doc.objects.values_mut() {
+            strip(object, &is_action, 0);
+        }
+        // Nothing reaches them now: pruning takes them out.
+        self.cut_references_to(&own);
+    }
+
+    /// Makes `gone` — annotations taken off their pages, the fields behind
+    /// widgets — unreachable, so the file written whole does not carry them.
+    ///
+    /// A tagged file's structure tree points at each annotation it tags
+    /// (`/OBJR`, PDF 32000-1 §14.7.4.3), as Word, LibreOffice and Chrome tag
+    /// links, fields and comments; a reply points at the comment it answers,
+    /// a submit action at its fields. Those object references are taken out
+    /// of the structure elements' `/K`, and every other reference to `gone`
+    /// becomes null.
+    fn unreach(&mut self, gone: &HashSet<ObjectId>) {
+        if gone.is_empty() {
+            return;
+        }
+        let points_at_gone = |d: &Dictionary| {
+            d.has_type(b"OBJR")
+                && d.get(b"Obj")
+                    .and_then(|o| o.as_reference())
+                    .is_ok_and(|id| gone.contains(&id))
+        };
+        // Object references held as objects of their own.
+        let own: HashSet<ObjectId> = self
+            .doc
+            .objects
+            .iter()
+            .filter(|(_, o)| o.as_dict().is_ok_and(points_at_gone))
+            .map(|(id, _)| *id)
+            .collect();
+        let is_gone = |o: &Object| match o {
+            Object::Dictionary(d) => points_at_gone(d),
+            Object::Reference(id) => own.contains(id),
+            _ => false,
+        };
         for object in self.doc.objects.values_mut() {
             visit_dicts_mut(object, 0, &mut |d| {
-                let drop = match d.get(b"A") {
-                    Ok(Object::Dictionary(a)) => is_kind(a),
-                    Ok(Object::Reference(id)) => own.contains(id),
-                    _ => false,
+                let whole = match d.get_mut(b"K") {
+                    Ok(Object::Array(kids)) => {
+                        kids.retain(|k| !is_gone(k));
+                        false
+                    }
+                    Ok(kid) => is_gone(kid),
+                    Err(_) => false,
                 };
-                if drop {
-                    d.remove(b"A");
+                if whole {
+                    d.remove(b"K");
                 }
             });
         }
+        let mut cut = gone.clone();
+        cut.extend(own);
+        self.cut_references_to(&cut);
     }
 
     fn remove_names(&mut self, key: &[u8]) {
@@ -814,8 +1140,10 @@ impl PdfDocument {
         }
     }
 
-    /// Removes every annotation whose subtype `drop` says to.
-    fn remove_annotations(&mut self, drop: impl Fn(&[u8]) -> bool) {
+    /// Removes every annotation whose subtype `drop` says to; answers the
+    /// ones that were objects of their own.
+    fn remove_annotations(&mut self, drop: impl Fn(&[u8]) -> bool) -> HashSet<ObjectId> {
+        let mut gone = HashSet::new();
         for page in self.pages.clone() {
             let Ok(dict) = self.doc.get_dictionary(page) else {
                 continue;
@@ -828,40 +1156,87 @@ impl PdfDocument {
             else {
                 continue;
             };
-            let before = annots.len();
-            let kept: Vec<Object> = annots
-                .iter()
-                .filter(|a| {
+            let (dropped, kept): (Vec<Object>, Vec<Object>) =
+                annots.iter().cloned().partition(|a| {
                     let subtype = self
                         .deref(a)
                         .and_then(|o| o.as_dict().ok())
                         .and_then(|d| name_of(d.get(b"Subtype").ok()))
                         .unwrap_or(b"");
-                    !drop(subtype)
-                })
-                .cloned()
-                .collect();
-            if kept.len() != before {
+                    drop(subtype)
+                });
+            if !dropped.is_empty() {
+                gone.extend(dropped.iter().filter_map(|a| a.as_reference().ok()));
                 self.set_annotations(page, kept);
             }
         }
+        gone
+    }
+
+    /// Every form field of the file: the tree under the form's `/Fields`,
+    /// and each widget's parents; bounded.
+    fn form_fields(&self) -> HashSet<ObjectId> {
+        let mut fields = HashSet::new();
+        let mut stack: Vec<ObjectId> = vec![];
+        if let Some(form) = self
+            .doc
+            .catalog()
+            .ok()
+            .and_then(|c| self.resolve_dict(c.get(b"AcroForm").ok()))
+        {
+            if let Some(Object::Array(roots)) = form.get(b"Fields").ok().and_then(|o| self.deref(o))
+            {
+                stack.extend(roots.iter().filter_map(|o| o.as_reference().ok()));
+            }
+        }
+        for &page in &self.pages {
+            for (_, annot) in self.page_annotations(page) {
+                if name_of(annot.get(b"Subtype").ok()) == Some(b"Widget") {
+                    stack.extend(annot.get(b"Parent").and_then(|p| p.as_reference()));
+                }
+            }
+        }
+        while let Some(id) = stack.pop() {
+            if fields.len() > MAX_ENTRIES || !fields.insert(id) {
+                continue;
+            }
+            let Ok(field) = self.doc.get_dictionary(id) else {
+                continue;
+            };
+            stack.extend(field.get(b"Parent").and_then(|p| p.as_reference()));
+            if let Some(Object::Array(kids)) = field.get(b"Kids").ok().and_then(|o| self.deref(o)) {
+                stack.extend(kids.iter().filter_map(|o| o.as_reference().ok()));
+            }
+        }
+        fields
     }
 
     /// Draws each form field's appearance into its page, then removes the
-    /// fields: what the form showed stays, its data does not.
-    fn flatten_forms(&mut self) {
+    /// fields: what the form showed stays, its data does not. Answers the
+    /// widgets and fields removed.
+    fn flatten_forms(&mut self) -> HashSet<ObjectId> {
+        let mut gone = self.form_fields();
         for page in self.pages.clone() {
             let annots: Vec<(Option<ObjectId>, Dictionary)> = self
                 .page_annotations(page)
                 .into_iter()
                 .map(|(id, d)| (id, d.clone()))
                 .collect();
+            // Names the page's drawings already have — its own, and those
+            // of a form flattened before — are not taken again.
+            let mut taken: HashSet<Vec<u8>> = self
+                .page_resources(page)
+                .and_then(|r| self.resolve_dict(r.get(b"XObject").ok()))
+                .map(|x| x.iter().map(|(k, _)| k.clone()).collect())
+                .unwrap_or_default();
+            let mut next = 1usize;
             let mut drawing = String::new();
             let mut forms: Vec<(String, ObjectId)> = vec![];
-            for (_, annot) in annots.iter() {
+            for (id, annot) in annots.iter() {
                 if name_of(annot.get(b"Subtype").ok()) != Some(b"Widget") {
                     continue;
                 }
+                gone.extend(id);
                 let flags = annot.get(b"F").and_then(|f| f.as_i64()).unwrap_or(0);
                 // Hidden (2) or not shown on screen (32): nothing to draw.
                 if flags & (2 | 32) != 0 {
@@ -870,7 +1245,13 @@ impl PdfDocument {
                 let Some((stream_id, a)) = self.flattened_placement(annot) else {
                     continue;
                 };
-                let name = format!("WqFlat{}", forms.len() + 1);
+                let name = loop {
+                    let name = format!("WqFlat{next}");
+                    next += 1;
+                    if taken.insert(name.clone().into_bytes()) {
+                        break name;
+                    }
+                };
                 drawing.push_str(&format!(
                     "q {} {} {} {} {} {} cm /{name} Do Q\n",
                     a.0[0], a.0[1], a.0[2], a.0[3], a.0[4], a.0[5]
@@ -908,6 +1289,7 @@ impl PdfDocument {
         if let Ok(catalog) = self.doc.catalog_mut() {
             catalog.remove(b"AcroForm");
         }
+        gone
     }
 
     /// A widget's normal appearance, and the matrix that puts it on its
@@ -1035,52 +1417,45 @@ impl PdfDocument {
         }
     }
 
-    /// Removes the layers that are switched off, with everything they draw
-    /// on the pages and in the drawings those use, and every mention of them.
-    fn remove_hidden_layers(&mut self) {
+    /// Removes what hidden layers draw — on the pages, in the drawings those
+    /// use, in the appearances of annotations, and the annotations in them —
+    /// then the layers themselves and every mention of them. Answers the
+    /// annotations removed.
+    ///
+    /// "Hidden" is decided as PDFium decides it, the engine the view draws
+    /// pages with (`off_layers`, `oc_shown`), so what goes is what the person
+    /// did not see. A hidden layer that something shown still depends on — a
+    /// membership dictionary whose policy shows content while the layer is
+    /// off, content that cannot be read to strip it, a drawing no page draws
+    /// (a pattern, a soft mask, a Type 3 glyph) — stays in the file, off:
+    /// taken out of `/OCProperties`, a viewer would count it as on, and show
+    /// what it hid, or hide what it showed.
+    fn remove_hidden_layers(&mut self) -> HashSet<ObjectId> {
         let off = self.off_layers();
+        let mut gone = HashSet::new();
         if off.is_empty() {
-            return;
+            return gone;
         }
-        // Optional-content membership dictionaries count as off when every
-        // layer they list is.
-        let hidden = |doc: &PdfDocument, o: &Object| -> bool {
-            let Some((id, target)) = doc.doc.dereference(o).ok() else {
-                return false;
-            };
-            if id.is_some_and(|id| off.contains(&id)) {
-                return true;
-            }
-            let Ok(d) = target.as_dict() else {
-                return false;
-            };
-            if d.has_type(b"OCMD") {
-                let members: Vec<ObjectId> = match d.get(b"OCGs") {
-                    Ok(Object::Reference(r)) => vec![*r],
-                    Ok(Object::Array(a)) => {
-                        a.iter().filter_map(|o| o.as_reference().ok()).collect()
-                    }
-                    _ => vec![],
-                };
-                return !members.is_empty() && members.iter().all(|m| off.contains(m));
-            }
-            false
-        };
-        // Page content, and the form XObjects it draws, each once.
+        // The hidden layers that must stay, and the streams read.
+        let mut keep: BTreeSet<ObjectId> = BTreeSet::new();
         let mut done: HashSet<ObjectId> = HashSet::new();
         for page in self.pages.clone() {
             let resources = self.page_resources(page).cloned().unwrap_or_default();
-            if let Some(ops) = self.page_ops(page) {
-                let (kept, changed) = self.without_layers(ops, &resources, &hidden);
-                if changed {
-                    if let Ok(bytes) = (Content { operations: kept }).encode() {
-                        self.set_page_content(page, bytes);
+            match self.page_ops(page) {
+                Some(ops) => {
+                    let (kept, changed) = self.without_layers(ops, &resources, &off, &mut keep);
+                    if changed {
+                        if let Ok(bytes) = (Content { operations: kept }).encode() {
+                            self.set_page_content(page, bytes);
+                        }
                     }
                 }
+                None => self.layers_named_in(&resources, &off, &mut keep),
             }
-            self.strip_layers_from_forms(&resources, &hidden, &mut done, 0);
+            self.strip_forms_in(&resources, &off, &mut keep, &mut done, 0);
         }
-        // Annotations in a hidden layer.
+        // Annotations in a hidden layer go; the appearances of the others
+        // are stripped as forms are.
         for page in self.pages.clone() {
             let annots: Vec<Object> = {
                 let Ok(dict) = self.doc.get_dictionary(page) else {
@@ -1091,47 +1466,243 @@ impl PdfDocument {
                     _ => continue,
                 }
             };
-            let kept: Vec<Object> = annots
-                .iter()
-                .filter(|a| {
-                    !self
-                        .deref(a)
-                        .and_then(|o| o.as_dict().ok())
-                        .and_then(|d| d.get(b"OC").ok())
-                        .is_some_and(|oc| hidden(self, oc))
-                })
-                .cloned()
-                .collect();
+            let mut kept = Vec::with_capacity(annots.len());
+            for annot in &annots {
+                if let Some(oc) = self
+                    .deref(annot)
+                    .and_then(|o| o.as_dict().ok())
+                    .and_then(|d| d.get(b"OC").ok())
+                {
+                    if !self.oc_shown(oc, &off, 0) {
+                        gone.extend(annot.as_reference().ok());
+                        continue;
+                    }
+                    self.depends_on(oc, &off, &mut keep);
+                }
+                kept.push(annot.clone());
+            }
             if kept.len() != annots.len() {
-                self.set_annotations(page, kept);
+                self.set_annotations(page, kept.clone());
+            }
+            for annot in &kept {
+                for stream in self.appearance_streams(annot) {
+                    self.strip_form(
+                        stream,
+                        &Dictionary::new(),
+                        true,
+                        &off,
+                        &mut keep,
+                        &mut done,
+                        0,
+                    );
+                }
             }
         }
-        // Their names in resources, and the layers themselves.
-        let refers_to_off = |o: &Object| o.as_reference().is_ok_and(|r| off.contains(&r));
-        for object in self.doc.objects.values_mut() {
-            visit_dicts_mut(object, 0, &mut |d| {
-                if let Ok(Object::Dictionary(props)) = d.get_mut(b"Properties") {
-                    let names: Vec<Vec<u8>> = props
-                        .iter()
-                        .filter(|(_, v)| refers_to_off(v))
-                        .map(|(k, _)| k.clone())
-                        .collect();
-                    for name in names {
-                        props.remove(&name);
+        // Drawings nothing above read keep every layer their resources name.
+        let pages: HashSet<ObjectId> = self.pages.iter().copied().collect();
+        let unread: Vec<Dictionary> = self
+            .doc
+            .objects
+            .iter()
+            .filter(|(id, _)| !done.contains(id) && !pages.contains(id))
+            .filter_map(|(_, o)| match o {
+                Object::Stream(s) => Some(&s.dict),
+                Object::Dictionary(d) if !d.has_type(b"Pages") => Some(d),
+                _ => None,
+            })
+            .filter_map(|d| self.resolve_dict(d.get(b"Resources").ok()).cloned())
+            .collect();
+        for resources in &unread {
+            self.layers_named_in(resources, &off, &mut keep);
+        }
+        let mut removed: BTreeSet<ObjectId> = off.difference(&keep).copied().collect();
+        if removed.is_empty() {
+            return gone;
+        }
+        // Names nothing draws any more: a removed layer, a group hidden only
+        // through removed layers, a drawing in either.
+        let unused = |o: &Object| -> bool {
+            let mut members = BTreeSet::new();
+            self.oc_members(o, &mut members, 0);
+            !self.oc_shown(o, &off, 0)
+                && members
+                    .iter()
+                    .filter(|m| off.contains(m))
+                    .all(|m| removed.contains(m))
+        };
+        let mut unused_ids: HashSet<ObjectId> = HashSet::new();
+        // Name dictionaries (`/Properties`, `/XObject`) held as objects.
+        let mut name_dicts: HashSet<ObjectId> = HashSet::new();
+        for (id, object) in &self.doc.objects {
+            let is_unused = match object {
+                Object::Stream(s) => s.dict.get(b"OC").is_ok_and(&unused),
+                Object::Dictionary(d) if off.contains(id) || d.has_type(b"OCMD") => {
+                    unused(&Object::Reference(*id))
+                }
+                _ => false,
+            };
+            if is_unused {
+                unused_ids.insert(*id);
+            }
+            visit_dicts(object, 0, &mut |d| {
+                for key in [b"Properties".as_slice(), b"XObject"] {
+                    if let Ok(Object::Reference(names)) = d.get(key) {
+                        name_dicts.insert(*names);
                     }
                 }
             });
         }
-        self.remove_layers_from_properties(&off);
+        let drop_names = |names: &mut Dictionary| {
+            let dropped: Vec<Vec<u8>> = names
+                .iter()
+                .filter(|(_, v)| v.as_reference().is_ok_and(|r| unused_ids.contains(&r)))
+                .map(|(k, _)| k.clone())
+                .collect();
+            for name in dropped {
+                names.remove(&name);
+            }
+        };
+        for (id, object) in self.doc.objects.iter_mut() {
+            if name_dicts.contains(id) {
+                if let Object::Dictionary(names) = object {
+                    drop_names(names);
+                }
+            }
+            visit_dicts_mut(object, 0, &mut |d| {
+                for key in [b"Properties".as_slice(), b"XObject"] {
+                    if let Ok(Object::Dictionary(names)) = d.get_mut(key) {
+                        drop_names(names);
+                    }
+                }
+            });
+        }
+        // A layer something reachable still refers to stays: a group that
+        // names it, a drawing that is in it.
+        for id in self.still_referenced(&removed, &gone) {
+            removed.remove(&id);
+        }
+        self.remove_layers_from_properties(&removed);
+        gone
+    }
+
+    /// Adds to `keep` the hidden layers optional content `oc` depends on.
+    fn depends_on(&self, oc: &Object, off: &BTreeSet<ObjectId>, keep: &mut BTreeSet<ObjectId>) {
+        let mut members = BTreeSet::new();
+        self.oc_members(oc, &mut members, 0);
+        keep.extend(members.intersection(off));
+    }
+
+    /// Adds to `keep` every hidden layer a resource dictionary names, for a
+    /// stream that could not be read: what it hides must stay hidden.
+    fn layers_named_in(
+        &self,
+        resources: &Dictionary,
+        off: &BTreeSet<ObjectId>,
+        keep: &mut BTreeSet<ObjectId>,
+    ) {
+        if let Some(properties) = self.resolve_dict(resources.get(b"Properties").ok()) {
+            for (_, oc) in properties.iter().take(MAX_ENTRIES) {
+                self.depends_on(oc, off, keep);
+            }
+        }
+        if let Some(xobjects) = self.resolve_dict(resources.get(b"XObject").ok()) {
+            for (_, x) in xobjects.iter().take(MAX_ENTRIES) {
+                if let Some(oc) = self
+                    .deref(x)
+                    .and_then(|x| x.as_stream().ok())
+                    .and_then(|s| s.dict.get(b"OC").ok())
+                {
+                    self.depends_on(oc, off, keep);
+                }
+            }
+        }
+    }
+
+    /// The streams an annotation's appearance is drawn with: normal, rollover
+    /// and down, each one stream or one per state.
+    fn appearance_streams(&self, annot: &Object) -> Vec<ObjectId> {
+        let mut out = vec![];
+        let Some(ap) = self
+            .deref(annot)
+            .and_then(|o| o.as_dict().ok())
+            .and_then(|d| self.resolve_dict(d.get(b"AP").ok()))
+        else {
+            return out;
+        };
+        for key in [b"N".as_slice(), b"R", b"D"] {
+            let Ok(entry) = ap.get(key) else {
+                continue;
+            };
+            match (entry, self.deref(entry)) {
+                (Object::Reference(id), Some(Object::Stream(_))) => out.push(*id),
+                (_, Some(Object::Dictionary(states))) => out.extend(
+                    states
+                        .iter()
+                        .take(MAX_ENTRIES)
+                        .filter_map(|(_, v)| v.as_reference().ok())
+                        .filter(|id| {
+                            self.doc
+                                .get_object(*id)
+                                .is_ok_and(|o| o.as_stream().is_ok())
+                        }),
+                ),
+                _ => {}
+            }
+        }
+        out
+    }
+
+    /// Hidden layers something reachable — besides `/OCProperties`, and
+    /// what is `gone` — still refers to.
+    fn still_referenced(
+        &self,
+        layers: &BTreeSet<ObjectId>,
+        gone: &HashSet<ObjectId>,
+    ) -> BTreeSet<ObjectId> {
+        let root = self
+            .doc
+            .trailer
+            .get(b"Root")
+            .and_then(|r| r.as_reference())
+            .ok();
+        let mut found = BTreeSet::new();
+        let mut seen: HashSet<ObjectId> = HashSet::new();
+        let mut queue: Vec<ObjectId> = vec![];
+        for (_, value) in self.doc.trailer.iter() {
+            collect_refs(value, &mut queue, 0);
+        }
+        while let Some(id) = queue.pop() {
+            if gone.contains(&id) || !seen.insert(id) {
+                continue;
+            }
+            if layers.contains(&id) {
+                found.insert(id);
+                continue;
+            }
+            match self.doc.get_object(id) {
+                Ok(Object::Dictionary(catalog)) if Some(id) == root => {
+                    for (key, value) in catalog.iter() {
+                        if key != b"OCProperties" {
+                            collect_refs(value, &mut queue, 0);
+                        }
+                    }
+                }
+                Ok(object) => collect_refs(object, &mut queue, 0),
+                Err(_) => {}
+            }
+        }
+        found
     }
 
     /// The operators of a content stream without the marked content and
-    /// the drawings that belong to a hidden layer.
+    /// the drawings in a hidden layer; the hidden layers that what is kept
+    /// depends on are added to `keep`.
     fn without_layers(
         &self,
         ops: Vec<Operation>,
         resources: &Dictionary,
-        hidden: &dyn Fn(&PdfDocument, &Object) -> bool,
+        off: &BTreeSet<ObjectId>,
+        keep: &mut BTreeSet<ObjectId>,
     ) -> (Vec<Operation>, bool) {
         let properties = self.resolve_dict(resources.get(b"Properties").ok());
         let xobjects = self.resolve_dict(resources.get(b"XObject").ok());
@@ -1153,10 +1724,13 @@ impl PdfDocument {
                             Some(other) => Some(other),
                             None => None,
                         };
-                        if target.is_some_and(|t| hidden(self, t)) {
-                            hidden_from = Some(depth);
-                            changed = true;
-                            continue;
+                        if let Some(target) = target {
+                            if !self.oc_shown(target, off, 0) {
+                                hidden_from = Some(depth);
+                                changed = true;
+                                continue;
+                            }
+                            self.depends_on(target, off, keep);
                         }
                     }
                 }
@@ -1169,15 +1743,17 @@ impl PdfDocument {
                     depth = depth.saturating_sub(1);
                 }
                 "Do" if hidden_from.is_none() => {
-                    let in_layer = name_of(op.operands.first())
+                    if let Some(oc) = name_of(op.operands.first())
                         .and_then(|n| xobjects.and_then(|x| x.get(n).ok()))
                         .and_then(|x| self.deref(x))
                         .and_then(|x| x.as_stream().ok())
                         .and_then(|s| s.dict.get(b"OC").ok())
-                        .is_some_and(|oc| hidden(self, oc));
-                    if in_layer {
-                        changed = true;
-                        continue;
+                    {
+                        if !self.oc_shown(oc, off, 0) {
+                            changed = true;
+                            continue;
+                        }
+                        self.depends_on(oc, off, keep);
                     }
                 }
                 _ => {}
@@ -1189,58 +1765,79 @@ impl PdfDocument {
         (kept, changed)
     }
 
-    fn strip_layers_from_forms(
+    /// `strip_form` for every form a resource dictionary names.
+    fn strip_forms_in(
         &mut self,
         resources: &Dictionary,
-        hidden: &dyn Fn(&PdfDocument, &Object) -> bool,
+        off: &BTreeSet<ObjectId>,
+        keep: &mut BTreeSet<ObjectId>,
         done: &mut HashSet<ObjectId>,
         depth: usize,
     ) {
-        if depth > 8 {
-            return;
-        }
         let forms: Vec<ObjectId> = self
             .resolve_dict(resources.get(b"XObject").ok())
             .map(|x| {
                 x.iter()
+                    .take(MAX_ENTRIES)
                     .filter_map(|(_, v)| v.as_reference().ok())
                     .collect()
             })
             .unwrap_or_default();
         for id in forms {
-            if !done.insert(id) {
-                continue;
-            }
-            let Ok(stream) = self.doc.get_object(id).and_then(|o| o.as_stream()) else {
-                continue;
-            };
-            if name_of(stream.dict.get(b"Subtype").ok()) != Some(b"Form") {
-                continue;
-            }
-            let own = self
-                .resolve_dict(stream.dict.get(b"Resources").ok())
-                .cloned()
-                .unwrap_or_else(|| resources.clone());
-            let Ok(bytes) = stream.decompressed_content_with_limit(MAX_CONTENT) else {
-                continue;
-            };
-            let Ok(content) = Content::decode(&bytes) else {
-                continue;
-            };
-            let (kept, changed) = self.without_layers(content.operations, &own, hidden);
-            if changed {
-                if let (Ok(bytes), Ok(Object::Stream(s))) = (
-                    (Content { operations: kept }).encode(),
-                    self.doc.get_object_mut(id),
-                ) {
-                    s.dict.remove(b"Filter");
-                    s.dict.remove(b"DecodeParms");
-                    s.set_plain_content(bytes);
-                    let _ = s.compress();
-                }
-            }
-            self.strip_layers_from_forms(&own, hidden, done, depth + 1);
+            self.strip_form(id, resources, false, off, keep, done, depth);
         }
+    }
+
+    /// A form XObject — or an appearance, whose stream may not say it is
+    /// one — without what hidden layers draw in it, and the forms it draws
+    /// in turn; each once. A form with no resources of its own uses
+    /// `inherited`. One that cannot be read keeps the layers it names.
+    #[allow(clippy::too_many_arguments)]
+    fn strip_form(
+        &mut self,
+        id: ObjectId,
+        inherited: &Dictionary,
+        appearance: bool,
+        off: &BTreeSet<ObjectId>,
+        keep: &mut BTreeSet<ObjectId>,
+        done: &mut HashSet<ObjectId>,
+        depth: usize,
+    ) {
+        if depth > 8 || !done.insert(id) {
+            return;
+        }
+        let Ok(stream) = self.doc.get_object(id).and_then(|o| o.as_stream()) else {
+            return;
+        };
+        let subtype = name_of(stream.dict.get(b"Subtype").ok());
+        if subtype != Some(b"Form") && !(appearance && subtype.is_none()) {
+            return;
+        }
+        let own = self
+            .resolve_dict(stream.dict.get(b"Resources").ok())
+            .cloned()
+            .unwrap_or_else(|| inherited.clone());
+        let ops = stream
+            .decompressed_content_with_limit(MAX_CONTENT)
+            .ok()
+            .and_then(|bytes| Content::decode(&bytes).ok());
+        let Some(content) = ops else {
+            self.layers_named_in(&own, off, keep);
+            return;
+        };
+        let (kept, changed) = self.without_layers(content.operations, &own, off, keep);
+        if changed {
+            if let (Ok(bytes), Ok(Object::Stream(s))) = (
+                (Content { operations: kept }).encode(),
+                self.doc.get_object_mut(id),
+            ) {
+                s.dict.remove(b"Filter");
+                s.dict.remove(b"DecodeParms");
+                s.set_plain_content(bytes);
+                let _ = s.compress();
+            }
+        }
+        self.strip_forms_in(&own, off, keep, done, depth + 1);
     }
 
     /// Takes `off` out of `/OCProperties`: its list, every configuration's
@@ -1390,30 +1987,77 @@ fn white(space: &[u8], values: &[f32]) -> bool {
 }
 
 /// The runs of text nobody can see, in a page's operators; `crop` is the
-/// page's visible box in its own space.
-fn find_hidden_runs(ops: &[Operation], crop: [f32; 4]) -> Vec<HiddenRun> {
+/// page's visible box in its own space, and `xobjects` what each drawing
+/// the page names covers (`PdfDocument::xobject_boxes`).
+///
+/// White text is hidden only where nothing but white was painted under it
+/// before: white on a coloured band, a table's shaded header or a picture
+/// is seen. What is under it is judged by boxes — a path's, a picture's, a
+/// form's, all of a shading's — so white text beside one, but inside its
+/// box, counts as seen too: the doubt leaves text in place.
+fn find_hidden_runs(
+    ops: &[Operation],
+    crop: [f32; 4],
+    xobjects: &std::collections::HashMap<Vec<u8>, [f32; 4]>,
+) -> Vec<HiddenRun> {
     #[derive(Clone)]
     struct State {
         ctm: Matrix,
         fill_space: Vec<u8>,
         fill_white: bool,
-        stroke_visible: bool,
+        stroke_space: Vec<u8>,
+        // Black until a file says otherwise.
+        stroke_white: bool,
         mode: i64,
     }
     let mut state = State {
         ctm: Matrix::IDENTITY,
         fill_space: b"DeviceGray".to_vec(),
         fill_white: false,
-        stroke_visible: false,
+        stroke_space: b"DeviceGray".to_vec(),
+        stroke_white: false,
         mode: 0,
     };
     let mut stack: Vec<State> = vec![];
     let (mut tm, mut tlm) = (Matrix::IDENTITY, Matrix::IDENTITY);
     let (mut leading, mut size) = (0.0f32, 0.0f32);
+    // What was painted, in anything but white, before: boxes in page space.
+    let mut painted: Vec<[f32; 4]> = vec![];
+    // The path being built, as a box in page space.
+    let mut path: Option<[f32; 4]> = None;
+    let bounds = |points: &[(f32, f32)]| -> [f32; 4] {
+        let mut b = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
+        for &(x, y) in points {
+            b = [b[0].min(x), b[1].min(y), b[2].max(x), b[3].max(y)];
+        }
+        b
+    };
+    let grow = |path: &mut Option<[f32; 4]>, b: [f32; 4]| {
+        *path = Some(match *path {
+            Some(p) => [
+                p[0].min(b[0]),
+                p[1].min(b[1]),
+                p[2].max(b[2]),
+                p[3].max(b[3]),
+            ],
+            None => b,
+        });
+    };
+    // A box in some space, through a matrix, as a box in page space.
+    let placed = |m: Matrix, b: [f32; 4]| -> [f32; 4] {
+        bounds(&[
+            m.apply(b[0], b[1]),
+            m.apply(b[2], b[1]),
+            m.apply(b[0], b[3]),
+            m.apply(b[2], b[3]),
+        ])
+    };
+    let overlaps =
+        |a: [f32; 4], b: [f32; 4]| a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
     // Every show in the current text object: (op index, hidden reason,
     // whether it is placed on its own rather than after the one before).
     let mut shows: Vec<(usize, Option<Reason>, bool)> = vec![];
-    let mut placed = true;
+    let mut placed_own = true;
     let mut out = vec![];
     let finish = |shows: &mut Vec<(usize, Option<Reason>, bool)>, out: &mut Vec<HiddenRun>| {
         // From the end: a run can go when the run after it is placed on its
@@ -1437,6 +2081,7 @@ fn find_hidden_runs(ops: &[Operation], crop: [f32; 4]) -> Vec<HiddenRun> {
     };
     for (i, op) in ops.iter().enumerate() {
         let a = &op.operands;
+        let point = |k: usize| state.ctm.apply(num(&a[k]), num(&a[k + 1]));
         match op.operator.as_str() {
             "q" => stack.push(state.clone()),
             "Q" => {
@@ -1475,14 +2120,56 @@ fn find_hidden_runs(ops: &[Operation], crop: [f32; 4]) -> Vec<HiddenRun> {
                 let values: Vec<f32> = a.iter().filter(|o| o.as_float().is_ok()).map(num).collect();
                 state.fill_white = white(&state.fill_space, &values);
             }
-            // Any stroke colour but none counts as visible.
-            "G" | "RG" | "K" | "CS" | "SC" | "SCN" => state.stroke_visible = true,
+            "G" if a.len() == 1 => {
+                state.stroke_space = b"DeviceGray".to_vec();
+                state.stroke_white = white(b"DeviceGray", &[num(&a[0])]);
+            }
+            "RG" if a.len() == 3 => {
+                state.stroke_space = b"DeviceRGB".to_vec();
+                state.stroke_white = white(b"DeviceRGB", &a.iter().map(num).collect::<Vec<_>>());
+            }
+            "K" if a.len() == 4 => {
+                state.stroke_space = b"DeviceCMYK".to_vec();
+                state.stroke_white = white(b"DeviceCMYK", &a.iter().map(num).collect::<Vec<_>>());
+            }
+            "CS" => {
+                state.stroke_space = name_of(a.first()).unwrap_or(b"").to_vec();
+                state.stroke_white = false;
+            }
+            "SC" | "SCN" => {
+                let values: Vec<f32> = a.iter().filter(|o| o.as_float().is_ok()).map(num).collect();
+                state.stroke_white = white(&state.stroke_space, &values);
+            }
+            // The path, and what painting it covers.
+            "m" | "l" if a.len() >= 2 => grow(&mut path, bounds(&[point(0)])),
+            "c" if a.len() >= 6 => grow(&mut path, bounds(&[point(0), point(2), point(4)])),
+            "v" | "y" if a.len() >= 4 => grow(&mut path, bounds(&[point(0), point(2)])),
+            "re" if a.len() >= 4 => {
+                let (x, y, w, h) = (num(&a[0]), num(&a[1]), num(&a[2]), num(&a[3]));
+                grow(&mut path, placed(state.ctm, [x, y, x + w, y + h]));
+            }
+            "f" | "F" | "f*" | "B" | "B*" | "b" | "b*" => {
+                if let Some(b) = path.take() {
+                    if !state.fill_white {
+                        painted.push(b);
+                    }
+                }
+            }
+            "S" | "s" | "n" => path = None,
+            // A shading paints whatever the clip leaves: the page, at most.
+            "sh" => painted.push(crop),
+            "Do" => painted.push(
+                name_of(a.first())
+                    .and_then(|n| xobjects.get(n))
+                    .map_or(crop, |b| placed(state.ctm, *b)),
+            ),
+            "BI" => painted.push(placed(state.ctm, [0.0, 0.0, 1.0, 1.0])),
             "Tr" if !a.is_empty() => state.mode = a[0].as_i64().unwrap_or(0),
             "BT" => {
                 tm = Matrix::IDENTITY;
                 tlm = tm;
                 shows.clear();
-                placed = true;
+                placed_own = true;
             }
             "ET" => finish(&mut shows, &mut out),
             "Tf" if a.len() >= 2 => size = num(&a[1]),
@@ -1493,7 +2180,7 @@ fn find_hidden_runs(ops: &[Operation], crop: [f32; 4]) -> Vec<HiddenRun> {
                 }
                 tlm = Matrix([1.0, 0.0, 0.0, 1.0, num(&a[0]), num(&a[1])]).then(tlm);
                 tm = tlm;
-                placed = true;
+                placed_own = true;
             }
             "Tm" if a.len() >= 6 => {
                 tlm = Matrix([
@@ -1505,29 +2192,35 @@ fn find_hidden_runs(ops: &[Operation], crop: [f32; 4]) -> Vec<HiddenRun> {
                     num(&a[5]),
                 ]);
                 tm = tlm;
-                placed = true;
+                placed_own = true;
             }
             "T*" => {
                 tlm = Matrix([1.0, 0.0, 0.0, 1.0, 0.0, -leading]).then(tlm);
                 tm = tlm;
-                placed = true;
+                placed_own = true;
             }
             "Tj" | "TJ" | "'" | "\"" => {
                 if matches!(op.operator.as_str(), "'" | "\"") {
                     tlm = Matrix([1.0, 0.0, 0.0, 1.0, 0.0, -leading]).then(tlm);
                     tm = tlm;
-                    placed = true;
+                    placed_own = true;
                 }
                 let full = tm.then(state.ctm);
                 let (x, y) = full.apply(0.0, 0.0);
                 let margin = (size * full.scale()).abs().max(1.0) * 2.0;
+                // What the run shows with: its fill, its stroke, or both.
+                let fills = matches!(state.mode, 0 | 2 | 4 | 6);
+                let strokes = matches!(state.mode, 1 | 2 | 5 | 6);
+                let all_white = (!fills || state.fill_white) && (!strokes || state.stroke_white);
+                // Where it is drawn, generously: every code as wide as the
+                // font is high, from below the baseline to above the caps.
+                let codes = shown_bytes(op).max(1) as f32;
+                let text_box = placed(full, [0.0, -0.3 * size, codes * size, 1.1 * size]);
                 let reason = if shows_nothing(op) {
                     None
                 } else if matches!(state.mode, 3 | 7) {
                     Some(Reason::Invisible)
-                } else if state.fill_white
-                    && !(state.stroke_visible && matches!(state.mode, 1 | 2 | 5 | 6))
-                {
+                } else if all_white && !painted.iter().any(|p| overlaps(*p, text_box)) {
                     Some(Reason::White)
                 } else if x < crop[0] - margin
                     || x > crop[2] + margin
@@ -1538,14 +2231,29 @@ fn find_hidden_runs(ops: &[Operation], crop: [f32; 4]) -> Vec<HiddenRun> {
                 } else {
                     None
                 };
-                shows.push((i, reason, placed));
-                placed = false;
+                shows.push((i, reason, placed_own));
+                placed_own = false;
             }
             _ => {}
         }
     }
     finish(&mut shows, &mut out);
     out
+}
+
+/// How many bytes of text a showing operator carries.
+fn shown_bytes(op: &Operation) -> usize {
+    match op.operands.last() {
+        Some(Object::String(s, _)) => s.len(),
+        Some(Object::Array(items)) => items
+            .iter()
+            .map(|i| match i {
+                Object::String(s, _) => s.len(),
+                _ => 0,
+            })
+            .sum(),
+        _ => 0,
+    }
 }
 
 /// A text-showing operator with no text: one `blank` emptied, say.
@@ -1634,7 +2342,13 @@ pub(crate) mod tests {
         ),
         (
             Hidden::Scripts,
-            &["DOCJS-SECRET", "OPENACTION-SECRET", "PAGE-AA-SECRET"],
+            &[
+                "DOCJS-SECRET",
+                "OPENACTION-SECRET",
+                "PAGE-AA-SECRET",
+                "NEXT-JS-SECRET",
+                "NEXT-SUBMIT-SECRET",
+            ],
         ),
         (
             Hidden::Attachments,
@@ -1699,7 +2413,38 @@ pub(crate) mod tests {
             .iter()
             .find(|f| f.kind == Hidden::HiddenLayers)
             .unwrap();
-        assert_eq!(layers.details, vec!["LAYERNAME-OFF-SECRET".to_string()]);
+        assert_eq!(
+            layers.details,
+            vec![Detail::Name("LAYERNAME-OFF-SECRET".to_string())]
+        );
+        // The core's words, the annotations' kinds and the properties' keys
+        // come apart from what the file names, for the interface to say.
+        let details = |kind: Hidden| {
+            report
+                .findings
+                .iter()
+                .find(|f| f.kind == kind)
+                .unwrap()
+                .details
+                .clone()
+        };
+        assert_eq!(
+            details(Hidden::HiddenText),
+            [
+                Detail::Word("invisible", 1),
+                Detail::Word("white", 1),
+                Detail::Word("offPage", 1)
+            ]
+        );
+        assert_eq!(
+            details(Hidden::Comments),
+            [Detail::Subtype("Text".into(), 1)]
+        );
+        assert!(details(Hidden::Metadata).contains(&Detail::Property(
+            "Title".into(),
+            "INFO-TITLE-SECRET".into()
+        )));
+        assert!(details(Hidden::Scripts).contains(&Detail::Word("Actions", 2)));
     }
 
     /// Each kind, removed alone, is gone from the bytes and from every
@@ -1715,15 +2460,30 @@ pub(crate) mod tests {
                 assert!(!text.contains(m), "{kind:?}: {m} is still in the file");
             }
             for (other, others) in MARKERS {
-                // A bookmark carries a web address: the two overlap.
-                if other == kind || (*kind == Hidden::Bookmarks && *other == Hidden::Links) {
+                if other == kind {
                     continue;
                 }
+                // A bookmark carries a web address, and runs a script and
+                // submits the form after going to its page: removed, it
+                // takes them.
+                let with_bookmark = [
+                    "bookmark-uri-secret.example",
+                    "NEXT-JS-SECRET",
+                    "NEXT-SUBMIT-SECRET",
+                ];
                 for m in *others {
+                    if *kind == Hidden::Bookmarks && with_bookmark.contains(m) {
+                        continue;
+                    }
                     assert!(text.contains(m), "{kind:?} took {m} ({other:?}) with it");
                 }
             }
-            for kept in ["VISIBLE-TEXT-KEPT", "LAYER-ON-TEXT", "Visible again"] {
+            for kept in [
+                "VISIBLE-TEXT-KEPT",
+                "LAYER-ON-TEXT",
+                "Visible again",
+                "WHITE-ON-BLUE-SHOWN",
+            ] {
                 assert!(text.contains(kept), "{kind:?}: {kept} went too");
             }
             assert!(
@@ -1753,13 +2513,67 @@ pub(crate) mod tests {
             }
         }
         // The field's appearance is drawn into the page; the field is gone.
-        for kept in ["VISIBLE-TEXT-KEPT", "LAYER-ON-TEXT", "FIELD-SHOWN"] {
+        // White text on a dark band is seen, and stays.
+        for kept in [
+            "VISIBLE-TEXT-KEPT",
+            "LAYER-ON-TEXT",
+            "FIELD-SHOWN",
+            "WHITE-ON-BLUE-SHOWN",
+        ] {
             assert!(text.contains(kept), "{kept} went too");
         }
         let reopened = PdfDocument::open(out, None).unwrap();
         let report = reopened.hidden_report();
         assert!(report.findings.is_empty(), "{report:#?}");
         assert_eq!(report.unreachable, 0);
+        // Still a tagged file: its structure stays, without what it pointed at.
+        let catalog = reopened.doc.catalog().unwrap();
+        let tree = catalog
+            .get(b"StructTreeRoot")
+            .unwrap()
+            .as_reference()
+            .unwrap();
+        assert!(reopened.doc.get_dictionary(tree).is_ok());
+    }
+
+    /// A tagged file's structure tree points at its annotations (`/OBJR`):
+    /// an annotation taken off its page must not stay reachable through it,
+    /// with its text, its field's name and value, or its attached file.
+    #[test]
+    fn what_the_structure_tree_pointed_at_goes_with_the_annotation() {
+        let doc = PdfDocument::open(fixture(), None).unwrap();
+        for kind in [
+            Hidden::Comments,
+            Hidden::Forms,
+            Hidden::Attachments,
+            Hidden::Links,
+        ] {
+            let out = doc.without_hidden(&[kind].into_iter().collect()).unwrap();
+            let copy = PdfDocument::open(out, None).unwrap();
+            // No object reference left pointing at an annotation of the kind.
+            for object in copy.doc.objects.values() {
+                visit_dicts(object, 0, &mut |d| {
+                    if d.has_type(b"OBJR") {
+                        let target = d
+                            .get(b"Obj")
+                            .and_then(|o| o.as_reference())
+                            .expect("an OBJR left points at an object");
+                        let subtype = copy
+                            .doc
+                            .get_dictionary(target)
+                            .ok()
+                            .and_then(|t| name_of(t.get(b"Subtype").ok()));
+                        let gone: &[u8] = match kind {
+                            Hidden::Comments => b"Text",
+                            Hidden::Forms => b"Widget",
+                            Hidden::Attachments => b"FileAttachment",
+                            _ => b"Link",
+                        };
+                        assert_ne!(subtype, Some(gone), "{kind:?}: an OBJR still points at one");
+                    }
+                });
+            }
+        }
     }
 
     #[test]
@@ -1776,6 +2590,359 @@ pub(crate) mod tests {
             .is_err());
     }
 
+    /// A file of `objects` (number, body): the catalog is object 1, and the
+    /// cross-reference table is written for them.
+    pub(crate) fn file_of(objects: &[(u32, String)]) -> Vec<u8> {
+        let mut sorted = objects.to_vec();
+        sorted.sort_by_key(|(n, _)| *n);
+        let mut out = b"%PDF-1.7\n".to_vec();
+        let mut offsets = std::collections::BTreeMap::new();
+        for (n, body) in &sorted {
+            offsets.insert(*n, out.len());
+            out.extend(format!("{n} 0 obj\n{body}\nendobj\n").into_bytes());
+        }
+        let size = sorted.last().map_or(1, |(n, _)| n + 1);
+        let xref = out.len();
+        out.extend(format!("xref\n0 {size}\n0000000000 65535 f \n").into_bytes());
+        for n in 1..size {
+            match offsets.get(&n) {
+                Some(at) => out.extend(format!("{at:010} 00000 n \n").into_bytes()),
+                None => out.extend(b"0000000000 65535 f \n"),
+            }
+        }
+        out.extend(
+            format!("trailer\n<< /Size {size} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n")
+                .into_bytes(),
+        );
+        out
+    }
+
+    /// A content stream object, uncompressed.
+    fn content(ops: &str) -> String {
+        format!("<< /Length {} >>\nstream\n{ops}\nendstream", ops.len())
+    }
+
+    /// One page (object 3, its content object 4, Helvetica 5), with `page`
+    /// added to the page dictionary, `catalog` to the catalog, and `more`.
+    fn one_page(catalog: &str, page: &str, ops: &str, more: &[(u32, &str)]) -> Vec<u8> {
+        let mut objects = vec![
+            (1, format!("<< /Type /Catalog /Pages 2 0 R {catalog} >>")),
+            (2, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_string()),
+            (
+                3,
+                format!(
+                    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R {page} >>"
+                ),
+            ),
+            (4, content(ops)),
+            (
+                5,
+                "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".to_string(),
+            ),
+        ];
+        objects.extend(more.iter().map(|(n, body)| (*n, body.to_string())));
+        file_of(&objects)
+    }
+
+    fn scripts(doc: &PdfDocument) -> usize {
+        doc.hidden_report()
+            .findings
+            .iter()
+            .find(|f| f.kind == Hidden::Scripts)
+            .map_or(0, |f| f.count)
+    }
+
+    /// An action is usually an object of its own, with no `/Type`: a link
+    /// whose `/A` points at a script runs it all the same. And an action
+    /// runs the ones chained after it (`/Next`), by reference too.
+    #[test]
+    fn a_script_behind_a_reference_or_after_another_action_is_reported_and_removed() {
+        let bytes = one_page(
+            "",
+            "/Annots [10 0 R 11 0 R]",
+            "BT /F1 12 Tf 72 700 Td (Links) Tj ET",
+            &[
+                (
+                    10,
+                    "<< /Type /Annot /Subtype /Link /Rect [72 690 200 710] /A 12 0 R >>",
+                ),
+                (
+                    11,
+                    "<< /Type /Annot /Subtype /Link /Rect [72 650 200 670] \
+                     /A << /S /GoTo /D [3 0 R /Fit] /Next 13 0 R >> >>",
+                ),
+                (12, "<< /S /JavaScript /JS (app.alert('INDIRECT-A-SECRET')) >>"),
+                (
+                    13,
+                    "<< /S /SubmitForm /F << /FS /URL /F (https://NEXT-SUBMIT-SECRET.example) >> >>",
+                ),
+            ],
+        );
+        let doc = PdfDocument::open(bytes, None).unwrap();
+        assert_eq!(scripts(&doc), 2, "{:#?}", doc.hidden_report());
+        let out = doc
+            .without_hidden(&[Hidden::Scripts].into_iter().collect())
+            .unwrap();
+        let text = readable(&out);
+        assert!(!text.contains("INDIRECT-A-SECRET"));
+        assert!(!text.contains("NEXT-SUBMIT-SECRET"));
+        let copy = PdfDocument::open(out, None).unwrap();
+        assert_eq!(scripts(&copy), 0);
+        // The links stay, and the second still goes to its page.
+        let annots = copy.page_annotations(copy.pages[0]);
+        assert_eq!(annots.len(), 2);
+        let goto = copy.resolve_dict(annots[1].1.get(b"A").ok()).unwrap();
+        assert_eq!(name_of(goto.get(b"S").ok()), Some(b"GoTo".as_slice()));
+        assert!(!goto.has(b"Next"));
+    }
+
+    /// White text shows on what was painted under it: only white on white
+    /// is hidden. Outlined text is seen in the stroke's colour, which is
+    /// black until a file says otherwise.
+    #[test]
+    fn white_text_is_hidden_only_where_nothing_but_white_is_under_it() {
+        let runs = |ops: &str| {
+            let ops = Content::decode(ops.as_bytes()).unwrap().operations;
+            find_hidden_runs(&ops, [0.0, 0.0, 612.0, 792.0], &Default::default())
+                .into_iter()
+                .map(|r| r.reason)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            runs("1 g BT /F1 12 Tf 72 700 Td (on the page) Tj ET"),
+            [Reason::White]
+        );
+        assert!(
+            runs("0 0 0.5 rg 0 690 612 30 re f 1 g BT /F1 12 Tf 72 700 Td (on a band) Tj ET")
+                .is_empty(),
+            "on a dark band it is seen"
+        );
+        assert_eq!(
+            runs("0 0 0.5 rg 0 100 612 30 re f 1 g BT /F1 12 Tf 72 700 Td (above it) Tj ET"),
+            [Reason::White],
+            "a band elsewhere changes nothing"
+        );
+        assert!(
+            runs(
+                "q 400 0 0 300 50 500 cm /Im1 Do Q 1 g BT /F1 12 Tf 72 700 Td (on a picture) Tj ET"
+            )
+            .is_empty(),
+            "a picture under it may be dark"
+        );
+        assert_eq!(
+            runs("1 g 0 690 612 30 re f 1 g BT /F1 12 Tf 72 700 Td (white on white) Tj ET"),
+            [Reason::White]
+        );
+        assert!(
+            runs("1 g 1 Tr BT /F1 12 Tf 72 700 Td (outlined) Tj ET").is_empty(),
+            "stroked in the default black"
+        );
+        assert_eq!(
+            runs("1 g 1 G 2 Tr BT /F1 12 Tf 72 700 Td (all white) Tj ET"),
+            [Reason::White],
+            "filled and stroked in white"
+        );
+    }
+
+    /// A form XObject object drawing `text`, uncompressed.
+    fn form(text: &str) -> String {
+        let ops = format!("BT /F1 12 Tf 2 6 Td ({text}) Tj ET");
+        format!(
+            "<< /Type /XObject /Subtype /Form /BBox [0 0 200 24] \
+             /Resources << /Font << /F1 5 0 R >> >> /Length {} >>\nstream\n{ops}\nendstream",
+            ops.len()
+        )
+    }
+
+    /// Membership dictionaries (OCMD) show or hide by their policy (`/P`)
+    /// or their expression (`/VE`): what one hides goes; what one shows
+    /// stays, and so does a hidden layer it depends on — switched off, or
+    /// a viewer would count it as on and change what shows.
+    #[test]
+    fn hidden_layers_follow_the_policy_of_the_groups_that_use_them() {
+        let ocmd = |body: &str| format!("<< /Type /OCMD {body} >>");
+        let bytes = one_page(
+            "/OCProperties << /OCGs [20 0 R 21 0 R] /D << /ON [21 0 R] /OFF [20 0 R] >> >>",
+            "/Resources << /Font << /F1 5 0 R >> /Properties << /Off 20 0 R /AllOn 30 0 R \
+             /AllOff 31 0 R /AnyOff 32 0 R /And 33 0 R /Not 34 0 R /Single 35 0 R >> >>",
+            "/OC /Off BDC BT /F1 12 Tf 72 700 Td (OFF-LAYER-SECRET) Tj ET EMC\n\
+             /OC /AllOn BDC BT /F1 12 Tf 72 680 Td (ALLON-HIDDEN-SECRET) Tj ET EMC\n\
+             /OC /AllOff BDC BT /F1 12 Tf 72 660 Td (ALLOFF-SHOWN) Tj ET EMC\n\
+             /OC /AnyOff BDC BT /F1 12 Tf 72 640 Td (ANYOFF-SHOWN) Tj ET EMC\n\
+             /OC /And BDC BT /F1 12 Tf 72 620 Td (VE-AND-HIDDEN-SECRET) Tj ET EMC\n\
+             /OC /Not BDC BT /F1 12 Tf 72 600 Td (VE-NOT-SHOWN) Tj ET EMC\n\
+             /OC /Single BDC BT /F1 12 Tf 72 580 Td (SINGLE-HIDDEN-SECRET) Tj ET EMC",
+            &[
+                (20, "<< /Type /OCG /Name (Off layer) >>"),
+                (21, "<< /Type /OCG /Name (On layer) >>"),
+                (30, &ocmd("/OCGs [20 0 R 21 0 R] /P /AllOn")),
+                // A list: PDFium reads one layer given alone by its state,
+                // whatever the policy says.
+                (31, &ocmd("/OCGs [20 0 R] /P /AllOff")),
+                (32, &ocmd("/OCGs [20 0 R 21 0 R] /P /AnyOff")),
+                (33, &ocmd("/OCGs [21 0 R] /VE [/And 20 0 R 21 0 R]")),
+                (34, &ocmd("/VE [/Not 20 0 R]")),
+                (35, &ocmd("/OCGs 20 0 R /P /AllOff")),
+            ],
+        );
+        let doc = PdfDocument::open(bytes, None).unwrap();
+        let out = doc
+            .without_hidden(&[Hidden::HiddenLayers].into_iter().collect())
+            .unwrap();
+        let text = readable(&out);
+        for gone in [
+            "OFF-LAYER-SECRET",
+            "ALLON-HIDDEN-SECRET",
+            "VE-AND-HIDDEN-SECRET",
+            "SINGLE-HIDDEN-SECRET",
+        ] {
+            assert!(!text.contains(gone), "{gone} is still in the file");
+        }
+        for shown in ["ALLOFF-SHOWN", "ANYOFF-SHOWN", "VE-NOT-SHOWN"] {
+            assert!(text.contains(shown), "{shown} was shown, and went");
+        }
+        // The shown groups depend on the hidden layer being off: it stays so.
+        let copy = PdfDocument::open(out, None).unwrap();
+        assert_eq!(copy.off_layers(), [(20, 0)].into_iter().collect());
+    }
+
+    /// PDFium hides a layer whose own view state is off, whatever the
+    /// configuration says; a drawing inside an annotation's appearance can
+    /// be in a hidden layer too.
+    #[test]
+    fn a_layer_off_by_its_view_state_and_layers_in_appearances_are_removed() {
+        let bytes = one_page(
+            "/OCProperties << /OCGs [20 0 R 21 0 R] /D << /ON [20 0 R 21 0 R] >> >>",
+            "/Resources << /Font << /F1 5 0 R >> /Properties << /Seen 21 0 R /ViewOff 20 0 R >> >> \
+             /Annots [10 0 R]",
+            "/OC /ViewOff BDC BT /F1 12 Tf 72 700 Td (VIEWSTATE-OFF-SECRET) Tj ET EMC\n\
+             /OC /Seen BDC BT /F1 12 Tf 72 680 Td (SEEN-LAYER-SHOWN) Tj ET EMC",
+            &[
+                (
+                    20,
+                    "<< /Type /OCG /Name (VIEW-OFF-NAME) /Usage << /View << /ViewState /OFF >> >> >>",
+                ),
+                (21, "<< /Type /OCG /Name (Seen) >>"),
+                (
+                    10,
+                    "<< /Type /Annot /Subtype /Square /Rect [300 600 400 700] /AP << /N 11 0 R >> >>",
+                ),
+                (
+                    11,
+                    &{
+                        let ops = "/OC /L BDC BT /F1 12 Tf 2 6 Td (AP-LAYER-SECRET) Tj ET EMC \
+                                   BT /F1 12 Tf 2 20 Td (AP-SHOWN) Tj ET";
+                        format!(
+                            "<< /Type /XObject /Subtype /Form /BBox [0 0 100 100] /Resources \
+                             << /Font << /F1 5 0 R >> /Properties << /L 20 0 R >> >> /Length {} \
+                             >>\nstream\n{ops}\nendstream",
+                            ops.len()
+                        )
+                    },
+                ),
+            ],
+        );
+        let doc = PdfDocument::open(bytes, None).unwrap();
+        let layers = doc
+            .hidden_report()
+            .findings
+            .into_iter()
+            .find(|f| f.kind == Hidden::HiddenLayers)
+            .expect("the layer off by its view state is reported");
+        assert_eq!(layers.count, 1);
+        let out = doc
+            .without_hidden(&[Hidden::HiddenLayers].into_iter().collect())
+            .unwrap();
+        let text = readable(&out);
+        for gone in ["VIEWSTATE-OFF-SECRET", "AP-LAYER-SECRET", "VIEW-OFF-NAME"] {
+            assert!(!text.contains(gone), "{gone} is still in the file");
+        }
+        for shown in ["SEEN-LAYER-SHOWN", "AP-SHOWN"] {
+            assert!(text.contains(shown), "{shown} went");
+        }
+    }
+
+    /// Content that cannot be read cannot be stripped: the layer that hides
+    /// it stays in the file, switched off, rather than let it show.
+    #[test]
+    fn a_hidden_layer_over_content_that_cannot_be_read_stays_off() {
+        let bytes = file_of(&[
+            (
+                1,
+                "<< /Type /Catalog /Pages 2 0 R \
+                 /OCProperties << /OCGs [20 0 R] /D << /OFF [20 0 R] >> >> >>"
+                    .into(),
+            ),
+            (2, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".into()),
+            (
+                3,
+                "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R \
+                 /Resources << /Properties << /Off 20 0 R >> >> >>"
+                    .into(),
+            ),
+            // Encoded as nothing this reader knows.
+            (
+                4,
+                "<< /Length 9 /Filter /FooDecode >>\nstream\nnot read!\nendstream".into(),
+            ),
+            (20, "<< /Type /OCG /Name (Off layer) >>".into()),
+        ]);
+        let doc = PdfDocument::open(bytes, None).unwrap();
+        assert_eq!(doc.off_layers().len(), 1);
+        let out = doc
+            .without_hidden(&[Hidden::HiddenLayers].into_iter().collect())
+            .unwrap();
+        let copy = PdfDocument::open(out, None).unwrap();
+        assert_eq!(
+            copy.off_layers().len(),
+            1,
+            "the layer is still there, and off"
+        );
+    }
+
+    /// A page flattened once draws its fields as `/WqFlat1`, `/WqFlat2`…: a
+    /// second flattening names its drawings anew, and the first stay.
+    #[test]
+    fn a_second_flattening_keeps_the_drawings_of_the_first() {
+        let bytes = one_page(
+            "/AcroForm << /Fields [11 0 R] >>",
+            "/Resources << /Font << /F1 5 0 R >> /XObject << /WqFlat1 10 0 R >> >> /Annots [11 0 R]",
+            "q 1 0 0 1 72 600 cm /WqFlat1 Do Q",
+            &[
+                (10, &form("EARLIER-FIELD-SHOWN")),
+                (
+                    11,
+                    "<< /Type /Annot /Subtype /Widget /FT /Tx /T (NEW-FIELD-NAME) \
+                     /Rect [72 500 272 524] /F 4 /AP << /N 12 0 R >> >>",
+                ),
+                (12, &form("NEW-FIELD-SHOWN")),
+            ],
+        );
+        let doc = PdfDocument::open(bytes, None).unwrap();
+        let out = doc
+            .without_hidden(&[Hidden::Forms].into_iter().collect())
+            .unwrap();
+        let text = readable(&out);
+        assert!(!text.contains("NEW-FIELD-NAME"));
+        for shown in ["EARLIER-FIELD-SHOWN", "NEW-FIELD-SHOWN"] {
+            assert!(text.contains(shown), "{shown} is no longer drawn");
+        }
+        let copy = PdfDocument::open(out, None).unwrap();
+        let xobjects = copy
+            .resolve_dict(
+                copy.page_resources(copy.pages[0])
+                    .unwrap()
+                    .get(b"XObject")
+                    .ok(),
+            )
+            .unwrap();
+        let drawn: HashSet<ObjectId> = xobjects
+            .iter()
+            .filter_map(|(_, v)| v.as_reference().ok())
+            .collect();
+        assert_eq!(drawn.len(), 2, "each drawing under a name of its own");
+    }
+
     #[test]
     fn hidden_text_that_would_move_visible_text_is_left_in_place() {
         let ops = Content::decode(
@@ -1783,7 +2950,7 @@ pub(crate) mod tests {
         )
         .unwrap()
         .operations;
-        let runs = find_hidden_runs(&ops, [0.0, 0.0, 612.0, 792.0]);
+        let runs = find_hidden_runs(&ops, [0.0, 0.0, 612.0, 792.0], &Default::default());
         assert_eq!(runs.len(), 2);
         assert!(!runs[0].removable, "b follows a without a place of its own");
         assert!(runs[1].removable, "d is placed by its own Td");

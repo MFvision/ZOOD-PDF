@@ -717,6 +717,7 @@ mod tests {
             height: 12.0,
             direction,
             spans,
+            turned: None,
         }
     }
 
@@ -759,6 +760,7 @@ mod tests {
             height: 12.0,
             direction: Direction::Rtl,
             spans,
+            turned: None,
         };
         let cells = line_cells(&l);
         assert_eq!(texts(&cells), ["12", "الوصف"]);
@@ -817,6 +819,7 @@ mod tests {
             height: 10.0,
             direction: Direction::Ltr,
             spans,
+            turned: None,
         }
     }
 

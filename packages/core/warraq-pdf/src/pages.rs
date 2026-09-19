@@ -510,7 +510,7 @@ impl PdfDocument {
     }
 
     /// Replaces every reference to one of `ids` with null, wherever it sits.
-    fn cut_references_to(&mut self, ids: &HashSet<ObjectId>) {
+    pub(crate) fn cut_references_to(&mut self, ids: &HashSet<ObjectId>) {
         if ids.is_empty() {
             return;
         }

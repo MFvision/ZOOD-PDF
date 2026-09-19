@@ -13,7 +13,7 @@ pub mod shape;
 pub use bidi::{base_direction, visual_runs, visual_runs_in, Direction, VisualRun};
 pub use extract::{
     clusters_to_logical, clusters_to_logical_mapped, reconstruct_lines, with_actual_text,
-    PositionedGlyph, TextLine,
+    PositionedGlyph, TextLine, Turned,
 };
 pub use glyphshape::{best_match, Descriptor, Form, MarkCluster, ShapeSampler, MAX_DISTANCE};
 pub use normalize::{

@@ -73,6 +73,7 @@ pub fn outline(name: &str, json: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, Cor
                         "title": b.title,
                         "depth": b.depth,
                         "page": b.page,
+                        "outside": b.outside,
                         "open": b.open,
                         "children": b.children,
                     })
@@ -294,5 +295,7 @@ mod tests {
         );
         assert_eq!(listed["bookmarks"][0]["title"], "BOOKMARK-SECRET");
         assert_eq!(listed["bookmarks"][0]["page"], 0);
+        assert_eq!(listed["bookmarks"][0]["outside"], false);
+        assert_eq!(listed["bookmarks"][1]["outside"], true, "a web address");
     }
 }
