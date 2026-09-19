@@ -81,9 +81,19 @@
   padding: var(--space-4) var(--space-5);
 }
 
-.redact-match .badge {
+.redact-match-tags {
+  display: flex;
+  flex-wrap: wrap;
   grid-column: 3;
+  gap: var(--space-2);
   justify-self: start;
+}
+
+/* A match the reader could not place on its page: marked by hand. */
+.redact-match-note {
+  grid-column: 3;
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
 }
 
 .redact-match-page {

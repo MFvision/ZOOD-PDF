@@ -220,8 +220,10 @@ export interface AppServices {
   /**
    * The open file, replaced by `bytes` in both views: a change made outside
    * them (Page marks, attachments, hidden information); it counts as an edit.
+   * `textUnchanged` for a change that leaves every page's text as it was (an
+   * attachment added or removed): Edit text's undo history stays.
    */
-  replaceFile: (bytes: ArrayBuffer) => Promise<void>;
+  replaceFile: (bytes: ArrayBuffer, options?: { textUnchanged?: boolean }) => Promise<void>;
   /** The layers the view shows by choice, by id; null while it shows the file's own visibility. */
   layersShown: readonly string[] | null;
   /** Shows exactly these layers, in a copy the view draws; the file is not changed. */
@@ -328,10 +330,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // default configuration shows them, and the file keeps its own until the
   // person keeps these with it. `layerOwnRef` is the file with its own.
   const layerOwnRef = useRef<ArrayBuffer | null>(null);
+  // A redaction was marked since `layerOwnRef` was taken: its bytes still
+  // hold what the redaction removes, so nothing may be kept as an update of
+  // them. Unlike `redactedRef` below, which follows the bytes the view was
+  // given, a switch of engines or a replaced view does not clear it: only
+  // taking new own bytes does.
+  const layerOwnRedactedRef = useRef(false);
   const layersShownRef = useRef<readonly string[] | null>(null);
   const [layersShown, setLayersShown] = useState<readonly string[] | null>(null);
   const forgetLayerView = useCallback(() => {
     layerOwnRef.current = null;
+    layerOwnRedactedRef.current = false;
     layersShownRef.current = null;
     setLayersShown(null);
   }, []);
@@ -690,7 +699,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     redactedRef.current = false;
   }, [documentBytes]);
   useEffect(() => {
-    if (pendingRedactions > 0) redactedRef.current = true;
+    if (pendingRedactions > 0) {
+      redactedRef.current = true;
+      layerOwnRedactedRef.current = true;
+    }
   }, [pendingRedactions]);
 
   /**
@@ -1049,13 +1061,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * `bytes` with the layer visibility the file has itself, while the view
    * shows other layers by choice (`showLayers`): the view's choice is not
    * written into the file until the person keeps it. As an update of the
-   * file's own bytes, unless a redaction means it must be written whole.
+   * file's own bytes, unless a redaction since they were taken means it must
+   * be written whole — an update would keep the redacted text in them, even
+   * after Edit text or Organize pages has handed the file round again.
    */
   const withOwnLayers = useCallback(
     async (bytes: ArrayBuffer): Promise<ArrayBuffer> => {
       const own = layerOwnRef.current;
       if (!own) return bytes;
-      const rebase = !redactedRef.current && own.byteLength <= REBASE_LIMIT;
+      const rebase = !redactedRef.current && !layerOwnRedactedRef.current && own.byteLength <= REBASE_LIMIT;
       const { blobs } = await client.callStatic<{ rebased: boolean }>(
         'layers.restore',
         { password: passwordRef.current ?? null, rebase },
@@ -1153,7 +1167,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * edit, so the file is marked changed until it is saved.
    */
   const replaceCurrentFile = useCallback(
-    async (bytes: ArrayBuffer) => {
+    async (bytes: ArrayBuffer, options: { textUnchanged?: boolean } = {}) => {
       // With layers shown by choice, the new file is shown the same way.
       let shown = bytes;
       const visible = layersShownRef.current;
@@ -1163,6 +1177,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           .catch(() => ({ blobs: [] as ArrayBuffer[] }));
         if (blobs[0]) {
           layerOwnRef.current = bytes;
+          layerOwnRedactedRef.current = false;
           shown = blobs[0];
         } else forgetLayerView();
       }
@@ -1175,7 +1190,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // wait for the view to open these (`bytesFromEmbed`).
       embedBytesRef.current = shown;
       setDocumentBytes(shown);
-      dispatch({ type: 'DOCUMENT_RESHAPED', pageCount: opened.pageCount, pageSizes: opened.pageSizes, selection: [] });
+      dispatch({
+        type: 'DOCUMENT_RESHAPED',
+        pageCount: opened.pageCount,
+        pageSizes: opened.pageSizes,
+        selection: [],
+        keepEditHistory: options.textUnchanged === true,
+      });
     },
     [client, forgetLayerView],
   );
@@ -1194,6 +1215,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const { blobs } = await client.callStatic('layers.show', { password: passwordRef.current ?? null, visible }, [own.slice(0)]);
       if (!blobs[0]) return;
       layerOwnRef.current = own;
+      layerOwnRedactedRef.current = false;
       layersShownRef.current = [...visible];
       setLayersShown([...visible]);
       returnToPage.current = stateRef.current.currentPage;

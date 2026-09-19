@@ -5,7 +5,12 @@ import type { Page } from '@playwright/test';
 import { chooseTool, embedTiles, openPdf, test } from './helpers';
 import { readable, spellings } from './pdfBytes';
 
-/** One of every kind of hidden information, each with a string of its own (tests/fixtures/hidden/make.py). */
+/**
+ * One of every kind of hidden information, each with a string of its own
+ * (tests/fixtures/hidden/make.py). Tagged, as Word and Chrome tag their files:
+ * its structure tree points at the comment, the field, the attachment and the
+ * link, which must not keep them in the file once they are removed.
+ */
 const EVERYTHING = fileURLToPath(new URL('../../../tests/fixtures/hidden/everything.pdf', import.meta.url));
 
 const MARKERS = [
@@ -15,6 +20,9 @@ const MARKERS = [
   'DOCJS-SECRET',
   'OPENACTION-SECRET',
   'PAGE-AA-SECRET',
+  // Run after a bookmark's own action (/Next), inline and by reference.
+  'NEXT-JS-SECRET',
+  'NEXT-SUBMIT-SECRET',
   'ATTACH-DOC-SECRET',
   'ATTACH-ANNOT-SECRET',
   'COMMENT-SECRET',
@@ -67,7 +75,9 @@ test.describe('Redact: remove hidden information', () => {
     }
     await expect(report).toContainText('LAYERNAME-OFF-SECRET');
     await expect(report).toContainText('doc-secret.txt');
-    await expect(report).toContainText('1 in white');
+    await expect(report).toContainText('White on white: 1');
+    // White text on a dark band is seen: not hidden text.
+    await expect(report.getByLabel('Hidden text', { exact: false })).toHaveAccessibleName(/\(3\)/);
     // The file as it stands: its own revision, and the update the viewer's
     // save adds, at the least; and the orphan.
     await expect(panel(page)).toContainText(/earlier versions \(\d+\) and objects nothing uses \(1\)/);
@@ -94,11 +104,32 @@ test.describe('Redact: remove hidden information', () => {
     for (const marker of MARKERS) expect(found(raw, marker), `${marker} is still in the saved file`).toBe(false);
     // One revision, and the page as it looked: its text and the field's look.
     expect(bytes.toString('latin1').match(/%%EOF/g)?.length).toBe(1);
-    for (const kept of ['VISIBLE-TEXT-KEPT', 'LAYER-ON-TEXT', 'FIELD-SHOWN']) expect(found(raw, kept), kept).toBe(true);
+    for (const kept of ['VISIBLE-TEXT-KEPT', 'LAYER-ON-TEXT', 'FIELD-SHOWN', 'WHITE-ON-BLUE-SHOWN']) expect(found(raw, kept), kept).toBe(true);
 
     await page.goto('/');
     await openPdf(page, path);
     await expect.poll(() => embedTiles(page)).toBeGreaterThan(0);
+  });
+
+  test('in Arabic the report says its own words, kinds and properties in Arabic, and the file’s names as they are', async ({
+    page,
+    stayLocal: _,
+  }) => {
+    await page.goto('/');
+    await openPdf(page, EVERYTHING);
+    await page.getByRole('menubar').getByRole('combobox', { name: 'Language' }).selectOption({ label: 'العربية' });
+    await chooseTool(page, 'تنقيح');
+    await panel(page).getByRole('button', { name: 'فحص الملف' }).click();
+    const report = panel(page).getByRole('group', { name: 'يحمل الملف' });
+    await expect(report).toContainText('ملاحظات لاصقة: 1');
+    await expect(report).toContainText('العنوان: INFO-TITLE-SECRET');
+    await expect(report).toContainText('تاريخ الإنشاء: ');
+    await expect(report).toContainText('نصوص بيضاء على خلفية بيضاء: 1');
+    await expect(report).toContainText('LAYERNAME-OFF-SECRET');
+    // No PDF vocabulary, no PDF date syntax.
+    for (const english of ['Text (1)', 'Title:', 'CreationDate', "D:2024", 'invisible', 'Actions']) {
+      await expect(report).not.toContainText(english);
+    }
   });
 
   test('nothing is removed while redaction marks wait to be applied', async ({ page, stayLocal: _ }) => {

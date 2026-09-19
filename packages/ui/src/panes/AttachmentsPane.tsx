@@ -110,7 +110,8 @@ export function AttachmentsPane() {
       if (!same) throw new Error('E_EDIT: the attachment is gone');
       const { blobs } = await client.callStatic('attachments.remove', { password, key: same.key }, [bytes.slice(0)]);
       if (!blobs[0]) throw new Error('E_EDIT: nothing written');
-      await services.replaceFile(blobs[0]);
+      // The pages' text is as it was: Edit text's undo history stays.
+      await services.replaceFile(blobs[0], { textUnchanged: true });
       return 'attachments.removed';
     });
 
@@ -131,7 +132,7 @@ export function AttachmentsPane() {
         [bytes, content],
       );
       if (!blobs[0]) throw new Error('E_EDIT: nothing written');
-      await services.replaceFile(blobs[0]);
+      await services.replaceFile(blobs[0], { textUnchanged: true });
       setDescription('');
       return 'attachments.added';
     });

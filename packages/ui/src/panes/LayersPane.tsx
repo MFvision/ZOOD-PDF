@@ -85,30 +85,32 @@ export function LayersPane() {
     </label>
   );
 
+  // The file's order: layers listed under a layer or a labelled group, as
+  // lists within the list — every one always shown, so nothing here opens
+  // or closes; each box is reached with Tab like any other.
   const nodes = (list: LayerNode[], depth: number): ReactNode[] =>
     list.map((node, index) => {
-      const children = node.children.length > 0 ? <ul role="group">{nodes(node.children, depth + 1)}</ul> : null;
       if ('label' in node) {
         return (
-          <li key={`g${depth}-${index}`} role="treeitem" aria-level={depth + 1} aria-expanded="true" className="docpane-group">
+          <li key={`g${depth}-${index}`} className="docpane-group">
             <bdi dir="auto">{node.label}</bdi>
-            {children}
+            {node.children.length > 0 && <ul aria-label={node.label}>{nodes(node.children, depth + 1)}</ul>}
           </li>
         );
       }
       const layer = byId.get(node.id);
       if (!layer) return <li key={node.id} hidden />;
       return (
-        <li key={node.id} role="treeitem" aria-level={depth + 1} aria-expanded={children ? true : undefined}>
+        <li key={node.id}>
           {row(layer)}
-          {children}
+          {node.children.length > 0 && <ul>{nodes(node.children, depth + 1)}</ul>}
         </li>
       );
     });
 
   return (
     <div className="docpane">
-      <ul className="docpane-list docpane-layers" role="tree" aria-label={t('pane.layers')}>
+      <ul className="docpane-list docpane-layers" aria-label={t('pane.layers')}>
         {nodes(found.order, 0)}
       </ul>
       {!embedShowing && <p className="docpane-note">{t('layers.readingOnly')}</p>}

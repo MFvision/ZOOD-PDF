@@ -9,7 +9,7 @@ import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { warraqOwnsDocument } from '../state/appReducer';
 import { EmbedToolPanel } from '../tools/EmbedToolPanel';
 import type { ToolDefinition } from '../tools/tools';
-import { PATTERNS, defaultChoices, detailText, marksOf } from './findings';
+import { PATTERNS, defaultChoices, detailText, marksOf, placed } from './findings';
 import type { FoundMatch, HiddenKind, HiddenReport, PatternKind } from './findings';
 import './redact.css';
 
@@ -19,13 +19,19 @@ import './redact.css';
  * search and ready-made patterns, and Remove hidden information. Those two
  * are sections of the inspector with headings of their own (an `h4`: the
  * inspector hides a panel's leading `h3`, which its header already shows).
+ *
+ * What they found belongs to the file they read: another file — or this
+ * one back from Edit text, which may have changed it — starts them afresh,
+ * so a match is never marked, nor a report acted on, in a file it was not
+ * found in.
  */
 export function RedactPanel({ tool }: { tool: ToolDefinition }) {
+  const documentId = useAppState().document?.id ?? null;
   return (
     <>
       <EmbedToolPanel tool={tool} />
-      <FindAndRedact />
-      <HiddenInformation />
+      <FindAndRedact key={`find-${documentId}`} />
+      <HiddenInformation key={`hidden-${documentId}`} />
     </>
   );
 }
@@ -47,7 +53,8 @@ function FindAndRedact() {
   const [error, setError] = useState<TKey | null>(null);
   const [found, setFound] = useState<{ matches: FoundMatch[]; total: number } | null>(null);
   const [chosen, setChosen] = useState<ReadonlySet<number>>(new Set());
-  const [marked, setMarked] = useState<number | null>(null);
+  // How many the view took; `refused` when it took none of them.
+  const [marked, setMarked] = useState<{ count: number; refused: boolean } | null>(null);
 
   const togglePattern = (kind: PatternKind) =>
     setPatterns((current) => {
@@ -79,7 +86,7 @@ function FindAndRedact() {
           custom: custom.trim() || null,
         });
         setFound(result);
-        setChosen(new Set(result.matches.map((_, index) => index)));
+        setChosen(everyPlaced(result.matches));
       } finally {
         void reading.free();
       }
@@ -100,8 +107,10 @@ function FindAndRedact() {
 
   const mark = () => {
     if (!found) return;
-    const count = services.markForRedaction(marksOf(found.matches, chosen));
-    setMarked(count);
+    const marks = marksOf(found.matches, chosen);
+    const count = services.markForRedaction(marks);
+    // EmbedPDF takes none on a file that forbids changing its content.
+    setMarked({ count, refused: count === 0 && marks.length > 0 });
     setChosen(new Set());
   };
 
@@ -153,7 +162,7 @@ function FindAndRedact() {
         <div className="redact-results">
           <div className="redact-results-head">
             <strong role="status">{t('redact.search.found', { count: found.total })}</strong>
-            <IconButton label={t('redact.search.all')} icon={<Icon of={SquareCheck} />} onClick={() => setChosen(new Set(found.matches.map((_, i) => i)))} />
+            <IconButton label={t('redact.search.all')} icon={<Icon of={SquareCheck} />} onClick={() => setChosen(everyPlaced(found.matches))} />
             <IconButton label={t('redact.search.clear')} icon={<Icon of={SquareX} />} onClick={() => setChosen(new Set())} />
           </div>
           {found.total > found.matches.length && <p className="tool-panel-note">{t('redact.search.more', { shown: found.matches.length, count: found.total })}</p>}
@@ -161,14 +170,18 @@ function FindAndRedact() {
             {found.matches.map((match, index) => (
               <li key={index}>
                 <label className="redact-match">
-                  <input type="checkbox" checked={chosen.has(index)} onChange={() => toggle(index)} />
+                  <input type="checkbox" checked={chosen.has(index)} disabled={!placed(match)} onChange={() => toggle(index)} />
                   <span className="redact-match-page">{t('redact.search.page', { page: match.page + 1 })}</span>
                   <bdi className="redact-match-context" dir="auto">
                     {match.before}
                     <mark>{match.text}</mark>
                     {match.after}
                   </bdi>
-                  <span className="badge">{t(`redact.kind.${match.kind}` as TKey)}</span>
+                  <span className="redact-match-tags">
+                    <span className="badge">{t(`redact.kind.${match.kind}` as TKey)}</span>
+                    {match.artifact && <span className="badge">{t('redact.search.artifact')}</span>}
+                  </span>
+                  {!placed(match) && <span className="redact-match-note">{t('redact.search.unplaced')}</span>}
                 </label>
               </li>
             ))}
@@ -185,17 +198,27 @@ function FindAndRedact() {
           </div>
         </div>
       )}
-      {marked !== null && (
+      {marked && !marked.refused && (
         <p className="tool-panel-note" role="status">
-          {t('redact.search.marked', { count: marked })}
+          {t('redact.search.marked', { count: marked.count })}
+        </p>
+      )}
+      {marked?.refused && (
+        <p className="field-error" role="alert">
+          {t('redact.search.refused')}
         </p>
       )}
     </section>
   );
 }
 
+/** Every match the reader placed on its page: the ones that can be marked. */
+function everyPlaced(matches: readonly FoundMatch[]): Set<number> {
+  return new Set(matches.flatMap((match, index) => (placed(match) ? [index] : [])));
+}
+
 function HiddenInformation() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const services = useServices();
   const dispatch = useAppDispatch();
   const ready = useReady();
@@ -219,7 +242,7 @@ function HiddenInformation() {
       setReport(found);
       if (found) setChosen(defaultChoices(found));
     } catch {
-      dispatch({ type: 'DOCUMENT_FAILED', error: 'redact.hidden.failed' });
+      dispatch({ type: 'DOCUMENT_FAILED', error: 'redact.hidden.checkFailed' });
     } finally {
       setBusy(null);
     }
@@ -293,7 +316,7 @@ function HiddenInformation() {
                 </strong>
                 {finding.details.length > 0 && (
                   <bdi className="redact-finding-details" dir="auto">
-                    {finding.details.map((detail) => detailText(detail, t)).join(' · ')}
+                    {finding.details.map((detail) => detailText(detail, t, lang)).join(' · ')}
                   </bdi>
                 )}
               </span>

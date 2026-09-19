@@ -1,11 +1,42 @@
+import type { Direction } from '../i18n/messages';
+
 /** One bookmark as `outline.list` gives it: flat, in reading order, with its depth. */
 export interface Bookmark {
   title: string;
   depth: number;
-  /** Zero-based; null for one that goes outside the file. */
+  /** Zero-based; null for one that goes outside the file, or nowhere (a heading). */
   page: number | null;
+  /** It goes outside the file: a web address, another file, a program. */
+  outside: boolean;
   open: boolean;
   children: number;
+}
+
+/** What a key does in a tree (WAI-ARIA's tree pattern), right and left mirrored right to left. */
+export type TreeMove = 'next' | 'previous' | 'first' | 'last' | 'open' | 'close' | 'activate';
+
+export function treeKey(key: string, dir: Direction): TreeMove | null {
+  const forward = dir === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
+  const backward = dir === 'rtl' ? 'ArrowRight' : 'ArrowLeft';
+  switch (key) {
+    case 'ArrowDown':
+      return 'next';
+    case 'ArrowUp':
+      return 'previous';
+    case 'Home':
+      return 'first';
+    case 'End':
+      return 'last';
+    case forward:
+      return 'open';
+    case backward:
+      return 'close';
+    case 'Enter':
+    case ' ':
+      return 'activate';
+    default:
+      return null;
+  }
 }
 
 /** The bookmarks a person sees: every one whose parents are all open. */

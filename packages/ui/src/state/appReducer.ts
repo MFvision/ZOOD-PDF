@@ -95,7 +95,14 @@ export type AppAction =
   | { type: 'ORGANIZE_SELECT_ALL' }
   | { type: 'ORGANIZE_BUSY'; busy: boolean }
   /** The open document changed shape (Organize): new pages, and what to select. */
-  | { type: 'DOCUMENT_RESHAPED'; pageCount: number; pageSizes: readonly PageSize[]; selection: number[] }
+  | {
+      type: 'DOCUMENT_RESHAPED';
+      pageCount: number;
+      pageSizes: readonly PageSize[];
+      selection: number[];
+      /** The change left every page's text as it was (an attachment): Edit text's undo history stays. */
+      keepEditHistory?: boolean;
+    }
   | { type: 'PASSWORD_CANCELLED' }
   | { type: 'ERROR_DISMISSED' }
   | { type: 'TOAST'; key: TKey }
@@ -369,8 +376,14 @@ function reduce(state: AppState, action: AppAction): AppState {
         currentPage: Math.min(state.currentPage, Math.max(1, action.pageCount)),
         organize: { selection, revision: state.organize.revision + 1, busy: false },
         // A page change is an edit: the file must be handed back and saved. The
-        // text-edit history goes: its entries name pages by position.
-        edit: { ...state.edit, stack: EMPTY_EDIT_STACK, editing: null, revision: state.edit.revision + 1 },
+        // text-edit history goes — its entries name pages by position and
+        // paragraphs by their place — unless the change left the text alone.
+        edit: {
+          ...state.edit,
+          stack: action.keepEditHistory ? state.edit.stack : EMPTY_EDIT_STACK,
+          editing: null,
+          revision: state.edit.revision + 1,
+        },
       };
     }
     case 'FIND_OPEN':
