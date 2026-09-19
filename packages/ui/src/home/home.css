@@ -43,7 +43,15 @@
   letter-spacing: var(--track-title3);
 }
 
-.home-open.icon-btn-primary {
+.home-actions {
+  display: flex;
+  flex: none;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.home-open.icon-btn-primary,
+.home-create.icon-btn-labeled {
   flex: none;
   block-size: 30px;
   padding-inline: var(--space-5) var(--space-6);
@@ -203,8 +211,13 @@
     block-size: 52px;
   }
 
-  .home-open.icon-btn-primary {
+  .home-actions {
     inline-size: 100%;
+  }
+
+  .home-open.icon-btn-primary,
+  .home-create.icon-btn-labeled {
+    flex: 1;
     justify-content: center;
   }
 

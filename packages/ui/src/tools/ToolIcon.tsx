@@ -19,6 +19,7 @@ const TOOL_COLORS: Partial<Record<ToolId, string>> = {
   compare: '#ff2d55',
   ocr: '#32ade6',
   combine: '#00c7be',
+  create: '#ff6482',
   compress: '#a2845e',
   prepareForm: '#5ac8fa',
   ai: '#bf5af2',
