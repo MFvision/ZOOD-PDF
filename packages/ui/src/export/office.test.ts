@@ -178,6 +178,9 @@ describe('the PowerPoint presentation', () => {
     const second = strFromU8(files['ppt/slides/slide2.xml']!);
     expect(second).toContain('<a:alpha val="0"/>');
     expect(second).toMatch(/<a:pPr algn="l" rtl="1">/);
+    // Text up the margin stands where it stood, turned, not as a giant box.
+    const turned = strFromU8(unzipSync(buildPptx([{ ...slides[1]!, texts: [{ x: 6, y: 18, width: 20, height: 650, lines: ['Public Disclosure Authorized'], direction: 'ltr', alignment: 'start', size: 16, pitch: null, color: '000000', vertical: true }] }]))['ppt/slides/slide1.xml']!);
+    expect(turned).toContain('<a:xfrm rot="16200000"><a:off x="-3924300" y="4229100"/><a:ext cx="8255000" cy="254000"/>');
     const presentation = strFromU8(files['ppt/presentation.xml']!);
     expect(presentation).toContain('<p:sldSz cx="7556500" cy="10693400"/>');
   });

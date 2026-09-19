@@ -193,7 +193,11 @@ async function exportSlides(doc: ExportableDocument, request: ExportRequest): Pr
         width: Math.max(...own.map((l) => l.x + l.width)) - x,
         height: Math.max(...own.map((l) => l.y + l.height)) - y,
       };
-      const size = p.fontSize ?? Math.max(4, own[0]!.height / 1.2);
+      // Text set up the page has boxes far taller than wide: its size is its thickness.
+      const vertical = own.every((l) => l.height > l.width * 2.5) && own.some((l) => l.text.trim().length > 2);
+      const size = vertical
+        ? Math.max(4, Math.min(96, Math.min(...own.map((l) => l.width)) / 1.2))
+        : (p.fontSize ?? Math.max(4, Math.min(96, own[0]!.height / 1.2)));
       const steps = own.slice(1).map((l, k) => l.y - own[k]!.y);
       const pitch = steps.length > 0 ? steps.reduce((a, b) => a + b, 0) / steps.length : null;
       const colour =
@@ -208,6 +212,7 @@ async function exportSlides(doc: ExportableDocument, request: ExportRequest): Pr
         size,
         pitch,
         color: colour,
+        vertical,
       };
     });
     slides.push({

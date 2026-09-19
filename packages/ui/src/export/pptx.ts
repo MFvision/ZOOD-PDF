@@ -46,6 +46,12 @@ export interface SlideText {
   pitch: number | null;
   /** `rrggbb`. */
   color: string;
+  /**
+   * Text set up the page (a margin's "Public Disclosure Authorized"): the
+   * box is written the way the text reads and turned a quarter to stand
+   * where it stood.
+   */
+  vertical?: boolean;
 }
 
 export interface Slide {
@@ -67,8 +73,14 @@ function xmlAttribute(text: string): string {
   return xmlText(text).replace(/"/g, '&quot;');
 }
 
+/** A size in EMU: never below zero. */
 function emu(points: number): number {
   return Math.max(0, Math.round(points * EMU));
+}
+
+/** A position in EMU: a turned box's corner may lie off the slide. */
+function coordinate(points: number): number {
+  return Math.round(points * EMU);
 }
 
 /**
@@ -122,11 +134,21 @@ function textBox(text: SlideText, id: number, at: ReturnType<typeof placement>, 
     text.pitch !== null && text.pitch > 0
       ? `<a:lnSpc><a:spcPts val="${Math.round(Math.min(1584, text.pitch * at.scale) * 100)}"/></a:lnSpc>`
       : '';
-  const x = at.dx + text.x * at.scale;
-  const y = at.dy + text.y * at.scale;
+  let x = at.dx + text.x * at.scale;
+  let y = at.dy + text.y * at.scale;
+  let [w, h] = [text.width * at.scale, text.height * at.scale];
+  let turn = '';
+  if (text.vertical) {
+    // Unturned, the box is as long as the text and as thick as a line, about
+    // the same centre; turned three quarters, it reads bottom to top.
+    const [cx, cy] = [x + w / 2, y + h / 2];
+    [w, h] = [h, w];
+    [x, y] = [cx - w / 2, cy - h / 2];
+    turn = ' rot="16200000"';
+  }
   return (
     `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="Text ${id - 2}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>` +
-    `<p:spPr><a:xfrm><a:off x="${emu(x)}" y="${emu(y)}"/><a:ext cx="${emu(text.width * at.scale)}" cy="${emu(text.height * at.scale)}"/></a:xfrm>` +
+    `<p:spPr><a:xfrm${turn}><a:off x="${coordinate(x)}" y="${coordinate(y)}"/><a:ext cx="${emu(w)}" cy="${emu(h)}"/></a:xfrm>` +
     '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>' +
     // No wrapping: the lines break where the page broke them.
     `<p:txBody><a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" rtlCol="${rtl ? 1 : 0}" anchor="t"><a:noAutofit/></a:bodyPr><a:lstStyle/>` +
