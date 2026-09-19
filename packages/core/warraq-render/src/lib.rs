@@ -28,6 +28,23 @@ pub struct Bitmap {
     pub rgba: Vec<u8>,
 }
 
+/// A straight line across or down a page — a table's rule, a cell's edge —
+/// in page space (y down, points): across when `y0 == y1`, down when
+/// `x0 == x1`, and from the smaller coordinate to the larger.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Ruling {
+    pub x0: f32,
+    pub y0: f32,
+    pub x1: f32,
+    pub y1: f32,
+}
+
+impl Ruling {
+    pub fn across(&self) -> bool {
+        self.y0 == self.y1
+    }
+}
+
 /// The marked-content sequences glyphs were drawn in (`BMC`/`BDC` … `EMC`):
 /// each sequence's tag, in the order they began, and for each glyph the
 /// sequences it is inside, outermost first. The sequences' properties —
@@ -50,6 +67,9 @@ pub trait RenderDoc {
         &self,
         index: usize,
     ) -> Result<(Vec<PositionedGlyph>, MarkedGlyphs), RenderError>;
+    /// The straight lines drawn across and down the page: stroked, or
+    /// filled bars thin enough to be rules, and the edges of shaded boxes.
+    fn rulings(&self, index: usize) -> Result<Vec<Ruling>, RenderError>;
 }
 
 pub fn open(bytes: Vec<u8>, password: Option<&str>) -> Result<Box<dyn RenderDoc>, RenderError> {

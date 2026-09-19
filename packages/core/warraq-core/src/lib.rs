@@ -7,6 +7,7 @@ use warraq_text::{
     SearchNormalization, TextLine,
 };
 
+pub mod tables;
 pub mod tools;
 #[cfg(target_arch = "wasm32")]
 pub mod wasm;
@@ -118,6 +119,12 @@ impl Document {
         let lines = self.read_lines(index, false)?;
         self.lines_cache.borrow_mut().insert(index, lines.clone());
         Ok(lines)
+    }
+
+    /// The straight lines drawn across and down the page (table rules), in
+    /// the same space as `text_lines`.
+    pub fn rulings(&self, index: usize) -> Result<Vec<warraq_render::Ruling>, CoreError> {
+        Ok(self.render.rulings(index)?)
     }
 
     /// The text of the page's artifacts only — its page marks, running

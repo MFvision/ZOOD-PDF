@@ -1,5 +1,5 @@
 //! Pure-Rust backend on `hayro` (raster) and `hayro-interpret` (glyph device).
-use crate::{Bitmap, MarkedGlyphs, RenderDoc, RenderError};
+use crate::{Bitmap, MarkedGlyphs, RenderDoc, RenderError, Ruling};
 use hayro::vello_cpu::kurbo::{Affine, BezPath, Rect};
 use hayro::{render, RenderCache, RenderSettings};
 use hayro_interpret::font::Glyph;
@@ -533,6 +533,116 @@ fn shape_recover(
     }
 }
 
+/// A line thinner than this, in points, is a rule rather than a shape.
+const RULE_THICKNESS: f64 = 3.0;
+/// A line shorter than this is not a rule: an underline's end, a tick.
+const RULE_LENGTH: f64 = 4.0;
+/// At most this many rulings are kept on a page (a hatched drawing has thousands).
+const MAX_RULINGS: usize = 20_000;
+
+/// Collects the straight lines drawn across and down a page (table rules):
+/// stroked segments, filled bars thin enough to be rules, and the edges of
+/// shaded boxes — a table with shaded cells and no borders has them there.
+#[derive(Default)]
+struct RulingDevice {
+    out: Vec<Ruling>,
+    /// Boxes as large as this are backgrounds, not cells.
+    page_area: f64,
+}
+
+impl RulingDevice {
+    fn push(&mut self, (ax, ay): (f64, f64), (bx, by): (f64, f64)) {
+        if self.out.len() >= MAX_RULINGS || ![ax, ay, bx, by].iter().all(|v| v.is_finite()) {
+            return;
+        }
+        let (dx, dy) = ((bx - ax).abs(), (by - ay).abs());
+        if dy <= 0.5 && dx >= RULE_LENGTH {
+            let y = ((ay + by) / 2.0) as f32;
+            self.out.push(Ruling {
+                x0: ax.min(bx) as f32,
+                y0: y,
+                x1: ax.max(bx) as f32,
+                y1: y,
+            });
+        } else if dx <= 0.5 && dy >= RULE_LENGTH {
+            let x = ((ax + bx) / 2.0) as f32;
+            self.out.push(Ruling {
+                x0: x,
+                y0: ay.min(by) as f32,
+                x1: x,
+                y1: ay.max(by) as f32,
+            });
+        }
+    }
+}
+
+impl<'a> Device<'a> for RulingDevice {
+    fn set_soft_mask(&mut self, _: Option<SoftMask<'a>>) {}
+    fn set_blend_mode(&mut self, _: BlendMode) {}
+    fn draw_path(&mut self, path: &BezPath, transform: Affine, _: &Paint<'a>, mode: &PathDrawMode) {
+        use hayro::vello_cpu::kurbo::{PathEl, Shape};
+        let mut p = path.clone();
+        p.apply_affine(transform);
+        match mode {
+            PathDrawMode::Stroke(_) => {
+                let (mut start, mut at) = ((0.0, 0.0), (0.0, 0.0));
+                for el in p.elements() {
+                    match *el {
+                        PathEl::MoveTo(q) => {
+                            start = (q.x, q.y);
+                            at = start;
+                        }
+                        PathEl::LineTo(q) => {
+                            self.push(at, (q.x, q.y));
+                            at = (q.x, q.y);
+                        }
+                        PathEl::ClosePath => {
+                            self.push(at, start);
+                            at = start;
+                        }
+                        PathEl::QuadTo(_, q) | PathEl::CurveTo(_, _, q) => at = (q.x, q.y),
+                    }
+                }
+            }
+            PathDrawMode::Fill(_) => {
+                let b = p.bounding_box();
+                let (w, h) = (b.width(), b.height());
+                if h <= RULE_THICKNESS && w >= RULE_LENGTH {
+                    let y = (b.y0 + b.y1) / 2.0;
+                    self.push((b.x0, y), (b.x1, y));
+                } else if w <= RULE_THICKNESS && h >= RULE_LENGTH {
+                    let x = (b.x0 + b.x1) / 2.0;
+                    self.push((x, b.y0), (x, b.y1));
+                } else if w * h < self.page_area * 0.5 && p.elements().len() <= 6 {
+                    // A shaded box: its edges bound a cell.
+                    for (a, c) in [
+                        ((b.x0, b.y0), (b.x1, b.y0)),
+                        ((b.x0, b.y1), (b.x1, b.y1)),
+                        ((b.x0, b.y0), (b.x0, b.y1)),
+                        ((b.x1, b.y0), (b.x1, b.y1)),
+                    ] {
+                        self.push(a, c);
+                    }
+                }
+            }
+        }
+    }
+    fn push_clip_path(&mut self, _: &ClipPath) {}
+    fn push_transparency_group(&mut self, _: f32, _: Option<SoftMask<'a>>, _: BlendMode) {}
+    fn draw_glyph(
+        &mut self,
+        _: &Glyph<'a>,
+        _: Affine,
+        _: Affine,
+        _: &Paint<'a>,
+        _: &GlyphDrawMode,
+    ) {
+    }
+    fn draw_image(&mut self, _: Image<'a, '_>, _: Affine) {}
+    fn pop_clip_path(&mut self) {}
+    fn pop_transparency_group(&mut self) {}
+}
+
 impl RenderDoc for HayroDoc {
     fn page_count(&self) -> usize {
         self.pdf.pages().len()
@@ -600,6 +710,29 @@ impl RenderDoc for HayroDoc {
         let mut glyphs = dev.glyphs;
         shape_recover(&mut glyphs, &dev.font_data, &dev.skeleton_fonts);
         Ok((glyphs, dev.marked))
+    }
+
+    fn rulings(&self, index: usize) -> Result<Vec<Ruling>, RenderError> {
+        let page = self
+            .pdf
+            .pages()
+            .get(index)
+            .ok_or(RenderError::Page(index))?;
+        let (w, h) = page.render_dimensions();
+        let cache = InterpreterCache::new();
+        let mut ctx = Context::new(
+            page.initial_transform(true).to_kurbo(),
+            Rect::new(0.0, 0.0, w as f64, h as f64),
+            &cache,
+            page.xref(),
+            InterpreterSettings::default(),
+        );
+        let mut dev = RulingDevice {
+            out: Vec::new(),
+            page_area: w as f64 * h as f64,
+        };
+        interpret_page(page, &mut ctx, &mut dev);
+        Ok(dev.out)
     }
 }
 

@@ -682,3 +682,42 @@ fn each_page_of_a_tiff_and_gif_bmp_and_webp_pictures_become_pages() {
     assert!(reddish(colour_at(pdf, 3, 0.5, 0.5)), "the BMP");
     assert!(bluish(colour_at(pdf, 4, 0.5, 0.5)), "the WebP");
 }
+
+#[test]
+fn a_created_arabic_table_is_found_again_with_its_merged_cell() {
+    let (pdf, _) = document(
+        json!([
+            { "type": "text", "text": "جدول الأصناف", "size": 16 },
+            { "type": "table", "headerRows": 1, "rows": [
+                [{ "text": "الصنف" }, { "text": "الكمية" }, { "text": "السعر" }],
+                [{ "text": "ورق" }, { "text": "١٢" }, { "text": "3.50" }],
+                [{ "text": "المجموع", "span": 2 }, { "text": "42.00" }],
+            ] },
+            { "type": "text", "text": "انتهى الجدول." },
+        ]),
+        vec![],
+    );
+    let mut doc = Document::open(pdf, None).unwrap();
+    let reply = doc.call("export.tables", r#"{"page":0}"#, vec![]).unwrap();
+    let v = value(&reply);
+    let items = v["items"].as_array().unwrap();
+    let kinds: Vec<&str> = items.iter().map(|i| i["kind"].as_str().unwrap()).collect();
+    assert_eq!(kinds, ["line", "table", "line"], "{v}");
+    let table = &items[1];
+    assert_eq!(table["ruled"], true);
+    assert_eq!(table["direction"], "rtl");
+    let rows = table["rows"].as_array().unwrap();
+    assert_eq!(rows.len(), 3);
+    // Left to right as drawn: a right-to-left table's first column is last.
+    let text = |r: usize, c: usize| rows[r][c]["text"].as_str().unwrap_or("").to_string();
+    assert_eq!(
+        [text(0, 2), text(0, 1), text(0, 0)],
+        ["الصنف", "الكمية", "السعر"]
+    );
+    assert_eq!([text(1, 2), text(1, 1), text(1, 0)], ["ورق", "١٢", "3.50"]);
+    // The total spans the two right-hand columns.
+    assert_eq!(text(2, 0), "42.00");
+    assert_eq!(rows[2][1]["text"], "المجموع");
+    assert_eq!(rows[2][1]["columns"], 2);
+    assert!(rows[2][2].is_null());
+}
