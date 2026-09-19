@@ -247,7 +247,11 @@ export function installWarraqText(registry: PluginRegistry, reading: Reading): (
           matchCase: flags.includes(MatchFlag.MatchCase),
           wholeWord: flags.includes(MatchFlag.MatchWholeWord),
         });
-        const results = mergeResults(toSearchResults(result.matches), (await found).results);
+        // Warraq's hits are shown at once; PDFium, reading every page again,
+        // can take seconds on a long file before what it alone finds joins them.
+        const own = toSearchResults(result.matches);
+        if (pending(task) && own.length > 0) task.progress({ page: Math.max(0, doc.pageCount - 1), results: own });
+        const results = mergeResults(own, (await found).results);
         if (pending(task)) task.resolve({ results, total: results.length + Math.max(0, result.total - result.matches.length) });
       } catch (error) {
         const result = await found;

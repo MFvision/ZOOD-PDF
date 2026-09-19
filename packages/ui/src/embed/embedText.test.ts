@@ -125,7 +125,12 @@ describe('the engine calls, replaced', () => {
     };
     let current: TextReading | null = reading;
     const undo = installWarraqText(registry, async () => current);
-    const found = await engine.searchAllPages(doc, 'العلم', { flags: [MatchFlag.MatchCase] }).toPromise();
+    const task = engine.searchAllPages(doc, 'العلم', { flags: [MatchFlag.MatchCase] });
+    // Warraq's own hits are shown first, before PDFium's joins them.
+    const progress: number[] = [];
+    task.onProgress((step) => progress.push((step as { results: unknown[] }).results.length));
+    const found = await task.toPromise();
+    expect(progress).toEqual([1]);
     expect(asked).toEqual([['view.search', { query: 'العلم', matchCase: true, wholeWord: false }]]);
     // Warraq's hit, and PDFium's elsewhere on the page.
     expect(found.results.map((r) => r.rects[0]!.origin.x)).toEqual([5, 100]);

@@ -39,6 +39,8 @@ async function searchState(page: Page, query: string) {
     const marks = [...root.querySelectorAll<HTMLElement>('div')].filter((div) => div.style.mixBlendMode === 'multiply');
     return {
       total: state.total as number,
+      query: state.query as string,
+      loading: state.loading as boolean,
       active: state.activeResultIndex as number,
       pages: (state.results as { pageIndex: number }[]).map((result) => result.pageIndex),
       matched: (state.results as { context: { match: string } }[]).map((result) => result.context.match),
@@ -50,8 +52,22 @@ async function searchState(page: Page, query: string) {
   }, query);
 }
 
+/**
+ * Types into EmbedPDF's search field and waits until it has searched for
+ * exactly that: the panel searches 300 ms after the last key, and a count
+ * that did not change ("7 results found" for two spellings) is no sign of it.
+ */
 async function search(page: Page, query: string, count: number): Promise<void> {
   await panel(page).getByPlaceholder('Search').fill(query);
+  await expect
+    .poll(() =>
+      page.evaluate(async (words) => {
+        const registry: Any = await (document.querySelector('embedpdf-container') as Any).registry;
+        const state = registry.getPlugin('search').provides().getState();
+        return state.query === words && !state.loading ? (state.total as number) : -1;
+      }, query.trim()),
+    )
+    .toBe(count);
   await expect(panel(page).getByText(`${count} results found`)).toBeVisible();
 }
 
