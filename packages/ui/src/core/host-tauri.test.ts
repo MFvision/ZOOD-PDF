@@ -16,6 +16,7 @@ import {
   saveFileAs,
   savePdfFile,
   takeStartupFile,
+  withoutPdfium,
 } from './host-tauri';
 import type { ResultMap } from './protocol';
 
@@ -390,5 +391,15 @@ describe('startup file', () => {
     expect(await takeStartupFile()).toBeNull();
     delete (globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
     expect(await takeStartupFile()).toBeNull();
+  });
+});
+
+describe('the desktop core without PDFium', () => {
+  it('is told apart from the core that has it, and from the browsers’, which never had it', () => {
+    expect(withoutPdfium({ kind: 'native', version: '0.1.0', engine: 'hayro' })).toBe(true);
+    expect(withoutPdfium({ kind: 'native', version: '0.1.0', engine: 'pdfium+hayro' })).toBe(false);
+    expect(withoutPdfium({ kind: 'wasm', version: '0.1.0' })).toBe(false);
+    expect(withoutPdfium({ kind: 'mock', version: '0.0.0' })).toBe(false);
+    expect(withoutPdfium(null)).toBe(false);
   });
 });

@@ -20,6 +20,7 @@ import { IconButton } from '../components/IconButton';
 import { Popover } from '../components/Popover';
 import { useToolbarKeyboard } from '../components/useToolbarKeyboard';
 import { canRedo, canUndo } from '../edit/editStack';
+import { withoutPdfium } from '../core/host-tauri';
 import { useI18n } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { hasUnsavedEdits } from '../state/appReducer';
@@ -174,13 +175,18 @@ export function Toolbar() {
         </Popover>
         {hasDocument && (
           <div className="toolbar-group">
+            {/* A toggle in either view: EmbedPDF's search panel, or Warraq's find bar in Edit text. */}
             <IconButton
               className="toolbar-optional"
               label={t('find.label')}
               icon={<Icon of={Search} />}
               disabled={organizing}
-              pressed={!services.embedShowing && state.find.open}
-              onClick={() => services.viewCommand('find')}
+              pressed={!organizing && services.viewCommandOn('find')}
+              onClick={() =>
+                services.embedShowing
+                  ? services.viewCommand('find')
+                  : dispatch({ type: state.find.open ? 'FIND_CLOSE' : 'FIND_OPEN' })
+              }
             />
             <IconButton label={t('file.save')} icon={<Icon of={Download} />} onClick={() => void services.saveDocument()} />
           </div>
@@ -202,8 +208,9 @@ export function Toolbar() {
 
 /**
  * The document's name and, under it, where you are and whether it is edited —
- * the window subtitle the system's viewer shows ("Page 2 of 9 — Edited"). It
- * replaces the status bar; the core's version is in About.
+ * the window subtitle the system's viewer shows ("Page 2 of 9 — Edited"). The
+ * core's version and engine are in About; a desktop core that could not load
+ * PDFium is also said here, beside the name.
  */
 function DocumentTitle() {
   const state = useAppState();
@@ -229,6 +236,11 @@ function DocumentTitle() {
       {core?.kind === 'mock' && (
         <span className="badge badge-warning" title={t('status.mockCoreHint')}>
           {t('status.mockCore')}
+        </span>
+      )}
+      {withoutPdfium(core) && (
+        <span className="badge badge-warning" title={t('status.noPdfiumHint')}>
+          {t('status.noPdfium')}
         </span>
       )}
     </div>

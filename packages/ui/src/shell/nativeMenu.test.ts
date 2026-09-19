@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { formatShortcut, toAccelerator } from './menuModel';
-import { ECHO_WINDOW_MS, comboOf, isEcho, normalizeKeys } from './shortcutEcho';
+import { ECHO_WINDOW_MS, comboOf, isEcho, normalizeKeys, shortcutLetter } from './shortcutEcho';
 
 const read = (relative: string) => readFileSync(new URL(relative, import.meta.url), 'utf8');
 
@@ -70,5 +70,21 @@ describe('a shortcut runs once', () => {
     expect(isEcho(handled, 'Mod+Shift+Z', 1000 + ECHO_WINDOW_MS + 1)).toBe(false);
     expect(isEcho(handled, undefined, 1100)).toBe(false);
     expect(isEcho(null, 'Mod+Shift+Z', 1100)).toBe(false);
+  });
+});
+
+describe('a shortcut on any keyboard layout', () => {
+  const key = (init: { key: string; code: string }) => ({ metaKey: true, ctrlKey: false, shiftKey: false, altKey: false, ...init });
+
+  it('is the letter marked on the key where it is Latin, and the key’s place where it is not', () => {
+    expect(shortcutLetter(key({ key: 'z', code: 'KeyZ' }))).toBe('z');
+    expect(shortcutLetter(key({ key: 'Z', code: 'KeyZ' }))).toBe('z');
+    // Arabic: the Z key types ئ, the F key ب.
+    expect(shortcutLetter(key({ key: 'ئ', code: 'KeyZ' }))).toBe('z');
+    expect(shortcutLetter(key({ key: 'ب', code: 'KeyF' }))).toBe('f');
+    expect(shortcutLetter(key({ key: '٠', code: 'Digit0' }))).toBe('0');
+    // French: the key marked Z sits where QWERTY has W.
+    expect(shortcutLetter(key({ key: 'z', code: 'KeyW' }))).toBe('z');
+    expect(shortcutLetter(key({ key: ',', code: 'Comma' }))).toBe(',');
   });
 });

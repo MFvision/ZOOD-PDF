@@ -760,6 +760,8 @@
   "status.label": "Status bar",
   "status.mockCore": "mock core",
   "status.mockCoreHint": "The WASM core is not built yet; a mock document is shown.",
+  "status.noPdfium": "Built-in renderer",
+  "status.noPdfiumHint": "PDFium could not be loaded, so Edit text, Organize pages, Scan & OCR and page pictures are drawn by the built-in renderer, which may draw some files less faithfully. About shows the engine in use.",
   "status.noDocument": "No document open",
   "status.page": "Page {current} of {total}",
   "status.viewMode": "View mode",

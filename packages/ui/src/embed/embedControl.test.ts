@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { PluginRegistry } from '@embedpdf/react-pdf-viewer';
-import { DESKTOP_CANNOT, WARRAQ_OWNS, addRedactionMarks, disabledCategories, unionBox } from './embedControl';
+import { DESKTOP_CANNOT, WARRAQ_OWNS, addRedactionMarks, disabledCategories, unionBox, watchToggles } from './embedControl';
+import type { ViewToggles } from './embedControl';
 
 describe('search-and-redact marks in the EmbedPDF view', () => {
   it('one pending text mark per match, over exactly its glyph boxes', () => {
@@ -54,5 +55,34 @@ describe("EmbedPDF's commands Warraq switches off", () => {
   it('on desktop also: the browser print, which the webview does not have', () => {
     expect(disabledCategories(true)).toEqual([...WARRAQ_OWNS, ...DESKTOP_CANNOT]);
     expect(DESKTOP_CANNOT).toEqual(['document-print']);
+  });
+});
+
+describe('the toggles the toolbar and the menus show', () => {
+  it('follow EmbedPDF whenever one of their commands changes, and only then', () => {
+    const active = new Set<string>(['zoom:fit-width']);
+    let changed: ((event: { commandId: string }) => void) | null = null;
+    const plugins: Record<string, unknown> = {
+      commands: {
+        resolve: (id: string) => ({ active: active.has(id) }),
+        onCommandStateChanged: (listener: (event: { commandId: string }) => void) => {
+          changed = listener;
+          return () => (changed = null);
+        },
+      },
+      'document-manager': { onActiveDocumentChanged: () => () => undefined },
+    };
+    const registry = { getPlugin: (id: string) => ({ provides: () => plugins[id] }) } as unknown as PluginRegistry;
+    const seen: ViewToggles[] = [];
+    const stop = watchToggles(registry, (toggles) => seen.push(toggles));
+    expect(seen).toEqual([{ 'fit-width': true, 'fit-page': false, sidebar: false, find: false }]);
+
+    active.add('panel:toggle-sidebar');
+    changed!({ commandId: 'panel:toggle-sidebar' });
+    expect(seen.at(-1)).toEqual({ 'fit-width': true, 'fit-page': false, sidebar: true, find: false });
+    changed!({ commandId: 'annotation:add-ink' });
+    expect(seen).toHaveLength(2);
+    stop();
+    expect(changed).toBeNull();
   });
 });

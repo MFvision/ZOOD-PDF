@@ -26,8 +26,8 @@ import {
 import type { PickedFile } from '../core/host-tauri';
 import type { CoreClient, RemoteDocument } from '../core/client';
 import type { PluginRegistry } from '@embedpdf/react-pdf-viewer';
-import { EMBED_COMMANDS, addRedactionMarks, capability, commandActive, disabledCategories, printAllowed, runCommand, scrollToPage, setKeyboard, watch, watchPendingRedactions } from '../embed/embedControl';
-import type { RedactionMark, ViewCommand } from '../embed/embedControl';
+import { EMBED_COMMANDS, NO_TOGGLES, addRedactionMarks, capability, disabledCategories, printAllowed, runCommand, scrollToPage, setKeyboard, watch, watchPendingRedactions, watchToggles } from '../embed/embedControl';
+import type { RedactionMark, ViewCommand, ViewToggles } from '../embed/embedControl';
 import { installViewText } from '../embed/embedText';
 import { uuidV4 } from '@embedpdf/models';
 import { loadEditFont } from '../edit/editFont';
@@ -182,14 +182,14 @@ export interface AppServices {
   runEmbedCommand: (command: string) => void;
   /**
    * Whether EmbedPDF is the view on screen; Warraq's own takes over while
-   * editing text. Menus, shortcuts and the status bar act on whichever this
+   * editing text. Menus, shortcuts and the toolbar act on whichever this
    * says — before, they always drove Warraq's view, and did nothing visible
    * while EmbedPDF showed the page.
    */
   embedShowing: boolean;
   /** Zoom, fit, find, the page sidebar, print, undo and redo, on the view on screen. */
   viewCommand: (command: ViewCommand) => void;
-  /** Whether a toggle — fit width, fit page, the sidebar — is on in the view on screen. */
+  /** Whether a toggle — fit width, fit page, the sidebar, find — is on in the view on screen. */
   viewCommandOn: (command: ViewCommand) => boolean;
   canUndo: boolean;
   canRedo: boolean;
@@ -655,8 +655,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     embedShowingRef.current = embedShowing;
   }, [embedShowing]);
 
-  // The status bar and Go to page follow the page EmbedPDF shows, and the Edit
-  // menu what its history can undo.
+  // The toolbar's page and Go to page follow the page EmbedPDF shows, and the
+  // Edit menu what its history can undo.
   useEffect(() => {
     if (!embed) return;
     return watch(embed, {
@@ -673,6 +673,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Marks not yet applied, for Export to warn about while they are there.
   useEffect(() => (embed ? watchPendingRedactions(embed, setPendingRedactions) : undefined), [embed]);
+
+  // Which of EmbedPDF's toggles are on — fit width, fit page, its sidebar and
+  // search — for the toolbar's pressed buttons and the menus' checks.
+  const [embedToggles, setEmbedToggles] = useState<ViewToggles>(NO_TOGGLES);
+  useEffect(() => {
+    if (!embed) return;
+    return watchToggles(embed, (next) =>
+      setEmbedToggles((current) => (Object.entries(next).every(([key, on]) => current[key as keyof ViewToggles] === on) ? current : next)),
+    );
+  }, [embed]);
 
   // Choosing a tool puts the view in that tool's mode — Annotate, Form, Redact —
   // so the toolbar matches the panel the person just opened.
@@ -1449,14 +1459,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [undoEdit, redoEdit, organizeStep, printFile, printWay],
   );
 
-  const viewCommandOn = useCallback((command: ViewCommand): boolean => {
-    const registry = embedRef.current;
-    if (registry && embedShowingRef.current) return commandActive(registry, EMBED_COMMANDS[command]);
-    const current = stateRef.current;
-    if (command === 'fit-page' || command === 'fit-width') return current.zoomMode === command;
-    if (command === 'sidebar') return current.leftPane.open;
-    return false;
-  }, []);
+  // From state, not refs: whatever shows these (the toolbar, the macOS menu
+  // bar) renders again when they change. Read from refs during render, the
+  // sidebar button showed the state before the click that changed it.
+  const { zoomMode } = state;
+  const findOpen = state.find.open;
+  const viewCommandOn = useCallback(
+    (command: ViewCommand): boolean => {
+      if (embedShowing) return command in embedToggles ? embedToggles[command as keyof ViewToggles] : false;
+      if (command === 'fit-page' || command === 'fit-width') return zoomMode === command;
+      if (command === 'sidebar') return leftOpen;
+      if (command === 'find') return findOpen;
+      return false;
+    },
+    [embedShowing, embedToggles, zoomMode, leftOpen, findOpen],
+  );
 
   const goToPage = useCallback((page: number) => {
     const registry = embedRef.current;

@@ -3,6 +3,7 @@ import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import type { ThemeMode } from '../state/preferences';
 import { useT } from '../i18n/useT';
 import { TOOLS } from '../tools/tools';
+import { undoTyping, useTyping } from './typing';
 
 export interface MenuItemModel {
   id: string;
@@ -72,26 +73,15 @@ export function toAccelerator(keys: string): string {
     .join('+');
 }
 
-/** A text field, text area or editable element: where Undo means the typing. */
-export function isEditable(element: Element | null | undefined): boolean {
-  if (!element) return false;
-  if (element instanceof HTMLTextAreaElement) return !element.readOnly;
-  if (element instanceof HTMLInputElement) return !element.readOnly && !/^(checkbox|radio|button|submit|range|color|file)$/.test(element.type);
-  return element instanceof HTMLElement && element.isContentEditable;
-}
-
 /**
- * Undo and Redo from a menu: the typing in the field that has the focus, as
- * the system's own Undo would, or else the document's history. (From the page's
- * menu bar the focus is on the menu, so this is always the document; from the
- * macOS menu bar the focus stays where the person was typing.)
+ * Undo and Redo from a menu: the typing in the field that has the focus —
+ * EmbedPDF's own fields too, inside its shadow root — as the system's own
+ * Undo would, or else the document's history. (From the page's menu bar the
+ * focus is on the menu, so this is always the document; from the macOS menu
+ * bar the focus stays where the person was typing.)
  */
 function undoOrRedo(which: 'undo' | 'redo', document: () => void): void {
-  if (typeof globalThis.document !== 'undefined' && isEditable(globalThis.document.activeElement)) {
-    globalThis.document.execCommand(which);
-    return;
-  }
-  document();
+  if (!undoTyping(which)) document();
 }
 
 const withShortcut = (item: MenuItemModel): MenuItemModel =>
@@ -115,6 +105,8 @@ export function useMenuModel(): MenuModel[] {
   // The page grid has no zoom, find or thumbnails: those would do nothing there.
   const organizing = hasDocument && state.rightPane.activeTool === 'organize';
   const edit = state.edit;
+  // While a text field has the focus, Undo and Redo are its typing's (typing.ts).
+  const typing = useTyping();
 
   const themeItem = (theme: ThemeMode, label: string): MenuItemModel => ({
     id: `theme-${theme}`,
@@ -179,14 +171,14 @@ export function useMenuModel(): MenuModel[] {
           id: 'undo',
           label: t('edit.undo'),
           keys: 'Mod+Z',
-          disabled: !hasDocument || !services.canUndo,
+          disabled: typing.editing ? !typing.canUndo : !hasDocument || !services.canUndo,
           onSelect: () => undoOrRedo('undo', () => services.viewCommand('undo')),
         },
         {
           id: 'redo',
           label: t('edit.redo'),
           keys: 'Mod+Shift+Z',
-          disabled: !hasDocument || !services.canRedo,
+          disabled: typing.editing ? !typing.canRedo : !hasDocument || !services.canRedo,
           onSelect: () => undoOrRedo('redo', () => services.viewCommand('redo')),
         },
         {
