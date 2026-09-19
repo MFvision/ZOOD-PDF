@@ -14,7 +14,7 @@ use warraq_pdf::signature::{
 use warraq_pdf::PdfDocument;
 
 use crate::asn1::{children, read};
-use crate::chain::{self, Cert, CertSummary, ChainReport, TrustStore};
+use crate::chain::{self, Cert, CertSummary, ChainReport, Purpose, Trust, TrustStore};
 use crate::cms;
 use crate::keys::{Padding, Signer};
 use crate::revocation::{self, IssuerKey, Status};
@@ -83,8 +83,10 @@ pub fn sign(doc: &mut PdfDocument, signer: &dyn Signer, o: &SignOptions) -> Resu
         field: o.field.clone(),
         page: o.page,
         rect: o.rect,
-        appearance: match (&o.font, o.rect) {
-            (Some(font), Some(_)) => Some(SigAppearance {
+        // Drawn where the person drew, or in the field chosen (which has a
+        // box of its own; an invisible one stays invisible).
+        appearance: match (&o.font, o.rect.is_some() || o.field.is_some()) {
+            (Some(font), true) => Some(SigAppearance {
                 lines: o.lines.clone(),
                 font,
                 image: o.image.clone(),
@@ -223,6 +225,9 @@ pub struct SignatureReport {
     pub signer: Option<CertSummary>,
     /// Who signed, as the person reads it.
     pub signed_by: String,
+    /// The name the signature dictionary gives (`/Name`): the signer's own
+    /// claim, not verified.
+    pub claimed_name: Option<String>,
     pub reason: Option<String>,
     pub location: Option<String>,
     pub contact: Option<String>,
@@ -451,6 +456,14 @@ pub fn verify(
             .map(|(c, d)| c + d)
             .unwrap_or(0)
     });
+    // The certification level is the certifying signature's own (its
+    // /Reference is signed), not only what the catalog says now: a later
+    // update could drop /Perms, or point the trailer at another catalog.
+    report.certified = report
+        .certified
+        .into_iter()
+        .chain(signed.iter().filter_map(|(_, s)| s.doc_mdp))
+        .min();
     let certified = report.certified;
     let dss_certs = certs_of(&dss.certs);
     let mut locks: Vec<FieldLock> = Vec::new();
@@ -459,12 +472,8 @@ pub fn verify(
         if let Some(lock) = &sig.field_mdp {
             locks.push(lock.clone());
         }
-        if let Some(fields) = &field.lock {
-            locks.push(if fields.is_empty() {
-                FieldLock::All
-            } else {
-                FieldLock::Include(fields.clone())
-            });
+        if let Some(lock) = &field.lock {
+            locks.push(lock.clone());
         }
         let visible = field
             .rect
@@ -483,7 +492,10 @@ pub fn verify(
             visible,
             sub_filter: sig.sub_filter.clone(),
             signer: None,
-            signed_by: sig.name.clone().unwrap_or_default(),
+            // The certificate's name, once the signer is found: /Name is
+            // the dictionary's own claim, outside what the signature covers.
+            signed_by: String::new(),
+            claimed_name: sig.name.clone().filter(|n| !n.trim().is_empty()),
             reason: sig.reason.clone(),
             location: sig.location.clone(),
             contact: sig.contact.clone(),
@@ -513,20 +525,22 @@ pub fn verify(
         let br: Vec<usize> = sig.byte_range.iter().map(|v| *v as usize).collect();
         let parts = [&bytes[..br[1]], &bytes[br[2]..end]];
         if index >= 30 {
+            // Not checked, to bound the work a file can ask for.
             r.problems.push("tooManySignatures".into());
+            r.status = "unchecked";
             report.signatures.push(r);
             continue;
         }
 
-        // The revision it signed must hold this very signature.
+        // The revision it signed must hold this very signature: the same
+        // field and dictionary, unchanged since, the dictionary's own
+        // /Contents where the byte range leaves its hole. A dictionary added
+        // later that borrows a genuine signature's byte range (and so its
+        // CMS) — to show another name, reason or time — fails here.
         let revision = PdfDocument::open(bytes[..end].to_vec(), password).ok();
-        let in_revision = revision.as_ref().is_some_and(|rev| {
-            rev.signature_fields().iter().any(|f| {
-                f.value
-                    .as_ref()
-                    .is_some_and(|v| v.byte_range == sig.byte_range)
-            })
-        });
+        let in_revision = revision
+            .as_ref()
+            .is_some_and(|rev| doc.signed_in(rev, field));
         if !in_revision {
             r.integrity.byte_range_ok = false;
             r.problems.push("notInRevision".into());
@@ -552,21 +566,35 @@ pub fn verify(
     Ok(report)
 }
 
+/// Problems that make a signature invalid: what it signed or who signed it
+/// is wrong, whatever anyone trusts.
+const INVALID: [&str; 7] = [
+    "certBinding",
+    "noSigner",
+    "notValidAtSigning",
+    "revokedBeforeSigning",
+    // The key was not allowed to sign; a certificate that is not a CA, or
+    // one beyond its path length, issued the one below it.
+    "keyUsage",
+    "notCa",
+    "pathLen",
+];
+
+/// Problems that leave a signature intact but its signer or time not
+/// vouched for.
+const UNTRUSTED: [&str; 4] = ["eku", "ekuCa", "weakHash", "noProofOfTime"];
+
+fn has_problem(r: &SignatureReport, codes: &[&str]) -> bool {
+    r.problems.iter().any(|p| {
+        let code = p.split(':').next().unwrap_or(p);
+        codes.contains(&code)
+    })
+}
+
 /// The final word on a signature, from what was found.
 fn status_of(r: &SignatureReport) -> &'static str {
     let i = &r.integrity;
-    if !i.byte_range_ok
-        || !i.digest_ok
-        || !i.signature_ok
-        || r.revocation.status == "revoked"
-            && r.problems.iter().any(|p| p == "revokedBeforeSigning")
-    {
-        return "invalid";
-    }
-    if r.problems
-        .iter()
-        .any(|p| p == "certBinding" || p == "noSigner" || p == "notValidAtSigning")
-    {
+    if !i.byte_range_ok || !i.digest_ok || !i.signature_ok || has_problem(r, &INVALID) {
         return "invalid";
     }
     if r.changes.iter().any(|c| !c.allowed) {
@@ -576,11 +604,16 @@ fn status_of(r: &SignatureReport) -> &'static str {
     if !trusted
         || r.revocation.status == "revoked"
         || r.timestamp.as_ref().is_some_and(|t| !t.valid)
+        || has_problem(r, &UNTRUSTED)
     {
         return "untrusted";
     }
     "valid"
 }
+
+/// SHA-1 is accepted only for a signature a trusted timestamp puts before
+/// 2017 (SHAttered, the first public SHA-1 collision, was published then).
+const SHA1_UNTIL: i64 = 1_483_228_800;
 
 /// Checks the cryptography of one signature (or document timestamp), filling
 /// in `r`; returns the time it is judged at.
@@ -617,25 +650,29 @@ fn check_signature(
         return now;
     };
     r.signer = Some(signer.summary());
-    if r.signed_by.trim().is_empty() {
-        r.signed_by = signer.common_name();
-    }
+    // Who signed is who the certificate says.
+    r.signed_by = signer.common_name();
     r.integrity.algorithm = parsed.sig_alg.name();
 
-    let mut signing_time = parsed
+    // The time the signer's computer claimed (signed, but the signer's own
+    // word), and a time an authority vouches for, if there is one.
+    let claimed = parsed
         .signing_time
-        .or_else(|| sig.time.as_deref().and_then(parse_pdf_date))
-        .unwrap_or(now);
+        .or_else(|| sig.time.as_deref().and_then(parse_pdf_date));
+    let mut trusted_time: Option<i64> = None;
+    let mut weak = false;
     if timestamp_only {
-        // A document timestamp: the token stamps the digest of the bytes.
+        // A document timestamp: the token stamps the digest of the bytes,
+        // and its time is the authority's own statement.
         match tsp::check_token(der, dss_certs) {
             Ok(check) => {
                 let imprint_ok = check.info.hash.digest_parts(parts) == check.info.imprint;
                 r.integrity.digest_ok = imprint_ok;
                 r.integrity.signature_ok = check.signature_ok;
-                signing_time = check.info.gen_time;
+                trusted_time = Some(check.info.gen_time);
                 r.claimed_time = Some(iso(check.info.gen_time));
                 r.signed_by = check.authority.clone();
+                weak = check.info.hash == HashAlg::Sha1;
             }
             Err(e) => r.problems.push(format!("token:{e}")),
         }
@@ -660,7 +697,21 @@ fn check_signature(
         if let Some(p) = check.problem {
             r.problems.push(format!("signature:{p}"));
         }
-        // A signature timestamp: the token stamps the signature value.
+        weak = parsed.digest == HashAlg::Sha1
+            || sig.sub_filter == "adbe.pkcs7.sha1"
+            || matches!(
+                parsed.sig_alg,
+                crate::keys::SigAlg::RsaPkcs1(HashAlg::Sha1)
+                    | crate::keys::SigAlg::Ecdsa(HashAlg::Sha1)
+                    | crate::keys::SigAlg::RsaPss {
+                        hash: HashAlg::Sha1,
+                        ..
+                    }
+            );
+        // A signature timestamp: the token stamps the signature value. Its
+        // time is relied on only when an authority trusted for timestamping
+        // signed it; anyone can make a token with a key of their own, and a
+        // token sits outside what the signer signed.
         if let Some(token) = parsed.timestamps.first() {
             match tsp::check_token(token, dss_certs) {
                 Ok(t) => {
@@ -671,17 +722,21 @@ fn check_signature(
                             &[cms::certificates(&t.info.parsed), dss_certs.to_vec()].concat(),
                             trust,
                             t.info.gen_time,
+                            Purpose::Timestamps,
                         )
                     });
                     let valid = t.signature_ok && stamps_this;
-                    if valid {
-                        signing_time = t.info.gen_time;
+                    let trusted = valid
+                        && t.purpose_ok
+                        && tsa_chain.is_some_and(|c| c.trusted() && c.valid_at_time);
+                    if trusted {
+                        trusted_time = Some(t.info.gen_time);
                     }
                     r.timestamp = Some(TimestampReport {
                         time: iso(t.info.gen_time),
                         authority: t.authority,
                         valid,
-                        trusted: valid && tsa_chain.is_some_and(|c| c.trusted()),
+                        trusted,
                     });
                 }
                 Err(e) => r.problems.push(format!("token:{e}")),
@@ -689,10 +744,31 @@ fn check_signature(
         }
     }
 
-    // The chain, judged at the signing time (a trusted time if there is one).
-    let chain = chain::build(&signer, &pool, trust, signing_time);
+    // The chain, judged at the trusted time — or, without one, now (ETSI
+    // EN 319 102-1): the time the signer claimed proves nothing, so a
+    // certificate that has expired since is "not proven" rather than valid.
+    let purpose = if timestamp_only {
+        Purpose::Timestamps
+    } else {
+        Purpose::Documents
+    };
+    let at = trusted_time.unwrap_or(now);
+    let mut chain = chain::build(&signer, &pool, trust, at, purpose);
     if !chain.valid_at_time {
-        r.problems.push("notValidAtSigning".into());
+        let valid_when_claimed = trusted_time.is_none()
+            && claimed.is_some_and(|c| chain.path.iter().all(|cert| cert.valid_at(c)));
+        r.problems.push(if valid_when_claimed {
+            "noProofOfTime".into()
+        } else {
+            "notValidAtSigning".into()
+        });
+    }
+    // SHA-1 only for what a trusted time puts before collisions were public.
+    let old_enough = trusted_time.is_some_and(|t| t < SHA1_UNTIL);
+    if old_enough {
+        chain.problems.retain(|p| !p.starts_with("weakHash"));
+    } else if weak {
+        r.problems.push("weakHash".into());
     }
     r.problems.extend(chain.problems.iter().cloned());
     let issuer = issuer_of(&chain.path, 0, trust);
@@ -702,16 +778,26 @@ fn check_signature(
     crls.extend(parsed.archived.crls.iter().cloned());
     crls.extend(parsed.crls.iter().cloned());
     r.revocation = revocation_of(&signer, issuer, &ocsps, &crls);
-    if let Some(at) = r.revocation.revoked_at.as_deref() {
-        if at <= iso(signing_time).as_str() {
-            r.problems.push("revokedBeforeSigning".into());
+    if let Some(revoked) = r.revocation.revoked_at.as_deref() {
+        // Revoked before the trusted time — or before even the signer's own.
+        if let Some(signed) = trusted_time.or(claimed) {
+            if revoked <= iso(signed).as_str() {
+                r.problems.push("revokedBeforeSigning".into());
+            }
         }
     }
     if !chain.trusted() {
-        r.trust_candidate = chain.path.last().map(|c| crate::base64(&c.der));
+        r.trust_candidate = match chain.trust {
+            // A forged or broken path: nothing to trust.
+            Trust::Broken { .. } => None,
+            // The certificate is not for this purpose: only trusting it
+            // itself would do, and that is the person's call.
+            _ if !chain.purpose_ok => Some(crate::base64(&signer.der)),
+            _ => chain.path.last().map(|c| crate::base64(&c.der)),
+        };
     }
     r.chain = Some(chain);
-    signing_time
+    at
 }
 
 // -------------------------------------------------------------- validation
@@ -755,13 +841,13 @@ fn paths(
         pool.extend(dss_certs.iter().cloned());
         let mut path = Vec::new();
         if let Some(signer) = cms::find_signer(&parsed, &pool) {
-            path.extend(chain::build(signer, &pool, trust, now).path);
+            path.extend(chain::build(signer, &pool, trust, now, Purpose::Documents).path);
         }
         for token in &parsed.timestamps {
             if let Ok(t) = tsp::check_token(token, &dss_certs) {
                 if let Some(tsa) = &t.signer {
                     let tsa_pool = [cms::certificates(&t.info.parsed), dss_certs.clone()].concat();
-                    path.extend(chain::build(tsa, &tsa_pool, trust, now).path);
+                    path.extend(chain::build(tsa, &tsa_pool, trust, now, Purpose::Timestamps).path);
                 }
             }
         }

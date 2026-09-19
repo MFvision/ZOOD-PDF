@@ -40,6 +40,7 @@ import { isPdf, namedLikePdf } from './pdfFile';
 import { combinedFileName, downloadPdf, extractedFileName, pdfFileName, saveBytes, splitArchiveName } from './saveFile';
 import { zipSync } from 'fflate';
 import { findTool } from '../tools/tools';
+import { keepPolicy, mentionsSignature } from '../signatures/marker';
 import type { OcrLanguage } from '../ocr/engine';
 import { recognizeFile } from '../ocr/run';
 import type { OcrProgress, OcrScope } from '../ocr/run';
@@ -111,6 +112,12 @@ export interface AppServices {
    * buffer by identity means the file changed and the view reopens it.
    */
   documentBytes: ArrayBuffer | null;
+  /**
+   * The file's own bytes as the view was given them: `documentBytes`, or —
+   * while the view shows other layers by choice — the file with its own
+   * layer visibility, not the view's copy. What its signatures are checked on.
+   */
+  fileBytes: ArrayBuffer | null;
   /** The password the open file was unlocked with, for the EmbedPDF view. Memory only. */
   documentPassword: string | undefined;
   recent: string[];
@@ -334,13 +341,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // default configuration shows them, and the file keeps its own until the
   // person keeps these with it. `layerOwnRef` is the file with its own.
   const layerOwnRef = useRef<ArrayBuffer | null>(null);
+  // The same, for what renders from it (`fileBytes`).
+  const [layerOwn, setLayerOwn] = useState<ArrayBuffer | null>(null);
+  const keepLayerOwn = useCallback((bytes: ArrayBuffer | null) => {
+    layerOwnRef.current = bytes;
+    setLayerOwn(bytes);
+  }, []);
   const layersShownRef = useRef<readonly string[] | null>(null);
   const [layersShown, setLayersShown] = useState<readonly string[] | null>(null);
   const forgetLayerView = useCallback(() => {
-    layerOwnRef.current = null;
+    keepLayerOwn(null);
     layersShownRef.current = null;
     setLayersShown(null);
-  }, []);
+  }, [keepLayerOwn]);
   // The page to come back to when the view reopens a copy of the same file.
   const returnToPage = useRef<number | null>(null);
   const syncedRevision = useRef(0);
@@ -672,23 +685,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * update sealed with the file's own key. A file with nothing to redraw comes
    * back as it was, and a failure never costs the save.
    */
-  const withArabicAppearances = useCallback(
-    async (bytes: ArrayBuffer): Promise<ArrayBuffer> => {
-      try {
-        const font = await loadEditFont('amiri');
-        const { blobs } = await client.callStatic<{ fields: number; comments: number }>(
-          'forms.fix_appearances',
-          { password: passwordRef.current ?? null },
-          [bytes.slice(0), font.slice().buffer],
-        );
-        return blobs[0] ?? bytes;
-      } catch {
-        return bytes;
-      }
-    },
-    [client],
-  );
-
   // The bytes EmbedPDF was given, and whether redaction marks were made on
   // them since: saves are kept as an update of those bytes, but not after a
   // redaction, whose point is that nothing under it survives anywhere.
@@ -702,17 +698,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (pendingRedactions > 0) redactedRef.current = true;
   }, [pendingRedactions]);
 
+  const withArabicAppearances = useCallback(
+    async (bytes: ArrayBuffer): Promise<ArrayBuffer> => {
+      try {
+        const font = await loadEditFont('amiri');
+        // The file as the view opened it: when it is signed, only what
+        // changed since is redrawn — a third party's appearances redrawn
+        // after the signature would show it changed on every save.
+        const opened = embedBytesRef.current;
+        const { blobs } = await client.callStatic<{ fields: number; comments: number }>(
+          'forms.fix_appearances',
+          { password: passwordRef.current ?? null },
+          [bytes.slice(0), font.slice().buffer, ...(opened && opened.byteLength <= REBASE_LIMIT ? [opened.slice(0)] : [])],
+        );
+        return blobs[0] ?? bytes;
+      } catch {
+        return bytes;
+      }
+    },
+    [client],
+  );
+
   /**
    * EmbedPDF's save — PDFium writes a file whole — kept as an update of the
    * bytes it opened (`file.rebase`): what was signed stays signed, and a file
    * nothing was done to comes back as it was. Not after a redaction, nor for
-   * a very large file, nor when the protection changed (the core says so);
-   * then the rewrite is the file, as before.
+   * a very large unsigned file, nor when the protection changed (the core
+   * says so); then the rewrite is the file, as before. A large signed file is
+   * kept as an update all the same, and if even that cannot be done the save
+   * is refused (`E_SIGNED_TOO_LARGE`) rather than written over its signatures.
    */
   const keepOwnBytes = useCallback(
     async (rewritten: ArrayBuffer): Promise<ArrayBuffer> => {
       const own = embedBytesRef.current;
-      if (!own || redactedRef.current || own.byteLength > REBASE_LIMIT) return rewritten;
+      if (!own) return rewritten;
+      const policy = keepPolicy(own.byteLength, REBASE_LIMIT, redactedRef.current, () => mentionsSignature(own));
+      if (policy === 'rewrite') return rewritten;
       try {
         const { result, blobs } = await client.callStatic<{ rebased: boolean }>(
           'file.rebase',
@@ -721,6 +742,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
         return result.rebased && blobs[0] ? blobs[0] : rewritten;
       } catch {
+        if (policy === 'rebaseOrRefuse') throw new Error('E_SIGNED_TOO_LARGE: the signed file could not be kept as an update');
         return rewritten;
       }
     },
@@ -1165,8 +1187,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const fileBytesForChange = useCallback(async (): Promise<ArrayBuffer | null> => {
     if (warraqOwnsDocument(stateRef.current)) return currentFileBytes();
     const rewritten = await bytesFromEmbed();
-    return rewritten ? keepOwnBytes(rewritten) : null;
-  }, [currentFileBytes, bytesFromEmbed, keepOwnBytes]);
+    // With the file's own layer visibility: a signature (or a mark) made now
+    // must not take in the layers the view shows by choice.
+    return rewritten ? withOwnLayers(await keepOwnBytes(rewritten)) : null;
+  }, [currentFileBytes, bytesFromEmbed, keepOwnBytes, withOwnLayers]);
 
   const combineFiles = useCallback(
     async (files: readonly CombineInput[]) => {
@@ -1227,7 +1251,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           .callStatic('layers.show', { password: passwordRef.current ?? null, visible }, [bytes.slice(0)])
           .catch(() => ({ blobs: [] as ArrayBuffer[] }));
         if (blobs[0]) {
-          layerOwnRef.current = bytes;
+          keepLayerOwn(bytes);
           shown = blobs[0];
         } else forgetLayerView();
       }
@@ -1242,7 +1266,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setDocumentBytes(shown);
       dispatch({ type: 'DOCUMENT_RESHAPED', pageCount: opened.pageCount, pageSizes: opened.pageSizes, selection: [] });
     },
-    [client, forgetLayerView],
+    [client, forgetLayerView, keepLayerOwn],
   );
 
   /**
@@ -1258,14 +1282,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!own) return;
       const { blobs } = await client.callStatic('layers.show', { password: passwordRef.current ?? null, visible }, [own.slice(0)]);
       if (!blobs[0]) return;
-      layerOwnRef.current = own;
+      keepLayerOwn(own);
       layersShownRef.current = [...visible];
       setLayersShown([...visible]);
       returnToPage.current = stateRef.current.currentPage;
       embedBytesRef.current = blobs[0];
       setDocumentBytes(blobs[0]);
     },
-    [client, readFile],
+    [client, readFile, keepLayerOwn],
   );
 
   /** The layers shown now become the file's own: it is changed, to be saved. */
@@ -1444,8 +1468,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       dispatch({ type: 'DOCUMENT_SAVED' });
       dispatch({ type: 'TOAST', key: 'file.saved' });
-    } catch {
-      dispatch({ type: 'DOCUMENT_FAILED', error: 'file.saveFailed' });
+    } catch (error) {
+      const tooLarge = String(error instanceof Error ? error.message : error).includes('E_SIGNED_TOO_LARGE');
+      dispatch({ type: 'DOCUMENT_FAILED', error: tooLarge ? 'signatures.error.tooLarge' : 'file.saveFailed' });
     }
   }, [bytesFromEmbed, keepOwnBytes, withOwnLayers]);
 
@@ -1467,6 +1492,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       client,
       document,
       documentBytes,
+      fileBytes: layerOwn ?? documentBytes,
       documentPassword,
       recent,
       openFile,
@@ -1526,6 +1552,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       client,
       document,
       documentBytes,
+      layerOwn,
       documentPassword,
       recent,
       openFile,
