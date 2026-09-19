@@ -35,7 +35,7 @@ const LANGUAGE: Record<Lang, string> = { ar: 'Modern Standard Arabic', en: 'Engl
  * still get an answer about it.
  */
 const SYSTEM = [
-  'You help a person read a PDF document in Warraq, a PDF editor.',
+  'You help a person read a PDF document in محرر PDF, a PDF editor.',
   'The user message holds the text of the document, read from the file page by page, each page inside <page number="N"> tags, and then a request.',
   'Rules:',
   '- Work only from that text. If it does not hold what is asked, say so plainly.',

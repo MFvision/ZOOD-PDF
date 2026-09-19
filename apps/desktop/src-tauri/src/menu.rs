@@ -360,7 +360,7 @@ mod tests {
     #[test]
     fn the_ui_spec_deserializes() {
         let spec = spec();
-        assert_eq!(spec.labels.app_name, "ورّاق");
+        assert_eq!(spec.labels.app_name, "محرر PDF");
         let ids: Vec<&str> = spec.menus.iter().map(|menu| menu.id.as_str()).collect();
         assert_eq!(ids, ["app", "file", "edit", "view", "tools", "help"]);
     }

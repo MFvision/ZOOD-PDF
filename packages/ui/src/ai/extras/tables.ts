@@ -37,7 +37,7 @@ export const TABLES_SCHEMA = {
 } as const;
 
 export const TABLES_SYSTEM = [
-  'You find the tables in a PDF\'s text, in Warraq, a PDF editor.',
+  'You find the tables in a PDF\'s text, in محرر PDF, a PDF editor.',
   'The user message holds the text of the pages, each inside <page number="N"> tags, read in logical order: a table\'s rows come as lines, its cells in reading order (right to left in Arabic).',
   'Rules:',
   '- Return every table: its page, a short title (the heading above it, or empty), and its rows, the header row first, each row a list of its cells in the table\'s reading order.',

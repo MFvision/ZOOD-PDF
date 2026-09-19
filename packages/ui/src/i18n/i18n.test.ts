@@ -17,6 +17,20 @@ describe('i18n dictionaries', () => {
     }
   });
 
+  it('call the app محرر PDF, and keep that name right-to-left inside English sentences', () => {
+    const name = 'محرر PDF';
+    const isolated = '\u2067' + name + '\u2069';
+    for (const [key, value] of Object.entries({ ...en, ...ar })) {
+      expect(value, `${key} uses an earlier name`).not.toMatch(/ورّاق|Warraq/);
+    }
+    expect(en['app.name']).toBe(name);
+    expect(ar['app.name']).toBe(name);
+    for (const [key, value] of Object.entries(en)) {
+      if (key === 'app.name' || !value.includes(name)) continue;
+      expect(value.split(isolated).join('').includes(name), `${key}: the name is not isolated`).toBe(false);
+    }
+  });
+
   it('use the same placeholders in both languages', () => {
     for (const key of Object.keys(en) as Array<keyof typeof en>) {
       expect(placeholders(ar[key]), key).toEqual(placeholders(en[key]));

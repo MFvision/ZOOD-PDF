@@ -36,7 +36,7 @@ export const PII_SCHEMA = {
 } as const;
 
 export const PII_SYSTEM = [
-  'You help a person find personal information to redact in a PDF, in Warraq, a PDF editor.',
+  'You help a person find personal information to redact in a PDF, in محرر PDF, a PDF editor.',
   'The user message holds the text of the document, page by page, each page inside <page number="N"> tags, then the request.',
   'Rules:',
   '- List every piece of personal information about a person: names of people, home or work addresses, phone numbers, e-mail addresses, national ID, Iqama, passport or other identity numbers, bank account, IBAN or card numbers, dates of birth.',

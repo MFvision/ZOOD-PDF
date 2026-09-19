@@ -45,7 +45,7 @@ export const OCR_FIX_SCHEMA = {
 } as const;
 
 export const OCR_FIX_SYSTEM = [
-  'You correct text that optical character recognition (OCR) read from scanned pages of a PDF, in Warraq, a PDF editor.',
+  'You correct text that optical character recognition (OCR) read from scanned pages of a PDF, in محرر PDF, a PDF editor.',
   'The user message holds each page\'s recognised text inside <page number="N"> tags, then the request.',
   'Rules:',
   '- Correct only recognition errors: confused or missing letters and dots, a word wrongly split or joined, stray symbols, Arabic letters read as Latin ones.',
