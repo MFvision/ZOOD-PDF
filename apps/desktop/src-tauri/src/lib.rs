@@ -13,6 +13,7 @@ use tauri::{AppHandle, DragDropEvent, Emitter, Manager, Runtime, State, WindowEv
 use tauri_plugin_fs::FsExt;
 
 pub mod core_bridge;
+pub mod menu;
 pub mod print;
 
 /// Event sent to the webview when files are dropped on the window.
@@ -150,6 +151,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        // The macOS menu bar is the UI's model (src/menu.rs); until the UI
+        // sends it, Tauri's default menu stands in.
+        .manage(menu::MenuState::default())
+        .on_menu_event(|app, event| menu::forward(app, event.id().as_ref()))
         // Points warraq-render at the bundled PDFium and starts the core thread
         // before the window can invoke anything (see `core_bridge`).
         .setup(|app| {
@@ -198,6 +203,7 @@ pub fn run() {
             core_bridge::core_call,
             print::print_available,
             print::print_pdf,
+            menu::set_menu,
         ])
         .on_window_event(|window, event| {
             // Forward OS file drops to the webview, after allowing the dropped

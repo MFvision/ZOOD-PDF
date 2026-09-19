@@ -6,6 +6,8 @@ import type { MenuItemModel, MenuModel } from './menuModel';
 
 interface MenuDropdownProps {
   menu: MenuModel;
+  /** The application menu: its title is the app's name, set in bold. */
+  app?: boolean;
   open: boolean;
   onToggle: () => void;
   onHover: () => void;
@@ -14,7 +16,7 @@ interface MenuDropdownProps {
 
 const ITEM_SELECTOR = '[role^="menuitem"]:not([aria-disabled="true"])';
 
-export function MenuDropdown({ menu, open, onToggle, onHover, onClose }: MenuDropdownProps) {
+export function MenuDropdown({ menu, app, open, onToggle, onHover, onClose }: MenuDropdownProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -77,8 +79,18 @@ export function MenuDropdown({ menu, open, onToggle, onHover, onClose }: MenuDro
         role="menuitem"
         aria-haspopup="menu"
         aria-expanded={open}
-        className="menu-button"
-        onClick={onToggle}
+        className={app ? 'menu-button menu-button-app' : 'menu-button'}
+        // A menu opens on the press, as the system's do; the click that
+        // follows would only close it again.
+        onPointerDown={(event) => {
+          if (event.button !== 0 || event.pointerType === 'touch') return;
+          event.preventDefault();
+          onToggle();
+        }}
+        onClick={(event) => {
+          // Keyboard (Enter/Space) and touch still arrive here; a mouse press was handled above.
+          if (event.detail === 0 || (event.nativeEvent as PointerEvent).pointerType === 'touch') onToggle();
+        }}
         onPointerEnter={onHover}
         onKeyDown={onButtonKeyDown}
       >

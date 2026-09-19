@@ -154,6 +154,14 @@ export async function embedTiles(page: Page): Promise<number> {
   });
 }
 
+/**
+ * Where the window says which page is on screen and whether the file is
+ * edited: the subtitle under the document's title in the toolbar ("Page 2 of
+ * 9 — Edited"), which took over from the status bar.
+ */
+export const documentStatus = (page: Page): Locator =>
+  page.getByRole('toolbar').getByRole('status', { name: 'Document status' });
+
 /** Opens a PDF the way a person does, and waits until EmbedPDF has drawn it. */
 export async function openPdf(page: Page, file: string): Promise<void> {
   await page.locator('input[type="file"]').setInputFiles(file);

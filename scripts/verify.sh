@@ -29,10 +29,10 @@ run deskfmt cargo fmt --check --manifest-path apps/desktop/src-tauri/Cargo.toml
 run deskclippy cargo clippy --all-targets --manifest-path apps/desktop/src-tauri/Cargo.toml -- -D warnings
 run desktest cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 [ "$1" = "--no-e2e" ] || run e2e pnpm --filter @warraq/web e2e
-grep -hE "Tests +[0-9]+" "$logs/verify-unit.log"
-grep -hE "^test result" "$logs/verify-coretest.log" | awk '{p+=$4; f+=$6} END {print "core tests passed:", p, "failed:", f}'
-grep -hE "^test result" "$logs/verify-desktest.log" | awk '{p+=$4; f+=$6} END {print "desktop tests passed:", p, "failed:", f}'
-[ -f "$logs/verify-e2e.log" ] && grep -hE "passed|failed" "$logs/verify-e2e.log" | tail -2
-grep -hE "^checked" "$logs/verify-acid.log"
+grep -ahE "Tests +[0-9]+" "$logs/verify-unit.log"
+grep -ahE "^test result" "$logs/verify-coretest.log" | awk '{p+=$4; f+=$6} END {print "core tests passed:", p, "failed:", f}'
+grep -ahE "^test result" "$logs/verify-desktest.log" | awk '{p+=$4; f+=$6} END {print "desktop tests passed:", p, "failed:", f}'
+[ -f "$logs/verify-e2e.log" ] && grep -ahE "passed|failed" "$logs/verify-e2e.log" | tail -2
+grep -ahE "^checked" "$logs/verify-acid.log"
 echo "logs in $logs"
 echo "VERDICT $([ $fail -eq 0 ] && echo GREEN || echo RED)"

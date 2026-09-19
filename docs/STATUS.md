@@ -63,6 +63,24 @@ it and checks the change is in the file, not just on the screen. A test
 keeps the count of *Later* cards at zero; a tool not built would have to say
 so on its face.
 
+## How it looks (design refresh, 2026-09-18)
+
+The shell now follows the system's document apps (Preview, Pages) instead of an office suite. The design
+system is written down in `docs/design/README.md`, with screenshots in `docs/design/screenshots/`. It has one
+set of design tokens modelled on macOS's semantic colours, used in light and dark, with increased contrast,
+reduced transparency and reduced motion honoured.
+
+| | |
+| --- | --- |
+| Toolbar | One unified toolbar in place of the ribbon and the status bar. It carries the document's title, with "Page n of m — Edited" under it; pages; zoom (which now drives EmbedPDF's zoom too); the markup toolbar; Edit text; a tool picker that opens a gallery of the 13 tools; find; save; and the inspector |
+| Inspector | The tools pane, restyled: grouped inset sections, action lists, and macOS checkboxes, radios, pop-up buttons, segmented controls, steppers and switches. Every panel, including ones added later, gets the look from shared classes |
+| Home | A document chooser. Recent files are shown as pages with a small picture of each first page, stored on the device and never for a password-protected file. The inert "Open from OneDrive / Google Drive" buttons are gone: they did nothing, and the connectors are not built (feature matrix: Cloud ⬜) |
+| Dialogs and overlays | Dialogs are sheets. Popovers come out of their trigger. Toasts are a HUD. The find bar sits under the toolbar. The drop overlay is a material with one or two targets. Settings (⌘,) holds language and appearance |
+| EmbedPDF | Themed with Warraq's tokens by reference. Its duplicated sidebar, zoom and search buttons and its floating page field (except on a phone) are gone. The rest of its bar is the markup toolbar, shown from Warraq's toolbar |
+| macOS app | The title bar is merged into the toolbar, with the traffic lights in it. The toolbar drags the window and a double click zooms it. The system menu bar is built from the page's own menu model, in the interface language, and enables and checks items as the page does. A shortcut the page handles never runs its menu item too |
+| Narrow windows | On a tablet the toolbar condenses. On a phone the inspector is a sheet, the sidebar floats over the page, and nothing scrolls sideways |
+| App icon | New original artwork (`scripts/icon/make_icon.py`): a calligraphic و on a sheet of paper. Desktop and extension icons are regenerated from it |
+
 ## Next (in order)
 1. **Print on Windows and Linux** desktop builds (macOS prints through PDFKit).
 2. Nastaliq Urdu extraction; Acrobat verification on a machine that has it.
@@ -238,6 +256,15 @@ test that fails without its fix.
 * **Finder does not offer Warraq for a PDF.** The bundle claims no document types on purpose — an editor should not take over the system PDF handler unasked. Open from inside the app, or pass the path on the command line.
 * **The macOS build is ad hoc signed, not notarised.** It runs on the machine that built it. Copied to any other Mac it will be refused until that user clears the quarantine flag by hand, because notarising needs a paid Apple Developer account. Nothing in the build is broken by this; it is a distribution decision, not a defect.
 * **Nobody has looked at the installed window.** The Claude desktop app has no Screen Recording permission on this Mac, so no screenshot is possible. What is verified, from the host's own log (`WARRAQ_DEBUG=1 warraq-desktop file.pdf`), is the whole chain behind the glass: the interface boots, claims the file named on the command line, reads it through the file scope and opens it in the core, and EmbedPDF — which reports back through the `ui_log` command — starts, opens the file and draws its pages inside the macOS webview (the Arabic Word export: 4 tiles in 502 ms on 2026-09-18). What that does not prove is what the pixels look like, or that the open and save panels behave once a person clicks them.
+* **The macOS title bar and menu bar have not been seen either.** For the same reason, no one has looked at
+  whether the traffic lights sit centred in the toolbar at `trafficLightPosition {20, 19}` (worked out from
+  how tao places them, and pinned by `desktop_contract.rs`), how the system menu bar looks in Arabic, or
+  whether a double click on the toolbar zooms the window. The configuration and the menu wiring are tested;
+  the pixels are not. The browser and extension look is verified by screenshots
+  (`docs/design/screenshots/`).
+* **Undo in the macOS menu bar is the app's own item, not the system's role.** A system Undo reaches only the
+  webview's text fields, never the document's history. The app's item undoes the document, or the typing
+  when a text field has the focus. Cut, Copy, Paste and Select All are the system's.
 * **OCR reads diacritics poorly and skips some table rows**; crooked scans are straightened first, but there is no cleanup of stains or shadows; Nastaliq Urdu cannot be recognised usefully on the device at all. Recognition in the desktop app has not been watched yet (it runs in the same webview that draws the pages).
 * **Nastaliq Urdu** extraction is still garbage: cascading Nastaliq ligatures do not reverse-map from glyphs the way Naskh does. Needs shape matching or OCR.
 * **Ten corpus files** come back with U+FFFD placeholders where a glyph has no usable ToUnicode, cmap or GSUB evidence. Placeholders are deliberate: words are never silently merged.

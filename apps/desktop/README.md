@@ -24,6 +24,7 @@ apps/desktop/
     ├── tests/core_bridge.rs # the registry against the Arabic corpus, with PDFium
     └── src/
         ├── lib.rs           # host commands and the file-drop forwarder
+        ├── menu.rs          # the macOS menu bar, built from the UI's menu model (docs/design/README.md)
         └── core_bridge.rs   # doc_* commands over the in-process document registry
 ```
 

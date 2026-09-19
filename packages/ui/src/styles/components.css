@@ -1,165 +1,682 @@
-/* Shared controls: icon buttons, dialogs, toast, badges. */
+/*
+ * Shared controls, drawn the way macOS draws them: borderless toolbar items
+ * with a plate on hover, bezelled push buttons, pop-up buttons, text fields,
+ * checkboxes and radios, segmented controls, switches, steppers, grouped
+ * sections, sheets, popovers and the HUD. Every panel is built from these
+ * classes, so a panel added later looks like the rest without extra CSS.
+ * docs/design/README.md is the catalogue.
+ */
+
+/* ---- Borderless button (toolbars, headers, close boxes) ------------------ */
 .icon-btn {
   display: inline-flex;
-  gap: 6px;
+  flex: none;
+  gap: var(--space-3);
   align-items: center;
   justify-content: center;
-  min-inline-size: 32px;
-  block-size: 32px;
-  padding-inline: 6px;
-  color: var(--fg);
+  min-inline-size: var(--control-h);
+  block-size: var(--control-h);
+  padding-inline: var(--space-3);
+  font-size: var(--text-body);
+  line-height: 1;
+  color: var(--secondary-label);
+  white-space: nowrap;
   background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-s);
-  transition: background-color var(--motion);
+  border: 0;
+  border-radius: var(--radius-6);
+  transition:
+    background-color var(--duration-quick) var(--ease-out),
+    color var(--duration-quick) var(--ease-out),
+    transform var(--duration-press) var(--ease-out);
 }
 
-.icon-btn:hover:not(:disabled) {
-  background: var(--bg-hover);
+.icon-btn:hover:not(:disabled, [aria-disabled="true"]) {
+  color: var(--label);
+  background: var(--tertiary-fill);
 }
 
-.icon-btn:active:not(:disabled),
+/* Feedback on the press itself, not on release. */
+.icon-btn:active:not(:disabled, [aria-disabled="true"]) {
+  color: var(--label);
+  background: var(--fill);
+  transition-duration: 0ms;
+}
+
 .icon-btn[aria-pressed="true"],
 .icon-btn[aria-expanded="true"] {
-  background: var(--bg-active);
+  color: var(--accent);
+  background: var(--secondary-fill);
 }
 
 .icon-btn-labeled {
-  padding-inline: 10px;
+  padding-inline: var(--space-4) var(--space-5);
 }
 
+/* ---- Push buttons: bezelled, wherever they are not in a toolbar ------------ */
+.push-btn,
+.icon-btn-labeled:not(.toolbar *, .menubar *),
 .icon-btn-primary {
-  color: var(--accent-fg);
+  gap: var(--space-3);
+  min-block-size: var(--control-h);
+  block-size: auto;
+  padding-block: var(--space-2);
+  padding-inline: var(--space-5);
+  color: var(--label);
+  text-align: start;
+  white-space: normal;
+  background: var(--control-background);
+  border-radius: var(--radius-8);
+  box-shadow: var(--shadow-control);
+}
+
+.push-btn:hover:not(:disabled, [aria-disabled="true"]),
+.icon-btn-labeled:not(.toolbar *, .menubar *):hover:not(:disabled, [aria-disabled="true"]) {
+  color: var(--label);
+  background: color-mix(in srgb, var(--control-background) 92%, var(--label));
+}
+
+.push-btn:active:not(:disabled, [aria-disabled="true"]),
+.icon-btn-labeled:not(.toolbar *, .menubar *):active:not(:disabled, [aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--control-background) 84%, var(--label));
+}
+
+.icon-btn-labeled:not(.toolbar *, .menubar *) .lucide {
+  color: var(--accent);
+}
+
+/* A disabled push button keeps its bezel; only its label fades. */
+.push-btn:disabled,
+.icon-btn-labeled:not(.toolbar *, .menubar *):disabled {
+  color: var(--tertiary-label);
+  opacity: 1;
+}
+
+.icon-btn-labeled:not(.toolbar *, .menubar *):disabled .lucide {
+  color: var(--tertiary-label);
+}
+
+/* The default button: filled with the accent. */
+.icon-btn-primary,
+.icon-btn-primary:not(.toolbar *, .menubar *) {
+  font-weight: 500;
+  color: var(--accent-contrast);
+  background: var(--accent);
+  box-shadow:
+    0 0.5px 1px rgb(0 0 0 / 18%),
+    inset 0 0.5px 0 rgb(255 255 255 / 22%);
+}
+
+.icon-btn-primary .lucide,
+.icon-btn-primary:not(.toolbar *, .menubar *) .lucide {
+  color: inherit;
+}
+
+.icon-btn-primary:hover:not(:disabled, [aria-disabled="true"]) {
+  color: var(--accent-contrast);
+  background: color-mix(in srgb, var(--accent) 90%, white);
+}
+
+.icon-btn-primary:active:not(:disabled, [aria-disabled="true"]) {
+  color: var(--accent-contrast);
+  background: color-mix(in srgb, var(--accent) 86%, black);
+}
+
+.icon-btn-destructive:not(:disabled) {
+  color: var(--destructive);
+}
+
+.icon-btn-destructive:not(:disabled) .lucide {
+  color: var(--destructive);
+}
+
+/* A text button with no bezel, like "Clear" next to a list's heading. */
+.link-btn {
+  padding: 0;
+  font-size: var(--text-body);
+  color: var(--accent);
+  background: none;
+  border: 0;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+/* ---- Pop-up button ------------------------------------------------------------ */
+.select,
+.tool-panel select:not([multiple], [size]) {
+  block-size: var(--control-h-small);
+  min-block-size: var(--control-h-small);
+  padding-block: 0;
+  padding-inline: var(--space-4) 22px;
+  font-size: var(--text-body);
+  color: var(--label);
+  appearance: none;
+  background-color: var(--control-background);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none' stroke='%23007aff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 6.5 8 3.5l3 3M5 9.5l3 3 3-3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  background-size: 14px;
+  border: 0;
+  border-radius: var(--radius-6);
+  box-shadow: var(--shadow-control);
+}
+
+[dir="rtl"] .select,
+[dir="rtl"] .tool-panel select:not([multiple], [size]) {
+  background-position: left 4px center;
+}
+
+.select:hover:not(:disabled),
+.tool-panel select:not([multiple], [size]):hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--control-background) 94%, var(--label));
+}
+
+.select-compact {
+  block-size: var(--control-h-small);
+  font-size: var(--text-callout);
+}
+
+/* ---- Text field ------------------------------------------------------------------ */
+.text-input {
+  block-size: var(--control-h);
+  min-inline-size: 0;
+  padding-inline: var(--space-4);
+  font-size: var(--text-body);
+  color: var(--label);
+  background: var(--content-background);
+  border: 0;
+  border-radius: var(--radius-6);
+  outline: 0;
+  box-shadow:
+    inset 0 0 0 0.5px var(--control-border),
+    inset 0 0.5px 1px rgb(0 0 0 / 6%);
+  transition: box-shadow var(--duration-quick) var(--ease-out);
+}
+
+.text-input::placeholder {
+  color: var(--tertiary-label);
+}
+
+/* The field's own focus ring: the accent halo macOS draws around it. */
+.text-input:focus,
+.text-input:focus-visible {
+  outline: 0;
+  box-shadow:
+    inset 0 0 0 0.5px var(--accent),
+    0 0 0 3.5px var(--focus);
+}
+
+textarea.text-input {
+  block-size: auto;
+  padding-block: var(--space-3);
+}
+
+/* Numbers read in columns. */
+input[type="number"].text-input {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Checkbox and radio ----------------------------------------------------------- */
+input[type="checkbox"]:not(.switch),
+input[type="radio"] {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-content: center;
+  inline-size: 14px;
+  block-size: 14px;
+  margin: 0;
+  margin-block-start: 0.15em;
+  appearance: none;
+  background: var(--control-background);
+  border: 0;
+  box-shadow:
+    inset 0 0 0 0.5px var(--control-border),
+    0 0.5px 1px rgb(0 0 0 / 10%);
+  transition: background-color var(--duration-quick) var(--ease-out);
+}
+
+input[type="checkbox"]:not(.switch) {
+  border-radius: 3.5px;
+}
+
+input[type="radio"] {
+  border-radius: 50%;
+}
+
+input[type="checkbox"]:not(.switch):checked,
+input[type="radio"]:checked {
+  background: var(--accent);
+  box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 12%);
+}
+
+input[type="checkbox"]:not(.switch):checked::after {
+  inline-size: 10px;
+  block-size: 10px;
+  content: "";
+  background: var(--accent-contrast);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 5.2 4.1 7.3 8.2 2.6' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+input[type="radio"]:checked::after {
+  inline-size: 6px;
+  block-size: 6px;
+  content: "";
+  background: var(--accent-contrast);
+  border-radius: 50%;
+}
+
+input[type="checkbox"]:not(.switch):focus-visible,
+input[type="radio"]:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 0;
+}
+
+/* ---- Switch (a checkbox that reads as on/off) ---------------------------------------- */
+input[type="checkbox"].switch {
+  position: relative;
+  flex: none;
+  inline-size: 26px;
+  block-size: 15px;
+  margin: 0;
+  appearance: none;
+  background: var(--fill);
+  border-radius: var(--radius-capsule);
+  transition: background-color var(--duration-regular) var(--ease-out);
+}
+
+input[type="checkbox"].switch::after {
+  position: absolute;
+  inset-block-start: 1.5px;
+  inset-inline-start: 1.5px;
+  inline-size: 12px;
+  block-size: 12px;
+  content: "";
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 25%);
+  transition: transform var(--duration-regular) var(--spring);
+}
+
+input[type="checkbox"].switch:checked {
   background: var(--accent);
 }
 
-.icon-btn-primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 88%, black);
+input[type="checkbox"].switch:checked::after {
+  transform: translateX(11px);
 }
 
-.select {
-  block-size: 30px;
-  padding-inline: 8px 26px;
-  color: var(--fg);
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-s);
+[dir="rtl"] input[type="checkbox"].switch:checked::after {
+  transform: translateX(-11px);
 }
 
-.text-input {
-  block-size: 30px;
-  padding-inline: 8px;
-  color: var(--fg);
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-s);
+/* ---- Segmented control ---------------------------------------------------------------- */
+.segmented {
+  display: inline-flex;
+  gap: 0;
+  align-items: stretch;
+  padding: 2px;
+  background: var(--secondary-fill);
+  border-radius: var(--radius-8);
 }
 
-.text-input:focus-visible {
-  border-color: var(--focus);
+.segmented-item {
+  position: relative;
+  display: inline-flex;
+  flex: 1 1 0;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 0;
+  block-size: var(--control-h-small);
+  padding-inline: var(--space-4);
+  font-size: var(--text-callout);
+  font-weight: 500;
+  color: var(--label);
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-6);
+  transition:
+    background-color var(--duration-quick) var(--ease-out),
+    box-shadow var(--duration-quick) var(--ease-out);
 }
 
-.dialog {
-  inline-size: min(92vw, 480px);
+.segmented-item + .segmented-item::before {
+  position: absolute;
+  inset-block: 5px;
+  inset-inline-start: 0;
+  inline-size: 1px;
+  content: "";
+  background: var(--separator);
+}
+
+.segmented-item[aria-checked="true"],
+.segmented-item[aria-pressed="true"],
+.segmented-item[aria-selected="true"] {
+  background: var(--control-background);
+  box-shadow: var(--shadow-control);
+}
+
+.segmented-item[aria-checked="true"]::before,
+.segmented-item[aria-checked="true"] + .segmented-item::before,
+.segmented-item[aria-pressed="true"]::before,
+.segmented-item[aria-pressed="true"] + .segmented-item::before {
+  opacity: 0;
+}
+
+.segmented-item:active:not(:disabled) {
+  background: var(--fill);
+}
+
+/* ---- Stepper: a number field with its arrows beside it ------------------------------------- */
+.stepper {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.stepper .text-input {
+  inline-size: 5em;
+  text-align: end;
+}
+
+/* Under a label, the stepper takes the row. */
+.field .stepper {
+  display: flex;
+}
+
+.field .stepper .text-input {
+  flex: 1;
+  inline-size: auto;
+}
+
+.stepper-buttons {
+  display: inline-flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--control-background);
+  border-radius: var(--radius-6);
+  box-shadow: var(--shadow-control);
+}
+
+.stepper-buttons button {
+  display: grid;
+  place-items: center;
+  inline-size: 16px;
+  block-size: 11px;
   padding: 0;
-  color: var(--fg);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-l);
-  box-shadow: var(--shadow-2);
+  color: var(--label);
+  background: none;
+  border: 0;
+}
+
+.stepper-buttons button:active {
+  background: var(--fill);
+}
+
+/* Browsers draw their own spin arrows on hover; the stepper has its own. */
+.stepper input[type="number"]::-webkit-inner-spin-button,
+.stepper input[type="number"]::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+/* ---- Fields and groups ------------------------------------------------------------------ */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-body);
+}
+
+.field > span:first-child {
+  color: var(--secondary-label);
+}
+
+.field-row {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  min-block-size: var(--control-h);
+}
+
+.field-error {
+  margin-block: 0 var(--space-5);
+  padding-block: var(--space-4);
+  padding-inline: var(--space-5);
+  font-size: var(--text-callout);
+  color: var(--destructive);
+  background: var(--danger-bg);
+  border-radius: var(--radius-8);
+}
+
+/* ---- Sheet (every dialog) ------------------------------------------------------------------- */
+.dialog {
+  position: fixed;
+  inset-block: var(--sheet-top, var(--toolbar-h)) auto;
+  inline-size: min(calc(100vw - 32px), 460px);
+  max-block-size: calc(100dvh - var(--sheet-top, var(--toolbar-h)) - 24px);
+  padding: 0;
+  margin-block: 0;
+  margin-inline: auto;
+  overflow: auto;
+  color: var(--label);
+  background: var(--elevated-background);
+  backdrop-filter: var(--blur-thick);
+  border: 0;
+  border-radius: 0 0 var(--radius-16) var(--radius-16);
+  box-shadow: var(--shadow-sheet);
+  transform-origin: top center;
+  transition:
+    transform var(--duration-sheet) var(--spring),
+    opacity var(--duration-quick) var(--ease-out),
+    overlay var(--duration-sheet) allow-discrete,
+    display var(--duration-sheet) allow-discrete;
+}
+
+/* It leaves the way it came: back up under the toolbar. */
+.dialog:not([open]) {
+  opacity: 0;
+  transform: translateY(-28px) scaleY(0.96);
+}
+
+@starting-style {
+  .dialog[open] {
+    opacity: 0;
+    transform: translateY(-28px) scaleY(0.96);
+  }
 }
 
 .dialog::backdrop {
-  background: rgb(0 0 0 / 40%);
+  background: var(--scrim);
+  opacity: 1;
+  transition:
+    opacity var(--duration-regular) var(--ease-out),
+    overlay var(--duration-regular) allow-discrete,
+    display var(--duration-regular) allow-discrete;
+}
+
+.dialog:not([open])::backdrop {
+  opacity: 0;
+}
+
+@starting-style {
+  .dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+.dialog:focus-visible {
+  outline: 0;
+}
+
+/* The close box: a small round button, quiet until pointed at. */
+.dialog-header .icon-btn {
+  min-inline-size: 22px;
+  block-size: 22px;
+  padding: 0;
+  color: var(--secondary-label);
+  background: var(--secondary-fill);
+  border-radius: 50%;
+}
+
+.dialog-header .icon-btn .lucide {
+  inline-size: 13px;
+  block-size: 13px;
+  stroke-width: 2.2;
 }
 
 .dialog-header {
   display: flex;
-  gap: 8px;
+  gap: var(--space-4);
   align-items: center;
   justify-content: space-between;
-  padding-block: 12px;
-  padding-inline: 20px 12px;
-  border-block-end: 1px solid var(--border);
+  padding-block: var(--space-6) 0;
+  padding-inline: var(--space-7) var(--space-5);
 }
 
 .dialog-header h2 {
-  font-size: 16px;
+  font-size: var(--text-headline);
+  font-weight: 700;
+  letter-spacing: var(--track-body);
 }
 
 .dialog-body {
-  padding: 20px;
+  padding-block: var(--space-4) var(--space-7);
+  padding-inline: var(--space-7);
+}
+
+.dialog-body > p:first-child {
+  margin-block-start: 0;
 }
 
 .dialog-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-4);
   justify-content: flex-end;
-  margin-block-start: 16px;
+  margin-block-start: var(--space-7);
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.dialog-actions .icon-btn-labeled,
+.dialog-actions .icon-btn-primary {
+  min-inline-size: 84px;
+  justify-content: center;
+  text-align: center;
 }
 
-.field-error {
-  margin-block: 0 12px;
-  padding-block: 8px;
-  padding-inline: 12px;
-  color: var(--danger);
-  background: var(--danger-bg);
-  border-radius: var(--radius-m);
+/* ---- Popover (anchored to its trigger) ------------------------------------------------------------ */
+.popover {
+  position: fixed;
+  z-index: 60;
+  max-inline-size: calc(100vw - 16px);
+  max-block-size: calc(100dvh - 80px);
+  padding: var(--space-4);
+  overflow: auto;
+  color: var(--label);
+  background: var(--elevated-background);
+  backdrop-filter: var(--blur-thick);
+  border-radius: var(--radius-12);
+  box-shadow: var(--shadow-popover);
+  transform-origin: var(--popover-origin, top center);
+  animation: popover-in var(--duration-regular) var(--spring) both;
 }
 
+.popover[data-leaving] {
+  pointer-events: none;
+  animation: popover-out var(--duration-quick) var(--ease-in) both;
+}
+
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes popover-out {
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+/* ---- HUD (transient confirmations) ---------------------------------------------------------------- */
 .toast {
   position: absolute;
-  inset-block-end: calc(var(--status-h) + 12px);
+  inset-block-end: var(--space-8);
   inset-inline-start: 50%;
-  z-index: 30;
-  padding-block: 8px;
-  padding-inline: 14px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
-  box-shadow: var(--shadow-2);
-  transform: translateX(-50%);
+  z-index: 70;
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  max-inline-size: min(90vw, 440px);
+  padding-block: var(--space-4);
+  padding-inline: var(--space-6);
+  font-weight: 500;
+  color: var(--label);
+  pointer-events: none;
+  background: var(--elevated-background);
+  backdrop-filter: var(--blur-thick);
+  border-radius: var(--radius-capsule);
+  box-shadow: var(--shadow-popover);
+  translate: -50% 0;
+  animation: hud-in var(--duration-regular) var(--spring) both;
 }
 
 [dir="rtl"] .toast {
-  transform: translateX(50%);
+  translate: 50% 0;
 }
 
+@keyframes hud-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+}
+
+/* ---- Badges, banners ---------------------------------------------------------------------------- */
 .badge {
   display: inline-flex;
   align-items: center;
-  block-size: 20px;
-  padding-inline: 8px;
-  font-size: 12px;
+  block-size: 18px;
+  padding-inline: var(--space-3);
+  font-size: var(--text-subheadline);
   font-weight: 600;
   line-height: 1;
-  border-radius: 999px;
+  letter-spacing: var(--track-small);
+  color: var(--secondary-label);
+  background: var(--secondary-fill);
+  border-radius: var(--radius-capsule);
 }
 
 .badge-warning {
   color: var(--warning-fg);
   background: var(--warning-bg);
-  border: 1px solid var(--warning-border);
 }
 
+/* A notice under the toolbar: a quiet strip, not an alarm. */
 .banner {
   display: flex;
-  gap: 12px;
+  gap: var(--space-5);
   align-items: center;
-  padding-block: 8px;
-  padding-inline: 16px;
-  border-block-end: 1px solid var(--border);
+  min-block-size: 36px;
+  padding-block: var(--space-3);
+  padding-inline: var(--space-6) var(--space-4);
+  font-size: var(--text-body);
+  color: var(--label);
+  background: var(--toolbar-background);
+  border-block-end: 0.5px solid var(--separator);
 }
 
-.banner-error {
-  color: var(--danger);
-  background: var(--danger-bg);
+.banner > .lucide {
+  color: var(--secondary-label);
+}
+
+.banner-error > .lucide {
+  color: var(--destructive);
 }
 
 .banner span {
@@ -169,13 +686,60 @@
 .coming-later {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-4);
   align-items: center;
-  padding: 24px 16px;
-  color: var(--fg-muted);
+  padding: var(--space-8) var(--space-6);
+  color: var(--secondary-label);
   text-align: center;
 }
 
 .coming-later strong {
-  color: var(--fg);
+  color: var(--label);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- Reduced motion: cross-fades only ---------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .dialog:not([open]) {
+    transform: none;
+  }
+
+  @starting-style {
+    .dialog[open] {
+      transform: none;
+    }
+  }
+
+  @keyframes popover-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes popover-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes hud-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  .icon-btn,
+  .segmented-item,
+  input[type="checkbox"].switch::after {
+    transition-property: background-color, color, box-shadow, opacity;
+  }
 }

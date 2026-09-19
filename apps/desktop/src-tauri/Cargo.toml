@@ -61,6 +61,12 @@ objc2-foundation = { version = "0.3", default-features = false, features = ["std
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSPrintInfo", "NSPrintOperation", "NSResponder", "NSView", "NSWindow"] }
 objc2-pdf-kit = { version = "0.3", default-features = false, features = ["std", "PDFDocument", "objc2-app-kit"] }
 
+[dev-dependencies]
+# Parses the menu bar's accelerators in a test exactly as Tauri does (it drops
+# one it cannot read without a word). Already in the tree through tauri; MIT
+# OR Apache-2.0.
+muda = { version = "0.19", default-features = false }
+
 # A test that prints through PDFKit into a file: AppKit wants the main thread,
 # which only a test without the harness runs on.
 [[test]]
