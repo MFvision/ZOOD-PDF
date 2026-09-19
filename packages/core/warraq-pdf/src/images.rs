@@ -28,7 +28,7 @@ use lopdf::{Dictionary, Object, ObjectId};
 
 use crate::lex::{lex, Op, Operand, MAX_TOKENS};
 use crate::pagework::{cm, name as name_text, num, MAX_STREAM};
-use crate::picture::add_picture;
+use crate::picture::{add_picture, picture_info, upright_matrix};
 use crate::text_walk::Matrix;
 use crate::{Error, PdfDocument, Result};
 
@@ -626,6 +626,15 @@ fn wrap(op: &[u8], base: Matrix, placement: Matrix, clip: [f32; 4]) -> Result<Ve
     Ok(out)
 }
 
+/// A picture's stored unit square onto the square it is seen in: the turn
+/// or flip its EXIF orientation asks for (none for most pictures). PDF
+/// viewers draw the pixels as stored; the file keeps them so, losslessly,
+/// and the turn goes into where it is drawn.
+fn upright(picture: &[u8]) -> Matrix {
+    let orientation = picture_info(picture).map_or(1, |i| i.orientation);
+    Matrix(upright_matrix(orientation, 0.0, 0.0, 1.0, 1.0))
+}
+
 /// A matrix that is finite and not flat.
 fn usable(m: Matrix) -> bool {
     m.0.iter().all(|v| v.is_finite()) && m.invert().is_some()
@@ -1007,7 +1016,10 @@ impl PdfDocument {
             (m[0] * m[0] + m[1] * m[1]).sqrt(),
             (m[2] * m[2] + m[3] * m[3]).sqrt(),
         );
-        let want = added.width as f32 / added.height.max(1) as f32;
+        // Its proportions as it is seen, turned upright.
+        let (seen_w, seen_h) =
+            picture_info(picture).map_or((added.width, added.height), |i| i.shown());
+        let want = seen_w as f32 / seen_h.max(1) as f32;
         let fit = if w / h.max(1e-6) > want {
             let s = (h * want / w.max(1e-6)).clamp(0.0, 1.0);
             Matrix([s, 0.0, 0.0, 1.0, (1.0 - s) / 2.0, 0.0])
@@ -1016,12 +1028,18 @@ impl PdfDocument {
             Matrix([1.0, 0.0, 0.0, s, 0.0, (1.0 - s) / 2.0])
         };
         let op = format!("{} Do", name_text(&name)).into_bytes();
-        let bytes = wrap(&op, found.base, fit.then(shown), FULL)?;
+        let bytes = wrap(
+            &op,
+            found.base,
+            upright(picture).then(fit.then(shown)),
+            FULL,
+        )?;
         self.splice(&found, &bytes)?;
         self.release(index, &found)
     }
 
-    /// Places a new picture on page `index`, its unit square landing at
+    /// Places a new picture on page `index`, the unit square of the picture
+    /// as it is seen (turned upright by its EXIF orientation) landing at
     /// `matrix` on the page as shown. Returns its id.
     pub fn add_image(&mut self, index: usize, matrix: [f32; 6], picture: &[u8]) -> Result<String> {
         let to_user = self.display_frame(index)?.display_to_user();
@@ -1048,6 +1066,7 @@ impl PdfDocument {
         let (_, base) = self.walk_images(index, after_marks)?;
         let base = if usable(base) { base } else { Matrix::IDENTITY };
         let op = format!("{} Do", name_text(&name)).into_bytes();
+        let placement = upright(picture).then(placement);
         let stream = self.new_stream(Dictionary::new(), wrap(&op, base, placement, FULL)?);
         let mut ids = ids;
         match after_marks {
@@ -1127,7 +1146,7 @@ impl PdfDocument {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::picture::tests::{jpeg, png};
+    use crate::picture::tests::{jpeg, png, turned_photo};
     use lopdf::dictionary;
 
     fn corpus(name: &str) -> Vec<u8> {
@@ -1574,6 +1593,70 @@ mod tests {
         let listed = within(60, move || doc.list_images(0).unwrap());
         assert_eq!(listed.len(), 2, "{listed:?}");
         assert!(listed.iter().all(|i| i.shared), "{listed:?}");
+    }
+
+    /// Where a stored pixel of a listed picture lands on the page as shown.
+    fn shown_at(image: &PlacedImage, u: f32, v: f32) -> (f32, f32) {
+        Matrix(image.matrix).apply(u, v)
+    }
+
+    /// A phone photo stored landscape with an EXIF "turn a quarter" is
+    /// placed upright — the JPEG as it is, the turn in where it is drawn — so
+    /// its red left half (as stored) is at the top of the portrait box the
+    /// interface measured, and the box is filled.
+    #[test]
+    fn a_turned_photo_is_placed_and_replaced_upright() {
+        let mut doc = three_pages();
+        // 100 × 200 points, top-left at (50, 60): the photo seen upright.
+        let at = [100.0, 0.0, 0.0, -200.0, 50.0, 260.0];
+        let id = doc.add_image(0, at, &turned_photo()).unwrap();
+        let image = doc.list_images(0).unwrap().remove(0);
+        assert_eq!(image.id, id);
+        // Stored red (u < 0.5) is up the page; stored blue is down it.
+        let (_, red_y) = shown_at(&image, 0.25, 0.5);
+        let (_, blue_y) = shown_at(&image, 0.75, 0.5);
+        assert!(red_y < 160.0 && blue_y > 160.0, "{red_y} {blue_y}");
+        // The whole box is covered: its corners are the box's.
+        let corners: Vec<(f32, f32)> = [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)]
+            .into_iter()
+            .map(|(u, v)| shown_at(&image, u, v))
+            .collect();
+        let (x0, x1) = corners
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(a, b), c| (a.min(c.0), b.max(c.0)));
+        let (y0, y1) = corners
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(a, b), c| (a.min(c.1), b.max(c.1)));
+        assert!(
+            (x0 - 50.0).abs() < 0.1
+                && (x1 - 150.0).abs() < 0.1
+                && (y0 - 60.0).abs() < 0.1
+                && (y1 - 260.0).abs() < 0.1,
+            "{corners:?}"
+        );
+
+        // Replacing a square picture with the photo: fitted upright, portrait
+        // inside the square, red on top.
+        let square = [120.0, 0.0, 0.0, -120.0, 300.0, 420.0];
+        let id = doc.add_image(0, square, &png(8, 8)).unwrap();
+        doc.replace_image(0, &id, &turned_photo()).unwrap();
+        let replaced = doc
+            .list_images(0)
+            .unwrap()
+            .into_iter()
+            .find(|i| i.id == id)
+            .unwrap();
+        let (red_x, red_y) = shown_at(&replaced, 0.25, 0.5);
+        let (_, blue_y) = shown_at(&replaced, 0.75, 0.5);
+        assert!(red_y < blue_y, "{red_y} {blue_y}");
+        // Half as wide as tall: 60 of the square's 120 points, centred.
+        let across = (shown_at(&replaced, 0.0, 0.0).0 - shown_at(&replaced, 0.0, 1.0).0)
+            .abs()
+            .max((shown_at(&replaced, 0.0, 0.0).0 - shown_at(&replaced, 1.0, 0.0).0).abs());
+        assert!(
+            (across - 60.0).abs() < 0.5 && (red_x - 360.0).abs() < 31.0,
+            "{across} {red_x}"
+        );
     }
 
     fn xobject_names(doc: &PdfDocument, index: usize) -> Vec<Vec<u8>> {

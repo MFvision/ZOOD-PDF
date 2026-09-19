@@ -5,9 +5,7 @@
 //! runs with limits, and nothing here panics. A baseline or progressive JPEG
 //! in grey or RGB goes in as it is (`/DCTDecode`, no loss); anything else —
 //! a CMYK JPEG, every PNG — is decoded and stored losslessly with Flate, its
-//! transparency as a soft mask. A picture with an EXIF orientation (a phone
-//! photo, typically) is turned upright first, since no PDF viewer reads the
-//! tag; a JPEG so turned is written again, once, at `JPEG_QUALITY`.
+//! transparency as a soft mask.
 use lopdf::{dictionary, Document, Object, ObjectId, Stream};
 
 use crate::{Error, Result};
@@ -16,8 +14,6 @@ use crate::{Error, Result};
 const MAX_BYTES: usize = 64 * 1024 * 1024;
 const MAX_SIDE: u32 = 16_384;
 const MAX_PIXELS: u64 = 40_000_000;
-/// A turned photo's JPEG is written again at this quality.
-const JPEG_QUALITY: u8 = 92;
 
 /// What was added: the XObject and its size in pixels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -122,48 +118,258 @@ fn flate_image(doc: &mut Document, image: image::DynamicImage) -> Result<Picture
     })
 }
 
-/// Decodes a picture, with limits, turned the way its EXIF orientation
-/// says it is shown — as every photo viewer and the browser show it; a
-/// PDF viewer never reads that tag. Says too whether it had to be turned.
-fn decode(bytes: &[u8], format: image::ImageFormat) -> Result<(image::DynamicImage, bool)> {
-    use image::ImageDecoder;
-    let unreadable = |e: image::ImageError| refuse(&format!("the picture could not be read: {e}"));
+fn decode(bytes: &[u8], format: image::ImageFormat) -> Result<image::DynamicImage> {
     let mut reader = image::ImageReader::with_format(std::io::Cursor::new(bytes), format);
     let mut limits = image::Limits::default();
     limits.max_image_width = Some(MAX_SIDE);
     limits.max_image_height = Some(MAX_SIDE);
     limits.max_alloc = Some(MAX_PIXELS * 4 + (1 << 20));
     reader.limits(limits);
-    let mut decoder = reader.into_decoder().map_err(unreadable)?;
-    let orientation = decoder
-        .orientation()
-        .unwrap_or(image::metadata::Orientation::NoTransforms);
-    let mut image = image::DynamicImage::from_decoder(decoder).map_err(unreadable)?;
-    image.apply_orientation(orientation);
-    Ok((
-        image,
-        orientation != image::metadata::Orientation::NoTransforms,
-    ))
+    reader
+        .decode()
+        .map_err(|e| refuse(&format!("the picture could not be read: {e}")))
 }
 
-/// A turned photo, written again as a JPEG, upright: grey stays grey.
-fn upright_jpeg(image: &image::DynamicImage) -> Result<(Vec<u8>, &'static str)> {
-    let (image, space) = if image.color().has_color() {
-        (image::DynamicImage::ImageRgb8(image.to_rgb8()), "DeviceRGB")
-    } else {
-        (
-            image::DynamicImage::ImageLuma8(image.to_luma8()),
-            "DeviceGray",
-        )
+/// What a PNG or JPEG says about itself before it is decoded: its size, the
+/// way a camera says to turn it, and the resolution it was made at.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PictureInfo {
+    /// As stored, before `orientation` is applied.
+    pub width: u32,
+    pub height: u32,
+    /// EXIF orientation, 1–8; 1 when the file says nothing (TIFF 6.0 §274).
+    pub orientation: u8,
+    /// Dots per inch the file records, when it records a believable one.
+    pub dpi: Option<f32>,
+}
+
+impl PictureInfo {
+    /// Width and height as the picture is meant to be seen.
+    pub fn shown(&self) -> (u32, u32) {
+        if self.orientation >= 5 {
+            (self.height, self.width)
+        } else {
+            (self.width, self.height)
+        }
+    }
+}
+
+/// A resolution nobody scans or photographs at is a file's placeholder.
+fn believable_dpi(dpi: f32) -> Option<f32> {
+    (dpi.is_finite() && (50.0..=2400.0).contains(&dpi)).then_some(dpi)
+}
+
+/// Orientation and resolution from an EXIF block (a TIFF header and IFD0).
+fn exif(tiff: &[u8]) -> (Option<u8>, Option<f32>) {
+    let big = match tiff.get(..2) {
+        Some(b"MM") => true,
+        Some(b"II") => false,
+        _ => return (None, None),
     };
-    let mut out = Vec::new();
-    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, JPEG_QUALITY)
-        .encode_image(&image)
-        .map_err(|e| refuse(&format!("the picture could not be turned upright: {e}")))?;
-    Ok((out, space))
+    let u16_at = |at: usize| -> Option<u16> {
+        let b = tiff.get(at..at + 2)?;
+        Some(if big {
+            u16::from_be_bytes([b[0], b[1]])
+        } else {
+            u16::from_le_bytes([b[0], b[1]])
+        })
+    };
+    let u32_at = |at: usize| -> Option<u32> {
+        let b = tiff.get(at..at + 4)?;
+        Some(if big {
+            u32::from_be_bytes([b[0], b[1], b[2], b[3]])
+        } else {
+            u32::from_le_bytes([b[0], b[1], b[2], b[3]])
+        })
+    };
+    let Some(ifd) = u32_at(4).map(|o| o as usize) else {
+        return (None, None);
+    };
+    let count = u16_at(ifd).unwrap_or(0).min(512) as usize;
+    let (mut orientation, mut resolution, mut unit) = (None, None, 2u16);
+    for k in 0..count {
+        let entry = ifd + 2 + k * 12;
+        match u16_at(entry) {
+            Some(0x0112) => orientation = u16_at(entry + 8).map(|v| v as u8),
+            Some(0x011A) => {
+                resolution = u32_at(entry + 8).and_then(|at| {
+                    let (n, d) = (u32_at(at as usize)?, u32_at(at as usize + 4)?);
+                    (d > 0).then(|| n as f32 / d as f32)
+                })
+            }
+            Some(0x0128) => unit = u16_at(entry + 8).unwrap_or(2),
+            _ => {}
+        }
+    }
+    let dpi = resolution.and_then(|r| match unit {
+        2 => believable_dpi(r),
+        3 => believable_dpi(r * 2.54),
+        _ => None,
+    });
+    (orientation.filter(|o| (1..=8).contains(o)), dpi)
 }
 
-/// Adds `bytes`, a PNG or JPEG, to `doc` as an image XObject.
+fn jpeg_info(bytes: &[u8]) -> Option<PictureInfo> {
+    let (width, height, _) = jpeg_frame(bytes)?;
+    let (mut orientation, mut dpi) = (None, None);
+    let mut i = 2;
+    // The markers before the frame: JFIF's density (APP0) and EXIF (APP1).
+    while i + 4 <= bytes.len() {
+        if bytes[i] != 0xFF {
+            i += 1;
+            continue;
+        }
+        let marker = bytes[i + 1];
+        if matches!(marker, 0xFF) {
+            i += 1;
+            continue;
+        }
+        if matches!(marker, 0xD0..=0xD9 | 0x01) {
+            i += 2;
+            continue;
+        }
+        let frame = (0xC0..=0xCF).contains(&marker) && !matches!(marker, 0xC4 | 0xC8 | 0xCC);
+        if marker == 0xDA || frame {
+            break;
+        }
+        let len = u16::from_be_bytes([bytes[i + 2], bytes[i + 3]]) as usize;
+        let body = bytes
+            .get(i + 4..(i + 2 + len).min(bytes.len()))
+            .unwrap_or(&[]);
+        if marker == 0xE0 && body.starts_with(b"JFIF\0") && body.len() >= 12 {
+            let x = u16::from_be_bytes([body[8], body[9]]) as f32;
+            dpi = dpi.or(match body[7] {
+                1 => believable_dpi(x),
+                2 => believable_dpi(x * 2.54),
+                _ => None,
+            });
+        }
+        if marker == 0xE1 && body.starts_with(b"Exif\0\0") {
+            let (o, d) = exif(&body[6..]);
+            orientation = orientation.or(o);
+            dpi = d.or(dpi);
+        }
+        i += 2 + len.max(2);
+    }
+    Some(PictureInfo {
+        width,
+        height,
+        orientation: orientation.unwrap_or(1),
+        dpi,
+    })
+}
+
+fn png_info(bytes: &[u8]) -> Option<PictureInfo> {
+    if !bytes.starts_with(b"\x89PNG\r\n\x1a\n") || bytes.get(12..16) != Some(b"IHDR") {
+        return None;
+    }
+    let be = |at: usize| -> Option<u32> {
+        let b = bytes.get(at..at + 4)?;
+        Some(u32::from_be_bytes([b[0], b[1], b[2], b[3]]))
+    };
+    let (width, height) = (be(16)?, be(20)?);
+    let mut dpi = None;
+    let mut at = 8;
+    // Chunks until the pixels start; pHYs must come before them.
+    while at + 8 <= bytes.len() {
+        let len = be(at)? as usize;
+        let kind = &bytes[at + 4..at + 8];
+        if kind == b"IDAT" || kind == b"IEND" {
+            break;
+        }
+        if kind == b"pHYs" && len == 9 && bytes.get(at + 16) == Some(&1) {
+            dpi = believable_dpi(be(at + 8)? as f32 * 0.0254);
+        }
+        at = at.checked_add(12 + len)?;
+    }
+    Some(PictureInfo {
+        width,
+        height,
+        orientation: 1,
+        dpi,
+    })
+}
+
+/// What kind of picture a file is, by its first bytes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PictureKind {
+    Jpeg,
+    Png,
+    Gif,
+    Bmp,
+    Webp,
+    Tiff,
+}
+
+pub fn picture_kind(bytes: &[u8]) -> Option<PictureKind> {
+    if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        Some(PictureKind::Jpeg)
+    } else if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+        Some(PictureKind::Png)
+    } else if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
+        Some(PictureKind::Gif)
+    } else if bytes.starts_with(b"BM") && bytes.len() > 26 {
+        Some(PictureKind::Bmp)
+    } else if bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WEBP") {
+        Some(PictureKind::Webp)
+    } else if crate::tiff::is_tiff(bytes) {
+        Some(PictureKind::Tiff)
+    } else {
+        None
+    }
+}
+
+fn image_format(kind: PictureKind) -> Option<image::ImageFormat> {
+    match kind {
+        PictureKind::Gif => Some(image::ImageFormat::Gif),
+        PictureKind::Bmp => Some(image::ImageFormat::Bmp),
+        PictureKind::Webp => Some(image::ImageFormat::WebP),
+        _ => None,
+    }
+}
+
+/// Size, orientation and resolution of a picture, read from its headers.
+pub fn picture_info(bytes: &[u8]) -> Option<PictureInfo> {
+    let kind = picture_kind(bytes)?;
+    match kind {
+        PictureKind::Jpeg => jpeg_info(bytes),
+        PictureKind::Png => png_info(bytes),
+        PictureKind::Tiff => crate::tiff::tiff_info(bytes),
+        _ => {
+            let format = image_format(kind)?;
+            let (width, height) =
+                image::ImageReader::with_format(std::io::Cursor::new(bytes), format)
+                    .into_dimensions()
+                    .ok()?;
+            Some(PictureInfo {
+                width,
+                height,
+                orientation: 1,
+                dpi: None,
+            })
+        }
+    }
+}
+
+/// Where the unit square of a picture stored in `orientation` lands so that
+/// it is seen upright in the box `(x, y, w, h)` (PDF space, y up).
+pub fn upright_matrix(orientation: u8, x: f32, y: f32, w: f32, h: f32) -> [f32; 6] {
+    // Shown (X, Y) from stored (u, v), both in the unit square, v up.
+    let [a, b, c, d, e, f] = match orientation {
+        2 => [-1.0, 0.0, 0.0, 1.0, 1.0, 0.0],
+        3 => [-1.0, 0.0, 0.0, -1.0, 1.0, 1.0],
+        4 => [1.0, 0.0, 0.0, -1.0, 0.0, 1.0],
+        5 => [0.0, -1.0, -1.0, 0.0, 1.0, 1.0],
+        6 => [0.0, -1.0, 1.0, 0.0, 0.0, 1.0],
+        7 => [0.0, 1.0, 1.0, 0.0, 0.0, 0.0],
+        8 => [0.0, 1.0, -1.0, 0.0, 1.0, 0.0],
+        _ => [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+    };
+    [a * w, b * h, c * w, d * h, e * w + x, f * h + y]
+}
+
+/// Adds `bytes` — a PNG, JPEG, GIF, BMP, WebP or the first page of a TIFF — to
+/// `doc` as an image XObject.
 pub fn add_picture(doc: &mut Document, bytes: &[u8]) -> Result<Picture> {
     if bytes.len() > MAX_BYTES {
         return Err(refuse("the picture is too large"));
@@ -176,30 +382,10 @@ pub fn add_picture(doc: &mut Document, bytes: &[u8]) -> Result<Picture> {
             1 => "DeviceGray",
             3 => "DeviceRGB",
             // CMYK and the rest: decoded, so they are drawn as they look.
-            _ => return flate_image(doc, decode(bytes, image::ImageFormat::Jpeg)?.0),
+            _ => return flate_image(doc, decode(bytes, image::ImageFormat::Jpeg)?),
         };
         // Decoded once, to be sure a viewer will not meet a broken file.
-        let (image, turned) = decode(bytes, image::ImageFormat::Jpeg)?;
-        if turned {
-            // Turned upright and written again: once, at a high quality.
-            let (jpeg, space) = upright_jpeg(&image)?;
-            let (width, height) = (image.width(), image.height());
-            let stream = Stream::new(
-                dictionary! {
-                    "Type" => "XObject", "Subtype" => "Image",
-                    "Width" => width as i64, "Height" => height as i64,
-                    "ColorSpace" => space, "BitsPerComponent" => 8,
-                    "Filter" => "DCTDecode",
-                },
-                jpeg,
-            )
-            .with_compression(false);
-            return Ok(Picture {
-                id: doc.add_object(stream),
-                width,
-                height,
-            });
-        }
+        decode(bytes, image::ImageFormat::Jpeg)?;
         let stream = Stream::new(
             dictionary! {
                 "Type" => "XObject", "Subtype" => "Image",
@@ -216,10 +402,37 @@ pub fn add_picture(doc: &mut Document, bytes: &[u8]) -> Result<Picture> {
             height,
         });
     }
-    if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
-        return flate_image(doc, decode(bytes, image::ImageFormat::Png)?.0);
+    match picture_kind(bytes) {
+        Some(PictureKind::Png) => flate_image(doc, decode(bytes, image::ImageFormat::Png)?),
+        // The first page; `add_picture_pages` takes them all.
+        Some(PictureKind::Tiff) => crate::tiff::add_tiff_pages(doc, bytes)?
+            .into_iter()
+            .next()
+            .map(|(p, _)| p)
+            .ok_or_else(|| refuse("the TIFF has no pages")),
+        Some(kind) => match image_format(kind) {
+            // A GIF's first frame; the others of an animation are not pages.
+            Some(format) => flate_image(doc, decode(bytes, format)?),
+            None => Err(refuse("the picture could not be read")),
+        },
+        None => Err(refuse(
+            "only PNG, JPEG, GIF, BMP, WebP and TIFF pictures can be placed",
+        )),
     }
-    Err(refuse("only PNG and JPEG pictures can be placed"))
+}
+
+/// Every page of a picture — one, or each of a TIFF's — as image XObjects
+/// added to `doc`, with how each is to be shown.
+pub fn add_picture_pages(doc: &mut Document, bytes: &[u8]) -> Result<Vec<(Picture, PictureInfo)>> {
+    if bytes.len() > MAX_BYTES {
+        return Err(refuse("the picture is too large"));
+    }
+    if picture_kind(bytes) == Some(PictureKind::Tiff) {
+        return crate::tiff::add_tiff_pages(doc, bytes);
+    }
+    let info = picture_info(bytes).ok_or_else(|| refuse("the picture could not be read"))?;
+    let picture = add_picture(doc, bytes)?;
+    Ok(vec![(picture, info)])
 }
 
 #[cfg(test)]
@@ -255,6 +468,38 @@ pub(crate) mod tests {
         out
     }
 
+    /// A phone photo: stored landscape, 40 × 20 — red on the left, blue on
+    /// the right — with an EXIF orientation of 6, "turn a quarter clockwise
+    /// to show": seen upright it is 20 × 40, red on top.
+    pub(crate) fn turned_photo() -> Vec<u8> {
+        let image = image::RgbImage::from_fn(40, 20, |x, _| {
+            if x < 20 {
+                image::Rgb([230, 20, 20])
+            } else {
+                image::Rgb([20, 20, 230])
+            }
+        });
+        let exif = b"II\x2a\x00\x08\x00\x00\x00\x01\x00\x12\x01\x03\x00\x01\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00";
+        let mut out = Vec::new();
+        let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, 95);
+        image::ImageEncoder::set_exif_metadata(&mut encoder, exif.to_vec()).unwrap();
+        encoder.encode_image(&image).unwrap();
+        out
+    }
+
+    #[test]
+    fn a_turned_photo_is_stored_as_it_is_and_said_to_be_turned() {
+        let bytes = turned_photo();
+        let info = picture_info(&bytes).unwrap();
+        assert_eq!((info.width, info.height, info.orientation), (40, 20, 6));
+        assert_eq!(info.shown(), (20, 40));
+        let mut doc = Document::with_version("1.7");
+        let picture = add_picture(&mut doc, &bytes).unwrap();
+        assert_eq!((picture.width, picture.height), (40, 20));
+        let stream = doc.get_object(picture.id).unwrap().as_stream().unwrap();
+        assert_eq!(stream.content, bytes, "no loss: the JPEG goes in as it is");
+    }
+
     #[test]
     fn a_png_becomes_a_flate_image_with_its_transparency_as_a_mask() {
         let mut doc = Document::with_version("1.7");
@@ -280,44 +525,6 @@ pub(crate) mod tests {
             b"DCTDecode"
         );
         assert_eq!((picture.width, picture.height), (30, 10));
-    }
-
-    /// A phone photo: stored landscape — red on the left, blue on the right
-    /// — with an EXIF orientation of 6, "turn a quarter clockwise to show".
-    fn turned_photo() -> Vec<u8> {
-        let image = image::RgbImage::from_fn(40, 20, |x, _| {
-            if x < 20 {
-                image::Rgb([230, 20, 20])
-            } else {
-                image::Rgb([20, 20, 230])
-            }
-        });
-        let exif = b"II\x2a\x00\x08\x00\x00\x00\x01\x00\x12\x01\x03\x00\x01\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00";
-        let mut out = Vec::new();
-        let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, 95);
-        image::ImageEncoder::set_exif_metadata(&mut encoder, exif.to_vec()).unwrap();
-        encoder.encode_image(&image).unwrap();
-        out
-    }
-
-    /// PDF viewers draw a JPEG's pixels as they are stored and never read
-    /// its EXIF orientation: the picture goes in upright, as the photo
-    /// shows everywhere else (and as the browser measured it).
-    #[test]
-    fn a_photo_goes_in_upright_whatever_its_exif_orientation() {
-        let mut doc = Document::with_version("1.7");
-        let picture = add_picture(&mut doc, &turned_photo()).unwrap();
-        assert_eq!((picture.width, picture.height), (20, 40));
-        let stream = doc.get_object(picture.id).unwrap().as_stream().unwrap();
-        assert_eq!(stream.dict.get(b"Width").unwrap().as_i64().unwrap(), 20);
-        assert_eq!(stream.dict.get(b"Height").unwrap().as_i64().unwrap(), 40);
-        // Turned clockwise, the left (red) half is now on top.
-        let stored = image::load_from_memory(&stream.content).unwrap().to_rgb8();
-        assert_eq!(stored.dimensions(), (20, 40));
-        let top = stored.get_pixel(10, 5).0;
-        let bottom = stored.get_pixel(10, 35).0;
-        assert!(top[0] > 150 && top[2] < 100, "{top:?}");
-        assert!(bottom[2] > 150 && bottom[0] < 100, "{bottom:?}");
     }
 
     #[test]

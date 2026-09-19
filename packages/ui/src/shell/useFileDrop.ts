@@ -53,8 +53,9 @@ export function useFileDrop(onFiles: (files: File[], at: DropPoint | null) => vo
     const stopDrag = onNativeFileDrag((at) => setDrag({ dragging: at !== null, at }));
     const stopDrop = onNativeFileDrop((picked, at) => {
       setDrag({ dragging: false, at: null });
+      // Typed by name: a Word file or a picture dropped here is not a PDF.
       onFiles(
-        picked.map((file) => new File([file.bytes], file.name, { type: 'application/pdf' })),
+        picked.map((file) => new File([file.bytes], file.name, { type: /\.pdf$/i.test(file.name) ? 'application/pdf' : '' })),
         at,
       );
     });

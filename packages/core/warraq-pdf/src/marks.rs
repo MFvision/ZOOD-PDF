@@ -29,7 +29,7 @@ use warraq_text::{base_direction, Direction, ShapedGlyph, Shaper};
 
 use crate::fonts::{embed_subset_font, FontSubset};
 use crate::pagework::name as name_text;
-use crate::picture::add_picture;
+use crate::picture::{add_picture, picture_info, upright_matrix};
 use crate::show::{show_line, ShownLine};
 use crate::{Error, PdfDocument, Result};
 
@@ -707,8 +707,16 @@ impl PdfDocument {
                 Some((shaper, subset, font_id, glyphs))
             }
         };
+        // A picture is drawn as it is seen: a photo's EXIF orientation turns
+        // its proportions and is drawn with it, the pixels kept as stored.
         let picture = match mark.picture() {
-            Some((bytes, share)) => Some((add_picture(&mut self.doc, bytes)?, *share)),
+            Some((bytes, share)) => {
+                let info = picture_info(bytes);
+                let added = add_picture(&mut self.doc, bytes)?;
+                let seen = info.map_or((added.width, added.height), |i| i.shown());
+                let turn = upright_matrix(info.map_or(1, |i| i.orientation), 0.0, 0.0, 1.0, 1.0);
+                Some((added, *share, seen, turn))
+            }
             None => None,
         };
         if !has_text && picture.is_none() {
@@ -797,10 +805,10 @@ impl PdfDocument {
                     }
                 }
             }
-            if let Some((picture, share)) = &picture {
+            if let Some((picture, share, (seen_w, seen_h), turn)) = &picture {
                 resources.set("XObject", dictionary! { "I" => picture.id });
                 let width = upright.0 * share.clamp(0.01, 1.0);
-                let height = width * picture.height as f32 / picture.width.max(1) as f32;
+                let height = width * *seen_h as f32 / (*seen_w).max(1) as f32;
                 let anchor = items[k].first().map_or(
                     Anchor {
                         h: HAlign::Center,
@@ -832,6 +840,9 @@ impl PdfDocument {
                         -width / 2.0,
                         -height / 2.0,
                     ]));
+                    if *turn != [1.0, 0.0, 0.0, 1.0, 0.0, 0.0] {
+                        ops.push(matrix_op(*turn));
+                    }
                     ops.push(op("Do", vec![Object::Name(b"I".to_vec())]));
                     ops.push(op("Q", vec![]));
                 }
@@ -1432,6 +1443,61 @@ pub(crate) mod tests {
         );
         assert!(doc.add_mark(&text, &[0], None, true).is_err());
         assert!(doc.add_mark(&text, &[9], Some(AMIRI), true).is_err());
+    }
+
+    /// A phone photo as a watermark is drawn upright, at the proportions it
+    /// is seen at: its stored left half (red) above its right half.
+    #[test]
+    fn a_turned_photo_watermark_is_drawn_upright() {
+        let mut doc =
+            PdfDocument::open(corpus("chrome-notonaskh-justified-3pages.pdf"), None).unwrap();
+        let m = PageMark {
+            rotation: 0.0,
+            ..mark(
+                MarkKind::Watermark,
+                MarkContent::Watermark {
+                    text: None,
+                    image: Some((crate::picture::tests::turned_photo(), 0.2)),
+                    anchor: Anchor {
+                        h: HAlign::Center,
+                        v: VAlign::Middle,
+                    },
+                    tiled: false,
+                },
+            )
+        };
+        doc.add_mark(&m, &[0], None, true).unwrap();
+        let page = doc.page_id(0).unwrap();
+        let placed = doc.marks_on(page).remove(0);
+        let form = doc
+            .doc
+            .get_object(placed.form)
+            .unwrap()
+            .as_stream()
+            .unwrap();
+        let content = Content::decode(&form.decompressed_content().unwrap()).unwrap();
+        // The transform the picture is drawn under: every `cm` before `Do`.
+        let mut ctm = crate::text_walk::Matrix::IDENTITY;
+        for op in &content.operations {
+            match op.operator.as_str() {
+                "cm" => {
+                    let v: Vec<f32> = op.operands.iter().map(|o| o.as_float().unwrap()).collect();
+                    ctm = crate::text_walk::Matrix([v[0], v[1], v[2], v[3], v[4], v[5]]).then(ctm);
+                }
+                "Do" => break,
+                _ => {}
+            }
+        }
+        // User space, y up: red above blue; the drawn box taller than wide.
+        let (_, red) = ctm.apply(0.25, 0.5);
+        let (_, blue) = ctm.apply(0.75, 0.5);
+        assert!(red > blue, "{red} {blue}");
+        let (x0, y0) = ctm.apply(0.0, 0.0);
+        let (x1, y1) = ctm.apply(1.0, 1.0);
+        assert!(
+            (y1 - y0).abs() > (x1 - x0).abs() * 1.9,
+            "{x0},{y0} {x1},{y1}"
+        );
     }
 
     #[test]
