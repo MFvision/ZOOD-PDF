@@ -8,6 +8,7 @@
 |---|---|
 | Open, render, thumbnails, zoom, search | EmbedPDF — PDFium compiled to WebAssembly (MIT) — on web, desktop and extension; Warraq's own engine (native PDFium on desktop, pure Rust in browsers) takes over in Edit text |
 | Comment, fill & sign, prepare form, redact, protect | work end to end through EmbedPDF's plugins, in all three hosts; see the count below |
+| Prepare form | Warraq's core finds where a flat form expects writing — underscore and dot runs, empty table cells, drawn boxes, lines to sign on, check boxes — names each field from its Arabic or English label and types it (text, check box, date, Hijri date, signature); the proposals are drawn on the page to adjust, then created as real AcroForm fields. Formats (numbers with SAR and Arabic-Indic digits, percent, dates, Umm al-Qura Hijri dates), ranges and calculations (sum, product, average, min, max, or arithmetic typed over field names) are written as the built-in JavaScript every form reader runs, and run inside Warraq by its own interpreter of exactly that subset — no JavaScript engine, no eval. Measured below |
 | Page marks | watermarks (text or a picture), headers and footers with page, date (Gregorian or Hijri) and file tokens, page numbers and Bates numbers, drawn by Warraq's core with Arabic shaped, previewed on the page before they are applied, and listed to change or take off — the page's own content is never touched (form XObjects tagged as artifacts, round the page's streams) |
 | Edit PDF: pictures and links | pictures picked, moved, resized, turned, cropped, replaced, deleted or placed from a PNG/JPEG; links drawn, pointed at an address or a page, moved and removed — each change rewrites only the one operation or annotation it touches, as an incremental update |
 | Find and redact, remove hidden information | Warraq's core finds words (Arabic-aware, as Find) and ready-made patterns — emails, phones, national ID/Iqama, IBANs, card numbers, dates — or a person's own pattern, with the boxes of their glyphs, which become EmbedPDF's redaction marks; and it reports and removes what a file carries besides its pages, writing the file whole |
@@ -57,7 +58,7 @@ alike when only one of them did anything.
 | Digital signature (Warraq's engine) | **Sign**: open a certificate file with its password (the signer, issuer, key and expiry are shown first) or, on the desktop, read a smart card through its PKCS#11 module after the PIN; sign visibly — drag where on the page, optionally with a picture of a handwritten signature, the name, date, reason and place drawn in Amiri, Arabic shaped — or invisibly, or into an empty signature field the form already has; approval or certification (no changes / forms and signing / also comments), optionally locking the form's fields; RSA PKCS#1 v1.5 or RSA-PSS, ECDSA P-256 and P-384; on the desktop, a trusted timestamp from DigiCert, Sectigo, GlobalSign, SSL.com, FreeTSA or an address typed in (the panel says the server sees only a digest). The file is signed as it stands, every earlier change kept as an update of its own bytes, and saved through the normal Save. **Check**: a banner the moment a signed file opens (who signed, and valid / signer not trusted / changed after signing / invalid), and a list with each signature's details — the byte range, the digest, the signature, the chain and where trust ends, validity at signing time, the timestamp, revocation data in the file, and each kind of change made after it, permitted or not by its certification. Trust a signer's root with one click, or a certificate from a file; kept on this device only. **Keep**: on the desktop, add validation data (OCSP answers, revocation lists, certificates) to `/DSS`, and a document timestamp. When a tool that would break a signature is chosen, the shell says so before anything is changed |
 | Comment (EmbedPDF) | highlight, underline, strike out, sticky note, text box, freehand drawing, rectangle, arrow, link |
 | Fill & sign (EmbedPDF) | type into a form's fields, draw or type a signature and place it, place a stamp |
-| Prepare form (EmbedPDF) | add text fields, checkboxes, radio buttons, drop-downs and list boxes as real AcroForm fields |
+| Prepare form (EmbedPDF + Warraq's engine) | **Detect fields** on this page or all pages: the proposals are drawn over the page — drag to move, drag the corner to resize, arrow keys to nudge, Delete to remove — and listed with their name and type (text, check box, date, Hijri date, signature) to change; **Create fields** makes them real AcroForm fields (Arabic ones right-aligned, the label as the tooltip, dates with their format). **Add a field by hand**: EmbedPDF's text field, check box, radio button, drop-down and list box. **Formats and calculations** for a chosen field: number (decimals, separators, negatives in minus, brackets or red, ر.س after or SAR before, Arabic-Indic digits), percentage, date (four patterns), Hijri date (Umm al-Qura, three patterns); an allowed range; a sum, product, average, smallest or largest of chosen fields, or an arithmetic expression over their names (Arabic names, quotes for names with spaces, Arabic-Indic digits), checked as it is typed and refused if it would go round in a circle. Filling the form — in Fill & sign or anywhere in the view — recalculates it; a value outside its format or range is put back, with a notice. XFA forms and scripts Warraq does not run are said so, in this panel and in Fill & sign |
 | Redact (EmbedPDF + Warraq's engine) | mark text or an area, then apply: the text and images underneath are removed from the file, not covered. Find and redact: words found the Arabic-aware way, or emails, phone numbers (Saudi and international, Latin or Arabic-Indic digits), national ID and Iqama numbers, IBANs, card numbers, dates, or a pattern of one's own — each listed with its page and context, the chosen ones marked over their exact glyphs. Remove hidden information: metadata, scripts and actions, attachments, comments, form data, hidden layers, bookmarks, thumbnails, applications' private data, links, hidden text — reported, chosen, and removed by writing the file anew, its earlier revisions and unused objects gone with them |
 | Navigation pane (Warraq's engine) | in both views, from the View menu: bookmarks with their levels (a click goes to the page), attachments (saved, never opened; added with a description; removed), layers in their order with locked ones and print/export states shown, switched in the view only until *Save layer visibility with the file*; in Edit text also the page thumbnails |
 | Protect (EmbedPDF) | require a password to open, restrict permissions |
@@ -67,6 +68,50 @@ does — clicks the card, the control, the page — then saves the file, reopens
 it and checks the change is in the file, not just on the screen. A test
 keeps the count of *Later* cards at zero; a tool not built would have to say
 so on its face.
+
+## Prepare form, measured (2026-09-19)
+
+Detection was measured on a labelled set: flat forms printed by Chrome
+(Skia/PDF, as Google Docs and "Save as PDF" make them) with where a person
+would put each field marked in their source and measured from the page
+(`tests/fixtures/forms/make.mjs`, `truth.json`), plus the corpus's own flat
+form. `cargo run -p warraq-core --example detect_fields -- --eval .` prints
+the table; `tests/tool_forms.rs` holds a floor under it.
+
+| Set | Forms | Fields | Found | Precision | Recall | Right type | Right name |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| First (detection built on it) | 6 (5 Arabic, 1 English) | 64 | 64 | 1.00 | 1.00 | 1.00 | 1.00 |
+| Held-out, as first measured | 4 (3 Arabic, 1 English) | 28 | 27 | 1.00 | 0.96 | 0.74 | 0.78 |
+| Held-out, after four fixes | 4 | 28 | 28 | 1.00 | 1.00 | 1.00 | 1.00 |
+
+The held-out forms — other faces (Amiri, Cairo), colon-less labels, a shaded
+box, a dotted line, check boxes inside a table, blanks in running text — were
+written after detection was built and measured before anything was changed
+for them. The four fixes were general, not per form: a box drawn inside a
+table cell is the field, not the cell (and is named `row/column`); a dotted
+line (a row of tiny squares) is a line; a label a line above a box or a line
+is read; and in running text only the words beside a blank decide its type
+("جرى التوقيع في مدينة ____" is a city, not a signature). So the held-out
+numbers after the fixes are no longer held out; the first measurement is the
+honest estimate for forms like these.
+
+On documents that are not forms: of the 41 other corpus files (Word,
+InDesign, LibreOffice, Google Docs, Acrobat exports, scans), 36 get no
+proposal at all; the other five get 56, 38 of them in one MediaWiki guide
+whose tables have an empty column. A frame at the page edge, a rule under a
+heading, a page number's line, an empty cell beside a dash and a box around a
+picture are not proposed.
+
+Found along the way, and fixed with a test each:
+
+1. **Fields made with a font size of 0 ("fit") took nothing typed in
+   EmbedPDF**: its field editor draws the size literally, and at 0 the value
+   typed was lost. Fields Warraq makes get a size their box holds.
+2. **Warraq's reader cut Arabic-Indic numbers at the Arabic decimal
+   separator**: `٧٥٫٠٠` read as `٠٠٫٧٥`, in Edit text, Export, Compare and
+   search, and `٪` was joined to them as if they were European digits. The
+   separators `٫` `٬` are now part of the number (UAX #9 class AN) and a
+   terminator joins only European digits (class ET, rule W5).
 
 ## How it looks (design refresh, 2026-09-18)
 
@@ -250,6 +295,12 @@ test that fails without its fix.
    both copies at once.
 
 ## Known gaps, stated plainly
+* **Prepare form — what is and is not proven.** Detection is measured on Chrome-printed forms and the corpus (above); forms made in Word, InDesign or by hand-coded generators have not been labelled, and a scanned form gets no proposals at all — its boxes and lines are pixels, not drawing. On a page that is no form, a table with an empty column gets proposals. The proposals are drawn over EmbedPDF's pages by reading its page layout (2.15.1); if the view is turned with EmbedPDF's own rotate, they are drawn unturned. Signature fields are real, empty signature fields for a digital signature (Digital signature signs into an empty field the form has; that has not yet been tried on one Prepare form made); Fill & sign places a drawn signature anywhere, over them too.
+* **Form scripts: only the standard subset runs, and only inside Warraq's own interpreter.** Recognised: `AFNumber_*`, `AFPercent_*`, `AFDate_*` (the numbered and the `Ex` forms), `AFSpecial_*` (the four US masks), `AFRange_Validate`, `AFSimple_Calculate`, `event.value =` arithmetic over `getField(…).value` (simplified field notation), and Warraq's own `Warraq_Digits`, `Warraq_LatinDigits`, `Warraq_HijriFormat` and `Warraq_HijriKeystroke`, whose JavaScript definitions travel in the file for other readers and are recognised by their exact text. Anything else — document scripts, open actions, mouse and focus actions, a calculation with a variable or a loop — is listed in the panel (up to 100) and never run. A `/CO` a file leaves incomplete is completed in the form's order.
+* **While a form is filled in Warraq, a formatted field shows the value as typed** (`1500`): PDFium runs no format script. The formatted look (`١٬٥٠٠٫٠٠ ر.س`) is drawn into the file when it is saved, and readers that run form scripts format it themselves. A value is checked when its field loses the focus; a calculated field is not made read-only.
+* **Warraq's own functions have not been run in Acrobat**, which is not installed here; they were run as a form reader runs a field's script (an `event` object in a sandbox, `forms/readerScripts.test.ts`) and agree with the Rust that Warraq runs. In Acrobat, Arabic-Indic digits typed into a number field become Western ones through `Warraq_LatinDigits`.
+* **Hijri dates** follow the Umm al-Qura table from 1356 to 1500 AH (1937–2077), checked against ICU on every 97th day; outside it they follow the tabular Islamic calendar, which can be a day off. Gregorian date patterns with a time show midnight.
+* **XFA**: a static XFA form is filled through its AcroForm fields; readers that prefer the XFA layer may still show its old values until *Remove the XFA layer* is used. A dynamic XFA form is shown only as its file draws it without an XFA engine — usually a "please wait" page — and cannot be filled; the panel says so.
 * **Digital signatures — what is and is not proven.** Proven by tests: signing an Arabic corpus file with RSA (PKCS#1 v1.5 and PSS), P-256 and P-384 keys from legacy (3DES/RC2-40) and modern (PBES2/AES-256) .p12 files, and `openssl cms -verify` (LibreSSL 3.3, an independent implementation) accepting every one and refusing each once a signed byte changes; a protected (AES-256) file signed and still protected; a form filled after signing (permitted) and after locking (not); page content drawn after signing, found; certification levels enforced; a revoked certificate caught from its OCSP answer; timestamps from a stand-in authority and — run once on 2026-09-19, over the network, by an ignored test (`cargo test --lib real_timestamp -- --ignored` in `apps/desktop/src-tauri`) — from DigiCert and Sectigo, both verified and trusted through Mozilla's roots, and their responders' OCSP answers written to `/DSS` and checked. Through the interface (`e2e/signatures.spec.ts`): sign with a TEST certificate, PDFium itself lists the signature, save keeps the signed bytes exactly (saving twice gives the same file), a comment afterwards is appended and listed as permitted, reopening checks it, trusting the TEST root makes it valid, and one changed byte makes it invalid.
 * **Smart cards are untested with a card.** The PKCS#11 path (`apps/desktop/src-tauri/src/signing.rs`, the `cryptoki` crate) compiles and its encodings are tested, and the same `Signer` trait signed and verified with a software key standing in for the card — but no card, token or SoftHSM was available on this machine, and installing system software was out of bounds. Until someone signs with a real card, treat it as unproven.
 * **The browser build cannot timestamp or fetch revocation data.** Checked on 2026-09-18: eleven public timestamp authorities answer a server, and not one sends the CORS headers a page needs to read the answer — no Content-Security-Policy change can fix that — so the web and extension builds say so in the panel and offer neither; the desktop app does both, from Rust. For the same reason the web CSP was not widened: allowing origins whose answers cannot be read would be a control that does nothing. Signing and checking work in every host.

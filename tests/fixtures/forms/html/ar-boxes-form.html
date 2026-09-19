@@ -1,0 +1,30 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><style>
+@font-face{font-family:'Noto Naskh Arabic';src:url('../../../fonts/static/NotoNaskhArabic-Regular-static.ttf')}
+@font-face{font-family:'Noto Sans Arabic';src:url('../../../fonts/static/NotoSansArabic-Regular-static.ttf')}
+@font-face{font-family:'Amiri';src:url('../../../fonts/Amiri-Regular.ttf')}
+@font-face{font-family:'Cairo';src:url('../../../fonts/static/Cairo-Regular-static.ttf')}
+@font-face{font-family:'Inter';src:url('../../../fonts/static/Inter-Regular-static.ttf')}
+@page { size: A4; margin: 0 }
+html, body { margin: 0 }
+body { padding: 15mm; font-family: 'Noto Naskh Arabic', 'Inter', sans-serif; font-size: 12pt; line-height: 2.1 }
+h1 { font-size: 18pt; margin: 0 0 10pt }
+table { border-collapse: collapse; width: 100% }
+td, th { border: 0.75pt solid #333; padding: 3pt 6pt; height: 24pt; font-weight: normal; text-align: start }
+.box { display: inline-block; border: 0.75pt solid #333; vertical-align: middle }
+.check { display: inline-block; width: 11pt; height: 11pt; border: 0.75pt solid #333; vertical-align: middle; margin: 0 4pt }
+.line { border-bottom: 0.75pt solid #333; height: 26pt }
+
+</style></head><body><h1>نموذج طلب إجازة</h1>
+<div style="display:flex; gap: 16pt">
+<div style="flex:1"><div>اسم الموظف</div><div class="box" style="width:100%; height:22pt" data-field="اسم الموظف" data-type="text"></div></div>
+<div style="flex:1"><div>الرقم الوظيفي</div><div class="box" style="width:100%; height:22pt" data-field="الرقم الوظيفي" data-type="text"></div></div>
+</div>
+<div style="display:flex; gap: 16pt; margin-top: 8pt">
+<div style="flex:1"><div>الإدارة</div><div class="box" style="width:100%; height:22pt" data-field="الإدارة" data-type="text"></div></div>
+<div style="flex:1"><div>عدد الأيام</div><div class="box" style="width:100%; height:22pt" data-field="عدد الأيام" data-type="text"></div></div>
+</div>
+<p style="margin-top:14pt">نوع الإجازة:</p>
+<p><span class="check" data-field="اعتيادية" data-type="checkbox"></span>اعتيادية <span class="check" data-field="مرضية" data-type="checkbox"></span>مرضية <span class="check" data-field="اضطرارية" data-type="checkbox"></span>اضطرارية</p>
+<div style="margin-top:8pt">سبب الإجازة</div>
+<div class="box" style="width:100%; height:70pt" data-field="سبب الإجازة" data-type="text"></div>
+<p><span class="check" data-field="أقر بصحة ما ورد أعلاه" data-type="checkbox"></span>أقر بصحة ما ورد أعلاه</p></body></html>

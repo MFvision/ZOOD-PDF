@@ -89,6 +89,14 @@ Tool operations (`warraq-core/src/tools`), all answering JSON plus bytes:
 | `signatures.fetches` (static) | `{password?, now}` + the PDF, trusted certificates | `{fetches: [{url, kind: ocsp\|crl\|certificate, about}]}` + each OCSP request body (empty for a GET) |
 | `signatures.add_validation` (static) | `{password?, now, kinds}` + the PDF, one answer per `kinds` entry, trusted certificates | `{certs, ocsps, crls, rejected}` + the file with them in `/DSS` |
 | `signatures.certificates` (static) | a certificate file (DER, PEM, PKCS#7) | `{certificates: [...]}` + each one's DER |
+| `forms.inspect` (static) | `{password?}` + the PDF | `{xfa: none\|static\|dynamic, order: name[], fields: [{name, type, value, tooltip, readOnly, widgets: [{page, rect}], scripts: {keystroke, format, validate, calculate}, supported, format, range, calculate}], notRun: [{place, page?, field?, event, text}]}` — rects as shown, `[x0, top, x1, bottom]` |
+| `forms.detect` (static) | `{password?, pages?: number[]}` (every page when empty) + the PDF | `{pages: [{index, width, height, fields: [{kind: text\|checkbox\|date\|hijri\|signature, name, tooltip, rect, rtl, source, pattern}]}]}`, names unique in the file |
+| `forms.create` (static) | `{password?, fields: [{page, kind, name, tooltip, rect, rtl, pattern?}]}` + the PDF | `{created: name[]}` + the file with the fields, as an update |
+| `forms.set_actions` (static) | `{password?, fields: [{name, format?: {kind: number\|percent\|date\|hijri, …} \| null, range?: {min?, max?} \| null, calculate?: {op, fields} \| {expression} \| null}]}` (a key left out is left as it is; `null` removes it) + the PDF + a font | `{ok: true, changed}` + the file, calculated values stored and drawn; or `{ok: false, error: {kind: noField\|cycle\|expression, …}}` and no file |
+| `forms.check_expression` (static) | `{expression, fields: name[]}` | `{ok, uses?, typed?, error?: {kind: syntax\|unknownField\|empty\|tooLong, start, end, name?}}` |
+| `forms.recalculate` (static) | `{fields: [{name, value, keystroke?, format?, validate?, calculate?}], order, changed?}` | `{normalized?, rejected?: {kind: number\|date\|hijri\|special\|range, …}, values: {name: value}, shown: {name: {text, red}}}` — only the subset `warraq_pdf::forms::script` parses is run |
+| `forms.drop_xfa` (static) | `{password?}` + the PDF | `{dropped}` + the file without `/XFA` (and `/NeedsRendering`), as an update |
+| `forms.fix_appearances` (static) | `{password?}` + the PDF + a font | `{fields, comments}` + the file with Arabic and formatted values drawn |
 
 Signing never reaches the network: the core builds a request and takes the answer; the desktop host sends it (`net_exchange`), and signs on a smart card through `pkcs11_certificates` / `pkcs11_sign`, which call `tools::signatures::sign_with` with a card-backed `warraq_sign::keys::Signer`.
 
