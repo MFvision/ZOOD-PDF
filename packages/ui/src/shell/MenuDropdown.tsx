@@ -94,7 +94,7 @@ export function MenuDropdown({ menu, app, open, onToggle, onHover, onClose }: Me
         onPointerEnter={onHover}
         onKeyDown={onButtonKeyDown}
       >
-        {menu.label}
+        {app ? <bdi dir="rtl">{menu.label}</bdi> : menu.label}
       </button>
       {open && (
         <div ref={listRef} role="menu" aria-label={menu.label} className="menu-list" onKeyDown={onListKeyDown}>
