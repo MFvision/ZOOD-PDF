@@ -2763,7 +2763,7 @@ impl PdfDocument {
             subject: text(&info, b"Subject"),
             keywords: text(&info, b"Keywords"),
             creator_tool: text(&info, b"Creator"),
-            producer: Some("ورّاق".into()),
+            producer: Some("محرر PDF".into()),
             created: Some(created.clone()),
             modified: Some(now_iso.to_string()),
             ..Default::default()
