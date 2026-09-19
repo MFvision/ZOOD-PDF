@@ -348,7 +348,10 @@ test that fails without its fix.
    e2e: every state of EmbedPDF — loading, each mode, menus, comments, text
    style, stamps, signature, a new drop-down, redaction, print, security,
    screenshot, search, sidebar — has no Latin word but the document's own and
-   font names.
+   font names. In English the Form toolbar's fill button was named with its
+   key, "form.toggleFillMode" (EmbedPDF's English has no string for it); the
+   English it lacks is added to its own locale, and the same walk in English
+   fails on any key shown as it is.
 29. **The tool gallery ran off a phone's screen.** A popover was placed by its
    box as measured while it was still scaled down for its opening animation,
    so it landed too far along; it is placed by its layout size now (e2e at
@@ -361,6 +364,13 @@ test that fails without its fix.
    now keeps its drawn order; the corpus's Amiri tashkeel page went from
    0.90 to 1.0, and a LibreOffice page's Aref Ruqaa lam–alef was fixed by the
    same rule.
+31. **A refused form value went back to empty, not to the value before it,**
+   when the two were typed in quick succession: the second commit replaced
+   the first before the engine had reported it, so the first was never
+   checked or kept (the prepare-form e2e failed whenever it ran alone, on
+   main too). A field's commit now carries the text it held when it lost the
+   focus, a second commit runs the first at once, and nothing being typed is
+   overwritten by the check of what was typed before.
 
 ## Known gaps, stated plainly
 * **Prepare form — what is and is not proven.** Detection is measured on Chrome-printed forms and the corpus (above); forms made in Word, InDesign or by hand-coded generators have not been labelled, and a scanned form gets no proposals at all — its boxes and lines are pixels, not drawing. On a page that is no form, a table with an empty column gets proposals. The proposals are drawn over EmbedPDF's pages by reading its page layout (2.15.1); if the view is turned with EmbedPDF's own rotate, they are drawn unturned. Signature fields are real, empty signature fields for a digital signature (Digital signature signs into an empty field the form has; that has not yet been tried on one Prepare form made); Fill & sign places a drawn signature anywhere, over them too.
