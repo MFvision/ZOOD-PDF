@@ -17,15 +17,18 @@ import {
   pickFiles,
   pickPdfFile,
   printAvailable,
+  printMode,
   printPdf,
+  printWebview,
   savePdfFile,
   takeStartupFile,
 } from '../core/host-tauri';
 import type { PickedFile } from '../core/host-tauri';
 import type { CoreClient, RemoteDocument } from '../core/client';
 import type { PluginRegistry } from '@embedpdf/react-pdf-viewer';
-import { EMBED_COMMANDS, addRedactionMarks, capability, commandActive, disabledCategories, runCommand, scrollToPage, setKeyboard, watch, watchPendingRedactions } from '../embed/embedControl';
+import { EMBED_COMMANDS, addRedactionMarks, capability, commandActive, disabledCategories, printAllowed, runCommand, scrollToPage, setKeyboard, watch, watchPendingRedactions } from '../embed/embedControl';
 import type { RedactionMark, ViewCommand } from '../embed/embedControl';
+import { installViewText } from '../embed/embedText';
 import { uuidV4 } from '@embedpdf/models';
 import { loadEditFont } from '../edit/editFont';
 import { canRedo as canRedoStack, canUndo as canUndoStack, redo as redoStack, undo as undoStack } from '../edit/editStack';
@@ -33,7 +36,8 @@ import type { EditEntry, StackStep } from '../edit/editStack';
 import type { TKey } from '../i18n/messages';
 import { appReducer, createInitialState, warraqOwnsDocument } from './appReducer';
 import type { AppAction, AppState } from './appReducer';
-import { readPreferences, writePreferences } from './preferences';
+import { readJson, readPreferences, writePreferences } from './preferences';
+import { drawPages, mountSheet } from '../print/printPages';
 import { addRecent, clearRecent as clearStoredRecent, readRecent } from './recent';
 import { isPdf, namedLikePdf } from './pdfFile';
 import { combinedFileName, downloadPdf, extractedFileName, pdfFileName, saveBytes, splitArchiveName } from './saveFile';
@@ -95,6 +99,15 @@ export interface DropTarget {
 
 /** What became of inserting another file's pages. */
 export type InsertOutcome = 'inserted' | 'locked' | 'wrongPassword' | 'failed';
+
+/** How Print prints: the host prints the file (PDFKit), EmbedPDF does, or the pages are laid out here. */
+export type PrintWay = 'pdfkit' | 'embed' | 'pages';
+
+/** Pages drawn so far for printing by pages, of how many. */
+export interface PrintProgress {
+  done: number;
+  total: number;
+}
 
 /** What a page change answers: the document's new shape. */
 interface PageShape {
@@ -184,6 +197,10 @@ export interface AppServices {
    * route to the system one yet, so it offers no Print rather than a dead one.
    */
   canPrint: boolean;
+  /** Printing by pages: how far drawing the pages for print has come; null when nothing is being prepared. */
+  printing: PrintProgress | null;
+  /** Stops preparing a print by pages. */
+  cancelPrint: () => void;
   /** Brings a page (one-based) to the top of the view on screen. */
   goToPage: (page: number) => void;
   /** Organize pages: one change to the pages of the open document; `blobs` go with it to the core. `false` if it failed. */
@@ -778,6 +795,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return withArabicAppearances(await engine.saveAsCopy(active).toPromise());
   }, [withArabicAppearances]);
 
+  // EmbedPDF's search and copy read the file through Warraq's engine, which
+  // reads Arabic in logical order where PDFium does not (embed/embedText.ts).
+  useEffect(() => {
+    if (!embed) return;
+    return installViewText(embed, {
+      own: () => (warraqOwnsDocument(stateRef.current) || stateRef.current.switching ? null : documentRef.current),
+      fromView: bytesFromEmbed,
+      open: (bytes) => client.open(bytes, passwordRef.current),
+    });
+  }, [embed, bytesFromEmbed, client]);
+
   /**
    * The handover between the two engines. Opening Edit text or Organize pages,
    * Warraq's engine takes the file exactly as EmbedPDF holds it, so nothing
@@ -1287,13 +1315,73 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const organizing = state.rightPane.activeTool === 'organize' && state.document !== null;
 
-  // Desktop print: the host says whether it can (PDFKit, macOS).
+  // Desktop print: the host says whether it can, and how — PDFKit prints the
+  // file itself on macOS; elsewhere the pages are laid out here for the
+  // webview to print (print/printPages.ts). A browser prints through
+  // EmbedPDF, or by pages when `warraq.print` is "pages" (how that path is
+  // tested in a browser).
   const [nativePrint, setNativePrint] = useState(false);
+  const [printWay, setPrintWay] = useState<PrintWay>(() =>
+    !isTauriHost() && readJson<string>('warraq.print', '') === 'pages' ? 'pages' : 'embed',
+  );
   useEffect(() => {
-    if (isTauriHost()) void printAvailable().then(setNativePrint, () => setNativePrint(false));
+    if (!isTauriHost()) return;
+    void printAvailable().then(setNativePrint, () => setNativePrint(false));
+    void printMode().then(setPrintWay, () => setPrintWay('pdfkit'));
   }, []);
 
+  const [printing, setPrinting] = useState<PrintProgress | null>(null);
+  const printAbort = useRef<AbortController | null>(null);
+  const printUndo = useRef<(() => void) | null>(null);
+
+  const cancelPrint = useCallback(() => printAbort.current?.abort(), []);
+  // Another file, or none: what was being drawn for print is not it any more.
+  useEffect(() => () => printAbort.current?.abort(), [document]);
+
+  const printByPages = useCallback(async () => {
+    if (printAbort.current) return;
+    const registry = embedRef.current;
+    if (registry && !printAllowed(registry)) {
+      dispatch({ type: 'DOCUMENT_FAILED', error: 'print.forbidden' });
+      return;
+    }
+    const abort = new AbortController();
+    printAbort.current = abort;
+    printUndo.current?.();
+    printUndo.current = null;
+    let reading: RemoteDocument | null = null;
+    try {
+      const bytes = await currentFileBytes();
+      if (!bytes) return;
+      reading = await client.open(bytes, passwordRef.current);
+      setPrinting({ done: 0, total: reading.pageCount });
+      const pages = await drawPages(reading, (done, total) => setPrinting({ done, total }), abort.signal);
+      const undo = await mountSheet(pages);
+      printUndo.current = undo;
+      // The sheet goes when printing is over: the dialog closed, printed or not.
+      window.addEventListener(
+        'afterprint',
+        () => {
+          if (printUndo.current !== undo) return;
+          undo();
+          printUndo.current = null;
+        },
+        { once: true },
+      );
+      setPrinting(null);
+      if (isTauriHost()) await printWebview();
+      else window.print();
+    } catch (error) {
+      if ((error as Error)?.name !== 'AbortError') dispatch({ type: 'DOCUMENT_FAILED', error: 'print.failed' });
+    } finally {
+      void reading?.free();
+      printAbort.current = null;
+      setPrinting(null);
+    }
+  }, [client, currentFileBytes]);
+
   const printFile = useCallback(async () => {
+    if (printWay === 'pages') return printByPages();
     const bytes = await currentFileBytes();
     if (!bytes) return;
     try {
@@ -1302,14 +1390,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const forbidden = String(error).includes('E_PRINT_FORBIDDEN');
       dispatch({ type: 'DOCUMENT_FAILED', error: forbidden ? 'print.forbidden' : 'print.failed' });
     }
-  }, [currentFileBytes]);
+  }, [currentFileBytes, printWay, printByPages]);
 
   const viewCommand = useCallback(
     (command: ViewCommand) => {
       // Mid-switch neither engine holds the current file.
       if (stateRef.current.switching) return;
-      // The desktop prints the file itself, with the system's print sheet.
-      if (command === 'print' && isTauriHost()) {
+      // The desktop prints the file itself, or its pages laid out for print,
+      // in the system's print dialog — from either view.
+      if (command === 'print' && (isTauriHost() || printWay === 'pages')) {
         void printFile();
         return;
       }
@@ -1346,7 +1435,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return;
       }
     },
-    [undoEdit, redoEdit, organizeStep, printFile],
+    [undoEdit, redoEdit, organizeStep, printFile, printWay],
   );
 
   const viewCommandOn = useCallback((command: ViewCommand): boolean => {
@@ -1375,9 +1464,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ? embedHistory.canRedo
       : !state.edit.busy && canRedoStack(state.edit.stack);
   // A browser prints through EmbedPDF while it is on screen; the desktop
-  // prints the file itself, from either view, once no switch is under way.
-  const canPrint = isTauriHost()
-    ? nativePrint && state.view === 'viewer' && state.document !== null && state.switching === null
+  // prints the file (or its pages), from either view, once no switch is
+  // under way and no print is being prepared.
+  const printsItself = isTauriHost() ? nativePrint : printWay === 'pages';
+  const canPrint = printsItself
+    ? state.view === 'viewer' && state.document !== null && state.switching === null && printing === null
     : embedShowing;
 
   const saveDocument = useCallback(async () => {
@@ -1454,6 +1545,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       canUndo,
       canRedo,
       canPrint,
+      printing,
+      cancelPrint,
       goToPage,
       organizePages,
       extractPages,
@@ -1512,6 +1605,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       canUndo,
       canRedo,
       canPrint,
+      printing,
+      cancelPrint,
       goToPage,
       organizePages,
       extractPages,

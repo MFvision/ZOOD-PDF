@@ -23,7 +23,7 @@ interface Placement {
 }
 
 /** Below the anchor, centred on it, kept inside the window; above it when there is no room below. */
-function place(anchor: DOMRect, box: DOMRect): Placement {
+function place(anchor: DOMRect, box: { width: number; height: number }): Placement {
   const width = box.width;
   const height = box.height;
   let left = anchor.left + anchor.width / 2 - width / 2;
@@ -61,8 +61,11 @@ export function Popover({ anchor, open, onClose, label, className, children }: P
 
   useLayoutEffect(() => {
     if (!open || !anchor || !ref.current) return;
+    // Its layout size, not its box on screen: it opens scaled down, and a
+    // box measured mid-animation placed it too far along — on a phone the
+    // tool gallery ran off the edge of the screen.
     const measure = () => {
-      if (ref.current) setPlacement(place(anchor.getBoundingClientRect(), ref.current.getBoundingClientRect()));
+      if (ref.current) setPlacement(place(anchor.getBoundingClientRect(), { width: ref.current.offsetWidth, height: ref.current.offsetHeight }));
     };
     measure();
     window.addEventListener('resize', measure);

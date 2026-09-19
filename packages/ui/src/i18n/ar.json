@@ -720,6 +720,8 @@
   "password.wrong": "لم تفتح كلمة المرور هذه الملف. حاول مرة أخرى.",
   "print.failed": "تعذّرت طباعة الملف.",
   "print.forbidden": "لا يسمح هذا الملف بالطباعة.",
+  "print.preparing": "جارٍ تجهيز الصفحة {done} من {total} للطباعة…",
+  "print.stop": "إيقاف تجهيز الطباعة",
   "ribbon.context": "الأداة النشطة: {tool}",
   "ribbon.label": "شريط الأدوات",
   "settings.open": "الإعدادات…",

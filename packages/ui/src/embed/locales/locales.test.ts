@@ -1,5 +1,9 @@
+import { readFileSync, readdirSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { arabic, arabicBeyondEnglish, arabicTranslations } from './ar';
+import { EMBED_PATCHES, HARD_CODED_STRINGS, isEmbedBundle, patchEmbed } from '../../../vite/embedPatches';
+import { arabic, arabicBeyondEnglish, arabicHardCoded, arabicTranslations } from './ar';
 import { englishTranslations } from './en';
 
 type Tree = { [key: string]: string | Tree };
@@ -59,5 +63,42 @@ describe("EmbedPDF's Arabic locale", () => {
   it('is registered under the code Warraq switches to', () => {
     expect(arabic.code).toBe('ar');
     expect(arabic.name).toBe('العربية');
+  });
+});
+
+/** EmbedPDF's viewer bundle as installed: `@embedpdf/snippet`, a dependency of its React wrapper. */
+function installedBundle(): { path: string; code: string } {
+  const require = createRequire(import.meta.url);
+  const wrapper = createRequire(require.resolve('@embedpdf/react-pdf-viewer'));
+  const dist = dirname(wrapper.resolve('@embedpdf/snippet'));
+  const name = readdirSync(dist).find((file) => isEmbedBundle(join(dist, file)));
+  if (!name) throw new Error(`no viewer bundle in ${dist}`);
+  const path = join(dist, name);
+  return { path, code: readFileSync(path, 'utf8') };
+}
+
+describe("EmbedPDF's strings written into its code", () => {
+  it('have Arabic, every one the patches look up, and nothing else', () => {
+    expect(Object.keys(arabicHardCoded).sort()).toEqual([...HARD_CODED_STRINGS].sort());
+    for (const [english, text] of Object.entries(arabicHardCoded)) {
+      expect(text, english).toMatch(/\p{Script=Arabic}/u);
+      expect(text, english).not.toMatch(/[A-Za-z]/);
+      // A string that ends in a space goes before a number: so does its Arabic.
+      expect(text.endsWith(' '), english).toBe(english.endsWith(' '));
+    }
+  });
+
+  it('are all found in the installed EmbedPDF, as often as each patch says', () => {
+    const { path, code } = installedBundle();
+    expect(isEmbedBundle(path)).toBe(true);
+    const patched = patchEmbed(code);
+    for (const patch of EMBED_PATCHES) {
+      expect(patched.includes(patch.find), patch.find).toBe(false);
+      expect(patched.split(patch.replace).length - 1, patch.replace).toBe(patch.count ?? 1);
+    }
+  });
+
+  it('fail the build when a patch no longer matches', () => {
+    expect(() => patchEmbed('nothing to patch here')).toThrow(/EmbedPDF patch/);
   });
 });

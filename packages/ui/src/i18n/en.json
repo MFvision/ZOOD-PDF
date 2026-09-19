@@ -720,6 +720,8 @@
   "password.wrong": "That password did not open the file. Try again.",
   "print.failed": "The file could not be printed.",
   "print.forbidden": "This file does not allow printing.",
+  "print.preparing": "Preparing page {done} of {total} for printing…",
+  "print.stop": "Stop preparing the print",
   "ribbon.context": "Active tool: {tool}",
   "ribbon.label": "Tool ribbon",
   "settings.open": "Settings…",

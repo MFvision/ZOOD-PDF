@@ -92,6 +92,7 @@ Use `font-variant-numeric: tabular-nums` wherever numbers change in place, such 
   sheets and drop targets, and `--radius-capsule` for toolbar groups, the HUD and search fields.
 - Controls are `--control-h` (28 px) high, or `--control-h-small` (22 px) for pop-ups, segments and the page
   field. The toolbar is `--toolbar-h` (52 px, 48 on a phone). The browser's menu bar is `--menubar-h` (26 px).
+  On a touch screen all four grow to take a finger (Narrow windows, below).
 - Icons are Lucide with a stroke of `--icon-stroke` (1.6). They are 17 px in the toolbar and 18 px elsewhere,
   so they sit near the weight of the system's symbols.
 
@@ -193,6 +194,13 @@ Use `font-variant-numeric: tabular-nums` wherever numbers change in place, such 
   - EmbedPDF's floating page field returns, as the way to move between pages.
   - The home grid uses three columns, and the tools gallery two.
   - Nothing ever scrolls sideways.
+- On a touch screen (`@media (pointer: coarse)`: a phone, a tablet), whatever the width, every target takes a
+  finger: `--control-h` becomes 44 px and `--control-h-small` 36 px, the toolbar is 60 px with 44-px buttons,
+  the menu bar's items and menu rows are 44 px, and so are the inspector's action rows and back button. The
+  look does not change, only the room around it. `e2e/pwa.spec.ts` fails on any smaller target in the shell.
+- Installed from the browser, the app is the web manifest's (`apps/web/public/manifest.webmanifest`): its
+  icons are the app icon at 192 and 512 px and a **maskable** version for phones, where the tile fills the
+  square and the paper sits in the middle 80 % (`make_icon.py --maskable`).
 
 ## Components
 
