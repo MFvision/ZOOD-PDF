@@ -12,7 +12,7 @@
 | Prepare form | Warraq's core finds where a flat form expects writing — underscore and dot runs, empty table cells, drawn boxes, lines to sign on, check boxes — names each field from its Arabic or English label and types it (text, check box, date, Hijri date, signature); the proposals are drawn on the page to adjust, then created as real AcroForm fields. Formats (numbers with SAR and Arabic-Indic digits, percent, dates, Umm al-Qura Hijri dates), ranges and calculations (sum, product, average, min, max, or arithmetic typed over field names) are written as the built-in JavaScript every form reader runs, and run inside Warraq by its own interpreter of exactly that subset — no JavaScript engine, no eval. Measured below |
 | Page marks | watermarks (text or a picture), headers and footers with page, date (Gregorian or Hijri) and file tokens, page numbers and Bates numbers, drawn by Warraq's core with Arabic shaped, previewed on the page before they are applied, and listed to change or take off — the page's own content is never touched (form XObjects tagged as artifacts, round the page's streams) |
 | Edit PDF: pictures and links | pictures picked, moved, resized, turned, cropped, replaced, deleted or placed from a PNG/JPEG; links drawn, pointed at an address or a page, moved and removed — each change rewrites only the one operation or annotation it touches, as an incremental update |
-| Find and redact, remove hidden information | Warraq's core finds words (Arabic-aware, as Find) and ready-made patterns — emails, phones, national ID/Iqama, IBANs, card numbers, dates — or a person's own pattern, with the boxes of their glyphs, which become EmbedPDF's redaction marks; and it reports and removes what a file carries besides its pages, writing the file whole |
+| Find and redact, remove hidden information | Warraq's core finds words (Arabic-aware, as Find) and ready-made patterns — emails, phones, national ID/Iqama, IBANs, card numbers, dates — or a person's own pattern, in the page's text and in its headers, footers and watermarks, with the boxes of their glyphs — on turned pages and slanting lines too — which become EmbedPDF's redaction marks; and it reports and removes what a file carries besides its pages, writing the file whole |
 | Bookmarks, attachments, layers | one navigation pane in both views (View menu): bookmarks go to their page; attachments are listed, saved, added and removed; layers are shown and hidden in the view without touching the file until the visibility is saved with it |
 | Organize pages | rotate, reorder (drag or buttons), delete, insert a blank page or another PDF's pages, extract pages to a new file, split into files, crop by margins or trim the white away, undo and redo — Warraq's core, as incremental updates (ADR-0008) |
 | Digital signatures | PAdES signatures made and checked by Warraq's own core (pure Rust, `warraq-sign`) in every host: sign with a certificate file (.p12/.pfx, modern or legacy) — visibly, where the person drags on the page, Arabic shaped — or on the desktop with a smart card; certify or approve, lock the form; every signature in a file checked when it opens (integrity, signer, chain, trust, time, revocation data, and what changed after it). A signer is shown as valid only when a certificate the person trusts vouches for them: Mozilla's roots are trusted by browsers for web sites and do not make a document signer valid (see "Trust" below). Trusted timestamps and long-term validation data are fetched by the desktop app only, on a click; the browser cannot read those servers' answers |
@@ -64,8 +64,8 @@ alike when only one of them did anything.
 | Comment (EmbedPDF) | highlight, underline, strike out, sticky note, text box, freehand drawing, rectangle, arrow, link |
 | Fill & sign (EmbedPDF) | type into a form's fields, draw or type a signature and place it, place a stamp |
 | Prepare form (EmbedPDF + Warraq's engine) | **Detect fields** on this page or all pages: the proposals are drawn over the page — drag to move, drag the corner to resize, arrow keys to nudge, Delete to remove — and listed with their name and type (text, check box, date, Hijri date, signature) to change; **Create fields** makes them real AcroForm fields (Arabic ones right-aligned, the label as the tooltip, dates with their format). **Add a field by hand**: EmbedPDF's text field, check box, radio button, drop-down and list box. **Formats and calculations** for a chosen field: number (decimals, separators, negatives in minus, brackets or red, ر.س after or SAR before, Arabic-Indic digits), percentage, date (four patterns), Hijri date (Umm al-Qura, three patterns); an allowed range; a sum, product, average, smallest or largest of chosen fields, or an arithmetic expression over their names (Arabic names, quotes for names with spaces, Arabic-Indic digits), checked as it is typed and refused if it would go round in a circle. Filling the form — in Fill & sign or anywhere in the view — recalculates it; a value outside its format or range is put back, with a notice. XFA forms and scripts Warraq does not run are said so, in this panel and in Fill & sign |
-| Redact (EmbedPDF + Warraq's engine) | mark text or an area, then apply: the text and images underneath are removed from the file, not covered. Find and redact: words found the Arabic-aware way, or emails, phone numbers (Saudi and international, Latin or Arabic-Indic digits), national ID and Iqama numbers, IBANs, card numbers, dates, or a pattern of one's own — each listed with its page and context, the chosen ones marked over their exact glyphs. Remove hidden information: metadata, scripts and actions, attachments, comments, form data, hidden layers, bookmarks, thumbnails, applications' private data, links, hidden text — reported, chosen, and removed by writing the file anew, its earlier revisions and unused objects gone with them |
-| Navigation pane (Warraq's engine) | in both views, from the View menu: bookmarks with their levels (a click goes to the page), attachments (saved, never opened; added with a description; removed), layers in their order with locked ones and print/export states shown, switched in the view only until *Save layer visibility with the file*; in Edit text also the page thumbnails |
+| Redact (EmbedPDF + Warraq's engine) | mark text or an area, then apply: the text and images underneath are removed from the file, not covered. Find and redact: words found the Arabic-aware way, or emails, phone numbers (Saudi and international, Latin or Arabic-Indic digits), national ID and Iqama numbers, IBANs, card numbers, dates, or a pattern of one's own — each listed with its page and context (a header, footer or watermark said to be one), the chosen ones marked over their glyphs — on pages turned by /Rotate, and on slanting or upright lines, each char where the reader placed it; a match it could not place is listed to be marked by hand, never guessed. A file whose permissions forbid changing its content takes no marks, and the panel says so; results belong to the file they were found in. Remove hidden information: metadata, scripts and actions (chained ones too), attachments, comments, form data, hidden layers, bookmarks, thumbnails, applications' private data, links, hidden text — reported in the interface's language, chosen, and removed by writing the file anew, its earlier revisions, unused objects and whatever still pointed at the removed ones (a tagged file's structure tree) gone with them |
+| Navigation pane (Warraq's engine) | in both views, from the View menu: bookmarks with their levels (a click or Enter goes to the page; a heading with no page is shown as a heading, an entry that leaves the file says so; the tree and the pane tabs work with the arrow keys, mirrored in Arabic), attachments (saved, never opened; added with a description; removed), layers in their order with locked ones and print/export states shown, switched in the view only until *Save layer visibility with the file*; in Edit text also the page thumbnails |
 | Protect (EmbedPDF) | require a password to open, restrict permissions |
 
 Each working tool has a test in `apps/web/e2e` that uses it the way a person
@@ -374,6 +374,63 @@ test that fails without its fix.
    focus, a second commit runs the first at once, and nothing being typed is
    overwritten by the check of what was typed before.
 
+## Fixed after a review of Redact and the navigation pane, 2026-09-20
+
+Three reviewers read Find and redact, Remove hidden information and the
+navigation pane, and a fourth tried to refute each finding. Each one below
+was reproduced first by a test that failed, and each test passes now.
+
+1. **A redaction came back in the saved file** when layers were shown by
+   choice and the file then went through Edit text or Organize pages: the
+   save was kept as an update of the file's bytes from before the redaction.
+   Those bytes now remember the redaction, and nothing is kept as an update
+   of them (e2e: the redacted words are nowhere in the saved bytes).
+2. **Remove hidden information left removed comments, fields and attached
+   files in tagged files**: the structure tree points at each annotation
+   (`/OBJR`), which kept it — with its text, its field's name and value, its
+   embedded file — in the file written whole. What pointed at them is taken
+   out now (Rust and e2e: every marker gone from the bytes and every
+   inflated stream, the structure tree still there).
+3. **Scripts chained after another action (`/Next`), and actions held as
+   objects without `/Type`, were neither reported nor removed.** They are
+   both now, wherever they sit.
+4. **Find and redact never read headers, footers and watermarks** (text
+   marked as an artifact, as Word and Page marks write them): it reads them
+   now, and says a match is in one.
+5. **Marks were misplaced on turned pages and slanting lines**: on a page
+   turned by /Rotate or a crooked scan's text layer the mark was an even
+   share of the line's box — the wrong word, or a whole line, or a strip.
+   Each char is now boxed where it was drawn, in its run's own frame (Rust:
+   /Rotate 0, 90, 180, 270, an 8° page, an upright margin line, against the
+   glyphs; e2e: only the word gone, its neighbours all there).
+6. **Removing hidden layers could show what they hid**: membership
+   dictionaries' policies and expressions, and a layer's own view state,
+   were ignored, and a hidden layer was taken out of the file even where
+   content that depends on it stayed. Hidden is now decided as PDFium
+   decides it, appearance streams are cleaned too, and a layer that is
+   still needed stays, switched off.
+7. **"N marked for redaction" was said when none were**: a file whose
+   permissions forbid changing its content takes no marks. The panel counts
+   what the view took, and says why when it took none (e2e: such a file).
+8. **Card and IBAN numbers after another group of digits were missed** (a
+   row number, an expiry date), and **a match partly overlapping another
+   was dropped with its tail**. Both are found whole now.
+9. **The Redact panel kept the previous file's results** after another file
+   was opened, and would mark or remove with them. It starts afresh.
+10. **White text on a coloured band counted as hidden text**, and removing
+   hidden text deleted it; outlined text in the default black counted too.
+   Only white on white counts now.
+11. **A second form flattening overwrote the first one's drawings.**
+12. **The report was half English in Arabic** — annotation kinds, property
+   names, PDF dates. The core now says what it found in structured words
+   that the interface translates.
+13. **Smaller ones**: a failed check said a removal had failed; a bookmark
+   that only heads others looked like a disabled external link; the pane
+   tabs and the bookmarks tree had no arrow keys, and layers claimed to be
+   a tree that could be collapsed; attaching a file in Edit text threw away
+   its undo history; attachment rows sat lopsided in Arabic; and several
+   Arabic strings read word for word from the English.
+
 ## Known gaps, stated plainly
 * **Create PDF lays content out itself, and plainly.** It is not Word's, Excel's or PowerPoint's layout engine: one face (Amiri, with Inter for what Amiri lacks) and one size per paragraph, greedy line breaks at spaces (no hyphenation, no kashida), tables whose cells can span columns but not rows (a cell merged down is left empty below it). Not read: Word's text boxes, shapes, footnotes, comments, columns and a first page's own header; Excel's charts, pictures and cell colours, and anything past 2,000 rows or 60 columns of a sheet (the panel says so); PowerPoint's charts, SmartArt, gradients, shapes other than boxes (drawn as their box), rotation, animations and notes; a web page's style sheets (only a `style` attribute's colour, alignment and direction) and any picture it does not carry itself. HEIC and AVIF pictures are made into PNGs by the browser, so they work where the browser can draw them (Safari and the macOS app for HEIC). The Office files Create reads and the exports it writes are checked against ECMA-376's content models by the tests (`packages/ui/src/export/ooxml.testing.ts`) and by the browser's XML parser; the official XSDs are not in the repository, and the exports have not been opened in Office itself on this Mac (no Office is installed).
 * **Excel export finds tables, it does not read their meaning.** A table drawn with rules becomes a grid, a missing border a merged cell; a table without rules is found where lines cut at wide gaps stand in the same columns one under another — a two-column page layout can be taken for one. Numbers are only what is plainly a number (a leading zero, a date, a phone number and anything with letters stay text).
@@ -398,7 +455,7 @@ test that fails without its fix.
 * **Artifacts leave Warraq's reading, not PDFium's.** Warraq's reader (Edit text, search, Export, Compare, AI, Copy) leaves a page's artifacts — watermarks, running heads, page numbers, from any producer — out of its text; the corpus gate is unchanged by it. The search in the page view keeps what PDFium alone finds where Warraq's reader found nothing, so a running head is still found; Copy takes PDFium's text where Warraq's reader has nothing under the selection.
 * **Search and copy in the page view — what is still PDFium's.** The selection itself is: what a drag highlights follows PDFium's order of characters, which on some Chrome-made Arabic files jumps about the line, and Copy then gives Warraq's reading of exactly the highlighted glyphs — in logical order, but only those. A selection with no Arabic script copies PDFium's text, which reads Latin well. The search reads the file as Warraq opened it; after a redaction is applied in the view it reads the view's copy instead, so removed text is not found. A word Warraq's reader gets wrong is not found either (it was the Amiri kaf–taa–alef ligature, now fixed; ten corpus files still have unreadable glyphs, below).
 * **In EmbedPDF's view a click on a link selects it**, as its annotation tools are unlocked; its *Go to Link* then follows it — an address only after Warraq's question, a page of the file at once. On desktop the confirmed address goes to the system's opener through a new host command (`open_url`); that is covered by the web e2e with the browser's own `window.open`, not yet clicked in the installed window.
-* **Remove hidden information does not find everything that could hide text**: it finds text drawn invisibly (as an OCR layer is), in white, or off the page, on the pages themselves; text under an image, text cut away by a clipping path, and hidden text inside reused drawings (form XObjects) are not detected. A protected file is refused rather than written without its password: take the password off first. A signed file can be cleaned, and its signature stops being valid (the report says so).
+* **Remove hidden information does not find everything that could hide text**: it finds text drawn invisibly (as an OCR layer is), white on white, or off the page, on the pages themselves; text under an image, text cut away by a clipping path, and hidden text inside reused drawings (form XObjects) are not detected. White text counts as hidden only where nothing but white was painted under it, judged by boxes: white text beside a dark shape but inside its box is taken as seen and left in place. Hidden layers are decided as PDFium decides them (a layer's own view state, then the configuration; membership dictionaries by their policy or expression); a hidden layer that shown content depends on, or whose content cannot be read, stays in the file, switched off, rather than be removed and let what it hid show. A protected file is refused rather than written without its password: take the password off first. A signed file can be cleaned, and its signature stops being valid (the report says so).
 * **Removing an attachment is an update**, like every change Warraq appends: the file's earlier revision still holds the attachment until the file is written whole — Remove hidden information does that, and the pane says so.
 * **Showing or hiding a layer reopens the view** on a copy of the file: EmbedPDF's own undo history starts again (the changes themselves are kept), and it comes back to the page that was on screen. Layers are switched in the reading view only; in Edit text the Layers tab lists them. A layer's print and export states are shown, not edited.
 * **EmbedPDF's own sidebar keeps its outline** beside Warraq's navigation pane: two lists of the same bookmarks in the reading view.
