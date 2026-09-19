@@ -24,6 +24,7 @@ import type { CoreClient, RemoteDocument } from '../core/client';
 import type { PluginRegistry } from '@embedpdf/react-pdf-viewer';
 import { EMBED_COMMANDS, addRedactionMarks, capability, commandActive, disabledCategories, runCommand, scrollToPage, setKeyboard, watch, watchPendingRedactions } from '../embed/embedControl';
 import type { RedactionMark, ViewCommand } from '../embed/embedControl';
+import { installViewText } from '../embed/embedText';
 import { uuidV4 } from '@embedpdf/models';
 import { loadEditFont } from '../edit/editFont';
 import { canRedo as canRedoStack, canUndo as canUndoStack, redo as redoStack, undo as undoStack } from '../edit/editStack';
@@ -693,6 +694,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const engine = registry.getEngine() as unknown as { saveAsCopy(document: unknown): Task<ArrayBuffer> };
     return withArabicAppearances(await engine.saveAsCopy(active).toPromise());
   }, [withArabicAppearances]);
+
+  // EmbedPDF's search and copy read the file through Warraq's engine, which
+  // reads Arabic in logical order where PDFium does not (embed/embedText.ts).
+  useEffect(() => {
+    if (!embed) return;
+    return installViewText(embed, {
+      own: () => (warraqOwnsDocument(stateRef.current) || stateRef.current.switching ? null : documentRef.current),
+      fromView: bytesFromEmbed,
+      open: (bytes) => client.open(bytes, passwordRef.current),
+    });
+  }, [embed, bytesFromEmbed, client]);
 
   /**
    * The handover between the two engines. Opening Edit text or Organize pages,

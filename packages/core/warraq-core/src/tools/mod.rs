@@ -23,6 +23,7 @@ pub mod panes;
 pub mod patterns;
 pub mod redact;
 pub mod signatures;
+pub mod view;
 
 /// What a tool operation answers: JSON for the UI, and bytes beside it.
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -63,6 +64,7 @@ pub fn call(
         Some(("links", name)) => links::call(doc, name, args, blobs),
         Some(("pages", name)) => pages::call(doc, name, args, blobs),
         Some(("redact", name)) => redact::call(doc, name, args, blobs),
+        Some(("view", name)) => view::call(doc, name, args, blobs),
         _ => Err(CoreError::UnknownOp(op.into())),
     }
 }
