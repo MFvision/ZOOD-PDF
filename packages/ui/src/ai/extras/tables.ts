@@ -1,18 +1,28 @@
-import { strToU8, zipSync } from 'fflate';
+import type { CoreClient } from '../../core/client';
+import { tableSheets, valueOf } from '../../export/tables';
+import type { PageItem, Sheet, SheetCell, TableItem } from '../../export/tables';
+import { buildXlsx } from '../../export/xlsx';
 import { fields, int, jsonIn, list, str } from './json';
 
 /**
- * Tables, read by the model from the pages' text (Warraq's reading, in
- * logical order) and handed over as CSV or as an Excel workbook — one sheet
- * per table, right to left when the table is Arabic, numbers as numbers
- * (Arabic-Indic digits read as digits). The person sees every table first.
+ * Tables, two ways, both handed over as CSV or as an Excel workbook and
+ * both shown first: found on this device by Warraq's core — the table
+ * detection the Excel export uses (`export.tables`: ruling lines, or text
+ * lined up in columns), nothing sent — or read by the model from the pages'
+ * text in logical order, for tables the core cannot see (no rules, ragged
+ * columns). The workbook is the Excel export's writer (`export/xlsx.ts`):
+ * one sheet per table, right to left when the table is Arabic, numbers as
+ * numbers written the way they were, merged cells kept for the core's.
  */
 
 export interface Table {
   /** One-based. */
   page: number;
   title: string;
+  /** In the table's reading order: the first cell of a row is its right-most in Arabic. */
   rows: string[][];
+  /** The core's own table, when it found it: its merged cells go to the workbook. */
+  source?: TableItem;
 }
 
 export const TABLES_SCHEMA = {
@@ -69,137 +79,56 @@ export function parseTables(answer: string, pageCount: number): Table[] | null {
   return out;
 }
 
+/** A table the core found, as rows in reading order: a covered (merged) cell is empty. */
+export function tableOf(item: TableItem, page: number): Table {
+  const rows = item.rows.map((row) => {
+    const cells = row.map((cell) => cell?.text.replace(/\s+/g, ' ').trim() ?? '');
+    return item.direction === 'rtl' ? cells.reverse() : cells;
+  });
+  return { page, title: '', rows, source: item };
+}
+
+/** The tables Warraq's core finds on `pages` (one-based) of the file: nothing is sent anywhere. */
+export async function findTablesOnDevice(
+  client: Pick<CoreClient, 'open'>,
+  bytes: ArrayBuffer,
+  password: string | undefined,
+  pages: readonly number[],
+): Promise<Table[]> {
+  const doc = await client.open(bytes, password);
+  try {
+    const out: Table[] = [];
+    for (const page of pages) {
+      if (page < 1 || page > doc.pageCount) continue;
+      const { result } = await doc.call<{ items: PageItem[] }>('export.tables', { page: page - 1 });
+      for (const item of result.items ?? []) if (item.kind === 'table') out.push(tableOf(item, page));
+    }
+    return out;
+  } finally {
+    void doc.free();
+  }
+}
+
 /** A table as CSV: UTF-8 with a byte-order mark (so spreadsheet programs read Arabic), CRLF lines, RFC 4180 quoting. */
 export function toCsv(table: Table): string {
   const cell = (value: string) => (/[",\r\n]/.test(value) || /^\s|\s$/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
   return `\uFEFF${table.rows.map((row) => row.map(cell).join(',')).join('\r\n')}\r\n`;
 }
 
-/** Western digits for Arabic-Indic and Persian ones, `.` for the Arabic decimal separator, no group separators. */
-function plainNumber(text: string): string {
-  return text
-    .trim()
-    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
-    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
-    .replace(/٫/g, '.')
-    .replace(/[٬,](?=\d{3}(\D|$))/g, '');
-}
+const ARABIC = /[؀-ۿݐ-ݿࢠ-ࣿ]/;
 
-/** The number a cell holds, when it holds only a number; else null. */
-export function cellNumber(text: string): number | null {
-  const plain = plainNumber(text);
-  if (!/^[-+]?(\d+(\.\d+)?|\.\d+)$/.test(plain)) return null;
-  const value = Number(plain);
-  // A long run of digits is an identifier (an account, an ID), not a quantity.
-  return Number.isFinite(value) && plain.replace(/\D/g, '').length <= 15 ? value : null;
-}
-
-const ARABIC = /[؀-ۿ]/;
-
-function xml(text: string): string {
-  return text
-    // Characters XML 1.0 cannot carry at all.
-    // eslint-disable-next-line no-control-regex -- control characters are what is being removed
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-/** A1-style column letters: 0 → A, 26 → AA. */
-export function columnName(index: number): string {
-  let name = '';
-  for (let n = index + 1; n > 0; n = Math.floor((n - 1) / 26)) name = String.fromCharCode(65 + ((n - 1) % 26)) + name;
-  return name;
-}
-
-/** A sheet name Excel accepts: at most 31 characters, none of `[]:*?/\`, unique in the book. */
-export function sheetName(title: string, index: number, taken: Set<string>): string {
-  const base = (title.replace(/[[\]:*?/\\]/g, ' ').trim() || `Table ${index + 1}`).slice(0, 28);
-  let name = base;
-  for (let n = 2; taken.has(name.toLowerCase()); n += 1) name = `${base.slice(0, 26)} ${n}`;
-  taken.add(name.toLowerCase());
-  return name;
-}
-
-function sheetXml(table: Table): string {
+/** A table as a sheet: the core's own through the Excel export (merges kept), a read one cell for cell. */
+export function sheetOf(table: Table, name: string): Sheet {
+  if (table.source) {
+    const [sheet] = tableSheets([[table.source]], () => name);
+    if (sheet) return sheet;
+  }
   const rtl = table.rows.some((row) => row.some((cell) => ARABIC.test(cell)));
-  const rows = table.rows
-    .map((row, r) => {
-      const cells = row
-        .map((value, c) => {
-          const ref = `${columnName(c)}${r + 1}`;
-          const number = r > 0 ? cellNumber(value) : null;
-          if (number !== null) return `<c r="${ref}"><v>${number}</v></c>`;
-          if (value === '') return '';
-          return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xml(value)}</t></is></c>`;
-        })
-        .join('');
-      return `<row r="${r + 1}">${cells}</row>`;
-    })
-    .join('');
-  return (
-    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-    `<sheetViews><sheetView workbookViewId="0"${rtl ? ' rightToLeft="1"' : ''}/></sheetViews>` +
-    `<sheetData>${rows}</sheetData></worksheet>`
-  );
+  const rows = table.rows.map((row) => row.map((text): SheetCell | null => (text.trim() === '' ? null : { value: valueOf(text) })));
+  return { name, rtl, rows, widths: [] };
 }
 
-/**
- * The tables as one workbook (Office Open XML SpreadsheetML, ECMA-376), a
- * sheet each: the least a spreadsheet program needs — content types,
- * relationships, the workbook, its sheets and a style sheet — with text in
- * the cells themselves (inline strings) rather than a shared-string table.
- */
-export function toXlsx(tables: readonly Table[]): Uint8Array<ArrayBuffer> {
-  const taken = new Set<string>();
-  const names = tables.map((table, k) => sheetName(table.title, k, taken));
-  const sheets = tables.map((_, k) => k + 1);
-  const files: Record<string, Uint8Array> = {
-    '[Content_Types].xml': strToU8(
-      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
-        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
-        '<Default Extension="xml" ContentType="application/xml"/>' +
-        '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
-        '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
-        sheets.map((n) => `<Override PartName="/xl/worksheets/sheet${n}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('') +
-        '</Types>',
-    ),
-    '_rels/.rels': strToU8(
-      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
-        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
-        '</Relationships>',
-    ),
-    'xl/workbook.xml': strToU8(
-      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
-        `<sheets>${sheets.map((n, k) => `<sheet name="${xml(names[k]!)}" sheetId="${n}" r:id="rId${n}"/>`).join('')}</sheets>` +
-        '</workbook>',
-    ),
-    'xl/_rels/workbook.xml.rels': strToU8(
-      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
-        sheets.map((n) => `<Relationship Id="rId${n}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${n}.xml"/>`).join('') +
-        `<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
-        '</Relationships>',
-    ),
-    'xl/styles.xml': strToU8(
-      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-        '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-        '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>' +
-        '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
-        '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
-        '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-        '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>' +
-        '</styleSheet>',
-    ),
-  };
-  tables.forEach((table, k) => {
-    files[`xl/worksheets/sheet${k + 1}.xml`] = strToU8(sheetXml(table));
-  });
-  return zipSync(files) as Uint8Array<ArrayBuffer>;
+/** The tables as one workbook, a sheet each, named by `name` (Excel keeps names unique and short). */
+export function toXlsx(tables: readonly Table[], name: (table: Table, index: number) => string): Uint8Array<ArrayBuffer> {
+  return buildXlsx(tables.map((table, k) => sheetOf(table, name(table, k))));
 }

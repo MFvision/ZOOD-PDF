@@ -319,16 +319,18 @@ const XLSX_KIND = {
 const CSV_KIND = { mime: 'text/csv;charset=utf-8', filter: { name: 'CSV', extensions: ['csv'] } };
 const ZIP_KIND = { mime: 'application/zip', filter: { name: 'ZIP', extensions: ['zip'] } };
 
-export function TablesReview({ answer, pageCount, name }: { answer: string; pageCount: number; name: string }) {
+/** Tables read by the model (`answer`) or found on this device (`found`), for review and saving. */
+export function TablesReview({ answer, found, pageCount, name }: { answer?: string; found?: Table[]; pageCount: number; name: string }) {
   const { t } = useI18n();
-  const tables = useMemo(() => parseTables(answer, pageCount), [answer, pageCount]);
+  const tables = useMemo(() => found ?? parseTables(answer ?? '', pageCount), [answer, found, pageCount]);
   const [chosen, setChosen] = useState<ReadonlySet<number>>(() => new Set((tables ?? []).map((_, k) => k)));
-  if (!tables) return <Unreadable answer={answer} />;
+  if (!tables) return <Unreadable answer={answer ?? ''} />;
   if (tables.length === 0) return <p className="tool-panel-note">{t('ai.tables.none')}</p>;
   const picked = tables.filter((_, k) => chosen.has(k));
   const stem = `${documentStem(name)} (${t('ai.tables.word')})`;
+  const sheetName = (table: Table) => table.title || t('ai.tables.untitled', { n: tables.indexOf(table) + 1 });
 
-  const saveXlsx = () => void saveBytes(toXlsx(picked), `${stem}.xlsx`, XLSX_KIND);
+  const saveXlsx = () => void saveBytes(toXlsx(picked, sheetName), `${stem}.xlsx`, XLSX_KIND);
   const saveCsv = () => {
     if (picked.length === 1) {
       void saveBytes(strToU8(toCsv(picked[0]!)) as Uint8Array<ArrayBuffer>, `${stem}.csv`, CSV_KIND);
@@ -340,7 +342,7 @@ export function TablesReview({ answer, pageCount, name }: { answer: string; page
 
   return (
     <div className="ai-review">
-      <p className="tool-panel-note">{t('ai.tables.intro', { count: tables.length })}</p>
+      <p className="tool-panel-note">{t(found ? 'ai.tables.introLocal' : 'ai.tables.intro', { count: tables.length })}</p>
       {tables.map((table: Table, k) => (
         <section key={k} className="ai-table" aria-label={t('ai.tables.tableLabel', { n: k + 1, page: table.page })}>
           <label className="ai-pick">

@@ -25,6 +25,8 @@ import type { LayerText } from './extras/ocrFix';
 import type { PiiFinding } from './extras/pii';
 import { forgetProfile, keepProfile, loadProfile } from './extras/profile';
 import { FormFillReview, OcrFixReview, PiiReview, TablesReview, findWithPatterns } from './extras/Reviews';
+import { findTablesOnDevice } from './extras/tables';
+import type { Table } from './extras/tables';
 import { layerWords } from '../ocr/layer';
 import type { FormModel } from '../forms/formTypes';
 import type { TextLineData } from '../core/types';
@@ -129,6 +131,7 @@ export function AiPanel() {
   const [rememberDetails, setRememberDetails] = useState(() => loadProfile().remembered);
   const [local, setLocal] = useState<{ documentId: number; findings: PiiFinding[] } | null>(null);
   const [finding, setFinding] = useState(false);
+  const [localTables, setLocalTables] = useState<{ documentId: number; tables: Table[] } | null>(null);
   const [showText, setShowText] = useState(false);
   const [sending, setSending] = useState(false);
   const [failure, setFailure] = useState<{ failure: Failure; provider: ProviderId } | null>(null);
@@ -222,6 +225,24 @@ export function AiPanel() {
       setLocal({ documentId, findings: await findWithPatterns(services) });
     } catch {
       setNotice({ key: 'ai.pii.failed' });
+    } finally {
+      setFinding(false);
+    }
+  };
+
+  // Tables by Warraq's own detection (the Excel export's): on this device, nothing sent.
+  const findTablesLocally = async () => {
+    if (documentId === null) return;
+    setFinding(true);
+    setNotice(null);
+    try {
+      const bytes = await services.currentFileBytes();
+      if (!bytes) throw new Error('E_NOT_FOUND: no open file');
+      const current = state.currentPage;
+      const pages = scope === 'current' ? pageRange(current, current, pageCount) : pageRange(Number(from) || 1, Number(to) || 1, pageCount);
+      setLocalTables({ documentId, tables: await findTablesOnDevice(services.client, bytes, services.documentPassword, pages) });
+    } catch {
+      setNotice({ key: 'ai.tables.failed' });
     } finally {
       setFinding(false);
     }
@@ -674,7 +695,23 @@ export function AiPanel() {
             onClick={() => void findLocal()}
           />
         )}
+        {task === 'tables' && (
+          <IconButton
+            label={t('ai.tables.local')}
+            icon={<Icon of={FileSearch} />}
+            showLabel
+            disabled={!hasDocument || finding}
+            onClick={() => void findTablesLocally()}
+          />
+        )}
       </div>
+      {task === 'tables' && <p className="tool-panel-note">{t('ai.tables.localNote')}</p>}
+      {task === 'tables' && localTables && localTables.documentId === documentId && (
+        <section className="ai-answer" aria-label={t('ai.tables.localTitle')}>
+          <h4>{t('ai.tables.localTitle')}</h4>
+          <TablesReview key={localTables.tables.length} found={localTables.tables} pageCount={pageCount} name={state.document?.name ?? 'document.pdf'} />
+        </section>
+      )}
       {task === 'pii' && <p className="tool-panel-note">{t('ai.pii.localNote')}</p>}
       {task === 'pii' && local && local.documentId === documentId && (
         <section className="ai-answer" aria-label={t('ai.pii.localTitle')}>

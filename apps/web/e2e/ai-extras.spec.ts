@@ -198,7 +198,7 @@ test.describe('the AI tool answers with data, and nothing is changed before it i
     await expect(panel(page).getByRole('button', { name: 'Apply redactions', exact: true })).toBeVisible();
   });
 
-  test('tables, with a local model: shown, then saved as Excel and as CSV', async ({ page, stayLocal: _ }) => {
+  test('tables: found on this device with nothing sent, or read by a local model; shown, then saved as Excel and as CSV', async ({ page, stayLocal: _ }) => {
     const table = {
       page: 1,
       title: 'فاتورة ضريبية مبسطة',
@@ -218,6 +218,21 @@ test.describe('the AI tool answers with data, and nothing is changed before it i
     await ai.getByRole('radio', { name: 'A local model on this computer' }).check();
     await ai.getByRole('radio', { name: 'Extract the tables' }).check();
     await ai.getByRole('radio', { name: 'This page (1)' }).check();
+
+    // First on this device: the Excel export's own table detection, nothing sent.
+    await ai.getByRole('button', { name: 'Find tables on this device — nothing is sent' }).click();
+    const local = ai.getByRole('region', { name: 'Tables found on this device' });
+    const found = local.getByRole('region', { name: 'Table 1, page 1' });
+    await expect(found.locator('th').first()).toHaveText('الوصف');
+    await expect(found).toContainText('اشتراك سنوي في خدمة Warraq Pro');
+    expect(toLocal).toHaveLength(0);
+    const [fromDevice] = await Promise.all([page.waitForEvent('download'), local.getByRole('button', { name: 'Save as Excel (.xlsx)' }).click()]);
+    await fromDevice.saveAs('test-results/tables-local.xlsx');
+    const localSheet = strFromU8(unzipSync(new Uint8Array(readFileSync('test-results/tables-local.xlsx')))['xl/worksheets/sheet1.xml']!);
+    expect(localSheet).toContain('rightToLeft="1"');
+    expect(localSheet).toMatch(/<v>1200<\/v>/);
+
+    // Then the model, for what the detection cannot see.
     await ai.getByRole('button', { name: 'Review what will be sent' }).click();
     await preflight(page).getByRole('button', { name: 'Send to the local model' }).click();
     // Ollama was asked for the answer's shape.
@@ -234,7 +249,7 @@ test.describe('the AI tool answers with data, and nothing is changed before it i
     const book = unzipSync(new Uint8Array(readFileSync('test-results/tables.xlsx')));
     const sheet = strFromU8(book['xl/worksheets/sheet1.xml']!);
     expect(sheet).toContain('rightToLeft="1"');
-    expect(sheet).toContain('<c r="C2"><v>1200</v></c>');
+    expect(sheet).toMatch(/<c r="C2"[^>]*><v>1200<\/v><\/c>/);
     expect(sheet).toContain('اشتراك سنوي في خدمة Warraq Pro');
 
     const [csv] = await Promise.all([page.waitForEvent('download'), review(page).getByRole('button', { name: 'Save as CSV' }).click()]);

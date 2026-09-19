@@ -9,7 +9,10 @@ import { fillPrompt, fillableFields, labelFor, parseFill } from './formFill';
 import { jsonIn } from './json';
 import { applyChanges, changesOf, pageText, parseFix } from './ocrFix';
 import { parsePii } from './pii';
-import { cellNumber, columnName, parseTables, sheetName, toCsv, toXlsx } from './tables';
+import { PACKAGE, SPREADSHEET, validate } from '../../export/ooxml.testing';
+import type { TableItem } from '../../export/tables';
+import { parseTables, tableOf, toCsv, toXlsx } from './tables';
+import type { Table } from './tables';
 
 const word = (text: string, x: number): LayerWord => ({ text, bbox: [x, 100, x + 40, 120] });
 
@@ -124,6 +127,7 @@ describe('tables', () => {
   const answer = JSON.stringify({
     tables: [{ page: 1, title: 'الفاتورة', rows: [['الصنف', 'الكمية', 'السعر'], ['قلم', '٣', '١٢٫٥٠'], ['دفتر', '2'], ['رقم الحساب', 'SA0380000000608010167519', '']] }],
   });
+  const named = (table: Table, k: number) => table.title || `Table ${k + 1}`;
 
   it('are read, rows made even', () => {
     const [table] = parseTables(answer, 2) ?? [];
@@ -131,44 +135,55 @@ describe('tables', () => {
     expect(parseTables('{"tables":[{"page":5,"title":"","rows":[["a"]]}]}', 2)).toEqual([]);
   });
 
-  it('read numbers as numbers, Arabic-Indic digits included, and not long identifiers', () => {
-    expect(cellNumber('١٢٫٥٠')).toBe(12.5);
-    expect(cellNumber('1,250')).toBe(1250);
-    expect(cellNumber('0501234567')).toBe(501234567);
-    expect(cellNumber('1234567890123456789')).toBeNull();
-    expect(cellNumber('12 ريال')).toBeNull();
-  });
-
   it('become CSV a spreadsheet program reads as UTF-8', () => {
     const csv = toCsv({ page: 1, title: '', rows: [['a,b', 'قال "نعم"'], ['1', '']] });
     expect(csv).toBe('\uFEFF"a,b","قال ""نعم"""\r\n1,\r\n');
   });
 
-  it('become a workbook: a sheet each, right to left when Arabic, numbers as numbers', () => {
+  it("become a workbook through the Excel export's writer: a sheet each, right to left when Arabic, numbers as numbers", () => {
     const tables = parseTables(answer, 2)!;
-    const files = unzipSync(toXlsx([...tables, { page: 2, title: 'Totals', rows: [['Item', 'Amount'], ['Pens', '4']] }]));
-    expect(Object.keys(files)).toEqual([
-      '[Content_Types].xml',
-      '_rels/.rels',
-      'xl/workbook.xml',
-      'xl/_rels/workbook.xml.rels',
-      'xl/styles.xml',
-      'xl/worksheets/sheet1.xml',
-      'xl/worksheets/sheet2.xml',
-    ]);
+    const workbook = toXlsx([...tables, { page: 2, title: '', rows: [['Item', 'Amount'], ['Pens', '4']] }], named);
+    const files = unzipSync(workbook);
+    // Valid SpreadsheetML, as the Excel export's own parts are checked.
+    for (const [path, bytes] of Object.entries(files)) {
+      if (path.endsWith('.xml') || path.endsWith('.rels')) expect(validate(strFromU8(bytes), path.endsWith('.rels') ? PACKAGE : SPREADSHEET), path).toEqual([]);
+    }
     const first = strFromU8(files['xl/worksheets/sheet1.xml']!);
     expect(first).toContain('rightToLeft="1"');
-    expect(first).toContain('<c r="C2"><v>12.5</v></c>');
-    expect(first).toContain('<c r="A1" t="inlineStr"><is><t xml:space="preserve">الصنف</t></is></c>');
+    // ١٢٫٥٠ is the number 12.5, and ٣ is 3.
+    expect(first).toMatch(/<c r="C2"[^>]*><v>12\.5<\/v><\/c>/);
+    expect(first).toMatch(/<c r="B2"[^>]*><v>3<\/v><\/c>/);
+    expect(first).toContain('الصنف');
     // An account number stays text.
     expect(first).toContain('SA0380000000608010167519');
-    expect(strFromU8(files['xl/worksheets/sheet2.xml']!)).not.toContain('rightToLeft');
-    expect(strFromU8(files['xl/workbook.xml']!)).toContain('<sheet name="الفاتورة" sheetId="1" r:id="rId1"/>');
-    expect(columnName(0)).toBe('A');
-    expect(columnName(27)).toBe('AB');
-    const taken = new Set<string>();
-    expect(sheetName('a/b:c', 0, taken)).toBe('a b c');
-    expect(sheetName('A B C', 1, taken)).toBe('A B C 2');
+    expect(first).not.toMatch(/<v>3800000000608010167519<\/v>/);
+    expect(strFromU8(files['xl/worksheets/sheet2.xml']!)).not.toContain('rightToLeft="1"');
+    const book = strFromU8(files['xl/workbook.xml']!);
+    expect(book).toContain('name="الفاتورة"');
+    expect(book).toContain('name="Table 2"');
+  });
+
+  it("found by the core: in reading order, and the core's own table (merged cells and all) goes to the workbook", () => {
+    const item: TableItem = {
+      kind: 'table',
+      ruled: true,
+      direction: 'rtl',
+      widths: [60, 80, 120],
+      rows: [
+        [{ text: 'الإجمالي', rows: 1, columns: 1 }, { text: 'الكمية', rows: 1, columns: 1 }, { text: 'الوصف', rows: 1, columns: 1 }],
+        [{ text: '1,200.00', rows: 1, columns: 2 }, null, { text: 'اشتراك سنوي', rows: 1, columns: 1 }],
+      ],
+    };
+    const table = tableOf(item, 3);
+    // Left to right as drawn; right to left as read: the description comes first.
+    expect(table.rows).toEqual([
+      ['الوصف', 'الكمية', 'الإجمالي'],
+      ['اشتراك سنوي', '', '1,200.00'],
+    ]);
+    expect(table.page).toBe(3);
+    const sheet = strFromU8(unzipSync(toXlsx([table], named))['xl/worksheets/sheet1.xml']!);
+    expect(sheet).toContain('rightToLeft="1"');
+    expect(sheet).toContain('<mergeCell ref="B2:C2"/>');
   });
 });
 
