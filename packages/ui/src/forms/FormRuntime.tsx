@@ -74,37 +74,58 @@ export function FormRuntimeProvider({ children }: { children: ReactNode }) {
     if (!scope) return;
     accepted.current = { ...scope.getFormValues() };
     let running = false;
-    // Runs asked for while one was running: commits by name, `null` for a
-    // plain recalculation.
-    const queue: (string | null)[] = [];
+    /**
+     * One run: a commit of `changed` — with `typed`, the text it held when
+     * it was committed, for a field typed into — or, with `changed` null,
+     * a plain recalculation.
+     */
+    interface Run {
+      changed: string | null;
+      typed?: string;
+    }
+    // Runs asked for while one was running.
+    const queue: Run[] = [];
     let closed = false;
 
-    const recalculate = async (changed: string | null): Promise<void> => {
+    const recalculate = async (run: Run): Promise<void> => {
       if (running) {
-        if (!queue.includes(changed)) queue.push(changed);
+        // One plain recalculation is enough; a field's later commit replaces its earlier one.
+        const same = queue.findIndex((queued) => queued.changed === run.changed);
+        if (same < 0) queue.push(run);
+        else if (run.changed !== null) queue[same] = run;
         return;
       }
       running = true;
+      const { changed, typed } = run;
       try {
-        const values = scope.getFormValues();
+        const current = scope.getFormValues();
+        // The value committed is what is checked, even when the field has
+        // moved on since: typed quickly, a value was committed and the next
+        // one typed before the engine had the first — which was then never
+        // checked, and a refused second one went back to empty.
+        const values = changed !== null && typed !== undefined ? { ...current, [changed]: typed } : current;
         const { result } = await client.callStatic<RecalcOutcome>('forms.recalculate', {
           fields: recalcInput(model, values),
           order: model.order,
           changed,
         });
         if (closed) return;
+        // The person may be typing there again: what they type is not overwritten.
+        const movedOn = changed !== null && typed !== undefined && (scope.getFormValues()[changed] ?? '') !== typed;
         if (changed && result.rejected) {
           const previous = accepted.current[changed] ?? '';
-          await scope
-            .setFormValues({ [changed]: previous })
-            .toPromise()
-            .catch(() => false);
+          if (!movedOn)
+            await scope
+              .setFormValues({ [changed]: previous })
+              .toPromise()
+              .catch(() => false);
           dispatch({ type: 'TOAST', key: rejectionKey(result.rejected) });
           return;
         }
         const next: Record<string, string> = { ...result.values };
         if (changed && result.normalized !== null) next[changed] = result.normalized;
         const set = changedValues(next, values);
+        if (movedOn && changed) delete set[changed];
         if (Object.keys(set).length > 0)
           await scope
             .setFormValues(set)
@@ -124,31 +145,30 @@ export function FormRuntimeProvider({ children }: { children: ReactNode }) {
 
     // A committed value reaches EmbedPDF's engine a moment after its input
     // loses the focus: it is checked once it has — its value-change event —
-    // or, when nothing changed, after a short wait.
-    const commits = new Map<string, number>();
+    // or, when nothing changed, after a short wait. A second commit of the
+    // same field before then does not drop the first: it is checked at once.
+    const commits = new Map<string, { timer: number; typed?: string }>();
     const commit = (name: string) => {
-      window.clearTimeout(commits.get(name));
+      const pending = commits.get(name);
+      window.clearTimeout(pending?.timer);
       commits.delete(name);
-      void recalculate(name);
+      void recalculate({ changed: name, typed: pending?.typed });
     };
     const unsubscribe = [
       // Every value EmbedPDF writes is calculated with.
       scope.onFieldValueChange((event) => {
         const name = event.widget.field?.name;
         if (name && commits.has(name)) commit(name);
-        else void recalculate(null);
+        else void recalculate({ changed: null });
       }),
-      watchCommits((name) => {
-        window.clearTimeout(commits.get(name));
-        commits.set(
-          name,
-          window.setTimeout(() => commit(name), 400),
-        );
+      watchCommits((name, typed) => {
+        if (commits.has(name)) commit(name);
+        commits.set(name, { timer: window.setTimeout(() => commit(name), 400), typed });
       }),
     ];
     return () => {
       closed = true;
-      commits.forEach((timer) => window.clearTimeout(timer));
+      commits.forEach((pending) => window.clearTimeout(pending.timer));
       unsubscribe.forEach((off) => off());
     };
   }, [client, dispatch, embedRegistry, model, active]);
