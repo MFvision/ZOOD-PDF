@@ -535,6 +535,105 @@ mod tests {
         assert_eq!(ints[1].value.len(), 31, "s loses its leading zero");
     }
 
+    /// The whole desktop path with a real authority on the internet:
+    /// sign, send the request, finish with the answer, verify. Needs the
+    /// network, so it runs only when asked:
+    /// `cargo test --lib real_timestamp -- --ignored`.
+    #[test]
+    #[ignore = "reaches a public timestamp authority"]
+    fn a_real_timestamp_authority_stamps_a_signature() {
+        let fixtures = format!(
+            "{}/../../../tests/fixtures/signatures",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let p12 = std::fs::read(format!("{fixtures}/signer-rsa-aes.p12")).unwrap();
+        let pdf = std::fs::read(format!(
+            "{}/../../../tests/corpus/arabic/generated/chrome-cairo-mixed-invoice.pdf",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let signed = warraq_core::call_static(
+            "signatures.sign",
+            &format!(r#"{{"p12Password":"warraq-test","time":{now},"timestamp":true}}"#),
+            vec![pdf, p12],
+        )
+        .unwrap();
+        let request = signed.blobs[2].clone();
+        for url in [
+            "http://timestamp.digicert.com",
+            "https://timestamp.sectigo.com",
+        ] {
+            let answer = exchange(url, &request, Some("application/timestamp-query")).unwrap();
+            let done = warraq_core::call_static(
+                "signatures.finish",
+                "{}",
+                vec![
+                    signed.blobs[0].clone(),
+                    signed.blobs[1].clone(),
+                    request.clone(),
+                    answer,
+                ],
+            )
+            .unwrap();
+            let root = std::fs::read(format!("{fixtures}/root-rsa.cer")).unwrap();
+            let verified = warraq_core::call_static(
+                "signatures.verify",
+                &format!(r#"{{"now":{}}}"#, now + 60),
+                vec![done.blobs[0].clone(), root],
+            )
+            .unwrap();
+            eprintln!("{url}: {}", verified.json);
+            assert!(verified.json.contains(r#""status":"valid""#), "{url}");
+            assert!(
+                verified.json.contains(r#""timestamp":{"#)
+                    && verified.json.contains(r#""valid":true"#),
+                "{url}"
+            );
+
+            // Long-term validation against the authority's real responders:
+            // its certificates carry OCSP addresses that answer.
+            let plan = warraq_core::call_static(
+                "signatures.fetches",
+                &format!(r#"{{"now":{now}}}"#),
+                vec![done.blobs[0].clone()],
+            )
+            .unwrap();
+            let fetches: serde_json::Value = serde_json::from_str(&plan.json).unwrap();
+            let mut kinds = Vec::new();
+            let mut blobs = vec![done.blobs[0].clone()];
+            for (i, f) in fetches["fetches"].as_array().unwrap().iter().enumerate() {
+                let kind = f["kind"].as_str().unwrap();
+                let content_type = (kind == "ocsp").then_some("application/ocsp-request");
+                match exchange(f["url"].as_str().unwrap(), &plan.blobs[i], content_type) {
+                    Ok(answer) => {
+                        kinds.push(kind.to_string());
+                        blobs.push(answer);
+                    }
+                    Err(e) => eprintln!("{}: {e}", f["url"]),
+                }
+            }
+            let added = warraq_core::call_static(
+                "signatures.add_validation",
+                &serde_json::json!({ "now": now, "kinds": kinds }).to_string(),
+                blobs,
+            )
+            .unwrap();
+            eprintln!("{url} LTV: {} over {:?}", added.json, fetches["fetches"]);
+            let counts: serde_json::Value = serde_json::from_str(&added.json).unwrap();
+            if url.contains("digicert") {
+                assert!(
+                    counts["ocsps"].as_u64().unwrap() > 0,
+                    "{url}: {}",
+                    added.json
+                );
+            }
+        }
+    }
+
     /// A software key playing the card, through the very path a card's
     /// signature takes (`TokenSigner` minus the session): the result is a
     /// signature the verifier accepts.
