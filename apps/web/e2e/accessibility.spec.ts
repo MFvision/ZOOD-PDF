@@ -111,6 +111,7 @@ test.describe('Accessibility: checked, tagged in a reading order a person can ch
     await p.getByRole('combobox', { name: 'Role of item 1', exact: true }).selectOption('H1');
     await expect(p.getByRole('combobox', { name: 'Document language' })).toHaveValue('ar');
     await p.getByRole('button', { name: 'Tag the document' }).click();
+    await expect(page.getByText('The document is tagged.')).toBeVisible();
     await expect(documentStatus(page)).toContainText('Edited');
 
     await p.getByRole('tab', { name: 'Check' }).click();
@@ -150,6 +151,7 @@ test.describe('Accessibility: checked, tagged in a reading order a person can ch
     await expect(p.getByRole('combobox', { name: 'دور العنصر 1', exact: true })).toHaveValue('Figure');
     await p.getByRole('textbox', { name: 'نص الصورة 1', exact: true }).fill('صفحة ممسوحة من كتاب مطبوع');
     await p.getByRole('button', { name: 'وسم المستند' }).click();
+    await expect(page.getByText('تم وسم المستند.')).toBeVisible();
     await expect(page.getByRole('toolbar').getByRole('status', { name: 'حالة المستند' })).toContainText('مُعدَّل');
 
     // The picture texts, listed with the pictures cut from their pages.
@@ -159,6 +161,8 @@ test.describe('Accessibility: checked, tagged in a reading order a person can ch
     await expect(p.locator('.access-figures textarea').first()).toHaveValue('صفحة ممسوحة من كتاب مطبوع');
     await p.locator('.access-figures textarea').nth(1).fill('الصفحة الثانية من الكتاب');
     await p.getByRole('button', { name: 'احفظ النصوص' }).click();
+    // Written into the file only when the panel says so.
+    await expect(page.getByText('حُفظت نصوص الصور في الملف.')).toBeVisible();
 
     const path = await saveFile(page, 'scan-alt.pdf');
     const { result } = await callOn<{ figures: { alt: string | null }[] }>('accessibility.figures', path);
