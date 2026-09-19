@@ -1,0 +1,11 @@
+{
+  "about": "The only hosts each cloud drive's requests may reach, over https. A leading '*.' is any name under that domain (OneDrive serves downloads and uploads from per-account hosts). The web build adds OneDrive's to connect-src when a OneDrive client ID is configured (packages/ui/vite/cloudConfig.ts); the desktop app sends to no other host (apps/desktop/src-tauri/src/cloud.rs).",
+  "onedrive": [
+    "login.microsoftonline.com",
+    "graph.microsoft.com",
+    "*.1drv.com",
+    "*.sharepoint.com",
+    "*.microsoftpersonalcontent.com"
+  ],
+  "gdrive": ["oauth2.googleapis.com", "www.googleapis.com"]
+}
