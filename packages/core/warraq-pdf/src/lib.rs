@@ -2,6 +2,7 @@
 pub mod appearance;
 pub mod attachments;
 pub mod compress;
+pub mod create;
 pub mod crypt;
 pub mod document;
 pub mod fonts;
@@ -23,6 +24,7 @@ pub mod picture;
 mod rebase;
 mod show;
 pub mod text_walk;
+pub mod textless;
 pub mod tounicode;
 
 pub use appearance::{needs_shaping, AppearanceReport};

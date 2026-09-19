@@ -1,5 +1,5 @@
 //! OpenType shaping with HarfRust, metrics with skrifa. Units: 1/1000 em.
-use crate::bidi::{visual_runs, Direction};
+use crate::bidi::{visual_runs_in, Direction};
 use harfrust::{BufferClusterLevel, Feature, ShapeOptions, ShaperData, Tag, UnicodeBuffer};
 use skrifa::instance::{LocationRef, Size};
 use skrifa::raw::TableProvider;
@@ -162,8 +162,14 @@ impl<'a> Shaper<'a> {
 
     /// Shape a whole logical line: bidi runs in visual order, each shaped in its direction.
     pub fn shape_line(&self, line: &str) -> Vec<ShapedGlyph> {
+        self.shape_line_in(line, None)
+    }
+
+    /// `shape_line` for a line of a paragraph of direction `base` (`None`:
+    /// the line's own, from its first strong letter).
+    pub fn shape_line_in(&self, line: &str, base: Option<Direction>) -> Vec<ShapedGlyph> {
         let mut out = vec![];
-        for run in visual_runs(line) {
+        for run in visual_runs_in(line, base) {
             let start = run.range.start;
             out.extend(
                 self.shape_run(&line[run.range.clone()], run.direction)

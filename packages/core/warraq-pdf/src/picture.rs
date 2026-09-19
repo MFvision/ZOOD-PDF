@@ -130,6 +130,192 @@ fn decode(bytes: &[u8], format: image::ImageFormat) -> Result<image::DynamicImag
         .map_err(|e| refuse(&format!("the picture could not be read: {e}")))
 }
 
+/// What a PNG or JPEG says about itself before it is decoded: its size, the
+/// way a camera says to turn it, and the resolution it was made at.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PictureInfo {
+    /// As stored, before `orientation` is applied.
+    pub width: u32,
+    pub height: u32,
+    /// EXIF orientation, 1–8; 1 when the file says nothing (TIFF 6.0 §274).
+    pub orientation: u8,
+    /// Dots per inch the file records, when it records a believable one.
+    pub dpi: Option<f32>,
+}
+
+impl PictureInfo {
+    /// Width and height as the picture is meant to be seen.
+    pub fn shown(&self) -> (u32, u32) {
+        if self.orientation >= 5 {
+            (self.height, self.width)
+        } else {
+            (self.width, self.height)
+        }
+    }
+}
+
+/// A resolution nobody scans or photographs at is a file's placeholder.
+fn believable_dpi(dpi: f32) -> Option<f32> {
+    (dpi.is_finite() && (50.0..=2400.0).contains(&dpi)).then_some(dpi)
+}
+
+/// Orientation and resolution from an EXIF block (a TIFF header and IFD0).
+fn exif(tiff: &[u8]) -> (Option<u8>, Option<f32>) {
+    let big = match tiff.get(..2) {
+        Some(b"MM") => true,
+        Some(b"II") => false,
+        _ => return (None, None),
+    };
+    let u16_at = |at: usize| -> Option<u16> {
+        let b = tiff.get(at..at + 2)?;
+        Some(if big {
+            u16::from_be_bytes([b[0], b[1]])
+        } else {
+            u16::from_le_bytes([b[0], b[1]])
+        })
+    };
+    let u32_at = |at: usize| -> Option<u32> {
+        let b = tiff.get(at..at + 4)?;
+        Some(if big {
+            u32::from_be_bytes([b[0], b[1], b[2], b[3]])
+        } else {
+            u32::from_le_bytes([b[0], b[1], b[2], b[3]])
+        })
+    };
+    let Some(ifd) = u32_at(4).map(|o| o as usize) else {
+        return (None, None);
+    };
+    let count = u16_at(ifd).unwrap_or(0).min(512) as usize;
+    let (mut orientation, mut resolution, mut unit) = (None, None, 2u16);
+    for k in 0..count {
+        let entry = ifd + 2 + k * 12;
+        match u16_at(entry) {
+            Some(0x0112) => orientation = u16_at(entry + 8).map(|v| v as u8),
+            Some(0x011A) => {
+                resolution = u32_at(entry + 8).and_then(|at| {
+                    let (n, d) = (u32_at(at as usize)?, u32_at(at as usize + 4)?);
+                    (d > 0).then(|| n as f32 / d as f32)
+                })
+            }
+            Some(0x0128) => unit = u16_at(entry + 8).unwrap_or(2),
+            _ => {}
+        }
+    }
+    let dpi = resolution.and_then(|r| match unit {
+        2 => believable_dpi(r),
+        3 => believable_dpi(r * 2.54),
+        _ => None,
+    });
+    (orientation.filter(|o| (1..=8).contains(o)), dpi)
+}
+
+fn jpeg_info(bytes: &[u8]) -> Option<PictureInfo> {
+    let (width, height, _) = jpeg_frame(bytes)?;
+    let (mut orientation, mut dpi) = (None, None);
+    let mut i = 2;
+    // The markers before the frame: JFIF's density (APP0) and EXIF (APP1).
+    while i + 4 <= bytes.len() {
+        if bytes[i] != 0xFF {
+            i += 1;
+            continue;
+        }
+        let marker = bytes[i + 1];
+        if matches!(marker, 0xFF) {
+            i += 1;
+            continue;
+        }
+        if matches!(marker, 0xD0..=0xD9 | 0x01) {
+            i += 2;
+            continue;
+        }
+        let frame = (0xC0..=0xCF).contains(&marker) && !matches!(marker, 0xC4 | 0xC8 | 0xCC);
+        if marker == 0xDA || frame {
+            break;
+        }
+        let len = u16::from_be_bytes([bytes[i + 2], bytes[i + 3]]) as usize;
+        let body = bytes
+            .get(i + 4..(i + 2 + len).min(bytes.len()))
+            .unwrap_or(&[]);
+        if marker == 0xE0 && body.starts_with(b"JFIF\0") && body.len() >= 12 {
+            let x = u16::from_be_bytes([body[8], body[9]]) as f32;
+            dpi = dpi.or(match body[7] {
+                1 => believable_dpi(x),
+                2 => believable_dpi(x * 2.54),
+                _ => None,
+            });
+        }
+        if marker == 0xE1 && body.starts_with(b"Exif\0\0") {
+            let (o, d) = exif(&body[6..]);
+            orientation = orientation.or(o);
+            dpi = d.or(dpi);
+        }
+        i += 2 + len.max(2);
+    }
+    Some(PictureInfo {
+        width,
+        height,
+        orientation: orientation.unwrap_or(1),
+        dpi,
+    })
+}
+
+fn png_info(bytes: &[u8]) -> Option<PictureInfo> {
+    if !bytes.starts_with(b"\x89PNG\r\n\x1a\n") || bytes.get(12..16) != Some(b"IHDR") {
+        return None;
+    }
+    let be = |at: usize| -> Option<u32> {
+        let b = bytes.get(at..at + 4)?;
+        Some(u32::from_be_bytes([b[0], b[1], b[2], b[3]]))
+    };
+    let (width, height) = (be(16)?, be(20)?);
+    let mut dpi = None;
+    let mut at = 8;
+    // Chunks until the pixels start; pHYs must come before them.
+    while at + 8 <= bytes.len() {
+        let len = be(at)? as usize;
+        let kind = &bytes[at + 4..at + 8];
+        if kind == b"IDAT" || kind == b"IEND" {
+            break;
+        }
+        if kind == b"pHYs" && len == 9 && bytes.get(at + 16) == Some(&1) {
+            dpi = believable_dpi(be(at + 8)? as f32 * 0.0254);
+        }
+        at = at.checked_add(12 + len)?;
+    }
+    Some(PictureInfo {
+        width,
+        height,
+        orientation: 1,
+        dpi,
+    })
+}
+
+/// Size, orientation and resolution of a PNG or JPEG, read from its headers.
+pub fn picture_info(bytes: &[u8]) -> Option<PictureInfo> {
+    if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        jpeg_info(bytes)
+    } else {
+        png_info(bytes)
+    }
+}
+
+/// Where the unit square of a picture stored in `orientation` lands so that
+/// it is seen upright in the box `(x, y, w, h)` (PDF space, y up).
+pub fn upright_matrix(orientation: u8, x: f32, y: f32, w: f32, h: f32) -> [f32; 6] {
+    // Shown (X, Y) from stored (u, v), both in the unit square, v up.
+    let [a, b, c, d, e, f] = match orientation {
+        2 => [-1.0, 0.0, 0.0, 1.0, 1.0, 0.0],
+        3 => [-1.0, 0.0, 0.0, -1.0, 1.0, 1.0],
+        4 => [1.0, 0.0, 0.0, -1.0, 0.0, 1.0],
+        5 => [0.0, -1.0, -1.0, 0.0, 1.0, 1.0],
+        6 => [0.0, -1.0, 1.0, 0.0, 0.0, 1.0],
+        7 => [0.0, 1.0, 1.0, 0.0, 0.0, 0.0],
+        8 => [0.0, 1.0, -1.0, 0.0, 1.0, 0.0],
+        _ => [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+    };
+    [a * w, b * h, c * w, d * h, e * w + x, f * h + y]
+}
+
 /// Adds `bytes`, a PNG or JPEG, to `doc` as an image XObject.
 pub fn add_picture(doc: &mut Document, bytes: &[u8]) -> Result<Picture> {
     if bytes.len() > MAX_BYTES {

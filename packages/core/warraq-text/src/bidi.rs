@@ -34,7 +34,18 @@ pub fn base_direction(text: &str) -> Direction {
 
 /// Resolved embedding level of every character (with the W5 repair).
 pub fn char_levels(line: &str) -> Vec<(usize, char, Level)> {
-    let info = BidiInfo::new(line, None);
+    char_levels_in(line, None)
+}
+
+/// `char_levels` with the paragraph's direction given rather than taken
+/// from the line's first strong letter: a line of an Arabic paragraph that
+/// happens to begin with an English word is still laid out right to left.
+pub fn char_levels_in(line: &str, base: Option<Direction>) -> Vec<(usize, char, Level)> {
+    let level = base.map(|d| match d {
+        Direction::Ltr => Level::ltr(),
+        Direction::Rtl => Level::rtl(),
+    });
+    let info = BidiInfo::new(line, level);
     let mut out: Vec<(usize, char, Level)> = line
         .char_indices()
         .map(|(i, c)| (i, c, info.levels[i]))
@@ -59,7 +70,12 @@ pub fn char_levels(line: &str) -> Vec<(usize, char, Level)> {
 
 /// Resolve the visual runs of a single line of logical text.
 pub fn visual_runs(line: &str) -> Vec<VisualRun> {
-    let chars = char_levels(line);
+    visual_runs_in(line, None)
+}
+
+/// `visual_runs` in a paragraph of direction `base` (`None`: the line's own).
+pub fn visual_runs_in(line: &str, base: Option<Direction>) -> Vec<VisualRun> {
+    let chars = char_levels_in(line, base);
     if chars.is_empty() {
         return vec![];
     }
@@ -159,6 +175,25 @@ mod tests {
         assert_eq!(base_direction("The word كتاب means book"), Direction::Ltr);
         assert_eq!(base_direction("كلمة book بالإنجليزية"), Direction::Rtl);
         assert_eq!(base_direction("1234"), Direction::Ltr);
+    }
+
+    #[test]
+    fn a_line_takes_its_paragraphs_direction_when_it_is_given() {
+        let line = "Warraq محرر";
+        let own = visual_runs(line);
+        assert_eq!(
+            own[0].direction,
+            Direction::Ltr,
+            "first strong letter: Latin"
+        );
+        assert_eq!(&line[own[0].range.clone()], "Warraq ");
+        let rtl = visual_runs_in(line, Some(Direction::Rtl));
+        // In a right-to-left paragraph the Arabic word is on the left.
+        assert_eq!(line[rtl[0].range.clone()].trim(), "محرر");
+        assert_eq!(&line[rtl[rtl.len() - 1].range.clone()], "Warraq");
+        // A list number and its full stop: the stop on the left in Arabic.
+        let number = visual_runs_in("٢.", Some(Direction::Rtl));
+        assert_eq!(&"٢."[number[0].range.clone()], ".");
     }
 
     #[test]

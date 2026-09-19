@@ -232,6 +232,10 @@ struct GlyphDevice {
     /// what marks a face that builds dotted letters from a skeleton plus dots.
     /// A font whose marks came from its own ToUnicode or cmap is not one of these.
     skeleton_fonts: std::collections::HashSet<u32>,
+    /// The glyph last filled, and where: text drawn to be filled and stroked
+    /// (render mode 2, how many producers make type bold) reaches the device
+    /// twice, and is one glyph to a reader.
+    last_fill: Option<((usize, u32), [f64; 6])>,
 }
 
 impl GlyphDevice {
@@ -339,10 +343,25 @@ impl<'a> Device<'a> for GlyphDevice {
         transform: Affine,
         glyph_transform: Affine,
         paint: &Paint<'a>,
-        _: &GlyphDrawMode,
+        mode: &GlyphDrawMode,
     ) {
         let t = transform * glyph_transform;
         let c = t.as_coeffs();
+        let key = match glyph {
+            Glyph::Outline(g) => (
+                g.font_data()
+                    .map(|fd| (*fd.data).as_ref().as_ptr() as usize)
+                    .unwrap_or(0),
+                g.glyph_id().to_u32(),
+            ),
+            Glyph::Type3(_) => (usize::MAX, 0),
+        };
+        let filled = self.last_fill.take();
+        match mode {
+            GlyphDrawMode::Stroke(_) if filled == Some((key, c)) => return,
+            GlyphDrawMode::Fill => self.last_fill = Some((key, c)),
+            _ => {}
+        }
         // glyph outlines are in 1/1000 text space, so the transform scale is size/1000
         let size = ((c[0] * c[0] + c[1] * c[1]).sqrt() * 1000.0) as f32;
         // ToUnicode text; U+0000 (Skia writes it for glyphs without a cmap entry) means unknown
