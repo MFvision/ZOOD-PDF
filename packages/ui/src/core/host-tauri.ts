@@ -54,6 +54,15 @@ export function uiLog(message: string): void {
   invoke('ui_log', { message }).catch(() => undefined);
 }
 
+/**
+ * Opens a web or e-mail address in the system's browser or mail app, after
+ * the person confirmed it (`links/openLink.ts`). The host checks the address
+ * again: only `http`, `https` and `mailto` are opened.
+ */
+export async function openExternalUrl(url: string): Promise<void> {
+  await invoke('open_url', { url });
+}
+
 /** Header values must be ASCII, and passwords may be Arabic. */
 function toHex(text: string): string {
   return Array.from(new TextEncoder().encode(text), (b) => b.toString(16).padStart(2, '0')).join(

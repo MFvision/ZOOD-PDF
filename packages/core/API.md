@@ -58,6 +58,29 @@ Tool operations (`warraq-core/src/tools`), all answering JSON plus bytes:
 | `pages.insert_file` | `{at: number, password?: string}` + the other file (its pages go in at `at`, with their form fields) | `{pageCount, pageSizes}` |
 | `pages.extract` | `{pages: number[]}` (in that order) | `{pageCount}` + the new file |
 | `pages.combine` (static) | `{passwords?: (string\|null)[]}` + one blob per file | `{pageCount}` + the new file |
+| `marks.add` (static) | `{password?, mark, pages?: number[], replace?: bool (default true), replaceIds?: number[], fontBlob?, imageBlob?}` + the PDF, then the font and/or the PNG/JPEG at those blob indices. `mark`: `{kind: "watermark"\|"header"\|"footer"\|"pageNumber"\|"bates", text?, imageWidth?, position?: "topLeft"…"bottomRight"\|"center"\|"tiled", slots?: [start, centre, end], direction?: "auto"\|"rtl"\|"ltr", format?: "plain"\|"ofTotal"\|"pageOfEnglish"\|"pageOfArabic"\|"roman", start?, skipFirst?, prefix?, suffix?, width?, size?, color?: "#rrggbb", opacity?, rotation?, marginX?, marginY?, front?, numerals?: "western"\|"arabic", date?, fileName?, modified?}`; tokens `{page}` `{pages}` `{date}` `{file}` | `{id}` + the file with the mark, as an incremental update |
+| `marks.preview` (static) | as `marks.add`, plus `{page, scale}` | `{width, height}` + RGBA of that page with the mark |
+| `marks.list` (static) | `{password?}` + the PDF | `{marks: [{id, kind, front, spec, pages}]}` (`spec` is the `mark` it was made with) |
+| `marks.remove` (static) | `{password?, ids?: number[], pages?: number[]}` (empty: all) + the PDF | `{removed}` + the file |
+| `marks.text` (static) | `{password?, page}` + the PDF | `{marks, page}`: what the page's artifacts say, and what the page says without them |
+| `images.list` | `{page}` (also static, with `password?` + the PDF) | `{images: [{id, matrix, clip, pixels, inline, inForm, shared}]}`; `matrix` takes the unit square onto the page as shown (points, y down) |
+| `images.add` | `{page, matrix}` + the PNG/JPEG | `{id}` |
+| `images.transform` | `{page, id, matrix, clip?: [u0, v0, u1, v1]}` | `{images}` |
+| `images.replace` | `{page, id}` + the PNG/JPEG (fitted inside what showed) | `{images}` |
+| `images.delete` | `{page, id}` | `{images}` |
+| `links.list` | `{page}` (also static) | `{links: [{id, rect: [x, y, w, h], to: {uri} \| {page} \| {}}]}` |
+| `links.add` | `{page, rect, to: {uri} \| {page}}` (only `http`, `https`, `mailto`) | `{links, id}` |
+| `links.update` | `{page, id, rect?, to?}` | `{links}` |
+| `links.remove` | `{page, id}` | `{links}` |
+| `redact.find` | `{query?: string, patterns?: ("email"\|"phone"\|"nationalId"\|"iban"\|"card"\|"date")[], custom?: string, pages?: number[]}` — words Arabic-aware as `search`; `custom` is a Rust `regex` (≤ 1000 chars, compiled within size limits) | `{matches: [{page, text, before, after, kind, rects: [{x, y, width, height}]}], total}` — rects are the glyph boxes in points from the top-left of the page as stored (before `/Rotate`); at most 5000 listed |
+| `redact.inspect` (static) | `{password?}` + the file | `{findings: [{kind, count, details}], revisions, unreachable, signed, protected}`; kinds: metadata, scripts, attachments, comments, forms, hiddenLayers, bookmarks, thumbnails, privateData, links, hiddenText |
+| `redact.scrub` (static) | `{password?, remove: kind[]}` + the file | `{size}` + the file written whole without them, with no earlier revision and nothing unreferenced; `{refused: "protected"}` for a protected file |
+| `outline.list` (static) | `{password?}` + the file | `{bookmarks: [{title, depth, page \| null, open, children}]}` |
+| `attachments.list` / `.get` (static) | `{password?, key?}` + the file | `{attachments: [{key, name, description, size, mime, page \| null}]}` / `{name, size}` + the attachment's bytes (never opened) |
+| `attachments.add` / `.remove` (static) | `{password?, name, description?}` + the file + the new file / `{password?, key}` + the file | the file with it, or without it, as an update |
+| `layers.list` (static) | `{password?}` + the file | `{layers: [{id, name, visible, locked, print, export}], order: [{id \| label, children}]}` |
+| `layers.show` (static) | `{password?, visible: id[]}` + the file | a copy whose default configuration shows exactly those (locked layers keep theirs), as an update |
+| `layers.restore` (static) | `{password?, rebase?: bool}` + the file with its own visibility + the same file as it stands | the second with the first's visibility — as an update of the first when `rebase` |
 | `signatures.verify` (static) | `{password?, now}` (Unix seconds) + the PDF, then certificates the person trusts (DER) | `{signatures: [...], emptyFields, certified, dss}`: per signature its status (`valid`, `untrusted`, `modified`, `invalid`), signer, integrity, chain and trust, timestamp, revocation, changes after it, `trustCandidate` |
 | `signatures.identity` (static) | `{p12Password, now?}` + a .p12/.pfx | `{name, issuer, notAfter, validNow, key, rsa, canSign}`; `E_P12_PASSWORD` for a wrong password |
 | `signatures.sign` (static) | `{password?, p12Password, field?, page, rect?, lines, image?: {width, height}, name?, reason?, location?, contact?, time, offsetMinutes, certify?: 1\|2\|3, lockFields, pss, timestamp}` + the PDF, the .p12, a font for a visible signature, the picture's RGBA | `{done: true}` + the signed file; with `timestamp`, `{done: false}` + the prepared file, the signature and the RFC 3161 request for the host to send |

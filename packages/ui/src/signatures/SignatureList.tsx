@@ -245,7 +245,7 @@ function Validation() {
     setOutcome(null);
     setFailure(null);
     try {
-      const bytes = await services.settledFileBytes();
+      const bytes = await services.fileBytesForChange();
       if (!bytes) throw new Error('E_NOT_FOUND');
       if (what === 'ltv') {
         const done = await addValidation(services.client, bytes, services.documentPassword, trusted.map((c) => fromBase64(c.der)));

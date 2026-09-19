@@ -1,0 +1,116 @@
+/*
+ * Redact: find and redact, and remove hidden information, under the marking
+ * tools. Each is a section of the inspector with its own heading; choices
+ * are the inspector's grouped sections (fieldset/legend), commands its
+ * action list (.tool-actions).
+ */
+.redact-section {
+  padding-block-start: var(--space-6);
+  border-block-start: 0.5px solid var(--separator);
+}
+
+.redact-title {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  margin: 0;
+  font-size: var(--text-headline);
+  font-weight: 700;
+}
+
+.redact-title .lucide {
+  color: var(--accent);
+}
+
+.redact-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.redact-pattern {
+  font-family: var(--font-mono);
+}
+
+.redact-results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.redact-results-head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.redact-results-head strong {
+  flex: 1;
+}
+
+/* The matches: a grouped list, one per row, divided by hairlines. */
+.redact-list {
+  max-block-size: 320px;
+  padding: 0;
+  margin: 0;
+  overflow: auto;
+  list-style: none;
+  background: var(--grouped-background);
+  border-radius: var(--radius-10);
+  box-shadow: 0 0 0 0.5px var(--separator);
+}
+
+.redact-list li {
+  position: relative;
+}
+
+.redact-list li + li::before {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 36px 0;
+  block-size: 0.5px;
+  content: "";
+  background: var(--separator);
+}
+
+.redact-match {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: var(--space-2) var(--space-4);
+  align-items: baseline;
+  padding: var(--space-4) var(--space-5);
+}
+
+.redact-match .badge {
+  grid-column: 3;
+  justify-self: start;
+}
+
+.redact-match-page {
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.redact-match-context {
+  overflow-wrap: anywhere;
+}
+
+.redact-match-context mark {
+  color: inherit;
+  background: color-mix(in srgb, var(--red) 22%, transparent);
+  border-radius: 2px;
+}
+
+.redact-finding > span {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.redact-finding-details {
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+  overflow-wrap: anywhere;
+}

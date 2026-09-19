@@ -5340,6 +5340,7 @@ dependencies = [
  "getrandom 0.4.3",
  "js-sys",
  "log",
+ "regex",
  "serde",
  "serde_json",
  "thiserror 2.0.20",

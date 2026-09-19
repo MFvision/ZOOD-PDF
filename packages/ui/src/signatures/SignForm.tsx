@@ -129,7 +129,7 @@ export function SignForm({ onSigned }: { onSigned: () => void }) {
     try {
       // Signing is the last thing written: the file as it stands, with
       // everything done to it so far kept as updates of its own bytes.
-      const bytes = await services.settledFileBytes();
+      const bytes = await services.fileBytesForChange();
       if (!bytes) throw new Error('E_NOT_FOUND: no open file');
       const now = new Date();
       const font = await loadEditFont('amiri');

@@ -64,6 +64,22 @@
   display: none;
 }
 
+/*
+ * The sidebar can be closed from its own header: in the reading view the
+ * toolbar's sidebar button is EmbedPDF's page sidebar, so this is the way
+ * out of the bookmarks, attachments and layers panes there.
+ */
+.pane-start .pane-close {
+  display: inline-flex;
+}
+
+/* The sidebar's panes, as a segmented control under its title. */
+.sidebar-tabs {
+  display: flex;
+  flex: none;
+  margin: 0 var(--space-5) var(--space-3);
+}
+
 .pane-body {
   flex: 1;
   min-block-size: 0;

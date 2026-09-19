@@ -623,7 +623,7 @@ impl PdfDocument {
                 (r, None)
             }
             (_, Some(shown)) => {
-                let (r, m) = self.user_rect(page, shown)?;
+                let (r, m) = self.signature_rect(page, shown)?;
                 (r, Some(m))
             }
             _ => ([0.0; 4], None),
@@ -720,7 +720,7 @@ impl PdfDocument {
     /// A rectangle on the page as shown (points from the top-left, after
     /// `/Rotate`), in the page's own space; and the matrix that turns an
     /// appearance drawn upright to match the page's rotation.
-    fn user_rect(&self, page: usize, shown: [f32; 4]) -> Result<([f32; 4], [f32; 6])> {
+    fn signature_rect(&self, page: usize, shown: [f32; 4]) -> Result<([f32; 4], [f32; 6])> {
         let ([x0, y0, x1, y1], rotate) = self.page_frame(page)?;
         let map = |dx: f32, dy: f32| -> (f32, f32) {
             match rotate {

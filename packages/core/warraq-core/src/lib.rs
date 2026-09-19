@@ -12,6 +12,8 @@ pub mod tools;
 pub mod wasm;
 
 pub use tools::{call_static, Reply};
+/// Whether an address is one a link may open (`http`, `https`, `mailto`).
+pub use warraq_pdf::allowed_uri;
 
 pub fn version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
@@ -107,7 +109,47 @@ impl Document {
         if let Some(l) = self.lines_cache.borrow().get(&index) {
             return Ok(l.clone());
         }
+        let lines = self.read_lines(index, false)?;
+        self.lines_cache.borrow_mut().insert(index, lines.clone());
+        Ok(lines)
+    }
+
+    /// The text of the page's artifacts only — its page marks, running
+    /// heads, page numbers — which `text_lines` leaves out.
+    pub fn artifact_lines(&self, index: usize) -> Result<Vec<TextLine>, CoreError> {
+        self.read_lines(index, true)
+    }
+
+    /// The page's lines, read from either what it says or its artifacts.
+    ///
+    /// What is marked `/Artifact` (PDF 2.0 §14.8.2.2) is not part of the
+    /// page's text: a watermark across the middle, a header, a page number.
+    /// Mixed in, a diagonal DRAFT splits every line it crosses and a running
+    /// head reads as the first sentence of each page, so the reader — and
+    /// with it search, Export, Compare and Edit — keeps them apart.
+    fn read_lines(&self, index: usize, artifacts: bool) -> Result<Vec<TextLine>, CoreError> {
         let (glyphs, marked) = self.render.marked_glyphs(index)?;
+        let artifact: Vec<bool> = marked.tags.iter().map(|t| t == b"Artifact").collect();
+        let (glyphs, inside): (Vec<_>, Vec<_>) = glyphs
+            .into_iter()
+            .zip(
+                marked
+                    .inside
+                    .iter()
+                    .cloned()
+                    .chain(std::iter::repeat(vec![])),
+            )
+            .filter(|(_, seqs)| {
+                let is = seqs
+                    .iter()
+                    .any(|k| artifact.get(*k as usize).copied().unwrap_or(false));
+                is == artifacts
+            })
+            .unzip();
+        let marked = warraq_render::MarkedGlyphs {
+            tags: marked.tags,
+            inside,
+        };
         // Glyphs inside `/ActualText` read as that text — when the document's
         // own list of the page's sequences matches, tag for tag, the one the
         // renderer met; otherwise as they are.
@@ -122,9 +164,7 @@ impl Document {
             }
             _ => glyphs,
         };
-        let lines = reconstruct_lines(&glyphs);
-        self.lines_cache.borrow_mut().insert(index, lines.clone());
-        Ok(lines)
+        Ok(reconstruct_lines(&glyphs))
     }
 
     pub fn extract_text(&self, index: usize) -> Result<String, CoreError> {
