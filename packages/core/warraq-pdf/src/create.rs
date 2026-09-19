@@ -45,6 +45,8 @@ const CELL_PAD: (f32, f32) = (4.0, 3.0);
 const RULE_GREY: f32 = 0.7;
 const BORDER_GREY: f32 = 0.55;
 const HEADER_SHADE: [f32; 3] = [0.93, 0.93, 0.94];
+/// The app's name, as a made file's /Producer and /Creator say it.
+pub const APP_NAME: &str = "محرر PDF";
 /// In a header or footer, where the page's number goes.
 pub const PAGE_NUMBER: char = '\u{E000}';
 /// In a header or footer, where the number of pages goes.
@@ -1693,7 +1695,7 @@ fn finish(mut doc: Document, pages: Vec<PageOut>, info: &FileInfo) -> Result<Vec
     }
     let catalog = doc.add_object(catalog);
     let mut about =
-        dictionary! { "Producer" => text_string("Warraq"), "Creator" => text_string("Warraq") };
+        dictionary! { "Producer" => text_string(APP_NAME), "Creator" => text_string(APP_NAME) };
     if let Some(title) = info.title.filter(|t| !t.trim().is_empty()) {
         about.set("Title", text_string(title));
     }

@@ -225,7 +225,10 @@ fn an_arabic_document_reads_back_as_typed_in_reading_order() {
         "the number reads before the item"
     );
 
-    // What the file says about itself.
+    // What the file says about itself: made by محرر PDF, in Arabic.
+    let info = Document::open(pdf.clone(), None).unwrap().metadata();
+    assert_eq!(info.producer.as_deref(), Some("محرر PDF"));
+    assert_eq!(info.title.as_deref(), Some("تقرير"));
     let raw = String::from_utf8_lossy(&pdf);
     assert!(raw.contains("/Lang"));
     // PDFium reads every line of an R2L file backwards; it has none.
@@ -736,11 +739,17 @@ fn a_fax_tiff_from_a_real_encoder_reads_black_on_white() {
     let pdf = &reply.blobs[0];
     let doc = Document::open(pdf.clone(), None).unwrap();
     let (w, h) = doc.page_size(0).unwrap();
-    assert!((w - 144.0).abs() < 0.5 && (h - 72.0).abs() < 0.5, "{w} x {h}");
+    assert!(
+        (w - 144.0).abs() < 0.5 && (h - 72.0).abs() < 0.5,
+        "{w} x {h}"
+    );
     // Drawn at four times its size: 576 x 288 pixels, the frame 5.8 wide.
     let bitmap = doc.render_page(0, 4.0).unwrap();
     let at = |fx: f32, fy: f32| {
-        let (x, y) = ((bitmap.width as f32 * fx) as u32, (bitmap.height as f32 * fy) as u32);
+        let (x, y) = (
+            (bitmap.width as f32 * fx) as u32,
+            (bitmap.height as f32 * fy) as u32,
+        );
         bitmap.rgba[((y * bitmap.width + x) * 4) as usize]
     };
     assert!(at(0.75, 0.5) > 200, "inside the frame is white");

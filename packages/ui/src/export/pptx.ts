@@ -205,8 +205,8 @@ function themeXml(): string {
   const fill = '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>';
   const line = (w: number) => `<a:ln w="${w}"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln>`;
   return (
-    `${DECLARATION}<a:theme xmlns:a="${A}" name="Warraq"><a:themeElements>` +
-    '<a:clrScheme name="Warraq">' +
+    `${DECLARATION}<a:theme xmlns:a="${A}" name="محرر PDF"><a:themeElements>` +
+    '<a:clrScheme name="محرر PDF">' +
     '<a:dk1><a:srgbClr val="000000"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1>' +
     colour('dk2', '1F2937') +
     colour('lt2', 'F3F4F6') +
@@ -219,9 +219,9 @@ function themeXml(): string {
     colour('hlink', '007AFF') +
     colour('folHlink', '5856D6') +
     '</a:clrScheme>' +
-    `<a:fontScheme name="Warraq"><a:majorFont><a:latin typeface="${font}"/><a:ea typeface=""/><a:cs typeface="${font}"/></a:majorFont>` +
+    `<a:fontScheme name="محرر PDF"><a:majorFont><a:latin typeface="${font}"/><a:ea typeface=""/><a:cs typeface="${font}"/></a:majorFont>` +
     `<a:minorFont><a:latin typeface="${font}"/><a:ea typeface=""/><a:cs typeface="${font}"/></a:minorFont></a:fontScheme>` +
-    '<a:fmtScheme name="Warraq">' +
+    '<a:fmtScheme name="محرر PDF">' +
     `<a:fillStyleLst>${fill}${fill}${fill}</a:fillStyleLst>` +
     `<a:lnStyleLst>${line(6350)}${line(12700)}${line(19050)}</a:lnStyleLst>` +
     '<a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst>' +
