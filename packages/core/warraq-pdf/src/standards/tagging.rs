@@ -102,13 +102,13 @@ enum Owner {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub(crate) enum Script {
+pub enum Script {
     Arabic,
     Latin,
 }
 
 impl Script {
-    fn lang(self) -> &'static str {
+    pub fn lang(self) -> &'static str {
         match self {
             Script::Arabic => "ar",
             Script::Latin => "en",
@@ -118,7 +118,7 @@ impl Script {
 
 /// The script most of `text`'s letters are in; `None` for digits, marks
 /// and punctuation alone.
-pub(crate) fn script_of(text: &str) -> Option<Script> {
+pub fn script_of(text: &str) -> Option<Script> {
     let (mut arabic, mut latin) = (0, 0);
     for c in text.chars() {
         match c as u32 {
@@ -218,9 +218,16 @@ struct FontText {
     two: bool,
 }
 
+/// A piece of the marked content: one of the page's own operators, by
+/// index, or one Warraq adds.
+enum Piece {
+    Orig(usize),
+    New(Operation),
+}
+
 /// One page's content, marked.
 struct Marked {
-    ops: Vec<Operation>,
+    pieces: Vec<Piece>,
     /// Each MCID's owner, in order.
     mcids: Vec<Owner>,
     artifacts: usize,
@@ -234,7 +241,7 @@ struct Marker<'a> {
     to_shown: Matrix,
     resources: Option<&'a Dictionary>,
     fonts: HashMap<Vec<u8>, Option<FontText>>,
-    out: Vec<Operation>,
+    out: Vec<Piece>,
     mcids: Vec<Owner>,
     /// The sequence Warraq opened, and how deep in the file's own ones.
     open: Option<(Owner, usize)>,
@@ -249,7 +256,7 @@ struct Marker<'a> {
 impl<'a> Marker<'a> {
     fn close(&mut self) {
         if self.open.take().is_some() {
-            self.out.push(Operation::new("EMC", vec![]));
+            self.out.push(Piece::New(Operation::new("EMC", vec![])));
         }
     }
 
@@ -308,7 +315,7 @@ impl<'a> Marker<'a> {
                 )
             }
         };
-        self.out.push(op);
+        self.out.push(Piece::New(op));
         self.open = Some((owner, depth));
     }
 
@@ -432,13 +439,43 @@ impl<'a> Marker<'a> {
         script_of(&text)
     }
 
-    fn walk(&mut self, ops: Vec<Operation>) {
+    /// Where the text a form draws is read: the block most of its runs fall
+    /// in, or an artifact when all of them fall in artifacts. `None` when
+    /// it draws no text.
+    fn form_owner(&mut self, form: &Stream, ctm: Matrix) -> Option<Owner> {
+        let content = form
+            .decompressed_content_with_limit(16 << 20)
+            .ok()
+            .or_else(|| (!form.dict.has(b"Filter")).then(|| form.content.clone()))?;
+        let ops = Content::decode(&content).ok()?.operations;
+        let runs = crate::text_walk::locate_show_runs(&ops);
+        if runs.is_empty() {
+            return None;
+        }
+        let to_shown = form_matrix(form).then(ctm).then(self.to_shown);
+        let mut counts: Vec<(Owner, usize)> = vec![];
+        for run in runs.iter().take(2000) {
+            let (x, y) = to_shown.apply(run.x, run.y);
+            let owner = match self.place((x, y - run.size * 0.35), true) {
+                Some(Owner::Cell(b, _, _) | Owner::Span(b, ..)) => Owner::Block(b),
+                Some(o) => o,
+                None => Owner::Artifact { pagination: false },
+            };
+            match counts.iter_mut().find(|(o, _)| *o == owner) {
+                Some((_, n)) => *n += 1,
+                None => counts.push((owner, 1)),
+            }
+        }
+        counts.into_iter().max_by_key(|(_, n)| *n).map(|(o, _)| o)
+    }
+
+    fn walk(&mut self, ops: &[Operation]) {
         let mut ctm = Matrix::IDENTITY;
         let mut stack: Vec<Matrix> = vec![];
         let (mut tm, mut tlm) = (Matrix::IDENTITY, Matrix::IDENTITY);
         let (mut leading, mut size, mut rise) = (0.0f32, 0.0f32, 0.0f32);
         let mut font: Vec<u8> = vec![];
-        let mut path: Vec<Operation> = vec![];
+        let mut path: Vec<usize> = vec![];
         let mut path_box: Option<[f32; 4]> = None;
         let extend = |b: &mut Option<[f32; 4]>, p: (f32, f32)| {
             *b = Some(match b {
@@ -446,8 +483,35 @@ impl<'a> Marker<'a> {
                 Some(r) => [r[0].min(p.0), r[1].min(p.1), r[2].max(p.0), r[3].max(p.1)],
             });
         };
-        for op in ops {
-            let a = op.operands.clone();
+        for (index, op) in ops.iter().enumerate() {
+            let a = &op.operands;
+            // A path the file leaves unpainted, or paints after other
+            // operators, keeps its place: nothing is ever reordered.
+            let in_path = matches!(
+                op.operator.as_str(),
+                "m" | "l"
+                    | "c"
+                    | "v"
+                    | "y"
+                    | "re"
+                    | "h"
+                    | "W"
+                    | "W*"
+                    | "S"
+                    | "s"
+                    | "f"
+                    | "F"
+                    | "f*"
+                    | "B"
+                    | "B*"
+                    | "b"
+                    | "b*"
+                    | "n"
+            );
+            if !in_path && !path.is_empty() {
+                self.out.extend(path.drain(..).map(Piece::Orig));
+                path_box = None;
+            }
             match op.operator.as_str() {
                 "BMC" | "BDC" => {
                     self.close();
@@ -464,7 +528,7 @@ impl<'a> Marker<'a> {
                     let old = props.is_some_and(|p| p.has(b"MCID")) && tag != b"Artifact";
                     self.existing.push((!old, tag == b"Artifact"));
                     if !old {
-                        self.out.push(op);
+                        self.out.push(Piece::Orig(index));
                     }
                 }
                 // The end of one of the file's own sequences: Warraq's, opened
@@ -473,48 +537,48 @@ impl<'a> Marker<'a> {
                     if let Some((kept, _)) = self.existing.pop() {
                         self.close();
                         if kept {
-                            self.out.push(op);
+                            self.out.push(Piece::Orig(index));
                         }
                     }
                 }
                 "q" => {
                     self.close();
                     stack.push(ctm);
-                    self.out.push(op);
+                    self.out.push(Piece::Orig(index));
                 }
                 "Q" => {
                     self.close();
                     ctm = stack.pop().unwrap_or(Matrix::IDENTITY);
-                    self.out.push(op);
+                    self.out.push(Piece::Orig(index));
                 }
                 "cm" if a.len() == 6 => {
-                    ctm = matrix(&a).then(ctm);
-                    self.out.push(op);
+                    ctm = matrix(a).then(ctm);
+                    self.out.push(Piece::Orig(index));
                 }
                 "BT" => {
                     self.close();
                     tm = Matrix::IDENTITY;
                     tlm = tm;
-                    self.out.push(op);
+                    self.out.push(Piece::Orig(index));
                 }
                 "ET" => {
                     self.close();
-                    self.out.push(op);
+                    self.out.push(Piece::Orig(index));
                 }
                 "Tf" if a.len() >= 2 => {
                     if let Object::Name(n) = &a[0] {
                         font = n.clone();
                     }
                     size = num(&a[1]);
-                    self.out.push(op);
+                    self.out.push(Piece::Orig(index));
                 }
                 "TL" if !a.is_empty() => {
                     leading = num(&a[0]);
-                    self.out.push(op);
+                    self.out.push(Piece::Orig(index));
                 }
                 "Ts" if !a.is_empty() => {
                     rise = num(&a[0]);
-                    self.out.push(op);
+                    self.out.push(Piece::Orig(index));
                 }
                 "Td" | "TD" if a.len() >= 2 => {
                     if op.operator == "TD" {
@@ -522,17 +586,17 @@ impl<'a> Marker<'a> {
                     }
                     tlm = Matrix([1.0, 0.0, 0.0, 1.0, num(&a[0]), num(&a[1])]).then(tlm);
                     tm = tlm;
-                    self.out.push(op);
+                    self.out.push(Piece::Orig(index));
                 }
                 "Tm" if a.len() == 6 => {
-                    tlm = matrix(&a);
+                    tlm = matrix(a);
                     tm = tlm;
-                    self.out.push(op);
+                    self.out.push(Piece::Orig(index));
                 }
                 "T*" => {
                     tlm = Matrix([1.0, 0.0, 0.0, 1.0, 0.0, -leading]).then(tlm);
                     tm = tlm;
-                    self.out.push(op);
+                    self.out.push(Piece::Orig(index));
                 }
                 "Tj" | "TJ" | "'" | "\"" => {
                     if matches!(op.operator.as_str(), "'" | "\"") {
@@ -545,13 +609,13 @@ impl<'a> Marker<'a> {
                     let p = self.to_shown.apply(x, y);
                     let owner = match self.place(p, true) {
                         Some(Owner::Block(b)) => {
-                            match (self.block_script[b], self.run_script(&font, &op)) {
+                            match (self.block_script[b], self.run_script(&font, op)) {
                                 (Some(mine), Some(its)) if mine != its => Owner::Span(b, None, its),
                                 _ => Owner::Block(b),
                             }
                         }
                         Some(Owner::Cell(b, r, c)) => {
-                            match (self.block_script[b], self.run_script(&font, &op)) {
+                            match (self.block_script[b], self.run_script(&font, op)) {
                                 (Some(mine), Some(its)) if mine != its => {
                                     Owner::Span(b, Some((r, c)), its)
                                 }
@@ -562,14 +626,14 @@ impl<'a> Marker<'a> {
                         None => Owner::Artifact { pagination: false },
                     };
                     self.own(owner);
-                    self.out.push(op);
+                    self.out.push(Piece::Orig(index));
                 }
                 "m" | "l" if a.len() >= 2 => {
                     extend(
                         &mut path_box,
                         self.to_shown.apply_pair(ctm.apply(num(&a[0]), num(&a[1]))),
                     );
-                    path.push(op);
+                    path.push(index);
                 }
                 "c" | "v" | "y" => {
                     for pair in a.chunks(2) {
@@ -580,17 +644,17 @@ impl<'a> Marker<'a> {
                             );
                         }
                     }
-                    path.push(op);
+                    path.push(index);
                 }
                 "re" if a.len() == 4 => {
                     let (x, y, w, h) = (num(&a[0]), num(&a[1]), num(&a[2]), num(&a[3]));
                     let r = bbox_of(ctm.then(self.to_shown), [x, y, x + w, y + h]);
                     extend(&mut path_box, (r[0], r[1]));
                     extend(&mut path_box, (r[2], r[3]));
-                    path.push(op);
+                    path.push(index);
                 }
-                "h" => path.push(op),
-                "W" | "W*" => path.push(op),
+                "h" => path.push(index),
+                "W" | "W*" => path.push(index),
                 "S" | "s" | "f" | "F" | "f*" | "B" | "B*" | "b" | "b*" | "n" => {
                     let paints = op.operator != "n";
                     if paints {
@@ -606,24 +670,34 @@ impl<'a> Marker<'a> {
                         self.own(owner);
                     }
                     // A clipping path (`W n`) paints nothing and stays where it is.
-                    self.out.append(&mut path);
-                    self.out.push(op);
+                    self.out.extend(path.drain(..).map(Piece::Orig));
+                    self.out.push(Piece::Orig(index));
                     path_box = None;
                 }
                 "Do" | "BI" | "sh" => {
-                    let r = if op.operator == "Do" {
-                        let form = a
-                            .first()
-                            .and_then(|n| n.as_name().ok())
-                            .and_then(|n| {
-                                self.resources
-                                    .and_then(|r| dict_of(self.doc, r.get(b"XObject").ok()))
-                                    .and_then(|x| x.get(n).ok())
-                            })
-                            .map(|o| resolve(self.doc, o))
-                            .and_then(|o| o.as_stream().ok());
-                        match form {
-                            Some(s) if name(s.dict.get(b"Subtype").ok()) == Some(b"Form") => {
+                    let form = (op.operator == "Do")
+                        .then(|| {
+                            a.first()
+                                .and_then(|n| n.as_name().ok())
+                                .and_then(|n| {
+                                    self.resources
+                                        .and_then(|r| dict_of(self.doc, r.get(b"XObject").ok()))
+                                        .and_then(|x| x.get(n).ok())
+                                })
+                                .map(|o| resolve(self.doc, o))
+                                .and_then(|o| o.as_stream().ok())
+                        })
+                        .flatten();
+                    let is_form =
+                        form.is_some_and(|s| name(s.dict.get(b"Subtype").ok()) == Some(b"Form"));
+                    let owner = match form {
+                        // A form that draws text belongs where its text is read.
+                        Some(s) if is_form => self.form_owner(s, ctm),
+                        _ => None,
+                    }
+                    .or_else(|| {
+                        let r = match form {
+                            Some(s) if is_form => {
                                 let bbox: Vec<f32> = s
                                     .dict
                                     .get(b"BBox")
@@ -632,69 +706,185 @@ impl<'a> Marker<'a> {
                                     .and_then(|b| b.as_array().ok())
                                     .map(|b| b.iter().map(num).collect())
                                     .unwrap_or_default();
-                                let m = s
-                                    .dict
-                                    .get(b"Matrix")
-                                    .ok()
-                                    .and_then(|m| m.as_array().ok())
-                                    .filter(|m| m.len() == 6)
-                                    .map(|m| matrix(m))
-                                    .unwrap_or(Matrix::IDENTITY);
                                 (bbox.len() == 4).then(|| {
                                     bbox_of(
-                                        m.then(ctm).then(self.to_shown),
+                                        form_matrix(s).then(ctm).then(self.to_shown),
                                         [bbox[0], bbox[1], bbox[2], bbox[3]],
                                     )
                                 })
                             }
+                            _ if op.operator == "sh" => None,
                             _ => Some(bbox_of(ctm.then(self.to_shown), [0.0, 0.0, 1.0, 1.0])),
-                        }
-                    } else if op.operator == "BI" {
-                        Some(bbox_of(ctm.then(self.to_shown), [0.0, 0.0, 1.0, 1.0]))
-                    } else {
-                        None
-                    };
-                    let owner = r
-                        .and_then(|r| {
-                            let c = ((r[0] + r[2]) / 2.0, (r[1] + r[3]) / 2.0);
-                            let figure = self
-                                .blocks
-                                .iter()
-                                .position(|b| b.role == "Figure" && inside(c, b.rect, 2.0));
-                            // A form that holds text is read with the block it is in.
-                            figure.map(Owner::Block).or_else(|| {
-                                let is_form = op.operator == "Do";
-                                if is_form {
-                                    self.blocks
-                                        .iter()
-                                        .position(|b| {
-                                            b.role != "Artifact"
-                                                && b.role != "Figure"
-                                                && inside(c, b.rect, 1.0)
-                                        })
-                                        .map(Owner::Block)
-                                } else {
-                                    None
-                                }
-                            })
-                        })
-                        .unwrap_or(Owner::Artifact { pagination: false });
+                        }?;
+                        let c = ((r[0] + r[2]) / 2.0, (r[1] + r[3]) / 2.0);
+                        self.blocks
+                            .iter()
+                            .position(|b| b.role == "Figure" && inside(c, b.rect, 2.0))
+                            .map(Owner::Block)
+                    })
+                    .unwrap_or(Owner::Artifact { pagination: false });
                     self.own(owner);
-                    self.out.push(op);
+                    self.out.push(Piece::Orig(index));
                 }
-                _ => {
-                    // Path construction continues through these too.
-                    if path.is_empty() {
-                        self.out.push(op);
-                    } else {
-                        path.push(op);
+                _ => self.out.push(Piece::Orig(index)),
+            }
+        }
+        self.out.extend(path.drain(..).map(Piece::Orig));
+        self.close();
+    }
+}
+
+/// Where each operator of a content stream is, with its operands:
+/// `(start, end, operator)`, as byte offsets. An inline image (`BI … ID …
+/// EI`) is one operator, as lopdf reads it. `None` when the stream does not
+/// lex (an unterminated string, image or dictionary).
+fn op_ranges(bytes: &[u8]) -> Option<Vec<(usize, usize, String)>> {
+    let white = |b: u8| matches!(b, 0 | 9 | 10 | 12 | 13 | 32);
+    let delimiter = |b: u8| {
+        matches!(
+            b,
+            b'(' | b')' | b'<' | b'>' | b'[' | b']' | b'{' | b'}' | b'/' | b'%'
+        )
+    };
+    let mut out = vec![];
+    let mut i = 0;
+    let mut start: Option<usize> = None;
+    let n = bytes.len();
+    while i < n {
+        let b = bytes[i];
+        if white(b) {
+            i += 1;
+            continue;
+        }
+        if b == b'%' {
+            while i < n && bytes[i] != b'\n' && bytes[i] != b'\r' {
+                i += 1;
+            }
+            continue;
+        }
+        let token_start = i;
+        match b {
+            b'(' => {
+                let mut depth = 0usize;
+                loop {
+                    let c = *bytes.get(i)?;
+                    match c {
+                        b'\\' => i += 1,
+                        b'(' => depth += 1,
+                        b')' => {
+                            depth -= 1;
+                            if depth == 0 {
+                                i += 1;
+                                break;
+                            }
+                        }
+                        _ => {}
                     }
+                    i += 1;
+                }
+            }
+            b'<' if bytes.get(i + 1) == Some(&b'<') => i += 2,
+            b'>' if bytes.get(i + 1) == Some(&b'>') => i += 2,
+            b'<' => {
+                i += bytes[i..].iter().position(|c| *c == b'>')? + 1;
+            }
+            b'[' | b']' | b'{' | b'}' => i += 1,
+            b'/' => {
+                i += 1;
+                while i < n && !white(bytes[i]) && !delimiter(bytes[i]) {
+                    i += 1;
+                }
+            }
+            _ => {
+                while i < n && !white(bytes[i]) && !delimiter(bytes[i]) {
+                    i += 1;
+                }
+                if i == token_start {
+                    // A lone `)` or `>`: not a content stream this lexer knows.
+                    return None;
+                }
+                let word = &bytes[token_start..i];
+                let numeric = word
+                    .iter()
+                    .all(|c| c.is_ascii_digit() || matches!(c, b'.' | b'-' | b'+'));
+                if !numeric && !matches!(word, b"true" | b"false" | b"null") {
+                    let from = start.take().unwrap_or(token_start);
+                    if word == b"BI" {
+                        // The image's dictionary, `ID`, its bytes, `EI`.
+                        let id = bytes[i..]
+                            .windows(2)
+                            .enumerate()
+                            .find(|(k, w)| {
+                                *w == b"ID"
+                                    && white(bytes[i + k - 1])
+                                    && bytes.get(i + k + 2).is_none_or(|c| white(*c))
+                            })?
+                            .0;
+                        let data = i + id + 3;
+                        let ei = bytes[data..]
+                            .windows(2)
+                            .enumerate()
+                            .find(|(k, w)| {
+                                *w == b"EI"
+                                    && (data + k == 0 || white(bytes[data + k - 1]))
+                                    && bytes
+                                        .get(data + k + 2)
+                                        .is_none_or(|c| white(*c) || delimiter(*c))
+                            })?
+                            .0;
+                        i = data + ei + 2;
+                        out.push((from, i, "BI".to_string()));
+                    } else {
+                        out.push((from, i, String::from_utf8_lossy(word).into_owned()));
+                    }
+                    continue;
                 }
             }
         }
-        self.out.append(&mut path);
-        self.close();
+        start.get_or_insert(token_start);
     }
+    Some(out)
+}
+
+/// The page's content with Warraq's marks between its own operators: the
+/// file's bytes for each operator as they were — numbers, strings and
+/// images exactly as written — so nothing can be drawn differently. When
+/// the stream cannot be lexed as lopdf read it, the operators are written
+/// anew instead.
+fn assemble(content: &[u8], ops: &[Operation], pieces: &[Piece]) -> Result<Vec<u8>> {
+    let encode = |op: &Operation| {
+        Content {
+            operations: vec![op.clone()],
+        }
+        .encode()
+        .map_err(|e| Error::Edit(e.to_string()))
+    };
+    let ranges = op_ranges(content).filter(|r| {
+        r.len() == ops.len() && r.iter().zip(ops).all(|(range, op)| range.2 == op.operator)
+    });
+    let mut out = Vec::with_capacity(content.len() + pieces.len() * 24);
+    for piece in pieces {
+        match (piece, &ranges) {
+            (Piece::Orig(i), Some(r)) => out.extend_from_slice(&content[r[*i].0..r[*i].1]),
+            (Piece::Orig(i), None) => out.extend(encode(&ops[*i])?),
+            (Piece::New(op), _) => out.extend(encode(op)?),
+        }
+        if !out.ends_with(b"\n") {
+            out.push(b'\n');
+        }
+    }
+    Ok(out)
+}
+
+/// A form XObject's `/Matrix`.
+fn form_matrix(form: &Stream) -> Matrix {
+    form.dict
+        .get(b"Matrix")
+        .ok()
+        .and_then(|m| m.as_array().ok())
+        .filter(|m| m.len() == 6)
+        .map(|m| matrix(m))
+        .unwrap_or(Matrix::IDENTITY)
 }
 
 trait ApplyPair {
@@ -755,9 +945,87 @@ impl PdfDocument {
             .map_err(|_| Error::Parse("no catalog".into()))
     }
 
+    /// Forms with a structure of their own (`/StructParents`) lose it with
+    /// the old tree: their MCIDs are taken out, everything else they mark
+    /// stays, and the page's sequence around the form tags what it draws.
+    fn strip_form_structure(&mut self) {
+        let forms: Vec<ObjectId> = self
+            .doc
+            .objects
+            .iter()
+            .filter(|(_, o)| {
+                o.as_stream().is_ok_and(|s| {
+                    name(s.dict.get(b"Subtype").ok()) == Some(b"Form")
+                        && (s.dict.has(b"StructParents") || s.dict.has(b"StructParent"))
+                })
+            })
+            .map(|(id, _)| *id)
+            .collect();
+        for id in forms {
+            let Some(stream) = self
+                .doc
+                .get_object(id)
+                .ok()
+                .and_then(|o| o.as_stream().ok())
+            else {
+                continue;
+            };
+            let content = if stream.dict.has(b"Filter") {
+                stream.decompressed_content_with_limit(16 << 20).ok()
+            } else {
+                Some(stream.content.clone())
+            };
+            let resources = dict_of(&self.doc, stream.dict.get(b"Resources").ok());
+            let rewritten = content.and_then(|content| {
+                let ops = Content::decode(&content).ok()?.operations;
+                let mut stack: Vec<bool> = vec![];
+                let mut pieces = Vec::with_capacity(ops.len());
+                for (i, op) in ops.iter().enumerate() {
+                    match op.operator.as_str() {
+                        "BDC" | "BMC" => {
+                            let props = match op.operands.get(1) {
+                                Some(Object::Name(n)) => resources
+                                    .and_then(|r| dict_of(&self.doc, r.get(b"Properties").ok()))
+                                    .and_then(|p| dict_of(&self.doc, p.get(n).ok())),
+                                Some(other) => dict_of(&self.doc, Some(other)),
+                                None => None,
+                            };
+                            let tag = op.operands.first().and_then(|t| t.as_name().ok());
+                            let old =
+                                props.is_some_and(|p| p.has(b"MCID")) && tag != Some(b"Artifact");
+                            stack.push(!old);
+                            if !old {
+                                pieces.push(Piece::Orig(i));
+                            }
+                        }
+                        "EMC" => {
+                            if stack.pop().unwrap_or(true) {
+                                pieces.push(Piece::Orig(i));
+                            }
+                        }
+                        _ => pieces.push(Piece::Orig(i)),
+                    }
+                }
+                assemble(&content, &ops, &pieces).ok()
+            });
+            if let Ok(Object::Stream(s)) = self.doc.get_object_mut(id) {
+                s.dict.remove(b"StructParents");
+                s.dict.remove(b"StructParent");
+                if let Some(bytes) = rewritten {
+                    s.dict.remove(b"Filter");
+                    s.dict.remove(b"DecodeParms");
+                    s.set_plain_content(bytes);
+                    let _ = s.compress();
+                }
+            }
+            self.mark_touched(id);
+        }
+    }
+
     /// Writes the structure the plan describes; see the module documentation.
     pub fn apply_tags(&mut self, plan: &TagPlan) -> Result<TagReport> {
         let mut report = TagReport::default();
+        self.strip_form_structure();
         let root_lang = plan.lang.clone();
         let root_script = script_of_lang(&root_lang);
         let mut elements: Vec<Element> = vec![Element::new("Document", None)];
@@ -806,9 +1074,9 @@ impl PdfDocument {
                     nearest: 0,
                     block_script,
                 };
-                marker.walk(ops);
+                marker.walk(&ops);
                 Marked {
-                    ops: marker.out,
+                    pieces: marker.out,
                     mcids: marker.mcids,
                     artifacts: marker.artifacts,
                     nearest: marker.nearest,
@@ -817,11 +1085,7 @@ impl PdfDocument {
             report.sequences += marked.mcids.len();
             report.artifacts += marked.artifacts;
             report.nearest += marked.nearest;
-            let encoded = Content {
-                operations: marked.ops,
-            }
-            .encode()
-            .map_err(|e| Error::Edit(e.to_string()))?;
+            let encoded = assemble(&content, &ops, &marked.pieces)?;
             let mut stream = Stream::new(Dictionary::new(), encoded);
             let _ = stream.compress();
             let contents = self.doc.add_object(stream);
@@ -1281,12 +1545,12 @@ impl PdfDocument {
         set
     }
 
-    /// Bookmarks from the headings of the structure tree, for a long
-    /// document without any. `0` when it has bookmarks or no headings.
-    pub fn bookmarks_from_headings(&mut self) -> usize {
-        let catalog_id = match self.root_id() {
-            Ok(id) => id,
-            Err(_) => return 0,
+    /// Bookmarks for a long document without any: each heading `(page,
+    /// level, title)`, level 1 at the top and level 2 under the one before
+    /// it. `0` when the file has bookmarks already.
+    pub fn add_bookmarks(&mut self, headings: &[(usize, u8, String)]) -> usize {
+        let Ok(catalog_id) = self.root_id() else {
+            return 0;
         };
         if self
             .doc
@@ -1296,29 +1560,20 @@ impl PdfDocument {
         {
             return 0;
         }
-        let headings: Vec<(usize, u8, String)> = self
-            .structure_leaves()
-            .into_iter()
-            .filter_map(|l| {
-                let level = l
-                    .role
-                    .strip_prefix('H')
-                    .and_then(|n| n.parse::<u8>().ok())?;
-                Some((l.page, level.min(2), l.text.clone().unwrap_or_default()))
-            })
-            .filter(|(_, _, t)| !t.trim().is_empty())
-            .take(500)
+        let headings: Vec<&(usize, u8, String)> = headings
+            .iter()
+            .filter(|(page, _, t)| *page < self.pages.len() && !t.trim().is_empty())
+            .take(2000)
             .collect();
         if headings.is_empty() {
             return 0;
         }
         let outlines = self.doc.new_object_id();
         let ids: Vec<ObjectId> = headings.iter().map(|_| self.doc.new_object_id()).collect();
-        // Level 1 headings at the top; level 2 under the one before them.
         let mut parent_of: Vec<Option<usize>> = vec![];
         let mut last_top: Option<usize> = None;
         for (i, (_, level, _)) in headings.iter().enumerate() {
-            if *level <= 1 {
+            if *level <= 1 || last_top.is_none() {
                 last_top = Some(i);
                 parent_of.push(None);
             } else {
@@ -1331,8 +1586,9 @@ impl PdfDocument {
         for (i, (page, _, text)) in headings.iter().enumerate() {
             let siblings = children(parent_of[i]);
             let at = siblings.iter().position(|s| *s == i).unwrap_or(0);
+            let title: String = text.trim().chars().take(200).collect();
             let mut d = dictionary! {
-                "Title" => lopdf::text_string(text.trim()),
+                "Title" => lopdf::text_string(&title),
                 "Parent" => parent_of[i].map(|p| ids[p]).unwrap_or(outlines),
                 "Dest" => vec![Object::Reference(self.pages[*page]), Object::Name(b"Fit".to_vec())],
             };
@@ -1356,7 +1612,7 @@ impl PdfDocument {
             Object::Dictionary(dictionary! {
                 "Type" => "Outlines",
                 "First" => ids[top[0]],
-                "Last" => ids[*top.last().unwrap_or(&top[0])],
+                "Last" => ids[top[top.len() - 1]],
                 "Count" => top.len() as i64,
             }),
         );
@@ -1365,6 +1621,15 @@ impl PdfDocument {
         }
         self.mark_touched(catalog_id);
         headings.len()
+    }
+
+    /// The matrix from page `index`'s user space to the page as shown
+    /// (points from its top-left corner, y down).
+    pub fn shown_from_user(&self, index: usize) -> Result<Matrix> {
+        self.display_frame(index)?
+            .display_to_user()
+            .invert()
+            .ok_or_else(|| Error::Parse(format!("page {} has no area", index + 1)))
     }
 
     /// Sets figures' alternative text, by the id of their element.
@@ -1405,6 +1670,75 @@ pub struct Leaf {
     /// The list it is in, and the table, row and column.
     pub list: Option<u32>,
     pub cell: Option<(u32, usize, usize)>,
+    /// In a header cell.
+    pub header: bool,
+}
+
+/// Elements that are part of a line of text, not a block of their own.
+const INLINE: &[&str] = &[
+    "Span",
+    "Quote",
+    "Note",
+    "Reference",
+    "BibEntry",
+    "Code",
+    "Link",
+    "Annot",
+    "Ruby",
+    "RB",
+    "RT",
+    "RP",
+    "Warichu",
+    "WT",
+    "WP",
+    "Lbl",
+];
+
+/// Every MCID under an element, in order, for the block that holds it.
+fn inline_mcids(
+    pdf: &PdfDocument,
+    object: &Object,
+    depth: usize,
+    out: &mut Vec<i64>,
+    seen: &mut BTreeSet<ObjectId>,
+) {
+    let doc = &pdf.doc;
+    if depth > 64 || out.len() > 100_000 {
+        return;
+    }
+    if let Ok(id) = object.as_reference() {
+        if !seen.insert(id) {
+            return;
+        }
+    }
+    let Some(d) = dict_of(doc, Some(object)) else {
+        return;
+    };
+    let kids: Vec<Object> = match d.get(b"K").map(|k| resolve(doc, k)) {
+        Ok(Object::Array(a)) => a.clone(),
+        Ok(_) => vec![d.get(b"K").cloned().unwrap_or(Object::Null)],
+        Err(_) => vec![],
+    };
+    for kid in kids {
+        match &kid {
+            Object::Integer(m) => out.push(*m),
+            other => {
+                let k = dict_of(doc, Some(other));
+                match k.and_then(|k| name(k.get(b"Type").ok())) {
+                    Some(b"MCR") => {
+                        if let Some(m) = k
+                            .and_then(|k| k.get(b"MCID").ok())
+                            .and_then(|m| m.as_i64().ok())
+                        {
+                            out.push(m);
+                        }
+                    }
+                    Some(b"OBJR") => {}
+                    _ => inline_mcids(pdf, other, depth + 1, out, seen),
+                }
+            }
+        }
+    }
 }
 
 /// Roles PDF 1.7 defines; anything else goes through the role map.
@@ -1497,12 +1831,16 @@ impl PdfDocument {
         let mut seen: BTreeSet<ObjectId> = BTreeSet::new();
         let mut lists = 0u32;
         let mut tables = 0u32;
+        /// What an element inherits from those it is in.
+        #[derive(Clone, Copy)]
         struct Ctx {
             page: Option<usize>,
             list: Option<u32>,
             table: Option<u32>,
             row: usize,
             col: usize,
+            cell: Option<(u32, usize, usize)>,
+            header: bool,
         }
         #[allow(clippy::too_many_arguments)]
         fn visit(
@@ -1531,14 +1869,13 @@ impl PdfDocument {
                 return;
             };
             let role = standard(name(d.get(b"S").ok()).unwrap_or(b"P"));
-            let page = d
+            let saved = *ctx;
+            ctx.page = d
                 .get(b"Pg")
                 .ok()
                 .and_then(|p| p.as_reference().ok())
                 .and_then(|p| pages.get(&p).copied())
                 .or(ctx.page);
-            let saved = (ctx.page, ctx.list, ctx.table, ctx.row, ctx.col);
-            ctx.page = page;
             match role.as_str() {
                 "L" => {
                     *lists += 1;
@@ -1546,10 +1883,13 @@ impl PdfDocument {
                 }
                 "Table" => {
                     *tables += 1;
-                    ctx.table = Some(*tables);
-                    ctx.row = 0;
+                    (ctx.table, ctx.row, ctx.col) = (Some(*tables), 0, 0);
                 }
                 "TR" => ctx.col = 0,
+                "TH" | "TD" => {
+                    ctx.cell = ctx.table.map(|t| (t, ctx.row, ctx.col));
+                    ctx.header = role == "TH";
+                }
                 _ => {}
             }
             let kids: Vec<Object> = match d.get(b"K").map(|k| resolve(doc, k)) {
@@ -1557,58 +1897,55 @@ impl PdfDocument {
                 Ok(_) => vec![d.get(b"K").cloned().unwrap_or(Object::Null)],
                 Err(_) => vec![],
             };
+            let text = |key: &[u8]| {
+                d.get(key)
+                    .ok()
+                    .and_then(|a| a.as_str().ok())
+                    .map(decode_text_string)
+            };
             let mut leaf = Leaf {
                 id,
                 role: role.clone(),
-                page: page.unwrap_or(0),
+                page: ctx.page.unwrap_or(0),
                 mcids: vec![],
-                alt: d
-                    .get(b"Alt")
-                    .ok()
-                    .and_then(|a| a.as_str().ok())
-                    .map(decode_text_string),
-                lang: d
-                    .get(b"Lang")
-                    .ok()
-                    .and_then(|a| a.as_str().ok())
-                    .map(decode_text_string),
-                text: d
-                    .get(b"ActualText")
-                    .ok()
-                    .and_then(|a| a.as_str().ok())
-                    .map(decode_text_string),
+                alt: text(b"Alt"),
+                lang: text(b"Lang"),
+                text: text(b"ActualText"),
                 list: ctx.list,
-                cell: match role.as_str() {
-                    "TH" | "TD" => ctx.table.map(|t| (t, ctx.row, ctx.col)),
-                    _ => None,
-                },
+                cell: ctx.cell,
+                header: ctx.header,
             };
-            let mut pushed = false;
             for kid in kids {
                 match &kid {
                     Object::Integer(m) => leaf.mcids.push(*m),
                     other => {
-                        let is_mcr = dict_of(doc, Some(other))
-                            .is_some_and(|k| name(k.get(b"Type").ok()) == Some(b"MCR"));
-                        if is_mcr {
-                            if let Some(m) = dict_of(doc, Some(other))
-                                .and_then(|k| k.get(b"MCID").ok())
-                                .and_then(|m| m.as_i64().ok())
-                            {
-                                leaf.mcids.push(m);
+                        let k = dict_of(doc, Some(other));
+                        match k.and_then(|k| name(k.get(b"Type").ok())) {
+                            Some(b"MCR") => {
+                                if let Some(m) = k
+                                    .and_then(|k| k.get(b"MCID").ok())
+                                    .and_then(|m| m.as_i64().ok())
+                                {
+                                    leaf.mcids.push(m);
+                                }
+                                continue;
                             }
-                            continue;
+                            Some(b"OBJR") => continue,
+                            _ => {}
                         }
-                        let is_objr = dict_of(doc, Some(other))
-                            .is_some_and(|k| name(k.get(b"Type").ok()) == Some(b"OBJR"));
-                        if is_objr {
+                        // Text-level elements (a span in another language, a
+                        // link) are read as part of the block they are in.
+                        let child_role = k
+                            .map(|c| standard(name(c.get(b"S").ok()).unwrap_or(b"P")))
+                            .unwrap_or_default();
+                        if INLINE.contains(&child_role.as_str()) {
+                            inline_mcids(pdf, other, depth + 1, &mut leaf.mcids, seen);
                             continue;
                         }
                         // Content before a child element is read before it.
-                        if !leaf.mcids.is_empty() && !pushed {
+                        if !leaf.mcids.is_empty() {
                             out.push(leaf.clone());
                             leaf.mcids.clear();
-                            pushed = true;
                         }
                         visit(
                             pdf,
@@ -1628,29 +1965,14 @@ impl PdfDocument {
             if !leaf.mcids.is_empty() {
                 out.push(leaf);
             }
+            // Rows and columns count on past the element; the rest is its own.
+            let (row, col) = (ctx.row, ctx.col);
+            *ctx = saved;
             match role.as_str() {
-                "TR" => {
-                    ctx.row += 1;
-                    let row = ctx.row;
-                    (ctx.page, ctx.list, ctx.table) = (saved.0, saved.1, saved.2);
-                    ctx.row = row;
-                    ctx.col = saved.4;
-                }
-                "TH" | "TD" => {
-                    let (row, col) = (ctx.row, ctx.col + 1);
-                    (ctx.page, ctx.list, ctx.table) = (saved.0, saved.1, saved.2);
-                    ctx.row = row;
-                    ctx.col = col;
-                }
-                "Table" => {
-                    (ctx.page, ctx.list, ctx.table, ctx.row, ctx.col) = saved;
-                }
-                _ => {
-                    let (row, col) = (ctx.row, ctx.col);
-                    (ctx.page, ctx.list, ctx.table) = (saved.0, saved.1, saved.2);
-                    ctx.row = row;
-                    ctx.col = col;
-                }
+                "TR" => (ctx.row, ctx.col) = (saved.row + 1, 0),
+                "TH" | "TD" => (ctx.row, ctx.col) = (saved.row, saved.col + 1),
+                "Table" => {}
+                _ => (ctx.row, ctx.col) = (row, col),
             }
         }
         let mut ctx = Ctx {
@@ -1659,6 +1981,8 @@ impl PdfDocument {
             table: None,
             row: 0,
             col: 0,
+            cell: None,
+            header: false,
         };
         if let Ok(k) = root.get(b"K") {
             let kids = match resolve(doc, k) {
@@ -1683,6 +2007,19 @@ impl PdfDocument {
         out
     }
 
+    /// The document's own language (`/Lang` in its catalog), when it says.
+    pub fn document_language(&self) -> Option<String> {
+        self.doc
+            .catalog()
+            .ok()?
+            .get(b"Lang")
+            .ok()?
+            .as_str()
+            .ok()
+            .map(decode_text_string)
+            .filter(|l| !l.trim().is_empty())
+    }
+
     /// Whether the file says it is tagged: a structure tree, and `Marked`.
     pub fn is_tagged(&self) -> bool {
         self.doc.catalog().ok().is_some_and(|c| {
@@ -1705,6 +2042,25 @@ mod tests {
             env!("CARGO_MANIFEST_DIR")
         ))
         .unwrap()
+    }
+
+    #[test]
+    fn operators_are_found_where_the_file_wrote_them() {
+        let src = b"q .23999999 0 0 -.23999999 0 841.91998 cm\n/P <</MCID 0>>BDC BT /F1 12 Tf (a\\)b(c)) Tj [<0041> -20 (x)] TJ ET EMC\n% comment\nBI /W 2 /H 1 /BPC 8 /CS /G ID \x00EI\xff EI Q";
+        let ranges = op_ranges(src).unwrap();
+        let ops: Vec<&str> = ranges.iter().map(|r| r.2.as_str()).collect();
+        assert_eq!(
+            ops,
+            ["q", "cm", "BDC", "BT", "Tf", "Tj", "TJ", "ET", "EMC", "BI", "Q"]
+        );
+        assert_eq!(
+            &src[ranges[1].0..ranges[1].1],
+            b".23999999 0 0 -.23999999 0 841.91998 cm"
+        );
+        assert_eq!(&src[ranges[5].0..ranges[5].1], b"(a\\)b(c)) Tj");
+        let decoded = Content::decode(src).unwrap().operations;
+        assert_eq!(decoded.len(), ranges.len());
+        assert!(op_ranges(b"(unterminated Tj").is_none());
     }
 
     #[test]
@@ -1798,5 +2154,45 @@ mod tests {
                 _ => (d, ok),
             });
         assert!(depth.1 && depth.0 == 0, "balanced marked content");
+    }
+}
+
+#[cfg(test)]
+mod scratch_lex {
+    use super::*;
+    #[test]
+    #[ignore]
+    fn lex() {
+        let name = std::env::var("F").unwrap();
+        let bytes = std::fs::read(format!(
+            "{}/../../../tests/corpus/arabic/{name}",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        let doc = PdfDocument::open(bytes, None).unwrap();
+        for (i, page) in doc.pages.iter().enumerate() {
+            let content = doc.doc.get_page_content(*page);
+            let ops = Content::decode(&content).unwrap().operations;
+            let ranges = op_ranges(&content);
+            match ranges {
+                None => println!("page {i}: does not lex"),
+                Some(r) => {
+                    println!("page {i}: {} ranges, {} ops", r.len(), ops.len());
+                    for (k, (range, op)) in r.iter().zip(&ops).enumerate() {
+                        if range.2 != op.operator {
+                            println!(
+                                "  first mismatch at {k}: lexed {} [{}], lopdf {}",
+                                range.2,
+                                String::from_utf8_lossy(
+                                    &content[range.0..range.1.min(range.0 + 80)]
+                                ),
+                                op.operator
+                            );
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 }

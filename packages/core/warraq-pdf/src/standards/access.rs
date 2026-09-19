@@ -204,7 +204,7 @@ impl PdfDocument {
             .collect();
         let headed: BTreeSet<u32> = leaves
             .iter()
-            .filter(|l| l.role == "TH")
+            .filter(|l| l.header)
             .filter_map(|l| l.cell.map(|(t, _, _)| t))
             .collect();
         let bare: Vec<u32> = tables.difference(&headed).copied().collect();
