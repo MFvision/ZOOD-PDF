@@ -105,9 +105,13 @@ export function selectedLink(current: EditPdfState): PageLink | null {
   return current.links[current.link.page]?.find((link) => link.id === current.link?.id) ?? null;
 }
 
-/** A picture's size in pixels, read from the file as the browser decodes it. */
+/**
+ * A picture's size in pixels, turned as its EXIF orientation says it is
+ * shown — as the core turns it before it goes in (`picture.rs`), so the box
+ * it is placed in has the proportions it is drawn with.
+ */
 export async function pictureSize(bytes: ArrayBuffer, type: string): Promise<{ width: number; height: number }> {
-  const bitmap = await createImageBitmap(new Blob([bytes], { type }));
+  const bitmap = await createImageBitmap(new Blob([bytes], { type }), { imageOrientation: 'from-image' });
   const size = { width: bitmap.width, height: bitmap.height };
   bitmap.close();
   return size;

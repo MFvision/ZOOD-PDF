@@ -130,7 +130,7 @@ export type AppAction =
   | { type: 'EDIT_FONT'; font: EditFontId }
   | { type: 'EDIT_BUSY'; busy: boolean }
   | { type: 'EDIT_APPLIED'; entry: EditEntry; fontSubstituted: boolean }
-  /** A picture or link change, the file before it kept as `snapshot` for undo. */
+  /** A picture, link or added-text change, the file before it kept as `snapshot` for undo. */
   | { type: 'EDIT_FILE_CHANGED'; page: number; snapshot: number }
   | { type: 'EDIT_STEPPED'; stack: EditStack; page: number; fontSubstituted: boolean }
   | { type: 'EDIT_NOTICE_DISMISSED' }
