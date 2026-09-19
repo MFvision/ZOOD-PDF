@@ -26,7 +26,7 @@
 | Hostile input | mutation harness on every pull request; cargo-fuzz targets ready for nightly |
 | Visual regressions | golden renders of all 48 corpus pages gated in CI |
 | No-mapping files | characters recovered from glyph shapes, at 100 % precision on held-out fonts |
-| Installed on this Mac | `/Applications/ورّاق.app`, built from this tree — `scripts/install-macos.sh`, documented in `docs/install-macos.md`. Opens a PDF, renders every page, both thumbnails and full size |
+| Installed on this Mac | `/Applications/محرر PDF.app`, built from this tree — `scripts/install-macos.sh`, documented in `docs/install-macos.md`. Opens a PDF, renders every page, both thumbnails and full size |
 
 Every one of the 48 corpus files opens. 63 tests green, clippy clean, `wasm32-unknown-unknown` compiles, core WASM 2.50 MB gzipped (budget 8 MB).
 
@@ -130,6 +130,18 @@ reduced transparency and reduced motion honoured.
 | macOS app | The title bar is merged into the toolbar, with the traffic lights in it. The toolbar drags the window and a double click zooms it. The system menu bar is built from the page's own menu model, in the interface language, and enables and checks items as the page does. A shortcut the page handles never runs its menu item too |
 | Narrow windows | On a tablet the toolbar condenses. On a phone the inspector is a sheet, the sidebar floats over the page, and nothing scrolls sideways |
 | App icon | New original artwork (`scripts/icon/make_icon.py`): a calligraphic و on a sheet of paper. Desktop and extension icons are regenerated from it |
+
+## The app's name
+
+Since 2026-09-19 the app is called **محرر PDF** in every language and on every
+host (the owner's choice): the Mac bundle `/Applications/محرر PDF.app`, the
+window, the Dock and menu bar, the browser tab, the extension, and both
+interface languages. Inside English sentences it is written between
+right-to-left isolates, so it reads as it does in Arabic. *Warraq* (ورّاق) is
+only the code name, left in the repository, crate and package names, and the
+Mac bundle identifier `app.warraq.desktop` (kept so macOS keeps trusting
+installs). The app icon still shows a calligraphic waw, the first letter of
+the earlier name.
 
 ## Next (in order)
 1. **Print on Windows and Linux** desktop builds (macOS prints through PDFKit).

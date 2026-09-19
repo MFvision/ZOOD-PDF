@@ -139,7 +139,7 @@ test.describe('Page marks are drawn into the file, read back in Arabic, and come
     await expect(p.locator('.marks-item')).toHaveCount(2);
     await expect.poll(() => redInEmbed(page, [0.3, 0.35, 0.7, 0.65]), { timeout: 20_000 }).toBeLessThan(0.005);
     await p.getByRole('button', { name: 'إزالة كل العلامات' }).click();
-    await expect(p.getByText('لا علامات من ورّاق في هذا الملف بعد.')).toBeVisible();
+    await expect(p.getByText('لا علامات من محرر PDF في هذا الملف بعد.')).toBeVisible();
     const cleaned = await saveAs(page, 'marks-cleaned');
     expect((await listMarks(cleaned)).marks).toEqual([]);
     expect((await marksText(cleaned, 0)).marks).toBe('');
@@ -200,7 +200,7 @@ test.describe('Page marks are drawn into the file, read back in Arabic, and come
     const p = panel(page);
     await expect(p.getByRole('heading', { name: 'Page marks' })).toBeVisible();
     await openPdf(page, THREE);
-    await expect(p.getByText('This file has no marks from ورّاق yet.')).toBeVisible({ timeout: 20_000 });
+    await expect(p.getByText(/^This file has no marks from .+ yet\.$/)).toBeVisible({ timeout: 20_000 });
     await p.getByRole('textbox', { name: 'Text' }).fill('DRAFT');
     await expect(p.locator('.marks-preview canvas')).toBeVisible();
     // Left alone, the preview is not drawn again and again.
