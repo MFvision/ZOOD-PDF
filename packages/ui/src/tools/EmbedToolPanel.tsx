@@ -1,4 +1,5 @@
 import { Icon } from '../components/Icon';
+import { FormNotices } from '../forms/FormNotices';
 import { IconButton } from '../components/IconButton';
 import { useT } from '../i18n/useT';
 import { useAppState, useServices } from '../state/AppContext';
@@ -24,6 +25,7 @@ export function EmbedToolPanel({ tool }: { tool: ToolDefinition }) {
         {t(tool.labelKey)}
       </h3>
       {!ready && <p className="tool-panel-note">{t('tool.openFirst')}</p>}
+      {tool.id === 'fillSign' && <FormNotices />}
       <div className="tool-actions">
         {(tool.actions ?? []).map((action) => (
           <IconButton

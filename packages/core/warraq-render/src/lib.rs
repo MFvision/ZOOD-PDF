@@ -38,6 +38,32 @@ pub struct MarkedGlyphs {
     pub inside: Vec<Vec<u32>>,
 }
 
+/// A straight line the page draws along one axis — a stroke, or a filled
+/// rectangle thin enough to be one — in page space (y down, points, as shown).
+/// Forms are drawn with these: boxes, table cells, lines to write on.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Rule {
+    pub horizontal: bool,
+    /// y of a horizontal rule, x of a vertical one.
+    pub at: f32,
+    /// Where it starts and ends along its axis; `from <= to`.
+    pub from: f32,
+    pub to: f32,
+}
+
+/// What a page draws that is not text: its lines (`Rule`), and the boxes of
+/// its pictures — a box drawn around a picture is a frame, not a field.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Drawing {
+    pub rules: Vec<Rule>,
+    /// `[x0, top, x1, bottom]`, page space.
+    pub pictures: Vec<[f32; 4]>,
+}
+
+/// No page yields more rules than this: past it the page is a drawing (a map,
+/// a chart), not a form, and its rules are not read at all.
+pub const MAX_RULES: usize = 4000;
+
 pub trait RenderDoc {
     fn page_count(&self) -> usize;
     /// Page size in points after rotation.
@@ -50,6 +76,9 @@ pub trait RenderDoc {
         &self,
         index: usize,
     ) -> Result<(Vec<PositionedGlyph>, MarkedGlyphs), RenderError>;
+    /// The page's own axis-aligned lines, visible ones only (annotations
+    /// excluded; none when there are more than `MAX_RULES`), and its pictures.
+    fn drawing(&self, index: usize) -> Result<Drawing, RenderError>;
 }
 
 pub fn open(bytes: Vec<u8>, password: Option<&str>) -> Result<Box<dyn RenderDoc>, RenderError> {

@@ -235,3 +235,16 @@ fn the_bundle_is_built_for_the_desktop_host() {
         );
     }
 }
+
+/// The app's name is ورّاق in every build. WiX (the MSI builder) writes the
+/// installer in a Windows code page that has no Arabic, so Windows builds make
+/// only the NSIS installer, which is Unicode throughout.
+#[test]
+fn the_arabic_name_is_bundled_where_it_can_be_written() {
+    let config = json("tauri.conf.json");
+    assert_eq!(config["productName"], "ورّاق");
+    assert_eq!(config["mainBinaryName"], "warraq-desktop");
+    assert_eq!(config["app"]["windows"][0]["title"], "ورّاق");
+    let windows = json("tauri.windows.conf.json");
+    assert_eq!(windows["bundle"]["targets"], serde_json::json!(["nsis"]));
+}

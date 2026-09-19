@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CircleAlert, Combine, FileText, Loader, Upload, X } from 'lucide-react';
 import type { DropPoint } from '../core/host-tauri';
 import type { DropIntent } from '../state/AppContext';
@@ -23,6 +23,7 @@ import { hasNativeMenuBar } from './menuModel';
 import { PaneResizer } from './PaneResizer';
 import { RightPane } from './RightPane';
 import { Toolbar } from './Toolbar';
+import { intentAt, intentOfDrop } from './dropIntent';
 import { useFileDrop } from './useFileDrop';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { useNativeMenu } from './useNativeMenu';
@@ -58,13 +59,27 @@ export function Shell() {
   // With a document open (and no tool taking drops), the overlay is two
   // targets: combine with it — the default — or open in its place.
   const [openZone, setOpenZone] = useState<HTMLDivElement | null>(null);
+  const openZoneRef = useRef<HTMLDivElement | null>(null);
+  const trackOpenZone = useCallback((zone: HTMLDivElement | null) => {
+    openZoneRef.current = zone;
+    setOpenZone(zone);
+  }, []);
+  // A browser drops while the overlay is still up, where it lands; the
+  // desktop host reports the drop only after the overlay has gone (and after
+  // reading the files), so there the target is the one last hovered.
+  const lastIntent = useRef<DropIntent>('combine');
   const onFiles = useCallback(
-    (files: File[], at: DropPoint | null) => services.dropFiles(files, intentAt(at, openZone)),
-    [services, openZone],
+    (files: File[], at: DropPoint | null) => {
+      services.dropFiles(files, intentOfDrop(at, openZoneRef.current, lastIntent.current));
+    },
+    [services],
   );
   const { dragging, at } = useFileDrop(onFiles);
   const split = state.document !== null && !services.dropClaimed;
   const intent = intentAt(at, openZone);
+  useEffect(() => {
+    if (dragging) lastIntent.current = intent;
+  }, [dragging, intent]);
 
   const isViewer = state.view === 'viewer';
   // EmbedPDF shows the document (ADR-0007); Warraq's own viewer takes over in
@@ -181,10 +196,10 @@ export function Shell() {
               <span className="drop-zone-icon">
                 <Icon of={Combine} size={30} />
               </span>
-              <p>{t('drop.combineWith', { name: state.document?.name ?? '' })}</p>
+              <p>{t('drop.combineWith', { name: isolate(state.document?.name ?? '') })}</p>
               <span>{t('drop.combineHint')}</span>
             </div>
-            <div ref={setOpenZone} className={`drop-zone drop-zone-open${intent === 'open' ? ' is-active' : ''}`}>
+            <div ref={trackOpenZone} className={`drop-zone drop-zone-open${intent === 'open' ? ' is-active' : ''}`}>
               <span className="drop-zone-icon">
                 <Icon of={FileText} size={26} />
               </span>
@@ -198,10 +213,7 @@ export function Shell() {
   );
 }
 
-/** Which target of the split overlay the pointer is over: Combine unless it is on Open. */
-function intentAt(at: DropPoint | null, openZone: HTMLElement | null): DropIntent {
-  const box = openZone?.getBoundingClientRect();
-  if (!at || !box) return 'combine';
-  const inside = at.x >= box.left && at.x <= box.right && at.y >= box.top && at.y <= box.bottom;
-  return inside ? 'open' : 'combine';
+/** A file name set apart from the sentence around it, whatever its direction (FSI … PDI). */
+function isolate(name: string): string {
+  return `\u2068${name}\u2069`;
 }

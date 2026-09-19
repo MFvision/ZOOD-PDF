@@ -12,6 +12,7 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 warraq-core = { path = "../warraq-core" }
+warraq-pdf = { path = "../warraq-pdf" }
 
 [[bin]]
 name = "open_document"
@@ -22,6 +23,12 @@ doc = false
 [[bin]]
 name = "extract_text"
 path = "fuzz_targets/extract_text.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "form_script"
+path = "fuzz_targets/form_script.rs"
 test = false
 doc = false
 

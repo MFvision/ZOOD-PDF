@@ -213,6 +213,228 @@ impl HayroDoc {
     }
 }
 
+/// Collects the page's axis-aligned lines (see `crate::Rule`): strokes along
+/// an axis, the edges of filled rectangles, and filled rectangles thin
+/// enough to be a line — which is how Chrome and Word draw table borders.
+/// Nothing white is kept: a white fill hides, it does not draw.
+#[derive(Default)]
+struct RuleDevice {
+    rules: Vec<crate::Rule>,
+    overflow: bool,
+    /// Middles of small filled dots: a dotted line is drawn as a row of them.
+    dots: Vec<(f64, f64, f64)>,
+    pictures: Vec<[f32; 4]>,
+}
+
+/// A filled rectangle no thicker than this is a line, not a box.
+const THIN: f64 = 3.0;
+/// Out of axis by less than this still counts as along it.
+const SLANT: f64 = 0.6;
+
+impl RuleDevice {
+    fn push(&mut self, horizontal: bool, at: f64, a: f64, b: f64) {
+        if self.overflow
+            || (b - a).abs() < 1.5
+            || !at.is_finite()
+            || !a.is_finite()
+            || !b.is_finite()
+        {
+            return;
+        }
+        if self.rules.len() >= crate::MAX_RULES {
+            self.overflow = true;
+            return;
+        }
+        self.rules.push(crate::Rule {
+            horizontal,
+            at: at as f32,
+            from: a.min(b) as f32,
+            to: a.max(b) as f32,
+        });
+    }
+
+    fn segment(&mut self, p: hayro::vello_cpu::kurbo::Point, q: hayro::vello_cpu::kurbo::Point) {
+        if (p.y - q.y).abs() < SLANT {
+            self.push(true, (p.y + q.y) / 2.0, p.x, q.x);
+        } else if (p.x - q.x).abs() < SLANT {
+            self.push(false, (p.x + q.x) / 2.0, p.y, q.y);
+        }
+    }
+
+    /// Rows of evenly spaced small dots, as a dotted border is drawn, are
+    /// lines too.
+    fn dotted_lines(&mut self) {
+        let mut dots = std::mem::take(&mut self.dots);
+        dots.sort_by(|a, b| {
+            ((a.1 * 2.0).round() as i64)
+                .cmp(&((b.1 * 2.0).round() as i64))
+                .then(a.0.total_cmp(&b.0))
+        });
+        let mut run: Vec<(f64, f64, f64)> = Vec::new();
+        let flush = |dev: &mut Self, run: &mut Vec<(f64, f64, f64)>| {
+            if run.len() >= 8 {
+                let y = run.iter().map(|d| d.1).sum::<f64>() / run.len() as f64;
+                dev.push(true, y, run[0].0, run[run.len() - 1].0);
+            }
+            run.clear();
+        };
+        for dot in dots {
+            let joins = run.last().is_some_and(|last| {
+                (last.1 - dot.1).abs() < 0.8
+                    && dot.0 - last.0 > 0.1
+                    && dot.0 - last.0 <= 4.0 * last.2.max(1.0)
+            });
+            if !joins {
+                flush(self, &mut run);
+            }
+            run.push(dot);
+        }
+        flush(self, &mut run);
+    }
+
+    fn filled_rect(&mut self, r: Rect) {
+        let (w, h) = (r.width(), r.height());
+        if h <= THIN && w > h * 3.0 {
+            self.push(true, (r.y0 + r.y1) / 2.0, r.x0, r.x1);
+        } else if w <= THIN && h > w * 3.0 {
+            self.push(false, (r.x0 + r.x1) / 2.0, r.y0, r.y1);
+        } else if w <= 3.5 && h <= 3.5 {
+            if self.dots.len() < 20_000 {
+                let c = r.center();
+                self.dots.push((c.x, c.y, w.max(h)));
+            }
+        } else if w > THIN && h > THIN {
+            self.push(true, r.y0, r.x0, r.x1);
+            self.push(true, r.y1, r.x0, r.x1);
+            self.push(false, r.x0, r.y0, r.y1);
+            self.push(false, r.x1, r.y0, r.y1);
+        }
+    }
+}
+
+/// Whether a paint leaves no visible mark on white paper.
+fn is_white(paint: &Paint<'_>) -> bool {
+    match paint {
+        Paint::Color(c) => {
+            let [r, g, b, a] = c.to_rgba().components();
+            a < 0.05 || (r > 0.94 && g > 0.94 && b > 0.94)
+        }
+        Paint::Pattern(_) => false,
+    }
+}
+
+impl<'a> Device<'a> for RuleDevice {
+    fn set_soft_mask(&mut self, _: Option<SoftMask<'a>>) {}
+    fn set_blend_mode(&mut self, _: BlendMode) {}
+    fn draw_path(
+        &mut self,
+        path: &BezPath,
+        transform: Affine,
+        paint: &Paint<'a>,
+        mode: &PathDrawMode,
+    ) {
+        use hayro::vello_cpu::kurbo::PathEl;
+        if self.overflow || is_white(paint) {
+            return;
+        }
+        let stroke = matches!(mode, PathDrawMode::Stroke(_));
+        // One subpath at a time: its points, and whether it is all straight.
+        let mut points: Vec<hayro::vello_cpu::kurbo::Point> = Vec::new();
+        let mut straight = true;
+        let finish = |dev: &mut Self,
+                      points: &mut Vec<hayro::vello_cpu::kurbo::Point>,
+                      straight: bool,
+                      closed: bool| {
+            if stroke {
+                for pair in points.windows(2) {
+                    dev.segment(pair[0], pair[1]);
+                }
+                if closed && points.len() > 2 {
+                    dev.segment(points[points.len() - 1], points[0]);
+                }
+            } else if !straight || points.len() > 5 {
+                // A small round or many-sided fill: perhaps one dot of a line.
+                if let Some(first) = points.first() {
+                    let bounds = points
+                        .iter()
+                        .fold(Rect::from_points(*first, *first), |r, p| r.union_pt(*p));
+                    if bounds.width() <= 3.5 && bounds.height() <= 3.5 && dev.dots.len() < 20_000 {
+                        let c = bounds.center();
+                        dev.dots
+                            .push((c.x, c.y, bounds.width().max(bounds.height())));
+                    }
+                }
+            } else if straight {
+                // A filled rectangle: four corners on two xs and two ys.
+                let mut corners = points.clone();
+                if corners.len() == 5 && corners[0].distance(corners[4]) < SLANT {
+                    corners.pop();
+                }
+                if corners.len() == 4 {
+                    let xs = |i: usize| corners[i].x;
+                    let ys = |i: usize| corners[i].y;
+                    let along = (0..4).all(|i| {
+                        let j = (i + 1) % 4;
+                        (xs(i) - xs(j)).abs() < SLANT || (ys(i) - ys(j)).abs() < SLANT
+                    });
+                    if along {
+                        let rect = corners
+                            .iter()
+                            .fold(Rect::from_points(corners[0], corners[0]), |r, p| {
+                                r.union_pt(*p)
+                            });
+                        dev.filled_rect(rect);
+                    }
+                }
+            }
+            points.clear();
+        };
+        for element in path.elements() {
+            match *element {
+                PathEl::MoveTo(p) => {
+                    finish(self, &mut points, straight, false);
+                    straight = true;
+                    points.push(transform * p);
+                }
+                PathEl::LineTo(p) => points.push(transform * p),
+                PathEl::QuadTo(_, p) | PathEl::CurveTo(_, _, p) => {
+                    // A curve is not a line; the lines on either side still are.
+                    straight = false;
+                    if stroke {
+                        finish(self, &mut points, false, false);
+                    }
+                    points.push(transform * p);
+                }
+                PathEl::ClosePath => {
+                    finish(self, &mut points, straight, true);
+                    straight = true;
+                }
+            }
+        }
+        finish(self, &mut points, straight, false);
+    }
+    fn push_clip_path(&mut self, _: &ClipPath) {}
+    fn push_transparency_group(&mut self, _: f32, _: Option<SoftMask<'a>>, _: BlendMode) {}
+    fn draw_glyph(
+        &mut self,
+        _: &Glyph<'a>,
+        _: Affine,
+        _: Affine,
+        _: &Paint<'a>,
+        _: &GlyphDrawMode,
+    ) {
+    }
+    fn draw_image(&mut self, _: Image<'a, '_>, transform: Affine) {
+        let r = transform.transform_rect_bbox(Rect::new(0.0, 0.0, 1.0, 1.0));
+        if self.pictures.len() < 1000 && r.width() > 2.0 && r.height() > 2.0 {
+            self.pictures
+                .push([r.x0 as f32, r.y0 as f32, r.x1 as f32, r.y1 as f32]);
+        }
+    }
+    fn pop_clip_path(&mut self) {}
+    fn pop_transparency_group(&mut self) {}
+}
+
 /// Collects glyph text and positions; advances come from the glyph's own font.
 #[derive(Default)]
 struct GlyphDevice {
@@ -582,6 +804,35 @@ impl RenderDoc for HayroDoc {
         shape_recover(&mut glyphs, &dev.font_data, &dev.skeleton_fonts);
         Ok((glyphs, dev.marked))
     }
+
+    fn drawing(&self, index: usize) -> Result<crate::Drawing, RenderError> {
+        let page = self
+            .pdf
+            .pages()
+            .get(index)
+            .ok_or(RenderError::Page(index))?;
+        let (w, h) = page.render_dimensions();
+        let cache = InterpreterCache::new();
+        // The page's own drawing: a form field's box is the field, not a place for one.
+        let settings = InterpreterSettings {
+            render_annotations: false,
+            ..InterpreterSettings::default()
+        };
+        let mut ctx = Context::new(
+            page.initial_transform(true).to_kurbo(),
+            Rect::new(0.0, 0.0, w as f64, h as f64),
+            &cache,
+            page.xref(),
+            settings,
+        );
+        let mut dev = RuleDevice::default();
+        interpret_page(page, &mut ctx, &mut dev);
+        dev.dotted_lines();
+        Ok(crate::Drawing {
+            rules: if dev.overflow { Vec::new() } else { dev.rules },
+            pictures: dev.pictures,
+        })
+    }
 }
 
 #[cfg(test)]
@@ -619,5 +870,37 @@ mod tests {
             "font size recovered: {}",
             g[0].size
         );
+    }
+
+    #[test]
+    fn a_tables_borders_come_back_as_rules() {
+        // Chrome's form layout: a table of six rows, two columns, bordered.
+        let d = HayroDoc::open(corpus("chrome-notosansarabic-form-layout.pdf"), None).unwrap();
+        let rules = d.drawing(0).unwrap().rules;
+        let (w, h) = d.page_size(0).unwrap();
+        assert!(rules.iter().all(|r| r.from <= r.to && r.at >= -1.0));
+        assert!(rules
+            .iter()
+            .all(|r| r.at <= if r.horizontal { h } else { w } + 1.0));
+        // Seven horizontal lines across the table (top, five between, bottom).
+        let mut rows: Vec<i32> = rules
+            .iter()
+            .filter(|r| r.horizontal && r.to - r.from > 100.0)
+            .map(|r| r.at.round() as i32)
+            .collect();
+        rows.sort();
+        rows.dedup_by(|a, b| (*a - *b).abs() <= 1);
+        assert_eq!(rows.len(), 7, "{rows:?}");
+        let columns = rules
+            .iter()
+            .filter(|r| !r.horizontal && r.to - r.from > 15.0)
+            .count();
+        assert!(columns >= 3, "left, middle and right borders: {columns}");
+    }
+
+    #[test]
+    fn a_page_of_text_alone_has_no_rules() {
+        let d = HayroDoc::open(corpus("raw-amiri-cid-identity-tounicode.pdf"), None).unwrap();
+        assert!(d.drawing(0).unwrap().rules.len() < 10);
     }
 }

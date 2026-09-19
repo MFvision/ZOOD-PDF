@@ -45,12 +45,22 @@ pub struct FileDragPayload {
     pub y: f64,
 }
 
-/// A drag position in CSS pixels: Tauri reports it in physical ones.
+/// A drag position in CSS pixels. Tauri labels it physical, but only on
+/// Windows is it (wry's WebView2 handler maps it with `ScreenToClient`); on
+/// macOS wry passes NSView points and on Linux GTK widget coordinates, both
+/// already logical — scaling those halved every position on a Retina Mac.
 fn logical<R: Runtime>(window: &tauri::Window<R>, at: &tauri::PhysicalPosition<f64>) -> (f64, f64) {
-    let scale = window.scale_factor().unwrap_or(1.0);
-    let at = at.to_logical::<f64>(scale);
-    (at.x, at.y)
+    if cfg!(target_os = "windows") {
+        let at = at.to_logical::<f64>(window.scale_factor().unwrap_or(1.0));
+        (at.x, at.y)
+    } else {
+        (at.x, at.y)
+    }
 }
+
+/// Whether the drag now over the window carries files: text, links and
+/// in-app drags carry none, and get no overlay.
+static DRAGGING_FILES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// A PDF named on the command line: `warraq-desktop report.pdf`. It is handed
 /// to the UI once, when it boots, and is also the only way to exercise the
@@ -243,11 +253,24 @@ pub fn run() {
                 return;
             };
             match drag {
-                DragDropEvent::Enter { position, .. } | DragDropEvent::Over { position } => {
-                    let (x, y) = logical(window, position);
-                    let _ = window.emit(FILE_DRAG_EVENT, FileDragPayload { kind: "over", x, y });
+                DragDropEvent::Enter { paths, position } => {
+                    let files = paths.iter().any(|p| p.is_file());
+                    DRAGGING_FILES.store(files, std::sync::atomic::Ordering::Relaxed);
+                    if files {
+                        let (x, y) = logical(window, position);
+                        let _ =
+                            window.emit(FILE_DRAG_EVENT, FileDragPayload { kind: "over", x, y });
+                    }
+                }
+                DragDropEvent::Over { position } => {
+                    if DRAGGING_FILES.load(std::sync::atomic::Ordering::Relaxed) {
+                        let (x, y) = logical(window, position);
+                        let _ =
+                            window.emit(FILE_DRAG_EVENT, FileDragPayload { kind: "over", x, y });
+                    }
                 }
                 DragDropEvent::Leave => {
+                    DRAGGING_FILES.store(false, std::sync::atomic::Ordering::Relaxed);
                     let _ = window.emit(
                         FILE_DRAG_EVENT,
                         FileDragPayload {
@@ -258,6 +281,7 @@ pub fn run() {
                     );
                 }
                 DragDropEvent::Drop { paths, position } => {
+                    DRAGGING_FILES.store(false, std::sync::atomic::Ordering::Relaxed);
                     let _ = window.emit(
                         FILE_DRAG_EVENT,
                         FileDragPayload {
