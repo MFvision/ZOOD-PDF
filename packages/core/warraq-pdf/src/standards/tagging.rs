@@ -937,7 +937,7 @@ fn annotation_role(subtype: &[u8]) -> Option<&'static str> {
 }
 
 impl PdfDocument {
-    fn root_id(&self) -> Result<ObjectId> {
+    fn tagging_catalog_id(&self) -> Result<ObjectId> {
         self.doc
             .trailer
             .get(b"Root")
@@ -1376,7 +1376,7 @@ impl PdfDocument {
                 "ParentTreeNextKey" => next_key,
             }),
         );
-        let catalog_id = self.root_id()?;
+        let catalog_id = self.tagging_catalog_id()?;
         let catalog = self
             .doc
             .get_dictionary_mut(catalog_id)
@@ -1416,7 +1416,7 @@ impl PdfDocument {
                 self.doc.trailer.set("Info", id);
             }
         }
-        let catalog_id = self.root_id()?;
+        let catalog_id = self.tagging_catalog_id()?;
         let meta_id = self
             .doc
             .get_dictionary(catalog_id)
@@ -1448,7 +1448,7 @@ impl PdfDocument {
 
     /// Viewers show the title, not the file's name (PDF/UA-1 §7.1).
     pub fn set_display_doc_title(&mut self) -> Result<()> {
-        let catalog_id = self.root_id()?;
+        let catalog_id = self.tagging_catalog_id()?;
         let prefs = self
             .doc
             .get_dictionary(catalog_id)
@@ -1479,7 +1479,7 @@ impl PdfDocument {
 
     /// The document's language (BCP 47).
     pub fn set_language(&mut self, lang: &str) -> Result<()> {
-        let catalog_id = self.root_id()?;
+        let catalog_id = self.tagging_catalog_id()?;
         if let Ok(c) = self.doc.get_dictionary_mut(catalog_id) {
             c.set("Lang", Object::string_literal(lang));
         }
@@ -1549,7 +1549,7 @@ impl PdfDocument {
     /// level, title)`, level 1 at the top and level 2 under the one before
     /// it. `0` when the file has bookmarks already.
     pub fn add_bookmarks(&mut self, headings: &[(usize, u8, String)]) -> usize {
-        let Ok(catalog_id) = self.root_id() else {
+        let Ok(catalog_id) = self.tagging_catalog_id() else {
             return 0;
         };
         if self
