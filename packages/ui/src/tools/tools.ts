@@ -33,6 +33,7 @@ import {
   Shield,
   Shrink,
   Sparkles,
+  FileBadge,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { TKey } from '../i18n/messages';
@@ -51,7 +52,8 @@ export type ToolId =
   | 'compress'
   | 'prepareForm'
   | 'ai'
-  | 'pageMarks';
+  | 'pageMarks'
+  | 'certificates';
 
 /**
  * One control in a tool's panel: an EmbedPDF command (ADR-0007), run through
@@ -159,6 +161,8 @@ export const TOOLS: readonly ToolDefinition[] = [
   { id: 'ai', labelKey: 'tool.ai', icon: Sparkles, implemented: true },
   // Warraq's core (`marks.*`): watermarks, headers and footers, page and Bates numbers, shaped Arabic.
   { id: 'pageMarks', labelKey: 'tool.pageMarks', icon: Layers, implemented: true },
+  // Warraq's own: PAdES signatures and their verification (`warraq-sign`, `signatures/`).
+  { id: 'certificates', labelKey: 'tool.certificates', icon: FileBadge, implemented: true },
 ];
 
 export function findTool(id: ToolId): ToolDefinition | undefined {

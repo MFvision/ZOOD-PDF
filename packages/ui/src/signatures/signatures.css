@@ -1,0 +1,173 @@
+/*
+ * Digital signatures: the banner under the toolbar, the inspector's list of
+ * signatures and its signing form. Built from the shared panel classes
+ * (fieldset groups, .tool-actions, .segmented, .field); only what is its
+ * own is here, in tokens.
+ */
+
+/* The banner is a quiet strip; the shield says how things stand. */
+.signature-banner.signature-valid > .lucide {
+  color: var(--green);
+}
+
+.signature-banner.signature-untrusted > .lucide,
+.signature-warning > .lucide {
+  color: var(--orange);
+}
+
+.signature-banner.signature-modified > .lucide,
+.signature-banner.signature-invalid > .lucide {
+  color: var(--destructive);
+}
+
+.signatures-tabs {
+  display: flex;
+}
+
+/* Each tab's contents: a column like the panel itself. */
+.signatures-panel [role="tabpanel"],
+.sign-form,
+.signature-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* One signature: a grouped card, its shield in the status colour. */
+.signature-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  background: var(--grouped-background);
+  border-radius: var(--radius-10);
+  box-shadow: 0 0 0 0.5px var(--separator);
+}
+
+.signature-card + .signature-card {
+  margin-block-start: var(--space-4);
+}
+
+.signature-card-head {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  font-weight: 600;
+}
+
+.signature-valid .signature-card-head > .lucide {
+  color: var(--green);
+}
+
+.signature-untrusted .signature-card-head > .lucide {
+  color: var(--orange);
+}
+
+.signature-modified .signature-card-head > .lucide,
+.signature-invalid .signature-card-head > .lucide {
+  color: var(--destructive);
+}
+
+.signature-signer {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.signature-changes,
+.signature-checks,
+.signature-problems {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0;
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-callout);
+  list-style: none;
+}
+
+.check-ok > span:first-child {
+  color: var(--green);
+}
+
+.check-bad,
+.signature-problems {
+  color: var(--destructive);
+}
+
+.signature-details > summary {
+  margin-block-start: var(--space-2);
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+  cursor: pointer;
+}
+
+.signature-chain {
+  padding-inline-start: var(--space-6);
+  margin: var(--space-2) 0;
+  font-size: var(--text-callout);
+}
+
+.signature-subhead {
+  font-size: var(--text-callout);
+  font-weight: 600;
+  color: var(--secondary-label);
+}
+
+.signature-identity,
+.signature-outcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-5);
+  white-space: pre-line;
+  background: var(--secondary-fill);
+  border-radius: var(--radius-8);
+}
+
+.signatures-trusted {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.signatures-trusted li {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* The page, small, to draw where a visible signature goes. */
+.rect-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.rect-picker-page {
+  position: relative;
+  max-inline-size: 100%;
+  margin-inline: auto;
+  overflow: hidden;
+  touch-action: none;
+  cursor: crosshair;
+  background: var(--content-background);
+  box-shadow: var(--shadow-page);
+}
+
+.rect-picker-canvas {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.rect-picker-box {
+  position: absolute;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1.5px dashed var(--accent);
+  border-radius: var(--radius-6);
+  pointer-events: none;
+}

@@ -15,6 +15,7 @@ use tauri_plugin_fs::FsExt;
 pub mod core_bridge;
 pub mod menu;
 pub mod print;
+pub mod signing;
 
 /// Event sent to the webview when files are dropped on the window.
 /// Payload: [`FileDropPayload`]. Every dropped path is added to the fs scope
@@ -203,6 +204,9 @@ pub fn run() {
             core_bridge::core_call,
             print::print_available,
             print::print_pdf,
+            signing::net_exchange,
+            signing::pkcs11_certificates,
+            signing::pkcs11_sign,
             menu::set_menu,
         ])
         .on_window_event(|window, event| {
