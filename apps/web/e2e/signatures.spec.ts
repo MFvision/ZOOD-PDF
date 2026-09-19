@@ -2,8 +2,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
-import { INVOICE, annotationTypes, chooseTool, embedDocument, openPdf, pageBox, test, useAction } from './helpers';
-import { callOn } from './pdfBytes';
+import { INVOICE, annotationTypes, chooseTool, corpus, embedDocument, openPdf, pageBox, test, useAction } from './helpers';
+import { callOn, core } from './pdfBytes';
 
 /**
  * Digital signatures through the interface: a TEST certificate file signs
@@ -223,6 +223,32 @@ test.describe('Digital signatures', () => {
     await expect(card).toContainText('on page 1');
     await expect.poll(() => pdfiumSignatures(page).then((s) => s.count)).toBe(1);
     await expect(panel(page)).not.toContainText('Empty signature fields');
+  });
+
+  test("saving a certified Arabic form leaves the appearances its own program drew", async ({ page, stayLocal: _ }) => {
+    // A form whose Arabic values pdf-lib drew, certified "no changes" by
+    // signing software that never let Warraq redraw them.
+    const { call_static } = await core();
+    const form = readFileSync(corpus('generated/acroform-pdflib-arabic-fields.pdf'));
+    const signed = call_static(
+      'signatures.sign',
+      JSON.stringify({ p12Password: 'warraq-test', time: Math.floor(Date.now() / 1000), certify: 1 }),
+      [new Uint8Array(form), new Uint8Array(readFileSync(P12))],
+    ).blobs[0];
+    if (!signed) throw new Error('not signed');
+    writeFileSync('test-results/signatures-certified-form.pdf', signed);
+
+    await page.goto('/');
+    await openPdf(page, 'test-results/signatures-certified-form.pdf');
+    await expect(banner(page)).toContainText(`Certified by ${iso(SIGNER)}`);
+    // Saved with nothing done: the file as it was signed, byte for byte —
+    // no Arabic appearance redrawn after the certification.
+    const saved = await save(page, 'certified-form-saved');
+    expect(saved.equals(Buffer.from(signed)), 'nothing appended after the certification').toBe(true);
+    await page.goto('/');
+    await openPdf(page, 'test-results/signatures-certified-form-saved.pdf');
+    await expect(banner(page)).toContainText(`Certified by ${iso(SIGNER)}`);
+    await expect(banner(page)).not.toContainText('Changed after signing');
   });
 
   test('layers shown by choice are neither signed nor checked as the file', async ({ page, stayLocal: _ }) => {
