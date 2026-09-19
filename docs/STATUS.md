@@ -1,6 +1,6 @@
 # STATUS — Warraq
 
-*Updated 2026-09-19: the interface is rebuilt on EmbedPDF (ADR-0007); all fifteen tools work end to end, each proven by a test that clicks through it, saves the file and reopens it — Digital signature (PAdES sign, verify, timestamps, validation data) the latest.*
+*Updated 2026-09-19: the interface is rebuilt on EmbedPDF (ADR-0007); all sixteen tools work end to end, each proven by a test that clicks through it, saves the file and reopens it — Batch (a sequence of the tools' steps over many files), OCR cleanup and the AI's data actions the latest.*
 
 ## Where the product stands
 
@@ -16,7 +16,8 @@
 | Organize pages | rotate, reorder (drag or buttons), delete, insert a blank page or another PDF's pages, extract pages to a new file, split into files, crop by margins or trim the white away, undo and redo — Warraq's core, as incremental updates (ADR-0008) |
 | Digital signatures | PAdES signatures made and checked by Warraq's own core (pure Rust, `warraq-sign`) in every host: sign with a certificate file (.p12/.pfx, modern or legacy) — visibly, where the person drags on the page, Arabic shaped — or on the desktop with a smart card; certify or approve, lock the form; every signature in a file checked when it opens (integrity, signer, chain, trust, time, revocation data, and what changed after it). Trusted timestamps and long-term validation data are fetched by the desktop app only, on a click; the browser cannot read those servers' answers |
 | Combine files | several PDFs into one new file, in the order listed, form fields and all; protected files with their password — Warraq's core (ADR-0008) |
-| Scan & OCR | Tesseract (Apache-2.0) reads scanned pages on the device — Arabic, English, Persian, Urdu (Naskh) — and Warraq's core writes what it read as an invisible, shaped text layer, so the page can be searched, selected and copied while it looks as it did. Measured on the corpus: 130 of 138 Arabic words of a 300 dpi scan (the misses carry diacritics), 20 of 30 of a 200 dpi black-and-white invoice (Tesseract skips its table rows) |
+| Scan & OCR | Tesseract (Apache-2.0) reads scanned pages on the device — Arabic, English, Persian, Urdu (Naskh) — and Warraq's core writes what it read as an invisible, shaped text layer, so the page can be searched, selected and copied while it looks as it did. Measured on the corpus: 130 of 138 Arabic words of a 300 dpi scan (the misses carry diacritics), 20 of 30 of a 200 dpi black-and-white invoice (Tesseract skips its table rows). A scan can be cleaned up first — shadows and stains evened out, contrast, black and white by Sauvola's local threshold, specks, dark borders — and the cleaned picture put in place of the scan: a shadowed and stained page went from 59 % of its words to 94 % (measured below). Runs in the desktop webview too (checked from the host's log) |
+| Batch | a sequence of the tools' own steps — OCR (with cleanup), compress, rotate, delete or keep pages, page marks, remove hidden information, flatten, protect, export — over many files, from the file picker, a folder (subfolders too) or a drop, one at a time; progress per file, Stop, a summary; a file that fails says why and the rest go on. Results never replace their originals: beside them with a suffix or into a chosen folder on the desktop (never over a file that is there), one zip in a browser. Sequences saved as named actions on this device, never with their passwords |
 | Compress | a smaller copy, written from scratch: unused objects dropped, duplicate streams shared, everything recompressed, and — only if chosen — images larger than a page needs downsampled to 150 or 96 dpi. Refuses protected and signed files rather than silently stripping their protection or breaking the signature |
 | Protected files | open everywhere after a password prompt; one prompt unlocks the file for both engines |
 | Arabic text **reading** in logical order | 16 of the truth-scored corpus files, against 2 for PDF.js, 2 for MuPDF, 0 for PDFium |
@@ -43,17 +44,18 @@ alike when only one of them did anything.
 
 | | |
 | --- | --- |
-| Tools in the pane | 15 |
-| Tools that work | **15** — Edit, Page marks, Organize pages, Combine, Compress, Scan & OCR, Export, Compare, AI, Digital signature, Comment, Fill & sign, Prepare form, Redact, Protect |
+| Tools in the pane | 16 |
+| Tools that work | **16** — Edit, Page marks, Organize pages, Combine, Compress, Scan & OCR, Export, Compare, AI, Digital signature, Batch, Comment, Fill & sign, Prepare form, Redact, Protect |
 | Tools marked *Later* on their face | 0 |
 | Edit (Warraq's engine) | three kinds, switched at the top of the panel. **Text**: replace the text of a paragraph, reflowed and reshaped; add a line of new text where you click; choose the face (Amiri, Cairo, Inter) and size; undo and redo a replacement. **Pictures**: every picture on the page as a box to pick — inline ones and ones inside forms too; drag to move, handles to resize (Shift keeps proportions), turn 90°, crop with the handles, replace with another PNG or JPEG (fitted inside what showed), delete, arrow keys to nudge; add a picture from a file or a drop by dragging out where it goes. **Links**: drag to draw one, point it at a web or e-mail address or a page of the file, move and resize it, remove it; follow it from the panel — an address only after the same question as everywhere |
 | Page marks (Warraq's engine) | four kinds: watermark (text or picture; size, colour, opacity, rotation, centre, a corner, an edge or tiled; in front of or behind the page), header and footer (three slots — start, centre, end, the start on the right in Arabic, detected from the text or chosen — with page number, page count, date and file name tokens; the date Gregorian or Hijri, in Western or Arabic-Indic digits), page numbers (`1`, `1 / 9`, `Page 1 of 9`, `صفحة ١ من ٩`, roman; start number; no number on the first page) and Bates numbers (prefix, start, padded digits, suffix); any range of pages; the page on screen previewed with the mark as the core will draw it; the marks already in the file listed, each changed in place or taken off, or all at once. A new mark replaces one of the same kind on the same pages |
 | Organize pages (Warraq's engine) | a grid of every page: select (click, Shift, Cmd/Ctrl), drag to reorder or move earlier/later, rotate either way, delete (never the last page), insert a blank page, insert every page of another PDF after the selection (its password asked for if it has one), extract the selection as a new file, split into files — every so many pages or at each selected page, saved as one zip; crop by margins in millimetres as the page is shown, or trim the white margins away; undo and redo; keyboard throughout, mirrored in Arabic |
 | Compare (Warraq's engine) | what changed in the text between two versions — the file's own earlier revisions, or another PDF — word by word, with Arabic matching that follows the search (letter variants and diacritics optional); go to a change's page; and how each page looks, drawn and compared, with what looks different outlined — a drawing, a stamp or a picture the text cannot show; save the comparison, pictures included, as a report |
-| AI (bring your own key, or local) | summarize, ask about, or translate the document with Claude on the person's own Anthropic key, or a model on this computer (Ollama or LM Studio). Nothing is sent before Send, and the screen first shows exactly what will go and where; the answer is shown as it streams in ("thinking" while the model thinks first), Stop keeps what arrived, and answers cite their pages. Refuses while redactions are marked but not applied |
+| AI (bring your own key, or local) | summarize, ask about, or translate the document with Claude on the person's own Anthropic key, or a model on this computer (Ollama or LM Studio). Nothing is sent before Send, and the screen first shows exactly what will go and where; the answer is shown as it streams in ("thinking" while the model thinks first), Stop keeps what arrived, and answers cite their pages. Refuses while redactions are marked but not applied. Four actions answer with data, shown for review before anything changes (the answer's shape asked of each provider: Claude's structured outputs, Ollama's `format`, an OpenAI-compatible `response_format`): **Correct the OCR text** — the words Scan & OCR kept with each page are sent; each changed word is listed ("محزر ← محرّر"), and the ticked ones are written into the text layer over the boxes they were read from. **Fill in the form from my details** — only the form's text fields (name, the words printed beside each, what it holds) and the pasted details go; the proposed values are listed to edit or leave out, then typed into the fields; the details stay in memory unless "Remember on this device" is ticked. **Find personal information** — the model's findings (names, addresses, numbers) and, with nothing sent, Warraq's own patterns (e-mails, phones, ID and Iqama numbers, IBANs, cards, dates) are looked up on their pages; the ticked ones become the Redact tool's marks, applied only there. **Extract the tables** — shown as tables, then saved as CSV (UTF-8 with a BOM) or an Excel workbook (a sheet each, right to left when Arabic, numbers as numbers) |
 | Combine (Warraq's engine) | add files (the open one comes first), reorder or remove them, unlock protected ones; the result opens in place, to save where you choose. The files chosen are not changed |
 | Export (Warraq's engine) | Word (.docx, text only: paragraphs, direction and alignment, not layout), plain text, Markdown, a self-contained web page, and page images (PNG, zipped). Built from Warraq's own reading of the file as it stands now — a redaction applied in the viewer never reaches an export; unapplied marks are warned about |
-| Scan & OCR (Tesseract + Warraq's engine) | choose the languages on the page and whether to read only pages without text; progress page by page, and a stop button; the result reports words read and Tesseract's confidence. Nothing is sent anywhere; the models are bundled |
+| Scan & OCR (Tesseract + Warraq's engine) | choose the languages on the page and whether to read only pages without text; clean the scan up first — remove shadows and stains, strengthen the contrast, black and white, remove specks, remove dark borders — previewed on the page on screen, and optionally put the cleaned, straightened picture in place of the scan (one bit a pixel when black and white); progress page by page, and a stop button; the result reports words read, Tesseract's confidence and the pictures replaced. Nothing is sent anywhere; the models are bundled |
+| Batch (Warraq's engine + PDFium) | files: add files or a folder (with its subfolders or not), or drop PDFs on the window; a password tried on protected ones. Steps, each with the options of its tool, in any order (Export last): Scan & OCR (languages, pages, cleanup, replace the picture), Compress (three levels), Rotate pages (all, odd, even or a list; either way or half), Delete pages, Keep only some pages, Page marks (text watermark, header, footer, page numbers, Bates), Remove hidden information (the kinds to remove), Flatten forms and comments, Protect (open password, permissions password, what is allowed), Export (Word, text, Markdown, web page, page images). Run: each file's state as it goes (which step, OCR's page), Stop after the step under way, a summary; a failure says why (not a PDF, needs a password, a step refuses it) and the rest go on. Results: desktop — beside each original with a suffix, or into a chosen folder, never over a file ("name (2).pdf"); browser — one zip, a folder's subfolders kept. Saved actions: named, kept on this device, used again or deleted; passwords never saved |
 | Compress (Warraq's engine) | three levels — without losing anything, smaller images (150 dpi), smallest (96 dpi) — then save the smaller copy beside the open file or open it in its place; says when a file is already as small as it gets |
 | Digital signature (Warraq's engine) | **Sign**: open a certificate file with its password (the signer, issuer, key and expiry are shown first) or, on the desktop, read a smart card through its PKCS#11 module after the PIN; sign visibly — drag where on the page, optionally with a picture of a handwritten signature, the name, date, reason and place drawn in Amiri, Arabic shaped — or invisibly, or into an empty signature field the form already has; approval or certification (no changes / forms and signing / also comments), optionally locking the form's fields; RSA PKCS#1 v1.5 or RSA-PSS, ECDSA P-256 and P-384; on the desktop, a trusted timestamp from DigiCert, Sectigo, GlobalSign, SSL.com, FreeTSA or an address typed in (the panel says the server sees only a digest). The file is signed as it stands, every earlier change kept as an update of its own bytes, and saved through the normal Save. **Check**: a banner the moment a signed file opens (who signed, and valid / signer not trusted / changed after signing / invalid), and a list with each signature's details — the byte range, the digest, the signature, the chain and where trust ends, validity at signing time, the timestamp, revocation data in the file, and each kind of change made after it, permitted or not by its certification. Trust a signer's root with one click, or a certificate from a file; kept on this device only. **Keep**: on the desktop, add validation data (OCSP answers, revocation lists, certificates) to `/DSS`, and a document timestamp. When a tool that would break a signature is chosen, the shell says so before anything is changed |
 | Comment (EmbedPDF) | highlight, underline, strike out, sticky note, text box, freehand drawing, rectangle, arrow, link |
@@ -112,6 +114,75 @@ Found along the way, and fixed with a test each:
    search, and `٪` was joined to them as if they were European digits. The
    separators `٫` `٬` are now part of the number (UAX #9 class AN) and a
    terminator joins only European digits (class ET, rule W5).
+
+## Scan & OCR cleanup, measured (2026-09-19)
+
+A new corpus scan, `scan-notonaskh-300dpi-shadowed-stained-jpeg` (two pages
+of the justified Naskh text, 300 dpi JPEG, with a book-fold shadow along one
+edge, a shadowed corner and tea stains with the darker ring such a stain dries
+into; `gen_scans.py --only=…`, truth beside it), was read with and without
+each cleanup step. Two measurements, the same metric as `e2e/ocr.spec.ts`
+(the share of the truth's Arabic words of three letters or more that were
+read), each page scored on its own:
+
+**In the browser, through the interface** (`e2e/ocr.spec.ts`, page 1, the
+text layer read back in Edit text): **59 %** read as it is, **94 %** with every
+cleanup step and the cleaned picture put in place of the scan.
+
+**Every scan, every setting** (`src/ocr/measure.test.ts`, opt-in:
+`WARRAQ_OCR_MEASURE=1`; Tesseract in Node on the pages the WASM core draws,
+cleaned and straightened as the app does it; both pages of each scan):
+
+| Scan | As it is | Shadows and stains | + contrast | Black and white only | Every step |
+| --- | --- | --- | --- | --- | --- |
+| Shadowed and stained (new) | 173/276 (63 %) | 255/276 (92 %) | 260/276 (94 %) | 253/276 (92 %) | 259/276 (94 %) |
+| 300 dpi, skewed 1.3° (clean) | 260/276 (94 %) | 259/276 (94 %) | 258/276 (93 %) | 254/276 (92 %) | 256/276 (93 %) |
+| 300 dpi, 8° crooked (clean) | 129/137 (94 %) | 128/137 (93 %) | — | — | 129/137 (94 %) |
+| 200 dpi black and white | 21/30 (70 %) | 21/30 | 21/30 | 21/30 | 21/30 |
+
+So cleanup lifts a damaged scan to what a clean one reads, and on a clean
+scan it changes nothing beyond Tesseract's own noise (a word or two either
+way) — which is why it is a choice in the panel, off until chosen. What is
+left on the damaged page is where a stain's ring crosses a word: the ring is
+as dark and as thin as a stroke, and no threshold tells them apart. The
+first version of the stained scan drew its rings as dark as ink (0.28 of the
+paper's light); at that, every step still read only 86–88 %.
+
+**In the desktop app** (2026-09-19, macOS, a debug build of this tree, the
+host's own log — `WARRAQ_DEBUG=1 WARRAQ_SELFCHECK=ocr|ocr-clean warraq-desktop
+scan.pdf` runs the recognition by itself once the file is open): Tesseract's
+SIMD core started in the webview in 266 ms under the host's security policy,
+read the 8° crooked scan (181 words, confidence 88 %), and with every cleanup
+step read the shadowed scan (363 words on 2 pages, both pictures replaced);
+Warraq's reader then read the layer back as Arabic. Nothing needed changing
+for the worker, its WebAssembly or its models. What this does not prove is
+how the panel looks there: no screen could be seen (below).
+
+## Batch and the AI's data actions: how they are proven (2026-09-19)
+
+* **Batch, in the browser** (`e2e/batch.spec.ts`): four files, one protected
+  and one not a PDF, through rotate (odd pages), page numbers (Arabic-Indic)
+  and compress — two done, the protected one refused by Compress with its
+  reason, the other named as not a PDF, and the rest went on; the zip holds
+  the two results, reopened by the core: page 1 turned, page 2 not, every word
+  still there, the numbers Warraq's marks. A saved action (flatten, protect)
+  comes back without its password and cannot run until one is given; the
+  form it ran on opens only with that password and has no form left. A folder
+  of scans, read with OCR and exported as text, keeps its subfolder in the zip.
+* **Batch, on the desktop** (the host's log, `WARRAQ_SELFCHECK=batch:<folder>`):
+  a folder of three "PDFs" listed, read and written through the host's
+  commands — one not a PDF, named so; the two others rotated and numbered as
+  incremental updates (the originals' bytes first), written beside them, and
+  one written as `speech-selfcheck (2).pdf` because `speech-selfcheck.pdf` was
+  already there. The writing rules themselves are Rust tests (`batch.rs`).
+* **AI** (`e2e/ai-extras.spec.ts`, both providers faked): an OCR correction
+  written into the layer and read back from the saved file; form values
+  reviewed, one edited, typed into the fields and saved, and the request
+  holding the fields and the details but not the page's other text; a name
+  found by the model and ID numbers by the patterns marked for redaction,
+  and nothing more sent while those marks wait; a table saved as a workbook
+  (right to left, `1,200.00` as the number 1200) and as CSV, from a local
+  model asked for the shape through Ollama's `format`.
 
 ## How it looks (design refresh, 2026-09-18)
 
@@ -306,7 +377,17 @@ test that fails without its fix.
    installer, which can write the Arabic name ورّاق (WiX's code page cannot);
    not yet built on Windows.
 
+## Fixed on 2026-09-19, with Batch and OCR cleanup
+
+1. **Scan & OCR wrote its layer onto PDFium's copy of the file.** The layer
+   is an incremental update, but it was appended to the file as EmbedPDF
+   rewrote it whole, so the file's own bytes — and a signature over them —
+   were gone after OCR. It is now appended to the file's own bytes, as Page
+   marks' changes are (`e2e/ocr.spec.ts` checks the prefix).
+
 ## Known gaps, stated plainly
+* **Batch: what it is not.** PDF/A is not one of its steps: there is no PDF/A conversion on main yet (a step plugs into `batch/steps.ts` when there is). In a browser the results are held in memory until the zip is made, so a batch of very many large files needs the memory for all of its results; on the desktop each is written as soon as it is done. Files dropped on the desktop window have no folder to go back to, so their results need a chosen folder. Protect and Flatten go through PDFium and write the file whole (as EmbedPDF's own Protect does); Flatten refuses a protected file rather than write it without its protection, Compress and Remove hidden information refuse one as their tools do. A saved action's page marks are text only (a picture watermark would have to be kept with the action). The batch was run in the desktop app through its self-check, not clicked there by a person: the native panels for files and folders are the ones Combine and Open already use.
+* **The AI's data actions: what they are not.** OCR correction needs the words Scan & OCR now keeps with each page: a layer written before 2026-09-19 has none and is not offered (take it off with Remove hidden information → hidden text, and recognise again). The words are the page's private application data (`/PieceInfo`): Remove hidden information lists them as such, and removing them ends later correction while the layer itself stays. A corrected word that the correction split or joined lies over the boxes of the words it replaced; a word the model adds joins the word before it. Smart fill fills text fields only — check boxes, radio buttons and lists are left for the person. Personal information is found as the model and the patterns find it; each finding is then looked up on its page with the Arabic-aware search, and one the page does not have is shown but cannot be marked. Tables come from the model reading the page's text in logical order, not from ruling lines: the person checks them against the page (a table detector in the core is being built separately, for Export).
 * **Prepare form — what is and is not proven.** Detection is measured on Chrome-printed forms and the corpus (above); forms made in Word, InDesign or by hand-coded generators have not been labelled, and a scanned form gets no proposals at all — its boxes and lines are pixels, not drawing. On a page that is no form, a table with an empty column gets proposals. The proposals are drawn over EmbedPDF's pages by reading its page layout (2.15.1); if the view is turned with EmbedPDF's own rotate, they are drawn unturned. Signature fields are real, empty signature fields for a digital signature (Digital signature signs into an empty field the form has; that has not yet been tried on one Prepare form made); Fill & sign places a drawn signature anywhere, over them too.
 * **Form scripts: only the standard subset runs, and only inside Warraq's own interpreter.** Recognised: `AFNumber_*`, `AFPercent_*`, `AFDate_*` (the numbered and the `Ex` forms), `AFSpecial_*` (the four US masks), `AFRange_Validate`, `AFSimple_Calculate`, `event.value =` arithmetic over `getField(…).value` (simplified field notation), and Warraq's own `Warraq_Digits`, `Warraq_LatinDigits`, `Warraq_HijriFormat` and `Warraq_HijriKeystroke`, whose JavaScript definitions travel in the file for other readers and are recognised by their exact text. Anything else — document scripts, open actions, mouse and focus actions, a calculation with a variable or a loop — is listed in the panel (up to 100) and never run. A `/CO` a file leaves incomplete is completed in the form's order.
 * **While a form is filled in Warraq, a formatted field shows the value as typed** (`1500`): PDFium runs no format script. The formatted look (`١٬٥٠٠٫٠٠ ر.س`) is drawn into the file when it is saved, and readers that run form scripts format it themselves. A value is checked when its field loses the focus; a calculated field is not made read-only.
@@ -344,7 +425,7 @@ test that fails without its fix.
 * **Undo in the macOS menu bar is the app's own item, not the system's role.** A system Undo reaches only the
   webview's text fields, never the document's history. The app's item undoes the document, or the typing
   when a text field has the focus. Cut, Copy, Paste and Select All are the system's.
-* **OCR reads diacritics poorly and skips some table rows**; crooked scans are straightened first, but there is no cleanup of stains or shadows; Nastaliq Urdu cannot be recognised usefully on the device at all. Recognition in the desktop app has not been watched yet (it runs in the same webview that draws the pages).
+* **OCR reads diacritics poorly and skips some table rows**; crooked scans are straightened and damaged ones can be cleaned up first, but a stain's ring as dark and thin as a stroke still costs the words it crosses; Nastaliq Urdu cannot be recognised usefully on the device at all. Recognition in the desktop app was checked from the host's log (above), not watched on screen.
 * **Nastaliq Urdu** extraction is still garbage: cascading Nastaliq ligatures do not reverse-map from glyphs the way Naskh does. Needs shape matching or OCR.
 * **Ten corpus files** come back with U+FFFD placeholders where a glyph has no usable ToUnicode, cmap or GSUB evidence. Placeholders are deliberate: words are never silently merged.
 * **SASLprep** is not applied to R5/R6 passwords; ASCII passwords are exact.
