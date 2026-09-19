@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "ورّاق",
+  "productName": "محرر PDF",
   "mainBinaryName": "warraq-desktop",
   "version": "0.1.0",
   "identifier": "app.warraq.desktop",
@@ -15,7 +15,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "ورّاق",
+        "title": "محرر PDF",
         "width": 1280,
         "height": 820,
         "minWidth": 720,
@@ -39,7 +39,7 @@
     "targets": "all",
     "category": "Productivity",
     "shortDescription": "Open, account-free, Arabic-first PDF editor",
-    "longDescription": "ورّاق is an open, account-free, Arabic-first PDF editor. One Rust core, one RTL-first UI, thin hosts for Windows, macOS, browsers and later iOS.",
+    "longDescription": "محرر PDF is an open, account-free, Arabic-first PDF editor. One Rust core, one RTL-first UI, thin hosts for Windows, macOS, browsers and later iOS.",
     "resources": [
       "resources/pdfium/LICENSE",
       "resources/pdfium/VERSION",

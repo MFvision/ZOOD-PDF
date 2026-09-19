@@ -20,7 +20,9 @@ export function HomeScreen() {
         <header className="home-hero">
           <img className="home-icon" src={APP_ICON} alt="" width={64} height={64} />
           <div className="home-hero-text">
-            <h1>{t('app.name')}</h1>
+            <h1>
+              <bdi dir="rtl">{t('app.name')}</bdi>
+            </h1>
             <p>{t('app.tagline')}</p>
           </div>
           <button type="button" className="icon-btn icon-btn-primary home-open" onClick={requestOpenFile}>

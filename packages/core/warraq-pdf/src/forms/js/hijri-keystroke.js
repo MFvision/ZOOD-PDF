@@ -1,4 +1,4 @@
-/* ورّاق: accepts only a real Hijri date by the Umm al-Qura calendar, written
+/* محرر PDF: accepts only a real Hijri date by the Umm al-Qura calendar, written
    in the order `pattern` gives (yyyy, mm, dd; a month may be named), when the
    value is committed. The table is the one in Warraq_HijriFormat. */
 function Warraq_HijriKeystroke(pattern) {
