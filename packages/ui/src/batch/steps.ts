@@ -25,8 +25,7 @@ import { NO_CLEANUP, anyCleanup, sanitizeCleanup } from '../ocr/cleanup';
 import type { CleanupOptions } from '../ocr/cleanup';
 import { OCR_LANGUAGES } from '../ocr/engine';
 import type { OcrLanguage, Recognizer } from '../ocr/engine';
-import { writeTextLayer } from '../ocr/layer';
-import { readPages } from '../ocr/run';
+import { recognizeFile } from '../ocr/run';
 import type { OcrScope } from '../ocr/run';
 import { HIDDEN_KINDS } from '../redact/findings';
 import type { HiddenKind } from '../redact/findings';
@@ -167,22 +166,19 @@ const ocr: StepDefinition<OcrStep> = {
   },
   problem: (o) => (o.languages.length === 0 ? 'batch.problem.languages' : null),
   async run(doc, o, context) {
-    const recognizer = await context.recognizer(o.languages);
-    const pages = await withDocument(context, doc, (open) =>
-      readPages(
-        open,
-        o.languages,
-        o.scope,
-        (progress) => context.onDetail('batch.detail.ocr', { page: progress.page, of: progress.of }),
-        context.signal,
-        { cleanup: o.cleanup, replaceImage: o.replaceImage && anyCleanup(o.cleanup) },
-        recognizer,
-      ),
+    const { bytes } = await recognizeFile(
+      context.client,
+      doc.bytes,
+      doc.password,
+      o.languages,
+      o.scope,
+      (progress) => context.onDetail('batch.detail.ocr', { page: progress.page, of: progress.of }),
+      context.signal,
+      { cleanup: o.cleanup, replaceImage: o.replaceImage && anyCleanup(o.cleanup) },
+      // One Tesseract for the whole batch, not one a file.
+      await context.recognizer(o.languages),
     );
-    const read = pages.filter((page) => page.words.length > 0);
-    if (read.length === 0 || context.signal.aborted) return doc;
-    const written = await writeTextLayer(context.client, doc.bytes, doc.password, read);
-    return written.bytes ? { ...doc, bytes: written.bytes } : doc;
+    return { ...doc, bytes };
   },
 };
 
