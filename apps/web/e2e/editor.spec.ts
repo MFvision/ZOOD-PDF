@@ -8,9 +8,9 @@ test.describe('the interface does what it shows', () => {
   }) => {
     await page.goto('/');
     // One list, not two: the tools pane used to repeat the grid beside it.
-    await expect(page.locator('.tool-card')).toHaveCount(14);
+    await expect(page.locator('.tool-card')).toHaveCount(15);
     const grid = page.locator('.tool-cards-grid');
-    await expect(grid.locator('.tool-card')).toHaveCount(14);
+    await expect(grid.locator('.tool-card')).toHaveCount(15);
     // Tripwire: when a tool is built, this number has to change with it.
     await expect(grid.locator('.tool-card-pending')).toHaveCount(0);
     await expect(grid.locator('.tool-card-pending .tool-card-later')).toHaveCount(0);

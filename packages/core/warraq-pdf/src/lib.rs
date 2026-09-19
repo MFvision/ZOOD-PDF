@@ -22,6 +22,7 @@ mod pagework;
 pub mod picture;
 mod rebase;
 mod show;
+pub mod signature;
 pub mod standards;
 pub mod text_walk;
 pub mod tounicode;
