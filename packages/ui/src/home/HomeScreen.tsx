@@ -1,4 +1,4 @@
-import { FolderOpen, ShieldCheck } from 'lucide-react';
+import { FilePlus2, FolderOpen, ShieldCheck } from 'lucide-react';
 import { APP_ICON } from '../components/appIcon';
 import { Icon } from '../components/Icon';
 import { useT } from '../i18n/useT';
@@ -13,7 +13,7 @@ import { RecentList } from './RecentList';
  */
 export function HomeScreen() {
   const t = useT();
-  const { requestOpenFile } = useServices();
+  const { requestOpenFile, requestCreateFiles } = useServices();
   return (
     <div className="home">
       <div className="home-inner">
@@ -25,10 +25,16 @@ export function HomeScreen() {
             </h1>
             <p>{t('app.tagline')}</p>
           </div>
-          <button type="button" className="icon-btn icon-btn-primary home-open" onClick={requestOpenFile}>
-            <Icon of={FolderOpen} />
-            <span>{t('file.open')}</span>
-          </button>
+          <div className="home-actions">
+            <button type="button" className="icon-btn icon-btn-labeled home-create" onClick={requestCreateFiles}>
+              <Icon of={FilePlus2} />
+              <span>{t('home.create')}</span>
+            </button>
+            <button type="button" className="icon-btn icon-btn-primary home-open" onClick={requestOpenFile}>
+              <Icon of={FolderOpen} />
+              <span>{t('file.open')}</span>
+            </button>
+          </div>
         </header>
         <RecentList />
         <section className="home-section" aria-labelledby="home-tools">

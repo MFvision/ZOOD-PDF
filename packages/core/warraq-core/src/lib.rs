@@ -7,6 +7,7 @@ use warraq_text::{
     SearchNormalization, TextLine,
 };
 
+pub mod tables;
 pub mod tools;
 #[cfg(target_arch = "wasm32")]
 pub mod wasm;
@@ -59,10 +60,15 @@ pub struct ParagraphReplacement {
     pub font_size: f32,
 }
 
+/// The document drawn without its text (`export.picture`), made once when
+/// asked for; with, for each page, whether all its text was invisible.
+type Textless = (Box<dyn RenderDoc>, Vec<bool>);
+
 pub struct Document {
     pdf: PdfDocument,
     render: Box<dyn RenderDoc>,
     lines_cache: std::cell::RefCell<std::collections::HashMap<usize, Vec<TextLine>>>,
+    textless: std::cell::RefCell<Option<Textless>>,
 }
 
 impl Document {
@@ -83,6 +89,7 @@ impl Document {
             pdf,
             render,
             lines_cache: Default::default(),
+            textless: Default::default(),
         })
     }
 
@@ -119,6 +126,12 @@ impl Document {
     /// left out, as `text_lines` leaves them out.
     pub fn glyphs(&self, index: usize) -> Result<Vec<warraq_text::PositionedGlyph>, CoreError> {
         self.read_glyphs(index, false)
+    }
+
+    /// What the page draws besides text: its lines along the axes (table
+    /// rules, form boxes) and its pictures, in the same space as `text_lines`.
+    pub fn drawing(&self, index: usize) -> Result<warraq_render::Drawing, CoreError> {
+        Ok(self.render.drawing(index)?)
     }
 
     /// The text of the page's artifacts only — its page marks, running
@@ -391,7 +404,28 @@ impl Document {
 
     pub fn pdf_mut(&mut self) -> &mut PdfDocument {
         self.lines_cache.borrow_mut().clear();
+        self.textless.borrow_mut().take();
         &mut self.pdf
+    }
+
+    /// Page `index` drawn with no text on it — pictures, lines, fills and
+    /// shading only — and whether all the page's text was invisible to begin
+    /// with (a scan's text layer), when the picture is the page as it is.
+    pub fn render_without_text(
+        &self,
+        index: usize,
+        scale: f32,
+    ) -> Result<(warraq_render::Bitmap, bool), CoreError> {
+        if self.textless.borrow().is_none() {
+            let (bytes, shown) = self.pdf.without_text()?;
+            let render = warraq_render::open(bytes, None)?;
+            let hidden = shown.iter().map(|s| s.only_invisible()).collect();
+            *self.textless.borrow_mut() = Some((render, hidden));
+        }
+        let cached = self.textless.borrow();
+        let (render, hidden) = cached.as_ref().expect("made above");
+        let bitmap = render.render(index, scale.clamp(0.05, 8.0))?;
+        Ok((bitmap, hidden.get(index).copied().unwrap_or(false)))
     }
 
     /// Rebuild the rasterizer from the edited document.
@@ -403,6 +437,7 @@ impl Document {
         let bytes = self.pdf.save_to_vec()?;
         self.render = warraq_render::open(bytes, None)?;
         self.lines_cache.borrow_mut().clear();
+        self.textless.borrow_mut().take();
         Ok(())
     }
 }

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { ParagraphData, PageSize, RenderedPageData, TextLineData } from '../core/types';
 import { MAX_PAGE_PIXELS, exportCurrentFile } from './runExport';
 import type { ExportRequest, ExportSource, ExportableDocument } from './runExport';
+import type { PageItem } from './tables';
 
 /**
  * The export path with the core faked at its boundary. The file's bytes stand
@@ -21,6 +22,28 @@ const FILES: Record<string, FakePage[]> = {
   original: [{ text: 'فاتورة ضريبية مبسطة\nرقم الفاتورة: INV-2026-0042\nالعميل: شركة زود للتقنية' }, { text: 'الإجمالي المستحق: 3,450.00 ر.س' }],
   scan: [{ text: '' }, { text: ' \n ' }],
   poster: [{ text: 'ملصق', size: [5000, 5000] }],
+  // An invoice whose second page is a ruled table (what `export.tables` finds).
+  table: [{ text: 'فاتورة ضريبية' }, { text: 'الصنف الكمية' }],
+};
+
+/** What the core finds on each page of the fake files. */
+const ITEMS: Record<string, PageItem[][]> = {
+  table: [
+    [{ kind: 'line', text: 'فاتورة ضريبية', direction: 'rtl', cells: [] }],
+    [
+      {
+        kind: 'table',
+        ruled: true,
+        direction: 'rtl',
+        widths: [80, 160],
+        rows: [
+          [{ text: 'الكمية', rows: 1, columns: 1 }, { text: 'الصنف', rows: 1, columns: 1 }],
+          [{ text: '١٢', rows: 1, columns: 1 }, { text: 'ورق', rows: 1, columns: 1 }],
+          [{ text: '1,234.50', rows: 1, columns: 1 }, { text: 'المجموع', rows: 1, columns: 1 }],
+        ],
+      },
+    ],
+  ],
 };
 
 const bytesOf = (name: string): ArrayBuffer => new TextEncoder().encode(name).buffer as ArrayBuffer;
@@ -47,6 +70,16 @@ function fakeDocument(name: string, log: string[], failOn?: 'extract_text'): Exp
       const rgba = new Uint8ClampedArray(new ArrayBuffer(2 * 2 * 4)).fill(255);
       rgba[0] = rgba[1] = rgba[2] = 0;
       return { width: 2, height: 2, rgba };
+    },
+    call: async <T,>(op: string, args: unknown = {}): Promise<{ result: T; blobs: ArrayBuffer[] }> => {
+      const page = (args as { page: number }).page;
+      log.push(`${op} ${page}`);
+      if (op === 'export.tables') {
+        const items = ITEMS[name]?.[page] ?? linesOf(pages[page]!.text).map((l): PageItem => ({ kind: 'line', text: l.text, direction: 'rtl', cells: [] }));
+        return { result: { items } as T, blobs: [] };
+      }
+      // `export.picture`: the page without its text, 2 by 2 and white.
+      return { result: { width: 2, height: 2, textHidden: name === 'scan' } as T, blobs: [new Uint8Array(16).fill(255).buffer] };
     },
     free: async () => {
       log.push(`free ${name}`);
