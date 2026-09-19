@@ -89,6 +89,18 @@ Tool operations (`warraq-core/src/tools`), all answering JSON plus bytes:
 | `signatures.fetches` (static) | `{password?, now}` + the PDF, trusted certificates | `{fetches: [{url, kind: ocsp\|crl\|certificate, about}]}` + each OCSP request body (empty for a GET) |
 | `signatures.add_validation` (static) | `{password?, now, kinds}` + the PDF, one answer per `kinds` entry, trusted certificates | `{certs, ocsps, crls, rejected}` + the file with them in `/DSS` |
 | `signatures.certificates` (static) | a certificate file (DER, PEM, PKCS#7) | `{certificates: [...]}` + each one's DER |
+| `standards.pdfa_validate` (static) | `{password?, level?: "2b"\|"2u"\|"3b"\|"1b"}` + the PDF | `{level, findings: {total, passed, items: [{clause, rule, detail, page \| null, object \| null}]}, rules: [{rule, clause}]}` — Warraq's own validator; `rules` is what it checks (ISO 19005-2/-3 clause numbers, -1 for 1b) |
+| `standards.pdfa` (static) | `{password?, level?, now (ISO 8601), title?, faces: [{name, serif}]}` + the PDF, then one font per `faces` entry (substitutes for fonts the file does not carry) | `{level, findings, substituted: [{font, face, missing}], unicodeAdded, changes: [{kind, detail}], size}` + the copy, written whole and validated; `{refused: "signed"}` or `{refused: "level", reasons}` (1b: transparency, layers, jpeg2000, deepImages) |
+| `standards.pdfx_validate` (static) | `{password?}` + the PDF | `{findings, rules: [{rule, clause}]}` (PDF/X-4, ISO 15930-7) |
+| `standards.pdfx` (static) | `{password?, now, title?, condition?, bleed?: points, faces}` + the PDF, the printer's ICC output profile, the fonts | as `standards.pdfa` + the PDF/X-4 copy (PDF 1.6); `E_EDIT: E_PROFILE…` for a profile that is not a printer's |
+| `standards.profile` (static) | an ICC profile | `{profile: false}` or `{profile: true, class, space, version, description, press}` (`press`: an output profile that converts both ways) |
+| `standards.preflight` (static) | `{password?, minPpi?: 150, hairline?: 0.25}` + the PDF | `{items: [{check, severity: "error"\|"warning"\|"info", detail, pages}], sizes: [{width, height, pages}], fonts, images, truncated}` |
+| `accessibility.plan` (static) | `{password?}` + the PDF | `{source: "structure"\|"reading", tagged, plan: {lang, title, pages: [{width, height, blocks: [{role, rect: [x0, y0, x1, y1], lang, alt, list, cells, pagination, text}]}]}}`; rects in points on the page as shown, y down; roles `H1`–`H6`, `P`, `LI`, `Table`, `Figure`, `Caption`, `Artifact` |
+| `accessibility.tag` (static) | `{password?, plan}` (as `plan` answers, reordered or relabelled) + the PDF | `{elements, sequences, artifacts, spans, annotations, bookmarks}` + the tagged file, as an update; the old structure is replaced |
+| `accessibility.check` (static) | `{password?}` + the PDF | `{checks: [{id, clause, wcag, status: "passed"\|"failed"\|"warning"\|"manual", detail, pages, fix}]}` |
+| `accessibility.fix` (static) | `{password?, fixes: ("title"\|"displayTitle"\|"language"\|"tabOrder"\|"fieldTooltips"\|"bookmarks")[], title?, lang?}` + the PDF | `{applied: {fix: count}}` + the file, as an update |
+| `accessibility.figures` (static) | `{password?}` + the PDF | `{figures: [{id: "n g", page, rect \| null, alt}]}` |
+| `accessibility.alt` (static) | `{password?, alts: [{id, alt}]}` + the PDF | `{set}` + the file, as an update |
 
 Signing never reaches the network: the core builds a request and takes the answer; the desktop host sends it (`net_exchange`), and signs on a smart card through `pkcs11_certificates` / `pkcs11_sign`, which call `tools::signatures::sign_with` with a card-backed `warraq_sign::keys::Signer`.
 

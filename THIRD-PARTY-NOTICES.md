@@ -32,6 +32,7 @@ licence text (`scripts/rust-licenses.mjs`).
 | `cryptoki`, `cryptoki-sys`, `secrecy` (desktop only); `libloading` | Apache-2.0; Apache-2.0 OR MIT; ISC | Digital signature: smart cards and tokens through the PKCS#11 module the person names |
 | `ureq`, `ureq-proto`, `rustls`, `rustls-webpki`, `ring`, `untrusted` (desktop only) | MIT OR Apache-2.0; Apache-2.0 OR ISC OR MIT; ISC; Apache-2.0 AND ISC | Digital signature: the one HTTP client in the app, used only when the person asks for a timestamp or validation data |
 | Amiri, Cairo, Inter, Noto Naskh Arabic | SIL OFL-1.1 | bundled edit, UI and fallback fonts (the corpus in `tests/` uses more, which are not shipped) |
+| Compact-ICC-Profiles by Clinton Ingram: `sRGB-v2-magic.icc`, `CGATS001Compat-v2-micro.icc` (`packages/core/warraq-pdf/assets/icc/`, copied from krilla and hayro-interpret, which ship the same files) | CC0-1.0 | Standards: the sRGB output intent of PDF/A copies, and what device RGB and CMYK mean in PDF/A and PDF/X copies |
 | Lucide (`lucide-react`) | ISC | icons |
 | fflate | MIT | zip and deflate for Export (the Word file, page images, PNG compression) |
 | React, Vite, Tauri | MIT / MIT / Apache-2.0 OR MIT | UI and app shells |
