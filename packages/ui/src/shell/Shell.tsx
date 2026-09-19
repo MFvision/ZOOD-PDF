@@ -7,6 +7,7 @@ import { IconButton } from '../components/IconButton';
 import { FontNotice } from '../edit/FontNotice';
 import { HomeScreen } from '../home/HomeScreen';
 import { useRecentThumbnail } from '../home/useRecentThumbnail';
+import { LinkConfirmDialog } from '../links/LinkConfirmDialog';
 import { useI18n } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { EmbedViewer } from '../embed/EmbedViewer';
@@ -149,6 +150,7 @@ export function Shell() {
         <ShortcutsDialog />
         <AboutDialog />
         <SettingsDialog />
+        <LinkConfirmDialog />
         {state.toast && (
           <div key={state.toast.nonce} className="toast" role="status">
             {t(state.toast.key)}

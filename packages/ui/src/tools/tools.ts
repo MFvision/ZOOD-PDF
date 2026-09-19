@@ -24,6 +24,7 @@ import {
   EyeOff,
   FileOutput,
   GitCompare,
+  Layers,
   LayoutGrid,
   MessageSquare,
   Pencil,
@@ -49,7 +50,8 @@ export type ToolId =
   | 'combine'
   | 'compress'
   | 'prepareForm'
-  | 'ai';
+  | 'ai'
+  | 'pageMarks';
 
 /**
  * One control in a tool's panel: an EmbedPDF command (ADR-0007), run through
@@ -155,6 +157,8 @@ export const TOOLS: readonly ToolDefinition[] = [
   },
   // Warraq's own: the person's Anthropic key or a local model, only on Send (`ai/AiPanel.tsx`).
   { id: 'ai', labelKey: 'tool.ai', icon: Sparkles, implemented: true },
+  // Warraq's core (`marks.*`): watermarks, headers and footers, page and Bates numbers, shaped Arabic.
+  { id: 'pageMarks', labelKey: 'tool.pageMarks', icon: Layers, implemented: true },
 ];
 
 export function findTool(id: ToolId): ToolDefinition | undefined {

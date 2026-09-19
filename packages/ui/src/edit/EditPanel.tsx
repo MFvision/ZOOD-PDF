@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Pencil, Redo2, TextCursorInput, Undo2 } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
@@ -5,18 +6,36 @@ import { useT } from '../i18n/useT';
 import { modKeyLabel } from '../shell/menuModel';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { EDIT_FONTS } from './editFont';
+import { updateEditPdf, useEditPdf } from './editPdf';
+import type { EditKind } from './editPdf';
+import { ImagesInspector, LinksInspector } from './EditPdfInspector';
 import { canRedo, canUndo } from './editStack';
+import './edit-pdf.css';
 
-/** Tools-pane panel for the Edit tool: the mode switch, undo/redo and the rules. */
+/**
+ * Tools-pane panel for the Edit tool — Edit PDF: text, pictures or links,
+ * each with its own layer over the page and its own controls here.
+ */
 export function EditPanel() {
   const t = useT();
   const state = useAppState();
   const dispatch = useAppDispatch();
-  const { undoEdit, redoEdit } = useServices();
+  const { kind } = useEditPdf();
   // Mid-switch the editor does not have the file yet (`state.switching`).
   const hasDocument = state.view === 'viewer' && state.document !== null && state.switching === null;
-  const { stack, active, busy, placing, addSize, font } = state.edit;
-  const mod = modKeyLabel();
+  const { active } = state.edit;
+
+  // A file opened in the editor starts with nothing picked on it.
+  const documentId = state.document?.id;
+  useEffect(() => {
+    updateEditPdf({ image: null, link: null, draft: null, pending: null, cropping: false, images: {}, links: {} });
+  }, [documentId]);
+
+  const chooseKind = (next: EditKind) => {
+    updateEditPdf({ kind: next, image: null, link: null, draft: null, pending: null, cropping: false });
+    // The page layers only exist in Edit mode.
+    if (next !== 'text' && !active) dispatch({ type: 'EDIT_MODE', active: true });
+  };
 
   return (
     <div className="tool-panel">
@@ -24,6 +43,40 @@ export function EditPanel() {
         <Icon of={Pencil} />
         {t('tool.edit')}
       </h3>
+      <div className="segmented edit-kinds" role="radiogroup" aria-label={t('editPdf.kind')}>
+        {(['text', 'images', 'links'] as const).map((option) => (
+          <button
+            key={option}
+            type="button"
+            role="radio"
+            aria-checked={kind === option}
+            className="segmented-item"
+            disabled={!hasDocument}
+            onClick={() => chooseKind(option)}
+          >
+            {t(`editPdf.kind.${option}`)}
+          </button>
+        ))}
+      </div>
+      {kind === 'images' && hasDocument && <ImagesInspector />}
+      {kind === 'links' && hasDocument && <LinksInspector />}
+      {kind === 'text' && <TextControls />}
+    </div>
+  );
+}
+
+/** Edit text: the mode switch, adding a line, the face and size, undo and redo. */
+function TextControls() {
+  const t = useT();
+  const state = useAppState();
+  const dispatch = useAppDispatch();
+  const { undoEdit, redoEdit } = useServices();
+  const hasDocument = state.view === 'viewer' && state.document !== null && state.switching === null;
+  const { stack, active, busy, placing, addSize, font } = state.edit;
+  const mod = modKeyLabel();
+
+  return (
+    <>
       <p className="edit-panel-intro">{t('edit.intro')}</p>
       <div className="edit-panel-actions">
         <IconButton
@@ -102,6 +155,6 @@ export function EditPanel() {
         <li>{t('edit.hintAdd')}</li>
         <li>{t('edit.hintFont')}</li>
       </ul>
-    </div>
+    </>
   );
 }

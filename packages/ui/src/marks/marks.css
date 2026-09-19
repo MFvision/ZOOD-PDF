@@ -1,0 +1,109 @@
+/*
+ * Page marks: the panel is built from the inspector's shared pieces
+ * (fieldset groups, .field, Stepper, .tool-actions); these rules only lay
+ * out what is its own — a two-column grid of settings, the token chips, the
+ * preview and the marks already in the file.
+ */
+.marks-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: end;
+}
+
+.marks-grid .select,
+.marks-grid .text-input {
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+.marks-panel .field .text-input {
+  inline-size: 100%;
+}
+
+.marks-changing {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  padding-block: var(--space-2);
+  padding-inline: var(--space-5) var(--space-2);
+  font-size: var(--text-callout);
+  background: var(--tertiary-fill);
+  border-radius: var(--radius-8);
+}
+
+.marks-color {
+  inline-size: 100%;
+  block-size: var(--control-h);
+  padding: 2px;
+  background: var(--control-background);
+  border: 0;
+  border-radius: var(--radius-6);
+  box-shadow: var(--shadow-control);
+}
+
+.marks-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+}
+
+.marks-token {
+  padding-block: 1px;
+  padding-inline: var(--space-4);
+  font-size: var(--text-callout);
+  color: var(--accent);
+  background: var(--tertiary-fill);
+  border: 0;
+  border-radius: var(--radius-capsule);
+}
+
+.marks-token:active {
+  background: var(--fill);
+}
+
+.marks-preview {
+  margin: 0;
+}
+
+.marks-preview canvas {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  margin-block-end: var(--space-3);
+  background: var(--content-background);
+  border-radius: var(--radius-6);
+  box-shadow: var(--shadow-page);
+}
+
+.marks-list ul {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.marks-item {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding-block: var(--space-3);
+}
+
+.marks-item + .marks-item {
+  border-block-start: 0.5px solid var(--separator);
+}
+
+.marks-item-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}

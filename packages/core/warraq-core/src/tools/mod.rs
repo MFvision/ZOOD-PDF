@@ -13,6 +13,9 @@ use crate::{CoreError, Document};
 pub mod compress;
 pub mod file;
 pub mod forms;
+pub mod images;
+pub mod links;
+pub mod marks;
 pub mod ocr;
 pub mod pages;
 
@@ -51,6 +54,8 @@ pub fn call(
     blobs: Vec<Vec<u8>>,
 ) -> Result<Reply, CoreError> {
     match op.split_once('.') {
+        Some(("images", name)) => images::call(doc, name, args, blobs),
+        Some(("links", name)) => links::call(doc, name, args, blobs),
         Some(("pages", name)) => pages::call(doc, name, args, blobs),
         _ => Err(CoreError::UnknownOp(op.into())),
     }
@@ -61,6 +66,9 @@ pub fn call_static(op: &str, args: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, C
         Some(("compress", name)) => compress::call_static(name, args, blobs),
         Some(("file", name)) => file::call_static(name, args, blobs),
         Some(("forms", name)) => forms::call_static(name, args, blobs),
+        Some(("images", name)) => images::call_static(name, args, blobs),
+        Some(("links", name)) => links::call_static(name, args, blobs),
+        Some(("marks", name)) => marks::call_static(name, args, blobs),
         Some(("ocr", name)) => ocr::call_static(name, args, blobs),
         Some(("pages", name)) => pages::call_static(name, args, blobs),
         _ => Err(CoreError::UnknownOp(op.into())),

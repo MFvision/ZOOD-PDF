@@ -7,6 +7,7 @@ import { OcrPanel } from '../ocr/OcrPanel';
 import { EditPanel } from '../edit/EditPanel';
 import { ExportPanel } from '../export/ExportPanel';
 import { OrganizePanel } from '../organize/OrganizePanel';
+import { PageMarksPanel } from '../marks/PageMarksPanel';
 import { useT } from '../i18n/useT';
 import { ComingLater } from './ComingLater';
 import { EmbedToolPanel } from './EmbedToolPanel';
@@ -23,6 +24,7 @@ export function ToolPanel({ tool }: { tool: ToolDefinition }) {
   if (tool.id === 'export') return <ExportPanel />;
   if (tool.id === 'ai') return <AiPanel />;
   if (tool.id === 'compare') return <ComparePanel />;
+  if (tool.id === 'pageMarks') return <PageMarksPanel />;
   if (tool.actions && tool.actions.length > 0) return <EmbedToolPanel tool={tool} />;
   return (
     <div className="tool-panel">
