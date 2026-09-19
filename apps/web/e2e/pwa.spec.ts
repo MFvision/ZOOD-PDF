@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 import { INVOICE, corpus, embedTiles, openPdf, test } from './helpers';
 
 /**
- * ورّاق as an installed web app: a manifest that names it in Arabic, icons
+ * محرر PDF as an installed web app: a manifest that names it in Arabic, icons
  * a phone can mask, a service worker that keeps the app itself — never a
  * document — so it opens and works with no network, and a phone-width,
  * touch-first layout.
@@ -15,7 +15,7 @@ const THREE_PAGES = corpus('generated/chrome-notonaskh-justified-3pages.pdf');
 const pngSize = (bytes: Buffer) => ({ width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) });
 
 test.describe('Installable', () => {
-  test('the manifest names ورّاق, right to left, and every icon it lists is served at its size', async ({
+  test('the manifest names محرر PDF, right to left, and every icon it lists is served at its size', async ({
     page,
     request,
     stayLocal: _,
@@ -25,8 +25,8 @@ test.describe('Installable', () => {
     expect(href).toBe('/manifest.webmanifest');
     const manifest = await (await request.get(href!)).json();
     expect(manifest).toMatchObject({
-      name: 'ورّاق',
-      short_name: 'ورّاق',
+      name: 'محرر PDF',
+      short_name: 'محرر PDF',
       lang: 'ar',
       dir: 'rtl',
       start_url: '/',

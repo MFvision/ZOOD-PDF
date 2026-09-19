@@ -31,12 +31,12 @@ try {
 
 // Core keys
 if (manifest.manifest_version !== 3) errors.push('manifest_version must be 3');
-// The name is ورّاق in every language, through the locale files.
+// The name is محرر PDF in every language, through the locale files.
 if (manifest.name !== '__MSG_extName__')
   errors.push(`name must be "__MSG_extName__" (got ${JSON.stringify(manifest.name)})`);
 for (const locale of ['ar', 'en']) {
   const name = readJson(join(root, '_locales', locale, 'messages.json')).extName?.message;
-  if (name !== 'ورّاق') errors.push(`_locales/${locale} extName must be "ورّاق" (got ${JSON.stringify(name)})`);
+  if (name !== 'محرر PDF') errors.push(`_locales/${locale} extName must be "محرر PDF" (got ${JSON.stringify(name)})`);
 }
 if (typeof manifest.version !== 'string' || !/^\d+(\.\d+){0,3}$/.test(manifest.version)) {
   errors.push(

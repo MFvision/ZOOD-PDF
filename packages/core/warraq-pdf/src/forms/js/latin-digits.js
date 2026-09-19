@@ -1,4 +1,4 @@
-/* ورّاق: Arabic-Indic (and Persian) digits typed into a number field become
+/* محرر PDF: Arabic-Indic (and Persian) digits typed into a number field become
    Western ones, and the Arabic decimal and thousands signs a dot and a comma,
    so the value stays a number every reader can calculate with. */
 function Warraq_LatinDigits() {

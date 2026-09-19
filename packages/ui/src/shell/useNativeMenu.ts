@@ -11,10 +11,13 @@ type T = ReturnType<typeof useT>;
 
 /** The menu model as the macOS host builds its menu bar from it. */
 export function nativeMenuSpec(menus: MenuModel[], t: T): NativeMenuSpec {
-  const app = t('app.name');
+  // The name is Arabic in every language; inside an English sentence it
+  // keeps its own right-to-left order (RLI … PDI).
+  const name = t('app.name');
+  const app = `\u2067${name}\u2069`;
   return {
     labels: {
-      appName: app,
+      appName: name,
       services: t('native.services'),
       hide: t('native.hide', { app }),
       hideOthers: t('native.hideOthers'),

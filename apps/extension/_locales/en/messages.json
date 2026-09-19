@@ -1,22 +1,22 @@
 {
   "extName": {
-    "message": "ورّاق",
-    "description": "The extension's name, written in Arabic in every language."
+    "message": "محرر PDF",
+    "description": "The extension's name, محرر PDF in every language."
   },
   "extDescription": {
     "message": "An open, account-free, Arabic-first PDF editor: open, read and edit your files inside the browser without sending them to any server.",
     "description": "Extension description shown in the browser's extension list and store listing."
   },
   "contextMenuOpen": {
-    "message": "Open with ورّاق",
-    "description": "Context-menu item that opens the Warraq viewer."
+    "message": "Open with ⁧محرر PDF⁩",
+    "description": "Context-menu item that opens the viewer."
   },
   "actionTitle": {
-    "message": "Open ورّاق",
+    "message": "Open ⁧محرر PDF⁩",
     "description": "Tooltip of the toolbar button."
   },
   "viewerTitle": {
-    "message": "ورّاق",
+    "message": "محرر PDF",
     "description": "Title of the viewer tab."
   }
 }
