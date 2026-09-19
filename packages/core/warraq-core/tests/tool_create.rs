@@ -457,3 +457,228 @@ fn nonsense_is_refused_with_a_reason() {
     .to_string();
     assert!(err.contains("E_IMAGE"), "{err}");
 }
+
+/// `create.document` of `value` (the whole argument), Amiri as blob 0.
+fn document_of(value: Value, pictures: Vec<Vec<u8>>) -> (Vec<u8>, Value) {
+    let mut blobs = vec![AMIRI.to_vec()];
+    blobs.extend(pictures);
+    let reply = call_static("create.document", &value.to_string(), blobs).unwrap();
+    let v = self::value(&reply);
+    (reply.blobs.into_iter().next().unwrap(), v)
+}
+
+#[test]
+fn a_paragraph_of_runs_reads_back_whole_and_keeps_its_link() {
+    let (pdf, _) = document(
+        json!([{ "type": "text", "runs": [
+            { "text": "كلمة " },
+            { "text": "عريضة", "bold": true },
+            { "text": " و" },
+            { "text": "مائلة", "italic": true },
+            { "text": " وتحتها خط", "underline": true, "color": "#1f4e9a" },
+            { "text": " ورابط", "link": "https://example.sa/دليل" },
+            { "text": " وآخر لا يعمل", "link": "javascript:alert(1)" },
+        ] }]),
+        vec![],
+    );
+    let page = &text(&pdf)[0];
+    assert!(
+        page.contains("كلمة عريضة ومائلة وتحتها خط ورابط وآخر لا يعمل"),
+        "{page}"
+    );
+    let raw = String::from_utf8_lossy(&pdf);
+    assert!(raw.contains("/Subtype /Link") || raw.contains("/Subtype/Link"));
+    // The address as a URI action may carry it: the Arabic percent-encoded.
+    assert!(
+        raw.contains("https://example.sa/%D8%AF%D9%84%D9%8A%D9%84"),
+        "{raw}"
+    );
+    assert!(!raw.contains("javascript"), "a script is never a link");
+    // Italic leans: its text matrix has a slant.
+    assert!(raw.len() > 1000);
+}
+
+#[test]
+fn slides_place_their_boxes_and_pictures_where_they_were() {
+    let slide = |title: &str, background: &str| {
+        json!([
+            { "type": "page", "width": 720, "height": 405, "background": background },
+            { "type": "frame", "x": 36, "y": 30, "width": 648, "height": 80, "anchor": "middle",
+              "blocks": [{ "type": "text", "text": title, "size": 28, "align": "center", "color": "#ffffff" }] },
+            { "type": "frame", "x": 400, "y": 150, "width": 280, "height": 200, "fill": "#e01010" },
+            { "type": "frame", "x": 40, "y": 150, "width": 300, "height": 200, "inset": [8, 8, 8, 8],
+              "line": { "color": "#000000", "width": 1 },
+              "blocks": [
+                { "type": "text", "text": "النقطة الأولى", "marker": "•", "indent": 18, "color": "#ffffff" },
+                { "type": "text", "text": "النقطة الثانية", "marker": "•", "indent": 18, "color": "#ffffff" },
+              ] },
+        ])
+    };
+    let mut blocks = slide("عنوان الشريحة الأولى", "#102030")
+        .as_array()
+        .unwrap()
+        .clone();
+    blocks.extend(
+        slide("الشريحة الثانية", "#203010")
+            .as_array()
+            .unwrap()
+            .clone(),
+    );
+    let (pdf, report) = document_of(
+        json!({
+            "page": { "width": 720, "height": 405, "margins": [0, 0, 0, 0] },
+            "blocks": blocks, "fonts": [0], "fontNames": ["Amiri"],
+        }),
+        vec![],
+    );
+    assert_eq!(
+        report["pages"], 2,
+        "one page a slide, and no empty one first"
+    );
+    let doc = Document::open(pdf.clone(), None).unwrap();
+    assert_eq!(doc.page_size(0).unwrap(), (720.0, 405.0));
+    let pages = text(&pdf);
+    assert!(pages[0].contains("عنوان الشريحة الأولى"), "{}", pages[0]);
+    assert!(pages[1].contains("الشريحة الثانية"));
+    assert!(pages[0].contains("• النقطة الأولى"), "{}", pages[0]);
+    // The title is centred in its box, and the box's middle is its middle.
+    let lines = doc.text_lines(0).unwrap();
+    let title = lines.iter().find(|l| l.text.contains("عنوان")).unwrap();
+    assert!(
+        (title.x + title.width / 2.0 - 360.0).abs() < 3.0,
+        "{title:?}"
+    );
+    let middle = title.y + title.height / 2.0;
+    assert!((middle - 70.0).abs() < 8.0, "{title:?}");
+    // The background is the slide's colour; the shape is filled red.
+    let corner = colour_at(&pdf, 0, 0.01, 0.99);
+    assert!(
+        corner[0] < 40 && corner[2] > 30 && corner[2] < 70,
+        "{corner:?}"
+    );
+    assert!(reddish(colour_at(&pdf, 0, 540.0 / 720.0, 250.0 / 405.0)));
+}
+
+#[test]
+fn every_page_has_its_header_and_its_numbered_footer() {
+    let blocks: Vec<Value> = (1..=40)
+        .map(|k| json!({ "type": "text", "text": format!("الفقرة {k}: {BODY}") }))
+        .collect();
+    let (pdf, report) = document_of(
+        json!({
+            "page": { "width": A4.0, "height": A4.1, "margins": [72, 56, 72, 56], "header": 30, "footer": 30 },
+            "blocks": blocks,
+            "header": [{ "type": "text", "text": "تقرير داخلي", "align": "center", "size": 9 }],
+            "footer": [{ "type": "text", "text": "صفحة \u{E000} من \u{E001}", "align": "center", "size": 9 }],
+            "fonts": [0], "fontNames": ["Amiri"],
+        }),
+        vec![],
+    );
+    let total = report["pages"].as_u64().unwrap() as usize;
+    assert!(total >= 3);
+    let doc = Document::open(pdf.clone(), None).unwrap();
+    for (k, page) in text(&pdf).iter().enumerate() {
+        let footer = format!("صفحة {} من {}", k + 1, total);
+        assert!(page.contains(&footer), "page {k}: {page}");
+        assert!(page.contains("تقرير داخلي"));
+        let lines = doc.text_lines(k).unwrap();
+        let head = lines
+            .iter()
+            .find(|l| l.text.contains("تقرير داخلي"))
+            .unwrap();
+        let foot = lines.iter().find(|l| l.text.contains("صفحة")).unwrap();
+        assert!(head.y + head.height < 72.0 && head.y > 25.0, "{head:?}");
+        assert!(
+            foot.y > A4.1 - 72.0 && foot.y + foot.height < A4.1 - 25.0,
+            "{foot:?}"
+        );
+    }
+}
+
+/// A little-endian TIFF of pages, each (width, height, samples, photometric, pixels).
+fn tiff(pages: &[(u32, u32, u16, u16, Vec<u8>)]) -> Vec<u8> {
+    let mut out = b"II*\0\0\0\0\0".to_vec();
+    let mut link = 4usize;
+    for (w, h, samples, photometric, data) in pages {
+        let data_at = out.len() as u32;
+        out.extend(data);
+        let ifd = out.len();
+        out[link..link + 4].copy_from_slice(&(ifd as u32).to_le_bytes());
+        let tags: [(u16, u16, u32); 9] = [
+            (256, 4, *w),
+            (257, 4, *h),
+            (258, 3, 8),
+            (259, 3, 1),
+            (262, 3, *photometric as u32),
+            (273, 4, data_at),
+            (277, 3, *samples as u32),
+            (278, 4, *h),
+            (279, 4, data.len() as u32),
+        ];
+        out.extend((tags.len() as u16).to_le_bytes());
+        for (tag, kind, v) in tags {
+            out.extend(tag.to_le_bytes());
+            out.extend(kind.to_le_bytes());
+            out.extend(1u32.to_le_bytes());
+            if kind == 3 {
+                out.extend((v as u16).to_le_bytes());
+                out.extend([0, 0]);
+            } else {
+                out.extend(v.to_le_bytes());
+            }
+        }
+        link = out.len();
+        out.extend(0u32.to_le_bytes());
+    }
+    out
+}
+
+fn encoded(format: image::ImageFormat, rgb: [u8; 3]) -> Vec<u8> {
+    let image = image::RgbaImage::from_pixel(60, 30, image::Rgba([rgb[0], rgb[1], rgb[2], 255]));
+    let mut out = Vec::new();
+    image::DynamicImage::ImageRgba8(image)
+        .write_to(&mut std::io::Cursor::new(&mut out), format)
+        .unwrap();
+    out
+}
+
+#[test]
+fn each_page_of_a_tiff_and_gif_bmp_and_webp_pictures_become_pages() {
+    let red = [220u8, 20, 20].repeat(40 * 20);
+    let grey = vec![40u8; 20 * 40];
+    let reply = call_static(
+        "create.images",
+        &json!({ "paper": { "width": A4.0, "height": A4.1 }, "orientation": "portrait", "margin": 20 }).to_string(),
+        vec![
+            tiff(&[(40, 20, 3, 2, red), (20, 40, 1, 1, grey)]),
+            encoded(image::ImageFormat::Gif, [20, 20, 220]),
+            encoded(image::ImageFormat::Bmp, [220, 20, 20]),
+            encoded(image::ImageFormat::WebP, [20, 20, 220]),
+        ],
+    )
+    .unwrap();
+    let v = value(&reply);
+    assert_eq!(v["pages"], 5, "{v}");
+    assert_eq!(v["leftOut"], json!([]));
+    let pdf = &reply.blobs[0];
+    let doc = Document::open(pdf.clone(), None).unwrap();
+    for k in 0..5 {
+        let (w, h) = doc.page_size(k).unwrap();
+        assert!(
+            h > w,
+            "portrait, as asked, even for a wide picture: page {k}"
+        );
+    }
+    assert!(
+        reddish(colour_at(pdf, 0, 0.5, 0.5)),
+        "the TIFF's colour page"
+    );
+    let dark = colour_at(pdf, 1, 0.5, 0.5);
+    assert!(
+        dark[0] < 70 && dark[0] == dark[1],
+        "the TIFF's grey page: {dark:?}"
+    );
+    assert!(bluish(colour_at(pdf, 2, 0.5, 0.5)), "the GIF");
+    assert!(reddish(colour_at(pdf, 3, 0.5, 0.5)), "the BMP");
+    assert!(bluish(colour_at(pdf, 4, 0.5, 0.5)), "the WebP");
+}

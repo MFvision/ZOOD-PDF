@@ -26,6 +26,7 @@ mod show;
 pub mod signature;
 pub mod text_walk;
 pub mod textless;
+pub mod tiff;
 pub mod tounicode;
 
 pub use appearance::{needs_shaping, AppearanceReport};

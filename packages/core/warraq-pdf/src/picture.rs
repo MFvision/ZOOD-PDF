@@ -290,12 +290,64 @@ fn png_info(bytes: &[u8]) -> Option<PictureInfo> {
     })
 }
 
-/// Size, orientation and resolution of a PNG or JPEG, read from its headers.
-pub fn picture_info(bytes: &[u8]) -> Option<PictureInfo> {
+/// What kind of picture a file is, by its first bytes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PictureKind {
+    Jpeg,
+    Png,
+    Gif,
+    Bmp,
+    Webp,
+    Tiff,
+}
+
+pub fn picture_kind(bytes: &[u8]) -> Option<PictureKind> {
     if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
-        jpeg_info(bytes)
+        Some(PictureKind::Jpeg)
+    } else if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+        Some(PictureKind::Png)
+    } else if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
+        Some(PictureKind::Gif)
+    } else if bytes.starts_with(b"BM") && bytes.len() > 26 {
+        Some(PictureKind::Bmp)
+    } else if bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WEBP") {
+        Some(PictureKind::Webp)
+    } else if crate::tiff::is_tiff(bytes) {
+        Some(PictureKind::Tiff)
     } else {
-        png_info(bytes)
+        None
+    }
+}
+
+fn image_format(kind: PictureKind) -> Option<image::ImageFormat> {
+    match kind {
+        PictureKind::Gif => Some(image::ImageFormat::Gif),
+        PictureKind::Bmp => Some(image::ImageFormat::Bmp),
+        PictureKind::Webp => Some(image::ImageFormat::WebP),
+        _ => None,
+    }
+}
+
+/// Size, orientation and resolution of a picture, read from its headers.
+pub fn picture_info(bytes: &[u8]) -> Option<PictureInfo> {
+    let kind = picture_kind(bytes)?;
+    match kind {
+        PictureKind::Jpeg => jpeg_info(bytes),
+        PictureKind::Png => png_info(bytes),
+        PictureKind::Tiff => crate::tiff::tiff_info(bytes),
+        _ => {
+            let format = image_format(kind)?;
+            let (width, height) =
+                image::ImageReader::with_format(std::io::Cursor::new(bytes), format)
+                    .into_dimensions()
+                    .ok()?;
+            Some(PictureInfo {
+                width,
+                height,
+                orientation: 1,
+                dpi: None,
+            })
+        }
     }
 }
 
@@ -316,7 +368,8 @@ pub fn upright_matrix(orientation: u8, x: f32, y: f32, w: f32, h: f32) -> [f32; 
     [a * w, b * h, c * w, d * h, e * w + x, f * h + y]
 }
 
-/// Adds `bytes`, a PNG or JPEG, to `doc` as an image XObject.
+/// Adds `bytes` — a PNG, JPEG, GIF, BMP, WebP or the first page of a TIFF — to
+/// `doc` as an image XObject.
 pub fn add_picture(doc: &mut Document, bytes: &[u8]) -> Result<Picture> {
     if bytes.len() > MAX_BYTES {
         return Err(refuse("the picture is too large"));
@@ -349,10 +402,37 @@ pub fn add_picture(doc: &mut Document, bytes: &[u8]) -> Result<Picture> {
             height,
         });
     }
-    if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
-        return flate_image(doc, decode(bytes, image::ImageFormat::Png)?);
+    match picture_kind(bytes) {
+        Some(PictureKind::Png) => flate_image(doc, decode(bytes, image::ImageFormat::Png)?),
+        // The first page; `add_picture_pages` takes them all.
+        Some(PictureKind::Tiff) => crate::tiff::add_tiff_pages(doc, bytes)?
+            .into_iter()
+            .next()
+            .map(|(p, _)| p)
+            .ok_or_else(|| refuse("the TIFF has no pages")),
+        Some(kind) => match image_format(kind) {
+            // A GIF's first frame; the others of an animation are not pages.
+            Some(format) => flate_image(doc, decode(bytes, format)?),
+            None => Err(refuse("the picture could not be read")),
+        },
+        None => Err(refuse(
+            "only PNG, JPEG, GIF, BMP, WebP and TIFF pictures can be placed",
+        )),
     }
-    Err(refuse("only PNG and JPEG pictures can be placed"))
+}
+
+/// Every page of a picture — one, or each of a TIFF's — as image XObjects
+/// added to `doc`, with how each is to be shown.
+pub fn add_picture_pages(doc: &mut Document, bytes: &[u8]) -> Result<Vec<(Picture, PictureInfo)>> {
+    if bytes.len() > MAX_BYTES {
+        return Err(refuse("the picture is too large"));
+    }
+    if picture_kind(bytes) == Some(PictureKind::Tiff) {
+        return crate::tiff::add_tiff_pages(doc, bytes);
+    }
+    let info = picture_info(bytes).ok_or_else(|| refuse("the picture could not be read"))?;
+    let picture = add_picture(doc, bytes)?;
+    Ok(vec![(picture, info)])
 }
 
 #[cfg(test)]

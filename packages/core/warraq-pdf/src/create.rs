@@ -1,29 +1,35 @@
 //! New PDFs from other content (Export / Create): pictures, one to a page,
-//! and documents — paragraphs, lists, tables, pictures and rules — typeset
-//! in a bundled face with Arabic shaped by `warraq-text`.
+//! and documents — paragraphs, lists, tables, pictures, rules and text boxes
+//! placed on a page — typeset in bundled faces with Arabic shaped by
+//! `warraq-text`.
 //!
-//! The interface reads a Word file, a web page, Markdown or plain text into
-//! [`Block`]s; this lays them out on pages and writes the file. Its text is
-//! written as all of Warraq's text is (`show_line`): an embedded subset with a
-//! ToUnicode map, and `/ActualText` where the glyphs alone would not read
-//! back, so a reader — Warraq's own, PDFium, a screen reader — finds what
-//! was typed. Nothing is rasterised: a created page is text and vectors, and
-//! the pictures go in as they came (a JPEG unchanged).
+//! The interface reads a Word file, a spreadsheet, a presentation, a web
+//! page, Markdown or plain text into [`Block`]s; this lays them out on pages
+//! and writes the file. Its text is written as all of Warraq's text is
+//! (`show_line`): an embedded subset with a ToUnicode map, and `/ActualText`
+//! where the glyphs alone would not read back, so a reader — Warraq's own,
+//! PDFium, a screen reader — finds what was typed. Nothing is rasterised: a
+//! created page is text and vectors, and the pictures go in as they came (a
+//! JPEG unchanged).
 //!
-//! The layout is a plain one, and says so: one face and size per paragraph
-//! (bold drawn by stroking the glyphs as they are filled, which reads back
-//! unchanged), greedy line breaking at spaces, tables as a grid of wrapped
-//! cells that break across pages between their lines and repeat their
-//! header rows. It is not Word's layout and does not pretend to be.
+//! The layout is a plain one, and says so: one face and size per paragraph,
+//! with bold, italic, underline, strike-through, colour and links changing
+//! inside it (bold drawn by stroking the glyphs as they are filled, italic
+//! by slanting them, both of which read back unchanged); greedy line breaking
+//! at spaces; tables as a grid of wrapped cells that break across pages
+//! between their lines and repeat their header rows; text boxes (a slide's)
+//! placed where they were, their text running over rather than shrinking;
+//! headers and footers on every page, with its number. It is not Word's or
+//! PowerPoint's layout and does not pretend to be.
 use std::collections::HashMap;
 
 use lopdf::content::{Content, Operation};
-use lopdf::{dictionary, Dictionary, Document, Object, ObjectId, Stream};
+use lopdf::{dictionary, Dictionary, Document, Object, ObjectId, Stream, StringFormat};
 use warraq_text::{base_direction, Direction, ShapedGlyph, Shaper};
 
 use crate::attachments::text_string;
 use crate::fonts::{embed_subset_font, FontSubset};
-use crate::picture::{add_picture, picture_info, upright_matrix};
+use crate::picture::{add_picture, add_picture_pages, picture_info, upright_matrix, PictureInfo};
 use crate::show::{show_line, ShownLine};
 use crate::{Error, Result};
 
@@ -32,11 +38,17 @@ const MAX_SIDE: f32 = 14_400.0;
 const MIN_SIDE: f32 = 72.0;
 /// Of the text size: how much bolder a bold line's stroke makes it.
 const BOLD_STROKE: f32 = 0.035;
+/// How far an italic run leans: the tangent of about 11°.
+const ITALIC_SLANT: f32 = 0.2;
 /// Around the text of a table cell, in points.
 const CELL_PAD: (f32, f32) = (4.0, 3.0);
 const RULE_GREY: f32 = 0.7;
 const BORDER_GREY: f32 = 0.55;
 const HEADER_SHADE: [f32; 3] = [0.93, 0.93, 0.94];
+/// In a header or footer, where the page's number goes.
+pub const PAGE_NUMBER: char = '\u{E000}';
+/// In a header or footer, where the number of pages goes.
+pub const PAGE_COUNT: char = '\u{E001}';
 
 /// A page's size and the margins inside it, in points.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -45,6 +57,23 @@ pub struct PageSetup {
     pub height: f32,
     /// Top, right, bottom, left.
     pub margins: [f32; 4],
+    /// From the top edge to the top of the header.
+    pub header: f32,
+    /// From the bottom edge to the foot of the footer.
+    pub footer: f32,
+}
+
+impl PageSetup {
+    /// A page with the header and footer half an inch from its edges.
+    pub fn new(width: f32, height: f32, margins: [f32; 4]) -> Self {
+        Self {
+            width,
+            height,
+            margins,
+            header: 36.0,
+            footer: 36.0,
+        }
+    }
 }
 
 /// Where a block's lines sit. Start and end follow the block's direction:
@@ -65,13 +94,31 @@ pub enum BlockDir {
     Ltr,
 }
 
+/// A stretch of a paragraph set differently from the rest of it.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct TextRun {
+    pub text: String,
+    pub bold: bool,
+    pub italic: bool,
+    pub underline: bool,
+    pub strike: bool,
+    /// RGB, 0–1; the paragraph's colour when absent.
+    pub color: Option<[f32; 3]>,
+    /// An `http:`, `https:` or `mailto:` address the run links to; any
+    /// other is left out.
+    pub link: Option<String>,
+}
+
 /// A paragraph, a heading, a list item or a line of code.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TextBlock {
-    /// `\n` breaks a line without ending the paragraph.
+    /// `\n` breaks a line without ending the paragraph. Ignored when the
+    /// paragraph has `runs`: its text is theirs, one after the other.
     pub text: String,
+    pub runs: Vec<TextRun>,
     pub size: f32,
     pub bold: bool,
+    pub italic: bool,
     /// RGB, 0–1.
     pub color: [f32; 3],
     pub align: BlockAlign,
@@ -97,8 +144,10 @@ impl Default for TextBlock {
     fn default() -> Self {
         Self {
             text: String::new(),
+            runs: Vec::new(),
             size: 11.0,
             bold: false,
+            italic: false,
             color: [0.0; 3],
             align: BlockAlign::Start,
             dir: BlockDir::Auto,
@@ -114,6 +163,17 @@ impl Default for TextBlock {
     }
 }
 
+impl TextBlock {
+    /// What the paragraph says.
+    pub fn plain(&self) -> String {
+        if self.runs.is_empty() {
+            self.text.clone()
+        } else {
+            self.runs.iter().map(|r| r.text.as_str()).collect()
+        }
+    }
+}
+
 /// One cell of a table row; `span` columns wide.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TableCell {
@@ -122,6 +182,8 @@ pub struct TableCell {
     pub align: BlockAlign,
     pub dir: BlockDir,
     pub span: usize,
+    /// A shade behind the cell.
+    pub fill: Option<[f32; 3]>,
 }
 
 /// A table: rows of cells over columns of relative widths, drawn with
@@ -141,7 +203,7 @@ pub struct TableBlock {
 
 /// A picture of the document: `index` into the pictures handed over, at its
 /// size in points when the source gave one, else at 96 per inch, never
-/// wider or taller than the text area.
+/// wider or taller than the room it is in.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImageBlock {
     pub index: usize,
@@ -153,11 +215,51 @@ pub struct ImageBlock {
     pub space_after: f32,
 }
 
+/// Where a text box's content sits when it is shorter than the box.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FrameAnchor {
+    Top,
+    Middle,
+    Bottom,
+}
+
+/// A box placed on the current page — a slide's text box, shape or
+/// picture — with blocks laid out inside it. It does not move the text
+/// flowing around it, and its content never starts a page: what does not
+/// fit runs over its foot.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FrameBlock {
+    /// From the page's top-left corner, in points, y down.
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+    pub fill: Option<[f32; 3]>,
+    /// The outline's colour and width.
+    pub line: Option<([f32; 3], f32)>,
+    /// Room inside the edges: left, top, right, bottom.
+    pub inset: [f32; 4],
+    pub anchor: FrameAnchor,
+    /// Text, tables, pictures and rules; a frame or page inside a frame is
+    /// left out.
+    pub blocks: Vec<Block>,
+}
+
+/// A new page of its own size (a slide, a landscape section), optionally
+/// filled with a colour.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PageBlock {
+    pub page: PageSetup,
+    pub background: Option<[f32; 3]>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Block {
     Text(TextBlock),
     Table(TableBlock),
     Image(ImageBlock),
+    Frame(FrameBlock),
+    Page(PageBlock),
     PageBreak,
     /// A thin line across the text area.
     Rule,
@@ -167,12 +269,16 @@ pub enum Block {
 pub struct DocumentSource<'a> {
     pub page: PageSetup,
     pub blocks: &'a [Block],
+    /// On every page, above the top margin and below the bottom one;
+    /// [`PAGE_NUMBER`] and [`PAGE_COUNT`] in their text become numbers.
+    pub header: &'a [Block],
+    pub footer: &'a [Block],
     /// The faces to set text in: the first for everything it has glyphs
     /// for, the others for paragraphs it does not cover.
     pub fonts: &'a [&'a [u8]],
     /// Names for the faces in the file (`/BaseFont`), in the same order.
     pub font_names: &'a [String],
-    /// PNG or JPEG files, for the image blocks.
+    /// Pictures for the image blocks: PNG, JPEG, GIF, BMP, WebP or TIFF.
     pub pictures: &'a [Vec<u8>],
     pub info: FileInfo<'a>,
 }
@@ -220,7 +326,19 @@ fn usable_setup(page: &PageSetup) -> Result<PageSetup> {
         margins[0] = 0.0;
         margins[2] = 0.0;
     }
-    Ok(PageSetup { margins, ..*page })
+    let distance = |d: f32, margin: f32| {
+        if d.is_finite() {
+            d.clamp(0.0, margin.max(0.0))
+        } else {
+            (margin / 2.0).max(0.0)
+        }
+    };
+    Ok(PageSetup {
+        margins,
+        header: distance(page.header, margins[0]),
+        footer: distance(page.footer, margins[2]),
+        ..*page
+    })
 }
 
 /// A face and everything drawn with it, for its subset.
@@ -283,6 +401,32 @@ impl<'a> Face<'a> {
     }
 }
 
+/// How a stretch of a paragraph is set.
+#[derive(Debug, Clone, PartialEq)]
+struct Style {
+    bold: bool,
+    italic: bool,
+    underline: bool,
+    strike: bool,
+    color: [f32; 3],
+    /// Into the document's links.
+    link: Option<usize>,
+}
+
+/// A character and the style it is set in (an index into the paragraph's styles).
+type SChar = (char, u16);
+
+/// One line of a paragraph, as broken.
+struct Line {
+    chars: Vec<SChar>,
+    /// It ends a line of the source: not justified.
+    last: bool,
+}
+
+fn text_of(chars: &[SChar]) -> String {
+    chars.iter().map(|c| c.0).collect()
+}
+
 /// Something to draw on a page, in PDF space (points, y up).
 enum Draw {
     Text {
@@ -294,16 +438,18 @@ enum Draw {
         stretch: f32,
         color: [f32; 3],
         bold: bool,
+        skew: f32,
     },
     Line {
         from: (f32, f32),
         to: (f32, f32),
         width: f32,
-        grey: f32,
+        color: [f32; 3],
     },
-    Frame {
+    Border {
         rect: [f32; 4],
-        grey: f32,
+        color: [f32; 3],
+        width: f32,
     },
     Fill {
         rect: [f32; 4],
@@ -313,6 +459,27 @@ enum Draw {
         id: ObjectId,
         matrix: [f32; 6],
     },
+    Link {
+        rect: [f32; 4],
+        uri: usize,
+    },
+}
+
+impl Draw {
+    /// Moved up by `dy` (down when negative).
+    fn shift(&mut self, dy: f32) {
+        match self {
+            Draw::Text { baseline, .. } => *baseline += dy,
+            Draw::Line { from, to, .. } => {
+                from.1 += dy;
+                to.1 += dy;
+            }
+            Draw::Border { rect, .. } | Draw::Fill { rect, .. } | Draw::Link { rect, .. } => {
+                rect[1] += dy
+            }
+            Draw::Picture { matrix, .. } => matrix[5] += dy,
+        }
+    }
 }
 
 /// A cell of a table row, broken into lines for its column.
@@ -321,24 +488,57 @@ struct LaidCell {
     x: f32,
     width: f32,
     face: usize,
-    lines: Vec<(String, bool)>,
+    lines: Vec<Line>,
     bold: bool,
     align: BlockAlign,
     dir: Direction,
+    fill: Option<[f32; 3]>,
+}
+
+/// The room text flows in: the page inside its margins, or a frame.
+#[derive(Debug, Clone, Copy)]
+struct Area {
+    left: f32,
+    right: f32,
+    top: f32,
+    bottom: f32,
+}
+
+fn area_of(setup: &PageSetup) -> Area {
+    Area {
+        left: setup.margins[3],
+        right: setup.width - setup.margins[1],
+        top: setup.height - setup.margins[0],
+        bottom: setup.margins[2],
+    }
+}
+
+/// A page being made: its size and what is drawn on it.
+struct OutPage {
+    setup: PageSetup,
+    draws: Vec<Draw>,
 }
 
 struct Typesetter<'a> {
+    /// The size of the pages the text flows onto next.
     setup: PageSetup,
     faces: Vec<Face<'a>>,
-    pages: Vec<Vec<Draw>>,
-    /// Top of the free space on the current page.
+    pages: Vec<OutPage>,
+    /// The page drawn on now.
+    current: usize,
+    area: Area,
+    /// Laying out inside a frame: never starting a page.
+    framed: bool,
+    /// Top of the free space in the area.
     y: f32,
     report: CreateReport,
     doc: Document,
-    pictures: HashMap<usize, Option<(ObjectId, crate::picture::PictureInfo)>>,
+    pictures: HashMap<usize, Option<(ObjectId, PictureInfo)>>,
     pictures_source: &'a [Vec<u8>],
     /// The direction most of the document's text runs in.
     dir: Direction,
+    /// The addresses links go to, each once.
+    links: Vec<String>,
 }
 
 /// A block's direction: as given, or from its first strong letter, or —
@@ -353,19 +553,21 @@ fn resolve(dir: BlockDir, text: &str, around: Direction) -> Direction {
     }
 }
 
-/// Collapses runs of white space into one space, as HTML and Word do.
-fn collapse(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut space = false;
-    for c in text.chars() {
+/// Collapses runs of white space into one space, as HTML and Word do; a
+/// space keeps the style of the first white space of its run.
+fn collapse(text: &[SChar]) -> Vec<SChar> {
+    let mut out = Vec::with_capacity(text.len());
+    let mut space: Option<u16> = None;
+    for &(c, s) in text {
         if c.is_whitespace() && c != '\u{00A0}' {
-            space = !out.is_empty();
-        } else {
-            if space {
-                out.push(' ');
-                space = false;
+            if !out.is_empty() && space.is_none() {
+                space = Some(s);
             }
-            out.push(c);
+        } else {
+            if let Some(style) = space.take() {
+                out.push((' ', style));
+            }
+            out.push((c, s));
         }
     }
     out
@@ -381,26 +583,94 @@ fn line_x(align: BlockAlign, dir: Direction, left: f32, right: f32, width: f32) 
     }
 }
 
+fn is_space(g: &ShapedGlyph) -> bool {
+    !g.text.is_empty() && g.text.chars().all(char::is_whitespace)
+}
+
+/// An address a link may go to: the web or mail, nothing that runs or opens a file.
+fn safe_link(uri: &str) -> Option<String> {
+    let uri = uri.trim();
+    let lower = uri.to_ascii_lowercase();
+    let allowed = ["http://", "https://", "mailto:"]
+        .iter()
+        .any(|scheme| lower.starts_with(scheme));
+    if !allowed || uri.len() > 2048 || uri.chars().any(char::is_control) {
+        return None;
+    }
+    // A URI action's address is seven-bit ASCII: the rest is percent-encoded.
+    let mut out = String::with_capacity(uri.len());
+    for b in uri.bytes() {
+        if b.is_ascii_graphic() {
+            out.push(b as char);
+        } else {
+            out.push_str(&format!("%{b:02X}"));
+        }
+    }
+    Some(out)
+}
+
+/// `blocks` with the page's number and the count of pages in their text.
+fn numbered(blocks: &[Block], page: usize, pages: usize) -> Vec<Block> {
+    let fill = |text: &str| {
+        text.replace(PAGE_NUMBER, &page.to_string())
+            .replace(PAGE_COUNT, &pages.to_string())
+    };
+    blocks
+        .iter()
+        .map(|block| match block {
+            Block::Text(t) => {
+                let mut t = t.clone();
+                t.text = fill(&t.text);
+                for run in &mut t.runs {
+                    run.text = fill(&run.text);
+                }
+                Block::Text(t)
+            }
+            Block::Table(t) => {
+                let mut t = t.clone();
+                for cell in t.rows.iter_mut().flatten() {
+                    cell.text = fill(&cell.text);
+                }
+                Block::Table(t)
+            }
+            other => other.clone(),
+        })
+        .collect()
+}
+
 impl<'a> Typesetter<'a> {
     fn top(&self) -> f32 {
-        self.setup.height - self.setup.margins[0]
+        self.area.top
     }
+    /// Where the flow must start a new page; inside a frame, nowhere.
     fn bottom(&self) -> f32 {
-        self.setup.margins[2]
+        if self.framed {
+            f32::NEG_INFINITY
+        } else {
+            self.area.bottom
+        }
     }
     fn left(&self) -> f32 {
-        self.setup.margins[3]
+        self.area.left
     }
     fn right(&self) -> f32 {
-        self.setup.width - self.setup.margins[1]
+        self.area.right
     }
-    /// Nothing is on this page yet.
+    /// Nothing is in the area yet.
     fn at_top(&self) -> bool {
         self.y >= self.top() - 0.01
     }
 
     fn new_page(&mut self) {
-        self.pages.push(Vec::new());
+        if self.framed {
+            return;
+        }
+        self.pages.push(OutPage {
+            setup: self.setup,
+            draws: Vec::new(),
+        });
+        self.current = self.pages.len() - 1;
+        self.area = area_of(&self.setup);
         self.y = self.top();
     }
 
@@ -408,9 +678,21 @@ impl<'a> Typesetter<'a> {
         if let Draw::Text { face, glyphs, .. } = &d {
             self.faces[*face].used.extend(glyphs.iter().cloned());
         }
-        if let Some(page) = self.pages.last_mut() {
-            page.push(d);
+        if let Some(page) = self.pages.get_mut(self.current) {
+            page.draws.push(d);
         }
+    }
+
+    fn link(&mut self, uri: &str) -> Option<usize> {
+        let uri = safe_link(uri)?;
+        if let Some(k) = self.links.iter().position(|l| *l == uri) {
+            return Some(k);
+        }
+        if self.links.len() >= 10_000 {
+            return None;
+        }
+        self.links.push(uri);
+        Some(self.links.len() - 1)
     }
 
     /// The first face with a glyph for every letter of `text`, or the one
@@ -435,68 +717,132 @@ impl<'a> Typesetter<'a> {
         best
     }
 
+    /// The paragraph's characters with the styles they are set in; style 0
+    /// is the paragraph's own.
+    fn styled(&mut self, b: &TextBlock) -> (Vec<SChar>, Vec<Style>) {
+        let own = Style {
+            bold: b.bold,
+            italic: b.italic,
+            underline: false,
+            strike: false,
+            color: b.color,
+            link: None,
+        };
+        let mut styles = vec![own];
+        if b.runs.is_empty() {
+            return (b.text.chars().map(|c| (c, 0)).collect(), styles);
+        }
+        let mut chars = Vec::new();
+        for run in &b.runs {
+            let style = Style {
+                bold: b.bold || run.bold,
+                italic: b.italic || run.italic,
+                underline: run.underline,
+                strike: run.strike,
+                color: run.color.unwrap_or(b.color),
+                link: run.link.as_deref().and_then(|u| self.link(u)),
+            };
+            let k = match styles.iter().position(|s| *s == style) {
+                Some(k) => k,
+                None if styles.len() < 4096 => {
+                    styles.push(style);
+                    styles.len() - 1
+                }
+                None => 0,
+            };
+            chars.extend(run.text.chars().map(|c| (c, k as u16)));
+        }
+        (chars, styles)
+    }
+
     /// `text` broken into lines no wider than `width` at `size`: at spaces,
     /// and inside a word only when the word alone is wider than the line.
-    /// Each line comes with whether it ends a line of the source (a line
-    /// that is not justified).
     fn break_lines(
         &mut self,
         face: usize,
-        text: &str,
+        text: &[SChar],
         size: f32,
         width: f32,
         preserve: bool,
-    ) -> Vec<(String, bool)> {
+    ) -> Vec<Line> {
         let scale = size / 1000.0;
         let max = width.max(size);
-        let mut out = Vec::new();
-        for hard in text.split('\n') {
-            let source = if preserve {
-                hard.replace('\t', "    ")
-            } else {
-                collapse(hard)
-            };
+        let mut out: Vec<Line> = Vec::new();
+        for hard in text.split(|c| c.0 == '\n') {
             let start = out.len();
             if preserve {
-                self.split_to_fit(face, &source, scale, max, &mut out);
-            } else {
-                let space = self.faces[face].width(" ") * scale;
-                let mut current = String::new();
-                let mut current_w = 0.0f32;
-                for word in source.split(' ').filter(|w| !w.is_empty()) {
-                    let w = self.faces[face].width(word) * scale;
-                    if w > max {
-                        if !current.is_empty() {
-                            out.push((std::mem::take(&mut current), false));
-                        }
-                        self.split_to_fit(face, word, scale, max, &mut out);
-                        if let Some((last, _)) = out.pop() {
-                            current_w = self.faces[face].width(&last) * scale;
-                            current = last;
-                        }
-                        continue;
-                    }
-                    if current.is_empty() {
-                        current = word.to_string();
-                        current_w = w;
-                    } else if current_w + space + w <= max + 0.01 {
-                        current.push(' ');
-                        current.push_str(word);
-                        current_w += space + w;
-                    } else {
-                        out.push((std::mem::replace(&mut current, word.to_string()), false));
-                        current_w = w;
+                let mut source = Vec::with_capacity(hard.len());
+                for &(c, s) in hard {
+                    match c {
+                        '\t' => source.extend([(' ', s); 4]),
+                        '\r' => {}
+                        _ => source.push((c, s)),
                     }
                 }
+                self.split_to_fit(face, &source, scale, max, &mut out);
+            } else {
+                let source = collapse(hard);
+                let space = self.faces[face].width(" ") * scale;
+                let mut current: Vec<SChar> = Vec::new();
+                let mut current_w = 0.0f32;
+                let mut gap: Option<SChar> = None;
+                let mut i = 0;
+                while i < source.len() {
+                    if source[i].0 == ' ' {
+                        gap = Some(source[i]);
+                        i += 1;
+                        continue;
+                    }
+                    let end = source[i..]
+                        .iter()
+                        .position(|c| c.0 == ' ')
+                        .map_or(source.len(), |p| i + p);
+                    let word = &source[i..end];
+                    i = end;
+                    let w = self.faces[face].width(&text_of(word)) * scale;
+                    if w > max {
+                        if !current.is_empty() {
+                            out.push(Line {
+                                chars: std::mem::take(&mut current),
+                                last: false,
+                            });
+                        }
+                        self.split_to_fit(face, word, scale, max, &mut out);
+                        if let Some(last) = out.pop() {
+                            current_w = self.faces[face].width(&text_of(&last.chars)) * scale;
+                            current = last.chars;
+                        }
+                    } else if current.is_empty() {
+                        current = word.to_vec();
+                        current_w = w;
+                    } else if current_w + space + w <= max + 0.01 {
+                        current.push(gap.unwrap_or((' ', word[0].1)));
+                        current.extend_from_slice(word);
+                        current_w += space + w;
+                    } else {
+                        out.push(Line {
+                            chars: std::mem::replace(&mut current, word.to_vec()),
+                            last: false,
+                        });
+                        current_w = w;
+                    }
+                    gap = None;
+                }
                 if !current.is_empty() {
-                    out.push((current, false));
+                    out.push(Line {
+                        chars: current,
+                        last: false,
+                    });
                 }
             }
             if out.len() == start {
-                out.push((String::new(), false));
+                out.push(Line {
+                    chars: Vec::new(),
+                    last: false,
+                });
             }
             if let Some(last) = out.last_mut() {
-                last.1 = true;
+                last.last = true;
             }
         }
         out
@@ -506,73 +852,143 @@ impl<'a> Typesetter<'a> {
     fn split_to_fit(
         &mut self,
         face: usize,
-        text: &str,
+        text: &[SChar],
         scale: f32,
         max: f32,
-        out: &mut Vec<(String, bool)>,
+        out: &mut Vec<Line>,
     ) {
-        let mut piece = String::new();
+        let mut piece: Vec<SChar> = Vec::new();
         let mut piece_w = 0.0f32;
-        for c in text.chars() {
+        for &(c, s) in text {
             let mut buf = [0u8; 4];
             let w = self.faces[face].width(c.encode_utf8(&mut buf)) * scale;
             if !piece.is_empty() && piece_w + w > max {
-                out.push((std::mem::take(&mut piece), false));
+                out.push(Line {
+                    chars: std::mem::take(&mut piece),
+                    last: false,
+                });
                 piece_w = 0.0;
             }
-            piece.push(c);
+            piece.push((c, s));
             piece_w += w;
         }
         if !piece.is_empty() || out.is_empty() {
-            out.push((piece, false));
+            out.push(Line {
+                chars: piece,
+                last: false,
+            });
         }
     }
 
     /// One line of text, shaped and placed in `[left, right]` with its
-    /// baseline at `baseline`.
+    /// baseline at `baseline`: each stretch of one style drawn in it, with
+    /// its underline, strike-through and link.
     #[allow(clippy::too_many_arguments)]
     fn draw_line(
         &mut self,
         face: usize,
-        line: &str,
+        line: &[SChar],
         last: bool,
         (left, right): (f32, f32),
         baseline: f32,
         size: f32,
         align: BlockAlign,
         dir: Direction,
-        color: [f32; 3],
-        bold: bool,
+        styles: &[Style],
     ) {
-        if line.trim().is_empty() {
+        if line.iter().all(|c| c.0.is_whitespace()) {
             return;
         }
-        let glyphs = self.faces[face].shaper.shape_line_in(line, Some(dir));
-        let natural = glyphs.iter().map(|g| g.x_advance).sum::<f32>() * size / 1000.0;
-        let spaces = glyphs.iter().filter(|g| g.text == " ").count();
+        let text = text_of(line);
+        // The character each byte of the line starts, for the glyphs' offsets.
+        let mut char_at = vec![0u32; text.len() + 1];
+        for (k, (b, _)) in text.char_indices().enumerate() {
+            char_at[b] = k as u32;
+        }
+        let glyphs = self.faces[face].shaper.shape_line_in(&text, Some(dir));
+        if glyphs.is_empty() {
+            return;
+        }
+        let scale = size / 1000.0;
+        let natural = glyphs.iter().map(|g| g.x_advance).sum::<f32>() * scale;
+        let spaces = glyphs.iter().filter(|g| is_space(g)).count();
         let room = right - left;
         let justify = align == BlockAlign::Justify && !last && spaces > 0 && natural < room;
         let (stretch, width) = if justify {
-            ((room - natural) / spaces as f32 * 1000.0 / size, room)
+            ((room - natural) / spaces as f32 / scale, room)
         } else {
             (0.0, natural)
         };
         let x = line_x(align, dir, left, right, width);
-        self.draw(Draw::Text {
-            face,
-            glyphs,
-            x,
-            baseline,
-            size,
-            stretch,
-            color,
-            bold,
-        });
+        // The style of each glyph; a glyph with no text of its own is part
+        // of the cluster before it, and never starts a stretch.
+        let mut glyph_style = Vec::with_capacity(glyphs.len());
+        for (k, g) in glyphs.iter().enumerate() {
+            let s = if g.text.is_empty() && k > 0 {
+                glyph_style[k - 1]
+            } else {
+                let c = char_at.get(g.offset).copied().unwrap_or(0) as usize;
+                line.get(c).map_or(0, |c| c.1)
+            };
+            glyph_style.push(s);
+        }
+        let own = Style {
+            bold: false,
+            italic: false,
+            underline: false,
+            strike: false,
+            color: [0.0; 3],
+            link: None,
+        };
+        let mut pen = 0.0f32;
+        let mut k = 0;
+        while k < glyphs.len() {
+            let s = glyph_style[k];
+            let (start, from) = (k, pen);
+            while k < glyphs.len() && glyph_style[k] == s {
+                let extra = if is_space(&glyphs[k]) { stretch } else { 0.0 };
+                pen += (glyphs[k].x_advance + extra) * scale;
+                k += 1;
+            }
+            let style = styles.get(s as usize).unwrap_or(&own).clone();
+            let (x0, x1) = (x + from, x + pen);
+            self.draw(Draw::Text {
+                face,
+                glyphs: glyphs[start..k].to_vec(),
+                x: x0,
+                baseline,
+                size,
+                stretch,
+                color: style.color,
+                bold: style.bold,
+                skew: if style.italic { ITALIC_SLANT } else { 0.0 },
+            });
+            let rule = |y: f32| Draw::Line {
+                from: (x0, y),
+                to: (x1, y),
+                width: (size * 0.055).max(0.4),
+                color: style.color,
+            };
+            if style.underline {
+                self.draw(rule(baseline - size * 0.12));
+            }
+            if style.strike {
+                self.draw(rule(baseline + size * 0.26));
+            }
+            if let Some(uri) = style.link {
+                self.draw(Draw::Link {
+                    rect: [x0, baseline - size * 0.28, x1 - x0, size * 1.15],
+                    uri,
+                });
+            }
+        }
     }
 
     fn text(&mut self, b: &TextBlock, next_line: f32) {
-        let face = self.face_for(&b.text);
-        let dir = resolve(b.dir, &b.text, self.dir);
+        let (chars, styles) = self.styled(b);
+        let plain = text_of(&chars);
+        let face = self.face_for(&plain);
+        let dir = resolve(b.dir, &plain, self.dir);
         let size = if b.size.is_finite() {
             b.size.clamp(4.0, 144.0)
         } else {
@@ -584,7 +1000,7 @@ impl<'a> Typesetter<'a> {
             Direction::Rtl => (self.left(), self.right() - indent),
             Direction::Ltr => (self.left() + indent, self.right()),
         };
-        let lines = self.break_lines(face, &b.text, size, right - left, b.preserve);
+        let lines = self.break_lines(face, &chars, size, right - left, b.preserve);
         if !self.at_top() {
             self.y -= b.space_before.max(0.0);
         }
@@ -597,7 +1013,7 @@ impl<'a> Typesetter<'a> {
         {
             self.new_page();
         }
-        for (k, (line, last)) in lines.iter().enumerate() {
+        for (k, line) in lines.iter().enumerate() {
             if !self.at_top() && self.y - line_h < self.bottom() - 0.01 {
                 self.new_page();
             }
@@ -621,15 +1037,14 @@ impl<'a> Typesetter<'a> {
             };
             self.draw_line(
                 face,
-                line,
-                *last,
+                &line.chars,
+                line.last,
                 (left, right),
                 baseline,
                 size,
                 align,
                 dir,
-                b.color,
-                b.bold,
+                &styles,
             );
             if k == 0 {
                 if let Some(marker) = b.marker.as_deref().filter(|m| !m.trim().is_empty()) {
@@ -641,18 +1056,18 @@ impl<'a> Typesetter<'a> {
                         Direction::Rtl => (right + gap, right + gap + w),
                         Direction::Ltr => (left - gap - w, left - gap),
                     };
+                    let marker: Vec<SChar> = marker.chars().map(|c| (c, 0)).collect();
                     // Shaped in the paragraph's direction: "٢." reads ".٢" on the page.
                     self.draw_line(
                         mface,
-                        marker,
+                        &marker,
                         true,
                         x,
                         baseline,
                         size,
                         BlockAlign::Center,
                         dir,
-                        b.color,
-                        b.bold,
+                        &styles[..1],
                     );
                 }
             }
@@ -665,7 +1080,7 @@ impl<'a> Typesetter<'a> {
     fn first_line(&mut self, block: Option<&Block>) -> f32 {
         match block {
             Some(Block::Text(t)) => {
-                let face = self.face_for(&t.text);
+                let face = self.face_for(&t.plain());
                 2.0 * self.faces[face].line(t.size.clamp(4.0, 144.0), t.spacing).0 + t.space_before
             }
             Some(Block::Table(t)) => {
@@ -689,12 +1104,12 @@ impl<'a> Typesetter<'a> {
             from: (left, y),
             to: (right, y),
             width: 0.75,
-            grey: RULE_GREY,
+            color: [RULE_GREY; 3],
         });
         self.y -= 7.0;
     }
 
-    fn picture(&mut self, index: usize) -> Option<(ObjectId, crate::picture::PictureInfo)> {
+    fn picture(&mut self, index: usize) -> Option<(ObjectId, PictureInfo)> {
         if let Some(known) = self.pictures.get(&index) {
             return *known;
         }
@@ -722,7 +1137,11 @@ impl<'a> Typesetter<'a> {
             (None, Some(h)) => (h * pw / ph, h),
             (None, None) => (pw * 0.75, ph * 0.75),
         };
-        let (max_w, max_h) = (self.right() - self.left(), self.top() - self.bottom());
+        // Never larger than the room it is in: the page's text area, or the frame.
+        let (max_w, max_h) = (
+            (self.right() - self.left()).max(1.0),
+            (self.area.top - self.area.bottom).max(1.0),
+        );
         let fit = (max_w / w).min(max_h / h).min(1.0);
         w *= fit;
         h *= fit;
@@ -748,7 +1167,8 @@ impl<'a> Typesetter<'a> {
             .map(|row| row.iter().map(|c| c.span.max(1)).sum::<usize>())
             .max()
             .unwrap_or(0)
-            .max(t.widths.len());
+            .max(t.widths.len())
+            .min(1000);
         if columns == 0 {
             return;
         }
@@ -815,7 +1235,8 @@ impl<'a> Typesetter<'a> {
                 let (x, width) = cell_x(from, n);
                 let face = self.face_for(&c.text);
                 let inner = (width - 2.0 * CELL_PAD.0).max(size);
-                let lines = self.break_lines(face, &c.text, size, inner, false);
+                let chars: Vec<SChar> = c.text.chars().map(|ch| (ch, 0)).collect();
+                let lines = self.break_lines(face, &chars, size, inner, false);
                 cells.push(LaidCell {
                     x,
                     width,
@@ -824,6 +1245,7 @@ impl<'a> Typesetter<'a> {
                     bold: c.bold || r < t.header_rows,
                     align: c.align,
                     dir: resolve(c.dir, &c.text, dir),
+                    fill: c.fill,
                 });
                 from += n;
             }
@@ -906,28 +1328,180 @@ impl<'a> Typesetter<'a> {
         let height =
             take.iter().copied().max().unwrap_or(0).max(1) as f32 * line_h + 2.0 * CELL_PAD.1;
         let top = self.y;
+        let plain = [Style {
+            bold: false,
+            italic: false,
+            underline: false,
+            strike: false,
+            color: [0.0; 3],
+            link: None,
+        }];
+        let bold = [Style {
+            bold: true,
+            ..plain[0].clone()
+        }];
         for (k, c) in cells.iter().enumerate() {
             let rect = [c.x, top - height, c.width, height];
-            if header {
-                self.draw(Draw::Fill {
-                    rect,
-                    color: HEADER_SHADE,
-                });
+            if let Some(color) = c.fill.or(header.then_some(HEADER_SHADE)) {
+                self.draw(Draw::Fill { rect, color });
             }
             let baseline_off = self.faces[c.face].line(size, 1.0).1;
             let bounds = (c.x + CELL_PAD.0, c.x + c.width - CELL_PAD.0);
-            for (i, (line, last)) in c.lines.iter().skip(from[k]).take(take[k]).enumerate() {
+            let styles = if c.bold { &bold } else { &plain };
+            for (i, line) in c.lines.iter().skip(from[k]).take(take[k]).enumerate() {
                 let baseline = top - CELL_PAD.1 - i as f32 * line_h - baseline_off;
                 self.draw_line(
-                    c.face, line, *last, bounds, baseline, size, c.align, c.dir, [0.0; 3], c.bold,
+                    c.face,
+                    &line.chars,
+                    line.last,
+                    bounds,
+                    baseline,
+                    size,
+                    c.align,
+                    c.dir,
+                    styles,
                 );
             }
-            self.draw(Draw::Frame {
+            self.draw(Draw::Border {
                 rect,
-                grey: BORDER_GREY,
+                color: [BORDER_GREY; 3],
+                width: 0.5,
             });
         }
         height
+    }
+
+    /// Lays `blocks` out in `area` without ever starting a page, and moves
+    /// what was drawn to sit at the area's top, middle or foot.
+    fn layout_in(&mut self, area: Area, blocks: &[Block], anchor: FrameAnchor) {
+        if !(area.right - area.left).is_finite() || area.right - area.left < 1.0 {
+            return;
+        }
+        let saved = (self.area, self.y, self.framed);
+        self.area = area;
+        self.y = area.top;
+        self.framed = true;
+        let start = self.pages.get(self.current).map_or(0, |p| p.draws.len());
+        for block in blocks {
+            match block {
+                Block::Text(b) => self.text(b, 0.0),
+                Block::Table(t) => self.table(t),
+                Block::Image(i) => self.image(i),
+                Block::Rule => self.rule(),
+                Block::Frame(_) | Block::Page(_) | Block::PageBreak => {}
+            }
+        }
+        let used = area.top - self.y;
+        let slack = (area.top - area.bottom) - used;
+        let shift = match anchor {
+            FrameAnchor::Top => 0.0,
+            FrameAnchor::Middle => slack / 2.0,
+            FrameAnchor::Bottom => slack,
+        }
+        .max(0.0);
+        if shift > 0.0 {
+            if let Some(page) = self.pages.get_mut(self.current) {
+                for d in &mut page.draws[start..] {
+                    d.shift(-shift);
+                }
+            }
+        }
+        (self.area, self.y, self.framed) = saved;
+    }
+
+    fn frame(&mut self, f: &FrameBlock) {
+        if self.framed {
+            return;
+        }
+        let page_h = self.pages[self.current].setup.height;
+        let (x, top, w, h) = (f.x, page_h - f.y, f.width.max(0.0), f.height.max(0.0));
+        if ![x, top, w, h].iter().all(|v| v.is_finite()) {
+            return;
+        }
+        let rect = [x, top - h, w, h];
+        if let Some(color) = f.fill {
+            self.draw(Draw::Fill { rect, color });
+        }
+        if let Some((color, width)) = f.line.filter(|l| l.1.is_finite() && l.1 > 0.0) {
+            self.draw(Draw::Border {
+                rect,
+                color,
+                width: width.min(72.0),
+            });
+        }
+        let inset = f
+            .inset
+            .map(|v| if v.is_finite() { v.max(0.0) } else { 0.0 });
+        let area = Area {
+            left: x + inset[0],
+            right: x + w - inset[2],
+            top: top - inset[1],
+            bottom: top - h + inset[3],
+        };
+        self.layout_in(area, &f.blocks, f.anchor);
+    }
+
+    fn page(&mut self, p: &PageBlock) {
+        if self.framed {
+            return;
+        }
+        let Ok(setup) = usable_setup(&p.page) else {
+            return;
+        };
+        self.setup = setup;
+        if self.pages[self.current].draws.is_empty() {
+            self.pages[self.current].setup = setup;
+            self.area = area_of(&setup);
+            self.y = self.top();
+        } else {
+            self.new_page();
+        }
+        if let Some(color) = p.background {
+            self.draw(Draw::Fill {
+                rect: [0.0, 0.0, setup.width, setup.height],
+                color,
+            });
+        }
+    }
+
+    /// The header and footer on every page, numbered.
+    fn furniture(&mut self, header: &[Block], footer: &[Block]) {
+        if header.is_empty() && footer.is_empty() {
+            return;
+        }
+        let total = self.pages.len();
+        let mut missing = self.report.missing_glyphs;
+        for k in 0..total {
+            self.current = k;
+            let setup = self.pages[k].setup;
+            let (left, right) = (setup.margins[3], setup.width - setup.margins[1]);
+            if !header.is_empty() {
+                let top = setup.height - setup.header;
+                let area = Area {
+                    left,
+                    right,
+                    top,
+                    bottom: (setup.height - setup.margins[0]).min(top),
+                };
+                self.layout_in(area, &numbered(header, k + 1, total), FrameAnchor::Top);
+            }
+            if !footer.is_empty() {
+                let bottom = setup.footer;
+                let area = Area {
+                    left,
+                    right,
+                    top: setup.margins[2].max(bottom),
+                    bottom,
+                };
+                self.layout_in(area, &numbered(footer, k + 1, total), FrameAnchor::Bottom);
+            }
+            // The same letters on every page are missing once.
+            if k == 0 {
+                missing = self.report.missing_glyphs;
+            } else {
+                self.report.missing_glyphs = missing;
+            }
+        }
     }
 }
 
@@ -977,6 +1551,7 @@ fn page_ops(
                 stretch,
                 color,
                 bold,
+                skew,
             } => {
                 let Some(subset) = subsets.get(*face).and_then(Option::as_ref) else {
                     continue;
@@ -1002,7 +1577,7 @@ fn page_ops(
                     &faces[*face].shaper,
                     &ShownLine {
                         glyphs,
-                        matrix: [1.0, 0.0, 0.0, 1.0, *x, *baseline],
+                        matrix: [1.0, 0.0, *skew, 1.0, *x, *baseline],
                         size: *size,
                         space_stretch: *stretch,
                     },
@@ -1014,20 +1589,20 @@ fn page_ops(
                 from,
                 to,
                 width,
-                grey,
+                color,
             } => {
                 ops.push(op("q", vec![]));
-                ops.push(op("G", vec![real(*grey)]));
+                ops.push(op("RG", rgb(*color)));
                 ops.push(op("w", vec![real(*width)]));
                 ops.push(op("m", vec![real(from.0), real(from.1)]));
                 ops.push(op("l", vec![real(to.0), real(to.1)]));
                 ops.push(op("S", vec![]));
                 ops.push(op("Q", vec![]));
             }
-            Draw::Frame { rect, grey } => {
+            Draw::Border { rect, color, width } => {
                 ops.push(op("q", vec![]));
-                ops.push(op("G", vec![real(*grey)]));
-                ops.push(op("w", vec![real(0.5)]));
+                ops.push(op("RG", rgb(*color)));
+                ops.push(op("w", vec![real(*width)]));
                 ops.push(op("re", rect.iter().map(|v| real(*v)).collect()));
                 ops.push(op("S", vec![]));
                 ops.push(op("Q", vec![]));
@@ -1048,34 +1623,55 @@ fn page_ops(
                 ops.push(op("Do", vec![Object::Name(name.clone().into_bytes())]));
                 ops.push(op("Q", vec![]));
             }
+            Draw::Link { .. } => {}
         }
     }
     ops
 }
 
+/// A page ready to be written.
+struct PageOut {
+    width: f32,
+    height: f32,
+    ops: Vec<Operation>,
+    resources: Object,
+    annots: Vec<Dictionary>,
+}
+
 /// Writes the pages, the catalog and the file's information, and the file.
-fn finish(
-    mut doc: Document,
-    pages: Vec<(f32, f32, Vec<Operation>, Object)>,
-    info: &FileInfo,
-) -> Result<Vec<u8>> {
+fn finish(mut doc: Document, pages: Vec<PageOut>, info: &FileInfo) -> Result<Vec<u8>> {
     let pages_id = doc.new_object_id();
     let mut kids = Vec::with_capacity(pages.len());
-    for (width, height, ops, resources) in pages {
-        let bytes = Content { operations: ops }
-            .encode()
-            .map_err(|e| refuse(&format!("a page could not be written: {e}")))?;
+    for page in pages {
+        let bytes = Content {
+            operations: page.ops,
+        }
+        .encode()
+        .map_err(|e| refuse(&format!("a page could not be written: {e}")))?;
         let mut stream = Stream::new(Dictionary::new(), bytes);
         let _ = stream.compress();
         let contents = doc.add_object(stream);
-        let page = doc.add_object(dictionary! {
+        let page_id = doc.new_object_id();
+        let mut dict = dictionary! {
             "Type" => "Page",
             "Parent" => pages_id,
-            "MediaBox" => vec![0.into(), 0.into(), real(width), real(height)],
+            "MediaBox" => vec![0.into(), 0.into(), real(page.width), real(page.height)],
             "Contents" => contents,
-            "Resources" => resources,
-        });
-        kids.push(Object::Reference(page));
+            "Resources" => page.resources,
+        };
+        if !page.annots.is_empty() {
+            let annots: Vec<Object> = page
+                .annots
+                .into_iter()
+                .map(|mut a| {
+                    a.set("P", page_id);
+                    Object::Reference(doc.add_object(a))
+                })
+                .collect();
+            dict.set("Annots", annots);
+        }
+        doc.objects.insert(page_id, Object::Dictionary(dict));
+        kids.push(Object::Reference(page_id));
     }
     let count = kids.len() as i64;
     doc.objects.insert(
@@ -1134,15 +1730,24 @@ pub fn create_document(source: &DocumentSource) -> Result<(Vec<u8>, CreateReport
     }
     // Which way the document runs, for what has no letters of its own.
     let (mut rtl, mut ltr) = (0usize, 0usize);
-    for block in source.blocks {
-        let (text, dir) = match block {
-            Block::Text(b) => (b.text.as_str(), b.dir),
-            _ => continue,
-        };
+    let mut count = |text: &str, dir: BlockDir| {
         let weight = text.chars().filter(|c| c.is_alphabetic()).count();
         match resolve(dir, text, Direction::Ltr) {
             Direction::Rtl => rtl += weight,
             Direction::Ltr => ltr += weight,
+        }
+    };
+    for block in source.blocks {
+        match block {
+            Block::Text(b) => count(&b.plain(), b.dir),
+            Block::Frame(f) => {
+                for inner in &f.blocks {
+                    if let Block::Text(b) = inner {
+                        count(&b.plain(), b.dir);
+                    }
+                }
+            }
+            _ => {}
         }
     }
     let dir = if rtl > ltr {
@@ -1154,12 +1759,16 @@ pub fn create_document(source: &DocumentSource) -> Result<(Vec<u8>, CreateReport
         setup,
         faces,
         pages: Vec::new(),
+        current: 0,
+        area: area_of(&setup),
+        framed: false,
         y: 0.0,
         report: CreateReport::default(),
         doc: Document::with_version("1.7"),
         pictures: HashMap::new(),
         pictures_source: source.pictures,
         dir,
+        links: Vec::new(),
     };
     t.new_page();
     for (k, block) in source.blocks.iter().enumerate() {
@@ -1174,8 +1783,10 @@ pub fn create_document(source: &DocumentSource) -> Result<(Vec<u8>, CreateReport
             }
             Block::Table(b) => t.table(b),
             Block::Image(b) => t.image(b),
+            Block::Frame(f) => t.frame(f),
+            Block::Page(p) => t.page(p),
             Block::PageBreak => {
-                if !t.at_top() {
+                if !t.pages[t.current].draws.is_empty() || !t.at_top() {
                     t.new_page();
                 }
             }
@@ -1183,15 +1794,18 @@ pub fn create_document(source: &DocumentSource) -> Result<(Vec<u8>, CreateReport
         }
     }
     // A break at the very end leaves no empty page behind it.
-    if t.pages.len() > 1 && t.pages.last().is_some_and(Vec::is_empty) {
+    if t.pages.len() > 1 && t.pages.last().is_some_and(|p| p.draws.is_empty()) {
         t.pages.pop();
+        t.current = t.pages.len() - 1;
     }
+    t.furniture(source.header, source.footer);
     let Typesetter {
         mut doc,
         faces,
         pages,
         report,
         pictures,
+        links,
         ..
     } = t;
     let mut subsets = Vec::with_capacity(faces.len());
@@ -1239,11 +1853,24 @@ pub fn create_document(source: &DocumentSource) -> Result<(Vec<u8>, CreateReport
         resources.set("XObject", xobjects);
     }
     let resources = doc.add_object(resources);
-    let written: Vec<(f32, f32, Vec<Operation>, Object)> = pages
+    let written: Vec<PageOut> = pages
         .iter()
-        .map(|draws| {
-            let ops = page_ops(draws, &faces, &subsets, &picture_names);
-            (setup.width, setup.height, ops, Object::Reference(resources))
+        .map(|page| {
+            let annots = page
+                .draws
+                .iter()
+                .filter_map(|d| match d {
+                    Draw::Link { rect, uri } => Some(link_annotation(rect, &links[*uri])),
+                    _ => None,
+                })
+                .collect();
+            PageOut {
+                width: page.setup.width,
+                height: page.setup.height,
+                ops: page_ops(&page.draws, &faces, &subsets, &picture_names),
+                resources: Object::Reference(resources),
+                annots,
+            }
         })
         .collect();
     let count = written.len();
@@ -1257,20 +1884,44 @@ pub fn create_document(source: &DocumentSource) -> Result<(Vec<u8>, CreateReport
     ))
 }
 
+/// A link annotation over `rect` (x, y, width, height) to `uri`.
+fn link_annotation(rect: &[f32; 4], uri: &str) -> Dictionary {
+    dictionary! {
+        "Type" => "Annot",
+        "Subtype" => "Link",
+        "Rect" => vec![real(rect[0]), real(rect[1]), real(rect[0] + rect[2]), real(rect[1] + rect[3])],
+        "Border" => vec![0.into(), 0.into(), 0.into()],
+        "A" => dictionary! {
+            "S" => "URI",
+            "URI" => Object::String(uri.as_bytes().to_vec(), StringFormat::Literal),
+        },
+    }
+}
+
 /// How pictures become pages.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PicturePaper {
     /// Each page the picture's own size, at the resolution it records (96
     /// per inch when it records none).
     Own,
-    /// Paper of this size (portrait), turned to suit each picture, with the
-    /// picture fitted inside the margin and centred.
+    /// Paper of this size, with the picture fitted inside the margin and
+    /// centred.
     Paper { width: f32, height: f32 },
+}
+
+/// Which way paper is turned.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PaperTurn {
+    /// Landscape for a picture wider than it is tall, portrait otherwise.
+    Auto,
+    Portrait,
+    Landscape,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PictureSetup {
     pub paper: PicturePaper,
+    pub turn: PaperTurn,
     /// Around the picture, in points (paper only).
     pub margin: f32,
 }
@@ -1283,8 +1934,10 @@ pub struct PictureReport {
     pub left_out: Vec<usize>,
 }
 
-/// A new PDF with each picture on a page of its own, upright as the camera
-/// meant it (EXIF orientation) — a JPEG as it is, without loss.
+/// A new PDF with each picture on a page of its own — every page of a
+/// multi-page TIFF — upright as the camera meant it (EXIF orientation): a
+/// JPEG as it is, a fax TIFF's pages still in their own compression, and
+/// everything else without loss.
 pub fn create_from_pictures(
     pictures: &[Vec<u8>],
     setup: &PictureSetup,
@@ -1294,54 +1947,73 @@ pub fn create_from_pictures(
     let mut pages = Vec::new();
     let mut report = PictureReport::default();
     for (k, bytes) in pictures.iter().enumerate() {
-        let placed = picture_info(bytes)
-            .and_then(|info| add_picture(&mut doc, bytes).ok().map(|p| (p, info)));
-        let Some((picture, pinfo)) = placed else {
+        let placed = add_picture_pages(&mut doc, bytes).unwrap_or_default();
+        if placed.is_empty() {
             report.left_out.push(k);
             continue;
-        };
-        let (pw, ph) = pinfo.shown();
-        let (pw, ph) = (pw.max(1) as f32, ph.max(1) as f32);
-        let (width, height, rect) = match setup.paper {
-            PicturePaper::Own => {
-                let per_point = pinfo.dpi.unwrap_or(96.0) / 72.0;
-                let (mut w, mut h) = (pw / per_point, ph / per_point);
-                // Within PDF's limits: shrunk to fit the largest page, grown to the smallest.
-                let down = (MAX_SIDE / w).min(MAX_SIDE / h).min(1.0);
-                w *= down;
-                h *= down;
-                let up = (MIN_SIDE / w.min(h)).max(1.0);
-                w = (w * up).min(MAX_SIDE);
-                h = (h * up).min(MAX_SIDE);
-                (w, h, [0.0, 0.0, w, h])
+        }
+        for (picture, pinfo) in placed {
+            if pages.len() >= MAX_PICTURE_PAGES {
+                break;
             }
-            PicturePaper::Paper { width, height } => {
-                let (short, long) = (width.min(height), width.max(height));
-                let (short, long) = (
-                    short.clamp(MIN_SIDE, MAX_SIDE),
-                    long.clamp(MIN_SIDE, MAX_SIDE),
-                );
-                let (w, h) = if pw > ph {
-                    (long, short)
-                } else {
-                    (short, long)
-                };
-                let margin = setup.margin.clamp(0.0, short / 4.0);
-                let (room_w, room_h) = (w - 2.0 * margin, h - 2.0 * margin);
-                let fit = (room_w / pw).min(room_h / ph);
-                let (iw, ih) = (pw * fit, ph * fit);
-                (w, h, [(w - iw) / 2.0, (h - ih) / 2.0, iw, ih])
-            }
-        };
-        let matrix = upright_matrix(pinfo.orientation, rect[0], rect[1], rect[2], rect[3]);
-        let ops = vec![
-            op("q", vec![]),
-            op("cm", matrix.iter().map(|v| real(*v)).collect()),
-            op("Do", vec![Object::Name(b"Im0".to_vec())]),
-            op("Q", vec![]),
-        ];
-        let resources = dictionary! { "XObject" => dictionary! { "Im0" => picture.id } };
-        pages.push((width, height, ops, Object::Dictionary(resources)));
+            let (pw, ph) = pinfo.shown();
+            let (pw, ph) = (pw.max(1) as f32, ph.max(1) as f32);
+            let (width, height, rect) = match setup.paper {
+                PicturePaper::Own => {
+                    let per_point = pinfo.dpi.unwrap_or(96.0) / 72.0;
+                    let (mut w, mut h) = (pw / per_point, ph / per_point);
+                    // Within PDF's limits: shrunk to fit the largest page, grown to the smallest.
+                    let down = (MAX_SIDE / w).min(MAX_SIDE / h).min(1.0);
+                    w *= down;
+                    h *= down;
+                    let up = (MIN_SIDE / w.min(h)).max(1.0);
+                    w = (w * up).min(MAX_SIDE);
+                    h = (h * up).min(MAX_SIDE);
+                    (w, h, [0.0, 0.0, w, h])
+                }
+                PicturePaper::Paper { width, height } => {
+                    let (short, long) = (width.min(height), width.max(height));
+                    let (short, long) = (
+                        short.clamp(MIN_SIDE, MAX_SIDE),
+                        long.clamp(MIN_SIDE, MAX_SIDE),
+                    );
+                    let landscape = match setup.turn {
+                        PaperTurn::Auto => pw > ph,
+                        PaperTurn::Portrait => false,
+                        PaperTurn::Landscape => true,
+                    };
+                    let (w, h) = if landscape {
+                        (long, short)
+                    } else {
+                        (short, long)
+                    };
+                    let margin = if setup.margin.is_finite() {
+                        setup.margin.clamp(0.0, short / 4.0)
+                    } else {
+                        0.0
+                    };
+                    let (room_w, room_h) = (w - 2.0 * margin, h - 2.0 * margin);
+                    let fit = (room_w / pw).min(room_h / ph);
+                    let (iw, ih) = (pw * fit, ph * fit);
+                    (w, h, [(w - iw) / 2.0, (h - ih) / 2.0, iw, ih])
+                }
+            };
+            let matrix = upright_matrix(pinfo.orientation, rect[0], rect[1], rect[2], rect[3]);
+            let ops = vec![
+                op("q", vec![]),
+                op("cm", matrix.iter().map(|v| real(*v)).collect()),
+                op("Do", vec![Object::Name(b"Im0".to_vec())]),
+                op("Q", vec![]),
+            ];
+            let resources = dictionary! { "XObject" => dictionary! { "Im0" => picture.id } };
+            pages.push(PageOut {
+                width,
+                height,
+                ops,
+                resources: Object::Dictionary(resources),
+                annots: Vec::new(),
+            });
+        }
     }
     if pages.is_empty() {
         return Err(Error::Edit(
@@ -1351,3 +2023,6 @@ pub fn create_from_pictures(
     report.pages = pages.len();
     Ok((finish(doc, pages, info)?, report))
 }
+
+/// A file of pictures has at most this many pages.
+const MAX_PICTURE_PAGES: usize = 5_000;
