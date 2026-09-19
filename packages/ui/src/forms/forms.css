@@ -23,7 +23,7 @@
 
 .proposal-list li {
   display: grid;
-  grid-template-columns: minmax(0, 7.5em) minmax(0, 1fr) auto;
+  grid-template-columns: 5.75em minmax(0, 1fr) auto;
   gap: var(--space-3);
   align-items: center;
   padding: var(--space-1);
@@ -45,8 +45,14 @@
 /* The calculation editor. */
 .range-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-4);
+}
+
+.range-row .field,
+.range-row .text-input {
+  min-inline-size: 0;
+  inline-size: 100%;
 }
 
 .calc-fields {
