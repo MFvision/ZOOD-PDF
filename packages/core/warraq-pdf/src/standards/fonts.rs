@@ -13,6 +13,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use lopdf::{dictionary, Dictionary, Document, Object, ObjectId, Stream};
 use skrifa::instance::{LocationRef, Size};
+use skrifa::outline::{DrawSettings, OutlinePen};
 use skrifa::raw::TableProvider;
 use skrifa::{GlyphId, MetadataProvider};
 
@@ -760,46 +761,284 @@ pub fn substitute(
     })
 }
 
-/// A ToUnicode for an embedded TrueType font that has none, read from its
-/// own `cmap` through the way it selects glyphs. `None` when the program
-/// does not say enough.
-pub fn tounicode_from_program(
-    doc: &Document,
-    font: &FontUse,
-    facts: &FontFacts,
-    program: &[u8],
-) -> Option<Vec<u8>> {
-    let face = skrifa::FontRef::new(program).ok()?;
+/// Feeds an outline into the shape sampler of the reader's last rung.
+#[derive(Default)]
+struct SamplePen(warraq_text::ShapeSampler);
+
+impl OutlinePen for SamplePen {
+    fn move_to(&mut self, x: f32, y: f32) {
+        self.0.move_to(x, y);
+    }
+    fn line_to(&mut self, x: f32, y: f32) {
+        self.0.line_to(x, y);
+    }
+    fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
+        self.0.quad_to(cx, cy, x, y);
+    }
+    fn curve_to(&mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) {
+        self.0.curve_to(c1x, c1y, c2x, c2y, x, y);
+    }
+    fn close(&mut self) {}
+}
+
+/// Text for glyphs of an embedded OpenType program, by the rungs Warraq's
+/// reader climbs for a glyph its ToUnicode leaves out (ADR-0005, the same
+/// order as `warraq-render`): the program's own `cmap` read backwards, its
+/// GSUB (each Arabic letter shaped in every joining form, and the lam-alef
+/// pairs), and last the glyph's outline matched against the bundled faces'
+/// letters. The last rung is not climbed for a face that builds dotted
+/// letters from a bare skeleton plus separate dots — most of its letters
+/// unknown, and dot-sized marks among them — where a skeleton alone would be
+/// read as the wrong letter.
+pub fn recover_texts(program: &[u8], gids: &BTreeSet<u32>) -> BTreeMap<u32, String> {
+    let mut out = BTreeMap::new();
+    let Ok(face) = skrifa::FontRef::new(program) else {
+        return out;
+    };
+    // The cmap, backwards: real letters over private use and presentation forms.
+    let pua = |c: char| ('\u{E000}'..='\u{F8FF}').contains(&c);
     let mut reverse: BTreeMap<u32, char> = BTreeMap::new();
     for (cp, g) in face.charmap().mappings() {
-        if let Some(ch) = char::from_u32(cp) {
-            let pua = ('\u{E000}'..='\u{F8FF}').contains(&ch);
-            if !pua {
-                reverse.entry(g.to_u32()).or_insert(ch);
+        let Some(ch) = char::from_u32(cp) else {
+            continue;
+        };
+        let better = |old: char| {
+            (pua(old) && !pua(ch))
+                || (warraq_text::normalize::is_presentation_form(old)
+                    && !warraq_text::normalize::is_presentation_form(ch)
+                    && !pua(ch))
+        };
+        match reverse.get(&g.to_u32()) {
+            Some(old) if !better(*old) => {}
+            _ => {
+                reverse.insert(g.to_u32(), ch);
             }
         }
     }
-    let two = facts.subtype == "Type0";
-    let mut entries = vec![];
-    for code in &font.codes {
-        let gid = truetype_glyph(doc, &font.dict, facts, program, *code)?;
-        let ch = reverse.get(&gid)?;
-        entries.push((*code, *ch));
+    for g in gids {
+        if let Some(ch) = reverse.get(g).filter(|c| !pua(**c) && **c != '\0') {
+            out.insert(*g, ch.to_string());
+        }
     }
+    // GSUB: what shaping every letter in every form draws.
+    if gids.iter().any(|g| !out.contains_key(g)) {
+        if let Ok(shaper) = warraq_text::Shaper::new(program) {
+            let mut probes: Vec<String> = vec![];
+            for l in (0x0620u32..=0x06FF)
+                .filter_map(char::from_u32)
+                .filter(|c| c.is_alphabetic())
+            {
+                probes.push(l.to_string());
+                probes.push(format!("\u{0640}{l}"));
+                probes.push(format!("{l}\u{0640}"));
+                probes.push(format!("\u{0640}{l}\u{0640}"));
+            }
+            for pair in ["لا", "لأ", "لإ", "لآ"] {
+                probes.push(pair.to_string());
+                probes.push(format!("\u{0640}{pair}"));
+            }
+            for probe in probes {
+                for g in shaper.shape_run(&probe, warraq_text::Direction::Rtl) {
+                    let text: String = g.text.chars().filter(|c| *c != '\u{0640}').collect();
+                    let gid = u32::from(g.gid);
+                    if gid != 0 && !text.is_empty() && gids.contains(&gid) {
+                        out.entry(gid).or_insert(text);
+                    }
+                }
+            }
+        }
+    }
+    // The outline, unless the face draws its dots apart.
+    let unknown: Vec<u32> = gids
+        .iter()
+        .copied()
+        .filter(|g| !out.contains_key(g))
+        .collect();
+    if unknown.is_empty() {
+        return out;
+    }
+    let Ok(head) = face.head() else {
+        return out;
+    };
+    let upem = f32::from(head.units_per_em()).max(1.0);
+    let metrics = face.glyph_metrics(Size::unscaled(), LocationRef::default());
+    let outlines = face.outline_glyphs();
+    let advancing = |g: u32| metrics.advance_width(GlyphId::new(g)).unwrap_or(0.0) > 0.0;
+    let dotted_apart = unknown.iter().any(|g| {
+        !advancing(*g)
+            && outlines.get(GlyphId::new(*g)).is_some_and(|o| {
+                let mut pen = BoundsPen::default();
+                o.draw(
+                    DrawSettings::unhinted(Size::unscaled(), LocationRef::default()),
+                    &mut pen,
+                )
+                .is_ok()
+                    && pen.dot_sized(upem)
+            })
+    });
+    let letters = gids.iter().filter(|g| advancing(**g)).count();
+    let unknown_letters = unknown.iter().filter(|g| advancing(**g)).count();
+    if dotted_apart && unknown_letters * 2 > letters {
+        return out;
+    }
+    for g in unknown.into_iter().filter(|g| advancing(*g)) {
+        let Some(outline) = outlines.get(GlyphId::new(g)) else {
+            continue;
+        };
+        let mut pen = SamplePen::default();
+        if outline
+            .draw(
+                DrawSettings::unhinted(Size::unscaled(), LocationRef::default()),
+                &mut pen,
+            )
+            .is_err()
+        {
+            continue;
+        }
+        if let Some((ch, _, _)) = pen
+            .0
+            .finish(upem)
+            .and_then(|d| warraq_text::best_match(&d, warraq_text::MAX_DISTANCE))
+        {
+            out.insert(g, ch.to_string());
+        }
+    }
+    out
+}
+
+/// The bounds of an outline, in font units.
+#[derive(Default)]
+struct BoundsPen {
+    min: (f32, f32),
+    max: (f32, f32),
+    any: bool,
+}
+
+impl BoundsPen {
+    fn add(&mut self, x: f32, y: f32) {
+        if self.any {
+            self.min = (self.min.0.min(x), self.min.1.min(y));
+            self.max = (self.max.0.max(x), self.max.1.max(y));
+        } else {
+            (self.min, self.max, self.any) = ((x, y), (x, y), true);
+        }
+    }
+
+    /// A blob the size of a dot: what `warraq-render` reads as a dot mark.
+    fn dot_sized(&self, upem: f32) -> bool {
+        let (w, h) = (
+            (self.max.0 - self.min.0) / upem,
+            (self.max.1 - self.min.1) / upem,
+        );
+        self.any && (0.03..=0.22).contains(&h) && w <= 0.45
+    }
+}
+
+impl OutlinePen for BoundsPen {
+    fn move_to(&mut self, x: f32, y: f32) {
+        self.add(x, y);
+    }
+    fn line_to(&mut self, x: f32, y: f32) {
+        self.add(x, y);
+    }
+    fn quad_to(&mut self, _: f32, _: f32, x: f32, y: f32) {
+        self.add(x, y);
+    }
+    fn curve_to(&mut self, _: f32, _: f32, _: f32, _: f32, x: f32, y: f32) {
+        self.add(x, y);
+    }
+    fn close(&mut self) {}
+}
+
+/// The program an embedded font carries, when it is one skrifa reads: a
+/// TrueType program, or an OpenType one in `FontFile3`.
+pub fn opentype_program(doc: &Document, facts: &FontFacts) -> Option<Vec<u8>> {
+    let (kind, id) = facts.program?;
+    let stream = doc.get_object(id).ok()?.as_stream().ok()?;
+    if kind == Program::Compact
+        && stream
+            .dict
+            .get(b"Subtype")
+            .ok()
+            .and_then(|s| s.as_name().ok())
+            != Some(b"OpenType")
+    {
+        return None;
+    }
+    if kind == Program::Type1 {
+        return None;
+    }
+    let bytes = if stream.dict.has(b"Filter") {
+        stream.decompressed_content_with_limit(32 << 20).ok()?
+    } else {
+        stream.content.clone()
+    };
+    skrifa::FontRef::new(&bytes).is_ok().then_some(bytes)
+}
+
+/// A ToUnicode for `font` with the entries its own map gets wrong — a
+/// U+0000, a replacement character, nothing — replaced by what
+/// `recover_texts` finds, and every other entry as it was. `None` when the
+/// font has no map to complete, or nothing could be found; else the
+/// stream's bytes, and how many shown codes are still without text.
+///
+/// A font with no map at all is left alone. Warraq's reader, and others,
+/// then read it their own way (its cmap, its encoding, its glyphs'
+/// shapes), and a map naming some codes but not the rest would send the
+/// rest to the encoding: for a CoreText subset whose WinAnsi codes draw
+/// Arabic glyphs, Latin letters in place of the text. The corpus sweep
+/// `every_corpus_copy_reads_as_well_as_the_file` (warraq-core) holds this.
+pub fn completed_tounicode(
+    doc: &Document,
+    font: &FontUse,
+    facts: &FontFacts,
+) -> Option<(Vec<u8>, usize)> {
+    let map = facts.tounicode.as_ref()?;
+    let missing = unmapped_codes(doc, font, facts);
+    if missing.is_empty() {
+        return None;
+    }
+    let program = opentype_program(doc, facts)?;
+    let gid_of = |code: u32| truetype_glyph(doc, &font.dict, facts, &program, code);
+    // Only codes the map itself names, wrongly: an absent one reads by
+    // the font's encoding today, and is left to do so.
+    let wrong: Vec<u32> = missing
+        .iter()
+        .copied()
+        .filter(|c| map.contains_key(c))
+        .collect();
+    let gids: BTreeSet<u32> = wrong.iter().filter_map(|c| gid_of(*c)).collect();
+    let found = recover_texts(&program, &gids);
+    let mut entries = map.clone();
+    let mut added = 0;
+    for code in &wrong {
+        if let Some(text) = gid_of(*code).and_then(|g| found.get(&g)) {
+            entries.insert(*code, text.clone());
+            added += 1;
+        }
+    }
+    if added == 0 {
+        return None;
+    }
+    Some((
+        tounicode_cmap(&entries, facts.subtype == "Type0"),
+        missing.len() - added,
+    ))
+}
+
+/// A ToUnicode CMap of `entries`, one- or two-byte codes.
+pub fn tounicode_cmap(entries: &BTreeMap<u32, String>, two: bool) -> Vec<u8> {
     let mut s = String::from("/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n");
     s.push_str(if two {
         "1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n"
     } else {
         "1 begincodespacerange\n<00> <FF>\nendcodespacerange\n"
     });
-    for chunk in entries.chunks(100) {
+    let list: Vec<(&u32, &String)> = entries.iter().filter(|(c, _)| two || **c <= 0xFF).collect();
+    for chunk in list.chunks(100) {
         s.push_str(&format!("{} beginbfchar\n", chunk.len()));
-        for (code, ch) in chunk {
-            let hex: String = ch
-                .to_string()
-                .encode_utf16()
-                .map(|u| format!("{u:04X}"))
-                .collect();
+        for (code, text) in chunk {
+            let hex: String = text.encode_utf16().map(|u| format!("{u:04X}")).collect();
             if two {
                 s.push_str(&format!("<{code:04X}> <{hex}>\n"));
             } else {
@@ -809,7 +1048,7 @@ pub fn tounicode_from_program(
         s.push_str("endbfchar\n");
     }
     s.push_str("endcmap\nCMapName currentdict /CMap defineresource pop\nend\nend\n");
-    Some(s.into_bytes())
+    s.into_bytes()
 }
 
 #[cfg(test)]

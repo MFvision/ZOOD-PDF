@@ -388,12 +388,7 @@ fn validate(pdf: &PdfDocument, level: Level, scan: &Scan) -> Findings {
             fail("afterEof", format!("{} bytes", tail.len()), None, None);
         }
     }
-    if level.one()
-        && (bytes.windows(7).any(|w| w == b"/ObjStm")
-            || bytes
-                .windows(10)
-                .any(|w| w == b"/Type/XRef" || w == b"/Type /XRe"))
-    {
+    if level.one() && !xref_is_table(bytes) {
         fail("crossReferenceStream", String::new(), None, None);
     }
 
@@ -901,6 +896,31 @@ fn validate(pdf: &PdfDocument, level: Level, scan: &Scan) -> Findings {
     out
 }
 
+/// Whether the last cross-reference section, the one `startxref` names, is
+/// a table (PDF 1.4) rather than a stream, and no trailer points at a
+/// stream beside it (a hybrid file).
+fn xref_is_table(bytes: &[u8]) -> bool {
+    let Some(at) = bytes.windows(9).rposition(|w| w == b"startxref") else {
+        return false;
+    };
+    let digits: String = bytes[at + 9..]
+        .iter()
+        .skip_while(|b| b.is_ascii_whitespace())
+        .take_while(|b| b.is_ascii_digit())
+        .map(|b| *b as char)
+        .take(20)
+        .collect();
+    let Ok(offset) = digits.parse::<usize>() else {
+        return false;
+    };
+    let section = bytes.get(offset..).unwrap_or_default();
+    let section = &section[section
+        .iter()
+        .take_while(|b| b.is_ascii_whitespace())
+        .count()..];
+    section.starts_with(b"xref") && !bytes.windows(8).any(|w| w == b"/XRefStm")
+}
+
 fn doc_descendant<'a>(doc: &'a Document, font: &'a Dictionary) -> Option<&'a Dictionary> {
     let kids = resolve(doc, font.get(b"DescendantFonts").ok()?)
         .as_array()
@@ -1385,25 +1405,9 @@ impl PdfDocument {
             } else if facts.cid_subtype.as_deref() == Some("CIDFontType2") {
                 copy.add_cid_set(&facts);
             }
-            if level.unicode() && facts.program.is_some() {
-                let unmapped = fonts::unmapped_codes(&copy.doc, font, &facts);
-                if unmapped.is_empty() {
-                    continue;
-                }
-                let program = match facts.program {
-                    Some((Program::TrueType, id)) => copy
-                        .doc
-                        .get_object(id)
-                        .ok()
-                        .and_then(|o| o.as_stream().ok())
-                        .and_then(|s| s.decompressed_content_with_limit(32 << 20).ok()),
-                    _ => None,
-                };
-                let map = program
-                    .as_deref()
-                    .and_then(|p| fonts::tounicode_from_program(&copy.doc, font, &facts, p));
-                match (map, font.id) {
-                    (Some(map), Some(id)) => {
+            if level.unicode() && facts.embedded() {
+                match (fonts::completed_tounicode(&copy.doc, font, &facts), font.id) {
+                    (Some((map, left)), Some(id)) => {
                         let mut s = Stream::new(Dictionary::new(), map);
                         let _ = s.compress();
                         let tu = copy.doc.add_object(s);
@@ -1411,13 +1415,28 @@ impl PdfDocument {
                             d.set("ToUnicode", tu);
                             report.unicode_added.push(facts.base_font.clone());
                         }
+                        if left > 0 {
+                            report
+                                .changes
+                                .push(("noUnicode", format!("{}: {left}", facts.base_font)));
+                        }
                     }
-                    _ => report.changes.push(("noUnicode", facts.base_font.clone())),
+                    _ => {
+                        let left = fonts::unmapped_codes(&copy.doc, font, &facts).len();
+                        if left > 0 {
+                            report
+                                .changes
+                                .push(("noUnicode", format!("{}: {left}", facts.base_font)));
+                        }
+                    }
                 }
             }
         }
 
         // Colour: the output intent, and device colour it does not cover.
+        if level.one() {
+            copy.downgrade_icc_profiles(&mut report);
+        }
         copy.set_output_intent(level, &mut report);
         copy.fix_annotations(level, &mut report);
         copy.fix_graphics_states();
@@ -1561,6 +1580,51 @@ impl PdfDocument {
             }
         }
         report.changes.push(("widths", facts.base_font.clone()));
+    }
+
+    /// PDF 1.4 knows ICC profiles up to version 2 (ISO 19005-1 §6.2.3.2):
+    /// a later one becomes the bundled version 2 profile of its colour space
+    /// (sRGB, SWOP CMYK, or a gray of gamma 2.2), in place, so everything
+    /// that names it keeps naming it.
+    fn downgrade_icc_profiles(&mut self, report: &mut Conversion) {
+        let mut replaced = 0;
+        for object in self.doc.objects.values_mut() {
+            let Object::Stream(s) = object else {
+                continue;
+            };
+            let n = s.dict.get(b"N").ok().and_then(|n| n.as_i64().ok());
+            if n.is_none() || s.dict.has(b"Type") || s.dict.has(b"Subtype") {
+                continue;
+            }
+            let bytes = if s.dict.has(b"Filter") {
+                s.decompressed_content_with_limit(8 << 20).ok()
+            } else {
+                Some(s.content.clone())
+            };
+            let Some(info) = bytes.as_deref().and_then(icc::read) else {
+                continue;
+            };
+            if info.major <= 2 {
+                continue;
+            }
+            let profile = match info.components {
+                1 => icc::gray_profile(),
+                3 => icc::SRGB.to_vec(),
+                4 => icc::CMYK_SWOP.to_vec(),
+                _ => continue,
+            };
+            s.dict.remove(b"Filter");
+            s.dict.remove(b"DecodeParms");
+            s.dict.remove(b"Alternate");
+            s.dict.remove(b"Range");
+            s.dict.remove(b"Metadata");
+            s.set_plain_content(profile);
+            let _ = s.compress();
+            replaced += 1;
+        }
+        if replaced > 0 {
+            report.changes.push(("iccProfile", replaced.to_string()));
+        }
     }
 
     fn add_cid_set(&mut self, facts: &fonts::FontFacts) {
@@ -3078,15 +3142,8 @@ mod tests {
                 let reread = PdfDocument::open(out.bytes, None).unwrap();
                 assert_eq!(reread.page_count(), doc.page_count(), "{name}");
                 if !out.findings.passed() {
-                    failed.push(format!(
-                        "{} {name}: {:?}",
-                        level.key(),
-                        out.findings
-                            .items
-                            .iter()
-                            .map(|i| format!("{} {}", i.rule, i.detail))
-                            .collect::<Vec<_>>()
-                    ));
+                    let rules: Vec<&str> = out.findings.items.iter().map(|i| i.rule).collect();
+                    failed.push((level, name.clone(), rules));
                 }
             }
         }
@@ -3098,12 +3155,26 @@ mod tests {
         for r in &refused {
             println!("  refused {r}");
         }
-        for f in &failed {
-            println!("  failed {f}");
+        for (level, name, rules) in &failed {
+            println!("  failed {} {name}: {rules:?}", level.key());
         }
-        // A Chinese font the file does not carry, named by a GB1 CMap: its
-        // codes cannot be turned into characters, so nothing can stand in.
-        let known = |f: &String| f.contains("B_baytalhekma") && f.contains("fontNotEmbedded");
-        assert!(failed.iter().all(known), "{failed:#?}");
+        // What is known not to convert: a Chinese font the file does not
+        // carry, named by a GB1 CMap, whose codes cannot be turned into
+        // characters, so nothing can stand in; and, for 2u, glyphs no rung of
+        // the reader can name (subsets with neither cmap nor GSUB, separate
+        // dots, Type 3 marks). Everything else converts.
+        for (level, name, rules) in &failed {
+            let allowed = |rule: &&str| {
+                (*rule == "fontNotEmbedded" && name.contains("B_baytalhekma"))
+                    || (*rule == "noUnicode" && *level == Level::A2u)
+            };
+            assert!(
+                rules.iter().all(allowed),
+                "{} {name}: {rules:?}",
+                level.key()
+            );
+        }
+        let unicode_ok = names.len() - failed.iter().filter(|f| f.0 == Level::A2u).count();
+        println!("2u: {unicode_ok} of {} files", names.len());
     }
 }

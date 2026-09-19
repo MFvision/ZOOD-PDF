@@ -22,6 +22,7 @@ pub mod panes;
 pub mod patterns;
 pub mod redact;
 pub mod signatures;
+pub mod standards;
 
 /// What a tool operation answers: JSON for the UI, and bytes beside it.
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -81,6 +82,7 @@ pub fn call_static(op: &str, args: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, C
         Some(("layers", name)) => panes::layers(name, args, blobs),
         Some(("outline", name)) => panes::outline(name, args, blobs),
         Some(("signatures", name)) => signatures::call_static(name, args, blobs),
+        Some(("standards", name)) => standards::call_static(name, args, blobs),
         _ => Err(CoreError::UnknownOp(op.into())),
     }
 }

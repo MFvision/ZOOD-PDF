@@ -8,6 +8,69 @@ pub const SRGB: &[u8] = include_bytes!("../../assets/icc/sRGB-v2-magic.icc");
 /// device CMYK means in a file whose output intent is RGB.
 pub const CMYK_SWOP: &[u8] = include_bytes!("../../assets/icc/CGATS001Compat-v2-micro.icc");
 
+/// A gray ICC v2 profile (monitor class, D50, gamma 2.2), built here: the
+/// profile PDF/A-1 needs where a file used a later gray one.
+pub fn gray_profile() -> Vec<u8> {
+    fn s15(v: f64) -> [u8; 4] {
+        ((v * 65536.0).round() as i32).to_be_bytes()
+    }
+    let desc = {
+        let text = b"Gray gamma 2.2\0";
+        let mut t = b"desc\0\0\0\0".to_vec();
+        t.extend((text.len() as u32).to_be_bytes());
+        t.extend_from_slice(text);
+        t.extend([0u8; 4 + 4 + 2 + 1 + 67]);
+        t
+    };
+    let cprt = b"text\0\0\0\0CC0\0".to_vec();
+    let mut wtpt = b"XYZ \0\0\0\0".to_vec();
+    for v in [0.9642, 1.0, 0.8249] {
+        wtpt.extend(s15(v));
+    }
+    let mut ktrc = b"curv\0\0\0\0".to_vec();
+    ktrc.extend(1u32.to_be_bytes());
+    ktrc.extend(0x0233u16.to_be_bytes()); // 2.2 as u8Fixed8
+    ktrc.extend([0u8; 2]);
+    let tags: [(&[u8; 4], Vec<u8>); 4] = [
+        (b"desc", desc),
+        (b"cprt", cprt),
+        (b"wtpt", wtpt),
+        (b"kTRC", ktrc),
+    ];
+    let mut table = (tags.len() as u32).to_be_bytes().to_vec();
+    let mut data = vec![];
+    let base = 128 + 4 + 12 * tags.len();
+    for (sig, body) in &tags {
+        while !(base + data.len()).is_multiple_of(4) {
+            data.push(0);
+        }
+        table.extend_from_slice(*sig);
+        table.extend(((base + data.len()) as u32).to_be_bytes());
+        table.extend((body.len() as u32).to_be_bytes());
+        data.extend_from_slice(body);
+    }
+    while !data.len().is_multiple_of(4) {
+        data.push(0);
+    }
+    let size = 128 + table.len() + data.len();
+    let mut header = vec![];
+    header.extend((size as u32).to_be_bytes());
+    header.extend([0u8; 4]);
+    header.extend([2, 0x10, 0, 0]);
+    header.extend_from_slice(b"mntrGRAYXYZ ");
+    header.extend([0u8; 12]);
+    header.extend_from_slice(b"acsp");
+    header.extend([0u8; 24]);
+    header.extend([0u8; 4]);
+    for v in [0.9642, 1.0, 0.8249] {
+        header.extend(s15(v));
+    }
+    header.resize(128, 0);
+    header.extend(table);
+    header.extend(data);
+    header
+}
+
 /// What the standards need to know about a profile.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IccInfo {
@@ -137,6 +200,12 @@ mod tests {
         assert_eq!((cmyk.space.as_str(), cmyk.components), ("CMYK", 4));
         assert!(!cmyk.bidirectional, "device to PCS only");
         assert!(read(b"not a profile").is_none());
+        let gray = read(&gray_profile()).unwrap();
+        assert_eq!(
+            (gray.space.as_str(), gray.components, gray.major),
+            ("GRAY", 1, 2)
+        );
+        assert!(gray.bidirectional);
         let mut short = SRGB.to_vec();
         short.truncate(200);
         assert!(read(&short).is_none(), "a size past the end is refused");
