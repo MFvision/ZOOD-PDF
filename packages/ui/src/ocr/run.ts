@@ -139,7 +139,8 @@ export async function recognizeFile(
   const { result, blobs } = await client.callStatic<{ pages: number; words: number; skipped: number }>(
     'ocr.add_text_layer',
     { password: password ?? null, pages: read.map(({ index, words, angle }) => ({ index, words, angle })) },
-    [bytes, font.slice().buffer],
+    // A copy: the core takes over what it is handed, and the file as it was is the answer when nothing was written.
+    [bytes.slice(0), font.slice().buffer],
   );
   return { ...result, bytes: result.pages > 0 && blobs[0] ? blobs[0] : bytes, confidence };
 }
