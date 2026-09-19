@@ -356,6 +356,63 @@ export function savePdfFile(bytes: Uint8Array, suggestedName: string): Promise<b
   return saveFileAs(bytes, suggestedName, PDF);
 }
 
+/* ------------------------------------------------------------- signatures */
+
+/**
+ * One request to a timestamp authority or a certificate status responder,
+ * made by the desktop host (`src-tauri/src/signing.rs`): a POST of `body`
+ * when there is one, else a GET. Only ever on the person's click; the answer
+ * comes back as bytes, or the promise rejects with `E_NET: …`.
+ */
+export async function netExchange(url: string, body?: ArrayBuffer, contentType?: string): Promise<ArrayBuffer> {
+  const headers: Record<string, string> = { 'x-warraq-url': encodeURIComponent(url) };
+  if (contentType) headers['x-warraq-content-type'] = contentType;
+  return (await invoke('net_exchange', body ?? new ArrayBuffer(0), { headers })) as ArrayBuffer;
+}
+
+/** A certificate on a smart card or token, as `pkcs11_certificates` lists it. */
+export interface TokenCertificate {
+  slot: number;
+  /** CKA_ID, hex: how the key beside it is found. */
+  id: string;
+  label: string;
+  name: string;
+  issuer: string;
+  notAfter: string;
+}
+
+/** The certificates on the tokens a PKCS#11 module (a path the person chose) can see, after the PIN. */
+export async function pkcs11Certificates(module: string, pin: string): Promise<TokenCertificate[]> {
+  return JSON.parse(
+    (await invoke('pkcs11_certificates', undefined, {
+      headers: { 'x-warraq-module': encodeURIComponent(module), 'x-warraq-pin-hex': toHex(pin) },
+    })) as string,
+  ) as TokenCertificate[];
+}
+
+/**
+ * Signs on the token: the same arguments and blobs as `signatures.sign`
+ * without the certificate file (the PDF, the face, the picture), and the
+ * same answer, framed as `core_call` frames it.
+ */
+export async function pkcs11Sign(
+  module: string,
+  pin: string,
+  certificate: TokenCertificate,
+  args: object,
+  blobs: ArrayBuffer[],
+): Promise<{ json: string; blobs: ArrayBuffer[] }> {
+  const reply = (await invoke('pkcs11_sign', encodeFrame(JSON.stringify(args), blobs), {
+    headers: {
+      'x-warraq-module': encodeURIComponent(module),
+      'x-warraq-pin-hex': toHex(pin),
+      'x-warraq-slot': String(certificate.slot),
+      'x-warraq-key-id': certificate.id,
+    },
+  })) as ArrayBuffer;
+  return decodeFrame(reply);
+}
+
 /** `width` u32 LE + `height` u32 LE + RGBA8, as `encode_bitmap` writes it. */
 function decodeRenderedPage(buffer: ArrayBuffer): ResultMap['render_page'] {
   if (buffer.byteLength < 8) throw new Error('E_RENDER: truncated page bitmap');
