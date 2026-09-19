@@ -12,9 +12,9 @@ const t =
 
 describe('search-and-redact results', () => {
   const matches: FoundMatch[] = [
-    { page: 0, text: 'Haddad', before: 'Nadia ', after: '', kind: 'text', artifact: false, rects: [{ x: 1, y: 2, width: 3, height: 4 }] },
-    { page: 2, text: 'a@b.sa', before: '', after: '', kind: 'email', artifact: true, rects: [{ x: 5, y: 6, width: 7, height: 8 }] },
-    { page: 3, text: 'x', before: '', after: '', kind: 'text', artifact: false, rects: [] },
+    { page: 0, text: 'Haddad', before: 'Nadia ', after: '', kind: 'text', pageMark: false, rects: [{ x: 1, y: 2, width: 3, height: 4 }] },
+    { page: 2, text: 'a@b.sa', before: '', after: '', kind: 'email', pageMark: true, rects: [{ x: 5, y: 6, width: 7, height: 8 }] },
+    { page: 3, text: 'x', before: '', after: '', kind: 'text', pageMark: false, rects: [] },
   ];
 
   it('marks only the chosen matches, with their pages and boxes', () => {

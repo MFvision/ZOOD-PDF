@@ -179,7 +179,7 @@ function FindAndRedact() {
                   </bdi>
                   <span className="redact-match-tags">
                     <span className="badge">{t(`redact.kind.${match.kind}` as TKey)}</span>
-                    {match.artifact && <span className="badge">{t('redact.search.artifact')}</span>}
+                    {match.pageMark && <span className="badge">{t('redact.search.pageMark')}</span>}
                   </span>
                   {!placed(match) && <span className="redact-match-note">{t('redact.search.unplaced')}</span>}
                 </label>

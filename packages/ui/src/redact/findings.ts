@@ -12,8 +12,8 @@ export interface FoundMatch {
   before: string;
   after: string;
   kind: 'text' | 'custom' | PatternKind;
-  /** In a header, footer, page number or watermark. */
-  artifact: boolean;
+  /** In a page mark محرر PDF drew: a header, footer, page or Bates number, a watermark. */
+  pageMark: boolean;
   /** Empty when the reader does not know where its glyphs are: it is marked by hand. */
   rects: PageBox[];
 }

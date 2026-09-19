@@ -62,8 +62,9 @@ struct Found {
     after: String,
     /// "text", a pattern's name, or "custom".
     kind: &'static str,
-    /// In a header, footer, page number or watermark (an artifact).
-    artifact: bool,
+    /// In a page mark محرر PDF drew: a header, footer, page or Bates number,
+    /// or a watermark.
+    page_mark: bool,
     /// Empty when the reader does not know where its glyphs are: the match
     /// is listed, to be marked by hand.
     rects: Vec<Rect>,
@@ -253,12 +254,13 @@ fn find(doc: &Document, a: Find) -> Result<Reply, CoreError> {
     let mut found: Vec<Found> = vec![];
     let mut total = 0usize;
     for page in pages {
-        // The page's text and, apart, its artifacts — running heads, page
-        // numbers, a footer, a watermark — which the reader keeps out of the
-        // page's text, but which carry names and numbers as much as it does.
-        let (body, artifacts) = doc.redaction_lines(page)?;
-        let first_artifact = body.len();
-        let lines: Vec<TextLine> = body.into_iter().chain(artifacts).collect();
+        // Every glyph of the page, once: its text — other programs' running
+        // heads, footers and watermarks included — and, read apart, the page
+        // marks محرر PDF drew (a header, a footer, Bates numbers, a
+        // watermark), which carry names and numbers as much as the page.
+        let body = doc.text_lines(page)?;
+        let first_mark = body.len();
+        let lines: Vec<TextLine> = body.into_iter().chain(doc.mark_lines(page)?).collect();
         let shown = doc.page_size(page)?;
         let rotation = doc.pdf.page_rotation(page).unwrap_or(0);
         let texts: Vec<String> = lines.iter().map(|l| l.text.clone()).collect();
@@ -297,7 +299,7 @@ fn find(doc: &Document, a: Find) -> Result<Reply, CoreError> {
                 before: slice(start.saturating_sub(CONTEXT), start),
                 after: slice(end, (end + CONTEXT).min(chars.len())),
                 kind,
-                artifact: li >= first_artifact,
+                page_mark: li >= first_mark,
                 rects,
             });
         }
@@ -643,31 +645,30 @@ mod tests {
         }
     }
 
-    /// Headers, footers, page numbers and watermarks are artifacts, which
-    /// the reader keeps out of a page's text: a redaction search reads them
-    /// too, and says where a match is.
+    /// A footer another program marked as an artifact, as Word does, is
+    /// searched as the page's text; a page mark محرر PDF drew is searched
+    /// too, read apart from the page and said to be one. Each is boxed where
+    /// it is drawn, and found once.
     #[test]
-    fn a_footer_marked_as_an_artifact_is_searched_too() {
+    fn footers_and_page_marks_are_searched_too() {
         let mut doc = turned();
         let found = matches(
             &mut doc,
             serde_json::json!({ "query": "Haddad", "patterns": ["phone"], "pages": [5] }),
         );
-        let footer: Vec<&serde_json::Value> =
-            found.iter().filter(|m| m["artifact"] == true).collect();
-        let texts: Vec<&str> = footer.iter().map(|m| m["text"].as_str().unwrap()).collect();
-        assert_eq!(texts, ["Haddad", "+966 50 123 4567"], "{found:?}");
-        // Boxed at the foot of the page, where it is drawn.
-        for m in footer {
-            let r = rects(m);
-            assert!(
-                !r.is_empty() && r.iter().all(|(_, y, _, _)| *y > 730.0),
-                "{r:?}"
-            );
-        }
-        assert_eq!(found.iter().filter(|m| m["artifact"] == false).count(), 1);
+        let texts: Vec<&str> = found.iter().map(|m| m["text"].as_str().unwrap()).collect();
+        assert_eq!(texts.len(), 3, "{found:?}");
+        let footer: Vec<&serde_json::Value> = found
+            .iter()
+            .filter(|m| {
+                let r = rects(m);
+                !r.is_empty() && r.iter().all(|(_, y, _, _)| *y > 730.0)
+            })
+            .collect();
+        let at_foot: Vec<&str> = footer.iter().map(|m| m["text"].as_str().unwrap()).collect();
+        assert_eq!(at_foot, ["Haddad", "+966 50 123 4567"], "{found:?}");
+        assert!(found.iter().all(|m| m["pageMark"] == false));
 
-        // Warraq's own page marks are artifacts too.
         let amiri = std::fs::read(format!(
             "{}/../../../tests/fonts/Amiri-Regular.ttf",
             env!("CARGO_MANIFEST_DIR")
@@ -691,7 +692,7 @@ mod tests {
         let mut doc = Document::open(marked.blobs[0].clone(), None).unwrap();
         let found = matches(&mut doc, serde_json::json!({ "query": "Qasim" }));
         assert_eq!(found.len(), 1, "{found:?}");
-        assert_eq!(found[0]["artifact"], true);
+        assert_eq!(found[0]["pageMark"], true);
         assert!(!rects(&found[0]).is_empty());
     }
 

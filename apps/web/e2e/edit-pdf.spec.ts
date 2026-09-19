@@ -191,11 +191,15 @@ test.describe('Edit PDF: pictures and links, like a drawing program, saved into 
     await p.getByRole('button', { name: 'Add the link' }).click();
     await expect(first.locator('.edit-pdf-link')).toHaveCount(2);
 
-    // Following the address asks first, shows it whole, and opens nothing on Cancel.
+    // Picked, its address reads in letters, as it was typed.
     await first.locator('.edit-pdf-link').first().click();
+    await expect(p.getByRole('textbox', { name: 'Address' })).toHaveValue('https://example.org/دليل');
+    // Following the address asks first, shows it whole — and the site it
+    // really opens — and opens nothing on Cancel.
     await p.getByRole('button', { name: 'Open the address…' }).click();
     const dialog = page.getByRole('dialog', { name: 'Open this link?' });
-    await expect(dialog).toContainText('https://example.org/');
+    await expect(dialog.locator('.link-address')).toHaveText('https://example.org/دليل');
+    await expect(dialog.locator('.link-host')).toContainText('example.org');
     await dialog.getByRole('button', { name: 'Cancel' }).click();
     await expect(dialog).toBeHidden();
 
@@ -218,8 +222,150 @@ test.describe('Edit PDF: pictures and links, like a drawing program, saved into 
     const scale = box.width / 595.28;
     await page.mouse.click(box.x + 250 * scale, box.y + 180 * scale);
     await page.locator('embedpdf-container').getByRole('button', { name: 'Go to Link' }).click();
-    await expect(page.getByRole('dialog', { name: 'Open this link?' })).toContainText('https://example.org/%D8%AF');
+    await expect(page.getByRole('dialog', { name: 'Open this link?' }).locator('.link-address')).toHaveText('https://example.org/دليل');
     await page.getByRole('dialog', { name: 'Open this link?' }).getByRole('button', { name: 'Cancel' }).click();
+  });
+
+  test('a link is added from the panel, moved and resized from the keyboard and by a handle, re-pointed and removed', async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    await openPdf(page, THREE);
+    const first = await enterEditText(page);
+    const p = panel(page);
+    await p.getByRole('radio', { name: 'Links' }).click();
+    const { at } = await screenOf(first, 595.28);
+    const links = first.locator('.edit-pdf-link');
+
+    // No pointer needed: an area in the middle of the page, then where it goes.
+    await p.getByRole('button', { name: 'Add a link on this page' }).click();
+    await p.getByRole('textbox', { name: 'Address' }).fill('https://example.org/a');
+    await p.getByRole('button', { name: 'Add the link' }).click();
+    await expect(links).toHaveCount(1);
+    // 200 × 24 points in the middle of A4.
+    const [x0, y0] = [(595.28 - 200) / 2, (841.89 - 24) / 2];
+    await expectAt(links.first(), at, [x0, y0, x0 + 200, y0 + 24]);
+
+    // The arrows move it (the box keeps the focus between presses); with Alt they resize it.
+    await links.first().focus();
+    for (const key of ['ArrowRight', 'ArrowRight', 'Shift+ArrowDown', 'Shift+Alt+ArrowRight']) {
+      await expect(links.first()).not.toHaveAttribute('aria-disabled', 'true');
+      await page.keyboard.press(key);
+      await expect(links.first()).toBeFocused();
+    }
+    await expectAt(links.first(), at, [x0 + 2, y0 + 10, x0 + 212, y0 + 34]);
+
+    // A handle drags its corner: 40 points more each way.
+    const handle = (await first.locator('.edit-pdf-link-handle').nth(4).boundingBox())!;
+    await drag(page, { x: handle.x + 5, y: handle.y + 5 }, at(x0 + 252, y0 + 74));
+    await expectAt(links.first(), at, [x0 + 2, y0 + 10, x0 + 252, y0 + 74]);
+
+    // Pointed at page 2 instead.
+    await p.getByRole('radio', { name: 'A page of this file' }).check();
+    await p.getByLabel('Page (1–3)').fill('2');
+    await p.getByRole('button', { name: 'Save where it goes' }).click();
+    await expect(links.first()).toHaveAttribute('aria-label', 'Link 1 to page 2');
+    const saved = await saveAs(page, 'edit-pdf-link-moved');
+    const [link] = (await inspect<{ links: Link[] }>('links.list', saved)).links;
+    expect(link!.to).toEqual({ page: 1 });
+    close(link!.rect, [x0 + 2, y0 + 10, 250, 64], 2);
+
+    // And taken off.
+    await links.first().click();
+    await p.getByRole('button', { name: 'Remove the link' }).click();
+    await expect(links).toHaveCount(0);
+    const removed = await saveAs(page, 'edit-pdf-link-removed');
+    expect((await inspect<{ links: Link[] }>('links.list', removed)).links).toEqual([]);
+  });
+
+  test('picture changes are undone in their turn with text edits, the arrows nudge the picked picture, and Edit text opens text again', async ({ page, stayLocal: _ }) => {
+    const mod = process.platform === 'darwin' ? 'Meta' : 'Control';
+    await page.goto('/');
+    await openPdf(page, THREE);
+    const first = await enterEditText(page);
+    const p = panel(page);
+
+    // A text edit first.
+    await first.locator('.edit-box').first().click();
+    const area = first.locator('.paragraph-editor-area');
+    const replacement = 'فقرة عدّلها الاختبار';
+    await area.fill(replacement);
+    await area.press(`${mod}+Enter`);
+    await expect(first.locator('.text-layer')).toContainText(replacement);
+
+    // Then a picture.
+    await p.getByRole('radio', { name: 'Pictures' }).click();
+    await p.getByLabel('Add a picture…').setInputFiles({ name: 'red.png', mimeType: 'image/png', buffer: Buffer.from(RED_PNG, 'base64') });
+    const { at } = await screenOf(first, 595.28);
+    await drag(page, at(100, 100), at(220, 180));
+    const pictures = first.locator('.edit-pdf-image');
+    await expect(pictures).toHaveCount(1);
+
+    // Undo takes back the picture — not the text before it; Redo puts it back.
+    await pictures.first().focus();
+    await page.keyboard.press(`${mod}+z`);
+    await expect(pictures).toHaveCount(0);
+    await expect(first.locator('.text-layer')).toContainText(replacement);
+    await page.keyboard.press(`${mod}+Shift+z`);
+    await expect(pictures).toHaveCount(1);
+    await expect(first.locator('.text-layer')).toContainText(replacement);
+
+    // Picked, the arrows nudge it a point at a time, and the box keeps the focus.
+    const placed = await saveAs(page, 'edit-pdf-placed');
+    const [before] = (await inspect<{ images: Image[] }>('images.list', placed)).images;
+    await pictures.first().click();
+    await expect(pictures.first()).toHaveAttribute('aria-pressed', 'true');
+    for (let k = 0; k < 2; k += 1) {
+      await expect(pictures.first()).not.toHaveAttribute('aria-disabled', 'true');
+      await page.keyboard.press('ArrowRight');
+      await expect(pictures.first()).toBeFocused();
+    }
+    await expect(pictures.first()).not.toHaveAttribute('aria-disabled', 'true');
+    const nudged = await saveAs(page, 'edit-pdf-nudged');
+    const [image] = (await inspect<{ images: Image[] }>('images.list', nudged)).images;
+    close(image!.matrix, [...before!.matrix.slice(0, 4), before!.matrix[4]! + 2, before!.matrix[5]!], 0.05);
+
+    // Undo again: the nudges, then the picture, then the text — in that order.
+    for (let k = 0; k < 3; k += 1) {
+      await expect(page.getByRole('toolbar').getByRole('button', { name: 'Undo' })).toBeEnabled();
+      await page.getByRole('toolbar').getByRole('button', { name: 'Undo' }).click();
+    }
+    await expect(pictures).toHaveCount(0);
+    await expect(first.locator('.text-layer')).toContainText(replacement);
+    await page.getByRole('toolbar').getByRole('button', { name: 'Undo' }).click();
+    await expect(first.locator('.text-layer')).not.toContainText(replacement);
+
+    // Edit text turned off and on from the toolbar opens text editing, not
+    // the picture layer — and no picture control is left meanwhile.
+    const toggle = page.getByRole('toolbar').getByRole('button', { name: 'Edit text' });
+    await toggle.click();
+    await expect(p.getByRole('button', { name: 'Add a picture…' })).toHaveCount(0);
+    await expect(p.getByRole('radio', { name: 'Text' })).toHaveAttribute('aria-checked', 'true');
+    await toggle.click();
+    await expect(page.locator('section[data-page="1"] .edit-box').first()).toBeVisible();
+    await expect(page.locator('.edit-pdf-image')).toHaveCount(0);
+  });
+
+  test('a link whose address is disguised with a bidi control is refused, and shown escaped', async ({ page, stayLocal: _ }) => {
+    const hostile = 'test-results/edit-pdf-bidi.pdf';
+    const placeholder = 'https://placeholder.example/aaaaaaaaaa';
+    const c = await core();
+    const doc = c.Document.open(new Uint8Array(readFileSync(THREE)));
+    doc.call('links.add', JSON.stringify({ page: 0, rect: [100, 100, 300, 60], to: { uri: placeholder } }), []).free();
+    const saved = Buffer.from(doc.save()).toString('latin1');
+    doc.free();
+    // `https://www.bank.com` + RLO (U+202E, as its UTF-8 bytes) + `@oi.live/`: reads as the bank, opens oi.live.
+    const rlo = String.fromCharCode(0xe2, 0x80, 0xae);
+    const disguised = `https://www.bank.com${rlo}@oi.live/`.padEnd(placeholder.length, 'x');
+    writeFileSync(hostile, Buffer.from(saved.replace(placeholder, disguised), 'latin1'));
+    await page.goto('/');
+    await openPdf(page, hostile);
+    const box = await pageBox(page);
+    const scale = box.width / 595.28;
+    await page.mouse.click(box.x + 250 * scale, box.y + 130 * scale);
+    await page.locator('embedpdf-container').getByRole('button', { name: 'Go to Link' }).click();
+    const dialog = page.getByRole('dialog', { name: 'This link is not opened' });
+    await expect(dialog).toContainText('invisible characters');
+    await expect(dialog.locator('.link-address')).toContainText('https://www.bank.com%E2%80%AE@oi.live/');
+    await expect(dialog.getByRole('button', { name: 'Open' })).toHaveCount(0);
   });
 
   test('a script link a file carries is refused, never opened', async ({ page, stayLocal: _ }) => {

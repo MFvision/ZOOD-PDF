@@ -1,9 +1,9 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { chooseTool, embedDocument, embedTiles, enterEditText, openPdf, pendingRedactions, test } from './helpers';
-import { callOn, readable, spellings, textOf } from './pdfBytes';
+import { callOn, core, readable, spellings, textOf } from './pdfBytes';
 
 const fixture = (path: string) => fileURLToPath(new URL(`../../../tests/fixtures/${path}`, import.meta.url));
 /** English in a standard font (its words literally in the content stream) and Arabic written by Warraq's core. */
@@ -113,9 +113,10 @@ test.describe('Redact: find and redact', () => {
     await openPdf(page, TURNED);
     await chooseTool(page, 'Redact');
     await find(page, 'Haddad');
-    // Four turned pages, the crooked one, the margin, and the footer — said to be one.
+    // Four turned pages, the crooked one, the margin, and the footer another
+    // program marked as an artifact.
     await expect(results(page)).toHaveCount(7);
-    await expect(results(page).filter({ hasText: 'Header, footer or watermark' })).toHaveCount(1);
+    await expect(results(page).filter({ hasText: 'Prepared for Nadia' })).toHaveCount(1);
     await panel(page).getByRole('button', { name: 'Mark selected (7)' }).click();
     await expect(panel(page).getByText('7 marked for redaction.', { exact: false })).toBeVisible();
     await expect.poll(() => pendingRedactions(page)).toBe(7);
@@ -128,18 +129,44 @@ test.describe('Redact: find and redact', () => {
     const text = await textOf(saved);
     expect(text).not.toContain('Haddad');
     const times = (needle: string) => text.split(needle).length - 1;
-    expect(times('Nadia')).toBe(6);
+    // Six lines and the footer.
+    expect(times('Nadia')).toBe(7);
     expect(times('keeps the rest')).toBe(6);
     expect(times('Line above stays')).toBe(5);
     expect(times('Line below stays')).toBe(5);
     expect(times('Text beside it stays')).toBe(1);
-    // The footer too, which the page's text leaves out.
-    const { result } = await callOn<{ marks: string }>('marks.text', saved, { page: 5 });
-    expect(result.marks).not.toContain('Haddad');
-    expect(result.marks).toContain('Prepared for Nadia');
-    expect(result.marks).toContain('+966 50 123 4567');
+    expect(text).toContain('Prepared for Nadia');
+    expect(text).toContain('+966 50 123 4567');
     const raw = readable(readFileSync(saved));
     for (const spelling of spellings('Haddad')) expect(raw, spelling).not.toContain(spelling);
+  });
+
+  test('a page mark محرر PDF drew is found, said to be one, and redacted', async ({ page, stayLocal: _ }) => {
+    // A header written by Page marks, as the core writes it.
+    const { call_static } = await core();
+    const amiri = new Uint8Array(readFileSync(fileURLToPath(new URL('../../../tests/fonts/Amiri-Regular.ttf', import.meta.url))));
+    const reply = call_static(
+      'marks.add',
+      JSON.stringify({ mark: { kind: 'header', slots: ['', 'Prepared by Samir Qasim', ''], size: 10 }, fontBlob: 1 }),
+      [new Uint8Array(readFileSync(CONTRACT)), amiri],
+    );
+    const marked = 'test-results/redact-page-mark-input.pdf';
+    writeFileSync(marked, reply.blobs[0]!);
+
+    await page.goto('/');
+    await openPdf(page, marked);
+    await chooseTool(page, 'Redact');
+    await find(page, 'Qasim');
+    await expect(results(page)).toHaveCount(1);
+    await expect(results(page).first()).toContainText('In a page mark');
+    await panel(page).getByRole('button', { name: 'Mark selected (1)' }).click();
+    await panel(page).getByRole('button', { name: 'Apply redactions', exact: true }).click();
+    await expect.poll(() => pendingRedactions(page)).toBe(0);
+    const saved = await save(page, 'redact-page-mark');
+    const { result } = await callOn<{ marks: string; page: string }>('marks.text', saved, { page: 0 });
+    expect(result.marks).not.toContain('Qasim');
+    expect(await textOf(saved)).not.toContain('Qasim');
+    expect(await textOf(saved)).toContain('Keep this line: the rest stays readable.');
   });
 
   test('what was found in one file is not offered for the next one opened', async ({ page, stayLocal: _ }) => {
