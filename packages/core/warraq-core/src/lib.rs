@@ -103,6 +103,14 @@ impl Document {
         if let Some(l) = self.lines_cache.borrow().get(&index) {
             return Ok(l.clone());
         }
+        let lines = reconstruct_lines(&self.glyphs(index)?);
+        self.lines_cache.borrow_mut().insert(index, lines.clone());
+        Ok(lines)
+    }
+
+    /// A page's glyphs as the reader takes them: positioned, with their text,
+    /// and a run marked with `/ActualText` as that text.
+    pub fn glyphs(&self, index: usize) -> Result<Vec<warraq_text::PositionedGlyph>, CoreError> {
         let (glyphs, marked) = self.render.marked_glyphs(index)?;
         // Glyphs inside `/ActualText` read as that text — when the document's
         // own list of the page's sequences matches, tag for tag, the one the
@@ -118,9 +126,60 @@ impl Document {
             }
             _ => glyphs,
         };
-        let lines = reconstruct_lines(&glyphs);
-        self.lines_cache.borrow_mut().insert(index, lines.clone());
-        Ok(lines)
+        Ok(glyphs)
+    }
+
+    /// Prepare form's proposals for the pages asked (every page when none):
+    /// where the page expects input, found from its text and its lines, and
+    /// never over a field it already has. See `warraq_pdf::forms::detect`.
+    pub fn detect_fields(
+        &self,
+        pages: &[usize],
+    ) -> Result<Vec<(usize, Vec<warraq_pdf::forms::Proposal>)>, CoreError> {
+        let form = self.pdf.form();
+        let all: Vec<usize> = (0..self.page_count()).collect();
+        let pages = if pages.is_empty() { &all } else { pages };
+        let mut out = Vec::new();
+        for &index in pages {
+            if index >= self.page_count() {
+                return Err(warraq_pdf::Error::Page(index).into());
+            }
+            let (width, height) = self.page_size(index)?;
+            let glyphs = self.glyphs(index)?;
+            let drawing = self.render.drawing(index)?;
+            let rules: Vec<warraq_pdf::forms::Rule> = drawing
+                .rules
+                .into_iter()
+                .map(|r| warraq_pdf::forms::Rule {
+                    horizontal: r.horizontal,
+                    at: r.at,
+                    from: r.from,
+                    to: r.to,
+                })
+                .collect();
+            let existing: Vec<[f32; 4]> = form
+                .fields
+                .iter()
+                .flat_map(|f| f.widgets.iter())
+                .filter(|w| w.page == index)
+                .map(|w| w.rect)
+                .collect();
+            let found = warraq_pdf::forms::detect(&warraq_pdf::forms::PageInput {
+                width,
+                height,
+                glyphs: &glyphs,
+                rules: &rules,
+                pictures: &drawing.pictures,
+                existing: &existing,
+            });
+            out.push((index, found));
+        }
+        Ok(out)
+    }
+
+    /// The form as `warraq_pdf` reads it.
+    pub fn form(&self) -> warraq_pdf::forms::FormReport {
+        self.pdf.form()
     }
 
     pub fn extract_text(&self, index: usize) -> Result<String, CoreError> {

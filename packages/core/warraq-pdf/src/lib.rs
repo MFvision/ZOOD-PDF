@@ -4,6 +4,7 @@ pub mod compress;
 pub mod crypt;
 pub mod document;
 pub mod fonts;
+pub mod forms;
 pub mod incremental;
 pub mod marked;
 pub mod ocr;

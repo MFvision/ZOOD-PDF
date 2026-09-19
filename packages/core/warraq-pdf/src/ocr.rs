@@ -170,7 +170,7 @@ impl PdfDocument {
     }
 
     /// How the page as shown maps onto its user space: its crop box and turn.
-    fn display_frame(&self, index: usize) -> Result<Frame> {
+    pub(crate) fn display_frame(&self, index: usize) -> Result<Frame> {
         let id = self.page_id(index)?;
         let dict = self.doc.get_dictionary(id).map_err(parse)?;
         let rect = |key: &[u8]| {
@@ -218,14 +218,41 @@ impl PdfDocument {
 }
 
 /// The crop box `[x0, y0, x1, y1]` in user space, and the page's `/Rotate`.
-struct Frame {
-    crop: [f32; 4],
-    turn: i64,
+pub(crate) struct Frame {
+    pub(crate) crop: [f32; 4],
+    pub(crate) turn: i64,
 }
 
 impl Frame {
+    /// Where a point of user space is on the page as shown, from its top-left:
+    /// the inverse of `user`.
+    pub(crate) fn shown(&self, ux: f32, uy: f32) -> (f32, f32) {
+        let [cx0, cy0, cx1, cy1] = self.crop;
+        match self.turn {
+            90 => (uy - cy0, ux - cx0),
+            180 => (cx1 - ux, uy - cy0),
+            270 => (cy1 - uy, cx1 - ux),
+            _ => (ux - cx0, cy1 - uy),
+        }
+    }
+
+    /// A rectangle of user space as shown: `[x0, top, x1, bottom]`.
+    pub(crate) fn shown_rect(&self, r: [f32; 4]) -> [f32; 4] {
+        let (ax, ay) = self.shown(r[0], r[1]);
+        let (bx, by) = self.shown(r[2], r[3]);
+        [ax.min(bx), ay.min(by), ax.max(bx), ay.max(by)]
+    }
+
+    /// A rectangle as shown, `[x0, top, x1, bottom]`, in user space
+    /// `[x0, y0, x1, y1]`.
+    pub(crate) fn user_rect(&self, r: [f32; 4]) -> [f32; 4] {
+        let (ax, ay) = self.user(r[0], r[1]);
+        let (bx, by) = self.user(r[2], r[3]);
+        [ax.min(bx), ay.min(by), ax.max(bx), ay.max(by)]
+    }
+
     /// User space of a point given from the top-left of the page as shown.
-    fn user(&self, x: f32, y: f32) -> (f32, f32) {
+    pub(crate) fn user(&self, x: f32, y: f32) -> (f32, f32) {
         let [cx0, cy0, cx1, cy1] = self.crop;
         match self.turn {
             90 => (cx0 + y, cy0 + x),
@@ -304,6 +331,21 @@ mod tests {
         // Shown 90° turned, the page is 800 wide: its top-right corner is the
         // user-space top-left.
         assert_eq!(at(90, 800.0, 0.0), (0.0, 800.0));
+        // `shown` undoes `user` for every turn.
+        for turn in [0, 90, 180, 270] {
+            let frame = Frame {
+                crop: [10.0, 20.0, 610.0, 820.0],
+                turn,
+            };
+            for (x, y) in [(0.0, 0.0), (15.0, 40.0), (300.0, 500.0)] {
+                let (ux, uy) = frame.user(x, y);
+                let (bx, by) = frame.shown(ux, uy);
+                assert!(
+                    (bx - x).abs() < 1e-3 && (by - y).abs() < 1e-3,
+                    "{turn}: {x},{y}"
+                );
+            }
+        }
     }
 
     #[test]

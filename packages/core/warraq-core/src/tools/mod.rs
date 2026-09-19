@@ -13,6 +13,7 @@ use crate::{CoreError, Document};
 pub mod compress;
 pub mod file;
 pub mod forms;
+pub mod forms_eval;
 pub mod ocr;
 pub mod pages;
 
