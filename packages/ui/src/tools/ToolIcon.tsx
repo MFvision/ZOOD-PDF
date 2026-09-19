@@ -24,6 +24,8 @@ const TOOL_COLORS: Partial<Record<ToolId, string>> = {
   ai: '#bf5af2',
   certificates: '#c69300',
   pageMarks: '#ff3b30',
+  standards: '#248a3d',
+  accessibility: '#0071a4',
 };
 
 export function toolColor(id: ToolId): string {

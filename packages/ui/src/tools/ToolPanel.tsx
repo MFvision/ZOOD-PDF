@@ -1,3 +1,4 @@
+import { AccessibilityPanel } from '../accessibility/AccessibilityPanel';
 import { AiPanel } from '../ai/AiPanel';
 import { Icon } from '../components/Icon';
 import { CombinePanel } from '../combine/CombinePanel';
@@ -10,6 +11,7 @@ import { OrganizePanel } from '../organize/OrganizePanel';
 import { PageMarksPanel } from '../marks/PageMarksPanel';
 import { RedactPanel } from '../redact/RedactPanel';
 import { SignaturesPanel } from '../signatures/SignaturesPanel';
+import { StandardsPanel } from '../standards/StandardsPanel';
 import { useT } from '../i18n/useT';
 import { ComingLater } from './ComingLater';
 import { EmbedToolPanel } from './EmbedToolPanel';
@@ -29,6 +31,8 @@ export function ToolPanel({ tool }: { tool: ToolDefinition }) {
   if (tool.id === 'pageMarks') return <PageMarksPanel />;
   if (tool.id === 'redact') return <RedactPanel tool={tool} />;
   if (tool.id === 'certificates') return <SignaturesPanel />;
+  if (tool.id === 'standards') return <StandardsPanel />;
+  if (tool.id === 'accessibility') return <AccessibilityPanel />;
   if (tool.actions && tool.actions.length > 0) return <EmbedToolPanel tool={tool} />;
   return (
     <div className="tool-panel">

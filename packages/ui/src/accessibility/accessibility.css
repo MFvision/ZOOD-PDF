@@ -1,0 +1,239 @@
+/* Accessibility: the checker, the reading order on the page, picture text. */
+.access-tabs {
+  display: flex;
+}
+
+.access-tabs .segmented-item {
+  flex: 1;
+}
+
+.access-tabpanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.access-checks,
+.access-blocks,
+.access-figures {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.access-check {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding-block: var(--space-3);
+  border-block-end: 0.5px solid var(--separator);
+}
+
+.access-check > svg {
+  flex: none;
+  margin-block-start: 1px;
+}
+
+.access-passed > svg {
+  color: var(--green);
+}
+
+.access-failed > svg {
+  color: var(--red);
+}
+
+.access-warning > svg {
+  color: var(--orange);
+}
+
+.access-manual > svg {
+  color: var(--secondary-label);
+}
+
+.access-check-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+  min-inline-size: 0;
+}
+
+.access-check-name {
+  font-weight: 600;
+}
+
+.access-check-status,
+.access-check-clause,
+.access-check-detail {
+  color: var(--secondary-label);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.access-check-clause {
+  inline-size: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.access-check-pages {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.access-doc-fields {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-4);
+}
+
+.access-page-nav {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The page, and the blocks laid over it in page points. */
+.page-picture {
+  position: relative;
+  inline-size: 100%;
+  background: var(--content-background);
+  box-shadow: var(--shadow-page);
+}
+
+.page-picture canvas {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.access-overlay {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.access-box {
+  --role: var(--accent);
+
+  cursor: pointer;
+}
+
+.access-box rect {
+  fill: color-mix(in srgb, var(--role) 10%, transparent);
+  stroke: var(--role);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.access-box text {
+  fill: var(--role);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.access-box-selected rect {
+  fill: color-mix(in srgb, var(--role) 28%, transparent);
+  stroke-width: 2.5;
+}
+
+.access-role-p {
+  --role: var(--green);
+}
+
+.access-role-li,
+.access-role-caption {
+  --role: var(--orange);
+}
+
+.access-role-figure,
+.access-role-table {
+  --role: var(--red);
+}
+
+.access-role-artifact {
+  --role: var(--secondary-label);
+}
+
+.access-box.access-role-artifact rect {
+  stroke-dasharray: 4 3;
+}
+
+.access-block {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-3) var(--space-2);
+  border-block-end: 0.5px solid var(--separator);
+  cursor: grab;
+}
+
+.access-block-selected {
+  background: var(--quaternary-fill);
+}
+
+.access-block-dragging {
+  opacity: 0.5;
+}
+
+.access-block-artifact .access-block-text {
+  color: var(--tertiary-label);
+}
+
+.access-block-grip {
+  flex: none;
+  color: var(--tertiary-label);
+  margin-block-start: 4px;
+}
+
+.access-block-number {
+  --role: var(--accent);
+
+  flex: none;
+  min-inline-size: 22px;
+  margin-block-start: 3px;
+  color: var(--role);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.access-block-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+.access-block-text {
+  font-size: 12px;
+  color: var(--secondary-label);
+  overflow-wrap: anywhere;
+}
+
+.access-block-move {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+}
+
+.access-figures > li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-block: var(--space-4);
+  border-block-end: 0.5px solid var(--separator);
+}
+
+.access-figure-thumb {
+  max-inline-size: 100%;
+  align-self: center;
+  box-shadow: var(--shadow-small);
+}

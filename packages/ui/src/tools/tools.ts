@@ -1,4 +1,5 @@
 import {
+  Accessibility,
   ArrowUpRight,
   CheckSquare,
   CircleDot,
@@ -34,6 +35,7 @@ import {
   Shrink,
   Sparkles,
   FileBadge,
+  FileCheck2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { TKey } from '../i18n/messages';
@@ -53,7 +55,9 @@ export type ToolId =
   | 'prepareForm'
   | 'ai'
   | 'pageMarks'
-  | 'certificates';
+  | 'certificates'
+  | 'standards'
+  | 'accessibility';
 
 /**
  * One control in a tool's panel: an EmbedPDF command (ADR-0007), run through
@@ -163,6 +167,10 @@ export const TOOLS: readonly ToolDefinition[] = [
   { id: 'pageMarks', labelKey: 'tool.pageMarks', icon: Layers, implemented: true },
   // Warraq's own: PAdES signatures and their verification (`warraq-sign`, `signatures/`).
   { id: 'certificates', labelKey: 'tool.certificates', icon: FileBadge, implemented: true },
+  // Warraq's core (`standards.*`): PDF/A and PDF/X-4 copies, their validators, preflight.
+  { id: 'standards', labelKey: 'tool.standards', icon: FileCheck2, implemented: true },
+  // Warraq's core (`accessibility.*`): checker, reading order, tags, alt text.
+  { id: 'accessibility', labelKey: 'tool.accessibility', icon: Accessibility, implemented: true },
 ];
 
 export function findTool(id: ToolId): ToolDefinition | undefined {
