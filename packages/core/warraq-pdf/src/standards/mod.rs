@@ -8,12 +8,14 @@
 //! The validators are honest about their reach: `RULES` lists exactly what
 //! each one checks. The reference validator for PDF/A is veraPDF (GPL/MPL,
 //! Java); it is not bundled, and nothing here claims to replace it.
+pub mod access;
 pub mod fonts;
 pub mod icc;
 pub mod pdfa;
 pub mod pdfx;
 pub mod preflight;
 pub mod scan;
+pub mod tagging;
 pub mod xmp;
 
 use lopdf::{Dictionary, Document, Object, ObjectId};

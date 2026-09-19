@@ -11,11 +11,13 @@ use lopdf::{Dictionary, Document, Object};
 use crate::document::decode_text_string;
 use crate::PdfDocument;
 
-/// One `BMC` or `BDC`: its tag, and the text its content stands for.
+/// One `BMC` or `BDC`: its tag, the text its content stands for, and the
+/// marked-content identifier that ties it to a structure element.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MarkedSequence {
     pub tag: Vec<u8>,
     pub actual_text: Option<String>,
+    pub mcid: Option<i64>,
 }
 
 /// The renderer (hayro) gives up on forms nested deeper than this.
@@ -65,6 +67,7 @@ fn walk<'a>(
             "BMC" => out.push(MarkedSequence {
                 tag: op.operands.first()?.as_name().ok()?.to_vec(),
                 actual_text: None,
+                mcid: None,
             }),
             "BDC" => {
                 let tag = op.operands.first()?.as_name().ok()?.to_vec();
@@ -84,7 +87,14 @@ fn walk<'a>(
                     .and_then(|p| p.get(b"ActualText").ok())
                     .and_then(|t| resolve(doc, t).as_str().ok())
                     .map(decode_text_string);
-                out.push(MarkedSequence { tag, actual_text });
+                let mcid = properties
+                    .and_then(|p| p.get(b"MCID").ok())
+                    .and_then(|m| m.as_i64().ok());
+                out.push(MarkedSequence {
+                    tag,
+                    actual_text,
+                    mcid,
+                });
             }
             "Do" => {
                 let name = op.operands.first()?.as_name().ok()?;
