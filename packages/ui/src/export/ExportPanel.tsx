@@ -8,6 +8,8 @@ import { saveBytes } from '../state/saveFile';
 import { DEFAULT_RESOLUTION, EXPORT_FORMATS, RESOLUTIONS } from './formats';
 import type { ExportFormat } from './formats';
 import { exportCurrentFile } from './runExport';
+import type { SlideMode } from './runExport';
+import type { SheetMode } from './tables';
 import './export.css';
 
 type Outcome = { kind: 'done'; name: string; reduced: boolean } | { kind: 'noText' };
@@ -25,6 +27,8 @@ export function ExportPanel() {
   const id = useId();
   const [format, setFormat] = useState<ExportFormat>('docx');
   const [dpi, setDpi] = useState<number>(DEFAULT_RESOLUTION);
+  const [sheets, setSheets] = useState<SheetMode>('page');
+  const [slides, setSlides] = useState<SlideMode>('picture');
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   // Set when this copy needs a password the app does not have: one set in Protect.
@@ -53,8 +57,11 @@ export function ExportPanel() {
         {
           format,
           dpi,
+          sheets,
+          slides,
           name,
           pageLabel: (page) => t('viewer.page', { page }),
+          tableLabel: (n) => t('export.tableLabel', { n }),
           pagesWord: t('export.pagesWord'),
           onProgress: (done, total) => setProgress({ done, total }),
         },
@@ -124,6 +131,24 @@ export function ExportPanel() {
                 {t('export.dpi', { dpi: value })}
               </option>
             ))}
+          </select>
+        </label>
+      )}
+      {format === 'xlsx' && (
+        <label className="export-resolution">
+          <span>{t('export.sheets')}</span>
+          <select className="select" value={sheets} disabled={running} onChange={(event) => setSheets(event.target.value as SheetMode)}>
+            <option value="page">{t('export.sheetsPage')}</option>
+            <option value="table">{t('export.sheetsTable')}</option>
+          </select>
+        </label>
+      )}
+      {format === 'pptx' && (
+        <label className="export-resolution">
+          <span>{t('export.slides')}</span>
+          <select className="select" value={slides} disabled={running} onChange={(event) => setSlides(event.target.value as SlideMode)}>
+            <option value="picture">{t('export.slidesPicture')}</option>
+            <option value="text">{t('export.slidesText')}</option>
           </select>
         </label>
       )}

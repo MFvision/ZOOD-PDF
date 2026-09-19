@@ -1,4 +1,5 @@
-import type { RemoteDocument } from '../core/client';
+import type { CoreClient, RemoteDocument } from '../core/client';
+import { loadEditFont } from '../edit/editFont';
 import { drawRgba } from '../viewer/useRenderedCanvas';
 import { skewAngle, straighten } from './deskew';
 import { startRecognizer } from './engine';
@@ -96,4 +97,50 @@ export async function readPages(
     canvas.height = 0;
   }
   return pages;
+}
+
+/** What reading a file's scanned pages did. */
+export interface RecognizedFile {
+  /** The file with its text layer, or as it was when nothing was read. */
+  bytes: ArrayBuffer;
+  /** Pages given a text layer, words in it, pages that already had Warraq's, and Tesseract's mean confidence (0–100). */
+  pages: number;
+  words: number;
+  skipped: number;
+  confidence: number;
+}
+
+/**
+ * Scan & OCR on a file's bytes: its pages read with Tesseract, and what was
+ * read written in by the core as an invisible text layer
+ * (`ocr.add_text_layer`). The open document's `recognizeText` and Create
+ * PDF's pictures both come here.
+ */
+export async function recognizeFile(
+  client: Pick<CoreClient, 'open' | 'callStatic'>,
+  bytes: ArrayBuffer,
+  password: string | undefined,
+  languages: readonly OcrLanguage[],
+  scope: OcrScope,
+  onProgress: (progress: OcrProgress) => void,
+  signal?: AbortSignal,
+): Promise<RecognizedFile> {
+  const reading = await client.open(bytes.slice(0), password);
+  let pages: OcrPageWords[];
+  try {
+    pages = await readPages(reading, languages, scope, onProgress, signal);
+  } finally {
+    void reading.free();
+  }
+  const read = pages.filter((page) => page.words.length > 0);
+  const confidence = read.length ? read.reduce((sum, page) => sum + page.confidence, 0) / read.length : 0;
+  if (read.length === 0 || signal?.aborted) return { bytes, pages: 0, words: 0, skipped: 0, confidence };
+  const font = await loadEditFont('amiri');
+  const { result, blobs } = await client.callStatic<{ pages: number; words: number; skipped: number }>(
+    'ocr.add_text_layer',
+    { password: password ?? null, pages: read.map(({ index, words, angle }) => ({ index, words, angle })) },
+    // A copy: the core takes over what it is handed, and the file as it was is the answer when nothing was written.
+    [bytes.slice(0), font.slice().buffer],
+  );
+  return { ...result, bytes: result.pages > 0 && blobs[0] ? blobs[0] : bytes, confidence };
 }
