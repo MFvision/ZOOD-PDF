@@ -913,7 +913,7 @@ impl PdfDocument {
     /// A widget's normal appearance, and the matrix that puts it on its
     /// rectangle (PDF 32000-1 §12.5.5): the appearance's box, through its
     /// own matrix, scaled and moved onto `/Rect`.
-    fn flattened_placement(&self, annot: &Dictionary) -> Option<(ObjectId, Matrix)> {
+    pub(crate) fn flattened_placement(&self, annot: &Dictionary) -> Option<(ObjectId, Matrix)> {
         let rect = self.rect(annot.get(b"Rect").ok())?;
         let ap = self.resolve_dict(annot.get(b"AP").ok())?;
         let normal = ap.get(b"N").ok()?;
