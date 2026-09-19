@@ -6,15 +6,13 @@ import { useI18n } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import type { CompressResult } from '../state/AppContext';
 import { compressedFileName } from '../state/saveFile';
+import { COMPRESS_LEVELS } from './levels';
+import type { CompressLevel } from './levels';
 import './compress.css';
 
 /** The three choices, from none of the images touched to the smallest file. */
-const LEVELS = {
-  lossless: {},
-  balanced: { imageDpi: 150, jpegQuality: 75 },
-  smallest: { imageDpi: 96, jpegQuality: 60 },
-} as const;
-type Level = keyof typeof LEVELS;
+const LEVELS = COMPRESS_LEVELS;
+type Level = CompressLevel;
 
 /** Bytes as a person reads them: 870 KB, 12.4 MB. */
 export function formatSize(bytes: number, lang: string): string {

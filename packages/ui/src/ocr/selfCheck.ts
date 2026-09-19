@@ -1,3 +1,4 @@
+import { runBatchSelfCheck } from '../batch/selfCheck';
 import { debugSelfCheck, uiLog } from '../core/host-tauri';
 import type { AppServices } from '../state/AppContext';
 import { NO_CLEANUP } from './cleanup';
@@ -16,6 +17,7 @@ export async function runSelfCheck(
   services: Pick<AppServices, 'recognizeText' | 'client' | 'currentFileBytes' | 'documentPassword'>,
 ): Promise<void> {
   const check = await debugSelfCheck();
+  if (check?.startsWith('batch:')) return runBatchSelfCheck(check.slice('batch:'.length), services.client);
   if (check !== 'ocr' && check !== 'ocr-clean') return;
   const cleanup: CleanupOptions =
     check === 'ocr-clean' ? { background: true, contrast: true, binarize: true, despeckle: true, borders: true } : NO_CLEANUP;
@@ -30,8 +32,13 @@ export async function runSelfCheck(
       { cleanup, replaceImage: check === 'ocr-clean' },
     );
     uiLog(`selfcheck ${check}: done in ${Date.now() - started} ms ${JSON.stringify(outcome)}`);
-    // What the layer says, read back by Warraq's own reader.
-    const bytes = await services.currentFileBytes();
+    // What the layer says, read back by Warraq's own reader — once the view
+    // has reopened the file with it (asking sooner finds no document).
+    let bytes: ArrayBuffer | null = null;
+    for (let attempt = 0; attempt < 10 && !bytes; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      bytes = await services.currentFileBytes().catch(() => null);
+    }
     if (bytes) {
       const doc = await services.client.open(bytes, services.documentPassword);
       try {

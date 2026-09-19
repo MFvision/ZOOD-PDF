@@ -6,7 +6,7 @@ import { NO_CLEANUP, anyCleanup, cleanUp, sanitizeCleanup } from './cleanup';
 import type { CleanupOptions } from './cleanup';
 import { skewAngle, straighten } from './deskew';
 import { startRecognizer } from './engine';
-import type { OcrLanguage, ReadWord } from './engine';
+import type { OcrLanguage, ReadWord, Recognizer } from './engine';
 
 /** Which pages to read: those with no text of their own, or every page. */
 export type OcrScope = 'blank' | 'all';
@@ -134,7 +134,9 @@ async function pageImage(
  * Reads the chosen pages of `doc`: each is drawn at about 300 dpi by
  * Warraq's core, cleaned up as chosen (`cleanup.ts`), straightened when it
  * is crooked, and read by Tesseract. Pages that already carry text are
- * skipped unless `scope` is `all`. `signal` stops it between pages.
+ * skipped unless `scope` is `all`. `signal` stops it between pages. A
+ * `recognizer` already started (the batch reads many files with one) is
+ * used and left running; otherwise one is started and stopped here.
  */
 export async function readPages(
   doc: RemoteDocument,
@@ -143,13 +145,14 @@ export async function readPages(
   onProgress: (progress: OcrProgress) => void,
   signal?: AbortSignal,
   options: ReadOptions = PLAIN_READING,
+  shared?: Recognizer,
 ): Promise<OcrPageWords[]> {
   const targets: number[] = [];
   for (let index = 0; index < doc.pageCount; index += 1) {
     if (scope === 'all' || (await doc.extract_text(index)).trim().length === 0) targets.push(index);
   }
   if (targets.length === 0) return [];
-  const recognizer = await startRecognizer(languages);
+  const recognizer = shared ?? (await startRecognizer(languages));
   const canvas = document.createElement('canvas');
   const pages: OcrPageWords[] = [];
   const cleaning = anyCleanup(options.cleanup);
@@ -179,7 +182,7 @@ export async function readPages(
       pages.push({ index, words: toPoints(words, scale, straight?.offset), confidence, angle, ...(image ? { image } : {}) });
     }
   } finally {
-    await recognizer.stop();
+    if (!shared) await recognizer.stop();
     canvas.width = 0;
     canvas.height = 0;
   }

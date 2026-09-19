@@ -76,14 +76,24 @@ fn ui_log(message: String) {
 
 /// A check the interface runs by itself once the startup file is open, named
 /// by `WARRAQ_SELFCHECK` and only with `WARRAQ_DEBUG` set: `ocr` reads the
-/// file with Scan & OCR, `ocr-clean` cleans it up first. It is how
-/// recognition inside this webview — Tesseract's worker and WebAssembly
-/// under the host's security policy — is checked from the log, without a
-/// person at the screen. `None` in every ordinary run.
+/// file with Scan & OCR, `ocr-clean` cleans it up first, `batch:<folder>`
+/// runs a batch over the PDFs in that folder and writes each result beside
+/// its original. It is how recognition and the batch inside this webview —
+/// Tesseract's worker and WebAssembly under the host's security policy, the
+/// batch's reads and writes through this host — are checked from the log,
+/// without a person at the screen. `None` in every ordinary run.
 #[tauri::command]
-fn debug_selfcheck() -> Option<String> {
+fn debug_selfcheck<R: Runtime>(app: AppHandle<R>) -> Option<String> {
     std::env::var_os("WARRAQ_DEBUG")?;
     let check = std::env::var("WARRAQ_SELFCHECK").ok()?;
+    if let Some(folder) = check.strip_prefix("batch:") {
+        // Named by whoever started the check: as if chosen in the panel.
+        let dir = PathBuf::from(folder);
+        let allowed = dir.is_absolute()
+            && dir.is_dir()
+            && app.fs_scope().allow_directory(&dir, false).is_ok();
+        return allowed.then_some(check);
+    }
     matches!(check.as_str(), "ocr" | "ocr-clean").then_some(check)
 }
 
