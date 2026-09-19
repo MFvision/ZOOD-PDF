@@ -35,6 +35,9 @@ js-sys = "0.3"
 
 [dev-dependencies]
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+# Tests edit a file the way another program would (already in the graph
+# through warraq-pdf).
+lopdf.workspace = true
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = ["-Oz", "--all-features"]

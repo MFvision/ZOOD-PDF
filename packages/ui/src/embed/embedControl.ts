@@ -120,6 +120,23 @@ export function commandActive(registry: PluginRegistry, id: string): boolean {
   return capability<Commands>(registry, 'commands')?.resolve(id).active === true;
 }
 
+/** PDF permission bit 3: the file may be printed (`PdfPermissionFlag.Print`). */
+const PRINT_PERMISSION = 4;
+
+/**
+ * Whether the open file allows printing, as PDFium read its protection: the
+ * print permission is set, or the owner's password unlocked it. A file with
+ * no protection allows everything.
+ */
+export function printAllowed(registry: PluginRegistry): boolean {
+  const document = capability<{ getActiveDocument(): { permissions?: number; isOwnerUnlocked?: boolean } | null }>(
+    registry,
+    'document-manager',
+  )?.getActiveDocument();
+  if (!document || typeof document.permissions !== 'number') return true;
+  return document.isOwnerUnlocked === true || (document.permissions & PRINT_PERMISSION) !== 0;
+}
+
 export function scrollToPage(registry: PluginRegistry, page: number): void {
   capability<Scroll>(registry, 'scroll')?.scrollToPage({ pageNumber: page });
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FileBadge } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { useT } from '../i18n/useT';
@@ -17,9 +17,14 @@ import './signatures.css';
 export function SignaturesPanel() {
   const t = useT();
   const state = useAppState();
-  const { report } = useSignatures();
+  const { report, ensureChecked } = useSignatures();
   const count = report?.signatures.length ?? 0;
   const [tab, setTab] = useState<'list' | 'sign'>(count > 0 ? 'list' : 'sign');
+  // A file only scanned so far (no signature in it) is checked now: an
+  // unsigned form's empty signature fields are offered for signing.
+  useEffect(() => {
+    ensureChecked();
+  }, [ensureChecked]);
   return (
     <div className="tool-panel signatures-panel">
       <h3>

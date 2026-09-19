@@ -181,7 +181,10 @@ fn read_file_bytes<R: Runtime>(
         .map_err(|e| format!("E_IO: {}: {e}", path.display()))
 }
 
-/// Builds and runs the Tauri application.
+/// Builds and runs the Tauri application. On iOS and Android (Tauri 2's
+/// mobile targets, not built yet: docs/STATUS.md) this is the app's entry
+/// point, as `main` is on the desktop.
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -238,7 +241,9 @@ pub fn run() {
             core_bridge::doc_save,
             core_bridge::core_call,
             print::print_available,
+            print::print_mode,
             print::print_pdf,
+            print::print_webview,
             signing::net_exchange,
             signing::pkcs11_certificates,
             signing::pkcs11_sign,

@@ -1,0 +1,35 @@
+/*
+ * Print by pages (print/printPages.ts): the pages laid out for print. On
+ * screen the sheet is never shown; in print, while it is laid out
+ * (`.print-pages` on the root), it is all there is — the app around it is
+ * hidden, and nothing clips it to one screenful.
+ */
+.print-sheet {
+  display: none;
+}
+
+@media print {
+  .print-pages,
+  .print-pages body {
+    block-size: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  .print-pages body > :not(.print-sheet) {
+    display: none !important;
+  }
+
+  .print-pages .print-sheet {
+    display: block;
+  }
+
+  .print-page {
+    display: block;
+    break-after: page;
+  }
+
+  .print-page:last-child {
+    break-after: auto;
+  }
+}

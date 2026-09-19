@@ -1,5 +1,5 @@
 //! OpenType shaping with HarfRust, metrics with skrifa. Units: 1/1000 em.
-use crate::bidi::{visual_runs, Direction};
+use crate::bidi::{visual_runs_in, Direction};
 use harfrust::{BufferClusterLevel, Feature, ShapeOptions, ShaperData, Tag, UnicodeBuffer};
 use skrifa::instance::{LocationRef, Size};
 use skrifa::raw::TableProvider;
@@ -162,8 +162,14 @@ impl<'a> Shaper<'a> {
 
     /// Shape a whole logical line: bidi runs in visual order, each shaped in its direction.
     pub fn shape_line(&self, line: &str) -> Vec<ShapedGlyph> {
+        self.shape_line_in(line, None)
+    }
+
+    /// `shape_line` for a line of a paragraph of direction `base` (`None`:
+    /// the line's own, from its first strong letter).
+    pub fn shape_line_in(&self, line: &str, base: Option<Direction>) -> Vec<ShapedGlyph> {
         let mut out = vec![];
-        for run in visual_runs(line) {
+        for run in visual_runs_in(line, base) {
             let start = run.range.start;
             out.extend(
                 self.shape_run(&line[run.range.clone()], run.direction)
@@ -267,5 +273,33 @@ mod tests {
         assert!(text.starts_with("INV-1"), "got {text:?}");
         assert!(s.covers("مرحبا Warraq 123"));
         assert!(!s.covers("你好"));
+    }
+
+    #[test]
+    fn a_date_marked_left_to_right_keeps_its_order_and_sign_in_arabic() {
+        // A visible signature's date line: without the mark, the date splits
+        // into three runs and the zone's sign lands after it ("03:00+").
+        let s = Shaper::new(AMIRI).unwrap();
+        let g = s.shape_line("التاريخ: \u{200E}2026-09-19 20:05 +03:00");
+        let text: String = g.iter().map(|g| g.text.as_str()).collect();
+        assert!(
+            text.trim_start_matches('\u{200E}')
+                .starts_with("2026-09-19 20:05 +03:00"),
+            "visual order: {text:?}"
+        );
+        // Unmarked, the same line is drawn as the review found it.
+        let bare: String = s
+            .shape_line("التاريخ: 2026-09-19 20:05 +03:00")
+            .iter()
+            .map(|g| g.text.as_str())
+            .collect();
+        assert!(bare.starts_with("03:00+"), "{bare:?}");
+        // The mark itself draws nothing.
+        let mark: f32 = g
+            .iter()
+            .filter(|g| g.text.contains('\u{200E}'))
+            .map(|g| g.x_advance)
+            .sum();
+        assert_eq!(mark, 0.0);
     }
 }

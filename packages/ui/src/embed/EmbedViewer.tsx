@@ -8,7 +8,7 @@ import { isTauriHost, uiLog } from '../core/host-tauri';
 import type { Lang } from '../i18n/messages';
 import { requestOpenLink } from '../links/openLink';
 import { capability, disabledCategories } from './embedControl';
-import { setEmbedLanguage } from './embedLanguage';
+import { setEmbedLanguage, setEmbedStrings } from './embedLanguage';
 import { installRtlStyles } from './embedRtl';
 import { EMBED_COLORS, installThemeStyles, removeDuplicatedChrome, showMarkupBar } from './embedTheme';
 
@@ -126,6 +126,9 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
   const openedRef = useRef<string | null>(null);
   const langRef = useRef(lang);
   const markupRef = useRef(markupBar);
+  // Its loading screens draw before its i18n plugin exists: their strings
+  // come from Warraq's table from the first frame (vite/embedPatches.ts).
+  setEmbedStrings(lang);
 
   // Built once: a new config object would tear the whole viewer down.
   const config = useMemo<PDFViewerConfig>(() => {
@@ -152,7 +155,10 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
       // A link to an address is not opened by the viewer: Warraq asks first
       // (`links/openLink.ts`, through `onNavigate` below). Links to a page of
       // the file still go there.
-      annotations: { autoOpenLinks: false },
+      // Nobody signs in to Warraq, so a comment has no author to record —
+      // not EmbedPDF's "Guest", in English, in every file. Its comments
+      // sidebar says so in the language on screen (vite/embedPatches.ts).
+      annotations: { autoOpenLinks: false, annotationAuthor: '' },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

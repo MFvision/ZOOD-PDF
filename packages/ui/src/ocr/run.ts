@@ -1,4 +1,4 @@
-import type { RemoteDocument } from '../core/client';
+import type { CoreClient, RemoteDocument } from '../core/client';
 import { encodePng } from '../export/png';
 import { readJson, writeJson } from '../state/preferences';
 import { drawRgba } from '../viewer/useRenderedCanvas';
@@ -7,6 +7,7 @@ import type { CleanupOptions } from './cleanup';
 import { skewAngle, straighten } from './deskew';
 import { startRecognizer } from './engine';
 import type { OcrLanguage, ReadWord, Recognizer } from './engine';
+import { writeTextLayer } from './layer';
 
 /** Which pages to read: those with no text of their own, or every page. */
 export type OcrScope = 'blank' | 'all';
@@ -187,4 +188,52 @@ export async function readPages(
     canvas.height = 0;
   }
   return pages;
+}
+
+/** What reading a file's scanned pages did. */
+export interface RecognizedFile {
+  /** The file with its text layer, or as it was when nothing was read. */
+  bytes: ArrayBuffer;
+  /** Pages given a text layer, words in it, pages that already had Warraq's, and Tesseract's mean confidence (0–100). */
+  pages: number;
+  words: number;
+  skipped: number;
+  confidence: number;
+  /** Pages whose scan was replaced by the cleaned-up one, and pages that kept theirs. */
+  images: number;
+  imagesKept: number;
+}
+
+/**
+ * Scan & OCR on a file's bytes: its pages read with Tesseract — cleaned up
+ * first as `options` say — and what was read written in by the core as an
+ * invisible text layer (`ocr.add_text_layer`). The open document's
+ * `recognizeText`, Create PDF's pictures and the batch's OCR step all come
+ * here; a batch hands its running `recognizer` over.
+ */
+export async function recognizeFile(
+  client: Pick<CoreClient, 'open' | 'callStatic'>,
+  bytes: ArrayBuffer,
+  password: string | undefined,
+  languages: readonly OcrLanguage[],
+  scope: OcrScope,
+  onProgress: (progress: OcrProgress) => void,
+  signal?: AbortSignal,
+  options: ReadOptions = PLAIN_READING,
+  recognizer?: Recognizer,
+): Promise<RecognizedFile> {
+  const reading = await client.open(bytes.slice(0), password);
+  let pages: OcrPageWords[];
+  try {
+    pages = await readPages(reading, languages, scope, onProgress, signal, options, recognizer);
+  } finally {
+    void reading.free();
+  }
+  const read = pages.filter((page) => page.words.length > 0);
+  const confidence = read.length ? read.reduce((sum, page) => sum + page.confidence, 0) / read.length : 0;
+  const nothing = { bytes, pages: 0, words: 0, skipped: 0, images: 0, imagesKept: 0, confidence };
+  if (read.length === 0 || signal?.aborted) return nothing;
+  // `writeTextLayer` hands the core a copy: the file as it was is the answer when nothing was written.
+  const written = await writeTextLayer(client, bytes, password, read);
+  return { ...written.report, bytes: written.bytes ?? bytes, confidence };
 }

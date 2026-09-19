@@ -34,6 +34,7 @@ import {
   Shrink,
   Sparkles,
   FileBadge,
+  FilePlus2,
   Workflow,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -50,6 +51,7 @@ export type ToolId =
   | 'compare'
   | 'ocr'
   | 'combine'
+  | 'create'
   | 'compress'
   | 'prepareForm'
   | 'ai'
@@ -143,6 +145,8 @@ export const TOOLS: readonly ToolDefinition[] = [
   { id: 'ocr', labelKey: 'tool.ocr', icon: ScanText, implemented: true },
   // Warraq's core (`pages.combine`): PDFium's importer breaks form fields (ADR-0008).
   { id: 'combine', labelKey: 'tool.combine', icon: Combine, implemented: true },
+  // Warraq's own: Word, Excel, PowerPoint, web pages, Markdown, text and pictures read in the page, laid out by the core (`create.*`).
+  { id: 'create', labelKey: 'tool.create', icon: FilePlus2, implemented: true },
   // Warraq's core (`compress.file`): a smaller copy, written from scratch.
   { id: 'compress', labelKey: 'tool.compress', icon: Shrink, implemented: true },
   {

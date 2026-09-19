@@ -59,6 +59,15 @@ pub const EXT_AUTHORITY_INFO_ACCESS: Oid = Oid::new_unwrap("1.3.6.1.5.5.7.1.1");
 pub const AD_OCSP: Oid = Oid::new_unwrap("1.3.6.1.5.5.7.48.1");
 pub const AD_CA_ISSUERS: Oid = Oid::new_unwrap("1.3.6.1.5.5.7.48.2");
 pub const KP_TIME_STAMPING: Oid = Oid::new_unwrap("1.3.6.1.5.5.7.3.8");
+pub const KP_SERVER_AUTH: Oid = Oid::new_unwrap("1.3.6.1.5.5.7.3.1");
+pub const KP_EMAIL_PROTECTION: Oid = Oid::new_unwrap("1.3.6.1.5.5.7.3.4");
+/// id-kp-documentSigning (RFC 9336).
+pub const KP_DOCUMENT_SIGNING: Oid = Oid::new_unwrap("1.3.6.1.5.5.7.3.36");
+pub const ANY_EXTENDED_KEY_USAGE: Oid = Oid::new_unwrap("2.5.29.37.0");
+/// Adobe's Authentic Documents Trust purpose (PDF signing certificates).
+pub const ADOBE_AUTHENTIC_DOCUMENTS: Oid = Oid::new_unwrap("1.2.840.113583.1.1.5");
+/// Microsoft's Document Signing purpose.
+pub const MS_DOCUMENT_SIGNING: Oid = Oid::new_unwrap("1.3.6.1.4.1.311.10.3.12");
 pub const KP_OCSP_SIGNING: Oid = Oid::new_unwrap("1.3.6.1.5.5.7.3.9");
 pub const OCSP_BASIC: Oid = Oid::new_unwrap("1.3.6.1.5.5.7.48.1.1");
 pub const OCSP_NOCHECK: Oid = Oid::new_unwrap("1.3.6.1.5.5.7.48.1.5");

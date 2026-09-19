@@ -115,6 +115,21 @@ impl PdfDocument {
         self.redraw_appearances(font, &BTreeSet::new())
     }
 
+    /// `fix_arabic_appearances` for this document as another engine wrote
+    /// it, `opened` being the file as it was opened: when that file is
+    /// signed, only what changed since is redrawn. Redrawing the rest would
+    /// be a change after the signature on every save — to appearances that
+    /// are the form's author's, not Warraq's — and a certification that
+    /// forbids it would show as broken.
+    pub fn fix_arabic_appearances_since(
+        &mut self,
+        font: &[u8],
+        opened: &PdfDocument,
+    ) -> Result<AppearanceReport> {
+        let keep = self.untouched_since(opened);
+        self.redraw(font, &BTreeSet::new(), &keep)
+    }
+
     /// `fix_arabic_appearances`, and also every text field in `fields` (by
     /// the field's object, or a widget's) whatever it holds: a value Warraq
     /// calculated has no appearance until something draws one.
@@ -123,7 +138,79 @@ impl PdfDocument {
         font: &[u8],
         fields: &BTreeSet<ObjectId>,
     ) -> Result<AppearanceReport> {
-        let jobs = self.appearance_jobs(fields);
+        self.redraw(font, fields, &BTreeSet::new())
+    }
+
+    /// The annotations of a signed `opened` that are as they were there — the
+    /// annotation and every field above it, bar a name (`/NM`) EmbedPDF made
+    /// up. Nothing, when `opened` has no signature.
+    fn untouched_since(&self, opened: &PdfDocument) -> BTreeSet<ObjectId> {
+        let mut keep = BTreeSet::new();
+        if !opened.signature_fields().iter().any(|f| f.value.is_some()) {
+            return keep;
+        }
+        let bare = |doc: &PdfDocument, id: ObjectId| -> Option<Dictionary> {
+            let mut d = doc.doc.get_dictionary(id).ok()?.clone();
+            d.remove(b"NM");
+            Some(d)
+        };
+        let same = |id: ObjectId| -> bool {
+            let mut current = id;
+            for _ in 0..32 {
+                let (Some(ours), Some(theirs)) = (bare(self, current), bare(opened, current))
+                else {
+                    return false;
+                };
+                if ours != theirs {
+                    return false;
+                }
+                // A value kept as an object of its own.
+                if let Ok(Object::Reference(v)) = ours.get(b"V") {
+                    if self.doc.objects.get(v) != opened.doc.objects.get(v) {
+                        return false;
+                    }
+                }
+                match ours.get(b"Parent").and_then(Object::as_reference) {
+                    Ok(parent) => current = parent,
+                    Err(_) => return true,
+                }
+            }
+            false
+        };
+        for &page in &self.pages {
+            let annots = match self
+                .doc
+                .get_dictionary(page)
+                .ok()
+                .and_then(|p| p.get(b"Annots").ok())
+            {
+                Some(Object::Array(items)) => items.clone(),
+                Some(Object::Reference(id)) => self
+                    .doc
+                    .get_object(*id)
+                    .ok()
+                    .and_then(|o| o.as_array().ok())
+                    .cloned()
+                    .unwrap_or_default(),
+                _ => Vec::new(),
+            };
+            for id in annots.iter().filter_map(|a| a.as_reference().ok()) {
+                if same(id) {
+                    keep.insert(id);
+                }
+            }
+        }
+        keep
+    }
+
+    fn redraw(
+        &mut self,
+        font: &[u8],
+        fields: &BTreeSet<ObjectId>,
+        keep: &BTreeSet<ObjectId>,
+    ) -> Result<AppearanceReport> {
+        let mut jobs = self.appearance_jobs(fields);
+        jobs.retain(|job| !keep.contains(&job.annot));
         if jobs.is_empty() {
             return Ok(AppearanceReport::default());
         }
