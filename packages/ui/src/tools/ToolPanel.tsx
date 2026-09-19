@@ -8,6 +8,7 @@ import { OcrPanel } from '../ocr/OcrPanel';
 import { EditPanel } from '../edit/EditPanel';
 import { ExportPanel } from '../export/ExportPanel';
 import { OrganizePanel } from '../organize/OrganizePanel';
+import { PrepareFormPanel } from '../forms/PrepareFormPanel';
 import { PageMarksPanel } from '../marks/PageMarksPanel';
 import { RedactPanel } from '../redact/RedactPanel';
 import { SignaturesPanel } from '../signatures/SignaturesPanel';
@@ -28,6 +29,7 @@ export function ToolPanel({ tool }: { tool: ToolDefinition }) {
   if (tool.id === 'export') return <ExportPanel />;
   if (tool.id === 'ai') return <AiPanel />;
   if (tool.id === 'compare') return <ComparePanel />;
+  if (tool.id === 'prepareForm') return <PrepareFormPanel />;
   if (tool.id === 'pageMarks') return <PageMarksPanel />;
   if (tool.id === 'redact') return <RedactPanel tool={tool} />;
   if (tool.id === 'certificates') return <SignaturesPanel />;

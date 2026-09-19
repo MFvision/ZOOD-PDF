@@ -43,14 +43,14 @@ pub fn call(
         "tables" => {
             let a: Page = args(json)?;
             let lines = doc.text_lines(a.page)?;
-            let rulings = doc.rulings(a.page)?;
+            let rules = doc.drawing(a.page)?.rules;
             let cells = |cells: &[LineCell]| -> Vec<Value> {
                 cells
                     .iter()
                     .map(|c| json!({ "text": c.text, "x0": c.x0, "x1": c.x1, "direction": dir(c.direction) }))
                     .collect()
             };
-            let items: Vec<Value> = page_items(&lines, &rulings)
+            let items: Vec<Value> = page_items(&lines, &rules)
                 .iter()
                 .map(|item| match item {
                     PageItem::Table(t) => json!({

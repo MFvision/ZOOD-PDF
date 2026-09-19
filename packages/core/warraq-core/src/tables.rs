@@ -1,7 +1,8 @@
 //! Tables on a page, for the Excel export (`export.tables`).
 //!
 //! Two ways a table shows itself. Most are drawn with rules: the lines
-//! across and down (`warraq-render`'s rulings) that meet make a grid, and a
+//! across and down (`warraq-render`'s drawing, the rules Prepare form reads
+//! too) that meet make a grid, and a
 //! border missing between two cells merges them. Some have no rules at all,
 //! only columns of text that line up: lines that the core's own reading
 //! parts at wide gaps (`line_cells`), one under another, whose pieces stand
@@ -9,7 +10,7 @@
 //! reading of it — Arabic in reading order — and a table whose text is
 //! mostly right to left says so, so the sheet can put its first column on
 //! the right.
-use warraq_render::Ruling;
+use warraq_render::Rule as Drawn;
 use warraq_text::{base_direction, Direction, TextLine};
 
 /// One cell of a line: its text in reading order and where it was drawn,
@@ -282,29 +283,21 @@ fn regions(owner: &[usize], cols: usize) -> std::collections::HashMap<usize, [us
 
 /// The grids that rules across and down draw: groups of rules that meet,
 /// with at least two cells between them.
-fn grids(rulings: &[Ruling]) -> Vec<Grid> {
-    let across = merge_rules(
-        rulings
-            .iter()
-            .filter(|r| r.across())
-            .map(|r| Rule {
-                at: r.y0,
-                from: r.x0,
-                to: r.x1,
-            })
-            .collect(),
-    );
-    let down = merge_rules(
-        rulings
-            .iter()
-            .filter(|r| !r.across())
-            .map(|r| Rule {
-                at: r.x0,
-                from: r.y0,
-                to: r.y1,
-            })
-            .collect(),
-    );
+fn grids(drawn: &[Drawn]) -> Vec<Grid> {
+    let along = |horizontal: bool| {
+        merge_rules(
+            drawn
+                .iter()
+                .filter(|r| r.horizontal == horizontal)
+                .map(|r| Rule {
+                    at: r.at,
+                    from: r.from,
+                    to: r.to,
+                })
+                .collect(),
+        )
+    };
+    let (across, down) = (along(true), along(false));
     let (na, nd) = (across.len(), down.len());
     if na < 2 || nd < 2 || na > 5_000 || nd > 5_000 {
         return Vec::new();
@@ -553,8 +546,8 @@ fn aligned_table(rows: &[(f32, Vec<LineCell>)]) -> Option<FoundTable> {
 
 /// What is on a page, in order from its top: the tables its rules draw,
 /// then tables whose columns line up without rules, and every other line.
-pub fn page_items(lines: &[TextLine], rulings: &[Ruling]) -> Vec<PageItem> {
-    let mut grids = grids(rulings);
+pub fn page_items(lines: &[TextLine], drawn: &[Drawn]) -> Vec<PageItem> {
+    let mut grids = grids(drawn);
     // A grid with text in fewer than two of its cells is a frame or a
     // decoration: its text is read as lines.
     let (texts, _) = assign(lines, &grids);
@@ -784,12 +777,23 @@ mod tests {
         assert_eq!(texts(&line_cells(&l)), ["a b"]);
     }
 
-    fn rule(x0: f32, y0: f32, x1: f32, y1: f32) -> Ruling {
-        Ruling { x0, y0, x1, y1 }
+    fn rule(x0: f32, y0: f32, x1: f32, y1: f32) -> Drawn {
+        let horizontal = y0 == y1;
+        let (at, from, to) = if horizontal {
+            (y0, x0, x1)
+        } else {
+            (x0, y0, y1)
+        };
+        Drawn {
+            horizontal,
+            at,
+            from: from.min(to),
+            to: from.max(to),
+        }
     }
 
     /// The rules of a grid with columns at `xs` and rows at `ys`, every border drawn.
-    fn grid_rules(xs: &[f32], ys: &[f32]) -> Vec<Ruling> {
+    fn grid_rules(xs: &[f32], ys: &[f32]) -> Vec<Drawn> {
         let mut out = Vec::new();
         for y in ys {
             out.push(rule(xs[0], *y, xs[xs.len() - 1], *y));

@@ -34,6 +34,7 @@ licence text (`scripts/rust-licenses.mjs`).
 | `ureq`, `ureq-proto`, `rustls`, `rustls-webpki`, `ring`, `untrusted` (desktop only) | MIT OR Apache-2.0; Apache-2.0 OR ISC OR MIT; ISC; Apache-2.0 AND ISC | Digital signature: the one HTTP client in the app, used only when the person asks for a timestamp or validation data |
 | Amiri, Cairo, Inter, Noto Naskh Arabic | SIL OFL-1.1 | bundled edit, UI and fallback fonts (the corpus in `tests/` uses more, which are not shipped) |
 | Lucide (`lucide-react`) | ISC | icons |
+| The Umm al-Qura month lengths for 1356–1500 AH (`warraq-pdf/src/forms/hijri.rs` and `js/hijri-*.js`), read from ICU's Islamic Umm al-Qura calendar through Node's `Intl` (`tests/fixtures/forms/umalqura.mjs`) | Unicode License v3 (ICU data) | Hijri dates in Prepare form |
 | fflate | MIT | zip and deflate for Export (the Word, Excel and PowerPoint files, page images, PNG compression) and for reading the Office files Create PDF takes |
 | React, Vite, Tauri | MIT / MIT / Apache-2.0 OR MIT | UI and app shells |
 | muda (Tauri's menu library, already inside Tauri) | Apache-2.0 OR MIT | named directly only in the desktop tests, to parse the macOS menu bar's shortcuts as Tauri does |

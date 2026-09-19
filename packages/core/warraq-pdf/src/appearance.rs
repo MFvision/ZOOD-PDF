@@ -10,6 +10,11 @@
 //! in visual order), one subset of a bundled face embedded for all of them,
 //! and a ToUnicode that maps back to the text typed. What PDFium drew around
 //! the text — border, background — is kept.
+//!
+//! A field with a format Warraq runs (`forms::script`) is drawn as that format
+//! shows it — `1,500.00 ر.س`, `٢٥/٠٣/١٤٤٧ هـ` — not as the number or date it
+//! stores: PDFium runs no form scripts, so without this the saved file shows
+//! the bare value to every reader that does not run them either.
 use std::collections::BTreeSet;
 
 use lopdf::content::{Content, Operation};
@@ -86,7 +91,8 @@ struct Job {
     matrix: Option<Object>,
     /// From the default appearance; 0 means fit the box.
     size: f32,
-    /// The colour operators of the default appearance (`0 g`, `1 0 0 rg`).
+    /// The colour operators of the default appearance (`0 g`, `1 0 0 rg`),
+    /// or red for a negative number its format shows in red.
     color: Vec<Operation>,
     align: Align,
     multiline: bool,
@@ -106,7 +112,18 @@ impl PdfDocument {
     /// comment that holds Arabic, in `font` (a bundled face). Everything else
     /// is left as it is, and so is a document with nothing to redraw.
     pub fn fix_arabic_appearances(&mut self, font: &[u8]) -> Result<AppearanceReport> {
-        let jobs = self.appearance_jobs();
+        self.redraw_appearances(font, &BTreeSet::new())
+    }
+
+    /// `fix_arabic_appearances`, and also every text field in `fields` (by
+    /// the field's object, or a widget's) whatever it holds: a value Warraq
+    /// calculated has no appearance until something draws one.
+    pub fn redraw_appearances(
+        &mut self,
+        font: &[u8],
+        fields: &BTreeSet<ObjectId>,
+    ) -> Result<AppearanceReport> {
+        let jobs = self.appearance_jobs(fields);
         if jobs.is_empty() {
             return Ok(AppearanceReport::default());
         }
@@ -170,7 +187,7 @@ impl PdfDocument {
     }
 
     /// Every annotation on every page whose appearance must be redrawn.
-    fn appearance_jobs(&self) -> Vec<Job> {
+    fn appearance_jobs(&self, forced: &BTreeSet<ObjectId>) -> Vec<Job> {
         let mut seen = BTreeSet::new();
         let mut jobs = Vec::new();
         for &page in &self.pages {
@@ -195,7 +212,7 @@ impl PdfDocument {
                     continue;
                 };
                 if seen.insert(id) {
-                    jobs.extend(self.job_for(id));
+                    jobs.extend(self.job_for(id, forced));
                 }
             }
         }
@@ -235,7 +252,57 @@ impl PdfDocument {
         form.get(key).ok().map(|v| self.resolve(v))
     }
 
-    fn job_for(&self, id: ObjectId) -> Option<Job> {
+    /// The script of a field's `/AA` entry `key`: on the widget, or the
+    /// first field above it that has one.
+    fn field_script(&self, widget: ObjectId, key: &[u8]) -> Option<String> {
+        let mut id = widget;
+        let mut seen = BTreeSet::new();
+        while seen.insert(id) {
+            let dict = self.doc.get_dictionary(id).ok()?;
+            let action = dict
+                .get(b"AA")
+                .ok()
+                .map(|aa| self.resolve(aa))
+                .and_then(|aa| aa.as_dict().ok().and_then(|d| d.get(key).ok().cloned()))
+                .map(|a| self.resolve(&a));
+            if let Some(Object::Dictionary(action)) = action {
+                let js = self.resolve(action.get(b"JS").ok()?);
+                return match js {
+                    Object::String(bytes, _) => Some(decode_text_string(&bytes)),
+                    Object::Stream(s) => Some(decode_text_string(
+                        &s.decompressed_content().unwrap_or(s.content.clone()),
+                    )),
+                    _ => None,
+                };
+            }
+            id = dict.get(b"Parent").ok()?.as_reference().ok()?;
+        }
+        None
+    }
+
+    /// Whether `id` or a field above it is in `set`.
+    fn within(&self, id: ObjectId, set: &BTreeSet<ObjectId>) -> bool {
+        let mut current = id;
+        let mut seen = BTreeSet::new();
+        while seen.insert(current) {
+            if set.contains(&current) {
+                return true;
+            }
+            match self
+                .doc
+                .get_dictionary(current)
+                .ok()
+                .and_then(|d| d.get(b"Parent").ok())
+                .and_then(|p| p.as_reference().ok())
+            {
+                Some(parent) => current = parent,
+                None => return false,
+            }
+        }
+        false
+    }
+
+    fn job_for(&self, id: ObjectId, forced: &BTreeSet<ObjectId>) -> Option<Job> {
         let dict = self.doc.get_dictionary(id).ok()?;
         let flags = dict
             .get(b"F")
@@ -275,7 +342,18 @@ impl PdfDocument {
             }
             _ => return None,
         };
-        if !needs_shaping(&text) {
+        // What the field's format shows, when it has one Warraq runs.
+        let shown = if comment {
+            None
+        } else {
+            self.field_script(id, b"F")
+                .and_then(|format| crate::forms::run::show(&format, &text))
+        };
+        let formatted = shown.as_ref().is_some_and(|s| s.text != text);
+        let red = shown.as_ref().is_some_and(|s| s.red);
+        let text = shown.map(|s| s.text).unwrap_or(text);
+        let force = !comment && !forced.is_empty() && self.within(id, forced);
+        if !needs_shaping(&text) && !formatted && !red && !force {
             return None;
         }
 
@@ -323,6 +401,11 @@ impl PdfDocument {
             .and_then(|d| d.as_str().ok())
             .map(parse_default_appearance)
             .unwrap_or((0.0, Vec::new()));
+        let color = if red {
+            vec![Operation::new("rg", vec![1.into(), 0.into(), 0.into()])]
+        } else {
+            color
+        };
         let q = if comment {
             dict.get(b"Q").ok().and_then(|q| q.as_i64().ok())
         } else {
@@ -858,6 +941,66 @@ mod tests {
             drawn.contains('م') && drawn.contains('ح') && drawn.contains('د'),
             "{drawn}"
         );
+    }
+
+    fn with_format(doc: &mut PdfDocument, field: ObjectId, value: &str, format: &str) {
+        let dict = doc.doc.get_dictionary_mut(field).unwrap();
+        dict.set("V", utf16(value));
+        dict.set(
+            "AA",
+            Dictionary::from_iter([(
+                "F",
+                Object::Dictionary(Dictionary::from_iter([
+                    ("S", Object::Name(b"JavaScript".to_vec())),
+                    ("JS", utf16(format)),
+                ])),
+            )]),
+        );
+    }
+
+    #[test]
+    fn a_formatted_value_is_drawn_as_its_format_shows_it() {
+        let mut doc = PdfDocument::open(corpus(ACROBAT_FORM), None).unwrap();
+        let text2 = field(&doc, "Text2");
+        with_format(
+            &mut doc,
+            text2,
+            "1500",
+            "AFNumber_Format(2, 0, 0, 0, \"SAR \", true);",
+        );
+        assert_eq!(doc.fix_arabic_appearances(AMIRI).unwrap().fields, 1);
+        let (stream, ops) = appearance(&doc, text2);
+        assert_eq!(drawn_text(&doc, &stream, &ops), "SAR 1,500.00");
+
+        // Arabic-Indic digits and the riyal sign, through Warraq's own function.
+        let script = format!(
+            "AFNumber_Format(0, 0, 2, 0, \" ر.س\", false);\nWarraq_Digits();\n{}",
+            crate::forms::script::DIGITS_JS
+        );
+        with_format(&mut doc, text2, "-1500", &script);
+        doc.fix_arabic_appearances(AMIRI).unwrap();
+        let (stream, ops) = appearance(&doc, text2);
+        let drawn = drawn_text(&doc, &stream, &ops);
+        assert!(
+            drawn.contains("١٬٥٠٠") && drawn.contains('(') && drawn.contains('س'),
+            "{drawn}"
+        );
+    }
+
+    #[test]
+    fn a_calculated_value_is_drawn_when_asked() {
+        let mut doc = PdfDocument::open(corpus(ACROBAT_FORM), None).unwrap();
+        let text2 = field(&doc, "Text2");
+        doc.doc
+            .get_dictionary_mut(text2)
+            .unwrap()
+            .set("V", Object::string_literal("60"));
+        // Latin, unformatted: left alone unless it is asked for.
+        assert_eq!(doc.fix_arabic_appearances(AMIRI).unwrap().fields, 0);
+        let forced = BTreeSet::from([text2]);
+        assert_eq!(doc.redraw_appearances(AMIRI, &forced).unwrap().fields, 1);
+        let (stream, ops) = appearance(&doc, text2);
+        assert_eq!(drawn_text(&doc, &stream, &ops), "60");
     }
 
     /// Saving a file whose Arabic is already drawn must change nothing — a

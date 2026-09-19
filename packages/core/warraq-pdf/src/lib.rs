@@ -6,6 +6,7 @@ pub mod create;
 pub mod crypt;
 pub mod document;
 pub mod fonts;
+pub mod forms;
 mod frame;
 pub mod hidden;
 pub mod images;
