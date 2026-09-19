@@ -6,8 +6,10 @@ import type { ToolId } from './tools';
 
 /**
  * Every tool, as a gallery of tiles: what the toolbar's tool picker opens.
- * The tool in use is marked; arrow keys move between tiles (the grid is a
- * radio group).
+ * The tool in use is marked; arrow keys move between tiles in the reading
+ * direction, Home and End go to the first and last, and Enter chooses. The
+ * keys stay here: the popover is a portal, and React would otherwise hand
+ * them on to the toolbar that opened it.
  */
 export function ToolGallery({ onChoose }: { onChoose: (tool: ToolId) => void }) {
   const t = useT();
@@ -36,9 +38,15 @@ export function ToolGallery({ onChoose }: { onChoose: (tool: ToolId) => void }) 
                 : event.key === (rtl ? 'ArrowLeft' : 'ArrowRight') ? 1
                 : event.key === (rtl ? 'ArrowRight' : 'ArrowLeft') ? -1
                 : 0;
-              if (!step) return;
+              const target =
+                event.key === 'Home' ? 0
+                : event.key === 'End' ? items.length - 1
+                : step ? (index + step + items.length) % items.length
+                : -1;
+              if (target < 0) return;
               event.preventDefault();
-              items[(index + step + items.length) % items.length]?.focus();
+              event.stopPropagation();
+              items[target]?.focus();
             }}
           >
             <ToolIcon tool={tool} size="large" />

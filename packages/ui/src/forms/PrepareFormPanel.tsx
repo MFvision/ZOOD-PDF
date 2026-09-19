@@ -2,7 +2,8 @@ import { useCallback, useState } from 'react';
 import { Check, ScanSearch, Trash2, X } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
-import { useT } from '../i18n/useT';
+import { radioTabIndex, useRadioGroupKeyboard } from '../components/useRadioGroupKeyboard';
+import { useI18n, useT } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { warraqOwnsDocument } from '../state/appReducer';
 import { findTool } from '../tools/tools';
@@ -25,6 +26,7 @@ const KINDS: ProposalKind[] = ['text', 'checkbox', 'date', 'hijri', 'signature']
  */
 export function PrepareFormPanel() {
   const t = useT();
+  const radioKeys = useRadioGroupKeyboard(useI18n().dir);
   const state = useAppState();
   const dispatch = useAppDispatch();
   const services = useServices();
@@ -128,13 +130,14 @@ export function PrepareFormPanel() {
       <fieldset disabled={!ready || busy}>
         <legend>{t('forms.detect.legend')}</legend>
         <p className="tool-panel-note">{t('forms.detect.note')}</p>
-        <div className="segmented" role="radiogroup" aria-label={t('forms.detect.scope')}>
+        <div className="segmented" role="radiogroup" aria-label={t('forms.detect.scope')} onKeyDown={radioKeys}>
           {(['all', 'page'] as const).map((value) => (
             <button
               key={value}
               type="button"
               role="radio"
               aria-checked={scope === value}
+              tabIndex={radioTabIndex(scope === value, value === 'all', false)}
               className="segmented-item"
               onClick={() => setScope(value)}
             >

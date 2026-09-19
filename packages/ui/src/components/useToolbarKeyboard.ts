@@ -7,11 +7,16 @@ const FOCUSABLE = 'button, select, input, [tabindex="0"]';
 /**
  * Arrow-key navigation for `role="toolbar"` and `role="tablist"` containers.
  * Arrow keys follow the reading direction; Home/End jump to the ends.
+ *
+ * Only for keys pressed on the container's own controls: React sends a key
+ * pressed in a popover the toolbar opened (the tool picker, a portal) up to
+ * the toolbar too, which took the focus out of the popover.
  */
 export function useToolbarKeyboard(dir: Direction) {
   return useCallback(
     (event: KeyboardEvent<HTMLElement>) => {
       const target = event.target as HTMLElement;
+      if (event.defaultPrevented || !event.currentTarget.contains(target)) return;
       if (target.matches('input, select, textarea')) return;
       const forward = dir === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
       const backward = dir === 'rtl' ? 'ArrowRight' : 'ArrowLeft';

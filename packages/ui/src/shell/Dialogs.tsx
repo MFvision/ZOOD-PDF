@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Dialog } from '../components/Dialog';
 import { APP_ICON } from '../components/appIcon';
+import { radioTabIndex, useRadioGroupKeyboard } from '../components/useRadioGroupKeyboard';
 import { useI18n, useT } from '../i18n/useT';
 import type { Lang, TKey } from '../i18n/messages';
 import type { ThemeMode } from '../state/preferences';
@@ -214,18 +215,22 @@ function Segmented<T extends string>({
   options: ReadonlyArray<{ value: T; label: string }>;
   onChange: (value: T) => void;
 }) {
+  const { dir } = useI18n();
+  const onKeyDown = useRadioGroupKeyboard(dir);
+  const noneChecked = !options.some((option) => option.value === value);
   return (
     <div className="settings-row">
       <span className="settings-label" id={id}>
         {label}
       </span>
-      <div className="segmented" role="radiogroup" aria-labelledby={id}>
-        {options.map((option) => (
+      <div className="segmented" role="radiogroup" aria-labelledby={id} onKeyDown={onKeyDown}>
+        {options.map((option, index) => (
           <button
             key={option.value}
             type="button"
             role="radio"
             aria-checked={option.value === value}
+            tabIndex={radioTabIndex(option.value === value, index === 0, noneChecked)}
             className="segmented-item"
             onClick={() => onChange(option.value)}
           >
