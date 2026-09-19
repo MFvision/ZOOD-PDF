@@ -221,6 +221,36 @@ impl Cert {
             .collect()
     }
 
+    /// The kind of key the certificate is for, when it is one this crate
+    /// signs with (a smart card's key is known only by its certificate).
+    pub fn key_kind(&self) -> Option<crate::keys::KeyKind> {
+        use pkcs8::DecodePublicKey;
+        let alg = &self
+            .parsed
+            .tbs_certificate
+            .subject_public_key_info
+            .algorithm;
+        if alg.oid == oids::RSA_ENCRYPTION {
+            let key = rsa::RsaPublicKey::from_public_key_der(&self.spki).ok()?;
+            return Some(crate::keys::KeyKind::Rsa {
+                bits: rsa::traits::PublicKeyParts::size(&key) * 8,
+            });
+        }
+        if alg.oid == oids::EC_PUBLIC_KEY {
+            let curve = alg
+                .parameters
+                .as_ref()?
+                .decode_as::<const_oid::ObjectIdentifier>()
+                .ok()?;
+            return match curve {
+                c if c == oids::SECP256R1 => Some(crate::keys::KeyKind::P256),
+                c if c == oids::SECP384R1 => Some(crate::keys::KeyKind::P384),
+                _ => None,
+            };
+        }
+        None
+    }
+
     /// Whether `issuer_spki`'s key signed this certificate.
     pub fn signed_by(&self, issuer_spki: &[u8]) -> bool {
         let alg = &self.parsed.signature_algorithm;
@@ -537,5 +567,16 @@ mod tests {
             ["http://ca.warraq.test/intermediate-rsa.cer"]
         );
         assert!(TrustStore::mozilla().anchors.len() > 100);
+    }
+
+    #[test]
+    fn the_key_behind_a_certificate_is_named() {
+        use crate::keys::KeyKind;
+        assert_eq!(
+            fixture("signer-rsa.cer").key_kind(),
+            Some(KeyKind::Rsa { bits: 2048 })
+        );
+        assert_eq!(fixture("signer-ec.cer").key_kind(), Some(KeyKind::P256));
+        assert_eq!(fixture("signer-ec384.cer").key_kind(), Some(KeyKind::P384));
     }
 }
