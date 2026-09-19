@@ -980,9 +980,12 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
         // A space the pen did not move past is no gap between words: Word
         // draws some with the next letter on top of them, or hangs a
         // paragraph's last one over its full stop, and read on whichever side
-        // they sort to they split a word. Only the glyph drawn just before or
-        // just after the space says so; a space that a later run happens to
-        // overlap (a number set in another font) still took its room.
+        // they sort to they split a word. What says so is the glyph drawn
+        // just after the space: it starts where the space starts (or, drawn
+        // leftwards, ends where it ends), and covers it. A letter drawn
+        // before a space may overhang it by its kerning (Amiri's ك in the
+        // editor's own text), and a later run may overlap it (a number set
+        // in another font): neither moved the pen back, and the space stays.
         let is_space = |c: &Cluster| !c.text.is_empty() && c.text.trim().is_empty();
         let at: std::collections::HashMap<usize, usize> = clusters
             .iter()
@@ -990,21 +993,21 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
             .map(|(k, c)| (c.ci, k))
             .collect();
         let pen_stayed = |c: &Cluster| -> bool {
-            let before = all_bases.partition_point(|b| *b < c.ci);
             let after = all_bases.partition_point(|b| *b <= c.ci);
-            [
-                before.checked_sub(1).and_then(|i| all_bases.get(i)),
-                all_bases.get(after),
-            ]
-            .into_iter()
-            .flatten()
-            .filter_map(|ci| at.get(ci).map(|k| &clusters[*k]))
-            .any(|o| {
-                !is_space(o)
-                    && o.adv > 0.0
-                    && c.adv > 0.0
-                    && (c.x + c.adv).min(o.x + o.adv) - c.x.max(o.x) >= 0.8 * c.adv
-            })
+            let Some(o) = all_bases
+                .get(after)
+                .and_then(|ci| at.get(ci))
+                .map(|k| &clusters[*k])
+            else {
+                return false;
+            };
+            let same_place = 0.25 * c.adv;
+            !is_space(o)
+                && o.adv > 0.0
+                && c.adv > 0.0
+                && ((o.x - c.x).abs() <= same_place
+                    || ((o.x + o.adv) - (c.x + c.adv)).abs() <= same_place)
+                && (c.x + c.adv).min(o.x + o.adv) - c.x.max(o.x) >= 0.8 * c.adv
         };
         for c in &clusters {
             if is_space(c) && pen_stayed(c) {
@@ -1618,6 +1621,17 @@ mod tests {
         g.push(glyph(177.59, 2.70, "ب"));
         g.push(glyph(180.23, 3.07, " "));
         assert_eq!(texts(&g), ["عام 2001 ب"]);
+        // What Warraq's own editor writes in Amiri: كتبها ends in a ك kerned
+        // three points into the space after it, so the ك's advance covers
+        // most of that space, but the pen moved past it before جديدة.
+        let g = vec![
+            glyph(488.38, 2.93, "ت"),
+            glyph(491.31, 7.91, "ك"),
+            glyph(496.29, 3.50, " "),
+            glyph(499.79, 4.43, "ة"),
+            glyph(504.22, 5.77, "د"),
+        ];
+        assert_eq!(texts(&g), ["دة كت"]);
     }
 
     #[test]
