@@ -11,6 +11,8 @@ export interface ExportParagraph {
   alignment: TextAlignment;
   /** Points; null when the page gives no believable size (rotated text reports hundreds). */
   fontSize: number | null;
+  /** The lines it was drawn on, with their boxes: where PowerPoint puts it. */
+  lines?: readonly TextLineData[];
 }
 
 /** Sizes outside this range are the core measuring something odd, not type. */
@@ -193,6 +195,7 @@ export function paragraphsOf(lines: readonly TextLineData[], blocks: readonly Pa
       direction: dominant(group.lines, block?.direction),
       alignment: block?.alignment ?? 'start',
       fontSize: size !== undefined && size >= BELIEVABLE_SIZE.min && size <= BELIEVABLE_SIZE.max ? size : null,
+      lines: group.lines,
     };
   });
 }

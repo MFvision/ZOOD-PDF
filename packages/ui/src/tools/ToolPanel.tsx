@@ -3,6 +3,7 @@ import { Icon } from '../components/Icon';
 import { CombinePanel } from '../combine/CombinePanel';
 import { ComparePanel } from '../compare/ComparePanel';
 import { CompressPanel } from '../compress/CompressPanel';
+import { CreatePanel } from '../create/CreatePanel';
 import { OcrPanel } from '../ocr/OcrPanel';
 import { EditPanel } from '../edit/EditPanel';
 import { ExportPanel } from '../export/ExportPanel';
@@ -21,6 +22,7 @@ export function ToolPanel({ tool }: { tool: ToolDefinition }) {
   if (tool.id === 'edit') return <EditPanel />;
   if (tool.id === 'organize') return <OrganizePanel />;
   if (tool.id === 'combine') return <CombinePanel />;
+  if (tool.id === 'create') return <CreatePanel />;
   if (tool.id === 'compress') return <CompressPanel />;
   if (tool.id === 'ocr') return <OcrPanel />;
   if (tool.id === 'export') return <ExportPanel />;

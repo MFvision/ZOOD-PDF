@@ -11,6 +11,7 @@ import {
 import type { ChangeEvent, Dispatch, ReactNode } from 'react';
 import { getSharedCoreClient } from '../core/client';
 import { installDesktopFileBridge } from '../core/desktopFiles';
+import { CREATE_EXTENSIONS } from '../create/createPdf';
 import {
   isTauriHost,
   pickPdfFile,
@@ -124,6 +125,14 @@ export interface AppServices {
   dropFiles: (files: ArrayLike<File>, intent?: DropIntent) => void;
   /** Files a drop sent to Combine, taken (once) by the panel as it opens. */
   takeCombineDrop: () => File[];
+  /**
+   * Create PDF: files of other kinds — Word, Excel, PowerPoint, web pages,
+   * Markdown, text, pictures — to make into a PDF. The Create panel opens
+   * and makes it at once; one already open adds them to its list.
+   */
+  startCreate: (files: readonly File[]) => void;
+  /** Files `startCreate` sent to Create, taken (once) by its panel as it opens. */
+  takeCreateFiles: () => File[];
   /** A panel claims the window's drops while it is open (`null` gives them back); Combine adds them to its list. */
   claimDrops: (target: DropTarget | null) => void;
   /** What the drop overlay says a drop will do. */
@@ -256,6 +265,12 @@ function toFile(picked: PickedFile): File {
 
 /** A dropped or picked file whose name or type says PDF; see `pdfFile.ts`. */
 export const isPdfFile = namedLikePdf;
+
+/** A file whose name says Create PDF can read it (Word, a picture…); its content decides later. */
+function namedForCreate(file: File): boolean {
+  const extension = file.name.toLowerCase().split('.').pop() ?? '';
+  return file.name.includes('.') && CREATE_EXTENSIONS.includes(extension);
+}
 
 function errorKeyFor(err: unknown): TKey {
   const code = (err as { code?: string } | null)?.code;
@@ -444,6 +459,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   const combineDrop = useRef<File[]>([]);
   const takeCombineDrop = useCallback(() => combineDrop.current.splice(0), []);
+  const createFiles = useRef<File[]>([]);
+  const takeCreateFiles = useCallback(() => createFiles.current.splice(0), []);
+  const startCreate = useCallback((files: readonly File[]) => {
+    if (files.length === 0) return;
+    // An open Create panel has claimed the window's drops: the files join its list.
+    if (dropTarget.current && stateRef.current.rightPane.activeTool === 'create') {
+      dropTarget.current.take([...files]);
+      return;
+    }
+    createFiles.current = [...files];
+    dispatch({ type: 'SET_ACTIVE_TOOL', tool: 'create' });
+  }, []);
   const dropFiles = useCallback(
     (files: ArrayLike<File>, intent?: DropIntent) => {
       const list = Array.from(files);
@@ -452,6 +479,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       const pdfs = list.filter(isPdfFile);
+      // No PDF among them, but files Create can make one of: that is what the drop is for.
+      if (pdfs.length === 0 && list.some(namedForCreate)) {
+        startCreate(list);
+        return;
+      }
       const open = stateRef.current.document !== null;
       if (pdfs.length > 0 && ((open && intent !== 'open') || (!open && pdfs.length > 1))) {
         combineDrop.current = pdfs;
@@ -460,7 +492,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       void openFiles(list);
     },
-    [openFiles],
+    [openFiles, startCreate],
   );
 
   const closeDocument = useCallback(() => {
@@ -1333,6 +1365,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       openFiles,
       dropFiles,
       takeCombineDrop,
+      startCreate,
+      takeCreateFiles,
       claimDrops,
       dropLabel,
       dropClaimed: dropLabel !== 'drop.overlay',
@@ -1387,6 +1421,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       openFiles,
       dropFiles,
       takeCombineDrop,
+      startCreate,
+      takeCreateFiles,
       claimDrops,
       dropLabel,
       closeDocument,
