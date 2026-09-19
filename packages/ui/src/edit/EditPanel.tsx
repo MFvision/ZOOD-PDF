@@ -28,7 +28,7 @@ export function EditPanel() {
   // A file opened in the editor starts with nothing picked on it.
   const documentId = state.document?.id;
   useEffect(() => {
-    updateEditPdf({ image: null, link: null, draft: null, pending: null, cropping: false, images: {}, links: {} });
+    updateEditPdf({ image: null, link: null, draft: null, pending: null, cropping: false, images: {}, links: {}, imagesAt: {}, linksAt: {} });
   }, [documentId]);
 
   const chooseKind = (next: EditKind) => {

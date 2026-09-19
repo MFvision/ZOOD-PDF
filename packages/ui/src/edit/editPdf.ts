@@ -55,6 +55,14 @@ export interface EditPdfState {
   /** The latest lists per page, for the panel's inspector. */
   images: Readonly<Record<number, readonly PageImage[]>>;
   links: Readonly<Record<number, readonly PageLink[]>>;
+  /**
+   * The page revision each list was read at. A change clears `busy` before
+   * the page's list is read again; until it is, the list describes the page
+   * as it was, and a key or a click acting on it would undo part of the
+   * change (`listFresh`).
+   */
+  imagesAt: Readonly<Record<number, number>>;
+  linksAt: Readonly<Record<number, number>>;
 }
 
 const INITIAL: EditPdfState = {
@@ -66,6 +74,8 @@ const INITIAL: EditPdfState = {
   draft: null,
   images: {},
   links: {},
+  imagesAt: {},
+  linksAt: {},
 };
 
 let state: EditPdfState = INITIAL;
@@ -92,6 +102,11 @@ export function useEditPdf(): EditPdfState {
     () => state,
     () => INITIAL,
   );
+}
+
+/** Whether a page's list of pictures (or links) was read at the page as it is now. */
+export function listFresh(listedAt: Readonly<Record<number, number>>, page: number, revision: number): boolean {
+  return listedAt[page] === revision;
 }
 
 /** The selected picture, if its page's list still has it. */

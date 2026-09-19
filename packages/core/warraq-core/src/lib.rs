@@ -146,14 +146,46 @@ impl Document {
         if let Some(l) = self.lines_cache.borrow().get(&(index, reading)) {
             return Ok(l.clone());
         }
-        let lines = reconstruct_lines(&self.read_glyphs(index, reading)?);
-        self.lines_cache
-            .borrow_mut()
-            .insert((index, reading), lines.clone());
-        Ok(lines)
+        // The page's text and all of it come from one reading of the page,
+        // and are kept together: search after Export or Edit reads no page
+        // twice. On a page without Warraq's marks they are the same lines.
+        let readings: &[Reading] = match reading {
+            Reading::Marks => &[Reading::Marks],
+            _ => &[Reading::Content, Reading::Everything],
+        };
+        let (sets, marked) = self.read_glyph_sets(index, readings)?;
+        let mut wanted = None;
+        let mut first: Option<Vec<TextLine>> = None;
+        for (r, glyphs) in readings.iter().zip(sets) {
+            let lines = match &first {
+                Some(same) if !marked => same.clone(),
+                _ => reconstruct_lines(&glyphs),
+            };
+            if *r == reading {
+                wanted = Some(lines.clone());
+            }
+            first.get_or_insert_with(|| lines.clone());
+            self.lines_cache.borrow_mut().insert((index, *r), lines);
+        }
+        Ok(wanted.unwrap_or_default())
     }
 
     /// The glyphs of the page a reading takes.
+    fn read_glyphs(
+        &self,
+        index: usize,
+        reading: Reading,
+    ) -> Result<Vec<warraq_text::PositionedGlyph>, CoreError> {
+        Ok(self
+            .read_glyph_sets(index, &[reading])?
+            .0
+            .into_iter()
+            .next()
+            .unwrap_or_default())
+    }
+
+    /// The glyphs each of `readings` takes, from one reading of the page;
+    /// and whether any glyph is in one of Warraq's marks.
     ///
     /// Warraq's page marks are `/Artifact` sequences carrying `/WarraqMark`
     /// (PDF 2.0 §14.8.2.2): mixed into the page's text, a diagonal DRAFT
@@ -164,11 +196,12 @@ impl Document {
     /// carries Warraq's marks every artifact is taken for one, and on any
     /// other page none is. Other programs' artifacts — Word's running heads
     /// and footers, say — are the page's text like the rest.
-    fn read_glyphs(
+    #[allow(clippy::type_complexity)]
+    fn read_glyph_sets(
         &self,
         index: usize,
-        reading: Reading,
-    ) -> Result<Vec<warraq_text::PositionedGlyph>, CoreError> {
+        readings: &[Reading],
+    ) -> Result<(Vec<Vec<warraq_text::PositionedGlyph>>, bool), CoreError> {
         let (glyphs, marked) = self.render.marked_glyphs(index)?;
         let sequences = self.pdf.marked_content(index).filter(|sequences| {
             sequences.len() == marked.tags.len()
@@ -181,39 +214,47 @@ impl Document {
             }
             None => vec![],
         };
-        let (glyphs, inside): (Vec<_>, Vec<_>) = glyphs
-            .into_iter()
-            .zip(
-                marked
-                    .inside
-                    .iter()
-                    .cloned()
-                    .chain(std::iter::repeat(vec![])),
-            )
-            .filter(|(_, seqs)| {
-                let mark = seqs
-                    .iter()
-                    .any(|k| ours.get(*k as usize).copied().unwrap_or(false));
-                match reading {
-                    Reading::Everything => true,
-                    Reading::Content => !mark,
-                    Reading::Marks => mark,
-                }
+        let inside: Vec<Vec<u32>> = marked
+            .inside
+            .iter()
+            .cloned()
+            .chain(std::iter::repeat(vec![]))
+            .take(glyphs.len())
+            .collect();
+        let is_mark: Vec<bool> = inside
+            .iter()
+            .map(|seqs| {
+                seqs.iter()
+                    .any(|k| ours.get(*k as usize).copied().unwrap_or(false))
             })
-            .unzip();
+            .collect();
+        let any_mark = is_mark.iter().any(|m| *m);
         // Glyphs inside `/ActualText` read as that text — when the sequences
         // pair; otherwise as they are.
-        let glyphs = match sequences {
-            Some(sequences) => {
-                let texts: Vec<Option<String>> =
-                    sequences.into_iter().map(|s| s.actual_text).collect();
-                with_actual_text(glyphs, &inside, &texts)
-            }
-            _ => glyphs,
-        };
-        Ok(glyphs)
+        let texts: Option<Vec<Option<String>>> =
+            sequences.map(|s| s.into_iter().map(|s| s.actual_text).collect());
+        let sets = readings
+            .iter()
+            .map(|reading| {
+                let (glyphs, inside): (Vec<_>, Vec<_>) = glyphs
+                    .iter()
+                    .zip(&inside)
+                    .zip(&is_mark)
+                    .filter(|(_, mark)| match reading {
+                        Reading::Everything => true,
+                        Reading::Content => !**mark,
+                        Reading::Marks => **mark,
+                    })
+                    .map(|((g, i), _)| (g.clone(), i.clone()))
+                    .unzip();
+                match &texts {
+                    Some(texts) => with_actual_text(glyphs, &inside, texts),
+                    None => glyphs,
+                }
+            })
+            .collect();
+        Ok((sets, any_mark))
     }
-
     /// Prepare form's proposals for the pages asked (every page when none):
     /// where the page expects input, found from its text and its lines, and
     /// never over a field it already has. See `warraq_pdf::forms::detect`.

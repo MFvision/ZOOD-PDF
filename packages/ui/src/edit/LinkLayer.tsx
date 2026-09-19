@@ -4,7 +4,7 @@ import type { RemoteDocument } from '../core/client';
 import { useT } from '../i18n/useT';
 import { displayUrl } from '../links/openLink';
 import { useAppState } from '../state/AppContext';
-import { updateEditPdf, useEditPdf } from './editPdf';
+import { listFresh, updateEditPdf, useEditPdf } from './editPdf';
 import type { PageLink } from './editPdf';
 import { HANDLES, between, dragRect } from './matrix';
 import type { Point, Rect } from './matrix';
@@ -39,11 +39,14 @@ export function LinkLayer({ document, index, scale }: LayerProps) {
   const revision = edit.pageRevisions[index] ?? 0;
   const links = pdf.links[index] ?? [];
   const draft = pdf.draft?.page === index ? pdf.draft.rect : null;
+  // A change in flight, or one made whose new list is not read yet: the
+  // boxes wait, or a key would act on where the link was.
+  const waiting = edit.busy || !listFresh(pdf.linksAt, index, revision);
 
   useEffect(() => {
     let cancelled = false;
     void actions.listLinks(index).then((list) => {
-      if (!cancelled && list) updateEditPdf((s) => ({ links: { ...s.links, [index]: list } }));
+      if (!cancelled && list) updateEditPdf((s) => ({ links: { ...s.links, [index]: list }, linksAt: { ...s.linksAt, [index]: revision } }));
     });
     return () => {
       cancelled = true;
@@ -91,7 +94,7 @@ export function LinkLayer({ document, index, scale }: LayerProps) {
     const remove = event.key === 'Delete' || event.key === 'Backspace';
     if (!arrow && !remove) return;
     event.preventDefault();
-    if (edit.busy) return;
+    if (waiting) return;
     if (remove) {
       void actions.removeLink(index, link.id).then((done) => done && updateEditPdf({ link: null }));
       return;
@@ -112,7 +115,7 @@ export function LinkLayer({ document, index, scale }: LayerProps) {
       role="group"
       aria-label={t('editPdf.linksLayer')}
       onPointerDown={(event) => {
-        if (event.target !== layer.current || event.button !== 0 || edit.busy) return;
+        if (event.target !== layer.current || event.button !== 0 || waiting) return;
         layer.current.setPointerCapture(event.pointerId);
         const point = at(event);
         setDrag({ kind: 'draw', from: point, to: point });
@@ -138,15 +141,15 @@ export function LinkLayer({ document, index, scale }: LayerProps) {
                   ? t('editPdf.linkToPage', { n: k + 1, page: link.to.page + 1 })
                   : t('editPdf.linkElsewhere', { n: k + 1 })
             }
-            aria-disabled={edit.busy || undefined}
+            aria-disabled={waiting || undefined}
             style={style(moving)}
             onClick={() => {
-              if (edit.busy) return;
+              if (waiting) return;
               updateEditPdf({ link: { page: index, id: link.id }, draft: null, image: null });
             }}
             onKeyDown={(event) => onKey(event, link)}
             onPointerDown={(event) => {
-              if (!isSelected || edit.busy || event.button !== 0) return;
+              if (!isSelected || waiting || event.button !== 0) return;
               layer.current?.setPointerCapture(event.pointerId);
               setDrag({ kind: 'move', from: at(event), link, handle: null, rect: asRect(link.rect) });
             }}
@@ -160,6 +163,7 @@ export function LinkLayer({ document, index, scale }: LayerProps) {
                   onPointerDown={(event) => {
                     if (event.button !== 0) return;
                     event.stopPropagation();
+                    if (waiting) return;
                     layer.current?.setPointerCapture(event.pointerId);
                     setDrag({ kind: 'move', from: at(event), link, handle, rect: asRect(link.rect) });
                   }}

@@ -6,7 +6,7 @@ import { Stepper } from '../components/Stepper';
 import { useT } from '../i18n/useT';
 import { displayUrl, isOpenableUrl, requestOpenLink } from '../links/openLink';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
-import { pictureSize, pictureType, selectedImage, selectedLink, updateEditPdf, useEditPdf } from './editPdf';
+import { listFresh, pictureSize, pictureType, selectedImage, selectedLink, updateEditPdf, useEditPdf } from './editPdf';
 import type { LinkTo } from './editPdf';
 import { quarterTurn } from './matrix';
 import { useEditPdfActions } from './useEditPdfActions';
@@ -39,7 +39,10 @@ export function ImagesInspector() {
   const [refused, setRefused] = useState(false);
   const image = selectedImage(pdf);
   const page = pdf.image?.page ?? 0;
-  const busy = state.edit.busy || state.switching !== null;
+  // With a picture picked, also while its page's list is not read again after
+  // a change: the buttons would act on the picture as it was.
+  const stale = pdf.image !== null && !listFresh(pdf.imagesAt, page, state.edit.pageRevisions[page] ?? 0);
+  const busy = state.edit.busy || state.switching !== null || stale;
 
   const take = async (file: File | undefined, then: (picture: NonNullable<Awaited<ReturnType<typeof readPicture>>>) => void) => {
     if (!file) return;
@@ -232,7 +235,9 @@ export function LinksInspector() {
   const actions = useEditPdfActions();
   const link = selectedLink(pdf);
   const pages = state.document?.pageCount ?? 1;
-  const busy = state.edit.busy || state.switching !== null;
+  // With a link picked, also while its page's list is not read again after a change.
+  const stale = pdf.link !== null && !listFresh(pdf.linksAt, pdf.link.page, state.edit.pageRevisions[pdf.link.page] ?? 0);
+  const busy = state.edit.busy || state.switching !== null || stale;
 
   if (pdf.draft) {
     const draft = pdf.draft;
