@@ -541,6 +541,8 @@ struct Cluster {
     x: f32,
     adv: f32,
     text: String,
+    /// Index of its base glyph in content order.
+    ci: usize,
 }
 
 /// Group glyphs into lines, order clusters by position, attach marks, and
@@ -625,6 +627,60 @@ fn cascade_baselines(run: &[((f32, f32), &PositionedGlyph)]) -> Vec<f32> {
         start = end;
     }
     base
+}
+
+/// Where each glyph of a line stands along it, for putting the line in
+/// visual order: its own position along the baseline, except where the order
+/// it was drawn in says otherwise by a kerning slip.
+///
+/// A font may kern a narrow letter in under its neighbour: Amiri draws the
+/// alef of كتابا to the taa's left, yet puts its origin a third of a point to
+/// the taa's right, and read by origin the word came back "كاتبا". Producers
+/// draw a stretch of pen in one direction — visual order, left to right, or
+/// logical, right to left — so a glyph that steps back against that
+/// direction by less than half the narrower advance was drawn after its
+/// neighbour on purpose, and is put just after it. A whole glyph back is a
+/// real change of direction (a number drawn forwards in a line drawn
+/// backwards) and is left alone.
+///
+/// `drawn` is the line's glyphs in content order: content index, position
+/// along the baseline, advance, size. `consecutive` says whether two content
+/// indices follow each other among all the page's letters.
+fn reading_keys(
+    drawn: &[(usize, f32, f32, f32)],
+    consecutive: &dyn Fn(usize, usize) -> bool,
+) -> Vec<f32> {
+    let mut keys: Vec<f32> = drawn.iter().map(|g| g.1).collect();
+    let touch = |a: &(usize, f32, f32, f32), b: &(usize, f32, f32, f32)| {
+        let slack = 0.15 * a.3.max(b.3).max(1.0);
+        a.2 > 0.0 && b.2 > 0.0 && a.1 <= b.1 + b.2 + slack && b.1 <= a.1 + a.2 + slack
+    };
+    let mut start = 0;
+    while start < drawn.len() {
+        let mut end = start + 1;
+        while end < drawn.len()
+            && consecutive(drawn[end - 1].0, drawn[end].0)
+            && touch(&drawn[end - 1], &drawn[end])
+        {
+            end += 1;
+        }
+        let run = &drawn[start..end];
+        let size = run.iter().map(|g| g.3).fold(1.0, f32::max);
+        let span = run[run.len() - 1].1 - run[0].1;
+        // Only a stretch long enough to have a direction has one.
+        if run.len() >= 3 && span.abs() >= 0.5 * size {
+            let d = span.signum();
+            for i in start + 1..end {
+                let back = (keys[i - 1] - drawn[i].1) * d;
+                let narrower = drawn[i - 1].2.min(drawn[i].2);
+                if back > 0.0 && back <= 0.5 * narrower && back <= 0.2 * size {
+                    keys[i] = keys[i - 1] + d * 1e-3;
+                }
+            }
+        }
+        start = end;
+    }
+    keys
 }
 
 pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
@@ -744,6 +800,40 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
     }
+    // Then by where each glyph stands in the order it was drawn in, where
+    // that differs from its origin by a kerning slip (see `reading_keys`).
+    let mut all_bases: Vec<usize> = lines
+        .iter()
+        .flat_map(|(_, _, v)| v.iter().map(|(ci, _)| *ci))
+        .collect();
+    all_bases.sort_unstable();
+    let consecutive = |a: usize, b: usize| {
+        let next = all_bases.partition_point(|c| *c <= a);
+        all_bases.get(next) == Some(&b)
+    };
+    for ((_, _, v), angle) in lines.iter_mut().zip(&line_angles) {
+        let mut drawn: Vec<usize> = (0..v.len()).collect();
+        drawn.sort_by_key(|i| v[*i].0);
+        let along: Vec<(usize, f32, f32, f32)> = drawn
+            .iter()
+            .map(|i| {
+                let (ci, g) = v[*i];
+                (ci, frame(g, *angle).0, g.advance, g.size)
+            })
+            .collect();
+        let keys = reading_keys(&along, &consecutive);
+        let mut key_of = vec![0f32; v.len()];
+        for (k, i) in drawn.into_iter().enumerate() {
+            key_of[i] = keys[k];
+        }
+        let mut order: Vec<usize> = (0..v.len()).collect();
+        order.sort_by(|a, b| {
+            key_of[*a]
+                .partial_cmp(&key_of[*b])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        *v = order.into_iter().map(|i| v[i]).collect();
+    }
 
     // 2. attach marks: the owning base is content-adjacent and shares the mark's pen origin
     let mut where_base: std::collections::HashMap<usize, (usize, usize)> = Default::default();
@@ -821,11 +911,12 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
     for (li, ((y, size, bases), angle)) in lines.into_iter().zip(line_angles).enumerate() {
         let mut clusters: Vec<Cluster> = bases
             .iter()
-            .map(|(_, g)| Cluster {
+            .map(|(ci, g)| Cluster {
                 // along the baseline, so word gaps are measured the way the run reads
                 x: frame(g, angle).0,
                 adv: g.advance,
                 text: glyph_text(g).to_string(),
+                ci: *ci,
             })
             .collect();
         for (pos, m) in &attached[li] {
@@ -879,7 +970,39 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
         // cluster its own advance, an inserted space the gap it stands for.
         let mut drawn: Vec<(f32, f32)> = vec![];
         let mut prev_end: Option<f32> = None;
+        // A space the pen did not move past is no gap between words: Word
+        // draws some with the next letter on top of them, or hangs a
+        // paragraph's last one over its full stop, and read on whichever side
+        // they sort to they split a word. Only the glyph drawn just before or
+        // just after the space says so; a space that a later run happens to
+        // overlap (a number set in another font) still took its room.
+        let is_space = |c: &Cluster| !c.text.is_empty() && c.text.trim().is_empty();
+        let at: std::collections::HashMap<usize, usize> = clusters
+            .iter()
+            .enumerate()
+            .map(|(k, c)| (c.ci, k))
+            .collect();
+        let pen_stayed = |c: &Cluster| -> bool {
+            let before = all_bases.partition_point(|b| *b < c.ci);
+            let after = all_bases.partition_point(|b| *b <= c.ci);
+            [
+                before.checked_sub(1).and_then(|i| all_bases.get(i)),
+                all_bases.get(after),
+            ]
+            .into_iter()
+            .flatten()
+            .filter_map(|ci| at.get(ci).map(|k| &clusters[*k]))
+            .any(|o| {
+                !is_space(o)
+                    && o.adv > 0.0
+                    && c.adv > 0.0
+                    && (c.x + c.adv).min(o.x + o.adv) - c.x.max(o.x) >= 0.8 * c.adv
+            })
+        };
         for c in &clusters {
+            if is_space(c) && pen_stayed(c) {
+                continue;
+            }
             if let Some(pe) = prev_end {
                 let gap = c.x - pe;
                 if gap > gap_threshold
@@ -1334,6 +1457,108 @@ mod tests {
         let mut g = run("base", 100.0, 100.0);
         g.extend(run("up", 140.0, 100.0 - 0.7 * 16.0));
         assert_eq!(texts(&g), ["up", "base"]);
+    }
+
+    /// Amiri kerns the alef of كتابا in under the taa: the alef is drawn to
+    /// the taa's left but its origin sits a third of a point to the right of
+    /// the taa's, and read by origin the word came back "كاتبا". The order the
+    /// glyphs were drawn in has them right, whichever way the producer drew.
+    #[test]
+    fn a_letter_kerned_under_its_neighbour_keeps_the_order_it_was_drawn_in() {
+        // Chrome's glyphs for "كِتَابًا،" (from the corpus), left to right.
+        let glyph = |x: f32, advance: f32, text: &str| PositionedGlyph {
+            x,
+            y: 351.0,
+            angle: 0.0,
+            size: 19.99,
+            advance,
+            text: Some(text.to_string()),
+            gid: 1,
+            font: 0,
+        };
+        let drawn = vec![
+            glyph(376.57, 7.38, "،"),
+            glyph(383.95, 4.58, "ا"),
+            glyph(386.28, 7.94, "ب\u{064B}"),
+            glyph(394.22, 4.58, "ا"),
+            glyph(393.86, 9.32, "ت\u{064E}"),
+            glyph(400.88, 9.28, "ك\u{0650}"),
+        ];
+        assert_eq!(texts(&drawn), ["كِتَابًا،"]);
+        let mut logical = drawn.clone();
+        logical.reverse();
+        assert_eq!(texts(&logical), ["كِتَابًا،"]);
+    }
+
+    /// A number drawn left to right inside a line drawn right to left steps
+    /// back a whole digit at a time: that is its order, not a kerning slip.
+    #[test]
+    fn a_number_drawn_forwards_inside_a_line_drawn_backwards_reads_as_before() {
+        let visual = to_visual("عدد 12 كتاب");
+        let mut g = glyphs_from_visual(&visual, 100.0);
+        // Drawn in logical order: the Arabic right to left, the digits left to right.
+        let digits: Vec<usize> = (0..g.len())
+            .filter(|i| {
+                g[*i]
+                    .text
+                    .as_deref()
+                    .is_some_and(|t| t.chars().all(|c| c.is_ascii_digit()))
+            })
+            .collect();
+        let mut order: Vec<usize> = (0..g.len()).rev().collect();
+        let first = order.iter().position(|i| digits.contains(i)).unwrap();
+        order[first..first + digits.len()].reverse();
+        g = order.into_iter().map(|i| g[i].clone()).collect();
+        assert_eq!(texts(&g), ["عدد 12 كتاب"]);
+    }
+
+    /// Word leaves space glyphs drawn on top of letters (the World Bank
+    /// briefing's "فضلا", a paragraph's hanging space over its full stop).
+    /// Sorted to one side of the letter or the other, each read as a gap
+    /// inside a word ("وف ضلا", "وفض لا"); a space under a letter is none.
+    #[test]
+    fn a_space_drawn_over_a_letter_is_not_a_gap() {
+        let glyph = |x: f32, advance: f32, text: &str| PositionedGlyph {
+            x,
+            y: 555.79,
+            angle: 0.0,
+            size: 13.56,
+            advance,
+            text: Some(text.to_string()),
+            gid: 1,
+            font: 0,
+        };
+        let before = vec![
+            glyph(500.19, 7.13, "ع"),
+            glyph(492.0, 8.19, "ن"),
+            glyph(507.27, 3.77, " "),
+            glyph(510.99, 8.14, "لا"),
+        ];
+        for over in [519.34, 519.10] {
+            let mut g = before.clone();
+            g.extend([
+                glyph(over, 3.77, " "),
+                glyph(519.22, 11.47, "ض"),
+                glyph(530.73, 3.63, "ف"),
+                glyph(534.36, 5.86, "و"),
+            ]);
+            assert_eq!(texts(&g), ["وفضلا عن"], "space at {over}");
+        }
+        // The Wikibooks guide's "عام 2001": the space after عام is drawn
+        // inside the advance of the number's last digit, which another run
+        // drew later. The pen did move past that space: it is a gap.
+        let mut g = vec![
+            glyph(205.74, 3.73, "م"),
+            glyph(209.57, 2.53, "ا"),
+            glyph(212.20, 5.81, "ع"),
+        ];
+        g.insert(0, glyph(202.63, 3.07, " "));
+        for (i, d) in "2001".chars().enumerate() {
+            g.push(glyph(183.67 + 5.52 * i as f32, 5.60, &d.to_string()));
+        }
+        g.push(glyph(177.59, 2.70, "ب"));
+        g.push(glyph(180.23, 3.07, " "));
+        assert_eq!(texts(&g), ["عام 2001 ب"]);
     }
 
     #[test]

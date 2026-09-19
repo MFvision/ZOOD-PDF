@@ -52,8 +52,8 @@
  },
  "chrome-amiri-tashkeel-ligatures": {
   "open": true,
-  "order_lcs": 0.875,
-  "recall_logical": 0.9,
+  "order_lcs": 1.0,
+  "recall_logical": 1.0,
   "verdict": "logical"
  },
  "chrome-cairo-mixed-invoice": {
