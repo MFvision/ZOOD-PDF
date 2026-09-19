@@ -104,6 +104,9 @@ struct Found {
     /// For a form with no resources of its own: the ones it draws with,
     /// the page's, written out whole.
     inherited: Option<Rc<Dictionary>>,
+    /// Drawn in a form: the form's space onto user space, and its `/BBox`
+    /// there — nothing of the picture shows outside it.
+    form_box: Option<(Matrix, [f32; 4])>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -205,6 +208,8 @@ struct Frame<'a> {
     holder: Holder,
     /// A form with no resources of its own, drawing with the ones round it.
     borrowed: bool,
+    /// The innermost form's space onto user space, and its `/BBox`.
+    form_box: Option<(Matrix, [f32; 4])>,
 }
 
 struct Walker<'a> {
@@ -385,6 +390,7 @@ impl<'a> Walker<'a> {
                             chain: self.chain.clone(),
                             xobject: None,
                             inherited: None,
+                            form_box: frame.form_box,
                         };
                         self.record(found, frame);
                     }
@@ -438,6 +444,7 @@ impl<'a> Walker<'a> {
                     chain: self.chain.clone(),
                     xobject: Some(xobject),
                     inherited: None,
+                    form_box: frame.form_box,
                 };
                 self.record(found, frame);
             }
@@ -468,7 +475,24 @@ impl<'a> Walker<'a> {
                     .get(b"Resources")
                     .ok()
                     .and_then(|r| resolve(self.pdf, r).as_dict().ok());
+                let bbox = stream
+                    .dict
+                    .get(b"BBox")
+                    .ok()
+                    .and_then(|b| resolve(self.pdf, b).as_array().ok())
+                    .and_then(|a| {
+                        let v: Vec<f32> = a.iter().filter_map(|n| n.as_float().ok()).collect();
+                        (v.len() == 4 && v.iter().all(|n| n.is_finite())).then(|| {
+                            [
+                                v[0].min(v[2]),
+                                v[1].min(v[3]),
+                                v[0].max(v[2]),
+                                v[1].max(v[3]),
+                            ]
+                        })
+                    });
                 let inner = Frame {
+                    form_box: bbox.map(|b| (matrix.then(ctm), b)),
                     resources: match own {
                         Some(own) => std::iter::once(own)
                             .chain(frame.resources.iter().copied())
@@ -555,6 +579,7 @@ impl<'a> Walker<'a> {
                 chain: self.chain.clone(),
                 xobject,
                 inherited: None,
+                form_box: frame.form_box,
             },
         ))
     }
@@ -623,6 +648,7 @@ impl PdfDocument {
             resources: self.page_resources(page_id).into_iter().collect(),
             holder: Holder::Page,
             borrowed: false,
+            form_box: None,
         };
         let mut walker = Walker::new(self, Budget::page());
         let mut state = State {
@@ -716,6 +742,7 @@ impl PdfDocument {
                 resources: self.page_resources(*page_id).into_iter().collect(),
                 holder: Holder::Page,
                 borrowed: false,
+                form_box: None,
             };
             let allowed = bytes.min(MAX_WALK_BYTES);
             let mut walker = Walker::new(
@@ -925,6 +952,26 @@ impl PdfDocument {
         ];
         if clip[2] - clip[0] < 0.01 || clip[3] - clip[1] < 0.01 {
             return Err(Error::Edit("the crop leaves nothing of the picture".into()));
+        }
+        // A form shows nothing outside its box: the part that shows must
+        // stay inside it (a point of slack for rounding).
+        if let Some((to_user, [x0, y0, x1, y1])) = found.form_box {
+            if let Some(to_form) = to_user.invert() {
+                let [u0, v0, u1, v1] = clip;
+                let shown = Matrix([u1 - u0, 0.0, 0.0, v1 - v0, u0, v0])
+                    .then(placement)
+                    .then(to_form);
+                let inside = [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)]
+                    .into_iter()
+                    .map(|(u, v)| shown.apply(u, v))
+                    .all(|(x, y)| x >= x0 - 1.0 && x <= x1 + 1.0 && y >= y0 - 1.0 && y <= y1 + 1.0);
+                if !inside {
+                    return Err(Error::Edit(
+                        "the picture would leave the group it is drawn in, and not show there"
+                            .into(),
+                    ));
+                }
+            }
         }
         let bytes = wrap(&found.op, found.base, placement, clip)?;
         self.splice(&found, &bytes)
@@ -1253,11 +1300,22 @@ mod tests {
         let moved = [80.0, 0.0, 0.0, -80.0, 10.0, 100.0];
         doc.transform_image(0, &images[0].id.clone(), moved, None)
             .unwrap();
-        doc.transform_image(0, &images[1].id.clone(), moved, None)
+        // The one in the form moves within the form's box — five points
+        // along each of the form's own axes. Out of it, it would not show
+        // (see below).
+        let (form_to_user, _) = doc.find_images(0).unwrap().0[1].form_box.unwrap();
+        let within = Matrix([10.0, 0.0, 0.0, 10.0, 5.0, 5.0])
+            .then(form_to_user)
+            .then(to_display)
+            .0;
+        doc.transform_image(0, &images[1].id.clone(), within, None)
             .unwrap();
+        assert!(doc
+            .transform_image(0, &images[1].id.clone(), moved, None)
+            .is_err());
         let images = doc.list_images(0).unwrap();
         assert!(
-            close(images[0].matrix, moved) && close(images[1].matrix, moved),
+            close(images[0].matrix, moved) && close(images[1].matrix, within),
             "{images:?}"
         );
         // Replacing the one in the form puts the new picture in the form's resources.
@@ -1568,6 +1626,50 @@ mod tests {
         doc.replace_image(0, &id, &png(4, 4)).unwrap();
         assert!(doc.doc.get_object(between).is_err());
         assert_eq!(doc.list_images(0).unwrap()[0].pixels, (4, 4));
+    }
+
+    /// A form draws only inside its `/BBox`: a picture in it moved or grown
+    /// past that box would be cut away, while the list still reported it
+    /// there. Such a change is refused; one inside the box is made.
+    #[test]
+    fn a_picture_in_a_form_does_not_leave_the_forms_box() {
+        let mut doc = three_pages();
+        let page = doc.page_id(0).unwrap();
+        let f = doc.new_stream(
+            dictionary! {
+                "Type" => "XObject", "Subtype" => "Form",
+                "BBox" => [0, 0, 100, 100].map(Object::Integer).to_vec(),
+            },
+            INLINE.to_vec(),
+        );
+        doc.own_resources(page).unwrap();
+        doc.own_xobjects(page)
+            .unwrap()
+            .set("Box", Object::Reference(f));
+        append(&mut doc, 0, b"q 1 0 0 1 0 0 cm /Box Do Q");
+        let image = doc.list_images(0).unwrap().remove(0);
+        assert!(image.in_form);
+        // Where the form's box is on the page as shown, whatever the page's
+        // own transform: its user-space corners, through the page's frame.
+        let found = doc.find_images(0).unwrap().0.remove(0);
+        let (to_user, _) = found.form_box.unwrap();
+        let to_display = doc
+            .display_frame(0)
+            .unwrap()
+            .display_to_user()
+            .invert()
+            .unwrap();
+        let inside = Matrix([20.0, 0.0, 0.0, 20.0, 40.0, 40.0])
+            .then(to_user)
+            .then(to_display)
+            .0;
+        let outside = Matrix([20.0, 0.0, 0.0, 20.0, 300.0, 300.0])
+            .then(to_user)
+            .then(to_display)
+            .0;
+        assert!(doc.transform_image(0, &image.id, outside, None).is_err());
+        doc.transform_image(0, &image.id, inside, None).unwrap();
+        assert!(close(doc.list_images(0).unwrap()[0].matrix, inside));
     }
 
     /// A form with no resources of its own draws with the page's. Given

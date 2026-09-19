@@ -253,7 +253,7 @@
   "editPdf.imageLabel": "Picture {n}, {w} × {h} pixels",
   "editPdf.imageShared": "Picture {n}, drawn in several places",
   "editPdf.imageSharedNote": "The same drawing puts this picture in several places, so it cannot be changed in one of them alone.",
-  "editPdf.inFormNote": "This picture is drawn inside a group of the page's content; the change is made there.",
+  "editPdf.inFormNote": "This picture is drawn inside a group of the page's content: the change is made there, and it cannot be moved out of that group's area, where it would not show.",
   "editPdf.kind": "What to edit",
   "editPdf.kind.images": "Pictures",
   "editPdf.kind.links": "Links",
