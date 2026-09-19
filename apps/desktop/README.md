@@ -51,8 +51,8 @@ pnpm --filter @warraq/desktop icons         # regenerate src-tauri/icons from ic
 
 | Platform | Files                                                                                     |
 | -------- | ----------------------------------------------------------------------------------------- |
-| macOS    | `bundle/macos/ورّاق.app`, `bundle/dmg/ورّاق_<version>_<arch>.dmg`                       |
-| Windows  | `bundle/msi/ورّاق_<version>_x64_en-US.msi`, `bundle/nsis/ورّاق_<version>_x64-setup.exe` |
+| macOS    | `bundle/macos/محرر PDF.app`, `bundle/dmg/محرر PDF_<version>_<arch>.dmg`                       |
+| Windows  | `bundle/msi/محرر PDF_<version>_x64_en-US.msi`, `bundle/nsis/محرر PDF_<version>_x64-setup.exe` |
 | Linux    | `bundle/deb`, `bundle/rpm`, `bundle/appimage`                                             |
 
 To build only some bundles: `pnpm --filter @warraq/desktop build -- --bundles app dmg`.
@@ -124,7 +124,7 @@ sets `PDFIUM_LIB_DIR` to the first directory that actually holds the library:
 
 1. `$PDFIUM_LIB_DIR`, if it is already set — **that always wins**, so you can point the app at another build:
    `PDFIUM_LIB_DIR=/path/to/lib pnpm --filter @warraq/desktop dev`
-2. the bundled resource (`ورّاق.app/Contents/Resources/resources/pdfium/`)
+2. the bundled resource (`محرر PDF.app/Contents/Resources/resources/pdfium/`)
 3. debug builds only: `src-tauri/resources/pdfium/`, then `.tools/pdfium/mac/lib/` at the repository root — so
    `tauri dev` works before anything has been bundled
 
@@ -166,7 +166,7 @@ in that tool.
 ## Signing and notarization — TODO
 
 Builds are **unsigned** in Phase 1: Gatekeeper shows "cannot be opened because the developer cannot be verified"
-(right-click → Open, or `xattr -d com.apple.quarantine ورّاق.app`), SmartScreen warns on Windows. Nothing in CI
+(right-click → Open, or `xattr -d com.apple.quarantine محرر PDF.app`), SmartScreen warns on Windows. Nothing in CI
 signs. When it is time:
 
 **macOS** (Developer ID Application certificate + notarization)

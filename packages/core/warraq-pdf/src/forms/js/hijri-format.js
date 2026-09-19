@@ -1,4 +1,4 @@
-/* ورّاق: a Hijri date by the Umm al-Qura calendar, shown in `pattern`
+/* محرر PDF: a Hijri date by the Umm al-Qura calendar, shown in `pattern`
    (yyyy, yy, mmmm, mm, m, dd, d; anything else as written), in Arabic-Indic
    digits when `arabic`. The months of 1356-1500 AH are the published table,
    one bit a month (30 days when set), three hex digits a year from 1356;
