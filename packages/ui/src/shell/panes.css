@@ -433,3 +433,16 @@
     }
   }
 }
+
+/* Touch: the inspector's rows and buttons take a finger (styles/tokens.css). */
+@media (pointer: coarse) {
+  .inspector-back.icon-btn {
+    min-inline-size: 44px;
+    block-size: 44px;
+  }
+
+  .tool-actions > .icon-btn:not(.icon-btn-primary),
+  .tool-actions > .icon-btn-primary {
+    min-block-size: 44px;
+  }
+}

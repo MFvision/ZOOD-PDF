@@ -299,6 +299,19 @@
   }
 }
 
+/* Touch (a phone, a tablet): a finger, not a pointer. Everything sized by
+   these metrics grows to the 44-point target touch needs; the look is the
+   same, only roomier. The toolbar, the menu bar and their rows follow in
+   shell/shell.css. */
+@media (pointer: coarse) {
+  :root {
+    --control-h: 44px;
+    --control-h-small: 36px;
+    --toolbar-h: 60px;
+    --menubar-h: 44px;
+  }
+}
+
 /* Reduce transparency: every material becomes its solid colour. */
 @media (prefers-reduced-transparency: reduce) {
   :root {
