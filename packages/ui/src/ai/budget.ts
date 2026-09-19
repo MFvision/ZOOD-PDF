@@ -6,17 +6,19 @@ export interface PageText {
   text: string;
 }
 
-export type TaskKind = 'summarize' | 'ask' | 'translate';
+export type TaskKind = 'summarize' | 'ask' | 'translate' | 'fixOcr' | 'fill' | 'pii' | 'tables';
 
 /**
  * How much document text one request may carry, in characters. Claude reads
  * a whole report (about 150,000 characters); a model on a laptop does well
- * with far less. A translation comes back about as long as it went, so it
- * is kept small enough for its reply to fit.
+ * with far less. A translation comes back about as long as it went, and so
+ * do an OCR correction and a page's tables, so those are kept small enough
+ * for their reply to fit.
  */
 export function budgetFor(provider: ProviderId, task: TaskKind): number {
-  if (provider === 'claude') return task === 'translate' ? 20_000 : 150_000;
-  return task === 'translate' ? 6_000 : 16_000;
+  const echoes = task === 'translate' || task === 'fixOcr' || task === 'tables';
+  if (provider === 'claude') return echoes ? 20_000 : 150_000;
+  return echoes ? 6_000 : 16_000;
 }
 
 export interface Budgeted {

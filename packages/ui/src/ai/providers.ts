@@ -53,6 +53,13 @@ const LOCAL_MAX_CONTEXT = 20_480;
 export interface Prompt {
   system: string;
   user: string;
+  /**
+   * The shape the answer must have, as a JSON Schema, for the tasks whose
+   * answer is data the panel reads (OCR corrections, form values, personal
+   * information, tables). Each provider is asked for it its own way; the
+   * answer is still checked when it comes back.
+   */
+  schema?: object;
 }
 
 /** One HTTP request, ready for `fetch`. */
@@ -84,6 +91,8 @@ export function claudeRequest(key: string, model: string, prompt: Prompt): Provi
       max_tokens: CLAUDE_MAX_TOKENS,
       system: prompt.system,
       messages: [{ role: 'user', content: prompt.user }],
+      // Structured outputs: the answer is JSON of exactly this shape.
+      ...(prompt.schema ? { output_config: { format: { type: 'json_schema', schema: prompt.schema } } } : {}),
       // The answer is shown as it is written, not after a silence.
       stream: true,
     }),
@@ -147,7 +156,8 @@ export function localRequest(
   if (api === 'openai') {
     // An OpenAI-compatible base is often given with its /v1 already.
     const url = /\/v1$/.test(base) ? `${base}/chat/completions` : `${base}/v1/chat/completions`;
-    return { url, headers, body: JSON.stringify({ model, messages, stream: true }) };
+    const shape = prompt.schema ? { response_format: { type: 'json_schema', json_schema: { name: 'answer', strict: true, schema: prompt.schema } } } : {};
+    return { url, headers, body: JSON.stringify({ model, messages, stream: true, ...shape }) };
   }
   return {
     url: `${base}/api/chat`,
@@ -156,6 +166,8 @@ export function localRequest(
       model,
       messages,
       stream: true,
+      // Ollama's structured outputs: its `format` takes the schema itself.
+      ...(prompt.schema ? { format: prompt.schema } : {}),
       options: { num_ctx: localContext(prompt), num_predict: LOCAL_REPLY_TOKENS },
     }),
   };
