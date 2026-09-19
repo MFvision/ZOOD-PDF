@@ -36,6 +36,9 @@ pub use hidden::{Finding, Hidden, HiddenReport};
 pub use images::PlacedImage;
 pub use incremental::{previous_xref, XrefStyle};
 pub use layers::{Layer, LayerNode, Layers};
+/// For the fuzzer (`packages/core/fuzz`): the content lexer's promises.
+#[doc(hidden)]
+pub use lex::ranges_hold as lex_ranges_hold;
 pub use links::{allowed_uri, LinkInfo, LinkTarget};
 pub use marks::{
     Anchor, Digits, HAlign, MarkContent, MarkInfo, MarkKind, NumberFormat, PageMark, SlotDirection,

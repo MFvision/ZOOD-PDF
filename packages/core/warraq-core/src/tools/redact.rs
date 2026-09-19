@@ -177,7 +177,7 @@ fn find(doc: &Document, a: Find) -> Result<Reply, CoreError> {
     let mut found: Vec<Found> = vec![];
     let mut total = 0usize;
     for page in pages {
-        let lines = doc.text_lines(page)?;
+        let lines = doc.all_lines(page)?;
         let shown = doc.page_size(page)?;
         let rotation = doc.pdf.page_rotation(page).unwrap_or(0);
         let texts: Vec<String> = lines.iter().map(|l| l.text.clone()).collect();

@@ -56,12 +56,58 @@ fn ascii_uri(uri: &str) -> String {
     out
 }
 
-/// Whether Warraq will write, or offer to open, this address.
+/// Whether a character changes how an address shows rather than where it
+/// goes: a control (Unicode's Cc), an invisible format character (Cf —
+/// the bidi embeddings, overrides, isolates and marks, zero-width joiners
+/// and spaces, the byte-order mark and the rest), or a line or paragraph
+/// separator. `https://www.bank.com` + RLO + `@oi.live/` reads as a bank's
+/// address and opens `oi.live`. The interface's `isOpenableUrl` refuses
+/// the same characters.
+pub fn hides_itself(c: char) -> bool {
+    c.is_control()
+        || matches!(
+            c,
+            '\u{00AD}'
+                | '\u{0600}'..='\u{0605}'
+                | '\u{061C}'
+                | '\u{06DD}'
+                | '\u{070F}'
+                | '\u{0890}'..='\u{0891}'
+                | '\u{08E2}'
+                | '\u{180E}'
+                | '\u{200B}'..='\u{200F}'
+                | '\u{2028}'..='\u{202E}'
+                | '\u{2060}'..='\u{2064}'
+                | '\u{2066}'..='\u{206F}'
+                | '\u{FEFF}'
+                | '\u{FFF9}'..='\u{FFFB}'
+                | '\u{110BD}'
+                | '\u{110CD}'
+                | '\u{13430}'..='\u{1343F}'
+                | '\u{1BCA0}'..='\u{1BCA3}'
+                | '\u{1D173}'..='\u{1D17A}'
+                | '\u{E0001}'
+                | '\u{E0020}'..='\u{E007F}'
+        )
+}
+
+/// Whether Warraq will write, or offer to open, this address: web or
+/// e-mail, at most `MAX_URI` bytes once trimmed, and nothing in it that
+/// hides itself.
 pub fn allowed_uri(uri: &str) -> bool {
-    let lower = uri.trim().to_ascii_lowercase();
+    let trimmed = uri.trim();
+    let lower = trimmed.to_ascii_lowercase();
     (lower.starts_with("https://") || lower.starts_with("http://") || lower.starts_with("mailto:"))
-        && uri.len() <= MAX_URI
-        && !uri.chars().any(char::is_control)
+        && trimmed.len() <= MAX_URI
+        && !uri.chars().any(hides_itself)
+}
+
+/// Where a link is kept: an object of its own, or written straight into
+/// the page's `/Annots` at a place.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Held {
+    Object(ObjectId),
+    Direct(usize),
 }
 
 impl PdfDocument {
@@ -343,8 +389,22 @@ impl PdfDocument {
         Ok(format!("{}.{}", id.0, id.1))
     }
 
-    fn link_object(&self, index: usize, link: &str) -> Result<ObjectId> {
+    fn link_object(&self, index: usize, link: &str) -> Result<Held> {
         let page_id = self.page_id(index)?;
+        let is_link =
+            |d: &Dictionary| d.get(b"Subtype").ok().and_then(|s| s.as_name().ok()) == Some(b"Link");
+        if let Some(k) = link.strip_prefix('#') {
+            let k: usize = k
+                .parse()
+                .map_err(|_| Error::Edit(format!("E_LINK: no link {link}")))?;
+            return match self.annots(page_id).get(k) {
+                Some(Object::Dictionary(d)) if is_link(d) => Ok(Held::Direct(k)),
+                _ => Err(Error::Edit(format!(
+                    "E_LINK: no link {link} on page {}",
+                    index + 1
+                ))),
+            };
+        }
         let (n, g) = link
             .split_once('.')
             .and_then(|(n, g)| Some((n.parse::<u32>().ok()?, g.parse::<u16>().ok()?)))
@@ -354,20 +414,14 @@ impl PdfDocument {
             .annots(page_id)
             .iter()
             .any(|a| a.as_reference().ok() == Some(id));
-        let is_link = self
-            .doc
-            .get_dictionary(id)
-            .ok()
-            .and_then(|d| d.get(b"Subtype").ok())
-            .and_then(|s| s.as_name().ok())
-            == Some(b"Link");
+        let is_link = self.doc.get_dictionary(id).is_ok_and(is_link);
         if !(on_page && is_link) {
             return Err(Error::Edit(format!(
                 "E_LINK: no link {link} on page {}",
                 index + 1
             )));
         }
-        Ok(id)
+        Ok(Held::Object(id))
     }
 
     /// Moves a link, points it somewhere else, or both.
@@ -378,34 +432,54 @@ impl PdfDocument {
         rect: Option<[f32; 4]>,
         target: Option<&LinkTarget>,
     ) -> Result<()> {
-        let id = self.link_object(index, link)?;
+        let held = self.link_object(index, link)?;
         let rect = rect.map(|r| self.user_rect(index, r)).transpose()?;
         let action = target.map(|t| self.link_action(t)).transpose()?;
-        let annot = self.doc.get_dictionary_mut(id).map_err(parse_err)?;
-        if let Some(rect) = rect {
-            annot.set("Rect", rect);
+        let change = |annot: &mut Dictionary| {
+            if let Some(rect) = rect {
+                annot.set("Rect", rect);
+            }
+            if let Some((key, value)) = action {
+                annot.remove(b"A");
+                annot.remove(b"Dest");
+                annot.set(key, value);
+            }
+        };
+        match held {
+            Held::Object(id) => {
+                change(self.doc.get_dictionary_mut(id).map_err(parse_err)?);
+                self.mark_touched(id);
+            }
+            // Changed where it is written, so it keeps its place and its id.
+            Held::Direct(k) => {
+                let page_id = self.page_id(index)?;
+                let mut annots = self.annots(page_id);
+                if let Some(Object::Dictionary(annot)) = annots.get_mut(k) {
+                    change(annot);
+                }
+                self.set_annots(page_id, annots)?;
+            }
         }
-        if let Some((key, value)) = action {
-            annot.remove(b"A");
-            annot.remove(b"Dest");
-            annot.set(key, value);
-        }
-        self.mark_touched(id);
         Ok(())
     }
 
     /// Takes a link off the page.
     pub fn remove_link(&mut self, index: usize, link: &str) -> Result<()> {
-        let id = self.link_object(index, link)?;
+        let held = self.link_object(index, link)?;
         let page_id = self.page_id(index)?;
-        let annots: Vec<Object> = self
-            .annots(page_id)
-            .into_iter()
-            .filter(|a| a.as_reference().ok() != Some(id))
-            .collect();
-        self.set_annots(page_id, annots)?;
-        if self.is_addition(id) {
-            self.doc.objects.remove(&id);
+        let mut annots = self.annots(page_id);
+        match held {
+            Held::Object(id) => {
+                annots.retain(|a| a.as_reference().ok() != Some(id));
+                self.set_annots(page_id, annots)?;
+                if self.is_addition(id) {
+                    self.doc.objects.remove(&id);
+                }
+            }
+            Held::Direct(k) => {
+                annots.remove(k);
+                self.set_annots(page_id, annots)?;
+            }
         }
         Ok(())
     }
@@ -421,6 +495,14 @@ mod tests {
             env!("CARGO_MANIFEST_DIR")
         ))
         .unwrap()
+    }
+
+    /// The object a link of page 1 is kept in.
+    fn object(doc: &PdfDocument, link: &str) -> ObjectId {
+        match doc.link_object(0, link).unwrap() {
+            Held::Object(id) => id,
+            held => panic!("{held:?}"),
+        }
     }
 
     #[test]
@@ -461,16 +543,10 @@ mod tests {
             );
         }
         // In the file: /A /URI and /Dest [page /Fit].
-        let annot = doc
-            .doc_ref()
-            .get_dictionary(doc.link_object(0, &page).unwrap())
-            .unwrap();
+        let annot = doc.doc_ref().get_dictionary(object(&doc, &page)).unwrap();
         let dest = annot.get(b"Dest").unwrap().as_array().unwrap();
         assert_eq!(dest[0].as_reference().unwrap(), doc.page_id(2).unwrap());
-        let annot = doc
-            .doc_ref()
-            .get_dictionary(doc.link_object(0, &web).unwrap())
-            .unwrap();
+        let annot = doc.doc_ref().get_dictionary(object(&doc, &web)).unwrap();
         assert!(annot
             .get(b"A")
             .unwrap()
@@ -515,6 +591,77 @@ mod tests {
             .is_err());
         assert!(doc.remove_link(0, "99999.0").is_err());
         assert!(doc.remove_link(0, "nonsense").is_err());
+    }
+
+    /// Bidi controls and other invisible format characters reorder what an
+    /// address shows without changing where it goes: `https://www.bank.com`,
+    /// then RLO, then `@oi.live/`, reads as a bank's address and opens
+    /// `oi.live`. Such an address is neither written nor offered to open.
+    #[test]
+    fn an_address_with_invisible_format_characters_is_refused() {
+        for uri in [
+            "https://www.bank.com\u{202E}@oi.live/",
+            "https://\u{2067}evil.example\u{2069}/",
+            "https://a.example/\u{200F}x",
+            "https://a.example/\u{061C}x",
+            "https://a.example/\u{FEFF}",
+            "https://a.example/\u{200B}",
+            "https://a.example/\u{2028}",
+            "https://a.example/\u{0085}",
+        ] {
+            assert!(!allowed_uri(uri), "{uri:?}");
+        }
+        assert!(allowed_uri("https://example.org/دليل"));
+        assert!(allowed_uri("mailto:nadia@example.sa"));
+        // Measured as the interface measures it: bytes of the trimmed address.
+        let long = format!("https://example.org/{}", "د".repeat(2100));
+        assert!(!allowed_uri(&long));
+        assert!(allowed_uri(&format!(
+            "  https://example.org/{}  ",
+            "a".repeat(4000)
+        )));
+    }
+
+    /// A link written straight into `/Annots`, not as an object of its own
+    /// (against the spec, but found): listed, it can be changed and removed
+    /// too — it is made an object of its own on the first change.
+    #[test]
+    fn a_link_written_into_the_page_can_be_changed_and_removed() {
+        let mut doc =
+            PdfDocument::open(corpus("chrome-notonaskh-justified-3pages.pdf"), None).unwrap();
+        let page = doc.page_id(0).unwrap();
+        let direct = |x: i64| {
+            Object::Dictionary(dictionary! {
+                "Type" => "Annot", "Subtype" => "Link",
+                "Rect" => vec![x.into(), 700.into(), (x + 100).into(), 720.into()],
+                "A" => dictionary! { "S" => "URI", "URI" => Object::string_literal("https://example.org") },
+            })
+        };
+        doc.set_annots(page, vec![direct(50), direct(300)]).unwrap();
+        let links = doc.list_links(0).unwrap();
+        assert_eq!(links.len(), 2);
+        doc.update_link(0, &links[0].id, None, Some(&LinkTarget::Page(1)))
+            .unwrap();
+        let links = doc.list_links(0).unwrap();
+        assert_eq!(links[0].target, LinkTarget::Page(1));
+        assert_eq!(
+            links[1].target,
+            LinkTarget::Uri("https://example.org".into())
+        );
+        doc.remove_link(0, &links[1].id).unwrap();
+        let links = doc.list_links(0).unwrap();
+        assert_eq!(links.len(), 1);
+        assert_eq!(links[0].target, LinkTarget::Page(1));
+        doc.remove_link(0, &links[0].id).unwrap();
+        assert!(doc.list_links(0).unwrap().is_empty());
+        // What is not a link is not one to change.
+        doc.set_annots(
+            page,
+            vec![Object::Dictionary(dictionary! { "Subtype" => "Text" })],
+        )
+        .unwrap();
+        assert!(doc.remove_link(0, "#0").is_err());
+        assert!(doc.remove_link(0, "#7").is_err());
     }
 
     #[test]

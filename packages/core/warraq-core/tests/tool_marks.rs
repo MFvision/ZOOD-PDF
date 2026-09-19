@@ -50,7 +50,7 @@ fn marks_text(pdf: &[u8], page: usize) -> (String, String) {
 fn line_at(pdf: &[u8], page: usize, needle: &str) -> (f32, f32, f32, f32) {
     let doc = Document::open(pdf.to_vec(), None).unwrap();
     let line = doc
-        .artifact_lines(page)
+        .mark_lines(page)
         .unwrap()
         .into_iter()
         .find(|l| l.text.contains(needle))

@@ -5,7 +5,9 @@
 //! runs with limits, and nothing here panics. A baseline or progressive JPEG
 //! in grey or RGB goes in as it is (`/DCTDecode`, no loss); anything else —
 //! a CMYK JPEG, every PNG — is decoded and stored losslessly with Flate, its
-//! transparency as a soft mask.
+//! transparency as a soft mask. A picture with an EXIF orientation (a phone
+//! photo, typically) is turned upright first, since no PDF viewer reads the
+//! tag; a JPEG so turned is written again, once, at `JPEG_QUALITY`.
 use lopdf::{dictionary, Document, Object, ObjectId, Stream};
 
 use crate::{Error, Result};
@@ -14,6 +16,8 @@ use crate::{Error, Result};
 const MAX_BYTES: usize = 64 * 1024 * 1024;
 const MAX_SIDE: u32 = 16_384;
 const MAX_PIXELS: u64 = 40_000_000;
+/// A turned photo's JPEG is written again at this quality.
+const JPEG_QUALITY: u8 = 92;
 
 /// What was added: the XObject and its size in pixels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -118,16 +122,45 @@ fn flate_image(doc: &mut Document, image: image::DynamicImage) -> Result<Picture
     })
 }
 
-fn decode(bytes: &[u8], format: image::ImageFormat) -> Result<image::DynamicImage> {
+/// Decodes a picture, with limits, turned the way its EXIF orientation
+/// says it is shown — as every photo viewer and the browser show it; a
+/// PDF viewer never reads that tag. Says too whether it had to be turned.
+fn decode(bytes: &[u8], format: image::ImageFormat) -> Result<(image::DynamicImage, bool)> {
+    use image::ImageDecoder;
+    let unreadable = |e: image::ImageError| refuse(&format!("the picture could not be read: {e}"));
     let mut reader = image::ImageReader::with_format(std::io::Cursor::new(bytes), format);
     let mut limits = image::Limits::default();
     limits.max_image_width = Some(MAX_SIDE);
     limits.max_image_height = Some(MAX_SIDE);
     limits.max_alloc = Some(MAX_PIXELS * 4 + (1 << 20));
     reader.limits(limits);
-    reader
-        .decode()
-        .map_err(|e| refuse(&format!("the picture could not be read: {e}")))
+    let mut decoder = reader.into_decoder().map_err(unreadable)?;
+    let orientation = decoder
+        .orientation()
+        .unwrap_or(image::metadata::Orientation::NoTransforms);
+    let mut image = image::DynamicImage::from_decoder(decoder).map_err(unreadable)?;
+    image.apply_orientation(orientation);
+    Ok((
+        image,
+        orientation != image::metadata::Orientation::NoTransforms,
+    ))
+}
+
+/// A turned photo, written again as a JPEG, upright: grey stays grey.
+fn upright_jpeg(image: &image::DynamicImage) -> Result<(Vec<u8>, &'static str)> {
+    let (image, space) = if image.color().has_color() {
+        (image::DynamicImage::ImageRgb8(image.to_rgb8()), "DeviceRGB")
+    } else {
+        (
+            image::DynamicImage::ImageLuma8(image.to_luma8()),
+            "DeviceGray",
+        )
+    };
+    let mut out = Vec::new();
+    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, JPEG_QUALITY)
+        .encode_image(&image)
+        .map_err(|e| refuse(&format!("the picture could not be turned upright: {e}")))?;
+    Ok((out, space))
 }
 
 /// Adds `bytes`, a PNG or JPEG, to `doc` as an image XObject.
@@ -143,10 +176,30 @@ pub fn add_picture(doc: &mut Document, bytes: &[u8]) -> Result<Picture> {
             1 => "DeviceGray",
             3 => "DeviceRGB",
             // CMYK and the rest: decoded, so they are drawn as they look.
-            _ => return flate_image(doc, decode(bytes, image::ImageFormat::Jpeg)?),
+            _ => return flate_image(doc, decode(bytes, image::ImageFormat::Jpeg)?.0),
         };
         // Decoded once, to be sure a viewer will not meet a broken file.
-        decode(bytes, image::ImageFormat::Jpeg)?;
+        let (image, turned) = decode(bytes, image::ImageFormat::Jpeg)?;
+        if turned {
+            // Turned upright and written again: once, at a high quality.
+            let (jpeg, space) = upright_jpeg(&image)?;
+            let (width, height) = (image.width(), image.height());
+            let stream = Stream::new(
+                dictionary! {
+                    "Type" => "XObject", "Subtype" => "Image",
+                    "Width" => width as i64, "Height" => height as i64,
+                    "ColorSpace" => space, "BitsPerComponent" => 8,
+                    "Filter" => "DCTDecode",
+                },
+                jpeg,
+            )
+            .with_compression(false);
+            return Ok(Picture {
+                id: doc.add_object(stream),
+                width,
+                height,
+            });
+        }
         let stream = Stream::new(
             dictionary! {
                 "Type" => "XObject", "Subtype" => "Image",
@@ -164,7 +217,7 @@ pub fn add_picture(doc: &mut Document, bytes: &[u8]) -> Result<Picture> {
         });
     }
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
-        return flate_image(doc, decode(bytes, image::ImageFormat::Png)?);
+        return flate_image(doc, decode(bytes, image::ImageFormat::Png)?.0);
     }
     Err(refuse("only PNG and JPEG pictures can be placed"))
 }
@@ -227,6 +280,44 @@ pub(crate) mod tests {
             b"DCTDecode"
         );
         assert_eq!((picture.width, picture.height), (30, 10));
+    }
+
+    /// A phone photo: stored landscape — red on the left, blue on the right
+    /// — with an EXIF orientation of 6, "turn a quarter clockwise to show".
+    fn turned_photo() -> Vec<u8> {
+        let image = image::RgbImage::from_fn(40, 20, |x, _| {
+            if x < 20 {
+                image::Rgb([230, 20, 20])
+            } else {
+                image::Rgb([20, 20, 230])
+            }
+        });
+        let exif = b"II\x2a\x00\x08\x00\x00\x00\x01\x00\x12\x01\x03\x00\x01\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00";
+        let mut out = Vec::new();
+        let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, 95);
+        image::ImageEncoder::set_exif_metadata(&mut encoder, exif.to_vec()).unwrap();
+        encoder.encode_image(&image).unwrap();
+        out
+    }
+
+    /// PDF viewers draw a JPEG's pixels as they are stored and never read
+    /// its EXIF orientation: the picture goes in upright, as the photo
+    /// shows everywhere else (and as the browser measured it).
+    #[test]
+    fn a_photo_goes_in_upright_whatever_its_exif_orientation() {
+        let mut doc = Document::with_version("1.7");
+        let picture = add_picture(&mut doc, &turned_photo()).unwrap();
+        assert_eq!((picture.width, picture.height), (20, 40));
+        let stream = doc.get_object(picture.id).unwrap().as_stream().unwrap();
+        assert_eq!(stream.dict.get(b"Width").unwrap().as_i64().unwrap(), 20);
+        assert_eq!(stream.dict.get(b"Height").unwrap().as_i64().unwrap(), 40);
+        // Turned clockwise, the left (red) half is now on top.
+        let stored = image::load_from_memory(&stream.content).unwrap().to_rgb8();
+        assert_eq!(stored.dimensions(), (20, 40));
+        let top = stored.get_pixel(10, 5).0;
+        let bottom = stored.get_pixel(10, 35).0;
+        assert!(top[0] > 150 && top[2] < 100, "{top:?}");
+        assert!(bottom[2] > 150 && bottom[0] < 100, "{bottom:?}");
     }
 
     #[test]
