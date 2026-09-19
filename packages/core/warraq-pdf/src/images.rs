@@ -765,11 +765,9 @@ impl PdfDocument {
             visits = walker.budget.visits;
             match walked {
                 Ok(()) => elsewhere.extend(walker.forms.intersection(&forms)),
-                Err(_) => {
-                    // Too much to know: as good as drawn.
-                    elsewhere.extend(forms.iter());
-                    break;
-                }
+                // Too much to know: as good as drawn. The pages left are
+                // still looked at for a content stream they share.
+                Err(_) => elsewhere.extend(forms.iter()),
             }
         }
         for f in found.iter_mut() {
@@ -1539,6 +1537,43 @@ mod tests {
         let before = doc.stream_bytes(s).unwrap();
         assert!(doc.delete_image(1, &listed[0].id).is_err());
         assert_eq!(doc.stream_bytes(s).unwrap(), before);
+    }
+
+    /// A page too heavy to walk makes the form it could draw count as
+    /// shared — and the pages after it are still looked at: one that lists
+    /// the page's own content stream makes a picture drawn there shared too.
+    #[test]
+    fn a_page_too_heavy_to_walk_does_not_stop_the_check() {
+        let mut doc = three_pages();
+        let f = form(&mut doc, INLINE, None);
+        let s = append(&mut doc, 0, &[INLINE, b" /F Do"].concat());
+        let p0 = doc.page_id(0).unwrap();
+        doc.own_resources(p0).unwrap();
+        doc.own_xobjects(p0).unwrap().set("F", Object::Reference(f));
+        // Page 2 could draw F, and draws a fan of forms no walk finishes.
+        let mut bomb = form(&mut doc, INLINE, None);
+        for _ in 0..7 {
+            let resources = dictionary! { "XObject" => dictionary! { "N" => bomb } };
+            bomb = form(&mut doc, &b"/N Do ".repeat(50), Some(resources));
+        }
+        let p1 = doc.page_id(1).unwrap();
+        doc.own_resources(p1).unwrap();
+        let group = doc.own_xobjects(p1).unwrap();
+        group.set("F", Object::Reference(f));
+        group.set("Bomb", Object::Reference(bomb));
+        append(&mut doc, 1, b"/Bomb Do");
+        // Page 3 lists page 1's stream.
+        let p2 = doc.page_id(2).unwrap();
+        let mut ids = doc.content_ids(p2);
+        ids.push(s);
+        doc.set_contents(
+            p2,
+            Object::Array(ids.into_iter().map(Object::Reference).collect()),
+        )
+        .unwrap();
+        let listed = within(60, move || doc.list_images(0).unwrap());
+        assert_eq!(listed.len(), 2, "{listed:?}");
+        assert!(listed.iter().all(|i| i.shared), "{listed:?}");
     }
 
     fn xobject_names(doc: &PdfDocument, index: usize) -> Vec<Vec<u8>> {
