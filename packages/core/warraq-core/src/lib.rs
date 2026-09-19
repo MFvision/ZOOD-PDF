@@ -140,6 +140,22 @@ impl Document {
         self.read_lines(index, true)
     }
 
+    /// Every glyph of a page read into lines, for redaction: what the page
+    /// says, and apart from it what its artifacts say — every artifact,
+    /// whoever drew it: a running head, a footer, a page number, a
+    /// watermark. Whatever `text_lines` keeps out of a page's reading, a
+    /// redaction search must still find, once: the two parts together are
+    /// each glyph of the page exactly once.
+    pub fn redaction_lines(
+        &self,
+        index: usize,
+    ) -> Result<(Vec<TextLine>, Vec<TextLine>), CoreError> {
+        Ok((
+            self.read_lines(index, false)?,
+            self.read_lines(index, true)?,
+        ))
+    }
+
     /// The page's lines, read from either what it says or its artifacts.
     ///
     /// What is marked `/Artifact` (PDF 2.0 §14.8.2.2) is not part of the

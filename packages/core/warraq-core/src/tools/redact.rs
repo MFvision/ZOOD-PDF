@@ -256,8 +256,7 @@ fn find(doc: &Document, a: Find) -> Result<Reply, CoreError> {
         // The page's text and, apart, its artifacts — running heads, page
         // numbers, a footer, a watermark — which the reader keeps out of the
         // page's text, but which carry names and numbers as much as it does.
-        let body = doc.text_lines(page)?;
-        let artifacts = doc.artifact_lines(page)?;
+        let (body, artifacts) = doc.redaction_lines(page)?;
         let first_artifact = body.len();
         let lines: Vec<TextLine> = body.into_iter().chain(artifacts).collect();
         let shown = doc.page_size(page)?;
