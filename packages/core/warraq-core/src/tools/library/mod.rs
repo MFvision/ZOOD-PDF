@@ -97,6 +97,10 @@ struct Add {
     kind: Option<String>,
     #[serde(default)]
     modified: i64,
+    /// The file's size as the host sees it; without it, the bytes handed over.
+    /// With `modified`, this is what tells an unchanged file from a new one.
+    #[serde(default)]
+    bytes: Option<u64>,
     #[serde(default)]
     pages: Option<u32>,
     /// Only to open a protected PDF; it is never written into the index.
@@ -329,7 +333,9 @@ fn add(a: Add, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
     } else {
         a.name.clone()
     };
-    let bytes = blobs.first().map(|b| b.len()).unwrap_or(0) as u64;
+    let bytes = a
+        .bytes
+        .unwrap_or_else(|| blobs.first().map(|b| b.len()).unwrap_or(0) as u64);
 
     // A file the index has no room for is skipped before anything is read.
     if with_index(a.handle, |index| index.full())? {

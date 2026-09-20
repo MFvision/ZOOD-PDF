@@ -43,5 +43,11 @@ path = "fuzz_targets/lex_content.rs"
 test = false
 doc = false
 
+[[bin]]
+name = "library_index"
+path = "fuzz_targets/library_index.rs"
+test = false
+doc = false
+
 [profile.release]
 debug = 1
