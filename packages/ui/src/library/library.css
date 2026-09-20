@@ -1,0 +1,339 @@
+/*
+ * The Library: the search box and its filters, the results, the folders that
+ * were added and the tag rules — each a section of the inspector with its own
+ * heading, as Batch lays its own out. A result is one control: pressing it
+ * opens the document at its page, so the whole row is the target, wide enough
+ * for a finger on a phone.
+ *
+ * The matched line is written with `dir="auto"`, so an Arabic line reads
+ * right-to-left and an English one left-to-right inside the same list, and
+ * the marks are inline so the bidi ordering of the line is untouched.
+ */
+
+.library-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-block-start: var(--space-5);
+  border-block-start: 0.5px solid var(--separator);
+}
+
+.library-section > h4 {
+  margin: 0;
+  font-size: var(--text-headline);
+  font-weight: 700;
+}
+
+.library-search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.library-search .text-input[type="search"] {
+  border-radius: var(--radius-capsule);
+}
+
+.library-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-end;
+}
+
+.library-row > .field {
+  flex: 1 1 96px;
+  min-inline-size: 0;
+}
+
+.library-choice {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.library-filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--grouped-background);
+  border-radius: var(--radius-10);
+  box-shadow: 0 0 0 0.5px var(--separator);
+}
+
+.library-filters fieldset {
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.library-filters legend {
+  padding: 0;
+  margin-block-end: var(--space-3);
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+}
+
+.library-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.library-chip {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-callout);
+  background: var(--quaternary-fill);
+  border-radius: var(--radius-capsule);
+}
+
+.library-chip:has(> input:checked) {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.library-count {
+  margin: 0;
+  font-size: var(--text-callout);
+  font-variant-numeric: tabular-nums;
+  color: var(--secondary-label);
+}
+
+/* The results. */
+
+.library-hits {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  background: var(--grouped-background);
+  border-radius: var(--radius-10);
+  box-shadow: 0 0 0 0.5px var(--separator);
+}
+
+.library-hit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.library-hit + .library-hit {
+  border-block-start: 0.5px solid var(--separator);
+}
+
+.library-hit-open {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  margin-inline: calc(-1 * var(--space-2));
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: default;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-8);
+}
+
+.library-hit-open:hover {
+  background: var(--quaternary-fill);
+}
+
+.library-hit-open:active {
+  background: var(--tertiary-fill);
+  transition-duration: 0s;
+}
+
+.library-hit-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.library-hit-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-hit-where {
+  flex: none;
+  font-size: var(--text-subheadline);
+  font-variant-numeric: tabular-nums;
+  color: var(--secondary-label);
+}
+
+.library-snippet {
+  display: block;
+  font-size: var(--text-callout);
+  line-height: 1.5;
+  color: var(--secondary-label);
+  overflow-wrap: anywhere;
+}
+
+.library-snippet mark {
+  color: var(--label);
+  background: var(--warning-bg);
+  border-radius: 3px;
+}
+
+.library-cut {
+  color: var(--tertiary-label);
+}
+
+.library-hit-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.library-missing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: baseline;
+  font-size: var(--text-callout);
+  color: var(--destructive);
+}
+
+.library-tag {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.library-tag .icon-btn {
+  min-inline-size: 16px;
+  block-size: 16px;
+  padding: 0;
+}
+
+/* The folders and files that were added. */
+
+.library-folders {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  background: var(--grouped-background);
+  border-radius: var(--radius-10);
+  box-shadow: 0 0 0 0.5px var(--separator);
+}
+
+.library-folder {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+}
+
+.library-folder + .library-folder {
+  border-block-start: 0.5px solid var(--separator);
+}
+
+.library-folder-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.library-folder-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-folder-count {
+  font-size: var(--text-callout);
+  font-variant-numeric: tabular-nums;
+  color: var(--secondary-label);
+}
+
+.library-stats {
+  font-variant-numeric: tabular-nums;
+}
+
+.library-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-variant-numeric: tabular-nums;
+  color: var(--secondary-label);
+}
+
+.library-progress > progress {
+  inline-size: 100%;
+  accent-color: var(--accent);
+}
+
+.library-skipped {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.library-skipped ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.library-skipped li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+  overflow-wrap: anywhere;
+}
+
+.library-skipped-name {
+  color: var(--label);
+}
+
+.library-rules {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  background: var(--grouped-background);
+  border-radius: var(--radius-10);
+  box-shadow: 0 0 0 0.5px var(--separator);
+}
+
+.library-rules li {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+}
+
+.library-rules li + li {
+  border-block-start: 0.5px solid var(--separator);
+}
+
+/* On a phone the inspector is a sheet: a result stays comfortably tappable. */
+@media (pointer: coarse) {
+  .library-hit-open {
+    padding-block: var(--space-3);
+  }
+}
