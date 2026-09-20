@@ -13,6 +13,7 @@ Before that, on 2026-09-19: the interface is rebuilt on EmbedPDF (ADR-0007); all
 |---|---|
 | Open, render, thumbnails, zoom | EmbedPDF — PDFium compiled to WebAssembly (MIT) — on web, desktop and extension; Warraq's own engine (native PDFium on desktop, pure Rust in browsers) takes over in Edit text |
 | Search and copy in the page view | EmbedPDF's search panel (Cmd+F), its highlights, next and previous, and its Copy, answered by Warraq's reader: Arabic found with or without diacritics, alef, taa marbuta, yaa and digit forms unified, case and whole words on request; what is selected copies in logical order. PDFium, on the corpus's three-page Naskh file, found none of the seven "وراق" this finds, and copied a Chrome-made form backwards |
+| The Library: search across a folder | **Its core, its readers and its desktop host are built; the panel is not.** `packages/core/warraq-core/src/tools/library` holds an inverted index over every document's words — normalized the way the find bar normalizes, so a word typed الفاتوره finds الفَاتُورَةُ, and 2026 finds ٢٠٢٦ — whole word against whole word, the last word of a query also as a beginning — with each word's line and place, ranked by BM25 with a phrase bonus (the rule is written down in `packages/core/API.md`), filtered by folder, kind, tag, date range or "scanned only", and each hit marked inside the line the person reads. The date shown is the document's own, read from its text in Arabic or Latin digits, Gregorian or Hijri (Umm al-Qura) — never the file's date. Tags by hand and by the person's own rules. The index is a cache, never the documents: no file is touched, nothing leaves the device, and a damaged or foreign index is refused rather than half-loaded. The reading of each kind of file into text and the desktop host that walks a folder and keeps the index are in too (their own sections below); the panel is the one part still in flight, so until it lands there is nothing to click |
 | Comment, fill & sign, prepare form, redact, protect | work end to end through EmbedPDF's plugins, in all three hosts; see the count below |
 | Prepare form | Warraq's core finds where a flat form expects writing — underscore and dot runs, empty table cells, drawn boxes, lines to sign on, check boxes — names each field from its Arabic or English label and types it (text, check box, date, Hijri date, signature); the proposals are drawn on the page to adjust, then created as real AcroForm fields. Formats (numbers with SAR and Arabic-Indic digits, percent, dates, Umm al-Qura Hijri dates), ranges and calculations (sum, product, average, min, max, or arithmetic typed over field names) are written as the built-in JavaScript every form reader runs, and run inside Warraq by its own interpreter of exactly that subset — no JavaScript engine, no eval. Measured below |
 | Page marks | watermarks (text or a picture), headers and footers with page, date (Gregorian or Hijri) and file tokens, page numbers and Bates numbers, drawn by Warraq's core with Arabic shaped, previewed on the page before they are applied, and listed to change or take off — the page's own content is never touched (form XObjects tagged as artifacts, round the page's streams) |
@@ -297,6 +298,48 @@ and those files are read again.
   and nothing more sent while those marks wait; a table saved as a workbook
   (right to left, `1,200.00` as the number 1200) and as CSV, from a local
   model asked for the shape through Ollama's `format`.
+
+## The Library's core, measured (2026-09-20)
+
+The Library — one search across a whole folder of documents — is being built by
+four agents at once. **This entry is part A alone: the core.** The panel is
+another agent's work and is not described here; the reading of each kind of
+file into text and the desktop host have their own entries. **Until
+the panel lands there is no Library tool in the interface**, and nothing claims
+one.
+
+`packages/core/warraq-core/tests/tool_library.rs::the_whole_arabic_corpus_goes_into_one_index_and_is_searched_across`
+offers the whole Arabic corpus to `library.add` one file at a time, searches
+across the lot, saves the index and opens it again. On this Mac (Apple silicon,
+release build, with several other agents working on it at the same time — so
+these are what a busy machine gives, not its best):
+
+| | |
+|---|---|
+| Files offered | 48 PDFs (`tests/corpus/arabic/{generated,realworld}`, the many-page performance fixtures left out) |
+| Indexed | 44 — the four password-protected files are refused with `skipped: "password"` until one is given, and the run carries on |
+| Read and indexed in | **3.7 s** — 83 ms a file: each PDF read page by page with Warraq's own reader, and what it says indexed. The two were not timed apart |
+| The same folder offered again | **14 ms** — nothing has been written to, so `library.add` answers `unchanged` without opening a single file. The test fails if a second pass ever costs more than a fifth of the first |
+| Words indexed | 65 028 |
+| The index | **1 159 KB** written by `library.save`; `library.stats` estimates 1 125 KB, 3 % under (the test keeps the two within a quarter of each other) |
+| One search across all 44 | **0.9 ms** (`العربية`, written without tashkeel; the test requires it in at least five different files, each hit marked inside the line the person would read) |
+| Scans seen for what they are | the corpus's scanned pages go in as `scan` with no text of their own, for the interface to read with OCR and hand back; the test requires at least three |
+
+An index of that shape costs about 18 bytes a word. These 44 documents run to
+1 478 words each, so the cap of 48 000 000 characters — call it eight million
+words of Arabic — works out at roughly 150 MB held and something over five
+thousand documents of this size (`Known gaps`, below).
+
+**Proved besides the numbers** (ten tests through `call_static`, the way every
+host reaches the ops, and 56 more inside the module): a protected file skipped
+until its password is given, and **the password nowhere in the bytes the index
+writes**; a scan filled in by OCR text under the same key and then found; one
+copy of a file changing while its twin keeps the old text; forgetting a file
+taking it out of every answer; **400 damaged indexes** — truncated, flipped,
+counts blown up to gigabytes, stretches cut out — every one refused with
+`E_INDEX` and not one of them a panic; and the ranking's four claims (a phrase
+beats scattered words, more beats fewer, short beats long, the whole query
+beats half) each with a test of its own.
 
 ## The Library's desktop host (2026-09-20)
 
@@ -846,6 +889,11 @@ was reproduced first by a test that failed, and each test passes now.
    Arabic strings read word for word from the English.
 
 ## Known gaps, stated plainly
+* **The Library has a core and no face yet.** `library.open/add/forget/search/document/tag/rules/stats/save/close` all work and are tested, the readers turn every kind of file into text, and the desktop host can walk a folder and keep an index — but nothing in the interface calls any of it: the panel is the one part still in flight. Until it lands, the Library cannot be used by a person.
+* **The Library's index is capped, and says so.** 200 000 documents; 2 000 000 characters and 400 000 words of any one document; 48 000 000 characters in the whole index — about 150 MB held, and something over five thousand documents the size of the Arabic corpus's (measured above). Past a cap a file is skipped with `indexFull`, or its text is cut with `truncated`; nothing fails silently, and nothing grows without end. A person with a bigger library than that needs a second index or a cap raised in one constant.
+* **The Library ranks with one rule, and it is a judgement.** BM25 with a phrase bonus (`packages/core/API.md`): a phrase beats scattered words, more matches beat fewer, a short document beats a long one on the same count, and a document holding the whole query beats one holding half of it. It was tested against those four statements, not against people searching their own files — nobody has used it yet.
+* **The document's date is a guess, and a scored one.** It is read from the first three pages, and where a document carries several dates the one beside a label, near the top of the first page, with its month written out, wins. A document that carries a deadline more prominently than its own date will show the deadline. A date is read as Hijri when its month is a Hijri month, when هـ or AH follows it, or when its year is between 1300 and 1500 — a Gregorian year in that band, in a historical document, would be converted wrongly.
+* **The Library's core reads PDFs and nothing else.** Word, Excel, PowerPoint, HTML, Markdown, text and pictures reach the index only as text the interface read and handed back, which is what `packages/ui/src/library/` now does; the core never opens them itself. A PDF whose pages carry no text is reported as a scan and stays unsearchable until the interface reads it with OCR and hands the words back under the same key.
 * **PDF/A and PDF/X are checked by Warraq's own validators only.** veraPDF, the reference PDF/A validator, is GPL/MPL and Java: it is not bundled, and it was not run on this machine. Each copy passes Warraq's validator, which checks exactly these rules (clauses of ISO 19005-2, the same numbers in -3; the -1 clauses in `warraq-pdf/src/standards/pdfa.rs`): file header, file identifier and nothing after `%%EOF` (6.1.2–6.1.3); no encryption (6.1.3); cross-reference tables for PDF/A-1 (-1 6.1.4); no streams in outside files (6.1.7.1); no LZW, Crypt, or JPEG 2000 in PDF/A-1 (6.1.7.2); implementation limits (6.1.13); one output intent profile, monitor or printer class, N matching (6.2.3); device colour only as the output intent allows, else a default colour space (6.2.4.3); embedded ICC profiles readable, N matching, version ≤ 2 for -1 (6.2.4.2); overprint mode 1 with ICC-based CMYK (6.2.4.2); transparency (none in -1) and only standard blend modes (6.2.10); transfer functions, halftones other than types 1 and 5, unknown rendering intents (6.2.5); alternate images, OPI, interpolation, bit depths (6.2.8); reference XObjects and PostScript (6.2.9); operators ISO 32000-1 does not define, and content that cannot be read (6.2.2); fonts embedded, their programs holding every glyph shown, widths matching (within 1/1000 em), TrueType encodings and cmaps, CIDToGIDMap, CIDSet (6.2.11); every character with Unicode for -2u (6.2.11.7.2); annotation types, print flags, appearances (6.3); forbidden and named actions, automatic actions, JavaScript (6.5); NeedAppearances and XFA (6.4); XMP present, unfiltered, with the PDF/A identification, and in step with the document information (6.6); embedded files per level, associated-file relationship, MIME type and names for -3 (6.8); layers named, ordered, without `AS` (6.9); alternate presentations and presentation steps (6.10); permissions (6.1.12). Not checked: the rest of ISO 19005 — among them the ICC profiles' own contents, every font format's internals (Type 1 and CFF programs are not parsed), Type 3 glyph procedures, image data, and the structure of every dictionary. PDF/X-4: one GTS_PDFX output intent with a printer profile, device colour, fonts embedded, a trim or art box (not both) inside the bleed and media boxes, nothing printing inside the page's boxes, no JavaScript or automatic actions, no transfer functions or PostScript, XMP with PDF/X-4, identifiers and dates, `Trapped` true or false, and a title.
 * **PDF/A-2u passes on 24 of the 49 corpus files** (`the_whole_corpus_converts_at_every_level`, release, ignored). Warraq completes a font's own ToUnicode where the reader's rungs (cmap, GSUB, glyph shape) name a glyph, and leaves alone a font with no map at all — a partial map would send the rest to the font's encoding and read Arabic as Latin letters. What remains are subsets with neither cmap nor GSUB (Chrome, CoreText), dots drawn as separate glyphs, and Type 3 marks: the copy is still written, and says it is not 2u. Every copy reads in Warraq as its file did, or nearer the truth (84 copies: 83 word for word, 1 nearer the truth where a broken map had lost letters — `every_corpus_copy_reads_as_well_as_the_file`).
 * **A substituted font moves letters.** A font a file names but does not carry is replaced by bundled Inter, Cairo or Amiri — the closest in style that has the characters — keeping the file's own codes; the new face's widths are its own, so lines can run a little longer or shorter than before. The report names each one. A font named through a CMap other than Identity (a Chinese GB1 font in one corpus file) cannot be replaced: its codes cannot be turned into characters, and the copy says it is not PDF/A.

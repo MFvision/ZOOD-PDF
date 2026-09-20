@@ -30,6 +30,10 @@ pub enum CoreError {
     Args(String),
     #[error("E_UNKNOWN_OP: no tool operation called {0}")]
     UnknownOp(String),
+    /// A Library index that cannot be read: damaged, cut short, written by
+    /// another version, or never an index at all (`tools::library::format`).
+    #[error("E_INDEX: {0}")]
+    Index(String),
     /// Signing and verifying (`warraq_sign`), with their own codes:
     /// `E_P12_PASSWORD`, `E_P12`, `E_TSA`, `E_SIGN`, …
     #[error("{0}")]
