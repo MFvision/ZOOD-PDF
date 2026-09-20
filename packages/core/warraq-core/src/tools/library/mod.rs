@@ -323,6 +323,13 @@ fn open_index(blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
 /// `library.add`: read a file's text — with the core, or as the host read it —
 /// and put it in the index.
 fn add(a: Add, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
+    // Before anything is read: a file under a key the index could never hold
+    // is a mistake in the host, not a file to be indexed.
+    if a.key.is_empty() || a.key.chars().count() > index::MAX_KEY_CHARS {
+        return Err(CoreError::Args(
+            "library.add needs a key, and a short one".into(),
+        ));
+    }
     let kind = a.kind.as_deref().and_then(Kind::parse);
     let name = if a.name.is_empty() {
         a.key
@@ -344,7 +351,13 @@ fn add(a: Add, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
 
     let (pages_text, pages) = match a.text {
         Some(text) => {
-            let pages = text.iter().map(|p| p.page + 1).max().unwrap_or(0);
+            // `saturating_add`: a host that says page 4 294 967 295 must get an
+            // answer, not an overflow.
+            let pages = text
+                .iter()
+                .map(|p| p.page.saturating_add(1))
+                .max()
+                .unwrap_or(0);
             (
                 text.into_iter().map(|p| (p.page, p.text)).collect(),
                 a.pages.unwrap_or(pages),
@@ -653,6 +666,50 @@ mod tests {
         assert_eq!(read["rules"].as_array().expect("rules").len(), 1);
         assert_eq!(read["tagged"], 0);
         close(handle);
+    }
+
+    #[test]
+    fn arguments_no_host_should_send_are_answered_not_crashed_on() {
+        let handle = open_new();
+        // The last page there could ever be, and one page past every cap.
+        let args = serde_json::json!({
+            "handle": handle,
+            "key": "/odd.pdf",
+            "name": "odd.pdf",
+            "kind": "something this build has never heard of",
+            "modified": i64::MIN,
+            "pages": u32::MAX,
+            "text": [{ "page": u32::MAX, "text": "مكتبة" }],
+        });
+        let out = json(&call_static("add", &args.to_string(), vec![]).expect("answered"));
+        assert_eq!(out["added"], true);
+        assert!(out["pages"].as_u64().unwrap_or(0) <= index::MAX_PAGES_PER_DOCUMENT as u64);
+        assert_eq!(out["guessedKind"], "pdf", "an unknown kind falls back");
+        assert_eq!(search_for(handle, "مكتبة")["total"], 1);
+
+        // An offset past the end, and a limit larger than the cap.
+        let far = serde_json::json!({
+            "handle": handle, "query": "مكتبة", "offset": u32::MAX, "limit": u32::MAX,
+        });
+        let out = json(&call_static("search", &far.to_string(), vec![]).expect("answered"));
+        assert_eq!(out["total"], 1);
+        assert!(out["hits"].as_array().expect("hits").is_empty());
+
+        // A key no file could have.
+        let long = serde_json::json!({ "handle": handle, "key": "ا".repeat(100_000) });
+        assert!(call_static("add", &long.to_string(), vec![vec![0u8; 8]]).is_err());
+        close(handle);
+    }
+
+    fn search_for(handle: u32, query: &str) -> serde_json::Value {
+        json(
+            &call_static(
+                "search",
+                &serde_json::json!({ "handle": handle, "query": query }).to_string(),
+                vec![],
+            )
+            .expect("searched"),
+        )
     }
 
     #[test]
