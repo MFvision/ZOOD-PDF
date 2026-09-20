@@ -181,6 +181,11 @@ score = Σᵢ idf(tᵢ)·tf(fᵢ, len) · coverage² · (1 + 2·ln(1+phrases) + 
   fraction held; a rarer word counts for more, because `idf` rises as fewer
   documents hold it.
 
+Two documents that score the same are ordered by name, so the same question
+gets the same answer twice. One search weighs at most 50 000 documents and
+reads at most 4 000 000 places before it stops widening: a word every file
+holds still answers.
+
 Hits are lines. Within a document they are ordered by what each line does — the
 phrase first, then more of the query's distinct words, then more often, then by
 page and line. `page` counts from zero and `line` is which line of that page it
