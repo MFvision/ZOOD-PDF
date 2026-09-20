@@ -4,13 +4,15 @@ import type { LinkTo, PageImage, PageLink } from './editPdf';
 import type { Clip, Matrix } from './matrix';
 
 /**
- * Edit PDF's changes, each one call to the core on the open document. A
- * change bumps the page's revision (`EDIT_ADDED`), so the page is drawn
- * again and its pictures and links listed again, and the file counts as
- * edited until it is saved. A failure says so and changes nothing.
+ * Edit PDF's changes, each one call to the core on the open document. The
+ * file as it was is kept first, so the change goes on the undo stack with
+ * the text edits (`rememberFileChange`) and Undo puts it back byte for byte.
+ * A change bumps the page's revision, so the page is drawn again and its
+ * pictures and links listed again, and the file counts as edited until it
+ * is saved. A failure says so and changes nothing.
  */
 export function useEditPdfActions() {
-  const { document } = useServices();
+  const { document, rememberFileChange } = useServices();
   const dispatch = useAppDispatch();
 
   const change = useCallback(
@@ -18,8 +20,9 @@ export function useEditPdfActions() {
       if (!document) return null;
       dispatch({ type: 'EDIT_BUSY', busy: true });
       try {
+        const before = await document.save();
         const { result } = await document.call<T>(op, { page, ...args }, blobs);
-        dispatch({ type: 'EDIT_ADDED', page });
+        rememberFileChange(page, before);
         return result;
       } catch {
         dispatch({ type: 'EDIT_BUSY', busy: false });
@@ -27,7 +30,7 @@ export function useEditPdfActions() {
         return null;
       }
     },
-    [document, dispatch],
+    [document, dispatch, rememberFileChange],
   );
 
   const read = useCallback(

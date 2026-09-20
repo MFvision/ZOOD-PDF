@@ -55,6 +55,14 @@ export interface EditPdfState {
   /** The latest lists per page, for the panel's inspector. */
   images: Readonly<Record<number, readonly PageImage[]>>;
   links: Readonly<Record<number, readonly PageLink[]>>;
+  /**
+   * The page revision each list was read at. A change clears `busy` before
+   * the page's list is read again; until it is, the list describes the page
+   * as it was, and a key or a click acting on it would undo part of the
+   * change (`listFresh`).
+   */
+  imagesAt: Readonly<Record<number, number>>;
+  linksAt: Readonly<Record<number, number>>;
 }
 
 const INITIAL: EditPdfState = {
@@ -66,6 +74,8 @@ const INITIAL: EditPdfState = {
   draft: null,
   images: {},
   links: {},
+  imagesAt: {},
+  linksAt: {},
 };
 
 let state: EditPdfState = INITIAL;
@@ -94,6 +104,11 @@ export function useEditPdf(): EditPdfState {
   );
 }
 
+/** Whether a page's list of pictures (or links) was read at the page as it is now. */
+export function listFresh(listedAt: Readonly<Record<number, number>>, page: number, revision: number): boolean {
+  return listedAt[page] === revision;
+}
+
 /** The selected picture, if its page's list still has it. */
 export function selectedImage(current: EditPdfState): PageImage | null {
   if (!current.image) return null;
@@ -105,9 +120,13 @@ export function selectedLink(current: EditPdfState): PageLink | null {
   return current.links[current.link.page]?.find((link) => link.id === current.link?.id) ?? null;
 }
 
-/** A picture's size in pixels, read from the file as the browser decodes it. */
+/**
+ * A picture's size in pixels, turned as its EXIF orientation says it is
+ * shown — as the core turns it before it goes in (`picture.rs`), so the box
+ * it is placed in has the proportions it is drawn with.
+ */
 export async function pictureSize(bytes: ArrayBuffer, type: string): Promise<{ width: number; height: number }> {
-  const bitmap = await createImageBitmap(new Blob([bytes], { type }));
+  const bitmap = await createImageBitmap(new Blob([bytes], { type }), { imageOrientation: 'from-image' });
   const size = { width: bitmap.width, height: bitmap.height };
   bitmap.close();
   return size;

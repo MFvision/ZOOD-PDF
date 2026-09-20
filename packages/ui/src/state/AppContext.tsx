@@ -31,7 +31,8 @@ import type { RedactionMark, ViewCommand, ViewToggles } from '../embed/embedCont
 import { installViewText } from '../embed/embedText';
 import { uuidV4 } from '@embedpdf/models';
 import { loadEditFont } from '../edit/editFont';
-import { canRedo as canRedoStack, canUndo as canUndoStack, redo as redoStack, undo as undoStack } from '../edit/editStack';
+import { resetEditPdf } from '../edit/editPdf';
+import { canRedo as canRedoStack, canUndo as canUndoStack, isFileEntry, redo as redoStack, snapshotsIn, undo as undoStack } from '../edit/editStack';
 import type { EditEntry, StackStep } from '../edit/editStack';
 import type { TKey } from '../i18n/messages';
 import { appReducer, createInitialState, warraqOwnsDocument } from './appReducer';
@@ -286,9 +287,14 @@ export interface AppServices {
   commitParagraph: (entry: EditEntry) => Promise<void>;
   /** Draws a new line of text at a point on a page, in page points. */
   addText: (page: number, x: number, y: number, size: number, text: string) => Promise<void>;
-  /** Re-applies the previous text of the last edit. */
+  /**
+   * Records a picture or link change on the undo stack: `before` is the
+   * file as it was (`save()` just before the change), put back on Undo.
+   */
+  rememberFileChange: (page: number, before: Uint8Array) => void;
+  /** Takes back the last edit: text, a picture or a link. */
   undoEdit: () => Promise<void>;
-  /** Re-applies the text that was undone. */
+  /** Makes the edit that was undone again. */
   redoEdit: () => Promise<void>;
   /** `save()` plus a download of `<original-name>.pdf`. */
   saveDocument: () => Promise<void>;
@@ -377,6 +383,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const switchInFlight = useRef(false);
   // Organize pages: the file as it was before each change, for undo and redo.
   const organizeHistory = useRef<{ undo: Uint8Array[]; redo: Uint8Array[] }>({ undo: [], redo: [] });
+  /** The file on the other side of each picture or link change on the edit stack. */
+  const fileSnapshots = useRef(new Map<number, Uint8Array>());
+  const nextSnapshot = useRef(1);
   const [organizeSteps, setOrganizeSteps] = useState({ undo: 0, redo: 0 });
   // Async work reads the latest state through this ref, never a stale closure.
   const stateRef = useRef(state);
@@ -929,11 +938,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  // Edit PDF's own state (pictures or links, what is picked) belongs to Edit
+  // mode: closed — by the toolbar's Edit text, the menu, another tool — it
+  // goes back to text with nothing picked, so no picture control is left
+  // acting on a document the view no longer shows, and Edit text opens text.
+  useEffect(() => {
+    if (!state.edit.active) resetEditPdf();
+  }, [state.edit.active]);
+
+  const rememberFileChange = useCallback((page: number, before: Uint8Array) => {
+    const snapshot = nextSnapshot.current;
+    nextSnapshot.current += 1;
+    fileSnapshots.current.set(snapshot, before);
+    dispatch({ type: 'EDIT_FILE_CHANGED', page, snapshot });
+  }, []);
+
+  // A snapshot the stack no longer names — undone and branched away from,
+  // past the bound, or of another document — is let go.
+  useEffect(() => {
+    const kept = snapshotsIn(state.edit.stack);
+    for (const id of [...fileSnapshots.current.keys()]) if (!kept.has(id)) fileSnapshots.current.delete(id);
+  }, [state.edit.stack]);
+
   /**
-   * A new line of text where the user pointed. Unlike a paragraph replacement
-   * this is not recorded on the undo stack — the stack replays replacements,
-   * and there is no paragraph here to replay — so the panel says so plainly
-   * instead of offering an Undo that would do nothing.
+   * A new line of text where the user pointed. There is no paragraph to
+   * replay for it, so it goes on the undo stack as a picture or link change
+   * does: the file as it was is kept, and Undo puts it back.
    */
   const addText = useCallback(
     async (page: number, x: number, y: number, size: number, text: string) => {
@@ -946,14 +976,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'EDIT_BUSY', busy: true });
       try {
         const font = await loadEditFont(stateRef.current.edit.font);
+        const before = await doc.save();
         await doc.add_text(page, x, y, size, text, font);
-        dispatch({ type: 'EDIT_ADDED', page });
+        rememberFileChange(page, before);
       } catch {
         dispatch({ type: 'EDIT_BUSY', busy: false });
         dispatch({ type: 'DOCUMENT_FAILED', error: 'edit.failed' });
       }
     },
-    [],
+    [rememberFileChange],
   );
 
   const commitParagraph = useCallback(
@@ -969,11 +1000,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [replaceParagraph],
   );
 
+  /**
+   * Undo or redo of a picture or link change: the file goes back to the
+   * snapshot's bytes, and the file as it is takes the snapshot's place, for
+   * the step back. As Organize's undo does, byte for byte.
+   */
+  const restoreSnapshot = useCallback(
+    async (snapshot: number): Promise<boolean> => {
+      const doc = documentRef.current;
+      const target = fileSnapshots.current.get(snapshot);
+      if (!doc || !target || stateRef.current.edit.busy) return false;
+      dispatch({ type: 'EDIT_BUSY', busy: true });
+      try {
+        const current = await doc.save();
+        const opened = await client.open(target.slice(), passwordRef.current);
+        fileSnapshots.current.set(snapshot, current);
+        void doc.free();
+        documentRef.current = opened;
+        setDocument(opened);
+        return true;
+      } catch {
+        dispatch({ type: 'EDIT_BUSY', busy: false });
+        dispatch({ type: 'DOCUMENT_FAILED', error: 'edit.failed' });
+        return false;
+      }
+    },
+    [client],
+  );
+
   const step = useCallback(
     async (next: (stack: AppState['edit']['stack']) => StackStep | null) => {
       const taken = next(stateRef.current.edit.stack);
       if (!taken) return;
       const { change, stack } = taken;
+      if (isFileEntry(change)) {
+        if (await restoreSnapshot(change.snapshot)) {
+          dispatch({ type: 'EDIT_STEPPED', stack, page: change.page, fontSubstituted: false });
+        }
+        return;
+      }
       const fontSubstituted = await replaceParagraph(
         change.page,
         change.paragraphIndex,
@@ -982,7 +1047,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (fontSubstituted === null) return;
       dispatch({ type: 'EDIT_STEPPED', stack, page: change.page, fontSubstituted });
     },
-    [replaceParagraph],
+    [replaceParagraph, restoreSnapshot],
   );
 
   const undoEdit = useCallback(() => step(undoStack), [step]);
@@ -1602,6 +1667,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       transformFile,
       clearRecent,
       commitParagraph,
+      rememberFileChange,
       addText,
       undoEdit,
       redoEdit,
@@ -1662,6 +1728,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       transformFile,
       clearRecent,
       commitParagraph,
+      rememberFileChange,
       addText,
       undoEdit,
       redoEdit,

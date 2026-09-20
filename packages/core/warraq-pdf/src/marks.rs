@@ -28,8 +28,8 @@ use lopdf::{dictionary, Dictionary, Object, ObjectId, StringFormat};
 use warraq_text::{base_direction, Direction, ShapedGlyph, Shaper};
 
 use crate::fonts::{embed_subset_font, FontSubset};
-use crate::pagework::{name as name_text, open_saves};
-use crate::picture::add_picture;
+use crate::pagework::name as name_text;
+use crate::picture::{add_picture, picture_info, upright_matrix};
 use crate::show::{show_line, ShownLine};
 use crate::{Error, PdfDocument, Result};
 
@@ -454,13 +454,32 @@ fn centre_at(
     (x, y)
 }
 
-/// Centres of the tiles of a tiled watermark, covering the page.
+/// Centres of the tiles of a tiled watermark, covering the page. A grid
+/// of more than `MAX_TILES` at the tiles' own spacing is spread out evenly
+/// until it fits, so small tiles still reach every edge of the page.
 fn tile_centres(w: f32, h: f32, degrees: f32, gap: f32, page: (f32, f32)) -> Vec<(f32, f32)> {
+    if !(page.0.is_finite() && page.1.is_finite() && page.0 > 0.0 && page.1 > 0.0) {
+        return vec![];
+    }
+    // A page as large as a file may claim, not as large as a float may.
+    let page = (page.0.min(1.0e5), page.1.min(1.0e5));
     let (s, c) = degrees.to_radians().sin_cos();
-    let step_x = (c.abs() * w + s.abs() * h + gap).max(8.0);
-    let step_y = (s.abs() * w + c.abs() * h + gap).max(8.0);
-    let nx = ((page.0 / step_x).ceil() as i64 / 2 + 1).min(40);
-    let ny = ((page.1 / step_y).ceil() as i64 / 2 + 1).min(40);
+    let mut step_x = (c.abs() * w + s.abs() * h + gap).max(8.0);
+    let mut step_y = (s.abs() * w + c.abs() * h + gap).max(8.0);
+    loop {
+        if let Some(tiles) = tile_grid(step_x, step_y, page) {
+            return tiles;
+        }
+        step_x *= 1.25;
+        step_y *= 1.25;
+    }
+}
+
+/// The brick-wall grid of tile centres at this spacing over the page, or
+/// `None` when it has more than `MAX_TILES`.
+fn tile_grid(step_x: f32, step_y: f32, page: (f32, f32)) -> Option<Vec<(f32, f32)>> {
+    let nx = (page.0 / step_x).ceil() as i64 / 2 + 1;
+    let ny = (page.1 / step_y).ceil() as i64 / 2 + 1;
     let mut out = Vec::new();
     for j in -ny..=ny {
         // Every other row shifted by half a step, like a brick wall.
@@ -470,13 +489,13 @@ fn tile_centres(w: f32, h: f32, degrees: f32, gap: f32, page: (f32, f32)) -> Vec
             let y = page.1 / 2.0 + j as f32 * step_y;
             if x > -step_x && x < page.0 + step_x && y > -step_y && y < page.1 + step_y {
                 out.push((x, y));
-            }
-            if out.len() >= MAX_TILES {
-                return out;
+                if out.len() > MAX_TILES {
+                    return None;
+                }
             }
         }
     }
-    out
+    Some(out)
 }
 
 fn real(v: f32) -> Object {
@@ -549,6 +568,12 @@ impl PdfDocument {
             .collect();
         out.sort_by_key(|p| p.id);
         out
+    }
+
+    /// Whether page `index` carries any of Warraq's marks.
+    pub fn has_marks(&self, index: usize) -> bool {
+        self.page_id(index)
+            .is_ok_and(|page_id| !self.marks_on(page_id).is_empty())
     }
 
     /// Every mark in the file, one entry per mark with the pages it is on.
@@ -682,8 +707,16 @@ impl PdfDocument {
                 Some((shaper, subset, font_id, glyphs))
             }
         };
+        // A picture is drawn as it is seen: a photo's EXIF orientation turns
+        // its proportions and is drawn with it, the pixels kept as stored.
         let picture = match mark.picture() {
-            Some((bytes, share)) => Some((add_picture(&mut self.doc, bytes)?, *share)),
+            Some((bytes, share)) => {
+                let info = picture_info(bytes);
+                let added = add_picture(&mut self.doc, bytes)?;
+                let seen = info.map_or((added.width, added.height), |i| i.shown());
+                let turn = upright_matrix(info.map_or(1, |i| i.orientation), 0.0, 0.0, 1.0, 1.0);
+                Some((added, *share, seen, turn))
+            }
             None => None,
         };
         if !has_text && picture.is_none() {
@@ -772,10 +805,10 @@ impl PdfDocument {
                     }
                 }
             }
-            if let Some((picture, share)) = &picture {
+            if let Some((picture, share, (seen_w, seen_h), turn)) = &picture {
                 resources.set("XObject", dictionary! { "I" => picture.id });
                 let width = upright.0 * share.clamp(0.01, 1.0);
-                let height = width * picture.height as f32 / picture.width.max(1) as f32;
+                let height = width * *seen_h as f32 / (*seen_w).max(1) as f32;
                 let anchor = items[k].first().map_or(
                     Anchor {
                         h: HAlign::Center,
@@ -807,6 +840,9 @@ impl PdfDocument {
                         -width / 2.0,
                         -height / 2.0,
                     ]));
+                    if *turn != [1.0, 0.0, 0.0, 1.0, 0.0, 0.0] {
+                        ops.push(matrix_op(*turn));
+                    }
                     ops.push(op("Do", vec![Object::Name(b"I".to_vec())]));
                     ops.push(op("Q", vec![]));
                 }
@@ -987,12 +1023,7 @@ impl PdfDocument {
         head.push_str("q\n");
         // Counted over the page's streams as one: a `q` in one may be closed
         // by a `Q` in the next.
-        let mut joined = Vec::new();
-        for id in &theirs {
-            joined.extend(self.stream_bytes(*id).unwrap_or_default());
-            joined.push(b'\n');
-        }
-        let open = open_saves(&joined);
+        let open = self.open_saves_in(&theirs)?;
         let mut tail = "Q\n".repeat(open + 1);
         for p in marks.iter().filter(|p| p.front) {
             tail.push_str(&draw(p));
@@ -1089,7 +1120,7 @@ impl PdfDocument {
         if !bytes.windows(10).any(|w| w == b"WarraqMark") {
             return Ok(());
         }
-        let ops = crate::lex::lex(&bytes);
+        let ops = crate::lex::lex(&bytes)?;
         let mut cut: Vec<std::ops::Range<usize>> = Vec::new();
         let mut k = 0;
         while k < ops.len() {
@@ -1175,6 +1206,35 @@ pub(crate) mod tests {
             file_name: "file.pdf".into(),
             spec: "{\"kind\":\"test\"}".into(),
             modified: "D:20260918120000Z".into(),
+        }
+    }
+
+    /// A small tiled watermark still covers the whole page — top rows
+    /// included — however many tiles it would take at its own spacing: past
+    /// the bound the tiles spread out evenly instead of stopping short.
+    #[test]
+    fn a_small_tiled_watermark_covers_the_whole_page() {
+        let a4 = (595.0, 842.0);
+        for (w, h, degrees) in [
+            (12.0, 8.0, 45.0),   // an 8 pt word, turned
+            (40.0, 6.0, 0.0),    // 6 pt CONFIDENTIAL, level
+            (30.0, 30.0, 0.0),   // a 5 % picture
+            (200.0, 72.0, 45.0), // the default: nothing to spread
+        ] {
+            let centres = tile_centres(w, h, degrees, h * 2.0, a4);
+            assert!(centres.len() <= MAX_TILES, "{}", centres.len());
+            let top = centres.iter().map(|c| c.1).fold(f32::MIN, f32::max);
+            let bottom = centres.iter().map(|c| c.1).fold(f32::MAX, f32::min);
+            let right = centres.iter().map(|c| c.0).fold(f32::MIN, f32::max);
+            let left = centres.iter().map(|c| c.0).fold(f32::MAX, f32::min);
+            assert!(
+                top >= a4.1 * 0.9 && bottom <= a4.1 * 0.1,
+                "{w}×{h}: {bottom}..{top}"
+            );
+            assert!(
+                right >= a4.0 * 0.9 && left <= a4.0 * 0.1,
+                "{w}×{h}: {left}..{right}"
+            );
         }
     }
 
@@ -1383,6 +1443,61 @@ pub(crate) mod tests {
         );
         assert!(doc.add_mark(&text, &[0], None, true).is_err());
         assert!(doc.add_mark(&text, &[9], Some(AMIRI), true).is_err());
+    }
+
+    /// A phone photo as a watermark is drawn upright, at the proportions it
+    /// is seen at: its stored left half (red) above its right half.
+    #[test]
+    fn a_turned_photo_watermark_is_drawn_upright() {
+        let mut doc =
+            PdfDocument::open(corpus("chrome-notonaskh-justified-3pages.pdf"), None).unwrap();
+        let m = PageMark {
+            rotation: 0.0,
+            ..mark(
+                MarkKind::Watermark,
+                MarkContent::Watermark {
+                    text: None,
+                    image: Some((crate::picture::tests::turned_photo(), 0.2)),
+                    anchor: Anchor {
+                        h: HAlign::Center,
+                        v: VAlign::Middle,
+                    },
+                    tiled: false,
+                },
+            )
+        };
+        doc.add_mark(&m, &[0], None, true).unwrap();
+        let page = doc.page_id(0).unwrap();
+        let placed = doc.marks_on(page).remove(0);
+        let form = doc
+            .doc
+            .get_object(placed.form)
+            .unwrap()
+            .as_stream()
+            .unwrap();
+        let content = Content::decode(&form.decompressed_content().unwrap()).unwrap();
+        // The transform the picture is drawn under: every `cm` before `Do`.
+        let mut ctm = crate::text_walk::Matrix::IDENTITY;
+        for op in &content.operations {
+            match op.operator.as_str() {
+                "cm" => {
+                    let v: Vec<f32> = op.operands.iter().map(|o| o.as_float().unwrap()).collect();
+                    ctm = crate::text_walk::Matrix([v[0], v[1], v[2], v[3], v[4], v[5]]).then(ctm);
+                }
+                "Do" => break,
+                _ => {}
+            }
+        }
+        // User space, y up: red above blue; the drawn box taller than wide.
+        let (_, red) = ctm.apply(0.25, 0.5);
+        let (_, blue) = ctm.apply(0.75, 0.5);
+        assert!(red > blue, "{red} {blue}");
+        let (x0, y0) = ctm.apply(0.0, 0.0);
+        let (x1, y1) = ctm.apply(1.0, 1.0);
+        assert!(
+            (y1 - y0).abs() > (x1 - x0).abs() * 1.9,
+            "{x0},{y0} {x1},{y1}"
+        );
     }
 
     #[test]

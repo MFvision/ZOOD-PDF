@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ImagePlus, Layers, Pencil, Trash, X } from 'lucide-react';
 import { Icon } from '../components/Icon';
@@ -9,7 +9,7 @@ import type { EditFontId } from '../edit/editFont';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
-import { DEFAULT_FORM, TOKENS, formOf, hasContent, pagesLabel, parsePages, specOf } from './markSpec';
+import { DEFAULT_FORM, TOKENS, batesSample, formOf, hasContent, pageNumberSample, pagesLabel, parsePages, specOf } from './markSpec';
 import type { MarkForm, MarkKind, MarkPosition, MarkSection } from './markSpec';
 import './marks.css';
 
@@ -33,6 +33,9 @@ const TOKEN_LABELS: Record<(typeof TOKENS)[number], TKey> = {
 };
 /** How long the controls must hold still before the preview is drawn again. */
 const PREVIEW_DELAY_MS = 350;
+/** The file is asked for this many times, this far apart, before the panel says it could not be read. */
+const LOAD_ATTEMPTS = 40;
+const LOAD_RETRY_MS = 250;
 
 /** A label above its control. */
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -44,8 +47,11 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/** What a listed mark says, in a few words. */
-function summary(mark: ListedMark, t: (key: TKey) => string): string {
+/**
+ * What a listed mark says, in a few words — as it is drawn: page numbers
+ * from its own start, in its own digits; a Bates number from its start.
+ */
+function summary(mark: ListedMark, t: (key: TKey, values?: Record<string, string | number>) => string): string {
   const spec = mark.spec ?? {};
   switch (mark.kind) {
     case 'watermark':
@@ -53,10 +59,14 @@ function summary(mark: ListedMark, t: (key: TKey) => string): string {
     case 'header':
     case 'footer':
       return Array.isArray(spec.slots) ? spec.slots.filter((s) => typeof s === 'string' && s.trim()).join(' · ') : '';
-    case 'pageNumber':
-      return t(`marks.format.${typeof spec.format === 'string' ? spec.format : 'plain'}` as TKey);
+    case 'pageNumber': {
+      const numerals = spec.numerals === 'arabic' ? 'arabic' : 'western';
+      const start = typeof spec.start === 'number' ? spec.start : 1;
+      const sample = pageNumberSample(numerals, start, mark.pages.length, spec.skipFirst === true);
+      return t(`marks.format.${typeof spec.format === 'string' ? spec.format : 'plain'}` as TKey, sample);
+    }
     case 'bates':
-      return `${String(spec.prefix ?? '')}${'0'.repeat(Math.max(0, Number(spec.width ?? 6) - 1))}1${String(spec.suffix ?? '')}`;
+      return batesSample(spec);
   }
 }
 
@@ -91,7 +101,9 @@ export function PageMarksPanel() {
   const documentName = state.document?.name ?? 'document.pdf';
   const pageCount = state.document?.pageCount ?? 0;
   const ready = state.view === 'viewer' && state.document !== null && state.switching === null;
-  const pages = parsePages(form.pages, pageCount);
+  // One array for as long as the field says the same: the preview's request
+  // depends on it, and a new one each render drew the preview again forever.
+  const pages = useMemo(() => parsePages(form.pages, pageCount), [form.pages, pageCount]);
   const previewPage = Math.min(Math.max(0, state.currentPage - 1), Math.max(0, pageCount - 1));
   const drawable = hasContent(form, picture !== null) && pages !== null;
   const password = documentPassword ?? null;
@@ -108,18 +120,29 @@ export function PageMarksPanel() {
   // The file as it stands, when the panel opens and whenever it is reopened.
   const documentId = state.document?.id ?? null;
   const loaded = documentId !== null && loadedFor === documentId;
+  const [listFailed, setListFailed] = useState(false);
   useEffect(() => {
     if (!ready || documentId === null) return;
     let cancelled = false;
     void (async () => {
+      setListFailed(false);
+      // The view may not hold the file yet — the tool chosen before a file
+      // was opened, say — so it is asked again for a while.
+      let bytes: ArrayBuffer | null = null;
+      for (let attempt = 0; attempt < LOAD_ATTEMPTS && !cancelled; attempt += 1) {
+        bytes = await services.fileBytesForChange().catch(() => null);
+        if (bytes) break;
+        await new Promise((wake) => setTimeout(wake, LOAD_RETRY_MS));
+      }
+      if (cancelled) return;
       try {
-        const bytes = await services.fileBytesForChange();
-        if (cancelled || !bytes) return;
+        if (!bytes) throw new Error('the file could not be read');
         base.current = bytes;
         await list(bytes);
       } catch {
-        // Listed or not, the panel can still add marks.
+        if (!cancelled) setListFailed(true);
       }
+      // Listed or not, the panel can still add marks: Apply reads the file afresh.
       if (!cancelled) setLoadedFor(documentId);
     })();
     return () => {
@@ -160,10 +183,8 @@ export function PageMarksPanel() {
 
   // The page on screen, drawn by the core with the mark on it.
   useEffect(() => {
-    if (!loaded || !base.current || !drawable) {
-      setPreview(null);
-      return;
-    }
+    // Nothing to draw: the canvas is hidden (below) until there is.
+    if (!loaded || !drawable) return;
     let cancelled = false;
     const timer = setTimeout(() => {
       void (async () => {
@@ -171,7 +192,10 @@ export function PageMarksPanel() {
           const size = state.document?.pageSizes[previewPage];
           const width = canvas.current?.parentElement?.clientWidth ?? 240;
           const scale = Math.min(2, ((width || 240) * (globalThis.devicePixelRatio || 1)) / (size?.[0] ?? 600));
-          const { args, blobs } = await request(base.current!, { page: previewPage, scale });
+          // The file as the panel read it, or — when it could not then — now.
+          base.current ??= await services.fileBytesForChange();
+          if (!base.current) throw new Error('the file could not be read');
+          const { args, blobs } = await request(base.current, { page: previewPage, scale });
           const { result, blobs: pixels } = await client.callStatic<{ width: number; height: number }>('marks.preview', args, blobs);
           if (!cancelled && pixels[0]) {
             setPreview({ width: result.width, height: result.height, rgba: pixels[0] });
@@ -186,6 +210,7 @@ export function PageMarksPanel() {
       cancelled = true;
       clearTimeout(timer);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `services` changes with every file handed over; its reader does not
   }, [loaded, drawable, request, previewPage, client, state.document]);
 
   useEffect(() => {
@@ -204,9 +229,10 @@ export function PageMarksPanel() {
     try {
       // Fresh: something may have been drawn or filled since the panel opened.
       const bytes = await services.fileBytesForChange();
-      if (!bytes) return;
+      // Said, not dropped: a change that cannot be made is a failure.
+      if (!bytes) throw new Error('the file could not be read');
       const changed = await run(bytes);
-      if (!changed) return;
+      if (!changed) throw new Error('the core returned no file');
       base.current = changed.slice(0);
       await services.replaceFile(changed);
       await list(base.current);
@@ -458,7 +484,7 @@ export function PageMarksPanel() {
               <select className="select" value={form.numberFormat} onChange={(e) => set('numberFormat', e.target.value as MarkForm['numberFormat'])}>
                 {(['plain', 'ofTotal', 'pageOfEnglish', 'pageOfArabic', 'roman'] as const).map((format) => (
                   <option key={format} value={format}>
-                    {t(`marks.format.${format}` as TKey)}
+                    {t(`marks.format.${format}` as TKey, pageNumberSample(form.numerals, Math.max(0, Math.floor(form.startNumber))))}
                   </option>
                 ))}
               </select>
@@ -520,7 +546,7 @@ export function PageMarksPanel() {
       </fieldset>
 
       <figure className="marks-preview">
-        <canvas ref={canvas} hidden={!preview || !drawable} aria-label={t('marks.preview', { page: previewPage + 1 })} role="img" />
+        <canvas ref={canvas} hidden={!preview || !drawable || !loaded} aria-label={t('marks.preview', { page: previewPage + 1 })} role="img" />
         <figcaption className="tool-panel-note">
           {previewFailed && drawable ? t('marks.previewFailed') : t('marks.preview', { page: previewPage + 1 })}
         </figcaption>
@@ -540,7 +566,12 @@ export function PageMarksPanel() {
 
       <fieldset className="marks-list">
         <legend>{t('marks.inFile')}</legend>
-        {loaded && marks.length === 0 && <p className="tool-panel-note">{t('marks.none')}</p>}
+        {listFailed && (
+          <p className="tool-panel-note" role="status">
+            {t('marks.listFailed')}
+          </p>
+        )}
+        {loaded && !listFailed && marks.length === 0 && <p className="tool-panel-note">{t('marks.none')}</p>}
         {marks.length > 0 && (
           <ul>
             {marks.map((mark) => (

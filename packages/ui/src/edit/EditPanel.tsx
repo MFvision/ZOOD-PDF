@@ -30,7 +30,7 @@ export function EditPanel() {
   // A file opened in the editor starts with nothing picked on it.
   const documentId = state.document?.id;
   useEffect(() => {
-    updateEditPdf({ image: null, link: null, draft: null, pending: null, cropping: false, images: {}, links: {} });
+    updateEditPdf({ image: null, link: null, draft: null, pending: null, cropping: false, images: {}, links: {}, imagesAt: {}, linksAt: {} });
   }, [documentId]);
 
   const chooseKind = (next: EditKind) => {
@@ -61,8 +61,9 @@ export function EditPanel() {
           </button>
         ))}
       </div>
-      {kind === 'images' && hasDocument && <ImagesInspector />}
-      {kind === 'links' && hasDocument && <LinksInspector />}
+      {/* The page layers these act on exist only in Edit mode; leaving it goes back to text. */}
+      {kind === 'images' && hasDocument && active && <ImagesInspector />}
+      {kind === 'links' && hasDocument && active && <LinksInspector />}
       {kind === 'text' && <TextControls />}
     </div>
   );

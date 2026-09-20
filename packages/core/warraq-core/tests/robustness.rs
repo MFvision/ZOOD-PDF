@@ -197,18 +197,15 @@ fn searching_for_any_character_of_the_arabic_presentation_blocks_returns() {
     }
 }
 
-/// A one-page PDF whose page is `side` points square, with a correct xref.
-fn page_of_side(side: u32) -> Vec<u8> {
-    let objects = [
-        "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
-        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_string(),
-        format!("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {side} {side}] >>"),
-    ];
+/// A file of these objects (1-based), with a correct xref.
+fn file_of(objects: &[Vec<u8>]) -> Vec<u8> {
     let mut out = b"%PDF-1.7\n".to_vec();
     let mut offsets = vec![];
     for (i, body) in objects.iter().enumerate() {
         offsets.push(out.len());
-        out.extend_from_slice(format!("{} 0 obj\n{body}\nendobj\n", i + 1).as_bytes());
+        out.extend_from_slice(format!("{} 0 obj\n", i + 1).as_bytes());
+        out.extend_from_slice(body);
+        out.extend_from_slice(b"\nendobj\n");
     }
     let xref = out.len();
     out.extend_from_slice(
@@ -225,6 +222,33 @@ fn page_of_side(side: u32) -> Vec<u8> {
         .as_bytes(),
     );
     out
+}
+
+/// One A4 page drawing `content`, and a form `/Fm` that draws it again and
+/// can draw itself — as `packages/core/fuzz/fuzz_targets/lex_content.rs`.
+fn one_page(content: &[u8]) -> Vec<u8> {
+    let stream = |dict: &str| {
+        let mut s = format!("<< {dict} /Length {} >>\nstream\n", content.len()).into_bytes();
+        s.extend_from_slice(content);
+        s.extend_from_slice(b"\nendstream");
+        s
+    };
+    file_of(&[
+        b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_vec(),
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /XObject << /Fm 5 0 R >> >> >>".to_vec(),
+        stream(""),
+        stream("/Type /XObject /Subtype /Form /BBox [0 0 595 842] /Resources << /XObject << /Fm 5 0 R >> >>"),
+    ])
+}
+
+/// A one-page PDF whose page is `side` points square.
+fn page_of_side(side: u32) -> Vec<u8> {
+    file_of(&[
+        b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_vec(),
+        format!("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {side} {side}] >>").into_bytes(),
+    ])
 }
 
 /// A page's size is read from the file. The home screen draws page 1 of every
@@ -255,4 +279,78 @@ fn a_page_too_large_to_draw_is_refused_not_allocated() {
         .render_page(0, 8.0)
         .expect("an A4-sized page at 8× is within the budget");
     assert_eq!((page.width, page.height), (6736, 6736));
+}
+
+/// Content streams built from the pieces that have broken content lexers —
+/// strings and escapes cut off at the end, inline images with impossible
+/// sizes, forms that draw themselves — never panic and never hang: listed,
+/// moved and deleted as Edit PDF's pictures are, and held to the lexer's
+/// promises (every range inside the stream, in order).
+#[test]
+fn hostile_content_streams_never_panic_or_hang() {
+    const PIECES: &[&[u8]] = &[
+        b"q ",
+        b"Q ",
+        b"1 0 0 1 10 20 cm ",
+        b"/Fm Do ",
+        b"/Fm Do /Fm Do ",
+        b"BI ",
+        b"/W 16 ",
+        b"/H 4095 ",
+        b"/BPC 524416 ",
+        b"/BPC 8 ",
+        b"/CS /G ",
+        b"ID ",
+        b"\x80 ",
+        b" EI ",
+        b"( EI ) Tj ",
+        b"(",
+        b"\\",
+        b")",
+        b"[",
+        b"]",
+        b"<<",
+        b">>",
+        b"<ab",
+        b"%comment\n",
+        b"/WarraqImage BMC ",
+        b"0 0 1 1 re W n ",
+        b"EMC ",
+        b"9999999999 ",
+        b"-.5e3 ",
+        b"/#zz ",
+    ];
+    let mut rng = Rng(0x5eed_1e57);
+    let mut slowest = Duration::ZERO;
+    for case in 0..600 {
+        let mut content = Vec::new();
+        for _ in 0..rng.below(40) {
+            content.extend_from_slice(PIECES[rng.below(PIECES.len())]);
+        }
+        let shown = String::from_utf8_lossy(&content).into_owned();
+        assert!(
+            warraq_pdf::lex_ranges_hold(&content),
+            "case {case}: {shown:?}"
+        );
+        let t = Instant::now();
+        let ran = catch_unwind(AssertUnwindSafe(|| {
+            if let Ok(mut doc) = warraq_pdf::PdfDocument::open(one_page(&content), None) {
+                if let Ok(images) = doc.list_images(0) {
+                    for image in images.iter().take(4) {
+                        let crop = Some([0.1, 0.1, 0.9, 0.9]);
+                        let _ = doc.transform_image(0, &image.id, image.matrix, crop);
+                    }
+                    if let Some(image) = images.last() {
+                        let _ = doc.delete_image(0, &image.id);
+                    }
+                }
+            }
+        }));
+        assert!(ran.is_ok(), "case {case} panicked: {shown:?}");
+        slowest = slowest.max(t.elapsed());
+    }
+    assert!(
+        slowest < Duration::from_secs(10),
+        "a content stream took {slowest:?}"
+    );
 }

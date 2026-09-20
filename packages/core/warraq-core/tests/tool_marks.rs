@@ -50,7 +50,7 @@ fn marks_text(pdf: &[u8], page: usize) -> (String, String) {
 fn line_at(pdf: &[u8], page: usize, needle: &str) -> (f32, f32, f32, f32) {
     let doc = Document::open(pdf.to_vec(), None).unwrap();
     let line = doc
-        .artifact_lines(page)
+        .mark_lines(page)
         .unwrap()
         .into_iter()
         .find(|l| l.text.contains(needle))
@@ -337,4 +337,32 @@ fn a_mark_being_changed_takes_the_place_of_the_old_one() {
     assert_eq!(marks[0]["pages"], json!([1, 2]));
     assert_eq!(marks[0]["spec"]["text"], "نهائي");
     assert!(!marks_text(&pdf, 0).0.contains("مسودة"));
+}
+
+#[test]
+fn search_and_copy_in_the_page_view_see_the_marks_the_reading_leaves_out() {
+    let pdf = add(
+        &corpus(THREE),
+        json!({ "kind": "header", "slots": ["التقرير السنوي", "", ""], "size": 11 }),
+        &[0],
+    );
+    let mut doc = Document::open(pdf, None).unwrap();
+    // What a person sees on the page is found, running heads too.
+    let found = value(
+        &doc.call(
+            "view.search",
+            &json!({ "query": "السنوي" }).to_string(),
+            vec![],
+        )
+        .unwrap(),
+    );
+    assert_eq!(found["total"], 1, "{found}");
+    // Edit text, Export, Compare and AI still read the page without it.
+    let content: String = doc
+        .text_lines(0)
+        .unwrap()
+        .iter()
+        .map(|l| l.text.clone())
+        .collect();
+    assert!(!content.contains("السنوي"), "{content}");
 }
