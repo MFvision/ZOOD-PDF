@@ -192,7 +192,8 @@ page and line. `page` counts from zero and `line` is which line of that page it
 is, counting from zero. `spans` are byte ranges of `text` that answered, so the
 interface marks the match over the person's own writing, marks and all.
 `total` is how many hits were ranked, at most 5 000 (50 from any one document),
-and `offset`/`limit` page through that ranking. `score` is the document's; every
+and `offset`/`limit` page through that ranking; `limit` is 50 when it is left
+out, and 5 000 at most. `score` is the document's; every
 hit of one document carries the same one.
 
 A file that is a copy of another — the same report in two folders — is answered
