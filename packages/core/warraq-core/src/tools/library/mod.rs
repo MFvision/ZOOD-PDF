@@ -349,6 +349,26 @@ fn add(a: Add, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
         return skipped("indexFull", kind.unwrap_or(Kind::Pdf));
     }
 
+    // Nor is a file that has not been written to since it went in read again:
+    // asked here, before the bytes are opened, a second pass over a folder of
+    // a thousand files costs a lookup each. (The index asks again for itself —
+    // this is a saving, not the rule.)
+    if a.text.is_none() {
+        let guess = kind.or_else(|| Kind::from_name(&name)).unwrap_or(Kind::Pdf);
+        let known = with_index(a.handle, |index| {
+            // Whether a PDF is really a scan is only known once it has been
+            // read, so a PDF is asked about under both names.
+            let mut answer = index.unchanged(&a.key, a.modified, bytes, guess, false);
+            if answer.is_none() && guess == Kind::Pdf {
+                answer = index.unchanged(&a.key, a.modified, bytes, Kind::Scan, false);
+            }
+            answer
+        })?;
+        if let Some(outcome) = known {
+            return answer(&outcome);
+        }
+    }
+
     let (pages_text, pages) = match a.text {
         Some(text) => {
             // `saturating_add`: a host that says page 4 294 967 295 must get an
@@ -388,6 +408,11 @@ fn add(a: Add, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
         pages: a.pages.unwrap_or(pages),
     };
     let outcome = with_index(a.handle, |index| index.add(about, pages_text, a.now))??;
+    answer(&outcome)
+}
+
+/// What `library.add` says, however it got there.
+fn answer(outcome: &index::AddOutcome) -> Result<Reply, CoreError> {
     Reply::of(&serde_json::json!({
         "added": outcome.added,
         "skipped": outcome.skipped,
@@ -399,16 +424,16 @@ fn add(a: Add, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
     }))
 }
 
-fn skipped(why: &str, kind: Kind) -> Result<Reply, CoreError> {
-    Reply::of(&serde_json::json!({
-        "added": false,
-        "skipped": why,
-        "pages": 0,
-        "chars": 0,
-        "date": serde_json::Value::Null,
-        "guessedKind": kind.as_str(),
-        "truncated": false,
-    }))
+fn skipped(why: &'static str, kind: Kind) -> Result<Reply, CoreError> {
+    answer(&index::AddOutcome {
+        added: false,
+        skipped: Some(why),
+        pages: 0,
+        chars: 0,
+        date: None,
+        kind,
+        truncated: false,
+    })
 }
 
 /// A file's text, one entry per page, and how many pages it has.

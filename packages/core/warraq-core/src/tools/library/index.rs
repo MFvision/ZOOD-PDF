@@ -424,32 +424,9 @@ impl Index {
             kind = Kind::Scan;
         }
 
-        // Unchanged: the host's own size-and-time check, kept here too so a
-        // second pass over a folder never reads a file twice.
-        if let Some(&slot) = self.by_key.get(&about.key) {
-            if let Some(doc) = self.doc(slot) {
-                // A scan already in the index carries no text of its own. When
-                // the interface comes back with what OCR read, that is not the
-                // same file coming round again, however untouched the file is.
-                let had_text = self.content(doc.content).is_some_and(|c| c.chars > 0);
-                let unchanged = about.modified != 0
-                    && doc.modified == about.modified
-                    && doc.bytes == about.bytes
-                    && doc.kind == kind
-                    && (had_text || empty);
-                if unchanged {
-                    let content = self.content(doc.content);
-                    return Ok(AddOutcome {
-                        added: false,
-                        skipped: Some("unchanged"),
-                        pages: content.map(|c| c.pages).unwrap_or(0),
-                        chars: content.map(|c| c.chars).unwrap_or(0),
-                        date: content.and_then(|c| c.date.as_ref()).map(|d| d.iso.clone()),
-                        kind: doc.kind,
-                        truncated: content.map(|c| c.truncated).unwrap_or(false),
-                    });
-                }
-            }
+        if let Some(outcome) = self.unchanged(&about.key, about.modified, about.bytes, kind, !empty)
+        {
+            return Ok(outcome);
         }
 
         if self.live_docs >= MAX_DOCUMENTS {
@@ -537,6 +514,43 @@ impl Index {
             chars: content.map(|c| c.chars).unwrap_or(0),
             date: content.and_then(|c| c.date.as_ref()).map(|d| d.iso.clone()),
             kind,
+            truncated: content.map(|c| c.truncated).unwrap_or(false),
+        })
+    }
+
+    /// Whether this file is already in the index as it stands — the host's own
+    /// size-and-time check, kept here too so that a second pass over a folder
+    /// never reads a file twice. `library.add` asks before it opens the bytes
+    /// it was handed, so reopening the app over an unchanged folder costs
+    /// nothing at all.
+    ///
+    /// `brings_text` is false when the caller has nothing to offer but the
+    /// file's bytes: a scan already in the index carries no text of its own,
+    /// and when the interface comes back with what OCR read, that is not the
+    /// same file coming round again however untouched the file is.
+    pub fn unchanged(
+        &self,
+        key: &str,
+        modified: i64,
+        bytes: u64,
+        kind: Kind,
+        brings_text: bool,
+    ) -> Option<AddOutcome> {
+        let doc = self.doc(*self.by_key.get(key)?)?;
+        let content = self.content(doc.content);
+        let had_text = content.is_some_and(|c| c.chars > 0);
+        let unchanged = modified != 0
+            && doc.modified == modified
+            && doc.bytes == bytes
+            && doc.kind == kind
+            && (had_text || !brings_text);
+        unchanged.then(|| AddOutcome {
+            added: false,
+            skipped: Some("unchanged"),
+            pages: content.map(|c| c.pages).unwrap_or(0),
+            chars: content.map(|c| c.chars).unwrap_or(0),
+            date: content.and_then(|c| c.date.as_ref()).map(|d| d.iso.clone()),
+            kind: doc.kind,
             truncated: content.map(|c| c.truncated).unwrap_or(false),
         })
     }

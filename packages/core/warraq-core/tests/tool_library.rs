@@ -136,6 +136,18 @@ fn the_whole_arabic_corpus_goes_into_one_index_and_is_searched_across() {
     }
     let indexing = started.elapsed();
 
+    // The same folder offered again: nothing has been written to, so nothing
+    // is opened, let alone read.
+    let started = Instant::now();
+    for file in &files {
+        add_file(handle, file, None);
+    }
+    let second_pass = started.elapsed();
+    assert!(
+        second_pass * 5 < indexing,
+        "a second pass took {second_pass:?} against {indexing:?}: files are being read twice"
+    );
+
     // Only the protected files are refused, and they say why.
     assert!(
         skipped.iter().all(|s| s.contains("password")),
@@ -195,8 +207,9 @@ fn the_whole_arabic_corpus_goes_into_one_index_and_is_searched_across() {
         "stats says {held} bytes, saving writes {written}"
     );
     eprintln!(
-        "library: {added} files indexed in {indexing:?}; index {} KB on disk, {} KB held; \
-         one search {searching:?}",
+        "library: {added} files ({} words) indexed in {indexing:?}, the same folder again in \
+         {second_pass:?}; index {} KB written, {} KB by stats; one search {searching:?}",
+        stats["words"].as_u64().unwrap_or(0),
         bytes.len() / 1024,
         stats["bytes"].as_u64().unwrap_or(0) / 1024,
     );
@@ -291,6 +304,11 @@ fn a_second_pass_over_a_folder_reads_nothing_twice() {
         again["chars"].as_u64().unwrap_or(0) > 0,
         "it still says what it holds"
     );
+    // A scan is asked about under both names: whether a PDF is one is only
+    // known once it has been read, and reading it again is the whole cost.
+    let scan = corpus_root().join("generated/scan-notonaskh-300dpi-skewed-jpeg.pdf");
+    assert_eq!(add_file(handle, &scan, None)["guessedKind"], "scan");
+    assert_eq!(add_file(handle, &scan, None)["skipped"], "unchanged");
 
     // The host may know the file's size without handing over its bytes, and a
     // size that changed means the file did.
