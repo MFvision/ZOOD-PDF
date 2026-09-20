@@ -139,6 +139,8 @@ export function ImageLayer({ document, index, scale }: LayerProps) {
   return (
     <div
       className="edit-pdf-layer"
+      // Until the page's pictures are listed, a press here does nothing.
+      aria-busy={waiting || undefined}
       ref={layer}
       onPointerMove={onMove}
       onPointerUp={(event) => void finish(event)}

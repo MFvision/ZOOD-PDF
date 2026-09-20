@@ -28,6 +28,33 @@ pub struct Bitmap {
     pub rgba: Vec<u8>,
 }
 
+/// The most pixels a page is ever drawn with: 64 million, 256 MB of RGBA —
+/// an A4 page at 8×, the largest scale the core draws at, is half of it.
+///
+/// A page's size is read from the file, so without a limit a `/MediaBox` of a
+/// million points asks for gigabytes the moment the page is drawn (a trap that
+/// aborts the WebAssembly core, and the home screen draws page 1 of every file
+/// opened). Past it the render is refused before anything is allocated; the
+/// app draws a large page at a smaller scale instead.
+pub const MAX_PIXELS: u64 = 64_000_000;
+
+/// The pixels a page of `width` × `height` points is drawn with at `scale`,
+/// as both backends size it, or `E_RENDER` past [`MAX_PIXELS`] or past the
+/// 65 535 pixels a side hayro can address.
+pub fn bitmap_size(width: f32, height: f32, scale: f32) -> Result<(u32, u32), RenderError> {
+    let side = |points: f32| {
+        let pixels = (f64::from(points) * f64::from(scale)).floor();
+        (pixels.is_finite() && (0.0..=f64::from(u16::MAX)).contains(&pixels))
+            .then_some(pixels as u64)
+    };
+    match (side(width), side(height)) {
+        (Some(w), Some(h)) if w * h <= MAX_PIXELS => Ok((w as u32, h as u32)),
+        _ => Err(RenderError::Render(format!(
+            "a page of {width} × {height} pt is too large to draw at {scale}×"
+        ))),
+    }
+}
+
 /// The marked-content sequences glyphs were drawn in (`BMC`/`BDC` … `EMC`):
 /// each sequence's tag, in the order they began, and for each glyph the
 /// sequences it is inside, outermost first. The sequences' properties —

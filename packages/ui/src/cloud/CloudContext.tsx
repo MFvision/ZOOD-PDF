@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { renderThumbnail } from '../home/useRecentThumbnail';
+import { firstPagePicture } from '../home/recentPicture';
 import type { TKey } from '../i18n/messages';
 import { useT } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
@@ -259,7 +259,7 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
     const id = recentId({ provider: binding.provider, key: binding.key });
     if (pictured.current === id) return;
     pictured.current = id;
-    void renderThumbnail(remote, info)
+    void firstPagePicture(remote)
       .then((picture) => {
         if (!picture) return;
         saveCloudThumbnail(id, picture);

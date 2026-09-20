@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
-import { isEditable } from './menuModel';
+import { SHEET_QUERY } from './sheetDrag';
+import { shortcutLetter } from './shortcutEcho';
+import { isEditable } from './typing';
 
 const isZoomInKey = (event: KeyboardEvent) =>
   event.key === '=' || event.key === '+' || event.code === 'Equal' || event.code === 'NumpadAdd';
@@ -36,12 +38,17 @@ export function useKeyboardShortcuts(): void {
 
       if (event.key === 'F4' && !mod && !event.altKey) {
         event.preventDefault();
-        if (event.shiftKey) dispatch({ type: 'TOGGLE_RIGHT_PANE' });
+        // A narrow window raises the sheet for a chosen tool only (panes.css).
+        const noSheet = globalThis.matchMedia?.(SHEET_QUERY).matches && current.rightPane.activeTool === null;
+        if (event.shiftKey) {
+          if (!noSheet) dispatch({ type: 'TOGGLE_RIGHT_PANE' });
+        }
         else if (hasDocument) services.viewCommand('sidebar');
         return;
       }
       if (!mod || event.altKey) return;
-      const key = event.key.toLowerCase();
+      // The letter wherever the layout puts it: on an Arabic keyboard ⌘Z types ئ.
+      const key = shortcutLetter(event);
 
       // In a text field Undo and Redo are the typing's. Handled here, not left
       // to the browser, so the macOS menu bar's Undo never runs on top of it.

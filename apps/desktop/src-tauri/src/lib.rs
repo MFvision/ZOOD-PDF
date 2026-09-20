@@ -12,6 +12,7 @@ use serde::Serialize;
 use tauri::{AppHandle, DragDropEvent, Emitter, Manager, Runtime, State, WindowEvent};
 use tauri_plugin_fs::FsExt;
 
+pub mod batch;
 pub mod cloud;
 pub mod core_bridge;
 pub mod menu;
@@ -82,6 +83,29 @@ fn startup_file(state: State<'_, StartupFile>) -> Option<String> {
 #[tauri::command]
 fn ui_log(message: String) {
     core_bridge::debug_log(format!("ui: {message}"));
+}
+
+/// A check the interface runs by itself once the startup file is open, named
+/// by `WARRAQ_SELFCHECK` and only with `WARRAQ_DEBUG` set: `ocr` reads the
+/// file with Scan & OCR, `ocr-clean` cleans it up first, `batch:<folder>`
+/// runs a batch over the PDFs in that folder and writes each result beside
+/// its original. It is how recognition and the batch inside this webview —
+/// Tesseract's worker and WebAssembly under the host's security policy, the
+/// batch's reads and writes through this host — are checked from the log,
+/// without a person at the screen. `None` in every ordinary run.
+#[tauri::command]
+fn debug_selfcheck<R: Runtime>(app: AppHandle<R>) -> Option<String> {
+    std::env::var_os("WARRAQ_DEBUG")?;
+    let check = std::env::var("WARRAQ_SELFCHECK").ok()?;
+    if let Some(folder) = check.strip_prefix("batch:") {
+        // Named by whoever started the check: as if chosen in the panel.
+        let dir = PathBuf::from(folder);
+        let allowed = dir.is_absolute()
+            && dir.is_dir()
+            && app.fs_scope().allow_directory(&dir, false).is_ok();
+        return allowed.then_some(check);
+    }
+    matches!(check.as_str(), "ocr" | "ocr-clean").then_some(check)
 }
 
 /// Opens a web or e-mail address in the system's browser or mail app, once
@@ -199,6 +223,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             core_version,
+            debug_selfcheck,
             open_url,
             read_file_bytes,
             startup_file,
@@ -233,6 +258,8 @@ pub fn run() {
             cloud::cloud_forget,
             cloud::cloud_http,
             menu::set_menu,
+            batch::batch_list_folder,
+            batch::batch_write,
         ])
         .on_window_event(|window, event| {
             // Forward OS file drops to the webview, after allowing the dropped

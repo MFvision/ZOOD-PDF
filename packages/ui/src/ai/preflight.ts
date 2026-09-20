@@ -48,17 +48,21 @@ export function preflightFor(
   context: PreflightContext,
 ): Preflight {
   const { sent, left, characters } = budgeted;
+  const prompt = buildPrompt(task, sent, { lang: context.lang, pageCount: context.pageCount, left });
+  // Smart fill sends no pages: the form's fields, from the pages they are
+  // on, and the person's details — counted whole, as they are sent.
+  const fill = task.kind === 'fill' ? task : null;
   return {
     settings,
     task,
     destination: settings.provider === 'claude' ? CLAUDE_HOST : settings.base,
-    pages: sent.map((page) => page.page),
+    pages: fill ? [...new Set(fill.fields.map((field) => field.page))].sort((a, b) => a - b) : sent.map((page) => page.page),
     left: [...left],
     pageCount: context.pageCount,
-    characters,
+    characters: fill ? prompt.user.length : characters,
     budget: context.budget,
-    empty: sent.every((page) => page.text.trim().length === 0),
-    prompt: buildPrompt(task, sent, { lang: context.lang, pageCount: context.pageCount, left }),
+    empty: fill ? fill.fields.length === 0 : sent.every((page) => page.text.trim().length === 0),
+    prompt,
   };
 }
 

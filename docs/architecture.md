@@ -8,7 +8,7 @@ flowchart LR
     W[apps/web · Vite static<br/>tool pages, PWA]
   end
   subgraph ui[packages/ui · one React app, RTL-first]
-    Shell[Acrobat-familiar shell:<br/>menu · ribbon · panes · canvas · status]
+    Shell[document-app shell:<br/>menu bar · toolbar · sidebar · canvas · inspector]
     Worker[core worker adapter]
   end
   subgraph core[packages/core · one Rust workspace]

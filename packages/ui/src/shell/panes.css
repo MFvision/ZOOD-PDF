@@ -64,6 +64,11 @@
   display: none;
 }
 
+/* The sheet's grabber (below), only on a phone. */
+.sheet-grabber {
+  display: none;
+}
+
 /*
  * The sidebar can be closed from its own header: in the reading view the
  * toolbar's sidebar button is EmbedPDF's page sidebar, so this is the way
@@ -387,18 +392,34 @@
     border-start-start-radius: var(--radius-16);
     border-start-end-radius: var(--radius-16);
     box-shadow: var(--shadow-sheet);
-    animation: sheet-up var(--duration-sheet) var(--spring) both;
+
+    /* Not held once it has risen: a drag moves the sheet with its own transform (sheetDrag.ts). */
+    animation: sheet-up var(--duration-sheet) var(--spring) backwards;
   }
 
-  /* The grabber a sheet shows at its top. */
-  .pane-end::before {
-    align-self: center;
+  /*
+   * The grabber a sheet shows at its top, and the strip around it that takes
+   * the finger: dragged down, the sheet follows and closes (so does its header).
+   */
+  .sheet-grabber {
+    display: flex;
+    flex: none;
+    justify-content: center;
+    block-size: 18px;
+    padding-block-start: var(--space-3);
+    touch-action: none;
+  }
+
+  .sheet-grabber::before {
     inline-size: 36px;
     block-size: 5px;
-    margin-block-start: var(--space-3);
     content: "";
     background: var(--tertiary-label);
     border-radius: var(--radius-capsule);
+  }
+
+  .pane-end .pane-header {
+    touch-action: none;
   }
 
   /* With no tool chosen, the toolbar's picker is the list: no sheet. */

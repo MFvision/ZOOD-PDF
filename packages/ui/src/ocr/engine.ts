@@ -2,6 +2,7 @@ import { createWorker, OEM } from 'tesseract.js';
 import workerUrl from 'tesseract.js/dist/worker.min.js?url';
 import coreUrl from 'tesseract.js-core/tesseract-core-lstm.wasm.js?url';
 import coreSimdUrl from 'tesseract.js-core/tesseract-core-simd-lstm.wasm.js?url';
+import { uiLog } from '../core/host-tauri';
 
 /**
  * Tesseract (Apache-2.0) in a worker, with everything it needs served from
@@ -46,16 +47,28 @@ export interface Recognizer {
 
 /** Starts Tesseract with the models for `languages`. */
 export async function startRecognizer(languages: readonly OcrLanguage[]): Promise<Recognizer> {
-  const worker = await createWorker([...languages], OEM.LSTM_ONLY, {
-    workerPath: absolute(workerUrl),
-    corePath: absolute(hasWasmSimd() ? coreSimdUrl : coreUrl),
-    langPath: absolute('ocr'),
-    gzip: true,
-    // A worker made from its own URL, not a blob: copy, and no cache in the
-    // browser's storage: nothing is kept after the run.
-    workerBlobURL: false,
-    cacheMethod: 'none',
-  });
+  const simd = hasWasmSimd();
+  const started = Date.now();
+  // Said in the desktop host's WARRAQ_DEBUG log (a no-op elsewhere): the
+  // one way to see recognition start inside the macOS webview.
+  uiLog(`ocr: starting Tesseract (${simd ? 'SIMD' : 'plain'} core) for ${languages.join('+')}`);
+  let worker: Awaited<ReturnType<typeof createWorker>>;
+  try {
+    worker = await createWorker([...languages], OEM.LSTM_ONLY, {
+      workerPath: absolute(workerUrl),
+      corePath: absolute(simd ? coreSimdUrl : coreUrl),
+      langPath: absolute('ocr'),
+      gzip: true,
+      // A worker made from its own URL, not a blob: copy, and no cache in the
+      // browser's storage: nothing is kept after the run.
+      workerBlobURL: false,
+      cacheMethod: 'none',
+    });
+  } catch (error) {
+    uiLog(`ocr: Tesseract did not start: ${String((error as Error)?.message ?? error)}`);
+    throw error;
+  }
+  uiLog(`ocr: Tesseract ready in ${Date.now() - started} ms`);
   return {
     async read(image) {
       const { data } = await worker.recognize(image, {}, { blocks: true });

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { isTauriHost } from '../core/host-tauri';
 import { Dialog } from '../components/Dialog';
 import { APP_ICON } from '../components/appIcon';
+import { radioTabIndex, useRadioGroupKeyboard } from '../components/useRadioGroupKeyboard';
 import { useI18n, useT } from '../i18n/useT';
 import type { Lang, TKey } from '../i18n/messages';
 import type { ThemeMode } from '../state/preferences';
@@ -170,7 +172,8 @@ export function ShortcutsDialog() {
           ))}
         </tbody>
       </table>
-      <p className="home-note">{t('shortcuts.browserNote')}</p>
+      {/* Only a browser keeps that key for itself; the desktop app does not. */}
+      {!isTauriHost() && <p className="home-note">{t('shortcuts.browserNote')}</p>}
     </Dialog>
   );
 }
@@ -186,7 +189,7 @@ export function AboutDialog() {
       <div className="about">
         <img className="about-icon" src={APP_ICON} alt="" width={96} height={96} />
         <p className="about-name">
-          <bdi dir="rtl">{t('app.name')}</bdi>
+          <bdi dir="rtl" lang="ar">{t('app.name')}</bdi>
         </p>
         <p className="about-tagline">{t('app.tagline')}</p>
         <p>{t('about.body')}</p>
@@ -214,18 +217,22 @@ function Segmented<T extends string>({
   options: ReadonlyArray<{ value: T; label: string }>;
   onChange: (value: T) => void;
 }) {
+  const { dir } = useI18n();
+  const onKeyDown = useRadioGroupKeyboard(dir);
+  const noneChecked = !options.some((option) => option.value === value);
   return (
     <div className="settings-row">
       <span className="settings-label" id={id}>
         {label}
       </span>
-      <div className="segmented" role="radiogroup" aria-labelledby={id}>
-        {options.map((option) => (
+      <div className="segmented" role="radiogroup" aria-labelledby={id} onKeyDown={onKeyDown}>
+        {options.map((option, index) => (
           <button
             key={option.value}
             type="button"
             role="radio"
             aria-checked={option.value === value}
+            tabIndex={radioTabIndex(option.value === value, index === 0, noneChecked)}
             className="segmented-item"
             onClick={() => onChange(option.value)}
           >
