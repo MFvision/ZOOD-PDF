@@ -471,9 +471,14 @@ with a test that fails without its fix.
 
 Also found while looking: the app's Arabic name was letter-spaced inside the
 English interface, which breaks the joins (it is marked as Arabic now); the
-tool picker had no height limit, so a short window would have cut it off; and
-a first keystroke was swallowed by the new focus tracking until it was moved
-off the input event's own dispatch.
+tool picker had no height limit, so a short window would have cut it off; a
+first keystroke was swallowed by the new focus tracking until it was moved
+off the input event's own dispatch; and Edit PDF's picture and link layers
+ignored a press until the page's pictures or links had been listed without
+saying so anywhere — they carry `aria-busy` while they wait now, which is
+also what the end-to-end tests that draw by dragging wait for (they had been
+pressing into a layer that was not ready, and failed whenever the machine
+was loaded).
 
 ## Known gaps, stated plainly
 * **Create PDF lays content out itself, and plainly.** It is not Word's, Excel's or PowerPoint's layout engine: one face (Amiri, with Inter for what Amiri lacks) and one size per paragraph, greedy line breaks at spaces (no hyphenation, no kashida), tables whose cells can span columns but not rows (a cell merged down is left empty below it). Not read: Word's text boxes, shapes, footnotes, comments, columns and a first page's own header; Excel's charts, pictures and cell colours, and anything past 2,000 rows or 60 columns of a sheet (the panel says so); PowerPoint's charts, SmartArt, gradients, shapes other than boxes (drawn as their box), rotation, animations and notes; a web page's style sheets (only a `style` attribute's colour, alignment and direction) and any picture it does not carry itself. HEIC and AVIF pictures are made into PNGs by the browser, so they work where the browser can draw them (Safari and the macOS app for HEIC). The Office files Create reads and the exports it writes are checked against ECMA-376's content models by the tests (`packages/ui/src/export/ooxml.testing.ts`) and by the browser's XML parser; the official XSDs are not in the repository, and the exports have not been opened in Office itself on this Mac (no Office is installed).
