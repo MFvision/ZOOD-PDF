@@ -244,11 +244,13 @@ fn a_pdf_whose_pages_carry_no_text_is_a_scan_the_interface_can_fill_in() {
     let filled = call(
         "library.add",
         serde_json::json!({
+            // The same size and time the first pass saw: the file itself was
+            // never touched, only read.
             "handle": handle,
             "key": key,
             "name": "scan.pdf",
             "kind": "scan",
-            "modified": 1_700_000_777i64,
+            "modified": 1_700_000_000i64,
             "text": [{ "page": 0, "text": "المكتبة الوطنية\nالتاريخ 5/6/2026" }],
         }),
         vec![],

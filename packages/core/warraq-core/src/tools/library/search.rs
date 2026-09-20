@@ -52,6 +52,10 @@ pub const MAX_HITS_PER_DOCUMENT: usize = 50;
 /// Places read before the search stops widening: a one-letter query over a
 /// full index must still answer.
 const MAX_POSITIONS_SCANNED: u64 = 4_000_000;
+/// Documents one search weighs. Past it the documents already met are still
+/// ranked in full; a query that reaches more than this is one word every file
+/// holds, and the ranking of the fifty-thousand-and-first is no answer anyway.
+const MAX_CANDIDATES: usize = 50_000;
 /// Marks on one line.
 const MAX_SPANS_PER_LINE: usize = 64;
 
@@ -229,10 +233,17 @@ impl Index {
                     if scanned > MAX_POSITIONS_SCANNED {
                         break 'gather;
                     }
-                    per_content
-                        .entry(posting.content)
-                        .or_insert_with(|| vec![Vec::new(); n])[i]
-                        .extend_from_slice(&posting.positions);
+                    // A document the search has not met yet costs a list per
+                    // word of the query, so the widening stops somewhere; the
+                    // documents already met go on being filled in.
+                    let room = per_content.len() < MAX_CANDIDATES;
+                    if let Some(lists) = per_content.get_mut(&posting.content) {
+                        lists[i].extend_from_slice(&posting.positions);
+                    } else if room {
+                        let mut lists = vec![Vec::new(); n];
+                        lists[i].extend_from_slice(&posting.positions);
+                        per_content.insert(posting.content, lists);
+                    }
                 }
             }
         }
@@ -314,7 +325,11 @@ impl Index {
                 continue;
             };
             let mut docs: Vec<u32> = content.docs.clone();
-            docs.sort_by_key(|slot| self.doc(*slot).map(|d| d.key.clone()));
+            // Copies of one file answer in a settled order; almost every text
+            // belongs to exactly one file, so the sort is usually not run.
+            if docs.len() > 1 {
+                docs.sort_by_key(|slot| self.doc(*slot).map(|d| d.key.clone()));
+            }
             for slot in docs {
                 let Some(doc) = self.doc(slot) else { continue };
                 if !filters.keeps(doc, content) {

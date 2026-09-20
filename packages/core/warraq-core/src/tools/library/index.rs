@@ -427,10 +427,15 @@ impl Index {
         // second pass over a folder never reads a file twice.
         if let Some(&slot) = self.by_key.get(&about.key) {
             if let Some(doc) = self.doc(slot) {
+                // A scan already in the index carries no text of its own. When
+                // the interface comes back with what OCR read, that is not the
+                // same file coming round again, however untouched the file is.
+                let had_text = self.content(doc.content).is_some_and(|c| c.chars > 0);
                 let unchanged = about.modified != 0
                     && doc.modified == about.modified
                     && doc.bytes == about.bytes
-                    && doc.kind == kind;
+                    && doc.kind == kind
+                    && (had_text || empty);
                 if unchanged {
                     let content = self.content(doc.content);
                     return Ok(AddOutcome {
@@ -941,18 +946,27 @@ mod tests {
             .add(about("/scan.pdf"), vec![(0, "   ".into())], 10)
             .expect("added");
         assert_eq!(out.kind, Kind::Scan);
-        // and the interface's OCR text replaces it under the same key
+        // The interface reads it with OCR and hands the text back under the
+        // same key. The file on disk was never touched, so its size and time
+        // have not changed — and that must not read as "unchanged".
         let mut later = about("/scan.pdf");
-        later.modified += 1;
         later.kind = Some(Kind::Scan);
-        index
+        let filled = index
             .add(later, vec![(0, "بسم الله".into())], 20)
             .expect("ocr");
+        assert!(filled.added, "{filled:?}");
         assert_eq!(
             index.document("/scan.pdf").map(|d| d.kind),
             Some(Kind::Scan)
         );
         assert!(index.terms.contains_key("الله"));
+        // Now that it has text, a second pass over the folder really is one.
+        let mut again = about("/scan.pdf");
+        again.kind = Some(Kind::Scan);
+        let second = index
+            .add(again, vec![(0, "بسم الله".into())], 30)
+            .expect("second");
+        assert_eq!(second.skipped, Some("unchanged"));
     }
 
     #[test]
