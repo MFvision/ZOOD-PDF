@@ -1,7 +1,6 @@
 import type { CoreClient, RemoteDocument } from '../core/client';
 import { createPdf } from '../create/createPdf';
 import type { CreateEnvironment } from '../create/createPdf';
-import { NO_CLEANUP } from '../ocr/cleanup';
 import type { CleanupOptions } from '../ocr/cleanup';
 import { startRecognizer } from '../ocr/engine';
 import type { OcrLanguage, Recognizer } from '../ocr/engine';
@@ -137,6 +136,28 @@ export interface IngestLimits {
   thumbnailEdge: number;
 }
 
+/**
+ * How a scan or a photograph is cleaned up before it is read, unless the
+ * panel says otherwise: the paper's own light evened out and the ink
+ * stretched to black (`ocr/cleanup.ts`).
+ *
+ * A folder holds pages photographed by hand, and a shadow across one costs
+ * Tesseract nearly all of its words. Measured on the photograph fixture
+ * (`scripts/measure-library.mjs`): read as it is, 13 % of the page's words,
+ * and 77 seconds spent reading nonsense; with these two steps, 93 % in 13
+ * seconds. Everything the cleanup offers reaches 94 %, and doubles the time
+ * a folder takes — on a 1924 manuscript, five times — so the Library stops
+ * at two. Scan & OCR leaves the choice to the person, who can see the page;
+ * the Library never can.
+ */
+export const LIBRARY_CLEANUP: CleanupOptions = {
+  background: true,
+  contrast: true,
+  binarize: false,
+  despeckle: false,
+  borders: false,
+};
+
 export const INGEST_LIMITS: IngestLimits = {
   bytes: 128 * 1024 * 1024,
   ocrPages: 50,
@@ -152,7 +173,7 @@ export interface IngestOptions {
   /** Read scans and pictures with Tesseract; on by default. */
   recognize?: boolean;
   languages?: readonly OcrLanguage[];
-  /** How a scan is cleaned up before it is read; nothing by default. */
+  /** How a scan is cleaned up before it is read; `LIBRARY_CLEANUP` by default. */
   cleanup?: CleanupOptions;
   /** What has already been read, so it is not read again. Kept only in memory by default. */
   ledger?: Ledger;
@@ -211,7 +232,7 @@ export async function ingestFiles(options: IngestOptions): Promise<IngestRun> {
   const reader = options.reader ?? startReader();
   const signal = options.signal;
   const languages = options.languages ?? ['ara', 'eng'];
-  const cleanup = options.cleanup ?? NO_CLEANUP;
+  const cleanup = options.cleanup ?? LIBRARY_CLEANUP;
   const recognizing = options.recognize ?? true;
   const say = options.onProgress ?? (() => undefined);
   const run: IngestRun = { files: [], added: 0, skipped: 0, failed: 0, recognized: 0, remaining: [], took: 0 };
