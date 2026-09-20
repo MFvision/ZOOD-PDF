@@ -136,6 +136,49 @@ test.describe('The Library searches across every document that was added', () =>
     expect(kinds).toContain('Word');
     expect(kinds).toContain('Markdown');
     expect(kinds).toContain('PDF');
+
+    // The readers draw the first page of what has one, and the panel shows
+    // it; a note has no page to draw, and shows the tool's own mark instead
+    // of an empty frame.
+    const pdf = hits.locator('li', { hasText: 'chrome-notonaskh-justified-3pages.pdf' }).first();
+    await expect(pdf.locator('img.library-thumb')).toBeVisible();
+    const note = hits.locator('li', { hasText: 'notes-ar.md' }).first();
+    await expect(note.locator('.library-thumb-none')).toBeVisible();
+  });
+
+  test('tags a document by hand, and a rule tags every document that holds a word', async ({ page, stayLocal: _ }) => {
+    const library = await openLibrary(page);
+    await needsEngine(library);
+
+    await addFiles(library, [INVOICE_A, INVOICE_B, THREE_PAGES]);
+    await expect(summary(library)).toContainText('Added: 3.', { timeout: 180_000 });
+
+    const hits = await search(library, 'فاتورة');
+    const first = hits.locator('li').first();
+    await first.getByRole('button', { name: /^Tags for / }).click();
+
+    // By hand, on this one document: the tag appears on the result itself.
+    await library.getByLabel('Add a tag').fill('مهم');
+    await library.locator('.library-section', { hasText: 'Tags for' }).getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(first.locator('.library-hit-foot .badge', { hasText: 'مهم' })).toBeVisible();
+
+    // By rule, on every document whose text holds the word — and the rule is
+    // kept with the index, in the words it was written in.
+    const rules = library.locator('.library-section', { hasText: 'Tag rules' });
+    await rules.getByRole('button', { name: 'Tag rules', exact: true }).click();
+    await rules.getByLabel('If it holds').fill('فاتورة');
+    await rules.getByLabel('Tag it').fill('فواتير');
+    await rules.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(rules.getByText(/^Documents tagged: [1-9]/)).toBeVisible();
+    await expect(rules.getByText('If the text holds فاتورة, tag it فواتير')).toBeVisible();
+
+    const again = await search(library, 'فاتورة');
+    await expect(again.locator('li').first().locator('.badge', { hasText: 'فواتير' })).toBeVisible();
+
+    // And a search can be held to that tag alone.
+    await library.getByRole('button', { name: 'Filters', exact: true }).click();
+    await library.getByRole('checkbox', { name: 'فواتير' }).check();
+    await expect(library.getByText(/^Results: [1-9]/)).toBeVisible();
   });
 
   test('deletes the index when asked, and says the files were not touched', async ({ page, stayLocal: _ }) => {
