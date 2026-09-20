@@ -318,16 +318,17 @@ these are what a busy machine gives, not its best):
 |---|---|
 | Files offered | 48 PDFs (`tests/corpus/arabic/{generated,realworld}`, the many-page performance fixtures left out) |
 | Indexed | 44 — the four password-protected files are refused with `skipped: "password"` until one is given, and the run carries on |
-| Read and indexed in | **3.7 s**, i.e. 83 ms a file. Nearly all of it is reading the PDFs with Warraq's own reader, page by page; the indexing itself is the small part |
+| Read and indexed in | **3.7 s** — 83 ms a file: each PDF read page by page with Warraq's own reader, and what it says indexed. The two were not timed apart |
 | The same folder offered again | **14 ms** — nothing has been written to, so `library.add` answers `unchanged` without opening a single file. The test fails if a second pass ever costs more than a fifth of the first |
 | Words indexed | 65 028 |
 | The index | **1 159 KB** written by `library.save`; `library.stats` estimates 1 125 KB, 3 % under (the test keeps the two within a quarter of each other) |
 | One search across all 44 | **0.9 ms** (`العربية`, written without tashkeel; the test requires it in at least five different files, each hit marked inside the line the person would read) |
 | Scans seen for what they are | the corpus's scanned pages go in as `scan` with no text of their own, for the interface to read with OCR and hand back; the test requires at least three |
 
-At that rate the index costs about 18 bytes a word, so the cap of 48 000 000
-characters is roughly 150 MB held and something over three thousand ordinary
-documents (`Known gaps`, below).
+An index of that shape costs about 18 bytes a word. These 44 documents run to
+1 478 words each, so the cap of 48 000 000 characters — call it eight million
+words of Arabic — works out at roughly 150 MB held and something over five
+thousand documents of this size (`Known gaps`, below).
 
 **Proved besides the numbers** (ten tests through `call_static`, the way every
 host reaches the ops, and 56 more inside the module): a protected file skipped
@@ -889,7 +890,7 @@ was reproduced first by a test that failed, and each test passes now.
 
 ## Known gaps, stated plainly
 * **The Library has a core and no face yet.** `library.open/add/forget/search/document/tag/rules/stats/save/close` all work and are tested, the readers turn every kind of file into text, and the desktop host can walk a folder and keep an index — but nothing in the interface calls any of it: the panel is the one part still in flight. Until it lands, the Library cannot be used by a person.
-* **The Library's index is capped, and says so.** 200 000 documents; 2 000 000 characters and 400 000 words of any one document; 48 000 000 characters in the whole index — about 150 MB held, and roughly three thousand ordinary documents. Past a cap a file is skipped with `indexFull`, or its text is cut with `truncated`; nothing fails silently, and nothing grows without end. A person with a bigger library than that needs a second index or a cap raised in one constant.
+* **The Library's index is capped, and says so.** 200 000 documents; 2 000 000 characters and 400 000 words of any one document; 48 000 000 characters in the whole index — about 150 MB held, and something over five thousand documents the size of the Arabic corpus's (measured above). Past a cap a file is skipped with `indexFull`, or its text is cut with `truncated`; nothing fails silently, and nothing grows without end. A person with a bigger library than that needs a second index or a cap raised in one constant.
 * **The Library ranks with one rule, and it is a judgement.** BM25 with a phrase bonus (`packages/core/API.md`): a phrase beats scattered words, more matches beat fewer, a short document beats a long one on the same count, and a document holding the whole query beats one holding half of it. It was tested against those four statements, not against people searching their own files — nobody has used it yet.
 * **The document's date is a guess, and a scored one.** It is read from the first three pages, and where a document carries several dates the one beside a label, near the top of the first page, with its month written out, wins. A document that carries a deadline more prominently than its own date will show the deadline. A date is read as Hijri when its month is a Hijri month, when هـ or AH follows it, or when its year is between 1300 and 1500 — a Gregorian year in that band, in a historical document, would be converted wrongly.
 * **The Library's core reads PDFs and nothing else.** Word, Excel, PowerPoint, HTML, Markdown, text and pictures reach the index only as text the interface read and handed back, which is what `packages/ui/src/library/` now does; the core never opens them itself. A PDF whose pages carry no text is reported as a scan and stays unsearchable until the interface reads it with OCR and hands the words back under the same key.
