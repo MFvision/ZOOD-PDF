@@ -29,7 +29,15 @@ export interface CloudResponse {
 
 export type Transport = (provider: ProviderId, request: CloudRequest) => Promise<CloudResponse>;
 
-/** The browser's: no cookies, no referrer, nothing cached. */
+/**
+ * How long one request to a drive may take before it is given up on. Long
+ * enough for a range of an upload on a slow line; short enough that a
+ * connection that has died does not leave the person waiting for ever (the
+ * desktop host bounds its own requests the same way).
+ */
+export const REQUEST_TIMEOUT_MS = 10 * 60 * 1000;
+
+/** The browser's: no cookies, no referrer, nothing cached, and never endless. */
 export const fetchTransport: Transport = async (_provider, request) => {
   let response: Response;
   try {
@@ -40,9 +48,11 @@ export const fetchTransport: Transport = async (_provider, request) => {
       credentials: 'omit',
       cache: 'no-store',
       referrerPolicy: 'no-referrer',
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   } catch (error) {
-    // Offline, a host the policy refuses, or a drive that sent no CORS headers.
+    // Offline, a host the policy refuses, a drive that sent no CORS headers,
+    // or a request that took longer than the time above.
     throw new CloudError('network', String(error));
   }
   const headers: Record<string, string> = {};
