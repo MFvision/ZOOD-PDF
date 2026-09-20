@@ -4,9 +4,10 @@ import { readJson, writeJson } from '../state/preferences';
  * What the Library has already read, so it does not read it twice.
  *
  * For each file: how large it was, when it was last changed, and a hash of
- * its content. A file whose three still agree is not opened, not recognized
- * and not indexed again — which is also how a run resumes after Stop, since
- * only a file that finished is written down here.
+ * its content. A file whose three still agree is read from the disk and no
+ * further — not opened, not recognized, not indexed again — which is also
+ * how a run resumes after Stop, since only a file that finished is written
+ * down here.
  *
  * It holds no text and no names a person did not already have: a key, three
  * numbers and sixteen hex digits. It lives beside the other things

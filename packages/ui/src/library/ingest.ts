@@ -34,9 +34,10 @@ import { hashBytes } from './work';
  *
  * Nothing heavy happens on the interface's thread. The core has its worker,
  * Tesseract has its own, and everything else — unzipping, parsing XML,
- * cleaning a scan up, measuring its slant, hashing, thumbnails — is in this
- * feature's own worker (`ingest.worker.ts`). What is left here is the
- * waiting between them.
+ * cleaning a scan up, measuring its slant, drawing thumbnails — is in this
+ * feature's own worker (`ingest.worker.ts`); a file's content hash is the
+ * platform's own digest, which is native and off this thread already. What
+ * is left here is the waiting between them.
  *
  * Every file is hostile input: its size, its pages and its characters are
  * bounded, a job that will not finish has its worker dropped, and a file

@@ -192,10 +192,12 @@ really on.
 
 **Nothing heavy on the interface's thread.** The core has its worker,
 Tesseract has its own, and everything else — unzipping, parsing XML, cleaning
-a scan up, measuring how crooked it is, hashing, thumbnails — is in the
-Library's own worker (`library/ingest.worker.ts`). A job that does not answer
-within 90 seconds has that worker dropped, a new one started for the next
-file, and this file skipped: one hostile file cannot end a run of a thousand.
+a scan up, measuring how crooked it is, drawing thumbnails — is in the
+Library's own worker (`library/ingest.worker.ts`); a file's content hash is
+the platform's own digest, native and off that thread already. A job that
+does not answer within 90 seconds has that worker dropped, a new one started
+for the next file, and this file skipped: one hostile file cannot end a run
+of a thousand.
 
 **Cleanup is on by default here**, unlike in Scan & OCR. Measured on a new
 fixture, `tests/fixtures/create/photo-arabic.jpg` — the corpus's Noto Naskh
