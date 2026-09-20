@@ -1,7 +1,7 @@
 import type { PluginRegistry } from '@embedpdf/react-pdf-viewer';
 
 /**
- * Warraq's menus, shortcuts and status bar acting on the EmbedPDF view
+ * Warraq's menus, shortcuts and toolbar acting on the EmbedPDF view
  * (ADR-0007). EmbedPDF's plugins are reached by id through its registry; the
  * few calls Warraq makes are typed here by hand.
  */
@@ -14,6 +14,8 @@ interface Commands {
   resolve(id: string): { active?: boolean; disabled?: boolean };
   getAllCommands(): { id: string; categories?: string[]; shortcuts?: string[] | null }[];
   setDisabledCategories(categories: string[]): void;
+  /** A command's active, disabled or visible state changed, in any document. */
+  onCommandStateChanged: Hook<{ commandId: string }>;
 }
 
 interface Scroll {
@@ -117,7 +119,40 @@ export function runCommand(registry: PluginRegistry, id: string): void {
 
 /** Whether a toggle — fit width, fit page, the sidebar — is on. */
 export function commandActive(registry: PluginRegistry, id: string): boolean {
-  return capability<Commands>(registry, 'commands')?.resolve(id).active === true;
+  try {
+    return capability<Commands>(registry, 'commands')?.resolve(id).active === true;
+  } catch {
+    // No document active yet: nothing is on.
+    return false;
+  }
+}
+
+/** The toggles Warraq's toolbar and menus show for EmbedPDF's view. */
+export type ViewToggle = 'fit-width' | 'fit-page' | 'sidebar' | 'find';
+export type ViewToggles = Record<ViewToggle, boolean>;
+export const NO_TOGGLES: ViewToggles = { 'fit-width': false, 'fit-page': false, sidebar: false, find: false };
+const TOGGLES = Object.keys(NO_TOGGLES) as ViewToggle[];
+
+/**
+ * Follows which of the toggles are on in EmbedPDF — now, whenever one of
+ * their commands changes, and when another document becomes active — so the
+ * toolbar's pressed buttons and the menus' checks are React state. Read at
+ * render time instead, they went stale: a click on the sidebar button, ⌘0 or
+ * F4 changed EmbedPDF and nothing in React, and the macOS menu bar, which is
+ * sent only when the page renders, kept its old checks. Returns the unsubscribe.
+ */
+export function watchToggles(registry: PluginRegistry, onToggles: (toggles: ViewToggles) => void): Unsubscribe {
+  const watched = new Set(TOGGLES.map((toggle) => EMBED_COMMANDS[toggle]));
+  const read = () =>
+    onToggles(Object.fromEntries(TOGGLES.map((toggle) => [toggle, commandActive(registry, EMBED_COMMANDS[toggle])])) as ViewToggles);
+  const subscriptions = [
+    capability<Commands>(registry, 'commands')?.onCommandStateChanged(({ commandId }) => {
+      if (watched.has(commandId)) read();
+    }),
+    capability<DocumentManager>(registry, 'document-manager')?.onActiveDocumentChanged(read),
+  ];
+  read();
+  return () => subscriptions.forEach((unsubscribe) => unsubscribe?.());
 }
 
 /** PDF permission bit 3: the file may be printed (`PdfPermissionFlag.Print`). */

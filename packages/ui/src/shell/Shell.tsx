@@ -6,7 +6,6 @@ import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { FontNotice } from '../edit/FontNotice';
 import { HomeScreen } from '../home/HomeScreen';
-import { useRecentThumbnail } from '../home/useRecentThumbnail';
 import { LinkConfirmDialog } from '../links/LinkConfirmDialog';
 import { useI18n } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
@@ -41,8 +40,6 @@ export function Shell() {
   const { t, lang } = useI18n();
   const nativeMenu = hasNativeMenuBar();
   useKeyboardShortcuts();
-  useNativeMenu(nativeMenu);
-  useRecentThumbnail();
 
   const [markupOn, setMarkupOn] = useState(readMarkupBar);
   const markupBar = useMemo(
@@ -102,6 +99,7 @@ export function Shell() {
 
   return (
     <MarkupBarContext.Provider value={markupBar}>
+      <NativeMenu enabled={nativeMenu} />
       <div className="shell" data-native-menu={nativeMenu || undefined} data-view={state.view}>
         {!nativeMenu && <MenuBar />}
         <Toolbar />
@@ -218,6 +216,12 @@ export function Shell() {
       </div>
     </MarkupBarContext.Provider>
   );
+}
+
+/** The macOS menu bar (`useNativeMenu`), inside the markup bar's provider: its View menu shows that bar. */
+function NativeMenu({ enabled }: { enabled: boolean }) {
+  useNativeMenu(enabled);
+  return null;
 }
 
 /** A file name set apart from the sentence around it, whatever its direction (FSI … PDI). */

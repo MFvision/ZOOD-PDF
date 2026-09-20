@@ -72,9 +72,12 @@ export function Popover({ anchor, open, onClose, label, className, children }: P
     return () => window.removeEventListener('resize', measure);
   }, [open, anchor, mounted]);
 
-  // Focus goes in on open, and back to the trigger on close.
+  // Focus goes in on open, and back to the trigger on close. Only once it is
+  // placed: until then it is `visibility: hidden`, which takes no focus — the
+  // focus stayed on the trigger, and the arrow keys moved along the toolbar.
+  const placed = placement !== null;
   useEffect(() => {
-    if (!open) return;
+    if (!open || !placed) return;
     const first = ref.current?.querySelector<HTMLElement>(
       '[aria-checked="true"], [aria-pressed="true"], button:not(:disabled), input, [tabindex="0"]',
     );
@@ -83,7 +86,7 @@ export function Popover({ anchor, open, onClose, label, className, children }: P
     return () => {
       if (anchor && popover?.contains(document.activeElement)) anchor.focus({ preventScroll: true });
     };
-  }, [open, anchor]);
+  }, [open, anchor, placed]);
 
   // A press anywhere else closes it (the trigger toggles it itself).
   useEffect(() => {

@@ -108,12 +108,6 @@
   border-block-end-color: var(--warning-border);
 }
 
-.statusbar-edited {
-  color: var(--warning-fg);
-  background: var(--warning-bg);
-  border: 1px solid var(--warning-border);
-}
-
 /* Placing new text ------------------------------------------------------- */
 
 /* While Add text is armed, the whole page is the target: the click says where

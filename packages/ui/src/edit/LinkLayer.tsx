@@ -114,6 +114,8 @@ export function LinkLayer({ document, index, scale }: LayerProps) {
       ref={layer}
       role="group"
       aria-label={t('editPdf.linksLayer')}
+      // Until the page's links are listed, a press here draws nothing.
+      aria-busy={waiting || undefined}
       onPointerDown={(event) => {
         if (event.target !== layer.current || event.button !== 0 || waiting) return;
         layer.current.setPointerCapture(event.pointerId);

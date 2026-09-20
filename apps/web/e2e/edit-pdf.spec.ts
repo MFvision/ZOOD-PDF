@@ -186,6 +186,8 @@ test.describe('Edit PDF: pictures and links, like a drawing program, saved into 
     const first = await enterEditText(page);
     const p = panel(page);
     await p.getByRole('radio', { name: 'Links' }).click();
+    // The layer ignores a press until the page's links are listed.
+    await expect(first.locator('.edit-pdf-links')).not.toHaveAttribute('aria-busy', 'true');
     const { at } = await screenOf(first, 595.28);
 
     // Drawn, then given an Arabic address.
@@ -305,6 +307,9 @@ test.describe('Edit PDF: pictures and links, like a drawing program, saved into 
     // Then a picture.
     await p.getByRole('radio', { name: 'Pictures' }).click();
     await p.getByLabel('Add a picture…').setInputFiles({ name: 'red.png', mimeType: 'image/png', buffer: Buffer.from(RED_PNG, 'base64') });
+    // The picture is read before it can be placed: dragging before the panel
+    // says so drops it on nothing (as the test above waits too).
+    await expect(p.getByRole('status')).toContainText('red.png');
     const { at } = await screenOf(first, 595.28);
     await drag(page, at(100, 100), at(220, 180));
     const pictures = first.locator('.edit-pdf-image');

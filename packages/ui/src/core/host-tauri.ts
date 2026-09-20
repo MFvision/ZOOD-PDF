@@ -551,6 +551,17 @@ export async function nativeCoreStatus(): Promise<CoreStatus> {
   return { kind: 'native', version, engine };
 }
 
+/**
+ * The desktop core fell back to the pure-Rust renderer: PDFium's library did
+ * not bind (`core_engine()` says "hayro" alone). Nothing fails, but Warraq's
+ * own drawing of pages — Edit text, Organize, Scan & OCR, page pictures — is
+ * hayro's, so the toolbar says so rather than leave it a mystery. Browsers
+ * never had PDFium in the core, and say nothing.
+ */
+export function withoutPdfium(status: CoreStatus | null): boolean {
+  return status?.kind === 'native' && status.engine === 'hayro';
+}
+
 /** A protocol request before the client stamps an id on it. */
 type HostRequest = { [K in RequestKind]: { kind: K } & RequestMap[K] }[RequestKind];
 

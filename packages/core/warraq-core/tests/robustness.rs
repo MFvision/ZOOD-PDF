@@ -197,22 +197,8 @@ fn searching_for_any_character_of_the_arabic_presentation_blocks_returns() {
     }
 }
 
-/// One A4 page drawing `content`, and a form `/Fm` that draws it again and
-/// can draw itself — as `packages/core/fuzz/fuzz_targets/lex_content.rs`.
-fn one_page(content: &[u8]) -> Vec<u8> {
-    let stream = |dict: &str| {
-        let mut s = format!("<< {dict} /Length {} >>\nstream\n", content.len()).into_bytes();
-        s.extend_from_slice(content);
-        s.extend_from_slice(b"\nendstream");
-        s
-    };
-    let objects: Vec<Vec<u8>> = vec![
-        b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_vec(),
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /XObject << /Fm 5 0 R >> >> >>".to_vec(),
-        stream(""),
-        stream("/Type /XObject /Subtype /Form /BBox [0 0 595 842] /Resources << /XObject << /Fm 5 0 R >> >>"),
-    ];
+/// A file of these objects (1-based), with a correct xref.
+fn file_of(objects: &[Vec<u8>]) -> Vec<u8> {
     let mut out = b"%PDF-1.7\n".to_vec();
     let mut offsets = vec![];
     for (i, body) in objects.iter().enumerate() {
@@ -236,6 +222,63 @@ fn one_page(content: &[u8]) -> Vec<u8> {
         .as_bytes(),
     );
     out
+}
+
+/// One A4 page drawing `content`, and a form `/Fm` that draws it again and
+/// can draw itself — as `packages/core/fuzz/fuzz_targets/lex_content.rs`.
+fn one_page(content: &[u8]) -> Vec<u8> {
+    let stream = |dict: &str| {
+        let mut s = format!("<< {dict} /Length {} >>\nstream\n", content.len()).into_bytes();
+        s.extend_from_slice(content);
+        s.extend_from_slice(b"\nendstream");
+        s
+    };
+    file_of(&[
+        b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_vec(),
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /XObject << /Fm 5 0 R >> >> >>".to_vec(),
+        stream(""),
+        stream("/Type /XObject /Subtype /Form /BBox [0 0 595 842] /Resources << /XObject << /Fm 5 0 R >> >>"),
+    ])
+}
+
+/// A one-page PDF whose page is `side` points square.
+fn page_of_side(side: u32) -> Vec<u8> {
+    file_of(&[
+        b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_vec(),
+        format!("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {side} {side}] >>").into_bytes(),
+    ])
+}
+
+/// A page's size is read from the file. The home screen draws page 1 of every
+/// file opened, so a `/MediaBox` of a million points asked for gigabytes the
+/// moment the file opened: a trap that aborts the WebAssembly core. Past the
+/// pixel budget a render is refused with an error before anything is allocated.
+#[test]
+fn a_page_too_large_to_draw_is_refused_not_allocated() {
+    // 170 000 pt at the smallest scale is 8 500 × 8 500 pixels: past the budget.
+    for side in [170_000, 1_400_000] {
+        let doc = warraq_core::Document::open(page_of_side(side), None).expect("the file opens");
+        let started = Instant::now();
+        let drawn = catch_unwind(AssertUnwindSafe(|| doc.render_page(0, 0.05)))
+            .unwrap_or_else(|_| panic!("a {side} pt page panicked"));
+        let error = drawn.err().map(|e| e.to_string()).unwrap_or_default();
+        assert!(
+            error.starts_with("E_RENDER"),
+            "a {side} pt page must be refused, got {error:?}"
+        );
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "refused at once, not after drawing"
+        );
+    }
+    // A page of an ordinary size still draws, at the largest scale the app asks for.
+    let doc = warraq_core::Document::open(page_of_side(842), None).unwrap();
+    let page = doc
+        .render_page(0, 8.0)
+        .expect("an A4-sized page at 8× is within the budget");
+    assert_eq!((page.width, page.height), (6736, 6736));
 }
 
 /// Content streams built from the pieces that have broken content lexers —

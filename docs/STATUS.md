@@ -1,6 +1,11 @@
 # STATUS — Warraq
 
-*Updated 2026-09-19: the interface is rebuilt on EmbedPDF (ADR-0007); all seventeen tools work end to end, each proven by a test that clicks through it, saves the file and reopens it — Create PDF (Word, Excel, PowerPoint, web pages, Markdown, text and pictures to PDF) and Export to Excel and PowerPoint the latest. Digital signature: signing and checking proven through the interface; its timestamps and validation data work on the desktop only, proven by Rust tests and run once against DigiCert and Sectigo, not through the interface; its verifier was hardened against the published PDF-signature attacks after an adversarial review (below). Also since then: search and copy in the page view answer with Warraq's reader, the web app installs and works offline, Windows and Linux print by pages, EmbedPDF's interface is Arabic throughout, and Nastaliq Urdu reads exactly; then Batch (a sequence of the tools' steps over many files), OCR cleanup and the AI's data actions.*
+*Updated 2026-09-20: an adversarial review of the Apple-style redesign found ten distinct problems —
+the home screen keeping a picture of a page as it was before a redaction, the macOS menu bar's Undo and
+About, stale checks and pressed states, the keyboard in the tool picker and in Settings, the markup
+toolbar and the sheet's grabber on a phone, and text pointing at chrome that no longer exists — and every
+one is fixed with a test ("Fixed after the redesign review", below).
+Before that, on 2026-09-19: the interface is rebuilt on EmbedPDF (ADR-0007); all seventeen tools work end to end, each proven by a test that clicks through it, saves the file and reopens it — Create PDF (Word, Excel, PowerPoint, web pages, Markdown, text and pictures to PDF) and Export to Excel and PowerPoint the latest. Digital signature: signing and checking proven through the interface; its timestamps and validation data work on the desktop only, proven by Rust tests and run once against DigiCert and Sectigo, not through the interface; its verifier was hardened against the published PDF-signature attacks after an adversarial review (below). Also since then: search and copy in the page view answer with Warraq's reader, the web app installs and works offline, Windows and Linux print by pages, EmbedPDF's interface is Arabic throughout, and Nastaliq Urdu reads exactly; then Batch (a sequence of the tools' steps over many files), OCR cleanup and the AI's data actions.*
 
 ## Where the product stands
 
@@ -198,12 +203,12 @@ reduced transparency and reduced motion honoured.
 
 | | |
 | --- | --- |
-| Toolbar | One unified toolbar in place of the ribbon and the status bar. It carries the document's title, with "Page n of m — Edited" under it; pages; zoom (which now drives EmbedPDF's zoom too); the markup toolbar; Edit text; a tool picker that opens a gallery of the 13 tools; find; save; and the inspector |
+| Toolbar | One unified toolbar in place of the ribbon and the status bar. It carries the document's title, with "Page n of m — Edited" under it; pages; zoom (which now drives EmbedPDF's zoom too); the markup toolbar; Edit text; a tool picker that opens a gallery of all sixteen tools; find; save; and the inspector. Its toggles follow what is really open in the view |
 | Inspector | The tools pane, restyled: grouped inset sections, action lists, and macOS checkboxes, radios, pop-up buttons, segmented controls, steppers and switches. Every panel, including ones added later, gets the look from shared classes |
-| Home | A document chooser. Recent files are shown as pages with a small picture of each first page, stored on the device and never for a password-protected file. The inert "Open from OneDrive / Google Drive" buttons are gone: they did nothing, and the connectors are not built (feature matrix: Cloud ⬜) |
+| Home | A document chooser. Recent files are shown as pages with a small picture of each first page, kept in this browser's storage and nowhere else: never for a file that needed a password, dropped the moment anything is marked for redaction, and dropped when the file is saved, since the saved file may no longer look like it (a new one is taken the next time it opens). The inert "Open from OneDrive / Google Drive" buttons are gone: they did nothing, and the connectors are not built (feature matrix: Cloud ⬜) |
 | Dialogs and overlays | Dialogs are sheets. Popovers come out of their trigger. Toasts are a HUD. The find bar sits under the toolbar. The drop overlay is a material with one or two targets. Settings (⌘,) holds language and appearance |
 | EmbedPDF | Themed with Warraq's tokens by reference. Its duplicated sidebar, zoom and search buttons and its floating page field (except on a phone) are gone. The rest of its bar is the markup toolbar, shown from Warraq's toolbar |
-| macOS app | The title bar is merged into the toolbar, with the traffic lights in it. The toolbar drags the window and a double click zooms it. The system menu bar is built from the page's own menu model, in the interface language, and enables and checks items as the page does. A shortcut the page handles never runs its menu item too |
+| macOS app | The title bar is merged into the toolbar, with the traffic lights in it. The toolbar drags the window and a double click zooms it. The system menu bar is built from the page's own menu model, in the interface language; its checks follow EmbedPDF's own state, it is sent again after every item chosen there, its Undo and Redo reach the typing in whatever field has the focus, and About opens the page's own sheet. A shortcut the page handles never runs its menu item too |
 | Narrow windows | On a tablet the toolbar condenses. On a phone the inspector is a sheet, the sidebar floats over the page, and nothing scrolls sideways. On a touch screen (`pointer: coarse`) the controls, rows, toolbar and menu bar grow to 44-point targets; the look is the same |
 | App icon | New original artwork (`scripts/icon/make_icon.py`): a calligraphic و on a sheet of paper. Desktop and extension icons are regenerated from it |
 
@@ -475,6 +480,85 @@ test that fails without its fix.
    were gone after OCR. It is now appended to the file's own bytes, as Page
    marks' changes are (`e2e/ocr.spec.ts` checks the prefix).
 
+## Fixed after the redesign review, 2026-09-20
+
+Three reviewers went over the Apple-style redesign and a fourth confirmed each
+finding. Eighteen were raised, ten of them distinct; every one is fixed, each
+with a test that fails without its fix.
+
+1. **The home screen kept a picture of page 1 as it was before a redaction.**
+   The recent grid's picture was taken when a file opened and never replaced,
+   so after marking and applying a redaction, deleting a page or setting a
+   password and saving over the file, the home screen still showed the page as
+   it was. It is now forgotten the moment anything is marked for redaction (and
+   none is taken while that file stays open), whenever the file is saved, and
+   when a file that needs a password opens under a name that had one
+   (`e2e/recent.spec.ts`).
+2. **Opening any file drew its first page with no limit on its size.** The
+   picture was drawn on every open, at a scale set by the page, and nothing
+   bounded it: a page of 170 000 points was drawn at 72 million pixels (that
+   much was run), and the million-point page the review describes would ask
+   for gigabytes — on wasm32 an allocation that aborts the core, which was not
+   run here. The picture is now sized to fit both ways and skipped past that,
+   and no render anywhere may pass 64 million pixels: the core refuses before
+   allocating, for both sizes (`robustness.rs`). Warraq's own view draws a
+   large page at a high zoom a little softer instead of hitting that limit.
+3. **In the macOS menu bar, Undo could not reach the typing in a text field.**
+   The page's own Undo item replaced the system's role but was enabled only by
+   the document's history, so typing in a field (the first paragraph edit, the
+   page field, the password sheet) could not be undone from the menu; and it
+   aimed by `document.activeElement`, which inside EmbedPDF's shadow root is
+   its host, so in EmbedPDF's search field the menu took back the last drawing
+   instead. Both now follow the focused field and what its typing can undo. The
+   paragraph editor undoes its own typing on ⌘Z, and shortcuts match the key's
+   place when the layout is not Latin (an Arabic keyboard types ئ on Z).
+4. **About could not be opened on the Mac.** The app menu's About was the
+   system's panel, which never reaches the page: the core's version, the engine
+   drawing the pages and the privacy note were nowhere. It is the page's own
+   sheet now, and a desktop core that could not load PDFium says so in a badge
+   beside the document's title.
+5. **Checks and pressed states that come from EmbedPDF went stale.** The
+   sidebar and Find buttons and the View menu's Fit width, Fit page and
+   navigation-pane checks were read while drawing, and nothing drew again when
+   EmbedPDF changed. They follow its command state now; the macOS menu is sent
+   again after every item chosen there, because the system flips a check item's
+   own mark; and in Edit text the sidebar button no longer shows the state
+   before the click. Find there can be pressed off again.
+6. **The arrow keys in the tool picker moved the focus out of it.** Left,
+   Right, Home and End went through the popover's portal to the toolbar behind
+   it, and opening the picker from the keyboard left the focus on its trigger
+   (the popover took focus while still hidden). Fixed both ways; Home and End
+   go to the first and last tile.
+7. **Settings' segmented controls announced a radio group they did not have.**
+   Every option was a Tab stop and the arrows did nothing. They are one Tab
+   stop now, and the arrows move and choose, following the reading direction —
+   the same for Edit's kinds and Prepare form's scope.
+8. **A phone could not show the markup toolbar at all**, and View › Tools pane
+   flipped a check and showed nothing while no tool was chosen. The View menu
+   has a Markup toolbar item (the macOS menu bar gets it too), and Tools pane,
+   the toolbar's inspector button and Shift+F4 are offered only when a sheet
+   can rise.
+9. **The phone's sheet drew a grabber that could not be dragged.** It drags
+   now, with the system's sheet physics, and closes when the drag — carried on
+   by its speed — passes half the sheet.
+10. **The Shortcuts sheet sent people to the status bar**, which the redesign
+    removed, in both languages. It names the toolbar's page field and Edit ›
+    Go to page now, and is shown only in a browser, since only a browser keeps
+    that key for itself. A test fails on any string that mentions the status
+    bar or the ribbon again, and their leftover strings, rules and tokens are
+    gone.
+
+Also found while looking: the app's Arabic name was letter-spaced inside the
+English interface, which breaks the joins (it is marked as Arabic now); the
+tool picker had no height limit, so a short window would have cut it off; a
+first keystroke was swallowed by the new focus tracking until it was moved
+off the input event's own dispatch; and Edit PDF's picture and link layers
+ignored a press until the page's pictures or links had been listed without
+saying so anywhere — they carry `aria-busy` while they wait now, which is
+also what the end-to-end tests that draw by dragging wait for (they had been
+pressing into a layer that was not ready, and failed whenever the machine
+was loaded).
+
 ## Known gaps, stated plainly
 * **Batch: what it is not.** PDF/A is not one of its steps: there is no PDF/A conversion on main yet (a step plugs into `batch/steps.ts` when there is). In a browser the results are held in memory until the zip is made, so a batch of very many large files needs the memory for all of its results; on the desktop each is written as soon as it is done. Files dropped on the desktop window have no folder to go back to, so their results need a chosen folder. Protect and Flatten go through PDFium and write the file whole (as EmbedPDF's own Protect does); Flatten refuses a protected file rather than write it without its protection, Compress and Remove hidden information refuse one as their tools do. A saved action's page marks are text only (a picture watermark would have to be kept with the action). The batch was run in the desktop app through its self-check, not clicked there by a person: the native panels for files and folders are the ones Combine and Open already use.
 * **The AI's data actions: what they are not.** OCR correction needs the words Scan & OCR now keeps with each page: a layer written before 2026-09-19 has none and is not offered (take it off with Remove hidden information → hidden text, and recognise again). The words are the page's private application data (`/PieceInfo`): Remove hidden information lists them as such, and removing them ends later correction while the layer itself stays. A corrected word that the correction split or joined lies over the boxes of the words it replaced; a word the model adds joins the word before it. Smart fill fills text fields only — check boxes, radio buttons and lists are left for the person. Personal information is found as the model and the patterns find it; each finding is then looked up on its page with the Arabic-aware search, and one the page does not have is shown but cannot be marked. Tables read by the model come from the page's text in logical order and are checked against the page by the person; tables found on the device are the Excel export's detection, with its limits (below).
@@ -525,6 +609,25 @@ test that fails without its fix.
   webview's text fields, never the document's history. The app's item undoes the document, or the typing
   when a text field has the focus. Cut, Copy, Paste and Select All are the system's.
 * **OCR reads diacritics poorly and skips some table rows**; crooked scans are straightened and damaged ones can be cleaned up first, but a stain's ring as dark and thin as a stroke still costs the words it crosses; Nastaliq Urdu cannot be recognised usefully on the device at all. Recognition in the desktop app was checked from the host's log (above), not watched on screen.
+
+  when a text field has the focus — enabled by what the browser says that field's history can undo
+  (`queryCommandEnabled`), and carried out with `execCommand`. Cut, Copy, Paste and Select All are the
+  system's. **What is proven and what is not**: the whole menu path is exercised in Chrome against a
+  stand-in for the host that receives the very menu the page sends and delivers items chosen in it
+  (`e2e/native-menu.spec.ts`); the system's own menu bar in the installed app has still not been clicked by
+  anyone (no screen access here), and WebKit's editing history is assumed to answer as Chrome's does.
+* **The recent grid's picture is dropped when a file is saved, not retaken.** The saved file may no longer
+  look like it — a page deleted, a password set, a redaction applied — and which file a name means after a
+  save (the panel can write anywhere) is not knowable from the name alone, so the tile shows a plain page
+  until that file is opened again. Nothing about a redacted or protected page is kept.
+* **No page is drawn with more than 64 million pixels.** Past that the core refuses the render rather than
+  allocating gigabytes for a page size read from the file. An A4 page at the largest scale the core draws
+  at (8×) is half of it, and print, export and OCR ask for less; a very large page at a very high zoom is
+  drawn a little softer instead.
+* **The phone's sheet drag has been tested in a browser, not on a phone.** The gesture is driven by pointer
+  events at 390 points wide with touch emulated (`e2e/phone.spec.ts`), and its physics — momentum
+  projection, rubber-banding, the spring — are unit-tested; no one has yet dragged it with a finger.
+* **OCR reads diacritics poorly and skips some table rows**; crooked scans are straightened first, but there is no cleanup of stains or shadows; Nastaliq Urdu cannot be recognised usefully on the device at all. Recognition in the desktop app has not been watched yet (it runs in the same webview that draws the pages).
 * **Nastaliq Urdu** now reads exactly where the file maps its glyphs: the corpus's Chrome-made Nastaliq page went from recall 0.61 / order 0.56 to 1.0 / 1.0 (`tests/acid`, baseline raised), with no other truth-scored file changing a byte. Nastaliq lifts each word's letters up to an em above the line, which split every line into fragments; a joining letter touching its neighbour is now read on that letter's baseline. Not done: a Nastaliq file with no ToUnicode map — Noto Nastaliq draws ب ت ث ن ی پ ٹ from one skeleton plus separate dots, which the glyph-to-letter fallback cannot express (65 of 170 glyphs right), and producers that subset the font drop the table it reads. Two leftovers in real-world files: a false space in "مع ظم" (Wikibooks) and diacritics out of order in "وَأَناَ اشْترََيْتهُاَ" (a LibreOffice page).
 * **Ten corpus files** come back with U+FFFD placeholders where a glyph has no usable ToUnicode, cmap or GSUB evidence. Placeholders are deliberate: words are never silently merged.
 * **SASLprep** is not applied to R5/R6 passwords; ASCII passwords are exact.

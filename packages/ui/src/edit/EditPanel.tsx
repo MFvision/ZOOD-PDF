@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { Pencil, Redo2, TextCursorInput, Undo2 } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
-import { useT } from '../i18n/useT';
+import { radioTabIndex, useRadioGroupKeyboard } from '../components/useRadioGroupKeyboard';
+import { useI18n, useT } from '../i18n/useT';
 import { modKeyLabel } from '../shell/menuModel';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { EDIT_FONTS } from './editFont';
@@ -21,6 +22,7 @@ export function EditPanel() {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const { kind } = useEditPdf();
+  const radioKeys = useRadioGroupKeyboard(useI18n().dir);
   // Mid-switch the editor does not have the file yet (`state.switching`).
   const hasDocument = state.view === 'viewer' && state.document !== null && state.switching === null;
   const { active } = state.edit;
@@ -43,13 +45,14 @@ export function EditPanel() {
         <Icon of={Pencil} />
         {t('tool.edit')}
       </h3>
-      <div className="segmented edit-kinds" role="radiogroup" aria-label={t('editPdf.kind')}>
+      <div className="segmented edit-kinds" role="radiogroup" aria-label={t('editPdf.kind')} onKeyDown={radioKeys}>
         {(['text', 'images', 'links'] as const).map((option) => (
           <button
             key={option}
             type="button"
             role="radio"
             aria-checked={kind === option}
+            tabIndex={radioTabIndex(kind === option, option === 'text', false)}
             className="segmented-item"
             disabled={!hasDocument}
             onClick={() => chooseKind(option)}
