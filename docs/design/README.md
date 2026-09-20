@@ -30,7 +30,8 @@ Segoe UI on Windows, with Cairo and Inter bundled for the rest.
 5. **Move only as feedback.** Sheets, popovers, the HUD and the phone's inspector sheet move because you
    asked for them. Nothing else animates, and nothing loops.
 6. **Arabic is not an afterthought.** Every layout uses logical properties, which stylelint enforces.
-   Arabic text is never letter-spaced, because tracking breaks the joins. Directional icons mirror
+   Arabic text is never letter-spaced, because tracking breaks the joins — including the app's own name
+   inside an English sentence, which is written `<bdi dir="rtl" lang="ar">`. Directional icons mirror
    (`<Icon mirror>`). Numbers typed in Arabic-Indic digits work in the page field.
 
 ## Tokens
@@ -119,7 +120,8 @@ Use `font-variant-numeric: tabular-nums` wherever numbers change in place, such 
     `transition-behavior: allow-discrete`).
   - Popovers grow out of their trigger. Their `transform-origin` is the point of the trigger (`Popover.tsx`).
     They shrink back into it.
-  - The phone's inspector sheet rises from the bottom edge.
+  - The phone's inspector sheet rises from the bottom edge, and follows a drag on its grabber; released, it
+    is sprung to where the drag was sending it (Apple's sheet spring: damping 0.8, response 0.3).
   - Nothing moves that you did not ask to move.
 
 ## The window
@@ -141,8 +143,10 @@ Use `font-variant-numeric: tabular-nums` wherever numbers change in place, such 
   - Leading: the sidebar toggle and the **title block**. The title block holds the file name and a subtitle
     `role="status"` named "Document status", which reads "Page n of m — Edited".
   - Middle: pages and zoom. Zoom reads and sets EmbedPDF's zoom, or Warraq's own in Edit text.
-  - Trailing: the markup toolbar, Edit text, the **tool picker** (a popover gallery of the 15 tools), find,
-    save and the inspector.
+  - Trailing: the markup toolbar, Edit text, the **tool picker** (a popover gallery of all sixteen tools;
+    the arrow keys move between its tiles, Home and End to the ends), find, save and the inspector.
+  - The toggles — the sidebar, find, the markup bar — are pressed exactly while what they show is open,
+    in both views: EmbedPDF's own state is followed (`watchToggles`), not read once while drawing.
   - Controls are grouped on glass capsules (`.toolbar-group`).
 - **Sidebar** (`LeftPane`): translucent source-list material.
 - **Inspector** (`RightPane`, `.inspector`): the tools as a list, or the chosen tool's panel under a header
@@ -176,8 +180,13 @@ Use `font-variant-numeric: tabular-nums` wherever numbers change in place, such 
     Others, Show All, Quit), the system's Cut/Copy/Paste/Select All, Enter Full Screen and the Window menu.
   - Items enable, disable and check as the page's menu does. The model is re-sent on every change. The
     menu is rebuilt only when labels change; otherwise it is updated in place.
-  - Undo and Redo are the model's own items, so they reach the document's history. In a text field they
-    undo the typing.
+  - Undo and Redo are the model's own items, so they reach the document's history. While a text field has
+    the focus — EmbedPDF's own fields too, inside its shadow root — they are that field's, enabled by what
+    its typing can undo (`shell/typing.ts`); ⌘Z is handled by the page either way.
+  - **About** is the page's own sheet, which names the core's version and the engine drawing the pages; the
+    system's About panel knew neither and never reached the page.
+  - The model is sent again after every item chosen there: the system flips a check item's own mark when it
+    is clicked, and the model is the truth.
   - The page's own menu bar is not drawn. Language and appearance are in **Settings… (⌘,)**.
 - **Each shortcut runs once.** WebKit gives the page the first look at a key equivalent, and the page calls
   `preventDefault()` on every key it handles, so the menu does not also see it. `shell/shortcutEcho.ts`
@@ -187,10 +196,15 @@ Use `font-variant-numeric: tabular-nums` wherever numbers change in place, such 
 
 - At 900 px and below, the tool picker shows its icon only and zoom leaves the toolbar. Zoom stays in the
   View menu and on keys.
-- At 700 px and below, the inspector becomes a **sheet** from the bottom edge (with a grabber and a close
-  button), and the sidebar floats over the document.
+- At 700 px and below, the inspector becomes a **sheet** from the bottom edge, and the sidebar floats over
+  the document. The sheet's **grabber** drags: it follows the finger from where it was taken, resists being
+  pulled past its top, and on release goes where the finger was sending it — the momentum projected as a
+  scroll's is, then a spring from where it is at the speed it had, which can be taken hold of again
+  mid-flight (`shell/sheetDrag.ts`). Its close button does the same for the keyboard. With no tool chosen
+  there is no sheet, so View › Tools pane and the inspector button are not offered.
 - At 640 px and below (a phone):
-  - The toolbar keeps the sidebar, the title, the tool picker and save.
+  - The toolbar keeps the sidebar, the title, the tool picker and save. Find, Edit text and the markup
+    toolbar are in the menus (Edit › Find, Edit › Edit text, View › Markup toolbar).
   - EmbedPDF's floating page field returns, as the way to move between pages.
   - The home grid uses three columns, and the tools gallery two.
   - Nothing ever scrolls sideways.
@@ -214,7 +228,7 @@ Use `font-variant-numeric: tabular-nums` wherever numbers change in place, such 
 | `.text-input`                                   | Text field, with the accent halo on focus     |                                                                       |
 | `input[type=checkbox]`, `input[type=radio]`     | macOS checkbox and radio                      | Drawn with `appearance: none`, so they look the same in every host    |
 | `input[type=checkbox].switch`                   | Switch                                        | For on/off settings                                                   |
-| `.segmented` > `.segmented-item`                | Segmented control                             | `role="radiogroup"` / `role="radio"` with `aria-checked` (see `SettingsDialog`) |
+| `.segmented` > `.segmented-item`                | Segmented control                             | `role="radiogroup"` / `role="radio"` with `aria-checked` (see `SettingsDialog`). One Tab stop: the arrow keys move and choose, following the reading direction (`useRadioGroupKeyboard`) |
 | `.stepper`                                      | Number field with arrows                      |                                                                       |
 | `.tool-panel`                                   | An inspector panel                            | A column with 12-px gaps                                              |
 | `fieldset` + `legend` inside `.tool-panel`      | **Grouped inset section**, heading above      | The legend is drawn above the rounded group                           |
@@ -250,8 +264,9 @@ The document view (EmbedPDF 2.15.1) is themed through its own API in `embed/embe
   (`removeDuplicatedChrome`), because the toolbar has them. Its floating page field is hidden except on a
   phone.
 - **The rest of its bar is the markup toolbar.** That is the modes (annotate, shapes, insert, form, redact),
-  page settings, pan and the comments panel. It is shown from the toolbar's markup button and hidden by
-  default, as Preview's markup toolbar is. Its mode toolbars still appear whenever a tool puts it in a mode.
+  page settings, pan and the comments panel. It is shown from the toolbar's markup button or **View › Markup
+  toolbar** (the only way at phone width, where that button has no room) and hidden by default, as Preview's
+  markup toolbar is. Its mode toolbars still appear whenever a tool puts it in a mode.
 
 ## The app icon
 
@@ -279,12 +294,14 @@ pnpm --filter @warraq/web build
 WARRAQ_SCREENSHOTS=1 pnpm --filter @warraq/web exec playwright test e2e/design-screenshots.spec.ts
 ```
 
-- `home-en-light`, `home-ar-dark`: the document chooser.
+- `home-en-light`, `home-ar-dark`: the document chooser; `home-tools-ar-light`: its tools.
 - `document-en-light`, `document-ar-light`, `document-ar-dark`: a document open.
+- `gallery-en-light`, `gallery-ar-dark`: the tool picker's gallery, all sixteen.
 - `inspector-organize-en-light`, `inspector-compress-en-dark`: the inspector.
-- `sheet-goto-en-light`: a sheet.
+- `sheet-goto-en-light`, `about-en-dark`, `settings-ar-light`: sheets.
 - `drop-overlay-ar-light`: the split drop overlay.
-- `phone-home-ar-light`, `phone-document-en-light`, `tablet-document-ar-dark`: narrow widths.
+- `phone-home-ar-light`, `phone-document-en-light`, `phone-sheet-ar-light`,
+  `tablet-document-ar-dark`: narrow widths.
 
 The macOS app itself (traffic lights, the system menu bar) cannot be screenshotted headlessly. Its
 configuration is pinned by `apps/desktop/src-tauri/tests/desktop_contract.rs` and `src/menu.rs`'s tests.

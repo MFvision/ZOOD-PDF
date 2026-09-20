@@ -86,6 +86,20 @@ test('every tool is in the picker, on the home screen, in the inspector and in t
   }
 });
 
+test('in a window too short for the gallery, it stays on screen and scrolls', async ({ page, stayLocal: _ }) => {
+  await start(page, 'en', { width: 1000, height: 420 });
+  await openPdf(page, INVOICE);
+  await page.getByRole('toolbar').getByRole('button', { name: /^Choose a tool/ }).click();
+  const gallery = page.getByRole('dialog', { name: 'All tools' });
+  const box = (await gallery.boundingBox())!;
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(420);
+  // Every tile is still reachable, by scrolling the gallery itself.
+  const last = gallery.getByRole('radio').last();
+  await last.scrollIntoViewIfNeeded();
+  await expect(last).toBeInViewport();
+});
+
 test('at phone width the gallery holds every tool and nothing scrolls sideways', async ({ page, stayLocal: _ }) => {
   await start(page, 'ar', { width: 390, height: 844 });
   const count = await page.locator('.home .tool-cards-grid .tool-card').count();
