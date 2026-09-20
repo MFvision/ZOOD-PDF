@@ -197,6 +197,47 @@ how the panel looks there: no screen could be seen (below).
   (right to left, `1,200.00` as the number 1200) and as CSV, from a local
   model asked for the shape through Ollama's `format`.
 
+## The Library's core, measured (2026-09-20)
+
+The Library — one search across a whole folder of documents — is being built by
+four agents at once. **This entry is part A alone: the core.** The panel and
+the reading of Word, Excel, pictures and scans into text are other agents' work
+and are not described here; the desktop host has its own entry below. **Until
+the panel lands there is no Library tool in the interface**, and nothing claims
+one.
+
+`packages/core/warraq-core/tests/tool_library.rs::the_whole_arabic_corpus_goes_into_one_index_and_is_searched_across`
+offers the whole Arabic corpus to `library.add` one file at a time, searches
+across the lot, saves the index and opens it again. On this Mac (Apple silicon,
+release build, with several other agents working on it at the same time — so
+these are what a busy machine gives, not its best):
+
+| | |
+|---|---|
+| Files offered | 48 PDFs (`tests/corpus/arabic/{generated,realworld}`, the many-page performance fixtures left out) |
+| Indexed | 44 — the four password-protected files are refused with `skipped: "password"` until one is given, and the run carries on |
+| Read and indexed in | **3.7 s**, i.e. 83 ms a file. Nearly all of it is reading the PDFs with Warraq's own reader, page by page; the indexing itself is the small part |
+| The same folder offered again | **14 ms** — nothing has been written to, so `library.add` answers `unchanged` without opening a single file. The test fails if a second pass ever costs more than a fifth of the first |
+| Words indexed | 65 028 |
+| The index | **1 159 KB** written by `library.save`; `library.stats` estimates 1 125 KB, 3 % under (the test keeps the two within a quarter of each other) |
+| One search across all 44 | **0.9 ms** (`العربية`, written without tashkeel; the test requires it in at least five different files, each hit marked inside the line the person would read) |
+| Scans seen for what they are | the corpus's scanned pages go in as `scan` with no text of their own, for the interface to read with OCR and hand back; the test requires at least three |
+
+At that rate the index costs about 18 bytes a word, so the cap of 48 000 000
+characters is roughly 150 MB held and something over three thousand ordinary
+documents (`Known gaps`, below).
+
+**Proved besides the numbers** (ten tests through `call_static`, the way every
+host reaches the ops, and 56 more inside the module): a protected file skipped
+until its password is given, and **the password nowhere in the bytes the index
+writes**; a scan filled in by OCR text under the same key and then found; one
+copy of a file changing while its twin keeps the old text; forgetting a file
+taking it out of every answer; **400 damaged indexes** — truncated, flipped,
+counts blown up to gigabytes, stretches cut out — every one refused with
+`E_INDEX` and not one of them a panic; and the ranking's four claims (a phrase
+beats scattered words, more beats fewer, short beats long, the whole query
+beats half) each with a test of its own.
+
 ## The Library's desktop host (2026-09-20)
 
 The Library — one search across a whole folder of documents — is being built by
