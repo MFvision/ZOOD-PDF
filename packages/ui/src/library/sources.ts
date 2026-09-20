@@ -1,24 +1,47 @@
-import { isTauriHost, listBatchFolder, pickFolder, readBatchFile } from '../core/host-tauri';
-import { kindOfName, readableFile } from './kinds';
+import {
+  hasLibraryHost,
+  onLibraryScan,
+  pickLibraryFolders,
+  readLibraryFile,
+  startLibraryScan,
+  stopLibraryScan,
+} from '../core/host-tauri';
+import type { LibraryScanEvent } from '../core/host-tauri';
+import { LIBRARY_ACCEPT } from './kinds';
+import type { LibraryFile } from './ingest';
 import type { FolderRecord, LibraryMeta } from './store';
-import type { IngestSource } from './ingest';
 
 /**
  * Where the Library's files come from, and how one is found again later.
  *
- * Three hosts, one shape: the desktop picks a folder natively and walks it
- * through its own host; a browser that has the directory picker walks the
- * folder handle it is given (and keeps the handle, so the same folder is read
- * again after a reload); anything else takes files from the file picker.
- * Nothing is read until its turn comes — `bytes()` is what reads it.
+ * Three hosts, one shape: the desktop picks folders in the system panel and
+ * its own host walks them (`library.rs`, part of this feature); a browser
+ * that has the directory picker walks the folder handle it is given, and
+ * keeps the handle so the same folder is read again after a reload; anything
+ * else takes files from the file picker or a drop. Nothing is read until its
+ * turn comes — `read()` is what reads it.
  *
- * The files themselves are never written, moved or copied. Walking is
- * bounded: a folder of a million files, or one that links to itself, stops at
- * the cap instead of taking the tab with it.
+ * The files themselves are never written, moved or copied. Walking in a
+ * browser is bounded: a folder of a million files, or one that links to
+ * itself, stops at the cap instead of taking the tab with it. (The desktop
+ * host has its own bounds.)
  */
 
 const MAX_FILES = 20_000;
 const MAX_DEPTH = 24;
+
+/** The extensions the Library reads, without their dots: what the desktop walk keeps. */
+const EXTENSIONS = LIBRARY_ACCEPT.split(',')
+  .filter((entry) => entry.startsWith('.'))
+  .map((entry) => entry.slice(1).toLowerCase());
+
+const READS = new Set(EXTENSIONS);
+
+/** Whether the Library has a reader for a file of this name. */
+export function readableFile(name: string): boolean {
+  const dot = name.lastIndexOf('.');
+  return dot > 0 && READS.has(name.slice(dot + 1).toLowerCase());
+}
 
 /** A browser folder handle, with the permission calls the type in `lib.dom` does not carry. */
 interface DirectoryHandle extends FileSystemDirectoryHandle {
@@ -33,8 +56,8 @@ type WithDirectoryPicker = {
 
 export interface AddedFolder {
   record: FolderRecord;
-  sources: IngestSource[];
-  /** Files under the folder the Library does not read at all, so the count is honest. */
+  files: LibraryFile[];
+  /** Files under the folder the Library has no reader for, so the count is honest. */
   ignored: number;
 }
 
@@ -43,9 +66,9 @@ export function directoryPickerAvailable(): boolean {
   return typeof (globalThis as WithDirectoryPicker).showDirectoryPicker === 'function';
 }
 
-/** The desktop picks folders through the system panel. */
+/** The desktop picks folders in the system panel and walks them itself. */
 export function nativeFolders(): boolean {
-  return isTauriHost();
+  return hasLibraryHost();
 }
 
 function folderId(): string {
@@ -56,28 +79,28 @@ function folderId(): string {
 /** A browser key: the folder's own id, then the file's place under it. */
 export const browserKey = (folder: string, relative: string): string => `${folder}/${relative}`;
 
-function fromFile(key: string, file: File, name = file.name): IngestSource {
+function fromFile(key: string, file: File, relative: string): LibraryFile {
   return {
     key,
-    name,
+    name: file.name,
+    path: relative,
     size: file.size,
     modified: file.lastModified,
-    bytes: () => file.arrayBuffer(),
+    read: () => file.arrayBuffer(),
   };
 }
 
 /**
  * Files chosen one by one, or a folder taken by a browser that has no
- * directory picker: the key is the folder's id and the file's place under it.
- * The `File`s come back beside the sources, because these are only in hand
- * while the tab lives — after a reload a hit in one of them is reported as
- * gone rather than opened from somewhere it never was.
+ * directory picker. The `File`s come back beside the list, because these are
+ * in hand only while the tab lives — after a reload a hit in one of them is
+ * reported as gone rather than opened from somewhere it never was.
  */
-export function sourcesFromFiles(
+export function filesFromPicker(
   files: readonly File[],
   folder: string,
-): { sources: IngestSource[]; ignored: number; held: Map<string, File> } {
-  const sources: IngestSource[] = [];
+): { files: LibraryFile[]; ignored: number; held: Map<string, File> } {
+  const taken: LibraryFile[] = [];
   const held = new Map<string, File>();
   let ignored = 0;
   for (const file of files) {
@@ -87,10 +110,10 @@ export function sourcesFromFiles(
       continue;
     }
     const key = browserKey(folder, relative);
-    sources.push(fromFile(key, file, file.name));
+    taken.push(fromFile(key, file, relative));
     held.set(key, file);
   }
-  return { sources, ignored, held };
+  return { files: taken, ignored, held };
 }
 
 /** Everything the Library can read under a browser folder handle, subfolders too. */
@@ -98,15 +121,15 @@ export async function walkDirectory(
   handle: DirectoryHandle,
   folder: string,
   onFound?: (found: number) => void,
-): Promise<{ sources: IngestSource[]; ignored: number }> {
-  const sources: IngestSource[] = [];
+): Promise<{ files: LibraryFile[]; ignored: number }> {
+  const files: LibraryFile[] = [];
   let ignored = 0;
   const walk = async (directory: DirectoryHandle, prefix: string, depth: number): Promise<void> => {
-    if (depth > MAX_DEPTH || sources.length >= MAX_FILES) return;
+    if (depth > MAX_DEPTH || files.length >= MAX_FILES) return;
     const entries = directory.values?.();
     if (!entries) return;
     for await (const entry of entries) {
-      if (sources.length >= MAX_FILES) return;
+      if (files.length >= MAX_FILES) return;
       const path = prefix ? `${prefix}/${entry.name}` : entry.name;
       if (entry.kind === 'directory') {
         await walk(entry as DirectoryHandle, path, depth + 1);
@@ -116,16 +139,15 @@ export async function walkDirectory(
         ignored += 1;
         continue;
       }
-      const fileHandle = entry as FileSystemFileHandle;
       // The file itself is read only when its turn comes; `getFile` here is
-      // just for its size and date, which is what tells an unchanged file.
-      const file = await fileHandle.getFile();
-      sources.push(fromFile(browserKey(folder, path), file, entry.name));
-      onFound?.(sources.length);
+      // for its size and date, which is what tells an unchanged file.
+      const file = await (entry as FileSystemFileHandle).getFile();
+      files.push(fromFile(browserKey(folder, path), file, path));
+      onFound?.(files.length);
     }
   };
   await walk(handle, '', 0);
-  return { sources, ignored };
+  return { files, ignored };
 }
 
 /** The browser's folder picker, walked. `null` when the person cancelled. */
@@ -140,27 +162,63 @@ export async function pickDirectory(onFound?: (found: number) => void): Promise<
     return null;
   }
   const id = folderId();
-  const { sources, ignored } = await walkDirectory(handle, id, onFound);
-  return { record: { id, label: handle.name, source: 'directory', handle }, sources, ignored };
+  const { files, ignored } = await walkDirectory(handle, id, onFound);
+  return { record: { id, label: handle.name, source: 'directory', handle }, files, ignored };
 }
 
-/** The desktop's folder picker, walked by the host. `null` when the person cancelled. */
-export async function pickNativeFolder(): Promise<AddedFolder | null> {
-  const path = await pickFolder(true);
-  if (!path) return null;
-  const found = await listBatchFolder(path, true);
-  const sources = found.map(
-    (file): IngestSource => ({
-      key: file.path,
-      name: file.name,
-      size: file.size,
-      // The host lists a file's size, not its date; the file is read again
-      // whenever its size changed, and otherwise left alone.
-      modified: 0,
-      bytes: () => readBatchFile(file.path),
-    }),
-  );
-  return { record: { id: path, label: path.split(/[\\/]/).pop() || path, source: 'path', path }, sources, ignored: 0 };
+/**
+ * The desktop's folder picker, walked by the host: it answers at once and
+ * sends what it finds as it goes, so a folder of ten thousand files does not
+ * hold the interface. `null` when the person cancelled.
+ */
+export async function pickNativeFolders(
+  onFound?: (found: number, where: string) => void,
+  signal?: AbortSignal,
+): Promise<AddedFolder[] | null> {
+  const paths = await pickLibraryFolders();
+  if (paths.length === 0) return null;
+  const found = new Map<string, LibraryFile[]>(paths.map((path) => [path, []]));
+  await new Promise<void>((resolve, reject) => {
+    let stop: (() => void) | null = null;
+    let scan = 0;
+    const off = onLibraryScan((event: LibraryScanEvent) => {
+      if (scan && event.scan !== scan) return;
+      for (const file of event.files) {
+        const list = found.get(file.root);
+        if (!list) continue;
+        list.push({
+          key: file.key,
+          name: file.name,
+          path: file.relative,
+          size: file.size,
+          modified: file.modified,
+          read: () => readLibraryFile(file.key),
+        });
+      }
+      onFound?.([...found.values()].reduce((sum, list) => sum + list.length, 0), event.current);
+      if (event.kind === 'done') {
+        stop?.();
+        off();
+        resolve();
+      }
+    });
+    startLibraryScan({ roots: paths.map((path) => ({ path, recursive: true })), extensions: EXTENSIONS })
+      .then((id) => {
+        scan = id;
+        const abort = () => void stopLibraryScan(id).catch(() => undefined);
+        signal?.addEventListener('abort', abort, { once: true });
+        stop = () => signal?.removeEventListener('abort', abort);
+      })
+      .catch((problem: unknown) => {
+        off();
+        reject(problem instanceof Error ? problem : new Error(String(problem)));
+      });
+  });
+  return paths.map((path) => ({
+    record: { id: path, label: path.split(/[\\/]/).pop() || path, source: 'path', path },
+    files: found.get(path) ?? [],
+    ignored: 0,
+  }));
 }
 
 /** The folder a key came from, by the records the store kept. */
@@ -180,18 +238,14 @@ export function keysUnder(meta: LibraryMeta, folder: FolderRecord): string[] {
  * folder through its path. `null` means the file has moved or gone — the
  * panel says so and offers to forget it.
  */
-export async function fileForKey(
-  meta: LibraryMeta,
-  key: string,
-  held: ReadonlyMap<string, File>,
-): Promise<File | null> {
+export async function fileForKey(meta: LibraryMeta, key: string, held: ReadonlyMap<string, File>): Promise<File | null> {
   const inHand = held.get(key);
   if (inHand) return inHand;
   const folder = folderOf(meta, key);
   const name = meta.files[key]?.name ?? key.split(/[\\/]/).pop() ?? key;
-  if (folder?.source === 'path' || (!folder && isTauriHost())) {
+  if (folder?.source === 'path' || (!folder && hasLibraryHost())) {
     try {
-      return new File([await readBatchFile(key)], name, { type: mimeOf(name) });
+      return new File([await readLibraryFile(key)], name, { type: mimeOf(name) });
     } catch {
       return null;
     }
@@ -230,5 +284,5 @@ const MIME: Record<string, string> = {
 function mimeOf(name: string): string {
   const dot = name.lastIndexOf('.');
   const extension = dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
-  return MIME[extension] ?? (kindOfName(name) === 'pdf' ? 'application/pdf' : 'application/octet-stream');
+  return MIME[extension] ?? 'application/octet-stream';
 }

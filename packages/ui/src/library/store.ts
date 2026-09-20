@@ -1,18 +1,21 @@
-import type { LibraryKind } from './ops';
+import { deleteLibraryIndex, hasLibraryHost, loadLibraryIndex, saveLibraryIndex } from '../core/host-tauri';
+import type { LibraryKind } from './kinds';
 
 /**
  * Where the Library's index lives on this device.
  *
  * The index holds text taken from the person's own documents, so it is kept
- * where their data is and nowhere else: in the browser it is IndexedDB, which
- * inside the desktop app is the app's own data directory. Nothing is ever
- * sent anywhere, and "Delete the index" deletes the database itself rather
- * than emptying it, so nothing is left behind.
+ * where their data is and nowhere else: in the desktop app the host writes it
+ * into the app's own data directory, and in a browser it goes to IndexedDB.
+ * Nothing is ever sent anywhere, and "Delete the index" removes the file, or
+ * the database itself, rather than emptying it — with the ledger of what was
+ * already read (`ledger.ts`), so nothing is left behind.
  *
  * Beside the index the store keeps only what the panel needs to go on: the
- * folders that were added (with the browser's directory handle, when it has
- * one, so the same folder can be read again after a reload), one small record
- * per file so an unchanged file is not read twice, and the person's tag rules.
+ * folders that were added — with the browser's directory handle, when it has
+ * one, so the same folder can be read again after a reload — and, for each
+ * indexed file, its name and the folder it came from. No text, and nothing
+ * the person did not already have.
  */
 
 const DATABASE = 'warraq-library';
@@ -21,16 +24,16 @@ const INDEX_STORE = 'index';
 const META_STORE = 'meta';
 const INDEX_KEY = 'bytes';
 const META_KEY = 'meta';
+/** The one index the app keeps, by name, in the desktop host's data directory. */
+export const INDEX_NAME = 'library';
 
-/** A file already in the index: enough to tell whether it must be read again. */
+/** A file in the index: enough to list a folder and to name a hit's file. */
 export interface FileRecord {
   key: string;
   name: string;
+  /** The id (browser) or path (desktop) of the folder it was added under. */
   folder: string;
   kind: LibraryKind;
-  size?: number;
-  modified: number;
-  indexed: number;
 }
 
 /** Where files came from. A browser folder keeps its handle so it can be read again. */
@@ -43,42 +46,31 @@ export interface FolderRecord {
   handle?: FileSystemDirectoryHandle;
 }
 
-/** "If the text holds {word}, tag it {tag}." The person's own, kept on this device. */
-export interface TagRule {
-  id: string;
-  word: string;
-  tag: string;
-}
-
 export interface LibraryMeta {
   folders: FolderRecord[];
   files: Record<string, FileRecord>;
-  rules: TagRule[];
 }
 
-export const emptyMeta = (): LibraryMeta => ({ folders: [], files: {}, rules: [] });
+export const emptyMeta = (): LibraryMeta => ({ folders: [], files: {} });
 
 export interface LibraryStore {
   readIndex(): Promise<ArrayBuffer | null>;
   writeIndex(bytes: ArrayBuffer): Promise<void>;
   readMeta(): Promise<LibraryMeta>;
   writeMeta(meta: LibraryMeta): Promise<void>;
-  /** Really deletes: the index, the file records, the folders and the rules. */
+  /** Really deletes: the index, the folders and the file records. */
   forgetEverything(): Promise<void>;
 }
 
 /** Makes a well-formed meta out of whatever came back, however old or broken. */
 export function tidyMeta(value: unknown): LibraryMeta {
   const meta = (value ?? {}) as Partial<LibraryMeta>;
-  const folders = Array.isArray(meta.folders) ? meta.folders.filter((f) => typeof f?.id === 'string') : [];
-  const rules = Array.isArray(meta.rules)
-    ? meta.rules.filter((r) => typeof r?.id === 'string' && typeof r.word === 'string' && typeof r.tag === 'string')
-    : [];
+  const folders = Array.isArray(meta.folders) ? meta.folders.filter((one) => typeof one?.id === 'string') : [];
   const files: Record<string, FileRecord> = {};
   for (const [key, record] of Object.entries(meta.files ?? {})) {
-    if (record && typeof record === 'object' && typeof (record as FileRecord).modified === 'number') files[key] = record as FileRecord;
+    if (record && typeof record === 'object' && typeof (record as FileRecord).name === 'string') files[key] = record as FileRecord;
   }
-  return { folders, files, rules };
+  return { folders, files };
 }
 
 function request<T>(req: IDBRequest<T>): Promise<T> {
@@ -134,26 +126,48 @@ export function storeAvailable(): boolean {
   }
 }
 
+function deleteDatabase(): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const gone = indexedDB.deleteDatabase(DATABASE);
+    gone.onsuccess = () => resolve();
+    gone.onerror = () => reject(gone.error ?? new Error('IndexedDB failed'));
+    // Another window of the app holds the database; the page closes it after
+    // every write, so this only happens while one is open elsewhere.
+    gone.onblocked = () => resolve();
+  });
+}
+
 export function browserStore(): LibraryStore {
   return {
     async readIndex() {
-      const bytes = await get<ArrayBuffer>(INDEX_STORE, INDEX_KEY);
-      return bytes ?? null;
+      return (await get<ArrayBuffer>(INDEX_STORE, INDEX_KEY)) ?? null;
     },
     writeIndex: (bytes) => put(INDEX_STORE, INDEX_KEY, bytes),
     async readMeta() {
       return tidyMeta(await get<LibraryMeta>(META_STORE, META_KEY));
     },
     writeMeta: (meta) => put(META_STORE, META_KEY, meta),
-    forgetEverything() {
-      return new Promise<void>((resolve, reject) => {
-        const gone = indexedDB.deleteDatabase(DATABASE);
-        gone.onsuccess = () => resolve();
-        gone.onerror = () => reject(gone.error ?? new Error('IndexedDB failed'));
-        // A tab left open elsewhere holds the database; it is closed after
-        // every write, so this only happens while another window has it.
-        gone.onblocked = () => resolve();
-      });
+    forgetEverything: deleteDatabase,
+  };
+}
+
+/**
+ * The desktop: the index itself is the host's file in the app's data
+ * directory. The folders and the file records stay in the webview's own
+ * database, which lives in that same directory.
+ */
+export function desktopStore(): LibraryStore {
+  const browser = storeAvailable() ? browserStore() : memoryStore();
+  return {
+    readIndex: () => loadLibraryIndex(INDEX_NAME),
+    writeIndex: async (bytes) => {
+      await saveLibraryIndex(INDEX_NAME, new Uint8Array(bytes));
+    },
+    readMeta: browser.readMeta,
+    writeMeta: browser.writeMeta,
+    async forgetEverything() {
+      await deleteLibraryIndex(INDEX_NAME).catch(() => false);
+      await browser.forgetEverything();
     },
   };
 }
@@ -168,9 +182,9 @@ export function memoryStore(): LibraryStore {
       index = bytes;
       return Promise.resolve();
     },
-    readMeta: () => Promise.resolve(structuredCloneMeta(meta)),
+    readMeta: () => Promise.resolve(copyMeta(meta)),
     writeMeta: (next) => {
-      meta = structuredCloneMeta(next);
+      meta = copyMeta(next);
       return Promise.resolve();
     },
     forgetEverything: () => {
@@ -182,14 +196,14 @@ export function memoryStore(): LibraryStore {
 }
 
 /** A copy that a caller's later edits cannot reach; folder handles are kept as they are. */
-function structuredCloneMeta(meta: LibraryMeta): LibraryMeta {
+function copyMeta(meta: LibraryMeta): LibraryMeta {
   return {
     folders: meta.folders.map((folder) => ({ ...folder })),
     files: Object.fromEntries(Object.entries(meta.files).map(([key, file]) => [key, { ...file }])),
-    rules: meta.rules.map((rule) => ({ ...rule })),
   };
 }
 
 export function libraryStore(): LibraryStore {
+  if (hasLibraryHost()) return desktopStore();
   return storeAvailable() ? browserStore() : memoryStore();
 }

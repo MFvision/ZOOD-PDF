@@ -1,72 +1,78 @@
-import type { LibraryKind } from './ops';
+import { CREATE_ACCEPT, createKind, pictureKind } from '../create/createPdf';
+import type { CreateKind } from '../create/createPdf';
 
 /**
- * What kind of document a file is, from its name. The core tells a PDF with
- * no text from one with text (`guessedKind`), so `scan` is never guessed
- * here: a file named `.pdf` goes in as `pdf` and the core may answer `scan`.
+ * What kind of thing a file in the Library is. The names are the ones the
+ * core's `library.add` takes (the brief's contract): a PDF whose pages carry
+ * no text of their own is a `scan`, and a picture is an `image` whether it
+ * holds words or not — both are read with Scan & OCR.
  */
-const BY_EXTENSION: Record<string, LibraryKind> = {
+export type LibraryKind =
+  | 'pdf'
+  | 'scan'
+  | 'image'
+  | 'word'
+  | 'excel'
+  | 'powerpoint'
+  | 'html'
+  | 'text'
+  | 'markdown';
+
+/** A file the readers in `create/` turn into blocks, or a picture, or a PDF. */
+export type SourceKind = CreateKind | 'pdf';
+
+/** What the Library's file and folder pickers offer: what Create PDF reads, and PDFs. */
+export const LIBRARY_ACCEPT = ['.pdf', 'application/pdf', ...CREATE_ACCEPT.split(',')].join(',');
+
+/** The extensions the desktop's folder walk keeps. */
+export const LIBRARY_EXTENSIONS = LIBRARY_ACCEPT.split(',')
+  .filter((entry) => entry.startsWith('.'))
+  .map((entry) => entry.slice(1));
+
+/** The kind `library.add` is told, for a source of this kind. */
+const KIND_OF: Record<SourceKind, LibraryKind> = {
   pdf: 'pdf',
-  png: 'image',
-  jpg: 'image',
-  jpeg: 'image',
-  tif: 'image',
-  tiff: 'image',
-  webp: 'image',
-  heic: 'image',
-  heif: 'image',
-  bmp: 'image',
-  gif: 'image',
-  doc: 'word',
+  image: 'image',
   docx: 'word',
-  rtf: 'word',
-  odt: 'word',
-  xls: 'excel',
   xlsx: 'excel',
-  csv: 'excel',
-  ods: 'excel',
-  ppt: 'powerpoint',
   pptx: 'powerpoint',
-  odp: 'powerpoint',
-  htm: 'html',
   html: 'html',
-  xhtml: 'html',
-  md: 'markdown',
   markdown: 'markdown',
-  txt: 'text',
+  // A comma-separated table is text: the contract has no kind of its own for it.
+  csv: 'text',
   text: 'text',
-  log: 'text',
-  xml: 'text',
-  json: 'text',
 };
 
-/** The extensions the Library offers to read, for the file picker's `accept`. */
-export const LIBRARY_ACCEPT = Object.keys(BY_EXTENSION)
-  .map((extension) => `.${extension}`)
-  .join(',');
-
-export function extensionOf(name: string): string {
-  const dot = name.lastIndexOf('.');
-  return dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
-}
-
-/** The kind of a file by its name, or null for one the Library does not read. */
-export function kindOfName(name: string): LibraryKind | null {
-  return BY_EXTENSION[extensionOf(name)] ?? null;
-}
-
-/** Files the Library will not try to read at all are left out of a folder's list. */
-export function readableFile(name: string): boolean {
-  return kindOfName(name) !== null;
-}
+export const libraryKindOf = (source: SourceKind): LibraryKind => KIND_OF[source];
 
 /**
- * The folder a key belongs to: everything before its last separator, or the
- * empty string for a file chosen on its own. Keys are the host's — a full
- * path on the desktop, `folder id/relative path` in a browser — and both use
- * `/` or `\`, so both are cut.
+ * What a file is, by its content first and its name only where the content
+ * cannot say — exactly as Create PDF decides it, with PDFs added. Null for
+ * anything the Library cannot read, which is skipped with a reason.
  */
-export function folderOfKey(key: string): string {
-  const cut = Math.max(key.lastIndexOf('/'), key.lastIndexOf('\\'));
-  return cut > 0 ? key.slice(0, cut) : '';
+export function sourceKind(name: string, bytes: Uint8Array): SourceKind | null {
+  if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) return 'pdf';
+  return createKind(name, bytes);
+}
+
+/** Whether this picture needs the browser to decode it (HEIC, AVIF) before the core can read it. */
+export const needsBrowserDecode = (bytes: Uint8Array): boolean => pictureKind(bytes) === 'browser';
+
+/** A picture's media type, by its name; the browser's decoder needs one. */
+export function pictureMimeOf(name: string): string {
+  const extension = name.toLowerCase().split('.').pop() ?? '';
+  const known: Record<string, string> = {
+    heic: 'image/heic',
+    heif: 'image/heif',
+    avif: 'image/avif',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    bmp: 'image/bmp',
+    webp: 'image/webp',
+    tif: 'image/tiff',
+    tiff: 'image/tiff',
+  };
+  return known[extension] ?? 'application/octet-stream';
 }

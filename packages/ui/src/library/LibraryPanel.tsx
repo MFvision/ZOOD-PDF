@@ -21,51 +21,47 @@ import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { LIBRARY_ACCEPT } from './kinds';
+import type { LibraryKind } from './kinds';
 import { badRange, filterCount, noFilters, toFilters, toggle } from './filters';
 import type { FilterState } from './filters';
-import { ingest } from './ingest';
-import type { IngestSource } from './ingest';
+import { ingestFiles } from './ingest';
+import type { IngestProgress, IngestRun, IngestedFile, LibraryFile } from './ingest';
+import { storedLedger } from './ledger';
 import { LIBRARY_KINDS, coreLibrary, missingLibraryEngine } from './ops';
-import type { IndexedDocument, LibraryKind, LibraryStats, SearchHit } from './ops';
-import { addRule, applyRules, parseTags, removeRule } from './rules';
-import { indexFiles } from './run';
-import type { FileState } from './run';
+import type { IndexedDocument, LibraryStats, SearchHit, TagRule } from './ops';
+import { addRule, parseTags, removeRule, ruleKey, ruleWords } from './rules';
 import { snippet } from './snippet';
 import {
   directoryPickerAvailable,
   fileForKey,
+  filesFromPicker,
   keysUnder,
   nativeFolders,
   pickDirectory,
-  pickNativeFolder,
-  sourcesFromFiles,
+  pickNativeFolders,
 } from './sources';
 import { emptyMeta, libraryStore } from './store';
-import type { FolderRecord, LibraryMeta } from './store';
+import type { FileRecord, FolderRecord, LibraryMeta } from './store';
 import './library.css';
 
 /**
  * The Library: one search across every document that was added, not only the
  * one on screen.
  *
- * Files and folders are read into an index kept on this device — IndexedDB in
- * a browser, which inside the desktop app is the app's own data directory —
- * and nothing about them ever leaves it: no file, no text, no thumbnail and
- * no search. A file already read is not read again while its size and date
- * are unchanged, so adding the same folder twice costs nothing. Stop leaves
- * what was read in place and the run picks up where it stopped.
+ * Files and folders are read into an index kept on this device — the app's
+ * own data directory on the desktop, IndexedDB in a browser — and nothing
+ * about them ever leaves it: no file, no text, no thumbnail and no search. A
+ * file already read is not read again while its size, date and content are
+ * unchanged, so adding the same folder twice costs nothing; Stop leaves what
+ * was read in place and *Carry on* picks up the files it never reached.
  *
  * A hit names its file, its page and the line it matched with the words
- * marked, and opens the document there.
+ * marked, and opens the document there. The reading itself is `ingest.ts`,
+ * the index and the search are the core's, and this file is the interface
+ * between a person and those two.
  */
 
 const PAGE_SIZE = 25;
-
-interface Progress {
-  done: number;
-  total: number;
-  name: string;
-}
 
 export function LibraryPanel() {
   const { t } = useI18n();
@@ -74,6 +70,7 @@ export function LibraryPanel() {
   const services = useServices();
 
   const store = useRef(libraryStore());
+  const ledger = useRef(storedLedger());
   const ops = useRef(coreLibrary(services.client));
   const held = useRef(new Map<string, File>());
   const stopper = useRef<AbortController | null>(null);
@@ -88,11 +85,12 @@ export function LibraryPanel() {
   const [stats, setStats] = useState<LibraryStats | null>(null);
 
   const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState<Progress | null>(null);
-  const [states, setStates] = useState<ReadonlyMap<string, FileState>>(new Map());
-  const [names, setNames] = useState<ReadonlyMap<string, string>>(new Map());
-  const [summary, setSummary] = useState<{ added: number; unchanged: number; skipped: number; failed: number } | null>(null);
+  const [finding, setFinding] = useState<{ found: number; where: string } | null>(null);
+  const [progress, setProgress] = useState<IngestProgress | null>(null);
+  const [outcome, setOutcome] = useState<IngestRun | null>(null);
+  const [remaining, setRemaining] = useState<LibraryFile[]>([]);
   const [password, setPassword] = useState('');
+  const [recognize, setRecognize] = useState(true);
 
   const [query, setQuery] = useState('');
   const [asked, setAsked] = useState('');
@@ -107,13 +105,14 @@ export function LibraryPanel() {
 
   const [chosen, setChosen] = useState<IndexedDocument | null>(null);
   const [newTag, setNewTag] = useState('');
+  const [rules, setRules] = useState<TagRule[]>([]);
   const [showRules, setShowRules] = useState(false);
   const [ruleWord, setRuleWord] = useState('');
   const [ruleTag, setRuleTag] = useState('');
-  const [ruleOutcome, setRuleOutcome] = useState<number | null>(null);
+  const [alsoName, setAlsoName] = useState(true);
+  const [tagged, setTagged] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const say = (message: string) => setError(message);
   const trouble = useCallback((problem: unknown) => {
     setError(problem instanceof Error ? problem.message : String(problem));
   }, []);
@@ -133,11 +132,16 @@ export function LibraryPanel() {
         const kept = await store.current.readIndex().catch(() => null);
         const { handle: id } = await library.open(kept ?? undefined);
         opened = id;
-        const [kind, count] = await Promise.all([store.current.readMeta().catch(emptyMeta), library.stats(id)]);
+        const [kept2, count, known] = await Promise.all([
+          store.current.readMeta().catch(emptyMeta),
+          library.stats(id),
+          library.rules(id),
+        ]);
         if (!alive) return;
         setHandle(id);
-        setMeta(kind);
+        setMeta(kept2);
         setStats(count);
+        setRules(known.rules);
       } catch (problem) {
         if (!alive) return;
         setEngine(missingLibraryEngine(problem) ? 'missing' : 'failed');
@@ -166,68 +170,79 @@ export function LibraryPanel() {
 
   /** Reads a list of files into the index, showing how far it has come. */
   const run = useCallback(
-    async (sources: readonly IngestSource[], folder?: FolderRecord) => {
-      if (handle === null || sources.length === 0) return;
+    async (files: readonly LibraryFile[], folder?: FolderRecord) => {
+      if (handle === null || files.length === 0) return;
       setError(null);
-      setSummary(null);
+      setOutcome(null);
+      setRemaining([]);
       setRunning(true);
-      setProgress({ done: 0, total: sources.length, name: '' });
-      setNames(new Map(sources.map((source) => [source.key, source.name])));
-      setStates(new Map(sources.map((source) => [source.key, { state: 'waiting' } as FileState])));
+      setProgress(null);
       const controller = new AbortController();
       stopper.current = controller;
+      const done: IngestedFile[] = [];
       try {
-        const before = await store.current.readMeta().catch(emptyMeta);
-        const outcome = await indexFiles({
-          ops: ops.current,
+        const answer = await ingestFiles({
           handle,
-          ingest,
-          sources,
-          known: before.files,
-          password: password || undefined,
+          files: password ? files.map((file) => ({ ...file, password })) : files,
+          client: services.client,
+          ledger: ledger.current,
+          recognize,
           signal: controller.signal,
-          onState: (key, next) => setStates((current) => new Map(current).set(key, next)),
-          onProgress: (done, of, name) => setProgress({ done, total: of, name }),
+          onProgress: setProgress,
+          onFile: (file) => done.push(file),
         });
-        const files = { ...before.files };
-        for (const record of outcome.records) files[record.key] = record;
+        const before = await store.current.readMeta().catch(emptyMeta);
+        const records = { ...before.files };
+        for (const file of answer.files) {
+          if (!file.added) continue;
+          records[file.key] = {
+            key: file.key,
+            name: file.name,
+            folder: folder?.id ?? before.files[file.key]?.folder ?? '',
+            kind: (file.kind ?? 'pdf') as LibraryKind,
+          } satisfies FileRecord;
+        }
         const folders = folder && !before.folders.some((one) => one.id === folder.id) ? [...before.folders, folder] : before.folders;
-        await rememberMeta({ ...before, folders, files });
+        await rememberMeta({ folders, files: records });
         await keep(handle);
-        setSummary({ added: outcome.added, unchanged: outcome.unchanged, skipped: outcome.skipped, failed: outcome.failed });
-        if (before.rules.length > 0 && outcome.addedKeys.length > 0) {
-          const tagged = await applyRules(ops.current, handle, before.rules, outcome.addedKeys);
-          if (tagged.tagged > 0) {
+        setOutcome(answer);
+        setRemaining(files.filter((file) => answer.remaining.includes(file.key)));
+        // Newly indexed documents take the tags the rules give them.
+        if (rules.length > 0 && answer.added > 0) {
+          const after = await ops.current.rules(handle, { apply: true });
+          if (after.tagged > 0) {
             await keep(handle);
-            setRuleOutcome(tagged.tagged);
+            setTagged(after.tagged);
           }
         }
       } catch (problem) {
         trouble(problem);
+        if (done.length > 0) setOutcome({ files: done, added: 0, skipped: 0, failed: 0, recognized: 0, remaining: [], took: 0 });
       } finally {
         stopper.current = null;
         setRunning(false);
+        setProgress(null);
       }
     },
-    [handle, keep, password, rememberMeta, trouble],
+    [handle, keep, password, recognize, rememberMeta, rules.length, services.client, trouble],
   );
 
   const takeFiles = useCallback(
-    (files: readonly File[]) => {
+    (picked: readonly File[]) => {
       // A browser folder taken by `webkitdirectory` keeps its own name, so
-      // the list shows the folder rather than "Files" for every one of them.
-      const inFolder = files.find((file) => (file as File & { webkitRelativePath?: string }).webkitRelativePath);
+      // the list shows the folder rather than "Chosen files" for every one.
+      const inFolder = picked.find((file) => (file as File & { webkitRelativePath?: string }).webkitRelativePath);
       const label = inFolder
         ? ((inFolder as File & { webkitRelativePath?: string }).webkitRelativePath ?? '').split('/')[0] || t('library.chosenFiles')
         : t('library.chosenFiles');
       const folder: FolderRecord = { id: `files-${Date.now().toString(36)}`, label, source: 'files' };
-      const { sources, held: taken } = sourcesFromFiles(files, folder.id);
-      if (sources.length === 0) {
-        say(t('library.error.noneReadable'));
+      const { files, held: taken } = filesFromPicker(picked, folder.id);
+      if (files.length === 0) {
+        setError(t('library.error.noneReadable'));
         return;
       }
       for (const [key, file] of taken) held.current.set(key, file);
-      void run(sources, folder);
+      void run(files, folder);
     },
     [run, t],
   );
@@ -254,24 +269,30 @@ export function LibraryPanel() {
     void (async () => {
       try {
         if (nativeFolders()) {
-          const picked = await pickNativeFolder();
-          if (picked) await run(picked.sources, picked.record);
+          setFinding({ found: 0, where: '' });
+          const found = await pickNativeFolders((count, where) => setFinding({ found: count, where })).finally(() => setFinding(null));
+          if (!found) return;
+          for (const folder of found) {
+            if (folder.files.length > 0) await run(folder.files, folder.record);
+          }
           return;
         }
         if (directoryPickerAvailable()) {
-          const picked = await pickDirectory();
+          setFinding({ found: 0, where: '' });
+          const picked = await pickDirectory((count) => setFinding({ found: count, where: '' })).finally(() => setFinding(null));
           if (!picked) return;
-          if (picked.sources.length === 0) {
-            say(t('library.error.emptyFolder'));
+          if (picked.files.length === 0) {
+            setError(t('library.error.emptyFolder'));
             return;
           }
           // No files are held: the folder's own handle is kept instead, so a
           // hit still opens after a reload, once the browser has been asked.
-          await run(picked.sources, picked.record);
+          await run(picked.files, picked.record);
           return;
         }
         folderInput.current?.click();
       } catch (problem) {
+        setFinding(null);
         trouble(problem);
       }
     })();
@@ -369,7 +390,7 @@ export function LibraryPanel() {
     if (handle === null) return;
     void ops.current
       .document(handle, key)
-      .then((document) => setChosen(document))
+      .then(setChosen)
       .catch(trouble);
   };
 
@@ -387,6 +408,21 @@ export function LibraryPanel() {
     })();
   };
 
+  const writeRules = (next: TagRule[], apply: boolean) => {
+    if (handle === null) return;
+    void (async () => {
+      try {
+        const answer = await ops.current.rules(handle, { set: next, apply });
+        setRules(answer.rules);
+        setTagged(apply ? answer.tagged : null);
+        await keep(handle);
+        if (apply && asked) await look(asked, filters, shown);
+      } catch (problem) {
+        trouble(problem);
+      }
+    })();
+  };
+
   const forgetFolder = (folder: FolderRecord) => {
     if (handle === null) return;
     void (async () => {
@@ -394,12 +430,13 @@ export function LibraryPanel() {
         const before = await store.current.readMeta().catch(emptyMeta);
         const keys = keysUnder(before, folder);
         if (keys.length > 0) await ops.current.forget(handle, keys);
+        ledger.current.forget(keys);
         const files = { ...before.files };
         for (const key of keys) {
           delete files[key];
           held.current.delete(key);
         }
-        await rememberMeta({ ...before, folders: before.folders.filter((one) => one.id !== folder.id), files });
+        await rememberMeta({ folders: before.folders.filter((one) => one.id !== folder.id), files });
         await keep(handle);
         setHits(null);
         setAsked('');
@@ -414,6 +451,7 @@ export function LibraryPanel() {
     void (async () => {
       try {
         await ops.current.forget(handle, [key]);
+        ledger.current.forget([key]);
         const before = await store.current.readMeta().catch(emptyMeta);
         const files = { ...before.files };
         delete files[key];
@@ -434,30 +472,18 @@ export function LibraryPanel() {
       try {
         if (handle !== null) await ops.current.close(handle).catch(() => undefined);
         await store.current.forgetEverything();
+        ledger.current.clear();
         held.current.clear();
         const { handle: fresh } = await ops.current.open();
         setHandle(fresh);
         setMeta(emptyMeta());
         setStats(await ops.current.stats(fresh));
+        setRules([]);
         setHits(null);
         setAsked('');
-        setStates(new Map());
-        setSummary(null);
+        setOutcome(null);
+        setRemaining([]);
         dispatch({ type: 'TOAST', key: 'library.deleted' });
-      } catch (problem) {
-        trouble(problem);
-      }
-    })();
-  };
-
-  const runRules = () => {
-    if (handle === null) return;
-    void (async () => {
-      try {
-        const outcome = await applyRules(ops.current, handle, meta.rules);
-        await keep(handle);
-        setRuleOutcome(outcome.tagged);
-        if (asked) await look(asked, filters, shown);
       } catch (problem) {
         trouble(problem);
       }
@@ -467,14 +493,22 @@ export function LibraryPanel() {
   const kindName = (kind: LibraryKind) => t(`library.kind.${kind}` as TKey);
   const documents = stats?.documents ?? 0;
   const tagsKnown = Object.keys(stats?.tags ?? {}).sort();
-  const skipped = [...states].filter(([, one]) => one.state === 'skipped' || one.state === 'failed');
+  const unchanged = outcome?.files.filter((file) => file.skipped === 'unchanged').length ?? 0;
+  const notRead = outcome ? outcome.files.filter((file) => file.skipped && file.skipped !== 'unchanged') : [];
 
-  const skipReason = (one: FileState): string => {
-    if (one.state === 'failed') return t('library.skip.failed', { detail: one.detail });
-    if (one.state !== 'skipped') return '';
-    if (one.reason === 'kind') return t('library.skip.kind');
-    if (one.reason === 'reader') return t('library.skip.reader');
-    return one.detail ? t('library.skip.core', { detail: one.detail }) : t('library.skip.unknown');
+  const skipReason = (file: IngestedFile): string => {
+    const reason = t(`library.skip.${file.skipped ?? 'unreadable'}` as TKey);
+    return file.problem ? t('library.skip.problem', { reason, problem: file.problem }) : reason;
+  };
+
+  const progressLine = (): string => {
+    if (!progress) return '';
+    const place = t('library.progress', { done: progress.file, of: progress.of });
+    const stage =
+      progress.stage === 'recognizing' && progress.page
+        ? t('library.stage.recognizingPage', { page: progress.page, pages: progress.pages ?? progress.page })
+        : t(`library.stage.${progress.stage}` as TKey);
+    return `${place} — ${progress.name} · ${stage}`;
   };
 
   if (opening) {
@@ -681,8 +715,8 @@ export function LibraryPanel() {
                       </span>
                       <span className="library-snippet" dir="auto">
                         {cut.cutStart && <span className="library-cut">…</span>}
-                        {cut.parts.map((part, at) =>
-                          part.match ? <mark key={at}>{part.text}</mark> : <span key={at}>{part.text}</span>,
+                        {cut.parts.map((part, place) =>
+                          part.match ? <mark key={place}>{part.text}</mark> : <span key={place}>{part.text}</span>,
                         )}
                         {cut.cutEnd && <span className="library-cut">…</span>}
                       </span>
@@ -713,12 +747,7 @@ export function LibraryPanel() {
             </ol>
             {hits.length < total && (
               <div className="tool-actions">
-                <IconButton
-                  label={t('library.more')}
-                  icon={<Icon of={Plus} />}
-                  showLabel
-                  onClick={() => setShown((many) => many + PAGE_SIZE)}
-                />
+                <IconButton label={t('library.more')} icon={<Icon of={Plus} />} showLabel onClick={() => setShown((many) => many + PAGE_SIZE)} />
               </div>
             )}
           </>
@@ -733,11 +762,7 @@ export function LibraryPanel() {
             {chosen.tags.map((tag) => (
               <span key={tag} className="badge library-tag" dir="auto">
                 {tag}
-                <IconButton
-                  label={t('library.removeTag', { tag })}
-                  icon={<Icon of={X} size={12} />}
-                  onClick={() => changeTags(chosen.key, { remove: [tag] })}
-                />
+                <IconButton label={t('library.removeTag', { tag })} icon={<Icon of={X} size={12} />} onClick={() => changeTags(chosen.key, { remove: [tag] })} />
               </span>
             ))}
           </div>
@@ -771,6 +796,10 @@ export function LibraryPanel() {
         </div>
         <input ref={filesInput} type="file" accept={LIBRARY_ACCEPT} multiple className="sr-only" tabIndex={-1} aria-hidden="true" onChange={onInput} />
         <input ref={folderInput} type="file" multiple className="sr-only" tabIndex={-1} aria-hidden="true" onChange={onInput} />
+        <label className="library-choice">
+          <input type="checkbox" checked={recognize} disabled={running} onChange={(event) => setRecognize(event.target.checked)} />
+          <span>{t('library.recognize')}</span>
+        </label>
         <label className="field">
           <span>{t('library.password')}</span>
           <input
@@ -789,25 +818,22 @@ export function LibraryPanel() {
           <p className="tool-panel-note">{t('library.noSources')}</p>
         ) : (
           <ul className="library-folders" aria-label={t('library.sources')}>
-            {meta.folders.map((folder) => {
-              const count = keysUnder(meta, folder).length;
-              return (
-                <li key={folder.id} className="library-folder">
-                  <span className="library-folder-text">
-                    <span className="library-folder-name" dir="auto" title={folder.path ?? folder.label}>
-                      {folder.label}
-                    </span>
-                    <span className="library-folder-count">{t('library.folderFiles', { n: count })}</span>
+            {meta.folders.map((folder) => (
+              <li key={folder.id} className="library-folder">
+                <span className="library-folder-text">
+                  <span className="library-folder-name" dir="auto" title={folder.path ?? folder.label}>
+                    {folder.label}
                   </span>
-                  <IconButton
-                    label={t('library.forgetFolder', { name: folder.label })}
-                    icon={<Icon of={Trash2} />}
-                    disabled={running}
-                    onClick={() => forgetFolder(folder)}
-                  />
-                </li>
-              );
-            })}
+                  <span className="library-folder-count">{t('library.folderFiles', { n: keysUnder(meta, folder).length })}</span>
+                </span>
+                <IconButton
+                  label={t('library.forgetFolder', { name: folder.label })}
+                  icon={<Icon of={Trash2} />}
+                  disabled={running}
+                  onClick={() => forgetFolder(folder)}
+                />
+              </li>
+            ))}
           </ul>
         )}
 
@@ -815,35 +841,46 @@ export function LibraryPanel() {
           <p className="tool-panel-note library-stats">{t('library.stats', { documents: stats.documents, pages: stats.pages, words: stats.words })}</p>
         )}
 
-        {running && progress && (
+        {finding && (
+          <p className="tool-panel-note" role="status">
+            <Icon of={Loader} className="spin" /> {t('library.finding', { n: finding.found })}
+            {finding.where ? ` — ${finding.where}` : ''}
+          </p>
+        )}
+
+        {running && (
           <div className="library-progress" role="status">
-            <progress max={progress.total} value={progress.done} aria-label={t('library.progressLabel')} />
-            <span>
-              {t('library.progress', { done: progress.done, of: progress.total })}
-              {progress.name ? ` — ${progress.name}` : ''}
-            </span>
+            <progress max={progress?.of ?? 1} value={progress?.file ?? 0} aria-label={t('library.progressLabel')} />
+            <span dir="auto">{progressLine()}</span>
             <div className="tool-actions">
               <IconButton label={t('library.stop')} icon={<Icon of={Square} />} showLabel onClick={() => stopper.current?.abort()} />
             </div>
           </div>
         )}
 
-        {summary && !running && (
+        {outcome && !running && (
           <p className="library-count" role="status">
-            {t('library.summary', summary)}
+            {t('library.summary', { added: outcome.added, unchanged, skipped: notRead.length, failed: outcome.failed })}
+            {outcome.recognized > 0 ? ` ${t('library.recognized', { n: outcome.recognized })}` : ''}
           </p>
         )}
 
-        {skipped.length > 0 && !running && (
+        {remaining.length > 0 && !running && (
+          <div className="tool-actions">
+            <IconButton label={t('library.carryOn', { n: remaining.length })} icon={<Icon of={Plus} />} showLabel onClick={() => void run(remaining)} />
+          </div>
+        )}
+
+        {notRead.length > 0 && !running && (
           <div className="library-skipped">
-            <p className="library-count">{t('library.skippedTitle', { n: skipped.length })}</p>
+            <p className="library-count">{t('library.skippedTitle', { n: notRead.length })}</p>
             <ul aria-label={t('library.skippedLabel')}>
-              {skipped.map(([key, one]) => (
-                <li key={key}>
+              {notRead.map((file) => (
+                <li key={file.key}>
                   <span className="library-skipped-name" dir="auto">
-                    {names.get(key) ?? key}
+                    {file.name}
                   </span>
-                  <span dir="auto">{skipReason(one)}</span>
+                  <span dir="auto">{skipReason(file)}</span>
                 </li>
               ))}
             </ul>
@@ -868,29 +905,19 @@ export function LibraryPanel() {
       <section className="library-section" aria-labelledby="library-rules-heading">
         <h4 id="library-rules-heading">{t('library.rules')}</h4>
         <div className="tool-actions">
-          <IconButton
-            label={t('library.rulesToggle')}
-            icon={<Icon of={Tag} />}
-            showLabel
-            pressed={showRules}
-            onClick={() => setShowRules((on) => !on)}
-          />
+          <IconButton label={t('library.rulesToggle')} icon={<Icon of={Tag} />} showLabel pressed={showRules} onClick={() => setShowRules((on) => !on)} />
         </div>
         {showRules && (
           <>
             <p className="tool-panel-note">{t('library.rulesNote')}</p>
-            {meta.rules.length === 0 ? (
+            {rules.length === 0 ? (
               <p className="tool-panel-note">{t('library.noRules')}</p>
             ) : (
               <ul className="library-rules" aria-label={t('library.rules')}>
-                {meta.rules.map((rule) => (
-                  <li key={rule.id}>
-                    <span dir="auto">{t('library.ruleReads', { word: rule.word, tag: rule.tag })}</span>
-                    <IconButton
-                      label={t('library.removeRule')}
-                      icon={<Icon of={Trash2} />}
-                      onClick={() => void rememberMeta({ ...meta, rules: removeRule(meta.rules, rule.id) })}
-                    />
+                {rules.map((rule, index) => (
+                  <li key={ruleKey(rule, index)}>
+                    <span dir="auto">{t('library.ruleReads', { word: ruleWords(rule), tag: rule.tag })}</span>
+                    <IconButton label={t('library.removeRule')} icon={<Icon of={Trash2} />} onClick={() => writeRules(removeRule(rules, index), false)} />
                   </li>
                 ))}
               </ul>
@@ -899,15 +926,14 @@ export function LibraryPanel() {
               className="library-row"
               onSubmit={(event) => {
                 event.preventDefault();
-                const rules = addRule(meta.rules, ruleWord, ruleTag);
-                void rememberMeta({ ...meta, rules });
+                writeRules(addRule(rules, ruleWord, ruleTag, alsoName), true);
                 setRuleWord('');
                 setRuleTag('');
               }}
             >
               <label className="field">
                 <span>{t('library.ruleWord')}</span>
-                <input className="text-input" dir="auto" maxLength={80} value={ruleWord} onChange={(event) => setRuleWord(event.target.value)} />
+                <input className="text-input" dir="auto" maxLength={160} value={ruleWord} onChange={(event) => setRuleWord(event.target.value)} />
               </label>
               <label className="field">
                 <span>{t('library.ruleTag')}</span>
@@ -918,15 +944,26 @@ export function LibraryPanel() {
                 icon={<Icon of={Plus} />}
                 showLabel
                 type="submit"
-                disabled={ruleWord.trim() === '' || ruleTag.trim() === ''}
+                disabled={parseTags(ruleWord).length === 0 || ruleTag.trim() === ''}
               />
             </form>
-            {meta.rules.length > 0 && (
+            <p className="tool-panel-note">{t('library.ruleWordsNote')}</p>
+            <label className="library-choice">
+              <input type="checkbox" checked={alsoName} onChange={(event) => setAlsoName(event.target.checked)} />
+              <span>{t('library.ruleAlsoName')}</span>
+            </label>
+            {rules.length > 0 && (
               <div className="tool-actions">
-                <IconButton label={t('library.applyRules')} icon={<Icon of={Tag} />} showLabel disabled={documents === 0} onClick={runRules} />
+                <IconButton
+                  label={t('library.applyRules')}
+                  icon={<Icon of={Tag} />}
+                  showLabel
+                  disabled={documents === 0}
+                  onClick={() => writeRules(rules, true)}
+                />
               </div>
             )}
-            {ruleOutcome !== null && <p className="tool-panel-note">{t('library.rulesApplied', { n: ruleOutcome })}</p>}
+            {tagged !== null && <p className="tool-panel-note">{t('library.rulesApplied', { n: tagged })}</p>}
           </>
         )}
       </section>

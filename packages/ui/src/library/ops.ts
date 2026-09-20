@@ -1,26 +1,18 @@
 import type { CoreClient } from '../core/client';
+import type { LibraryKind } from './kinds';
 
 /**
  * The Library's operations on the core, as one small adapter.
  *
- * The ops themselves are static (`call_static`): an index is built and read
- * without a document open. Their names, arguments and answers are the fixed
- * contract in `.tools/briefs/library.md`; everything above this file talks to
- * the index through `LibraryOps`, so the panel's own tests drive a fake and
- * the desktop and the browser drive the same real one.
+ * The ops are static (`call_static`), so an index is built and read with no
+ * document open. Their names, arguments and answers are the fixed contract in
+ * `.tools/briefs/library.md`; everything above this file talks to the index
+ * through `LibraryOps`, so the panel's own tests drive a fake and the desktop
+ * and the browser drive the same real one.
+ *
+ * `library.add` is not here: the readers (`ingest.ts`) call it as each file is
+ * read, because only they know what a file turned out to be.
  */
-
-/** What kind of document the index holds. A PDF whose pages have no text is a `scan`. */
-export type LibraryKind =
-  | 'pdf'
-  | 'scan'
-  | 'image'
-  | 'word'
-  | 'excel'
-  | 'powerpoint'
-  | 'html'
-  | 'text'
-  | 'markdown';
 
 export const LIBRARY_KINDS: readonly LibraryKind[] = [
   'pdf',
@@ -34,39 +26,10 @@ export const LIBRARY_KINDS: readonly LibraryKind[] = [
   'markdown',
 ];
 
-/** One page's text, when a reader outside the core produced it (OCR, Word, a web page). */
-export interface PageText {
-  page: number;
-  text: string;
-}
-
 export interface LibraryOpened {
   handle: number;
   documents: number;
   words: number;
-}
-
-export interface AddRequest {
-  key: string;
-  name: string;
-  kind: LibraryKind;
-  /** The file's own modified time, in milliseconds since the epoch. */
-  modified: number;
-  pages?: number;
-  password?: string;
-  /** Page text read outside the core; without it the core reads the bytes itself. */
-  text?: readonly PageText[];
-}
-
-export interface AddResult {
-  added: boolean;
-  /** Why the file was not indexed. The run carries on. */
-  skipped?: string;
-  pages: number;
-  chars: number;
-  /** The date the document itself carries, when one was found — not the file's date. */
-  date?: string;
-  guessedKind: LibraryKind;
 }
 
 export interface SearchFilters {
@@ -80,14 +43,14 @@ export interface SearchFilters {
 
 /**
  * One match. `spans` mark the matched words inside `text`, each `[start,
- * length]` counted in Unicode scalar values (what Rust's `char_indices` and
- * JavaScript's `Array.from(text)` agree on), so Arabic marks in the right
- * place. `markSpans` clamps anything outside the line rather than throwing.
+ * length]` counted in **UTF-8 bytes** — the core reads the line as Rust holds
+ * it — so `snippet.ts` turns them into places in the string before marking.
  */
 export interface SearchHit {
   key: string;
   name: string;
   page: number;
+  /** Its line on that page, zero-based. */
   line: number;
   text: string;
   spans: readonly (readonly [number, number])[];
@@ -110,9 +73,10 @@ export interface IndexedDocument {
   chars: number;
   date?: string;
   tags: readonly string[];
-  /** When it was read into the index, in milliseconds since the epoch. */
+  /** When it was read into the index, in seconds since the epoch. */
   indexed: number;
   modified: number;
+  bytes?: number;
   path?: string;
 }
 
@@ -125,6 +89,27 @@ export interface LibraryStats {
   tags: Record<string, number>;
 }
 
+/**
+ * One tag rule, as the core keeps it with the index: "a document whose text
+ * holds any of these words takes this tag". `all` asks for every word instead
+ * of any, `scope` is `text`, `name` or `both`, and `kinds` narrows it to some
+ * kinds of document.
+ */
+export interface TagRule {
+  tag: string;
+  words: string[];
+  all?: boolean;
+  enabled?: boolean;
+  scope?: 'text' | 'name' | 'both';
+  kinds?: LibraryKind[];
+}
+
+export interface RulesAnswer {
+  rules: TagRule[];
+  /** How many documents took a tag they did not have; 0 unless `apply` was asked for. */
+  tagged: number;
+}
+
 /** The index as bytes, ready for the host to keep. */
 export interface SavedIndex {
   bytes: number;
@@ -134,8 +119,6 @@ export interface SavedIndex {
 export interface LibraryOps {
   /** Opens an index — the bytes the host kept, or nothing for a new one. */
   open(bytes?: ArrayBuffer): Promise<LibraryOpened>;
-  /** Reads one file into the index; `bytes` are omitted when `request.text` is given. */
-  add(handle: number, request: AddRequest, bytes?: ArrayBuffer): Promise<AddResult>;
   forget(handle: number, keys: readonly string[]): Promise<{ documents: number }>;
   search(
     handle: number,
@@ -149,6 +132,8 @@ export interface LibraryOps {
     change: { add?: readonly string[]; remove?: readonly string[] },
   ): Promise<{ tags: string[] }>;
   stats(handle: number): Promise<LibraryStats>;
+  /** Reads the rules back, writes a new set (`set`), and runs them (`apply`). */
+  rules(handle: number, options?: { set?: readonly TagRule[]; apply?: boolean }): Promise<RulesAnswer>;
   save(handle: number): Promise<SavedIndex>;
   close(handle: number): Promise<void>;
 }
@@ -160,16 +145,11 @@ export function missingLibraryEngine(error: unknown): boolean {
 }
 
 /** The real thing: every op through the core, in the browser's worker or natively on the desktop. */
-export function coreLibrary(client: CoreClient): LibraryOps {
-  const call = async <T>(op: string, args: object, blobs: ArrayBuffer[] = []) =>
-    client.callStatic<T>(op, args, blobs);
+export function coreLibrary(client: Pick<CoreClient, 'callStatic'>): LibraryOps {
+  const call = <T>(op: string, args: object, blobs: ArrayBuffer[] = []) => client.callStatic<T>(op, args, blobs);
   return {
     async open(bytes) {
       const { result } = await call<LibraryOpened>('library.open', {}, bytes ? [bytes] : []);
-      return result;
-    },
-    async add(handle, request, bytes) {
-      const { result } = await call<AddResult>('library.add', { handle, ...request }, bytes ? [bytes] : []);
       return result;
     },
     async forget(handle, keys) {
@@ -194,13 +174,21 @@ export function coreLibrary(client: CoreClient): LibraryOps {
       const { result } = await call<{ tags: string[] }>('library.tag', {
         handle,
         key,
-        add: change.add ? [...change.add] : undefined,
-        remove: change.remove ? [...change.remove] : undefined,
+        add: change.add ? [...change.add] : [],
+        remove: change.remove ? [...change.remove] : [],
       });
       return result;
     },
     async stats(handle) {
       const { result } = await call<LibraryStats>('library.stats', { handle });
+      return result;
+    },
+    async rules(handle, options) {
+      const { result } = await call<RulesAnswer>('library.rules', {
+        handle,
+        set: options?.set ? options.set.map((rule) => ({ ...rule, words: [...rule.words] })) : undefined,
+        apply: options?.apply ?? false,
+      });
       return result;
     },
     async save(handle) {

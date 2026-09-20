@@ -1,4 +1,5 @@
-import type { LibraryKind, SearchFilters } from './ops';
+import type { LibraryKind } from './kinds';
+import type { SearchFilters } from './ops';
 
 /**
  * What the filter controls hold, and the filters the core is asked for.
