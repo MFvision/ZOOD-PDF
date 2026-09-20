@@ -1,0 +1,239 @@
+import { expect } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
+import { corpus, documentStatus, embedTiles, test } from './helpers';
+
+/**
+ * The Library, driven the way a person drives it: files added, read into the
+ * index on this device, one word searched across all of them, and a hit
+ * opened — which brings its document up at the page the match is on.
+ *
+ * The Arabic word is searched WITHOUT its tashkeel while the document carries
+ * it with tashkeel, because that is the promise: the find bar's normalization,
+ * over every document at once. Nothing leaves the app (`stayLocal`).
+ */
+
+/** Tashkeel on almost every letter: "الْمَكْتَبَةِ" is only ever written marked here. */
+const TASHKEEL = corpus('generated/chrome-amiri-tashkeel-ligatures.pdf');
+/** Three chapters, one page each: "الفصل الثالث" is on page 3 and nowhere else. */
+const THREE_PAGES = corpus('generated/chrome-notonaskh-justified-3pages.pdf');
+/** Two invoices in different fonts: "فاتورة" is in both, so one search crosses files. */
+const INVOICE_A = corpus('generated/chrome-cairo-mixed-invoice.pdf');
+const INVOICE_B = corpus('generated/raw-amiri-cid-identity-tounicode.pdf');
+/** Not a PDF at all: read by the same readers Create PDF uses. */
+const WORD = fileURLToPath(new URL('../../../tests/fixtures/create/report-ar.docx', import.meta.url));
+const MARKDOWN = fileURLToPath(new URL('../../../tests/fixtures/create/notes-ar.md', import.meta.url));
+/** A PDF whose pages carry no text of their own: read by Scan & OCR. */
+const SCAN = corpus('generated/scan-notonaskh-300dpi-skewed-jpeg.pdf');
+/** A photograph of an Arabic page, shadow and all: made a page, then read the same way. */
+const PHOTO = fileURLToPath(new URL('../../../tests/fixtures/create/photo-arabic.jpg', import.meta.url));
+
+const panel = (page: Page) => page.locator('.pane-end');
+
+async function openLibrary(page: Page): Promise<Locator> {
+  await page.goto('/');
+  // From the home screen: the Library needs no document open.
+  await page.locator('.tool-cards-grid .tool-card', { hasText: 'Library' }).click();
+  const library = panel(page);
+  // The panel is there whichever state it is in; wait until the index has
+  // been opened (or refused), so what it says next is what it means.
+  await expect(library.locator('.library-panel')).toBeVisible();
+  await expect(library.getByText('Opening the index…')).toHaveCount(0);
+  return library;
+}
+
+/**
+ * The index lives in the core, and the core operations behind it are another
+ * part of this feature. Until they are in the build the panel says so on its
+ * face rather than pretending; the spec says so too instead of failing.
+ */
+async function needsEngine(library: Locator): Promise<void> {
+  const missing = library.getByText('This build has no Library engine');
+  test.skip(await missing.isVisible(), 'this build has no library.* operations in the core yet');
+  await expect(library.getByRole('heading', { name: 'Folders and files' })).toBeVisible();
+}
+
+async function addFiles(library: Locator, files: string[]): Promise<void> {
+  await library.locator('input[type="file"][accept]').setInputFiles(files);
+}
+
+/** The summary line the run leaves behind: "Added: 4. Unchanged: 0. …". */
+const summary = (library: Locator) => library.getByText(/^Added: \d+\./);
+
+async function search(library: Locator, word: string): Promise<Locator> {
+  await library.getByRole('searchbox', { name: 'Search the library' }).fill(word);
+  await library.getByRole('button', { name: 'Search', exact: true }).click();
+  return library.getByRole('list', { name: 'Results' });
+}
+
+test.describe('The Library searches across every document that was added', () => {
+  test.setTimeout(240_000);
+
+  test('finds an Arabic word searched without the tashkeel the document carries', async ({ page, stayLocal: _ }) => {
+    const library = await openLibrary(page);
+    await needsEngine(library);
+
+    await addFiles(library, [TASHKEEL, THREE_PAGES, INVOICE_A, INVOICE_B]);
+    await expect(summary(library)).toContainText('Added: 4.', { timeout: 180_000 });
+    await expect(library.getByText(/Documents: 4 ·/)).toBeVisible();
+
+    // The files write الْمَكْتَبَةِ; the person types المكتبة. Two of the four
+    // carry that sentence, and only those two come back.
+    const hits = await search(library, 'المكتبة');
+    await expect(hits.locator('li')).toHaveCount(2);
+    await expect(hits.locator('li').first()).toContainText('chrome-amiri-tashkeel-ligatures.pdf');
+    await expect(hits.locator('li').first()).toContainText('Page 1');
+
+    // The word is marked inside the line, and the marked word is the one
+    // the document really carries — with every mark the query left out. A
+    // span read as letters instead of bytes marks the wrong half of it.
+    const marked = await hits.locator('mark').first().innerText();
+    expect(marked).toMatch(/[ً-ْ]/);
+    expect(marked.replace(/[ً-ْـ]/g, '')).toBe('المكتبة');
+
+    // The line reads in its own direction, whatever the interface language is.
+    await expect(hits.locator('.library-snippet').first()).toHaveAttribute('dir', 'auto');
+
+    // One word, hits in more than one file: what the Library is for.
+    const invoices = await search(library, 'فاتورة');
+    await expect(invoices.locator('li').first()).toBeVisible();
+    const named = await invoices.locator('.library-hit-name').allInnerTexts();
+    expect(new Set(named).size).toBeGreaterThan(1);
+  });
+
+  test('opens a hit at the page the match is on, and reads a file only once', async ({ page, stayLocal: _ }) => {
+    const library = await openLibrary(page);
+    await needsEngine(library);
+
+    await addFiles(library, [TASHKEEL, THREE_PAGES, INVOICE_A]);
+    await expect(summary(library)).toContainText('Added: 3.', { timeout: 180_000 });
+
+    // The same files again: nothing is read a second time.
+    await addFiles(library, [TASHKEEL, THREE_PAGES, INVOICE_A]);
+    await expect(summary(library)).toContainText('Added: 0. Unchanged: 3.', { timeout: 120_000 });
+
+    // "الفصل الثالث" heads page 3 of the three-chapter file and appears nowhere else.
+    const hits = await search(library, 'الثالث');
+    const first = hits.locator('li').first();
+    await expect(first).toContainText('chrome-notonaskh-justified-3pages.pdf');
+    await expect(first).toContainText('Page 3');
+
+    await first.locator('.library-hit-open').click();
+    await expect.poll(() => embedTiles(page)).toBeGreaterThan(0);
+    await expect(documentStatus(page)).toContainText('Page 3 of 3', { timeout: 60_000 });
+  });
+
+  test('reads a Word file and a Markdown one too, and one word finds all three kinds', async ({ page, stayLocal: _ }) => {
+    const library = await openLibrary(page);
+    await needsEngine(library);
+
+    await addFiles(library, [THREE_PAGES, WORD, MARKDOWN]);
+    await expect(summary(library)).toContainText('Added: 3.', { timeout: 180_000 });
+
+    // The PDF writes وراق; the Word file and the notes write ورّاق, with the
+    // shadda. One search without it finds all three, each named by its kind.
+    const hits = await search(library, 'وراق');
+    await expect(hits.locator('li').first()).toBeVisible();
+    const named = await hits.locator('.library-hit-name').allInnerTexts();
+    for (const name of ['chrome-notonaskh-justified-3pages.pdf', 'report-ar.docx', 'notes-ar.md']) expect(named).toContain(name);
+    const kinds = (await hits.locator('.library-hit-where').allInnerTexts()).join(' ');
+    expect(kinds).toContain('Word');
+    expect(kinds).toContain('Markdown');
+    expect(kinds).toContain('PDF');
+
+    // The readers draw the first page of what has one, and the panel shows
+    // it; a note has no page to draw, and shows the tool's own mark instead
+    // of an empty frame.
+    const pdf = hits.locator('li', { hasText: 'chrome-notonaskh-justified-3pages.pdf' }).first();
+    await expect(pdf.locator('img.library-thumb')).toBeVisible();
+    const note = hits.locator('li', { hasText: 'notes-ar.md' }).first();
+    await expect(note.locator('.library-thumb-none')).toBeVisible();
+  });
+
+  test('tags a document by hand, and a rule tags every document that holds a word', async ({ page, stayLocal: _ }) => {
+    const library = await openLibrary(page);
+    await needsEngine(library);
+
+    await addFiles(library, [INVOICE_A, INVOICE_B, THREE_PAGES]);
+    await expect(summary(library)).toContainText('Added: 3.', { timeout: 180_000 });
+
+    const hits = await search(library, 'فاتورة');
+    const first = hits.locator('li').first();
+    await first.getByRole('button', { name: /^Tags for / }).click();
+
+    // By hand, on this one document: the tag appears on the result itself.
+    await library.getByLabel('Add a tag').fill('مهم');
+    await library.locator('.library-section', { hasText: 'Tags for' }).getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(first.locator('.library-hit-foot .badge', { hasText: 'مهم' })).toBeVisible();
+
+    // By rule, on every document whose text holds the word — and the rule is
+    // kept with the index, in the words it was written in.
+    const rules = library.locator('.library-section', { hasText: 'Tag rules' });
+    await rules.getByRole('button', { name: 'Tag rules', exact: true }).click();
+    await rules.getByLabel('If it holds').fill('فاتورة');
+    await rules.getByLabel('Tag it').fill('فواتير');
+    await rules.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(rules.getByText(/^Documents tagged: [1-9]/)).toBeVisible();
+    await expect(rules.getByText('If the text holds فاتورة, tag it فواتير')).toBeVisible();
+
+    const again = await search(library, 'فاتورة');
+    await expect(again.locator('li').first().locator('.badge', { hasText: 'فواتير' })).toBeVisible();
+
+    // And a search can be held to that tag alone.
+    await library.getByRole('button', { name: 'Filters', exact: true }).click();
+    await library.getByRole('checkbox', { name: 'فواتير' }).check();
+    await expect(library.getByText(/^Results: [1-9]/)).toBeVisible();
+  });
+
+  test('indexes a text PDF, a scan, a photograph and a Word file, and one word finds all four', async ({ page, stayLocal: _ }) => {
+    // Two of the four are read by Scan & OCR, at seconds a page.
+    test.setTimeout(900_000);
+    const library = await openLibrary(page);
+    await needsEngine(library);
+
+    await addFiles(library, [THREE_PAGES, SCAN, PHOTO, WORD]);
+    await expect(summary(library)).toContainText('Added: 4.', { timeout: 720_000 });
+    // The scan and the photograph carry no text of their own: they were recognized.
+    await expect(library.getByText(/Pages read by Scan & OCR: [1-9]/)).toBeVisible();
+
+    // "ورّاق" is written with the shadda in the Word file and without it in the
+    // rest; the person types neither mark. One word, four kinds of file.
+    const hits = await search(library, 'وراق');
+    await expect(hits.locator('li').first()).toBeVisible();
+    const named = await hits.locator('.library-hit-name').allInnerTexts();
+    for (const name of ['chrome-notonaskh-justified-3pages.pdf', 'scan-notonaskh-300dpi-skewed-jpeg.pdf', 'photo-arabic.jpg', 'report-ar.docx']) {
+      expect(named, name).toContain(name);
+    }
+    // And each is named by what it turned out to be, not by its extension:
+    // the PDF with no text of its own is a scan, the photograph a picture.
+    const kinds = (await hits.locator('.library-hit-where').allInnerTexts()).join(' ');
+    for (const kind of ['PDF', 'Scan', 'Picture', 'Word']) expect(kinds, kind).toContain(kind);
+
+    // Open one, at the page its match is on.
+    const chosen = hits.locator('li', { hasText: 'chrome-notonaskh-justified-3pages.pdf' }).first();
+    const where = await chosen.locator('.library-hit-where').innerText();
+    const at = Number(/Page (\d+)/.exec(where)?.[1]);
+    expect(at).toBeGreaterThan(0);
+    await chosen.locator('.library-hit-open').click();
+    await expect.poll(() => embedTiles(page)).toBeGreaterThan(0);
+    await expect(documentStatus(page)).toContainText(`Page ${at} of 3`, { timeout: 60_000 });
+  });
+
+  test('deletes the index when asked, and says the files were not touched', async ({ page, stayLocal: _ }) => {
+    const library = await openLibrary(page);
+    await needsEngine(library);
+
+    await addFiles(library, [INVOICE_A]);
+    await expect(summary(library)).toContainText('Added: 1.', { timeout: 120_000 });
+
+    await library.getByRole('button', { name: 'Delete the index' }).click();
+    await page.getByRole('button', { name: 'Delete it' }).click();
+    await expect(library.getByText('Nothing has been indexed yet.')).toBeVisible();
+    await expect(library.getByText('No folder has been added yet.')).toBeVisible();
+
+    // And it is really gone: a reload finds an empty index, not the old one.
+    await page.reload();
+    await page.locator('.tool-cards-grid .tool-card', { hasText: 'Library' }).click();
+    await expect(panel(page).getByText('Nothing has been indexed yet.')).toBeVisible();
+  });
+});

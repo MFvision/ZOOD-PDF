@@ -80,6 +80,8 @@ struct Handle {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PageText {
+    /// One-based, as a person counts pages and as `library.search` answers.
+    /// Inside the index a page is still an offset from the first.
     page: u32,
     text: String,
 }
@@ -372,15 +374,15 @@ fn add(a: Add, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
 
     let (pages_text, pages) = match a.text {
         Some(text) => {
-            // `saturating_add`: a host that says page 4 294 967 295 must get an
-            // answer, not an overflow.
-            let pages = text
-                .iter()
-                .map(|p| p.page.saturating_add(1))
-                .max()
-                .unwrap_or(0);
+            // The host counts pages from one, so the count is simply the
+            // largest of them — and `max` cannot overflow the way adding one
+            // to a host's 4 294 967 295 could.
+            let pages = text.iter().map(|p| p.page).max().unwrap_or(0);
             (
-                text.into_iter().map(|p| (p.page, p.text)).collect(),
+                // One-based coming in, an offset inside: page 1 is the first.
+                text.into_iter()
+                    .map(|p| (p.page.saturating_sub(1), p.text))
+                    .collect(),
                 a.pages.unwrap_or(pages),
             )
         }
@@ -494,7 +496,9 @@ fn search(a: Search) -> Result<Reply, CoreError> {
         .map(|hit| HitOut {
             key: hit.key,
             name: hit.name,
-            page: hit.page,
+            // One-based on the way out: this number is shown to a person and
+            // is the page the document is opened at.
+            page: hit.page + 1,
             line: hit.line,
             text: hit.text,
             spans: hit.spans.into_iter().map(|(at, len)| [at, len]).collect(),
@@ -572,7 +576,7 @@ mod tests {
             "kind": "pdf",
             "modified": 1_700_000_000i64,
             "now": 1_700_000_500i64,
-            "text": [{ "page": 0, "text": text }],
+            "text": [{ "page": 1, "text": text }],
         });
         json(&call_static("add", &args.to_string(), vec![]).expect("added"))
     }
@@ -595,7 +599,8 @@ mod tests {
         );
         assert_eq!(found["total"], 1);
         assert_eq!(found["hits"][0]["key"], "/دفتر/فاتورة.pdf");
-        assert_eq!(found["hits"][0]["page"], 0);
+        // One-based: the first page is 1, the number the panel shows.
+        assert_eq!(found["hits"][0]["page"], 1);
         assert!(!found["hits"][0]["spans"]
             .as_array()
             .expect("spans")

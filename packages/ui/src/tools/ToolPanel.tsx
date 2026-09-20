@@ -6,6 +6,7 @@ import { CombinePanel } from '../combine/CombinePanel';
 import { ComparePanel } from '../compare/ComparePanel';
 import { CompressPanel } from '../compress/CompressPanel';
 import { CreatePanel } from '../create/CreatePanel';
+import { LibraryPanel } from '../library/LibraryPanel';
 import { OcrPanel } from '../ocr/OcrPanel';
 import { EditPanel } from '../edit/EditPanel';
 import { ExportPanel } from '../export/ExportPanel';
@@ -39,6 +40,7 @@ export function ToolPanel({ tool }: { tool: ToolDefinition }) {
   if (tool.id === 'standards') return <StandardsPanel />;
   if (tool.id === 'accessibility') return <AccessibilityPanel />;
   if (tool.id === 'batch') return <BatchPanel />;
+  if (tool.id === 'library') return <LibraryPanel />;
   if (tool.actions && tool.actions.length > 0) return <EmbedToolPanel tool={tool} />;
   return (
     <div className="tool-panel">

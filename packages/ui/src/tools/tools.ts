@@ -27,6 +27,7 @@ import {
   GitCompare,
   Layers,
   LayoutGrid,
+  Library,
   MessageSquare,
   Pencil,
   PenLine,
@@ -61,7 +62,8 @@ export type ToolId =
   | 'certificates'
   | 'standards'
   | 'accessibility'
-  | 'batch';
+  | 'batch'
+  | 'library';
 
 /**
  * One control in a tool's panel: an EmbedPDF command (ADR-0007), run through
@@ -179,6 +181,8 @@ export const TOOLS: readonly ToolDefinition[] = [
   { id: 'accessibility', labelKey: 'tool.accessibility', icon: Accessibility, implemented: true },
   // Warraq's own: the tools' operations over many files (`batch/`), needing no open document.
   { id: 'batch', labelKey: 'tool.batch', icon: Workflow, implemented: true },
+  // Warraq's core (`library.*`): one search over a whole folder of documents, indexed on this device.
+  { id: 'library', labelKey: 'tool.library', icon: Library, implemented: true },
 ];
 
 export function findTool(id: ToolId): ToolDefinition | undefined {
