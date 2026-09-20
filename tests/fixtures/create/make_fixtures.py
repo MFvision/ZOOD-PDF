@@ -16,7 +16,7 @@ import io
 import os
 import zipfile
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -513,6 +513,31 @@ def make_scan():
     print("wrote scan-invoice.tiff")
 
 
+def make_photo():
+    """A photograph of an Arabic page, for the Library: a picture with words in it, not a clean scan.
+
+    The corpus's 300 dpi Noto Naskh scan (its truth is in the corpus), taken
+    smaller as a camera would, under light that falls off across the page, and
+    saved as an ordinary JPEG. It is what a person photographs a page with a
+    phone and drops into the Library.
+    """
+    import fitz  # PyMuPDF, only to take the picture out of the corpus file
+
+    corpus = os.path.join(HERE, "..", "..", "corpus", "arabic", "generated", "scan-notonaskh-300dpi-skewed-jpeg.pdf")
+    doc = fitz.open(corpus)
+    picture = doc.extract_image(doc[0].get_images(full=True)[0][0])
+    page = Image.open(io.BytesIO(picture["image"])).convert("L")
+    tall = 2400
+    page = page.resize((round(page.width * tall / page.height), tall), Image.LANCZOS)
+    # A shadow falling across the paper from one side, as a hand held over a
+    # page leaves: the paper darkens, the ink stays ink. Exactly what the
+    # cleanup's "remove shadows and stains" is for.
+    light = Image.linear_gradient("L").rotate(90, expand=True).resize(page.size, Image.BILINEAR)
+    page = ImageChops.multiply(page, light.point(lambda v: 170 + v * 85 // 255))
+    page.convert("RGB").save(os.path.join(HERE, "photo-arabic.jpg"), "JPEG", quality=85)
+    print("wrote photo-arabic.jpg")
+
+
 if __name__ == "__main__":
     make_docx()
     make_xlsx()
@@ -520,3 +545,4 @@ if __name__ == "__main__":
     make_text_files()
     make_pictures()
     make_scan()
+    make_photo()
