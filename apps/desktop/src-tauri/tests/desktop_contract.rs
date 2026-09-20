@@ -248,3 +248,85 @@ fn the_arabic_name_is_bundled_where_it_can_be_written() {
     let windows = json("tauri.windows.conf.json");
     assert_eq!(windows["bundle"]["targets"], serde_json::json!(["nsis"]));
 }
+
+/// The Library reaches folders through this host and nowhere else: every
+/// command `packages/ui/src/core/host-tauri.ts` invokes for it has to be
+/// registered, or the panel's promise rejects with "command not found" and the
+/// person sees an empty list with no reason — exactly the silent failure the
+/// rest of this file exists to stop.
+#[test]
+fn the_library_commands_the_panel_invokes_are_registered() {
+    let lib = std::fs::read_to_string(manifest().join("src/lib.rs")).expect("lib.rs");
+    let host = repo_file("packages/ui/src/core/host-tauri.ts");
+    for command in [
+        "library_scan_start",
+        "library_scan_stop",
+        "library_read_file",
+        "library_stat",
+        "library_index_path",
+        "library_index_save",
+        "library_index_load",
+        "library_index_list",
+        "library_index_delete",
+        "library_watch_start",
+        "library_watch_stop",
+    ] {
+        assert!(
+            lib.contains(&format!("library::{command}")),
+            "{command} is not registered in the invoke handler"
+        );
+        assert!(
+            host.contains(&format!("'{command}'")),
+            "host-tauri.ts no longer invokes {command}; the Rust side would be dead code"
+        );
+    }
+    // The folder picker is the dialog plugin's, with `recursive` — which is
+    // what puts everything under the chosen folder in the fs scope, and so
+    // what lets the walk and the reads see it at all.
+    assert!(
+        host.contains("multiple: true, directory: true, recursive: true"),
+        "pickLibraryFolders must ask for directories recursively, or nothing under them is readable"
+    );
+}
+
+/// Both sides have to name the same events, or the progress and the watcher
+/// are silent while the walk runs perfectly well.
+#[test]
+fn the_library_events_carry_the_same_names_on_both_sides() {
+    let host = repo_file("packages/ui/src/core/host-tauri.ts");
+    for (name, event) in [
+        (
+            "LIBRARY_SCAN_EVENT",
+            warraq_desktop_lib::library::LIBRARY_SCAN_EVENT,
+        ),
+        (
+            "LIBRARY_WATCH_EVENT",
+            warraq_desktop_lib::library::LIBRARY_WATCH_EVENT,
+        ),
+    ] {
+        assert!(
+            host.contains(&format!("{name} = '{event}'")),
+            "host-tauri.ts listens for a different {name} than library.rs sends"
+        );
+    }
+}
+
+/// The index is the person's own documents' text. It goes where their data
+/// goes — the app's data directory — and never into a temporary folder the
+/// system sweeps, or anywhere the page could name.
+#[test]
+fn the_index_is_written_where_the_persons_data_lives() {
+    let library = std::fs::read_to_string(manifest().join("src/library.rs")).expect("library.rs");
+    assert!(
+        library.contains("app_data_dir()"),
+        "the index must live in the app's own data directory"
+    );
+    assert!(
+        !library.contains("temp_dir()")
+            || library
+                .split("mod tests")
+                .next()
+                .is_some_and(|before| !before.contains("temp_dir()")),
+        "nothing outside the tests may put the index in a temporary folder"
+    );
+}
