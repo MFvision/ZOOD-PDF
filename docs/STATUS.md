@@ -199,6 +199,14 @@ does not answer within 90 seconds has that worker dropped, a new one started
 for the next file, and this file skipped: one hostile file cannot end a run
 of a thousand.
 
+**On the desktop it reads what the host walks.** The walk answers each file
+as `new`, `changed` or `same` — by its size and date against what the index
+holds, without reading a byte — and hands over its full path, which is its
+key. A file the walk calls `same` and the ledger remembers at that same size
+and date is not read at all; anything else is read through
+`readLibraryFile(path)` when its turn comes, one file at a time, and hashed
+here. A browser has no walk, so every file is read and hashed.
+
 **Cleanup is on by default here**, unlike in Scan & OCR. Measured on a new
 fixture, `tests/fixtures/create/photo-arabic.jpg` — the corpus's Noto Naskh
 page taken smaller as a camera would, under light falling off across the

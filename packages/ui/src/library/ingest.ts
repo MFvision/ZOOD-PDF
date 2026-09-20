@@ -44,8 +44,13 @@ import { hashBytes } from './work';
  * that cannot be read is written down with a reason while the run goes on.
  */
 
-/** A file the Library is asked to read; the host decides what a key is. */
-export interface LibraryFile {
+/**
+ * A file the Library is asked to read; the host decides what a key is. On
+ * the desktop this is the walk's own `LibraryFile` (`core/host-tauri.ts`)
+ * with `read: () => readLibraryFile(key)` put on it — the host reads a
+ * file's bytes only when its turn comes.
+ */
+export interface IngestFile {
   /** Stable for this file: its full path on the desktop, folder id + relative path in a browser. */
   key: string;
   name: string;
@@ -54,6 +59,16 @@ export interface LibraryFile {
   /** Milliseconds since the epoch, as the file system says. */
   modified: number;
   read(): Promise<ArrayBuffer>;
+  /**
+   * What the host already knows, where it knows anything. The desktop walk
+   * answers `same` for a file whose size and date still match what the index
+   * holds, without reading a byte of it; a `same` file the ledger remembers
+   * at that same size and date is then not read at all — its content hash
+   * was taken the last time it was read, and neither has moved since.
+   * Anything else is read and hashed here. A browser, which has no walk, says
+   * nothing and every file is hashed.
+   */
+  state?: 'new' | 'changed' | 'same';
   /** Tried when the file asks for one. Never written to the index or to the ledger. */
   password?: string;
 }
@@ -171,7 +186,7 @@ export const INGEST_LIMITS: IngestLimits = {
 export interface IngestOptions {
   /** From `library.open`. */
   handle: number;
-  files: readonly LibraryFile[];
+  files: readonly IngestFile[];
   client: Pick<CoreClient, 'open' | 'callStatic'>;
   /** Read scans and pictures with Tesseract; on by default. */
   recognize?: boolean;
@@ -360,7 +375,7 @@ export async function ingestFiles(options: IngestOptions): Promise<IngestRun> {
     }
   }
 
-  async function readOne(file: LibraryFile, bytes: ArrayBuffer, kind: SourceKind, at: Omit<IngestProgress, 'stage'>): Promise<ReadFile> {
+  async function readOne(file: IngestFile, bytes: ArrayBuffer, kind: SourceKind, at: Omit<IngestProgress, 'stage'>): Promise<ReadFile> {
     if (kind === 'pdf') {
       const { doc, protectedFile } = await openPdf(bytes, file.password);
       try {
@@ -420,6 +435,13 @@ export async function ingestFiles(options: IngestOptions): Promise<IngestRun> {
         took: Date.now() - fileStarted,
       });
       say({ ...at, stage: 'reading' });
+      // The host walked this file and found it as the index has it, and so
+      // did the last run: there is nothing here to read.
+      const known = ledger.mark(file.key);
+      if (file.state === 'same' && known && known.size === file.size && known.modified === file.modified) {
+        finish(nothing('unchanged'));
+        continue;
+      }
       let bytes: ArrayBuffer;
       try {
         bytes = await file.read();
@@ -433,7 +455,7 @@ export async function ingestFiles(options: IngestOptions): Promise<IngestRun> {
       }
       const size = file.size || bytes.byteLength;
       const hash = await hashBytes(bytes);
-      if (unchanged(ledger.mark(file.key), { size, modified: file.modified }, hash)) {
+      if (unchanged(known, { size, modified: file.modified }, hash)) {
         finish(nothing('unchanged'));
         continue;
       }
