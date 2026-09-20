@@ -338,10 +338,25 @@ export async function saveFileAs(bytes: Uint8Array, suggestedName: string, filte
   return true;
 }
 
-/** Whether the desktop host can print (PDFKit, on macOS): the interface offers Print only then. */
+/** Whether the desktop host can print: the interface offers Print only then. */
 export async function printAvailable(): Promise<boolean> {
   if (!internals()) return false;
   return (await invoke('print_available')) === true;
+}
+
+/**
+ * How the desktop host prints: `pdfkit` — it prints the file itself
+ * (`printPdf`, macOS) — or `pages`: the interface lays the pages out for
+ * print and the host opens the webview's print dialog on them
+ * (`printWebview`; Windows, Linux, and macOS with `WARRAQ_PRINT=pages`).
+ */
+export async function printMode(): Promise<'pdfkit' | 'pages'> {
+  return (await invoke('print_mode')) === 'pages' ? 'pages' : 'pdfkit';
+}
+
+/** Opens the webview's own print dialog, on what the page's print style sheet lets through. */
+export async function printWebview(): Promise<void> {
+  await invoke('print_webview');
 }
 
 /**

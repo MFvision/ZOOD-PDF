@@ -10,7 +10,9 @@ import {
   pickFiles,
   pickPdfFile,
   printAvailable,
+  printMode,
   printPdf,
+  printWebview,
   saveFileAs,
   savePdfFile,
   takeStartupFile,
@@ -296,6 +298,16 @@ describe('printing', () => {
     expect(print?.options?.headers).toEqual({ 'x-warraq-password-hex': 'd8b3d8b1' });
     await printPdf(bytes);
     expect(calls.filter((c) => c.cmd === 'print_pdf')[1]?.options).toBeUndefined();
+  });
+
+  it('asks the host which way it prints, and has it print the laid-out pages', async () => {
+    fakeHost({ print_mode: 'pages' });
+    expect(await printMode()).toBe('pages');
+    fakeHost({ print_mode: 'pdfkit' });
+    expect(await printMode()).toBe('pdfkit');
+    const calls = fakeHost({ print_webview: null });
+    await printWebview();
+    expect(calls.map((c) => c.cmd)).toContain('print_webview');
   });
 
   it("passes on the host's reason when it cannot print", async () => {

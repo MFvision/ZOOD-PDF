@@ -18,6 +18,9 @@ pub struct MarkedSequence {
     pub tag: Vec<u8>,
     pub actual_text: Option<String>,
     pub mcid: Option<i64>,
+    /// One of Warraq's own page marks: an `/Artifact` whose properties
+    /// carry `/WarraqMark` (see `marks`), not another program's artifact.
+    pub warraq_mark: bool,
 }
 
 /// The renderer (hayro) gives up on forms nested deeper than this.
@@ -68,6 +71,7 @@ fn walk<'a>(
                 tag: op.operands.first()?.as_name().ok()?.to_vec(),
                 actual_text: None,
                 mcid: None,
+                warraq_mark: false,
             }),
             "BDC" => {
                 let tag = op.operands.first()?.as_name().ok()?.to_vec();
@@ -90,10 +94,13 @@ fn walk<'a>(
                 let mcid = properties
                     .and_then(|p| p.get(b"MCID").ok())
                     .and_then(|m| m.as_i64().ok());
+                let warraq_mark =
+                    tag == b"Artifact" && properties.is_some_and(|p| p.has(b"WarraqMark"));
                 out.push(MarkedSequence {
                     tag,
                     actual_text,
                     mcid,
+                    warraq_mark,
                 });
             }
             "Do" => {

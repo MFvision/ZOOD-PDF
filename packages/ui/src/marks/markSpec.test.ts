@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_FORM, formOf, formatDate, hasContent, pagesLabel, parsePages, pdfDate, specOf } from './markSpec';
+import { batesSample, DEFAULT_FORM, formOf, formatDate, hasContent, inDigits, pageNumberSample, pagesLabel, parsePages, pdfDate, specOf } from './markSpec';
+import en from '../i18n/en.json';
+import ar from '../i18n/ar.json';
+import { interpolate } from '../i18n/messages';
 
 const NOW = new Date(Date.UTC(2026, 8, 18, 9, 30, 5));
 
@@ -86,5 +89,27 @@ describe('the form becomes what marks.add reads, and back', () => {
     expect(hasContent({ ...DEFAULT_FORM, watermarkSource: 'picture' }, true)).toBe(true);
     expect(hasContent({ ...DEFAULT_FORM, section: 'band' }, false)).toBe(false);
     expect(hasContent({ ...DEFAULT_FORM, section: 'pageNumber' }, false)).toBe(true);
+  });
+});
+
+describe('what a page-number or Bates mark is shown as', () => {
+  it('shows a format in the digits the mark will draw, not the ones its label was written in', () => {
+    const label = (dictionary: Record<string, string>, numerals: 'western' | 'arabic') =>
+      interpolate(dictionary['marks.format.pageOfArabic']!, pageNumberSample(numerals));
+    // Western digits, the default: «صفحة ١ من ٩» would promise what is not drawn.
+    expect(label(ar, 'western')).toBe('صفحة 1 من 9');
+    expect(label(ar, 'arabic')).toBe('صفحة ١ من ٩');
+    expect(label(en, 'western')).toBe('صفحة 1 من 9');
+    expect(interpolate(ar['marks.format.ofTotal'], pageNumberSample('arabic'))).toBe('١ / ٩');
+    expect(inDigits(2026, 'arabic')).toBe('٢٠٢٦');
+  });
+
+  it('summarises a listed mark from its own start, pages and digits', () => {
+    // Three pages from 41, the first left unnumbered: 41 to 42.
+    expect(pageNumberSample('arabic', 41, 3, true)).toEqual({ page: '٤١', pages: '٤٢' });
+    expect(pageNumberSample('western', 1, 3)).toEqual({ page: '1', pages: '3' });
+    expect(batesSample({ prefix: 'WRQ-', start: 41, width: 6 })).toBe('WRQ-000041');
+    expect(batesSample({ prefix: 'A', suffix: '-X', start: 7, width: 1 })).toBe('A7-X');
+    expect(batesSample({})).toBe('000001');
   });
 });

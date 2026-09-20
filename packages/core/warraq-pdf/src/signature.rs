@@ -155,6 +155,17 @@ impl Prepared {
     }
 }
 
+/// The matrix that turns an appearance drawn upright to match a page turned
+/// by `rotate` degrees.
+fn rotation_matrix(rotate: i64) -> [f32; 6] {
+    match rotate {
+        90 => [0.0, 1.0, -1.0, 0.0, 0.0, 0.0],
+        180 => [-1.0, 0.0, 0.0, -1.0, 0.0, 0.0],
+        270 => [0.0, -1.0, 1.0, 0.0, 0.0, 0.0],
+        _ => [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+    }
+}
+
 fn find_from(haystack: &[u8], needle: &[u8], from: usize) -> Option<usize> {
     haystack
         .get(from..)?
@@ -190,8 +201,8 @@ pub struct SigField {
     pub rect: Option<[f32; 4]>,
     /// The signature dictionary, when signed.
     pub value: Option<SigDict>,
-    /// Fields its `/Lock` locks once signed: `None` no lock, empty all.
-    pub lock: Option<Vec<String>>,
+    /// The fields its `/Lock` locks once signed, if it has one.
+    pub lock: Option<FieldLock>,
 }
 
 /// What a signature dictionary says about itself. `/Contents` is read from
@@ -462,11 +473,7 @@ impl PdfDocument {
                 .ok()
                 .map(|l| self.deref_obj(l))
                 .and_then(|l| l.as_dict().ok())
-                .and_then(|l| self.lock_of(l))
-                .map(|l| match l {
-                    FieldLock::All => Vec::new(),
-                    FieldLock::Include(v) | FieldLock::Exclude(v) => v,
-                });
+                .and_then(|l| self.lock_of(l));
             out.push(SigField {
                 name,
                 field: id,
@@ -478,6 +485,66 @@ impl PdfDocument {
             });
         }
         out
+    }
+
+    /// Whether `field`'s signature is the one `signed` — the revision its
+    /// byte range covers — holds: the same field with the same signature
+    /// dictionary, the dictionary unchanged since, and written whole in the
+    /// file around the hole its byte range leaves (its own `/Contents`).
+    ///
+    /// A byte range says nothing about which dictionary it belongs to: a
+    /// dictionary added later can copy a genuine one's, and with it borrow
+    /// that signature's CMS, to show a name, reason or time of its own.
+    pub fn signed_in(&self, signed: &PdfDocument, field: &SigField) -> bool {
+        let Some(sig) = &field.value else {
+            return false;
+        };
+        let [_, b, c, _] = sig.byte_range[..] else {
+            return false;
+        };
+        let (Ok(b), Ok(c)) = (usize::try_from(b), usize::try_from(c)) else {
+            return false;
+        };
+        // The same field, holding the same dictionary, in the signed revision.
+        let then = signed
+            .signature_fields()
+            .into_iter()
+            .find(|f| f.field == field.field);
+        if !then.is_some_and(|f| f.value.is_some_and(|v| v.id == sig.id)) {
+            return false;
+        }
+        // The object that holds the dictionary (itself, or a field that has
+        // it inline), unchanged since.
+        let holder = sig.id.unwrap_or(field.field);
+        match (
+            self.doc.objects.get(&holder),
+            signed.doc.objects.get(&holder),
+        ) {
+            (Some(now), Some(then)) if now == then => {}
+            _ => return false,
+        }
+        // Written in the file itself (not in an object stream), with the
+        // hole inside it.
+        let Some(lopdf::xref::XrefEntry::Normal { offset, generation }) =
+            signed.doc.reference_table.get(holder.0)
+        else {
+            return false;
+        };
+        let bytes = signed.original_bytes();
+        let start = *offset as usize;
+        if *generation != holder.1 || start >= bytes.len() {
+            return false;
+        }
+        let at = start
+            + bytes[start..]
+                .iter()
+                .take_while(|b| b.is_ascii_whitespace())
+                .count();
+        let header = format!("{} {} obj", holder.0, holder.1);
+        if !bytes[at..].starts_with(header.as_bytes()) {
+            return false;
+        }
+        find_from(bytes, b"endobj", at).is_some_and(|end| at < b && c <= end)
     }
 
     /// The certification signature's DocMDP `/P`, if the file is certified.
@@ -590,18 +657,24 @@ impl PdfDocument {
                 "TransformParams" => dictionary! { "Type" => "TransformParams", "P" => p.clamp(1, 3) as i64, "V" => "1.2" },
             }));
         }
-        // The field's own /Lock, or the person's choice to lock everything.
-        let lock = match target.as_ref().and_then(|f| f.lock.clone()) {
-            Some(fields) if !fields.is_empty() => Some(dictionary! {
-                "Type" => "TransformParams", "Action" => "Include", "V" => "1.2",
+        // The field's own /Lock, as it says it (all, only these, or all but
+        // these), or the person's choice to lock everything.
+        let all = || dictionary! { "Type" => "TransformParams", "Action" => "All", "V" => "1.2" };
+        let listed = |action: &str, fields: &[String]| {
+            dictionary! {
+                "Type" => "TransformParams", "Action" => action, "V" => "1.2",
                 "Fields" => fields.iter().map(|f| text_string(f)).collect::<Vec<_>>(),
-            }),
-            Some(_) => {
-                Some(dictionary! { "Type" => "TransformParams", "Action" => "All", "V" => "1.2" })
             }
-            None if spec.lock_fields => {
-                Some(dictionary! { "Type" => "TransformParams", "Action" => "All", "V" => "1.2" })
-            }
+        };
+        let lock = match target.as_ref().and_then(|f| f.lock.clone()) {
+            // Only these, and none named: nothing is locked.
+            Some(FieldLock::Include(fields)) if fields.is_empty() => None,
+            Some(FieldLock::Include(fields)) => Some(listed("Include", &fields)),
+            // All but none: everything.
+            Some(FieldLock::Exclude(fields)) if fields.is_empty() => Some(all()),
+            Some(FieldLock::Exclude(fields)) => Some(listed("Exclude", &fields)),
+            Some(FieldLock::All) => Some(all()),
+            None if spec.lock_fields => Some(all()),
             None => None,
         };
         if let Some(params) = lock.clone() {
@@ -618,9 +691,13 @@ impl PdfDocument {
         let page = target.as_ref().and_then(|f| f.page).unwrap_or(spec.page);
         let page_id = self.page_id(page)?;
         let (rect, matrix) = match (&target, spec.rect) {
+            // The field's own box, in the page's space; its appearance is
+            // drawn upright as the page is shown.
             (Some(f), _) if f.rect.is_some() => {
-                let r = f.rect.unwrap_or_default();
-                (r, None)
+                let [x0, y0, x1, y1] = f.rect.unwrap_or_default();
+                let r = [x0.min(x1), y0.min(y1), x0.max(x1), y0.max(y1)];
+                let (_, rotate) = self.page_frame(page)?;
+                (r, Some(rotation_matrix(rotate)))
             }
             (_, Some(shown)) => {
                 let (r, m) = self.signature_rect(page, shown)?;
@@ -733,13 +810,7 @@ impl PdfDocument {
         let (a, b) = map(shown[0], shown[1]);
         let (c, d) = map(shown[2], shown[3]);
         let rect = [a.min(c), b.min(d), a.max(c), b.max(d)];
-        let matrix = match rotate {
-            90 => [0.0, 1.0, -1.0, 0.0, 0.0, 0.0],
-            180 => [-1.0, 0.0, 0.0, -1.0, 0.0, 0.0],
-            270 => [0.0, -1.0, 1.0, 0.0, 0.0, 0.0],
-            _ => [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-        };
-        Ok((rect, matrix))
+        Ok((rect, rotation_matrix(rotate)))
     }
 
     fn add_to_form(&mut self, catalog_id: ObjectId, field: ObjectId) -> Result<()> {
@@ -1036,7 +1107,10 @@ impl PdfDocument {
             .and_then(|d| d.as_dict().ok())
             .cloned()
             .unwrap_or_default();
-        let existing = |key: &[u8]| -> Vec<(ObjectId, Vec<u8>)> {
+        let mut budget = MAX_DSS_TOTAL;
+        // What is there already, kept whether or not it can be read within
+        // the limits (then it is only never matched).
+        let mut existing = |key: &[u8]| -> Vec<(ObjectId, Option<Vec<u8>>)> {
             old.get(key)
                 .ok()
                 .map(|a| self.deref_obj(a))
@@ -1044,15 +1118,11 @@ impl PdfDocument {
                 .map(|items| {
                     items
                         .iter()
+                        .take(10_000)
                         .filter_map(|i| i.as_reference().ok())
                         .filter_map(|id| {
                             let s = self.doc.get_object(id).ok()?.as_stream().ok()?;
-                            let bytes = if s.dict.has(b"Filter") {
-                                s.decompressed_content().ok()?
-                            } else {
-                                s.content.clone()
-                            };
-                            Some((id, bytes))
+                            Some((id, dss_item(s, &mut budget)))
                         })
                         .collect()
                 })
@@ -1060,7 +1130,7 @@ impl PdfDocument {
         };
         let before = [existing(b"Certs"), existing(b"OCSPs"), existing(b"CRLs")];
         let mut added = DssAdded::default();
-        let mut lists: Vec<Vec<(ObjectId, Vec<u8>)>> = Vec::new();
+        let mut lists: Vec<Vec<(ObjectId, Option<Vec<u8>>)>> = Vec::new();
         for ((items, count), mut list) in [
             (&data.certs, &mut added.certs),
             (&data.ocsps, &mut added.ocsps),
@@ -1070,12 +1140,12 @@ impl PdfDocument {
         .zip(before)
         {
             for item in items {
-                if list.iter().any(|(_, b)| b == item) {
+                if list.iter().any(|(_, b)| b.as_ref() == Some(item)) {
                     continue;
                 }
                 let mut s = Stream::new(Dictionary::new(), item.clone());
                 let _ = s.compress();
-                list.push((self.doc.add_object(s), item.clone()));
+                list.push((self.doc.add_object(s), Some(item.clone())));
                 *count += 1;
             }
             lists.push(list);
@@ -1083,12 +1153,12 @@ impl PdfDocument {
         if added.certs + added.ocsps + added.crls == 0 && data.vri.is_empty() {
             return Ok(added);
         }
-        let refs = |list: &Vec<(ObjectId, Vec<u8>)>| -> Vec<Object> {
+        let refs = |list: &Vec<(ObjectId, Option<Vec<u8>>)>| -> Vec<Object> {
             list.iter().map(|(id, _)| Object::Reference(*id)).collect()
         };
-        let find = |list: &Vec<(ObjectId, Vec<u8>)>, wanted: &[Vec<u8>]| -> Vec<Object> {
+        let find = |list: &Vec<(ObjectId, Option<Vec<u8>>)>, wanted: &[Vec<u8>]| -> Vec<Object> {
             list.iter()
-                .filter(|(_, b)| wanted.contains(b))
+                .filter(|(_, b)| b.as_ref().is_some_and(|b| wanted.contains(b)))
                 .map(|(id, _)| Object::Reference(*id))
                 .collect()
         };
@@ -1135,8 +1205,11 @@ impl PdfDocument {
     }
 
     /// Everything in the document security store: certificates, OCSP answers
-    /// and revocation lists, as stored.
+    /// and revocation lists, as stored — each at most [`MAX_DSS_ITEM`]
+    /// decoded, and [`MAX_DSS_TOTAL`] in all (a file checked the moment it
+    /// opens must not be able to ask for more).
     pub fn dss(&self) -> DssData {
+        let mut budget = MAX_DSS_TOTAL;
         let mut out = DssData::default();
         let Some(catalog) = self
             .catalog_id()
@@ -1167,17 +1240,32 @@ impl PdfDocument {
                 .unwrap_or_default();
             for item in items.iter().take(10_000) {
                 if let Ok(s) = self.deref_obj(item).as_stream() {
-                    let bytes = if s.dict.has(b"Filter") {
-                        s.decompressed_content().ok()
-                    } else {
-                        Some(s.content.clone())
-                    };
-                    into.extend(bytes);
+                    if let Some(bytes) = dss_item(s, &mut budget) {
+                        into.push(bytes);
+                    }
                 }
             }
         }
         out
     }
+}
+
+/// The most one certificate, OCSP answer or revocation list in `/DSS` is
+/// read to (the largest public CRLs are a few megabytes), and all of them.
+pub const MAX_DSS_ITEM: usize = 16 << 20;
+pub const MAX_DSS_TOTAL: usize = 64 << 20;
+
+/// A validation-data stream's bytes, decoded within its limit and what is
+/// left of `budget`; `None` past either.
+fn dss_item(s: &Stream, budget: &mut usize) -> Option<Vec<u8>> {
+    let bytes = if s.dict.has(b"Filter") {
+        s.decompressed_content_with_limit(MAX_DSS_ITEM.min(*budget))
+            .ok()?
+    } else {
+        s.content.clone()
+    };
+    *budget = budget.checked_sub(bytes.len())?;
+    Some(bytes)
 }
 
 fn unique_field_name(existing: &[SigField], kind: SigKind) -> String {
@@ -1239,12 +1327,17 @@ pub enum Role {
 pub enum ChangeKind {
     /// Page content, resources or the page tree.
     PageContent,
-    /// Catalog entries, actions, outlines, names — anything document-wide.
+    /// Catalog entries, actions, outlines, names — anything document-wide,
+    /// the trailer's catalog itself included.
     Document,
-    /// A signature dictionary that already existed was changed.
+    /// A signature that already existed was changed: its dictionary, its
+    /// field, or its appearance.
     SignatureAltered,
     /// A field locked by a signature was changed.
     LockedField,
+    /// Form fields or their widgets added, removed or changed in what they
+    /// are (type, flags, place, actions) — not the filling in of a form.
+    FormChanged,
     /// Comments added, changed or removed.
     Comments,
     /// Form fields filled in.
@@ -1264,6 +1357,7 @@ impl ChangeKind {
             ChangeKind::Document => "document",
             ChangeKind::SignatureAltered => "signatureAltered",
             ChangeKind::LockedField => "lockedField",
+            ChangeKind::FormChanged => "formChanged",
             ChangeKind::Comments => "comments",
             ChangeKind::FormFill => "formFill",
             ChangeKind::Signatures => "signatures",
@@ -1273,13 +1367,17 @@ impl ChangeKind {
     }
 
     /// Whether this kind of change is allowed after a signature whose
-    /// document's DocMDP is `doc_mdp` (`None`: not certified).
+    /// document's DocMDP is `doc_mdp` (`None`: not certified). ISO 32000-2
+    /// table 257: P=1 permits nothing (PAdES adds validation data and
+    /// document timestamps), P=2 filling in forms and signing, P=3 also
+    /// comments. Adding form fields is none of them.
     pub fn allowed(self, doc_mdp: Option<u8>, only_timestamps: bool) -> bool {
         match self {
             ChangeKind::ValidationData | ChangeKind::Metadata => true,
             ChangeKind::Signatures => doc_mdp != Some(1) || only_timestamps,
             ChangeKind::FormFill => doc_mdp != Some(1),
             ChangeKind::Comments => matches!(doc_mdp, None | Some(3)),
+            ChangeKind::FormChanged => doc_mdp.is_none(),
             ChangeKind::PageContent
             | ChangeKind::Document
             | ChangeKind::SignatureAltered
@@ -1293,20 +1391,82 @@ impl ChangeKind {
 pub struct Changes {
     /// Kinds of change, and how many objects each touched.
     pub kinds: BTreeMap<ChangeKind, usize>,
-    /// The signatures added after (their sig dicts are timestamps only).
+    /// Every signature added after is a document timestamp, and none shows
+    /// on the page: what PAdES lets a "no changes" certification gain.
     pub only_timestamps_added: bool,
 }
 
-/// A map from object to its role, walked from the trailer.
+/// The form's fields and their widgets: each one's fully qualified name
+/// (`parent.child`; a widget is named by its field) and whether it is a
+/// signature field (`/FT`, inherited).
+fn form_fields(pdf: &PdfDocument) -> BTreeMap<ObjectId, (String, bool)> {
+    let mut out = BTreeMap::new();
+    let Some(form) = pdf
+        .catalog_id()
+        .ok()
+        .and_then(|id| pdf.doc.get_dictionary(id).ok())
+        .and_then(|c| c.get(b"AcroForm").ok())
+        .map(|f| pdf.deref_obj(f))
+        .and_then(|f| f.as_dict().ok())
+    else {
+        return out;
+    };
+    let roots: Vec<ObjectId> = form
+        .get(b"Fields")
+        .ok()
+        .map(|f| pdf.deref_obj(f))
+        .and_then(|f| f.as_array().ok())
+        .map(|a| a.iter().filter_map(|r| r.as_reference().ok()).collect())
+        .unwrap_or_default();
+    let mut stack: Vec<(ObjectId, String, bool, usize)> = roots
+        .into_iter()
+        .rev()
+        .map(|id| (id, String::new(), false, 0))
+        .collect();
+    while let Some((id, prefix, inherited, depth)) = stack.pop() {
+        if depth > 32 || out.len() > 100_000 || out.contains_key(&id) {
+            continue;
+        }
+        let Ok(dict) = pdf.doc.get_dictionary(id) else {
+            continue;
+        };
+        let name = match (pdf.text_of(dict, b"T"), prefix.is_empty()) {
+            (Some(t), true) => t,
+            (Some(t), false) => format!("{prefix}.{t}"),
+            (None, _) => prefix,
+        };
+        let sig = match dict.get(b"FT").ok().and_then(|f| f.as_name().ok()) {
+            Some(ft) => ft == b"Sig",
+            None => inherited,
+        };
+        if let Some(kids) = dict
+            .get(b"Kids")
+            .ok()
+            .map(|k| pdf.deref_obj(k))
+            .and_then(|k| k.as_array().ok())
+        {
+            for kid in kids.iter().rev().filter_map(|k| k.as_reference().ok()) {
+                stack.push((kid, name.clone(), sig, depth + 1));
+            }
+        }
+        out.insert(id, (name, sig));
+    }
+    out
+}
+
+/// A map from object to its role, and the field it belongs to, walked from
+/// the trailer — breadth first, each object looked at again only when it is
+/// reached in a stricter role, and never copied.
 fn roles(pdf: &PdfDocument) -> BTreeMap<ObjectId, (Role, Option<String>)> {
     let doc = &pdf.doc;
+    let fields = form_fields(pdf);
     let mut out: BTreeMap<ObjectId, (Role, Option<String>)> = BTreeMap::new();
-    let mut queue: VecDeque<(Object, Role, Option<String>)> = VecDeque::new();
+    let mut queue: VecDeque<(&Object, Role, Option<String>)> = VecDeque::new();
     if let Ok(root) = doc.trailer.get(b"Root") {
-        queue.push_back((root.clone(), Role::Catalog, None));
+        queue.push_back((root, Role::Catalog, None));
     }
     if let Ok(info) = doc.trailer.get(b"Info") {
-        queue.push_back((info.clone(), Role::Info, None));
+        queue.push_back((info, Role::Info, None));
     }
     let mut steps = 0usize;
     while let Some((object, pushed, field)) = queue.pop_front() {
@@ -1315,49 +1475,54 @@ fn roles(pdf: &PdfDocument) -> BTreeMap<ObjectId, (Role, Option<String>)> {
             break;
         }
         let (id, object) = match object {
-            Object::Reference(id) => match doc.get_object(id) {
-                Ok(o) => (Some(id), o.clone()),
-                Err(_) => continue,
-            },
+            Object::Reference(id) => {
+                // Known in a role at least as strict: nothing new to learn.
+                if out.get(id).is_some_and(|(r, _)| *r <= pushed) {
+                    continue;
+                }
+                match doc.get_object(*id) {
+                    Ok(o) => (Some(*id), o),
+                    Err(_) => continue,
+                }
+            }
             o => (None, o),
         };
-        let dict = match &object {
-            Object::Dictionary(d) => Some(d.clone()),
-            Object::Stream(s) => Some(s.dict.clone()),
+        let dict = match object {
+            Object::Dictionary(d) => Some(d),
+            Object::Stream(s) => Some(&s.dict),
             _ => None,
         };
+        let known = id.and_then(|id| fields.get(&id));
         // An annotation that is a form field's widget belongs to the form;
         // a signature field and what hangs from it, to the signatures.
-        let is_sig =
-            |d: &Dictionary| d.get(b"FT").ok().and_then(|f| f.as_name().ok()) == Some(b"Sig");
-        let (role, field) = match (&dict, pushed) {
-            (Some(d), Role::Annotation)
-                if d.get(b"Subtype").ok().and_then(|s| s.as_name().ok()) == Some(b"Widget") =>
-            {
-                (
-                    if is_sig(d) {
-                        Role::Signature
-                    } else {
-                        Role::Form
-                    },
-                    pdf.text_of(d, b"T").or(field),
-                )
-            }
-            (Some(d), Role::Form) if is_sig(d) => (Role::Signature, pdf.text_of(d, b"T").or(field)),
-            (Some(d), Role::Form) => (Role::Form, pdf.text_of(d, b"T").or(field)),
+        let is_sig = |d: &Dictionary| {
+            d.get(b"FT").ok().and_then(|f| f.as_name().ok()) == Some(b"Sig")
+                || known.is_some_and(|(_, sig)| *sig)
+        };
+        let named = || known.map(|(n, _)| n.clone()).or_else(|| field.clone());
+        let (role, field) = match (dict, pushed) {
+            (Some(d), Role::Annotation) if is_widget(d) => (
+                if is_sig(d) {
+                    Role::Signature
+                } else {
+                    Role::Form
+                },
+                named(),
+            ),
+            (Some(d), Role::Form) if is_sig(d) => (Role::Signature, named()),
+            (Some(_), Role::Form) => (Role::Form, named()),
             _ => (pushed, field),
         };
         if let Some(id) = id {
-            match out.get(&id) {
-                Some((r, _)) if *r <= role => continue,
-                _ => {}
+            if out.get(&id).is_some_and(|(r, _)| *r <= role) {
+                continue;
             }
             out.insert(id, (role, field.clone()));
         }
         let Some(dict) = dict else {
-            if let Object::Array(items) = &object {
+            if let Object::Array(items) = object {
                 for i in items {
-                    queue.push_back((i.clone(), role, field.clone()));
+                    queue.push_back((i, role, field.clone()));
                 }
             }
             continue;
@@ -1385,48 +1550,76 @@ fn roles(pdf: &PdfDocument) -> BTreeMap<ObjectId, (Role, Option<String>)> {
                 (Role::Pages, _) => Role::PageContent,
                 (r, _) => r,
             };
-            queue.push_back((value.clone(), next, field.clone()));
+            queue.push_back((value, next, field.clone()));
         }
     }
     out
 }
 
-/// Annotations in the `then` list and not in `now` (each an `/Annots` array,
-/// or a reference to one): a comment removed, or — no less serious than
-/// changing the page — a form field's or a signature's widget.
-fn removed_annotations(
-    signed: &PdfDocument,
-    current: &PdfDocument,
-    then: Option<&Object>,
-    now: Option<&Object>,
-) -> Vec<ChangeKind> {
-    let refs = |doc: &PdfDocument, o: Option<&Object>| -> BTreeSet<ObjectId> {
-        let o = match o {
-            Some(Object::Reference(id)) => doc.doc.get_object(*id).ok(),
-            other => other,
-        };
-        o.and_then(|o| o.as_array().ok())
-            .map(|a| a.iter().filter_map(|i| i.as_reference().ok()).collect())
-            .unwrap_or_default()
-    };
-    let (before, after) = (refs(signed, then), refs(current, now));
-    before
-        .difference(&after)
-        .map(|id| {
-            let widget = signed
-                .doc
-                .get_dictionary(*id)
-                .ok()
-                .and_then(|d| d.get(b"Subtype").ok())
-                .and_then(|s| s.as_name().ok())
-                == Some(b"Widget");
-            if widget {
-                ChangeKind::Document
-            } else {
-                ChangeKind::Comments
+fn is_widget(d: &Dictionary) -> bool {
+    d.get(b"Subtype").ok().and_then(|s| s.as_name().ok()) == Some(b"Widget")
+}
+
+/// A form field, or a widget of one.
+fn field_like(d: &Dictionary) -> bool {
+    is_widget(d) || d.has(b"FT") || d.has(b"T") || d.has(b"Kids")
+}
+
+/// What a field or widget is, rather than what it holds: changing these is
+/// not filling it in (a widget moved, shown, retyped, given actions).
+const FIELD_STRUCTURE: [&[u8]; 12] = [
+    b"FT", b"Ff", b"Rect", b"F", b"Kids", b"T", b"Subtype", b"Type", b"AA", b"A", b"Opt", b"Parent",
+];
+
+/// Whether two values say the same, numbers to within a hundredth of a
+/// point: writers round reals differently (this one to five places), and a
+/// widget rewritten with its value must not look moved.
+fn alike(a: &Object, b: &Object, depth: usize) -> bool {
+    if depth > 16 {
+        return a == b;
+    }
+    match (a, b) {
+        (Object::Integer(_) | Object::Real(_), Object::Integer(_) | Object::Real(_)) => {
+            match (a.as_float(), b.as_float()) {
+                (Ok(x), Ok(y)) => (x - y).abs() < 0.01,
+                _ => false,
             }
+        }
+        (Object::Array(x), Object::Array(y)) => {
+            x.len() == y.len() && x.iter().zip(y).all(|(p, q)| alike(p, q, depth + 1))
+        }
+        (Object::Dictionary(x), Object::Dictionary(y)) => dicts_alike(x, y, depth + 1),
+        _ => a == b,
+    }
+}
+
+fn dicts_alike(a: &Dictionary, b: &Dictionary, depth: usize) -> bool {
+    a.len() == b.len()
+        && a.iter()
+            .all(|(k, v)| b.get(k).is_ok_and(|w| alike(v, w, depth)))
+}
+
+/// The keys whose values differ between two dictionaries.
+fn changed_keys(a: &Dictionary, b: &Dictionary) -> BTreeSet<Vec<u8>> {
+    a.iter()
+        .chain(b.iter())
+        .map(|(k, _)| k.clone())
+        .filter(|k| match (a.get(k).ok(), b.get(k).ok()) {
+            (Some(x), Some(y)) => !alike(x, y, 0),
+            (x, y) => x != y,
         })
         .collect()
+}
+
+/// References in an array (or in the array a reference names).
+fn refs_in(doc: &PdfDocument, o: Option<&Object>) -> BTreeSet<ObjectId> {
+    let o = match o {
+        Some(Object::Reference(id)) => doc.doc.get_object(*id).ok(),
+        other => other,
+    };
+    o.and_then(|o| o.as_array().ok())
+        .map(|a| a.iter().filter_map(|i| i.as_reference().ok()).collect())
+        .unwrap_or_default()
 }
 
 fn storage_only(object: &Object) -> bool {
@@ -1440,18 +1633,425 @@ fn storage_only(object: &Object) -> bool {
     )
 }
 
+fn as_dict(o: Option<&Object>) -> Option<&Dictionary> {
+    o.and_then(|o| o.as_dict().ok())
+}
+
+/// How many decoded bytes the stream comparisons of one check may read.
+const COMPARE_BUDGET: usize = 256 << 20;
+
+/// Comparing a signed revision with the file as it is now.
+struct Compare<'a> {
+    now: &'a PdfDocument,
+    then: &'a PdfDocument,
+    ours: BTreeMap<ObjectId, (Role, Option<String>)>,
+    theirs: BTreeMap<ObjectId, (Role, Option<String>)>,
+    locks: &'a [FieldLock],
+    kinds: BTreeMap<ChangeKind, usize>,
+    new_sigs: usize,
+    new_timestamps: usize,
+    /// A new signature shows on a page.
+    visible_new: bool,
+    /// Objects that came with something new under a signature field: a new
+    /// signature's, if one was added; else another kind of field's.
+    sig_parts: usize,
+}
+
+impl Compare<'_> {
+    fn add(&mut self, kind: ChangeKind) {
+        *self.kinds.entry(kind).or_insert(0) += 1;
+    }
+
+    /// Whether the object was part of the signed document (reachable then).
+    fn was_there(&self, id: ObjectId) -> bool {
+        self.theirs.contains_key(&id)
+    }
+
+    fn locked(&self, field: Option<&str>, like_a_field: bool) -> bool {
+        match field {
+            Some(f) => self.locks.iter().any(|l| l.locks(f)),
+            // A field whose name cannot be told is locked by any lock that
+            // is not a list of names to lock.
+            None => {
+                like_a_field
+                    && self
+                        .locks
+                        .iter()
+                        .any(|l| !matches!(l, FieldLock::Include(_)))
+            }
+        }
+    }
+
+    /// The form's own dictionary and its `/Fields` array, when indirect.
+    fn form_ids(doc: &PdfDocument) -> (Option<ObjectId>, Option<ObjectId>) {
+        let catalog = doc
+            .catalog_id()
+            .ok()
+            .and_then(|id| doc.doc.get_dictionary(id).ok());
+        let form = catalog
+            .and_then(|c| c.get(b"AcroForm").ok())
+            .and_then(|f| f.as_reference().ok());
+        let fields = form
+            .and_then(|f| doc.doc.get_dictionary(f).ok())
+            .and_then(|f| f.get(b"Fields").ok())
+            .and_then(|f| f.as_reference().ok());
+        (form, fields)
+    }
+
+    /// The signature a field (or its widget, through `/Parent`) now holds,
+    /// if it is a signature dictionary added after the signed revision.
+    fn new_signature_of(&self, d: &Dictionary) -> bool {
+        let value = |d: &Dictionary| -> Option<(Option<ObjectId>, Dictionary)> {
+            match d.get(b"V").ok()? {
+                Object::Reference(id) => {
+                    Some((Some(*id), self.now.doc.get_dictionary(*id).ok()?.clone()))
+                }
+                Object::Dictionary(v) => Some((None, v.clone())),
+                _ => None,
+            }
+        };
+        let found = value(d).or_else(|| {
+            let parent = d.get(b"Parent").ok()?.as_reference().ok()?;
+            value(self.now.doc.get_dictionary(parent).ok()?)
+        });
+        match found {
+            Some((id, v)) if v.has(b"ByteRange") => id.is_none_or(|id| !self.was_there(id)),
+            _ => false,
+        }
+    }
+
+    /// Whether a widget shows on its page.
+    fn shows(d: &Dictionary) -> bool {
+        let flags = d.get(b"F").ok().and_then(|f| f.as_i64().ok()).unwrap_or(0);
+        let rect: Vec<f32> = d
+            .get(b"Rect")
+            .ok()
+            .and_then(|r| r.as_array().ok())
+            .map(|a| a.iter().filter_map(|n| n.as_float().ok()).collect())
+            .unwrap_or_default();
+        let area = match rect[..] {
+            [x0, y0, x1, y1] => (x1 - x0).abs() > 1.0 && (y1 - y0).abs() > 1.0,
+            _ => false,
+        };
+        area && flags & (2 | 32) == 0 && d.has(b"AP")
+    }
+
+    /// What a page's (or an `/Annots` array's) annotations list lost and
+    /// gained. Gains that are new objects are judged by those objects; an
+    /// annotation that was already in the document, now placed on a page
+    /// again, is judged here.
+    fn annotations(&mut self, then: Option<&Object>, now: Option<&Object>) {
+        let before = refs_in(self.then, then);
+        let after = refs_in(self.now, now);
+        let widget = |doc: &PdfDocument, id: &ObjectId| {
+            doc.doc.get_dictionary(*id).ok().map(|d| {
+                (
+                    is_widget(d),
+                    d.get(b"FT").ok().and_then(|f| f.as_name().ok()) == Some(b"Sig"),
+                )
+            })
+        };
+        for id in before.difference(&after) {
+            // A comment removed; a form field's or a signature's widget
+            // removed is no less serious than changing the page.
+            self.add(match widget(self.then, id) {
+                Some((true, _)) => ChangeKind::Document,
+                _ => ChangeKind::Comments,
+            });
+        }
+        for id in after.difference(&before) {
+            if !self.was_there(*id) {
+                continue;
+            }
+            self.add(match widget(self.now, id) {
+                Some((true, true)) => ChangeKind::SignatureAltered,
+                Some((true, false)) => ChangeKind::FormChanged,
+                _ => ChangeKind::Comments,
+            });
+        }
+        // Annotations written into the list itself (PDFium writes some that
+        // way) are no objects of their own: judged here, by what they are.
+        let direct = |doc: &PdfDocument, o: Option<&Object>| -> Vec<Dictionary> {
+            let o = match o {
+                Some(Object::Reference(id)) => doc.doc.get_object(*id).ok(),
+                other => other,
+            };
+            o.and_then(|o| o.as_array().ok())
+                .map(|a| a.iter().filter_map(|i| i.as_dict().ok().cloned()).collect())
+                .unwrap_or_default()
+        };
+        let (mut before, after) = (direct(self.then, then), direct(self.now, now));
+        for d in after {
+            match before.iter().position(|b| *b == d) {
+                Some(i) => {
+                    before.swap_remove(i);
+                }
+                None => self.add(if is_widget(&d) {
+                    ChangeKind::FormChanged
+                } else {
+                    ChangeKind::Comments
+                }),
+            }
+        }
+        for d in before {
+            self.add(if is_widget(&d) {
+                ChangeKind::Document
+            } else {
+                ChangeKind::Comments
+            });
+        }
+    }
+
+    /// What a form's `/Fields` lost and gained: new signature fields are the
+    /// signing itself; anything else is the form changed.
+    fn fields(&mut self, then: Option<&Object>, now: Option<&Object>) {
+        let before = refs_in(self.then, then);
+        let after = refs_in(self.now, now);
+        for id in before.difference(&after) {
+            let sig = self
+                .theirs
+                .get(id)
+                .is_some_and(|(r, _)| *r == Role::Signature);
+            self.add(if sig {
+                ChangeKind::SignatureAltered
+            } else {
+                ChangeKind::FormChanged
+            });
+        }
+        for id in after.difference(&before) {
+            let signs = self
+                .now
+                .doc
+                .get_dictionary(*id)
+                .is_ok_and(|d| self.new_signature_of(d));
+            if signs && !self.was_there(*id) {
+                self.sig_parts += 1;
+            } else {
+                self.add(ChangeKind::FormChanged);
+            }
+        }
+    }
+
+    /// The form's own dictionary.
+    fn form(&mut self, then: &Dictionary, now: &Dictionary) {
+        for key in changed_keys(then, now) {
+            match key.as_slice() {
+                b"Fields" => {
+                    let (a, b) = (
+                        then.get(b"Fields").ok().cloned(),
+                        now.get(b"Fields").ok().cloned(),
+                    );
+                    self.fields(a.as_ref(), b.as_ref());
+                }
+                // Set when a signature is added.
+                b"SigFlags" => self.sig_parts += 1,
+                // What filling in a form may add: fonts, appearances.
+                b"NeedAppearances" | b"DR" | b"DA" => self.add(ChangeKind::FormFill),
+                // Another rendering of the whole form.
+                b"XFA" => self.add(ChangeKind::Document),
+                _ => self.add(ChangeKind::FormChanged),
+            }
+        }
+    }
+
+    fn catalog(&mut self, then: Option<&Dictionary>, now: Option<&Dictionary>) {
+        let (Some(a), Some(b)) = (now, then) else {
+            self.add(ChangeKind::Document);
+            return;
+        };
+        for key in changed_keys(b, a) {
+            match key.as_slice() {
+                b"DSS" | b"Extensions" => self.add(ChangeKind::ValidationData),
+                b"AcroForm" => match (b.get(b"AcroForm").ok(), a.get(b"AcroForm").ok()) {
+                    (Some(Object::Dictionary(x)), Some(Object::Dictionary(y))) => {
+                        let (x, y) = (x.clone(), y.clone());
+                        self.form(&x, &y);
+                    }
+                    _ => self.add(ChangeKind::FormChanged),
+                },
+                b"Metadata" => self.add(ChangeKind::Metadata),
+                b"Perms" => self.add(ChangeKind::SignatureAltered),
+                _ => self.add(ChangeKind::Document),
+            }
+        }
+    }
+
+    fn page(&mut self, then: Option<&Dictionary>, now: Option<&Dictionary>) {
+        let (Some(a), Some(b)) = (now, then) else {
+            self.add(ChangeKind::PageContent);
+            return;
+        };
+        let mut others = a.clone();
+        let mut before = b.clone();
+        others.remove(b"Annots");
+        before.remove(b"Annots");
+        if !dicts_alike(&others, &before, 0) {
+            self.add(ChangeKind::PageContent);
+        }
+        let (x, y) = (
+            b.get(b"Annots").ok().cloned(),
+            a.get(b"Annots").ok().cloned(),
+        );
+        self.annotations(x.as_ref(), y.as_ref());
+    }
+
+    /// An object of the form: the form's dictionary and `/Fields`, a field or
+    /// widget, or what hangs from one (its appearance, fonts).
+    fn form_object(
+        &mut self,
+        id: ObjectId,
+        then: Option<&Object>,
+        now: Option<&Object>,
+        field: Option<&str>,
+    ) {
+        let (form_now, fields_now) = Self::form_ids(self.now);
+        let (form_then, fields_then) = Self::form_ids(self.then);
+        if Some(id) == form_now || Some(id) == form_then {
+            match (
+                then.and_then(|o| o.as_dict().ok()),
+                now.and_then(|o| o.as_dict().ok()),
+            ) {
+                (Some(x), Some(y)) => {
+                    let (x, y) = (x.clone(), y.clone());
+                    self.form(&x, &y);
+                }
+                _ => self.add(ChangeKind::FormChanged),
+            }
+            return;
+        }
+        if Some(id) == fields_now || Some(id) == fields_then {
+            self.fields(then, now);
+            return;
+        }
+        let like_a_field = now
+            .or(then)
+            .and_then(|o| o.as_dict().ok())
+            .is_some_and(field_like);
+        let locked = self.locked(field, like_a_field);
+        let kind = if like_a_field {
+            match (
+                then.and_then(|o| o.as_dict().ok()),
+                now.and_then(|o| o.as_dict().ok()),
+            ) {
+                (Some(x), Some(y)) => {
+                    let structural = changed_keys(x, y)
+                        .iter()
+                        .any(|k| FIELD_STRUCTURE.contains(&k.as_slice()));
+                    if structural {
+                        ChangeKind::FormChanged
+                    } else {
+                        ChangeKind::FormFill
+                    }
+                }
+                // Added or removed.
+                _ => ChangeKind::FormChanged,
+            }
+        } else if now.is_some_and(|o| o.as_array().is_ok()) && then.is_some() {
+            // An indirect /Kids (or /Opt) list changed: widgets or choices
+            // added or taken away.
+            ChangeKind::FormChanged
+        } else {
+            // An appearance, a font, a value kept on its own.
+            ChangeKind::FormFill
+        };
+        self.add(if locked {
+            ChangeKind::LockedField
+        } else {
+            kind
+        });
+    }
+
+    /// An object of a signature: its dictionary, its field and widget, and
+    /// what hangs from them.
+    fn signature_object(&mut self, then: Option<&Object>, now: Option<&Object>) {
+        let d_now = now.and_then(|o| o.as_dict().ok());
+        let d_then = then.and_then(|o| o.as_dict().ok());
+        if d_now.is_some_and(|d| d.has(b"ByteRange")) || d_then.is_some_and(|d| d.has(b"ByteRange"))
+        {
+            match (d_now, then) {
+                // A new signature dictionary.
+                (Some(d), None) => {
+                    self.new_sigs += 1;
+                    if d.has_type(b"DocTimeStamp") {
+                        self.new_timestamps += 1;
+                    }
+                    self.add(ChangeKind::Signatures);
+                }
+                _ => self.add(ChangeKind::SignatureAltered),
+            }
+            return;
+        }
+        match (d_now, d_then) {
+            (Some(d), None) if field_like(d) && then.is_none() => {
+                // A new signature field or widget: a signature only if it
+                // holds a new signature; an empty one drawn on the page is a
+                // field added (the "sneaky signature").
+                if self.new_signature_of(d) {
+                    self.sig_parts += 1;
+                    self.visible_new |= Self::shows(d);
+                } else {
+                    self.add(ChangeKind::FormChanged);
+                }
+            }
+            (Some(d), Some(t)) if field_like(d) => {
+                // An empty signature field being signed: what changed is its
+                // value and its appearance, nothing else.
+                let keys = changed_keys(t, d);
+                let signing = !t.has(b"V")
+                    && self.new_signature_of(d)
+                    && keys
+                        .iter()
+                        .all(|k| matches!(k.as_slice(), b"V" | b"AP" | b"AS" | b"NM" | b"M"));
+                if signing {
+                    self.sig_parts += 1;
+                    self.visible_new |= Self::shows(d);
+                } else {
+                    self.add(ChangeKind::SignatureAltered);
+                }
+            }
+            _ if then.is_some() => self.add(ChangeKind::SignatureAltered),
+            // Something new hanging from a new signature field: its
+            // appearance, fonts, picture.
+            _ => self.sig_parts += 1,
+        }
+    }
+}
+
 impl PdfDocument {
     /// What changed in this document since `signed`, an earlier revision of
     /// it (the bytes a signature covers). `locks` are the fields locked by
     /// the signatures made so far.
+    ///
+    /// Objects are compared one by one, each judged by what it is to the
+    /// document (`roles`). An object that was in the file but that nothing
+    /// in the signed revision reached counts as new when something reaches
+    /// it now: it was not part of what was signed, whatever its bytes (the
+    /// "shadow" attacks hide content that way before signing and link it
+    /// after). The trailer is compared too: another catalog is another
+    /// document.
     pub fn changes_since(&self, signed: &PdfDocument, locks: &[FieldLock]) -> Changes {
-        let ours = roles(self);
-        let theirs = roles(signed);
-        let mut changes = Changes {
-            only_timestamps_added: true,
-            ..Changes::default()
+        let mut c = Compare {
+            now: self,
+            then: signed,
+            ours: roles(self),
+            theirs: roles(signed),
+            locks,
+            kinds: BTreeMap::new(),
+            new_sigs: 0,
+            new_timestamps: 0,
+            visible_new: false,
+            sig_parts: 0,
         };
-        let mut add = |kind: ChangeKind| *changes.kinds.entry(kind).or_insert(0) += 1;
+        for (key, kind) in [
+            (b"Root".as_slice(), ChangeKind::Document),
+            (b"Encrypt", ChangeKind::Document),
+            (b"Info", ChangeKind::Metadata),
+        ] {
+            if self.doc.trailer.get(key).ok() != signed.doc.trailer.get(key).ok() {
+                c.add(kind);
+            }
+        }
+        let mut budget = COMPARE_BUDGET;
         let ids: BTreeSet<ObjectId> = self
             .doc
             .objects
@@ -1459,20 +2059,22 @@ impl PdfDocument {
             .chain(signed.doc.objects.keys())
             .copied()
             .collect();
-        let mut new_sigs = 0usize;
-        let mut new_timestamps = 0usize;
         for id in ids {
             let now = self.doc.objects.get(&id);
-            let then = signed.doc.objects.get(&id);
-            if now.is_some_and(storage_only) || then.is_some_and(storage_only) {
+            let then_stored = signed.doc.objects.get(&id);
+            if now.is_some_and(storage_only) || then_stored.is_some_and(storage_only) {
                 continue;
             }
-            match (now, then) {
-                (Some(a), Some(b)) if crate::rebase::same(a, b) => continue,
-                _ => {}
+            let role_now = c.ours.get(&id).cloned();
+            let role_then = c.theirs.get(&id).cloned();
+            // What the signed revision had in the document: an object nothing
+            // reached then was not part of what was signed.
+            let then = then_stored.filter(|_| role_then.is_some());
+            if let (Some(a), Some(b)) = (now, then) {
+                if crate::rebase::same_within(a, b, &mut budget) {
+                    continue;
+                }
             }
-            let role_now = ours.get(&id).cloned();
-            let role_then = theirs.get(&id).cloned();
             let (role, field) = match (role_now, role_then) {
                 (Some(a), Some(b)) => {
                     if a.0 <= b.0 {
@@ -1486,101 +2088,45 @@ impl PdfDocument {
                 (None, None) => continue,
             };
             match role {
-                Role::Catalog => {
-                    let (Some(a), Some(b)) = (
-                        now.and_then(|o| o.as_dict().ok()),
-                        then.and_then(|o| o.as_dict().ok()),
-                    ) else {
-                        add(ChangeKind::Document);
-                        continue;
-                    };
-                    let keys: BTreeSet<Vec<u8>> =
-                        a.iter().chain(b.iter()).map(|(k, _)| k.clone()).collect();
-                    for key in keys {
-                        if a.get(&key).ok() == b.get(&key).ok() {
-                            continue;
-                        }
-                        add(match key.as_slice() {
-                            b"DSS" | b"Extensions" => ChangeKind::ValidationData,
-                            b"AcroForm" => ChangeKind::FormFill,
-                            b"Metadata" => ChangeKind::Metadata,
-                            b"Perms" => ChangeKind::SignatureAltered,
-                            _ => ChangeKind::Document,
-                        });
-                    }
-                }
+                Role::Catalog => c.catalog(as_dict(then), as_dict(now)),
                 Role::Pages => {
-                    // A page whose only change is its annotations list.
-                    let (Some(a), Some(b)) = (
-                        now.and_then(|o| o.as_dict().ok()),
-                        then.and_then(|o| o.as_dict().ok()),
-                    ) else {
-                        add(ChangeKind::PageContent);
-                        continue;
-                    };
-                    let mut others = a.clone();
-                    let mut before = b.clone();
-                    others.remove(b"Annots");
-                    before.remove(b"Annots");
-                    if others != before {
-                        add(ChangeKind::PageContent);
-                    }
-                    // What the annotations list gained is judged by those
-                    // annotations themselves; what it lost, here.
-                    for kind in removed_annotations(
-                        signed,
-                        self,
-                        b.get(b"Annots").ok(),
-                        a.get(b"Annots").ok(),
-                    ) {
-                        add(kind);
+                    if now.is_some_and(|o| o.as_array().is_ok()) {
+                        // A /Kids array: pages added, removed or reordered.
+                        c.add(ChangeKind::PageContent);
+                    } else {
+                        c.page(as_dict(then), as_dict(now));
                     }
                 }
-                Role::PageContent => add(ChangeKind::PageContent),
-                Role::Document => add(ChangeKind::Document),
+                Role::PageContent => c.add(ChangeKind::PageContent),
+                Role::Document => c.add(ChangeKind::Document),
                 Role::Annotation => {
                     if now.is_some_and(|o| o.as_array().is_ok())
                         || then.is_some_and(|o| o.as_array().is_ok())
                     {
                         // An /Annots array: judged by its members.
-                        for kind in removed_annotations(signed, self, then, now) {
-                            add(kind);
-                        }
-                        continue;
-                    }
-                    add(ChangeKind::Comments)
-                }
-                Role::Form => {
-                    if field
-                        .as_deref()
-                        .is_some_and(|f| locks.iter().any(|l| l.locks(f)))
-                    {
-                        add(ChangeKind::LockedField);
+                        c.annotations(then, now);
                     } else {
-                        add(ChangeKind::FormFill);
+                        c.add(ChangeKind::Comments);
                     }
                 }
-                Role::Signature => {
-                    let dict = now.and_then(|o| o.as_dict().ok());
-                    let is_sig_dict = dict.is_some_and(|d| d.has(b"ByteRange"));
-                    if then.is_some() && is_sig_dict {
-                        add(ChangeKind::SignatureAltered);
-                    } else {
-                        if is_sig_dict {
-                            new_sigs += 1;
-                            if dict.is_some_and(|d| d.has_type(b"DocTimeStamp")) {
-                                new_timestamps += 1;
-                            }
-                        }
-                        add(ChangeKind::Signatures);
-                    }
-                }
-                Role::Dss => add(ChangeKind::ValidationData),
-                Role::Info => add(ChangeKind::Metadata),
+                Role::Form => c.form_object(id, then, now, field.as_deref()),
+                Role::Signature => c.signature_object(then, now),
+                Role::Dss => c.add(ChangeKind::ValidationData),
+                Role::Info => c.add(ChangeKind::Metadata),
             }
         }
-        changes.only_timestamps_added = new_sigs == new_timestamps;
-        changes
+        if c.sig_parts > 0 {
+            let kind = if c.new_sigs > 0 {
+                ChangeKind::Signatures
+            } else {
+                ChangeKind::FormChanged
+            };
+            *c.kinds.entry(kind).or_insert(0) += c.sig_parts;
+        }
+        Changes {
+            only_timestamps_added: c.new_sigs == c.new_timestamps && !c.visible_new,
+            kinds: c.kinds,
+        }
     }
 }
 
@@ -1756,5 +2302,62 @@ mod tests {
         );
         assert!(ChangeKind::ValidationData.allowed(Some(1), false));
         assert_eq!(after.dss().certs, vec![vec![0x30, 0x00]]);
+    }
+
+    /// A file whose catalog carries `key` → `value`, as an update.
+    fn with_catalog_entry(key: &str, value: impl FnOnce(&mut PdfDocument) -> Object) -> Vec<u8> {
+        let mut doc =
+            PdfDocument::open(corpus("generated/chrome-cairo-mixed-invoice.pdf"), None).unwrap();
+        let value = value(&mut doc);
+        let root = doc.catalog_id().unwrap();
+        doc.doc.get_dictionary_mut(root).unwrap().set(key, value);
+        doc.mark_touched(root);
+        doc.save_incremental().unwrap()
+    }
+
+    #[test]
+    fn validation_data_that_inflates_without_end_is_not_inflated() {
+        // 64 MB of zeros, stored as some 64 KB: one piece of "validation
+        // data" past what one may be read to. A signed file is checked the
+        // moment it opens.
+        let bytes = with_catalog_entry("DSS", |doc| {
+            let mut bomb = Stream::new(Dictionary::new(), vec![0; 64 << 20]);
+            bomb.compress().unwrap();
+            assert!(bomb.content.len() < 1 << 20);
+            let bomb = doc.doc.add_object(bomb);
+            let small = doc
+                .doc
+                .add_object(Stream::new(Dictionary::new(), vec![0x30, 0x00]));
+            Object::Dictionary(dictionary! {
+                "Certs" => vec![Object::Reference(bomb), Object::Reference(small)],
+            })
+        });
+        let doc = PdfDocument::open(bytes, None).unwrap();
+        assert_eq!(
+            doc.dss().certs,
+            vec![vec![0x30, 0x00]],
+            "the bomb is skipped"
+        );
+    }
+
+    #[test]
+    fn a_file_referring_to_one_big_object_again_and_again_is_walked_once() {
+        // 200 000 references to one 4 MB stream: copied at each reference,
+        // as the walk once did, that is 800 GB.
+        let bytes = with_catalog_entry("Junk", |doc| {
+            let big = doc
+                .doc
+                .add_object(Stream::new(Dictionary::new(), vec![7; 4 << 20]));
+            Object::Array(vec![Object::Reference(big); 200_000])
+        });
+        let doc = PdfDocument::open(bytes, None).unwrap();
+        let started = std::time::Instant::now();
+        let changes = doc.changes_since(&doc, &[]);
+        assert!(changes.kinds.is_empty());
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(10),
+            "{:?}",
+            started.elapsed()
+        );
     }
 }

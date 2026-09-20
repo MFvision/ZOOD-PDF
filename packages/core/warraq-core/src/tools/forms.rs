@@ -359,7 +359,9 @@ fn expression_error(e: &forms::ExprError) -> Value {
 pub fn call_static(name: &str, json: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
     let mut blobs = blobs.into_iter();
     match name {
-        // blobs: the PDF, then the face to draw with (a bundled one).
+        // blobs: the PDF, then the face to draw with (a bundled one), then —
+        // optionally — the file as it was opened: when that is signed, only
+        // what changed since is redrawn.
         "fix_appearances" => {
             let a: Password = args(json)?;
             let (Some(pdf), Some(font)) = (blobs.next(), blobs.next()) else {
@@ -367,8 +369,15 @@ pub fn call_static(name: &str, json: &str, blobs: Vec<Vec<u8>>) -> Result<Reply,
                     "forms.fix_appearances takes the PDF and a font".into(),
                 ));
             };
+            let opened = blobs
+                .next()
+                .filter(|b| !b.is_empty())
+                .and_then(|b| warraq_pdf::PdfDocument::open(b, a.password.as_deref()).ok());
             let mut doc = warraq_pdf::PdfDocument::open(pdf.clone(), a.password.as_deref())?;
-            let report = doc.fix_arabic_appearances(&font)?;
+            let report = match &opened {
+                Some(opened) => doc.fix_arabic_appearances_since(&font, opened)?,
+                None => doc.fix_arabic_appearances(&font)?,
+            };
             let answer = |fixed: bool| {
                 serde_json::json!({
                     "fields": if fixed { report.fields } else { 0 },

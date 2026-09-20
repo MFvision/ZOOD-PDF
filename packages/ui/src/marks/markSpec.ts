@@ -295,6 +295,30 @@ export function formOf(spec: Record<string, unknown>, fallback: MarkForm = DEFAU
   }
 }
 
+/** `n` in the chosen digits, as the core writes page numbers. */
+export function inDigits(n: number, numerals: Numerals): string {
+  const s = String(n);
+  return numerals === 'arabic' ? s.replace(/\d/g, (d) => String.fromCharCode(0x0660 + Number(d))) : s;
+}
+
+/**
+ * The numbers a page-number format is shown with — in its label, or in a
+ * listed mark's summary — in the digits the mark draws: its first number,
+ * and the last of `count` pages (the first skipped or not).
+ */
+export function pageNumberSample(numerals: Numerals, start = 1, count = 9, skipFirst = false): { page: string; pages: string } {
+  const numbered = Math.max(1, count - (skipFirst ? 1 : 0));
+  return { page: inDigits(start, numerals), pages: inDigits(start + numbered - 1, numerals) };
+}
+
+/** A Bates mark's first number as the core draws it: the start padded to its digits (always Western), between prefix and suffix. */
+export function batesSample(spec: Record<string, unknown>): string {
+  const number = (key: string, or: number) => (typeof spec[key] === 'number' ? (spec[key] as number) : or);
+  const width = Math.min(20, Math.max(1, Math.floor(number('width', 6))));
+  const start = Math.max(0, Math.floor(number('start', 1)));
+  return `${String(spec.prefix ?? '')}${String(start).padStart(width, '0')}${String(spec.suffix ?? '')}`;
+}
+
 /** Pages as a person reads them: `1–3, 5`. */
 export function pagesLabel(pages: readonly number[]): string {
   const runs: string[] = [];

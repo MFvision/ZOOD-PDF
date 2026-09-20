@@ -20,13 +20,14 @@
 //! file is written whole as PDF 1.6.
 use std::collections::BTreeSet;
 
+use lopdf::content::Content;
 use lopdf::{dictionary, Dictionary, Object, ObjectId, Stream};
 
 use super::fonts::{self, Face};
 use super::pdfa::Conversion;
 use super::scan::ScanOptions;
 use super::{dict_of, icc, md5_hex, name, resolve, uuid_from, xmp, Finding, Findings};
-use crate::pagework::open_saves;
+use crate::text_walk::unbalanced_q;
 use crate::{Error, PdfDocument, Result};
 
 /// Every rule the validator checks, and the part of ISO 15930-7 it is in.
@@ -633,9 +634,13 @@ impl PdfDocument {
                     count += 1;
                 }
                 let streams = self.content_ids(page);
+                // Every `q` the page's own streams leave open, so the drawing
+                // after them starts from the page's own state.
                 let open: usize = streams
                     .iter()
-                    .map(|id| self.stream_bytes(*id).map(|b| open_saves(&b)).unwrap_or(0))
+                    .filter_map(|id| self.stream_bytes(*id).ok())
+                    .filter_map(|b| Content::decode(&b).ok())
+                    .map(|c| unbalanced_q(&c.operations))
                     .sum();
                 let before = self.new_stream(Dictionary::new(), b"q\n".to_vec());
                 let mut tail = "\n".to_string();

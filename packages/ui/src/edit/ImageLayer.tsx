@@ -3,7 +3,7 @@ import type { KeyboardEvent, PointerEvent } from 'react';
 import type { RemoteDocument } from '../core/client';
 import { useT } from '../i18n/useT';
 import { useAppState } from '../state/AppContext';
-import { updateEditPdf, useEditPdf } from './editPdf';
+import { listFresh, updateEditPdf, useEditPdf } from './editPdf';
 import type { PageImage } from './editPdf';
 import { HANDLES, apply, between, bounds, corners, crop, fitAspect, resize, translate, uprightIn } from './matrix';
 import type { Clip, Matrix, Point } from './matrix';
@@ -45,11 +45,14 @@ export function ImageLayer({ document, index, scale }: LayerProps) {
   const revision = edit.pageRevisions[index] ?? 0;
   const images = pdf.images[index] ?? [];
   const selected = pdf.image?.page === index ? pdf.image.index : null;
+  // A change in flight, or one made whose new list is not read yet: the
+  // boxes wait, or a key would act on where the picture was.
+  const waiting = edit.busy || !listFresh(pdf.imagesAt, index, revision);
 
   useEffect(() => {
     let cancelled = false;
     void actions.listImages(index).then((list) => {
-      if (!cancelled && list) updateEditPdf((s) => ({ images: { ...s.images, [index]: list } }));
+      if (!cancelled && list) updateEditPdf((s) => ({ images: { ...s.images, [index]: list }, imagesAt: { ...s.imagesAt, [index]: revision } }));
     });
     return () => {
       cancelled = true;
@@ -106,7 +109,18 @@ export function ImageLayer({ document, index, scale }: LayerProps) {
     else setDrag({ ...drag, clip: crop(drag.image.matrix, drag.image.clip, drag.handle, point) });
   };
 
-  const onKey = (event: KeyboardEvent<HTMLButtonElement>, image: PageImage) => {
+  /**
+   * Keys act on the picked picture only — Tab onto another and Enter picks
+   * it — and never while a change is in flight. The box is not disabled
+   * meanwhile (`aria-disabled`): a disabled button loses the focus, and the
+   * second arrow press would scroll the page instead of moving it again.
+   */
+  const onKey = (event: KeyboardEvent<HTMLButtonElement>, image: PageImage, picked: boolean) => {
+    if (!picked || image.shared) return;
+    if (waiting) {
+      if (event.key.startsWith('Arrow') || event.key === 'Delete' || event.key === 'Backspace') event.preventDefault();
+      return;
+    }
     const step = event.shiftKey ? NUDGE * 10 : NUDGE;
     const moves: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
     const move = moves[event.key];
@@ -143,12 +157,15 @@ export function ImageLayer({ document, index, scale }: LayerProps) {
             aria-pressed={isSelected}
             aria-label={t(image.shared ? 'editPdf.imageShared' : 'editPdf.imageLabel', { n: k + 1, w: image.pixels[0], h: image.pixels[1] })}
             title={image.shared ? t('editPdf.imageSharedNote') : undefined}
-            disabled={edit.busy || pdf.pending !== null}
+            aria-disabled={waiting || pdf.pending !== null || undefined}
             style={{ insetInlineStart: box.x * scale, insetBlockStart: box.y * scale, inlineSize: box.width * scale, blockSize: box.height * scale }}
-            onClick={() => updateEditPdf({ image: { page: index, index: k }, link: null })}
-            onKeyDown={(event) => !image.shared && onKey(event, image)}
+            onClick={() => {
+              if (waiting || pdf.pending !== null) return;
+              updateEditPdf({ image: { page: index, index: k }, link: null });
+            }}
+            onKeyDown={(event) => onKey(event, image, isSelected)}
             onPointerDown={(event) => {
-              if (!isSelected || image.shared || pdf.cropping || event.button !== 0) return;
+              if (!isSelected || image.shared || pdf.cropping || waiting || event.button !== 0) return;
               event.currentTarget.parentElement?.setPointerCapture(event.pointerId);
               setDrag({ kind: 'move', from: at(event), image, matrix: image.matrix });
             }}
@@ -180,6 +197,7 @@ export function ImageLayer({ document, index, scale }: LayerProps) {
                       onPointerDown={(event) => {
                         if (event.button !== 0) return;
                         event.stopPropagation();
+                        if (waiting) return;
                         layer.current?.setPointerCapture(event.pointerId);
                         setDrag({ kind: pdf.cropping ? 'crop' : 'resize', handle, image, matrix: image.matrix, clip: image.clip });
                       }}

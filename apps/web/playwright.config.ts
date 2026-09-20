@@ -29,6 +29,9 @@ export default defineConfig({
     locale: 'en-US',
     acceptDownloads: true,
     viewport: { width: 1400, height: 1000 },
+    // The service worker downloads the whole app into its cache; only the
+    // spec that tests it (pwa.spec.ts) lets it run, the rest load plainly.
+    serviceWorkers: 'block',
   },
   // Its own port on an explicit address, and never a server it did not start:
   // with `reuseExistingServer` another project's dev server on the usual

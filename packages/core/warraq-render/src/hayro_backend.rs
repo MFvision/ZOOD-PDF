@@ -646,7 +646,16 @@ impl<'a> Device<'a> for GlyphDevice {
                         }
                         (font, gid, adv * size)
                     }
-                    None => (u32::MAX, gid, 0.0),
+                    // A Type1 font hands out no program to measure, but its
+                    // `/Widths` still say how far the pen moves (1/1000 em).
+                    None => {
+                        let adv = g
+                            .advance_width()
+                            .filter(|w| w.is_finite() && *w > 0.0 && *w < 10_000.0)
+                            .map(|w| w / 1000.0 * size)
+                            .unwrap_or(0.0);
+                        (u32::MAX, gid, adv)
+                    }
                 }
             }
             Glyph::Type3(g) => {

@@ -9,6 +9,11 @@ publish = false
 [package.metadata]
 cargo-fuzz = true
 
+# Its own workspace, as `cargo fuzz init` writes it: the targets build apart
+# from packages/core's.
+[workspace]
+members = ["."]
+
 [dependencies]
 libfuzzer-sys = "0.4"
 warraq-core = { path = "../warraq-core" }
@@ -29,6 +34,12 @@ doc = false
 [[bin]]
 name = "form_script"
 path = "fuzz_targets/form_script.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "lex_content"
+path = "fuzz_targets/lex_content.rs"
 test = false
 doc = false
 
