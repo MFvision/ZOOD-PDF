@@ -276,6 +276,7 @@ pub struct Index {
     chars: u64,
     words: u64,
     positions: u64,
+    postings: u64,
     text_bytes: u64,
     term_bytes: u64,
 }
@@ -641,6 +642,7 @@ impl Index {
         let mut fresh = 0usize;
         for (term, positions) in places {
             self.positions += positions.len() as u64;
+            self.postings += 1;
             match self.terms.get_mut(&term) {
                 Some(postings) => postings.push(Posting {
                     content: slot,
@@ -649,6 +651,7 @@ impl Index {
                 None => {
                     if fresh >= room_for_terms {
                         self.positions -= positions.len() as u64;
+                        self.postings -= 1;
                         continue;
                     }
                     fresh += 1;
@@ -713,11 +716,14 @@ impl Index {
         let gone = doc.content;
         let mut freed_places = 0u64;
         let mut freed_terms = 0u64;
+        let mut freed_postings = 0u64;
         self.terms.retain(|term, postings| {
             let before: usize = postings.iter().map(|p| p.positions.len()).sum();
+            let was = postings.len();
             postings.retain(|p| p.content != gone);
             let after: usize = postings.iter().map(|p| p.positions.len()).sum();
             freed_places += (before - after) as u64;
+            freed_postings += (was - postings.len()) as u64;
             if postings.is_empty() {
                 freed_terms += term.len() as u64;
                 return false;
@@ -725,6 +731,7 @@ impl Index {
             true
         });
         self.positions = self.positions.saturating_sub(freed_places);
+        self.postings = self.postings.saturating_sub(freed_postings);
         self.term_bytes = self.term_bytes.saturating_sub(freed_terms);
     }
 
@@ -812,9 +819,14 @@ impl Index {
             .filter_map(|k| Some((Kind::from_byte(k as u8)?.as_str(), kinds[k])))
             .collect();
         stats.tags = tags.into_iter().map(|(t, n)| (t.to_string(), n)).collect();
-        // About what the index holds: its text, its terms, and a varint's
-        // worth per word's place — within a few per cent of what `save` writes.
-        stats.bytes = self.text_bytes + self.term_bytes + self.positions * 2 + doc_bytes;
+        // About what the index holds, counted the way the file is written: its
+        // text, its terms, four bytes for each place a word is in (a place
+        // carries its line as well as its place in it, so the varint between
+        // two of them is rarely short) and two for each term's entry in a
+        // document. It is an estimate — `library.save` writes the real thing —
+        // and on the Arabic corpus it lands within a few per cent of it.
+        stats.bytes =
+            self.text_bytes + self.term_bytes + self.positions * 4 + self.postings * 2 + doc_bytes;
         stats
     }
 

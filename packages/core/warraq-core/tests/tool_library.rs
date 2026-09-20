@@ -186,6 +186,14 @@ fn the_whole_arabic_corpus_goes_into_one_index_and_is_searched_across() {
     let saved =
         call_static("library.save", &format!("{{\"handle\":{handle}}}"), vec![]).expect("saved");
     let bytes = saved.blobs.into_iter().next().expect("the index");
+    // What `library.stats` says the index takes is an estimate; it must stay
+    // near what saving it really writes, or the number is worse than none.
+    let held = stats["bytes"].as_u64().expect("a size") as f64;
+    let written = bytes.len() as f64;
+    assert!(
+        (held / written - 1.0).abs() < 0.25,
+        "stats says {held} bytes, saving writes {written}"
+    );
     eprintln!(
         "library: {added} files indexed in {indexing:?}; index {} KB on disk, {} KB held; \
          one search {searching:?}",

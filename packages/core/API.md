@@ -245,6 +245,11 @@ truncated or foreign file with `E_INDEX` instead of loading half of it.
 **`now`** is Unix seconds, because the core has no clock of its own in the
 browser; without it `library.document` answers `indexed: 0`.
 
+**`library.stats`'s `bytes`** is an estimate of what the index takes, counted
+the way the file is written; `library.save` writes the real thing. On the
+Arabic corpus the two are within a few per cent, and a test keeps them within
+a quarter of each other.
+
 Signing never reaches the network: the core builds a request and takes the answer; the desktop host sends it (`net_exchange`), and signs on a smart card through `pkcs11_certificates` / `pkcs11_sign`, which call `tools::signatures::sign_with` with a card-backed `warraq_sign::keys::Signer`.
 
 Errors add `E_ARGS` (arguments that do not parse), `E_UNKNOWN_OP`, and
