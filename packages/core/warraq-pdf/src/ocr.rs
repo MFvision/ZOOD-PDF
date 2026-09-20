@@ -234,7 +234,8 @@ impl PdfDocument {
             if !bytes.windows(MARK.len()).any(|w| w == MARK) {
                 continue;
             }
-            let ops = crate::lex::lex(&bytes);
+            // A stream too large to lex is refused rather than half-edited.
+            let ops = crate::lex::lex(&bytes)?;
             let mut cut: Vec<std::ops::Range<usize>> = Vec::new();
             let mut k = 0;
             while k < ops.len() {
