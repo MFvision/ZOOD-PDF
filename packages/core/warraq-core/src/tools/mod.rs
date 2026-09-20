@@ -10,6 +10,7 @@ use serde::Serialize;
 
 use crate::{CoreError, Document};
 
+pub mod accessibility;
 pub mod compress;
 pub mod create;
 pub mod export;
@@ -25,6 +26,7 @@ pub mod panes;
 pub mod patterns;
 pub mod redact;
 pub mod signatures;
+pub mod standards;
 pub mod view;
 
 /// What a tool operation answers: JSON for the UI, and bytes beside it.
@@ -74,6 +76,7 @@ pub fn call(
 
 pub fn call_static(op: &str, args: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
     match op.split_once('.') {
+        Some(("accessibility", name)) => accessibility::call_static(name, args, blobs),
         Some(("compress", name)) => compress::call_static(name, args, blobs),
         Some(("create", name)) => create::call_static(name, args, blobs),
         Some(("file", name)) => file::call_static(name, args, blobs),
@@ -88,6 +91,7 @@ pub fn call_static(op: &str, args: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, C
         Some(("layers", name)) => panes::layers(name, args, blobs),
         Some(("outline", name)) => panes::outline(name, args, blobs),
         Some(("signatures", name)) => signatures::call_static(name, args, blobs),
+        Some(("standards", name)) => standards::call_static(name, args, blobs),
         _ => Err(CoreError::UnknownOp(op.into())),
     }
 }

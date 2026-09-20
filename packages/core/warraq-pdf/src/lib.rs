@@ -25,6 +25,7 @@ pub mod picture;
 mod rebase;
 mod show;
 pub mod signature;
+pub mod standards;
 pub mod text_walk;
 pub mod textless;
 pub mod tiff;

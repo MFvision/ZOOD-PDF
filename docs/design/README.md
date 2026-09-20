@@ -143,7 +143,7 @@ Use `font-variant-numeric: tabular-nums` wherever numbers change in place, such 
   - Leading: the sidebar toggle and the **title block**. The title block holds the file name and a subtitle
     `role="status"` named "Document status", which reads "Page n of m — Edited".
   - Middle: pages and zoom. Zoom reads and sets EmbedPDF's zoom, or Warraq's own in Edit text.
-  - Trailing: the markup toolbar, Edit text, the **tool picker** (a popover gallery of all seventeen tools;
+  - Trailing: the markup toolbar, Edit text, the **tool picker** (a popover gallery of all nineteen tools;
     the arrow keys move between its tiles, Home and End to the ends), find, save and the inspector.
   - The toggles — the sidebar, find, the markup bar — are pressed exactly while what they show is open,
     in both views: EmbedPDF's own state is followed (`watchToggles`), not read once while drawing.

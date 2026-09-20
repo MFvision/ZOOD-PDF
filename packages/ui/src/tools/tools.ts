@@ -1,4 +1,5 @@
 import {
+  Accessibility,
   ArrowUpRight,
   CheckSquare,
   CircleDot,
@@ -34,6 +35,7 @@ import {
   Shrink,
   Sparkles,
   FileBadge,
+  FileCheck2,
   FilePlus2,
   Workflow,
 } from 'lucide-react';
@@ -57,6 +59,8 @@ export type ToolId =
   | 'ai'
   | 'pageMarks'
   | 'certificates'
+  | 'standards'
+  | 'accessibility'
   | 'batch';
 
 /**
@@ -169,6 +173,10 @@ export const TOOLS: readonly ToolDefinition[] = [
   { id: 'pageMarks', labelKey: 'tool.pageMarks', icon: Layers, implemented: true },
   // Warraq's own: PAdES signatures and their verification (`warraq-sign`, `signatures/`).
   { id: 'certificates', labelKey: 'tool.certificates', icon: FileBadge, implemented: true },
+  // Warraq's core (`standards.*`): PDF/A and PDF/X-4 copies, their validators, preflight.
+  { id: 'standards', labelKey: 'tool.standards', icon: FileCheck2, implemented: true },
+  // Warraq's core (`accessibility.*`): checker, reading order, tags, alt text.
+  { id: 'accessibility', labelKey: 'tool.accessibility', icon: Accessibility, implemented: true },
   // Warraq's own: the tools' operations over many files (`batch/`), needing no open document.
   { id: 'batch', labelKey: 'tool.batch', icon: Workflow, implemented: true },
 ];

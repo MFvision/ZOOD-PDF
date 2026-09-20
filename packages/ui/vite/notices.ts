@@ -54,6 +54,12 @@ export const NOTICES: Notice[] = [
     path: () => ui('public/fonts/NotoNaskhArabic-OFL.txt'),
   },
   {
+    fileName: 'icc/Compact-ICC-Profiles-CC0.txt',
+    path: () => ui('../core/warraq-pdf/assets/icc/LICENSE-CC0.txt'),
+    header:
+      "The sRGB and CMYK (CGATS TR 001) colour profiles compiled into Warraq's core for PDF/A and PDF/X, from Clinton Ingram's Compact-ICC-Profiles:",
+  },
+  {
     fileName: 'embedpdf-stamps-LICENSE.txt',
     path: () => ui('public/stamps/en/LICENSE'),
     header: "EmbedPDF's standard stamps (stamps.pdf), from the embed-pdf-viewer repository:",

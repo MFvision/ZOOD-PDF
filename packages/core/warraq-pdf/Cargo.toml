@@ -34,5 +34,8 @@ image = { version = "0.25", default-features = false, features = ["jpeg", "png",
 hayro-ccitt = "0.3"
 weezl = "0.2"
 pdf-writer.workspace = true
+# Standards (src/standards): reading embedded font programs' cmap, widths
+# and glyph counts. Already in the graph through warraq-text.
+skrifa.workspace = true
 subsetter.workspace = true
 warraq-text = { path = "../warraq-text" }

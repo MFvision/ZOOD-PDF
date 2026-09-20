@@ -442,7 +442,15 @@ struct GlyphDevice {
     /// The marked-content sequences begun so far, and the ones open now.
     marked: MarkedGlyphs,
     open: Vec<u32>,
+    /// A font's id, by the address of its bytes; valid only while `held`
+    /// keeps those bytes alive (see `draw_glyph`).
     font_ids: HashMap<usize, u32>,
+    /// Every font met on the page, held until the page is read: were one
+    /// dropped, another could be loaded at its address, and would be taken
+    /// for it — its id, and with it the first one's cached advances, cmap and
+    /// shaping. Which address is reused depends on the allocator, so a
+    /// build's text could lose a space that another build kept.
+    held: Vec<hayro_interpret::font::FontData>,
     advance_cache: HashMap<(u32, u32), f32>,
     /// gid → code point from the embedded font's cmap (fallback when ToUnicode is missing or U+0000)
     reverse_cmaps: HashMap<u32, HashMap<u32, char>>,
@@ -602,8 +610,15 @@ impl<'a> Device<'a> for GlyphDevice {
                     Some(fd) => {
                         let bytes: &[u8] = (*fd.data).as_ref();
                         let key = bytes.as_ptr() as usize;
-                        let next = self.font_ids.len() as u32;
-                        let font = *self.font_ids.entry(key).or_insert(next);
+                        let font = match self.font_ids.get(&key) {
+                            Some(font) => *font,
+                            None => {
+                                let font = self.font_ids.len() as u32;
+                                self.font_ids.insert(key, font);
+                                self.held.push(fd.data.clone());
+                                font
+                            }
+                        };
                         if text.is_none() {
                             text = self.cmap_char(bytes, font, gid).map(|c| c.to_string());
                         }

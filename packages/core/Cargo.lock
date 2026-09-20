@@ -2119,6 +2119,7 @@ dependencies = [
  "md-5",
  "pdf-writer",
  "sha2 0.11.0",
+ "skrifa 0.47.0",
  "subsetter",
  "thiserror",
  "warraq-text",
