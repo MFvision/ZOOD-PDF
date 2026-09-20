@@ -237,6 +237,11 @@
   display: none;
 }
 
+/* A dot between the parts, which the markup leaves out so each reads on its own. */
+.cloud-row-detail bdi + bdi::before {
+  content: ' · ';
+}
+
 .cloud-more {
   align-self: center;
 }

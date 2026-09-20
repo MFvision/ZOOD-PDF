@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect } from '@playwright/test';
 import type { Page, Request } from '@playwright/test';
@@ -397,5 +397,93 @@ test.describe('OneDrive in the browser', () => {
     const refused = fake.log.filter((r) => r.url.startsWith(GRAPH) && r.url.includes('/children'));
     expect(refused.length).toBeGreaterThanOrEqual(3);
     expect(fake.tokenRequests.map((form) => form.grant_type)).toEqual(['authorization_code', 'refresh_token']);
+  });
+});
+
+/* --------------------------------------------- the pictures for the design notes */
+
+/**
+ * The cloud screens for `docs/design/screenshots/`, taken from the build this
+ * spec makes. Not a test of behaviour — every state shown is proven above — so
+ * it runs only when asked for:
+ *
+ *   WARRAQ_SCREENSHOTS=1 pnpm --filter @warraq/web exec playwright test e2e/cloud.spec.ts
+ */
+const SHOTS = fileURLToPath(new URL('../../../docs/design/screenshots/', import.meta.url));
+
+test.describe('the cloud screens, for the design notes', () => {
+  test.use({ baseURL: CLOUD });
+  test.skip(!process.env.WARRAQ_SCREENSHOTS, 'screenshots are taken on request only');
+  test.describe.configure({ mode: 'serial' });
+
+  async function shoot(page: Page, name: string): Promise<void> {
+    mkdirSync(SHOTS, { recursive: true });
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: `${SHOTS}${name}.png` });
+  }
+
+  /** The app in a language and a theme, with a drive behind it. */
+  async function ready(page: Page, lang: 'en' | 'ar', theme: 'light' | 'dark', size = { width: 1440, height: 900 }): Promise<FakeMicrosoft> {
+    const { fake } = driveWithFiles();
+    await microsoft(page, fake);
+    await page.setViewportSize(size);
+    await page.emulateMedia({ colorScheme: theme });
+    await page.addInitScript(
+      ([chosen]) => {
+        if (localStorage.getItem('warraq.preferences')) return;
+        localStorage.setItem('warraq.preferences', JSON.stringify({ lang: chosen, theme: 'system' }));
+        localStorage.setItem('warraq.recent', JSON.stringify(['التقرير السنوي ٢٠٢٥.pdf', 'Quarterly review.pdf']));
+      },
+      [lang],
+    );
+    await page.goto('/');
+    await expect(page.locator('.shell')).toBeVisible();
+    return fake;
+  }
+
+  /** Signs in from whichever sheet is on screen, in either language. */
+  async function signInHere(page: Page): Promise<void> {
+    const [popup] = await Promise.all([page.waitForEvent('popup'), sheet(page).locator('.icon-btn-primary').click()]);
+    await popup.waitForEvent('close');
+    await expect(sheet(page).locator('.cloud-list button').first()).toBeVisible();
+  }
+
+  test('the drives on the home screen, signing in, and browsing (English, light)', async ({ page, stayLocal: _ }) => {
+    await ready(page, 'en', 'light');
+    await shoot(page, 'cloud-home-en-light');
+    await oneDriveRow(page).getByRole('button', { name: 'Open from OneDrive…' }).click();
+    await expect(sheet(page)).toBeVisible();
+    await shoot(page, 'cloud-signin-en-light');
+    await signInHere(page);
+    await shoot(page, 'cloud-browse-en-light');
+    await sheet(page).getByRole('button', { name: 'Cancel' }).click();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByRole('heading', { name: 'Cloud drives' })).toBeVisible();
+    await shoot(page, 'cloud-phone-home-en-light');
+  });
+
+  test('the same in Arabic, dark', async ({ page, stayLocal: _ }) => {
+    await ready(page, 'ar', 'dark');
+    await shoot(page, 'cloud-home-ar-dark');
+    // The section's heading is Arabic here: the drive's own row is the anchor.
+    await page.locator('.cloud-drive', { hasText: 'OneDrive' }).locator('.icon-btn-labeled').click();
+    await expect(sheet(page)).toBeVisible();
+    await signInHere(page);
+    await shoot(page, 'cloud-browse-ar-dark');
+  });
+
+  test('a file that changed in the drive', async ({ page, stayLocal: _ }) => {
+    const fake = await ready(page, 'en', 'light');
+    await oneDriveRow(page).getByRole('button', { name: 'Open from OneDrive…' }).click();
+    await signInHere(page);
+    await openFromSheet(page, 'World Bank briefing');
+    await draw(page);
+    const report = [...fake.items.values()].find((item) => item.name === 'World Bank briefing.pdf');
+    if (report) fake.touch(report.id);
+    await save(page);
+    await expect(sheet(page).getByRole('heading', { name: 'This file changed in OneDrive' })).toBeVisible();
+    await shoot(page, 'cloud-conflict-en-light');
+    await sheet(page).getByRole('button', { name: 'Cancel' }).click();
   });
 });

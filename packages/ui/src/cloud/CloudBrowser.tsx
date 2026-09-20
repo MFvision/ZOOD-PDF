@@ -125,14 +125,17 @@ export function CloudBrowser({
     return `${format.format(bytes / (1024 * 1024))} MB`;
   };
   const when = (iso?: string) => (iso ? new Date(iso).toLocaleDateString(lang, { dateStyle: 'medium' }) : '');
-  const detail = (entry: Entry) =>
+  /** What is said under a name; each part reads in its own direction (bidi), with a dot between. */
+  const detail = (entry: Entry): string[] =>
     entry.kind === 'folder'
       ? entry.children !== undefined
-        ? t('cloud.browse.items', { count: entry.children.toLocaleString(lang) })
-        : ''
-      : [searching !== null && entry.location ? t('cloud.browse.in', { path: isolate(entry.location) }) : '', size(entry.size), when(entry.modified)]
-          .filter(Boolean)
-          .join(' · ');
+        ? [t('cloud.browse.items', { count: entry.children.toLocaleString(lang) })]
+        : []
+      : [
+          searching !== null && entry.location ? t('cloud.browse.in', { path: isolate(entry.location) }) : '',
+          size(entry.size),
+          when(entry.modified),
+        ].filter(Boolean);
 
   const safeName = provider === 'onedrive' ? oneDriveName(name) : /\.pdf$/i.test(name.trim()) ? name.trim() : `${name.trim() || 'document'}.pdf`;
   const account = cloud.accounts[provider];
@@ -186,11 +189,10 @@ export function CloudBrowser({
                 <button
                   type="button"
                   className="link-btn"
-                  dir="auto"
                   aria-current={index === path.length - 1 ? 'location' : undefined}
                   onClick={() => setPath((current) => current.slice(0, index + 1))}
                 >
-                  {place.name}
+                  <bdi>{place.name}</bdi>
                 </button>
               </li>
             ))}
@@ -213,10 +215,15 @@ export function CloudBrowser({
               >
                 <Icon of={entry.kind === 'folder' ? Folder : FileText} />
                 <span className="cloud-row-text">
-                  <span className="cloud-row-name" dir="auto">
-                    {entry.name}
+                  <span className="cloud-row-name">
+                    {/* The name reads in its own direction, but starts where the row does. */}
+                    <bdi>{entry.name}</bdi>
                   </span>
-                  <span className="cloud-row-detail">{detail(entry)}</span>
+                  <span className="cloud-row-detail">
+                    {detail(entry).map((part) => (
+                      <bdi key={part}>{part}</bdi>
+                    ))}
+                  </span>
                 </span>
                 {entry.kind === 'folder' && <Icon of={ChevronRight} size={15} mirror />}
               </button>
