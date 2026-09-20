@@ -3,21 +3,39 @@ import { CoreClient } from './client';
 import {
   FILE_DRAG_EVENT,
   FILE_DROP_EVENT,
+  LIBRARY_SCAN_EVENT,
+  LIBRARY_WATCH_EVENT,
+  deleteLibraryIndex,
   handleTauriRequest,
+  hasLibraryHost,
   isTauriHost,
+  libraryIndexFolder,
+  listLibraryIndexes,
+  loadLibraryIndex,
+  onLibraryScan,
+  onLibraryWatch,
   onNativeFileDrag,
   onNativeFileDrop,
   pickFiles,
+  pickLibraryFolders,
   pickPdfFile,
   printAvailable,
   printMode,
   printPdf,
   printWebview,
+  readLibraryFile,
   saveFileAs,
+  saveLibraryIndex,
   savePdfFile,
+  startLibraryScan,
+  startLibraryWatch,
+  statLibraryFile,
+  stopLibraryScan,
+  stopLibraryWatch,
   takeStartupFile,
   withoutPdfium,
 } from './host-tauri';
+import type { LibraryScanEvent, LibraryWatchEvent } from './host-tauri';
 import type { ResultMap } from './protocol';
 
 type Invoke = (
@@ -401,5 +419,172 @@ describe('the desktop core without PDFium', () => {
     expect(withoutPdfium({ kind: 'wasm', version: '0.1.0' })).toBe(false);
     expect(withoutPdfium({ kind: 'mock', version: '0.0.0' })).toBe(false);
     expect(withoutPdfium(null)).toBe(false);
+  });
+});
+
+describe('the Library on the desktop host', () => {
+  it('is offered only where a whole folder can be reached', () => {
+    expect(hasLibraryHost()).toBe(false);
+    fakeHost();
+    expect(hasLibraryHost()).toBe(true);
+  });
+
+  it('picks several folders, and puts everything under them in the file scope', async () => {
+    const calls = fakeHost({ 'plugin:dialog|open': ['/Users/n/فواتير', '/Users/n/عقود'] });
+    expect(await pickLibraryFolders()).toEqual(['/Users/n/فواتير', '/Users/n/عقود']);
+    expect(calls.at(-1)?.args).toEqual({
+      options: { multiple: true, directory: true, recursive: true },
+    });
+  });
+
+  it('takes one folder, and nothing when the person cancels', async () => {
+    fakeHost({ 'plugin:dialog|open': '/Users/n/فواتير' });
+    expect(await pickLibraryFolders()).toEqual(['/Users/n/فواتير']);
+    fakeHost({ 'plugin:dialog|open': null });
+    expect(await pickLibraryFolders()).toEqual([]);
+  });
+
+  it('starts a walk that answers at once with its number, and is stopped by it', async () => {
+    const calls = fakeHost({ library_scan_start: 7, library_scan_stop: true });
+    const request = {
+      roots: [{ path: '/Users/n/فواتير', recursive: true, exclude: ['/Users/n/فواتير/مسودات'] }],
+      known: [{ key: '/Users/n/فواتير/a.pdf', size: 12, modified: 1_700_000_000_000 }],
+    };
+    expect(await startLibraryScan(request)).toBe(7);
+    expect(calls.at(-1)).toMatchObject({ cmd: 'library_scan_start', args: { request } });
+    expect(await stopLibraryScan(7)).toBe(true);
+    expect(calls.at(-1)).toMatchObject({ cmd: 'library_scan_stop', args: { scan: 7 } });
+  });
+
+  it('hands the walk’s batches to the panel as they arrive, and stops listening', async () => {
+    const calls = fakeHost({ 'plugin:event|listen': 11, 'plugin:event|unlisten': null });
+    const seen: LibraryScanEvent[] = [];
+    const stop = onLibraryScan((event) => seen.push(event));
+    expect(calls.find((c) => c.cmd === 'plugin:event|listen')?.args).toMatchObject({
+      event: LIBRARY_SCAN_EVENT,
+    });
+    const handler = callbacks.at(-1);
+    handler?.({
+      payload: {
+        scan: 7,
+        kind: 'progress',
+        current: '/Users/n/فواتير',
+        files: [
+          {
+            key: '/Users/n/فواتير/a.pdf',
+            name: 'a.pdf',
+            relative: 'a.pdf',
+            root: '/Users/n/فواتير',
+            size: 12,
+            modified: 1,
+            extension: 'pdf',
+            state: 'new',
+          },
+        ],
+        skipped: [{ path: '/Users/n/فواتير/locked', reason: 'unreadable' }],
+        found: 1,
+        folders: 1,
+        stopped: false,
+        truncated: false,
+      },
+    });
+    handler?.({ payload: undefined });
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.files[0]?.state).toBe('new');
+    expect(seen[0]?.skipped[0]?.reason).toBe('unreadable');
+    // The host answers `listen` with the id the unsubscribe needs; it arrives
+    // on a microtask, as it does in the window.
+    await Promise.resolve();
+    stop();
+    expect(calls.find((c) => c.cmd === 'plugin:event|unlisten')?.args).toMatchObject({
+      event: LIBRARY_SCAN_EVENT,
+      eventId: 11,
+    });
+  });
+
+  it('reads one file when its turn comes, and passes the host’s refusal on', async () => {
+    const calls = fakeHost({ library_read_file: new Uint8Array([0x25, 0x50]).buffer });
+    const bytes = await readLibraryFile('/Users/n/فواتير/a.pdf');
+    expect(new Uint8Array(bytes)).toEqual(new Uint8Array([0x25, 0x50]));
+    expect(calls.at(-1)?.args).toEqual({ path: '/Users/n/فواتير/a.pdf' });
+    fakeHost({ library_read_file: new Error('E_SCOPE: … was not chosen through the folder picker') });
+    await expect(readLibraryFile('/etc/passwd')).rejects.toThrow('E_SCOPE');
+  });
+
+  it('asks whether a file is still what the index holds', async () => {
+    fakeHost({ library_stat: { exists: true, size: 12, modified: 5 } });
+    expect(await statLibraryFile('/Users/n/فواتير/a.pdf')).toEqual({
+      exists: true,
+      size: 12,
+      modified: 5,
+    });
+  });
+
+  it('writes the index into the app’s own data directory, its name in the header', async () => {
+    const calls = fakeHost({ library_index_save: 4096, library_index_path: '/Users/n/Library/Application Support/app.warraq.desktop/library' });
+    expect(await libraryIndexFolder()).toContain('app.warraq.desktop');
+    const bytes = new Uint8Array([1, 2, 3]);
+    expect(await saveLibraryIndex('main', bytes)).toBe(4096);
+    const save = calls.find((c) => c.cmd === 'library_index_save');
+    expect(save?.args).toBe(bytes);
+    expect(save?.options?.headers).toEqual({ 'x-warraq-name': 'main' });
+  });
+
+  it('reads the index back, and answers null on a first run rather than failing', async () => {
+    fakeHost({ library_index_load: new Uint8Array([0x57]).buffer });
+    expect(new Uint8Array((await loadLibraryIndex('main')) as ArrayBuffer)).toEqual(
+      new Uint8Array([0x57]),
+    );
+    fakeHost({ library_index_load: new Error('E_MISSING: no index named main') });
+    expect(await loadLibraryIndex('main')).toBeNull();
+    fakeHost({ library_index_load: new Error('E_IO: the disk is full') });
+    await expect(loadLibraryIndex('main')).rejects.toThrow('E_IO');
+  });
+
+  it('lists the indexes and really deletes one', async () => {
+    const calls = fakeHost({
+      library_index_list: [
+        { name: 'main', bytes: 4096, modified: 5, path: '/…/library/main.wlx' },
+      ],
+      library_index_delete: true,
+    });
+    expect(await listLibraryIndexes()).toHaveLength(1);
+    expect(await deleteLibraryIndex('main')).toBe(true);
+    expect(calls.at(-1)).toMatchObject({ cmd: 'library_index_delete', args: { name: 'main' } });
+    fakeHost({ library_index_delete: false });
+    expect(await deleteLibraryIndex('main')).toBe(false);
+  });
+
+  it('says how the watcher works, and when it is not watching at all', async () => {
+    fakeHost({ library_watch_start: { watching: true, files: 120, seconds: 5 } });
+    const answer = await startLibraryWatch({ roots: [{ path: '/Users/n/فواتير', recursive: true }] });
+    expect(answer).toEqual({ watching: true, files: 120, seconds: 5 });
+    fakeHost({ library_watch_start: { watching: false, files: 40_000, seconds: 5, reason: 'too-many' } });
+    const refused = await startLibraryWatch({ roots: [{ path: '/Users/n/كل شيء', recursive: true }] });
+    expect(refused.watching).toBe(false);
+    expect(refused.reason).toBe('too-many');
+  });
+
+  it('hands over what changed under a watched folder, and says when it gives up', async () => {
+    const calls = fakeHost({ library_watch_stop: null });
+    const seen: LibraryWatchEvent[] = [];
+    const stop = onLibraryWatch((event) => seen.push(event));
+    expect(calls.find((c) => c.cmd === 'plugin:event|listen')?.args).toMatchObject({
+      event: LIBRARY_WATCH_EVENT,
+    });
+    const handler = callbacks.at(-1);
+    handler?.({ payload: { added: [], changed: [], removed: ['/Users/n/فواتير/a.pdf'] } });
+    handler?.({ payload: { added: [], changed: [], removed: [], stopped: 'too-many' } });
+    expect(seen).toHaveLength(2);
+    expect(seen[0]?.removed).toEqual(['/Users/n/فواتير/a.pdf']);
+    expect(seen[1]?.stopped).toBe('too-many');
+    stop();
+    await stopLibraryWatch();
+    expect(calls.some((c) => c.cmd === 'library_watch_stop')).toBe(true);
+  });
+
+  it('does nothing at all in a browser, where there is no host to ask', () => {
+    expect(onLibraryScan(() => {})).toBeInstanceOf(Function);
+    expect(onLibraryWatch(() => {})).toBeInstanceOf(Function);
   });
 });
