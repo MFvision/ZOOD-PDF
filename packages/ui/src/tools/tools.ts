@@ -35,6 +35,7 @@ import {
   Sparkles,
   FileBadge,
   FilePlus2,
+  Workflow,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { TKey } from '../i18n/messages';
@@ -55,7 +56,8 @@ export type ToolId =
   | 'prepareForm'
   | 'ai'
   | 'pageMarks'
-  | 'certificates';
+  | 'certificates'
+  | 'batch';
 
 /**
  * One control in a tool's panel: an EmbedPDF command (ADR-0007), run through
@@ -167,6 +169,8 @@ export const TOOLS: readonly ToolDefinition[] = [
   { id: 'pageMarks', labelKey: 'tool.pageMarks', icon: Layers, implemented: true },
   // Warraq's own: PAdES signatures and their verification (`warraq-sign`, `signatures/`).
   { id: 'certificates', labelKey: 'tool.certificates', icon: FileBadge, implemented: true },
+  // Warraq's own: the tools' operations over many files (`batch/`), needing no open document.
+  { id: 'batch', labelKey: 'tool.batch', icon: Workflow, implemented: true },
 ];
 
 export function findTool(id: ToolId): ToolDefinition | undefined {

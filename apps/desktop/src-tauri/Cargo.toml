@@ -63,11 +63,24 @@ ureq = { version = "3", default-features = false, features = ["rustls"] }
 
 # Print (src/print.rs): PDFKit prints the PDF itself in the system's print
 # sheet. The same objc2 family Tauri already links (MIT OR Apache-2.0 OR Zlib).
+#
+# Cloud drives (src/cloud.rs): a signed-in drive's refresh token is kept in the
+# system's credential store — the keychain here, Credential Manager on
+# Windows, the Secret Service on Linux (which needs libdbus to build) — never
+# in a file (keyring, MIT OR Apache-2.0). Without a backend feature keyring
+# would keep it in memory only, so each platform names its own.
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSData", "NSDictionary", "NSString", "NSURL"] }
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSPrintInfo", "NSPrintOperation", "NSResponder", "NSView", "NSWindow"] }
 objc2-pdf-kit = { version = "0.3", default-features = false, features = ["std", "PDFDocument", "objc2-app-kit"] }
+keyring = { version = "3.6", features = ["apple-native"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3.6", features = ["windows-native"] }
+
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+keyring = { version = "3.6", features = ["sync-secret-service", "crypto-rust"] }
 
 [dev-dependencies]
 # Parses the menu bar's accelerators in a test exactly as Tauri does (it drops

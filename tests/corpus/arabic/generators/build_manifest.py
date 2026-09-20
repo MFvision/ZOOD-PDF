@@ -39,6 +39,7 @@ CATEGORIES = {  # what each generated file is for (the "class" column of the aci
     "scan-notonaskh-300dpi-skewed-jpeg": "Image-only scan, 300 dpi, skewed 1.3/-0.8 deg, noise, JPEG (OCR target)",
     "scan-arial-200dpi-bilevel": "Image-only scan, 200 dpi, 1-bit (OCR target)",
     "scan-notonaskh-300dpi-crooked-8deg-jpeg": "Image-only scan, 300 dpi, 8 deg crooked, noise, JPEG (OCR straightening target)",
+    "scan-notonaskh-300dpi-shadowed-stained-jpeg": "Image-only scan, 300 dpi, a book-fold shadow, a shadowed corner and tea stains, noise, JPEG (OCR cleanup target)",
     "variant-encrypted-aes256": "AES-256 (R6) encrypted, user password 'warraq'",
     "variant-encrypted-rc4-40": "RC4 40-bit (R2, /V 1) encrypted, user password 'warraq', owner 'warraq-owner'",
     "variant-encrypted-rc4-128": "RC4 128-bit (R3, /V 2) encrypted, user password 'warraq', owner 'warraq-owner'",

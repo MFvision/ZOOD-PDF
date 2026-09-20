@@ -70,6 +70,8 @@ impl RenderDoc for PdfiumDoc {
             .pages()
             .get(index as i32)
             .map_err(|_| RenderError::Page(index))?;
+        // Refused before PDFium allocates anything (`MAX_PIXELS`).
+        crate::bitmap_size(p.width().value, p.height().value, scale)?;
         let w = (p.width().value * scale).floor().max(1.0) as i32;
         let img = p
             .render_with_config(&PdfRenderConfig::new().set_target_width(w))

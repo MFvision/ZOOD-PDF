@@ -34,6 +34,22 @@ function baseKey(event: KeyLike): string {
   return key.length === 1 ? key.toUpperCase() : key;
 }
 
+/**
+ * The letter or digit a shortcut is written with ("z" for ⌘Z), whatever the
+ * keyboard layout: the key's own character when it is a Latin letter or a
+ * digit — so ⌘Z is the key marked Z on a French keyboard too — or else the
+ * key's place, since on an Arabic layout ⌘Z types ئ. As the system matches
+ * its menus' shortcuts.
+ */
+export function shortcutLetter(event: KeyLike): string {
+  const key = event.key.toLowerCase();
+  if (/^[a-z0-9]$/.test(key)) return key;
+  const code = event.code ?? '';
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase();
+  if (/^Digit\d$/.test(code)) return code.slice(5);
+  return key;
+}
+
 /** A keydown as the model's `keys` ("Mod+Shift+Z"). On Apple platforms Mod is ⌘, elsewhere Ctrl. */
 export function comboOf(event: KeyLike, apple: boolean): string {
   const modifiers = new Set<string>();

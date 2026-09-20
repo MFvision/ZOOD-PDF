@@ -1,7 +1,9 @@
 import { randomBytes } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
+import { cloudConfig } from '../../packages/ui/vite/cloudConfig';
 import { embedPatches, embedPatchesForDeps } from '../../packages/ui/vite/embedPatches';
 import { notices } from '../../packages/ui/vite/notices';
 import { ocrModels } from '../../packages/ui/vite/ocrModels';
@@ -53,7 +55,17 @@ export function stripMetaCsp(): Plugin {
 }
 
 export default defineConfig(({ command, mode }) => ({
-  plugins: [react(), devCspNonce(), embedPatches(), ocrModels(), notices(), serviceWorker(), ...(mode === 'tauri' ? [stripMetaCsp()] : [])],
+  plugins: [
+    react(),
+    devCspNonce(),
+    embedPatches(),
+    ocrModels(),
+    notices(),
+    serviceWorker(),
+    // The cloud drives this build offers, from its environment (docs/cloud.md).
+    cloudConfig(mode),
+    ...(mode === 'tauri' ? [stripMetaCsp()] : []),
+  ],
   optimizeDeps: { rolldownOptions: { plugins: [embedPatchesForDeps()] } },
   html: command === 'serve' ? { cspNonce: devNonce } : undefined,
   server: { port: 5173, strictPort: true },
@@ -64,6 +76,13 @@ export default defineConfig(({ command, mode }) => ({
     sourcemap: false,
     // The bundled packages' licences, beside those `notices()` adds.
     license: { fileName: 'licenses/THIRD-PARTY-LICENSES.md' },
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('index.html', import.meta.url)),
+        // Where a browser sign-in comes back to (the OneDrive app's redirect URI).
+        'oauth-callback': fileURLToPath(new URL('oauth-callback.html', import.meta.url)),
+      },
+    },
   },
   worker: { format: 'es' },
   resolve: { dedupe: ['react', 'react-dom'] },

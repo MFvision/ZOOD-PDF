@@ -13,6 +13,14 @@ done
 logs=${WARRAQ_LOGS:-$(mktemp -d)}
 fail=0
 run() { local name=$1; shift; local out; out=$("$@" 2>&1); local code=$?; if [ $code -eq 0 ]; then echo "PASS $name"; else echo "FAIL $name (exit $code)"; echo "$out" | tail -25; fail=1; fi; echo "$out" > "$logs/verify-$name.log"; }
+# The browser engine is built from the Rust core and is git-ignored, so a
+# checkout (or a worktree that has just merged core changes) can still hold
+# yesterday's engine: every browser test would then run code that is not this
+# tree. It is built first, in a target directory of this checkout's own —
+# another worktree's build of the same crates can otherwise be handed back.
+# WARRAQ_SKIP_WASM=1 skips it when you have just built it yourself.
+wasm() { CARGO_TARGET_DIR="${WARRAQ_WASM_TARGET:-$repo/.tools/wasm-target}" pnpm build:core; }
+[ "${WARRAQ_SKIP_WASM:-0}" = "1" ] || run wasm wasm
 run lint pnpm -r lint
 run unit pnpm -r test
 run typecheck pnpm -r --filter './packages/**' build

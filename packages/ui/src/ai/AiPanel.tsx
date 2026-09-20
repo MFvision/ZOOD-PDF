@@ -5,11 +5,12 @@ import { IconButton } from '../components/IconButton';
 import { useI18n } from '../i18n/useT';
 import type { Lang, TKey, TParams } from '../i18n/messages';
 import { useAppState, useServices } from '../state/AppContext';
-import { budgetFor, formatPages, pageRange } from './budget';
+import { budgetFor, formatPages, pageRange, takeWithinBudget } from './budget';
 import type { TaskKind } from './budget';
 import { splitCitations } from './citations';
 import { preflightFor } from './preflight';
 import type { Preflight, ProviderSettings } from './preflight';
+import { answersWithData } from './prompt';
 import type { AiTask } from './prompt';
 import { CLAUDE_MODELS, LOCAL_ALLOWED_ORIGINS, localAddress } from './providers';
 import type { Answer, Failure, LocalApi, ProviderId } from './providers';
@@ -17,6 +18,18 @@ import { readDocument } from './readDocument';
 import { send } from './send';
 import { forgetKey, keepKey, loadKey, readSettings, writeSettings } from './store';
 import type { AiSettings } from './store';
+import { fillableFields } from './extras/formFill';
+import type { FillField } from './extras/formFill';
+import { pageText } from './extras/ocrFix';
+import type { LayerText } from './extras/ocrFix';
+import type { PiiFinding } from './extras/pii';
+import { forgetProfile, keepProfile, loadProfile } from './extras/profile';
+import { FormFillReview, OcrFixReview, PiiReview, TablesReview, findWithPatterns } from './extras/Reviews';
+import { findTablesOnDevice } from './extras/tables';
+import type { Table } from './extras/tables';
+import { layerWords } from '../ocr/layer';
+import type { FormModel } from '../forms/formTypes';
+import type { TextLineData } from '../core/types';
 import './ai.css';
 
 type Message = { key: TKey; params?: TParams };
@@ -27,7 +40,18 @@ const TASKS: Record<TaskKind, TKey> = {
   summarize: 'ai.summarize',
   ask: 'ai.ask',
   translate: 'ai.translate',
+  fixOcr: 'ai.fixOcr',
+  fill: 'ai.fill',
+  pii: 'ai.pii',
+  tables: 'ai.tables',
 };
+
+/** What a data task read to build its request, kept for reviewing the answer. */
+interface Extra {
+  layer?: LayerText[];
+  fields?: FillField[];
+  name?: string;
+}
 
 function failureMessage(failure: Failure, provider: ProviderId): Message {
   switch (failure.kind) {
@@ -75,6 +99,8 @@ interface Result {
   model: string;
   pages: number[];
   pageCount: number;
+  task: AiTask;
+  extra: Extra;
 }
 
 /**
@@ -100,7 +126,12 @@ export function AiPanel() {
   const [to, setTo] = useState('1');
   const [reading, setReading] = useState<number | null>(null);
   const [notice, setNotice] = useState<Message | null>(null);
-  const [preflight, setPreflight] = useState<(Preflight & { documentId: number }) | null>(null);
+  const [preflight, setPreflight] = useState<(Preflight & { documentId: number; extra: Extra }) | null>(null);
+  const [details, setDetails] = useState(() => loadProfile().text);
+  const [rememberDetails, setRememberDetails] = useState(() => loadProfile().remembered);
+  const [local, setLocal] = useState<{ documentId: number; findings: PiiFinding[] } | null>(null);
+  const [finding, setFinding] = useState(false);
+  const [localTables, setLocalTables] = useState<{ documentId: number; tables: Table[] } | null>(null);
   const [showText, setShowText] = useState(false);
   const [sending, setSending] = useState(false);
   const [failure, setFailure] = useState<{ failure: Failure; provider: ProviderId } | null>(null);
@@ -151,7 +182,9 @@ export function AiPanel() {
         ? 'ai.needModel'
         : task === 'ask' && question.trim().length === 0
           ? 'ai.needQuestion'
-          : null;
+          : task === 'fill' && details.trim().length === 0
+            ? 'ai.fill.needDetails'
+            : null;
   const canReview =
     hasDocument && missing === null && addressProblem === null && reading === null && !sending;
 
@@ -183,6 +216,38 @@ export function AiPanel() {
     setStoreFailed(false);
   };
 
+  // Personal information by Warraq's own patterns: on this device, nothing sent.
+  const findLocal = async () => {
+    if (documentId === null) return;
+    setFinding(true);
+    setNotice(null);
+    try {
+      setLocal({ documentId, findings: await findWithPatterns(services) });
+    } catch {
+      setNotice({ key: 'ai.pii.failed' });
+    } finally {
+      setFinding(false);
+    }
+  };
+
+  // Tables by Warraq's own detection (the Excel export's): on this device, nothing sent.
+  const findTablesLocally = async () => {
+    if (documentId === null) return;
+    setFinding(true);
+    setNotice(null);
+    try {
+      const bytes = await services.currentFileBytes();
+      if (!bytes) throw new Error('E_NOT_FOUND: no open file');
+      const current = state.currentPage;
+      const pages = scope === 'current' ? pageRange(current, current, pageCount) : pageRange(Number(from) || 1, Number(to) || 1, pageCount);
+      setLocalTables({ documentId, tables: await findTablesOnDevice(services.client, bytes, services.documentPassword, pages) });
+    } catch {
+      setNotice({ key: 'ai.tables.failed' });
+    } finally {
+      setFinding(false);
+    }
+  };
+
   const review = async () => {
     if (!canReview || documentId === null) return;
     let target: ProviderSettings;
@@ -200,11 +265,15 @@ export function AiPanel() {
         ? { kind: 'ask', question }
         : task === 'translate'
           ? { kind: 'translate', to: translateTo }
-          : { kind: 'summarize' };
+          : task === 'fixOcr' || task === 'pii' || task === 'tables'
+            ? { kind: task }
+            : task === 'fill'
+              ? { kind: 'fill', fields: [], details }
+              : { kind: 'summarize' };
     const budget = budgetFor(target.provider, task);
     const current = state.currentPage;
     const pagesOf = (count: number) =>
-      task !== 'translate'
+      task !== 'translate' && task !== 'tables'
         ? pageRange(1, count, count)
         : scope === 'current'
           ? pageRange(current, current, count)
@@ -222,7 +291,47 @@ export function AiPanel() {
         setNotice({ key: 'ai.redactPending' });
         return;
       }
-      const read = await readDocument(services, pagesOf, budget, setReading);
+      const extra: Extra = { name: state.document?.name ?? 'document.pdf' };
+      let read: Awaited<ReturnType<typeof readDocument>>;
+      if (aiTask.kind === 'fixOcr') {
+        // The words Scan & OCR wrote, as kept with their pages.
+        const bytes = await services.currentFileBytes();
+        const layer = bytes ? await layerWords(services.client, bytes, services.documentPassword) : [];
+        if (ticket !== generation.current) return;
+        if (layer.length === 0) {
+          setNotice({ key: 'ai.fix.noLayer' });
+          return;
+        }
+        extra.layer = layer.map((page) => ({ page: page.index + 1, angle: page.angle, words: page.words }));
+        const texts = new Map(extra.layer.map((page) => [page.page, pageText(page.words)]));
+        const budgeted = await takeWithinBudget([...texts.keys()], budget, async (page) => texts.get(page) ?? '');
+        read = { pageCount, budgeted };
+      } else if (aiTask.kind === 'fill') {
+        // The form's fields, and the words beside each one on its page.
+        const bytes = await services.currentFileBytes();
+        if (!bytes) throw new Error('E_NOT_FOUND: no open file');
+        const { result: model } = await services.client.callStatic<FormModel>('forms.inspect', { password: services.documentPassword ?? null }, [bytes.slice(0)]);
+        const doc = await services.client.open(bytes, services.documentPassword);
+        const lines = new Map<number, TextLineData[]>();
+        try {
+          for (const page of new Set(model.fields.flatMap((field) => field.widgets.map((w) => w.page)))) {
+            if (page >= 0 && page < doc.pageCount) lines.set(page, await doc.text_lines(page));
+          }
+        } finally {
+          void doc.free();
+        }
+        if (ticket !== generation.current) return;
+        const fields = fillableFields(model, (page) => lines.get(page) ?? []);
+        if (fields.length === 0) {
+          setNotice({ key: 'ai.fill.noFields' });
+          return;
+        }
+        extra.fields = fields;
+        aiTask.fields = fields;
+        read = { pageCount, budgeted: { sent: [], left: [], characters: 0 } };
+      } else {
+        read = await readDocument(services, pagesOf, budget, setReading);
+      }
       if (ticket !== generation.current) return;
       if (!read) {
         setNotice({ key: 'ai.readFailed' });
@@ -241,7 +350,7 @@ export function AiPanel() {
       } else if (next.empty) {
         setNotice({ key: 'ai.noText' });
       } else {
-        setPreflight({ ...next, documentId });
+        setPreflight({ ...next, documentId, extra });
       }
     } catch {
       setNotice({ key: 'ai.readFailed' });
@@ -271,6 +380,8 @@ export function AiPanel() {
         model: sent.settings.model,
         pages: sent.pages,
         pageCount: sent.pageCount,
+        task: sent.task,
+        extra: sent.extra,
       });
       setCopied('no');
       setPreflight(null);
@@ -440,22 +551,70 @@ export function AiPanel() {
         </label>
       )}
 
-      {task === 'translate' && (
+      {task === 'fill' && (
         <div className="ai-group">
           <label className="field">
-            <span>{t('ai.direction')}</span>
-            <select
-              className="select"
-              value={translateTo}
+            <span>{t('ai.fill.details')}</span>
+            <textarea
+              className="text-input ai-question"
+              dir="auto"
+              rows={5}
+              maxLength={4000}
+              value={details}
               onChange={(event) => {
-                setTranslateTo(event.target.value as Lang);
+                setDetails(event.target.value);
+                keepProfile(event.target.value, rememberDetails);
                 changed();
               }}
-            >
-              <option value="en">{t('ai.toEnglish')}</option>
-              <option value="ar">{t('ai.toArabic')}</option>
-            </select>
+            />
           </label>
+          <label className="ai-choice">
+            <input
+              type="checkbox"
+              checked={rememberDetails}
+              onChange={(event) => {
+                setRememberDetails(event.target.checked);
+                keepProfile(details, event.target.checked);
+              }}
+            />
+            {t('ai.fill.remember')}
+          </label>
+          <p className="tool-panel-note">{t('ai.fill.detailsNote')}</p>
+          <div className="tool-actions">
+            <IconButton
+              label={t('ai.fill.forget')}
+              icon={<Icon of={X} />}
+              showLabel
+              disabled={details.length === 0 && !rememberDetails}
+              onClick={() => {
+                forgetProfile();
+                setDetails('');
+                setRememberDetails(false);
+                changed();
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {(task === 'translate' || task === 'tables') && (
+        <div className="ai-group">
+          {task === 'translate' && (
+            <label className="field">
+              <span>{t('ai.direction')}</span>
+              <select
+                className="select"
+                value={translateTo}
+                onChange={(event) => {
+                  setTranslateTo(event.target.value as Lang);
+                  changed();
+                }}
+              >
+                <option value="en">{t('ai.toEnglish')}</option>
+                <option value="ar">{t('ai.toArabic')}</option>
+              </select>
+            </label>
+          )}
           <fieldset className="ai-group">
             <legend>{t('ai.pages')}</legend>
             <label className="ai-choice">
@@ -527,7 +686,39 @@ export function AiPanel() {
           disabled={!canReview}
           onClick={() => void review()}
         />
+        {task === 'pii' && (
+          <IconButton
+            label={t('ai.pii.local')}
+            icon={<Icon of={FileSearch} />}
+            showLabel
+            disabled={!hasDocument || finding}
+            onClick={() => void findLocal()}
+          />
+        )}
+        {task === 'tables' && (
+          <IconButton
+            label={t('ai.tables.local')}
+            icon={<Icon of={FileSearch} />}
+            showLabel
+            disabled={!hasDocument || finding}
+            onClick={() => void findTablesLocally()}
+          />
+        )}
       </div>
+      {task === 'tables' && <p className="tool-panel-note">{t('ai.tables.localNote')}</p>}
+      {task === 'tables' && localTables && localTables.documentId === documentId && (
+        <section className="ai-answer" aria-label={t('ai.tables.localTitle')}>
+          <h4>{t('ai.tables.localTitle')}</h4>
+          <TablesReview key={localTables.tables.length} found={localTables.tables} pageCount={pageCount} name={state.document?.name ?? 'document.pdf'} />
+        </section>
+      )}
+      {task === 'pii' && <p className="tool-panel-note">{t('ai.pii.localNote')}</p>}
+      {task === 'pii' && local && local.documentId === documentId && (
+        <section className="ai-answer" aria-label={t('ai.pii.localTitle')}>
+          <h4>{t('ai.pii.localTitle')}</h4>
+          <PiiReview key={local.findings.length} pageCount={pageCount} local={local.findings} />
+        </section>
+      )}
       {hasDocument && missing && <p className="tool-panel-note">{t(missing)}</p>}
       {reading !== null && reading > 0 && (
         <p className="tool-panel-note" role="status">
@@ -627,7 +818,7 @@ export function AiPanel() {
           />
         </div>
       )}
-      {sending && partial?.text && (
+      {sending && partial?.text && !(preflight && answersWithData(preflight.task)) && (
         // As it is written; read out once, whole, when it is done.
         <div className="ai-answer-text ai-streaming" aria-live="off">
           {partial.text.split('\n').map((line, index) =>
@@ -645,7 +836,20 @@ export function AiPanel() {
         </p>
       )}
 
-      {shownResult && (
+      {shownResult && answersWithData(shownResult.task) && (
+        <section className="ai-answer" aria-labelledby={answerId}>
+          <h4 id={answerId}>{t('ai.review.title')}</h4>
+          {shownResult.answer.cutOff && <p className="ai-warning">{t('ai.cutOff')}</p>}
+          {shownResult.task.kind === 'fixOcr' && <OcrFixReview answer={shownResult.answer.text} layer={shownResult.extra.layer ?? []} />}
+          {shownResult.task.kind === 'fill' && <FormFillReview answer={shownResult.answer.text} fields={shownResult.extra.fields ?? []} />}
+          {shownResult.task.kind === 'pii' && <PiiReview answer={shownResult.answer.text} pageCount={shownResult.pageCount} />}
+          {shownResult.task.kind === 'tables' && (
+            <TablesReview answer={shownResult.answer.text} pageCount={shownResult.pageCount} name={shownResult.extra.name ?? 'document.pdf'} />
+          )}
+          <p className="tool-panel-note">{t('ai.review.from', { model: shownResult.model })}</p>
+        </section>
+      )}
+      {shownResult && !answersWithData(shownResult.task) && (
         <section className="ai-answer" aria-labelledby={answerId}>
           <h4 id={answerId}>{t('ai.answer')}</h4>
           <div className="ai-answer-text">

@@ -134,6 +134,15 @@ describe('appReducer edit state', () => {
     expect(reshaped.edit.stack.entries).toEqual([]);
   });
 
+  it('takes the name a file was saved under, and keeps its edits', () => {
+    const edited = appReducer(withDocument(), { type: 'EDIT_APPLIED', entry, fontSubstituted: false });
+    const renamed = appReducer(edited, { type: 'DOCUMENT_RENAMED', name: 'تقرير نهائي.pdf' });
+    expect(renamed.document?.name).toBe('تقرير نهائي.pdf');
+    expect(renamed.edit).toBe(edited.edit);
+    const home = createInitialState({});
+    expect(appReducer(home, { type: 'DOCUMENT_RENAMED', name: 'x.pdf' })).toBe(home);
+  });
+
   it('marks the document edited until it is saved', () => {
     const opened = withDocument();
     expect(hasUnsavedEdits(opened)).toBe(false);

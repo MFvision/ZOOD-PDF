@@ -85,6 +85,44 @@ test('document, Arabic, dark', async ({ page, stayLocal: _ }) => {
   await shoot(page, 'document-ar-dark');
 });
 
+test('home: the tools', async ({ page, stayLocal: _ }) => {
+  await start(page, 'ar', 'light');
+  await page.locator('.home-section', { has: page.locator('#home-tools') }).scrollIntoViewIfNeeded();
+  await shoot(page, 'home-tools-ar-light');
+});
+
+test('the tool picker’s gallery', async ({ page, stayLocal: _ }) => {
+  await start(page, 'en', 'light');
+  await openPdf(page, WORD_EXPORT);
+  await page.getByRole('toolbar').getByRole('button', { name: /^Choose a tool/ }).click();
+  await expect(page.getByRole('dialog', { name: 'All tools' })).toBeVisible();
+  await shoot(page, 'gallery-en-light');
+});
+
+test('the tool picker’s gallery, Arabic, dark', async ({ page, stayLocal: _ }) => {
+  await start(page, 'ar', 'dark');
+  await openPdf(page, INVOICE);
+  await page.getByRole('toolbar').getByRole('button', { name: /^اختيار أداة/ }).click();
+  await expect(page.getByRole('dialog', { name: 'كل الأدوات' })).toBeVisible();
+  await shoot(page, 'gallery-ar-dark');
+});
+
+test('About', async ({ page, stayLocal: _ }) => {
+  await start(page, 'en', 'dark');
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'محرر PDF' }).click();
+  await page.getByRole('menuitem', { name: /^About/ }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await shoot(page, 'about-en-dark');
+});
+
+test('Settings', async ({ page, stayLocal: _ }) => {
+  await start(page, 'ar', 'light');
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'محرر PDF' }).click();
+  await page.getByRole('menuitem', { name: /^الإعدادات/ }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await shoot(page, 'settings-ar-light');
+});
+
 test('inspector: Organize', async ({ page, stayLocal: _ }) => {
   await start(page, 'en', 'light');
   await openPdf(page, THREE_PAGES);
@@ -132,6 +170,15 @@ test('phone: document', async ({ page, stayLocal: _ }) => {
   await start(page, 'en', 'light', { width: 375, height: 812 });
   await openPdf(page, THREE_PAGES);
   await shoot(page, 'phone-document-en-light');
+});
+
+test('phone: a tool’s sheet', async ({ page, stayLocal: _ }) => {
+  await start(page, 'ar', 'light', { width: 375, height: 812 });
+  await openPdf(page, INVOICE);
+  await page.getByRole('toolbar').getByRole('button', { name: /^اختيار أداة/ }).click();
+  await page.getByRole('dialog', { name: 'كل الأدوات' }).getByRole('radio', { name: 'ضغط' }).click();
+  await expect(page.locator('.pane-end')).toBeVisible();
+  await shoot(page, 'phone-sheet-ar-light');
 });
 
 test('tablet: document with inspector', async ({ page, stayLocal: _ }) => {

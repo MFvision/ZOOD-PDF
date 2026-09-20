@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import type { ParagraphData } from '../core/types';
 import { useT } from '../i18n/useT';
+import { shortcutLetter } from '../shell/shortcutEcho';
 import { useAppState } from '../state/AppContext';
 import { editFontName } from './editFont';
 import { paragraphRect } from './geometry';
@@ -56,7 +57,7 @@ export function ParagraphEditor({
   }, []);
 
   // Clicking outside commits. `pointerdown` in the capture phase catches the
-  // canvas, the panes and the ribbon alike, and the listener is installed after
+  // canvas, the panes and the toolbar alike, and the listener is installed after
   // the click that opened the editor has finished, so it cannot close itself.
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
@@ -83,10 +84,14 @@ export function ParagraphEditor({
       return;
     }
     // Inside the editor, Mod+Z means "undo my typing", not "undo the last
-    // committed paragraph". Stopping it here leaves the textarea's own history
-    // to the browser and keeps the document stack out of it.
-    if (event.key.toLowerCase() === 'z' && (event.metaKey || event.ctrlKey)) {
+    // committed paragraph". Done here, not left to the browser: a Mac webview
+    // (and Chrome without its window) undoes typing only through a menu's
+    // Undo, and the macOS menu bar's Undo is the document's until a field
+    // reports typing to undo. Prevented, the key never reaches the menu.
+    if (shortcutLetter(event) === 'z' && (event.metaKey || event.ctrlKey) && !event.altKey) {
+      event.preventDefault();
       event.stopPropagation();
+      document.execCommand(event.shiftKey ? 'redo' : 'undo');
     }
   };
 
