@@ -357,6 +357,14 @@ export function LibraryPanel() {
     return () => clearInterval(timer);
   }, [goToPage, pages, pendingPage]);
 
+  // The tags of a document chosen from a result are edited in their own
+  // section further down the panel; bring it into view, or the press does
+  // nothing that can be seen from where it was made.
+  const tagEditor = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (chosen) tagEditor.current?.scrollIntoView({ block: 'nearest' });
+  }, [chosen]);
+
   const chooseDocument = (key: string) => {
     if (handle === null) return;
     void ops.current
@@ -599,27 +607,31 @@ export function LibraryPanel() {
                 </div>
               </fieldset>
             )}
-            <div className="library-row">
-              <label className="field">
-                <span>{t('library.filter.from')}</span>
-                <input
-                  type="date"
-                  className="text-input"
-                  value={filters.from}
-                  onChange={(event) => setFilters((one) => ({ ...one, from: event.target.value }))}
-                />
-              </label>
-              <label className="field">
-                <span>{t('library.filter.to')}</span>
-                <input
-                  type="date"
-                  className="text-input"
-                  value={filters.to}
-                  onChange={(event) => setFilters((one) => ({ ...one, to: event.target.value }))}
-                />
-              </label>
-            </div>
-            {badRange(filters) && <p className="field-error">{t('library.badRange')}</p>}
+            <fieldset>
+              <legend>{t('library.filter.date')}</legend>
+              <p className="tool-panel-note">{t('library.filter.dateNote')}</p>
+              <div className="library-row">
+                <label className="field">
+                  <span>{t('library.filter.from')}</span>
+                  <input
+                    type="date"
+                    className="text-input"
+                    value={filters.from}
+                    onChange={(event) => setFilters((one) => ({ ...one, from: event.target.value }))}
+                  />
+                </label>
+                <label className="field">
+                  <span>{t('library.filter.to')}</span>
+                  <input
+                    type="date"
+                    className="text-input"
+                    value={filters.to}
+                    onChange={(event) => setFilters((one) => ({ ...one, to: event.target.value }))}
+                  />
+                </label>
+              </div>
+              {badRange(filters) && <p className="field-error">{t('library.badRange')}</p>}
+            </fieldset>
             <label className="library-choice">
               <input
                 type="checkbox"
@@ -714,7 +726,7 @@ export function LibraryPanel() {
       </section>
 
       {chosen && (
-        <section className="library-section" aria-labelledby="library-tags-heading">
+        <section className="library-section" ref={tagEditor} aria-labelledby="library-tags-heading">
           <h4 id="library-tags-heading">{t('library.tagsOf', { name: chosen.name })}</h4>
           <div className="library-chips">
             {chosen.tags.length === 0 && <p className="tool-panel-note">{t('library.noTags')}</p>}

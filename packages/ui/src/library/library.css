@@ -52,27 +52,15 @@
   align-items: flex-start;
 }
 
+/*
+ * Each class of filter is one of the system's grouped sections, with its
+ * heading above it — not a box inside a box, which is what nesting them in a
+ * group of their own made.
+ */
 .library-filters {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  background: var(--grouped-background);
-  border-radius: var(--radius-10);
-  box-shadow: 0 0 0 0.5px var(--separator);
-}
-
-.library-filters fieldset {
-  padding: 0;
-  margin: 0;
-  border: 0;
-}
-
-.library-filters legend {
-  padding: 0;
-  margin-block-end: var(--space-3);
-  font-size: var(--text-callout);
-  color: var(--secondary-label);
+  gap: var(--space-2);
 }
 
 .library-chips {
@@ -81,6 +69,8 @@
   gap: var(--space-2);
 }
 
+/* A filter's own capsule, narrower than the panel's usual checkbox row. */
+.tool-panel fieldset .library-chip,
 .library-chip {
   display: inline-flex;
   gap: var(--space-2);
