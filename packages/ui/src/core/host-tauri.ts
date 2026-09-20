@@ -376,6 +376,74 @@ export function savePdfFile(bytes: Uint8Array, suggestedName: string): Promise<b
   return saveFileAs(bytes, suggestedName, PDF);
 }
 
+/* ------------------------------------------------------------------ batch */
+
+/**
+ * A file for the batch, known by its path and read only when its turn comes
+ * (`src-tauri/src/batch.rs`): a folder of a thousand PDFs is not held in
+ * memory at once.
+ */
+export interface BatchSource {
+  name: string;
+  path: string;
+  /** Its place under the chosen folder, when it came from one. */
+  relative?: string;
+  size?: number;
+}
+
+/** PDFs from the native open panel, by path. */
+export async function pickBatchFiles(): Promise<BatchSource[]> {
+  const picked = await invoke('plugin:dialog|open', { options: { multiple: true, directory: false, filters: PDF_FILTER } });
+  const paths = Array.isArray(picked) ? picked.filter((p): p is string => typeof p === 'string') : typeof picked === 'string' ? [picked] : [];
+  return paths.map((path) => ({ name: baseName(path), path }));
+}
+
+/**
+ * A folder from the native panel. `recursive` puts everything under it in
+ * the file scope (so its subfolders' PDFs can be read); without it, only
+ * the folder itself — enough to write results into.
+ */
+export async function pickFolder(recursive: boolean): Promise<string | null> {
+  const picked = await invoke('plugin:dialog|open', { options: { multiple: false, directory: true, recursive } });
+  return typeof picked === 'string' ? picked : null;
+}
+
+/** The PDFs in a folder chosen with `pickFolder(true)`, subfolders too when `recursive`. */
+export async function listBatchFolder(path: string, recursive: boolean): Promise<BatchSource[]> {
+  const found = (await invoke('batch_list_folder', { path, recursive })) as { path: string; name: string; relative: string; size: number }[];
+  return found.map(({ path: file, name, relative, size }) => ({ path: file, name, relative, size }));
+}
+
+/** One batch file's bytes, when its turn comes. */
+export async function readBatchFile(path: string): Promise<ArrayBuffer> {
+  return toArrayBuffer(await readFile(path));
+}
+
+/** Where a result goes: a folder chosen for the results, or beside its original. */
+export type BatchTarget = { dir: string } | { beside: string };
+
+/**
+ * Writes one result, never over a file already there ("name (2).pdf"
+ * instead). Returns the path written.
+ */
+export async function writeBatchResult(bytes: Uint8Array, name: string, target: BatchTarget): Promise<string> {
+  const headers: Record<string, string> = { 'x-warraq-name': encodeURIComponent(name) };
+  if ('dir' in target) headers['x-warraq-dir'] = encodeURIComponent(target.dir);
+  else headers['x-warraq-beside'] = encodeURIComponent(target.beside);
+  return (await invoke('batch_write', bytes, { headers })) as string;
+}
+
+/**
+ * The check the desktop host asks the interface to run by itself, from its
+ * environment (`WARRAQ_SELFCHECK`, with `WARRAQ_DEBUG`): null in a browser
+ * and in every ordinary run.
+ */
+export async function debugSelfCheck(): Promise<string | null> {
+  if (!internals()) return null;
+  const check = await invoke('debug_selfcheck').catch(() => null);
+  return typeof check === 'string' ? check : null;
+}
+
 /* ------------------------------------------------------------- signatures */
 
 /**

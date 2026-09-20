@@ -1,0 +1,9 @@
+/* Scan & OCR: the cleaned-up page, previewed in the panel as paper on the grey. */
+.ocr-preview {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  border-radius: var(--radius-6);
+  background: var(--content-background);
+  box-shadow: var(--shadow-page);
+}
