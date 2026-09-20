@@ -69,12 +69,20 @@ test.describe('The Library searches across every document that was added', () =>
     await expect(summary(library)).toContainText('Added: 4.', { timeout: 180_000 });
     await expect(library.getByText(/Documents: 4 ·/)).toBeVisible();
 
-    // The file writes الْمَكْتَبَةِ; the person types المكتبة.
+    // The files write الْمَكْتَبَةِ; the person types المكتبة. Two of the four
+    // carry that sentence, and only those two come back.
     const hits = await search(library, 'المكتبة');
-    await expect(hits.locator('li')).toHaveCount(1);
+    await expect(hits.locator('li')).toHaveCount(2);
     await expect(hits.locator('li').first()).toContainText('chrome-amiri-tashkeel-ligatures.pdf');
-    // The matched word is marked inside the line, not merely somewhere on it.
-    await expect(hits.locator('mark').first()).toBeVisible();
+    await expect(hits.locator('li').first()).toContainText('Page 1');
+
+    // The word is marked inside the line, and the marked word is the one
+    // the document really carries — with every mark the query left out. A
+    // span read as letters instead of bytes marks the wrong half of it.
+    const marked = await hits.locator('mark').first().innerText();
+    expect(marked).toMatch(/[ً-ْ]/);
+    expect(marked.replace(/[ً-ْـ]/g, '')).toBe('المكتبة');
+
     // The line reads in its own direction, whatever the interface language is.
     await expect(hits.locator('.library-snippet').first()).toHaveAttribute('dir', 'auto');
 

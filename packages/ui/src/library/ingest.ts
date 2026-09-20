@@ -438,9 +438,15 @@ export async function ingestFiles(options: IngestOptions): Promise<IngestRun> {
           key: file.key,
           name: file.name,
           kind: read.kind,
-          modified: file.modified,
+          // Whole milliseconds: the core reads this as an integer, and a
+          // file system that reports a fraction of one would lose the file
+          // to an argument error rather than to anything about the file.
+          modified: Math.round(file.modified),
           pages: read.pageCount,
           text: read.pages,
+          // The core has no clock of its own in the browser, and without one
+          // it cannot say when a document was read.
+          now: Math.floor(Date.now() / 1000),
         });
         answer = reply.result;
       } catch (error) {

@@ -35,11 +35,18 @@ import {
   directoryPickerAvailable,
   fileForKey,
   filesFromPicker,
+  folderOf,
   keysUnder,
   nativeFolders,
+  onNativeWatch,
   pickDirectory,
-  pickNativeFolders,
+  pickNativeFolderPaths,
+  scanNativeFolders,
+  stopNativeWatch,
+  watchNativeFolders,
+  watchedFiles,
 } from './sources';
+import type { LibraryWatchAnswer, PassedOver } from './sources';
 import { emptyMeta, libraryStore } from './store';
 import type { FileRecord, FolderRecord, LibraryMeta } from './store';
 import './library.css';
@@ -91,6 +98,10 @@ export function LibraryPanel() {
   const [remaining, setRemaining] = useState<LibraryFile[]>([]);
   const [password, setPassword] = useState('');
   const [recognize, setRecognize] = useState(true);
+  const [passedOver, setPassedOver] = useState<PassedOver[]>([]);
+  const [gone, setGone] = useState<string[]>([]);
+  const [walkTruncated, setWalkTruncated] = useState(false);
+  const [watching, setWatching] = useState<LibraryWatchAnswer | null>(null);
 
   const [query, setQuery] = useState('');
   const [asked, setAsked] = useState('');
@@ -198,7 +209,7 @@ export function LibraryPanel() {
           records[file.key] = {
             key: file.key,
             name: file.name,
-            folder: folder?.id ?? before.files[file.key]?.folder ?? '',
+            folder: folder?.id ?? before.files[file.key]?.folder ?? folderOf(before, file.key)?.id ?? '',
             kind: (file.kind ?? 'pdf') as LibraryKind,
           } satisfies FileRecord;
         }
@@ -231,11 +242,15 @@ export function LibraryPanel() {
     (picked: readonly File[]) => {
       // A browser folder taken by `webkitdirectory` keeps its own name, so
       // the list shows the folder rather than "Chosen files" for every one.
+      //
+      // The id is the same every time, and so is a file's key: choosing the
+      // same file twice is the same document, not a second copy under a new
+      // name — which is what a fresh id each time quietly made.
       const inFolder = picked.find((file) => (file as File & { webkitRelativePath?: string }).webkitRelativePath);
-      const label = inFolder
-        ? ((inFolder as File & { webkitRelativePath?: string }).webkitRelativePath ?? '').split('/')[0] || t('library.chosenFiles')
-        : t('library.chosenFiles');
-      const folder: FolderRecord = { id: `files-${Date.now().toString(36)}`, label, source: 'files' };
+      const top = inFolder ? (((inFolder as File & { webkitRelativePath?: string }).webkitRelativePath ?? '').split('/')[0] ?? '') : '';
+      const folder: FolderRecord = top
+        ? { id: `dir:${top}`, label: top, source: 'files' }
+        : { id: 'files', label: t('library.chosenFiles'), source: 'files' };
       const { files, held: taken } = filesFromPicker(picked, folder.id);
       if (files.length === 0) {
         setError(t('library.error.noneReadable'));
@@ -269,10 +284,27 @@ export function LibraryPanel() {
     void (async () => {
       try {
         if (nativeFolders()) {
+          const paths = await pickNativeFolderPaths();
+          if (paths.length === 0) return;
+          setPassedOver([]);
+          setGone([]);
+          setWalkTruncated(false);
           setFinding({ found: 0, where: '' });
-          const found = await pickNativeFolders((count, where) => setFinding({ found: count, where })).finally(() => setFinding(null));
-          if (!found) return;
-          for (const folder of found) {
+          const walker = new AbortController();
+          stopper.current = walker;
+          const scan = await scanNativeFolders(
+            paths,
+            ledger.current.all(),
+            (count, where) => setFinding({ found: count, where }),
+            walker.signal,
+          ).finally(() => {
+            setFinding(null);
+            stopper.current = null;
+          });
+          setPassedOver(scan.skipped);
+          setGone(scan.missing);
+          setWalkTruncated(scan.truncated);
+          for (const folder of scan.folders) {
             if (folder.files.length > 0) await run(folder.files, folder.record);
           }
           return;
@@ -446,25 +478,67 @@ export function LibraryPanel() {
     })();
   };
 
-  const forgetFile = (key: string) => {
-    if (handle === null) return;
-    void (async () => {
-      try {
-        await ops.current.forget(handle, [key]);
-        ledger.current.forget([key]);
-        const before = await store.current.readMeta().catch(emptyMeta);
-        const files = { ...before.files };
+  const forgetKeys = useCallback(
+    async (keys: readonly string[]) => {
+      if (handle === null || keys.length === 0) return;
+      await ops.current.forget(handle, keys);
+      ledger.current.forget(keys);
+      const before = await store.current.readMeta().catch(emptyMeta);
+      const files = { ...before.files };
+      for (const key of keys) {
         delete files[key];
         held.current.delete(key);
-        await rememberMeta({ ...before, files });
-        await keep(handle);
-        setMissing(null);
-        setHits((current) => current?.filter((hit) => hit.key !== key) ?? current);
+      }
+      await rememberMeta({ ...before, files });
+      await keep(handle);
+      setMissing(null);
+      setGone((left) => left.filter((key) => !keys.includes(key)));
+      setHits((current) => current?.filter((hit) => !keys.includes(hit.key)) ?? current);
+    },
+    [handle, keep, rememberMeta],
+  );
+
+  const forgetFile = (key: string) => void forgetKeys([key]).catch(trouble);
+
+  /**
+   * The host's watcher: it re-checks the chosen folders every few seconds —
+   * it is not the system telling us, and the panel says so — and may refuse a
+   * set of folders that is too large to re-check. What it finds is read, and
+   * a file that has gone is forgotten.
+   */
+  const watchFolders = (on: boolean) => {
+    void (async () => {
+      try {
+        if (!on) {
+          await stopNativeWatch();
+          setWatching(null);
+          return;
+        }
+        const paths = meta.folders.filter((one) => one.source === 'path' && one.path).map((one) => one.path!);
+        if (paths.length === 0) return;
+        setWatching(await watchNativeFolders(paths));
       } catch (problem) {
         trouble(problem);
       }
     })();
   };
+
+  const runWatched = useRef(run);
+  useEffect(() => {
+    runWatched.current = run;
+  });
+  useEffect(() => {
+    if (watching?.watching !== true) return undefined;
+    const off = onNativeWatch((event) => {
+      const fresh = watchedFiles([...event.added, ...event.changed]);
+      if (fresh.length > 0) void runWatched.current(fresh);
+      if (event.removed.length > 0) void forgetKeys(event.removed).catch(() => undefined);
+      if (event.stopped) setWatching({ watching: false, files: 0, seconds: 0, reason: event.stopped });
+    });
+    return () => off();
+  }, [forgetKeys, watching?.watching]);
+  // The watcher is the host's, and outlives this panel unless it is stopped.
+  useEffect(() => () => void stopNativeWatch().catch(() => undefined), []);
 
   const deleteIndex = () => {
     void (async () => {
@@ -839,6 +913,52 @@ export function LibraryPanel() {
 
         {stats && documents > 0 && (
           <p className="tool-panel-note library-stats">{t('library.stats', { documents: stats.documents, pages: stats.pages, words: stats.words })}</p>
+        )}
+
+        {nativeFolders() && meta.folders.some((one) => one.source === 'path') && (
+          <>
+            <label className="library-choice">
+              <input type="checkbox" checked={watching?.watching === true} disabled={running} onChange={(event) => watchFolders(event.target.checked)} />
+              <span>{t('library.watch')}</span>
+            </label>
+            {watching?.watching === true && (
+              <p className="tool-panel-note" role="status">
+                {t('library.watching', { files: watching.files, seconds: watching.seconds })}
+              </p>
+            )}
+            {watching && watching.watching === false && (
+              <p className="field-error" role="status">
+                {t(watching.reason === 'too-many' ? 'library.watchTooMany' : 'library.watchRefused')}
+              </p>
+            )}
+          </>
+        )}
+
+        {walkTruncated && <p className="tool-panel-note">{t('library.walkTruncated')}</p>}
+
+        {gone.length > 0 && (
+          <div className="library-missing" role="status">
+            <span>{t('library.goneFiles', { n: gone.length })}</span>
+            <button type="button" className="link-btn" onClick={() => void forgetKeys(gone).catch(trouble)}>
+              {t('library.forgetGone')}
+            </button>
+          </div>
+        )}
+
+        {passedOver.length > 0 && (
+          <div className="library-skipped">
+            <p className="library-count">{t('library.passedOver', { n: passedOver.length })}</p>
+            <ul aria-label={t('library.passedOverLabel')}>
+              {passedOver.slice(0, 50).map((one) => (
+                <li key={one.path}>
+                  <span className="library-skipped-name" dir="auto">
+                    {one.path}
+                  </span>
+                  <span dir="auto">{t(`library.walk.${one.reason}` as TKey)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         {finding && (

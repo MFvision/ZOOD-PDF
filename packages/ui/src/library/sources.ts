@@ -4,9 +4,15 @@ import {
   pickLibraryFolders,
   readLibraryFile,
   startLibraryScan,
+  startLibraryWatch,
   stopLibraryScan,
 } from '../core/host-tauri';
-import type { LibraryScanEvent } from '../core/host-tauri';
+import type {
+  LibraryFile as HostFile,
+  LibraryScanEvent,
+  LibrarySkip,
+  LibraryWatchAnswer,
+} from '../core/host-tauri';
 import { LIBRARY_ACCEPT } from './kinds';
 import type { LibraryFile } from './ingest';
 import type { FolderRecord, LibraryMeta } from './store';
@@ -166,23 +172,57 @@ export async function pickDirectory(onFound?: (found: number) => void): Promise<
   return { record: { id, label: handle.name, source: 'directory', handle }, files, ignored };
 }
 
+/** One file or folder the desktop walk passed over, in words a person reads. */
+export interface PassedOver {
+  path: string;
+  reason: LibrarySkip['reason'];
+}
+
+export interface NativeScan {
+  folders: AddedFolder[];
+  /** What the walk passed over, and why — never fatal, but never silent either. */
+  skipped: PassedOver[];
+  /** Indexed files no chosen folder holds any more: moved, or gone. */
+  missing: string[];
+  /** The walk reached a bound of the host's, so the list is short and says so. */
+  truncated: boolean;
+  stopped: boolean;
+}
+
+/** A folder record for one of the paths the desktop walked. */
+export const nativeFolderRecord = (path: string): FolderRecord => ({
+  id: path,
+  label: path.split(/[\\/]/).pop() || path,
+  source: 'path',
+  path,
+});
+
+/** What the index already holds, in the shape the host's walk wants. */
+export type KnownFiles = Record<string, { size: number; modified: number }>;
+
+/** The system panel: the folders a person chose, or none. */
+export function pickNativeFolderPaths(): Promise<string[]> {
+  return pickLibraryFolders();
+}
+
 /**
- * The desktop's folder picker, walked by the host: it answers at once and
- * sends what it finds as it goes, so a folder of ten thousand files does not
- * hold the interface. `null` when the person cancelled.
+ * The folders walked by the desktop host: it answers at once and sends what
+ * it finds in batches while it runs, so a folder of ten thousand files never
+ * holds the interface. Stop ends the walk where it is.
  */
-export async function pickNativeFolders(
+export async function scanNativeFolders(
+  paths: readonly string[],
+  known: KnownFiles,
   onFound?: (found: number, where: string) => void,
   signal?: AbortSignal,
-): Promise<AddedFolder[] | null> {
-  const paths = await pickLibraryFolders();
-  if (paths.length === 0) return null;
+): Promise<NativeScan> {
   const found = new Map<string, LibraryFile[]>(paths.map((path) => [path, []]));
+  const scan: NativeScan = { folders: [], skipped: [], missing: [], truncated: false, stopped: false };
+  let letGo: (() => void) | null = null;
   await new Promise<void>((resolve, reject) => {
-    let stop: (() => void) | null = null;
-    let scan = 0;
+    let id = 0;
     const off = onLibraryScan((event: LibraryScanEvent) => {
-      if (scan && event.scan !== scan) return;
+      if (id && event.scan !== id) return;
       for (const file of event.files) {
         const list = found.get(file.root);
         if (!list) continue;
@@ -195,31 +235,61 @@ export async function pickNativeFolders(
           read: () => readLibraryFile(file.key),
         });
       }
+      for (const passed of event.skipped) scan.skipped.push({ path: passed.path, reason: passed.reason });
+      if (event.truncated) scan.truncated = true;
       onFound?.([...found.values()].reduce((sum, list) => sum + list.length, 0), event.current);
       if (event.kind === 'done') {
-        stop?.();
+        scan.missing = event.missing ?? [];
+        scan.stopped = event.stopped;
+        letGo?.();
         off();
         resolve();
       }
     });
-    startLibraryScan({ roots: paths.map((path) => ({ path, recursive: true })), extensions: EXTENSIONS })
-      .then((id) => {
-        scan = id;
-        const abort = () => void stopLibraryScan(id).catch(() => undefined);
-        signal?.addEventListener('abort', abort, { once: true });
-        stop = () => signal?.removeEventListener('abort', abort);
+    startLibraryScan({
+      roots: paths.map((path) => ({ path, recursive: true })),
+      extensions: EXTENSIONS,
+      known: Object.entries(known).map(([key, mark]) => ({ key, size: mark.size, modified: mark.modified })),
+    })
+      .then((started) => {
+        id = started;
+        const abort = () => void stopLibraryScan(started).catch(() => undefined);
+        if (signal?.aborted) abort();
+        else signal?.addEventListener('abort', abort, { once: true });
+        letGo = () => signal?.removeEventListener('abort', abort);
       })
       .catch((problem: unknown) => {
         off();
         reject(problem instanceof Error ? problem : new Error(String(problem)));
       });
   });
-  return paths.map((path) => ({
-    record: { id: path, label: path.split(/[\\/]/).pop() || path, source: 'path', path },
-    files: found.get(path) ?? [],
-    ignored: 0,
+  scan.folders = paths.map((path) => ({ record: nativeFolderRecord(path), files: found.get(path) ?? [], ignored: 0 }));
+  return scan;
+}
+
+/**
+ * What the host's watcher found, as files the Library can read. The watcher
+ * is a five-second re-check, not the system telling us — the panel says so
+ * rather than letting a person believe it is instant.
+ */
+export function watchedFiles(files: readonly HostFile[]): LibraryFile[] {
+  return files.map((file) => ({
+    key: file.key,
+    name: file.name,
+    path: file.relative,
+    size: file.size,
+    modified: file.modified,
+    read: () => readLibraryFile(file.key),
   }));
 }
+
+/** Asks the host to keep re-checking these folders; it may refuse, and says why. */
+export function watchNativeFolders(paths: readonly string[]): Promise<LibraryWatchAnswer> {
+  return startLibraryWatch({ roots: paths.map((path) => ({ path, recursive: true })), extensions: EXTENSIONS });
+}
+
+export { onLibraryWatch as onNativeWatch, stopLibraryWatch as stopNativeWatch } from '../core/host-tauri';
+export type { LibraryWatchAnswer, LibraryWatchEvent } from '../core/host-tauri';
 
 /** The folder a key came from, by the records the store kept. */
 export function folderOf(meta: LibraryMeta, key: string): FolderRecord | undefined {

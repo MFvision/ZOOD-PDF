@@ -1723,5 +1723,19 @@
   "library.finding": "Looking through the folder — files found: {n}",
   "library.carryOn": "Carry on with the {n} left",
   "library.ruleAlsoName": "Look at the file's name as well as its text",
-  "library.ruleWordsNote": "Several words, separated by commas: any one of them is enough."
+  "library.ruleWordsNote": "Several words, separated by commas: any one of them is enough.",
+  "library.watch": "Keep watching these folders",
+  "library.watching": "Watching: {files} files, re-checked every {seconds} seconds. This is a re-check, not the system telling us, so a change takes up to that long to show.",
+  "library.watchTooMany": "There are too many files in these folders to re-check, so they are not watched. Add a folder again to read what changed.",
+  "library.watchRefused": "These folders are not being watched. Add a folder again to read what changed.",
+  "library.walkTruncated": "The folder holds more than the walk reads at once, so what is listed is only part of it.",
+  "library.goneFiles": "Files in the index that are no longer in their folder: {n}.",
+  "library.forgetGone": "Forget them",
+  "library.passedOver": "Passed over while reading the folder: {n}",
+  "library.passedOverLabel": "What the folder walk passed over",
+  "library.walk.unreadable": "it could not be read.",
+  "library.walk.link": "it is a link that points out of the folder.",
+  "library.walk.too-deep": "it sits deeper than the walk goes.",
+  "library.walk.too-big": "it is larger than the Library reads.",
+  "library.walk.too-many": "the folder holds more files than the walk lists."
 }
