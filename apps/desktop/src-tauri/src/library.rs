@@ -968,7 +968,7 @@ pub fn delete_index(dir: &Path, name: &str) -> std::io::Result<bool> {
     Ok(gone)
 }
 
-/// Every index in the folder, newest name first by name order.
+/// Every index in the folder, in name order.
 pub fn list_indexes(dir: &Path) -> std::io::Result<Vec<IndexFile>> {
     let mut found = Vec::new();
     for entry in std::fs::read_dir(dir)?.flatten() {
