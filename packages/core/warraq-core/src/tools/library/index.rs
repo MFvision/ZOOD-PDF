@@ -952,6 +952,30 @@ mod tests {
     }
 
     #[test]
+    fn one_copy_changing_leaves_the_other_copy_alone() {
+        let mut index = Index::default();
+        let same = vec![(0, "تقرير الربع الأول".to_string())];
+        index.add(about("/one.pdf"), same.clone(), 10).expect("one");
+        index.add(about("/two.pdf"), same, 10).expect("two");
+        assert_eq!(index.contents.iter().flatten().count(), 1);
+
+        let mut edited = about("/one.pdf");
+        edited.modified += 60;
+        index
+            .add(edited, vec![(0, "تقرير الربع الثاني".into())], 20)
+            .expect("edited");
+        assert_eq!(index.contents.iter().flatten().count(), 2, "they part ways");
+        assert_eq!(index.documents(), 2);
+        // The word only the old text had is still found, under the other name.
+        let old = index.search_for("الاول").expect("searched");
+        assert_eq!(old.len(), 1);
+        assert_eq!(old[0].key, "/two.pdf");
+        let new = index.search_for("الثاني").expect("searched");
+        assert_eq!(new.len(), 1);
+        assert_eq!(new[0].key, "/one.pdf");
+    }
+
+    #[test]
     fn a_pdf_with_no_text_is_a_scan() {
         let mut index = Index::default();
         let out = index
