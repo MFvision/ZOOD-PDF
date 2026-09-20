@@ -1,4 +1,5 @@
 import type { CoreClient, RemoteDocument } from '../core/client';
+import type { RenderedPageData } from '../core/types';
 import { encodePng } from '../export/png';
 import { readJson, writeJson } from '../state/preferences';
 import { drawRgba } from '../viewer/useRenderedCanvas';
@@ -132,6 +133,48 @@ async function pageImage(
 }
 
 /**
+ * A page cleaned up (`cleanup.ts`) and the slant of its lines measured
+ * (`deskew.ts`) — the two passes over its pixels, and the whole of the work
+ * reading a page does outside the core and Tesseract. `page` is changed in
+ * place and handed back, so a worker can take it and give it again.
+ *
+ * Scan & OCR does this work where it runs; the Library's reader hands it to
+ * its own worker (`library/ingest.ts`), so indexing a folder never stops the
+ * interface.
+ */
+export type PreparePixels = (
+  page: RenderedPageData,
+  cleanup: CleanupOptions,
+  dpi: number,
+) => Promise<{ page: RenderedPageData; angle: number }>;
+
+/** The preparation done in the thread that asks for it. */
+export const prepareHere: PreparePixels = async (page, cleanup, dpi) => {
+  // Cleaned before the slant is measured: a shadow is not a line of text.
+  if (anyCleanup(cleanup)) cleanUp(page, cleanup, dpi);
+  return { page, angle: skewAngle(page) };
+};
+
+/** What `readPagesWith` needs; everything but the document has a sensible default. */
+export interface ReadPagesOptions {
+  languages: readonly OcrLanguage[];
+  scope: OcrScope;
+  onProgress?: (progress: OcrProgress) => void;
+  signal?: AbortSignal;
+  options?: ReadOptions;
+  /** A recognizer already started (a batch reads many files with one): used and left running. */
+  recognizer?: Recognizer;
+  /** Where the pixel work is done; in this thread by default. */
+  prepare?: PreparePixels;
+  /**
+   * The pages to read, zero-based, when the caller already knows which carry
+   * no text of their own — the Library does, having just read them all — so
+   * they are not extracted twice. `scope` chooses them otherwise.
+   */
+  pages?: readonly number[];
+}
+
+/**
  * Reads the chosen pages of `doc`: each is drawn at about 300 dpi by
  * Warraq's core, cleaned up as chosen (`cleanup.ts`), straightened when it
  * is crooked, and read by Tesseract. Pages that already carry text are
@@ -139,19 +182,17 @@ async function pageImage(
  * `recognizer` already started (the batch reads many files with one) is
  * used and left running; otherwise one is started and stopped here.
  */
-export async function readPages(
-  doc: RemoteDocument,
-  languages: readonly OcrLanguage[],
-  scope: OcrScope,
-  onProgress: (progress: OcrProgress) => void,
-  signal?: AbortSignal,
-  options: ReadOptions = PLAIN_READING,
-  shared?: Recognizer,
-): Promise<OcrPageWords[]> {
+export async function readPagesWith(doc: RemoteDocument, how: ReadPagesOptions): Promise<OcrPageWords[]> {
+  const { languages, scope, signal, recognizer: shared } = how;
+  const options = how.options ?? PLAIN_READING;
+  const onProgress = how.onProgress ?? (() => undefined);
+  const prepare = how.prepare ?? prepareHere;
   const targets: number[] = [];
-  for (let index = 0; index < doc.pageCount; index += 1) {
-    if (scope === 'all' || (await doc.extract_text(index)).trim().length === 0) targets.push(index);
-  }
+  if (how.pages) targets.push(...how.pages.filter((index) => index >= 0 && index < doc.pageCount));
+  else
+    for (let index = 0; index < doc.pageCount; index += 1) {
+      if (scope === 'all' || (await doc.extract_text(index)).trim().length === 0) targets.push(index);
+    }
   if (targets.length === 0) return [];
   const recognizer = shared ?? (await startRecognizer(languages));
   const canvas = document.createElement('canvas');
@@ -162,13 +203,12 @@ export async function readPages(
       if (signal?.aborted) break;
       onProgress({ page: k + 1, of: targets.length });
       const scale = renderScale(doc.pageSizes[index] ?? [612, 792]);
-      const render = await doc.render_page(index, scale);
-      // Cleaned before the slant is measured: a shadow is not a line of text.
-      if (cleaning) cleanUp(render, options.cleanup, scale * 72);
+      const drawn = await doc.render_page(index, scale);
+      const { page: render, angle } = await prepare(drawn, options.cleanup, scale * 72);
+      if (signal?.aborted) break;
       drawRgba(canvas, render);
       // A crooked scan is read straightened; its words come back in the
       // straightened page, and the text layer is turned back over it.
-      const angle = skewAngle(render);
       const straight = angle === 0 ? null : straighten(canvas, angle);
       const words = await recognizer.read(straight?.canvas ?? canvas);
       // Only a page that was changed is worth putting in the scan's place.
@@ -188,6 +228,19 @@ export async function readPages(
     canvas.height = 0;
   }
   return pages;
+}
+
+/** `readPagesWith` as Scan & OCR and the batch have always called it. */
+export function readPages(
+  doc: RemoteDocument,
+  languages: readonly OcrLanguage[],
+  scope: OcrScope,
+  onProgress: (progress: OcrProgress) => void,
+  signal?: AbortSignal,
+  options: ReadOptions = PLAIN_READING,
+  shared?: Recognizer,
+): Promise<OcrPageWords[]> {
+  return readPagesWith(doc, { languages, scope, onProgress, signal, options, recognizer: shared });
 }
 
 /** What reading a file's scanned pages did. */

@@ -1621,5 +1621,14 @@
   "access.saveAlt": "Save the texts",
   "access.altSaved": "The picture texts are saved in the file.",
   "access.altNote": "Write what the picture tells the reader, not what it looks like. Leave it empty only for decoration.",
-  "tool.batch": "Batch"
+  "tool.batch": "Batch",
+  "library.skipped.unchanged": "Unchanged since it was last read.",
+  "library.skipped.tooLarge": "Too large to read.",
+  "library.skipped.unsupported": "Not a kind of file the Library reads.",
+  "library.skipped.needsPassword": "Protected: give its password to index it.",
+  "library.skipped.unreadable": "It could not be read.",
+  "library.skipped.tooSlow": "It took too long to read.",
+  "library.skipped.empty": "There is no text in it.",
+  "library.skipped.notIndexed": "The index would not take it.",
+  "library.truncated": "Part of it was left out: it is past what one file may put in the index."
 }
