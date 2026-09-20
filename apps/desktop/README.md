@@ -82,6 +82,35 @@ still forces the mock core on the desktop too.
 | `readFile()` / `writeFile()` from `@tauri-apps/plugin-fs` | allowed only for paths in that scope (`fs:allow-read-file`, `fs:allow-write-file`; no static scope entries)                                                     |
 | event `warraq://file-drop`, payload `{ paths: string[] }` | emitted after the Rust side allowed the dropped files in the fs scope. Tauri's own `tauri://drag-enter/over/leave/drop` events still fire for hover UI          |
 
+### Cloud drives (`cloud_*` commands, `src/cloud.rs`)
+
+What only the host can do for OneDrive and Google Drive, and what keeps the
+window out of it (docs/cloud.md is the owner's side):
+
+|                                                                         |                                                                                                                                                              |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `invoke("cloud_auth_listen")` → `number`                                | opens a one-shot listener on `127.0.0.1` at a port the system picks, and answers it; a sign-in started before is cancelled                                     |
+| `invoke("cloud_auth_wait", { expectedState })` → `Record<string,string>` | waits for the browser to come back to `/callback` with exactly that state and answers the redirect's parameters; `E_CLOUD_TIMEOUT`, `E_CLOUD_CANCELLED`, `E_CLOUD_DENIED: <error>: <why>` |
+| `invoke("cloud_auth_cancel")`                                           | ends the sign-in under way                                                                                                                                    |
+| `invoke("cloud_token", { provider, url, form })` → JSON `string`        | redeems a code or refreshes at the drive's token endpoint; the refresh token is added from, and kept in, the credential store, and never appears in the answer |
+| `invoke("cloud_has_session", { provider })` → `boolean`                 | whether a sign-in is kept for that drive                                                                                                                      |
+| `invoke("cloud_forget", { provider, revokeUrl })` → `boolean`           | signs out: revokes where the provider can (Google), then forgets; answers whether it was revoked                                                               |
+| `invoke("cloud_http", frame)` → frame                                   | one request to a drive, framed as `core_call` frames it; follows no redirect (the interface does, through this command again)                                  |
+
+The refresh token — the long-lived credential — never reaches the webview: it
+goes from the token endpoint into the system's credential store (`keyring`:
+the macOS keychain, Windows Credential Manager, the Secret Service on Linux,
+which needs libdbus to build). The window is given access tokens only, and
+`cloud_token` refuses a form that carries a refresh token, a client secret, or
+any grant but `authorization_code` and `refresh_token`.
+
+Every request goes out from here, over https, to the hosts in
+`packages/ui/src/cloud/hosts.json` and no others — the same list the web
+build's `connect-src` is made from. The window itself can reach none of them
+(its policy names none), which is also why signing in works at all: Microsoft
+redeems a desktop app's code only for a request with no `Origin`, and every
+request from a webview carries one.
+
 Capabilities are in `src-tauri/capabilities/default.json` (`core:default`, `dialog:allow-open/save/message/ask/confirm`,
 `fs:allow-read-file`, `fs:allow-write-file`). There is no static fs scope: the only readable files are the ones
 the user picked in a dialog or dropped on the window. The `doc_*` and `core_*` commands are this app's own
@@ -162,6 +191,10 @@ at runtime. Like the web app's, `connect-src` also names the AI tool's providers
 and the ports Ollama and LM Studio listen on, on this computer, `http://localhost:11434 http://127.0.0.1:11434
 http://localhost:1234 http://127.0.0.1:1234` — which receive a document's text only when the person presses Send
 in that tool.
+
+The cloud drives add nothing to this policy: the window reaches no drive. Its
+requests are made by the host, in Rust (`cloud_*` above), which is also what
+lets Microsoft redeem the desktop app's code.
 
 ## Signing and notarization — TODO
 

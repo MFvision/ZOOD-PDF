@@ -19,6 +19,7 @@
 | Create PDF | Word, Excel, PowerPoint, web pages, Markdown, text, CSV and pictures (PNG, JPEG, GIF, BMP, WebP, every page of a TIFF; HEIC or AVIF where the browser draws them) made into a new PDF on the device — no LibreOffice, no server. The files are read in the interface and laid out by Warraq's own engine in the core (`warraq-pdf/src/create.rs`): shaped Arabic in embedded subsets that read back as typed, right to left where the text is, pages of the source's size. From the home screen, the Create PDF tool, or by dropping such files on the window; several become one PDF in the order listed; pictures optionally read with Scan & OCR afterwards |
 | Scan & OCR | Tesseract (Apache-2.0) reads scanned pages on the device — Arabic, English, Persian, Urdu (Naskh) — and Warraq's core writes what it read as an invisible, shaped text layer, so the page can be searched, selected and copied while it looks as it did. Measured on the corpus: 130 of 138 Arabic words of a 300 dpi scan (the misses carry diacritics), 20 of 30 of a 200 dpi black-and-white invoice (Tesseract skips its table rows) |
 | Compress | a smaller copy, written from scratch: unused objects dropped, duplicate streams shared, everything recompressed, and — only if chosen — images larger than a page needs downsampled to 150 or 96 dpi. Refuses protected and signed files rather than silently stripping their protection or breaking the signature |
+| Cloud drives | OneDrive (desktop and web) and Google Drive (desktop) opened from and saved to, with no ورّاق server and no client secret: the person signs in on the provider's own page, Save writes a new revision checked against the version the file was opened at, and a file someone else saved meanwhile is never overwritten silently. Nothing of it appears unless the build carries a client ID (docs/cloud.md); with none, no control, no address in the security policy, no request |
 | Protected files | open everywhere after a password prompt; one prompt unlocks the file for both engines |
 | Arabic text **reading** in logical order | 16 of the truth-scored corpus files, against 2 for PDF.js, 2 for MuPDF, 0 for PDFium |
 | Arabic text **editing** with reflow | works end to end: click a paragraph in the app, edit it, undo/redo, save. GATE 2 passed (`docs/gate-2.md`) |
@@ -64,6 +65,7 @@ alike when only one of them did anything.
 | Redact (EmbedPDF + Warraq's engine) | mark text or an area, then apply: the text and images underneath are removed from the file, not covered. Find and redact: words found the Arabic-aware way, or emails, phone numbers (Saudi and international, Latin or Arabic-Indic digits), national ID and Iqama numbers, IBANs, card numbers, dates, or a pattern of one's own — each listed with its page and context, the chosen ones marked over their exact glyphs. Remove hidden information: metadata, scripts and actions, attachments, comments, form data, hidden layers, bookmarks, thumbnails, applications' private data, links, hidden text — reported, chosen, and removed by writing the file anew, its earlier revisions and unused objects gone with them |
 | Navigation pane (Warraq's engine) | in both views, from the View menu: bookmarks with their levels (a click goes to the page), attachments (saved, never opened; added with a description; removed), layers in their order with locked ones and print/export states shown, switched in the view only until *Save layer visibility with the file*; in Edit text also the page thumbnails |
 | Protect (EmbedPDF) | require a password to open, restrict permissions |
+| Cloud drives (OneDrive, Google Drive) | **shown only in a build that carries a client ID; this repository ships none, so by default there is no cloud control at all.** With one: Open… and Sign out for each drive on the home screen, the drive files opened lately as pages, and in the File menu *Open from…*, *Save to…* and *Save a Copy on This Device*. OneDrive is browsed by folder and searched; with Google Drive the person picks the file in Google's own picker, shown in its consent screen. Save writes a new revision checked against the version the file was opened at; a file changed in the drive since is offered as a copy, or replaced on purpose, never overwritten silently |
 
 Each working tool has a test in `apps/web/e2e` that uses it the way a person
 does — clicks the card, the control, the page — then saves the file, reopens
@@ -126,7 +128,7 @@ reduced transparency and reduced motion honoured.
 | --- | --- |
 | Toolbar | One unified toolbar in place of the ribbon and the status bar. It carries the document's title, with "Page n of m — Edited" under it; pages; zoom (which now drives EmbedPDF's zoom too); the markup toolbar; Edit text; a tool picker that opens a gallery of the 13 tools; find; save; and the inspector |
 | Inspector | The tools pane, restyled: grouped inset sections, action lists, and macOS checkboxes, radios, pop-up buttons, segmented controls, steppers and switches. Every panel, including ones added later, gets the look from shared classes |
-| Home | A document chooser. Recent files are shown as pages with a small picture of each first page, stored on the device and never for a password-protected file. The inert "Open from OneDrive / Google Drive" buttons are gone: they did nothing, and the connectors are not built (feature matrix: Cloud ⬜) |
+| Home | A document chooser. Recent files are shown as pages with a small picture of each first page, stored on the device and never for a password-protected file. Where the inert "Open from OneDrive / Google Drive" buttons used to be there is now a **Cloud drives** section — but only in a build that carries a client ID: each drive with its account, Open… and Sign out, and the drive files opened lately as pages that reopen from the drive (docs/cloud.md) |
 | Dialogs and overlays | Dialogs are sheets. Popovers come out of their trigger. Toasts are a HUD. The find bar sits under the toolbar. The drop overlay is a material with one or two targets. Settings (⌘,) holds language and appearance |
 | EmbedPDF | Themed with Warraq's tokens by reference. Its duplicated sidebar, zoom and search buttons and its floating page field (except on a phone) are gone. The rest of its bar is the markup toolbar, shown from Warraq's toolbar |
 | macOS app | The title bar is merged into the toolbar, with the traffic lights in it. The toolbar drags the window and a double click zooms it. The system menu bar is built from the page's own menu model, in the interface language, and enables and checks items as the page does. A shortcut the page handles never runs its menu item too |
@@ -150,8 +152,31 @@ the earlier name.
 2. Nastaliq Urdu extraction; Acrobat verification on a machine that has it.
 
 ## Decisions needed from you
-1. **GitHub organization** — nothing has been pushed: `gh repo create <org>/warraq --private --source . --push`.
-2. **Xcode license** — `/usr/bin/cc` and the system `python3` refuse to run until `sudo xcodebuild -license accept` (needs your password). Builds work because they are pointed at Xcode's clang directly.
+1. **Register the cloud apps** (and one thing to check). The drives are built
+   and proven, but no build offers them until you register an app with each
+   provider and build with its client ID; `docs/cloud.md` is the step-by-step,
+   with the redirect URIs, the scopes and the consent screens. Two parts are
+   yours to decide:
+   * **OneDrive** — one Microsoft app registration serves the web build (a
+     single-page-app redirect URI) and the desktop app (a loopback one). No
+     secret, and none may be added. Nothing else is needed.
+   * **Google Drive** — a "Desktop app" client, scope `drive.file` only (a
+     non-sensitive scope: basic verification, no security assessment). Its
+     documentation calls the client secret optional for installed apps
+     redeeming a code with PKCE, which is what the app does — but developers
+     have reported through August 2026 that Google answers "client_secret is
+     missing." all the same. **Sign in once in the built app after
+     registering.** If Google refuses, either leave the Google client ID unset
+     (no Google control appears) or decide to ship the value Google calls a
+     secret and itself says "is not treated as a secret" for installed apps —
+     which would change the rule *no client secrets in binaries*, so it is
+     yours, not the app's. Google Drive is not offered in a browser at all:
+     Google redeems no web client's code without a secret, and its
+     browser-only alternative (the implicit grant, with Google's scripts in
+     the page) is neither what was asked for nor what the security policy
+     allows.
+2. **GitHub organization** — nothing has been pushed: `gh repo create <org>/warraq --private --source . --push`.
+3. **Xcode license** — `/usr/bin/cc` and the system `python3` refuse to run until `sudo xcodebuild -license accept` (needs your password). Builds work because they are pointed at Xcode's clang directly.
 
 ## Fixed after the first install, 2026-09-17
 
@@ -321,6 +346,12 @@ test that fails without its fix.
    not yet built on Windows.
 
 ## Known gaps, stated plainly
+* **The cloud drives are proven against stand-ins for the drives, not against the drives themselves.** No app is registered with Microsoft or Google here, so nothing has ever signed in to a real account. What the tests do check is the protocol: the stand-ins are written from the providers' documentation and refuse what the real ones refuse — PKCE against the challenge, the redirect URI and the origin a code is redeemed from, a secret from a public client, bearer tokens, `If-Match` (412), `conflictBehavior` (409), upload ranges in multiples of 320 KiB, no Authorization on an upload address, and drive.file's rule that a file the person did not pick is "not found". Two things can only be found against the real services, and `docs/cloud.md` says so: whether Google's token endpoint asks a Desktop app client for its "secret" despite its documentation, and whether a particular OneDrive account's download and upload addresses fall under the hosts the policy names (`*.1drv.com`, `*.sharepoint.com`, `*.microsoftpersonalcontent.com`).
+* **Google Drive is desktop-only, and its conflict check has a window.** A browser build ships none: Google redeems no web client's code without a client secret. On the desktop, Drive v3 has no conditional write, so a save reads the file's head revision and refuses if it changed — someone saving in the moment between that read and the write would still be overwritten. OneDrive's `If-Match` has no such window.
+* **A browser sign-in to OneDrive lasts 24 hours at most** (Microsoft's lifetime for a browser app's refresh token), and only if the person ticks *Stay signed in on this browser*; otherwise it ends with the tab. On the desktop the refresh token is kept in the system keychain and never reaches the window — on macOS, a rebuilt app is a different signer, so the keychain asks the person once whether the new build may read what the old one kept.
+* **Microsoft lets a public client revoke nothing.** Signing out forgets the sign-in on this device; withdrawing the app's access is done in the person's Microsoft account, and the app says where. Google's token is revoked on sign-out.
+* **The cloud drives are not in the extension**, and not offered there: it has no page a provider can send a sign-in back to.
+* **Only the person's own OneDrive is browsed** (`/me/drive`, with shortcuts to other drives followed): SharePoint sites and shared libraries are not listed, and national clouds (US Government, China) are not supported.
 * **Create PDF lays content out itself, and plainly.** It is not Word's, Excel's or PowerPoint's layout engine: one face (Amiri, with Inter for what Amiri lacks) and one size per paragraph, greedy line breaks at spaces (no hyphenation, no kashida), tables whose cells can span columns but not rows (a cell merged down is left empty below it). Not read: Word's text boxes, shapes, footnotes, comments, columns and a first page's own header; Excel's charts, pictures and cell colours, and anything past 2,000 rows or 60 columns of a sheet (the panel says so); PowerPoint's charts, SmartArt, gradients, shapes other than boxes (drawn as their box), rotation, animations and notes; a web page's style sheets (only a `style` attribute's colour, alignment and direction) and any picture it does not carry itself. HEIC and AVIF pictures are made into PNGs by the browser, so they work where the browser can draw them (Safari and the macOS app for HEIC). The Office files Create reads and the exports it writes are checked against ECMA-376's content models by the tests (`packages/ui/src/export/ooxml.testing.ts`) and by the browser's XML parser; the official XSDs are not in the repository, and the exports have not been opened in Office itself on this Mac (no Office is installed).
 * **Excel export finds tables, it does not read their meaning.** A table drawn with rules becomes a grid, a missing border a merged cell; a table without rules is found where lines cut at wide gaps stand in the same columns one under another — a two-column page layout can be taken for one. Numbers are only what is plainly a number (a leading zero, a date, a phone number and anything with letters stay text).
 * **Prepare form — what is and is not proven.** Detection is measured on Chrome-printed forms and the corpus (above); forms made in Word, InDesign or by hand-coded generators have not been labelled, and a scanned form gets no proposals at all — its boxes and lines are pixels, not drawing. On a page that is no form, a table with an empty column gets proposals. The proposals are drawn over EmbedPDF's pages by reading its page layout (2.15.1); if the view is turned with EmbedPDF's own rotate, they are drawn unturned. Signature fields are real, empty signature fields for a digital signature: Digital signature offers them and signs into one visibly, in its own box (proven on a field Prepare form made: `tool_signatures.rs` and `e2e/signatures.spec.ts`); Fill & sign places a drawn signature anywhere, over them too.
