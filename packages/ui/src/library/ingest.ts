@@ -496,6 +496,8 @@ export async function ingestFiles(options: IngestOptions): Promise<IngestRun> {
           name: file.name,
           kind: read.kind,
           modified: file.modified,
+          bytes: file.size,
+          now: Date.now(),
           pages: read.pageCount,
           text: read.pages,
         });

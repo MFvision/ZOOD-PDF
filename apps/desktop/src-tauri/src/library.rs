@@ -54,8 +54,9 @@ const MAX_KNOWN: usize = MAX_FILES;
 const BATCH: usize = 256;
 /// The largest single file handed to the indexer. Bigger ones are a skip with
 /// a reason: the index is built from text, and no document is read into memory
-/// whole beyond this.
-pub const MAX_FILE_BYTES: u64 = 512 * 1024 * 1024;
+/// whole beyond this. It matches the core's own limit (`tools::library`), so a
+/// file is never read from disk only to be refused a moment later.
+pub const MAX_FILE_BYTES: u64 = 256 * 1024 * 1024;
 /// The most files re-checked by the watcher, over all its folders. Beyond it
 /// the watcher says plainly that it is not watching, rather than re-stat a
 /// hundred thousand files every few seconds.
