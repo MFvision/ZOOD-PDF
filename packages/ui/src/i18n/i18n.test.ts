@@ -37,6 +37,16 @@ describe('i18n dictionaries', () => {
     }
   });
 
+  it('never send people to chrome the app no longer has', () => {
+    // The redesign replaced the ribbon and the status bar with one toolbar;
+    // the Shortcuts sheet still sent people to a page indicator in a status
+    // bar that is not there.
+    for (const [key, value] of Object.entries({ ...en, ...ar })) {
+      expect(value, `${key} mentions the status bar`).not.toMatch(/status bar|شريط الحالة/i);
+      expect(value, `${key} mentions the ribbon`).not.toMatch(/\bribbons?\b/i);
+    }
+  });
+
   it('never mention the competitor brand', () => {
     for (const value of [...Object.values(en), ...Object.values(ar)]) {
       expect(value.toLowerCase()).not.toMatch(/acrobat|adobe/);

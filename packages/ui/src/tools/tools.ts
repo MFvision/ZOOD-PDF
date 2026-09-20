@@ -37,6 +37,7 @@ import {
   FileBadge,
   FileCheck2,
   FilePlus2,
+  Workflow,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { TKey } from '../i18n/messages';
@@ -59,7 +60,8 @@ export type ToolId =
   | 'pageMarks'
   | 'certificates'
   | 'standards'
-  | 'accessibility';
+  | 'accessibility'
+  | 'batch';
 
 /**
  * One control in a tool's panel: an EmbedPDF command (ADR-0007), run through
@@ -175,6 +177,8 @@ export const TOOLS: readonly ToolDefinition[] = [
   { id: 'standards', labelKey: 'tool.standards', icon: FileCheck2, implemented: true },
   // Warraq's core (`accessibility.*`): checker, reading order, tags, alt text.
   { id: 'accessibility', labelKey: 'tool.accessibility', icon: Accessibility, implemented: true },
+  // Warraq's own: the tools' operations over many files (`batch/`), needing no open document.
+  { id: 'batch', labelKey: 'tool.batch', icon: Workflow, implemented: true },
 ];
 
 export function findTool(id: ToolId): ToolDefinition | undefined {

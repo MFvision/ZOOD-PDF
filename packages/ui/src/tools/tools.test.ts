@@ -32,11 +32,12 @@ describe('the tool list tells the truth about itself', () => {
       'certificates',
       'standards',
       'accessibility',
+      'batch',
     ]);
   });
 
   it('gives every working EmbedPDF tool real controls, named in both languages', () => {
-    const warraqs = ['edit', 'organize', 'export', 'compare', 'ocr', 'combine', 'create', 'compress', 'ai', 'pageMarks', 'certificates', 'standards', 'accessibility'];
+    const warraqs = ['edit', 'organize', 'export', 'compare', 'ocr', 'combine', 'create', 'compress', 'ai', 'pageMarks', 'certificates', 'standards', 'accessibility', 'batch'];
     for (const tool of TOOLS.filter((candidate) => !warraqs.includes(candidate.id) && candidate.implemented)) {
       expect(tool.actions?.length, `${tool.id} has controls`).toBeGreaterThan(0);
       for (const action of tool.actions ?? []) {

@@ -376,6 +376,74 @@ export function savePdfFile(bytes: Uint8Array, suggestedName: string): Promise<b
   return saveFileAs(bytes, suggestedName, PDF);
 }
 
+/* ------------------------------------------------------------------ batch */
+
+/**
+ * A file for the batch, known by its path and read only when its turn comes
+ * (`src-tauri/src/batch.rs`): a folder of a thousand PDFs is not held in
+ * memory at once.
+ */
+export interface BatchSource {
+  name: string;
+  path: string;
+  /** Its place under the chosen folder, when it came from one. */
+  relative?: string;
+  size?: number;
+}
+
+/** PDFs from the native open panel, by path. */
+export async function pickBatchFiles(): Promise<BatchSource[]> {
+  const picked = await invoke('plugin:dialog|open', { options: { multiple: true, directory: false, filters: PDF_FILTER } });
+  const paths = Array.isArray(picked) ? picked.filter((p): p is string => typeof p === 'string') : typeof picked === 'string' ? [picked] : [];
+  return paths.map((path) => ({ name: baseName(path), path }));
+}
+
+/**
+ * A folder from the native panel. `recursive` puts everything under it in
+ * the file scope (so its subfolders' PDFs can be read); without it, only
+ * the folder itself — enough to write results into.
+ */
+export async function pickFolder(recursive: boolean): Promise<string | null> {
+  const picked = await invoke('plugin:dialog|open', { options: { multiple: false, directory: true, recursive } });
+  return typeof picked === 'string' ? picked : null;
+}
+
+/** The PDFs in a folder chosen with `pickFolder(true)`, subfolders too when `recursive`. */
+export async function listBatchFolder(path: string, recursive: boolean): Promise<BatchSource[]> {
+  const found = (await invoke('batch_list_folder', { path, recursive })) as { path: string; name: string; relative: string; size: number }[];
+  return found.map(({ path: file, name, relative, size }) => ({ path: file, name, relative, size }));
+}
+
+/** One batch file's bytes, when its turn comes. */
+export async function readBatchFile(path: string): Promise<ArrayBuffer> {
+  return toArrayBuffer(await readFile(path));
+}
+
+/** Where a result goes: a folder chosen for the results, or beside its original. */
+export type BatchTarget = { dir: string } | { beside: string };
+
+/**
+ * Writes one result, never over a file already there ("name (2).pdf"
+ * instead). Returns the path written.
+ */
+export async function writeBatchResult(bytes: Uint8Array, name: string, target: BatchTarget): Promise<string> {
+  const headers: Record<string, string> = { 'x-warraq-name': encodeURIComponent(name) };
+  if ('dir' in target) headers['x-warraq-dir'] = encodeURIComponent(target.dir);
+  else headers['x-warraq-beside'] = encodeURIComponent(target.beside);
+  return (await invoke('batch_write', bytes, { headers })) as string;
+}
+
+/**
+ * The check the desktop host asks the interface to run by itself, from its
+ * environment (`WARRAQ_SELFCHECK`, with `WARRAQ_DEBUG`): null in a browser
+ * and in every ordinary run.
+ */
+export async function debugSelfCheck(): Promise<string | null> {
+  if (!internals()) return null;
+  const check = await invoke('debug_selfcheck').catch(() => null);
+  return typeof check === 'string' ? check : null;
+}
+
 /* ------------------------------------------------------------- signatures */
 
 /**
@@ -433,6 +501,74 @@ export async function pkcs11Sign(
   return decodeFrame(reply);
 }
 
+/* ------------------------------------------------------------ cloud drives */
+
+/**
+ * The desktop's side of OneDrive and Google Drive (`src-tauri/src/cloud.rs`):
+ * a one-shot listener on 127.0.0.1 for the browser to come back to after a
+ * sign-in, the refresh token kept in the system keychain (never handed to
+ * the page), and each request to a drive sent from Rust to that drive's own
+ * hosts. Only ever on the person's click.
+ */
+
+/** Opens the listener of a new sign-in (cancelling one under way); its port goes in the redirect URI. */
+export async function cloudAuthListen(): Promise<number> {
+  return (await invoke('cloud_auth_listen')) as number;
+}
+
+/**
+ * Waits for the browser to come back with `state`, and answers the redirect's
+ * parameters. Rejects with `E_CLOUD_TIMEOUT`, `E_CLOUD_CANCELLED` or
+ * `E_CLOUD_DENIED: <error>: <why>`.
+ */
+export async function cloudAuthWait(state: string): Promise<Record<string, string>> {
+  return (await invoke('cloud_auth_wait', { expectedState: state })) as Record<string, string>;
+}
+
+export async function cloudAuthCancel(): Promise<void> {
+  await invoke('cloud_auth_cancel');
+}
+
+/**
+ * A code redeemed or a refresh at `url`, `provider`'s token endpoint. `form`
+ * carries neither a refresh token nor a secret; the host adds the kept token
+ * to a refresh and keeps the one that comes back. Answers the endpoint's JSON
+ * without it.
+ */
+export async function cloudToken(provider: string, url: string, form: Record<string, string>): Promise<unknown> {
+  return JSON.parse((await invoke('cloud_token', { provider, url, form })) as string) as unknown;
+}
+
+/** Whether the keychain holds a sign-in for `provider`. */
+export async function cloudHasSession(provider: string): Promise<boolean> {
+  return (await invoke('cloud_has_session', { provider })) === true;
+}
+
+/** Signs out: revokes at `revokeUrl` when given (Google's), then forgets. Answers whether revoked. */
+export async function cloudForget(provider: string, revokeUrl?: string): Promise<boolean> {
+  return (await invoke('cloud_forget', { provider, revokeUrl: revokeUrl ?? null })) === true;
+}
+
+export interface CloudHostAnswer {
+  status: number;
+  headers: Record<string, string>;
+  body: ArrayBuffer;
+}
+
+/** One request to a drive, sent by the host, which follows no redirect (the caller does). */
+export async function cloudHttp(
+  provider: string,
+  method: string,
+  url: string,
+  headers: Record<string, string>,
+  body?: ArrayBuffer,
+): Promise<CloudHostAnswer> {
+  const frame = encodeFrame(JSON.stringify({ provider, method, url, headers }), body ? [body] : []);
+  const { json, blobs } = decodeFrame((await invoke('cloud_http', frame)) as ArrayBuffer);
+  const head = JSON.parse(json) as { status: number; headers?: Record<string, string> };
+  return { status: head.status, headers: head.headers ?? {}, body: blobs[0] ?? new ArrayBuffer(0) };
+}
+
 /** `width` u32 LE + `height` u32 LE + RGBA8, as `encode_bitmap` writes it. */
 function decodeRenderedPage(buffer: ArrayBuffer): ResultMap['render_page'] {
   if (buffer.byteLength < 8) throw new Error('E_RENDER: truncated page bitmap');
@@ -481,6 +617,17 @@ export async function nativeCoreStatus(): Promise<CoreStatus> {
     invoke('core_engine'),
   ])) as [string, string];
   return { kind: 'native', version, engine };
+}
+
+/**
+ * The desktop core fell back to the pure-Rust renderer: PDFium's library did
+ * not bind (`core_engine()` says "hayro" alone). Nothing fails, but Warraq's
+ * own drawing of pages — Edit text, Organize, Scan & OCR, page pictures — is
+ * hayro's, so the toolbar says so rather than leave it a mystery. Browsers
+ * never had PDFium in the core, and say nothing.
+ */
+export function withoutPdfium(status: CoreStatus | null): boolean {
+  return status?.kind === 'native' && status.engine === 'hayro';
 }
 
 /** A protocol request before the client stamps an id on it. */

@@ -1,0 +1,192 @@
+/*
+ * Batch: the files, the steps, saved actions and where results go — each a
+ * section of the inspector with its own heading. A step is a grouped inset
+ * section (fieldset/legend) with its controls; its order buttons sit at the
+ * top of the group, at the end of the line.
+ */
+.batch-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-block-start: var(--space-5);
+  border-block-start: 0.5px solid var(--separator);
+}
+
+.batch-section > h4 {
+  margin: 0;
+  font-size: var(--text-headline);
+  font-weight: 700;
+}
+
+.batch-choice {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.batch-choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.batch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.batch-row > .field {
+  flex: 1 1 90px;
+  min-inline-size: 0;
+}
+
+.batch-count {
+  display: flex;
+  gap: var(--space-4);
+  align-items: baseline;
+  justify-content: space-between;
+  color: var(--secondary-label);
+  font-variant-numeric: tabular-nums;
+}
+
+.batch-files {
+  display: flex;
+  flex-direction: column;
+  max-block-size: 280px;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--grouped-background);
+  border-radius: var(--radius-10);
+  box-shadow: 0 0 0 0.5px var(--separator);
+}
+
+.batch-file {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  padding: var(--space-3) var(--space-4);
+}
+
+.batch-file + .batch-file {
+  border-block-start: 0.5px solid var(--separator);
+}
+
+.batch-file > .lucide {
+  flex: none;
+  margin-block-start: 2px;
+  color: var(--secondary-label);
+}
+
+.batch-file .batch-ok {
+  color: var(--green);
+}
+
+.batch-file .batch-bad {
+  color: var(--destructive);
+}
+
+.batch-file-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.batch-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-file-state {
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+  overflow-wrap: anywhere;
+}
+
+.batch-file[data-state="failed"] .batch-file-state {
+  color: var(--destructive);
+}
+
+.batch-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+/* Room above each step for its heading line: the name, and its order buttons. */
+.batch-steps > .batch-step > fieldset {
+  margin-block-start: var(--space-8);
+}
+
+.batch-step > fieldset > legend {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  color: var(--label);
+}
+
+.batch-step > fieldset > legend .lucide {
+  color: var(--accent);
+}
+
+.batch-step-number {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 18px;
+  block-size: 18px;
+  font-size: var(--text-subheadline);
+  font-variant-numeric: tabular-nums;
+  color: var(--secondary-label);
+  background: var(--secondary-fill);
+  border-radius: var(--radius-capsule);
+}
+
+/* On the heading's line, at its end: move earlier, later, remove. */
+.batch-step-tools {
+  position: absolute;
+  inset-block-start: -26px;
+  inset-inline-end: 0;
+  display: flex;
+  gap: var(--space-1);
+}
+
+.batch-step-tools .icon-btn {
+  min-inline-size: var(--control-h-small);
+  block-size: var(--control-h-small);
+  padding-inline: var(--space-1);
+}
+
+.batch-path {
+  overflow-wrap: anywhere;
+}
+
+.batch-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-variant-numeric: tabular-nums;
+  color: var(--secondary-label);
+}
+
+.batch-progress > progress {
+  inline-size: 100%;
+  accent-color: var(--accent);
+}
+
+.batch-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.batch-summary > p:first-child {
+  font-weight: 600;
+}

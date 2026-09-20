@@ -116,10 +116,22 @@ export async function openConfirmed(url: string): Promise<void> {
 }
 
 /**
+ * A window the app opens itself, not an address a document names: the cloud
+ * sign-in (`cloud/signin.ts`), which must reach the provider's own page. It
+ * goes through the `window.open` the guard kept, since the guard's own stands
+ * in the way of everything the page asks for — the point of it.
+ */
+export function openOwnWindow(name: string, features: string): Window | null {
+  const open = nativeOpen ?? window.open.bind(window);
+  return open('', name, features);
+}
+
+/**
  * Routes every `window.open` in the page through the question. EmbedPDF's
  * outline opens a bookmark's address with `window.open` directly, around its
  * own `autoOpenLinks` setting; this catches that and anything like it.
- * Installed once; the real `window.open` is kept for `openConfirmed`.
+ * Installed once; the real `window.open` is kept for `openConfirmed` and for
+ * the app's own windows (`openOwnWindow`).
  */
 export function installLinkGuard(): void {
   if (nativeOpen || typeof window === 'undefined') return;

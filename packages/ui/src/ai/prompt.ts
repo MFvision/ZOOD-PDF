@@ -1,11 +1,31 @@
 import type { Lang } from '../i18n/messages';
 import { formatPages } from './budget';
 import type { PageText } from './budget';
+import { fillPrompt } from './extras/formFill';
+import type { FillField } from './extras/formFill';
+import { OCR_FIX_SCHEMA, OCR_FIX_SYSTEM } from './extras/ocrFix';
+import { PII_SCHEMA, PII_SYSTEM } from './extras/pii';
+import { TABLES_SCHEMA, TABLES_SYSTEM } from './extras/tables';
 import type { Prompt } from './providers';
 
-/** What the person asked for: the three actions of the AI panel. */
+/**
+ * What the person asked for: the actions of the AI panel. The first three
+ * answer in words; the others in data the panel reads and shows for review
+ * before anything is done with it (`extras/`).
+ */
 export type AiTask =
-  { kind: 'summarize' } | { kind: 'ask'; question: string } | { kind: 'translate'; to: Lang };
+  | { kind: 'summarize' }
+  | { kind: 'ask'; question: string }
+  | { kind: 'translate'; to: Lang }
+  | { kind: 'fixOcr' }
+  | { kind: 'fill'; fields: FillField[]; details: string }
+  | { kind: 'pii' }
+  | { kind: 'tables' };
+
+/** The tasks whose answer is data for review, not words to read. */
+export function answersWithData(task: AiTask): boolean {
+  return task.kind === 'fixOcr' || task.kind === 'fill' || task.kind === 'pii' || task.kind === 'tables';
+}
 
 const LANGUAGE: Record<Lang, string> = { ar: 'Modern Standard Arabic', en: 'English' };
 
@@ -15,7 +35,7 @@ const LANGUAGE: Record<Lang, string> = { ar: 'Modern Standard Arabic', en: 'Engl
  * still get an answer about it.
  */
 const SYSTEM = [
-  'You help a person read a PDF document in Warraq, a PDF editor.',
+  'You help a person read a PDF document in محرر PDF, a PDF editor.',
   'The user message holds the text of the document, read from the file page by page, each page inside <page number="N"> tags, and then a request.',
   'Rules:',
   '- Work only from that text. If it does not hold what is asked, say so plainly.',
@@ -32,7 +52,7 @@ export function documentText(pages: readonly PageText[]): string {
   return `<document>\n${body}\n</document>`;
 }
 
-function request(task: AiTask, lang: Lang): string {
+function request(task: Exclude<AiTask, { kind: 'fill' }>, lang: Lang): string {
   switch (task.kind) {
     case 'summarize':
       return `Summarize this document in ${LANGUAGE[lang]}: one or two sentences on what it is, then its main points as a list, each with its page citation.`;
@@ -42,8 +62,21 @@ function request(task: AiTask, lang: Lang): string {
       const from = task.to === 'ar' ? 'English' : 'Arabic';
       return `Translate the text of these pages from ${from} into ${LANGUAGE[task.to]}. Keep its order and meaning; do not summarize, explain or add anything. Begin each page's translation with its citation [p. N] on a line of its own.`;
     }
+    case 'fixOcr':
+      return 'Correct the recognition errors of each page.';
+    case 'pii':
+      return 'List the personal information in these pages.';
+    case 'tables':
+      return 'Find the tables in these pages.';
   }
 }
+
+/** The rules and the answer's shape of the tasks that answer with data. */
+const DATA: Record<'fixOcr' | 'pii' | 'tables', { system: string; schema: object }> = {
+  fixOcr: { system: OCR_FIX_SYSTEM, schema: OCR_FIX_SCHEMA },
+  pii: { system: PII_SYSTEM, schema: PII_SCHEMA },
+  tables: { system: TABLES_SYSTEM, schema: TABLES_SCHEMA },
+};
 
 export interface PromptContext {
   /** The interface language: the language of a summary. */
@@ -59,6 +92,8 @@ export function buildPrompt(
   pages: readonly PageText[],
   { lang, pageCount, left }: PromptContext,
 ): Prompt {
+  // Smart fill sends the form's fields and the person's details: no pages.
+  if (task.kind === 'fill') return fillPrompt(task.fields, task.details);
   const parts = [documentText(pages)];
   if (left.length > 0) {
     parts.push(
@@ -66,5 +101,8 @@ export function buildPrompt(
     );
   }
   parts.push(request(task, lang));
+  if (task.kind === 'fixOcr' || task.kind === 'pii' || task.kind === 'tables') {
+    return { system: DATA[task.kind].system, user: parts.join('\n\n'), schema: DATA[task.kind].schema };
+  }
   return { system: SYSTEM, user: parts.join('\n\n') };
 }

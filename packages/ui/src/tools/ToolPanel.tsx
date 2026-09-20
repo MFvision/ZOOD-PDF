@@ -1,5 +1,6 @@
 import { AccessibilityPanel } from '../accessibility/AccessibilityPanel';
 import { AiPanel } from '../ai/AiPanel';
+import { BatchPanel } from '../batch/BatchPanel';
 import { Icon } from '../components/Icon';
 import { CombinePanel } from '../combine/CombinePanel';
 import { ComparePanel } from '../compare/ComparePanel';
@@ -37,6 +38,7 @@ export function ToolPanel({ tool }: { tool: ToolDefinition }) {
   if (tool.id === 'certificates') return <SignaturesPanel />;
   if (tool.id === 'standards') return <StandardsPanel />;
   if (tool.id === 'accessibility') return <AccessibilityPanel />;
+  if (tool.id === 'batch') return <BatchPanel />;
   if (tool.actions && tool.actions.length > 0) return <EmbedToolPanel tool={tool} />;
   return (
     <div className="tool-panel">

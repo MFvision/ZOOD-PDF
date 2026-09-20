@@ -488,3 +488,56 @@ fn ocr_text_layer_is_read_back_by_warraq_s_own_reader() {
         assert!(text.contains(word), "{word} in {text:?}");
     }
 }
+
+#[test]
+fn a_corrected_ocr_layer_takes_the_place_of_the_first_and_its_words_come_back() {
+    let font = std::fs::read(format!(
+        "{}/../../../tests/fonts/Amiri-Regular.ttf",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    let scan = corpus("generated/scan-arial-200dpi-bilevel.pdf");
+    let first = r#"{"pages":[{"index":0,"words":[
+        {"text":"مرحيا","bbox":[300,100,380,120]},
+        {"text":"Warraq","bbox":[72,140,150,156]}]}],"modified":"D:20260919120000Z"}"#;
+    let reply = call_static(
+        "ocr.add_text_layer",
+        first,
+        vec![scan.clone(), font.clone()],
+    )
+    .unwrap();
+    let read = reply.blobs[0].clone();
+
+    // The words kept with the page: what a correction starts from.
+    let kept = call_static("ocr.layer_words", "{}", vec![read.clone()]).unwrap();
+    let kept = json(&kept);
+    assert_eq!(kept["pages"][0]["index"], 0);
+    assert_eq!(kept["pages"][0]["words"][0]["text"], "مرحيا");
+    assert_eq!(kept["pages"][0]["words"][1]["bbox"][0], 72.0);
+
+    // The correction replaces the layer: the new word is read, the old one gone.
+    let fixed = r#"{"pages":[{"index":0,"replace":true,"words":[
+        {"text":"مرحبا","bbox":[300,100,380,120]},
+        {"text":"Warraq","bbox":[72,140,150,156]}]}]}"#;
+    let reply = call_static("ocr.add_text_layer", fixed, vec![read.clone(), font]).unwrap();
+    assert_eq!(json(&reply)["pages"], 1);
+    assert!(reply.blobs[0].starts_with(&read), "an update of the file");
+    let text = Document::open(reply.blobs[0].clone(), None)
+        .unwrap()
+        .extract_text(0)
+        .unwrap();
+    assert!(
+        text.contains("مرحبا") && !text.contains("مرحيا"),
+        "{text:?}"
+    );
+    let kept = call_static(
+        "ocr.layer_words",
+        r#"{"pages":[0,7]}"#,
+        vec![reply.blobs[0].clone()],
+    )
+    .unwrap();
+    assert_eq!(json(&kept)["pages"][0]["words"][0]["text"], "مرحبا");
+    // A page with no layer has nothing to give back.
+    let none = call_static("ocr.layer_words", "{}", vec![scan]).unwrap();
+    assert_eq!(json(&none)["pages"], serde_json::json!([]));
+}

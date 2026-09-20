@@ -799,6 +799,9 @@ impl RenderDoc for HayroDoc {
             .pages()
             .get(index)
             .ok_or(RenderError::Page(index))?;
+        // Sized and refused before hayro allocates anything (`MAX_PIXELS`).
+        let (width, height) = page.render_dimensions();
+        crate::bitmap_size(width, height, scale)?;
         let cache = RenderCache::new();
         let settings = RenderSettings {
             x_scale: scale,
@@ -808,7 +811,7 @@ impl RenderDoc for HayroDoc {
         };
         let pix = render(page, &cache, &InterpreterSettings::default(), &settings);
         let (w, h) = (pix.width() as u32, pix.height() as u32);
-        let mut rgba = Vec::with_capacity((w * h * 4) as usize);
+        let mut rgba = Vec::with_capacity(w as usize * h as usize * 4);
         for p in pix.data() {
             rgba.extend_from_slice(&[p.r, p.g, p.b, 255]);
         }

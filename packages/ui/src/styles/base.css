@@ -41,6 +41,16 @@ textarea,
   user-select: text;
 }
 
+/*
+ * Arabic set inside another language — the app's name, a document's title —
+ * is never tracked: spacing joined letters apart breaks them. The tracking
+ * tokens are zeroed for an Arabic interface (tokens.css); this is for Arabic
+ * inside an English one.
+ */
+[lang="ar"] {
+  letter-spacing: 0;
+}
+
 /* Arabic reads better with a little more room between lines. */
 :lang(ar) body,
 body:lang(ar) {

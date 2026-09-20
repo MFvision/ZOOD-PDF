@@ -9,16 +9,18 @@
 //! same code its own menu would.
 //!
 //! Around those items this module adds what every Mac app has and the page
-//! cannot provide: the application menu (About, Settings…, Services, Hide,
-//! Hide Others, Show All, Quit), the clipboard items with their system roles
-//! (Cut, Copy, Paste, Select All go to the first responder, so they work in
-//! any text field), Enter Full Screen, and the Window menu.
+//! cannot provide: the application menu's system items (Services, Hide, Hide
+//! Others, Show All, Quit; About and Settings… are the model's), the clipboard
+//! items with their system roles (Cut, Copy, Paste, Select All go to the first
+//! responder, so they work in any text field), Enter Full Screen, and the
+//! Window menu.
 //!
 //! Undo and Redo are the model's own items rather than the system roles: a
 //! system Undo reaches only the web view's text fields, never the document's
 //! history, so choosing it from the menu would have done nothing to a drawing
-//! or an edit. The page's handler sends them to a text field when one has the
-//! focus.
+//! or an edit. While a text field has the focus the page enables them by what
+//! its typing can undo and sends them there (`packages/ui/src/shell/typing.ts`),
+//! and it handles ⌘Z itself, so typing in a field is undone either way.
 //!
 //! A shortcut never runs twice: WebKit gives the page the first look at a key
 //! equivalent and passes it to the menu only if the page did not handle it;
@@ -29,8 +31,8 @@ use std::sync::Mutex;
 
 use serde::Deserialize;
 use tauri::menu::{
-    AboutMetadata, CheckMenuItem, Menu, MenuItem, MenuItemKind, PredefinedMenuItem, Submenu,
-    HELP_SUBMENU_ID, WINDOW_SUBMENU_ID,
+    CheckMenuItem, Menu, MenuItem, MenuItemKind, PredefinedMenuItem, Submenu, HELP_SUBMENU_ID,
+    WINDOW_SUBMENU_ID,
 };
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 
@@ -169,51 +171,73 @@ fn model_submenu<R: Runtime>(app: &AppHandle<R>, spec: &SubmenuSpec) -> tauri::R
     Ok(submenu)
 }
 
+/// What the application menu holds, in order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum AppEntry<'a> {
+    /// One of the model's items, run by the page like any other.
+    Model(&'a ItemSpec),
+    Separator,
+    Services,
+    Hide,
+    HideOthers,
+    ShowAll,
+    Quit,
+}
+
+/// The application menu: the model's About and Settings…, then the system's
+/// items (Services, Hide, Hide Others, Show All, Quit).
+///
+/// About is the page's own sheet, not the system's panel: that one knew only
+/// the name and version, and choosing it never reached the page, so on the
+/// Mac nothing showed the core's version or the engine drawing the pages —
+/// the one sign that PDFium did not load — nor what the app keeps private.
+fn application_entries(spec: &MenuSpec) -> Vec<AppEntry<'_>> {
+    let items = spec
+        .menu("app")
+        .map(|menu| menu.items.as_slice())
+        .unwrap_or_default();
+    let mut entries: Vec<AppEntry<'_>> = items.iter().map(AppEntry::Model).collect();
+    entries.extend([
+        AppEntry::Separator,
+        AppEntry::Services,
+        AppEntry::Separator,
+        AppEntry::Hide,
+        AppEntry::HideOthers,
+        AppEntry::ShowAll,
+        AppEntry::Separator,
+        AppEntry::Quit,
+    ]);
+    entries
+}
+
 /// Builds the whole menu bar from the UI's model.
 pub fn build<R: Runtime>(app: &AppHandle<R>, spec: &MenuSpec) -> tauri::Result<Menu<R>> {
     let labels = &spec.labels;
     let menu = Menu::new(app)?;
 
-    // The application menu: the model's About and Settings… (About is the
-    // system's own panel, labelled from the model), then the system's items.
     let application = Submenu::new(app, &labels.app_name, true)?;
-    let app_items = spec.menu("app");
-    let about_label = app_items
-        .and_then(|menu| menu.items.iter().find(|item| item.id == "about"))
-        .map(|item| item.label.as_str());
-    let package = app.package_info();
-    application.append(&PredefinedMenuItem::about(
-        app,
-        about_label,
-        Some(AboutMetadata {
-            name: Some(labels.app_name.clone()),
-            version: Some(package.version.to_string()),
-            ..Default::default()
-        }),
-    )?)?;
-    if let Some(settings) =
-        app_items.and_then(|menu| menu.items.iter().find(|item| item.id == "settings"))
-    {
-        append_item(
-            app,
-            &application,
-            &ItemSpec {
-                separator_before: true,
-                ..settings.clone()
-            },
-        )?;
+    for entry in application_entries(spec) {
+        match entry {
+            AppEntry::Model(item) => append_item(app, &application, item)?,
+            AppEntry::Separator => application.append(&PredefinedMenuItem::separator(app)?)?,
+            AppEntry::Services => {
+                application.append(&PredefinedMenuItem::services(app, Some(&labels.services))?)?
+            }
+            AppEntry::Hide => {
+                application.append(&PredefinedMenuItem::hide(app, Some(&labels.hide))?)?
+            }
+            AppEntry::HideOthers => application.append(&PredefinedMenuItem::hide_others(
+                app,
+                Some(&labels.hide_others),
+            )?)?,
+            AppEntry::ShowAll => {
+                application.append(&PredefinedMenuItem::show_all(app, Some(&labels.show_all))?)?
+            }
+            AppEntry::Quit => {
+                application.append(&PredefinedMenuItem::quit(app, Some(&labels.quit))?)?
+            }
+        }
     }
-    application.append(&PredefinedMenuItem::separator(app)?)?;
-    application.append(&PredefinedMenuItem::services(app, Some(&labels.services))?)?;
-    application.append(&PredefinedMenuItem::separator(app)?)?;
-    application.append(&PredefinedMenuItem::hide(app, Some(&labels.hide))?)?;
-    application.append(&PredefinedMenuItem::hide_others(
-        app,
-        Some(&labels.hide_others),
-    )?)?;
-    application.append(&PredefinedMenuItem::show_all(app, Some(&labels.show_all))?)?;
-    application.append(&PredefinedMenuItem::separator(app)?)?;
-    application.append(&PredefinedMenuItem::quit(app, Some(&labels.quit))?)?;
     menu.append(&application)?;
 
     for spec_menu in spec.menus.iter().filter(|menu| menu.id != "app") {
@@ -390,6 +414,24 @@ mod tests {
             relabelled.shape(),
             "a new label rebuilds the menu"
         );
+    }
+
+    /// About is the page's own sheet, which names the core's version and the
+    /// engine that draws the pages — the one place a Mac without PDFium says
+    /// so. The system's panel knows neither, and the page never heard of it.
+    #[test]
+    fn about_opens_the_pages_own_sheet() {
+        let spec = spec();
+        let entries = application_entries(&spec);
+        assert!(
+            matches!(entries.first(), Some(AppEntry::Model(item)) if item.id == "about"),
+            "About is the model's item, sent to the page: {entries:?}"
+        );
+        assert!(
+            matches!(entries.get(1), Some(AppEntry::Model(item)) if item.id == "settings" && item.separator_before),
+            "Settings… follows, after a separator"
+        );
+        assert_eq!(entries.last(), Some(&AppEntry::Quit));
     }
 
     #[test]

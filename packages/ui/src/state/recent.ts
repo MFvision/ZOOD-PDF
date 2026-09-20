@@ -3,7 +3,8 @@ import { readJson, writeJson } from './preferences';
 /**
  * Recent files are remembered by name (no bytes, no paths), with a small
  * picture of the first page for the home screen's grid — kept on this device
- * only, never for a file that needed a password, and forgotten with the list.
+ * only, never for a protected file or one being redacted, forgotten when the
+ * file is saved and with the list (`home/recentPicture.ts` says when).
  */
 const RECENT_KEY = 'warraq.recent';
 const THUMBS_KEY = 'warraq.recentThumbs';
@@ -45,4 +46,10 @@ export function readRecentThumbnails(): Record<string, string> {
 export function saveRecentThumbnail(name: string, dataUrl: string): void {
   if (!isThumbnail(dataUrl)) return;
   writeJson(THUMBS_KEY, { ...readRecentThumbnails(), [name]: dataUrl });
+}
+
+/** Forgets the picture of `name` (and those of files no longer in the list); the name stays. */
+export function forgetRecentThumbnail(name: string): void {
+  const { [name]: _forgotten, ...rest } = readRecentThumbnails();
+  writeJson(THUMBS_KEY, rest);
 }

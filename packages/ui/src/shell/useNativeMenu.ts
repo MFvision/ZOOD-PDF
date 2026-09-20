@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { onNativeMenu, setNativeMenu } from '../core/host-tauri';
 import type { NativeMenuSpec } from '../core/host-tauri';
 import { useT } from '../i18n/useT';
@@ -64,6 +64,8 @@ export function useNativeMenu(enabled: boolean): void {
   const menusRef = useRef(menus);
   const sent = useRef('');
   const handled = useRef<Handled | null>(null);
+  // Bumped after an item is chosen in the menu bar: the model goes again.
+  const [chosen, setChosen] = useState(0);
   useEffect(() => {
     menusRef.current = menus;
   });
@@ -76,7 +78,7 @@ export function useNativeMenu(enabled: boolean): void {
       // Sent again with the next change.
       sent.current = '';
     });
-  }, [enabled, spec]);
+  }, [enabled, spec, chosen]);
 
   // What the page handled itself: read once every listener has had the key.
   useEffect(() => {
@@ -94,6 +96,11 @@ export function useNativeMenu(enabled: boolean): void {
   useEffect(() => {
     if (!enabled) return;
     return onNativeMenu((id) => {
+      // The system flips a check item's mark itself when it is chosen — Fit
+      // width checked beside Fit page, or unchecked while the view stays at
+      // fit width — so the model's own states go back whatever happens next.
+      sent.current = '';
+      setChosen((count) => count + 1);
       const item = menusRef.current.flatMap((menu) => menu.items).find((entry) => entry.id === id);
       if (!item || item.disabled) return;
       if (isEcho(handled.current, item.keys, performance.now())) return;

@@ -1,0 +1,620 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import { firstPagePicture } from '../home/recentPicture';
+import type { TKey } from '../i18n/messages';
+import { useT } from '../i18n/useT';
+import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
+import type { SaveTarget } from '../state/AppContext';
+import type { BrowserBroker } from './brokers';
+import { builtConfig } from './config';
+import type { ProviderId } from './config';
+import type { Account, Entry, Saved } from './drive';
+import { kindOf } from './errors';
+import type { CloudErrorKind } from './errors';
+import { pickedIds } from './gdrive';
+import { currentHost } from './host';
+import { googlePicker } from './oauth';
+import { CloudService } from './service';
+import type { CloudDrive } from './service';
+import { openSignInWindow } from './signin';
+import {
+  addCloudRecent,
+  clearCloudRecent,
+  keepAccount,
+  readAccounts,
+  readCloudRecent,
+  readCloudThumbnails,
+  readKeptSession,
+  recentId,
+  saveCloudThumbnail,
+} from './store';
+import type { CloudRecent } from './store';
+
+/**
+ * The cloud drives in the interface: who is signed in, the sheet on screen
+ * (sign in, browse, a conflict, a taken name), and which drive file the open
+ * document is — so that Save writes a new revision of it, checked against
+ * the version it was opened at.
+ *
+ * Nothing here reaches the network by itself: every request follows a click
+ * (open, save, sign in, sign out, browse), and what the home screen shows
+ * about the drives comes from this device.
+ */
+
+/** What to do once signed in. */
+export type Next =
+  | { kind: 'open' }
+  | { kind: 'saveAs' }
+  | { kind: 'recent'; entry: CloudRecent }
+  | { kind: 'save' }
+  | { kind: 'pickFolder'; name: string };
+
+export type Sheet =
+  | { kind: 'signIn'; provider: ProviderId; next: Next }
+  | {
+      kind: 'browse';
+      provider: ProviderId;
+      mode: 'open' | 'saveAs';
+      /** Save As starts here (a copy of a file beside it); its name when the drive said. */
+      folder?: { key: string; name: string | null };
+      name?: string;
+    }
+  | { kind: 'conflict'; provider: ProviderId; name: string }
+  | { kind: 'nameTaken'; provider: ProviderId; name: string };
+
+export type Activity = { kind: 'signIn' | 'opening' | 'saving'; provider: ProviderId; name?: string };
+
+/** The drive file the open document is. */
+export interface Binding extends Saved {
+  provider: ProviderId;
+  /** The `File` it was opened as (`services.openedFile`), by identity. */
+  file: File;
+}
+
+export interface CloudApi {
+  /** The drives this build offers on this host; empty: no cloud control anywhere. */
+  providers: readonly ProviderId[];
+  desktop: boolean;
+  accounts: Partial<Record<ProviderId, Account>>;
+  recent: CloudRecent[];
+  thumbnails: Record<string, string>;
+  binding: Binding | null;
+  sheet: Sheet | null;
+  activity: Activity | null;
+  /** What went wrong, said in the sheet on screen. */
+  error: CloudErrorKind | null;
+  startOpen: (provider: ProviderId) => void;
+  startSaveAs: (provider: ProviderId) => void;
+  openRecent: (entry: CloudRecent) => void;
+  clearRecent: () => void;
+  /** In the click: a browser opens its sign-in window before anything else. */
+  signIn: (provider: ProviderId, stay: boolean) => void;
+  /** Google's picker, in the consent screen (desktop): a PDF to open, or a folder to save `name` in. */
+  pickWithGoogle: (purpose: 'open' | 'folder', name?: string) => void;
+  signOut: (provider: ProviderId) => Promise<void>;
+  openEntry: (provider: ProviderId, entry: Pick<Entry, 'key' | 'name'>) => Promise<void>;
+  saveInto: (provider: ProviderId, folderKey: string | null, name: string) => Promise<void>;
+  resolveConflict: (choice: 'copy' | 'replace' | 'cancel') => void;
+  resolveNameTaken: (choice: 'replace' | 'rename' | 'cancel') => void;
+  /** The sign-in is over (a drive said so): ask for it again, then carry on with `next`. */
+  signInAgain: (provider: ProviderId, next: Next) => void;
+  /** Closes the sheet, cancelling a sign-in under way. */
+  cancel: () => void;
+  drive: (provider: ProviderId) => CloudDrive;
+  /** In a browser: whether the sign-in is kept in this browser (the person chose to stay signed in). */
+  staying: (provider: ProviderId) => boolean;
+}
+
+export const errorKey = (kind: CloudErrorKind): TKey => `cloud.error.${kind}` as TKey;
+
+/** "report.pdf" → "report (copy).pdf", in the interface's language. */
+export function copyName(name: string, word: string): string {
+  const base = name.replace(/\.pdf$/i, '');
+  return `${base} (${word}).pdf`;
+}
+
+/** A view of `bytes` as the whole buffer a request body takes. */
+function wholeBuffer(bytes: Uint8Array<ArrayBuffer>): ArrayBuffer {
+  return bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength ? bytes.buffer : bytes.slice().buffer;
+}
+
+const NO_CLOUD: CloudApi = {
+  providers: [],
+  desktop: false,
+  accounts: {},
+  recent: [],
+  thumbnails: {},
+  binding: null,
+  sheet: null,
+  activity: null,
+  error: null,
+  startOpen: () => undefined,
+  startSaveAs: () => undefined,
+  openRecent: () => undefined,
+  clearRecent: () => undefined,
+  signIn: () => undefined,
+  pickWithGoogle: () => undefined,
+  signOut: async () => undefined,
+  openEntry: async () => undefined,
+  saveInto: async () => undefined,
+  resolveConflict: () => undefined,
+  resolveNameTaken: () => undefined,
+  signInAgain: () => undefined,
+  cancel: () => undefined,
+  drive: () => {
+    throw new Error('no cloud drive is offered');
+  },
+  staying: () => false,
+};
+
+const CloudContext = createContext<CloudApi>(NO_CLOUD);
+
+export function useCloud(): CloudApi {
+  return useContext(CloudContext);
+}
+
+export function CloudProvider({ children }: { children: ReactNode }) {
+  const service = useMemo(() => {
+    const config = builtConfig();
+    if (!config.onedrive && !config.gdrive) return null;
+    const created = new CloudService(config, currentHost());
+    return created.providers.length > 0 ? created : null;
+  }, []);
+  return service ? <CloudProviderFor service={service}>{children}</CloudProviderFor> : <>{children}</>;
+}
+
+/** The accounts this device knows to be signed in: in a browser, only while the kept sign-in lasts. */
+function knownAccounts(service: CloudService): Partial<Record<ProviderId, Account>> {
+  const kept = readAccounts();
+  const known: Partial<Record<ProviderId, Account>> = {};
+  for (const provider of service.providers) {
+    const account = kept[provider];
+    if (account && (service.host.desktop || readKeptSession(provider) !== null)) known[provider] = account;
+  }
+  return known;
+}
+
+function CloudProviderFor({ service, children }: { service: CloudService; children: ReactNode }) {
+  const services = useServices();
+  const state = useAppState();
+  const dispatch = useAppDispatch();
+  const t = useT();
+  const offered = service.providers;
+  const [accounts, setAccounts] = useState(() => knownAccounts(service));
+  const [recent, setRecent] = useState(() => readCloudRecent().filter((entry) => offered.includes(entry.provider)));
+  const [thumbnails, setThumbnails] = useState(readCloudThumbnails);
+  const [sheet, setSheet] = useState<Sheet | null>(null);
+  const [activity, setActivity] = useState<Activity | null>(null);
+  const [error, setError] = useState<CloudErrorKind | null>(null);
+  const [binding, setBinding] = useState<Binding | null>(null);
+  // Async work reads the latest of these through refs, never a stale closure.
+  const bindingRef = useRef<Binding | null>(null);
+  const sheetRef = useRef<Sheet | null>(null);
+  useEffect(() => {
+    bindingRef.current = binding;
+  }, [binding]);
+  useEffect(() => {
+    sheetRef.current = sheet;
+  }, [sheet]);
+  // A drive file being opened: it becomes the binding once the app has it open.
+  const pending = useRef<Binding | null>(null);
+  const abort = useRef<AbortController | null>(null);
+  const answer = useRef<((choice: string) => void) | null>(null);
+
+  const drive = useCallback((provider: ProviderId) => service.drive(provider), [service]);
+
+  const rememberAccount = useCallback(
+    (provider: ProviderId, account: Account | null, keep: boolean) => {
+      setAccounts((current) => {
+        const next = { ...current };
+        if (account) next[provider] = account;
+        else delete next[provider];
+        return next;
+      });
+      keepAccount(provider, account && keep ? account : null);
+    },
+    [],
+  );
+
+  /** The sign-in is over: forget the account and ask again, then carry on with `next`. */
+  const signInAgain = useCallback(
+    (provider: ProviderId, next: Next) => {
+      rememberAccount(provider, null, false);
+      setError('signedOut');
+      setSheet({ kind: 'signIn', provider, next });
+    },
+    [rememberAccount],
+  );
+
+  /** An error where the person will see it: in the sheet on screen, else in the window's banner. */
+  const report = useCallback(
+    (error: unknown) => {
+      const kind = kindOf(error);
+      if (sheetRef.current) setError(kind);
+      else dispatch({ type: 'DOCUMENT_FAILED', error: errorKey(kind) });
+    },
+    [dispatch],
+  );
+
+  // The binding follows the document: set when the drive file opened is the
+  // one open, dropped when another file takes its place or it is closed.
+  const openedFile = services.openedFile;
+  useEffect(() => {
+    const waiting = pending.current;
+    if (waiting && openedFile === waiting.file) {
+      pending.current = null;
+      setBinding(waiting);
+      return;
+    }
+    if (openedFile && waiting) pending.current = null;
+    setBinding((current) => (current && current.file !== openedFile ? null : current));
+  }, [openedFile]);
+
+  // The first page of a drive file, for its tile on the home screen (never a protected one).
+  const { document: remote, documentPassword } = services;
+  const info = state.document;
+  const pictured = useRef<string | null>(null);
+  useEffect(() => {
+    if (!binding || !remote || !info || documentPassword !== undefined || info.metadata.encrypted) return;
+    const id = recentId({ provider: binding.provider, key: binding.key });
+    if (pictured.current === id) return;
+    pictured.current = id;
+    void firstPagePicture(remote)
+      .then((picture) => {
+        if (!picture) return;
+        saveCloudThumbnail(id, picture);
+        setThumbnails(readCloudThumbnails());
+      })
+      .catch(() => undefined);
+  }, [binding, remote, info, documentPassword]);
+
+  const openEntry = useCallback(
+    async (provider: ProviderId, entry: Pick<Entry, 'key' | 'name'>) => {
+      setError(null);
+      setActivity({ kind: 'opening', provider, name: entry.name });
+      try {
+        const opened = await drive(provider).open(entry.key);
+        const file = new File([opened.bytes], opened.name, { type: 'application/pdf' });
+        const { bytes: _bytes, ...saved } = opened;
+        pending.current = { ...saved, provider, file };
+        setActivity(null);
+        setSheet(null);
+        setRecent(addCloudRecent({ provider, key: opened.key, name: opened.name, openedAt: Date.now() }));
+        await services.openFile(file, undefined, { recent: false });
+      } catch (error) {
+        setActivity(null);
+        if (kindOf(error) === 'signedOut') signInAgain(provider, { kind: 'recent', entry: { provider, key: entry.key, name: entry.name, openedAt: Date.now() } });
+        else report(error);
+      }
+    },
+    [drive, services, signInAgain, report],
+  );
+
+  /** Asks the person, in a sheet, and waits for the choice. */
+  const ask = useCallback(<T extends string>(next: Sheet): Promise<T> => {
+    setSheet(next);
+    return new Promise<T>((resolve) => {
+      answer.current = (choice) => resolve(choice as T);
+    });
+  }, []);
+
+  const adopt = useCallback((provider: ProviderId, saved: Saved, file: File | null) => {
+    if (!file) return;
+    const next: Binding = { ...saved, provider, file };
+    bindingRef.current = next;
+    setBinding(next);
+  }, []);
+
+  const saveInto = useCallback(
+    async (provider: ProviderId, folderKey: string | null, name: string) => {
+      const file = services.openedFile;
+      setError(null);
+      let bytes: Uint8Array<ArrayBuffer> | null;
+      try {
+        bytes = await services.bytesForSave();
+      } catch {
+        dispatch({ type: 'DOCUMENT_FAILED', error: 'file.saveFailed' });
+        return;
+      }
+      if (!bytes) return;
+      const body = wholeBuffer(bytes);
+      const back = sheetRef.current;
+      setActivity({ kind: 'saving', provider, name });
+      try {
+        let saved: Saved;
+        try {
+          saved = await drive(provider).saveNew(folderKey, name, body, 'fail');
+        } catch (error) {
+          if (kindOf(error) !== 'nameTaken') throw error;
+          setActivity(null);
+          const choice = await ask<'replace' | 'rename' | 'cancel'>({ kind: 'nameTaken', provider, name });
+          if (choice === 'cancel') {
+            setSheet(back);
+            return;
+          }
+          setActivity({ kind: 'saving', provider, name });
+          saved = await drive(provider).saveNew(folderKey, name, body, choice);
+        }
+        adopt(provider, saved, file);
+        if (saved.name !== state.document?.name) dispatch({ type: 'DOCUMENT_RENAMED', name: saved.name });
+        dispatch({ type: 'DOCUMENT_SAVED' });
+        dispatch({ type: 'TOAST', key: `cloud.saved.${provider}` as TKey });
+        setRecent(addCloudRecent({ provider, key: saved.key, name: saved.name, openedAt: Date.now() }));
+        setSheet(null);
+      } catch (error) {
+        if (kindOf(error) === 'signedOut') signInAgain(provider, { kind: 'saveAs' });
+        else {
+          setSheet((current) => current ?? back);
+          report(error);
+        }
+      } finally {
+        setActivity(null);
+      }
+    },
+    [services, drive, ask, adopt, state.document, dispatch, signInAgain, report],
+  );
+
+  // Save, for a file that came from a drive: a new revision, checked against
+  // the version it was opened at; a conflict is the person's to decide.
+  const target = useMemo<SaveTarget>(
+    () => ({
+      save: async (bytes) => {
+        const bound = bindingRef.current;
+        if (!bound) return { saved: false };
+        const body = wholeBuffer(bytes);
+        const done = (saved: Saved) => {
+          adopt(bound.provider, saved, bound.file);
+          return { saved: true as const, toast: `cloud.saved.${bound.provider}` as TKey };
+        };
+        setActivity({ kind: 'saving', provider: bound.provider, name: bound.name });
+        try {
+          try {
+            return done(await drive(bound.provider).saveRevision(bound.key, body, bound.version));
+          } catch (error) {
+            if (kindOf(error) !== 'conflict') throw error;
+          }
+          setActivity(null);
+          const choice = await ask<'copy' | 'replace' | 'cancel'>({ kind: 'conflict', provider: bound.provider, name: bound.name });
+          if (choice === 'replace') {
+            setSheet(null);
+            setActivity({ kind: 'saving', provider: bound.provider, name: bound.name });
+            return done(await drive(bound.provider).saveRevision(bound.key, body, null));
+          }
+          if (choice === 'copy') {
+            setSheet({
+              kind: 'browse',
+              provider: bound.provider,
+              mode: 'saveAs',
+              folder: bound.parentKey ? { key: bound.parentKey, name: bound.parentName ?? null } : undefined,
+              name: copyName(bound.name, t('cloud.copyWord')),
+            });
+          } else setSheet(null);
+          return { saved: false };
+        } catch (error) {
+          if (kindOf(error) === 'signedOut') signInAgain(bound.provider, { kind: 'save' });
+          else {
+            setSheet(null);
+            dispatch({ type: 'DOCUMENT_FAILED', error: errorKey(kindOf(error)) });
+          }
+          return { saved: false };
+        } finally {
+          setActivity(null);
+        }
+      },
+    }),
+    [drive, adopt, ask, t, signInAgain, dispatch],
+  );
+
+  const { claimSave } = services;
+  useEffect(() => {
+    if (!binding) return;
+    claimSave(target);
+    return () => claimSave(null);
+  }, [binding, target, claimSave]);
+
+  const openRecentNow = useCallback((entry: CloudRecent) => void openEntry(entry.provider, entry), [openEntry]);
+
+  const carryOn = useCallback(
+    async (provider: ProviderId, next: Next, params: Record<string, string>) => {
+      switch (next.kind) {
+        case 'open': {
+          const picked = provider === 'gdrive' ? pickedIds(params)[0] : undefined;
+          if (picked) await openEntry(provider, { key: picked, name: '' });
+          else setSheet({ kind: 'browse', provider, mode: 'open' });
+          return;
+        }
+        case 'saveAs':
+          setSheet({ kind: 'browse', provider, mode: 'saveAs' });
+          return;
+        case 'pickFolder': {
+          const folder = pickedIds(params)[0];
+          setSheet({ kind: 'browse', provider, mode: 'saveAs', name: next.name });
+          if (folder) await saveInto(provider, folder, next.name);
+          return;
+        }
+        case 'recent':
+          openRecentNow(next.entry);
+          return;
+        case 'save':
+          setSheet(null);
+          await services.saveDocument();
+          return;
+      }
+    },
+    [openEntry, saveInto, openRecentNow, services],
+  );
+
+  const begin = useCallback(
+    (provider: ProviderId, next: Next, stay: boolean) => {
+      let popup: Window | undefined;
+      if (!service.host.desktop) {
+        try {
+          popup = openSignInWindow();
+        } catch (error) {
+          setError(kindOf(error));
+          return;
+        }
+        (service.host.broker as BrowserBroker).staySignedIn(provider, stay);
+      }
+      const controller = new AbortController();
+      abort.current = controller;
+      setError(null);
+      setActivity({ kind: 'signIn', provider });
+      const extra =
+        provider === 'gdrive' && (next.kind === 'open' || next.kind === 'pickFolder')
+          ? googlePicker(next.kind === 'open' ? 'open' : 'folder')
+          : undefined;
+      void (async () => {
+        try {
+          const { account, params } = await service.signIn(provider, { popup, extra, signal: controller.signal });
+          rememberAccount(provider, account, service.host.desktop || stay);
+          setActivity(null);
+          await carryOn(provider, next, params);
+        } catch (error) {
+          setActivity(null);
+          // Closing the sheet cancelled it: nothing to say.
+          if (abort.current === controller && !controller.signal.aborted) setError(kindOf(error));
+        } finally {
+          if (abort.current === controller) abort.current = null;
+        }
+      })();
+    },
+    [service, rememberAccount, carryOn],
+  );
+
+  const signIn = useCallback(
+    (provider: ProviderId, stay: boolean) => {
+      const current = sheetRef.current;
+      begin(provider, current?.kind === 'signIn' ? current.next : { kind: 'open' }, stay);
+    },
+    [begin],
+  );
+
+  const pickWithGoogle = useCallback(
+    (purpose: 'open' | 'folder', name?: string) =>
+      begin('gdrive', purpose === 'open' ? { kind: 'open' } : { kind: 'pickFolder', name: name ?? '' }, true),
+    [begin],
+  );
+
+  const startOpen = useCallback(
+    (provider: ProviderId) => {
+      setError(null);
+      setSheet(accounts[provider] ? { kind: 'browse', provider, mode: 'open' } : { kind: 'signIn', provider, next: { kind: 'open' } });
+    },
+    [accounts],
+  );
+
+  const startSaveAs = useCallback(
+    (provider: ProviderId) => {
+      if (!state.document) return;
+      setError(null);
+      setSheet(accounts[provider] ? { kind: 'browse', provider, mode: 'saveAs' } : { kind: 'signIn', provider, next: { kind: 'saveAs' } });
+    },
+    [accounts, state.document],
+  );
+
+  const openRecent = useCallback(
+    (entry: CloudRecent) => {
+      setError(null);
+      if (accounts[entry.provider]) openRecentNow(entry);
+      else setSheet({ kind: 'signIn', provider: entry.provider, next: { kind: 'recent', entry } });
+    },
+    [accounts, openRecentNow],
+  );
+
+  const signOut = useCallback(
+    async (provider: ProviderId) => {
+      const revoked = await service.signOut(provider).catch(() => false);
+      rememberAccount(provider, null, false);
+      setRecent(clearCloudRecent(provider));
+      setThumbnails(readCloudThumbnails());
+      if (sheetRef.current?.provider === provider) setSheet(null);
+      const key = provider === 'gdrive' ? (revoked ? 'cloud.signedOut.gdrive' : 'cloud.signedOut.gdriveLocal') : 'cloud.signedOut.onedrive';
+      dispatch({ type: 'TOAST', key });
+    },
+    [service, rememberAccount, dispatch],
+  );
+
+  const cancel = useCallback(() => {
+    abort.current?.abort();
+    abort.current = null;
+    void service.cancelSignIn();
+    answer.current?.('cancel');
+    answer.current = null;
+    setActivity((current) => (current?.kind === 'signIn' ? null : current));
+    setError(null);
+    setSheet(null);
+  }, [service]);
+
+  const resolve = useCallback((choice: string) => {
+    const pick = answer.current;
+    answer.current = null;
+    pick?.(choice);
+  }, []);
+
+  const clearRecent = useCallback(() => {
+    setRecent(clearCloudRecent());
+    setThumbnails({});
+  }, []);
+
+  const staying = useCallback(
+    (provider: ProviderId) => !service.host.desktop && (service.host.broker as BrowserBroker).isStaying(provider),
+    [service],
+  );
+
+  const api = useMemo<CloudApi>(
+    () => ({
+      providers: offered,
+      desktop: service.host.desktop,
+      accounts,
+      recent,
+      thumbnails,
+      binding,
+      sheet,
+      activity,
+      error,
+      startOpen,
+      startSaveAs,
+      openRecent,
+      clearRecent,
+      signIn,
+      pickWithGoogle,
+      signOut,
+      openEntry,
+      saveInto,
+      resolveConflict: resolve,
+      resolveNameTaken: resolve,
+      signInAgain,
+      cancel,
+      drive,
+      staying,
+    }),
+    [
+      offered,
+      service,
+      accounts,
+      recent,
+      thumbnails,
+      binding,
+      sheet,
+      activity,
+      error,
+      startOpen,
+      startSaveAs,
+      openRecent,
+      clearRecent,
+      signIn,
+      pickWithGoogle,
+      signOut,
+      openEntry,
+      saveInto,
+      resolve,
+      signInAgain,
+      cancel,
+      drive,
+      staying,
+    ],
+  );
+
+  return <CloudContext.Provider value={api}>{children}</CloudContext.Provider>;
+}

@@ -1,6 +1,11 @@
 # STATUS — Warraq
 
-*Updated 2026-09-19: the interface is rebuilt on EmbedPDF (ADR-0007); all eighteen tools work end to end, each proven by a test that clicks through it, saves the file and reopens it — Create PDF (Word, Excel, PowerPoint, web pages, Markdown, text and pictures to PDF) and Export to Excel and PowerPoint, and Standards (PDF/A, PDF/X-4, preflight) with Accessibility (checker, reading order, tags, picture text) the latest. Digital signature: signing and checking proven through the interface; its timestamps and validation data work on the desktop only, proven by Rust tests and run once against DigiCert and Sectigo, not through the interface; its verifier was hardened against the published PDF-signature attacks after an adversarial review (below). Also since then: search and copy in the page view answer with Warraq's reader, the web app installs and works offline, Windows and Linux print by pages, EmbedPDF's interface is Arabic throughout, and Nastaliq Urdu reads exactly.*
+*Updated 2026-09-20: an adversarial review of the Apple-style redesign found ten distinct problems —
+the home screen keeping a picture of a page as it was before a redaction, the macOS menu bar's Undo and
+About, stale checks and pressed states, the keyboard in the tool picker and in Settings, the markup
+toolbar and the sheet's grabber on a phone, and text pointing at chrome that no longer exists — and every
+one is fixed with a test ("Fixed after the redesign review", below).
+Before that, on 2026-09-19: the interface is rebuilt on EmbedPDF (ADR-0007); all nineteen tools work end to end, each proven by a test that clicks through it, saves the file and reopens it — Create PDF (Word, Excel, PowerPoint, web pages, Markdown, text and pictures to PDF) and Export to Excel and PowerPoint the latest. Digital signature: signing and checking proven through the interface; its timestamps and validation data work on the desktop only, proven by Rust tests and run once against DigiCert and Sectigo, not through the interface; its verifier was hardened against the published PDF-signature attacks after an adversarial review (below). Also since then: search and copy in the page view answer with Warraq's reader, the web app installs and works offline, Windows and Linux print by pages, EmbedPDF's interface is Arabic throughout, and Nastaliq Urdu reads exactly; then Batch (a sequence of the tools' steps over many files), OCR cleanup and the AI's data actions, and Standards (PDF/A, PDF/X-4, preflight) with Accessibility (checker, reading order, tags, picture text).*
 
 ## Where the product stands
 
@@ -18,8 +23,10 @@
 | Digital signatures | PAdES signatures made and checked by Warraq's own core (pure Rust, `warraq-sign`) in every host: sign with a certificate file (.p12/.pfx, modern or legacy) — visibly, where the person drags on the page, Arabic shaped — or on the desktop with a smart card; certify or approve, lock the form; every signature in a file checked when it opens (integrity, signer, chain, trust, time, revocation data, and what changed after it). A signer is shown as valid only when a certificate the person trusts vouches for them: Mozilla's roots are trusted by browsers for web sites and do not make a document signer valid (see "Trust" below). Trusted timestamps and long-term validation data are fetched by the desktop app only, on a click; the browser cannot read those servers' answers |
 | Combine files | several PDFs into one new file, in the order listed, form fields and all; protected files with their password — Warraq's core (ADR-0008) |
 | Create PDF | Word, Excel, PowerPoint, web pages, Markdown, text, CSV and pictures (PNG, JPEG, GIF, BMP, WebP, every page of a TIFF; HEIC or AVIF where the browser draws them) made into a new PDF on the device — no LibreOffice, no server. The files are read in the interface and laid out by Warraq's own engine in the core (`warraq-pdf/src/create.rs`): shaped Arabic in embedded subsets that read back as typed, right to left where the text is, pages of the source's size. From the home screen, the Create PDF tool, or by dropping such files on the window; several become one PDF in the order listed; pictures optionally read with Scan & OCR afterwards |
-| Scan & OCR | Tesseract (Apache-2.0) reads scanned pages on the device — Arabic, English, Persian, Urdu (Naskh) — and Warraq's core writes what it read as an invisible, shaped text layer, so the page can be searched, selected and copied while it looks as it did. Measured on the corpus: 130 of 138 Arabic words of a 300 dpi scan (the misses carry diacritics), 20 of 30 of a 200 dpi black-and-white invoice (Tesseract skips its table rows) |
+| Scan & OCR | Tesseract (Apache-2.0) reads scanned pages on the device — Arabic, English, Persian, Urdu (Naskh) — and Warraq's core writes what it read as an invisible, shaped text layer, so the page can be searched, selected and copied while it looks as it did. Measured on the corpus: 130 of 138 Arabic words of a 300 dpi scan (the misses carry diacritics), 20 of 30 of a 200 dpi black-and-white invoice (Tesseract skips its table rows). A scan can be cleaned up first — shadows and stains evened out, contrast, black and white by Sauvola's local threshold, specks, dark borders — and the cleaned picture put in place of the scan: a shadowed and stained page went from 59 % of its words to 94 % (measured below). Runs in the desktop webview too (checked from the host's log) |
+| Batch | a sequence of the tools' own steps — OCR (with cleanup), compress, rotate, delete or keep pages, page marks, remove hidden information, flatten, protect, export — over many files, from the file picker, a folder (subfolders too) or a drop, one at a time; progress per file, Stop, a summary; a file that fails says why and the rest go on. Results never replace their originals: beside them with a suffix or into a chosen folder on the desktop (never over a file that is there), one zip in a browser. Sequences saved as named actions on this device, never with their passwords |
 | Compress | a smaller copy, written from scratch: unused objects dropped, duplicate streams shared, everything recompressed, and — only if chosen — images larger than a page needs downsampled to 150 or 96 dpi. Refuses protected and signed files rather than silently stripping their protection or breaking the signature |
+| Cloud drives | OneDrive (desktop and web) and Google Drive (desktop) opened from and saved to, with no ورّاق server and no client secret: the person signs in on the provider's own page, Save writes a new revision checked against the version the file was opened at, and a file someone else saved meanwhile is never overwritten silently. Nothing of it appears unless the build carries a client ID (docs/cloud.md); with none, no control, no address in the security policy, no request |
 | Protected files | open everywhere after a password prompt; one prompt unlocks the file for both engines |
 | Arabic text **reading** in logical order | 26 of the 32 truth-scored corpus files (2026-09-19, the Nastaliq page and the Amiri tashkeel page among them), against 2 for PDF.js, 2 for MuPDF, 0 for PDFium, scored the same way (`tests/acid/score.py`) |
 | Arabic text **editing** with reflow | works end to end: click a paragraph in the app, edit it, undo/redo, save. GATE 2 passed (`docs/gate-2.md`) |
@@ -47,18 +54,19 @@ alike when only one of them did anything.
 
 | | |
 | --- | --- |
-| Tools in the pane | 18 |
-| Tools that work | **18** — Edit, Page marks, Organize pages, Combine, Create PDF, Compress, Scan & OCR, Export, Compare, AI, Digital signature, Standards, Accessibility, Comment, Fill & sign, Prepare form, Redact, Protect |
+| Tools in the pane | 19 |
+| Tools that work | **19** — Edit, Page marks, Organize pages, Combine, Create PDF, Compress, Scan & OCR, Export, Compare, AI, Digital signature, Batch, Standards, Accessibility, Comment, Fill & sign, Prepare form, Redact, Protect |
 | Tools marked *Later* on their face | 0 |
 | Edit (Warraq's engine) | three kinds, switched at the top of the panel. **Text**: replace the text of a paragraph, reflowed and reshaped; add a line of new text where you click; choose the face (Amiri, Cairo, Inter) and size; undo and redo, in order, every change made in Edit — a replacement, an added line, a picture or a link. **Pictures**: every picture on the page as a box to pick — inline ones and ones inside forms too; drag to move, handles to resize (Shift keeps proportions), turn 90°, crop with the handles, replace with another PNG or JPEG (fitted inside what showed), delete, arrow keys to nudge the picked picture; add a picture from a file or a drop by dragging out where it goes. **Links**: drag to draw one, or add one in the middle of the page from the panel; point it at a web or e-mail address or a page of the file; move and resize it by dragging or with the arrow keys (Alt resizes); remove it; follow it from the panel — an address only after the same question as everywhere |
 | Page marks (Warraq's engine) | four kinds: watermark (text or picture; size, colour, opacity, rotation, centre, a corner, an edge or tiled; in front of or behind the page), header and footer (three slots — start, centre, end, the start on the right in Arabic, detected from the text or chosen — with page number, page count, date and file name tokens; the date Gregorian or Hijri, in Western or Arabic-Indic digits), page numbers (`1`, `1 / 9`, `Page 1 of 9`, `صفحة 1 من 9`, roman — shown in the digits chosen, Western or Arabic-Indic; start number; no number on the first page) and Bates numbers (prefix, start, padded digits, suffix); any range of pages; the page on screen previewed with the mark as the core will draw it; the marks already in the file listed, each changed in place or taken off, or all at once. A new mark replaces one of the same kind on the same pages |
 | Organize pages (Warraq's engine) | a grid of every page: select (click, Shift, Cmd/Ctrl), drag to reorder or move earlier/later, rotate either way, delete (never the last page), insert a blank page, insert every page of another PDF after the selection (its password asked for if it has one), extract the selection as a new file, split into files — every so many pages or at each selected page, saved as one zip; crop by margins in millimetres as the page is shown, or trim the white margins away; undo and redo; keyboard throughout, mirrored in Arabic |
 | Compare (Warraq's engine) | what changed in the text between two versions — the file's own earlier revisions, or another PDF — word by word, with Arabic matching that follows the search (letter variants and diacritics optional); go to a change's page; and how each page looks, drawn and compared, with what looks different outlined — a drawing, a stamp or a picture the text cannot show; save the comparison, pictures included, as a report |
-| AI (bring your own key, or local) | summarize, ask about, or translate the document with Claude on the person's own Anthropic key, or a model on this computer (Ollama or LM Studio). Nothing is sent before Send, and the screen first shows exactly what will go and where; the answer is shown as it streams in ("thinking" while the model thinks first), Stop keeps what arrived, and answers cite their pages. Refuses while redactions are marked but not applied |
+| AI (bring your own key, or local) | summarize, ask about, or translate the document with Claude on the person's own Anthropic key, or a model on this computer (Ollama or LM Studio). Nothing is sent before Send, and the screen first shows exactly what will go and where; the answer is shown as it streams in ("thinking" while the model thinks first), Stop keeps what arrived, and answers cite their pages. Refuses while redactions are marked but not applied. Four actions answer with data, shown for review before anything changes (the answer's shape asked of each provider: Claude's structured outputs, Ollama's `format`, an OpenAI-compatible `response_format`): **Correct the OCR text** — the words Scan & OCR kept with each page are sent; each changed word is listed ("محزر ← محرّر"), and the ticked ones are written into the text layer over the boxes they were read from. **Fill in the form from my details** — only the form's text fields (name, the words printed beside each, what it holds) and the pasted details go; the proposed values are listed to edit or leave out, then typed into the fields; the details stay in memory unless "Remember on this device" is ticked. **Find personal information** — the model's findings (names, addresses, numbers) and, with nothing sent, Warraq's own patterns (e-mails, phones, ID and Iqama numbers, IBANs, cards, dates) are looked up on their pages; the ticked ones become the Redact tool's marks, applied only there. **Extract the tables** — found on this device by the Excel export's own detection (ruling lines or columns, nothing sent), or read by the model for tables without either; shown as tables, then saved as CSV (UTF-8 with a BOM) or an Excel workbook written by the Excel export (a sheet each, right to left when Arabic, numbers as numbers written the way they were, the core's merged cells kept) |
 | Combine (Warraq's engine) | add files (the open one comes first), reorder or remove them, unlock protected ones; the result opens in place, to save where you choose. The files chosen are not changed |
 | Export (Warraq's engine) | Word (.docx, text only: paragraphs, direction and alignment, not layout), **Excel** (.xlsx: the tables the core finds on each page — drawn with rules, whose missing borders are merged cells, or lined up in columns without them — cell for cell, numbers as numbers in the format they were written in, Arabic-Indic digits and `٫` `٬` included, percentages and losses in parentheses too; the rest of the page's text in rows; a sheet for each page or for each table; a right-to-left page is a right-to-left sheet with its first column as A), **PowerPoint** (.pptx: a slide for each page at its size, the page drawn *without its text* behind the text as editable text boxes where it was, in its lines, size and colour, right to left where it is Arabic; or the text alone; a scan keeps its picture and its recognised text stays invisible), plain text, Markdown, a self-contained web page, and page images (PNG, zipped). Built from Warraq's own reading of the file as it stands now — a redaction applied in the viewer never reaches an export; unapplied marks are warned about |
 | Create PDF (Warraq's engine) | choose files (or drop them on the window, or use Create PDF… on the home screen, which makes the PDF at once): list, reorder, remove; page size as each file says, A4 or Letter; portrait, landscape or as each page suits; a margin around pictures; *then read the text in the pictures* runs Scan & OCR on the new file before it opens. The panel names files it could not read, and says how many letters had no glyph and how many pictures were left out. **Word**: paragraphs with direction, alignment, spacing, indent and shading; bold, italic, underline, strike-through, colour and links inside them; headings; numbered and bulleted lists counted as Word counts; tables with widths, merged and shaded cells and repeated header rows; pictures at their size; sections of another page size; the header and footer with page numbers. **Excel**: every visible sheet as a paginated table (landscape when wide) showing what the cells show — number formats, dates, percentages, the value saved with a formula — merged cells across a row, right to left as the sheet is. **PowerPoint**: each slide a page of the slide's size and background, its text boxes where they are (placeholders placed by their layout, text sized by the master), bullets and numbering, theme colours, filled and outlined boxes, pictures, tables. **Web page**: a safe subset — headings, paragraphs, lists, tables with spans, quotations, preformatted text, pictures carried in the page; nothing runs and nothing is fetched. **Markdown** (CommonMark with GitHub tables), **text** (UTF-8, UTF-16 or Windows-1256), **CSV** |
-| Scan & OCR (Tesseract + Warraq's engine) | choose the languages on the page and whether to read only pages without text; progress page by page, and a stop button; the result reports words read and Tesseract's confidence. Nothing is sent anywhere; the models are bundled |
+| Scan & OCR (Tesseract + Warraq's engine) | choose the languages on the page and whether to read only pages without text; clean the scan up first — remove shadows and stains, strengthen the contrast, black and white, remove specks, remove dark borders — previewed on the page on screen, and optionally put the cleaned, straightened picture in place of the scan (one bit a pixel when black and white); progress page by page, and a stop button; the result reports words read, Tesseract's confidence and the pictures replaced. Nothing is sent anywhere; the models are bundled |
+| Batch (Warraq's engine + PDFium) | files: add files or a folder (with its subfolders or not), or drop PDFs on the window; a password tried on protected ones. Steps, each with the options of its tool, in any order (Export last): Scan & OCR (languages, pages, cleanup, replace the picture), Compress (three levels), Rotate pages (all, odd, even or a list; either way or half), Delete pages, Keep only some pages, Page marks (text watermark, header, footer, page numbers, Bates), Remove hidden information (the kinds to remove), Flatten forms and comments, Protect (open password, permissions password, what is allowed), Export (Word, text, Markdown, web page, page images). Run: each file's state as it goes (which step, OCR's page), Stop after the step under way, a summary; a failure says why (not a PDF, needs a password, a step refuses it) and the rest go on. Results: desktop — beside each original with a suffix, or into a chosen folder, never over a file ("name (2).pdf"); browser — one zip, a folder's subfolders kept. Saved actions: named, kept on this device, used again or deleted; passwords never saved |
 | Compress (Warraq's engine) | three levels — without losing anything, smaller images (150 dpi), smallest (96 dpi) — then save the smaller copy beside the open file or open it in its place; says when a file is already as small as it gets |
 | Digital signature (Warraq's engine) | **Sign**: open a certificate file with its password (the signer, issuer, key and expiry are shown first) or, on the desktop, read a smart card through its PKCS#11 module after the PIN; sign visibly — drag where on the page, optionally with a picture of a handwritten signature, the name, date, reason and place drawn in Amiri, Arabic shaped — or invisibly, or into an empty signature field the form already has; approval or certification (no changes / forms and signing / also comments), optionally locking the form's fields; RSA PKCS#1 v1.5 or RSA-PSS, ECDSA P-256 and P-384; on the desktop, a trusted timestamp from DigiCert, Sectigo, GlobalSign, SSL.com, FreeTSA or an address typed in (the panel says the server sees only a digest). The file is signed as it stands, every earlier change kept as an update of its own bytes — with the file's own layer visibility, not the view's — and saved through the normal Save. **Check**: a banner the moment a signed file opens (who signed — the certificate's name, never the file's own claim — and valid / intact but the signer's identity not verified / changed after signing / invalid / not checked), and a list with each signature's details: why it is not simply valid, in one sentence under its status (for example "The signer's identity is not verified by a document-signing authority you trust: the certificate chains to ISRG Root X1, which browsers trust for web sites, not for signers"); the name the signature gives itself, marked as its own unverified claim when it differs; the byte range, the digest, the signature, the chain and where trust ends, validity, the timestamp (and whether its authority is trusted), revocation data in the file, and each kind of change made after it, permitted or not by its certification — each check worded as passed or failed, not only marked. Names are isolated for their direction in both languages. Trust a signer's root (or, for a certificate issued for another purpose, that certificate itself) with one click, or a certificate from a file; kept on this device only. **Keep**: on the desktop, add validation data (OCSP answers, revocation lists, certificates) to `/DSS`, and a document timestamp; a failure is said in words, the error codes behind "Technical details". When a tool that would break a signature is chosen — Edit, Organize pages, Scan & OCR, Page marks, Comment, Fill & sign (a picture or stamp on a forms-only certification), Prepare form, Redact, Protect — the banner says so before anything is changed; the attachments and layers panes say it beside their controls |
 | Comment (EmbedPDF) | highlight, underline, strike out, sticky note, text box, freehand drawing, rectangle, arrow, link |
@@ -67,6 +75,7 @@ alike when only one of them did anything.
 | Redact (EmbedPDF + Warraq's engine) | mark text or an area, then apply: the text and images underneath are removed from the file, not covered. Find and redact: words found the Arabic-aware way, or emails, phone numbers (Saudi and international, Latin or Arabic-Indic digits), national ID and Iqama numbers, IBANs, card numbers, dates, or a pattern of one's own — each listed with its page and context, the chosen ones marked over their exact glyphs. Remove hidden information: metadata, scripts and actions, attachments, comments, form data, hidden layers, bookmarks, thumbnails, applications' private data, links, hidden text — reported, chosen, and removed by writing the file anew, its earlier revisions and unused objects gone with them |
 | Navigation pane (Warraq's engine) | in both views, from the View menu: bookmarks with their levels (a click goes to the page), attachments (saved, never opened; added with a description; removed), layers in their order with locked ones and print/export states shown, switched in the view only until *Save layer visibility with the file*; in Edit text also the page thumbnails |
 | Protect (EmbedPDF) | require a password to open, restrict permissions |
+| Cloud drives (OneDrive, Google Drive) | **shown only in a build that carries a client ID; this repository ships none, so by default there is no cloud control at all.** With one: Open… and Sign out for each drive on the home screen, the drive files opened lately as pages, and in the File menu *Open from…*, *Save to…* and *Save a Copy on This Device*. OneDrive is browsed by folder and searched; with Google Drive the person picks the file in Google's own picker, shown in its consent screen. Save writes a new revision checked against the version the file was opened at; a file changed in the drive since is offered as a copy, or replaced on purpose, never overwritten silently |
 
 Each working tool has a test in `apps/web/e2e` that uses it the way a person
 does — clicks the card, the control, the page — then saves the file, reopens
@@ -118,6 +127,75 @@ Found along the way, and fixed with a test each:
    separators `٫` `٬` are now part of the number (UAX #9 class AN) and a
    terminator joins only European digits (class ET, rule W5).
 
+## Scan & OCR cleanup, measured (2026-09-19)
+
+A new corpus scan, `scan-notonaskh-300dpi-shadowed-stained-jpeg` (two pages
+of the justified Naskh text, 300 dpi JPEG, with a book-fold shadow along one
+edge, a shadowed corner and tea stains with the darker ring such a stain dries
+into; `gen_scans.py --only=…`, truth beside it), was read with and without
+each cleanup step. Two measurements, the same metric as `e2e/ocr.spec.ts`
+(the share of the truth's Arabic words of three letters or more that were
+read), each page scored on its own:
+
+**In the browser, through the interface** (`e2e/ocr.spec.ts`, page 1, the
+text layer read back in Edit text): **59 %** read as it is, **94 %** with every
+cleanup step and the cleaned picture put in place of the scan.
+
+**Every scan, every setting** (`src/ocr/measure.test.ts`, opt-in:
+`WARRAQ_OCR_MEASURE=1`; Tesseract in Node on the pages the WASM core draws,
+cleaned and straightened as the app does it; both pages of each scan):
+
+| Scan | As it is | Shadows and stains | + contrast | Black and white only | Every step |
+| --- | --- | --- | --- | --- | --- |
+| Shadowed and stained (new) | 173/276 (63 %) | 255/276 (92 %) | 260/276 (94 %) | 253/276 (92 %) | 259/276 (94 %) |
+| 300 dpi, skewed 1.3° (clean) | 260/276 (94 %) | 259/276 (94 %) | 258/276 (93 %) | 254/276 (92 %) | 256/276 (93 %) |
+| 300 dpi, 8° crooked (clean) | 129/137 (94 %) | 128/137 (93 %) | — | — | 129/137 (94 %) |
+| 200 dpi black and white | 21/30 (70 %) | 21/30 | 21/30 | 21/30 | 21/30 |
+
+So cleanup lifts a damaged scan to what a clean one reads, and on a clean
+scan it changes nothing beyond Tesseract's own noise (a word or two either
+way) — which is why it is a choice in the panel, off until chosen. What is
+left on the damaged page is where a stain's ring crosses a word: the ring is
+as dark and as thin as a stroke, and no threshold tells them apart. The
+first version of the stained scan drew its rings as dark as ink (0.28 of the
+paper's light); at that, every step still read only 86–88 %.
+
+**In the desktop app** (2026-09-19, macOS, a debug build of this tree, the
+host's own log — `WARRAQ_DEBUG=1 WARRAQ_SELFCHECK=ocr|ocr-clean warraq-desktop
+scan.pdf` runs the recognition by itself once the file is open): Tesseract's
+SIMD core started in the webview in 266 ms under the host's security policy,
+read the 8° crooked scan (181 words, confidence 88 %), and with every cleanup
+step read the shadowed scan (363 words on 2 pages, both pictures replaced);
+Warraq's reader then read the layer back as Arabic. Nothing needed changing
+for the worker, its WebAssembly or its models. What this does not prove is
+how the panel looks there: no screen could be seen (below).
+
+## Batch and the AI's data actions: how they are proven (2026-09-19)
+
+* **Batch, in the browser** (`e2e/batch.spec.ts`): four files, one protected
+  and one not a PDF, through rotate (odd pages), page numbers (Arabic-Indic)
+  and compress — two done, the protected one refused by Compress with its
+  reason, the other named as not a PDF, and the rest went on; the zip holds
+  the two results, reopened by the core: page 1 turned, page 2 not, every word
+  still there, the numbers Warraq's marks. A saved action (flatten, protect)
+  comes back without its password and cannot run until one is given; the
+  form it ran on opens only with that password and has no form left. A folder
+  of scans, read with OCR and exported as text, keeps its subfolder in the zip.
+* **Batch, on the desktop** (the host's log, `WARRAQ_SELFCHECK=batch:<folder>`):
+  a folder of three "PDFs" listed, read and written through the host's
+  commands — one not a PDF, named so; the two others rotated and numbered as
+  incremental updates (the originals' bytes first), written beside them, and
+  one written as `speech-selfcheck (2).pdf` because `speech-selfcheck.pdf` was
+  already there. The writing rules themselves are Rust tests (`batch.rs`).
+* **AI** (`e2e/ai-extras.spec.ts`, both providers faked): an OCR correction
+  written into the layer and read back from the saved file; form values
+  reviewed, one edited, typed into the fields and saved, and the request
+  holding the fields and the details but not the page's other text; a name
+  found by the model and ID numbers by the patterns marked for redaction,
+  and nothing more sent while those marks wait; a table saved as a workbook
+  (right to left, `1,200.00` as the number 1200) and as CSV, from a local
+  model asked for the shape through Ollama's `format`.
+
 ## How it looks (design refresh, 2026-09-18)
 
 The shell now follows the system's document apps (Preview, Pages) instead of an office suite. The design
@@ -127,12 +205,12 @@ reduced transparency and reduced motion honoured.
 
 | | |
 | --- | --- |
-| Toolbar | One unified toolbar in place of the ribbon and the status bar. It carries the document's title, with "Page n of m — Edited" under it; pages; zoom (which now drives EmbedPDF's zoom too); the markup toolbar; Edit text; a tool picker that opens a gallery of the 13 tools; find; save; and the inspector |
+| Toolbar | One unified toolbar in place of the ribbon and the status bar. It carries the document's title, with "Page n of m — Edited" under it; pages; zoom (which now drives EmbedPDF's zoom too); the markup toolbar; Edit text; a tool picker that opens a gallery of all sixteen tools; find; save; and the inspector. Its toggles follow what is really open in the view |
 | Inspector | The tools pane, restyled: grouped inset sections, action lists, and macOS checkboxes, radios, pop-up buttons, segmented controls, steppers and switches. Every panel, including ones added later, gets the look from shared classes |
-| Home | A document chooser. Recent files are shown as pages with a small picture of each first page, stored on the device and never for a password-protected file. The inert "Open from OneDrive / Google Drive" buttons are gone: they did nothing, and the connectors are not built (feature matrix: Cloud ⬜) |
+| Home | A document chooser. Recent files are shown as pages with a small picture of each first page, kept in this browser's storage and nowhere else: never for a file that needed a password, dropped the moment anything is marked for redaction, and dropped when the file is saved, since the saved file may no longer look like it (a new one is taken the next time it opens). Where the inert "Open from OneDrive / Google Drive" buttons used to be there is now a **Cloud drives** section — but only in a build that carries a client ID: each drive with its account, Open… and Sign out, and the drive files opened lately as pages that reopen from the drive (docs/cloud.md) |
 | Dialogs and overlays | Dialogs are sheets. Popovers come out of their trigger. Toasts are a HUD. The find bar sits under the toolbar. The drop overlay is a material with one or two targets. Settings (⌘,) holds language and appearance |
 | EmbedPDF | Themed with Warraq's tokens by reference. Its duplicated sidebar, zoom and search buttons and its floating page field (except on a phone) are gone. The rest of its bar is the markup toolbar, shown from Warraq's toolbar |
-| macOS app | The title bar is merged into the toolbar, with the traffic lights in it. The toolbar drags the window and a double click zooms it. The system menu bar is built from the page's own menu model, in the interface language, and enables and checks items as the page does. A shortcut the page handles never runs its menu item too |
+| macOS app | The title bar is merged into the toolbar, with the traffic lights in it. The toolbar drags the window and a double click zooms it. The system menu bar is built from the page's own menu model, in the interface language; its checks follow EmbedPDF's own state, it is sent again after every item chosen there, its Undo and Redo reach the typing in whatever field has the focus, and About opens the page's own sheet. A shortcut the page handles never runs its menu item too |
 | Narrow windows | On a tablet the toolbar condenses. On a phone the inspector is a sheet, the sidebar floats over the page, and nothing scrolls sideways. On a touch screen (`pointer: coarse`) the controls, rows, toolbar and menu bar grow to 44-point targets; the look is the same |
 | App icon | New original artwork (`scripts/icon/make_icon.py`): a calligraphic و on a sheet of paper. Desktop and extension icons are regenerated from it |
 
@@ -154,9 +232,32 @@ the earlier name.
 3. Nastaliq Urdu in files without a ToUnicode map; Acrobat verification on a machine that has it.
 
 ## Decisions needed from you
-1. **GitHub organization** — nothing has been pushed: `gh repo create <org>/warraq --private --source . --push`.
-2. **Xcode license** — `/usr/bin/cc` and the system `python3` refuse to run until `sudo xcodebuild -license accept` (needs your password). Builds work because they are pointed at Xcode's clang directly.
-3. **Phone apps (Tauri 2 mobile)** — tried on 2026-09-19 and stopped, as it should, at tools this Mac does not have. What they need, all installs outside this project:
+1. **Register the cloud apps** (and one thing to check). The drives are built
+   and proven, but no build offers them until you register an app with each
+   provider and build with its client ID; `docs/cloud.md` is the step-by-step,
+   with the redirect URIs, the scopes and the consent screens. Two parts are
+   yours to decide:
+   * **OneDrive** — one Microsoft app registration serves the web build (a
+     single-page-app redirect URI) and the desktop app (a loopback one). No
+     secret, and none may be added. Nothing else is needed.
+   * **Google Drive** — a "Desktop app" client, scope `drive.file` only (a
+     non-sensitive scope: basic verification, no security assessment). Its
+     documentation calls the client secret optional for installed apps
+     redeeming a code with PKCE, which is what the app does — but developers
+     have reported through August 2026 that Google answers "client_secret is
+     missing." all the same. **Sign in once in the built app after
+     registering.** If Google refuses, either leave the Google client ID unset
+     (no Google control appears) or decide to ship the value Google calls a
+     secret and itself says "is not treated as a secret" for installed apps —
+     which would change the rule *no client secrets in binaries*, so it is
+     yours, not the app's. Google Drive is not offered in a browser at all:
+     Google redeems no web client's code without a secret, and its
+     browser-only alternative (the implicit grant, with Google's scripts in
+     the page) is neither what was asked for nor what the security policy
+     allows.
+2. **GitHub organization** — nothing has been pushed: `gh repo create <org>/warraq --private --source . --push`.
+3. **Xcode license** — `/usr/bin/cc` and the system `python3` refuse to run until `sudo xcodebuild -license accept` (needs your password). Builds work because they are pointed at Xcode's clang directly.
+4. **Phone apps (Tauri 2 mobile)** — tried on 2026-09-19 and stopped, as it should, at tools this Mac does not have. What they need, all installs outside this project:
    * **iOS**: `tauri ios init` added the iOS Rust targets (`aarch64-apple-ios`, `aarch64-apple-ios-sim`, `x86_64-apple-ios`, user-level, through rustup) and then tried to install **xcodegen** with Homebrew, which is not installed. Steps: accept the Xcode licence (item 2); install Homebrew, then `brew install xcodegen cocoapods`; an Apple development team for signing (`APPLE_DEVELOPMENT_TEAM`, or `bundle > iOS > developmentTeam` in `tauri.conf.json`; a free Apple ID works for a simulator and your own phone); then `pnpm --filter @warraq/desktop tauri ios init`.
    * **Android**: `tauri android init` found no Android SDK. Steps: Android Studio (or the command-line tools) with the SDK, the NDK and a JDK 17; set `ANDROID_HOME`, `NDK_HOME` and `JAVA_HOME`; `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`; then `pnpm --filter @warraq/desktop tauri android init`.
    * Prepared here: `run()` is the mobile entry point (`#[cfg_attr(mobile, tauri::mobile_entry_point)]`) and the bundle names iOS 15 and Android API 26 as the lowest. Still to do in the host for a phone: the menu bar, `print_webview`, the drop events and the external opener are desktop APIs and need `#[cfg(desktop)]`; PDFium is bundled as a macOS dylib, and a phone needs its own PDFium build or the pure-Rust hayro renderer the browsers use; PKCS#11 smart cards do not apply.
@@ -396,6 +497,93 @@ test that fails without its fix.
    instead; the arrows nudged a picture once; the picture and link panels
    stayed on screen after Edit mode was turned off.
 
+## Fixed on 2026-09-19, with Batch and OCR cleanup
+
+1. **Scan & OCR wrote its layer onto PDFium's copy of the file.** The layer
+   is an incremental update, but it was appended to the file as EmbedPDF
+   rewrote it whole, so the file's own bytes — and a signature over them —
+   were gone after OCR. It is now appended to the file's own bytes, as Page
+   marks' changes are (`e2e/ocr.spec.ts` checks the prefix).
+
+## Fixed after the redesign review, 2026-09-20
+
+Three reviewers went over the Apple-style redesign and a fourth confirmed each
+finding. Eighteen were raised, ten of them distinct; every one is fixed, each
+with a test that fails without its fix.
+
+1. **The home screen kept a picture of page 1 as it was before a redaction.**
+   The recent grid's picture was taken when a file opened and never replaced,
+   so after marking and applying a redaction, deleting a page or setting a
+   password and saving over the file, the home screen still showed the page as
+   it was. It is now forgotten the moment anything is marked for redaction (and
+   none is taken while that file stays open), whenever the file is saved, and
+   when a file that needs a password opens under a name that had one
+   (`e2e/recent.spec.ts`).
+2. **Opening any file drew its first page with no limit on its size.** The
+   picture was drawn on every open, at a scale set by the page, and nothing
+   bounded it: a page of 170 000 points was drawn at 72 million pixels (that
+   much was run), and the million-point page the review describes would ask
+   for gigabytes — on wasm32 an allocation that aborts the core, which was not
+   run here. The picture is now sized to fit both ways and skipped past that,
+   and no render anywhere may pass 64 million pixels: the core refuses before
+   allocating, for both sizes (`robustness.rs`). Warraq's own view draws a
+   large page at a high zoom a little softer instead of hitting that limit.
+3. **In the macOS menu bar, Undo could not reach the typing in a text field.**
+   The page's own Undo item replaced the system's role but was enabled only by
+   the document's history, so typing in a field (the first paragraph edit, the
+   page field, the password sheet) could not be undone from the menu; and it
+   aimed by `document.activeElement`, which inside EmbedPDF's shadow root is
+   its host, so in EmbedPDF's search field the menu took back the last drawing
+   instead. Both now follow the focused field and what its typing can undo. The
+   paragraph editor undoes its own typing on ⌘Z, and shortcuts match the key's
+   place when the layout is not Latin (an Arabic keyboard types ئ on Z).
+4. **About could not be opened on the Mac.** The app menu's About was the
+   system's panel, which never reaches the page: the core's version, the engine
+   drawing the pages and the privacy note were nowhere. It is the page's own
+   sheet now, and a desktop core that could not load PDFium says so in a badge
+   beside the document's title.
+5. **Checks and pressed states that come from EmbedPDF went stale.** The
+   sidebar and Find buttons and the View menu's Fit width, Fit page and
+   navigation-pane checks were read while drawing, and nothing drew again when
+   EmbedPDF changed. They follow its command state now; the macOS menu is sent
+   again after every item chosen there, because the system flips a check item's
+   own mark; and in Edit text the sidebar button no longer shows the state
+   before the click. Find there can be pressed off again.
+6. **The arrow keys in the tool picker moved the focus out of it.** Left,
+   Right, Home and End went through the popover's portal to the toolbar behind
+   it, and opening the picker from the keyboard left the focus on its trigger
+   (the popover took focus while still hidden). Fixed both ways; Home and End
+   go to the first and last tile.
+7. **Settings' segmented controls announced a radio group they did not have.**
+   Every option was a Tab stop and the arrows did nothing. They are one Tab
+   stop now, and the arrows move and choose, following the reading direction —
+   the same for Edit's kinds and Prepare form's scope.
+8. **A phone could not show the markup toolbar at all**, and View › Tools pane
+   flipped a check and showed nothing while no tool was chosen. The View menu
+   has a Markup toolbar item (the macOS menu bar gets it too), and Tools pane,
+   the toolbar's inspector button and Shift+F4 are offered only when a sheet
+   can rise.
+9. **The phone's sheet drew a grabber that could not be dragged.** It drags
+   now, with the system's sheet physics, and closes when the drag — carried on
+   by its speed — passes half the sheet.
+10. **The Shortcuts sheet sent people to the status bar**, which the redesign
+    removed, in both languages. It names the toolbar's page field and Edit ›
+    Go to page now, and is shown only in a browser, since only a browser keeps
+    that key for itself. A test fails on any string that mentions the status
+    bar or the ribbon again, and their leftover strings, rules and tokens are
+    gone.
+
+Also found while looking: the app's Arabic name was letter-spaced inside the
+English interface, which breaks the joins (it is marked as Arabic now); the
+tool picker had no height limit, so a short window would have cut it off; a
+first keystroke was swallowed by the new focus tracking until it was moved
+off the input event's own dispatch; and Edit PDF's picture and link layers
+ignored a press until the page's pictures or links had been listed without
+saying so anywhere — they carry `aria-busy` while they wait now, which is
+also what the end-to-end tests that draw by dragging wait for (they had been
+pressing into a layer that was not ready, and failed whenever the machine
+was loaded).
+
 ## Known gaps, stated plainly
 * **PDF/A and PDF/X are checked by Warraq's own validators only.** veraPDF, the reference PDF/A validator, is GPL/MPL and Java: it is not bundled, and it was not run on this machine. Each copy passes Warraq's validator, which checks exactly these rules (clauses of ISO 19005-2, the same numbers in -3; the -1 clauses in `warraq-pdf/src/standards/pdfa.rs`): file header, file identifier and nothing after `%%EOF` (6.1.2–6.1.3); no encryption (6.1.3); cross-reference tables for PDF/A-1 (-1 6.1.4); no streams in outside files (6.1.7.1); no LZW, Crypt, or JPEG 2000 in PDF/A-1 (6.1.7.2); implementation limits (6.1.13); one output intent profile, monitor or printer class, N matching (6.2.3); device colour only as the output intent allows, else a default colour space (6.2.4.3); embedded ICC profiles readable, N matching, version ≤ 2 for -1 (6.2.4.2); overprint mode 1 with ICC-based CMYK (6.2.4.2); transparency (none in -1) and only standard blend modes (6.2.10); transfer functions, halftones other than types 1 and 5, unknown rendering intents (6.2.5); alternate images, OPI, interpolation, bit depths (6.2.8); reference XObjects and PostScript (6.2.9); operators ISO 32000-1 does not define, and content that cannot be read (6.2.2); fonts embedded, their programs holding every glyph shown, widths matching (within 1/1000 em), TrueType encodings and cmaps, CIDToGIDMap, CIDSet (6.2.11); every character with Unicode for -2u (6.2.11.7.2); annotation types, print flags, appearances (6.3); forbidden and named actions, automatic actions, JavaScript (6.5); NeedAppearances and XFA (6.4); XMP present, unfiltered, with the PDF/A identification, and in step with the document information (6.6); embedded files per level, associated-file relationship, MIME type and names for -3 (6.8); layers named, ordered, without `AS` (6.9); alternate presentations and presentation steps (6.10); permissions (6.1.12). Not checked: the rest of ISO 19005 — among them the ICC profiles' own contents, every font format's internals (Type 1 and CFF programs are not parsed), Type 3 glyph procedures, image data, and the structure of every dictionary. PDF/X-4: one GTS_PDFX output intent with a printer profile, device colour, fonts embedded, a trim or art box (not both) inside the bleed and media boxes, nothing printing inside the page's boxes, no JavaScript or automatic actions, no transfer functions or PostScript, XMP with PDF/X-4, identifiers and dates, `Trapped` true or false, and a title.
 * **PDF/A-2u passes on 24 of the 49 corpus files** (`the_whole_corpus_converts_at_every_level`, release, ignored). Warraq completes a font's own ToUnicode where the reader's rungs (cmap, GSUB, glyph shape) name a glyph, and leaves alone a font with no map at all — a partial map would send the rest to the font's encoding and read Arabic as Latin letters. What remains are subsets with neither cmap nor GSUB (Chrome, CoreText), dots drawn as separate glyphs, and Type 3 marks: the copy is still written, and says it is not 2u. Every copy reads in Warraq as its file did, or nearer the truth (84 copies: 83 word for word, 1 nearer the truth where a broken map had lost letters — `every_corpus_copy_reads_as_well_as_the_file`).
@@ -406,6 +594,14 @@ test that fails without its fix.
 * **What the tagger does not do yet.** Vector drawings (charts drawn with paths) are artifacts, not figures, unless a figure box is drawn round them in the reading order; tables are found only where lines share columns of wide gaps (not by ruling lines), with the first row as the header; list items get a body, not a separate label; headings are found by size alone, so a bold title in the body size stays a paragraph until relabelled; artifacts in form XObjects are left as the file had them. Tagging writes a touched annotation's `/Rect` through lopdf, which keeps reals as f32: on one corpus file, one pixel at an annotation's edge flips its antialiasing in Warraq's renderer (PDFium, which reads reals as f32, is unchanged).
 * **No AI suggestion for picture text.** The AI tool sends text only; describing a picture needs the picture sent and shown first, which is not built. The panel offers no such button.
 
+* **Batch: what it is not.** PDF/A is not one of its steps: there is no PDF/A conversion on main yet (a step plugs into `batch/steps.ts` when there is). In a browser the results are held in memory until the zip is made, so a batch of very many large files needs the memory for all of its results; on the desktop each is written as soon as it is done. Files dropped on the desktop window have no folder to go back to, so their results need a chosen folder. Protect and Flatten go through PDFium and write the file whole (as EmbedPDF's own Protect does); Flatten refuses a protected file rather than write it without its protection, Compress and Remove hidden information refuse one as their tools do. A saved action's page marks are text only (a picture watermark would have to be kept with the action). The batch was run in the desktop app through its self-check, not clicked there by a person: the native panels for files and folders are the ones Combine and Open already use.
+* **The AI's data actions: what they are not.** OCR correction needs the words Scan & OCR now keeps with each page: a layer written before 2026-09-19 has none and is not offered (take it off with Remove hidden information → hidden text, and recognise again). The words are the page's private application data (`/PieceInfo`): Remove hidden information lists them as such, and removing them ends later correction while the layer itself stays. A corrected word that the correction split or joined lies over the boxes of the words it replaced; a word the model adds joins the word before it. Smart fill fills text fields only — check boxes, radio buttons and lists are left for the person. Personal information is found as the model and the patterns find it; each finding is then looked up on its page with the Arabic-aware search, and one the page does not have is shown but cannot be marked. Tables read by the model come from the page's text in logical order and are checked against the page by the person; tables found on the device are the Excel export's detection, with its limits (below).
+* **The cloud drives are proven against stand-ins for the drives, not against the drives themselves.** No app is registered with Microsoft or Google here, so nothing has ever signed in to a real account. What the tests do check is the protocol: the stand-ins are written from the providers' documentation and refuse what the real ones refuse — PKCE against the challenge, the redirect URI and the origin a code is redeemed from, a secret from a public client, bearer tokens, `If-Match` (412), `conflictBehavior` (409), upload ranges in multiples of 320 KiB, no Authorization on an upload address, and drive.file's rule that a file the person did not pick is "not found". Two things can only be found against the real services, and `docs/cloud.md` says so: whether Google's token endpoint asks a Desktop app client for its "secret" despite its documentation, and whether a particular OneDrive account's download and upload addresses fall under the hosts the policy names (`*.1drv.com`, `*.sharepoint.com`, `*.microsoftpersonalcontent.com`).
+* **Google Drive is desktop-only, and its conflict check has a window.** A browser build ships none: Google redeems no web client's code without a client secret. On the desktop, Drive v3 has no conditional write, so a save reads the file's head revision and refuses if it changed — someone saving in the moment between that read and the write would still be overwritten. OneDrive's `If-Match` has no such window.
+* **A browser sign-in to OneDrive lasts 24 hours at most** (Microsoft's lifetime for a browser app's refresh token), and only if the person ticks *Stay signed in on this browser*; otherwise it ends with the tab. On the desktop the refresh token is kept in the system keychain and never reaches the window — on macOS, a rebuilt app is a different signer, so the keychain asks the person once whether the new build may read what the old one kept.
+* **Microsoft lets a public client revoke nothing.** Signing out forgets the sign-in on this device; withdrawing the app's access is done in the person's Microsoft account, and the app says where. Google's token is revoked on sign-out.
+* **The cloud drives are not in the extension**, and not offered there: it has no page a provider can send a sign-in back to.
+* **Only the person's own OneDrive is browsed** (`/me/drive`, with shortcuts to other drives followed): SharePoint sites and shared libraries are not listed, and national clouds (US Government, China) are not supported.
 * **Create PDF lays content out itself, and plainly.** It is not Word's, Excel's or PowerPoint's layout engine: one face (Amiri, with Inter for what Amiri lacks) and one size per paragraph, greedy line breaks at spaces (no hyphenation, no kashida), tables whose cells can span columns but not rows (a cell merged down is left empty below it). Not read: Word's text boxes, shapes, footnotes, comments, columns and a first page's own header; Excel's charts, pictures and cell colours, and anything past 2,000 rows or 60 columns of a sheet (the panel says so); PowerPoint's charts, SmartArt, gradients, shapes other than boxes (drawn as their box), rotation, animations and notes; a web page's style sheets (only a `style` attribute's colour, alignment and direction) and any picture it does not carry itself. HEIC and AVIF pictures are made into PNGs by the browser, so they work where the browser can draw them (Safari and the macOS app for HEIC). The Office files Create reads and the exports it writes are checked against ECMA-376's content models by the tests (`packages/ui/src/export/ooxml.testing.ts`) and by the browser's XML parser; the official XSDs are not in the repository, and the exports have not been opened in Office itself on this Mac (no Office is installed).
 * **Excel export finds tables, it does not read their meaning.** A table drawn with rules becomes a grid, a missing border a merged cell; a table without rules is found where lines cut at wide gaps stand in the same columns one under another — a two-column page layout can be taken for one. Numbers are only what is plainly a number (a leading zero, a date, a phone number and anything with letters stay text).
 * **Prepare form — what is and is not proven.** Detection is measured on Chrome-printed forms and the corpus (above); forms made in Word, InDesign or by hand-coded generators have not been labelled, and a scanned form gets no proposals at all — its boxes and lines are pixels, not drawing. On a page that is no form, a table with an empty column gets proposals. The proposals are drawn over EmbedPDF's pages by reading its page layout (2.15.1); if the view is turned with EmbedPDF's own rotate, they are drawn unturned. Signature fields are real, empty signature fields for a digital signature: Digital signature offers them and signs into one visibly, in its own box (proven on a field Prepare form made: `tool_signatures.rs` and `e2e/signatures.spec.ts`); Fill & sign places a drawn signature anywhere, over them too.
@@ -452,6 +648,25 @@ test that fails without its fix.
 * **Undo in the macOS menu bar is the app's own item, not the system's role.** A system Undo reaches only the
   webview's text fields, never the document's history. The app's item undoes the document, or the typing
   when a text field has the focus. Cut, Copy, Paste and Select All are the system's.
+* **OCR reads diacritics poorly and skips some table rows**; crooked scans are straightened and damaged ones can be cleaned up first, but a stain's ring as dark and thin as a stroke still costs the words it crosses; Nastaliq Urdu cannot be recognised usefully on the device at all. Recognition in the desktop app was checked from the host's log (above), not watched on screen.
+
+  when a text field has the focus — enabled by what the browser says that field's history can undo
+  (`queryCommandEnabled`), and carried out with `execCommand`. Cut, Copy, Paste and Select All are the
+  system's. **What is proven and what is not**: the whole menu path is exercised in Chrome against a
+  stand-in for the host that receives the very menu the page sends and delivers items chosen in it
+  (`e2e/native-menu.spec.ts`); the system's own menu bar in the installed app has still not been clicked by
+  anyone (no screen access here), and WebKit's editing history is assumed to answer as Chrome's does.
+* **The recent grid's picture is dropped when a file is saved, not retaken.** The saved file may no longer
+  look like it — a page deleted, a password set, a redaction applied — and which file a name means after a
+  save (the panel can write anywhere) is not knowable from the name alone, so the tile shows a plain page
+  until that file is opened again. Nothing about a redacted or protected page is kept.
+* **No page is drawn with more than 64 million pixels.** Past that the core refuses the render rather than
+  allocating gigabytes for a page size read from the file. An A4 page at the largest scale the core draws
+  at (8×) is half of it, and print, export and OCR ask for less; a very large page at a very high zoom is
+  drawn a little softer instead.
+* **The phone's sheet drag has been tested in a browser, not on a phone.** The gesture is driven by pointer
+  events at 390 points wide with touch emulated (`e2e/phone.spec.ts`), and its physics — momentum
+  projection, rubber-banding, the spring — are unit-tested; no one has yet dragged it with a finger.
 * **OCR reads diacritics poorly and skips some table rows**; crooked scans are straightened first, but there is no cleanup of stains or shadows; Nastaliq Urdu cannot be recognised usefully on the device at all. Recognition in the desktop app has not been watched yet (it runs in the same webview that draws the pages).
 * **Nastaliq Urdu** now reads exactly where the file maps its glyphs: the corpus's Chrome-made Nastaliq page went from recall 0.61 / order 0.56 to 1.0 / 1.0 (`tests/acid`, baseline raised), with no other truth-scored file changing a byte. Nastaliq lifts each word's letters up to an em above the line, which split every line into fragments; a joining letter touching its neighbour is now read on that letter's baseline. Not done: a Nastaliq file with no ToUnicode map — Noto Nastaliq draws ب ت ث ن ی پ ٹ from one skeleton plus separate dots, which the glyph-to-letter fallback cannot express (65 of 170 glyphs right), and producers that subset the font drop the table it reads. Two leftovers in real-world files: a false space in "مع ظم" (Wikibooks) and diacritics out of order in "وَأَناَ اشْترََيْتهُاَ" (a LibreOffice page).
 * **Ten corpus files** come back with U+FFFD placeholders where a glyph has no usable ToUnicode, cmap or GSUB evidence. Placeholders are deliberate: words are never silently merged.
