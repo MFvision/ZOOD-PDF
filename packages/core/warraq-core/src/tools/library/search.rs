@@ -52,6 +52,10 @@ pub const MAX_HITS_PER_DOCUMENT: usize = 50;
 /// Places read before the search stops widening: a one-letter query over a
 /// full index must still answer.
 const MAX_POSITIONS_SCANNED: u64 = 4_000_000;
+/// Documents one search weighs. Past it the documents already met are still
+/// ranked in full; a query that reaches more than this is one word every file
+/// holds, and the ranking of the fifty-thousand-and-first is no answer anyway.
+const MAX_CANDIDATES: usize = 50_000;
 /// Marks on one line.
 const MAX_SPANS_PER_LINE: usize = 64;
 
@@ -146,9 +150,13 @@ pub struct Results {
 }
 
 /// A document that answered, and its best lines.
-struct Ranked {
+struct Ranked<'a> {
     content: u32,
     score: f64,
+    /// The first key that holds this text: what settles a tie between two
+    /// equal scores, so the answer does not depend on the order the folder
+    /// happened to be walked in, or on an index having been saved since.
+    key: &'a str,
     /// Line, and what that line does, best first.
     lines: Vec<(u32, i64)>,
 }
@@ -229,10 +237,17 @@ impl Index {
                     if scanned > MAX_POSITIONS_SCANNED {
                         break 'gather;
                     }
-                    per_content
-                        .entry(posting.content)
-                        .or_insert_with(|| vec![Vec::new(); n])[i]
-                        .extend_from_slice(&posting.positions);
+                    // A document the search has not met yet costs a list per
+                    // word of the query, so the widening stops somewhere; the
+                    // documents already met go on being filled in.
+                    let room = per_content.len() < MAX_CANDIDATES;
+                    if let Some(lists) = per_content.get_mut(&posting.content) {
+                        lists[i].extend_from_slice(&posting.positions);
+                    } else if room {
+                        let mut lists = vec![Vec::new(); n];
+                        lists[i].extend_from_slice(&posting.positions);
+                        per_content.insert(posting.content, lists);
+                    }
                 }
             }
         }
@@ -263,7 +278,7 @@ impl Index {
             .collect();
         let average = (self.words() as f64 / documents).max(1.0);
 
-        let mut ranked: Vec<Ranked> = Vec::with_capacity(per_content.len());
+        let mut ranked: Vec<Ranked<'_>> = Vec::with_capacity(per_content.len());
         for (slot, lists) in &per_content {
             let Some(content) = self.content(*slot) else {
                 continue;
@@ -296,6 +311,13 @@ impl Index {
             ranked.push(Ranked {
                 content: *slot,
                 score,
+                key: content
+                    .docs
+                    .iter()
+                    .filter_map(|slot| self.doc(*slot))
+                    .map(|doc| doc.key.as_str())
+                    .min()
+                    .unwrap_or_default(),
                 lines,
             });
         }
@@ -303,7 +325,7 @@ impl Index {
             b.score
                 .partial_cmp(&a.score)
                 .unwrap_or(std::cmp::Ordering::Equal)
-                .then(a.content.cmp(&b.content))
+                .then_with(|| a.key.cmp(b.key))
         });
 
         // The places, in the order they will be shown; their text and marks
@@ -314,7 +336,11 @@ impl Index {
                 continue;
             };
             let mut docs: Vec<u32> = content.docs.clone();
-            docs.sort_by_key(|slot| self.doc(*slot).map(|d| d.key.clone()));
+            // Copies of one file answer in a settled order; almost every text
+            // belongs to exactly one file, so the sort is usually not run.
+            if docs.len() > 1 {
+                docs.sort_by_key(|slot| self.doc(*slot).map(|d| d.key.clone()));
+            }
             for slot in docs {
                 let Some(doc) = self.doc(slot) else { continue };
                 if !filters.keeps(doc, content) {
@@ -648,6 +674,14 @@ mod tests {
             keys(&index.search("مكتبة", &scans, 0, 50)),
             vec!["/دفتر/2026/d.pdf"]
         );
+    }
+
+    #[test]
+    fn documents_that_answer_alike_are_ordered_by_name_whatever_the_order_they_went_in() {
+        let forwards = with(&[("/a.pdf", "مكتبة عامة"), ("/b.pdf", "مكتبة خاصة")]);
+        let backwards = with(&[("/b.pdf", "مكتبة خاصة"), ("/a.pdf", "مكتبة عامة")]);
+        assert_eq!(keys(&search(&forwards, "مكتبة")), vec!["/a.pdf", "/b.pdf"]);
+        assert_eq!(keys(&search(&backwards, "مكتبة")), vec!["/a.pdf", "/b.pdf"]);
     }
 
     #[test]

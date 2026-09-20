@@ -23,6 +23,10 @@ const INVOICE_B = corpus('generated/raw-amiri-cid-identity-tounicode.pdf');
 /** Not a PDF at all: read by the same readers Create PDF uses. */
 const WORD = fileURLToPath(new URL('../../../tests/fixtures/create/report-ar.docx', import.meta.url));
 const MARKDOWN = fileURLToPath(new URL('../../../tests/fixtures/create/notes-ar.md', import.meta.url));
+/** A PDF whose pages carry no text of their own: read by Scan & OCR. */
+const SCAN = corpus('generated/scan-notonaskh-300dpi-skewed-jpeg.pdf');
+/** A photograph of an Arabic page, shadow and all: made a page, then read the same way. */
+const PHOTO = fileURLToPath(new URL('../../../tests/fixtures/create/photo-arabic.jpg', import.meta.url));
 
 const panel = (page: Page) => page.locator('.pane-end');
 
@@ -179,6 +183,40 @@ test.describe('The Library searches across every document that was added', () =>
     await library.getByRole('button', { name: 'Filters', exact: true }).click();
     await library.getByRole('checkbox', { name: 'فواتير' }).check();
     await expect(library.getByText(/^Results: [1-9]/)).toBeVisible();
+  });
+
+  test('indexes a text PDF, a scan, a photograph and a Word file, and one word finds all four', async ({ page, stayLocal: _ }) => {
+    // Two of the four are read by Scan & OCR, at seconds a page.
+    test.setTimeout(900_000);
+    const library = await openLibrary(page);
+    await needsEngine(library);
+
+    await addFiles(library, [THREE_PAGES, SCAN, PHOTO, WORD]);
+    await expect(summary(library)).toContainText('Added: 4.', { timeout: 720_000 });
+    // The scan and the photograph carry no text of their own: they were recognized.
+    await expect(library.getByText(/Pages read by Scan & OCR: [1-9]/)).toBeVisible();
+
+    // "ورّاق" is written with the shadda in the Word file and without it in the
+    // rest; the person types neither mark. One word, four kinds of file.
+    const hits = await search(library, 'وراق');
+    await expect(hits.locator('li').first()).toBeVisible();
+    const named = await hits.locator('.library-hit-name').allInnerTexts();
+    for (const name of ['chrome-notonaskh-justified-3pages.pdf', 'scan-notonaskh-300dpi-skewed-jpeg.pdf', 'photo-arabic.jpg', 'report-ar.docx']) {
+      expect(named, name).toContain(name);
+    }
+    // And each is named by what it turned out to be, not by its extension:
+    // the PDF with no text of its own is a scan, the photograph a picture.
+    const kinds = (await hits.locator('.library-hit-where').allInnerTexts()).join(' ');
+    for (const kind of ['PDF', 'Scan', 'Picture', 'Word']) expect(kinds, kind).toContain(kind);
+
+    // Open one, at the page its match is on.
+    const chosen = hits.locator('li', { hasText: 'chrome-notonaskh-justified-3pages.pdf' }).first();
+    const where = await chosen.locator('.library-hit-where').innerText();
+    const at = Number(/Page (\d+)/.exec(where)?.[1]);
+    expect(at).toBeGreaterThan(0);
+    await chosen.locator('.library-hit-open').click();
+    await expect.poll(() => embedTiles(page)).toBeGreaterThan(0);
+    await expect(documentStatus(page)).toContainText(`Page ${at} of 3`, { timeout: 60_000 });
   });
 
   test('deletes the index when asked, and says the files were not touched', async ({ page, stayLocal: _ }) => {

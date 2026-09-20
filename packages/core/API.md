@@ -117,10 +117,157 @@ Tool operations (`warraq-core/src/tools`), all answering JSON plus bytes:
 | `forms.fix_appearances` (static) | `{password?}` + the PDF + a font, optionally + the file as it was opened | `{fields, comments}` + the file with Arabic and formatted values drawn; when the opened file is signed, only annotations changed since are redrawn |
 | `ocr.add_text_layer` (static) | `{password?, pages: [{index, words: [{text, bbox: [x0, top, x1, bottom]}], angle?, replace?: bool, image?: blob index}], modified?: "D:…"}` + the PDF + a font + the cleaned-up pages (PNG/JPEG: the whole page as shown, straightened by `angle`) | `{pages, words, skipped, images, imagesKept}` + the file with an invisible, shaped layer, as an update; `replace` takes Warraq's earlier layer on the page out first; `image` replaces a page that is one scanned picture (its words are then written level); the words are kept in the page's `/PieceInfo /Warraq` |
 | `ocr.layer_words` (static) | `{password?, pages?: number[]}` + the PDF | `{pages: [{index, angle, words: [{text, bbox}]}]}` — the words kept with each layer Warraq wrote (what an OCR correction starts from) |
+| `library.open` (static) | `{}` + the index's bytes (no blob, or an empty one, for a new index) | `{handle, documents, words}` — an index held in memory behind a handle until `library.close`; `E_INDEX` for one that cannot be read |
+| `library.add` (static) | `{handle, key, name?, kind?, modified?, bytes?, pages?, password?, now?, text?: [{page, text}]}` + the file's bytes (leave the blob out when `text` is given) | `{added, skipped?, pages, chars, date?, guessedKind, truncated}` — reads a PDF's text with Warraq's own reader; `text` is for the kinds the core does not open (Word, Excel, HTML, a scan the interface read with OCR) |
+| `library.forget` (static) | `{handle, keys: string[]}` | `{documents}` — the files are never touched, only the index |
+| `library.search` (static) | `{handle, query, limit?, offset?, filters?: {kinds?, folders?, tags?, from?, to?, scannedOnly?}}` | `{total, hits: [{key, name, page, line, text, spans: [[start, length]], score, date?, kind, tags}]}` |
+| `library.document` (static) | `{handle, key}` | `{key, name, kind, pages, chars, date?, tags, indexed, modified, bytes, path?}` |
+| `library.tag` (static) | `{handle, key, add?: string[], remove?: string[]}` | `{tags}` — by hand; a tag taken off is remembered, so no rule puts it back |
+| `library.rules` (static) | `{handle, set?: [{tag, words: string[], all?, enabled?, scope?: "text"\|"name"\|"both", kinds?}], apply?: bool}` | `{rules, tagged}` — read the tag rules, replace them, and run them over what is already indexed |
+| `library.stats` (static) | `{handle}` | `{documents, pages, words, bytes, kinds: {kind: count}, tags: {tag: count}}` |
+| `library.save` (static) | `{handle}` | `{bytes}` + the index's bytes, for the host to write where the person's data lives |
+| `library.close` (static) | `{handle}` | `{}` |
+
+## The Library (`tools/library`)
+
+One search across a whole folder of files instead of the open one. The index is
+a cache and never the documents: no file is read except through the bytes a
+host hands over, nothing is written back to any file, and nothing reaches the
+network.
+
+**`key`** is the host's own stable name for a file — its full path on the
+desktop, the folder handle's id plus the relative path in the browser. Folder
+filters match it as a prefix ending at `/` or `\`, so `/دفتر/2026` does not take
+in `/دفتر/2026-قديم`. `library.document` echoes it back as `path` when it looks
+like one.
+
+**`kind`** is `pdf` | `scan` | `image` | `word` | `excel` | `powerpoint` |
+`html` | `text` | `markdown`. A word this build does not know is taken as no
+answer (the file name's ending decides instead) rather than failing a run over
+a folder. **`guessedKind`** is what the core settled on: a PDF whose pages carry
+no text is a `scan`, which the interface reads with OCR and hands back as
+`text` under the same key.
+
+**What comes back from `library.add`.** `added` is false with a `skipped`
+reason: `unchanged` (the key is in the index and neither the file's `modified`
+time nor its size has changed), `password` (a protected PDF and no password, or
+the wrong one), `unreadable` (the bytes are not a PDF the core can open),
+`tooLarge` (past 256 MB), `indexFull` (the index is at its cap — see below).
+`truncated` says the document was longer than the index takes and the rest of
+it is not in there. A password is used to open the file and never written into
+the index.
+
+**How a search is ranked.** The query is read the way the find bar reads one —
+tashkeel and tatweel dropped, alef, taa marbuta, yaa and the Arabic-Indic and
+Persian digits unified, case folded — then matched whole word to whole word.
+The query's last word also matches as a beginning (three letters or more, up to
+32 words of the index), so results narrow as the person types. A query inside
+quotation marks (`"…"`, `«…»`, `“…”`) asks for that phrase and nothing else.
+
+A document's score is Okapi BM25 over the query's words (k₁ = 1.2, b = 0.75),
+multiplied by how much of the query it holds and by what those words do
+together:
+
+```
+score = Σᵢ idf(tᵢ)·tf(fᵢ, len) · coverage² · (1 + 2·ln(1+phrases) + ½·ln(1+lines))
+```
+
+* **A phrase beats the same words scattered**: `phrases` counts the places
+  where the query's words stand together, in order, on one line.
+* **More matches beat fewer**, with diminishing returns (that is `tf`).
+* **A shorter document beats a longer one on the same count**: `tf` divides by
+  the document's length against the average (b = 0.75).
+* **Holding the whole query beats holding half of it**, by the square of the
+  fraction held; a rarer word counts for more, because `idf` rises as fewer
+  documents hold it.
+
+Two documents that score the same are ordered by name, so the same question
+gets the same answer twice. One search weighs at most 50 000 documents and
+reads at most 4 000 000 places before it stops widening: a word every file
+holds still answers.
+
+Hits are lines. Within a document they are ordered by what each line does — the
+phrase first, then more of the query's distinct words, then more often, then by
+page and line. `page` counts from zero and `line` is which line of that page it
+is, counting from zero. `spans` are byte ranges of `text` that answered, so the
+interface marks the match over the person's own writing, marks and all.
+`total` is how many hits were ranked, at most 5 000 (50 from any one document),
+and `offset`/`limit` page through that ranking; `limit` is 50 when it is left
+out, and 5 000 at most. `score` is the document's; every
+hit of one document carries the same one.
+
+A file that is a copy of another — the same report in two folders — is answered
+under both names from one stored text.
+
+**The document's own date** (`date`, `YYYY-MM-DD` Gregorian) is read from the
+document's first three pages, never from the file's timestamp:
+
+* `3/4/2026`, `03-04-2026`, `2026-04-03`, `٣/٤/٢٠٢٦`; `3 أبريل 2026`,
+  `3 نيسان 2026`, `3 April 2026`, `April 3, 2026`; `3 رمضان 1447هـ`,
+  `١٥ ذو الحجة ١٤٤٦`.
+* A four-digit number first is read year-month-day. Otherwise the four-digit
+  part is the year and, of the two left, the first is the day — unless that is
+  impossible (`4/25/2026` can only be month-day). A two-digit year is 19xx from
+  69 up, 20xx below it (POSIX).
+* A date is Hijri when its month is a Hijri month, when هـ or AH follows it, or
+  when its year is between 1300 and 1500 with nothing saying otherwise; it is
+  then converted through Umm al-Qura (`warraq_pdf::forms::hijri`).
+* Of the dates found, the best wins: **+4** for one right after a label
+  (التاريخ، بتاريخ، صدر في، حرر في، Date, Dated, Issued), **+2** for the first
+  page, **+2** for a month written out rather than numbered, **+1** for the top
+  quarter of its page, **+1** for carrying هـ or م. Ties go to the date that
+  comes first. A date that does not exist — 31 February, a Hijri day past the
+  end of its month — is thrown away, not corrected, and a document with no date
+  has none.
+
+**Tags and rules.** `library.tag` puts tags on and takes them off by hand; a tag
+taken off is remembered, so a rule never argues with its owner. A rule is a tag
+and the words that call for it (each a word or a phrase), looking at the text,
+the file name or both, and may be narrowed to some kinds. `library.rules` reads
+them, replaces them, and with `apply` runs them over everything already
+indexed. Rules live in the index and go nowhere else.
+
+**What it holds, and its bounds.** The index keeps each document's text lines,
+its words' places and what the host said about the file — never the file's
+bytes. Documents whose text is identical share one copy of it, keyed by
+SHA-256. The caps: 200 000 documents; 20 000 pages, 400 000 lines, 2 000 000
+characters and 400 000 words per document; 20 000 characters per line;
+4 000 000 distinct terms; 48 000 000 characters in the whole index (about
+150 MB held), past which `library.add` answers `indexFull`; 64 tags on a
+document and 200 rules; eight indexes open at once. Anything past a cap is cut
+with `truncated` or skipped with a reason — never a failure that stops a run
+over a folder.
+
+**The index file.** `"WRQLIB"`, a version, then the texts, the terms, the
+documents and the rules, little-endian with LEB128 varints and delta-coded runs,
+ending in eight bytes of SHA-256 over the rest. `library.save` writes the live
+records only, so saving is also what compacts an index that has forgotten
+things. Reading one treats it as hostile input — every count checked against
+the bytes that are left before anything is allocated, every string validated as
+UTF-8, every reference checked against what was read — and refuses a damaged,
+truncated or foreign file with `E_INDEX` instead of loading half of it.
+(`packages/core/fuzz/fuzz_targets/library_index.rs`.)
+
+**`modified` and `now`** are the host's own count of time, and the core never
+reads a calendar out of either: `modified` is only ever compared with itself to
+tell an unchanged file from a changed one, and `now` is only stored and given
+back as `indexed`. So seconds or milliseconds both work, as long as one host
+keeps to one of them — the desktop host's walk reports milliseconds since the
+epoch (`packages/ui/src/core/host-tauri.ts`), and whichever the interface
+passes is what `library.document` will answer with. The core has no clock of
+its own in the browser, so without `now` a document's `indexed` is 0. A
+document's own date is a different thing altogether, read from its text (above)
+and always `YYYY-MM-DD`.
+
+**`library.stats`'s `bytes`** is an estimate of what the index takes, counted
+the way the file is written; `library.save` writes the real thing. On the
+Arabic corpus the two are within a few per cent, and a test keeps them within
+a quarter of each other.
 
 Signing never reaches the network: the core builds a request and takes the answer; the desktop host sends it (`net_exchange`), and signs on a smart card through `pkcs11_certificates` / `pkcs11_sign`, which call `tools::signatures::sign_with` with a card-backed `warraq_sign::keys::Signer`.
 
-Errors add `E_ARGS` (arguments that do not parse) and `E_UNKNOWN_OP`.
+Errors add `E_ARGS` (arguments that do not parse), `E_UNKNOWN_OP`, and
+`E_INDEX` (a Library index that cannot be read).
 
 Rules: every method is synchronous and pure; the host puts the module in a
 Web Worker (extension: offscreen document). Errors are `Error` objects with an

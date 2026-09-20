@@ -363,15 +363,23 @@ export function LibraryPanel() {
     [handle, trouble],
   );
 
-  // The filters act on the search already asked for, without retyping it.
-  // A beat's wait keeps a handful of chips turned on in a row to one search.
+  /*
+   * The results follow the typing. A search over fifty files answers in about
+   * a millisecond (STATUS), so there is nothing to wait for but the person:
+   * a beat's pause after the last letter, which also keeps a handful of
+   * filter chips turned on in a row to one search. Enter still searches at
+   * once, and so does the button, for anyone who would rather ask than be
+   * answered while they think.
+   */
   useEffect(() => {
-    if (asked === '' || badRange(filters)) return undefined;
-    const timer = setTimeout(() => void look(asked, filters, shown), 120);
+    if (badRange(filters)) return undefined;
+    if (query.trim() === '' && asked === '') return undefined;
+    const timer = setTimeout(() => void look(query, filters, shown), 180);
     return () => clearTimeout(timer);
-    // Re-run when a filter or the page size changes, not when the box is typed in.
+    // `asked` is what the last search asked for: reading it here would run
+    // this again on its own answer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, shown]);
+  }, [query, filters, shown]);
 
   // One address per document on screen, made when the results change and
   // given back when they do: an object URL the page never releases is a leak

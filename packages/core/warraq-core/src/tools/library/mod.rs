@@ -99,6 +99,10 @@ struct Add {
     kind: Option<String>,
     #[serde(default)]
     modified: i64,
+    /// The file's size as the host sees it; without it, the bytes handed over.
+    /// With `modified`, this is what tells an unchanged file from a new one.
+    #[serde(default)]
+    bytes: Option<u64>,
     #[serde(default)]
     pages: Option<u32>,
     /// Only to open a protected PDF; it is never written into the index.
@@ -107,8 +111,9 @@ struct Add {
     /// The text the host read itself, for the kinds the core does not open.
     #[serde(default)]
     text: Option<Vec<PageText>>,
-    /// Unix seconds, so `library.document` can say when a file was indexed.
-    /// The core has no clock of its own in the browser.
+    /// The time, as the host counts it, so `library.document` can say when a
+    /// file was indexed: the core stores it and gives it back, and has no
+    /// clock of its own in the browser.
     #[serde(default)]
     now: i64,
 }
@@ -321,6 +326,13 @@ fn open_index(blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
 /// `library.add`: read a file's text — with the core, or as the host read it —
 /// and put it in the index.
 fn add(a: Add, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
+    // Before anything is read: a file under a key the index could never hold
+    // is a mistake in the host, not a file to be indexed.
+    if a.key.is_empty() || a.key.chars().count() > index::MAX_KEY_CHARS {
+        return Err(CoreError::Args(
+            "library.add needs a key, and a short one".into(),
+        ));
+    }
     let kind = a.kind.as_deref().and_then(Kind::parse);
     let name = if a.name.is_empty() {
         a.key
@@ -331,16 +343,41 @@ fn add(a: Add, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
     } else {
         a.name.clone()
     };
-    let bytes = blobs.first().map(|b| b.len()).unwrap_or(0) as u64;
+    let bytes = a
+        .bytes
+        .unwrap_or_else(|| blobs.first().map(|b| b.len()).unwrap_or(0) as u64);
 
     // A file the index has no room for is skipped before anything is read.
     if with_index(a.handle, |index| index.full())? {
         return skipped("indexFull", kind.unwrap_or(Kind::Pdf));
     }
 
+    // Nor is a file that has not been written to since it went in read again:
+    // asked here, before the bytes are opened, a second pass over a folder of
+    // a thousand files costs a lookup each. (The index asks again for itself —
+    // this is a saving, not the rule.)
+    if a.text.is_none() {
+        let guess = kind.or_else(|| Kind::from_name(&name)).unwrap_or(Kind::Pdf);
+        let known = with_index(a.handle, |index| {
+            // Whether a PDF is really a scan is only known once it has been
+            // read, so a PDF is asked about under both names.
+            let mut answer = index.unchanged(&a.key, a.modified, bytes, guess, false);
+            if answer.is_none() && guess == Kind::Pdf {
+                answer = index.unchanged(&a.key, a.modified, bytes, Kind::Scan, false);
+            }
+            answer
+        })?;
+        if let Some(outcome) = known {
+            return answer(&outcome);
+        }
+    }
+
     let (pages_text, pages) = match a.text {
         Some(text) => {
-            let pages = text.iter().map(|p| p.page.max(1)).max().unwrap_or(0);
+            // The host counts pages from one, so the count is simply the
+            // largest of them — and `max` cannot overflow the way adding one
+            // to a host's 4 294 967 295 could.
+            let pages = text.iter().map(|p| p.page).max().unwrap_or(0);
             (
                 // One-based coming in, an offset inside: page 1 is the first.
                 text.into_iter()
@@ -374,6 +411,11 @@ fn add(a: Add, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
         pages: a.pages.unwrap_or(pages),
     };
     let outcome = with_index(a.handle, |index| index.add(about, pages_text, a.now))??;
+    answer(&outcome)
+}
+
+/// What `library.add` says, however it got there.
+fn answer(outcome: &index::AddOutcome) -> Result<Reply, CoreError> {
     Reply::of(&serde_json::json!({
         "added": outcome.added,
         "skipped": outcome.skipped,
@@ -385,16 +427,16 @@ fn add(a: Add, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
     }))
 }
 
-fn skipped(why: &str, kind: Kind) -> Result<Reply, CoreError> {
-    Reply::of(&serde_json::json!({
-        "added": false,
-        "skipped": why,
-        "pages": 0,
-        "chars": 0,
-        "date": serde_json::Value::Null,
-        "guessedKind": kind.as_str(),
-        "truncated": false,
-    }))
+fn skipped(why: &'static str, kind: Kind) -> Result<Reply, CoreError> {
+    answer(&index::AddOutcome {
+        added: false,
+        skipped: Some(why),
+        pages: 0,
+        chars: 0,
+        date: None,
+        kind,
+        truncated: false,
+    })
 }
 
 /// A file's text, one entry per page, and how many pages it has.
@@ -655,6 +697,50 @@ mod tests {
         assert_eq!(read["rules"].as_array().expect("rules").len(), 1);
         assert_eq!(read["tagged"], 0);
         close(handle);
+    }
+
+    #[test]
+    fn arguments_no_host_should_send_are_answered_not_crashed_on() {
+        let handle = open_new();
+        // The last page there could ever be, and one page past every cap.
+        let args = serde_json::json!({
+            "handle": handle,
+            "key": "/odd.pdf",
+            "name": "odd.pdf",
+            "kind": "something this build has never heard of",
+            "modified": i64::MIN,
+            "pages": u32::MAX,
+            "text": [{ "page": u32::MAX, "text": "مكتبة" }],
+        });
+        let out = json(&call_static("add", &args.to_string(), vec![]).expect("answered"));
+        assert_eq!(out["added"], true);
+        assert!(out["pages"].as_u64().unwrap_or(0) <= index::MAX_PAGES_PER_DOCUMENT as u64);
+        assert_eq!(out["guessedKind"], "pdf", "an unknown kind falls back");
+        assert_eq!(search_for(handle, "مكتبة")["total"], 1);
+
+        // An offset past the end, and a limit larger than the cap.
+        let far = serde_json::json!({
+            "handle": handle, "query": "مكتبة", "offset": u32::MAX, "limit": u32::MAX,
+        });
+        let out = json(&call_static("search", &far.to_string(), vec![]).expect("answered"));
+        assert_eq!(out["total"], 1);
+        assert!(out["hits"].as_array().expect("hits").is_empty());
+
+        // A key no file could have.
+        let long = serde_json::json!({ "handle": handle, "key": "ا".repeat(100_000) });
+        assert!(call_static("add", &long.to_string(), vec![vec![0u8; 8]]).is_err());
+        close(handle);
+    }
+
+    fn search_for(handle: u32, query: &str) -> serde_json::Value {
+        json(
+            &call_static(
+                "search",
+                &serde_json::json!({ "handle": handle, "query": query }).to_string(),
+                vec![],
+            )
+            .expect("searched"),
+        )
     }
 
     #[test]

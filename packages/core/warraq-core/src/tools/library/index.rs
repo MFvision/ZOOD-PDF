@@ -191,9 +191,12 @@ pub struct Doc {
     pub key: String,
     pub name: String,
     pub kind: Kind,
-    /// When the file was last written, as the host counts it (Unix seconds).
+    /// When the file was last written, in whatever the host counts time in.
+    /// The core never reads a calendar out of it — it only ever compares it
+    /// with itself, to tell an unchanged file from a changed one.
     pub modified: i64,
-    /// When it went into the index (Unix seconds).
+    /// When it went into the index, likewise as the host counts it; the core
+    /// stores it and gives it back.
     pub indexed: i64,
     pub bytes: u64,
     pub content: u32,
@@ -276,6 +279,7 @@ pub struct Index {
     chars: u64,
     words: u64,
     positions: u64,
+    postings: u64,
     text_bytes: u64,
     term_bytes: u64,
 }
@@ -423,27 +427,9 @@ impl Index {
             kind = Kind::Scan;
         }
 
-        // Unchanged: the host's own size-and-time check, kept here too so a
-        // second pass over a folder never reads a file twice.
-        if let Some(&slot) = self.by_key.get(&about.key) {
-            if let Some(doc) = self.doc(slot) {
-                let unchanged = about.modified != 0
-                    && doc.modified == about.modified
-                    && doc.bytes == about.bytes
-                    && doc.kind == kind;
-                if unchanged {
-                    let content = self.content(doc.content);
-                    return Ok(AddOutcome {
-                        added: false,
-                        skipped: Some("unchanged"),
-                        pages: content.map(|c| c.pages).unwrap_or(0),
-                        chars: content.map(|c| c.chars).unwrap_or(0),
-                        date: content.and_then(|c| c.date.as_ref()).map(|d| d.iso.clone()),
-                        kind: doc.kind,
-                        truncated: content.map(|c| c.truncated).unwrap_or(false),
-                    });
-                }
-            }
+        if let Some(outcome) = self.unchanged(&about.key, about.modified, about.bytes, kind, !empty)
+        {
+            return Ok(outcome);
         }
 
         if self.live_docs >= MAX_DOCUMENTS {
@@ -531,6 +517,43 @@ impl Index {
             chars: content.map(|c| c.chars).unwrap_or(0),
             date: content.and_then(|c| c.date.as_ref()).map(|d| d.iso.clone()),
             kind,
+            truncated: content.map(|c| c.truncated).unwrap_or(false),
+        })
+    }
+
+    /// Whether this file is already in the index as it stands — the host's own
+    /// size-and-time check, kept here too so that a second pass over a folder
+    /// never reads a file twice. `library.add` asks before it opens the bytes
+    /// it was handed, so reopening the app over an unchanged folder costs
+    /// nothing at all.
+    ///
+    /// `brings_text` is false when the caller has nothing to offer but the
+    /// file's bytes: a scan already in the index carries no text of its own,
+    /// and when the interface comes back with what OCR read, that is not the
+    /// same file coming round again however untouched the file is.
+    pub fn unchanged(
+        &self,
+        key: &str,
+        modified: i64,
+        bytes: u64,
+        kind: Kind,
+        brings_text: bool,
+    ) -> Option<AddOutcome> {
+        let doc = self.doc(*self.by_key.get(key)?)?;
+        let content = self.content(doc.content);
+        let had_text = content.is_some_and(|c| c.chars > 0);
+        let unchanged = modified != 0
+            && doc.modified == modified
+            && doc.bytes == bytes
+            && doc.kind == kind
+            && (had_text || !brings_text);
+        unchanged.then(|| AddOutcome {
+            added: false,
+            skipped: Some("unchanged"),
+            pages: content.map(|c| c.pages).unwrap_or(0),
+            chars: content.map(|c| c.chars).unwrap_or(0),
+            date: content.and_then(|c| c.date.as_ref()).map(|d| d.iso.clone()),
+            kind: doc.kind,
             truncated: content.map(|c| c.truncated).unwrap_or(false),
         })
     }
@@ -636,6 +659,7 @@ impl Index {
         let mut fresh = 0usize;
         for (term, positions) in places {
             self.positions += positions.len() as u64;
+            self.postings += 1;
             match self.terms.get_mut(&term) {
                 Some(postings) => postings.push(Posting {
                     content: slot,
@@ -644,6 +668,7 @@ impl Index {
                 None => {
                     if fresh >= room_for_terms {
                         self.positions -= positions.len() as u64;
+                        self.postings -= 1;
                         continue;
                     }
                     fresh += 1;
@@ -708,11 +733,14 @@ impl Index {
         let gone = doc.content;
         let mut freed_places = 0u64;
         let mut freed_terms = 0u64;
+        let mut freed_postings = 0u64;
         self.terms.retain(|term, postings| {
             let before: usize = postings.iter().map(|p| p.positions.len()).sum();
+            let was = postings.len();
             postings.retain(|p| p.content != gone);
             let after: usize = postings.iter().map(|p| p.positions.len()).sum();
             freed_places += (before - after) as u64;
+            freed_postings += (was - postings.len()) as u64;
             if postings.is_empty() {
                 freed_terms += term.len() as u64;
                 return false;
@@ -720,6 +748,7 @@ impl Index {
             true
         });
         self.positions = self.positions.saturating_sub(freed_places);
+        self.postings = self.postings.saturating_sub(freed_postings);
         self.term_bytes = self.term_bytes.saturating_sub(freed_terms);
     }
 
@@ -807,9 +836,14 @@ impl Index {
             .filter_map(|k| Some((Kind::from_byte(k as u8)?.as_str(), kinds[k])))
             .collect();
         stats.tags = tags.into_iter().map(|(t, n)| (t.to_string(), n)).collect();
-        // About what the index holds: its text, its terms, and a varint's
-        // worth per word's place — within a few per cent of what `save` writes.
-        stats.bytes = self.text_bytes + self.term_bytes + self.positions * 2 + doc_bytes;
+        // About what the index holds, counted the way the file is written: its
+        // text, its terms, four bytes for each place a word is in (a place
+        // carries its line as well as its place in it, so the varint between
+        // two of them is rarely short) and two for each term's entry in a
+        // document. It is an estimate — `library.save` writes the real thing —
+        // and on the Arabic corpus it lands within a few per cent of it.
+        stats.bytes =
+            self.text_bytes + self.term_bytes + self.positions * 4 + self.postings * 2 + doc_bytes;
         stats
     }
 
@@ -935,24 +969,57 @@ mod tests {
     }
 
     #[test]
+    fn one_copy_changing_leaves_the_other_copy_alone() {
+        let mut index = Index::default();
+        let same = vec![(0, "تقرير الربع الأول".to_string())];
+        index.add(about("/one.pdf"), same.clone(), 10).expect("one");
+        index.add(about("/two.pdf"), same, 10).expect("two");
+        assert_eq!(index.contents.iter().flatten().count(), 1);
+
+        let mut edited = about("/one.pdf");
+        edited.modified += 60;
+        index
+            .add(edited, vec![(0, "تقرير الربع الثاني".into())], 20)
+            .expect("edited");
+        assert_eq!(index.contents.iter().flatten().count(), 2, "they part ways");
+        assert_eq!(index.documents(), 2);
+        // The word only the old text had is still found, under the other name.
+        let old = index.search_for("الاول").expect("searched");
+        assert_eq!(old.len(), 1);
+        assert_eq!(old[0].key, "/two.pdf");
+        let new = index.search_for("الثاني").expect("searched");
+        assert_eq!(new.len(), 1);
+        assert_eq!(new[0].key, "/one.pdf");
+    }
+
+    #[test]
     fn a_pdf_with_no_text_is_a_scan() {
         let mut index = Index::default();
         let out = index
             .add(about("/scan.pdf"), vec![(0, "   ".into())], 10)
             .expect("added");
         assert_eq!(out.kind, Kind::Scan);
-        // and the interface's OCR text replaces it under the same key
+        // The interface reads it with OCR and hands the text back under the
+        // same key. The file on disk was never touched, so its size and time
+        // have not changed — and that must not read as "unchanged".
         let mut later = about("/scan.pdf");
-        later.modified += 1;
         later.kind = Some(Kind::Scan);
-        index
+        let filled = index
             .add(later, vec![(0, "بسم الله".into())], 20)
             .expect("ocr");
+        assert!(filled.added, "{filled:?}");
         assert_eq!(
             index.document("/scan.pdf").map(|d| d.kind),
             Some(Kind::Scan)
         );
         assert!(index.terms.contains_key("الله"));
+        // Now that it has text, a second pass over the folder really is one.
+        let mut again = about("/scan.pdf");
+        again.kind = Some(Kind::Scan);
+        let second = index
+            .add(again, vec![(0, "بسم الله".into())], 30)
+            .expect("second");
+        assert_eq!(second.skipped, Some("unchanged"));
     }
 
     #[test]
