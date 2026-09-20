@@ -50,9 +50,20 @@ async function saveAs(page: Page, name: string): Promise<string> {
   return path;
 }
 
-/** Points on the page as shown → the screen, for page 1 of Warraq's view. */
+/**
+ * Points on the page as shown → the screen, for page 1 of Warraq's view.
+ * The box is read until it stops moving: on a busy machine the view is still
+ * settling when the edit layer appears, and a drag worked out from the first
+ * reading lands beside the page (three full-suite runs failed that way).
+ */
 async function screenOf(section: Locator, pageWidthPt: number) {
-  const box = (await section.boundingBox())!;
+  let box = (await section.boundingBox())!;
+  for (let tries = 0; tries < 20; tries += 1) {
+    await section.page().waitForTimeout(100);
+    const again = (await section.boundingBox())!;
+    if (again.x === box.x && again.y === box.y && again.width === box.width && again.height === box.height) break;
+    box = again;
+  }
   const scale = box.width / pageWidthPt;
   return { box, scale, at: (x: number, y: number) => ({ x: box.x + x * scale, y: box.y + y * scale }) };
 }
