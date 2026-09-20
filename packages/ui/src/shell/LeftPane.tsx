@@ -2,6 +2,7 @@ import { Bookmark, GalleryVertical, Layers, Paperclip, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
+import { useToolbarKeyboard } from '../components/useToolbarKeyboard';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { AttachmentsPane } from '../panes/AttachmentsPane';
@@ -31,7 +32,10 @@ export const DOCUMENT_PANES: readonly LeftTab[] = ['bookmarks', 'attachments', '
 export function LeftPane({ reading }: { reading: boolean }) {
   const { leftPane } = useAppState();
   const dispatch = useAppDispatch();
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
+  // The tabs are one stop in the Tab order; the arrow keys move between them,
+  // following the reading direction, and Enter or Space opens one.
+  const onTabKey = useToolbarKeyboard(dir);
   const tabs = reading ? TABS.filter((tab) => DOCUMENT_PANES.includes(tab.id)) : TABS;
   const active = tabs.find((tab) => tab.id === leftPane.tab) ?? tabs[0]!;
 
@@ -47,7 +51,7 @@ export function LeftPane({ reading }: { reading: boolean }) {
         <IconButton className="pane-close" label={t('pane.close')} icon={<Icon of={X} />} onClick={close} />
       </div>
       {/* The panes as a segmented control, the way a source list switches views. */}
-      <div className="segmented sidebar-tabs" role="tablist" aria-label={t('pane.tabs')}>
+      <div className="segmented sidebar-tabs" role="tablist" aria-label={t('pane.tabs')} onKeyDown={onTabKey}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -56,6 +60,7 @@ export function LeftPane({ reading }: { reading: boolean }) {
             id={`left-tab-${tab.id}`}
             className="segmented-item"
             aria-selected={tab.id === active.id}
+            tabIndex={tab.id === active.id ? 0 : -1}
             aria-controls="left-tab-panel"
             aria-label={t(tab.label)}
             title={t(tab.label)}

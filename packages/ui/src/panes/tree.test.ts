@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { sizeText, switched, visibleBookmarks } from './tree';
+import { sizeText, switched, treeKey, visibleBookmarks } from './tree';
 import type { Bookmark, Layer } from './tree';
 
-const mark = (title: string, depth: number, children = 0): Bookmark => ({ title, depth, page: 0, open: true, children });
+const mark = (title: string, depth: number, children = 0): Bookmark => ({ title, depth, page: 0, outside: false, open: true, children });
 
 describe('the bookmarks a person sees', () => {
   const items = [mark('1', 0, 2), mark('1.1', 1, 1), mark('1.1.1', 2), mark('1.2', 1), mark('2', 0)];
@@ -15,6 +15,27 @@ describe('the bookmarks a person sees', () => {
     expect(visibleBookmarks(items, new Set([1])).map((v) => v.item.title)).toEqual(['1', '1.1', '1.2', '2']);
     expect(visibleBookmarks(items, new Set([0])).map((v) => v.item.title)).toEqual(['1', '2']);
     expect(visibleBookmarks(items, new Set([0])).map((v) => v.index)).toEqual([0, 4]);
+  });
+});
+
+describe('the keys of a tree', () => {
+  it('open and close with the arrow that points into the text, mirrored right to left', () => {
+    expect(treeKey('ArrowRight', 'ltr')).toBe('open');
+    expect(treeKey('ArrowLeft', 'ltr')).toBe('close');
+    expect(treeKey('ArrowLeft', 'rtl')).toBe('open');
+    expect(treeKey('ArrowRight', 'rtl')).toBe('close');
+  });
+
+  it('move up and down, to the ends, and go where an entry goes', () => {
+    expect(['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' '].map((key) => treeKey(key, 'rtl'))).toEqual([
+      'next',
+      'previous',
+      'first',
+      'last',
+      'activate',
+      'activate',
+    ]);
+    expect(treeKey('a', 'ltr')).toBeNull();
   });
 });
 

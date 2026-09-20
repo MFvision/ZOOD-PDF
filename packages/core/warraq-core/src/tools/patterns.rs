@@ -234,42 +234,94 @@ impl Finder {
         }
         char_at[text.len()] = n;
         let chars: Vec<char> = text.chars().collect();
+        // Char index → byte offset, to search on from a char.
+        let byte_at: Vec<usize> = text
+            .char_indices()
+            .map(|(i, _)| i)
+            .chain(std::iter::once(text.len()))
+            .collect();
         // A match must not run on from, or into, a Latin letter or a digit:
         // a longer number never yields a shorter one. Arabic letters may
         // touch it — "و2026" is "and 2026".
         let glued = |c: Option<&char>| c.is_some_and(|c| c.is_ascii_alphanumeric());
         let mut out = vec![];
-        for m in self.regex.find_iter(&text) {
-            if m.start() == m.end() {
-                continue;
-            }
+        let mut from = 0usize;
+        // Each round starts past where the last one did: at most one round
+        // per char of the line.
+        while from <= text.len() {
+            let Some(m) = self.regex.find_at(&text, from) else {
+                break;
+            };
             let (start, end) = (char_at[m.start()], char_at[m.end()]);
             let Some(kind) = self.kind else {
-                out.push((start, end));
+                // A person's own pattern: each match as it is; an empty one
+                // is passed over.
+                if start < end {
+                    out.push((start, end));
+                    from = m.end();
+                } else if end < chars.len() {
+                    from = byte_at[end + 1];
+                } else {
+                    break;
+                }
                 continue;
             };
-            let before = start.checked_sub(1).and_then(|i| chars.get(i));
-            if glued(before) && kind != Kind::Email {
-                continue;
+            // Greedy grouping can take a group too many, at the end ("… 7519
+            // 12") or at the start (a row number, a date before a card): an
+            // account, card or phone number is tried from each group the
+            // match holds, each shorter until it checks out, and the longest
+            // that does is the number.
+            let trimmed = matches!(kind, Kind::Iban | Kind::Card | Kind::Phone);
+            let starts = std::iter::once(start)
+                .chain((start + 1..end).filter(|&i| {
+                    trimmed && chars[i].is_alphanumeric() && !glued(chars.get(i - 1))
+                }));
+            let mut found: Option<(usize, usize)> = None;
+            for s in starts {
+                let before = s.checked_sub(1).and_then(|i| chars.get(i));
+                if s >= end || (glued(before) && kind != Kind::Email) {
+                    continue;
+                }
+                // The pattern's own match from here.
+                let Some(from_here) = self.regex.find_at(&text, byte_at[s]) else {
+                    continue;
+                };
+                if char_at[from_here.start()] != s {
+                    continue;
+                }
+                let last = char_at[from_here.end()];
+                let shortest = if trimmed { s + 1 } else { last };
+                let longest = (shortest..=last).rev().find(|&e| {
+                    let candidate: String = chars[s..e].iter().collect();
+                    !glued(chars.get(e))
+                        && self
+                            .regex
+                            .find(&candidate)
+                            .is_some_and(|w| w.start() == 0 && w.end() == candidate.len())
+                        && kind.accepts(&candidate)
+                });
+                if let Some(e) = longest {
+                    if found.is_none_or(|(fs, fe)| e - s > fe - fs) {
+                        found = Some((s, e));
+                    }
+                }
             }
-            // Greedy grouping can take a group too many ("… 7519 12"): an
-            // account or card number is tried shorter until it checks out.
-            let shortest = if matches!(kind, Kind::Iban | Kind::Card | Kind::Phone) {
-                start + 1
-            } else {
-                end
-            };
-            let found = (shortest..=end).rev().find(|&e| {
-                let candidate: String = chars[start..e].iter().collect();
-                !glued(chars.get(e))
-                    && self
-                        .regex
-                        .find(&candidate)
-                        .is_some_and(|w| w.start() == 0 && w.end() == candidate.len())
-                    && kind.accepts(&candidate)
-            });
-            if let Some(e) = found {
-                out.push((start, e));
+            match found {
+                // On from its end: what a greedy match took past it is read again.
+                Some((s, e)) => {
+                    out.push((s, e));
+                    from = byte_at[e];
+                }
+                // Not one from here: a number may start at the next group
+                // inside it ("1 4111 1111 1111 1111", "REF12 SA03 …").
+                None => {
+                    let next = (start + 1..chars.len())
+                        .find(|&i| chars[i].is_alphanumeric() && !glued(chars.get(i - 1)));
+                    match next {
+                        Some(i) => from = byte_at[i],
+                        None => break,
+                    }
+                }
             }
         }
         out
@@ -367,6 +419,36 @@ mod tests {
             ["4111 1111 1111 1111", "5500-0000-0000-0004"]
         );
         assert!(found(Kind::Card, "4111 1111 1111 1112").is_empty());
+    }
+
+    /// A number with another group of digits before it — a table's row
+    /// number, an expiry date, a year — is found all the same, and one
+    /// straight after another is found too: a greedy match that takes the
+    /// group before, or the next number's first group, is not the end.
+    #[test]
+    fn a_number_after_another_group_of_digits_is_found() {
+        for line in [
+            "1 4111 1111 1111 1111",
+            "7 4111 1111 1111 1111",
+            "No. 3 4111 1111 1111 1111",
+            "12/28 4111 1111 1111 1111",
+            "2026 4111 1111 1111 1111",
+            "Ref 12 4111 1111 1111 1111",
+        ] {
+            assert_eq!(found(Kind::Card, line), ["4111 1111 1111 1111"], "{line}");
+        }
+        assert_eq!(
+            found(Kind::Card, "4111 1111 1111 1111 5500 0000 0000 0004"),
+            ["4111 1111 1111 1111", "5500 0000 0000 0004"]
+        );
+        assert_eq!(
+            found(Kind::Iban, "REF12 SA03 8000 0000 6080 1016 7519"),
+            ["SA03 8000 0000 6080 1016 7519"]
+        );
+        assert_eq!(
+            found(Kind::NationalId, "10123456789 1012345678"),
+            ["1012345678"]
+        );
     }
 
     #[test]

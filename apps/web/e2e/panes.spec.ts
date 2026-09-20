@@ -12,6 +12,8 @@ const EVERYTHING = fixture('hidden/everything.pdf');
 const LAYERS = fixture('layers/layers.pdf');
 /** Three pages, with Arabic bookmarks. */
 const OUTLINED = corpus('generated/variant-arabic-metadata-outlines-annots.pdf');
+/** An outline with a heading that goes nowhere, over a page and a web address (tests/fixtures/panes/make.py). */
+const HEADINGS = fixture('panes/headings.pdf');
 
 const navigation = (page: Page) => page.getByRole('complementary', { name: 'Navigation' });
 
@@ -68,10 +70,37 @@ test.describe('the navigation pane: bookmarks, attachments and layers, in both v
     const tree = navigation(page).getByRole('tree', { name: 'Bookmarks' });
     await expect(tree.getByRole('treeitem')).toHaveCount(6);
     await expect(tree.getByRole('treeitem', { level: 2 })).toHaveCount(3);
-    await tree.getByRole('button', { name: 'الفصل الثالث: الخصوصية والمزامنة', exact: true }).click();
+    await tree.getByRole('treeitem', { name: 'الفصل الثالث: الخصوصية والمزامنة', exact: true }).click();
     await expect.poll(() => embedPage(page)).toBe(3);
-    // Closing an entry hides what is under it.
-    await tree.getByRole('button', { name: 'Hide what is under الفصل الأول: لماذا وراق؟' }).click();
+    // The keyboard of a tree: one stop in the Tab order, the arrows move and
+    // open and close, Enter goes to the page.
+    const first = tree.getByRole('treeitem', { name: 'الفصل الأول: لماذا وراق؟', exact: true });
+    await first.focus();
+    await expect(tree.locator('[role="treeitem"][tabindex="0"]')).toHaveCount(1);
+    await expect(first).toHaveAttribute('aria-expanded', 'true');
+    // Closing an entry hides what is under it; opening shows it again.
+    await page.keyboard.press('ArrowLeft');
+    await expect(first).toHaveAttribute('aria-expanded', 'false');
+    await expect(tree.getByRole('treeitem')).toHaveCount(5);
+    await page.keyboard.press('ArrowRight');
+    await expect(tree.getByRole('treeitem')).toHaveCount(6);
+    await page.keyboard.press('ArrowRight');
+    const child = tree.getByRole('treeitem', { level: 2 }).first();
+    await expect(child).toBeFocused();
+    await page.keyboard.press('ArrowLeft');
+    await expect(first).toBeFocused();
+    await page.keyboard.press('End');
+    await expect(tree.getByRole('treeitem').last()).toBeFocused();
+    await page.keyboard.press('Home');
+    await expect(first).toBeFocused();
+    const { result } = await callOn<{ bookmarks: { title: string; page: number | null }[] }>('outline.list', OUTLINED);
+    const goesTo = result.bookmarks.find((b) => b.title === 'الفصل الأول: لماذا وراق؟')?.page ?? null;
+    expect(goesTo).not.toBeNull();
+    await page.keyboard.press('Enter');
+    await expect.poll(() => embedPage(page)).toBe((goesTo ?? 0) + 1);
+    // Closed again, to be seen so in the editor.
+    await first.focus();
+    await page.keyboard.press('ArrowLeft');
     await expect(tree.getByRole('treeitem')).toHaveCount(5);
 
     // The same pane, as it was left, in Warraq's editor beside the pages.
@@ -132,7 +161,9 @@ test.describe('the navigation pane: bookmarks, attachments and layers, in both v
     await page.goto('/');
     await openPdf(page, LAYERS);
     await openPane(page, 'Layers');
-    const tree = navigation(page).getByRole('tree', { name: 'Layers' });
+    // Every layer always shown in the list, so a list, not a tree: nothing opens or closes.
+    await expect(navigation(page).getByRole('tree')).toHaveCount(0);
+    const tree = navigation(page).getByRole('list', { name: 'Layers' });
     const box = (name: string) => tree.getByRole('checkbox', { name, exact: false });
     await expect(box('Text')).toBeChecked();
     await expect(box('طبقة عربية')).toBeChecked();
@@ -170,5 +201,87 @@ test.describe('the navigation pane: bookmarks, attachments and layers, in both v
     // An update of the file: its own bytes are still its first ones.
     const original = readFileSync(LAYERS);
     expect(readFileSync(kept).subarray(0, original.length).equals(original)).toBe(true);
+  });
+
+  test('bookmarks: a heading is a heading, and only an entry that leaves the file says so', async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    await openPdf(page, HEADINGS);
+    await openPane(page, 'Bookmarks');
+    const tree = navigation(page).getByRole('tree', { name: 'Bookmarks' });
+    await expect(tree.getByRole('treeitem')).toHaveCount(4);
+    const heading = tree.getByRole('treeitem', { name: 'Part one', exact: true });
+    const web = tree.getByRole('treeitem', { name: 'On the web', exact: true });
+    await expect(heading.locator('.docpane-heading')).toHaveCount(1);
+    await expect(heading).not.toHaveAttribute('title');
+    await expect(heading.locator('.lucide-external-link')).toHaveCount(0);
+    await expect(web).toHaveAttribute('title', 'Goes outside this file');
+    await expect(web.locator('.lucide-external-link')).toHaveCount(1);
+    // Choosing the heading opens or closes what it heads; the page stays.
+    await heading.click();
+    await expect(tree.getByRole('treeitem')).toHaveCount(2);
+    await tree.getByRole('treeitem', { name: 'Appendix', exact: true }).click();
+    await expect.poll(() => embedPage(page)).toBe(2);
+  });
+
+  test('the pane switcher is one stop in the Tab order, and the arrows move along it', async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    await openPdf(page, EVERYTHING);
+    await openPane(page, 'Bookmarks');
+    const tabs = navigation(page).getByRole('tablist');
+    await expect(tabs.locator('[role="tab"][tabindex="0"]')).toHaveCount(1);
+    await navigation(page).getByRole('tab', { name: 'Bookmarks' }).focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(navigation(page).getByRole('tab', { name: 'Attachments' })).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(navigation(page).getByRole('tab', { name: 'Attachments' })).toHaveAttribute('aria-selected', 'true');
+    await expect(navigation(page).getByRole('tab', { name: 'Attachments' })).toHaveAttribute('tabindex', '0');
+    await page.keyboard.press('End');
+    await expect(navigation(page).getByRole('tab', { name: 'Layers' })).toBeFocused();
+    await page.keyboard.press('Home');
+    await expect(navigation(page).getByRole('tab', { name: 'Bookmarks' })).toBeFocused();
+  });
+
+  test('attachments: adding one in Edit text keeps the text edits undoable', async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    await openPdf(page, OUTLINED);
+    const first = await enterEditText(page);
+    await first.locator('.edit-box').first().click();
+    const area = first.locator('.paragraph-editor-area');
+    await area.fill('فقرة عدّلها الاختبار');
+    await area.press('ControlOrMeta+Enter');
+    await expect(first.locator('.text-layer')).toContainText('فقرة عدّلها الاختبار');
+    const undo = page.locator('.pane-end').getByRole('button', { name: 'Undo', exact: true });
+    await expect(undo).toBeEnabled();
+
+    await openPane(page, 'Attachments');
+    await navigation(page).getByTestId('attach-input').setInputFiles({ name: 'note.txt', mimeType: 'text/plain', buffer: Buffer.from('note') });
+    await expect(navigation(page).getByRole('list', { name: 'Attachments' }).getByRole('listitem')).toHaveCount(1);
+    // The attachment moved no text: the edit can still be undone.
+    await expect(undo).toBeEnabled();
+    await undo.click();
+    await expect(first.locator('.text-layer')).not.toContainText('فقرة عدّلها الاختبار');
+  });
+
+  test('attachment rows sit the same way in Arabic as in English, mirrored', async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    await openPdf(page, EVERYTHING);
+    await openPane(page, 'Attachments');
+    const inset = () =>
+      page.evaluate(() => {
+        const row = document.querySelector('.docpane-file');
+        const icon = row?.querySelector('.lucide');
+        if (!row || !icon) return null;
+        const r = row.getBoundingClientRect();
+        const i = icon.getBoundingClientRect();
+        // From the row's start edge: the left in English, the right in Arabic.
+        return document.documentElement.dir === 'rtl' ? r.right - i.right : i.left - r.left;
+      });
+    // The rows are read from the file: measured once they are on screen.
+    await expect(navigation(page).getByRole('list', { name: 'Attachments' }).getByRole('listitem')).toHaveCount(2);
+    await expect.poll(inset).toBeGreaterThan(0);
+    const english = await inset();
+    await page.getByRole('menubar').getByRole('combobox', { name: 'Language' }).selectOption({ label: 'العربية' });
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+    await expect.poll(inset).toBe(english);
   });
 });

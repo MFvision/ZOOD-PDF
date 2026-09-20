@@ -258,7 +258,7 @@ test.describe('Digital signatures', () => {
       const before = (await embedDocument(page)).id;
       await page
         .getByRole('complementary', { name: 'Navigation' })
-        .getByRole('tree', { name: 'Layers' })
+        .getByRole('list', { name: 'Layers' })
         .getByRole('checkbox', { name: 'Watermark', exact: false })
         .check();
       await expect.poll(async () => (await embedDocument(page)).id).not.toBe(before);

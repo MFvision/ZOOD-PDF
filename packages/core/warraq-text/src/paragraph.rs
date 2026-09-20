@@ -325,6 +325,7 @@ mod tests {
             height: 12.0,
             direction: dir,
             spans: vec![],
+            turned: None,
         }
     }
 

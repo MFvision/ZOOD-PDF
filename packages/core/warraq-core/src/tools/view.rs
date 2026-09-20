@@ -15,7 +15,7 @@
 use serde::{Deserialize, Serialize};
 use warraq_text::{find_in_lines, SearchNormalization, TextLine};
 
-use super::redact::{char_boxes, match_boxes, unrotate, Rect};
+use super::redact::{char_rects, match_boxes, unrotate, Rect};
 use super::{args, Reply};
 use crate::{CoreError, Document};
 
@@ -165,19 +165,8 @@ fn chars_in(line: &TextLine, boxes: &[Rect], rotation: i64, shown: (f32, f32)) -
     };
     line.text
         .chars()
-        .zip(char_boxes(line))
-        .filter(|(_, (x0, x1))| {
-            inside(unrotate(
-                Rect {
-                    x: *x0,
-                    y: line.y,
-                    width: (x1 - x0).max(0.0),
-                    height: line.height,
-                },
-                rotation,
-                shown,
-            ))
-        })
+        .zip(char_rects(line))
+        .filter(|(_, r)| inside(unrotate(*r, rotation, shown)))
         .map(|(c, _)| c)
         .collect()
 }
@@ -409,13 +398,16 @@ mod tests {
             .find(|l| l.direction == warraq_text::Direction::Rtl && l.text.split(' ').count() > 3)
             .expect("an Arabic line")
             .clone();
-        let spans = char_boxes(&line);
+        let spans = char_rects(&line);
         let words: Vec<&str> = line.text.split(' ').collect();
         let first_two = format!("{} {}", words[0], words[1]);
         let n = first_two.chars().count();
         // The first two words' glyphs: the rightmost stretch of the line.
-        let x0 = spans[..n].iter().map(|s| s.0).fold(f32::MAX, f32::min);
-        let x1 = spans[..n].iter().map(|s| s.1).fold(f32::MIN, f32::max);
+        let x0 = spans[..n].iter().map(|s| s.x).fold(f32::MAX, f32::min);
+        let x1 = spans[..n]
+            .iter()
+            .map(|s| s.x + s.width)
+            .fold(f32::MIN, f32::max);
         let got = reply(
             &mut doc,
             "view.text",

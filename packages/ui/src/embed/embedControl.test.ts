@@ -6,12 +6,19 @@ import type { ViewToggles } from './embedControl';
 describe('search-and-redact marks in the EmbedPDF view', () => {
   it('one pending text mark per match, over exactly its glyph boxes', () => {
     const added: unknown[][] = [];
+    let pendingCount = 1;
     const plugins: Record<string, unknown> = {
       'document-manager': { getActiveDocumentId: () => 'doc-1' },
       redaction: {
         forDocument: (id: string) => {
           expect(id).toBe('doc-1');
-          return { addPending: (items: unknown[]) => added.push(items) };
+          return {
+            getState: () => ({ pendingCount }),
+            addPending: (items: unknown[]) => {
+              added.push(items);
+              pendingCount += items.length;
+            },
+          };
         },
       },
     };
@@ -39,6 +46,18 @@ describe('search-and-redact marks in the EmbedPDF view', () => {
     });
     expect(second).toMatchObject({ page: 2, rect: { origin: { x: 100, y: 300 }, size: { width: 120, height: 16 } } });
     expect((second?.rects as unknown[]).length).toBe(2);
+  });
+
+  it('counts only what EmbedPDF took: none on a file that forbids changing its content', () => {
+    // EmbedPDF's addPendingItems returns without a word when the document
+    // lacks the ModifyContents permission.
+    const plugins: Record<string, unknown> = {
+      'document-manager': { getActiveDocumentId: () => 'doc-1' },
+      redaction: { forDocument: () => ({ getState: () => ({ pendingCount: 0 }), addPending: () => {} }) },
+    };
+    const registry = { getPlugin: (id: string) => ({ provides: () => plugins[id] }) } as unknown as PluginRegistry;
+    const marks = [{ page: 0, text: 'Haddad', rects: [{ x: 280, y: 50, width: 40, height: 14 }] }];
+    expect(addRedactionMarks(registry, marks, () => 'id')).toBe(0);
   });
 
   it('the box around several', () => {

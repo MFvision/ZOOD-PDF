@@ -122,6 +122,18 @@ describe('appReducer edit state', () => {
     expect(appReducer(state, { type: 'EDIT_NOTICE_DISMISSED' }).edit.fontSubstituted).toBe(false);
   });
 
+  it('keeps the undo history through a change that leaves the text alone, not through others', () => {
+    const edited = appReducer(withDocument(), { type: 'EDIT_APPLIED', entry, fontSubstituted: false });
+    const shape = { pageCount: 3, pageSizes: [[595, 842], [595, 842], [595, 842]] as [number, number][], selection: [] };
+    // An attachment added or removed: the paragraphs are where they were.
+    const attached = appReducer(edited, { type: 'DOCUMENT_RESHAPED', ...shape, keepEditHistory: true });
+    expect(attached.edit.stack.entries).toEqual([entry]);
+    expect(attached.edit.revision).toBeGreaterThan(edited.edit.revision);
+    // Pages turned, text recognised, marks drawn: the history names what may have moved.
+    const reshaped = appReducer(edited, { type: 'DOCUMENT_RESHAPED', ...shape });
+    expect(reshaped.edit.stack.entries).toEqual([]);
+  });
+
   it('takes the name a file was saved under, and keeps its edits', () => {
     const edited = appReducer(withDocument(), { type: 'EDIT_APPLIED', entry, fontSubstituted: false });
     const renamed = appReducer(edited, { type: 'DOCUMENT_RENAMED', name: 'تقرير نهائي.pdf' });

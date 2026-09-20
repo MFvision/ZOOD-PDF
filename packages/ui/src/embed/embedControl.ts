@@ -217,10 +217,22 @@ export function unionBox(boxes: readonly PageBox[]): PageBox {
   return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
 }
 
+/** How many marks wait in a document's redaction scope; 0 when it cannot say. */
+function pendingIn(scope: ReturnType<Redaction['forDocument']>): number {
+  try {
+    return Number(scope.getState().pendingCount ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
 /**
  * Pending redaction marks in the EmbedPDF view, one per match, over exactly
  * the glyph boxes given — what its own "Mark text" makes from a selection, so
- * its Apply removes what is under them. Returns how many were added.
+ * its Apply removes what is under them. Returns how many were added: EmbedPDF
+ * adds none, and says nothing, to a file whose permissions forbid changing
+ * its content (opened without its owner password), so what is counted is
+ * what it holds afterwards, not what it was given.
  */
 export function addRedactionMarks(
   registry: PluginRegistry,
@@ -244,8 +256,10 @@ export function addRedactionMarks(
       markColor: '#E44234',
       redactionColor: '#000000',
     }));
-  if (items.length > 0) scope.addPending(items);
-  return items.length;
+  if (items.length === 0) return 0;
+  const before = pendingIn(scope);
+  scope.addPending(items);
+  return Math.max(0, pendingIn(scope) - before);
 }
 
 /**
