@@ -81,6 +81,7 @@ still forces the mock core on the desktop too.
 | `open()` / `save()` from `@tauri-apps/plugin-dialog`      | native dialogs; every picked path is added to the fs scope at runtime                                                                                           |
 | `readFile()` / `writeFile()` from `@tauri-apps/plugin-fs` | allowed only for paths in that scope (`fs:allow-read-file`, `fs:allow-write-file`; no static scope entries)                                                     |
 | event `warraq://file-drop`, payload `{ paths: string[] }` | emitted after the Rust side allowed the dropped files in the fs scope. Tauri's own `tauri://drag-enter/over/leave/drop` events still fire for hover UI          |
+| `library_*` commands                                      | whole folders for the Library — walked, read a file at a time, the index in the app's data directory — see [the Library](#the-library-library_-commands-srclibraryrs)                 |
 
 ### Cloud drives (`cloud_*` commands, `src/cloud.rs`)
 
@@ -115,6 +116,85 @@ Capabilities are in `src-tauri/capabilities/default.json` (`core:default`, `dial
 `fs:allow-read-file`, `fs:allow-write-file`). There is no static fs scope: the only readable files are the ones
 the user picked in a dialog or dropped on the window. The `doc_*` and `core_*` commands are this app's own
 commands, so they need no capability entry; only plugin commands do.
+
+### The Library (`library_*` commands, `src/library.rs`)
+
+What the Library panel (`packages/ui/src/library/`) uses to reach whole folders — the one
+thing a browser cannot do. Every command below is wrapped for the panel in
+`packages/ui/src/core/host-tauri.ts` (`pickLibraryFolders`, `startLibraryScan`, …); the panel
+should call those rather than `invoke` by hand. `hasLibraryHost()` is `false` in a browser and
+in the extension, where the panel keeps its own directory-picker path.
+
+|                                                                    |                                                                                                                                                                                       |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `open({ multiple: true, directory: true, recursive: true })`       | the native folder picker, several folders at once. `recursive` is what puts everything under each folder in the fs scope; without it nothing inside is readable                        |
+| `invoke("library_scan_start", { request })` → `number`             | starts walking the chosen folders on a thread of its own and answers at once with the number naming this walk. Findings arrive as `warraq://library-scan`                              |
+| `invoke("library_scan_stop", { scan })` → `boolean`                | stops that walk. `false` when it had already finished, which is not an error                                                                                                          |
+| `invoke("library_read_file", { path })` → `ArrayBuffer`            | one file's bytes when its turn comes. `E_SCOPE …` outside the chosen folders, `E_TOO_BIG …` past 512 MB, `E_IO …` otherwise                                                           |
+| `invoke("library_stat", { path })` → `{ exists, size, modified }`  | whether a file is still there and still what the index holds, without reading it                                                                                                      |
+| `invoke("library_index_path")` → `string`                          | where the indexes live, to show the person whose data it is                                                                                                                           |
+| `invoke("library_index_save", bytes, { headers })` → `number`      | writes `library.save`'s bytes. Header `x-warraq-name`, percent-encoded. Written whole or not at all                                                                                   |
+| `invoke("library_index_load", { name })` → `ArrayBuffer`           | the index back, for `library.open`. `E_MISSING …` on a first run (`loadLibraryIndex` turns that into `null`)                                                                          |
+| `invoke("library_index_list")` → `IndexFile[]`                     | the indexes on this device: `{ name, bytes, modified, path }`                                                                                                                         |
+| `invoke("library_index_delete", { name })` → `boolean`             | deletes one for good, half-written leftovers included. `false` when there was nothing to delete                                                                                        |
+| `invoke("library_watch_start", { request })` → `WatchAnswer`       | re-checks the chosen folders while the app runs: `{ watching, files, seconds, reason? }`                                                                                               |
+| `invoke("library_watch_stop")`                                     | stops watching; safe when nothing is watched                                                                                                                                          |
+| event `warraq://library-scan`, payload `ScanEvent`                 | `{ scan, kind: "progress" \| "done", current, files, skipped, found, folders, missing?, stopped, truncated }` — `done` arrives once and last                                            |
+| event `warraq://library-watch`, payload `WatchEvent`               | `{ added, changed, removed, stopped? }`                                                                                                                                                |
+
+A `request` is `{ roots: [{ path, recursive, exclude }], extensions?, known? }`. `exclude` holds
+full paths of subfolders the person unticked — they are not walked and not reported, because
+they are a choice, not a skip. `extensions` is lower-case and without dots; left out, the host
+uses its own list (`DEFAULT_EXTENSIONS`: pdf, png, jpg, jpeg, tif, tiff, webp, heic, heif, bmp,
+gif, docx, xlsx, pptx, html, htm, md, markdown, txt, csv), so the same folder lists the same
+files on macOS, Windows and Linux. `known` is what the index already holds, `{ key, size,
+modified }` — at most 200 000 of them.
+
+**Nothing blocks the window.** `library_scan_start` returns a number immediately; the walk
+itself runs on a thread of its own and hands over batches of 256 files as it goes, with the
+folder it is reading now in `current`. Stop is answered between entries. No file's bytes are
+read to list it — one `stat` each — so memory does not follow the folder's size.
+
+**Files changed while the app was closed** fall out of the same walk. Pass `known`; every file
+comes back with `state: "new" | "changed" | "same"` (size **and** date compared), and the `done`
+event's `missing` lists everything in `known` that no folder held any more — moved, renamed or
+gone. A walk that was stopped reports no `missing` at all: it met only part of the folder, and
+what it did not reach is not gone.
+
+**Bounds**, all of them per scan: depth 24, 100 000 files, 1 000 000 entries looked at, 512 MB a
+file. Anything passed over is a `skipped` entry with a reason — `unreadable`, `link`,
+`too-deep`, `too-big`, `too-many` — never a failure of the run. A short list sets `truncated`,
+so the panel can say the list is short instead of showing it as complete.
+
+**Scope and links.** Only folders the picker put in the fs scope are walked, and only paths in
+it are read. A link that leaves the chosen folder is refused even though the scope's glob would
+let it through — the person chose a folder, not wherever its links point — and so is a link
+inside one whose target is outside (`library_read_file` checks the target against the chosen
+folder as the file system truly names it, because `/tmp` is `/private/tmp` on macOS and a home
+directory can itself be a link). Every folder is entered once, by its true path, which is what
+keeps `deeper -> ..` from walking for ever. Hidden entries (a leading `.`) are left out
+everywhere.
+
+**Where the index lives.** The app's own data directory, `<app_data_dir>/library/<name>.wlx`:
+`~/Library/Application Support/app.warraq.desktop/library` on macOS,
+`%APPDATA%\app.warraq.desktop\library` on Windows, `~/.local/share/app.warraq.desktop/library`
+on Linux. Never a temporary folder — it holds text out of the person's own documents, and the
+system sweeps temporary folders. A save writes `<name>.wlx.writing` and renames it over the
+old index, so a crash halfway leaves the old one whole. A name may hold only letters, digits,
+`.`, `-` and `_`, never leads with a dot and is at most 64 characters, so it can never become a
+path. `library_index_delete` removes the file itself.
+
+**Watching is a re-check, not the system's notifications.** Every five seconds the host walks
+the watched folders again (`stat` only) and emits what moved. FSEvents, inotify and
+ReadDirectoryChangesW each behave differently and each fails silently in its own way — a
+network volume, a full watch table — and none could be exercised on more than one machine here;
+a re-check behaves the same on all three systems and is tested. So the answer says `seconds`,
+for the panel to say plainly how often it looks, and `watching: false` with `reason:
+"too-many"` when the folders hold more than 20 000 files, rather than watch nothing in silence.
+The same `stopped: "too-many"` arrives on the event if the folders grow past that while it runs.
+
+The `library_*` commands are this app's own, so they need no capability entry; the folder picker
+uses `dialog:allow-open`, which the capability already grants.
 
 ### The core bridge (`doc_*` commands)
 

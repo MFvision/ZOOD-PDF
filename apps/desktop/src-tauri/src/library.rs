@@ -1532,6 +1532,29 @@ mod tests {
         std::fs::remove_dir_all(outside).unwrap();
     }
 
+    /// The size the Library is meant for. It also measures what docs/STATUS.md
+    /// records: run it with `--nocapture` to see the number on this machine.
+    #[test]
+    fn a_folder_of_ten_thousand_files_is_walked_without_reading_one() {
+        let dir = scratch("many");
+        for bucket in 0..20 {
+            for n in 0..500 {
+                write(&dir, &format!("d{bucket:02}/f{n:03}.pdf"), b"%PDF-1.7");
+            }
+        }
+        let started = std::time::Instant::now();
+        let (files, skipped, summary) = collect(&dir, &mut options(true));
+        let took = started.elapsed();
+        assert_eq!(files.len(), 10_000);
+        assert!(skipped.is_empty(), "{skipped:?}");
+        assert!(!summary.truncated && !summary.stopped);
+        println!("walked {} files in {took:?}", files.len());
+        // Far above what a `stat` each costs, and only here to catch a walk
+        // that started reading files or lost itself in a loop.
+        assert!(took.as_secs() < 30, "the walk took {took:?}");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
     #[test]
     fn a_walk_stops_when_it_is_asked_to() {
         let dir = scratch("stop");
