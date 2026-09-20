@@ -44,8 +44,10 @@ const MAX_FILES: usize = 100_000;
 /// The most entries one scan looks at, listed or not: a folder of a million
 /// files must not hold the window.
 const MAX_ENTRIES: usize = 1_000_000;
-/// The most files whose size and date one scan is told about beforehand.
-const MAX_KNOWN: usize = 200_000;
+/// The most files whose size and date one scan is told about beforehand. No
+/// more than one scan can list: everything past that could only ever come
+/// back as missing.
+const MAX_KNOWN: usize = MAX_FILES;
 /// Findings travel to the interface this many at a time.
 const BATCH: usize = 256;
 /// The largest single file handed to the indexer. Bigger ones are a skip with
@@ -494,9 +496,6 @@ pub struct ScanEvent {
     /// On `done`: Stop was pressed, or a bound was reached.
     pub stopped: bool,
     pub truncated: bool,
-    /// On `done`: set when a folder could not be walked at all.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
 }
 
 impl ScanEvent {
@@ -512,7 +511,6 @@ impl ScanEvent {
             missing: Vec::new(),
             stopped: false,
             truncated: false,
-            error: None,
         }
     }
 }
@@ -669,20 +667,25 @@ pub async fn library_scan_start<R: Runtime>(
                     ScanEvent::progress(id, &root.path),
                 );
                 let mut options = options_for(root, &extensions, &known, budget);
-                let summary = walk_folder(dir, &mut options, &stop, &mut |item| match item {
-                    WalkItem::File(file) => {
-                        unseen.remove(&file.key);
-                        found += 1;
-                        files.push(file);
-                        if files.len() >= BATCH {
-                            let mut event = ScanEvent::progress(id, &root.path);
-                            event.files = std::mem::take(&mut files);
-                            event.skipped = std::mem::take(&mut skipped);
-                            event.found = found;
-                            let _ = handle.emit(LIBRARY_SCAN_EVENT, event);
+                let summary = walk_folder(dir, &mut options, &stop, &mut |item| {
+                    match item {
+                        WalkItem::File(file) => {
+                            unseen.remove(&file.key);
+                            found += 1;
+                            files.push(file);
                         }
+                        WalkItem::Skipped(skip) => skipped.push(skip),
                     }
-                    WalkItem::Skipped(skip) => skipped.push(skip),
+                    // Both are flushed on a full batch: a folder of nothing but
+                    // unreadable entries would otherwise pile up a million
+                    // skips before the `done` event ever came.
+                    if files.len() >= BATCH || skipped.len() >= BATCH {
+                        let mut event = ScanEvent::progress(id, &root.path);
+                        event.files = std::mem::take(&mut files);
+                        event.skipped = std::mem::take(&mut skipped);
+                        event.found = found;
+                        let _ = handle.emit(LIBRARY_SCAN_EVENT, event);
+                    }
                 });
                 budget = options.budget;
                 folders += summary.folders;
@@ -720,7 +723,6 @@ pub async fn library_scan_start<R: Runtime>(
                     missing,
                     stopped,
                     truncated,
-                    error: None,
                 },
             );
             if let Some(state) = handle.try_state::<LibraryState>() {

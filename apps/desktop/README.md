@@ -148,7 +148,7 @@ they are a choice, not a skip. `extensions` is lower-case and without dots; left
 uses its own list (`DEFAULT_EXTENSIONS`: pdf, png, jpg, jpeg, tif, tiff, webp, heic, heif, bmp,
 gif, docx, xlsx, pptx, html, htm, md, markdown, txt, csv), so the same folder lists the same
 files on macOS, Windows and Linux. `known` is what the index already holds, `{ key, size,
-modified }` — at most 200 000 of them.
+modified }` — at most 100 000 of them, the most one scan can list.
 
 **Nothing blocks the window.** `library_scan_start` returns a number immediately; the walk
 itself runs on a thread of its own and hands over batches of 256 files as it goes, with the

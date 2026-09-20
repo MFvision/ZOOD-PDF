@@ -811,7 +811,6 @@ export interface LibraryScanEvent {
   stopped: boolean;
   /** A bound was reached: the list is short, and says so. */
   truncated: boolean;
-  error?: string;
 }
 
 /** Whether a file is still there and still what the index holds. */
