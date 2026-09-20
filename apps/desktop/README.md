@@ -129,8 +129,8 @@ sets `PDFIUM_LIB_DIR` to the first directory that actually holds the library:
    `tauri dev` works before anything has been bundled
 
 If none of them binds, the core degrades to the pure-Rust renderer on its own; nothing crashes and
-`core_engine()` reports `"hayro"` instead of `"pdfium+hayro"`. The UI shows that string in the status bar, so a
-silent downgrade is visible rather than mysterious.
+`core_engine()` reports `"hayro"` instead of `"pdfium+hayro"`. The UI then puts a **Built-in renderer** badge beside
+the document's title, and About names the engine, so a silent downgrade is visible rather than mysterious.
 
 **Bundling and licence.** `src-tauri/resources/pdfium/` holds `libpdfium.dylib` plus the upstream `LICENSE`,
 `VERSION` and the whole `licenses/` folder, and `bundle.resources` ships all of it (the dylib itself is listed

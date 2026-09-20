@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { isTauriHost } from '../core/host-tauri';
 import { Dialog } from '../components/Dialog';
 import { APP_ICON } from '../components/appIcon';
 import { radioTabIndex, useRadioGroupKeyboard } from '../components/useRadioGroupKeyboard';
@@ -171,7 +172,8 @@ export function ShortcutsDialog() {
           ))}
         </tbody>
       </table>
-      <p className="home-note">{t('shortcuts.browserNote')}</p>
+      {/* Only a browser keeps that key for itself; the desktop app does not. */}
+      {!isTauriHost() && <p className="home-note">{t('shortcuts.browserNote')}</p>}
     </Dialog>
   );
 }

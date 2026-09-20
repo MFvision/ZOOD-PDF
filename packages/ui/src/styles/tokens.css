@@ -165,8 +165,6 @@
   --font-s: var(--text-callout);
   --font-xs: var(--text-subheadline);
   --motion: var(--duration-quick);
-  --ribbon-h: var(--toolbar-h);
-  --status-h: 0px;
 }
 
 @supports (color: AccentColor) {
