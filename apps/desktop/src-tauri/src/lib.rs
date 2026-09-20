@@ -15,6 +15,7 @@ use tauri_plugin_fs::FsExt;
 pub mod batch;
 pub mod cloud;
 pub mod core_bridge;
+pub mod library;
 pub mod menu;
 pub mod print;
 pub mod signing;
@@ -195,6 +196,8 @@ pub fn run() {
         .manage(menu::MenuState::default())
         // Cloud drives: the sign-in under way and the system's credential store.
         .manage(cloud::CloudState::default())
+        // The Library's walks under way, and its folder watcher.
+        .manage(library::LibraryState::default())
         .on_menu_event(|app, event| menu::forward(app, event.id().as_ref()))
         // Points warraq-render at the bundled PDFium and starts the core thread
         // before the window can invoke anything (see `core_bridge`).
@@ -260,6 +263,17 @@ pub fn run() {
             menu::set_menu,
             batch::batch_list_folder,
             batch::batch_write,
+            library::library_scan_start,
+            library::library_scan_stop,
+            library::library_read_file,
+            library::library_stat,
+            library::library_index_path,
+            library::library_index_save,
+            library::library_index_load,
+            library::library_index_list,
+            library::library_index_delete,
+            library::library_watch_start,
+            library::library_watch_stop,
         ])
         .on_window_event(|window, event| {
             // Forward OS file drops to the webview, after allowing the dropped

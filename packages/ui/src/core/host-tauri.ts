@@ -728,3 +728,239 @@ export async function handleTauriRequest<K extends RequestKind>(
   const message = { kind, ...payload } as unknown as HostRequest;
   return (await dispatch(message)) as ResultMap[K];
 }
+
+/* ---------------------------------------------------------------- library */
+
+/**
+ * The Library's side of the desktop host (`apps/desktop/src-tauri/src/library.rs`).
+ *
+ * The shape is the one a folder of ten thousand files needs: the walk is
+ * started and answers at once with a number, its findings arrive as events in
+ * batches while it runs, and Stop is a second call — nothing here waits on a
+ * promise for minutes, and no file's bytes are read to list it. A file is read
+ * only when its turn comes.
+ *
+ * Where the index lives is the host's business, not the page's: the app's own
+ * data directory (`~/Library/Application Support/app.warraq.desktop/library`
+ * on macOS, `%APPDATA%` on Windows, `~/.local/share` on Linux), never a
+ * temporary folder, and `deleteLibraryIndex` really removes it.
+ */
+
+/** One folder the person chose, and how much of it they chose. */
+export interface LibraryScanRoot {
+  path: string;
+  /** Its subfolders too. */
+  recursive?: boolean;
+  /** Full paths of subfolders to leave out — what was unticked. */
+  exclude?: string[];
+}
+
+/** What the index already holds for a file, so unchanged files are not read again. */
+export interface LibraryKnownFile {
+  key: string;
+  size: number;
+  /** Milliseconds since the epoch, as the walk reports them. */
+  modified: number;
+}
+
+/** The arguments of one walk, or of the watcher. */
+export interface LibraryScanRequest {
+  roots: LibraryScanRoot[];
+  /** Lower-case, without dots. Omitted: the host's own list of the kinds it reads. */
+  extensions?: string[];
+  /** Only for a walk; the watcher ignores it. */
+  known?: LibraryKnownFile[];
+}
+
+/** One file found under a chosen folder. Its bytes are not read to list it. */
+export interface LibraryFile {
+  /** `library.add`'s `key`: the full path. */
+  key: string;
+  name: string;
+  /** Its place under the chosen folder, `/`-separated on every platform. */
+  relative: string;
+  /** The chosen folder it was found under. */
+  root: string;
+  size: number;
+  modified: number;
+  /** Lower-case, no dot; empty when the name has no extension. */
+  extension: string;
+  /** `new` and `changed` need reading; `same` is already indexed. */
+  state: 'new' | 'changed' | 'same';
+}
+
+/** A file or folder the walk passed over, and why. Never fatal. */
+export interface LibrarySkip {
+  path: string;
+  reason: 'unreadable' | 'link' | 'too-deep' | 'too-big' | 'too-many';
+}
+
+/** One message of a walk under way. `done` arrives once, and last. */
+export interface LibraryScanEvent {
+  scan: number;
+  kind: 'progress' | 'done';
+  /** The folder being read now. */
+  current: string;
+  files: LibraryFile[];
+  skipped: LibrarySkip[];
+  /** Files found so far, over every folder of this scan. */
+  found: number;
+  folders: number;
+  /** On `done` only: indexed files no folder held any more — moved or gone. */
+  missing?: string[];
+  stopped: boolean;
+  /** A bound was reached: the list is short, and says so. */
+  truncated: boolean;
+}
+
+/** Whether a file is still there and still what the index holds. */
+export interface LibraryFileStamp {
+  exists: boolean;
+  size: number;
+  modified: number;
+}
+
+/** An index kept in the app's data directory. */
+export interface LibraryIndexFile {
+  name: string;
+  bytes: number;
+  modified: number;
+  path: string;
+}
+
+/** What the watcher found since its last look. */
+export interface LibraryWatchEvent {
+  added: LibraryFile[];
+  changed: LibraryFile[];
+  /** Keys that are no longer there. */
+  removed: string[];
+  /** Set on the last event when the watcher gave up, with the reason. */
+  stopped?: 'too-many';
+}
+
+/** Whether the watcher took the folders, and how it works when it did. */
+export interface LibraryWatchAnswer {
+  watching: boolean;
+  /** How many files it re-checks each time. */
+  files: number;
+  /** How often, in seconds — said plainly, rather than implying live notifications. */
+  seconds: number;
+  reason?: 'too-many';
+}
+
+/** Emitted by `library.rs` while a folder is walked. */
+export const LIBRARY_SCAN_EVENT = 'warraq://library-scan';
+
+/** Emitted by `library.rs` when a watched folder changes. */
+export const LIBRARY_WATCH_EVENT = 'warraq://library-watch';
+
+/** Whether the Library can reach whole folders: only the desktop host can. */
+export function hasLibraryHost(): boolean {
+  return isTauriHost();
+}
+
+/**
+ * The native folder picker, several folders at once. `recursive` puts
+ * everything under each of them in the file scope, which is what then lets
+ * the walk and the reads see it — nothing outside is reachable.
+ */
+export async function pickLibraryFolders(): Promise<string[]> {
+  const picked = await invoke('plugin:dialog|open', {
+    options: { multiple: true, directory: true, recursive: true },
+  });
+  if (Array.isArray(picked)) return picked.filter((p): p is string => typeof p === 'string');
+  return typeof picked === 'string' ? [picked] : [];
+}
+
+/**
+ * Starts walking the chosen folders and answers at once with the number that
+ * names this walk. Everything it finds arrives through `onLibraryScan`.
+ */
+export async function startLibraryScan(request: LibraryScanRequest): Promise<number> {
+  return (await invoke('library_scan_start', { request })) as number;
+}
+
+/** Stops a walk. `false` when it had already finished, which is not an error. */
+export async function stopLibraryScan(scan: number): Promise<boolean> {
+  return (await invoke('library_scan_stop', { scan })) === true;
+}
+
+/** Subscribes to a walk's progress and findings. Returns the unsubscribe. */
+export function onLibraryScan(onEvent: (event: LibraryScanEvent) => void): () => void {
+  const host = internals();
+  if (!host) return () => {};
+  return listen(host, LIBRARY_SCAN_EVENT, ((event: { payload?: LibraryScanEvent }) => {
+    if (event?.payload) onEvent(event.payload);
+  }) as (payload: never) => void);
+}
+
+/**
+ * One file's bytes, when its turn comes. Rejects with `E_SCOPE` for a path
+ * outside the chosen folders (a link pointing out of them included) and with
+ * `E_TOO_BIG` for a file past what the Library reads.
+ */
+export async function readLibraryFile(path: string): Promise<ArrayBuffer> {
+  return toArrayBuffer(await invoke('library_read_file', { path }));
+}
+
+/** Whether a file is still there, and still what the index holds. */
+export async function statLibraryFile(path: string): Promise<LibraryFileStamp> {
+  return (await invoke('library_stat', { path })) as LibraryFileStamp;
+}
+
+/** Where the indexes live on this device, to show the person whose data it is. */
+export async function libraryIndexFolder(): Promise<string> {
+  return (await invoke('library_index_path')) as string;
+}
+
+/** Writes the index the core handed over, whole or not at all. Answers its size. */
+export async function saveLibraryIndex(name: string, bytes: Uint8Array): Promise<number> {
+  return (await invoke('library_index_save', bytes, {
+    headers: { 'x-warraq-name': encodeURIComponent(name) },
+  })) as number;
+}
+
+/** The index's bytes, or `null` on a first run, when there is none yet. */
+export async function loadLibraryIndex(name: string): Promise<ArrayBuffer | null> {
+  try {
+    return toArrayBuffer(await invoke('library_index_load', { name }));
+  } catch (error) {
+    if (String(error).includes('E_MISSING')) return null;
+    throw error;
+  }
+}
+
+/** The indexes on this device, with their size and when they were written. */
+export async function listLibraryIndexes(): Promise<LibraryIndexFile[]> {
+  return (await invoke('library_index_list')) as LibraryIndexFile[];
+}
+
+/** Deletes an index for good. `false` when there was nothing to delete. */
+export async function deleteLibraryIndex(name: string): Promise<boolean> {
+  return (await invoke('library_index_delete', { name })) === true;
+}
+
+/**
+ * Watches the chosen folders while the app runs. The host looks again every
+ * `seconds` rather than asking the system for notifications, and says so:
+ * `watching: false` with `reason: 'too-many'` when the folders hold more
+ * files than it re-checks, so the panel can tell the person plainly instead
+ * of implying it is watching when it is not.
+ */
+export async function startLibraryWatch(request: LibraryScanRequest): Promise<LibraryWatchAnswer> {
+  return (await invoke('library_watch_start', { request })) as LibraryWatchAnswer;
+}
+
+/** Stops watching. Safe when nothing is watched. */
+export async function stopLibraryWatch(): Promise<void> {
+  await invoke('library_watch_stop');
+}
+
+/** Subscribes to what the watcher finds. Returns the unsubscribe. */
+export function onLibraryWatch(onEvent: (event: LibraryWatchEvent) => void): () => void {
+  const host = internals();
+  if (!host) return () => {};
+  return listen(host, LIBRARY_WATCH_EVENT, ((event: { payload?: LibraryWatchEvent }) => {
+    if (event?.payload) onEvent(event.payload);
+  }) as (payload: never) => void);
+}

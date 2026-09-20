@@ -196,6 +196,106 @@ how the panel looks there: no screen could be seen (below).
   (right to left, `1,200.00` as the number 1200) and as CSV, from a local
   model asked for the shape through Ollama's `format`.
 
+## The Library's desktop host (2026-09-20)
+
+The Library — one search across a whole folder of documents — is being built by
+four agents at once. **This entry is part D alone: the desktop host.** The
+core's index and search, the panel, and the reading of each kind into text are
+other agents' work and are not described here. **Until those land there is no
+Library tool in the interface**, and nothing claims one: what follows is a set
+of commands, documented in `apps/desktop/README.md`, with nothing in front of
+them yet.
+
+**What the host does** (`apps/desktop/src-tauri/src/library.rs`, reached through
+`packages/ui/src/core/host-tauri.ts`):
+
+* The native folder picker, several folders at once; `recursive` is what puts
+  everything under each in the file scope, and nothing outside it is reachable.
+* A walk of each folder and its subfolders on a thread of its own. It answers
+  at once with the number naming the walk, then hands over batches of 256 files
+  as it goes, with the folder being read now, and stops between entries when
+  asked. No file's bytes are read to list it — one `stat` each — so memory does
+  not follow the folder's size.
+* Files read one at a time, when their turn comes, and only from inside the
+  chosen folders.
+* The index written into the app's own data directory
+  (`<app_data_dir>/library/<name>.wlx`), whole or not at all — a temporary file
+  renamed over the old one, so a crash halfway leaves the old index intact —
+  and deleted for real when asked, half-written leftovers included. Never a
+  temporary folder: it holds text out of the person's own documents.
+* Files that changed while the app was closed, from the same walk: hand it what
+  the index holds and each file comes back `new`, `changed` or `same` (size
+  **and** date), with everything the index holds that no folder held any more
+  reported as missing. A walk that was stopped reports none, because it met
+  only part of the folder.
+
+**Measured on this Mac**: a folder of 10 000 files across 20 subfolders is
+walked in **40 ms** (`a_folder_of_ten_thousand_files_is_walked_without_reading_one`,
+run it with `--nocapture` to see the number). How long indexing 50 corpus files
+takes, how big the index is and how long a search takes are the core's and the
+panel's numbers, and belong with their parts.
+
+**Hostile folders.** A folder can hold anything, so nothing here is fatal: a
+subfolder that refuses to be read, a file whose metadata is refused, a link
+that points nowhere — each is reported as a skip with its reason
+(`unreadable`, `link`, `too-deep`, `too-big`, `too-many`) and the walk carries
+on. Depth (24), files (100 000), folders entered (100 000), entries looked at
+(1 000 000) and a single file's size (512 MB) are all bounded per scan — and so
+is what the walk holds while it runs: findings are handed over 256 at a time,
+skips included, and each folder is remembered by its true path only up to that
+same bound. A list cut short says it is short rather than look complete.
+
+**Links.** A link that leaves the chosen folder is refused although the file
+scope's own glob would allow it — the person chose a folder, not wherever its
+links point — and a link inside one whose target is outside is refused at the
+read as well, since the panel can ask for any path. That check compares the
+target with the chosen folder as the file system truly names it: on macOS
+`/tmp` is `/private/tmp`, and comparing a resolved target with an unresolved
+scope would have refused honest files. Every folder is entered once, by its
+true path, which is what keeps `deeper -> ..` from walking for ever.
+
+**Watching a folder while the app runs is a re-check, and says so.** Every five
+seconds the host walks the watched folders again — `stat` only — and reports
+what was added, changed or taken away. It is *not* the operating system's own
+notifications: FSEvents, inotify and ReadDirectoryChangesW each behave
+differently, each fails silently in its own way (a network volume, a full watch
+table), and none could be exercised on more than this one Mac. A re-check
+behaves the same on all three systems and is tested. The cost is stated rather
+than hidden: the answer carries how often it looks, so the panel can say it,
+and it refuses folders holding more than 20 000 files — `watching: false`,
+`reason: "too-many"` — instead of appearing to watch and watching nothing.
+Whoever builds the panel must show that refusal; a "watching" light over a
+host that answered `false` would be a façade.
+
+**Proven by**: 15 Rust tests in `library.rs`, each making its own temporary
+folder — the kinds listed and hidden files left out, a subfolder unticked, a
+folder that refuses to be read, links out and links that loop, Stop,
+the bounds, the ten-thousand-file walk, change detection, the watcher's
+differences, the index written/read/deleted, index names that are never paths,
+and the scope (`only_a_folder_the_person_picked_is_walked`,
+`a_file_is_read_only_from_inside_the_chosen_folder`); 13 vitest in
+`packages/ui/src/core/host-tauri.test.ts` for the bridge; and three contract
+tests in `tests/desktop_contract.rs` pinning that every command the panel
+invokes is registered, that both sides name the same events, and that the index
+goes to the app's data directory and never to a temporary folder.
+
+**Not done, and why**:
+
+* **Not run on Windows or Linux.** The commands are written portably — `/`-separated
+  relative paths on every platform, `canonicalize` on both sides of every link
+  check (which carries Windows' `\\?\` prefix and with it paths longer than 260
+  characters), a rename that replaces on all three, and the app's own data
+  directory wherever the system puts it — but neither system is on this Mac, so
+  none of it was exercised there.
+* **Not exercised through the running window.** The commands are registered and
+  pinned by the contract test, but no panel calls them yet, so the IPC itself —
+  the raw bodies, the headers, the events — has been proven only by the vitest
+  against a fake host. It should be exercised once the Library panel lands.
+* **The watcher is a re-check, not live notifications** (above), and it does not
+  watch folders past 20 000 files.
+* **No thumbnails and no text**: turning a file into text is part C's, and the
+  host hands over bytes only.
+
 ## How it looks (design refresh, 2026-09-18)
 
 The shell now follows the system's document apps (Preview, Pages) instead of an office suite. The design
