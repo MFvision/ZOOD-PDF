@@ -27,7 +27,7 @@ import { hasUnsavedEdits } from '../state/appReducer';
 import { findTool } from '../tools/tools';
 import { ToolGallery } from '../tools/ToolGallery';
 import { useMarkupBar } from './markupBar';
-import { hasNativeMenuBar } from './menuModel';
+import { hasNativeMenuBar, useInspectorHidden } from './menuModel';
 import { PageInput } from './PageInput';
 import { ZoomControl } from './ZoomControl';
 
@@ -58,6 +58,7 @@ export function Toolbar() {
   // as the system's viewer shows its markup toolbar.
   const markup = useMarkupBar();
   const markupOn = services.embedShowing && markup.on;
+  const noInspector = useInspectorHidden();
 
   return (
     <div
@@ -191,7 +192,7 @@ export function Toolbar() {
             <IconButton label={t('file.save')} icon={<Icon of={Download} />} onClick={() => void services.saveDocument()} />
           </div>
         )}
-        {(hasDocument || state.rightPane.activeTool !== null) && (
+        {(hasDocument || state.rightPane.activeTool !== null) && !noInspector && (
           <div className="toolbar-group toolbar-optional">
             <IconButton
               label={t('view.rightPane')}

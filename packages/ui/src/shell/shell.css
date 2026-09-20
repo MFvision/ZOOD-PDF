@@ -787,7 +787,8 @@
   }
 
   /* A phone keeps the essentials: the sidebar, the title, the tools and save.
-     Find, the markup bar and the inspector are in the menus and the sheet. */
+     Find, Edit text, the markup toolbar and the tools pane are in the menus
+     (Edit, View); a chosen tool's panel is the sheet. */
   .toolbar-optional {
     display: none;
   }

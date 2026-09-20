@@ -3,7 +3,10 @@ import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import type { ThemeMode } from '../state/preferences';
 import { useT } from '../i18n/useT';
 import { TOOLS } from '../tools/tools';
+import { useMarkupBar } from './markupBar';
+import { SHEET_QUERY } from './sheetDrag';
 import { undoTyping, useTyping } from './typing';
+import { useMediaQuery } from './useMediaQuery';
 
 export interface MenuItemModel {
   id: string;
@@ -40,6 +43,16 @@ export function isApplePlatform(): boolean {
  */
 export function hasNativeMenuBar(): boolean {
   return isTauriHost() && isApplePlatform();
+}
+
+/**
+ * The inspector has nothing to show: in a narrow window it is a sheet, and
+ * only a chosen tool raises it — the toolbar's tool picker is the list there.
+ */
+export function useInspectorHidden(): boolean {
+  const narrow = useMediaQuery(SHEET_QUERY);
+  const { rightPane } = useAppState();
+  return narrow && rightPane.activeTool === null;
 }
 
 /** Human-readable modifier for shortcut hints. */
@@ -107,6 +120,11 @@ export function useMenuModel(): MenuModel[] {
   const edit = state.edit;
   // While a text field has the focus, Undo and Redo are its typing's (typing.ts).
   const typing = useTyping();
+  // EmbedPDF's own bar, shown from here too: on a phone the toolbar has no room for its button.
+  const markup = useMarkupBar();
+  // A narrow window shows the inspector as a sheet only for a chosen tool
+  // (panes.css): with none, "Tools pane" would change a check and show nothing.
+  const noSheet = useInspectorHidden();
 
   const themeItem = (theme: ThemeMode, label: string): MenuItemModel => ({
     id: `theme-${theme}`,
@@ -218,7 +236,15 @@ export function useMenuModel(): MenuModel[] {
           disabled: !hasDocument || organizing,
           onSelect: () => dispatch({ type: 'SET_LEFT_TAB', tab: pane }),
         })),
-        { id: 'right-pane', label: t('view.rightPane'), keys: 'Shift+F4', role: 'menuitemcheckbox', checked: state.rightPane.open, onSelect: () => dispatch({ type: 'TOGGLE_RIGHT_PANE' }) },
+        { id: 'right-pane', label: t('view.rightPane'), keys: 'Shift+F4', role: 'menuitemcheckbox', checked: state.rightPane.open && !noSheet, disabled: noSheet, onSelect: () => dispatch({ type: 'TOGGLE_RIGHT_PANE' }) },
+        {
+          id: 'markup',
+          label: t('shell.markup'),
+          role: 'menuitemcheckbox',
+          checked: services.embedShowing && markup.on,
+          disabled: !hasDocument || !services.embedShowing,
+          onSelect: () => markup.set(!markup.on),
+        },
         { ...themeItem('system', `${t('theme.label')}: ${t('theme.system')}`), separatorBefore: true },
         themeItem('light', `${t('theme.label')}: ${t('theme.light')}`),
         themeItem('dark', `${t('theme.label')}: ${t('theme.dark')}`),

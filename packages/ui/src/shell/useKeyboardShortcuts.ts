@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
+import { SHEET_QUERY } from './sheetDrag';
 import { shortcutLetter } from './shortcutEcho';
 import { isEditable } from './typing';
 
@@ -37,7 +38,11 @@ export function useKeyboardShortcuts(): void {
 
       if (event.key === 'F4' && !mod && !event.altKey) {
         event.preventDefault();
-        if (event.shiftKey) dispatch({ type: 'TOGGLE_RIGHT_PANE' });
+        // A narrow window raises the sheet for a chosen tool only (panes.css).
+        const noSheet = globalThis.matchMedia?.(SHEET_QUERY).matches && current.rightPane.activeTool === null;
+        if (event.shiftKey) {
+          if (!noSheet) dispatch({ type: 'TOGGLE_RIGHT_PANE' });
+        }
         else if (hasDocument) services.viewCommand('sidebar');
         return;
       }
