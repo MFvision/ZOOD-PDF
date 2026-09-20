@@ -1,6 +1,7 @@
 import type { CoreClient, RemoteDocument } from '../core/client';
 import { createPdf } from '../create/createPdf';
 import type { CreateEnvironment } from '../create/createPdf';
+import type { TKey } from '../i18n/messages';
 import type { CleanupOptions } from '../ocr/cleanup';
 import { startRecognizer } from '../ocr/engine';
 import type { OcrLanguage, Recognizer } from '../ocr/engine';
@@ -86,6 +87,9 @@ export type SkipReason =
   | 'tooSlow'
   | 'empty'
   | 'notIndexed';
+
+/** What the panel says for a reason, in either language. */
+export const skipMessage = (reason: SkipReason): TKey => `library.skipped.${reason}` as TKey;
 
 export interface IngestedFile {
   key: string;

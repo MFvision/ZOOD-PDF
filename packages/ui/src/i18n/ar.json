@@ -1621,5 +1621,14 @@
   "access.saveAlt": "احفظ النصوص",
   "access.altSaved": "حُفظت نصوص الصور في الملف.",
   "access.altNote": "اكتب ما تنقله الصورة للقارئ لا مظهرها، ولا تتركه فارغًا إلا إن كانت زخرفة.",
-  "tool.batch": "المعالجة الدفعية"
+  "tool.batch": "المعالجة الدفعية",
+  "library.skipped.unchanged": "لم يتغيّر منذ آخر قراءة.",
+  "library.skipped.tooLarge": "أكبر من أن يُقرأ.",
+  "library.skipped.unsupported": "ليس من أنواع الملفات التي تقرؤها المكتبة.",
+  "library.skipped.needsPassword": "محمي: ضع كلمة مروره ليُفهرَس.",
+  "library.skipped.unreadable": "تعذّرت قراءته.",
+  "library.skipped.tooSlow": "استغرقت قراءته وقتًا أطول من اللازم.",
+  "library.skipped.empty": "لا نص فيه.",
+  "library.skipped.notIndexed": "لم يقبله الفهرس.",
+  "library.truncated": "تُرك جزء منه: تجاوز ما يضعه ملف واحد في الفهرس."
 }
