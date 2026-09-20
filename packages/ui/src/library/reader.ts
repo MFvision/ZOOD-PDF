@@ -120,7 +120,23 @@ export function inlineReader(): Reader {
   };
 }
 
-/** The reader the app uses: a worker where there is one, this thread where there is not. */
+/**
+ * The reader the app uses. The first worker is made at once, so a host that
+ * will not have one — an old browser, a policy that forbids it — is found
+ * before a run begins rather than on every file of it; there the work is
+ * done in this thread instead, which is slower but never wrong.
+ */
 export function startReader(): Reader {
-  return typeof Worker === 'function' ? workerReader() : inlineReader();
+  if (typeof Worker !== 'function') return inlineReader();
+  let first: Worker | null;
+  try {
+    first = createReaderWorker();
+  } catch {
+    return inlineReader();
+  }
+  return workerReader(() => {
+    const worker = first ?? createReaderWorker();
+    first = null;
+    return worker;
+  });
 }

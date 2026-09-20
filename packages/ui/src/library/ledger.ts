@@ -68,21 +68,38 @@ function trim(marks: Record<string, FileMark>): void {
   for (const key of keys.slice(0, keys.length - LEDGER_LIMIT)) delete marks[key];
 }
 
-function ledgerOver(marks: Record<string, FileMark>, changed: () => void): Ledger {
+/**
+ * `changed` is told whether what happened can wait: a file just read can —
+ * the worst a lost write costs is that file read again — while forgetting
+ * and clearing are answers to something a person asked for, and are written
+ * at once. Counting the files as they come, rather than asking how many
+ * there are after each one, is what keeps a folder of ten thousand from
+ * costing the square of that.
+ */
+function ledgerOver(marks: Record<string, FileMark>, changed: (soon: boolean) => void): Ledger {
+  let held = Object.keys(marks).length;
   return {
     mark: (key) => marks[key],
     remember(key, mark) {
+      if (!(key in marks)) held += 1;
       marks[key] = { ...mark, hash: shortHash(mark.hash) };
-      trim(marks);
-      changed();
+      if (held > LEDGER_LIMIT) {
+        trim(marks);
+        held = Object.keys(marks).length;
+      }
+      changed(true);
     },
     forget(keys) {
-      for (const key of keys) delete marks[key];
-      changed();
+      for (const key of keys) {
+        if (key in marks) held -= 1;
+        delete marks[key];
+      }
+      changed(false);
     },
     clear() {
       for (const key of Object.keys(marks)) delete marks[key];
-      changed();
+      held = 0;
+      changed(false);
     },
     all: () => ({ ...marks }),
   };
@@ -95,8 +112,25 @@ export function memoryLedger(from: Record<string, FileMark> = {}): Ledger {
 
 export const LEDGER_KEY = 'warraq.library.read';
 
-/** The ledger as the app keeps it: written to this device after every file. */
+/** At most one write to this device a second while a run is under way. */
+export const LEDGER_WRITE_MS = 1000;
+
+/**
+ * The ledger as the app keeps it. Writing it costs as much as the whole
+ * ledger, so a run of a thousand files does not write it a thousand times:
+ * a file read schedules a write within a second, and what a person asked for
+ * is written at once.
+ */
 export function storedLedger(key: string = LEDGER_KEY): Ledger {
   const marks = sanitize(readJson<unknown>(key, {}));
-  return ledgerOver(marks, () => writeJson(key, marks));
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const save = () => {
+    if (timer) clearTimeout(timer);
+    timer = null;
+    writeJson(key, marks);
+  };
+  return ledgerOver(marks, (soon) => {
+    if (!soon) return save();
+    timer ??= setTimeout(save, LEDGER_WRITE_MS);
+  });
 }

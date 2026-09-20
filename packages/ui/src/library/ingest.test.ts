@@ -319,6 +319,17 @@ describe('every file is hostile input', () => {
     expect(run.files[0]!.truncated).toBe(true);
   });
 
+  it('goes on without Tesseract where it cannot start, indexing what the files say in words', async () => {
+    // Node has no worker for it to start in: exactly what a host that cannot
+    // run recognition looks like, and no reason to fail forty-nine other files.
+    const core = fakeCore();
+    const files = [file('scan.pdf', fakePdf(['', ''])), file('report.pdf', fakePdf(['نص الصفحة']))];
+    const run = await ingestFiles({ handle: 1, files, client: core.client, recognize: true, reader: inlineReader(), ledger: memoryLedger() });
+    expect(run.added).toBe(2);
+    expect(run.recognized).toBe(0);
+    expect(core.added().map((call) => call.args.kind)).toEqual(['scan', 'pdf']);
+  }, 30_000);
+
   it('says so when the core refuses the file, and does not write it down as read', async () => {
     const ledger = memoryLedger();
     const core = fakeCore();

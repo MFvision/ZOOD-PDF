@@ -48,8 +48,6 @@ export interface LibraryFile {
   /** Stable for this file: its full path on the desktop, folder id + relative path in a browser. */
   key: string;
   name: string;
-  /** Where it sits under the folder that was added — `reports/2024/q1.pdf` — for the folder filter. */
-  path?: string;
   /** Bytes, as the file system says; 0 where it does not. */
   size: number;
   /** Milliseconds since the epoch, as the file system says. */
@@ -245,8 +243,18 @@ export async function ingestFiles(options: IngestOptions): Promise<IngestRun> {
   // a folder of scans would pay it for every file.
   let recognizer = options.recognizer;
   const ownRecognizer = !options.recognizer;
-  const recognizerFor = async (): Promise<Recognizer> => {
-    recognizer ??= await startRecognizer(languages);
+  // Tesseract that will not start at all — no models on this host, a policy
+  // that stops its worker — is not a fault of any one file: the run goes on
+  // and indexes what the files say in words themselves.
+  let noRecognizer = false;
+  const recognizerFor = async (): Promise<Recognizer | null> => {
+    if (noRecognizer) return null;
+    try {
+      recognizer ??= await startRecognizer(languages);
+    } catch {
+      noRecognizer = true;
+      return null;
+    }
     return recognizer;
   };
 
@@ -304,7 +312,8 @@ export async function ingestFiles(options: IngestOptions): Promise<IngestRun> {
     }
     let recognized = 0;
     let truncated = count > reading;
-    if (recognizing && blank.length > 0 && !signal?.aborted) {
+    const tesseract = recognizing && blank.length > 0 && !signal?.aborted ? await recognizerFor() : null;
+    if (tesseract) {
       const targets = blank.slice(0, limits.ocrPages);
       truncated ||= targets.length < blank.length;
       say({ ...at, stage: 'recognizing', page: 1, pages: targets.length });
@@ -315,7 +324,7 @@ export async function ingestFiles(options: IngestOptions): Promise<IngestRun> {
         onProgress: (progress) => say({ ...at, stage: 'recognizing', page: progress.page, pages: progress.of }),
         signal,
         options: { cleanup, replaceImage: false },
-        recognizer: await recognizerFor(),
+        recognizer: tesseract,
         prepare,
       });
       for (const page of read) {
