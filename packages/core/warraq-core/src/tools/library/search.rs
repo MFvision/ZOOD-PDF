@@ -150,9 +150,13 @@ pub struct Results {
 }
 
 /// A document that answered, and its best lines.
-struct Ranked {
+struct Ranked<'a> {
     content: u32,
     score: f64,
+    /// The first key that holds this text: what settles a tie between two
+    /// equal scores, so the answer does not depend on the order the folder
+    /// happened to be walked in, or on an index having been saved since.
+    key: &'a str,
     /// Line, and what that line does, best first.
     lines: Vec<(u32, i64)>,
 }
@@ -274,7 +278,7 @@ impl Index {
             .collect();
         let average = (self.words() as f64 / documents).max(1.0);
 
-        let mut ranked: Vec<Ranked> = Vec::with_capacity(per_content.len());
+        let mut ranked: Vec<Ranked<'_>> = Vec::with_capacity(per_content.len());
         for (slot, lists) in &per_content {
             let Some(content) = self.content(*slot) else {
                 continue;
@@ -307,6 +311,13 @@ impl Index {
             ranked.push(Ranked {
                 content: *slot,
                 score,
+                key: content
+                    .docs
+                    .iter()
+                    .filter_map(|slot| self.doc(*slot))
+                    .map(|doc| doc.key.as_str())
+                    .min()
+                    .unwrap_or_default(),
                 lines,
             });
         }
@@ -314,7 +325,7 @@ impl Index {
             b.score
                 .partial_cmp(&a.score)
                 .unwrap_or(std::cmp::Ordering::Equal)
-                .then(a.content.cmp(&b.content))
+                .then_with(|| a.key.cmp(b.key))
         });
 
         // The places, in the order they will be shown; their text and marks
@@ -663,6 +674,14 @@ mod tests {
             keys(&index.search("مكتبة", &scans, 0, 50)),
             vec!["/دفتر/2026/d.pdf"]
         );
+    }
+
+    #[test]
+    fn documents_that_answer_alike_are_ordered_by_name_whatever_the_order_they_went_in() {
+        let forwards = with(&[("/a.pdf", "مكتبة عامة"), ("/b.pdf", "مكتبة خاصة")]);
+        let backwards = with(&[("/b.pdf", "مكتبة خاصة"), ("/a.pdf", "مكتبة عامة")]);
+        assert_eq!(keys(&search(&forwards, "مكتبة")), vec!["/a.pdf", "/b.pdf"]);
+        assert_eq!(keys(&search(&backwards, "مكتبة")), vec!["/a.pdf", "/b.pdf"]);
     }
 
     #[test]
