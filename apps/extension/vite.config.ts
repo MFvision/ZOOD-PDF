@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { embedPatches, embedPatchesForDeps } from '../../packages/ui/vite/embedPatches';
 import { notices } from '../../packages/ui/vite/notices';
 import { ocrModels } from '../../packages/ui/vite/ocrModels';
 
@@ -13,7 +14,8 @@ import { ocrModels } from '../../packages/ui/vite/ocrModels';
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
   base: './',
-  plugins: [react(), ocrModels(), notices()],
+  plugins: [react(), embedPatches(), ocrModels(), notices()],
+  optimizeDeps: { rolldownOptions: { plugins: [embedPatchesForDeps()] } },
   build: {
     outDir: 'dist',
     emptyOutDir: true,

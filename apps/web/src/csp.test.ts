@@ -15,7 +15,7 @@ const AI_SOURCES =
   'https://api.anthropic.com http://localhost:11434 http://127.0.0.1:11434 http://localhost:1234 http://127.0.0.1:1234';
 
 const EXPECTED_CSP =
-  `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' ${AI_SOURCES}; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`;
+  `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; worker-src 'self' blob:; frame-src blob:; connect-src 'self' ${AI_SOURCES}; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`;
 
 describe('apps/web index.html', () => {
   it('ships the strict Content-Security-Policy', () => {
@@ -32,6 +32,15 @@ describe('apps/web index.html', () => {
 
   it('defaults to Arabic and RTL before hydration', () => {
     expect(html).toContain('<html lang="ar" dir="rtl">');
+  });
+
+  /*
+   * A browser prints the file through its own PDF viewer: EmbedPDF puts the
+   * file it made in a hidden frame, as a blob, and prints that. Framing
+   * nothing at all (`default-src 'self'`) blocked it, and Print did nothing.
+   */
+  it('frames only a PDF the page made itself, to print it', () => {
+    expect(directives(EXPECTED_CSP).get('frame-src')).toBe('blob:');
   });
 });
 

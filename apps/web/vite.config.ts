@@ -4,8 +4,10 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 import { cloudConfig } from '../../packages/ui/vite/cloudConfig';
+import { embedPatches, embedPatchesForDeps } from '../../packages/ui/vite/embedPatches';
 import { notices } from '../../packages/ui/vite/notices';
 import { ocrModels } from '../../packages/ui/vite/ocrModels';
+import { serviceWorker } from './pwa';
 
 /**
  * The dev server injects an inline React Fast Refresh preamble, which the strict
@@ -56,12 +58,15 @@ export default defineConfig(({ command, mode }) => ({
   plugins: [
     react(),
     devCspNonce(),
+    embedPatches(),
     ocrModels(),
     notices(),
+    serviceWorker(),
     // The cloud drives this build offers, from its environment (docs/cloud.md).
     cloudConfig(mode),
     ...(mode === 'tauri' ? [stripMetaCsp()] : []),
   ],
+  optimizeDeps: { rolldownOptions: { plugins: [embedPatchesForDeps()] } },
   html: command === 'serve' ? { cspNonce: devNonce } : undefined,
   server: { port: 5173, strictPort: true },
   preview: { port: 4173, strictPort: true },

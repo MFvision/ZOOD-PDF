@@ -20,14 +20,15 @@
 //!
 //! Page marks are Warraq's own forms and are not listed here: the Page
 //! marks tool looks after them.
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ops::Range;
+use std::rc::Rc;
 
 use lopdf::{Dictionary, Object, ObjectId};
 
-use crate::lex::{lex, Op, Operand};
-use crate::pagework::{cm, name as name_text, num};
-use crate::picture::add_picture;
+use crate::lex::{lex, Op, Operand, MAX_TOKENS};
+use crate::pagework::{cm, name as name_text, num, MAX_STREAM};
+use crate::picture::{add_picture, picture_info, upright_matrix};
 use crate::text_walk::Matrix;
 use crate::{Error, PdfDocument, Result};
 
@@ -38,6 +39,20 @@ const MAX_FORM_DEPTH: usize = 8;
 const MAX_STACK: usize = 1024;
 /// No page reports more pictures than this.
 const MAX_IMAGES: usize = 2000;
+/// What one walk of a page may cost: content decoded, and operations
+/// visited — a form drawn a hundred times is visited a hundred times,
+/// though it is read once.
+const MAX_WALK_BYTES: usize = 64 * 1024 * 1024;
+const MAX_WALK_VISITS: usize = 4_000_000;
+/// What finding out whether other pages draw a page's forms may cost,
+/// over every page it reads.
+const MAX_SHARE_BYTES: usize = 256 * 1024 * 1024;
+const MAX_SHARE_VISITS: usize = 16_000_000;
+/// Entries of resource dictionaries looked through, a page, for the forms
+/// it could draw.
+const MAX_RESOURCE_NODES: usize = 10_000;
+/// Direct objects nested deeper than this are not searched for references.
+const MAX_OBJECT_DEPTH: usize = 64;
 const FULL: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 
 /// A picture on a page, as the interface is told about it.
@@ -55,8 +70,10 @@ pub struct PlacedImage {
     pub inline: bool,
     /// Drawn inside a form XObject.
     pub in_form: bool,
-    /// The same bytes draw it more than once (a form used twice): an edit
-    /// would change every one, so the interface does not offer it.
+    /// The bytes that draw it draw it somewhere else too — a form used
+    /// twice, on this page or another, or a content stream two pages
+    /// share: an edit would change every one, so the interface does not
+    /// offer it.
     pub shared: bool,
 }
 
@@ -78,6 +95,18 @@ struct Found {
     /// Resources the operation's names are looked up in: the page's, or a form's.
     holder: Holder,
     shared: bool,
+    /// The streams it is drawn through: the page's content stream, then
+    /// each form, the last being `stream`. Whatever else draws any of them
+    /// sees an edit too.
+    chain: Vec<ObjectId>,
+    /// The image XObject a `/Name Do` draws.
+    xobject: Option<ObjectId>,
+    /// For a form with no resources of its own: the ones it draws with,
+    /// the page's, written out whole.
+    inherited: Option<Rc<Dictionary>>,
+    /// Drawn in a form: the form's space onto user space, and its `/BBox`
+    /// there — nothing of the picture shows outside it.
+    form_box: Option<(Matrix, [f32; 4])>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -105,10 +134,98 @@ fn int(o: Option<&Object>) -> u32 {
         .map_or(0, |v| v.min(1.0e6) as u32)
 }
 
+/// The resources a chain looks names up in — the nearest first — written
+/// out as one dictionary, each category's entries merged.
+fn merged(pdf: &PdfDocument, chain: &[&Dictionary]) -> Dictionary {
+    let mut out = Dictionary::new();
+    for dict in chain.iter().rev() {
+        for (key, value) in dict.iter() {
+            match resolve(pdf, value) {
+                Object::Dictionary(group) => {
+                    let mut all = match out.get(key) {
+                        Ok(Object::Dictionary(d)) => d.clone(),
+                        _ => Dictionary::new(),
+                    };
+                    for (k, v) in group.iter() {
+                        all.set(k.clone(), v.clone());
+                    }
+                    out.set(key.clone(), Object::Dictionary(all));
+                }
+                other => out.set(key.clone(), other.clone()),
+            }
+        }
+    }
+    out
+}
+
+/// Whether `o`, or anything written inside it, refers to `id`.
+fn refers(o: &Object, id: ObjectId, depth: usize) -> bool {
+    if depth > MAX_OBJECT_DEPTH {
+        return false;
+    }
+    match o {
+        Object::Reference(r) => *r == id,
+        Object::Array(a) => a.iter().any(|v| refers(v, id, depth + 1)),
+        Object::Dictionary(d) => d.iter().any(|(_, v)| refers(v, id, depth + 1)),
+        Object::Stream(s) => s.dict.iter().any(|(_, v)| refers(v, id, depth + 1)),
+        _ => false,
+    }
+}
+
+/// A stream read for a walk: its bytes, and its operations.
+struct Lexed {
+    bytes: Vec<u8>,
+    ops: Vec<Op>,
+}
+
+/// What a walk may still spend.
+#[derive(Debug, Clone, Copy)]
+struct Budget {
+    bytes: usize,
+    tokens: usize,
+    visits: usize,
+}
+
+impl Budget {
+    fn page() -> Self {
+        Self {
+            bytes: MAX_WALK_BYTES,
+            tokens: MAX_TOKENS,
+            visits: MAX_WALK_VISITS,
+        }
+    }
+
+    fn spent() -> Error {
+        Error::Edit("the page draws too much for its pictures to be found".into())
+    }
+}
+
+/// Where a stream is drawn from: the resources its names are looked up in
+/// (the nearest first), and whose they are.
+#[derive(Clone)]
+struct Frame<'a> {
+    resources: Vec<&'a Dictionary>,
+    holder: Holder,
+    /// A form with no resources of its own, drawing with the ones round it.
+    borrowed: bool,
+    /// The innermost form's space onto user space, and its `/BBox`.
+    form_box: Option<(Matrix, [f32; 4])>,
+}
+
 struct Walker<'a> {
     pdf: &'a PdfDocument,
+    /// Recorded pictures; off when a walk only asks which forms are drawn.
+    list: bool,
     found: Vec<Found>,
     seen: HashMap<(ObjectId, usize), usize>,
+    /// The streams already read in this walk: each is decoded once.
+    read: HashMap<ObjectId, Rc<Lexed>>,
+    /// The streams being drawn, outermost first. A form drawn inside
+    /// itself is a loop, and is not followed, as PDFium does not.
+    chain: Vec<ObjectId>,
+    /// Every form the walk went into.
+    forms: HashSet<ObjectId>,
+    budget: Budget,
 }
 
 /// The graphics state the walker keeps: the transform, and its saved copies.
@@ -118,6 +235,19 @@ struct State {
 }
 
 impl<'a> Walker<'a> {
+    fn new(pdf: &'a PdfDocument, budget: Budget) -> Self {
+        Self {
+            pdf,
+            list: true,
+            found: Vec::new(),
+            seen: HashMap::new(),
+            read: HashMap::new(),
+            chain: Vec::new(),
+            forms: HashSet::new(),
+            budget,
+        }
+    }
+
     fn lookup(
         &self,
         resources: &[&'a Dictionary],
@@ -133,7 +263,10 @@ impl<'a> Walker<'a> {
         })
     }
 
-    fn record(&mut self, mut found: Found) {
+    fn record(&mut self, mut found: Found, frame: &Frame<'a>) {
+        if !self.list {
+            return;
+        }
         let key = (found.stream, found.range.start);
         if let Some(k) = self.seen.get(&key) {
             self.found[*k].shared = true;
@@ -143,32 +276,79 @@ impl<'a> Walker<'a> {
             return;
         }
         found.shared = false;
+        if frame.borrowed {
+            found.inherited = Some(Rc::new(merged(self.pdf, &frame.resources)));
+        }
         self.seen.insert(key, self.found.len());
         self.found.push(found);
     }
 
+    /// A stream's bytes and operations, read once a walk and paid for from
+    /// its budget; `None` for one that cannot be decoded, which draws nothing.
+    fn read(&mut self, id: ObjectId) -> Result<Option<Rc<Lexed>>> {
+        if let Some(lexed) = self.read.get(&id) {
+            return Ok(Some(Rc::clone(lexed)));
+        }
+        let Some(bytes) = self
+            .pdf
+            .stream_bytes_within(id, self.budget.bytes.min(MAX_STREAM))
+            .map_err(|_| Budget::spent())?
+        else {
+            return Ok(None);
+        };
+        self.budget.bytes -= bytes.len();
+        let ops = lex(&bytes)?;
+        let tokens: usize = ops.iter().map(|o| 1 + o.operands.len()).sum();
+        self.budget.tokens = self
+            .budget
+            .tokens
+            .checked_sub(tokens)
+            .ok_or_else(Budget::spent)?;
+        let lexed = Rc::new(Lexed { bytes, ops });
+        self.read.insert(id, Rc::clone(&lexed));
+        Ok(Some(lexed))
+    }
+
     /// One content stream, carrying the state across from the one before.
-    #[allow(clippy::too_many_arguments)]
     fn stream(
         &mut self,
         id: ObjectId,
-        resources: &[&'a Dictionary],
+        frame: &Frame<'a>,
         state: &mut State,
         depth: usize,
-        holder: Holder,
-    ) {
-        let Ok(bytes) = self.pdf.stream_bytes(id) else {
-            return;
+    ) -> Result<()> {
+        if self.chain.contains(&id) {
+            return Ok(());
+        }
+        let Some(lexed) = self.read(id)? else {
+            return Ok(());
         };
-        let ops = lex(&bytes);
+        self.chain.push(id);
+        let walked = self.operations(&lexed, id, frame, state, depth);
+        self.chain.pop();
+        walked
+    }
+
+    fn operations(
+        &mut self,
+        lexed: &Lexed,
+        id: ObjectId,
+        frame: &Frame<'a>,
+        state: &mut State,
+        depth: usize,
+    ) -> Result<()> {
+        let (bytes, ops) = (&lexed.bytes, &lexed.ops);
         let mut k = 0;
         while k < ops.len() {
+            self.budget.visits = self
+                .budget
+                .visits
+                .checked_sub(1)
+                .ok_or_else(Budget::spent)?;
             let op = &ops[k];
             if op.is("BMC") && op.name(0) == Some(WRAPPER) {
-                if let Some((end, found)) =
-                    self.wrapper(&bytes, &ops, k, id, resources, state.ctm, holder)
-                {
-                    self.record(found);
+                if let Some((end, found)) = self.wrapper(bytes, ops, k, id, frame, state.ctm) {
+                    self.record(found, frame);
                     k = end + 1;
                     continue;
                 }
@@ -191,27 +371,35 @@ impl<'a> Walker<'a> {
                 }
                 b"Do" => {
                     if let Some(name) = op.name(0) {
-                        self.draw(&bytes, op, name, id, resources, state.ctm, depth, holder);
+                        self.draw(bytes, op, name, id, frame, state.ctm, depth)?;
                     }
                 }
                 b"BI" => {
-                    self.record(Found {
-                        stream: id,
-                        range: op.range.clone(),
-                        op: bytes[op.range.clone()].to_vec(),
-                        base: state.ctm,
-                        placement: state.ctm,
-                        clip: FULL,
-                        pixels: inline_size(op),
-                        inline: true,
-                        holder,
-                        shared: false,
-                    });
+                    if let Some(written) = bytes.get(op.range.clone()) {
+                        let found = Found {
+                            stream: id,
+                            range: op.range.clone(),
+                            op: written.to_vec(),
+                            base: state.ctm,
+                            placement: state.ctm,
+                            clip: FULL,
+                            pixels: inline_size(op),
+                            inline: true,
+                            holder: frame.holder,
+                            shared: false,
+                            chain: self.chain.clone(),
+                            xobject: None,
+                            inherited: None,
+                            form_box: frame.form_box,
+                        };
+                        self.record(found, frame);
+                    }
                 }
                 _ => {}
             }
             k += 1;
         }
+        Ok(())
     }
 
     /// `/Name Do`: a picture is recorded, a form is walked into.
@@ -222,13 +410,12 @@ impl<'a> Walker<'a> {
         op: &Op,
         name: &[u8],
         id: ObjectId,
-        resources: &[&'a Dictionary],
+        frame: &Frame<'a>,
         ctm: Matrix,
         depth: usize,
-        holder: Holder,
-    ) {
-        let Some((xobject, stream)) = self.lookup(resources, name) else {
-            return;
+    ) -> Result<()> {
+        let Some((xobject, stream)) = self.lookup(&frame.resources, name) else {
+            return Ok(());
         };
         match stream
             .dict
@@ -236,21 +423,31 @@ impl<'a> Walker<'a> {
             .ok()
             .and_then(|s| s.as_name().ok())
         {
-            Some(b"Image") => self.record(Found {
-                stream: id,
-                range: op.range.clone(),
-                op: bytes[op.range.clone()].to_vec(),
-                base: ctm,
-                placement: ctm,
-                clip: FULL,
-                pixels: (
-                    int(stream.dict.get(b"Width").ok()),
-                    int(stream.dict.get(b"Height").ok()),
-                ),
-                inline: false,
-                holder,
-                shared: false,
-            }),
+            Some(b"Image") => {
+                let Some(written) = bytes.get(op.range.clone()) else {
+                    return Ok(());
+                };
+                let found = Found {
+                    stream: id,
+                    range: op.range.clone(),
+                    op: written.to_vec(),
+                    base: ctm,
+                    placement: ctm,
+                    clip: FULL,
+                    pixels: (
+                        int(stream.dict.get(b"Width").ok()),
+                        int(stream.dict.get(b"Height").ok()),
+                    ),
+                    inline: false,
+                    holder: frame.holder,
+                    shared: false,
+                    chain: self.chain.clone(),
+                    xobject: Some(xobject),
+                    inherited: None,
+                    form_box: frame.form_box,
+                };
+                self.record(found, frame);
+            }
             Some(b"Form") if depth < MAX_FORM_DEPTH => {
                 // Page marks are Warraq's own, and their tool's business.
                 if stream.dict.has(b"PieceInfo") {
@@ -259,7 +456,7 @@ impl<'a> Walker<'a> {
                         stream.dict.get(b"PieceInfo").unwrap_or(&Object::Null),
                     );
                     if piece.as_dict().is_ok_and(|p| p.has(b"Warraq")) {
-                        return;
+                        return Ok(());
                     }
                 }
                 let matrix = stream
@@ -278,39 +475,54 @@ impl<'a> Walker<'a> {
                     .get(b"Resources")
                     .ok()
                     .and_then(|r| resolve(self.pdf, r).as_dict().ok());
-                let inner: Vec<&Dictionary> = match own {
-                    Some(own) => std::iter::once(own)
-                        .chain(resources.iter().copied())
-                        .collect(),
-                    None => resources.to_vec(),
+                let bbox = stream
+                    .dict
+                    .get(b"BBox")
+                    .ok()
+                    .and_then(|b| resolve(self.pdf, b).as_array().ok())
+                    .and_then(|a| {
+                        let v: Vec<f32> = a.iter().filter_map(|n| n.as_float().ok()).collect();
+                        (v.len() == 4 && v.iter().all(|n| n.is_finite())).then(|| {
+                            [
+                                v[0].min(v[2]),
+                                v[1].min(v[3]),
+                                v[0].max(v[2]),
+                                v[1].max(v[3]),
+                            ]
+                        })
+                    });
+                let inner = Frame {
+                    form_box: bbox.map(|b| (matrix.then(ctm), b)),
+                    resources: match own {
+                        Some(own) => std::iter::once(own)
+                            .chain(frame.resources.iter().copied())
+                            .collect(),
+                        None => frame.resources.clone(),
+                    },
+                    holder: Holder::Form(xobject),
+                    borrowed: own.is_none(),
                 };
                 let mut state = State {
                     ctm: matrix.then(ctm),
                     stack: Vec::new(),
                 };
-                self.stream(
-                    xobject,
-                    &inner,
-                    &mut state,
-                    depth + 1,
-                    Holder::Form(xobject),
-                );
+                self.forms.insert(xobject);
+                self.stream(xobject, &inner, &mut state, depth + 1)?;
             }
             _ => {}
         }
+        Ok(())
     }
 
     /// `/WarraqImage BMC q X cm [x y w h re W n] <picture> Q EMC`, at `k`.
-    #[allow(clippy::too_many_arguments)]
     fn wrapper(
         &self,
         bytes: &[u8],
         ops: &[Op],
         k: usize,
         id: ObjectId,
-        resources: &[&'a Dictionary],
+        frame: &Frame<'a>,
         base: Matrix,
-        holder: Holder,
     ) -> Option<(usize, Found)> {
         let at = |j: usize| ops.get(k + j);
         if !at(1)?.is("q") {
@@ -329,10 +541,10 @@ impl<'a> Walker<'a> {
             j += 3;
         }
         let picture = at(j)?;
-        let (inline, pixels) = if picture.is("BI") {
-            (true, inline_size(picture))
+        let (inline, pixels, xobject) = if picture.is("BI") {
+            (true, inline_size(picture), None)
         } else if picture.is("Do") {
-            let (_, stream) = self.lookup(resources, picture.name(0)?)?;
+            let (xobject, stream) = self.lookup(&frame.resources, picture.name(0)?)?;
             if stream.dict.get(b"Subtype").ok()?.as_name().ok()? != b"Image" {
                 return None;
             }
@@ -342,6 +554,7 @@ impl<'a> Walker<'a> {
                     int(stream.dict.get(b"Width").ok()),
                     int(stream.dict.get(b"Height").ok()),
                 ),
+                Some(xobject),
             )
         } else {
             return None;
@@ -355,14 +568,18 @@ impl<'a> Walker<'a> {
             Found {
                 stream: id,
                 range: ops[k].range.start..ops[end].range.end,
-                op: bytes[picture.range.clone()].to_vec(),
+                op: bytes.get(picture.range.clone())?.to_vec(),
                 base,
                 placement: x.then(base),
                 clip,
                 pixels,
                 inline,
-                holder,
+                holder: frame.holder,
                 shared: false,
+                chain: self.chain.clone(),
+                xobject,
+                inherited: None,
+                form_box: frame.form_box,
             },
         ))
     }
@@ -409,35 +626,164 @@ fn wrap(op: &[u8], base: Matrix, placement: Matrix, clip: [f32; 4]) -> Result<Ve
     Ok(out)
 }
 
+/// A picture's stored unit square onto the square it is seen in: the turn
+/// or flip its EXIF orientation asks for (none for most pictures). PDF
+/// viewers draw the pixels as stored; the file keeps them so, losslessly,
+/// and the turn goes into where it is drawn.
+fn upright(picture: &[u8]) -> Matrix {
+    let orientation = picture_info(picture).map_or(1, |i| i.orientation);
+    Matrix(upright_matrix(orientation, 0.0, 0.0, 1.0, 1.0))
+}
+
 /// A matrix that is finite and not flat.
 fn usable(m: Matrix) -> bool {
     m.0.iter().all(|v| v.is_finite()) && m.invert().is_some()
 }
 
 impl PdfDocument {
+    /// The pictures of page `index`, each marked shared when anything else
+    /// in the file draws the bytes that draw it.
     fn find_images(&self, index: usize) -> Result<(Vec<Found>, Matrix)> {
-        self.walk_images(index, None)
+        let (mut found, ctm) = self.walk_images(index, None)?;
+        self.mark_drawn_elsewhere(index, &mut found);
+        Ok((found, ctm))
     }
 
     /// The pictures of the page's first `streams` content streams (all of
     /// them when `None`), and the transform in effect after them.
     fn walk_images(&self, index: usize, streams: Option<usize>) -> Result<(Vec<Found>, Matrix)> {
         let page_id = self.page_id(index)?;
-        let resources: Vec<&Dictionary> = self.page_resources(page_id).into_iter().collect();
-        let mut walker = Walker {
-            pdf: self,
-            found: Vec::new(),
-            seen: HashMap::new(),
+        let frame = Frame {
+            resources: self.page_resources(page_id).into_iter().collect(),
+            holder: Holder::Page,
+            borrowed: false,
+            form_box: None,
         };
+        let mut walker = Walker::new(self, Budget::page());
         let mut state = State {
             ctm: Matrix::IDENTITY,
             stack: Vec::new(),
         };
         let ids = self.content_ids(page_id);
         for id in ids.iter().take(streams.unwrap_or(ids.len())) {
-            walker.stream(*id, &resources, &mut state, 0, Holder::Page);
+            walker.stream(*id, &frame, &mut state, 0)?;
         }
         Ok((walker.found, state.ctm))
+    }
+
+    /// Whether the forms `page_id` can reach through its resources — its
+    /// own XObjects, and theirs in turn — include one of `forms`. A page
+    /// whose resources are too many to look through may.
+    fn may_draw(&self, page_id: ObjectId, forms: &HashSet<ObjectId>) -> bool {
+        let Some(resources) = self.page_resources(page_id) else {
+            return false;
+        };
+        let mut nodes = MAX_RESOURCE_NODES;
+        let mut stack = vec![resources];
+        let mut visited: HashSet<ObjectId> = HashSet::new();
+        while let Some(dict) = stack.pop() {
+            let Some(group) = dict
+                .get(b"XObject")
+                .ok()
+                .and_then(|g| resolve(self, g).as_dict().ok())
+            else {
+                continue;
+            };
+            for (_, value) in group.iter() {
+                if nodes == 0 {
+                    return true;
+                }
+                nodes -= 1;
+                let Ok(id) = value.as_reference() else {
+                    continue;
+                };
+                if forms.contains(&id) {
+                    return true;
+                }
+                if !visited.insert(id) {
+                    continue;
+                }
+                if let Some(inner) = self
+                    .doc
+                    .get_object(id)
+                    .and_then(Object::as_stream)
+                    .ok()
+                    .and_then(|s| s.dict.get(b"Resources").ok())
+                    .and_then(|r| resolve(self, r).as_dict().ok())
+                {
+                    stack.push(inner);
+                }
+            }
+        }
+        false
+    }
+
+    /// Marks as shared each picture drawn through a stream another page
+    /// draws as well: a content stream two pages list, or a form another
+    /// page draws. Pages that could draw one of the forms, by what their
+    /// resources reach, are walked to see whether they do; when that costs
+    /// too much, they are taken to.
+    fn mark_drawn_elsewhere(&self, index: usize, found: &mut [Found]) {
+        let contents: HashSet<ObjectId> = found
+            .iter()
+            .filter_map(|f| f.chain.first().copied())
+            .collect();
+        let forms: HashSet<ObjectId> = found
+            .iter()
+            .flat_map(|f| f.chain.iter().skip(1).copied())
+            .collect();
+        if contents.is_empty() {
+            return;
+        }
+        let mut elsewhere: HashSet<ObjectId> = HashSet::new();
+        let mut bytes = MAX_SHARE_BYTES;
+        let mut visits = MAX_SHARE_VISITS;
+        for (p, page_id) in self.pages.iter().enumerate() {
+            if p == index {
+                continue;
+            }
+            let ids = self.content_ids(*page_id);
+            elsewhere.extend(ids.iter().filter(|id| contents.contains(id)));
+            if forms.is_empty() || forms.is_subset(&elsewhere) || !self.may_draw(*page_id, &forms) {
+                continue;
+            }
+            let frame = Frame {
+                resources: self.page_resources(*page_id).into_iter().collect(),
+                holder: Holder::Page,
+                borrowed: false,
+                form_box: None,
+            };
+            let allowed = bytes.min(MAX_WALK_BYTES);
+            let mut walker = Walker::new(
+                self,
+                Budget {
+                    bytes: allowed,
+                    tokens: MAX_TOKENS,
+                    visits,
+                },
+            );
+            walker.list = false;
+            let mut state = State {
+                ctm: Matrix::IDENTITY,
+                stack: Vec::new(),
+            };
+            let walked = ids
+                .iter()
+                .try_for_each(|id| walker.stream(*id, &frame, &mut state, 0));
+            bytes -= allowed - walker.budget.bytes;
+            visits = walker.budget.visits;
+            match walked {
+                Ok(()) => elsewhere.extend(walker.forms.intersection(&forms)),
+                // Too much to know: as good as drawn. The pages left are
+                // still looked at for a content stream they share.
+                Err(_) => elsewhere.extend(forms.iter()),
+            }
+        }
+        for f in found.iter_mut() {
+            if f.chain.iter().any(|s| elsewhere.contains(s)) {
+                f.shared = true;
+            }
+        }
     }
 
     /// The pictures on page `index`, in drawing order.
@@ -481,11 +827,111 @@ impl PdfDocument {
 
     fn splice(&mut self, found: &Found, with: &[u8]) -> Result<()> {
         let mut bytes = self.stream_bytes(found.stream)?;
-        if found.range.end > bytes.len() {
+        if found.range.start > found.range.end || found.range.end > bytes.len() {
             return Err(Error::Edit("the page changed under the edit".into()));
         }
         bytes.splice(found.range.clone(), with.iter().copied());
         self.set_stream_bytes(found.stream, bytes)
+    }
+
+    /// Whether anything in the file refers to `id`.
+    fn referenced(&self, id: ObjectId) -> bool {
+        self.doc
+            .objects
+            .iter()
+            .any(|(k, o)| *k != id && refers(o, id, 0))
+            || self.doc.trailer.iter().any(|(_, v)| refers(v, id, 0))
+    }
+
+    /// Takes the entries naming `picture` out of an XObject group; whether
+    /// there were any.
+    fn drop_names(&self, resources: &mut Dictionary, picture: ObjectId) -> bool {
+        let mut group = match resources.get(b"XObject") {
+            Ok(Object::Reference(r)) => self.doc.get_dictionary(*r).cloned().unwrap_or_default(),
+            Ok(Object::Dictionary(d)) => d.clone(),
+            _ => return false,
+        };
+        let names: Vec<Vec<u8>> = group
+            .iter()
+            .filter(|(_, v)| v.as_reference().ok() == Some(picture))
+            .map(|(k, _)| k.clone())
+            .collect();
+        for name in &names {
+            group.remove(name);
+        }
+        resources.set("XObject", Object::Dictionary(group));
+        !names.is_empty()
+    }
+
+    /// After an edit took `found`'s drawing off page `index`: when nothing
+    /// on the page draws that picture any more, its name comes out of the
+    /// resources that held it — the page's own copy, and each form's on
+    /// the way, written into the form so nothing else that shared the same
+    /// dictionary loses it — and a picture this session added, and nothing
+    /// else uses, is dropped. One that came with the file stays in the
+    /// file's earlier revision until a clean copy is written.
+    fn release(&mut self, index: usize, found: &Found) -> Result<()> {
+        let Some(picture) = found.xobject else {
+            return Ok(());
+        };
+        // A page too heavy to walk again keeps the name: the edit is made.
+        let Ok((now, _)) = self.walk_images(index, None) else {
+            return Ok(());
+        };
+        if now.iter().any(|f| f.xobject == Some(picture)) {
+            return Ok(());
+        }
+        let page_id = self.page_id(index)?;
+        let mut page = self.page_resources(page_id).cloned().unwrap_or_default();
+        if self.drop_names(&mut page, picture) {
+            self.own_resources(page_id)?;
+            let group = self.own_xobjects(page_id)?;
+            let names: Vec<Vec<u8>> = group
+                .iter()
+                .filter(|(_, v)| v.as_reference().ok() == Some(picture))
+                .map(|(k, _)| k.clone())
+                .collect();
+            for name in names {
+                group.remove(&name);
+            }
+            self.mark_touched(page_id);
+        }
+        for form in found.chain.iter().skip(1) {
+            let own = self
+                .doc
+                .get_object(*form)
+                .and_then(Object::as_stream)
+                .ok()
+                .and_then(|s| s.dict.get(b"Resources").ok())
+                .and_then(|r| resolve(self, r).as_dict().ok())
+                .cloned();
+            let Some(mut own) = own else {
+                continue;
+            };
+            if self.drop_names(&mut own, picture) {
+                self.doc
+                    .get_object_mut(*form)
+                    .and_then(Object::as_stream_mut)
+                    .map_err(|e| Error::Parse(e.to_string()))?
+                    .dict
+                    .set("Resources", Object::Dictionary(own));
+                self.mark_touched(*form);
+            }
+        }
+        if self.is_addition(picture) && !self.referenced(picture) {
+            let mask = self
+                .doc
+                .get_object(picture)
+                .and_then(Object::as_stream)
+                .ok()
+                .and_then(|s| s.dict.get(b"SMask").ok())
+                .and_then(|m| m.as_reference().ok());
+            self.forget(picture);
+            if let Some(mask) = mask.filter(|m| !self.referenced(*m)) {
+                self.forget(mask);
+            }
+        }
+        Ok(())
     }
 
     /// Moves, resizes or turns a picture: `matrix` is where its unit square
@@ -514,18 +960,41 @@ impl PdfDocument {
         if clip[2] - clip[0] < 0.01 || clip[3] - clip[1] < 0.01 {
             return Err(Error::Edit("the crop leaves nothing of the picture".into()));
         }
+        // A form shows nothing outside its box: the part that shows must
+        // stay inside it (a point of slack for rounding).
+        if let Some((to_user, [x0, y0, x1, y1])) = found.form_box {
+            if let Some(to_form) = to_user.invert() {
+                let [u0, v0, u1, v1] = clip;
+                let shown = Matrix([u1 - u0, 0.0, 0.0, v1 - v0, u0, v0])
+                    .then(placement)
+                    .then(to_form);
+                let inside = [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)]
+                    .into_iter()
+                    .map(|(u, v)| shown.apply(u, v))
+                    .all(|(x, y)| x >= x0 - 1.0 && x <= x1 + 1.0 && y >= y0 - 1.0 && y <= y1 + 1.0);
+                if !inside {
+                    return Err(Error::Edit(
+                        "the picture would leave the group it is drawn in, and not show there"
+                            .into(),
+                    ));
+                }
+            }
+        }
         let bytes = wrap(&found.op, found.base, placement, clip)?;
         self.splice(&found, &bytes)
     }
 
-    /// Takes a picture off the page.
+    /// Takes a picture off the page — and, when nothing else on the page
+    /// draws it, out of what the page holds.
     pub fn delete_image(&mut self, index: usize, id: &str) -> Result<()> {
         let found = self.found(index, id)?;
-        self.splice(&found, b"")
+        self.splice(&found, b"")?;
+        self.release(index, &found)
     }
 
     /// Puts another picture (PNG or JPEG bytes) where one is, fitted inside
-    /// the part of it that showed and keeping its own proportions.
+    /// the part of it that showed and keeping its own proportions. The old
+    /// one goes as a deleted one does.
     pub fn replace_image(&mut self, index: usize, id: &str, picture: &[u8]) -> Result<()> {
         let found = self.found(index, id)?;
         let added = add_picture(&mut self.doc, picture)?;
@@ -535,7 +1004,9 @@ impl PdfDocument {
                 self.own_resources(page_id)?;
                 self.add_xobject(page_id, "WqImg", added.id)?
             }
-            Holder::Form(form) => self.add_form_xobject(form, added.id)?,
+            Holder::Form(form) => {
+                self.add_form_xobject(form, added.id, found.inherited.as_deref())?
+            }
         };
         // The part that showed, as its own unit square.
         let [u0, v0, u1, v1] = found.clip;
@@ -545,7 +1016,10 @@ impl PdfDocument {
             (m[0] * m[0] + m[1] * m[1]).sqrt(),
             (m[2] * m[2] + m[3] * m[3]).sqrt(),
         );
-        let want = added.width as f32 / added.height.max(1) as f32;
+        // Its proportions as it is seen, turned upright.
+        let (seen_w, seen_h) =
+            picture_info(picture).map_or((added.width, added.height), |i| i.shown());
+        let want = seen_w as f32 / seen_h.max(1) as f32;
         let fit = if w / h.max(1e-6) > want {
             let s = (h * want / w.max(1e-6)).clamp(0.0, 1.0);
             Matrix([s, 0.0, 0.0, 1.0, (1.0 - s) / 2.0, 0.0])
@@ -554,11 +1028,18 @@ impl PdfDocument {
             Matrix([1.0, 0.0, 0.0, s, 0.0, (1.0 - s) / 2.0])
         };
         let op = format!("{} Do", name_text(&name)).into_bytes();
-        let bytes = wrap(&op, found.base, fit.then(shown), FULL)?;
-        self.splice(&found, &bytes)
+        let bytes = wrap(
+            &op,
+            found.base,
+            upright(picture).then(fit.then(shown)),
+            FULL,
+        )?;
+        self.splice(&found, &bytes)?;
+        self.release(index, &found)
     }
 
-    /// Places a new picture on page `index`, its unit square landing at
+    /// Places a new picture on page `index`, the unit square of the picture
+    /// as it is seen (turned upright by its EXIF orientation) landing at
     /// `matrix` on the page as shown. Returns its id.
     pub fn add_image(&mut self, index: usize, matrix: [f32; 6], picture: &[u8]) -> Result<String> {
         let to_user = self.display_frame(index)?.display_to_user();
@@ -585,6 +1066,7 @@ impl PdfDocument {
         let (_, base) = self.walk_images(index, after_marks)?;
         let base = if usable(base) { base } else { Matrix::IDENTITY };
         let op = format!("{} Do", name_text(&name)).into_bytes();
+        let placement = upright(picture).then(placement);
         let stream = self.new_stream(Dictionary::new(), wrap(&op, base, placement, FULL)?);
         let mut ids = ids;
         match after_marks {
@@ -596,7 +1078,7 @@ impl PdfDocument {
             Object::Array(ids.into_iter().map(Object::Reference).collect()),
         )?;
         let found = self
-            .find_images(index)?
+            .walk_images(index, None)?
             .0
             .into_iter()
             .find(|f| f.stream == stream)
@@ -604,8 +1086,15 @@ impl PdfDocument {
         Ok(found.id())
     }
 
-    /// Registers a picture in a form's own resources.
-    fn add_form_xobject(&mut self, form: ObjectId, id: ObjectId) -> Result<Vec<u8>> {
+    /// Registers a picture in a form's own resources. A form that had none
+    /// drew with `inherited`, the page's: its new resources start from a
+    /// copy of those, so the rest of what it draws is still found.
+    fn add_form_xobject(
+        &mut self,
+        form: ObjectId,
+        id: ObjectId,
+        inherited: Option<&Dictionary>,
+    ) -> Result<Vec<u8>> {
         let dict = &self
             .doc
             .get_object(form)
@@ -618,7 +1107,7 @@ impl PdfDocument {
                 self.doc.get_dictionary(*r).cloned().unwrap_or_default(),
             ),
             Ok(Object::Dictionary(d)) => (None, d.clone()),
-            _ => (None, Dictionary::new()),
+            _ => (None, inherited.cloned().unwrap_or_default()),
         };
         let mut group = match resources.get(b"XObject") {
             Ok(Object::Reference(r)) => self.doc.get_dictionary(*r).cloned().unwrap_or_default(),
@@ -657,7 +1146,7 @@ impl PdfDocument {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::picture::tests::{jpeg, png};
+    use crate::picture::tests::{jpeg, png, turned_photo};
     use lopdf::dictionary;
 
     fn corpus(name: &str) -> Vec<u8> {
@@ -828,11 +1317,22 @@ mod tests {
         let moved = [80.0, 0.0, 0.0, -80.0, 10.0, 100.0];
         doc.transform_image(0, &images[0].id.clone(), moved, None)
             .unwrap();
-        doc.transform_image(0, &images[1].id.clone(), moved, None)
+        // The one in the form moves within the form's box — five points
+        // along each of the form's own axes. Out of it, it would not show
+        // (see below).
+        let (form_to_user, _) = doc.find_images(0).unwrap().0[1].form_box.unwrap();
+        let within = Matrix([10.0, 0.0, 0.0, 10.0, 5.0, 5.0])
+            .then(form_to_user)
+            .then(to_display)
+            .0;
+        doc.transform_image(0, &images[1].id.clone(), within, None)
             .unwrap();
+        assert!(doc
+            .transform_image(0, &images[1].id.clone(), moved, None)
+            .is_err());
         let images = doc.list_images(0).unwrap();
         assert!(
-            close(images[0].matrix, moved) && close(images[1].matrix, moved),
+            close(images[0].matrix, moved) && close(images[1].matrix, within),
             "{images:?}"
         );
         // Replacing the one in the form puts the new picture in the form's resources.
@@ -877,5 +1377,484 @@ mod tests {
         // Taking the mark off keeps the picture.
         doc.remove_marks(&[], &[]).unwrap();
         assert!(close(doc.list_images(0).unwrap()[0].matrix, at));
+    }
+
+    fn three_pages() -> PdfDocument {
+        PdfDocument::open(corpus("chrome-notonaskh-justified-3pages.pdf"), None).unwrap()
+    }
+
+    /// Page `index` draws `bytes` after what it draws already.
+    fn append(doc: &mut PdfDocument, index: usize, bytes: &[u8]) -> ObjectId {
+        let page = doc.page_id(index).unwrap();
+        let s = doc.new_stream(Dictionary::new(), bytes.to_vec());
+        let mut ids = doc.content_ids(page);
+        ids.push(s);
+        doc.set_contents(
+            page,
+            Object::Array(ids.into_iter().map(Object::Reference).collect()),
+        )
+        .unwrap();
+        s
+    }
+
+    /// A form XObject drawing `content`, with `resources` of its own or none.
+    fn form(doc: &mut PdfDocument, content: &[u8], resources: Option<Dictionary>) -> ObjectId {
+        let mut dict = dictionary! {
+            "Type" => "XObject", "Subtype" => "Form",
+            "BBox" => [0, 0, 600, 800].map(Object::Integer).to_vec(),
+        };
+        if let Some(r) = resources {
+            dict.set("Resources", r);
+        }
+        doc.new_stream(dict, content.to_vec())
+    }
+
+    /// Runs `f` on a thread of its own and fails if it takes longer than
+    /// `secs`: a walk that never ends must fail the test, not hang it.
+    fn within<T: Send + 'static>(secs: u64, f: impl FnOnce() -> T + Send + 'static) -> T {
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = tx.send(f());
+        });
+        rx.recv_timeout(std::time::Duration::from_secs(secs))
+            .expect("the walk did not end")
+    }
+
+    const INLINE: &[u8] = b"q 10 0 0 10 0 0 cm BI /W 1 /H 1 /BPC 8 /CS /G ID \x80 EI Q";
+
+    #[test]
+    fn a_hostile_stream_is_listed_without_a_panic() {
+        for bytes in [
+            &b"BI (\\"[..],
+            b"q BI /W 1 /H 1 (\\",
+            b"q 1 0 0 1 0 0 cm BI /W 16 /H 4095 /BPC 524416 /CS /G ID ( EI ) Tj",
+            b"/WarraqImage BMC q 1 0 0 1 0 0 cm BI (\\",
+        ] {
+            let mut doc = three_pages();
+            append(&mut doc, 0, bytes);
+            let _ = doc.list_images(0);
+            if let Ok(list) = doc.list_images(0) {
+                for image in list {
+                    let _ = doc.transform_image(0, &image.id, image.matrix, None);
+                    let _ = doc.delete_image(0, &image.id);
+                }
+            }
+        }
+    }
+
+    /// A form that draws itself fifty times would be walked 50^8 times if
+    /// only its depth were bounded; PDFium draws it once and stops.
+    #[test]
+    fn a_form_that_draws_itself_is_not_walked_forever() {
+        let mut doc = three_pages();
+        let page = doc.page_id(0).unwrap();
+        let f = form(&mut doc, &b"/F Do ".repeat(50), None);
+        let own = dictionary! { "XObject" => dictionary! { "F" => f } };
+        doc.doc
+            .get_object_mut(f)
+            .unwrap()
+            .as_stream_mut()
+            .unwrap()
+            .dict
+            .set("Resources", own);
+        doc.own_resources(page).unwrap();
+        doc.own_xobjects(page)
+            .unwrap()
+            .set("F", Object::Reference(f));
+        append(&mut doc, 0, b"/F Do");
+        let listed = within(20, move || doc.list_images(0).map(|l| l.len()));
+        assert!(matches!(listed, Ok(0) | Err(_)), "{listed:?}");
+    }
+
+    /// Distinct forms, each drawing the next fifty times: no loop to catch,
+    /// but 50^8 visits all the same. The walk has a budget.
+    #[test]
+    fn forms_that_fan_out_are_walked_within_a_budget() {
+        let mut doc = three_pages();
+        let page = doc.page_id(0).unwrap();
+        let mut inner = form(&mut doc, INLINE, None);
+        for _ in 0..7 {
+            let resources = dictionary! { "XObject" => dictionary! { "N" => inner } };
+            inner = form(&mut doc, &b"/N Do ".repeat(50), Some(resources));
+        }
+        doc.own_resources(page).unwrap();
+        doc.own_xobjects(page)
+            .unwrap()
+            .set("Top", Object::Reference(inner));
+        append(&mut doc, 0, b"/Top Do");
+        let listed = within(20, move || doc.list_images(0).map(|l| l.len()));
+        assert!(listed.is_err(), "{listed:?}");
+    }
+
+    /// One form drawn once on each of two pages — a logo on every page, as
+    /// pdfTeX writes it: an edit on one page would change both.
+    #[test]
+    fn a_form_drawn_on_two_pages_is_shared_and_not_edited() {
+        let mut doc = three_pages();
+        let f = form(&mut doc, INLINE, None);
+        for index in [0, 1] {
+            let page = doc.page_id(index).unwrap();
+            doc.own_resources(page).unwrap();
+            doc.own_xobjects(page)
+                .unwrap()
+                .set("Logo", Object::Reference(f));
+            append(&mut doc, index, b"/Logo Do");
+        }
+        let listed = doc.list_images(0).unwrap();
+        assert_eq!(listed.len(), 1);
+        assert!(listed[0].in_form && listed[0].shared, "{listed:?}");
+        let before = doc.stream_bytes(f).unwrap();
+        assert!(doc
+            .transform_image(0, &listed[0].id, [5.0, 0.0, 0.0, -5.0, 1.0, 10.0], None)
+            .is_err());
+        assert!(doc.delete_image(0, &listed[0].id).is_err());
+        assert_eq!(doc.stream_bytes(f).unwrap(), before);
+    }
+
+    /// Pages that share one resource dictionary list a form they do not all
+    /// draw: drawn on one page only, its picture is that page's to edit.
+    #[test]
+    fn a_form_only_listed_by_another_page_is_not_shared() {
+        let mut doc = three_pages();
+        let f = form(&mut doc, INLINE, None);
+        let shared = doc.doc.add_object(dictionary! {
+            "XObject" => dictionary! { "Logo" => f },
+        });
+        for index in [0, 1] {
+            let page = doc.page_id(index).unwrap();
+            doc.doc
+                .get_dictionary_mut(page)
+                .unwrap()
+                .set("Resources", Object::Reference(shared));
+        }
+        append(&mut doc, 0, b"/Logo Do");
+        let listed = doc.list_images(0).unwrap();
+        assert_eq!(listed.len(), 1);
+        assert!(!listed[0].shared, "{listed:?}");
+        doc.delete_image(0, &listed[0].id).unwrap();
+    }
+
+    /// Two pages whose `/Contents` is the same stream (as qpdf, and
+    /// Warraq's own page duplication, leave them): a picture in it is
+    /// both pages', and not edited for one.
+    #[test]
+    fn a_content_stream_shared_by_two_pages_is_not_edited() {
+        let mut doc = three_pages();
+        let s = append(&mut doc, 0, INLINE);
+        let (p0, p1) = (doc.page_id(0).unwrap(), doc.page_id(1).unwrap());
+        let contents = doc
+            .doc
+            .get_dictionary(p0)
+            .unwrap()
+            .get(b"Contents")
+            .unwrap()
+            .clone();
+        doc.set_contents(p1, contents).unwrap();
+        let listed = doc.list_images(1).unwrap();
+        assert_eq!(listed.len(), 1);
+        assert!(listed[0].shared, "{listed:?}");
+        let before = doc.stream_bytes(s).unwrap();
+        assert!(doc.delete_image(1, &listed[0].id).is_err());
+        assert_eq!(doc.stream_bytes(s).unwrap(), before);
+    }
+
+    /// A page too heavy to walk makes the form it could draw count as
+    /// shared — and the pages after it are still looked at: one that lists
+    /// the page's own content stream makes a picture drawn there shared too.
+    #[test]
+    fn a_page_too_heavy_to_walk_does_not_stop_the_check() {
+        let mut doc = three_pages();
+        let f = form(&mut doc, INLINE, None);
+        let s = append(&mut doc, 0, &[INLINE, b" /F Do"].concat());
+        let p0 = doc.page_id(0).unwrap();
+        doc.own_resources(p0).unwrap();
+        doc.own_xobjects(p0).unwrap().set("F", Object::Reference(f));
+        // Page 2 could draw F, and draws a fan of forms no walk finishes.
+        let mut bomb = form(&mut doc, INLINE, None);
+        for _ in 0..7 {
+            let resources = dictionary! { "XObject" => dictionary! { "N" => bomb } };
+            bomb = form(&mut doc, &b"/N Do ".repeat(50), Some(resources));
+        }
+        let p1 = doc.page_id(1).unwrap();
+        doc.own_resources(p1).unwrap();
+        let group = doc.own_xobjects(p1).unwrap();
+        group.set("F", Object::Reference(f));
+        group.set("Bomb", Object::Reference(bomb));
+        append(&mut doc, 1, b"/Bomb Do");
+        // Page 3 lists page 1's stream.
+        let p2 = doc.page_id(2).unwrap();
+        let mut ids = doc.content_ids(p2);
+        ids.push(s);
+        doc.set_contents(
+            p2,
+            Object::Array(ids.into_iter().map(Object::Reference).collect()),
+        )
+        .unwrap();
+        let listed = within(60, move || doc.list_images(0).unwrap());
+        assert_eq!(listed.len(), 2, "{listed:?}");
+        assert!(listed.iter().all(|i| i.shared), "{listed:?}");
+    }
+
+    /// Where a stored pixel of a listed picture lands on the page as shown.
+    fn shown_at(image: &PlacedImage, u: f32, v: f32) -> (f32, f32) {
+        Matrix(image.matrix).apply(u, v)
+    }
+
+    /// A phone photo stored landscape with an EXIF "turn a quarter" is
+    /// placed upright — the JPEG as it is, the turn in where it is drawn — so
+    /// its red left half (as stored) is at the top of the portrait box the
+    /// interface measured, and the box is filled.
+    #[test]
+    fn a_turned_photo_is_placed_and_replaced_upright() {
+        let mut doc = three_pages();
+        // 100 × 200 points, top-left at (50, 60): the photo seen upright.
+        let at = [100.0, 0.0, 0.0, -200.0, 50.0, 260.0];
+        let id = doc.add_image(0, at, &turned_photo()).unwrap();
+        let image = doc.list_images(0).unwrap().remove(0);
+        assert_eq!(image.id, id);
+        // Stored red (u < 0.5) is up the page; stored blue is down it.
+        let (_, red_y) = shown_at(&image, 0.25, 0.5);
+        let (_, blue_y) = shown_at(&image, 0.75, 0.5);
+        assert!(red_y < 160.0 && blue_y > 160.0, "{red_y} {blue_y}");
+        // The whole box is covered: its corners are the box's.
+        let corners: Vec<(f32, f32)> = [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)]
+            .into_iter()
+            .map(|(u, v)| shown_at(&image, u, v))
+            .collect();
+        let (x0, x1) = corners
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(a, b), c| (a.min(c.0), b.max(c.0)));
+        let (y0, y1) = corners
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(a, b), c| (a.min(c.1), b.max(c.1)));
+        assert!(
+            (x0 - 50.0).abs() < 0.1
+                && (x1 - 150.0).abs() < 0.1
+                && (y0 - 60.0).abs() < 0.1
+                && (y1 - 260.0).abs() < 0.1,
+            "{corners:?}"
+        );
+
+        // Replacing a square picture with the photo: fitted upright, portrait
+        // inside the square, red on top.
+        let square = [120.0, 0.0, 0.0, -120.0, 300.0, 420.0];
+        let id = doc.add_image(0, square, &png(8, 8)).unwrap();
+        doc.replace_image(0, &id, &turned_photo()).unwrap();
+        let replaced = doc
+            .list_images(0)
+            .unwrap()
+            .into_iter()
+            .find(|i| i.id == id)
+            .unwrap();
+        let (red_x, red_y) = shown_at(&replaced, 0.25, 0.5);
+        let (_, blue_y) = shown_at(&replaced, 0.75, 0.5);
+        assert!(red_y < blue_y, "{red_y} {blue_y}");
+        // Half as wide as tall: 60 of the square's 120 points, centred.
+        let across = (shown_at(&replaced, 0.0, 0.0).0 - shown_at(&replaced, 0.0, 1.0).0)
+            .abs()
+            .max((shown_at(&replaced, 0.0, 0.0).0 - shown_at(&replaced, 1.0, 0.0).0).abs());
+        assert!(
+            (across - 60.0).abs() < 0.5 && (red_x - 360.0).abs() < 31.0,
+            "{across} {red_x}"
+        );
+    }
+
+    fn xobject_names(doc: &PdfDocument, index: usize) -> Vec<Vec<u8>> {
+        let resources = doc.page_resources(doc.page_id(index).unwrap()).unwrap();
+        let group = match resources.get(b"XObject") {
+            Ok(Object::Reference(id)) => doc.doc.get_dictionary(*id).unwrap(),
+            Ok(Object::Dictionary(d)) => d,
+            _ => return vec![],
+        };
+        group.iter().map(|(k, _)| k.clone()).collect()
+    }
+
+    /// Deleting a picture takes it out of what the page holds, not just out
+    /// of what it draws: a photo of an identity card deleted is not left in
+    /// the page's resources for any tool to pull out.
+    #[test]
+    fn a_deleted_picture_leaves_the_page() {
+        let mut doc = PdfDocument::open(corpus("scan-arial-200dpi-bilevel.pdf"), None).unwrap();
+        let before = xobject_names(&doc, 0);
+        assert_eq!(before.len(), 1, "{before:?}");
+        let id = doc.list_images(0).unwrap()[0].id.clone();
+        doc.delete_image(0, &id).unwrap();
+        assert!(
+            xobject_names(&doc, 0).is_empty(),
+            "{:?}",
+            xobject_names(&doc, 0)
+        );
+
+        // Placed and deleted in one session: nothing of it is saved.
+        let mut doc = three_pages();
+        let id = doc
+            .add_image(0, [100.0, 0.0, 0.0, -50.0, 72.0, 122.0], &png(40, 20))
+            .unwrap();
+        let added: Vec<ObjectId> = doc
+            .doc
+            .objects
+            .keys()
+            .copied()
+            .filter(|k| doc.is_addition(*k))
+            .collect();
+        doc.delete_image(0, &id).unwrap();
+        assert!(xobject_names(&doc, 0)
+            .iter()
+            .all(|n| !n.starts_with(b"WqImg")));
+        let saved = doc.save_incremental().unwrap();
+        let reopened = PdfDocument::open(saved, None).unwrap();
+        let images = reopened
+            .doc
+            .objects
+            .values()
+            .filter(|o| {
+                o.as_stream().is_ok_and(|s| {
+                    s.dict.get(b"Subtype").and_then(Object::as_name).ok() == Some(b"Image")
+                })
+            })
+            .count();
+        assert_eq!(images, 0, "added objects were {added:?}");
+    }
+
+    /// Replacing a picture takes the old one out too.
+    #[test]
+    fn a_replaced_picture_leaves_the_page() {
+        let mut doc = PdfDocument::open(corpus("scan-arial-200dpi-bilevel.pdf"), None).unwrap();
+        let old = xobject_names(&doc, 0);
+        let id = doc.list_images(0).unwrap()[0].id.clone();
+        doc.replace_image(0, &id, &png(8, 8)).unwrap();
+        let now = xobject_names(&doc, 0);
+        assert!(now.iter().all(|n| !old.contains(n)), "{now:?}");
+        assert_eq!(now.len(), 1);
+        // Replaced again in the session: the picture in between is gone.
+        let id = doc.list_images(0).unwrap()[0].id.clone();
+        let between = doc
+            .page_resources(doc.page_id(0).unwrap())
+            .unwrap()
+            .get(b"XObject")
+            .unwrap()
+            .as_dict()
+            .unwrap()
+            .iter()
+            .next()
+            .unwrap()
+            .1
+            .as_reference()
+            .unwrap();
+        doc.replace_image(0, &id, &png(4, 4)).unwrap();
+        assert!(doc.doc.get_object(between).is_err());
+        assert_eq!(doc.list_images(0).unwrap()[0].pixels, (4, 4));
+    }
+
+    /// A form draws only inside its `/BBox`: a picture in it moved or grown
+    /// past that box would be cut away, while the list still reported it
+    /// there. Such a change is refused; one inside the box is made.
+    #[test]
+    fn a_picture_in_a_form_does_not_leave_the_forms_box() {
+        let mut doc = three_pages();
+        let page = doc.page_id(0).unwrap();
+        let f = doc.new_stream(
+            dictionary! {
+                "Type" => "XObject", "Subtype" => "Form",
+                "BBox" => [0, 0, 100, 100].map(Object::Integer).to_vec(),
+            },
+            INLINE.to_vec(),
+        );
+        doc.own_resources(page).unwrap();
+        doc.own_xobjects(page)
+            .unwrap()
+            .set("Box", Object::Reference(f));
+        append(&mut doc, 0, b"q 1 0 0 1 0 0 cm /Box Do Q");
+        let image = doc.list_images(0).unwrap().remove(0);
+        assert!(image.in_form);
+        // Where the form's box is on the page as shown, whatever the page's
+        // own transform: its user-space corners, through the page's frame.
+        let found = doc.find_images(0).unwrap().0.remove(0);
+        let (to_user, _) = found.form_box.unwrap();
+        let to_display = doc
+            .display_frame(0)
+            .unwrap()
+            .display_to_user()
+            .invert()
+            .unwrap();
+        let inside = Matrix([20.0, 0.0, 0.0, 20.0, 40.0, 40.0])
+            .then(to_user)
+            .then(to_display)
+            .0;
+        let outside = Matrix([20.0, 0.0, 0.0, 20.0, 300.0, 300.0])
+            .then(to_user)
+            .then(to_display)
+            .0;
+        assert!(doc.transform_image(0, &image.id, outside, None).is_err());
+        doc.transform_image(0, &image.id, inside, None).unwrap();
+        assert!(close(doc.list_images(0).unwrap()[0].matrix, inside));
+    }
+
+    /// A form with no resources of its own draws with the page's. Given
+    /// resources of its own to hold a replacement, it must still find the
+    /// rest of what it draws.
+    #[test]
+    fn replacing_in_a_form_without_resources_keeps_the_rest_of_the_form() {
+        let mut doc = three_pages();
+        let page = doc.page_id(0).unwrap();
+        let one = add_picture(&mut doc.doc, &png(2, 2)).unwrap().id;
+        let two = add_picture(&mut doc.doc, &png(3, 3)).unwrap().id;
+        let font = doc.doc.add_object(dictionary! {
+            "Type" => "Font", "Subtype" => "Type1", "BaseFont" => "Helvetica",
+        });
+        let f = form(
+            &mut doc,
+            b"q 10 0 0 10 0 0 cm /Im1 Do Q q 10 0 0 10 20 0 cm /Im2 Do Q BT /F1 12 Tf 0 0 Td (x) Tj ET",
+            None,
+        );
+        doc.own_resources(page).unwrap();
+        let group = doc.own_xobjects(page).unwrap();
+        group.set("Im1", Object::Reference(one));
+        group.set("Im2", Object::Reference(two));
+        group.set("Fm", Object::Reference(f));
+        doc.doc
+            .get_dictionary_mut(page)
+            .unwrap()
+            .get_mut(b"Resources")
+            .unwrap()
+            .as_dict_mut()
+            .unwrap()
+            .set("Font", dictionary! { "F1" => font });
+        append(&mut doc, 0, b"/Fm Do");
+        let listed = doc.list_images(0).unwrap();
+        assert_eq!(listed.len(), 2, "{listed:?}");
+        doc.replace_image(0, &listed[0].id, &png(8, 8)).unwrap();
+        let listed = doc.list_images(0).unwrap();
+        assert_eq!(listed.len(), 2, "{listed:?}");
+        assert_eq!(listed[1].pixels, (3, 3));
+        // The form now holds resources of its own, and they still name
+        // the second picture and the font.
+        let own = doc
+            .doc
+            .get_object(f)
+            .unwrap()
+            .as_stream()
+            .unwrap()
+            .dict
+            .get(b"Resources")
+            .unwrap()
+            .as_dict()
+            .unwrap()
+            .clone();
+        let names = |category: &[u8]| -> Vec<Vec<u8>> {
+            match own.get(category) {
+                Ok(Object::Dictionary(d)) => d.iter().map(|(k, _)| k.clone()).collect(),
+                Ok(Object::Reference(r)) => doc
+                    .doc
+                    .get_dictionary(*r)
+                    .unwrap()
+                    .iter()
+                    .map(|(k, _)| k.clone())
+                    .collect(),
+                _ => vec![],
+            }
+        };
+        assert!(names(b"XObject").contains(&b"Im2".to_vec()), "{own:?}");
+        assert!(names(b"Font").contains(&b"F1".to_vec()), "{own:?}");
     }
 }

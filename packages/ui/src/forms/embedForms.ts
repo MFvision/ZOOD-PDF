@@ -153,23 +153,25 @@ export function showPagePoint(registry: PluginRegistry, page: number, x: number,
   }
 }
 
+/** Inputs whose `value` is the text typed: not check boxes, radio buttons or lists. */
+const TYPED = new Set(['', 'text', 'search', 'tel', 'email', 'number', 'url']);
+
 /**
  * Calls `onCommit` with a field's name when a value typed into it is
  * committed: EmbedPDF edits each field in an input named after it, and the
  * value is committed when that input loses the focus — to the next field, or
- * anywhere else. Returns the unsubscribe.
+ * anywhere else. For a field typed into, `typed` is the text it held then:
+ * the engine hears of it a moment later, and by then the person may be
+ * typing something else there. Returns the unsubscribe.
  */
-export function watchCommits(onCommit: (name: string) => void): Unsubscribe {
+export function watchCommits(onCommit: (name: string, typed?: string) => void): Unsubscribe {
   const root = shadowRoot();
   if (!root) return () => {};
   const left = (event: Event) => {
     const target = event.target;
-    if (
-      (target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement) &&
-      target.name
-    ) {
+    if (target instanceof HTMLTextAreaElement || (target instanceof HTMLInputElement && TYPED.has(target.type))) {
+      if (target.name) onCommit(target.name, target.value);
+    } else if ((target instanceof HTMLInputElement || target instanceof HTMLSelectElement) && target.name) {
       onCommit(target.name);
     }
   };

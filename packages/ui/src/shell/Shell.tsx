@@ -122,6 +122,13 @@ export function Shell() {
             <span>{t('loading.open', { name: state.loadingName })}</span>
           </div>
         )}
+        {services.printing && (
+          <div className="banner" role="status">
+            <Icon of={Loader} className="spin" />
+            <span>{t('print.preparing', { done: services.printing.done, total: services.printing.total })}</span>
+            <IconButton label={t('print.stop')} icon={<Icon of={X} />} onClick={services.cancelPrint} />
+          </div>
+        )}
         <div className="shell-body" data-tool={state.rightPane.activeTool ?? undefined}>
           {navigation && (
             <>

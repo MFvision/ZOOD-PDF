@@ -1,11 +1,17 @@
 /**
- * Undo/redo for paragraph edits.
+ * Undo/redo for Edit: paragraph edits, and picture and link changes.
  *
- * Every entry is the whole text of one paragraph before and after the edit, so
- * both directions are the same core call — `replace_paragraph` with the text
- * from the other side of the entry. That keeps the stack independent of how the
- * core rewrites content streams: the UI never has to model the PDF, only the
- * text it asked for.
+ * A paragraph entry is the whole text of one paragraph before and after the
+ * edit, so both directions are the same core call — `replace_paragraph` with
+ * the text from the other side of the entry. That keeps the stack independent
+ * of how the core rewrites content streams: the UI never has to model the
+ * PDF, only the text it asked for.
+ *
+ * A picture or link change has no text to replay, so its entry names a copy
+ * of the file (`snapshot`, kept by the app beside the stack): undoing it puts
+ * the file back as it was, byte for byte, and keeps the file as it is in the
+ * same place for the redo. Both kinds share one stack, so Undo always takes
+ * back the last change, whatever kind it was.
  *
  * `cursor` is the number of applied entries, so `entries.slice(0, cursor)` is
  * the history that is currently on the page and everything after it is redoable.
@@ -19,8 +25,16 @@ export interface EditEntry {
   after: string;
 }
 
+/** A picture or link change: the file on the other side of it is `snapshot`. */
+export interface FileEntry {
+  page: number;
+  snapshot: number;
+}
+
+export type StackEntry = EditEntry | FileEntry;
+
 export interface EditStack {
-  entries: readonly EditEntry[];
+  entries: readonly StackEntry[];
   cursor: number;
 }
 
@@ -31,12 +45,25 @@ export interface EditChange {
   text: string;
 }
 
-export interface StackStep {
-  stack: EditStack;
-  change: EditChange;
+/** Or: the file to put back — and, in its place, the file as it is now. */
+export interface FileChange {
+  page: number;
+  snapshot: number;
 }
 
+export interface StackStep {
+  stack: EditStack;
+  change: EditChange | FileChange;
+}
+
+/** Picture and link changes kept for undo, each a copy of the whole file. */
+export const MAX_FILE_ENTRIES = 10;
+
 export const EMPTY_EDIT_STACK: EditStack = { entries: [], cursor: 0 };
+
+export function isFileEntry(entry: StackEntry | EditChange | FileChange): entry is FileEntry {
+  return 'snapshot' in entry;
+}
 
 export function canUndo(stack: EditStack): boolean {
   return stack.cursor > 0;
@@ -47,11 +74,22 @@ export function canRedo(stack: EditStack): boolean {
 }
 
 /**
- * Records a committed edit. Anything that had been undone is dropped: editing
+ * Records a committed change. Anything that had been undone is dropped: editing
  * after an undo starts a new branch, exactly as every other editor behaves.
+ * Past `MAX_FILE_ENTRIES` picture and link changes, the oldest history goes,
+ * up to and with the oldest of them.
  */
-export function applyEdit(stack: EditStack, entry: EditEntry): EditStack {
-  return { entries: [...stack.entries.slice(0, stack.cursor), entry], cursor: stack.cursor + 1 };
+export function applyEdit(stack: EditStack, entry: StackEntry): EditStack {
+  let entries = [...stack.entries.slice(0, stack.cursor), entry];
+  while (entries.filter(isFileEntry).length > MAX_FILE_ENTRIES) {
+    entries = entries.slice(entries.findIndex(isFileEntry) + 1);
+  }
+  return { entries, cursor: entries.length };
+}
+
+/** The snapshots the stack still names: every other one can be let go. */
+export function snapshotsIn(stack: EditStack): Set<number> {
+  return new Set(stack.entries.filter(isFileEntry).map((entry) => entry.snapshot));
 }
 
 /** The entry to reverse, or `null` when there is nothing to undo. */
@@ -61,7 +99,9 @@ export function undo(stack: EditStack): StackStep | null {
   if (!entry) return null;
   return {
     stack: { entries: stack.entries, cursor: stack.cursor - 1 },
-    change: { page: entry.page, paragraphIndex: entry.paragraphIndex, text: entry.before },
+    change: isFileEntry(entry)
+      ? { page: entry.page, snapshot: entry.snapshot }
+      : { page: entry.page, paragraphIndex: entry.paragraphIndex, text: entry.before },
   };
 }
 
@@ -72,6 +112,8 @@ export function redo(stack: EditStack): StackStep | null {
   if (!entry) return null;
   return {
     stack: { entries: stack.entries, cursor: stack.cursor + 1 },
-    change: { page: entry.page, paragraphIndex: entry.paragraphIndex, text: entry.after },
+    change: isFileEntry(entry)
+      ? { page: entry.page, snapshot: entry.snapshot }
+      : { page: entry.page, paragraphIndex: entry.paragraphIndex, text: entry.after },
   };
 }

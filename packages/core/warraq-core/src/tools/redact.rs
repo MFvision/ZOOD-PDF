@@ -44,7 +44,7 @@ struct Find {
 
 /// A box on a page, in points from the top-left corner of the page as it is
 /// stored — before its `/Rotate` — which is how the viewer places marks.
-#[derive(Serialize, Clone, Copy, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 pub struct Rect {
     pub x: f32,
     pub y: f32,
@@ -67,7 +67,7 @@ struct Found {
 
 /// Each char of `line`'s boxes, left to right on the page: its own spans,
 /// or, where the reader has none (a turned line), an even share of the line.
-fn char_boxes(line: &TextLine) -> Vec<(f32, f32)> {
+pub(crate) fn char_boxes(line: &TextLine) -> Vec<(f32, f32)> {
     let n = line.text.chars().count();
     if line.spans.len() == n {
         return line.spans.clone();
@@ -91,7 +91,7 @@ fn char_boxes(line: &TextLine) -> Vec<(f32, f32)> {
 /// that holds only matched chars — so a word is one box even where its
 /// glyphs' advances leave a gap, and a match that bidi splits across the
 /// line is two boxes that take nothing between them.
-fn match_boxes(line: &TextLine, start: usize, end: usize) -> Vec<Rect> {
+pub(crate) fn match_boxes(line: &TextLine, start: usize, end: usize) -> Vec<Rect> {
     let mut boxes: Vec<(f32, f32, bool)> = char_boxes(line)
         .into_iter()
         .enumerate()
@@ -177,7 +177,7 @@ fn find(doc: &Document, a: Find) -> Result<Reply, CoreError> {
     let mut found: Vec<Found> = vec![];
     let mut total = 0usize;
     for page in pages {
-        let lines = doc.text_lines(page)?;
+        let lines = doc.all_lines(page)?;
         let shown = doc.page_size(page)?;
         let rotation = doc.pdf.page_rotation(page).unwrap_or(0);
         let texts: Vec<String> = lines.iter().map(|l| l.text.clone()).collect();

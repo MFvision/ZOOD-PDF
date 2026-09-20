@@ -128,9 +128,10 @@ export type AppAction =
   | { type: 'EDIT_ADD_AT'; page: number; x: number; y: number }
   | { type: 'EDIT_ADD_SIZE'; size: number }
   | { type: 'EDIT_FONT'; font: EditFontId }
-  | { type: 'EDIT_ADDED'; page: number }
   | { type: 'EDIT_BUSY'; busy: boolean }
   | { type: 'EDIT_APPLIED'; entry: EditEntry; fontSubstituted: boolean }
+  /** A picture, link or added-text change, the file before it kept as `snapshot` for undo. */
+  | { type: 'EDIT_FILE_CHANGED'; page: number; snapshot: number }
   | { type: 'EDIT_STEPPED'; stack: EditStack; page: number; fontSubstituted: boolean }
   | { type: 'EDIT_NOTICE_DISMISSED' }
   | { type: 'DOCUMENT_SAVED' }
@@ -445,11 +446,6 @@ function reduce(state: AppState, action: AppAction): AppState {
       return { ...state, edit: { ...state.edit, addSize: action.size } };
     case 'EDIT_FONT':
       return { ...state, edit: { ...state.edit, font: action.font } };
-    case 'EDIT_ADDED':
-      // Added text is not on the undo stack: the stack replays paragraph
-      // replacements, and there is no paragraph here to replay. The panel says
-      // so rather than offering an Undo that would quietly do nothing.
-      return { ...state, edit: bumpRevision(state.edit, action.page, false) };
     case 'EDIT_BUSY':
       return { ...state, edit: { ...state.edit, busy: action.busy } };
     case 'EDIT_APPLIED':
@@ -458,6 +454,14 @@ function reduce(state: AppState, action: AppAction): AppState {
         edit: {
           ...bumpRevision(state.edit, action.entry.page, action.fontSubstituted),
           stack: applyEdit(state.edit.stack, action.entry),
+        },
+      };
+    case 'EDIT_FILE_CHANGED':
+      return {
+        ...state,
+        edit: {
+          ...bumpRevision(state.edit, action.page, false),
+          stack: applyEdit(state.edit.stack, { page: action.page, snapshot: action.snapshot }),
         },
       };
     case 'EDIT_STEPPED':

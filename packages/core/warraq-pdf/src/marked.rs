@@ -16,6 +16,9 @@ use crate::PdfDocument;
 pub struct MarkedSequence {
     pub tag: Vec<u8>,
     pub actual_text: Option<String>,
+    /// One of Warraq's own page marks: an `/Artifact` whose properties
+    /// carry `/WarraqMark` (see `marks`), not another program's artifact.
+    pub warraq_mark: bool,
 }
 
 /// The renderer (hayro) gives up on forms nested deeper than this.
@@ -65,6 +68,7 @@ fn walk<'a>(
             "BMC" => out.push(MarkedSequence {
                 tag: op.operands.first()?.as_name().ok()?.to_vec(),
                 actual_text: None,
+                warraq_mark: false,
             }),
             "BDC" => {
                 let tag = op.operands.first()?.as_name().ok()?.to_vec();
@@ -84,7 +88,13 @@ fn walk<'a>(
                     .and_then(|p| p.get(b"ActualText").ok())
                     .and_then(|t| resolve(doc, t).as_str().ok())
                     .map(decode_text_string);
-                out.push(MarkedSequence { tag, actual_text });
+                let warraq_mark =
+                    tag == b"Artifact" && properties.is_some_and(|p| p.has(b"WarraqMark"));
+                out.push(MarkedSequence {
+                    tag,
+                    actual_text,
+                    warraq_mark,
+                });
             }
             "Do" => {
                 let name = op.operands.first()?.as_name().ok()?;
