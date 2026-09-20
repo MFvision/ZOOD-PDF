@@ -32,8 +32,12 @@ export function thumbnailScale(width: number, height: number): number | null {
   return scale >= CORE_MIN_SCALE ? scale : null;
 }
 
-/** Page 1 of `doc`, drawn by Warraq's core as a small JPEG data URL; null if it cannot be. */
-async function firstPagePicture(doc: RemoteDocument): Promise<string | null> {
+/**
+ * Page 1 of `doc`, drawn by Warraq's core as a small JPEG data URL; null if it
+ * cannot be. The cloud drives' recent files are pictured the same way
+ * (`cloud/CloudContext.tsx`), kept under the drive's own key.
+ */
+export async function firstPagePicture(doc: RemoteDocument): Promise<string | null> {
   const [width, height] = doc.pageSizes[0] ?? [0, 0];
   const scale = thumbnailScale(width, height);
   if (scale === null) return null;

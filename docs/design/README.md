@@ -302,6 +302,10 @@ WARRAQ_SCREENSHOTS=1 pnpm --filter @warraq/web exec playwright test e2e/design-s
 - `drop-overlay-ar-light`: the split drop overlay.
 - `phone-home-ar-light`, `phone-document-en-light`, `phone-sheet-ar-light`,
   `tablet-document-ar-dark`: narrow widths.
+- `cloud-home-en-light`, `cloud-home-ar-dark`, `cloud-signin-en-light`, `cloud-browse-en-light`,
+  `cloud-browse-ar-dark`, `cloud-conflict-en-light`, `cloud-phone-home-en-light`: the cloud drives.
+  They come from a build that carries a client ID (the default build has none), so the cloud spec
+  takes them: `WARRAQ_SCREENSHOTS=1 pnpm --filter @warraq/web exec playwright test e2e/cloud.spec.ts`.
 
 The macOS app itself (traffic lights, the system menu bar) cannot be screenshotted headlessly. Its
 configuration is pinned by `apps/desktop/src-tauri/tests/desktop_contract.rs` and `src/menu.rs`'s tests.

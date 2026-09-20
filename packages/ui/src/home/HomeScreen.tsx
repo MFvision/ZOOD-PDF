@@ -1,4 +1,6 @@
 import { FilePlus2, FolderOpen, ShieldCheck } from 'lucide-react';
+import { CloudHome } from '../cloud/CloudHome';
+import { useCloud } from '../cloud/CloudContext';
 import { APP_ICON } from '../components/appIcon';
 import { Icon } from '../components/Icon';
 import { useT } from '../i18n/useT';
@@ -14,6 +16,7 @@ import { RecentList } from './RecentList';
 export function HomeScreen() {
   const t = useT();
   const { requestOpenFile, requestCreateFiles } = useServices();
+  const cloud = useCloud();
   return (
     <div className="home">
       <div className="home-inner">
@@ -37,6 +40,7 @@ export function HomeScreen() {
           </div>
         </header>
         <RecentList />
+        <CloudHome />
         <section className="home-section" aria-labelledby="home-tools">
           <div className="home-section-header">
             <h2 id="home-tools">{t('home.tools')}</h2>
@@ -45,7 +49,7 @@ export function HomeScreen() {
         </section>
         <p className="home-privacy">
           <Icon of={ShieldCheck} size={14} />
-          <span>{t('home.privacy')}</span>
+          <span>{t(cloud.providers.length > 0 ? 'home.privacyCloud' : 'home.privacy')}</span>
         </p>
       </div>
     </div>

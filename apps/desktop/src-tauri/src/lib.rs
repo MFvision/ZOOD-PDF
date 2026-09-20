@@ -13,6 +13,7 @@ use tauri::{AppHandle, DragDropEvent, Emitter, Manager, Runtime, State, WindowEv
 use tauri_plugin_fs::FsExt;
 
 pub mod batch;
+pub mod cloud;
 pub mod core_bridge;
 pub mod menu;
 pub mod print;
@@ -192,6 +193,8 @@ pub fn run() {
         // The macOS menu bar is the UI's model (src/menu.rs); until the UI
         // sends it, Tauri's default menu stands in.
         .manage(menu::MenuState::default())
+        // Cloud drives: the sign-in under way and the system's credential store.
+        .manage(cloud::CloudState::default())
         .on_menu_event(|app, event| menu::forward(app, event.id().as_ref()))
         // Points warraq-render at the bundled PDFium and starts the core thread
         // before the window can invoke anything (see `core_bridge`).
@@ -247,6 +250,13 @@ pub fn run() {
             signing::net_exchange,
             signing::pkcs11_certificates,
             signing::pkcs11_sign,
+            cloud::cloud_auth_listen,
+            cloud::cloud_auth_wait,
+            cloud::cloud_auth_cancel,
+            cloud::cloud_token,
+            cloud::cloud_has_session,
+            cloud::cloud_forget,
+            cloud::cloud_http,
             menu::set_menu,
             batch::batch_list_folder,
             batch::batch_write,

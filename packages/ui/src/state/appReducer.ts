@@ -134,7 +134,9 @@ export type AppAction =
   | { type: 'EDIT_FILE_CHANGED'; page: number; snapshot: number }
   | { type: 'EDIT_STEPPED'; stack: EditStack; page: number; fontSubstituted: boolean }
   | { type: 'EDIT_NOTICE_DISMISSED' }
-  | { type: 'DOCUMENT_SAVED' };
+  | { type: 'DOCUMENT_SAVED' }
+  /** The file now has another name: saved under it in a cloud drive. */
+  | { type: 'DOCUMENT_RENAMED'; name: string };
 
 export const PANE_MIN_WIDTH = 160;
 export const PANE_MAX_WIDTH = 560;
@@ -474,6 +476,8 @@ function reduce(state: AppState, action: AppAction): AppState {
       return { ...state, edit: { ...state.edit, fontSubstituted: false } };
     case 'DOCUMENT_SAVED':
       return { ...state, edit: { ...state.edit, savedRevision: state.edit.revision } };
+    case 'DOCUMENT_RENAMED':
+      return state.document ? { ...state, document: { ...state.document, name: action.name } } : state;
     default:
       return state;
   }
