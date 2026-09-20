@@ -109,8 +109,9 @@ struct Add {
     /// The text the host read itself, for the kinds the core does not open.
     #[serde(default)]
     text: Option<Vec<PageText>>,
-    /// Unix seconds, so `library.document` can say when a file was indexed.
-    /// The core has no clock of its own in the browser.
+    /// The time, as the host counts it, so `library.document` can say when a
+    /// file was indexed: the core stores it and gives it back, and has no
+    /// clock of its own in the browser.
     #[serde(default)]
     now: i64,
 }

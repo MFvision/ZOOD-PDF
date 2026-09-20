@@ -191,9 +191,12 @@ pub struct Doc {
     pub key: String,
     pub name: String,
     pub kind: Kind,
-    /// When the file was last written, as the host counts it (Unix seconds).
+    /// When the file was last written, in whatever the host counts time in.
+    /// The core never reads a calendar out of it — it only ever compares it
+    /// with itself, to tell an unchanged file from a changed one.
     pub modified: i64,
-    /// When it went into the index (Unix seconds).
+    /// When it went into the index, likewise as the host counts it; the core
+    /// stores it and gives it back.
     pub indexed: i64,
     pub bytes: u64,
     pub content: u32,

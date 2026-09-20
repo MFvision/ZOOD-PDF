@@ -247,8 +247,16 @@ UTF-8, every reference checked against what was read — and refuses a damaged,
 truncated or foreign file with `E_INDEX` instead of loading half of it.
 (`packages/core/fuzz/fuzz_targets/library_index.rs`.)
 
-**`now`** is Unix seconds, because the core has no clock of its own in the
-browser; without it `library.document` answers `indexed: 0`.
+**`modified` and `now`** are the host's own count of time, and the core never
+reads a calendar out of either: `modified` is only ever compared with itself to
+tell an unchanged file from a changed one, and `now` is only stored and given
+back as `indexed`. So seconds or milliseconds both work, as long as one host
+keeps to one of them — the desktop host's walk reports milliseconds since the
+epoch (`packages/ui/src/core/host-tauri.ts`), and whichever the interface
+passes is what `library.document` will answer with. The core has no clock of
+its own in the browser, so without `now` a document's `indexed` is 0. A
+document's own date is a different thing altogether, read from its text (above)
+and always `YYYY-MM-DD`.
 
 **`library.stats`'s `bytes`** is an estimate of what the index takes, counted
 the way the file is written; `library.save` writes the real thing. On the
