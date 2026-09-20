@@ -276,8 +276,10 @@ test.describe('the navigation pane: bookmarks, attachments and layers, in both v
         // From the row's start edge: the left in English, the right in Arabic.
         return document.documentElement.dir === 'rtl' ? r.right - i.right : i.left - r.left;
       });
+    // The rows are read from the file: measured once they are on screen.
+    await expect(navigation(page).getByRole('list', { name: 'Attachments' }).getByRole('listitem')).toHaveCount(2);
+    await expect.poll(inset).toBeGreaterThan(0);
     const english = await inset();
-    expect(english).toBeGreaterThan(0);
     await page.getByRole('menubar').getByRole('combobox', { name: 'Language' }).selectOption({ label: 'العربية' });
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
     await expect.poll(inset).toBe(english);
