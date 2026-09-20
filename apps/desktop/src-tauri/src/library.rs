@@ -44,6 +44,8 @@ const MAX_FILES: usize = 100_000;
 /// The most entries one scan looks at, listed or not: a folder of a million
 /// files must not hold the window.
 const MAX_ENTRIES: usize = 1_000_000;
+/// The most folders one scan enters, below the ones it was given.
+const MAX_FOLDERS: usize = 100_000;
 /// The most files whose size and date one scan is told about beforehand. No
 /// more than one scan can list: everything past that could only ever come
 /// back as missing.
@@ -174,6 +176,9 @@ pub struct WalkOptions {
 pub struct Budget {
     pub files: usize,
     pub entries: usize,
+    /// Folders entered. Each is remembered by its true path — which is what
+    /// stops a link walking for ever — so the remembering is bounded too.
+    pub folders: usize,
 }
 
 impl Default for Budget {
@@ -181,6 +186,7 @@ impl Default for Budget {
         Self {
             files: MAX_FILES,
             entries: MAX_ENTRIES,
+            folders: MAX_FOLDERS,
         }
     }
 }
@@ -449,8 +455,13 @@ where
                 summary.skipped += 1;
                 continue;
             }
+            if options.budget.folders == 0 {
+                summary.truncated = true;
+                break;
+            }
             // Already walked, by this path or another that leads to it.
             if seen.insert(target) {
+                options.budget.folders -= 1;
                 next.push((path, depth + 1));
             }
         }
@@ -1101,7 +1112,7 @@ fn look(
     let mut stamps = Stamps::new();
     let mut budget = Budget {
         files: MAX_WATCHED,
-        entries: MAX_ENTRIES,
+        ..Budget::default()
     };
     let mut truncated = false;
     let known = HashMap::new();
@@ -1588,12 +1599,29 @@ mod tests {
         let mut few = options(true);
         few.budget = Budget {
             files: 4,
-            entries: MAX_ENTRIES,
+            ..Budget::default()
         };
         let (files, skipped, summary) = collect(&dir, &mut few);
         assert_eq!(files.len(), 4);
         assert!(summary.truncated, "a short list says it is short");
         assert!(skipped.iter().any(|s| s.reason == "too-many"));
+
+        // A tree of more folders than the walk enters: it says so rather
+        // than remember one path for every folder on the disk.
+        let wide = scratch("wide");
+        for n in 0..6 {
+            write(&wide, &format!("d{n}/f.pdf"), b"x");
+        }
+        let mut two = options(true);
+        two.budget = Budget {
+            folders: 2,
+            ..Budget::default()
+        };
+        let (files, skipped, summary) = collect(&wide, &mut two);
+        assert_eq!(files.len(), 2, "only the folders it entered: {files:?}");
+        assert!(summary.truncated);
+        assert!(skipped.iter().any(|s| s.reason == "too-many"));
+        std::fs::remove_dir_all(wide).unwrap();
 
         // Deeper than MAX_DEPTH: reported, not walked, and not a hang.
         let deep = scratch("deep");

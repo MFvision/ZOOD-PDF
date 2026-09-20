@@ -239,9 +239,11 @@ panel's numbers, and belong with their parts.
 subfolder that refuses to be read, a file whose metadata is refused, a link
 that points nowhere — each is reported as a skip with its reason
 (`unreadable`, `link`, `too-deep`, `too-big`, `too-many`) and the walk carries
-on. Depth (24), files (100 000), entries looked at (1 000 000) and a single
-file's size (512 MB) are all bounded per scan, and a list cut short says it is
-short rather than look complete.
+on. Depth (24), files (100 000), folders entered (100 000), entries looked at
+(1 000 000) and a single file's size (512 MB) are all bounded per scan — and so
+is what the walk holds while it runs: findings are handed over 256 at a time,
+skips included, and each folder is remembered by its true path only up to that
+same bound. A list cut short says it is short rather than look complete.
 
 **Links.** A link that leaves the chosen folder is refused although the file
 scope's own glob would allow it — the person chose a folder, not wherever its
@@ -265,7 +267,7 @@ and it refuses folders holding more than 20 000 files — `watching: false`,
 Whoever builds the panel must show that refusal; a "watching" light over a
 host that answered `false` would be a façade.
 
-**Proven by**: 15 Rust tests in `library.rs`, each making its own temporary
+**Proven by**: 16 Rust tests in `library.rs`, each making its own temporary
 folder — the kinds listed and hidden files left out, a subfolder unticked, a
 folder that refuses to be read, links out and links that loop, Stop,
 the bounds, the ten-thousand-file walk, change detection, the watcher's

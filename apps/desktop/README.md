@@ -161,8 +161,10 @@ event's `missing` lists everything in `known` that no folder held any more — m
 gone. A walk that was stopped reports no `missing` at all: it met only part of the folder, and
 what it did not reach is not gone.
 
-**Bounds**, all of them per scan: depth 24, 100 000 files, 1 000 000 entries looked at, 512 MB a
-file. Anything passed over is a `skipped` entry with a reason — `unreadable`, `link`,
+**Bounds**, all of them per scan: depth 24, 100 000 files, 100 000 folders entered, 1 000 000
+entries looked at, 512 MB a file. (Each folder is remembered by its true path — that is what
+stops a link walking for ever — so what the walk itself holds is bounded as well as what it
+reports.) Anything passed over is a `skipped` entry with a reason — `unreadable`, `link`,
 `too-deep`, `too-big`, `too-many` — never a failure of the run. A short list sets `truncated`,
 so the panel can say the list is short instead of showing it as complete.
 
