@@ -962,10 +962,15 @@ export function LibraryPanel() {
         )}
 
         {finding && (
-          <p className="tool-panel-note" role="status">
-            <Icon of={Loader} className="spin" /> {t('library.finding', { n: finding.found })}
-            {finding.where ? ` — ${finding.where}` : ''}
-          </p>
+          <div className="library-progress" role="status">
+            <span dir="auto">
+              <Icon of={Loader} className="spin" /> {t('library.finding', { n: finding.found })}
+              {finding.where ? ` — ${finding.where}` : ''}
+            </span>
+            <div className="tool-actions">
+              <IconButton label={t('library.stop')} icon={<Icon of={Square} />} showLabel onClick={() => stopper.current?.abort()} />
+            </div>
+          </div>
         )}
 
         {running && (
