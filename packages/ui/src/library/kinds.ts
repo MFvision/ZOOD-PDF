@@ -1,4 +1,4 @@
-import { CREATE_ACCEPT, createKind, pictureKind } from '../create/createPdf';
+import { CREATE_ACCEPT, createKind } from '../create/createPdf';
 import type { CreateKind } from '../create/createPdf';
 
 /**
@@ -53,26 +53,4 @@ export const libraryKindOf = (source: SourceKind): LibraryKind => KIND_OF[source
 export function sourceKind(name: string, bytes: Uint8Array): SourceKind | null {
   if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) return 'pdf';
   return createKind(name, bytes);
-}
-
-/** Whether this picture needs the browser to decode it (HEIC, AVIF) before the core can read it. */
-export const needsBrowserDecode = (bytes: Uint8Array): boolean => pictureKind(bytes) === 'browser';
-
-/** A picture's media type, by its name; the browser's decoder needs one. */
-export function pictureMimeOf(name: string): string {
-  const extension = name.toLowerCase().split('.').pop() ?? '';
-  const known: Record<string, string> = {
-    heic: 'image/heic',
-    heif: 'image/heif',
-    avif: 'image/avif',
-    png: 'image/png',
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    gif: 'image/gif',
-    bmp: 'image/bmp',
-    webp: 'image/webp',
-    tif: 'image/tiff',
-    tiff: 'image/tiff',
-  };
-  return known[extension] ?? 'application/octet-stream';
 }

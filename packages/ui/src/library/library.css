@@ -144,9 +144,32 @@
 .library-hit-head {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
-  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
   justify-content: space-between;
+}
+
+.library-hit-head > .library-hit-name {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+/* The small picture of the file's first page, where its reader made one. */
+.library-thumb {
+  flex: none;
+  inline-size: 28px;
+  block-size: 36px;
+  object-fit: cover;
+  background: var(--content-background);
+  border-radius: var(--radius-6);
+  box-shadow: 0 0 0 0.5px var(--separator);
+}
+
+.library-thumb-none {
+  display: grid;
+  place-items: center;
+  color: var(--tertiary-label);
+  background: var(--quaternary-fill);
 }
 
 .library-hit-name {

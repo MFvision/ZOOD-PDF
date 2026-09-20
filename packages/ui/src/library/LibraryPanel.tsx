@@ -24,8 +24,8 @@ import { LIBRARY_ACCEPT } from './kinds';
 import type { LibraryKind } from './kinds';
 import { badRange, filterCount, noFilters, toFilters, toggle } from './filters';
 import type { FilterState } from './filters';
-import { ingestFiles } from './ingest';
-import type { IngestProgress, IngestRun, IngestedFile, LibraryFile } from './ingest';
+import { ingestFiles, skipMessage } from './ingest';
+import type { IngestFile, IngestProgress, IngestRun, IngestedFile } from './ingest';
 import { storedLedger } from './ledger';
 import { LIBRARY_KINDS, coreLibrary, missingLibraryEngine } from './ops';
 import type { IndexedDocument, LibraryStats, SearchHit, TagRule } from './ops';
@@ -95,7 +95,7 @@ export function LibraryPanel() {
   const [finding, setFinding] = useState<{ found: number; where: string } | null>(null);
   const [progress, setProgress] = useState<IngestProgress | null>(null);
   const [outcome, setOutcome] = useState<IngestRun | null>(null);
-  const [remaining, setRemaining] = useState<LibraryFile[]>([]);
+  const [remaining, setRemaining] = useState<IngestFile[]>([]);
   const [password, setPassword] = useState('');
   const [recognize, setRecognize] = useState(true);
   const [passedOver, setPassedOver] = useState<PassedOver[]>([]);
@@ -113,6 +113,7 @@ export function LibraryPanel() {
   const [searching, setSearching] = useState(false);
   const [missing, setMissing] = useState<string | null>(null);
   const [pendingPage, setPendingPage] = useState<number | null>(null);
+  const [thumbs, setThumbs] = useState<ReadonlyMap<string, string>>(new Map());
 
   const [chosen, setChosen] = useState<IndexedDocument | null>(null);
   const [newTag, setNewTag] = useState('');
@@ -181,7 +182,7 @@ export function LibraryPanel() {
 
   /** Reads a list of files into the index, showing how far it has come. */
   const run = useCallback(
-    async (files: readonly LibraryFile[], folder?: FolderRecord) => {
+    async (files: readonly IngestFile[], folder?: FolderRecord) => {
       if (handle === null || files.length === 0) return;
       setError(null);
       setOutcome(null);
@@ -218,6 +219,10 @@ export function LibraryPanel() {
         await keep(handle);
         setOutcome(answer);
         setRemaining(files.filter((file) => answer.remaining.includes(file.key)));
+        // The readers draw a small picture of each file's first page; it is
+        // kept beside the index, on this device, and shown beside its hits.
+        const pictures = new Map(answer.files.filter((file) => file.thumbnail).map((file) => [file.key, file.thumbnail!]));
+        if (pictures.size > 0) await store.current.writeThumbs(pictures).catch(() => undefined);
         // Newly indexed documents take the tags the rules give them.
         if (rules.length > 0 && answer.added > 0) {
           const after = await ops.current.rules(handle, { apply: true });
@@ -368,6 +373,29 @@ export function LibraryPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, shown]);
 
+  // One address per document on screen, made when the results change and
+  // given back when they do: an object URL the page never releases is a leak
+  // the tab pays for until it closes.
+  const keysShown = hits ? [...new Set(hits.map((hit) => hit.key))].join('\u0000') : '';
+  useEffect(() => {
+    if (keysShown === '') return undefined;
+    let alive = true;
+    const made = new Map<string, string>();
+    void (async () => {
+      for (const key of keysShown.split('\u0000')) {
+        const picture = await store.current.readThumb(key).catch(() => null);
+        if (!picture || !alive) continue;
+        made.set(key, URL.createObjectURL(new Blob([picture.image], { type: picture.mime })));
+      }
+      if (alive) setThumbs(made);
+      else for (const url of made.values()) URL.revokeObjectURL(url);
+    })();
+    return () => {
+      alive = false;
+      for (const url of made.values()) URL.revokeObjectURL(url);
+    };
+  }, [keysShown]);
+
   /** Opens the document a hit came from, at its page. */
   const openHit = (hit: SearchHit) => {
     void (async () => {
@@ -483,6 +511,7 @@ export function LibraryPanel() {
       if (handle === null || keys.length === 0) return;
       await ops.current.forget(handle, keys);
       ledger.current.forget(keys);
+      await store.current.forgetThumbs(keys).catch(() => undefined);
       const before = await store.current.readMeta().catch(emptyMeta);
       const files = { ...before.files };
       for (const key of keys) {
@@ -571,7 +600,7 @@ export function LibraryPanel() {
   const notRead = outcome ? outcome.files.filter((file) => file.skipped && file.skipped !== 'unchanged') : [];
 
   const skipReason = (file: IngestedFile): string => {
-    const reason = t(`library.skip.${file.skipped ?? 'unreadable'}` as TKey);
+    const reason = t(skipMessage(file.skipped ?? 'unreadable'));
     return file.problem ? t('library.skip.problem', { reason, problem: file.problem }) : reason;
   };
 
@@ -779,6 +808,13 @@ export function LibraryPanel() {
                       aria-label={t('library.openHit', { name: hit.name, page: hit.page })}
                     >
                       <span className="library-hit-head">
+                        {thumbs.get(hit.key) ? (
+                          <img className="library-thumb" src={thumbs.get(hit.key)} alt="" />
+                        ) : (
+                          <span className="library-thumb library-thumb-none" aria-hidden="true">
+                            <Icon of={Library} size={14} />
+                          </span>
+                        )}
                         <span className="library-hit-name" dir="auto">
                           {hit.name}
                         </span>
@@ -874,6 +910,7 @@ export function LibraryPanel() {
           <input type="checkbox" checked={recognize} disabled={running} onChange={(event) => setRecognize(event.target.checked)} />
           <span>{t('library.recognize')}</span>
         </label>
+        <p className="tool-panel-note">{t('library.recognizeNote')}</p>
         <label className="field">
           <span>{t('library.password')}</span>
           <input
@@ -989,6 +1026,8 @@ export function LibraryPanel() {
             {outcome.recognized > 0 ? ` ${t('library.recognized', { n: outcome.recognized })}` : ''}
           </p>
         )}
+
+        {outcome && !running && outcome.files.some((file) => file.truncated) && <p className="tool-panel-note">{t('library.truncated')}</p>}
 
         {remaining.length > 0 && !running && (
           <div className="tool-actions">

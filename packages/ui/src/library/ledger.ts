@@ -4,9 +4,10 @@ import { readJson, writeJson } from '../state/preferences';
  * What the Library has already read, so it does not read it twice.
  *
  * For each file: how large it was, when it was last changed, and a hash of
- * its content. A file whose three still agree is not opened, not recognized
- * and not indexed again — which is also how a run resumes after Stop, since
- * only a file that finished is written down here.
+ * its content. A file whose three still agree is read from the disk and no
+ * further — not opened, not recognized, not indexed again — which is also
+ * how a run resumes after Stop, since only a file that finished is written
+ * down here.
  *
  * It holds no text and no names a person did not already have: a key, three
  * numbers and sixteen hex digits. It lives beside the other things
@@ -68,33 +69,38 @@ function trim(marks: Record<string, FileMark>): void {
   for (const key of keys.slice(0, keys.length - LEDGER_LIMIT)) delete marks[key];
 }
 
-function ledgerOver(marks: Record<string, FileMark>, changed: () => void): Ledger {
-  // How many are written down, carried along rather than counted again: a
-  // folder of ten thousand files wrote one file and counted ten thousand
-  // keys for each of them, which took seconds the interface could feel.
-  let kept = Object.keys(marks).length;
+/**
+ * `changed` is told whether what happened can wait: a file just read can —
+ * the worst a lost write costs is that file read again — while forgetting
+ * and clearing are answers to something a person asked for, and are written
+ * at once. Counting the files as they come, rather than asking how many
+ * there are after each one, is what keeps a folder of ten thousand from
+ * costing the square of that.
+ */
+function ledgerOver(marks: Record<string, FileMark>, changed: (soon: boolean) => void): Ledger {
+  let held = Object.keys(marks).length;
   return {
     mark: (key) => marks[key],
     remember(key, mark) {
-      if (marks[key] === undefined) kept += 1;
+      if (!(key in marks)) held += 1;
       marks[key] = { ...mark, hash: shortHash(mark.hash) };
-      if (kept > LEDGER_LIMIT) {
+      if (held > LEDGER_LIMIT) {
         trim(marks);
-        kept = Object.keys(marks).length;
+        held = Object.keys(marks).length;
       }
-      changed();
+      changed(true);
     },
     forget(keys) {
       for (const key of keys) {
-        if (marks[key] !== undefined) kept -= 1;
+        if (key in marks) held -= 1;
         delete marks[key];
       }
-      changed();
+      changed(false);
     },
     clear() {
       for (const key of Object.keys(marks)) delete marks[key];
-      kept = 0;
-      changed();
+      held = 0;
+      changed(false);
     },
     all: () => ({ ...marks }),
   };
@@ -107,8 +113,25 @@ export function memoryLedger(from: Record<string, FileMark> = {}): Ledger {
 
 export const LEDGER_KEY = 'warraq.library.read';
 
-/** The ledger as the app keeps it: written to this device after every file. */
+/** At most one write to this device a second while a run is under way. */
+export const LEDGER_WRITE_MS = 1000;
+
+/**
+ * The ledger as the app keeps it. Writing it costs as much as the whole
+ * ledger, so a run of a thousand files does not write it a thousand times:
+ * a file read schedules a write within a second, and what a person asked for
+ * is written at once.
+ */
 export function storedLedger(key: string = LEDGER_KEY): Ledger {
   const marks = sanitize(readJson<unknown>(key, {}));
-  return ledgerOver(marks, () => writeJson(key, marks));
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const save = () => {
+    if (timer) clearTimeout(timer);
+    timer = null;
+    writeJson(key, marks);
+  };
+  return ledgerOver(marks, (soon) => {
+    if (!soon) return save();
+    timer ??= setTimeout(save, LEDGER_WRITE_MS);
+  });
 }

@@ -19,9 +19,10 @@ import type { LibraryKind } from './kinds';
  */
 
 const DATABASE = 'warraq-library';
-const VERSION = 1;
+const VERSION = 2;
 const INDEX_STORE = 'index';
 const META_STORE = 'meta';
+const THUMB_STORE = 'thumbs';
 const INDEX_KEY = 'bytes';
 const META_KEY = 'meta';
 /** The one index the app keeps, by name, in the desktop host's data directory. */
@@ -53,12 +54,21 @@ export interface LibraryMeta {
 
 export const emptyMeta = (): LibraryMeta => ({ folders: [], files: {} });
 
+/** A small picture of a document's first page, made by the readers. */
+export interface Thumbnail {
+  image: ArrayBuffer;
+  mime: string;
+}
+
 export interface LibraryStore {
   readIndex(): Promise<ArrayBuffer | null>;
   writeIndex(bytes: ArrayBuffer): Promise<void>;
   readMeta(): Promise<LibraryMeta>;
   writeMeta(meta: LibraryMeta): Promise<void>;
-  /** Really deletes: the index, the folders and the file records. */
+  readThumb(key: string): Promise<Thumbnail | null>;
+  writeThumbs(thumbs: ReadonlyMap<string, Thumbnail>): Promise<void>;
+  forgetThumbs(keys: readonly string[]): Promise<void>;
+  /** Really deletes: the index, the folders, the file records and the pictures. */
   forgetEverything(): Promise<void>;
 }
 
@@ -87,6 +97,7 @@ function openDatabase(): Promise<IDBDatabase> {
       const db = open.result;
       if (!db.objectStoreNames.contains(INDEX_STORE)) db.createObjectStore(INDEX_STORE);
       if (!db.objectStoreNames.contains(META_STORE)) db.createObjectStore(META_STORE);
+      if (!db.objectStoreNames.contains(THUMB_STORE)) db.createObjectStore(THUMB_STORE);
     };
     open.onsuccess = () => resolve(open.result);
     open.onerror = () => reject(open.error ?? new Error('IndexedDB failed'));
@@ -99,6 +110,22 @@ async function put(store: string, key: string, value: unknown): Promise<void> {
   try {
     const tx = db.transaction(store, 'readwrite');
     await request(tx.objectStore(store).put(value, key));
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error ?? new Error('IndexedDB failed'));
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function remove(store: string, keys: readonly string[]): Promise<void> {
+  if (keys.length === 0) return;
+  const db = await openDatabase();
+  try {
+    const tx = db.transaction(store, 'readwrite');
+    const shelf = tx.objectStore(store);
+    for (const key of keys) shelf.delete(key);
     await new Promise<void>((resolve, reject) => {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error ?? new Error('IndexedDB failed'));
@@ -147,6 +174,13 @@ export function browserStore(): LibraryStore {
       return tidyMeta(await get<LibraryMeta>(META_STORE, META_KEY));
     },
     writeMeta: (meta) => put(META_STORE, META_KEY, meta),
+    async readThumb(key) {
+      return (await get<Thumbnail>(THUMB_STORE, key)) ?? null;
+    },
+    async writeThumbs(thumbs) {
+      for (const [key, thumbnail] of thumbs) await put(THUMB_STORE, key, thumbnail);
+    },
+    forgetThumbs: (keys) => remove(THUMB_STORE, keys),
     forgetEverything: deleteDatabase,
   };
 }
@@ -165,6 +199,9 @@ export function desktopStore(): LibraryStore {
     },
     readMeta: browser.readMeta,
     writeMeta: browser.writeMeta,
+    readThumb: browser.readThumb,
+    writeThumbs: browser.writeThumbs,
+    forgetThumbs: browser.forgetThumbs,
     async forgetEverything() {
       await deleteLibraryIndex(INDEX_NAME).catch(() => false);
       await browser.forgetEverything();
@@ -176,6 +213,7 @@ export function desktopStore(): LibraryStore {
 export function memoryStore(): LibraryStore {
   let index: ArrayBuffer | null = null;
   let meta = emptyMeta();
+  const thumbs = new Map<string, Thumbnail>();
   return {
     readIndex: () => Promise.resolve(index),
     writeIndex: (bytes) => {
@@ -187,9 +225,19 @@ export function memoryStore(): LibraryStore {
       meta = copyMeta(next);
       return Promise.resolve();
     },
+    readThumb: (key) => Promise.resolve(thumbs.get(key) ?? null),
+    writeThumbs: (fresh) => {
+      for (const [key, thumbnail] of fresh) thumbs.set(key, thumbnail);
+      return Promise.resolve();
+    },
+    forgetThumbs: (keys) => {
+      for (const key of keys) thumbs.delete(key);
+      return Promise.resolve();
+    },
     forgetEverything: () => {
       index = null;
       meta = emptyMeta();
+      thumbs.clear();
       return Promise.resolve();
     },
   };

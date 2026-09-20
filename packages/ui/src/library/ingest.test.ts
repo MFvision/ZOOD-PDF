@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { CoreClient, RemoteDocument } from '../core/client';
 import { CoreClientError } from '../core/client';
 import { INGEST_LIMITS, ingestFiles } from './ingest';
-import type { IngestedFile, LibraryFile } from './ingest';
+import type { IngestedFile, IngestFile } from './ingest';
 import { sourceKind } from './kinds';
 import { memoryLedger } from './ledger';
 import { ReaderBusy, inlineReader } from './reader';
@@ -70,7 +70,7 @@ function fakeCore(options: { images?: number } = {}) {
   return { client, calls, opened, rendered, added: () => calls.filter((call) => call.op === 'library.add') };
 }
 
-const file = (name: string, bytes: ArrayBuffer, over: Partial<LibraryFile> = {}): LibraryFile => ({
+const file = (name: string, bytes: ArrayBuffer, over: Partial<IngestFile> = {}): IngestFile => ({
   key: `/library/${name}`,
   name,
   size: bytes.byteLength,
@@ -80,7 +80,7 @@ const file = (name: string, bytes: ArrayBuffer, over: Partial<LibraryFile> = {})
 });
 
 /** One run, with the reader in this thread and no recognition (Tesseract needs a browser). */
-async function ingest(files: readonly LibraryFile[], over: Partial<Parameters<typeof ingestFiles>[0]> = {}) {
+async function ingest(files: readonly IngestFile[], over: Partial<Parameters<typeof ingestFiles>[0]> = {}) {
   const core = over.client ? null : fakeCore();
   const run = await ingestFiles({
     handle: 7,
@@ -220,6 +220,35 @@ describe('what the run costs and what it remembers', () => {
     expect((await ingest(changed, { ledger })).run.added).toBe(1);
   });
 
+  it('does not even read a file the desktop walk and the ledger both call unchanged', async () => {
+    const ledger = memoryLedger();
+    const bytes = fixtureBytes('notes-ar.txt');
+    let reads = 0;
+    const counted = (over: Partial<IngestFile>) => ({
+      ...file('notes-ar.txt', bytes, over),
+      read: () => {
+        reads += 1;
+        return Promise.resolve(bytes.slice(0));
+      },
+    });
+    expect((await ingest([counted({ state: 'new' })], { ledger })).run.added).toBe(1);
+    expect(reads).toBe(1);
+
+    // The walk says its size and date still match; the ledger agrees.
+    const again = await ingest([counted({ state: 'same' })], { ledger });
+    expect(again.run.files[0]!.skipped).toBe('unchanged');
+    expect(reads).toBe(1);
+
+    // The walk says `same` but nothing here remembers it: it is read and hashed.
+    const fresh = await ingest([counted({ state: 'same' })], { ledger: memoryLedger() });
+    expect(fresh.run.added).toBe(1);
+    expect(reads).toBe(2);
+
+    // The walk says it changed: read, whatever the ledger holds.
+    expect((await ingest([counted({ state: 'changed', modified: 1_900_000_000_000 })], { ledger })).run.added).toBe(1);
+    expect(reads).toBe(3);
+  });
+
   it('stops where it is asked to and resumes there, without reading what was done', async () => {
     const controller = new AbortController();
     const ledger = memoryLedger();
@@ -318,6 +347,17 @@ describe('every file is hostile input', () => {
     expect(pages.reduce((sum, page) => sum + page.text.length, 0)).toBeLessThanOrEqual(30);
     expect(run.files[0]!.truncated).toBe(true);
   });
+
+  it('goes on without Tesseract where it cannot start, indexing what the files say in words', async () => {
+    // Node has no worker for it to start in: exactly what a host that cannot
+    // run recognition looks like, and no reason to fail forty-nine other files.
+    const core = fakeCore();
+    const files = [file('scan.pdf', fakePdf(['', ''])), file('report.pdf', fakePdf(['نص الصفحة']))];
+    const run = await ingestFiles({ handle: 1, files, client: core.client, recognize: true, reader: inlineReader(), ledger: memoryLedger() });
+    expect(run.added).toBe(2);
+    expect(run.recognized).toBe(0);
+    expect(core.added().map((call) => call.args.kind)).toEqual(['scan', 'pdf']);
+  }, 30_000);
 
   it('says so when the core refuses the file, and does not write it down as read', async () => {
     const ledger = memoryLedger();

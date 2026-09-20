@@ -14,7 +14,7 @@ import type {
   LibraryWatchAnswer,
 } from '../core/host-tauri';
 import { LIBRARY_ACCEPT } from './kinds';
-import type { LibraryFile } from './ingest';
+import type { IngestFile } from './ingest';
 import type { FolderRecord, LibraryMeta } from './store';
 
 /**
@@ -62,7 +62,7 @@ type WithDirectoryPicker = {
 
 export interface AddedFolder {
   record: FolderRecord;
-  files: LibraryFile[];
+  files: IngestFile[];
   /** Files under the folder the Library has no reader for, so the count is honest. */
   ignored: number;
 }
@@ -85,11 +85,10 @@ function folderId(): string {
 /** A browser key: the folder's own id, then the file's place under it. */
 export const browserKey = (folder: string, relative: string): string => `${folder}/${relative}`;
 
-function fromFile(key: string, file: File, relative: string): LibraryFile {
+function fromFile(key: string, file: File): IngestFile {
   return {
     key,
     name: file.name,
-    path: relative,
     size: file.size,
     modified: file.lastModified,
     read: () => file.arrayBuffer(),
@@ -105,8 +104,8 @@ function fromFile(key: string, file: File, relative: string): LibraryFile {
 export function filesFromPicker(
   files: readonly File[],
   folder: string,
-): { files: LibraryFile[]; ignored: number; held: Map<string, File> } {
-  const taken: LibraryFile[] = [];
+): { files: IngestFile[]; ignored: number; held: Map<string, File> } {
+  const taken: IngestFile[] = [];
   const held = new Map<string, File>();
   let ignored = 0;
   for (const file of files) {
@@ -116,7 +115,7 @@ export function filesFromPicker(
       continue;
     }
     const key = browserKey(folder, relative);
-    taken.push(fromFile(key, file, relative));
+    taken.push(fromFile(key, file));
     held.set(key, file);
   }
   return { files: taken, ignored, held };
@@ -127,8 +126,8 @@ export async function walkDirectory(
   handle: DirectoryHandle,
   folder: string,
   onFound?: (found: number) => void,
-): Promise<{ files: LibraryFile[]; ignored: number }> {
-  const files: LibraryFile[] = [];
+): Promise<{ files: IngestFile[]; ignored: number }> {
+  const files: IngestFile[] = [];
   let ignored = 0;
   const walk = async (directory: DirectoryHandle, prefix: string, depth: number): Promise<void> => {
     if (depth > MAX_DEPTH || files.length >= MAX_FILES) return;
@@ -148,7 +147,7 @@ export async function walkDirectory(
       // The file itself is read only when its turn comes; `getFile` here is
       // for its size and date, which is what tells an unchanged file.
       const file = await (entry as FileSystemFileHandle).getFile();
-      files.push(fromFile(browserKey(folder, path), file, path));
+      files.push(fromFile(browserKey(folder, path), file));
       onFound?.(files.length);
     }
   };
@@ -216,7 +215,7 @@ export async function scanNativeFolders(
   onFound?: (found: number, where: string) => void,
   signal?: AbortSignal,
 ): Promise<NativeScan> {
-  const found = new Map<string, LibraryFile[]>(paths.map((path) => [path, []]));
+  const found = new Map<string, IngestFile[]>(paths.map((path) => [path, []]));
   const scan: NativeScan = { folders: [], skipped: [], missing: [], truncated: false, stopped: false };
   let letGo: (() => void) | null = null;
   await new Promise<void>((resolve, reject) => {
@@ -229,9 +228,11 @@ export async function scanNativeFolders(
         list.push({
           key: file.key,
           name: file.name,
-          path: file.relative,
           size: file.size,
           modified: file.modified,
+          // The walk has already weighed it: `same` saves reading and
+          // hashing a file whose size and date have not moved.
+          state: file.state,
           read: () => readLibraryFile(file.key),
         });
       }
@@ -272,13 +273,13 @@ export async function scanNativeFolders(
  * is a five-second re-check, not the system telling us — the panel says so
  * rather than letting a person believe it is instant.
  */
-export function watchedFiles(files: readonly HostFile[]): LibraryFile[] {
+export function watchedFiles(files: readonly HostFile[]): IngestFile[] {
   return files.map((file) => ({
     key: file.key,
     name: file.name,
-    path: file.relative,
     size: file.size,
     modified: file.modified,
+    state: file.state,
     read: () => readLibraryFile(file.key),
   }));
 }

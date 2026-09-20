@@ -1,7 +1,7 @@
 import type { CoreClient, RemoteDocument } from '../core/client';
 import { createPdf } from '../create/createPdf';
 import type { CreateEnvironment } from '../create/createPdf';
-import { NO_CLEANUP } from '../ocr/cleanup';
+import type { TKey } from '../i18n/messages';
 import type { CleanupOptions } from '../ocr/cleanup';
 import { startRecognizer } from '../ocr/engine';
 import type { OcrLanguage, Recognizer } from '../ocr/engine';
@@ -34,27 +34,41 @@ import { hashBytes } from './work';
  *
  * Nothing heavy happens on the interface's thread. The core has its worker,
  * Tesseract has its own, and everything else — unzipping, parsing XML,
- * cleaning a scan up, measuring its slant, hashing, thumbnails — is in this
- * feature's own worker (`ingest.worker.ts`). What is left here is the
- * waiting between them.
+ * cleaning a scan up, measuring its slant, drawing thumbnails — is in this
+ * feature's own worker (`ingest.worker.ts`); a file's content hash is the
+ * platform's own digest, which is native and off this thread already. What
+ * is left here is the waiting between them.
  *
  * Every file is hostile input: its size, its pages and its characters are
  * bounded, a job that will not finish has its worker dropped, and a file
  * that cannot be read is written down with a reason while the run goes on.
  */
 
-/** A file the Library is asked to read; the host decides what a key is. */
-export interface LibraryFile {
+/**
+ * A file the Library is asked to read; the host decides what a key is. On
+ * the desktop this is the walk's own `LibraryFile` (`core/host-tauri.ts`)
+ * with `read: () => readLibraryFile(key)` put on it — the host reads a
+ * file's bytes only when its turn comes.
+ */
+export interface IngestFile {
   /** Stable for this file: its full path on the desktop, folder id + relative path in a browser. */
   key: string;
   name: string;
-  /** Where it sits under the folder that was added — `reports/2024/q1.pdf` — for the folder filter. */
-  path?: string;
   /** Bytes, as the file system says; 0 where it does not. */
   size: number;
   /** Milliseconds since the epoch, as the file system says. */
   modified: number;
   read(): Promise<ArrayBuffer>;
+  /**
+   * What the host already knows, where it knows anything. The desktop walk
+   * answers `same` for a file whose size and date still match what the index
+   * holds, without reading a byte of it; a `same` file the ledger remembers
+   * at that same size and date is then not read at all — its content hash
+   * was taken the last time it was read, and neither has moved since.
+   * Anything else is read and hashed here. A browser, which has no walk, says
+   * nothing and every file is hashed.
+   */
+  state?: 'new' | 'changed' | 'same';
   /** Tried when the file asks for one. Never written to the index or to the ledger. */
   password?: string;
 }
@@ -87,6 +101,9 @@ export type SkipReason =
   | 'tooSlow'
   | 'empty'
   | 'notIndexed';
+
+/** What the panel says for a reason, in either language. */
+export const skipMessage = (reason: SkipReason): TKey => `library.skipped.${reason}` as TKey;
 
 export interface IngestedFile {
   key: string;
@@ -137,6 +154,28 @@ export interface IngestLimits {
   thumbnailEdge: number;
 }
 
+/**
+ * How a scan or a photograph is cleaned up before it is read, unless the
+ * panel says otherwise: the paper's own light evened out and the ink
+ * stretched to black (`ocr/cleanup.ts`).
+ *
+ * A folder holds pages photographed by hand, and a shadow across one costs
+ * Tesseract nearly all of its words. Measured on the photograph fixture
+ * (`scripts/measure-library.mjs`): read as it is, 13 % of the page's words,
+ * and 77 seconds spent reading nonsense; with these two steps, 93 % in 13
+ * seconds. Everything the cleanup offers reaches 94 %, and doubles the time
+ * a folder takes — on a 1924 manuscript, five times — so the Library stops
+ * at two. Scan & OCR leaves the choice to the person, who can see the page;
+ * the Library never can.
+ */
+export const LIBRARY_CLEANUP: CleanupOptions = {
+  background: true,
+  contrast: true,
+  binarize: false,
+  despeckle: false,
+  borders: false,
+};
+
 export const INGEST_LIMITS: IngestLimits = {
   bytes: 128 * 1024 * 1024,
   ocrPages: 50,
@@ -147,12 +186,12 @@ export const INGEST_LIMITS: IngestLimits = {
 export interface IngestOptions {
   /** From `library.open`. */
   handle: number;
-  files: readonly LibraryFile[];
+  files: readonly IngestFile[];
   client: Pick<CoreClient, 'open' | 'callStatic'>;
   /** Read scans and pictures with Tesseract; on by default. */
   recognize?: boolean;
   languages?: readonly OcrLanguage[];
-  /** How a scan is cleaned up before it is read; nothing by default. */
+  /** How a scan is cleaned up before it is read; `LIBRARY_CLEANUP` by default. */
   cleanup?: CleanupOptions;
   /** What has already been read, so it is not read again. Kept only in memory by default. */
   ledger?: Ledger;
@@ -211,7 +250,7 @@ export async function ingestFiles(options: IngestOptions): Promise<IngestRun> {
   const reader = options.reader ?? startReader();
   const signal = options.signal;
   const languages = options.languages ?? ['ara', 'eng'];
-  const cleanup = options.cleanup ?? NO_CLEANUP;
+  const cleanup = options.cleanup ?? LIBRARY_CLEANUP;
   const recognizing = options.recognize ?? true;
   const say = options.onProgress ?? (() => undefined);
   const run: IngestRun = { files: [], added: 0, skipped: 0, failed: 0, recognized: 0, remaining: [], took: 0 };
@@ -220,8 +259,18 @@ export async function ingestFiles(options: IngestOptions): Promise<IngestRun> {
   // a folder of scans would pay it for every file.
   let recognizer = options.recognizer;
   const ownRecognizer = !options.recognizer;
-  const recognizerFor = async (): Promise<Recognizer> => {
-    recognizer ??= await startRecognizer(languages);
+  // Tesseract that will not start at all — no models on this host, a policy
+  // that stops its worker — is not a fault of any one file: the run goes on
+  // and indexes what the files say in words themselves.
+  let noRecognizer = false;
+  const recognizerFor = async (): Promise<Recognizer | null> => {
+    if (noRecognizer) return null;
+    try {
+      recognizer ??= await startRecognizer(languages);
+    } catch {
+      noRecognizer = true;
+      return null;
+    }
     return recognizer;
   };
 
@@ -279,7 +328,8 @@ export async function ingestFiles(options: IngestOptions): Promise<IngestRun> {
     }
     let recognized = 0;
     let truncated = count > reading;
-    if (recognizing && blank.length > 0 && !signal?.aborted) {
+    const tesseract = recognizing && blank.length > 0 && !signal?.aborted ? await recognizerFor() : null;
+    if (tesseract) {
       const targets = blank.slice(0, limits.ocrPages);
       truncated ||= targets.length < blank.length;
       say({ ...at, stage: 'recognizing', page: 1, pages: targets.length });
@@ -290,7 +340,7 @@ export async function ingestFiles(options: IngestOptions): Promise<IngestRun> {
         onProgress: (progress) => say({ ...at, stage: 'recognizing', page: progress.page, pages: progress.of }),
         signal,
         options: { cleanup, replaceImage: false },
-        recognizer: await recognizerFor(),
+        recognizer: tesseract,
         prepare,
       });
       for (const page of read) {
@@ -325,7 +375,7 @@ export async function ingestFiles(options: IngestOptions): Promise<IngestRun> {
     }
   }
 
-  async function readOne(file: LibraryFile, bytes: ArrayBuffer, kind: SourceKind, at: Omit<IngestProgress, 'stage'>): Promise<ReadFile> {
+  async function readOne(file: IngestFile, bytes: ArrayBuffer, kind: SourceKind, at: Omit<IngestProgress, 'stage'>): Promise<ReadFile> {
     if (kind === 'pdf') {
       const { doc, protectedFile } = await openPdf(bytes, file.password);
       try {
@@ -385,6 +435,13 @@ export async function ingestFiles(options: IngestOptions): Promise<IngestRun> {
         took: Date.now() - fileStarted,
       });
       say({ ...at, stage: 'reading' });
+      // The host walked this file and found it as the index has it, and so
+      // did the last run: there is nothing here to read.
+      const known = ledger.mark(file.key);
+      if (file.state === 'same' && known && known.size === file.size && known.modified === file.modified) {
+        finish(nothing('unchanged'));
+        continue;
+      }
       let bytes: ArrayBuffer;
       try {
         bytes = await file.read();
@@ -398,7 +455,7 @@ export async function ingestFiles(options: IngestOptions): Promise<IngestRun> {
       }
       const size = file.size || bytes.byteLength;
       const hash = await hashBytes(bytes);
-      if (unchanged(ledger.mark(file.key), { size, modified: file.modified }, hash)) {
+      if (unchanged(known, { size, modified: file.modified }, hash)) {
         finish(nothing('unchanged'));
         continue;
       }

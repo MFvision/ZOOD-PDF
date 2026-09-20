@@ -172,6 +172,108 @@ Warraq's reader then read the layer back as Arabic. Nothing needed changing
 for the worker, its WebAssembly or its models. What this does not prove is
 how the panel looks there: no screen could be seen (below).
 
+## The Library: reading the files, measured (2026-09-20)
+
+The Library indexes a whole folder and answers one search across it. Turning
+each file into the text the index holds is `packages/ui/src/library/` — the
+index itself, the panel and the desktop host are being built beside it.
+
+**What it reads, and how.** A PDF is read page by page by Warraq's own
+reader. A page that carries no text of its own is a scan, and goes through
+**Scan & OCR** — the same `ocr/run.ts` and `ocr/cleanup.ts` the tool uses,
+reached through a new `readPagesWith`, never a copy of them; a PDF no page of
+which carries text is indexed as a `scan`, so the filter for "has no text
+layer" finds it even when nothing was recognized. A **picture** (PNG, JPEG,
+GIF, BMP, WebP, every page of a TIFF; HEIC and AVIF where the browser draws
+them) is made a page by **Create PDF**'s own `create.images` and then read
+exactly as a scan is. **Word, Excel, PowerPoint, web pages, Markdown, text
+and CSV** go through the readers in `create/` that Create PDF already uses;
+a page break, and a page of its own size — which is what a slide and a
+turned section are — start a new page, so a hit points at the slide it is
+really on.
+
+**Nothing heavy on the interface's thread.** The core has its worker,
+Tesseract has its own, and everything else — unzipping, parsing XML, cleaning
+a scan up, measuring how crooked it is, drawing thumbnails — is in the
+Library's own worker (`library/ingest.worker.ts`); a file's content hash is
+the platform's own digest, native and off that thread already. A job that
+does not answer within 90 seconds has that worker dropped, a new one started
+for the next file, and this file skipped: one hostile file cannot end a run
+of a thousand.
+
+**On the desktop it reads what the host walks.** The walk answers each file
+as `new`, `changed` or `same` — by its size and date against what the index
+holds, without reading a byte — and hands over its full path, which is its
+key. A file the walk calls `same` and the ledger remembers at that same size
+and date is not read at all; anything else is read through
+`readLibraryFile(path)` when its turn comes, one file at a time, and hashed
+here. A browser has no walk, so every file is read and hashed.
+
+**Cleanup is on by default here**, unlike in Scan & OCR. Measured on a new
+fixture, `tests/fixtures/create/photo-arabic.jpg` — the corpus's Noto Naskh
+page taken smaller as a camera would, under light falling off across the
+paper:
+
+| The photograph read | Of the page's 138 Arabic words | Time |
+| --- | --- | --- |
+| as it is | 13 % (and 4 528 characters of nonsense) | 77 s |
+| shadows evened out + contrast (what the Library does) | **93 %** | 13 s |
+| every cleanup step | 94 % | 8 s |
+
+Every step reads one word more and costs a folder twice the time — five times
+on a 1924 manuscript — so the Library stops at the two. Scan & OCR leaves the
+choice to the person, who can see the page; the Library never can.
+
+**Fifty files, in Chrome, on this Mac** (`node scripts/measure-library.mjs`:
+the real ingest, the real WebAssembly core, the real Tesseract and the real
+worker, over the 48 corpus PDFs and the two picture fixtures, 18.5 MB):
+
+| | |
+| --- | --- |
+| The whole run | **201 s** — 4.0 s a file |
+| Reading the files' own text (42 PDFs, no recognition) | 12.5 s |
+| Recognizing (37 pages of 6 scans and 2 pictures) | 188 s |
+| Handing the text to the index | 71 ms |
+| Indexed / skipped | 46 / 4 — the four are the corpus's encrypted variants, skipped as `needsPassword` because no password was given |
+| Thumbnails | 46, 167 kB in all (192 px on the longer side, JPEG) |
+| Slowest one file | 104 s — a 1924 manuscript scan |
+| The scanned Arabic page | 97 % of the truth's words; searching «المستندات» finds it |
+| The photograph | 93 %; «المستندات» finds it too |
+
+So a folder of ordinary documents is read at about a quarter of a second a
+file, and everything after that is Tesseract: a folder with scans in it costs
+what Scan & OCR costs, once, and never again — a file whose size, date and
+content hash are unchanged is not read a second time, which is also how a run
+resumes after Stop, since only a file that finished is written down.
+
+**How this part is proven.**
+
+* `src/library/ingest.test.ts` and `reader.test.ts` (33 tests): every kind
+  read into pages of text with the real fixtures and the real readers —
+  Word, Excel, PowerPoint, web page, Markdown, text, CSV, a PDF page by
+  page, a PDF with no text called a `scan` and still indexed, a picture made
+  a PDF through `create.images`, a multi-page TIFF; unchanged files not read
+  again; Stop and resume; a thumbnail of the first page and never one for a
+  file that needed a password; and, hostile: a file that cannot be opened, a
+  password not given, a file past the size bound, a reader that will not
+  finish, page and character bounds, and the core refusing the file — each
+  skipped with its reason while the run carries on.
+* `e2e/library-ingest.spec.ts` in a real browser against the production
+  build: a scanned Arabic page and a photograph of one, both read to text
+  through the very paths the Library uses for them, and the words a search
+  needs found in both.
+
+**What is not proven here.** Holding that text and answering a search over it
+are the core's (`library.*`) and the panel's, and are being written beside
+this; the e2e that indexes a folder and searches across it comes with them.
+The fifty-file measurement stubs `library.add` for the same reason, so its
+numbers are the cost of reading, not of indexing. Office files, web pages,
+Markdown and text get no thumbnail — nothing draws them without typesetting
+them into a PDF first, which would cost more than the picture is worth; they
+are shown by their kind. The ledger of what has been read keeps its last
+10 000 files on this device (about 600 kB); past that the oldest are dropped
+and those files are read again.
+
 ## Batch and the AI's data actions: how they are proven (2026-09-19)
 
 * **Batch, in the browser** (`e2e/batch.spec.ts`): four files, one protected

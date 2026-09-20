@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ReadDocument } from '../create/blocks';
 import { LEDGER_LIMIT, memoryLedger, shortHash, unchanged } from './ledger';
 import { boundPages, documentPages, wordsAsText } from './pageText';
-import { ReaderBusy, inlineReader, workerReader } from './reader';
+import { ReaderBusy, inlineReader, startReader, workerReader } from './reader';
 import type { WorkerAnswer, WorkerJob } from './ingest.worker';
 import { doWork, hashBytes, thumbnailOf, thumbnailSize } from './work';
 
@@ -93,6 +93,14 @@ describe('the reader worker', () => {
     const reader = inlineReader();
     reader.close();
     await expect(reader.work({ job: 'hash', bytes: bytesOf('x') })).rejects.toThrow('E_READER');
+  });
+
+  it('does the work in this thread where the host has no worker at all', async () => {
+    expect(typeof Worker).not.toBe('function');
+    const reader = startReader();
+    const reply = await reader.work({ job: 'hash', bytes: bytesOf('التقرير') });
+    expect(reply.job === 'hash' && reply.hash).toHaveLength(64);
+    reader.close();
   });
 });
 
