@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
 import { corpus, documentStatus, embedTiles, test } from './helpers';
 
 /**
@@ -19,6 +20,9 @@ const THREE_PAGES = corpus('generated/chrome-notonaskh-justified-3pages.pdf');
 /** Two invoices in different fonts: "فاتورة" is in both, so one search crosses files. */
 const INVOICE_A = corpus('generated/chrome-cairo-mixed-invoice.pdf');
 const INVOICE_B = corpus('generated/raw-amiri-cid-identity-tounicode.pdf');
+/** Not a PDF at all: read by the same readers Create PDF uses. */
+const WORD = fileURLToPath(new URL('../../../tests/fixtures/create/report-ar.docx', import.meta.url));
+const MARKDOWN = fileURLToPath(new URL('../../../tests/fixtures/create/notes-ar.md', import.meta.url));
 
 const panel = (page: Page) => page.locator('.pane-end');
 
@@ -113,6 +117,25 @@ test.describe('The Library searches across every document that was added', () =>
     await first.locator('.library-hit-open').click();
     await expect.poll(() => embedTiles(page)).toBeGreaterThan(0);
     await expect(documentStatus(page)).toContainText('Page 3 of 3', { timeout: 60_000 });
+  });
+
+  test('reads a Word file and a Markdown one too, and one word finds all three kinds', async ({ page, stayLocal: _ }) => {
+    const library = await openLibrary(page);
+    await needsEngine(library);
+
+    await addFiles(library, [THREE_PAGES, WORD, MARKDOWN]);
+    await expect(summary(library)).toContainText('Added: 3.', { timeout: 180_000 });
+
+    // The PDF writes وراق; the Word file and the notes write ورّاق, with the
+    // shadda. One search without it finds all three, each named by its kind.
+    const hits = await search(library, 'وراق');
+    await expect(hits.locator('li').first()).toBeVisible();
+    const named = await hits.locator('.library-hit-name').allInnerTexts();
+    for (const name of ['chrome-notonaskh-justified-3pages.pdf', 'report-ar.docx', 'notes-ar.md']) expect(named).toContain(name);
+    const kinds = (await hits.locator('.library-hit-where').allInnerTexts()).join(' ');
+    expect(kinds).toContain('Word');
+    expect(kinds).toContain('Markdown');
+    expect(kinds).toContain('PDF');
   });
 
   test('deletes the index when asked, and says the files were not touched', async ({ page, stayLocal: _ }) => {
