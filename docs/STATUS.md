@@ -415,13 +415,15 @@ with a test that fails without its fix.
    none is taken while that file stays open), whenever the file is saved, and
    when a file that needs a password opens under a name that had one
    (`e2e/recent.spec.ts`).
-2. **Opening any file drew its first page with no limit on its size.** A
-   `/MediaBox` of a million points asked the core for gigabytes — a trap that
-   aborts the WebAssembly core — and a picture was drawn on every open. The
-   picture is sized to fit both ways and skipped past that, and no render
-   anywhere may pass 64 million pixels: the core refuses first, before
-   allocating (`robustness.rs`). Warraq's own view draws a large page at a high
-   zoom a little softer instead of hitting that limit.
+2. **Opening any file drew its first page with no limit on its size.** The
+   picture was drawn on every open, at a scale set by the page, and nothing
+   bounded it: a page of 170 000 points was drawn at 72 million pixels (that
+   much was run), and the million-point page the review describes would ask
+   for gigabytes — on wasm32 an allocation that aborts the core, which was not
+   run here. The picture is now sized to fit both ways and skipped past that,
+   and no render anywhere may pass 64 million pixels: the core refuses before
+   allocating, for both sizes (`robustness.rs`). Warraq's own view draws a
+   large page at a high zoom a little softer instead of hitting that limit.
 3. **In the macOS menu bar, Undo could not reach the typing in a text field.**
    The page's own Undo item replaced the system's role but was enabled only by
    the document's history, so typing in a field (the first paragraph edit, the
