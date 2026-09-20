@@ -18,6 +18,7 @@ pub mod file;
 pub mod forms;
 pub mod forms_eval;
 pub mod images;
+pub mod library;
 pub mod links;
 pub mod marks;
 pub mod ocr;
@@ -82,6 +83,7 @@ pub fn call_static(op: &str, args: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, C
         Some(("file", name)) => file::call_static(name, args, blobs),
         Some(("forms", name)) => forms::call_static(name, args, blobs),
         Some(("images", name)) => images::call_static(name, args, blobs),
+        Some(("library", name)) => library::call_static(name, args, blobs),
         Some(("links", name)) => links::call_static(name, args, blobs),
         Some(("marks", name)) => marks::call_static(name, args, blobs),
         Some(("ocr", name)) => ocr::call_static(name, args, blobs),
