@@ -1,4 +1,5 @@
 import { CALLBACK_CHANNEL, CALLBACK_MESSAGE, CALLBACK_PAGE } from './callback';
+import { openOwnWindow } from '../links/openLink';
 import { CloudError, kindOf } from './errors';
 import { authorizeUrl, paramsOf, readCallback } from './oauth';
 import type { AuthServer, Callback } from './oauth';
@@ -29,15 +30,19 @@ export function browserRedirectUri(base: string = globalThis.document.baseURI): 
 
 /**
  * Opens the sign-in window, in the same click that asked for it — a pop-up
- * opened after anything asynchronous is blocked. Its address is set once
- * the request is ready.
+ * opened after anything asynchronous is blocked by the browser. Its address
+ * is set once the request is ready.
+ *
+ * It is opened through `openOwnWindow`, because the app's own link guard
+ * takes `window.open` away from the page: no document may open a window,
+ * and this is the app opening one.
  */
 export function openSignInWindow(): Window {
   const width = 520;
   const height = 680;
   const left = Math.max(0, Math.round(globalThis.screenX + (globalThis.outerWidth - width) / 2));
   const top = Math.max(0, Math.round(globalThis.screenY + (globalThis.outerHeight - height) / 3));
-  const popup = globalThis.open('', 'warraq-sign-in', `popup,width=${width},height=${height},left=${left},top=${top}`);
+  const popup = openOwnWindow('warraq-sign-in', `popup,width=${width},height=${height},left=${left},top=${top}`);
   if (!popup) throw new CloudError('popupBlocked');
   return popup;
 }
