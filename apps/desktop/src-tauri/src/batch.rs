@@ -164,7 +164,7 @@ fn decoded(header: Option<&tauri::http::HeaderValue>) -> Option<String> {
 }
 
 /// `%XX` escapes back to UTF-8 (the path and name travel in ASCII headers).
-fn percent_decode(text: &str) -> Option<String> {
+pub(crate) fn percent_decode(text: &str) -> Option<String> {
     let bytes = text.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
