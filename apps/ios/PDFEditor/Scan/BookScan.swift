@@ -196,8 +196,7 @@ struct RGBABitmap {
             guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
                                           bytesPerRow: width * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                           bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
-            context.translateBy(x: 0, y: CGFloat(height))
-            context.scaleBy(x: 1, y: -1)
+            // Rows top first, as the picture is shown.
             context.setFillColor(red: 1, green: 1, blue: 1, alpha: 1)
             context.fill(CGRect(x: 0, y: 0, width: width, height: height))
             context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
@@ -221,16 +220,8 @@ struct RGBABitmap {
             guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
                                           bytesPerRow: width * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                           bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
-            // The rows are top first; a bitmap context's are bottom first,
-            // so the picture made straight from them would be upside down.
-            guard let flipped = context.makeImage() else { return nil }
-            guard let out = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
-                                      space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
-            out.translateBy(x: 0, y: CGFloat(height))
-            out.scaleBy(x: 1, y: -1)
-            out.draw(flipped, in: CGRect(x: 0, y: 0, width: width, height: height))
-            return out.makeImage()
+            // The rows are top first, as a bitmap context's are.
+            return context.makeImage()
         }
     }
 }

@@ -54,7 +54,7 @@ final class ScanTests: XCTestCase {
     private func waitForPage(_ index: Int, in app: XCUIApplication, timeout: TimeInterval = 90) {
         XCTAssertTrue(app.buttons["scan.page.\(index)"].waitForExistence(timeout: timeout), "page \(index + 1) is in the stack")
         let done = NSPredicate(format: "exists == false")
-        expectation(for: done, evaluatedWith: app.otherElements["scan.processing"])
+        expectation(for: done, evaluatedWith: app.descendants(matching: .any)["scan.processing"])
         waitForExpectations(timeout: timeout)
     }
 
@@ -83,11 +83,11 @@ final class ScanTests: XCTestCase {
         app.buttons["scan.photos"].tap()
         try pickNewestPhoto(in: app)
         waitForPage(0, in: app)
-        XCTAssertTrue(app.otherElements["scan.stage"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["scan.stage"].exists)
 
         // The corners: drag the top-left handle inwards and see it move.
         app.buttons["scan.crop"].tap()
-        let handle = app.otherElements["crop.handle.0"]
+        let handle = app.descendants(matching: .any)["crop.handle.0"]
         XCTAssertTrue(handle.waitForExistence(timeout: 10))
         let before = try XCTUnwrap(handle.value as? String)
         let grab = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
@@ -105,7 +105,7 @@ final class ScanTests: XCTestCase {
         XCTAssertTrue(modes.waitForExistence(timeout: 5))
         modes.buttons.element(boundBy: 2).tap()
         app.switches["enhance.creases"].firstMatch.tap()
-        let compare = app.otherElements["enhance.original"].firstMatch.exists ? app.otherElements["enhance.original"].firstMatch : app.staticTexts["enhance.original"].firstMatch
+        let compare = app.descendants(matching: .any)["enhance.original"].firstMatch
         XCTAssertTrue(compare.waitForExistence(timeout: 5))
         compare.press(forDuration: 1.0)
         app.buttons["sheet.done"].tap()
@@ -114,7 +114,7 @@ final class ScanTests: XCTestCase {
         // The text, read and copied.
         app.buttons["scan.text"].tap()
         XCTAssertTrue(app.buttons["text.read"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["scan.languages"].exists || app.otherElements["scan.languages"].exists, "the languages read are named")
+        XCTAssertTrue(app.descendants(matching: .any)["scan.languages"].exists, "the languages read are named")
         app.buttons["text.read"].tap()
         XCTAssertTrue(app.staticTexts["text.body"].waitForExistence(timeout: 120), "Vision read the page")
         app.buttons["text.copy"].tap()
@@ -165,7 +165,7 @@ final class ScanTests: XCTestCase {
         let app = launch(language: "en", scan: [try fixture("id-front"), try fixture("id-back")], mode: "idCard")
         waitForPage(1, in: app)
         XCTAssertTrue(app.buttons["scan.page.0"].label.contains("1"))
-        let stage = app.otherElements["scan.stage"]
+        let stage = app.descendants(matching: .any)["scan.stage"]
         let composed = expectation(for: NSPredicate(format: "label CONTAINS[c] 'card size'"), evaluatedWith: stage)
         await fulfillment(of: [composed], timeout: 60)
 
@@ -214,7 +214,7 @@ final class ScanTests: XCTestCase {
             try save(app, as: "scan-\(suffix)", in: directory)
 
             app.buttons["scan.crop"].tap()
-            let handle = app.otherElements["crop.handle.0"]
+            let handle = app.descendants(matching: .any)["crop.handle.0"]
             XCTAssertTrue(handle.waitForExistence(timeout: 10))
             // Mid-drag, so the magnifier is in the picture.
             let target = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 30, dy: 30))
@@ -241,7 +241,7 @@ final class ScanTests: XCTestCase {
 
             app = launch(language: combo.language, appearance: combo.appearance, scan: [try fixture("id-front"), try fixture("id-back")], mode: "idCard")
             waitForPage(1, in: app)
-            let stage = app.otherElements["scan.stage"]
+            let stage = app.descendants(matching: .any)["scan.stage"]
             expectation(for: NSPredicate(format: "label CONTAINS[c] 'card' OR label CONTAINS 'بطاقة'"), evaluatedWith: stage)
             waitForExpectations(timeout: 60)
             try save(app, as: "scan-id-\(suffix)", in: directory)

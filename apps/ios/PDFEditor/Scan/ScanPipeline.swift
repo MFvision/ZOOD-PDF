@@ -155,7 +155,7 @@ enum ScanPipeline {
         if (try? handler.perform([segmentation])) != nil,
            let found = segmentation.results?.first, found.confidence > 0.3 {
             let quad = quad(from: found, in: size)
-            if quad.isConvex, quad.coverage(of: size) > 0.05 {
+            if plausible(quad, in: size) {
                 return quad
             }
         }
@@ -168,11 +168,46 @@ enum ScanPipeline {
         rectangles.maximumObservations = 1
         if (try? handler.perform([rectangles])) != nil, let found = rectangles.results?.first {
             let quad = quad(from: found, in: size)
-            if quad.isConvex, quad.coverage(of: size) > 0.05 {
+            if plausible(quad, in: size) {
                 return quad
             }
         }
         return nil
+    }
+
+    /// A page, a card or a spread: convex, at least a tenth of the photo,
+    /// and no more than four times as wide as tall or tall as wide — a
+    /// sliver along an edge is a detector's mistake, not a page.
+    static func plausible(_ quad: Quad, in size: CGSize) -> Bool {
+        guard quad.isConvex, quad.coverage(of: size) > 0.1 else { return false }
+        let page = quad.pageSize
+        guard page.width > 0, page.height > 0 else { return false }
+        let aspect = page.width / page.height
+        return aspect > 0.25 && aspect < 4
+    }
+
+    /// What Vision's two detectors answer for a picture, raw, for the tests'
+    /// log: the segmentation's confidence, box and corners, and the
+    /// rectangle detector's.
+    static func printDetections(in image: CGImage, name: String) {
+        let handler = VNImageRequestHandler(cgImage: image, options: [:])
+        let segmentation = VNDetectDocumentSegmentationRequest()
+        try? handler.perform([segmentation])
+        for (k, found) in (segmentation.results ?? []).enumerated() {
+            print("SCAN-DETECT \(name) segmentation[\(k)] confidence \(found.confidence) box \(found.boundingBox) tl \(found.topLeft) tr \(found.topRight) br \(found.bottomRight) bl \(found.bottomLeft) mask \(found.globalSegmentationMask.map { "\(CVPixelBufferGetWidth($0.pixelBuffer))x\(CVPixelBufferGetHeight($0.pixelBuffer))" } ?? "none")")
+        }
+        let rectangles = VNDetectRectanglesRequest()
+        rectangles.minimumAspectRatio = 0.2
+        rectangles.maximumAspectRatio = 1.0
+        rectangles.quadratureTolerance = 35
+        rectangles.minimumSize = 0.15
+        rectangles.minimumConfidence = 0.5
+        rectangles.maximumObservations = 3
+        try? handler.perform([rectangles])
+        for (k, found) in (rectangles.results ?? []).enumerated() {
+            print("SCAN-DETECT \(name) rectangle[\(k)] confidence \(found.confidence) box \(found.boundingBox) tl \(found.topLeft) tr \(found.topRight) br \(found.bottomRight) bl \(found.bottomLeft)")
+        }
+        print("SCAN-DETECT \(name) image \(image.width)x\(image.height) bits \(image.bitsPerPixel) alpha \(image.alphaInfo.rawValue) space \(image.colorSpace?.name.map { String($0) } ?? "none")")
     }
 
     /// Vision's corners (normalized, from the bottom-left) as pixels from
@@ -551,9 +586,8 @@ struct GreyBitmap {
                                           bytesPerRow: width, space: CGColorSpaceCreateDeviceGray(),
                                           bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return false }
             context.interpolationQuality = .medium
-            // Row 0 at the top, as the picture is shown.
-            context.translateBy(x: 0, y: CGFloat(height))
-            context.scaleBy(x: 1, y: -1)
+            // A bitmap context's rows are stored top first, as the picture
+            // is shown: row 0 is the top of the image.
             context.setFillColor(gray: 1, alpha: 1)
             context.fill(CGRect(x: 0, y: 0, width: width, height: height))
             context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
