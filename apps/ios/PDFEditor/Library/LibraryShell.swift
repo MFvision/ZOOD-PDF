@@ -269,6 +269,7 @@ struct DocumentGrid: View {
                 library.forget(recent)
             }
         }
+        .draggableToNewWindow(recent.resolveURL().flatMap(DocumentReference.init(url:)), enabled: supportsMultipleWindows)
         .accessibilityIdentifier("recent.\(recent.id.uuidString)")
     }
 
@@ -291,6 +292,21 @@ struct DocumentGrid: View {
                 pendingDelete = local
             }
         }
+        .draggableToNewWindow(DocumentReference(url: local.url), enabled: supportsMultipleWindows)
         .accessibilityIdentifier("document.\(local.name)")
+    }
+}
+
+extension View {
+    /// On iPad, a cell dragged out of the app and dropped at the screen's
+    /// edge opens its document in a new window (the `document` scene takes
+    /// a `DocumentReference`).
+    @ViewBuilder
+    func draggableToNewWindow(_ reference: DocumentReference?, enabled: Bool) -> some View {
+        if enabled, let reference {
+            draggable(reference)
+        } else {
+            self
+        }
     }
 }

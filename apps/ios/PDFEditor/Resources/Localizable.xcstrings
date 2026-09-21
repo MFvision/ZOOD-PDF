@@ -1,19 +1,34 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "%@ · %@" : {
-      "localizations" : {
-        "ar" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ · %2$@" } }
-      }
-    },
     "%@ will be deleted from this device." : {
       "localizations" : {
         "ar" : { "stringUnit" : { "state" : "translated", "value" : "سيُحذف %@ من هذا الجهاز." } }
       }
     },
+    "%@ · %@" : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ · %2$@" } }
+      }
+    },
+    "%@ → %@" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "من %1$@ إلى %2$@" } } }
+    },
     "%@: %@" : {
       "localizations" : {
         "ar" : { "stringUnit" : { "state" : "translated", "value" : "%1$@: %2$@" } }
+      }
+    },
+    "%lld of %lld" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "%1$lld من %2$lld" } } }
+    },
+    "%lld of %lld selected" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "%1$lld من %2$lld محددة" } } }
+    },
+    "%lld pages" : {
+      "localizations" : {
+        "ar" : { "variations" : { "plural" : { "zero" : { "stringUnit" : { "state" : "translated", "value" : "لا صفحات" } }, "one" : { "stringUnit" : { "state" : "translated", "value" : "صفحة واحدة" } }, "two" : { "stringUnit" : { "state" : "translated", "value" : "صفحتان" } }, "few" : { "stringUnit" : { "state" : "translated", "value" : "%lld صفحات" } }, "many" : { "stringUnit" : { "state" : "translated", "value" : "%lld صفحة" } }, "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld صفحة" } } } } },
+        "en" : { "variations" : { "plural" : { "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld page" } }, "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld pages" } } } } }
       }
     },
     "%lld pages · %@" : {
@@ -40,14 +55,80 @@
         }
       }
     },
+    "%lld pictures." : {
+      "localizations" : {
+        "ar" : { "variations" : { "plural" : { "zero" : { "stringUnit" : { "state" : "translated", "value" : "لا صور." } }, "one" : { "stringUnit" : { "state" : "translated", "value" : "صورة واحدة." } }, "two" : { "stringUnit" : { "state" : "translated", "value" : "صورتان." } }, "few" : { "stringUnit" : { "state" : "translated", "value" : "%lld صور." } }, "many" : { "stringUnit" : { "state" : "translated", "value" : "%lld صورة." } }, "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld صورة." } } } } },
+        "en" : { "variations" : { "plural" : { "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld picture." } }, "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld pictures." } } } } }
+      }
+    },
+    "%lld points" : {
+      "localizations" : {
+        "ar" : { "variations" : { "plural" : { "zero" : { "stringUnit" : { "state" : "translated", "value" : "لا نقاط" } }, "one" : { "stringUnit" : { "state" : "translated", "value" : "نقطة واحدة" } }, "two" : { "stringUnit" : { "state" : "translated", "value" : "نقطتان" } }, "few" : { "stringUnit" : { "state" : "translated", "value" : "%lld نقاط" } }, "many" : { "stringUnit" : { "state" : "translated", "value" : "%lld نقطة" } }, "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld نقطة" } } } } },
+        "en" : { "variations" : { "plural" : { "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld point" } }, "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld points" } } } } }
+      }
+    },
+    "%lld × %lld pt" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "%1$lld × %2$lld نقطة" } } }
+    },
+    "A PNG of each page at 150 dpi." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "صورة PNG لكل صفحة بدقة 150 نقطة في البوصة." } } }
+    },
+    "A document keeps at least one page." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يجب أن يبقى في المستند صفحة واحدة على الأقل." } } }
+    },
+    "A signed document is not converted." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا يُحوَّل مستند موقّع." } } }
+    },
     "About" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "حول" } } }
+    },
+    "Add" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إضافة" } } }
+    },
+    "Add note" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إضافة ملاحظة" } } }
+    },
+    "Add stamp" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إضافة ختم" } } }
+    },
+    "Add text" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إضافة نص" } } }
+    },
+    "Anyone opening the document will be asked for it. There is no way to recover a forgotten password." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "سيُطلب من كل من يفتح المستند. لا سبيل لاستعادة كلمة مرور منسية." } } }
     },
     "Appearance" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المظهر" } } }
     },
+    "Arabic is shaped and stays searchable." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تُشكَّل الحروف العربية ويبقى النص قابلًا للبحث." } } }
+    },
+    "Arrow" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "سهم" } } }
+    },
     "Author" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المؤلف" } } }
+    },
+    "Black" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "أسود" } } }
+    },
+    "Blank page" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "صفحة فارغة" } } }
+    },
+    "Blue" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "أزرق" } } }
+    },
+    "Bottom" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "أسفل" } } }
+    },
+    "Bottom left" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "أسفل اليسار" } } }
+    },
+    "Bottom right" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "أسفل اليمين" } } }
+    },
+    "Cancel" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إلغاء" } } }
     },
     "Cannot draw this file" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّر رسم هذا الملف" } } }
@@ -55,14 +136,59 @@
     "Cannot open this file" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّر فتح هذا الملف" } } }
     },
+    "Centre" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الوسط" } } }
+    },
     "Choose a document, or open one from Files." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "اختر مستندًا، أو افتح واحدًا من تطبيق الملفات." } } }
+    },
+    "Choose another tool or Done to keep the drawing." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "اختر أداة أخرى أو «تم» للاحتفاظ بالرسم." } } }
+    },
+    "Clear" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مسح" } } }
+    },
+    "Colour" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "اللون" } } }
+    },
+    "Compressed PDF" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "PDF مضغوط" } } }
+    },
+    "Compressed copy" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "نسخة مضغوطة" } } }
+    },
+    "Confirm the password" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تأكيد كلمة المرور" } } }
+    },
+    "Continuous" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "متواصل" } } }
     },
     "Core" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "النواة" } } }
     },
+    "Could not add the mark" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّرت إضافة العلامة" } } }
+    },
+    "Could not add the stamp" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّرت إضافة الختم" } } }
+    },
+    "Could not change the pages" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّر تغيير الصفحات" } } }
+    },
+    "Could not change the protection" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّر تغيير الحماية" } } }
+    },
+    "Could not export" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّر التصدير" } } }
+    },
+    "Could not keep the signature" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّر حفظ التوقيع" } } }
+    },
     "Could not open" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّر الفتح" } } }
+    },
+    "Could not place the signature" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّر وضع التوقيع" } } }
     },
     "Could not save" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّر الحفظ" } } }
@@ -70,11 +196,26 @@
     "Creator" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المنشئ" } } }
     },
+    "Crop" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "قص" } } }
+    },
+    "Crop…" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "قص…" } } }
+    },
     "Dark" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "داكن" } } }
     },
     "Delete" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "حذف" } } }
+    },
+    "Delete %lld pages" : {
+      "localizations" : {
+        "ar" : { "variations" : { "plural" : { "zero" : { "stringUnit" : { "state" : "translated", "value" : "لا صفحات للحذف" } }, "one" : { "stringUnit" : { "state" : "translated", "value" : "حذف صفحة واحدة" } }, "two" : { "stringUnit" : { "state" : "translated", "value" : "حذف صفحتين" } }, "few" : { "stringUnit" : { "state" : "translated", "value" : "حذف %lld صفحات" } }, "many" : { "stringUnit" : { "state" : "translated", "value" : "حذف %lld صفحة" } }, "other" : { "stringUnit" : { "state" : "translated", "value" : "حذف %lld صفحة" } } } } },
+        "en" : { "variations" : { "plural" : { "one" : { "stringUnit" : { "state" : "translated", "value" : "Delete %lld page" } }, "other" : { "stringUnit" : { "state" : "translated", "value" : "Delete %lld pages" } } } } }
+      }
+    },
+    "Delete the selected pages?" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "هل تريد حذف الصفحات المحددة؟" } } }
     },
     "Delete this document?" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "هل تريد حذف هذا المستند؟" } } }
@@ -88,8 +229,29 @@
     "Done" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تم" } } }
     },
+    "Downsampling pictures makes the file smallest; keeping them loses nothing." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تقليل دقة الصور يجعل الملف أصغر ما يمكن؛ والإبقاء عليها لا يُفقد شيئًا." } } }
+    },
+    "Draw" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "رسم" } } }
+    },
+    "Draw a new one" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "رسم توقيع جديد" } } }
+    },
+    "Draw with a finger or the Pencil; two fingers scroll." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "ارسم بإصبعك أو بالقلم؛ والتمرير بإصبعين." } } }
+    },
+    "Drawing" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "رسم" } } }
+    },
+    "Drop the signature over a page." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "ضع التوقيع فوق صفحة." } } }
+    },
     "Edited" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مُعدَّل" } } }
+    },
+    "Ellipse" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "شكل بيضاوي" } } }
     },
     "Engine" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المحرّك" } } }
@@ -100,14 +262,116 @@
     "Enter its password to open it." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "أدخل كلمة مروره لفتحه." } } }
     },
+    "Every file takes this many pages, in order." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يأخذ كل ملف هذا العدد من الصفحات بالترتيب." } } }
+    },
+    "Every page" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "كل الصفحات" } } }
+    },
+    "Every page's text in logical order." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "نص كل صفحة بالترتيب المنطقي." } } }
+    },
+    "Export" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تصدير" } } }
+    },
+    "Export…" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تصدير…" } } }
+    },
+    "Extract selected pages" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "استخراج الصفحات المحددة" } } }
+    },
+    "Extract this page" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "استخراج هذه الصفحة" } } }
+    },
+    "Files ready" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الملفات جاهزة" } } }
+    },
+    "Find" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "بحث" } } }
+    },
+    "Find in document" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "ابحث في المستند" } } }
+    },
+    "Find…" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "بحث…" } } }
+    },
+    "Flowing paragraphs in reading order, Arabic right-to-left." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "فقرات متدفقة بترتيب القراءة، والعربية من اليمين إلى اليسار." } } }
+    },
+    "For archiving: written whole and validated." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "للأرشفة: يُكتب كاملًا ويُتحقق منه." } } }
+    },
+    "Form field" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "حقل نموذج" } } }
+    },
+    "Format" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الصيغة" } } }
+    },
+    "From 1 to %lld" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "من 1 إلى %lld" } } }
+    },
+    "Go" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "انتقال" } } }
+    },
+    "Go to Page…" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الانتقال إلى صفحة…" } } }
+    },
+    "Go to page" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الانتقال إلى صفحة" } } }
+    },
+    "Go to page…" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الانتقال إلى صفحة…" } } }
+    },
+    "Green" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "أخضر" } } }
+    },
+    "Highlight" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تمييز" } } }
+    },
+    "Highlights, notes, drawings and shapes you add appear here." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يظهر هنا ما تضيفه من تمييز وملاحظات ورسوم وأشكال." } } }
+    },
     "Info" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "معلومات" } } }
+    },
+    "Insert" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إدراج" } } }
+    },
+    "Insert blank page after" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إدراج صفحة فارغة بعدها" } } }
     },
     "Interface" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الواجهة" } } }
     },
+    "It is kept on this device, encrypted, for next time." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يُحفظ مشفّرًا على هذا الجهاز للمرة القادمة." } } }
+    },
+    "Keep in My documents" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الاحتفاظ بها في مستنداتي" } } }
+    },
+    "Keep the pictures as they are" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إبقاء الصور كما هي" } } }
+    },
+    "Kept" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المُبقى" } } }
+    },
+    "Kept in My documents" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "حُفظت في مستنداتي" } } }
+    },
     "Language" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "اللغة" } } }
+    },
+    "Large" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "كبير" } } }
+    },
+    "Layout" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "التخطيط" } } }
+    },
+    "Leads outside the document" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يقود إلى خارج المستند" } } }
+    },
+    "Left" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "اليسار" } } }
     },
     "Left to right" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "من اليسار إلى اليمين" } } }
@@ -118,8 +382,44 @@
     "Light" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "فاتح" } } }
     },
+    "Link" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "رابط" } } }
+    },
+    "Mark" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "علامة" } } }
+    },
+    "Marks" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "العلامات" } } }
+    },
+    "Markup" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعليق" } } }
+    },
+    "Matches" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "النتائج" } } }
+    },
+    "Medium" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "متوسط" } } }
+    },
+    "Merge documents…" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "دمج مستندات…" } } }
+    },
+    "More" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المزيد" } } }
+    },
     "My documents" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مستنداتي" } } }
+    },
+    "Next" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "التالي" } } }
+    },
+    "Next Page" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الصفحة التالية" } } }
+    },
+    "Night Mode" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الوضع الليلي" } } }
+    },
+    "Night mode" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الوضع الليلي" } } }
     },
     "No" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا" } } }
@@ -129,6 +429,21 @@
     },
     "No documents yet" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا مستندات بعد" } } }
+    },
+    "No marks yet" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا علامات بعد" } } }
+    },
+    "No matches" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا نتائج" } } }
+    },
+    "No outline" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا فهرس" } } }
+    },
+    "No text on this page" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا نص في هذه الصفحة" } } }
+    },
+    "Note" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "ملاحظة" } } }
     },
     "Nothing leaves this device." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا شيء يغادر هذا الجهاز." } } }
@@ -148,17 +463,41 @@
     "Open in the Settings app" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "فتح في تطبيق الإعدادات" } } }
     },
-    "Open…" : {
-      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "فتح…" } } }
-    },
     "Opening…" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "جارٍ الفتح…" } } }
     },
     "Opens the document" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يفتح المستند" } } }
     },
+    "Open…" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "فتح…" } } }
+    },
+    "Outline" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الفهرس" } } }
+    },
+    "PDF" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "PDF" } } }
+    },
+    "PDF/A-%@: %lld of %lld checks passed." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "PDF/A-%1$@: اجتاز %2$lld من %3$lld فحصًا." } } }
+    },
+    "PDF/A-2b" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "PDF/A-2b" } } }
+    },
+    "PDFs saved here from the share sheet, and scans, appear in this list." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تظهر في هذه القائمة ملفات PDF المحفوظة هنا من ورقة المشاركة، والمستندات الممسوحة." } } }
+    },
+    "Page %lld" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الصفحة %lld" } } }
+    },
     "Page %lld of %lld" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "صفحة %1$lld من %2$lld" } } }
+    },
+    "Page number" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "رقم الصفحة" } } }
+    },
+    "Page pictures" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "صور الصفحات" } } }
     },
     "Pages" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الصفحات" } } }
@@ -166,11 +505,50 @@
     "Pages drawn by" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تُرسم الصفحات بـ" } } }
     },
+    "Pages from a PDF…" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "صفحات من ملف PDF…" } } }
+    },
+    "Pages per file" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "عدد الصفحات في كل ملف" } } }
+    },
+    "Pages…" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الصفحات…" } } }
+    },
     "Password" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "كلمة المرور" } } }
     },
-    "PDFs saved here from the share sheet, and scans, appear in this list." : {
-      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تظهر في هذه القائمة ملفات PDF المحفوظة هنا من ورقة المشاركة، والمستندات الممسوحة." } } }
+    "Pictures at 100 dpi" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الصور بدقة 100 نقطة في البوصة" } } }
+    },
+    "Pictures at 150 dpi" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الصور بدقة 150 نقطة في البوصة" } } }
+    },
+    "Pictures downsampled, streams recompressed, unused objects dropped." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تُقلَّل دقة الصور، ويُعاد ضغط التدفقات، وتُحذف الكائنات غير المستخدمة." } } }
+    },
+    "Pictures…" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "صور…" } } }
+    },
+    "Pink" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "وردي" } } }
+    },
+    "Place" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "وضع" } } }
+    },
+    "Place here" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الوضع هنا" } } }
+    },
+    "Position" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الموضع" } } }
+    },
+    "Previous" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "السابق" } } }
+    },
+    "Previous Page" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الصفحة السابقة" } } }
+    },
+    "Print…" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "طباعة…" } } }
     },
     "Privacy" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الخصوصية" } } }
@@ -178,29 +556,122 @@
     "Producer" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المنتِج" } } }
     },
+    "Protect" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "حماية" } } }
+    },
     "Protected" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "محمي" } } }
+    },
+    "Protect…" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "حماية…" } } }
+    },
+    "Reader Mode" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "وضع القراءة" } } }
+    },
+    "Reader mode" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "وضع القراءة" } } }
     },
     "Reading direction" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "اتجاه القراءة" } } }
     },
+    "Ready to share" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "جاهز للمشاركة" } } }
+    },
     "Recents" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الأخيرة" } } }
+    },
+    "Rectangle" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مستطيل" } } }
+    },
+    "Red" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "أحمر" } } }
+    },
+    "Redo" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إعادة" } } }
     },
     "Remove from Recents" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إزالة من الأخيرة" } } }
     },
+    "Remove the password" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إزالة كلمة المرور" } } }
+    },
+    "Removing it writes the document without protection; Save keeps that." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إزالتها تكتب المستند دون حماية، والحفظ يثبّت ذلك." } } }
+    },
+    "Reset" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إعادة الضبط" } } }
+    },
+    "Right" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "اليمين" } } }
+    },
     "Right to left" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "من اليمين إلى اليسار" } } }
+    },
+    "Rotate" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تدوير" } } }
+    },
+    "Rotate left" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تدوير لليسار" } } }
+    },
+    "Rotate right" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تدوير لليمين" } } }
     },
     "Save" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "حفظ" } } }
     },
+    "Save a copy to Files…" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "حفظ نسخة في «الملفات»…" } } }
+    },
     "Search by name" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "بحث بالاسم" } } }
     },
+    "Set a password" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعيين كلمة مرور" } } }
+    },
     "Settings" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الإعدادات" } } }
+    },
+    "Share a file, or keep them all in My documents." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "شارك ملفًا، أو احتفظ بها كلها في مستنداتي." } } }
+    },
+    "Share all %lld files" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مشاركة كل الملفات (%lld)" } } }
+    },
+    "Sign here" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "وقّع هنا" } } }
+    },
+    "Signature" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "التوقيع" } } }
+    },
+    "Signature canvas" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لوحة التوقيع" } } }
+    },
+    "Signature, drag to place, pinch to resize" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "التوقيع؛ اسحبه لوضعه، وقرّب إصبعيك أو باعدهما لتغيير حجمه" } } }
+    },
+    "Single page" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "صفحة واحدة" } } }
+    },
+    "Size" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الحجم" } } }
+    },
+    "Small" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "صغير" } } }
+    },
+    "Split" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تقسيم" } } }
+    },
+    "Split into files" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تقسيم إلى ملفات" } } }
+    },
+    "Split into files…" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تقسيم إلى ملفات…" } } }
+    },
+    "Stamp" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "ختم" } } }
+    },
+    "Strike through" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "شطب" } } }
     },
     "System appearance" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مظهر النظام" } } }
@@ -208,8 +679,29 @@
     "System language" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لغة النظام" } } }
     },
+    "Text" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "نص" } } }
+    },
+    "Text only: the layout is not carried over." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "النص فقط: لا يُنقل التخطيط." } } }
+    },
+    "That file needs its password" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يحتاج هذا الملف إلى كلمة مروره" } } }
+    },
+    "That file needs its password." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يحتاج هذا الملف إلى كلمة مروره." } } }
+    },
+    "That is not a PDF this app can read." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "ليس هذا ملف PDF يمكن للتطبيق قراءته." } } }
+    },
     "That password is not right. Try again." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "كلمة المرور غير صحيحة. حاول مرة أخرى." } } }
+    },
+    "The document as it stands." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المستند كما هو الآن." } } }
+    },
+    "The outline could not be read." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّرت قراءة الفهرس." } } }
     },
     "The pages could not be drawn on this device." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّر رسم الصفحات على هذا الجهاز." } } }
@@ -217,20 +709,68 @@
     "The system's own parts — alerts, the file browser — follow the language from the next launch. The Settings app can set it too." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "أجزاء النظام نفسه — التنبيهات ومتصفح الملفات — تتبع اللغة من التشغيل التالي. ويمكن ضبطها من تطبيق الإعدادات أيضًا." } } }
     },
+    "The two passwords differ." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "كلمتا المرور مختلفتان." } } }
+    },
+    "There is nothing to split at that size." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا شيء يُقسَّم بهذا الحجم." } } }
+    },
+    "This document cannot be PDF/A-2b: %@" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا يمكن جعل هذا المستند PDF/A-2b: %@" } } }
+    },
+    "This document carries no bookmarks." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا يحمل هذا المستند إشارات مرجعية." } } }
+    },
     "This document is protected" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "هذا المستند محمي" } } }
+    },
+    "This document is protected. It asks for its password when opened." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "هذا المستند محمي، ويطلب كلمة مروره عند فتحه." } } }
     },
     "This file is no longer where it was." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لم يعد هذا الملف في مكانه." } } }
     },
+    "Thumbnails" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المصغّرات" } } }
+    },
     "Title" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "العنوان" } } }
+    },
+    "Top" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "أعلى" } } }
+    },
+    "Top left" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "أعلى اليسار" } } }
+    },
+    "Top right" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "أعلى اليمين" } } }
+    },
+    "Underline" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تسطير" } } }
+    },
+    "Undo" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تراجع" } } }
     },
     "Version" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الإصدار" } } }
     },
+    "Word" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "Word" } } }
+    },
+    "Yellow" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "أصفر" } } }
+    },
     "Yes" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "نعم" } } }
+    },
+    "Your signature" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "توقيعك" } } }
+    },
+    "compressed" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مضغوط" } } }
+    },
+    "pages" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "صفحات" } } }
     },
     "العربية" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "العربية" } } }

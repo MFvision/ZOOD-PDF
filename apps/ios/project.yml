@@ -53,6 +53,10 @@ targets:
     sources:
       - path: PDFEditor
       - path: Shared
+      # The Arabic face the core writes with (stamps, text boxes, PDF/A
+      # substitutes): Amiri, SIL OFL, subset on each write.
+      - path: ../../tests/fonts/Amiri-Regular.ttf
+        buildPhase: resources
     dependencies:
       - target: WarraqCore
         embed: false
@@ -107,6 +111,15 @@ targets:
             LSHandlerRank: Alternate
             LSItemContentTypes:
               - com.adobe.pdf
+        # The app's own drag types: a document dragged out of the Library
+        # to a new window, and a page moved inside the pages grid.
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: app.warraq.document-reference
+            UTTypeDescription: Document reference
+            UTTypeConformsTo: [public.data]
+          - UTTypeIdentifier: app.warraq.page
+            UTTypeDescription: Page
+            UTTypeConformsTo: [public.data]
         # The privacy strings are localized in InfoPlist.xcstrings (Arabic
         # and English); these are the fallbacks.
         NSCameraUsageDescription: "The camera scans paper documents into PDFs. Nothing leaves the device."
@@ -227,6 +240,10 @@ targets:
         buildPhase: resources
       - path: ../../tests/corpus/arabic/generated/variant-encrypted-rc4-40.pdf
         buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/chrome-notonaskh-justified-3pages.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/variant-arabic-metadata-outlines-annots.pdf
+        buildPhase: resources
     dependencies:
       - target: PDFEditor
       # The wrapper's code is already inside the host app; the tests need only
@@ -245,6 +262,10 @@ targets:
     sources:
       - path: PDFEditorUITests
       - path: ../../tests/corpus/arabic/generated/coretext-sfarabic-mixed-invoice.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/chrome-notonaskh-justified-3pages.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/variant-arabic-metadata-outlines-annots.pdf
         buildPhase: resources
     dependencies:
       - target: PDFEditor

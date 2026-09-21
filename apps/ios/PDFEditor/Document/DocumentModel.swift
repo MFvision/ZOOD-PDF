@@ -40,8 +40,12 @@ final class DocumentModel: Identifiable, Hashable {
     private(set) var isRightToLeft = false
     private var pageTexts: [Int: String] = [:]
     private var core: Core?
-    private var password: String?
+    /// The password the document opened with, for static operations that
+    /// take the bytes and need it too.
+    private(set) var password: String?
     private var holdsSecurityScope = false
+    /// Counts the edits, so views that draw the bytes know to look again.
+    private(set) var revision = 0
 
     /// The bytes as they stand: edited, or the original.
     var bytes: Data { edited ?? original }
@@ -165,27 +169,70 @@ final class DocumentModel: Identifiable, Hashable {
         return reply
     }
 
+    /// Takes bytes a static operation answered — a mark added, appearances
+    /// redrawn, another engine's changes rebased — as the edited document:
+    /// the core reopens on them, PDFKit reloads, and undo gets a step back.
+    func replace(bytes: Data, undoManager: UndoManager? = nil) async throws {
+        try await replace(bytes: bytes, password: password, undoManager: undoManager)
+    }
+
+    /// `replace` for bytes whose protection changed: the core opens them
+    /// with the new password (nil once the protection is removed), and
+    /// undo brings the old one back with the old bytes.
+    func replace(bytes: Data, password newPassword: String?, undoManager: UndoManager?) async throws {
+        let before = edited
+        let passwordBefore = password
+        let core = try await Core.open(bytes: bytes, password: newPassword)
+        self.core = core
+        password = newPassword
+        metadata = try? await core.metadata()
+        pageCount = await core.pageCount
+        take(bytes: bytes)
+        registerUndo(to: before, passwordBefore: passwordBefore, with: undoManager)
+    }
+
+    /// Hands PDFKit's whole rewrite of the document — after annotations it
+    /// added — to the core, which keeps only what changed as an incremental
+    /// update on the bytes as they stand. When the core cannot (the
+    /// protection differs), the rewrite is taken as it is.
+    func commitPDFKitChanges(undoManager: UndoManager? = nil) async throws {
+        guard let pdf, let rewritten = pdf.dataRepresentation() else { throw CoreError.closed }
+        struct Args: Encodable { let password: String? }
+        let reply = try await Core.callStatic(op: "file.rebase", args: Args(password: password), blobs: [bytes, rewritten])
+        let rebased = reply.object["rebased"] as? Bool ?? false
+        let result = rebased ? (reply.blobs.first ?? rewritten) : rewritten
+        try await replace(bytes: result, undoManager: undoManager)
+    }
+
     private func take(bytes: Data) {
         edited = bytes == original ? nil : bytes
         pageTexts.removeAll()
         loadPDFKit()
+        revision += 1
     }
 
     private func registerUndo(to before: Data?, with undoManager: UndoManager?) {
+        registerUndo(to: before, passwordBefore: password, with: undoManager)
+    }
+
+    private func registerUndo(to before: Data?, passwordBefore: String?, with undoManager: UndoManager?) {
         guard let undoManager else { return }
         let after = edited
+        let passwordAfter = password
         // The handler runs on the main actor, as the model does.
         undoManager.registerUndo(withTarget: self) { model in
-            model.restore(before, redoTo: after, undoManager: undoManager)
+            model.restore(before, password: passwordBefore, redoTo: after, password: passwordAfter, undoManager: undoManager)
         }
     }
 
     /// Goes back to the bytes before an edit (the core reopened on them),
-    /// and gives the undo manager the way forward again.
-    func restore(_ bytes: Data?, redoTo after: Data?, undoManager: UndoManager) {
+    /// with the password they open with, and gives the undo manager the way
+    /// forward again.
+    func restore(_ bytes: Data?, password passwordBefore: String?, redoTo after: Data?, password passwordAfter: String?, undoManager: UndoManager) {
+        password = passwordBefore
         take(bytes: bytes ?? original)
         undoManager.registerUndo(withTarget: self) { model in
-            model.restore(after, redoTo: bytes, undoManager: undoManager)
+            model.restore(after, password: passwordAfter, redoTo: bytes, password: passwordBefore, undoManager: undoManager)
         }
         Task { await reopenCore() }
     }
@@ -193,6 +240,7 @@ final class DocumentModel: Identifiable, Hashable {
     private func reopenCore() async {
         guard let core = try? await Core.open(bytes: bytes, password: password) else { return }
         self.core = core
+        metadata = try? await core.metadata()
         pageCount = await core.pageCount
     }
 
