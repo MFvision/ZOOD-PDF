@@ -19,7 +19,7 @@ final class ViewUITests: XCTestCase {
         let count = ui.app.buttons["search.count"]
         XCTAssertTrue(count.waitForExistence(timeout: 20), "hits are counted: \(ui.app.staticTexts["search.none"].exists ? "no matches" : "")")
         let label = count.label
-        XCTAssertTrue(label.contains("1"), "the first hit is current: \(label)")
+        XCTAssertTrue(label.contains("1") || label.contains("١"), "the first hit is current: \(label)")
         ui.app.buttons["search.next"].tap()
         ui.app.buttons["search.previous"].tap()
         XCTAssertEqual(count.label, label, "back on the first hit")

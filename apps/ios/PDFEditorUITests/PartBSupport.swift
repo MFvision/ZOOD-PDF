@@ -78,7 +78,7 @@ struct PartBApp {
 
     /// "Edited" in the status, in either language.
     func waitForEdited(timeout: TimeInterval = 30) {
-        let predicate = NSPredicate(format: "label CONTAINS %@ OR label CONTAINS %@", "Edited", "معدّل")
+        let predicate = NSPredicate(format: "label CONTAINS %@ OR label CONTAINS %@", "Edited", "مُعدَّل")
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: status)
         XCTAssertEqual(XCTWaiter().wait(for: [expectation], timeout: timeout), .completed, "status says edited: \(status.label)")
     }
