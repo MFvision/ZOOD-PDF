@@ -39,9 +39,62 @@ Before that, on 2026-09-19: the interface is rebuilt on EmbedPDF (ADR-0007); all
 | No-mapping files | characters recovered from glyph shapes, at 100 % precision on held-out fonts |
 | Installed on this Mac | `/Applications/محرر PDF.app`, built from this tree — `scripts/install-macos.sh`, documented in `docs/install-macos.md`. Opens a PDF, renders every page, both thumbnails and full size |
 | Print | macOS: PDFKit prints the file itself, vectors and all. Windows and Linux: each page drawn by Warraq's core at 300 dpi and printed through the webview's own dialog — proven in Chrome, not yet run on either system (below). Browsers: the file through the browser's PDF viewer, which the page's security policy had been blocking without a word |
+| iPhone and iPad app | **The foundation is built, simulator only** (2026-09-21, below): a native SwiftUI app in `apps/ios` with the Rust core linked in as an XCFramework behind a C ABI. It opens a PDF from Files or its own Library, draws it with PDFKit in right-to-left page order for Arabic documents, reads its text in logical order through the core (VoiceOver gets it as the page's value), edits through the core as incremental updates with nothing written until Save, and has Settings for language and appearance that apply at once. Everything else — annotate, sign, organize, export, scan, OCR, the Library's search, the widgets, Shortcuts — is being built on it. Proven on the iPhone 17 and iPad Pro 13-inch (M5) simulators; no device, no signing identity here |
 | Install and offline (phones too) | the web app installs from the browser under its Arabic name, and after one visit opens and works with no network: a service worker keeps the app's own files — never a document. On phones and tablets every control is a 44-point target. Native iOS and Android apps are not built: the tools they need are not on this Mac (Decisions, below) |
 
 Every one of the 48 corpus files opens. 63 tests green, clippy clean, `wasm32-unknown-unknown` compiles, core WASM 2.50 MB gzipped (budget 8 MB).
+
+## The iPhone and iPad app: the foundation (2026-09-21)
+
+The owner asked for the phone app to be rebuilt as a true Apple-native app. `apps/ios` is that app's
+foundation — SwiftUI from the first screen, Swift 6 with strict concurrency, iOS 18, universal — with the
+shared Rust core inside it. Four parts are being built in parallel; this is part A, what the other three
+build on (`apps/ios/README.md` says how).
+
+* **The core on a phone.** `packages/core/warraq-core/src/ffi.rs` (feature `ffi`, crate type `staticlib`)
+  is a C ABI mirroring `wasm.rs`: `warraq_open`, `warraq_call`, `warraq_call_static`, `warraq_save`,
+  `warraq_free` and the readers; JSON in and out, bytes as (pointer, length) pairs, errors as codes carrying
+  the core's `E_…` names, and a panic on hostile input caught at the boundary and answered as
+  `WARRAQ_E_PANIC` rather than ending the app (the `ios` profile unwinds for that). `scripts/ios/build-core.sh`
+  builds it for the device and the simulator into `apps/ios/Vendor/WarraqCore.xcframework`. Nine Rust tests
+  round-trip a corpus Arabic PDF through the C surface (`ffi::tests`), and a test keeps the header
+  (`include/warraq_core.h`) and the exports in step. Cross-crate LTO is off for this build: Xcode 27's
+  linker cannot read the bitcode rustc's newer LLVM writes.
+* **The Swift wrapper.** `actor Core` (`apps/ios/WarraqCore`): `open`, `call`, `callStatic`, `save`, `close`
+  and typed readers, errors as `CoreError` cases, every call off the main thread.
+* **The app.** A Library shell — `NavigationSplitView` on iPad (sections, documents as a grid of real first
+  pages, the document), a stack on iPhone — with Recents, the app's own Documents folder (the Files app shows
+  it), Open… through the system's file picker, search by name, and the scene restored to the document it had
+  open. A document model whose edits go through the core and come back as incremental updates: the file on
+  disk is untouched until Save, undo and redo included. PDFs handed over by Files, Mail, Safari and "Open in"
+  open in a `DocumentGroup` scene; "Open in New Window" on iPad opens a window of its own. PDFKit draws the
+  pages, continuous, pinch and scroll its own, pages ordered right-to-left when the first page reads
+  right-to-left; the page view's accessibility value is the page's text in logical order from the core, so
+  VoiceOver reads Arabic as it is read. Info shows what the core read; Share hands the bytes as they stand to
+  the share sheet; a protected file asks for its password. Settings: language (system, Arabic, English —
+  applied at once to every screen and, through `AppleLanguages`, to the system's own pieces from the next
+  launch, with a link to the Settings app) and appearance. The String Catalog carries every string in Arabic
+  and English, the app's name isolated inside English text. Design tokens and a small component set follow
+  `docs/design/README.md`: system colours by role, the system text styles (Dynamic Type), a 4-point grid,
+  press feedback on touch-down, critically damped motion, cross-fades under Reduce Motion. The icon is the
+  maskable variant of `scripts/icon/make_icon.py`.
+* **Widgets and the share sheet, as far as the foundation goes.** A Recent documents widget (small, medium,
+  large, Lock Screen rectangle) reads the recents list and thumbnails the app keeps in the App Group
+  container and opens a document through `pdfeditor://open/<id>`; "Save to محرر PDF" in the share sheet
+  copies PDFs into the container's Inbox, which the app takes into its Documents folder when it is next in
+  front. Part D builds the rest of the widgets, the intents and Spotlight on these.
+* **Proof, on the simulator only** (no device and no signing identity on this Mac; a device or TestFlight
+  needs the owner's Apple Developer team): `scripts/ios/build.sh` generates the project with XcodeGen,
+  builds for the iPhone 17 and the iPad Pro 13-inch (M5), runs 12 unit tests (the wrapper on corpus files:
+  Arabic in logical order, Arabic-aware search, an incremental save, combine, every error code; the
+  document model: untouched file until Save, password, undo and redo; the recents store) and 3 UI tests
+  (launch, open a corpus Arabic PDF, see its Arabic text on screen; the English interface; the screenshots)
+  on each, and writes the screenshots — the document, its Info sheet, the Library and Settings, in Arabic and
+  English, light and dark, on both — to `docs/design/ios/`, each looked at.
+* **What the simulator cannot do,** so it has not been done: the real camera (VisionKit's document camera
+  does not exist there), Face ID, the share sheet from another app, a Home Screen with the widget on it.
+  What is not built yet is not shown: the sidebar lists Recents and My documents, nothing more, until the
+  parts behind the other sections land.
 
 ## Completed this session
 * **Phase 0** — landscape audit (92 live-verified records), Arabic corpus (48 files: 33 generated with ground truth, 15 real-world with provenance), acid harness across five engines plus our own, two prototypes, GATE 0 (`docs/research/02-decision.md`, ADR-0003/4/5).
@@ -476,7 +529,7 @@ the earlier name.
 
 ## Next (in order)
 1. **Run the Windows and Linux builds on those systems**: print by pages, the drop targets and the NSIS installer have been built for them in code only — nothing of them has run here.
-2. **Phone apps**: once the tools below are installed, `tauri ios init` / `tauri android init`, then the host's desktop-only parts (below) for a phone. The installable web app covers phones meanwhile.
+2. **Phone apps**: iPhone and iPad are the native SwiftUI app in `apps/ios` (its foundation above; the other parts in progress). Android is not started: it would need the Android SDK, NDK and JDK installed here (Decisions, below). The installable web app covers phones meanwhile.
 3. Nastaliq Urdu in files without a ToUnicode map; Acrobat verification on a machine that has it.
 
 ## Decisions needed from you
@@ -505,7 +558,7 @@ the earlier name.
      allows.
 2. **GitHub organization** — nothing has been pushed: `gh repo create <org>/warraq --private --source . --push`.
 3. **Xcode license** — `/usr/bin/cc` and the system `python3` refuse to run until `sudo xcodebuild -license accept` (needs your password). Builds work because they are pointed at Xcode's clang directly.
-4. **Phone apps (Tauri 2 mobile)** — tried on 2026-09-19 and stopped, as it should, at tools this Mac does not have. What they need, all installs outside this project:
+4. **Phone apps (Tauri 2 mobile)** — tried on 2026-09-19 and stopped, as it should, at tools this Mac does not have. Since 2026-09-21 iOS is no longer this route: the owner asked for a native SwiftUI app, which is `apps/ios` (above), simulator only until an **Apple Developer team** is set in `apps/ios/project.yml` for a device or TestFlight. The notes below stand for Android. What they need, all installs outside this project:
    * **iOS**: `tauri ios init` added the iOS Rust targets (`aarch64-apple-ios`, `aarch64-apple-ios-sim`, `x86_64-apple-ios`, user-level, through rustup) and then tried to install **xcodegen** with Homebrew, which is not installed. Steps: accept the Xcode licence (item 2); install Homebrew, then `brew install xcodegen cocoapods`; an Apple development team for signing (`APPLE_DEVELOPMENT_TEAM`, or `bundle > iOS > developmentTeam` in `tauri.conf.json`; a free Apple ID works for a simulator and your own phone); then `pnpm --filter @warraq/desktop tauri ios init`.
    * **Android**: `tauri android init` found no Android SDK. Steps: Android Studio (or the command-line tools) with the SDK, the NDK and a JDK 17; set `ANDROID_HOME`, `NDK_HOME` and `JAVA_HOME`; `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`; then `pnpm --filter @warraq/desktop tauri android init`.
    * Prepared here: `run()` is the mobile entry point (`#[cfg_attr(mobile, tauri::mobile_entry_point)]`) and the bundle names iOS 15 and Android API 26 as the lowest. Still to do in the host for a phone: the menu bar, `print_webview`, the drop events and the external opener are desktop APIs and need `#[cfg(desktop)]`; PDFium is bundled as a macOS dylib, and a phone needs its own PDFium build or the pure-Rust hayro renderer the browsers use; PKCS#11 smart cards do not apply.
