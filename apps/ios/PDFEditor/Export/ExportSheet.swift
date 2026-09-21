@@ -35,7 +35,7 @@ struct ExportSheet: View {
                 }
                 Section {
                     Button {
-                        Exporter.print(model, from: nil)
+                        Exporter.print(model)
                     } label: {
                         Label("Print…", systemImage: "printer")
                     }

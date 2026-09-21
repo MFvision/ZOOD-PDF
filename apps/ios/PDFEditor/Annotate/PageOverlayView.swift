@@ -94,9 +94,8 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
             toolPicker?.addObserver(canvas)
             self.canvas = canvas
         }
-        if let drawing = editor?.inkDrawings[pageIndex] {
-            canvas?.drawing = drawing
-        }
+        // The strokes not yet committed, or a clean canvas.
+        canvas?.drawing = editor?.inkDrawings[pageIndex] ?? PKDrawing()
         canvas?.isHidden = false
     }
 

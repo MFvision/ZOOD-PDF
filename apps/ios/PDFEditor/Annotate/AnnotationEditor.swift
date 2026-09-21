@@ -188,18 +188,17 @@ final class AnnotationEditor {
     /// can wait for it.
     private(set) var pendingCommit: Task<Void, Never>?
 
+    /// Commits PDFKit's document to the model — and, for a text box, has
+    /// the core reshape its Arabic in the bundled face on the way, as one
+    /// step of undo.
     private func commit(thenShapeArabic: Bool = false) {
         let undoManager = self.undoManager
         let previous = pendingCommit
+        let font = thenShapeArabic ? AppFonts.arabic : nil
         pendingCommit = Task {
             await previous?.value
-            undoManager?.beginUndoGrouping()
-            defer { undoManager?.endUndoGrouping() }
             do {
-                try await model.commitPDFKitChanges(undoManager: undoManager)
-                if thenShapeArabic {
-                    try await shapeArabicAppearances(undoManager: undoManager)
-                }
+                try await model.commitPDFKitChanges(undoManager: undoManager, arabicFont: font)
                 commits += 1
             } catch {
                 self.error = error.localizedDescription
@@ -212,19 +211,6 @@ final class AnnotationEditor {
         while let task = pendingCommit {
             await task.value
             if pendingCommit == task { pendingCommit = nil }
-        }
-    }
-
-    /// Redraws text boxes and fields whose words PDFKit wrote with a font
-    /// that has no Arabic, with the bundled face, shaped.
-    func shapeArabicAppearances(undoManager: UndoManager?) async throws {
-        guard let font = AppFonts.arabic else { return }
-        struct Args: Encodable { let password: String? }
-        let reply = try await Core.callStatic(op: "forms.fix_appearances", args: Args(password: model.password), blobs: [model.bytes, font])
-        let comments = reply.object["comments"] as? Int ?? 0
-        let fields = reply.object["fields"] as? Int ?? 0
-        if comments + fields > 0, let fixed = reply.blobs.first {
-            try await model.replace(bytes: fixed, undoManager: undoManager)
         }
     }
 

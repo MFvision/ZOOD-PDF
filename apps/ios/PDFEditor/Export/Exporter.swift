@@ -132,13 +132,20 @@ enum Exporter {
     }
 
     /// Prints the bytes as they stand through the system's print panel.
-    static func print(_ model: DocumentModel, from view: UIView?) {
+    static func print(_ model: DocumentModel) {
         let controller = UIPrintInteractionController.shared
         let info = UIPrintInfo(dictionary: nil)
         info.jobName = model.name
         info.outputType = .general
         controller.printInfo = info
         controller.printingItem = model.bytes
-        controller.present(animated: true, completionHandler: nil)
+        // On iPad the panel is a popover and needs somewhere to point at.
+        if UIDevice.current.userInterfaceIdiom == .pad,
+           let window = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first {
+            let anchor = CGRect(x: window.bounds.midX - 1, y: window.bounds.midY - 1, width: 2, height: 2)
+            controller.present(from: anchor, in: window, animated: true, completionHandler: nil)
+        } else {
+            controller.present(animated: true, completionHandler: nil)
+        }
     }
 }

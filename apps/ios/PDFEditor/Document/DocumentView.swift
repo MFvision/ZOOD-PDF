@@ -75,7 +75,7 @@ struct DocumentView: View {
             }
             if showingThumbnails, model.isReady, compact {
                 Divider()
-                ThumbnailsSidebar(model: model, cache: thumbnails, width: 84, horizontal: true)
+                ThumbnailsSidebar(model: model, cache: thumbnails, width: 72, horizontal: true)
                     .frame(height: 132)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }

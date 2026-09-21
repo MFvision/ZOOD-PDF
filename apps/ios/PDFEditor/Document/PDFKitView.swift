@@ -104,10 +104,13 @@ struct PDFKitView: UIViewRepresentable {
             applyLayout(to: view)
             if let page { view.go(to: page) }
         }
-        if coordinator.night != night || coordinator.tool != editor?.tool {
+        if coordinator.night != night || coordinator.tool != editor?.tool || coordinator.editor !== editor {
             coordinator.night = night
             coordinator.tool = editor?.tool
+            coordinator.editor = editor
             for overlay in coordinator.overlays.values {
+                // The editor can arrive after the first page was shown.
+                overlay.editor = editor
                 overlay.update(night: night, tool: editor?.tool)
             }
             if editor?.tool != .ink {
@@ -156,6 +159,7 @@ struct PDFKitView: UIViewRepresentable {
         var layout: PageLayout = .continuous
         var night = false
         var tool: AnnotationTool?
+        weak var editor: AnnotationEditor?
         var shownHighlight: PDFSelection?
         var lastReported = -1
         var overlays: [PDFPage: PageOverlayView] = [:]
@@ -183,7 +187,7 @@ struct PDFKitView: UIViewRepresentable {
             }
             guard let document = view.document else { return nil }
             let overlay = PageOverlayView(page: page, pageIndex: document.index(for: page), pdfView: view,
-                                          editor: parent.editor, toolPicker: toolPicker)
+                                          editor: parent.editor ?? editor, toolPicker: toolPicker)
             overlay.update(night: night, tool: tool)
             overlays[page] = overlay
             return overlay

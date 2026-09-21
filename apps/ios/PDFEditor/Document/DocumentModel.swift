@@ -195,12 +195,24 @@ final class DocumentModel: Identifiable, Hashable {
     /// added — to the core, which keeps only what changed as an incremental
     /// update on the bytes as they stand. When the core cannot (the
     /// protection differs), the rewrite is taken as it is.
-    func commitPDFKitChanges(undoManager: UndoManager? = nil) async throws {
+    ///
+    /// With `arabicFont`, the core then redraws text boxes and fields whose
+    /// words PDFKit wrote with a font that has no Arabic — shaped, in that
+    /// face, with a ToUnicode that reads back (`forms.fix_appearances`) —
+    /// before the bytes are taken, so the two are one step of undo.
+    func commitPDFKitChanges(undoManager: UndoManager? = nil, arabicFont: Data? = nil) async throws {
         guard let pdf, let rewritten = pdf.dataRepresentation() else { throw CoreError.closed }
         struct Args: Encodable { let password: String? }
         let reply = try await Core.callStatic(op: "file.rebase", args: Args(password: password), blobs: [bytes, rewritten])
         let rebased = reply.object["rebased"] as? Bool ?? false
-        let result = rebased ? (reply.blobs.first ?? rewritten) : rewritten
+        var result = rebased ? (reply.blobs.first ?? rewritten) : rewritten
+        if let arabicFont {
+            let fixed = try await Core.callStatic(op: "forms.fix_appearances", args: Args(password: password), blobs: [result, arabicFont])
+            let redrawn = (fixed.object["comments"] as? Int ?? 0) + (fixed.object["fields"] as? Int ?? 0)
+            if redrawn > 0, let bytes = fixed.blobs.first {
+                result = bytes
+            }
+        }
         try await replace(bytes: result, undoManager: undoManager)
     }
 

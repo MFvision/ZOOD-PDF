@@ -55,7 +55,8 @@ final class DocumentSearch {
                 hits = answer.matches
                 total = answer.total
                 current = 0
-                selections = hits.map { Self.selection(for: $0, in: model.pdf) }
+                // PDFKit draws every hit it can; past a thousand, the list still names them.
+                selections = hits.prefix(1000).map { Self.selection(for: $0, in: model.pdf) }
             } catch {
                 hits = []
                 total = 0
