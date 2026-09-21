@@ -27,7 +27,7 @@ final class PartBScreenshotTests: XCTestCase {
 
             // Search, with hits.
             app.buttons["document.search"].tap()
-            ui.type(combo.language == PartBApp.arabic ? "الفصل" : "warraq", into: "search.field")
+            ui.type(combo.language == PartBApp.arabic ? "الفصل" : "PDF", into: "search.field")
             _ = app.buttons["search.count"].waitForExistence(timeout: 20)
             try ui.screenshot("search-\(suffix)", in: directory)
             app.buttons["search.done"].tap()
