@@ -17,3 +17,11 @@ tests/corpus/**/generated-large/
 
 # Agent worktrees (Claude Code); each is its own checkout.
 .claude/worktrees/
+
+# The iOS app: the Xcode project is generated from apps/ios/project.yml by
+# XcodeGen; the core is built into an XCFramework by scripts/ios/build-core.sh.
+apps/ios/*.xcodeproj/
+apps/ios/.build/
+apps/ios/Vendor/*.xcframework/
+DerivedData/
+*.xcuserstate
