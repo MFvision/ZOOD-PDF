@@ -64,6 +64,10 @@ struct PDFKitView: UIViewRepresentable {
             editor?.markup(selection, as: tool)
         }
         view.accessibilityIdentifier = "document.pdfView"
+        // One element to UIKit's accessibility too: PDFKit's own text
+        // elements (visual order for Arabic) stay out of the tree; the
+        // page's value is the core's text, on the SwiftUI element around it.
+        view.isAccessibilityElement = true
         applyLayout(to: view)
         NotificationCenter.default.addObserver(
             context.coordinator,

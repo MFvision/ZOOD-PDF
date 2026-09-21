@@ -48,7 +48,7 @@ final class OrganizeUITests: XCTestCase {
         XCTAssertTrue(second.waitForExistence(timeout: 15))
         second.tap()
         ui.app.buttons["pages.rotate"].firstMatch.tap()
-        let status = ui.app.staticTexts["document.status"]
+        let status = ui.status
         XCTAssertTrue(status.waitForExistence(timeout: 10))
         // Delete the selected page: three become two.
         ui.app.buttons["pages.delete"].firstMatch.tap()

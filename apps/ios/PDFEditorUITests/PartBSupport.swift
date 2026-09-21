@@ -52,7 +52,7 @@ struct PartBApp {
     var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
 
     /// The page view, with the core's text of the page as its value.
-    var page: XCUIElement { app.otherElements["document.page"] }
+    var page: XCUIElement { app.descendants(matching: .any).matching(identifier: "document.page").firstMatch }
 
     /// The accessibility tree, for a failure's message.
     var tree: String {
@@ -72,7 +72,8 @@ struct PartBApp {
         return page.value as? String ?? ""
     }
 
-    var status: XCUIElement { app.staticTexts["document.status"] }
+    /// The toolbar's state line, whatever element it is read as.
+    var status: XCUIElement { app.descendants(matching: .any).matching(identifier: "document.status").firstMatch }
 
     /// Waits for the toolbar's status to hold `text`.
     func waitForStatus(containing text: String, timeout: TimeInterval = 20) {

@@ -53,7 +53,8 @@ struct ToolbarStatus: View {
                     .accessibilityIdentifier("document.status")
             }
         }
-        .accessibilityElement(children: .combine)
+        // Two elements, the name and the state: VoiceOver reads them in
+        // turn, and the state keeps its identifier whatever it says.
     }
 }
 
