@@ -119,7 +119,7 @@ struct LibraryShell: View {
                     }
                 }
             }
-            .navigationTitle(Text(verbatim: AppName.plain))
+            .navigationTitle(Text(verbatim: AppName.isolated))
             .toolbar { libraryToolbar }
         } content: {
             DocumentGrid(library: library, section: section.wrappedValue)
@@ -143,7 +143,7 @@ struct LibraryShell: View {
     private var compact: some View {
         NavigationStack {
             DocumentGrid(library: library, section: nil)
-                .navigationTitle(Text(verbatim: AppName.plain))
+                .navigationTitle(Text(verbatim: AppName.isolated))
                 .toolbar { libraryToolbar }
                 .navigationDestination(item: $library.opened) { model in
                     DocumentView(model: model)
@@ -173,8 +173,14 @@ struct LibraryShell: View {
 
     private func restoreScene() {
         #if DEBUG
-        // A UI test, or a run from the command line: `-warraqOpen <path>`;
+        // A UI test, or a run from the command line: `-warraqReset 1` starts
+        // from an empty Library, `-warraqOpen <path>` opens a file,
         // `-warraqScan <path>[,…]` opens the scanner on those photos.
+        if UserDefaults.standard.bool(forKey: "warraqReset") {
+            try? library.store.clear()
+            restoredBookmark = nil
+            library.refresh()
+        }
         if let path = UserDefaults.standard.string(forKey: "warraqOpen"), !path.isEmpty {
             library.open(url: URL(filePath: path))
             return

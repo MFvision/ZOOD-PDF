@@ -30,7 +30,9 @@ final class ShareState {
     enum Phase: Equatable {
         case saving
         case saved(count: Int)
-        case failed(String)
+        /// The system's description of what went wrong, or one of the
+        /// extension's own messages (a key of its String Catalog).
+        case failed(LocalizedStringKey)
     }
 
     var phase: Phase = .saving
@@ -48,7 +50,7 @@ final class ShareState {
         if saved > 0 {
             phase = .saved(count: saved)
         } else {
-            phase = .failed(lastError ?? String(localized: "Nothing shared was a PDF."))
+            phase = .failed(lastError.map { LocalizedStringKey($0) } ?? "Nothing shared was a PDF.")
         }
     }
 
@@ -110,7 +112,7 @@ struct ShareView: View {
             }
             .padding(32)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .navigationTitle(Text(verbatim: "محرر PDF"))
+            .navigationTitle(Text(verbatim: "\u{2067}محرر PDF\u{2069}"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
