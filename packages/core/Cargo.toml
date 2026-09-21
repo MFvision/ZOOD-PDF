@@ -35,3 +35,13 @@ strip = true
 
 [profile.release.package."*"]
 opt-level = 3
+
+# The phone build (scripts/ios/build-core.sh): release, but unwinding, so a
+# panic on hostile input is caught at the C ABI (ffi.rs) and answered as an
+# error instead of ending the app; thin LTO keeps the build within the memory
+# several agents share.
+[profile.ios]
+inherits = "release"
+panic = "unwind"
+lto = "thin"
+codegen-units = 4

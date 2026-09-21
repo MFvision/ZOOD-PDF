@@ -1,0 +1,6 @@
+// The C module Swift imports as `WarraqCoreFFI` (the Swift wrapper around it
+// is the `WarraqCore` module, so the two names never collide).
+module WarraqCoreFFI {
+    header "warraq_core.h"
+    export *
+}

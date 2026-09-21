@@ -25,11 +25,14 @@ regex = { version = "1", default-features = false, features = ["std", "unicode",
 sha2 = "0.11"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+# staticlib: libwarraq_core.a for the iOS app (scripts/ios/build-core.sh).
+crate-type = ["cdylib", "rlib", "staticlib"]
 
 [features]
 default = []
 pdfium = ["warraq-render/pdfium"]
+# The C ABI (src/ffi.rs) behind the iOS app's XCFramework.
+ffi = []
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # transitive dependency (via lopdf/rand); the browser backend must be selected explicitly
