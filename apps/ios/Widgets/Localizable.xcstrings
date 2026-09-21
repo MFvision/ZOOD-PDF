@@ -1,0 +1,18 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "No documents yet" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا مستندات بعد" } } }
+    },
+    "Open a PDF and it appears here." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "افتح ملف PDF وسيظهر هنا." } } }
+    },
+    "Recent documents" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المستندات الأخيرة" } } }
+    },
+    "The documents you opened last." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المستندات التي فتحتها مؤخرًا." } } }
+    }
+  },
+  "version" : "1.0"
+}

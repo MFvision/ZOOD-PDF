@@ -1,0 +1,13 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "حفظ في محرر PDF" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save to ⁧محرر PDF⁩" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}
