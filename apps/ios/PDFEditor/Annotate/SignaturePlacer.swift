@@ -16,7 +16,7 @@ struct SignaturePlacer: View {
     @State private var dragOffset: CGSize = .zero
     @State private var pinch: CGFloat = 1
     @State private var working = false
-    @State private var error: String?
+    @State private var error: LocalizedStringKey?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var aspect: CGFloat { image.size.height / max(image.size.width, 1) }
@@ -110,7 +110,7 @@ struct SignaturePlacer: View {
                                     width: shownWidth, height: shownWidth * aspect)
         guard let page = view.page(for: frameInPDFView.origin, nearest: true) ?? view.page(for: CGPoint(x: frameInPDFView.midX, y: frameInPDFView.midY), nearest: true),
               let document = view.document else {
-            error = String(localized: "Drop the signature over a page.")
+            error = "Drop the signature over a page."
             return
         }
         let index = document.index(for: page)
@@ -123,7 +123,7 @@ struct SignaturePlacer: View {
                 try await Self.place(image: image, in: shown, on: index, of: model, undoManager: undoManager)
                 finished()
             } catch {
-                self.error = error.localizedDescription
+                self.error = PagesModel.describe(error)
             }
             working = false
         }

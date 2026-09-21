@@ -78,6 +78,7 @@ struct PDFKitView: UIViewRepresentable {
         let coordinator = context.coordinator
         coordinator.parent = self
         host?.view = view
+        view.locale = context.environment.locale
         if view.document !== document {
             // The bytes changed (an edit): show the same place in the new
             // document, and keep the direction the document asks for.
@@ -204,12 +205,14 @@ struct PDFKitView: UIViewRepresentable {
 /// words, then Highlight, Underline or Strike through, as in Books.
 final class DocumentPDFView: PDFView {
     var onMarkup: ((AnnotationTool, PDFSelection) -> Void)?
+    /// The interface's language (chosen in Settings, not always the system's).
+    var locale: Locale = .current
 
     override func buildMenu(with builder: any UIMenuBuilder) {
         super.buildMenu(with: builder)
         guard let selection = currentSelection, selection.string?.isEmpty == false else { return }
         let actions = [AnnotationTool.highlight, .underline, .strikeout].map { tool in
-            UIAction(title: String(localized: String.LocalizationValue(tool.rawValueTitle)), image: UIImage(systemName: tool.symbol)) { [weak self] _ in
+            UIAction(title: String(localized: String.LocalizationValue(tool.rawValueTitle), locale: locale), image: UIImage(systemName: tool.symbol)) { [weak self] _ in
                 guard let self, let selection = self.currentSelection else { return }
                 self.onMarkup?(tool, selection)
                 self.clearSelection()

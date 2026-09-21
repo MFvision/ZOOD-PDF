@@ -12,6 +12,7 @@ struct PagesGridView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.undoManager) private var undoManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.locale) private var locale
     @State private var dragging: Int?
     @State private var dropTarget: Int?
     @State private var showingImporter = false
@@ -44,7 +45,7 @@ struct PagesGridView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    ToolbarStatus(title: String(localized: "Pages"), subtitle: status)
+                    ToolbarStatus(title: Text("Pages"), subtitle: status)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
@@ -117,7 +118,10 @@ struct PagesGridView: View {
                 ProducedFilesSheet(files: pages.produced)
             }
         }
-        .onAppear { pages.undoManager = undoManager }
+        .onAppear {
+            pages.undoManager = undoManager
+            pages.locale = locale
+        }
         .sensoryFeedback(.impact(weight: .light), trigger: dragging != nil)
         .sensoryFeedback(.success, trigger: model.revision)
         .accessibilityIdentifier("pages.grid")

@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import PDFKit
+import SwiftUI
 import UniformTypeIdentifiers
 import WarraqCore
 
@@ -12,10 +13,14 @@ final class PagesModel {
     let model: DocumentModel
     var selection: Set<Int> = []
     private(set) var working = false
-    var error: String?
+    /// What went wrong, shown once: one of the app's own messages (a key
+    /// of the String Catalog) or the core's.
+    var error: LocalizedStringKey?
     /// A file that came out (extracted or split pages), ready to share.
     var produced: [URL] = []
     weak var undoManager: UndoManager?
+    /// The interface's language, for the words in a produced file's name.
+    var locale: Locale = .current
 
     init(model: DocumentModel) {
         self.model = model
@@ -60,7 +65,7 @@ final class PagesModel {
 
     func delete(_ pages: [Int]) {
         guard !pages.isEmpty, pages.count < pageCount else {
-            error = String(localized: "A document keeps at least one page.")
+            error = "A document keeps at least one page."
             return
         }
         struct Args: Encodable { let pages: [Int] }
@@ -109,7 +114,7 @@ final class PagesModel {
         working = true
         Task {
             do {
-                let url = try await extractFile(pages, name: "\(model.name) – \(String(localized: "pages")) \(pages.map { String($0 + 1) }.joined(separator: ","))")
+                let url = try await extractFile(pages, name: "\(model.name) – \(String(localized: "pages", locale: locale)) \(pages.map { String($0 + 1) }.joined(separator: ","))")
                 produced = [url]
             } catch {
                 self.error = Self.describe(error)
@@ -122,7 +127,7 @@ final class PagesModel {
     func split(every: Int) {
         let step = max(every, 1)
         guard pageCount > step else {
-            error = String(localized: "There is nothing to split at that size.")
+            error = "There is nothing to split at that size."
             return
         }
         working = true
@@ -187,14 +192,19 @@ final class PagesModel {
         }
     }
 
-    static func describe(_ error: any Error) -> String {
+    /// An error as the interface says it: the app's own words for the
+    /// core's common refusals, else the message as it came.
+    static func describe(_ error: any Error) -> LocalizedStringKey {
         if let core = error as? CoreError {
             switch core {
-            case .password: return String(localized: "That file needs its password.")
-            case .parse: return String(localized: "That is not a PDF this app can read.")
-            default: return core.message
+            case .password: return "That file needs its password."
+            case .parse: return "That is not a PDF this app can read."
+            default: return LocalizedStringKey(core.message)
             }
         }
-        return error.localizedDescription
+        if let refusal = error as? Exporter.Refusal {
+            return refusal.message
+        }
+        return LocalizedStringKey(error.localizedDescription)
     }
 }

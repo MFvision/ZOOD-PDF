@@ -108,8 +108,16 @@ xcodebuild -project apps/ios/PDFEditor.xcodeproj -scheme PDFEditor \
   `Design/Components.swift`; strings go through `Text("key")` and the
   String Catalog (`Resources/Localizable.xcstrings`, Arabic and English —
   the app's name inside English text is written between U+2067 and
-  U+2069). Give controls `accessibilityIdentifier`s and test them in
-  `PDFEditorUITests`.
+  U+2069, `AppName.isolated`). Give controls `accessibilityIdentifier`s and
+  test them in `PDFEditorUITests`.
+- A UI test launches the app with its settings on the command line —
+  `-language ar|en`, `-appearance light|dark` (the app's own UserDefaults
+  keys), `-AppleLanguages (ar)` for the system's frameworks — and, in
+  Debug builds only, `-warraqReset 1` (an empty Library first) and
+  `-warraqOpen <path>` (open that file). Corpus files listed under the
+  test target in `project.yml` are in the test bundle. Screenshots are
+  written where `WARRAQ_SCREENSHOT_DIR` says, named
+  `<screen>-<language>-<appearance>-<device>.jpg`.
 - A document tool edits through `DocumentModel.apply(op, args:, blobs:,
   undoManager:)`: the core runs the operation, the model takes the new
   bytes (an incremental update on the original), PDFKit reloads, and undo

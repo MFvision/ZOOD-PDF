@@ -1,5 +1,6 @@
 import Foundation
 import PDFKit
+import SwiftUI
 import UIKit
 import WarraqCore
 
@@ -45,14 +46,14 @@ enum Exporter {
     }
 
     /// Plain text: every page's lines in logical order, pages headed.
-    static func text(_ model: DocumentModel) async throws -> URL {
+    static func text(_ model: DocumentModel, locale: Locale = .current) async throws -> URL {
         guard let core = model.engine else { throw CoreError.closed }
         var out = ""
         let count = await core.pageCount
         for index in 0..<count {
             let text = try await core.extractText(page: index)
             if index > 0 { out += "\n\n" }
-            out += String(localized: "Page \(index + 1)") + "\n\n" + DocxWriter.clean(text)
+            out += String(localized: "Page \(index + 1)", locale: locale) + "\n\n" + DocxWriter.clean(text)
         }
         let url = try folder().appending(path: "\(model.name).txt")
         try out.write(to: url, atomically: true, encoding: .utf8)
@@ -90,7 +91,7 @@ enum Exporter {
     /// A smaller copy through the core (`compress.file`): pictures
     /// downsampled to `imageDPI` when asked, streams recompressed, unused
     /// objects dropped. The open document is not changed.
-    static func compressed(_ model: DocumentModel, imageDPI: Float?, jpegQuality: Int) async throws -> (url: URL, report: CompressReport) {
+    static func compressed(_ model: DocumentModel, imageDPI: Float?, jpegQuality: Int, locale: Locale = .current) async throws -> (url: URL, report: CompressReport) {
         struct Args: Encodable { let password: String?; let imageDpi: Float?; let jpegQuality: Int }
         let reply = try await Core.callStatic(op: "compress.file", args: Args(password: model.password, imageDpi: imageDPI, jpegQuality: jpegQuality), blobs: [model.bytes])
         let report: CompressReport = try reply.decode()
@@ -98,9 +99,22 @@ enum Exporter {
             throw CoreError.edit(refused)
         }
         guard let bytes = reply.blobs.first else { throw CoreError.badReply("compress.file answered no file") }
-        let url = try folder().appending(path: "\(model.name) – \(String(localized: "compressed")).pdf")
+        let url = try folder().appending(path: "\(model.name) – \(String(localized: "compressed", locale: locale)).pdf")
         try bytes.write(to: url)
         return (url, report)
+    }
+
+    /// Why the core would not make a copy, in the interface's words.
+    enum Refusal: Error {
+        case signed
+        case level(String)
+
+        var message: LocalizedStringKey {
+            switch self {
+            case .signed: "A signed document is not converted."
+            case let .level(reasons): "This document cannot be PDF/A-2b: \(reasons)"
+            }
+        }
     }
 
     struct PDFAReport: Decodable, Sendable {
@@ -123,7 +137,7 @@ enum Exporter {
         let reply = try await Core.callStatic(op: "standards.pdfa", args: args, blobs: [model.bytes, font])
         let report: PDFAReport = try reply.decode()
         if let refused = report.refused {
-            throw CoreError.edit(refused == "signed" ? String(localized: "A signed document is not converted.") : String(localized: "This document cannot be PDF/A-2b: \((report.reasons ?? []).joined(separator: ", "))"))
+            throw refused == "signed" ? Refusal.signed : Refusal.level((report.reasons ?? []).joined(separator: ", "))
         }
         guard let bytes = reply.blobs.first else { throw CoreError.badReply("standards.pdfa answered no file") }
         let url = try folder().appending(path: "\(model.name) – PDFA.pdf")

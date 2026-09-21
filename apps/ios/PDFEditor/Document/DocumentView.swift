@@ -470,8 +470,12 @@ struct DocumentInfoSheet: View {
                             .tabularNumbers()
                             .accessibilityIdentifier("info.marks")
                     }
-                    LabeledContent("Protected", value: model.password != nil || model.metadata?.encrypted == true ? String(localized: "Yes") : String(localized: "No"))
-                    LabeledContent("Reading direction", value: model.isRightToLeft ? String(localized: "Right to left") : String(localized: "Left to right"))
+                    LabeledContent("Protected") {
+                        model.password != nil || model.metadata?.encrypted == true ? Text("Yes") : Text("No")
+                    }
+                    LabeledContent("Reading direction") {
+                        model.isRightToLeft ? Text("Right to left") : Text("Left to right")
+                    }
                 }
                 Section("Engine") {
                     LabeledContent("Core", value: Core.version)

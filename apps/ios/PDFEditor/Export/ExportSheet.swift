@@ -8,9 +8,10 @@ import UniformTypeIdentifiers
 struct ExportSheet: View {
     let model: DocumentModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
     @State private var working: Exporter.Format?
     @State private var result: ExportResult?
-    @State private var error: String?
+    @State private var error: LocalizedStringKey?
     @State private var imageDPI: Float? = 150
     @State private var showingCompress = false
     @State private var showingFileExporter = false
@@ -19,7 +20,7 @@ struct ExportSheet: View {
         let id = UUID()
         let format: Exporter.Format
         let files: [URL]
-        let note: String?
+        let note: LocalizedStringKey?
     }
 
     var body: some View {
@@ -130,22 +131,22 @@ struct ExportSheet: View {
                 case .pdf:
                     result = ExportResult(format: format, files: [try Exporter.pdf(model)], note: nil)
                 case .word:
-                    result = ExportResult(format: format, files: [try await Exporter.word(model)], note: String(localized: "Text only: the layout is not carried over."))
+                    result = ExportResult(format: format, files: [try await Exporter.word(model)], note: "Text only: the layout is not carried over.")
                 case .images:
                     let files = try Exporter.images(model)
-                    result = ExportResult(format: format, files: files, note: String(localized: "\(files.count) pictures."))
+                    result = ExportResult(format: format, files: files, note: "\(files.count) pictures.")
                 case .text:
-                    result = ExportResult(format: format, files: [try await Exporter.text(model)], note: nil)
+                    result = ExportResult(format: format, files: [try await Exporter.text(model, locale: locale)], note: nil)
                 case .compressed:
-                    let (url, report) = try await Exporter.compressed(model, imageDPI: dpi, jpegQuality: 75)
+                    let (url, report) = try await Exporter.compressed(model, imageDPI: dpi, jpegQuality: 75, locale: locale)
                     let before = ByteCountFormatter.string(fromByteCount: Int64(report.before), countStyle: .file)
                     let after = ByteCountFormatter.string(fromByteCount: Int64(report.after), countStyle: .file)
-                    result = ExportResult(format: format, files: [url], note: String(localized: "\(before) → \(after)"))
+                    result = ExportResult(format: format, files: [url], note: "\(before) → \(after)")
                 case .pdfa:
                     let (url, report) = try await Exporter.pdfA(model)
                     let passed = report.findings?.passed ?? 0
                     let total = report.findings?.total ?? 0
-                    result = ExportResult(format: format, files: [url], note: String(localized: "PDF/A-\(report.level ?? "2b"): \(passed) of \(total) checks passed."))
+                    result = ExportResult(format: format, files: [url], note: "PDF/A-\(report.level ?? "2b"): \(passed) of \(total) checks passed.")
                 }
                 #if DEBUG
                 // A UI test asks for the files where it can read them.

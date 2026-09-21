@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import PDFKit
+import SwiftUI
 import WidgetKit
 
 /// A PDF in the app's own Documents folder (visible in Files under the
@@ -23,8 +24,9 @@ final class LibraryModel {
     private(set) var documents: [LocalDocument] = []
     /// The document on screen, in the detail column or pushed on the stack.
     var opened: DocumentModel?
-    /// Something that went wrong opening a file, shown once.
-    var error: String?
+    /// Something that went wrong opening a file, shown once: one of the
+    /// app's own messages (a key of the String Catalog), or the system's.
+    var error: LocalizedStringKey?
 
     let store: RecentsStore
     let documentsFolder: URL
@@ -104,13 +106,13 @@ final class LibraryModel {
                 await remember(model)
             }
         } catch {
-            self.error = error.localizedDescription
+            self.error = LocalizedStringKey(error.localizedDescription)
         }
     }
 
     func open(_ recent: RecentDocument) {
         guard let url = recent.resolveURL() else {
-            error = String(localized: "This file is no longer where it was.")
+            error = "This file is no longer where it was."
             try? store.forget(id: recent.id)
             refresh()
             return
@@ -182,7 +184,7 @@ final class LibraryModel {
             }
             documents = listDocuments()
         } catch {
-            self.error = error.localizedDescription
+            self.error = LocalizedStringKey(error.localizedDescription)
         }
     }
 }

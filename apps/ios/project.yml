@@ -77,7 +77,8 @@ targets:
         CFBundleName: محرر PDF
         CFBundleShortVersionString: "0.1.0"
         CFBundleVersion: "1"
-        CFBundleDevelopmentRegion: ar
+        # The String Catalogs' source language, so a missing table falls back to it.
+        CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [ar, en]
         LSRequiresIPhoneOS: true
         ITSAppUsesNonExemptEncryption: false
@@ -183,7 +184,8 @@ targets:
         CFBundleDisplayName: محرر PDF
         CFBundleShortVersionString: "0.1.0"
         CFBundleVersion: "1"
-        CFBundleDevelopmentRegion: ar
+        # The String Catalogs' source language, so a missing table falls back to it.
+        CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [ar, en]
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
@@ -212,7 +214,8 @@ targets:
         CFBundleDisplayName: محرر PDF
         CFBundleShortVersionString: "0.1.0"
         CFBundleVersion: "1"
-        CFBundleDevelopmentRegion: ar
+        # The String Catalogs' source language, so a missing table falls back to it.
+        CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [ar, en]
         NSExtension:
           NSExtensionPointIdentifier: com.apple.share-services
