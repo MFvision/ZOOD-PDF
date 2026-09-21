@@ -30,6 +30,8 @@ run extcheck pnpm --filter @warraq/extension check
 run corefmt cargo fmt --all --check --manifest-path packages/core/Cargo.toml
 run coreclippy cargo clippy --all-targets --manifest-path packages/core/Cargo.toml -- -D warnings
 run coretest cargo test --manifest-path packages/core/Cargo.toml
+# The C ABI behind the iOS app is a feature, so its tests need asking for.
+run coreffi cargo test --manifest-path packages/core/Cargo.toml -p warraq-core --features ffi ffi::
 # CI's Arabic extraction gate; the results file carries timings, so it is put back.
 acid() { cp tests/acid/results-warraq.json "$logs/acid-keep.json"; cargo run --release --manifest-path packages/core/Cargo.toml -p warraq-core --example acid -- . >/dev/null && python3 tests/acid/gate_warraq.py .; local s=$?; cp "$logs/acid-keep.json" tests/acid/results-warraq.json; return $s; }
 run acid acid

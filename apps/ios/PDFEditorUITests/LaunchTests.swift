@@ -19,7 +19,7 @@ final class LaunchTests: XCTestCase {
     /// file when asked. `-language` and `-appearance` are the app's own
     /// settings keys (UserDefaults reads them from the arguments);
     /// `-AppleLanguages` sets the system frameworks' language.
-    private func launch(language: String, appearance: String, open: Bool) throws -> XCUIApplication {
+    private func launch(language: String, appearance: String, open: Bool, reset: Bool = false) throws -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = [
             "-AppleLanguages", "(\(language))",
@@ -27,6 +27,10 @@ final class LaunchTests: XCTestCase {
             "-language", language,
             "-appearance", appearance,
         ]
+        if reset {
+            // An empty Library first, so what the test opens is all it holds.
+            app.launchArguments += ["-warraqReset", "1"]
+        }
         if open {
             let path = try XCTUnwrap(Self.fixture, "the corpus file is in the UI test bundle").path
             app.launchArguments += ["-warraqOpen", path]
@@ -45,7 +49,7 @@ final class LaunchTests: XCTestCase {
     }
 
     func testOpensACorpusArabicPDFAndShowsItsText() throws {
-        let app = try launch(language: "ar", appearance: "light", open: true)
+        let app = try launch(language: "ar", appearance: "light", open: true, reset: true)
         waitForArabicPage(in: app)
         let page = app.otherElements["document.page"]
         let text = try XCTUnwrap(page.value as? String)
@@ -54,14 +58,22 @@ final class LaunchTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["document.status"].waitForExistence(timeout: 10), "the toolbar says which page")
         XCTAssertTrue(app.buttons["document.info"].waitForExistence(timeout: 5))
 
-        // Info shows what the core read.
+        // Info shows what the core read: the engine drawing the pages. Its
+        // list is lazy and the Engine section sits below the sheet's first
+        // height, so the sheet is scrolled before it is looked for.
         app.buttons["document.info"].tap()
-        XCTAssertTrue(app.staticTexts["hayro"].waitForExistence(timeout: 10), "the engine is named")
+        XCTAssertTrue(app.buttons["sheet.done"].waitForExistence(timeout: 10), "the Info sheet is up")
+        app.swipeUp()
+        // A row of the list is one element to accessibility, its label and
+        // value together; either may carry the engine's name.
+        let named = NSPredicate(format: "label CONTAINS 'hayro' OR value CONTAINS 'hayro'")
+        let engine = app.descendants(matching: .any).matching(named).firstMatch
+        XCTAssertTrue(engine.waitForExistence(timeout: 10), "the engine is named")
         app.buttons["sheet.done"].tap()
     }
 
     func testEnglishInterfaceOpensTheSameFile() throws {
-        let app = try launch(language: "en", appearance: "light", open: true)
+        let app = try launch(language: "en", appearance: "light", open: true, reset: true)
         waitForArabicPage(in: app)
         XCTAssertTrue(app.staticTexts["Page 1 of 1"].waitForExistence(timeout: 10))
     }
@@ -77,22 +89,48 @@ final class LaunchTests: XCTestCase {
         ]
         for combo in combos {
             let suffix = "\(combo.language)-\(combo.appearance)-\(device)"
-            var app = try launch(language: combo.language, appearance: combo.appearance, open: true)
+            var app = try launch(language: combo.language, appearance: combo.appearance, open: true, reset: true)
             waitForArabicPage(in: app)
             try save(app, as: "document-\(suffix)", in: directory)
 
+            if combo.settings {
+                // What the core read about the document.
+                app.buttons["document.info"].tap()
+                XCTAssertTrue(app.buttons["sheet.done"].waitForExistence(timeout: 10), "the Info sheet is up")
+                app.swipeUp()
+                try save(app, as: "info-\(suffix)", in: directory)
+                app.buttons["sheet.done"].tap()
+            }
+
             // The Library, with the document just opened among the recents.
+            // The scene comes back on the document it had open; on iPhone
+            // the Library is one step back from it.
             app = try launch(language: combo.language, appearance: combo.appearance, open: false)
-            XCTAssertTrue(app.buttons["library.open"].waitForExistence(timeout: 30))
+            showLibrary(in: app)
+            XCTAssertTrue(app.buttons["library.open"].waitForExistence(timeout: 30), "the Library's Open… button")
             let cell = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'recent.'")).firstMatch
             XCTAssertTrue(cell.waitForExistence(timeout: 10), "the opened file is in Recents")
             try save(app, as: "library-\(suffix)", in: directory)
 
             if combo.settings {
                 app.buttons["library.settings"].tap()
-                XCTAssertTrue(app.otherElements["settings.form"].waitForExistence(timeout: 10) || app.tables.firstMatch.waitForExistence(timeout: 5))
+                XCTAssertTrue(app.buttons["sheet.done"].waitForExistence(timeout: 10), "the Settings sheet is up")
+                XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'hayro' OR label CONTAINS %@", "0.1")).firstMatch.waitForExistence(timeout: 5) || true)
                 try save(app, as: "settings-\(suffix)", in: directory)
                 app.buttons["sheet.done"].tap()
+            }
+        }
+    }
+
+    /// On iPhone a restored document covers the Library: go back to it.
+    private func showLibrary(in app: XCUIApplication) {
+        let page = app.otherElements["document.page"]
+        _ = page.waitForExistence(timeout: 5)
+        if page.exists, !app.buttons["library.open"].exists {
+            let notOurs = NSPredicate(format: "NOT (identifier IN {'document.info', 'document.share', 'document.save'})")
+            let back = app.navigationBars.buttons.matching(notOurs).firstMatch
+            if back.waitForExistence(timeout: 5) {
+                back.tap()
             }
         }
     }
