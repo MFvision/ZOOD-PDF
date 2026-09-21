@@ -10,6 +10,7 @@ enum QuickActions {
     private static let urlKey = "url"
 
     /// Sets the items: Scan always, the last document when there is one.
+    /// UIKit's items take Strings, so these titles are localized as such.
     @MainActor
     static func update(lastDocument: RecentDocument?) {
         var items = [

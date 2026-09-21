@@ -106,9 +106,14 @@ struct LibrarySearchResults: View {
             Button {
                 showingFilters = true
             } label: {
-                Label(filters.isEmpty ? String(localized: "Filters") : String(localized: "Filters on"),
-                      systemImage: filters.isEmpty ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-                    .font(TextStyle.caption)
+                Group {
+                    if filters.isEmpty {
+                        Label("Filters", systemImage: "line.3.horizontal.decrease.circle")
+                    } else {
+                        Label("Filters on", systemImage: "line.3.horizontal.decrease.circle.fill")
+                    }
+                }
+                .font(TextStyle.caption)
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
@@ -178,7 +183,13 @@ struct SearchFiltersSheet: View {
                 if library.chosenFolder != nil {
                     Section("Where") {
                         Toggle("My documents", isOn: binding(folder: .documents))
-                        Toggle(library.chosenFolder?.name ?? String(localized: "Chosen folder"), isOn: binding(folder: .folder))
+                        Toggle(isOn: binding(folder: .folder)) {
+                            if let name = library.chosenFolder?.name {
+                                Text(verbatim: name)
+                            } else {
+                                Text("Chosen folder")
+                            }
+                        }
                     }
                 }
                 Section {

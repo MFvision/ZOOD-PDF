@@ -33,7 +33,7 @@ struct IndexStatusView: View {
                 .progressViewStyle(.linear)
                 .frame(maxWidth: 160)
             VStack(alignment: .leading, spacing: 1) {
-                Text(stage(progress))
+                stage(progress)
                     .lineLimit(1)
                 Text("\(progress.done) of \(progress.total)")
                     .foregroundStyle(Surface.secondaryLabel)
@@ -50,12 +50,12 @@ struct IndexStatusView: View {
         }
     }
 
-    private func stage(_ progress: IndexingProgress) -> String {
+    private func stage(_ progress: IndexingProgress) -> Text {
         switch progress.stage {
-        case .listing: String(localized: "Listing the files…")
-        case .reading: String(localized: "Reading \(progress.current)")
-        case let .recognizing(page, of): String(localized: "Recognizing \(progress.current) — page \(page) of \(of)")
-        case .saving: String(localized: "Saving the index…")
+        case .listing: Text("Listing the files…")
+        case .reading: Text("Reading \(progress.current)")
+        case let .recognizing(page, of): Text("Recognizing \(progress.current) — page \(page) of \(of)")
+        case .saving: Text("Saving the index…")
         }
     }
 
@@ -69,7 +69,7 @@ struct IndexStatusView: View {
                     .accessibilityValue(Text(verbatim: "\(indexer.stats.documents)"))
                     .accessibilityIdentifier("library.indexedCount")
                 if let summary = indexer.summary {
-                    Text(describe(summary))
+                    describe(summary)
                         .foregroundStyle(Surface.secondaryLabel)
                         .lineLimit(1)
                 } else if let error = indexer.error {
@@ -93,15 +93,15 @@ struct IndexStatusView: View {
         }
     }
 
-    private func describe(_ summary: IndexingSummary) -> String {
-        var parts: [String] = []
-        if summary.added > 0 { parts.append(String(localized: "\(summary.added) read")) }
-        if summary.unchanged > 0 { parts.append(String(localized: "\(summary.unchanged) unchanged")) }
-        if summary.recognized > 0 { parts.append(String(localized: "\(summary.recognized) pages recognized")) }
-        if summary.skipped > 0 { parts.append(String(localized: "\(summary.skipped) skipped")) }
-        if summary.forgotten > 0 { parts.append(String(localized: "\(summary.forgotten) removed")) }
-        if summary.stopped { parts.append(String(localized: "stopped")) }
-        if parts.isEmpty { parts.append(String(localized: "Nothing new")) }
-        return parts.joined(separator: " · ")
+    private func describe(_ summary: IndexingSummary) -> Text {
+        var parts: [Text] = []
+        if summary.added > 0 { parts.append(Text("\(summary.added) read")) }
+        if summary.unchanged > 0 { parts.append(Text("\(summary.unchanged) unchanged")) }
+        if summary.recognized > 0 { parts.append(Text("\(summary.recognized) pages recognized")) }
+        if summary.skipped > 0 { parts.append(Text("\(summary.skipped) skipped")) }
+        if summary.forgotten > 0 { parts.append(Text("\(summary.forgotten) removed")) }
+        if summary.stopped { parts.append(Text("stopped")) }
+        guard let first = parts.first else { return Text("Nothing new") }
+        return parts.dropFirst().reduce(first) { $0 + Text(verbatim: " · ") + $1 }
     }
 }

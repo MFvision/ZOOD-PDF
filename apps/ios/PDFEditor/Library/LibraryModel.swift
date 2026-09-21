@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import PDFKit
+import SwiftUI
 import UIKit
 import WidgetKit
 
@@ -30,8 +31,9 @@ final class LibraryModel {
     private(set) var chosenFolder: ChosenFolder?
     /// The document on screen, in the detail column or pushed on the stack.
     var opened: DocumentModel?
-    /// Something that went wrong opening a file, shown once.
-    var error: String?
+    /// Something that went wrong opening a file, shown once: one of the
+    /// app's own messages (a key of the String Catalog), or the system's.
+    var error: LocalizedStringKey?
     /// The Library's index and the runs over it, once the index is open.
     private(set) var indexer: LibraryIndexer?
     /// A search asked for from outside (a widget, a Shortcut): the search
@@ -142,7 +144,7 @@ final class LibraryModel {
             let files = LibraryListing.files(documentsFolder: documentsFolder, chosen: chosenFolder)
             await indexer.reloadCatalog(files: files)
         } catch {
-            self.error = error.localizedDescription
+            self.error = LocalizedStringKey(error.localizedDescription)
         }
     }
 
@@ -189,7 +191,7 @@ final class LibraryModel {
             refresh()
             indexNow()
         } catch {
-            self.error = error.localizedDescription
+            self.error = LocalizedStringKey(error.localizedDescription)
         }
     }
 
@@ -219,13 +221,13 @@ final class LibraryModel {
                 await remember(model)
             }
         } catch {
-            self.error = error.localizedDescription
+            self.error = LocalizedStringKey(error.localizedDescription)
         }
     }
 
     func open(_ recent: RecentDocument) {
         guard let url = recent.resolveURL() else {
-            error = String(localized: "This file is no longer where it was.")
+            error = "This file is no longer where it was."
             try? store.forget(id: recent.id)
             refresh()
             return
@@ -240,7 +242,7 @@ final class LibraryModel {
     /// Opens a document the index knows by its key, at a page.
     func open(key: String, page: Int? = nil) {
         guard let url = LibraryListing.url(for: key, documentsFolder: documentsFolder, chosen: chosenFolder) else {
-            error = String(localized: "This file is no longer where it was.")
+            error = "This file is no longer where it was."
             return
         }
         if url.pathExtension.lowercased() == "pdf" {
@@ -261,7 +263,7 @@ final class LibraryModel {
                 opened = model
                 await model.load()
             } catch {
-                self.error = error.localizedDescription
+                self.error = LocalizedStringKey(error.localizedDescription)
             }
         }
     }
@@ -356,7 +358,7 @@ final class LibraryModel {
             documents = listDocuments()
             Task { await indexer?.forget(keys: [local.key]) }
         } catch {
-            self.error = error.localizedDescription
+            self.error = LocalizedStringKey(error.localizedDescription)
         }
     }
 

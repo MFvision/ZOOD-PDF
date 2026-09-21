@@ -17,7 +17,7 @@ struct SettingsView: View {
     @State private var choosingFolder = false
     @State private var confirmingDelete = false
     @State private var deleting = false
-    @State private var lockError: String?
+    @State private var lockError: LocalizedStringKey?
     @Environment(\.dismiss) private var dismiss
 
     /// The languages Vision can read on this device, with their names.
@@ -106,7 +106,9 @@ struct SettingsView: View {
             }
             .accessibilityIdentifier("settings.scanMode")
             if recognizable.isEmpty {
-                LabeledContent("Text recognition", value: String(localized: "Not available on this device"))
+                LabeledContent("Text recognition") {
+                    Text("Not available on this device")
+                }
             } else {
                 ForEach(recognizable, id: \.code) { language in
                     Toggle(isOn: Binding(
@@ -152,13 +154,17 @@ struct SettingsView: View {
         Section {
             Toggle(isOn: Binding(get: { appLock }, set: { on in
                 if on, !AppLock.canLock {
-                    lockError = String(localized: "Set up Face ID, Touch ID or a passcode on this device first.")
+                    lockError = "Set up Face ID, Touch ID or a passcode on this device first."
                     return
                 }
                 appLock = on
             })) {
                 Label {
-                    Text(AppLock.biometryName.map { String(localized: "Lock with \($0)") } ?? String(localized: "Lock the app"))
+                    if let name = AppLock.biometryName {
+                        Text("Lock with \(name)")
+                    } else {
+                        Text("Lock the app")
+                    }
                 } icon: {
                     Image(systemName: AppLock.biometryName == "Touch ID" ? "touchid" : "faceid")
                 }
@@ -167,7 +173,11 @@ struct SettingsView: View {
         } header: {
             Text("Privacy")
         } footer: {
-            Text("With the lock on, the app asks for \(AppLock.biometryName ?? String(localized: "the passcode")) whenever it comes to the front. Nothing leaves this device either way.")
+            if let name = AppLock.biometryName {
+                Text("With the lock on, the app asks for \(name) whenever it comes to the front. Nothing leaves this device either way.")
+            } else {
+                Text("With the lock on, the app asks for the passcode whenever it comes to the front. Nothing leaves this device either way.")
+            }
         }
     }
 

@@ -34,7 +34,9 @@ final class ShareState {
     enum Phase: Equatable {
         case saving
         case saved(count: Int)
-        case failed(String)
+        /// The system's description of what went wrong, or one of the
+        /// extension's own messages (a key of its String Catalog).
+        case failed(LocalizedStringKey)
     }
 
     var phase: Phase = .saving
@@ -63,6 +65,7 @@ final class ShareState {
         if !pictures.isEmpty {
             do {
                 let bytes = try await PicturePDF.make(pictures)
+                // A file name is a String, so this one is localized as one.
                 let name = String(localized: "Pictures \(Date.now.formatted(date: .abbreviated, time: .shortened))")
                 try bytes.write(to: Self.freeName("\(name).pdf", in: inbox), options: .atomic)
                 saved += 1
@@ -73,7 +76,7 @@ final class ShareState {
         if saved > 0 {
             phase = .saved(count: saved)
         } else {
-            phase = .failed(lastError ?? String(localized: "Nothing shared was a PDF or a picture."))
+            phase = .failed(lastError.map { LocalizedStringKey($0) } ?? "Nothing shared was a PDF or a picture.")
         }
     }
 
@@ -186,7 +189,7 @@ struct ShareView: View {
             }
             .padding(32)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .navigationTitle(Text(verbatim: "محرر PDF"))
+            .navigationTitle(Text(verbatim: "\u{2067}محرر PDF\u{2069}"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

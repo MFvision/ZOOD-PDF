@@ -11,7 +11,7 @@ final class AppLock {
     enum State: Equatable {
         case unlocked
         case locked
-        case failed(String)
+        case failed(LocalizedStringKey)
     }
 
     private(set) var state: State = .unlocked
@@ -63,21 +63,22 @@ final class AppLock {
         guard isEnabled, state != .unlocked, !checking else { return }
         checking = true
         defer { checking = false }
+        // The system's own prompt takes Strings; these two are localized as such.
         let context = LAContext()
         context.localizedCancelTitle = String(localized: "Cancel")
         guard let policy = Self.policy else {
             // Nothing to unlock with any more (the passcode was removed): the
-            // lock cannot hold, and says so rather than shutting the person out.
-            state = .failed(String(localized: "Set up Face ID, Touch ID or a passcode on this device first."))
+            // lock cannot hold, so it is turned off rather than shutting the
+            // person out of their own documents.
             UserDefaults.standard.set(false, forKey: SettingsKey.appLock)
             state = .unlocked
             return
         }
         do {
             let ok = try await context.evaluatePolicy(policy, localizedReason: String(localized: "Unlock to open your documents."))
-            state = ok ? .unlocked : .failed(String(localized: "Not unlocked."))
+            state = ok ? .unlocked : .failed("Not unlocked.")
         } catch {
-            state = .failed(error.localizedDescription)
+            state = .failed(LocalizedStringKey(error.localizedDescription))
         }
     }
 }
@@ -105,7 +106,7 @@ struct LockScreen: View {
                 Button {
                     Task { await lock.unlock() }
                 } label: {
-                    Label(String(localized: "Unlock"), systemImage: AppLock.biometryName == "Touch ID" ? "touchid" : "faceid")
+                    Label("Unlock", systemImage: AppLock.biometryName == "Touch ID" ? "touchid" : "faceid")
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("lock.unlock")

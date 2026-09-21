@@ -38,7 +38,7 @@ struct TagsView: View {
                             Label {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(document.name).lineLimit(1)
-                                    Text("\(document.pages) pages · \(document.kind.title)")
+                                    Text("\(document.pages) pages · \(document.kind.text)")
                                         .font(TextStyle.caption)
                                         .foregroundStyle(Surface.secondaryLabel)
                                         .tabularNumbers()

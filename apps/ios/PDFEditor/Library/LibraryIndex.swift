@@ -8,19 +8,22 @@ enum LibraryKind: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
-    var title: String {
+    var title: LocalizedStringKey {
         switch self {
-        case .pdf: String(localized: "PDF")
-        case .scan: String(localized: "Scan")
-        case .image: String(localized: "Picture")
-        case .word: String(localized: "Word")
-        case .excel: String(localized: "Excel")
-        case .powerpoint: String(localized: "PowerPoint")
-        case .html: String(localized: "Web page")
-        case .text: String(localized: "Text")
-        case .markdown: String(localized: "Markdown")
+        case .pdf: "PDF"
+        case .scan: "Scan"
+        case .image: "Picture"
+        case .word: "Word"
+        case .excel: "Excel"
+        case .powerpoint: "PowerPoint"
+        case .html: "Web page"
+        case .text: "Text"
+        case .markdown: "Markdown"
         }
     }
+
+    /// The title as text, for interpolating into another line.
+    var text: Text { Text(title) }
 
     var symbol: String {
         switch self {

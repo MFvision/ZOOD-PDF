@@ -149,7 +149,7 @@ struct LibraryShell: View {
                     }
                 }
             }
-            .navigationTitle(Text(verbatim: AppName.plain))
+            .navigationTitle(Text(verbatim: AppName.isolated))
             .toolbar { libraryToolbar }
         } content: {
             content(for: section.wrappedValue ?? .recents)
@@ -182,7 +182,7 @@ struct LibraryShell: View {
     private var compact: some View {
         NavigationStack {
             DocumentGrid(library: library, section: nil)
-                .navigationTitle(Text(verbatim: AppName.plain))
+                .navigationTitle(Text(verbatim: AppName.isolated))
                 .toolbar { libraryToolbar }
                 .navigationDestination(item: $library.opened) { model in
                     DocumentView(model: model)
@@ -216,8 +216,14 @@ struct LibraryShell: View {
 
     private func restoreScene() {
         #if DEBUG
-        // A UI test, or a run from the command line: `-warraqOpen <path>`,
-        // `-warraqImport <folder>` (its PDFs copied into Documents).
+        // A UI test, or a run from the command line: `-warraqReset 1` starts
+        // from an empty Library, `-warraqImport <folder>` copies its PDFs and
+        // pictures into Documents, `-warraqOpen <path>` opens a file.
+        if UserDefaults.standard.bool(forKey: "warraqReset") {
+            try? library.store.clear()
+            restoredBookmark = nil
+            library.refresh()
+        }
         if let folder = UserDefaults.standard.string(forKey: "warraqImport"), !folder.isEmpty {
             let source = URL(filePath: folder, directoryHint: .isDirectory)
             let files = (try? FileManager.default.contentsOfDirectory(at: source, includingPropertiesForKeys: nil)) ?? []
@@ -459,7 +465,7 @@ struct DocumentGrid: View {
         let indexed = library.indexer?.catalog[file.key]
         return DocumentGridCell(
             name: file.name,
-            detail: indexed.map { Text("\($0.pages) pages · \($0.kind.title)") } ?? Text("Not indexed yet"),
+            detail: indexed.map { Text("\($0.pages) pages · \($0.kind.text)") } ?? Text("Not indexed yet"),
             thumbnail: library.thumbnail(forKey: file.key, url: file.url)
         ) {
             library.open(key: file.key)

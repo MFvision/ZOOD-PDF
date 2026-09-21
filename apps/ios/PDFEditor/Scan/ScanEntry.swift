@@ -101,6 +101,7 @@ struct ScanEntry: View {
         Task {
             do {
                 let bytes = try await PDFMaker.pdf(fromPictures: pages, mode: mode)
+                // A file name is a String, so this one is localized as one.
                 let name = String(localized: "Scan \(Date.now.formatted(date: .abbreviated, time: .shortened))")
                 _ = try library.adopt(bytes: bytes, name: name)
                 making = false

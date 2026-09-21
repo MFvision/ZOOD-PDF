@@ -204,8 +204,12 @@ struct DocumentInfoSheet: View {
                         Text(model.pageCount, format: .number)
                             .tabularNumbers()
                     }
-                    LabeledContent("Protected", value: model.metadata?.encrypted == true ? String(localized: "Yes") : String(localized: "No"))
-                    LabeledContent("Reading direction", value: model.isRightToLeft ? String(localized: "Right to left") : String(localized: "Left to right"))
+                    LabeledContent("Protected") {
+                        model.metadata?.encrypted == true ? Text("Yes") : Text("No")
+                    }
+                    LabeledContent("Reading direction") {
+                        model.isRightToLeft ? Text("Right to left") : Text("Left to right")
+                    }
                 }
                 Section("Engine") {
                     LabeledContent("Core", value: Core.version)

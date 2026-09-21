@@ -85,8 +85,31 @@ for device in "${devices[@]}"; do
     # TEST_RUNNER_ variables in xcodebuild's environment reach the test
     # process's environment, without the prefix.
     TEST_RUNNER_WARRAQ_SCREENSHOT_DIR="$shots" TEST_RUNNER_WARRAQ_DEVICE_SLUG="$slug" TEST_RUNNER_WARRAQ_FACEID_DRIVER="${matcher:+1}" \
-      xcb test-without-building -destination "$dest" "${only[@]}" > "$log" 2>&1 || { [ -n "$matcher" ] && kill "$matcher" 2>/dev/null; summarize "$log"; echo "tests failed; log: $log" >&2; exit 1; }
+      xcb test-without-building -destination "$dest" "${only[@]}" > "$log" 2>&1 &
+    xcb_pid=$!
+    # xcodebuild has been seen to sit for minutes after the last test bundle
+    # reported (Xcode 27, simulator): once every bundle has, it gets two
+    # minutes to finish on its own, then the log is the verdict.
+    bundles=2
+    [ "$unit_only" = "1" ] && bundles=1
+    reported_at=""
+    while kill -0 "$xcb_pid" 2>/dev/null; do
+      sleep 5
+      done_count=$(grep -c "Test Suite '.*\.xctest' \(passed\|failed\)" "$log" 2>/dev/null || true)
+      if [ "${done_count:-0}" -ge "$bundles" ]; then
+        [ -z "$reported_at" ] && reported_at=$(date +%s)
+        if [ $(( $(date +%s) - reported_at )) -ge 120 ]; then
+          echo "xcodebuild did not exit after the tests; ending it" >&2
+          kill "$xcb_pid" 2>/dev/null || true
+          break
+        fi
+      fi
+    done
+    wait "$xcb_pid" 2>/dev/null || true
     [ -n "$matcher" ] && kill "$matcher" 2>/dev/null
+    if grep -q "Test Suite '.*\.xctest' failed" "$log" || ! grep -q "Test Suite '.*\.xctest' passed" "$log"; then
+      summarize "$log"; echo "tests failed; log: $log" >&2; exit 1
+    fi
     summarize "$log"
   fi
 done
