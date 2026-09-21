@@ -64,7 +64,7 @@ final class AnnotateUITests: XCTestCase {
 
         // A signature drawn with the finger, then placed.
         ui.app.buttons["markup.signature"].tap()
-        let canvas = ui.app.otherElements["signature.pkcanvas"].exists ? ui.app.otherElements["signature.pkcanvas"] : ui.app.otherElements["signature.canvas"]
+        let canvas = ui.app.descendants(matching: .any).matching(identifier: "signature.pkcanvas").firstMatch
         XCTAssertTrue(canvas.waitForExistence(timeout: 10), "the signature canvas")
         let a = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.6))
         let b = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
@@ -74,7 +74,7 @@ final class AnnotateUITests: XCTestCase {
         let place = ui.app.buttons["signature.place"]
         XCTAssertTrue(waitFor { place.isEnabled }, "strokes landed on the canvas")
         place.tap()
-        let floating = ui.app.images["signature.floating"].exists ? ui.app.images["signature.floating"] : ui.app.otherElements["signature.floating"]
+        let floating = ui.app.descendants(matching: .any).matching(identifier: "signature.floating").firstMatch
         XCTAssertTrue(floating.waitForExistence(timeout: 10), "the signature floats over the page")
         let from = floating.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         from.press(forDuration: 0.1, thenDragTo: from.withOffset(CGVector(dx: 0, dy: 120)), withVelocity: .slow, thenHoldForDuration: 0.1)

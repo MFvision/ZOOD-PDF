@@ -569,10 +569,14 @@ signature, marks, pages, crop, export, protect).
   is undone with Undo or removed on the desktop/web Page marks tool.
 * *Ink keeps one width per stroke*: PencilKit's pressure shows on the canvas; a PDF ink
   annotation has one border width, so the committed stroke takes the stroke's width.
-* *Protection is a whole rewrite*: setting or removing a password cannot be an
-  incremental update (the encryption covers every string and stream), so those two
-  edits replace the bytes; everything the core appends after them is incremental and
-  keeps the protection. PDFKit chooses the algorithm (the core reads what it writes).
+* *Protection is a whole rewrite, and PDFKit's is RC4*: setting or removing a password
+  cannot be an incremental update (the encryption covers every string and stream), so
+  those two edits replace the bytes; everything the core appends after them is
+  incremental and keeps the protection. PDFKit's writer encrypts with **RC4 128-bit**
+  (`/V 2`), not AES-256 — the core has no encrypting writer of its own, and PDFKit
+  offers no choice. Taking the password off is the core's `pages.extract` of every
+  page: PDFKit keeps the encryption on a plain rewrite of an unlocked document, so
+  the core writes what it read — pages, marks, outline, information — unencrypted.
 * *Text selection in PDFKit is PDFKit's*: for Arabic files PDFKit reads in visual order
   in places; Copy from the page view is its reading, while search, reader mode,
   VoiceOver's page text and every export are the core's.

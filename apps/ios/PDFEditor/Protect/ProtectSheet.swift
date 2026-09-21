@@ -3,9 +3,10 @@ import SwiftUI
 import WarraqCore
 
 /// Protect: set a password on the document, or take it off. PDFKit writes
-/// the protection (a whole rewrite, as the format needs); every edit the
-/// core appends afterwards keeps it, and the file asks for the password
-/// when it is opened again.
+/// the protection (a whole rewrite, as the format needs; RC4 128-bit, its
+/// writer's choice); every edit the core appends afterwards keeps it, and
+/// the file asks for the password when it is opened again. Taking it off
+/// is the core writing the document whole, unprotected.
 struct ProtectSheet: View {
     let model: DocumentModel
     let undoManager: UndoManager?
@@ -129,12 +130,17 @@ struct ProtectSheet: View {
         try await model.replace(bytes: bytes, password: password, undoManager: undoManager)
     }
 
-    /// The unlocked document written again without protection.
+    /// The document written whole by the core without its protection: the
+    /// core opened it with the password, so `pages.extract` of every page
+    /// writes what it read — pages, marks, outline, information — as a
+    /// new, unencrypted file. (PDFKit keeps the encryption on a plain
+    /// rewrite of an unlocked document, so it is not asked.)
     static func removePassword(from model: DocumentModel, undoManager: UndoManager?) async throws {
-        guard let pdf = model.pdf else { throw CoreError.closed }
-        guard let bytes = pdf.dataRepresentation() else {
-            throw CoreError.io("PDFKit could not write the document")
-        }
+        guard let core = model.engine else { throw CoreError.closed }
+        struct Args: Encodable { let pages: [Int] }
+        let count = await core.pageCount
+        let reply = try await core.call(op: "pages.extract", args: Args(pages: Array(0..<count)))
+        guard let bytes = reply.blobs.first else { throw CoreError.badReply("pages.extract answered no file") }
         try await model.replace(bytes: bytes, password: nil, undoManager: undoManager)
     }
 }
