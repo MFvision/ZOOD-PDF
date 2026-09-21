@@ -25,3 +25,6 @@ apps/ios/.build/
 apps/ios/Vendor/*.xcframework/
 DerivedData/
 *.xcuserstate
+# XcodeGen writes these from project.yml on every build.
+apps/ios/**/Info.plist
+apps/ios/**/*.entitlements
