@@ -72,12 +72,18 @@ struct DocumentView: View {
                         .transition(.opacity)
                     }
                 }
-            }
-            if showingThumbnails, model.isReady, compact {
-                Divider()
-                ThumbnailsSidebar(model: model, cache: thumbnails, width: 72, horizontal: true)
-                    .frame(height: 144)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    // On iPhone the strip sits above the bottom bar, inside
+                    // the safe area the bar leaves.
+                    if showingThumbnails, model.isReady, compact {
+                        VStack(spacing: 0) {
+                            Divider()
+                            ThumbnailsSidebar(model: model, cache: thumbnails, width: 72, horizontal: true)
+                                .frame(height: 144)
+                        }
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
             }
         }
         .animation(Motion.travel(reduceMotion: reduceMotion), value: showingSearch)
