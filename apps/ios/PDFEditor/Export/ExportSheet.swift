@@ -26,28 +26,8 @@ struct ExportSheet: View {
     var body: some View {
         AppSheet(title: "Export") {
             List {
-                Section("Format") {
-                    row(.pdf, "PDF", "doc.richtext", "The document as it stands.")
-                    row(.word, "Word", "doc.text", "Flowing paragraphs in reading order, Arabic right-to-left.")
-                    row(.images, "Page pictures", "photo.on.rectangle", "A PNG of each page at 150 dpi.")
-                    row(.text, "Text", "text.alignright", "Every page's text in logical order.")
-                    row(.compressed, "Compressed PDF", "arrow.down.right.and.arrow.up.left", "Pictures downsampled, streams recompressed, unused objects dropped.")
-                    row(.pdfa, "PDF/A-2b", "checkmark.seal", "For archiving: written whole and validated.")
-                }
-                Section {
-                    Button {
-                        Exporter.print(model)
-                    } label: {
-                        Label("Print…", systemImage: "printer")
-                    }
-                    .accessibilityIdentifier("export.print")
-                    Button {
-                        showingFileExporter = true
-                    } label: {
-                        Label("Save a copy to Files…", systemImage: "folder")
-                    }
-                    .accessibilityIdentifier("export.files")
-                }
+                // What was just made comes first: the file to share, and a
+                // word on it.
                 if let result {
                     Section {
                         ForEach(result.files, id: \.self) { url in
@@ -70,6 +50,28 @@ struct ExportSheet: View {
                                 .accessibilityIdentifier("export.note")
                         }
                     }
+                }
+                Section("Format") {
+                    row(.pdf, "PDF", "doc.richtext", "The document as it stands.")
+                    row(.word, "Word", "doc.text", "Flowing paragraphs in reading order, Arabic right-to-left.")
+                    row(.images, "Page pictures", "photo.on.rectangle", "A PNG of each page at 150 dpi.")
+                    row(.text, "Text", "text.alignright", "Every page's text in logical order.")
+                    row(.compressed, "Compressed PDF", "arrow.down.right.and.arrow.up.left", "Pictures downsampled, streams recompressed, unused objects dropped.")
+                    row(.pdfa, "PDF/A-2b", "checkmark.seal", "For archiving: written whole and validated.")
+                }
+                Section {
+                    Button {
+                        Exporter.print(model)
+                    } label: {
+                        Label("Print…", systemImage: "printer")
+                    }
+                    .accessibilityIdentifier("export.print")
+                    Button {
+                        showingFileExporter = true
+                    } label: {
+                        Label("Save a copy to Files…", systemImage: "folder")
+                    }
+                    .accessibilityIdentifier("export.files")
                 }
             }
             .accessibilityIdentifier("export.list")

@@ -89,7 +89,7 @@ final class PartBScreenshotTests: XCTestCase {
             _ = app.buttons["pages.cell.2"].waitForExistence(timeout: 15)
             app.buttons["pages.cell.1"].tap()
             try ui.screenshot("pages-\(suffix)", in: directory)
-            app.buttons["pages.more"].tap()
+            app.buttons["pages.more"].firstMatch.tap()
             let crop = app.buttons["pages.crop"]
             if crop.waitForExistence(timeout: 5) {
                 crop.tap()
