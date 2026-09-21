@@ -201,6 +201,10 @@ struct DocumentView: View {
                            editor: editor, tool: editor?.tool, host: host,
                            highlights: search.highlighted, currentHighlight: showingSearch ? search.currentSelection : nil,
                            currentPage: $model.currentPage)
+                    // Night mode: the pages inverted, hues turned back so a
+                    // blue heading stays blue (the system's own smart invert).
+                    .colorInvert(if: night)
+                    .hueRotation(.degrees(night ? 180 : 0))
                     .ignoresSafeArea(edges: showingThumbnails && compact ? [] : .bottom)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(Text("Page \(model.currentPage + 1) of \(model.pageCount)"))
@@ -500,6 +504,17 @@ struct DocumentInfoSheet: View {
             Text(value?.isEmpty == false ? value! : "—")
                 .foregroundStyle(value?.isEmpty == false ? Surface.label : Surface.tertiaryLabel)
                 .multilineTextAlignment(.trailing)
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func colorInvert(if inverted: Bool) -> some View {
+        if inverted {
+            colorInvert()
+        } else {
+            self
         }
     }
 }

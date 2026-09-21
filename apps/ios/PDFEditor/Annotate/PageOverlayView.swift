@@ -3,7 +3,7 @@ import PencilKit
 import UIKit
 
 /// The view PDFKit lays over each page (`PDFPageOverlayViewProvider`): the
-/// night-mode filter, the Pencil's canvas while the drawing tool is in hand,
+/// Pencil's canvas while the drawing tool is in hand,
 /// and the gestures of the other tools — a drag that marks text or draws a
 /// box, a tap that drops a note — each tracking the finger 1:1 and
 /// committing on release. Without a tool it lets every touch through to
@@ -16,7 +16,6 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
     weak var editor: AnnotationEditor?
     weak var toolPicker: PKToolPicker?
 
-    private let nightView = UIView()
     private var canvas: PKCanvasView?
     private let preview = CAShapeLayer()
     private lazy var pan = UIPanGestureRecognizer(target: self, action: #selector(panned(_:)))
@@ -33,13 +32,6 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
         super.init(frame: .zero)
         backgroundColor = .clear
         isOpaque = false
-        nightView.backgroundColor = .white
-        // White, composited by difference: the paper goes black, the ink white.
-        nightView.layer.compositingFilter = "differenceBlendMode"
-        nightView.isUserInteractionEnabled = false
-        nightView.isHidden = true
-        nightView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        addSubview(nightView)
         preview.fillColor = nil
         preview.lineWidth = 2
         preview.lineJoin = .round
@@ -59,7 +51,6 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        nightView.frame = bounds
         canvas?.frame = bounds
         preview.frame = bounds
     }
@@ -67,7 +58,6 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
     // MARK: - What the overlay shows
 
     func update(night: Bool, tool: AnnotationTool?) {
-        nightView.isHidden = !night
         self.tool = tool
         let active = tool != nil
         isUserInteractionEnabled = active
