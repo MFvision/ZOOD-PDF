@@ -104,10 +104,13 @@ final class ViewTests: XCTestCase {
         struct Answer: Decodable { let bookmarks: [OutlineEntry] }
         let reply = try await Core.callStatic(op: "outline.list", args: Args(password: nil), blobs: [model.bytes])
         let answer: Answer = try reply.decode()
-        XCTAssertEqual(answer.bookmarks.count, 3)
-        XCTAssertTrue(answer.bookmarks[0].title.hasPrefix("الفصل الأول"), answer.bookmarks[0].title)
-        XCTAssertEqual(answer.bookmarks[2].page, 2)
-        XCTAssertEqual(answer.bookmarks[0].children.count, 1)
+        let tree = OutlineNode.tree(from: answer.bookmarks)
+        XCTAssertEqual(tree.count, 3, "three chapters")
+        XCTAssertTrue(tree[0].entry.title.hasPrefix("الفصل الأول"), tree[0].entry.title)
+        XCTAssertEqual(tree[2].entry.page, 2)
+        XCTAssertEqual(tree[0].kids.count, 1, "each chapter has an introduction under it")
+        XCTAssertEqual(tree[0].kids[0].entry.depth, 1)
+        XCTAssertEqual(answer.bookmarks.count, 6, "flat: chapters and their children")
         model.close()
     }
 

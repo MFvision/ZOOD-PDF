@@ -85,7 +85,8 @@ final class ExportTests: XCTestCase {
         struct Args: Encodable { let password: String?; let level: String }
         let validated = try await Core.callStatic(op: "standards.pdfa_validate", args: Args(password: nil, level: "2b"), blobs: [bytes])
         let findings = try XCTUnwrap(validated.object["findings"] as? [String: Any])
-        XCTAssertEqual(findings["passed"] as? Int, findings["total"] as? Int, "\(findings)")
+        XCTAssertEqual(findings["passed"] as? Bool, true, "\(findings)")
+        XCTAssertEqual(pdfaReport.findings?.passed, true)
         model.close()
     }
 }

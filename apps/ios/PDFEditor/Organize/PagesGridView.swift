@@ -178,7 +178,10 @@ struct PagesGridView: View {
             dragging = nil
             let indices = moved.map(\.page)
             let group = pages.selection.contains(indices.first ?? -1) ? pages.selected : indices
-            pages.move(group, before: page)
+            // Dragged forward, the page lands after the one it is dropped on;
+            // dragged back, before it.
+            let forward = (group.min() ?? page) < page
+            pages.move(group, before: forward ? page + 1 : page)
             return true
         } isTargeted: { over in
             dropTarget = over ? page : (dropTarget == page ? nil : dropTarget)

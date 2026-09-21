@@ -22,7 +22,8 @@ final class OrganizeTests: XCTestCase {
         XCTAssertEqual(PagesModel.order(moving: [2], before: 0, count: 3), [2, 0, 1])
         XCTAssertEqual(PagesModel.order(moving: [0], before: 3, count: 3), [1, 2, 0])
         XCTAssertEqual(PagesModel.order(moving: [0], before: 2, count: 3), [1, 0, 2])
-        XCTAssertEqual(PagesModel.order(moving: [0, 1], before: 3, count: 4), [2, 3, 0, 1])
+        XCTAssertEqual(PagesModel.order(moving: [0, 1], before: 3, count: 4), [2, 0, 1, 3])
+        XCTAssertEqual(PagesModel.order(moving: [0, 1], before: 4, count: 4), [2, 3, 0, 1], "the end")
         XCTAssertEqual(PagesModel.order(moving: [1], before: 1, count: 3), [0, 1, 2], "dropped where it was")
         XCTAssertEqual(PagesModel.order(moving: [5], before: 0, count: 3), [0, 1, 2], "an index past the end is ignored")
     }

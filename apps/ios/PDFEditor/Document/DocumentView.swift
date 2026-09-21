@@ -198,7 +198,7 @@ struct DocumentView: View {
                 ReaderModeView(model: model)
             } else if let pdf = model.pdf {
                 PDFKitView(document: pdf, displaysRTL: model.isRightToLeft, layout: layout, night: night,
-                           editor: editor, host: host,
+                           editor: editor, tool: editor?.tool, host: host,
                            highlights: search.highlighted, currentHighlight: showingSearch ? search.currentSelection : nil,
                            currentPage: $model.currentPage)
                     .ignoresSafeArea(edges: showingThumbnails && compact ? [] : .bottom)

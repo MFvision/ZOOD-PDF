@@ -124,7 +124,7 @@ final class DocumentModel: Identifiable, Hashable {
     /// The page's text in logical order, from the core, cached.
     func text(ofPage index: Int) async -> String? {
         if let text = pageTexts[index] { return text }
-        guard let core, index >= 0, index < pageCount else { return nil }
+        guard let core = await readyEngine(), index >= 0, index < pageCount else { return nil }
         guard let text = try? await core.extractText(page: index) else { return nil }
         pageTexts[index] = text
         return text
@@ -137,12 +137,24 @@ final class DocumentModel: Identifiable, Hashable {
 
     /// The pages holding `query`, the core's Arabic-aware way.
     func search(_ query: String) async throws -> [Int] {
-        guard let core else { throw CoreError.closed }
+        guard let core = await readyEngine() else { throw CoreError.closed }
         return try await core.search(query)
     }
 
     /// The core itself, for a tool that reads more than the model caches.
+    /// Right after an undo it may still be reopening on the restored
+    /// bytes: `readyEngine()` waits for that.
     var engine: Core? { core }
+
+    /// The core once it matches the bytes (an undo reopens it off the
+    /// main thread; anything that reads or edits waits for that first).
+    func readyEngine() async -> Core? {
+        await reopening?.value
+        return core
+    }
+
+    /// The reopen an undo or redo started, so the next edit waits for it.
+    private var reopening: Task<Void, Never>?
 
     // MARK: - Editing
 
@@ -159,7 +171,7 @@ final class DocumentModel: Identifiable, Hashable {
     /// `apply` with the arguments already as JSON (empty for none).
     @discardableResult
     func apply(_ op: String, json: String = "", blobs: [Data] = [], undoManager: UndoManager? = nil) async throws -> Reply {
-        guard let core else { throw CoreError.closed }
+        guard let core = await readyEngine() else { throw CoreError.closed }
         let before = edited
         let reply = try await core.call(op: op, args: json, blobs: blobs)
         let bytes = try await core.save()
@@ -246,7 +258,11 @@ final class DocumentModel: Identifiable, Hashable {
         undoManager.registerUndo(withTarget: self) { model in
             model.restore(after, password: passwordAfter, redoTo: bytes, password: passwordBefore, undoManager: undoManager)
         }
-        Task { await reopenCore() }
+        let previous = reopening
+        reopening = Task {
+            await previous?.value
+            await reopenCore()
+        }
     }
 
     private func reopenCore() async {

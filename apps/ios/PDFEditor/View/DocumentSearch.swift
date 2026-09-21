@@ -40,7 +40,7 @@ final class DocumentSearch {
     func run(in model: DocumentModel) {
         task?.cancel()
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty, let core = model.engine else {
+        guard !query.isEmpty, model.engine != nil else {
             clear()
             return
         }
@@ -49,6 +49,7 @@ final class DocumentSearch {
             struct Args: Encodable { let query: String }
             struct Answer: Decodable { let matches: [SearchHit]; let total: Int }
             do {
+                guard let core = await model.readyEngine() else { throw CoreError.closed }
                 let reply = try await core.call(op: "view.search", args: Args(query: query))
                 let answer: Answer = try reply.decode()
                 guard !Task.isCancelled else { return }

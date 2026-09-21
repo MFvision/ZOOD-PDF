@@ -144,9 +144,11 @@ struct ExportSheet: View {
                     result = ExportResult(format: format, files: [url], note: "\(before) → \(after)")
                 case .pdfa:
                     let (url, report) = try await Exporter.pdfA(model)
-                    let passed = report.findings?.passed ?? 0
+                    let level = report.level ?? "2b"
                     let total = report.findings?.total ?? 0
-                    result = ExportResult(format: format, files: [url], note: "PDF/A-\(report.level ?? "2b"): \(passed) of \(total) checks passed.")
+                    let findings = report.findings?.items.count ?? 0
+                    result = ExportResult(format: format, files: [url],
+                                          note: report.findings?.passed == true ? "PDF/A-\(level): all \(total) checks passed." : "PDF/A-\(level): \(findings) findings in \(total) checks.")
                 }
                 #if DEBUG
                 // A UI test asks for the files where it can read them.

@@ -37,7 +37,7 @@ enum Exporter {
 
     /// Word: the core's paragraphs, `DocxWriter`.
     static func word(_ model: DocumentModel) async throws -> URL {
-        guard let core = model.engine else { throw CoreError.closed }
+        guard let core = await model.readyEngine() else { throw CoreError.closed }
         let pages = try await DocxWriter.pages(of: core)
         let data = DocxWriter.docx(pages: pages, title: model.name)
         let url = try folder().appending(path: "\(model.name).docx")
@@ -47,7 +47,7 @@ enum Exporter {
 
     /// Plain text: every page's lines in logical order, pages headed.
     static func text(_ model: DocumentModel, locale: Locale = .current) async throws -> URL {
-        guard let core = model.engine else { throw CoreError.closed }
+        guard let core = await model.readyEngine() else { throw CoreError.closed }
         var out = ""
         let count = await core.pageCount
         for index in 0..<count {
@@ -118,7 +118,8 @@ enum Exporter {
     }
 
     struct PDFAReport: Decodable, Sendable {
-        struct Findings: Decodable, Sendable { let total: Int; let passed: Int }
+        struct Finding: Decodable, Sendable { let clause: String; let rule: String; let detail: String }
+        struct Findings: Decodable, Sendable { let total: Int; let passed: Bool; let items: [Finding] }
         let level: String?
         let findings: Findings?
         let refused: String?

@@ -48,8 +48,8 @@ struct ProtectSheet: View {
                     } header: {
                         Text("Set a password")
                     } footer: {
-                        Text(mismatch ? "The two passwords differ." : "Anyone opening the document will be asked for it. There is no way to recover a forgotten password.")
-                            .foregroundStyle(mismatch ? .red : .secondary)
+                        Text(unusable ? "Use Latin letters, digits and symbols (up to 32): the PDF protection this device writes takes no others." : mismatch ? "The two passwords differ." : "Anyone opening the document will be asked for it. There is no way to recover a forgotten password.")
+                            .foregroundStyle(unusable || mismatch ? .red : .secondary)
                     }
                     Section {
                         Button(action: set) {
@@ -83,7 +83,15 @@ struct ProtectSheet: View {
     }
 
     private var mismatch: Bool { !confirmation.isEmpty && confirmation != password }
-    private var canSet: Bool { !password.isEmpty && password == confirmation }
+    private var unusable: Bool { !password.isEmpty && !Self.isUsable(password) }
+    private var canSet: Bool { !password.isEmpty && password == confirmation && Self.isUsable(password) }
+
+    /// PDFKit's writer protects with the standard handler's RC4, whose
+    /// passwords are Latin-1 (PDFDocEncoding): letters, digits and
+    /// symbols of the Latin script only. Anything else it silently drops.
+    static func isUsable(_ password: String) -> Bool {
+        !password.isEmpty && password.count <= 32 && password.unicodeScalars.allSatisfy { $0.value >= 0x20 && $0.value <= 0xFF }
+    }
 
     private func set() {
         guard canSet else { return }
@@ -119,6 +127,7 @@ struct ProtectSheet: View {
     /// write for that); the core then opens it with the password, and
     /// keeps the protection on every edit it appends.
     static func setPassword(_ password: String, on model: DocumentModel, undoManager: UndoManager?) async throws {
+        guard isUsable(password) else { throw CoreError.edit("the password must be Latin letters, digits and symbols") }
         guard let pdf = model.pdf else { throw CoreError.closed }
         let options: [PDFDocumentWriteOption: Any] = [
             .userPasswordOption: password,
@@ -126,6 +135,11 @@ struct ProtectSheet: View {
         ]
         guard let bytes = pdf.dataRepresentation(options: options) else {
             throw CoreError.io("PDFKit could not write the protected document")
+        }
+        // Never say a document is protected when it is not: the core must
+        // refuse it without the password.
+        if (try? await Core.open(bytes: bytes)) != nil {
+            throw CoreError.edit("PDFKit wrote the document without protection")
         }
         try await model.replace(bytes: bytes, password: password, undoManager: undoManager)
     }
@@ -136,7 +150,7 @@ struct ProtectSheet: View {
     /// new, unencrypted file. (PDFKit keeps the encryption on a plain
     /// rewrite of an unlocked document, so it is not asked.)
     static func removePassword(from model: DocumentModel, undoManager: UndoManager?) async throws {
-        guard let core = model.engine else { throw CoreError.closed }
+        guard let core = await model.readyEngine() else { throw CoreError.closed }
         struct Args: Encodable { let pages: [Int] }
         let count = await core.pageCount
         let reply = try await core.call(op: "pages.extract", args: Args(pages: Array(0..<count)))

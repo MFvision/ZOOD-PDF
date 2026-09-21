@@ -19,9 +19,9 @@ final class ProtectTests: XCTestCase {
     func testSetPasswordKeepItThroughAnEditAndRemoveIt() async throws {
         let model = try await PartB.loadedModel("coretext-sfarabic-mixed-invoice", in: folder)
         let undo = UndoManager()
-        try await ProtectSheet.setPassword("سر-1234", on: model, undoManager: undo)
+        try await ProtectSheet.setPassword("s3cret-1234", on: model, undoManager: undo)
         XCTAssertTrue(model.isEdited)
-        XCTAssertEqual(model.password, "سر-1234")
+        XCTAssertEqual(model.password, "s3cret-1234")
         XCTAssertEqual(model.metadata?.encrypted, true)
         XCTAssertEqual(model.pdf?.isLocked, false, "PDFKit is unlocked in the app")
 
@@ -32,7 +32,7 @@ final class ProtectTests: XCTestCase {
         } catch let error as CoreError {
             XCTAssertEqual(error, .password)
         }
-        let withPassword = try await Core.open(bytes: model.bytes, password: "سر-1234")
+        let withPassword = try await Core.open(bytes: model.bytes, password: "s3cret-1234")
         let text = try await withPassword.extractText(page: 0)
         XCTAssertTrue(text.contains("فاتورة"), "still readable: \(text.prefix(40))")
 
@@ -53,7 +53,7 @@ final class ProtectTests: XCTestCase {
         let reopened = try DocumentModel(url: try XCTUnwrap(model.url))
         await reopened.load()
         XCTAssertEqual(reopened.state, .needsPassword(wrong: false))
-        await reopened.load(password: "سر-1234")
+        await reopened.load(password: "s3cret-1234")
         XCTAssertEqual(reopened.state, .ready)
         XCTAssertEqual(reopened.pdf?.page(at: 0)?.rotation, 90)
 
@@ -65,6 +65,20 @@ final class ProtectTests: XCTestCase {
         XCTAssertFalse(meta.encrypted)
         XCTAssertEqual(reopened.pdf?.isLocked, false)
         reopened.close()
+        model.close()
+    }
+
+    func testAnArabicPasswordIsRefusedRatherThanSilentlyDropped() async throws {
+        let model = try await PartB.loadedModel("coretext-sfarabic-mixed-invoice", in: folder)
+        XCTAssertFalse(ProtectSheet.isUsable("سر-1234"))
+        XCTAssertTrue(ProtectSheet.isUsable("s3cret-1234"))
+        do {
+            try await ProtectSheet.setPassword("سر-1234", on: model, undoManager: nil)
+            XCTFail("an Arabic password was accepted")
+        } catch {
+            XCTAssertFalse(model.isEdited, "nothing changed")
+            XCTAssertNil(model.password)
+        }
         model.close()
     }
 

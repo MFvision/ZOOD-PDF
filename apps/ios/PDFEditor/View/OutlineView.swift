@@ -1,17 +1,47 @@
 import SwiftUI
 import WarraqCore
 
-/// A bookmark of the document's outline, as the core lists it: the title
-/// (Arabic read right), the page, or nothing for a heading, and its children.
-struct OutlineEntry: Decodable, Identifiable, Sendable {
+/// A bookmark of the document's outline, as the core lists it: a flat
+/// list in reading order, each entry with its depth, its title (Arabic
+/// read right), the page or nothing for a heading, and how many entries
+/// under it are its children.
+struct OutlineEntry: Decodable, Sendable {
     let title: String
+    let depth: Int
     let page: Int?
     let outside: Bool
-    let children: [OutlineEntry]
+    let open: Bool
+    let children: Int
+}
 
-    var id: String { "\(title)@\(page ?? -1)#\(children.count)" }
+/// The outline as a tree, built from the flat list by depth.
+struct OutlineNode: Identifiable {
+    let id: Int
+    let entry: OutlineEntry
+    let kids: [OutlineNode]
 
-    var hasChildren: Bool { !children.isEmpty }
+    /// `List(children:)` wants nil for a leaf.
+    var optionalKids: [OutlineNode]? { kids.isEmpty ? nil : kids }
+
+    static func tree(from entries: [OutlineEntry]) -> [OutlineNode] {
+        var index = 0
+        func take(depth: Int) -> [OutlineNode] {
+            var nodes: [OutlineNode] = []
+            while index < entries.count, entries[index].depth == depth {
+                let id = index
+                let entry = entries[index]
+                index += 1
+                let kids = entry.children > 0 ? take(depth: depth + 1) : []
+                nodes.append(OutlineNode(id: id, entry: entry, kids: kids))
+            }
+            // Entries deeper than expected (a damaged outline) are skipped.
+            while index < entries.count, entries[index].depth > depth {
+                index += 1
+            }
+            return nodes
+        }
+        return take(depth: 0)
+    }
 }
 
 /// The document's outline (its bookmarks) as a tree; tapping an entry
@@ -20,18 +50,18 @@ struct OutlineEntry: Decodable, Identifiable, Sendable {
 struct OutlineSheet: View {
     let model: DocumentModel
     @Environment(\.dismiss) private var dismiss
-    @State private var entries: [OutlineEntry]?
+    @State private var nodes: [OutlineNode]?
     @State private var failed = false
 
     var body: some View {
         AppSheet(title: "Outline") {
             Group {
-                if let entries {
-                    if entries.isEmpty {
+                if let nodes {
+                    if nodes.isEmpty {
                         EmptyState(symbol: "list.bullet.indent", title: "No outline", message: "This document carries no bookmarks.")
                     } else {
-                        List(entries, children: \.optionalChildren) { entry in
-                            row(entry)
+                        List(nodes, children: \.optionalKids) { node in
+                            row(node)
                         }
                         .listStyle(.plain)
                         .accessibilityIdentifier("outline.list")
@@ -50,7 +80,7 @@ struct OutlineSheet: View {
             do {
                 let reply = try await Core.callStatic(op: "outline.list", args: Args(password: model.password), blobs: [model.bytes])
                 let answer: Answer = try reply.decode()
-                entries = answer.bookmarks
+                nodes = OutlineNode.tree(from: answer.bookmarks)
             } catch {
                 failed = true
             }
@@ -58,7 +88,8 @@ struct OutlineSheet: View {
     }
 
     @ViewBuilder
-    private func row(_ entry: OutlineEntry) -> some View {
+    private func row(_ node: OutlineNode) -> some View {
+        let entry = node.entry
         if let page = entry.page, !entry.outside {
             Button {
                 model.currentPage = page
@@ -74,7 +105,7 @@ struct OutlineSheet: View {
                         .foregroundStyle(Surface.secondaryLabel)
                 }
             }
-            .accessibilityIdentifier("outline.\(page)")
+            .accessibilityIdentifier("outline.\(node.id)")
         } else {
             HStack {
                 Text(entry.title)
@@ -86,10 +117,7 @@ struct OutlineSheet: View {
                         .accessibilityLabel(Text("Leads outside the document"))
                 }
             }
+            .accessibilityIdentifier("outline.\(node.id)")
         }
     }
-}
-
-private extension OutlineEntry {
-    var optionalChildren: [OutlineEntry]? { hasChildren ? children : nil }
 }

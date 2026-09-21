@@ -478,8 +478,14 @@
     "PDF" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "PDF" } } }
     },
+    "PDF/A-%@: %lld findings in %lld checks." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "PDF/A-%1$@: %2$lld ملاحظة في %3$lld فحصًا." } } }
+    },
     "PDF/A-%@: %lld of %lld checks passed." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "PDF/A-%1$@: اجتاز %2$lld من %3$lld فحصًا." } } }
+    },
+    "PDF/A-%@: all %lld checks passed." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "PDF/A-%1$@: اجتاز كل الفحوص الـ%2$lld." } } }
     },
     "PDF/A-2b" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "PDF/A-2b" } } }
@@ -750,6 +756,9 @@
     },
     "Undo" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تراجع" } } }
+    },
+    "Use Latin letters, digits and symbols (up to 32): the PDF protection this device writes takes no others." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "استخدم حروفًا لاتينية وأرقامًا ورموزًا (حتى 32): حماية PDF التي يكتبها هذا الجهاز لا تقبل غيرها." } } }
     },
     "Version" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الإصدار" } } }

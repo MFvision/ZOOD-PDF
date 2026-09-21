@@ -41,6 +41,9 @@ struct PDFKitView: UIViewRepresentable {
     let layout: PageLayout
     let night: Bool
     let editor: AnnotationEditor?
+    /// The tool in hand, passed on its own so a change of tool reaches the
+    /// overlays (the view is only re-evaluated for what its body reads).
+    let tool: AnnotationTool?
     let host: PDFViewHost?
     /// PDFKit draws these highlighted (the search's hits) and scrolls to
     /// `currentHighlight` when it changes.
@@ -105,16 +108,16 @@ struct PDFKitView: UIViewRepresentable {
             applyLayout(to: view)
             if let page { view.go(to: page) }
         }
-        if coordinator.night != night || coordinator.tool != editor?.tool || coordinator.editor !== editor {
+        if coordinator.night != night || coordinator.tool != tool || coordinator.editor !== editor {
             coordinator.night = night
-            coordinator.tool = editor?.tool
+            coordinator.tool = tool
             coordinator.editor = editor
             for overlay in coordinator.overlays.values {
                 // The editor can arrive after the first page was shown.
                 overlay.editor = editor
-                overlay.update(night: night, tool: editor?.tool)
+                overlay.update(night: night, tool: tool)
             }
-            if editor?.tool != .ink {
+            if tool != .ink {
                 coordinator.toolPicker.setVisible(false, forFirstResponder: view)
             }
         }

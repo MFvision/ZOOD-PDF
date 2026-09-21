@@ -54,10 +54,15 @@ struct PartBApp {
     /// The page view, with the core's text of the page as its value.
     var page: XCUIElement { app.otherElements["document.page"] }
 
+    /// The accessibility tree, for a failure's message.
+    var tree: String {
+        String(app.debugDescription.prefix(6000))
+    }
+
     /// Waits for the page view and for the core's text to arrive on it.
     @discardableResult
     func waitForPage(containing word: String, timeout: TimeInterval = 40) -> String {
-        XCTAssertTrue(page.waitForExistence(timeout: timeout), "the page view appears")
+        XCTAssertTrue(page.waitForExistence(timeout: timeout), "the page view appears: \(tree)")
         let deadline = Date(timeIntervalSinceNow: timeout)
         while Date() < deadline {
             if let value = page.value as? String, value.contains(word) { return value }
@@ -80,7 +85,8 @@ struct PartBApp {
     func waitForEdited(timeout: TimeInterval = 30) {
         let predicate = NSPredicate(format: "label CONTAINS %@ OR label CONTAINS %@", "Edited", "مُعدَّل")
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: status)
-        XCTAssertEqual(XCTWaiter().wait(for: [expectation], timeout: timeout), .completed, "status says edited: \(status.label)")
+        let outcome = XCTWaiter().wait(for: [expectation], timeout: timeout)
+        XCTAssertEqual(outcome, .completed, "status says edited: \(status.exists ? status.label : "no status") \(outcome == .completed ? "" : tree)")
     }
 
     /// Opens the More menu and taps the item with `identifier` (or, when
@@ -109,6 +115,7 @@ struct PartBApp {
 
     /// A drag across the page view, from and to fractions of its size.
     func drag(from: (Double, Double), to: (Double, Double), duration: TimeInterval = 0.05) {
+        XCTAssertTrue(page.waitForExistence(timeout: 10), "the page view is there to drag on: \(tree)")
         let start = page.coordinate(withNormalizedOffset: CGVector(dx: from.0, dy: from.1))
         let end = page.coordinate(withNormalizedOffset: CGVector(dx: to.0, dy: to.1))
         start.press(forDuration: duration, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.1)

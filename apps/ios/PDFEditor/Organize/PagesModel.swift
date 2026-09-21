@@ -151,7 +151,7 @@ final class PagesModel {
     }
 
     private func extractFile(_ pages: [Int], name: String) async throws -> URL {
-        guard let core = model.engine else { throw CoreError.closed }
+        guard let core = await model.readyEngine() else { throw CoreError.closed }
         struct Args: Encodable { let pages: [Int] }
         let reply = try await core.call(op: "pages.extract", args: Args(pages: pages))
         guard let bytes = reply.blobs.first else { throw CoreError.badReply("pages.extract answered no file") }
