@@ -13,7 +13,11 @@ final class AnnotateUITests: XCTestCase {
     private func marks(_ ui: PartBApp) -> Int {
         ui.app.buttons["document.info"].tap()
         let count = ui.app.staticTexts["info.marks"]
-        XCTAssertTrue(count.waitForExistence(timeout: 10))
+        // The sheet's list is lazy: the row may sit below its first height.
+        if !count.waitForExistence(timeout: 5) {
+            ui.app.swipeUp()
+        }
+        XCTAssertTrue(count.waitForExistence(timeout: 10), "the Marks row: \(ui.tree)")
         let digits = count.label.unicodeScalars.map { scalar -> Character in
             switch scalar.value {
             case 0x660...0x669: Character(UnicodeScalar(scalar.value - 0x660 + 0x30)!)
