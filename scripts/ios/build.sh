@@ -66,6 +66,13 @@ for device in "${devices[@]}"; do
   summarize "$log"
 
   if [ "$run_tests" = "1" ]; then
+    # The scanner's UI test scans a photo from the simulator's library:
+    # the photo goes in first (a copy each run; the test takes the newest).
+    udid="$(/usr/bin/xcrun simctl list devices available -j | /usr/bin/jq -r --arg name "$device" '.devices[][] | select(.name == $name and .isAvailable) | .udid' | head -1)"
+    if [ -n "$udid" ] && [ "$unit_only" = "0" ]; then
+      /usr/bin/xcrun simctl bootstatus "$udid" -b > /dev/null 2>&1 || true
+      /usr/bin/xcrun simctl addmedia "$udid" "$repo/tests/fixtures/create/photo-arabic.jpg" || echo "could not add the photo to $device's library" >&2
+    fi
     echo "== test on $device"
     log="$logs/test-$slug.log"
     only=()
