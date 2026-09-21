@@ -622,6 +622,11 @@ signature, marks, pages, crop, export, protect).
   is undone with Undo or removed on the desktop/web Page marks tool.
 * *Ink keeps one width per stroke*: PencilKit's pressure shows on the canvas; a PDF ink
   annotation has one border width, so the committed stroke takes the stroke's width.
+* *Passwords are Latin-1*: PDFKit's RC4 handler takes PDFDocEncoding passwords only, and
+  writes **no protection at all** for any other (an Arabic password came back as an
+  unprotected file in the first run). The sheet refuses anything outside Latin letters,
+  digits and symbols, says so, and the result is checked to be protected before it is
+  taken — never a document said to be protected that is not.
 * *Protection is a whole rewrite, and PDFKit's is RC4*: setting or removing a password
   cannot be an incremental update (the encryption covers every string and stream), so
   those two edits replace the bytes; everything the core appends after them is
@@ -633,7 +638,9 @@ signature, marks, pages, crop, export, protect).
 * *Text selection in PDFKit is PDFKit's*: for Arabic files PDFKit reads in visual order
   in places; Copy from the page view is its reading, while search, reader mode,
   VoiceOver's page text and every export are the core's.
-* *Night mode inverts colours* (a blue heading becomes yellow), as most readers do.
+* *Night mode is SwiftUI's inversion* (`colorInvert` with the hues turned back, the
+  system's smart-invert idea): a layer compositing filter is ignored on iOS — the first
+  run's screenshot showed a white page — so the pages are inverted as a whole.
 * *Rotated pages*: the overlays convert through PDFKit's own `convert(_:to:)`, and the
   page-space conversions are unit-tested at every rotation, but the corpus files used
   through the interface are upright; a page with `/Rotate` was not exercised on screen.
@@ -641,6 +648,12 @@ signature, marks, pages, crop, export, protect).
   cells, which iPadOS turns into a new window when dropped at the edge; XCUITest
   cannot perform that system gesture, so it was not run — "Open in New Window" from
   the cell's menu takes the same path (a `WindowGroup(for: DocumentReference.self)`).
+* *A page cell has no context menu*: a long press is the lift of a drag (a menu took the
+  press first, and no drag began — seen on the iPad); rotate, insert, extract and delete
+  are in the grid's bar and its More menu.
+* *The core's page text leaves page marks out* (`extract_text` is the page's own text; the
+  search reads everything), so a stamp is read back through the search, not the page's
+  VoiceOver value.
 * *Print* opens the system's panel; the simulator has no printer.
 * Everything ran on the simulator only; no device, no Face ID, no real share targets.
 
