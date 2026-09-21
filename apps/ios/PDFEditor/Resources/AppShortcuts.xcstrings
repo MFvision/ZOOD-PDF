@@ -1,0 +1,46 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Make a PDF with ${applicationName}" : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "أنشئ PDF بـ ${applicationName}" } }
+      }
+    },
+    "Open ${document} in ${applicationName}" : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "افتح ${document} في ${applicationName}" } }
+      }
+    },
+    "Open a document in ${applicationName}" : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "افتح مستندًا في ${applicationName}" } }
+      }
+    },
+    "Open my last document in ${applicationName}" : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "افتح آخر مستند لي في ${applicationName}" } }
+      }
+    },
+    "Scan a document with ${applicationName}" : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "امسح مستندًا بـ ${applicationName}" } }
+      }
+    },
+    "Scan with ${applicationName}" : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "امسح بـ ${applicationName}" } }
+      }
+    },
+    "Search ${applicationName}" : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "ابحث في ${applicationName}" } }
+      }
+    },
+    "Search my documents in ${applicationName}" : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "ابحث في مستنداتي في ${applicationName}" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

@@ -61,6 +61,12 @@ targets:
       - target: Widgets
       - target: ShareExtension
       - sdk: PDFKit.framework
+      - sdk: CoreSpotlight.framework
+      - sdk: LocalAuthentication.framework
+      - sdk: Vision.framework
+      - sdk: VisionKit.framework
+      - sdk: AppIntents.framework
+      - sdk: WidgetKit.framework
     entitlements:
       path: PDFEditor/PDFEditor.entitlements
       properties:
@@ -95,10 +101,20 @@ targets:
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
         UISupportsDocumentBrowser: true
-        # Widgets open a document with pdfeditor://open/<id>.
+        # Widgets open a document with pdfeditor://open/<id>, the scanner
+        # with pdfeditor://scan, a search with pdfeditor://search?q=…
         CFBundleURLTypes:
           - CFBundleURLName: app.warraq.ios
             CFBundleURLSchemes: [pdfeditor]
+        # Spotlight results open in the app.
+        NSUserActivityTypes:
+          - com.apple.corespotlightitem
+        # The Home Screen's quick actions: Scan always; the last document
+        # is added by the app as documents are opened.
+        UIApplicationShortcutItems:
+          - UIApplicationShortcutItemType: app.warraq.ios.scan
+            UIApplicationShortcutItemTitle: SHORTCUT_SCAN
+            UIApplicationShortcutItemIconSymbolName: doc.viewfinder
         # Opened from Files, Mail, Safari and "Open in": PDFs. Images are
         # registered by the scanner once it turns them into PDFs.
         CFBundleDocumentTypes:
@@ -159,6 +175,9 @@ targets:
     sources:
       - path: Widgets
       - path: Shared
+    dependencies:
+      - sdk: AppIntents.framework
+      - sdk: Vision.framework
     entitlements:
       path: Widgets/Widgets.entitlements
       properties:
@@ -188,6 +207,11 @@ targets:
     sources:
       - path: ShareExtension
       - path: Shared
+    dependencies:
+      - target: WarraqCore
+        embed: false
+      - framework: Vendor/WarraqCore.xcframework
+        embed: false
     entitlements:
       path: ShareExtension/ShareExtension.entitlements
       properties:
@@ -205,8 +229,8 @@ targets:
           NSExtensionPointIdentifier: com.apple.share-services
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
           NSExtensionAttributes:
-            # Offered for anything shared that holds at least one PDF.
-            NSExtensionActivationRule: 'SUBQUERY(extensionItems, $extensionItem, SUBQUERY($extensionItem.attachments, $attachment, ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.adobe.pdf").@count >= 1).@count >= 1'
+            # Offered for anything shared that holds at least one PDF or picture.
+            NSExtensionActivationRule: 'SUBQUERY(extensionItems, $extensionItem, SUBQUERY($extensionItem.attachments, $attachment, (ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.adobe.pdf") OR (ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.image")).@count >= 1).@count >= 1'
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.warraq.ios.share
@@ -227,6 +251,12 @@ targets:
         buildPhase: resources
       - path: ../../tests/corpus/arabic/generated/variant-encrypted-rc4-40.pdf
         buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/chrome-cairo-mixed-invoice.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/coretext-albayan-tashkeel.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/scan-arial-200dpi-bilevel.pdf
+        buildPhase: resources
     dependencies:
       - target: PDFEditor
       # The wrapper's code is already inside the host app; the tests need only
@@ -244,7 +274,16 @@ targets:
     platform: iOS
     sources:
       - path: PDFEditorUITests
+      # A small corpus the Library test imports and indexes.
       - path: ../../tests/corpus/arabic/generated/coretext-sfarabic-mixed-invoice.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/chrome-cairo-mixed-invoice.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/coretext-albayan-tashkeel.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/chrome-notonaskh-justified-3pages.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/scan-arial-200dpi-bilevel.pdf
         buildPhase: resources
     dependencies:
       - target: PDFEditor

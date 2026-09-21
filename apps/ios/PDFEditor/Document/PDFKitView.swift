@@ -23,6 +23,11 @@ struct PDFKitView: UIViewRepresentable {
             name: .PDFViewPageChanged,
             object: view
         )
+        // Opened at a page (a search hit): go there once the view has laid
+        // out its pages.
+        if currentPage > 0, let page = document.page(at: min(currentPage, max(document.pageCount - 1, 0))) {
+            DispatchQueue.main.async { view.go(to: page) }
+        }
         return view
     }
 
@@ -36,6 +41,10 @@ struct PDFKitView: UIViewRepresentable {
             if let page = document.page(at: min(currentPage, max(document.pageCount - 1, 0))) {
                 view.go(to: page)
             }
+        } else if let shown = view.currentPage, document.index(for: shown) != currentPage,
+                  let page = document.page(at: min(currentPage, max(document.pageCount - 1, 0))) {
+            // The page was asked for from outside (Go to page, a search hit).
+            view.go(to: page)
         }
     }
 

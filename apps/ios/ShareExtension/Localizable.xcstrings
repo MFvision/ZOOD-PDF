@@ -41,6 +41,24 @@
     },
     "Saving…" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "جارٍ الحفظ…" } } }
+    },
+    "Nothing shared was a PDF or a picture." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لم يكن شيء مما شُورك ملف PDF أو صورة." } } }
+    },
+    "Pictures %@" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "صور %@" } } }
+    },
+    "Scan a document" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مسح مستند" } } }
+    },
+    "Opens the scanner to scan a paper document into a PDF." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يفتح الماسح لمسح مستند ورقي إلى ملف PDF." } } }
+    },
+    "Open the last document" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "فتح آخر مستند" } } }
+    },
+    "Opens the document you opened last." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يفتح المستند الذي فتحته آخر مرة." } } }
     }
   },
   "version" : "1.0"

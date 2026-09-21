@@ -7,6 +7,9 @@ import SwiftUI
 /// language and appearance from Settings.
 @main
 struct PDFEditorApp: App {
+    /// For the Home Screen's quick actions, which UIKit delivers.
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     var body: some Scene {
         WindowGroup(id: "library") {
             LibraryShell()

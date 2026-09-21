@@ -12,6 +12,54 @@
     },
     "The documents you opened last." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المستندات التي فتحتها مؤخرًا." } } }
+    },
+    "Last document" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "آخر مستند" } } }
+    },
+    "Scan" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مسح" } } }
+    },
+    "Scan a paper document into a PDF with one tap." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "امسح مستندًا ورقيًا إلى ملف PDF بلمسة واحدة." } } }
+    },
+    "Scan a document" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مسح مستند" } } }
+    },
+    "A paper document, into a PDF." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مستند ورقي، إلى ملف PDF." } } }
+    },
+    "From pictures, into a PDF." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "من الصور، إلى ملف PDF." } } }
+    },
+    "Library search" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "بحث المكتبة" } } }
+    },
+    "Your last searches across every document." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "عمليات بحثك الأخيرة عبر كل المستندات." } } }
+    },
+    "Search my documents" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "البحث في مستنداتي" } } }
+    },
+    "A search" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "بحث" } } }
+    },
+    "Search once in the app and the search appears here." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "ابحث مرة في التطبيق ليظهر البحث هنا." } } }
+    },
+    "Search for %@, %lld matches" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "البحث عن %1$@، %2$lld نتائج" } } }
+    },
+    "Opens the scanner." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يفتح الماسح." } } }
+    },
+    "Opens the scanner to scan a paper document into a PDF." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يفتح الماسح لمسح مستند ورقي إلى ملف PDF." } } }
+    },
+    "Open the last document" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "فتح آخر مستند" } } }
+    },
+    "Opens the document you opened last." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يفتح المستند الذي فتحته آخر مرة." } } }
     }
   },
   "version" : "1.0"

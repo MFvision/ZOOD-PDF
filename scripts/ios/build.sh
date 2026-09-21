@@ -72,10 +72,21 @@ for device in "${devices[@]}"; do
     if [ "$unit_only" = "1" ]; then
       only=(-only-testing:PDFEditorTests)
     fi
+    # The app-lock UI test needs a face: the simulator enrols one, and a
+    # helper answers every Face ID prompt with a match while the tests run
+    # (the simulator has no sensor; this is what its Features menu does).
+    udid="$(/usr/bin/xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next((x["udid"] for v in d["devices"].values() for x in v if x["name"]==sys.argv[1]), ""))' "$device")"
+    matcher=""
+    if [ -n "$udid" ] && [ "$unit_only" = "0" ]; then
+      /usr/bin/xcrun simctl spawn "$udid" notifyutil -s com.apple.BiometricKit.enrollmentChanged 1 -p com.apple.BiometricKit.enrollmentChanged >/dev/null 2>&1 || true
+      ( while true; do /usr/bin/xcrun simctl spawn "$udid" notifyutil -p com.apple.BiometricKit_Sim.pearl.match >/dev/null 2>&1; sleep 1; done ) &
+      matcher=$!
+    fi
     # TEST_RUNNER_ variables in xcodebuild's environment reach the test
     # process's environment, without the prefix.
-    TEST_RUNNER_WARRAQ_SCREENSHOT_DIR="$shots" TEST_RUNNER_WARRAQ_DEVICE_SLUG="$slug" \
-      xcb test-without-building -destination "$dest" "${only[@]}" > "$log" 2>&1 || { summarize "$log"; echo "tests failed; log: $log" >&2; exit 1; }
+    TEST_RUNNER_WARRAQ_SCREENSHOT_DIR="$shots" TEST_RUNNER_WARRAQ_DEVICE_SLUG="$slug" TEST_RUNNER_WARRAQ_FACEID_DRIVER="${matcher:+1}" \
+      xcb test-without-building -destination "$dest" "${only[@]}" > "$log" 2>&1 || { [ -n "$matcher" ] && kill "$matcher" 2>/dev/null; summarize "$log"; echo "tests failed; log: $log" >&2; exit 1; }
+    [ -n "$matcher" ] && kill "$matcher" 2>/dev/null
     summarize "$log"
   fi
 done

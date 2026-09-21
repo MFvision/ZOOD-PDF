@@ -35,6 +35,17 @@ public enum AppGroup {
         containerURL.appending(path: "recents.json")
     }
 
+    /// The last Library searches, for the Library search widget.
+    public static var searchesFileURL: URL {
+        containerURL.appending(path: "searches.json")
+    }
+
+    /// Settings the widgets and intents read too (the pending route, whether
+    /// a scan is possible), beside the app's own defaults.
+    public static var sharedDefaults: UserDefaults {
+        UserDefaults(suiteName: identifier) ?? .standard
+    }
+
     /// Makes a folder if it is not there yet.
     @discardableResult
     public static func ensure(_ url: URL) -> URL {
