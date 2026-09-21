@@ -62,7 +62,9 @@ final class ViewUITests: XCTestCase {
 
         // By the outline the core read.
         ui.more("document.outline", label: "Outline")
-        let entry = ui.app.buttons["outline.1"]
+        // The flat list numbers every entry: the second chapter is 2 (its
+        // introduction, 1, is folded under the first).
+        let entry = ui.app.buttons["outline.2"]
         XCTAssertTrue(entry.waitForExistence(timeout: 15), "the outline lists the chapters")
         XCTAssertTrue(entry.label.contains("الفصل الثاني"), entry.label)
         entry.tap()
