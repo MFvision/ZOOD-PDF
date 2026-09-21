@@ -13,7 +13,6 @@ struct PagesGridView: View {
     @Environment(\.undoManager) private var undoManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.locale) private var locale
-    @State private var dragging: Int?
     @State private var dropTarget: Int?
     @State private var showingImporter = false
     @State private var importPassword = ""
@@ -122,7 +121,6 @@ struct PagesGridView: View {
             pages.undoManager = undoManager
             pages.locale = locale
         }
-        .sensoryFeedback(.impact(weight: .light), trigger: dragging != nil)
         .sensoryFeedback(.success, trigger: model.revision)
         .accessibilityIdentifier("pages.grid")
     }
@@ -158,7 +156,6 @@ struct PagesGridView: View {
                             .transition(.scale.combined(with: .opacity))
                     }
                 }
-                .opacity(dragging == page ? 0.35 : 1)
                 .overlay(alignment: .leading) {
                     if dropTarget == page {
                         RoundedRectangle(cornerRadius: 2)
@@ -171,11 +168,9 @@ struct PagesGridView: View {
         .buttonStyle(.pressable)
         .draggable(PageDragItem(page: page)) {
             PageThumbnail(model: model, cache: cache, page: page, width: 90)
-                .onAppear { dragging = page }
         }
         .dropDestination(for: PageDragItem.self) { moved, _ in
             dropTarget = nil
-            dragging = nil
             let indices = moved.map(\.page)
             let group = pages.selection.contains(indices.first ?? -1) ? pages.selected : indices
             // Dragged forward, the page lands after the one it is dropped on;
@@ -186,14 +181,8 @@ struct PagesGridView: View {
         } isTargeted: { over in
             dropTarget = over ? page : (dropTarget == page ? nil : dropTarget)
         }
-        .contextMenu {
-            Button("Rotate right", systemImage: "rotate.right") { pages.rotate([page], quarterTurns: 1) }
-            Button("Rotate left", systemImage: "rotate.left") { pages.rotate([page], quarterTurns: -1) }
-            Button("Insert blank page after", systemImage: "doc.badge.plus") { pages.insertBlank(after: page) }
-            Button("Extract this page", systemImage: "square.and.arrow.up") { pages.extract([page]) }
-            Divider()
-            Button("Delete", systemImage: "trash", role: .destructive) { pages.delete([page]) }
-        }
+        // No context menu on a cell: a long press is the lift of a drag (a
+        // menu would take the press first); the bar does everything else.
         .accessibilityLabel(Text("Page \(page + 1)"))
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityIdentifier("pages.cell.\(page)")
@@ -230,6 +219,8 @@ struct PagesGridView: View {
         .accessibilityIdentifier("pages.insert")
         Spacer()
         Menu {
+            Button("Rotate left", systemImage: "rotate.left") { pages.rotate(chosen, quarterTurns: -1) }
+                .accessibilityIdentifier("pages.rotateLeft")
             Button("Extract selected pages", systemImage: "square.and.arrow.up") { pages.extract(chosen) }
                 .accessibilityIdentifier("pages.extract")
             Button("Split into files…", systemImage: "square.split.2x1") { showingSplit = true }
