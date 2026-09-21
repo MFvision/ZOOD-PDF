@@ -18,7 +18,7 @@ final class OrganizeUITests: XCTestCase {
         XCTAssertTrue(third.waitForExistence(timeout: 15))
         XCTAssertTrue(first.waitForExistence(timeout: 5))
         // Lift the third page and drop it on the first's place.
-        third.press(forDuration: 0.9, thenDragTo: first, withVelocity: .slow, thenHoldForDuration: 0.4)
+        third.press(forDuration: 0.7, thenDragTo: first, withVelocity: .slow, thenHoldForDuration: 0.5)
         let done = ui.app.buttons["pages.done"]
         XCTAssertTrue(done.waitForExistence(timeout: 10))
         done.tap()
