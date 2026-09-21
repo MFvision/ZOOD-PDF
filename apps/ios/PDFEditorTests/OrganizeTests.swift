@@ -37,7 +37,7 @@ final class OrganizeTests: XCTestCase {
             if Date() > deadline { throw XCTSkip("timed out") }
             try await Task.sleep(for: .milliseconds(30))
         }
-        XCTAssertNil(pages.error, pages.error ?? "")
+        XCTAssertNil(pages.error, "\(String(describing: pages.error))")
     }
 
     func testMoveRotateDeleteInsertCropThroughTheCore() async throws {
