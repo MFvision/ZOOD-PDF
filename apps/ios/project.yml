@@ -1,0 +1,276 @@
+# محرر PDF for iPhone and iPad. XcodeGen 2.46 turns this into PDFEditor.xcodeproj
+# (git-ignored): scripts/ios/build.sh does that, builds, tests and takes the
+# screenshots. The core is apps/ios/Vendor/WarraqCore.xcframework, built by
+# scripts/ios/build-core.sh (also git-ignored).
+name: PDFEditor
+options:
+  minimumXcodeGenVersion: 2.46.0
+  bundleIdPrefix: app.warraq
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "27.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+  groupSortPosition: top
+  defaultConfig: Debug
+
+configs:
+  Debug: debug
+  Release: release
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY: YES
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+    # Simulator only on this Mac: there is no signing identity here. Ad-hoc
+    # signing keeps the entitlements (the App Group) on the simulator; a
+    # device or TestFlight needs the owner's Apple Developer team.
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+    PROVISIONING_PROFILE_SPECIFIER: ""
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+    CLANG_ENABLE_MODULES: YES
+    # The C ABI's module map ships inside the XCFramework's Headers folder.
+    OTHER_SWIFT_FLAGS: "$(inherited) -Xcc -fmodule-map-file=$(PROJECT_DIR)/Vendor/WarraqCore.xcframework/ios-arm64-simulator/Headers/module.modulemap"
+  configs:
+    Debug:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+      ONLY_ACTIVE_ARCH: YES
+
+targets:
+  # ---- the app -------------------------------------------------------------
+  PDFEditor:
+    type: application
+    platform: iOS
+    sources:
+      - path: PDFEditor
+      - path: Shared
+    dependencies:
+      - target: WarraqCore
+        embed: false
+      - framework: Vendor/WarraqCore.xcframework
+        embed: false
+      - target: Widgets
+      - target: ShareExtension
+      - sdk: PDFKit.framework
+    entitlements:
+      path: PDFEditor/PDFEditor.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.app.warraq
+    info:
+      path: PDFEditor/Info.plist
+      properties:
+        CFBundleDisplayName: محرر PDF
+        CFBundleName: محرر PDF
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        CFBundleDevelopmentRegion: ar
+        CFBundleLocalizations: [ar, en]
+        LSRequiresIPhoneOS: true
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen: {}
+        UIApplicationSupportsMultipleScenes: true
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIRequiresFullScreen: false
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        UISupportsDocumentBrowser: true
+        # Widgets open a document with pdfeditor://open/<id>.
+        CFBundleURLTypes:
+          - CFBundleURLName: app.warraq.ios
+            CFBundleURLSchemes: [pdfeditor]
+        # Opened from Files, Mail, Safari and "Open in": PDFs. Images are
+        # registered by the scanner once it turns them into PDFs.
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: PDF document
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - com.adobe.pdf
+        # The privacy strings are localized in InfoPlist.xcstrings (Arabic
+        # and English); these are the fallbacks.
+        NSCameraUsageDescription: "The camera scans paper documents into PDFs. Nothing leaves the device."
+        NSPhotoLibraryUsageDescription: "Photos you choose become pages of a PDF. Nothing leaves the device."
+        NSPhotoLibraryAddUsageDescription: "Pages you export as pictures are saved to your photos."
+        NSFaceIDUsageDescription: "Face ID unlocks the app when you turn on the app lock."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.warraq.ios
+        PRODUCT_NAME: PDFEditor
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        ENABLE_PREVIEWS: YES
+    scheme:
+      testTargets:
+        - PDFEditorTests
+        - PDFEditorUITests
+      gatherCoverageData: false
+      environmentVariables:
+        - variable: WARRAQ_SCREENSHOT_DIR
+          value: ""
+          isEnabled: false
+
+  # ---- the Swift wrapper around the C ABI ----------------------------------
+  # A static framework: its code is linked into whichever target imports it
+  # (the app, the extensions), and the XCFramework's libwarraq_core.a with it.
+  WarraqCore:
+    type: framework
+    platform: iOS
+    sources:
+      - path: WarraqCore/Sources
+    dependencies:
+      - framework: Vendor/WarraqCore.xcframework
+        embed: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.warraq.ios.core
+        PRODUCT_NAME: WarraqCore
+        MACH_O_TYPE: staticlib
+        SKIP_INSTALL: YES
+        DEFINES_MODULE: YES
+        BUILD_LIBRARY_FOR_DISTRIBUTION: NO
+        GENERATE_INFOPLIST_FILE: YES
+
+  # ---- Home Screen widgets --------------------------------------------------
+  Widgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+      - path: Shared
+    entitlements:
+      path: Widgets/Widgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.app.warraq
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: محرر PDF
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        CFBundleDevelopmentRegion: ar
+        CFBundleLocalizations: [ar, en]
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.warraq.ios.widgets
+        PRODUCT_NAME: Widgets
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
+
+  # ---- "Save to محرر PDF" in the share sheet --------------------------------
+  ShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ShareExtension
+      - path: Shared
+    entitlements:
+      path: ShareExtension/ShareExtension.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.app.warraq
+    info:
+      path: ShareExtension/Info.plist
+      properties:
+        CFBundleDisplayName: محرر PDF
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        CFBundleDevelopmentRegion: ar
+        CFBundleLocalizations: [ar, en]
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            # Offered for anything shared that holds at least one PDF.
+            NSExtensionActivationRule: 'SUBQUERY(extensionItems, $extensionItem, SUBQUERY($extensionItem.attachments, $attachment, ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.adobe.pdf").@count >= 1).@count >= 1'
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.warraq.ios.share
+        PRODUCT_NAME: ShareExtension
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
+
+  # ---- tests ----------------------------------------------------------------
+  PDFEditorTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: PDFEditorTests
+      # Corpus files, straight from tests/corpus, copied into the test bundle.
+      - path: ../../tests/corpus/arabic/generated/coretext-sfarabic-mixed-invoice.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/raw-amiri-cid-identity-tounicode.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/variant-encrypted-rc4-40.pdf
+        buildPhase: resources
+    dependencies:
+      - target: PDFEditor
+      # The wrapper's code is already inside the host app; the tests need only
+      # its module to compile against.
+      - target: WarraqCore
+        link: false
+        embed: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.warraq.ios.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+  PDFEditorUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: PDFEditorUITests
+      - path: ../../tests/corpus/arabic/generated/coretext-sfarabic-mixed-invoice.pdf
+        buildPhase: resources
+    dependencies:
+      - target: PDFEditor
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.warraq.ios.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: PDFEditor
+
+schemes:
+  PDFEditor:
+    build:
+      targets:
+        PDFEditor: all
+        WarraqCore: all
+        Widgets: all
+        ShareExtension: all
+        PDFEditorTests: [test]
+        PDFEditorUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - PDFEditorTests
+        - PDFEditorUITests
+      # Screenshots go where scripts/ios/build.sh says (TEST_RUNNER_… variables).
+    archive:
+      config: Release

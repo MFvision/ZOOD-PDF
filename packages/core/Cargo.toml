@@ -35,3 +35,15 @@ strip = true
 
 [profile.release.package."*"]
 opt-level = 3
+
+# The phone build (scripts/ios/build-core.sh): release, but unwinding, so a
+# panic on hostile input is caught at the C ABI (ffi.rs) and answered as an
+# error instead of ending the app. No cross-crate LTO: a static library built
+# with it holds LLVM bitcode from rustc's LLVM, which Xcode's older linker
+# cannot read ("Unknown attribute kind"); without it the archive is native
+# objects, and Xcode's linker drops what the app does not use.
+[profile.ios]
+inherits = "release"
+panic = "unwind"
+lto = false
+codegen-units = 16

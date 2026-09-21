@@ -7,6 +7,8 @@ use warraq_text::{
     SearchNormalization, TextLine,
 };
 
+#[cfg(feature = "ffi")]
+pub mod ffi;
 pub mod tables;
 pub mod tools;
 #[cfg(target_arch = "wasm32")]

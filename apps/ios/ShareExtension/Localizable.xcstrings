@@ -1,0 +1,47 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%lld files saved. Find them under My documents." : {
+      "localizations" : {
+        "ar" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "حُفظ ملف واحد. تجده تحت «مستنداتي»." } },
+              "two" : { "stringUnit" : { "state" : "translated", "value" : "حُفظ ملفان. تجدهما تحت «مستنداتي»." } },
+              "few" : { "stringUnit" : { "state" : "translated", "value" : "حُفظت %lld ملفات. تجدها تحت «مستنداتي»." } },
+              "many" : { "stringUnit" : { "state" : "translated", "value" : "حُفظ %lld ملفًا. تجدها تحت «مستنداتي»." } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "حُفظ %lld ملف. تجدها تحت «مستنداتي»." } }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld file saved. Find it under My documents." } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld files saved. Find them under My documents." } }
+            }
+          }
+        }
+      }
+    },
+    "Could not save" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّر الحفظ" } } }
+    },
+    "Done" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تم" } } }
+    },
+    "Nothing shared was a PDF." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لم يكن بين ما شاركته ملف PDF." } } }
+    },
+    "Saved to محرر PDF" : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "حُفظ في محرر PDF" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Saved to ⁧محرر PDF⁩" } }
+      }
+    },
+    "Saving…" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "جارٍ الحفظ…" } } }
+    }
+  },
+  "version" : "1.0"
+}

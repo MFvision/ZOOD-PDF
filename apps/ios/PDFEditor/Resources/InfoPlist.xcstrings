@@ -1,0 +1,48 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "محرر PDF" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "محرر PDF" } }
+      }
+    },
+    "CFBundleName" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "محرر PDF" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "محرر PDF" } }
+      }
+    },
+    "NSCameraUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "تمسح الكاميرا المستندات الورقية إلى ملفات PDF. لا شيء يغادر الجهاز." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The camera scans paper documents into PDFs. Nothing leaves the device." } }
+      }
+    },
+    "NSFaceIDUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "يفتح Face ID التطبيق عند تشغيل قفل التطبيق." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Face ID unlocks the app when you turn on the app lock." } }
+      }
+    },
+    "NSPhotoLibraryAddUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "تُحفظ الصفحات التي تصدّرها كصور في صورك." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pages you export as pictures are saved to your photos." } }
+      }
+    },
+    "NSPhotoLibraryUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "تصبح الصور التي تختارها صفحات في ملف PDF. لا شيء يغادر الجهاز." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Photos you choose become pages of a PDF. Nothing leaves the device." } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

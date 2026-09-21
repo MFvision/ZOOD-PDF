@@ -1,0 +1,240 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ · %@" : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ · %2$@" } }
+      }
+    },
+    "%@ will be deleted from this device." : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "سيُحذف %@ من هذا الجهاز." } }
+      }
+    },
+    "%@: %@" : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "%1$@: %2$@" } }
+      }
+    },
+    "%lld pages · %@" : {
+      "localizations" : {
+        "ar" : {
+          "variations" : {
+            "plural" : {
+              "zero" : { "stringUnit" : { "state" : "translated", "value" : "لا صفحات · %2$@" } },
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "صفحة واحدة · %2$@" } },
+              "two" : { "stringUnit" : { "state" : "translated", "value" : "صفحتان · %2$@" } },
+              "few" : { "stringUnit" : { "state" : "translated", "value" : "%1$lld صفحات · %2$@" } },
+              "many" : { "stringUnit" : { "state" : "translated", "value" : "%1$lld صفحة · %2$@" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%1$lld صفحة · %2$@" } }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%1$lld page · %2$@" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%1$lld pages · %2$@" } }
+            }
+          }
+        }
+      }
+    },
+    "About" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "حول" } } }
+    },
+    "Appearance" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المظهر" } } }
+    },
+    "Author" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المؤلف" } } }
+    },
+    "Cannot draw this file" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّر رسم هذا الملف" } } }
+    },
+    "Cannot open this file" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّر فتح هذا الملف" } } }
+    },
+    "Choose a document, or open one from Files." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "اختر مستندًا، أو افتح واحدًا من تطبيق الملفات." } } }
+    },
+    "Core" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "النواة" } } }
+    },
+    "Could not open" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّر الفتح" } } }
+    },
+    "Could not save" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّر الحفظ" } } }
+    },
+    "Creator" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المنشئ" } } }
+    },
+    "Dark" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "داكن" } } }
+    },
+    "Delete" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "حذف" } } }
+    },
+    "Delete this document?" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "هل تريد حذف هذا المستند؟" } } }
+    },
+    "Document" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المستند" } } }
+    },
+    "Documents you open appear here, with their first page." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تظهر هنا المستندات التي تفتحها، مع صفحتها الأولى." } } }
+    },
+    "Done" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تم" } } }
+    },
+    "Edited" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مُعدَّل" } } }
+    },
+    "Engine" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المحرّك" } } }
+    },
+    "English" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "English" } } }
+    },
+    "Enter its password to open it." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "أدخل كلمة مروره لفتحه." } } }
+    },
+    "Info" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "معلومات" } } }
+    },
+    "Interface" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الواجهة" } } }
+    },
+    "Language" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "اللغة" } } }
+    },
+    "Left to right" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "من اليسار إلى اليمين" } } }
+    },
+    "Library" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المكتبة" } } }
+    },
+    "Light" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "فاتح" } } }
+    },
+    "My documents" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مستنداتي" } } }
+    },
+    "No" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا" } } }
+    },
+    "No document open" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا مستند مفتوح" } } }
+    },
+    "No documents yet" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا مستندات بعد" } } }
+    },
+    "Nothing leaves this device." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا شيء يغادر هذا الجهاز." } } }
+    },
+    "Nothing opened yet" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لم يُفتح شيء بعد" } } }
+    },
+    "OK" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "حسنًا" } } }
+    },
+    "Open" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "فتح" } } }
+    },
+    "Open in New Window" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "فتح في نافذة جديدة" } } }
+    },
+    "Open in the Settings app" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "فتح في تطبيق الإعدادات" } } }
+    },
+    "Open…" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "فتح…" } } }
+    },
+    "Opening…" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "جارٍ الفتح…" } } }
+    },
+    "Opens the document" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يفتح المستند" } } }
+    },
+    "Page %lld of %lld" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "صفحة %1$lld من %2$lld" } } }
+    },
+    "Pages" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الصفحات" } } }
+    },
+    "Pages drawn by" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تُرسم الصفحات بـ" } } }
+    },
+    "Password" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "كلمة المرور" } } }
+    },
+    "PDFs saved here from the share sheet, and scans, appear in this list." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تظهر في هذه القائمة ملفات PDF المحفوظة هنا من ورقة المشاركة، والمستندات الممسوحة." } } }
+    },
+    "Privacy" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الخصوصية" } } }
+    },
+    "Producer" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المنتِج" } } }
+    },
+    "Protected" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "محمي" } } }
+    },
+    "Reading direction" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "اتجاه القراءة" } } }
+    },
+    "Recents" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الأخيرة" } } }
+    },
+    "Remove from Recents" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إزالة من الأخيرة" } } }
+    },
+    "Right to left" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "من اليمين إلى اليسار" } } }
+    },
+    "Save" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "حفظ" } } }
+    },
+    "Search by name" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "بحث بالاسم" } } }
+    },
+    "Settings" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الإعدادات" } } }
+    },
+    "System appearance" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مظهر النظام" } } }
+    },
+    "System language" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لغة النظام" } } }
+    },
+    "That password is not right. Try again." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "كلمة المرور غير صحيحة. حاول مرة أخرى." } } }
+    },
+    "The pages could not be drawn on this device." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّر رسم الصفحات على هذا الجهاز." } } }
+    },
+    "The system's own parts — alerts, the file browser — follow the language from the next launch. The Settings app can set it too." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "أجزاء النظام نفسه — التنبيهات ومتصفح الملفات — تتبع اللغة من التشغيل التالي. ويمكن ضبطها من تطبيق الإعدادات أيضًا." } } }
+    },
+    "This document is protected" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "هذا المستند محمي" } } }
+    },
+    "This file is no longer where it was." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لم يعد هذا الملف في مكانه." } } }
+    },
+    "Title" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "العنوان" } } }
+    },
+    "Version" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الإصدار" } } }
+    },
+    "Yes" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "نعم" } } }
+    },
+    "العربية" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "العربية" } } }
+    }
+  },
+  "version" : "1.0"
+}
