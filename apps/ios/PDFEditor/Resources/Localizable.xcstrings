@@ -379,6 +379,9 @@
     "Saved as a note" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "حُفظ كملاحظة" } } }
     },
+    "Saved to My documents" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "حُفظ في مستنداتي" } } }
+    },
     "Saving…" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "جارٍ الحفظ…" } } }
     },

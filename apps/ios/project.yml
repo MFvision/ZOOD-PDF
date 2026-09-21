@@ -105,14 +105,19 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: app.warraq.ios
             CFBundleURLSchemes: [pdfeditor]
-        # Opened from Files, Mail, Safari and "Open in": PDFs. Images are
-        # registered by the scanner once it turns them into PDFs.
+        # Opened from Files, Mail, Safari and "Open in": PDFs, and pictures
+        # (shown as a one-page PDF of the picture, with the scanner offered).
         CFBundleDocumentTypes:
           - CFBundleTypeName: PDF document
             CFBundleTypeRole: Editor
             LSHandlerRank: Alternate
             LSItemContentTypes:
               - com.adobe.pdf
+          - CFBundleTypeName: Picture
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - public.image
         # The privacy strings are localized in InfoPlist.xcstrings (Arabic
         # and English); these are the fallbacks.
         NSCameraUsageDescription: "The camera scans paper documents into PDFs. Nothing leaves the device."

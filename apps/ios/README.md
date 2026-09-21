@@ -17,6 +17,8 @@ apps/ios/
     Library/             LibraryShell (split view / stack), DocumentGrid, LibraryModel
     Document/            DocumentModel, PDFEditorDocument (DocumentGroup), DocumentView, PDFKitView
     Settings/            SettingsView
+    Scan/                ScanView (the scanner), ScanSession, ScanPipeline, TextRecognizer (Vision OCR),
+                         IDPageComposer, BookScan, CornerEditor, the enhance/text/save sheets
     Design/              Theme (tokens), Components (press style, toolbar status, sheet, grid cell, empty state)
     Resources/           Assets.xcassets (icon, accent), Localizable.xcstrings, InfoPlist.xcstrings
   WarraqCore/Sources/    the Swift wrapper: actor Core, CoreError, the typed results
@@ -107,8 +109,11 @@ xcodebuild -project apps/ios/PDFEditor.xcodeproj -scheme PDFEditor \
 - A UI test launches the app with its settings on the command line —
   `-language ar|en`, `-appearance light|dark` (the app's own UserDefaults
   keys), `-AppleLanguages (ar)` for the system's frameworks — and, in
-  Debug builds only, `-warraqReset 1` (an empty Library first) and
-  `-warraqOpen <path>` (open that file). Corpus files listed under the
+  Debug builds only, `-warraqReset 1` (an empty Library first),
+  `-warraqOpen <path>` (open that file), `-warraqDocumentsFolder <path>`
+  (the app's Documents folder for that run, so a test can read what it
+  saved), `-warraqScan <path>[,<path>…]` (open the scanner on those
+  photos) and `-warraqScanMode document|idCard|passport|book`. Corpus files listed under the
   test target in `project.yml` are in the test bundle. Screenshots are
   written where `WARRAQ_SCREENSHOT_DIR` says, named
   `<screen>-<language>-<appearance>-<device>.jpg`.
@@ -122,6 +127,31 @@ xcodebuild -project apps/ios/PDFEditor.xcodeproj -scheme PDFEditor \
   text layer, exports) is `Core.callStatic(op:args:blobs:)`.
 - New sidebar sections join `LibrarySection`; new settings join
   `SettingsView`; new widgets join `WidgetsBundle`.
+
+## The scanner (`PDFEditor/Scan/`)
+
+- `ScanView` is the screen (opened from the Library's toolbar, or on a
+  photo handed to the app): the mode across the top, the page on the
+  stage with the edges Vision found, the page stack along the bottom
+  (drag to reorder; long-press for corners, retake, delete), the shutter.
+  `DocumentCameraView` wraps VisionKit's camera where `isSupported`; the
+  simulator has none, so the shutter chooses a photo and says so.
+- `ScanSession` is the model: the pages, each with its corners and
+  `Enhancement`, processed off the main thread by `ScanPipeline` (pure
+  functions: Vision segmentation → perspective correction → deskew →
+  lighting → creases → contrast → sharpen → colour mode), plus
+  `IDPageComposer` (front and back at ISO ID-1 size on A4) and
+  `BookSplitter`/`BookFlattener` (the gutter, the lines' bow).
+- `TextRecognizer` is Vision's `VNRecognizeTextRequest`; the languages
+  are the device's own list, shown in Settings. `ScanExporter` makes the
+  PDF through the core (`create.images`, then `ocr.add_text_layer` with
+  the page angle and the bundled Amiri face), so the layer is the same
+  one every host writes.
+- Tests: `PDFEditorTests/ScanPipelineTests` (fixtures: the corpus's
+  shadowed and crooked scans, `photo-arabic.jpg`, and the synthetic
+  pictures in `tests/fixtures/scan/`, made by `make_fixtures.py`) and
+  `PDFEditorUITests/ScanTests` (the photo from the simulator's library,
+  which `scripts/ios/build.sh` adds with `simctl addmedia`).
 
 ## What the simulator cannot do
 

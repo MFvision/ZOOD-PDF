@@ -33,9 +33,14 @@ struct ScanView: View {
         let id: UUID
     }
 
-    init(mode: ScanMode = .document, documentsFolder: URL? = nil, onSaved: @escaping (URL) -> Void) {
+    /// Pictures the scanner starts with: a photo handed to the app from
+    /// Files or another app.
+    private let initialImages: [CGImage]
+
+    init(mode: ScanMode = .document, images: [CGImage] = [], documentsFolder: URL? = nil, onSaved: @escaping (URL) -> Void) {
         let folder = documentsFolder ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         _session = State(initialValue: ScanSession(mode: mode, documentsFolder: folder))
+        initialImages = images
         self.onSaved = onSaved
     }
 
@@ -60,7 +65,12 @@ struct ScanView: View {
             .toolbar { toolbar }
         }
         .onAppear(perform: applyStoredSettings)
-        .task { loadLaunchArguments() }
+        .task {
+            if !initialImages.isEmpty, session.pages.isEmpty {
+                take(initialImages)
+            }
+            loadLaunchArguments()
+        }
         .fullScreenCover(isPresented: $showingCamera) {
             DocumentCameraView { images in
                 showingCamera = false
@@ -69,7 +79,7 @@ struct ScanView: View {
                 showingCamera = false
             } onError: { message in
                 showingCamera = false
-                session.error = message
+                session.error = LocalizedStringKey(message)
             }
             .ignoresSafeArea()
         }
@@ -92,7 +102,8 @@ struct ScanView: View {
                     editingCorners = nil
                 } onAuto: {
                     let image = page.original
-                    return await Task.detached { ScanPipeline.detectPage(in: image) }.value
+                    let book = session.mode == .book
+                    return await Task.detached { book ? ScanPipeline.detectSpread(in: image) : ScanPipeline.detectPage(in: image) }.value
                 }
             }
         }
@@ -315,7 +326,7 @@ struct ScanView: View {
             }
         }
         if images.isEmpty {
-            session.error = String(localized: "None of the chosen pictures could be read.")
+            session.error = "None of the chosen pictures could be read."
             retaking = nil
             return
         }
@@ -332,7 +343,7 @@ struct ScanView: View {
             }
         }
         if images.isEmpty {
-            session.error = String(localized: "None of the chosen pictures could be read.")
+            session.error = "None of the chosen pictures could be read."
             retaking = nil
             return
         }

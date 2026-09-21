@@ -299,7 +299,10 @@ final class ScanPipelineTests: XCTestCase {
 
     func testBookSpreadSplitsAtTheGutterAndLinesAreFlattened() throws {
         let spread = try photo("book-spread")
-        let quad = ScanPipeline.detectPage(in: spread) ?? .whole(CGSize(width: spread.width, height: spread.height))
+        ScanPipeline.printDetections(in: spread, name: "book-spread")
+        ScanPipeline.printDetections(in: try photo("photo-arabic"), name: "photo-arabic")
+        let quad = try XCTUnwrap(ScanPipeline.detectSpread(in: spread), "the spread is found")
+        XCTAssertGreaterThan(quad.coverage(of: CGSize(width: spread.width, height: spread.height)), 0.5, "both pages, not one")
         let cut = ScanPipeline.corrected(spread, quad: quad)
         let split = BookSplitter.split(cut)
         XCTAssertTrue(split.found, "the gutter stands out")

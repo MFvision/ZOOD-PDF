@@ -67,6 +67,12 @@ struct Quad: Equatable, Sendable, Codable {
         return CGSize(width: max(top, bottom).rounded(), height: max(left, right).rounded())
     }
 
+    /// The box around the corners.
+    var bounds: CGRect {
+        let xs = points.map(\.x), ys = points.map(\.y)
+        return CGRect(x: xs.min() ?? 0, y: ys.min() ?? 0, width: (xs.max() ?? 0) - (xs.min() ?? 0), height: (ys.max() ?? 0) - (ys.min() ?? 0))
+    }
+
     /// How much of the picture the quad covers, 0 to 1.
     func coverage(of size: CGSize) -> CGFloat {
         guard size.width > 0, size.height > 0 else { return 0 }
@@ -145,45 +151,88 @@ enum ScanPipeline {
 
     // MARK: - Finding the page
 
-    /// Where the page is in a photo: Vision's document segmentation, or
-    /// its rectangle detector when that finds nothing, or nil when neither
-    /// does (the caller takes the whole picture).
+    /// Where the page is in a photo: Vision's document segmentation when
+    /// it answers something page-shaped, else its rectangle detector's
+    /// best rectangle, else nil (the caller takes the whole picture). On
+    /// the simulator the segmentation model has answered a band along the
+    /// bottom of a photo with 0.97 confidence (`ScanPipelineTests` logs
+    /// what both detectors say); `plausible` is what keeps that out.
     static func detectPage(in image: CGImage) -> Quad? {
         let size = CGSize(width: image.width, height: image.height)
         let handler = VNImageRequestHandler(cgImage: image, options: [:])
-        let segmentation = VNDetectDocumentSegmentationRequest()
-        if (try? handler.perform([segmentation])) != nil,
-           let found = segmentation.results?.first, found.confidence > 0.3 {
-            let quad = quad(from: found, in: size)
-            if plausible(quad, in: size) {
-                return quad
+        if let quad = segmentedPage(handler, in: size), plausible(quad, in: size) {
+            return quad
+        }
+        return rectangles(handler, in: size, count: 1).first { plausible($0, in: size) }
+    }
+
+    /// An open book: the whole spread. Segmentation when it answers
+    /// something plausible; else the two largest rectangles side by side —
+    /// the two pages, which the rectangle detector sees one at a time —
+    /// joined into one quad; else the one rectangle; else nil.
+    static func detectSpread(in image: CGImage) -> Quad? {
+        let size = CGSize(width: image.width, height: image.height)
+        let handler = VNImageRequestHandler(cgImage: image, options: [:])
+        if let quad = segmentedPage(handler, in: size), plausible(quad, in: size), quad.coverage(of: size) > 0.4 {
+            return quad
+        }
+        let found = rectangles(handler, in: size, count: 4)
+            .filter { plausible($0, in: size) }
+            .sorted { $0.coverage(of: size) > $1.coverage(of: size) }
+        if found.count >= 2 {
+            let (left, right) = found[0].bounds.midX < found[1].bounds.midX ? (found[0], found[1]) : (found[1], found[0])
+            let leftEdge = max(left.topRight.x, left.bottomRight.x)
+            let rightEdge = min(right.topLeft.x, right.bottomLeft.x)
+            let overlap = min(left.bounds.maxY, right.bounds.maxY) - max(left.bounds.minY, right.bounds.minY)
+            // Side by side: hardly overlapping across, mostly overlapping down.
+            if rightEdge >= leftEdge - size.width * 0.05, overlap > 0.6 * min(left.bounds.height, right.bounds.height) {
+                return Quad(topLeft: left.topLeft, topRight: right.topRight, bottomRight: right.bottomRight, bottomLeft: left.bottomLeft)
             }
         }
-        let rectangles = VNDetectRectanglesRequest()
-        rectangles.minimumAspectRatio = 0.2
-        rectangles.maximumAspectRatio = 1.0
-        rectangles.quadratureTolerance = 35
-        rectangles.minimumSize = 0.15
-        rectangles.minimumConfidence = 0.5
-        rectangles.maximumObservations = 1
-        if (try? handler.perform([rectangles])) != nil, let found = rectangles.results?.first {
-            let quad = quad(from: found, in: size)
-            if plausible(quad, in: size) {
-                return quad
-            }
+        return found.first
+    }
+
+    private static func segmentedPage(_ handler: VNImageRequestHandler, in size: CGSize) -> Quad? {
+        let request = VNDetectDocumentSegmentationRequest()
+        guard (try? handler.perform([request])) != nil, let found = request.results?.first, found.confidence > 0.3 else {
+            return nil
         }
-        return nil
+        return quad(from: found, in: size)
+    }
+
+    /// The rectangle detector's best `count` rectangles, most confident first.
+    private static func rectangles(_ handler: VNImageRequestHandler, in size: CGSize, count: Int) -> [Quad] {
+        let request = VNDetectRectanglesRequest()
+        request.minimumAspectRatio = 0.2
+        request.maximumAspectRatio = 1.0
+        request.quadratureTolerance = 35
+        request.minimumSize = 0.15
+        request.minimumConfidence = 0.5
+        request.maximumObservations = count
+        guard (try? handler.perform([request])) != nil, let found = request.results else { return [] }
+        return found.map { quad(from: $0, in: size) }
     }
 
     /// A page, a card or a spread: convex, at least a tenth of the photo,
-    /// and no more than four times as wide as tall or tall as wide — a
-    /// sliver along an edge is a detector's mistake, not a page.
+    /// no more than four times as wide as tall or tall as wide, and not a
+    /// band along an edge — a small quad touching three of the photo's
+    /// borders is a detector's mistake, not a page.
     static func plausible(_ quad: Quad, in size: CGSize) -> Bool {
-        guard quad.isConvex, quad.coverage(of: size) > 0.1 else { return false }
+        guard quad.isConvex else { return false }
+        let coverage = quad.coverage(of: size)
+        guard coverage > 0.1 else { return false }
         let page = quad.pageSize
         guard page.width > 0, page.height > 0 else { return false }
         let aspect = page.width / page.height
-        return aspect > 0.25 && aspect < 4
+        guard aspect > 0.25, aspect < 4 else { return false }
+        let bounds = quad.bounds
+        let margin: CGFloat = 0.02
+        var touched = 0
+        if bounds.minX <= size.width * margin { touched += 1 }
+        if bounds.maxX >= size.width * (1 - margin) { touched += 1 }
+        if bounds.minY <= size.height * margin { touched += 1 }
+        if bounds.maxY >= size.height * (1 - margin) { touched += 1 }
+        return !(touched >= 3 && coverage < 0.5)
     }
 
     /// What Vision's two detectors answer for a picture, raw, for the tests'

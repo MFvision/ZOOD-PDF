@@ -16,6 +16,8 @@ struct DocumentView: View {
     @State private var showingInfo = false
     @State private var saveError: String?
     @State private var pageText: String?
+    @State private var showingScanner = false
+    @State private var scanSaved: URL?
 
     var body: some View {
         content
@@ -25,6 +27,20 @@ struct DocumentView: View {
             .toolbarRole(.editor)
             .sheet(isPresented: $showingInfo) {
                 DocumentInfoSheet(model: model)
+            }
+            // A document opened from a picture: the scanner enhances and reads it.
+            .fullScreenCover(isPresented: $showingScanner) {
+                if let image = model.sourceImage {
+                    ScanView(images: [image]) { url in
+                        scanSaved = url
+                    }
+                    .appEnvironment()
+                }
+            }
+            .alert("Saved to My documents", isPresented: Binding(get: { scanSaved != nil }, set: { if !$0 { scanSaved = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(verbatim: scanSaved?.lastPathComponent ?? "")
             }
             .alert("Could not save", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
                 Button("OK", role: .cancel) {}
@@ -89,6 +105,12 @@ struct DocumentView: View {
             ToolbarStatus(title: model.name, subtitle: status)
         }
         ToolbarItemGroup(placement: .primaryAction) {
+            if model.sourceImage != nil {
+                Button("Scan", systemImage: "doc.viewfinder") {
+                    showingScanner = true
+                }
+                .accessibilityIdentifier("document.scan")
+            }
             if model.isEdited, model.url != nil {
                 Button("Save", systemImage: "square.and.arrow.down") {
                     Task {

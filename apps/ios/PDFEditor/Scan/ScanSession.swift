@@ -129,7 +129,9 @@ final class ScanSession {
     let supportedLanguages: [String]
     private(set) var isBusy = false
     private(set) var busyMessage: LocalizedStringKey?
-    var error: String?
+    /// Something that went wrong, shown once: one of the app's own messages
+    /// (a key of the String Catalog), or the system's.
+    var error: LocalizedStringKey?
     /// The PDF just written, and the text just read.
     private(set) var savedURL: URL?
     private(set) var recognizedText: String?
@@ -187,7 +189,7 @@ final class ScanSession {
             let placeholder = UUID()
             let mode = mode
             let detected = await Task.detached(priority: .userInitiated) { () -> (quad: Quad?, halves: (CGImage, CGImage)?) in
-                let quad = ScanPipeline.detectPage(in: image)
+                let quad = mode == .book ? ScanPipeline.detectSpread(in: image) : ScanPipeline.detectPage(in: image)
                 guard mode == .book else { return (quad, nil) }
                 let spread = ScanPipeline.corrected(image, quad: quad ?? .whole(CGSize(width: image.width, height: image.height)))
                 let split = BookSplitter.split(spread)
@@ -400,7 +402,7 @@ final class ScanSession {
 
     /// Writes the pages as a PDF into the Documents folder, with the text
     /// layer when OCR is on, and answers where it went.
-    func savePDF(named name: String) async throws -> URL {
+    func savePDF(named name: String, locale: Locale = .current) async throws -> URL {
         guard !pages.isEmpty else { throw ScanError.noPages }
         isBusy = true
         busyMessage = ocrEnabled ? "Reading the text…" : "Making the PDF…"
@@ -415,7 +417,7 @@ final class ScanSession {
         let pictures = outputPictures()
         let recognitions = ocrEnabled ? await recognize() : []
         busyMessage = "Making the PDF…"
-        let title = name.isEmpty ? Self.defaultName() : name
+        let title = name.isEmpty ? Self.defaultName(locale: locale) : name
         let made = try await ScanExporter.makePDF(pictures: pictures,
                                                    recognitions: recognitions.map { $0.recognition },
                                                    angles: recognitions.map { $0.angle }, title: title)
@@ -435,12 +437,14 @@ final class ScanSession {
         return url
     }
 
-    /// "Scan 2026-09-21 14.32".
-    nonisolated static func defaultName(now: Date = .now) -> String {
+    /// "Scan 2026-09-21 14.32" — a file name, so a String rather than a
+    /// `Text`: looked up for the interface's locale, which follows the
+    /// language chosen in Settings at once.
+    nonisolated static func defaultName(now: Date = .now, locale: Locale = .current) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd HH.mm"
-        return String(localized: "Scan") + " " + formatter.string(from: now)
+        return String(localized: "Scan", locale: locale) + " " + formatter.string(from: now)
     }
 
     /// A name a file system takes: no slashes or colons, nothing hidden, not empty.
@@ -453,18 +457,20 @@ final class ScanSession {
     }
 }
 
-enum ScanError: Error, LocalizedError {
+enum ScanError: Error {
     case noPages
     case noText
     case noFont
     case core(String)
 
-    var errorDescription: String? {
+    /// What the interface shows: the app's own message (a key of the
+    /// String Catalog), or the core's.
+    var message: LocalizedStringKey {
         switch self {
-        case .noPages: String(localized: "There are no pages to save yet.")
-        case .noText: String(localized: "No text was read.")
-        case .noFont: String(localized: "The text layer's font is missing from the app.")
-        case let .core(message): message
+        case .noPages: "There are no pages to save yet."
+        case .noText: "No text was read."
+        case .noFont: "The text layer's font is missing from the app."
+        case let .core(message): LocalizedStringKey(message)
         }
     }
 }

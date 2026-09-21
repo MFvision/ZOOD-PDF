@@ -122,6 +122,7 @@ struct HoldToCompareButton: View {
 /// reads named — and Arabic's absence said plainly where it is absent.
 struct ScanTextSheet: View {
     @Bindable var session: ScanSession
+    @Environment(\.locale) private var locale
     @State private var reading = false
     @State private var savedNote: URL?
     @State private var copied = 0
@@ -150,7 +151,7 @@ struct ScanTextSheet: View {
                             }
                             .accessibilityIdentifier("text.share")
                             Button("Save as note", systemImage: "note.text.badge.plus") {
-                                savedNote = try? session.saveText(named: ScanSession.defaultName())
+                                savedNote = try? session.saveText(named: ScanSession.defaultName(locale: locale))
                             }
                             .accessibilityIdentifier("text.note")
                         }
@@ -218,9 +219,10 @@ struct ScanTextSheet: View {
 struct SaveScanSheet: View {
     @Bindable var session: ScanSession
     let onSaved: (URL) -> Void
-    @State private var name = ScanSession.defaultName()
+    @Environment(\.locale) private var locale
+    @State private var name = ""
     @State private var saving = false
-    @State private var failure: String?
+    @State private var failure: LocalizedStringKey?
 
     var body: some View {
         AppSheet(title: "Save as PDF") {
@@ -270,6 +272,9 @@ struct SaveScanSheet: View {
             }
             .accessibilityIdentifier("save.form")
         }
+        .onAppear {
+            if name.isEmpty { name = ScanSession.defaultName(locale: locale) }
+        }
         .interactiveDismissDisabled(saving)
         .alert("Could not save", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } })) {
             Button("OK", role: .cancel) {}
@@ -282,12 +287,12 @@ struct SaveScanSheet: View {
         saving = true
         Task {
             do {
-                let url = try await session.savePDF(named: name)
+                let url = try await session.savePDF(named: name, locale: locale)
                 saving = false
                 onSaved(url)
             } catch {
                 saving = false
-                failure = error.localizedDescription
+                failure = (error as? ScanError)?.message ?? LocalizedStringKey(error.localizedDescription)
             }
         }
     }
