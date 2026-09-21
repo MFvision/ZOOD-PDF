@@ -301,21 +301,24 @@ enum ScanPipeline {
     /// evened out, folds smoothed, contrast stretched, ink sharpened, and
     /// last the colour mode.
     static func enhance(_ image: CGImage, with enhancement: Enhancement) -> EnhancedPage {
-        let source = downsized(image)
+        var source = downsized(image)
+        var bow: Double?
+        // A book page's curve first: it takes the bend out of every line
+        // and leaves them all tilted alike, which the deskew then measures
+        // sharply and takes out.
+        if enhancement.flattenCurvature {
+            let flat = BookFlattener.flattened(source)
+            bow = flat.bow
+            if flat.bow != nil {
+                source = flat.image
+            }
+        }
         var skew = 0.0
         var working = CIImage(cgImage: source)
         if enhancement.deskew {
             skew = skewAngle(of: source)
             if skew != 0 {
                 working = rotated(working, counterClockwiseDegrees: -skew)
-            }
-        }
-        var bow: Double?
-        if enhancement.flattenCurvature, let level = render(working) {
-            let flat = BookFlattener.flattened(level)
-            bow = flat.bow
-            if flat.bow != nil {
-                working = CIImage(cgImage: flat.image)
             }
         }
         if enhancement.flattenLighting {

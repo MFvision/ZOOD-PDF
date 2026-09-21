@@ -309,6 +309,9 @@ final class ScanPipelineTests: XCTestCase {
         XCTAssertEqual(Double(split.gutter), Double(cut.width) / 2, accuracy: Double(cut.width) * 0.06, "near the middle")
         XCTAssertEqual(Double(split.left.width), Double(split.right.width), accuracy: Double(cut.width) * 0.12)
 
+        // The bow as the flattener measures it: how far the ink strays from
+        // each line's own straight fit — the curve beyond the tilt, about a
+        // quarter of a parabola's sag; the tilt is the deskew's to take out.
         let samples = BookFlattener.lineSamples(in: split.left)
         XCTAssertGreaterThanOrEqual(samples.count, 5, "Vision finds the lines' characters")
         let shifts = try XCTUnwrap(BookFlattener.bowShifts(of: samples, width: CGFloat(split.left.width)))
@@ -316,10 +319,10 @@ final class ScanPipelineTests: XCTestCase {
         let flat = BookFlattener.flattened(split.left)
         let measuredBow = try XCTUnwrap(flat.bow)
         XCTAssertEqual(measuredBow, bow, accuracy: 0.01)
-        XCTAssertGreaterThan(bow, 4, "the fixture's lines are bowed")
+        XCTAssertGreaterThan(bow, 5, "the fixture's lines are bowed")
         let after = try XCTUnwrap(BookFlattener.bowShifts(of: BookFlattener.lineSamples(in: flat.image), width: CGFloat(flat.image.width)))
         let residual = (after.max() ?? 0) - (after.min() ?? 0)
-        print("SCAN-BOOK bow \(bow.rounded()) px → \(residual.rounded()) px after flattening")
+        print("SCAN-BOOK bow \(bow.rounded()) px → \(residual.rounded()) px after flattening (\(samples.count) lines)")
         XCTAssertLessThan(residual, bow / 2, "the bow is at least halved")
 
         // Through the pipeline as book mode runs it.

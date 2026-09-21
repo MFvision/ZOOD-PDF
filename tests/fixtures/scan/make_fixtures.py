@@ -92,8 +92,8 @@ def page_text(w, h, first_line, bow, towards_right):
 
 def book_spread():
     w, h = 1100, 1500
-    left = page_text(w, h, 0, 28, towards_right=True)
-    right = page_text(w, h, 5, 28, towards_right=False)
+    left = page_text(w, h, 0, 64, towards_right=True)
+    right = page_text(w, h, 5, 64, towards_right=False)
     gutter = 70
     spread = Image.new("RGB", (2 * w + gutter, h), (60, 58, 55))
     spread.paste(left, (0, 0))
