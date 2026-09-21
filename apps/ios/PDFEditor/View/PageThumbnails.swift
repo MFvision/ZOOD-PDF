@@ -7,7 +7,7 @@ import SwiftUI
 @MainActor @Observable
 final class PageThumbnailCache {
     private var images: [Key: UIImage] = [:]
-    private var inFlight: Set<Key> = []
+    @ObservationIgnored private var inFlight: Set<Key> = []
 
     private struct Key: Hashable {
         let revision: Int
