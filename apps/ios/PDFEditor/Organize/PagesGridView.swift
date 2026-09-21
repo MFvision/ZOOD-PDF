@@ -19,6 +19,7 @@ struct PagesGridView: View {
     @State private var pendingImport: Data?
     @State private var showingMerge = false
     @State private var photos: [PhotosPickerItem] = []
+    @State private var showingPhotos = false
     @State private var showingCrop = false
     @State private var showingSplit = false
     @State private var splitEvery = 1
@@ -63,6 +64,7 @@ struct PagesGridView: View {
             .fileImporter(isPresented: $showingImporter, allowedContentTypes: [.pdf], allowsMultipleSelection: showingMerge) { result in
                 handleImport(result)
             }
+            .photosPicker(isPresented: $showingPhotos, selection: $photos, maxSelectionCount: 50, matching: .images)
             .onChange(of: photos) { _, items in
                 guard !items.isEmpty else { return }
                 Task {
@@ -206,9 +208,10 @@ struct PagesGridView: View {
                 showingImporter = true
             }
             .accessibilityIdentifier("pages.insertFile")
-            PhotosPicker(selection: $photos, matching: .images) {
-                Label("Pictures…", systemImage: "photo")
+            Button("Pictures…", systemImage: "photo") {
+                showingPhotos = true
             }
+            .accessibilityIdentifier("pages.insertPictures")
             Button("Merge documents…", systemImage: "rectangle.stack.badge.plus") {
                 showingMerge = true
                 showingImporter = true
