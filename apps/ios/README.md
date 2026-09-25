@@ -17,7 +17,7 @@ apps/ios/
     Library/             LibraryShell (split view / stack), DocumentGrid, LibraryModel
     Document/            DocumentModel, PDFEditorDocument (DocumentGroup), DocumentView (the screen, its toolbar and sheets), PDFKitView (PDFView, page overlays)
     View/                PageSpace (user/stored/shown conversions), DocumentSearch (view.search + PDFKit highlights), SearchBar, PageThumbnails, OutlineView, ReaderModeView, GoToPageSheet, DocumentCommands, ViewSettings
-    Annotate/            AnnotationTool, AnnotationEditor (PDFKit annotations → file.rebase), PageOverlayView (gestures, PencilKit canvas, night filter), MarkupBar, NoteSheet, StampSheet (marks.add), SignatureStore/Sheet/Placer (images.add), AnnotationsListSheet
+    Annotate/            AnnotationTool, AnnotationEditor (PDFKit annotations → file.rebase; the pen's kind/colour/width), PageOverlayView (gestures, PencilKit canvas), MarkupBar (the dark toolbar of the owner's design target, and PenPalette), NoteSheet, StampSheet (marks.add), SignatureStore/Sheet/Placer (images.add), AnnotationsListSheet
     Organize/            PagesModel (pages.* ops), PagesGridView (lift-and-drop grid, the bar), CropSheet
     Export/              Exporter, ExportSheet, DocxWriter, ZipWriter
     Protect/             ProtectSheet (PDFKit's password writer; the core keeps it on appends)
