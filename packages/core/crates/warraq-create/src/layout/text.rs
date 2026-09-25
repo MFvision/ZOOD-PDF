@@ -208,7 +208,11 @@ pub fn shape_paragraph(para: &Paragraph, default_rtl: bool) -> Result<ShapedPara
         let mut pieces = Vec::new();
         // Split the segment into pieces.
         let mut cur: Option<(usize, (usize, u8, bool, FontId))> = None;
-        let flush = |from: usize, to: usize, key: (usize, u8, bool, FontId), pieces: &mut Vec<Piece>| -> Result<()> {
+        let flush = |from: usize,
+                     to: usize,
+                     key: (usize, u8, bool, FontId),
+                     pieces: &mut Vec<Piece>|
+         -> Result<()> {
             let (run, level, space, fid) = key;
             let Some(t) = text.get(from..to) else {
                 return Ok(());
@@ -217,7 +221,11 @@ pub fn shape_paragraph(para: &Paragraph, default_rtl: bool) -> Result<ShapedPara
             if t.is_empty() {
                 return Ok(());
             }
-            let style = para.runs.get(run).map(|r| r.style.clone()).unwrap_or_default();
+            let style = para
+                .runs
+                .get(run)
+                .map(|r| r.style.clone())
+                .unwrap_or_default();
             pieces.push(make_piece(from..to, t, fid, level, space, &style)?);
             Ok(())
         };
@@ -225,7 +233,9 @@ pub fn shape_paragraph(para: &Paragraph, default_rtl: bool) -> Result<ShapedPara
             let i = prev + off;
             let run = run_at(i);
             let style = para.runs.get(run).map(|r| &r.style);
-            let pref = style.map_or(FontId::CairoRegular, |s| FontId::for_family(s.family, s.bold));
+            let pref = style.map_or(FontId::CairoRegular, |s| {
+                FontId::for_family(s.family, s.bold)
+            });
             let space = c.is_whitespace();
             let fid = match &cur {
                 // Spaces and marks stay in the current font.
@@ -369,8 +379,22 @@ fn split_piece(p: &Piece, max_w: f64) -> Result<(Piece, Option<Piece>)> {
     };
     let (a, b) = p.text.split_at(cut);
     let mid = p.range.start + cut.min(p.range.len());
-    let first = make_piece(p.range.start..mid, a.to_string(), p.font, p.level, p.space, &style)?;
-    let second = make_piece(mid..p.range.end, b.to_string(), p.font, p.level, p.space, &style)?;
+    let first = make_piece(
+        p.range.start..mid,
+        a.to_string(),
+        p.font,
+        p.level,
+        p.space,
+        &style,
+    )?;
+    let second = make_piece(
+        mid..p.range.end,
+        b.to_string(),
+        p.font,
+        p.level,
+        p.space,
+        &style,
+    )?;
     Ok((first, Some(second)))
 }
 
@@ -506,16 +530,49 @@ enum Join {
 
 fn joining(c: char) -> Join {
     match c {
-        '\u{064B}'..='\u{065F}' | '\u{0670}' | '\u{06D6}'..='\u{06DC}' | '\u{06DF}'..='\u{06E4}'
-        | '\u{06E7}' | '\u{06E8}' | '\u{06EA}'..='\u{06ED}' => Join::Transparent,
-        '\u{0622}'..='\u{0625}' | '\u{0627}' | '\u{0629}' | '\u{062F}'..='\u{0632}' | '\u{0648}'
-        | '\u{0671}'..='\u{0673}' | '\u{0675}'..='\u{0677}' | '\u{0688}'..='\u{0699}' | '\u{06C0}'
-        | '\u{06C3}'..='\u{06CB}' | '\u{06CD}' | '\u{06CF}' | '\u{06D2}' | '\u{06D3}' | '\u{06D5}'
-        | '\u{06EE}' | '\u{06EF}' => Join::Right,
-        '\u{0626}' | '\u{0628}' | '\u{062A}'..='\u{062E}' | '\u{0633}'..='\u{063F}'
-        | '\u{0640}'..='\u{0647}' | '\u{0649}' | '\u{064A}' | '\u{066E}' | '\u{066F}'
-        | '\u{0678}'..='\u{0687}' | '\u{069A}'..='\u{06BF}' | '\u{06C1}' | '\u{06C2}' | '\u{06CC}'
-        | '\u{06CE}' | '\u{06D0}' | '\u{06D1}' | '\u{06FA}'..='\u{06FC}' | '\u{06FF}' => Join::Dual,
+        '\u{064B}'..='\u{065F}'
+        | '\u{0670}'
+        | '\u{06D6}'..='\u{06DC}'
+        | '\u{06DF}'..='\u{06E4}'
+        | '\u{06E7}'
+        | '\u{06E8}'
+        | '\u{06EA}'..='\u{06ED}' => Join::Transparent,
+        '\u{0622}'..='\u{0625}'
+        | '\u{0627}'
+        | '\u{0629}'
+        | '\u{062F}'..='\u{0632}'
+        | '\u{0648}'
+        | '\u{0671}'..='\u{0673}'
+        | '\u{0675}'..='\u{0677}'
+        | '\u{0688}'..='\u{0699}'
+        | '\u{06C0}'
+        | '\u{06C3}'..='\u{06CB}'
+        | '\u{06CD}'
+        | '\u{06CF}'
+        | '\u{06D2}'
+        | '\u{06D3}'
+        | '\u{06D5}'
+        | '\u{06EE}'
+        | '\u{06EF}' => Join::Right,
+        '\u{0626}'
+        | '\u{0628}'
+        | '\u{062A}'..='\u{062E}'
+        | '\u{0633}'..='\u{063F}'
+        | '\u{0640}'..='\u{0647}'
+        | '\u{0649}'
+        | '\u{064A}'
+        | '\u{066E}'
+        | '\u{066F}'
+        | '\u{0678}'..='\u{0687}'
+        | '\u{069A}'..='\u{06BF}'
+        | '\u{06C1}'
+        | '\u{06C2}'
+        | '\u{06CC}'
+        | '\u{06CE}'
+        | '\u{06D0}'
+        | '\u{06D1}'
+        | '\u{06FA}'..='\u{06FC}'
+        | '\u{06FF}' => Join::Dual,
         _ => Join::None,
     }
 }
@@ -531,7 +588,10 @@ pub fn kashida_point(word: &str) -> Option<usize> {
         }
         // Skip transparent marks after c.
         let mut j = k + 1;
-        while chars.get(j).is_some_and(|&(_, m)| joining(m) == Join::Transparent) {
+        while chars
+            .get(j)
+            .is_some_and(|&(_, m)| joining(m) == Join::Transparent)
+        {
             j += 1;
         }
         let Some(&(pos, next)) = chars.get(j) else {
@@ -540,7 +600,12 @@ pub fn kashida_point(word: &str) -> Option<usize> {
         if !matches!(joining(next), Join::Dual | Join::Right) || next == '\u{0640}' {
             continue;
         }
-        if c == '\u{0644}' && matches!(next, '\u{0622}' | '\u{0623}' | '\u{0625}' | '\u{0627}' | '\u{0671}') {
+        if c == '\u{0644}'
+            && matches!(
+                next,
+                '\u{0622}' | '\u{0623}' | '\u{0625}' | '\u{0627}' | '\u{0671}'
+            )
+        {
             continue;
         }
         best = Some(pos);
@@ -549,12 +614,7 @@ pub fn kashida_point(word: &str) -> Option<usize> {
 }
 
 /// Lay out one line: justify when asked, then place pieces left to right.
-pub fn place_line(
-    logical: Vec<Piece>,
-    base_rtl: bool,
-    width: f64,
-    justify: bool,
-) -> Result<Line> {
+pub fn place_line(logical: Vec<Piece>, base_rtl: bool, width: f64, justify: bool) -> Result<Line> {
     let mut pieces = visual_order(logical, base_rtl);
     let natural: f64 = pieces.iter().map(|p| p.width).sum();
     let mut extra = width - natural;
@@ -617,7 +677,11 @@ fn add_kashidas(pieces: &mut [Piece], extra: f64) -> Result<f64> {
         if !f.covers('\u{0640}') {
             continue;
         }
-        let tw: f64 = f.shape("\u{0640}", true).iter().map(|g| g.x_advance).sum::<f64>()
+        let tw: f64 = f
+            .shape("\u{0640}", true)
+            .iter()
+            .map(|g| g.x_advance)
+            .sum::<f64>()
             * f.scale(p.size);
         if tw > 0.1 {
             ops.push((i, pos, tw));
@@ -706,7 +770,11 @@ mod tests {
 
     #[test]
     fn mixed_line_reorders_to_visual() {
-        let p = shape_paragraph(&para("مرحبا ZOOD PDF اليوم", Family::Sans, Dir::Auto), false).unwrap();
+        let p = shape_paragraph(
+            &para("مرحبا ZOOD PDF اليوم", Family::Sans, Dir::Auto),
+            false,
+        )
+        .unwrap();
         assert!(p.base_rtl);
         let lines = break_lines(&p, 1000.0).unwrap();
         assert_eq!(lines.len(), 1);
@@ -721,7 +789,11 @@ mod tests {
         assert_eq!(words, vec!["اليوم", "ZOOD", "PDF", "مرحبا"]);
         // Inter has no Arabic: Arabic pieces fall back to Cairo only if family is Latin.
         let p2 = shape_paragraph(&para("abc مرحبا", Family::Latin, Dir::Auto), false).unwrap();
-        let fonts: Vec<FontId> = p2.segments.iter().flat_map(|s| s.pieces.iter().map(|p| p.font)).collect();
+        let fonts: Vec<FontId> = p2
+            .segments
+            .iter()
+            .flat_map(|s| s.pieces.iter().map(|p| p.font))
+            .collect();
         assert!(fonts.contains(&FontId::InterRegular) && fonts.contains(&FontId::CairoRegular));
     }
 
@@ -736,7 +808,11 @@ mod tests {
             assert!(placed.width <= 150.01, "{}", placed.width);
         }
         // Words are never split when they fit.
-        let all: String = lines.iter().flat_map(|l| &l.0).map(|p| p.text.as_str()).collect();
+        let all: String = lines
+            .iter()
+            .flat_map(|l| &l.0)
+            .map(|p| p.text.as_str())
+            .collect();
         assert_eq!(all.trim_end(), text.trim_end());
     }
 
@@ -745,7 +821,11 @@ mod tests {
         let p = shape_paragraph(&para(&"x".repeat(200), Family::Latin, Dir::Ltr), false).unwrap();
         let lines = break_lines(&p, 50.0).unwrap();
         assert!(lines.len() > 3);
-        let joined: String = lines.iter().flat_map(|l| &l.0).map(|p| p.text.as_str()).collect();
+        let joined: String = lines
+            .iter()
+            .flat_map(|l| &l.0)
+            .map(|p| p.text.as_str())
+            .collect();
         assert_eq!(joined, "x".repeat(200));
     }
 
@@ -757,16 +837,31 @@ mod tests {
         assert!(lines.len() >= 2);
         assert!(!lines[0].1);
         let first = place_line(lines[0].0.clone(), true, 200.0, true).unwrap();
-        assert!((first.width - 200.0).abs() < 1.5, "justified width {}", first.width);
+        assert!(
+            (first.width - 200.0).abs() < 1.5,
+            "justified width {}",
+            first.width
+        );
         // Some word got tatweel glyphs (more glyphs than its unjustified shaping).
         let stretched = first.pieces.iter().any(|(_, p)| {
             !p.space && font(p.font).unwrap().shape(&p.text, true).len() < p.glyphs.len()
         });
         assert!(stretched, "kashida inserted");
         // Text (ActualText) is unchanged.
-        assert!(first.pieces.iter().all(|(_, p)| !p.text.contains('\u{0640}')));
+        assert!(first
+            .pieces
+            .iter()
+            .all(|(_, p)| !p.text.contains('\u{0640}')));
         // Latin justification stretches spaces instead.
-        let lp = shape_paragraph(&para(&"lorem ipsum dolor sit amet ".repeat(4), Family::Latin, Dir::Ltr), false).unwrap();
+        let lp = shape_paragraph(
+            &para(
+                &"lorem ipsum dolor sit amet ".repeat(4),
+                Family::Latin,
+                Dir::Ltr,
+            ),
+            false,
+        )
+        .unwrap();
         let ll = break_lines(&lp, 200.0).unwrap();
         let l0 = place_line(ll[0].0.clone(), false, 200.0, true).unwrap();
         assert!((l0.width - 200.0).abs() < 0.5);

@@ -152,7 +152,9 @@ pub fn jpeg(bytes: &[u8]) -> Result<ImageData> {
         if bytes.get(i) != Some(&0xFF) {
             return Err(CreateError::malformed("JPEG marker expected"));
         }
-        let marker = *bytes.get(i + 1).ok_or_else(|| CreateError::malformed("JPEG"))?;
+        let marker = *bytes
+            .get(i + 1)
+            .ok_or_else(|| CreateError::malformed("JPEG"))?;
         if marker == 0xFF {
             i += 1;
             continue;
@@ -184,15 +186,11 @@ pub fn jpeg(bytes: &[u8]) -> Result<ImageData> {
             0xEE if seg.starts_with(b"Adobe") => adobe = true,
             0xC0..=0xCF if marker != 0xC4 && marker != 0xC8 && marker != 0xCC => {
                 if marker >= 0xC9 {
-                    return Err(CreateError::Unsupported(
-                        "arithmetic-coded JPEG".into(),
-                    ));
+                    return Err(CreateError::Unsupported("arithmetic-coded JPEG".into()));
                 }
                 let precision = seg.first().copied().unwrap_or(0);
                 if precision != 8 {
-                    return Err(CreateError::Unsupported(format!(
-                        "{precision}-bit JPEG"
-                    )));
+                    return Err(CreateError::Unsupported(format!("{precision}-bit JPEG")));
                 }
                 let h = u32::from(be16(seg, 1).unwrap_or(0));
                 let w = u32::from(be16(seg, 3).unwrap_or(0));
@@ -202,7 +200,11 @@ pub fn jpeg(bytes: &[u8]) -> Result<ImageData> {
                     1 => ColorSpace::Gray,
                     3 => ColorSpace::Rgb,
                     4 => ColorSpace::Cmyk,
-                    n => return Err(CreateError::Unsupported(format!("JPEG with {n} components"))),
+                    n => {
+                        return Err(CreateError::Unsupported(format!(
+                            "JPEG with {n} components"
+                        )))
+                    }
                 };
                 return Ok(ImageData {
                     width: w,
@@ -239,10 +241,7 @@ pub fn png(bytes: &[u8]) -> Result<ImageData> {
     let (w, h, dpi) = {
         let info = reader.info();
         let dpi = info.pixel_dims.and_then(|d| match d.unit {
-            png::Unit::Meter => Some((
-                f64::from(d.xppu) * 0.0254,
-                f64::from(d.yppu) * 0.0254,
-            )),
+            png::Unit::Meter => Some((f64::from(d.xppu) * 0.0254, f64::from(d.yppu) * 0.0254)),
             png::Unit::Unspecified => None,
         });
         (info.width, info.height, dpi)
@@ -308,7 +307,9 @@ mod tests {
         assert!(jpeg(b"\xFF\xD8").is_err());
         assert!(jpeg(b"not a jpeg").is_err());
         // SOF0 claiming 65535×65535.
-        let mut j = vec![0xFF, 0xD8, 0xFF, 0xC0, 0, 11, 8, 0xFF, 0xFF, 0xFF, 0xFF, 3, 1, 0x11, 0];
+        let mut j = vec![
+            0xFF, 0xD8, 0xFF, 0xC0, 0, 11, 8, 0xFF, 0xFF, 0xFF, 0xFF, 3, 1, 0x11, 0,
+        ];
         j.extend_from_slice(&[0xFF, 0xD9]);
         assert_eq!(jpeg(&j).unwrap_err().code(), "limit_exceeded");
         // A sane header is accepted and keeps the bytes.
@@ -330,7 +331,8 @@ mod tests {
             enc.set_color(png::ColorType::Rgba);
             enc.set_depth(png::BitDepth::Eight);
             let mut w = enc.write_header().unwrap();
-            w.write_image_data(&[255, 0, 0, 255, 0, 0, 255, 128]).unwrap();
+            w.write_image_data(&[255, 0, 0, 255, 0, 0, 255, 128])
+                .unwrap();
         }
         let im = png(&out).unwrap();
         assert_eq!((im.width, im.height, im.color), (2, 1, ColorSpace::Rgb));

@@ -55,7 +55,10 @@ impl Rd<'_> {
             .b
             .get(at..at + 2)
             .ok_or_else(|| CreateError::malformed("TIFF: offset out of range"))?;
-        let a = [s.first().copied().unwrap_or(0), s.get(1).copied().unwrap_or(0)];
+        let a = [
+            s.first().copied().unwrap_or(0),
+            s.get(1).copied().unwrap_or(0),
+        ];
         Ok(if self.le {
             u16::from_le_bytes(a)
         } else {
@@ -165,7 +168,12 @@ fn parse_ifd(r: &Rd, off: usize) -> Result<(Ifd, usize)> {
         let typ = r.u16(e + 2)?;
         let cnt = r.u32(e + 4)?;
         let field = e + 8;
-        let first = || -> Result<u32> { Ok(values(r, typ, cnt.min(1), field)?.first().copied().unwrap_or(0)) };
+        let first = || -> Result<u32> {
+            Ok(values(r, typ, cnt.min(1), field)?
+                .first()
+                .copied()
+                .unwrap_or(0))
+        };
         match tag {
             256 => d.width = first()?,
             257 => d.height = first()?,
@@ -184,7 +192,7 @@ fn parse_ifd(r: &Rd, off: usize) -> Result<(Ifd, usize)> {
             296 => d.res_unit = first()?,
             317 => d.predictor = first()?,
             320 => d.colormap = values(r, typ, cnt.min(3 * 65536), field)?,
-            322 | 323 | 324 | 325 => d.tiled = true,
+            322..=325 => d.tiled = true,
             _ => {}
         }
     }
@@ -229,7 +237,8 @@ fn strip<'a>(bytes: &'a [u8], ifd: &Ifd, i: usize) -> Result<&'a [u8]> {
     let n = *ifd
         .strip_counts
         .get(i)
-        .ok_or_else(|| CreateError::malformed("TIFF: missing strip byte count"))? as usize;
+        .ok_or_else(|| CreateError::malformed("TIFF: missing strip byte count"))?
+        as usize;
     bytes
         .get(o..o.saturating_add(n))
         .ok_or_else(|| CreateError::malformed("TIFF: strip out of range"))
@@ -307,7 +316,7 @@ fn page(bytes: &[u8], ifd: &Ifd) -> Result<TiffPage> {
     let bits = ifd.bits.first().copied().unwrap_or(1);
     let mut bands = Vec::new();
     // CCITT: pass each strip through.
-    if matches!(ifd.compression, 2 | 3 | 4) {
+    if matches!(ifd.compression, 2..=4) {
         if bits != 1 || ifd.spp != 1 {
             return Err(CreateError::malformed("CCITT TIFF must be bilevel"));
         }
@@ -429,7 +438,11 @@ fn page(bytes: &[u8], ifd: &Ifd) -> Result<TiffPage> {
                 c.extend_from_slice(p.get(..cc).unwrap_or(&[]));
                 a.push(p.get(cc).copied().unwrap_or(255));
             }
-            let cs = if cc == 1 { ColorSpace::Gray } else { ColorSpace::Rgb };
+            let cs = if cc == 1 {
+                ColorSpace::Gray
+            } else {
+                ColorSpace::Rgb
+            };
             // Opaque alpha channels are dropped by from_samples.
             ImageData::from_samples(w, h, cs, 8, &c, Some(&a), dpi)?
         }
@@ -506,7 +519,13 @@ mod tests {
                     b.extend_from_slice(&v.to_le_bytes());
                 }
             }
-            let next = if p + 1 < pages { data_at + 4 } else if cycle { 8 } else { 0 };
+            let next = if p + 1 < pages {
+                data_at + 4
+            } else if cycle {
+                8
+            } else {
+                0
+            };
             b.extend_from_slice(&(next as u32).to_le_bytes());
             b.extend_from_slice(&[0, 255, 255, 0]);
         }
@@ -528,7 +547,10 @@ mod tests {
 
     #[test]
     fn packbits_is_bounded() {
-        assert_eq!(packbits(&[2, 1, 2, 3, 0xFE, 9], 100).unwrap(), vec![1, 2, 3, 9, 9, 9]);
+        assert_eq!(
+            packbits(&[2, 1, 2, 3, 0xFE, 9], 100).unwrap(),
+            vec![1, 2, 3, 9, 9, 9]
+        );
         assert!(packbits(&[0x81, 1].repeat(100), 50).is_err());
     }
 }

@@ -71,7 +71,9 @@ pub fn read_tiff(bytes: &[u8], name: &str) -> Result<Document> {
             background: None,
         });
     }
-    let first = fixed.first().map_or((595.0, 842.0), |p| (p.width, p.height));
+    let first = fixed
+        .first()
+        .map_or((595.0, 842.0), |p| (p.width, p.height));
     doc.sections.push(Section {
         page: PageSetup::with_size(first.0, first.1, 0.0),
         content: Content::Fixed(fixed),

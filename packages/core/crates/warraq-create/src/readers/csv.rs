@@ -73,7 +73,11 @@ pub fn sniff(text: &str, name: &str) -> char {
     if name.to_ascii_lowercase().ends_with(".tsv") {
         return '\t';
     }
-    let sample: Vec<&str> = text.lines().filter(|l| !l.trim().is_empty()).take(20).collect();
+    let sample: Vec<&str> = text
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .take(20)
+        .collect();
     let mut best = (',', 0usize, false);
     for d in [',', ';', '\t', '،'] {
         let counts: Vec<usize> = sample
@@ -105,7 +109,12 @@ pub fn sniff(text: &str, name: &str) -> char {
 pub fn read(text: &str, name: &str, opts: &ReadOptions) -> Result<crate::model::Document> {
     let d = sniff(text, name);
     let rows = parse(text, d)?;
-    let ncols = rows.iter().map(Vec::len).max().unwrap_or(0).min(limits::MAX_COLUMNS);
+    let ncols = rows
+        .iter()
+        .map(Vec::len)
+        .max()
+        .unwrap_or(0)
+        .min(limits::MAX_COLUMNS);
     let all: String = rows
         .iter()
         .take(50)
@@ -126,8 +135,21 @@ pub fn read(text: &str, name: &str, opts: &ReadOptions) -> Result<crate::model::
         .count();
     let rtl = arabic_cells > latin_cells || (arabic_cells > 0 && opts.default_rtl);
     let _ = all;
-    let size = if ncols > 12 { 7.0 } else if ncols > 8 { 8.5 } else { 10.0 };
-    let table = table_from_rows(&rows, ncols, true, if rtl { Dir::Rtl } else { Dir::Ltr }, size, opts);
+    let size = if ncols > 12 {
+        7.0
+    } else if ncols > 8 {
+        8.5
+    } else {
+        10.0
+    };
+    let table = table_from_rows(
+        &rows,
+        ncols,
+        true,
+        if rtl { Dir::Rtl } else { Dir::Ltr },
+        size,
+        opts,
+    );
     let mut page = opts.page;
     if ncols > 6 && page.width < page.height {
         page = page.oriented(true);
@@ -212,8 +234,15 @@ mod tests {
 
     #[test]
     fn arabic_csv_is_rtl_with_header() {
-        let d = read("الاسم,المدينة\nعلي,الرياض\n", "a.csv", &ReadOptions::default()).unwrap();
-        let Content::Flow(b) = &d.sections[0].content else { panic!() };
+        let d = read(
+            "الاسم,المدينة\nعلي,الرياض\n",
+            "a.csv",
+            &ReadOptions::default(),
+        )
+        .unwrap();
+        let Content::Flow(b) = &d.sections[0].content else {
+            panic!()
+        };
         let Block::Table(t) = &b[0] else { panic!() };
         assert_eq!(t.dir, Dir::Rtl);
         assert!(t.rows[0].header && !t.rows[1].header);

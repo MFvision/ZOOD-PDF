@@ -14,7 +14,11 @@ use crate::model::Family;
 
 macro_rules! font_file {
     ($p:literal) => {
-        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fonts/", $p))
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../assets/fonts/",
+            $p
+        ))
     };
 }
 
@@ -232,12 +236,7 @@ impl Font {
             .iter()
             .filter_map(|(t, v)| {
                 let b = t.as_bytes();
-                let arr: [u8; 4] = [
-                    *b.first()?,
-                    *b.get(1)?,
-                    *b.get(2)?,
-                    *b.get(3)?,
-                ];
+                let arr: [u8; 4] = [*b.first()?, *b.get(1)?, *b.get(2)?, *b.get(3)?];
                 Some((subsetter::Tag::new(&arr), *v))
             })
             .collect()
@@ -294,8 +293,14 @@ mod tests {
         assert!(font(FontId::AmiriRegular).unwrap().covers('ب'));
         assert!(font(FontId::CairoBold).unwrap().covers('ب'));
         assert!(!font(FontId::InterRegular).unwrap().covers('ب'));
-        assert_eq!(font_for_char(FontId::InterRegular, 'ب'), FontId::CairoRegular);
-        assert_eq!(font_for_char(FontId::InterRegular, 'x'), FontId::InterRegular);
+        assert_eq!(
+            font_for_char(FontId::InterRegular, 'ب'),
+            FontId::CairoRegular
+        );
+        assert_eq!(
+            font_for_char(FontId::InterRegular, 'x'),
+            FontId::InterRegular
+        );
     }
 
     #[test]

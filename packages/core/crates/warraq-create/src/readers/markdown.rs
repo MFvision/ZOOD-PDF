@@ -63,10 +63,18 @@ impl State<'_> {
         }
         if self.link > 0 {
             s.underline = true;
-            s.color = Color { r: 0x1a, g: 0x5f, b: 0xd6 };
+            s.color = Color {
+                r: 0x1a,
+                g: 0x5f,
+                b: 0xd6,
+            };
         }
         if self.strike > 0 {
-            s.color = Color { r: 0x77, g: 0x77, b: 0x77 };
+            s.color = Color {
+                r: 0x77,
+                g: 0x77,
+                b: 0x77,
+            };
         }
         if self.code_block {
             s.family = Family::Latin;
@@ -93,8 +101,16 @@ impl State<'_> {
                 dir: if self.code_block { Dir::Ltr } else { Dir::Auto },
                 list,
                 indent,
-                background: self.code_block.then_some(Color { r: 0xF2, g: 0xF2, b: 0xF4 }),
-                space_after: if self.tables.is_empty() { None } else { Some(0.0) },
+                background: self.code_block.then_some(Color {
+                    r: 0xF2,
+                    g: 0xF2,
+                    b: 0xF4,
+                }),
+                space_after: if self.tables.is_empty() {
+                    None
+                } else {
+                    Some(0.0)
+                },
                 ..ParaStyle::default()
             },
         });
@@ -274,7 +290,12 @@ pub fn read(text: &str, opts: &ReadOptions) -> Result<Document> {
                 }
                 Tag::TableCell => {
                     st.sinks.push(Vec::new());
-                    if st.tables.last().and_then(|t| t.1.as_ref()).is_some_and(|r| r.header) {
+                    if st
+                        .tables
+                        .last()
+                        .and_then(|t| t.1.as_ref())
+                        .is_some_and(|r| r.header)
+                    {
                         st.bold += 1;
                     }
                 }
@@ -319,7 +340,12 @@ pub fn read(text: &str, opts: &ReadOptions) -> Result<Document> {
                 }
                 TagEnd::TableCell => {
                     st.close_para()?;
-                    if st.tables.last().and_then(|t| t.1.as_ref()).is_some_and(|r| r.header) {
+                    if st
+                        .tables
+                        .last()
+                        .and_then(|t| t.1.as_ref())
+                        .is_some_and(|r| r.header)
+                    {
                         st.bold = st.bold.saturating_sub(1);
                     }
                     let blocks = st.sinks.pop().unwrap_or_default();
@@ -382,8 +408,14 @@ pub fn read(text: &str, opts: &ReadOptions) -> Result<Document> {
     st.close_para()?;
     let blocks = st.sinks.into_iter().next().unwrap_or_default();
     let mut doc = st.doc;
-    let has_ar = blocks.iter().any(|b| matches!(b, Block::Paragraph(p) if crate::layout::text::has_rtl(&p.text())));
-    doc.lang = Some(if has_ar || opts.default_rtl { "ar".into() } else { "en".into() });
+    let has_ar = blocks
+        .iter()
+        .any(|b| matches!(b, Block::Paragraph(p) if crate::layout::text::has_rtl(&p.text())));
+    doc.lang = Some(if has_ar || opts.default_rtl {
+        "ar".into()
+    } else {
+        "en".into()
+    });
     doc.sections.push(Section {
         page: opts.page,
         content: Content::Flow(blocks),
@@ -414,13 +446,29 @@ mod tests {
         let Block::Paragraph(p) = &b[1] else { panic!() };
         assert!(p.runs.iter().any(|r| r.style.bold && r.text == "عريض"));
         assert!(p.runs.iter().any(|r| r.style.italic && r.text == "مائل"));
-        let Block::Paragraph(l1) = &b[2] else { panic!() };
+        let Block::Paragraph(l1) = &b[2] else {
+            panic!()
+        };
         assert_eq!(l1.style.list.as_ref().unwrap().number, 1);
-        let Block::Paragraph(l2) = &b[3] else { panic!() };
+        let Block::Paragraph(l2) = &b[3] else {
+            panic!()
+        };
         assert_eq!(l2.style.list.as_ref().unwrap().number, 2);
-        let nested = b.iter().filter_map(|x| match x { Block::Paragraph(p) => p.style.list.as_ref(), _ => None }).any(|l| l.level == 1);
+        let nested = b
+            .iter()
+            .filter_map(|x| match x {
+                Block::Paragraph(p) => p.style.list.as_ref(),
+                _ => None,
+            })
+            .any(|l| l.level == 1);
         assert!(nested);
-        let t = b.iter().find_map(|x| match x { Block::Table(t) => Some(t), _ => None }).unwrap();
+        let t = b
+            .iter()
+            .find_map(|x| match x {
+                Block::Table(t) => Some(t),
+                _ => None,
+            })
+            .unwrap();
         assert_eq!(t.rows.len(), 2);
         assert!(t.rows[0].header);
     }

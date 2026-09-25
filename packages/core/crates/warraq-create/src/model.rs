@@ -27,10 +27,28 @@ impl Family {
             return None;
         }
         let serif = [
-            "times", "serif", "amiri", "traditional arabic", "georgia", "cambria", "garamond",
-            "naskh", "book", "simplified arabic", "arabic typesetting", "sakkal",
+            "times",
+            "serif",
+            "amiri",
+            "traditional arabic",
+            "georgia",
+            "cambria",
+            "garamond",
+            "naskh",
+            "book",
+            "simplified arabic",
+            "arabic typesetting",
+            "sakkal",
         ];
-        let latin = ["inter", "helvetica", "arial", "calibri", "segoe", "roboto", "verdana"];
+        let latin = [
+            "inter",
+            "helvetica",
+            "arial",
+            "calibri",
+            "segoe",
+            "roboto",
+            "verdana",
+        ];
         if serif.iter().any(|s| n.contains(s)) {
             Some(Family::Serif)
         } else if latin.iter().any(|s| n.contains(s)) {

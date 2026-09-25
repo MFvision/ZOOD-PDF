@@ -150,7 +150,11 @@ fn apply_setup(doc: &mut Document, opts: &CreateOptions, base: PageSetup) {
 fn pdf_name(name: &str) -> String {
     let base = name.rsplit(['/', '\\']).next().unwrap_or(name);
     let stem = base.rsplit_once('.').map_or(base, |(a, _)| a);
-    let stem = if stem.trim().is_empty() { "document" } else { stem };
+    let stem = if stem.trim().is_empty() {
+        "document"
+    } else {
+        stem
+    };
     format!("{stem}.pdf")
 }
 

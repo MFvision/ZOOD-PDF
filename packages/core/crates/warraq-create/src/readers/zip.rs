@@ -31,8 +31,10 @@ pub struct Zip<'a> {
 
 fn u16_at(b: &[u8], i: usize) -> Result<u16> {
     Ok(u16::from_le_bytes([
-        *b.get(i).ok_or_else(|| CreateError::malformed("zip: truncated"))?,
-        *b.get(i + 1).ok_or_else(|| CreateError::malformed("zip: truncated"))?,
+        *b.get(i)
+            .ok_or_else(|| CreateError::malformed("zip: truncated"))?,
+        *b.get(i + 1)
+            .ok_or_else(|| CreateError::malformed("zip: truncated"))?,
     ]))
 }
 
@@ -43,7 +45,9 @@ fn u32_at(b: &[u8], i: usize) -> Result<u32> {
 /// Normalise a part name: no leading slash, forward slashes, lower case (OPC names are
 /// case-insensitive).
 pub fn norm(name: &str) -> String {
-    name.trim_start_matches('/').replace('\\', "/").to_lowercase()
+    name.trim_start_matches('/')
+        .replace('\\', "/")
+        .to_lowercase()
 }
 
 impl<'a> Zip<'a> {
@@ -129,7 +133,9 @@ impl<'a> Zip<'a> {
             .get(&norm(name))
             .ok_or_else(|| CreateError::malformed(format!("zip: missing part {name}")))?;
         if e.encrypted {
-            return Err(CreateError::Unsupported("encrypted (password-protected) file".into()));
+            return Err(CreateError::Unsupported(
+                "encrypted (password-protected) file".into(),
+            ));
         }
         let b = self.bytes;
         if b.get(e.local..e.local + 4) != Some(b"PK\x03\x04") {
@@ -145,8 +151,7 @@ impl<'a> Zip<'a> {
         let cap = e
             .csize
             .saturating_mul(limits::MAX_ZIP_RATIO)
-            .max(limits::ZIP_RATIO_FLOOR)
-            .min(limits::MAX_ZIP_ENTRY)
+            .clamp(limits::ZIP_RATIO_FLOOR, limits::MAX_ZIP_ENTRY)
             .min(remaining);
         let out = match e.method {
             0 => {
@@ -162,7 +167,11 @@ impl<'a> Zip<'a> {
                     CreateError::malformed(format!("zip entry {name} is damaged"))
                 }
             })?,
-            m => return Err(CreateError::Unsupported(format!("zip compression method {m}"))),
+            m => {
+                return Err(CreateError::Unsupported(format!(
+                    "zip compression method {m}"
+                )))
+            }
         };
         self.total.set(self.total.get() + out.len());
         Ok(out)
@@ -224,7 +233,10 @@ mod tests {
     #[test]
     fn stored_and_deflated_entries() {
         for deflate in [false, true] {
-            let z = build(&[("Word/Document.xml", b"<w/>"), ("a.txt", "نص".as_bytes())], deflate);
+            let z = build(
+                &[("Word/Document.xml", b"<w/>"), ("a.txt", "نص".as_bytes())],
+                deflate,
+            );
             let zip = Zip::open(&z).unwrap();
             assert!(zip.has("/word/document.xml"));
             assert_eq!(zip.read("word/document.xml").unwrap(), b"<w/>");

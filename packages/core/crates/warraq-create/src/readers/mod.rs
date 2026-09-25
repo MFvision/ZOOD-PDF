@@ -79,7 +79,9 @@ impl Format {
         Some(match h.as_str() {
             "docx" | "vnd.openxmlformats-officedocument.wordprocessingml.document" => Format::Docx,
             "xlsx" | "vnd.openxmlformats-officedocument.spreadsheetml.sheet" => Format::Xlsx,
-            "pptx" | "vnd.openxmlformats-officedocument.presentationml.presentation" => Format::Pptx,
+            "pptx" | "vnd.openxmlformats-officedocument.presentationml.presentation" => {
+                Format::Pptx
+            }
             "html" | "htm" | "xhtml" | "text/html" => Format::Html,
             "md" | "markdown" | "text/markdown" => Format::Markdown,
             "txt" | "text" | "text/plain" => Format::Text,
@@ -126,20 +128,29 @@ pub fn detect(name: &str, bytes: &[u8]) -> Result<Format> {
         ));
     }
     if let Some(f) = Format::from_hint(name) {
-        if matches!(f, Format::Docx | Format::Xlsx | Format::Pptx | Format::Jpeg | Format::Png | Format::Tiff) {
-            return Err(CreateError::malformed(format!("{name} is not a valid {}", f.as_str())));
+        if matches!(
+            f,
+            Format::Docx | Format::Xlsx | Format::Pptx | Format::Jpeg | Format::Png | Format::Tiff
+        ) {
+            return Err(CreateError::malformed(format!(
+                "{name} is not a valid {}",
+                f.as_str()
+            )));
         }
         return Ok(f);
     }
     // Unknown name: text-like content is read as text, HTML if it looks like it.
-    let head = String::from_utf8_lossy(bytes.get(..bytes.len().min(512)).unwrap_or(&[])).to_ascii_lowercase();
+    let head = String::from_utf8_lossy(bytes.get(..bytes.len().min(512)).unwrap_or(&[]))
+        .to_ascii_lowercase();
     if head.contains("<!doctype html") || head.contains("<html") {
         return Ok(Format::Html);
     }
     if std::str::from_utf8(bytes).is_ok() {
         return Ok(Format::Text);
     }
-    Err(CreateError::Unsupported(format!("unknown file type: {name}")))
+    Err(CreateError::Unsupported(format!(
+        "unknown file type: {name}"
+    )))
 }
 
 /// Decode text bytes: UTF-8 (with or without BOM), UTF-16 with BOM; lossy otherwise.
@@ -151,7 +162,10 @@ pub fn decode_text(bytes: &[u8]) -> String {
         let units: Vec<u16> = b
             .chunks_exact(2)
             .map(|c| {
-                let a = [c.first().copied().unwrap_or(0), c.get(1).copied().unwrap_or(0)];
+                let a = [
+                    c.first().copied().unwrap_or(0),
+                    c.get(1).copied().unwrap_or(0),
+                ];
                 if le {
                     u16::from_le_bytes(a)
                 } else {
@@ -238,8 +252,14 @@ mod tests {
         assert_eq!(detect("x", b"<!DOCTYPE html><p>").unwrap(), Format::Html);
         assert_eq!(detect("x", "نص".as_bytes()).unwrap(), Format::Text);
         assert_eq!(detect("a.csv", b"a,b").unwrap(), Format::Csv);
-        assert_eq!(detect("a.pdf", b"%PDF-1.7").unwrap_err().code(), "unsupported_format");
-        assert_eq!(detect("a.docx", b"hello").unwrap_err().code(), "malformed_input");
+        assert_eq!(
+            detect("a.pdf", b"%PDF-1.7").unwrap_err().code(),
+            "unsupported_format"
+        );
+        assert_eq!(
+            detect("a.docx", b"hello").unwrap_err().code(),
+            "malformed_input"
+        );
     }
 
     #[test]

@@ -29,13 +29,38 @@ pub enum Tag {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item {
     /// A shaped piece; `(x, y)` is the pen position on the baseline.
-    Text { x: f64, y: f64, piece: Piece, tag: Tag },
+    Text {
+        x: f64,
+        y: f64,
+        piece: Piece,
+        tag: Tag,
+    },
     /// A picture filling the rectangle.
-    Image { x: f64, y: f64, w: f64, h: f64, image: usize, tag: Tag },
+    Image {
+        x: f64,
+        y: f64,
+        w: f64,
+        h: f64,
+        image: usize,
+        tag: Tag,
+    },
     /// A filled rectangle (artifact).
-    Rect { x: f64, y: f64, w: f64, h: f64, color: Color },
+    Rect {
+        x: f64,
+        y: f64,
+        w: f64,
+        h: f64,
+        color: Color,
+    },
     /// A stroked line (artifact).
-    Rule { x1: f64, y1: f64, x2: f64, y2: f64, width: f64, color: Color },
+    Rule {
+        x1: f64,
+        y1: f64,
+        x2: f64,
+        y2: f64,
+        width: f64,
+        color: Color,
+    },
 }
 
 /// One output page.
@@ -188,7 +213,13 @@ impl<'a> Composer<'a> {
     }
 
     /// Compose a sequence of blocks for a column `width` wide.
-    fn blocks(&mut self, blocks: &[Block], width: f64, parent: usize, depth: usize) -> Result<Vec<LBox>> {
+    fn blocks(
+        &mut self,
+        blocks: &[Block],
+        width: f64,
+        parent: usize,
+        depth: usize,
+    ) -> Result<Vec<LBox>> {
         if depth > limits::MAX_NESTING {
             return Err(CreateError::limit("nesting depth"));
         }
@@ -277,7 +308,11 @@ impl<'a> Composer<'a> {
         let shaped = shape_paragraph(p, self.opts.default_rtl)?;
         let lines = break_lines(&shaped, avail)?;
         let n = lines.len();
-        let factor = if st.line_height > 0.1 { st.line_height.min(5.0) } else { 1.0 };
+        let factor = if st.line_height > 0.1 {
+            st.line_height.min(5.0)
+        } else {
+            1.0
+        };
         let (def_before, def_after) = match st.heading {
             1 => (18.0, 8.0),
             2 => (14.0, 6.0),
@@ -297,7 +332,9 @@ impl<'a> Composer<'a> {
             let free = (avail - line.width).max(0.0);
             let off = match (st.align, rtl) {
                 (Align::Center, _) => free / 2.0,
-                (Align::Left, _) | (Align::Start | Align::Justify, false) | (Align::End, true) => 0.0,
+                (Align::Left, _) | (Align::Start | Align::Justify, false) | (Align::End, true) => {
+                    0.0
+                }
                 _ => free,
             };
             let x = if rtl { off } else { start_indent + off };
@@ -311,7 +348,11 @@ impl<'a> Composer<'a> {
                         } else {
                             start_indent - LIST_STEP
                         };
-                        let lx = if rtl { lx.min(width - l.width) } else { lx.max(0.0) };
+                        let lx = if rtl {
+                            lx.min(width - l.width)
+                        } else {
+                            lx.max(0.0)
+                        };
                         Some((lx, l, Tag::Elem(lt)))
                     }
                     _ => None,
@@ -327,12 +368,18 @@ impl<'a> Composer<'a> {
                     x,
                     tag: Tag::Elem(elem),
                     label,
-                    background: st.background.map(|c| (if rtl { 0.0 } else { start_indent }, avail, c)),
+                    background: st
+                        .background
+                        .map(|c| (if rtl { 0.0 } else { start_indent }, avail, c)),
                 },
                 // Orphans (first two lines) and widows (last two lines) stay together;
                 // headings stay with what follows.
                 keep_with_next: (n > 1 && (k == 0 || k + 2 == n)) || (st.heading > 0 && k + 1 == n),
-                gap_before: if k == 0 { st.space_before.unwrap_or(def_before) } else { 0.0 },
+                gap_before: if k == 0 {
+                    st.space_before.unwrap_or(def_before)
+                } else {
+                    0.0
+                },
                 break_before: k == 0 && st.page_break_before,
             });
         }
@@ -351,7 +398,7 @@ impl<'a> Composer<'a> {
         while self.lists.last().is_some_and(|(lvl, _, _)| *lvl > li.level) {
             self.lists.pop();
         }
-        let need_new = !self.lists.last().is_some_and(|(lvl, _, _)| *lvl == li.level);
+        let need_new = self.lists.last().is_none_or(|(lvl, _, _)| *lvl != li.level);
         if need_new {
             let lparent = self
                 .lists
@@ -393,7 +440,11 @@ impl<'a> Composer<'a> {
             Align::Right | Align::End => width - w,
             _ => (width - w) / 2.0,
         };
-        let x = if self.opts.default_rtl && ib.align == Align::Start { width - w } else { x };
+        let x = if self.opts.default_rtl && ib.align == Align::Start {
+            width - w
+        } else {
+            x
+        };
         vec![
             LBox {
                 h,
@@ -428,7 +479,12 @@ impl<'a> Composer<'a> {
             for cell in &row.cells {
                 cells += 1;
                 limits::check(cells, limits::MAX_CELLS, "table cells")?;
-                while occupied.get(r).and_then(|o| o.get(c)).copied().unwrap_or(false) {
+                while occupied
+                    .get(r)
+                    .and_then(|o| o.get(c))
+                    .copied()
+                    .unwrap_or(false)
+                {
                     c += 1;
                 }
                 let cs = usize::from(cell.colspan.max(1));
@@ -511,10 +567,14 @@ impl<'a> Composer<'a> {
             let mut content = self.blocks(&cell.blocks, inner, td, depth + 1)?;
             self.lists = saved;
             // Trailing spacing inside a cell is padding enough.
-            while content.last().is_some_and(|b| matches!(b.kind, Kind::Space)) {
+            while content
+                .last()
+                .is_some_and(|b| matches!(b.kind, Kind::Space))
+            {
                 content.pop();
             }
-            let need: f64 = content.iter().map(|b| b.h + b.gap_before).sum::<f64>() + 2.0 * CELL_PAD;
+            let need: f64 =
+                content.iter().map(|b| b.h + b.gap_before).sum::<f64>() + 2.0 * CELL_PAD;
             let idx = rows.get(r).map_or(0, |row| row.cells.len());
             if let Some(row) = rows.get_mut(r) {
                 row.cells.push(RowCell {
@@ -581,7 +641,10 @@ impl<'a> Composer<'a> {
         width: f64,
     ) -> Result<Vec<f64>> {
         if let Some(cw) = &t.col_widths {
-            let cw: Vec<f64> = cw.iter().map(|w| if w.is_finite() { w.max(0.0) } else { 0.0 }).collect();
+            let cw: Vec<f64> = cw
+                .iter()
+                .map(|w| if w.is_finite() { w.max(0.0) } else { 0.0 })
+                .collect();
             let sum: f64 = cw.iter().take(ncols).sum();
             if cw.len() >= ncols && sum > 0.0 {
                 let mut out: Vec<f64> = cw.iter().take(ncols).map(|w| w / sum * width).collect();
@@ -655,8 +718,11 @@ fn split_row(row: Row, h: f64, max_h: f64) -> Vec<LBox> {
             break_before: false,
         }];
     }
-    let mut queues: Vec<std::collections::VecDeque<LBox>> =
-        row.cells.iter().map(|c| c.content.iter().cloned().collect()).collect();
+    let mut queues: Vec<std::collections::VecDeque<LBox>> = row
+        .cells
+        .iter()
+        .map(|c| c.content.iter().cloned().collect())
+        .collect();
     let mut out = Vec::new();
     let mut guard = 0;
     while queues.iter().any(|q| !q.is_empty()) && guard < 10_000 {
@@ -724,8 +790,19 @@ const ARABIC_LETTERS: [char; 28] = [
 
 fn roman(mut n: u32) -> String {
     let table = [
-        (1000, "m"), (900, "cm"), (500, "d"), (400, "cd"), (100, "c"), (90, "xc"), (50, "l"),
-        (40, "xl"), (10, "x"), (9, "ix"), (5, "v"), (4, "iv"), (1, "i"),
+        (1000, "m"),
+        (900, "cm"),
+        (500, "d"),
+        (400, "cd"),
+        (100, "c"),
+        (90, "xc"),
+        (50, "l"),
+        (40, "xl"),
+        (10, "x"),
+        (9, "ix"),
+        (5, "v"),
+        (4, "iv"),
+        (1, "i"),
     ];
     let mut s = String::new();
     for (v, r) in table {
@@ -744,7 +821,10 @@ fn letters(n: u32, alphabet: &[char]) -> String {
     }
     let idx = ((n - 1) % len) as usize;
     let reps = ((n - 1) / len + 1).min(5) as usize;
-    alphabet.get(idx).map(|c| c.to_string().repeat(reps)).unwrap_or_default()
+    alphabet
+        .get(idx)
+        .map(|c| c.to_string().repeat(reps))
+        .unwrap_or_default()
 }
 
 /// Western digits → Arabic-Indic digits.
@@ -911,7 +991,15 @@ impl Placer<'_> {
 }
 
 /// Draw a box whose top-left is `(x0, top)` (top measured from the page top).
-fn draw_box(b: &LBox, x0: f64, top: f64, page_h: f64, artifact: bool, out: &mut Vec<Item>, depth: usize) {
+fn draw_box(
+    b: &LBox,
+    x0: f64,
+    top: f64,
+    page_h: f64,
+    artifact: bool,
+    out: &mut Vec<Item>,
+    depth: usize,
+) {
     let tag_of = |t: Tag| if artifact { Tag::Artifact } else { t };
     match &b.kind {
         Kind::Space => {}
@@ -978,7 +1066,15 @@ fn draw_box(b: &LBox, x0: f64, top: f64, page_h: f64, artifact: bool, out: &mut 
             for c in &row.cells {
                 let cx = x0 + c.x;
                 let y_bottom = page_h - top - c.h;
-                if let Some(fill) = c.fill.or(if row.header { Some(Color { r: 0xF0, g: 0xF0, b: 0xF0 }) } else { None }) {
+                if let Some(fill) = c.fill.or(if row.header {
+                    Some(Color {
+                        r: 0xF0,
+                        g: 0xF0,
+                        b: 0xF0,
+                    })
+                } else {
+                    None
+                }) {
                     out.push(Item::Rect {
                         x: cx,
                         y: y_bottom,
@@ -1093,7 +1189,13 @@ fn sane_setup(mut s: PageSetup) -> PageSetup {
 }
 
 fn fixed_page(comp: &mut Composer, fp: &FixedPage) -> Result<Page> {
-    let fix = |v: f64, d: f64| if v.is_finite() { v.clamp(3.0, 14_400.0) } else { d };
+    let fix = |v: f64, d: f64| {
+        if v.is_finite() {
+            v.clamp(3.0, 14_400.0)
+        } else {
+            d
+        }
+    };
     let (pw, ph) = (fix(fp.width, 595.0), fix(fp.height, 842.0));
     let mut page = Page {
         width: pw,
@@ -1117,7 +1219,11 @@ fn fixed_page(comp: &mut Composer, fp: &FixedPage) -> Result<Page> {
         }
         match &fr.content {
             FrameContent::Image { image, alt } => {
-                let alt = if alt.trim().is_empty() { "image".to_string() } else { alt.clone() };
+                let alt = if alt.trim().is_empty() {
+                    "image".to_string()
+                } else {
+                    alt.clone()
+                };
                 let e = comp.elem_with("Figure", 0, Some(alt), None);
                 page.items.push(Item::Image {
                     x: fr.x,
@@ -1159,7 +1265,11 @@ fn add_page_numbers(pages: &mut [Page], opts: &Options) -> Result<()> {
         };
         let style = Style {
             size: 9.0,
-            color: Color { r: 0x55, g: 0x55, b: 0x55 },
+            color: Color {
+                r: 0x55,
+                g: 0x55,
+                b: 0x55,
+            },
             lang: Some(if rtl { "ar".into() } else { "en".into() }),
             ..Style::default()
         };
@@ -1194,7 +1304,7 @@ fn add_page_numbers(pages: &mut [Page], opts: &Options) -> Result<()> {
 #[allow(clippy::unwrap_used, clippy::indexing_slicing)]
 mod tests {
     use super::*;
-    use crate::model::{Cell, Section, Row as MRow};
+    use crate::model::{Cell, Row as MRow, Section};
 
     fn body(text: &str) -> Block {
         Block::Paragraph(Paragraph::plain(text, Style::default()))
@@ -1223,12 +1333,26 @@ mod tests {
 
     #[test]
     fn labels() {
-        let li = |ordered, number, style| ListInfo { ordered, level: 0, number, style };
+        let li = |ordered, number, style| ListInfo {
+            ordered,
+            level: 0,
+            number,
+            style,
+        };
         assert_eq!(list_label(&li(true, 3, NumberStyle::Auto), false), "3.");
         assert_eq!(list_label(&li(true, 12, NumberStyle::Auto), true), "١٢.");
-        assert_eq!(list_label(&li(true, 3, NumberStyle::ArabicLetter), true), "ت.");
-        assert_eq!(list_label(&li(true, 4, NumberStyle::UpperRoman), false), "IV.");
-        assert_eq!(list_label(&li(true, 28, NumberStyle::LowerLetter), false), "bb.");
+        assert_eq!(
+            list_label(&li(true, 3, NumberStyle::ArabicLetter), true),
+            "ت."
+        );
+        assert_eq!(
+            list_label(&li(true, 4, NumberStyle::UpperRoman), false),
+            "IV."
+        );
+        assert_eq!(
+            list_label(&li(true, 28, NumberStyle::LowerLetter), false),
+            "bb."
+        );
         assert_eq!(list_label(&li(false, 1, NumberStyle::Auto), false), "•");
     }
 
@@ -1248,7 +1372,14 @@ mod tests {
         }
         // No page starts or ends with a single line of a multi-line paragraph: count baselines.
         let lines_on = |p: &Page| {
-            let mut ys: Vec<i64> = p.items.iter().filter_map(|i| match i { Item::Text { y, .. } => Some(*y as i64), _ => None }).collect();
+            let mut ys: Vec<i64> = p
+                .items
+                .iter()
+                .filter_map(|i| match i {
+                    Item::Text { y, .. } => Some(*y as i64),
+                    _ => None,
+                })
+                .collect();
             ys.dedup();
             ys.len()
         };
@@ -1260,24 +1391,55 @@ mod tests {
     #[test]
     fn heading_is_kept_with_next_paragraph() {
         let filler = "filler text ".repeat(250);
-        let mut h = Paragraph::plain("Heading", Style { size: 20.0, bold: true, ..Style::default() });
+        let mut h = Paragraph::plain(
+            "Heading",
+            Style {
+                size: 20.0,
+                bold: true,
+                ..Style::default()
+            },
+        );
         h.style.heading = 1;
         // Fill most of the page, then a heading, then a paragraph.
-        let blocks = vec![body(&filler), body(&filler), Block::Paragraph(h), body(&"after ".repeat(80))];
+        let blocks = vec![
+            body(&filler),
+            body(&filler),
+            Block::Paragraph(h),
+            body(&"after ".repeat(80)),
+        ];
         let l = layout(&doc(blocks), &Options::default()).unwrap();
-        let page_of = |needle: &str| l.pages.iter().position(|p| texts(p).iter().any(|t| t == needle)).unwrap();
+        let page_of = |needle: &str| {
+            l.pages
+                .iter()
+                .position(|p| texts(p).iter().any(|t| t == needle))
+                .unwrap()
+        };
         assert_eq!(page_of("Heading"), page_of("after"));
         assert!(l.elems.iter().any(|e| e.role == "H1"));
     }
 
     #[test]
     fn rtl_table_mirrors_columns_and_repeats_header() {
-        let cell = |t: &str| Cell { blocks: vec![body(t)], ..Cell::default() };
-        let mut rows = vec![MRow { cells: vec![cell("الاسم"), cell("المدينة")], header: true }];
+        let cell = |t: &str| Cell {
+            blocks: vec![body(t)],
+            ..Cell::default()
+        };
+        let mut rows = vec![MRow {
+            cells: vec![cell("الاسم"), cell("المدينة")],
+            header: true,
+        }];
         for i in 0..120 {
-            rows.push(MRow { cells: vec![cell(&format!("سطر{i}")), cell("الرياض")], header: false });
+            rows.push(MRow {
+                cells: vec![cell(&format!("سطر{i}")), cell("الرياض")],
+                header: false,
+            });
         }
-        let t = Table { rows, col_widths: None, dir: Dir::Rtl, borders: true };
+        let t = Table {
+            rows,
+            col_widths: None,
+            dir: Dir::Rtl,
+            borders: true,
+        };
         let l = layout(&doc(vec![Block::Table(t)]), &Options::default()).unwrap();
         assert!(l.pages.len() >= 2);
         // Header text appears on every page (repeated as artifact on later pages).
@@ -1285,10 +1447,16 @@ mod tests {
             assert!(texts(p).iter().any(|t| t == "الاسم"), "header on every page");
         }
         // Column 0 is on the right in an RTL table.
-        let x_of = |needle: &str| l.pages[0].items.iter().find_map(|i| match i {
-            Item::Text { x, piece, .. } if piece.text == needle => Some(*x),
-            _ => None,
-        }).unwrap();
+        let x_of = |needle: &str| {
+            l.pages[0]
+                .items
+                .iter()
+                .find_map(|i| match i {
+                    Item::Text { x, piece, .. } if piece.text == needle => Some(*x),
+                    _ => None,
+                })
+                .unwrap()
+        };
         assert!(x_of("الاسم") > x_of("المدينة"));
         let roles: Vec<&str> = l.elems.iter().map(|e| e.role).collect();
         for r in ["Table", "TR", "TH", "TD", "P"] {
@@ -1306,12 +1474,24 @@ mod tests {
     fn lists_get_structure_and_arabic_numbers() {
         let item = |t: &str, n| {
             let mut p = Paragraph::plain(t, Style::default());
-            p.style.list = Some(ListInfo { ordered: true, level: 0, number: n, style: NumberStyle::Auto });
+            p.style.list = Some(ListInfo {
+                ordered: true,
+                level: 0,
+                number: n,
+                style: NumberStyle::Auto,
+            });
             Block::Paragraph(p)
         };
-        let l = layout(&doc(vec![item("البند الأول", 1), item("البند الثاني", 2)]), &Options::default()).unwrap();
+        let l = layout(
+            &doc(vec![item("البند الأول", 1), item("البند الثاني", 2)]),
+            &Options::default(),
+        )
+        .unwrap();
         let t = texts(&l.pages[0]);
-        assert!(t.iter().any(|x| x == "١") && t.iter().any(|x| x == "٢"), "{t:?}");
+        assert!(
+            t.iter().any(|x| x == "١") && t.iter().any(|x| x == "٢"),
+            "{t:?}"
+        );
         let roles: Vec<&str> = l.elems.iter().map(|e| e.role).collect();
         assert_eq!(roles.iter().filter(|r| **r == "L").count(), 1);
         assert_eq!(roles.iter().filter(|r| **r == "LI").count(), 2);
@@ -1319,7 +1499,11 @@ mod tests {
 
     #[test]
     fn page_numbers_in_arabic() {
-        let opts = Options { page_numbers: true, arabic_numbers: true, default_rtl: true };
+        let opts = Options {
+            page_numbers: true,
+            arabic_numbers: true,
+            default_rtl: true,
+        };
         let l = layout(&doc(vec![body("نص"), Block::PageBreak, body("نص")]), &opts).unwrap();
         assert_eq!(l.pages.len(), 2);
         let t = texts(&l.pages[1]);

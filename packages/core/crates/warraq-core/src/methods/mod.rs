@@ -5,6 +5,7 @@ use crate::CoreError;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
+mod create;
 mod doc;
 mod pages;
 mod pdf;
@@ -20,6 +21,8 @@ pub const NAMESPACES: &[fn(&mut Registry)] = &[
     protect::register,
     pdf::register,
     text::register,
+    // Create PDF
+    create::register,
     #[cfg(feature = "render")]
     render::register,
 ];

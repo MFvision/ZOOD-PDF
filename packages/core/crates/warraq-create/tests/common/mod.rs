@@ -71,7 +71,8 @@ pub fn embedded_fonts(pdf: &[u8]) -> Vec<(String, usize)> {
     for (_, o) in d.objects.iter() {
         if let Object::Dictionary(fd) = o {
             if fd.get(b"Type").and_then(|t| t.as_name()).ok() == Some(b"FontDescriptor") {
-                let name = String::from_utf8_lossy(fd.get(b"FontName").unwrap().as_name().unwrap()).into_owned();
+                let name = String::from_utf8_lossy(fd.get(b"FontName").unwrap().as_name().unwrap())
+                    .into_owned();
                 let ff = fd.get(b"FontFile2").unwrap().as_reference().unwrap();
                 let st = d.get_object(ff).unwrap().as_stream().unwrap();
                 let len = st.decompressed_content().unwrap().len();
@@ -144,4 +145,29 @@ pub fn dump(pdf: &[u8], name: &str) {
         std::fs::write(format!("{dir}/{name}-{i}.png"), png).unwrap();
     }
     std::fs::write(format!("{dir}/{name}.pdf"), pdf).unwrap();
+}
+
+/// Structure roles (`/S`) of every StructElem, and the /Alt texts.
+pub fn struct_roles(pdf: &[u8]) -> (Vec<String>, Vec<String>) {
+    let d = Document::load_mem(pdf).unwrap();
+    let mut roles = Vec::new();
+    let mut alts = Vec::new();
+    for (_, o) in d.objects.iter() {
+        if let Object::Dictionary(e) = o {
+            if e.get(b"Type").and_then(|t| t.as_name()).ok() == Some(b"StructElem") {
+                roles.push(
+                    String::from_utf8_lossy(e.get(b"S").unwrap().as_name().unwrap()).into_owned(),
+                );
+                if let Ok(Object::String(a, _)) = e.get(b"Alt") {
+                    let u: Vec<u16> = a
+                        .chunks(2)
+                        .skip(1)
+                        .map(|c| u16::from_be_bytes([c[0], c[1]]))
+                        .collect();
+                    alts.push(String::from_utf16_lossy(&u));
+                }
+            }
+        }
+    }
+    (roles, alts)
 }

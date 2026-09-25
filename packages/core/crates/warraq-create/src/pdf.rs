@@ -141,7 +141,9 @@ fn cluster_texts(text: &str, clusters: &[usize]) -> Vec<Option<String>> {
                 .find(|s| **s > *c)
                 .copied()
                 .unwrap_or(text.len());
-            text.get(*c..end).map(str::to_string).filter(|s| !s.is_empty())
+            text.get(*c..end)
+                .map(str::to_string)
+                .filter(|s| !s.is_empty())
         })
         .collect()
 }
@@ -254,7 +256,8 @@ pub fn write(layout: &Layout, doc: &Document, meta: &Meta) -> Result<Vec<u8>> {
             subsetter::subset_with_variations(fid.data(), 0, &vars, &remap)
         }
         .map_err(|e| CreateError::Font(format!("subsetting {fid:?}: {e}")))?;
-        let sub = FontRef::new(&data).map_err(|e| CreateError::Font(format!("subset font: {e}")))?;
+        let sub =
+            FontRef::new(&data).map_err(|e| CreateError::Font(format!("subset font: {e}")))?;
         let upem = f64::from(sub.head().map(|h| h.units_per_em()).unwrap_or(1000).max(16));
         let (bbox, asc, desc) = match sub.head() {
             Ok(h) => (
@@ -298,7 +301,10 @@ pub fn write(layout: &Layout, doc: &Document, meta: &Meta) -> Result<Vec<u8>> {
         fd.set("Ascent", Object::Integer(asc as i64));
         fd.set("Descent", Object::Integer(desc as i64));
         fd.set("CapHeight", Object::Integer((asc * 0.7) as i64));
-        fd.set("StemV", Object::Integer(if fid.is_bold() { 140 } else { 80 }));
+        fd.set(
+            "StemV",
+            Object::Integer(if fid.is_bold() { 140 } else { 80 }),
+        );
         fd.set("FontFile2", Object::Reference(ff_id));
         let fd_id = objs.add(fd);
         let mut cid = Dictionary::new();
@@ -320,7 +326,10 @@ pub fn write(layout: &Layout, doc: &Document, meta: &Meta) -> Result<Vec<u8>> {
         t0.set("Subtype", name("Type0"));
         t0.set("BaseFont", name(&base));
         t0.set("Encoding", name("Identity-H"));
-        t0.set("DescendantFonts", Object::Array(vec![Object::Reference(cid_id)]));
+        t0.set(
+            "DescendantFonts",
+            Object::Array(vec![Object::Reference(cid_id)]),
+        );
         t0.set("ToUnicode", Object::Reference(tu_id));
         let t0_id = objs.add(t0);
         let res = format!("F{}", k + 1);
@@ -378,7 +387,12 @@ pub fn write(layout: &Layout, doc: &Document, meta: &Meta) -> Result<Vec<u8>> {
     }
     resources.set(
         "ProcSet",
-        Object::Array(vec![name("PDF"), name("Text"), name("ImageB"), name("ImageC")]),
+        Object::Array(vec![
+            name("PDF"),
+            name("Text"),
+            name("ImageB"),
+            name("ImageC"),
+        ]),
     );
     let resources_id = objs.add(resources);
 
@@ -519,7 +533,9 @@ pub fn write(layout: &Layout, doc: &Document, meta: &Meta) -> Result<Vec<u8>> {
                     hasher ^= piece.text.len() as u64;
                     hasher = hasher.wrapping_mul(0x0100_0000_01b3);
                 }
-                Item::Image { x, y, w, h, image, .. } => {
+                Item::Image {
+                    x, y, w, h, image, ..
+                } => {
                     close_bt(&mut cs, &mut in_bt);
                     if let Some(res) = image_res.get(image) {
                         let _ = writeln!(
@@ -603,7 +619,10 @@ pub fn write(layout: &Layout, doc: &Document, meta: &Meta) -> Result<Vec<u8>> {
     }
     // ToUnicode streams.
     for fo in fonts.values() {
-        objs.set(fo.tu, stream(Dictionary::new(), tounicode_cmap(&fo.unicode), true)?);
+        objs.set(
+            fo.tu,
+            stream(Dictionary::new(), tounicode_cmap(&fo.unicode), true)?,
+        );
     }
     let mut pages = Dictionary::new();
     pages.set("Type", name("Pages"));
@@ -656,7 +675,10 @@ pub fn write(layout: &Layout, doc: &Document, meta: &Meta) -> Result<Vec<u8>> {
     let mut pt = Dictionary::new();
     pt.set("Nums", Object::Array(parent_tree));
     sr.set("ParentTree", Object::Dictionary(pt));
-    sr.set("ParentTreeNextKey", Object::Integer(layout.pages.len() as i64));
+    sr.set(
+        "ParentTreeNextKey",
+        Object::Integer(layout.pages.len() as i64),
+    );
     objs.set(struct_root_id, sr);
 
     // 6. Catalog + Info.

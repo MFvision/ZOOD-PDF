@@ -59,7 +59,9 @@ impl Node {
             .find(|(k, _)| k == name)
             .or_else(|| {
                 let l = local(name);
-                self.attrs.iter().find(|(k, _)| k.contains(':') && local(k) == l)
+                self.attrs
+                    .iter()
+                    .find(|(k, _)| k.contains(':') && local(k) == l)
             })
             .map(|(_, v)| v.as_str())
     }

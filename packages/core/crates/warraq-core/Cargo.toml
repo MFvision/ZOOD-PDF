@@ -16,6 +16,8 @@ serde.workspace = true
 serde_json.workspace = true
 warraq-pdf = { path = "../warraq-pdf" }
 warraq-text = { path = "../warraq-text" }
+# Create PDF (layout engine + readers); bundles the Amiri/Cairo/Inter fonts.
+warraq-create = { path = "../warraq-create" }
 warraq-render = { path = "../warraq-render", optional = true, default-features = false, features = ["hayro"] }
 wasm-bindgen = { version = "0.2", optional = true, default-features = false, features = ["std"] }
 js-sys = { version = "0.3", optional = true, default-features = false, features = ["std"] }
