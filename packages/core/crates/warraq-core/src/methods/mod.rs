@@ -12,6 +12,8 @@ mod protect;
 #[cfg(feature = "render")]
 mod render;
 mod text;
+// Redact tool (warraq-redact)
+mod redact;
 
 /// Every namespace's `register` function.
 pub const NAMESPACES: &[fn(&mut Registry)] = &[
@@ -20,6 +22,8 @@ pub const NAMESPACES: &[fn(&mut Registry)] = &[
     protect::register,
     pdf::register,
     text::register,
+    // Redact tool (warraq-redact)
+    redact::register,
     #[cfg(feature = "render")]
     render::register,
 ];

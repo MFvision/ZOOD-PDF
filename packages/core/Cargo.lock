@@ -1373,6 +1373,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "warraq-pdf",
+ "warraq-redact",
  "warraq-render",
  "warraq-text",
  "wasm-bindgen",
