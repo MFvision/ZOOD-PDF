@@ -993,6 +993,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "roxmltree"
+version = "0.21.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1964b10c76125c36f8afe190065a4bf9a87bf324842c05701330bba9f1cacbb"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "rustc-hash"
 version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1196,6 +1205,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ttf-parser"
+version = "0.25.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2df906b07856748fa3f6e0ad0cbaa047052d4a7dd609e231c4f72cee8c36f31"
+
+[[package]]
 name = "typenum"
 version = "1.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1303,6 +1318,7 @@ dependencies = [
  "thiserror",
  "warraq-pdf",
  "warraq-render",
+ "warraq-standards",
  "wasm-bindgen",
 ]
 
@@ -1337,6 +1353,17 @@ name = "warraq-sign"
 version = "0.1.0"
 dependencies = [
  "thiserror",
+]
+
+[[package]]
+name = "warraq-standards"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "roxmltree",
+ "serde_json",
+ "ttf-parser",
+ "warraq-pdf",
 ]
 
 [[package]]

@@ -1,0 +1,18 @@
+[package]
+name = "warraq-standards"
+description = "PDF/A-1b/2b/2u/3b and PDF/X-4 of the ZOOD PDF engine: own 52-rule PDF/A validator with ISO clause references, converter, preflight."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+warraq-pdf = { path = "../warraq-pdf" }
+serde_json.workspace = true
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
+roxmltree = { version = "0.21", default-features = false, features = ["std"] }
+ttf-parser = { version = "0.25", default-features = false, features = ["std"] }
+
+[lints]
+workspace = true

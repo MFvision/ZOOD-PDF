@@ -413,6 +413,11 @@ impl Pdf {
         &self.doc.version
     }
 
+    /// Set the header version written by the next full rewrite (e.g. `1.4` for PDF/A-1).
+    pub fn set_version(&mut self, version: &str) {
+        self.doc.version = version.to_string();
+    }
+
     /// The (decrypted) trailer, without `/Encrypt`.
     pub fn trailer(&self) -> &Dictionary {
         &self.doc.trailer
