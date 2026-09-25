@@ -14,6 +14,7 @@ libfuzzer-sys = "0.4"
 lopdf = { version = "0.45", default-features = false }
 warraq-pdf = { path = "../crates/warraq-pdf" }
 warraq-text = { path = "../crates/warraq-text" }
+warraq-create = { path = "../crates/warraq-create" }
 
 # Standalone: not a member of the engine workspace (see ../Cargo.toml `exclude`).
 [workspace]
@@ -53,6 +54,76 @@ bench = false
 [[bin]]
 name = "cmap"
 path = "fuzz_targets/cmap.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_docx"
+path = "fuzz_targets/create_docx.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_xlsx"
+path = "fuzz_targets/create_xlsx.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_pptx"
+path = "fuzz_targets/create_pptx.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_html"
+path = "fuzz_targets/create_html.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_markdown"
+path = "fuzz_targets/create_markdown.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_csv"
+path = "fuzz_targets/create_csv.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_text"
+path = "fuzz_targets/create_text.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_picture"
+path = "fuzz_targets/create_picture.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_tiff"
+path = "fuzz_targets/create_tiff.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_zip_xml"
+path = "fuzz_targets/create_zip_xml.rs"
 test = false
 doc = false
 bench = false
