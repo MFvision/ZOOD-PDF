@@ -222,8 +222,9 @@ pyhanko-certvalidator`). Test PKI: `tests/fixtures/sign/make_pki.sh` (committed 
   reserve would need a bigger `placeholderSize`.
 * **Adobe Acrobat is not available** to cross-check; independent checks are OpenSSL and pyHanko only.
 * cargo-fuzz targets `cms` and `sig_dict` (`packages/core/fuzz`) compile (`cargo check`); they were
-  **not run under libFuzzer** here (no nightly; disk space on the shared machine ran out during a
-  sancov build). The stable smoke fuzz above runs instead.
+  **not run under libFuzzer** here (no nightly/cargo-fuzz; the stable SanitizerCoverage release build
+  was abandoned to stay within the shared machine's disk budget). The stable smoke fuzz above runs
+  instead, in every `cargo test`.
 * Verification: RSA keys > 4096 bits, curves other than P-256/P-384, Ed25519 and `adbe.x509.rsa_sha1`
   are reported `unsupported`; signed attributes and TBS certificates are verified over their
   received bytes, but OCSP responses are verified over a DER re-encoding (fine for DER responders).
