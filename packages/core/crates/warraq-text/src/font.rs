@@ -52,6 +52,8 @@ pub struct Font {
     pub kind: FontKind,
     pub vertical: bool,
     pub bold: bool,
+    /// Italic/oblique (font name or descriptor `/Flags` bit 7, `/ItalicAngle`).
+    pub italic: bool,
     /// Ascent / descent in text space units per unit font size.
     pub ascent: f64,
     pub descent: f64,
@@ -123,6 +125,7 @@ impl Font {
             kind: FontKind::Simple,
             vertical: false,
             bold: false,
+            italic: false,
             ascent: 0.8,
             descent: -0.2,
             encoding: None,
@@ -178,6 +181,7 @@ impl Font {
         let lname = base_font.to_ascii_lowercase();
         f.bold =
             f.bold || lname.contains("bold") || lname.contains("black") || lname.contains("heavy");
+        f.italic = f.italic || lname.contains("italic") || lname.contains("oblique");
         f
     }
 
@@ -204,6 +208,12 @@ impl Font {
             if (flags as i64) & (1 << 18) != 0 {
                 self.bold = true;
             }
+            if (flags as i64) & (1 << 6) != 0 {
+                self.italic = true;
+            }
+        }
+        if num(b"ItalicAngle").is_some_and(|a| a.abs() > 1.0 && a.abs() < 45.0) {
+            self.italic = true;
         }
     }
 
@@ -580,5 +590,26 @@ mod tests {
         assert!((dec[1].width - 0.25).abs() < 1e-9);
         assert!((dec[2].width - 1.0).abs() < 1e-9);
         assert_eq!(dec[3].len, 1, "odd trailing byte still consumed");
+    }
+
+    #[test]
+    fn italic_from_name_flags_or_angle() {
+        let mut doc = Document::with_version("1.7");
+        let named = doc.add_object(dictionary! {"Type" => "Font", "Subtype" => "Type1", "BaseFont" => "Helvetica-Oblique"});
+        let fd = doc.add_object(dictionary! {"Type" => "FontDescriptor", "Flags" => 64});
+        let flagged = doc.add_object(dictionary! {"Type" => "Font", "Subtype" => "TrueType", "BaseFont" => "ABC+Naskh", "FontDescriptor" => fd});
+        let fd2 = doc.add_object(dictionary! {"Type" => "FontDescriptor", "Flags" => 32, "ItalicAngle" => -12});
+        let angled = doc.add_object(dictionary! {"Type" => "Font", "Subtype" => "TrueType", "BaseFont" => "Serif", "FontDescriptor" => fd2});
+        let plain = doc.add_object(dictionary! {"Type" => "Font", "Subtype" => "Type1", "BaseFont" => "Helvetica-Bold"});
+        let src = src_with(doc);
+        let load = |id: lopdf::ObjectId| {
+            let d = resolve_dict(&src, &Object::Reference(id)).unwrap().clone();
+            Font::load(&src, FontKey::Object(id.0, id.1), &d)
+        };
+        assert!(load(named).italic);
+        assert!(load(flagged).italic);
+        assert!(load(angled).italic);
+        let bold = load(plain);
+        assert!(!bold.italic && bold.bold);
     }
 }

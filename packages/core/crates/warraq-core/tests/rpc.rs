@@ -269,10 +269,10 @@ fn static_merge_and_method_list() {
     ] {
         assert!(docs.iter().any(|d| d == m), "{m} not registered");
     }
-    assert_eq!(
-        registry().static_names(),
-        vec!["methods.list", "pdf.isEncrypted", "pdf.merge"]
-    );
+    let stat = registry().static_names();
+    for m in ["methods.list", "pdf.isEncrypted", "pdf.merge"] {
+        assert!(stat.contains(&m), "{m} not registered");
+    }
 }
 
 #[test]

@@ -670,7 +670,22 @@ version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
  "lopdf",
+ "serde_json",
+ "warraq-office",
  "warraq-pdf",
+ "warraq-text",
+]
+
+[[package]]
+name = "warraq-office"
+version = "0.1.0"
+dependencies = [
+ "crc32fast",
+ "lopdf",
+ "miniz_oxide",
+ "serde",
+ "serde_json",
+ "thiserror",
  "warraq-text",
 ]
 

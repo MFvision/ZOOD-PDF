@@ -6,6 +6,8 @@ members = [
   "crates/warraq-render",
   "crates/warraq-sign",
   "crates/warraq-core",
+  # Export (DOCX/XLSX/PPTX/HTML/Markdown/text) and Compare.
+  "crates/warraq-office",
 ]
 # cargo-fuzz crate: nightly-only, built separately (`cd fuzz && cargo fuzz run load`).
 exclude = ["fuzz"]
