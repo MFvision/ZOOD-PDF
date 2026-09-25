@@ -4,11 +4,12 @@
 //! and compare it with its truth file using a normalised character accuracy
 //! (`1 − Levenshtein / truth length` after NFC, removal of invisible formatting characters and
 //! whitespace collapsing). The test fails when any file drops below its threshold in
-//! `tests/acid/baseline.json` — a regression gate. Encrypted files that cannot be opened yet are
-//! reported as `pending_decryption` (the manifest may also mark them so).
+//! `tests/acid/baseline.json` — a regression gate. Files are loaded and decrypted by `warraq-pdf`
+//! (the product path); the manifest can still mark a file `pending_decryption` to skip it.
 //!
 //! Run: `cargo test -p warraq-text --test acid -- --nocapture`
 //! Env: `ACID_VERBOSE=1` prints extracted vs truth text for files below 100 %;
+//!      `ACID_LOADER=lopdf` loads with the stand-alone `LopdfSource` instead of `warraq-pdf`;
 //!      `ACID_BLESS=1` rewrites the baseline from the measured values (minus a small margin).
 #![allow(
     clippy::unwrap_used,
@@ -22,7 +23,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 use unicode_normalization::UnicodeNormalization;
-use warraq_text::{extract_all, plain_text, LayoutOptions, LopdfSource};
+use warraq_text::{extract_all, plain_text, DocSource, LayoutOptions, LopdfSource};
 
 fn repo() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -110,6 +111,15 @@ fn arabic_acid_gate() {
         .unwrap_or(Value::Null);
     let verbose = std::env::var_os("ACID_VERBOSE").is_some();
     let bless = std::env::var_os("ACID_BLESS").is_some();
+    let use_lopdf = std::env::var("ACID_LOADER").is_ok_and(|v| v == "lopdf");
+    println!(
+        "loader: {}",
+        if use_lopdf {
+            "lopdf (stand-alone)"
+        } else {
+            "warraq-pdf (product path)"
+        }
+    );
 
     let mut rows: Vec<Row> = Vec::new();
     let mut failures: Vec<String> = Vec::new();
@@ -146,38 +156,33 @@ fn arabic_acid_gate() {
             });
             continue;
         }
-        let src = match LopdfSource::open(&bytes, password) {
-            Ok(s) => s,
-            Err(e) => {
-                if password.is_some() {
-                    rows.push(Row {
-                        id,
-                        producer,
-                        status: format!("pending_decryption ({e})"),
-                        accuracy: None,
-                        baseline: base,
-                    });
-                } else {
-                    failures.push(format!("{id}: cannot open: {e}"));
-                    rows.push(Row {
-                        id,
-                        producer,
-                        status: "open error".into(),
-                        accuracy: None,
-                        baseline: base,
-                    });
-                }
-                continue;
-            }
+        // Product path: warraq-pdf loads and decrypts; the text engine reads the document in
+        // place. `ACID_LOADER=lopdf` uses the stand-alone lopdf loader instead.
+        let extracted = if use_lopdf {
+            LopdfSource::open(&bytes, password)
+                .map_err(|e| e.to_string())
+                .and_then(|src| {
+                    extract_all(&src, &LayoutOptions::default()).map_err(|e| e.to_string())
+                })
+        } else {
+            warraq_pdf::Pdf::open(bytes, password)
+                .map_err(|e| format!("warraq-pdf: {e}"))
+                .and_then(|pdf| {
+                    extract_all(
+                        &DocSource::borrowed(pdf.document()),
+                        &LayoutOptions::default(),
+                    )
+                    .map_err(|e| e.to_string())
+                })
         };
-        let text = match extract_all(&src, &LayoutOptions::default()) {
+        let text = match extracted {
             Ok(p) => plain_text(&p),
             Err(e) => {
-                failures.push(format!("{id}: extraction error: {e}"));
+                failures.push(format!("{id}: {e}"));
                 rows.push(Row {
                     id,
                     producer,
-                    status: "extract error".into(),
+                    status: "open/extract error".into(),
                     accuracy: None,
                     baseline: base,
                 });
@@ -185,17 +190,6 @@ fn arabic_acid_gate() {
             }
         };
         let acc = accuracy(&text, &truth);
-        if password.is_some() && acc < 0.05 {
-            // Opened but decrypted to garbage: the stand-in decryption does not handle it.
-            rows.push(Row {
-                id,
-                producer,
-                status: "pending_decryption (garbled)".into(),
-                accuracy: Some(acc),
-                baseline: base,
-            });
-            continue;
-        }
         if verbose && acc < 1.0 {
             println!(
                 "\n=== {id} ({:.2}%)\n--- extracted\n{text}\n--- truth\n{truth}",

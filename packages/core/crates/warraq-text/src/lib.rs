@@ -35,4 +35,4 @@ pub use model::PageText;
 pub use normalize::normalize_for_search;
 pub use search::{search, Hit};
 pub use shape::{actual_text_spans, shape, ShapedRun};
-pub use source::{ContentSource, LopdfSource};
+pub use source::{ContentSource, DocSource, LopdfSource};

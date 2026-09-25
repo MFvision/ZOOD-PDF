@@ -15,6 +15,7 @@ apps/ios/Frameworks/
 out/
 .vite/
 *.tsbuildinfo
+.claude/worktrees/
 
 # Arabic corpus generation
 scripts/corpus/.venv/

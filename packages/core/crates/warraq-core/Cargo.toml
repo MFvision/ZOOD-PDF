@@ -1,13 +1,37 @@
 [package]
 name = "warraq-core"
+description = "JSON + blobs RPC facade of the ZOOD PDF engine (wasm-bindgen, C ABI, Rust)."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 
+[lib]
+crate-type = ["cdylib", "rlib", "staticlib"]
+
 [dependencies]
 thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+warraq-pdf = { path = "../warraq-pdf" }
+warraq-render = { path = "../warraq-render", optional = true, default-features = false, features = ["hayro"] }
+wasm-bindgen = { version = "0.2", optional = true, default-features = false, features = ["std"] }
+js-sys = { version = "0.3", optional = true, default-features = false, features = ["std"] }
+
+[features]
+default = ["ffi"]
+# C ABI for the iOS app (see include/warraq.h).
+ffi = []
+# wasm-bindgen class for the web UI. Build with `bash scripts/build-wasm.sh`.
+wasm = ["dep:wasm-bindgen", "dep:js-sys", "warraq-pdf/wasm_js"]
+# `pages.render` via hayro (adds several MB of wasm; off by default).
+render = ["dep:warraq-render"]
+
+# wasm-pack would download binaryen from GitHub at build time; scripts/build-wasm.sh runs
+# wasm-opt itself when it is installed (WASM_OPT or PATH) so offline builds still work.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
 
 [lints]
 workspace = true

@@ -14,8 +14,8 @@ that matches what a reader sees, search it Arabic-aware, and write Arabic that r
 
 ## Decision
 1. **Own content interpreter** (`interp.rs`) on a small, bounded lexer; the object layer is reached only through the
-   `ContentSource` trait (page count, content bytes, resources, object lookup) so `warraq-pdf`'s decrypted document
-   can back it. Until integration, `LopdfSource` implements it on `lopdf` 0.45 (default features off).
+   `ContentSource` trait (page count, content bytes, resources, object lookup), implemented by `DocSource` over an
+   owned or borrowed `lopdf` 0.45 document (default features off) — e.g. `warraq-pdf`'s decrypted one.
 2. **Fonts** keyed by object id (`FontKey`), never by pointer. Text comes from, in order: `/ActualText` (always
    preferred), ToUnicode (bfchar/bfrange incl. array form and multi-codepoint), simple-font encodings +
    `/Differences` glyph names (AGL subset incl. `uniXXXX`, `afii57xxx`, `lam-ar.init`, `lam_alef-ar`), `Uni*-UCS2`
@@ -55,5 +55,5 @@ that matches what a reader sees, search it Arabic-aware, and write Arabic that r
   render identically); we pick the reading documented in `bidi.rs` tests.
 * Tables are only recognised from aligned text (no ruling-line analysis yet); prose with 3+ columns of short lines
   could be mistaken for a table.
-* The crate does not decrypt by itself: encrypted files open through lopdf's handler in `LopdfSource` today and
-  through `warraq-pdf` after integration.
+* The crate does not decrypt by itself: in the product it reads `warraq-pdf`'s decrypted document in place
+  (`DocSource::borrowed`); `LopdfSource` (lopdf's own loader) exists for stand-alone use and tests.

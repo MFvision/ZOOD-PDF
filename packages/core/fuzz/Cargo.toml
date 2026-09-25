@@ -4,6 +4,7 @@ version = "0.0.0"
 publish = false
 edition = "2021"
 license = "Apache-2.0"
+description = "cargo-fuzz targets for the ZOOD PDF engine parsers (never shipped)."
 
 [package.metadata]
 cargo-fuzz = true
@@ -11,11 +12,36 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 lopdf = { version = "0.45", default-features = false }
+warraq-pdf = { path = "../crates/warraq-pdf" }
 warraq-text = { path = "../crates/warraq-text" }
 
-# Stand-alone workspace: `cargo +nightly fuzz run <target>` from packages/core/fuzz.
+# Standalone: not a member of the engine workspace (see ../Cargo.toml `exclude`).
 [workspace]
 members = ["."]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "load"
+path = "fuzz_targets/load.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "decrypt"
+path = "fuzz_targets/decrypt.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rebase"
+path = "fuzz_targets/rebase.rs"
+test = false
+doc = false
+bench = false
 
 [[bin]]
 name = "content_text"

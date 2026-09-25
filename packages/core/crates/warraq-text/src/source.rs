@@ -1,8 +1,11 @@
 //! The narrow interface the text engine needs from the PDF object layer.
 //!
 //! [`ContentSource`] is deliberately small (page count, page content bytes, resources and
-//! object lookup) so that it can be implemented on top of `warraq-pdf`'s decrypted document
-//! once that crate lands. Until then [`LopdfSource`] implements it directly on `lopdf`.
+//! object lookup). [`DocSource`] implements it on any (owned or borrowed) `lopdf::Document`:
+//! [`LopdfSource`] owns one (stand-alone use, lopdf's own decryption), and
+//! `DocSource::borrowed(pdf.document())` reads `warraq-pdf`'s decrypted document in place.
+
+use std::borrow::Borrow;
 
 use lopdf::{Dictionary, Document, LoadOptions, Object, ObjectId, Stream};
 
@@ -80,15 +83,19 @@ pub fn stream_data(stream: &Stream) -> Result<Vec<u8>> {
     }
 }
 
-/// [`ContentSource`] backed by a `lopdf::Document`.
-pub struct LopdfSource {
-    doc: Document,
+/// [`ContentSource`] backed by a `lopdf::Document`, owned (`D = Document`) or borrowed
+/// (`D = &Document`, e.g. `warraq_pdf::Pdf::document()`).
+pub struct DocSource<D: Borrow<Document>> {
+    doc: D,
     pages: Vec<ObjectId>,
 }
 
-impl LopdfSource {
-    /// Parse `bytes`. `password` is tried for encrypted files (lopdf's own handler; the
-    /// `warraq-pdf` handler replaces it at integration).
+/// A [`DocSource`] that owns its document.
+pub type LopdfSource = DocSource<Document>;
+
+impl DocSource<Document> {
+    /// Parse `bytes`. `password` is tried for encrypted files with lopdf's own handler (the
+    /// product path decrypts with `warraq-pdf` and uses [`DocSource::borrowed`]).
     pub fn open(bytes: &[u8], password: Option<&str>) -> Result<Self> {
         let opts = LoadOptions {
             max_decompressed_size: Some(limits::MAX_CONTENT_BYTES),
@@ -99,15 +106,24 @@ impl LopdfSource {
             .map_err(|e| TextError::Pdf(e.to_string()))?;
         Ok(Self::from_document(doc))
     }
+}
 
-    /// Wrap an already loaded document.
-    pub fn from_document(doc: Document) -> Self {
-        let pages = doc.page_iter().take(1_000_000).collect();
-        LopdfSource { doc, pages }
+impl<'a> DocSource<&'a Document> {
+    /// Read a document owned elsewhere (e.g. `warraq_pdf::Pdf::document()`), without copying.
+    pub fn borrowed(doc: &'a Document) -> Self {
+        DocSource::from_document(doc)
+    }
+}
+
+impl<D: Borrow<Document>> DocSource<D> {
+    /// Wrap a loaded document.
+    pub fn from_document(doc: D) -> Self {
+        let pages = doc.borrow().page_iter().take(1_000_000).collect();
+        DocSource { doc, pages }
     }
 
     pub fn document(&self) -> &Document {
-        &self.doc
+        self.doc.borrow()
     }
 
     fn page_dict(&self, index: usize) -> Result<&Dictionary> {
@@ -115,7 +131,7 @@ impl LopdfSource {
             .pages
             .get(index)
             .ok_or(TextError::PageOutOfRange(index))?;
-        self.doc
+        self.document()
             .get_dictionary(*id)
             .map_err(|e| TextError::Pdf(e.to_string()))
     }
@@ -136,7 +152,7 @@ impl LopdfSource {
     }
 }
 
-impl ContentSource for LopdfSource {
+impl<D: Borrow<Document>> ContentSource for DocSource<D> {
     fn page_count(&self) -> usize {
         self.pages.len()
     }
@@ -194,6 +210,6 @@ impl ContentSource for LopdfSource {
     }
 
     fn object(&self, id: ObjectId) -> Option<&Object> {
-        self.doc.objects.get(&id)
+        self.document().objects.get(&id)
     }
 }

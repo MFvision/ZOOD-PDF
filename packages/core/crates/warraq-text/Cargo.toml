@@ -17,5 +17,9 @@ unicode-normalization = "0.1"
 harfrust = "0.13"
 read-fonts = "0.43"
 
+[dev-dependencies]
+# The acid gate reads the corpus through the product object layer (load + decryption).
+warraq-pdf = { path = "../warraq-pdf" }
+
 [lints]
 workspace = true
