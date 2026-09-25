@@ -595,12 +595,18 @@ mod tests {
     #[test]
     fn italic_from_name_flags_or_angle() {
         let mut doc = Document::with_version("1.7");
-        let named = doc.add_object(dictionary! {"Type" => "Font", "Subtype" => "Type1", "BaseFont" => "Helvetica-Oblique"});
+        let named = doc.add_object(
+            dictionary! {"Type" => "Font", "Subtype" => "Type1", "BaseFont" => "Helvetica-Oblique"},
+        );
         let fd = doc.add_object(dictionary! {"Type" => "FontDescriptor", "Flags" => 64});
         let flagged = doc.add_object(dictionary! {"Type" => "Font", "Subtype" => "TrueType", "BaseFont" => "ABC+Naskh", "FontDescriptor" => fd});
-        let fd2 = doc.add_object(dictionary! {"Type" => "FontDescriptor", "Flags" => 32, "ItalicAngle" => -12});
+        let fd2 = doc.add_object(
+            dictionary! {"Type" => "FontDescriptor", "Flags" => 32, "ItalicAngle" => -12},
+        );
         let angled = doc.add_object(dictionary! {"Type" => "Font", "Subtype" => "TrueType", "BaseFont" => "Serif", "FontDescriptor" => fd2});
-        let plain = doc.add_object(dictionary! {"Type" => "Font", "Subtype" => "Type1", "BaseFont" => "Helvetica-Bold"});
+        let plain = doc.add_object(
+            dictionary! {"Type" => "Font", "Subtype" => "Type1", "BaseFont" => "Helvetica-Bold"},
+        );
         let src = src_with(doc);
         let load = |id: lopdf::ObjectId| {
             let d = resolve_dict(&src, &Object::Reference(id)).unwrap().clone();

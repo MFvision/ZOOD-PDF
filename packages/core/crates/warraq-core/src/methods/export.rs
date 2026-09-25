@@ -89,14 +89,22 @@ fn zip(p: &Value, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
         z.add(name, data, packed).map_err(office_err)?;
     }
     let bytes = z.finish().map_err(office_err)?;
-    Ok(Reply::with_blob(json!({ "files": blobs.len(), "size": bytes.len() }), bytes))
+    Ok(Reply::with_blob(
+        json!({ "files": blobs.len(), "size": bytes.len() }),
+        bytes,
+    ))
 }
 
 #[cfg(feature = "render")]
 fn png(d: &mut Document, p: &Value, _b: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
     use warraq_render::{HayroRenderer, PageRenderer};
-    let scale = p.get("scale").and_then(Value::as_f64).unwrap_or(2.0).clamp(0.1, 8.0) as f32;
-    let pages = warraq_office::page_list(d.pdf().document().get_pages().len(), p).map_err(office_err)?;
+    let scale = p
+        .get("scale")
+        .and_then(Value::as_f64)
+        .unwrap_or(2.0)
+        .clamp(0.1, 8.0) as f32;
+    let pages =
+        warraq_office::page_list(d.pdf().document().get_pages().len(), p).map_err(office_err)?;
     let bytes = if d.pdf().is_encrypted() || d.pdf().has_changes() {
         d.pdf().write_full(warraq_pdf::Protection::Remove)?
     } else {
