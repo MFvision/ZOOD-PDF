@@ -124,7 +124,7 @@ final class AnnotateUITests: XCTestCase {
         let draw = ui.app.buttons["markup.ink"]
         XCTAssertTrue(draw.waitForExistence(timeout: 10))
         draw.tap()
-        XCTAssertTrue(ui.app.staticTexts["markup.hint"].waitForExistence(timeout: 5))
+        XCTAssertTrue(ui.app.buttons["pen.color.red"].waitForExistence(timeout: 5), "the pen palette floats up")
         ui.drag(from: (0.3, 0.55), to: (0.7, 0.6), duration: 0.05)
         ui.drag(from: (0.3, 0.6), to: (0.7, 0.55), duration: 0.05)
         // Done commits the strokes.
