@@ -1,0 +1,60 @@
+[package]
+name = "zood-pdf-desktop"
+version = "0.1.0"
+description = "ZOOD PDF (زود PDF) desktop host"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/MFvision/ZOOD-PDF"
+rust-version = "1.85"
+publish = false
+default-run = "zood-pdf"
+
+[lib]
+name = "zood_pdf_desktop"
+path = "src/lib.rs"
+
+[[bin]]
+name = "zood-pdf"
+path = "src/main.rs"
+
+# Known trap: without `custom-protocol` a plain `cargo build` produces a binary that loads
+# `devUrl` (http://localhost:5173) instead of the bundled UI. It is declared here and on by
+# default; `tauri dev` runs with `--no-default-features` (see ../package.json "dev").
+# tests/features.rs fails if this ever disappears.
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSData", "NSString", "NSObject"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSPrintInfo", "NSPrintOperation", "NSView", "NSResponder"] }
+objc2-pdf-kit = { version = "0.3", default-features = false, features = ["std", "PDFDocument", "objc2-app-kit"] }
+
+[dev-dependencies]
+toml = "0.9"
+
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+
+[profile.release]
+opt-level = "s"
+lto = "thin"
+codegen-units = 1
+strip = true
