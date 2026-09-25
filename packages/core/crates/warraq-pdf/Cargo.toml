@@ -1,5 +1,6 @@
 [package]
 name = "warraq-pdf"
+description = "PDF object layer of the ZOOD PDF engine: hostile-input loader, own Standard security handler, incremental writer, rebase, page ops."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,6 +9,18 @@ rust-version.workspace = true
 
 [dependencies]
 thiserror.workspace = true
+lopdf.workspace = true
+aes = "0.9"
+cbc = { version = "0.2", features = ["alloc"] }
+rc4 = "0.2"
+md-5 = "0.11"
+sha2 = "0.11"
+getrandom = "0.4"
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
+
+[features]
+# Enables the wasm-bindgen randomness backend (crypto.getRandomValues) on wasm32.
+wasm_js = ["getrandom/wasm_js", "lopdf/wasm_js"]
 
 [lints]
 workspace = true
