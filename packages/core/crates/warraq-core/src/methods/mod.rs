@@ -6,6 +6,7 @@ use serde::de::DeserializeOwned;
 use serde_json::Value;
 
 mod doc;
+mod organize;
 mod pages;
 mod pdf;
 mod protect;
@@ -16,6 +17,7 @@ mod render;
 pub const NAMESPACES: &[fn(&mut Registry)] = &[
     doc::register,
     pages::register,
+    organize::register,
     protect::register,
     pdf::register,
     #[cfg(feature = "render")]
