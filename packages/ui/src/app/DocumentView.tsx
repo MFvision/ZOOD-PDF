@@ -11,6 +11,9 @@ import { Viewer, type ViewerApi } from '../viewer/Viewer';
 import { Icon } from './icons';
 import { IconButton, MenuButton, Tile, type MenuItem } from './primitives';
 import { runTool } from './useTools';
+import { closeToolPanel, panelFor, useToolPanel } from '../tools/panels';
+import { ExportSheet } from './ExportSheet';
+import { ComparePanel } from './ComparePanel';
 
 const wide = () => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 900px)').matches;
 
@@ -35,7 +38,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
       app.dispatch({ type: 'VIEWER_READY', id: doc.id, revision: doc.revision, pageCount: info.pageCount });
       if (doc.pendingTool) {
         const def = toolById(doc.pendingTool as ToolId);
-        if (def && runTool(def, viewer)) setTool(def.id);
+        if (def && runTool(def, viewer, doc.id)) setTool(def.id);
         app.dispatch({ type: 'TOOL_STARTED', id: doc.id });
       }
       // First-page picture for Recents, rendered by PDFium.
@@ -59,7 +62,17 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
       setTool(null);
       return;
     }
-    if (runTool(def, api) && def.id !== 'protect') setTool(def.id);
+    if (runTool(def, api, doc.id) && def.id !== 'protect' && def.id !== 'export') setTool(def.id);
+  };
+
+  // Core-tool panels (Export sheet, Compare panel) requested for this document.
+  const panel = useToolPanel();
+  const mine = panelFor(panel, doc.id, active);
+  const exportOpen = mine && panel?.tool === 'export';
+  const compareOpen = mine && panel?.tool === 'compare';
+  const closePanel = (id: ToolId) => {
+    closeToolPanel(id);
+    setTool((cur) => (cur === id ? null : cur));
   };
 
   const status = doc.edited ? ` · ${t('doc.edited')}` : '';
@@ -138,7 +151,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
           onClick={() => setInspectorOpen((v) => !v)}
         />
       </header>
-      <div className={`doc-body${pagesOpen ? ' pages-open' : ''}${inspectorOpen ? ' inspector-open' : ''}`}>
+      <div className={`doc-body${pagesOpen ? ' pages-open' : ''}${inspectorOpen && !compareOpen ? ' inspector-open' : ''}${compareOpen ? ' compare-open' : ''}`}>
         {pagesOpen && (
           <PagesPanel
             api={api}
@@ -173,8 +186,13 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
             </div>
           )}
         </div>
-        {inspectorOpen && <Inspector doc={doc} onComments={() => api?.exec('panel:toggle-comment')} />}
+        {compareOpen ? (
+          <ComparePanel key={panel?.nonce} doc={doc} api={api} onClose={() => closePanel('compare')} />
+        ) : (
+          inspectorOpen && <Inspector doc={doc} onComments={() => api?.exec('panel:toggle-comment')} />
+        )}
       </div>
+      {exportOpen && <ExportSheet key={panel?.nonce} doc={doc} api={api} onClose={() => closePanel('export')} />}
     </section>
   );
 }

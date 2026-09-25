@@ -21,19 +21,19 @@ export function useStartTool() {
       if (app.state.route.name !== 'document' || app.state.route.id !== target) {
         app.dispatch({ type: 'SET_ROUTE', route: { name: 'document', id: target } });
       }
-      runTool(tool, app.viewer(target));
+      runTool(tool, app.viewer(target), target);
     },
     [app],
   );
 }
 
-export function runTool(tool: ToolDef, viewer: { exec(cmd: string): void } | undefined): boolean {
+export function runTool(tool: ToolDef, viewer: { exec(cmd: string): void } | undefined, docId?: string): boolean {
   if (tool.viewer && viewer) {
     for (const cmd of tool.viewer.commands) viewer.exec(cmd);
     return true;
   }
   if (tool.core) {
-    void tool.core.open();
+    void tool.core.open(docId);
     return true;
   }
   return false;

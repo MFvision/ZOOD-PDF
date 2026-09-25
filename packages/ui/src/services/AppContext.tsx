@@ -37,6 +37,10 @@ export interface AppServices {
   viewer(docId: string): ViewerApi | undefined;
   markSensitive(docId: string): void;
   storeThumbnail(docId: string, png: Uint8Array): Promise<void>;
+  /** The engine client (core tools: Export, Compare, …). */
+  engine(): EngineClient;
+  /** Current bytes of a document including unsaved viewer edits (PDFium's copy when edited). */
+  currentBytes(docId: string): Promise<Uint8Array>;
 }
 
 const Ctx = createContext<AppServices | null>(null);
@@ -284,6 +288,16 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
       sensitive.current.add(docId);
       const rid = stateRef.current.documents[docId]?.recentId;
       if (rid) void recents.forgetThumbnail(rid).then(refreshRecents);
+    },
+    engine: () => getEngine(),
+    currentBytes: async (docId) => {
+      const doc = stateRef.current.documents[docId];
+      if (!doc) throw new Error('document not open');
+      if (doc.edited && !doc.warraqOwnsDocument) {
+        const api = viewers.current.get(docId);
+        if (api) return api.exportBytes();
+      }
+      return doc.bytes;
     },
     storeThumbnail: async (docId, png) => {
       const rid = stateRef.current.documents[docId]?.recentId;
