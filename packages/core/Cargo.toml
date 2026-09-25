@@ -6,6 +6,8 @@ members = [
   "crates/warraq-render",
   "crates/warraq-sign",
   "crates/warraq-core",
+  # Create PDF (layout engine + readers)
+  "crates/warraq-create",
 ]
 # cargo-fuzz crate: nightly-only, built separately (`cd fuzz && cargo fuzz run load`).
 exclude = ["fuzz"]
@@ -44,6 +46,15 @@ opt-level = 3
 [profile.dev.package.nom]
 opt-level = 2
 [profile.dev.package.lopdf]
+opt-level = 2
+# warraq-create: shaping and font subsetting in tests
+[profile.dev.package.harfrust]
+opt-level = 2
+[profile.dev.package.subsetter]
+opt-level = 2
+[profile.dev.package.write-fonts]
+opt-level = 2
+[profile.dev.package.skrifa]
 opt-level = 2
 
 [profile.release]
