@@ -1,0 +1,5 @@
+Quarterly Engineering Update
+The document engine now extracts text in logical order, including right-to-left scripts such as Arabic, Persian and Urdu. Search ignores diacritics and unifies letter variants.
+We processed 12,500 pages in 3.2 minutes during the last benchmark, a 40% improvement over the previous release.
+Next steps
+The team will add table detection, better column handling and more fuzz targets before the next milestone.

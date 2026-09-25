@@ -1,0 +1,745 @@
+{
+  "version": 1,
+  "generator": "scripts/corpus/generate.py",
+  "files": [
+    {
+      "id": "chrome-news-amiri",
+      "path": "pdf/chrome-news-amiri.pdf",
+      "producer": "chrome",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/chrome-news-amiri.txt",
+      "password": null,
+      "flags": {
+        "scanned": false,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1
+      },
+      "committed": true,
+      "pending_decryption": false
+    },
+    {
+      "id": "chrome-news-cairo-type3",
+      "path": "pdf/chrome-news-cairo-type3.pdf",
+      "producer": "chrome",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/chrome-news-cairo-type3.txt",
+      "password": null,
+      "flags": {
+        "scanned": false,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "type3": true
+      },
+      "committed": true,
+      "pending_decryption": false,
+      "notes": "Variable font: Chrome embeds Type3 glyphs whose ToUnicode maps to presentation forms"
+    },
+    {
+      "id": "chrome-mixed-naskh",
+      "path": "pdf/chrome-mixed-naskh.pdf",
+      "producer": "chrome",
+      "languages": [
+        "ar",
+        "en"
+      ],
+      "truth": "truth/chrome-mixed-naskh.txt",
+      "password": null,
+      "flags": {
+        "scanned": false,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "mixed_digits": true
+      },
+      "committed": true,
+      "pending_decryption": false
+    },
+    {
+      "id": "chrome-hard-bidi-naskh",
+      "path": "pdf/chrome-hard-bidi-naskh.pdf",
+      "producer": "chrome",
+      "languages": [
+        "ar",
+        "en"
+      ],
+      "truth": "truth/chrome-hard-bidi-naskh.txt",
+      "password": null,
+      "flags": {
+        "scanned": false,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "mixed_digits": true,
+        "hard_bidi": true
+      },
+      "committed": true,
+      "pending_decryption": false,
+      "notes": "Deliberately hard bidi: e-mail, phone with +, URL, Hijri/Gregorian dates with /, brackets, multi-word Latin runs, Arabic words inside an English paragraph"
+    },
+    {
+      "id": "chrome-two-column-naskh",
+      "path": "pdf/chrome-two-column-naskh.pdf",
+      "producer": "chrome",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/chrome-two-column-naskh.txt",
+      "password": null,
+      "flags": {
+        "scanned": false,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 2
+      },
+      "committed": true,
+      "pending_decryption": false
+    },
+    {
+      "id": "chrome-table-cairo",
+      "path": "pdf/chrome-table-cairo.pdf",
+      "producer": "chrome",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/chrome-table-cairo.txt",
+      "password": null,
+      "flags": {
+        "scanned": false,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "table": true,
+        "type3": true
+      },
+      "committed": true,
+      "pending_decryption": false
+    },
+    {
+      "id": "chrome-bold-naskh",
+      "path": "pdf/chrome-bold-naskh.pdf",
+      "producer": "chrome",
+      "languages": [
+        "ar",
+        "en"
+      ],
+      "truth": "truth/chrome-bold-naskh.txt",
+      "password": null,
+      "flags": {
+        "scanned": false,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "bold": true
+      },
+      "committed": true,
+      "pending_decryption": false
+    },
+    {
+      "id": "chrome-tashkeel-amiri",
+      "path": "pdf/chrome-tashkeel-amiri.pdf",
+      "producer": "chrome",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/chrome-tashkeel-amiri.txt",
+      "password": null,
+      "flags": {
+        "scanned": false,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": true,
+        "columns": 1
+      },
+      "committed": true,
+      "pending_decryption": false
+    },
+    {
+      "id": "chrome-urdu-nastaliq",
+      "path": "pdf/chrome-urdu-nastaliq.pdf",
+      "producer": "chrome",
+      "languages": [
+        "ur"
+      ],
+      "truth": "truth/chrome-urdu-nastaliq.txt",
+      "password": null,
+      "flags": {
+        "scanned": false,
+        "encrypted": false,
+        "nastaliq": true,
+        "tashkeel": false,
+        "columns": 1
+      },
+      "committed": true,
+      "pending_decryption": false
+    },
+    {
+      "id": "chrome-persian-vazirmatn",
+      "path": "pdf/chrome-persian-vazirmatn.pdf",
+      "producer": "chrome",
+      "languages": [
+        "fa"
+      ],
+      "truth": "truth/chrome-persian-vazirmatn.txt",
+      "password": null,
+      "flags": {
+        "scanned": false,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "persian_digits": true
+      },
+      "committed": true,
+      "pending_decryption": false
+    },
+    {
+      "id": "chrome-lists-cairo",
+      "path": "pdf/chrome-lists-cairo.pdf",
+      "producer": "chrome",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/chrome-lists-cairo.txt",
+      "password": null,
+      "flags": {
+        "scanned": false,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "lists": true
+      },
+      "committed": true,
+      "pending_decryption": false
+    },
+    {
+      "id": "chrome-english-inter",
+      "path": "pdf/chrome-english-inter.pdf",
+      "producer": "chrome",
+      "languages": [
+        "en"
+      ],
+      "truth": "truth/chrome-english-inter.txt",
+      "password": null,
+      "flags": {
+        "scanned": false,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1
+      },
+      "committed": true,
+      "pending_decryption": false
+    },
+    {
+      "id": "synthetic-word-naskh",
+      "path": "pdf/synthetic-word-naskh.pdf",
+      "producer": "synthetic-word",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/synthetic-word-naskh.txt",
+      "password": null,
+      "flags": {
+        "scanned": false,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "bold": true,
+        "hidden_text": true,
+        "artifacts": true
+      },
+      "committed": true,
+      "pending_decryption": false,
+      "notes": "Synthetic Word-style (own writer): Identity-H + ToUnicode, TJ kerning, one run per word, ActualText per word. Not produced by Microsoft Word."
+    },
+    {
+      "id": "synthetic-libreoffice-naskh",
+      "path": "pdf/synthetic-libreoffice-naskh.pdf",
+      "producer": "synthetic-libreoffice",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/synthetic-libreoffice-naskh.txt",
+      "password": null,
+      "flags": {
+        "scanned": false,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "presentation_forms": true
+      },
+      "committed": true,
+      "pending_decryption": false,
+      "notes": "Synthetic LibreOffice-style (own writer): glyphs in logical order, ToUnicode to presentation forms. Not produced by LibreOffice."
+    },
+    {
+      "id": "synthetic-nastaliq-stream",
+      "path": "pdf/synthetic-nastaliq-stream.pdf",
+      "producer": "synthetic-shaper",
+      "languages": [
+        "ur"
+      ],
+      "truth": "truth/synthetic-nastaliq-stream.txt",
+      "password": null,
+      "flags": {
+        "scanned": false,
+        "encrypted": false,
+        "nastaliq": true,
+        "tashkeel": false,
+        "columns": 1
+      },
+      "committed": true,
+      "pending_decryption": false,
+      "notes": "Shaper-order glyph stream with cascading y offsets (Nastaliq ordering trap)."
+    },
+    {
+      "id": "synthetic-amiri-kerning",
+      "path": "pdf/synthetic-amiri-kerning.pdf",
+      "producer": "synthetic-shaper",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/synthetic-amiri-kerning.txt",
+      "password": null,
+      "flags": {
+        "scanned": false,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "kerning_trap": true
+      },
+      "committed": true,
+      "pending_decryption": false,
+      "notes": "Amiri kerned lam-alef / kaf-taa sequences in shaper order."
+    },
+    {
+      "id": "synthetic-simple-fonts",
+      "path": "pdf/synthetic-simple-fonts.pdf",
+      "producer": "synthetic-simple-font",
+      "languages": [
+        "ar",
+        "en"
+      ],
+      "truth": "truth/synthetic-simple-fonts.txt",
+      "password": null,
+      "flags": {
+        "scanned": false,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "simple_fonts": true,
+        "form_xobject": true
+      },
+      "committed": true,
+      "pending_decryption": false,
+      "notes": "Standard-14 Helvetica (WinAnsi, TL/T*/'/\"/Tw/Tc/Tz), symbolic TrueType Arabic with /Differences names only, form XObject."
+    },
+    {
+      "id": "chrome-news-amiri-rc4-128",
+      "path": "pdf/encrypted/chrome-news-amiri-rc4-128.pdf",
+      "producer": "chrome",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/chrome-news-amiri.txt",
+      "password": "zood-rc4-128",
+      "flags": {
+        "scanned": false,
+        "encrypted": "RC4-128",
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1
+      },
+      "committed": true,
+      "pending_decryption": false,
+      "source": "chrome-news-amiri"
+    },
+    {
+      "id": "chrome-mixed-naskh-aes-256",
+      "path": "pdf/encrypted/chrome-mixed-naskh-aes-256.pdf",
+      "producer": "chrome",
+      "languages": [
+        "ar",
+        "en"
+      ],
+      "truth": "truth/chrome-mixed-naskh.txt",
+      "password": "zood-aes-256",
+      "flags": {
+        "scanned": false,
+        "encrypted": "AES-256",
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "mixed_digits": true
+      },
+      "committed": true,
+      "pending_decryption": false,
+      "source": "chrome-mixed-naskh"
+    },
+    {
+      "id": "synthetic-word-naskh-aes-256",
+      "path": "pdf/encrypted/synthetic-word-naskh-aes-256.pdf",
+      "producer": "synthetic-word",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/synthetic-word-naskh.txt",
+      "password": "zood-word-aes",
+      "flags": {
+        "scanned": false,
+        "encrypted": "AES-256",
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "bold": true,
+        "hidden_text": true,
+        "artifacts": true
+      },
+      "committed": true,
+      "pending_decryption": false,
+      "source": "synthetic-word-naskh"
+    },
+    {
+      "id": "chrome-tashkeel-amiri-aes-256",
+      "path": "pdf/encrypted/chrome-tashkeel-amiri-aes-256.pdf",
+      "producer": "chrome",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/chrome-tashkeel-amiri.txt",
+      "password": "كلمة-سر",
+      "flags": {
+        "scanned": false,
+        "encrypted": "AES-256",
+        "nastaliq": false,
+        "tashkeel": true,
+        "columns": 1
+      },
+      "committed": true,
+      "pending_decryption": false,
+      "source": "chrome-tashkeel-amiri"
+    },
+    {
+      "id": "scan-chrome-tashkeel-amiri-straight",
+      "path": "generated/scans/chrome-tashkeel-amiri-straight.pdf",
+      "producer": "scan",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/chrome-tashkeel-amiri.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": true,
+        "columns": 1,
+        "dpi": 300,
+        "variant": "straight",
+        "skew_degrees": 0,
+        "shadow": false
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-tashkeel-amiri",
+      "image": "generated/scans/chrome-tashkeel-amiri-straight.png"
+    },
+    {
+      "id": "scan-chrome-tashkeel-amiri-crooked5",
+      "path": "generated/scans/chrome-tashkeel-amiri-crooked5.pdf",
+      "producer": "scan",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/chrome-tashkeel-amiri.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": true,
+        "columns": 1,
+        "dpi": 300,
+        "variant": "crooked5",
+        "skew_degrees": 5,
+        "shadow": false
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-tashkeel-amiri",
+      "image": "generated/scans/chrome-tashkeel-amiri-crooked5.png"
+    },
+    {
+      "id": "scan-chrome-tashkeel-amiri-crooked8",
+      "path": "generated/scans/chrome-tashkeel-amiri-crooked8.pdf",
+      "producer": "scan",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/chrome-tashkeel-amiri.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": true,
+        "columns": 1,
+        "dpi": 300,
+        "variant": "crooked8",
+        "skew_degrees": 8,
+        "shadow": false
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-tashkeel-amiri",
+      "image": "generated/scans/chrome-tashkeel-amiri-crooked8.png"
+    },
+    {
+      "id": "scan-chrome-tashkeel-amiri-shadow",
+      "path": "generated/scans/chrome-tashkeel-amiri-shadow.pdf",
+      "producer": "scan",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/chrome-tashkeel-amiri.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": true,
+        "columns": 1,
+        "dpi": 300,
+        "variant": "shadow",
+        "skew_degrees": 0,
+        "shadow": true
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-tashkeel-amiri",
+      "image": "generated/scans/chrome-tashkeel-amiri-shadow.png"
+    },
+    {
+      "id": "scan-chrome-urdu-nastaliq-straight",
+      "path": "generated/scans/chrome-urdu-nastaliq-straight.pdf",
+      "producer": "scan",
+      "languages": [
+        "ur"
+      ],
+      "truth": "truth/chrome-urdu-nastaliq.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": true,
+        "tashkeel": false,
+        "columns": 1,
+        "dpi": 300,
+        "variant": "straight",
+        "skew_degrees": 0,
+        "shadow": false
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-urdu-nastaliq",
+      "image": "generated/scans/chrome-urdu-nastaliq-straight.png"
+    },
+    {
+      "id": "scan-chrome-urdu-nastaliq-crooked5",
+      "path": "generated/scans/chrome-urdu-nastaliq-crooked5.pdf",
+      "producer": "scan",
+      "languages": [
+        "ur"
+      ],
+      "truth": "truth/chrome-urdu-nastaliq.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": true,
+        "tashkeel": false,
+        "columns": 1,
+        "dpi": 300,
+        "variant": "crooked5",
+        "skew_degrees": 5,
+        "shadow": false
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-urdu-nastaliq",
+      "image": "generated/scans/chrome-urdu-nastaliq-crooked5.png"
+    },
+    {
+      "id": "scan-chrome-urdu-nastaliq-crooked8",
+      "path": "generated/scans/chrome-urdu-nastaliq-crooked8.pdf",
+      "producer": "scan",
+      "languages": [
+        "ur"
+      ],
+      "truth": "truth/chrome-urdu-nastaliq.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": true,
+        "tashkeel": false,
+        "columns": 1,
+        "dpi": 300,
+        "variant": "crooked8",
+        "skew_degrees": 8,
+        "shadow": false
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-urdu-nastaliq",
+      "image": "generated/scans/chrome-urdu-nastaliq-crooked8.png"
+    },
+    {
+      "id": "scan-chrome-urdu-nastaliq-shadow",
+      "path": "generated/scans/chrome-urdu-nastaliq-shadow.pdf",
+      "producer": "scan",
+      "languages": [
+        "ur"
+      ],
+      "truth": "truth/chrome-urdu-nastaliq.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": true,
+        "tashkeel": false,
+        "columns": 1,
+        "dpi": 300,
+        "variant": "shadow",
+        "skew_degrees": 0,
+        "shadow": true
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-urdu-nastaliq",
+      "image": "generated/scans/chrome-urdu-nastaliq-shadow.png"
+    },
+    {
+      "id": "scan-chrome-persian-vazirmatn-straight",
+      "path": "generated/scans/chrome-persian-vazirmatn-straight.pdf",
+      "producer": "scan",
+      "languages": [
+        "fa"
+      ],
+      "truth": "truth/chrome-persian-vazirmatn.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "persian_digits": true,
+        "dpi": 300,
+        "variant": "straight",
+        "skew_degrees": 0,
+        "shadow": false
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-persian-vazirmatn",
+      "image": "generated/scans/chrome-persian-vazirmatn-straight.png"
+    },
+    {
+      "id": "scan-chrome-persian-vazirmatn-crooked5",
+      "path": "generated/scans/chrome-persian-vazirmatn-crooked5.pdf",
+      "producer": "scan",
+      "languages": [
+        "fa"
+      ],
+      "truth": "truth/chrome-persian-vazirmatn.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "persian_digits": true,
+        "dpi": 300,
+        "variant": "crooked5",
+        "skew_degrees": 5,
+        "shadow": false
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-persian-vazirmatn",
+      "image": "generated/scans/chrome-persian-vazirmatn-crooked5.png"
+    },
+    {
+      "id": "scan-chrome-persian-vazirmatn-crooked8",
+      "path": "generated/scans/chrome-persian-vazirmatn-crooked8.pdf",
+      "producer": "scan",
+      "languages": [
+        "fa"
+      ],
+      "truth": "truth/chrome-persian-vazirmatn.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "persian_digits": true,
+        "dpi": 300,
+        "variant": "crooked8",
+        "skew_degrees": 8,
+        "shadow": false
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-persian-vazirmatn",
+      "image": "generated/scans/chrome-persian-vazirmatn-crooked8.png"
+    },
+    {
+      "id": "scan-chrome-persian-vazirmatn-shadow",
+      "path": "generated/scans/chrome-persian-vazirmatn-shadow.pdf",
+      "producer": "scan",
+      "languages": [
+        "fa"
+      ],
+      "truth": "truth/chrome-persian-vazirmatn.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "persian_digits": true,
+        "dpi": 300,
+        "variant": "shadow",
+        "skew_degrees": 0,
+        "shadow": true
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-persian-vazirmatn",
+      "image": "generated/scans/chrome-persian-vazirmatn-shadow.png"
+    }
+  ]
+}
