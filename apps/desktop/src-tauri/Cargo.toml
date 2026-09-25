@@ -58,3 +58,8 @@ opt-level = "s"
 lto = "thin"
 codegen-units = 1
 strip = true
+
+# `option-ext` (MPL-2.0) arrives via tauri → dirs → dirs-sys and would be linked into the
+# binary; replace it with a clean-room MIT/Apache copy (docs/decisions/0007-desktop-host.md).
+[patch.crates-io]
+option-ext = { path = "vendor/option-ext" }
