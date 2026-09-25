@@ -39,9 +39,14 @@ fn host_info() -> host::HostInfo {
 
 /// Called by the UI once it has rendered. With `ZOOD_SMOKE_EXIT_ON_READY=1` the app prints
 /// `ZOOD_READY` and exits 0 (headless smoke test, see scripts/desktop-smoke.sh).
+/// An optional `report` (≤ 4 KiB) is printed as `ZOOD_REPORT …` in smoke mode only.
 #[tauri::command]
-fn app_ready<R: Runtime>(app: AppHandle<R>) {
+fn app_ready<R: Runtime>(app: AppHandle<R>, report: Option<String>) {
     if host::smoke_flag_set(std::env::var(host::SMOKE_ENV).ok().as_deref()) {
+        if let Some(r) = report {
+            let r: String = r.chars().filter(|c| !c.is_control()).take(4096).collect();
+            println!("ZOOD_REPORT {r}");
+        }
         println!("ZOOD_READY");
         app.exit(0);
     }
