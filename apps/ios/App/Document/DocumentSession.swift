@@ -51,7 +51,6 @@ final class DocumentSession {
     private(set) var isEdited = false
     private(set) var isBusy = false
     private(set) var revision = 0
-    private(set) var canUndo = false
     var pageIndex = 0
     var errorMessage: String?
     var toast: Toast?
@@ -66,9 +65,8 @@ final class DocumentSession {
     private(set) var bytes = Data()
     private(set) var password: String?
     private var pdfkitDirty = false
-    private var undo: [UndoStep] = [] {
-        didSet { canUndo = !undo.isEmpty }
-    }
+    private var undo: [UndoStep] = []
+    var canUndo: Bool { !undo.isEmpty }
     private static let undoByteBudget = 300_000_000
 
     init(document: OpenedDocument, library: Library) {

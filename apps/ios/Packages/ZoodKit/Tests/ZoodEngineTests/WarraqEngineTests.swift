@@ -150,11 +150,13 @@ struct WarraqEngineTests {
         #expect(counts == Array(repeating: 3, count: 16))
     }
 
-    @Test func plainTextIsNilWithoutTextNamespace() async throws {
+    @Test func plainTextComesFromTheEngineWhenAvailable() async throws {
         let engine = try WarraqEngine(data: pdf)
-        if !WarraqEngine.supports("text.plain") {
-            #expect(await engine.plainText() == nil)
-        }
+        // warraq-core registers warraq-text's `text.*` namespace.
+        #expect(WarraqEngine.supports("text.plain"))
+        let text = try #require(await engine.plainText())
+        #expect(text.contains("Page 1") && text.contains("Page 3"), "\(text)")
+        #expect(await engine.plainText(maxCharacters: 4) == "Page")
     }
 }
 

@@ -75,8 +75,8 @@ struct CompressSheet: View {
                 }
                 if let result {
                     Section {
-                        LabeledContent("compress.before") { Text(result.before.formatted(.byteCount(style: .file))) }
-                        LabeledContent("compress.after") { Text(result.after.formatted(.byteCount(style: .file))) }
+                        LabeledContent("compress.before") { Text(Int64(result.before).formatted(.byteCount(style: .file))) }
+                        LabeledContent("compress.after") { Text(Int64(result.after).formatted(.byteCount(style: .file))) }
                         LabeledContent("compress.saved") { Text(result.saved.formatted(.percent.precision(.fractionLength(0)))) }
                         if let savedURL {
                             ShareLink(item: savedURL) { Label("common.share", systemImage: "square.and.arrow.up") }

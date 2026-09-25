@@ -228,3 +228,65 @@ cannot describe them): the generator now wraps such words in `/ActualText` (as r
 * Files opened in an earlier session leave the fs scope; saving them asks for a location again.
 * The macOS Dock name is "ZOOD PDF" (no `ar.lproj` localisation of the bundle name yet); the window title switches
   to "زود PDF" with the UI locale.
+
+## iOS / iPadOS app (`apps/ios`, native SwiftUI)
+
+**Not compiled for iOS here.** This machine is Linux: no Xcode, no iOS SDK, no simulator. The app and
+widget sources have never been built with the iOS SDK, so small compile errors in the SwiftUI layer are
+possible; nothing about the UI is proven yet. What *was* compiled and tested here:
+
+| Checked on Linux | How | Result |
+| --- | --- | --- |
+| `ZoodKit` package (engine wrapper + pure logic) compiled with Swift 6.3, Swift 6 language mode, `-strict-concurrency=complete -warnings-as-errors` | `bash scripts/ios/test-linux.sh` | builds clean |
+| FFI bridge to the real engine (`libwarraq_core.a`, feature `ffi`, cargo profile `ios`) through `warraq.h`: open/info, garbage → `parse_error`, rotate as incremental update (original bytes kept), delete/insert/move/extract, bad params / unknown method errors, `doc.rebase` (unchanged + incremental), AES-256 protect → `password_required` → reopen with user/owner password → remove, `pdf.merge`, `methods.list`, metadata, `text.plain`, 16 documents in parallel; `warraq.h` copy equals the engine header | swift-testing, `ZoodEngineTests` | 13 tests pass |
+| Arabic search normalisation (mirror of the web rules), page ranges with Arabic-Indic/Persian digits and «،», Umm al-Qura Hijri + Gregorian dates with locale numerals, safe file names (bidi-spoof removal), recents store (dedupe, cap, stars, tags, thumbnails, forget-thumbnail, path-escape), scan geometry (corner ordering, ID-1 real size, right-to-left book order), deep links, AI prompt/request body/SSE parsing | swift-testing, `ZoodCoreTests` | 30 tests pass |
+| Every app/widget/test source parses (`swiftc -parse`, Swift 6) | `bash scripts/ios/parse-check.sh` | 29 files parse |
+| String Catalogs: every key used in Swift exists in English and Arabic, Arabic plural forms (zero…other), no unused keys, App Shortcuts phrases in both languages | `python3 scripts/ios/check-strings.py` | 256 app keys, 13 widget keys, 7 phrases |
+| `build.sh` / `build-core.sh` fail clearly on non-macOS; all iOS scripts pass `shellcheck` | run on Linux | as designed |
+
+Total on Linux: **43 swift-testing tests** in 10 suites.
+
+**Written, needs a Mac to run (owner action):** `scripts/ios/build-core.sh` (XCFramework, LTO off),
+`xcodegen generate`, simulator build and tests (`Tests/ZoodPDFTests`: PDFKit ink → `doc.rebase`
+incremental save, highlight annotations, invisible OCR text layer readable by PDFKit, ID-card A4 page,
+Vision runtime language check, compress never grows a file, unique file names; `Tests/ZoodPDFUITests`:
+Arabic and English tours Home → document → Pencil stroke → Save → Organize → Scan with screenshots into
+`docs/design/ios/`). `docs/design/ios/` is empty until then.
+
+**Implemented (🟡 until run on a simulator):** iPad `NavigationSplitView` (Home, Recents, Starred, Tags,
+tools) and iPhone tabs; Home hero «ملفات PDF، من جديد», six action cards, Recents grid with PDFKit
+thumbnails, Gregorian · Hijri dates, ⋯ menus, search; glass materials with Reduce Motion / Reduce
+Transparency / Increase Contrast handled; document view (PDFKit, toolbar with "Page x of y · Edited",
+thumbnails rail, prev/next, share, save, unsaved-changes prompt); floating Pencil palette (pen, marker,
+highlighter, eraser, text highlight, 6 colours, width, undo) turning PencilKit strokes into PDF ink
+annotations; Organize (rotate/reorder by drag/delete/insert blank or file/extract, page-range field);
+Protect/remove (engine); Combine (new file) and drop-a-PDF → "Combine with this document / Open in New
+Window"; Compress (new file); Convert (PNG/JPEG pages, text); AI assistant (bring-your-own Anthropic key in
+the Keychain, exact text shown before Send, streaming, `claude-opus-5` default, model editable); Scan to
+PDF (dark camera screen, mode strip Document · Whiteboard · ID Card · Book; VisionKit for Document; own
+AVFoundation capture with live rectangle detection and draggable corners for the others; photo import);
+widgets (Recents small/medium/large, Scan, Lock Screen circular/rectangular/inline, Control Center
+"Scan to PDF"); App Intents + App Shortcuts (Open recent, Scan, Combine, Compress; phrases en + ar);
+Core Spotlight indexing of recents with engine `text.plain`; multiple windows (`WindowGroup(for: URL.self)`),
+drag & drop of PDFs between windows; Files app (open in place, app Documents folder visible).
+
+**Limits / honest notes:**
+* The OCR text layer is written by Core Text (invisible text mode) while the scan PDF is generated with
+  `UIGraphicsPDFRenderer`; the engine has no OCR-layer method yet, so the per-word ActualText rule of the
+  web OCR does not apply to iOS scans. Arabic OCR is used only if `supportedRecognitionLanguages()`
+  reports Arabic at runtime; otherwise the scanner says so and recognises English only.
+* Markup on a **password-protected** file cannot be saved incrementally (PDFKit re-writes the encryption):
+  the user chooses "Keep Password" (AES-256 whole rewrite with the password they typed, original
+  permissions) or "Save Without Password".
+* Undo covers markup strokes and engine steps (whole-file snapshots, capped at 300 MB); no redo.
+* Not on iOS yet (web/desktop only): Fill & sign, form preparation, redaction, digital signatures, page
+  marks, Office export/import (iOS Convert makes pictures and text), compare, standards, accessibility
+  tools, batch, library indexing, cloud drives. Local AI servers (Ollama/LM Studio on localhost) are not
+  offered on iOS.
+* Page labels inside PDFKit's own thumbnail rail use PDFKit's digits.
+* No Apple team: simulator only. A device build needs `DEVELOPMENT_TEAM`, automatic signing and the App
+  Group `group.sa.zood.pdf` registered for `sa.zood.pdf.ios` and `sa.zood.pdf.ios.widgets`.
+
+**Owner actions:** install Xcode 26+ and Rust; `brew install xcodegen`; run `bash scripts/ios/build.sh`
+(iPhone 17 + iPad Pro 13-inch (M4) simulators, time-boxed tests, screenshots into `docs/design/ios/`);
+fix any SwiftUI compile errors it reports; for a device, set the Apple team as above.

@@ -255,3 +255,11 @@ System components used but **not shipped** by us: WebKitGTK and GTK on Linux (LG
 distribution's packages — no AppImage, which would bundle them), WebView2 on Windows, WKWebView/PDFKit on macOS.
 MPL-2.0 `cssparser`, `selectors` and `dtoa-short` are used only inside Tauri's build-time proc-macros and are not
 part of any artefact.
+
+## iOS app (`apps/ios`)
+
+No third-party Swift packages. The app links only Apple system frameworks (SwiftUI, UIKit, PDFKit,
+PencilKit, VisionKit, Vision, AVFoundation, Core Image, Core Text, WidgetKit, App Intents, Core Spotlight,
+Security) and the ZOOD PDF engine (`warraq-core` static library in `WarraqCore.xcframework`, whose Rust
+dependencies are listed above). The app icon is the project's own artwork (`apps/web/public/icons`).
+Build/test tools (not shipped): XcodeGen (MIT), the Swift toolchain (Apache-2.0) used for Linux tests.

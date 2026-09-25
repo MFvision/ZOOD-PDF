@@ -201,8 +201,8 @@ extension WarraqEngine {
     }
 
     /// Plain text of the document when the engine offers `text.plain` (warraq-text); nil
-    /// otherwise, so callers fall back to PDFKit. The reply shape is read tolerantly: a
-    /// top-level `text` string, or `pages: [{ text }]`.
+    /// otherwise, so callers fall back to PDFKit. Reply: `{ "text": all pages, "pages": [per page] }`
+    /// (logical order, Arabic-aware); read tolerantly in case the shape grows.
     public func plainText(maxCharacters: Int = 200_000) -> String? {
         guard Self.supports("text.plain") else { return nil }
         guard let r = try? call("text.plain"),
@@ -210,8 +210,8 @@ extension WarraqEngine {
         var text: String?
         if let t = obj["text"] as? String {
             text = t
-        } else if let pages = obj["pages"] as? [[String: Any]] {
-            text = pages.compactMap { $0["text"] as? String }.joined(separator: "\n")
+        } else if let pages = obj["pages"] as? [String] {
+            text = pages.joined(separator: "\n\n")
         }
         return text.map { String($0.prefix(maxCharacters)) }
     }
