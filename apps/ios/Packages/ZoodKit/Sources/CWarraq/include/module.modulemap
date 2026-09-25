@@ -1,0 +1,4 @@
+module CWarraq {
+    header "warraq.h"
+    export *
+}

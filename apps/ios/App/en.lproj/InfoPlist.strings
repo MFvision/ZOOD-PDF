@@ -1,0 +1,5 @@
+/* App name on the Home Screen */
+"CFBundleDisplayName" = "ZOOD PDF";
+"CFBundleName" = "ZOOD PDF";
+"NSCameraUsageDescription" = "ZOOD PDF uses the camera to scan documents into PDF files. Pictures stay on your device.";
+"NSPhotoLibraryUsageDescription" = "ZOOD PDF imports photos you choose to turn them into PDF pages.";
