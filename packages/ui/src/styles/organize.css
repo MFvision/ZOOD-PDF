@@ -3,7 +3,7 @@
 .organize {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 5;
   display: flex;
   flex-direction: column;
   min-block-size: 0;
@@ -227,6 +227,11 @@
   font-size: 13px;
 }
 
+/* The viewer stays mounted underneath (it renders the page pictures) but is not shown. */
+.viewer-area:has(> .organize) .viewer-host {
+  visibility: hidden;
+}
+
 /* Crop sheet */
 .crop-layout {
   display: grid;
@@ -237,6 +242,7 @@
 
 .crop-preview {
   position: relative;
+  overflow: hidden;
   justify-self: center;
   touch-action: none;
   cursor: crosshair;

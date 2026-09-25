@@ -205,6 +205,19 @@ transitive crates they add:
 | tinyvec | 1.13.3 | Zlib OR Apache-2.0 OR MIT | Transitive dependency (unicode-normalization) |
 | core_detect, multiversion_no_op | 1.0.0 | MIT OR Apache-2.0 | Transitive dependency (harfrust) |
 
+## Rust engine (Organize / Combine / Compress in warraq-core)
+
+Direct dependencies added by `warraq-core/src/ops` (picture pages, compression). `warraq-core` also links
+`warraq-text` (above) for text boxes in "Trim margins".
+
+| Component | Version | Licence | Used for |
+| --- | --- | --- | --- |
+| jpeg-encoder | 0.7.1 | MIT OR Apache-2.0 | JPEG re-encoding of downsampled pictures (Compress) |
+| zune-jpeg | 0.5.15 | MIT OR Apache-2.0 OR Zlib | JPEG decoding for Compress (now a direct dependency, also used by hayro) |
+| zune-core | 0.5.3 | MIT OR Apache-2.0 OR Zlib | Decoder options for zune-jpeg |
+| png | 0.18.1 | MIT OR Apache-2.0 | PNG decoding for "Insert picture" (alpha → soft mask) |
+| flate2 | 1.1.10 | MIT OR Apache-2.0 | Flate for picture pages, recompressed streams and object streams |
+
 ## Fonts
 
 Test corpus fonts live in `tests/corpus/fonts/<family>/` with their `OFL.txt` (SIL Open Font License 1.1). They are

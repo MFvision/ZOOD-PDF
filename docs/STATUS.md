@@ -49,8 +49,9 @@ after `bash scripts/build-wasm.sh`). Page indices in the RPC are 0-based.
 * Real PDFium output was not available: rebase is tested against lopdf-simulated full rewrites. The numbering
   assumption is checked at runtime (fallback: append everything) — see ADR 0003.
 * R5/R6 passwords are not SASLprep-normalised; R2–R4 non-Latin-1 passwords are not portable (ADR 0004).
-* Form fields of pages copied with `pages.insertFrom`/`extract`/`merge` are not added to the target AcroForm;
-  outlines/named destinations pointing at deleted pages become dangling (resolve to null).
+* ~~Form fields of pages copied with `pages.insertFrom`/`extract`/`merge` are not added to the target AcroForm~~
+  (done: see "Organize, Combine, Compress"); outlines/named destinations pointing at deleted pages still become
+  dangling (resolve to null).
 * `doc.info.hasSignatures` is a heuristic (a `/FT /Sig` field with `/V`, or a `/Sig` dictionary with
   `/ByteRange`); verification belongs to warraq-sign.
 
@@ -183,3 +184,55 @@ cannot describe them): the generator now wraps such words in `/ActualText` (as r
 * `warraq-core` does not register `text.extract` / `text.search` / `text.plain` yet (lead integration): a
   `methods/text.rs` needs `warraq_text::call(&DocSource::borrowed(doc.pdf().document()), method, params)` and an
   error mapping via `TextError::code()`.
+
+## Organize, Combine, Compress
+
+Engine: `warraq-pdf` (`outline.rs`, `import.rs`, compact writer in `writer.rs`) and `warraq-core`
+(`methods/organize.rs`, `ops/{image,geometry,compress}.rs`). UI: `packages/ui/src/{organize,combine,compress}`,
+`services/{coreOps,history,ranges,zip,toolBus}.ts`. Undo model and Compress-as-new-file: ADR 0007.
+
+### Proven by tests
+| What | Test |
+| --- | --- |
+| Outline read with every destination form (explicit, `/Dests` name, name tree, `GoTo` action, `/D` dict); cycles/depth bounded; pypdf reads the outlines we write (Arabic titles) | `warraq-pdf/tests/import.rs` |
+| Merge: one top-level bookmark per file with the file's own bookmarks nested and remapped; form fields merged, clashing names renamed (`name` → `name_2`, pypdf agrees); page labels kept per file (pypdf: `i ii iii i ii 1`) | `import.rs::merge_nests_each_files_outline_renames_fields_and_keeps_labels` |
+| Extract keeps only the bookmarks of extracted pages; incremental insert appends a bookmark entry + fields, original bytes a prefix | `import.rs` |
+| Compact rewrite: object streams + xref stream (PDF 1.5), smaller than the table form, readable by us and pypdf, incremental update on top works; AES-256 protection kept (pypdf decrypts) | `warraq-pdf/tests/compact.rs` |
+| `pages.insertImage`: JPEG embedded byte-for-byte (DCTDecode passthrough), PNG → Flate + `/SMask` from alpha, page size of the neighbour, picture centred and fitted; hostile/truncated pictures are errors (no panic); 100 MP / 64 k side bounds | `warraq-core/tests/organize.rs`, `ops/image.rs` tests |
+| `pages.trimMargins`: CropBox = text (font metrics) ∪ paths (white fills ignored) ∪ images, + margin; `dryRun`; blank page → `nothing_to_trim` | `organize.rs::trim_margins_…`, `ops/geometry.rs` tests |
+| `pages.replace` (one update), `pages.combine` (files at a position, one bookmark each), `pages.split` (every N, ranges, top-level bookmarks incl. leading pages; each part keeps its bookmark), `pages.boxes`, `doc.outline`, `pdf.merge` titles | `warraq-core/tests/organize.rs` |
+| `doc.compress`: placement-based downsampling (CTM at `Do`; 480 dpi → 150 dpi), JPEG re-encode (jpeg-encoder) / Flate for lossless in "high", masks/`/Decode`/special colour spaces/corrupt pictures skipped and reported, uncompressed streams Flate-compressed, duplicate streams/fonts stored once, thumbnails + PieceInfo dropped in "smallest"; presets ordered (smallest < balanced < high < original); **hayro raster of the output vs the original: mean pixel difference < 1.5/255 (balanced), < 3/255 (smallest)**; open document unchanged; protection kept | `organize.rs::compress_*` |
+| No panic / bounded time: 600 mutated documents (bookmarks, pictures) through boxes, trim, split, combine, replace, merge, compress | `warraq-core/tests/organize_smoke.rs` |
+| Page ranges incl. Arabic-Indic/Persian digits and «،» (`١-٣، ٥`), open ranges, errors with reasons, bounds | `ranges.test.ts` |
+| Store-only ZIP writer: CRC-32, UTF-8 names (bit 11), DOS date/time, unique/safe names, ZIP64 refused | `zip.test.ts` |
+| Undo/redo history of byte versions: order, redo cleared by new edits, out-of-sync refusal, count/byte bounds | `history.test.ts` |
+| Selection (click/shift/meta), RTL-mirrored keyboard focus, drop slot → `pages.move` target, crop margins ↔ CropBox for /Rotate 0/90/180/270, drawn rectangle → margins, drop-overlay halves mirrored in RTL | `organize/logic.test.ts` |
+| Organize/Combine/Compress are ready core tools (sidebar, More sheet, tool gallery, ⌘K) and open through the tool bus | `registry.test.ts`, `App.test.tsx`, `home.spec.ts` |
+| **Organize (e2e, en)**: rotate from the organize menu, drag page 6 before page 1, delete from the right-click menu, Add Page (neighbour size), Alt+→ moves the selection, undo + redo; saved via the save picker: original bytes are a prefix, 6 revisions, page order by page sizes, `/Rotate 90` on the right page; reopened | `organize.spec.ts` |
+| **Organize (e2e, ar)**: RTL grid (page 1 on the right), Arabic labels and plurals; insert a PDF from the ⋯ menu, insert JPEG + PNG pictures, replace page 1, crop by margins (CropBox `[40 0 420 550]`), trim margins; saved bytes: prefix, 10 pages in the expected order, JPEG bytes present verbatim | `organize.spec.ts` |
+| **Extract / Split (e2e)**: shift-click multi-select → Extract saves `organize-6 (pages 2-3).pdf` (document untouched); split by «١-٢، ٥» (reversed range rejected with a message) and by bookmarks → ZIP with named parts, each part's pages and bookmark checked | `organize.spec.ts` |
+| **Crop by drawing** a rectangle on the page preview → CropBox within 6 pt of the drawn area | `organize.spec.ts` |
+| **Phone width (390 px)**: organize grid fits (no horizontal overflow, ≥ 2 pages per row), ⋯ menu stays on screen, rotate from it | `organize.spec.ts` |
+| **Combine (e2e)**: from Home pick two files, reorder with the button alternative, combine → new unsaved “Combined.pdf” (8 pages); saved: page order and outline (one entry per file, the file's chapters nested with page indices) | `combine.spec.ts` |
+| **Drop on an open document (e2e, ar)**: split overlay; dropping on «دمج مع organize-6.pdf» (start half, right in RTL) appends as an incremental update (prefix, 8 pages, `sample-ar.pdf` bookmark at page 7); the other half («Open instead») opens the file as its own document | `combine.spec.ts` |
+| **Combine at a position (e2e)**: from the document tool picker, insert after page 2 | `combine.spec.ts` |
+| **Compress (e2e, en/ar)**: before/after sizes (`452.9 KB`, `٤٥٢٫٩ ك.ب`), “% smaller”, pictures recompressed; Save Compressed Copy → `photo-heavy (compressed).pdf` < ¼ of the original, 1 page, object streams; the open document is not edited; Open Compressed Copy opens an unsaved new document | `compress.spec.ts` |
+
+### Not done / not proven
+* **Desktop / extension**: the same UI runs there, but no spec exercises these tools in Tauri or in the MV3 page;
+  the desktop drop path (`onHostDrop` with a point but no HTML5 drag preview) shows the two halves as a choice
+  sheet — covered by code, not by a desktop test.
+* **Long-press** on touch screens opens the page menu (pointer timer) — not exercised by Playwright (no touch
+  emulation in the spec); right-click, ⋯ and Shift+F10 are.
+* **Trim margins** ignores clipping paths and shadings, and form XObject `/BBox` clipping; text boxes use font
+  ascent/descent (may leave a few points of space).
+* **Compress** does not re-encode CMYK/Indexed/Separation/Lab pictures, images with masks or `/Decode`, JPX,
+  JBIG2 or CCITT (reported as "left as they are"); fonts are not subset (only exact duplicates are shared).
+  Placement is measured on page content only (pictures used only in annotation appearances keep their resolution).
+* **Page labels** are merged only when pages are appended at the end (Combine from Home, append on drop); inserting
+  in the middle leaves the target's labels unchanged.
+* **Encrypted sources** for Insert from file / Combine need their password: the UI does not ask yet
+  (`password_required` is shown as an error).
+* Thumbnails in the grid are rendered by PDFium through the viewer; very large documents render them lazily.
+* wasm grows from ~1.3 MB to ~1.9 MB (unoptimised; warraq-text interpreter + JPEG/PNG codecs).
+

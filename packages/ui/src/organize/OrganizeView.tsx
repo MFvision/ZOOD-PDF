@@ -346,7 +346,7 @@ export function OrganizeView({ doc, api, onExit }: { doc: OpenDocument; api: Vie
   ];
 
   return (
-    <div className="organize" data-testid="organize" dir={dir}>
+    <div className="organize" data-testid="organize" data-revision={doc.revision} dir={dir}>
       <div className="org-bar glass-strong" role="toolbar" aria-label={t('organize.menu')}>
         <div className="org-actions">
           {bar.map((a, i) =>

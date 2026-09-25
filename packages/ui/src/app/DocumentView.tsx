@@ -182,7 +182,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
           onClick={() => setInspectorOpen((v) => !v)}
         />
       </header>
-      <div className={`doc-body${pagesOpen ? ' pages-open' : ''}${inspectorOpen ? ' inspector-open' : ''}`}>
+      <div className={`doc-body${pagesOpen && !organizing ? ' pages-open' : ''}${inspectorOpen ? ' inspector-open' : ''}`}>
         {pagesOpen && !organizing && (
           <PagesPanel
             api={api}
