@@ -160,9 +160,9 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
         case .ended:
             preview.path = nil
             if tool.isTextMarkup {
-                let selection = page.selection(from: userPoint(dragStart), to: userPoint(point))
+                let selection = textSelection(from: dragStart, to: point)
                 pdfView?.clearSelection()
-                if let selection, selection.string?.isEmpty == false {
+                if let selection {
                     editor.markup(selection, as: tool)
                 }
             } else if tool == .arrow {
@@ -205,8 +205,26 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
     }
 
     private func showSelection(from start: CGPoint, to end: CGPoint) {
-        guard let selection = page.selection(from: userPoint(start), to: userPoint(end)) else { return }
+        guard let selection = textSelection(from: start, to: end) else { return }
         pdfView?.setCurrentSelection(selection, animate: false)
+    }
+
+    /// The words a drag covers: from the first point to the last as a
+    /// reading selection when both land on text, else whatever sits in the
+    /// band the finger crossed (a swipe begun on blank paper, or across
+    /// the gap between two lines).
+    private func textSelection(from start: CGPoint, to end: CGPoint) -> PDFSelection? {
+        let a = userPoint(start)
+        let b = userPoint(end)
+        if let selection = page.selection(from: a, to: b), selection.string?.isEmpty == false {
+            return selection
+        }
+        let band = CGRect(x: min(a.x, b.x), y: min(a.y, b.y), width: abs(a.x - b.x), height: abs(a.y - b.y))
+            .insetBy(dx: 0, dy: -8)
+        if let selection = page.selection(for: band), selection.string?.isEmpty == false {
+            return selection
+        }
+        return nil
     }
 
     private func showBox(from start: CGPoint, to end: CGPoint, tool: AnnotationTool) {
