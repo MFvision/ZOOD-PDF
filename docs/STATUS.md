@@ -36,9 +36,10 @@ after `bash scripts/build-wasm.sh`). Page indices in the RPC are 0-based.
 | hayro renders a generated page (non-white pixels, PNG); `pages.render` of an encrypted doc (feature `render`) | `warraq-render` tests, `rpc.rs::render_png_of_encrypted_document` (`--features render`) |
 
 ### Not done / not proven
-* **cargo-fuzz targets** (`packages/core/fuzz`: `load`, `decrypt`, `rebase`) compile on stable but need nightly +
-  cargo-fuzz to run; no nightly on this machine. The stable smoke fuzz above runs in every `cargo test`.
-  `content_lexer` target comes with the content lexer.
+* **cargo-fuzz targets** (`packages/core/fuzz`: `load`, `decrypt`, `rebase`): no nightly/cargo-fuzz here, so they
+  were built on stable with SanitizerCoverage flags (`-Cpasses=sancov-module …`, no ASan) and each ran 60 s from
+  the fixture corpus (load 135k, decrypt 47k, rebase 47k executions, no crash). Not part of `verify.sh`;
+  the stable smoke fuzz above is. `content_lexer` target comes with the content lexer.
 * **PDFium backend** (`warraq-render`, feature `pdfium`) compiles but is untested: no libpdfium on the build machine.
 * **wasm size**: 1,003,533 bytes (435 KB gzip) with `wasm-opt -Os`; wasm-pack cannot download binaryen here, so
   `build-wasm.sh` runs `wasm-opt` itself when `WASM_OPT`/PATH provides it and otherwise skips it (~1.3 MB).
