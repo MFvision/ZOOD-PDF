@@ -1330,7 +1330,9 @@ dependencies = [
 name = "warraq-core"
 version = "0.1.0"
 dependencies = [
+ "flate2",
  "js-sys",
+ "read-fonts 0.43.3",
  "serde",
  "serde_json",
  "thiserror",

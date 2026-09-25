@@ -19,6 +19,12 @@ warraq-text = { path = "../warraq-text" }
 warraq-render = { path = "../warraq-render", optional = true, default-features = false, features = ["hayro"] }
 wasm-bindgen = { version = "0.2", optional = true, default-features = false, features = ["std"] }
 js-sys = { version = "0.3", optional = true, default-features = false, features = ["std"] }
+# Scan & OCR: image streams of ocr.createPdf (same crate and version as warraq-pdf).
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
+
+[dev-dependencies]
+# Validates the generated GlyphLessFont (same crate and version as warraq-text).
+read-fonts = "0.43"
 
 [features]
 default = ["ffi"]
