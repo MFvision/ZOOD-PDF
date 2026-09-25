@@ -252,7 +252,7 @@ export function OrganizePanel() {
           </div>
         </form>
       )}
-      <fieldset className="organize-split">
+      <fieldset className="organize-split organize-crop">
         <legend>{t('organize.crop')}</legend>
         <p className="tool-panel-note">{t('organize.cropWhich')}</p>
         <IconButton

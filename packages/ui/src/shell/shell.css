@@ -844,3 +844,18 @@
     min-block-size: 88px;
   }
 }
+
+/* ---- A context menu at a point (components/ContextMenu.tsx) -------------------- */
+.context-menu.menu-list {
+  position: fixed;
+  inset-block-start: auto;
+  inset-inline: auto;
+  z-index: 70;
+  min-inline-size: 200px;
+  animation: popover-in var(--duration-quick) var(--spring) both;
+  transform-origin: top left;
+}
+
+:dir(rtl) .context-menu.menu-list {
+  transform-origin: top right;
+}

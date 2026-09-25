@@ -350,3 +350,12 @@
     padding-block: var(--space-3);
   }
 }
+
+/* A document's star: the flag the Starred view lists it by. */
+.library-star.is-on {
+  color: var(--yellow);
+}
+
+.library-star.is-on svg {
+  fill: currentcolor;
+}

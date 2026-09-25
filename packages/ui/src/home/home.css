@@ -1,63 +1,419 @@
-/* The home screen: the document chooser the app opens on. */
+/*
+ * The home screen: frosted-glass panels over a soft gradient of the app's
+ * own (tokens.css: --home-gradient, --glass-*). A sidebar of places and
+ * tools, a top bar with the search field, the headline and its action cards,
+ * the recent files as a row of pages, and the AI Assistant docked at the
+ * trailing edge. Logical properties throughout, so Arabic mirrors it.
+ */
 .home {
+  display: flex;
   flex: 1;
   min-block-size: 0;
-  padding-block: var(--space-9) var(--space-10);
-  padding-inline: var(--space-8);
-  overflow: auto;
+  overflow: hidden;
+  background: var(--home-gradient), var(--window-background);
 }
 
-.home-inner {
+/* A frosted panel: translucent, blurred, with a light 1-px edge. */
+.glass {
+  background: var(--glass-panel);
+  backdrop-filter: var(--blur-regular);
+  border: 1px solid var(--glass-border);
+}
+
+/* ---- Sidebar ------------------------------------------------------------------- */
+.home-sidebar {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-9);
-  max-inline-size: 1040px;
-  margin-inline: auto;
-}
-
-.home-hero {
-  display: flex;
-  gap: var(--space-6);
-  align-items: center;
-}
-
-.home-icon {
   flex: none;
-  filter: drop-shadow(0 2px 6px rgb(0 0 0 / 14%));
+  flex-direction: column;
+  gap: var(--space-2);
+  inline-size: 236px;
+  padding: var(--space-6) var(--space-4) var(--space-5);
+  overflow: auto;
+  border-block: 0;
+  border-inline-start: 0;
 }
 
-.home-hero-text {
-  flex: 1;
+.home-brand {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-2) var(--space-3) var(--space-6);
+}
+
+.home-brand img {
+  flex: none;
+  filter: drop-shadow(0 1px 3px rgb(0 0 0 / 14%));
+}
+
+.home-brand-text {
   min-inline-size: 0;
 }
 
-.home-hero h1 {
-  font-size: var(--text-large-title);
-  font-weight: 700;
+.home-brand p {
+  margin: 0;
 }
 
-.home-hero p {
-  margin: var(--space-1) 0 0;
+.home-brand-name {
   font-size: var(--text-title3);
-  color: var(--secondary-label);
-  letter-spacing: var(--track-title3);
+  font-weight: 700;
+  line-height: var(--leading-tight);
 }
 
-.home-actions {
+.home-brand-tagline {
+  overflow: hidden;
+  font-size: var(--text-subheadline);
+  color: var(--secondary-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.home-nav-heading {
+  padding: var(--space-3) var(--space-4) var(--space-2);
+  margin: var(--space-5) 0 0;
+  font-size: var(--text-subheadline);
+  font-weight: 600;
+  color: var(--secondary-label);
+  letter-spacing: var(--track-small);
+}
+
+.home-nav-item {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  inline-size: 100%;
+  min-block-size: 30px;
+  padding-block: var(--space-2);
+  padding-inline: var(--space-4);
+  font-size: var(--text-body);
+  color: var(--label);
+  text-align: start;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-8);
+  transition: background-color var(--duration-quick) var(--ease-out);
+}
+
+.home-nav-item > .lucide {
+  color: var(--secondary-label);
+}
+
+.home-nav-item:hover {
+  background: var(--tertiary-fill);
+}
+
+.home-nav-item:active {
+  background: var(--fill);
+  transition-duration: 0ms;
+}
+
+/* The place on screen: the accent, as the system's source lists mark it. */
+.home-nav-item.is-current {
+  color: var(--accent-contrast);
+  background: var(--accent);
+}
+
+.home-nav-item.is-current > .lucide {
+  color: inherit;
+}
+
+.home-nav-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-nav-tools .home-nav-item {
+  min-block-size: 28px;
+}
+
+.home-storage {
+  padding: var(--space-5) var(--space-4) 0;
+  margin: auto 0 0;
+  font-size: var(--text-subheadline);
+  color: var(--secondary-label);
+}
+
+/* ---- The middle: top bar, then the content beside the assistant ------------------- */
+.home-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
+.home-topbar {
+  position: relative;
+  z-index: 3;
   display: flex;
   flex: none;
-  gap: var(--space-3);
+  gap: var(--space-5);
   align-items: center;
+  min-block-size: 60px;
+  padding-block: var(--space-4);
+  padding-inline: var(--space-8);
+  border-block-start: 0;
+  border-inline: 0;
 }
 
-.home-open.icon-btn-primary,
-.home-create.icon-btn-labeled {
-  flex: none;
-  block-size: 30px;
-  padding-inline: var(--space-5) var(--space-6);
+.home-add.icon-btn-primary {
+  min-inline-size: 34px;
+  block-size: 34px;
+  padding: 0;
   border-radius: var(--radius-capsule);
 }
 
+.home-body {
+  display: flex;
+  flex: 1;
+  gap: var(--space-8);
+  min-block-size: 0;
+  padding: var(--space-8);
+  overflow: auto;
+}
+
+.home-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-9);
+  min-inline-size: 0;
+  max-inline-size: 1040px;
+}
+
+/* ---- Search ------------------------------------------------------------------ */
+.home-search {
+  position: relative;
+  flex: 1;
+  max-inline-size: 640px;
+}
+
+.home-search-field {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  block-size: 36px;
+  padding-inline: var(--space-5) var(--space-3);
+  background: var(--glass-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-capsule);
+  box-shadow: var(--shadow-control);
+  transition: box-shadow var(--duration-quick) var(--ease-out);
+}
+
+.home-search-field:focus-within {
+  box-shadow:
+    var(--shadow-control),
+    0 0 0 3px var(--focus);
+}
+
+.home-search-icon {
+  flex: none;
+  color: var(--secondary-label);
+}
+
+.home-search-input {
+  flex: 1;
+  min-inline-size: 0;
+  block-size: 100%;
+  font-size: var(--text-body);
+  color: var(--label);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  appearance: none;
+}
+
+.home-search-input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.home-search-input::placeholder {
+  color: var(--secondary-label);
+}
+
+.home-search-key {
+  flex: none;
+  padding: 1px 6px;
+  font-family: inherit;
+  font-size: var(--text-subheadline);
+  color: var(--secondary-label);
+  background: var(--secondary-fill);
+  border-radius: var(--radius-6);
+  direction: ltr;
+}
+
+.home-search-clear.icon-btn {
+  min-inline-size: 22px;
+  block-size: 22px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.home-search-results {
+  position: absolute;
+  inset-block-start: calc(100% + var(--space-3));
+  inset-inline: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-block-size: min(60vh, 460px);
+  padding: var(--space-4);
+  overflow: auto;
+  background: var(--elevated-background);
+  backdrop-filter: var(--blur-thick);
+  border-radius: var(--radius-12);
+  box-shadow: var(--shadow-popover);
+}
+
+.home-search-results h4 {
+  padding: var(--space-2) var(--space-4);
+  margin: 0;
+  font-size: var(--text-subheadline);
+  font-weight: 600;
+  color: var(--secondary-label);
+}
+
+.home-search-results ul {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.home-search-hit {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  inline-size: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-body);
+  color: var(--label);
+  text-align: start;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-8);
+}
+
+.home-search-hit > .lucide {
+  flex: none;
+  margin-block-start: 1px;
+  color: var(--secondary-label);
+}
+
+.home-search-hit:hover,
+.home-search-hit:focus-visible {
+  background: var(--tertiary-fill);
+}
+
+.home-search-hit-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.home-search-snippet {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.home-search-snippet mark {
+  color: inherit;
+  background: color-mix(in srgb, var(--yellow) 45%, transparent);
+  border-radius: 2px;
+}
+
+.home-search-results .home-note,
+.home-search-results .field-error {
+  padding-inline: var(--space-4);
+}
+
+/* ---- Hero and its cards ---------------------------------------------------------- */
+.home-hero h1 {
+  font-size: clamp(30px, 3.4vw, 40px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: var(--track-large-title);
+}
+
+.home-hero p {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-title2);
+  color: var(--secondary-label);
+  letter-spacing: var(--track-title2);
+}
+
+.home-cards {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-5);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.home-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+  inline-size: 100%;
+  min-block-size: 132px;
+  padding: var(--space-6);
+  color: var(--label);
+  text-align: start;
+  background: var(--glass-card);
+  border-radius: var(--radius-16);
+  box-shadow: var(--shadow-small);
+  transition:
+    background-color var(--duration-quick) var(--ease-out),
+    box-shadow var(--duration-quick) var(--ease-out),
+    transform var(--duration-press) var(--ease-out);
+}
+
+.home-card .tool-icon {
+  margin-block-end: var(--space-2);
+}
+
+.home-card:hover {
+  background: var(--glass-hover);
+  box-shadow:
+    var(--shadow-small),
+    0 6px 18px rgb(0 0 0 / 8%);
+}
+
+.home-card:active {
+  transform: scale(0.98);
+  transition-duration: 0ms;
+}
+
+.home-card-title {
+  font-size: var(--text-title3);
+  font-weight: 600;
+  letter-spacing: var(--track-title3);
+}
+
+.home-card-hint {
+  font-size: var(--text-callout);
+  line-height: 1.3;
+  color: var(--secondary-label);
+}
+
+/* ---- Sections ------------------------------------------------------------------- */
 .home-section {
   display: flex;
   flex-direction: column;
@@ -66,15 +422,35 @@
 
 .home-section-header {
   display: flex;
-  align-items: baseline;
+  gap: var(--space-5);
+  align-items: center;
   justify-content: space-between;
-  padding-block-end: var(--space-3);
-  border-block-end: 0.5px solid var(--separator);
 }
 
 .home-section-header h2 {
-  font-size: var(--text-title3);
+  font-size: var(--text-title2);
   font-weight: 700;
+  letter-spacing: var(--track-title2);
+}
+
+.home-section-tools {
+  display: flex;
+  gap: var(--space-5);
+  align-items: center;
+}
+
+.home-paging {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.home-paging .icon-btn {
+  min-inline-size: 26px;
+  block-size: 26px;
+  padding: 0;
+  background: var(--glass-card);
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
 }
 
 .home-note {
@@ -93,53 +469,74 @@
   color: var(--secondary-label);
 }
 
-/* ---- Recent files, as pages in a grid ---------------------------------------- */
+/* ---- Recent files: pages in a row, or every one in a grid ------------------------ */
+.recent-row {
+  display: flex;
+  gap: var(--space-5);
+  padding: var(--space-2) var(--space-1);
+  margin: 0;
+  overflow: hidden auto;
+  list-style: none;
+  scroll-snap-type: inline mandatory;
+}
+
+.recent-row > li {
+  flex: 0 0 150px;
+  scroll-snap-align: start;
+}
+
 .recent-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-  gap: var(--space-7) var(--space-6);
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-6) var(--space-5);
   padding: 0;
   margin: 0;
   list-style: none;
 }
 
+.recent-card {
+  position: relative;
+}
+
 .recent-item {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  align-items: center;
+  gap: var(--space-3);
+  align-items: flex-start;
   inline-size: 100%;
-  padding: var(--space-3);
+  padding: var(--space-4);
   color: var(--label);
-  text-align: center;
-  background: transparent;
-  border: 0;
+  text-align: start;
+  background: var(--glass-card);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-12);
-  transition: background-color var(--duration-quick) var(--ease-out);
+  transition:
+    background-color var(--duration-quick) var(--ease-out),
+    transform var(--duration-press) var(--ease-out);
 }
 
 .recent-item:hover {
-  background: var(--quaternary-fill);
+  background: var(--glass-hover);
 }
 
 .recent-item:active {
-  background: var(--tertiary-fill);
+  transform: scale(0.985);
   transition-duration: 0ms;
 }
 
 /* A page: paper, in the proportion of A4, with a soft shadow. */
 .recent-page {
+  position: relative;
   display: grid;
   place-items: center;
   inline-size: 100%;
-  max-inline-size: 120px;
-  aspect-ratio: 1 / 1.414;
+  aspect-ratio: 1 / 1.35;
+  margin-block-end: var(--space-2);
   overflow: hidden;
   color: var(--tertiary-label);
   background: var(--page-white);
-  border-radius: 3px;
+  border-radius: 4px;
   box-shadow: var(--shadow-page);
-  transition: transform var(--duration-regular) var(--spring);
 }
 
 .recent-page img {
@@ -149,30 +546,74 @@
   object-position: top;
 }
 
-.recent-item:hover .recent-page {
-  transform: translateY(-2px);
+.recent-star {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-start: var(--space-2);
+  display: grid;
+  place-items: center;
+  inline-size: 18px;
+  block-size: 18px;
+  color: #fff;
+  background: var(--yellow);
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 25%);
+}
+
+.recent-star svg {
+  fill: currentcolor;
 }
 
 .recent-name {
   display: -webkit-box;
   max-inline-size: 100%;
   overflow: hidden;
-  font-size: var(--text-callout);
+  font-size: var(--text-body);
+  font-weight: 500;
   line-height: 1.3;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow-wrap: anywhere;
 }
 
-/* The first tile opens a file, or takes one dropped on it. */
+.recent-date {
+  font-size: var(--text-subheadline);
+  color: var(--secondary-label);
+}
+
+/* The ⋯ in a card's corner. */
+.recent-more.icon-btn {
+  position: absolute;
+  inset-block-start: var(--space-3);
+  inset-inline-end: var(--space-3);
+  min-inline-size: 24px;
+  block-size: 24px;
+  padding: 0;
+  color: var(--secondary-label);
+  background: var(--glass-hover);
+  border-radius: 50%;
+  box-shadow: var(--shadow-control);
+}
+
+.recent-card .field-error {
+  margin-block-start: var(--space-2);
+}
+
+/* The first tile of the grid opens a file, or takes one dropped on it. */
+.dropzone.recent-item {
+  align-items: center;
+  text-align: center;
+  background: transparent;
+  border: 1.5px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
 .dropzone-page {
   color: var(--accent);
   background: transparent;
-  border: 1.5px dashed color-mix(in srgb, var(--accent) 55%, transparent);
   box-shadow: none;
 }
 
-.dropzone:hover .dropzone-page {
+.dropzone:hover {
   background: var(--accent-soft);
 }
 
@@ -191,39 +632,255 @@
   color: var(--secondary-label);
 }
 
-@media (width <= 640px) {
-  .home {
-    padding-block: var(--space-7) var(--space-9);
-    padding-inline: var(--space-6);
+/* ---- Tags -------------------------------------------------------------------------- */
+.home-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.home-chip {
+  display: inline-flex;
+  gap: var(--space-3);
+  align-items: center;
+  min-block-size: 30px;
+  padding-block: var(--space-2);
+  padding-inline: var(--space-5);
+  font-size: var(--text-body);
+  color: var(--label);
+  text-align: start;
+  background: var(--glass-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-capsule);
+  transition: background-color var(--duration-quick) var(--ease-out);
+}
+
+.home-chip:hover {
+  background: var(--glass-hover);
+}
+
+.home-chip:active {
+  background: var(--fill);
+  transition-duration: 0ms;
+}
+
+.home-tag-count {
+  font-size: var(--text-subheadline);
+  color: var(--secondary-label);
+}
+
+/* ---- The AI Assistant, docked ------------------------------------------------------- */
+.home-ai {
+  position: sticky;
+  inset-block-start: 0;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-5);
+  inline-size: 300px;
+  max-block-size: 100%;
+  padding: var(--space-6);
+  overflow: auto;
+  border-radius: var(--radius-16);
+  box-shadow: var(--shadow-small);
+}
+
+.home-ai-head {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.home-ai-head h2 {
+  font-size: var(--text-title3);
+  font-weight: 700;
+}
+
+.home-ai-head p {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+}
+
+.home-ai-chips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.home-ai-chips .home-chip {
+  inline-size: 100%;
+}
+
+.home-ai-ask {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+}
+
+.home-ai-question {
+  flex: 1;
+  min-inline-size: 0;
+  resize: none;
+}
+
+.home-ai-ask .icon-btn-primary {
+  min-inline-size: 30px;
+  block-size: 30px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.home-ai-note {
+  margin: 0;
+  font-size: var(--text-subheadline);
+  line-height: 1.35;
+  color: var(--secondary-label);
+}
+
+/* ---- Narrower windows ------------------------------------------------------------- */
+@media (width <= 1180px) {
+  .home-body {
+    flex-direction: column;
   }
 
-  .home-inner {
+  .home-ai {
+    position: static;
+    inline-size: auto;
+    max-block-size: none;
+  }
+
+  .home-ai-chips {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .home-ai-chips .home-chip {
+    inline-size: auto;
+  }
+
+  .home-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (width <= 900px) {
+  .home-sidebar {
+    inline-size: 200px;
+  }
+}
+
+/* A phone: the places as a strip at the top, the tools in the gallery; no row scrolls sideways. */
+@media (width <= 700px) {
+  .home {
+    flex-direction: column;
+  }
+
+  .home-sidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    inline-size: auto;
+    padding: var(--space-4) var(--space-5);
+    overflow: visible;
+    border-inline: 0;
+    border-block-end: 1px solid var(--glass-border);
+  }
+
+  .home-brand {
+    inline-size: 100%;
+    padding: 0 0 var(--space-3);
+  }
+
+  .home-brand img {
+    inline-size: 32px;
+    block-size: 32px;
+  }
+
+  .home-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .home-nav-item {
+    min-block-size: 32px;
+    padding-inline: var(--space-4);
+    background: var(--glass-card);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-capsule);
+  }
+
+  .home-nav-heading,
+  .home-nav-tools,
+  .home-storage {
+    display: none;
+  }
+
+  .home-topbar {
+    padding-inline: var(--space-5);
+  }
+
+  .home-search-key {
+    display: none;
+  }
+
+  .home-body {
+    gap: var(--space-8);
+    padding: var(--space-6) var(--space-5) var(--space-9);
+  }
+
+  .home-content {
     gap: var(--space-8);
   }
 
-  .home-hero {
-    flex-wrap: wrap;
-    gap: var(--space-5);
+  .home-hero h1 {
+    font-size: 28px;
   }
 
-  .home-icon {
-    inline-size: 52px;
-    block-size: 52px;
+  .home-hero p {
+    font-size: var(--text-title3);
   }
 
-  .home-actions {
-    inline-size: 100%;
+  .home-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
   }
 
-  .home-open.icon-btn-primary,
-  .home-create.icon-btn-labeled {
-    flex: 1;
-    justify-content: center;
+  .home-card {
+    min-block-size: 108px;
+    padding: var(--space-5);
+  }
+
+  .home-paging {
+    display: none;
+  }
+
+  .recent-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4) var(--space-3);
+    overflow: visible;
+  }
+
+  .recent-row > li {
+    flex: none;
   }
 
   .recent-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--space-5) var(--space-3);
+    gap: var(--space-4) var(--space-3);
+  }
+
+  .recent-item {
+    padding: var(--space-3);
   }
 
   .tool-cards-grid {
@@ -234,5 +891,26 @@
   .tool-cards-grid .tool-card {
     min-block-size: 84px;
     padding: var(--space-5);
+  }
+}
+
+/* ---- Touch, reduced motion --------------------------------------------------------- */
+@media (pointer: coarse) {
+  .home-nav-item,
+  .home-chip {
+    min-block-size: 44px;
+  }
+
+  .recent-more.icon-btn,
+  .home-paging .icon-btn,
+  .home-search-clear.icon-btn {
+    min-inline-size: 36px;
+    block-size: 36px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recent-row {
+    scroll-behavior: auto;
   }
 }
