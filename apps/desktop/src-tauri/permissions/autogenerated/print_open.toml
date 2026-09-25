@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-print-open"
+description = "Enables the print_open command without any pre-configured scope."
+commands.allow = ["print_open"]
+
+[[permission]]
+identifier = "deny-print-open"
+description = "Denies the print_open command without any pre-configured scope."
+commands.deny = ["print_open"]

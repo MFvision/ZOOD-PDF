@@ -11,7 +11,9 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
+lopdf = { version = "0.45", default-features = false }
 warraq-pdf = { path = "../crates/warraq-pdf" }
+warraq-text = { path = "../crates/warraq-text" }
 
 # Standalone: not a member of the engine workspace (see ../Cargo.toml `exclude`).
 [workspace]
@@ -37,6 +39,20 @@ bench = false
 [[bin]]
 name = "rebase"
 path = "fuzz_targets/rebase.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "content_text"
+path = "fuzz_targets/content_text.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cmap"
+path = "fuzz_targets/cmap.rs"
 test = false
 doc = false
 bench = false

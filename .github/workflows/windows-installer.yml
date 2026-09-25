@@ -1,0 +1,65 @@
+name: Windows installer
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  nsis:
+    name: NSIS installer (x64)
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      CARGO_TERM_COLOR: always
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            packages/core -> ../../.target-wasm
+            apps/desktop/src-tauri -> target
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the engine (WASM)
+        run: bash scripts/build-wasm.sh
+
+      - name: Desktop unit tests
+        working-directory: apps/desktop/src-tauri
+        run: cargo test
+
+      # NSIS only: WiX/MSI cannot write the Arabic product name. beforeBuildCommand builds the UI.
+      - name: Build NSIS installer
+        working-directory: apps/desktop
+        run: pnpm tauri build --bundles nsis
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zood-pdf-windows-installer
+          path: apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error

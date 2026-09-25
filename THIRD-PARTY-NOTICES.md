@@ -187,3 +187,71 @@ under their MIT or Apache-2.0 option.
 | pypdf | 6.x | BSD-3-Clause | Generates encrypted fixtures and cross-checks our encryption in tests (optional at test time) |
 | pikepdf / qpdf | 10.x / 12.x | MPL-2.0 / Apache-2.0 | Generates encrypted fixtures (`tests/fixtures/make_fixtures.py`); output files only are committed |
 | binaryen (wasm-opt) | 117 | Apache-2.0 | Build tool: optimises the wasm in `scripts/build-wasm.sh` when installed |
+
+## Rust engine (warraq-text)
+
+Direct dependencies of `warraq-text` (in addition to lopdf, serde, serde_json and thiserror above), with the
+transitive crates they add:
+
+| Component | Version | Licence | Used for |
+| --- | --- | --- | --- |
+| harfrust | 0.13.3 | MIT | Arabic shaping for text written into PDFs |
+| read-fonts | 0.43.3 | MIT OR Apache-2.0 | Font parsing for harfrust; embedded-font cmap fallback in extraction |
+| font-types | 0.12.5 | MIT OR Apache-2.0 | Transitive dependency (read-fonts) |
+| unicode-bidi | 0.3.18 | MIT OR Apache-2.0 | Bidi reordering with the W5 fix |
+| unicode-normalization | 0.1.25 | MIT OR Apache-2.0 | NFKC of presentation forms, NFC in the acid gate |
+| smallvec | 1.16.2 | MIT OR Apache-2.0 | Transitive dependency (harfrust) |
+| bytemuck, bytemuck_derive | 1.25.2, 1.12.1 | Zlib OR Apache-2.0 OR MIT | Transitive dependency (read-fonts) |
+| tinyvec | 1.13.3 | Zlib OR Apache-2.0 OR MIT | Transitive dependency (unicode-normalization) |
+| core_detect, multiversion_no_op | 1.0.0 | MIT OR Apache-2.0 | Transitive dependency (harfrust) |
+
+## Fonts
+
+Test corpus fonts live in `tests/corpus/fonts/<family>/` with their `OFL.txt` (SIL Open Font License 1.1). They are
+used to generate the Arabic corpus; the Edit tool may embed subsets of Amiri, Cairo and Inter, in which case the OFL
+text ships with the build.
+
+| Font | Source | Licence |
+| --- | --- | --- |
+| Amiri (Regular, Bold) | google/fonts `ofl/amiri` | OFL-1.1 |
+| Cairo (variable) | google/fonts `ofl/cairo` | OFL-1.1 |
+| Noto Naskh Arabic (variable) | google/fonts `ofl/notonaskharabic` | OFL-1.1 |
+| Noto Nastaliq Urdu (variable) | google/fonts `ofl/notonastaliqurdu` | OFL-1.1 |
+| Vazirmatn (variable) | google/fonts `ofl/vazirmatn` | OFL-1.1 |
+| Inter (variable) | google/fonts `ofl/inter` | OFL-1.1 |
+
+### Arabic corpus generators (never bundled, never linked)
+
+| Tool | Licence | Used for |
+| --- | --- | --- |
+| Chromium (headless, Playwright build) | BSD-3-Clause | Printing the "Chrome-made" corpus PDFs and 300-dpi page images |
+| Pillow | HPND (MIT-CMU) | Scan variants (rotation, shadow, noise) and image-only PDFs |
+| fontTools | MIT | Static font instances, font subsetting for the synthetic PDFs |
+| uharfbuzz (HarfBuzz) | Apache-2.0 (HarfBuzz: MIT "Old") | Shaping for the synthetic producer-style PDFs |
+| pypdf, cryptography | BSD-3-Clause; Apache-2.0 OR BSD-3-Clause | RC4-128 / AES-256 encrypted corpus copies |
+
+## Desktop host (`apps/desktop`)
+
+Every crate linked into the desktop binary is checked by `apps/desktop/src-tauri/tests/licences.rs`
+(`cargo tree -e normal,no-proc-macro`). The main ones:
+
+| Component | Version | Licence | Used for |
+| --- | --- | --- | --- |
+| tauri, tauri-runtime, tauri-runtime-wry, tauri-utils, tauri-build, tauri-codegen, tauri-macros | 2.11 | Apache-2.0 OR MIT | Desktop shell |
+| wry, tao, muda | 0.55 / 0.35 / 0.19 | Apache-2.0 OR MIT | Webview, windowing, native menus |
+| tauri-plugin-dialog, rfd | 2.7 / 0.16 | Apache-2.0 OR MIT / MIT | Native open/save dialogs |
+| tauri-plugin-fs | 2.5 | Apache-2.0 OR MIT | `read_file` / `write_file` for picked and dropped files |
+| objc2, objc2-foundation, objc2-app-kit, objc2-pdf-kit (macOS only) | 0.6 / 0.3 | MIT | PDFKit printing |
+| gtk-rs (gtk, gdk, glib, …), webkit2gtk-rs (Linux only) | 0.18 / 2.0 | MIT | Bindings to the system GTK/WebKitGTK |
+| webview2-com, windows-rs (Windows only) | — | MIT OR Apache-2.0 | Bindings to the system WebView2 |
+| serde, serde_json, thiserror | 1 / 1 / 2 | MIT OR Apache-2.0 | IPC payloads, errors |
+| warraq-pdf, warraq-render (+ hayro and their dependencies, listed under the Rust engine) | 0.1 | Apache-2.0 (ours) | Rendering pages for printing on Windows/Linux |
+| option-ext (replacement) | 0.2.0 | MIT OR Apache-2.0 | Clean-room stand-in in `apps/desktop/src-tauri/vendor/option-ext` for the MPL-2.0 crate of the same name that `dirs` pulls in |
+| @tauri-apps/api, @tauri-apps/plugin-dialog, @tauri-apps/plugin-fs (npm) | 2.11 / 2.7 / 2.5 | Apache-2.0 OR MIT | JS side of the IPC, bundled into the desktop UI |
+| @tauri-apps/cli (npm, build tool only) | 2.11 | Apache-2.0 OR MIT | Building bundles, generating icons |
+| toml (dev-dependency, tests only) | 0.9 | MIT OR Apache-2.0 | Config guard tests |
+
+System components used but **not shipped** by us: WebKitGTK and GTK on Linux (LGPL; the `.deb` depends on the
+distribution's packages — no AppImage, which would bundle them), WebView2 on Windows, WKWebView/PDFKit on macOS.
+MPL-2.0 `cssparser`, `selectors` and `dtoa-short` are used only inside Tauri's build-time proc-macros and are not
+part of any artefact.
