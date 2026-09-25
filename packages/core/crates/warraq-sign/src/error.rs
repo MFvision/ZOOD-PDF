@@ -44,7 +44,7 @@ impl SignError {
             SignError::WrongPassword => "wrong_certificate_password",
             SignError::Malformed(_) => "malformed_input",
             SignError::Unsupported(_) => "unsupported",
-            SignError::InvalidArgument(_) => "invalid_params",
+            SignError::InvalidArgument(_) => "invalid_argument",
             SignError::Crypto(_) => "crypto_error",
             SignError::Limit(_) => "limit_exceeded",
             SignError::Timestamp(_) => "timestamp_rejected",

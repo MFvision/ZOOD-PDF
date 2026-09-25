@@ -1961,13 +1961,16 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 name = "warraq-core"
 version = "0.1.0"
 dependencies = [
+ "der",
  "js-sys",
  "serde",
  "serde_json",
  "thiserror",
  "warraq-pdf",
  "warraq-render",
+ "warraq-sign",
  "wasm-bindgen",
+ "zeroize",
 ]
 
 [[package]]
