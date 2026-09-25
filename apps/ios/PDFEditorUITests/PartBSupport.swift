@@ -94,9 +94,11 @@ struct PartBApp {
         let button = app.buttons[identifier]
         XCTAssertTrue(button.waitForExistence(timeout: 10), "markup button \(identifier): \(tree)")
         let bar = app.descendants(matching: .any).matching(identifier: "markup.bar").firstMatch
+        let screen = app.windows.firstMatch.frame
         var tries = 0
-        while !button.isHittable, bar.exists, tries < 6 {
-            // The bar scrolls one way in Arabic and the other in English.
+        // Off the screen's edge (a frame outside the window), the bar is
+        // scrolled — one way in Arabic and the other in English.
+        while !screen.insetBy(dx: 2, dy: 0).contains(button.frame), bar.exists, tries < 6 {
             if tries % 2 == 0 { bar.swipeLeft() } else { bar.swipeRight() }
             tries += 1
         }
