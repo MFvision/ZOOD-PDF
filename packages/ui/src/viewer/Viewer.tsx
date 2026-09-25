@@ -133,6 +133,7 @@ export function Viewer(props: Props) {
     }>(registry, 'commands');
     const history = cap<{ onHistoryChange: Hook<unknown> }>(registry, 'history');
     const annotation = cap<{ onAnnotationEvent: Hook<{ type: string; committed?: boolean }> }>(registry, 'annotation');
+    const redaction = cap<{ onRedactionEvent: Hook<{ type: string; documentId: string; success?: boolean }> }>(registry, 'redaction');
     const exporter = cap<{ forDocument(id: string): { saveAsCopy(): TaskLike<ArrayBuffer> } }>(registry, 'export');
     const ui = cap<{ forDocument(id: string): { closeToolbarSlot(p: string, s: string): void } }>(registry, 'ui');
     const engine = registry.getEngine();
@@ -207,6 +208,12 @@ export function Viewer(props: Props) {
       unsubs.push(
         annotation.onAnnotationEvent((e) => {
           if (e.type === 'create' || e.type === 'update' || e.type === 'delete') events.current.onEdited();
+        }),
+      );
+    if (redaction)
+      unsubs.push(
+        redaction.onRedactionEvent((e) => {
+          if (e.type === 'commit' && e.success !== false && e.documentId === documentId) events.current.onSensitiveChange();
         }),
       );
     if (commands)

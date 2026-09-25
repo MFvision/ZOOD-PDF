@@ -53,3 +53,46 @@ after `bash scripts/build-wasm.sh`). Page indices in the RPC are 0-based.
   outlines/named destinations pointing at deleted pages become dangling (resolve to null).
 * `doc.info.hasSignatures` is a heuristic (a `/FT /Sig` field with `/V`, or a `/Sig` dictionary with
   `/ByteRange`); verification belongs to warraq-sign.
+
+## Interface (`packages/ui`, `apps/web`, `apps/extension`)
+
+`pnpm -C packages/ui test` (vitest) and `pnpm e2e` (Playwright, Chromium, production build of `apps/web` on
+port 4311; the extension spec loads `apps/extension/dist` unpacked). Architecture: ADR 0006.
+
+### Proven by tests
+| What | Test |
+| --- | --- |
+| Home renders in English (LTR, sidebar left) and Arabic (RTL, sidebar mirrored right, «ملفات PDF، من جديد», `زود PDF` title); zero requests leave localhost | `home.spec.ts` |
+| Only ready tools are shown (sidebar = More sheet = the 5 viewer-backed tools); no "coming soon"; six working home cards | `home.spec.ts`, `registry.test.ts`, `App.test.tsx` |
+| Language switch in Settings flips `dir`, persists across reload; Arabic-Indic digits (`صفحة ١ من ٢`) | `home.spec.ts`, `open-save.spec.ts`, `i18n.test.ts` |
+| Open via the Open card (file chooser) → viewer with page count; highlight with EmbedPDF; Save through the File System Access picker; saved bytes contain the `/Highlight`; **original bytes are an exact prefix of the saved file** (doc.rebase); reopen the saved file | `open-save.spec.ts` |
+| A second save is one more incremental update on top of the first save | `open-save.spec.ts` |
+| Save falls back to `<a download>` without the File System Access API | `open-save.spec.ts` |
+| Non-PDF files are refused with a HUD toast; a tool picked before any document opens starts after the file is chosen | `open-save.spec.ts` |
+| Redaction: mark + apply in EmbedPDF, saved as a whole rewrite (original is NOT a prefix), recents preview and stored bytes dropped | `redact-protect.spec.ts`, `save.test.ts` (`saveStrategy`) |
+| Protect sheet (en/ar), Fill & sign and Prepare form tool strips reachable from our tool gallery; EmbedPDF speaks Arabic | `redact-protect.spec.ts`, `vite/embedpdf.test.ts` (every key of its English locale translated) |
+| EmbedPDF build-time string patches still match the 2.15.1 dist (build fails otherwise) | `vite/embedpdf.test.ts` |
+| Recents: real first-page PNG rendered by PDFium, date, survives reload, one-click reopen from stored bytes; star/tag via ⋯ menu; Starred/Tags sections | `recents-search.spec.ts`, `recents.test.ts` |
+| ⌘K search over recents, Arabic-aware (hamza/tashkeel/taa-marbuta/digits), Enter opens | `recents-search.spec.ts`, `recents.test.ts` |
+| PWA: manifest (en + ar translations, 192/512/maskable original icons); strict CSP meta without `unsafe-eval` or inline script; shell works offline after first load (including opening a PDF); no document ever cached; "Install app" only after `beforeinstallprompt` | `pwa.spec.ts` |
+| Dark mode + reduced motion and Arabic light snapshots; increased contrast makes glass opaque; phone width: drawer (from the right in Arabic), no horizontal overflow, document view fits | `layout.spec.ts` |
+| Chrome MV3 extension: `_locales` en/ar names, no permissions, CSP `script-src 'self' 'wasm-unsafe-eval'; object-src 'self'`; the extension page opens a PDF with no CSP violations or external requests | `extension.spec.ts` |
+| Engine client: request ids, transferred blobs, typed `{code,message}` errors, worker crash and wasm trap (Rust panic) recreate the worker | `engine.test.ts` |
+| Reducer: synchronous `switching` + `warraqOwnsDocument` on core byte replacement; stale viewer-ready ignored | `state.test.ts` |
+| Every shipped npm package is under an allowed licence, listed in THIRD-PARTY-NOTICES.md, and its licence text is emitted into `licenses/` of every build | `vite/licenses.test.ts` |
+
+### Not done / not proven
+* **Password-protected originals**: EmbedPDF asks for the password itself and it never reaches the engine, so
+  `doc.rebase` cannot open the original; such saves use PDFium's own output (which keeps the file's
+  encryption) instead of an incremental update. Needs a hook into EmbedPDF's password prompt.
+* **Fill & sign / Prepare form / Protect**: reachable and working in the viewer, but no spec yet fills a field,
+  places a signature or sets a password and then reopens the saved bytes.
+* **Snapshots** (`layout.spec.ts-snapshots`) are Linux/Chromium baselines; other OS fonts will differ.
+* `prefers-reduced-transparency` is honoured in CSS but Playwright cannot emulate it; only `prefers-contrast`
+  is tested.
+* EmbedPDF's own page-number overlay shows Latin digits in Arabic, and its canvas stays LTR (its layout uses
+  physical coordinates); its tool strips are mirrored.
+* The extension runs PDFium on the page thread: MV3 CSP forbids the `blob:` worker EmbedPDF uses.
+* `ZOOD_ALLOW_MISSING_ENGINE=1` (dev only) builds without the engine; `verify.sh` never sets it.
+* Clouds and the AI card are implemented as seams only (`setCloudOpener`, `setAiHandler`) and stay hidden
+  until those tools exist.

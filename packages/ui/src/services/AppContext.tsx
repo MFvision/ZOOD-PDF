@@ -178,6 +178,12 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
 
   const openRecent = useCallback(
     async (item: RecentItem) => {
+      // Already open (possibly with unsaved edits): switch to it instead of opening a second copy.
+      const open = Object.values(stateRef.current.documents).find((d) => d.recentId === item.id);
+      if (open) {
+        dispatch({ type: 'SET_ROUTE', route: { name: 'document', id: open.id } });
+        return;
+      }
       const bytes = item.hasBytes ? await recents.getBytes(item.id) : undefined;
       if (!bytes) {
         toast(t('recents.reselect', { name: item.name }));

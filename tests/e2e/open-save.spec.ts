@@ -52,6 +52,27 @@ test.describe('open, annotate, save, reopen', () => {
     expect(external).toEqual([]);
   });
 
+  test('each save is one more incremental update on top of the previous save', async ({ context, page }) => {
+    test.skip(!ENGINE_BUILT, 'needs the warraq-core engine (doc.rebase)');
+    await stubSavePicker(context);
+    await page.goto('/');
+    await openViaCard(page, fixture('sample-en.pdf'));
+    await highlightSecondParagraph(page);
+    const save = page.locator('[data-testid=document-view]:visible [data-testid=save]');
+    await save.click();
+    await expect.poll(async () => (await savedFiles(page)).length).toBe(1);
+    // the viewer reloads from the saved bytes; edit again and save again
+    await expect(page.locator('[data-testid=document-view]:visible .viewer-loading')).toHaveCount(0);
+    await highlightSecondParagraph(page, 0.166);
+    await save.click();
+    await expect.poll(async () => (await savedFiles(page)).length).toBe(2);
+    const [first, second] = await savedFiles(page);
+    const original = fixtureBytes('sample-en.pdf');
+    expect(first!.bytes.subarray(0, original.length).equals(original)).toBe(true);
+    expect(second!.bytes.subarray(0, first!.bytes.length).equals(first!.bytes)).toBe(true);
+    expect(second!.bytes.length).toBeGreaterThan(first!.bytes.length);
+  });
+
   test('without the File System Access API, Save downloads the file', async ({ context, page }) => {
     await context.addInitScript(() => {
       delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker;

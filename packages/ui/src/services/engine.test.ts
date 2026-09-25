@@ -84,6 +84,27 @@ describe('engine client', () => {
     expect(workers).toHaveLength(2);
   });
 
+  it('recreates the worker after the wasm instance traps (Rust panic = abort)', async () => {
+    const workers: ReturnType<typeof fakeWorker>[] = [];
+    const engine = createEngineClient(() => {
+      const first = workers.length === 0;
+      const w = fakeWorker((req) =>
+        first
+          ? req.kind === 'call'
+            ? { id: req.id, ok: false, error: { code: 'engine_crashed', message: 'unreachable' } }
+            : null
+          : { id: req.id, ok: true, json: 'fresh', blobs: [] },
+      );
+      workers.push(w);
+      return w;
+    });
+    const stuck = engine.callStatic('pdf.isEncrypted', {});
+    await expect(engine.call('d', 'doc.info', {})).rejects.toMatchObject({ code: 'engine_crashed' });
+    await expect(stuck).rejects.toMatchObject({ code: 'engine_crashed' });
+    await expect(engine.callStatic('methods.list', {})).resolves.toMatchObject({ json: 'fresh' });
+    expect(workers).toHaveLength(2);
+  });
+
   it('ignores responses for unknown ids', () => {
     const w = fakeWorker(() => null);
     createEngineClient(() => w);

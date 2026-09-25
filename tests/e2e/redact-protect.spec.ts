@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { fixture, fixtureBytes, latin1, openViaCard, pageBox, pickTool, savedFiles, stubSavePicker } from './helpers';
+import { fixture, fixtureBytes, latin1, openViaCard, pageBox, pickTool, savedFiles, stubSavePicker, waitForDocument } from './helpers';
 
 test.describe('viewer-backed tools reachable from our tool picker', () => {
   test('Redact: mark an area, apply, save as a whole rewrite; the recents preview is dropped', async ({ context, page }) => {
@@ -10,7 +10,10 @@ test.describe('viewer-backed tools reachable from our tool picker', () => {
     await page.getByRole('button', { name: 'Home' }).first().click();
     const card = page.locator('[data-testid=recent-card][data-name="sample-en.pdf"]');
     await expect(card.locator('img.thumb-img')).toBeVisible();
+    // Back to the same (still open) document, not a second copy.
     await card.locator('.recent-open').click();
+    await waitForDocument(page);
+    await expect(page.locator('[data-testid=document-view]')).toHaveCount(1);
 
     await pickTool(page, 'redact');
     await expect(page.locator('[data-epdf-i=redaction-toolbar]')).toBeVisible();

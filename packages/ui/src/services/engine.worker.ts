@@ -31,7 +31,13 @@ function normalise(reply: unknown): RawReply {
   return { json: json ?? null, blobs };
 }
 
+/** A Rust panic in wasm32 aborts: the instance is unusable afterwards. */
+function isTrap(e: unknown): boolean {
+  return (typeof WebAssembly !== 'undefined' && e instanceof WebAssembly.RuntimeError) || (e instanceof Error && e.name === 'RuntimeError');
+}
+
 function toError(e: unknown): { code: string; message: string } {
+  if (isTrap(e)) return { code: 'engine_crashed', message: e instanceof Error ? e.message : String(e) };
   if (e && typeof e === 'object') {
     const o = e as { code?: unknown; message?: unknown };
     if (typeof o.code === 'string') return { code: o.code, message: String(o.message ?? o.code) };
@@ -84,4 +90,6 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
     res = { id: req.id, ok: false, error: toError(e) };
   }
   self.postMessage(res, transfer);
+  // After a trap the wasm instance is dead: stop; the client starts a fresh worker on the next call.
+  if (!res.ok && res.error.code === 'engine_crashed') self.close();
 };

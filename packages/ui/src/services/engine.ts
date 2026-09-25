@@ -71,6 +71,12 @@ export function createEngineClient(spawn: () => WorkerLike): EngineClient {
       pending.delete(res.id);
       if (res.ok) p.resolve({ json: res.json, blobs: res.blobs ?? [] });
       else p.reject(new EngineError(res.error?.code ?? 'unknown', res.error?.message ?? 'Unknown engine error'));
+      if (!res.ok && res.error?.code === 'engine_crashed') {
+        // A Rust panic aborted the wasm instance: every open document in it is gone. Recreate lazily.
+        if (worker === w) worker = null;
+        w.terminate();
+        failAll('engine_crashed', 'The engine stopped after an internal error; open the document again');
+      }
     };
     w.onerror = (ev) => {
       // A crashed worker loses every open document: fail loudly, restart on next use.

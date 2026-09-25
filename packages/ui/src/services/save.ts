@@ -30,8 +30,10 @@ export async function rebaseOnOriginal(
     if (!out || out.byteLength === 0) throw new EngineError('rebase_empty', 'doc.rebase returned no bytes');
     return { bytes: out, mode: 'incremental' };
   } catch (e) {
-    // Only a build without the engine (development escape hatch) may fall back to PDFium's rewrite.
-    if (e instanceof EngineError && e.code === 'engine_missing') {
+    // Fall back to PDFium's own (whole) save only when the engine cannot read the original at all:
+    // a build without the engine (development escape hatch), or a password-protected original whose
+    // password was typed into the viewer and never reached us (PDFium keeps the file's encryption).
+    if (e instanceof EngineError && (e.code === 'engine_missing' || e.code === 'password_required' || e.code === 'wrong_password')) {
       return { bytes: pdfium, mode: 'rewrite', reason: e.code };
     }
     throw e;

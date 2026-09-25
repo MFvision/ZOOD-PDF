@@ -30,6 +30,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
     (viewer: ViewerApi, info: { pageCount: number }) => {
       setApi(viewer);
       setPage(1);
+      setTool(null); // a (re)loaded viewer starts in reading mode
       app.registerViewer(doc.id, viewer);
       app.dispatch({ type: 'VIEWER_READY', id: doc.id, revision: doc.revision, pageCount: info.pageCount });
       if (doc.pendingTool) {

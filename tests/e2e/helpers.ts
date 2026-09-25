@@ -89,12 +89,13 @@ export async function pickTool(page: Page, tool: string): Promise<void> {
   await page.locator(`[data-testid=tool-gallery] [data-tool=${tool}]`).click();
 }
 
-/** Highlights the fixture's second paragraph with EmbedPDF's highlight tool (drag over the text). */
-export async function highlightSecondParagraph(page: Page): Promise<void> {
+/** Highlights a line of the fixture with EmbedPDF's highlight tool (drag over the text). The default is
+ * the second paragraph; 0.166 is the first one. */
+export async function highlightSecondParagraph(page: Page, yFraction = 0.206): Promise<void> {
   await pickTool(page, 'comment');
   await page.locator('[data-epdf-i=add-highlight]').click();
   const box = await pageBox(page, 0);
-  const y = box.y + box.height * 0.206;
+  const y = box.y + box.height * yFraction;
   await page.mouse.move(box.x + box.width * 0.13, y);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width * 0.35, y, { steps: 6 });
