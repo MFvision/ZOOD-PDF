@@ -1,0 +1,6 @@
+# wasm32-unknown-unknown randomness (AES IVs, file keys, /ID) comes from crypto.getRandomValues.
+# getrandom 0.3 selects that backend only with this cfg; getrandom 0.4 (used by lopdf 0.45 and
+# warraq-pdf) selects it through its `wasm_js` feature, which warraq-core's `wasm` feature
+# enables — the cfg is kept so any getrandom 0.3 in the tree gets the same backend.
+[target.wasm32-unknown-unknown]
+rustflags = ['--cfg', 'getrandom_backend="wasm_js"']
