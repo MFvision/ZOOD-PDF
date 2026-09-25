@@ -574,11 +574,43 @@ pub fn sign_unchecked(pdf: &Pdf, signer: &dyn Signer, opts: &SignOptions) -> Res
         .name
         .clone()
         .unwrap_or_else(|| signer.certificate().display_name());
-    // Appearance.
-    let ap = match opts.rect {
+    // Appearance: an existing empty field keeps its own widget rectangle and page.
+    let existing = opts.field.as_ref().and_then(|n| {
+        pdfobj::fields(pdf)
+            .into_iter()
+            .find(|f| &f.name == n && f.ft.as_deref() == Some(b"Sig"))
+    });
+    let (ap_rect, ap_page) = match existing.as_ref().and_then(|f| f.widgets.first().copied()) {
+        Some(w) => {
+            let wd = pdf.get_dict(w);
+            let r = wd.and_then(|d| pdfobj::get_rect(pdf, d, b"Rect"));
+            let page = wd
+                .and_then(|d| d.get(b"P").ok())
+                .and_then(|o| o.as_reference().ok())
+                .and_then(|pid| {
+                    warraq_pdf::pages::flatten(pdf)
+                        .ok()?
+                        .iter()
+                        .position(|p| p.id == pid)
+                })
+                .unwrap_or(opts.page);
+            (r.or(opts.rect), page)
+        }
+        None => (opts.rect, opts.page),
+    };
+    // A field's own /Lock becomes this signature's FieldMDP (ISO 32000-2 12.7.5.5).
+    let lock = opts.lock.clone().or_else(|| {
+        let f = existing.as_ref()?;
+        let fd = pdf.get_dict(f.id)?;
+        match pdfobj::get(pdf, fd, b"Lock")? {
+            Object::Dictionary(ld) => lock_from_dict(pdf, ld),
+            _ => None,
+        }
+    });
+    let ap = match ap_rect {
         Some(r) if (r[2] - r[0]).abs() > 1.0 && (r[3] - r[1]).abs() > 1.0 => {
             let rot = warraq_pdf::pages::flatten(pdf)?
-                .get(opts.page)
+                .get(ap_page)
                 .map(|p| p.rotate.rem_euclid(360))
                 .unwrap_or(0);
             let spec = opts.appearance.clone().unwrap_or_default();
@@ -608,7 +640,7 @@ pub fn sign_unchecked(pdf: &Pdf, signer: &dyn Signer, opts: &SignOptions) -> Res
         rect,
         sig_id,
         ap,
-        opts.lock.as_ref(),
+        lock.as_ref(),
     )?;
     // Signature dictionary.
     let mut sd = Dictionary::new();
@@ -639,7 +671,7 @@ pub fn sign_unchecked(pdf: &Pdf, signer: &dyn Signer, opts: &SignOptions) -> Res
         tp.set("V", name("1.2"));
         refs.push(sig_ref("DocMDP", tp));
     }
-    if let Some(l) = &opts.lock {
+    if let Some(l) = &lock {
         refs.push(sig_ref("FieldMDP", lock_params(l)));
     }
     if !refs.is_empty() {

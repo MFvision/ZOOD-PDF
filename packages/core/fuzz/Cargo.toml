@@ -12,6 +12,7 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 warraq-pdf = { path = "../crates/warraq-pdf" }
+warraq-sign = { path = "../crates/warraq-sign" }
 
 # Standalone: not a member of the engine workspace (see ../Cargo.toml `exclude`).
 [workspace]
@@ -37,6 +38,20 @@ bench = false
 [[bin]]
 name = "rebase"
 path = "fuzz_targets/rebase.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cms"
+path = "fuzz_targets/cms.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "sig_dict"
+path = "fuzz_targets/sig_dict.rs"
 test = false
 doc = false
 bench = false

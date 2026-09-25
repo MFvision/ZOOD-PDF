@@ -376,3 +376,65 @@ fn level_bt_returns_a_timestamp_request_and_room_for_the_token() {
     assert_eq!(req.imprint.len(), 32);
     assert!(out.placeholder >= out.cms_len + 8 * 1024);
 }
+
+#[test]
+fn existing_empty_field_is_filled_with_its_rect_and_lock() {
+    use lopdf::{dictionary, Object};
+    let mut pdf = Pdf::open(plain(1), None).unwrap();
+    let page = warraq_pdf::pages::flatten(&pdf).unwrap()[0].id;
+    let w = pdf.add(Object::Dictionary(dictionary! {
+        "FT" => "Sig", "T" => Object::string_literal("Approver"),
+        "Type" => "Annot", "Subtype" => "Widget", "F" => 4,
+        "Rect" => vec![100.into(), 100.into(), 300.into(), 160.into()],
+        "P" => Object::Reference(page),
+        "Lock" => dictionary! {"Type" => "SigFieldLock", "Action" => "All"},
+    }));
+    let mut pd = pdf.get_dict(page).unwrap().clone();
+    pd.set("Annots", vec![Object::Reference(w)]);
+    pdf.set(page, Object::Dictionary(pd));
+    let root = pdf.root_id().unwrap();
+    let mut cat = pdf.get_dict(root).unwrap().clone();
+    cat.set(
+        "AcroForm",
+        dictionary! {"Fields" => vec![Object::Reference(w)]},
+    );
+    pdf.set(root, Object::Dictionary(cat));
+    let doc = pdf.commit().unwrap();
+    let out = sign(
+        &Pdf::open(doc.clone(), None).unwrap(),
+        &signer("signer-p256-modern.p12"),
+        &SignOptions {
+            field: Some("Approver".into()),
+            time: NOW,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(out.field, "Approver");
+    let pdf = Pdf::open(out.bytes.clone(), None).unwrap();
+    let fields = warraq_sign::pdfobj::fields(&pdf);
+    assert_eq!(fields.len(), 1, "no new field");
+    let wd = pdf.get_dict(fields[0].widgets[0]).unwrap();
+    assert!(
+        wd.has(b"AP"),
+        "visible appearance from the widget's own rectangle"
+    );
+    let text = String::from_utf8_lossy(&out.bytes[doc.len()..]).to_string();
+    assert!(
+        text.contains("/TransformMethod /FieldMDP"),
+        "field /Lock becomes FieldMDP"
+    );
+    openssl_verify("existing_field", &out.bytes);
+    // Signing it again is refused.
+    let e = sign(
+        &pdf,
+        &signer("signer-p256-modern.p12"),
+        &SignOptions {
+            field: Some("Approver".into()),
+            time: NOW,
+            ..Default::default()
+        },
+    )
+    .unwrap_err();
+    assert_eq!(e.code(), "signing_not_allowed");
+}
