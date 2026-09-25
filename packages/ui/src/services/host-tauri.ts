@@ -48,6 +48,8 @@ export interface HostInfo {
   trafficLightsWidth: number;
   titleBarHeight: number;
   nativePdfPrint: boolean;
+  /** Headless smoke test running (the desktop entry adds self-checks to its ready report). */
+  smoke?: boolean;
 }
 
 export interface TauriHost extends HostBridge {
@@ -58,7 +60,7 @@ export interface TauriHost extends HostBridge {
   /** Native menu bar (macOS) from the web menu model. */
   setMenu(model: MenuModel): void;
   /** Tell the Rust side the interface has rendered (used by the headless smoke test). */
-  ready(): Promise<void>;
+  ready(report?: string): Promise<void>;
   /** Called when a native menu item is chosen. */
   onMenu(cb: (id: string) => void): () => void;
   /** Provide the page renderer used for printing where PDFKit is not available. */
@@ -110,8 +112,8 @@ export function acceptToFilters(accept: string[]): DialogFilter[] {
 /** Filter for the save dialog, from the suggested name's extension. */
 export function saveFilters(name: string): DialogFilter[] | undefined {
   const m = /\.([A-Za-z0-9]{1,10})$/.exec(name);
-  if (!m) return undefined;
-  const ext = m[1].toLowerCase();
+  const ext = m?.[1]?.toLowerCase();
+  if (!ext) return undefined;
   return [{ name: ext.toUpperCase(), extensions: [ext] }];
 }
 
@@ -329,8 +331,8 @@ export async function createTauriHost(
       rasterize = r;
     },
 
-    async ready() {
-      await apis.invoke('app_ready');
+    async ready(report?: string) {
+      await apis.invoke('app_ready', report === undefined ? {} : { report });
     },
 
     dispose() {

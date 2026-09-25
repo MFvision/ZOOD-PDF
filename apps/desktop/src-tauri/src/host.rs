@@ -44,9 +44,12 @@ pub struct HostInfo {
     pub title_bar_height: f64,
     /// Whether `print` is handled natively (PDFKit) or needs page images.
     pub native_pdf_print: bool,
+    /// Headless smoke test in progress (`ZOOD_SMOKE_EXIT_ON_READY`): the UI adds self-checks
+    /// to its ready report.
+    pub smoke: bool,
 }
 
-pub fn host_info(os: TargetOs) -> HostInfo {
+pub fn host_info(os: TargetOs, smoke: bool) -> HostInfo {
     let mac = os == TargetOs::MacOs;
     HostInfo {
         os: os.as_str(),
@@ -54,6 +57,7 @@ pub fn host_info(os: TargetOs) -> HostInfo {
         traffic_lights_width: if mac { 78.0 } else { 0.0 },
         title_bar_height: if mac { 28.0 } else { 0.0 },
         native_pdf_print: mac,
+        smoke,
     }
 }
 
@@ -86,11 +90,12 @@ mod tests {
 
     #[test]
     fn host_info_reserves_traffic_lights_only_on_macos() {
-        let mac = host_info(TargetOs::MacOs);
+        let mac = host_info(TargetOs::MacOs, false);
         assert!(mac.title_bar_overlay && mac.native_pdf_print);
         assert!(mac.traffic_lights_width > 60.0);
         for os in [TargetOs::Windows, TargetOs::Linux] {
-            let i = host_info(os);
+            let i = host_info(os, true);
+            assert!(i.smoke);
             assert!(!i.title_bar_overlay && !i.native_pdf_print);
             assert_eq!(i.traffic_lights_width, 0.0);
         }

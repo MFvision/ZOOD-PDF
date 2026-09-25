@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readFile, writeFile } from '@tauri-apps/plugin-fs';
-import type { TauriApis } from '@zood/ui/src/services/host-tauri';
+import type { TauriApis } from '../../../packages/ui/src/services/host-tauri';
 
 export const tauriApis: TauriApis = {
   invoke: (cmd, args) => invoke(cmd, args),

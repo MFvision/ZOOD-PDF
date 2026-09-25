@@ -82,4 +82,8 @@ if grep -q "UI not built" "$DESKTOP/dist/index.html" 2>/dev/null; then
 fi
 build_binary ""
 run_app ui
-echo "[smoke] ui: OK (the app started, rendered the interface and reported ready)"
+if ! grep -q "^ZOOD_REPORT engine=ok$" "$LOG_DIR/ui.out.log"; then
+  echo "[smoke] ui: engine self-check failed: $(grep "^ZOOD_REPORT" "$LOG_DIR/ui.out.log" || echo "no report")" >&2
+  exit 1
+fi
+echo "[smoke] ui: OK (the interface rendered and the WASM engine answered in its worker)"

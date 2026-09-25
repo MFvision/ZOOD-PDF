@@ -34,7 +34,10 @@ pub const COMMANDS: &[&str] = &[
 
 #[tauri::command]
 fn host_info() -> host::HostInfo {
-    host::host_info(drop::TargetOs::current())
+    host::host_info(
+        drop::TargetOs::current(),
+        host::smoke_flag_set(std::env::var(host::SMOKE_ENV).ok().as_deref()),
+    )
 }
 
 /// Called by the UI once it has rendered. With `ZOOD_SMOKE_EXIT_ON_READY=1` the app prints

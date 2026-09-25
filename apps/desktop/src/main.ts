@@ -1,5 +1,5 @@
 // ZOOD PDF desktop entry: install the Tauri host bridge, then mount the shared interface.
-import { mountApp } from '@zood/ui';
+import { EngineError, engine, mountApp } from '@zood/ui';
 import { createTauriHost } from '../../../packages/ui/src/services/host-tauri';
 import { tauriApis } from './tauri-apis';
 
@@ -26,7 +26,23 @@ async function boot(): Promise<void> {
   if (!root) throw new Error('missing #root');
   mountApp(root, { platform: 'desktop' });
   await whenRendered(root);
-  await host.ready();
+  await host.ready(host.info.smoke ? await selfCheck() : undefined);
+}
+
+/**
+ * Smoke-test only: proves the WASM engine loads in its module worker under the Tauri CSP
+ * (worker-src, 'wasm-unsafe-eval'). An unknown static method must come back as the engine's
+ * own `unknown_method` error — anything else means the worker or the WASM never started.
+ */
+async function selfCheck(): Promise<string> {
+  const timeout = new Promise<string>((resolve) => setTimeout(() => resolve('engine=timeout'), 20_000));
+  const probe = engine()
+    .callStatic('zood.smoke_probe')
+    .then(
+      () => 'engine=unexpected-success',
+      (err: unknown) => (err instanceof EngineError && err.code === 'unknown_method' ? 'engine=ok' : `engine=${String(err)}`),
+    );
+  return Promise.race([probe, timeout]);
 }
 
 boot().catch((err: unknown) => {

@@ -22,11 +22,13 @@ async function expectAllowed(name, promise, check = () => true) {
   await expectDenied('shell open', I.invoke('plugin:shell|open', { path: 'https://example.com' }));
   await expectDenied('window close', I.invoke('plugin:window|close', { label: 'main' }));
   // CSP: no eval, no inline script.
+  // eslint-disable-next-line no-eval -- the probe proves the CSP blocks eval
   await expectDenied('eval', Promise.resolve().then(() => (0, eval)('1+1')));
+  // eslint-disable-next-line no-new-func -- the probe proves the CSP blocks new Function
   await expectDenied('new Function', Promise.resolve().then(() => new Function('return 1')()));
   await expectDenied('remote fetch', fetch('https://example.com/', { cache: 'no-store' }));
   // App commands.
-  await expectAllowed('host_info', I.invoke('host_info'), (i) => i.os === 'linux' && i.nativePdfPrint === false);
+  await expectAllowed('host_info', I.invoke('host_info'), (i) => i.os === 'linux' && i.nativePdfPrint === false && i.smoke === true);
   await expectAllowed('suggest_save_path', I.invoke('suggest_save_path', { name: '../../x<y>.pdf' }), (p) =>
     p.endsWith('x_y_.pdf') && !p.includes('..'),
   );
