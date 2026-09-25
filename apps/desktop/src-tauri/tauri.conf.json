@@ -34,7 +34,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "dmg", "nsis", "deb", "appimage"],
+    "targets": ["app", "dmg", "nsis", "deb"],
     "category": "Productivity",
     "shortDescription": "ZOOD PDF (زود PDF) — an Arabic-first, account-free PDF editor",
     "longDescription": "ZOOD PDF (زود PDF) edits, organises, signs, converts and protects PDF files on your device. No account, no telemetry.",

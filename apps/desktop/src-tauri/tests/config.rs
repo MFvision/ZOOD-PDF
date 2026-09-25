@@ -96,7 +96,9 @@ fn windows_bundles_nsis_only_with_arabic() {
         !targets.contains(&"msi"),
         "WiX/MSI cannot write the Arabic name"
     );
-    for t in ["app", "deb", "appimage"] {
+    // AppImage would bundle LGPL WebKitGTK/GTK libraries into our artefact (ADR 0002/0007).
+    assert!(!targets.contains(&"appimage"));
+    for t in ["app", "deb"] {
         assert!(targets.contains(&t), "{t}");
     }
     let langs = c.pointer("/bundle/windows/nsis/languages");

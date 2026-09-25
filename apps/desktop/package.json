@@ -9,7 +9,7 @@
     "dev:ui": "vite",
     "build:ui": "vite build",
     "build": "vite build",
-    "dev": "tauri dev",
+    "dev": "tauri dev -- --no-default-features",
     "tauri": "tauri",
     "icons": "tauri icon icon.svg",
     "typecheck": "tsc --noEmit -p tsconfig.json",
@@ -17,7 +17,9 @@
     "smoke": "bash ../../scripts/desktop-smoke.sh"
   },
   "dependencies": {
-    "@tauri-apps/api": "2.11.1"
+    "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/plugin-dialog": "2.7.3",
+    "@tauri-apps/plugin-fs": "2.5.2"
   },
   "devDependencies": {
     "@tauri-apps/cli": "2.11.5",
