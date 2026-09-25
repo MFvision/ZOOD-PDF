@@ -60,18 +60,17 @@ final class PartBScreenshotTests: XCTestCase {
             // Markup: the bar with the highlighter in hand, then the stamps
             // and the signature sheets.
             app.buttons["document.markup"].tap()
-            _ = app.buttons["markup.highlight"].waitForExistence(timeout: 10)
-            app.buttons["markup.highlight"].tap()
+            ui.tapMarkup("markup.highlight")
             try ui.screenshot("markup-\(suffix)", in: directory)
             // The pen, with its floating palette.
-            app.buttons["markup.ink"].tap()
+            ui.tapMarkup("markup.ink")
             _ = app.buttons["pen.color.red"].waitForExistence(timeout: 10)
             try ui.screenshot("pen-\(suffix)", in: directory)
-            app.buttons["markup.stamp"].tap()
+            ui.tapMarkup("markup.stamp")
             _ = app.buttons["stamp.approved"].waitForExistence(timeout: 10)
             try ui.screenshot("stamps-\(suffix)", in: directory)
             app.buttons[combo.language == PartBApp.arabic ? "إلغاء" : "Cancel"].firstMatch.tap()
-            app.buttons["markup.signature"].tap()
+            ui.tapMarkup("markup.signature")
             let canvas = app.descendants(matching: .any).matching(identifier: "signature.pkcanvas").firstMatch
             if canvas.waitForExistence(timeout: 10) {
                 let a = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.6))

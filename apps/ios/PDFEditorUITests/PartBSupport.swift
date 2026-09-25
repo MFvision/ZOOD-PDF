@@ -75,13 +75,33 @@ struct PartBApp {
     /// The toolbar's state line (the front-most one, when a sheet has its own).
     var status: XCUIElement { app.staticTexts.matching(identifier: "document.status").firstMatch }
 
-    /// Waits for the toolbar's status to hold `text`.
+    /// Waits for the toolbar's status, or the page element's label, to
+    /// hold `text` ("Page 2 of 3", "of 2").
     func waitForStatus(containing text: String, timeout: TimeInterval = 20) {
         let found = poll(timeout: timeout) {
             let element = self.status
-            return element.exists && element.label.contains(text)
+            if element.exists, element.label.contains(text) { return true }
+            let page = self.page
+            return page.exists && page.label.contains(text)
         }
         XCTAssertTrue(found, "status holds \(text): \(status.exists ? status.label : "no status") \(found ? "" : tree)")
+    }
+
+    /// A button of the markup bar, scrolled into reach when the bar is
+    /// wider than the screen (a phone, either reading direction).
+    @discardableResult
+    func tapMarkup(_ identifier: String) -> XCUIElement {
+        let button = app.buttons[identifier]
+        XCTAssertTrue(button.waitForExistence(timeout: 10), "markup button \(identifier): \(tree)")
+        let bar = app.descendants(matching: .any).matching(identifier: "markup.bar").firstMatch
+        var tries = 0
+        while !button.isHittable, bar.exists, tries < 6 {
+            // The bar scrolls one way in Arabic and the other in English.
+            if tries % 2 == 0 { bar.swipeLeft() } else { bar.swipeRight() }
+            tries += 1
+        }
+        button.tap()
+        return button
     }
 
     /// "Edited" in the status or on the page element, in either language.

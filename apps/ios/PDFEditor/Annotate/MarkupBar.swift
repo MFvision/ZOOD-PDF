@@ -38,6 +38,7 @@ struct MarkupBar: View {
                 }
                 .padding(.horizontal, Space.x3)
             }
+            .accessibilityIdentifier("markup.bar")
             Button("Done", action: done)
                 .font(TextStyle.headline)
                 .foregroundStyle(.white)

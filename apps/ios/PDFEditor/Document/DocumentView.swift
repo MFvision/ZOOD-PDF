@@ -254,20 +254,8 @@ struct DocumentView: View {
                     .keyboardShortcut("s", modifiers: .command)
                     .accessibilityIdentifier("document.save")
             }
-            if !readerMode {
-                Button("Find", systemImage: "magnifyingglass") {
-                    if showingSearch { closeSearch() } else { showingSearch = true }
-                }
-                .keyboardShortcut("f", modifiers: .command)
-                .disabled(!model.isReady)
-                .accessibilityIdentifier("document.search")
-                Button("Markup", systemImage: markup ? "pencil.tip.crop.circle.fill" : "pencil.tip.crop.circle") {
-                    if markup { finishMarkup() } else { startMarkup() }
-                }
-                .disabled(!model.isReady)
-                .accessibilityIdentifier("document.markup")
-            }
             if !compact {
+                findAndMarkup
                 Button("Pages", systemImage: "square.grid.2x2") { showingPages = true }
                     .disabled(!model.isReady)
                     .accessibilityIdentifier("document.pages")
@@ -290,7 +278,11 @@ struct DocumentView: View {
             .accessibilityIdentifier("document.info")
         }
         if compact {
+            // The phone: the title block stays in the navigation bar, and
+            // the tools sit under the thumb — the view modes in More.
             ToolbarItemGroup(placement: .bottomBar) {
+                findAndMarkup
+                Spacer()
                 Button("Thumbnails", systemImage: "rectangle.grid.1x2") { showingThumbnails.toggle() }
                     .disabled(!model.isReady)
                     .accessibilityIdentifier("document.thumbnails.toggle")
@@ -298,19 +290,24 @@ struct DocumentView: View {
                 Button("Pages", systemImage: "square.grid.2x2") { showingPages = true }
                     .disabled(!model.isReady)
                     .accessibilityIdentifier("document.pages")
-                Spacer()
-                Button("Reader mode", systemImage: readerMode ? "doc.plaintext.fill" : "doc.plaintext") { readerMode.toggle() }
-                    .disabled(!model.isReady)
-                    .accessibilityIdentifier("document.reader.toggle")
-                Spacer()
-                Button("Night mode", systemImage: night ? "moon.fill" : "moon") { night.toggle() }
-                    .disabled(!model.isReady)
-                    .accessibilityIdentifier("document.night.toggle")
-                Spacer()
-                Button("Go to page", systemImage: "number") { showingGoTo = true }
-                    .disabled(!model.isReady)
-                    .accessibilityIdentifier("document.goto")
             }
+        }
+    }
+
+    @ViewBuilder
+    private var findAndMarkup: some View {
+        if !readerMode {
+            Button("Find", systemImage: "magnifyingglass") {
+                if showingSearch { closeSearch() } else { showingSearch = true }
+            }
+            .keyboardShortcut("f", modifiers: .command)
+            .disabled(!model.isReady)
+            .accessibilityIdentifier("document.search")
+            Button("Markup", systemImage: markup ? "pencil.tip.crop.circle.fill" : "pencil.tip.crop.circle") {
+                if markup { finishMarkup() } else { startMarkup() }
+            }
+            .disabled(!model.isReady)
+            .accessibilityIdentifier("document.markup")
         }
     }
 

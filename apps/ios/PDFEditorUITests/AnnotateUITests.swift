@@ -36,30 +36,28 @@ final class AnnotateUITests: XCTestCase {
 
         // Highlight: drag across the words in the middle of the page.
         ui.app.buttons["document.markup"].tap()
-        let highlight = ui.app.buttons["markup.highlight"]
-        XCTAssertTrue(highlight.waitForExistence(timeout: 10))
-        highlight.tap()
+        ui.tapMarkup("markup.highlight")
         ui.drag(from: (0.12, 0.42), to: (0.88, 0.42))
         ui.waitForEdited()
         let afterHighlight = marks(ui)
         XCTAssertGreaterThanOrEqual(afterHighlight, 1, "the highlight is a mark")
 
         // A note where the finger taps, with Arabic words.
-        ui.app.buttons["markup.note"].tap()
+        ui.tapMarkup("markup.note")
         ui.page.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.7)).tap()
         ui.type("راجع هذا", into: "note.field")
         ui.app.buttons["note.add"].tap()
         XCTAssertTrue(waitFor { self.marks(ui) == afterHighlight + 1 }, "the note is a mark")
 
         // A text box: Arabic, shaped by the core.
-        ui.app.buttons["markup.freeText"].tap()
+        ui.tapMarkup("markup.freeText")
         ui.page.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8)).tap()
         ui.type("نص مضاف", into: "note.field")
         ui.app.buttons["note.add"].tap()
         XCTAssertTrue(waitFor { self.marks(ui) == afterHighlight + 2 }, "the text box is a mark")
 
         // A stamp, written by the core.
-        ui.app.buttons["markup.stamp"].tap()
+        ui.tapMarkup("markup.stamp")
         let approved = ui.app.buttons["stamp.approved"]
         XCTAssertTrue(approved.waitForExistence(timeout: 10))
         approved.tap()
@@ -67,7 +65,7 @@ final class AnnotateUITests: XCTestCase {
         XCTAssertTrue(ui.app.buttons["markup.done"].waitForExistence(timeout: 20))
 
         // A signature drawn with the finger, then placed.
-        ui.app.buttons["markup.signature"].tap()
+        ui.tapMarkup("markup.signature")
         let canvas = ui.app.descendants(matching: .any).matching(identifier: "signature.pkcanvas").firstMatch
         XCTAssertTrue(canvas.waitForExistence(timeout: 10), "the signature canvas")
         let a = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.6))
@@ -121,9 +119,7 @@ final class AnnotateUITests: XCTestCase {
         let ui = try PartBApp.launch(fixture: PartBApp.invoice)
         ui.waitForPage(containing: "فاتورة")
         ui.app.buttons["document.markup"].tap()
-        let draw = ui.app.buttons["markup.ink"]
-        XCTAssertTrue(draw.waitForExistence(timeout: 10))
-        draw.tap()
+        ui.tapMarkup("markup.ink")
         XCTAssertTrue(ui.app.buttons["pen.color.red"].waitForExistence(timeout: 5), "the pen palette floats up")
         ui.drag(from: (0.3, 0.55), to: (0.7, 0.6), duration: 0.05)
         ui.drag(from: (0.3, 0.6), to: (0.7, 0.55), duration: 0.05)
@@ -136,7 +132,7 @@ final class AnnotateUITests: XCTestCase {
         let undo = ui.app.buttons["markup.undo"]
         XCTAssertTrue(undo.waitForExistence(timeout: 5))
         if undo.isEnabled {
-            undo.tap()
+            ui.tapMarkup("markup.undo")
             XCTAssertTrue(waitFor { self.marks(ui) == 0 }, "undone")
         }
     }
