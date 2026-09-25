@@ -16,13 +16,16 @@
 //! Dates suffer the same way (`2024-06-01` → `01-06-2024`, because ES between AN is neutral).
 //!
 //! The fix restores the W2 context before W5 runs: for every run of European digits in the
-//! visual line we look for the nearest strong character on each side. If the run sits in a
-//! right-to-left context (strong R/AL — or the paragraph edge of an RTL paragraph — on both
-//! sides), its logical predecessor is the strong character on its **right**; if that is an
-//! Arabic letter (AL) the digits are treated as AN (by substituting an Arabic-Indic digit
-//! proxy). W5 then correctly leaves adjacent ETs alone, W4 no longer joins `-` separators,
-//! and the reversal restores `50%` and `2024-06-01`. Digits that are really EN in logical
-//! order (e.g. at the start of an RTL paragraph, or after a Latin word) are left untouched.
+//! visual line we look for the nearest strong character on each side. In a right-to-left
+//! paragraph (and, in a left-to-right paragraph, only when the run is enclosed by RTL text) the
+//! run's logical predecessor is the strong character on its **right** (or the paragraph start).
+//! If that is an Arabic letter (AL) the digits are AN: they get an Arabic-Indic digit proxy, so
+//! W5 leaves adjacent ETs alone, W4 no longer joins `-` separators, and the reversal restores
+//! `50%` and `2024-06-01`. Otherwise the digits are EN: the digits *and* the terminators W5
+//! attaches to them get AN proxies, forming one number block that the Arabic or Latin letter
+//! visually before it cannot capture through W2 or W7 (so `1. Install` — a Latin list item in an
+//! RTL page, displayed `Install .1` — and `50% من` come back right). Digit runs whose right-hand
+//! strong neighbour is L are left to the standard algorithm.
 
 use unicode_bidi::{bidi_class, BidiClass, Level, ParagraphBidiInfo};
 
@@ -125,18 +128,25 @@ pub fn w5_fix(proxies: &mut [char], para: Dir) {
             Some(_) => false,
             None => para == Dir::Rtl,
         };
-        if !(rtl(left) && rtl(right)) {
+        // Inside right-to-left text the logical predecessor of a digit run is the strong
+        // character on its visual right (or the paragraph start).
+        let applies = match para {
+            // A run at the visual right end of an RTL line starts the paragraph logically; a run
+            // between Latin (left) and Arabic (right) is ambiguous (`نسخة Windows 10` and
+            // `حوالي 10 USD` look the same) and is left to the standard W7 reading.
+            Dir::Rtl => (rtl(left) && rtl(right)) || right.is_none(),
+            Dir::Ltr => rtl(left) && rtl(right),
+        };
+        if !applies {
             continue;
         }
-        if right == Some(BidiClass::AL) {
+        let (s, e) = if right == Some(BidiClass::AL) {
             // Logically preceded by an Arabic letter: W2 makes these AN; W5 must not apply.
-            for p in proxies.get_mut(start..end).into_iter().flatten() {
-                *p = '\u{0660}';
-            }
+            (start, end)
         } else {
-            // Logically EN (preceded by R or the paragraph start): W2 must not see the Arabic
-            // letter that is only *visually* before the digits. The number and the terminators
-            // W5 attaches to it form one left-to-right block: use a strong-L proxy for all.
+            // Logically EN (preceded by R or the paragraph start): W5 attaches adjacent
+            // terminators, and neither W2 nor W7 may see the letter that is only *visually*
+            // before the digits. The number and its terminators form one block.
             let mut s = start;
             while s > 0 && classes.get(s - 1) == Some(&BidiClass::ET) {
                 s -= 1;
@@ -145,11 +155,13 @@ pub fn w5_fix(proxies: &mut [char], para: Dir) {
             while classes.get(e) == Some(&BidiClass::ET) {
                 e += 1;
             }
-            for p in proxies.get_mut(s..e).into_iter().flatten() {
-                *p = 'a';
-            }
-            i = e;
+            (s, e)
+        };
+        // AN proxies: embedded at the number level like EN, but immune to W2/W5/W7 context.
+        for p in proxies.get_mut(s..e).into_iter().flatten() {
+            *p = '\u{0660}';
         }
+        i = e.max(i);
     }
 }
 
@@ -260,6 +272,27 @@ mod tests {
         ] {
             assert_eq!(roundtrip(logical, para), logical, "{logical}");
         }
+    }
+
+    #[test]
+    fn number_at_paragraph_start_is_not_captured_by_w7() {
+        // A Latin list item in an RTL page: "1." is displayed at the right (".1").
+        for logical in [
+            "1. Install the application",
+            "50% of users agree",
+            "2024 كان عاما جيدا",
+        ] {
+            assert_eq!(roundtrip(logical, Dir::Rtl), logical, "{logical}");
+        }
+        // Ambiguous: "كلمة ABC 50" (W7 keeps 50 with ABC) and "كلمة 50 ABC" render the same.
+        assert_eq!(
+            logical_to_visual("كلمة ABC 50", Some(Dir::Rtl)),
+            logical_to_visual("كلمة 50 ABC", Some(Dir::Rtl))
+        );
+        assert_eq!(
+            roundtrip("نسخة Windows 10 متاحة", Dir::Rtl),
+            "نسخة Windows 10 متاحة"
+        );
     }
 
     #[test]

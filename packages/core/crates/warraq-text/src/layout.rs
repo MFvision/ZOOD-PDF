@@ -178,6 +178,19 @@ pub fn layout_page(
         let spaces: Vec<usize> = (0..us.len())
             .filter(|&i| us.get(i).is_some_and(|u| u.space))
             .collect();
+        let ctx = PageCtx {
+            dir: region_dir(&us, &idx),
+            left: idx
+                .iter()
+                .filter_map(|&i| us.get(i))
+                .map(|u| u.x0)
+                .fold(f64::MAX, f64::min),
+            right: idx
+                .iter()
+                .filter_map(|&i| us.get(i))
+                .map(|u| u.x1)
+                .fold(f64::MIN, f64::max),
+        };
         let mut leaves = Vec::new();
         xy_cut(&us, idx, 0, &mut leaves);
         let leaf_boxes: Vec<Option<LeafBox>> = leaves.iter().map(|l| leaf_box(&us, l)).collect();
@@ -199,6 +212,7 @@ pub fn layout_page(
             if let Some(block) = build_block(
                 &us,
                 &leaf,
+                &ctx,
                 opts,
                 &to_tl,
                 &mut out.plain,
@@ -732,7 +746,42 @@ struct LineOut {
     size: f64,
 }
 
-fn line_dir(us: &[U], line: &[usize], block_dir: Dir) -> Dir {
+/// Page-level context for paragraph direction.
+struct PageCtx {
+    dir: Dir,
+    left: f64,
+    right: f64,
+}
+
+/// Paragraph direction of a line: majority of strong characters; mixed lines take the block
+/// direction. A minority-script line that is flush with the page's start edge for the *page*
+/// direction and ragged on the other side (e.g. a Latin list item inside an RTL page, whose
+/// marker sits on the right) takes the page direction.
+fn line_dir(us: &[U], line: &[usize], block_dir: Dir, ctx: &PageCtx) -> Dir {
+    let d = line_majority_dir(us, line, block_dir);
+    if d == ctx.dir {
+        return d;
+    }
+    let solid: Vec<&U> = line
+        .iter()
+        .filter_map(|&i| us.get(i))
+        .filter(|u| !u.space)
+        .collect();
+    let x0 = solid.iter().map(|u| u.x0).fold(f64::MAX, f64::min);
+    let x1 = solid.iter().map(|u| u.x1).fold(f64::MIN, f64::max);
+    let size = median(solid.iter().map(|u| u.size).collect()).max(0.5);
+    let (start_gap, end_gap) = match ctx.dir {
+        Dir::Rtl => (ctx.right - x1, x0 - ctx.left),
+        Dir::Ltr => (x0 - ctx.left, ctx.right - x1),
+    };
+    if start_gap < 2.5 * size && end_gap > 2.0 * start_gap + 3.0 * size {
+        ctx.dir
+    } else {
+        d
+    }
+}
+
+fn line_majority_dir(us: &[U], line: &[usize], block_dir: Dir) -> Dir {
     let (mut l, mut r) = (0usize, 0usize);
     for u in line.iter().filter_map(|&i| us.get(i)) {
         for c in u.text.chars() {
@@ -761,11 +810,12 @@ fn build_line<F: Fn(&Rect) -> Rect>(
     us: &[U],
     line: &[usize],
     block_dir: Dir,
+    ctx: &PageCtx,
     opts: &LayoutOptions,
     to_tl: &F,
 ) -> Option<LineOut> {
     let items = visual_items(us, line);
-    let dir = line_dir(us, line, block_dir);
+    let dir = line_dir(us, line, block_dir, ctx);
     let proxies: Vec<char> = items
         .iter()
         .map(|it| match it {
@@ -919,6 +969,7 @@ fn ends_sentence(t: &str) -> bool {
 fn build_block<F: Fn(&Rect) -> Rect>(
     us: &[U],
     leaf: &[usize],
+    ctx: &PageCtx,
     opts: &LayoutOptions,
     to_tl: &F,
     plain: &mut String,
@@ -934,7 +985,7 @@ fn build_block<F: Fn(&Rect) -> Rect>(
     let block_dir = region_dir(us, &solid);
     let lines: Vec<LineOut> = build_lines(us, leaf)
         .iter()
-        .filter_map(|l| build_line(us, l, block_dir, opts, to_tl))
+        .filter_map(|l| build_line(us, l, block_dir, ctx, opts, to_tl))
         .collect();
     if lines.is_empty() {
         return None;
@@ -1193,7 +1244,11 @@ mod tests {
     fn rtl_table_is_read_row_by_row() {
         let mut v = Vec::new();
         let mut seq = 0;
-        let rows = [["المنتج", "الكمية", "السعر"], ["حاسوب", "3", "4500"], ["طابعة", "2", "1200"]];
+        let rows = [
+            ["المنتج", "الكمية", "السعر"],
+            ["حاسوب", "3", "4500"],
+            ["طابعة", "2", "1200"],
+        ];
         for (r, row) in rows.iter().enumerate() {
             // columns at x = 400 (first, rightmost), 250, 100
             for (c, cell) in row.iter().enumerate() {
@@ -1204,7 +1259,10 @@ mod tests {
             }
         }
         let p = plain(v);
-        assert_eq!(p.split_whitespace().collect::<Vec<_>>().join(" "), "المنتج الكمية السعر حاسوب 3 4500 طابعة 2 1200");
+        assert_eq!(
+            p.split_whitespace().collect::<Vec<_>>().join(" "),
+            "المنتج الكمية السعر حاسوب 3 4500 طابعة 2 1200"
+        );
     }
 
     #[test]

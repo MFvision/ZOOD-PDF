@@ -55,7 +55,29 @@ Scaffolding in progress.
 Normalised character accuracy = 1 − Levenshtein / truth length after NFC, removal of invisible format characters
 and whitespace collapsing. Per-file floors in `tests/acid/baseline.json` (measured − 0.2 points); any drop fails.
 
-ACID_TABLE_PLACEHOLDER
+Measured on 2026-09-25 (21 non-scanned files; all at their floor of 99.80 %):
+
+| Category | Files | Accuracy |
+| --- | --- | --- |
+| Chrome-made Arabic (Amiri, Cairo Type3, Noto Naskh, two columns, table, bold, lists) | 6 | 100.00 % each |
+| Chrome-made mixed Arabic/English/digits incl. the hard-bidi page | 2 | 100.00 % each |
+| Chrome-made Amiri full tashkeel | 1 | 100.00 % |
+| Chrome-made Nastaliq Urdu | 1 | 100.00 % |
+| Chrome-made Persian (Vazirmatn, Persian digits, ZWNJ) | 1 | 100.00 % |
+| Chrome-made English control (Inter) | 1 | 100.00 % |
+| Synthetic Word-style (2 pages, fake bold, Tr 2/3, artifacts) | 1 | 100.00 % |
+| Synthetic LibreOffice-style (presentation forms, logical glyph order) | 1 | 100.00 % |
+| Synthetic shaper streams (Nastaliq cascades, Amiri kerning) | 2 | 100.00 % each |
+| Synthetic simple fonts (WinAnsi, `/Differences` names, form XObject) | 1 | 100.00 % |
+| Encrypted copies (RC4-128, AES-256 ×3 incl. Arabic password) | 4 | 100.00 % each |
+| Scans (12 variants) | — | not measured here (OCR is in the UI) |
+
+Caveat: the corpus was written together with the engine, and several engine rules came from failures it exposed
+(word gaps inside cursive words: first run 99.67 % news/Amiri, 99.06 % Nastaliq, 99.01 % Amiri kerning; the W7 case
+of Latin list items in an RTL page: 98.13 %; vertical cuts between blocks that are not side by side). 100 % here
+means "no known regression on these producers", not "perfect on every PDF". Two early synthetic files were
+unreadable by construction (Noto Naskh draws dots as separate glyphs shared by several letters, so ToUnicode alone
+cannot describe them): the generator now wraps such words in `/ActualText` (as real producers must) or uses Amiri.
 
 ### Not done / limits (honest)
 * Scanned PDFs are generated but not measured here (OCR belongs to the UI; no OCR accuracy numbers yet).
@@ -63,7 +85,8 @@ ACID_TABLE_PLACEHOLDER
 * Tables are recognised only from aligned text (no ruling-line analysis); 3+ columns of short prose lines could be
   read as a table. Paragraph breaks between equally long lines with uniform spacing are not detected (text is
   still correct, only the paragraph grouping differs).
-* Visual order is ambiguous in some LTR-paragraph cases (documented in `bidi.rs`).
+* Visual order is genuinely ambiguous in a few cases (an LTR paragraph `Price: السعر 50%`; a number between a Latin
+  and an Arabic word in an RTL line); we return the standard reading (documented in `bidi.rs` tests).
 * Vertical (`-V`) CJK layout is only approximated; Type3 glyph procedures are not interpreted.
 * `warraq-core` RPC registration and the switch from lopdf to `warraq-pdf` (decryption, object layer) are left to
   the lead.

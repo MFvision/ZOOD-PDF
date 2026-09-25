@@ -31,10 +31,13 @@ that matches what a reader sees, search it Arabic-aware, and write Arabic that r
 5. **Bidi**: visual → logical by running `unicode-bidi` on one proxy character per unit and applying L2 (the
    classic involution) with the **W5 fix**: European digit runs whose logical predecessor (the strong character on
    their *right* in a right-to-left context) is an Arabic letter are treated as AN, so W5 cannot glue `%`, `$`, `+`,
-   `٪` to them and W4 cannot join `-`/`/` separators; digit runs whose logical predecessor is not an Arabic letter
-   are forced to stay one left-to-right block with their terminators. Without it `…بنسبة 50%` at a line end
-   comes back as `%50` and `2024-06-01` as `01-06-2024`. Paragraph direction per line: majority of strong
-   characters (first strong on ties), the block's direction when mixed (35–65 %).
+   `٪` to them and W4 cannot join `-`/`/` separators; digit runs whose logical predecessor is R or the paragraph
+   start stay one number block with their terminators, protected from W2/W7 by the letter that is only *visually*
+   before them. Without it `…بنسبة 50%` at a line end comes back as `%50`, `2024-06-01` as `01-06-2024`, and a
+   Latin list item `1. Install` in an RTL page as `Install .1`. A digit run between Latin (left) and Arabic
+   (right) is genuinely ambiguous (`نسخة Windows 10` vs `حوالي 10 USD`) and keeps the standard reading. Paragraph direction per line: majority of strong
+   characters (first strong on ties), the block's direction when mixed (35–65 %); a minority-script line flush
+   with the page's start edge and ragged at the end takes the page direction (Latin list items in RTL pages).
 6. **Presentation forms** are mapped back with NFKC *only for those characters* (lam-alef ligatures expand to
    ل + ا in logical order); nothing else is NFKC-normalised during extraction.
 7. **Search normalisation** drops tashkeel/tatweel/invisible format characters, unifies alef forms, ة→ه, ى→ي,
