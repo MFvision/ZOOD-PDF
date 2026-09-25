@@ -1,7 +1,7 @@
 export default {
   extends: ['stylelint-config-standard'],
   plugins: ['stylelint-use-logical'],
-  ignoreFiles: ['**/dist/**', '**/node_modules/**', '**/target/**', 'apps/ios/**'],
+  ignoreFiles: ['.claude/**', '**/dist/**', '**/node_modules/**', '**/target/**', 'apps/ios/**'],
   rules: {
     // RTL-first: physical left/right properties are forbidden; use logical ones.
     'csstools/use-logical': ['always', { except: ['width', 'height', 'min-width', 'max-width', 'min-height', 'max-height', 'top', 'bottom', 'margin-top', 'margin-bottom', 'padding-top', 'padding-bottom', 'border-top', 'border-bottom'] }],

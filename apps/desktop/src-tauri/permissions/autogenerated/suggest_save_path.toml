@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-suggest-save-path"
+description = "Enables the suggest_save_path command without any pre-configured scope."
+commands.allow = ["suggest_save_path"]
+
+[[permission]]
+identifier = "deny-suggest-save-path"
+description = "Denies the suggest_save_path command without any pre-configured scope."
+commands.deny = ["suggest_save_path"]
