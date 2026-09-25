@@ -165,7 +165,7 @@ under their MIT or Apache-2.0 option.
 | pikepdf / qpdf | 10.x / 12.x | MPL-2.0 / Apache-2.0 | Generates encrypted fixtures (`tests/fixtures/make_fixtures.py`); output files only are committed |
 | binaryen (wasm-opt) | 117 | Apache-2.0 | Build tool: optimises the wasm in `scripts/build-wasm.sh` when installed |
 
-### Desktop host (`apps/desktop`)
+## Desktop host (`apps/desktop`)
 
 Every crate linked into the desktop binary is checked by `apps/desktop/src-tauri/tests/licences.rs`
 (`cargo tree -e normal,no-proc-macro`). The main ones:
