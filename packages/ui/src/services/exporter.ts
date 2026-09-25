@@ -1,7 +1,7 @@
 /**
  * Export: Word, Excel, PowerPoint, HTML, Markdown and text come from the engine (`export.*`,
  * warraq-office, logical-order text + detected tables); PNG pages are rendered by PDFium in the
- * viewer (the default wasm has no raster backend, see ADR 0007) and several pages are zipped by
+ * viewer (the default wasm has no raster backend, see ADR 0013) and several pages are zipped by
  * the engine (`export.zip`).
  */
 import type { EngineClient } from './engine';

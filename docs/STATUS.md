@@ -290,3 +290,56 @@ drag & drop of PDFs between windows; Files app (open in place, app Documents fol
 **Owner actions:** install Xcode 26+ and Rust; `brew install xcodegen`; run `bash scripts/ios/build.sh`
 (iPhone 17 + iPad Pro 13-inch (M4) simulators, time-boxed tests, screenshots into `docs/design/ios/`);
 fix any SwiftUI compile errors it reports; for a device, set the Apple team as above.
+
+## Export and Compare (`warraq-office`, Export sheet, Compare panel)
+
+Architecture: ADR 0013. Engine methods: `export.docx|xlsx|pptx|html|markdown|text` (document), `export.zip`
+(static), `export.png` (feature `render` only), `compare.text` (document + other PDF as blob),
+`compare.visual` / `compare.report` (static).
+
+### Proven by tests
+| What | Test |
+| --- | --- |
+| Text export of 13 Arabic/Urdu/Persian corpus files (Chrome-made + synthetic Word/LibreOffice-style) equals the logical truth at ≥ 99.8 % (the acid floor) | `warraq-office/tests/export.rs::text_export_of_the_arabic_corpus_equals_the_logical_truth` |
+| DOCX: required parts present and well-formed (quick-xml); every Arabic paragraph has `<w:bidi/>`, every run holding Arabic letters has `<w:rtl/>`; document.xml text ≥ 99 % of the truth; `w:lang w:bidi="ar-SA"`; title in core properties | `export.rs::docx_has_bidi_arabic_paragraphs_in_logical_order` (news/Amiri, mixed, synthetic Word, tashkeel) |
+| XLSX of a generated ruled Arabic table: sheet `جدول 1`, RTL view, A1 = rightmost header, Western/Arabic-Indic numbers as numbers (`٣٥٠` → 350, `٧` → 7) | `export.rs::xlsx_of_a_generated_arabic_table_has_the_right_cells` |
+| XLSX of the Chrome-made corpus table (borders drawn as 1-unit filled rectangles): 5 rows, `المنتج` in A1, D2 = 13500 | `export.rs::chrome_table_corpus_file_becomes_a_spreadsheet` |
+| Row/column spans from missing rules → XLSX `mergeCell`, DOCX `gridSpan` | `export.rs::merged_cells_become_spans`, `table.rs` unit tests |
+| DOCX/HTML/Markdown keep the table between the paragraphs before/after it; HTML `lang`/`dir`, `<th>` row, headings, no scripts | `export.rs::docx_and_html_keep_the_table_structure` |
+| Prose (two columns, news, lists, English) is never taken for a table | `export.rs::two_column_prose_is_not_a_table` |
+| PPTX: one slide per page, all parts well-formed, RTL paragraphs | `export.rs::pptx_has_one_slide_per_page_with_positioned_text` |
+| Independent readers open our files: python-docx (paragraphs, table cell), openpyxl (RTL view, values), python-pptx (2 slides) | `export.rs::python_office_readers_open_our_files` (skips when not installed; ran here) |
+| Page ranges and typed errors (`page_out_of_range`, `invalid_params`) | `export.rs::page_ranges_and_bad_params`, `warraq-core/tests/export_compare_methods.rs` |
+| Compare: identical → no changes; one changed word (ثلاثين → عشرين) found with one rectangle on each document at the right place; insertions/deletions across pages; tashkeel ignored by default and detected on request | `warraq-office/tests/compare.rs` |
+| Diff correctness (ops rebuild the target), Myers minimality, 50 000-word unrelated inputs stay bounded | `compare.rs` unit tests |
+| Visual diff: changed region box, overlay PNG, size mismatch/garbage rejected | `compare.rs::visual_diff_finds_the_changed_region`, `tests/no_panic.rs` |
+| HTML report: `lang`/`dir` from locale, `<del>`/`<ins>` with `dir`, Arabic-Indic counts, data-URI images, no scripts, no URLs | `compare.rs::html_report_contains_the_change_and_no_scripts`, `export_compare_methods.rs` |
+| No panic on 600 mutated content streams through rules → tables → every writer; 3000 mutated ZIPs; random rasters | `warraq-office/tests/no_panic.rs` (`WARRAQ_SMOKE_CASES`) |
+| RPC: all methods registered; exports leave the document unchanged; `export.zip` rejects paths/duplicates | `warraq-core/tests/export_compare_methods.rs` |
+| **UI, en + ar**: Export sheet → Word of `sample-ar.pdf` → saved via the save picker → unzipped in the test: paragraphs in logical order (`هذا ملف اختبار صغير لتطبيق زود PDF، مكتوب باللغة العربية.`), all `w:bidi`, Heading1, page 2 after page 1; no network | `tests/e2e/export-compare.spec.ts` |
+| **UI, en + ar**: Excel of the Arabic table fixture → cells A1 `المنتج`, A2 `حاسوب محمول`, D2 13500, localised sheet name | `export-compare.spec.ts` |
+| **UI, en + ar**: Pictures with a page range typed in Arabic-Indic digits (`١-٢`); an out-of-range page disables Export; ZIP of two 144-dpi PNGs | `export-compare.spec.ts` |
+| **UI, en + ar**: Compare `compare-v1.pdf` with `compare-v2.pdf` chosen through the file chooser → exactly one change `ثلاثين → عشرين`; clicking it shows both pages with one highlight each; the visual pass lists page 1 only; the saved HTML report contains the change, the overlay image and no script | `export-compare.spec.ts` |
+| **UI**: Convert card → file chooser → Export sheet → text export | `export-compare.spec.ts`, `App.test.tsx` |
+| Page-range parser (Arabic-Indic/Persian digits, `،`, en dash), file names, engine call shapes, panel store | `exporter.test.ts`, `comparer.test.ts`, `panels.test.ts` |
+
+### Not done / limits (honest)
+* **Fidelity**: exports are structured documents, not layout copies. Fonts, colours, images (DOCX "images
+  optional": not done), lists, columns, footnotes and links are not reproduced; PPTX places one text box per
+  paragraph/cell at its PDF position with a substitute font (slack added), so text may reflow. Headings come from
+  font size only; italic from font names/descriptors only (synthetic slant is not detected).
+* **Tables**: ruled grids need both horizontal and vertical rules (booktabs-style tables with only horizontal rules
+  fall back to alignment detection); alignment tables need ≥ 3 rows with the same column count, so tables with
+  empty cells in the text-only style may be missed; tables spanning pages are two tables; nested tables are
+  flattened; rotated pages (`/Rotate`) are not handled for rules.
+* **Compare**: word-level only (no character-level highlight inside a word, no moved-block detection); a change
+  adjacent to a deletion on another page is reported as one change spanning both pages; the visual pass covers the
+  first 30 pages at 480 px width and compares pages by index (an inserted page makes later pages differ); both
+  files must open without a password (a protected revised file fails with an error toast).
+* **PNG export** uses PDFium in the viewer; the engine's `export.png` (hayro) is only compiled with the `render`
+  feature and has no test of its own here (the existing `pages.render` test covers the renderer).
+* The fuzz targets `ruling_tables` and `zip_read` (`packages/core/fuzz`) compile; they were not run under
+  cargo-fuzz here (no nightly). The stable smoke test above runs in `verify.sh`.
+* python-docx/openpyxl/python-pptx are not part of CI images; the reader test skips without them.
+* Desktop and extension hosts use the same UI and engine code but have no Export/Compare spec of their own.
+

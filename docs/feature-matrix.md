@@ -11,6 +11,8 @@ M = iOS native app.
 | Prepare form (EmbedPDF form fields) | 🟡 tool strip reachable (`redact-protect.spec.ts`) | | 🟡 | ⛔ not on iOS yet (STATUS) |
 | Redact (EmbedPDF marks + apply) | ✅ mark, apply, save as whole rewrite, recents preview dropped (`redact-protect.spec.ts`) | | 🟡 | ⛔ not on iOS yet (STATUS) |
 | Protect (EmbedPDF sheet) | 🟡 sheet reachable in en/ar (`redact-protect.spec.ts`); password save not yet reopened in a spec | | 🟡 | 🟡 engine `protect.set`/`remove` (engine call proven on Linux: ZoodKit tests; UI not run) |
+| Export (Word, Excel, PowerPoint, HTML, Markdown, text, pictures; warraq-office) | ✅ DOCX/XLSX/PNG-ZIP/text saved and inspected in en + ar (`export-compare.spec.ts`); HTML/Markdown/PPTX engine-proven (`warraq-office/tests/export.rs`) | 🟡 same UI + engine, no desktop spec | 🟡 same UI + engine, no extension spec | ⛔ Office export not on iOS yet |
+| Compare (text + visual diff, HTML report; warraq-office) | ✅ changed word listed, highlighted, report saved and inspected in en + ar (`export-compare.spec.ts`) | 🟡 | 🟡 | ⛔ not on iOS yet |
 
 ## iOS app (M) in detail
 

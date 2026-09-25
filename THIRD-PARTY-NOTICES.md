@@ -205,6 +205,23 @@ transitive crates they add:
 | tinyvec | 1.13.3 | Zlib OR Apache-2.0 OR MIT | Transitive dependency (unicode-normalization) |
 | core_detect, multiversion_no_op | 1.0.0 | MIT OR Apache-2.0 | Transitive dependency (harfrust) |
 
+## Rust engine (warraq-office: Export and Compare)
+
+`warraq-office` writes DOCX/XLSX/PPTX/HTML/Markdown/text and compares documents with its own code (no office
+suite, no LibreOffice). Direct dependencies beyond the crates above:
+
+| Component | Version | Licence | Used for |
+| --- | --- | --- | --- |
+| miniz_oxide | 0.9.1 | MIT OR Zlib OR Apache-2.0 | Deflate for the ZIP containers (OOXML, zipped PNG pages) and the PNG encoder (already linked through flate2) |
+| crc32fast | 1.5.2 | MIT OR Apache-2.0 | CRC-32 for ZIP entries and PNG chunks (already linked through flate2) |
+
+Test-only (never bundled, never linked into a build):
+
+| Component | Version | Licence | Used for |
+| --- | --- | --- | --- |
+| quick-xml | 0.42 | MIT | Independent XML parser that checks every part our writers produce is well-formed |
+| python-docx, openpyxl, python-pptx | 1.2 / 3.1 / 1.0 | MIT / MIT / MIT | Independent readers that open our DOCX/XLSX/PPTX in `warraq-office/tests/export.rs` (skipped when not installed) |
+
 ## Fonts
 
 Test corpus fonts live in `tests/corpus/fonts/<family>/` with their `OFL.txt` (SIL Open Font License 1.1). They are

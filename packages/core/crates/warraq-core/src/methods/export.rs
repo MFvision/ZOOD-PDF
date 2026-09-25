@@ -6,7 +6,7 @@
 //!   `{ pages, tables, extension, mime, size }` + the file as `blobs[0]`. PPTX takes optional
 //!   PNG page backgrounds as blobs.
 //! * `export.png` (feature `render`, not in the default wasm): `{ pages?, scale? }` → one PNG per
-//!   page. The web UI renders PNGs with PDFium instead (see ADR 0007).
+//!   page. The web UI renders PNGs with PDFium instead (see ADR 0013).
 //! * `export.zip` (static) `{ names: [...] }` + one blob per name → a ZIP (`blobs[0]`).
 
 use super::params;
