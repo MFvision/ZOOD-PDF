@@ -299,6 +299,10 @@ img {
   position: relative;
 }
 
+.menu.glass-strong {
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+}
+
 .menu {
   position: absolute;
   z-index: 50;

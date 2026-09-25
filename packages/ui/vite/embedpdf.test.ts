@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { describe, expect, it } from 'vitest';
-import { applyPatches, loadPatches, packageDir } from './index';
+import { applyPatches, loadPatches, packageDir } from './index.ts';
 import ar from '../src/viewer/embedpdf-ar.json';
 
 const distDir = path.join(packageDir('@embedpdf/snippet'), 'dist');

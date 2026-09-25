@@ -7,7 +7,8 @@
     ],
     "lib": [
       "ES2023"
-    ]
+    ],
+    "allowImportingTsExtensions": true
   },
   "include": [
     "vite",

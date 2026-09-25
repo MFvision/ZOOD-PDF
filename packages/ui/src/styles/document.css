@@ -98,6 +98,11 @@
   block-size: 34px;
 }
 
+.gallery.glass-strong {
+  /* Nested in the toolbar's backdrop filter, so its own blur sees nothing: stay nearly opaque. */
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+}
+
 .gallery {
   position: absolute;
   z-index: 60;

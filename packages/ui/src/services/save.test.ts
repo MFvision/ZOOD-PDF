@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { rebaseOnOriginal, looksProtected } from './save';
+import { rebaseOnOriginal, looksProtected, saveStrategy } from './save';
 import { EngineError, type EngineClient } from './engine';
 
 function fakeEngine(impl: Partial<EngineClient>): EngineClient {
@@ -50,6 +50,25 @@ describe('rebaseOnOriginal', () => {
     });
     const res = await rebaseOnOriginal(engine, new Uint8Array([1]), new Uint8Array([2]));
     expect(res).toEqual({ bytes: new Uint8Array([2]), mode: 'rewrite', reason: 'engine_missing' });
+  });
+});
+
+describe('saveStrategy', () => {
+  const enc = (s: string) => new TextEncoder().encode(s);
+  const plain = enc('%PDF-1.7\ntrailer\n<< /Size 3 /Root 1 0 R >>\n%%EOF');
+  const locked = enc('%PDF-1.7\ntrailer\n<< /Size 3 /Encrypt 5 0 R /Root 1 0 R >>\n%%EOF');
+
+  it('is incremental for ordinary edits', () => {
+    expect(saveStrategy({ original: plain, pdfium: plain, redacted: false })).toEqual({ mode: 'incremental' });
+  });
+
+  it('rewrites the whole file after redaction so no earlier revision keeps the content', () => {
+    expect(saveStrategy({ original: plain, pdfium: plain, redacted: true })).toEqual({ mode: 'rewrite', reason: 'redaction' });
+  });
+
+  it('rewrites when protection is added or removed', () => {
+    expect(saveStrategy({ original: plain, pdfium: locked, redacted: false }).reason).toBe('protection');
+    expect(saveStrategy({ original: locked, pdfium: plain, redacted: false }).reason).toBe('protection');
   });
 });
 

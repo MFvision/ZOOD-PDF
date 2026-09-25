@@ -9,7 +9,7 @@ import { createRecentsStore, type RecentItem, type RecentsStore } from './recent
 import { getHost, type HostBridge, type OpenedFile } from './host';
 import { engine as sharedEngine, type EngineClient } from './engine';
 import { isPdfBytes } from './files';
-import { looksProtected, rebaseOnOriginal } from './save';
+import { looksProtected, rebaseOnOriginal, saveStrategy } from './save';
 import type { ViewerApi } from '../viewer/Viewer';
 import type { Platform } from '../tools/registry';
 
@@ -209,7 +209,8 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
           const api = viewers.current.get(id);
           if (!api) throw new Error('viewer not ready');
           const pdfium = await api.exportBytes();
-          out = (await rebaseOnOriginal(getEngine(), doc.originalBytes, pdfium)).bytes;
+          const strategy = saveStrategy({ original: doc.originalBytes, pdfium, redacted: sensitive.current.has(id) });
+          out = strategy.mode === 'rewrite' ? pdfium : (await rebaseOnOriginal(getEngine(), doc.originalBytes, pdfium)).bytes;
         } else {
           out = doc.originalBytes;
         }

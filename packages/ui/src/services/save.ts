@@ -46,3 +46,19 @@ export function looksProtected(bytes: Uint8Array): boolean {
   const tail = new TextDecoder('latin1').decode(bytes.subarray(Math.max(0, bytes.byteLength - 65536)));
   return /\/Encrypt[\s\d<]/.test(tail);
 }
+
+export const WHOLE_REWRITE_BYTES = 150 * 1024 * 1024;
+
+/**
+ * Incremental (rebase) unless the change must not leave the earlier content in the file: redaction applied,
+ * protection (password/permissions) added, changed or removed, or files over 150 MB (docs/SPEC.md §1).
+ */
+export function saveStrategy(opts: { original: Uint8Array; pdfium: Uint8Array; redacted: boolean }): {
+  mode: 'incremental' | 'rewrite';
+  reason?: 'redaction' | 'protection' | 'size';
+} {
+  if (opts.redacted) return { mode: 'rewrite', reason: 'redaction' };
+  if (looksProtected(opts.original) !== looksProtected(opts.pdfium)) return { mode: 'rewrite', reason: 'protection' };
+  if (opts.original.byteLength > WHOLE_REWRITE_BYTES) return { mode: 'rewrite', reason: 'size' };
+  return { mode: 'incremental' };
+}

@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
-import { zoodAssetAliases } from './vite/index';
+import { zoodAssetAliases } from './vite/index.ts';
 
 export default defineConfig({
   plugins: [react()],
