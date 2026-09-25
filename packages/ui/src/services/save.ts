@@ -1,0 +1,48 @@
+/**
+ * Turning an edited document into the bytes we write to disk. PDFium writes files whole; the engine's
+ * `doc.rebase` appends only the objects PDFium changed to the ORIGINAL bytes, so the saved file is the
+ * original file + one incremental update (signatures and untouched bytes survive).
+ *
+ * This is the one call site for rebase.
+ */
+import type { EngineClient } from './engine';
+import { EngineError } from './engine';
+
+export interface RebaseResult {
+  bytes: Uint8Array;
+  /** 'incremental' = original bytes are a prefix; 'rewrite' = PDFium's whole file (see reason). */
+  mode: 'incremental' | 'rewrite';
+  reason?: string;
+}
+
+let tmp = 0;
+
+export async function rebaseOnOriginal(
+  engine: EngineClient,
+  original: Uint8Array,
+  pdfium: Uint8Array,
+): Promise<RebaseResult> {
+  const docId = `rebase-${++tmp}`;
+  try {
+    await engine.open(docId, original);
+    const reply = await engine.call(docId, 'doc.rebase', {}, [pdfium.slice()]);
+    const out = reply.blobs[0];
+    if (!out || out.byteLength === 0) throw new EngineError('rebase_empty', 'doc.rebase returned no bytes');
+    return { bytes: out, mode: 'incremental' };
+  } catch (e) {
+    // Only a build without the engine (development escape hatch) may fall back to PDFium's rewrite.
+    if (e instanceof EngineError && e.code === 'engine_missing') {
+      return { bytes: pdfium, mode: 'rewrite', reason: e.code };
+    }
+    throw e;
+  } finally {
+    engine.close(docId).catch(() => {});
+  }
+}
+
+/** Used to drop recents previews: the saved file is encrypted (password/permissions). The trailer
+ * (or the cross-reference stream dictionary) sits at the end of a PDFium-written file. */
+export function looksProtected(bytes: Uint8Array): boolean {
+  const tail = new TextDecoder('latin1').decode(bytes.subarray(Math.max(0, bytes.byteLength - 65536)));
+  return /\/Encrypt[\s\d<]/.test(tail);
+}

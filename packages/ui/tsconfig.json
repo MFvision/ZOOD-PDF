@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": [
+      "vite/client",
+      "vitest/globals"
+    ],
+    "paths": {
+      "@zood-assets/stamps/*": [
+        "./node_modules/@embedpdf/default-stamps/*"
+      ]
+    }
+  },
+  "include": [
+    "src",
+    "test"
+  ]
+}
