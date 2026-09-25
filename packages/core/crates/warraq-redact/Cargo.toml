@@ -1,0 +1,25 @@
+[package]
+name = "warraq-redact"
+description = "True redaction (content removal), Arabic-aware find & redact with PII patterns, and removal of hidden information for the ZOOD PDF engine."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+lopdf.workspace = true
+warraq-pdf = { path = "../warraq-pdf" }
+warraq-text = { path = "../warraq-text" }
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
+# Linear-time regular expressions (no backtracking) for PII patterns and bounded custom regexes.
+regex = { version = "1.11", default-features = false, features = ["std", "unicode", "perf"] }
+# Baseline/progressive JPEG decoding so redacted areas of DCT images can be painted over.
+zune-jpeg = { version = "0.5", default-features = false, features = ["std"] }
+zune-core = { version = "0.5", default-features = false, features = ["std"] }
+
+[lints]
+workspace = true

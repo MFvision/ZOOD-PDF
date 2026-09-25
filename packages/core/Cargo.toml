@@ -6,6 +6,7 @@ members = [
   "crates/warraq-render",
   "crates/warraq-sign",
   "crates/warraq-core",
+  "crates/warraq-redact",
 ]
 # cargo-fuzz crate: nightly-only, built separately (`cd fuzz && cargo fuzz run load`).
 exclude = ["fuzz"]
