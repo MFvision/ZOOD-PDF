@@ -679,6 +679,7 @@
   display: flex;
   flex: none;
   flex-direction: column;
+  align-self: flex-start;
   gap: var(--space-5);
   inline-size: 300px;
   max-block-size: 100%;
