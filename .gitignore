@@ -1,0 +1,17 @@
+node_modules/
+dist/
+target/
+.target-*/
+*.log
+.DS_Store
+coverage/
+test-results/
+playwright-report/
+packages/ui/src/wasm/pkg/
+apps/desktop/src-tauri/gen/
+apps/ios/build/
+apps/ios/*.xcodeproj
+apps/ios/Frameworks/
+out/
+.vite/
+*.tsbuildinfo
