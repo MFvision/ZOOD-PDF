@@ -11,7 +11,14 @@ use warraq_pdf::Pdf;
 fn original() -> &'static [u8] {
     static O: OnceLock<Vec<u8>> = OnceLock::new();
     O.get_or_init(|| {
-        sample_pdf(2, &SampleOptions { with_annotation: true, ..Default::default() }).unwrap_or_default()
+        sample_pdf(
+            2,
+            &SampleOptions {
+                with_annotation: true,
+                ..Default::default()
+            },
+        )
+        .unwrap_or_default()
     })
 }
 
