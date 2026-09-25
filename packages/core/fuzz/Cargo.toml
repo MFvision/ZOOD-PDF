@@ -1,0 +1,32 @@
+[package]
+name = "warraq-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+license = "Apache-2.0"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+lopdf = { version = "0.45", default-features = false }
+warraq-text = { path = "../crates/warraq-text" }
+
+# Stand-alone workspace: `cargo +nightly fuzz run <target>` from packages/core/fuzz.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "content_text"
+path = "fuzz_targets/content_text.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cmap"
+path = "fuzz_targets/cmap.rs"
+test = false
+doc = false
+bench = false

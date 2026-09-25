@@ -244,7 +244,6 @@ fn leaf_box(us: &[U], leaf: &[usize]) -> Option<LeafBox> {
 fn attach_marks(us: &mut [U]) {
     let mut by_seq: Vec<usize> = (0..us.len()).collect();
     by_seq.sort_by_key(|&i| us.get(i).map_or(0, |u| u.seq));
-    let pos_of: HashMap<usize, usize> = by_seq.iter().enumerate().map(|(p, &i)| (i, p)).collect();
     for p in 0..by_seq.len() {
         let Some(&mi) = by_seq.get(p) else { continue };
         let Some(m) = us.get(mi).cloned() else {
@@ -278,7 +277,6 @@ fn attach_marks(us: &mut [U]) {
             }
         }
         if let Some((_, bi)) = best {
-            let _ = pos_of.get(&bi);
             if let Some(b) = us.get_mut(bi) {
                 b.text.push_str(&m.text);
             }
@@ -385,7 +383,25 @@ fn xy_cut(us: &[U], idx: Vec<usize>, depth: usize, out: &mut Vec<Vec<usize>>) {
                 count_lines(us, &left, 0.5 * med),
                 count_lines(us, &right, 0.5 * med),
             );
-            (nl >= 2 && nr >= 2) || (b - a) >= 2.5 * med
+            // Columns sit side by side: their vertical extents must overlap.
+            let ext = |g: &[usize]| {
+                let y0 = g
+                    .iter()
+                    .filter_map(|&i| us.get(i))
+                    .map(|u| u.y0)
+                    .fold(f64::MAX, f64::min);
+                let y1 = g
+                    .iter()
+                    .filter_map(|&i| us.get(i))
+                    .map(|u| u.y1)
+                    .fold(f64::MIN, f64::max);
+                (y0, y1)
+            };
+            let (l0, l1) = ext(&left);
+            let (r0, r1) = ext(&right);
+            let overlap = (l1.min(r1) - l0.max(r0)).max(0.0);
+            let side_by_side = overlap >= 0.5 * (l1 - l0).min(r1 - r0).max(1e-6);
+            side_by_side && ((nl >= 2 && nr >= 2) || (b - a) >= 2.5 * med)
         })
         .collect();
     if !vgaps.is_empty() {
@@ -607,6 +623,10 @@ enum Item {
 fn visual_items(us: &[U], line: &[usize]) -> Vec<Item> {
     let mut order: Vec<usize> = line.to_vec();
     order.sort_by_key(|&i| us.get(i).map_or(0, |u| u.seq));
+    // Producers that draw space glyphs draw all of them: then only spaces (or a very wide gap)
+    // separate words, and cursive/kerned positioning gaps inside words are ignored.
+    let explicit_spaces = line.iter().any(|&i| us.get(i).is_some_and(|u| u.space));
+    let word_gap = if explicit_spaces { 0.8 } else { 0.12 };
     // Chains of touching units in content order.
     let mut chains: Vec<Vec<usize>> = Vec::new();
     let mut cur: Vec<usize> = Vec::new();
@@ -621,7 +641,7 @@ fn visual_items(us: &[U], line: &[usize]) -> Vec<Item> {
             continue;
         }
         if let Some(p) = cur.last().and_then(|&l| us.get(l)) {
-            let wg = 0.12 * p.size.max(u.size);
+            let wg = word_gap * p.size.max(u.size);
             if gap((p.x0, p.x1), (u.x0, u.x1)) > wg {
                 chains.push(std::mem::take(&mut cur));
             }
@@ -677,7 +697,7 @@ fn visual_items(us: &[U], line: &[usize]) -> Vec<Item> {
     let mut merged: Vec<C> = Vec::new();
     for c in cs {
         if let Some(m) = merged.last_mut() {
-            let wg = 0.12 * m.size.max(c.size);
+            let wg = word_gap * m.size.max(c.size);
             let g = gap((m.x0, m.x1), (c.x0, c.x1));
             let space_between = spaces
                 .iter()
@@ -1167,6 +1187,45 @@ mod tests {
         }
         let p = plain(v);
         assert_eq!(p, "هذا سطر طويل جدا من النص العربي نهاية.\nفقرة جديدة هنا");
+    }
+
+    #[test]
+    fn rtl_table_is_read_row_by_row() {
+        let mut v = Vec::new();
+        let mut seq = 0;
+        let rows = [["المنتج", "الكمية", "السعر"], ["حاسوب", "3", "4500"], ["طابعة", "2", "1200"]];
+        for (r, row) in rows.iter().enumerate() {
+            // columns at x = 400 (first, rightmost), 250, 100
+            for (c, cell) in row.iter().enumerate() {
+                let x = 400.0 - 150.0 * c as f64;
+                let run = visual_run(cell, x, 700.0 - 20.0 * r as f64, seq);
+                seq += run.len();
+                v.extend(run);
+            }
+        }
+        let p = plain(v);
+        assert_eq!(p.split_whitespace().collect::<Vec<_>>().join(" "), "المنتج الكمية السعر حاسوب 3 4500 طابعة 2 1200");
+    }
+
+    #[test]
+    fn heading_above_two_columns() {
+        let mut v = Vec::new();
+        let mut seq = 0;
+        let mut add = |t: &str, x: f64, y: f64| {
+            let run = visual_run(t, x, y, seq);
+            seq += run.len();
+            v.extend(run);
+        };
+        add("عنوان يمتد فوق العمودين معا في الصفحة", 150.0, 760.0);
+        for k in 0..3 {
+            add("نص العمود الأيمن هنا", 330.0, 720.0 - 14.0 * k as f64);
+            add("نص العمود الأيسر هنا", 60.0, 720.0 - 14.0 * k as f64);
+        }
+        let p = plain(v);
+        let h = p.find("عنوان").unwrap();
+        let r = p.find("الأيمن").unwrap();
+        let l = p.find("الأيسر").unwrap();
+        assert!(h < r && r < l, "{p}");
     }
 
     #[test]

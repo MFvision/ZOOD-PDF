@@ -174,7 +174,11 @@ impl<'s, S: ContentSource + ?Sized> Interpreter<'s, S> {
         self.ops = 0;
         self.seq = 0;
         self.open_groups = 0;
-        self.run(&content, &resources, Matrix::IDENTITY, 0)?;
+        match self.run(&content, &resources, GState::new(Matrix::IDENTITY), 0) {
+            // A hostile page hit a limit: keep what was read so far.
+            Ok(()) | Err(TextError::Limit(_)) => {}
+            Err(e) => return Err(e),
+        }
         // Close unbalanced ActualText groups.
         while let Some(m) = self.marked.pop() {
             if let Some(start) = m.group_start {
@@ -192,7 +196,7 @@ impl<'s, S: ContentSource + ?Sized> Interpreter<'s, S> {
         self.marked.clear();
         self.ops = 0;
         self.open_groups = 0;
-        let _ = self.run(content, resources, Matrix::IDENTITY, 0);
+        let _ = self.run(content, resources, GState::new(Matrix::IDENTITY), 0);
         while let Some(m) = self.marked.pop() {
             if let Some(start) = m.group_start {
                 self.open_groups = self.open_groups.saturating_sub(1);
@@ -264,10 +268,10 @@ impl<'s, S: ContentSource + ?Sized> Interpreter<'s, S> {
         &mut self,
         content: &[u8],
         resources: &Dictionary,
-        base_ctm: Matrix,
+        initial: GState,
         depth: usize,
     ) -> Result<()> {
-        let mut gs = GState::new(base_ctm);
+        let mut gs = initial;
         let mut stack: Vec<GState> = Vec::new();
         let mut tm = Matrix::IDENTITY;
         let mut tlm = Matrix::IDENTITY;
@@ -469,10 +473,12 @@ impl<'s, S: ContentSource + ?Sized> Interpreter<'s, S> {
         if let Some(id) = id {
             self.forms.push(id);
         }
-        let ctm = m.then(&gs.ctm);
+        // The form inherits the graphics (and text) state of the Do; only the CTM changes.
+        let mut inner = gs.clone();
+        inner.ctm = m.then(&gs.ctm);
         let r = match form_res {
-            Some(fr) => self.run(&data, fr, ctm, depth + 1),
-            None => self.run(&data, resources, ctm, depth + 1),
+            Some(fr) => self.run(&data, fr, inner, depth + 1),
+            None => self.run(&data, resources, inner, depth + 1),
         };
         if id.is_some() {
             self.forms.pop();
@@ -786,6 +792,25 @@ mod tests {
         assert!(!g[1].artifact);
         assert_eq!(g[1].lang.as_deref(), Some("ar-SA"));
         assert!((g[1].origin.0 - 10.0).abs() < 1e-9, "form /Matrix applied");
+    }
+
+    #[test]
+    fn forms_inherit_the_text_state() {
+        let mut doc = Document::with_version("1.7");
+        let f1 = doc.add_object(
+            dictionary! {"Type" => "Font", "Subtype" => "Type1", "BaseFont" => "Helvetica"},
+        );
+        let form = doc.add_object(Stream::new(
+            dictionary! {"Subtype" => "Form"},
+            b"BT 0 0 Td (inherited) Tj ET".to_vec(),
+        ));
+        let res =
+            dictionary! {"Font" => dictionary!{"F1" => f1}, "XObject" => dictionary! {"X" => form}};
+        let src = LopdfSource::from_document(doc);
+        let mut it = Interpreter::new(&src);
+        let g = it.run_content(b"BT /F1 9 Tf ET /X Do", &res);
+        assert_eq!(texts(&g).concat(), "inherited");
+        assert!((g[0].size - 9.0).abs() < 1e-9);
     }
 
     #[test]

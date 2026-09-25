@@ -88,8 +88,13 @@ fn search_page(page: &PageText, q: &str, hits: &mut Vec<Hit>) {
 /// Rectangles covering chars `[start, end)` of the page text, merged per line.
 pub fn rects_for(page: &PageText, start: usize, end: usize) -> Vec<Rect> {
     let mut per_line: Vec<(usize, Rect)> = Vec::new();
-    for s in &page.spans {
-        if s.end <= start || s.start >= end || s.end <= s.start {
+    // Spans are in increasing text order.
+    let first = page.spans.partition_point(|s| s.end <= start);
+    for s in page.spans.get(first..).unwrap_or(&[]) {
+        if s.start >= end {
+            break;
+        }
+        if s.end <= start || s.end <= s.start {
             continue;
         }
         let n = (s.end - s.start) as f64;

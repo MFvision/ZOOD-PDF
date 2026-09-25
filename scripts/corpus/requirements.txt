@@ -1,0 +1,6 @@
+# Generation-time only (never bundled in ZOOD PDF). All permissive licences.
+pillow==12.3.0        # HPND (MIT-CMU)
+fonttools==4.66.0     # MIT
+pypdf==6.19.0         # BSD-3-Clause
+cryptography==50.0.1  # Apache-2.0 OR BSD-3-Clause (AES for pypdf)
+uharfbuzz==0.56.2     # Apache-2.0 (HarfBuzz: MIT "Old")
