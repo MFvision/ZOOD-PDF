@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
 import { AppProvider } from './services/AppContext';
 import { captureInstallPrompt } from './services/install';
+import { setViewerWorker } from './viewer/config';
 import type { Platform } from './tools/registry';
 import './styles/index.css';
 
@@ -22,10 +23,13 @@ export { APP_MARK_SVG } from './app/AppMark';
 
 export interface MountOptions {
   platform?: Platform;
+  /** Run PDFium in a blob: worker (default). MV3 extension pages must pass false. */
+  viewerWorker?: boolean;
 }
 
 export function mountApp(el: HTMLElement, opts: MountOptions = {}): () => void {
   captureInstallPrompt();
+  setViewerWorker(opts.viewerWorker ?? true);
   const root = createRoot(el);
   root.render(
     <StrictMode>

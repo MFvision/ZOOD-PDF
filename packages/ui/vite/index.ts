@@ -109,6 +109,15 @@ export function packageDir(name: string, from = UI_ROOT): string {
   throw new Error(`Cannot find package ${name}`);
 }
 
+/** Local copies of EmbedPDF's assets (PDFium wasm, Arabic fallback font, stamps): no CDN. */
+export function zoodAssetAliases(): Record<string, string> {
+  return {
+    '@zood-assets/fonts-arabic': path.join(packageDir('@embedpdf/fonts-arabic'), 'fonts'),
+    '@zood-assets/stamps': packageDir('@embedpdf/default-stamps'),
+    '@zood-assets/pdfium': path.join(packageDir('@embedpdf/snippet'), 'dist'),
+  };
+}
+
 /** Everything a host needs: React, the engine resolver, EmbedPDF patches and local asset aliases. */
 export function zoodUi(): PluginOption[] {
   return [
@@ -119,13 +128,7 @@ export function zoodUi(): PluginOption[] {
       name: 'zood:config',
       config() {
         return {
-          resolve: {
-            alias: {
-              '@zood-assets/fonts-arabic': path.join(packageDir('@embedpdf/fonts-arabic'), 'fonts'),
-              '@zood-assets/stamps': packageDir('@embedpdf/default-stamps'),
-              '@zood-assets/pdfium': path.join(packageDir('@embedpdf/snippet'), 'dist'),
-            },
-          },
+          resolve: { alias: zoodAssetAliases() },
           // Pre-bundling would skip our transform (string patches) in dev.
           optimizeDeps: { exclude: ['@embedpdf/snippet', '@embedpdf/react-pdf-viewer'] },
           worker: { format: 'es' as const, plugins: () => [zoodEngine()] },

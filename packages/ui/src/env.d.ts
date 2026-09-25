@@ -11,6 +11,18 @@ declare module 'virtual:warraq-core' {
   export function callStatic(method: string, paramsJson: string, blobs: Uint8Array[]): unknown;
 }
 
+/** @embedpdf/default-stamps manifest (bundled locally through the @zood-assets alias). */
+declare module '@zood-assets/stamps/en/manifest.json' {
+  const manifest: {
+    id: string;
+    name: string;
+    categories?: string[];
+    pdf: string;
+    stamps: { id: string; pageIndex: number; name: string; subject: string }[];
+  };
+  export default manifest;
+}
+
 interface Window {
   /** Host bridge injected by a native host (Tauri) before the app boots. */
   __ZOOD_HOST__?: import('./services/host').HostBridge;

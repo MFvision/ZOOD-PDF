@@ -16,3 +16,4 @@ out/
 .vite/
 *.tsbuildinfo
 .claude/worktrees/
+apps/extension/*.zip

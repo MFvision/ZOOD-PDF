@@ -63,6 +63,12 @@ const themeColors = {
   tooltip: { background: 'var(--label)', foreground: 'var(--surface)' },
 };
 
+let useWorker = true;
+/** Hosts whose CSP forbids blob: workers (MV3 extension pages) run PDFium on the page thread. */
+export function setViewerWorker(enabled: boolean): void {
+  useWorker = enabled;
+}
+
 export interface ViewerConfigInput {
   bytes: Uint8Array;
   name: string;
@@ -75,7 +81,7 @@ export function buildViewerConfig({ bytes, name, documentId, locale, scheme }: V
   // EmbedPDF may transfer the buffer to its worker: always hand it a private copy.
   const buffer = bytes.slice().buffer as ArrayBuffer;
   return {
-    worker: true,
+    worker: useWorker,
     wasmUrl: absoluteAssetUrl(pdfiumWasmUrl),
     fontFallback: {
       fonts: {
