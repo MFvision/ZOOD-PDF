@@ -37,8 +37,12 @@ positions inconsistently, and WiX (MSI) cannot write an Arabic product name.
   already reports logical points on macOS and Linux).
 * **Printing**: macOS uses PDFKit (`objc2-pdf-kit`: `PDFDocument(data:)` →
   `printOperationForPrintInfo:scalingMode:autoRotate:` → `runOperation`) on the main thread. Windows and Linux
-  print 300-dpi page images through the webview's own print dialog (an image-only document in a hidden iframe);
-  the page renderer is provided by the UI (PDFium in the viewer) via `setPageRasterizer`.
+  print 300-dpi page images through the webview's own print dialog (an image-only document in a hidden iframe).
+  The pages are rendered natively by the engine's `warraq-render` (hayro) linked into the desktop binary
+  (`print_open` → `print_page` × n → `print_close`; encrypted files that open without a password are decrypted in
+  memory by `warraq-pdf` first; ≤ 2000 pages, dpi clamped to 72–300). The UI can override the renderer with
+  `setPageRasterizer`. Documents with an open password must be printed after unlocking (the UI passes the bytes it
+  has).
 * **Menu**: the UI sends a JSON menu model; Rust validates it (≤ 64 KiB, ≤ 12 menus, ≤ 300 items, depth ≤ 4,
   id charset, labels without control characters, accelerator vocabulary, unique ids), adds a standard Edit menu
   when the model lacks Copy (WKWebView needs it for ⌘C/⌘V), and builds the native menu on macOS only. Windows and

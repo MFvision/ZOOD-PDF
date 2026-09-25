@@ -199,13 +199,33 @@ export async function printImages(pages: Blob[], doc: Document = document): Prom
   }
 }
 
+/**
+ * Page renderer backed by the engine's warraq-render (hayro) in the Rust host:
+ * `print_open` (raw bytes) → `print_page` per page (PNG) → `print_close`.
+ */
+export function engineRasterizer(apis: TauriApis): PageRasterizer {
+  return async (bytes, dpi) => {
+    const pages = await apis.invoke<number>('print_open', bytes);
+    try {
+      const out: Blob[] = [];
+      for (let index = 0; index < pages; index++) {
+        const png = await apis.invoke<ArrayBuffer | Uint8Array>('print_page', { index, dpi });
+        out.push(new Blob([png instanceof Uint8Array ? (png as Uint8Array<ArrayBuffer>) : png], { type: 'image/png' }));
+      }
+      return out;
+    } finally {
+      await apis.invoke('print_close').catch(() => undefined);
+    }
+  };
+}
+
 export async function createTauriHost(
   apis: TauriApis,
   opts: { root?: HTMLElement; rasterize?: PageRasterizer } = {},
 ): Promise<TauriHost> {
   const root = opts.root ?? document.documentElement;
   const info = await apis.invoke<HostInfo>('host_info');
-  let rasterize = opts.rasterize;
+  let rasterize = opts.rasterize ?? engineRasterizer(apis);
   const disposers: (() => void)[] = [];
   const menuHandlers = new Set<(id: string) => void>();
   let menuIdsKnown = new Set<string>();
@@ -309,7 +329,6 @@ export async function createTauriHost(
         await apis.invoke('print_pdf', bytes);
         return;
       }
-      if (!rasterize) throw new Error('print: no page renderer registered');
       await printImages(await rasterize(bytes, PRINT_DPI));
     },
 

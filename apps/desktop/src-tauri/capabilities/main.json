@@ -16,6 +16,9 @@
     "allow-set-locale",
     "allow-set-menu",
     "allow-print-pdf",
-    "allow-suggest-save-path"
+    "allow-suggest-save-path",
+    "allow-print-open",
+    "allow-print-page",
+    "allow-print-close"
   ]
 }

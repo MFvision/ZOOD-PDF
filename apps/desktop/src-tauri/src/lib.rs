@@ -13,10 +13,13 @@ pub mod names;
 pub mod native_menu;
 #[cfg(target_os = "macos")]
 mod print_macos;
+pub mod print_raster;
 
 use std::path::PathBuf;
-use tauri::ipc::{InvokeBody, Request};
-use tauri::{AppHandle, DragDropEvent, Emitter, Manager, Runtime, WebviewWindow, WindowEvent};
+use tauri::ipc::{InvokeBody, Request, Response};
+use tauri::{
+    AppHandle, DragDropEvent, Emitter, Manager, Runtime, State, WebviewWindow, WindowEvent,
+};
 use tauri_plugin_fs::FsExt;
 
 pub const DROP_EVENT: &str = "zood://drop";
@@ -30,6 +33,9 @@ pub const COMMANDS: &[&str] = &[
     "set_menu",
     "print_pdf",
     "suggest_save_path",
+    "print_open",
+    "print_page",
+    "print_close",
 ];
 
 #[tauri::command]
@@ -116,6 +122,55 @@ async fn print_pdf<R: Runtime>(app: AppHandle<R>, request: Request<'_>) -> Resul
     }
 }
 
+/// Starts a print job for Windows/Linux (raw PDF bytes): pages are rendered by warraq-render.
+/// Returns the page count.
+#[tauri::command]
+async fn print_open(
+    state: State<'_, print_raster::PrintState>,
+    request: Request<'_>,
+) -> Result<usize, String> {
+    let InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected raw PDF bytes".into());
+    };
+    if bytes.len() > host::MAX_PRINT_BYTES || !host::looks_like_pdf(bytes) {
+        return Err("not a printable PDF".into());
+    }
+    let bytes = bytes.clone();
+    let job = tauri::async_runtime::spawn_blocking(move || print_raster::PrintJob::open(bytes))
+        .await
+        .map_err(|e| e.to_string())??;
+    let pages = job.pages();
+    *state.0.lock().map_err(|_| "print state unavailable")? = Some(job);
+    Ok(pages)
+}
+
+/// PNG of one page of the open print job at `dpi` (clamped to 72-300).
+#[tauri::command]
+async fn print_page(
+    state: State<'_, print_raster::PrintState>,
+    index: usize,
+    dpi: f32,
+) -> Result<Response, String> {
+    let shared = state.inner().clone();
+    let png = tauri::async_runtime::spawn_blocking(move || {
+        let guard = shared
+            .0
+            .lock()
+            .map_err(|_| "print state unavailable".to_owned())?;
+        let job = guard.as_ref().ok_or("no print job is open")?;
+        job.page_png(index, dpi)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    Ok(Response::new(png))
+}
+
+#[tauri::command]
+fn print_close(state: State<'_, print_raster::PrintState>) -> Result<(), String> {
+    *state.0.lock().map_err(|_| "print state unavailable")? = None;
+    Ok(())
+}
+
 /// Default location + sanitised name for a save dialog: `<Documents>/<safe name>`.
 #[tauri::command]
 fn suggest_save_path<R: Runtime>(app: AppHandle<R>, name: String) -> String {
@@ -157,13 +212,17 @@ pub fn run() {
     let result = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .manage(print_raster::PrintState::default())
         .invoke_handler(tauri::generate_handler![
             host_info,
             app_ready,
             set_locale,
             set_menu,
             print_pdf,
-            suggest_save_path
+            suggest_save_path,
+            print_open,
+            print_page,
+            print_close
         ])
         .on_menu_event(|app, event| {
             let _ = app.emit(

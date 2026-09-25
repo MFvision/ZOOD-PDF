@@ -29,6 +29,9 @@ fn main() {
         "set_menu",
         "print_pdf",
         "suggest_save_path",
+        "print_open",
+        "print_page",
+        "print_close",
     ]);
     if let Err(e) = tauri_build::try_build(tauri_build::Attributes::new().app_manifest(manifest)) {
         println!("cargo:warning=tauri-build failed: {e:#}");

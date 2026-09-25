@@ -87,7 +87,8 @@ after `bash scripts/build-wasm.sh`). Page indices in the RPC are 0-based.
   dialogs/writes — need a person at a Mac.
 * Windows NSIS installer with the Arabic language page: `.github/workflows/windows-installer.yml`
   (workflow_dispatch / `v*` tags). Drop-position scaling on a HiDPI Windows display is unit-tested only.
-* Windows/Linux printing uses page images from the UI's renderer (`setPageRasterizer`); the print dialog itself is
+* Windows/Linux printing renders 300-dpi PNGs with warraq-render (unit-tested: US Letter → 2550×3300 px) and prints
+  them from an image-only document (bridge unit-tested with jsdom); the print dialog itself is
   a native dialog and is not automated.
 
 **Known limits:**

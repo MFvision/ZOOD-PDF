@@ -180,6 +180,7 @@ Every crate linked into the desktop binary is checked by `apps/desktop/src-tauri
 | gtk-rs (gtk, gdk, glib, …), webkit2gtk-rs (Linux only) | 0.18 / 2.0 | MIT | Bindings to the system GTK/WebKitGTK |
 | webview2-com, windows-rs (Windows only) | — | MIT OR Apache-2.0 | Bindings to the system WebView2 |
 | serde, serde_json, thiserror | 1 / 1 / 2 | MIT OR Apache-2.0 | IPC payloads, errors |
+| warraq-pdf, warraq-render (+ hayro and their dependencies, listed under the Rust engine) | 0.1 | Apache-2.0 (ours) | Rendering pages for printing on Windows/Linux |
 | option-ext (replacement) | 0.2.0 | MIT OR Apache-2.0 | Clean-room stand-in in `apps/desktop/src-tauri/vendor/option-ext` for the MPL-2.0 crate of the same name that `dirs` pulls in |
 | @tauri-apps/api, @tauri-apps/plugin-dialog, @tauri-apps/plugin-fs (npm) | 2.11 / 2.7 / 2.5 | Apache-2.0 OR MIT | JS side of the IPC, bundled into the desktop UI |
 | @tauri-apps/cli (npm, build tool only) | 2.11 | Apache-2.0 OR MIT | Building bundles, generating icons |

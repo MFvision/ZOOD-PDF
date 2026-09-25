@@ -13,7 +13,7 @@ import {
 const LINUX: HostInfo = { os: 'linux', titleBarOverlay: false, trafficLightsWidth: 0, titleBarHeight: 0, nativePdfPrint: false };
 const MAC: HostInfo = { os: 'macos', titleBarOverlay: true, trafficLightsWidth: 78, titleBarHeight: 28, nativePdfPrint: true };
 
-function fakeApis(info: HostInfo, files: Record<string, Uint8Array> = {}) {
+function fakeApis(info: HostInfo, files: Record<string, Uint8Array> = {}, opts: { failPage?: number } = {}) {
   const listeners = new Map<string, (e: { payload: unknown }) => void>();
   const written = new Map<string, Uint8Array>();
   const calls: { cmd: string; args?: unknown }[] = [];
@@ -26,6 +26,12 @@ function fakeApis(info: HostInfo, files: Record<string, Uint8Array> = {}) {
       if (cmd === 'host_info') return info;
       if (cmd === 'suggest_save_path') return `/home/u/Documents/${(args as { name: string }).name}`;
       if (cmd === 'set_menu') return true;
+      if (cmd === 'print_open') return 2;
+      if (cmd === 'print_page') {
+        const { index } = args as { index: number };
+        if (index === opts.failPage) throw new Error(`page ${index} failed`);
+        return new Uint8Array([137, 80, 78, 71, index]).buffer;
+      }
       return undefined;
     }) as TauriApis['invoke'],
     listen: vi.fn(async (event: string, handler: (e: { payload: unknown }) => void) => {
@@ -162,13 +168,8 @@ describe('Tauri host bridge', () => {
     expect(calls.find((c) => c.cmd === 'print_pdf')?.args).toBe(pdf);
   });
 
-  it('prints 300-dpi page images elsewhere, and refuses without a renderer', async () => {
-    const { apis } = fakeApis(LINUX);
-    const host = await createTauriHost(apis);
-    await expect(host.print(new Uint8Array([1]))).rejects.toThrow(/renderer/);
-    const rasterize = vi.fn(async () => [new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' })]);
-    host.setPageRasterizer(rasterize);
-    URL.createObjectURL = vi.fn(() => 'blob:page-1');
+  function stubPrintFrame() {
+    URL.createObjectURL = vi.fn(() => 'blob:page');
     URL.revokeObjectURL = vi.fn();
     const printSpy = vi.fn();
     const origCreate = document.createElement.bind(document);
@@ -182,8 +183,37 @@ describe('Tauri host bridge', () => {
       }
       return el;
     });
+    return { printSpy, restore: () => spy.mockRestore() };
+  }
+
+  it('prints 300-dpi page images rendered by warraq-render elsewhere (open → page × n → close)', async () => {
+    const { apis, calls } = fakeApis(LINUX);
+    const host = await createTauriHost(apis);
+    const { printSpy, restore } = stubPrintFrame();
+    const pdf = new Uint8Array([37, 80, 68, 70, 45]);
+    await host.print(pdf);
+    restore();
+    const cmds = calls.map((c) => c.cmd).filter((c) => c.startsWith('print_'));
+    expect(cmds).toEqual(['print_open', 'print_page', 'print_page', 'print_close']);
+    expect(calls.find((c) => c.cmd === 'print_open')?.args).toBe(pdf);
+    expect(calls.filter((c) => c.cmd === 'print_page').map((c) => c.args)).toEqual([
+      { index: 0, dpi: 300 },
+      { index: 1, dpi: 300 },
+    ]);
+    expect(printSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes the print job even when a page fails, and accepts a UI-provided renderer', async () => {
+    const { apis, calls } = fakeApis(LINUX, {}, { failPage: 1 });
+    const host = await createTauriHost(apis);
+    await expect(host.print(new Uint8Array([37]))).rejects.toThrow(/page 1/);
+    expect(calls.at(-1)?.cmd).toBe('print_close');
+
+    const rasterize = vi.fn(async () => [new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' })]);
+    host.setPageRasterizer(rasterize);
+    const { printSpy, restore } = stubPrintFrame();
     await host.print(new Uint8Array([1]));
-    spy.mockRestore();
+    restore();
     expect(rasterize).toHaveBeenCalledWith(new Uint8Array([1]), 300);
     expect(printSpy).toHaveBeenCalledTimes(1);
   });
