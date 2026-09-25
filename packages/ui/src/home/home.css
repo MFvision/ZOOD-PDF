@@ -907,6 +907,16 @@
     min-inline-size: 36px;
     block-size: 36px;
   }
+
+  .home-add.icon-btn-primary,
+  .home-ai-ask .icon-btn-primary {
+    min-inline-size: 44px;
+    block-size: 44px;
+  }
+
+  .home-search-field {
+    block-size: 44px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

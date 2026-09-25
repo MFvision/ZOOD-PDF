@@ -1,6 +1,16 @@
 import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { Crop, FileInput, FileOutput, FilePlus2, Replace, RotateCcw, RotateCw, Scissors, Trash2 } from 'lucide-react';
+import {
+  Crop,
+  FileInput,
+  FileOutput,
+  FilePlus2,
+  Replace,
+  RotateCcw,
+  RotateCw,
+  Scissors,
+  Trash2,
+} from 'lucide-react';
 import { ContextMenu } from '../components/ContextMenu';
 import { Dialog } from '../components/Dialog';
 import { Icon } from '../components/Icon';
@@ -45,24 +55,31 @@ export function PageMenu({ menu, onClose, onCrop }: PageMenuProps) {
   const dispatch = useAppDispatch();
   const services = useServices();
   const chooser = useRef<HTMLInputElement>(null);
-  const [choosing, setChoosing] = useState<{ index: number; how: 'replace' | 'insert' } | null>(null);
+  const [choosing, setChoosing] = useState<{ index: number; how: 'replace' | 'insert' } | null>(
+    null,
+  );
   const [locked, setLocked] = useState<Locked | null>(null);
   const count = state.document?.pageCount ?? 0;
   const { selection, busy } = state.organize;
   const ready = count > 0 && !busy && state.switching === null;
 
-  if (!menu) return chooserAndPassword();
-  const index = menu.index;
-  // The menu acts on the selection when the page is part of it, else on the page alone.
-  const pages = selection.pages.includes(index) ? selection.pages : [index];
-  const last = Math.max(...pages);
-
-  const put = async (file: { name: string; bytes: ArrayBuffer }, at: number, how: 'replace' | 'insert', password?: string) => {
+  /** Another file's pages in place of page `at` (replace), or after it (insert). */
+  const put = async (
+    file: { name: string; bytes: ArrayBuffer },
+    at: number,
+    how: 'replace' | 'insert',
+    password?: string,
+  ) => {
     const outcome =
-      how === 'replace' ? await services.replacePageFromFile(file, at, password) : await services.insertPagesFromFile(file, at + 1, password);
+      how === 'replace'
+        ? await services.replacePageFromFile(file, at, password)
+        : await services.insertPagesFromFile(file, at + 1, password);
     if (outcome === 'inserted') {
       setLocked(null);
-      dispatch({ type: 'TOAST', key: how === 'replace' ? 'organize.replaced' : 'organize.inserted' });
+      dispatch({
+        type: 'TOAST',
+        key: how === 'replace' ? 'organize.replaced' : 'organize.inserted',
+      });
     } else if (outcome === 'locked') {
       setLocked({ ...file, index: at, how, password: '', wrong: false });
     } else if (outcome === 'wrongPassword') {
@@ -73,20 +90,36 @@ export function PageMenu({ menu, onClose, onCrop }: PageMenuProps) {
     }
   };
 
+  // With no menu open the page is still here for the file chooser and the
+  // password sheet: the tree stays the same, so the input the chooser was
+  // opened on is the one its files come back to.
+  const index = menu?.index ?? 0;
+  // The menu acts on the selection when the page is part of it, else on the page alone.
+  const pages = selection.pages.includes(index) ? selection.pages : [index];
+  const last = Math.max(...pages);
+
   const items = [
     {
       id: 'add',
       label: t('organize.menu.addPage'),
       icon: <Icon of={FilePlus2} size={14} />,
       disabled: !ready,
-      onSelect: () => void services.organizePages('insert_blank', { at: index + 1, like: index }, () => [index + 1]),
+      onSelect: () =>
+        void services.organizePages('insert_blank', { at: index + 1, like: index }, () => [
+          index + 1,
+        ]),
     },
     {
       id: 'delete',
       label: t('organize.menu.deletePage'),
       icon: <Icon of={Trash2} size={14} />,
       disabled: !ready || pages.length >= count,
-      onSelect: () => void services.organizePages('delete', { pages }, () => selectionAfterDelete(count, pages).pages),
+      onSelect: () =>
+        void services.organizePages(
+          'delete',
+          { pages },
+          () => selectionAfterDelete(count, pages).pages,
+        ),
     },
     {
       id: 'extract',
@@ -101,14 +134,16 @@ export function PageMenu({ menu, onClose, onCrop }: PageMenuProps) {
       icon: <Icon of={RotateCcw} size={14} />,
       separatorBefore: true,
       disabled: !ready,
-      onSelect: () => void services.organizePages('rotate', { pages, quarterTurns: -1 }, () => pages),
+      onSelect: () =>
+        void services.organizePages('rotate', { pages, quarterTurns: -1 }, () => pages),
     },
     {
       id: 'rotateRight',
       label: t('organize.menu.rotateRight'),
       icon: <Icon of={RotateCw} size={14} />,
       disabled: !ready,
-      onSelect: () => void services.organizePages('rotate', { pages, quarterTurns: 1 }, () => pages),
+      onSelect: () =>
+        void services.organizePages('rotate', { pages, quarterTurns: 1 }, () => pages),
     },
     {
       id: 'replace',
@@ -148,61 +183,87 @@ export function PageMenu({ menu, onClose, onCrop }: PageMenuProps) {
     },
   ];
 
+  const chosen = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    const what = choosing;
+    setChoosing(null);
+    if (file && what)
+      await put({ name: file.name, bytes: await file.arrayBuffer() }, what.index, what.how);
+  };
+
   return (
     <>
-      <ContextMenu at={menu.at} label={t('organize.menu', { page: index + 1 })} items={items} returnTo={menu.from} onClose={onClose} />
-      {chooserAndPassword()}
+      <ContextMenu
+        at={menu?.at ?? null}
+        label={t('organize.menu', { page: index + 1 })}
+        items={items}
+        returnTo={menu?.from}
+        onClose={onClose}
+      />
+      <input
+        ref={chooser}
+        type="file"
+        accept="application/pdf,.pdf"
+        hidden
+        aria-label={t('organize.menu.insertFile')}
+        onChange={(event) => void chosen(event)}
+      />
+      <Dialog
+        open={locked !== null}
+        title={t(locked?.how === 'replace' ? 'organize.menu.replace' : 'organize.menu.insertFile')}
+        onClose={() => setLocked(null)}
+      >
+        {locked && (
+          <form
+            className="tool-panel"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void put(locked, locked.index, locked.how, locked.password);
+            }}
+          >
+            <label className="field">
+              <span>
+                {t(
+                  locked.how === 'replace' ? 'organize.replacePassword' : 'organize.insertPassword',
+                  { name: locked.name },
+                )}
+              </span>
+              <input
+                className="text-input"
+                type="password"
+                dir="auto"
+                autoComplete="off"
+                value={locked.password}
+                onChange={(event) =>
+                  setLocked({ ...locked, password: event.target.value, wrong: false })
+                }
+              />
+            </label>
+            {locked.wrong && (
+              <p className="field-error" role="alert">
+                {t('password.wrong')}
+              </p>
+            )}
+            <div className="tool-actions">
+              <button
+                type="submit"
+                className="icon-btn icon-btn-labeled icon-btn-primary"
+                disabled={locked.password.length === 0}
+              >
+                {t('organize.insert')}
+              </button>
+              <button
+                type="button"
+                className="icon-btn icon-btn-labeled"
+                onClick={() => setLocked(null)}
+              >
+                {t('password.cancel')}
+              </button>
+            </div>
+          </form>
+        )}
+      </Dialog>
     </>
   );
-
-  function chooserAndPassword() {
-    const chosen = async (event: ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      event.target.value = '';
-      const what = choosing;
-      setChoosing(null);
-      if (file && what) await put({ name: file.name, bytes: await file.arrayBuffer() }, what.index, what.how);
-    };
-    return (
-      <>
-        <input ref={chooser} type="file" accept="application/pdf,.pdf" hidden aria-label={t('organize.menu.insertFile')} onChange={(event) => void chosen(event)} />
-        <Dialog open={locked !== null} title={t(locked?.how === 'replace' ? 'organize.menu.replace' : 'organize.menu.insertFile')} onClose={() => setLocked(null)}>
-          {locked && (
-            <form
-              className="dialog-body"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void put(locked, locked.index, locked.how, locked.password);
-              }}
-            >
-              <label className="field">
-                <span>{t(locked.how === 'replace' ? 'organize.replacePassword' : 'organize.insertPassword', { name: locked.name })}</span>
-                <input
-                  className="text-input"
-                  type="password"
-                  dir="auto"
-                  autoComplete="off"
-                  value={locked.password}
-                  onChange={(event) => setLocked({ ...locked, password: event.target.value, wrong: false })}
-                />
-              </label>
-              {locked.wrong && (
-                <p className="field-error" role="alert">
-                  {t('password.wrong')}
-                </p>
-              )}
-              <div className="tool-actions">
-                <button type="submit" className="icon-btn icon-btn-labeled icon-btn-primary" disabled={locked.password.length === 0}>
-                  {t('organize.insert')}
-                </button>
-                <button type="button" className="icon-btn icon-btn-labeled" onClick={() => setLocked(null)}>
-                  {t('password.cancel')}
-                </button>
-              </div>
-            </form>
-          )}
-        </Dialog>
-      </>
-    );
-  }
 }

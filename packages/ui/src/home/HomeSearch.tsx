@@ -4,11 +4,11 @@ import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useI18n } from '../i18n/useT';
 import type { SearchHit } from '../library/ops';
-import { fileForKey } from '../library/sources';
+import { fileForKey, folderOf } from '../library/sources';
 import { snippet } from '../library/snippet';
 import { useServices } from '../state/AppContext';
 import type { LibraryIndex } from './useLibraryIndex';
-import { usePendingPage } from './usePendingPage';
+import { requestPage } from './pendingPage';
 
 const LIMIT = 6;
 
@@ -26,8 +26,7 @@ export function HomeSearch({ index }: { index: LibraryIndex }) {
   const [query, setQuery] = useState('');
   // What the Library answered, and for which words: an answer to older words is not shown.
   const [found, setFound] = useState<{ query: string; hits: SearchHit[] }>({ query: '', hits: [] });
-  const [missing, setMissing] = useState<string | null>(null);
-  const showPage = usePendingPage();
+  const [missing, setMissing] = useState<{ key: string; note: string } | null>(null);
   const resultsId = useId();
 
   // ⌘K (Ctrl+K) puts the caret here from anywhere on the home screen.
@@ -71,16 +70,25 @@ export function HomeSearch({ index }: { index: LibraryIndex }) {
   const open = wanted.length > 0;
   const nothing = open && recents.length === 0 && hits.length === 0;
 
+  // A hit opens its document at its page. A document added to the Library
+  // one file at a time cannot be read again by the app (a browser keeps no
+  // way back to it): it is asked for, and opens at the page once chosen.
   const openHit = (hit: SearchHit) => {
     void (async () => {
       setMissing(null);
+      if (folderOf(index.meta, hit.key)?.source === 'files') {
+        setMissing({ key: hit.key, note: t('starred.chooseAgain', { name: hit.name }) });
+        requestPage(hit.page);
+        services.requestOpenFile();
+        return;
+      }
       const file = await fileForKey(index.meta, hit.key, new Map()).catch(() => null);
       if (!file) {
-        setMissing(hit.key);
+        setMissing({ key: hit.key, note: t('library.missing', { name: hit.name }) });
         return;
       }
       await services.openFile(file);
-      showPage(hit.page);
+      requestPage(hit.page);
     })();
   };
 
@@ -125,7 +133,7 @@ export function HomeSearch({ index }: { index: LibraryIndex }) {
               <ul>
                 {recents.map((name) => (
                   <li key={name}>
-                    <button type="button" className="home-search-hit" onClick={services.requestOpenFile} title={t('home.recentOpen', { name })}>
+                    <button type="button" className="home-search-hit" onClick={services.requestOpenFile} aria-label={t('home.recentOpen', { name })}>
                       <Icon of={FileText} size={16} />
                       <span dir="auto">{name}</span>
                     </button>
@@ -160,9 +168,9 @@ export function HomeSearch({ index }: { index: LibraryIndex }) {
                           </span>
                         </span>
                       </button>
-                      {missing === hit.key && (
+                      {missing?.key === hit.key && (
                         <p className="field-error" role="alert">
-                          {t('library.missing', { name: hit.name })}
+                          {missing.note}
                         </p>
                       )}
                     </li>

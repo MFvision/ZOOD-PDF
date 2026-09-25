@@ -11,13 +11,15 @@ interface Card {
   id: string;
   title: TKey;
   hint: TKey;
+  /** The accessible name where it is a command with a picker: "Open…", "Create PDF…", as the menus say. */
+  name?: TKey;
   icon: LucideIcon;
   color: string;
 }
 
 const CARDS: Card[] = [
-  { id: 'open', title: 'home.card.open', hint: 'home.card.openHint', icon: FolderOpen, color: 'var(--accent)' },
-  { id: 'create', title: 'home.card.create', hint: 'home.card.createHint', icon: FilePlus2, color: toolColor('create') },
+  { id: 'open', title: 'home.card.open', hint: 'home.card.openHint', name: 'file.open', icon: FolderOpen, color: 'var(--accent)' },
+  { id: 'create', title: 'home.card.create', hint: 'home.card.createHint', name: 'home.add.create', icon: FilePlus2, color: toolColor('create') },
   { id: 'edit', title: 'home.card.edit', hint: 'home.card.editHint', icon: Pencil, color: toolColor('edit') },
   { id: 'convert', title: 'home.card.convert', hint: 'home.card.convertHint', icon: FileOutput, color: toolColor('export') },
   { id: 'ai', title: 'home.card.ai', hint: 'home.card.aiHint', icon: Sparkles, color: toolColor('ai') },
@@ -68,7 +70,7 @@ export function HeroCards({ onAi, onMore }: HeroCardsProps) {
     <ul className="home-cards" aria-label={t('home.actions')}>
       {CARDS.map((card) => (
         <li key={card.id}>
-          <button type="button" className="home-card glass" onClick={() => act(card.id)}>
+          <button type="button" className="home-card glass" aria-label={card.name ? t(card.name) : undefined} onClick={() => act(card.id)}>
             <span className="tool-icon tool-icon-large" style={{ '--tool-color': card.color } as CSSProperties} aria-hidden="true">
               <Icon of={card.icon} size={22} />
             </span>
