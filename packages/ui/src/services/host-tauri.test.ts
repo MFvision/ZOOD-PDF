@@ -87,7 +87,7 @@ describe('Tauri host bridge', () => {
       filters: [{ name: 'PDF', extensions: ['pdf'] }],
     });
     expect(files.map((f) => f.name)).toEqual(['تقرير.pdf', 'b.pdf']);
-    expect(files[0].path).toBe('/docs/تقرير.pdf');
+    expect(files[0].handle).toBe('/docs/تقرير.pdf');
     expect(files[0].bytes).toBe(bytes);
     host.dispose();
   });
@@ -96,19 +96,24 @@ describe('Tauri host bridge', () => {
     const { apis } = fakeApis(LINUX);
     apis.openDialog.mockResolvedValue(null);
     const host = await createTauriHost(apis);
-    expect(await host.openFiles({ multiple: false, accept: [] })).toEqual([]);
+    expect(await host.openFiles()).toEqual([]);
+    expect(apis.openDialog).toHaveBeenCalledWith({
+      multiple: false,
+      directory: false,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    });
   });
 
   it('saves in place when a path is known, else asks with a sanitised default', async () => {
     const { apis, written, calls } = fakeApis(LINUX);
     const host = await createTauriHost(apis);
     const b = new Uint8Array([1, 2, 3]);
-    expect(await host.saveFile('x.pdf', b, '/docs/x.pdf')).toEqual({ path: '/docs/x.pdf' });
+    expect(await host.saveFile('x.pdf', b, { handle: '/docs/x.pdf' })).toEqual({ name: 'x.pdf', handle: '/docs/x.pdf' });
     expect(written.get('/docs/x.pdf')).toBe(b);
     expect(apis.saveDialog).not.toHaveBeenCalled();
 
     apis.saveDialog.mockResolvedValue('/home/u/Documents/new.pdf');
-    expect(await host.saveFile('new.pdf', b)).toEqual({ path: '/home/u/Documents/new.pdf' });
+    expect(await host.saveFile('new.pdf', b)).toEqual({ name: 'new.pdf', handle: '/home/u/Documents/new.pdf' });
     expect(calls.some((c) => c.cmd === 'suggest_save_path')).toBe(true);
     expect(apis.saveDialog).toHaveBeenCalledWith({
       defaultPath: '/home/u/Documents/new.pdf',
@@ -116,11 +121,20 @@ describe('Tauri host bridge', () => {
     });
   });
 
+  it('"Save as" always asks, even with a handle', async () => {
+    const { apis, written } = fakeApis(LINUX);
+    const host = await createTauriHost(apis);
+    apis.saveDialog.mockResolvedValue('/docs/copy.pdf');
+    const r = await host.saveFile('x.pdf', new Uint8Array([1]), { handle: '/docs/x.pdf', saveAs: true });
+    expect(r).toEqual({ name: 'copy.pdf', handle: '/docs/copy.pdf' });
+    expect(written.has('/docs/x.pdf')).toBe(false);
+  });
+
   it('falls back to the save dialog when the old path is not writable, and cancel returns null', async () => {
     const { apis } = fakeApis(LINUX);
     const host = await createTauriHost(apis);
     apis.saveDialog.mockResolvedValue(null);
-    expect(await host.saveFile('a.pdf', new Uint8Array(), '/readonly/a.pdf')).toBeNull();
+    expect(await host.saveFile('a.pdf', new Uint8Array(), { handle: '/readonly/a.pdf' })).toBeNull();
     expect(apis.saveDialog).toHaveBeenCalledTimes(1);
   });
 
@@ -133,7 +147,7 @@ describe('Tauri host bridge', () => {
     await flush();
     emit(DROP_EVENT, { files: [{ name: 'ملف.pdf', path: '/d/ملف.pdf' }], position: { x: 120, y: 48 } });
     await flush();
-    expect(cb).toHaveBeenCalledWith([{ name: 'ملف.pdf', bytes, path: '/d/ملف.pdf' }], { x: 120, y: 48 });
+    expect(cb).toHaveBeenCalledWith([{ name: 'ملف.pdf', bytes, handle: '/d/ملف.pdf' }], { x: 120, y: 48 });
     off();
     emit(DROP_EVENT, { files: [{ name: 'ملف.pdf', path: '/d/ملف.pdf' }], position: { x: 1, y: 1 } });
     await flush();

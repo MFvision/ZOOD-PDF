@@ -8,14 +8,10 @@
  *
  * This file imports nothing from `@tauri-apps/*`: the desktop app (`apps/desktop/src/main.ts`)
  * passes the real APIs in, which keeps `@zood/ui` free of desktop dependencies and lets
- * vitest drive the bridge with fakes.
+ * vitest drive the bridge with fakes. The desktop app installs it as `window.__ZOOD_HOST__`
+ * before `mountApp`, so `getHost()` picks it up. File handles are absolute paths (strings).
  */
-
-export interface HostFile {
-  name: string;
-  bytes: Uint8Array;
-  path?: string;
-}
+import type { DropPoint, HostBridge, OpenedFile, SaveOptions, SaveResult } from './host';
 
 export type MenuEntry =
   | { type: 'item'; id: string; label: string; accelerator?: string; enabled?: boolean; checked?: boolean }
@@ -26,15 +22,6 @@ export type MenuEntry =
 export interface MenuModel {
   appMenu?: { label: string; items: MenuEntry[] };
   menus: { label: string; items: MenuEntry[] }[];
-}
-
-export interface HostBridge {
-  kind: 'web' | 'desktop' | 'extension';
-  openFiles(opts: { multiple: boolean; accept: string[] }): Promise<HostFile[]>;
-  saveFile(suggestedName: string, bytes: Uint8Array, path?: string): Promise<{ path?: string } | null>;
-  onHostDrop(cb: (files: HostFile[], pos: { x: number; y: number }) => void): () => void;
-  print(bytes: Uint8Array): Promise<void>;
-  setMenu?(model: MenuModel): void;
 }
 
 export interface DialogFilter {
@@ -64,8 +51,12 @@ export interface HostInfo {
 }
 
 export interface TauriHost extends HostBridge {
-  kind: 'desktop';
+  readonly kind: 'desktop';
   info: HostInfo;
+  /** Print a PDF: PDFKit on macOS, 300-dpi page images through the webview elsewhere. */
+  print(bytes: Uint8Array): Promise<void>;
+  /** Native menu bar (macOS) from the web menu model. */
+  setMenu(model: MenuModel): void;
   /** Tell the Rust side the interface has rendered (used by the headless smoke test). */
   ready(): Promise<void>;
   /** Called when a native menu item is chosen. */
@@ -253,50 +244,60 @@ export async function createTauriHost(
     }),
   );
 
-  const readAll = async (paths: string[]): Promise<HostFile[]> => {
-    const out: HostFile[] = [];
+  const readAll = async (paths: string[]): Promise<OpenedFile[]> => {
+    const out: OpenedFile[] = [];
     for (const path of paths) {
-      out.push({ name: baseName(path), bytes: await apis.readFile(path), path });
+      out.push({ name: baseName(path), bytes: await apis.readFile(path), handle: path });
     }
     return out;
+  };
+
+  const askAndWrite = async (name: string, bytes: Uint8Array): Promise<SaveResult | null> => {
+    const defaultPath = await apis.invoke<string>('suggest_save_path', { name });
+    const target = await apis.saveDialog({ defaultPath, filters: saveFilters(name) });
+    if (target === null) return null;
+    await apis.writeFile(target, bytes);
+    return { name: baseName(target), handle: target };
   };
 
   return {
     kind: 'desktop',
     info,
 
-    async openFiles({ multiple, accept }) {
+    async openFiles(opts = {}) {
+      const multiple = !!opts.multiple;
+      const accept = opts.accept ?? ['application/pdf', '.pdf'];
       const picked = await apis.openDialog({ multiple, directory: false, filters: acceptToFilters(accept) });
       if (picked === null) return [];
       const paths = Array.isArray(picked) ? picked : [picked];
       return readAll(multiple ? paths : paths.slice(0, 1));
     },
 
-    async saveFile(suggestedName, bytes, path) {
-      if (path) {
+    async saveFile(name: string, bytes: Uint8Array, opts: SaveOptions = {}): Promise<SaveResult | null> {
+      const path = typeof opts.handle === 'string' && opts.handle !== '' ? opts.handle : null;
+      if (path && !opts.saveAs) {
         try {
           await apis.writeFile(path, bytes);
-          return { path };
+          return { name: baseName(path), handle: path };
         } catch {
-          // Not writable any more (e.g. a recent file from a previous session is outside the
+          // Not writable any more (e.g. a recent file from an earlier session is outside the
           // fs scope, or the disk is read-only): fall back to asking where to save.
         }
       }
-      const defaultPath = await apis.invoke<string>('suggest_save_path', { name: suggestedName });
-      const target = await apis.saveDialog({ defaultPath, filters: saveFilters(suggestedName) });
-      if (target === null) return null;
-      await apis.writeFile(target, bytes);
-      return { path: target };
+      return askAndWrite(name, bytes);
     },
 
-    onHostDrop(cb) {
+    onHostDrop(cb: (files: OpenedFile[], point: DropPoint | null) => void) {
       return addListener<{ files: { name: string; path: string }[]; position: { x: number; y: number } }>(
         DROP_EVENT,
         (e) => {
           const { files, position } = e.payload;
-          void readAll(files.map((f) => f.path)).then((read) => {
-            if (read.length > 0) cb(read, { x: position.x, y: position.y });
-          });
+          void readAll(files.map((f) => f.path)).then(
+            (read) => {
+              if (read.length > 0) cb(read, position ? { x: position.x, y: position.y } : null);
+            },
+            (err: unknown) => console.error('dropped file could not be read', err),
+          );
         },
       );
     },
@@ -319,7 +320,9 @@ export async function createTauriHost(
 
     onMenu(cb) {
       menuHandlers.add(cb);
-      return () => menuHandlers.delete(cb);
+      return () => {
+        menuHandlers.delete(cb);
+      };
     },
 
     setPageRasterizer(r) {

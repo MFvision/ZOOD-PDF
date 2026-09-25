@@ -57,7 +57,10 @@ fn strict_csp() {
         "script-src 'self' 'wasm-unsafe-eval'",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' blob: data:",
-        "connect-src 'self' ipc: http://ipc.localhost http://localhost:11434 http://localhost:1234 https://api.anthropic.com",
+        "connect-src 'self' ipc: http://ipc.localhost blob: data: http://localhost:11434 http://localhost:1234 https://api.anthropic.com",
+        "font-src 'self' data:",
+        "object-src 'none'",
+        "base-uri 'self'",
         "worker-src 'self' blob:",
     ] {
         assert!(directives.contains(&d), "missing `{d}` in {csp}");

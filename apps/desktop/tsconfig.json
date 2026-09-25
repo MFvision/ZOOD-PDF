@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "types": ["vite/client", "node"], "noEmit": true },
+  "include": ["src", "vite.config.ts", "vite-plugin-desktop.ts", "vite-plugin-desktop.test.ts", "../../packages/ui/src/env.d.ts"]
+}

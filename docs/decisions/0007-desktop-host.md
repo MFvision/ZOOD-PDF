@@ -17,8 +17,11 @@ positions inconsistently, and WiX (MSI) cannot write an Arabic product name.
   `--no-default-features`. A plain `cargo build` therefore serves the bundled UI, never `devUrl`.
   `tests/config.rs` and a `const` assertion in `lib.rs` fail if it disappears.
 * **CSP** lives in `tauri.conf.json` only: `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src
-  'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self' ipc: http://ipc.localhost
-  http://localhost:11434 http://localhost:1234 https://api.anthropic.com; worker-src 'self' blob:`.
+  'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data:; media-src 'self' blob:; frame-src 'self'
+  blob:; connect-src 'self' ipc: http://ipc.localhost blob: data: http://localhost:11434 http://localhost:1234
+  https://api.anthropic.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'`.
+  The only remote origins are the AI endpoints; `blob:`/`data:` in `connect-src`, `font-src`, `frame-src` and
+  `media-src` match the web build's CSP (EmbedPDF fetches blob URLs and loads its fonts/worker locally).
   `dangerousDisableAssetCspModification: ["style-src"]` stops Tauri adding a nonce to `style-src`, which would
   silently disable `'unsafe-inline'` (EmbedPDF sets inline styles). `script-src` keeps Tauri's hashes.
 * **Capabilities** (`capabilities/main.json`): one capability for the `main` window with
