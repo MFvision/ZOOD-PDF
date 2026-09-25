@@ -438,3 +438,81 @@ fn existing_empty_field_is_filled_with_its_rect_and_lock() {
     .unwrap_err();
     assert_eq!(e.code(), "signing_not_allowed");
 }
+
+#[test]
+fn appearance_text_reads_back_in_logical_order() {
+    use lopdf::{dictionary, Object, Stream};
+    let pdf = Pdf::open(plain(1), None).unwrap();
+    let out = sign(
+        &pdf,
+        &signer("signer-p256-modern.p12"),
+        &SignOptions {
+            rect: Some([300.0, 80.0, 540.0, 160.0]),
+            appearance: Some(AppearanceSpec {
+                lines: Some(vec!["أحمد بن سعيد".into(), "الرياض 2026".into()]),
+                arabic_labels: None,
+            }),
+            time: NOW,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    // Draw the widget appearance into the page content so the page text extractor sees it
+    // (extractors read annotation appearances the same way).
+    let mut p = Pdf::open(out.bytes, None).unwrap();
+    let w = warraq_sign::pdfobj::fields(&p)[0].widgets[0];
+    let ap = p
+        .get_dict(w)
+        .unwrap()
+        .get(b"AP")
+        .unwrap()
+        .as_dict()
+        .unwrap()
+        .get(b"N")
+        .unwrap()
+        .as_reference()
+        .unwrap();
+    let page = warraq_pdf::pages::flatten(&p).unwrap()[0].id;
+    let draw = p.add(Object::Stream(Stream::new(
+        dictionary! {},
+        b"q 1 0 0 1 300 80 cm /SigAP Do Q".to_vec(),
+    )));
+    let mut pd = p.get_dict(page).unwrap().clone();
+    let old = pd.get(b"Contents").unwrap().clone();
+    pd.set("Contents", vec![old, Object::Reference(draw)]);
+    let mut res = pd.get(b"Resources").unwrap().as_dict().unwrap().clone();
+    res.set("XObject", dictionary! {"SigAP" => Object::Reference(ap)});
+    pd.set("Resources", res);
+    p.set(page, Object::Dictionary(pd));
+    let bytes = p.commit().unwrap();
+    let src = warraq_text::LopdfSource::open(&bytes, None).unwrap();
+    let text =
+        warraq_text::plain_text(&warraq_text::extract_all(&src, &Default::default()).unwrap());
+    assert!(text.contains("أحمد بن سعيد"), "extracted: {text:?}");
+    assert!(text.contains("الرياض"), "extracted: {text:?}");
+}
+
+#[test]
+fn rotated_page_appearance_is_counter_rotated() {
+    let mut pdf = Pdf::open(plain(1), None).unwrap();
+    warraq_pdf::pages::rotate(&mut pdf, &[0], 90).unwrap();
+    let doc = pdf.commit().unwrap();
+    let out = sign(
+        &Pdf::open(doc, None).unwrap(),
+        &signer("signer-rsa-modern.p12"),
+        &SignOptions { rect: Some([50.0, 50.0, 110.0, 250.0]), time: NOW, ..Default::default() },
+    )
+    .unwrap();
+    let pdf = Pdf::open(out.bytes.clone(), None).unwrap();
+    let w = warraq_sign::pdfobj::fields(&pdf)[0].widgets[0];
+    let wd = pdf.get_dict(w).unwrap();
+    assert_eq!(wd.get(b"MK").unwrap().as_dict().unwrap().get(b"R").unwrap().as_i64().unwrap(), 90);
+    let ap = wd.get(b"AP").unwrap().as_dict().unwrap().get(b"N").unwrap().as_reference().unwrap();
+    let apd = pdf.get_dict(ap).unwrap();
+    let m: Vec<i64> = apd.get(b"Matrix").unwrap().as_array().unwrap().iter().map(|o| o.as_i64().unwrap()).collect();
+    assert_eq!(m, vec![0, 1, -1, 0, 0, 0]);
+    // The box is laid out in the rotated (visual) frame: 200 wide, 60 high.
+    let bbox: Vec<f32> = apd.get(b"BBox").unwrap().as_array().unwrap().iter().map(|o| o.as_float().unwrap()).collect();
+    assert_eq!(bbox, vec![0.0, 0.0, 200.0, 60.0]);
+    openssl_verify("rotated", &out.bytes);
+}

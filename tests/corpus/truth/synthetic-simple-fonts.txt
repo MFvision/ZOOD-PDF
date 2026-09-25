@@ -1,0 +1,6 @@
+مرحبا بكم في زود
+Plain Helvetica text with WinAnsi encoding.
+Second line using the T* operator.
+Third line using the quote operator.
+Fourth line with word spacing.
+Text inside a form XObject.

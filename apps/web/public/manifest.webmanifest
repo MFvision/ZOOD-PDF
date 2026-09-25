@@ -1,0 +1,33 @@
+{
+  "name": "ZOOD PDF",
+  "short_name": "ZOOD PDF",
+  "description": "Open, fill, sign and protect PDFs. Nothing leaves your device.",
+  "lang": "en",
+  "dir": "auto",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#eef1f7",
+  "theme_color": "#3a63f0",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "file_handlers": [
+    { "action": "./", "accept": { "application/pdf": [".pdf"] } }
+  ],
+  "translations": {
+    "ar": {
+      "name": "زود PDF",
+      "short_name": "زود PDF",
+      "description": "افتح ملفات PDF واملأها ووقّعها واحمِها، دون أن يغادر شيء جهازك.",
+      "lang": "ar",
+      "dir": "rtl"
+    }
+  }
+}

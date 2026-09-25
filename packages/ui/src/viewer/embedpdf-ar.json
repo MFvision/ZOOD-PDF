@@ -1,0 +1,404 @@
+{
+  "search": {
+    "placeholder": "بحث",
+    "caseSensitive": "مطابقة حالة الأحرف",
+    "wholeWord": "الكلمة كاملة",
+    "resultsFound": "النتائج: {count}",
+    "page": "صفحة {page}"
+  },
+  "zoom": {
+    "in": "تكبير",
+    "out": "تصغير",
+    "fitWidth": "ملاءمة العرض",
+    "fitPage": "ملاءمة الصفحة",
+    "marquee": "تكبير منطقة محددة",
+    "menu": "قائمة التكبير",
+    "level": "مستوى التكبير ({level}٪)",
+    "dragTip": "اسحب لتحديد المنطقة المراد تكبيرها"
+  },
+  "pan": { "toggle": "تبديل وضع التحريك" },
+  "pointer": { "toggle": "تبديل وضع المؤشر" },
+  "capture": {
+    "screenshot": "لقطة شاشة",
+    "dragTip": "اسحب لتحديد المنطقة المراد التقاطها",
+    "title": "معاينة اللقطة",
+    "download": "تنزيل",
+    "cancel": "إلغاء"
+  },
+  "document": {
+    "menu": "قائمة المستند",
+    "open": "فتح",
+    "close": "إغلاق",
+    "print": "طباعة",
+    "protect": "الأمان",
+    "export": "تصدير",
+    "fullscreen": "ملء الشاشة",
+    "loading": "جارٍ تحميل المستند…"
+  },
+  "emptyState": {
+    "title": "لا توجد مستندات مفتوحة",
+    "description": "افتح مستند PDF للبدء.",
+    "descriptionMulti": "يمكنك عرض عدة مستندات في علامات تبويب.",
+    "openButton": "فتح مستند",
+    "supportedFormats": "الصيغة المدعومة: PDF"
+  },
+  "passwordPrompt": {
+    "title": "كلمة المرور مطلوبة",
+    "required": "هذا المستند محمي بكلمة مرور. أدخل كلمة المرور لفتحه.",
+    "incorrect": "كلمة المرور التي أدخلتها غير صحيحة. حاول مرة أخرى.",
+    "incorrectWarning": "كلمة المرور غير صحيحة. تحقّق منها وحاول مرة أخرى.",
+    "label": "كلمة المرور",
+    "placeholder": "أدخل كلمة مرور المستند",
+    "open": "فتح",
+    "opening": "جارٍ الفتح…",
+    "cancel": "إلغاء",
+    "close": "إغلاق"
+  },
+  "documentError": {
+    "title": "تعذّر تحميل المستند",
+    "unknown": "حدث خطأ غير معروف",
+    "errorCode": "رمز الخطأ: {code}",
+    "close": "إغلاق المستند"
+  },
+  "panel": {
+    "sidebar": "الشريط الجانبي",
+    "search": "بحث",
+    "comment": "التعليقات",
+    "thumbnails": "الصور المصغّرة",
+    "outline": "المخطط",
+    "annotationStyle": "نمط التعليق التوضيحي",
+    "redaction": "لوحة التنقيح"
+  },
+  "menu": {
+    "viewControls": "عناصر التحكم في العرض",
+    "zoomControls": "عناصر التحكم في التكبير",
+    "moreOptions": "خيارات إضافية"
+  },
+  "outline": {
+    "title": "المخطط",
+    "loading": "جارٍ تحميل المخطط…",
+    "noOutline": "لا يوجد مخطط",
+    "noBookmarks": "لا يحتوي هذا المستند على إشارات مرجعية"
+  },
+  "page": {
+    "settings": "إعدادات الصفحة",
+    "single": "صفحة واحدة",
+    "twoOdd": "صفحتان (فردية)",
+    "twoEven": "صفحتان (زوجية)",
+    "vertical": "عمودي",
+    "horizontal": "أفقي",
+    "spreadMode": "عرض الصفحات المتقابلة",
+    "scrollLayout": "اتجاه التمرير",
+    "rotation": "تدوير الصفحة",
+    "next": "الصفحة التالية",
+    "previous": "الصفحة السابقة"
+  },
+  "rotate": {
+    "clockwise": "تدوير باتجاه عقارب الساعة",
+    "counterClockwise": "تدوير عكس عقارب الساعة"
+  },
+  "selection": {
+    "copy": "نسخ التحديد",
+    "copyToClipboard": "نسخ إلى الحافظة"
+  },
+  "mode": {
+    "view": "عرض",
+    "annotate": "تعليق",
+    "shapes": "أشكال",
+    "form": "نموذج",
+    "redact": "تنقيح",
+    "insert": "إدراج"
+  },
+  "form": {
+    "textfield": "حقل نص",
+    "checkbox": "خانة اختيار",
+    "radio": "زر اختيار",
+    "select": "قائمة منسدلة",
+    "listbox": "مربع قائمة",
+    "combobox": "مربع تحرير وسرد",
+    "radiobutton": "زر اختيار",
+    "toggleFillMode": "تبديل وضع التعبئة",
+    "addOption": "إضافة خيار",
+    "comb": "خانات منفصلة",
+    "defaultValue": "القيمة الافتراضية",
+    "fieldName": "اسم الحقل",
+    "maxLength": "الحد الأقصى للطول",
+    "multiSelect": "تحديد متعدد",
+    "multiline": "أسطر متعددة",
+    "options": "الخيارات",
+    "properties": "الخصائص",
+    "readOnly": "للقراءة فقط",
+    "removeOption": "إزالة",
+    "required": "مطلوب"
+  },
+  "annotation": {
+    "text": "نص",
+    "highlight": "تظليل",
+    "strikeout": "يتوسطه خط",
+    "underline": "تسطير",
+    "squiggly": "خط متعرّج",
+    "rectangle": "مستطيل",
+    "circle": "دائرة",
+    "line": "خط",
+    "arrow": "سهم",
+    "polygon": "مضلّع",
+    "polyline": "خط متعدد",
+    "ink": "حبر",
+    "inkHighlighter": "قلم تظليل",
+    "stamp": "ختم",
+    "caret": "علامة إدراج",
+    "insertText": "إدراج نص",
+    "replaceText": "استبدال نص",
+    "freeText": "نص حر",
+    "square": "مربع",
+    "style": "نمط التعليق التوضيحي",
+    "styles": "أنماط {type}",
+    "defaults": "الإعدادات الافتراضية لـ {type}",
+    "color": "اللون",
+    "opacity": "العتامة",
+    "blendMode": "وضع المزج",
+    "strokeWidth": "سُمك الخط",
+    "strokeColor": "لون الخط",
+    "borderStyle": "نمط الحد",
+    "fillColor": "لون التعبئة",
+    "fontSize": "حجم الخط",
+    "fontFamily": "الخط",
+    "textAlign": "محاذاة النص",
+    "verticalAlign": "المحاذاة العمودية",
+    "lineEnding": "نهاية الخط",
+    "lineEndings": "نهايات الخط",
+    "lineStart": "بداية الخط",
+    "lineEnd": "نهاية الخط",
+    "font": "الخط",
+    "fontColor": "لون الخط",
+    "backgroundColor": "لون الخلفية",
+    "noStyles": "لا توجد أنماط لهذا التعليق التوضيحي.",
+    "noStylesStamp": "لا توجد أنماط للأختام.",
+    "selectAnnotation": "حدّد تعليقًا توضيحيًا لعرض أنماطه",
+    "deleteSelected": "حذف التعليق التوضيحي المحدد",
+    "deleteAllSelected": "حذف المحدد",
+    "multiSelect": "التعليقات التوضيحية المحددة: {count}",
+    "group": "تجميع",
+    "ungroup": "فك التجميع",
+    "moreTools": "أدوات أخرى",
+    "addLink": "إضافة رابط",
+    "removeLink": "إزالة الرابط",
+    "gotoLink": "الانتقال إلى الرابط",
+    "link": "رابط",
+    "widgetEdit": "تحرير الحقول",
+    "comment": "تعليق",
+    "callout": "وسيلة شرح",
+    "redact": "تنقيح",
+    "overlayText": "نص التغطية",
+    "overlayTextPlaceholder": "مثال: محجوب",
+    "rotation": "التدوير"
+  },
+  "insert": {
+    "image": "صورة",
+    "rubberStamp": "ختم مطاطي"
+  },
+  "redaction": {
+    "redact": "تنقيح",
+    "area": "تنقيح منطقة",
+    "text": "تنقيح نص",
+    "apply": "تطبيق التنقيح",
+    "applyAll": "تطبيق الكل",
+    "clearAll": "مسح الكل",
+    "deleteSelected": "حذف التنقيح المحدد",
+    "commitSelected": "تطبيق التنقيح المحدد",
+    "emptyState": "لا توجد تنقيحات معلّقة",
+    "panel": {
+      "title": "التنقيحات",
+      "itemCount": "تنقيحات معلّقة: {count}",
+      "itemCountPlural": "تنقيحات معلّقة: {count}",
+      "clearAll": "مسح الكل",
+      "redactAll": "تنقيح الكل"
+    }
+  },
+  "history": {
+    "undo": "تراجع",
+    "redo": "إعادة"
+  },
+  "comments": {
+    "page": "صفحة {page}",
+    "commentCount": "التعليقات: {count}",
+    "commentCountPlural": "التعليقات: {count}",
+    "addComment": "أضف تعليقًا…",
+    "addReply": "أضف ردًا…",
+    "showAllAnnotations": "إظهار كل التعليقات التوضيحية",
+    "closeAllAnnotations": "إغلاق كل التعليقات التوضيحية",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "showMore": "المزيد",
+    "showLess": "أقل",
+    "emptyState": "أضف تعليقات توضيحية لتتمكن من التعليق عليها."
+  },
+  "blendMode": {
+    "normal": "عادي",
+    "multiply": "ضرب",
+    "screen": "شاشة",
+    "overlay": "تراكب",
+    "darken": "تغميق",
+    "lighten": "تفتيح",
+    "colorDodge": "تفتيح اللون",
+    "colorBurn": "حرق اللون",
+    "hardLight": "ضوء قوي",
+    "softLight": "ضوء خافت",
+    "difference": "فرق",
+    "exclusion": "استبعاد",
+    "hue": "تدرّج اللون",
+    "saturation": "التشبّع",
+    "color": "اللون",
+    "luminosity": "الإضاءة"
+  },
+  "print": {
+    "title": "إعدادات الطباعة",
+    "loading": "جارٍ تجهيز المستند…",
+    "pages": "الصفحات المراد طباعتها",
+    "all": "كل الصفحات",
+    "current": "الصفحة الحالية ({currentPage})",
+    "specify": "تحديد الصفحات",
+    "specifyEG": "مثال: 1-3، 5، 8-10",
+    "total": "إجمالي صفحات المستند: {totalPages}",
+    "annotation": "تضمين التعليقات التوضيحية",
+    "printing": "جارٍ الطباعة…",
+    "print": "طباعة",
+    "cancel": "إلغاء"
+  },
+  "protect": {
+    "title": "حماية المستند",
+    "cancel": "إلغاء",
+    "apply": "تطبيق الحماية",
+    "applying": "جارٍ التطبيق…",
+    "applyFailed": "تعذّر تطبيق الحماية. حاول مرة أخرى.",
+    "removeFailed": "تعذّرت إزالة الحماية. حاول مرة أخرى.",
+    "passwordMismatch": "كلمتا المرور غير متطابقتين",
+    "noProtectionSelected": "اختر خيار حماية واحدًا على الأقل.",
+    "bothPasswordsNote": "من يفتح المستند بكلمة مرور المستند ستكون صلاحياته محدودة. استخدم كلمة مرور المالك لفتح كل الصلاحيات.",
+    "openPassword": {
+      "title": "طلب كلمة مرور للفتح",
+      "description": "يجب على المستخدمين إدخال كلمة مرور لعرض هذا المستند.",
+      "label": "كلمة مرور المستند",
+      "placeholder": "أدخل كلمة المرور",
+      "confirm": "تأكيد كلمة المرور",
+      "confirmPlaceholder": "أكّد كلمة المرور"
+    },
+    "ownerPassword": {
+      "label": "كلمة مرور المالك",
+      "placeholder": "أدخل كلمة مرور المالك",
+      "confirm": "تأكيد كلمة مرور المالك",
+      "confirmPlaceholder": "أكّد كلمة مرور المالك"
+    },
+    "permissions": {
+      "title": "تقييد الصلاحيات",
+      "description": "حدّد ما يمكن للمستخدمين فعله بهذا المستند.",
+      "allowedActions": "الإجراءات المسموح بها",
+      "print": "الطباعة",
+      "printHighQuality": "الطباعة بجودة عالية",
+      "copy": "نسخ المحتوى",
+      "accessibility": "الاستخراج لأغراض إمكانية الوصول",
+      "modify": "تعديل المحتوى",
+      "annotations": "إضافة التعليقات التوضيحية والتعليقات وتعديلها",
+      "fillForms": "تعبئة النماذج والتوقيع",
+      "assemble": "تجميع الصفحات واستخراجها"
+    },
+    "encrypted": {
+      "title": "المستند محمي",
+      "description": "هذا المستند محمي من مالكه. أدخل كلمة مرور المالك لتعديل إعدادات الأمان.",
+      "enterOwnerPassword": "أدخل كلمة مرور المالك للتعديل",
+      "unlockAndEdit": "فتح القفل والتعديل"
+    },
+    "modifyProtection": {
+      "title": "تعديل الحماية",
+      "description": "اختر طريقة تعديل حماية المستند.",
+      "changeOption": "تغيير كلمات المرور أو الصلاحيات",
+      "changeDescription": "حدّث كلمة مرور المستند أو إعدادات الصلاحيات.",
+      "removeOption": "إزالة كل الحماية",
+      "removeDescription": "أزل الحماية بكلمة المرور من هذا المستند."
+    },
+    "removeProtection": {
+      "title": "إزالة الحماية",
+      "warning": "هل تريد بالتأكيد إزالة الحماية؟",
+      "description": "سيؤدي هذا إلى إزالة كل الحماية بكلمة المرور من المستند، وسيتمكن أي شخص من فتحه وتعديله.",
+      "confirm": "إزالة الحماية"
+    }
+  },
+  "security": {
+    "protected": {
+      "title": "هذا المستند محمي",
+      "description": "هذا الملف محمي وقد تكون بعض الميزات معطّلة. افتح «الأمان» لعرض الصلاحيات أو فتحها.",
+      "viewPermissions": "عرض الصلاحيات"
+    },
+    "viewPermissions": {
+      "title": "صلاحيات المستند",
+      "description": "قيّد المالك هذا الملف، ويلزم إدخال كلمة مرور لتنفيذ بعض الإجراءات.",
+      "restrictedActions": "الإجراءات المقيّدة"
+    },
+    "unlock": {
+      "label": "أدخل كلمة مرور المالك لفتح الملف",
+      "placeholder": "أدخل كلمة مرور المالك",
+      "button": "فتح الملف",
+      "invalidPassword": "كلمة المرور غير صحيحة. حاول مرة أخرى.",
+      "failed": "تعذّر الفتح. حاول مرة أخرى.",
+      "success": "فُتحت صلاحيات المالك، ولديك الآن وصول كامل."
+    }
+  },
+  "common": {
+    "close": "إغلاق",
+    "back": "رجوع",
+    "cancel": "إلغاء"
+  },
+  "link": {
+    "title": "إدراج رابط",
+    "url": "عنوان URL",
+    "page": "صفحة",
+    "enterUrl": "أدخل عنوان URL",
+    "enterPage": "أدخل رقم الصفحة",
+    "pageRange": "من صفحة 1 إلى {totalPages}",
+    "link": "رابط"
+  },
+  "stamp": {
+    "title": "الأختام المطاطية",
+    "allStamps": "كل الأختام",
+    "export": "تصدير الأختام",
+    "emptyState": "لا توجد أختام في المكتبة المحددة.",
+    "createFromSelected": "إنشاء ختم",
+    "createFromGroup": "إنشاء ختم من المجموعة",
+    "rubberStamp": "ختم مطاطي",
+    "library": {
+      "custom": "أختام مخصّصة"
+    }
+  },
+  "signature": {
+    "title": "التواقيع",
+    "createNew": "إنشاء توقيع جديد",
+    "createNewWithInitials": "إنشاء توقيع وأحرف أولى",
+    "placeSignature": "توقيع",
+    "placeInitials": "الأحرف الأولى",
+    "remove": "إزالة التوقيع",
+    "emptyState": "لا توجد تواقيع بعد. أنشئ توقيعًا للبدء.",
+    "ink": "توقيع بالحبر",
+    "stamp": "توقيع مصوّر",
+    "create": {
+      "title": "إنشاء توقيع",
+      "draw": "رسم",
+      "type": "كتابة",
+      "upload": "رفع صورة",
+      "signatureLabel": "التوقيع",
+      "initialsLabel": "الأحرف الأولى",
+      "clear": "مسح",
+      "typePlaceholder": "مثال: سارة أحمد",
+      "initialsPlaceholder": "مثال: س.أ",
+      "uploadPlaceholder": "انقر أو اسحب صورة إلى هنا",
+      "font": "الخط",
+      "color": "اللون",
+      "cancel": "إلغاء",
+      "save": "حفظ"
+    }
+  },
+  "tabs": {
+    "overflowMenu": "مستندات أخرى"
+  }
+}

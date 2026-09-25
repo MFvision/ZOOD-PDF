@@ -18,6 +18,7 @@ warraq-pdf = { path = "../warraq-pdf" }
 warraq-sign = { path = "../warraq-sign" }
 der = { version = "0.7", default-features = false }
 zeroize = "1"
+warraq-text = { path = "../warraq-text" }
 warraq-render = { path = "../warraq-render", optional = true, default-features = false, features = ["hayro"] }
 wasm-bindgen = { version = "0.2", optional = true, default-features = false, features = ["std"] }
 js-sys = { version = "0.3", optional = true, default-features = false, features = ["std"] }

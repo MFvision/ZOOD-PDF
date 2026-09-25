@@ -1332,8 +1332,10 @@ name = "warraq-fuzz"
 version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
+ "lopdf",
  "warraq-pdf",
  "warraq-sign",
+ "warraq-text",
 ]
 
 [[package]]
@@ -1391,6 +1393,20 @@ dependencies = [
  "x509-ocsp",
  "x509-tsp",
  "zeroize",
+]
+
+[[package]]
+name = "warraq-text"
+version = "0.1.0"
+dependencies = [
+ "harfrust",
+ "lopdf",
+ "read-fonts",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "unicode-bidi",
+ "unicode-normalization",
 ]
 
 [[package]]

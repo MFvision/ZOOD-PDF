@@ -1,0 +1,244 @@
+/*
+ * ZOOD PDF design tokens: macOS-style semantic colours, one blue accent, glass materials over an
+ * original soft gradient. Light is the default; dark applies from the OS unless the user picks a theme
+ * (html[data-theme]).
+ */
+:root {
+  color-scheme: light dark;
+
+  --font-ui: -apple-system, blinkmacsystemfont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui,
+    "Noto Sans", "Noto Sans Arabic", "Geeza Pro", tahoma, sans-serif;
+  --font-display: -apple-system, blinkmacsystemfont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI",
+    system-ui, "Noto Sans", "Noto Sans Arabic", "Geeza Pro", tahoma, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", menlo, consolas, monospace;
+
+  /* radii 6–24 */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-2xl: 24px;
+
+  /* semantic colours (light) */
+  --accent: #007aff;
+  --accent-hover: #0068d9;
+  --accent-pressed: #0059bb;
+  --accent-soft: rgb(0 122 255 / 12%);
+  --on-accent: #fff;
+  --label: rgb(0 0 0 / 85%);
+  --label-2: rgb(0 0 0 / 55%);
+  --label-3: rgb(0 0 0 / 30%);
+  --fill: rgb(120 120 128 / 12%);
+  --fill-2: rgb(120 120 128 / 8%);
+  --fill-hover: rgb(120 120 128 / 16%);
+  --separator: rgb(0 0 0 / 9%);
+  --separator-strong: rgb(0 0 0 / 16%);
+  --window: #f3f3f6;
+  --surface: #fff;
+  --surface-2: #f6f6f8;
+  --red: #ff3b30;
+  --green: #34c759;
+  --orange: #ff9500;
+  --yellow: #fc0;
+
+  /* glass */
+  --glass: rgb(255 255 255 / 58%);
+  --glass-strong: rgb(255 255 255 / 78%);
+  --glass-border: rgb(255 255 255 / 70%);
+  --glass-edge: rgb(0 0 0 / 6%);
+  --glass-blur: saturate(180%) blur(28px);
+  --shadow-1: 0 1px 2px rgb(15 23 42 / 6%), 0 1px 1px rgb(15 23 42 / 4%);
+  --shadow-2: 0 1px 2px rgb(15 23 42 / 5%), 0 10px 30px rgb(15 23 42 / 9%);
+  --shadow-3: 0 2px 6px rgb(15 23 42 / 8%), 0 24px 60px rgb(15 23 42 / 18%);
+  --focus-ring: 0 0 0 3px rgb(0 122 255 / 40%);
+
+  /* original soft gradient: peach, lilac, sky and mint washes */
+  --bg-base: #eef1f7;
+  --bg-wash-1: rgb(255 204 178 / 55%);
+  --bg-wash-2: rgb(196 181 253 / 50%);
+  --bg-wash-3: rgb(147 197 253 / 50%);
+  --bg-wash-4: rgb(167 243 208 / 45%);
+
+  /* pastel tool tiles: background + glyph */
+  --tile-blue: #dbeafe;
+  --tile-blue-fg: #1d5fd6;
+  --tile-indigo: #e0e7ff;
+  --tile-indigo-fg: #4338ca;
+  --tile-purple: #ede4ff;
+  --tile-purple-fg: #7c3aed;
+  --tile-pink: #fce7f3;
+  --tile-pink-fg: #be185d;
+  --tile-red: #fee2e2;
+  --tile-red-fg: #c62828;
+  --tile-orange: #ffedd5;
+  --tile-orange-fg: #c2410c;
+  --tile-yellow: #fef3c7;
+  --tile-yellow-fg: #a16207;
+  --tile-green: #dcfce7;
+  --tile-green-fg: #15803d;
+  --tile-teal: #ccfbf1;
+  --tile-teal-fg: #0f766e;
+  --tile-mint: #d1fae5;
+  --tile-mint-fg: #047857;
+  --tile-cyan: #cffafe;
+  --tile-cyan-fg: #0e7490;
+  --tile-graphite: #e7e8ec;
+  --tile-graphite-fg: #3f4452;
+
+  /* motion: springs only as interaction feedback */
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-1: 120ms;
+  --dur-2: 220ms;
+  --dur-3: 360ms;
+
+  /* layout */
+  --sidebar-w: 264px;
+  --toolbar-h: 52px;
+  --gutter: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --accent: #0a84ff;
+    --accent-hover: #339aff;
+    --accent-pressed: #0070e0;
+    --accent-soft: rgb(10 132 255 / 22%);
+    --label: rgb(255 255 255 / 88%);
+    --label-2: rgb(235 235 245 / 60%);
+    --label-3: rgb(235 235 245 / 32%);
+    --fill: rgb(120 120 128 / 28%);
+    --fill-2: rgb(120 120 128 / 18%);
+    --fill-hover: rgb(120 120 128 / 36%);
+    --separator: rgb(255 255 255 / 10%);
+    --separator-strong: rgb(255 255 255 / 18%);
+    --window: #1c1c1e;
+    --surface: #2c2c2e;
+    --surface-2: #232325;
+    --glass: rgb(40 40 46 / 55%);
+    --glass-strong: rgb(44 44 50 / 78%);
+    --glass-border: rgb(255 255 255 / 10%);
+    --glass-edge: rgb(0 0 0 / 40%);
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 30%);
+    --shadow-2: 0 1px 2px rgb(0 0 0 / 30%), 0 12px 32px rgb(0 0 0 / 35%);
+    --shadow-3: 0 2px 6px rgb(0 0 0 / 40%), 0 28px 70px rgb(0 0 0 / 55%);
+    --focus-ring: 0 0 0 3px rgb(10 132 255 / 55%);
+    --bg-base: #121218;
+    --bg-wash-1: rgb(190 92 60 / 30%);
+    --bg-wash-2: rgb(109 76 214 / 32%);
+    --bg-wash-3: rgb(37 99 235 / 30%);
+    --bg-wash-4: rgb(16 150 110 / 22%);
+    --tile-blue: rgb(59 130 246 / 22%);
+    --tile-blue-fg: #8ab8ff;
+    --tile-indigo: rgb(99 102 241 / 24%);
+    --tile-indigo-fg: #a5b4fc;
+    --tile-purple: rgb(139 92 246 / 24%);
+    --tile-purple-fg: #c4b5fd;
+    --tile-pink: rgb(236 72 153 / 22%);
+    --tile-pink-fg: #f9a8d4;
+    --tile-red: rgb(239 68 68 / 22%);
+    --tile-red-fg: #fca5a5;
+    --tile-orange: rgb(249 115 22 / 22%);
+    --tile-orange-fg: #fdba74;
+    --tile-yellow: rgb(234 179 8 / 22%);
+    --tile-yellow-fg: #fde047;
+    --tile-green: rgb(34 197 94 / 20%);
+    --tile-green-fg: #86efac;
+    --tile-teal: rgb(20 184 166 / 20%);
+    --tile-teal-fg: #5eead4;
+    --tile-mint: rgb(16 185 129 / 20%);
+    --tile-mint-fg: #6ee7b7;
+    --tile-cyan: rgb(6 182 212 / 20%);
+    --tile-cyan-fg: #67e8f9;
+    --tile-graphite: rgb(148 163 184 / 20%);
+    --tile-graphite-fg: #cbd5e1;
+  }
+}
+
+:root[data-theme="dark"] {
+  --accent: #0a84ff;
+  --accent-hover: #339aff;
+  --accent-pressed: #0070e0;
+  --accent-soft: rgb(10 132 255 / 22%);
+  --label: rgb(255 255 255 / 88%);
+  --label-2: rgb(235 235 245 / 60%);
+  --label-3: rgb(235 235 245 / 32%);
+  --fill: rgb(120 120 128 / 28%);
+  --fill-2: rgb(120 120 128 / 18%);
+  --fill-hover: rgb(120 120 128 / 36%);
+  --separator: rgb(255 255 255 / 10%);
+  --separator-strong: rgb(255 255 255 / 18%);
+  --window: #1c1c1e;
+  --surface: #2c2c2e;
+  --surface-2: #232325;
+  --glass: rgb(40 40 46 / 55%);
+  --glass-strong: rgb(44 44 50 / 78%);
+  --glass-border: rgb(255 255 255 / 10%);
+  --glass-edge: rgb(0 0 0 / 40%);
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 30%);
+  --shadow-2: 0 1px 2px rgb(0 0 0 / 30%), 0 12px 32px rgb(0 0 0 / 35%);
+  --shadow-3: 0 2px 6px rgb(0 0 0 / 40%), 0 28px 70px rgb(0 0 0 / 55%);
+  --focus-ring: 0 0 0 3px rgb(10 132 255 / 55%);
+  --bg-base: #121218;
+  --bg-wash-1: rgb(190 92 60 / 30%);
+  --bg-wash-2: rgb(109 76 214 / 32%);
+  --bg-wash-3: rgb(37 99 235 / 30%);
+  --bg-wash-4: rgb(16 150 110 / 22%);
+  --tile-blue: rgb(59 130 246 / 22%);
+  --tile-blue-fg: #8ab8ff;
+  --tile-indigo: rgb(99 102 241 / 24%);
+  --tile-indigo-fg: #a5b4fc;
+  --tile-purple: rgb(139 92 246 / 24%);
+  --tile-purple-fg: #c4b5fd;
+  --tile-pink: rgb(236 72 153 / 22%);
+  --tile-pink-fg: #f9a8d4;
+  --tile-red: rgb(239 68 68 / 22%);
+  --tile-red-fg: #fca5a5;
+  --tile-orange: rgb(249 115 22 / 22%);
+  --tile-orange-fg: #fdba74;
+  --tile-yellow: rgb(234 179 8 / 22%);
+  --tile-yellow-fg: #fde047;
+  --tile-green: rgb(34 197 94 / 20%);
+  --tile-green-fg: #86efac;
+  --tile-teal: rgb(20 184 166 / 20%);
+  --tile-teal-fg: #5eead4;
+  --tile-mint: rgb(16 185 129 / 20%);
+  --tile-mint-fg: #6ee7b7;
+  --tile-cyan: rgb(6 182 212 / 20%);
+  --tile-cyan-fg: #67e8f9;
+  --tile-graphite: rgb(148 163 184 / 20%);
+  --tile-graphite-fg: #cbd5e1;
+}
+
+/* Reduced transparency: glass becomes solid. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass: var(--surface);
+    --glass-strong: var(--surface);
+    --glass-blur: none;
+  }
+}
+
+/* Increased contrast: stronger separators and labels, no translucency. */
+@media (prefers-contrast: more) {
+  :root {
+    --glass: var(--surface);
+    --glass-strong: var(--surface);
+    --glass-blur: none;
+    --glass-border: var(--label-2);
+    --separator: var(--label-2);
+    --separator-strong: var(--label);
+    --label-2: var(--label);
+    --accent: #0040dd;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-1: 0ms;
+    --dur-2: 0ms;
+    --dur-3: 0ms;
+    --spring: linear;
+  }
+}

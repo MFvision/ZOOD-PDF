@@ -1,17 +1,14 @@
 //! Visible signature appearance with real Arabic shaping.
 //!
-//! Text is split into bidi runs (unicode-bidi), each run is shaped with HarfRust (the Rust
-//! port of HarfBuzz: contextual forms, lam-alef and other ligatures, mark positioning) using
-//! the bundled Amiri subset, and drawn with an embedded, subsetted CID font (Identity-H,
-//! ToUnicode). Every word is wrapped in `/Span <</ActualText …>> BDC … EMC` so extraction
-//! reads back the logical text.
-//!
-//! INTEGRATION POINT (warraq-text): when warraq-text's shaping API lands, `shape_run` is the
-//! one function to replace; everything else (layout, font embedding, ActualText) stays.
+//! Each line is shaped by warraq-text (`warraq_text::shape`: unicode-bidi visual runs shaped
+//! with HarfRust, the Rust port of HarfBuzz — contextual forms, lam-alef, marks) with the
+//! bundled Amiri subset, and drawn with an embedded, subsetted CID font (Identity-H,
+//! ToUnicode). Every word is wrapped in `/Span <</ActualText …>> BDC … EMC`
+//! (`warraq_text::actual_text_spans`) so extraction reads back the logical text.
 
 use crate::error::{Result, SignError};
-use crate::pdfobj::{name, num, pdf_date, Edit};
-use lopdf::{Dictionary, Object, Stream, StringFormat};
+use crate::pdfobj::{name, num, Edit};
+use lopdf::{Dictionary, Object, Stream};
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
@@ -30,7 +27,9 @@ pub struct AppearanceSpec {
 }
 
 fn has_arabic(s: &str) -> bool {
-    s.chars().any(|c| matches!(c as u32, 0x0600..=0x06FF | 0x0750..=0x077F | 0xFB50..=0xFDFF | 0xFE70..=0xFEFF))
+    s.chars().any(|c| {
+        matches!(c as u32, 0x0600..=0x06FF | 0x0750..=0x077F | 0xFB50..=0xFDFF | 0xFE70..=0xFEFF)
+    })
 }
 
 impl AppearanceSpec {
@@ -48,7 +47,6 @@ impl AppearanceSpec {
         let ar = self.arabic_labels.unwrap_or_else(|| has_arabic(signer));
         let (y, mo, d, h, mi, _) = crate::pdfobj::civil(time);
         let date = format!("{y:04}-{mo:02}-{d:02} {h:02}:{mi:02} UTC");
-        let _ = pdf_date;
         let mut out = vec![signer.to_string()];
         if ar {
             out.push(format!("التاريخ: {date}"));
@@ -87,9 +85,9 @@ pub fn empty_form() -> Stream {
 #[derive(Debug, Clone, Copy)]
 struct Glyph {
     gid: u16,
-    adv: i32,
-    dx: i32,
-    dy: i32,
+    adv: f64,
+    dx: f64,
+    dy: f64,
     /// Byte offset of the glyph's cluster in the line.
     cluster: usize,
 }
@@ -139,92 +137,44 @@ fn load_font() -> Result<Font<'static>> {
     })
 }
 
-/// Shape one directional run. INTEGRATION POINT for warraq-text's shaper.
-fn shape_run(font: &Font<'_>, text: &str, rtl: bool, base: usize) -> Result<Vec<Glyph>> {
-    let fr = harfrust::FontRef::new(font.data)
-        .map_err(|e| SignError::Malformed(format!("font: {e}")))?;
-    let data = harfrust::ShaperData::new(&fr);
-    let shaper = data.shaper(&fr).build();
-    let mut buf = harfrust::UnicodeBuffer::new();
-    buf.push_str(text);
-    buf.set_direction(if rtl {
-        harfrust::Direction::RightToLeft
-    } else {
-        harfrust::Direction::LeftToRight
-    });
-    buf.guess_segment_properties();
-    let out = shaper.shape(buf, harfrust::ShapeOptions::new());
-    Ok(out
-        .glyph_infos()
-        .iter()
-        .zip(out.glyph_positions())
-        .map(|(i, p)| Glyph {
-            gid: u16::try_from(i.glyph_id).unwrap_or(0),
-            adv: p.x_advance,
-            dx: p.x_offset,
-            dy: p.y_offset,
-            cluster: base + i.cluster as usize,
-        })
-        .collect())
-}
-
-/// A shaped line in visual order.
+/// A shaped line in visual order, with its ActualText groups.
 struct Line {
     text: String,
     glyphs: Vec<Glyph>,
     width: f64,
     rtl: bool,
+    /// `(logical text, glyph range)` per word / whitespace run.
+    spans: Vec<(String, std::ops::Range<usize>)>,
 }
 
 fn shape_line(font: &Font<'_>, text: &str) -> Result<Line> {
-    let info = unicode_bidi::BidiInfo::new(text, None);
-    let mut glyphs = Vec::new();
-    let mut rtl = false;
-    if let Some(para) = info.paragraphs.first() {
-        rtl = para.level.is_rtl();
-        let (levels, runs) = info.visual_runs(para, para.range.clone());
-        for run in runs {
-            let level = levels.get(run.start).copied().unwrap_or(para.level);
-            let piece = text.get(run.clone()).unwrap_or_default();
-            glyphs.extend(shape_run(font, piece, level.is_rtl(), run.start)?);
-        }
-    }
-    let width = glyphs.iter().map(|g| f64::from(g.adv)).sum::<f64>();
+    // Shaping at size = units-per-em keeps every metric in font units.
+    let run = warraq_text::shape(text, font.data, font.upem)
+        .map_err(|e| SignError::Malformed(format!("shaping: {e}")))?;
+    let spans = warraq_text::actual_text_spans(&run)
+        .into_iter()
+        .map(|s| (s.text, s.glyphs))
+        .collect();
+    let rtl = unicode_bidi::ParagraphBidiInfo::new(text, None)
+        .paragraph_level
+        .is_rtl();
     Ok(Line {
         text: text.to_string(),
-        glyphs,
-        width,
+        glyphs: run
+            .glyphs
+            .iter()
+            .map(|g| Glyph {
+                gid: u16::try_from(g.glyph_id).unwrap_or(0),
+                adv: g.x_advance,
+                dx: g.x_offset,
+                dy: g.y_offset,
+                cluster: g.cluster,
+            })
+            .collect(),
+        width: run.width,
         rtl,
+        spans,
     })
-}
-
-/// Word index (in logical order) for each byte of `text`; `None` for whitespace.
-fn word_of_byte(text: &str) -> (Vec<Option<usize>>, Vec<String>) {
-    let mut map = vec![None; text.len()];
-    let mut words = Vec::new();
-    let mut cur: Option<(usize, usize)> = None;
-    for (i, c) in text.char_indices() {
-        if c.is_whitespace() {
-            if let Some((s, _)) = cur.take() {
-                words.push(text.get(s..i).unwrap_or_default().to_string());
-            }
-        } else {
-            let w = match cur {
-                Some((_, w)) => w,
-                None => {
-                    cur = Some((i, words.len()));
-                    words.len()
-                }
-            };
-            for slot in map.iter_mut().skip(i).take(c.len_utf8()) {
-                *slot = Some(w);
-            }
-        }
-    }
-    if let Some((s, _)) = cur {
-        words.push(text.get(s..).unwrap_or_default().to_string());
-    }
-    (map, words)
 }
 
 fn utf16_hex(s: &str) -> String {
@@ -291,31 +241,12 @@ pub fn build(edit: &mut Edit<'_>, rect: [f64; 4], rot: i64, lines: &[String]) ->
         let lw = line.width * scale;
         let x0 = if line.rtl { w - pad - lw } else { pad };
         let _ = writeln!(content, "/F1 {} Tf", num_s(size));
-        let (word_map, words) = word_of_byte(&line.text);
-        // Group consecutive glyphs by word.
         let mut pen = x0;
-        let mut idx = 0;
-        while idx < line.glyphs.len() {
-            let wi = line
-                .glyphs
-                .get(idx)
-                .and_then(|g| word_map.get(g.cluster).copied().flatten());
-            let mut end = idx + 1;
-            while end < line.glyphs.len()
-                && line
-                    .glyphs
-                    .get(end)
-                    .and_then(|g| word_map.get(g.cluster).copied().flatten())
-                    == wi
-            {
-                end += 1;
-            }
-            if let Some(word) = wi.and_then(|k| words.get(k)) {
-                let _ = writeln!(content, "/Span <</ActualText {}>> BDC", utf16_hex(word));
-            }
+        for (word, range) in &line.spans {
+            let _ = writeln!(content, "/Span <</ActualText {}>> BDC", utf16_hex(word));
             let _ = writeln!(content, "1 0 0 1 {} {} Tm", num_s(pen), num_s(y));
             let mut tj = String::new();
-            for g in line.glyphs.get(idx..end).unwrap_or_default() {
+            for g in line.glyphs.get(range.clone()).unwrap_or_default() {
                 let new_gid = remap.get(g.gid).unwrap_or(0);
                 let cluster_text: String = line
                     .text
@@ -326,7 +257,7 @@ pub fn build(edit: &mut Edit<'_>, rect: [f64; 4], rot: i64, lines: &[String]) ->
                     .collect();
                 to_unicode.entry(new_gid).or_insert(cluster_text);
                 let hmtx_adv = glyph_advance(&font, g.gid);
-                if g.dx != 0 || g.dy != 0 {
+                if g.dx.abs() > 0.01 || g.dy.abs() > 0.01 {
                     if !tj.is_empty() {
                         let _ = writeln!(content, "[{tj}] TJ");
                         tj.clear();
@@ -334,27 +265,24 @@ pub fn build(edit: &mut Edit<'_>, rect: [f64; 4], rot: i64, lines: &[String]) ->
                     let _ = writeln!(
                         content,
                         "1 0 0 1 {} {} Tm <{new_gid:04X}> Tj",
-                        num_s(pen + f64::from(g.dx) * scale),
-                        num_s(y + f64::from(g.dy) * scale)
+                        num_s(pen + g.dx * scale),
+                        num_s(y + g.dy * scale)
                     );
-                    pen += f64::from(g.adv) * scale;
+                    pen += g.adv * scale;
                     let _ = writeln!(content, "1 0 0 1 {} {} Tm", num_s(pen), num_s(y));
                     continue;
                 }
                 let _ = write!(tj, "<{new_gid:04X}>");
-                let adj = (hmtx_adv - f64::from(g.adv)) * 1000.0 / font.upem;
+                let adj = (hmtx_adv - g.adv) * 1000.0 / font.upem;
                 if adj.abs() > 0.01 {
                     let _ = write!(tj, " {} ", num_s(adj));
                 }
-                pen += f64::from(g.adv) * scale;
+                pen += g.adv * scale;
             }
             if !tj.is_empty() {
                 let _ = writeln!(content, "[{tj}] TJ");
             }
-            if wi.is_some() {
-                content.push_str("EMC\n");
-            }
-            idx = end;
+            content.push_str("EMC\n");
         }
         y -= -font.descent * scale;
     }
@@ -506,7 +434,6 @@ fn embed_font(
         Object::Array(vec![Object::Reference(cid_id)]),
     );
     t0.set("ToUnicode", Object::Reference(tu_id));
-    let _ = StringFormat::Literal;
     Ok(edit.add(Object::Dictionary(t0)))
 }
 

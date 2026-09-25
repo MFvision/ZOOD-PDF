@@ -1969,6 +1969,7 @@ dependencies = [
  "warraq-pdf",
  "warraq-render",
  "warraq-sign",
+ "warraq-text",
  "wasm-bindgen",
  "zeroize",
 ]
@@ -2012,7 +2013,6 @@ dependencies = [
  "digest 0.10.7",
  "ecdsa",
  "flate2",
- "harfrust",
  "hmac",
  "lopdf",
  "p256",
@@ -2034,6 +2034,7 @@ dependencies = [
  "thiserror",
  "unicode-bidi",
  "warraq-pdf",
+ "warraq-text",
  "webpki-roots",
  "x509-cert",
  "x509-ocsp",
@@ -2045,7 +2046,15 @@ dependencies = [
 name = "warraq-text"
 version = "0.1.0"
 dependencies = [
+ "harfrust",
+ "lopdf",
+ "read-fonts 0.43.3",
+ "serde",
+ "serde_json",
  "thiserror",
+ "unicode-bidi",
+ "unicode-normalization",
+ "warraq-pdf",
 ]
 
 [[package]]

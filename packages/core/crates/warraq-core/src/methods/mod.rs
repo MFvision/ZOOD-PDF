@@ -12,6 +12,7 @@ mod protect;
 #[cfg(feature = "render")]
 mod render;
 mod sign;
+mod text;
 
 /// Every namespace's `register` function.
 pub const NAMESPACES: &[fn(&mut Registry)] = &[
@@ -20,6 +21,7 @@ pub const NAMESPACES: &[fn(&mut Registry)] = &[
     protect::register,
     pdf::register,
     sign::register,
+    text::register,
     #[cfg(feature = "render")]
     render::register,
 ];

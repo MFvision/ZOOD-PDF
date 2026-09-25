@@ -16,3 +16,9 @@ out/
 .vite/
 *.tsbuildinfo
 .claude/worktrees/
+apps/extension/*.zip
+
+# Arabic corpus generation
+scripts/corpus/.venv/
+scripts/corpus/__pycache__/
+tests/corpus/generated/

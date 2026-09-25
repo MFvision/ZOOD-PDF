@@ -1,0 +1,69 @@
+# ADR 0007 — Desktop host (Tauri 2)
+
+* Status: accepted
+* Date: 2026-09-25
+
+## Context
+The desktop app must be the same interface as the web app (`packages/ui`) with the same WASM engine, named
+"ZOOD PDF" / "زود PDF" everywhere, with a strict CSP, and it must work on macOS (WKWebView), Windows (WebView2)
+and Linux (WebKitGTK). WKWebView ignores `<input type=file>` and `<a download>`, wry reports drag-and-drop
+positions inconsistently, and WiX (MSI) cannot write an Arabic product name.
+
+## Decision
+* **Tauri 2** (`apps/desktop/src-tauri`, crate `zood-pdf-desktop`, binary `zood-pdf`), productName "ZOOD PDF",
+  identifier `sa.zood.pdf`. The UI is built by `apps/desktop/vite.config.ts` from the shared entry with the
+  `<meta>` CSP stripped (a meta CSP intersects Tauri's header CSP) and the Tauri host bridge selected.
+* **`custom-protocol` is declared and on by default** in `Cargo.toml`; `tauri dev` runs with
+  `--no-default-features`. A plain `cargo build` therefore serves the bundled UI, never `devUrl`.
+  `tests/config.rs` and a `const` assertion in `lib.rs` fail if it disappears.
+* **CSP** lives in `tauri.conf.json` only: `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src
+  'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data:; media-src 'self' blob:; frame-src 'self'
+  blob:; connect-src 'self' ipc: http://ipc.localhost blob: data: http://localhost:11434 http://localhost:1234
+  https://api.anthropic.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'`.
+  The only remote origins are the AI endpoints; `blob:`/`data:` in `connect-src`, `font-src`, `frame-src` and
+  `media-src` match the web build's CSP (EmbedPDF fetches blob URLs and loads its fonts/worker locally).
+  `dangerousDisableAssetCspModification: ["style-src"]` stops Tauri adding a nonce to `style-src`, which would
+  silently disable `'unsafe-inline'` (EmbedPDF sets inline styles). `script-src` keeps Tauri's hashes.
+* **Capabilities** (`capabilities/main.json`): one capability for the `main` window with
+  `dialog:allow-open/save`, `fs:allow-read-file/write-file` with **no static scope** (the dialog plugin adds each
+  picked path; the drop handler adds each dropped file), event listen/unlisten, `start-dragging`, and one
+  `allow-*` per app command. `build.rs` declares the app commands in the ACL manifest, so none is implicitly
+  allowed. No shell, http, process or window-management permissions.
+* **Host bridge** (`packages/ui/src/services/host-tauri.ts`) implements `HostBridge` over injected Tauri APIs
+  (`apps/desktop/src/tauri-apis.ts`): native open/save dialogs, `plugin:fs|read_file` / `plugin:fs|write_file`,
+  `zood://drop` for OS drops, `zood://menu` for native menu clicks, `set_locale` from `<html lang>`.
+* **Drag-and-drop** is handled in Rust (`WindowEvent::DragDrop`): regular files only, at most 64, added to the fs
+  scope, positions converted by `drop_position_to_logical` — divide by the scale factor on Windows only (wry
+  already reports logical points on macOS and Linux).
+* **Printing**: macOS uses PDFKit (`objc2-pdf-kit`: `PDFDocument(data:)` →
+  `printOperationForPrintInfo:scalingMode:autoRotate:` → `runOperation`) on the main thread. Windows and Linux
+  print 300-dpi page images through the webview's own print dialog (an image-only document in a hidden iframe).
+  The pages are rendered natively by the engine's `warraq-render` (hayro) linked into the desktop binary
+  (`print_open` → `print_page` × n → `print_close`; encrypted files that open without a password are decrypted in
+  memory by `warraq-pdf` first; ≤ 2000 pages, dpi clamped to 72–300). The UI can override the renderer with
+  `setPageRasterizer`. Documents with an open password must be printed after unlocking (the UI passes the bytes it
+  has).
+* **Menu**: the UI sends a JSON menu model; Rust validates it (≤ 64 KiB, ≤ 12 menus, ≤ 300 items, depth ≤ 4,
+  id charset, labels without control characters, accelerator vocabulary, unique ids), adds a standard Edit menu
+  when the model lacks Copy (WKWebView needs it for ⌘C/⌘V), and builds the native menu on macOS only. Windows and
+  Linux keep the in-window web menus.
+* **Title bar** on macOS is `titleBarStyle: Overlay` + `hiddenTitle`; the bridge sets `data-titlebar="overlay"`
+  and `--zood-titlebar-height`, `--zood-traffic-lights-left`, `--zood-titlebar-inset-inline-start/-end` on
+  `<html>` so the toolbar leaves room for the traffic lights (physical left, i.e. inline end in RTL).
+* **Engine**: the UI uses the WASM engine in all hosts. Native engine commands may be added later.
+* **Bundles**: macOS `.app`/`.dmg` (`Info.plist` pins `CFBundleName`/`CFBundleDisplayName` "ZOOD PDF"); Windows
+  **NSIS only** with `languages: ["Arabic", "English"]` and `displayLanguageSelector`; Linux `.deb` only — an AppImage would bundle the LGPL WebKitGTK/GTK libraries into our artefact (ADR 0002), while the `.deb` depends on the distribution's packages.
+  Licences ship as resources under `licenses/`.
+* **Licences**: `tests/licences.rs` walks `cargo tree -e normal,no-proc-macro` and fails on anything outside
+  ADR 0002. Tauri pulls MPL-2.0 `option-ext` into the binary (via `dirs`); it is replaced through
+  `[patch.crates-io]` by a clean-room MIT/Apache copy in `vendor/option-ext` (three trait methods). MPL-2.0
+  `cssparser`/`selectors`/`dtoa-short` are only used by Tauri's build-time proc-macros and are not shipped.
+* **Icon**: original artwork, `apps/desktop/icon.svg` (blue gradient tile, folded page, the letter ز); PNG/ICNS/ICO
+  generated by `pnpm -C apps/desktop icons` (`tauri icon`).
+
+## Consequences
+* Rust logic that does not need a window is unit-tested on Linux; the real window, CSP and ACL are exercised by
+  `scripts/desktop-smoke.sh` under Xvfb/WebKitGTK. PDFKit printing, the native menu bar and the NSIS installer are
+  type-checked here (`cargo clippy --target aarch64-apple-darwin` / `x86_64-pc-windows-msvc`) but only run on
+  macOS/Windows hardware or CI (`.github/workflows/macos.yml`, `windows-installer.yml`).
+* Files opened in an earlier session are no longer in the fs scope; "Save" then falls back to the save dialog.
