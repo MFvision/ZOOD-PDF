@@ -94,7 +94,7 @@ pub struct Report {
     pub kind: &'static str,
     /// `/SubFilter`.
     pub sub_filter: String,
-    /// `valid`, `valid_identity_unknown`, `modified`, `invalid`, `unsupported`.
+    /// `valid`, `valid_identity_unknown`, `modified`, `invalid`, `unsupported`, `unchecked`.
     pub status: &'static str,
     /// Bytes and cryptography check out for the signed revision.
     pub integrity: bool,
@@ -215,6 +215,7 @@ pub fn verify(pdf: &Pdf, opts: &VerifyOptions) -> Result<Vec<Report>> {
     let mut reports = Vec::new();
     let mut locks = Locks::default();
     let mut docmdp: Option<u8> = None;
+    let mut budget: u64 = crate::limits::MAX_VERIFY_WORK;
     for (i, slot) in slots.iter().enumerate().take(MAX_SIGNATURES) {
         let sd = pdf.get_dict(slot.sig_id).cloned().unwrap_or_default();
         // Locks written by this signature (FieldMDP reference or the field's /Lock).
@@ -250,6 +251,15 @@ pub fn verify(pdf: &Pdf, opts: &VerifyOptions) -> Result<Vec<Report>> {
             docmdp,
             locks: locks.clone(),
         };
+        // Work budget: every signature hashes (and may re-parse) up to the whole file.
+        let cost = slot.range[2]
+            .saturating_add(slot.range[3])
+            .saturating_mul(2) as u64;
+        if cost > budget {
+            reports.push(unchecked(i, slot));
+            continue;
+        }
+        budget -= cost;
         let mut r = verify_one(&ctx, i, slot, &sd, &policy)?;
         r.certification = p;
         if is_cert {
@@ -279,6 +289,44 @@ pub fn verify(pdf: &Pdf, opts: &VerifyOptions) -> Result<Vec<Report>> {
         }
     }
     Ok(reports)
+}
+
+/// A report for a signature skipped because the work budget ran out.
+fn unchecked(index: usize, slot: &SigSlot) -> Report {
+    Report {
+        index,
+        field: slot.field.clone(),
+        kind: if slot.kind == b"DocTimeStamp" {
+            "documentTimestamp"
+        } else {
+            "approval"
+        },
+        sub_filter: String::from_utf8_lossy(&slot.sub_filter).into_owned(),
+        status: "unchecked",
+        integrity: false,
+        identity: "unknown",
+        signer: None,
+        chain: Vec::new(),
+        claimed_time: None,
+        timestamp: None,
+        reason: None,
+        location: None,
+        contact_info: None,
+        level: "B-B",
+        revision: None,
+        covers_whole_document: false,
+        byte_range: slot.range,
+        certification: None,
+        locks: Vec::new(),
+        revocation: "unknown".into(),
+        reasons: vec![note(
+            "limit_exceeded",
+            "too many signatures over a large file: this one was not checked",
+        )],
+        warnings: Vec::new(),
+        modifications: Vec::new(),
+        attacks: Vec::new(),
+    }
 }
 
 /// Byte-range structure checks; returns reasons (empty = sane) and attack evidence.

@@ -500,19 +500,55 @@ fn rotated_page_appearance_is_counter_rotated() {
     let out = sign(
         &Pdf::open(doc, None).unwrap(),
         &signer("signer-rsa-modern.p12"),
-        &SignOptions { rect: Some([50.0, 50.0, 110.0, 250.0]), time: NOW, ..Default::default() },
+        &SignOptions {
+            rect: Some([50.0, 50.0, 110.0, 250.0]),
+            time: NOW,
+            ..Default::default()
+        },
     )
     .unwrap();
     let pdf = Pdf::open(out.bytes.clone(), None).unwrap();
     let w = warraq_sign::pdfobj::fields(&pdf)[0].widgets[0];
     let wd = pdf.get_dict(w).unwrap();
-    assert_eq!(wd.get(b"MK").unwrap().as_dict().unwrap().get(b"R").unwrap().as_i64().unwrap(), 90);
-    let ap = wd.get(b"AP").unwrap().as_dict().unwrap().get(b"N").unwrap().as_reference().unwrap();
+    assert_eq!(
+        wd.get(b"MK")
+            .unwrap()
+            .as_dict()
+            .unwrap()
+            .get(b"R")
+            .unwrap()
+            .as_i64()
+            .unwrap(),
+        90
+    );
+    let ap = wd
+        .get(b"AP")
+        .unwrap()
+        .as_dict()
+        .unwrap()
+        .get(b"N")
+        .unwrap()
+        .as_reference()
+        .unwrap();
     let apd = pdf.get_dict(ap).unwrap();
-    let m: Vec<i64> = apd.get(b"Matrix").unwrap().as_array().unwrap().iter().map(|o| o.as_i64().unwrap()).collect();
+    let m: Vec<i64> = apd
+        .get(b"Matrix")
+        .unwrap()
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|o| o.as_i64().unwrap())
+        .collect();
     assert_eq!(m, vec![0, 1, -1, 0, 0, 0]);
     // The box is laid out in the rotated (visual) frame: 200 wide, 60 high.
-    let bbox: Vec<f32> = apd.get(b"BBox").unwrap().as_array().unwrap().iter().map(|o| o.as_float().unwrap()).collect();
+    let bbox: Vec<f32> = apd
+        .get(b"BBox")
+        .unwrap()
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|o| o.as_float().unwrap())
+        .collect();
     assert_eq!(bbox, vec![0.0, 0.0, 200.0, 60.0]);
     openssl_verify("rotated", &out.bytes);
 }

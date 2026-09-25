@@ -418,30 +418,3 @@ fn shadow_hide_and_replace_via_hidden_content_is_detected() {
         r.attacks
     );
 }
-
-#[test]
-fn zz_debug_dump() {
-    if std::env::var("WARRAQ_DEBUG").is_err() {
-        return;
-    }
-    let b = signed(
-        sample(),
-        "signer-rsa-modern.p12",
-        SignOptions {
-            certify: Some(2),
-            ..Default::default()
-        },
-    );
-    let b = signed(
-        b,
-        "signer-p256-modern.p12",
-        SignOptions {
-            rect: Some([100.0, 100.0, 300.0, 160.0]),
-            ..Default::default()
-        },
-    );
-    let b = add_annotation(&b, true);
-    for r in check(&b, None, &trusting()) {
-        println!("{}", serde_json::to_string_pretty(&r).unwrap());
-    }
-}

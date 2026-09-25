@@ -1042,3 +1042,22 @@ pub fn add_dss(pdf: &Pdf, m: &DssMaterial) -> Result<Vec<u8>> {
     }
     edit.build()
 }
+
+/// Native convenience: sign and timestamp in one call through a [`tsp::TsaClient`] (hosts
+/// with network access). The wasm/UI path uses `sign` + `finish` with the host doing HTTP.
+pub fn sign_with_timestamp(
+    pdf: &Pdf,
+    signer: &dyn Signer,
+    opts: &SignOptions,
+    tsa: &dyn tsp::TsaClient,
+) -> Result<Vec<u8>> {
+    let mut o = opts.clone();
+    o.level = o.level.max(Level::BT);
+    let out = sign(pdf, signer, &o)?;
+    let req = out
+        .tsa_request
+        .ok_or_else(|| SignError::Crypto("no timestamp request".into()))?;
+    let resp = tsa.timestamp(&req.der)?;
+    let signed = Pdf::open_with_limits(out.bytes, Some(pdf.password()), *pdf.limits())?;
+    Ok(finish(&signed, &resp)?.0)
+}

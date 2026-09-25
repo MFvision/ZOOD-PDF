@@ -21,3 +21,6 @@ pub const MAX_SIGNATURES: usize = 512;
 pub const MAX_PLACEHOLDER: usize = 1 << 20;
 /// Most objects compared when listing modifications between two revisions.
 pub const MAX_DIFF_OBJECTS: usize = 2_000_000;
+/// Bytes of hashing + revision parsing `sign.verify` may spend on one document (a file with
+/// hundreds of signatures over hundreds of MB would otherwise take minutes).
+pub const MAX_VERIFY_WORK: u64 = 3 << 30;

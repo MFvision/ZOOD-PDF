@@ -175,3 +175,33 @@ fn b_t_then_b_lt_then_b_lta() {
         String::from_utf8_lossy(&ok.stderr)
     );
 }
+
+struct OpensslTsa(std::path::PathBuf);
+impl warraq_sign::tsp::TsaClient for OpensslTsa {
+    fn timestamp(&self, req: &[u8]) -> warraq_sign::Result<Vec<u8>> {
+        Ok(tsa_reply(&self.0, req))
+    }
+}
+
+#[test]
+fn tsa_client_trait_signs_b_t_in_one_call() {
+    if !has_openssl() {
+        return;
+    }
+    let dir = scratch("tsa_client");
+    let s = SoftwareSigner::from_pkcs12(&read_pki("signer-p384-modern.p12"), PW).unwrap();
+    let pdf = Pdf::open(sample_pdf(1, &SampleOptions::default()).unwrap(), None).unwrap();
+    let b = warraq_sign::sign::sign_with_timestamp(
+        &pdf,
+        &s,
+        &SignOptions {
+            time: NOW,
+            ..Default::default()
+        },
+        &OpensslTsa(dir),
+    )
+    .unwrap();
+    let r = &verify(&Pdf::open(b, None).unwrap(), &trusting()).unwrap()[0];
+    assert_eq!(r.level, "B-T");
+    assert_eq!(r.status, "valid", "{r:#?}");
+}
