@@ -18,6 +18,6 @@ public enum WidgetTimelines {
     /// Whether the device can scan with a camera (the app records it at
     /// launch); the Scan widget says "from photos" where it cannot.
     public static var cameraAvailable: Bool {
-        AppGroup.sharedDefaults.bool(forKey: "cameraAvailable")
+        AppGroup.flag("cameraAvailable")
     }
 }

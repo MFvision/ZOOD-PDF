@@ -67,7 +67,8 @@ final class IntentsTests: XCTestCase {
         XCTAssertGreaterThan(result.total, 0)
         XCTAssertEqual(result.hits.first?.name, "فاتورة")
         XCTAssertEqual(result.hits.first?.page, 1)
-        let nothing = await reader.search("كلمة لا توجد في أي ملف", limit: 20)
+        // A word no file holds (common words such as "في" would be found).
+        let nothing = await reader.search("زقطبعرخ", limit: 20)
         XCTAssertEqual(nothing.total, 0)
         let none = await IndexReader(indexURL: folder.appending(path: "missing/library.wlx"), documentsFolder: folder).search("x", limit: 1)
         XCTAssertEqual(none.total, 0, "no index yet is no matches, not a failure")
@@ -105,18 +106,25 @@ final class IntentsTests: XCTestCase {
         XCTAssertTrue(bw.starts(with: Data("%PDF".utf8)))
     }
 
+    /// Each opening intent posts its route; the host app takes it the moment
+    /// the notification fires, so the notification's `url` is what is checked.
     @MainActor
     func testOpeningIntentsLeaveTheirRouteForTheApp() async throws {
-        _ = AppRoute.takePending()
-        _ = try await ScanDocumentIntent().perform()
-        XCTAssertEqual(AppRoute.takePending(), .scan)
-        _ = try await OpenLastDocumentIntent().perform()
-        XCTAssertEqual(AppRoute.takePending(), .lastDocument)
         let id = UUID()
-        var open = OpenDocumentIntent()
+        let open = OpenDocumentIntent()
         open.document = DocumentEntity(recent: RecentDocument(id: id, name: "x", bookmark: Data(), pageCount: 1))
-        _ = try await open.perform()
-        XCTAssertEqual(AppRoute.takePending(), .open(id: id))
+        let cases: [(name: String, route: AppRoute, run: () async throws -> Void)] = [
+            ("scan", .scan, { _ = try await ScanDocumentIntent().perform() }),
+            ("last", .lastDocument, { _ = try await OpenLastDocumentIntent().perform() }),
+            ("open", .open(id: id), { _ = try await open.perform() }),
+        ]
+        for item in cases {
+            let posted = expectation(forNotification: AppRoute.notification, object: nil) { note in
+                (note.userInfo?["url"] as? URL) == item.route.url
+            }
+            try await item.run()
+            await fulfillment(of: [posted], timeout: 2)
+        }
     }
 
     func testTheShortcutsNameEveryIntent() {

@@ -20,7 +20,11 @@ public enum AppRoute: Equatable, Sendable {
     case lastDocument
 
     public static let notification = Notification.Name("app.warraq.ios.route")
-    private static let pendingKey = "pendingRoute"
+    /// Where a route waits: a file in the shared container, which every
+    /// process of the app can write and the app reads (the container's
+    /// defaults suite is not reliably writable from a test host or an
+    /// extension on the simulator; a file is).
+    public static var pendingURL: URL { AppGroup.containerURL.appending(path: "pending-route") }
 
     // MARK: - URLs
 
@@ -71,17 +75,18 @@ public enum AppRoute: Equatable, Sendable {
 
     /// Leaves the route for the app to take when it is next in front, and
     /// tells the app now if this is its own process.
-    public func post() {
-        let defaults = UserDefaults(suiteName: AppGroup.identifier) ?? .standard
-        defaults.set(url.absoluteString, forKey: Self.pendingKey)
+    public func post(to file: URL = AppRoute.pendingURL) {
+        AppGroup.ensure(file.deletingLastPathComponent())
+        try? Data(url.absoluteString.utf8).write(to: file, options: .atomic)
+        // The app, if this is its process, takes the route at once (the
+        // notification's `url` names it); otherwise it waits in the file.
         NotificationCenter.default.post(name: Self.notification, object: nil, userInfo: ["url": url])
     }
 
     /// The route left by an intent, taken once.
-    public static func takePending() -> AppRoute? {
-        let defaults = UserDefaults(suiteName: AppGroup.identifier) ?? .standard
-        guard let string = defaults.string(forKey: pendingKey) else { return nil }
-        defaults.removeObject(forKey: pendingKey)
-        return URL(string: string).flatMap(AppRoute.init(url:))
+    public static func takePending(from file: URL = AppRoute.pendingURL) -> AppRoute? {
+        guard let data = try? Data(contentsOf: file) else { return nil }
+        try? FileManager.default.removeItem(at: file)
+        return URL(string: String(decoding: data, as: UTF8.self)).flatMap(AppRoute.init(url:))
     }
 }

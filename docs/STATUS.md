@@ -155,11 +155,11 @@ described here.
 `VNRecognizeTextRequest` stands behind it by default; the scan agent's pipeline was not on main
 when this was built, so the unit tests drive the seam with a fake recognizer (`FakeRecognizer` in
 `LibraryTests`) and the UI test uses Vision as it is. **Vision's languages on this simulator:**
-VISION_LANGUAGES_PLACEHOLDER
+`en-US, fr-FR, it-IT, de-DE, es-ES, pt-BR, zh-Hans, zh-Hant, yue-Hans, yue-Hant, ko-KR, ja-JP, ru-RU, uk-UA, th-TH, vi-VT, ar-SA, ars-SA, tr-TR, id-ID, cs-CZ, da-DK, nl-NL, no-NO, nn-NO, nb-NO, ms-MY, pl-PL, ro-RO, sv-SE, fi-FI, hi-IN, mr-IN` (`testVisionLanguagesOnThisSimulator`, iPhone 17, iOS 27.0) — **Arabic (`ar-SA`, and Najdi `ars-SA`) is there**, so the index reads Arabic scans with Vision on this simulator; the default OCR languages are Arabic and English.
 
 **Proven by** (all on the simulator, both devices unless said):
 
-* XCTest `LibraryTests` (INDEX_TESTS_PLACEHOLDER): corpus files indexed, "فاتوره" (no tashkeel,
+* XCTest `LibraryTests` (6 tests): corpus files indexed, "فاتوره" (no tashkeel,
   haa for taa marbuta) found in the invoice at page 1 with its span marked, a tashkeel-laden word of
   `coretext-albayan-tashkeel` found from its bare form, filters by kind and tag, rules applied,
   save/close/reopen, forget; a damaged index file set aside; the indexer reading a corpus folder

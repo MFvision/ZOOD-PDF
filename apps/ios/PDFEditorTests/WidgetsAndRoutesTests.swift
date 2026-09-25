@@ -66,11 +66,17 @@ final class WidgetsAndRoutesTests: XCTestCase {
     }
 
     func testAPostedRouteIsTakenOnceByTheApp() {
-        let expectation = expectation(forNotification: AppRoute.notification, object: nil)
-        AppRoute.search("عقد").post()
+        // A file of the test's own: the host app takes what lands in the
+        // real one the moment the notification fires.
+        let file = folder.appending(path: "pending-route")
+        let expectation = expectation(forNotification: AppRoute.notification, object: nil) { note in
+            (note.userInfo?["url"] as? URL) == AppRoute.search("عقد").url
+        }
+        AppRoute.search("عقد").post(to: file)
         wait(for: [expectation], timeout: 2)
-        XCTAssertEqual(AppRoute.takePending(), .search("عقد"))
-        XCTAssertNil(AppRoute.takePending(), "taken once")
+        XCTAssertEqual(AppRoute.takePending(from: file), .search("عقد"))
+        XCTAssertNil(AppRoute.takePending(from: file), "taken once")
+        XCTAssertNil(AppRoute.takePending(from: folder.appending(path: "none")))
     }
 
     @MainActor

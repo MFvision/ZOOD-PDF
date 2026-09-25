@@ -206,8 +206,11 @@ actor LibraryIndex {
         return handle
     }
 
+    /// Encodes the arguments here, before anything crosses into the core's
+    /// task: a String is sendable, whatever `A` is.
     private func call<A: Encodable, R: Decodable>(_ op: String, _ args: A, blobs: [Data] = []) async throws -> R {
-        try await Core.callStatic(op: op, args: args, blobs: blobs).decode()
+        let json = String(decoding: try JSONEncoder().encode(args), as: UTF8.self)
+        return try await Core.callStatic(op: op, args: json, blobs: blobs).decode()
     }
 
     // MARK: - Adding and forgetting
@@ -309,17 +312,15 @@ actor LibraryIndex {
     /// Writes the index whole or not at all: to a file beside it, then
     /// renamed over the old one.
     func save() async throws {
-        struct Args: Encodable { let handle: Int }
-        let reply = try await Core.callStatic(op: "library.save", args: Args(handle: try requireHandle()))
+        let reply = try await Core.callStatic(op: "library.save", args: #"{"handle":\#(try requireHandle())}"#)
         guard let bytes = reply.blobs.first else { throw CoreError.badReply("library.save answered no bytes") }
         try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try bytes.write(to: fileURL, options: .atomic)
     }
 
     func close() async {
-        struct Args: Encodable { let handle: Int }
         if let handle {
-            _ = try? await Core.callStatic(op: "library.close", args: Args(handle: handle))
+            _ = try? await Core.callStatic(op: "library.close", args: #"{"handle":\#(handle)}"#)
         }
         handle = nil
     }

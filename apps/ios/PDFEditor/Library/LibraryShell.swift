@@ -122,7 +122,7 @@ struct LibraryShell: View {
         .task {
             guard !restored else { return }
             restored = true
-            AppGroup.sharedDefaults.set(ScanEntry.cameraAvailable, forKey: "cameraAvailable")
+            AppGroup.setFlag("cameraAvailable", ScanEntry.cameraAvailable)
             lock.lock()
             restoreScene()
         }

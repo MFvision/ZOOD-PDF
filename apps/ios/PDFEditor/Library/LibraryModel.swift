@@ -380,7 +380,7 @@ final class LibraryModel {
         for key in [SettingsKey.language, SettingsKey.appearance, SettingsKey.scanMode, SettingsKey.ocrLanguages, SettingsKey.appLock, "AppleLanguages"] {
             UserDefaults.standard.removeObject(forKey: key)
         }
-        AppGroup.sharedDefaults.removePersistentDomain(forName: AppGroup.identifier)
+        _ = AppRoute.takePending()
         indexer = nil
         refresh()
         WidgetCenter.shared.reloadAllTimelines()
