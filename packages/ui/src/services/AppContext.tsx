@@ -235,6 +235,12 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
     [host, recents, refreshRecents, t, toast],
   );
 
+  const registerViewer = useCallback((docId: string, api: ViewerApi | null) => {
+    if (api) viewers.current.set(docId, api);
+    else viewers.current.delete(docId);
+  }, []);
+  const viewer = useCallback((docId: string) => viewers.current.get(docId), []);
+
   const services: AppServices = {
     state,
     dispatch,
@@ -265,11 +271,8 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
       await recents.remove(rid);
       await refreshRecents();
     },
-    registerViewer: (docId, api) => {
-      if (api) viewers.current.set(docId, api);
-      else viewers.current.delete(docId);
-    },
-    viewer: (docId) => viewers.current.get(docId),
+    registerViewer,
+    viewer,
     markSensitive: (docId) => {
       sensitive.current.add(docId);
       const rid = stateRef.current.documents[docId]?.recentId;

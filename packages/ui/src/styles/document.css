@@ -279,7 +279,8 @@
   box-shadow: var(--shadow-1);
 }
 
-.viewer-host {
+.viewer-host,
+.viewer-inner {
   position: absolute;
   inset: 0;
 }

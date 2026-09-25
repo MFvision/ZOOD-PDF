@@ -57,6 +57,22 @@ const SENSITIVE_COMMANDS = new Set([
   'annotation:apply-redaction',
 ]);
 
+/** RTL for EmbedPDF's toolbars, menus and panels (not its page canvas), inside its shadow root. */
+const RTL_CSS = `
+  [data-epdf-i$="-toolbar"], [role="menu"], [data-sidebar-id], [role="dialog"] { direction: rtl; }
+`;
+function mirrorToolbars(container: EmbedPdfContainer, locale: Locale) {
+  const root = container.shadowRoot;
+  if (!root) return;
+  let style = root.querySelector<HTMLStyleElement>('style[data-zood-dir]');
+  if (!style) {
+    style = document.createElement('style');
+    style.dataset.zoodDir = '';
+    root.append(style);
+  }
+  style.textContent = locale === 'ar' ? RTL_CSS : '';
+}
+
 export function Viewer(props: Props) {
   const { bytes, name, documentId, locale, scheme } = props;
   const events = useRef<ViewerEvents>(props);
@@ -82,6 +98,10 @@ export function Viewer(props: Props) {
   useEffect(() => {
     containerRef.current?.setTheme(scheme);
   }, [scheme]);
+
+  useEffect(() => {
+    if (containerRef.current) mirrorToolbars(containerRef.current, locale);
+  }, [locale]);
 
   const onReady = (registry: PluginRegistry) => {
     registryRef.current = registry;
@@ -201,12 +221,19 @@ export function Viewer(props: Props) {
   const cleanup = useRef<() => void>(() => {});
   useEffect(() => () => cleanup.current(), []);
 
+  // EmbedPDF lays pages out with physical coordinates: its scroll container must stay LTR even in an
+  // RTL interface (Arabic text inside pages is unaffected). Its tool strips are mirrored separately.
   return (
-    <PDFViewer
-      className="viewer-host"
-      config={config}
-      onInit={(c) => (containerRef.current = c)}
-      onReady={onReady}
-    />
+    <div className="viewer-host" dir="ltr">
+      <PDFViewer
+        className="viewer-inner"
+        config={config}
+        onInit={(c) => {
+          containerRef.current = c;
+          mirrorToolbars(c, locale);
+        }}
+        onReady={onReady}
+      />
+    </div>
   );
 }

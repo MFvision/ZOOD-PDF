@@ -47,7 +47,8 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
     [doc.id, doc.revision],
   );
 
-  useEffect(() => () => app.registerViewer(doc.id, null), [app, doc.id]);
+  const { registerViewer } = app;
+  useEffect(() => () => registerViewer(doc.id, null), [registerViewer, doc.id]);
 
   const pick = (def: ToolDef | null) => {
     setGalleryOpen(false);
