@@ -15,3 +15,4 @@ apps/ios/Frameworks/
 out/
 .vite/
 *.tsbuildinfo
+.claude/worktrees/
