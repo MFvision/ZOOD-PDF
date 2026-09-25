@@ -33,3 +33,157 @@ shipped package is missing here or is not under an allowed licence.
 Build and test tools (not shipped): Vite 8.3.1, @vitejs/plugin-react 6.1.1, Vitest 5.0.2, jsdom 30.1.1,
 @testing-library/react 16.3.3, fake-indexeddb 6.2.5, @playwright/test 1.56.1, TypeScript 5.9, ESLint 9,
 Stylelint 16 — all MIT or Apache-2.0.
+
+## Rust engine (warraq-pdf, warraq-core, warraq-render)
+
+Generated from `cargo tree -e normal,build -p warraq-core --features render,wasm --target all`
+(every crate compiled into the engine, including optional features). Dual-licensed crates are used
+under their MIT or Apache-2.0 option.
+
+| Component | Version | Licence | Used for |
+| --- | --- | --- | --- |
+| aes | 0.9.3 | MIT OR Apache-2.0 | AES-128/256 (Standard security handler) |
+| brotli-decompressor | 5.0.3 | BSD-3-Clause/MIT | Brotli filter (lopdf) |
+| cbc | 0.2.1 | MIT OR Apache-2.0 | CBC mode for AESV2/AESV3 |
+| encoding_rs | 0.8.42 | (Apache-2.0 OR MIT) AND BSD-3-Clause | Text encodings (lopdf) |
+| flate2 | 1.1.10 | MIT OR Apache-2.0 | Flate compression of streams and xref streams |
+| getrandom | 0.4.3 | MIT OR Apache-2.0 | Random IVs, file keys and /ID (crypto.getRandomValues on the web) |
+| hayro | 0.7.1 | Apache-2.0 OR MIT | Page rasteriser (warraq-render; warraq-core `render` feature) |
+| indexmap | 2.14.2 | Apache-2.0 OR MIT | Ordered dictionaries (lopdf) |
+| js-sys | 0.3.106 | MIT OR Apache-2.0 | WebAssembly bindings (warraq-core `wasm`) |
+| lopdf | 0.45.0 | MIT | PDF object parser (warraq-pdf) |
+| md-5 | 0.11.0 | MIT OR Apache-2.0 | MD5 key derivation (R2-R4) |
+| miniz_oxide | 0.8.9 | MIT OR Zlib OR Apache-2.0 | Pure-Rust deflate backend |
+| miniz_oxide | 0.9.1 | MIT OR Zlib OR Apache-2.0 | Pure-Rust deflate backend |
+| nom | 8.0.0 | MIT | Parser combinators (lopdf) |
+| png | 0.18.1 | MIT OR Apache-2.0 | PNG encoding of rendered pages |
+| rc4 | 0.2.0 | MIT OR Apache-2.0 | RC4 for R2-R4 encryption |
+| serde | 1.0.229 | MIT OR Apache-2.0 | RPC JSON (warraq-core) |
+| serde_json | 1.0.151 | MIT OR Apache-2.0 | RPC JSON (warraq-core) |
+| sha2 | 0.11.0 | MIT OR Apache-2.0 | SHA-256/384/512 (R5/R6 hash 2.B) |
+| thiserror | 2.0.21 | MIT OR Apache-2.0 | Error types |
+| wasm-bindgen | 0.2.129 | MIT OR Apache-2.0 | WebAssembly bindings (warraq-core `wasm`) |
+| weezl | 0.2.1 | MIT OR Apache-2.0 | LZW filter (lopdf) |
+| adler2 | 2.0.1 | 0BSD OR MIT OR Apache-2.0 | Transitive dependency |
+| alloc-no-stdlib | 2.0.4 | BSD-3-Clause | Transitive dependency |
+| alloc-stdlib | 0.2.4 | BSD-3-Clause | Transitive dependency |
+| arrayvec | 0.7.8 | MIT OR Apache-2.0 | Transitive dependency |
+| autocfg | 1.5.1 | Apache-2.0 OR MIT | Transitive dependency |
+| bitflags | 2.13.2 | MIT OR Apache-2.0 | Transitive dependency |
+| block-buffer | 0.12.1 | MIT OR Apache-2.0 | Transitive dependency |
+| block-padding | 0.4.2 | MIT OR Apache-2.0 | Transitive dependency |
+| brotli | 8.0.4 | BSD-3-Clause AND MIT | Transitive dependency |
+| bumpalo | 3.20.3 | MIT OR Apache-2.0 | Transitive dependency |
+| bytemuck | 1.25.2 | Zlib OR Apache-2.0 OR MIT | Transitive dependency |
+| bytemuck_derive | 1.12.1 | Zlib OR Apache-2.0 OR MIT | Transitive dependency |
+| byteorder-lite | 0.1.0 | Unlicense OR MIT | Transitive dependency |
+| cfg-if | 1.0.5 | MIT OR Apache-2.0 | Transitive dependency |
+| chacha20 | 0.10.2 | MIT OR Apache-2.0 | Transitive dependency |
+| cipher | 0.5.2 | MIT OR Apache-2.0 | Transitive dependency |
+| color | 0.3.3 | Apache-2.0 OR MIT | Transitive dependency |
+| const-oid | 0.10.2 | Apache-2.0 OR MIT | Transitive dependency |
+| core_detect | 1.0.0 | MIT/Apache-2.0 | Transitive dependency |
+| cpubits | 0.1.1 | MIT OR Apache-2.0 | Transitive dependency |
+| cpufeatures | 0.3.1 | MIT OR Apache-2.0 | Transitive dependency |
+| crc32fast | 1.5.2 | MIT OR Apache-2.0 | Transitive dependency |
+| crypto-common | 0.2.2 | MIT OR Apache-2.0 | Transitive dependency |
+| digest | 0.11.3 | MIT OR Apache-2.0 | Transitive dependency |
+| ecb | 0.2.1 | MIT OR Apache-2.0 | Transitive dependency |
+| equivalent | 1.0.2 | Apache-2.0 OR MIT | Transitive dependency |
+| euclid | 0.22.14 | MIT OR Apache-2.0 | Transitive dependency |
+| fastrand | 2.5.0 | Apache-2.0 OR MIT | Transitive dependency |
+| fdeflate | 0.3.7 | MIT OR Apache-2.0 | Transitive dependency |
+| fearless_simd | 0.4.1 | Apache-2.0 OR MIT | Transitive dependency |
+| foldhash | 0.2.0 | Zlib | Transitive dependency |
+| font-types | 0.11.3 | MIT OR Apache-2.0 | Transitive dependency |
+| futures-core | 0.3.34 | MIT OR Apache-2.0 | Transitive dependency |
+| futures-task | 0.3.34 | MIT OR Apache-2.0 | Transitive dependency |
+| futures-util | 0.3.34 | MIT OR Apache-2.0 | Transitive dependency |
+| guillotiere | 0.7.0 | MIT/Apache-2.0 | Transitive dependency |
+| hashbrown | 0.17.1 | MIT OR Apache-2.0 | Transitive dependency |
+| hayro-ccitt | 0.3.0 | Apache-2.0 OR MIT | Transitive dependency |
+| hayro-cmap | 0.1.0 | Apache-2.0 OR MIT | Transitive dependency |
+| hayro-interpret | 0.7.0 | Apache-2.0 OR MIT | Transitive dependency |
+| hayro-jbig2 | 0.3.0 | Apache-2.0 OR MIT | Transitive dependency |
+| hayro-jpeg2000 | 0.3.5 | Apache-2.0 OR MIT | Transitive dependency |
+| hayro-postscript | 0.1.0 | Apache-2.0 OR MIT | Transitive dependency |
+| hayro-syntax | 0.7.2 | Apache-2.0 OR MIT | Transitive dependency |
+| hybrid-array | 0.4.15 | MIT OR Apache-2.0 | Transitive dependency |
+| image | 0.25.10 | MIT OR Apache-2.0 | Transitive dependency |
+| inout | 0.2.2 | MIT OR Apache-2.0 | Transitive dependency |
+| itoa | 1.0.18 | MIT OR Apache-2.0 | Transitive dependency |
+| kurbo | 0.13.1 | Apache-2.0 OR MIT | Transitive dependency |
+| libc | 0.2.189 | MIT OR Apache-2.0 | Transitive dependency |
+| linebender_resource_handle | 0.1.1 | Apache-2.0 OR MIT | Transitive dependency |
+| log | 0.4.34 | MIT OR Apache-2.0 | Transitive dependency |
+| memchr | 2.8.3 | Unlicense OR MIT | Transitive dependency |
+| moxcms | 0.8.1 | BSD-3-Clause OR Apache-2.0 | Transitive dependency |
+| multiversion_no_op | 1.0.0 | Apache-2.0 OR MIT | Transitive dependency |
+| num-traits | 0.2.19 | MIT OR Apache-2.0 | Transitive dependency |
+| once_cell | 1.21.4 | MIT OR Apache-2.0 | Transitive dependency |
+| peniko | 0.6.1 | Apache-2.0 OR MIT | Transitive dependency |
+| phf | 0.13.1 | MIT | Transitive dependency |
+| phf_generator | 0.13.1 | MIT | Transitive dependency |
+| phf_macros | 0.13.1 | MIT | Transitive dependency |
+| phf_shared | 0.13.1 | MIT | Transitive dependency |
+| pic-scale | 0.7.12 | BSD-3-Clause OR Apache-2.0 | Transitive dependency |
+| pin-project-lite | 0.2.17 | Apache-2.0 OR MIT | Transitive dependency |
+| polycool | 0.4.0 | MIT OR Apache-2.0 | Transitive dependency |
+| proc-macro2 | 1.0.107 | MIT OR Apache-2.0 | Transitive dependency |
+| pxfm | 0.1.30 | BSD-3-Clause OR Apache-2.0 | Transitive dependency |
+| quote | 1.0.47 | MIT OR Apache-2.0 | Transitive dependency |
+| r-efi | 6.0.0 | MIT OR Apache-2.0 OR LGPL-2.1-or-later | Transitive dependency |
+| rand | 0.10.3 | MIT OR Apache-2.0 | Transitive dependency |
+| rand_core | 0.10.1 | MIT OR Apache-2.0 | Transitive dependency |
+| rangemap | 1.8.0 | MIT/Apache-2.0 | Transitive dependency |
+| read-fonts | 0.39.2 | MIT OR Apache-2.0 | Transitive dependency |
+| rustc-hash | 2.1.3 | Apache-2.0 OR MIT | Transitive dependency |
+| rustversion | 1.0.23 | MIT OR Apache-2.0 | Transitive dependency |
+| scopeguard | 1.2.0 | MIT OR Apache-2.0 | Transitive dependency |
+| serde_core | 1.0.229 | MIT OR Apache-2.0 | Transitive dependency |
+| serde_derive | 1.0.229 | MIT OR Apache-2.0 | Transitive dependency |
+| simd-adler32 | 0.3.10 | MIT | Transitive dependency |
+| simdutf8 | 0.1.5 | MIT OR Apache-2.0 | Transitive dependency |
+| siphasher | 1.0.4 | MIT OR Apache-2.0 | Transitive dependency |
+| skrifa | 0.42.1 | MIT OR Apache-2.0 | Transitive dependency |
+| slab | 0.4.12 | MIT | Transitive dependency |
+| smallvec | 1.16.2 | MIT OR Apache-2.0 | Transitive dependency |
+| stable_deref_trait | 1.2.1 | MIT OR Apache-2.0 | Transitive dependency |
+| stringprep | 0.1.5 | MIT/Apache-2.0 | Transitive dependency |
+| syn | 2.0.119 | MIT OR Apache-2.0 | Transitive dependency |
+| syn | 3.0.6 | MIT OR Apache-2.0 | Transitive dependency |
+| synstructure | 0.14.0 | MIT | Transitive dependency |
+| thiserror-impl | 2.0.21 | MIT OR Apache-2.0 | Transitive dependency |
+| tinyvec | 1.13.3 | Zlib OR Apache-2.0 OR MIT | Transitive dependency |
+| typenum | 1.20.1 | MIT OR Apache-2.0 | Transitive dependency |
+| unicode-bidi | 0.3.18 | MIT OR Apache-2.0 | Transitive dependency |
+| unicode-ident | 1.0.26 | (MIT OR Apache-2.0) AND Unicode-3.0 | Transitive dependency |
+| unicode-normalization | 0.1.25 | MIT OR Apache-2.0 | Transitive dependency |
+| unicode-properties | 0.1.4 | MIT/Apache-2.0 | Transitive dependency |
+| vello_common | 0.0.8 | Apache-2.0 OR MIT | Transitive dependency |
+| vello_cpu | 0.0.8 | Apache-2.0 OR MIT | Transitive dependency |
+| wasm-bindgen-macro | 0.2.129 | MIT OR Apache-2.0 | Transitive dependency |
+| wasm-bindgen-macro-support | 0.2.129 | MIT OR Apache-2.0 | Transitive dependency |
+| wasm-bindgen-shared | 0.2.129 | MIT OR Apache-2.0 | Transitive dependency |
+| yoke | 0.8.3 | Unicode-3.0 | Transitive dependency |
+| yoke-derive | 0.8.3 | Unicode-3.0 | Transitive dependency |
+| zerofrom | 0.1.8 | Unicode-3.0 | Transitive dependency |
+| zerofrom-derive | 0.1.8 | Unicode-3.0 | Transitive dependency |
+| zmij | 1.0.23 | MIT | Transitive dependency |
+| zune-core | 0.5.3 | MIT OR Apache-2.0 OR Zlib | Transitive dependency |
+| zune-jpeg | 0.5.15 | MIT OR Apache-2.0 OR Zlib | Transitive dependency |
+
+### Optional / not shipped by default
+
+| Component | Version | Licence | Used for |
+| --- | --- | --- | --- |
+| pdfium-render | 0.8.37 | MIT OR Apache-2.0 | Optional native PDFium backend (warraq-render `pdfium`, off by default) |
+| libfuzzer-sys | 0.4 | (MIT OR Apache-2.0) AND NCSA | Fuzz targets in `packages/core/fuzz` only (never shipped) |
+
+### Test-fixture generators (never bundled, never linked)
+
+| Component | Version | Licence | Used for |
+| --- | --- | --- | --- |
+| pypdf | 6.x | BSD-3-Clause | Generates encrypted fixtures and cross-checks our encryption in tests (optional at test time) |
+| pikepdf / qpdf | 10.x / 12.x | MPL-2.0 / Apache-2.0 | Generates encrypted fixtures (`tests/fixtures/make_fixtures.py`); output files only are committed |
+| binaryen (wasm-opt) | 117 | Apache-2.0 | Build tool: optimises the wasm in `scripts/build-wasm.sh` when installed |

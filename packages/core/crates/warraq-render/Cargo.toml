@@ -1,5 +1,6 @@
 [package]
 name = "warraq-render"
+description = "Page rasterisation for the ZOOD PDF engine: hayro backend (pure Rust), optional PDFium backend."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,6 +9,20 @@ rust-version.workspace = true
 
 [dependencies]
 thiserror.workspace = true
+hayro = { version = "0.7", optional = true }
+png = { version = "0.18", optional = true }
+pdfium-render = { version = "0.8", optional = true, default-features = false, features = ["pdfium_latest", "thread_safe"] }
+
+[features]
+default = ["hayro"]
+# Pure-Rust rasteriser (hayro, MIT/Apache-2.0). Adds several MB to wasm: warraq-core only
+# enables it through its own `render` feature.
+hayro = ["dep:hayro", "dep:png"]
+# Native PDFium backend (needs libpdfium at runtime; off by default, see docs/STATUS.md).
+pdfium = ["dep:pdfium-render", "dep:png"]
+
+[dev-dependencies]
+warraq-pdf = { path = "../warraq-pdf" }
 
 [lints]
 workspace = true
