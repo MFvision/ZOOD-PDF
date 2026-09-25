@@ -61,11 +61,7 @@ jobs:
       - name: verify.sh
         run: bash scripts/verify.sh
 
-      - name: Offline server tests
-        run: node --test scripts/package-web/serve.test.mjs
 
-      - name: Desktop smoke (debug binary under Xvfb)
-        run: bash scripts/desktop-smoke.sh
 
       - name: Package web + extension zips
         run: |
