@@ -106,6 +106,18 @@ described here.
 
 **What works, as a person would see it**
 
+* **Home** (to the owner's design target of 2026-09-25, in SwiftUI materials over a soft
+  gradient — no photograph): a greeting by the time of day, the headline «مستنداتك، في مكان واحد
+  هادئ.» / "Your documents, in one calm place.", six large action cards — Open, Scan, Create (pictures
+  into a PDF), Combine (files into one PDF), Search, Settings — each doing what it says today, then
+  rows of real first pages with the file's name and date ("Today, 9:41 AM"): Recents, Starred,
+  My documents, the chosen folder; a ⋯ menu on every card (Star, Open in New Window, Remove from
+  Recents), "See all" into the section, paging arrows on iPad. The sidebar: Home, Recents, Starred,
+  My documents, the folder once chosen, Tags; "Tools": Scan, Create a PDF, Combine files, Search.
+  **Starred** is a real per-device flag (`StarredStore`, a set of file paths in the shared
+  container). Not shown, because they do not exist on this device: Convert and AI cards, Shared,
+  Clouds. Proven by XCUITest `testHomeCardsAndStarring` (the six cards, a star from the ⋯ menu
+  putting the document in the Starred row and section, the Search card opening the field).
 * **The Library.** Above the documents, one search field: "ابحث داخل كل مستند". Typing a word
   finds every line holding it in every document the index holds — in Arabic without its tashkeel
   and with alef, taa marbuta and yaa forms unified (the core's `library.search`) — grouped by

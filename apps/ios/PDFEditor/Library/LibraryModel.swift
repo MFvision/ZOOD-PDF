@@ -18,6 +18,19 @@ struct LocalDocument: Identifiable, Hashable, Sendable {
     var key: String { LibrarySource.documents.keyPrefix + url.lastPathComponent }
 }
 
+/// A document as the home screen's rows and the Starred section list it,
+/// whichever source it came from: its name, where it is, when, and how to
+/// find its thumbnail.
+struct LibraryItem: Identifiable, Hashable {
+    let id: String
+    let name: String
+    let url: URL?
+    let key: String?
+    let recentID: UUID?
+    let date: Date
+    let detail: String?
+}
+
 /// What the Library's shell shows and does: the recents list (shared with
 /// the widgets), the app's own Documents folder, the folder chosen in
 /// Files, the Inbox the share extension fills, the index over all of them,
@@ -29,6 +42,8 @@ final class LibraryModel {
     /// The files of the chosen folder, as listed on the last refresh.
     private(set) var folderFiles: [LibraryFile] = []
     private(set) var chosenFolder: ChosenFolder?
+    /// The paths starred on this device.
+    private(set) var starred: Set<String> = []
     /// The document on screen, in the detail column or pushed on the stack.
     var opened: DocumentModel?
     /// Something that went wrong opening a file, shown once: one of the
@@ -44,16 +59,19 @@ final class LibraryModel {
 
     let store: RecentsStore
     let searches: SearchesStore
+    let stars: StarredStore
     let documentsFolder: URL
     let indexURL: URL
 
     init(store: RecentsStore = RecentsStore(),
          searches: SearchesStore = SearchesStore(),
+         stars: StarredStore = StarredStore(),
          documentsFolder: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0],
          indexURL: URL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
              .appending(path: "Library/library.wlx")) {
         self.store = store
         self.searches = searches
+        self.stars = stars
         self.documentsFolder = documentsFolder
         self.indexURL = indexURL
     }
@@ -63,6 +81,7 @@ final class LibraryModel {
     func refresh() {
         recents = store.load()
         documents = listDocuments()
+        starred = stars.load()
         chosenFolder = ChosenFolder.current()
         folderFiles = chosenFolder.map { chosen in
             LibraryListing.files(documentsFolder: documentsFolder, chosen: chosen).filter { $0.source == .folder }
@@ -84,6 +103,97 @@ final class LibraryModel {
                                      modified: values.contentModificationDate ?? .distantPast)
             }
             .sorted { $0.modified > $1.modified }
+    }
+
+    // MARK: - Items and stars
+
+    func item(_ local: LocalDocument) -> LibraryItem {
+        LibraryItem(id: "local:" + local.url.path, name: local.name, url: local.url, key: local.key, recentID: nil,
+                    date: local.modified, detail: nil)
+    }
+
+    func item(_ file: LibraryFile) -> LibraryItem {
+        LibraryItem(id: "folder:" + file.key, name: file.name, url: file.url, key: file.key, recentID: nil,
+                    date: Date(timeIntervalSince1970: TimeInterval(file.modified) / 1000), detail: nil)
+    }
+
+    func item(_ recent: RecentDocument) -> LibraryItem {
+        LibraryItem(id: "recent:" + recent.id.uuidString, name: recent.name, url: recent.resolveURL(), key: nil,
+                    recentID: recent.id, date: recent.lastOpened, detail: nil)
+    }
+
+    /// Everything starred, from every source, once each.
+    var starredItems: [LibraryItem] {
+        var seen: Set<String> = []
+        var items: [LibraryItem] = []
+        let all = documents.map(item) + folderFiles.map(item) + recents.map(item)
+        for entry in all {
+            guard let url = entry.url else { continue }
+            let path = StarredStore.key(for: url)
+            guard starred.contains(path), !seen.contains(path) else { continue }
+            seen.insert(path)
+            items.append(entry)
+        }
+        return items.sorted { $0.date > $1.date }
+    }
+
+    func isStarred(_ url: URL?) -> Bool {
+        guard let url else { return false }
+        return starred.contains(StarredStore.key(for: url))
+    }
+
+    func toggleStar(_ url: URL?) {
+        guard let url else { return }
+        try? stars.toggle(url)
+        starred = stars.load()
+    }
+
+    /// The thumbnail for an item: the index's, or the recents'.
+    func thumbnail(for item: LibraryItem) -> UIImage? {
+        if let key = item.key, let image = thumbnail(forKey: key, url: item.url) {
+            return image
+        }
+        if let id = item.recentID, let recent = recents.first(where: { $0.id == id }),
+           let file = recent.thumbnailURL, let image = UIImage(contentsOfFile: file.path) {
+            return image
+        }
+        if let url = item.url {
+            return thumbnail(forKey: "", url: url)
+        }
+        return nil
+    }
+
+    func open(_ item: LibraryItem) {
+        if let key = item.key {
+            open(key: key)
+        } else if let id = item.recentID, let recent = recents.first(where: { $0.id == id }) {
+            open(recent)
+        } else if let url = item.url {
+            open(url: url)
+        }
+    }
+
+    /// Joins files chosen in Files — PDFs and pictures — into one PDF among
+    /// My documents, and opens it.
+    func combine(urls: [URL]) {
+        guard !urls.isEmpty else { return }
+        Task {
+            var files: [(name: String, bytes: Data)] = []
+            for url in urls {
+                let scoped = url.startAccessingSecurityScopedResource()
+                defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                if let bytes = try? Data(contentsOf: url) {
+                    files.append((url.lastPathComponent, bytes))
+                }
+            }
+            do {
+                let bytes = try await PDFMaker.pdf(fromFiles: files)
+                let name = urls.count == 1 ? urls[0].deletingPathExtension().lastPathComponent : String(localized: "Combined")
+                _ = try adopt(bytes: bytes, name: name)
+            } catch {
+                self.error = LocalizedStringKey(error.localizedDescription)
+            }
+        }
     }
 
     /// Moves what the share extension left in the Inbox into Documents,
@@ -373,6 +483,7 @@ final class LibraryModel {
         }
         try? store.clear()
         try? searches.clear()
+        try? stars.clear()
         try? FileManager.default.removeItem(at: AppGroup.inboxURL)
         try? FileManager.default.removeItem(at: AppGroup.thumbnailsURL)
         try? FileManager.default.removeItem(at: indexURL.deletingLastPathComponent())

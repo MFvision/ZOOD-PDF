@@ -2,10 +2,13 @@ import CoreSpotlight
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The sections of the Library. Folder appears once a folder is chosen in
-/// Settings; nothing is listed before it works.
+/// The sections of the Library: Home first, then the lists. Folder appears
+/// once a folder is chosen in Settings; Clouds would join here when a
+/// cloud drive exists on this device (none does), so it is not listed.
 enum LibrarySection: String, CaseIterable, Identifiable {
+    case home
     case recents
+    case starred
     case documents
     case folder
     case tags
@@ -14,7 +17,9 @@ enum LibrarySection: String, CaseIterable, Identifiable {
 
     var title: LocalizedStringKey {
         switch self {
+        case .home: "Home"
         case .recents: "Recents"
+        case .starred: "Starred"
         case .documents: "My documents"
         case .folder: "Folder"
         case .tags: "Tags"
@@ -23,7 +28,9 @@ enum LibrarySection: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
+        case .home: "house"
         case .recents: "clock"
+        case .starred: "star"
         case .documents: "folder"
         case .folder: "icloud"
         case .tags: "tag"
@@ -31,31 +38,71 @@ enum LibrarySection: String, CaseIterable, Identifiable {
     }
 }
 
-/// The Library: a three-column split view on iPad (sections, documents, the
-/// document), a stack on iPhone. Which section and which document are on
-/// screen come back with the scene. Search above the documents searches
-/// inside every document the index holds.
+/// The tools the sidebar lists under "Tools": each one the app does today.
+enum LibraryTool: String, CaseIterable, Identifiable {
+    case scan
+    case create
+    case combine
+    case search
+
+    var id: String { rawValue }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .scan: "Scan"
+        case .create: "Create a PDF"
+        case .combine: "Combine files"
+        case .search: "Search"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .scan: "doc.viewfinder"
+        case .create: "photo.on.rectangle.angled"
+        case .combine: "doc.on.doc"
+        case .search: "text.magnifyingglass"
+        }
+    }
+}
+
+/// The Library: a three-column split view on iPad (sections and tools, the
+/// section, the document), a stack on iPhone with Home at its root. Which
+/// section and which document are on screen come back with the scene.
 struct LibraryShell: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.scenePhase) private var scenePhase
     @State private var library = LibraryModel()
     @State private var lock = AppLock()
-    @SceneStorage("library.section") private var sectionID = LibrarySection.recents.rawValue
+    @SceneStorage("library.section") private var sectionID = LibrarySection.home.rawValue
     @SceneStorage("library.document") private var restoredBookmark: String?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var showingSettings = false
     @State private var showingImporter = false
+    @State private var showingCombiner = false
+    @State private var creating = false
     @State private var restored = false
 
     private var section: Binding<LibrarySection?> {
         Binding(
-            get: { LibrarySection(rawValue: sectionID) ?? .recents },
-            set: { sectionID = ($0 ?? .recents).rawValue }
+            get: { LibrarySection(rawValue: sectionID) ?? .home },
+            set: { sectionID = ($0 ?? .home).rawValue }
         )
     }
 
     private var sections: [LibrarySection] {
         LibrarySection.allCases.filter { $0 != .folder || library.chosenFolder != nil }
+    }
+
+    private var actions: HomeActions {
+        HomeActions(
+            open: { showingImporter = true },
+            scan: { library.scanRequested = true },
+            create: { creating = true },
+            combine: { showingCombiner = true },
+            search: { library.requestedSearch = "" },
+            settings: { showingSettings = true }
+        )
     }
 
     var body: some View {
@@ -77,9 +124,17 @@ struct LibraryShell: View {
         .sheet(isPresented: $library.scanRequested) {
             ScanEntry(library: library)
         }
+        .sheet(isPresented: $creating) {
+            ScanEntry(library: library, picturesOnly: true)
+        }
         .fileImporter(isPresented: $showingImporter, allowedContentTypes: [.pdf]) { result in
             if case let .success(url) = result {
                 library.open(url: url)
+            }
+        }
+        .fileImporter(isPresented: $showingCombiner, allowedContentTypes: [.pdf, .image], allowsMultipleSelection: true) { result in
+            if case let .success(urls) = result {
+                library.combine(urls: urls)
             }
         }
         .onOpenURL { url in
@@ -106,7 +161,11 @@ struct LibraryShell: View {
                 library.takePendingRoute()
                 Task {
                     await library.prepareIndex()
-                    library.indexNow()
+                    // Hosting unit tests, the app leaves the machine to them:
+                    // the tests index folders of their own.
+                    if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
+                        library.indexNow()
+                    }
                 }
                 Task { await lock.unlock() }
             case .background:
@@ -133,7 +192,7 @@ struct LibraryShell: View {
     private var regular: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             List(selection: section) {
-                Section("Library") {
+                Section {
                     ForEach(sections) { item in
                         Label {
                             if item == .folder, let folder = library.chosenFolder {
@@ -147,13 +206,36 @@ struct LibraryShell: View {
                         .tag(item)
                         .accessibilityIdentifier("sidebar.\(item.rawValue)")
                     }
+                } header: {
+                    VStack(alignment: .leading, spacing: Space.x1) {
+                        Text("Library")
+                        Text("Nothing leaves this device.")
+                            .font(TextStyle.caption)
+                            .textCase(nil)
+                    }
+                }
+                Section("Tools") {
+                    ForEach(LibraryTool.allCases) { tool in
+                        Button {
+                            run(tool)
+                        } label: {
+                            Label(tool.title, systemImage: tool.symbol)
+                        }
+                        .accessibilityIdentifier("tool.\(tool.rawValue)")
+                    }
                 }
             }
             .navigationTitle(Text(verbatim: AppName.isolated))
             .toolbar { libraryToolbar }
         } content: {
-            content(for: section.wrappedValue ?? .recents)
-                .navigationTitle(section.wrappedValue?.title ?? "Recents")
+            SearchHost(library: library) {
+                content(for: section.wrappedValue ?? .home)
+            }
+            .navigationTitle(section.wrappedValue?.title ?? "Home")
+            .navigationDestination(for: LibrarySection.self) { section in
+                content(for: section)
+                    .navigationTitle(section.title)
+            }
         } detail: {
             if let opened = library.opened {
                 DocumentView(model: opened)
@@ -168,12 +250,21 @@ struct LibraryShell: View {
         .navigationSplitViewStyle(.balanced)
     }
 
+    private func run(_ tool: LibraryTool) {
+        switch tool {
+        case .scan: actions.scan()
+        case .create: actions.create()
+        case .combine: actions.combine()
+        case .search: actions.search()
+        }
+    }
+
     @ViewBuilder
     private func content(for section: LibrarySection) -> some View {
-        if section == .tags {
-            TagsView(library: library)
-        } else {
-            DocumentGrid(library: library, section: section)
+        switch section {
+        case .home: HomeView(library: library, actions: actions)
+        case .tags: TagsView(library: library)
+        default: DocumentGrid(library: library, section: section)
         }
     }
 
@@ -181,16 +272,18 @@ struct LibraryShell: View {
 
     private var compact: some View {
         NavigationStack {
-            DocumentGrid(library: library, section: nil)
-                .navigationTitle(Text(verbatim: AppName.isolated))
-                .toolbar { libraryToolbar }
-                .navigationDestination(item: $library.opened) { model in
-                    DocumentView(model: model)
-                }
-                .navigationDestination(for: LibrarySection.self) { section in
-                    content(for: section)
-                        .navigationTitle(section.title)
-                }
+            SearchHost(library: library) {
+                HomeView(library: library, actions: actions)
+            }
+            .navigationTitle(Text(verbatim: AppName.isolated))
+            .toolbar { libraryToolbar }
+            .navigationDestination(item: $library.opened) { model in
+                DocumentView(model: model)
+            }
+            .navigationDestination(for: LibrarySection.self) { section in
+                content(for: section)
+                    .navigationTitle(section.title)
+            }
         }
     }
 
@@ -250,31 +343,25 @@ struct LibraryShell: View {
     }
 }
 
-/// The documents of a section as a grid of first pages; on iPhone all
-/// sections, one after the other, with Tags and the chosen folder as rows
-/// above. Searching searches inside every document the index holds.
-struct DocumentGrid: View {
+/// The search field above a screen: while a query is typed the screen is
+/// the Library's results (inside every document); a search asked for from
+/// outside (a widget, a Shortcut, the Search card) opens the field.
+struct SearchHost<Content: View>: View {
     let library: LibraryModel
-    /// One section, or nil for all of them with headings.
-    let section: LibrarySection?
+    @ViewBuilder let content: Content
     @State private var query = ""
+    @State private var presented = false
     @State private var filters = SearchFilters.none
-    @State private var pendingDelete: LocalDocument?
-    @State private var tagging: IndexedDocument?
-    @Environment(\.openWindow) private var openWindow
-    @Environment(\.supportsMultipleWindows) private var supportsMultipleWindows
-
-    private let columns = [GridItem(.adaptive(minimum: 140, maximum: 200), spacing: Space.x5, alignment: .top)]
 
     var body: some View {
         Group {
             if !query.isEmpty {
                 LibrarySearchResults(library: library, query: query, filters: $filters)
             } else {
-                grid
+                content
             }
         }
-        .searchable(text: $query, prompt: Text("Search inside every document"))
+        .searchable(text: $query, isPresented: $presented, prompt: Text("Search inside every document"))
         .onSubmit(of: .search) {
             Task {
                 let result = await library.search(query, filters: filters)
@@ -284,8 +371,62 @@ struct DocumentGrid: View {
         .onChange(of: library.requestedSearch, initial: true) { _, requested in
             if let requested {
                 query = requested
+                presented = true
                 library.requestedSearch = nil
             }
+        }
+    }
+}
+
+/// The documents of a section as a grid of first pages. Starred shows what
+/// was starred from every source.
+struct DocumentGrid: View {
+    let library: LibraryModel
+    let section: LibrarySection
+    @State private var pendingDelete: LocalDocument?
+    @State private var tagging: IndexedDocument?
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.supportsMultipleWindows) private var supportsMultipleWindows
+
+    private let columns = [GridItem(.adaptive(minimum: 140, maximum: 200), spacing: Space.x5, alignment: .top)]
+
+    var body: some View {
+        ScrollView {
+            IndexStatusView(library: library)
+            LazyVGrid(columns: columns, alignment: .leading, spacing: Space.x6) {
+                switch section {
+                case .recents:
+                    ForEach(library.recents) { recent in
+                        recentCell(recent)
+                    }
+                case .documents:
+                    ForEach(library.documents) { local in
+                        localCell(local)
+                    }
+                case .folder:
+                    ForEach(library.folderFiles) { file in
+                        folderCell(file)
+                    }
+                case .starred:
+                    ForEach(library.starredItems) { item in
+                        itemCell(item)
+                    }
+                default:
+                    EmptyView()
+                }
+            }
+            .padding(.horizontal, Space.x5)
+            .padding(.vertical, Space.x4)
+        }
+        .background(Surface.window)
+        .overlay {
+            if isEmpty {
+                emptyState
+            }
+        }
+        .refreshable {
+            library.refresh()
+            library.indexNow()
         }
         .accessibilityIdentifier("library.grid")
         .confirmationDialog("Delete this document?", isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }), titleVisibility: .visible, presenting: pendingDelete) { local in
@@ -300,110 +441,37 @@ struct DocumentGrid: View {
         }
     }
 
-    private var grid: some View {
-        ScrollView {
-            IndexStatusView(library: library)
-            if section == nil {
-                compactSections
-            }
-            LazyVGrid(columns: columns, alignment: .leading, spacing: Space.x6) {
-                if section == nil || section == .recents {
-                    gridSection(.recents, isEmpty: recents.isEmpty) {
-                        ForEach(recents) { recent in
-                            recentCell(recent)
-                        }
-                    }
-                }
-                if section == nil || section == .documents {
-                    gridSection(.documents, isEmpty: documents.isEmpty) {
-                        ForEach(documents) { local in
-                            localCell(local)
-                        }
-                    }
-                }
-                if section == .folder || (section == nil && !library.folderFiles.isEmpty) {
-                    gridSection(.folder, isEmpty: library.folderFiles.isEmpty) {
-                        ForEach(library.folderFiles) { file in
-                            folderCell(file)
-                        }
-                    }
-                }
-            }
-            .padding(.horizontal, Space.x5)
-            .padding(.vertical, Space.x4)
-        }
-        .background(Surface.window)
-        .overlay {
-            if recents.isEmpty, documents.isEmpty, section != .folder || library.folderFiles.isEmpty {
-                emptyState
-            }
-        }
-        .refreshable {
-            library.refresh()
-            library.indexNow()
-        }
-    }
-
-    /// On iPhone: Tags and the chosen folder as rows into their screens.
-    private var compactSections: some View {
-        VStack(spacing: 0) {
-            NavigationLink(value: LibrarySection.tags) {
-                row(LibrarySection.tags.title, symbol: "tag", detail: Text((library.indexer?.stats.tags.count ?? 0), format: .number))
-            }
-            .accessibilityIdentifier("sidebar.tags")
-            if let folder = library.chosenFolder {
-                Divider().padding(.leading, Space.x10)
-                NavigationLink(value: LibrarySection.folder) {
-                    row(LocalizedStringKey(folder.name), symbol: "icloud", detail: Text(library.folderFiles.count, format: .number))
-                }
-                .accessibilityIdentifier("sidebar.folder")
-            }
-        }
-        .background(Surface.grouped, in: RoundedRectangle(cornerRadius: Radius.group, style: .continuous))
-        .padding(.horizontal, Space.x5)
-        .padding(.top, Space.x3)
-    }
-
-    private func row(_ title: LocalizedStringKey, symbol: String, detail: Text) -> some View {
-        HStack {
-            Label(title, systemImage: symbol)
-            Spacer()
-            detail.foregroundStyle(Surface.secondaryLabel).tabularNumbers()
-            Image(systemName: "chevron.forward").font(TextStyle.caption).foregroundStyle(Surface.tertiaryLabel)
-        }
-        .padding(.horizontal, Space.x5)
-        .padding(.vertical, Space.x4)
-        .contentShape(Rectangle())
-    }
-
-    private var recents: [RecentDocument] { library.recents }
-    private var documents: [LocalDocument] { library.documents }
-
-    @ViewBuilder
-    private func gridSection<Cells: View>(_ which: LibrarySection, isEmpty: Bool, @ViewBuilder cells: () -> Cells) -> some View {
-        if section == nil, !isEmpty {
-            Section {
-                cells()
-            } header: {
-                Text(which == .folder ? LocalizedStringKey(library.chosenFolder?.name ?? "") : which.title)
-                    .font(TextStyle.headline)
-                    .foregroundStyle(Surface.secondaryLabel)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, Space.x3)
-            }
-        } else {
-            cells()
+    private var isEmpty: Bool {
+        switch section {
+        case .recents: library.recents.isEmpty
+        case .documents: library.documents.isEmpty
+        case .folder: library.folderFiles.isEmpty
+        case .starred: library.starredItems.isEmpty
+        default: true
         }
     }
 
     @ViewBuilder
     private var emptyState: some View {
-        if section == .documents {
+        switch section {
+        case .documents:
             EmptyState(symbol: "folder", title: "No documents yet", message: "PDFs saved here from the share sheet, and scans, appear in this list.")
-        } else if section == .folder {
+        case .folder:
             EmptyState(symbol: "icloud", title: "Nothing in this folder yet", message: "PDFs and pictures in the chosen folder appear here once they are on this device.")
-        } else {
+        case .starred:
+            EmptyState(symbol: "star", title: "Nothing starred yet", message: "Star a document from its menu to keep it here.")
+        default:
             EmptyState(symbol: "clock", title: "Nothing opened yet", message: "Documents you open appear here, with their first page.")
+        }
+    }
+
+    @ViewBuilder
+    private func starButton(_ url: URL?) -> some View {
+        if let url {
+            let starred = library.isStarred(url)
+            Button(starred ? "Unstar" : "Star", systemImage: starred ? "star.slash" : "star") {
+                library.toggleStar(url)
+            }
         }
     }
 
@@ -416,6 +484,7 @@ struct DocumentGrid: View {
             library.open(recent)
         }
         .contextMenu {
+            starButton(recent.resolveURL())
             if supportsMultipleWindows, let url = recent.resolveURL(), let reference = DocumentReference(url: url) {
                 Button("Open in New Window", systemImage: "macwindow.badge.plus") {
                     openWindow(id: "document", value: reference)
@@ -438,6 +507,7 @@ struct DocumentGrid: View {
             library.open(local)
         }
         .contextMenu {
+            starButton(local.url)
             if supportsMultipleWindows, let reference = DocumentReference(url: local.url) {
                 Button("Open in New Window", systemImage: "macwindow.badge.plus") {
                     openWindow(id: "document", value: reference)
@@ -471,6 +541,7 @@ struct DocumentGrid: View {
             library.open(key: file.key)
         }
         .contextMenu {
+            starButton(file.url)
             if let indexed {
                 Button("Tags…", systemImage: "tag") {
                     tagging = indexed
@@ -478,5 +549,19 @@ struct DocumentGrid: View {
             }
         }
         .accessibilityIdentifier("folderFile.\(file.name)")
+    }
+
+    private func itemCell(_ item: LibraryItem) -> some View {
+        DocumentGridCell(
+            name: item.name,
+            detail: Text(DocumentDate.text(item.date)),
+            thumbnail: library.thumbnail(for: item)
+        ) {
+            library.open(item)
+        }
+        .contextMenu {
+            starButton(item.url)
+        }
+        .accessibilityIdentifier("starred.\(item.name)")
     }
 }

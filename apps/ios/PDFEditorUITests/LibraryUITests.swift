@@ -131,6 +131,38 @@ final class LibraryUITests: XCTestCase {
         XCTAssertTrue(heading.waitForExistence(timeout: 20) || app.otherElements["tags.tag.فواتير"].waitForExistence(timeout: 5), "the tag appears with its documents")
     }
 
+    /// The home screen: every action card is there, and starring a document
+    /// from its ⋯ menu puts it in the Starred row and section.
+    func testHomeCardsAndStarring() throws {
+        let app = try launch(language: "en")
+        waitForIndex(in: app, count: 5)
+        for id in ["home.open", "home.scan", "home.create", "home.combine", "home.search", "home.settings"] {
+            XCTAssertTrue(app.buttons[id].waitForExistence(timeout: 10), "\(id) is on the home screen")
+        }
+        XCTAssertFalse(app.otherElements["home.row.starred"].exists, "nothing starred yet")
+        let more = app.buttons["home.more.coretext-sfarabic-mixed-invoice"].firstMatch
+        XCTAssertTrue(more.waitForExistence(timeout: 10), "the document's menu is on its card")
+        more.tap()
+        let star = app.buttons["home.star.coretext-sfarabic-mixed-invoice"].firstMatch
+        let starByLabel = app.buttons["Star"].firstMatch
+        if star.waitForExistence(timeout: 5) { star.tap() } else { XCTAssertTrue(starByLabel.waitForExistence(timeout: 5)); starByLabel.tap() }
+        XCTAssertTrue(app.otherElements["home.row.starred"].waitForExistence(timeout: 10), "the Starred row appeared")
+        app.buttons["home.seeAll.starred"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["starred.coretext-sfarabic-mixed-invoice"].waitForExistence(timeout: 10), "the Starred section lists it")
+        // Back home (the sidebar on iPad, the back button on iPhone); the
+        // Search card opens the search field.
+        if app.buttons["sidebar.home"].exists {
+            app.buttons["sidebar.home"].tap()
+        } else if app.cells["sidebar.home"].exists {
+            app.cells["sidebar.home"].tap()
+        } else {
+            app.navigationBars.buttons.firstMatch.tap()
+        }
+        XCTAssertTrue(app.buttons["home.search"].waitForExistence(timeout: 10))
+        app.buttons["home.search"].tap()
+        XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout: 10))
+    }
+
     private func openTags(in app: XCUIApplication) {
         let sidebar = app.buttons["sidebar.tags"]
         let cell = app.cells["sidebar.tags"]
@@ -155,7 +187,7 @@ final class LibraryUITests: XCTestCase {
             let suffix = "\(combo.0)-\(combo.1)-\(device)"
             let app = try launch(language: combo.0, appearance: combo.1)
             waitForIndex(in: app, count: 5)
-            try Screenshots.save(app, as: "library-indexed-\(suffix)", in: directory)
+            try Screenshots.save(app, as: "home-\(suffix)", in: directory)
             search(combo.0 == "ar" ? "فاتوره" : "invoice", in: app)
             _ = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'search.hit.'")).firstMatch.waitForExistence(timeout: 30)
             try Screenshots.save(app, as: "library-search-\(suffix)", in: directory)

@@ -13,6 +13,9 @@ import VisionKit
 /// layer) is the scan feature's; this is the entry it takes over.
 struct ScanEntry: View {
     let library: LibraryModel
+    /// Pictures from the photo library even where there is a camera: the
+    /// home screen's Create card.
+    var picturesOnly = false
     @Environment(\.dismiss) private var dismiss
     @AppStorage(SettingsKey.scanMode) private var mode: ScanMode = .color
     @State private var pictures: [PhotosPickerItem] = []
@@ -24,7 +27,7 @@ struct ScanEntry: View {
     }
 
     var body: some View {
-        if Self.cameraAvailable {
+        if Self.cameraAvailable, !picturesOnly {
             DocumentCamera { pages in
                 make(pages.compactMap { $0.jpegData(compressionQuality: 0.9) })
             } cancel: {
@@ -38,14 +41,14 @@ struct ScanEntry: View {
 
     /// The simulator, and a device without a camera: pages from photos.
     private var fromPhotos: some View {
-        AppSheet(title: "Scan") {
+        AppSheet(title: picturesOnly ? "Create a PDF" : "Scan") {
             VStack(spacing: Space.x6) {
-                Image(systemName: "doc.viewfinder")
+                Image(systemName: picturesOnly ? "photo.on.rectangle.angled" : "doc.viewfinder")
                     .font(.system(size: 48, weight: .light))
                     .foregroundStyle(Surface.secondaryLabel)
-                Text("No camera on this device")
+                Text(picturesOnly ? "A PDF from pictures" : "No camera on this device")
                     .font(TextStyle.title)
-                Text("Choose pictures of the pages instead: each becomes a page of a new PDF.")
+                Text(picturesOnly ? "Choose pictures: each becomes a page of a new PDF, in the mode below." : "Choose pictures of the pages instead: each becomes a page of a new PDF.")
                     .font(TextStyle.body)
                     .foregroundStyle(Surface.secondaryLabel)
                     .multilineTextAlignment(.center)
@@ -102,7 +105,8 @@ struct ScanEntry: View {
             do {
                 let bytes = try await PDFMaker.pdf(fromPictures: pages, mode: mode)
                 // A file name is a String, so this one is localized as one.
-                let name = String(localized: "Scan \(Date.now.formatted(date: .abbreviated, time: .shortened))")
+                let stamp = Date.now.formatted(date: .abbreviated, time: .shortened)
+                let name = picturesOnly ? String(localized: "Pictures \(stamp)") : String(localized: "Scan \(stamp)")
                 _ = try library.adopt(bytes: bytes, name: name)
                 making = false
                 dismiss()

@@ -68,8 +68,22 @@ public struct VisionTextRecognizer: TextRecognizing {
         let wanted = languages.filter { language in
             supported.contains { $0 == language || $0.hasPrefix(language + "-") || $0.hasPrefix(language + "_") }
         }
-        // A nonisolated async method runs off the main actor as it is.
-        return try Self.read(image, width: width, height: height, languages: wanted)
+        // Vision blocks its thread for the whole page: a queue of its own,
+        // so the cooperative pool (and everything else awaiting) is not held.
+        let sendableImage = SendableImage(image)
+        return try await withCheckedThrowingContinuation { continuation in
+            Self.queue.async {
+                continuation.resume(with: Result { try Self.read(sendableImage.image, width: width, height: height, languages: wanted) })
+            }
+        }
+    }
+
+    private static let queue = DispatchQueue(label: "app.warraq.ios.vision", qos: .utility)
+
+    /// A CGImage is immutable; this only says so to the compiler.
+    private struct SendableImage: @unchecked Sendable {
+        let image: CGImage
+        init(_ image: CGImage) { self.image = image }
     }
 
     private static func read(_ image: CGImage, width: Double, height: Double, languages wanted: [String]) throws -> [RecognizedWord] {

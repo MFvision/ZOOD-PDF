@@ -759,6 +759,93 @@
     },
     "With the lock on, the app asks for the passcode whenever it comes to the front. Nothing leaves this device either way." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مع تفعيل القفل، يطلب التطبيق رمز الدخول كلما عاد إلى الواجهة. لا شيء يغادر هذا الجهاز في كلتا الحالتين." } } }
+    },
+    "the passcode" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "رمز الدخول" } } }
+    },
+    "Home" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الرئيسية" } } }
+    },
+    "Starred" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المميّزة بنجمة" } } }
+    },
+    "Create a PDF" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إنشاء PDF" } } }
+    },
+    "Combine files" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "ضم ملفات" } } }
+    },
+    "Search" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "بحث" } } }
+    },
+    "Good morning" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "صباح الخير" } } }
+    },
+    "Good afternoon" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "طاب يومك" } } }
+    },
+    "Good evening" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مساء الخير" } } }
+    },
+    "Your documents, in one calm place." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مستنداتك، في مكان واحد هادئ." } } }
+    },
+    "Open, scan, search — everything stays on this device." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "افتح، امسح، ابحث — كل شيء يبقى على هذا الجهاز." } } }
+    },
+    "A PDF from Files or iCloud Drive" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "ملف PDF من «الملفات» أو iCloud Drive" } } }
+    },
+    "Paper into a PDF" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "من الورق إلى PDF" } } }
+    },
+    "Create" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إنشاء" } } }
+    },
+    "A PDF from pictures" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "ملف PDF من الصور" } } }
+    },
+    "Combine" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "ضم" } } }
+    },
+    "Several files into one PDF" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "عدة ملفات في ملف PDF واحد" } } }
+    },
+    "Words inside every document" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "كلمات داخل كل مستند" } } }
+    },
+    "Language, scanning, the lock" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "اللغة، المسح، القفل" } } }
+    },
+    "See all" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "عرض الكل" } } }
+    },
+    "More" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "المزيد" } } }
+    },
+    "Star" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تمييز بنجمة" } } }
+    },
+    "Unstar" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إزالة النجمة" } } }
+    },
+    "PDFs saved here from the share sheet, and scans, appear in this row." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تظهر في هذا الصف ملفات PDF المحفوظة هنا من ورقة المشاركة، والمسوحات." } } }
+    },
+    "Nothing in this folder is on this device yet." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا شيء من هذا المجلد على هذا الجهاز بعد." } } }
+    },
+    "Nothing starred yet" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا شيء مميّز بنجمة بعد" } } }
+    },
+    "Star a document from its menu to keep it here." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "ميّز مستندًا بنجمة من قائمته ليبقى هنا." } } }
+    },
+    "Choose pictures: each becomes a page of a new PDF, in the mode below." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "اختر صورًا: تصبح كل صورة صفحة في ملف PDF جديد، بالوضع أدناه." } } }
+    },
+    "Pictures %@" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "صور %@" } } }
     }
   },
   "version" : "1.0"

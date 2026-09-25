@@ -15,7 +15,9 @@ apps/ios/
   PDFEditor/             the app (bundle app.warraq.ios, shown as محرر PDF)
     App/                 PDFEditorApp (the scenes), AppSettings (language, appearance, scan mode, OCR
                          languages, app lock), QuickActions (Home Screen quick actions, the UIKit delegates)
-    Library/             LibraryShell (split view / stack), DocumentGrid, LibraryModel; the index —
+    Library/             LibraryShell (split view / stack: Home, Recents, Starred, My documents, Folder,
+                         Tags, and the Tools), HomeView (the design target's home: greeting, headline,
+                         action cards, rows of real first pages), DocumentGrid, LibraryModel; the index —
                          LibraryIndex (the core's library.* ops), LibrarySources (Documents + the chosen
                          folder, keys), LibraryIndexer (reading, OCR through the seam, progress, Stop,
                          thumbnails), SpotlightIndex; LibrarySearchView (hits, filters), TagsView (tags,
@@ -30,8 +32,9 @@ apps/ios/
     Resources/           Assets.xcassets (icon, accent), Localizable.xcstrings, InfoPlist.xcstrings,
                          AppShortcuts.xcstrings (the Siri phrases)
   WarraqCore/Sources/    the Swift wrapper: actor Core, CoreError, the typed results
-  Shared/                AppGroup, RecentsStore, SearchesStore, AppRoute (where widgets and intents send the
-                         app), TextRecognizer (the OCR seam), ScanDocumentIntent, WidgetTimelines —
+  Shared/                AppGroup, RecentsStore, SearchesStore, StarredStore (the per-device star), AppRoute
+                         (where widgets and intents send the app), TextRecognizer (the OCR seam),
+                         ScanDocumentIntent, WidgetTimelines —
                          compiled into the app, the widgets and the share extension
   Widgets/               WidgetKit extension (app.warraq.ios.widgets): Recent documents, Scan, Library
                          search, the Control Center Scan control
@@ -50,6 +53,23 @@ bookmark remembers them); documents the share extension saves land in the
 app's own Documents folder, which the Files app shows under the app's name.
 The recents list, the last searches and the thumbnails live in the App
 Group container (`group.app.warraq`), where the widgets read them.
+
+## The home screen
+
+The owner's design target (`.tools/briefs/design-target.md`), in SwiftUI
+materials: a greeting by the time of day (no account, no name), the
+headline, six action cards that each do something today — Open, Scan,
+Create (pictures into a PDF), Combine (files into one PDF), Search, Settings
+— then rows of real first pages: Recents, Starred (when anything is),
+My documents, the chosen folder; each card has a ⋯ menu (Star, Open in
+New Window, Remove from Recents) and "See all" opens the section. Convert
+and AI are not on this device, so there are no cards for them. The
+sidebar (iPad) lists Home, Recents, Starred, My documents, the folder
+once chosen, Tags, and under "Tools" Scan, Create a PDF, Combine files,
+Search; Clouds would join it when a cloud drive exists here (none does).
+On iPhone the same rows sit below the home's rows. **Starred** is
+`StarredStore`: a set of file paths in the shared container, this
+device's own.
 
 ## The Library
 
