@@ -57,6 +57,9 @@ test('serves wasm as application/wasm with CSP and nosniff', async () => {
   assert.equal(r.headers['content-type'], 'application/wasm');
   assert.match(r.headers['content-security-policy'], /script-src 'self' 'wasm-unsafe-eval'/);
   assert.match(r.headers['content-security-policy'], /frame-ancestors 'none'/);
+  // Must be at least as permissive as the web build's own <meta> CSP (policies intersect).
+  assert.match(r.headers['content-security-policy'], /connect-src 'self' blob: data:/);
+  assert.match(r.headers['content-security-policy'], /frame-src 'self' blob:/);
   assert.equal(r.headers['x-content-type-options'], 'nosniff');
 });
 
