@@ -11,6 +11,9 @@ import { Viewer, type ViewerApi } from '../viewer/Viewer';
 import { Icon } from './icons';
 import { IconButton, MenuButton, Tile, type MenuItem } from './primitives';
 import { runTool } from './useTools';
+import { RedactPanel } from './RedactPanel';
+import { ProtectPanel } from './ProtectPanel';
+import { onToolRequest } from '../services/toolRequests';
 
 const wide = () => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 900px)').matches;
 
@@ -24,6 +27,8 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [tool, setTool] = useState<ToolId | null>(null);
+  /** Engine-backed tool panel (Redact, Protect) shown in the inspector column. */
+  const [panel, setPanel] = useState<'redact' | 'protect' | null>(null);
   const total = doc.pageCount;
 
   const onReady = useCallback(
@@ -36,7 +41,14 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
       if (doc.pendingTool) {
         const def = toolById(doc.pendingTool as ToolId);
         if (def && runTool(def, viewer)) setTool(def.id);
+        if (def?.panel) setPanel(def.panel);
         app.dispatch({ type: 'TOOL_STARTED', id: doc.id });
+      } else if (panel === 'redact') {
+        // Still redacting after the engine rewrote the file: back to the marking mode.
+        viewer.exec('mode:redact');
+        setTool('redact');
+      } else if (panel) {
+        setTool(panel);
       }
       // First-page picture for Recents, rendered by PDFium.
       viewer
@@ -51,15 +63,30 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
   const { registerViewer } = app;
   useEffect(() => () => registerViewer(doc.id, null), [registerViewer, doc.id]);
 
+  // A panel tool picked elsewhere (Home, More, ⌘K) for this open document.
+  useEffect(
+    () =>
+      onToolRequest((id, requested) => {
+        const def = toolById(requested);
+        if (id !== doc.id || !def?.panel) return;
+        setPanel(def.panel);
+        setTool(def.id);
+      }),
+    [doc.id],
+  );
+
   const pick = (def: ToolDef | null) => {
     setGalleryOpen(false);
     if (!api) return;
     if (!def) {
       api.exec('mode:view');
       setTool(null);
+      setPanel(null);
       return;
     }
-    if (runTool(def, api) && def.id !== 'protect') setTool(def.id);
+    if (def.panel && !def.viewer) api.exec('mode:view');
+    if (runTool(def, api)) setTool(def.id);
+    setPanel(def.panel ?? null);
   };
 
   const status = doc.edited ? ` · ${t('doc.edited')}` : '';
@@ -138,7 +165,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
           onClick={() => setInspectorOpen((v) => !v)}
         />
       </header>
-      <div className={`doc-body${pagesOpen ? ' pages-open' : ''}${inspectorOpen ? ' inspector-open' : ''}`}>
+      <div className={`doc-body${pagesOpen ? ' pages-open' : ''}${inspectorOpen || panel ? ' inspector-open' : ''}`}>
         {pagesOpen && (
           <PagesPanel
             api={api}
@@ -162,6 +189,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
             onReady={onReady}
             onPageChange={(p) => setPage(p)}
             onZoomChange={(z) => setZoom(z)}
+            password={doc.password}
             onEdited={() => app.dispatch({ type: 'VIEWER_EDITED', id: doc.id })}
             onSensitiveChange={() => app.markSensitive(doc.id)}
             onError={(m) => app.toast(`${t('toast.openFailed', { name: doc.name })} (${m})`, 'error')}
@@ -173,7 +201,28 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
             </div>
           )}
         </div>
-        {inspectorOpen && <Inspector doc={doc} onComments={() => api?.exec('panel:toggle-comment')} />}
+        {panel === 'redact' && (
+          <RedactPanel
+            key={doc.revision /* new bytes: earlier results no longer describe the document */}
+            doc={doc}
+            api={api}
+            onClose={() => {
+              setPanel(null);
+              setTool(null);
+              api?.exec('mode:view');
+            }}
+          />
+        )}
+        {panel === 'protect' && (
+          <ProtectPanel
+            doc={doc}
+            onClose={() => {
+              setPanel(null);
+              setTool(null);
+            }}
+          />
+        )}
+        {!panel && inspectorOpen && <Inspector doc={doc} onComments={() => api?.exec('panel:toggle-comment')} />}
       </div>
     </section>
   );

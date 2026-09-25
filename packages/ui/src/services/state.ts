@@ -31,6 +31,8 @@ export interface OpenDocument {
   handle?: unknown;
   /** Tool to start once the viewer is ready (picked before a document was open). */
   pendingTool?: string;
+  /** Password the document was opened with (kept in memory only; the engine and the viewer need it). */
+  password?: string;
 }
 
 export type HomeSection = 'home' | 'recents' | 'starred' | 'tags';
@@ -52,12 +54,15 @@ export interface AppState {
 }
 
 export type Action =
-  | { type: 'OPEN_DOCUMENT'; id: string; name: string; bytes: Uint8Array; recentId?: string; handle?: unknown; tool?: string }
+  | { type: 'OPEN_DOCUMENT'; id: string; name: string; bytes: Uint8Array; recentId?: string; handle?: unknown; tool?: string; password?: string }
   | { type: 'TOOL_STARTED'; id: string }
   | { type: 'CLOSE_DOCUMENT'; id: string }
   | { type: 'VIEWER_READY'; id: string; revision: number; pageCount: number }
   | { type: 'VIEWER_EDITED'; id: string }
-  | { type: 'CORE_REPLACED_BYTES'; id: string; bytes: Uint8Array }
+  /** `wholeRewrite` (redaction, hidden-information removal, password changes): the earlier bytes are gone
+   * for good, so later viewer edits are rebased on the new bytes, never on the old original. `password`:
+   * the protection changed (null = removed). */
+  | { type: 'CORE_REPLACED_BYTES'; id: string; bytes: Uint8Array; wholeRewrite?: boolean; password?: string | null }
   | { type: 'SAVED'; id: string; bytes: Uint8Array; name: string; handle?: unknown }
   | { type: 'SET_RECENT_ID'; id: string; recentId: string }
   | { type: 'SET_ROUTE'; route: Route }
@@ -92,6 +97,7 @@ export function reducer(state: AppState, action: Action): AppState {
         recentId: action.recentId,
         handle: action.handle,
         pendingTool: action.tool,
+        password: action.password,
       };
       return {
         ...state,
@@ -126,6 +132,8 @@ export function reducer(state: AppState, action: Action): AppState {
       return updateDoc(state, action.id, (d) => ({
         ...d,
         bytes: action.bytes,
+        originalBytes: action.wholeRewrite ? action.bytes.slice() : d.originalBytes,
+        password: action.password === undefined ? d.password : (action.password ?? undefined),
         revision: d.revision + 1,
         switching: true,
         warraqOwnsDocument: true,

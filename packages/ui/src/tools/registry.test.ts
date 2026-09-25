@@ -26,7 +26,7 @@ describe('tool registry', () => {
     for (const id of ready) {
       const tool = toolById(id)!;
       // A ready tool must be wired to something: a viewer mode/command or a core implementation.
-      expect(tool.viewer ?? tool.core, id).toBeTruthy();
+      expect(tool.viewer ?? tool.core ?? tool.panel, id).toBeTruthy();
     }
   });
 
@@ -41,5 +41,15 @@ describe('tool registry', () => {
         if (!t.platforms.includes(p)) expect(readyTools(p).some((r) => r.id === t.id)).toBe(false);
       }
     }
+  });
+});
+
+// Redact / Protect
+describe('engine-backed panels', () => {
+  it('Protect no longer opens the EmbedPDF protection modal; Redact keeps EmbedPDF marks and applies in the engine', () => {
+    expect(toolById('protect')?.viewer).toBeUndefined();
+    expect(toolById('protect')?.panel).toBe('protect');
+    expect(toolById('redact')?.viewer?.commands).toEqual(['mode:redact']);
+    expect(toolById('redact')?.panel).toBe('redact');
   });
 });

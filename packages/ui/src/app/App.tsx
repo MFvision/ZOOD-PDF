@@ -6,6 +6,7 @@ import { DocumentView } from './DocumentView';
 import { CommandPalette, SettingsSheet, TagsSheet, ToolsSheet } from './Sheets';
 import { Sheet, Toasts } from './primitives';
 import { Icon } from './icons';
+import { PasswordPrompt } from './ProtectPanel';
 
 export function App() {
   const app = useApp();
@@ -130,6 +131,7 @@ export function App() {
           </div>
         </div>
       )}
+      <PasswordPrompt />
       <Toasts />
     </div>
   );

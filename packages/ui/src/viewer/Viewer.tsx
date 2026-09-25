@@ -22,6 +22,10 @@ export interface ViewerApi {
   /** PNG of a page, `width` CSS pixels wide. */
   renderPage(pageIndex: number, width: number): Promise<Blob>;
   pageCount(): number;
+  /** Adds redaction marks (EmbedPDF REDACT annotations) — rects in viewer page space (top-left, points). */
+  addRedactionMarks(items: { page: number; rects: [number, number, number, number][] }[]): number;
+  /** Number of redaction marks currently in the viewer; `cb` fires on every change. */
+  onRedactionMarks(cb: (count: number) => void): () => void;
 }
 
 export interface ViewerEvents {
@@ -40,6 +44,7 @@ interface Props extends ViewerEvents {
   documentId: string;
   locale: Locale;
   scheme: 'light' | 'dark';
+  password?: string;
 }
 
 type Cap = Record<string, (...args: never[]) => unknown> & Record<string, unknown>;
@@ -50,6 +55,8 @@ function cap<T = Cap>(registry: PluginRegistry, id: string): T | null {
 
 type Hook<E> = (cb: (e: E) => void) => () => void;
 type TaskLike<R> = { toPromise(): Promise<R> };
+
+let markSeq = 0;
 
 const SENSITIVE_COMMANDS = new Set([
   'redaction:apply-all',
@@ -74,7 +81,7 @@ function mirrorToolbars(container: EmbedPdfContainer, locale: Locale) {
 }
 
 export function Viewer(props: Props) {
-  const { bytes, name, documentId, locale, scheme } = props;
+  const { bytes, name, documentId, locale, scheme, password } = props;
   const events = useRef<ViewerEvents>(props);
   useLayoutEffect(() => {
     events.current = props;
@@ -84,7 +91,7 @@ export function Viewer(props: Props) {
 
   // Built once per mount: the parent remounts us (key = revision) for new bytes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const config = useMemo(() => buildViewerConfig({ bytes, name, documentId, locale, scheme }), []);
+  const config = useMemo(() => buildViewerConfig({ bytes, name, documentId, locale, scheme, password }), []);
   setEmbedPdfLocale(locale);
 
   useEffect(() => {
@@ -133,7 +140,15 @@ export function Viewer(props: Props) {
     }>(registry, 'commands');
     const history = cap<{ onHistoryChange: Hook<unknown> }>(registry, 'history');
     const annotation = cap<{ onAnnotationEvent: Hook<{ type: string; committed?: boolean }> }>(registry, 'annotation');
-    const redaction = cap<{ onRedactionEvent: Hook<{ type: string; documentId: string; success?: boolean }> }>(registry, 'redaction');
+    type RedactionItem = { id: string; kind: 'area'; page: number; rect: { origin: { x: number; y: number }; size: { width: number; height: number } } };
+    const redaction = cap<{
+      onRedactionEvent: Hook<{ type: string; documentId: string; success?: boolean }>;
+      forDocument(id: string): {
+        addPending(items: RedactionItem[]): void;
+        getState(): { pendingCount?: number; pending?: Record<string, unknown[]> };
+        onPendingChange(cb: (pending: Record<string, unknown[]>) => void): () => void;
+      };
+    }>(registry, 'redaction');
     const exporter = cap<{ forDocument(id: string): { saveAsCopy(): TaskLike<ArrayBuffer> } }>(registry, 'export');
     const ui = cap<{ forDocument(id: string): { closeToolbarSlot(p: string, s: string): void } }>(registry, 'ui');
     const engine = registry.getEngine();
@@ -169,6 +184,33 @@ export function Viewer(props: Props) {
           .toPromise();
       },
       pageCount: () => docs?.getDocument(documentId)?.pageCount ?? 0,
+      addRedactionMarks(items) {
+        const scope = redaction?.forDocument(documentId);
+        if (!scope) throw new Error('redaction plugin unavailable');
+        const list: RedactionItem[] = [];
+        for (const it of items)
+          for (const [x0, y0, x1, y1] of it.rects)
+            list.push({
+              id: `zood-${Date.now().toString(36)}-${(markSeq += 1)}`,
+              kind: 'area',
+              page: it.page,
+              rect: { origin: { x: x0, y: y0 }, size: { width: x1 - x0, height: y1 - y0 } },
+            });
+        if (list.length) scope.addPending(list);
+        return list.length;
+      },
+      onRedactionMarks(cb) {
+        const scope = redaction?.forDocument(documentId);
+        if (!scope) return () => {};
+        const count = (p: Record<string, unknown[]> | undefined) => Object.values(p ?? {}).reduce((n, l) => n + (l?.length ?? 0), 0);
+        try {
+          const st = scope.getState();
+          cb(st.pendingCount ?? count(st.pending));
+        } catch {
+          cb(0);
+        }
+        return scope.onPendingChange((p) => cb(count(p)));
+      },
     };
 
     let opened = false;

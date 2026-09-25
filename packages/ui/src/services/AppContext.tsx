@@ -10,6 +10,7 @@ import { getHost, type HostBridge, type OpenedFile } from './host';
 import { engine as sharedEngine, type EngineClient } from './engine';
 import { isPdfBytes } from './files';
 import { looksProtected, rebaseOnOriginal, saveStrategy } from './save';
+import { encryptionOf, passwordOpens } from './redact';
 import type { ViewerApi } from '../viewer/Viewer';
 import type { Platform } from '../tools/registry';
 
@@ -37,6 +38,17 @@ export interface AppServices {
   viewer(docId: string): ViewerApi | undefined;
   markSensitive(docId: string): void;
   storeThumbnail(docId: string, png: Uint8Array): Promise<void>;
+  // Redact / Protect (engine-backed)
+  /** The app-wide engine client. */
+  engine(): EngineClient;
+  /** Current bytes of a document including unsaved viewer edits (PDFium export when needed). */
+  currentBytes(docId: string, opts?: { fromViewer?: boolean }): Promise<Uint8Array>;
+  /** A core tool produced new bytes by a whole rewrite (redaction, sanitising, protection): the viewer
+   * reloads from them, and the recents picture and stored bytes of the old content are dropped. */
+  replaceWithCoreBytes(docId: string, bytes: Uint8Array, opts?: { password?: string | null }): Promise<void>;
+  /** Pending password prompt (our own sheet; EmbedPDF never asks). */
+  passwordRequest: { id: number; name: string; wrong: boolean } | null;
+  answerPassword(password: string | null): void;
 }
 
 const Ctx = createContext<AppServices | null>(null);
@@ -103,6 +115,36 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
   const getEngine = () => (engineRef.current ??= sharedEngine());
   const viewers = useRef(new Map<string, ViewerApi>());
   const sensitive = useRef(new Set<string>());
+  /** Documents whose pictures must not be kept (opened with a password, redacted, protected). */
+  const noPreview = useRef(new Set<string>());
+  const [pwRequest, setPwRequest] = useState<{ id: number; name: string; wrong: boolean; resolve: (pw: string | null) => void } | null>(null);
+  const pwSeq = useRef(0);
+  const askPassword = useCallback(
+    (name: string, wrong: boolean) =>
+      new Promise<string | null>((resolve) => setPwRequest({ id: (pwSeq.current += 1), name, wrong, resolve })),
+    [],
+  );
+  /** Our own password prompt, checked by the engine, before anything reaches EmbedPDF. */
+  const unlock = useCallback(
+    async (name: string, bytes: Uint8Array): Promise<{ ok: boolean; password?: string }> => {
+      let needs = false;
+      try {
+        needs = (await encryptionOf(getEngine(), bytes)).needsPassword;
+      } catch {
+        return { ok: true }; // no engine (development build): the viewer handles it
+      }
+      if (!needs) return { ok: true };
+      let wrong = false;
+      for (let attempt = 0; attempt < 50; attempt++) {
+        const pw = await askPassword(name, wrong);
+        if (pw === null) return { ok: false };
+        if (await passwordOpens(getEngine(), bytes, pw)) return { ok: true, password: pw };
+        wrong = true;
+      }
+      return { ok: false };
+    },
+    [askPassword],
+  );
   const stateRef = useRef(state);
   useLayoutEffect(() => {
     stateRef.current = state;
@@ -154,17 +196,20 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
           continue;
         }
         const id = newDocId();
+        const lock = await unlock(f.name, f.bytes);
+        if (!lock.ok) continue;
+        if (lock.password !== undefined) noPreview.current.add(id);
         let recentId: string | undefined;
         try {
           recentId = (await recents.add({ name: f.name, bytes: f.bytes })).id;
         } catch {
           /* recents are a convenience (IndexedDB may be unavailable) */
         }
-        dispatch({ type: 'OPEN_DOCUMENT', id, name: f.name, bytes: f.bytes, handle: f.handle, recentId, tool });
+        dispatch({ type: 'OPEN_DOCUMENT', id, name: f.name, bytes: f.bytes, handle: f.handle, recentId, tool, password: lock.password });
         void refreshRecents();
       }
     },
-    [recents, refreshRecents, t, toast],
+    [recents, refreshRecents, t, toast, unlock],
   );
 
   const openFromHost = useCallback(async (tool?: string) => {
@@ -190,16 +235,21 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
         await openFromHost();
         return;
       }
+      const lock = await unlock(item.name, bytes);
+      if (!lock.ok) return;
       await recents.add({ name: item.name, bytes });
-      dispatch({ type: 'OPEN_DOCUMENT', id: newDocId(), name: item.name, bytes, recentId: item.id });
+      const id = newDocId();
+      if (lock.password !== undefined) noPreview.current.add(id);
+      dispatch({ type: 'OPEN_DOCUMENT', id, name: item.name, bytes, recentId: item.id, password: lock.password });
       void refreshRecents();
     },
-    [openFromHost, recents, refreshRecents, t, toast],
+    [openFromHost, recents, refreshRecents, t, toast, unlock],
   );
 
   const closeDocument = useCallback((id: string) => {
     viewers.current.delete(id);
     sensitive.current.delete(id);
+    noPreview.current.delete(id);
     dispatch({ type: 'CLOSE_DOCUMENT', id });
   }, []);
 
@@ -215,8 +265,13 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
           const api = viewers.current.get(id);
           if (!api) throw new Error('viewer not ready');
           const pdfium = await api.exportBytes();
-          const strategy = saveStrategy({ original: doc.originalBytes, pdfium, redacted: sensitive.current.has(id) });
-          out = strategy.mode === 'rewrite' ? pdfium : (await rebaseOnOriginal(getEngine(), doc.originalBytes, pdfium)).bytes;
+          const strategy = saveStrategy({
+            original: doc.originalBytes,
+            pdfium,
+            redacted: sensitive.current.has(id),
+            encrypted: looksProtected(doc.originalBytes),
+          });
+          out = strategy.mode === 'rewrite' ? pdfium : (await rebaseOnOriginal(getEngine(), doc.originalBytes, pdfium, doc.password)).bytes;
         } else {
           out = doc.originalBytes;
         }
@@ -224,7 +279,7 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
         if (!res) return false;
         dispatch({ type: 'SAVED', id, bytes: out, name: res.name, handle: res.handle });
         if (doc.recentId) {
-          if (sensitive.current.has(id) || looksProtected(out)) {
+          if (sensitive.current.has(id) || noPreview.current.has(id) || looksProtected(out)) {
             await recents.forgetThumbnail(doc.recentId);
           } else {
             await recents.putBytes(doc.recentId, out);
@@ -287,9 +342,40 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
     },
     storeThumbnail: async (docId, png) => {
       const rid = stateRef.current.documents[docId]?.recentId;
-      if (!rid || sensitive.current.has(docId)) return;
+      if (!rid || sensitive.current.has(docId) || noPreview.current.has(docId)) return;
       await recents.setThumbnail(rid, png);
       await refreshRecents();
+    },
+    engine: getEngine,
+    currentBytes: async (docId, opts = {}) => {
+      const doc = stateRef.current.documents[docId];
+      if (!doc) throw new Error('no such document');
+      const viewerHasChanges = doc.edited && !doc.warraqOwnsDocument;
+      if (opts.fromViewer || viewerHasChanges) {
+        const api = viewers.current.get(docId);
+        if (!api) throw new Error('viewer not ready');
+        return api.exportBytes();
+      }
+      return doc.bytes;
+    },
+    replaceWithCoreBytes: async (docId, bytes, opts = {}) => {
+      noPreview.current.add(docId);
+      dispatch({ type: 'CORE_REPLACED_BYTES', id: docId, bytes, wholeRewrite: true, password: opts.password });
+      const rid = stateRef.current.documents[docId]?.recentId;
+      if (rid) {
+        try {
+          await recents.forgetThumbnail(rid);
+        } catch {
+          /* IndexedDB unavailable */
+        }
+        await refreshRecents();
+      }
+    },
+    passwordRequest: pwRequest ? { id: pwRequest.id, name: pwRequest.name, wrong: pwRequest.wrong } : null,
+    answerPassword: (pw) => {
+      const r = pwRequest;
+      setPwRequest(null);
+      r?.resolve(pw);
     },
   };
 

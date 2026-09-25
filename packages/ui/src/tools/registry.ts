@@ -45,6 +45,8 @@ export interface ToolDef {
   viewer?: { commands: string[] };
   /** Core-backed tools: set by the agent implementing the tool. */
   core?: { open: () => void | Promise<void> };
+  /** Core-backed tools with a side panel in the document window (Redact, Protect). */
+  panel?: 'redact' | 'protect';
   /** Needs an open document. */
   needsDocument: boolean;
 }
@@ -75,8 +77,9 @@ export const TOOLS: readonly ToolDef[] = [
   tool('organize', 'organize', 'indigo'),
   tool('comment', 'comment', 'yellow', { status: 'ready', viewer: { commands: ['mode:annotate'] } }),
   tool('fill-sign', 'sign', 'purple', { status: 'ready', viewer: { commands: ['mode:insert'] } }),
-  tool('protect', 'lock', 'graphite', { status: 'ready', viewer: { commands: ['document:protect'] } }),
-  tool('redact', 'redact', 'red', { status: 'ready', viewer: { commands: ['mode:redact'] } }),
+  // Redact: EmbedPDF draws the marks (mode:redact); the engine applies them (panel). Protect: engine only.
+  tool('protect', 'lock', 'graphite', { status: 'ready', panel: 'protect' }),
+  tool('redact', 'redact', 'red', { status: 'ready', viewer: { commands: ['mode:redact'] }, panel: 'redact' }),
   tool('export', 'export', 'green'),
   tool('create', 'create', 'blue', { needsDocument: false }),
   tool('compare', 'compare', 'teal'),
