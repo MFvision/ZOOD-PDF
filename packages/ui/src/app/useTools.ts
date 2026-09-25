@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useApp } from '../services/AppContext';
 import { toolById, type ToolDef, type ToolId } from '../tools/registry';
+import { withToolTarget } from '../services/toolBus';
 
 /** Starts a tool: on the current document, or after the user picks a file. */
 export function useStartTool() {
@@ -21,7 +22,7 @@ export function useStartTool() {
       if (app.state.route.name !== 'document' || app.state.route.id !== target) {
         app.dispatch({ type: 'SET_ROUTE', route: { name: 'document', id: target } });
       }
-      runTool(tool, app.viewer(target));
+      withToolTarget(target, () => runTool(tool, app.viewer(target)));
     },
     [app],
   );

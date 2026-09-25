@@ -370,6 +370,13 @@ fn merge_titles_nest_bookmarks_per_file() {
     let t: Vec<_> = o.iter().map(|i| i.title_text()).collect();
     assert_eq!(t, vec!["a.pdf", "b.pdf"]);
     assert_eq!(o[0].children[0].title_text(), "Part 3");
+    // doc.outline reports titles with 0-based page indices
+    let mut d = Document::open(r.blobs[0].clone(), None).unwrap();
+    let j = call(&mut d, "doc.outline", json!({}), vec![]).json;
+    assert_eq!(j["items"][0]["title"], "a.pdf");
+    assert_eq!(j["items"][0]["page"], 0);
+    assert_eq!(j["items"][0]["children"][0]["page"], 2);
+    assert_eq!(j["items"][1]["page"], 3);
 }
 
 // ---------------------------------------------------------------- compress

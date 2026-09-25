@@ -3,6 +3,7 @@ import en from '../i18n/en.json';
 import ar from '../i18n/ar.json';
 import { TOOLS, readyTools, toolById, type ToolId } from './registry';
 import { ICONS } from '../app/icons';
+import { onTool } from '../services/toolBus';
 
 describe('tool registry', () => {
   it('lists exactly the 20 tools of the spec, each once', () => {
@@ -41,5 +42,21 @@ describe('tool registry', () => {
         if (!t.platforms.includes(p)) expect(readyTools(p).some((r) => r.id === t.id)).toBe(false);
       }
     }
+  });
+
+  it('Organize, Combine and Compress are ready core tools that open through the tool bus', () => {
+    const seen: string[] = [];
+    const off = onTool((id) => seen.push(id));
+    for (const id of ['organize', 'combine', 'compress'] as ToolId[]) {
+      const tool = toolById(id)!;
+      expect(tool.status, id).toBe('ready');
+      expect(tool.platforms).toEqual(expect.arrayContaining(['web', 'desktop', 'extension']));
+      void tool.core!.open();
+    }
+    off();
+    expect(seen).toEqual(['organize', 'combine', 'compress']);
+    // Combine starts without a document (pick files); the others need one
+    expect(toolById('combine')!.needsDocument).toBe(false);
+    expect(toolById('organize')!.needsDocument).toBe(true);
   });
 });

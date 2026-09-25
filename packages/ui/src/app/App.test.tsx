@@ -1,3 +1,4 @@
+import { readyTools } from '../tools/registry';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { IDBFactory } from 'fake-indexeddb';
@@ -43,7 +44,9 @@ describe('<App> home', () => {
     const cards = document.querySelectorAll('.action-card');
     expect(cards).toHaveLength(6);
     const tools = [...document.querySelectorAll('[data-testid=sidebar-tools] [data-tool]')].map((b) => b.getAttribute('data-tool'));
-    expect(tools.sort()).toEqual(['comment', 'fill-sign', 'prepare-form', 'protect', 'redact']);
+    // exactly the ready tools (other agents flip theirs to ready as they land)
+    expect(tools.sort()).toEqual(readyTools('web').map((t) => t.id).sort());
+    expect(tools).toEqual(expect.arrayContaining(['comment', 'fill-sign', 'prepare-form', 'protect', 'redact', 'organize', 'combine', 'compress']));
     // AI is not ready: no AI card, no AI action card
     expect(document.querySelector('.ai-card')).toBeNull();
     expect(document.querySelector('[data-card=ai]')).toBeNull();

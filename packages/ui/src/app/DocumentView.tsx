@@ -2,7 +2,7 @@
  * Document window: unified toolbar (sidebar, title + "Page x of y · Edited", navigation, zoom, tool
  * gallery, inspector), a Pages sidebar with thumbnails, the EmbedPDF viewer and an inspector.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useApp } from '../services/AppContext';
 import type { OpenDocument } from '../services/state';
 import { formatBytes } from '../i18n';
@@ -11,6 +11,11 @@ import { Viewer, type ViewerApi } from '../viewer/Viewer';
 import { Icon } from './icons';
 import { IconButton, MenuButton, Tile, type MenuItem } from './primitives';
 import { runTool } from './useTools';
+import { PageImage } from './PageImage';
+import { onTool } from '../services/toolBus';
+import { OrganizeView } from '../organize/OrganizeView';
+import { CompressSheet } from '../compress/CompressSheet';
+import { CombineSheet } from '../combine/CombineSheet';
 
 const wide = () => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 900px)').matches;
 
@@ -24,7 +29,24 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [tool, setTool] = useState<ToolId | null>(null);
+  // Core-backed tools: Organize replaces the page view; Compress and Combine are sheets.
+  const [organizing, setOrganizing] = useState(false);
+  const [coreSheet, setCoreSheet] = useState<'compress' | 'combine' | null>(null);
   const total = doc.pageCount;
+  const activeRef = useRef(active);
+  useLayoutEffect(() => {
+    activeRef.current = active;
+  });
+
+  const openCore = useCallback((id: ToolId, viewer?: ViewerApi | null) => {
+    if (id === 'organize') {
+      viewer?.exec('mode:view');
+      setTool(null);
+      setOrganizing(true);
+    } else if (id === 'compress' || id === 'combine') {
+      setCoreSheet(id);
+    }
+  }, []);
 
   const onReady = useCallback(
     (viewer: ViewerApi, info: { pageCount: number }) => {
@@ -35,7 +57,8 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
       app.dispatch({ type: 'VIEWER_READY', id: doc.id, revision: doc.revision, pageCount: info.pageCount });
       if (doc.pendingTool) {
         const def = toolById(doc.pendingTool as ToolId);
-        if (def && runTool(def, viewer)) setTool(def.id);
+        if (def?.core) openCore(def.id, viewer);
+        else if (def && runTool(def, viewer)) setTool(def.id);
         app.dispatch({ type: 'TOOL_STARTED', id: doc.id });
       }
       // First-page picture for Recents, rendered by PDFium.
@@ -51,20 +74,41 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
   const { registerViewer } = app;
   useEffect(() => () => registerViewer(doc.id, null), [registerViewer, doc.id]);
 
+  // A core tool started from elsewhere (sidebar, ⌘K, More) for this document.
+  const apiRef = useRef(api);
+  useLayoutEffect(() => {
+    apiRef.current = api;
+  });
+  useEffect(
+    () =>
+      onTool((id, target) => {
+        if (id === 'combine') return; // Combine without a document is the app's sheet
+        if (target ? target !== doc.id : !activeRef.current) return;
+        openCore(id, apiRef.current);
+      }),
+    [doc.id, openCore],
+  );
+
   const pick = (def: ToolDef | null) => {
     setGalleryOpen(false);
     if (!api) return;
     if (!def) {
+      setOrganizing(false);
       api.exec('mode:view');
       setTool(null);
       return;
     }
+    if (def.core) {
+      openCore(def.id, api);
+      return;
+    }
+    setOrganizing(false);
     if (runTool(def, api) && def.id !== 'protect') setTool(def.id);
   };
 
   const status = doc.edited ? ` · ${t('doc.edited')}` : '';
   const tools = readyTools(app.platform);
-  const current = tool ? toolById(tool) : null;
+  const current = organizing ? toolById('organize') : tool ? toolById(tool) : null;
   const more: MenuItem[] = [
     { id: 'save-copy', label: t('doc.saveCopy'), icon: 'save', onSelect: () => void app.saveDocument(doc.id, { saveAs: true }) },
     { id: 'close', label: t('doc.close'), icon: 'close', onSelect: () => onRequestClose(doc.id) },
@@ -139,7 +183,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
         />
       </header>
       <div className={`doc-body${pagesOpen ? ' pages-open' : ''}${inspectorOpen ? ' inspector-open' : ''}`}>
-        {pagesOpen && (
+        {pagesOpen && !organizing && (
           <PagesPanel
             api={api}
             total={total}
@@ -166,7 +210,17 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
             onSensitiveChange={() => app.markSensitive(doc.id)}
             onError={(m) => app.toast(`${t('toast.openFailed', { name: doc.name })} (${m})`, 'error')}
           />
-          {doc.switching && (
+          {organizing && (
+            <OrganizeView
+              doc={doc}
+              api={api}
+              onExit={(p) => {
+                setOrganizing(false);
+                if (p) setTimeout(() => apiRef.current?.goToPage(p), 0);
+              }}
+            />
+          )}
+          {doc.switching && !organizing && (
             <div className="viewer-loading" aria-live="polite">
               <span className="spinner" />
               <span>{t('doc.loading')}</span>
@@ -175,6 +229,8 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
         </div>
         {inspectorOpen && <Inspector doc={doc} onComments={() => api?.exec('panel:toggle-comment')} />}
       </div>
+      {coreSheet === 'compress' && <CompressSheet doc={doc} onClose={() => setCoreSheet(null)} />}
+      {coreSheet === 'combine' && <CombineSheet docId={doc.id} onClose={() => setCoreSheet(null)} />}
     </section>
   );
 }
@@ -240,35 +296,6 @@ function PagesPanel({ api, total, page, revision, onPick }: { api: ViewerApi | n
       </ol>
     </nav>
   );
-}
-
-function PageImage({ api, index }: { api: ViewerApi | null; index: number }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    if (!api || !ref.current) return;
-    let alive = true;
-    let made: string | null = null;
-    const io = new IntersectionObserver((entries) => {
-      if (!entries.some((e) => e.isIntersecting)) return;
-      io.disconnect();
-      api
-        .renderPage(index, 160)
-        .then((blob) => {
-          if (!alive) return;
-          made = URL.createObjectURL(blob);
-          setUrl(made);
-        })
-        .catch(() => {});
-    });
-    io.observe(ref.current);
-    return () => {
-      alive = false;
-      io.disconnect();
-      if (made) URL.revokeObjectURL(made);
-    };
-  }, [api, index]);
-  return <span ref={ref} className="page-img">{url ? <img src={url} alt="" draggable={false} /> : <span className="page-skeleton" />}</span>;
 }
 
 function Inspector({ doc, onComments }: { doc: OpenDocument; onComments: () => void }) {

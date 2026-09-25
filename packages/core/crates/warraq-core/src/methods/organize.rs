@@ -7,6 +7,7 @@
 //! * `pages.combine` — insert several PDFs (blobs) at a position, each under its own bookmark.
 //! * `pages.split` — new documents (blobs) every N pages, by ranges, or by top-level bookmarks.
 //! * `doc.compress` — a new, smaller file (whole rewrite; the open document is unchanged).
+//! * `doc.outline` — the bookmarks with their page indices.
 //!
 //! Page indices are 0-based. Mutating methods commit one incremental update and return the
 //! new file as `blobs[0]`.
@@ -34,7 +35,29 @@ pub fn register(r: &mut Registry) {
         .doc("pages.replace", replace)
         .doc("pages.combine", combine)
         .doc("pages.split", split)
-        .doc("doc.compress", doc_compress);
+        .doc("doc.compress", doc_compress)
+        .doc("doc.outline", doc_outline);
+}
+
+fn outline_json(items: &[outline::OutlineItem], ids: &[warraq_pdf::lopdf::ObjectId]) -> Vec<Value> {
+    items
+        .iter()
+        .map(|it| {
+            let page = it
+                .dest
+                .as_ref()
+                .and_then(|d| ids.iter().position(|id| *id == d.page));
+            json!({ "title": it.title_text(), "page": page, "children": outline_json(&it.children, ids) })
+        })
+        .collect()
+}
+
+/// The bookmarks: `{ items: [{ title, page (0-based or null), children }] }`.
+fn doc_outline(doc: &mut Document, _p: &Value, _b: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
+    let pdf = doc.pdf();
+    let ids: Vec<_> = pages::flatten(pdf)?.iter().map(|p| p.id).collect();
+    let items = outline::read_outline(pdf)?;
+    Ok(Reply::json(json!({ "items": outline_json(&items, &ids) })))
 }
 
 fn box_json(b: [f64; 4]) -> Value {

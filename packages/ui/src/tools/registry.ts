@@ -5,6 +5,7 @@
  */
 import type { MessageKey } from '../i18n';
 import type { IconName } from '../app/icons';
+import { emitTool } from '../services/toolBus';
 
 export type ToolId =
   | 'edit'
@@ -72,7 +73,8 @@ function tool(
 
 export const TOOLS: readonly ToolDef[] = [
   tool('edit', 'edit', 'blue'),
-  tool('organize', 'organize', 'indigo'),
+  // Organize / Combine / Compress: engine-backed; `core.open` asks the owning view to open the tool.
+  tool('organize', 'organize', 'indigo', { status: 'ready', core: { open: () => emitTool('organize') } }),
   tool('comment', 'comment', 'yellow', { status: 'ready', viewer: { commands: ['mode:annotate'] } }),
   tool('fill-sign', 'sign', 'purple', { status: 'ready', viewer: { commands: ['mode:insert'] } }),
   tool('protect', 'lock', 'graphite', { status: 'ready', viewer: { commands: ['document:protect'] } }),
@@ -81,8 +83,8 @@ export const TOOLS: readonly ToolDef[] = [
   tool('create', 'create', 'blue', { needsDocument: false }),
   tool('compare', 'compare', 'teal'),
   tool('scan', 'scan', 'cyan', { needsDocument: false }),
-  tool('combine', 'combine', 'orange'),
-  tool('compress', 'compress', 'mint'),
+  tool('combine', 'combine', 'orange', { status: 'ready', needsDocument: false, core: { open: () => emitTool('combine') } }),
+  tool('compress', 'compress', 'mint', { status: 'ready', core: { open: () => emitTool('compress') } }),
   tool('prepare-form', 'form', 'pink', { status: 'ready', viewer: { commands: ['mode:form'] } }),
   tool('ai', 'sparkle', 'purple'),
   tool('page-marks', 'stamp', 'orange'),
