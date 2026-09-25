@@ -9,12 +9,11 @@ import UIKit
 /// committing on release. Without a tool it lets every touch through to
 /// PDFKit's own scrolling, pinching and selecting.
 @MainActor
-final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDelegate {
+final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDelegate, UIPencilInteractionDelegate {
     let page: PDFPage
     let pageIndex: Int
     weak var pdfView: PDFView?
     weak var editor: AnnotationEditor?
-    weak var toolPicker: PKToolPicker?
 
     private var canvas: PKCanvasView?
     private let preview = CAShapeLayer()
@@ -23,12 +22,11 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
     private var dragStart: CGPoint = .zero
     private var tool: AnnotationTool?
 
-    init(page: PDFPage, pageIndex: Int, pdfView: PDFView, editor: AnnotationEditor?, toolPicker: PKToolPicker?) {
+    init(page: PDFPage, pageIndex: Int, pdfView: PDFView, editor: AnnotationEditor?) {
         self.page = page
         self.pageIndex = pageIndex
         self.pdfView = pdfView
         self.editor = editor
-        self.toolPicker = toolPicker
         super.init(frame: .zero)
         backgroundColor = .clear
         isOpaque = false
@@ -79,29 +77,34 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
             canvas.delegate = self
             canvas.isScrollEnabled = false
             canvas.accessibilityIdentifier = "page.canvas.\(pageIndex)"
-            canvas.tool = PKInkingTool(.pen, color: editor?.color.uiColor ?? .black, width: editor?.lineWidth ?? 3)
+            canvas.tool = editor?.inkTool ?? PKInkingTool(.pen, color: .black, width: 4)
+            // The Pencil's double-tap: eraser and back, as the palette shows.
+            canvas.addInteraction(UIPencilInteraction(delegate: self))
             addSubview(canvas)
-            toolPicker?.addObserver(canvas)
             self.canvas = canvas
         }
         // The strokes not yet committed, or a clean canvas.
         canvas?.drawing = editor?.inkDrawings[pageIndex] ?? PKDrawing()
+        canvas?.tool = editor?.inkTool ?? PKInkingTool(.pen, color: .black, width: 4)
         canvas?.isHidden = false
     }
 
     private func hideCanvas() {
         guard let canvas else { return }
-        toolPicker?.setVisible(false, forFirstResponder: canvas)
         canvas.resignFirstResponder()
         canvas.isHidden = true
     }
 
-    /// Brings the tool picker up for the canvas being drawn on: the system's
-    /// own, with the Pencil's double-tap switching tools.
-    func canvasViewDidBeginUsingTool(_ canvasView: PKCanvasView) {
-        guard let toolPicker else { return }
-        toolPicker.setVisible(true, forFirstResponder: canvasView)
-        canvasView.becomeFirstResponder()
+    /// The palette changed the pen: the canvas takes it.
+    func applyInk() {
+        guard let canvas, let editor else { return }
+        canvas.tool = editor.inkTool
+    }
+
+    func pencilInteractionDidTap(_ interaction: UIPencilInteraction) {
+        guard UIPencilInteraction.preferredTapAction != .ignore else { return }
+        editor?.togglePencilEraser()
+        applyInk()
     }
 
     /// Keeps the editor's copy of the page's strokes, in user space, so

@@ -43,7 +43,7 @@ final class PartBScreenshotTests: XCTestCase {
             try ui.screenshot("night-\(suffix)", in: directory)
             ui.viewControl("document.night.toggle", menuLabel: combo.language == PartBApp.arabic ? "الوضع الليلي" : "Night mode")
             ui.viewControl("document.reader.toggle", menuLabel: combo.language == PartBApp.arabic ? "وضع القراءة" : "Reader mode")
-            _ = app.otherElements["reader.page.0"].waitForExistence(timeout: 20)
+            _ = app.staticTexts.matching(identifier: "reader.text.0").firstMatch.waitForExistence(timeout: 30)
             try ui.screenshot("reader-\(suffix)", in: directory)
             ui.viewControl("document.reader.toggle", menuLabel: combo.language == PartBApp.arabic ? "وضع القراءة" : "Reader mode")
 
@@ -63,6 +63,10 @@ final class PartBScreenshotTests: XCTestCase {
             _ = app.buttons["markup.highlight"].waitForExistence(timeout: 10)
             app.buttons["markup.highlight"].tap()
             try ui.screenshot("markup-\(suffix)", in: directory)
+            // The pen, with its floating palette.
+            app.buttons["markup.ink"].tap()
+            _ = app.buttons["pen.color.red"].waitForExistence(timeout: 10)
+            try ui.screenshot("pen-\(suffix)", in: directory)
             app.buttons["markup.stamp"].tap()
             _ = app.buttons["stamp.approved"].waitForExistence(timeout: 10)
             try ui.screenshot("stamps-\(suffix)", in: directory)

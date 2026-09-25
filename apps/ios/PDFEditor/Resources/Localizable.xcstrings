@@ -85,6 +85,9 @@
     "Add" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إضافة" } } }
     },
+    "Add Page" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إضافة صفحة" } } }
+    },
     "Add note" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إضافة ملاحظة" } } }
     },
@@ -214,6 +217,9 @@
         "en" : { "variations" : { "plural" : { "one" : { "stringUnit" : { "state" : "translated", "value" : "Delete %lld page" } }, "other" : { "stringUnit" : { "state" : "translated", "value" : "Delete %lld pages" } } } } }
       }
     },
+    "Delete Page" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "حذف الصفحة" } } }
+    },
     "Delete the selected pages?" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "هل تريد حذف الصفحات المحددة؟" } } }
     },
@@ -262,6 +268,9 @@
     "Enter its password to open it." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "أدخل كلمة مروره لفتحه." } } }
     },
+    "Eraser" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "ممحاة" } } }
+    },
     "Every file takes this many pages, in order." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يأخذ كل ملف هذا العدد من الصفحات بالترتيب." } } }
     },
@@ -276,6 +285,9 @@
     },
     "Export…" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تصدير…" } } }
+    },
+    "Extract Pages" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "استخراج الصفحات" } } }
     },
     "Extract selected pages" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "استخراج الصفحات المحددة" } } }
@@ -340,6 +352,9 @@
     "Insert blank page after" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إدراج صفحة فارغة بعدها" } } }
     },
+    "Insert from File" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إدراج من ملف" } } }
+    },
     "Interface" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الواجهة" } } }
     },
@@ -387,6 +402,9 @@
     },
     "Mark" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "علامة" } } }
+    },
+    "Marker" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "قلم تمييز" } } }
     },
     "Marks" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "العلامات" } } }
@@ -523,6 +541,12 @@
     "Password" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "كلمة المرور" } } }
     },
+    "Pen" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "قلم" } } }
+    },
+    "Pencil" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "قلم رصاص" } } }
+    },
     "Pictures at 100 dpi" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الصور بدقة 100 نقطة في البوصة" } } }
     },
@@ -604,6 +628,9 @@
     "Removing it writes the document without protection; Save keeps that." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إزالتها تكتب المستند دون حماية، والحفظ يثبّت ذلك." } } }
     },
+    "Replace Page" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "استبدال الصفحة" } } }
+    },
     "Reset" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "إعادة الضبط" } } }
     },
@@ -615,6 +642,12 @@
     },
     "Rotate" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تدوير" } } }
+    },
+    "Rotate Left" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تدوير لليسار" } } }
+    },
+    "Rotate Right" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تدوير لليمين" } } }
     },
     "Rotate left" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تدوير لليسار" } } }
@@ -636,6 +669,9 @@
     },
     "Settings" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الإعدادات" } } }
+    },
+    "Shapes" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الأشكال" } } }
     },
     "Share a file, or keep them all in My documents." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "شارك ملفًا، أو احتفظ بها كلها في مستنداتي." } } }
@@ -666,6 +702,9 @@
     },
     "Split" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تقسيم" } } }
+    },
+    "Split PDF" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تقسيم الملف" } } }
     },
     "Split into files" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تقسيم إلى ملفات" } } }

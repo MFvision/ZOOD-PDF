@@ -2,7 +2,34 @@ import Foundation
 import Observation
 import PDFKit
 import PencilKit
+import SwiftUI
 import WarraqCore
+
+/// What the pen palette offers: PencilKit's pen, marker and pencil, and
+/// the eraser that takes whole strokes.
+enum InkKind: String, CaseIterable, Identifiable {
+    case pen, marker, pencil, eraser
+
+    var id: String { rawValue }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .pen: "Pen"
+        case .marker: "Marker"
+        case .pencil: "Pencil"
+        case .eraser: "Eraser"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .pen: "pencil.tip"
+        case .marker: "highlighter"
+        case .pencil: "pencil"
+        case .eraser: "eraser"
+        }
+    }
+}
 
 /// Where a note or a text box is about to go, waiting for its words.
 struct PendingPlacement: Identifiable, Equatable {
@@ -23,7 +50,26 @@ final class AnnotationEditor {
     let model: DocumentModel
     var tool: AnnotationTool?
     var color: MarkupColor = .yellow
-    var lineWidth: CGFloat = 3
+    var lineWidth: CGFloat = 4
+    var inkKind: InkKind = .pen
+
+    /// The PencilKit tool the palette describes.
+    var inkTool: PKTool {
+        switch inkKind {
+        case .pen: PKInkingTool(.pen, color: color.uiColor, width: lineWidth)
+        case .marker: PKInkingTool(.marker, color: color.uiColor.withAlphaComponent(0.6), width: lineWidth * 4)
+        case .pencil: PKInkingTool(.pencil, color: color.uiColor, width: lineWidth)
+        case .eraser: PKEraserTool(.vector)
+        }
+    }
+
+    /// Changes when the pen's tool changes, so the canvases follow.
+    var inkSignature: String { "\(inkKind.rawValue)/\(color.rawValue)/\(lineWidth)" }
+
+    /// The Pencil's double-tap: the eraser, and back to the pen.
+    func togglePencilEraser() {
+        inkKind = inkKind == .eraser ? .pen : .eraser
+    }
     var textSize: CGFloat = 14
     /// The Pencil's strokes per page, until `commitInk()` makes them ink
     /// annotations: the drawing as the canvas shows it, and the same

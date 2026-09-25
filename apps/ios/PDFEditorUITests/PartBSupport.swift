@@ -72,22 +72,51 @@ struct PartBApp {
         return page.value as? String ?? ""
     }
 
-    /// The toolbar's state line, whatever element it is read as.
-    var status: XCUIElement { app.descendants(matching: .any).matching(identifier: "document.status").firstMatch }
+    /// The toolbar's state line (the front-most one, when a sheet has its own).
+    var status: XCUIElement { app.staticTexts.matching(identifier: "document.status").firstMatch }
 
     /// Waits for the toolbar's status to hold `text`.
     func waitForStatus(containing text: String, timeout: TimeInterval = 20) {
-        let predicate = NSPredicate(format: "label CONTAINS %@", text)
-        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: status)
-        XCTAssertEqual(XCTWaiter().wait(for: [expectation], timeout: timeout), .completed, "status holds \(text): \(status.label)")
+        let found = poll(timeout: timeout) {
+            let element = self.status
+            return element.exists && element.label.contains(text)
+        }
+        XCTAssertTrue(found, "status holds \(text): \(status.exists ? status.label : "no status") \(found ? "" : tree)")
     }
 
-    /// "Edited" in the status, in either language.
+    /// "Edited" in the status or on the page element, in either language.
     func waitForEdited(timeout: TimeInterval = 30) {
-        let predicate = NSPredicate(format: "label CONTAINS %@ OR label CONTAINS %@", "Edited", "مُعدَّل")
-        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: status)
-        let outcome = XCTWaiter().wait(for: [expectation], timeout: timeout)
-        XCTAssertEqual(outcome, .completed, "status says edited: \(status.exists ? status.label : "no status") \(outcome == .completed ? "" : tree)")
+        let words = ["Edited", "مُعدَّل"]
+        let found = poll(timeout: timeout) {
+            let state = self.status
+            if state.exists, words.contains(where: { state.label.contains($0) }) { return true }
+            let page = self.page
+            return page.exists && words.contains(where: { page.label.contains($0) })
+        }
+        XCTAssertTrue(found, "the document says edited: \(status.exists ? status.label : "no status") \(found ? "" : tree)")
+    }
+
+    /// Runs `condition` every few hundred milliseconds until it holds.
+    @discardableResult
+    func poll(timeout: TimeInterval = 15, _ condition: () -> Bool) -> Bool {
+        let deadline = Date(timeIntervalSinceNow: timeout)
+        while Date() < deadline {
+            if condition() { return true }
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.3))
+        }
+        return condition()
+    }
+
+    /// Taps a row of a list, scrolling to it when it is below the fold.
+    func tapRow(_ identifier: String) {
+        let row = app.buttons[identifier]
+        var tries = 0
+        while !row.exists, tries < 4 {
+            app.swipeUp()
+            tries += 1
+        }
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "row \(identifier)")
+        row.tap()
     }
 
     /// Opens the More menu and taps the item with `identifier` (or, when

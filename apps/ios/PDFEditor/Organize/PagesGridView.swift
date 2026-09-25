@@ -24,6 +24,9 @@ struct PagesGridView: View {
     @State private var showingSplit = false
     @State private var splitEvery = 1
     @State private var confirmDelete = false
+    /// A page whose place an imported file takes (Replace Page), or where
+    /// an imported file goes (Insert from File); nil for the bar's insert.
+    @State private var importTarget: (page: Int, replace: Bool)?
 
     private var model: DocumentModel { pages.model }
     private let columns = [GridItem(.adaptive(minimum: 110, maximum: 150), spacing: Space.x5, alignment: .top)]
@@ -93,10 +96,17 @@ struct PagesGridView: View {
                 SecureField("Password", text: $importPassword)
                 Button("Insert") {
                     if let bytes = pendingImport {
-                        pages.insert(pdf: bytes, password: importPassword, at: insertionPoint)
+                        if let target = importTarget, target.replace {
+                            pages.replace(page: target.page, with: bytes, password: importPassword)
+                        } else if let target = importTarget {
+                            pages.insert(pdf: bytes, password: importPassword, at: target.page + 1)
+                        } else {
+                            pages.insert(pdf: bytes, password: importPassword, at: insertionPoint)
+                        }
                     }
                     pendingImport = nil
                     importPassword = ""
+                    importTarget = nil
                 }
                 Button("Cancel", role: .cancel) {
                     pendingImport = nil
@@ -181,8 +191,30 @@ struct PagesGridView: View {
         } isTargeted: { over in
             dropTarget = over ? page : (dropTarget == page ? nil : dropTarget)
         }
-        // No context menu on a cell: a long press is the lift of a drag (a
-        // menu would take the press first); the bar does everything else.
+        // The page's menu (the design target's): a long press held shows
+        // it; a press that moves lifts the page for a drag instead.
+        .contextMenu {
+            Button("Add Page", systemImage: "doc.badge.plus") { pages.insertBlank(after: page) }
+            Button("Delete Page", systemImage: "trash", role: .destructive) { pages.delete([page]) }
+            Button("Extract Pages", systemImage: "square.and.arrow.up") { pages.extract(pages.selection.contains(page) ? pages.selected : [page]) }
+            Button("Rotate Left", systemImage: "rotate.left") { pages.rotate([page], quarterTurns: -1) }
+            Button("Rotate Right", systemImage: "rotate.right") { pages.rotate([page], quarterTurns: 1) }
+            Button("Replace Page", systemImage: "arrow.triangle.2.circlepath.doc.on.clipboard") {
+                importTarget = (page, true)
+                showingMerge = false
+                showingImporter = true
+            }
+            Button("Crop", systemImage: "crop") {
+                pages.selection = [page]
+                showingCrop = true
+            }
+            Button("Split PDF", systemImage: "square.split.2x1") { showingSplit = true }
+            Button("Insert from File", systemImage: "doc.on.doc") {
+                importTarget = (page, false)
+                showingMerge = false
+                showingImporter = true
+            }
+        }
         .accessibilityLabel(Text("Page \(page + 1)"))
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityIdentifier("pages.cell.\(page)")
@@ -250,8 +282,17 @@ struct PagesGridView: View {
                 pendingImport = bytes
                 continue
             }
-            pages.insert(pdf: bytes, at: showingMerge ? pages.pageCount : insertionPoint)
+            if let target = importTarget {
+                if target.replace {
+                    pages.replace(page: target.page, with: bytes)
+                } else {
+                    pages.insert(pdf: bytes, at: target.page + 1)
+                }
+            } else {
+                pages.insert(pdf: bytes, at: showingMerge ? pages.pageCount : insertionPoint)
+            }
         }
+        importTarget = nil
     }
 }
 

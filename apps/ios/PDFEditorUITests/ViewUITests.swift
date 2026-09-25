@@ -64,7 +64,7 @@ final class ViewUITests: XCTestCase {
         ui.more("document.outline", label: "Outline")
         // The flat list numbers every entry: the second chapter is 2 (its
         // introduction, 1, is folded under the first).
-        let entry = ui.app.buttons["outline.2"]
+        let entry = ui.app.buttons.matching(identifier: "outline.2").firstMatch
         XCTAssertTrue(entry.waitForExistence(timeout: 15), "the outline lists the chapters")
         XCTAssertTrue(entry.label.contains("الفصل الثاني"), entry.label)
         entry.tap()
@@ -87,9 +87,9 @@ final class ViewUITests: XCTestCase {
         ui.viewControl("document.reader.toggle", menuLabel: "Reader mode")
         let reader = ui.app.otherElements["document.reader"]
         XCTAssertTrue(reader.waitForExistence(timeout: 10) || ui.app.scrollViews["document.reader"].waitForExistence(timeout: 5))
-        let firstPage = ui.app.otherElements["reader.page.0"]
-        XCTAssertTrue(firstPage.waitForExistence(timeout: 20), "the first page's text, reflowed")
-        XCTAssertTrue(firstPage.label.contains("الفصل الأول") || ui.app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "الفصل الأول")).firstMatch.waitForExistence(timeout: 10))
+        let firstText = ui.app.staticTexts.matching(identifier: "reader.text.0").firstMatch
+        XCTAssertTrue(firstText.waitForExistence(timeout: 30), "the first page's text, reflowed: \(ui.tree)")
+        XCTAssertTrue(firstText.label.contains("الفصل الأول"), String(firstText.label.prefix(80)))
         ui.viewControl("document.reader.toggle", menuLabel: "Reader mode")
         XCTAssertTrue(ui.page.waitForExistence(timeout: 10))
     }

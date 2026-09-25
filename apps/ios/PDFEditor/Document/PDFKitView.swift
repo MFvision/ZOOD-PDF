@@ -44,6 +44,8 @@ struct PDFKitView: UIViewRepresentable {
     /// The tool in hand, passed on its own so a change of tool reaches the
     /// overlays (the view is only re-evaluated for what its body reads).
     let tool: AnnotationTool?
+    /// The pen's kind, colour and width, so the canvases follow the palette.
+    var inkSignature: String = ""
     let host: PDFViewHost?
     /// PDFKit draws these highlighted (the search's hits) and scrolls to
     /// `currentHighlight` when it changes.
@@ -121,8 +123,11 @@ struct PDFKitView: UIViewRepresentable {
                 overlay.editor = editor
                 overlay.update(night: night, tool: tool)
             }
-            if tool != .ink {
-                coordinator.toolPicker.setVisible(false, forFirstResponder: view)
+        }
+        if coordinator.inkSignature != inkSignature {
+            coordinator.inkSignature = inkSignature
+            for overlay in coordinator.overlays.values {
+                overlay.applyInk()
             }
         }
         if view.highlightedSelections?.count != highlights.count || view.highlightedSelections?.first !== highlights.first {
@@ -171,7 +176,7 @@ struct PDFKitView: UIViewRepresentable {
         var shownHighlight: PDFSelection?
         var lastReported = -1
         var overlays: [PDFPage: PageOverlayView] = [:]
-        let toolPicker = PKToolPicker()
+        var inkSignature = ""
 
         init(parent: PDFKitView) {
             self.parent = parent
@@ -195,7 +200,7 @@ struct PDFKitView: UIViewRepresentable {
             }
             guard let document = view.document else { return nil }
             let overlay = PageOverlayView(page: page, pageIndex: document.index(for: page), pdfView: view,
-                                          editor: parent.editor ?? editor, toolPicker: toolPicker)
+                                          editor: parent.editor ?? editor)
             overlay.update(night: night, tool: tool)
             overlays[page] = overlay
             return overlay

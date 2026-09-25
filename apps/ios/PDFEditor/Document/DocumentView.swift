@@ -25,6 +25,7 @@ struct DocumentView: View {
     @State private var pagesModel: PagesModel?
     @State private var showingSearch = false
     @State private var showingThumbnails = false
+    @State private var thumbnailsForMarkup = false
     @State private var readerMode = false
     @State private var markup = false
     @State private var showingInfo = false
@@ -36,6 +37,7 @@ struct DocumentView: View {
     @State private var showingMarks = false
     @State private var showingStamps = false
     @State private var showingSignature = false
+    @State private var showingCrop = false
     @State private var placingSignature: UIImage?
     @State private var saveError: String?
     @State private var pageText: String?
@@ -55,6 +57,7 @@ struct DocumentView: View {
                 MarkupBar(editor: editor, undoManager: undoManager,
                           openStamps: { showingStamps = true },
                           openSignature: { showingSignature = true },
+                          openCrop: { showingCrop = true },
                           done: finishMarkup)
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
@@ -70,6 +73,15 @@ struct DocumentView: View {
                             placingSignature = nil
                         }
                         .transition(.opacity)
+                    }
+                    if markup, let editor, editor.tool == .ink {
+                        // The floating pen palette, over the pages' foot.
+                        VStack {
+                            Spacer()
+                            PenPalette(editor: editor)
+                                .padding(.bottom, Space.x5)
+                        }
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -117,6 +129,11 @@ struct DocumentView: View {
         .sheet(isPresented: $showingMarks) {
             if let editor {
                 AnnotationsListSheet(model: model, editor: editor)
+            }
+        }
+        .sheet(isPresented: $showingCrop) {
+            if let pagesModel {
+                CropSheet(pages: pagesModel, cache: thumbnails, page: model.currentPage)
             }
         }
         .sheet(isPresented: $showingStamps) {
@@ -204,7 +221,7 @@ struct DocumentView: View {
                 ReaderModeView(model: model)
             } else if let pdf = model.pdf {
                 PDFKitView(document: pdf, displaysRTL: model.isRightToLeft, layout: layout, night: night,
-                           editor: editor, tool: editor?.tool, host: host,
+                           editor: editor, tool: editor?.tool, inkSignature: editor?.inkSignature ?? "", host: host,
                            highlights: search.highlighted, currentHighlight: showingSearch ? search.currentSelection : nil,
                            currentPage: $model.currentPage)
                     // Night mode: the pages inverted, hues turned back so a
@@ -213,7 +230,7 @@ struct DocumentView: View {
                     .hueRotation(.degrees(night ? 180 : 0))
                     .ignoresSafeArea(edges: showingThumbnails && compact ? [] : .bottom)
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(Text("Page \(model.currentPage + 1) of \(model.pageCount)"))
+                    .accessibilityLabel(pageLabel)
                     .accessibilityValue(Text(pageText ?? ""))
                     .accessibilityIdentifier("document.page")
             } else {
@@ -245,7 +262,7 @@ struct DocumentView: View {
                 .disabled(!model.isReady)
                 .accessibilityIdentifier("document.search")
                 Button("Markup", systemImage: markup ? "pencil.tip.crop.circle.fill" : "pencil.tip.crop.circle") {
-                    if markup { finishMarkup() } else { markup = true }
+                    if markup { finishMarkup() } else { startMarkup() }
                 }
                 .disabled(!model.isReady)
                 .accessibilityIdentifier("document.markup")
@@ -338,6 +355,12 @@ struct DocumentView: View {
         .accessibilityIdentifier("document.more")
     }
 
+    /// The page element's label: the page, and whether the document is edited.
+    private var pageLabel: Text {
+        let page = Text("Page \(model.currentPage + 1) of \(model.pageCount)")
+        return model.isEdited ? page + Text(verbatim: ", ") + Text("Edited") : page
+    }
+
     private var status: Text? {
         guard model.isReady else { return nil }
         let page = Text("Page \(model.currentPage + 1) of \(model.pageCount)")
@@ -372,10 +395,24 @@ struct DocumentView: View {
         search.clear()
     }
 
+    /// Markup on iPad shows the numbered strip of pages beside the
+    /// document, as the design target does; it goes back with Done.
+    private func startMarkup() {
+        markup = true
+        if !compact, !showingThumbnails {
+            showingThumbnails = true
+            thumbnailsForMarkup = true
+        }
+    }
+
     private func finishMarkup() {
         editor?.commitInk()
         editor?.tool = nil
         markup = false
+        if thumbnailsForMarkup {
+            showingThumbnails = false
+            thumbnailsForMarkup = false
+        }
     }
 
     private func save() {

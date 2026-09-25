@@ -580,6 +580,20 @@ only** (iPhone 17 and iPad Pro 13-inch (M5), iOS 27): this Mac has no signing id
   the core keeps it on every edit it appends afterwards; the saved file asks for it
   again; undo brings the old protection back.
 
+**The owner's design target (2026-09-25, `.tools/briefs/design-target.md`), on these
+screens.** Annotate is the target's iPad picture: a thin dark toolbar over the pages with
+undo and redo, the text tools (a text box, the highlighter, underline, strike-through),
+the pen with its colours as small dots, shapes, a note, crop, stamp and signature; on
+iPad the numbered strip of page thumbnails opens beside the document while marking up;
+and while the pen is in hand a floating palette at the bottom — pen, marker, pencil,
+eraser, three widths and the colour swatches — which every page's canvas follows at
+once (the Pencil's double-tap flips pen and eraser through `UIPencilInteraction`; the
+system's PencilKit picker is not used, so the palette is the same on every page and the
+same in the screenshots). Organize has the target's page menu on a long press: Add Page,
+Delete Page, Extract Pages, Rotate Left, Rotate Right, Replace Page (another PDF's pages
+in its place: an insert and a delete, two steps of undo), Crop, Split PDF, Insert from
+File; a press that moves lifts the page for a drag instead.
+
 **How it is proven.** `apps/ios/PDFEditorTests`: `ViewTests` (page spaces round-trip
 through user space at every rotation; `الفاتوره` typed with haa for taa marbuta finds
 فاتورة with PDFKit selecting the glyphs in the core's boxes; a heading found on every
@@ -648,9 +662,8 @@ signature, marks, pages, crop, export, protect).
   cells, which iPadOS turns into a new window when dropped at the edge; XCUITest
   cannot perform that system gesture, so it was not run — "Open in New Window" from
   the cell's menu takes the same path (a `WindowGroup(for: DocumentReference.self)`).
-* *A page cell has no context menu*: a long press is the lift of a drag (a menu took the
-  press first, and no drag began — seen on the iPad); rotate, insert, extract and delete
-  are in the grid's bar and its More menu.
+* *A page's menu and its drag share the long press*: held still, the menu; moved, the
+  drag (the UI test presses for under half a second before moving).
 * *The core's page text leaves page marks out* (`extract_text` is the page's own text; the
   search reads everything), so a stamp is read back through the search, not the page's
   VoiceOver value.

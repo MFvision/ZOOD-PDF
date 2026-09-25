@@ -86,6 +86,24 @@ final class PagesModel {
         run("pages.insert_file", Args(at: at, password: password), blobs: [bytes])
     }
 
+    /// Another PDF's pages in the place of page `page`: they go in after
+    /// it, and it is deleted — two steps through the core, two of undo.
+    func replace(page: Int, with bytes: Data, password: String? = nil) {
+        working = true
+        Task {
+            do {
+                struct Insert: Encodable { let at: Int; let password: String? }
+                try await model.apply("pages.insert_file", args: Insert(at: page + 1, password: password), blobs: [bytes], undoManager: undoManager)
+                struct Delete: Encodable { let pages: [Int] }
+                try await model.apply("pages.delete", args: Delete(pages: [page]), undoManager: undoManager)
+                selection = []
+            } catch {
+                self.error = Self.describe(error)
+            }
+            working = false
+        }
+    }
+
     /// Pictures as pages at `at`: the core makes a PDF of them first
     /// (`create.images`, each upright by its EXIF orientation), then inserts it.
     func insert(pictures: [Data], at: Int) {

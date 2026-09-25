@@ -31,13 +31,14 @@ struct ReaderModeView: View {
                                         .lineSpacing(6)
                                         .textSelection(.enabled)
                                         .frame(maxWidth: .infinity, alignment: .leading)
+                                        .accessibilityIdentifier("reader.text.\(page)")
                                 }
                             } else {
                                 ProgressView()
                             }
                         }
                         .id(page)
-                        .accessibilityElement(children: .combine)
+                        .accessibilityElement(children: .contain)
                         .accessibilityIdentifier("reader.page.\(page)")
                     }
                 }

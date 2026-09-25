@@ -18,7 +18,7 @@ final class OrganizeUITests: XCTestCase {
         XCTAssertTrue(third.waitForExistence(timeout: 15))
         XCTAssertTrue(first.waitForExistence(timeout: 5))
         // Lift the third page and drop it on the first's place.
-        third.press(forDuration: 0.7, thenDragTo: first, withVelocity: .slow, thenHoldForDuration: 0.5)
+        third.press(forDuration: 0.45, thenDragTo: first, withVelocity: .slow, thenHoldForDuration: 0.5)
         let done = ui.app.buttons["pages.done"]
         XCTAssertTrue(done.waitForExistence(timeout: 10))
         done.tap()
@@ -48,13 +48,9 @@ final class OrganizeUITests: XCTestCase {
         XCTAssertTrue(second.waitForExistence(timeout: 15))
         second.tap()
         ui.app.buttons["pages.rotate"].firstMatch.tap()
-        let status = ui.status
-        XCTAssertTrue(status.waitForExistence(timeout: 10))
         // Delete the selected page: three become two.
         ui.app.buttons["pages.delete"].firstMatch.tap()
-        let predicate = NSPredicate(format: "label CONTAINS %@", "2")
-        let twoPages = XCTNSPredicateExpectation(predicate: predicate, object: status)
-        XCTAssertEqual(XCTWaiter().wait(for: [twoPages], timeout: 20), .completed, status.label)
+        XCTAssertTrue(ui.poll(timeout: 20) { ui.app.buttons["pages.cell.2"].exists == false && ui.app.buttons["pages.cell.1"].exists }, "two cells left: \(ui.tree)")
         ui.app.buttons["pages.done"].tap()
         ui.waitForStatus(containing: "of 2")
     }
