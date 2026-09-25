@@ -123,7 +123,7 @@ pub fn build_signed_data(
     extra: Vec<Attribute>,
 ) -> Result<Vec<u8>> {
     let hash = signer.digest_algorithm();
-    if content_digest.len() != hash.len() {
+    if content_digest.len() != hash.output_len() {
         return Err(SignError::InvalidArgument("content digest length".into()));
     }
     let cert = signer.certificate();

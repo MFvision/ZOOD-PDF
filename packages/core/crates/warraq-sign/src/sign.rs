@@ -550,6 +550,18 @@ pub fn sign(pdf: &Pdf, signer: &dyn Signer, opts: &SignOptions) -> Result<SignOu
         crate::x509::EkuVerdict::Accepted(_) => {}
         crate::x509::EkuVerdict::Rejected(why) => return Err(SignError::NotAllowed(why)),
     }
+    if opts.time != 0 && !signer.certificate().valid_at(opts.time) {
+        return Err(SignError::NotAllowed(
+            "the signing certificate is expired or not yet valid".into(),
+        ));
+    }
+    sign_unchecked(pdf, signer, opts)
+}
+
+/// [`sign`] without the certificate policy checks (extended key usage, validity). Only for
+/// building negative test fixtures; the RPC layer never calls it.
+#[doc(hidden)]
+pub fn sign_unchecked(pdf: &Pdf, signer: &dyn Signer, opts: &SignOptions) -> Result<SignOutput> {
     let size = opts
         .placeholder
         .unwrap_or_else(|| default_placeholder(signer, opts.level));

@@ -322,7 +322,7 @@ pub fn load(bytes: &[u8], password: &str) -> Result<Pkcs12> {
                 mac.mac_salt.as_bytes(),
                 Pkcs12KeyType::Mac,
                 rounds,
-                hash.len(),
+                hash.output_len(),
             )?;
             if hmac_ok(hash, &key, data, mac.mac.digest.as_bytes()) {
                 mac_pass = Some(p);

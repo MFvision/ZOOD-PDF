@@ -41,7 +41,7 @@ impl HashAlg {
     }
 
     /// Output length in bytes.
-    pub fn len(self) -> usize {
+    pub fn output_len(self) -> usize {
         match self {
             HashAlg::Sha1 => 20,
             HashAlg::Sha256 => 32,

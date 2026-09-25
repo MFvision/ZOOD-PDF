@@ -14,6 +14,7 @@
 
 pub mod appearance;
 pub mod cms;
+pub mod diff;
 pub mod error;
 pub mod hash;
 pub mod keys;
@@ -26,6 +27,7 @@ pub mod sign;
 pub mod signer;
 pub mod tlv;
 pub mod tsp;
+pub mod verify;
 pub mod x509;
 
 pub use error::{Result, SignError};

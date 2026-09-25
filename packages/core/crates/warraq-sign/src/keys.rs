@@ -371,7 +371,7 @@ impl SoftKey {
     /// Sign a digest: RSA PKCS#1 v1.5 (blinded) or DER-encoded ECDSA (RFC 6979 nonces).
     pub fn sign_digest(&self, hash: HashAlg, digest: &[u8]) -> Result<Vec<u8>> {
         use ecdsa::signature::hazmat::PrehashSigner;
-        if digest.len() != hash.len() {
+        if digest.len() != hash.output_len() {
             return Err(SignError::InvalidArgument("digest length".into()));
         }
         match self {
