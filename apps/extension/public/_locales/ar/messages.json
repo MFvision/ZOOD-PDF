@@ -1,0 +1,9 @@
+{
+  "appName": { "message": "زود PDF", "description": "Extension name" },
+  "appShortName": { "message": "زود PDF", "description": "Short name" },
+  "appDescription": {
+    "message": "افتح ملفات PDF واملأها ووقّعها واحمِها. بلا حسابات، والعربية أولًا، ولا يغادر شيء جهازك.",
+    "description": "Store description"
+  },
+  "actionTitle": { "message": "افتح زود PDF", "description": "Toolbar button tooltip" }
+}

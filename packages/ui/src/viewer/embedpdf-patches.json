@@ -1,0 +1,24 @@
+{
+  "$comment": "Hard-coded English strings in @embedpdf/snippet 2.15.1 that bypass its i18n. The zoodEmbedPdfPatches Vite plugin rewrites `context + \"en\"` into a runtime lookup (window.__zoodEP) in the snippet's dist chunk. Every entry MUST still match after an upgrade, or the build fails.",
+  "chunk": "@embedpdf/snippet/dist/embedpdf-",
+  "patches": [
+    { "context": "title:", "en": "Align left", "ar": "محاذاة إلى اليسار" },
+    { "context": "title:", "en": "Align center", "ar": "توسيط" },
+    { "context": "title:", "en": "Align right", "ar": "محاذاة إلى اليمين" },
+    { "context": "title:", "en": "Align top", "ar": "محاذاة إلى الأعلى" },
+    { "context": "title:", "en": "Align middle", "ar": "محاذاة إلى المنتصف" },
+    { "context": "title:", "en": "Align bottom", "ar": "محاذاة إلى الأسفل" },
+    { "context": "title:", "en": "Bold", "ar": "غامق" },
+    { "context": "title:", "en": "Italic", "ar": "مائل" },
+    { "context": "?", "en": "Text Redaction", "ar": "تنقيح نص" },
+    { "context": ":", "en": "Area Redaction", "ar": "تنقيح منطقة" },
+    { "context": "alt:", "en": "Captured PDF area", "ar": "المنطقة الملتقطة من المستند" },
+    { "context": "text:", "en": "Initializing PDF engine...", "ar": "جارٍ تشغيل محرك PDF…" },
+    { "context": "text:", "en": "Initializing plugins...", "ar": "جارٍ تجهيز العارض…" },
+    { "context": "\"aria-label\":", "en": "Set zoom", "ar": "ضبط التكبير" },
+    { "context": "\"aria-label\":", "en": "Open File", "ar": "فتح ملف" },
+    { "context": "title:", "en": "Open File", "ar": "فتح ملف" },
+    { "context": "title:", "en": "Print Document", "ar": "طباعة المستند" },
+    { "context": "||", "en": "Insert Link or Page", "ar": "إدراج رابط أو صفحة" }
+  ]
+}

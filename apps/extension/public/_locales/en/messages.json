@@ -1,0 +1,9 @@
+{
+  "appName": { "message": "ZOOD PDF", "description": "Extension name" },
+  "appShortName": { "message": "ZOOD PDF", "description": "Short name" },
+  "appDescription": {
+    "message": "Open, fill, sign and protect PDFs. Account-free and Arabic-first; nothing leaves your device.",
+    "description": "Store description"
+  },
+  "actionTitle": { "message": "Open ZOOD PDF", "description": "Toolbar button tooltip" }
+}
