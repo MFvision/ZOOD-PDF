@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi, type Mock } from 'vitest';
 import {
   acceptToFilters,
   baseName,
@@ -18,8 +18,8 @@ function fakeApis(info: HostInfo, files: Record<string, Uint8Array> = {}, opts: 
   const written = new Map<string, Uint8Array>();
   const calls: { cmd: string; args?: unknown }[] = [];
   const apis: TauriApis & {
-    openDialog: ReturnType<typeof vi.fn>;
-    saveDialog: ReturnType<typeof vi.fn>;
+    openDialog: Mock<TauriApis['openDialog']>;
+    saveDialog: Mock<TauriApis['saveDialog']>;
   } = {
     invoke: vi.fn(async (cmd: string, args?: unknown) => {
       calls.push({ cmd, args });
@@ -38,8 +38,8 @@ function fakeApis(info: HostInfo, files: Record<string, Uint8Array> = {}, opts: 
       listeners.set(event, handler);
       return () => listeners.delete(event);
     }) as TauriApis['listen'],
-    openDialog: vi.fn(),
-    saveDialog: vi.fn(),
+    openDialog: vi.fn<TauriApis['openDialog']>(),
+    saveDialog: vi.fn<TauriApis['saveDialog']>(),
     readFile: vi.fn(async (p: string) => {
       const f = files[p];
       if (!f) throw new Error(`forbidden path: ${p}`);
@@ -65,8 +65,8 @@ describe('accept → dialog filters', () => {
   it('maps extensions and MIME types', () => {
     expect(acceptToFilters(['.pdf', 'application/pdf'])).toEqual([{ name: 'PDF', extensions: ['pdf'] }]);
     const img = acceptToFilters(['image/*']);
-    expect(img[0].extensions).toContain('jpeg');
-    expect(img[0].extensions).toContain('tiff');
+    expect(img[0]?.extensions).toContain('jpeg');
+    expect(img[0]?.extensions).toContain('tiff');
   });
   it('drops junk and wildcards mean no filter', () => {
     expect(acceptToFilters(['.p df', '.../x'])).toEqual([]);
@@ -93,8 +93,8 @@ describe('Tauri host bridge', () => {
       filters: [{ name: 'PDF', extensions: ['pdf'] }],
     });
     expect(files.map((f) => f.name)).toEqual(['تقرير.pdf', 'b.pdf']);
-    expect(files[0].handle).toBe('/docs/تقرير.pdf');
-    expect(files[0].bytes).toBe(bytes);
+    expect(files[0]?.handle).toBe('/docs/تقرير.pdf');
+    expect(files[0]?.bytes).toBe(bytes);
     host.dispose();
   });
 

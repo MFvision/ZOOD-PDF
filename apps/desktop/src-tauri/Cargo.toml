@@ -57,6 +57,12 @@ unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"
 
+# Debug builds (tests, smoke) without debug info or incremental caches: the Tauri/WebKitGTK
+# dependency tree otherwise takes >10 GB of disk per tree on a machine shared by several agents.
+[profile.dev]
+debug = false
+incremental = false
+
 [profile.release]
 opt-level = "s"
 lto = "thin"
