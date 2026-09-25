@@ -44,6 +44,10 @@ struct EnhancePanel: View {
                         Toggle("Flatten the page's curve", isOn: $enhancement.flattenCurvature)
                             .accessibilityIdentifier("enhance.curvature")
                     }
+                    if session.mode == .whiteboard {
+                        Toggle("Whiteboard: board to white, marker colours kept", isOn: $enhancement.whiteboard)
+                            .accessibilityIdentifier("enhance.whiteboard")
+                    }
                 } header: {
                     Text("Steps")
                 } footer: {

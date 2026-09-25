@@ -261,6 +261,8 @@ targets:
         buildPhase: resources
       - path: ../../tests/fixtures/scan/page-crooked.jpg
         buildPhase: resources
+      - path: ../../tests/fixtures/scan/whiteboard.jpg
+        buildPhase: resources
     dependencies:
       - target: PDFEditor
       # The wrapper's code is already inside the host app; the tests need only
@@ -289,6 +291,8 @@ targets:
       - path: ../../tests/fixtures/scan/book-spread.jpg
         buildPhase: resources
       - path: ../../tests/fixtures/scan/page-crooked.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/whiteboard.jpg
         buildPhase: resources
     dependencies:
       - target: PDFEditor

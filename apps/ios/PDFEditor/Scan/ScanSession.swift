@@ -5,12 +5,12 @@ import Observation
 import SwiftUI
 import WarraqCore
 
-/// What is being scanned: loose pages, the two sides of a card, a
-/// passport's page, or an open book.
+/// What is being scanned: loose pages, a whiteboard, the two sides of a
+/// card (or a passport's page), or an open book.
 enum ScanMode: String, CaseIterable, Identifiable, Codable {
     case document
+    case whiteboard
     case idCard
-    case passport
     case book
 
     var id: String { rawValue }
@@ -18,8 +18,8 @@ enum ScanMode: String, CaseIterable, Identifiable, Codable {
     var title: LocalizedStringKey {
         switch self {
         case .document: "Document"
-        case .idCard: "ID card"
-        case .passport: "Passport"
+        case .whiteboard: "Whiteboard"
+        case .idCard: "ID Card"
         case .book: "Book"
         }
     }
@@ -27,22 +27,14 @@ enum ScanMode: String, CaseIterable, Identifiable, Codable {
     var symbol: String {
         switch self {
         case .document: "doc.viewfinder"
+        case .whiteboard: "rectangle.inset.filled.and.person.filled"
         case .idCard: "person.text.rectangle"
-        case .passport: "book.closed"
         case .book: "book"
         }
     }
 
-    /// ID and passport modes compose their sides onto one page.
-    var composesOnePage: Bool { self == .idCard || self == .passport }
-
-    var idKind: IDPageComposer.Kind? {
-        switch self {
-        case .idCard: .card
-        case .passport: .passport
-        default: nil
-        }
-    }
+    /// ID mode composes the sides onto one page.
+    var composesOnePage: Bool { self == .idCard }
 }
 
 /// Which side or half a page is, where the mode cares.
@@ -108,6 +100,7 @@ final class ScanSession {
             storedMode = newValue
             for index in pages.indices {
                 pages[index].enhancement.flattenCurvature = newValue == .book
+                pages[index].enhancement.whiteboard = newValue == .whiteboard
                 pages[index].side = nil
             }
             assignSides()
@@ -116,6 +109,14 @@ final class ScanSession {
         }
     }
     private(set) var pages: [ScanPage] = []
+    /// ID mode: a passport's page (ID-3) instead of a card (ID-1).
+    var passport = false {
+        didSet {
+            guard passport != oldValue else { return }
+            assignSides()
+            refreshComposedPage()
+        }
+    }
     var selectedID: UUID?
     /// While the compare button is held: the stage shows the page cut out
     /// but not enhanced.
@@ -184,12 +185,12 @@ final class ScanSession {
 
     /// Takes photos into the session: the page found in each (Vision), or
     /// in book mode the spread cut at its gutter into two pages.
-    func add(images: [CGImage]) async {
+    func add(images: [CGImage], detect: Bool = true) async {
         for image in images.prefix(Self.maxPages - pages.count) {
             let placeholder = UUID()
             let mode = mode
             let detected = await Task.detached(priority: .userInitiated) { () -> (quad: Quad?, halves: (CGImage, CGImage)?) in
-                let quad = mode == .book ? ScanPipeline.detectSpread(in: image) : ScanPipeline.detectPage(in: image)
+                let quad = !detect ? nil : mode == .book ? ScanPipeline.detectSpread(in: image) : ScanPipeline.detectPage(in: image)
                 guard mode == .book else { return (quad, nil) }
                 let spread = ScanPipeline.corrected(image, quad: quad ?? .whole(CGSize(width: image.width, height: image.height)))
                 let split = BookSplitter.split(spread)
@@ -207,9 +208,15 @@ final class ScanSession {
         }
     }
 
+    /// The kind of ID page the mode composes, if any.
+    var idKind: IDPageComposer.Kind? {
+        mode == .idCard ? (passport ? .passport : .card) : nil
+    }
+
     private func pageEnhancement() -> Enhancement {
         var enhancement = defaultEnhancement
         enhancement.flattenCurvature = mode == .book
+        enhancement.whiteboard = mode == .whiteboard
         return enhancement
     }
 
@@ -225,15 +232,15 @@ final class ScanSession {
     /// Front and back in ID mode; the passport's page; left and right in a book.
     private func assignSides() {
         switch mode {
-        case .idCard:
+        case .idCard where !passport:
             for index in pages.indices { pages[index].side = index == 0 ? .front : (index == 1 ? .back : nil) }
-        case .passport:
+        case .idCard:
             for index in pages.indices { pages[index].side = index == 0 ? .front : nil }
         case .book:
             for index in pages.indices where pages[index].side == nil {
                 pages[index].side = index.isMultiple(of: 2) ? .left : .right
             }
-        case .document:
+        case .document, .whiteboard:
             for index in pages.indices { pages[index].side = nil }
         }
     }
@@ -344,7 +351,7 @@ final class ScanSession {
 
     /// ID and passport modes: the composed page follows the sides.
     private func refreshComposedPage() {
-        guard let kind = mode.idKind else {
+        guard let kind = idKind else {
             composedPage = nil
             return
         }

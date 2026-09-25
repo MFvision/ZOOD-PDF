@@ -9,6 +9,9 @@ is known exactly.
                               a curved page's are, for book mode
   page-crooked.jpg            a page on a dark desk, turned 6 degrees, for
                               edge detection and deskew
+  whiteboard.jpg              a whiteboard with blue, red and green marker
+                              writing, a window's glare and a shadow, for
+                              whiteboard mode
 
 Run from the repository root: python3 tests/fixtures/scan/make_fixtures.py
 """
@@ -133,10 +136,33 @@ def crooked_page():
     return desk.resize((desk.width // 2, desk.height // 2), Image.LANCZOS)
 
 
+def whiteboard():
+    w, h = 1600, 1000
+    board = Image.new("RGB", (w, h), (232, 234, 230))
+    px = board.load()
+    # Glare from a window on the left, a shadow across the right.
+    for x in range(w):
+        for y in range(h):
+            g = max(0.0, 1 - ((x - 300) ** 2 + (y - 250) ** 2) / 240000.0)
+            shade = 1 - 0.32 * max(0.0, (x - 900) / 700.0)
+            r, gg, b = px[x, y]
+            px[x, y] = (min(255, int((r + 40 * g) * shade)), min(255, int((gg + 40 * g) * shade)), min(255, int((b + 30 * g) * shade)))
+    d = ImageDraw.Draw(board)
+    d.text((120, 120), "Sprint plan", font=font(90), fill=(40, 60, 170))
+    d.text((120, 300), "1. Scanner: edges + OCR", font=font(60), fill=(40, 60, 170))
+    d.text((120, 420), "2. Whiteboard mode: keep colours", font=font(60), fill=(180, 40, 40))
+    d.text((120, 540), "3. Ship Friday", font=font(60), fill=(30, 130, 60))
+    d.ellipse([1050, 300, 1450, 700], outline=(180, 40, 40), width=8)
+    frame = Image.new("RGB", (w + 200, h + 200), (70, 68, 66))
+    frame.paste(board, (100, 100))
+    return frame.resize((frame.width * 2 // 3, frame.height * 2 // 3), Image.LANCZOS)
+
+
 if __name__ == "__main__":
     card(True).save(HERE / "id-front.jpg", "JPEG", quality=82)
     card(False).save(HERE / "id-back.jpg", "JPEG", quality=82)
     book_spread().save(HERE / "book-spread.jpg", "JPEG", quality=82)
     crooked_page().save(HERE / "page-crooked.jpg", "JPEG", quality=82)
-    for name in ("id-front", "id-back", "book-spread", "page-crooked"):
+    whiteboard().save(HERE / "whiteboard.jpg", "JPEG", quality=82)
+    for name in ("id-front", "id-back", "book-spread", "page-crooked", "whiteboard"):
         print(name, Image.open(HERE / f"{name}.jpg").size)

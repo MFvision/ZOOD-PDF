@@ -85,17 +85,20 @@ final class ScanTests: XCTestCase {
         waitForPage(0, in: app)
         XCTAssertTrue(app.descendants(matching: .any)["scan.stage"].exists)
 
-        // The corners: drag the top-left handle inwards and see it move.
-        app.buttons["scan.crop"].tap()
+        // The corners: Auto off puts the handles on the whole photo; the
+        // top-left one dragged inwards moves.
+        app.buttons["scan.auto"].tap()
         let handle = app.descendants(matching: .any)["crop.handle.0"]
         XCTAssertTrue(handle.waitForExistence(timeout: 10))
         let before = try XCTUnwrap(handle.value as? String)
         let grab = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         grab.press(forDuration: 0.3, thenDragTo: grab.withOffset(CGVector(dx: 40, dy: 40)))
+        waitForPage(0, in: app)
+        app.buttons["scan.auto"].tap()
+        XCTAssertTrue(handle.waitForExistence(timeout: 10))
         let after = try XCTUnwrap(handle.value as? String)
-        XCTAssertNotEqual(before, after, "the handle followed the finger")
-        XCTAssertTrue(app.buttons["crop.auto"].exists)
-        app.buttons["crop.done"].tap()
+        XCTAssertNotEqual(before, after, "the handle moved with the finger, then Auto found the page again")
+        app.buttons["scan.auto"].tap()
         waitForPage(0, in: app)
 
         // Enhance: black and white, creases off, hold to compare.
@@ -213,14 +216,16 @@ final class ScanTests: XCTestCase {
             waitForPage(0, in: app)
             try save(app, as: "scan-\(suffix)", in: directory)
 
-            app.buttons["scan.crop"].tap()
+            // Auto off: the corners on the whole photo; mid-drag, so the
+            // magnifier is in the picture.
+            app.buttons["scan.auto"].tap()
             let handle = app.descendants(matching: .any)["crop.handle.0"]
             XCTAssertTrue(handle.waitForExistence(timeout: 10))
-            // Mid-drag, so the magnifier is in the picture.
             let target = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 30, dy: 30))
             handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(forDuration: 0.3, thenDragTo: target, withVelocity: .slow, thenHoldForDuration: 0.1)
             try save(app, as: "scan-corners-\(suffix)", in: directory)
-            app.buttons["crop.cancel"].tap()
+            app.buttons["scan.auto"].tap()
+            waitForPage(0, in: app)
 
             app.buttons["scan.enhance"].tap()
             XCTAssertTrue(app.segmentedControls["enhance.mode"].waitForExistence(timeout: 10))
@@ -249,6 +254,10 @@ final class ScanTests: XCTestCase {
             app = launch(language: combo.language, appearance: combo.appearance, scan: [try fixture("book-spread")], mode: "book")
             waitForPage(1, in: app)
             try save(app, as: "scan-book-\(suffix)", in: directory)
+
+            app = launch(language: combo.language, appearance: combo.appearance, scan: [try fixture("whiteboard")], mode: "whiteboard")
+            waitForPage(0, in: app)
+            try save(app, as: "scan-whiteboard-\(suffix)", in: directory)
 
             app = launch(language: combo.language, appearance: combo.appearance)
             XCTAssertTrue(app.buttons["library.settings"].waitForExistence(timeout: 30))

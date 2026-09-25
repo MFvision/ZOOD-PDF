@@ -184,6 +184,9 @@
     "ID card" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "بطاقة هوية" } } }
     },
+    "ID Card" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "بطاقة هوية" } } }
+    },
     "Info" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "معلومات" } } }
     },
@@ -313,6 +316,9 @@
     "Passport page at real size" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "صفحة جواز السفر بحجمها الحقيقي" } } }
     },
+    "Passport size" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "بحجم جواز السفر" } } }
+    },
     "Password" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "كلمة المرور" } } }
     },
@@ -388,6 +394,9 @@
     "Scan" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مسح ضوئي" } } }
     },
+    "Scan a whiteboard" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "امسح سبورة" } } }
+    },
     "Scan an open book" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "امسح كتابًا مفتوحًا" } } }
     },
@@ -396,6 +405,9 @@
     },
     "Scan the passport's page" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "امسح صفحة جواز السفر" } } }
+    },
+    "Scan to PDF" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مسح إلى PDF" } } }
     },
     "Search by name" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "بحث بالاسم" } } }
@@ -448,6 +460,9 @@
     "The lines were bowed by %lld pixels; they are straightened column by column. The letters' squeeze near the gutter stays." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "كانت السطور منحنية بمقدار %lld بكسل؛ تُسوّى عمودًا عمودًا. أما انضغاط الحروف قرب طيّة الكتاب فيبقى كما هو." } } }
     },
+    "The page's corners found by Vision; off, the whole photo" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "زوايا الصفحة كما يجدها Vision؛ وعند الإيقاف، الصورة كاملة" } } }
+    },
     "The pages could not be drawn on this device." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "تعذّر رسم الصفحات على هذا الجهاز." } } }
     },
@@ -492,6 +507,12 @@
     },
     "Vision reads the words on every page. The PDF gets them as a searchable layer when it is saved." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "يقرأ Vision الكلمات في كل صفحة، وتُضاف إلى ملف PDF طبقةً قابلة للبحث عند الحفظ." } } }
+    },
+    "Whiteboard" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "سبورة" } } }
+    },
+    "Whiteboard: board to white, marker colours kept" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "سبورة: اللوح أبيض مع الحفاظ على ألوان الأقلام" } } }
     },
     "Whole" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الصورة كاملة" } } }

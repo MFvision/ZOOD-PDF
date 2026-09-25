@@ -123,12 +123,15 @@ struct Enhancement: Equatable, Codable, Sendable {
     var autoContrast = true
     /// Book mode only: straighten lines bowed by the page's curve.
     var flattenCurvature = false
+    /// Whiteboard mode: glare and shadow evened out, the board pushed to
+    /// white, the markers' colours kept and deepened.
+    var whiteboard = false
 
     /// The photo exactly as it is.
     static let none = Enhancement(mode: .color, deskew: false, flattenLighting: false, smoothCreases: false,
-                                  sharpen: false, autoContrast: false, flattenCurvature: false)
+                                  sharpen: false, autoContrast: false, flattenCurvature: false, whiteboard: false)
 
-    var isNone: Bool { self == .none || (mode == .color && !deskew && !flattenLighting && !smoothCreases && !sharpen && !autoContrast && !flattenCurvature) }
+    var isNone: Bool { self == .none }
 }
 
 /// A page after the pipeline, and what the pipeline measured on the way.
@@ -321,8 +324,11 @@ enum ScanPipeline {
                 working = rotated(working, counterClockwiseDegrees: -skew)
             }
         }
-        if enhancement.flattenLighting {
+        if enhancement.flattenLighting || enhancement.whiteboard {
             working = flattenedLighting(working)
+        }
+        if enhancement.whiteboard {
+            working = whiteboard(working)
         }
         if enhancement.smoothCreases {
             working = smoothedCreases(working)
@@ -452,6 +458,25 @@ enum ScanPipeline {
     }
 
     // MARK: - Creases, contrast, sharpening, colour
+
+    /// A whiteboard once its glare and shadow are divided away: the board
+    /// (anything lighter than 78 % grey) pushed to white, the markers'
+    /// strokes kept — their colours deepened by half again so a faint blue
+    /// or red marker stays blue or red rather than going grey.
+    static func whiteboard(_ image: CIImage) -> CIImage {
+        let colour = CIFilter.colorControls()
+        colour.inputImage = image
+        colour.saturation = 1.6
+        colour.contrast = 1.15
+        let curve = CIFilter.toneCurve()
+        curve.inputImage = colour.outputImage
+        curve.point0 = CGPoint(x: 0, y: 0)
+        curve.point1 = CGPoint(x: 0.25, y: 0.2)
+        curve.point2 = CGPoint(x: 0.5, y: 0.5)
+        curve.point3 = CGPoint(x: 0.78, y: 1)
+        curve.point4 = CGPoint(x: 1, y: 1)
+        return clamped(curve.outputImage ?? image).cropped(to: image.extent)
+    }
 
     /// Dust and noise taken out by the median of each pixel's neighbours,
     /// then paper lighter than 82 % grey — the faint band a fold leaves once
