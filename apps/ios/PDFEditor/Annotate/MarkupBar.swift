@@ -38,11 +38,16 @@ struct MarkupBar: View {
                 }
                 .padding(.horizontal, Space.x3)
             }
+            .frame(maxWidth: .infinity)
+            .layoutPriority(-1)
             .accessibilityIdentifier("markup.bar")
+            // Done keeps its place at the end whatever the tools need.
             Button("Done", action: done)
                 .font(TextStyle.headline)
                 .foregroundStyle(.white)
                 .padding(.horizontal, Space.x4)
+                .fixedSize()
+                .layoutPriority(1)
                 .accessibilityIdentifier("markup.done")
         }
         .frame(height: 44)
