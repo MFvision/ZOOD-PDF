@@ -11,6 +11,7 @@ mod pdf;
 mod protect;
 #[cfg(feature = "render")]
 mod render;
+mod sign;
 mod text;
 // Export and Compare (warraq-office).
 mod compare;
@@ -22,6 +23,7 @@ pub const NAMESPACES: &[fn(&mut Registry)] = &[
     pages::register,
     protect::register,
     pdf::register,
+    sign::register,
     text::register,
     // Export and Compare (warraq-office).
     export::register,

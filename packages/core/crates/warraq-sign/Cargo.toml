@@ -1,5 +1,6 @@
 [package]
 name = "warraq-sign"
+description = "Digital signatures of the ZOOD PDF engine: PAdES B-B/B-T/B-LT/B-LTA signing, PKCS#12, verification with attack detection."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,6 +9,49 @@ rust-version.workspace = true
 
 [dependencies]
 thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+lopdf.workspace = true
+warraq-pdf = { path = "../warraq-pdf" }
+# Arabic shaping (HarfRust + bidi) and ActualText grouping for visible appearances.
+warraq-text = { path = "../warraq-text" }
+# RustCrypto "formats" generation of der 0.7 / x509-cert 0.2 / cms 0.2: the newest set in which
+# cms, x509-tsp and x509-ocsp agree on one der/x509-cert version (see ADR 0008).
+der = { version = "0.7", features = ["alloc", "oid", "derive", "std"] }
+spki = { version = "0.7", features = ["alloc"] }
+x509-cert = { version = "0.2", default-features = false, features = ["std"] }
+cms = { version = "0.2", default-features = false, features = ["std"] }
+x509-tsp = "0.1"
+x509-ocsp = "0.2"
+const-oid = { version = "0.9", features = ["db"] }
+pkcs8 = { version = "0.10", features = ["alloc", "encryption"] }
+pkcs5 = { version = "0.7", features = ["alloc", "pbes2", "sha1-insecure", "3des", "des-insecure"] }
+pkcs12 = { version = "0.1", features = ["kdf"] }
+rsa = { version = "0.9", default-features = false, features = ["sha2", "u64_digit"] }
+p256 = { version = "0.13", default-features = false, features = ["ecdsa", "pkcs8", "alloc"] }
+p384 = { version = "0.13", default-features = false, features = ["ecdsa", "pkcs8", "alloc"] }
+ecdsa = { version = "0.16", default-features = false, features = ["der", "verifying", "signing", "alloc", "pkcs8"] }
+signature = { version = "2", default-features = false, features = ["alloc"] }
+rand_core = { version = "0.6", default-features = false }
+unicode-bidi = "0.3.18"
+sha2 = { version = "0.10", features = ["oid"] }
+sha1 = { version = "0.10", features = ["oid"] }
+digest = "0.10"
+hmac = "0.12"
+des = "0.8"
+rc2 = "0.8"
+cbc = { version = "0.1", features = ["alloc"] }
+aes = "0.8"
+zeroize = { version = "1", features = ["alloc"] }
+webpki-roots = "1"
+read-fonts = "0.43"
+subsetter = { version = "0.2", default-features = false }
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
+
+[features]
+default = ["builtin-font"]
+# Ships a subset of Amiri (OFL) for visible Arabic appearances when the caller passes no font.
+builtin-font = []
 
 [lints]
 workspace = true

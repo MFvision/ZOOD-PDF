@@ -185,6 +185,60 @@ cannot describe them): the generator now wraps such words in `/ActualText` (as r
   error mapping via `TextError::code()`.
 
 
+## Digital signatures (`warraq-sign`, `sign.*` RPC)
+
+`cargo test -p warraq-sign -p warraq-core`. Design: ADR 0008. External checkers are optional at
+test time and skip when absent: the OpenSSL 3 CLI (test PKI, TSA, OCSP responder, `cms -verify`,
+`ts -verify`) and pyHanko (`WARRAQ_PYTHON=/path/to/python` with `pip install pyhanko
+pyhanko-certvalidator`). Test PKI: `tests/fixtures/sign/make_pki.sh` (committed output under
+`tests/fixtures/sign/pki/`, test-only keys).
+
+### Proven by tests
+| What | Test |
+| --- | --- |
+| PKCS#12: modern PBES2/AES-256 + SHA-256 MAC; legacy `-legacy` (RC2-40 certs + 3DES key, SHA-1 MAC), 3DES-only, RC2-40-only; RSA-2048, P-256, P-384; Arabic password; wrong password → `wrong_certificate_password`; 300 mutated/truncated files never panic | `warraq-sign/tests/pkcs12.rs` |
+| PAdES B-B as an incremental update (original bytes are a prefix), `/ByteRange` covers the whole file except `/Contents`, `ETSI.CAdES.detached`, second signature appends another revision; **`openssl cms -verify` accepts every produced CMS** (RSA, P-256, P-384, xref-stream file, AES-256 encrypted file, existing empty field) | `tests/sign.rs` |
+| Encrypted documents: `/Reason` is ciphertext on disk, `/Contents` is the raw CMS, reopening decrypts the reason | `tests/sign.rs::encrypted_document_…` |
+| Visible Arabic appearance: shaped by warraq-text/HarfRust (contextual forms differ from nominal glyphs; lam-alef), subsetted Type0 Identity-H Amiri with ToUnicode, per-word `/ActualText`; **warraq-text's extractor reads "أحمد بن سعيد" and "الرياض" back in logical order** | `tests/sign.rs::arabic_is_shaped_not_nominal`, `appearance_text_reads_back_in_logical_order` |
+| Certification DocMDP P=1/2/3 (+ `/Perms`), FieldMDP All/Include/Exclude, field `/Lock` → FieldMDP; second certification and signing after P=1 refused; serverAuth-only and expired certificates cannot sign | `tests/sign.rs`, `tests/verify.rs` |
+| B-T: TSA request → `openssl ts -reply` → `finish` embeds the token in place (file length unchanged); responses for other data and garbage are rejected | `tests/ltv.rs` |
+| B-LT: OCSP request built by us answered by `openssl ocsp` (delegated responder), DSS with Certs/OCSPs/CRLs/VRI; verification reports `good (OCSP)`, level B-LT | `tests/ltv.rs` |
+| B-LTA: `/DocTimeStamp` (`ETSI.RFC3161`) prepared + finished; verified by us and by **`openssl ts -verify`** | `tests/ltv.rs` |
+| **pyHanko validates our signatures as intact/valid/trusted**: RSA, P-256 visible Arabic, P-384 certified P=2, two signatures (coverage, DocMDP ok), AES-256 encrypted, B-LTA (signature timestamp recognised) — and flags our three attack fixtures | `tests/pyhanko.rs` (ran here with pyHanko installed in a venv) |
+| Verification: untrusted by default (`valid_identity_unknown`), `valid` with the test root, chain of 3, JSON shape; tampered byte → `digest_mismatch`; EKU policy (serverAuth-only → invalid, Adobe authentic documents + emailProtection accepted); expired signer → invalid | `tests/verify.rs` |
+| Modification listing: annotations allowed for approval/P=3 (overlay reported), refused for P=1/2; form fill allowed for P=2, refused when the field is FieldMDP-locked; later signatures/DSS/doc timestamps allowed | `tests/verify.rs`, `tests/ltv.rs` |
+| Attacks (each fixture passes a naive digest check): shadow **replace** (content stream redefined), shadow **hide via xref** (later xref re-points the page content at hidden signed bytes), **hide-and-replace** (page switched to hidden content), **borrowed signature** (other document embeds the signed file; byte range points into it), **signature wrapping** (SWA: second part moved, new xref/sig dict inside the gap) — all rejected with the right reason; committed fixtures in `tests/fixtures/sign/attacks/` | `tests/attacks.rs`, `tests/verify.rs` |
+| RPC: `sign.list`, `sign.prepare` (B-B … B-LTA, certification, field lock, Arabic appearance), `sign.finish`, `sign.revocationRequests`, `sign.addDss`, `sign.verify` (trusted roots as blobs); error codes; full B-LTA flow through the RPC | `warraq-core/tests/sign_rpc.rs` |
+| No panic / bounded time: 4 000+ mutated signed PDFs (ByteRange/Contents/startxref hot spots, attack fixtures as seeds) and 7 000 mutated CMS/CRL/cert/PKCS#12 blobs (run here with `WARRAQ_SMOKE_CASES=700`; default 150 in `verify.sh`) | `tests/smoke_fuzz.rs` |
+| wasm32 build of warraq-core with `sign.*` compiles (`cargo check --target wasm32-unknown-unknown --features wasm`; no getrandom 0.2) | manual check |
+
+### Not done / not proven (honest)
+* **PKCS#11 untested**: only the `Signer` trait exists (digest-level signing maps to `CKM_RSA_PKCS`
+  / `CKM_ECDSA`); no token implementation and no smart-card hardware here.
+* **Real TSA / OCSP / CRL over the network untested**: the engine never does network I/O; all
+  timestamp and revocation tests use a local OpenSSL TSA and responder. The desktop host still has
+  to POST `application/timestamp-query` / `application/ocsp-request` and fetch CRLs; no UI is wired
+  (`packages/ui`, `apps/desktop` are other agents' work). Real TSAs whose tokens exceed the 12 KiB
+  reserve would need a bigger `placeholderSize`.
+* **Adobe Acrobat is not available** to cross-check; independent checks are OpenSSL and pyHanko only.
+* cargo-fuzz targets `cms` and `sig_dict` (`packages/core/fuzz`) compile (`cargo check`); they were
+  **not run under libFuzzer** here (no nightly/cargo-fuzz; the stable SanitizerCoverage release build
+  was abandoned to stay within the shared machine's disk budget). The stable smoke fuzz above runs
+  instead, in every `cargo test`.
+* Verification: RSA keys > 4096 bits, curves other than P-256/P-384, Ed25519 and `adbe.x509.rsa_sha1`
+  are reported `unsupported`; signed attributes and TBS certificates are verified over their
+  received bytes, but OCSP responses are verified over a DER re-encoding (fine for DER responders).
+  Chain building does not process name constraints, policies or path-length limits; revocation of
+  intermediates is reported only through warnings; no AIA fetching.
+* Modification classification is object-level: a later update that re-writes an object with
+  semantically equal content is invisible (correct), and "unused object" additions are reported as
+  allowed. Changes to `/Outlines`, `/PageLabels` and similar catalog entries count as allowed for
+  approval-only documents and disallowed under certification.
+* Page rotation of visible signatures is compensated with the form `/Matrix` (tested for 90°).
+* `rsa 0.9` has RUSTSEC-2023-0071 (Marvin); signing uses blinding, nothing is decrypted.
+* The JSON password parameter is wiped only in our copy (the JS/serde strings are outside Rust's
+  control); the key and decrypted PKCS#12 buffers are zeroized.
+
 ## Desktop host (Tauri 2), CI and packaging
 
 **Built and tested on Linux (this machine):**

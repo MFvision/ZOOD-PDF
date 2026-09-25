@@ -15,6 +15,9 @@ thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 warraq-pdf = { path = "../warraq-pdf" }
+warraq-sign = { path = "../warraq-sign" }
+der = { version = "0.7", default-features = false }
+zeroize = "1"
 warraq-text = { path = "../warraq-text" }
 # Export (DOCX/XLSX/PPTX/HTML/Markdown/text) and Compare.
 warraq-office = { path = "../warraq-office" }
