@@ -1,0 +1,178 @@
+# XcodeGen spec for the native iPhone/iPad app. Generate with:
+#   cd apps/ios && xcodegen generate        (or: bash scripts/ios/build.sh)
+# The engine XCFramework comes from scripts/ios/build-core.sh.
+#
+# Signing: no Apple team is configured (simulator only; simulator builds are signed
+# "to run locally"). For a device build set DEVELOPMENT_TEAM (the owner's team), switch
+# CODE_SIGN_STYLE to Automatic, and register the App Group group.sa.zood.pdf.
+name: ZoodPDF
+options:
+  bundleIdPrefix: sa.zood.pdf
+  deploymentTarget:
+    iOS: "18.0"
+  developmentLanguage: en
+  xcodeVersion: "26.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY: YES
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Manual
+    "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEAD_CODE_STRIPPING: YES
+    ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+
+packages:
+  ZoodKit:
+    path: Packages/ZoodKit
+
+targets:
+  ZOOD PDF:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: Shared
+      - path: Intents
+    dependencies:
+      - package: ZoodKit
+        products: [ZoodCore, ZoodEngine]
+      - framework: Frameworks/WarraqCore.xcframework
+        embed: false
+      - target: ZoodWidgets
+        embed: true
+      - sdk: PDFKit.framework
+      - sdk: VisionKit.framework
+      - sdk: Vision.framework
+      - sdk: PencilKit.framework
+      - sdk: CoreSpotlight.framework
+      - sdk: AVFoundation.framework
+    entitlements:
+      path: App/ZoodPDF.entitlements
+      properties:
+        com.apple.security.application-groups: [group.sa.zood.pdf]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: sa.zood.pdf.ios
+        PRODUCT_NAME: ZOOD PDF
+        PRODUCT_MODULE_NAME: ZoodPDF
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SUPPORTS_MACCATALYST: NO
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: ZOOD PDF
+        CFBundleName: ZOOD PDF
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [ar, en]
+        CFBundleAllowMixedLocalizations: true
+        LSRequiresIPhoneOS: true
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+        UISupportedInterfaceOrientations:
+          [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad:
+          [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UIRequiresFullScreen: false
+        # Files app: open PDFs in place, and show the app's own Documents folder.
+        LSSupportsOpeningDocumentsInPlace: true
+        UIFileSharingEnabled: true
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: PDF
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [com.adobe.pdf]
+        CFBundleURLTypes:
+          - CFBundleURLName: sa.zood.pdf.links
+            CFBundleURLSchemes: [zoodpdf]
+        NSUserActivityTypes: [sa.zood.pdf.open]
+        NSCameraUsageDescription: ZOOD PDF uses the camera to scan documents into PDF files. Pictures stay on your device.
+        NSPhotoLibraryUsageDescription: ZOOD PDF imports photos you choose to turn them into PDF pages.
+        ITSAppUsesNonExemptEncryption: false
+
+  ZoodWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+      - path: Shared
+    dependencies:
+      - package: ZoodKit
+        products: [ZoodCore]
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    entitlements:
+      path: Widgets/ZoodWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.sa.zood.pdf]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: sa.zood.pdf.ios.widgets
+        PRODUCT_NAME: ZoodWidgets
+        SKIP_INSTALL: YES
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: ZOOD PDF
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [ar, en]
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+  ZoodPDFTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests/ZoodPDFTests]
+    dependencies:
+      - target: ZOOD PDF
+      - package: ZoodKit
+        products: [ZoodCore, ZoodEngine]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: sa.zood.pdf.ios.tests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/ZOOD PDF.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ZOOD PDF"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        GENERATE_INFOPLIST_FILE: YES
+
+  ZoodPDFUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [Tests/ZoodPDFUITests]
+    dependencies:
+      - target: ZOOD PDF
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: sa.zood.pdf.ios.uitests
+        TEST_TARGET_NAME: ZOOD PDF
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  ZOOD PDF:
+    build:
+      targets:
+        ZOOD PDF: all
+        ZoodWidgets: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: false
+      targets:
+        - name: ZoodPDFTests
+          parallelizable: false
+        - name: ZoodPDFUITests
+          parallelizable: false
