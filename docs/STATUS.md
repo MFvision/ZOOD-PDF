@@ -19,7 +19,9 @@ Scaffolding in progress.
   Probe run: a fixture page inside the real window proves the ACL and CSP — `fs` outside the dialog/drop scope,
   `read_dir`, `remove`, shell, window close, `eval`, `new Function` and remote `fetch` are denied; the app's own
   commands work. (Negative control: with the CSP removed the probe reports `PROBE_FAIL`.) UI run: the real shared
-  interface must start and call `app_ready`.
+  interface (built by `apps/desktop/vite.config.ts` from the web entry, no meta CSP) must render, and the WASM engine
+  must answer from its module worker under the Tauri CSP (`engine=ok`). Both runs passed here on WebKitGTK 2.52
+  under Xvfb (UI run against a local trial merge of the UI and engine branches).
 * `packages/ui/src/services/host-tauri.ts` + tests (vitest, jsdom): dialogs, read/write via plugin-fs, save
   fallback, drop re-emission, macOS PDFKit vs image printing, chrome CSS vars, menu routing.
 * `apps/desktop/vite-plugin-desktop.ts`: strips the `<meta>` CSP and fails the build if one survives (vitest).
