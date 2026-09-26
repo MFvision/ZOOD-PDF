@@ -26,6 +26,8 @@ import { ProtectPanel } from './ProtectPanel';
 // Edit tool.
 import { EditPanel } from './EditPanel';
 import { MarksPanel } from './MarksPanel';
+// Accessibility tool (warraq-a11y).
+import { AccessibilityPanel } from './AccessibilityPanel';
 import { LinkConfirmSheet } from './LinkSheets';
 // Read aloud.
 import { ReadAloudPlayer, useSpeech } from './ReadAloud';
@@ -101,11 +103,14 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
   const signOpen = mine && panel?.tool === 'digital-signature';
   // Page marks shares the side slot too.
   const marksOpen = mine && panel?.tool === 'page-marks';
+  // Accessibility: side panel plus the reading-order overlay drawn in the viewer area.
+  const a11yOpen = mine && panel?.tool === 'accessibility';
+  const [viewerArea, setViewerArea] = useState<HTMLDivElement | null>(null);
   // Signatures of the current bytes (banner + Signatures panel), verified by the engine.
   const signatures = useSignatures(doc);
   const [sigPanel, setSigPanel] = useState(false);
-  const signSide = signOpen || (sigPanel && !compareOpen && !standardsOpen && !redactOpen && !protectOpen && !marksOpen);
-  const sideOpen = compareOpen || standardsOpen || redactOpen || protectOpen || marksOpen || signSide;
+  const signSide = signOpen || (sigPanel && !compareOpen && !standardsOpen && !redactOpen && !protectOpen && !marksOpen && !a11yOpen);
+  const sideOpen = compareOpen || standardsOpen || redactOpen || protectOpen || marksOpen || signSide || a11yOpen;
   useLayoutEffect(() => {
     panelRef.current = redactOpen ? 'redact' : protectOpen ? 'protect' : null;
   });
@@ -147,6 +152,8 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
     // Leaving Redact / Protect for another tool closes their panel.
     if (redactOpen && def?.id !== 'redact') closePanel('redact');
     if (protectOpen && def?.id !== 'protect') closePanel('protect');
+    // The reading-order overlay covers the viewer: leave Accessibility for any other tool.
+    if (a11yOpen && def?.id !== 'accessibility') closePanel('accessibility');
     if (!def) {
       api.exec('mode:view');
       setTool(null);
@@ -244,7 +251,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
           onClick={() => setInspectorOpen((v) => !v)}
         />
       </header>
-      <div className={`doc-body${pagesOpen && !organizing ? ' pages-open' : ''}${inspectorOpen && !sideOpen ? ' inspector-open' : ''}${compareOpen || signSide ? ' compare-open' : ''}${standardsOpen || redactOpen || protectOpen || marksOpen ? ' tool-panel-open' : ''}`}>
+      <div className={`doc-body${pagesOpen && !organizing ? ' pages-open' : ''}${inspectorOpen && !sideOpen ? ' inspector-open' : ''}${compareOpen || signSide ? ' compare-open' : ''}${standardsOpen || redactOpen || protectOpen || marksOpen || a11yOpen ? ' tool-panel-open' : ''}`}>
         {pagesOpen && !organizing && (
           <PagesPanel
             api={api}
@@ -257,7 +264,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
             }}
           />
         )}
-        <div className="viewer-area">
+        <div className="viewer-area" ref={setViewerArea}>
           {!organizing && <SignatureBanner state={signatures} onOpen={() => setSigPanel(true)} />}
           <Viewer
             key={`${doc.id}:${doc.revision}`}
@@ -324,6 +331,8 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
           <StandardsPanel key={`${panel?.nonce}:${doc.revision}`} doc={doc} api={api} onClose={() => closePanel('standards')} />
         ) : marksOpen ? (
           <MarksPanel key={panel?.nonce} doc={doc} api={api} page={page} onClose={() => closePanel('page-marks')} />
+        ) : a11yOpen ? (
+          <AccessibilityPanel key={panel?.nonce} doc={doc} api={api} page={page} overlayHost={viewerArea} onClose={() => closePanel('accessibility')} />
         ) : signOpen ? (
           <SignPanel key={panel?.nonce} doc={doc} api={api} onClose={() => closePanel('digital-signature')} />
         ) : sigPanel ? (

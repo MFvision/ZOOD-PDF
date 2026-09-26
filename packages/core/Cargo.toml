@@ -17,6 +17,8 @@ members = [
   "crates/warraq-edit",
   # Page marks: watermarks, headers/footers, page numbers, Bates.
   "crates/warraq-marks",
+  # Accessibility tool: structure tree, auto-tagging, reading order, alt text, checker.
+  "crates/warraq-a11y",
 ]
 # cargo-fuzz crate: nightly-only, built separately (`cd fuzz && cargo fuzz run load`).
 exclude = ["fuzz"]

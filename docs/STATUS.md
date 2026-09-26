@@ -692,6 +692,13 @@ text is sent anywhere, no voice data is bundled.
 Architecture: ADR 0019. Engine methods: `marks.list`, `marks.add` (picture as `blobs[0]`; `only` for previews),
 `marks.update`, `marks.remove` (`foreign:<kind>` for other applications' marks). Mutating calls commit one
 incremental update; a failed call leaves the document as it was. UI: `app/MarksPanel.tsx`, `services/marks.ts`.
+## Accessibility (`warraq-a11y`, `a11y.*` RPC, Accessibility panel, ADR 0018)
+
+Auto-tagging with MCIDs (insertions only: nothing moves), `/Lang` per element and per span, reading-order
+panel, alt text, and a **PDF/UA-style checker with fixes**. The checker is a Matterhorn-inspired subset of
+22 machine-decidable ISO 14289-1 rules — **it is not a certified PDF/UA validator** (human checkpoints such as
+meaningful alt text, correct reading order, contrast, and many machine checkpoints are not covered). Acrobat and
+veraPDF (GPL) were not used to cross-check.
 
 ### Proven by tests
 | What | Test |
@@ -734,3 +741,38 @@ incremental update; a failed call leaves the document as it was. UI: `app/MarksP
   marks tool.
 * cargo-fuzz target `marks_scan` compiles on stable; not run under cargo-fuzz here (no nightly). The stable
   smoke fuzz above runs in `verify.sh`.
+| Untagged Chromium Arabic + English file (`tests/fixtures/a11y-ar.pdf`, made by `generate-a11y.mjs` with `tagged: false`) → Document > H1, H2 (relative size), P, L > LI > Lbl (`١.` `٢.` `٣.`, `•`) + LBody, Table > TR > TH (`/Scope /Column`) / TD in right-to-left logical order, Figure with `/BBox`, Link with its words + OBJR, `Span /Lang en` for «PDF» inside Arabic, English paragraph `/Lang en`, catalog `/Lang ar`, `/MarkInfo`, `/Tabs /S`, title + DisplayDocTitle; the running footer is `/Artifact /Pagination /Footer` | `warraq-a11y/tests/autotag.rs::untagged_chromium_arabic_file_is_tagged_in_logical_order` |
+| Every drawn glyph, picture and path is in an MCID sequence or an artifact; structure order text = warraq-text's logical-order text; **identical pixels** (hayro, every page); **every original content operator byte-identical** (only BDC/EMC added); original bytes a prefix | same test; also `untagged_corpus_files_keep_pixels_and_get_fully_tagged` (Word-, LibreOffice-style, Amiri-kerning, simple-font corpus files) |
+| "Retag all" on Chrome-tagged corpus files (table, mixed Arabic/English, lists): old MCIDs removed (ActualText kept), new tree, all content covered, identical pixels | `retag_keeps_pixels_on_chromium_tagged_corpus` |
+| Partially tagged documents: existing elements kept (same ids, same order), only new content tagged | `partially_tagged_documents_keep_their_tags` |
+| Reading-order move, type change, `/Lang` per element, Arabic alt text (UTF-16) with `/Lang ar`, decorative (content → `/Artifact BMC`, pixels identical; refused for elements holding annotations), merge with next / split back, title + document language, errors (`not_tagged`, `not_found`, bad type/language tag) | `warraq-a11y/tests/edit.rs` |
+| Checker before/after: the untagged file reports struct-tree, marked, untagged-content, title, display-doc-title, doc-lang, annot-tagged; `fix` (title given) leaves only figure-alt; alt text → passes. Heading skip, missing TH, language mismatch, `/Direction /R2L`, new untagged annotation, form field without `/TU` (name taken from the label on its line) found and fixed; every finding has a known rule, clause and key; all corpus files check without panicking | `warraq-a11y/tests/check.rs` |
+| Hostile structure trees: cycles and shared elements (read once), 5000-deep nesting (truncated, writes refused), 150 000-kid arrays, nonsense kids/MCIDs, RoleMap loops, parent-tree cycles, unbalanced marked content; 60 mutated tagged files through read/list/check/autotag/fix/edits — no panic, bounded time | `warraq-a11y/tests/hostile.rs` (`WARRAQ_A11Y_SMOKE_CASES`) |
+| Marked-content analysis, nesting-safe ranges, MCID strip / artifact rewrites, list labels (Arabic-Indic, Persian digits, abjad, roman), page-number patterns (`صفحة ١ من ٩`), language by script (digits neutral), XMP `dc:title` | unit tests in `warraq-a11y/src/*.rs` |
+| RPC: every `a11y.*` method registered; incremental updates; failed calls change nothing; AES-256 file tagged with its password stays encrypted; owner forbids changes → `permission_denied`, checking still works | `warraq-core/tests/a11y_rpc.rs` |
+| Panel helpers: siblings, Alt+↑/↓ targets, drop targets, overlay numbering, finding groups, every rule/finding/type string in en + ar | `packages/ui/src/services/a11y.test.ts` |
+| **UI, en + ar**: open the untagged Arabic file → Accessibility → auto-tag → list shows H1 (Arabic in logical order), table, figure, Span «PDF», list body; overlay numbers the page (Arabic digits in ar) → move the English paragraph above the Arabic one (Alt+↑ in en, drag and drop in ar) → Arabic alt text with `ar` → check (title + DisplayDocTitle findings, ISO clause shown, "not a certified validator" note) → give the title, fix automatically → no errors → save: original bytes a prefix; the engine (wasm in Node) reads tagged, `/Lang ar`, the title, the figure's `/Alt` = the Arabic text with `/Lang ar`, the reading order as set, checker passes → reopen in the app: tagged, same order; no network | `tests/e2e/accessibility.spec.ts` |
+
+### Not done / limits (honest)
+* **Not a PDF/UA validator.** 22 rules of the Matterhorn Protocol's machine checks are covered (listed in ADR
+  0018); a passing report means "no problem found by these rules", not PDF/UA conformance. No `pdfuaid` XMP
+  claim is written.
+* **Heuristics**: headings come from relative font size (bold-only headings at body size are P); list items
+  from their labels; tables from ruling lines or column alignment (first row assumed to be the header);
+  running headers/footers from repetition within the outer 15 % of pages. The panel exists to correct them.
+* **Content that cannot be wrapped safely** (unbalanced marked content, one text operator drawing two
+  paragraphs or a link inside a run that also draws other words) stays as it is: the link then holds only its
+  OBJR, the paragraph the text; the checker reports untagged content that remains.
+* **Form XObjects** are tagged whole (Figure when they show text, artifact when graphic-only, left alone when
+  they are page marks already marked as artifacts); MCIDs inside forms are read but not created; decorative is
+  refused for their content.
+* **Language** is detected by script: Arabic script → `ar` (or `fa`/`ur` when their letters appear), Latin →
+  `en`; other Latin-script languages must be set by hand.
+* **Split** cuts at the middle content boundary (MCID granularity), not at an arbitrary character.
+* **Pixel proof** runs in Rust tests with hayro (the default wasm has no rasteriser); PDFium/Acrobat and real
+  screen readers (NVDA, VoiceOver) were not run against the output.
+* The ligature rule only reports Arabic presentation-form glyphs without ActualText; it does not fix them.
+* The cargo-fuzz target `struct_tree` is written but not run here (no nightly); the stable smoke fuzz in
+  `hostile.rs` runs in `verify.sh`.
+* Desktop and extension use the same UI and engine but have no Accessibility spec of their own; iOS has no
+  Accessibility tool.

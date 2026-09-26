@@ -1,0 +1,27 @@
+[package]
+name = "warraq-a11y"
+description = "Accessibility tool of the ZOOD PDF engine: structure-tree reader, auto-tagging with MCIDs (pixels untouched), reading order, alt text, per-span language, a PDF/UA-style checker with fixes."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+lopdf.workspace = true
+warraq-pdf = { path = "../warraq-pdf" }
+warraq-text = { path = "../warraq-text" }
+# Byte-faithful content lexer/rewriter and the page scanner (text operators with glyph boxes, pictures).
+warraq-edit = { path = "../warraq-edit" }
+# Table detection (ruling lines + column alignment) and the language guess.
+warraq-office = { path = "../warraq-office" }
+
+[dev-dependencies]
+# Pixel proof: pages rendered before/after auto-tagging must be identical.
+warraq-render = { path = "../warraq-render", default-features = false, features = ["hayro"] }
+
+[lints]
+workspace = true

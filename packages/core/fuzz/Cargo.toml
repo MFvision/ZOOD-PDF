@@ -20,6 +20,7 @@ warraq-create = { path = "../crates/warraq-create" }
 warraq-office = { path = "../crates/warraq-office" }
 warraq-edit = { path = "../crates/warraq-edit" }
 warraq-marks = { path = "../crates/warraq-marks" }
+warraq-a11y = { path = "../crates/warraq-a11y" }
 serde_json = "1"
 
 # Standalone: not a member of the engine workspace (see ../Cargo.toml `exclude`).
@@ -196,6 +197,9 @@ bench = false
 [[bin]]
 name = "marks_scan"
 path = "fuzz_targets/marks_scan.rs"
+[[bin]]
+name = "struct_tree"
+path = "fuzz_targets/struct_tree.rs"
 test = false
 doc = false
 bench = false

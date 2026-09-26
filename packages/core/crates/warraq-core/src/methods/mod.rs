@@ -26,6 +26,8 @@ mod export;
 mod edit;
 // Page marks (warraq-marks).
 mod marks;
+// Accessibility tool (warraq-a11y).
+mod a11y;
 
 /// Every namespace's `register` function.
 pub const NAMESPACES: &[fn(&mut Registry)] = &[
@@ -49,6 +51,8 @@ pub const NAMESPACES: &[fn(&mut Registry)] = &[
     edit::register,
     // Page marks (warraq-marks).
     marks::register,
+    // Accessibility tool (warraq-a11y).
+    a11y::register,
     #[cfg(feature = "render")]
     render::register,
 ];
