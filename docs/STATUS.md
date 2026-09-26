@@ -675,8 +675,8 @@ incremental update; a failed call leaves the document as it was. UI: `app/MarksP
 * Header/footer text is not wrapped or shrunk: a very long slot can run off the page. One font and weight per
   mark (no bold/italic); Arabic text in "Inter" falls back to Cairo (Inter has no Arabic).
 * Behind-content marks are hidden by opaque page backgrounds (typical for scans) — by design.
-* Adding a mark to a **signed** document appends a page-content change; under certification the signature
-  panel reports it as not allowed (no special warning in the Page marks panel yet).
+* Adding a mark to a **signed** document is a page-content change in a later revision, which certification
+  signatures do not allow; this is not specifically tested with Page marks and the panel shows no warning yet.
 * Desktop and extension run the same UI and engine but have no Page marks spec of their own; iOS has no Page
   marks tool.
 * cargo-fuzz target `marks_scan` compiles on stable; not run under cargo-fuzz here (no nightly). The stable
