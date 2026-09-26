@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-trust-add"
+description = "Enables the trust_add command without any pre-configured scope."
+commands.allow = ["trust_add"]
+
+[[permission]]
+identifier = "deny-trust-add"
+description = "Denies the trust_add command without any pre-configured scope."
+commands.deny = ["trust_add"]

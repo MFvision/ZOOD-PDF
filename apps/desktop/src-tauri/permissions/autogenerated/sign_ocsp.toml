@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sign-ocsp"
+description = "Enables the sign_ocsp command without any pre-configured scope."
+commands.allow = ["sign_ocsp"]
+
+[[permission]]
+identifier = "deny-sign-ocsp"
+description = "Denies the sign_ocsp command without any pre-configured scope."
+commands.deny = ["sign_ocsp"]

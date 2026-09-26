@@ -11,9 +11,11 @@ pub mod host;
 pub mod menu_model;
 pub mod names;
 pub mod native_menu;
+pub mod net;
 #[cfg(target_os = "macos")]
 mod print_macos;
 pub mod print_raster;
+pub mod trust;
 
 use std::path::PathBuf;
 use tauri::ipc::{InvokeBody, Request, Response};
@@ -36,6 +38,12 @@ pub const COMMANDS: &[&str] = &[
     "print_open",
     "print_page",
     "print_close",
+    "sign_timestamp",
+    "sign_ocsp",
+    "sign_fetch_crl",
+    "trust_list",
+    "trust_add",
+    "trust_remove",
 ];
 
 #[tauri::command]
@@ -181,6 +189,78 @@ fn suggest_save_path<R: Runtime>(app: AppHandle<R>, name: String) -> String {
     }
 }
 
+/// POSTs an RFC 3161 request (`application/timestamp-query`) to the timestamp authority the
+/// user chose, on the user's click (Sign at level B-T or above). Returns the raw reply.
+#[tauri::command]
+async fn sign_timestamp(url: String, request: Vec<u8>) -> Result<Response, String> {
+    let reply = tauri::async_runtime::spawn_blocking(move || {
+        net::post_der(
+            &url,
+            net::TSA_REQUEST,
+            net::TSA_REPLY,
+            &request,
+            &net::HttpConfig::default(),
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())?;
+    Ok(Response::new(reply))
+}
+
+/// POSTs an OCSP request to a responder named in the certificate and confirmed by the user.
+#[tauri::command]
+async fn sign_ocsp(url: String, request: Vec<u8>) -> Result<Response, String> {
+    let reply = tauri::async_runtime::spawn_blocking(move || {
+        net::post_der(
+            &url,
+            net::OCSP_REQUEST,
+            net::OCSP_REPLY,
+            &request,
+            &net::HttpConfig::default(),
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())?;
+    Ok(Response::new(reply))
+}
+
+/// GETs a CRL from a distribution point named in the certificate and confirmed by the user.
+#[tauri::command]
+async fn sign_fetch_crl(url: String) -> Result<Response, String> {
+    let reply = tauri::async_runtime::spawn_blocking(move || {
+        net::get_crl(&url, &net::HttpConfig::default())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())?;
+    Ok(Response::new(reply))
+}
+
+fn trust_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map(|d| d.join(trust::DIR_NAME))
+        .map_err(|e| e.to_string())
+}
+
+/// The user's trusted certificates (DER), for signature verification.
+#[tauri::command]
+fn trust_list<R: Runtime>(app: AppHandle<R>) -> Result<Vec<Vec<u8>>, String> {
+    trust::list(&trust_dir(&app)?).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn trust_add<R: Runtime>(app: AppHandle<R>, sha256: String, der: Vec<u8>) -> Result<(), String> {
+    trust::add(&trust_dir(&app)?, &sha256, &der).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn trust_remove<R: Runtime>(app: AppHandle<R>, sha256: String) -> Result<(), String> {
+    trust::remove(&trust_dir(&app)?, &sha256).map_err(|e| e.to_string())
+}
+
 fn on_drag_drop<R: Runtime>(window: &tauri::Window<R>, event: &DragDropEvent) {
     let DragDropEvent::Drop { paths, position } = event else {
         return;
@@ -222,7 +302,13 @@ pub fn run() {
             suggest_save_path,
             print_open,
             print_page,
-            print_close
+            print_close,
+            sign_timestamp,
+            sign_ocsp,
+            sign_fetch_crl,
+            trust_list,
+            trust_add,
+            trust_remove
         ])
         .on_menu_event(|app, event| {
             let _ = app.emit(

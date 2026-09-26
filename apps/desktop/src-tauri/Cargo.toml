@@ -39,6 +39,10 @@ thiserror = "2"
 # Windows/Linux; warraq-pdf decrypts in memory first. The UI still uses the WASM engine.
 warraq-pdf = { path = "../../../packages/core/crates/warraq-pdf" }
 warraq-render = { path = "../../../packages/core/crates/warraq-render", default-features = false, features = ["hayro"] }
+# Digital signatures (desktop only, on the user's click): POST RFC 3161 timestamp requests and
+# OCSP requests, fetch CRLs. rustls + ring, OS trust store through rustls-platform-verifier; no
+# webpki-roots (CDLA) and no OpenSSL. `_ring` selects ring as rustls' crypto provider.
+ureq = { version = "3.4", default-features = false, features = ["rustls-no-provider", "_ring", "platform-verifier"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
