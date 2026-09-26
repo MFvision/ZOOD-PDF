@@ -156,8 +156,10 @@ final class ScanTests: XCTestCase {
     /// The system photo picker: its newest photo, tapped, then the
     /// picker's Add (a multi-selection picker) when it shows one.
     private func pickNewestPhoto(in app: XCUIApplication) throws {
-        let images = app.images.matching(NSPredicate(format: "label CONTAINS[c] 'photo' OR label CONTAINS 'صورة' OR identifier CONTAINS 'PXG'"))
-        XCTAssertTrue(images.firstMatch.waitForExistence(timeout: 30), "the photo library shows its photos")
+        // The picker's photos are labelled "Photo, <date>" / "صورة، <date>";
+        // the scanner's own Photos button carries a symbol, not a photo.
+        let images = app.images.matching(NSPredicate(format: "(label BEGINSWITH[c] 'photo,' OR label BEGINSWITH 'صورة' OR identifier CONTAINS 'PXG') AND NOT (identifier CONTAINS 'rectangle') AND NOT (label CONTAINS 'rectangle')"))
+        XCTAssertTrue(images.firstMatch.waitForExistence(timeout: 45), "the photo library shows its photos")
         images.firstMatch.tap()
         let add = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Add' OR label BEGINSWITH 'إضافة' OR label == 'Done' OR label == 'تم'")).firstMatch
         if add.waitForExistence(timeout: 5) {
