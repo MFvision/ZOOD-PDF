@@ -274,7 +274,8 @@ summaries + DER per certificate); `sign.prepare` takes an optional RGBA signatur
 | What | Test |
 | --- | --- |
 | **UI, en + ar**: import `signer-*.p12` through the file chooser, wrong password → "Wrong certificate password" / «كلمة سر الشهادة غير صحيحة», unlock, certificate summary (Arabic CN «أحمد بن سعيد», issuer), draw the box on the page preview, reason/location, hand-drawn picture, Sign → saved through the host bridge → the viewer reloads, banner "valid, identity unknown"; the saved file starts with the original bytes, has `/ETSI.CAdES.detached`, `/Subtype /Image`, `/ActualText`; **`sign.verify` run on the saved bytes in Node (wasm)** → `valid_identity_unknown`, `valid` with the test root; reopen → panel shows the signer, no changes after signing, Hijri time (`١٤٤٨`, Arabic digits); adding `root.pem` to the trust list turns it "valid"; no external request | `tests/e2e/sign.spec.ts` |
-| **UI, en + ar**: certification "no changes" (DocMDP P=1, invisible) → a highlight added and saved (incremental on top) → Node `sign.verify` says `modified`; reopened: banner "changed after signing", panel lists `annotation_added` as not allowed; "View signed version" opens the covered revision, which verifies with no changes | `sign.spec.ts` |
+| **UI, en + ar**: approval signature → a highlight added with Comment and saved (incremental on top) → Node `sign.verify`: still `valid_identity_unknown`, not covering the whole file; reopened: `annotation_added` listed as allowed and an **overlay** warning; "View signed version" opens the covered revision, which verifies with no changes | `sign.spec.ts` |
+| **UI, en + ar**: certification "form filling and signing" (DocMDP P=2) → page 1 rotated with **Organize** and saved → Node `sign.verify` says `modified`; reopened: banner "changed after signing", the page change listed as not allowed | `sign.spec.ts` |
 | **UI, en + ar**: the `shadow-replace.pdf` attack fixture → banner invalid/modified, panel lists the shadow attack | `sign.spec.ts` |
 | Web/extension: B-T/B-LT/B-LTA are not offered (hidden without a host network); the desktop host shows them | `sign.spec.ts`, `SignPanel` (`app.host.signing?.network`) |
 | Signing flow with a fake engine + network: B-B uses no network; B-T = prepare → TSA → finish; B-LTA = TSA, OCSP with CRL fallback, DSS (`kinds`), document timestamp; only the chosen TSA and the certificate's own URLs are contacted | `packages/ui/src/services/signing.test.ts` |
@@ -291,8 +292,9 @@ Not proven / limits:
   HTTP commands against a local mock; no public TSA/OCSP responder was contacted.
 * The page preview used to draw the box ignores a MediaBox/CropBox whose origin is not (0, 0).
 * FieldMDP from the UI offers "lock all form fields" only (Include/Exclude lists are engine-only).
-* Tampering "via Edit" is not covered (the Edit tool is not ready); the tamper test uses a Comment
-  highlight after a "no changes" certification.
+* Tampering is covered through Organize (rotate) and Comment (highlight); the Edit tool is not
+  ready yet, so no text-edit tamper test exists. Comment-after-certification (disallowed annotation) is proven
+  in the engine (`warraq-sign/tests/verify.rs`), not through the UI.
 * The password lives in a React state string until signing finishes or the panel closes; JS strings
   cannot be wiped.
 

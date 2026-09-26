@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
-import { ENGINE_BUILT, FIXTURES, ROOT, fixture, highlightSecondParagraph, openViaCard, pickTool, savedFiles, stubSavePicker, trackExternalRequests } from './helpers';
+import { ENGINE_BUILT, FIXTURES, ROOT, fixture, pageBox, openViaCard, pickTool, savedFiles, stubSavePicker, trackExternalRequests, waitForDocument } from './helpers';
 
 const PKI = path.join(FIXTURES, 'sign/pki');
 
@@ -45,7 +45,7 @@ const LOCALES = [
     wrongPassword: /Wrong certificate password/,
     saved: /Saved/,
     unknown: /valid, identity unknown/,
-    valid: /— valid$/,
+    valid: /— valid(?!,)/,
     modified: /changed after signing/,
     reason: 'Approval',
     location: 'Riyadh',
@@ -59,7 +59,7 @@ const LOCALES = [
     wrongPassword: /كلمة سر الشهادة غير صحيحة/,
     saved: /حُفظ/,
     unknown: /صالح، وهوية الموقِّع غير معروفة/,
-    valid: /— صالح$/,
+    valid: /— صالح(?!،)/,
     modified: /تغيّر بعد التوقيع/,
     reason: 'اعتماد',
     location: 'الرياض',
@@ -86,6 +86,27 @@ async function unlock(page: Page, p12: string, password = 'test123') {
   await choose(page, 'sign-choose-p12', path.join(PKI, p12));
   await page.locator('[data-testid=sign-password]').fill(password);
   await page.locator('[data-testid=sign-unlock]').click();
+}
+
+/** Highlights the second line of the fixture (drags across its whole width; retried once the text layer is ready). */
+async function highlightLine(page: Page, rtl: boolean) {
+  // Start on the text: a highlight drag that starts on empty paper selects nothing.
+  const [x0, x1] = rtl ? [0.87, 0.45] : [0.13, 0.6];
+  await pickTool(page, 'comment');
+  await page.locator('[data-epdf-i=add-highlight]').click();
+  const status = page.locator('[data-testid=document-view]:visible [data-testid=doc-status]');
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const box = await pageBox(page, 0);
+    const y = box.y + box.height * 0.206;
+    await page.mouse.move(box.x + box.width * x0, y);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * ((x0 + x1) / 2), y, { steps: 8 });
+    await page.mouse.move(box.x + box.width * x1, y, { steps: 8 });
+    await page.mouse.up();
+    if (await status.filter({ hasText: /Edited|معدَّل/ }).count()) return;
+    await page.waitForTimeout(1000);
+  }
+  await expect(status).toContainText(/Edited|معدَّل/);
 }
 
 async function reopen(page: Page, name: string, bytes: Buffer) {
@@ -177,7 +198,44 @@ for (const L of LOCALES) {
       expect(external).toEqual([]);
     });
 
-    test('certified with "no changes", then commented: the panel lists the disallowed change; the signed version is still valid', async ({ context, page }) => {
+    test('approval signature, then commented: the comment is an allowed change but reported as drawn over the signed page; View signed version', async ({ context, page }) => {
+      await stubSavePicker(context);
+      await page.goto('/');
+      await openViaCard(page, fixture(L.file));
+      await pickTool(page, 'digital-signature');
+      await unlock(page, L.p12);
+      await expect(page.locator('[data-testid=sign-cert-name]')).toHaveText(L.name);
+      await page.locator('[data-placement=invisible]').click();
+      await page.locator('[data-testid=sign-run]').click();
+      await expect(page.locator('.hud', { hasText: L.saved })).toBeVisible();
+      const banner = page.locator('[data-testid=document-view]:visible [data-testid=sig-banner]');
+      await expect(banner).toHaveAttribute('data-status', 'valid_identity_unknown');
+
+      // Modify after signing (a highlight) and save: an incremental update on top of the signature.
+      await waitForDocument(page);
+      await highlightLine(page, L.locale === 'ar');
+      await page.locator('[data-testid=document-view]:visible [data-testid=save]').click();
+      await expect.poll(async () => (await savedFiles(page)).length).toBe(2);
+      const [signed, tampered] = await savedFiles(page);
+      expect(tampered!.bytes.subarray(0, signed!.bytes.length).equals(signed!.bytes)).toBe(true);
+      const sigs = await verifyInNode(tampered!.bytes);
+      expect(sigs[0]).toMatchObject({ status: 'valid_identity_unknown', kind: 'approval', integrity: true, coversWholeDocument: false });
+
+      await reopen(page, `tampered-${L.file}`, tampered!.bytes);
+      const banner2 = page.locator('[data-testid=document-view]:visible [data-testid=sig-banner]');
+      await expect(banner2).toHaveAttribute('data-status', 'valid_identity_unknown');
+      await banner2.locator('[data-testid=sig-banner-open]').click();
+      await expect(page.locator('[data-testid=sig-card] [data-testid=sig-mods] li[data-kind=annotation_added][data-allowed=true]')).toHaveCount(1);
+      await expect(page.locator('[data-testid=sig-card] [data-testid=sig-attacks] li[data-kind=overlay]')).toBeVisible();
+
+      // "View signed version" opens exactly what was signed: no changes after signing there.
+      await page.locator('[data-testid=sig-view-signed]').click();
+      const banner3 = page.locator('[data-testid=document-view]:visible [data-testid=sig-banner]');
+      await expect(banner3).toHaveAttribute('data-status', 'valid_identity_unknown');
+      await expect(page.locator('[data-testid=document-view]:visible .doc-name')).toContainText(L.locale === 'ar' ? 'النسخة الموقَّعة' : 'signed version');
+    });
+
+    test('certified (form filling and signing only), then a page rotated with Organize: the change is not allowed and the signature reads "changed after signing"', async ({ context, page }) => {
       await stubSavePicker(context);
       await page.goto('/');
       await openViaCard(page, fixture(L.file));
@@ -186,35 +244,34 @@ for (const L of LOCALES) {
       await expect(page.locator('[data-testid=sign-cert-name]')).toHaveText(L.name);
       await page.locator('[data-placement=invisible]').click();
       await page.locator('[data-kind=certify]').click();
-      await page.locator('[data-certify="1"]').check();
+      await page.locator('[data-certify="2"]').check();
       await page.locator('[data-testid=sign-run]').click();
       await expect(page.locator('.hud', { hasText: L.saved })).toBeVisible();
-      const banner = page.locator('[data-testid=document-view]:visible [data-testid=sig-banner]');
-      await expect(banner).toHaveAttribute('data-status', 'valid_identity_unknown');
+      const view = page.locator('[data-testid=document-view]:visible');
+      await expect(view.locator('[data-testid=sig-banner]')).toHaveAttribute('data-status', 'valid_identity_unknown');
 
-      // Modify after signing (a highlight) and save: an incremental update on top of the signature.
-      await highlightSecondParagraph(page);
-      await page.locator('[data-testid=document-view]:visible [data-testid=save]').click();
+      // Organize: rotate page 1 (an engine incremental update on top of the signed revision).
+      await pickTool(page, 'organize');
+      const organize = view.locator('[data-testid=organize]');
+      await expect(organize.locator('[role=listbox]')).toHaveAttribute('aria-busy', 'false', { timeout: 30_000 });
+      const before = Number(await organize.getAttribute('data-revision'));
+      await organize.locator('[role=option][data-index="0"]').click();
+      await organize.locator('.org-bar [data-action="rotate-right"]').click();
+      await expect.poll(async () => Number(await organize.getAttribute('data-revision')), { timeout: 30_000 }).toBeGreaterThan(before);
+      await view.locator('[data-testid=save]').click();
       await expect.poll(async () => (await savedFiles(page)).length).toBe(2);
-      const [signed, tampered] = await savedFiles(page);
-      expect(tampered!.bytes.subarray(0, signed!.bytes.length).equals(signed!.bytes)).toBe(true);
-      const sigs = await verifyInNode(tampered!.bytes);
-      expect(sigs[0]).toMatchObject({ status: 'modified', kind: 'certification', certification: 1, integrity: true });
+      const [signed, rotated] = await savedFiles(page);
+      expect(rotated!.bytes.subarray(0, signed!.bytes.length).equals(signed!.bytes)).toBe(true);
+      const sigs = await verifyInNode(rotated!.bytes);
+      expect(sigs[0]).toMatchObject({ status: 'modified', kind: 'certification', certification: 2, integrity: true });
 
-      await reopen(page, `tampered-${L.file}`, tampered!.bytes);
-      const banner2 = page.locator('[data-testid=document-view]:visible [data-testid=sig-banner]');
-      await expect(banner2).toHaveAttribute('data-status', 'modified');
-      await expect(banner2).toContainText(L.modified);
-      await banner2.locator('[data-testid=sig-banner-open]').click();
-      const mods = page.locator('[data-testid=sig-card] [data-testid=sig-mods] li');
-      await expect(mods.filter({ has: page.locator('.badge-deleted') }).first()).toBeVisible();
-      await expect(page.locator('[data-testid=sig-card] [data-testid=sig-mods] li[data-kind=annotation_added][data-allowed=false]')).toHaveCount(1);
-
-      // "View signed version" opens exactly what was signed: no changes after signing there.
-      await page.locator('[data-testid=sig-view-signed]').click();
-      const banner3 = page.locator('[data-testid=document-view]:visible [data-testid=sig-banner]');
-      await expect(banner3).toHaveAttribute('data-status', 'valid_identity_unknown');
-      await expect(page.locator('[data-testid=document-view]:visible .doc-name')).toContainText(L.locale === 'ar' ? 'النسخة الموقَّعة' : 'signed version');
+      await reopen(page, `rotated-${L.file}`, rotated!.bytes);
+      const banner = page.locator('[data-testid=document-view]:visible [data-testid=sig-banner]');
+      await expect(banner).toHaveAttribute('data-status', 'modified');
+      await expect(banner).toContainText(L.modified);
+      await banner.locator('[data-testid=sig-banner-open]').click();
+      await expect(page.locator('[data-testid=sig-card] [data-testid=sig-mods] li[data-allowed=false]').first()).toBeVisible();
+      await expect(page.locator('[data-testid=sig-card] [data-testid=sig-mods] li[data-kind^=page]').first()).toBeVisible();
     });
 
     test('a shadow attack fixture is flagged in the banner and the panel', async ({ page }) => {
