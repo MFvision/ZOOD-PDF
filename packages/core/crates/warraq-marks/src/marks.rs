@@ -193,8 +193,15 @@ pub fn remove(pdf: &mut Pdf, id: &str) -> Result<(Vec<usize>, Option<ObjectId>)>
 
 /// Replace mark `id` by `spec` (same id). A picture watermark keeps its picture unless a new one
 /// is given.
-pub fn update(pdf: &mut Pdf, id: &str, spec: &MarkSpec, picture: Option<&[u8]>) -> Result<Added> {
+/// `only`: as in [`add`] (previews of an edit).
+pub fn update(
+    pdf: &mut Pdf,
+    id: &str,
+    spec: &MarkSpec,
+    picture: Option<&[u8]>,
+    only: Option<&[usize]>,
+) -> Result<Added> {
     spec.validate()?;
     let (_, old_picture) = remove(pdf, id)?;
-    add(pdf, spec, picture, None, Some(id.to_string()), old_picture)
+    add(pdf, spec, picture, only, Some(id.to_string()), old_picture)
 }

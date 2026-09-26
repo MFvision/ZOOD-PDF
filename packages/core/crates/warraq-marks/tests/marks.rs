@@ -416,7 +416,7 @@ fn list_update_and_remove_leave_every_other_content_byte_identical() {
     // Update: same id, new text; the original streams are still the same objects and bytes.
     let mut s2 = la.spec.clone();
     s2["text"] = json!("FINAL");
-    marks::update(&mut pdf, &a.id, &spec(s2), None).unwrap();
+    marks::update(&mut pdf, &a.id, &spec(s2), None, None).unwrap();
     let bytes2 = commit(&mut pdf, &bytes);
     let mut pdf = Pdf::open(bytes2.clone(), None).unwrap();
     let t = text_pages(&pdf, true);
@@ -474,7 +474,11 @@ fn picture_watermark_png_behind_and_kept_on_update() {
     // Update without a new picture keeps it.
     let mut s = marks::list(&pdf).unwrap()[0].spec.clone();
     s["opacity"] = json!(0.8);
-    marks::update(&mut pdf, &r.id, &spec(s.clone()), None).unwrap();
+    // An edit preview (one page, no new picture) keeps the picture too.
+    let mut preview = Pdf::open(bytes.clone(), None).unwrap();
+    let p = marks::update(&mut preview, &r.id, &spec(s.clone()), None, Some(&[1])).unwrap();
+    assert_eq!(p.pages, vec![1]);
+    marks::update(&mut pdf, &r.id, &spec(s.clone()), None, None).unwrap();
     let bytes2 = commit(&mut pdf, &bytes);
     let pdf = Pdf::open(bytes2, None).unwrap();
     assert!(String::from_utf8_lossy(&find_form(&pdf, 0)).contains("/ZI1 Do"));

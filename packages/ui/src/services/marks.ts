@@ -319,10 +319,13 @@ export function formFromSpec(s: MarkSpec): MarkForm {
   }
 }
 
-/** Calls drawing the mark on page `page` only (the preview), replacing mark `editing` if given. */
+/** Calls drawing the mark on page `page` only (the preview), replacing mark `editing` if given
+ * (an update keeps the mark's picture when no new one is chosen). */
 export function previewCalls(spec: MarkSpec, page: number, editing?: string, picture?: Uint8Array): CoreCall[] {
-  const add: CoreCall = { method: 'marks.add', params: { mark: spec, only: [page] }, blobs: picture ? [picture] : [] };
-  return editing ? [{ method: 'marks.remove', params: { id: editing } }, add] : [add];
+  const blobs = picture ? [picture] : [];
+  return editing
+    ? [{ method: 'marks.update', params: { id: editing, mark: spec, only: [page] }, blobs }]
+    : [{ method: 'marks.add', params: { mark: spec, only: [page] }, blobs }];
 }
 
 /** Calls adding the mark (or updating mark `editing`). */

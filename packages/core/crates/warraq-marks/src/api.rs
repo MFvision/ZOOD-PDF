@@ -2,7 +2,7 @@
 //!
 //! * `marks.list` → `{ marks: [{ id, spec, pages }], foreign: [{ id, kind, pages, regions, removable, acrobat }] }`
 //! * `marks.add` `{ mark, only? }` (+ picture as `blobs[0]`) → `{ id, pages }`
-//! * `marks.update` `{ id, mark }` (+ optional new picture) → `{ id, pages }`
+//! * `marks.update` `{ id, mark, only? }` (+ optional new picture) → `{ id, pages }`
 //! * `marks.remove` `{ id }` → `{ pages }` for ours; `{ removed, left }` for `foreign:<kind>`
 //!
 //! Mutating calls only record changes on the [`Pdf`]; the caller commits one incremental update.
@@ -41,6 +41,8 @@ struct Add {
 struct Update {
     id: String,
     mark: MarkSpec,
+    #[serde(default)]
+    only: Option<Vec<usize>>,
 }
 
 #[derive(Deserialize)]
@@ -68,7 +70,7 @@ pub fn call(pdf: &mut Pdf, method: &str, p: &Value, blobs: &[Vec<u8>]) -> Option
             to_json(&r)
         }),
         "marks.update" => params::<Update>(p).and_then(|u| {
-            let r = marks::update(pdf, &u.id, &u.mark, picture)?;
+            let r = marks::update(pdf, &u.id, &u.mark, picture, u.only.as_deref())?;
             to_json(&r)
         }),
         "marks.remove" => params::<Remove>(p).and_then(|r| {

@@ -95,13 +95,10 @@ describe('building the engine model', () => {
 describe('engine calls', () => {
   const spec = { kind: 'pageNumber' as const, pages: null };
 
-  it('preview draws on the shown page only; editing removes the old mark first', () => {
+  it('preview draws on the shown page only; editing previews an update', () => {
     expect(previewCalls(spec, 2)).toEqual([{ method: 'marks.add', params: { mark: spec, only: [2] }, blobs: [] }]);
     const pic = new Uint8Array([1]);
-    expect(previewCalls(spec, 0, 'zm1', pic)).toEqual([
-      { method: 'marks.remove', params: { id: 'zm1' } },
-      { method: 'marks.add', params: { mark: spec, only: [0] }, blobs: [pic] },
-    ]);
+    expect(previewCalls(spec, 0, 'zm1', pic)).toEqual([{ method: 'marks.update', params: { id: 'zm1', mark: spec, only: [0] }, blobs: [pic] }]);
     expect(applyCalls(spec)).toEqual([{ method: 'marks.add', params: { mark: spec }, blobs: [] }]);
     expect(applyCalls(spec, 'zm1')).toEqual([{ method: 'marks.update', params: { id: 'zm1', mark: spec }, blobs: [] }]);
   });
