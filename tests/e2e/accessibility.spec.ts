@@ -131,7 +131,8 @@ for (const L of LOCALES) {
 
       // 6. Save (an incremental update) and inspect the bytes with the engine.
       await page.locator('[data-testid=document-view]:visible [data-testid=save]').click();
-      await expect(page.locator('.hud')).toContainText(L.saved);
+      await expect.poll(async () => (await savedFiles(page)).length, { timeout: 30_000 }).toBe(1);
+      await expect(page.locator('.hud').filter({ hasText: L.saved }).first()).toBeVisible();
       const [saved] = await savedFiles(page);
       expect(saved, 'saved file').toBeTruthy();
       expect(saved!.bytes.subarray(0, original.length).equals(original)).toBe(true);
