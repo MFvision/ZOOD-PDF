@@ -40,7 +40,7 @@ test('the app’s name is set as Arabic even inside the English interface, so it
 }) => {
   for (const lang of ['en', 'ar'] as const) {
     await start(page, lang);
-    const wordmark = page.locator('.home-hero h1 bdi');
+    const wordmark = page.locator('.home-brand-name bdi');
     await expect(wordmark).toHaveText('محرر PDF');
     expect(await tracking(wordmark), `the home title, in ${lang}`).toBe(0);
     // It reads right to left wherever it is set.

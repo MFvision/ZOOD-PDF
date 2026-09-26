@@ -10,6 +10,7 @@ import {
   Search,
   SlidersHorizontal,
   Square,
+  Star,
   Tag,
   Trash2,
   X,
@@ -29,6 +30,7 @@ import type { IngestFile, IngestProgress, IngestRun, IngestedFile } from './inge
 import { storedLedger } from './ledger';
 import { LIBRARY_KINDS, coreLibrary, missingLibraryEngine } from './ops';
 import type { IndexedDocument, LibraryStats, SearchHit, TagRule } from './ops';
+import { onLibraryRequest, takeLibraryRequest } from './request';
 import { addRule, parseTags, removeRule, ruleKey, ruleWords } from './rules';
 import { snippet } from './snippet';
 import {
@@ -47,6 +49,7 @@ import {
   watchedFiles,
 } from './sources';
 import type { LibraryWatchAnswer, PassedOver } from './sources';
+import { starId, toggleStarred, useStarred } from '../state/starred';
 import { emptyMeta, libraryStore } from './store';
 import type { FileRecord, FolderRecord, LibraryMeta } from './store';
 import './library.css';
@@ -105,8 +108,13 @@ export function LibraryPanel() {
 
   const [query, setQuery] = useState('');
   const [asked, setAsked] = useState('');
-  const [filters, setFilters] = useState<FilterState>(noFilters);
-  const [showFilters, setShowFilters] = useState(false);
+  // The home screen's Tags view opens the panel with one tag already chosen.
+  const [asked0] = useState(takeLibraryRequest);
+  const [filters, setFilters] = useState<FilterState>(() => (asked0 ? { ...noFilters(), tags: [asked0.tag] } : noFilters()));
+  const [showFilters, setShowFilters] = useState(asked0 !== null);
+  const starred = useStarred();
+  const starOf = (key: string) => starred.some((item) => item.id === starId('library', key));
+  const star = (key: string, name: string) => toggleStarred({ id: starId('library', key), name, source: 'library' });
   const [hits, setHits] = useState<SearchHit[] | null>(null);
   const [total, setTotal] = useState(0);
   const [shown, setShown] = useState(PAGE_SIZE);
@@ -133,6 +141,16 @@ export function LibraryPanel() {
   useEffect(() => {
     folderInput.current?.setAttribute('webkitdirectory', '');
   }, []);
+
+  // The Tags view asks for a tag while the panel is already open.
+  useEffect(
+    () =>
+      onLibraryRequest((request) => {
+        setFilters({ ...noFilters(), tags: [request.tag] });
+        setShowFilters(true);
+      }),
+    [],
+  );
 
   /** Opens the index the store kept — or a new one — and reads what it holds. */
   useEffect(() => {
@@ -850,6 +868,13 @@ export function LibraryPanel() {
                         icon={<Icon of={Tag} />}
                         onClick={() => chooseDocument(hit.key)}
                       />
+                      <IconButton
+                        className={starOf(hit.key) ? 'library-star is-on' : 'library-star'}
+                        label={t(starOf(hit.key) ? 'starred.remove' : 'starred.add', { name: hit.name })}
+                        icon={<Icon of={Star} />}
+                        pressed={starOf(hit.key)}
+                        onClick={() => star(hit.key, hit.name)}
+                      />
                     </div>
                     {missing === hit.key && (
                       <div className="library-missing" role="alert">
@@ -900,6 +925,15 @@ export function LibraryPanel() {
             </label>
             <IconButton label={t('library.addTagButton')} icon={<Icon of={Plus} />} showLabel type="submit" disabled={parseTags(newTag).length === 0} />
           </form>
+          <div className="tool-actions">
+            <IconButton
+              label={t(starOf(chosen.key) ? 'starred.remove' : 'starred.add', { name: chosen.name })}
+              icon={<Icon of={Star} />}
+              showLabel
+              pressed={starOf(chosen.key)}
+              onClick={() => star(chosen.key, chosen.name)}
+            />
+          </div>
           <button type="button" className="link-btn" onClick={() => setChosen(null)}>
             {t('library.closeTags')}
           </button>

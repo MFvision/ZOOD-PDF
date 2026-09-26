@@ -85,6 +85,35 @@ test('document, Arabic, dark', async ({ page, stayLocal: _ }) => {
   await shoot(page, 'document-ar-dark');
 });
 
+test('home: the search field, with results', async ({ page, stayLocal: _ }) => {
+  await start(page, 'en', 'light');
+  await withRecents(page, 'File|Close document');
+  await page.getByRole('searchbox', { name: 'Search' }).fill('invoice');
+  await expect(page.getByRole('region', { name: 'Search results' })).toBeVisible();
+  await shoot(page, 'home-search-en-light');
+});
+
+test('home: Starred, Arabic, dark', async ({ page, stayLocal: _ }) => {
+  await start(page, 'ar', 'dark');
+  await withRecents(page, 'ملف|إغلاق المستند');
+  await page.getByRole('button', { name: /^مزيد من الإجراءات لـ chrome-cairo/ }).click();
+  await page.getByRole('menuitem', { name: /^تمييز/ }).click();
+  await page.getByRole('navigation', { name: 'أقسام الرئيسية' }).getByRole('button', { name: 'المميّزة بنجمة' }).click();
+  await expect(page.locator('.recent-card')).toHaveCount(1);
+  await shoot(page, 'home-starred-ar-dark');
+});
+
+test('Organize: a page’s context menu', async ({ page, stayLocal: _ }) => {
+  await start(page, 'en', 'light');
+  await openPdf(page, THREE_PAGES);
+  await chooseTool(page, 'Organize');
+  const tile = page.getByRole('listbox', { name: 'Pages' }).getByRole('option', { name: 'Page 2', exact: true });
+  await expect(tile).toBeVisible();
+  await tile.click({ button: 'right' });
+  await expect(page.getByRole('menu', { name: 'Page 2' })).toBeVisible();
+  await shoot(page, 'organize-menu-en-light');
+});
+
 test('home: the tools', async ({ page, stayLocal: _ }) => {
   await start(page, 'ar', 'light');
   await page.locator('.home-section', { has: page.locator('#home-tools') }).scrollIntoViewIfNeeded();
