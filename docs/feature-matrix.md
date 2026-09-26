@@ -7,6 +7,7 @@ M = iOS native app.
 | --- | --- | --- | --- | --- |
 | (filled in as tools land) | | | | |
 | Comment (EmbedPDF) | ✅ `open-save.spec.ts` | | 🟡 extension page opens PDFs (`extension.spec.ts`); tool not exercised there | 🟡 Pencil ink + text highlight saved through `doc.rebase` (`ZoodPDFTests`, not yet run) |
+| Scan & OCR: make searchable, scan pages (tesseract.js, local models) | ✅ `ocr.spec.ts` (search in viewer, save, reopen) | 🟡 same UI; not run in Tauri | ✅ `ocr.spec.ts` (MV3 CSP) | see iOS rows |
 | Fill & sign (EmbedPDF) | 🟡 tool strip reachable (`redact-protect.spec.ts`); signing not yet saved+reopened in a spec | | 🟡 | ⛔ not on iOS yet (STATUS) |
 | Digital signature (engine `sign.*`: PAdES B-B…B-LTA, verify, attack detection) | ✅ B-B sign (visible Arabic, drawn picture, certification), save, reopen, banner + Signatures panel, trust list, tamper + shadow attack, en + ar (`sign.spec.ts`) | 🟡 same UI; B-T/B-LT/B-LTA offered only here — Rust TSA/OCSP/CRL commands proven against a local mock TSA (`net.rs`), flow unit-tested with fakes, not driven through the desktop UI | 🟡 same UI (B-B + verification), no extension spec | 🟡 engine via C ABI, not exercised |
 | Prepare form (EmbedPDF form fields) | 🟡 tool strip reachable (`redact-protect.spec.ts`) | | 🟡 | ⛔ not on iOS yet (STATUS) |

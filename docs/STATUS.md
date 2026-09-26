@@ -186,7 +186,7 @@ Measured on 2026-09-25 (21 non-scanned files; all at their floor of 99.80 %):
 | Synthetic shaper streams (Nastaliq cascades, Amiri kerning) | 2 | 100.00 % each |
 | Synthetic simple fonts (WinAnsi, `/Differences` names, form XObject) | 1 | 100.00 % |
 | Encrypted copies (RC4-128, AES-256 ×3 incl. Arabic password) | 4 | 100.00 % each |
-| Scans (12 variants) | — | not measured here (OCR is in the UI) |
+| Scans (20 variants) | — | measured by the OCR benchmark (see "Scan & OCR") |
 
 Caveat: the corpus was written together with the engine, and several engine rules came from failures it exposed
 (word gaps inside cursive words: first run 99.67 % news/Amiri, 99.06 % Nastaliq, 99.01 % Amiri kerning; the W7 case
@@ -196,7 +196,7 @@ unreadable by construction (Noto Naskh draws dots as separate glyphs shared by s
 cannot describe them): the generator now wraps such words in `/ActualText` (as real producers must) or uses Amiri.
 
 ### Not done / limits (honest)
-* Scanned PDFs are generated but not measured here (OCR belongs to the UI; no OCR accuracy numbers yet).
+* Scanned PDFs are measured by the OCR benchmark (section "Scan & OCR"), not by this gate.
 * No genuine Word/LibreOffice PDFs (see above); real-world producer quirks beyond the synthetic ones are untested.
 * Tables are recognised only from aligned text (no ruling-line analysis); 3+ columns of short prose lines could be
   read as a table. Paragraph breaks between equally long lines with uniform spacing are not detected (text is
@@ -455,6 +455,59 @@ Architecture: ADR 0013. Engine methods: `export.docx|xlsx|pptx|html|markdown|tex
   cargo-fuzz here (no nightly). The stable smoke test above runs in `verify.sh`.
 * python-docx/openpyxl/python-pptx are not part of CI images; the reader test skips without them.
 * Desktop and extension hosts use the same UI and engine code but have no Export/Compare spec of their own.
+
+## Scan & OCR (`packages/ui/src/ocr`, `warraq-core/src/ocr`, ADR 0016)
+
+tesseract.js 7 (LSTM-only cores) with tessdata 4.1.0 "best-int" models for `ara`, `eng`, `fas`, `urd`, all served
+from the app's origin (`ocr/`); models fetched by `scripts/fetch-ocr-models.sh` (pinned SHA-256, git-ignored cache,
+not committed: 28 MB). Own preprocessing in a worker; the engine writes the invisible text layer.
+
+### Proven by tests
+| What | Test |
+| --- | --- |
+| Preprocessing on synthetic images: known rotations recovered within 0.3° (±15°), shadow gradient flattened, Sauvola, despeckle bounds, homography/warp, header-only size checks (64 MP / 16 000 px) | `ocr/preprocess.test.ts` |
+| Language codes, tesseract word tree → words with lines | `ocr/recognizer.test.ts` |
+| `ocr.addTextLayer`: invisible `3 Tr` text, `Tz` to the word box, words read back in logical order (Arabic, tashkeel, digits in RTL words), existing text kept, one incremental update (original bytes a prefix), several pages in one commit, low-confidence words skipped, `/Direction` never written, rotated matrix on a crooked page, `/Rotate` pages, hostile params rejected | `warraq-core/tests/ocr.rs` |
+| RTL words: visual order in `/ReversedChars`, no ActualText (PDFium-searchable); a space glyph after each word keeps tightly set Arabic words apart | `ocr.rs::rtl_words_…`, `tightly_set_words_stay_separate` |
+| `ocr.createPdf`: pages from JPEG (DCT passthrough) and 1-bit/gray images with a text layer; hostile/truncated images rejected | `ocr.rs` |
+| **Make searchable (e2e, ar)**: scanned Arabic PDF → Scan & OCR (Arabic by default, Arabic-Indic numerals, «صفحة واحدة بلا نص») → progress → **viewer Ctrl+F finds «الحكومية»** → Save: original bytes a prefix, 2 revisions, no `/Direction`; engine `text.plain` of the saved bytes contains the words; reopened, viewer search finds «التحول»; zero non-localhost requests, zero CSP errors | `ocr.spec.ts` |
+| **Scan pages (e2e)**: crooked 8° photo → skew **detected 8.x°** (within 0.5°) → cleaned preview → Create PDF opens in the viewer → Save: 1 page, image + `/Lang (ar)`, Arabic text read back | `ocr.spec.ts` |
+| Cancel stops recognition, document unchanged; a 30 000 × 30 000 PNG header is refused before decoding | `ocr.spec.ts` |
+| **MV3 extension**: the same scan works under the extension CSP (worker from its file, no `blob:` worker, no `unsafe-eval`) | `ocr.spec.ts` |
+
+### Measured accuracy (2026-09-26, headless Chromium, the real UI path)
+Character accuracy = 1 − Levenshtein / truth length, after NFC, bidi controls and tatweel removed and whitespace
+collapsed; first number with tashkeel removed from both sides, in brackets with tashkeel kept. `pnpm ocr:bench`
+("Make searchable" + Save + engine `text.plain`), floors in `tests/ocr/baseline.json` (tolerance 2 points),
+raw results in `tests/ocr/results.json`. E2E pages: `scan-ar` (straight, title + first paragraph) **97.3 %**,
+`crooked8-ar` (Scan pages from a crooked JPEG) **71.3 %**.
+
+| Page (300 dpi, image-only PDF) | Languages | Straight | Crooked 5° | Crooked 8° | Shadowed |
+| --- | --- | --- | --- | --- | --- |
+| Arabic news (Amiri) | ar | 89.0 % (88.5 %) | 75.2 % (75.0 %) | 87.3 % (86.8 %) | 96.1 % (95.6 %) |
+| Arabic, full tashkeel (Amiri) | ar | 50.2 % (35.2 %) | 41.5 % (29.8 %) | 53.1 % (39.1 %) | 38.2 % (23.3 %) |
+| Urdu Nastaliq | ur | 83.0 % (83.0 %) | 83.0 % (83.0 %) | 80.5 % (80.5 %) | 83.0 % (83.0 %) |
+| Persian (Vazirmatn) | fa | 96.1 % (96.1 %) | 96.1 % (96.1 %) | 96.1 % (96.1 %) | 96.5 % (96.5 %) |
+| Mixed Arabic/English (Naskh) | ar+en | 89.0 % (88.7 %) | 90.9 % (90.6 %) | 91.3 % (91.0 %) | 88.8 % (88.5 %) |
+
+About 4–8 s per page on this 4-core container.
+
+### Not done / limits (honest)
+* **Tashkeel**: the Arabic model drops most diacritics (35 % with tashkeel kept on the fully vocalised page, ~50 %
+  without); Quranic/vocalised text is not usable as OCR output.
+* **Accuracy is uneven across variants** of the same page (Arabic news: 75 % crooked 5° vs 96 % shadowed): errors
+  are mostly line merges and alef-maqsura/yaa confusions from the model, not investigated further; the Scan tab's
+  binarisation costs accuracy on clean photos (crooked8-ar 71 %).
+* Urdu Nastaliq tops out around 83 % (tessdata `urd` is trained on Naskh-like fonts).
+* **Desktop**: the web UI runs in Tauri (same CSP allowances) but no desktop spec runs OCR; the camera uses
+  `getUserMedia` (web) — no native camera bridge, the file picker is the desktop path.
+* **Dropped images** go to Create PDF (lead convention for non-PDF drops), not to Scan: a photo dropped on the
+  window becomes a plain image page; to OCR it, open Scan & OCR → Scan pages. Routing photo drops to Scan is left
+  undecided (no reliable way to tell a document photo from an illustration).
+* The first OCR needs the core and the chosen model from the app's origin (Arabic ~2.5 MB, English 23 MB); the
+  service worker caches them on first use, not at install.
+* PDFium in the viewer reads the RTL words through `/ReversedChars`; readers that ignore that marker see visual
+  order (same as Chrome's own Arabic PDFs).
 
 ## Organize, Combine, Compress
 

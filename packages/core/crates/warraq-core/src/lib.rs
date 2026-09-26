@@ -14,6 +14,7 @@
 
 pub mod error;
 mod methods;
+pub mod ocr;
 pub mod ops;
 pub mod registry;
 

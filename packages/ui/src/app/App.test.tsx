@@ -45,7 +45,7 @@ describe('<App> home', () => {
     expect(cards).toHaveLength(6);
     const tools = [...document.querySelectorAll('[data-testid=sidebar-tools] [data-tool]')].map((b) => b.getAttribute('data-tool'));
     expect(tools.sort()).toEqual(readyTools('web').map((t) => t.id).sort());
-    expect(tools).toEqual(expect.arrayContaining(['comment', 'fill-sign', 'prepare-form', 'protect', 'redact', 'export', 'compare', 'organize', 'combine', 'compress', 'standards', 'create']));
+    expect(tools).toEqual(expect.arrayContaining(['comment', 'fill-sign', 'prepare-form', 'protect', 'redact', 'export', 'compare', 'organize', 'combine', 'compress', 'standards', 'create', 'scan']));
     // AI is not ready: no AI card, no AI action card
     expect(document.querySelector('.ai-card')).toBeNull();
     expect(document.querySelector('[data-card=ai]')).toBeNull();

@@ -22,6 +22,16 @@ export const SHIPPED = [
   '@embedpdf/default-stamps',
   'preact',
   'tailwind-merge',
+  // Scan & OCR: tesseract.js (main thread + dist/worker.min.js), its WebAssembly core and the
+  // packages bundled into its worker.
+  'tesseract.js',
+  'tesseract.js-core',
+  'bmp-js',
+  'idb-keyval',
+  'is-url',
+  'regenerator-runtime',
+  'wasm-feature-detect',
+  'zlibjs',
 ] as const;
 
 /** Non-npm assets bundled into the build, with their licence file (relative to packages/ui). */

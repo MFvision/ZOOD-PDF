@@ -646,11 +646,11 @@ fn visual_items(us: &[U], line: &[usize]) -> Vec<Item> {
     // Chains of touching units in content order.
     let mut chains: Vec<Vec<usize>> = Vec::new();
     let mut cur: Vec<usize> = Vec::new();
-    let mut spaces: Vec<f64> = Vec::new();
+    let mut spaces: Vec<(f64, f64)> = Vec::new();
     for i in order {
         let Some(u) = us.get(i) else { continue };
         if u.space {
-            spaces.push(u.cx());
+            spaces.push((u.x0, u.x1));
             if !cur.is_empty() {
                 chains.push(std::mem::take(&mut cur));
             }
@@ -715,9 +715,15 @@ fn visual_items(us: &[U], line: &[usize]) -> Vec<Item> {
         if let Some(m) = merged.last_mut() {
             let wg = word_gap * m.size.max(c.size);
             let g = gap((m.x0, m.x1), (c.x0, c.x1));
-            let space_between = spaces
-                .iter()
-                .any(|&s| s > m.x1.min(c.x0) - 1e-6 && s < m.x1.max(c.x0) + 1e-6);
+            // A space glyph separates the chains when it reaches into the gap between them (it
+            // may be wider than the gap: OCR text layers scale it with the word) and its centre
+            // lies between the chains' centres.
+            let (lo, hi) = (m.x1.min(c.x0), m.x1.max(c.x0));
+            let (mm, cm) = ((m.x0 + m.x1) / 2.0, (c.x0 + c.x1) / 2.0);
+            let space_between = spaces.iter().any(|&(s0, s1)| {
+                let sc = (s0 + s1) / 2.0;
+                s0 < hi + 1e-6 && s1 > lo - 1e-6 && sc > mm && sc < cm
+            });
             if g <= wg && !space_between {
                 m.units.extend(c.units);
                 m.x0 = m.x0.min(c.x0);

@@ -16,6 +16,8 @@
     "test": "pnpm -r --if-present test",
     "build": "pnpm -r --if-present build",
     "e2e": "playwright test",
+    "ocr:models": "bash scripts/fetch-ocr-models.sh",
+    "ocr:bench": "playwright test -c tests/ocr/playwright.config.ts",
     "verify": "bash scripts/verify.sh"
   },
   "devDependencies": {

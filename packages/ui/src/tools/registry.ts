@@ -6,6 +6,7 @@
 import type { MessageKey } from '../i18n';
 import type { IconName } from '../app/icons';
 import { openToolPanel } from './panels';
+import { openScan } from '../ocr/store';
 
 export type ToolId =
   | 'edit'
@@ -94,7 +95,8 @@ export const TOOLS: readonly ToolDef[] = [
   // Create PDF: warraq-create (own layout engine) via `create.fromFiles`; sheet in tools/create.
   tool('create', 'create', 'blue', { needsDocument: false, status: 'ready', core: { open: () => openToolPanel('create') } }),
   tool('compare', 'compare', 'teal', { status: 'ready', core: { open: (docId) => openToolPanel('compare', docId) } }),
-  tool('scan', 'scan', 'cyan', { needsDocument: false }),
+  // Scan & OCR: its sheet offers "Make searchable" for the open PDF and "Scan pages" from images.
+  tool('scan', 'scan', 'cyan', { status: 'ready', needsDocument: false, core: { open: () => openScan() } }),
   tool('combine', 'combine', 'orange', { status: 'ready', needsDocument: false, core: { open: (docId) => openToolPanel('combine', docId) } }),
   tool('compress', 'compress', 'mint', { status: 'ready', core: { open: (docId) => openToolPanel('compress', docId) } }),
   tool('prepare-form', 'form', 'pink', { status: 'ready', viewer: { commands: ['mode:form'] } }),
