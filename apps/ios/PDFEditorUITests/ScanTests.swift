@@ -102,7 +102,7 @@ final class ScanTests: XCTestCase {
 
         // Enhance: black and white, creases off, hold to compare.
         app.buttons["scan.enhance"].tap()
-        XCTAssertTrue(app.otherElements["enhance.form"].waitForExistence(timeout: 10) || app.tables.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["enhance.form"].firstMatch.waitForExistence(timeout: 10))
         let modes = app.segmentedControls["enhance.mode"]
         XCTAssertTrue(modes.waitForExistence(timeout: 5))
         modes.buttons.element(boundBy: 2).tap()
