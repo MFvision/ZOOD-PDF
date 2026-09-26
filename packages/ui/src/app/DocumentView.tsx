@@ -14,6 +14,8 @@ import { runTool } from './useTools';
 import { closeToolPanel, panelFor, useToolPanel } from '../tools/panels';
 import { ExportSheet } from './ExportSheet';
 import { ComparePanel } from './ComparePanel';
+import { SignPanel } from './SignPanel';
+import { SignatureBanner, SignaturesPanel, useSignatures } from './SignaturesPanel';
 
 const wide = () => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 900px)').matches;
 
@@ -70,6 +72,11 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
   const mine = panelFor(panel, doc.id, active);
   const exportOpen = mine && panel?.tool === 'export';
   const compareOpen = mine && panel?.tool === 'compare';
+  const signOpen = mine && panel?.tool === 'digital-signature';
+  // Signatures of the current bytes (banner + panel), verified by the engine.
+  const signatures = useSignatures(doc);
+  const [sigPanel, setSigPanel] = useState(false);
+  const sidePanel = compareOpen || signOpen || sigPanel;
   const closePanel = (id: ToolId) => {
     closeToolPanel(id);
     setTool((cur) => (cur === id ? null : cur));
@@ -151,7 +158,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
           onClick={() => setInspectorOpen((v) => !v)}
         />
       </header>
-      <div className={`doc-body${pagesOpen ? ' pages-open' : ''}${inspectorOpen && !compareOpen ? ' inspector-open' : ''}${compareOpen ? ' compare-open' : ''}`}>
+      <div className={`doc-body${pagesOpen ? ' pages-open' : ''}${inspectorOpen && !sidePanel ? ' inspector-open' : ''}${sidePanel ? ' compare-open' : ''}`}>
         {pagesOpen && (
           <PagesPanel
             api={api}
@@ -165,6 +172,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
           />
         )}
         <div className="viewer-area">
+          <SignatureBanner state={signatures} onOpen={() => setSigPanel(true)} />
           <Viewer
             key={`${doc.id}:${doc.revision}`}
             bytes={doc.bytes}
@@ -188,6 +196,10 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
         </div>
         {compareOpen ? (
           <ComparePanel key={panel?.nonce} doc={doc} api={api} onClose={() => closePanel('compare')} />
+        ) : signOpen ? (
+          <SignPanel key={panel?.nonce} doc={doc} api={api} onClose={() => closePanel('digital-signature')} />
+        ) : sigPanel ? (
+          <SignaturesPanel doc={doc} state={signatures} onClose={() => setSigPanel(false)} />
         ) : (
           inspectorOpen && <Inspector doc={doc} onComments={() => api?.exec('panel:toggle-comment')} />
         )}

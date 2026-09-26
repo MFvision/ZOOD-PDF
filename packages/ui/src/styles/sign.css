@@ -1,0 +1,228 @@
+/* Digital signature panel, signatures panel and banner. Logical properties only. */
+.btn.btn-small {
+  min-block-size: 28px;
+  padding-inline: 10px;
+  font-size: 12.5px;
+}
+
+.sign-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sign-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.sign-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.sign-row .text-input {
+  flex: 0 0 auto;
+  min-inline-size: 72px;
+}
+
+.cert-card {
+  padding: 10px;
+  border-radius: var(--r-md);
+  background: var(--fill-2);
+  font-size: 13px;
+}
+
+.cert-card .cert-warn {
+  grid-column: 1 / -1;
+  font-weight: 500;
+}
+
+.sign-page {
+  position: relative;
+  inline-size: 100%;
+  border: 1px solid var(--separator-strong);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: #fff;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.sign-page img {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  pointer-events: none;
+}
+
+.sign-page .page-skeleton {
+  display: block;
+  aspect-ratio: 1 / 1.3;
+}
+
+.sign-rect {
+  position: absolute;
+  border: 2px solid var(--accent);
+  border-radius: 3px;
+  background: var(--accent-soft);
+  pointer-events: none;
+}
+
+.sign-pad-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.sign-pad {
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 3 / 1;
+  border: 1px dashed var(--separator-strong);
+  border-radius: var(--r-sm);
+  background: #fff;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+/* Banner over the page (verification of the open file). */
+.sig-banner {
+  position: absolute;
+  z-index: 6;
+  inset-block-start: 10px;
+  inset-inline: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-block: 8px;
+  padding-inline: 12px;
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-2);
+  font-size: 13px;
+}
+
+.sig-banner-text {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.sig-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  inline-size: 22px;
+  block-size: 22px;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.tone-good .sig-icon {
+  background: var(--green);
+}
+
+.tone-warn .sig-icon {
+  background: var(--orange);
+}
+
+.tone-bad .sig-icon {
+  background: var(--red);
+}
+
+.sig-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sig-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--separator);
+  border-inline-start-width: 4px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.sig-card.tone-good {
+  border-inline-start-color: var(--green);
+}
+
+.sig-card.tone-warn {
+  border-inline-start-color: var(--orange);
+}
+
+.sig-card.tone-bad {
+  border-inline-start-color: var(--red);
+}
+
+.sig-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sig-card-head > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.sig-status {
+  color: var(--label-2);
+  font-size: 12.5px;
+}
+
+.sig-props {
+  padding-inline: 0;
+}
+
+.sig-sub {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.sig-notes,
+.sig-mods,
+.trust-list {
+  margin: 0;
+  padding-inline-start: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sig-attacks {
+  color: var(--red);
+  font-weight: 500;
+}
+
+.sig-warnings {
+  color: var(--label-2);
+}
+
+.trust-list {
+  list-style: none;
+  padding-inline-start: 0;
+}
+
+.trust-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}

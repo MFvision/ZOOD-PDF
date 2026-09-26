@@ -88,7 +88,13 @@ export const TOOLS: readonly ToolDef[] = [
   tool('prepare-form', 'form', 'pink', { status: 'ready', viewer: { commands: ['mode:form'] } }),
   tool('ai', 'sparkle', 'purple'),
   tool('page-marks', 'stamp', 'orange'),
-  tool('digital-signature', 'certificate', 'indigo'),
+  // Digital signature: B-B signing + verification everywhere; B-T/B-LT/B-LTA only where the host
+  // offers network (desktop). Core-backed panel (warraq-sign), see app/SignPanel.tsx.
+  tool('digital-signature', 'certificate', 'indigo', {
+    status: 'ready',
+    platforms: ['web', 'desktop', 'extension'],
+    core: { open: (docId) => openToolPanel('digital-signature', docId) },
+  }),
   tool('standards', 'badge', 'teal'),
   tool('accessibility', 'accessibility', 'blue'),
   tool('batch', 'batch', 'graphite', { needsDocument: false }),

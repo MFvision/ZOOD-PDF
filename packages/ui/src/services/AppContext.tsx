@@ -30,7 +30,8 @@ export interface AppServices {
   openFiles(files: OpenedFile[], tool?: string): Promise<void>;
   openRecent(item: RecentItem): Promise<void>;
   closeDocument(id: string): void;
-  saveDocument(id: string, opts?: { saveAs?: boolean }): Promise<boolean>;
+  /** `bytes`: save these instead (a core tool's finished incremental update, e.g. a signature). */
+  saveDocument(id: string, opts?: { saveAs?: boolean; bytes?: Uint8Array }): Promise<boolean>;
   updateRecent(id: string, patch: Partial<Pick<RecentItem, 'starred' | 'tags'>>): Promise<void>;
   removeRecent(id: string): Promise<void>;
   registerViewer(docId: string, api: ViewerApi | null): void;
@@ -208,12 +209,14 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
   }, []);
 
   const saveDocument = useCallback(
-    async (id: string, opts: { saveAs?: boolean } = {}) => {
+    async (id: string, opts: { saveAs?: boolean; bytes?: Uint8Array } = {}) => {
       const doc: OpenDocument | undefined = stateRef.current.documents[id];
       if (!doc) return false;
       try {
         let out: Uint8Array;
-        if (doc.warraqOwnsDocument) {
+        if (opts.bytes) {
+          out = opts.bytes;
+        } else if (doc.warraqOwnsDocument) {
           out = doc.bytes; // the core already produced an incremental update
         } else if (doc.edited) {
           const api = viewers.current.get(id);

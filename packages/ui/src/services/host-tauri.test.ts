@@ -257,3 +257,33 @@ describe('Tauri host bridge', () => {
     expect(calls.some((c) => c.cmd === 'app_ready')).toBe(true);
   });
 });
+
+describe('desktop signing host', () => {
+  it('sends timestamp/OCSP/CRL requests to the Rust commands with the URL the user chose', async () => {
+    const { apis, calls } = fakeApis(LINUX);
+    (apis.invoke as Mock).mockImplementation(async (cmd: string, args?: unknown) => {
+      calls.push({ cmd, args });
+      if (cmd === 'host_info') return LINUX;
+      if (cmd.startsWith('sign_')) return new Uint8Array([0x30, 1]).buffer;
+      if (cmd === 'trust_list') return [[0x30, 0x03, 0x02, 0x01, 0x01]];
+      return undefined;
+    });
+    const host = await createTauriHost(apis);
+    const net = host.signing!.network!;
+    expect(await net.timestamp('http://tsa.test', new Uint8Array([0x30, 0]))).toEqual(new Uint8Array([0x30, 1]));
+    await net.ocsp('http://ocsp.test', new Uint8Array([7]));
+    await net.fetchCrl('http://crl.test/a.crl');
+    expect(calls.filter((c) => c.cmd.startsWith('sign_'))).toEqual([
+      { cmd: 'sign_timestamp', args: { url: 'http://tsa.test', request: [0x30, 0] } },
+      { cmd: 'sign_ocsp', args: { url: 'http://ocsp.test', request: [7] } },
+      { cmd: 'sign_fetch_crl', args: { url: 'http://crl.test/a.crl' } },
+    ]);
+    const [cert] = await host.signing!.trust!.list();
+    expect(cert!.der).toEqual(new Uint8Array([0x30, 0x03, 0x02, 0x01, 0x01]));
+    expect(cert!.sha256).toMatch(/^[0-9A-F]{64}$/);
+    await host.signing!.trust!.add(cert!.sha256, cert!.der);
+    await host.signing!.trust!.remove(cert!.sha256);
+    expect(calls.find((c) => c.cmd === 'trust_add')?.args).toEqual({ sha256: cert!.sha256, der: [0x30, 0x03, 0x02, 0x01, 0x01] });
+    expect(calls.find((c) => c.cmd === 'trust_remove')?.args).toEqual({ sha256: cert!.sha256 });
+  });
+});

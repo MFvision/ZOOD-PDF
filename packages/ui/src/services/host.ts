@@ -5,6 +5,8 @@
  * WKWebView ignores `<input type=file>` and `<a download>`).
  */
 import { webHost } from './files';
+import type { SigningNetwork } from './signing';
+import type { TrustStore } from './trust';
 
 export interface OpenedFile {
   name: string;
@@ -38,6 +40,11 @@ export interface HostBridge {
   saveFile(name: string, bytes: Uint8Array, opts?: SaveOptions): Promise<SaveResult | null>;
   /** Files dropped on the window (or re-emitted by a native host). Returns an unsubscribe function. */
   onHostDrop(cb: (files: OpenedFile[], point: DropPoint | null) => void): () => void;
+  /**
+   * Digital signatures. `network` exists on desktop only (timestamps and long-term validation,
+   * SPEC: "timestamps + LTV desktop only"); `trust` replaces the IndexedDB trust list.
+   */
+  signing?: { network?: SigningNetwork; trust?: TrustStore };
 }
 
 let current: HostBridge | null = null;
