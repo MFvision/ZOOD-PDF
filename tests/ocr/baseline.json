@@ -1,0 +1,9 @@
+{
+  "measured": "2026-09-26, headless Chromium, tessdata 4.1.0 best-int",
+  "tolerance": 2,
+  "e2e": {
+    "scan-ar": { "accuracy": 97.3 },
+    "crooked8-ar": { "accuracy": 71.3 }
+  },
+  "corpus": {}
+}

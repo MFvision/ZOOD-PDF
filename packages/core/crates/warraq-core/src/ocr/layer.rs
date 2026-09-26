@@ -1,11 +1,13 @@
 //! The invisible OCR text layer.
 //!
 //! Every recognised word becomes one run of GlyphLessFont characters in text rendering mode 3
-//! (invisible), horizontally scaled (`Tz`) so the run covers the word's box, wrapped in a
-//! `/Span <</ActualText …>> BDC … EMC` with the word itself. Characters are written in LOGICAL
-//! order; for right-to-left words the text matrix is mirrored (the pen moves leftwards from the
-//! word's right edge), the same convention as Tesseract's PDF renderer, so readers that ignore
-//! `/ActualText` still see the characters in reading order. `/Direction` is never written.
+//! (invisible), horizontally scaled (`Tz`) so the run covers the word's box. Right-to-left words
+//! are stored in VISUAL order (digit/Latin runs kept left to right) with an upright matrix inside
+//! `/ReversedChars BMC … EMC` — exactly how Chrome writes Arabic — and without `/ActualText`:
+//! PDFium (Chrome, the viewer) reorders them to reading order for search, selection and copy, but
+//! runs its line bidi pass over `/ActualText` too, which reverses it. Left-to-right words carry
+//! `/Span <</ActualText …>> BDC`. Tesseract's own renderer (logical order, mirrored matrix) also
+//! comes out reversed in PDFium. A space glyph follows every word. `/Direction` is never written.
 //!
 //! Coordinates: word boxes are in pixels of the image that was recognised (y down). That image
 //! shows the page as displayed (after `/Rotate`), optionally deskewed by `angle` degrees
@@ -149,6 +151,43 @@ pub fn is_rtl(s: &str) -> bool {
         }
     }
     false
+}
+
+/// Left-to-right display order of a right-to-left word: characters reversed, except runs of
+/// digits and Latin letters, which keep their own order. Combining marks end up before their
+/// base, which the reader's bidi pass undoes.
+pub fn visual_order(word: &str) -> String {
+    let ltr = |c: char| {
+        c.is_ascii_alphanumeric()
+            || matches!(c as u32, 0x0660..=0x0669 | 0x06F0..=0x06F9)
+            || (c.is_alphabetic() && (c as u32) < 0x0590)
+    };
+    let chars: Vec<char> = word.chars().collect();
+    let mut runs: Vec<(bool, String)> = Vec::new();
+    let mut i = 0;
+    while i < chars.len() {
+        let is_ltr = ltr(chars[i]);
+        let mut run = String::new();
+        run.push(chars[i]);
+        i += 1;
+        while i < chars.len() {
+            let n = chars[i];
+            // a separator between two LTR characters (2,5 or 10:30) stays inside the run
+            let joins = is_ltr
+                && matches!(n, '.' | ',' | ':' | '/' | '-' | '\u{066B}' | '\u{066C}')
+                && chars.get(i + 1).copied().is_some_and(ltr);
+            if ltr(n) != is_ltr && !joins {
+                break;
+            }
+            run.push(n);
+            i += 1;
+        }
+        runs.push((is_ltr, run));
+    }
+    runs.iter()
+        .rev()
+        .map(|(l, r)| if *l { r.clone() } else { r.chars().rev().collect() })
+        .collect()
 }
 
 fn name(n: &[u8]) -> Object {
@@ -345,28 +384,60 @@ pub fn add_text_layer(
         let height = (by1 - by0).max(0.5);
         let size = height * em / f64::from(ASCENT - DESCENT);
         let baseline = by1 + size * f64::from(DESCENT) / em; // DESCENT < 0: above the bottom
-        let rtl = is_rtl(text);
-        let (sx0, adv) = if rtl { (bx1, -1.0) } else { (bx0, 1.0) };
-        let p = m.map(sx0, baseline);
-        let a = m.map(sx0 + adv, baseline);
-        let u = m.map(sx0, baseline - 1.0);
         let units = text.encode_utf16().count().max(1) as f64;
         let natural = units * size * f64::from(ADVANCE) / em;
         let tz = (100.0 * (bx1 - bx0) / natural).clamp(1.0, 10_000.0);
-        ops.push_str(&format!(
-            "/Span <</ActualText <FEFF{}>>> BDC\n/{} {} Tf {} Tz {} {} {} {} {} {} Tm <{}> Tj\nEMC\n",
-            hex_utf16(text),
-            res_name,
-            pt(size),
-            pt(tz),
-            num(a.0 - p.0),
-            num(a.1 - p.1),
-            num(u.0 - p.0),
-            num(u.1 - p.1),
-            pt(p.0),
-            pt(p.1),
-            hex_utf16(text),
-        ));
+        // A real space glyph after each word, outside the word's /ActualText span and next in
+        // content order, as Tesseract does: readers then see a word boundary even where Arabic
+        // words sit closer than their gap heuristics expect. It sits on the reading-order side
+        // of the word: right of an LTR word, LEFT of an RTL word (its own text matrix).
+        let rtl = is_rtl(text);
+        let tm = |x: f64| {
+            let p = m.map(x, baseline);
+            let a = m.map(x + 1.0, baseline);
+            let u = m.map(x, baseline - 1.0);
+            format!(
+                "{} {} {} {} {} {} Tm",
+                num(a.0 - p.0),
+                num(a.1 - p.1),
+                num(u.0 - p.0),
+                num(u.1 - p.1),
+                pt(p.0),
+                pt(p.1)
+            )
+        };
+        let glyphs = if rtl { visual_order(text) } else { text.to_string() };
+        // RTL words: visual-order glyphs inside /ReversedChars (the marker Chrome writes around
+        // its Arabic runs) and NO /ActualText: PDFium (Chrome, the viewer) then searches, selects
+        // and copies them in logical order, and warraq-text reads them like Chrome's text. PDFium
+        // applies its line bidi pass to /ActualText too, which would come out reversed (measured
+        // with the viewer's PDFium build). LTR words keep /ActualText with the word.
+        if rtl {
+            ops.push_str(&format!(
+                "/{} {} Tf {} Tz {}\n/ReversedChars BMC <{}> Tj EMC",
+                res_name,
+                pt(size),
+                pt(tz),
+                tm(bx0),
+                hex_utf16(&visual_order(text)),
+            ));
+        } else {
+            ops.push_str(&format!(
+                "/{} {} Tf {} Tz {}\n/Span <</ActualText <FEFF{}>>> BDC <{}> Tj EMC",
+                res_name,
+                pt(size),
+                pt(tz),
+                tm(bx0),
+                hex_utf16(text),
+                hex_utf16(text),
+            ));
+        }
+        if rtl {
+            let space = size * f64::from(ADVANCE) / em * tz / 100.0;
+            ops.push_str(&format!(" {} <0020> Tj\n", tm(bx0 - space)));
+        } else {
+            ops.push_str(" <0020> Tj\n");
+        }
         stats.words += 1;
     }
     ops.push_str("ET\n");

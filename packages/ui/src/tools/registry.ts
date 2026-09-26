@@ -5,6 +5,7 @@
  */
 import type { MessageKey } from '../i18n';
 import type { IconName } from '../app/icons';
+import { openScan } from '../ocr/store';
 
 export type ToolId =
   | 'edit'
@@ -80,7 +81,8 @@ export const TOOLS: readonly ToolDef[] = [
   tool('export', 'export', 'green'),
   tool('create', 'create', 'blue', { needsDocument: false }),
   tool('compare', 'compare', 'teal'),
-  tool('scan', 'scan', 'cyan', { needsDocument: false }),
+  // Scan & OCR: its sheet offers "Make searchable" for the open PDF and "Scan pages" from images.
+  tool('scan', 'scan', 'cyan', { status: 'ready', needsDocument: false, core: { open: () => openScan() } }),
   tool('combine', 'combine', 'orange'),
   tool('compress', 'compress', 'mint'),
   tool('prepare-form', 'form', 'pink', { status: 'ready', viewer: { commands: ['mode:form'] } }),

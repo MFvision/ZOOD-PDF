@@ -1,6 +1,6 @@
 //! Scan & OCR in the engine: the invisible text layer written over page images
 //! (`ocr.addTextLayer`) and new PDFs made from scanned images (`ocr.createPdf`).
-//! Recognition itself (tesseract.js) and image preprocessing run in the UI (ADR 0008).
+//! Recognition itself (tesseract.js) and image preprocessing run in the UI (ADR 0016).
 
 mod create;
 mod font;

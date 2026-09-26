@@ -34,7 +34,10 @@ export async function stubSavePicker(context: BrowserContext): Promise<void> {
       createWritable: async () => {
         const chunks: number[] = [];
         return {
-          write: async (b: Uint8Array) => void chunks.push(...Array.from(new Uint8Array(b))),
+          // a loop, not push(...spread): large files exceed the argument limit
+          write: async (b: Uint8Array) => {
+            for (const v of new Uint8Array(b)) chunks.push(v);
+          },
           close: async () => void w.__saved.push({ name: opts.suggestedName, bytes: chunks }),
         };
       },

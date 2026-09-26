@@ -22,6 +22,16 @@ export const SHIPPED = [
   '@embedpdf/default-stamps',
   'preact',
   'tailwind-merge',
+  // Scan & OCR: tesseract.js (main thread + dist/worker.min.js), its WebAssembly core and the
+  // packages bundled into its worker.
+  'tesseract.js',
+  'tesseract.js-core',
+  'bmp-js',
+  'idb-keyval',
+  'is-url',
+  'regenerator-runtime',
+  'wasm-feature-detect',
+  'zlibjs',
 ] as const;
 
 export const ALLOWED = /^(MIT|Apache-2\.0|BSD-2-Clause|BSD-3-Clause|ISC|Zlib|OFL-1\.1|CC0-1\.0|Unicode-3\.0)$/;

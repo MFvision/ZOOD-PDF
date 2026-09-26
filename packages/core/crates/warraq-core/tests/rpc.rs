@@ -271,7 +271,7 @@ fn static_merge_and_method_list() {
     }
     assert_eq!(
         registry().static_names(),
-        vec!["methods.list", "pdf.isEncrypted", "pdf.merge"]
+        vec!["methods.list", "ocr.createPdf", "pdf.isEncrypted", "pdf.merge"]
     );
 }
 

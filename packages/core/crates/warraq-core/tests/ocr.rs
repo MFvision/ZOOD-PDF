@@ -80,7 +80,8 @@ fn text_layer_reads_back_in_logical_order_and_is_incremental() {
 
     let content = page_content(out, 0);
     assert!(content.contains("3 Tr"), "invisible text: {content}");
-    assert!(content.contains("/ActualText"), "{content}");
+    assert!(content.contains("/ActualText"), "LTR words carry ActualText: {content}");
+    assert!(content.contains("/ReversedChars BMC"), "RTL words: {content}");
     assert!(content.contains(" Tz"), "horizontal scaling to the bbox");
     assert!(!String::from_utf8_lossy(out).contains("/Direction"));
 }
@@ -126,19 +127,54 @@ fn crooked_page_gets_a_rotated_text_layer() {
     let mut d = Document::open(a4(), None).unwrap();
     let r = call(&mut d, "ocr.addTextLayer", layer(arabic_line_words(), 8.0));
     let content = page_content(&r.blobs[0], 0);
-    // RTL words are drawn with a mirrored, rotated matrix: a = -cos 8°, b = -sin 8°.
+    // Every word, RTL or LTR, is drawn with the same upright matrix rotated by the skew.
     let (c, s) = (8f64.to_radians().cos(), 8f64.to_radians().sin());
-    let tm_rtl = format!("{:.4} {:.4} {:.4} {:.4}", -c, -s, -s, c);
-    assert!(
-        content.contains(&tm_rtl),
-        "rotated RTL matrix {tm_rtl} in {content}"
-    );
-    let tm_ltr = format!("{:.4} {:.4} {:.4} {:.4}", c, s, -s, c);
-    assert!(content.contains(&tm_ltr), "rotated LTR matrix {tm_ltr}");
+    let tm = format!("{:.4} {:.4} {:.4} {:.4}", c, s, -s, c);
+    assert_eq!(content.matches(&tm).count(), 6 + 4, "6 words and 4 RTL spaces, {tm} in {content}");
+    let mirrored = format!("{:.4} {:.4}", -c, -s);
+    assert!(!content.contains(&mirrored), "no mirrored matrix: {content}");
     let p0 = &plain(&r.blobs[0])[0];
     for w in ["التحول", "الرقمي", "المؤسسات", "Report"] {
         assert!(p0.contains(w), "{w} in {p0:?}");
     }
+}
+
+fn utf16_hex(s: &str) -> String {
+    s.encode_utf16().map(|u| format!("{u:04X}")).collect()
+}
+
+#[test]
+fn rtl_words_are_visual_order_reversed_chars_and_read_back_logically() {
+    // PDFium (Chrome, the viewer) reads visual-order runs inside /ReversedChars in logical order;
+    // it would reverse an /ActualText, so RTL words carry none.
+    let mut d = Document::open(a4(), None).unwrap();
+    let words = json!([
+        { "text": "الرقمي", "bbox": [700, 100, 900, 140] },
+        { "text": "عام2026م", "bbox": [400, 100, 650, 140] },
+        { "text": "مُحَمَّد", "bbox": [150, 100, 380, 140] },
+    ]);
+    let r = call(&mut d, "ocr.addTextLayer", layer(words, 0.0));
+    let content = page_content(&r.blobs[0], 0);
+    assert!(!content.contains("ActualText"), "{content}");
+    assert!(content.contains(&format!("/ReversedChars BMC <{}> Tj EMC", utf16_hex("يمقرلا"))), "visual glyphs: {content}");
+    // digits keep their left-to-right order inside the right-to-left word
+    assert!(content.contains(&format!("<{}> Tj", utf16_hex("م2026ماع"))), "{content}");
+    let p0 = &plain(&r.blobs[0])[0];
+    assert!(p0.contains("الرقمي") && p0.contains("عام2026م") && p0.contains("مُحَمَّد"), "{p0:?}");
+    assert!(!p0.contains("  "), "one space between words: {p0:?}");
+}
+
+#[test]
+fn tightly_set_words_stay_separate() {
+    // Arabic words often sit a hair apart; the space glyph after each word keeps them apart.
+    let mut d = Document::open(a4(), None).unwrap();
+    let words = json!([
+        { "text": "باسم", "bbox": [900, 100, 1000, 140] },
+        { "text": "الوزارة", "bbox": [760, 100, 898, 140] },
+    ]);
+    let r = call(&mut d, "ocr.addTextLayer", layer(words, 0.0));
+    let p0 = &plain(&r.blobs[0])[0];
+    assert!(p0.contains("باسم الوزارة"), "{p0:?}");
 }
 
 #[test]
@@ -347,3 +383,4 @@ fn jpeg_header_parser_survives_truncation() {
     let info = warraq_core::ocr::jpeg_info(&j).unwrap();
     assert_eq!((info.width, info.height, info.components), (16, 8, 1));
 }
+

@@ -6,6 +6,7 @@ import { DocumentView } from './DocumentView';
 import { CommandPalette, SettingsSheet, TagsSheet, ToolsSheet } from './Sheets';
 import { Sheet, Toasts } from './primitives';
 import { Icon } from './icons';
+import { ScanHost } from '../ocr/ScanSheet';
 
 export function App() {
   const app = useApp();
@@ -130,6 +131,7 @@ export function App() {
           </div>
         </div>
       )}
+      <ScanHost />
       <Toasts />
     </div>
   );

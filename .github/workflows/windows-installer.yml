@@ -49,6 +49,10 @@ jobs:
       - name: Build the engine (WASM)
         run: bash scripts/build-wasm.sh
 
+      - name: OCR language models (pinned checksums)
+        shell: bash
+        run: bash scripts/fetch-ocr-models.sh
+
       - name: Desktop unit tests
         working-directory: apps/desktop/src-tauri
         run: cargo test

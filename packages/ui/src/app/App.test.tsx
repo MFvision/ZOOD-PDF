@@ -43,7 +43,7 @@ describe('<App> home', () => {
     const cards = document.querySelectorAll('.action-card');
     expect(cards).toHaveLength(6);
     const tools = [...document.querySelectorAll('[data-testid=sidebar-tools] [data-tool]')].map((b) => b.getAttribute('data-tool'));
-    expect(tools.sort()).toEqual(['comment', 'fill-sign', 'prepare-form', 'protect', 'redact']);
+    expect(tools.sort()).toEqual(['comment', 'fill-sign', 'prepare-form', 'protect', 'redact', 'scan']);
     // AI is not ready: no AI card, no AI action card
     expect(document.querySelector('.ai-card')).toBeNull();
     expect(document.querySelector('[data-card=ai]')).toBeNull();

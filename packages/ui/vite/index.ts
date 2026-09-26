@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import type { Plugin, PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 import { zoodLicenses } from './licenses.ts';
+import { zoodOcrAssets } from './ocr.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const UI_ROOT = path.resolve(here, '..');
@@ -126,6 +127,7 @@ export function zoodUi(): PluginOption[] {
     zoodEngine(),
     zoodEmbedPdfPatches(),
     zoodLicenses(),
+    zoodOcrAssets(),
     {
       name: 'zood:config',
       config() {
