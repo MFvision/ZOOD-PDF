@@ -71,8 +71,11 @@ export async function send(
   options: SendOptions = {},
 ): Promise<Outcome> {
   const { settings } = preflight;
-  const request = requestFor(preflight, key);
   const fail = (failure: Failure): Outcome => ({ ok: false, failure });
+  // An on-device request never comes here (`device/generate.ts`); refusing
+  // it keeps this the one place text leaves, and nothing more.
+  if (settings.provider === 'device') return fail({ kind: 'device', message: 'not a network request' });
+  const request = requestFor(preflight, key);
   const doFetch: typeof fetch = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
   const policy = (options.watch ?? watchPolicy)();
   let response: Response;

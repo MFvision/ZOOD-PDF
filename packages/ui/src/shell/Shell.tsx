@@ -14,6 +14,9 @@ import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { EmbedViewer } from '../embed/EmbedViewer';
 import { OrganizeView } from '../organize/OrganizeView';
 import { SignatureBanner } from '../signatures/SignatureBanner';
+import { EmbedReadAloudHighlight } from '../speech/EmbedReadAloudHighlight';
+import { ReadAloudBar } from '../speech/ReadAloudBar';
+import { useReadAloud } from '../speech/readAloud';
 import { Viewer } from '../viewer/Viewer';
 import { AboutDialog, GoToPageDialog, PasswordDialog, SettingsDialog, ShortcutsDialog } from './Dialogs';
 import { FindBar } from './FindBar';
@@ -59,6 +62,9 @@ export function Shell() {
   // targets: combine with it — the default — or open in its place.
   const [openZone, setOpenZone] = useState<HTMLDivElement | null>(null);
   const openZoneRef = useRef<HTMLDivElement | null>(null);
+  // Read aloud: its bar, and the sentence marked over EmbedPDF's host.
+  const readAloud = useReadAloud();
+  const [embedHost, setEmbedHost] = useState<HTMLDivElement | null>(null);
   const trackOpenZone = useCallback((zone: HTMLDivElement | null) => {
     openZoneRef.current = zone;
     setOpenZone(zone);
@@ -107,6 +113,7 @@ export function Shell() {
         {!nativeMenu && <MenuBar />}
         <Toolbar />
         {warraqView && !organizing && state.find.open && <FindBar />}
+        {isViewer && state.document !== null && !organizing && readAloud.open && <ReadAloudBar />}
         {state.error && (
           <div className="banner banner-error" role="alert">
             <Icon of={CircleAlert} />
@@ -141,7 +148,8 @@ export function Shell() {
             {/* EmbedPDF stays mounted under Warraq's editor, so switching into Edit
                 text keeps its engine, its state and the handover source alive. */}
             {isViewer && services.documentBytes !== null && (
-              <div className="embed-host" hidden={warraqView}>
+              <div className="embed-host" hidden={warraqView} ref={setEmbedHost}>
+                <EmbedReadAloudHighlight host={embedHost} registry={services.embedRegistry} />
                 <EmbedViewer
                   bytes={services.documentBytes}
                   name={state.document?.name ?? 'document.pdf'}

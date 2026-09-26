@@ -1,9 +1,12 @@
 import { readJson, writeJson } from '../state/preferences';
+import { DEVICE_MODELS } from './device/models';
+import type { DeviceModelId } from './device/models';
 import {
   CLAUDE_MODELS,
   DEFAULT_CLAUDE_MODEL,
   LOCAL_DEFAULT_MODEL,
   LOCAL_DEFAULT_URL,
+  PROVIDERS,
 } from './providers';
 import type { LocalApi, ProviderId } from './providers';
 
@@ -72,16 +75,23 @@ export interface AiSettings {
   localUrl: string;
   localApi: LocalApi;
   localModel: string;
+  /**
+   * The on-device model, once chosen; until then the one `defaultModelFor`
+   * picks for this machine, so a setting never names a model this
+   * computer would be the wrong size for.
+   */
+  deviceModel: DeviceModelId | null;
 }
 
 const SETTINGS_STORAGE = 'warraq.ai.settings';
 
 export const DEFAULT_SETTINGS: AiSettings = {
-  provider: 'claude',
+  provider: 'device',
   claudeModel: DEFAULT_CLAUDE_MODEL,
   localUrl: LOCAL_DEFAULT_URL,
   localApi: 'ollama',
   localModel: LOCAL_DEFAULT_MODEL,
+  deviceModel: null,
 };
 
 const text = (value: unknown, fallback: string) =>
@@ -91,13 +101,14 @@ const text = (value: unknown, fallback: string) =>
 export function sanitizeSettings(raw: unknown): AiSettings {
   const stored = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   return {
-    provider: stored.provider === 'local' ? 'local' : 'claude',
+    provider: (PROVIDERS as readonly unknown[]).includes(stored.provider) ? (stored.provider as ProviderId) : 'device',
     claudeModel: (CLAUDE_MODELS as readonly unknown[]).includes(stored.claudeModel)
       ? (stored.claudeModel as string)
       : DEFAULT_SETTINGS.claudeModel,
     localUrl: text(stored.localUrl, DEFAULT_SETTINGS.localUrl),
     localApi: stored.localApi === 'openai' ? 'openai' : 'ollama',
     localModel: text(stored.localModel, DEFAULT_SETTINGS.localModel),
+    deviceModel: DEVICE_MODELS.some((model) => model.id === stored.deviceModel) ? (stored.deviceModel as DeviceModelId) : null,
   };
 }
 

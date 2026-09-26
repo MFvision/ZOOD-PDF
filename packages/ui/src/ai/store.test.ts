@@ -84,13 +84,18 @@ describe('the panel settings', () => {
       localUrl: 'http://127.0.0.1:11434',
       localApi: 'openai',
       localModel: 'qwen2.5:7b',
+      deviceModel: 'qwen2.5-0.5b',
     };
     expect(sanitizeSettings(chosen)).toEqual(chosen);
+    // The on-device model is the default provider, and a model this build does not know is not kept.
+    expect(DEFAULT_SETTINGS.provider).toBe('device');
+    expect(sanitizeSettings({ provider: 'device', deviceModel: 'gpt-4' }).deviceModel).toBeNull();
   });
 
   it('never include the key', () => {
     expect(Object.keys(DEFAULT_SETTINGS).sort()).toEqual([
       'claudeModel',
+      'deviceModel',
       'localApi',
       'localModel',
       'localUrl',

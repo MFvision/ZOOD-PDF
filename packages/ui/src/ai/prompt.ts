@@ -84,18 +84,24 @@ export interface PromptContext {
   pageCount: number;
   /** Pages of the request that were left out, over the budget. */
   left: readonly number[];
+  /** The pages are passages picked for the request (a long document, a small model), with "…" where lines were left out. */
+  passages?: boolean;
 }
 
 /** Exactly what is sent, besides the provider's own fields: the rules, the pages, the request. */
 export function buildPrompt(
   task: AiTask,
   pages: readonly PageText[],
-  { lang, pageCount, left }: PromptContext,
+  { lang, pageCount, left, passages = false }: PromptContext,
 ): Prompt {
   // Smart fill sends the form's fields and the person's details: no pages.
   if (task.kind === 'fill') return fillPrompt(task.fields, task.details);
   const parts = [documentText(pages)];
-  if (left.length > 0) {
+  if (passages) {
+    parts.push(
+      `Only the passages of this ${pageCount}-page document that seem to concern the request are included, each inside the tag of its page; "…" marks lines left out between them. If the answer may lie elsewhere in the document, say so.`,
+    );
+  } else if (left.length > 0) {
     parts.push(
       `Only part of this ${pageCount}-page document is included. Left out for length: pages ${formatPages(left)}. If the request may concern them, say so.`,
     );

@@ -148,6 +148,9 @@ importers:
       '@tesseract.js-data/urd':
         specifier: 1.0.0
         version: 1.0.0
+      '@wllama/wllama':
+        specifier: 3.6.1
+        version: 3.6.1
       fflate:
         specifier: ^0.8.3
         version: 0.8.3
@@ -1135,6 +1138,9 @@ packages:
 
   '@vue/shared@3.5.43':
     resolution: {integrity: sha512-uksS7YGMR5NZyr4JNq0Rp+QyLns0ueaz20KwzIPW9R0LH1Vnt4E+XUM29PNseEbf1www2gOuhuDi5AKOIXag9Q==}
+
+  '@wllama/wllama@3.6.1':
+    resolution: {integrity: sha512-v6cA0w6sHuaTLmUo9nSU37Sln+5YqZy/OGWp2dXWaR3ts26yLiMnKHGGbjdzQolPSPydPSKUlHHSKZgXK5Prkw==}
 
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -3163,6 +3169,8 @@ snapshots:
       '@vue/shared': 3.5.43
 
   '@vue/shared@3.5.43': {}
+
+  '@wllama/wllama@3.6.1': {}
 
   acorn-jsx@5.3.2(acorn@8.18.0):
     dependencies:

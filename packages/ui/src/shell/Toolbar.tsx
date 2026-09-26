@@ -11,6 +11,7 @@ import {
   Redo2,
   Search,
   Undo2,
+  Volume2,
   Wrench,
   ZoomIn,
   ZoomOut,
@@ -24,6 +25,7 @@ import { withoutPdfium } from '../core/host-tauri';
 import { useI18n } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { hasUnsavedEdits } from '../state/appReducer';
+import { closeBar, openBar, useReadAloud } from '../speech/readAloud';
 import { findTool } from '../tools/tools';
 import { ToolGallery } from '../tools/ToolGallery';
 import { useMarkupBar } from './markupBar';
@@ -59,6 +61,7 @@ export function Toolbar() {
   const markup = useMarkupBar();
   const markupOn = services.embedShowing && markup.on;
   const noInspector = useInspectorHidden();
+  const readAloud = useReadAloud();
 
   return (
     <div
@@ -188,6 +191,15 @@ export function Toolbar() {
                   ? services.viewCommand('find')
                   : dispatch({ type: state.find.open ? 'FIND_CLOSE' : 'FIND_OPEN' })
               }
+            />
+            {/* Read aloud, in either view: the bar under the toolbar, with the sentence marked on the page. */}
+            <IconButton
+              className="toolbar-optional"
+              label={t('readAloud.label')}
+              icon={<Icon of={Volume2} />}
+              disabled={organizing}
+              pressed={!organizing && readAloud.open}
+              onClick={() => (readAloud.open ? closeBar() : openBar())}
             />
             <IconButton label={t('file.save')} icon={<Icon of={Download} />} onClick={() => void services.saveDocument()} />
           </div>

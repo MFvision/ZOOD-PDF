@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { CLAUDE_ENDPOINT, LM_STUDIO_URL, LOCAL_ALLOWED_ORIGINS, LOCAL_DEFAULT_URL } from '@warraq/ui/src/ai/providers';
+import { DEVICE_MODELS, MODEL_HOSTS } from '@warraq/ui/src/ai/device/models';
 import { stripMetaCsp } from '../vite.config';
 import { cloudConfig, oneDriveSources, shippedConfig, withCloudSources } from '../../../packages/ui/vite/cloudConfig';
 
@@ -8,14 +9,19 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 /**
  * The only places the app may connect to besides itself: the AI tool's two
- * providers — Anthropic's API, for a person's own key, and the ports Ollama
- * and LM Studio listen on, on this computer. Nothing is sent to them until the person presses Send.
+ * remote providers — Anthropic's API, for a person's own key, and the ports
+ * Ollama and LM Studio listen on, on this computer — and, in a browser only,
+ * Hugging Face and its CDN, for the one download of the on-device model.
+ * Nothing is sent to any of them until the person presses Send, or the
+ * download button. The desktop host downloads the model itself, so its
+ * webview never reaches Hugging Face.
  */
 const AI_SOURCES =
   'https://api.anthropic.com http://localhost:11434 http://127.0.0.1:11434 http://localhost:1234 http://127.0.0.1:1234';
+const MODEL_SOURCES = 'https://huggingface.co https://*.hf.co';
 
 const EXPECTED_CSP =
-  `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; worker-src 'self' blob:; frame-src blob:; connect-src 'self' ${AI_SOURCES}; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`;
+  `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; worker-src 'self' blob:; frame-src blob:; connect-src 'self' ${AI_SOURCES} ${MODEL_SOURCES}; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`;
 
 describe('apps/web index.html', () => {
   it('ships the strict Content-Security-Policy', () => {
@@ -101,7 +107,7 @@ describe('the AI tool can reach its providers, and nothing else is opened up', (
   it('adds the same sources to both policies, and only these', () => {
     const extra = (connect: string | undefined, own: string[]) =>
       (connect ?? '').split(' ').filter((source) => !own.includes(source));
-    expect(extra(directives(EXPECTED_CSP).get('connect-src'), ["'self'"])).toEqual(AI_SOURCES.split(' '));
+    expect(extra(directives(EXPECTED_CSP).get('connect-src'), ["'self'"])).toEqual([...AI_SOURCES.split(' '), ...MODEL_SOURCES.split(' ')]);
     expect(extra(directives(desktopCsp).get('connect-src'), ["'self'", 'ipc:', 'http://ipc.localhost'])).toEqual(
       AI_SOURCES.split(' '),
     );
@@ -109,6 +115,9 @@ describe('the AI tool can reach its providers, and nothing else is opened up', (
 
   it('allows exactly the addresses the tool uses by default', () => {
     expect(AI_SOURCES.split(' ')).toEqual([new URL(CLAUDE_ENDPOINT).origin, ...LOCAL_ALLOWED_ORIGINS]);
+    // The model's catalogue and the policy name the same hosts; the desktop host checks each redirect against them itself.
+    expect(MODEL_SOURCES.split(' ')).toEqual([...MODEL_HOSTS]);
+    for (const model of DEVICE_MODELS) expect(new URL(model.url).origin).toBe('https://huggingface.co');
     expect(LOCAL_ALLOWED_ORIGINS).toContain(new URL(LOCAL_DEFAULT_URL).origin);
     expect(LOCAL_ALLOWED_ORIGINS).toContain(new URL(LM_STUDIO_URL).origin);
   });
@@ -134,7 +143,7 @@ describe('the cloud drives reach exactly their own hosts, and only in a build th
     const csp = /Content-Security-Policy" content="([^"]*)"/.exec(withCloudSources(html, { onedrive: { clientId: APP, tenant: 'common' } }))?.[1] ?? '';
     const cloud = directives(csp);
     for (const [name, sources] of directives(EXPECTED_CSP)) if (name !== 'connect-src') expect(cloud.get(name)).toBe(sources);
-    expect(cloud.get('connect-src')).toBe(`'self' ${AI_SOURCES} ${ONEDRIVE.join(' ')}`);
+    expect(cloud.get('connect-src')).toBe(`'self' ${AI_SOURCES} ${MODEL_SOURCES} ${ONEDRIVE.join(' ')}`);
     expect(oneDriveSources()).toEqual(ONEDRIVE);
   });
 

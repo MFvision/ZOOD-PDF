@@ -8,6 +8,8 @@ import { useI18n, useT } from '../i18n/useT';
 import type { Lang, TKey } from '../i18n/messages';
 import type { ThemeMode } from '../state/preferences';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
+import { AiSettingsSection } from '../ai/AiSettings';
+import { VoiceSettings } from '../speech/VoiceSettings';
 import { formatShortcut } from './menuModel';
 
 function GoToPageForm({ total, initialPage, onGo, onCancel }: { total: number; initialPage: number; onGo: (page: number) => void; onCancel: () => void }) {
@@ -277,6 +279,13 @@ export function SettingsDialog() {
           ]}
           onChange={(next) => dispatch({ type: 'SET_THEME', theme: next })}
         />
+        {/* The AI tool's provider and on-device model, the person's details for forms, and the reading voices. */}
+        {dialog === 'settings' && (
+          <>
+            <AiSettingsSection />
+            <VoiceSettings />
+          </>
+        )}
       </div>
     </Dialog>
   );

@@ -4,7 +4,7 @@ import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useI18n } from '../i18n/useT';
 import type { Lang, TKey, TParams } from '../i18n/messages';
-import { useAppState, useServices } from '../state/AppContext';
+import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { budgetFor, formatPages, pageRange, takeWithinBudget } from './budget';
 import type { TaskKind } from './budget';
 import { splitCitations } from './citations';
@@ -12,9 +12,15 @@ import { preflightFor } from './preflight';
 import type { Preflight, ProviderSettings } from './preflight';
 import { answersWithData } from './prompt';
 import type { AiTask } from './prompt';
-import { CLAUDE_MODELS, LOCAL_ALLOWED_ORIGINS, localAddress } from './providers';
+import { CLAUDE_MODELS, LOCAL_ALLOWED_ORIGINS, PROVIDERS, localAddress } from './providers';
 import type { Answer, Failure, LocalApi, ProviderId } from './providers';
 import { readDocument } from './readDocument';
+import { DeviceSection } from './device/DeviceSection';
+import { generateOnDevice } from './device/generate';
+import { needsRetrieval, retrievePassages } from './device/retrieval';
+import { useDeviceModel } from './device/useDeviceModel';
+import { profileDetails, profileIsEmpty } from './profile/profile';
+import { useProfile } from './profile/ProfileEditor';
 import { onAiRequest, takeAiRequest } from './request';
 import type { AiRequest } from './request';
 import { send } from './send';
@@ -37,6 +43,15 @@ import './ai.css';
 type Message = { key: TKey; params?: TParams };
 
 const numbers = new Intl.NumberFormat('en-US');
+
+const PROVIDER_LABEL: Record<ProviderId, TKey> = { device: 'ai.device', claude: 'ai.claude', local: 'ai.local' };
+
+/**
+ * The whole document is read for the on-device model, whatever its length,
+ * so the passages that answer a question can be chosen from all of it —
+ * within a bound no document of a person's reaches.
+ */
+const READ_ALL = 2_000_000;
 
 const TASKS: Record<TaskKind, TKey> = {
   summarize: 'ai.summarize',
@@ -91,6 +106,10 @@ function failureMessage(failure: Failure, provider: ProviderId): Message {
       return { key: 'ai.empty' };
     case 'cancelled':
       return { key: 'ai.cancelled' };
+    case 'modelMissing':
+      return { key: 'ai.modelMissing' };
+    case 'device':
+      return { key: 'ai.deviceFailed', params: { message: failure.message } };
   }
 }
 
@@ -116,7 +135,11 @@ export function AiPanel() {
   const { t, lang, dir } = useI18n();
   const state = useAppState();
   const services = useServices();
+  const dispatch = useAppDispatch();
   const [settings, setSettings] = useState<AiSettings>(readSettings);
+  // The on-device model for this machine, and the person's saved details.
+  const device = useDeviceModel(settings.deviceModel);
+  const { profile, reload: reloadProfile } = useProfile();
   const [key, setKey] = useState(() => loadKey().key);
   const [remember, setRemember] = useState(() => loadKey().remembered);
   const [storeFailed, setStoreFailed] = useState(false);
@@ -189,22 +212,29 @@ export function AiPanel() {
 
   const address = localAddress(settings.localUrl);
   const claude = settings.provider === 'claude';
+  const onDevice = settings.provider === 'device';
+  const localServer = settings.provider === 'local';
   const addressProblem: TKey | null =
-    claude || address.ok ? null : address.reason === 'notLocal' ? 'ai.notLocal' : 'ai.invalidUrl';
+    !localServer || address.ok ? null : address.reason === 'notLocal' ? 'ai.notLocal' : 'ai.invalidUrl';
   const otherPort =
-    !claude &&
+    localServer &&
     address.ok &&
     !(LOCAL_ALLOWED_ORIGINS as readonly string[]).includes(new URL(address.base).origin);
+  // The saved details, as smart fill sends them, before anything typed here.
+  const savedDetails = profile && !profileIsEmpty(profile) ? profileDetails(profile, lang) : '';
+  const allDetails = [savedDetails, details.trim()].filter(Boolean).join('\n');
   const missing: TKey | null =
     claude && key.trim().length === 0
       ? 'ai.needKey'
-      : !claude && settings.localModel.trim().length === 0
+      : localServer && settings.localModel.trim().length === 0
         ? 'ai.needModel'
-        : task === 'ask' && question.trim().length === 0
-          ? 'ai.needQuestion'
-          : task === 'fill' && details.trim().length === 0
-            ? 'ai.fill.needDetails'
-            : null;
+        : onDevice && device.status?.kind !== 'ready'
+          ? 'ai.needDeviceModel'
+          : task === 'ask' && question.trim().length === 0
+            ? 'ai.needQuestion'
+            : task === 'fill' && allDetails.length === 0
+              ? 'ai.fill.needDetails'
+              : null;
   const canReview =
     hasDocument && missing === null && addressProblem === null && reading === null && !sending;
 
@@ -271,7 +301,8 @@ export function AiPanel() {
   const review = async () => {
     if (!canReview || documentId === null) return;
     let target: ProviderSettings;
-    if (claude) target = { provider: 'claude', model: settings.claudeModel };
+    if (onDevice) target = { provider: 'device', model: device.model.id, runtime: device.runtime ?? 'cpu' };
+    else if (claude) target = { provider: 'claude', model: settings.claudeModel };
     else if (address.ok)
       target = {
         provider: 'local',
@@ -288,7 +319,7 @@ export function AiPanel() {
           : task === 'fixOcr' || task === 'pii' || task === 'tables'
             ? { kind: task }
             : task === 'fill'
-              ? { kind: 'fill', fields: [], details }
+              ? { kind: 'fill', fields: [], details: allDetails }
               : { kind: 'summarize' };
     const budget = budgetFor(target.provider, task);
     const current = state.currentPage;
@@ -313,6 +344,7 @@ export function AiPanel() {
       }
       const extra: Extra = { name: state.document?.name ?? 'document.pdf' };
       let read: Awaited<ReturnType<typeof readDocument>>;
+      let passages = false;
       if (aiTask.kind === 'fixOcr') {
         // The words Scan & OCR wrote, as kept with their pages.
         const bytes = await services.currentFileBytes();
@@ -349,6 +381,18 @@ export function AiPanel() {
         extra.fields = fields;
         aiTask.fields = fields;
         read = { pageCount, budgeted: { sent: [], left: [], characters: 0 } };
+      } else if (target.provider === 'device' && aiTask.kind === 'ask') {
+        // A question for the small model: the whole document is read here,
+        // and when it does not fit its window, the passages that answer the
+        // question go instead of whole pages (`device/retrieval.ts`).
+        read = await readDocument(services, pagesOf, READ_ALL, setReading);
+        if (ticket !== generation.current) return;
+        if (read && needsRetrieval(read.budgeted.sent, budget)) {
+          const found = await retrievePassages(services.client, read.budgeted.sent, aiTask.question, budget);
+          if (ticket !== generation.current) return;
+          read = { pageCount: read.pageCount, budgeted: { sent: found.passages, left: [], characters: found.characters } };
+          passages = true;
+        }
       } else {
         read = await readDocument(services, pagesOf, budget, setReading);
       }
@@ -361,6 +405,7 @@ export function AiPanel() {
         lang,
         pageCount: read.pageCount,
         budget,
+        passages,
       });
       if (next.pages.length === 0 && next.left.length > 0) {
         setNotice({
@@ -387,9 +432,13 @@ export function AiPanel() {
     setSending(true);
     setFailure(null);
     setPartial({ text: '', thinking: false });
-    const outcome = await send(sent, key.trim(), controller.signal, {
-      onText: (text, thinking) => setPartial({ text, thinking }),
-    });
+    // On this device the model runs in the app; the others are one request.
+    const outcome =
+      sent.settings.provider === 'device'
+        ? await generateOnDevice(sent, controller.signal, { onText: (text) => setPartial({ text, thinking: false }) })
+        : await send(sent, key.trim(), controller.signal, {
+            onText: (text, thinking) => setPartial({ text, thinking }),
+          });
     if (abortRef.current === controller) abortRef.current = null;
     setSending(false);
     setPartial(null);
@@ -431,7 +480,7 @@ export function AiPanel() {
 
       <fieldset className="ai-group">
         <legend>{t('ai.provider')}</legend>
-        {(['claude', 'local'] as const).map((provider) => (
+        {PROVIDERS.map((provider) => (
           <label key={provider} className="ai-choice">
             <input
               type="radio"
@@ -439,12 +488,14 @@ export function AiPanel() {
               checked={settings.provider === provider}
               onChange={() => update({ provider })}
             />
-            {t(provider === 'claude' ? 'ai.claude' : 'ai.local')}
+            {t(PROVIDER_LABEL[provider])}
           </label>
         ))}
       </fieldset>
 
-      {claude ? (
+      {onDevice ? (
+        <DeviceSection view={device} showDelete={false} />
+      ) : claude ? (
         <div className="ai-group">
           <label className="field">
             <span>{t('ai.key')}</span>
@@ -573,6 +624,27 @@ export function AiPanel() {
 
       {task === 'fill' && (
         <div className="ai-group">
+          {/* The saved details first (Settings keeps them encrypted); anything more is typed here. */}
+          <p className="tool-panel-note" data-profile={savedDetails ? 'saved' : 'empty'}>
+            {savedDetails ? t('ai.fill.profileSaved', { count: savedDetails.split('\n').length }) : t('ai.fill.profileEmpty')}
+          </p>
+          <div className="tool-actions">
+            <IconButton
+              label={t('ai.fill.editProfile')}
+              icon={<Icon of={FileSearch} />}
+              showLabel
+              onClick={() => {
+                dispatch({ type: 'DIALOG', dialog: 'settings' });
+                // When the sheet closes, the details it saved are read again.
+                const again = () => {
+                  void reloadProfile();
+                  changed();
+                  globalThis.document?.removeEventListener('close', again, true);
+                };
+                globalThis.document?.addEventListener('close', again, true);
+              }}
+            />
+          </div>
           <label className="field">
             <span>{t('ai.fill.details')}</span>
             <textarea
@@ -760,7 +832,9 @@ export function AiPanel() {
               <dd>
                 {shownPreflight.settings.provider === 'claude'
                   ? t('ai.toAnthropic', { host: shownPreflight.destination })
-                  : t('ai.toThisComputer', { url: shownPreflight.destination })}
+                  : shownPreflight.settings.provider === 'local'
+                    ? t('ai.toThisComputer', { url: shownPreflight.destination })
+                    : t('ai.toThisDevice')}
               </dd>
             </div>
             <div>
@@ -792,6 +866,7 @@ export function AiPanel() {
           {shownPreflight.task.kind === 'ask' && (
             <p className="tool-panel-note">{t('ai.questionSent')}</p>
           )}
+          {shownPreflight.passages && <p className="tool-panel-note">{t('ai.passagesNote', { pages: pageList(shownPreflight.pages) })}</p>}
           <details
             className="ai-exact"
             open={showText}
@@ -805,7 +880,7 @@ export function AiPanel() {
           <div className="tool-actions">
             <IconButton
               label={t(
-                shownPreflight.settings.provider === 'claude' ? 'ai.sendClaude' : 'ai.sendLocal',
+                shownPreflight.settings.provider === 'claude' ? 'ai.sendClaude' : shownPreflight.settings.provider === 'local' ? 'ai.sendLocal' : 'ai.runOnDevice',
               )}
               icon={<Icon of={Send} mirror />}
               showLabel

@@ -45,9 +45,11 @@ export const AiCard = forwardRef<HTMLTextAreaElement, { className?: string }>(fu
   const settings = readSettings();
   const address = localAddress(settings.localUrl);
   const provider =
-    settings.provider === 'claude'
-      ? t('ai.card.providerClaude')
-      : t('ai.card.providerLocal', { host: address.ok ? new URL(address.base).host : settings.localUrl });
+    settings.provider === 'device'
+      ? t('ai.card.providerDevice')
+      : settings.provider === 'claude'
+        ? t('ai.card.providerClaude')
+        : t('ai.card.providerLocal', { host: address.ok ? new URL(address.base).host : settings.localUrl });
 
   const ask = (request: AiRequest) => {
     postAiRequest(request);
