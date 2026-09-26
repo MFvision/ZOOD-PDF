@@ -114,6 +114,13 @@ async function highlightTop(page: Page, pageIndex: number): Promise<number> {
   return (m.y + 1 - p.y) / p.height;
 }
 
+/** The highlight's left edge as a fraction of the page width (page 1 on screen). */
+async function highlightLeft(page: Page): Promise<number> {
+  const m = (await page.locator('[data-testid=reading-highlight][data-page="0"]').first().boundingBox())!;
+  const p = await pageBox(page, 0);
+  return (m.x + 2 - p.x) / p.width;
+}
+
 // Page 1 of the fixture (A4, 841.89 pt): heading y≈77, Arabic ≈132, English ≈166, mixed ≈200.
 const A4 = 841.89;
 
@@ -146,6 +153,8 @@ for (const locale of ['en', 'ar'] as const) {
       await expect(player).toHaveAttribute('data-status', 'playing');
       await expect(view.locator('[data-testid=read-aloud-status]')).toHaveText(locale === 'ar' ? 'الفقرة ١ من ٦' : 'Paragraph 1 of 6');
       expect(Math.abs((await highlightTop(page, 0)) - 76.8 / A4)).toBeLessThan(0.012);
+      // Horizontally too: the Arabic heading is right-aligned (x 408–528 of 595 pt).
+      expect(Math.abs((await highlightLeft(page)) - 408 / 595.28)).toBeLessThan(0.02);
 
       await finish(page);
       await expectSpoken(page, 2, TEXT.arabic, 'local-ar');

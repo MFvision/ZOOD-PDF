@@ -216,6 +216,13 @@ export function Viewer(props: Props) {
       viewportEl = best;
       return best;
     };
+    /** Top-left of EmbedPDF's page layout (its first child, centred with a margin) in the viewport's client box. */
+    const contentOrigin = (vp: HTMLElement) => {
+      const content = vp.firstElementChild as HTMLElement | null;
+      const vr = vp.getBoundingClientRect();
+      const cr = content?.getBoundingClientRect() ?? vr;
+      return { x: cr.left - vr.left - vp.clientLeft, y: cr.top - vr.top - vp.clientTop };
+    };
     const toPos = (page: number, r: [number, number, number, number]) => {
       try {
         return scrollAt?.forDocument(documentId).getRectPositionForPage(page, { origin: { x: r[0], y: r[1] }, size: { width: r[2] - r[0], height: r[3] - r[1] } }) ?? null;
@@ -230,15 +237,15 @@ export function Viewer(props: Props) {
         setReading(null);
         return;
       }
-      const gap = parseFloat(vp.style.padding) || 0;
+      const origin = contentOrigin(vp);
       const hr = host.getBoundingClientRect();
       const vr = vp.getBoundingClientRect();
       const boxes = highlight.rects
         .map((r) => toPos(highlight!.page, r))
         .filter((p): p is NonNullable<typeof p> => !!p)
         .map((p) => ({
-          x: gap + p.origin.x - vp.scrollLeft - 2,
-          y: gap + p.origin.y - vp.scrollTop - 1,
+          x: origin.x + p.origin.x - 2,
+          y: origin.y + p.origin.y - 1,
           w: p.size.width + 4,
           h: p.size.height + 2,
         }));
@@ -395,8 +402,7 @@ export function Viewer(props: Props) {
         const vp = findViewport();
         const pos = toPos(page, rect);
         if (!vp || !pos) return;
-        const gap = parseFloat(vp.style.padding) || 0;
-        const top = gap + pos.origin.y;
+        const top = contentOrigin(vp).y + vp.scrollTop + pos.origin.y;
         const bottom = top + pos.size.height;
         if (top >= vp.scrollTop && bottom <= vp.scrollTop + vp.clientHeight) return;
         const smooth = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;

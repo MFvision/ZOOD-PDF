@@ -30,12 +30,12 @@
   }
 }
 
-/* Compact floating player, centred at the bottom of the viewer. */
+/* Compact floating player, centred at the bottom of the viewer, above EmbedPDF's page pill. */
 .read-aloud-dock {
   position: absolute;
   z-index: 6;
   inset-inline: 0;
-  inset-block-end: 16px;
+  inset-block-end: 72px;
   display: flex;
   justify-content: center;
   padding-inline: 12px;
@@ -158,7 +158,7 @@
 
 @media (max-width: 600px) {
   .read-aloud-dock {
-    inset-block-end: 8px;
+    inset-block-end: 64px;
   }
 
   .read-aloud-status {
