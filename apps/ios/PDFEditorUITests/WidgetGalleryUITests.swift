@@ -23,10 +23,10 @@ final class WidgetGalleryUITests: XCTestCase {
         app.launchArguments = ["-AppleLanguages", "(en)", "-language", "en", "-appearance", "light", "-warraqFresh", "1",
                                "-warraqImport", try XCTUnwrap(Bundle(for: WidgetGalleryUITests.self).resourceURL).path]
         app.launch()
+        XCTAssertTrue(app.descendants(matching: .any)["library.indexStatus"].waitForExistence(timeout: 120))
         let status = app.staticTexts["library.indexedCount"]
-        XCTAssertTrue(status.waitForExistence(timeout: 60))
         expectation(for: NSPredicate(format: "value.integerValue >= 5"), evaluatedWith: status)
-        waitForExpectations(timeout: 240)
+        waitForExpectations(timeout: 420)
         let cell = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'document.'")).firstMatch
         XCTAssertTrue(cell.waitForExistence(timeout: 10))
         cell.tap()

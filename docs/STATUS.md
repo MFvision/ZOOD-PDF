@@ -193,7 +193,14 @@ when this was built, so the unit tests drive the seam with a fake recognizer (`F
   everything emptying the Library (0 indexed, no documents, no recents); the app starting locked
   with `-appLock 1` and unlocking on the simulator's Face ID match (`scripts/ios/build.sh` enrols a
   face and posts matches through `simctl spawn … notifyutil`); the lock switch.
-* Screenshots in `docs/design/ios/`: SCREENSHOTS_PLACEHOLDER
+* Screenshots in `docs/design/ios/` (iPhone 17; each looked at): `home-ar-light-iPhone-17.jpg`
+  and `home-en-dark-iPhone-17.jpg` (the home: greeting, headline, the six cards, the index status
+  line — "5 documents indexed · 5 read · 1 pages recognized" in the dark English one, the scan
+  read by Vision), `library-search-*`, `library-filters-*` (the filters sheet), `library-tags-*`
+  (the Tags screen), `widgets-gallery-1..4-iPhone-17.jpg` (SpringBoard's widget gallery opened
+  on the app's entry: "Recent documents", then the next families), `settings-full-en-light-*`.
+  The iPad set is taken by the same tests on the iPad Pro 13-inch (M5) when
+  `scripts/ios/build.sh` reaches it (see "Not done", below).
 
 **Not done, limited, or not provable here — stated plainly**
 
@@ -209,7 +216,22 @@ when this was built, so the unit tests drive the seam with a fake recognizer (`F
 * Widgets, the Control Center control, Siri, Shortcuts and the share sheet are proven as code
   (timelines, entity queries, routes, the extension's saving) and through the app's handling of
   each route; the widget gallery itself is photographed by `WidgetGalleryUITests` only where
-  SpringBoard's controls could be found (WIDGET_GALLERY_PLACEHOLDER).
+  SpringBoard's controls could be found — on the iPhone 17 simulator they were: the gallery
+  opened on the app's entry and four pages were photographed (`widgets-gallery-1..4`); the Lock
+  Screen and Control Center galleries are not driven.
+* **Shared simulators.** Several agents test on the same two booted simulators outside the
+  queue; two XCUITest runners on one device kill each other ("Early unexpected exit … server
+  died") and the machine's load (50–90) exhausts process slots. `scripts/ios/build.sh` now takes
+  `WARRAQ_IPHONE` / `WARRAQ_IPAD` for simulators of one's own (part D ran on "iPhone 17 D" and
+  "iPad Pro 13-inch (M5) D", reported under the shared names); its Face ID matcher loop dies with
+  the script. The last complete iPhone UI run before that change (`build13`): LaunchTests 2/3
+  (the third: the app could not be launched under load), LibraryUITests 3/5, SettingsUITests 1/4,
+  WidgetGalleryUITests 1/1 — the failures were the index status line not yet idle within the
+  wait, rows below the fold, the lock's switch tapped beside its control, and launch timeouts;
+  each is fixed in the tests (longer waits through the running state, scrolling, the row's own
+  switch) and re-run on the private simulators. The iPad stage had not been reached by any run
+  with the final code when this was written; the log of the last run is the verdict
+  (`apps/ios/.build/logs/test-iPad-Pro-13-inch-M5.log`).
 * The chosen-folder flow through the system's folder picker is not driven by a UI test (the
   picker is another process); the bookmark, the listing and the keys are unit-tested through the
   Documents folder, which uses the same code.

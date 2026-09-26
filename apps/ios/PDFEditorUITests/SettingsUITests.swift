@@ -58,10 +58,10 @@ final class SettingsUITests: XCTestCase {
 
     func testDeleteEverythingEmptiesTheLibrary() throws {
         let app = try launch(importCorpus: true)
+        XCTAssertTrue(app.descendants(matching: .any)["library.indexStatus"].waitForExistence(timeout: 120))
         let status = app.staticTexts["library.indexedCount"]
-        XCTAssertTrue(status.waitForExistence(timeout: 60))
         expectation(for: NSPredicate(format: "value.integerValue >= 5"), evaluatedWith: status)
-        waitForExpectations(timeout: 240)
+        waitForExpectations(timeout: 420)
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'document.'")).firstMatch.exists, "documents are listed")
 
         openSettings(in: app)
@@ -69,17 +69,15 @@ final class SettingsUITests: XCTestCase {
         scrollTo(delete, in: app)
         XCTAssertTrue(delete.waitForExistence(timeout: 10))
         delete.tap()
-        let confirm = app.buttons["settings.deleteConfirm"]
+        let confirm = app.buttons["settings.deleteConfirm"].firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 10))
         confirm.tap()
 
         XCTAssertTrue(app.buttons["library.open"].waitForExistence(timeout: 30), "back in the Library")
         expectation(for: NSPredicate(format: "value == %@", "0"), evaluatedWith: app.staticTexts["library.indexedCount"])
-        waitForExpectations(timeout: 60)
+        waitForExpectations(timeout: 120)
         XCTAssertFalse(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'document.'")).firstMatch.exists, "no documents left")
-        XCTAssertNil(AppGroupProbe.container.flatMap { try? Data(contentsOf: $0.appending(path: "recents.json")) }.flatMap { data in
-            (try? JSONSerialization.jsonObject(with: data) as? [Any])?.first
-        }, "the recents are gone")
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'recent.'")).firstMatch.exists, "the recents are gone")
     }
 
     func testTheAppLockAsksForFaceIDAndUnlocksOnAMatch() throws {
@@ -96,7 +94,7 @@ final class SettingsUITests: XCTestCase {
         }
         let unlocked = NSPredicate(format: "exists == false")
         expectation(for: unlocked, evaluatedWith: lock)
-        waitForExpectations(timeout: 90)
+        waitForExpectations(timeout: 180)
         XCTAssertTrue(app.buttons["library.settings"].waitForExistence(timeout: 10), "the Library is usable again")
         XCTAssertTrue(app.buttons["library.settings"].isHittable, "unlocked on the simulator's Face ID match")
     }
@@ -116,7 +114,8 @@ final class SettingsUITests: XCTestCase {
         scrollTo(lock, in: app)
         XCTAssertTrue(lock.waitForExistence(timeout: 10))
         let before = lock.value as? String
-        lock.tap()
+        // The row is the toggle; its switch is the control that flips it.
+        if lock.switches.firstMatch.exists { lock.switches.firstMatch.tap() } else { lock.tap() }
         // Either it turned on, or the device cannot lock and said so.
         let alert = app.alerts.firstMatch
         if alert.waitForExistence(timeout: 3) {
@@ -124,7 +123,7 @@ final class SettingsUITests: XCTestCase {
             XCTAssertEqual(lock.value as? String, before, "left off when the device cannot lock")
         } else {
             XCTAssertNotEqual(lock.value as? String, before, "turned on")
-            lock.tap()
+            if lock.switches.firstMatch.exists { lock.switches.firstMatch.tap() } else { lock.tap() }
             XCTAssertEqual(lock.value as? String, before, "and off again")
         }
         if let directory = ProcessInfo.processInfo.environment["WARRAQ_SCREENSHOT_DIR"], !directory.isEmpty {

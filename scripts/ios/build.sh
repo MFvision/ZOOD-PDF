@@ -23,13 +23,18 @@ xcodegen_bin="${XCODEGEN:-$HOME/Developer/warraq/.tools/xcodegen/xcodegen/bin/xc
 
 run_tests=1
 unit_only=0
-devices=("iPhone 17" "iPad Pro 13-inch (M5)")
+# WARRAQ_IPHONE / WARRAQ_IPAD name other simulators (an agent's own, when
+# the shared ones are in use by another run: two test runners on one
+# device kill each other).
+iphone="${WARRAQ_IPHONE:-iPhone 17}"
+ipad="${WARRAQ_IPAD:-iPad Pro 13-inch (M5)}"
+devices=("$iphone" "$ipad")
 for arg in "$@"; do
   case "$arg" in
     --no-test) run_tests=0 ;;
     --unit) unit_only=1 ;;
-    --iphone) devices=("iPhone 17") ;;
-    --ipad) devices=("iPad Pro 13-inch (M5)") ;;
+    --iphone) devices=("$iphone") ;;
+    --ipad) devices=("$ipad") ;;
     *) echo "unknown option $arg" >&2; exit 2 ;;
   esac
 done
@@ -60,6 +65,8 @@ summarize() {
 for device in "${devices[@]}"; do
   dest="platform=iOS Simulator,name=$device"
   slug="$(echo "$device" | tr -c 'A-Za-z0-9\n' '-' | tr -s '-' | sed 's/-$//')"
+  # A private copy named "<name> D" reports under the shared device's name.
+  slug="${slug%-D}"
   echo "== build for $device"
   log="$logs/build-$slug.log"
   xcb build-for-testing -destination "$dest" > "$log" 2>&1 || { summarize "$log"; echo "build failed; log: $log" >&2; exit 1; }
@@ -79,8 +86,12 @@ for device in "${devices[@]}"; do
     matcher=""
     if [ -n "$udid" ] && [ "$unit_only" = "0" ]; then
       /usr/bin/xcrun simctl spawn "$udid" notifyutil -s com.apple.BiometricKit.enrollmentChanged 1 -p com.apple.BiometricKit.enrollmentChanged >/dev/null 2>&1 || true
-      ( while true; do /usr/bin/xcrun simctl spawn "$udid" notifyutil -p com.apple.BiometricKit_Sim.pearl.match >/dev/null 2>&1; sleep 1; done ) &
+      # The loop ends with this script (it checks its parent each turn) and
+      # never spins: a sleep that cannot start (no process slots) ends it.
+      parent=$$
+      ( while kill -0 "$parent" 2>/dev/null; do /usr/bin/xcrun simctl spawn "$udid" notifyutil -p com.apple.BiometricKit_Sim.pearl.match >/dev/null 2>&1; sleep 1 || break; done ) &
       matcher=$!
+      trap '[ -n "$matcher" ] && kill "$matcher" 2>/dev/null' EXIT
     fi
     # TEST_RUNNER_ variables in xcodebuild's environment reach the test
     # process's environment, without the prefix.

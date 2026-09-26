@@ -320,6 +320,8 @@ struct LibraryShell: View {
         // `-warraqFresh 1`: the home screen and nothing over it — no document
         // restored from the last scene, no route another test left (a
         // Shortcut's "Scan"), so the test sees what it looks for.
+        // It also empties My documents, the index and the thumbnails, so a
+        // test starts from the files it imports and nothing an earlier run left.
         if UserDefaults.standard.bool(forKey: "warraqFresh") {
             _ = AppRoute.takePending()
             library.scanRequested = false
@@ -327,7 +329,14 @@ struct LibraryShell: View {
             library.closeDocument()
             restoredBookmark = nil
             sectionID = LibrarySection.home.rawValue
-            if UserDefaults.standard.string(forKey: "warraqOpen") == nil {
+            let files = (try? FileManager.default.contentsOfDirectory(at: library.documentsFolder, includingPropertiesForKeys: nil)) ?? []
+            for file in files { try? FileManager.default.removeItem(at: file) }
+            try? FileManager.default.removeItem(at: library.indexURL.deletingLastPathComponent())
+            try? FileManager.default.removeItem(at: AppGroup.thumbnailsURL)
+            try? library.store.clear()
+            try? library.stars.clear()
+            library.refresh()
+            if UserDefaults.standard.string(forKey: "warraqOpen") == nil, UserDefaults.standard.string(forKey: "warraqImport") == nil {
                 return
             }
         }
