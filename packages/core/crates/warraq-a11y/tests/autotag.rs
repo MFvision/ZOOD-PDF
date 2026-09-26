@@ -21,7 +21,10 @@ fn tag(bytes: &[u8], opts: &Options) -> (Vec<u8>, warraq_a11y::autotag::Report) 
     let mut pdf = Pdf::open(bytes.to_vec(), None).unwrap();
     let report = autotag(&mut pdf, opts).unwrap();
     let out = pdf.commit().unwrap();
-    assert!(out.starts_with(bytes), "incremental update: original bytes are a prefix");
+    assert!(
+        out.starts_with(bytes),
+        "incremental update: original bytes are a prefix"
+    );
     (out, report)
 }
 
@@ -72,7 +75,13 @@ fn untagged_chromium_arabic_file_is_tagged_in_logical_order() {
     let roles: Vec<&str> = els.iter().map(|e| e.role.as_str()).collect();
     println!("{roles:?}");
     for e in els {
-        println!("{}{} {:?} {:?}", "  ".repeat(e.depth), e.role, e.lang, e.text);
+        println!(
+            "{}{} {:?} {:?}",
+            "  ".repeat(e.depth),
+            e.role,
+            e.lang,
+            e.text
+        );
     }
     assert_eq!(els[0].role, "Document");
 
@@ -94,14 +103,19 @@ fn untagged_chromium_arabic_file_is_tagged_in_logical_order() {
         .iter()
         .find(|p| p.text.starts_with("يشرح"))
         .expect("mixed paragraph");
-    assert_eq!(mixed.lang, None, "Arabic paragraph inherits the document language");
+    assert_eq!(
+        mixed.lang, None,
+        "Arabic paragraph inherits the document language"
+    );
     assert_eq!(
         squash(&mixed.text),
         squash("يشرح هذا المستند كيف يقرأ قارئ الشاشة ملف PDF بترتيب صحيح.")
     );
     let spans = by_role(els, "Span");
     assert!(
-        spans.iter().any(|s| s.text == "PDF" && s.lang.as_deref() == Some("en")),
+        spans
+            .iter()
+            .any(|s| s.text == "PDF" && s.lang.as_deref() == Some("en")),
         "per-span language"
     );
 
@@ -110,7 +124,10 @@ fn untagged_chromium_arabic_file_is_tagged_in_logical_order() {
     assert_eq!(lists.len(), 2);
     let lis = by_role(els, "LI");
     assert_eq!(lis.len(), 5);
-    let lbls: Vec<&str> = by_role(els, "Lbl").iter().map(|e| e.text.as_str()).collect();
+    let lbls: Vec<&str> = by_role(els, "Lbl")
+        .iter()
+        .map(|e| e.text.as_str())
+        .collect();
     assert_eq!(lbls, vec!["١.", "٢.", "٣.", "•", "•"]);
     assert_eq!(by_role(els, "LBody")[0].text, "البند الأول في القائمة");
 
@@ -142,7 +159,10 @@ fn untagged_chromium_arabic_file_is_tagged_in_logical_order() {
     for p in 0..2 {
         let data = warraq_edit::page::load(&pdf, p).unwrap().data;
         let text = String::from_utf8_lossy(&data);
-        assert!(text.contains("/Artifact <</Type /Pagination /Subtype /Footer>> BDC"), "page {p}");
+        assert!(
+            text.contains("/Artifact <</Type /Pagination /Subtype /Footer>> BDC"),
+            "page {p}"
+        );
     }
 
     // Every drawn glyph, picture and path is in an MCID sequence or an artifact.
@@ -157,7 +177,10 @@ fn untagged_chromium_arabic_file_is_tagged_in_logical_order() {
         .filter(|e| e.depth == 1)
         .map(|e| e.text.clone())
         .collect();
-    assert_eq!(squash(&tops.join("")), squash(&logical_text(&pdf).replace("تقرير الوصول — زود PDF", "")));
+    assert_eq!(
+        squash(&tops.join("")),
+        squash(&logical_text(&pdf).replace("تقرير الوصول — زود PDF", ""))
+    );
 
     // Pixels: identical renders.
     assert_eq!(render_all(&original), render_all(&out));
@@ -175,7 +198,11 @@ fn untagged_chromium_arabic_file_is_tagged_in_logical_order() {
 
 #[test]
 fn retag_keeps_pixels_on_chromium_tagged_corpus() {
-    for name in ["chrome-table-cairo.pdf", "chrome-mixed-naskh.pdf", "chrome-lists-cairo.pdf"] {
+    for name in [
+        "chrome-table-cairo.pdf",
+        "chrome-mixed-naskh.pdf",
+        "chrome-lists-cairo.pdf",
+    ] {
         let original = corpus(name);
         let (out, report) = tag(
             &original,

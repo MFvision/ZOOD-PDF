@@ -61,7 +61,11 @@ pub fn mcid_info(pm: &PageMap) -> HashMap<i64, McInfo> {
     }
     let mut words: Vec<(usize, i64)> = word_votes
         .into_iter()
-        .filter_map(|(w, v)| v.into_iter().max_by_key(|(m, n)| (*n, -m)).map(|(m, _)| (w, m)))
+        .filter_map(|(w, v)| {
+            v.into_iter()
+                .max_by_key(|(m, n)| (*n, -m))
+                .map(|(m, _)| (w, m))
+        })
         .collect();
     words.sort_unstable();
     for (w, m) in words {
@@ -141,7 +145,10 @@ pub fn is_marked(pdf: &Pdf) -> bool {
     let Ok(c) = pdf.catalog() else { return false };
     match c.get(b"MarkInfo").ok().and_then(|o| pdf.resolve(o)) {
         Some(Object::Dictionary(d)) => {
-            matches!(d.get(b"Marked").ok().and_then(|o| pdf.resolve(o)), Some(Object::Boolean(true)))
+            matches!(
+                d.get(b"Marked").ok().and_then(|o| pdf.resolve(o)),
+                Some(Object::Boolean(true))
+            )
         }
         _ => false,
     }
@@ -150,7 +157,11 @@ pub fn is_marked(pdf: &Pdf) -> bool {
 /// `/ViewerPreferences /DisplayDocTitle true`.
 pub fn display_doc_title(pdf: &Pdf) -> bool {
     let Ok(c) = pdf.catalog() else { return false };
-    match c.get(b"ViewerPreferences").ok().and_then(|o| pdf.resolve(o)) {
+    match c
+        .get(b"ViewerPreferences")
+        .ok()
+        .and_then(|o| pdf.resolve(o))
+    {
         Some(Object::Dictionary(d)) => matches!(
             d.get(b"DisplayDocTitle").ok().and_then(|o| pdf.resolve(o)),
             Some(Object::Boolean(true))
@@ -211,12 +222,18 @@ pub fn list(pdf: &Pdf) -> Result<Listing> {
         pos.insert(*i, k);
     }
     for (i, _) in order.iter().rev() {
-        let Some(e) = tree.elems.get(*i) else { continue };
+        let Some(e) = tree.elems.get(*i) else {
+            continue;
+        };
         let mut parts: Vec<String> = Vec::new();
         let mut b: Option<Rect> = None;
         for k in &e.kids {
             match k {
-                Kid::Mcr { mcid, page, stm: None } => {
+                Kid::Mcr {
+                    mcid,
+                    page,
+                    stm: None,
+                } => {
                     let p = page.or(e.page);
                     if let Some(info) = p.and_then(|p| infos.get(&p)).and_then(|m| m.get(mcid)) {
                         if !info.text.is_empty() {
@@ -252,8 +269,14 @@ pub fn list(pdf: &Pdf) -> Result<Listing> {
     }
     let mut elements = Vec::with_capacity(order.len());
     for (i, depth) in &order {
-        let Some(e) = tree.elems.get(*i) else { continue };
-        let parent = e.parent.and_then(|p| tree.elems.get(p)).and_then(|p| p.id).map(|(n, _)| n);
+        let Some(e) = tree.elems.get(*i) else {
+            continue;
+        };
+        let parent = e
+            .parent
+            .and_then(|p| tree.elems.get(p))
+            .and_then(|p| p.id)
+            .map(|(n, _)| n);
         let page = e
             .page
             .or_else(|| e.mcrs().find_map(|(_, p, _)| p))
@@ -262,7 +285,9 @@ pub fn list(pdf: &Pdf) -> Result<Listing> {
         let mut up = e.parent;
         let mut hops = 0;
         while eff.is_none() && hops < 256 {
-            let Some(p) = up.and_then(|p| tree.elems.get(p)) else { break };
+            let Some(p) = up.and_then(|p| tree.elems.get(p)) else {
+                break;
+            };
             eff = p.lang.clone();
             up = p.parent;
             hops += 1;
@@ -286,7 +311,11 @@ pub fn list(pdf: &Pdf) -> Result<Listing> {
                 .map(|r| [r.x0, r.y0, r.x1, r.y1].map(|v| (v * 100.0).round() / 100.0)),
             mcids: e.mcrs().count(),
             children: e.child_elems().count(),
-            annotations: e.kids.iter().filter(|k| matches!(k, Kid::Objr { .. })).count(),
+            annotations: e
+                .kids
+                .iter()
+                .filter(|k| matches!(k, Kid::Objr { .. }))
+                .count(),
         });
     }
     Ok(Listing {

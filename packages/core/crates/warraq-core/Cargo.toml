@@ -28,6 +28,8 @@ warraq-create = { path = "../warraq-create" }
 warraq-office = { path = "../warraq-office" }
 # Edit tool (edit.*).
 warraq-edit = { path = "../warraq-edit" }
+# Accessibility tool (a11y.*).
+warraq-a11y = { path = "../warraq-a11y" }
 # Organize / Compress: content geometry (text boxes via warraq-text's interpreter), picture
 # pages and image recompression. All MIT/Apache-2.0 (zune-*: MIT OR Apache-2.0 OR Zlib).
 flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }

@@ -23,6 +23,8 @@ mod compare;
 mod export;
 // Edit tool (warraq-edit).
 mod edit;
+// Accessibility tool (warraq-a11y).
+mod a11y;
 
 /// Every namespace's `register` function.
 pub const NAMESPACES: &[fn(&mut Registry)] = &[
@@ -43,6 +45,8 @@ pub const NAMESPACES: &[fn(&mut Registry)] = &[
     compare::register,
     // Edit tool (warraq-edit).
     edit::register,
+    // Accessibility tool (warraq-a11y).
+    a11y::register,
     #[cfg(feature = "render")]
     render::register,
 ];

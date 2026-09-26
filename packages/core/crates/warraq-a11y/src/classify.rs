@@ -22,7 +22,9 @@ const ARABIC_LABELS: &[char] = &[
 ];
 
 fn is_digit_any(c: char) -> bool {
-    c.is_ascii_digit() || ('\u{0660}'..='\u{0669}').contains(&c) || ('\u{06F0}'..='\u{06F9}').contains(&c)
+    c.is_ascii_digit()
+        || ('\u{0660}'..='\u{0669}').contains(&c)
+        || ('\u{06F0}'..='\u{06F9}').contains(&c)
 }
 
 /// The list label at the start of a paragraph's logical text, if any (e.g. `•`, `1.`, `١-`,
@@ -72,7 +74,10 @@ pub fn list_label(text: &str) -> Option<String> {
         }
     }
     // Roman numerals up to 3 letters (i, ii, iv, …).
-    if inner.iter().all(|c| matches!(c, 'i' | 'v' | 'x' | 'I' | 'V' | 'X')) {
+    if inner
+        .iter()
+        .all(|c| matches!(c, 'i' | 'v' | 'x' | 'I' | 'V' | 'X'))
+    {
         return Some(first.to_string());
     }
     None
@@ -90,9 +95,21 @@ pub fn is_page_number(text: &str) -> bool {
     if digits == 0 {
         return false;
     }
-    let allowed_words = ["page", "Page", "PAGE", "صفحة", "الصفحة", "ص", "of", "من", "صفحه"];
+    let allowed_words = [
+        "page",
+        "Page",
+        "PAGE",
+        "صفحة",
+        "الصفحة",
+        "ص",
+        "of",
+        "من",
+        "صفحه",
+    ];
     words.iter().all(|w| {
-        let w = w.trim_matches(|c: char| matches!(c, '-' | '–' | '—' | '|' | '.' | '/' | ':' | '(' | ')'));
+        let w = w.trim_matches(|c: char| {
+            matches!(c, '-' | '–' | '—' | '|' | '.' | '/' | ':' | '(' | ')')
+        });
         w.is_empty() || w.chars().all(is_digit_any) || allowed_words.contains(&w)
     })
 }
@@ -190,7 +207,14 @@ pub fn stats(pages: &[PageText]) -> Stats {
             let bottom = para.bbox.y0 > h * 0.85;
             let edge = para.bbox.y1 < h * 0.12 || para.bbox.y0 > h * 0.88;
             if top || bottom {
-                margin.push((p.page, pi, running_key(&para.text), para.bbox.cy(), top, edge));
+                margin.push((
+                    p.page,
+                    pi,
+                    running_key(&para.text),
+                    para.bbox.cy(),
+                    top,
+                    edge,
+                ));
             }
         }
     }
@@ -220,11 +244,18 @@ pub fn stats(pages: &[PageText]) -> Stats {
             if pagination.contains_key(&(p.page, pi)) || list_label(&para.text).is_some() {
                 continue;
             }
-            if para.lines.iter().all(|l| l.words.iter().all(|w| w.artifact)) {
+            if para
+                .lines
+                .iter()
+                .all(|l| l.words.iter().all(|w| w.artifact))
+            {
                 continue;
             }
             let s = round_half(para_size(para));
-            if s >= body * 1.15 && heading_shape(&para.text, para.lines.len()) && !sizes.contains(&s) {
+            if s >= body * 1.15
+                && heading_shape(&para.text, para.lines.len())
+                && !sizes.contains(&s)
+            {
                 sizes.push(s);
             }
         }

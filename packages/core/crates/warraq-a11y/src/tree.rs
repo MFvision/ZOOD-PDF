@@ -27,11 +27,62 @@ const MAX_ROLE_HOPS: usize = 16;
 
 /// Standard structure types (ISO 32000-1 §14.8.4 and ISO 32000-2 additions).
 pub const STANDARD_TYPES: &[&str] = &[
-    "Document", "DocumentFragment", "Part", "Art", "Sect", "Div", "BlockQuote", "Caption", "TOC",
-    "TOCI", "Index", "NonStruct", "Private", "Aside", "Title", "FENote", "P", "H", "H1", "H2", "H3",
-    "H4", "H5", "H6", "L", "LI", "Lbl", "LBody", "Table", "TR", "TH", "TD", "THead", "TBody",
-    "TFoot", "Span", "Quote", "Note", "Reference", "BibEntry", "Code", "Link", "Annot", "Ruby",
-    "RB", "RT", "RP", "Warichu", "WT", "WP", "Figure", "Formula", "Form", "Sub", "Em", "Strong",
+    "Document",
+    "DocumentFragment",
+    "Part",
+    "Art",
+    "Sect",
+    "Div",
+    "BlockQuote",
+    "Caption",
+    "TOC",
+    "TOCI",
+    "Index",
+    "NonStruct",
+    "Private",
+    "Aside",
+    "Title",
+    "FENote",
+    "P",
+    "H",
+    "H1",
+    "H2",
+    "H3",
+    "H4",
+    "H5",
+    "H6",
+    "L",
+    "LI",
+    "Lbl",
+    "LBody",
+    "Table",
+    "TR",
+    "TH",
+    "TD",
+    "THead",
+    "TBody",
+    "TFoot",
+    "Span",
+    "Quote",
+    "Note",
+    "Reference",
+    "BibEntry",
+    "Code",
+    "Link",
+    "Annot",
+    "Ruby",
+    "RB",
+    "RT",
+    "RP",
+    "Warichu",
+    "WT",
+    "WP",
+    "Figure",
+    "Formula",
+    "Form",
+    "Sub",
+    "Em",
+    "Strong",
     "Artifact",
 ];
 
@@ -48,7 +99,10 @@ pub enum Kid {
         stm: Option<ObjectId>,
     },
     /// An object reference (annotation).
-    Objr { obj: ObjectId, page: Option<ObjectId> },
+    Objr {
+        obj: ObjectId,
+        page: Option<ObjectId>,
+    },
     /// Anything else (kept as read: cycles, shared elements, junk).
     Other(Object),
 }
@@ -197,8 +251,7 @@ impl Tree {
             return t;
         };
         t.root_dict = rd.clone();
-        if let Some(Object::Dictionary(rm)) = rd.get(b"RoleMap").ok().and_then(|o| pdf.resolve(o))
-        {
+        if let Some(Object::Dictionary(rm)) = rd.get(b"RoleMap").ok().and_then(|o| pdf.resolve(o)) {
             for (k, v) in rm.iter().take(10_000) {
                 if let Some(v) = pdf.resolve(v).and_then(name_str) {
                     t.role_map
@@ -238,7 +291,15 @@ impl Tree {
             let Some(dict) = dict else { continue };
             if let Some(k) = dict.get(b"K").ok().cloned() {
                 let mut items = Vec::new();
-                t.kids_of(pdf, &k, Some(idx), depth + 1, &mut seen, &mut queue, &mut items);
+                t.kids_of(
+                    pdf,
+                    &k,
+                    Some(idx),
+                    depth + 1,
+                    &mut seen,
+                    &mut queue,
+                    &mut items,
+                );
                 if let Some(e) = t.elems.get_mut(idx) {
                     e.kids = items;
                 }
@@ -248,6 +309,7 @@ impl Tree {
     }
 
     /// Parse one `/K` value into kids, allocating child elements (queued for reading).
+    #[allow(clippy::too_many_arguments)]
     fn kids_of(
         &mut self,
         pdf: &Pdf,
@@ -261,7 +323,9 @@ impl Tree {
         let items: Vec<Object> = match k {
             Object::Array(a) => a.iter().take(MAX_KIDS).cloned().collect(),
             o => match pdf.resolve(o) {
-                Some(Object::Array(a)) if !matches!(o, Object::Array(_)) && ref_of(Some(o)).is_some() => {
+                Some(Object::Array(a))
+                    if !matches!(o, Object::Array(_)) && ref_of(Some(o)).is_some() =>
+                {
                     // A reference to an array of kids (unusual but seen).
                     a.iter().take(MAX_KIDS).cloned().collect()
                 }
@@ -591,7 +655,9 @@ impl Tree {
             for kid in &e.kids {
                 match kid {
                     Kid::Elem(c) => {
-                        if let Some(cid) = self.elems.get(*c).filter(|x| !x.removed).and_then(|x| x.id) {
+                        if let Some(cid) =
+                            self.elems.get(*c).filter(|x| !x.removed).and_then(|x| x.id)
+                        {
                             k.push(Object::Reference(cid));
                         }
                     }
@@ -628,9 +694,10 @@ impl Tree {
             set_text(&mut d, "Alt", e.alt.as_deref());
             set_text(&mut d, "ActualText", e.actual_text.as_deref());
             match e.lang.as_deref() {
-                Some(l) if !l.is_empty() => {
-                    d.set("Lang", Object::String(l.as_bytes().to_vec(), StringFormat::Literal))
-                }
+                Some(l) if !l.is_empty() => d.set(
+                    "Lang",
+                    Object::String(l.as_bytes().to_vec(), StringFormat::Literal),
+                ),
                 _ => {
                     d.remove(b"Lang");
                 }
@@ -804,7 +871,11 @@ pub fn set_int_key(pdf: &mut Pdf, id: ObjectId, key: &str, v: i64) {
 
 /// An `MCR` or `OBJR` dictionary as a kid.
 fn marked_ref(pdf: &Pdf, d: &Dictionary) -> Option<Kid> {
-    let ty = d.get(b"Type").ok().and_then(|o| pdf.resolve(o)).and_then(name_str);
+    let ty = d
+        .get(b"Type")
+        .ok()
+        .and_then(|o| pdf.resolve(o))
+        .and_then(name_str);
     match ty.as_deref() {
         Some("MCR") => {
             let mcid = d.get(b"MCID").ok().and_then(|o| int_of(pdf, o))?;

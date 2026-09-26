@@ -88,11 +88,6 @@ fn to_text_rect(r: &ERect) -> Rect {
 impl PageMap {
     /// Build the map of page `index`; `text` is its extraction (from [`extract`]) when already done.
     pub fn build(pdf: &Pdf, index: usize, text: Option<PageText>) -> Result<PageMap> {
-        let pc = load(pdf, index)?;
-        let sc = scan(pdf, &pc)?;
-        let res = resources(pdf, pc.page_id);
-        let named = named_props(pdf, &res);
-        let marks = analyze(&sc.content, &named);
         let pt = match text {
             Some(t) => t,
             None => extract(pdf, &[index])?
@@ -100,6 +95,29 @@ impl PageMap {
                 .next()
                 .ok_or_else(|| A11yError::NotFound(format!("page {index}")))?,
         };
+        Self::build_with(pdf, index, Some(pt))
+    }
+
+    /// Operations and marks only (no words): for checks that do not need the text.
+    pub fn build_light(pdf: &Pdf, index: usize) -> Result<PageMap> {
+        Self::build_with(pdf, index, None)
+    }
+
+    fn build_with(pdf: &Pdf, index: usize, text: Option<PageText>) -> Result<PageMap> {
+        let pc = load(pdf, index)?;
+        let sc = scan(pdf, &pc)?;
+        let res = resources(pdf, pc.page_id);
+        let named = named_props(pdf, &res);
+        let marks = analyze(&sc.content, &named);
+        let (w0, h0) = (pc.space.width(), pc.space.height());
+        let pt = text.unwrap_or(PageText {
+            page: index,
+            width: w0,
+            height: h0,
+            blocks: Vec::new(),
+            plain: String::new(),
+            spans: Vec::new(),
+        });
         let mut words = Vec::new();
         let mut paras = Vec::new();
         for (pi, p) in pt.paragraphs().enumerate() {
@@ -295,7 +313,7 @@ pub fn draws(pm: &PageMap, op: usize, show: Option<usize>) -> bool {
     matches!(
         o.operator.as_slice(),
         b"S" | b"s" | b"f" | b"F" | b"f*" | b"B" | b"B*" | b"b" | b"b*" | b"sh" | b"BI"
-    ) || (o.is(b"Do") && !matches!(o.operands.first().map(|x| &x.value), None))
+    ) || (o.is(b"Do") && !o.operands.is_empty())
 }
 
 /// Resolved `Do` target kind: image, form, or unknown.

@@ -59,7 +59,10 @@ impl Marks {
 
 /// Whether the operation is a marked-content operator.
 pub fn is_mc(op: &Op) -> bool {
-    matches!(op.operator.as_slice(), b"BMC" | b"BDC" | b"EMC" | b"MP" | b"DP")
+    matches!(
+        op.operator.as_slice(),
+        b"BMC" | b"BDC" | b"EMC" | b"MP" | b"DP"
+    )
 }
 
 /// Path construction operators.
@@ -173,7 +176,11 @@ pub fn analyze(content: &Content, named: &dyn Fn(&[u8]) -> Option<Props>) -> Mar
         };
         match op.operator.as_slice() {
             b"BMC" | b"BDC" => {
-                let tag = op.operands.first().and_then(|o| o.value.name()).unwrap_or(b"");
+                let tag = op
+                    .operands
+                    .first()
+                    .and_then(|o| o.value.name())
+                    .unwrap_or(b"");
                 let p = if op.is(b"BDC") {
                     props_of(op, named)
                 } else {

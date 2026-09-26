@@ -2078,6 +2078,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "warraq-a11y",
  "warraq-create",
  "warraq-edit",
  "warraq-office",

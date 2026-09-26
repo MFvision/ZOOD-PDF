@@ -57,9 +57,9 @@ pub fn strip_mcids(content: &Content, marks: &Marks) -> Vec<Splice> {
                 .collect(),
             _ => Vec::new(),
         };
-        let keep = rest.iter().any(|(k, _)| {
-            matches!(k.as_slice(), b"ActualText" | b"Lang" | b"Alt" | b"E")
-        });
+        let keep = rest
+            .iter()
+            .any(|(k, _)| matches!(k.as_slice(), b"ActualText" | b"Lang" | b"Alt" | b"E"));
         if keep {
             out.push(Splice {
                 range: op.span.clone(),
@@ -125,7 +125,8 @@ impl Insert {
 
     /// The splices (zero-length ranges) in writing order.
     pub fn splices(mut self) -> Vec<Splice> {
-        self.items.sort_by_key(|(at, kind, seq, _)| (*at, *kind, *seq));
+        self.items
+            .sort_by_key(|(at, kind, seq, _)| (*at, *kind, *seq));
         self.items
             .into_iter()
             .map(|(at, _, _, with)| Splice {
@@ -155,7 +156,10 @@ mod tests {
         let out = rewrite(data, &strip_mcids(&c, &m)).unwrap();
         let s = String::from_utf8(out).unwrap();
         assert!(!s.contains("MCID"), "{s}");
-        assert!(s.contains("/Span <</ActualText <78>>> BDC (b) Tj EMC"), "{s}");
+        assert!(
+            s.contains("/Span <</ActualText <78>>> BDC (b) Tj EMC"),
+            "{s}"
+        );
         assert!(s.contains("BT (a) Tj ET"), "{s}");
         let c2 = parse(s.as_bytes()).unwrap();
         assert!(!analyze(&c2, &none).unbalanced);

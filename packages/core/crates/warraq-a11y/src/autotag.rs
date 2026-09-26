@@ -32,7 +32,9 @@ use warraq_text::DocSource;
 use crate::classify::{list_label, stats, Stats};
 use crate::error::{A11yError, Result};
 use crate::lang;
-use crate::marked::{analyze, balance, is_mc, is_path_construct, is_path_paint, is_show, named_props};
+use crate::marked::{
+    analyze, balance, is_mc, is_path_construct, is_path_paint, is_show, named_props,
+};
 use crate::pagemap::{extract, xobject_kind, PageMap};
 use crate::rewrite::{strip_mcids, Insert};
 use crate::tree::{Elem, Kid, Tree};
@@ -223,7 +225,8 @@ pub fn form_class(pdf: &Pdf, id: Option<ObjectId>) -> FormClass {
         if mk.opens_mcid.is_some() {
             return FormClass::Tagged;
         }
-        let paints = is_show(op) || is_path_paint(op) || op.is(b"Do") || op.is(b"BI") || op.is(b"sh");
+        let paints =
+            is_show(op) || is_path_paint(op) || op.is(b"Do") || op.is(b"BI") || op.is(b"sh");
         if paints {
             any_paint = true;
             if !mk.artifact {
@@ -263,9 +266,7 @@ pub fn autotag(pdf: &mut Pdf, opts: &Options) -> Result<Report> {
         for i in 0..list.len() {
             strip_page(pdf, i)?;
         }
-        let mut t = Tree::default();
-        t.root = None;
-        t
+        Tree::default()
     } else {
         let t = Tree::read(pdf);
         if t.truncated {
@@ -376,11 +377,19 @@ pub fn autotag(pdf: &mut Pdf, opts: &Options) -> Result<Report> {
     if let Some(l) = &doc_lang {
         let has = cat.has(b"Lang");
         if opts.lang.is_some() || !has {
-            cat.set("Lang", Object::String(l.as_bytes().to_vec(), StringFormat::Literal));
+            cat.set(
+                "Lang",
+                Object::String(l.as_bytes().to_vec(), StringFormat::Literal),
+            );
         }
     }
     pdf.set(cat_id, Object::Dictionary(cat));
-    if let Some(t) = opts.title.as_deref().map(str::trim).filter(|t| !t.is_empty()) {
+    if let Some(t) = opts
+        .title
+        .as_deref()
+        .map(str::trim)
+        .filter(|t| !t.is_empty())
+    {
         set_title(pdf, t)?;
         report.title = Some(t.to_string());
     } else {
@@ -494,7 +503,9 @@ fn tag_page(
         }
     }
     for (si, s) in pm.scan.shows.iter().enumerate() {
-        let tagged = marks.get(s.op).is_some_and(|m| m.mcid.is_some() || m.artifact);
+        let tagged = marks
+            .get(s.op)
+            .is_some_and(|m| m.mcid.is_some() || m.artifact);
         if let (true, Some(Some(w))) = (tagged, pm.show_word.get(si)) {
             if let Some(t) = word_tagged.get_mut(*w) {
                 *t = true;
@@ -502,8 +513,7 @@ fn tag_page(
         }
     }
     let free = |w: usize, wo: &Vec<Owner>| {
-        !word_tagged.get(w).copied().unwrap_or(true)
-            && matches!(wo.get(w), Some(Owner::Neutral))
+        !word_tagged.get(w).copied().unwrap_or(true) && matches!(wo.get(w), Some(Owner::Neutral))
     };
 
     // Paragraph roles decided first (lists and pagination are kept out of table detection).
@@ -617,13 +627,20 @@ fn tag_page(
     for (pi, p) in pm.paras.iter().enumerate() {
         let ws: Vec<usize> = p.words.clone().filter(|w| free(*w, &word_owner)).collect();
         if ws.is_empty() {
-            if p.words.clone().any(|w| matches!(word_owner.get(w), Some(Owner::Elem(_)))) {
+            if p.words
+                .clone()
+                .any(|w| matches!(word_owner.get(w), Some(Owner::Elem(_))))
+            {
                 last_list = None;
             }
             continue;
         }
         if let Some(top) = st.pagination.get(&(pm.index, pi)) {
-            let k = if *top { ArtKind::Header } else { ArtKind::Footer };
+            let k = if *top {
+                ArtKind::Header
+            } else {
+                ArtKind::Footer
+            };
             for w in ws {
                 if let Some(o) = word_owner.get_mut(w) {
                     *o = Owner::Art(k);
@@ -636,7 +653,12 @@ fn tag_page(
             .filter_map(|w| pm.words.get(*w).map(|x| x.text.as_str()))
             .collect::<Vec<_>>()
             .join(" ");
-        if let Some(label) = para_label.get(pi).cloned().flatten().filter(|_| list_label(&text).is_some()) {
+        if let Some(label) = para_label
+            .get(pi)
+            .cloned()
+            .flatten()
+            .filter(|_| list_label(&text).is_some())
+        {
             let l = match last_list {
                 Some(l) => l,
                 None => {
@@ -648,8 +670,13 @@ fn tag_page(
             elems.push(PElem::new("LI", Some(l)));
             let li = elems.len() - 1;
             let first = ws.first().copied();
-            let label_word = first.filter(|w| pm.words.get(*w).is_some_and(|x| x.text.trim() == label));
-            let body_words: Vec<usize> = ws.iter().copied().filter(|w| Some(*w) != label_word).collect();
+            let label_word =
+                first.filter(|w| pm.words.get(*w).is_some_and(|x| x.text.trim() == label));
+            let body_words: Vec<usize> = ws
+                .iter()
+                .copied()
+                .filter(|w| Some(*w) != label_word)
+                .collect();
             if let Some(lw) = label_word {
                 elems.push(PElem::new("Lbl", Some(li)));
                 let lbl = elems.len() - 1;
@@ -669,7 +696,10 @@ fn tag_page(
             continue;
         }
         last_list = None;
-        let sizes: Vec<f64> = ws.iter().filter_map(|w| pm.words.get(*w).map(|x| x.size)).collect();
+        let sizes: Vec<f64> = ws
+            .iter()
+            .filter_map(|w| pm.words.get(*w).map(|x| x.size))
+            .collect();
         let size = {
             let mut v = sizes.clone();
             v.sort_by(f64::total_cmp);
@@ -693,7 +723,9 @@ fn tag_page(
         if tagged_annots.contains(&a) {
             continue;
         }
-        let Some((kind, hidden)) = annot_kind(pdf, a) else { continue };
+        let Some((kind, hidden)) = annot_kind(pdf, a) else {
+            continue;
+        };
         if !annot_needs_tag(&kind, hidden) {
             continue;
         }
@@ -707,7 +739,10 @@ fn tag_page(
                     .filter(|w| {
                         pm.words.get(*w).is_some_and(|x| {
                             let (cx, cy) = (x.bbox.cx(), x.bbox.cy());
-                            cx >= tl.x0 - 1.0 && cx <= tl.x1 + 1.0 && cy >= tl.y0 - 1.0 && cy <= tl.y1 + 1.0
+                            cx >= tl.x0 - 1.0
+                                && cx <= tl.x1 + 1.0
+                                && cy >= tl.y0 - 1.0
+                                && cy <= tl.y1 + 1.0
                         }) && matches!(word_owner.get(*w), Some(Owner::Elem(_)))
                     })
                     .collect();
@@ -717,7 +752,10 @@ fn tag_page(
                         *votes.entry(*e).or_default() += 1;
                     }
                 }
-                let parent = votes.into_iter().max_by_key(|(e, n)| (*n, usize::MAX - e)).map(|(e, _)| e);
+                let parent = votes
+                    .into_iter()
+                    .max_by_key(|(e, n)| (*n, usize::MAX - e))
+                    .map(|(e, _)| e);
                 let mut link = PElem::new("Link", parent);
                 link.objr = Some(a);
                 link.pos_rank = Some(pos_rank(pm, &tl));
@@ -757,7 +795,10 @@ fn tag_page(
     leaves.sort_unstable();
     for e in leaves {
         let ws = words_of.get(&e).cloned().unwrap_or_default();
-        let el = lang_of_words(ws.iter().filter_map(|w| pm.words.get(*w).map(|x| x.text.as_str())));
+        let el = lang_of_words(
+            ws.iter()
+                .filter_map(|w| pm.words.get(*w).map(|x| x.text.as_str())),
+        );
         let Some(el) = el else { continue };
         if doc_lang.is_none_or(|d| !lang::same(d, el)) {
             if let Some(pe) = elems.get_mut(e) {
@@ -814,7 +855,11 @@ fn tag_page(
         let Some(m) = marks.get(i) else { break };
         let tagged = m.mcid.is_some() || m.artifact;
         if is_mc(op) {
-            let opener = if op.is(b"EMC") { m.mc_match.and_then(|o| marks.get(o)) } else { Some(m) };
+            let opener = if op.is(b"EMC") {
+                m.mc_match.and_then(|o| marks.get(o))
+            } else {
+                Some(m)
+            };
             let structural = opener.is_none_or(|o| o.opens_mcid.is_some() || o.opens_artifact);
             if structural || tagged {
                 set(&mut op_owner, i, Owner::Blocker);
@@ -835,12 +880,21 @@ fn tag_page(
         }
         if is_path_paint(op) {
             let s = path_start.take().unwrap_or(i);
-            let own = if tagged { Owner::Blocker } else { Owner::Art(ArtKind::Layout) };
+            let own = if tagged {
+                Owner::Blocker
+            } else {
+                Owner::Art(ArtKind::Layout)
+            };
             for k in s..=i {
                 set(&mut op_owner, k, own);
             }
             if !tagged {
-                units.push(Unit { s, e: i, owner: own, rank: None });
+                units.push(Unit {
+                    s,
+                    e: i,
+                    owner: own,
+                    rank: None,
+                });
             }
             continue;
         }
@@ -878,7 +932,12 @@ fn tag_page(
                     Some([one]) => Some((one.0 as f64, one.0 as f64)),
                     _ => None,
                 };
-                units.push(Unit { s: i, e: i, owner: own, rank: r });
+                units.push(Unit {
+                    s: i,
+                    e: i,
+                    owner: own,
+                    rank: r,
+                });
             }
             continue;
         }
@@ -906,7 +965,9 @@ fn tag_page(
                     }
                     if let Some(ii) = picture {
                         if let Some(im) = pm.scan.images.get(ii) {
-                            let u = im.ctm.map_rect(&warraq_edit::geom::Rect::new(0.0, 0.0, 1.0, 1.0));
+                            let u = im
+                                .ctm
+                                .map_rect(&warraq_edit::geom::Rect::new(0.0, 0.0, 1.0, 1.0));
                             let mut a = Dictionary::new();
                             a.set("O", name("Layout"));
                             a.set("Placement", name("Block"));
@@ -924,7 +985,8 @@ fn tag_page(
                         .and_then(|o| o.value.name())
                         .and_then(|nm| {
                             let res = resources(pdf, pm.page_id());
-                            warraq_edit::page::resource(pdf, &res, b"XObject", nm).and_then(|(id, _)| id)
+                            warraq_edit::page::resource(pdf, &res, b"XObject", nm)
+                                .and_then(|(id, _)| id)
                         });
                     match form_class(pdf, id) {
                         FormClass::Artifact | FormClass::Tagged => None,
@@ -948,7 +1010,12 @@ fn tag_page(
                     Owner::Elem(e) => elems.get(e).and_then(|x| x.pos_rank).map(|r| (r, r)),
                     _ => None,
                 };
-                units.push(Unit { s: i, e: i, owner: o, rank: r });
+                units.push(Unit {
+                    s: i,
+                    e: i,
+                    owner: o,
+                    rank: r,
+                });
             }
         }
     }
@@ -977,9 +1044,15 @@ fn tag_page(
                 (Some((lo, hi)), Some((a, b))) => a <= hi + 1.0 && b >= lo - 1.0,
                 _ => true,
             };
-            if c.owner == u.owner && u.s > *last && contiguous && clean(*last + 1..u.s, u.owner, &op_owner) {
+            if c.owner == u.owner
+                && u.s > *last
+                && contiguous
+                && clean(*last + 1..u.s, u.owner, &op_owner)
+            {
                 if let Some((s2, e2)) = balance(content, marks, *first, u.e, floor) {
-                    if clean(s2..*first, u.owner, &op_owner) && clean(u.e + 1..e2 + 1, u.owner, &op_owner) {
+                    if clean(s2..*first, u.owner, &op_owner)
+                        && clean(u.e + 1..e2 + 1, u.owner, &op_owner)
+                    {
                         c.s = s2;
                         c.e = e2;
                         c.rank = union(c.rank, u.rank);
@@ -1051,7 +1124,10 @@ fn tag_page(
         };
         match s.owner {
             Owner::Elem(e) => {
-                let role = elems.get(e).map(|x| x.role.clone()).unwrap_or_else(|| "Span".into());
+                let role = elems
+                    .get(e)
+                    .map(|x| x.role.clone())
+                    .unwrap_or_else(|| "Span".into());
                 let lang = elems.get(e).and_then(|x| x.lang.clone());
                 let mut props = format!("<</MCID {next}");
                 if let (Some(l), "Span") = (&lang, role.as_str()) {
@@ -1068,8 +1144,12 @@ fn tag_page(
             Owner::Art(k) => {
                 let t = match k {
                     ArtKind::Layout => "/Artifact BMC".to_string(),
-                    ArtKind::Header => "/Artifact <</Type /Pagination /Subtype /Header>> BDC".to_string(),
-                    ArtKind::Footer => "/Artifact <</Type /Pagination /Subtype /Footer>> BDC".to_string(),
+                    ArtKind::Header => {
+                        "/Artifact <</Type /Pagination /Subtype /Header>> BDC".to_string()
+                    }
+                    ArtKind::Footer => {
+                        "/Artifact <</Type /Pagination /Subtype /Footer>> BDC".to_string()
+                    }
                 };
                 ins.open(a.span.start, t);
                 ins.close(b.span.end);
@@ -1142,7 +1222,10 @@ fn tag_page(
     }
     let page_id = pm.page_id();
     let mut tops: Vec<usize> = (0..ne)
-        .filter(|i| elems.get(*i).is_some_and(|e| e.parent.is_none()) && alive.get(*i).copied().unwrap_or(false))
+        .filter(|i| {
+            elems.get(*i).is_some_and(|e| e.parent.is_none())
+                && alive.get(*i).copied().unwrap_or(false)
+        })
         .collect();
     tops.sort_by(|a, b| {
         let ra = rank.get(*a).copied().unwrap_or(f64::MAX);
@@ -1174,7 +1257,14 @@ struct Materialize<'a> {
 }
 
 impl Materialize<'_> {
-    fn add(&self, tree: &mut Tree, i: usize, parent: Option<usize>, depth: usize, report: &mut Report) {
+    fn add(
+        &self,
+        tree: &mut Tree,
+        i: usize,
+        parent: Option<usize>,
+        depth: usize,
+        report: &mut Report,
+    ) {
         let Some(pe) = self.elems.get(i) else { return };
         if depth > 32 {
             return;
@@ -1196,7 +1286,12 @@ impl Materialize<'_> {
                 continue;
             }
             let key = self.elems.get(c).and_then(|x| x.order).unwrap_or(0.0);
-            kids.push((key, self.rank.get(c).copied().unwrap_or(f64::MAX), Some(c), 0));
+            kids.push((
+                key,
+                self.rank.get(c).copied().unwrap_or(f64::MAX),
+                Some(c),
+                0,
+            ));
         }
         kids.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.total_cmp(&b.1)));
         for (_, _, child, m) in kids {
