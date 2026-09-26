@@ -36,6 +36,6 @@ let package = Package(
         .target(name: "ZoodCore", swiftSettings: strict),
         .target(name: "ZoodEngine", dependencies: ["CWarraq", "ZoodCore"], swiftSettings: strict),
         .testTarget(name: "ZoodCoreTests", dependencies: ["ZoodCore"], swiftSettings: strict),
-        .testTarget(name: "ZoodEngineTests", dependencies: ["ZoodEngine"], swiftSettings: strict),
+        .testTarget(name: "ZoodEngineTests", dependencies: ["ZoodEngine", "ZoodCore"], swiftSettings: strict),
     ]
 )

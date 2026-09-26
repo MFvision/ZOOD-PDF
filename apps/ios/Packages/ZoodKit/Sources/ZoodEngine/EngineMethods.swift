@@ -1,4 +1,5 @@
 import Foundation
+import ZoodCore
 
 // Typed Swift front for the RPC methods in packages/core/crates/warraq-core/src/methods/.
 // Page indices are 0-based. Mutating methods return the whole new file (original bytes +
@@ -214,6 +215,36 @@ extension WarraqEngine {
             text = pages.joined(separator: "\n\n")
         }
         return text.map { String($0.prefix(maxCharacters)) }
+    }
+
+    /// Logical-order text of every page (engine `text.plain`, Arabic-aware), for the on-device
+    /// assistant and read-aloud. nil when this engine build has no text layer support.
+    public func pageTexts() -> [PageContent]? {
+        guard Self.supports("text.plain"),
+              let r = try? call("text.plain"),
+              let obj = try? JSONSerialization.jsonObject(with: r.json) as? [String: Any],
+              let pages = obj["pages"] as? [String] else { return nil }
+        return pages.enumerated().map { PageContent(index: $0.offset, text: $0.element) }
+    }
+
+    /// Paragraphs with their boxes (engine `text.extract`) of `pages` (0-based; nil = all), in
+    /// reading order. Coordinates: points from the top-left of the page's visible box.
+    public func paragraphs(pages: [Int]? = nil) throws(WarraqError) -> [TextParagraph] {
+        struct Params: Encodable, Sendable { let pages: [Int]? }
+        struct Rect: Decodable { let x0: Double; let y0: Double; let x1: Double; let y1: Double }
+        struct Para: Decodable { let text: String; let bbox: Rect?; let dir: String? }
+        struct Block: Decodable { let paragraphs: [Para] }
+        struct Page: Decodable { let page: Int; let blocks: [Block] }
+        struct Reply: Decodable { let pages: [Page] }
+        let reply: Reply = try call("text.extract", Params(pages: pages)).decode()
+        return reply.pages.flatMap { page in
+            page.blocks.flatMap(\.paragraphs).map { p in
+                TextParagraph(
+                    page: page.page, text: p.text,
+                    bbox: p.bbox.map { PageRect(x0: $0.x0, y0: $0.y0, x1: $0.x1, y1: $0.y1) },
+                    rtl: p.dir == "rtl")
+            }
+        }
     }
 
     // MARK: - Static
