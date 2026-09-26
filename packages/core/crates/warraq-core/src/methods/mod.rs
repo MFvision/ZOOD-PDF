@@ -11,7 +11,12 @@ mod pdf;
 mod protect;
 #[cfg(feature = "render")]
 mod render;
+mod sign;
 mod standards;
+mod text;
+// Export and Compare (warraq-office).
+mod compare;
+mod export;
 
 /// Every namespace's `register` function.
 pub const NAMESPACES: &[fn(&mut Registry)] = &[
@@ -20,6 +25,11 @@ pub const NAMESPACES: &[fn(&mut Registry)] = &[
     protect::register,
     pdf::register,
     standards::register,
+    sign::register,
+    text::register,
+    // Export and Compare (warraq-office).
+    export::register,
+    compare::register,
     #[cfg(feature = "render")]
     render::register,
 ];

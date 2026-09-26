@@ -171,6 +171,34 @@ export const ICONS = {
       {P('M5 7v12a1.5 1.5 0 0 0 1.5 1.5H15')}
     </>
   ),
+  // Export formats and Compare.
+  table: (
+    <>
+      <rect x="4" y="5" width="16" height="14" rx="1.5" />
+      {P('M4 10h16M4 14.5h16M10 5v14')}
+    </>
+  ),
+  slides: (
+    <>
+      <rect x="3.5" y="5" width="17" height="11" rx="1.5" />
+      {P('M12 16v3.5M8.5 19.5h7M7.5 9h6M7.5 12h4')}
+    </>
+  ),
+  markdown: (
+    <>
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      {P('M6.5 15V9l2.5 3 2.5-3v6M15.5 9v6M13.5 13l2 2 2-2')}
+    </>
+  ),
+  text: <>{P('M5 6.5h14M5 10.5h14M5 14.5h14M5 18.5h9')}</>,
+  image: (
+    <>
+      <rect x="3.5" y="5" width="17" height="14" rx="2" />
+      <circle cx="9" cy="10" r="1.6" />
+      {P('m4 17 5-4.5 3.5 3 3-2.5 4.5 4')}
+    </>
+  ),
+  swap: <>{P('M7 7.5h11M15 4.5l3 3-3 3M17 16.5H6M9 13.5l-3 3 3 3')}</>,
 } as const;
 
 export type IconName = keyof typeof ICONS;

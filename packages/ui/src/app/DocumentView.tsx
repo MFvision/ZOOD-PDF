@@ -11,6 +11,9 @@ import { Viewer, type ViewerApi } from '../viewer/Viewer';
 import { Icon } from './icons';
 import { IconButton, MenuButton, Tile, type MenuItem } from './primitives';
 import { runTool } from './useTools';
+import { closeToolPanel, panelFor, useToolPanel } from '../tools/panels';
+import { ExportSheet } from './ExportSheet';
+import { ComparePanel } from './ComparePanel';
 import { StandardsPanel } from './StandardsPanel';
 
 const wide = () => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 900px)').matches;
@@ -36,7 +39,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
       app.dispatch({ type: 'VIEWER_READY', id: doc.id, revision: doc.revision, pageCount: info.pageCount });
       if (doc.pendingTool) {
         const def = toolById(doc.pendingTool as ToolId);
-        if (def && runTool(def, viewer, (panel) => app.dispatch({ type: 'SET_PANEL', id: doc.id, panel }))) setTool(def.id);
+        if (def && runTool(def, viewer, doc.id)) setTool(def.id);
         app.dispatch({ type: 'TOOL_STARTED', id: doc.id });
       }
       // First-page picture for Recents, rendered by PDFium.
@@ -58,18 +61,23 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
     if (!def) {
       api.exec('mode:view');
       setTool(null);
-      if (doc.panel) app.dispatch({ type: 'SET_PANEL', id: doc.id, panel: undefined });
       return;
     }
-    if (def.panel) api.exec('mode:view');
-    else if (doc.panel) app.dispatch({ type: 'SET_PANEL', id: doc.id, panel: undefined });
-    if (runTool(def, api, (panel) => app.dispatch({ type: 'SET_PANEL', id: doc.id, panel })) && def.id !== 'protect') setTool(def.id);
+    if (runTool(def, api, doc.id) && def.id !== 'protect' && def.id !== 'export') setTool(def.id);
   };
-  const closePanel = () => {
-    app.dispatch({ type: 'SET_PANEL', id: doc.id, panel: undefined });
-    setTool(null);
+
+  // Core-tool panels (Export sheet, Compare or Standards side panel) requested for this document.
+  // One shared slot (tools/panels): opening one panel replaces the other.
+  const panel = useToolPanel();
+  const mine = panelFor(panel, doc.id, active);
+  const exportOpen = mine && panel?.tool === 'export';
+  const compareOpen = mine && panel?.tool === 'compare';
+  const standardsOpen = mine && panel?.tool === 'standards';
+  const sideOpen = compareOpen || standardsOpen;
+  const closePanel = (id: ToolId) => {
+    closeToolPanel(id);
+    setTool((cur) => (cur === id ? null : cur));
   };
-  const panelOpen = doc.panel === 'standards';
 
   const status = doc.edited ? ` · ${t('doc.edited')}` : '';
   const tools = readyTools(app.platform);
@@ -147,7 +155,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
           onClick={() => setInspectorOpen((v) => !v)}
         />
       </header>
-      <div className={`doc-body${pagesOpen ? ' pages-open' : ''}${inspectorOpen && !panelOpen ? ' inspector-open' : ''}${panelOpen ? ' tool-panel-open' : ''}`}>
+      <div className={`doc-body${pagesOpen ? ' pages-open' : ''}${inspectorOpen && !sideOpen ? ' inspector-open' : ''}${compareOpen ? ' compare-open' : ''}${standardsOpen ? ' tool-panel-open' : ''}`}>
         {pagesOpen && (
           <PagesPanel
             api={api}
@@ -182,9 +190,15 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
             </div>
           )}
         </div>
-        {inspectorOpen && !panelOpen && <Inspector doc={doc} onComments={() => api?.exec('panel:toggle-comment')} />}
-        {panelOpen && <StandardsPanel key={`${doc.id}:${doc.revision}`} doc={doc} api={api} onClose={closePanel} />}
+        {compareOpen ? (
+          <ComparePanel key={panel?.nonce} doc={doc} api={api} onClose={() => closePanel('compare')} />
+        ) : standardsOpen ? (
+          <StandardsPanel key={`${panel?.nonce}:${doc.revision}`} doc={doc} api={api} onClose={() => closePanel('standards')} />
+        ) : (
+          inspectorOpen && <Inspector doc={doc} onComments={() => api?.exec('panel:toggle-comment')} />
+        )}
       </div>
+      {exportOpen && <ExportSheet key={panel?.nonce} doc={doc} api={api} onClose={() => closePanel('export')} />}
     </section>
   );
 }

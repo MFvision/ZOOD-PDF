@@ -167,6 +167,18 @@ pub fn tokens(pdf: &Pdf, sink: &mut Sink) {
                     );
                 }
                 let data_start = lx.pos + e;
+                // Trust /Length when `endstream` (after an optional EOL) sits right there: binary
+                // data may itself end in CR or LF, so the EOL before `endstream` is ambiguous.
+                let declared = current.and_then(|id| declared_length(pdf, id));
+                let at_declared = declared.and_then(|d| {
+                    let p = data_start.checked_add(usize::try_from(d).ok()?)?;
+                    let eol = eol_len(buf, p);
+                    (eol > 0 && buf.get(p + eol..)?.starts_with(b"endstream")).then_some(p + eol)
+                });
+                if let Some(end) = at_declared {
+                    lx.pos = end + b"endstream".len();
+                    continue;
+                }
                 let Some(end) = find(buf, b"endstream", data_start) else {
                     break;
                 };
@@ -189,8 +201,8 @@ pub fn tokens(pdf: &Pdf, sink: &mut Sink) {
                         .fixable(true),
                     );
                 }
-                if let Some(id) = current {
-                    if let Some(declared) = declared_length(pdf, id) {
+                if current.is_some() {
+                    if let Some(declared) = declared {
                         let actual = data_end.saturating_sub(data_start) as i64;
                         if declared != actual {
                             sink.push(

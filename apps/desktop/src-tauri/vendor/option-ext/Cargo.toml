@@ -1,0 +1,14 @@
+[package]
+# Clean-room, permissively licensed stand-in for the MPL-2.0 `option-ext` crate, which Tauri
+# pulls in through `dirs` → `dirs-sys`. ZOOD PDF ships no MPL code (docs/decisions/0002).
+# Same name and version so `[patch.crates-io]` can substitute it; written from the public
+# API only (three trait methods on Option).
+name = "option-ext"
+version = "0.2.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Extension methods for Option (ZOOD PDF clean-room replacement)"
+publish = false
+
+[lib]
+path = "src/lib.rs"

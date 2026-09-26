@@ -5,6 +5,7 @@
  */
 import type { MessageKey } from '../i18n';
 import type { IconName } from '../app/icons';
+import { openToolPanel } from './panels';
 
 export type ToolId =
   | 'edit'
@@ -43,9 +44,9 @@ export interface ToolDef {
   status: 'ready' | 'hidden';
   /** Viewer-backed tools: EmbedPDF commands executed when the tool is picked. */
   viewer?: { commands: string[] };
-  /** Core-backed tools: set by the agent implementing the tool. */
-  core?: { open: () => void | Promise<void> };
-  /** Core-backed tools that show a panel next to the viewer of the current document. */
+  /** Core-backed tools: set by the agent implementing the tool. `docId`: the document to act on. */
+  core?: { open: (docId?: string) => void | Promise<void> };
+  /** Tools whose UI is a side panel (opened through tools/panels; one panel at a time). */
   panel?: string;
   /** Needs an open document. */
   needsDocument: boolean;
@@ -79,9 +80,10 @@ export const TOOLS: readonly ToolDef[] = [
   tool('fill-sign', 'sign', 'purple', { status: 'ready', viewer: { commands: ['mode:insert'] } }),
   tool('protect', 'lock', 'graphite', { status: 'ready', viewer: { commands: ['document:protect'] } }),
   tool('redact', 'redact', 'red', { status: 'ready', viewer: { commands: ['mode:redact'] } }),
-  tool('export', 'export', 'green'),
+  // Export and Compare: core-backed panels (warraq-office), see tools/panels.ts.
+  tool('export', 'export', 'green', { status: 'ready', core: { open: (docId) => openToolPanel('export', docId) } }),
   tool('create', 'create', 'blue', { needsDocument: false }),
-  tool('compare', 'compare', 'teal'),
+  tool('compare', 'compare', 'teal', { status: 'ready', core: { open: (docId) => openToolPanel('compare', docId) } }),
   tool('scan', 'scan', 'cyan', { needsDocument: false }),
   tool('combine', 'combine', 'orange'),
   tool('compress', 'compress', 'mint'),
@@ -89,7 +91,7 @@ export const TOOLS: readonly ToolDef[] = [
   tool('ai', 'sparkle', 'purple'),
   tool('page-marks', 'stamp', 'orange'),
   tool('digital-signature', 'certificate', 'indigo'),
-  tool('standards', 'badge', 'teal', { status: 'ready', panel: 'standards', platforms: ['web', 'desktop', 'extension'] }),
+  tool('standards', 'badge', 'teal', { status: 'ready', panel: 'standards', core: { open: (docId) => openToolPanel('standards', docId) } }),
   tool('accessibility', 'accessibility', 'blue'),
   tool('batch', 'batch', 'graphite', { needsDocument: false }),
   tool('library', 'library', 'green', { needsDocument: false }),

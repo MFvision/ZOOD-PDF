@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useApp } from '../services/AppContext';
 import { Home, type HomeSheet } from './Home';
 import { DocumentView } from './DocumentView';
-import { CommandPalette, SettingsSheet, TagsSheet, ToolsSheet } from './Sheets';
+import { CommandPalette, ConvertSheet, SettingsSheet, TagsSheet, ToolsSheet } from './Sheets';
 import { Sheet, Toasts } from './primitives';
 import { Icon } from './icons';
 
@@ -83,6 +83,7 @@ export function App() {
       {sheet?.kind === 'tools' && <ToolsSheet onClose={() => setSheet(null)} />}
       {sheet?.kind === 'tags' && <TagsSheet item={sheet.item} onClose={() => setSheet(null)} />}
       {sheet?.kind === 'palette' && <CommandPalette onClose={() => setSheet(null)} />}
+      {sheet?.kind === 'convert' && <ConvertSheet onClose={() => setSheet(null)} />}
 
       {closing && (
         <Sheet

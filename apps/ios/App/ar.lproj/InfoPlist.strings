@@ -1,0 +1,5 @@
+/* اسم التطبيق على الشاشة الرئيسية */
+"CFBundleDisplayName" = "زود PDF";
+"CFBundleName" = "زود PDF";
+"NSCameraUsageDescription" = "يستخدم زود PDF الكاميرا لمسح المستندات ضوئيًا وتحويلها إلى ملفات PDF. تبقى الصور على جهازك.";
+"NSPhotoLibraryUsageDescription" = "يستورد زود PDF الصور التي تختارها لتحويلها إلى صفحات PDF.";

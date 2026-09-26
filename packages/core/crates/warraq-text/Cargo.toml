@@ -5,9 +5,21 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
+description = "Arabic-first text extraction, search normalisation and shaping for the ZOOD PDF engine"
 
 [dependencies]
 thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+lopdf.workspace = true
+unicode-bidi = "0.3.18"
+unicode-normalization = "0.1"
+harfrust = "0.13"
+read-fonts = "0.43"
+
+[dev-dependencies]
+# The acid gate reads the corpus through the product object layer (load + decryption).
+warraq-pdf = { path = "../warraq-pdf" }
 
 [lints]
 workspace = true

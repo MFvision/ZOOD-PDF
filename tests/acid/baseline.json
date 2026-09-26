@@ -1,0 +1,26 @@
+{
+  "about": "Per-file minimum normalised character accuracy for the Arabic acid gate (tests/acid). Regenerate with ACID_BLESS=1 only when a change is an intended improvement.",
+  "files": {
+    "chrome-bold-naskh": 0.998,
+    "chrome-english-inter": 0.998,
+    "chrome-hard-bidi-naskh": 0.998,
+    "chrome-lists-cairo": 0.998,
+    "chrome-mixed-naskh": 0.998,
+    "chrome-mixed-naskh-aes-256": 0.998,
+    "chrome-news-amiri": 0.998,
+    "chrome-news-amiri-rc4-128": 0.998,
+    "chrome-news-cairo-type3": 0.998,
+    "chrome-persian-vazirmatn": 0.998,
+    "chrome-table-cairo": 0.998,
+    "chrome-tashkeel-amiri": 0.998,
+    "chrome-tashkeel-amiri-aes-256": 0.998,
+    "chrome-two-column-naskh": 0.998,
+    "chrome-urdu-nastaliq": 0.998,
+    "synthetic-amiri-kerning": 0.998,
+    "synthetic-libreoffice-naskh": 0.998,
+    "synthetic-nastaliq-stream": 0.998,
+    "synthetic-simple-fonts": 0.998,
+    "synthetic-word-naskh": 0.998,
+    "synthetic-word-naskh-aes-256": 0.998
+  }
+}

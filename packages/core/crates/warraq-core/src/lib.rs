@@ -24,6 +24,7 @@ pub mod wasm;
 pub use error::CoreError;
 pub use registry::{registry, Registry};
 pub use warraq_pdf;
+pub use warraq_sign;
 
 use serde_json::Value;
 use warraq_pdf::Pdf;

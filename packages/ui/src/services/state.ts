@@ -31,8 +31,6 @@ export interface OpenDocument {
   handle?: unknown;
   /** Tool to start once the viewer is ready (picked before a document was open). */
   pendingTool?: string;
-  /** Core tool panel shown next to the viewer (e.g. 'standards'). */
-  panel?: string;
 }
 
 export type HomeSection = 'home' | 'recents' | 'starred' | 'tags';
@@ -56,7 +54,6 @@ export interface AppState {
 export type Action =
   | { type: 'OPEN_DOCUMENT'; id: string; name: string; bytes: Uint8Array; recentId?: string; handle?: unknown; tool?: string }
   | { type: 'TOOL_STARTED'; id: string }
-  | { type: 'SET_PANEL'; id: string; panel?: string }
   | { type: 'CLOSE_DOCUMENT'; id: string }
   | { type: 'VIEWER_READY'; id: string; revision: number; pageCount: number }
   | { type: 'VIEWER_EDITED'; id: string }
@@ -148,8 +145,6 @@ export function reducer(state: AppState, action: Action): AppState {
       }));
     case 'TOOL_STARTED':
       return updateDoc(state, action.id, (d) => (d.pendingTool ? { ...d, pendingTool: undefined } : d));
-    case 'SET_PANEL':
-      return updateDoc(state, action.id, (d) => (d.panel === action.panel ? d : { ...d, panel: action.panel }));
     case 'SET_RECENT_ID':
       return updateDoc(state, action.id, (d) => ({ ...d, recentId: action.recentId }));
     case 'SET_ROUTE':

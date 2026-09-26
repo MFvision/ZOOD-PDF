@@ -3,7 +3,8 @@ import en from '../i18n/en.json';
 import ar from '../i18n/ar.json';
 import { fontUrl, groupByClause, loadFonts, messageArgs, MODES, StandardsSession, suggestedName, type Finding } from './standards';
 import type { EngineClient } from './engine';
-import { initialState, reducer } from './state';
+import { toolById } from '../tools/registry';
+import { closeToolPanel, currentToolPanel } from '../tools/panels';
 
 const f = (rule: string, clause: string, extra: Partial<Finding> = {}): Finding => ({
   rule,
@@ -77,12 +78,13 @@ describe('standards service', () => {
     expect(engine.close).toHaveBeenCalled();
   });
 
-  it('keeps a tool panel per document in the reducer', () => {
-    let s = reducer(initialState('en'), { type: 'OPEN_DOCUMENT', id: 'd', name: 'a.pdf', bytes: new Uint8Array([1]) });
-    s = reducer(s, { type: 'SET_PANEL', id: 'd', panel: 'standards' });
-    expect(s.documents.d!.panel).toBe('standards');
-    s = reducer(s, { type: 'SET_PANEL', id: 'd', panel: undefined });
-    expect(s.documents.d!.panel).toBeUndefined();
+  it('opens in the shared side-panel slot, replacing Compare (one panel at a time)', () => {
+    toolById('compare')!.core!.open('d1');
+    expect(currentToolPanel()?.tool).toBe('compare');
+    toolById('standards')!.core!.open('d1');
+    expect(currentToolPanel()).toMatchObject({ tool: 'standards', docId: 'd1' });
+    closeToolPanel('standards');
+    expect(currentToolPanel()).toBeNull();
   });
 });
 

@@ -1,0 +1,32 @@
+{
+  "name": "@zood/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "description": "ZOOD PDF (زود PDF) desktop host — Tauri 2",
+  "type": "module",
+  "scripts": {
+    "dev:ui": "vite",
+    "build:ui": "vite build",
+    "build": "vite build",
+    "dev": "tauri dev -- --no-default-features",
+    "tauri": "tauri",
+    "icons": "tauri icon icon.svg",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json",
+    "test:rust": "cd src-tauri && cargo test",
+    "smoke": "bash ../../scripts/desktop-smoke.sh"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/plugin-dialog": "2.7.3",
+    "@tauri-apps/plugin-fs": "2.5.2",
+    "@zood/ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.5",
+    "@types/node": "^22.20.4",
+    "vite": "8.3.1",
+    "vitest": "5.0.2"
+  }
+}

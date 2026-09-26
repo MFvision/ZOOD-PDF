@@ -173,6 +173,15 @@ fn stream_length() {
         "stream-length",
         true,
     );
+    // Binary data that itself ends in CR or LF is not a mismatch (regression: tests/corpus).
+    for tail in [&b"012345678\r"[..], b"012345678\n", b"0123456\r\n"] {
+        let r = validate(&with_marked_stream(tail), A2b);
+        assert!(
+            !r.has("stream-length") && !r.has("stream-keywords"),
+            "{tail:?}: {:?}",
+            r.counts
+        );
+    }
 }
 
 #[test]
