@@ -1,0 +1,341 @@
+/* Edit tool surface (app/EditPanel.tsx) and link sheets (app/LinkSheets.tsx). Logical properties only.
+   The page itself is a physical canvas (PDF coordinates): overlay positions are set inline. */
+.edit-surface {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  background: var(--viewer-canvas);
+}
+
+.edit-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px;
+  padding: 6px 8px;
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-1);
+}
+
+.edit-modes {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-sm);
+  background: var(--fill);
+}
+
+.edit-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-block-size: 30px;
+  padding-inline: 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--label);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.edit-mode.on {
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  color: var(--accent);
+}
+
+.edit-pager {
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--label-2);
+}
+
+.edit-status {
+  flex: 1;
+  min-inline-size: 120px;
+  font-size: 12.5px;
+  color: var(--label-2);
+}
+
+.edit-canvas {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 24px 48px;
+}
+
+.edit-page {
+  position: relative;
+  margin-inline: auto;
+  background: #fff;
+  box-shadow: var(--shadow-2);
+  touch-action: none;
+  user-select: none;
+}
+
+.edit-page.mode-addText,
+.edit-page.mode-addImage {
+  cursor: crosshair;
+}
+
+.edit-page.mode-addLink {
+  cursor: cell;
+}
+
+.edit-picture {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  pointer-events: none;
+}
+
+.edit-block,
+.edit-link,
+.edit-image,
+.edit-draw {
+  position: absolute;
+  padding: 0;
+  margin: 0;
+  border: 1px dashed transparent;
+  border-radius: 3px;
+  background: transparent;
+}
+
+.edit-block {
+  cursor: text;
+}
+
+.edit-block:hover:not(:disabled),
+.edit-block:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.edit-block.locked {
+  cursor: not-allowed;
+}
+
+.edit-block.locked:hover {
+  border-color: var(--label-3);
+  background: transparent;
+}
+
+.edit-link {
+  border-color: rgb(0 122 255 / 55%);
+  background: rgb(0 122 255 / 8%);
+  cursor: pointer;
+}
+
+.edit-link.suspicious {
+  border-color: var(--orange);
+  background: rgb(255 149 0 / 14%);
+}
+
+.edit-link.selected {
+  border-style: solid;
+  box-shadow: var(--focus-ring);
+}
+
+.edit-image {
+  border-color: rgb(120 120 128 / 40%);
+  cursor: move;
+}
+
+.edit-image.selected {
+  border: 1.5px solid var(--accent);
+  outline: none;
+}
+
+.edit-image.cropping {
+  border-style: dashed;
+  background: rgb(0 0 0 / 12%);
+}
+
+.edit-handle {
+  position: absolute;
+  inline-size: 11px;
+  block-size: 11px;
+  border: 1.5px solid var(--accent);
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+/* Handles sit on the physical corners of the (physical) page canvas. */
+.edit-page .h-nw {
+  inset-block-start: -6px;
+  inset-inline-start: -6px;
+  cursor: nwse-resize;
+}
+
+.edit-page .h-ne {
+  inset-block-start: -6px;
+  inset-inline-end: -6px;
+  cursor: nesw-resize;
+}
+
+.edit-page .h-sw {
+  inset-block-end: -6px;
+  inset-inline-start: -6px;
+  cursor: nesw-resize;
+}
+
+.edit-page .h-se {
+  inset-block-end: -6px;
+  inset-inline-end: -6px;
+  cursor: nwse-resize;
+}
+
+.edit-draw {
+  border: 1.5px dashed var(--accent);
+  background: var(--accent-soft);
+}
+
+.edit-text-wrap {
+  position: absolute;
+  z-index: 3;
+}
+
+.edit-textarea {
+  display: block;
+  inline-size: 100%;
+  box-sizing: border-box;
+  padding: 3px;
+  border: 1.5px solid var(--accent);
+  border-radius: 4px;
+  background: rgb(255 255 255 / 96%);
+  resize: none;
+  overflow: hidden;
+  box-shadow: var(--shadow-2);
+}
+
+.edit-textarea:focus {
+  outline: none;
+  box-shadow: var(--focus-ring), var(--shadow-2);
+}
+
+.edit-minibar {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-2);
+  white-space: nowrap;
+}
+
+.edit-minibar.static {
+  position: static;
+  margin-block-start: 6px;
+  inline-size: max-content;
+  max-inline-size: 520px;
+}
+
+.edit-style {
+  white-space: normal;
+}
+
+.edit-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--label-2);
+}
+
+.edit-field input[type="number"] {
+  inline-size: 56px;
+}
+
+.edit-minibar .btn.on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.link-bar-target {
+  max-inline-size: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+
+.edit-busy {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  background: rgb(255 255 255 / 25%);
+  cursor: progress;
+}
+
+/* Link sheets. */
+.link-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.link-host-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--fill-2);
+}
+
+.link-host-label,
+.link-url-label {
+  margin: 0;
+  font-size: 12px;
+  color: var(--label-2);
+}
+
+.link-host {
+  font-size: 22px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  unicode-bidi: isolate;
+}
+
+.link-host-ascii {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--label-2);
+}
+
+.link-url {
+  display: block;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--fill);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+
+.link-problems {
+  margin: 0;
+  padding-inline-start: 18px;
+  color: var(--orange);
+  font-size: 13px;
+}
+
+.link-typing {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .edit-textarea {
+    background: rgb(255 255 255 / 96%);
+  }
+}

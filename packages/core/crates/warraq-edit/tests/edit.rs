@@ -603,3 +603,26 @@ fn rpc_surface_and_errors() {
     .unwrap();
     assert_eq!(c["verdict"], "reject");
 }
+
+#[test]
+fn chrome_fixture_used_by_the_ui_spec() {
+    let original = std::fs::read(root().join("tests/fixtures/edit-ar.pdf")).unwrap();
+    let mut pdf = Pdf::open(original.clone(), None).unwrap();
+    let blocks = text::blocks(&pdf, 0).unwrap();
+    let first = blocks
+        .iter()
+        .find(|b| b.text.starts_with("هذه الجملة الأولى"))
+        .expect("first sentence");
+    assert!(first.editable, "{first:?}");
+    assert_eq!(images::list(&pdf, 0).unwrap().len(), 1);
+    let new_text = "هذه جملةٌ جديدةٌ مُعدَّلة بالكامل.";
+    text::replace(&mut pdf, 0, first.id, new_text, Some(&first.text), None).unwrap();
+    let bytes = commit(&mut pdf, &original);
+    let re = Pdf::open(bytes, None).unwrap();
+    let t = plain(&re);
+    assert!(t.contains(new_text), "{t}");
+    assert!(
+        t.contains("الفقرة الثانية تبقى كما هي دون أي تغيير."),
+        "{t}"
+    );
+}

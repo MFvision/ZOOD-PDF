@@ -72,7 +72,8 @@ function tool(
 }
 
 export const TOOLS: readonly ToolDef[] = [
-  tool('edit', 'edit', 'blue'),
+  // Edit: core-backed surface over the viewer (warraq-edit), see app/EditPanel.tsx.
+  tool('edit', 'edit', 'blue', { status: 'ready', core: { open: (docId) => openToolPanel('edit', docId) } }),
   tool('organize', 'organize', 'indigo'),
   tool('comment', 'comment', 'yellow', { status: 'ready', viewer: { commands: ['mode:annotate'] } }),
   tool('fill-sign', 'sign', 'purple', { status: 'ready', viewer: { commands: ['mode:insert'] } }),

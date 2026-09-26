@@ -54,6 +54,9 @@ pub struct Placed {
     pub gid: u16,
     pub x: f64,
     pub y: f64,
+    /// Pen position before the glyph's offset, and its advance (the word's advance range).
+    pub pen: f64,
+    pub adv: f64,
     /// Text this glyph stands for in the ToUnicode fallback ("" for secondary glyphs).
     pub text: String,
 }
@@ -101,29 +104,46 @@ impl Laid<'_> {
             fmt_num(fill[2])
         ));
         let mut cur: Option<usize> = None;
+        let mut glyph = |s: &mut String, g: &Placed| {
+            let Some(w) = written.get(g.face) else {
+                return;
+            };
+            if cur != Some(g.face) {
+                s.push_str(&format!(
+                    "{} {} Tf\n",
+                    crate::content::fmt_name(&w.resource),
+                    fmt_num(self.size)
+                ));
+                cur = Some(g.face);
+            }
+            let cid = w.cid.get(&g.gid).copied().unwrap_or(g.gid);
+            s.push_str(&format!(
+                "1 0 0 1 {} {} Tm <{cid:04X}> Tj\n",
+                fmt_num(g.x),
+                fmt_num(g.y)
+            ));
+        };
         for line in &self.lines {
             for (range, text) in &line.spans {
+                let gs = line.glyphs.get(range.clone()).unwrap_or(&[]);
+                // The word's advance range; glyphs drawn outside it (a tanween hanging over the
+                // space) are drawn in an empty ActualText span so no extractor merges the word
+                // with its neighbour or the space.
+                let lo = gs.iter().map(|g| g.pen).fold(f64::MAX, f64::min);
+                let hi = gs.iter().map(|g| g.pen + g.adv).fold(f64::MIN, f64::max);
+                let outside = |g: &Placed| g.x < lo - 0.05 || g.x > hi + 0.05;
                 s.push_str(&format!("/Span <</ActualText {}>> BDC\n", hex_text(text)));
-                for g in line.glyphs.get(range.clone()).unwrap_or(&[]) {
-                    let Some(w) = written.get(g.face) else {
-                        continue;
-                    };
-                    if cur != Some(g.face) {
-                        s.push_str(&format!(
-                            "{} {} Tf\n",
-                            crate::content::fmt_name(&w.resource),
-                            fmt_num(self.size)
-                        ));
-                        cur = Some(g.face);
-                    }
-                    let cid = w.cid.get(&g.gid).copied().unwrap_or(g.gid);
-                    s.push_str(&format!(
-                        "1 0 0 1 {} {} Tm <{cid:04X}> Tj\n",
-                        fmt_num(g.x),
-                        fmt_num(g.y)
-                    ));
+                for g in gs.iter().filter(|g| !outside(g)) {
+                    glyph(&mut s, g);
                 }
                 s.push_str("EMC\n");
+                if gs.iter().any(outside) {
+                    s.push_str("/Span <</ActualText <FEFF>>> BDC\n");
+                    for g in gs.iter().filter(|g| outside(g)) {
+                        glyph(&mut s, g);
+                    }
+                    s.push_str("EMC\n");
+                }
             }
         }
         s.push_str("ET\nQ\n");
@@ -438,6 +458,8 @@ pub fn layout<'a>(req: &Request<'a>) -> Result<Laid<'a>> {
                     gid: g.gid,
                     x: x + g.x_off,
                     y: y + g.y_off,
+                    pen: x,
+                    adv: g.adv,
                     text: g.text.clone(),
                 });
                 x += g.adv;
