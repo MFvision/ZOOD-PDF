@@ -15,7 +15,10 @@ struct MarkupBar: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(spacing: 0) {
+        // The tools scroll under a Done that stays put at the end; the
+        // scroll view fills the width (its own ideal width would be its
+        // content's, past the screen's edge).
+        ZStack(alignment: .trailing) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Space.x1) {
                     barButton("Undo", "arrow.uturn.backward", id: "markup.undo", enabled: undoManager?.canUndo == true) { undoManager?.undo() }
@@ -36,20 +39,20 @@ struct MarkupBar: View {
                     barButton("Stamp", "seal", id: "markup.stamp", action: openStamps)
                     barButton("Signature", "signature", id: "markup.signature", action: openSignature)
                 }
-                .padding(.horizontal, Space.x3)
+                .padding(.leading, Space.x3)
+                .padding(.trailing, 88)
             }
             .frame(maxWidth: .infinity)
-            .layoutPriority(-1)
             .accessibilityIdentifier("markup.bar")
-            // Done keeps its place at the end whatever the tools need.
             Button("Done", action: done)
                 .font(TextStyle.headline)
                 .foregroundStyle(.white)
                 .padding(.horizontal, Space.x4)
-                .fixedSize()
-                .layoutPriority(1)
+                .frame(height: 44)
+                .background(MarkupChrome.bar)
                 .accessibilityIdentifier("markup.done")
         }
+        .frame(maxWidth: .infinity)
         .frame(height: 44)
         .background(MarkupChrome.bar)
         .overlay(alignment: .bottom) {

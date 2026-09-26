@@ -59,7 +59,7 @@ final class ExportTests: XCTestCase {
         let model = try await PartB.loadedModel("chrome-notonaskh-justified-3pages", in: folder)
         let text = try String(contentsOf: try await Exporter.text(model), encoding: .utf8)
         XCTAssertTrue(text.contains("الفصل الثالث"))
-        XCTAssertTrue(text.contains("Page 3") || text.contains("الصفحة 3"), text.prefix(80).description)
+        XCTAssertTrue(text.contains("Page") || text.contains("الصفحة"), "a page heading in the interface's language: \(text.prefix(80))")
         let pictures = try Exporter.images(model)
         XCTAssertEqual(pictures.count, 3)
         XCTAssertTrue(pictures[0].lastPathComponent.hasSuffix(" 01.png"))

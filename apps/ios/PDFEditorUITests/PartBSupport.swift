@@ -98,8 +98,10 @@ struct PartBApp {
         var tries = 0
         // Off the screen's edge (a frame outside the window), the bar is
         // scrolled — one way in Arabic and the other in English.
-        while !screen.insetBy(dx: 2, dy: 0).contains(button.frame), bar.exists, tries < 6 {
-            if tries % 2 == 0 { bar.swipeLeft() } else { bar.swipeRight() }
+        while !screen.insetBy(dx: 2, dy: 0).contains(button.frame), bar.exists, tries < 8 {
+            // Towards the button: past the right edge, the content moves
+            // left; past the left edge, right.
+            if button.frame.minX < screen.minX + 2 { bar.swipeRight() } else { bar.swipeLeft() }
             tries += 1
         }
         button.tap()
@@ -163,6 +165,12 @@ struct PartBApp {
         } else {
             more(identifier, label: menuLabel)
         }
+    }
+
+    /// The signature's canvas: PencilKit's view or the SwiftUI element
+    /// around it, whichever accessibility exposes.
+    var signatureCanvas: XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN %@", ["signature.pkcanvas", "signature.canvas"])).firstMatch
     }
 
     /// A drag across the page view, from and to fractions of its size.
