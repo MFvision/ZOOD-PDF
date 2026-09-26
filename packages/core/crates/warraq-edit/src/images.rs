@@ -479,17 +479,22 @@ pub fn decode_picture(bytes: &[u8]) -> Result<Picture> {
 }
 
 fn add_xobject(pdf: &mut Pdf, page_id: ObjectId, p: &Picture) -> Result<Vec<u8>> {
+    let id = embed_picture(pdf, p)?;
+    add_resource(pdf, page_id, b"XObject", "ZIm", Object::Reference(id))
+}
+
+/// Embed `p` as a new image XObject (with its `/SMask`); not added to any resources.
+pub fn embed_picture(pdf: &mut Pdf, p: &Picture) -> Result<ObjectId> {
     let mut dict = p.dict.clone();
     if let Some(a) = &p.smask {
         let sm = new_stream(pdf, image_dict(p.width, p.height, b"DeviceGray"), a)?;
         dict.set("SMask", Object::Reference(sm));
     }
-    let id = if p.compress {
+    Ok(if p.compress {
         new_stream(pdf, dict, &p.data)?
     } else {
         pdf.add(Object::Stream(Stream::new(dict, p.data.clone())))
-    };
-    add_resource(pdf, page_id, b"XObject", "ZIm", Object::Reference(id))
+    })
 }
 
 /// Largest box with the picture's aspect ratio centred inside `r`.

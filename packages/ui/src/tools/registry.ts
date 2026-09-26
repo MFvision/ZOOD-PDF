@@ -101,7 +101,8 @@ export const TOOLS: readonly ToolDef[] = [
   tool('compress', 'compress', 'mint', { status: 'ready', core: { open: (docId) => openToolPanel('compress', docId) } }),
   tool('prepare-form', 'form', 'pink', { status: 'ready', viewer: { commands: ['mode:form'] } }),
   tool('ai', 'sparkle', 'purple'),
-  tool('page-marks', 'stamp', 'orange'),
+  // Page marks: watermarks, headers/footers, page numbers, Bates (warraq-marks), side panel app/MarksPanel.tsx.
+  tool('page-marks', 'stamp', 'orange', { status: 'ready', panel: 'page-marks', core: { open: (docId) => openToolPanel('page-marks', docId) } }),
   // Digital signature: B-B signing + verification everywhere; B-T/B-LT/B-LTA only where the host
   // offers network (desktop). Core-backed panel (warraq-sign), see app/SignPanel.tsx.
   tool('digital-signature', 'certificate', 'indigo', {

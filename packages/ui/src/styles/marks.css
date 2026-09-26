@@ -1,0 +1,199 @@
+/* Page marks panel (app/MarksPanel.tsx). Base .tool-panel styles live in standards.css. Logical properties only. */
+
+.marks-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-sm);
+  background: var(--fill);
+}
+
+.marks-tabs button {
+  min-block-size: 32px;
+  padding-inline: 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.marks-tabs button.on {
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+
+.marks-tabs button:disabled {
+  opacity: 0.45;
+}
+
+.marks-editing {
+  margin: 0;
+  padding-block: 6px;
+  padding-inline: 10px;
+  border-radius: var(--r-sm);
+  background: var(--fill-2);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.marks-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 10px;
+  border-radius: var(--r-md);
+  background: var(--fill-2);
+}
+
+.marks-preview img {
+  display: block;
+  max-inline-size: 100%;
+  max-block-size: 300px;
+  border-radius: 2px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 18%);
+  background: #fff;
+}
+
+.marks-preview .page-skeleton {
+  inline-size: 55%;
+}
+
+.marks-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.marks-tokens .chip {
+  padding-block: 3px;
+  padding-inline: 9px;
+  font-size: 12px;
+}
+
+.marks-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.marks-row > .field-label {
+  flex: 1 1 88px;
+  min-inline-size: 0;
+}
+
+.marks-row .select,
+.marks-row .text-input {
+  inline-size: 100%;
+}
+
+.marks-num {
+  min-inline-size: 0;
+}
+
+.marks-color {
+  inline-size: 100%;
+  min-block-size: 34px;
+  padding: 2px;
+  border: 1px solid var(--separator-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+.marks-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 34px);
+  gap: 4px;
+}
+
+.marks-grid button {
+  display: grid;
+  place-items: center;
+  block-size: 26px;
+  padding: 0;
+  border: 1px solid var(--separator);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.marks-grid button span {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--separator-strong);
+}
+
+.marks-grid button.on {
+  border-color: var(--accent);
+}
+
+.marks-grid button.on span {
+  background: var(--accent);
+}
+
+.marks-list ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.marks-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 10px;
+  padding-block: 6px;
+  border-block-end: 1px solid var(--separator);
+  font-size: 13px;
+}
+
+.marks-item-text {
+  flex: 1 1 160px;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.link-btn.danger {
+  color: var(--red);
+}
+
+.marks-foot-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.marks-foot-row .btn {
+  flex: 1;
+}
+
+.marks-panel .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.marks-panel .field legend {
+  margin-block-end: 4px;
+  padding: 0;
+  font-size: 13px;
+  color: var(--label-2);
+}
+
+@media (max-width: 760px) {
+  .marks-preview img {
+    max-block-size: 200px;
+  }
+}

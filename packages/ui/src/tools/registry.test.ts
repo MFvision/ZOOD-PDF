@@ -76,3 +76,18 @@ describe('engine-backed panels', () => {
     }
   });
 });
+
+// Page marks
+describe('page marks', () => {
+  it('is a ready core tool on web, desktop and extension that opens its side panel for a document', () => {
+    const tool = toolById('page-marks')!;
+    expect(tool.status).toBe('ready');
+    expect(tool.needsDocument).toBe(true);
+    expect(tool.panel).toBe('page-marks');
+    expect(tool.platforms).toEqual(expect.arrayContaining(['web', 'desktop', 'extension']));
+    expect(readyTools('web').map((t) => t.id)).toContain('page-marks');
+    void tool.core!.open('doc-3');
+    expect(currentToolPanel()).toMatchObject({ tool: 'page-marks', docId: 'doc-3' });
+    closeToolPanel('page-marks');
+  });
+});
