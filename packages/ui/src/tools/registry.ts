@@ -5,7 +5,7 @@
  */
 import type { MessageKey } from '../i18n';
 import type { IconName } from '../app/icons';
-import { emitTool } from '../services/toolBus';
+import { openToolPanel } from './panels';
 
 export type ToolId =
   | 'edit'
@@ -44,8 +44,8 @@ export interface ToolDef {
   status: 'ready' | 'hidden';
   /** Viewer-backed tools: EmbedPDF commands executed when the tool is picked. */
   viewer?: { commands: string[] };
-  /** Core-backed tools: set by the agent implementing the tool. */
-  core?: { open: () => void | Promise<void> };
+  /** Core-backed tools: set by the agent implementing the tool. `docId`: the document to act on. */
+  core?: { open: (docId?: string) => void | Promise<void> };
   /** Needs an open document. */
   needsDocument: boolean;
 }
@@ -73,18 +73,19 @@ function tool(
 
 export const TOOLS: readonly ToolDef[] = [
   tool('edit', 'edit', 'blue'),
-  // Organize / Combine / Compress: engine-backed; `core.open` asks the owning view to open the tool.
-  tool('organize', 'organize', 'indigo', { status: 'ready', core: { open: () => emitTool('organize') } }),
+  // Organize / Combine / Compress: engine-backed panels (see tools/panels.ts).
+  tool('organize', 'organize', 'indigo', { status: 'ready', core: { open: (docId) => openToolPanel('organize', docId) } }),
   tool('comment', 'comment', 'yellow', { status: 'ready', viewer: { commands: ['mode:annotate'] } }),
   tool('fill-sign', 'sign', 'purple', { status: 'ready', viewer: { commands: ['mode:insert'] } }),
   tool('protect', 'lock', 'graphite', { status: 'ready', viewer: { commands: ['document:protect'] } }),
   tool('redact', 'redact', 'red', { status: 'ready', viewer: { commands: ['mode:redact'] } }),
-  tool('export', 'export', 'green'),
+  // Export and Compare: core-backed panels (warraq-office), see tools/panels.ts.
+  tool('export', 'export', 'green', { status: 'ready', core: { open: (docId) => openToolPanel('export', docId) } }),
   tool('create', 'create', 'blue', { needsDocument: false }),
-  tool('compare', 'compare', 'teal'),
+  tool('compare', 'compare', 'teal', { status: 'ready', core: { open: (docId) => openToolPanel('compare', docId) } }),
   tool('scan', 'scan', 'cyan', { needsDocument: false }),
-  tool('combine', 'combine', 'orange', { status: 'ready', needsDocument: false, core: { open: () => emitTool('combine') } }),
-  tool('compress', 'compress', 'mint', { status: 'ready', core: { open: () => emitTool('compress') } }),
+  tool('combine', 'combine', 'orange', { status: 'ready', needsDocument: false, core: { open: (docId) => openToolPanel('combine', docId) } }),
+  tool('compress', 'compress', 'mint', { status: 'ready', core: { open: (docId) => openToolPanel('compress', docId) } }),
   tool('prepare-form', 'form', 'pink', { status: 'ready', viewer: { commands: ['mode:form'] } }),
   tool('ai', 'sparkle', 'purple'),
   tool('page-marks', 'stamp', 'orange'),

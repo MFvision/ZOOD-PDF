@@ -3,14 +3,14 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { useApp } from '../services/AppContext';
 import type { OpenedFile } from '../services/host';
 import { isPdfBytes } from '../services/files';
-import { onTool } from '../services/toolBus';
+import { closeToolPanel, useToolPanel } from '../tools/panels';
 import { dirFor } from '../i18n';
 import { dropChoice } from '../organize/logic';
 import { errorText } from '../organize/errors';
 import { CombineSheet } from '../combine/CombineSheet';
 import { Home, type HomeSheet } from './Home';
 import { DocumentView } from './DocumentView';
-import { CommandPalette, SettingsSheet, TagsSheet, ToolsSheet } from './Sheets';
+import { CommandPalette, ConvertSheet, SettingsSheet, TagsSheet, ToolsSheet } from './Sheets';
 import { Sheet, Toasts } from './primitives';
 import { Icon } from './icons';
 
@@ -21,7 +21,6 @@ export function App() {
   const [confirmClose, setConfirmClose] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [dropHalf, setDropHalf] = useState<'combine' | 'open' | null>(null);
-  const [combine, setCombine] = useState<{ initial: OpenedFile[] } | null>(null);
   const [dropAsk, setDropAsk] = useState<{ docId: string; files: OpenedFile[] } | null>(null);
   const activeDoc = state.route.name === 'document' ? state.route.id : null;
   const dir = dirFor(state.locale);
@@ -32,14 +31,9 @@ export function App() {
   });
   const sawDrag = useRef(false);
 
-  // Combine picked without a document (sidebar, ⌘K, More): the new-document sheet.
-  useEffect(
-    () =>
-      onTool((id, target) => {
-        if (id === 'combine' && !target) setCombine({ initial: [] });
-      }),
-    [],
-  );
+  // Combine picked with no document on screen (sidebar, ⌘K, More on Home): the new-document sheet.
+  const panel = useToolPanel();
+  const combineNew = panel?.tool === 'combine' && !panel.docId && !activeDoc ? panel : null;
 
   const combineInto = useCallback(
     async (docId: string, files: OpenedFile[]) => {
@@ -157,6 +151,7 @@ export function App() {
       {sheet?.kind === 'tools' && <ToolsSheet onClose={() => setSheet(null)} />}
       {sheet?.kind === 'tags' && <TagsSheet item={sheet.item} onClose={() => setSheet(null)} />}
       {sheet?.kind === 'palette' && <CommandPalette onClose={() => setSheet(null)} />}
+      {sheet?.kind === 'convert' && <ConvertSheet onClose={() => setSheet(null)} />}
 
       {closing && (
         <Sheet
@@ -252,7 +247,7 @@ export function App() {
           </div>
         </Sheet>
       )}
-      {combine && <CombineSheet initial={combine.initial} onClose={() => setCombine(null)} />}
+      {combineNew && <CombineSheet key={combineNew.nonce} onClose={() => closeToolPanel('combine')} />}
       <Toasts />
     </div>
   );

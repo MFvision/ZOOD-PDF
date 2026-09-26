@@ -73,7 +73,10 @@ export function CombineSheet({ docId, initial = [], onClose }: { docId?: string;
         );
         const out = res.blobs[0];
         if (!out) throw new Error('no output');
+        // Close first: the new document must not pick up this sheet's request.
+        onClose();
         await app.openNewDocument(t('combine.defaultName'), out);
+        return;
       }
       onClose();
     } catch (e) {

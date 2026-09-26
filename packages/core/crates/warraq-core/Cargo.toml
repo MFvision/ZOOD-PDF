@@ -15,9 +15,14 @@ thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 warraq-pdf = { path = "../warraq-pdf" }
+warraq-sign = { path = "../warraq-sign" }
+der = { version = "0.7", default-features = false }
+zeroize = "1"
+warraq-text = { path = "../warraq-text" }
+# Export (DOCX/XLSX/PPTX/HTML/Markdown/text) and Compare.
+warraq-office = { path = "../warraq-office" }
 # Organize / Compress: content geometry (text boxes via warraq-text's interpreter), picture
 # pages and image recompression. All MIT/Apache-2.0 (zune-*: MIT OR Apache-2.0 OR Zlib).
-warraq-text = { path = "../warraq-text" }
 flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
 png = "0.18"
 zune-jpeg = { version = "0.5", default-features = false, features = ["std"] }

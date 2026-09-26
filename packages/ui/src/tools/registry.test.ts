@@ -3,7 +3,7 @@ import en from '../i18n/en.json';
 import ar from '../i18n/ar.json';
 import { TOOLS, readyTools, toolById, type ToolId } from './registry';
 import { ICONS } from '../app/icons';
-import { onTool } from '../services/toolBus';
+import { closeToolPanel, currentToolPanel } from './panels';
 
 describe('tool registry', () => {
   it('lists exactly the 20 tools of the spec, each once', () => {
@@ -44,19 +44,20 @@ describe('tool registry', () => {
     }
   });
 
-  it('Organize, Combine and Compress are ready core tools that open through the tool bus', () => {
-    const seen: string[] = [];
-    const off = onTool((id) => seen.push(id));
+  it('Organize, Combine and Compress are ready core tools that open their panel for a document', () => {
     for (const id of ['organize', 'combine', 'compress'] as ToolId[]) {
       const tool = toolById(id)!;
       expect(tool.status, id).toBe('ready');
       expect(tool.platforms).toEqual(expect.arrayContaining(['web', 'desktop', 'extension']));
-      void tool.core!.open();
+      void tool.core!.open('doc-1');
+      expect(currentToolPanel()).toMatchObject({ tool: id, docId: 'doc-1' });
+      closeToolPanel(id);
     }
-    off();
-    expect(seen).toEqual(['organize', 'combine', 'compress']);
-    // Combine starts without a document (pick files); the others need one
+    // Combine also starts without a document (pick files first); the others need one
     expect(toolById('combine')!.needsDocument).toBe(false);
     expect(toolById('organize')!.needsDocument).toBe(true);
+    void toolById('combine')!.core!.open();
+    expect(currentToolPanel()).toMatchObject({ tool: 'combine', docId: undefined });
+    closeToolPanel('combine');
   });
 });

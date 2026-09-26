@@ -38,6 +38,11 @@ step "arabic acid gate"    core cargo test -p warraq-text --test acid -- --nocap
 step "web build"           pnpm -C apps/web build
 step "extension build"     pnpm -C apps/extension build
 step "desktop tests"       bash -c 'cd apps/desktop/src-tauri && cargo test'
+step "offline server tests" node --test scripts/package-web/serve.test.mjs
+step "desktop smoke"       bash scripts/desktop-smoke.sh
+step "ios strings"         python3 scripts/ios/check-strings.py
+step "ios swift parse"     bash scripts/ios/parse-check.sh
+step "ios engine (linux)"  bash scripts/ios/test-linux.sh
 step "e2e (playwright)"    pnpm e2e
 
 echo

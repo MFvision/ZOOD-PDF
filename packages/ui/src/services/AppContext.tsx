@@ -40,9 +40,10 @@ export interface AppServices {
   markSensitive(docId: string): void;
   storeThumbnail(docId: string, png: Uint8Array): Promise<void>;
   // ---- core tools (Organize, Combine, Compress) ----
-  /** The engine client (shared worker). */
+  /** The engine client (shared worker; core tools: Organize, Combine, Compress, Export, Compare…). */
   engine(): EngineClient;
-  /** The document's bytes including unsaved viewer (PDFium) edits, folded in as an incremental update. */
+  /** The document's bytes including unsaved viewer (PDFium) edits, folded in as an incremental update
+   * (`doc.rebase` on the current bytes; PDFium's whole rewrite after an applied redaction). */
   currentBytes(docId: string): Promise<Uint8Array>;
   /** Runs engine calls on the current bytes WITHOUT changing the document (extract, split, compress…). */
   runOnDocument<J = unknown>(docId: string, calls: CoreCall[]): Promise<CoreResult<J>>;

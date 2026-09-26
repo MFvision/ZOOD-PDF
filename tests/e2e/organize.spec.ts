@@ -215,7 +215,17 @@ test.describe('Organize', () => {
     await action(page, 'crop').click();
     const preview = page.getByTestId('crop-preview').locator('img');
     await expect(preview).toBeVisible();
-    const box = (await preview.boundingBox())!;
+    // the sheet opens with a scale animation: wait until the preview stops moving
+    await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    let box = (await preview.boundingBox())!;
+    await expect
+      .poll(async () => {
+        const b = (await preview.boundingBox())!;
+        const same = b.x === box.x && b.y === box.y && b.width === box.width && b.height === box.height;
+        box = b;
+        return same;
+      })
+      .toBe(true);
     await page.mouse.move(box.x + box.width * 0.1, box.y + box.height * 0.1);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5, { steps: 5 });

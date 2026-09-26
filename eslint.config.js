@@ -6,7 +6,7 @@ import globals from 'globals';
 export default tseslint.config(
   {
     ignores: [
-      '**/dist/**', '**/node_modules/**', '**/target/**', '**/.target-*/**',
+      '.claude/**', '**/dist/**', '**/node_modules/**', '**/target/**', '**/.target-*/**',
       'packages/ui/src/wasm/pkg/**', 'apps/desktop/src-tauri/**', 'apps/ios/**',
       'test-results/**', 'playwright-report/**', 'tests/corpus/generated/**',
     ],

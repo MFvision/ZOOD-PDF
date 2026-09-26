@@ -11,8 +11,10 @@ import { Viewer, type ViewerApi } from '../viewer/Viewer';
 import { Icon } from './icons';
 import { IconButton, MenuButton, Tile, type MenuItem } from './primitives';
 import { runTool } from './useTools';
+import { closeToolPanel, panelFor, useToolPanel } from '../tools/panels';
+import { ExportSheet } from './ExportSheet';
+import { ComparePanel } from './ComparePanel';
 import { PageImage } from './PageImage';
-import { onTool } from '../services/toolBus';
 import { OrganizeView } from '../organize/OrganizeView';
 import { CompressSheet } from '../compress/CompressSheet';
 import { CombineSheet } from '../combine/CombineSheet';
@@ -29,24 +31,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [tool, setTool] = useState<ToolId | null>(null);
-  // Core-backed tools: Organize replaces the page view; Compress and Combine are sheets.
-  const [organizing, setOrganizing] = useState(false);
-  const [coreSheet, setCoreSheet] = useState<'compress' | 'combine' | null>(null);
   const total = doc.pageCount;
-  const activeRef = useRef(active);
-  useLayoutEffect(() => {
-    activeRef.current = active;
-  });
-
-  const openCore = useCallback((id: ToolId, viewer?: ViewerApi | null) => {
-    if (id === 'organize') {
-      viewer?.exec('mode:view');
-      setTool(null);
-      setOrganizing(true);
-    } else if (id === 'compress' || id === 'combine') {
-      setCoreSheet(id);
-    }
-  }, []);
 
   const onReady = useCallback(
     (viewer: ViewerApi, info: { pageCount: number }) => {
@@ -57,8 +42,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
       app.dispatch({ type: 'VIEWER_READY', id: doc.id, revision: doc.revision, pageCount: info.pageCount });
       if (doc.pendingTool) {
         const def = toolById(doc.pendingTool as ToolId);
-        if (def?.core) openCore(def.id, viewer);
-        else if (def && runTool(def, viewer)) setTool(def.id);
+        if (def && runTool(def, viewer, doc.id)) setTool(def.id);
         app.dispatch({ type: 'TOOL_STARTED', id: doc.id });
       }
       // First-page picture for Recents, rendered by PDFium.
@@ -74,36 +58,37 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
   const { registerViewer } = app;
   useEffect(() => () => registerViewer(doc.id, null), [registerViewer, doc.id]);
 
-  // A core tool started from elsewhere (sidebar, ⌘K, More) for this document.
+  // Core-tool panels (Export sheet, Compare panel, Organize grid, Compress and Combine sheets)
+  // requested for this document.
+  const panel = useToolPanel();
+  const mine = panelFor(panel, doc.id, active);
+  const exportOpen = mine && panel?.tool === 'export';
+  const compareOpen = mine && panel?.tool === 'compare';
+  const organizing = mine && panel?.tool === 'organize';
+  const compressOpen = mine && panel?.tool === 'compress';
+  const combineOpen = mine && panel?.tool === 'combine';
+  const closePanel = (id: ToolId) => {
+    closeToolPanel(id);
+    setTool((cur) => (cur === id ? null : cur));
+  };
   const apiRef = useRef(api);
   useLayoutEffect(() => {
     apiRef.current = api;
   });
-  useEffect(
-    () =>
-      onTool((id, target) => {
-        if (id === 'combine') return; // Combine without a document is the app's sheet
-        if (target ? target !== doc.id : !activeRef.current) return;
-        openCore(id, apiRef.current);
-      }),
-    [doc.id, openCore],
-  );
 
   const pick = (def: ToolDef | null) => {
     setGalleryOpen(false);
     if (!api) return;
+    // Organize replaces the page view: leave it for any other choice.
+    if (organizing && def?.id !== 'organize') closePanel('organize');
     if (!def) {
-      setOrganizing(false);
       api.exec('mode:view');
       setTool(null);
       return;
     }
-    if (def.core) {
-      openCore(def.id, api);
-      return;
-    }
-    setOrganizing(false);
-    if (runTool(def, api) && def.id !== 'protect') setTool(def.id);
+    if (def.id === 'organize') api.exec('mode:view');
+    const sheet = def.id === 'protect' || def.id === 'export' || def.id === 'compress' || def.id === 'combine';
+    if (runTool(def, api, doc.id) && !sheet) setTool(def.id);
   };
 
   const status = doc.edited ? ` · ${t('doc.edited')}` : '';
@@ -182,7 +167,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
           onClick={() => setInspectorOpen((v) => !v)}
         />
       </header>
-      <div className={`doc-body${pagesOpen && !organizing ? ' pages-open' : ''}${inspectorOpen ? ' inspector-open' : ''}`}>
+      <div className={`doc-body${pagesOpen && !organizing ? ' pages-open' : ''}${inspectorOpen && !compareOpen ? ' inspector-open' : ''}${compareOpen ? ' compare-open' : ''}`}>
         {pagesOpen && !organizing && (
           <PagesPanel
             api={api}
@@ -215,7 +200,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
               doc={doc}
               api={api}
               onExit={(p) => {
-                setOrganizing(false);
+                closePanel('organize');
                 if (p) setTimeout(() => apiRef.current?.goToPage(p), 0);
               }}
             />
@@ -227,10 +212,15 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
             </div>
           )}
         </div>
-        {inspectorOpen && <Inspector doc={doc} onComments={() => api?.exec('panel:toggle-comment')} />}
+        {compareOpen ? (
+          <ComparePanel key={panel?.nonce} doc={doc} api={api} onClose={() => closePanel('compare')} />
+        ) : (
+          inspectorOpen && <Inspector doc={doc} onComments={() => api?.exec('panel:toggle-comment')} />
+        )}
       </div>
-      {coreSheet === 'compress' && <CompressSheet doc={doc} onClose={() => setCoreSheet(null)} />}
-      {coreSheet === 'combine' && <CombineSheet docId={doc.id} onClose={() => setCoreSheet(null)} />}
+      {exportOpen && <ExportSheet key={panel?.nonce} doc={doc} api={api} onClose={() => closePanel('export')} />}
+      {compressOpen && <CompressSheet key={panel?.nonce} doc={doc} onClose={() => closePanel('compress')} />}
+      {combineOpen && <CombineSheet key={panel?.nonce} docId={doc.id} onClose={() => closePanel('combine')} />}
     </section>
   );
 }
