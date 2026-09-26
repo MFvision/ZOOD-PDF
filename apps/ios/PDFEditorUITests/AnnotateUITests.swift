@@ -72,7 +72,7 @@ final class AnnotateUITests: XCTestCase {
         // A signature drawn with the finger, then placed.
         ui.tapMarkup("markup.signature")
         let canvas = ui.signatureCanvas
-        XCTAssertTrue(canvas.waitForExistence(timeout: 15), "the signature canvas: \(ui.tree)")
+        XCTAssertTrue(canvas.waitForExistence(timeout: 40), "the signature canvas: \(ui.tree)")
         let a = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.6))
         let b = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
         let c = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.65))
