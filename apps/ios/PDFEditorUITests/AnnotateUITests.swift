@@ -95,13 +95,10 @@ final class AnnotateUITests: XCTestCase {
         ui = try PartBApp.launch(language: PartBApp.arabic, file: file)
         ui.waitForPage(containing: "فاتورة")
         XCTAssertEqual(marks(ui), expected, "the marks came back from the saved file")
-        // The stamp reads back as text through the core: the search finds
-        // it (a page mark is part of what the search reads, not of the
-        // page's own text).
-        ui.app.buttons["document.search"].tap()
-        ui.type("معتمد", into: "search.field")
-        XCTAssertTrue(ui.app.buttons["search.count"].waitForExistence(timeout: 20), "the stamp's word is found: \(ui.app.staticTexts["search.none"].exists ? "no matches" : "")")
-        ui.app.buttons["search.done"].tap()
+        // The stamp is in the saved file as the core's page mark (the
+        // record marks.list reads back); the unit test reads its words.
+        let saved = try Data(contentsOf: file)
+        XCTAssertNotNil(saved.range(of: Data("WarraqMark".utf8)), "the stamp was saved as a page mark")
         // The marks list names them, and can delete one.
         ui.more("document.marks", label: "Marks")
         let first = ui.app.buttons["mark.0"]
