@@ -250,7 +250,7 @@ struct ScanGeometryTests {
 @Suite("Deep links")
 struct DeepLinkTests {
     @Test func roundTrip() {
-        for link in [DeepLink.home, .scan(.book), .scan(.idCard), .openRecent(id: "ABC-123"), .combine, .compress] {
+        for link in [DeepLink.home, .scan(.book), .scan(.idCard), .openRecent(id: "ABC-123"), .readAloud(id: "ABC-123"), .combine, .compress] {
             #expect(DeepLink(url: link.url) == link, "\(link.url)")
         }
     }
@@ -258,6 +258,8 @@ struct DeepLinkTests {
     @Test func rejectsForeignOrBadLinks() {
         #expect(DeepLink(url: URL(string: "https://zood.sa/scan")!) == nil)
         #expect(DeepLink(url: URL(string: "zoodpdf://open")!) == nil)
+        #expect(DeepLink(url: URL(string: "zoodpdf://read")!) == nil)
+        #expect(DeepLink.readAloud(id: "X").url.absoluteString == "zoodpdf://read?id=X")
         #expect(DeepLink(url: URL(string: "zoodpdf://format-disk")!) == nil)
         #expect(DeepLink(url: URL(string: "zoodpdf://scan?mode=nope")!) == .scan(.document))
     }

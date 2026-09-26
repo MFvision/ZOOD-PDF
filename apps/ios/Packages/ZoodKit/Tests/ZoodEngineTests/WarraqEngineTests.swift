@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import ZoodCore
 @testable import ZoodEngine
 
 /// Runs the real Rust engine (libwarraq_core.a, feature "ffi") through the C ABI.
@@ -157,6 +158,24 @@ struct WarraqEngineTests {
         let text = try #require(await engine.plainText())
         #expect(text.contains("Page 1") && text.contains("Page 3"), "\(text)")
         #expect(await engine.plainText(maxCharacters: 4) == "Page")
+    }
+
+    @Test func pageTextsAndParagraphBoxesForAIAndReadAloud() async throws {
+        let engine = try WarraqEngine(data: pdf)
+        let pages = try #require(await engine.pageTexts())
+        #expect(pages.map(\.index) == [0, 1, 2])
+        #expect(pages[1].text.contains("Page 2") && pages[1].number == 2)
+        let paragraphs = try await engine.paragraphs()
+        #expect(paragraphs.map(\.page) == [0, 1, 2])
+        #expect(paragraphs[2].text == "Page 3" && !paragraphs[2].rtl)
+        // "72 720 Td" with 24 pt Helvetica: the box starts at x=72, about 72 pt below the top.
+        let b = try #require(paragraphs[0].bbox)
+        #expect(abs(b.x0 - 72) < 1 && b.x1 > b.x0 && b.y0 > 50 && b.y1 < 100)
+        let one = try await engine.paragraphs(pages: [1])
+        #expect(one.map(\.text) == ["Page 2"])
+        let units = ReadingPlanner.units(paragraphs, defaultLanguage: .english)
+        #expect(units.map(\.text) == ["Page 1", "Page 2", "Page 3"])
+        await #expect(throws: WarraqError.self) { try await engine.paragraphs(pages: [9]) }
     }
 }
 

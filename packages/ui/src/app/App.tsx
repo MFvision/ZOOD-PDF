@@ -13,6 +13,7 @@ import { DocumentView } from './DocumentView';
 import { CommandPalette, ConvertSheet, SettingsSheet, TagsSheet, ToolsSheet } from './Sheets';
 import { Sheet, Toasts } from './primitives';
 import { Icon } from './icons';
+import { ScanHost } from '../ocr/ScanSheet';
 import { PasswordPrompt } from './ProtectPanel';
 import { claimDrop, setPendingCreateFiles } from '../services/toolSheets';
 import { CreateSheet } from '../tools/create/CreateSheet';
@@ -229,6 +230,7 @@ export function App() {
           </div>
         </div>
       )}
+      <ScanHost />
       <PasswordPrompt />
       {dragging && activeDoc && state.documents[activeDoc] && (
         <div className="drop-overlay drop-split" data-testid="drop-split" aria-hidden="true">

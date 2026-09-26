@@ -27,6 +27,7 @@ step() {
 core() { (cd packages/core && "$@"); }
 
 step "wasm build"          bash scripts/build-wasm.sh
+step "ocr models"          bash scripts/fetch-ocr-models.sh
 step "install"             pnpm install --frozen-lockfile
 step "lint"                pnpm lint
 step "typecheck"           pnpm typecheck

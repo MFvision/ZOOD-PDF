@@ -1,0 +1,74 @@
+{
+  "measured": "2026-09-26, headless Chromium, tessdata 4.1.0 best-int",
+  "tolerance": 2,
+  "e2e": {
+    "scan-ar": {
+      "accuracy": 97.3
+    },
+    "crooked8-ar": {
+      "accuracy": 71.3
+    }
+  },
+  "corpus": {
+    "chrome-news-amiri-straight": {
+      "accuracy": 89
+    },
+    "chrome-news-amiri-crooked5": {
+      "accuracy": 75.2
+    },
+    "chrome-news-amiri-crooked8": {
+      "accuracy": 87.2
+    },
+    "chrome-news-amiri-shadow": {
+      "accuracy": 96.1
+    },
+    "chrome-tashkeel-amiri-straight": {
+      "accuracy": 50.1
+    },
+    "chrome-tashkeel-amiri-crooked5": {
+      "accuracy": 41.4
+    },
+    "chrome-tashkeel-amiri-crooked8": {
+      "accuracy": 53
+    },
+    "chrome-tashkeel-amiri-shadow": {
+      "accuracy": 38.1
+    },
+    "chrome-urdu-nastaliq-straight": {
+      "accuracy": 83
+    },
+    "chrome-urdu-nastaliq-crooked5": {
+      "accuracy": 83
+    },
+    "chrome-urdu-nastaliq-crooked8": {
+      "accuracy": 80.5
+    },
+    "chrome-urdu-nastaliq-shadow": {
+      "accuracy": 83
+    },
+    "chrome-persian-vazirmatn-straight": {
+      "accuracy": 96.1
+    },
+    "chrome-persian-vazirmatn-crooked5": {
+      "accuracy": 96.1
+    },
+    "chrome-persian-vazirmatn-crooked8": {
+      "accuracy": 96.1
+    },
+    "chrome-persian-vazirmatn-shadow": {
+      "accuracy": 96.5
+    },
+    "chrome-mixed-naskh-straight": {
+      "accuracy": 88.9
+    },
+    "chrome-mixed-naskh-crooked5": {
+      "accuracy": 90.9
+    },
+    "chrome-mixed-naskh-crooked8": {
+      "accuracy": 91.2
+    },
+    "chrome-mixed-naskh-shadow": {
+      "accuracy": 88.8
+    }
+  }
+}

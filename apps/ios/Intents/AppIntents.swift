@@ -66,6 +66,8 @@ enum ZoodIntentError: Error, CustomLocalizedStringResourceConvertible {
     case protected(String)
     case engine(String)
     case noGain
+    case noText
+    case noModel
 
     var localizedStringResource: LocalizedStringResource {
         switch self {
@@ -73,6 +75,8 @@ enum ZoodIntentError: Error, CustomLocalizedStringResourceConvertible {
         case .protected(let name): "intent.error.protected \(name)"
         case .engine(let message): "intent.error.engine \(message)"
         case .noGain: "compress.noGain"
+        case .noText: "intent.error.noText"
+        case .noModel: "intent.error.noModel"
         }
     }
 }
@@ -157,5 +161,18 @@ struct ZoodShortcuts: AppShortcutsProvider {
             phrases: ["Compress a PDF with \(.applicationName)"],
             shortTitle: "intent.compress.short",
             systemImageName: "arrow.down.right.and.arrow.up.left")
+        AppShortcut(
+            intent: SummarizePDFIntent(),
+            phrases: ["Summarize a PDF with \(.applicationName)"],
+            shortTitle: "intent.summarize.short",
+            systemImageName: "sparkles")
+        AppShortcut(
+            intent: ReadAloudIntent(),
+            phrases: [
+                "Read \(\.$document) aloud with \(.applicationName)",
+                "Read a PDF aloud with \(.applicationName)",
+            ],
+            shortTitle: "intent.readAloud.short",
+            systemImageName: "speaker.wave.2")
     }
 }

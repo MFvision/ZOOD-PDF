@@ -4,6 +4,7 @@ import ZoodCore
 
 @main
 struct ZoodPDFApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var library = Library()
 
     var body: some Scene {
@@ -14,6 +15,7 @@ struct ZoodPDFApp: App {
                 .task {
                     if let demo = DemoContent.prepareIfRequested() { await library.record(url: demo) }
                     await library.refresh()
+                    ModelManager.shared.reconnect()
                 }
         }
 
@@ -76,5 +78,25 @@ enum DemoContent {
             try? SamplePDFBuilder.arabicSample().write(to: url, options: .atomic)
         }
         return url
+    }
+}
+
+/// Background model downloads: iOS relaunches the app when the transfer finishes; the handler
+/// is called once the session has delivered its events (`ModelManager`).
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication, handleEventsForBackgroundURLSession identifier: String,
+        completionHandler: @escaping () -> Void
+    ) {
+        guard identifier == ModelManager.sessionID else {
+            completionHandler()
+            return
+        }
+        ModelManager.shared.backgroundCompletion = completionHandler
+        ModelManager.shared.reconnect()
+    }
+
+    func applicationDidReceiveMemoryWarning(_ application: UIApplication) {
+        Task { await PortableModelRunner.shared.unload() }
     }
 }

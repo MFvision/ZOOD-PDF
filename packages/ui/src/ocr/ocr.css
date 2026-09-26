@@ -1,0 +1,213 @@
+/* Scan & OCR sheet. Logical properties only; the crop box is a physical photo (dir="ltr"). */
+.ocr-tabs {
+  max-inline-size: 420px;
+}
+
+.ocr-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+
+.ocr-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+}
+
+.ocr-check input {
+  inline-size: 16px;
+  block-size: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.ocr-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ocr-note {
+  color: var(--label-2);
+}
+
+.ocr-status {
+  font-weight: 600;
+}
+
+.ocr-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ocr-actions {
+  justify-content: flex-end;
+}
+
+.ocr-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  background: var(--fill-2);
+  font-size: 13px;
+}
+
+.ocr-progress progress {
+  inline-size: 100%;
+  block-size: 6px;
+  accent-color: var(--accent);
+}
+
+.scan-workspace {
+  display: grid;
+  grid-template-columns: minmax(150px, 200px) 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.scan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-block-size: 52vh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.scan-item {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--separator);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+.scan-item.on {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.scan-thumb {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.scan-thumb img {
+  display: block;
+  inline-size: 48px;
+  block-size: 64px;
+  object-fit: cover;
+  border-radius: var(--r-xs);
+  background: var(--fill);
+}
+
+.scan-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+  font-size: 12.5px;
+}
+
+.scan-angle {
+  color: var(--label-2);
+}
+
+.scan-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-inline-size: 0;
+}
+
+.scan-cleaned {
+  max-inline-size: 100%;
+  max-block-size: 52vh;
+  object-fit: contain;
+  border: 1px solid var(--separator);
+  border-radius: var(--r-sm);
+  background: #fff;
+}
+
+.crop-box {
+  position: relative;
+  inline-size: min(100%, calc(52vh * var(--ar, 0.75)));
+  touch-action: none;
+  user-select: none;
+}
+
+.crop-box img,
+.crop-box svg {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.crop-box img {
+  border-radius: var(--r-sm);
+}
+
+.crop-box polygon {
+  fill: rgb(0 122 255 / 12%);
+  stroke: var(--accent);
+  stroke-width: 0.4%;
+  vector-effect: non-scaling-stroke;
+}
+
+.crop-handle {
+  position: absolute;
+  inline-size: 26px;
+  block-size: 26px;
+  margin-inline-start: -13px;
+  margin-block-start: -13px;
+  padding: 0;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: var(--shadow-2);
+  cursor: grab;
+  touch-action: none;
+}
+
+.crop-handle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.scan-camera {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scan-camera video {
+  inline-size: 100%;
+  max-block-size: 44vh;
+  border-radius: var(--r-md);
+  background: #000;
+}
+
+@media (width <= 640px) {
+  .scan-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .scan-list {
+    flex-direction: row;
+    max-block-size: none;
+    overflow-x: auto;
+  }
+}
