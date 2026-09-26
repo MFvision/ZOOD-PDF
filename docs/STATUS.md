@@ -75,7 +75,7 @@ Fixtures: `python3 scripts/create-fixtures.py` → `tests/fixtures/create/` (eac
 ### Not supported yet
 DOCX headers/footers, footnotes, text boxes, floating positions; XLSX number formats/dates;
 PPTX themes, backgrounds, shape fills, charts, SmartArt; EMF/WMF/GIF pictures; legacy .doc/.xls/.ppt.
-The bundled fonts add about 3 MB to the wasm (6.4 MB total without wasm-opt).
+The bundled fonts (packages/core/assets/fonts, 2.3 MB) are compiled into the wasm (6.4 MB total without wasm-opt).
 
 ## Interface (`packages/ui`, `apps/web`, `apps/extension`)
 
