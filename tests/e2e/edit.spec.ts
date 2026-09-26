@@ -43,7 +43,7 @@ const ORIGINAL_SENTENCE = 'هذه الجملة الأولى سيتم تعديل�
 
 const LOCALES = [
   { locale: 'en', browser: 'en-US', added: 'Added by ZOOD', edited: /Edited/, saved: /Saved/ },
-  { locale: 'ar', browser: 'ar-SA', added: 'نص مضاف من زود', edited: /معدَّل/, saved: /تم حفظ/ },
+  { locale: 'ar', browser: 'ar-SA', added: 'نص مضاف من زود', edited: /معدَّل/, saved: /حُفظ/ },
 ] as const;
 
 const surface = (page: Page) => page.locator('[data-testid=edit-surface]');
