@@ -164,29 +164,29 @@ pub fn visual_order(word: &str) -> String {
     };
     let chars: Vec<char> = word.chars().collect();
     let mut runs: Vec<(bool, String)> = Vec::new();
-    let mut i = 0;
-    while i < chars.len() {
-        let is_ltr = ltr(chars[i]);
-        let mut run = String::new();
-        run.push(chars[i]);
-        i += 1;
-        while i < chars.len() {
-            let n = chars[i];
+    for (i, &c) in chars.iter().enumerate() {
+        let c_ltr = ltr(c);
+        if let Some((run_ltr, run)) = runs.last_mut() {
             // a separator between two LTR characters (2,5 or 10:30) stays inside the run
-            let joins = is_ltr
-                && matches!(n, '.' | ',' | ':' | '/' | '-' | '\u{066B}' | '\u{066C}')
+            let joins = *run_ltr
+                && matches!(c, '.' | ',' | ':' | '/' | '-' | '\u{066B}' | '\u{066C}')
                 && chars.get(i + 1).copied().is_some_and(ltr);
-            if ltr(n) != is_ltr && !joins {
-                break;
+            if c_ltr == *run_ltr || joins {
+                run.push(c);
+                continue;
             }
-            run.push(n);
-            i += 1;
         }
-        runs.push((is_ltr, run));
+        runs.push((c_ltr, c.to_string()));
     }
     runs.iter()
         .rev()
-        .map(|(l, r)| if *l { r.clone() } else { r.chars().rev().collect() })
+        .map(|(l, r)| {
+            if *l {
+                r.clone()
+            } else {
+                r.chars().rev().collect()
+            }
+        })
         .collect()
 }
 
@@ -406,7 +406,6 @@ pub fn add_text_layer(
                 pt(p.1)
             )
         };
-        let glyphs = if rtl { visual_order(text) } else { text.to_string() };
         // RTL words: visual-order glyphs inside /ReversedChars (the marker Chrome writes around
         // its Arabic runs) and NO /ActualText: PDFium (Chrome, the viewer) then searches, selects
         // and copies them in logical order, and warraq-text reads them like Chrome's text. PDFium
