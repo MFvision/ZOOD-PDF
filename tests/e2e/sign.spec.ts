@@ -11,6 +11,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import { ENGINE_BUILT, FIXTURES, ROOT, fixture, pageBox, openViaCard, pickTool, savedFiles, stubSavePicker, trackExternalRequests, waitForDocument } from './helpers';
+import { pdfiumText } from './pdfium';
 
 const PKI = path.join(FIXTURES, 'sign/pki');
 
@@ -173,6 +174,12 @@ for (const L of LOCALES) {
       expect((sigs[0]!.signer as { name: string }).name).toBe(L.name);
       const trusted = await verifyInNode(saved!.bytes, [fs.readFileSync(path.join(PKI, 'root.pem'))]);
       expect(trusted[0]!.status).toBe('valid');
+      // PDFium (Chrome's viewer, printing/flattening) reads the signer's name in the visible
+      // appearance in logical order: Arabic words are encoded by their glyphs, not ActualText.
+      const flat = await pdfiumText(saved!.bytes, { flatten: true });
+      expect(flat.pages[0]).toContain(L.name);
+      expect(flat.count(L.name)).toBe(1);
+      flat.close();
 
       // Reopen the saved bytes: banner + panel.
       await reopen(page, `signed-${L.file}`, saved!.bytes);

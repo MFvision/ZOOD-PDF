@@ -235,6 +235,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
             locale={app.state.locale}
             scheme={app.scheme}
             password={doc.password}
+            textEngine={app.engine()}
             onReady={onReady}
             onPageChange={(p) => setPage(p)}
             onZoomChange={(z) => setZoom(z)}

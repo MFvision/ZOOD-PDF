@@ -7,7 +7,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { PDFViewer, type PluginRegistry, type EmbedPdfContainer } from '@embedpdf/react-pdf-viewer';
 import { buildViewerConfig } from './config';
 import { embedPdfArabicLocale, setEmbedPdfLocale } from './locale';
+import { engineTextProvider, hookEngineText, type HookableEngine } from './arabicText';
 import type { Locale } from '../i18n';
+import type { EngineClient } from '../services/engine';
 
 export interface ViewerApi {
   goToPage(page: number): void;
@@ -60,6 +62,8 @@ interface Props extends ViewerEvents {
   locale: Locale;
   scheme: 'light' | 'dark';
   password?: string;
+  /** The engine answers EmbedPDF's search and copy (Arabic-aware, logical order; `arabicText.ts`). */
+  textEngine?: EngineClient;
 }
 
 type Cap = Record<string, (...args: never[]) => unknown> & Record<string, unknown>;
@@ -172,6 +176,14 @@ export function Viewer(props: Props) {
     const exporter = cap<{ forDocument(id: string): { saveAsCopy(): TaskLike<ArrayBuffer> } }>(registry, 'export');
     const ui = cap<{ forDocument(id: string): { closeToolbarSlot(p: string, s: string): void } }>(registry, 'ui');
     const engine = registry.getEngine();
+    if (props.textEngine) {
+      const provider = engineTextProvider(props.textEngine, bytes, password);
+      const restore = hookEngineText(engine as unknown as HookableEngine, documentId, provider);
+      unsubs.push(() => {
+        restore();
+        provider.close();
+      });
+    }
 
     const api: ViewerApi = {
       goToPage: (page) => scroll?.forDocument(documentId).scrollToPage({ pageNumber: page }),
