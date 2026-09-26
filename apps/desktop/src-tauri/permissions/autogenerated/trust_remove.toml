@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-trust-remove"
+description = "Enables the trust_remove command without any pre-configured scope."
+commands.allow = ["trust_remove"]
+
+[[permission]]
+identifier = "deny-trust-remove"
+description = "Denies the trust_remove command without any pre-configured scope."
+commands.deny = ["trust_remove"]

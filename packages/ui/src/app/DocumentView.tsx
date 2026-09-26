@@ -14,6 +14,8 @@ import { runTool } from './useTools';
 import { closeToolPanel, panelFor, useToolPanel } from '../tools/panels';
 import { ExportSheet } from './ExportSheet';
 import { ComparePanel } from './ComparePanel';
+import { SignPanel } from './SignPanel';
+import { SignatureBanner, SignaturesPanel, useSignatures } from './SignaturesPanel';
 import { PageImage } from './PageImage';
 import { OrganizeView } from '../organize/OrganizeView';
 import { CompressSheet } from '../compress/CompressSheet';
@@ -21,6 +23,9 @@ import { CombineSheet } from '../combine/CombineSheet';
 import { StandardsPanel } from './StandardsPanel';
 import { RedactPanel } from './RedactPanel';
 import { ProtectPanel } from './ProtectPanel';
+// Edit tool.
+import { EditPanel } from './EditPanel';
+import { LinkConfirmSheet } from './LinkSheets';
 
 const wide = () => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 900px)').matches;
 
@@ -34,15 +39,24 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [tool, setTool] = useState<ToolId | null>(null);
+  const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const total = doc.pageCount;
+  // The page shown, kept across viewer reloads (core edits must not jump back to page 1).
+  const pageRef = useRef(1);
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
   /** Redact / Protect panel open for this document (read when a new revision's viewer is ready). */
   const panelRef = useRef<'redact' | 'protect' | null>(null);
 
   const onReady = useCallback(
     (viewer: ViewerApi, info: { pageCount: number }) => {
       setApi(viewer);
-      setPage(1);
-      setTool(null); // a (re)loaded viewer starts in reading mode
+      const keep = pageRef.current;
+      setPage(keep);
+      if (keep > 1) setTimeout(() => viewer.goToPage(keep), 0);
+      // A (re)loaded viewer starts in reading mode, except under the Edit tool (its surface stays).
+      setTool((cur) => (cur === 'edit' ? cur : null));
       app.registerViewer(doc.id, viewer);
       app.dispatch({ type: 'VIEWER_READY', id: doc.id, revision: doc.revision, pageCount: info.pageCount });
       if (doc.pendingTool) {
@@ -81,13 +95,19 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
   // Redact and Protect (engine-backed) use the same side slot.
   const redactOpen = mine && panel?.tool === 'redact';
   const protectOpen = mine && panel?.tool === 'protect';
-  const sideOpen = compareOpen || standardsOpen || redactOpen || protectOpen;
+  const signOpen = mine && panel?.tool === 'digital-signature';
+  // Signatures of the current bytes (banner + Signatures panel), verified by the engine.
+  const signatures = useSignatures(doc);
+  const [sigPanel, setSigPanel] = useState(false);
+  const signSide = signOpen || (sigPanel && !compareOpen && !standardsOpen && !redactOpen && !protectOpen);
+  const sideOpen = compareOpen || standardsOpen || redactOpen || protectOpen || signSide;
   useLayoutEffect(() => {
     panelRef.current = redactOpen ? 'redact' : protectOpen ? 'protect' : null;
   });
   const organizing = mine && panel?.tool === 'organize';
   const compressOpen = mine && panel?.tool === 'compress';
   const combineOpen = mine && panel?.tool === 'combine';
+  const editOpen = tool === 'edit' || (mine && panel?.tool === 'edit');
   const closePanel = (id: ToolId) => {
     closeToolPanel(id);
     setTool((cur) => (cur === id ? null : cur));
@@ -99,6 +119,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
 
   const pick = (def: ToolDef | null) => {
     setGalleryOpen(false);
+    if (!def || def.id !== 'edit') closeToolPanel('edit');
     if (!api) return;
     // Organize replaces the page view: leave it for any other choice.
     if (organizing && def?.id !== 'organize') closePanel('organize');
@@ -191,7 +212,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
           onClick={() => setInspectorOpen((v) => !v)}
         />
       </header>
-      <div className={`doc-body${pagesOpen && !organizing ? ' pages-open' : ''}${inspectorOpen && !sideOpen ? ' inspector-open' : ''}${compareOpen ? ' compare-open' : ''}${standardsOpen || redactOpen || protectOpen ? ' tool-panel-open' : ''}`}>
+      <div className={`doc-body${pagesOpen && !organizing ? ' pages-open' : ''}${inspectorOpen && !sideOpen ? ' inspector-open' : ''}${compareOpen || signSide ? ' compare-open' : ''}${standardsOpen || redactOpen || protectOpen ? ' tool-panel-open' : ''}`}>
         {pagesOpen && !organizing && (
           <PagesPanel
             api={api}
@@ -205,6 +226,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
           />
         )}
         <div className="viewer-area">
+          {!organizing && <SignatureBanner state={signatures} onOpen={() => setSigPanel(true)} />}
           <Viewer
             key={`${doc.id}:${doc.revision}`}
             bytes={doc.bytes}
@@ -219,7 +241,19 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
             onEdited={() => app.dispatch({ type: 'VIEWER_EDITED', id: doc.id })}
             onSensitiveChange={() => app.markSensitive(doc.id)}
             onError={(m) => app.toast(`${t('toast.openFailed', { name: doc.name })} (${m})`, 'error')}
+            onLinkNavigate={(uri) => setLinkUrl(uri)}
           />
+          {editOpen && !organizing && (
+            <EditPanel
+              doc={doc}
+              api={api}
+              page={page}
+              onClose={() => {
+                closeToolPanel('edit');
+                setTool((cur) => (cur === 'edit' ? null : cur));
+              }}
+            />
+          )}
           {organizing && (
             <OrganizeView
               doc={doc}
@@ -253,10 +287,15 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
           <ProtectPanel key={panel?.nonce} doc={doc} onClose={() => closePanel('protect')} />
         ) : standardsOpen ? (
           <StandardsPanel key={`${panel?.nonce}:${doc.revision}`} doc={doc} api={api} onClose={() => closePanel('standards')} />
+        ) : signOpen ? (
+          <SignPanel key={panel?.nonce} doc={doc} api={api} onClose={() => closePanel('digital-signature')} />
+        ) : sigPanel ? (
+          <SignaturesPanel doc={doc} state={signatures} onClose={() => setSigPanel(false)} />
         ) : (
           inspectorOpen && <Inspector doc={doc} onComments={() => api?.exec('panel:toggle-comment')} />
         )}
       </div>
+      {linkUrl && <LinkConfirmSheet url={linkUrl} onClose={() => setLinkUrl(null)} />}
       {exportOpen && <ExportSheet key={panel?.nonce} doc={doc} api={api} onClose={() => closePanel('export')} />}
       {compressOpen && <CompressSheet key={panel?.nonce} doc={doc} onClose={() => closePanel('compress')} />}
       {combineOpen && <CombineSheet key={panel?.nonce} docId={doc.id} onClose={() => closePanel('combine')} />}

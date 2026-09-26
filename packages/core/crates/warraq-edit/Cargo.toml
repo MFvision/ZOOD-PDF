@@ -1,0 +1,28 @@
+[package]
+name = "warraq-edit"
+description = "Edit tool of the ZOOD PDF engine: byte-faithful content-stream rewriting, text reflow with shaping and embedded font subsets, pictures, links with spoof checks."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+lopdf.workspace = true
+warraq-pdf = { path = "../warraq-pdf" }
+warraq-text = { path = "../warraq-text" }
+# The bundled Amiri/Cairo/Inter programs (compiled into the engine once, by Create PDF).
+warraq-create = { path = "../warraq-create" }
+harfrust = "0.13"
+read-fonts = "0.43"
+subsetter = "0.2.6"
+unicode-bidi = "0.3.18"
+unicode-linebreak = "0.1.5"
+png = "0.18"
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
+
+[lints]
+workspace = true

@@ -12,6 +12,8 @@
  * before `mountApp`, so `getHost()` picks it up. File handles are absolute paths (strings).
  */
 import type { DropPoint, HostBridge, OpenedFile, SaveOptions, SaveResult } from './host';
+import type { SigningNetwork } from './signing';
+import type { TrustStore } from './trust';
 
 export type MenuEntry =
   | { type: 'item'; id: string; label: string; accelerator?: string; enabled?: boolean; checked?: boolean }
@@ -219,6 +221,36 @@ export function engineRasterizer(apis: TauriApis): PageRasterizer {
   };
 }
 
+const toBytes = (v: ArrayBuffer | Uint8Array | number[]): Uint8Array =>
+  v instanceof Uint8Array ? v : v instanceof ArrayBuffer ? new Uint8Array(v) : Uint8Array.from(v);
+
+async function sha256Hex(der: Uint8Array): Promise<string> {
+  const d = new Uint8Array(await crypto.subtle.digest('SHA-256', der.slice().buffer as ArrayBuffer));
+  return [...d].map((x) => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
+/**
+ * Signature network (Rust `sign_timestamp` / `sign_ocsp` / `sign_fetch_crl`: http/https, no
+ * redirects, size cap, timeout) and the trust list in the app data directory.
+ */
+export function tauriSigning(apis: TauriApis): { network: SigningNetwork; trust: TrustStore } {
+  return {
+    network: {
+      timestamp: async (url, request) => toBytes(await apis.invoke('sign_timestamp', { url, request: Array.from(request) })),
+      ocsp: async (url, request) => toBytes(await apis.invoke('sign_ocsp', { url, request: Array.from(request) })),
+      fetchCrl: async (url) => toBytes(await apis.invoke('sign_fetch_crl', { url })),
+    },
+    trust: {
+      async list() {
+        const all = await apis.invoke<number[][]>('trust_list');
+        return Promise.all(all.map(async (d) => ({ der: Uint8Array.from(d), sha256: await sha256Hex(Uint8Array.from(d)) })));
+      },
+      add: async (sha256, der) => void (await apis.invoke('trust_add', { sha256, der: Array.from(der) })),
+      remove: async (sha256) => void (await apis.invoke('trust_remove', { sha256 })),
+    },
+  };
+}
+
 export async function createTauriHost(
   apis: TauriApis,
   opts: { root?: HTMLElement; rasterize?: PageRasterizer } = {},
@@ -285,6 +317,7 @@ export async function createTauriHost(
   return {
     kind: 'desktop',
     info,
+    signing: tauriSigning(apis),
 
     async openFiles(opts = {}) {
       const multiple = !!opts.multiple;

@@ -334,6 +334,16 @@ Direct dependencies added by `warraq-core/src/ops` (picture pages, compression).
 | png | 0.18.1 | MIT OR Apache-2.0 | PNG decoding for "Insert picture" (alpha → soft mask) |
 | flate2 | 1.1.10 | MIT OR Apache-2.0 | Flate for picture pages, recompressed streams and object streams |
 
+### Edit tool (warraq-edit)
+
+| Component | Version | Licence | Used for |
+| --- | --- | --- | --- |
+| subsetter | 0.2.6 | MIT OR Apache-2.0 | Subsets (and instances variable) Amiri/Cairo/Inter before embedding them in edited pages |
+| write-fonts | 0.48.1 | MIT OR Apache-2.0 | Transitive dependency (subsetter, variable-font instancing) |
+| unicode-linebreak | 0.1.5 | Apache-2.0 | UAX #14 line breaking when text is reflowed into a box |
+| harfrust, read-fonts, unicode-bidi, png, flate2 | see above | MIT / Apache-2.0 | Shaping, font tables, bidi reordering, PNG pictures, stream compression |
+| Amiri Regular/Bold, Cairo (variable), Inter (variable) | `packages/core/assets/fonts/` | OFL-1.1 | Compiled into the engine; subsets embedded into PDFs when the page's own font lacks glyphs. OFL texts ship as `licenses/font-*-OFL.txt` |
+
 ## Fonts
 
 Test corpus fonts live in `tests/corpus/fonts/<family>/` with their `OFL.txt` (SIL Open Font License 1.1). They are
@@ -378,6 +388,11 @@ Every crate linked into the desktop binary is checked by `apps/desktop/src-tauri
 | serde, serde_json, thiserror | 1 / 1 / 2 | MIT OR Apache-2.0 | IPC payloads, errors |
 | warraq-pdf, warraq-render (+ hayro and their dependencies, listed under the Rust engine) | 0.1 | Apache-2.0 (ours) | Rendering pages for printing on Windows/Linux |
 | option-ext (replacement) | 0.2.0 | MIT OR Apache-2.0 | Clean-room stand-in in `apps/desktop/src-tauri/vendor/option-ext` for the MPL-2.0 crate of the same name that `dirs` pulls in |
+| ureq, ureq-proto | 3.4 / 0.6 | MIT OR Apache-2.0 | HTTP for signature timestamps (RFC 3161), OCSP and CRLs — only on the user's click (`src/net.rs`) |
+| rustls, rustls-pki-types | 0.23 / 1.15 | Apache-2.0 OR ISC OR MIT / MIT OR Apache-2.0 | TLS for https timestamp authorities |
+| rustls-webpki | 0.103 | ISC | Certificate path validation for TLS |
+| ring | 0.17 | Apache-2.0 AND ISC | rustls crypto provider |
+| rustls-platform-verifier, rustls-native-certs, openssl-probe, security-framework (macOS) | 0.7 / 0.8 / 0.2 / 3.7 | MIT OR Apache-2.0 (rustls-native-certs: Apache-2.0 OR ISC OR MIT) | The operating system's trust store for https (no bundled web PKI roots) |
 | @tauri-apps/api, @tauri-apps/plugin-dialog, @tauri-apps/plugin-fs (npm) | 2.11 / 2.7 / 2.5 | Apache-2.0 OR MIT | JS side of the IPC, bundled into the desktop UI |
 | @tauri-apps/cli (npm, build tool only) | 2.11 | Apache-2.0 OR MIT | Building bundles, generating icons |
 | toml (dev-dependency, tests only) | 0.9 | MIT OR Apache-2.0 | Config guard tests |

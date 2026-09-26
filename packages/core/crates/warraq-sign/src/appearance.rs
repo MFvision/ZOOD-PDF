@@ -25,6 +25,72 @@ pub struct AppearanceSpec {
     pub lines: Option<Vec<String>>,
     /// Arabic labels for the default lines (default: when the name contains Arabic).
     pub arabic_labels: Option<bool>,
+    /// Hand-drawn or typed signature picture, drawn at the physical left of the box.
+    pub image: Option<SignatureImage>,
+}
+
+/// Largest signature picture side, in pixels (bounded allocation).
+pub const MAX_IMAGE_SIDE: u32 = 2048;
+
+/// An 8-bit RGBA picture (row-major, top row first).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SignatureImage {
+    /// Width in pixels.
+    pub width: u32,
+    /// Height in pixels.
+    pub height: u32,
+    /// `width × height × 4` bytes.
+    pub rgba: Vec<u8>,
+}
+
+impl SignatureImage {
+    /// Checks the size against the pixel data.
+    pub fn new(width: u32, height: u32, rgba: Vec<u8>) -> Result<Self> {
+        if width == 0 || height == 0 || width > MAX_IMAGE_SIDE || height > MAX_IMAGE_SIDE {
+            return Err(SignError::InvalidArgument(format!(
+                "signature picture must be 1-{MAX_IMAGE_SIDE} pixels per side"
+            )));
+        }
+        if rgba.len() as u64 != u64::from(width) * u64::from(height) * 4 {
+            return Err(SignError::InvalidArgument(
+                "signature picture data does not match its size".into(),
+            ));
+        }
+        Ok(SignatureImage {
+            width,
+            height,
+            rgba,
+        })
+    }
+}
+
+/// Image XObject (DeviceRGB) with the alpha channel as an `/SMask`.
+fn image_xobject(edit: &mut Edit<'_>, img: &SignatureImage) -> lopdf::ObjectId {
+    let n = (img.width as usize) * (img.height as usize);
+    let mut rgb = Vec::with_capacity(n * 3);
+    let mut alpha = Vec::with_capacity(n);
+    for px in img.rgba.chunks_exact(4) {
+        rgb.extend_from_slice(px.get(..3).unwrap_or(&[0, 0, 0]));
+        alpha.push(px.get(3).copied().unwrap_or(255));
+    }
+    let base = |cs: &str| {
+        let mut d = Dictionary::new();
+        d.set("Type", name("XObject"));
+        d.set("Subtype", name("Image"));
+        d.set("Width", Object::Integer(i64::from(img.width)));
+        d.set("Height", Object::Integer(i64::from(img.height)));
+        d.set("ColorSpace", name(cs));
+        d.set("BitsPerComponent", Object::Integer(8));
+        d
+    };
+    let mut mask = Stream::new(base("DeviceGray"), alpha);
+    let _ = mask.compress();
+    let mask_id = edit.add(Object::Stream(mask));
+    let mut d = base("DeviceRGB");
+    d.set("SMask", Object::Reference(mask_id));
+    let mut st = Stream::new(d, rgb);
+    let _ = st.compress();
+    edit.add(Object::Stream(st))
 }
 
 fn has_arabic(s: &str) -> bool {
@@ -189,7 +255,13 @@ fn utf16_hex(s: &str) -> String {
 
 /// Build the appearance form XObject for a widget of `rect` on a page rotated by `rot`
 /// degrees. Font objects are added to `edit`.
-pub fn build(edit: &mut Edit<'_>, rect: [f64; 4], rot: i64, lines: &[String]) -> Result<Stream> {
+pub fn build(
+    edit: &mut Edit<'_>,
+    rect: [f64; 4],
+    rot: i64,
+    lines: &[String],
+    image: Option<&SignatureImage>,
+) -> Result<Stream> {
     let font = load_font()?;
     let (rw, rh) = ((rect[2] - rect[0]).abs(), (rect[3] - rect[1]).abs());
     let (w, h) = if rot == 90 || rot == 270 {
@@ -203,6 +275,22 @@ pub fn build(edit: &mut Edit<'_>, rect: [f64; 4], rot: i64, lines: &[String]) ->
         .map(|l| shape_line(&font, l))
         .collect::<Result<_>>()?;
     let pad = (w.min(h) * 0.06).clamp(1.0, 6.0);
+    // The picture takes the physical left of the box (at most 40 % of it), text the rest.
+    let img_box = image.map(|img| {
+        let aspect = f64::from(img.width) / f64::from(img.height);
+        let ih = (h - 2.0 * pad).max(1.0);
+        let iw = (ih * aspect)
+            .min(if lines.is_empty() {
+                w - 2.0 * pad
+            } else {
+                w * 0.4
+            })
+            .max(1.0);
+        let ih = (iw / aspect).min(ih);
+        (iw, ih)
+    });
+    let text_left = img_box.map(|(iw, _)| pad + iw).unwrap_or(0.0);
+    let tw = w - text_left;
     let line_h = (font.ascent - font.descent) / font.upem;
     let n = shaped.len().max(1) as f64;
     // Name line at size s, others at 0.6 s.
@@ -213,7 +301,7 @@ pub fn build(edit: &mut Edit<'_>, rect: [f64; 4], rot: i64, lines: &[String]) ->
         let f = if i == 0 { 1.0 } else { ratio };
         let wu = l.width / font.upem * f;
         if wu > 0.0 {
-            s = s.min((w - 2.0 * pad) / wu);
+            s = s.min((tw - 2.0 * pad) / wu);
         }
     }
     let s = s.max(1.0);
@@ -240,7 +328,11 @@ pub fn build(edit: &mut Edit<'_>, rect: [f64; 4], rot: i64, lines: &[String]) ->
         let scale = size / font.upem;
         y -= font.ascent * scale;
         let lw = line.width * scale;
-        let x0 = if line.rtl { w - pad - lw } else { pad };
+        let x0 = if line.rtl {
+            w - pad - lw
+        } else {
+            text_left + pad
+        };
         let _ = writeln!(content, "/F1 {} Tf", num_s(size));
         let mut pen = x0;
         for (word, range) in &line.spans {
@@ -288,11 +380,27 @@ pub fn build(edit: &mut Edit<'_>, rect: [f64; 4], rot: i64, lines: &[String]) ->
         y -= -font.descent * scale;
     }
     content.push_str("ET\n");
+    let mut xobjects = Dictionary::new();
+    if let (Some(img), Some((iw, ih))) = (image, img_box) {
+        let id = image_xobject(edit, img);
+        xobjects.set("Im1", Object::Reference(id));
+        let _ = writeln!(
+            content,
+            "q {} 0 0 {} {} {} cm /Im1 Do Q",
+            num_s(iw),
+            num_s(ih),
+            num_s(pad),
+            num_s((h - ih) / 2.0)
+        );
+    }
     let font_id = embed_font(edit, &font, &remap, &to_unicode)?;
     let mut res = Dictionary::new();
     let mut fonts = Dictionary::new();
     fonts.set("F1", Object::Reference(font_id));
     res.set("Font", Object::Dictionary(fonts));
+    if !xobjects.is_empty() {
+        res.set("XObject", Object::Dictionary(xobjects));
+    }
     let mut d = Dictionary::new();
     d.set("Type", name("XObject"));
     d.set("Subtype", name("Form"));

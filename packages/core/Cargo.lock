@@ -2064,6 +2064,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "warraq-create",
+ "warraq-edit",
  "warraq-office",
  "warraq-pdf",
  "warraq-redact",
@@ -2099,6 +2100,26 @@ dependencies = [
  "warraq-render",
  "warraq-text",
  "weezl",
+]
+
+[[package]]
+name = "warraq-edit"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "harfrust",
+ "lopdf",
+ "png",
+ "read-fonts 0.43.3",
+ "serde",
+ "serde_json",
+ "subsetter",
+ "thiserror",
+ "unicode-bidi",
+ "unicode-linebreak",
+ "warraq-create",
+ "warraq-pdf",
+ "warraq-text",
 ]
 
 [[package]]

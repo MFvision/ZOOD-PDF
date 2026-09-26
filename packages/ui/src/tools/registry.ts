@@ -75,7 +75,8 @@ function tool(
 }
 
 export const TOOLS: readonly ToolDef[] = [
-  tool('edit', 'edit', 'blue'),
+  // Edit: core-backed surface over the viewer (warraq-edit), see app/EditPanel.tsx.
+  tool('edit', 'edit', 'blue', { status: 'ready', core: { open: (docId) => openToolPanel('edit', docId) } }),
   // Organize / Combine / Compress: engine-backed panels (see tools/panels.ts).
   tool('organize', 'organize', 'indigo', { status: 'ready', core: { open: (docId) => openToolPanel('organize', docId) } }),
   tool('comment', 'comment', 'yellow', { status: 'ready', viewer: { commands: ['mode:annotate'] } }),
@@ -101,7 +102,13 @@ export const TOOLS: readonly ToolDef[] = [
   tool('prepare-form', 'form', 'pink', { status: 'ready', viewer: { commands: ['mode:form'] } }),
   tool('ai', 'sparkle', 'purple'),
   tool('page-marks', 'stamp', 'orange'),
-  tool('digital-signature', 'certificate', 'indigo'),
+  // Digital signature: B-B signing + verification everywhere; B-T/B-LT/B-LTA only where the host
+  // offers network (desktop). Core-backed panel (warraq-sign), see app/SignPanel.tsx.
+  tool('digital-signature', 'certificate', 'indigo', {
+    status: 'ready',
+    platforms: ['web', 'desktop', 'extension'],
+    core: { open: (docId) => openToolPanel('digital-signature', docId) },
+  }),
   tool('standards', 'badge', 'teal', { status: 'ready', panel: 'standards', core: { open: (docId) => openToolPanel('standards', docId) } }),
   tool('accessibility', 'accessibility', 'blue'),
   tool('batch', 'batch', 'graphite', { needsDocument: false }),

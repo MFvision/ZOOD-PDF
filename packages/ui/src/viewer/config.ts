@@ -124,6 +124,7 @@ export function buildViewerConfig({ bytes, name, documentId, locale, scheme, pas
       ],
     },
     export: { defaultFileName: name },
-    annotations: { annotationAuthor: locale === 'ar' ? 'ضيف' : 'Guest' },
+    // Links never open straight away: the Viewer shows our confirm sheet (bidi-spoof checks) instead.
+    annotations: { annotationAuthor: locale === 'ar' ? 'ضيف' : 'Guest', autoOpenLinks: false },
   };
 }

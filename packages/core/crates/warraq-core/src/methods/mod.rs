@@ -22,6 +22,8 @@ mod redact;
 // Export and Compare (warraq-office).
 mod compare;
 mod export;
+// Edit tool (warraq-edit).
+mod edit;
 
 /// Every namespace's `register` function.
 pub const NAMESPACES: &[fn(&mut Registry)] = &[
@@ -41,6 +43,8 @@ pub const NAMESPACES: &[fn(&mut Registry)] = &[
     // Export and Compare (warraq-office).
     export::register,
     compare::register,
+    // Edit tool (warraq-edit).
+    edit::register,
     #[cfg(feature = "render")]
     render::register,
 ];

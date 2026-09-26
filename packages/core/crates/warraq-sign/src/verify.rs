@@ -169,7 +169,8 @@ fn dss_items(pdf: &Pdf, key: &[u8]) -> Vec<Vec<u8>> {
     }
 }
 
-fn signer_info(c: &Cert) -> SignerInfo {
+/// Certificate summary (also used by the UI to preview a PKCS#12 before signing).
+pub fn signer_info(c: &Cert) -> SignerInfo {
     let (a, b) = c.validity();
     SignerInfo {
         name: c.display_name(),

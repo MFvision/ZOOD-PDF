@@ -26,6 +26,8 @@ warraq-redact = { path = "../warraq-redact" }
 warraq-create = { path = "../warraq-create" }
 # Export (DOCX/XLSX/PPTX/HTML/Markdown/text) and Compare.
 warraq-office = { path = "../warraq-office" }
+# Edit tool (edit.*).
+warraq-edit = { path = "../warraq-edit" }
 # Organize / Compress: content geometry (text boxes via warraq-text's interpreter), picture
 # pages and image recompression. All MIT/Apache-2.0 (zune-*: MIT OR Apache-2.0 OR Zlib).
 flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }

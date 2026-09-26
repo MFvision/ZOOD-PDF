@@ -49,6 +49,8 @@ export interface ViewerEvents {
   /** Redaction applied or protection changed: previews of the old content must be forgotten. */
   onSensitiveChange(): void;
   onError(message: string): void;
+  /** A link (URI action) was clicked in the page: confirm before opening (Edit tool, LinkSheets). */
+  onLinkNavigate?(uri: string): void;
 }
 
 interface Props extends ViewerEvents {
@@ -152,7 +154,10 @@ export function Viewer(props: Props) {
       onCommandExecuted: Hook<{ commandId: string; documentId: string }>;
     }>(registry, 'commands');
     const history = cap<{ onHistoryChange: Hook<unknown> }>(registry, 'history');
-    const annotation = cap<{ onAnnotationEvent: Hook<{ type: string; committed?: boolean }> }>(registry, 'annotation');
+    const annotation = cap<{
+      onAnnotationEvent: Hook<{ type: string; committed?: boolean }>;
+      onNavigate?: Hook<{ documentId?: string; result?: { outcome?: string; uri?: string } }>;
+    }>(registry, 'annotation');
     type RedactionItem = { id: string; kind: 'area'; page: number; rect: { origin: { x: number; y: number }; size: { width: number; height: number } } };
     const redaction = cap<{
       onRedactionEvent: Hook<{ type: string; documentId: string; success?: boolean }>;
@@ -319,6 +324,12 @@ export function Viewer(props: Props) {
       unsubs.push(
         annotation.onAnnotationEvent((e) => {
           if (e.type === 'create' || e.type === 'update' || e.type === 'delete') events.current.onEdited();
+        }),
+      );
+    if (annotation?.onNavigate)
+      unsubs.push(
+        annotation.onNavigate((e) => {
+          if (e.result?.outcome === 'uri' && e.result.uri && (!e.documentId || e.documentId === documentId)) events.current.onLinkNavigate?.(e.result.uri);
         }),
       );
     if (redaction)

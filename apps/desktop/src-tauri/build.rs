@@ -32,6 +32,12 @@ fn main() {
         "print_open",
         "print_page",
         "print_close",
+        "sign_timestamp",
+        "sign_ocsp",
+        "sign_fetch_crl",
+        "trust_list",
+        "trust_add",
+        "trust_remove",
     ]);
     if let Err(e) = tauri_build::try_build(tauri_build::Attributes::new().app_manifest(manifest)) {
         println!("cargo:warning=tauri-build failed: {e:#}");

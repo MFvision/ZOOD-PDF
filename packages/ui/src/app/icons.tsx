@@ -252,6 +252,10 @@ export const ICONS = {
   // Create PDF: reorder the file list.
   moveUp: <>{P('m6.5 14.5 5.5-5.5 5.5 5.5')}</>,
   moveDown: <>{P('m6.5 9.5 5.5 5.5 5.5-5.5')}</>,
+  // Edit tool.
+  cursor: <>{P('M6 4.5 18 12l-5.2 1.3 3 5.4-2.2 1.2-3-5.4L6.5 18z')}</>,
+  textAdd: <>{P('M5 6.5V5h11v1.5M10.5 5v13M8.5 18h4M17 13v6M14 16h6')}</>,
+  link: <>{P('M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1')}</>,
 } as const;
 
 export type IconName = keyof typeof ICONS;

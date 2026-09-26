@@ -304,3 +304,107 @@ fn b_lta_flow_through_the_rpc() {
         4
     );
 }
+
+#[test]
+fn visible_signature_with_ui_lines_and_a_hand_drawn_image() {
+    let mut d = doc();
+    // 4×2 RGBA "ink": opaque dark pixels on transparent.
+    let mut rgba = Vec::new();
+    for i in 0..8 {
+        rgba.extend_from_slice(if i % 2 == 0 {
+            &[10, 20, 60, 255]
+        } else {
+            &[0, 0, 0, 0]
+        });
+    }
+    let r = call(
+        &mut d,
+        "sign.prepare",
+        json!({
+            "password": "test123", "page": 0, "rect": [300, 60, 560, 150], "time": NOW,
+            "appearance": {"lines": ["أحمد بن سعيد", "التاريخ: ٢٦/٠٩/٢٠٢٦"], "image": {"width": 4, "height": 2}}
+        }),
+        vec![read("signer-p256-modern.p12"), rgba.clone()],
+    );
+    let bytes = &r.blobs[0];
+    let text = String::from_utf8_lossy(bytes);
+    assert!(text.contains("/Subtype /Image"), "image XObject written");
+    assert!(text.contains("/SMask"), "alpha kept as a soft mask");
+    let v = call(&mut d, "sign.verify", json!({"now": NOW}), vec![]);
+    assert_eq!(v.json["signatures"][0]["status"], "valid_identity_unknown");
+    // Wrong image size.
+    let mut d = doc();
+    let e = err(
+        &mut d,
+        "sign.prepare",
+        json!({"password": "test123", "page": 0, "rect": [300, 60, 560, 150],
+               "appearance": {"image": {"width": 5, "height": 2}}}),
+        vec![read("signer-p256-modern.p12"), rgba],
+    );
+    assert_eq!(e.code, "invalid_argument");
+}
+
+#[test]
+fn inspect_summarises_a_pkcs12_without_signing() {
+    let inspect = |pw: &str, file: &str| {
+        warraq_core::call_static(
+            "sign.inspect",
+            &json!({"password": pw, "now": NOW}),
+            vec![read(file)],
+        )
+    };
+    let r = inspect("test123", "signer-p256-modern.p12").unwrap();
+    let s = &r.json["signer"];
+    assert_eq!(s["name"], "أحمد بن سعيد");
+    assert!(s["subject"].as_str().unwrap().contains("أحمد بن سعيد"));
+    assert!(s["issuer"]
+        .as_str()
+        .unwrap()
+        .contains("ZOOD Test Document CA"));
+    assert_eq!(s["keyAlgorithm"], "ECDSA P-256");
+    assert_eq!(s["notBefore"], "2025-01-01T00:00:00Z");
+    assert_eq!(r.json["eku"]["accepted"], true);
+    assert_eq!(r.json["validNow"], true);
+    assert_eq!(r.json["canSign"], true);
+    assert_eq!(r.json["chain"][0], "ZOOD Test Document CA");
+    assert!(r.blobs.is_empty(), "no key material leaves the engine");
+
+    // serverAuth-only: summarised, but flagged.
+    let r = inspect("test123", "signer-server.p12").unwrap();
+    assert_eq!(r.json["eku"]["accepted"], false);
+    assert!(r.json["eku"]["detail"]
+        .as_str()
+        .unwrap()
+        .contains("serverAuth"));
+    assert_eq!(r.json["canSign"], false);
+    // Expired.
+    let r = inspect("test123", "signer-expired.p12").unwrap();
+    assert_eq!(r.json["validNow"], false);
+    assert_eq!(r.json["canSign"], false);
+    // Arabic password.
+    let r = inspect("كلمة سر", "signer-p256-arabic-pw.p12").unwrap();
+    assert_eq!(r.json["signer"]["name"], "أحمد بن سعيد");
+    // Wrong password, missing blob.
+    let e = inspect("nope", "signer-rsa-modern.p12").unwrap_err();
+    assert_eq!(e.code, "wrong_certificate_password");
+    let e = warraq_core::call_static("sign.inspect", &json!({}), vec![]).unwrap_err();
+    assert_eq!(e.code, "invalid_params");
+}
+
+#[test]
+fn cert_info_reads_pem_and_der_for_the_trust_list() {
+    let r = warraq_core::call_static("sign.certInfo", &json!({}), vec![read("chain.pem")]).unwrap();
+    let certs = r.json["certificates"].as_array().unwrap();
+    assert_eq!(certs.len(), 2);
+    assert_eq!(certs[0]["name"], "ZOOD Test Document CA");
+    assert_eq!(certs[0]["isCa"], true);
+    assert_eq!(certs[1]["selfIssued"], true);
+    assert_eq!(certs[1]["sha256"].as_str().unwrap().len(), 64);
+    assert_eq!(r.blobs.len(), 2, "one DER blob per certificate");
+    assert_eq!(r.blobs[1], read("root.der"));
+    let r = warraq_core::call_static("sign.certInfo", &json!({}), vec![read("root.der")]).unwrap();
+    assert_eq!(r.json["certificates"][0]["name"], "ZOOD Test Root CA");
+    let e = warraq_core::call_static("sign.certInfo", &json!({}), vec![b"garbage".to_vec()])
+        .unwrap_err();
+    assert_ne!(e.code, "");
+}

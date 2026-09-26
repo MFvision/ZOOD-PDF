@@ -13,6 +13,8 @@ members = [
   "crates/warraq-standards",
   # Export (DOCX/XLSX/PPTX/HTML/Markdown/text) and Compare.
   "crates/warraq-office",
+  # Edit tool: byte-faithful content rewriting, text reflow, pictures, links.
+  "crates/warraq-edit",
 ]
 # cargo-fuzz crate: nightly-only, built separately (`cd fuzz && cargo fuzz run load`).
 exclude = ["fuzz"]

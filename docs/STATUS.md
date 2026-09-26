@@ -240,10 +240,9 @@ pyhanko-certvalidator`). Test PKI: `tests/fixtures/sign/make_pki.sh` (committed 
 * **PKCS#11 untested**: only the `Signer` trait exists (digest-level signing maps to `CKM_RSA_PKCS`
   / `CKM_ECDSA`); no token implementation and no smart-card hardware here.
 * **Real TSA / OCSP / CRL over the network untested**: the engine never does network I/O; all
-  timestamp and revocation tests use a local OpenSSL TSA and responder. The desktop host still has
-  to POST `application/timestamp-query` / `application/ocsp-request` and fetch CRLs; no UI is wired
-  (`packages/ui`, `apps/desktop` are other agents' work). Real TSAs whose tokens exceed the 12 KiB
-  reserve would need a bigger `placeholderSize`.
+  timestamp and revocation tests use a local OpenSSL TSA and responder. The desktop host's HTTP
+  commands (below) are tested against a local mock TSA only; no request to a public TSA was made
+  here. Real TSAs whose tokens exceed the 12 KiB reserve would need a bigger `placeholderSize`.
 * **Adobe Acrobat is not available** to cross-check; independent checks are OpenSSL and pyHanko only.
 * cargo-fuzz targets `cms` and `sig_dict` (`packages/core/fuzz`) compile (`cargo check`); they were
   **not run under libFuzzer** here (no nightly/cargo-fuzz; the stable SanitizerCoverage release build
@@ -262,6 +261,42 @@ pyhanko-certvalidator`). Test PKI: `tests/fixtures/sign/make_pki.sh` (committed 
 * `rsa 0.9` has RUSTSEC-2023-0071 (Marvin); signing uses blinding, nothing is decrypted.
 * The JSON password parameter is wiped only in our copy (the JS/serde strings are outside Rust's
   control); the key and decrypted PKCS#12 buffers are zeroized.
+
+### Interface (Digital signature tool, Signatures panel) and desktop network
+Tool `digital-signature` is `ready` on web, desktop and extension (`tools/registry.ts`). Signing
+panel `packages/ui/src/app/SignPanel.tsx`, verification `SignaturesPanel.tsx` (banner + panel),
+engine orchestration `services/signing.ts`, formatting `services/signatures.ts`, trust list
+`services/trust.ts`. New engine methods: `sign.inspect` (static: PKCS#12 + password → certificate
+summary, EKU verdict, validity; no key material returned) and `sign.certInfo` (static: PEM/DER →
+summaries + DER per certificate); `sign.prepare` takes an optional RGBA signature picture
+(`appearance.image` + `blobs[1]`, image XObject with `/SMask`, left 40 % of the box).
+
+| What | Test |
+| --- | --- |
+| **UI, en + ar**: import `signer-*.p12` through the file chooser, wrong password → "Wrong certificate password" / «كلمة سر الشهادة غير صحيحة», unlock, certificate summary (Arabic CN «أحمد بن سعيد», issuer), draw the box on the page preview, reason/location, hand-drawn picture, Sign → saved through the host bridge → the viewer reloads, banner "valid, identity unknown"; the saved file starts with the original bytes, has `/ETSI.CAdES.detached`, `/Subtype /Image`, `/ActualText`; **`sign.verify` run on the saved bytes in Node (wasm)** → `valid_identity_unknown`, `valid` with the test root; reopen → panel shows the signer, no changes after signing, Hijri time (`١٤٤٨`, Arabic digits); adding `root.pem` to the trust list turns it "valid"; no external request | `tests/e2e/sign.spec.ts` |
+| **UI, en + ar**: approval signature → a highlight added with Comment and saved (incremental on top) → Node `sign.verify`: still `valid_identity_unknown`, not covering the whole file; reopened: `annotation_added` listed as allowed and an **overlay** warning; "View signed version" opens the covered revision, which verifies with no changes | `sign.spec.ts` |
+| **UI, en + ar**: certification "form filling and signing" (DocMDP P=2) → page 1 rotated with **Organize** and saved → Node `sign.verify` says `modified`; reopened: banner "changed after signing", the page change listed as not allowed | `sign.spec.ts` |
+| **UI, en + ar**: the `shadow-replace.pdf` attack fixture → banner invalid/modified, panel lists the shadow attack | `sign.spec.ts` |
+| Web/extension: B-T/B-LT/B-LTA are not offered (hidden without a host network); the desktop host shows them | `sign.spec.ts`, `SignPanel` (`app.host.signing?.network`) |
+| Signing flow with a fake engine + network: B-B uses no network; B-T = prepare → TSA → finish; B-LTA = TSA, OCSP with CRL fallback, DSS (`kinds`), document timestamp; only the chosen TSA and the certificate's own URLs are contacted | `packages/ui/src/services/signing.test.ts` |
+| Certificate summary formatting: DN parsing with Arabic values, Gregorian and Hijri (Umm al-Qura) times with Arabic-Indic digits, appearance lines without bidi control characters, rectangle → PDF user space for /Rotate 0/90/180/270, overall status | `services/signatures.test.ts` |
+| Trust list: empty by default, IndexedDB persistence, idempotent import, removal by fingerprint, unreadable entries skipped | `services/trust.test.ts` |
+| `sign.inspect` (Arabic CN, serverAuth-only flagged, expired flagged, Arabic password, wrong password), `sign.certInfo` (PEM chain, DER), signature picture + wrong picture size | `warraq-core/tests/sign_rpc.rs` |
+| Arabic-Indic digits are in the signature font (localised dates in the appearance) | `warraq-sign/tests/sign.rs::font_has_arabic_indic_digits_for_localised_dates` |
+| **Desktop** `sign_timestamp` / `sign_ocsp` / `sign_fetch_crl` (ureq 3 + rustls/ring, OS trust store via rustls-platform-verifier, no webpki-roots): a **local mock TSA answering with `openssl ts -reply`** returns a token that `openssl ts -verify` accepts; http/https only, no user-info, no redirects (302 refused), non-200 and HTML answers refused, reply size cap (declared and streamed), timeout; CRL GET | `apps/desktop/src-tauri/src/net.rs` tests |
+| **Desktop** trust list in `<app data>/trusted-certificates/<SHA-256>.der`: add/list/remove, names and bytes validated | `apps/desktop/src-tauri/src/trust.rs` tests, `host-tauri.test.ts` |
+
+Not proven / limits:
+* B-T/B-LT/B-LTA through the desktop **UI** are not exercised end to end (no desktop Playwright;
+  the WebKitGTK smoke test only boots the app). The flow is unit-tested with fakes and the Rust
+  HTTP commands against a local mock; no public TSA/OCSP responder was contacted.
+* The page preview used to draw the box ignores a MediaBox/CropBox whose origin is not (0, 0).
+* FieldMDP from the UI offers "lock all form fields" only (Include/Exclude lists are engine-only).
+* Tampering is covered through Organize (rotate) and Comment (highlight); a text change made with
+  the Edit tool (which landed after this work) is not yet exercised against a signature in a spec. Comment-after-certification (disallowed annotation) is proven
+  in the engine (`warraq-sign/tests/verify.rs`), not through the UI.
+* The password lives in a React state string until signing finishes or the panel closes; JS strings
+  cannot be wiped.
 
 ## Desktop host (Tauri 2), CI and packaging
 
@@ -523,3 +558,48 @@ Engine: `warraq-pdf` (`outline.rs`, `import.rs`, compact writer in `writer.rs`) 
 * Organize/Compress add ~0.6 MB to the wasm (warraq-text interpreter + JPEG/PNG codecs); the merged engine with
   signing and Office export is ~5.1 MB unoptimised.
 
+## Edit tool (`warraq-edit`, `edit.*` RPC, Edit surface)
+
+Architecture: ADR 0014. Engine methods: `edit.textBlocks|replaceText|addText`, `edit.images|imageTransform|
+imageCrop|imageReplace|imageDelete|imageAdd`, `edit.links|linkAdd|linkUpdate|linkDelete` (document) and
+`edit.checkUrl` (static). Mutating calls commit one incremental update; a failed call leaves the document as it was.
+
+### Proven by tests
+| What | Test |
+| --- | --- |
+| Byte-faithful lexer: operations + gaps partition every page of every corpus/fixture PDF and re-emit it byte for byte; splices change only the edited operators; hostile nesting/unterminated/inline-image input bounded | `warraq-edit/tests/edit.rs::lexer_round_trips_every_corpus_page_byte_for_byte`, `content.rs` unit tests, `tests/no_panic.rs` |
+| Edit an Arabic paragraph of a Chrome-made Amiri page: new text (with shadda/tashkeel, Arabic-Indic digits, ٪) read back by `text.plain` in logical order, old text gone, neighbouring paragraph intact, every untouched operator byte-identical and in order, Amiri subset embedded (`+Amiri-…`, FontFile2), ActualText present, no `/Direction`, no fill+stroke double draw, original bytes an exact prefix | `edit.rs::edit_arabic_paragraph_reflows_reads_back_and_keeps_other_bytes` |
+| Full-tashkeel paragraph replaced and read back with its marks; the page's own font is reused (no new font program) when it covers the new text (Chrome's Inter subset) | `edit.rs::tashkeel_…`, `original_embedded_font_is_reused_when_it_covers_the_new_text` |
+| `/Artifact` text (synthetic Word footers) is extracted but never offered as an editable block | `edit.rs::artifacts_are_not_editable_blocks` |
+| Add text boxes (Arabic in Cairo, Latin in Inter, colour), which are editable blocks afterwards | `edit.rs::add_text_box_arabic_and_english` |
+| Pictures: list (XObject + inline), move (the `cm` before the `Do` rewritten in place, everything else identical), resize into a box, rotate 90° and free, crop (clip in unit space, kept by later moves), replace with PNG (alpha → SMask), delete inline image, add picture; reopened | `edit.rs::pictures_list_move_resize_rotate_crop_replace_delete_add` |
+| Links: add/list/update (to a page)/delete; RLO, `javascript:` refused; Punycode mixed-script host refused unless the decoded host is typed; saved and reopened | `edit.rs::links_add_list_update_delete_and_spoof_refusal`, `url.rs` unit tests (bidi controls raw and percent-encoded, IDN decoding incl. Arabic IDN, whole-script Cyrillic look-alike, `user@host`) |
+| RPC: all methods registered; stale block → `stale`; refused URL → `url_refused` and the document unchanged (`unsavedChanges: false`); edits on an AES-256 file with an Arabic password stay encrypted and read back | `warraq-core/tests/edit_methods.rs`, `edit.rs::rpc_surface_and_errors` |
+| No panic on 400 mutated pages through blocks/replace/pictures/links/commit, 3000 random URLs, JPEG/PNG garbage | `warraq-edit/tests/no_panic.rs` (`WARRAQ_SMOKE_CASES`) |
+| Page ↔ view coordinates at 0/90/180/270°, scheme allow-list, Arabic/Persian digits in page numbers | `packages/ui/src/services/editor.test.ts` |
+| **UI, en + ar**: Home "Edit" card → file chooser → Edit surface; edit the Arabic sentence of a Chrome-made page in a `dir=auto` text area (new text with tashkeel), add a text box, nudge (arrow keys) and drag a picture then delete it, add a link (RLO address refused, Punycode look-alike host shown decoded and refused until typed), open it only through the confirm sheet (host + full address), undo/redo by toolbar and ⌘/Ctrl+Z / ⇧⌘/Ctrl+Shift+Z, click the link in the viewer → confirm sheet (no popup), save: original bytes are an exact prefix, the engine (wasm in Node) reads the new sentence, the added text, no picture, one link, no `/Direction`; the saved file reopens with the new sentence as an editable block; no network | `tests/e2e/edit.spec.ts` |
+
+### Not done / limits (honest)
+* **Reusing the original font** works only when the page's embedded font program already has every glyph (and,
+  for Arabic, its GSUB table): Chrome's Latin subsets often qualify, Chrome/Word Arabic subsets never do, so
+  edited Arabic is set in a bundled Amiri/Cairo subset (visually close for Amiri/Cairo/Naskh-like pages, different
+  for other typefaces). Adding glyphs to an existing subset is not attempted. Type3 and simple (non-Type0) fonts
+  are never reused.
+* **Blocks** are warraq-text paragraphs: a paragraph that shares a text-showing operator with another one
+  (e.g. one `TJ` drawing two columns) is listed as not editable (`shared_operators`); invisible OCR text is not
+  editable (`hidden`); text inside form XObjects (stamps, page marks, some producers' whole pages) is not
+  listed. Justified text comes back start-aligned; the new text keeps size, colour and weight but not italics,
+  letter spacing or underline; overflow grows the box downwards. Tagged PDFs keep their structure tree, but the
+  new text is untagged content (the Accessibility tool re-tags).
+* **Pictures** inside form XObjects are not listed; free rotation + non-uniform resize of a rotated picture
+  scales its bounding box (can shear); replace keeps the visible box but drops rotation and crop; only JPEG and
+  PNG (no CMYK PNG, no 16-bit alpha precision) are accepted.
+* **Links**: only URI and GoTo actions are listed/edited (Launch, JavaScript, GoToR links are left alone and not
+  listed); link borders/highlight modes are not edited; the confirm sheet opens http/https/mailto only.
+  EmbedPDF's bookmark panel still opens bookmark URIs directly (it bypasses the annotation navigate event).
+* **Undo/redo** is the shared core-edit history (also used by Organize): 40 steps / 400 MB per open document,
+  session only, cleared on save; EmbedPDF's own history starts empty after each engine edit (the viewer reloads).
+* The font programs are shared with Create PDF (`warraq_create::fonts`), so Edit adds only its code to the wasm.
+* cargo-fuzz targets `content_rewrite`, `url_check`, `picture_decode` compile on stable; not run under cargo-fuzz
+  here (no nightly). The stable smoke fuzz (`warraq-edit/tests/no_panic.rs`) runs in `verify.sh`.
+* Desktop and extension use the same UI and engine but have no Edit spec of their own; iOS has no Edit tool.

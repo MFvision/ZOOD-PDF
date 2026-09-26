@@ -620,7 +620,7 @@ pub fn sign_unchecked(pdf: &Pdf, signer: &dyn Signer, opts: &SignOptions) -> Res
                 opts.reason.as_deref(),
                 opts.location.as_deref(),
             );
-            let stream = appearance::build(&mut edit, r, rot, &lines)?;
+            let stream = appearance::build(&mut edit, r, rot, &lines, spec.image.as_ref())?;
             Some((Object::Stream(stream), r, rot))
         }
         _ => None,
