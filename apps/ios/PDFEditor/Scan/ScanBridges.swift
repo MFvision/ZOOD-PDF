@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 import UIKit
 import VisionKit
@@ -11,7 +12,11 @@ struct DocumentCameraView: UIViewControllerRepresentable {
     let onCancel: () -> Void
     let onError: (String) -> Void
 
-    static var isSupported: Bool { VNDocumentCameraViewController.isSupported }
+    /// VisionKit says the simulator supports the document camera; it has
+    /// no camera to show, so the device must have one too.
+    static var isSupported: Bool {
+        VNDocumentCameraViewController.isSupported && AVCaptureDevice.default(for: .video) != nil
+    }
 
     func makeUIViewController(context: Context) -> VNDocumentCameraViewController {
         let controller = VNDocumentCameraViewController()

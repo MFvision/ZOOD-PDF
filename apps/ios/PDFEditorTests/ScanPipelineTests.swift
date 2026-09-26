@@ -332,6 +332,29 @@ final class ScanPipelineTests: XCTestCase {
         XCTAssertNotNil(page.bow)
     }
 
+    /// Whiteboard mode: the board's glare and shadow go, the board is white,
+    /// and the markers keep their colours — blue stays blue, red red.
+    func testWhiteboardKeepsMarkerColoursOnAWhiteBoard() throws {
+        let board = try photo("whiteboard")
+        let before = try paper(of: board)
+        var enhancement = Enhancement()
+        enhancement.whiteboard = true
+        let clean = try XCTUnwrap(RGBABitmap(ScanPipeline.enhance(board, with: enhancement).image))
+        let after = try paper(of: try XCTUnwrap(clean.cgImage))
+        print("SCAN-WHITEBOARD board mean \(Int(before.mean))→\(Int(after.mean)), spread \(before.spread.rounded())→\(after.spread.rounded())")
+        XCTAssertGreaterThan(after.mean, 240, "the board is white")
+        XCTAssertLessThan(after.spread, before.spread * 0.6, "glare and shadow are gone")
+        // Colours: count clearly blue and clearly red pixels.
+        var blue = 0, red = 0
+        for k in stride(from: 0, to: clean.data.count, by: 4 * 7) {
+            let r = Int(clean.data[k]), g = Int(clean.data[k + 1]), b = Int(clean.data[k + 2])
+            if b > r + 60, b > g + 40 { blue += 1 }
+            if r > g + 80, r > b + 80 { red += 1 }
+        }
+        XCTAssertGreaterThan(blue, 200, "blue marker strokes stay blue: \(blue)")
+        XCTAssertGreaterThan(red, 200, "red marker strokes stay red: \(red)")
+    }
+
     // MARK: - The PDF, through the core
 
     func testPlacementOnA4MatchesTheCoresFit() {

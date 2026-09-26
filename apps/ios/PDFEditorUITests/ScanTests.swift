@@ -39,6 +39,7 @@ final class ScanTests: XCTestCase {
             "-language", language,
             "-appearance", appearance,
             "-warraqDocumentsFolder", folder.path,
+            "-warraqReset", "1",
         ]
         if !scan.isEmpty {
             app.launchArguments += ["-warraqScan", scan.map(\.path).joined(separator: ",")]
@@ -87,18 +88,18 @@ final class ScanTests: XCTestCase {
 
         // The corners: Auto off puts the handles on the whole photo; the
         // top-left one dragged inwards moves.
-        app.buttons["scan.auto"].tap()
+        app.descendants(matching: .any)["scan.auto"].firstMatch.tap()
         let handle = app.descendants(matching: .any)["crop.handle.0"]
         XCTAssertTrue(handle.waitForExistence(timeout: 10))
         let before = try XCTUnwrap(handle.value as? String)
         let grab = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         grab.press(forDuration: 0.3, thenDragTo: grab.withOffset(CGVector(dx: 40, dy: 40)))
         waitForPage(0, in: app)
-        app.buttons["scan.auto"].tap()
+        app.descendants(matching: .any)["scan.auto"].firstMatch.tap()
         XCTAssertTrue(handle.waitForExistence(timeout: 10))
         let after = try XCTUnwrap(handle.value as? String)
         XCTAssertNotEqual(before, after, "the handle moved with the finger, then Auto found the page again")
-        app.buttons["scan.auto"].tap()
+        app.descendants(matching: .any)["scan.auto"].firstMatch.tap()
         waitForPage(0, in: app)
 
         // Enhance: black and white, creases off, hold to compare.
@@ -218,13 +219,13 @@ final class ScanTests: XCTestCase {
 
             // Auto off: the corners on the whole photo; mid-drag, so the
             // magnifier is in the picture.
-            app.buttons["scan.auto"].tap()
+            app.descendants(matching: .any)["scan.auto"].firstMatch.tap()
             let handle = app.descendants(matching: .any)["crop.handle.0"]
             XCTAssertTrue(handle.waitForExistence(timeout: 10))
             let target = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 30, dy: 30))
             handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(forDuration: 0.3, thenDragTo: target, withVelocity: .slow, thenHoldForDuration: 0.1)
             try save(app, as: "scan-corners-\(suffix)", in: directory)
-            app.buttons["scan.auto"].tap()
+            app.descendants(matching: .any)["scan.auto"].firstMatch.tap()
             waitForPage(0, in: app)
 
             app.buttons["scan.enhance"].tap()

@@ -193,6 +193,10 @@ struct ScanView: View {
                 showingEnhance = true
             }
             .accessibilityIdentifier("scan.enhance")
+            Button("Text", systemImage: "text.quote") {
+                showingText = true
+            }
+            .accessibilityIdentifier("scan.text")
             Button("Retake", systemImage: "arrow.triangle.2.circlepath.camera") {
                 guard let page = session.selected else { return }
                 retaking = page.id
@@ -304,11 +308,6 @@ struct ScanView: View {
                 .accessibilityIdentifier("scan.close")
         }
         ToolbarItemGroup(placement: .primaryAction) {
-            Button("Text", systemImage: "text.quote") {
-                showingText = true
-            }
-            .disabled(session.pages.isEmpty)
-            .accessibilityIdentifier("scan.text")
             Button("Save", systemImage: "square.and.arrow.down") {
                 showingSave = true
             }
