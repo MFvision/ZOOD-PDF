@@ -527,7 +527,7 @@ struct OverlayFont {
     helv_id: Option<ObjectId>,
     widths: BTreeMap<u32, f64>,
     descendant: Option<ObjectId>,
-    /// ToUnicode texts of the overlay glyphs (`warraq_text::encode`, ADR 0018).
+    /// ToUnicode texts of the overlay glyphs (`warraq_text::encode`, ADR 0020).
     unicode: warraq_text::ToUnicodeMaps,
 }
 

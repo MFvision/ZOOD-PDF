@@ -141,7 +141,7 @@ fn ecdsa_visible_arabic_appearance_is_encoded_for_every_reader() {
     openssl_verify("p256_visible", &out.bytes);
     let pdf = Pdf::open(out.bytes.clone(), None).unwrap();
     // Find the appearance stream: Arabic words are drawn WITHOUT /ActualText (PDFium would reverse
-    // it; their glyphs' ToUnicode entries carry the text, ADR 0018), Latin words keep it.
+    // it; their glyphs' ToUnicode entries carry the text, ADR 0020), Latin words keep it.
     let mut found = false;
     for obj in pdf.objects().values() {
         if let lopdf::Object::Stream(s) = obj {

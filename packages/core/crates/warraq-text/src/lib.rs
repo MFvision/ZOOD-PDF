@@ -7,7 +7,7 @@
 //! * [`normalize`] / [`search`] implement Arabic-aware search with rectangles.
 //! * [`shape`] shapes Arabic for writing into PDFs (harfrust); [`encode`] decides per word how
 //!   writers encode it (glyph ToUnicode in visual order, `/ActualText` where that cannot work) so
-//!   PDFium, Acrobat, pdf.js and our extractor all read it back in logical order (ADR 0018).
+//!   PDFium, Acrobat, pdf.js and our extractor all read it back in logical order (ADR 0020).
 //! * [`api`] exposes `text.extract`, `text.search`, `text.plain` and `text.readingUnits` for the
 //!   RPC layer ([`reading`] prepares paragraphs for read-aloud).
 //!

@@ -41,7 +41,7 @@ result as an incremental update like every other edit.
    A real space glyph follows each word in content order (left of an RTL word) so readers see word boundaries
    (warraq-text accepts a space glyph wider than the gap it sits in); `/Direction` is never written. For a crooked
    page the words are mapped back through the detected angle (the page image is untouched), so the layer lies on
-   the crooked text. All OCR'd pages go into **one** incremental update. ADR 0018 applies the same finding to
+   the crooked text. All OCR'd pages go into **one** incremental update. ADR 0020 applies the same finding to
    every other writer (one shared encoder in warraq-text) and adds engine-backed search/copy in the viewer.
 5. **UI**: one sheet, two tabs — *Make searchable* (pages without text are detected with the engine; per-page
    progress; cancel terminates the workers and leaves the document unchanged) and *Scan pages* (files, or the camera

@@ -3,7 +3,7 @@
 //! Each line is shaped by warraq-text (`warraq_text::shape`: unicode-bidi visual runs shaped
 //! with HarfRust, the Rust port of HarfBuzz — contextual forms, lam-alef, marks) with the
 //! bundled Amiri subset, and drawn with an embedded, subsetted CID font (Identity-H,
-//! ToUnicode). Words are encoded by `warraq_text::encode_line` (ADR 0018): right-to-left words by
+//! ToUnicode). Words are encoded by `warraq_text::encode_line` (ADR 0020): right-to-left words by
 //! their glyphs' ToUnicode entries in visual order (PDFium — Chrome and the viewer — reverses an
 //! Arabic `/ActualText`), everything else in `/Span <</ActualText …>> BDC … EMC`, so every reader
 //! reads back the logical text.

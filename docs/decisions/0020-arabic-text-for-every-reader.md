@@ -1,4 +1,4 @@
-# ADR 0018 — Arabic text that reads back in every reader: glyph encoding + engine-backed viewer text
+# ADR 0020 — Arabic text that reads back in every reader: glyph encoding + engine-backed viewer text
 
 * Status: accepted
 * Date: 2026-09-26

@@ -157,9 +157,11 @@ pub fn draw(
         })?);
     }
     // 3. Embed each face once (subset to every glyph the mark uses).
+    // How every word is written (glyph ToUnicode or /ActualText, ADR 0020), per laid text.
+    let encoded: Vec<_> = laid.iter().map(|l| l.encode()).collect();
     let mut used: BTreeMap<FaceSource, (&Face, BTreeMap<u16, String>)> = BTreeMap::new();
-    for l in &laid {
-        for (fi, glyphs) in l.used().into_iter().enumerate() {
+    for (l, (_, maps)) in laid.iter().zip(&encoded) {
+        for (fi, glyphs) in l.used(maps).into_iter().enumerate() {
             let Some(face) = l.faces.get(fi) else {
                 continue;
             };
@@ -235,7 +237,9 @@ pub fn draw(
             body.push_str(&format!("q {} /ZI1 Do Q\n", cm(&m)));
         }
         for (h, ti) in mine {
-            let Some(l) = laid.get(*ti) else { continue };
+            let (Some(l), Some((spans, _))) = (laid.get(*ti), encoded.get(*ti)) else {
+                continue;
+            };
             let w: Vec<Written> = l
                 .faces
                 .iter()
@@ -250,7 +254,7 @@ pub fn draw(
             let c = anchor(spec, &d, *h, spec.vertical(), bw, bh);
             let m = place(&l.bbox, deg, c);
             body.push_str(&format!("q {}\n", cm(&m)));
-            body.push_str(&String::from_utf8_lossy(&l.content(&w, fill)));
+            body.push_str(&String::from_utf8_lossy(&l.content(&w, fill, spans)));
             body.push_str("Q\n");
         }
         let matrix = d.to_user.to_array();
