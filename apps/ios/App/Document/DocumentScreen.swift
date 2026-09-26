@@ -25,7 +25,7 @@ struct DocumentScreen: View {
 }
 
 enum DocSheet: Identifiable {
-    case organize, protect, compress, convert, ai
+    case organize, protect, compress, convert, ai, autofill
     case share(URL)
 
     var id: String {
@@ -35,6 +35,7 @@ enum DocSheet: Identifiable {
         case .compress: "compress"
         case .convert: "convert"
         case .ai: "ai"
+        case .autofill: "autofill"
         case .share(let u): "share-\(u.path)"
         }
     }
@@ -124,6 +125,7 @@ struct DocumentContent: View {
                 showDropChoice = true
                 return true
             }
+            .onDisappear { session.stopReadingAloud() }
             .onChange(of: session.phase) { _, phase in
                 guard phase == .ready, !didApplyInitialTool, let tool = initialTool else { return }
                 didApplyInitialTool = true
@@ -162,6 +164,11 @@ struct DocumentContent: View {
                     if session.tool != nil {
                         PencilPalette(session: session)
                             .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+                    } else if let reader = session.reader {
+                        ReadAloudBar(reader: reader) {
+                            withAnimation(reduceMotion ? nil : .default) { session.stopReadingAloud() }
+                        }
+                        .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
                     }
                     if session.isBusy {
                         ProgressView().padding(20).glass()
@@ -283,6 +290,13 @@ struct DocumentContent: View {
             Button { sheet = .protect } label: { Label { Text(ToolKind.protect.title) } icon: { Image(systemName: ToolKind.protect.symbol) } }
             Button { sheet = .convert } label: { Label { Text(ToolKind.convert.title) } icon: { Image(systemName: ToolKind.convert.symbol) } }
             Button { sheet = .ai } label: { Label { Text(ToolKind.ai.title) } icon: { Image(systemName: ToolKind.ai.symbol) } }
+            Button { start(.readAloud) } label: {
+                Label { Text(ToolKind.readAloud.title) } icon: { Image(systemName: ToolKind.readAloud.symbol) }
+            }
+            .disabled(session.reader != nil)
+            Button { sheet = .autofill } label: {
+                Label { Text(ToolKind.fillForm.title) } icon: { Image(systemName: ToolKind.fillForm.symbol) }
+            }
             if supportsMultipleWindows {
                 Divider()
                 Button {
@@ -305,6 +319,10 @@ struct DocumentContent: View {
         case .compress: sheet = .compress
         case .convert: sheet = .convert
         case .ai: sheet = .ai
+        case .fillForm: sheet = .autofill
+        case .readAloud:
+            session.tool = nil
+            withAnimation(reduceMotion ? nil : .default) { session.startReadingAloud() }
         default: break
         }
     }
@@ -316,6 +334,7 @@ struct DocumentContent: View {
         case .compress: CompressSheet(session: session)
         case .convert: ConvertSheet(session: session)
         case .ai: AIAssistantSheet(session: session)
+        case .autofill: AutofillSheet(session: session)
         case .share(let url): ActivityView(items: [url]).ignoresSafeArea()
         }
     }

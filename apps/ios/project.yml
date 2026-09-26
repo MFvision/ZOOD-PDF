@@ -58,6 +58,31 @@ targets:
       - sdk: PencilKit.framework
       - sdk: CoreSpotlight.framework
       - sdk: AVFoundation.framework
+      - sdk: MediaPlayer.framework
+      - sdk: CryptoKit.framework
+    # llama.cpp (portable on-device model, ADR 0015): Frameworks/llama.xcframework, fetched with
+    # its pinned SHA-256 by scripts/ios/fetch-llama.sh. Its release has iOS device and macOS
+    # slices only (no simulator), so it is linked and embedded for iphoneos builds only; in the
+    # simulator `canImport(llama)` is false and the app offers Apple's model alone.
+    postCompileScripts:
+      - name: Embed llama.framework (device builds)
+        basedOnDependencyAnalysis: false
+        inputFiles:
+          - $(PROJECT_DIR)/Frameworks/llama.xcframework/ios-arm64/llama.framework/llama
+          - $(PROJECT_DIR)/Frameworks/llama.xcframework/ios-arm64/llama.framework/Info.plist
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/llama.framework/llama
+          - $(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/llama.framework/Info.plist
+        script: |
+          set -euo pipefail
+          [ "${PLATFORM_NAME}" = "iphoneos" ] || exit 0
+          SRC="${PROJECT_DIR}/Frameworks/llama.xcframework/ios-arm64/llama.framework"
+          DST="${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/llama.framework"
+          mkdir -p "${DST}"
+          cp -f "${SRC}/llama" "${SRC}/Info.plist" "${DST}/"
+          if [ -n "${EXPANDED_CODE_SIGN_IDENTITY:-}" ]; then
+            codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY}" --preserve-metadata=identifier,entitlements "${DST}"
+          fi
     entitlements:
       path: App/ZoodPDF.entitlements
       properties:
@@ -70,6 +95,11 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SUPPORTS_MACCATALYST: NO
+        LD_RUNPATH_SEARCH_PATHS: $(inherited) @executable_path/Frameworks
+        # Apple's on-device model is iOS 26+; the app still runs on iOS 18.
+        OTHER_LDFLAGS: $(inherited) -weak_framework FoundationModels
+        "FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]": $(inherited) $(PROJECT_DIR)/Frameworks/llama.xcframework/ios-arm64
+        "OTHER_LDFLAGS[sdk=iphoneos*]": $(inherited) -weak_framework FoundationModels -framework llama
     info:
       path: App/Info.plist
       properties:
@@ -100,6 +130,8 @@ targets:
           - CFBundleURLName: sa.zood.pdf.links
             CFBundleURLSchemes: [zoodpdf]
         NSUserActivityTypes: [sa.zood.pdf.open]
+        # Read aloud keeps playing with the screen locked.
+        UIBackgroundModes: [audio]
         NSCameraUsageDescription: ZOOD PDF uses the camera to scan documents into PDF files. Pictures stay on your device.
         NSPhotoLibraryUsageDescription: ZOOD PDF imports photos you choose to turn them into PDF pages.
         ITSAppUsesNonExemptEncryption: false
