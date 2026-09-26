@@ -349,6 +349,7 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
       const pdfium = await api.exportBytes();
       // Redaction must not leave the old content in the file: keep PDFium's whole rewrite.
       if (sensitive.current.has(docId)) return pdfium;
+      if (opts.fromViewer) return pdfium;
       // Protected files: the engine opens the current bytes with the password and keeps the key.
       return (await rebaseOnOriginal(getEngine(), doc.bytes, pdfium, doc.password)).bytes;
     },
