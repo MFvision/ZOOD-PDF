@@ -111,7 +111,7 @@ struct FontOut {
     widths: HashMap<u16, f64>,
     /// The ToUnicode stream object (written after the content pass).
     tu: ObjectId,
-    /// ToUnicode texts by original glyph id, from `warraq_text::encode_line` (ADR 0017).
+    /// ToUnicode texts by original glyph id, from `warraq_text::encode_line` (ADR 0018).
     maps: warraq_text::ToUnicodeMaps,
 }
 
@@ -454,7 +454,7 @@ pub fn write(layout: &Layout, doc: &Document, meta: &Meta) -> Result<Vec<u8>> {
                     let lang = lang_tag(&piece.lang);
                     // Right-to-left words are encoded by their glyphs (ToUnicode in visual order):
                     // PDFium reverses an Arabic /ActualText. Words the glyphs cannot express
-                    // (tashkeel, kashida-stretched, …) keep it (warraq_text::encode, ADR 0017).
+                    // (tashkeel, kashida-stretched, …) keep it (warraq_text::encode, ADR 0018).
                     let refs: Vec<warraq_text::GlyphRef> = piece
                         .glyphs
                         .iter()

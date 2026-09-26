@@ -15,6 +15,8 @@ pub mod net;
 #[cfg(target_os = "macos")]
 mod print_macos;
 pub mod print_raster;
+// Read aloud (native speech: macOS AVSpeechSynthesizer, Windows speech).
+pub mod speech_cmds;
 pub mod trust;
 
 use std::path::PathBuf;
@@ -44,6 +46,12 @@ pub const COMMANDS: &[&str] = &[
     "trust_list",
     "trust_add",
     "trust_remove",
+    // Read aloud.
+    "speech_voices",
+    "speech_speak",
+    "speech_pause",
+    "speech_resume",
+    "speech_stop",
 ];
 
 #[tauri::command]
@@ -293,6 +301,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .manage(print_raster::PrintState::default())
+        .manage(speech_cmds::SpeechState::default())
         .invoke_handler(tauri::generate_handler![
             host_info,
             app_ready,
@@ -308,7 +317,12 @@ pub fn run() {
             sign_fetch_crl,
             trust_list,
             trust_add,
-            trust_remove
+            trust_remove,
+            speech_cmds::speech_voices,
+            speech_cmds::speech_speak,
+            speech_cmds::speech_pause,
+            speech_cmds::speech_resume,
+            speech_cmds::speech_stop
         ])
         .on_menu_event(|app, event| {
             let _ = app.emit(

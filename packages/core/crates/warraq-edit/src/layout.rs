@@ -1,6 +1,6 @@
 //! Laying text into a box: paragraphs, UAX #14 line breaking, bidi (visual runs per line),
 //! per-character font choice with fallback, harfrust shaping, alignment; then content-stream
-//! operators with every word encoded by `warraq_text::encode_line` (ADR 0017): right-to-left words
+//! operators with every word encoded by `warraq_text::encode_line` (ADR 0018): right-to-left words
 //! by their glyphs' ToUnicode entries in visual order (PDFium reverses an Arabic `/ActualText`),
 //! other words (and words in the page's own font, whose ToUnicode is not ours) in
 //! `/Span <</ActualText …>> BDC … EMC`, so every reader reads the words back in logical order.

@@ -5,6 +5,7 @@ import {
   createTauriHost,
   DROP_EVENT,
   MENU_EVENT,
+  SPEECH_EVENT,
   saveFilters,
   type HostInfo,
   type TauriApis,
@@ -285,5 +286,49 @@ describe('desktop signing host', () => {
     await host.signing!.trust!.remove(cert!.sha256);
     expect(calls.find((c) => c.cmd === 'trust_add')?.args).toEqual({ sha256: cert!.sha256, der: [0x30, 0x03, 0x02, 0x01, 0x01] });
     expect(calls.find((c) => c.cmd === 'trust_remove')?.args).toEqual({ sha256: cert!.sha256 });
+  });
+});
+
+// ---- Read aloud (native speech) ----
+describe('native speech bridge', () => {
+  it('is only offered when the Rust host has an engine', async () => {
+    expect((await createTauriHost(fakeApis(LINUX).apis)).speech).toBeUndefined();
+    expect((await createTauriHost(fakeApis({ ...MAC, speech: true }).apis)).speech).toBeDefined();
+  });
+
+  it('lists voices, speaks, pauses and relays engine events', async () => {
+    const { apis, calls, emit } = fakeApis({ ...MAC, speech: true });
+    (apis.invoke as Mock).mockImplementation(async (cmd: string, args?: unknown) => {
+      calls.push({ cmd, args });
+      if (cmd === 'host_info') return { ...MAC, speech: true };
+      if (cmd === 'speech_voices')
+        return [
+          { id: 'com.apple.voice.premium.en-US.Ava', name: 'Ava', lang: 'en-US', quality: 'premium' },
+          { id: 'x', name: 'Odd', lang: 'ar-SA', quality: 'ultra' },
+          { name: 'no id' },
+        ];
+      return undefined;
+    });
+    const host = await createTauriHost(apis);
+    const speech = host.speech!;
+    expect(await speech.voices()).toEqual([
+      { id: 'com.apple.voice.premium.en-US.Ava', name: 'Ava', lang: 'en-US', quality: 'premium' },
+      { id: 'x', name: 'Odd', lang: 'ar-SA', quality: 'default' },
+    ]);
+    const events: unknown[] = [];
+    speech.onEvent((e) => events.push(e));
+    await flush();
+    await speech.speak(7, { text: 'مرحبا', voice: 'x', rate: 1.25, pitch: 1 });
+    await speech.pause();
+    await speech.resume();
+    await speech.stop();
+    expect(calls.filter((c) => c.cmd.startsWith('speech_') && c.cmd !== 'speech_voices')).toEqual([
+      { cmd: 'speech_speak', args: { id: 7, text: 'مرحبا', voice: 'x', rate: 1.25, pitch: 1 } },
+      { cmd: 'speech_pause', args: undefined },
+      { cmd: 'speech_resume', args: undefined },
+      { cmd: 'speech_stop', args: undefined },
+    ]);
+    emit(SPEECH_EVENT, { id: 7, kind: 'end' });
+    expect(events).toEqual([{ id: 7, kind: 'end' }]);
   });
 });

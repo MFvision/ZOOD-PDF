@@ -8,7 +8,9 @@ use warraq_text::DocSource;
 pub fn register(r: &mut Registry) {
     r.doc("text.extract", extract)
         .doc("text.search", search)
-        .doc("text.plain", plain);
+        .doc("text.plain", plain)
+        // Read aloud: paragraphs in reading order with boxes and language runs.
+        .doc("text.readingUnits", reading_units);
 }
 
 fn run(d: &mut Document, method: &str, p: &Value) -> Result<Reply, CoreError> {
@@ -28,4 +30,7 @@ fn search(d: &mut Document, p: &Value, _b: Vec<Vec<u8>>) -> Result<Reply, CoreEr
 }
 fn plain(d: &mut Document, p: &Value, _b: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
     run(d, "text.plain", p)
+}
+fn reading_units(d: &mut Document, p: &Value, _b: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
+    run(d, "text.readingUnits", p)
 }

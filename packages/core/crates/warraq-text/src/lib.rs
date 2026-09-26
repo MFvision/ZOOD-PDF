@@ -7,8 +7,9 @@
 //! * [`normalize`] / [`search`] implement Arabic-aware search with rectangles.
 //! * [`shape`] shapes Arabic for writing into PDFs (harfrust); [`encode`] decides per word how
 //!   writers encode it (glyph ToUnicode in visual order, `/ActualText` where that cannot work) so
-//!   PDFium, Acrobat, pdf.js and our extractor all read it back in logical order (ADR 0017).
-//! * [`api`] exposes `text.extract`, `text.search` and `text.plain` for the RPC layer.
+//!   PDFium, Acrobat, pdf.js and our extractor all read it back in logical order (ADR 0018).
+//! * [`api`] exposes `text.extract`, `text.search`, `text.plain` and `text.readingUnits` for the
+//!   RPC layer ([`reading`] prepares paragraphs for read-aloud).
 //!
 //! The PDF object layer is reached only through [`ContentSource`], so the crate can be backed
 //! by `warraq-pdf`'s decrypted document; [`LopdfSource`] is the stand-alone implementation.
@@ -27,6 +28,8 @@ pub mod lexer;
 pub mod limits;
 pub mod model;
 pub mod normalize;
+// Read aloud: paragraphs split into language runs for speech (`text.readingUnits`).
+pub mod reading;
 pub mod search;
 pub mod shape;
 pub mod source;

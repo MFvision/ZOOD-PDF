@@ -171,7 +171,7 @@ pub fn content_stream(run: &ShapedRun, font_res: &str, x: f64, y: f64) -> Vec<u8
 
 /// Like [`content_stream`], for a font whose ToUnicode map the caller writes from `maps` (font 0,
 /// keyed by glyph id; see [`crate::encode::tounicode_cmap`]): right-to-left words are encoded by
-/// their glyphs and carry no `/ActualText` (ADR 0017).
+/// their glyphs and carry no `/ActualText` (ADR 0018).
 pub fn content_stream_encoded(
     run: &ShapedRun,
     font_res: &str,

@@ -396,9 +396,14 @@ Every crate linked into the desktop binary is checked by `apps/desktop/src-tauri
 | @tauri-apps/api, @tauri-apps/plugin-dialog, @tauri-apps/plugin-fs (npm) | 2.11 / 2.7 / 2.5 | Apache-2.0 OR MIT | JS side of the IPC, bundled into the desktop UI |
 | @tauri-apps/cli (npm, build tool only) | 2.11 | Apache-2.0 OR MIT | Building bundles, generating icons |
 | toml (dev-dependency, tests only) | 0.9 | MIT OR Apache-2.0 | Config guard tests |
+| zood-speech (`apps/desktop/speech`, ours) | 0.1 | Apache-2.0 | Read aloud with the operating system's voices |
+| objc2-avf-audio (macOS only) | 0.3 | Zlib OR Apache-2.0 OR MIT | Read aloud: AVSpeechSynthesizer bindings |
+| windows-rs features `Media_SpeechSynthesis`, `Media_Playback`, `Media_Core`, `Storage_Streams` (Windows only) | 0.61 | MIT OR Apache-2.0 | Read aloud: WinRT speech synthesis and playback |
 
 System components used but **not shipped** by us: WebKitGTK and GTK on Linux (LGPL; the `.deb` depends on the
 distribution's packages — no AppImage, which would bundle them), WebView2 on Windows, WKWebView/PDFKit on macOS.
+Read aloud speaks with voices that belong to the operating system or browser (AVSpeechSynthesizer voices on macOS,
+Windows speech voices, `speechSynthesis` on-device voices on the web); no voice data is bundled.
 MPL-2.0 `cssparser`, `selectors` and `dtoa-short` are used only inside Tauri's build-time proc-macros and are not
 part of any artefact.
 

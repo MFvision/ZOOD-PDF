@@ -13,7 +13,7 @@ serde.workspace = true
 serde_json.workspace = true
 lopdf.workspace = true
 warraq-pdf = { path = "../warraq-pdf" }
-# The shared text encoder (ToUnicode vs /ActualText per word, ADR 0017).
+# The shared text encoder (ToUnicode vs /ActualText per word, ADR 0018).
 warraq-text = { path = "../warraq-text" }
 harfrust = "0.13"
 read-fonts = "0.43"

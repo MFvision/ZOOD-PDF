@@ -9,7 +9,8 @@
 //! * `query` (search, required): the text to find.
 //!
 //! Replies: `text.extract` → `{ "pages": [PageText…] }`; `text.search` →
-//! `{ "hits": [Hit…] }`; `text.plain` → `{ "text": "…", "pages": ["…", …] }`.
+//! `{ "hits": [Hit…] }`; `text.plain` → `{ "text": "…", "pages": ["…", …] }`;
+//! `text.readingUnits` → `{ "units": [ReadingUnit…] }` (see [`crate::reading`]).
 
 use serde_json::{json, Value};
 
@@ -21,7 +22,12 @@ use crate::search::search;
 use crate::source::ContentSource;
 
 /// RPC methods implemented here.
-pub const METHODS: &[&str] = &["text.extract", "text.search", "text.plain"];
+pub const METHODS: &[&str] = &[
+    "text.extract",
+    "text.search",
+    "text.plain",
+    "text.readingUnits",
+];
 
 /// Extract the given pages (0-based).
 pub fn extract_pages<S: ContentSource + ?Sized>(
@@ -126,6 +132,21 @@ pub fn rpc_plain<S: ContentSource + ?Sized>(src: &S, params: &Value) -> Result<V
     Ok(json!({ "text": plain_text(&pages), "pages": per }))
 }
 
+/// `text.readingUnits` → `{ "units": [ReadingUnit…] }` (read aloud). Pagination artifacts
+/// (headers, footers, watermarks) are skipped unless `artifacts: true`; hidden OCR text is read.
+pub fn rpc_reading_units<S: ContentSource + ?Sized>(src: &S, params: &Value) -> Result<Value> {
+    let mut opts = options(params);
+    opts.glyphs = false;
+    opts.include_artifacts = params
+        .get("artifacts")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    let pages = extract_pages(src, &page_list(src, params)?, &opts)?;
+    serde_json::to_value(crate::reading::reading_units(&pages))
+        .map(|u| json!({ "units": u }))
+        .map_err(|e| TextError::Params(e.to_string()))
+}
+
 /// Dispatch one of [`METHODS`]; `None` if the method is not a text method.
 pub fn call<S: ContentSource + ?Sized>(
     src: &S,
@@ -136,6 +157,7 @@ pub fn call<S: ContentSource + ?Sized>(
         "text.extract" => rpc_extract(src, params),
         "text.search" => rpc_search(src, params),
         "text.plain" => rpc_plain(src, params),
+        "text.readingUnits" => rpc_reading_units(src, params),
         _ => return None,
     })
 }

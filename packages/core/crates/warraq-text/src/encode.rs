@@ -1,6 +1,6 @@
 //! How writers encode shaped text so it reads back in logical order in **every** reader — the one
 //! place Edit, Create PDF, the signature appearance, redaction overlays (and later Page marks and
-//! Forms) decide, word by word, between glyph `ToUnicode` entries and `/ActualText` (ADR 0017).
+//! Forms) decide, word by word, between glyph `ToUnicode` entries and `/ActualText` (ADR 0018).
 //!
 //! Measured with the viewer's PDFium (EmbedPDF 2.15.1, the engine of Chrome's viewer):
 //! PDFium collects a line's characters in content order and reverses every right-to-left run —

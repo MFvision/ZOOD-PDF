@@ -26,6 +26,8 @@ import { ProtectPanel } from './ProtectPanel';
 // Edit tool.
 import { EditPanel } from './EditPanel';
 import { LinkConfirmSheet } from './LinkSheets';
+// Read aloud.
+import { ReadAloudPlayer, useSpeech } from './ReadAloud';
 
 const wide = () => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 900px)').matches;
 
@@ -117,6 +119,22 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
     apiRef.current = api;
   });
 
+  // ---- Read aloud (shown only when the device has an on-device voice) ----
+  const speech = useSpeech();
+  const [reading, setReading] = useState(false);
+  const canRead = !!speech && !!api && !organizing;
+  useEffect(() => {
+    if (!active || !canRead) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyR') {
+        e.preventDefault();
+        setReading((v) => !v);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [active, canRead]);
+
   const pick = (def: ToolDef | null) => {
     setGalleryOpen(false);
     if (!def || def.id !== 'edit') closeToolPanel('edit');
@@ -177,6 +195,17 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
           <IconButton icon="zoomIn" label={t('doc.zoomIn')} disabled={!api} onClick={() => api?.zoomIn()} />
         </div>
         <div className="tb-spacer" />
+        {speech && (
+          <IconButton
+            icon="speaker"
+            label={reading ? t('readAloud.buttonStop') : t('readAloud.button')}
+            aria-pressed={reading}
+            aria-keyshortcuts="Alt+Shift+R"
+            disabled={!canRead}
+            onClick={() => setReading((v) => !v)}
+            data-testid="read-aloud"
+          />
+        )}
         <div className="menu-wrap tb-gallery">
           <button
             type="button"
@@ -264,6 +293,9 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
                 if (p) setTimeout(() => apiRef.current?.goToPage(p), 0);
               }}
             />
+          )}
+          {reading && active && canRead && speech && api && (
+            <ReadAloudPlayer key={doc.revision} doc={doc} api={api} page={page} setup={speech} onClose={() => setReading(false)} />
           )}
           {doc.switching && !organizing && (
             <div className="viewer-loading" aria-live="polite">

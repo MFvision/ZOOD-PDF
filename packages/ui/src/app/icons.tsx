@@ -256,6 +256,13 @@ export const ICONS = {
   cursor: <>{P('M6 4.5 18 12l-5.2 1.3 3 5.4-2.2 1.2-3-5.4L6.5 18z')}</>,
   textAdd: <>{P('M5 6.5V5h11v1.5M10.5 5v13M8.5 18h4M17 13v6M14 16h6')}</>,
   link: <>{P('M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1')}</>,
+  // Read aloud (media transport icons are never mirrored, like every media player in RTL).
+  speaker: <>{P('M4.5 9.5h3l4.5-4v13l-4.5-4h-3zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11')}</>,
+  play: <>{P('M8 5.5v13l10.5-6.5z')}</>,
+  pause: <>{P('M8.5 5.5v13M15.5 5.5v13')}</>,
+  skipBack: <>{P('M6.5 5.5v13M18 5.5v13l-9-6.5z')}</>,
+  skipForward: <>{P('M17.5 5.5v13M6 5.5v13l9-6.5z')}</>,
+  stop: <>{P('M7 7h10v10H7z')}</>,
 } as const;
 
 export type IconName = keyof typeof ICONS;

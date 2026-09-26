@@ -7,6 +7,7 @@
 import { webHost } from './files';
 import type { SigningNetwork } from './signing';
 import type { TrustStore } from './trust';
+import type { NativeSpeech } from './speech/native';
 
 export interface OpenedFile {
   name: string;
@@ -47,6 +48,8 @@ export interface HostBridge {
    * SPEC: "timestamps + LTV desktop only"); `trust` replaces the IndexedDB trust list.
    */
   signing?: { network?: SigningNetwork; trust?: TrustStore };
+  /** Read aloud with the operating system's own voices (desktop macOS/Windows). */
+  speech?: NativeSpeech;
 }
 
 let current: HostBridge | null = null;

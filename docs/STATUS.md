@@ -650,3 +650,57 @@ imageCrop|imageReplace|imageDelete|imageAdd`, `edit.links|linkAdd|linkUpdate|lin
 * cargo-fuzz targets `content_rewrite`, `url_check`, `picture_decode` compile on stable; not run under cargo-fuzz
   here (no nightly). The stable smoke fuzz (`warraq-edit/tests/no_panic.rs`) runs in `verify.sh`.
 * Desktop and extension use the same UI and engine but have no Edit spec of their own; iOS has no Edit tool.
+
+## Read aloud (local text-to-speech; `text.readingUnits`, `services/speech`, `apps/desktop/speech`)
+
+Decision: [0017-local-read-aloud](decisions/0017-local-read-aloud.md). Everything is spoken on the device; no
+text is sent anywhere, no voice data is bundled.
+
+### Proven by tests
+* **Engine** (`warraq-text/src/reading.rs`, `tests/roundtrip.rs`): paragraphs in reading order with page, box
+  and per-line boxes; tatweel/bidi controls/soft hyphens stripped, tashkeel kept; hyphenated English line ends
+  joined; Arabic / English / mixed paragraphs split into script runs (a 1–2 letter foreign token never switches
+  the voice; numbers stay in their run); rule-only paragraphs skipped; page-range errors are values.
+* **Speech service** (vitest, `services/speech/*.test.ts`): only `localService` voices are listed and a
+  misreporting "… Online (Natural)" / "Google …" voice is still excluded; an utterance is never spoken with the
+  default voice (which may be a network voice); Premium → Enhanced → region ranking; remembered voice per
+  language; `voiceschanged` wait; sentence chunking ≤ 200 chars at Arabic/Latin sentence ends, then clauses,
+  then spaces (no split inside 3.5 / v2.1); the queue state machine (order, per-run voice, pause as
+  cancel+repeat on the web and real pause on native, stale events ignored, next/previous clamping, runs without
+  a voice skipped and reported, voice change restarts the sentence, stop after 3 engine errors); prefs survive
+  garbage; backend choice (native → web fallback → hidden); the Tauri bridge (`speech_*` commands, events).
+* **Interface** (`tests/e2e/read-aloud.spec.ts`, Chrome, en + ar): with a recording fake `speechSynthesis`
+  exposing an Arabic and an English local voice plus network voices that would rank higher: the toolbar button
+  opens the player; utterances come in reading order with the Arabic voice for Arabic paragraphs and the English
+  voice for English ones, the mixed paragraph switching voices mid-sentence; the highlight lands on the paragraph
+  being read (±1.2 % of the page height) and moves with it, the view follows onto page 2; pause/resume, next,
+  Alt+Shift+P/B/R and speed (remembered) work; status numerals follow the locale (`الفقرة ١ من ٦`); the voice
+  picker lists only the local voices and states that Siri voices are unavailable; closing removes the highlight;
+  the document is never marked edited; no network request. Without any local voice the button is absent; with no
+  Arabic voice the player says so and no Arabic text is spoken by another voice.
+* **Desktop** (`apps/desktop/speech`, `scripts/check-speech.sh` in `verify.sh`): voice ranking by quality,
+  novelty/Personal Voice exclusion, language matching, request validation and clamping, AVFoundation/WinRT rate
+  mapping, event JSON; the macOS (`AVSpeechSynthesizer`, objc2-avf-audio) and Windows
+  (`Windows.Media.SpeechSynthesis` + `MediaPlayer`, windows-rs) engines **type-check and are clippy-clean** for
+  `aarch64-apple-darwin` and `x86_64-pc-windows-msvc` on Linux; `host_info.speech` is true exactly on
+  macOS/Windows; the five `speech_*` commands are in the ACL (build.rs + capabilities).
+
+### Not done / not proven (honest)
+* **macOS and Windows speech have never been run**: this machine is Linux. Nothing here has heard
+  AVSpeechSynthesizer or a Windows voice; the macOS/Windows workflows run the crate's unit tests and build the app,
+  but speaking, delegate callbacks on the main thread, pause/resume and the Windows `MediaPlayer` path need a person
+  at a Mac / Windows PC. Voice quality depends on what is installed (Premium/Enhanced voices are downloaded by the
+  user in System Settings → Accessibility → Spoken Content; Windows Arabic voices need the Arabic speech pack).
+* **Siri voices are not available** to third-party apps on macOS/iOS; the picker says so.
+* **Linux desktop**: no native engine. WebKitGTK usually has no `speechSynthesis` (or no voices), so the Read aloud
+  button is normally hidden there — by design, not a façade.
+* **Real browsers**: the e2e uses a fake `speechSynthesis`; which local voices a given Chrome/Edge/Safari exposes is
+  up to the OS (Chrome on Linux often has none → hidden; Chrome on macOS/Windows exposes the OS voices; Safari
+  exposes installed Premium/Enhanced voices). Word-level highlighting (boundary events) is not used — highlighting
+  is per paragraph.
+* Persian/Urdu text is Arabic script → read with the Arabic voice; other scripts (Cyrillic, Greek, CJK, …) use a
+  voice of the script's most likely language when one is installed, else they are skipped and announced.
+* The extension and the desktop webview use the same UI and backends but have no read-aloud spec of their own;
+  the iOS app is handled separately.
+* The highlight is positioned from EmbedPDF 2.15.1 internals (viewport padding, scroll-plugin geometry); the e2e
+  position check guards an upgrade.

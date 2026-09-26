@@ -38,6 +38,12 @@ fn main() {
         "trust_list",
         "trust_add",
         "trust_remove",
+        // Read aloud.
+        "speech_voices",
+        "speech_speak",
+        "speech_pause",
+        "speech_resume",
+        "speech_stop",
     ]);
     if let Err(e) = tauri_build::try_build(tauri_build::Attributes::new().app_manifest(manifest)) {
         println!("cargo:warning=tauri-build failed: {e:#}");
