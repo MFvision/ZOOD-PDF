@@ -339,3 +339,10 @@
     background: rgb(255 255 255 / 96%);
   }
 }
+
+/* While adding text, pictures or links, clicks and drags go to the page, not to existing items. */
+.edit-page:not(.mode-select) .edit-block,
+.edit-page:not(.mode-select) .edit-link,
+.edit-page:not(.mode-select) .edit-image {
+  pointer-events: none;
+}

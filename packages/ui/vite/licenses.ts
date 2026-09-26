@@ -78,6 +78,14 @@ export function zoodLicenses(): Plugin {
       const notices = path.join(REPO, 'THIRD-PARTY-NOTICES.md');
       if (fs.existsSync(notices)) this.emitFile({ type: 'asset', fileName: 'licenses/THIRD-PARTY-NOTICES.md', source: fs.readFileSync(notices, 'utf8') });
       this.emitFile({ type: 'asset', fileName: 'licenses/ZOOD-PDF-LICENSE.txt', source: fs.readFileSync(path.join(REPO, 'LICENSE'), 'utf8') });
+      // Fonts compiled into the engine (Edit / Create PDF embed subsets of them): OFL texts.
+      const engineFonts = path.join(REPO, 'packages/core/assets/fonts');
+      if (fs.existsSync(engineFonts)) {
+        for (const family of fs.readdirSync(engineFonts)) {
+          const ofl = path.join(engineFonts, family, 'OFL.txt');
+          if (fs.existsSync(ofl)) this.emitFile({ type: 'asset', fileName: `licenses/font-${family}-OFL.txt`, source: fs.readFileSync(ofl, 'utf8') });
+        }
+      }
     },
   };
 }

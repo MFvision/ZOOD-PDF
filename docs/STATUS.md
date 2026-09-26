@@ -397,3 +397,53 @@ Architecture: ADR 0013. Engine methods: `export.docx|xlsx|pptx|html|markdown|tex
 * python-docx/openpyxl/python-pptx are not part of CI images; the reader test skips without them.
 * Desktop and extension hosts use the same UI and engine code but have no Export/Compare spec of their own.
 
+
+## Edit tool (`warraq-edit`, `edit.*` RPC, Edit surface)
+
+Architecture: ADR 0014. Engine methods: `edit.textBlocks|replaceText|addText`, `edit.images|imageTransform|
+imageCrop|imageReplace|imageDelete|imageAdd`, `edit.links|linkAdd|linkUpdate|linkDelete` (document) and
+`edit.checkUrl` (static). Mutating calls commit one incremental update; a failed call leaves the document as it was.
+
+### Proven by tests
+| What | Test |
+| --- | --- |
+| Byte-faithful lexer: operations + gaps partition every page of every corpus/fixture PDF and re-emit it byte for byte; splices change only the edited operators; hostile nesting/unterminated/inline-image input bounded | `warraq-edit/tests/edit.rs::lexer_round_trips_every_corpus_page_byte_for_byte`, `content.rs` unit tests, `tests/no_panic.rs` |
+| Edit an Arabic paragraph of a Chrome-made Amiri page: new text (with shadda/tashkeel, Arabic-Indic digits, ٪) read back by `text.plain` in logical order, old text gone, neighbouring paragraph intact, every untouched operator byte-identical and in order, Amiri subset embedded (`+Amiri-…`, FontFile2), ActualText present, no `/Direction`, no fill+stroke double draw, original bytes an exact prefix | `edit.rs::edit_arabic_paragraph_reflows_reads_back_and_keeps_other_bytes` |
+| Full-tashkeel paragraph replaced and read back with its marks; the page's own font is reused (no new font program) when it covers the new text (Chrome's Inter subset) | `edit.rs::tashkeel_…`, `original_embedded_font_is_reused_when_it_covers_the_new_text` |
+| `/Artifact` text (synthetic Word footers) is extracted but never offered as an editable block | `edit.rs::artifacts_are_not_editable_blocks` |
+| Add text boxes (Arabic in Cairo, Latin in Inter, colour), which are editable blocks afterwards | `edit.rs::add_text_box_arabic_and_english` |
+| Pictures: list (XObject + inline), move (the `cm` before the `Do` rewritten in place, everything else identical), resize into a box, rotate 90° and free, crop (clip in unit space, kept by later moves), replace with PNG (alpha → SMask), delete inline image, add picture; reopened | `edit.rs::pictures_list_move_resize_rotate_crop_replace_delete_add` |
+| Links: add/list/update (to a page)/delete; RLO, `javascript:` refused; Punycode mixed-script host refused unless the decoded host is typed; saved and reopened | `edit.rs::links_add_list_update_delete_and_spoof_refusal`, `url.rs` unit tests (bidi controls raw and percent-encoded, IDN decoding incl. Arabic IDN, whole-script Cyrillic look-alike, `user@host`) |
+| RPC: all methods registered; stale block → `stale`; refused URL → `url_refused` and the document unchanged (`unsavedChanges: false`); edits on an AES-256 file with an Arabic password stay encrypted and read back | `warraq-core/tests/edit_methods.rs`, `edit.rs::rpc_surface_and_errors` |
+| No panic on 400 mutated pages through blocks/replace/pictures/links/commit, 3000 random URLs, JPEG/PNG garbage | `warraq-edit/tests/no_panic.rs` (`WARRAQ_SMOKE_CASES`) |
+| Undo/redo stack: versions share one buffer (prefixes), redo branch dropped on new edits, non-incremental versions capped | `packages/ui/src/services/history.test.ts` |
+| Page ↔ view coordinates at 0/90/180/270°, scheme allow-list, Arabic/Persian digits in page numbers | `packages/ui/src/services/editor.test.ts` |
+| **UI, en + ar**: Home "Edit" card → file chooser → Edit surface; edit the Arabic sentence of a Chrome-made page in a `dir=auto` text area (new text with tashkeel), add a text box, nudge (arrow keys) and drag a picture then delete it, add a link (RLO address refused, Punycode look-alike host shown decoded and refused until typed), open it only through the confirm sheet (host + full address), undo/redo by toolbar and ⌘/Ctrl+Z / ⇧⌘/Ctrl+Shift+Z, click the link in the viewer → confirm sheet (no popup), save: original bytes are an exact prefix, the engine (wasm in Node) reads the new sentence, the added text, no picture, one link, no `/Direction`; the saved file reopens with the new sentence as an editable block; no network | `tests/e2e/edit.spec.ts` |
+
+### Not done / limits (honest)
+* **Reusing the original font** works only when the page's embedded font program already has every glyph (and,
+  for Arabic, its GSUB table): Chrome's Latin subsets often qualify, Chrome/Word Arabic subsets never do, so
+  edited Arabic is set in a bundled Amiri/Cairo subset (visually close for Amiri/Cairo/Naskh-like pages, different
+  for other typefaces). Adding glyphs to an existing subset is not attempted. Type3 and simple (non-Type0) fonts
+  are never reused.
+* **Blocks** are warraq-text paragraphs: a paragraph that shares a text-showing operator with another one
+  (e.g. one `TJ` drawing two columns) is listed as not editable (`shared_operators`); invisible OCR text is not
+  editable (`hidden`); text inside form XObjects (stamps, page marks, some producers' whole pages) is not
+  listed. Justified text comes back start-aligned; the new text keeps size, colour and weight but not italics,
+  letter spacing or underline; overflow grows the box downwards. Tagged PDFs keep their structure tree, but the
+  new text is untagged content (the Accessibility tool re-tags).
+* **Pictures** inside form XObjects are not listed; free rotation + non-uniform resize of a rotated picture
+  scales its bounding box (can shear); replace keeps the visible box but drops rotation and crop; only JPEG and
+  PNG (no CMYK PNG, no 16-bit alpha precision) are accepted.
+* **Links**: only URI and GoTo actions are listed/edited (Launch, JavaScript, GoToR links are left alone and not
+  listed); link borders/highlight modes are not edited; the confirm sheet opens http/https/mailto only.
+  EmbedPDF's bookmark panel still opens bookmark URIs directly (it bypasses the annotation navigate event).
+* **Undo/redo** covers engine edits (and PDFium edits folded into them) while the Edit tool is open; it is kept
+  per open document for the session only (not persisted); EmbedPDF's own history starts empty after each engine
+  edit (the viewer reloads).
+* **wasm size**: the three bundled fonts add ~2.3 MB to the engine (8.1 MB unoptimised here — wasm-opt is not
+  installed on this machine); warraq-create bundles the same files, so the two must share them after merging
+  (`fonts.rs` is the seam).
+* cargo-fuzz targets `content_rewrite`, `url_check`, `picture_decode` compile on stable; not run under cargo-fuzz
+  here (no nightly). The stable smoke fuzz (`warraq-edit/tests/no_panic.rs`) runs in `verify.sh`.
+* Desktop and extension use the same UI and engine but have no Edit spec of their own; iOS has no Edit tool.

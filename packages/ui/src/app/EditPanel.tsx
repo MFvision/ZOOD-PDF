@@ -292,7 +292,7 @@ export function EditPanel({
 
   const onPagePointerDown = (e: RPointerEvent<HTMLDivElement>) => {
     if (!geom || busy || e.button !== 0) return;
-    if (e.target !== e.currentTarget && !(e.target as HTMLElement).classList.contains('edit-picture')) return;
+    if (mode === 'select' && e.target !== e.currentTarget && !(e.target as HTMLElement).classList.contains('edit-picture')) return;
     const p = pointAt(e);
     if (mode === 'addText') {
       setNewText({ x: p.x, y: p.y, value: '', size: 14, color: '#000000', align: 'start', family: 'auto', bold: false });

@@ -13,6 +13,7 @@ M = iOS native app.
 | Redact (EmbedPDF marks + apply) | ✅ mark, apply, save as whole rewrite, recents preview dropped (`redact-protect.spec.ts`) | | 🟡 | ⛔ not on iOS yet (STATUS) |
 | Protect (EmbedPDF sheet) | 🟡 sheet reachable in en/ar (`redact-protect.spec.ts`); password save not yet reopened in a spec | | 🟡 | 🟡 engine `protect.set`/`remove` (engine call proven on Linux: ZoodKit tests; UI not run) |
 | Export (Word, Excel, PowerPoint, HTML, Markdown, text, pictures; warraq-office) | ✅ DOCX/XLSX/PNG-ZIP/text saved and inspected in en + ar (`export-compare.spec.ts`); HTML/Markdown/PPTX engine-proven (`warraq-office/tests/export.rs`) | 🟡 same UI + engine, no desktop spec | 🟡 same UI + engine, no extension spec | ⛔ Office export not on iOS yet |
+| Edit (text reflow + reshape with embedded Amiri/Cairo/Inter subsets, add text, pictures, links with confirm + spoof rejection, undo/redo; warraq-edit) | ✅ Arabic sentence with tashkeel edited, text box added, picture nudged/dragged/deleted, link added (spoofs refused), confirm sheet on click, undo/redo, saved + reopened in en + ar (`edit.spec.ts`); resize/rotate/crop/replace engine-proven (`warraq-edit/tests/edit.rs`) | 🟡 same UI + engine, no desktop spec | 🟡 same UI + engine, no extension spec | ⛔ not on iOS yet |
 | Compare (text + visual diff, HTML report; warraq-office) | ✅ changed word listed, highlighted, report saved and inspected in en + ar (`export-compare.spec.ts`) | 🟡 | 🟡 | ⛔ not on iOS yet |
 
 ## iOS app (M) in detail
