@@ -458,6 +458,7 @@ struct PasswordPrompt: View {
                 .font(TextStyle.body)
                 .foregroundStyle(Surface.secondaryLabel)
                 .multilineTextAlignment(.center)
+                .accessibilityIdentifier("document.password.hint")
             SecureField("Password", text: $password)
                 .textFieldStyle(.roundedBorder)
                 .textContentType(.password)

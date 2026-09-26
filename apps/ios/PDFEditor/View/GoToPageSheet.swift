@@ -34,7 +34,10 @@ struct GoToPageSheet: View {
                 }
             }
         }
-        .presentationDetents([.height(220)])
+        // A short sheet on a phone. On an iPad a short detent floats at
+        // the bottom, and the number pad floats over its buttons; there it
+        // is a form sheet, which the docked keyboard pushes up.
+        .presentationDetents(UIDevice.current.userInterfaceIdiom == .pad ? [.large] : [.height(220)])
         .onAppear { focused = true }
     }
 

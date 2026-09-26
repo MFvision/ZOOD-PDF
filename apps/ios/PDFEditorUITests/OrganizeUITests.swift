@@ -17,11 +17,29 @@ final class OrganizeUITests: XCTestCase {
         let first = ui.app.buttons["pages.cell.0"]
         XCTAssertTrue(third.waitForExistence(timeout: 15))
         XCTAssertTrue(first.waitForExistence(timeout: 5))
-        // Lift the third page and drop it on the first's place.
-        third.press(forDuration: 0.45, thenDragTo: first, withVelocity: .slow, thenHoldForDuration: 0.5)
-        let done = ui.app.buttons["pages.done"]
-        XCTAssertTrue(done.waitForExistence(timeout: 10))
-        done.tap()
+        // Lift the third page and drop it on the first's place. The lift
+        // is a press just long enough to start the drag before the context
+        // menu opens; when a press did not take (a slower simulator), the
+        // next one is longer.
+        var edited = false
+        for duration in [0.45, 0.8, 1.2] where !edited {
+            XCTAssertTrue(third.waitForExistence(timeout: 15))
+            third.press(forDuration: duration, thenDragTo: first, withVelocity: .slow, thenHoldForDuration: 0.5)
+            if ui.app.buttons["Add Page"].waitForExistence(timeout: 2) {
+                // The context menu opened instead of the lift: close it.
+                ui.app.tap()
+            }
+            let done = ui.app.buttons["pages.done"]
+            XCTAssertTrue(done.waitForExistence(timeout: 10))
+            done.tap()
+            edited = ui.poll(timeout: 8) {
+                let state = ui.status
+                let page = ui.page
+                return (state.exists && (state.label.contains("Edited") || state.label.contains("مُعدَّل")))
+                    || (page.exists && (page.label.contains("Edited") || page.label.contains("مُعدَّل")))
+            }
+            if !edited { ui.app.buttons["document.pages"].tap() }
+        }
         ui.waitForEdited()
         let moved = ui.waitForPage(containing: "الفصل الثالث")
         XCTAssertTrue(moved.contains("الفصل الثالث"), "the core reads the moved page first")

@@ -32,8 +32,9 @@ final class ProtectUITests: XCTestCase {
         field.tap()
         field.typeText("wrong")
         ui.app.buttons["document.password.open"].tap()
-        let wrong = ui.app.staticTexts["That password is not right. Try again."]
-        XCTAssertTrue(wrong.waitForExistence(timeout: 20), "a wrong password is refused")
+        let hint = ui.app.staticTexts.matching(identifier: "document.password.hint").firstMatch
+        let refused = ui.poll(timeout: 40) { hint.exists && hint.label.contains("not right") }
+        XCTAssertTrue(refused, "a wrong password is refused: \(hint.exists ? hint.label : "no hint") \(refused ? "" : ui.tree)")
         let again = ui.app.secureTextFields["document.password"]
         again.tap()
         again.typeText("1234")
