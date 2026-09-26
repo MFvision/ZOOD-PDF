@@ -1,0 +1,249 @@
+{
+  "measured": "2026-09-26",
+  "rows": [
+    {
+      "id": "chrome-mixed-naskh-crooked5",
+      "doc": "Mixed Arabic/English (Naskh)",
+      "variant": "crooked5",
+      "langs": [
+        "ar",
+        "en"
+      ],
+      "seconds": 7.044,
+      "accuracy": 90.93851132686083,
+      "withTashkeel": 90.64516129032259,
+      "truthChars": 618
+    },
+    {
+      "id": "chrome-mixed-naskh-crooked8",
+      "doc": "Mixed Arabic/English (Naskh)",
+      "variant": "crooked8",
+      "langs": [
+        "ar",
+        "en"
+      ],
+      "seconds": 8.028,
+      "accuracy": 91.2621359223301,
+      "withTashkeel": 90.96774193548387,
+      "truthChars": 618
+    },
+    {
+      "id": "chrome-mixed-naskh-shadow",
+      "doc": "Mixed Arabic/English (Naskh)",
+      "variant": "shadow",
+      "langs": [
+        "ar",
+        "en"
+      ],
+      "seconds": 7.988,
+      "accuracy": 88.83495145631069,
+      "withTashkeel": 88.54838709677419,
+      "truthChars": 618
+    },
+    {
+      "id": "chrome-mixed-naskh-straight",
+      "doc": "Mixed Arabic/English (Naskh)",
+      "variant": "straight",
+      "langs": [
+        "ar",
+        "en"
+      ],
+      "seconds": 6.99,
+      "accuracy": 88.9967637540453,
+      "withTashkeel": 88.70967741935483,
+      "truthChars": 618
+    },
+    {
+      "id": "chrome-news-amiri-crooked5",
+      "doc": "Arabic news (Amiri)",
+      "variant": "crooked5",
+      "langs": [
+        "ar"
+      ],
+      "seconds": 5.001,
+      "accuracy": 75.24752475247524,
+      "withTashkeel": 75,
+      "truthChars": 1212
+    },
+    {
+      "id": "chrome-news-amiri-crooked8",
+      "doc": "Arabic news (Amiri)",
+      "variant": "crooked8",
+      "langs": [
+        "ar"
+      ],
+      "seconds": 4.953,
+      "accuracy": 87.29372937293729,
+      "withTashkeel": 86.75986842105263,
+      "truthChars": 1212
+    },
+    {
+      "id": "chrome-news-amiri-shadow",
+      "doc": "Arabic news (Amiri)",
+      "variant": "shadow",
+      "langs": [
+        "ar"
+      ],
+      "seconds": 6.004,
+      "accuracy": 96.12211221122112,
+      "withTashkeel": 95.55921052631578,
+      "truthChars": 1212
+    },
+    {
+      "id": "chrome-news-amiri-straight",
+      "doc": "Arabic news (Amiri)",
+      "variant": "straight",
+      "langs": [
+        "ar"
+      ],
+      "seconds": 4.945,
+      "accuracy": 89.02640264026402,
+      "withTashkeel": 88.48684210526316,
+      "truthChars": 1212
+    },
+    {
+      "id": "chrome-persian-vazirmatn-crooked5",
+      "doc": "Persian (Vazirmatn)",
+      "variant": "crooked5",
+      "langs": [
+        "fa"
+      ],
+      "seconds": 3.938,
+      "accuracy": 96.13899613899613,
+      "withTashkeel": 96.13899613899613,
+      "truthChars": 259
+    },
+    {
+      "id": "chrome-persian-vazirmatn-crooked8",
+      "doc": "Persian (Vazirmatn)",
+      "variant": "crooked8",
+      "langs": [
+        "fa"
+      ],
+      "seconds": 3.988,
+      "accuracy": 96.13899613899613,
+      "withTashkeel": 96.13899613899613,
+      "truthChars": 259
+    },
+    {
+      "id": "chrome-persian-vazirmatn-shadow",
+      "doc": "Persian (Vazirmatn)",
+      "variant": "shadow",
+      "langs": [
+        "fa"
+      ],
+      "seconds": 3.973,
+      "accuracy": 96.52509652509652,
+      "withTashkeel": 96.52509652509652,
+      "truthChars": 259
+    },
+    {
+      "id": "chrome-persian-vazirmatn-straight",
+      "doc": "Persian (Vazirmatn)",
+      "variant": "straight",
+      "langs": [
+        "fa"
+      ],
+      "seconds": 4.049,
+      "accuracy": 96.13899613899613,
+      "withTashkeel": 96.13899613899613,
+      "truthChars": 259
+    },
+    {
+      "id": "chrome-tashkeel-amiri-crooked5",
+      "doc": "Arabic, full tashkeel (Amiri)",
+      "variant": "crooked5",
+      "langs": [
+        "ar"
+      ],
+      "seconds": 4.963,
+      "accuracy": 41.45454545454545,
+      "withTashkeel": 29.79683972911964,
+      "truthChars": 275
+    },
+    {
+      "id": "chrome-tashkeel-amiri-crooked8",
+      "doc": "Arabic, full tashkeel (Amiri)",
+      "variant": "crooked8",
+      "langs": [
+        "ar"
+      ],
+      "seconds": 5.032,
+      "accuracy": 53.090909090909086,
+      "withTashkeel": 39.05191873589165,
+      "truthChars": 275
+    },
+    {
+      "id": "chrome-tashkeel-amiri-shadow",
+      "doc": "Arabic, full tashkeel (Amiri)",
+      "variant": "shadow",
+      "langs": [
+        "ar"
+      ],
+      "seconds": 4.095,
+      "accuracy": 38.18181818181819,
+      "withTashkeel": 23.250564334085777,
+      "truthChars": 275
+    },
+    {
+      "id": "chrome-tashkeel-amiri-straight",
+      "doc": "Arabic, full tashkeel (Amiri)",
+      "variant": "straight",
+      "langs": [
+        "ar"
+      ],
+      "seconds": 5.001,
+      "accuracy": 50.18181818181818,
+      "withTashkeel": 35.214446952595935,
+      "truthChars": 275
+    },
+    {
+      "id": "chrome-urdu-nastaliq-crooked5",
+      "doc": "Urdu Nastaliq",
+      "variant": "crooked5",
+      "langs": [
+        "ur"
+      ],
+      "seconds": 3.936,
+      "accuracy": 83.01886792452831,
+      "withTashkeel": 83.01886792452831,
+      "truthChars": 318
+    },
+    {
+      "id": "chrome-urdu-nastaliq-crooked8",
+      "doc": "Urdu Nastaliq",
+      "variant": "crooked8",
+      "langs": [
+        "ur"
+      ],
+      "seconds": 3.956,
+      "accuracy": 80.50314465408806,
+      "withTashkeel": 80.50314465408806,
+      "truthChars": 318
+    },
+    {
+      "id": "chrome-urdu-nastaliq-shadow",
+      "doc": "Urdu Nastaliq",
+      "variant": "shadow",
+      "langs": [
+        "ur"
+      ],
+      "seconds": 3.975,
+      "accuracy": 83.01886792452831,
+      "withTashkeel": 83.01886792452831,
+      "truthChars": 318
+    },
+    {
+      "id": "chrome-urdu-nastaliq-straight",
+      "doc": "Urdu Nastaliq",
+      "variant": "straight",
+      "langs": [
+        "ur"
+      ],
+      "seconds": 3.951,
+      "accuracy": 83.01886792452831,
+      "withTashkeel": 83.01886792452831,
+      "truthChars": 318
+    }
+  ]
+}

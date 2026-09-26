@@ -91,7 +91,9 @@ CHROME_DOCS = [
          lang="en", dir="ltr", languages=["en"], flags={}),
 ]
 
-SCAN_SOURCES = ["chrome-tashkeel-amiri", "chrome-urdu-nastaliq", "chrome-persian-vazirmatn"]
+# Scan and OCR benchmark: plain Arabic, full tashkeel, Nastaliq Urdu, Persian, mixed Arabic/English.
+SCAN_SOURCES = ["chrome-news-amiri", "chrome-tashkeel-amiri", "chrome-urdu-nastaliq", "chrome-persian-vazirmatn",
+                "chrome-mixed-naskh"]
 
 ENCRYPTED = [
     ("chrome-news-amiri", "RC4-128", "zood-rc4-128"),
