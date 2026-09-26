@@ -25,6 +25,7 @@ import { RedactPanel } from './RedactPanel';
 import { ProtectPanel } from './ProtectPanel';
 // Edit tool.
 import { EditPanel } from './EditPanel';
+import { MarksPanel } from './MarksPanel';
 import { LinkConfirmSheet } from './LinkSheets';
 
 const wide = () => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 900px)').matches;
@@ -96,11 +97,13 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
   const redactOpen = mine && panel?.tool === 'redact';
   const protectOpen = mine && panel?.tool === 'protect';
   const signOpen = mine && panel?.tool === 'digital-signature';
+  // Page marks shares the side slot too.
+  const marksOpen = mine && panel?.tool === 'page-marks';
   // Signatures of the current bytes (banner + Signatures panel), verified by the engine.
   const signatures = useSignatures(doc);
   const [sigPanel, setSigPanel] = useState(false);
-  const signSide = signOpen || (sigPanel && !compareOpen && !standardsOpen && !redactOpen && !protectOpen);
-  const sideOpen = compareOpen || standardsOpen || redactOpen || protectOpen || signSide;
+  const signSide = signOpen || (sigPanel && !compareOpen && !standardsOpen && !redactOpen && !protectOpen && !marksOpen);
+  const sideOpen = compareOpen || standardsOpen || redactOpen || protectOpen || marksOpen || signSide;
   useLayoutEffect(() => {
     panelRef.current = redactOpen ? 'redact' : protectOpen ? 'protect' : null;
   });
@@ -212,7 +215,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
           onClick={() => setInspectorOpen((v) => !v)}
         />
       </header>
-      <div className={`doc-body${pagesOpen && !organizing ? ' pages-open' : ''}${inspectorOpen && !sideOpen ? ' inspector-open' : ''}${compareOpen || signSide ? ' compare-open' : ''}${standardsOpen || redactOpen || protectOpen ? ' tool-panel-open' : ''}`}>
+      <div className={`doc-body${pagesOpen && !organizing ? ' pages-open' : ''}${inspectorOpen && !sideOpen ? ' inspector-open' : ''}${compareOpen || signSide ? ' compare-open' : ''}${standardsOpen || redactOpen || protectOpen || marksOpen ? ' tool-panel-open' : ''}`}>
         {pagesOpen && !organizing && (
           <PagesPanel
             api={api}
@@ -287,6 +290,8 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
           <ProtectPanel key={panel?.nonce} doc={doc} onClose={() => closePanel('protect')} />
         ) : standardsOpen ? (
           <StandardsPanel key={`${panel?.nonce}:${doc.revision}`} doc={doc} api={api} onClose={() => closePanel('standards')} />
+        ) : marksOpen ? (
+          <MarksPanel key={panel?.nonce} doc={doc} api={api} page={page} onClose={() => closePanel('page-marks')} />
         ) : signOpen ? (
           <SignPanel key={panel?.nonce} doc={doc} api={api} onClose={() => closePanel('digital-signature')} />
         ) : sigPanel ? (
