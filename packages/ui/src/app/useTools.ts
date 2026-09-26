@@ -28,13 +28,15 @@ export function useStartTool() {
 }
 
 export function runTool(tool: ToolDef, viewer: { exec(cmd: string): void } | undefined, docId?: string): boolean {
+  let ran = false;
   if (tool.viewer && viewer) {
     for (const cmd of tool.viewer.commands) viewer.exec(cmd);
-    return true;
+    ran = true;
   }
-  if (tool.core) {
+  // A viewer mode with a core panel beside it (Redact: EmbedPDF draws the marks, the engine applies them).
+  if (tool.core && (!ran || tool.panel)) {
     void tool.core.open(docId);
-    return true;
+    ran = true;
   }
-  return false;
+  return ran;
 }

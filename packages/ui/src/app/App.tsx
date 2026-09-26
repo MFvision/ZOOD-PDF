@@ -13,6 +13,7 @@ import { DocumentView } from './DocumentView';
 import { CommandPalette, ConvertSheet, SettingsSheet, TagsSheet, ToolsSheet } from './Sheets';
 import { Sheet, Toasts } from './primitives';
 import { Icon } from './icons';
+import { PasswordPrompt } from './ProtectPanel';
 import { claimDrop, setPendingCreateFiles } from '../services/toolSheets';
 import { CreateSheet } from '../tools/create/CreateSheet';
 import { createKind } from '../tools/create/create';
@@ -43,9 +44,22 @@ export function App() {
   const combineInto = useCallback(
     async (docId: string, files: OpenedFile[]) => {
       try {
+        // Protected files go through our password prompt first; a cancelled one is left out.
+        const unlocked: (OpenedFile & { password?: string })[] = [];
+        for (const f of files) {
+          const lock = await app.unlockFile(f.name, f.bytes);
+          if (lock.ok) unlocked.push({ ...f, ...(lock.password !== undefined ? { password: lock.password } : {}) });
+        }
+        if (!unlocked.length) return;
         const res = await app.coreEdit<{ inserted: number }>(
           docId,
-          [{ method: 'pages.combine', params: { files: files.map((f) => ({ title: f.name })) }, blobs: files.map((f) => f.bytes) }],
+          [
+            {
+              method: 'pages.combine',
+              params: { files: unlocked.map((f) => ({ title: f.name, ...(f.password !== undefined ? { password: f.password } : {}) })) },
+              blobs: unlocked.map((f) => f.bytes),
+            },
+          ],
           t('organize.action.combine'),
         );
         if (res) app.toast(t('organize.inserted', { count: res.json.inserted }), 'success');
@@ -215,6 +229,7 @@ export function App() {
           </div>
         </div>
       )}
+      <PasswordPrompt />
       {dragging && activeDoc && state.documents[activeDoc] && (
         <div className="drop-overlay drop-split" data-testid="drop-split" aria-hidden="true">
           <div className={`drop-half glass-strong${dropHalf === 'combine' ? ' hot' : ''}`} data-drop="combine">

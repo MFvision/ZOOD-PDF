@@ -16,9 +16,13 @@ mod render;
 mod sign;
 mod standards;
 mod text;
+// Redact tool (warraq-redact)
+mod redact;
 // Export and Compare (warraq-office).
 mod compare;
 mod export;
+// Edit tool (warraq-edit).
+mod edit;
 
 /// Every namespace's `register` function.
 pub const NAMESPACES: &[fn(&mut Registry)] = &[
@@ -30,11 +34,15 @@ pub const NAMESPACES: &[fn(&mut Registry)] = &[
     standards::register,
     sign::register,
     text::register,
+    // Redact tool (warraq-redact)
+    redact::register,
     // Create PDF
     create::register,
     // Export and Compare (warraq-office).
     export::register,
     compare::register,
+    // Edit tool (warraq-edit).
+    edit::register,
     #[cfg(feature = "render")]
     render::register,
 ];

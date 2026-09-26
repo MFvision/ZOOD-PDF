@@ -21,10 +21,13 @@ warraq-sign = { path = "../warraq-sign" }
 der = { version = "0.7", default-features = false }
 zeroize = "1"
 warraq-text = { path = "../warraq-text" }
+warraq-redact = { path = "../warraq-redact" }
 # Create PDF (layout engine + readers); bundles the Amiri/Cairo/Inter fonts.
 warraq-create = { path = "../warraq-create" }
 # Export (DOCX/XLSX/PPTX/HTML/Markdown/text) and Compare.
 warraq-office = { path = "../warraq-office" }
+# Edit tool (edit.*).
+warraq-edit = { path = "../warraq-edit" }
 # Organize / Compress: content geometry (text boxes via warraq-text's interpreter), picture
 # pages and image recompression. All MIT/Apache-2.0 (zune-*: MIT OR Apache-2.0 OR Zlib).
 flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }

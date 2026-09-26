@@ -61,3 +61,18 @@ describe('tool registry', () => {
     closeToolPanel('combine');
   });
 });
+
+// Redact / Protect
+describe('engine-backed panels', () => {
+  it('Protect no longer opens the EmbedPDF protection modal; Redact keeps EmbedPDF marks and applies in the engine', () => {
+    expect(toolById('protect')?.viewer).toBeUndefined();
+    expect(toolById('protect')?.panel).toBe('protect');
+    expect(toolById('redact')?.viewer?.commands).toEqual(['mode:redact']);
+    expect(toolById('redact')?.panel).toBe('redact');
+    for (const id of ['redact', 'protect'] as ToolId[]) {
+      void toolById(id)!.core!.open('doc-2');
+      expect(currentToolPanel()).toMatchObject({ tool: id, docId: 'doc-2' });
+      closeToolPanel(id);
+    }
+  });
+});

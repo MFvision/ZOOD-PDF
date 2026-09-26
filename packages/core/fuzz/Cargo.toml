@@ -15,8 +15,10 @@ lopdf = { version = "0.45", default-features = false }
 warraq-pdf = { path = "../crates/warraq-pdf" }
 warraq-sign = { path = "../crates/warraq-sign" }
 warraq-text = { path = "../crates/warraq-text" }
+warraq-redact = { path = "../crates/warraq-redact" }
 warraq-create = { path = "../crates/warraq-create" }
 warraq-office = { path = "../crates/warraq-office" }
+warraq-edit = { path = "../crates/warraq-edit" }
 serde_json = "1"
 
 # Standalone: not a member of the engine workspace (see ../Cargo.toml `exclude`).
@@ -71,6 +73,13 @@ bench = false
 [[bin]]
 name = "cmap"
 path = "fuzz_targets/cmap.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "redact_content"
+path = "fuzz_targets/redact_content.rs"
 test = false
 doc = false
 bench = false
@@ -155,6 +164,29 @@ bench = false
 [[bin]]
 name = "zip_read"
 path = "fuzz_targets/zip_read.rs"
+test = false
+doc = false
+bench = false
+
+# warraq-edit (Edit tool): byte-faithful content lexer/rewriter, link URL check with Punycode,
+# JPEG/PNG picture decoding.
+[[bin]]
+name = "content_rewrite"
+path = "fuzz_targets/content_rewrite.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "url_check"
+path = "fuzz_targets/url_check.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "picture_decode"
+path = "fuzz_targets/picture_decode.rs"
 test = false
 doc = false
 bench = false

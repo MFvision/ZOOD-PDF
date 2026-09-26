@@ -74,13 +74,21 @@ function tool(
 }
 
 export const TOOLS: readonly ToolDef[] = [
-  tool('edit', 'edit', 'blue'),
+  // Edit: core-backed surface over the viewer (warraq-edit), see app/EditPanel.tsx.
+  tool('edit', 'edit', 'blue', { status: 'ready', core: { open: (docId) => openToolPanel('edit', docId) } }),
   // Organize / Combine / Compress: engine-backed panels (see tools/panels.ts).
   tool('organize', 'organize', 'indigo', { status: 'ready', core: { open: (docId) => openToolPanel('organize', docId) } }),
   tool('comment', 'comment', 'yellow', { status: 'ready', viewer: { commands: ['mode:annotate'] } }),
   tool('fill-sign', 'sign', 'purple', { status: 'ready', viewer: { commands: ['mode:insert'] } }),
-  tool('protect', 'lock', 'graphite', { status: 'ready', viewer: { commands: ['document:protect'] } }),
-  tool('redact', 'redact', 'red', { status: 'ready', viewer: { commands: ['mode:redact'] } }),
+  // Redact: EmbedPDF draws the marks (mode:redact) and the engine applies them from the side panel.
+  // Protect: engine only (AES-256), in the side panel.
+  tool('protect', 'lock', 'graphite', { status: 'ready', panel: 'protect', core: { open: (docId) => openToolPanel('protect', docId) } }),
+  tool('redact', 'redact', 'red', {
+    status: 'ready',
+    viewer: { commands: ['mode:redact'] },
+    panel: 'redact',
+    core: { open: (docId) => openToolPanel('redact', docId) },
+  }),
   // Export and Compare: core-backed panels (warraq-office), see tools/panels.ts.
   tool('export', 'export', 'green', { status: 'ready', core: { open: (docId) => openToolPanel('export', docId) } }),
   // Create PDF: warraq-create (own layout engine) via `create.fromFiles`; sheet in tools/create.

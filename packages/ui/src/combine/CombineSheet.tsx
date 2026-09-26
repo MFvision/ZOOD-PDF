@@ -16,6 +16,8 @@ import { errorText } from '../organize/errors';
 
 interface Item extends OpenedFile {
   key: string;
+  /** Password typed into our prompt for a protected file. */
+  password?: string;
 }
 
 let seq = 0;
@@ -37,8 +39,13 @@ export function CombineSheet({ docId, initial = [], onClose }: { docId?: string;
     const files = await app.host.openFiles({ multiple: true, accept: ['application/pdf', '.pdf'] });
     const ok: Item[] = [];
     for (const f of files) {
-      if (isPdfBytes(f.bytes)) ok.push({ ...f, key: `f${++seq}` });
-      else app.toast(t('organize.notPdf', { name: f.name }), 'error');
+      if (!isPdfBytes(f.bytes)) {
+        app.toast(t('organize.notPdf', { name: f.name }), 'error');
+        continue;
+      }
+      // Protected files: our password prompt (checked by the engine); cancelled = left out.
+      const lock = await app.unlockFile(f.name, f.bytes);
+      if (lock.ok) ok.push({ ...f, key: `f${++seq}`, ...(lock.password !== undefined ? { password: lock.password } : {}) });
     }
     setItems((list) => [...list, ...ok]);
   };
@@ -61,14 +68,14 @@ export function CombineSheet({ docId, initial = [], onClose }: { docId?: string;
         const at = position === 'end' ? pageCount : position === 'start' ? 0 : Math.min(pageCount, Math.max(0, after));
         const res = await app.coreEdit<{ inserted: number }>(
           docId,
-          [{ method: 'pages.combine', params: { at, files: items.map((f) => ({ title: f.name })) }, blobs: items.map((f) => f.bytes) }],
+          [{ method: 'pages.combine', params: { at, files: items.map((f) => ({ title: f.name, ...(f.password !== undefined ? { password: f.password } : {}) })) }, blobs: items.map((f) => f.bytes) }],
           t('organize.action.combine'),
         );
         if (res) app.toast(t('organize.inserted', { count: res.json.inserted }), 'success');
       } else {
         const res = await app.engine().callStatic<{ pageCount: number }>(
           'pdf.merge',
-          { titles: items.map((f) => f.name) },
+          { titles: items.map((f) => f.name), passwords: items.map((f) => f.password ?? null) },
           items.map((f) => f.bytes.slice()),
         );
         const out = res.blobs[0];

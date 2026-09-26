@@ -10,6 +10,7 @@ import { getHost, type HostBridge, type OpenedFile } from './host';
 import { engine as sharedEngine, type EngineClient } from './engine';
 import { isPdfBytes } from './files';
 import { looksProtected, rebaseOnOriginal, saveStrategy } from './save';
+import { encryptionOf, passwordOpens } from './redact';
 import { runOnBytes, type CoreCall, type CoreResult } from './coreOps';
 import { createHistory, type History } from './history';
 import type { ViewerApi } from '../viewer/Viewer';
@@ -44,8 +45,9 @@ export interface AppServices {
   /** The engine client (shared worker; core tools: Organize, Combine, Compress, Export, Compare…). */
   engine(): EngineClient;
   /** The document's bytes including unsaved viewer (PDFium) edits, folded in as an incremental update
-   * (`doc.rebase` on the current bytes; PDFium's whole rewrite after an applied redaction). */
-  currentBytes(docId: string): Promise<Uint8Array>;
+   * (`doc.rebase` on the current bytes; PDFium's whole rewrite after an applied redaction). `fromViewer`:
+   * export from the viewer even without edits (pending redaction marks live only there). */
+  currentBytes(docId: string, opts?: { fromViewer?: boolean }): Promise<Uint8Array>;
   /** Runs engine calls on the current bytes WITHOUT changing the document (extract, split, compress…). */
   runOnDocument<J = unknown>(docId: string, calls: CoreCall[]): Promise<CoreResult<J>>;
   /** Runs mutating engine calls; the result replaces the document (undoable). Null when nothing changed. */
@@ -57,6 +59,16 @@ export interface AppServices {
   openNewDocument(name: string, bytes: Uint8Array): Promise<void>;
   /** Saves bytes made by a tool as a new file (always asks where). */
   saveNewFile(name: string, bytes: Uint8Array, mimeType?: string): Promise<boolean>;
+  // ---- Redact / Protect ----
+  /** A core tool produced new bytes by a whole rewrite (redaction, sanitising, protection): the viewer
+   * reloads from them, and the recents picture and stored bytes of the old content are dropped. */
+  replaceWithCoreBytes(docId: string, bytes: Uint8Array, opts?: { password?: string | null }): Promise<void>;
+  /** Pending password prompt (our own sheet; EmbedPDF never asks). */
+  passwordRequest: { id: number; name: string; wrong: boolean } | null;
+  answerPassword(password: string | null): void;
+  /** Asks for a protected file's password with our prompt (checked by the engine). `ok: false` = the
+   * user cancelled; `password` is undefined for files that need none. For files a tool reads (Combine). */
+  unlockFile(name: string, bytes: Uint8Array): Promise<{ ok: boolean; password?: string }>;
 }
 
 const Ctx = createContext<AppServices | null>(null);
@@ -133,6 +145,36 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
     return h;
   };
   const sensitive = useRef(new Set<string>());
+  /** Documents whose pictures must not be kept (opened with a password, redacted, protected). */
+  const noPreview = useRef(new Set<string>());
+  const [pwRequest, setPwRequest] = useState<{ id: number; name: string; wrong: boolean; resolve: (pw: string | null) => void } | null>(null);
+  const pwSeq = useRef(0);
+  const askPassword = useCallback(
+    (name: string, wrong: boolean) =>
+      new Promise<string | null>((resolve) => setPwRequest({ id: (pwSeq.current += 1), name, wrong, resolve })),
+    [],
+  );
+  /** Our own password prompt, checked by the engine, before anything reaches EmbedPDF. */
+  const unlock = useCallback(
+    async (name: string, bytes: Uint8Array): Promise<{ ok: boolean; password?: string }> => {
+      let needs = false;
+      try {
+        needs = (await encryptionOf(getEngine(), bytes)).needsPassword;
+      } catch {
+        return { ok: true }; // no engine (development build): the viewer handles it
+      }
+      if (!needs) return { ok: true };
+      let wrong = false;
+      for (let attempt = 0; attempt < 50; attempt++) {
+        const pw = await askPassword(name, wrong);
+        if (pw === null) return { ok: false };
+        if (await passwordOpens(getEngine(), bytes, pw)) return { ok: true, password: pw };
+        wrong = true;
+      }
+      return { ok: false };
+    },
+    [askPassword],
+  );
   const stateRef = useRef(state);
   useLayoutEffect(() => {
     stateRef.current = state;
@@ -184,17 +226,20 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
           continue;
         }
         const id = newDocId();
+        const lock = await unlock(f.name, f.bytes);
+        if (!lock.ok) continue;
+        if (lock.password !== undefined) noPreview.current.add(id);
         let recentId: string | undefined;
         try {
           recentId = (await recents.add({ name: f.name, bytes: f.bytes })).id;
         } catch {
           /* recents are a convenience (IndexedDB may be unavailable) */
         }
-        dispatch({ type: 'OPEN_DOCUMENT', id, name: f.name, bytes: f.bytes, handle: f.handle, recentId, tool });
+        dispatch({ type: 'OPEN_DOCUMENT', id, name: f.name, bytes: f.bytes, handle: f.handle, recentId, tool, password: lock.password });
         void refreshRecents();
       }
     },
-    [recents, refreshRecents, t, toast],
+    [recents, refreshRecents, t, toast, unlock],
   );
 
   const openFromHost = useCallback(async (tool?: string) => {
@@ -220,17 +265,22 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
         await openFromHost();
         return;
       }
+      const lock = await unlock(item.name, bytes);
+      if (!lock.ok) return;
       await recents.add({ name: item.name, bytes });
-      dispatch({ type: 'OPEN_DOCUMENT', id: newDocId(), name: item.name, bytes, recentId: item.id });
+      const id = newDocId();
+      if (lock.password !== undefined) noPreview.current.add(id);
+      dispatch({ type: 'OPEN_DOCUMENT', id, name: item.name, bytes, recentId: item.id, password: lock.password });
       void refreshRecents();
     },
-    [openFromHost, recents, refreshRecents, t, toast],
+    [openFromHost, recents, refreshRecents, t, toast, unlock],
   );
 
   const closeDocument = useCallback((id: string) => {
     viewers.current.delete(id);
     histories.current.delete(id);
     sensitive.current.delete(id);
+    noPreview.current.delete(id);
     dispatch({ type: 'CLOSE_DOCUMENT', id });
   }, []);
 
@@ -248,8 +298,13 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
           const api = viewers.current.get(id);
           if (!api) throw new Error('viewer not ready');
           const pdfium = await api.exportBytes();
-          const strategy = saveStrategy({ original: doc.originalBytes, pdfium, redacted: sensitive.current.has(id) });
-          out = strategy.mode === 'rewrite' ? pdfium : (await rebaseOnOriginal(getEngine(), doc.originalBytes, pdfium)).bytes;
+          const strategy = saveStrategy({
+            original: doc.originalBytes,
+            pdfium,
+            redacted: sensitive.current.has(id),
+            encrypted: looksProtected(doc.originalBytes),
+          });
+          out = strategy.mode === 'rewrite' ? pdfium : (await rebaseOnOriginal(getEngine(), doc.originalBytes, pdfium, doc.password)).bytes;
         } else {
           out = doc.originalBytes;
         }
@@ -260,7 +315,7 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
         histories.current.get(id)?.clear();
         setHistoryTick((n) => n + 1);
         if (doc.recentId) {
-          if (sensitive.current.has(id) || looksProtected(out)) {
+          if (sensitive.current.has(id) || noPreview.current.has(id) || looksProtected(out)) {
             await recents.forgetThumbnail(doc.recentId);
           } else {
             await recents.putBytes(doc.recentId, out);
@@ -285,16 +340,21 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
   const viewer = useCallback((docId: string) => viewers.current.get(docId), []);
 
   const currentBytes = useCallback(
-    async (docId: string): Promise<Uint8Array> => {
+    async (docId: string, opts: { fromViewer?: boolean } = {}): Promise<Uint8Array> => {
       const doc = stateRef.current.documents[docId];
       if (!doc) throw new Error('document is not open');
-      if (!doc.edited || doc.warraqOwnsDocument) return doc.bytes;
+      if (!opts.fromViewer && (!doc.edited || doc.warraqOwnsDocument)) return doc.bytes;
       const api = viewers.current.get(docId);
-      if (!api) return doc.bytes;
+      if (!api) {
+        if (opts.fromViewer) throw new Error('viewer not ready');
+        return doc.bytes;
+      }
       const pdfium = await api.exportBytes();
       // Redaction must not leave the old content in the file: keep PDFium's whole rewrite.
       if (sensitive.current.has(docId)) return pdfium;
-      return (await rebaseOnOriginal(getEngine(), doc.bytes, pdfium)).bytes;
+      if (opts.fromViewer) return pdfium;
+      // Protected files: the engine opens the current bytes with the password and keeps the key.
+      return (await rebaseOnOriginal(getEngine(), doc.bytes, pdfium, doc.password)).bytes;
     },
     [],
   );
@@ -311,7 +371,7 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
       if (!doc) return null;
       const base = await currentBytes(docId);
       if (base !== doc.bytes) replaceBytes(docId, doc.bytes, base, 'viewer');
-      const res = await runOnBytes<J>(getEngine(), base, calls);
+      const res = await runOnBytes<J>(getEngine(), base, calls, doc.password);
       if (!res.bytes || res.bytes.byteLength === 0) return null;
       replaceBytes(docId, base, res.bytes, label);
       return res;
@@ -410,9 +470,32 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
     },
     storeThumbnail: async (docId, png) => {
       const rid = stateRef.current.documents[docId]?.recentId;
-      if (!rid || sensitive.current.has(docId)) return;
+      if (!rid || sensitive.current.has(docId) || noPreview.current.has(docId)) return;
       await recents.setThumbnail(rid, png);
       await refreshRecents();
+    },
+    replaceWithCoreBytes: async (docId, bytes, opts = {}) => {
+      noPreview.current.add(docId);
+      // Not undoable: the earlier bytes (unredacted, or with the old protection) must not come back.
+      histories.current.delete(docId);
+      setHistoryTick((n) => n + 1);
+      dispatch({ type: 'CORE_REPLACED_BYTES', id: docId, bytes, wholeRewrite: true, password: opts.password });
+      const rid = stateRef.current.documents[docId]?.recentId;
+      if (rid) {
+        try {
+          await recents.forgetThumbnail(rid);
+        } catch {
+          /* IndexedDB unavailable */
+        }
+        await refreshRecents();
+      }
+    },
+    passwordRequest: pwRequest ? { id: pwRequest.id, name: pwRequest.name, wrong: pwRequest.wrong } : null,
+    unlockFile: unlock,
+    answerPassword: (pw) => {
+      const r = pwRequest;
+      setPwRequest(null);
+      r?.resolve(pw);
     },
   };
 

@@ -31,6 +31,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "aho-corasick"
+version = "1.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c982642fa9e8606056828ee9a8505737230110bb1099153c79efe865c59d12ba"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "alloc-no-stdlib"
 version = "2.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1086,6 +1095,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "regex"
+version = "1.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f020237b6c8eed93db2e2cb53c00c60a8e1bc73da7d073199a1180401450218d"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "regex-automata",
+ "regex-syntax",
+]
+
+[[package]]
+name = "regex-automata"
+version = "0.4.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad8553b9b26413251cbf30e620595c7a41b3887f03da04579c0e6b0d6a06b4b2"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "regex-syntax",
+]
+
+[[package]]
+name = "regex-syntax"
+version = "0.8.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
+
+[[package]]
 name = "rfc6979"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1482,6 +1520,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "warraq-edit"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "harfrust",
+ "lopdf",
+ "png",
+ "read-fonts 0.43.3",
+ "serde",
+ "serde_json",
+ "subsetter",
+ "thiserror",
+ "unicode-bidi",
+ "unicode-linebreak",
+ "warraq-create",
+ "warraq-pdf",
+ "warraq-text",
+]
+
+[[package]]
 name = "warraq-fuzz"
 version = "0.0.0"
 dependencies = [
@@ -1489,8 +1547,10 @@ dependencies = [
  "lopdf",
  "serde_json",
  "warraq-create",
+ "warraq-edit",
  "warraq-office",
  "warraq-pdf",
+ "warraq-redact",
  "warraq-sign",
  "warraq-text",
 ]
@@ -1521,6 +1581,22 @@ dependencies = [
  "rc4",
  "sha2 0.11.0",
  "thiserror",
+]
+
+[[package]]
+name = "warraq-redact"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "lopdf",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "warraq-pdf",
+ "warraq-text",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -1693,3 +1769,18 @@ name = "zmij"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
+
+[[package]]
+name = "zune-core"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d56377fd46368984a170bc5aac5567e52ca5da874caa60bea39fcbca78fb658b"
+
+[[package]]
+name = "zune-jpeg"
+version = "0.5.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27bc9d5b815bc103f142aa054f561d9187d191692ec7c2d1e2b4737f8dbd7296"
+dependencies = [
+ "zune-core",
+]

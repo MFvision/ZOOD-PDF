@@ -6,12 +6,15 @@ members = [
   "crates/warraq-render",
   "crates/warraq-sign",
   "crates/warraq-core",
+  "crates/warraq-redact",
   # Create PDF (layout engine + readers)
   "crates/warraq-create",
   # Standards tool (PDF/A, PDF/X-4, preflight)
   "crates/warraq-standards",
   # Export (DOCX/XLSX/PPTX/HTML/Markdown/text) and Compare.
   "crates/warraq-office",
+  # Edit tool: byte-faithful content rewriting, text reflow, pictures, links.
+  "crates/warraq-edit",
 ]
 # cargo-fuzz crate: nightly-only, built separately (`cd fuzz && cargo fuzz run load`).
 exclude = ["fuzz"]

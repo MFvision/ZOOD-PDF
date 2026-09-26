@@ -320,6 +320,16 @@ Direct dependencies added by `warraq-core/src/ops` (picture pages, compression).
 | png | 0.18.1 | MIT OR Apache-2.0 | PNG decoding for "Insert picture" (alpha → soft mask) |
 | flate2 | 1.1.10 | MIT OR Apache-2.0 | Flate for picture pages, recompressed streams and object streams |
 
+### Edit tool (warraq-edit)
+
+| Component | Version | Licence | Used for |
+| --- | --- | --- | --- |
+| subsetter | 0.2.6 | MIT OR Apache-2.0 | Subsets (and instances variable) Amiri/Cairo/Inter before embedding them in edited pages |
+| write-fonts | 0.48.1 | MIT OR Apache-2.0 | Transitive dependency (subsetter, variable-font instancing) |
+| unicode-linebreak | 0.1.5 | Apache-2.0 | UAX #14 line breaking when text is reflowed into a box |
+| harfrust, read-fonts, unicode-bidi, png, flate2 | see above | MIT / Apache-2.0 | Shaping, font tables, bidi reordering, PNG pictures, stream compression |
+| Amiri Regular/Bold, Cairo (variable), Inter (variable) | `packages/core/assets/fonts/` | OFL-1.1 | Compiled into the engine; subsets embedded into PDFs when the page's own font lacks glyphs. OFL texts ship as `licenses/font-*-OFL.txt` |
+
 ## Fonts
 
 Test corpus fonts live in `tests/corpus/fonts/<family>/` with their `OFL.txt` (SIL Open Font License 1.1). They are
