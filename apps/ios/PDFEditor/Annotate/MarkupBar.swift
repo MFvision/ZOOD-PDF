@@ -15,11 +15,13 @@ struct MarkupBar: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        // The tools scroll under a Done that stays put at the end; the
-        // scroll view fills the width (its own ideal width would be its
-        // content's, past the screen's edge).
-        ZStack(alignment: .trailing) {
-            ScrollView(.horizontal, showsIndicators: false) {
+        // The tools scroll under a Done that stays put at the end. The bar
+        // is cut to the width it is given: a horizontal scroll view's own
+        // ideal width is its content's, and a stack would grow to it, past
+        // the screen's edge (which is where Done ended up in a test run).
+        GeometryReader { geometry in
+            ZStack(alignment: .trailing) {
+                ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Space.x1) {
                     barButton("Undo", "arrow.uturn.backward", id: "markup.undo", enabled: undoManager?.canUndo == true) { undoManager?.undo() }
                     barButton("Redo", "arrow.uturn.forward", id: "markup.redo", enabled: undoManager?.canRedo == true) { undoManager?.redo() }
@@ -42,7 +44,7 @@ struct MarkupBar: View {
                 .padding(.leading, Space.x3)
                 .padding(.trailing, 88)
             }
-            .frame(maxWidth: .infinity)
+            .frame(width: geometry.size.width, height: 44)
             .accessibilityIdentifier("markup.bar")
             Button("Done", action: done)
                 .font(TextStyle.headline)
@@ -51,8 +53,9 @@ struct MarkupBar: View {
                 .frame(height: 44)
                 .background(MarkupChrome.bar)
                 .accessibilityIdentifier("markup.done")
+            }
+            .frame(width: geometry.size.width, height: 44)
         }
-        .frame(maxWidth: .infinity)
         .frame(height: 44)
         .background(MarkupChrome.bar)
         .overlay(alignment: .bottom) {
