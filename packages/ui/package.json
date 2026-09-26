@@ -19,7 +19,8 @@
     "@embedpdf/react-pdf-viewer": "2.15.1",
     "@embedpdf/snippet": "2.15.1",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "tesseract.js": "7.0.0"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",

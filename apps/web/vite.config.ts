@@ -59,7 +59,9 @@ function shellServiceWorker(): Plugin {
         }
       };
       walk(publicDir);
-      const list = [...files].sort();
+      // Scan & OCR assets (~40 MB of models and cores) are cached on first use, not at install.
+      const lazy = [...files].filter((f) => f.startsWith('./ocr/')).sort();
+      const list = [...files].filter((f) => !f.startsWith('./ocr/')).sort();
       const version = crypto.createHash('sha256').update(list.join('\n')).digest('hex').slice(0, 12);
       const template = fs.readFileSync(path.join(here, 'src/sw-template.js'), 'utf8');
       this.emitFile({
@@ -68,7 +70,8 @@ function shellServiceWorker(): Plugin {
         source: template
           .replace(/^\/\* global .*\*\/\n/, '')
           .replaceAll('__ZOOD_VERSION__', version)
-          .replaceAll('__ZOOD_SHELL__', JSON.stringify(list)),
+          .replaceAll('__ZOOD_SHELL__', JSON.stringify(list))
+          .replaceAll('__ZOOD_LAZY__', JSON.stringify(lazy)),
       });
     },
   };

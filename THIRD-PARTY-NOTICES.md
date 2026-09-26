@@ -29,6 +29,20 @@ shipped package is missing here or is not under an allowed licence.
 | @embedpdf/default-stamps | 0.0.1 | MIT | Standard rubber-stamp library (English `stamps.pdf`), served locally |
 | preact | 10.29.8 | MIT | Rendering library bundled inside @embedpdf/snippet |
 | tailwind-merge | 3.7.0 | MIT | Class-name utility bundled inside @embedpdf/snippet |
+| tesseract.js | 7.0.0 | Apache-2.0 | Scan & OCR: recogniser client and its worker (`ocr/worker.min.js`, served locally) |
+| tesseract.js-core | 7.0.0 | Apache-2.0 | Scan & OCR: Tesseract 5 + Leptonica compiled to WebAssembly (`ocr/core/*-lstm.wasm.js`, served locally). Bundles Tesseract (Apache-2.0), Leptonica (BSD-2-Clause), zlib (Zlib), libpng (PNG Reference Library licence, permissive), libjpeg-turbo (IJG/BSD-3-Clause), libwebp (BSD-3-Clause) |
+| bmp-js | 0.1.0 | MIT | Bundled inside the tesseract.js worker |
+| idb-keyval | 6.3.0 | Apache-2.0 | Bundled inside the tesseract.js worker (model cache; switched off: `cacheMethod: 'none'`) |
+| is-url | 1.2.4 | MIT | tesseract.js dependency |
+| regenerator-runtime | 0.13.11 | MIT | Bundled inside the tesseract.js worker |
+| wasm-feature-detect | 1.9.0 | Apache-2.0 | tesseract.js picks the SIMD / relaxed-SIMD core |
+| zlibjs | 0.3.1 | MIT | Bundled inside the tesseract.js worker |
+
+OCR language models (not npm): `ara`, `eng`, `fas`, `urd` `.traineddata` from
+[tesseract-ocr/tessdata](https://github.com/tesseract-ocr/tessdata) tag 4.1.0 ("best-int": tessdata_best LSTM
+models converted to integer), Apache-2.0, 27.9 MB in total. They are not committed: `scripts/fetch-ocr-models.sh`
+downloads them into `.cache/ocr-models` and verifies pinned SHA-256 checksums; builds ship them as `ocr/lang/*`
+with `LICENSE.txt`.
 
 Build and test tools (not shipped): Vite 8.3.1, @vitejs/plugin-react 6.1.1, Vitest 5.0.2, jsdom 30.1.1,
 @testing-library/react 16.3.3, fake-indexeddb 6.2.5, @playwright/test 1.56.1, TypeScript 5.9, ESLint 9,
@@ -395,8 +409,21 @@ part of any artefact.
 
 ## iOS app (`apps/ios`)
 
-No third-party Swift packages. The app links only Apple system frameworks (SwiftUI, UIKit, PDFKit,
-PencilKit, VisionKit, Vision, AVFoundation, Core Image, Core Text, WidgetKit, App Intents, Core Spotlight,
-Security) and the ZOOD PDF engine (`warraq-core` static library in `WarraqCore.xcframework`, whose Rust
-dependencies are listed above). The app icon is the project's own artwork (`apps/web/public/icons`).
+No third-party Swift packages. The app links Apple system frameworks (SwiftUI, UIKit, PDFKit,
+PencilKit, VisionKit, Vision, AVFoundation, MediaPlayer, CryptoKit, Foundation Models (weak, iOS 26+),
+Core Image, Core Text, WidgetKit, App Intents, Core Spotlight), the ZOOD PDF engine (`warraq-core` static
+library in `WarraqCore.xcframework`, whose Rust dependencies are listed above) and, in device builds only:
+
+| Component | Version | Licence | Use |
+| --- | --- | --- | --- |
+| llama.cpp (incl. ggml) | release b11200, `llama-b11200-xcframework.zip`, SHA-256 `c62cae37316b12938cde3224493e008d121635bf759ddd08fbcdd587b3b8808c` | MIT | Runs the portable on-device model (ADR 0015); fetched by `scripts/ios/fetch-llama.sh` |
+
+Models are **not shipped**; the user downloads one on request (or imports a file):
+
+| Model | File (pinned revision, SHA-256) | Licence |
+| --- | --- | --- |
+| Qwen3-1.7B, GGUF Q4_K_M (quantised by Unsloth) | `unsloth/Qwen3-1.7B-GGUF@d7f544ee…` `Qwen3-1.7B-Q4_K_M.gguf`, 1,107,409,472 bytes, `b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897` | Apache-2.0 |
+| Qwen3-0.6B, GGUF Q4_K_M ("light") | `unsloth/Qwen3-0.6B-GGUF@50968a44…` `Qwen3-0.6B-Q4_K_M.gguf`, 396,705,472 bytes, `ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a` | Apache-2.0 |
+
+Voices are the system's own (`AVSpeechSynthesizer`); Apple's on-device model is part of the OS. The app icon is the project's own artwork (`apps/web/public/icons`).
 Build/test tools (not shipped): XcodeGen (MIT), the Swift toolchain (Apache-2.0) used for Linux tests.

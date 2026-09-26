@@ -7,6 +7,7 @@ use serde_json::Value;
 
 mod create;
 mod doc;
+mod ocr;
 mod organize;
 mod pages;
 mod pdf;
@@ -34,6 +35,7 @@ pub const NAMESPACES: &[fn(&mut Registry)] = &[
     standards::register,
     sign::register,
     text::register,
+    ocr::register,
     // Redact tool (warraq-redact)
     redact::register,
     // Create PDF

@@ -47,6 +47,10 @@ jobs:
         working-directory: apps/desktop/speech
         run: cargo test
 
+      - name: OCR language models (pinned checksums)
+        shell: bash
+        run: bash scripts/fetch-ocr-models.sh
+
       - name: Desktop unit tests (incl. PDFKit print module compile)
         working-directory: apps/desktop/src-tauri
         run: cargo test

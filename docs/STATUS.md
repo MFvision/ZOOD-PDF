@@ -186,7 +186,7 @@ Measured on 2026-09-25 (21 non-scanned files; all at their floor of 99.80 %):
 | Synthetic shaper streams (Nastaliq cascades, Amiri kerning) | 2 | 100.00 % each |
 | Synthetic simple fonts (WinAnsi, `/Differences` names, form XObject) | 1 | 100.00 % |
 | Encrypted copies (RC4-128, AES-256 ×3 incl. Arabic password) | 4 | 100.00 % each |
-| Scans (12 variants) | — | not measured here (OCR is in the UI) |
+| Scans (20 variants) | — | measured by the OCR benchmark (see "Scan & OCR") |
 
 Caveat: the corpus was written together with the engine, and several engine rules came from failures it exposed
 (word gaps inside cursive words: first run 99.67 % news/Amiri, 99.06 % Nastaliq, 99.01 % Amiri kerning; the W7 case
@@ -196,7 +196,7 @@ unreadable by construction (Noto Naskh draws dots as separate glyphs shared by s
 cannot describe them): the generator now wraps such words in `/ActualText` (as real producers must) or uses Amiri.
 
 ### Not done / limits (honest)
-* Scanned PDFs are generated but not measured here (OCR belongs to the UI; no OCR accuracy numbers yet).
+* Scanned PDFs are measured by the OCR benchmark (section "Scan & OCR"), not by this gate.
 * No genuine Word/LibreOffice PDFs (see above); real-world producer quirks beyond the synthetic ones are untested.
 * Tables are recognised only from aligned text (no ruling-line analysis); 3+ columns of short prose lines could be
   read as a table. Paragraph breaks between equally long lines with uniform spacing are not detected (text is
@@ -351,18 +351,22 @@ possible; nothing about the UI is proven yet. What *was* compiled and tested her
 | Checked on Linux | How | Result |
 | --- | --- | --- |
 | `ZoodKit` package (engine wrapper + pure logic) compiled with Swift 6.3, Swift 6 language mode, `-strict-concurrency=complete -warnings-as-errors` | `bash scripts/ios/test-linux.sh` | builds clean |
-| FFI bridge to the real engine (`libwarraq_core.a`, feature `ffi`, cargo profile `ios`) through `warraq.h`: open/info, garbage → `parse_error`, rotate as incremental update (original bytes kept), delete/insert/move/extract, bad params / unknown method errors, `doc.rebase` (unchanged + incremental), AES-256 protect → `password_required` → reopen with user/owner password → remove, `pdf.merge`, `methods.list`, metadata, `text.plain`, 16 documents in parallel; `warraq.h` copy equals the engine header | swift-testing, `ZoodEngineTests` | 13 tests pass |
-| Arabic search normalisation (mirror of the web rules), page ranges with Arabic-Indic/Persian digits and «،», Umm al-Qura Hijri + Gregorian dates with locale numerals, safe file names (bidi-spoof removal), recents store (dedupe, cap, stars, tags, thumbnails, forget-thumbnail, path-escape), scan geometry (corner ordering, ID-1 real size, right-to-left book order), deep links, AI prompt/request body/SSE parsing | swift-testing, `ZoodCoreTests` | 30 tests pass |
-| Every app/widget/test source parses (`swiftc -parse`, Swift 6) | `bash scripts/ios/parse-check.sh` | 29 files parse |
-| String Catalogs: every key used in Swift exists in English and Arabic, Arabic plural forms (zero…other), no unused keys, App Shortcuts phrases in both languages | `python3 scripts/ios/check-strings.py` | 256 app keys, 13 widget keys, 7 phrases |
+| FFI bridge to the real engine (`libwarraq_core.a`, feature `ffi`, cargo profile `ios`) through `warraq.h`: open/info, garbage → `parse_error`, rotate as incremental update (original bytes kept), delete/insert/move/extract, bad params / unknown method errors, `doc.rebase` (unchanged + incremental), AES-256 protect → `password_required` → reopen with user/owner password → remove, `pdf.merge`, `methods.list`, metadata, `text.plain`, per-page texts and paragraph boxes (`text.extract`) for AI/read-aloud, 16 documents in parallel; `warraq.h` copy equals the engine header | swift-testing, `ZoodEngineTests` | 14 tests pass |
+| Arabic search normalisation (mirror of the web rules), page ranges with Arabic-Indic/Persian digits and «،», Umm al-Qura Hijri + Gregorian dates with locale numerals, safe file names (bidi-spoof removal), recents store (dedupe, cap, stars, tags, thumbnails, forget-thumbnail, path-escape), scan geometry (corner ordering, ID-1 real size, right-to-left book order), deep links (incl. `zoodpdf://read`) | swift-testing, `ZoodCoreTests` | 27 tests pass |
+| Local-first AI logic (ADR 0015): per-page chunking (no word cut, Arabic sentence marks), BM25 retrieval over Arabic-normalised/stemmed terms finding the right page for Arabic questions, budgets, prompt templates for ask/summarize/explain/translate (ar↔en direction)/key points, prompt-injection sanitising (`<\|im_…\|>`, `</excerpts>`), ChatML with thinking off, streaming think-block filter, UTF-8 reassembly of token bytes, citation parsing (`[p. 3]`, `[ص ٣]`, ranges; non-existent pages stay text), backend choice, pinned model catalog (revision, size, SHA-256, RAM threshold, imports), GGUF header check | swift-testing, `ZoodCoreTests` | 17 tests pass |
+| Autofill: profile derived values (first/last names, DOB Gregorian → Umm al-Qura Hijri), Saudi ID/Iqama Luhn check, profile file encoding/versioning/missing keys, save/load/clear, Arabic + English label/field-name rules, JSON extraction from fenced/think output, validation accepting grounded values and **rejecting** unknown/read-only/signature fields, duplicates, over-long, control and bidi-override characters, `javascript:`/template tokens, non-options, non-booleans, unknown sources, profile mismatches and values not on the cited page; GBNF grammar | swift-testing, `ZoodCoreTests` | 9 tests pass |
+| Read-aloud: reading units per paragraph with per-sentence Arabic/English switching, page numbers skipped, grouping limit, speakable text (tatweel out, tashkeel kept), engine box → PDFKit page space, voice ranking (Premium > Enhanced > default, region, novelty/Personal Voice excluded, saved choice), speed mapping | swift-testing, `ZoodCoreTests` | 6 tests pass |
+| Every app/widget/test source parses (`swiftc -parse`, Swift 6) | `bash scripts/ios/parse-check.sh` | 41 files parse |
+| String Catalogs: every key used in Swift exists in English and Arabic, Arabic plural forms (zero…other), no unused keys, App Shortcuts phrases in both languages | `python3 scripts/ios/check-strings.py` | 371 app keys, 13 widget keys, 10 phrases |
+| llama.cpp XCFramework download + SHA-256 pin | `bash scripts/ios/fetch-llama.sh` (run on Linux) | archive verified, slices: ios-arm64, macos only |
 | `build.sh` / `build-core.sh` fail clearly on non-macOS; all iOS scripts pass `shellcheck` | run on Linux | as designed |
 
-Total on Linux: **43 swift-testing tests** in 10 suites.
+Total on Linux: **73 swift-testing tests** in 14 suites (the 3 bring-your-own-key AI tests were removed with that feature).
 
 **Written, needs a Mac to run (owner action):** `scripts/ios/build-core.sh` (XCFramework, LTO off),
 `xcodegen generate`, simulator build and tests (`Tests/ZoodPDFTests`: PDFKit ink → `doc.rebase`
 incremental save, highlight annotations, invisible OCR text layer readable by PDFKit, ID-card A4 page,
-Vision runtime language check, compress never grows a file, unique file names; `Tests/ZoodPDFUITests`:
+Vision runtime language check, compress never grows a file, unique file names; `Tests/LocalFirstTests`: autofill written into a PDFKit text widget and rebased incrementally, engine paragraph boxes selecting the same text in PDFKit, installed voices ranked, Foundation Models availability checked without crashing; `Tests/ZoodPDFUITests`:
 Arabic and English tours Home → document → Pencil stroke → Save → Organize → Scan with screenshots into
 `docs/design/ios/`). `docs/design/ios/` is empty until then.
 
@@ -374,12 +378,16 @@ thumbnails rail, prev/next, share, save, unsaved-changes prompt); floating Penci
 highlighter, eraser, text highlight, 6 colours, width, undo) turning PencilKit strokes into PDF ink
 annotations; Organize (rotate/reorder by drag/delete/insert blank or file/extract, page-range field);
 Protect/remove (engine); Combine (new file) and drop-a-PDF → "Combine with this document / Open in New
-Window"; Compress (new file); Convert (PNG/JPEG pages, text); AI assistant (bring-your-own Anthropic key in
-the Keychain, exact text shown before Send, streaming, `claude-opus-5` default, model editable); Scan to
+Window"; Compress (new file); Convert (PNG/JPEG pages, text); on-device AI assistant (ADR 0015: Apple
+Foundation Models when available and the language is supported, else Qwen3 via llama.cpp after a
+one-time pinned download or a Files import; ask with tappable page citations, summarize, explain
+simply, translate ar↔en, key points; "Show prompt"); Fill Form (autofill from "My details" + document
+text, per-field review with source, incremental save); Read Aloud (best installed voices, per-language
+switching, paragraph highlight, background audio, Now Playing, voice picker); Scan to
 PDF (dark camera screen, mode strip Document · Whiteboard · ID Card · Book; VisionKit for Document; own
 AVFoundation capture with live rectangle detection and draggable corners for the others; photo import);
 widgets (Recents small/medium/large, Scan, Lock Screen circular/rectangular/inline, Control Center
-"Scan to PDF"); App Intents + App Shortcuts (Open recent, Scan, Combine, Compress; phrases en + ar);
+"Scan to PDF"); App Intents + App Shortcuts (Open recent, Scan, Combine, Compress, Summarize PDF, Read PDF aloud; phrases en + ar);
 Core Spotlight indexing of recents with engine `text.plain`; multiple windows (`WindowGroup(for: URL.self)`),
 drag & drop of PDFs between windows; Files app (open in place, app Documents folder visible).
 
@@ -392,17 +400,36 @@ drag & drop of PDFs between windows; Files app (open in place, app Documents fol
   the user chooses "Keep Password" (AES-256 whole rewrite with the password they typed, original
   permissions) or "Save Without Password".
 * Undo covers markup strokes and engine steps (whole-file snapshots, capped at 300 MB); no redo.
-* Not on iOS yet (web/desktop only): Fill & sign, form preparation, redaction, digital signatures, page
+* **Local-first AI / autofill / read-aloud (ADR 0015) — honest state:** the logic is proven on Linux
+  (above); the app-side code is **syntax-checked only**: Foundation Models calls (written against the
+  iOS 26 SDK API: `SystemLanguageModel.default.availability`, `supportsLocale`, `LanguageModelSession`,
+  `streamResponse` snapshots, `@Generable` guided generation), the llama.cpp C calls (written against
+  the `llama.h` of release b11200, which was downloaded and read here), the background `URLSession`
+  download, PDFKit widget reading/writing, `AVSpeechSynthesizer`, `AVAudioSession`, MediaPlayer.
+  None has run. The llama.cpp XCFramework has **no simulator slice**, so the portable model works only
+  in device builds (the simulator offers Apple's model only). Arabic support of Apple's model is
+  decided at run time by `supportsLocale`; if it is missing, Arabic requests use Qwen3. No model
+  quality has been measured on real documents; Qwen3-0.6B in particular is weak.
+  The model download URL is Hugging Face (`huggingface.co/unsloth/…` at a fixed revision) — it needs
+  the network once; the SHA-256 pins make a changed file fail closed.
+* Not on iOS yet (web/desktop only): Fill & sign (signatures), form preparation, redaction, digital signatures, page
   marks, Office export/import (iOS Convert makes pictures and text), compare, standards, accessibility
   tools, batch, library indexing, cloud drives. Local AI servers (Ollama/LM Studio on localhost) are not
-  offered on iOS.
+  offered on iOS (the model runs inside the app).
 * Page labels inside PDFKit's own thumbnail rail use PDFKit's digits.
 * No Apple team: simulator only. A device build needs `DEVELOPMENT_TEAM`, automatic signing and the App
   Group `group.sa.zood.pdf` registered for `sa.zood.pdf.ios` and `sa.zood.pdf.ios.widgets`.
 
 **Owner actions:** install Xcode 26+ and Rust; `brew install xcodegen`; run `bash scripts/ios/build.sh`
-(iPhone 17 + iPad Pro 13-inch (M4) simulators, time-boxed tests, screenshots into `docs/design/ios/`);
-fix any SwiftUI compile errors it reports; for a device, set the Apple team as above.
+(fetches the pinned llama.cpp XCFramework; iPhone 17 + iPad Pro 13-inch (M4) simulators, time-boxed
+tests, screenshots into `docs/design/ios/`); fix any SwiftUI compile errors it reports; for a device,
+set the Apple team as above. Then on a **physical device**: (1) with Apple Intelligence on (iOS 26),
+ask/summarize an English and an Arabic PDF and note whether `supportsLocale` reports Arabic; (2) with
+it off, download Qwen3 (≈1.1 GB) in AI settings, lock the phone mid-download, confirm it resumes and
+verifies, then ask with flight mode on; (3) fill a real government form from "My details"; (4) read
+an Arabic/English document aloud with the screen locked and use the Lock Screen controls; download
+Ava (Premium) and Majed in Settings › Accessibility › Spoken Content › Voices and confirm they are
+picked.
 
 ## Export and Compare (`warraq-office`, Export sheet, Compare panel)
 
@@ -455,6 +482,59 @@ Architecture: ADR 0013. Engine methods: `export.docx|xlsx|pptx|html|markdown|tex
   cargo-fuzz here (no nightly). The stable smoke test above runs in `verify.sh`.
 * python-docx/openpyxl/python-pptx are not part of CI images; the reader test skips without them.
 * Desktop and extension hosts use the same UI and engine code but have no Export/Compare spec of their own.
+
+## Scan & OCR (`packages/ui/src/ocr`, `warraq-core/src/ocr`, ADR 0016)
+
+tesseract.js 7 (LSTM-only cores) with tessdata 4.1.0 "best-int" models for `ara`, `eng`, `fas`, `urd`, all served
+from the app's origin (`ocr/`); models fetched by `scripts/fetch-ocr-models.sh` (pinned SHA-256, git-ignored cache,
+not committed: 28 MB). Own preprocessing in a worker; the engine writes the invisible text layer.
+
+### Proven by tests
+| What | Test |
+| --- | --- |
+| Preprocessing on synthetic images: known rotations recovered within 0.3° (±15°), shadow gradient flattened, Sauvola, despeckle bounds, homography/warp, header-only size checks (64 MP / 16 000 px) | `ocr/preprocess.test.ts` |
+| Language codes, tesseract word tree → words with lines | `ocr/recognizer.test.ts` |
+| `ocr.addTextLayer`: invisible `3 Tr` text, `Tz` to the word box, words read back in logical order (Arabic, tashkeel, digits in RTL words), existing text kept, one incremental update (original bytes a prefix), several pages in one commit, low-confidence words skipped, `/Direction` never written, rotated matrix on a crooked page, `/Rotate` pages, hostile params rejected | `warraq-core/tests/ocr.rs` |
+| RTL words: visual order in `/ReversedChars`, no ActualText (PDFium-searchable); a space glyph after each word keeps tightly set Arabic words apart | `ocr.rs::rtl_words_…`, `tightly_set_words_stay_separate` |
+| `ocr.createPdf`: pages from JPEG (DCT passthrough) and 1-bit/gray images with a text layer; hostile/truncated images rejected | `ocr.rs` |
+| **Make searchable (e2e, ar)**: scanned Arabic PDF → Scan & OCR (Arabic by default, Arabic-Indic numerals, «صفحة واحدة بلا نص») → progress → **viewer Ctrl+F finds «الحكومية»** → Save: original bytes a prefix, 2 revisions, no `/Direction`; engine `text.plain` of the saved bytes contains the words; reopened, viewer search finds «التحول»; zero non-localhost requests, zero CSP errors | `ocr.spec.ts` |
+| **Scan pages (e2e)**: crooked 8° photo → skew **detected 8.x°** (within 0.5°) → cleaned preview → Create PDF opens in the viewer → Save: 1 page, image + `/Lang (ar)`, Arabic text read back | `ocr.spec.ts` |
+| Cancel stops recognition, document unchanged; a 30 000 × 30 000 PNG header is refused before decoding | `ocr.spec.ts` |
+| **MV3 extension**: the same scan works under the extension CSP (worker from its file, no `blob:` worker, no `unsafe-eval`) | `ocr.spec.ts` |
+
+### Measured accuracy (2026-09-26, headless Chromium, the real UI path)
+Character accuracy = 1 − Levenshtein / truth length, after NFC, bidi controls and tatweel removed and whitespace
+collapsed; first number with tashkeel removed from both sides, in brackets with tashkeel kept. `pnpm ocr:bench`
+("Make searchable" + Save + engine `text.plain`), floors in `tests/ocr/baseline.json` (tolerance 2 points),
+raw results in `tests/ocr/results.json`. E2E pages: `scan-ar` (straight, title + first paragraph) **97.3 %**,
+`crooked8-ar` (Scan pages from a crooked JPEG) **71.3 %**.
+
+| Page (300 dpi, image-only PDF) | Languages | Straight | Crooked 5° | Crooked 8° | Shadowed |
+| --- | --- | --- | --- | --- | --- |
+| Arabic news (Amiri) | ar | 89.0 % (88.5 %) | 75.2 % (75.0 %) | 87.3 % (86.8 %) | 96.1 % (95.6 %) |
+| Arabic, full tashkeel (Amiri) | ar | 50.2 % (35.2 %) | 41.5 % (29.8 %) | 53.1 % (39.1 %) | 38.2 % (23.3 %) |
+| Urdu Nastaliq | ur | 83.0 % (83.0 %) | 83.0 % (83.0 %) | 80.5 % (80.5 %) | 83.0 % (83.0 %) |
+| Persian (Vazirmatn) | fa | 96.1 % (96.1 %) | 96.1 % (96.1 %) | 96.1 % (96.1 %) | 96.5 % (96.5 %) |
+| Mixed Arabic/English (Naskh) | ar+en | 89.0 % (88.7 %) | 90.9 % (90.6 %) | 91.3 % (91.0 %) | 88.8 % (88.5 %) |
+
+About 4–8 s per page on this 4-core container.
+
+### Not done / limits (honest)
+* **Tashkeel**: the Arabic model drops most diacritics (35 % with tashkeel kept on the fully vocalised page, ~50 %
+  without); Quranic/vocalised text is not usable as OCR output.
+* **Accuracy is uneven across variants** of the same page (Arabic news: 75 % crooked 5° vs 96 % shadowed): errors
+  are mostly line merges and alef-maqsura/yaa confusions from the model, not investigated further; the Scan tab's
+  binarisation costs accuracy on clean photos (crooked8-ar 71 %).
+* Urdu Nastaliq tops out around 83 % (tessdata `urd` is trained on Naskh-like fonts).
+* **Desktop**: the web UI runs in Tauri (same CSP allowances) but no desktop spec runs OCR; the camera uses
+  `getUserMedia` (web) — no native camera bridge, the file picker is the desktop path.
+* **Dropped images** go to Create PDF (lead convention for non-PDF drops), not to Scan: a photo dropped on the
+  window becomes a plain image page; to OCR it, open Scan & OCR → Scan pages. Routing photo drops to Scan is left
+  undecided (no reliable way to tell a document photo from an illustration).
+* The first OCR needs the core and the chosen model from the app's origin (Arabic ~2.5 MB, English 23 MB); the
+  service worker caches them on first use, not at install.
+* PDFium in the viewer reads the RTL words through `/ReversedChars`; readers that ignore that marker see visual
+  order (same as Chrome's own Arabic PDFs).
 
 ## Organize, Combine, Compress
 
