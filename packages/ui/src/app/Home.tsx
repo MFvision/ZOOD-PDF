@@ -13,7 +13,7 @@ import { getAiHandler, cloudsConfigured, openClouds } from '../services/ai';
 import type { RecentItem } from '../services/recents';
 import type { HomeSection } from '../services/state';
 
-export type HomeSheet = { kind: 'settings' } | { kind: 'tools' } | { kind: 'tags'; item: RecentItem } | { kind: 'palette' };
+export type HomeSheet = { kind: 'settings' } | { kind: 'tools' } | { kind: 'tags'; item: RecentItem } | { kind: 'palette' } | { kind: 'convert' };
 
 interface HomeProps {
   openSheet: (s: HomeSheet) => void;
@@ -183,7 +183,17 @@ function HomeSectionView({ openSheet }: { openSheet: (s: HomeSheet) => void }) {
     const middle = [
       byTool('create', 'create', 'create', 'green'),
       byTool('edit', 'edit', 'edit', 'indigo'),
-      byTool('export', 'convert', 'convert', 'orange'),
+      // Convert: Export (and Create, once it works) — a choice sheet only when both are ready.
+      isToolReady('export', app.platform)
+        ? {
+            id: 'convert',
+            icon: 'convert' as IconName,
+            tile: 'orange' as ToolDef['tile'],
+            title: t('card.convert.title'),
+            desc: t('card.convert.desc'),
+            onClick: () => (isToolReady('create', app.platform) ? openSheet({ kind: 'convert' }) : startTool('export')),
+          }
+        : null,
       byTool('ai', 'ai', 'sparkle', 'purple'),
     ].filter((c): c is CardDef => c !== null);
     // Keep six cards: fill free slots with tools that work today.

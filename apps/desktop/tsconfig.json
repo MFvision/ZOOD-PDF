@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node"],
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "paths": {
+      "@zood-assets/stamps/*": ["../../packages/ui/node_modules/@embedpdf/default-stamps/*"]
+    }
+  },
+  "include": ["src", "vite.config.ts", "vite-plugin-desktop.ts", "vite-plugin-desktop.test.ts", "../../packages/ui/src/env.d.ts"]
+}

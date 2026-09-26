@@ -26,6 +26,19 @@ export interface ViewerApi {
   addRedactionMarks(items: { page: number; rects: [number, number, number, number][] }[]): number;
   /** Number of redaction marks currently in the viewer; `cb` fires on every change. */
   onRedactionMarks(cb: (count: number) => void): () => void;
+  /** Page sizes in PDF points (unrotated). */
+  pageSizes(): { width: number; height: number }[];
+  /** Opens other PDF bytes in the same PDFium engine (not shown), e.g. the second file of Compare. */
+  openOther(bytes: Uint8Array): Promise<OtherDocument>;
+}
+
+/** A PDF opened in the viewer's PDFium engine without being displayed. */
+export interface OtherDocument {
+  pageCount: number;
+  pageSizes: { width: number; height: number }[];
+  /** PNG of a page, `width` CSS pixels wide. */
+  renderPage(pageIndex: number, width: number): Promise<Blob>;
+  close(): void;
 }
 
 export interface ViewerEvents {
@@ -234,6 +247,37 @@ export function Viewer(props: Props) {
         const offs = [scope.onStateChange?.(later), scope.onPendingChange(later), scope.onRedactionEvent?.(later)];
         return () => {
           for (const off of offs) off?.();
+        };
+      },
+      pageSizes() {
+        const doc = docs?.getDocument(documentId) as unknown as { pages: { size: { width: number; height: number } }[] } | null;
+        return (doc?.pages ?? []).map((p) => ({ width: p.size.width, height: p.size.height }));
+      },
+      async openOther(bytes) {
+        type PdfDoc = { pageCount: number; pages: { size: { width: number; height: number } }[] };
+        const pdfium = engine as unknown as {
+          openDocumentBuffer(f: { id: string; content: ArrayBuffer }): TaskLike<PdfDoc>;
+          renderThumbnail(d: unknown, p: unknown, o: unknown): TaskLike<Blob>;
+          closeDocument(d: unknown): TaskLike<boolean>;
+        };
+        const id = `zood-other-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        // PDFium may take ownership of the buffer: hand it a private copy.
+        const doc = await pdfium.openDocumentBuffer({ id, content: bytes.slice().buffer as ArrayBuffer }).toPromise();
+        let open = true;
+        return {
+          pageCount: doc.pageCount,
+          pageSizes: doc.pages.map((p) => ({ width: p.size.width, height: p.size.height })),
+          renderPage(pageIndex, width) {
+            const page = doc.pages[pageIndex];
+            if (!open || !page) return Promise.reject(new Error('page not available'));
+            const scaleFactor = Math.max(0.05, width / page.size.width);
+            return pdfium.renderThumbnail(doc, page, { scaleFactor, imageType: 'image/png', withAnnotations: true, dpr: 1 }).toPromise();
+          },
+          close() {
+            if (!open) return;
+            open = false;
+            void pdfium.closeDocument(doc).toPromise().catch(() => {});
+          },
         };
       },
     };

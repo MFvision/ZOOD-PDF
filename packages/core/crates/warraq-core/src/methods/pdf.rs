@@ -31,6 +31,10 @@ struct Merge {
     /// Optional password per blob (null for none).
     #[serde(default)]
     passwords: Vec<Option<String>>,
+    /// Optional bookmark title per blob (usually the file name): each file's pages get one
+    /// top-level bookmark with the file's own bookmarks nested under it.
+    #[serde(default)]
+    titles: Vec<Option<String>>,
 }
 
 fn merge(p: &Value, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
@@ -49,7 +53,12 @@ fn merge(p: &Value, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
                 .map_err(|e| CoreError::new(e.code(), format!("file {}: {e}", i + 1)))
         })
         .collect::<Result<Vec<_>, _>>()?;
-    let out = pages::merge(&docs)?;
+    let titled: Vec<(&Pdf, Option<String>)> = docs
+        .iter()
+        .enumerate()
+        .map(|(i, d)| (d, p.titles.get(i).cloned().flatten()))
+        .collect();
+    let out = pages::merge_titled(&titled)?;
     let n = pages::count(&Pdf::open(out.clone(), None)?)?;
     Ok(Reply::with_blob(
         json!({ "byteLength": out.len(), "pageCount": n }),

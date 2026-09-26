@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-print-close"
+description = "Enables the print_close command without any pre-configured scope."
+commands.allow = ["print_close"]
+
+[[permission]]
+identifier = "deny-print-close"
+description = "Denies the print_close command without any pre-configured scope."
+commands.deny = ["print_close"]

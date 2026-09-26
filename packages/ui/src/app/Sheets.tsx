@@ -86,6 +86,37 @@ export function ToolsSheet({ onClose, docId }: { onClose: () => void; docId?: st
   );
 }
 
+/** Convert: the ready tools among Export (a PDF to other formats) and Create (other formats to PDF). */
+export function ConvertSheet({ onClose }: { onClose: () => void }) {
+  const app = useApp();
+  const startTool = useStartTool();
+  const tools = readyTools(app.platform).filter((t) => t.id === 'export' || t.id === 'create');
+  return (
+    <Sheet title={app.t('convert.title')} onClose={onClose}>
+      <p className="sheet-sub">{app.t('convert.subtitle')}</p>
+      <ul className="tool-gallery" data-testid="convert-choices">
+        {tools.map((tool) => (
+          <li key={tool.id}>
+            <button
+              type="button"
+              className="tool-card"
+              data-tool={tool.id}
+              onClick={() => {
+                onClose();
+                startTool(tool.id);
+              }}
+            >
+              <Tile icon={tool.icon} colour={tool.tile} size="lg" />
+              <span className="tool-name">{app.t(tool.nameKey)}</span>
+              <span className="tool-desc">{app.t(tool.descKey)}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </Sheet>
+  );
+}
+
 export function TagsSheet({ item, onClose }: { item: RecentItem; onClose: () => void }) {
   const app = useApp();
   const live = app.state.recents.find((r) => r.id === item.id) ?? item;

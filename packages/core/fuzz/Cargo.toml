@@ -13,8 +13,11 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 lopdf = { version = "0.45", default-features = false }
 warraq-pdf = { path = "../crates/warraq-pdf" }
+warraq-sign = { path = "../crates/warraq-sign" }
 warraq-text = { path = "../crates/warraq-text" }
 warraq-redact = { path = "../crates/warraq-redact" }
+warraq-office = { path = "../crates/warraq-office" }
+serde_json = "1"
 
 # Standalone: not a member of the engine workspace (see ../Cargo.toml `exclude`).
 [workspace]
@@ -45,8 +48,22 @@ doc = false
 bench = false
 
 [[bin]]
+name = "cms"
+path = "fuzz_targets/cms.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "content_text"
 path = "fuzz_targets/content_text.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "sig_dict"
+path = "fuzz_targets/sig_dict.rs"
 test = false
 doc = false
 bench = false
@@ -61,6 +78,18 @@ bench = false
 [[bin]]
 name = "redact_content"
 path = "fuzz_targets/redact_content.rs"
+# warraq-office (Export/Compare): ruling-line reader + table detection + export writers, and the
+# ZIP reader.
+[[bin]]
+name = "ruling_tables"
+path = "fuzz_targets/ruling_tables.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "zip_read"
+path = "fuzz_targets/zip_read.rs"
 test = false
 doc = false
 bench = false

@@ -5,6 +5,7 @@
  */
 import type { MessageKey } from '../i18n';
 import type { IconName } from '../app/icons';
+import { openToolPanel } from './panels';
 
 export type ToolId =
   | 'edit'
@@ -43,10 +44,10 @@ export interface ToolDef {
   status: 'ready' | 'hidden';
   /** Viewer-backed tools: EmbedPDF commands executed when the tool is picked. */
   viewer?: { commands: string[] };
-  /** Core-backed tools: set by the agent implementing the tool. */
-  core?: { open: () => void | Promise<void> };
-  /** Core-backed tools with a side panel in the document window (Redact, Protect). */
-  panel?: 'redact' | 'protect';
+  /** Core-backed tools: set by the agent implementing the tool. `docId`: the document to act on. */
+  core?: { open: (docId?: string) => void | Promise<void> };
+  /** Tools whose UI is a side panel (opened through tools/panels; one panel at a time). */
+  panel?: string;
   /** Needs an open document. */
   needsDocument: boolean;
 }
@@ -74,23 +75,31 @@ function tool(
 
 export const TOOLS: readonly ToolDef[] = [
   tool('edit', 'edit', 'blue'),
-  tool('organize', 'organize', 'indigo'),
+  // Organize / Combine / Compress: engine-backed panels (see tools/panels.ts).
+  tool('organize', 'organize', 'indigo', { status: 'ready', core: { open: (docId) => openToolPanel('organize', docId) } }),
   tool('comment', 'comment', 'yellow', { status: 'ready', viewer: { commands: ['mode:annotate'] } }),
   tool('fill-sign', 'sign', 'purple', { status: 'ready', viewer: { commands: ['mode:insert'] } }),
-  // Redact: EmbedPDF draws the marks (mode:redact); the engine applies them (panel). Protect: engine only.
-  tool('protect', 'lock', 'graphite', { status: 'ready', panel: 'protect' }),
-  tool('redact', 'redact', 'red', { status: 'ready', viewer: { commands: ['mode:redact'] }, panel: 'redact' }),
-  tool('export', 'export', 'green'),
+  // Redact: EmbedPDF draws the marks (mode:redact) and the engine applies them from the side panel.
+  // Protect: engine only (AES-256), in the side panel.
+  tool('protect', 'lock', 'graphite', { status: 'ready', panel: 'protect', core: { open: (docId) => openToolPanel('protect', docId) } }),
+  tool('redact', 'redact', 'red', {
+    status: 'ready',
+    viewer: { commands: ['mode:redact'] },
+    panel: 'redact',
+    core: { open: (docId) => openToolPanel('redact', docId) },
+  }),
+  // Export and Compare: core-backed panels (warraq-office), see tools/panels.ts.
+  tool('export', 'export', 'green', { status: 'ready', core: { open: (docId) => openToolPanel('export', docId) } }),
   tool('create', 'create', 'blue', { needsDocument: false }),
-  tool('compare', 'compare', 'teal'),
+  tool('compare', 'compare', 'teal', { status: 'ready', core: { open: (docId) => openToolPanel('compare', docId) } }),
   tool('scan', 'scan', 'cyan', { needsDocument: false }),
-  tool('combine', 'combine', 'orange'),
-  tool('compress', 'compress', 'mint'),
+  tool('combine', 'combine', 'orange', { status: 'ready', needsDocument: false, core: { open: (docId) => openToolPanel('combine', docId) } }),
+  tool('compress', 'compress', 'mint', { status: 'ready', core: { open: (docId) => openToolPanel('compress', docId) } }),
   tool('prepare-form', 'form', 'pink', { status: 'ready', viewer: { commands: ['mode:form'] } }),
   tool('ai', 'sparkle', 'purple'),
   tool('page-marks', 'stamp', 'orange'),
   tool('digital-signature', 'certificate', 'indigo'),
-  tool('standards', 'badge', 'teal'),
+  tool('standards', 'badge', 'teal', { status: 'ready', panel: 'standards', core: { open: (docId) => openToolPanel('standards', docId) } }),
   tool('accessibility', 'accessibility', 'blue'),
   tool('batch', 'batch', 'graphite', { needsDocument: false }),
   tool('library', 'library', 'green', { needsDocument: false }),

@@ -1,29 +1,7 @@
-/* Engine-backed tool panels (Redact, Protect) in the inspector column, and their sheets. Logical properties only. */
+/* Redact and Protect panels (base .tool-panel styles live in standards.css) and their sheets. Logical properties only. */
 
-.tool-panel {
-  display: flex;
-  flex-direction: column;
-  min-block-size: 0;
-  border-radius: var(--r-lg);
-  overflow: hidden;
-}
-
-.tool-panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-inline-end: 6px;
-}
-
-.tool-panel-body {
+.tool-panel.with-foot .tool-panel-body {
   flex: 1;
-  min-block-size: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding-block: 0 12px;
-  padding-inline: 14px;
 }
 
 .tool-panel-foot {
@@ -171,15 +149,4 @@
 
 .report .report-row {
   display: contents;
-}
-
-@media (max-width: 900px) {
-  .tool-panel {
-    position: absolute;
-    z-index: 20;
-    inset-block: 72px 10px;
-    inset-inline-end: 10px;
-    inline-size: min(320px, 90vw);
-    background: var(--glass-strong);
-  }
 }

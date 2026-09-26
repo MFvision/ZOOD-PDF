@@ -54,7 +54,7 @@ export interface AppState {
 }
 
 export type Action =
-  | { type: 'OPEN_DOCUMENT'; id: string; name: string; bytes: Uint8Array; recentId?: string; handle?: unknown; tool?: string; password?: string }
+  | { type: 'OPEN_DOCUMENT'; id: string; name: string; bytes: Uint8Array; recentId?: string; handle?: unknown; tool?: string; unsaved?: boolean; password?: string }
   | { type: 'TOOL_STARTED'; id: string }
   | { type: 'CLOSE_DOCUMENT'; id: string }
   | { type: 'VIEWER_READY'; id: string; revision: number; pageCount: number }
@@ -62,7 +62,7 @@ export type Action =
   /** `wholeRewrite` (redaction, hidden-information removal, password changes): the earlier bytes are gone
    * for good, so later viewer edits are rebased on the new bytes, never on the old original. `password`:
    * the protection changed (null = removed). */
-  | { type: 'CORE_REPLACED_BYTES'; id: string; bytes: Uint8Array; wholeRewrite?: boolean; password?: string | null }
+  | { type: 'CORE_REPLACED_BYTES'; id: string; bytes: Uint8Array; edited?: boolean; wholeRewrite?: boolean; password?: string | null }
   | { type: 'SAVED'; id: string; bytes: Uint8Array; name: string; handle?: unknown }
   | { type: 'SET_RECENT_ID'; id: string; recentId: string }
   | { type: 'SET_ROUTE'; route: Route }
@@ -91,8 +91,9 @@ export function reducer(state: AppState, action: Action): AppState {
         originalBytes: action.bytes.slice(),
         revision: 0,
         switching: true,
-        warraqOwnsDocument: false,
-        edited: false,
+        // A document made by a tool (e.g. Combine) exists only in memory until the user saves it.
+        warraqOwnsDocument: !!action.unsaved,
+        edited: !!action.unsaved,
         pageCount: 0,
         recentId: action.recentId,
         handle: action.handle,
@@ -137,7 +138,7 @@ export function reducer(state: AppState, action: Action): AppState {
         revision: d.revision + 1,
         switching: true,
         warraqOwnsDocument: true,
-        edited: true,
+        edited: action.edited ?? true,
       }));
     case 'SAVED':
       return updateDoc(state, action.id, (d) => ({

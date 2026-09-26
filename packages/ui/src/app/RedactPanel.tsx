@@ -143,7 +143,7 @@ export function RedactPanel({ doc, api, onClose }: { doc: OpenDocument; api: Vie
   };
 
   return (
-    <aside className="tool-panel glass" aria-label={t('redact.panel.title')} data-testid="redact-panel">
+    <aside className="tool-panel glass with-foot" aria-label={t('redact.panel.title')} data-testid="redact-panel">
       <header className="tool-panel-head">
         <h2 className="panel-title">{t('redact.panel.title')}</h2>
         <IconButton icon="close" label={t('common.close')} onClick={onClose} />

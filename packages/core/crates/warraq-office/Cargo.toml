@@ -1,0 +1,27 @@
+[package]
+name = "warraq-office"
+description = "Own OOXML (DOCX/XLSX/PPTX), HTML, Markdown and text writers, table detection and document comparison for the ZOOD PDF engine."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+lopdf.workspace = true
+warraq-text = { path = "../warraq-text" }
+# Deflate for ZIP containers and PNG (MIT OR Zlib OR Apache-2.0).
+miniz_oxide = "0.9"
+# CRC-32 for ZIP and PNG (MIT OR Apache-2.0).
+crc32fast = "1.4"
+
+[dev-dependencies]
+warraq-pdf = { path = "../warraq-pdf" }
+# Test-only independent XML parser used to validate our writers (MIT).
+quick-xml = "0.42"
+
+[lints]
+workspace = true

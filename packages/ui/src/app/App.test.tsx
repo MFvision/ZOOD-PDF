@@ -7,6 +7,7 @@ import { AiCard } from './Home';
 import { createRecentsStore } from '../services/recents';
 import { setAiHandler } from '../services/ai';
 import type { HostBridge } from '../services/host';
+import { readyTools } from '../tools/registry';
 
 function fakeHost(): HostBridge {
   return {
@@ -43,7 +44,8 @@ describe('<App> home', () => {
     const cards = document.querySelectorAll('.action-card');
     expect(cards).toHaveLength(6);
     const tools = [...document.querySelectorAll('[data-testid=sidebar-tools] [data-tool]')].map((b) => b.getAttribute('data-tool'));
-    expect(tools.sort()).toEqual(['comment', 'fill-sign', 'prepare-form', 'protect', 'redact']);
+    expect(tools.sort()).toEqual(readyTools('web').map((t) => t.id).sort());
+    expect(tools).toEqual(expect.arrayContaining(['comment', 'fill-sign', 'prepare-form', 'protect', 'redact', 'export', 'compare', 'organize', 'combine', 'compress', 'standards']));
     // AI is not ready: no AI card, no AI action card
     expect(document.querySelector('.ai-card')).toBeNull();
     expect(document.querySelector('[data-card=ai]')).toBeNull();
@@ -96,5 +98,17 @@ describe('<AiCard>', () => {
     fireEvent.click(send);
     expect(handler).toHaveBeenCalledWith('Summarize this document in a short paragraph.', expect.any(Object));
     setAiHandler(null);
+  });
+});
+
+describe('<App> Convert card (Export)', () => {
+  it('opens Export directly while Create is not ready: asks for a PDF first', async () => {
+    const { host } = renderApp('en');
+    const card = document.querySelector<HTMLButtonElement>('[data-card=convert]');
+    expect(card).not.toBeNull();
+    expect(card!.textContent).toContain('Convert');
+    fireEvent.click(card!);
+    await waitFor(() => expect(host.openFiles).toHaveBeenCalledWith({ multiple: false }));
+    expect(document.querySelector('[data-testid=convert-choices]')).toBeNull();
   });
 });
