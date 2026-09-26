@@ -2052,6 +2052,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
+name = "warraq-a11y"
+version = "0.1.0"
+dependencies = [
+ "lopdf",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "warraq-edit",
+ "warraq-office",
+ "warraq-pdf",
+ "warraq-render",
+ "warraq-text",
+]
+
+[[package]]
 name = "warraq-core"
 version = "0.1.0"
 dependencies = [
