@@ -31,6 +31,9 @@ struct ScanView: View {
     @State private var loadedLaunchArguments = false
     /// Auto: the corners Vision finds. Off: the whole photo, corners by hand.
     @State private var auto = true
+    /// The photo with its corner handles on the stage (after a capture, or
+    /// Auto changed); off, the page as cut out and enhanced.
+    @State private var showingCorners = true
     /// Pictures the scanner starts with: a photo handed to the app from
     /// Files or another app.
     private let initialImages: [CGImage]
@@ -117,6 +120,7 @@ struct ScanView: View {
         .sensoryFeedback(.selection, trigger: session.mode)
         .onChange(of: auto) { _, on in
             // Off: the whole photo; on: the corners found again.
+            showingCorners = true
             for page in session.pages {
                 if on {
                     let image = page.original
@@ -140,9 +144,10 @@ struct ScanView: View {
             ScanStage(image: composed, quad: nil, label: composedLabel, processing: session.isProcessing, liveText: liveText, onQuad: nil)
                 .padding(Space.x5)
         } else if let page = session.selected {
-            ScanStage(image: session.previewOriginal ? (page.corrected ?? page.original) : page.display,
-                      quad: page.enhanced == nil && page.corrected == nil ? page.quad : nil,
-                      label: pageLabel(page), processing: page.isProcessing, liveText: liveText) { quad in
+            let corners = showingCorners || (page.enhanced == nil && page.corrected == nil)
+            ScanStage(image: corners ? page.original : (session.previewOriginal ? (page.corrected ?? page.original) : page.display),
+                      quad: corners ? page.quad : nil,
+                      label: pageLabel(page), processing: page.isProcessing, liveText: liveText && !corners) { quad in
                 session.setQuad(quad, for: page.id)
             }
             .padding(Space.x5)
@@ -189,6 +194,17 @@ struct ScanView: View {
 
     private var actions: some View {
         HStack(spacing: Space.x3) {
+            if showingCorners {
+                Button("Cut out", systemImage: "checkmark") {
+                    withAnimation(Motion.travel(reduceMotion: reduceMotion)) { showingCorners = false }
+                }
+                .accessibilityIdentifier("scan.cut")
+            } else {
+                Button("Corners", systemImage: "crop") {
+                    withAnimation(Motion.travel(reduceMotion: reduceMotion)) { showingCorners = true }
+                }
+                .accessibilityIdentifier("scan.corners")
+            }
             Button("Enhance", systemImage: "wand.and.stars") {
                 showingEnhance = true
             }
@@ -338,6 +354,7 @@ struct ScanView: View {
             }
             retaking = nil
             captures += 1
+            showingCorners = true
         }
     }
 

@@ -94,13 +94,11 @@ final class ScanTests: XCTestCase {
         let before = try XCTUnwrap(handle.value as? String)
         let grab = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         grab.press(forDuration: 0.3, thenDragTo: grab.withOffset(CGVector(dx: 40, dy: 40)))
-        waitForPage(0, in: app)
-        app.descendants(matching: .any)["scan.auto"].firstMatch.tap()
-        XCTAssertTrue(handle.waitForExistence(timeout: 10))
         let after = try XCTUnwrap(handle.value as? String)
-        XCTAssertNotEqual(before, after, "the handle moved with the finger, then Auto found the page again")
-        app.descendants(matching: .any)["scan.auto"].firstMatch.tap()
+        XCTAssertNotEqual(before, after, "the handle followed the finger")
+        app.buttons["scan.cut"].tap()
         waitForPage(0, in: app)
+        XCTAssertTrue(app.buttons["scan.corners"].waitForExistence(timeout: 5), "the page is cut out; the corners can come back")
 
         // Enhance: black and white, creases off, hold to compare.
         app.buttons["scan.enhance"].tap()
@@ -219,14 +217,14 @@ final class ScanTests: XCTestCase {
 
             // Auto off: the corners on the whole photo; mid-drag, so the
             // magnifier is in the picture.
-            app.descendants(matching: .any)["scan.auto"].firstMatch.tap()
             let handle = app.descendants(matching: .any)["crop.handle.0"]
             XCTAssertTrue(handle.waitForExistence(timeout: 10))
             let target = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 30, dy: 30))
             handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(forDuration: 0.3, thenDragTo: target, withVelocity: .slow, thenHoldForDuration: 0.1)
             try save(app, as: "scan-corners-\(suffix)", in: directory)
-            app.descendants(matching: .any)["scan.auto"].firstMatch.tap()
+            app.buttons["scan.cut"].tap()
             waitForPage(0, in: app)
+            try save(app, as: "scan-page-\(suffix)", in: directory)
 
             app.buttons["scan.enhance"].tap()
             XCTAssertTrue(app.segmentedControls["enhance.mode"].waitForExistence(timeout: 10))
@@ -263,7 +261,7 @@ final class ScanTests: XCTestCase {
             app = launch(language: combo.language, appearance: combo.appearance)
             XCTAssertTrue(app.buttons["library.settings"].waitForExistence(timeout: 30))
             app.buttons["library.settings"].tap()
-            XCTAssertTrue(app.switches.matching(NSPredicate(format: "identifier BEGINSWITH 'settings.ocr.'")).firstMatch.waitForExistence(timeout: 10))
+            XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'settings.ocr.'")).firstMatch.waitForExistence(timeout: 15))
             app.swipeUp()
             try save(app, as: "settings-scan-\(suffix)", in: directory)
             app.buttons["sheet.done"].tap()

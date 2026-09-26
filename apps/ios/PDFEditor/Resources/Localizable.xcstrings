@@ -124,6 +124,9 @@
     "cut out" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مقصوصة" } } }
     },
+    "Cut out" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "قصّ" } } }
+    },
     "Dark" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "داكن" } } }
     },

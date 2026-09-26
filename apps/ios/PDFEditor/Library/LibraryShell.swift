@@ -124,6 +124,8 @@ struct LibraryShell: View {
         } content: {
             DocumentGrid(library: library, section: section.wrappedValue)
                 .navigationTitle(section.wrappedValue?.title ?? "Recents")
+                // The sidebar's bar is narrow: Scan sits over the documents.
+                .toolbar { ToolbarItem(placement: .primaryAction) { scanButton } }
         } detail: {
             if let opened = library.opened {
                 DocumentView(model: opened)
@@ -154,10 +156,9 @@ struct LibraryShell: View {
     @ToolbarContentBuilder
     private var libraryToolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
-            Button("Scan", systemImage: "doc.viewfinder") {
-                showingScanner = true
+            if sizeClass == .compact {
+                scanButton
             }
-            .accessibilityIdentifier("library.scan")
             Button("Open…", systemImage: "folder.badge.plus") {
                 showingImporter = true
             }
@@ -167,6 +168,13 @@ struct LibraryShell: View {
             }
             .accessibilityIdentifier("library.settings")
         }
+    }
+
+    private var scanButton: some View {
+        Button("Scan", systemImage: "doc.viewfinder") {
+            showingScanner = true
+        }
+        .accessibilityIdentifier("library.scan")
     }
 
     // MARK: - Restoring
