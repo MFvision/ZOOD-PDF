@@ -3,7 +3,7 @@
  * toolbar, and reports page/zoom/edit events. The component is keyed by document revision by its
  * parent, so new bytes always mean a fresh viewer.
  */
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { PDFViewer, type PluginRegistry, type EmbedPdfContainer } from '@embedpdf/react-pdf-viewer';
 import { buildViewerConfig } from './config';
 import { embedPdfArabicLocale, setEmbedPdfLocale } from './locale';
@@ -30,6 +30,19 @@ export interface ViewerApi {
   pageSizes(): { width: number; height: number }[];
   /** Opens other PDF bytes in the same PDFium engine (not shown), e.g. the second file of Compare. */
   openOther(bytes: Uint8Array): Promise<OtherDocument>;
+  // ---- Read aloud ----
+  /** Highlights the paragraph being read (rects in viewer page space: top-left, points); null clears. */
+  setReadingHighlight(h: ReadingHighlight | null): void;
+  /** Scrolls the rect of a page into view (no-op when it is already visible). */
+  revealRect(page: number, rect: [number, number, number, number]): void;
+  /** Top-left of the current text selection (0-based page, page points), if any. */
+  selectionAnchor(): { page: number; x: number; y: number } | null;
+}
+
+/** Read aloud: what to highlight. */
+export interface ReadingHighlight {
+  page: number;
+  rects: [number, number, number, number][];
 }
 
 /** A PDF opened in the viewer's PDFium engine without being displayed. */
@@ -103,6 +116,9 @@ export function Viewer(props: Props) {
   });
   const registryRef = useRef<PluginRegistry | null>(null);
   const containerRef = useRef<EmbedPdfContainer | null>(null);
+  // Read aloud: highlight boxes drawn over EmbedPDF's scroll viewport (screen-space, recomputed on scroll/zoom).
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const [reading, setReading] = useState<ReadingLayer | null>(null);
 
   // Built once per mount: the parent remounts us (key = revision) for new bytes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -172,6 +188,90 @@ export function Viewer(props: Props) {
     const exporter = cap<{ forDocument(id: string): { saveAsCopy(): TaskLike<ArrayBuffer> } }>(registry, 'export');
     const ui = cap<{ forDocument(id: string): { closeToolbarSlot(p: string, s: string): void } }>(registry, 'ui');
     const engine = registry.getEngine();
+    // ---- Read aloud: highlight layer ----
+    const scrollAt = cap<{
+      forDocument(id: string): {
+        getRectPositionForPage(page: number, rect: { origin: { x: number; y: number }; size: { width: number; height: number } }): {
+          origin: { x: number; y: number };
+          size: { width: number; height: number };
+        } | null;
+      };
+      onLayoutChange?: Hook<unknown>;
+    }>(registry, 'scroll');
+    const selection = cap<{
+      forDocument(id: string): { getFormattedSelection(): { pageIndex: number; rect: { origin: { x: number; y: number } } }[] };
+    }>(registry, 'selection');
+    let highlight: ReadingHighlight | null = null;
+    let viewportEl: HTMLElement | null = null;
+    const findViewport = (): HTMLElement | null => {
+      if (viewportEl?.isConnected) return viewportEl;
+      const root = containerRef.current?.shadowRoot;
+      if (!root) return null;
+      // EmbedPDF's viewport: the scrolling div with `overflow: auto` and the viewport gap as padding.
+      let best: HTMLElement | null = null;
+      for (const el of root.querySelectorAll<HTMLElement>('div')) {
+        if (el.style.overflow !== 'auto' || !el.style.padding) continue;
+        if (!best || el.clientWidth * el.clientHeight > best.clientWidth * best.clientHeight) best = el;
+      }
+      viewportEl = best;
+      return best;
+    };
+    const toPos = (page: number, r: [number, number, number, number]) => {
+      try {
+        return scrollAt?.forDocument(documentId).getRectPositionForPage(page, { origin: { x: r[0], y: r[1] }, size: { width: r[2] - r[0], height: r[3] - r[1] } }) ?? null;
+      } catch {
+        return null;
+      }
+    };
+    const relayout = () => {
+      const vp = findViewport();
+      const host = hostRef.current;
+      if (!highlight || !vp || !host) {
+        setReading(null);
+        return;
+      }
+      const gap = parseFloat(vp.style.padding) || 0;
+      const hr = host.getBoundingClientRect();
+      const vr = vp.getBoundingClientRect();
+      const boxes = highlight.rects
+        .map((r) => toPos(highlight!.page, r))
+        .filter((p): p is NonNullable<typeof p> => !!p)
+        .map((p) => ({
+          x: gap + p.origin.x - vp.scrollLeft - 2,
+          y: gap + p.origin.y - vp.scrollTop - 1,
+          w: p.size.width + 4,
+          h: p.size.height + 2,
+        }));
+      setReading({
+        page: highlight.page,
+        frame: { x: vr.left - hr.left + vp.clientLeft, y: vr.top - hr.top + vp.clientTop, w: vp.clientWidth, h: vp.clientHeight },
+        boxes,
+      });
+    };
+    let raf = 0;
+    const schedule = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        relayout();
+      });
+    };
+    let scrollBound: HTMLElement | null = null;
+    const bindScroll = () => {
+      const vp = findViewport();
+      if (vp === scrollBound) return;
+      scrollBound?.removeEventListener('scroll', schedule);
+      vp?.addEventListener('scroll', schedule, { passive: true });
+      scrollBound = vp;
+    };
+    const resize = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(schedule) : null;
+    if (hostRef.current) resize?.observe(hostRef.current);
+    unsubs.push(() => {
+      resize?.disconnect();
+      scrollBound?.removeEventListener('scroll', schedule);
+      if (raf) cancelAnimationFrame(raf);
+    });
+    if (scrollAt?.onLayoutChange) unsubs.push(scrollAt.onLayoutChange(schedule));
 
     const api: ViewerApi = {
       goToPage: (page) => scroll?.forDocument(documentId).scrollToPage({ pageNumber: page }),
@@ -285,6 +385,32 @@ export function Viewer(props: Props) {
           },
         };
       },
+      // ---- Read aloud ----
+      setReadingHighlight(h) {
+        highlight = h && h.rects.length ? h : null;
+        bindScroll();
+        relayout();
+      },
+      revealRect(page, rect) {
+        const vp = findViewport();
+        const pos = toPos(page, rect);
+        if (!vp || !pos) return;
+        const gap = parseFloat(vp.style.padding) || 0;
+        const top = gap + pos.origin.y;
+        const bottom = top + pos.size.height;
+        if (top >= vp.scrollTop && bottom <= vp.scrollTop + vp.clientHeight) return;
+        const smooth = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        vp.scrollTo({ top: Math.max(0, top - vp.clientHeight * 0.25), behavior: smooth ? 'smooth' : 'auto' });
+      },
+      selectionAnchor() {
+        try {
+          const sel = selection?.forDocument(documentId).getFormattedSelection() ?? [];
+          const first = sel[0];
+          return first ? { page: first.pageIndex, x: first.rect.origin.x, y: first.rect.origin.y } : null;
+        } catch {
+          return null;
+        }
+      },
     };
 
     let opened = false;
@@ -316,7 +442,10 @@ export function Viewer(props: Props) {
     if (zoom)
       unsubs.push(
         zoom.onZoomChange((e) => {
-          if (e.documentId === documentId) events.current.onZoomChange(Math.round(e.newZoom * 100));
+          if (e.documentId === documentId) {
+            events.current.onZoomChange(Math.round(e.newZoom * 100));
+            schedule();
+          }
         }),
       );
     if (history) unsubs.push(history.onHistoryChange(() => events.current.onEdited()));
@@ -353,7 +482,7 @@ export function Viewer(props: Props) {
   // EmbedPDF lays pages out with physical coordinates: its scroll container must stay LTR even in an
   // RTL interface (Arabic text inside pages is unaffected). Its tool strips are mirrored separately.
   return (
-    <div className="viewer-host" dir="ltr">
+    <div className="viewer-host" dir="ltr" ref={hostRef}>
       <PDFViewer
         className="viewer-inner"
         config={config}
@@ -363,6 +492,31 @@ export function Viewer(props: Props) {
         }}
         onReady={onReady}
       />
+      {reading && (
+        <div
+          className="reading-layer"
+          aria-hidden="true"
+          style={{ insetInlineStart: reading.frame.x, insetBlockStart: reading.frame.y, inlineSize: reading.frame.w, blockSize: reading.frame.h }}
+        >
+          {reading.boxes.map((b, i) => (
+            <div
+              key={i}
+              className="reading-mark"
+              data-testid="reading-highlight"
+              data-page={reading.page}
+              style={{ insetInlineStart: b.x, insetBlockStart: b.y, inlineSize: b.w, blockSize: b.h }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
+}
+
+interface ReadingLayer {
+  page: number;
+  /** The viewport's client box relative to the host. */
+  frame: { x: number; y: number; w: number; h: number };
+  /** Highlight boxes relative to the frame. */
+  boxes: { x: number; y: number; w: number; h: number }[];
 }

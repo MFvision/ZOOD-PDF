@@ -43,6 +43,10 @@ jobs:
       - name: Build the engine (WASM)
         run: bash scripts/build-wasm.sh
 
+      - name: Read aloud engine tests (macOS native speech)
+        working-directory: apps/desktop/speech
+        run: cargo test
+
       - name: Desktop unit tests (incl. PDFKit print module compile)
         working-directory: apps/desktop/src-tauri
         run: cargo test

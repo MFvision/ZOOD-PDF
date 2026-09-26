@@ -48,6 +48,15 @@ const docs = {
       <p>IBAN: SA03 8000 0000 6080 1016 7519</p>
       <p>Invalid ID stays: 1000000009</p>
       <p lang="ar" dir="rtl">رقم الإقامة ٢٠٠٠٠٠٠٠٠٦</p></div>`,
+  // Read aloud: Arabic, English and a mixed paragraph on page 1 (tatweel to strip, tashkeel to
+  // keep), then an English and an Arabic paragraph on page 2.
+  'read-aloud.pdf': `
+    <div class="page"><h1 lang="ar" dir="rtl">دليل القراءة</h1>
+      <p lang="ar" dir="rtl">مـــرحبًا بك، هذه فقرةٌ عربية تُقرأ بصوتٍ عربي.</p>
+      <p>This paragraph is written in English and uses the English voice.</p>
+      <p lang="ar" dir="rtl">ينطق التطبيق عبارة Read Aloud Mode بصوت إنجليزي ثم يكمل بالعربية.</p></div>
+    <div class="page"><h1>Second page</h1>
+      <p lang="ar" dir="rtl">هذه الفقرة الأخيرة في الصفحة الثانية.</p></div>`,
 };
 const only = process.argv.slice(2);
 

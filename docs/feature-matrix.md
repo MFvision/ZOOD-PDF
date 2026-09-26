@@ -17,6 +17,7 @@ M = iOS native app.
 | Compare (text + visual diff, HTML report; warraq-office) | ✅ changed word listed, highlighted, report saved and inspected in en + ar (`export-compare.spec.ts`) | 🟡 | 🟡 | ⛔ not on iOS yet |
 | Organize (grid, rotate, reorder, delete, insert blank/file/picture, replace, extract, split → ZIP, crop, trim, context menu, undo/redo) | ✅ `organize.spec.ts` (en + ar + phone width) | 🟡 same UI in Tauri, not exercised | 🟡 same UI, not exercised | 🟡 see iOS detail below |
 | Combine (Home: pick + reorder → new document; drop on open document → «دمج مع …» / «فتح بدلاً منه»; insert at a position) | ✅ `combine.spec.ts` (en + ar) | 🟡 host drop without preview → choice sheet, not exercised | 🟡 | 🟡 see iOS detail below |
+| Read aloud (on-device voices only; Arabic/English voice per run; paragraph highlight; `text.readingUnits`) | ✅ reading order, voice per language, highlight + follow, pause/resume/next, speed, shortcuts, hidden without a local voice, en + ar (`read-aloud.spec.ts`, fake `speechSynthesis`) | 🟡 macOS `AVSpeechSynthesizer` / Windows speech engines type-checked + unit-tested on Linux, never run; Linux: webview voices or hidden | 🟡 same UI + web backend, no extension spec | (separate iOS work) |
 | Compress (presets, before/after, save/open the copy; original untouched) | ✅ `compress.spec.ts` (en + ar) | 🟡 | 🟡 | 🟡 see iOS detail below |
 
 ## iOS app (M) in detail

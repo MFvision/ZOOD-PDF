@@ -38,7 +38,8 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: wasm32-unknown-unknown
+          # macOS/Windows targets: verify.sh type-checks the read-aloud native engines for them.
+          targets: wasm32-unknown-unknown, aarch64-apple-darwin, x86_64-pc-windows-msvc
           components: clippy, rustfmt
 
       - uses: Swatinem/rust-cache@v2

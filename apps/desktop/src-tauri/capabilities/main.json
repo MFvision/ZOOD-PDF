@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "The only capability: the main window. Native dialogs, reading/writing the files the user picked or dropped (plugin-fs scope is filled by the dialog plugin and the drop handler; no static paths), events, title-bar dragging, and the app's own commands. No shell, no HTTP plugin, no process. The only network access is the app's own sign_timestamp / sign_ocsp / sign_fetch_crl commands (http/https URL the user chose, no redirects, size cap, timeout) used when the user signs with a timestamp or long-term validation.",
+  "description": "The only capability: the main window. Native dialogs, reading/writing the files the user picked or dropped (plugin-fs scope is filled by the dialog plugin and the drop handler; no static paths), events, title-bar dragging, and the app's own commands. No shell, no HTTP plugin, no process. The only network access is the app's own sign_timestamp / sign_ocsp / sign_fetch_crl commands (http/https URL the user chose, no redirects, size cap, timeout) used when the user signs with a timestamp or long-term validation. Read aloud uses the OS speech engine through speech_* (on the device, no network).",
   "windows": ["main"],
   "permissions": [
     "core:event:allow-listen",
@@ -25,6 +25,11 @@
     "allow-sign-fetch-crl",
     "allow-trust-list",
     "allow-trust-add",
-    "allow-trust-remove"
+    "allow-trust-remove",
+    "allow-speech-voices",
+    "allow-speech-speak",
+    "allow-speech-pause",
+    "allow-speech-resume",
+    "allow-speech-stop"
   ]
 }

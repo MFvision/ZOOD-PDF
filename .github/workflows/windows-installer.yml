@@ -49,6 +49,10 @@ jobs:
       - name: Build the engine (WASM)
         run: bash scripts/build-wasm.sh
 
+      - name: Read aloud engine tests (Windows native speech)
+        working-directory: apps/desktop/speech
+        run: cargo test
+
       - name: Desktop unit tests
         working-directory: apps/desktop/src-tauri
         run: cargo test

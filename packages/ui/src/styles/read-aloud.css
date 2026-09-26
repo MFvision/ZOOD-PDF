@@ -1,0 +1,167 @@
+/* Read aloud (app/ReadAloud.tsx, viewer highlight layer). Logical properties only. */
+
+/* Highlight of the paragraph being read, drawn over EmbedPDF's viewport. */
+.reading-layer {
+  position: absolute;
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.reading-mark {
+  position: absolute;
+  border-radius: 4px;
+  background: rgb(255 204 0 / 32%);
+  box-shadow: 0 0 0 1px rgb(255 170 0 / 45%);
+  mix-blend-mode: multiply;
+  transition: inset-block-start 160ms ease, inset-inline-start 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reading-mark {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .reading-mark {
+    background: transparent;
+    outline: 2px solid Highlight;
+  }
+}
+
+/* Compact floating player, centred at the bottom of the viewer. */
+.read-aloud-dock {
+  position: absolute;
+  z-index: 6;
+  inset-inline: 0;
+  inset-block-end: 16px;
+  display: flex;
+  justify-content: center;
+  padding-inline: 12px;
+  pointer-events: none;
+}
+
+.read-aloud {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-inline-size: min(640px, 100%);
+  padding: 6px 8px;
+  border-radius: var(--r-xl);
+}
+
+.read-aloud-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-inline-size: 0;
+}
+
+.read-aloud-transport {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.read-aloud-play {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 36px;
+  block-size: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  cursor: pointer;
+}
+
+.read-aloud-play:hover {
+  background: var(--accent-hover);
+}
+
+.read-aloud-play:active {
+  transform: scale(0.94);
+}
+
+.read-aloud-play:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.read-aloud-play:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.read-aloud-status {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  padding-inline: 6px;
+  overflow: hidden;
+  color: var(--label-2);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.read-aloud-rate {
+  block-size: 30px;
+  padding-inline: 8px;
+  border: 1px solid var(--separator);
+  border-radius: var(--r-sm);
+  background: var(--fill-2);
+  color: var(--label);
+  font: inherit;
+  font-size: 13px;
+}
+
+.read-aloud-voices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 6px 4px;
+  border-block-end: 1px solid var(--separator);
+}
+
+.read-aloud-voices .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--label-2);
+}
+
+.read-aloud-voices select {
+  block-size: 32px;
+  padding-inline: 8px;
+  border: 1px solid var(--separator);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--label);
+  font: inherit;
+}
+
+.read-aloud-help,
+.read-aloud-note {
+  margin: 0;
+  padding-inline: 6px;
+  color: var(--label-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.read-aloud-note {
+  color: var(--orange);
+}
+
+@media (max-width: 600px) {
+  .read-aloud-dock {
+    inset-block-end: 8px;
+  }
+
+  .read-aloud-status {
+    display: none;
+  }
+}

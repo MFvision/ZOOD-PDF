@@ -14,6 +14,8 @@
 import type { DropPoint, HostBridge, OpenedFile, SaveOptions, SaveResult } from './host';
 import type { SigningNetwork } from './signing';
 import type { TrustStore } from './trust';
+import type { NativeSpeech, NativeSpeechEvent } from './speech/native';
+import type { SpeechVoice, VoiceQuality } from './speech/types';
 
 export type MenuEntry =
   | { type: 'item'; id: string; label: string; accelerator?: string; enabled?: boolean; checked?: boolean }
@@ -50,6 +52,8 @@ export interface HostInfo {
   trafficLightsWidth: number;
   titleBarHeight: number;
   nativePdfPrint: boolean;
+  /** Native read-aloud voices (macOS AVSpeechSynthesizer, Windows speech); absent = use the webview's. */
+  speech?: boolean;
   /** Headless smoke test running (the desktop entry adds self-checks to its ready report). */
   smoke?: boolean;
 }
@@ -71,6 +75,7 @@ export interface TauriHost extends HostBridge {
 }
 
 export const DROP_EVENT = 'zood://drop';
+export const SPEECH_EVENT = 'zood://speech';
 export const MENU_EVENT = 'zood://menu';
 export const PRINT_DPI = 300;
 
@@ -251,6 +256,38 @@ export function tauriSigning(apis: TauriApis): { network: SigningNetwork; trust:
   };
 }
 
+// ---- Read aloud (native speech) ----
+
+const QUALITIES: VoiceQuality[] = ['default', 'enhanced', 'premium'];
+
+/** Read aloud through the Rust `speech_*` commands; events arrive as `zood://speech`. */
+export function tauriSpeech(apis: TauriApis): NativeSpeech {
+  return {
+    async voices() {
+      const list = await apis.invoke<SpeechVoice[]>('speech_voices');
+      return (Array.isArray(list) ? list : [])
+        .filter((v) => v && typeof v.id === 'string' && typeof v.lang === 'string')
+        .map((v) => ({ id: v.id, name: String(v.name ?? v.id), lang: v.lang, quality: QUALITIES.includes(v.quality) ? v.quality : 'default' }));
+    },
+    speak: async (id, req) => void (await apis.invoke('speech_speak', { id, text: req.text, voice: req.voice, rate: req.rate, pitch: req.pitch })),
+    pause: async () => void (await apis.invoke('speech_pause')),
+    resume: async () => void (await apis.invoke('speech_resume')),
+    stop: async () => void (await apis.invoke('speech_stop')),
+    onEvent(cb) {
+      let off: (() => void) | null = null;
+      let cancelled = false;
+      void apis.listen<NativeSpeechEvent>(SPEECH_EVENT, (e) => cb(e.payload)).then((u) => {
+        if (cancelled) u();
+        else off = u;
+      });
+      return () => {
+        cancelled = true;
+        off?.();
+      };
+    },
+  };
+}
+
 export async function createTauriHost(
   apis: TauriApis,
   opts: { root?: HTMLElement; rasterize?: PageRasterizer } = {},
@@ -318,6 +355,7 @@ export async function createTauriHost(
     kind: 'desktop',
     info,
     signing: tauriSigning(apis),
+    ...(info.speech ? { speech: tauriSpeech(apis) } : {}),
 
     async openFiles(opts = {}) {
       const multiple = !!opts.multiple;
