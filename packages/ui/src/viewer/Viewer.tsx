@@ -147,6 +147,8 @@ export function Viewer(props: Props) {
         addPending(items: RedactionItem[]): void;
         getState(): { pendingCount?: number; pending?: Record<string, unknown[]> };
         onPendingChange(cb: (pending: Record<string, unknown[]>) => void): () => void;
+        onStateChange?(cb: (state: { pendingCount?: number; pending?: Record<string, unknown[]> }) => void): () => void;
+        onRedactionEvent?(cb: (event: unknown) => void): () => void;
       };
     }>(registry, 'redaction');
     const exporter = cap<{ forDocument(id: string): { saveAsCopy(): TaskLike<ArrayBuffer> } }>(registry, 'export');
@@ -209,7 +211,30 @@ export function Viewer(props: Props) {
         } catch {
           cb(0);
         }
-        return scope.onPendingChange((p) => cb(count(p)));
+        // In annotation mode marks are REDACT annotations synced into the state without always
+        // emitting a pending event: follow the whole state, and pending events as a fallback.
+        let last = -1;
+        const emit = (n: number) => {
+          if (n !== last) cb((last = n));
+        };
+        // Re-read the state on any redaction signal (events can arrive before the state is updated).
+        const reread = () => {
+          try {
+            const st = scope.getState();
+            emit(st.pendingCount ?? count(st.pending));
+          } catch {
+            /* document closing */
+          }
+        };
+        const later = () => {
+          reread();
+          queueMicrotask(reread);
+          setTimeout(reread, 0);
+        };
+        const offs = [scope.onStateChange?.(later), scope.onPendingChange(later), scope.onRedactionEvent?.(later)];
+        return () => {
+          for (const off of offs) off?.();
+        };
       },
     };
 

@@ -203,7 +203,6 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
         </div>
         {panel === 'redact' && (
           <RedactPanel
-            key={doc.revision /* new bytes: earlier results no longer describe the document */}
             doc={doc}
             api={api}
             onClose={() => {

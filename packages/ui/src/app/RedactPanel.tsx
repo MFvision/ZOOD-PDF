@@ -63,7 +63,9 @@ export function RedactPanel({ doc, api, onClose }: { doc: OpenDocument; api: Vie
   const [patterns, setPatterns] = useState<Set<PatternKind>>(new Set());
   const [regex, setRegex] = useState('');
   const [busy, setBusy] = useState<'find' | 'apply' | null>(null);
-  const [hits, setHits] = useState<FindHit[] | null>(null);
+  const [found, setFound] = useState<{ rev: number; hits: FindHit[] } | null>(null);
+  // New bytes (after apply) → earlier results no longer describe the document.
+  const hits = found && found.rev === doc.revision ? found.hits : null;
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const [marked, setMarked] = useState<Set<number>>(new Set());
   const [marks, setMarks] = useState(0);
@@ -85,7 +87,7 @@ export function RedactPanel({ doc, api, onClose }: { doc: OpenDocument; api: Vie
         ...(patterns.size ? { patterns: [...patterns] } : {}),
         ...(regex.trim() ? { regex: regex.trim() } : {}),
       });
-      setHits(r.hits);
+      setFound({ rev: doc.revision, hits: r.hits });
       setChecked(new Set(r.hits.map((_, i) => i)));
       setMarked(new Set());
     } catch (e) {
@@ -204,7 +206,7 @@ export function RedactPanel({ doc, api, onClose }: { doc: OpenDocument; api: Vie
         </form>
 
         {hits && (
-          <section className="results" data-testid="redact-results" aria-live="polite">
+          <section className="results" data-testid="redact-results" data-count={hits.length} aria-live="polite">
             <div className="results-head">
               <strong>{t('redact.results', { count: hits.length })}</strong>
               {hits.length > 0 && (
@@ -243,7 +245,7 @@ export function RedactPanel({ doc, api, onClose }: { doc: OpenDocument; api: Vie
         )}
       </div>
       <footer className="tool-panel-foot">
-        <span className="fineprint" data-testid="redact-marks">
+        <span className="fineprint" data-testid="redact-marks" data-count={marks}>
           {t('redact.marksCount', { count: marks })}
         </span>
         <button type="button" className="btn" disabled={!api || !hits || checked.size === 0} onClick={markSelected} data-testid="redact-mark">
