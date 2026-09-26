@@ -108,6 +108,10 @@ final class ScanTests: XCTestCase {
         modes.buttons.element(boundBy: 2).tap()
         app.switches["enhance.creases"].firstMatch.tap()
         let compare = app.descendants(matching: .any)["enhance.original"].firstMatch
+        if !compare.waitForExistence(timeout: 3) {
+            // Below the sheet's fold on a phone: a list makes its rows as they scroll in.
+            app.swipeUp()
+        }
         XCTAssertTrue(compare.waitForExistence(timeout: 5))
         compare.press(forDuration: 1.0)
         app.buttons["sheet.done"].tap()
@@ -155,7 +159,7 @@ final class ScanTests: XCTestCase {
         let images = app.images.matching(NSPredicate(format: "label CONTAINS[c] 'photo' OR label CONTAINS 'صورة' OR identifier CONTAINS 'PXG'"))
         XCTAssertTrue(images.firstMatch.waitForExistence(timeout: 30), "the photo library shows its photos")
         images.firstMatch.tap()
-        let add = app.buttons.matching(NSPredicate(format: "label == 'Add' OR label == 'إضافة' OR label == 'Done' OR label == 'تم'")).firstMatch
+        let add = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Add' OR label BEGINSWITH 'إضافة' OR label == 'Done' OR label == 'تم'")).firstMatch
         if add.waitForExistence(timeout: 5) {
             add.tap()
         }
@@ -261,8 +265,8 @@ final class ScanTests: XCTestCase {
             app = launch(language: combo.language, appearance: combo.appearance)
             XCTAssertTrue(app.buttons["library.settings"].waitForExistence(timeout: 30))
             app.buttons["library.settings"].tap()
-            XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'settings.ocr.'")).firstMatch.waitForExistence(timeout: 15))
             app.swipeUp()
+            XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'settings.ocr.'")).firstMatch.waitForExistence(timeout: 15))
             try save(app, as: "settings-scan-\(suffix)", in: directory)
             app.buttons["sheet.done"].tap()
         }
