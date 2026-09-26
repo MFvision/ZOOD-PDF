@@ -171,6 +171,9 @@ export const ICONS = {
       {P('M5 7v12a1.5 1.5 0 0 0 1.5 1.5H15')}
     </>
   ),
+  // Create PDF: reorder the file list.
+  moveUp: <>{P('m6.5 14.5 5.5-5.5 5.5 5.5')}</>,
+  moveDown: <>{P('m6.5 9.5 5.5 5.5 5.5-5.5')}</>,
 } as const;
 
 export type IconName = keyof typeof ICONS;

@@ -5,6 +5,7 @@
  */
 import type { MessageKey } from '../i18n';
 import type { IconName } from '../app/icons';
+import { requestToolSheet } from '../services/toolSheets';
 
 export type ToolId =
   | 'edit'
@@ -78,7 +79,8 @@ export const TOOLS: readonly ToolDef[] = [
   tool('protect', 'lock', 'graphite', { status: 'ready', viewer: { commands: ['document:protect'] } }),
   tool('redact', 'redact', 'red', { status: 'ready', viewer: { commands: ['mode:redact'] } }),
   tool('export', 'export', 'green'),
-  tool('create', 'create', 'blue', { needsDocument: false }),
+  // Create PDF: warraq-create (own layout engine) via `create.fromFiles`; sheet in tools/create.
+  tool('create', 'create', 'blue', { needsDocument: false, status: 'ready', core: { open: () => requestToolSheet({ tool: 'create' }) } }),
   tool('compare', 'compare', 'teal'),
   tool('scan', 'scan', 'cyan', { needsDocument: false }),
   tool('combine', 'combine', 'orange'),

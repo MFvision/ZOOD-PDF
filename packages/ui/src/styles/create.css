@@ -1,0 +1,96 @@
+/* Create PDF sheet (tools/create/CreateSheet.tsx). Logical properties only: mirrors in Arabic. */
+.create-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-block: 20px;
+  padding-inline: 16px;
+  border: 1.5px dashed var(--separator-strong);
+  border-radius: var(--r-lg);
+  background: var(--fill-2);
+  color: var(--label-2);
+  text-align: center;
+}
+
+.create-drop > span:first-of-type {
+  color: var(--label);
+  font-weight: 600;
+}
+
+.create-count {
+  margin-block: 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--label-2);
+}
+
+.create-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.create-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-block: 6px;
+  padding-inline: 10px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+
+.create-item-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.create-item-name {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.create-item-meta {
+  font-size: 12px;
+  color: var(--label-2);
+}
+
+.create-item-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.create-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.create-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.check input {
+  inline-size: 16px;
+  block-size: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}

@@ -37,6 +37,10 @@ export interface AppServices {
   viewer(docId: string): ViewerApi | undefined;
   markSensitive(docId: string): void;
   storeThumbnail(docId: string, png: Uint8Array): Promise<void>;
+  /** The engine client (core tools call it directly). */
+  engine(): EngineClient;
+  /** Open documents the core just made (Create PDF): new, unsaved, no file handle yet. */
+  openCreated(docs: { name: string; bytes: Uint8Array }[]): void;
 }
 
 const Ctx = createContext<AppServices | null>(null);
@@ -230,6 +234,15 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
             await recents.putBytes(doc.recentId, out);
           }
           await refreshRecents();
+        } else if (!sensitive.current.has(id)) {
+          // First save of a document made in the app (Create PDF): it joins Recents now.
+          try {
+            const recentId = (await recents.add({ name: res.name, bytes: out })).id;
+            dispatch({ type: 'SET_RECENT_ID', id, recentId });
+            await refreshRecents();
+          } catch {
+            /* recents are a convenience */
+          }
         }
         toast(t('toast.saved', { name: res.name }), 'success');
         return true;
@@ -284,6 +297,12 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
       sensitive.current.add(docId);
       const rid = stateRef.current.documents[docId]?.recentId;
       if (rid) void recents.forgetThumbnail(rid).then(refreshRecents);
+    },
+    engine: getEngine,
+    openCreated: (docs) => {
+      for (const d of docs) {
+        dispatch({ type: 'OPEN_DOCUMENT', id: newDocId(), name: d.name, bytes: d.bytes, unsaved: true });
+      }
     },
     storeThumbnail: async (docId, png) => {
       const rid = stateRef.current.documents[docId]?.recentId;

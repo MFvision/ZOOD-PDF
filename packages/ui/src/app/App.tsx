@@ -6,6 +6,11 @@ import { DocumentView } from './DocumentView';
 import { CommandPalette, SettingsSheet, TagsSheet, ToolsSheet } from './Sheets';
 import { Sheet, Toasts } from './primitives';
 import { Icon } from './icons';
+import { claimDrop, onToolSheet, requestToolSheet, type ToolSheetRequest } from '../services/toolSheets';
+import { CreateSheet } from '../tools/create/CreateSheet';
+import { createKind } from '../tools/create/create';
+import { isToolReady } from '../tools/registry';
+import { isPdfBytes } from '../services/files';
 
 export function App() {
   const app = useApp();
@@ -13,6 +18,8 @@ export function App() {
   const [sheet, setSheet] = useState<HomeSheet | null>(null);
   const [confirmClose, setConfirmClose] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [toolSheet, setToolSheet] = useState<ToolSheetRequest | null>(null);
+  useEffect(() => onToolSheet(setToolSheet), []);
   const activeDoc = state.route.name === 'document' ? state.route.id : null;
 
   const requestClose = useCallback(
@@ -47,7 +54,12 @@ export function App() {
   useEffect(() => {
     const off = app.host.onHostDrop((files) => {
       setDragging(false);
-      void app.openFiles(files);
+      // An open tool sheet (Create PDF) takes the drop.
+      if (claimDrop(files)) return;
+      // Documents and pictures that are not PDFs go to Create PDF.
+      const convertible = isToolReady('create', app.platform) ? files.filter((f) => !isPdfBytes(f.bytes) && createKind(f.name)) : [];
+      if (convertible.length) requestToolSheet({ tool: 'create', files: convertible });
+      void app.openFiles(files.filter((f) => !convertible.includes(f)));
     });
     const enter = (e: DragEvent) => {
       if (Array.from(e.dataTransfer?.types ?? []).includes('Files')) setDragging(true);
@@ -83,6 +95,7 @@ export function App() {
       {sheet?.kind === 'tools' && <ToolsSheet onClose={() => setSheet(null)} />}
       {sheet?.kind === 'tags' && <TagsSheet item={sheet.item} onClose={() => setSheet(null)} />}
       {sheet?.kind === 'palette' && <CommandPalette onClose={() => setSheet(null)} />}
+      {toolSheet?.tool === 'create' && <CreateSheet initial={toolSheet.files} onClose={() => setToolSheet(null)} />}
 
       {closing && (
         <Sheet

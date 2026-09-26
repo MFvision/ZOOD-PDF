@@ -52,7 +52,7 @@ export interface AppState {
 }
 
 export type Action =
-  | { type: 'OPEN_DOCUMENT'; id: string; name: string; bytes: Uint8Array; recentId?: string; handle?: unknown; tool?: string }
+  | { type: 'OPEN_DOCUMENT'; id: string; name: string; bytes: Uint8Array; recentId?: string; handle?: unknown; tool?: string; unsaved?: boolean }
   | { type: 'TOOL_STARTED'; id: string }
   | { type: 'CLOSE_DOCUMENT'; id: string }
   | { type: 'VIEWER_READY'; id: string; revision: number; pageCount: number }
@@ -86,8 +86,9 @@ export function reducer(state: AppState, action: Action): AppState {
         originalBytes: action.bytes.slice(),
         revision: 0,
         switching: true,
-        warraqOwnsDocument: false,
-        edited: false,
+        // A document made by the core (Create PDF) is new and unsaved: its bytes are the save.
+        warraqOwnsDocument: !!action.unsaved,
+        edited: !!action.unsaved,
         pageCount: 0,
         recentId: action.recentId,
         handle: action.handle,
