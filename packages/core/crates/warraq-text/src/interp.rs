@@ -507,18 +507,29 @@ impl<'s, S: ContentSource + ?Sized> Interpreter<'s, S> {
                 trm.apply(x0, y1),
             ];
             let bbox = Rect::from_points(&pts);
-            let origin = trm.apply(0.0, 0.0);
-            let dir = norm(trm.apply_vec(1.0, 0.0));
+            let mut origin = trm.apply(0.0, 0.0);
+            let mut dir = norm(trm.apply_vec(1.0, 0.0));
             let (vx, vy) = trm.apply_vec(0.0, 1.0);
             let size = (vx * vx + vy * vy).sqrt();
-            let up = (-dir.1, dir.0);
-            let proj = |v: (f64, f64)| v.0 * up.0 + v.1 * up.1;
             let (ax, ay) = trm.apply_vec(d.width, 0.0);
             let width = if font.vertical {
                 size
             } else {
                 (ax * ax + ay * ay).sqrt()
             };
+            // Right-to-left text drawn with a horizontally mirrored matrix (Tesseract/OCRmyPDF
+            // text layers: logical order, pen moving leftwards): the glyph spans origin − width
+            // … origin on an upright line, not an upside-down one.
+            let (xx, xy) = trm.apply_vec(1.0, 0.0);
+            if !font.vertical
+                && xx * vy - xy * vx < 0.0
+                && d.text.chars().find_map(crate::bidi::strong_dir) == Some(crate::bidi::Dir::Rtl)
+            {
+                origin = (origin.0 + dir.0 * width, origin.1 + dir.1 * width);
+                dir = (-dir.0, -dir.1);
+            }
+            let up = (-dir.1, dir.0);
+            let proj = |v: (f64, f64)| v.0 * up.0 + v.1 * up.1;
             let a = proj(trm.apply_vec(0.0, font.ascent));
             let de = proj(trm.apply_vec(0.0, font.descent));
             let (asc, desc) = if a >= de { (a, de) } else { (de, a) };

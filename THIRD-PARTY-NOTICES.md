@@ -29,6 +29,20 @@ shipped package is missing here or is not under an allowed licence.
 | @embedpdf/default-stamps | 0.0.1 | MIT | Standard rubber-stamp library (English `stamps.pdf`), served locally |
 | preact | 10.29.8 | MIT | Rendering library bundled inside @embedpdf/snippet |
 | tailwind-merge | 3.7.0 | MIT | Class-name utility bundled inside @embedpdf/snippet |
+| tesseract.js | 7.0.0 | Apache-2.0 | Scan & OCR: recogniser client and its worker (`ocr/worker.min.js`, served locally) |
+| tesseract.js-core | 7.0.0 | Apache-2.0 | Scan & OCR: Tesseract 5 + Leptonica compiled to WebAssembly (`ocr/core/*-lstm.wasm.js`, served locally). Bundles Tesseract (Apache-2.0), Leptonica (BSD-2-Clause), zlib (Zlib), libpng (PNG Reference Library licence, permissive), libjpeg-turbo (IJG/BSD-3-Clause), libwebp (BSD-3-Clause) |
+| bmp-js | 0.1.0 | MIT | Bundled inside the tesseract.js worker |
+| idb-keyval | 6.3.0 | Apache-2.0 | Bundled inside the tesseract.js worker (model cache; switched off: `cacheMethod: 'none'`) |
+| is-url | 1.2.4 | MIT | tesseract.js dependency |
+| regenerator-runtime | 0.13.11 | MIT | Bundled inside the tesseract.js worker |
+| wasm-feature-detect | 1.9.0 | Apache-2.0 | tesseract.js picks the SIMD / relaxed-SIMD core |
+| zlibjs | 0.3.1 | MIT | Bundled inside the tesseract.js worker |
+
+OCR language models (not npm): `ara`, `eng`, `fas`, `urd` `.traineddata` from
+[tesseract-ocr/tessdata](https://github.com/tesseract-ocr/tessdata) tag 4.1.0 ("best-int": tessdata_best LSTM
+models converted to integer), Apache-2.0, 27.9 MB in total. They are not committed: `scripts/fetch-ocr-models.sh`
+downloads them into `.cache/ocr-models` and verifies pinned SHA-256 checksums; builds ship them as `ocr/lang/*`
+with `LICENSE.txt`.
 
 Build and test tools (not shipped): Vite 8.3.1, @vitejs/plugin-react 6.1.1, Vitest 5.0.2, jsdom 30.1.1,
 @testing-library/react 16.3.3, fake-indexeddb 6.2.5, @playwright/test 1.56.1, TypeScript 5.9, ESLint 9,

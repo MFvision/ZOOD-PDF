@@ -438,6 +438,106 @@
       "source": "chrome-tashkeel-amiri"
     },
     {
+      "id": "scan-chrome-news-amiri-straight",
+      "path": "generated/scans/chrome-news-amiri-straight.pdf",
+      "producer": "scan",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/chrome-news-amiri.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "dpi": 300,
+        "variant": "straight",
+        "skew_degrees": 0,
+        "shadow": false
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-news-amiri",
+      "image": "generated/scans/chrome-news-amiri-straight.png"
+    },
+    {
+      "id": "scan-chrome-news-amiri-crooked5",
+      "path": "generated/scans/chrome-news-amiri-crooked5.pdf",
+      "producer": "scan",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/chrome-news-amiri.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "dpi": 300,
+        "variant": "crooked5",
+        "skew_degrees": 5,
+        "shadow": false
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-news-amiri",
+      "image": "generated/scans/chrome-news-amiri-crooked5.png"
+    },
+    {
+      "id": "scan-chrome-news-amiri-crooked8",
+      "path": "generated/scans/chrome-news-amiri-crooked8.pdf",
+      "producer": "scan",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/chrome-news-amiri.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "dpi": 300,
+        "variant": "crooked8",
+        "skew_degrees": 8,
+        "shadow": false
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-news-amiri",
+      "image": "generated/scans/chrome-news-amiri-crooked8.png"
+    },
+    {
+      "id": "scan-chrome-news-amiri-shadow",
+      "path": "generated/scans/chrome-news-amiri-shadow.pdf",
+      "producer": "scan",
+      "languages": [
+        "ar"
+      ],
+      "truth": "truth/chrome-news-amiri.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "dpi": 300,
+        "variant": "shadow",
+        "skew_degrees": 0,
+        "shadow": true
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-news-amiri",
+      "image": "generated/scans/chrome-news-amiri-shadow.png"
+    },
+    {
       "id": "scan-chrome-tashkeel-amiri-straight",
       "path": "generated/scans/chrome-tashkeel-amiri-straight.pdf",
       "producer": "scan",
@@ -740,6 +840,114 @@
       "pending_decryption": false,
       "source": "chrome-persian-vazirmatn",
       "image": "generated/scans/chrome-persian-vazirmatn-shadow.png"
+    },
+    {
+      "id": "scan-chrome-mixed-naskh-straight",
+      "path": "generated/scans/chrome-mixed-naskh-straight.pdf",
+      "producer": "scan",
+      "languages": [
+        "ar",
+        "en"
+      ],
+      "truth": "truth/chrome-mixed-naskh.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "mixed_digits": true,
+        "dpi": 300,
+        "variant": "straight",
+        "skew_degrees": 0,
+        "shadow": false
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-mixed-naskh",
+      "image": "generated/scans/chrome-mixed-naskh-straight.png"
+    },
+    {
+      "id": "scan-chrome-mixed-naskh-crooked5",
+      "path": "generated/scans/chrome-mixed-naskh-crooked5.pdf",
+      "producer": "scan",
+      "languages": [
+        "ar",
+        "en"
+      ],
+      "truth": "truth/chrome-mixed-naskh.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "mixed_digits": true,
+        "dpi": 300,
+        "variant": "crooked5",
+        "skew_degrees": 5,
+        "shadow": false
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-mixed-naskh",
+      "image": "generated/scans/chrome-mixed-naskh-crooked5.png"
+    },
+    {
+      "id": "scan-chrome-mixed-naskh-crooked8",
+      "path": "generated/scans/chrome-mixed-naskh-crooked8.pdf",
+      "producer": "scan",
+      "languages": [
+        "ar",
+        "en"
+      ],
+      "truth": "truth/chrome-mixed-naskh.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "mixed_digits": true,
+        "dpi": 300,
+        "variant": "crooked8",
+        "skew_degrees": 8,
+        "shadow": false
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-mixed-naskh",
+      "image": "generated/scans/chrome-mixed-naskh-crooked8.png"
+    },
+    {
+      "id": "scan-chrome-mixed-naskh-shadow",
+      "path": "generated/scans/chrome-mixed-naskh-shadow.pdf",
+      "producer": "scan",
+      "languages": [
+        "ar",
+        "en"
+      ],
+      "truth": "truth/chrome-mixed-naskh.txt",
+      "password": null,
+      "flags": {
+        "scanned": true,
+        "encrypted": false,
+        "nastaliq": false,
+        "tashkeel": false,
+        "columns": 1,
+        "mixed_digits": true,
+        "dpi": 300,
+        "variant": "shadow",
+        "skew_degrees": 0,
+        "shadow": true
+      },
+      "committed": false,
+      "pending_decryption": false,
+      "source": "chrome-mixed-naskh",
+      "image": "generated/scans/chrome-mixed-naskh-shadow.png"
     }
   ]
 }

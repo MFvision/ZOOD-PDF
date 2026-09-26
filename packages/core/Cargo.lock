@@ -2075,6 +2075,7 @@ dependencies = [
  "jpeg-encoder",
  "js-sys",
  "png",
+ "read-fonts 0.43.3",
  "serde",
  "serde_json",
  "thiserror",
