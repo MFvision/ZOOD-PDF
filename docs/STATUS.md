@@ -54,6 +54,29 @@ after `bash scripts/build-wasm.sh`). Page indices in the RPC are 0-based.
 * `doc.info.hasSignatures` is a heuristic (a `/FT /Sig` field with `/V`, or a `/Sig` dictionary with
   `/ByteRange`); verification belongs to warraq-sign.
 
+## Create PDF (warraq-create, `create.fromFiles`)
+
+Own layout engine (rustybuzz shaping, UAX #9 bidi, line breaking, kashida justification, tables,
+lists, pagination) and a tagged PDF writer with subset TrueType fonts (Amiri, Cairo, Inter bundled).
+Readers: DOCX, XLSX, PPTX, HTML (safe subset, `data:` images only), Markdown, TXT (UTF-8/16,
+Windows-1256), CSV/TSV, JPEG, PNG, multi-page TIFF (G3/G4 passed through, LZW/Deflate/PackBits).
+Fixtures: `python3 scripts/create-fixtures.py` → `tests/fixtures/create/` (each with `.truth.txt`).
+
+### Proven by tests
+| What | Test |
+| --- | --- |
+| Arabic/English text round-trips through warraq-text in logical order (incl. kashida-justified paragraphs, ActualText) | `warraq-create/tests/roundtrip.rs` |
+| Every reader on generated fixtures: text back in logical order, table cells intact, headings/lists/tables/figures tagged, `/Alt` on pictures, slide size kept, TIFF polarity/colour checked by rendering with hayro | `warraq-create/tests/readers.rs` |
+| Invariants: tagged (`StructTreeRoot`, `MarkInfo`, `Lang`), subset fonts only, never `/Direction`, lopdf reloads | `tests/common/mod.rs::assert_pdf_invariants` |
+| No panic / bounded time on mutated whole files and mutated OOXML parts (600 cases default; 5000 checked); billion laughs, zip bomb, huge picture, absurd spans, deep nesting | `warraq-create/tests/no_panic.rs` (`WARRAQ_CREATE_SMOKE_CASES`); cargo-fuzz targets `create_*` |
+| RPC `create.fromFiles` / `create.formats`, coded errors; wasm build creates a PDF from the DOCX fixture | `warraq-core/src/methods/create.rs` tests, `wasm-smoke.mjs` |
+| UI: pick files, refuse unsupported ones, reorder, page numbers, new PDF opens unsaved and saves through the host (en + ar) | `tests/e2e/create.spec.ts`, `tools/create/create.test.ts` |
+
+### Not supported yet
+DOCX headers/footers, footnotes, text boxes, floating positions; XLSX number formats/dates;
+PPTX themes, backgrounds, shape fills, charts, SmartArt; EMF/WMF/GIF pictures; legacy .doc/.xls/.ppt.
+The bundled fonts add about 3 MB to the wasm (6.4 MB total without wasm-opt).
+
 ## Interface (`packages/ui`, `apps/web`, `apps/extension`)
 
 `pnpm -C packages/ui test` (vitest) and `pnpm e2e` (Playwright, Chromium, production build of `apps/web` on
@@ -63,7 +86,7 @@ port 4311; the extension spec loads `apps/extension/dist` unpacked). Architectur
 | What | Test |
 | --- | --- |
 | Home renders in English (LTR, sidebar left) and Arabic (RTL, sidebar mirrored right, «ملفات PDF، من جديد», `زود PDF` title); zero requests leave localhost | `home.spec.ts` |
-| Only ready tools are shown (sidebar = More sheet = the 5 viewer-backed tools); no "coming soon"; six working home cards | `home.spec.ts`, `registry.test.ts`, `App.test.tsx` |
+| Only ready tools are shown (sidebar = More sheet = the 5 viewer-backed tools + Create PDF); no "coming soon"; six working home cards | `home.spec.ts`, `registry.test.ts`, `App.test.tsx` |
 | Language switch in Settings flips `dir`, persists across reload; Arabic-Indic digits (`صفحة ١ من ٢`) | `home.spec.ts`, `open-save.spec.ts`, `i18n.test.ts` |
 | Open via the Open card (file chooser) → viewer with page count; highlight with EmbedPDF; Save through the File System Access picker; saved bytes contain the `/Highlight`; **original bytes are an exact prefix of the saved file** (doc.rebase); reopen the saved file | `open-save.spec.ts` |
 | A second save is one more incremental update on top of the first save | `open-save.spec.ts` |
