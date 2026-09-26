@@ -39,15 +39,15 @@ async function lineBox(bytes: Buffer, text: string): Promise<{ box: Rect; width:
   throw new Error(`line not found: ${text}`);
 }
 
-/** EmbedPDF's search panel (Ctrl+F): the number of results for `query`. */
-async function viewerSearch(page: Page, query: string): Promise<number> {
-  const input = page.locator('[data-testid=document-view]:visible embedpdf-container input[placeholder="Search"]');
+/** EmbedPDF's search panel (Ctrl+F): searches `query` and waits for exactly `expected` results (the panel
+ * shows "0 results found" while a search is still running, so only the settled count is meaningful). */
+async function viewerSearch(page: Page, query: string, expected: number): Promise<void> {
+  const container = page.locator('[data-testid=document-view]:visible embedpdf-container');
+  const input = container.locator('input[placeholder="Search"]');
   if (!(await input.isVisible())) await page.keyboard.press('Control+f');
   await expect(input).toBeVisible();
   await input.fill(query);
-  const found = page.locator('[data-testid=document-view]:visible embedpdf-container').getByText(/^\d+ results found$/);
-  await expect(found).toBeVisible();
-  return Number((await found.textContent())!.split(' ')[0]);
+  await expect(container.getByText(/^\d+ results found$/)).toHaveText(`${expected} results found`);
 }
 
 /** Selects the whole line `box` of page 0 by dragging across it, copies with Ctrl+C, returns the copy. */
@@ -126,7 +126,7 @@ test.describe('Arabic text reads back in logical order: engine, PDFium, viewer s
     pd.close();
     // (c) the app's viewer
     await reopen(page, 'edited.pdf', bytes);
-    expect(await viewerSearch(page, 'للبحث')).toBe(1);
+    await viewerSearch(page, 'للبحث', 1);
     expect(await copyLine(page, await lineBox(bytes, EDITED))).toBe(EDITED);
   });
 
@@ -161,9 +161,9 @@ test.describe('Arabic text reads back in logical order: engine, PDFium, viewer s
     pd.close();
 
     await reopen(page, 'report.pdf', bytes);
-    expect(await viewerSearch(page, 'الرياض')).toBe(1);
+    await viewerSearch(page, 'الرياض', 1);
     // Arabic-aware (as the engine): typed without hamza, «الأول» is still found everywhere.
-    expect(await viewerSearch(page, 'الاول')).toBe(withoutHamza);
+    await viewerSearch(page, 'الاول', withoutHamza);
     expect(await copyLine(page, await lineBox(bytes, HEADING))).toBe(HEADING);
   });
 
@@ -178,7 +178,7 @@ test.describe('Arabic text reads back in logical order: engine, PDFium, viewer s
     await stubClipboard(context);
     await page.goto('/');
     await openViaCard(page, fixture('sample-ar.pdf'));
-    expect(await viewerSearch(page, 'الاول')).toBe(1);
+    await viewerSearch(page, 'الاول', 1);
     expect(await copyLine(page, await lineBox(bytes, LINE))).toBe(LINE);
   });
 });
