@@ -8,6 +8,7 @@ import { readJson, writeJson } from './preferences';
  */
 const RECENT_KEY = 'warraq.recent';
 const THUMBS_KEY = 'warraq.recentThumbs';
+const DATES_KEY = 'warraq.recentDates';
 export const RECENT_LIMIT = 10;
 
 export function readRecent(): string[] {
@@ -15,15 +16,43 @@ export function readRecent(): string[] {
   return Array.isArray(list) ? list.filter((n): n is string => typeof n === 'string') : [];
 }
 
-export function addRecent(name: string): string[] {
+export function addRecent(name: string, now: number = Date.now()): string[] {
   const next = [name, ...readRecent().filter((n) => n !== name)].slice(0, RECENT_LIMIT);
   writeJson(RECENT_KEY, next);
+  writeJson(DATES_KEY, { ...readRecentDates(next), [name]: now });
+  return next;
+}
+
+/** Takes one file off the list, with its picture and its date; the file itself is not touched. */
+export function removeRecent(name: string): string[] {
+  const next = readRecent().filter((n) => n !== name);
+  writeJson(RECENT_KEY, next);
+  forgetRecentThumbnail(name);
+  writeJson(DATES_KEY, readRecentDates(next));
   return next;
 }
 
 export function clearRecent(): void {
   writeJson(RECENT_KEY, []);
   writeJson(THUMBS_KEY, {});
+  writeJson(DATES_KEY, {});
+}
+
+/**
+ * When each recent file was last opened, in milliseconds since the epoch, by
+ * name — only for files still on the list, and only sound numbers: a file
+ * listed before dates were kept simply has none.
+ */
+export function readRecentDates(names: readonly string[] = readRecent()): Record<string, number> {
+  const stored = readJson<unknown>(DATES_KEY, {});
+  if (!stored || typeof stored !== 'object') return {};
+  const listed = new Set(names);
+  return Object.fromEntries(
+    Object.entries(stored as Record<string, unknown>).filter(
+      (entry): entry is [string, number] =>
+        listed.has(entry[0]) && typeof entry[1] === 'number' && Number.isFinite(entry[1]) && entry[1] > 0,
+    ),
+  );
 }
 
 /** Only a JPEG data URL is ever shown: anything else in storage is ignored. */

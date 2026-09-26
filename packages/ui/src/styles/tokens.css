@@ -107,6 +107,21 @@
   --scrim: rgb(0 0 0 / 22%);
   --page-white: #fff;
 
+  /* ---- The home screen's glass ------------------------------------------------ */
+
+  /* An original soft gradient (sky, haze, a little green) and the frosted
+     panels over it. The border is white at 60 % in light, since white is
+     what catches the light there; 12 % white in dark. */
+  --home-gradient:
+    radial-gradient(60% 55% at 12% 8%, rgb(136 182 255 / 55%), transparent 70%),
+    radial-gradient(45% 45% at 88% 18%, rgb(255 214 170 / 40%), transparent 70%),
+    radial-gradient(55% 50% at 75% 92%, rgb(140 214 190 / 45%), transparent 70%),
+    linear-gradient(165deg, #eaf2ff 0%, #f5f6fa 55%, #edf6f2 100%);
+  --glass-panel: rgb(255 255 255 / 52%);
+  --glass-card: rgb(255 255 255 / 66%);
+  --glass-border: rgb(255 255 255 / 60%);
+  --glass-hover: rgb(255 255 255 / 80%);
+
   /* ---- Depth ------------------------------------------------------------------ */
   --shadow-control: 0 0.5px 1px rgb(0 0 0 / 14%), 0 0 0 0.5px rgb(0 0 0 / 6%);
   --shadow-small: 0 1px 3px rgb(0 0 0 / 10%), 0 0 0 0.5px rgb(0 0 0 / 5%);
@@ -205,6 +220,15 @@
     --green: #30d158;
     --scrim: rgb(0 0 0 / 45%);
     --warning-fg: #ffd98a;
+    --home-gradient:
+      radial-gradient(60% 55% at 12% 8%, rgb(64 110 190 / 45%), transparent 70%),
+      radial-gradient(45% 45% at 88% 18%, rgb(150 110 70 / 28%), transparent 70%),
+      radial-gradient(55% 50% at 75% 92%, rgb(40 120 100 / 35%), transparent 70%),
+      linear-gradient(165deg, #171a22 0%, #1c1d22 55%, #171d1b 100%);
+    --glass-panel: rgb(30 30 34 / 52%);
+    --glass-card: rgb(52 52 58 / 58%);
+    --glass-border: rgb(255 255 255 / 12%);
+    --glass-hover: rgb(70 70 78 / 70%);
     --shadow-control: 0 0.5px 1px rgb(0 0 0 / 30%), inset 0 0.5px 0 rgb(255 255 255 / 8%);
     --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(255 255 255 / 6%);
     --shadow-popover: 0 12px 34px rgb(0 0 0 / 45%), 0 2px 6px rgb(0 0 0 / 30%), 0 0 0 0.5px rgb(255 255 255 / 12%);
@@ -242,6 +266,15 @@
   --green: #30d158;
   --scrim: rgb(0 0 0 / 45%);
   --warning-fg: #ffd98a;
+  --home-gradient:
+    radial-gradient(60% 55% at 12% 8%, rgb(64 110 190 / 45%), transparent 70%),
+    radial-gradient(45% 45% at 88% 18%, rgb(150 110 70 / 28%), transparent 70%),
+    radial-gradient(55% 50% at 75% 92%, rgb(40 120 100 / 35%), transparent 70%),
+    linear-gradient(165deg, #171a22 0%, #1c1d22 55%, #171d1b 100%);
+  --glass-panel: rgb(30 30 34 / 52%);
+  --glass-card: rgb(52 52 58 / 58%);
+  --glass-border: rgb(255 255 255 / 12%);
+  --glass-hover: rgb(70 70 78 / 70%);
   --shadow-control: 0 0.5px 1px rgb(0 0 0 / 30%), inset 0 0.5px 0 rgb(255 255 255 / 8%);
   --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(255 255 255 / 6%);
   --shadow-popover: 0 12px 34px rgb(0 0 0 / 45%), 0 2px 6px rgb(0 0 0 / 30%), 0 0 0 0.5px rgb(255 255 255 / 12%);
@@ -273,6 +306,10 @@
     --sidebar-background: var(--window-background);
     --elevated-background: var(--grouped-background);
     --glass: var(--control-background);
+    --glass-panel: var(--window-background);
+    --glass-card: var(--grouped-background);
+    --glass-border: var(--separator);
+    --home-gradient: none;
     --separator: rgb(0 0 0 / 35%);
     --control-border: rgb(0 0 0 / 45%);
     --secondary-label: rgb(0 0 0 / 70%);
@@ -317,6 +354,10 @@
     --sidebar-background: var(--window-background);
     --elevated-background: var(--grouped-background);
     --glass: var(--grouped-background);
+    --glass-panel: var(--window-background);
+    --glass-card: var(--grouped-background);
+    --glass-border: var(--separator);
+    --home-gradient: none;
     --blur-thin: none;
     --blur-regular: none;
     --blur-thick: none;

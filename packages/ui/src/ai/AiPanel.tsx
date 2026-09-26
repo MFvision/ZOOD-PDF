@@ -15,6 +15,8 @@ import type { AiTask } from './prompt';
 import { CLAUDE_MODELS, LOCAL_ALLOWED_ORIGINS, localAddress } from './providers';
 import type { Answer, Failure, LocalApi, ProviderId } from './providers';
 import { readDocument } from './readDocument';
+import { onAiRequest, takeAiRequest } from './request';
+import type { AiRequest } from './request';
 import { send } from './send';
 import { forgetKey, keepKey, loadKey, readSettings, writeSettings } from './store';
 import type { AiSettings } from './store';
@@ -147,6 +149,24 @@ export function AiPanel() {
   const answerId = useId();
 
   useEffect(() => writeSettings(settings), [settings]);
+  // A request from the home screen's chips chooses the action and fills in
+  // the question — no more: what would be sent is still reviewed here, and
+  // sent only from the Send button.
+  useEffect(() => {
+    const apply = (request: AiRequest) => {
+      setTask(request.task);
+      if (request.question !== undefined) setQuestion(request.question);
+      if (request.to) setTranslateTo(request.to);
+      generation.current += 1;
+      setPreflight(null);
+      setNotice(null);
+      setFailure(null);
+      setShowText(false);
+    };
+    const first = takeAiRequest();
+    if (first) apply(first);
+    return onAiRequest(apply);
+  }, []);
   // Leaving the panel stops waiting for an answer nobody will see.
   useEffect(() => () => abortRef.current?.abort(), []);
   useEffect(() => {

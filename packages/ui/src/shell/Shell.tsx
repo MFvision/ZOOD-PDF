@@ -7,6 +7,7 @@ import { IconButton } from '../components/IconButton';
 import { CloudSheets } from '../cloud/CloudSheets';
 import { FontNotice } from '../edit/FontNotice';
 import { HomeScreen } from '../home/HomeScreen';
+import { PendingPage } from '../home/pendingPage';
 import { LinkConfirmDialog } from '../links/LinkConfirmDialog';
 import { useI18n } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
@@ -101,6 +102,7 @@ export function Shell() {
   return (
     <MarkupBarContext.Provider value={markupBar}>
       <NativeMenu enabled={nativeMenu} />
+      <PendingPage />
       <div className="shell" data-native-menu={nativeMenu || undefined} data-view={state.view}>
         {!nativeMenu && <MenuBar />}
         <Toolbar />
