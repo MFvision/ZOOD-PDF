@@ -52,11 +52,16 @@ async function viewerSearch(page: Page, query: string, expected: number): Promis
 
 /** Selects the whole line `box` of page 0 by dragging across it, copies with Ctrl+C, returns the copy. */
 async function copyLine(page: Page, line: { box: Rect; width: number; height: number }): Promise<string> {
-  const pb = await pageBox(page, 0);
-  const k = pb.width / line.width;
-  const y = pb.y + ((line.box.y0 + line.box.y1) / 2) * k;
-  const right = pb.x + (line.box.x1 - 0.8) * k;
-  const left = pb.x + (line.box.x0 + 0.8) * k;
+  const at = async () => {
+    const pb = await pageBox(page, 0);
+    const k = pb.width / line.width;
+    return {
+      key: `${pb.x},${pb.y},${pb.width}`,
+      y: pb.y + ((line.box.y0 + line.box.y1) / 2) * k,
+      right: pb.x + (line.box.x1 - 0.8) * k,
+      left: pb.x + (line.box.x0 + 0.8) * k,
+    };
+  };
   // The selection layer answers hovering text with an I-beam once the page's glyph geometry is loaded.
   const cursorAt = (x: number, yy: number) =>
     page.evaluate(
@@ -67,14 +72,21 @@ async function copyLine(page: Page, line: { box: Rect; width: number; height: nu
       },
       [x, yy],
     );
+  // Ready = the page no longer moves (opening the search panel re-centres it and scrolls to the active
+  // result) AND hovering the line's first glyph shows the I-beam.
   let nudge = 0;
+  let pos = await at();
   await expect
     .poll(async () => {
       nudge = 0.5 - nudge;
-      await page.mouse.move(right, y + nudge);
-      return cursorAt(right, y + nudge);
+      const now = await at();
+      const still = now.key === pos.key;
+      pos = now;
+      await page.mouse.move(pos.right, pos.y + nudge);
+      return still && (await cursorAt(pos.right, pos.y + nudge)) === 'text' && (await at()).key === pos.key;
     })
-    .toBe('text');
+    .toBe(true);
+  const { left, right, y } = pos;
   await page.mouse.down();
   await page.mouse.move((left + right) / 2, y, { steps: 6 });
   await page.mouse.move(left, y, { steps: 6 });
