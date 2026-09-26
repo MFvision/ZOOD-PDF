@@ -292,8 +292,8 @@ Not proven / limits:
   HTTP commands against a local mock; no public TSA/OCSP responder was contacted.
 * The page preview used to draw the box ignores a MediaBox/CropBox whose origin is not (0, 0).
 * FieldMDP from the UI offers "lock all form fields" only (Include/Exclude lists are engine-only).
-* Tampering is covered through Organize (rotate) and Comment (highlight); the Edit tool is not
-  ready yet, so no text-edit tamper test exists. Comment-after-certification (disallowed annotation) is proven
+* Tampering is covered through Organize (rotate) and Comment (highlight); a text change made with
+  the Edit tool (which landed after this work) is not yet exercised against a signature in a spec. Comment-after-certification (disallowed annotation) is proven
   in the engine (`warraq-sign/tests/verify.rs`), not through the UI.
 * The password lives in a React state string until signing finishes or the panel closes; JS strings
   cannot be wiped.
