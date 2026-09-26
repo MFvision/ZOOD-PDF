@@ -15,7 +15,7 @@ project are Linux: no Xcode, no iOS SDK, no simulator.
 1. **Two layers.** `apps/ios/Packages/ZoodKit` is a SwiftPM package with no Apple-only imports:
    `ZoodEngine` (a Sendable **actor** per open document over the C ABI `warraq.h`, typed Codable wrappers
    of the RPC methods) and `ZoodCore` (recents store, Arabic search normalisation mirroring the web
-   rules, page ranges, Hijri dates, file naming, scan geometry, deep links, AI request/SSE parsing).
+   rules, page ranges, Hijri dates, file naming, scan geometry, deep links; since ADR 0015 also the local-first AI, autofill and read-aloud logic).
    Everything that needs UIKit/SwiftUI/PDFKit/VisionKit/PencilKit lives in the app and widget targets.
    ZoodKit is built and tested on Linux against the real engine static library
    (`scripts/ios/test-linux.sh`), which proves the FFI bridge (ownership, blobs, errors, concurrency)
@@ -48,7 +48,10 @@ project are Linux: no Xcode, no iOS SDK, no simulator.
    scope survives. Navigation state is per window; the library is shared.
 8. **Localisation.** String Catalogs with semantic keys (as in the web `en.json`/`ar.json`), English +
    Arabic MSA, Arabic plural forms, numerals from the locale; a Python checker enforces completeness.
-9. **No third-party Swift packages.**
+9. **No third-party Swift packages.** Amended by ADR 0015: llama.cpp (MIT) is linked as its pinned
+   upstream release XCFramework for device builds (on-device model fallback); still no SwiftPM
+   dependencies. The bring-your-own-key AI assistant this ADR originally shipped was removed
+   (SPEC §8: no cloud AI, no API keys).
 
 ## Consequences
 

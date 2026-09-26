@@ -404,8 +404,21 @@ part of any artefact.
 
 ## iOS app (`apps/ios`)
 
-No third-party Swift packages. The app links only Apple system frameworks (SwiftUI, UIKit, PDFKit,
-PencilKit, VisionKit, Vision, AVFoundation, Core Image, Core Text, WidgetKit, App Intents, Core Spotlight,
-Security) and the ZOOD PDF engine (`warraq-core` static library in `WarraqCore.xcframework`, whose Rust
-dependencies are listed above). The app icon is the project's own artwork (`apps/web/public/icons`).
+No third-party Swift packages. The app links Apple system frameworks (SwiftUI, UIKit, PDFKit,
+PencilKit, VisionKit, Vision, AVFoundation, MediaPlayer, CryptoKit, Foundation Models (weak, iOS 26+),
+Core Image, Core Text, WidgetKit, App Intents, Core Spotlight), the ZOOD PDF engine (`warraq-core` static
+library in `WarraqCore.xcframework`, whose Rust dependencies are listed above) and, in device builds only:
+
+| Component | Version | Licence | Use |
+| --- | --- | --- | --- |
+| llama.cpp (incl. ggml) | release b11200, `llama-b11200-xcframework.zip`, SHA-256 `c62cae37316b12938cde3224493e008d121635bf759ddd08fbcdd587b3b8808c` | MIT | Runs the portable on-device model (ADR 0015); fetched by `scripts/ios/fetch-llama.sh` |
+
+Models are **not shipped**; the user downloads one on request (or imports a file):
+
+| Model | File (pinned revision, SHA-256) | Licence |
+| --- | --- | --- |
+| Qwen3-1.7B, GGUF Q4_K_M (quantised by Unsloth) | `unsloth/Qwen3-1.7B-GGUF@d7f544ee…` `Qwen3-1.7B-Q4_K_M.gguf`, 1,107,409,472 bytes, `b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897` | Apache-2.0 |
+| Qwen3-0.6B, GGUF Q4_K_M ("light") | `unsloth/Qwen3-0.6B-GGUF@50968a44…` `Qwen3-0.6B-Q4_K_M.gguf`, 396,705,472 bytes, `ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a` | Apache-2.0 |
+
+Voices are the system's own (`AVSpeechSynthesizer`); Apple's on-device model is part of the OS. The app icon is the project's own artwork (`apps/web/public/icons`).
 Build/test tools (not shipped): XcodeGen (MIT), the Swift toolchain (Apache-2.0) used for Linux tests.

@@ -58,13 +58,14 @@ swift.org first (or set `SWIFT=/path/to/swift`).
 | Path | What |
 | --- | --- |
 | `project.yml` | XcodeGen spec: app **ZOOD PDF** (`sa.zood.pdf.ios`), widget extension, unit + UI tests |
-| `Packages/ZoodKit` | SwiftPM package, platform-independent, tested on Linux. `ZoodEngine`: actor over the C ABI with typed RPC methods. `ZoodCore`: recents store, Arabic search normalisation (mirror of the web rules), page ranges, Hijri dates, file naming, scan geometry, deep links, AI request/SSE parsing |
-| `App/` | SwiftUI app: `Home/` (split view / tabs, Home, Recents, Tags), `Document/` (PDFKit view, Pencil palette, ink conversion, session that saves through `doc.rebase`), `Organize/`, `Tools/` (Protect, Combine, Compress, Convert), `Scan/` (VisionKit + AVFoundation capture, corner editor, OCR, PDF builder), `AI/`, `Services/` |
+| `Packages/ZoodKit` | SwiftPM package, platform-independent, tested on Linux. `ZoodEngine`: actor over the C ABI with typed RPC methods. `ZoodCore`: recents store, Arabic search normalisation (mirror of the web rules), page ranges, Hijri dates, file naming, scan geometry, deep links; `LocalAI` (chunking/BM25 retrieval, prompts, citations, pinned model catalog), `Autofill` (profile, rules, validation of model output), `ReadAloud` (reading units, voice ranking) — ADR 0015 |
+| `App/` | SwiftUI app: `Home/` (split view / tabs, Home, Recents, Tags), `Document/` (PDFKit view, Pencil palette, ink conversion, session that saves through `doc.rebase`), `Organize/`, `Tools/` (Protect, Combine, Compress, Convert), `Scan/` (VisionKit + AVFoundation capture, corner editor, OCR, PDF builder), `AI/` (on-device assistant: Foundation Models, llama.cpp runner, model download/import, settings), `Autofill/` ("My details", form reader, review sheet), `ReadAloud/` (speech controller, player bar, voice picker), `Services/` |
 | `Shared/` | Compiled into the app and the widgets (the Scan intent used by the Control Center control) |
-| `Intents/` | App Intents + App Shortcuts (Open recent, Scan, Combine, Compress) |
+| `Intents/` | App Intents + App Shortcuts (Open recent, Scan, Combine, Compress, Summarize PDF, Read PDF aloud) |
 | `Widgets/` | WidgetKit: Recents, Scan, Lock Screen accessory, Control Center control |
 | `*.xcstrings` | String Catalogs, English + Arabic (MSA): app, widgets, App Shortcuts phrases |
-| `Tests/ZoodPDFTests` | Simulator tests: PDFKit + engine rebase, OCR text layer, Vision runtime check, compress |
+| `Tests/ZoodPDFTests` | Simulator tests: PDFKit + engine rebase, OCR text layer, Vision runtime check, compress, autofill write + rebase, paragraph boxes, voices, Foundation Models availability |
+| `Frameworks/` | Generated, ignored: `WarraqCore.xcframework` (build-core.sh) and `llama.xcframework` (`scripts/ios/fetch-llama.sh`: llama.cpp b11200, SHA-256 pinned, iOS device slice only — ADR 0015) |
 | `Tests/ZoodPDFUITests` | Clicks through Home → document → Pencil → Organize → Scan in Arabic and English, attaching screenshots |
 
 ## How documents are handled

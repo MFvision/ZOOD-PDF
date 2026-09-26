@@ -40,10 +40,13 @@ stays 🟡 until `scripts/ios/build.sh` runs on a Mac.
 | Convert: pages → PNG/JPEG, text → .txt (engine `text.plain`) | 🟡 `text.plain` through the wrapper proven on Linux |
 | Scan to PDF: VisionKit document camera; own capture with corner handles for Whiteboard / ID Card / Book | 🟡 geometry (corner ordering, ID-1 real size, right-to-left book order) proven on Linux |
 | OCR text layer (Vision; Arabic only if the OS supports it, checked at runtime) | 🟡 `ZoodPDFTests` (not run) |
-| AI assistant (bring your own Anthropic key, exact text shown before Send, streaming) | 🟡 request body + SSE parsing proven on Linux |
+| On-device AI assistant (ADR 0015): Apple Foundation Models (iOS 26+, runtime language check) else Qwen3 via llama.cpp (pinned one-time download or Files import, device builds only); ask with tappable page citations, summarize, explain simply, translate ar↔en, key points; exact prompt viewable; no keys, no cloud | 🟡 chunking/retrieval, prompts, citations, think filter, UTF-8 reassembly, model catalog proven on Linux (`ZoodCoreTests`); Foundation Models / llama.cpp calls syntax-checked only, never run |
+| Fill Form (autofill from on-device "My details" + document text, per-field review with source, incremental save) | 🟡 profile store, rules, strict validation of model output, GBNF grammar proven on Linux; PDFKit widget write + rebase in `LocalFirstTests` (not run) |
+| Read Aloud (AVSpeechSynthesizer, Premium > Enhanced voices, ar/en switching, paragraph highlight, background audio, Now Playing) | 🟡 reading units, voice ranking, box mapping, speed proven on Linux; audio/UI not run |
+| Siri / Shortcuts: Summarize PDF, Read PDF aloud (phrases en + ar) | 🟡 |
 | Widgets: Recents, Scan, Lock Screen accessory; Control Center control (iOS 18) | 🟡 |
 | Siri / Shortcuts: Open recent, Scan, Combine, Compress (phrases en + ar) | 🟡 |
 | Core Spotlight indexing of recents | 🟡 |
 | Multiple windows, drag & drop PDFs between windows, Files app (open in place), Share sheet | 🟡 |
 | String Catalogs en + ar complete (plural forms, no unused keys) | ✅ `python3 scripts/ios/check-strings.py` (not yet wired into `verify.sh`) |
-| Fill & sign, forms, redaction, digital signatures, page marks, Office export/import, compare, standards, accessibility tools, batch, library | ⛔ web/desktop only for now (STATUS) |
+| Fill & sign (signatures), form preparation, redaction, digital signatures, page marks, Office export/import, compare, standards, accessibility tools, batch, library | ⛔ web/desktop only for now (STATUS) |
