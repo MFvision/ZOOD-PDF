@@ -22,6 +22,8 @@ der = { version = "0.7", default-features = false }
 zeroize = "1"
 warraq-text = { path = "../warraq-text" }
 warraq-redact = { path = "../warraq-redact" }
+# Create PDF (layout engine + readers); bundles the Amiri/Cairo/Inter fonts.
+warraq-create = { path = "../warraq-create" }
 # Export (DOCX/XLSX/PPTX/HTML/Markdown/text) and Compare.
 warraq-office = { path = "../warraq-office" }
 # Organize / Compress: content geometry (text boxes via warraq-text's interpreter), picture

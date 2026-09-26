@@ -248,7 +248,7 @@ License Agreement – Permissive 2.0 (a permissive data licence, see ADR 0008).
 | version_check | 0.9.5 | MIT/Apache-2.0 | Transitive dependency |
 | zerocopy | 0.8.59 | BSD-2-Clause OR Apache-2.0 OR MIT | Transitive dependency |
 | zerocopy-derive | 0.8.59 | BSD-2-Clause OR Apache-2.0 OR MIT | Transitive dependency |
-| Amiri (subset `Amiri-Sign.ttf`) | 1.x | OFL-1.1 | Arabic/Latin font embedded (subsetted) in visible signature appearances; licence in `crates/warraq-sign/assets/OFL-Amiri.txt` |
+| Amiri (`packages/core/assets/fonts/amiri`, shared with warraq-create) | 1.x | OFL-1.1 | Arabic/Latin font embedded (subsetted) in visible signature appearances and created PDFs; licence in `packages/core/assets/fonts/amiri/OFL.txt` (copy in `crates/warraq-sign/assets/OFL-Amiri.txt`) |
 
 ### Signature test tools (never bundled, never linked)
 
@@ -324,7 +324,9 @@ Direct dependencies added by `warraq-core/src/ops` (picture pages, compression).
 
 Test corpus fonts live in `tests/corpus/fonts/<family>/` with their `OFL.txt` (SIL Open Font License 1.1). They are
 used to generate the Arabic corpus; the Edit tool may embed subsets of Amiri, Cairo and Inter, in which case the OFL
-text ships with the build.
+text ships with the build. Create PDF (warraq-create) and signature appearances (warraq-sign) compile Amiri
+Regular/Bold, Cairo and Inter from `packages/core/assets/fonts/<family>/` (each with its `OFL.txt`) into the engine
+and embed subsets of them in the PDFs they write.
 
 | Font | Source | Licence |
 | --- | --- | --- |

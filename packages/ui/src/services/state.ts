@@ -91,7 +91,7 @@ export function reducer(state: AppState, action: Action): AppState {
         originalBytes: action.bytes.slice(),
         revision: 0,
         switching: true,
-        // A document made by a tool (e.g. Combine) exists only in memory until the user saves it.
+        // A document made by a tool (Combine, Create PDF) exists only in memory until the user saves it.
         warraqOwnsDocument: !!action.unsaved,
         edited: !!action.unsaved,
         pageCount: 0,

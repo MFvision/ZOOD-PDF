@@ -5,6 +5,7 @@ use crate::CoreError;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
+mod create;
 mod doc;
 mod organize;
 mod pages;
@@ -33,6 +34,8 @@ pub const NAMESPACES: &[fn(&mut Registry)] = &[
     text::register,
     // Redact tool (warraq-redact)
     redact::register,
+    // Create PDF
+    create::register,
     // Export and Compare (warraq-office).
     export::register,
     compare::register,

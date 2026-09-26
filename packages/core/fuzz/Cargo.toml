@@ -16,6 +16,7 @@ warraq-pdf = { path = "../crates/warraq-pdf" }
 warraq-sign = { path = "../crates/warraq-sign" }
 warraq-text = { path = "../crates/warraq-text" }
 warraq-redact = { path = "../crates/warraq-redact" }
+warraq-create = { path = "../crates/warraq-create" }
 warraq-office = { path = "../crates/warraq-office" }
 serde_json = "1"
 
@@ -78,11 +79,83 @@ bench = false
 [[bin]]
 name = "redact_content"
 path = "fuzz_targets/redact_content.rs"
-# warraq-office (Export/Compare): ruling-line reader + table detection + export writers, and the
-# ZIP reader.
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_docx"
+path = "fuzz_targets/create_docx.rs"
+test = false
+doc = false
+bench = false
+
 [[bin]]
 name = "ruling_tables"
 path = "fuzz_targets/ruling_tables.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_xlsx"
+path = "fuzz_targets/create_xlsx.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_pptx"
+path = "fuzz_targets/create_pptx.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_html"
+path = "fuzz_targets/create_html.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_markdown"
+path = "fuzz_targets/create_markdown.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_csv"
+path = "fuzz_targets/create_csv.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_text"
+path = "fuzz_targets/create_text.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_picture"
+path = "fuzz_targets/create_picture.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_tiff"
+path = "fuzz_targets/create_tiff.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "create_zip_xml"
+path = "fuzz_targets/create_zip_xml.rs"
 test = false
 doc = false
 bench = false

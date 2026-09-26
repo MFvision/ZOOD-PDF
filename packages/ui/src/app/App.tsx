@@ -14,6 +14,11 @@ import { CommandPalette, ConvertSheet, SettingsSheet, TagsSheet, ToolsSheet } fr
 import { Sheet, Toasts } from './primitives';
 import { Icon } from './icons';
 import { PasswordPrompt } from './ProtectPanel';
+import { claimDrop, setPendingCreateFiles } from '../services/toolSheets';
+import { CreateSheet } from '../tools/create/CreateSheet';
+import { createKind } from '../tools/create/create';
+import { isToolReady } from '../tools/registry';
+import { openToolPanel } from '../tools/panels';
 
 export function App() {
   const app = useApp();
@@ -100,6 +105,16 @@ export function App() {
       const previewed = sawDrag.current;
       sawDrag.current = false;
       setDragging(false);
+      // An open Create PDF sheet takes the drop.
+      if (claimDrop(files)) return;
+      // Documents and pictures that are not PDFs go to Create PDF; PDFs follow the usual path.
+      const convertible = isToolReady('create', app.platform) ? files.filter((f) => !isPdfBytes(f.bytes) && createKind(f.name)) : [];
+      if (convertible.length) {
+        setPendingCreateFiles(convertible);
+        openToolPanel('create');
+        files = files.filter((f) => !convertible.includes(f));
+        if (files.length === 0) return;
+      }
       setDropHalf(null);
       const { activeDoc: docId, dir: d } = live.current;
       const pdfs = files.filter((f) => isPdfBytes(f.bytes));
@@ -166,6 +181,7 @@ export function App() {
       {sheet?.kind === 'tags' && <TagsSheet item={sheet.item} onClose={() => setSheet(null)} />}
       {sheet?.kind === 'palette' && <CommandPalette onClose={() => setSheet(null)} />}
       {sheet?.kind === 'convert' && <ConvertSheet onClose={() => setSheet(null)} />}
+      {panel?.tool === 'create' && <CreateSheet key={panel.nonce} onClose={() => closeToolPanel('create')} />}
 
       {closing && (
         <Sheet

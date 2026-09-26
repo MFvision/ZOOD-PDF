@@ -90,7 +90,8 @@ export const TOOLS: readonly ToolDef[] = [
   }),
   // Export and Compare: core-backed panels (warraq-office), see tools/panels.ts.
   tool('export', 'export', 'green', { status: 'ready', core: { open: (docId) => openToolPanel('export', docId) } }),
-  tool('create', 'create', 'blue', { needsDocument: false }),
+  // Create PDF: warraq-create (own layout engine) via `create.fromFiles`; sheet in tools/create.
+  tool('create', 'create', 'blue', { needsDocument: false, status: 'ready', core: { open: () => openToolPanel('create') } }),
   tool('compare', 'compare', 'teal', { status: 'ready', core: { open: (docId) => openToolPanel('compare', docId) } }),
   tool('scan', 'scan', 'cyan', { needsDocument: false }),
   tool('combine', 'combine', 'orange', { status: 'ready', needsDocument: false, core: { open: (docId) => openToolPanel('combine', docId) } }),

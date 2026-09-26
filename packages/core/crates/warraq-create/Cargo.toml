@@ -1,0 +1,34 @@
+[package]
+name = "warraq-create"
+description = "Create PDF for the ZOOD PDF engine: own layout engine (bidi, UAX #14, harfrust shaping, kashida justification, pagination, tagged output with embedded font subsets) and bounded readers for DOCX/XLSX/PPTX/HTML/Markdown/text/CSV/images."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+lopdf.workspace = true
+warraq-pdf = { path = "../warraq-pdf" }
+harfrust = "0.13"
+read-fonts = "0.43"
+subsetter = "0.2.6"
+unicode-bidi = "0.3.18"
+unicode-linebreak = "0.1.5"
+quick-xml = { version = "0.42", default-features = false }
+miniz_oxide = { version = "0.8", features = ["with-alloc"] }
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
+png = "0.18"
+weezl = "0.2"
+pulldown-cmark = { version = "0.13", default-features = false }
+
+[dev-dependencies]
+warraq-text = { path = "../warraq-text" }
+# Renders created pages in tests (pictures, CCITT polarity) and for visual checks.
+warraq-render = { path = "../warraq-render" }
+
+[lints]
+workspace = true

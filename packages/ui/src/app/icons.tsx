@@ -249,6 +249,9 @@ export const ICONS = {
   ),
   arrowUp: <>{P('M12 19V5M6 11l6-6 6 6')}</>,
   arrowDown: <>{P('M12 5v14M6 13l6 6 6-6')}</>,
+  // Create PDF: reorder the file list.
+  moveUp: <>{P('m6.5 14.5 5.5-5.5 5.5 5.5')}</>,
+  moveDown: <>{P('m6.5 9.5 5.5 5.5 5.5-5.5')}</>,
 } as const;
 
 export type IconName = keyof typeof ICONS;
