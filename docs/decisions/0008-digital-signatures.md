@@ -114,6 +114,22 @@ Per signature, in byte-range order:
 Status: `invalid` (integrity or identity failure) › `modified` (disallowed changes) › `valid`
 (trusted) › `valid_identity_unknown`.
 
+### Interface and hosts (added with the UI)
+* The UI previews a PKCS#12 with the static `sign.inspect` (summary + EKU verdict, nothing secret
+  returned) before signing; the password is kept in component state only and dropped after signing.
+* Visible signatures take their lines from the UI (localised labels, dates with the locale's digits,
+  bidi control characters stripped because the font has no glyphs for them) and an optional RGBA
+  picture (hand-drawn or typed on a canvas), written as an image XObject with an `/SMask`.
+* Signing always ends in a save of the engine's incremental update; the viewer reloads on it and
+  the document view verifies every signed file it shows (banner + Signatures panel).
+* Network is a host capability (`HostBridge.signing.network`), present only in the desktop host:
+  Rust commands `sign_timestamp`, `sign_ocsp`, `sign_fetch_crl` with `ureq` 3 (rustls + ring, the
+  OS trust store through rustls-platform-verifier — no bundled roots), http/https only, no
+  redirects, 1 MiB reply cap (16 MiB for CRLs), 20 s timeout, called only after the user picked a
+  level above B-B and clicked Sign. Web and extension hide those levels.
+* The document trust list is the user's: IndexedDB (`zood-pdf-trust`) on web/extension, DER files
+  in the app data directory on desktop; it starts empty.
+
 ## Consequences
 * Signing and verification work the same in wasm, desktop and iOS; only the host touches the
   network, and only on the user's action (desktop, per SPEC).

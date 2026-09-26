@@ -216,10 +216,9 @@ pyhanko-certvalidator`). Test PKI: `tests/fixtures/sign/make_pki.sh` (committed 
 * **PKCS#11 untested**: only the `Signer` trait exists (digest-level signing maps to `CKM_RSA_PKCS`
   / `CKM_ECDSA`); no token implementation and no smart-card hardware here.
 * **Real TSA / OCSP / CRL over the network untested**: the engine never does network I/O; all
-  timestamp and revocation tests use a local OpenSSL TSA and responder. The desktop host still has
-  to POST `application/timestamp-query` / `application/ocsp-request` and fetch CRLs; no UI is wired
-  (`packages/ui`, `apps/desktop` are other agents' work). Real TSAs whose tokens exceed the 12 KiB
-  reserve would need a bigger `placeholderSize`.
+  timestamp and revocation tests use a local OpenSSL TSA and responder. The desktop host's HTTP
+  commands (below) are tested against a local mock TSA only; no request to a public TSA was made
+  here. Real TSAs whose tokens exceed the 12 KiB reserve would need a bigger `placeholderSize`.
 * **Adobe Acrobat is not available** to cross-check; independent checks are OpenSSL and pyHanko only.
 * cargo-fuzz targets `cms` and `sig_dict` (`packages/core/fuzz`) compile (`cargo check`); they were
   **not run under libFuzzer** here (no nightly/cargo-fuzz; the stable SanitizerCoverage release build
@@ -238,6 +237,40 @@ pyhanko-certvalidator`). Test PKI: `tests/fixtures/sign/make_pki.sh` (committed 
 * `rsa 0.9` has RUSTSEC-2023-0071 (Marvin); signing uses blinding, nothing is decrypted.
 * The JSON password parameter is wiped only in our copy (the JS/serde strings are outside Rust's
   control); the key and decrypted PKCS#12 buffers are zeroized.
+
+### Interface (Digital signature tool, Signatures panel) and desktop network
+Tool `digital-signature` is `ready` on web, desktop and extension (`tools/registry.ts`). Signing
+panel `packages/ui/src/app/SignPanel.tsx`, verification `SignaturesPanel.tsx` (banner + panel),
+engine orchestration `services/signing.ts`, formatting `services/signatures.ts`, trust list
+`services/trust.ts`. New engine methods: `sign.inspect` (static: PKCS#12 + password → certificate
+summary, EKU verdict, validity; no key material returned) and `sign.certInfo` (static: PEM/DER →
+summaries + DER per certificate); `sign.prepare` takes an optional RGBA signature picture
+(`appearance.image` + `blobs[1]`, image XObject with `/SMask`, left 40 % of the box).
+
+| What | Test |
+| --- | --- |
+| **UI, en + ar**: import `signer-*.p12` through the file chooser, wrong password → "Wrong certificate password" / «كلمة سر الشهادة غير صحيحة», unlock, certificate summary (Arabic CN «أحمد بن سعيد», issuer), draw the box on the page preview, reason/location, hand-drawn picture, Sign → saved through the host bridge → the viewer reloads, banner "valid, identity unknown"; the saved file starts with the original bytes, has `/ETSI.CAdES.detached`, `/Subtype /Image`, `/ActualText`; **`sign.verify` run on the saved bytes in Node (wasm)** → `valid_identity_unknown`, `valid` with the test root; reopen → panel shows the signer, no changes after signing, Hijri time (`١٤٤٨`, Arabic digits); adding `root.pem` to the trust list turns it "valid"; no external request | `tests/e2e/sign.spec.ts` |
+| **UI, en + ar**: certification "no changes" (DocMDP P=1, invisible) → a highlight added and saved (incremental on top) → Node `sign.verify` says `modified`; reopened: banner "changed after signing", panel lists `annotation_added` as not allowed; "View signed version" opens the covered revision, which verifies with no changes | `sign.spec.ts` |
+| **UI, en + ar**: the `shadow-replace.pdf` attack fixture → banner invalid/modified, panel lists the shadow attack | `sign.spec.ts` |
+| Web/extension: B-T/B-LT/B-LTA are not offered (hidden without a host network); the desktop host shows them | `sign.spec.ts`, `SignPanel` (`app.host.signing?.network`) |
+| Signing flow with a fake engine + network: B-B uses no network; B-T = prepare → TSA → finish; B-LTA = TSA, OCSP with CRL fallback, DSS (`kinds`), document timestamp; only the chosen TSA and the certificate's own URLs are contacted | `packages/ui/src/services/signing.test.ts` |
+| Certificate summary formatting: DN parsing with Arabic values, Gregorian and Hijri (Umm al-Qura) times with Arabic-Indic digits, appearance lines without bidi control characters, rectangle → PDF user space for /Rotate 0/90/180/270, overall status | `services/signatures.test.ts` |
+| Trust list: empty by default, IndexedDB persistence, idempotent import, removal by fingerprint, unreadable entries skipped | `services/trust.test.ts` |
+| `sign.inspect` (Arabic CN, serverAuth-only flagged, expired flagged, Arabic password, wrong password), `sign.certInfo` (PEM chain, DER), signature picture + wrong picture size | `warraq-core/tests/sign_rpc.rs` |
+| Arabic-Indic digits are in the signature font (localised dates in the appearance) | `warraq-sign/tests/sign.rs::font_has_arabic_indic_digits_for_localised_dates` |
+| **Desktop** `sign_timestamp` / `sign_ocsp` / `sign_fetch_crl` (ureq 3 + rustls/ring, OS trust store via rustls-platform-verifier, no webpki-roots): a **local mock TSA answering with `openssl ts -reply`** returns a token that `openssl ts -verify` accepts; http/https only, no user-info, no redirects (302 refused), non-200 and HTML answers refused, reply size cap (declared and streamed), timeout; CRL GET | `apps/desktop/src-tauri/src/net.rs` tests |
+| **Desktop** trust list in `<app data>/trusted-certificates/<SHA-256>.der`: add/list/remove, names and bytes validated | `apps/desktop/src-tauri/src/trust.rs` tests, `host-tauri.test.ts` |
+
+Not proven / limits:
+* B-T/B-LT/B-LTA through the desktop **UI** are not exercised end to end (no desktop Playwright;
+  the WebKitGTK smoke test only boots the app). The flow is unit-tested with fakes and the Rust
+  HTTP commands against a local mock; no public TSA/OCSP responder was contacted.
+* The page preview used to draw the box ignores a MediaBox/CropBox whose origin is not (0, 0).
+* FieldMDP from the UI offers "lock all form fields" only (Include/Exclude lists are engine-only).
+* Tampering "via Edit" is not covered (the Edit tool is not ready); the tamper test uses a Comment
+  highlight after a "no changes" certification.
+* The password lives in a React state string until signing finishes or the panel closes; JS strings
+  cannot be wiped.
 
 ## Desktop host (Tauri 2), CI and packaging
 

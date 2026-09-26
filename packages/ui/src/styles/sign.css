@@ -92,12 +92,16 @@
   cursor: crosshair;
 }
 
-/* Banner over the page (verification of the open file). */
+/* Banner at the bottom of the page area (verification of the open file); it stays clear of
+   the viewer's own tool strips at the top. */
 .sig-banner {
   position: absolute;
   z-index: 6;
-  inset-block-start: 10px;
-  inset-inline: 12px;
+  inset-block-end: 12px;
+  inset-inline: 0;
+  margin-inline: auto;
+  inline-size: max-content;
+  max-inline-size: calc(100% - 24px);
   display: flex;
   align-items: center;
   gap: 10px;
