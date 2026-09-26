@@ -67,12 +67,19 @@ final class AnnotateUITests: XCTestCase {
         XCTAssertTrue(approved.waitForExistence(timeout: 10))
         approved.tap()
         ui.app.buttons["stamp.add"].tap()
+        // The sheet closes once the core has written the stamp; a sheet
+        // asked for while it is still closing would not open.
+        XCTAssertTrue(ui.poll(timeout: 40) { !ui.app.buttons["stamp.add"].exists }, "the stamp sheet closes")
         XCTAssertTrue(ui.app.buttons["markup.done"].waitForExistence(timeout: 20))
 
         // A signature drawn with the finger, then placed.
         ui.tapMarkup("markup.signature")
-        let canvas = ui.signatureCanvas
-        XCTAssertTrue(canvas.waitForExistence(timeout: 40), "the signature canvas: \(ui.tree)")
+        var canvas = ui.signatureCanvas
+        if !canvas.waitForExistence(timeout: 8) {
+            ui.tapMarkup("markup.signature")
+            canvas = ui.signatureCanvas
+        }
+        XCTAssertTrue(canvas.waitForExistence(timeout: 30), "the signature canvas: \(ui.tree)")
         let a = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.6))
         let b = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
         let c = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.65))
