@@ -21,6 +21,8 @@ zeroize = "1"
 warraq-text = { path = "../warraq-text" }
 # Export (DOCX/XLSX/PPTX/HTML/Markdown/text) and Compare.
 warraq-office = { path = "../warraq-office" }
+# Edit tool (edit.*).
+warraq-edit = { path = "../warraq-edit" }
 warraq-render = { path = "../warraq-render", optional = true, default-features = false, features = ["hayro"] }
 wasm-bindgen = { version = "0.2", optional = true, default-features = false, features = ["std"] }
 js-sys = { version = "0.3", optional = true, default-features = false, features = ["std"] }

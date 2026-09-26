@@ -1764,7 +1764,10 @@ version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "38803281d1c23166c5ebcb455439a5d2afe711cc909cf88af72448c297756ad6"
 dependencies = [
+ "kurbo",
  "rustc-hash",
+ "skrifa",
+ "write-fonts",
 ]
 
 [[package]]
@@ -1881,6 +1884,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d245f478577f809a851594d02313b640fb437e0bb33866753cff937863096954"
 
 [[package]]
+name = "unicode-linebreak"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b09c83c3c29d37506a3e260c08c03743a6bb66a9cd432c6934ab501a190571f"
+
+[[package]]
 name = "unicode-normalization"
 version = "0.1.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1975,6 +1984,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "warraq-edit",
  "warraq-office",
  "warraq-pdf",
  "warraq-render",
@@ -1982,6 +1992,25 @@ dependencies = [
  "warraq-text",
  "wasm-bindgen",
  "zeroize",
+]
+
+[[package]]
+name = "warraq-edit"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "harfrust",
+ "lopdf",
+ "png",
+ "read-fonts 0.43.3",
+ "serde",
+ "serde_json",
+ "subsetter",
+ "thiserror",
+ "unicode-bidi",
+ "unicode-linebreak",
+ "warraq-pdf",
+ "warraq-text",
 ]
 
 [[package]]
@@ -2220,6 +2249,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7837d08f69c77cf6b07689544538e017c1bfcf57e34b4c0ff58e6c2cd3b37091"
 dependencies = [
  "windows-link",
+]
+
+[[package]]
+name = "write-fonts"
+version = "0.48.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb731d4c4d93eacc69a1ad2f270f905788a98e4a3438267bcafbe08d3431c8d8"
+dependencies = [
+ "font-types 0.11.3",
+ "indexmap",
+ "kurbo",
+ "log",
+ "read-fonts 0.39.2",
 ]
 
 [[package]]
