@@ -74,14 +74,16 @@ struct DocumentView: View {
                         }
                         .transition(.opacity)
                     }
+                }
+                .overlay(alignment: .bottom) {
+                    // The floating pen palette, over the pages' foot. An
+                    // overlay, so its width (more than an iPhone's) never
+                    // sizes the pages, the stack and the bar above them.
                     if markup, let editor, editor.tool == .ink {
-                        // The floating pen palette, over the pages' foot.
-                        VStack {
-                            Spacer()
-                            PenPalette(editor: editor)
-                                .padding(.bottom, Space.x5)
-                        }
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        PenPalette(editor: editor)
+                            .padding(.horizontal, Space.x5)
+                            .padding(.bottom, Space.x5)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) {

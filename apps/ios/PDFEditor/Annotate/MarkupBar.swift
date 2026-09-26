@@ -51,13 +51,13 @@ struct MarkupBar: View {
                 .foregroundStyle(.white)
                 .padding(.horizontal, Space.x4)
                 .frame(height: 44)
-                .background(MarkupChrome.bar)
+                .background(MarkupChrome.bar, ignoresSafeAreaEdges: [])
                 .accessibilityIdentifier("markup.done")
             }
             .frame(width: geometry.size.width, height: 44)
         }
         .frame(height: 44)
-        .background(MarkupChrome.bar)
+        .background(MarkupChrome.bar, ignoresSafeAreaEdges: [])
         .overlay(alignment: .bottom) {
             Rectangle().fill(.white.opacity(0.12)).frame(height: 0.5)
         }
@@ -184,6 +184,19 @@ struct PenPalette: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        // Whole when it fits (an iPad); scrolled sideways on a phone.
+        ViewThatFits(in: .horizontal) {
+            row
+            ScrollView(.horizontal, showsIndicators: false) { row }
+        }
+        .background(.regularMaterial, in: Capsule())
+        .overlay(Capsule().strokeBorder(.white.opacity(0.15), lineWidth: 0.5))
+        .shadow(color: .black.opacity(0.18), radius: 14, y: 6)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("pen.palette")
+    }
+
+    private var row: some View {
         HStack(spacing: Space.x3) {
             ForEach(InkKind.allCases) { kind in
                 Button {
@@ -238,10 +251,5 @@ struct PenPalette: View {
         }
         .padding(.horizontal, Space.x4)
         .padding(.vertical, Space.x2)
-        .background(.regularMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(.white.opacity(0.15), lineWidth: 0.5))
-        .shadow(color: .black.opacity(0.18), radius: 14, y: 6)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("pen.palette")
     }
 }

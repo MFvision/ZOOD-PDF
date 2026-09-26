@@ -37,7 +37,12 @@ final class AnnotateUITests: XCTestCase {
         // Highlight: drag across the words in the middle of the page.
         ui.app.buttons["document.markup"].tap()
         ui.tapMarkup("markup.highlight")
-        ui.drag(from: (0.12, 0.42), to: (0.88, 0.42))
+        // A line of the invoice; the next line down when the first drag
+        // crossed no words (a slow simulator can turn a press into a scroll).
+        for y in [0.42, 0.46, 0.38] {
+            ui.drag(from: (0.12, y), to: (0.88, y))
+            if ui.poll(timeout: 8, { ui.status.exists && (ui.status.label.contains("Edited") || ui.status.label.contains("مُعدَّل")) }) { break }
+        }
         ui.waitForEdited()
         let afterHighlight = marks(ui)
         XCTAssertGreaterThanOrEqual(afterHighlight, 1, "the highlight is a mark")
