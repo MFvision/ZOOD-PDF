@@ -178,3 +178,29 @@ fn rpc_extract_and_search() {
     assert_eq!(err.code(), "invalid_params");
     assert!(call(&src, "doc.info", &json!({})).is_none());
 }
+
+#[test]
+fn rpc_reading_units_keep_tashkeel_and_boxes() {
+    let pdf = build_pdf(LINES);
+    let src = LopdfSource::open(&pdf, None).unwrap();
+    let r = call(&src, "text.readingUnits", &json!({}))
+        .unwrap()
+        .unwrap();
+    let units = r["units"].as_array().unwrap();
+    assert!(!units.is_empty());
+    let all: Vec<&str> = units.iter().map(|u| u["text"].as_str().unwrap()).collect();
+    let joined = all.join(" ");
+    assert!(joined.contains("كَتَبَ الطَّالِبُ"), "tashkeel kept: {joined}");
+    for u in units {
+        assert_eq!(u["page"], 0);
+        assert_eq!(u["lang"], "ar");
+        assert_eq!(u["dir"], "rtl");
+        assert!(u["bbox"]["x1"].as_f64().unwrap() > u["bbox"]["x0"].as_f64().unwrap());
+        assert!(!u["rects"].as_array().unwrap().is_empty());
+        assert_eq!(u["runs"][0]["lang"], "ar");
+    }
+    let err = call(&src, "text.readingUnits", &json!({"pages": [3]}))
+        .unwrap()
+        .unwrap_err();
+    assert_eq!(err.code(), "page_out_of_range");
+}

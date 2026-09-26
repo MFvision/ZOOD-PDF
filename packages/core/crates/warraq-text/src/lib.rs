@@ -6,7 +6,8 @@
 //!   (columns by XY-cut, bidi with the W5 fix, the Nastaliq ordering rule).
 //! * [`normalize`] / [`search`] implement Arabic-aware search with rectangles.
 //! * [`shape`] shapes Arabic for writing into PDFs (harfrust) with per-word `/ActualText`.
-//! * [`api`] exposes `text.extract`, `text.search` and `text.plain` for the RPC layer.
+//! * [`api`] exposes `text.extract`, `text.search`, `text.plain` and `text.readingUnits` for the
+//!   RPC layer ([`reading`] prepares paragraphs for read-aloud).
 //!
 //! The PDF object layer is reached only through [`ContentSource`], so the crate can be backed
 //! by `warraq-pdf`'s decrypted document; [`LopdfSource`] is the stand-alone implementation.
@@ -24,6 +25,8 @@ pub mod lexer;
 pub mod limits;
 pub mod model;
 pub mod normalize;
+// Read aloud: paragraphs split into language runs for speech (`text.readingUnits`).
+pub mod reading;
 pub mod search;
 pub mod shape;
 pub mod source;
