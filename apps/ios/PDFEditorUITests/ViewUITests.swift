@@ -28,7 +28,7 @@ final class ViewUITests: XCTestCase {
         XCTAssertTrue(ui.app.buttons["search.hit.0"].waitForExistence(timeout: 10))
         ui.app.buttons["search.hit.0"].tap()
         ui.app.buttons["search.done"].tap()
-        XCTAssertFalse(ui.app.textFields["search.field"].exists)
+        XCTAssertTrue(ui.poll { !ui.app.textFields["search.field"].exists }, "the find bar closes")
     }
 
     func testSearchInEnglishFindsALatinWordToo() throws {
