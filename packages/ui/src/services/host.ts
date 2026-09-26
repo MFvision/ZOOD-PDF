@@ -18,6 +18,8 @@ export interface SaveOptions {
   handle?: unknown;
   /** Always ask for a location. */
   saveAs?: boolean;
+  /** Content type when it is not a PDF (e.g. `application/zip` for Split on the web). */
+  mimeType?: string;
 }
 
 export interface SaveResult {

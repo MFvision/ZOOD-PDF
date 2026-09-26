@@ -5,12 +5,10 @@
 //! (Resources, MediaBox, CropBox, Rotate) materialised and becomes a direct kid of the root
 //! `/Pages` node; intermediate nodes that are no longer used are freed.
 
-use crate::builder::empty_pdf;
 use crate::error::{PdfError, Result};
-use crate::pdf::map_refs;
-use crate::{Pdf, Protection};
+use crate::Pdf;
 use lopdf::{Dictionary, Object, ObjectId};
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeSet, HashSet};
 
 /// A page with its inherited attributes resolved.
 #[derive(Debug, Clone)]
@@ -180,7 +178,7 @@ pub fn count(pdf: &Pdf) -> Result<usize> {
     flatten(pdf).map(|p| p.len())
 }
 
-fn check_indices(indices: &[usize], n: usize) -> Result<()> {
+pub(crate) fn check_indices(indices: &[usize], n: usize) -> Result<()> {
     if indices.is_empty() {
         return Err(PdfError::InvalidArgument("no pages given".into()));
     }
@@ -196,7 +194,7 @@ fn check_indices(indices: &[usize], n: usize) -> Result<()> {
     Ok(())
 }
 
-fn page_dict(pdf: &Pdf, id: ObjectId) -> Result<Dictionary> {
+pub(crate) fn page_dict(pdf: &Pdf, id: ObjectId) -> Result<Dictionary> {
     pdf.get_dict(id)
         .cloned()
         .ok_or_else(|| PdfError::Structure(format!("page {} {} is not a dictionary", id.0, id.1)))
@@ -246,7 +244,7 @@ pub fn crop(pdf: &mut Pdf, indices: &[usize], rect: [f64; 4]) -> Result<()> {
 }
 
 /// Make `list` the page sequence: one flat root node, inherited attributes materialised.
-fn rebuild(pdf: &mut Pdf, list: &[PageInfo], old_nodes: &[ObjectId]) -> Result<()> {
+pub(crate) fn rebuild(pdf: &mut Pdf, list: &[PageInfo], old_nodes: &[ObjectId]) -> Result<()> {
     let root = pages_root(pdf)?;
     let mut kids = Vec::with_capacity(list.len());
     let mut done = HashSet::new();
@@ -391,140 +389,76 @@ pub fn insert_blank(pdf: &mut Pdf, at: usize, width: f64, height: f64) -> Result
 
 /// Deep-copy pages `indices` of `src` into `dst` at position `at`. Every object reachable
 /// from the copied pages is renumbered into `dst`; references to pages that are not copied,
-/// to page-tree nodes and to the source catalog become `null`.
+/// to page-tree nodes and to the source catalog become `null`. Bookmarks pointing at the
+/// copied pages and their form fields come along (see [`crate::import`]).
 pub fn insert_from(
     dst: &mut Pdf,
     src: &Pdf,
     indices: &[usize],
     at: usize,
 ) -> Result<Vec<ObjectId>> {
-    dst.require("inserting pages", assemble)?;
-    src.require("copying pages", |p| p.copy || p.assemble || p.modify)?;
-    let limits = *dst.limits();
-    let src_pages = flatten(src)?;
-    check_indices(indices, src_pages.len())?;
-    let (mut pages, nodes) = flatten_with_nodes(dst)?;
-    let root = pages_root(dst)?;
-    let src_root = src.root_id().ok();
-
-    let mut next = dst.next_number();
-    let mut map: HashMap<ObjectId, ObjectId> = HashMap::new();
-    let mut work: Vec<ObjectId> = Vec::new();
-    let mut new_pages = Vec::new();
-    for &i in indices {
-        let Some(p) = src_pages.get(i) else { continue };
-        // The same source page may be inserted twice: give each copy its own id.
-        let nid = (next, 0);
-        next += 1;
-        new_pages.push((p.clone(), nid));
-        map.entry(p.id).or_insert(nid);
-    }
-    let selected: HashSet<ObjectId> = new_pages.iter().map(|(p, _)| p.id).collect();
-    let remap = |obj: &mut Object,
-                 map: &mut HashMap<ObjectId, ObjectId>,
-                 work: &mut Vec<ObjectId>,
-                 next: &mut u32|
-     -> Result<()> {
-        map_refs(obj, 0, &limits, &mut |r| {
-            if let Some(n) = map.get(&r) {
-                return Object::Reference(*n);
-            }
-            if Some(r) == src_root || selected.contains(&r) {
-                return Object::Null;
-            }
-            match src.get_dict(r) {
-                Some(d)
-                    if d.has_type(b"Page") || d.has_type(b"Pages") || d.has_type(b"Catalog") =>
-                {
-                    return Object::Null
-                }
-                _ => {}
-            }
-            if src.get(r).is_none() {
-                return Object::Null;
-            }
-            let n = (*next, 0);
-            *next += 1;
-            map.insert(r, n);
-            work.push(r);
-            Object::Reference(n)
-        })
-    };
-    let mut out_objects: BTreeMap<ObjectId, Object> = BTreeMap::new();
-    let mut infos = Vec::new();
-    for (p, nid) in &new_pages {
-        let mut d = page_dict(src, p.id)?;
-        d.remove(b"Parent");
-        d.remove(b"StructParents");
-        d.set("MediaBox", box_obj(p.media_box));
-        if let Some(c) = p.crop_box {
-            d.set("CropBox", box_obj(c));
-        }
-        d.set("Rotate", Object::Integer(p.rotate));
-        if let Some(r) = &p.resources {
-            d.set("Resources", r.clone());
-        }
-        let mut o = Object::Dictionary(d);
-        remap(&mut o, &mut map, &mut work, &mut next)?;
-        if let Object::Dictionary(d) = &mut o {
-            d.set("Parent", Object::Reference(root));
-        }
-        out_objects.insert(*nid, o);
-        infos.push(PageInfo {
-            id: *nid,
-            media_box: p.media_box,
-            crop_box: p.crop_box,
-            rotate: p.rotate,
-            resources: None,
-        });
-    }
-    let mut copied = 0usize;
-    while let Some(sid) = work.pop() {
-        copied += 1;
-        if copied > limits.max_objects {
-            return Err(PdfError::Limit("too many objects to copy".into()));
-        }
-        let Some(nid) = map.get(&sid).copied() else {
-            continue;
-        };
-        let Some(obj) = src.get(sid) else { continue };
-        let mut o = obj.clone();
-        remap(&mut o, &mut map, &mut work, &mut next)?;
-        out_objects.insert(nid, o);
-    }
-    for (id, o) in out_objects {
-        dst.set(id, o);
-    }
-    let at = at.min(pages.len());
-    let ids: Vec<ObjectId> = infos.iter().map(|p| p.id).collect();
-    for (k, info) in infos.into_iter().enumerate() {
-        pages.insert(at + k, info);
-    }
-    rebuild(dst, &pages, &nodes)?;
-    Ok(ids)
+    crate::import::import_pages(
+        dst,
+        src,
+        indices,
+        at,
+        &crate::import::ImportOptions::default(),
+    )
 }
 
-/// A new document containing pages `indices` of `src` (unencrypted, garbage-collected).
+/// A new document containing pages `indices` of `src` (unencrypted, garbage-collected), with
+/// the bookmarks, form fields and page labels that belong to those pages.
 pub fn extract(src: &Pdf, indices: &[usize]) -> Result<Vec<u8>> {
-    let mut base = Pdf::open_with_limits(empty_pdf()?, None, *src.limits())?;
-    insert_from(&mut base, src, indices, 0)?;
-    base.write_full(Protection::Remove)
+    crate::import::assemble(&[(src, indices.to_vec(), None)])
 }
 
 /// Concatenate all pages of `docs` into a new document.
 pub fn merge(docs: &[Pdf]) -> Result<Vec<u8>> {
+    let titled: Vec<(&Pdf, Option<String>)> = docs.iter().map(|d| (d, None)).collect();
+    merge_titled(&titled)
+}
+
+/// Concatenate all pages of `docs`; each file with a title gets one top-level bookmark (its
+/// own bookmarks nested under it). Form fields are merged (clashing names renamed) and page
+/// labels kept per file.
+pub fn merge_titled(docs: &[(&Pdf, Option<String>)]) -> Result<Vec<u8>> {
     if docs.is_empty() {
         return Err(PdfError::InvalidArgument("nothing to merge".into()));
     }
-    let limits = *docs
-        .first()
-        .map(|d| d.limits())
-        .unwrap_or(&crate::Limits::default());
-    let mut base = Pdf::open_with_limits(empty_pdf()?, None, limits)?;
-    for d in docs {
+    let mut parts = Vec::with_capacity(docs.len());
+    for (d, title) in docs {
         let n = count(d)?;
-        let at = count(&base)?;
-        insert_from(&mut base, d, &(0..n).collect::<Vec<_>>(), at)?;
+        parts.push((*d, (0..n).collect::<Vec<_>>(), title.clone()));
     }
-    base.write_full(Protection::Remove)
+    crate::import::assemble(&parts)
+}
+
+/// Insert a ready-made page dictionary at `at` (its `/Parent` is set here).
+pub fn insert_page_dict(pdf: &mut Pdf, at: usize, mut d: Dictionary) -> Result<ObjectId> {
+    pdf.require("inserting pages", assemble)?;
+    let (mut pages, nodes) = flatten_with_nodes(pdf)?;
+    let root = pages_root(pdf)?;
+    let media = d
+        .get(b"MediaBox")
+        .ok()
+        .and_then(|o| parse_box(pdf, o))
+        .unwrap_or([0.0, 0.0, 595.276, 841.89]);
+    d.set("Type", Object::Name(b"Page".to_vec()));
+    d.set("Parent", Object::Reference(root));
+    d.set("MediaBox", box_obj(media));
+    if !d.has(b"Resources") {
+        d.set("Resources", Object::Dictionary(Dictionary::new()));
+    }
+    let id = pdf.add(Object::Dictionary(d));
+    let info = PageInfo {
+        id,
+        media_box: media,
+        crop_box: None,
+        rotate: 0,
+        resources: None,
+    };
+    let at = at.min(pages.len());
+    pages.insert(at, info);
+    rebuild(pdf, &pages, &nodes)?;
+    Ok(id)
 }

@@ -75,7 +75,8 @@ function tool(
 
 export const TOOLS: readonly ToolDef[] = [
   tool('edit', 'edit', 'blue'),
-  tool('organize', 'organize', 'indigo'),
+  // Organize / Combine / Compress: engine-backed panels (see tools/panels.ts).
+  tool('organize', 'organize', 'indigo', { status: 'ready', core: { open: (docId) => openToolPanel('organize', docId) } }),
   tool('comment', 'comment', 'yellow', { status: 'ready', viewer: { commands: ['mode:annotate'] } }),
   tool('fill-sign', 'sign', 'purple', { status: 'ready', viewer: { commands: ['mode:insert'] } }),
   tool('protect', 'lock', 'graphite', { status: 'ready', viewer: { commands: ['document:protect'] } }),
@@ -85,8 +86,8 @@ export const TOOLS: readonly ToolDef[] = [
   tool('create', 'create', 'blue', { needsDocument: false }),
   tool('compare', 'compare', 'teal', { status: 'ready', core: { open: (docId) => openToolPanel('compare', docId) } }),
   tool('scan', 'scan', 'cyan', { needsDocument: false }),
-  tool('combine', 'combine', 'orange'),
-  tool('compress', 'compress', 'mint'),
+  tool('combine', 'combine', 'orange', { status: 'ready', needsDocument: false, core: { open: (docId) => openToolPanel('combine', docId) } }),
+  tool('compress', 'compress', 'mint', { status: 'ready', core: { open: (docId) => openToolPanel('compress', docId) } }),
   tool('prepare-form', 'form', 'pink', { status: 'ready', viewer: { commands: ['mode:form'] } }),
   tool('ai', 'sparkle', 'purple'),
   tool('page-marks', 'stamp', 'orange'),
