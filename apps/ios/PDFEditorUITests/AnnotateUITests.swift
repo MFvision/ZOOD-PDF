@@ -121,7 +121,11 @@ final class AnnotateUITests: XCTestCase {
             delete.tap()
             XCTAssertTrue(waitFor { !ui.app.buttons["mark.\(expected - 1)"].exists })
         }
-        ui.app.buttons["sheet.done"].tap()
+        // A swipe the simulator took as a tap went to the mark and closed
+        // the list itself.
+        if ui.app.buttons["sheet.done"].waitForExistence(timeout: 3) {
+            ui.app.buttons["sheet.done"].tap()
+        }
     }
 
     func testDrawingWithAFingerBecomesInk() throws {

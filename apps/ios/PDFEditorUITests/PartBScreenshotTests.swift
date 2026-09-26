@@ -71,7 +71,11 @@ final class PartBScreenshotTests: XCTestCase {
             try ui.screenshot("stamps-\(suffix)", in: directory)
             app.buttons[combo.language == PartBApp.arabic ? "إلغاء" : "Cancel"].firstMatch.tap()
             ui.tapMarkup("markup.signature")
-            let canvas = ui.signatureCanvas
+            var canvas = ui.signatureCanvas
+            if !canvas.waitForExistence(timeout: 8) {
+                ui.tapMarkup("markup.signature")
+                canvas = ui.signatureCanvas
+            }
             if canvas.waitForExistence(timeout: 10) {
                 let a = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.6))
                 let b = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.4))

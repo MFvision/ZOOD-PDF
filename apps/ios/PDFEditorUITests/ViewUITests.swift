@@ -27,8 +27,14 @@ final class ViewUITests: XCTestCase {
         count.tap()
         XCTAssertTrue(ui.app.buttons["search.hit.0"].waitForExistence(timeout: 10))
         ui.app.buttons["search.hit.0"].tap()
+        // The list closes on its own; Done is tapped once it has.
+        XCTAssertTrue(ui.poll { !ui.app.buttons["search.hit.0"].exists }, "the hits list closes")
+        ui.settle()
         ui.app.buttons["search.done"].tap()
-        XCTAssertTrue(ui.poll { !ui.app.textFields["search.field"].exists }, "the find bar closes")
+        if !ui.poll(timeout: 5, { !ui.app.textFields["search.field"].exists }), ui.app.buttons["search.done"].exists {
+            ui.app.buttons["search.done"].tap()
+        }
+        XCTAssertTrue(ui.poll { !ui.app.textFields["search.field"].exists }, "the find bar closes: \(ui.tree)")
     }
 
     func testSearchInEnglishFindsALatinWordToo() throws {

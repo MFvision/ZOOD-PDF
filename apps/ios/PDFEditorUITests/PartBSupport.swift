@@ -91,6 +91,7 @@ struct PartBApp {
     /// wider than the screen (a phone, either reading direction).
     @discardableResult
     func tapMarkup(_ identifier: String) -> XCUIElement {
+        settle()
         let button = app.buttons[identifier]
         XCTAssertTrue(button.waitForExistence(timeout: 10), "markup button \(identifier): \(tree)")
         let bar = app.descendants(matching: .any).matching(identifier: "markup.bar").firstMatch
@@ -143,9 +144,18 @@ struct PartBApp {
         row.tap()
     }
 
+    /// Waits for any sheet to finish closing: a sheet asked for while
+    /// another is still on its way out does not open, and a tap on a
+    /// control under a closing sheet is lost.
+    func settle() {
+        let sheetControls = ["sheet.done", "stamp.add", "signature.place", "goto.go", "note.add", "crop.apply", "export.share.pdf"]
+        _ = poll(timeout: 15) { sheetControls.allSatisfy { !self.app.buttons[$0].exists } }
+    }
+
     /// Opens the More menu and taps the item with `identifier` (or, when
     /// the menu item carries none, the one labelled `label`).
     func more(_ identifier: String, label: String? = nil) {
+        settle()
         let more = app.buttons["document.more"]
         XCTAssertTrue(more.waitForExistence(timeout: 10))
         more.tap()
@@ -159,6 +169,7 @@ struct PartBApp {
 
     /// Taps a control: on iPhone the bottom bar's, on iPad the More menu's.
     func viewControl(_ identifier: String, menuLabel: String) {
+        settle()
         let button = app.buttons[identifier]
         if button.waitForExistence(timeout: 3), button.isHittable {
             button.tap()
