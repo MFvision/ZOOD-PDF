@@ -76,3 +76,18 @@ describe('engine-backed panels', () => {
     }
   });
 });
+
+// Accessibility
+describe('accessibility tool', () => {
+  it('is a ready core panel on web, desktop and extension that opens for a document', () => {
+    const tool = toolById('accessibility')!;
+    expect(tool.status).toBe('ready');
+    expect(tool.panel).toBe('accessibility');
+    expect(tool.viewer).toBeUndefined();
+    expect(readyTools('web').map((t) => t.id)).toEqual(expect.arrayContaining<ToolId>(['accessibility']));
+    for (const p of ['desktop', 'extension'] as const) expect(readyTools(p).some((t) => t.id === 'accessibility')).toBe(true);
+    void tool.core!.open('doc-3');
+    expect(currentToolPanel()).toMatchObject({ tool: 'accessibility', docId: 'doc-3' });
+    closeToolPanel('accessibility');
+  });
+});

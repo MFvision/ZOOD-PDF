@@ -1,0 +1,270 @@
+/* Accessibility panel (app/AccessibilityPanel.tsx) and the reading-order overlay. Logical properties
+   only; the page itself is a physical canvas (PDF coordinates), so box positions are set inline. */
+
+.a11y-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 12.5px;
+  color: var(--label-2);
+}
+
+.a11y-more > summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--label-2);
+}
+
+.a11y-more > .tool-form {
+  margin-block-start: 8px;
+}
+
+.a11y-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-sm);
+  background: var(--fill);
+}
+
+.a11y-tab {
+  flex: 1;
+  min-block-size: 30px;
+  padding-inline: 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--label);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.a11y-tab.on {
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  color: var(--accent);
+}
+
+.a11y-tab:focus-visible,
+.a11y-row:focus-visible,
+.a11y-box:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.a11y-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.a11y-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.a11y-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-block-size: 28px;
+  padding-block: 4px;
+  padding-inline-end: 6px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.a11y-row:hover {
+  background: var(--fill-hover);
+}
+
+.a11y-row.on {
+  background: var(--accent-soft);
+}
+
+.a11y-row.dragging {
+  opacity: 0.5;
+}
+
+.a11y-n {
+  flex: none;
+  min-inline-size: 22px;
+  color: var(--label-3, var(--label-2));
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.a11y-type {
+  flex: none;
+  padding-block: 1px;
+  padding-inline: 6px;
+  border-radius: 999px;
+  background: var(--fill);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.a11y-type.role-H1,
+.a11y-type.role-H2,
+.a11y-type.role-H3,
+.a11y-type.role-H4,
+.a11y-type.role-H5,
+.a11y-type.role-H6 {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.a11y-type.role-Figure {
+  background: rgb(175 82 222 / 16%);
+}
+
+.a11y-type.role-Table,
+.a11y-type.role-TR,
+.a11y-type.role-TH,
+.a11y-type.role-TD {
+  background: rgb(52 199 89 / 16%);
+}
+
+.a11y-type.role-L,
+.a11y-type.role-LI,
+.a11y-type.role-Lbl,
+.a11y-type.role-LBody {
+  background: rgb(255 149 0 / 16%);
+}
+
+.a11y-text {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.a11y-lang,
+.a11y-pg {
+  flex: none;
+  font-size: 11px;
+  color: var(--label-2);
+}
+
+.a11y-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border-radius: var(--r-sm);
+  background: var(--fill-2);
+}
+
+.a11y-editor-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.a11y-editor-row > .field-label {
+  flex: 1;
+  min-inline-size: 120px;
+}
+
+.a11y-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--r-sm);
+  background: var(--fill-2);
+}
+
+.a11y-alt-input {
+  resize: vertical;
+  min-block-size: 60px;
+}
+
+.a11y-check {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.a11y-link {
+  min-block-size: 22px;
+}
+
+/* Overlay over the viewer: the current page with numbered reading-order boxes. */
+.a11y-surface {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: auto;
+  padding-block: 16px 48px;
+  padding-inline: 24px;
+  background: var(--viewer-canvas);
+}
+
+.a11y-page {
+  position: relative;
+  margin-inline: auto;
+  background: #fff;
+  box-shadow: var(--shadow-2);
+}
+
+.a11y-page > img {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  pointer-events: none;
+}
+
+.a11y-box {
+  position: absolute;
+  padding: 0;
+  border: 1.5px solid rgb(0 122 255 / 70%);
+  border-radius: 4px;
+  background: rgb(0 122 255 / 6%);
+  cursor: pointer;
+}
+
+.a11y-box.on {
+  border-color: var(--accent);
+  background: rgb(0 122 255 / 14%);
+}
+
+.a11y-box-n {
+  position: absolute;
+  inset-block-start: -10px;
+  inset-inline-start: -10px;
+  min-inline-size: 20px;
+  block-size: 20px;
+  padding-inline: 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+
+.a11y-box-sel {
+  position: absolute;
+  border: 2px dashed var(--accent);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+@media (prefers-contrast: more) {
+  .a11y-box {
+    border-width: 2px;
+    border-color: var(--accent);
+  }
+}

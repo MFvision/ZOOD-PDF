@@ -110,7 +110,12 @@ export const TOOLS: readonly ToolDef[] = [
     core: { open: (docId) => openToolPanel('digital-signature', docId) },
   }),
   tool('standards', 'badge', 'teal', { status: 'ready', panel: 'standards', core: { open: (docId) => openToolPanel('standards', docId) } }),
-  tool('accessibility', 'accessibility', 'blue'),
+  // Accessibility: auto-tag, reading order, alt text, PDF/UA-style checker (warraq-a11y), see app/AccessibilityPanel.tsx.
+  tool('accessibility', 'accessibility', 'blue', {
+    status: 'ready',
+    panel: 'accessibility',
+    core: { open: (docId) => openToolPanel('accessibility', docId) },
+  }),
   tool('batch', 'batch', 'graphite', { needsDocument: false }),
   tool('library', 'library', 'green', { needsDocument: false }),
 ];
