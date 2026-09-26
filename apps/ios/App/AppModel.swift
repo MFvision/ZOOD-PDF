@@ -10,13 +10,14 @@ import ZoodEngine
 enum ToolKind: String, CaseIterable, Identifiable, Hashable, Codable {
     case open, scan, edit, convert, ai, more
     case organize, combine, compress, protect
+    case readAloud, fillForm
 
     var id: String { rawValue }
 
     /// The six Home action cards (spec §4).
     static let homeCards: [ToolKind] = [.open, .scan, .edit, .convert, .ai, .more]
     /// Sidebar / "More" tools.
-    static let tools: [ToolKind] = [.scan, .edit, .organize, .combine, .compress, .protect, .convert, .ai]
+    static let tools: [ToolKind] = [.scan, .edit, .organize, .combine, .compress, .protect, .convert, .ai, .readAloud, .fillForm]
 
     var symbol: String {
         switch self {
@@ -30,6 +31,8 @@ enum ToolKind: String, CaseIterable, Identifiable, Hashable, Codable {
         case .combine: "square.stack.3d.down.right"
         case .compress: "arrow.down.right.and.arrow.up.left"
         case .protect: "lock.doc"
+        case .readAloud: "speaker.wave.2"
+        case .fillForm: "list.bullet.rectangle.portrait"
         }
     }
 
@@ -45,6 +48,8 @@ enum ToolKind: String, CaseIterable, Identifiable, Hashable, Codable {
         case .combine: "tool.combine"
         case .compress: "tool.compress"
         case .protect: "tool.protect"
+        case .readAloud: "tool.readAloud"
+        case .fillForm: "tool.fillForm"
         }
     }
 
@@ -60,13 +65,15 @@ enum ToolKind: String, CaseIterable, Identifiable, Hashable, Codable {
         case .combine: "tool.combine.desc"
         case .compress: "tool.compress.desc"
         case .protect: "tool.protect.desc"
+        case .readAloud: "tool.readAloud.desc"
+        case .fillForm: "tool.fillForm.desc"
         }
     }
 
     /// Tools that act on one open document (opened first when started from Home).
     var needsDocument: Bool {
         switch self {
-        case .edit, .convert, .ai, .organize, .compress, .protect: true
+        case .edit, .convert, .ai, .organize, .compress, .protect, .readAloud, .fillForm: true
         case .open, .scan, .more, .combine: false
         }
     }
@@ -229,14 +236,20 @@ final class WindowRouter {
         case .compress:
             importerTool = .compress
         case .openRecent(let id):
-            Task {
-                await library.refresh()
-                guard let recent = library.recents.first(where: { $0.id == id }), let url = library.url(for: recent) else {
-                    toast = Toast(message: String(localized: "error.notFound"), isError: true)
-                    return
-                }
-                show(OpenedDocument(url: url, recentID: recent.id))
+            openRecent(id, tool: nil, library: library)
+        case .readAloud(let id):
+            openRecent(id, tool: .readAloud, library: library)
+        }
+    }
+
+    private func openRecent(_ id: String, tool: ToolKind?, library: Library) {
+        Task {
+            await library.refresh()
+            guard let recent = library.recents.first(where: { $0.id == id }), let url = library.url(for: recent) else {
+                toast = Toast(message: String(localized: "error.notFound"), isError: true)
+                return
             }
+            show(OpenedDocument(url: url, recentID: recent.id, initialTool: tool))
         }
     }
 

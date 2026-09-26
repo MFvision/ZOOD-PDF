@@ -32,6 +32,8 @@ public enum DeepLink: Equatable, Sendable {
     case home
     case scan(ScanMode)
     case openRecent(id: String)
+    /// Open a recent document and start reading it aloud.
+    case readAloud(id: String)
     case combine
     case compress
 
@@ -46,6 +48,9 @@ public enum DeepLink: Equatable, Sendable {
             c.queryItems = [URLQueryItem(name: "mode", value: mode.rawValue)]
         case .openRecent(let id):
             c.host = "open"
+            c.queryItems = [URLQueryItem(name: "id", value: id)]
+        case .readAloud(let id):
+            c.host = "read"
             c.queryItems = [URLQueryItem(name: "id", value: id)]
         case .combine:
             c.host = "combine"
@@ -67,6 +72,9 @@ public enum DeepLink: Equatable, Sendable {
         case "open":
             guard let id = q("id"), !id.isEmpty, id.count <= 64 else { return nil }
             self = .openRecent(id: id)
+        case "read":
+            guard let id = q("id"), !id.isEmpty, id.count <= 64 else { return nil }
+            self = .readAloud(id: id)
         case "combine":
             self = .combine
         case "compress":

@@ -18,8 +18,8 @@ import sys
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "apps", "ios")
 NAMESPACES = {
-    "ai", "annotate", "app", "color", "combine", "common", "compress", "convert", "doc", "drop", "engine",
-    "entity", "error", "home", "intent", "more", "nav", "organize", "plus", "protect", "range", "recents",
+    "ai", "annotate", "app", "autofill", "color", "combine", "common", "compress", "convert", "doc", "drop", "engine",
+    "entity", "error", "home", "intent", "more", "nav", "organize", "plus", "profile", "protect", "range", "read", "recents",
     "scan", "search", "section", "tags", "tool", "widget",
 }
 # Accessibility identifiers / engine method names that look like keys.

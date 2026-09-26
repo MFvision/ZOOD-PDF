@@ -2,7 +2,7 @@ import Foundation
 
 /// A downloadable GGUF model for the portable (llama.cpp) backend. Pinned to a repository
 /// revision, byte size and SHA-256: the download is refused unless every byte matches.
-public struct LocalModelSpec: Sendable, Equatable, Identifiable {
+public struct LocalModelSpec: Sendable, Equatable, Identifiable, Codable {
     public let id: String
     public let displayName: String
     public let fileName: String
@@ -52,6 +52,24 @@ public enum LocalModelCatalog {
     }
 
     public static func spec(id: String) -> LocalModelSpec? { all.first { $0.id == id } }
+
+    /// A .gguf the user imported from Files. A file identical to a catalog model is that model;
+    /// any other file gets conservative settings (small ones are treated like the light model).
+    public static func imported(fileName: String, byteCount: Int64, sha256: String) -> LocalModelSpec {
+        if let known = spec(sha256: sha256) { return known }
+        let light = byteCount < 700_000_000
+        let base = (fileName as NSString).deletingPathExtension
+        return LocalModelSpec(
+            id: "imported-" + String(sha256.lowercased().prefix(12)),
+            displayName: base.isEmpty ? "GGUF" : base,
+            fileName: "imported-" + String(sha256.lowercased().prefix(12)) + ".gguf",
+            url: URL(fileURLWithPath: "/"),
+            byteCount: byteCount,
+            sha256: sha256.lowercased(),
+            contextTokens: light ? 4_096 : 8_192,
+            budget: light ? .portableLight : .portable,
+            licence: "")
+    }
 
     public static func spec(sha256: String) -> LocalModelSpec? {
         let h = sha256.lowercased()
@@ -134,6 +152,53 @@ public struct ThinkFilter: Sendable {
             n -= 1
         }
         return 0
+    }
+}
+
+/// llama.cpp hands out token pieces as bytes; one Arabic letter (2 bytes in UTF-8) or emoji can
+/// be split across two tokens. This collects bytes and releases only complete characters.
+public struct UTF8Assembler: Sendable {
+    private var pending: [UInt8] = []
+
+    public init() {}
+
+    public mutating func append(_ bytes: [UInt8]) -> String {
+        pending += bytes
+        let keep = Self.incompleteTail(pending)
+        let ready = pending.count - keep
+        guard ready > 0 else { return "" }
+        let out = String(decoding: pending[..<ready], as: UTF8.self)
+        pending.removeFirst(ready)
+        return out
+    }
+
+    /// Anything left (invalid bytes become U+FFFD).
+    public mutating func finish() -> String {
+        defer { pending = [] }
+        return String(decoding: pending, as: UTF8.self)
+    }
+
+    /// Number of bytes at the end that start a multi-byte character not yet complete.
+    static func incompleteTail(_ b: [UInt8]) -> Int {
+        var i = b.count - 1
+        var continuation = 0
+        while i >= 0 && continuation < 3 && b[i] & 0xC0 == 0x80 {
+            continuation += 1
+            i -= 1
+        }
+        guard i >= 0 else { return 0 }
+        let lead = b[i]
+        let needed: Int
+        if lead & 0xE0 == 0xC0 {
+            needed = 1
+        } else if lead & 0xF0 == 0xE0 {
+            needed = 2
+        } else if lead & 0xF8 == 0xF0 {
+            needed = 3
+        } else {
+            return 0
+        }
+        return continuation < needed ? continuation + 1 : 0
     }
 }
 

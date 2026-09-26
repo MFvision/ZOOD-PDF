@@ -23,6 +23,8 @@ enum Theme {
         case .combine: Color(red: 0.30, green: 0.70, blue: 0.40)
         case .compress: Color(red: 0.90, green: 0.40, blue: 0.35)
         case .protect: Color(red: 0.35, green: 0.40, blue: 0.80)
+        case .readAloud: Color(red: 0.15, green: 0.62, blue: 0.75)
+        case .fillForm: Color(red: 0.62, green: 0.48, blue: 0.20)
         }
     }
 }

@@ -181,6 +181,16 @@ struct LocalAIPlumbingTests {
         #expect(LocalModelCatalog.recommended(physicalMemory: 5_900_000_000) == LocalModelCatalog.light)
         #expect(LocalModelCatalog.recommended(physicalMemory: 6_200_000_000) == LocalModelCatalog.standard)
         #expect(LocalModelCatalog.recommended(physicalMemory: 8 << 30) == LocalModelCatalog.standard)
+        // Imports: a known file is the catalog model, others get conservative settings.
+        let std = LocalModelCatalog.standard
+        #expect(LocalModelCatalog.imported(fileName: "x.gguf", byteCount: std.byteCount, sha256: std.sha256) == std)
+        let small = LocalModelCatalog.imported(fileName: "gemma-tiny.gguf", byteCount: 300_000_000, sha256: String(repeating: "AB", count: 32))
+        #expect(small.displayName == "gemma-tiny" && small.budget == .portableLight && small.contextTokens == 4_096)
+        #expect(small.fileName == "imported-abababababab.gguf" && small.id == "imported-abababababab")
+        let big = LocalModelCatalog.imported(fileName: "big.gguf", byteCount: 2_000_000_000, sha256: String(repeating: "c", count: 64))
+        #expect(big.budget == .portable)
+        let roundTrip = try? JSONDecoder().decode(LocalModelSpec.self, from: JSONEncoder().encode(std))
+        #expect(roundTrip == std)
     }
 
     @Test func ggufHeaderCheck() {
@@ -189,6 +199,20 @@ struct LocalAIPlumbingTests {
         #expect(!GGUFFile.looksValid(header: Data("%PDF-1.7".utf8)))
         #expect(!GGUFFile.looksValid(header: Data([0x47, 0x47])))
         #expect(GGUFFile.hex([0x00, 0xab, 0xff]) == "00abff")
+    }
+
+    @Test func utf8PiecesAreJoinedIntoWholeCharacters() {
+        let bytes = Array("سلام 👋 ok".utf8)
+        var a = UTF8Assembler()
+        var out = ""
+        for b in bytes { out += a.append([b]) }
+        out += a.finish()
+        #expect(out == "سلام 👋 ok")
+        var b = UTF8Assembler()
+        #expect(b.append([0xD8]) == "")
+        #expect(b.append([0xB3, 0x41]) == "سA")
+        #expect(b.append([0xF0, 0x9F]) == "")
+        #expect(b.finish() == "\u{FFFD}")
     }
 
     @Test func languageDetection() {

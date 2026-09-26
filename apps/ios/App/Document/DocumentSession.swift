@@ -382,6 +382,45 @@ final class DocumentSession {
         return try? DocumentLibrary.temporaryCopy(data, name: name)
     }
 
+    /// Mark PDFKit form edits (autofill) so the next save folds them in through `doc.rebase`.
+    func formEdited() {
+        pdfkitDirty = true
+        isEdited = true
+    }
+
+    /// The document is being read aloud (nil when the player is closed).
+    var reader: ReadAloudController?
+
+    func startReadingAloud() {
+        if reader == nil { reader = ReadAloudController(session: self) }
+        Task { await reader?.start() }
+    }
+
+    func stopReadingAloud() {
+        reader?.stop()
+        reader = nil
+    }
+
+    /// Logical-order text of every page for the on-device assistant: the engine's Arabic-aware
+    /// `text.plain`, else PDFKit's page strings.
+    func pageTexts() async -> [PageContent] {
+        if let data = await currentBytes(), let e = try? WarraqEngine(data: data, password: password),
+           let pages = await e.pageTexts() {
+            return pages
+        }
+        guard let pdf else { return [] }
+        return (0..<pdf.pageCount).map { PageContent(index: $0, text: pdf.page(at: $0)?.string ?? "") }
+    }
+
+    /// Paragraphs with boxes for read-aloud (engine `text.extract`), else lines of page text.
+    func paragraphs() async -> [TextParagraph] {
+        if let data = await currentBytes(), let e = try? WarraqEngine(data: data, password: password),
+           let paragraphs = try? await e.paragraphs(), !paragraphs.isEmpty {
+            return paragraphs
+        }
+        return ReadingPlanner.paragraphs(from: await pageTexts())
+    }
+
     func goTo(page index: Int) {
         guard let pdf, let page = pdf.page(at: index) else { return }
         pdfView.go(to: page)

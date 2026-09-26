@@ -120,6 +120,57 @@
           }
         }
       }
+    },
+    "Summarize a PDF with ${applicationName}": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Summarize a PDF with ${applicationName}"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لخّص ملف PDF باستخدام ${applicationName}"
+          }
+        }
+      }
+    },
+    "Read ${document} aloud with ${applicationName}": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read ${document} aloud with ${applicationName}"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اقرأ ${document} بصوت عالٍ باستخدام ${applicationName}"
+          }
+        }
+      }
+    },
+    "Read a PDF aloud with ${applicationName}": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read a PDF aloud with ${applicationName}"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اقرأ ملف PDF بصوت عالٍ باستخدام ${applicationName}"
+          }
+        }
+      }
     }
   }
 }

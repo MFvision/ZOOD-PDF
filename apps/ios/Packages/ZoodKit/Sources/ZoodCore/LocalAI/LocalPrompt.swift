@@ -14,7 +14,7 @@ public enum AIScope: Equatable, Sendable {
 
 /// Context limits of the model that will run the prompt. Characters, not tokens: both models
 /// tokenise Arabic less efficiently than English, so the budgets are conservative.
-public struct ModelBudget: Sendable, Equatable {
+public struct ModelBudget: Sendable, Equatable, Codable {
     /// Characters of document text that may go into one prompt.
     public let excerptCharacters: Int
     /// Tokens the model may generate.

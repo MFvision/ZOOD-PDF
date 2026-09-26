@@ -2,6 +2,7 @@
 # Builds and tests the native iOS app on simulators and captures screenshots.
 #
 #   1. scripts/ios/build-core.sh          → apps/ios/Frameworks/WarraqCore.xcframework
+#      scripts/ios/fetch-llama.sh         → apps/ios/Frameworks/llama.xcframework (pinned, device only)
 #   2. xcodegen generate                   → apps/ios/ZoodPDF.xcodeproj
 #   3. xcodebuild build-for-testing + test-without-building on an iPhone 17 and an
 #      iPad Pro 13-inch (M4) simulator, each time-boxed (known trap: `xcodebuild test` can
@@ -34,6 +35,7 @@ mkdir -p "$BUILD" "$SHOTS"
 if [ "${SKIP_CORE:-0}" != "1" ] || [ ! -d "$IOS/Frameworks/WarraqCore.xcframework" ]; then
   bash "$ROOT/scripts/ios/build-core.sh"
 fi
+bash "$ROOT/scripts/ios/fetch-llama.sh"
 
 echo "[ios] xcodegen generate"
 ( cd "$IOS" && xcodegen generate --spec project.yml )
