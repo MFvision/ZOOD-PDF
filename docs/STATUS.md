@@ -633,3 +633,51 @@ imageCrop|imageReplace|imageDelete|imageAdd`, `edit.links|linkAdd|linkUpdate|lin
 * cargo-fuzz targets `content_rewrite`, `url_check`, `picture_decode` compile on stable; not run under cargo-fuzz
   here (no nightly). The stable smoke fuzz (`warraq-edit/tests/no_panic.rs`) runs in `verify.sh`.
 * Desktop and extension use the same UI and engine but have no Edit spec of their own; iOS has no Edit tool.
+
+## Page marks (`warraq-marks`, `marks.*` RPC, Page marks panel)
+
+Architecture: ADR 0019. Engine methods: `marks.list`, `marks.add` (picture as `blobs[0]`; `only` for previews),
+`marks.update`, `marks.remove` (`foreign:<kind>` for other applications' marks). Mutating calls commit one
+incremental update; a failed call leaves the document as it was. UI: `app/MarksPanel.tsx`, `services/marks.ts`.
+
+### Proven by tests
+| What | Test |
+| --- | --- |
+| Umm al-Qura by own table (1356–1500 AH): announced dates (1 Ramadan 1447 = 18 Feb 2026, Eid al-Fitr 1446, 1 Muharram 1447/1448, Arafah 1445, 1 Muharram 1420), every day of the table consecutive, outside the table → empty token | `warraq-marks/src/hijri.rs` tests |
+| Tokens `{page}` `{pages}` `{date}` `{hijri}` `{time}` `{file}` `{bates}` with Latin or Arabic-Indic digits («صفحة ١ من ٩», `١٤٤٨/٤/١٥ هـ`, "Page 1 of 9"); literal digits kept; unknown/broken braces left as typed | `tokens.rs` tests, `tests/marks.rs::tokens_date_hijri_file_and_time` |
+| «صفحة {page} من {pages}» on a 3-page file reads back as «صفحة ٢ من ٣» etc. in logical order; shaped Amiri subset embedded, `/ActualText` per word, no `/Direction`, no stroke; bottom-centre position; excluded with `artifacts: false` (pagination artifact) | `tests/marks.rs::arabic_page_numbers_read_back_in_logical_order_with_arabic_indic_digits` |
+| Search (`text.search`, Arabic-Indic or Western digits in the query) finds the mark text on the right page; warraq-redact find + apply removes it from that page only, body text kept | `tests/marks.rs::search_finds_mark_text_and_redaction_removes_it` |
+| Mark text is never an editable block (warraq-edit), while the page body is | `tests/marks.rs::mark_text_is_never_an_editable_block` |
+| Diagonal watermark: rotation = atan(height/width) of the displayed page, ExtGState `/ca` = `/CA` = 0.3, Cairo subset, behind the content (mark stream first), `/Artifact <</Type /Pagination /Subtype /Watermark …>>` | `tests/marks.rs::diagonal_watermark_has_opacity_rotation_and_artifact_tag` |
+| `/Rotate` 0/90/180/270 with a CropBox: the header lies inside the visible box at the displayed top-start corner | `tests/marks.rs::marks_stand_upright_in_the_visible_box_of_rotated_and_cropped_pages` |
+| List (id, stored model, pages), update (same id, new text), remove: the original content streams are the same objects with identical bytes after every step; removing the last mark restores `/Contents` exactly; our marks never listed as foreign; unknown id → `not_found` | `tests/marks.rs::list_update_and_remove_leave_every_other_content_byte_identical` |
+| Picture watermark (PNG → `/SMask`, one image shared by all pages, `/Rotate 90`), kept on update without a new picture; missing/garbage picture refused | `tests/marks.rs::picture_watermark_png_behind_and_kept_on_update` |
+| Bates numbers count the marked pages (`ZD-0005…0007` on pages 2–4; Arabic-Indic `ملف-٠٠١…`); previews draw one page but number it like the real thing | `tests/marks.rs::bates_numbers_count_the_marked_pages`, `preview_draws_only_the_asked_page_…` |
+| Acrobat-style marks (artifact + `/ADBE_CompoundType` form) listed per kind and removed through the byte-faithful rewriter (the rest of the content byte-identical); an artifact that changes state outside its own `q … Q` is reported `not_removable` and left alone; a `q … Q`-wrapped footer is removed | `tests/marks.rs::acrobat_style_marks_are_listed_and_removed_when_safe` |
+| AES-256 file (Arabic password) stays encrypted and reads back; restricted user-password session → `permission_denied`, owner can; RPC surface, failed call leaves bytes unchanged | `tests/marks.rs::encrypted_documents_stay_encrypted`, `warraq-core/tests/marks_methods.rs` |
+| No panic / bounded time: mutated page content (artifacts, Acrobat forms, `/Properties`), mutated marked files, random specs (≥ 5 % actually drawn), mutated PNGs (600 cases run here; 150 in `verify.sh`) | `warraq-marks/tests/no_panic.rs` (`WARRAQ_SMOKE_CASES`) |
+| Form ↔ model (all/odd/even/custom ranges with «١-٢، ٤», Bates digits typed in Arabic-Indic, presets per locale, edit round trip), preview/apply/list call shapes, direction guess | `packages/ui/src/services/marks.test.ts` |
+| Page marks is a ready core tool (sidebar, More sheet, gallery) opening its panel | `registry.test.ts`, `App.test.tsx`, `home.spec.ts` |
+| **UI, en + ar**: 3-page Arabic file (Chromium) → Arabic diagonal watermark «سري للغاية» at 30 % with live preview → footer «صفحة {page} من {pages}» with Arabic-Indic digits → save: original bytes an exact prefix, 3 revisions; engine (wasm in Node): `text.search` finds «صفحة ٢ من ٣» on page 2 only, «سري للغاية» on every page but not with `artifacts: false`, `marks.list` = 2 marks of ours (ids, pages, opacity 0.3, diagonal), no foreign, no `/Direction`; reopened → both listed; no network | `tests/e2e/marks.spec.ts` |
+| **UI, en + ar**: picture watermark (PNG chosen through the file chooser, behind content) → Bates `ZD-` from 7 (typed «٧» in Arabic), 4 digits → remove the watermark, Undo brings it back, Redo removes it → save: prefix; engine lists only the Bates mark; pages read `ZD-0007`, `ZD-0008`, `ZD-0009` | `marks.spec.ts` |
+| **Phone width (390 px, ar)**: the panel fits (no horizontal overflow), Apply is on screen, page numbers «صفحة ٢ من ٣» saved and read back | `marks.spec.ts` |
+
+### Not done / limits (honest)
+* **Other applications' marks** are found only in page content streams (not inside other form XObjects) and
+  only when tagged (pagination artifact or Acrobat `/ADBE_CompoundType`); untagged "watermarks" drawn as plain
+  text or pictures are not recognisable as such. Their removal is engine-proven with generated Acrobat-style
+  pages; Acrobat itself is not available here, and no UI spec removes a foreign mark.
+* Marks are **static text** from the moment they are applied: `{pages}` and `{page}` are not renumbered when
+  Organize later inserts/deletes pages (edit the mark to refresh it); pages added later are not marked;
+  `{page}` is the physical page number (no page labels, no start offset); `{date}`/`{time}` are the local
+  clock at apply time.
+* Hijri dates exist for 1356–1500 AH (1937–2077); outside that the token is empty.
+* Header/footer text is not wrapped or shrunk: a very long slot can run off the page. One font and weight per
+  mark (no bold/italic); Arabic text in "Inter" falls back to Cairo (Inter has no Arabic).
+* Behind-content marks are hidden by opaque page backgrounds (typical for scans) — by design.
+* Adding a mark to a **signed** document appends a page-content change; under certification the signature
+  panel reports it as not allowed (no special warning in the Page marks panel yet).
+* Desktop and extension run the same UI and engine but have no Page marks spec of their own; iOS has no Page
+  marks tool.
+* cargo-fuzz target `marks_scan` compiles on stable; not run under cargo-fuzz here (no nightly). The stable
+  smoke fuzz above runs in `verify.sh`.

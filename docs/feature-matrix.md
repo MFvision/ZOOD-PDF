@@ -19,6 +19,7 @@ M = iOS native app.
 | Organize (grid, rotate, reorder, delete, insert blank/file/picture, replace, extract, split → ZIP, crop, trim, context menu, undo/redo) | ✅ `organize.spec.ts` (en + ar + phone width) | 🟡 same UI in Tauri, not exercised | 🟡 same UI, not exercised | 🟡 see iOS detail below |
 | Combine (Home: pick + reorder → new document; drop on open document → «دمج مع …» / «فتح بدلاً منه»; insert at a position) | ✅ `combine.spec.ts` (en + ar) | 🟡 host drop without preview → choice sheet, not exercised | 🟡 | 🟡 see iOS detail below |
 | Compress (presets, before/after, save/open the copy; original untouched) | ✅ `compress.spec.ts` (en + ar) | 🟡 | 🟡 | 🟡 see iOS detail below |
+| Page marks (watermark text/picture, header & footer with page/date/Hijri/time/file tokens, page numbers incl. «صفحة ١ من ٩», Bates; removable tagged form XObjects; warraq-marks) | ✅ Arabic diagonal watermark at 30 % + «صفحة {page} من {pages}» footer saved, inspected (search finds «صفحة ٢ من ٣» on page 2, marks listed as ours, original a prefix) and reopened; picture watermark, Bates across pages, remove + undo/redo; phone width — en + ar (`marks.spec.ts`); rotated/cropped pages, redaction, edit exclusion, other applications' marks engine-proven (`warraq-marks/tests/marks.rs`) | 🟡 same UI + engine, no desktop spec | 🟡 same UI + engine, no extension spec | ⛔ not on iOS yet |
 
 ## iOS app (M) in detail
 
