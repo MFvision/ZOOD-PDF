@@ -24,6 +24,8 @@ pub enum XrefRow {
     InUse(usize, u16),
     /// Free: next free object number, generation for re-use.
     Free(u32, u16),
+    /// Stored in object stream number `.0` at index `.1` (xref streams only).
+    Compressed(u32, u16),
 }
 
 /// Group sorted object numbers into `(start, count)` subsections.
@@ -56,6 +58,10 @@ pub fn write_xref_table(
                 XrefRow::Free(next, gen) => {
                     let _ = write!(out, "{:010} {:05} f\r\n", next, gen);
                 }
+                // Tables cannot express compressed objects; the compact writer never uses them.
+                XrefRow::Compressed(..) => {
+                    let _ = write!(out, "{:010} {:05} f\r\n", 0, 0);
+                }
             }
         }
     }
@@ -81,6 +87,7 @@ pub fn write_xref_stream(
         .map(|r| match r {
             XrefRow::InUse(o, _) => *o as u64,
             XrefRow::Free(n, _) => u64::from(*n),
+            XrefRow::Compressed(n, _) => u64::from(*n),
         })
         .max()
         .unwrap_or(0);
@@ -97,6 +104,7 @@ pub fn write_xref_stream(
             let (t, a, b) = match r {
                 XrefRow::InUse(o, g) => (1u8, o as u64, g),
                 XrefRow::Free(n, g) => (0u8, u64::from(n), g),
+                XrefRow::Compressed(n, i) => (2u8, u64::from(n), i),
             };
             data.push(t);
             let be = a.to_be_bytes();
@@ -203,5 +211,106 @@ pub fn write_new_file(
             write_xref_stream(&mut out, &rows, &trailer, (next, 0))?;
         }
     }
+    Ok(out)
+}
+
+/// Most objects packed into one object stream by [`write_compact_file`].
+pub const OBJECTS_PER_STREAM: usize = 100;
+
+fn deflate(data: &[u8], level: u32) -> Result<Vec<u8>> {
+    let mut enc = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::new(level));
+    enc.write_all(data)
+        .map_err(|e| PdfError::Structure(format!("compress: {e}")))?;
+    enc.finish()
+        .map_err(|e| PdfError::Structure(format!("compress: {e}")))
+}
+
+/// Write a complete new file whose non-stream objects are packed into Flate-compressed object
+/// streams, with a cross-reference stream (PDF 1.5). Streams stay top-level objects. With a
+/// security handler, streams (object streams included) are encrypted and the objects inside
+/// object streams are written plain, as ISO 32000 requires.
+#[allow(clippy::too_many_arguments)]
+pub fn write_compact_file(
+    version: &str,
+    objects: &BTreeMap<ObjectId, Object>,
+    root: ObjectId,
+    info: Option<ObjectId>,
+    id: Option<(Object, Object)>,
+    security: Option<&SecurityHandler>,
+    limits: &Limits,
+) -> Result<Vec<u8>> {
+    let version = if version < "1.5" { "1.5" } else { version };
+    let mut out = Vec::new();
+    let _ = writeln!(out, "%PDF-{}", version);
+    out.extend_from_slice(&[b'%', 0xE2, 0xE3, 0xCF, 0xD3, b'\n']);
+    let mut rows = BTreeMap::new();
+    rows.insert(0u32, XrefRow::Free(0, 65535));
+    let mut next = objects.keys().next_back().map(|k| k.0 + 1).unwrap_or(1);
+    let mut packable: Vec<(ObjectId, &Object)> = Vec::new();
+    for (&oid, obj) in objects {
+        if matches!(obj, Object::Stream(_)) || oid.1 != 0 {
+            let off = out.len();
+            if let Some(sec) = security {
+                let mut o = obj.clone();
+                sec.encrypt_object(oid, &mut o, limits)?;
+                write_indirect(&mut out, oid, &o)?;
+            } else {
+                write_indirect(&mut out, oid, obj)?;
+            }
+            rows.insert(oid.0, XrefRow::InUse(off, oid.1));
+        } else {
+            packable.push((oid, obj));
+        }
+    }
+    for chunk in packable.chunks(OBJECTS_PER_STREAM) {
+        let sid = (next, 0);
+        next += 1;
+        let mut header = Vec::new();
+        let mut body = Vec::new();
+        for (k, (oid, obj)) in chunk.iter().enumerate() {
+            let _ = write!(header, "{} {} ", oid.0, body.len());
+            write_object(&mut body, obj)?;
+            body.push(b'\n');
+            rows.insert(oid.0, XrefRow::Compressed(sid.0, k as u16));
+        }
+        header.push(b'\n');
+        let first = header.len();
+        header.extend_from_slice(&body);
+        let mut dict = Dictionary::new();
+        dict.set("Type", Object::Name(b"ObjStm".to_vec()));
+        dict.set("N", Object::Integer(chunk.len() as i64));
+        dict.set("First", Object::Integer(first as i64));
+        dict.set("Filter", Object::Name(b"FlateDecode".to_vec()));
+        let mut stream = Object::Stream(Stream::new(dict, deflate(&header, 9)?));
+        if let Some(sec) = security {
+            sec.encrypt_object(sid, &mut stream, limits)?;
+        }
+        let off = out.len();
+        write_indirect(&mut out, sid, &stream)?;
+        rows.insert(sid.0, XrefRow::InUse(off, 0));
+    }
+    let mut trailer = Dictionary::new();
+    if let Some(sec) = security {
+        let enc_id = (next, 0);
+        next += 1;
+        let off = out.len();
+        write_indirect(&mut out, enc_id, &Object::Dictionary(sec.dict.clone()))?;
+        rows.insert(enc_id.0, XrefRow::InUse(off, 0));
+        trailer.set("Encrypt", Object::Reference(enc_id));
+    }
+    trailer.set("Root", Object::Reference(root));
+    if let Some(i) = info {
+        trailer.set("Info", Object::Reference(i));
+    }
+    let (a, b) = match id {
+        Some(p) => p,
+        None => {
+            let x = new_id_element()?;
+            (x.clone(), x)
+        }
+    };
+    trailer.set("ID", Object::Array(vec![a, b]));
+    trailer.set("Size", Object::Integer(i64::from(next) + 1));
+    write_xref_stream(&mut out, &rows, &trailer, (next, 0))?;
     Ok(out)
 }

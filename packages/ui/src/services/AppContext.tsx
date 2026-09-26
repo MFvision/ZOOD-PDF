@@ -10,6 +10,8 @@ import { getHost, type HostBridge, type OpenedFile } from './host';
 import { engine as sharedEngine, type EngineClient } from './engine';
 import { isPdfBytes } from './files';
 import { looksProtected, rebaseOnOriginal, saveStrategy } from './save';
+import { runOnBytes, type CoreCall, type CoreResult } from './coreOps';
+import { createHistory, type History } from './history';
 import type { ViewerApi } from '../viewer/Viewer';
 import type { Platform } from '../tools/registry';
 
@@ -38,10 +40,23 @@ export interface AppServices {
   viewer(docId: string): ViewerApi | undefined;
   markSensitive(docId: string): void;
   storeThumbnail(docId: string, png: Uint8Array): Promise<void>;
-  /** The engine client (core tools: Export, Compare, …). */
+  // ---- core tools (Organize, Combine, Compress) ----
+  /** The engine client (shared worker; core tools: Organize, Combine, Compress, Export, Compare…). */
   engine(): EngineClient;
-  /** Current bytes of a document including unsaved viewer edits (PDFium's copy when edited). */
+  /** The document's bytes including unsaved viewer (PDFium) edits, folded in as an incremental update
+   * (`doc.rebase` on the current bytes; PDFium's whole rewrite after an applied redaction). */
   currentBytes(docId: string): Promise<Uint8Array>;
+  /** Runs engine calls on the current bytes WITHOUT changing the document (extract, split, compress…). */
+  runOnDocument<J = unknown>(docId: string, calls: CoreCall[]): Promise<CoreResult<J>>;
+  /** Runs mutating engine calls; the result replaces the document (undoable). Null when nothing changed. */
+  coreEdit<J = unknown>(docId: string, calls: CoreCall[], label: string): Promise<CoreResult<J> | null>;
+  undoCore(docId: string): Promise<boolean>;
+  redoCore(docId: string): Promise<boolean>;
+  historyOf(docId: string): { canUndo: boolean; canRedo: boolean; undoLabel?: string; redoLabel?: string };
+  /** Opens bytes made by a tool (e.g. Combine) as a new, unsaved document. */
+  openNewDocument(name: string, bytes: Uint8Array): Promise<void>;
+  /** Saves bytes made by a tool as a new file (always asks where). */
+  saveNewFile(name: string, bytes: Uint8Array, mimeType?: string): Promise<boolean>;
 }
 
 const Ctx = createContext<AppServices | null>(null);
@@ -107,6 +122,16 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
   const engineRef = useRef<EngineClient | null>(engineProp ?? null);
   const getEngine = () => (engineRef.current ??= sharedEngine());
   const viewers = useRef(new Map<string, ViewerApi>());
+  const histories = useRef(new Map<string, History>());
+  const [, setHistoryTick] = useState(0);
+  const historyFor = (docId: string): History => {
+    let h = histories.current.get(docId);
+    if (!h) {
+      h = createHistory();
+      histories.current.set(docId, h);
+    }
+    return h;
+  };
   const sensitive = useRef(new Set<string>());
   const stateRef = useRef(state);
   useLayoutEffect(() => {
@@ -204,6 +229,7 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
 
   const closeDocument = useCallback((id: string) => {
     viewers.current.delete(id);
+    histories.current.delete(id);
     sensitive.current.delete(id);
     dispatch({ type: 'CLOSE_DOCUMENT', id });
   }, []);
@@ -230,6 +256,9 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
         const res = await host.saveFile(doc.name, out, { handle: doc.handle, saveAs: opts.saveAs });
         if (!res) return false;
         dispatch({ type: 'SAVED', id, bytes: out, name: res.name, handle: res.handle });
+        // Saved bytes are the new baseline: earlier versions are no longer "the document".
+        histories.current.get(id)?.clear();
+        setHistoryTick((n) => n + 1);
         if (doc.recentId) {
           if (sensitive.current.has(id) || looksProtected(out)) {
             await recents.forgetThumbnail(doc.recentId);
@@ -254,6 +283,61 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
     else viewers.current.delete(docId);
   }, []);
   const viewer = useCallback((docId: string) => viewers.current.get(docId), []);
+
+  const currentBytes = useCallback(
+    async (docId: string): Promise<Uint8Array> => {
+      const doc = stateRef.current.documents[docId];
+      if (!doc) throw new Error('document is not open');
+      if (!doc.edited || doc.warraqOwnsDocument) return doc.bytes;
+      const api = viewers.current.get(docId);
+      if (!api) return doc.bytes;
+      const pdfium = await api.exportBytes();
+      // Redaction must not leave the old content in the file: keep PDFium's whole rewrite.
+      if (sensitive.current.has(docId)) return pdfium;
+      return (await rebaseOnOriginal(getEngine(), doc.bytes, pdfium)).bytes;
+    },
+    [],
+  );
+
+  const replaceBytes = useCallback((docId: string, before: Uint8Array, after: Uint8Array, label: string) => {
+    historyFor(docId).record(before, after, label);
+    dispatch({ type: 'CORE_REPLACED_BYTES', id: docId, bytes: after });
+    setHistoryTick((n) => n + 1);
+  }, []);
+
+  const coreEdit = useCallback(
+    async <J,>(docId: string, calls: CoreCall[], label: string): Promise<CoreResult<J> | null> => {
+      const doc = stateRef.current.documents[docId];
+      if (!doc) return null;
+      const base = await currentBytes(docId);
+      if (base !== doc.bytes) replaceBytes(docId, doc.bytes, base, 'viewer');
+      const res = await runOnBytes<J>(getEngine(), base, calls);
+      if (!res.bytes || res.bytes.byteLength === 0) return null;
+      replaceBytes(docId, base, res.bytes, label);
+      return res;
+    },
+    [currentBytes, replaceBytes],
+  );
+
+  const stepHistory = useCallback(
+    async (docId: string, dir: 'undo' | 'redo'): Promise<boolean> => {
+      const doc = stateRef.current.documents[docId];
+      if (!doc) return false;
+      const h = historyFor(docId);
+      // Unsaved viewer edits become their own step first, so undo never silently drops them.
+      const base = await currentBytes(docId);
+      if (base !== doc.bytes) {
+        if (dir === 'redo') return false;
+        h.record(doc.bytes, base, 'viewer');
+      }
+      const step = dir === 'undo' ? h.undo(base) : h.redo(base);
+      if (!step) return false;
+      dispatch({ type: 'CORE_REPLACED_BYTES', id: docId, bytes: step.bytes });
+      setHistoryTick((n) => n + 1);
+      return true;
+    },
+    [currentBytes],
+  );
 
   const services: AppServices = {
     state,
@@ -292,15 +376,37 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
       const rid = stateRef.current.documents[docId]?.recentId;
       if (rid) void recents.forgetThumbnail(rid).then(refreshRecents);
     },
-    engine: () => getEngine(),
-    currentBytes: async (docId) => {
-      const doc = stateRef.current.documents[docId];
-      if (!doc) throw new Error('document not open');
-      if (doc.edited && !doc.warraqOwnsDocument) {
-        const api = viewers.current.get(docId);
-        if (api) return api.exportBytes();
+    engine: getEngine,
+    currentBytes,
+    runOnDocument: async (docId, calls) => runOnBytes(getEngine(), await currentBytes(docId), calls),
+    coreEdit,
+    undoCore: (docId) => stepHistory(docId, 'undo'),
+    redoCore: (docId) => stepHistory(docId, 'redo'),
+    historyOf: (docId) => {
+      const h = histories.current.get(docId);
+      return { canUndo: !!h?.canUndo(), canRedo: !!h?.canRedo(), undoLabel: h?.undoLabel(), redoLabel: h?.redoLabel() };
+    },
+    openNewDocument: async (name, bytes) => {
+      let recentId: string | undefined;
+      try {
+        recentId = (await recents.add({ name, bytes })).id;
+      } catch {
+        /* recents are a convenience */
       }
-      return doc.bytes;
+      dispatch({ type: 'OPEN_DOCUMENT', id: newDocId(), name, bytes, recentId, unsaved: true });
+      void refreshRecents();
+    },
+    saveNewFile: async (name, bytes, mimeType) => {
+      try {
+        const res = await host.saveFile(name, bytes, { saveAs: true, mimeType });
+        if (!res) return false;
+        toast(t('toast.saved', { name: res.name }), 'success');
+        return true;
+      } catch (e) {
+        const reason = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : String(e);
+        toast(t('toast.saveFailed', { reason }), 'error');
+        return false;
+      }
     },
     storeThumbnail: async (docId, png) => {
       const rid = stateRef.current.documents[docId]?.recentId;

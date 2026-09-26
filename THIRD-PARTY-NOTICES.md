@@ -248,7 +248,7 @@ License Agreement – Permissive 2.0 (a permissive data licence, see ADR 0008).
 | version_check | 0.9.5 | MIT/Apache-2.0 | Transitive dependency |
 | zerocopy | 0.8.59 | BSD-2-Clause OR Apache-2.0 OR MIT | Transitive dependency |
 | zerocopy-derive | 0.8.59 | BSD-2-Clause OR Apache-2.0 OR MIT | Transitive dependency |
-| Amiri (subset `Amiri-Sign.ttf`) | 1.x | OFL-1.1 | Arabic/Latin font embedded (subsetted) in visible signature appearances; licence in `crates/warraq-sign/assets/OFL-Amiri.txt` |
+| Amiri (`packages/core/assets/fonts/amiri`, shared with warraq-create) | 1.x | OFL-1.1 | Arabic/Latin font embedded (subsetted) in visible signature appearances and created PDFs; licence in `packages/core/assets/fonts/amiri/OFL.txt` (copy in `crates/warraq-sign/assets/OFL-Amiri.txt`) |
 
 ### Signature test tools (never bundled, never linked)
 
@@ -307,11 +307,26 @@ Test-only (never bundled, never linked into a build):
 | quick-xml | 0.42 | MIT | Independent XML parser that checks every part our writers produce is well-formed |
 | python-docx, openpyxl, python-pptx | 1.2 / 3.1 / 1.0 | MIT / MIT / MIT | Independent readers that open our DOCX/XLSX/PPTX in `warraq-office/tests/export.rs` (skipped when not installed) |
 
+## Rust engine (Organize / Combine / Compress in warraq-core)
+
+Direct dependencies added by `warraq-core/src/ops` (picture pages, compression). `warraq-core` also links
+`warraq-text` (above) for text boxes in "Trim margins".
+
+| Component | Version | Licence | Used for |
+| --- | --- | --- | --- |
+| jpeg-encoder | 0.7.1 | MIT OR Apache-2.0 | JPEG re-encoding of downsampled pictures (Compress) |
+| zune-jpeg | 0.5.15 | MIT OR Apache-2.0 OR Zlib | JPEG decoding for Compress (now a direct dependency, also used by hayro) |
+| zune-core | 0.5.3 | MIT OR Apache-2.0 OR Zlib | Decoder options for zune-jpeg |
+| png | 0.18.1 | MIT OR Apache-2.0 | PNG decoding for "Insert picture" (alpha → soft mask) |
+| flate2 | 1.1.10 | MIT OR Apache-2.0 | Flate for picture pages, recompressed streams and object streams |
+
 ## Fonts
 
 Test corpus fonts live in `tests/corpus/fonts/<family>/` with their `OFL.txt` (SIL Open Font License 1.1). They are
 used to generate the Arabic corpus; the Edit tool may embed subsets of Amiri, Cairo and Inter, in which case the OFL
-text ships with the build.
+text ships with the build. Create PDF (warraq-create) and signature appearances (warraq-sign) compile Amiri
+Regular/Bold, Cairo and Inter from `packages/core/assets/fonts/<family>/` (each with its `OFL.txt`) into the engine
+and embed subsets of them in the PDFs they write.
 
 | Font | Source | Licence |
 | --- | --- | --- |

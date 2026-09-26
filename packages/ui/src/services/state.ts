@@ -52,12 +52,12 @@ export interface AppState {
 }
 
 export type Action =
-  | { type: 'OPEN_DOCUMENT'; id: string; name: string; bytes: Uint8Array; recentId?: string; handle?: unknown; tool?: string }
+  | { type: 'OPEN_DOCUMENT'; id: string; name: string; bytes: Uint8Array; recentId?: string; handle?: unknown; tool?: string; unsaved?: boolean }
   | { type: 'TOOL_STARTED'; id: string }
   | { type: 'CLOSE_DOCUMENT'; id: string }
   | { type: 'VIEWER_READY'; id: string; revision: number; pageCount: number }
   | { type: 'VIEWER_EDITED'; id: string }
-  | { type: 'CORE_REPLACED_BYTES'; id: string; bytes: Uint8Array }
+  | { type: 'CORE_REPLACED_BYTES'; id: string; bytes: Uint8Array; edited?: boolean }
   | { type: 'SAVED'; id: string; bytes: Uint8Array; name: string; handle?: unknown }
   | { type: 'SET_RECENT_ID'; id: string; recentId: string }
   | { type: 'SET_ROUTE'; route: Route }
@@ -86,8 +86,9 @@ export function reducer(state: AppState, action: Action): AppState {
         originalBytes: action.bytes.slice(),
         revision: 0,
         switching: true,
-        warraqOwnsDocument: false,
-        edited: false,
+        // A document made by a tool (Combine, Create PDF) exists only in memory until the user saves it.
+        warraqOwnsDocument: !!action.unsaved,
+        edited: !!action.unsaved,
         pageCount: 0,
         recentId: action.recentId,
         handle: action.handle,
@@ -129,7 +130,7 @@ export function reducer(state: AppState, action: Action): AppState {
         revision: d.revision + 1,
         switching: true,
         warraqOwnsDocument: true,
-        edited: true,
+        edited: action.edited ?? true,
       }));
     case 'SAVED':
       return updateDoc(state, action.id, (d) => ({

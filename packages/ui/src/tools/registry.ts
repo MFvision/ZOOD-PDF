@@ -46,6 +46,8 @@ export interface ToolDef {
   viewer?: { commands: string[] };
   /** Core-backed tools: set by the agent implementing the tool. `docId`: the document to act on. */
   core?: { open: (docId?: string) => void | Promise<void> };
+  /** Tools whose UI is a side panel (opened through tools/panels; one panel at a time). */
+  panel?: string;
   /** Needs an open document. */
   needsDocument: boolean;
 }
@@ -73,18 +75,20 @@ function tool(
 
 export const TOOLS: readonly ToolDef[] = [
   tool('edit', 'edit', 'blue'),
-  tool('organize', 'organize', 'indigo'),
+  // Organize / Combine / Compress: engine-backed panels (see tools/panels.ts).
+  tool('organize', 'organize', 'indigo', { status: 'ready', core: { open: (docId) => openToolPanel('organize', docId) } }),
   tool('comment', 'comment', 'yellow', { status: 'ready', viewer: { commands: ['mode:annotate'] } }),
   tool('fill-sign', 'sign', 'purple', { status: 'ready', viewer: { commands: ['mode:insert'] } }),
   tool('protect', 'lock', 'graphite', { status: 'ready', viewer: { commands: ['document:protect'] } }),
   tool('redact', 'redact', 'red', { status: 'ready', viewer: { commands: ['mode:redact'] } }),
   // Export and Compare: core-backed panels (warraq-office), see tools/panels.ts.
   tool('export', 'export', 'green', { status: 'ready', core: { open: (docId) => openToolPanel('export', docId) } }),
-  tool('create', 'create', 'blue', { needsDocument: false }),
+  // Create PDF: warraq-create (own layout engine) via `create.fromFiles`; sheet in tools/create.
+  tool('create', 'create', 'blue', { needsDocument: false, status: 'ready', core: { open: () => openToolPanel('create') } }),
   tool('compare', 'compare', 'teal', { status: 'ready', core: { open: (docId) => openToolPanel('compare', docId) } }),
   tool('scan', 'scan', 'cyan', { needsDocument: false }),
-  tool('combine', 'combine', 'orange'),
-  tool('compress', 'compress', 'mint'),
+  tool('combine', 'combine', 'orange', { status: 'ready', needsDocument: false, core: { open: (docId) => openToolPanel('combine', docId) } }),
+  tool('compress', 'compress', 'mint', { status: 'ready', core: { open: (docId) => openToolPanel('compress', docId) } }),
   tool('prepare-form', 'form', 'pink', { status: 'ready', viewer: { commands: ['mode:form'] } }),
   tool('ai', 'sparkle', 'purple'),
   tool('page-marks', 'stamp', 'orange'),
@@ -95,7 +99,7 @@ export const TOOLS: readonly ToolDef[] = [
     platforms: ['web', 'desktop', 'extension'],
     core: { open: (docId) => openToolPanel('digital-signature', docId) },
   }),
-  tool('standards', 'badge', 'teal'),
+  tool('standards', 'badge', 'teal', { status: 'ready', panel: 'standards', core: { open: (docId) => openToolPanel('standards', docId) } }),
   tool('accessibility', 'accessibility', 'blue'),
   tool('batch', 'batch', 'graphite', { needsDocument: false }),
   tool('library', 'library', 'green', { needsDocument: false }),

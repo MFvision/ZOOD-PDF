@@ -3,5 +3,8 @@
 @import "./home.css";
 @import "./document.css";
 @import "./sheets.css";
+@import "./standards.css";
 @import "./export-compare.css";
+@import "./organize.css";
+@import "./create.css";
 @import "./sign.css";

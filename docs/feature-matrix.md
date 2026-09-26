@@ -14,6 +14,9 @@ M = iOS native app.
 | Protect (EmbedPDF sheet) | 🟡 sheet reachable in en/ar (`redact-protect.spec.ts`); password save not yet reopened in a spec | | 🟡 | 🟡 engine `protect.set`/`remove` (engine call proven on Linux: ZoodKit tests; UI not run) |
 | Export (Word, Excel, PowerPoint, HTML, Markdown, text, pictures; warraq-office) | ✅ DOCX/XLSX/PNG-ZIP/text saved and inspected in en + ar (`export-compare.spec.ts`); HTML/Markdown/PPTX engine-proven (`warraq-office/tests/export.rs`) | 🟡 same UI + engine, no desktop spec | 🟡 same UI + engine, no extension spec | ⛔ Office export not on iOS yet |
 | Compare (text + visual diff, HTML report; warraq-office) | ✅ changed word listed, highlighted, report saved and inspected in en + ar (`export-compare.spec.ts`) | 🟡 | 🟡 | ⛔ not on iOS yet |
+| Organize (grid, rotate, reorder, delete, insert blank/file/picture, replace, extract, split → ZIP, crop, trim, context menu, undo/redo) | ✅ `organize.spec.ts` (en + ar + phone width) | 🟡 same UI in Tauri, not exercised | 🟡 same UI, not exercised | 🟡 see iOS detail below |
+| Combine (Home: pick + reorder → new document; drop on open document → «دمج مع …» / «فتح بدلاً منه»; insert at a position) | ✅ `combine.spec.ts` (en + ar) | 🟡 host drop without preview → choice sheet, not exercised | 🟡 | 🟡 see iOS detail below |
+| Compress (presets, before/after, save/open the copy; original untouched) | ✅ `compress.spec.ts` (en + ar) | 🟡 | 🟡 | 🟡 see iOS detail below |
 
 ## iOS app (M) in detail
 

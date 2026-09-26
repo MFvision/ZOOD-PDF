@@ -41,8 +41,8 @@ async function writeHandle(handle: FileHandleLike, bytes: Uint8Array): Promise<v
   await w.close();
 }
 
-function downloadViaAnchor(name: string, bytes: Uint8Array): void {
-  const blob = new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'application/pdf' });
+function downloadViaAnchor(name: string, bytes: Uint8Array, type = 'application/pdf'): void {
+  const blob = new Blob([bytes as Uint8Array<ArrayBuffer>], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -90,9 +90,12 @@ export function webHost(kind: 'web' | 'extension' = 'web'): HostBridge {
         }
         const picker = (window as unknown as { showSaveFilePicker?: SavePicker }).showSaveFilePicker;
         if (typeof picker === 'function') {
+          const zip = opts.mimeType === 'application/zip';
           const handle = await picker({
             suggestedName: name,
-            types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }],
+            types: zip
+              ? [{ description: 'ZIP', accept: { 'application/zip': ['.zip'] } }]
+              : [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }],
           });
           await writeHandle(handle, bytes);
           return { name: handle.name, handle };
@@ -101,7 +104,7 @@ export function webHost(kind: 'web' | 'extension' = 'web'): HostBridge {
         if (e instanceof DOMException && e.name === 'AbortError') return null;
         throw e;
       }
-      downloadViaAnchor(name, bytes);
+      downloadViaAnchor(name, bytes, opts.mimeType);
       return { name };
     },
 
