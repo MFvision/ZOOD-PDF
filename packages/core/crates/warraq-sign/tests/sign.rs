@@ -451,6 +451,7 @@ fn appearance_text_reads_back_in_logical_order() {
             appearance: Some(AppearanceSpec {
                 lines: Some(vec!["أحمد بن سعيد".into(), "الرياض 2026".into()]),
                 arabic_labels: None,
+                image: None,
             }),
             time: NOW,
             ..Default::default()
@@ -551,4 +552,14 @@ fn rotated_page_appearance_is_counter_rotated() {
         .collect();
     assert_eq!(bbox, vec![0.0, 0.0, 200.0, 60.0]);
     openssl_verify("rotated", &out.bytes);
+}
+
+#[test]
+fn font_has_arabic_indic_digits_for_localised_dates() {
+    for c in "٠١٢٣٤٥٦٧٨٩/:".chars() {
+        assert!(
+            warraq_sign::appearance::nominal_glyph_for_test(c).is_some_and(|g| g != 0),
+            "{c} missing from the signature font"
+        );
+    }
 }

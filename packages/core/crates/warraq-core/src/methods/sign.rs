@@ -20,7 +20,7 @@ use crate::registry::Registry;
 use crate::{CoreError, Document, Reply};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use warraq_sign::appearance::AppearanceSpec;
+use warraq_sign::appearance::{AppearanceSpec, SignatureImage};
 use warraq_sign::sign::{
     self as s, DocTimestampOptions, DssMaterial, FieldLock, Finished, Level, LockAction,
     SignOptions,
@@ -36,7 +36,76 @@ pub fn register(r: &mut Registry) {
         .doc("sign.finish", finish)
         .doc("sign.revocationRequests", revocation_requests)
         .doc("sign.addDss", add_dss)
-        .doc("sign.verify", verify_all);
+        .doc("sign.verify", verify_all)
+        .static_fn("sign.inspect", inspect)
+        .static_fn("sign.certInfo", cert_info);
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct Inspect {
+    #[serde(default)]
+    password: String,
+    /// Unix seconds (default: host clock).
+    now: Option<i64>,
+}
+
+/// Summary of a PKCS#12 (signer certificate, chain, EKU policy, validity) so the user can
+/// check it before signing. The key is loaded to prove the password and dropped (zeroized)
+/// right away; nothing but the summary leaves the engine.
+fn inspect(p: &Value, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
+    let p: Inspect = params(p)?;
+    let password = Zeroizing::new(p.password);
+    let mut p12 = blob0(blobs, "the PKCS#12 (.p12/.pfx) file")?;
+    let signer = SoftwareSigner::from_pkcs12(&p12, &password);
+    p12.zeroize();
+    drop(password);
+    let signer = signer?;
+    let cert = signer.certificate();
+    let at = p.now.unwrap_or_else(now);
+    let (accepted, detail) = match warraq_sign::x509::document_signing_policy(cert) {
+        warraq_sign::x509::EkuVerdict::Accepted(d) => (true, d),
+        warraq_sign::x509::EkuVerdict::Rejected(d) => (false, d),
+    };
+    let valid_now = cert.valid_at(at);
+    let chain: Vec<String> = signer.chain().iter().map(Cert::display_name).collect();
+    Ok(Reply::json(json!({
+        "signer": warraq_sign::verify::signer_info(cert),
+        "chain": chain,
+        "eku": { "accepted": accepted, "detail": detail },
+        "validNow": valid_now,
+        "canSign": accepted && valid_now,
+    })))
+}
+
+/// Certificates in a PEM or DER file (for the user's trust list): a summary each plus the DER
+/// of each certificate as a blob (what the UI stores).
+fn cert_info(_p: &Value, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
+    let file = blob0(blobs, "a certificate file (PEM or DER)")?;
+    let certs = Cert::from_pem_or_der(&file)?;
+    if certs.is_empty() {
+        return Err(CoreError::new(
+            "malformed_input",
+            "no certificate found in the file",
+        ));
+    }
+    let list: Vec<Value> = certs
+        .iter()
+        .map(|c| {
+            let mut v = obj(json!(warraq_sign::verify::signer_info(c)));
+            v.insert("isCa".into(), json!(c.is_ca()));
+            v.insert("selfIssued".into(), json!(c.is_self_issued()));
+            v.insert(
+                "sha256".into(),
+                json!(warraq_sign::hash::hex_upper(&c.sha256())),
+            );
+            Value::Object(v)
+        })
+        .collect();
+    Ok(Reply {
+        json: json!({ "certificates": list }),
+        blobs: certs.into_iter().map(|c| c.der).collect(),
+    })
 }
 
 impl From<SignError> for CoreError {
@@ -84,6 +153,15 @@ fn list(doc: &mut Document, _p: &Value, _b: Vec<Vec<u8>>) -> Result<Reply, CoreE
 struct Appearance {
     lines: Option<Vec<String>>,
     arabic_labels: Option<bool>,
+    /// Signature picture: RGBA pixels in `blobs[1]`.
+    image: Option<ImageSize>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ImageSize {
+    width: u32,
+    height: u32,
 }
 
 #[derive(Deserialize)]
@@ -132,11 +210,23 @@ fn level_name(l: Level) -> &'static str {
 fn prepare(doc: &mut Document, p: &Value, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
     let p: Prepare = params(p)?;
     let password = Zeroizing::new(p.password);
-    let mut p12 = blob0(blobs, "the PKCS#12 (.p12/.pfx) file")?;
+    let mut blobs = blobs.into_iter();
+    let mut p12 = blobs
+        .next()
+        .ok_or_else(|| CoreError::params("blobs[0] must be the PKCS#12 (.p12/.pfx) file"))?;
     let signer = SoftwareSigner::from_pkcs12(&p12, &password);
     p12.zeroize();
     drop(password);
     let signer = signer?;
+    let image = match p.appearance.as_ref().and_then(|a| a.image.as_ref()) {
+        Some(sz) => {
+            let rgba = blobs.next().ok_or_else(|| {
+                CoreError::params("blobs[1] must be the signature picture (RGBA)")
+            })?;
+            Some(SignatureImage::new(sz.width, sz.height, rgba)?)
+        }
+        None => None,
+    };
     let level = Level::parse(p.level.as_deref().unwrap_or("B-B"))?;
     let lock = match p.field_lock {
         Some(l) => Some(FieldLock {
@@ -152,6 +242,7 @@ fn prepare(doc: &mut Document, p: &Value, blobs: Vec<Vec<u8>>) -> Result<Reply, 
         appearance: p.appearance.map(|a| AppearanceSpec {
             lines: a.lines,
             arabic_labels: a.arabic_labels,
+            image,
         }),
         reason: p.reason,
         location: p.location,
