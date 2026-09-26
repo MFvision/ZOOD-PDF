@@ -45,7 +45,7 @@ describe('<App> home', () => {
     expect(cards).toHaveLength(6);
     const tools = [...document.querySelectorAll('[data-testid=sidebar-tools] [data-tool]')].map((b) => b.getAttribute('data-tool'));
     expect(tools.sort()).toEqual(readyTools('web').map((t) => t.id).sort());
-    expect(tools).toEqual(expect.arrayContaining(['comment', 'fill-sign', 'prepare-form', 'protect', 'redact', 'export', 'compare']));
+    expect(tools).toEqual(expect.arrayContaining(['comment', 'fill-sign', 'prepare-form', 'protect', 'redact', 'export', 'compare', 'organize', 'combine', 'compress', 'standards', 'create']));
     // AI is not ready: no AI card, no AI action card
     expect(document.querySelector('.ai-card')).toBeNull();
     expect(document.querySelector('[data-card=ai]')).toBeNull();
@@ -102,13 +102,19 @@ describe('<AiCard>', () => {
 });
 
 describe('<App> Convert card (Export)', () => {
-  it('opens Export directly while Create is not ready: asks for a PDF first', async () => {
+  it('offers Export and Create PDF; Create opens its sheet, Export asks for a PDF', async () => {
     const { host } = renderApp('en');
     const card = document.querySelector<HTMLButtonElement>('[data-card=convert]');
     expect(card).not.toBeNull();
     expect(card!.textContent).toContain('Convert');
     fireEvent.click(card!);
+    const choices = [...document.querySelectorAll('[data-testid=convert-choices] [data-tool]')].map((b) => b.getAttribute('data-tool'));
+    expect(choices.sort()).toEqual(['create', 'export']);
+    fireEvent.click(document.querySelector('[data-testid=convert-choices] [data-tool=create]')!);
+    await waitFor(() => expect(document.querySelector('[data-testid=create-choose]')).not.toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(card!);
+    fireEvent.click(document.querySelector('[data-testid=convert-choices] [data-tool=export]')!);
     await waitFor(() => expect(host.openFiles).toHaveBeenCalledWith({ multiple: false }));
-    expect(document.querySelector('[data-testid=convert-choices]')).toBeNull();
   });
 });

@@ -48,9 +48,8 @@ excluded from editing, EmbedPDF owns the viewer.
   new glyphs and layout tables — "adding glyphs to an existing subset" is not attempted). Otherwise a bundled
   face matching the style: Amiri (serif, also Latin), Cairo (Arabic sans) and Inter (Latin sans), bold instances
   via `subsetter`'s variable-font instancing, embedded as a new Type0/CIDFontType2 subset with `/W` from the
-  subset's `hmtx` and a ToUnicode fallback. The font files live in `packages/core/assets/fonts/` — the same paths
-  and bytes warraq-create uses; `fonts.rs` is the seam to delegate to `warraq_create::fonts` once both are merged
-  so the programs are compiled in once.
+  subset's `hmtx` and a ToUnicode fallback. The font programs are warraq-create's
+  (`packages/core/assets/fonts/`, `warraq_create::fonts::FontId::data`), so they are compiled in once.
 * **Pictures (`images.rs`)**: listed from `Do` of image XObjects and inline images at page level with the CTM
   (unit square → page). Move/resize/rotate compute the new placement `N` and rewrite the `cm` right before the
   picture when it is the canonical `q … cm <picture> Q` (new `cm` = `N × C⁻¹ × cm`); otherwise the picture is
@@ -84,18 +83,21 @@ excluded from editing, EmbedPDF owns the viewer.
   so nothing is lost and the result is still an incremental update.
 
 ### Undo/redo
-* Per-document **version stack of byte prefixes** (`services/history.ts`). Every engine edit appends an update,
-  so version *k* is a prefix of version *k + 1*: the whole chain shares one buffer (`tip.subarray(0, len)`), and
-  undo is a truncation at the previous `%%EOF`. Memory ≈ one copy of the newest file. A non-appending version
-  (whole rewrite of a file > 150 MB) starts a new chain; old chains are kept only while the total stays under
-  300 MB (oldest dropped). Inverse operations were rejected: they would need an inverse for every edit kind and
-  could not undo PDFium's changes.
+* The Edit tool uses the app's **shared core-edit history** (ADR 0007, `services/history.ts`, `AppContext`
+  `coreEdit` / `undoCore` / `redoCore`): a per-document stack of byte versions (before/after of each step),
+  bounded to 40 steps and 400 MB, cleared on save, dropped after whole rewrites (redaction, protection). Edit and
+  Organize steps therefore undo in one sequence. Because every engine edit is an incremental update, each
+  version is a byte prefix of the next and "undo" is showing the previous version again. (While built alone, this
+  tool first had its own stack whose versions shared one buffer as `subarray` prefixes — one copy of the newest
+  file for the whole chain; merging onto the shared history was preferred over two competing undo stacks. That
+  buffer-sharing remains a possible memory optimisation for `services/history.ts`.) Inverse operations were
+  rejected: they would need an inverse for every edit kind and could not undo PDFium's changes.
 * ⌘Z / ⇧⌘Z (Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y) and toolbar buttons act on this stack **while the Edit tool is
   open** (not while typing in a text field, where the browser's own text undo applies). Outside the Edit tool,
   EmbedPDF's own history (`history:undo`/`history:redo`, its Ctrl/⌘+Z shortcut) handles annotation edits in the
   viewer. The two do not merge: an engine edit remounts the viewer, which starts with an empty PDFium history;
-  PDFium edits made before are folded into an engine version first, so undoing the engine edit returns to the
-  state that includes them, and saving/closing keeps working as before.
+  unsaved PDFium edits are first folded into their own history step (`doc.rebase`, "viewer"), so undoing the
+  engine edit returns to the state that includes them.
 
 ## Consequences
 * Untouched content bytes are provably unchanged (test compares operator bytes before/after).
@@ -103,4 +105,4 @@ excluded from editing, EmbedPDF owns the viewer.
   Accessibility tool.
 * Paragraph detection decides what a "block" is; justified text is re-set ragged (start-aligned); overflowing
   text grows the box downwards instead of shrinking the font.
-* wasm grows by the bundled fonts (~2.3 MB before compression) — shared with warraq-create once merged.
+* The bundled font programs are compiled in once: `fonts.rs` takes them from `warraq_create::fonts`.

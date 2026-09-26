@@ -122,7 +122,8 @@ impl<'a> Lexer<'a> {
         self.data.get(self.pos).copied()
     }
 
-    fn skip_ws_and_comments(&mut self) {
+    /// Skip whitespace and comments (the next token starts at [`Lexer::pos`]).
+    pub fn skip_ws_and_comments(&mut self) {
         while let Some(b) = self.peek() {
             if is_ws(b) {
                 self.pos += 1;
@@ -365,6 +366,16 @@ impl<'a> ContentParser<'a> {
         }
     }
 
+    /// Next operation plus the byte range it occupies in the input (operands through operator;
+    /// for inline images `BI … EI`). Bytes between spans are whitespace and comments only, so a
+    /// rewriter can copy untouched operations verbatim.
+    pub fn next_spanned(&mut self) -> Option<(Op, std::ops::Range<usize>)> {
+        self.lex.skip_ws_and_comments();
+        let start = self.lex.pos();
+        let op = self.next()?;
+        Some((op, start..self.lex.pos()))
+    }
+
     fn operand_from(&mut self, tok: Token<'a>, depth: usize) -> Option<Operand> {
         Some(match tok {
             Token::Num(n) => Operand::Num(n),
@@ -527,6 +538,30 @@ mod tests {
         let o = ops("BI /W 2 /H 2 /BPC 8 ID \x00EI\x01\x02 EI Q");
         assert_eq!(o.len(), 2);
         assert_eq!(o[1].operator, b"Q");
+    }
+
+    #[test]
+    fn spans_are_byte_faithful() {
+        let src =
+            b"q  % comment\n1 0 0 1 5 5 cm BT [(A) -12 <0041>] TJ ET BI /W 1 /H 1 ID \x00 EI Q";
+        let mut p = ContentParser::new(src);
+        let mut got = Vec::new();
+        while let Some((op, span)) = p.next_spanned() {
+            got.push((op.operator.clone(), src[span].to_vec()));
+        }
+        let ops: Vec<&[u8]> = got.iter().map(|(_, s)| s.as_slice()).collect();
+        assert_eq!(
+            ops,
+            [
+                &b"q"[..],
+                b"1 0 0 1 5 5 cm",
+                b"BT",
+                b"[(A) -12 <0041>] TJ",
+                b"ET",
+                b"BI /W 1 /H 1 ID \x00 EI",
+                b"Q"
+            ]
+        );
     }
 
     #[test]

@@ -128,11 +128,9 @@ export function deltaFromView(g: PageGeometry, dx: number, dy: number): Point {
   return { x: p.x - o.x, y: p.y - o.y };
 }
 
-export type EditReply = { json: Record<string, unknown>; bytes: Uint8Array };
-
 /**
- * The engine copy of one open document for editing. `sync(bytes)` (re)opens it when the app's
- * bytes changed underneath (undo/redo, a save, PDFium edits folded in).
+ * Read-only engine copy of one open document for the Edit surface (blocks, pictures, links).
+ * `sync(bytes)` (re)opens it when the app's bytes changed (every edit, undo/redo, a save).
  */
 export class DocEditor {
   private synced: Uint8Array | null = null;
@@ -144,19 +142,10 @@ export class DocEditor {
     this.engineId = `${docId}:edit`;
   }
 
-  async sync(bytes: Uint8Array): Promise<void> {
+  async sync(bytes: Uint8Array, password?: string): Promise<void> {
     if (this.synced === bytes) return;
-    await this.engine.open(this.engineId, bytes);
+    await this.engine.open(this.engineId, bytes, password);
     this.synced = bytes;
-  }
-
-  /** Folds PDFium's unsaved edits into `base` as an incremental update (engine `doc.rebase`). */
-  async fold(base: Uint8Array, pdfium: Uint8Array): Promise<Uint8Array> {
-    await this.sync(base);
-    const r = await this.engine.call<{ mode: string }>(this.engineId, 'doc.rebase', {}, [pdfium.slice()]);
-    const out = r.blobs[0] ?? base;
-    this.synced = out;
-    return out;
   }
 
   async info(pageIndex: number): Promise<PageGeometry & { pageCount: number }> {
@@ -172,15 +161,6 @@ export class DocEditor {
       this.engine.call<{ links: LinkInfo[] }>(this.engineId, 'edit.links', { page }),
     ]);
     return { blocks: b.json.blocks, images: i.json.images, links: l.json.links };
-  }
-
-  /** A mutating call: returns the new file (an incremental update of the synced bytes). */
-  async edit(method: string, params: Record<string, unknown>, blobs: Uint8Array[] = []): Promise<EditReply> {
-    const r = await this.engine.call<Record<string, unknown>>(this.engineId, method, params, blobs);
-    const bytes = r.blobs[0];
-    if (!bytes) throw new Error('engine returned no document');
-    this.synced = bytes;
-    return { json: r.json, bytes };
   }
 
   async close(): Promise<void> {

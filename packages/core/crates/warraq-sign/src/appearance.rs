@@ -13,7 +13,8 @@ use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
 #[cfg(feature = "builtin-font")]
-static FONT: &[u8] = include_bytes!("../assets/Amiri-Sign.ttf");
+// Shared with warraq-create (packages/core/assets/fonts): one Amiri in the wasm.
+static FONT: &[u8] = include_bytes!("../../../assets/fonts/amiri/Amiri-Regular.ttf");
 #[cfg(not(feature = "builtin-font"))]
 static FONT: &[u8] = &[];
 

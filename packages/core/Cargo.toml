@@ -6,6 +6,11 @@ members = [
   "crates/warraq-render",
   "crates/warraq-sign",
   "crates/warraq-core",
+  "crates/warraq-redact",
+  # Create PDF (layout engine + readers)
+  "crates/warraq-create",
+  # Standards tool (PDF/A, PDF/X-4, preflight)
+  "crates/warraq-standards",
   # Export (DOCX/XLSX/PPTX/HTML/Markdown/text) and Compare.
   "crates/warraq-office",
   # Edit tool: byte-faithful content rewriting, text reflow, pictures, links.
@@ -48,6 +53,15 @@ opt-level = 3
 [profile.dev.package.nom]
 opt-level = 2
 [profile.dev.package.lopdf]
+opt-level = 2
+# warraq-create: shaping and font subsetting in tests
+[profile.dev.package.harfrust]
+opt-level = 2
+[profile.dev.package.subsetter]
+opt-level = 2
+[profile.dev.package.write-fonts]
+opt-level = 2
+[profile.dev.package.skrifa]
 opt-level = 2
 
 [profile.release]

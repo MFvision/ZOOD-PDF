@@ -2,8 +2,8 @@
 //! the same files and names as warraq-create's), reuse of a page's own embedded font when it covers
 //! the new text, shaping with harfrust, and embedding a subset as a Type0/Identity-H font.
 //!
-//! SEAM: when warraq-create (Create PDF) lands, `Bundled` can delegate to `warraq_create::fonts`
-//! (same assets, same instances) so the font programs are compiled into the engine once.
+//! The font programs themselves come from `warraq_create::fonts` (Create PDF), so they are compiled
+//! into the engine once; `Bundled` maps onto its instances.
 
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
@@ -18,21 +18,6 @@ use warraq_pdf::Pdf;
 use crate::error::{EditError, Result};
 use crate::page::new_stream;
 
-macro_rules! font_file {
-    ($p:literal) => {
-        include_bytes!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../assets/fonts/",
-            $p
-        ))
-    };
-}
-
-static AMIRI_REGULAR: &[u8] = font_file!("amiri/Amiri-Regular.ttf");
-static AMIRI_BOLD: &[u8] = font_file!("amiri/Amiri-Bold.ttf");
-static CAIRO: &[u8] = font_file!("cairo/Cairo-Variable.ttf");
-static INTER: &[u8] = font_file!("inter/Inter-Variable.ttf");
-
 /// A bundled font instance.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Bundled {
@@ -45,23 +30,26 @@ pub enum Bundled {
 }
 
 impl Bundled {
-    pub fn data(self) -> &'static [u8] {
+    /// The matching warraq-create instance (same files, same variation coordinates).
+    pub fn create_id(self) -> warraq_create::fonts::FontId {
+        use warraq_create::fonts::FontId;
         match self {
-            Bundled::AmiriRegular => AMIRI_REGULAR,
-            Bundled::AmiriBold => AMIRI_BOLD,
-            Bundled::CairoRegular | Bundled::CairoBold => CAIRO,
-            Bundled::InterRegular | Bundled::InterBold => INTER,
+            Bundled::AmiriRegular => FontId::AmiriRegular,
+            Bundled::AmiriBold => FontId::AmiriBold,
+            Bundled::CairoRegular => FontId::CairoRegular,
+            Bundled::CairoBold => FontId::CairoBold,
+            Bundled::InterRegular => FontId::InterRegular,
+            Bundled::InterBold => FontId::InterBold,
         }
     }
 
+    /// Font program bytes (the variable font for Cairo/Inter).
+    pub fn data(self) -> &'static [u8] {
+        self.create_id().data()
+    }
+
     pub fn variations(self) -> &'static [(&'static str, f32)] {
-        match self {
-            Bundled::AmiriRegular | Bundled::AmiriBold => &[],
-            Bundled::CairoRegular => &[("wght", 400.0), ("slnt", 0.0)],
-            Bundled::CairoBold => &[("wght", 700.0), ("slnt", 0.0)],
-            Bundled::InterRegular => &[("wght", 400.0), ("opsz", 14.0)],
-            Bundled::InterBold => &[("wght", 700.0), ("opsz", 14.0)],
-        }
+        self.create_id().variations()
     }
 
     pub fn base_name(self) -> &'static str {

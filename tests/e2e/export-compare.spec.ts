@@ -186,10 +186,15 @@ for (const L of LOCALES) {
       expect(external).toEqual([]);
     });
 
-    test('the Convert card opens Export for a chosen PDF', async ({ context, page }) => {
+    test('the Convert card offers Export (and Create); Export runs on a chosen PDF', async ({ context, page }) => {
       await stubSavePicker(context);
       await page.goto('/');
-      const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.locator('[data-card=convert]').click()]);
+      // Create PDF is ready too, so Convert asks which way first.
+      await page.locator('[data-card=convert]').click();
+      const [chooser] = await Promise.all([
+        page.waitForEvent('filechooser'),
+        page.locator('[data-testid=convert-choices] [data-tool=export]').click(),
+      ]);
       await chooser.setFiles(fixture('sample-en.pdf'));
       await expect(page.locator('[data-testid=export-formats]')).toBeVisible();
       await page.locator('[data-format=text]').click();

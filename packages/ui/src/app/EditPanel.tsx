@@ -5,9 +5,10 @@
  * resize, keyboard nudging, rotate, crop, replace, delete); links can be added, changed, deleted
  * and opened through the confirm sheet. Every change is an engine incremental update: the viewer
  * reloads from the new bytes (`CORE_REPLACED_BYTES` → `switching`) and stays on the same page.
- * Undo/redo (⌘Z / ⇧⌘Z and the toolbar) walk this document's engine versions (services/history.ts).
+ * Undo/redo (⌘Z / ⇧⌘Z and the toolbar) walk the document's shared core-edit history (AppContext
+ * `coreEdit`/`undoCore`/`redoCore`, services/history.ts — the same stack Organize uses).
  */
-import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
 import { useApp } from '../services/AppContext';
 import type { OpenDocument } from '../services/state';
 import {
@@ -23,7 +24,6 @@ import {
   type TextBlock,
   type ViewRect,
 } from '../services/editor';
-import { historyFor } from '../services/history';
 import type { ViewerApi } from '../viewer/Viewer';
 import { Icon, type IconName } from './icons';
 import { IconButton } from './primitives';
@@ -90,11 +90,6 @@ export function EditPanel({
   const uiDir = dirFor(state.locale);
   const editor = useMemo(() => new DocEditor(app.engine(), doc.id), [app, doc.id]);
   useEffect(() => () => void editor.close(), [editor]);
-  const history = historyFor(doc.id);
-  const docRef = useRef(doc);
-  useLayoutEffect(() => {
-    docRef.current = doc;
-  });
 
   const [pageIndex, setPageIndex] = useState(Math.max(0, page - 1));
   const [geom, setGeom] = useState<(PageGeometry & { pageCount: number }) | null>(null);
@@ -110,11 +105,7 @@ export function EditPanel({
   const [nudge, setNudge] = useState<{ dx: number; dy: number } | null>(null);
   const [linkDraft, setLinkDraft] = useState<(LinkDraft & { box?: [number, number, number, number]; id?: number }) | null>(null);
   const [openUrl, setOpenUrl] = useState<string | null>(null);
-  const [, bump] = useReducer((x: number) => x + 1, 0);
-  // The history starts at the document's bytes unless they are its current version already
-  // (idempotent, so safe during render).
-  if (history.current() !== doc.bytes) history.reset(doc.bytes);
-  const hist = history.state();
+  const hist = app.historyOf(doc.id);
   const [width, setWidth] = useState(800);
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -132,7 +123,7 @@ export function EditPanel({
     let alive = true;
     (async () => {
       try {
-        await editor.sync(doc.bytes);
+        await editor.sync(doc.bytes, doc.password);
         const g = await editor.info(pageIndex);
         const c = await editor.contents(pageIndex);
         if (!alive) return;
@@ -145,7 +136,7 @@ export function EditPanel({
     return () => {
       alive = false;
     };
-  }, [app, editor, doc.bytes, pageIndex, t]);
+  }, [app, editor, doc.bytes, doc.password, pageIndex, t]);
 
   const view = geom ? (geom.rotation % 180 === 0 ? { w: geom.width, h: geom.height } : { w: geom.height, h: geom.width }) : { w: 612, h: 792 };
   const scale = Math.max(0.3, Math.min(2.5, (width - 48) / view.w));
@@ -173,44 +164,28 @@ export function EditPanel({
   const px = (r: ViewRect) => ({ left: r.left * scale, top: r.top * scale, width: r.width * scale, height: r.height * scale });
 
   const apply = async (method: string, params: Record<string, unknown>, blobs: Uint8Array[] = []) => {
-      if (busy) return false;
-      setBusy(true);
-      try {
-        const d = docRef.current;
-        let base = d.bytes;
-        if (d.edited && !d.warraqOwnsDocument && api) {
-          // Unsaved viewer (PDFium) edits: fold them in first so nothing is lost.
-          base = await editor.fold(d.bytes, await api.exportBytes());
-          if (history.current() !== d.bytes) history.reset(d.bytes);
-          history.push(base);
-        } else {
-          await editor.sync(base);
-        }
-        const r = await editor.edit(method, { page: pageIndex, ...params }, blobs);
-        if (history.current() !== base) history.reset(base);
-        history.push(r.bytes);
-        bump();
-        app.dispatch({ type: 'CORE_REPLACED_BYTES', id: d.id, bytes: r.bytes });
-        return true;
-      } catch (e) {
-        const { code, message } = reasonOf(e);
-        const key = ERROR_KEYS[code];
-        app.toast(key ? t(key) : t('edit.failed', { reason: message }), 'error');
-        return false;
-      } finally {
-        setBusy(false);
-      }
+    if (busy) return false;
+    setBusy(true);
+    try {
+      // coreEdit folds unsaved viewer (PDFium) edits in first, runs the engine call on the current
+      // bytes (an incremental update), records the step in the shared history and reloads the viewer.
+      const r = await app.coreEdit(doc.id, [{ method, params: { page: pageIndex, ...params }, blobs }], t('tool.edit.name'));
+      return !!r;
+    } catch (e) {
+      const { code, message } = reasonOf(e);
+      const key = ERROR_KEYS[code];
+      app.toast(key ? t(key) : t('edit.failed', { reason: message }), 'error');
+      return false;
+    } finally {
+      setBusy(false);
+    }
   };
 
   const undo = () => {
-    const b = history.undo();
-    bump();
-    if (b) app.dispatch({ type: 'CORE_REPLACED_BYTES', id: doc.id, bytes: b });
+    if (!busy) void app.undoCore(doc.id);
   };
   const redo = () => {
-    const b = history.redo();
-    bump();
-    if (b) app.dispatch({ type: 'CORE_REPLACED_BYTES', id: doc.id, bytes: b });
+    if (!busy) void app.redoCore(doc.id);
   };
 
   const selectedImage = selection?.kind === 'image' ? contents?.images.find((i) => i.id === selection.id) : undefined;
