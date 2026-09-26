@@ -57,7 +57,7 @@ export type Action =
   | { type: 'CLOSE_DOCUMENT'; id: string }
   | { type: 'VIEWER_READY'; id: string; revision: number; pageCount: number }
   | { type: 'VIEWER_EDITED'; id: string }
-  | { type: 'CORE_REPLACED_BYTES'; id: string; bytes: Uint8Array }
+  | { type: 'CORE_REPLACED_BYTES'; id: string; bytes: Uint8Array; edited?: boolean }
   | { type: 'SAVED'; id: string; bytes: Uint8Array; name: string; handle?: unknown }
   | { type: 'SET_RECENT_ID'; id: string; recentId: string }
   | { type: 'SET_ROUTE'; route: Route }
@@ -86,7 +86,7 @@ export function reducer(state: AppState, action: Action): AppState {
         originalBytes: action.bytes.slice(),
         revision: 0,
         switching: true,
-        // A document made by the core (Create PDF) is new and unsaved: its bytes are the save.
+        // A document made by a tool (Combine, Create PDF) exists only in memory until the user saves it.
         warraqOwnsDocument: !!action.unsaved,
         edited: !!action.unsaved,
         pageCount: 0,
@@ -130,7 +130,7 @@ export function reducer(state: AppState, action: Action): AppState {
         revision: d.revision + 1,
         switching: true,
         warraqOwnsDocument: true,
-        edited: true,
+        edited: action.edited ?? true,
       }));
     case 'SAVED':
       return updateDoc(state, action.id, (d) => ({

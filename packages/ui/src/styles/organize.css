@@ -1,0 +1,469 @@
+/* Organize (page grid + organize menu), Crop, Split, Combine, Compress and the split drop overlay. */
+
+.organize {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  background: var(--window);
+}
+
+.org-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px;
+  padding-block: 6px;
+  padding-inline: 8px;
+  border-radius: var(--r-md);
+}
+
+.org-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-inline-size: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.org-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  min-inline-size: 64px;
+  padding-block: 4px;
+  padding-inline: 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--label);
+  font-size: 11px;
+  transition: background-color var(--dur-1) ease, transform var(--dur-2) var(--spring);
+}
+
+.org-btn .icon {
+  color: var(--accent);
+}
+
+.org-btn.danger .icon {
+  color: var(--red);
+}
+
+.org-btn:hover {
+  background: var(--fill);
+}
+
+.org-btn:active {
+  transform: scale(0.95);
+}
+
+.org-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.org-btn-label {
+  white-space: nowrap;
+}
+
+.org-sep {
+  flex: none;
+  inline-size: 1px;
+  block-size: 28px;
+  margin-inline: 4px;
+  background: var(--separator-strong);
+}
+
+.org-history {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.org-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding-inline: 18px;
+  font-size: 12.5px;
+  color: var(--label-2);
+}
+
+.org-hint {
+  color: var(--label-3);
+}
+
+.org-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  align-content: start;
+  gap: 18px 14px;
+  margin: 0;
+  padding: 14px 18px 28px;
+  list-style: none;
+  overflow-y: auto;
+  min-block-size: 0;
+}
+
+.org-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--r-md);
+  outline: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.org-page:hover {
+  background: var(--fill-2);
+}
+
+.org-page:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.org-page.selected {
+  background: var(--accent-soft);
+}
+
+.org-page.selected .page-img img,
+.org-page.selected .page-skeleton {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.org-page.drop-before::before,
+.org-page.drop-after::after {
+  content: "";
+  position: absolute;
+  inset-block: 8px;
+  inline-size: 4px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.org-page.drop-before::before {
+  inset-inline-start: -9px;
+}
+
+.org-page.drop-after::after {
+  inset-inline-end: -9px;
+}
+
+.org-thumb {
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  min-block-size: 150px;
+}
+
+.org-thumb .page-img img {
+  max-block-size: 220px;
+}
+
+.org-num {
+  font-size: 12px;
+  color: var(--label-2);
+}
+
+.org-page.selected .org-num {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.org-more {
+  position: absolute;
+  inset-block-start: 6px;
+  inset-inline-end: 6px;
+  inline-size: 28px;
+  block-size: 28px;
+  background: var(--glass-strong);
+  box-shadow: var(--shadow-1);
+  opacity: 0;
+}
+
+.org-page:hover .org-more,
+.org-page:focus-within .org-more,
+.org-page.selected .org-more {
+  opacity: 1;
+}
+
+.org-busy {
+  position: absolute;
+  inset-block-start: 70px;
+  inset-inline-end: 22px;
+}
+
+.org-context {
+  position: fixed;
+  z-index: 120;
+  min-inline-size: 220px;
+  max-block-size: calc(100vh - 16px);
+  overflow-y: auto;
+}
+
+.menu-item:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.form-error {
+  margin: 0;
+  color: var(--red);
+  font-size: 13px;
+}
+
+/* The viewer stays mounted underneath (it renders the page pictures) but is not shown. */
+.viewer-area:has(> .organize) .viewer-host {
+  visibility: hidden;
+}
+
+/* Crop sheet */
+.crop-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 240px);
+  gap: 18px;
+  align-items: start;
+}
+
+.crop-preview {
+  position: relative;
+  overflow: hidden;
+  justify-self: center;
+  touch-action: none;
+  cursor: crosshair;
+  line-height: 0;
+}
+
+.crop-preview img {
+  max-inline-size: 100%;
+  max-block-size: 52vh;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
+  user-select: none;
+}
+
+.crop-rect {
+  position: absolute;
+  border: 2px solid var(--accent);
+  background: rgb(0 122 255 / 8%);
+  box-shadow: 0 0 0 9999px rgb(0 0 0 / 28%);
+  pointer-events: none;
+}
+
+.crop-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.crop-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Combine sheet */
+.combine-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.combine-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-block: 6px;
+  padding-inline: 10px;
+  border: 1px solid var(--separator);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  cursor: grab;
+}
+
+.combine-item.drop-before {
+  box-shadow: 0 -3px 0 var(--accent);
+}
+
+.combine-grip {
+  flex: none;
+  color: var(--label-3);
+}
+
+.combine-num {
+  flex: none;
+  min-inline-size: 1.4em;
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.combine-name {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.combine-size {
+  flex: none;
+  color: var(--label-2);
+  font-size: 12px;
+}
+
+/* Compress sheet */
+.preset-list {
+  display: grid;
+  gap: 8px;
+}
+
+.preset {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding-block: 10px;
+  padding-inline: 14px;
+  border: 1px solid var(--separator-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  text-align: start;
+}
+
+.preset.on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.preset-name {
+  font-weight: 600;
+}
+
+.preset-desc {
+  font-size: 12.5px;
+  color: var(--label-2);
+}
+
+.compress-result {
+  margin-block-start: 14px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--fill-2);
+}
+
+.compress-headline {
+  margin: 6px 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--green);
+}
+
+/* Split drop overlay: "Combine with …" (start half) / "Open instead" */
+.drop-overlay.drop-split {
+  display: flex;
+  gap: 16px;
+  padding: 28px;
+  place-items: stretch;
+}
+
+.drop-half {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  border: 2px dashed transparent;
+  border-radius: var(--r-xl);
+  color: var(--label);
+  text-align: center;
+}
+
+.drop-half .icon {
+  color: var(--accent);
+}
+
+.drop-half span {
+  color: var(--label-2);
+}
+
+.drop-half.hot {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.drop-choice {
+  display: flex;
+  gap: 12px;
+}
+
+.drop-choice .drop-half {
+  min-block-size: 150px;
+  border: 1px solid var(--separator-strong);
+}
+
+.drop-choice .drop-half:hover {
+  border-color: var(--accent);
+}
+
+@media (max-width: 760px) {
+  .org-bar {
+    flex-wrap: wrap;
+    margin: 6px;
+  }
+
+  .org-actions {
+    order: 2;
+    flex-basis: 100%;
+  }
+
+  .org-history {
+    margin-inline-start: auto;
+  }
+
+  .org-btn {
+    min-inline-size: 52px;
+  }
+
+  .org-grid {
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+    gap: 12px 8px;
+    padding: 10px;
+  }
+
+  .org-thumb {
+    min-block-size: 110px;
+  }
+
+  .org-thumb .page-img img {
+    max-block-size: 150px;
+  }
+
+  .crop-layout,
+  .drop-choice {
+    grid-template-columns: minmax(0, 1fr);
+    flex-direction: column;
+  }
+}

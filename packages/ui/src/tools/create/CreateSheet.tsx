@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../../services/AppContext';
 import type { OpenedFile } from '../../services/host';
-import { setDropClaim } from '../../services/toolSheets';
+import { setDropClaim, takePendingCreateFiles } from '../../services/toolSheets';
 import { EngineError } from '../../services/engine';
 import { formatBytes, type MessageKey } from '../../i18n';
 import { IconButton, Sheet, Tile } from '../../app/primitives';
@@ -80,7 +80,7 @@ function Segmented<T extends string>({
   );
 }
 
-export function CreateSheet({ initial, onClose }: { initial?: OpenedFile[]; onClose: () => void }) {
+export function CreateSheet({ onClose }: { onClose: () => void }) {
   const app = useApp();
   const { t } = app;
   const [items, setItems] = useState<Item[]>([]);
@@ -108,16 +108,17 @@ export function CreateSheet({ initial, onClose }: { initial?: OpenedFile[]; onCl
 
   // Files given when the sheet opened (dropped on the window) and later drops go to the list.
   useEffect(() => {
-    if (!seeded.current && initial?.length) {
+    if (!seeded.current) {
       seeded.current = true;
-      addRef.current(initial);
+      const initial = takePendingCreateFiles();
+      if (initial.length) addRef.current(initial);
     }
     setDropClaim((files) => {
       addRef.current(files);
       return true;
     });
     return () => setDropClaim(null);
-  }, [initial]);
+  }, []);
 
   const choose = async () => {
     try {
@@ -133,7 +134,7 @@ export function CreateSheet({ initial, onClose }: { initial?: OpenedFile[]; onCl
     try {
       const out = await createPdfs(app.engine(), items, settings, app.state.locale);
       onClose();
-      app.openCreated(out.map((d) => ({ name: d.name, bytes: d.bytes })));
+      for (const d of out) await app.openNewDocument(d.name, d.bytes);
       app.toast(t('create.done', { count: out.length }), 'success');
     } catch (e) {
       const code = e instanceof EngineError ? e.code : undefined;

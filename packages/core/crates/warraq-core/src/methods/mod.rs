@@ -7,22 +7,34 @@ use serde_json::Value;
 
 mod create;
 mod doc;
+mod organize;
 mod pages;
 mod pdf;
 mod protect;
 #[cfg(feature = "render")]
 mod render;
+mod sign;
+mod standards;
 mod text;
+// Export and Compare (warraq-office).
+mod compare;
+mod export;
 
 /// Every namespace's `register` function.
 pub const NAMESPACES: &[fn(&mut Registry)] = &[
     doc::register,
     pages::register,
+    organize::register,
     protect::register,
     pdf::register,
+    standards::register,
+    sign::register,
     text::register,
     // Create PDF
     create::register,
+    // Export and Compare (warraq-office).
+    export::register,
+    compare::register,
     #[cfg(feature = "render")]
     render::register,
 ];

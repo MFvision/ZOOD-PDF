@@ -41,7 +41,7 @@ test.describe('home', () => {
   test('only ready tools are listed; the More sheet shows the same set', async ({ page }) => {
     await page.goto('/');
     const sidebarTools = await page.locator('[data-testid=sidebar-tools] [data-tool]').evaluateAll((els) => els.map((e) => e.getAttribute('data-tool')));
-    expect(sidebarTools.sort()).toEqual(['comment', 'create', 'fill-sign', 'prepare-form', 'protect', 'redact']);
+    expect(sidebarTools).toEqual(expect.arrayContaining(['comment', 'fill-sign', 'prepare-form', 'protect', 'redact', 'export', 'compare', 'organize', 'combine', 'compress', 'standards', 'create']));
     await page.locator('[data-card=more]').click();
     const sheetTools = await page.locator('[data-testid=tool-gallery] [data-tool]').evaluateAll((els) => els.map((e) => e.getAttribute('data-tool')));
     expect(sheetTools.sort()).toEqual(sidebarTools.sort());

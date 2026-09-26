@@ -173,6 +173,91 @@ under their MIT or Apache-2.0 option.
 | zune-core | 0.5.3 | MIT OR Apache-2.0 OR Zlib | Transitive dependency |
 | zune-jpeg | 0.5.15 | MIT OR Apache-2.0 OR Zlib | Transitive dependency |
 
+## Digital signatures (warraq-sign)
+
+Added by the signature engine (`cargo tree -e normal,build -p warraq-core --features render,wasm
+--target all`, rows not already listed above; the appearance also uses warraq-text's harfrust,
+read-fonts and unicode-bidi listed in its section). `webpki-roots` data is under the Community Data
+License Agreement – Permissive 2.0 (a permissive data licence, see ADR 0008).
+
+| Component | Version | Licence | Used for |
+| --- | --- | --- | --- |
+| aes | 0.8.4 | MIT OR Apache-2.0 | AES (PBES2 PKCS#12) |
+| cbc | 0.1.2 | MIT OR Apache-2.0 | CBC mode (legacy PKCS#12) |
+| cmpv2 | 0.2.0 | Apache-2.0 OR MIT | PKIStatusInfo (x509-tsp) |
+| cms | 0.2.3 | Apache-2.0 OR MIT | CMS SignedData (PAdES signatures, timestamp tokens) |
+| const-oid | 0.9.6 | Apache-2.0 OR MIT | Object identifiers |
+| der | 0.7.10 | Apache-2.0 OR MIT | DER encoding/decoding |
+| der_derive | 0.7.3 | Apache-2.0 OR MIT | DER derive macros |
+| des | 0.8.1 | MIT OR Apache-2.0 | 3DES (legacy PKCS#12) |
+| ecdsa | 0.16.9 | Apache-2.0 OR MIT | ECDSA signing/verification |
+| elliptic-curve | 0.13.8 | Apache-2.0 OR MIT | Elliptic-curve arithmetic |
+| hmac | 0.12.1 | MIT OR Apache-2.0 | PKCS#12 MAC |
+| p256 | 0.13.2 | Apache-2.0 OR MIT | ECDSA P-256 |
+| p384 | 0.13.1 | Apache-2.0 OR MIT | ECDSA P-384 |
+| pkcs1 | 0.7.5 | Apache-2.0 OR MIT | RSA key encodings |
+| pkcs12 | 0.1.0 | Apache-2.0 OR MIT | PKCS#12 ASN.1 types and key derivation |
+| pkcs5 | 0.7.1 | Apache-2.0 OR MIT | PBES2 (PKCS#12 modern encryption) |
+| pkcs8 | 0.10.2 | Apache-2.0 OR MIT | PKCS#8 private keys |
+| rc2 | 0.8.1 | MIT OR Apache-2.0 | RC2 (legacy PKCS#12) |
+| rsa | 0.9.10 | MIT OR Apache-2.0 | RSA PKCS#1 v1.5 / PSS signatures |
+| rustls-pki-types | 1.15.1 | MIT OR Apache-2.0 | Trust-anchor types for webpki-roots |
+| sha1 | 0.10.7 | MIT OR Apache-2.0 | SHA-1 (PKCS#12 legacy KDF/MAC, verifying legacy signatures only) |
+| sha2 | 0.10.9 | MIT OR Apache-2.0 | SHA-256/384/512 (RustCrypto 0.10 generation used by the CMS stack) |
+| signature | 2.2.0 | Apache-2.0 OR MIT | Signature traits |
+| spki | 0.7.3 | Apache-2.0 OR MIT | SubjectPublicKeyInfo |
+| subsetter | 0.2.6 | MIT OR Apache-2.0 | Font subsetting for the embedded appearance font |
+| webpki-roots | 1.0.9 | CDLA-Permissive-2.0 | Mozilla root list, used ONLY to recognise timestamp authorities (never document trust) |
+| x509-cert | 0.2.5 | Apache-2.0 OR MIT | X.509 certificates and CRLs |
+| x509-ocsp | 0.2.1 | Apache-2.0 OR MIT | OCSP requests/responses |
+| x509-tsp | 0.1.0 | Apache-2.0 OR MIT | RFC 3161 timestamp requests/responses |
+| zeroize | 1.9.0 | Apache-2.0 OR MIT | Wipes key material and passwords from memory |
+| base16ct | 0.2.0 | Apache-2.0 OR MIT | Transitive dependency |
+| base64ct | 1.8.3 | Apache-2.0 OR MIT | Transitive dependency |
+| block-buffer | 0.10.4 | MIT OR Apache-2.0 | Transitive dependency |
+| block-padding | 0.3.3 | MIT OR Apache-2.0 | Transitive dependency |
+| cipher | 0.4.4 | MIT OR Apache-2.0 | Transitive dependency |
+| cpufeatures | 0.2.17 | MIT OR Apache-2.0 | Transitive dependency |
+| crmf | 0.2.0 | Apache-2.0 OR MIT | Transitive dependency |
+| crypto-bigint | 0.5.5 | Apache-2.0 OR MIT | Transitive dependency |
+| crypto-common | 0.1.7 | MIT OR Apache-2.0 | Transitive dependency |
+| digest | 0.10.7 | MIT OR Apache-2.0 | Transitive dependency |
+| ff | 0.13.1 | MIT/Apache-2.0 | Transitive dependency |
+| flagset | 0.4.7 | Apache-2.0 | Transitive dependency |
+| generic-array | 0.14.7 | MIT | Transitive dependency |
+| group | 0.13.0 | MIT/Apache-2.0 | Transitive dependency |
+| inout | 0.1.4 | MIT OR Apache-2.0 | Transitive dependency |
+| lazy_static | 1.5.0 | MIT OR Apache-2.0 | Transitive dependency |
+| libm | 0.2.16 | MIT | Transitive dependency |
+| num-bigint-dig | 0.8.6 | MIT/Apache-2.0 | Transitive dependency |
+| num-integer | 0.1.47 | MIT OR Apache-2.0 | Transitive dependency |
+| num-iter | 0.1.46 | MIT OR Apache-2.0 | Transitive dependency |
+| pbkdf2 | 0.12.2 | MIT OR Apache-2.0 | Transitive dependency |
+| pem-rfc7468 | 0.7.0 | Apache-2.0 OR MIT | Transitive dependency |
+| ppv-lite86 | 0.2.21 | MIT OR Apache-2.0 | Transitive dependency |
+| primeorder | 0.13.6 | Apache-2.0 OR MIT | Transitive dependency |
+| rand | 0.8.8 | MIT OR Apache-2.0 | Transitive dependency |
+| rand_chacha | 0.3.1 | MIT OR Apache-2.0 | Transitive dependency |
+| rand_core | 0.6.4 | MIT OR Apache-2.0 | Transitive dependency |
+| rfc6979 | 0.4.0 | Apache-2.0 OR MIT | Transitive dependency |
+| salsa20 | 0.10.2 | MIT OR Apache-2.0 | Transitive dependency |
+| scrypt | 0.11.0 | MIT OR Apache-2.0 | Transitive dependency |
+| sec1 | 0.7.3 | Apache-2.0 OR MIT | Transitive dependency |
+| spin | 0.9.9 | MIT | Transitive dependency |
+| subtle | 2.6.1 | BSD-3-Clause | Transitive dependency |
+| version_check | 0.9.5 | MIT/Apache-2.0 | Transitive dependency |
+| zerocopy | 0.8.59 | BSD-2-Clause OR Apache-2.0 OR MIT | Transitive dependency |
+| zerocopy-derive | 0.8.59 | BSD-2-Clause OR Apache-2.0 OR MIT | Transitive dependency |
+| Amiri (`packages/core/assets/fonts/amiri`, shared with warraq-create) | 1.x | OFL-1.1 | Arabic/Latin font embedded (subsetted) in visible signature appearances and created PDFs; licence in `packages/core/assets/fonts/amiri/OFL.txt` (copy in `crates/warraq-sign/assets/OFL-Amiri.txt`) |
+
+### Signature test tools (never bundled, never linked)
+
+| Component | Version | Licence | Used for |
+| --- | --- | --- | --- |
+| OpenSSL CLI | 3.0 | Apache-2.0 | Generates the test PKI and PKCS#12 files (`tests/fixtures/sign/make_pki.sh`), answers test TSA/OCSP requests, `openssl cms -verify` / `ts -verify` cross-checks |
+| pyHanko, pyhanko-certvalidator | 0.x | MIT | Independent validation of produced signatures in `warraq-sign/tests/pyhanko.rs` (skipped when not installed) |
+| fontTools (pyftsubset) | 4.x | MIT | Made the bundled Amiri subset (Arabic + Latin, layout features kept) |
+
 ### Optional / not shipped by default
 
 | Component | Version | Licence | Used for |
@@ -205,11 +290,43 @@ transitive crates they add:
 | tinyvec | 1.13.3 | Zlib OR Apache-2.0 OR MIT | Transitive dependency (unicode-normalization) |
 | core_detect, multiversion_no_op | 1.0.0 | MIT OR Apache-2.0 | Transitive dependency (harfrust) |
 
+## Rust engine (warraq-office: Export and Compare)
+
+`warraq-office` writes DOCX/XLSX/PPTX/HTML/Markdown/text and compares documents with its own code (no office
+suite, no LibreOffice). Direct dependencies beyond the crates above:
+
+| Component | Version | Licence | Used for |
+| --- | --- | --- | --- |
+| miniz_oxide | 0.9.1 | MIT OR Zlib OR Apache-2.0 | Deflate for the ZIP containers (OOXML, zipped PNG pages) and the PNG encoder (already linked through flate2) |
+| crc32fast | 1.5.2 | MIT OR Apache-2.0 | CRC-32 for ZIP entries and PNG chunks (already linked through flate2) |
+
+Test-only (never bundled, never linked into a build):
+
+| Component | Version | Licence | Used for |
+| --- | --- | --- | --- |
+| quick-xml | 0.42 | MIT | Independent XML parser that checks every part our writers produce is well-formed |
+| python-docx, openpyxl, python-pptx | 1.2 / 3.1 / 1.0 | MIT / MIT / MIT | Independent readers that open our DOCX/XLSX/PPTX in `warraq-office/tests/export.rs` (skipped when not installed) |
+
+## Rust engine (Organize / Combine / Compress in warraq-core)
+
+Direct dependencies added by `warraq-core/src/ops` (picture pages, compression). `warraq-core` also links
+`warraq-text` (above) for text boxes in "Trim margins".
+
+| Component | Version | Licence | Used for |
+| --- | --- | --- | --- |
+| jpeg-encoder | 0.7.1 | MIT OR Apache-2.0 | JPEG re-encoding of downsampled pictures (Compress) |
+| zune-jpeg | 0.5.15 | MIT OR Apache-2.0 OR Zlib | JPEG decoding for Compress (now a direct dependency, also used by hayro) |
+| zune-core | 0.5.3 | MIT OR Apache-2.0 OR Zlib | Decoder options for zune-jpeg |
+| png | 0.18.1 | MIT OR Apache-2.0 | PNG decoding for "Insert picture" (alpha → soft mask) |
+| flate2 | 1.1.10 | MIT OR Apache-2.0 | Flate for picture pages, recompressed streams and object streams |
+
 ## Fonts
 
 Test corpus fonts live in `tests/corpus/fonts/<family>/` with their `OFL.txt` (SIL Open Font License 1.1). They are
 used to generate the Arabic corpus; the Edit tool may embed subsets of Amiri, Cairo and Inter, in which case the OFL
-text ships with the build.
+text ships with the build. Create PDF (warraq-create) and signature appearances (warraq-sign) compile Amiri
+Regular/Bold, Cairo and Inter from `packages/core/assets/fonts/<family>/` (each with its `OFL.txt`) into the engine
+and embed subsets of them in the PDFs they write.
 
 | Font | Source | Licence |
 | --- | --- | --- |
@@ -255,3 +372,11 @@ System components used but **not shipped** by us: WebKitGTK and GTK on Linux (LG
 distribution's packages — no AppImage, which would bundle them), WebView2 on Windows, WKWebView/PDFKit on macOS.
 MPL-2.0 `cssparser`, `selectors` and `dtoa-short` are used only inside Tauri's build-time proc-macros and are not
 part of any artefact.
+
+## iOS app (`apps/ios`)
+
+No third-party Swift packages. The app links only Apple system frameworks (SwiftUI, UIKit, PDFKit,
+PencilKit, VisionKit, Vision, AVFoundation, Core Image, Core Text, WidgetKit, App Intents, Core Spotlight,
+Security) and the ZOOD PDF engine (`warraq-core` static library in `WarraqCore.xcframework`, whose Rust
+dependencies are listed above). The app icon is the project's own artwork (`apps/web/public/icons`).
+Build/test tools (not shipped): XcodeGen (MIT), the Swift toolchain (Apache-2.0) used for Linux tests.

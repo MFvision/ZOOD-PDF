@@ -171,6 +171,84 @@ export const ICONS = {
       {P('M5 7v12a1.5 1.5 0 0 0 1.5 1.5H15')}
     </>
   ),
+  // Export formats and Compare.
+  table: (
+    <>
+      <rect x="4" y="5" width="16" height="14" rx="1.5" />
+      {P('M4 10h16M4 14.5h16M10 5v14')}
+    </>
+  ),
+  slides: (
+    <>
+      <rect x="3.5" y="5" width="17" height="11" rx="1.5" />
+      {P('M12 16v3.5M8.5 19.5h7M7.5 9h6M7.5 12h4')}
+    </>
+  ),
+  markdown: (
+    <>
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      {P('M6.5 15V9l2.5 3 2.5-3v6M15.5 9v6M13.5 13l2 2 2-2')}
+    </>
+  ),
+  text: <>{P('M5 6.5h14M5 10.5h14M5 14.5h14M5 18.5h9')}</>,
+  image: (
+    <>
+      <rect x="3.5" y="5" width="17" height="14" rx="2" />
+      <circle cx="9" cy="10" r="1.6" />
+      {P('m4 17 5-4.5 3.5 3 3-2.5 4.5 4')}
+    </>
+  ),
+  swap: <>{P('M7 7.5h11M15 4.5l3 3-3 3M17 16.5H6M9 13.5l-3 3 3 3')}</>,
+  // ---- Organize / Combine / Compress ----
+  rotateLeft: <>{P('M5 9.5A7.5 7.5 0 1 1 5.6 15M5 4.5v5h5')}</>,
+  rotateRight: <>{P('M19 9.5A7.5 7.5 0 1 0 18.4 15M19 4.5v5h-5')}</>,
+  pageAdd: (
+    <>
+      {P('M13.5 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8.5z')}
+      {P('M13.5 3.5v5h5M12 11.5v6M9 14.5h6')}
+    </>
+  ),
+  pageDelete: (
+    <>
+      {P('M13.5 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8.5z')}
+      {P('M13.5 3.5v5h5M9.5 12.5l5 5M14.5 12.5l-5 5')}
+    </>
+  ),
+  replace: <>{P('M4 8.5h11.5L12 5M20 15.5H8.5L12 19')}</>,
+  crop: <>{P('M7 3v13.5A.5.5 0 0 0 7.5 17H21M3 7h13.5a.5.5 0 0 1 .5.5V21')}</>,
+  trim: (
+    <>
+      <rect x="7.5" y="7.5" width="9" height="9" rx="1" />
+      {P('M3.5 3.5h3M3.5 3.5v3M20.5 3.5h-3M20.5 3.5v3M3.5 20.5h3M3.5 20.5v-3M20.5 20.5h-3M20.5 20.5v-3')}
+    </>
+  ),
+  split: (
+    <>
+      <rect x="4" y="3.5" width="7" height="17" rx="1.5" />
+      <rect x="13" y="3.5" width="7" height="17" rx="1.5" />
+    </>
+  ),
+  picture: (
+    <>
+      <rect x="3.5" y="5" width="17" height="14" rx="2" />
+      <circle cx="9" cy="10" r="1.6" />
+      {P('m4 17 5-4.5 4 3.5 2.5-2 4.5 4')}
+    </>
+  ),
+  undo: <>{P('M9 5 4.5 9.5 9 14M5 9.5h9a5.5 5.5 0 0 1 0 11h-3')}</>,
+  redo: <>{P('M15 5l4.5 4.5L15 14M19 9.5h-9a5.5 5.5 0 0 0 0 11h3')}</>,
+  grip: (
+    <>
+      <circle cx="9" cy="7" r="1" />
+      <circle cx="15" cy="7" r="1" />
+      <circle cx="9" cy="12" r="1" />
+      <circle cx="15" cy="12" r="1" />
+      <circle cx="9" cy="17" r="1" />
+      <circle cx="15" cy="17" r="1" />
+    </>
+  ),
+  arrowUp: <>{P('M12 19V5M6 11l6-6 6 6')}</>,
+  arrowDown: <>{P('M12 5v14M6 13l6 6 6-6')}</>,
   // Create PDF: reorder the file list.
   moveUp: <>{P('m6.5 14.5 5.5-5.5 5.5 5.5')}</>,
   moveDown: <>{P('m6.5 9.5 5.5 5.5 5.5-5.5')}</>,
@@ -179,7 +257,7 @@ export const ICONS = {
 export type IconName = keyof typeof ICONS;
 
 /** Icons that point along the reading direction and must mirror in RTL. */
-const DIRECTIONAL = new Set<IconName>(['chevronStart', 'chevronEnd', 'convert', 'comment']);
+const DIRECTIONAL = new Set<IconName>(['chevronStart', 'chevronEnd', 'convert', 'comment', 'undo', 'redo']);
 
 export function Icon({ name, size = 20, ...rest }: { name: IconName; size?: number } & SVGProps<SVGSVGElement>) {
   return (

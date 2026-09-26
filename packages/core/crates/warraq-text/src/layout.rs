@@ -66,6 +66,7 @@ struct U {
     hidden: bool,
     artifact: bool,
     bold: bool,
+    italic: bool,
     lang: Option<Rc<str>>,
 }
 
@@ -145,6 +146,7 @@ pub fn layout_page(
             hidden: g.hidden,
             artifact: g.artifact,
             bold: g.bold,
+            italic: g.italic,
             lang: g.lang,
         });
     }
@@ -849,7 +851,7 @@ fn build_line<F: Fn(&Rect) -> Rect>(
         let mut wtext = String::new();
         let mut bbox: Option<Rect> = None;
         let mut glyphs = Vec::new();
-        let (mut hidden, mut artifact, mut bold) = (true, true, false);
+        let (mut hidden, mut artifact, mut bold, mut italic) = (true, true, false, false);
         let mut lang = None;
         let mut sizes = Vec::new();
         for &i in cur.iter() {
@@ -862,6 +864,7 @@ fn build_line<F: Fn(&Rect) -> Rect>(
             hidden &= u.hidden;
             artifact &= u.artifact;
             bold |= u.bold;
+            italic |= u.italic;
             if lang.is_none() {
                 lang = u.lang.as_ref().map(|l| l.to_string());
             }
@@ -882,6 +885,7 @@ fn build_line<F: Fn(&Rect) -> Rect>(
             hidden,
             artifact,
             bold,
+            italic,
             lang,
             size: (median(sizes) * 100.0).round() / 100.0,
             glyphs,
@@ -1114,6 +1118,7 @@ mod tests {
             lang: None,
             font: None,
             bold: false,
+            italic: false,
         }
     }
 

@@ -1,30 +1,21 @@
 /**
- * Tool sheets: core tools that need their own dialog (Create PDF, …) are opened through this tiny
- * bus, so `tools/registry.ts` can stay free of React. `App` subscribes and renders the sheet; a
- * sheet that is open can claim files dropped on the window.
+ * Create PDF plumbing next to `tools/panels.ts` (which opens the sheet): files handed to the sheet
+ * when it opens (dropped on the window), and a drop claim so later drops go to the open sheet.
  */
 import type { OpenedFile } from './host';
 
-export interface ToolSheetRequest {
-  tool: string;
-  /** Files to start with (e.g. dropped on the window). */
-  files?: OpenedFile[];
+let pending: OpenedFile[] = [];
+
+/** Files the next Create PDF sheet starts with. */
+export function setPendingCreateFiles(files: OpenedFile[]): void {
+  pending = files;
 }
 
-type Listener = (req: ToolSheetRequest) => void;
-const listeners = new Set<Listener>();
-
-/** Ask the app to open a tool's sheet. */
-export function requestToolSheet(req: ToolSheetRequest): void {
-  for (const l of listeners) l(req);
-}
-
-/** Subscribe to sheet requests; returns an unsubscribe function. */
-export function onToolSheet(l: Listener): () => void {
-  listeners.add(l);
-  return () => {
-    listeners.delete(l);
-  };
+/** Take (and clear) the files waiting for the Create PDF sheet. */
+export function takePendingCreateFiles(): OpenedFile[] {
+  const out = pending;
+  pending = [];
+  return out;
 }
 
 type DropClaim = (files: OpenedFile[]) => boolean;

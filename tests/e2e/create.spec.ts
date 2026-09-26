@@ -1,5 +1,6 @@
+import fs from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { ENGINE_BUILT, fixture, fixtureBytes, latin1, savedFiles, stubSavePicker, trackExternalRequests, waitForDocument } from './helpers';
+import { ENGINE_BUILT, fixture, fixtureBytes, latin1, openViaCard, savedFiles, stubSavePicker, trackExternalRequests, waitForDocument } from './helpers';
 
 test.describe('Create PDF', () => {
   test.skip(!ENGINE_BUILT, 'needs the warraq-core engine (create.fromFiles)');
@@ -47,5 +48,25 @@ test.describe('Create PDF', () => {
     await page.locator('[data-testid=create-run]').click();
     await waitForDocument(page);
     await expect(page.locator('.doc-name')).toHaveText('guide.pdf');
+  });
+
+  test('a Word file dropped on an open PDF goes to Create PDF, not Combine', async ({ page }) => {
+    await page.goto('/');
+    await openViaCard(page, fixture('sample-en.pdf'));
+    const b64 = fs.readFileSync(fixture('create/report.docx')).toString('base64');
+    const dt = await page.evaluateHandle((data) => {
+      const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+      const t = new DataTransfer();
+      t.items.add(new File([bytes], 'report.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }));
+      return t;
+    }, b64);
+    const vw = page.viewportSize()!;
+    for (const type of ['dragenter', 'dragover', 'drop'] as const) {
+      await page.dispatchEvent('.docview:not([hidden])', type, { dataTransfer: dt, clientX: vw.width * 0.25, clientY: vw.height / 2 });
+    }
+    await expect(page.locator('[data-testid=create-list] li')).toHaveCount(1);
+    await expect(page.locator('[data-testid=create-list] li').first()).toHaveAttribute('data-name', 'report.docx');
+    // The open document is untouched (no combine happened).
+    await expect(page.locator('[data-testid=document-view]:visible [data-testid=doc-status]')).not.toContainText('Edited');
   });
 });

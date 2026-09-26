@@ -22,3 +22,4 @@ apps/extension/*.zip
 scripts/corpus/.venv/
 scripts/corpus/__pycache__/
 tests/corpus/generated/
+.target-ios-host/
