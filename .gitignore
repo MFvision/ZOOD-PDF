@@ -25,3 +25,4 @@ tests/corpus/generated/
 
 # OCR models (scripts/fetch-ocr-models.sh)
 .cache/
+.target-ios-host/

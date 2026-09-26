@@ -90,7 +90,7 @@ export class Recognizer {
     this.progress = onProgress ?? null;
     try {
       await this.worker.setParameters({ user_defined_dpi: String(Math.round(dpi)) });
-      const { data } = await this.worker.recognize(image, {}, { text: true, blocks: true });
+      const { data } = await this.worker.recognize(image as unknown as Parameters<TessWorker['recognize']>[0], {}, { text: true, blocks: true });
       return { words: wordsFromPage(data), text: data.text ?? '', confidence: data.confidence ?? 0 };
     } finally {
       this.progress = null;

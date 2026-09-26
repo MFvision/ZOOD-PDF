@@ -15,7 +15,24 @@ thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 warraq-pdf = { path = "../warraq-pdf" }
+# Standards tool: PDF/A + PDF/X-4 validator, converter, preflight.
+warraq-standards = { path = "../warraq-standards" }
+warraq-sign = { path = "../warraq-sign" }
+der = { version = "0.7", default-features = false }
+zeroize = "1"
 warraq-text = { path = "../warraq-text" }
+warraq-redact = { path = "../warraq-redact" }
+# Create PDF (layout engine + readers); bundles the Amiri/Cairo/Inter fonts.
+warraq-create = { path = "../warraq-create" }
+# Export (DOCX/XLSX/PPTX/HTML/Markdown/text) and Compare.
+warraq-office = { path = "../warraq-office" }
+# Organize / Compress: content geometry (text boxes via warraq-text's interpreter), picture
+# pages and image recompression. All MIT/Apache-2.0 (zune-*: MIT OR Apache-2.0 OR Zlib).
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
+png = "0.18"
+zune-jpeg = { version = "0.5", default-features = false, features = ["std"] }
+zune-core = { version = "0.5", default-features = false, features = ["std"] }
+jpeg-encoder = { version = "0.7", default-features = false, features = ["std"] }
 warraq-render = { path = "../warraq-render", optional = true, default-features = false, features = ["hayro"] }
 wasm-bindgen = { version = "0.2", optional = true, default-features = false, features = ["std"] }
 js-sys = { version = "0.3", optional = true, default-features = false, features = ["std"] }
@@ -25,6 +42,10 @@ flate2 = { version = "1.1", default-features = false, features = ["rust_backend"
 [dev-dependencies]
 # Validates the generated GlyphLessFont (same crate and version as warraq-text).
 read-fonts = "0.43"
+
+[dev-dependencies]
+# Compress output is compared with the original by rasterising both (tests only).
+warraq-render = { path = "../warraq-render", default-features = false, features = ["hayro"] }
 
 [features]
 default = ["ffi"]

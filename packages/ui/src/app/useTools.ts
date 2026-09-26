@@ -21,20 +21,22 @@ export function useStartTool() {
       if (app.state.route.name !== 'document' || app.state.route.id !== target) {
         app.dispatch({ type: 'SET_ROUTE', route: { name: 'document', id: target } });
       }
-      runTool(tool, app.viewer(target));
+      runTool(tool, app.viewer(target), target);
     },
     [app],
   );
 }
 
-export function runTool(tool: ToolDef, viewer: { exec(cmd: string): void } | undefined): boolean {
+export function runTool(tool: ToolDef, viewer: { exec(cmd: string): void } | undefined, docId?: string): boolean {
+  let ran = false;
   if (tool.viewer && viewer) {
     for (const cmd of tool.viewer.commands) viewer.exec(cmd);
-    return true;
+    ran = true;
   }
-  if (tool.core) {
-    void tool.core.open();
-    return true;
+  // A viewer mode with a core panel beside it (Redact: EmbedPDF draws the marks, the engine applies them).
+  if (tool.core && (!ran || tool.panel)) {
+    void tool.core.open(docId);
+    ran = true;
   }
-  return false;
+  return ran;
 }

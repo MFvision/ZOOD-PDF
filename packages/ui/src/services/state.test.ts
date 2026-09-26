@@ -108,3 +108,24 @@ describe('app reducer', () => {
     expect(s.recents).toEqual([item]);
   });
 });
+
+// Redact / Protect (core-backed whole rewrites)
+describe('whole rewrites and passwords', () => {
+  it('a whole rewrite (redaction) replaces the original, so later viewer edits never rebase on the old bytes', () => {
+    let s = reducer(initialState('en'), { type: 'OPEN_DOCUMENT', id: 'd1', name: 'a.pdf', bytes: bytes(1, 2, 3), password: 'pw' });
+    expect(s.documents.d1?.password).toBe('pw');
+    s = reducer(s, { type: 'CORE_REPLACED_BYTES', id: 'd1', bytes: bytes(5, 5), wholeRewrite: true });
+    expect(s.documents.d1?.originalBytes).toEqual(bytes(5, 5));
+    expect(s.documents.d1?.originalBytes).not.toBe(s.documents.d1?.bytes);
+    expect(s.documents.d1?.password).toBe('pw');
+    expect(s.documents.d1?.edited).toBe(true);
+  });
+
+  it('protection changes carry the new password (null = removed)', () => {
+    let s = reducer(initialState('en'), { type: 'OPEN_DOCUMENT', id: 'd1', name: 'a.pdf', bytes: bytes(1) });
+    s = reducer(s, { type: 'CORE_REPLACED_BYTES', id: 'd1', bytes: bytes(2), wholeRewrite: true, password: 'new' });
+    expect(s.documents.d1?.password).toBe('new');
+    s = reducer(s, { type: 'CORE_REPLACED_BYTES', id: 'd1', bytes: bytes(3), wholeRewrite: true, password: null });
+    expect(s.documents.d1?.password).toBeUndefined();
+  });
+});

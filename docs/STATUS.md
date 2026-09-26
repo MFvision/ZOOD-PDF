@@ -49,10 +49,34 @@ after `bash scripts/build-wasm.sh`). Page indices in the RPC are 0-based.
 * Real PDFium output was not available: rebase is tested against lopdf-simulated full rewrites. The numbering
   assumption is checked at runtime (fallback: append everything) — see ADR 0003.
 * R5/R6 passwords are not SASLprep-normalised; R2–R4 non-Latin-1 passwords are not portable (ADR 0004).
-* Form fields of pages copied with `pages.insertFrom`/`extract`/`merge` are not added to the target AcroForm;
-  outlines/named destinations pointing at deleted pages become dangling (resolve to null).
+* ~~Form fields of pages copied with `pages.insertFrom`/`extract`/`merge` are not added to the target AcroForm~~
+  (done: see "Organize, Combine, Compress"); outlines/named destinations pointing at deleted pages still become
+  dangling (resolve to null).
 * `doc.info.hasSignatures` is a heuristic (a `/FT /Sig` field with `/V`, or a `/Sig` dictionary with
   `/ByteRange`); verification belongs to warraq-sign.
+
+## Create PDF (warraq-create, `create.fromFiles`)
+
+Own layout engine (rustybuzz shaping, UAX #9 bidi, line breaking, kashida justification, tables,
+lists, pagination) and a tagged PDF writer with subset TrueType fonts (Amiri, Cairo, Inter bundled).
+Readers: DOCX, XLSX, PPTX, HTML (safe subset, `data:` images only), Markdown, TXT (UTF-8/16,
+Windows-1256), CSV/TSV, JPEG, PNG, multi-page TIFF (G3/G4 passed through, LZW/Deflate/PackBits).
+Fixtures: `python3 scripts/create-fixtures.py` → `tests/fixtures/create/` (each with `.truth.txt`).
+
+### Proven by tests
+| What | Test |
+| --- | --- |
+| Arabic/English text round-trips through warraq-text in logical order (incl. kashida-justified paragraphs, ActualText) | `warraq-create/tests/roundtrip.rs` |
+| Every reader on generated fixtures: text back in logical order, table cells intact, headings/lists/tables/figures tagged, `/Alt` on pictures, slide size kept, TIFF polarity/colour checked by rendering with hayro | `warraq-create/tests/readers.rs` |
+| Invariants: tagged (`StructTreeRoot`, `MarkInfo`, `Lang`), subset fonts only, never `/Direction`, lopdf reloads | `tests/common/mod.rs::assert_pdf_invariants` |
+| No panic / bounded time on mutated whole files and mutated OOXML parts (600 cases default; 5000 checked); billion laughs, zip bomb, huge picture, absurd spans, deep nesting | `warraq-create/tests/no_panic.rs` (`WARRAQ_CREATE_SMOKE_CASES`); cargo-fuzz targets `create_*` |
+| RPC `create.fromFiles` / `create.formats`, coded errors; wasm build creates a PDF from the DOCX fixture | `warraq-core/src/methods/create.rs` tests, `wasm-smoke.mjs` |
+| UI: pick files, refuse unsupported ones, reorder, page numbers, new PDF opens unsaved and saves through the host (en + ar); a non-PDF dropped on an open document goes to Create, not Combine; Convert card offers Export and Create | `tests/e2e/create.spec.ts`, `tools/create/create.test.ts`, `App.test.tsx` |
+
+### Not supported yet
+DOCX headers/footers, footnotes, text boxes, floating positions; XLSX number formats/dates;
+PPTX themes, backgrounds, shape fills, charts, SmartArt; EMF/WMF/GIF pictures; legacy .doc/.xls/.ppt.
+The bundled fonts (packages/core/assets/fonts, 2.3 MB) are compiled into the wasm (9.7 MB total with all tools, without wasm-opt); warraq-sign uses the same Amiri.
 
 ## Interface (`packages/ui`, `apps/web`, `apps/extension`)
 
@@ -63,7 +87,7 @@ port 4311; the extension spec loads `apps/extension/dist` unpacked). Architectur
 | What | Test |
 | --- | --- |
 | Home renders in English (LTR, sidebar left) and Arabic (RTL, sidebar mirrored right, «ملفات PDF، من جديد», `زود PDF` title); zero requests leave localhost | `home.spec.ts` |
-| Only ready tools are shown (sidebar = More sheet = the 5 viewer-backed tools); no "coming soon"; six working home cards | `home.spec.ts`, `registry.test.ts`, `App.test.tsx` |
+| Only ready tools are shown (sidebar = More sheet = the viewer-backed tools, the core tools and Create PDF); no "coming soon"; six working home cards | `home.spec.ts`, `registry.test.ts`, `App.test.tsx` |
 | Language switch in Settings flips `dir`, persists across reload; Arabic-Indic digits (`صفحة ١ من ٢`) | `home.spec.ts`, `open-save.spec.ts`, `i18n.test.ts` |
 | Open via the Open card (file chooser) → viewer with page count; highlight with EmbedPDF; Save through the File System Access picker; saved bytes contain the `/Highlight`; **original bytes are an exact prefix of the saved file** (doc.rebase); reopen the saved file | `open-save.spec.ts` |
 | A second save is one more incremental update on top of the first save | `open-save.spec.ts` |
@@ -162,7 +186,7 @@ Measured on 2026-09-25 (21 non-scanned files; all at their floor of 99.80 %):
 | Synthetic shaper streams (Nastaliq cascades, Amiri kerning) | 2 | 100.00 % each |
 | Synthetic simple fonts (WinAnsi, `/Differences` names, form XObject) | 1 | 100.00 % |
 | Encrypted copies (RC4-128, AES-256 ×3 incl. Arabic password) | 4 | 100.00 % each |
-| Scans (12 variants) | — | not measured here (OCR is in the UI) |
+| Scans (20 variants) | — | measured by the OCR benchmark (see "Scan & OCR") |
 
 Caveat: the corpus was written together with the engine, and several engine rules came from failures it exposed
 (word gaps inside cursive words: first run 99.67 % news/Amiri, 99.06 % Nastaliq, 99.01 % Amiri kerning; the W7 case
@@ -172,7 +196,7 @@ unreadable by construction (Noto Naskh draws dots as separate glyphs shared by s
 cannot describe them): the generator now wraps such words in `/ActualText` (as real producers must) or uses Amiri.
 
 ### Not done / limits (honest)
-* Scanned PDFs are generated but not measured here (OCR belongs to the UI; no OCR accuracy numbers yet).
+* Scanned PDFs are measured by the OCR benchmark (section "Scan & OCR"), not by this gate.
 * No genuine Word/LibreOffice PDFs (see above); real-world producer quirks beyond the synthetic ones are untested.
 * Tables are recognised only from aligned text (no ruling-line analysis); 3+ columns of short prose lines could be
   read as a table. Paragraph breaks between equally long lines with uniform spacing are not detected (text is
@@ -184,6 +208,60 @@ cannot describe them): the generator now wraps such words in `/ActualText` (as r
   `methods/text.rs` needs `warraq_text::call(&DocSource::borrowed(doc.pdf().document()), method, params)` and an
   error mapping via `TextError::code()`.
 
+
+## Digital signatures (`warraq-sign`, `sign.*` RPC)
+
+`cargo test -p warraq-sign -p warraq-core`. Design: ADR 0008. External checkers are optional at
+test time and skip when absent: the OpenSSL 3 CLI (test PKI, TSA, OCSP responder, `cms -verify`,
+`ts -verify`) and pyHanko (`WARRAQ_PYTHON=/path/to/python` with `pip install pyhanko
+pyhanko-certvalidator`). Test PKI: `tests/fixtures/sign/make_pki.sh` (committed output under
+`tests/fixtures/sign/pki/`, test-only keys).
+
+### Proven by tests
+| What | Test |
+| --- | --- |
+| PKCS#12: modern PBES2/AES-256 + SHA-256 MAC; legacy `-legacy` (RC2-40 certs + 3DES key, SHA-1 MAC), 3DES-only, RC2-40-only; RSA-2048, P-256, P-384; Arabic password; wrong password → `wrong_certificate_password`; 300 mutated/truncated files never panic | `warraq-sign/tests/pkcs12.rs` |
+| PAdES B-B as an incremental update (original bytes are a prefix), `/ByteRange` covers the whole file except `/Contents`, `ETSI.CAdES.detached`, second signature appends another revision; **`openssl cms -verify` accepts every produced CMS** (RSA, P-256, P-384, xref-stream file, AES-256 encrypted file, existing empty field) | `tests/sign.rs` |
+| Encrypted documents: `/Reason` is ciphertext on disk, `/Contents` is the raw CMS, reopening decrypts the reason | `tests/sign.rs::encrypted_document_…` |
+| Visible Arabic appearance: shaped by warraq-text/HarfRust (contextual forms differ from nominal glyphs; lam-alef), subsetted Type0 Identity-H Amiri with ToUnicode, per-word `/ActualText`; **warraq-text's extractor reads "أحمد بن سعيد" and "الرياض" back in logical order** | `tests/sign.rs::arabic_is_shaped_not_nominal`, `appearance_text_reads_back_in_logical_order` |
+| Certification DocMDP P=1/2/3 (+ `/Perms`), FieldMDP All/Include/Exclude, field `/Lock` → FieldMDP; second certification and signing after P=1 refused; serverAuth-only and expired certificates cannot sign | `tests/sign.rs`, `tests/verify.rs` |
+| B-T: TSA request → `openssl ts -reply` → `finish` embeds the token in place (file length unchanged); responses for other data and garbage are rejected | `tests/ltv.rs` |
+| B-LT: OCSP request built by us answered by `openssl ocsp` (delegated responder), DSS with Certs/OCSPs/CRLs/VRI; verification reports `good (OCSP)`, level B-LT | `tests/ltv.rs` |
+| B-LTA: `/DocTimeStamp` (`ETSI.RFC3161`) prepared + finished; verified by us and by **`openssl ts -verify`** | `tests/ltv.rs` |
+| **pyHanko validates our signatures as intact/valid/trusted**: RSA, P-256 visible Arabic, P-384 certified P=2, two signatures (coverage, DocMDP ok), AES-256 encrypted, B-LTA (signature timestamp recognised) — and flags our three attack fixtures | `tests/pyhanko.rs` (ran here with pyHanko installed in a venv) |
+| Verification: untrusted by default (`valid_identity_unknown`), `valid` with the test root, chain of 3, JSON shape; tampered byte → `digest_mismatch`; EKU policy (serverAuth-only → invalid, Adobe authentic documents + emailProtection accepted); expired signer → invalid | `tests/verify.rs` |
+| Modification listing: annotations allowed for approval/P=3 (overlay reported), refused for P=1/2; form fill allowed for P=2, refused when the field is FieldMDP-locked; later signatures/DSS/doc timestamps allowed | `tests/verify.rs`, `tests/ltv.rs` |
+| Attacks (each fixture passes a naive digest check): shadow **replace** (content stream redefined), shadow **hide via xref** (later xref re-points the page content at hidden signed bytes), **hide-and-replace** (page switched to hidden content), **borrowed signature** (other document embeds the signed file; byte range points into it), **signature wrapping** (SWA: second part moved, new xref/sig dict inside the gap) — all rejected with the right reason; committed fixtures in `tests/fixtures/sign/attacks/` | `tests/attacks.rs`, `tests/verify.rs` |
+| RPC: `sign.list`, `sign.prepare` (B-B … B-LTA, certification, field lock, Arabic appearance), `sign.finish`, `sign.revocationRequests`, `sign.addDss`, `sign.verify` (trusted roots as blobs); error codes; full B-LTA flow through the RPC | `warraq-core/tests/sign_rpc.rs` |
+| No panic / bounded time: 4 000+ mutated signed PDFs (ByteRange/Contents/startxref hot spots, attack fixtures as seeds) and 7 000 mutated CMS/CRL/cert/PKCS#12 blobs (run here with `WARRAQ_SMOKE_CASES=700`; default 150 in `verify.sh`) | `tests/smoke_fuzz.rs` |
+| wasm32 build of warraq-core with `sign.*` compiles (`cargo check --target wasm32-unknown-unknown --features wasm`; no getrandom 0.2) | manual check |
+
+### Not done / not proven (honest)
+* **PKCS#11 untested**: only the `Signer` trait exists (digest-level signing maps to `CKM_RSA_PKCS`
+  / `CKM_ECDSA`); no token implementation and no smart-card hardware here.
+* **Real TSA / OCSP / CRL over the network untested**: the engine never does network I/O; all
+  timestamp and revocation tests use a local OpenSSL TSA and responder. The desktop host still has
+  to POST `application/timestamp-query` / `application/ocsp-request` and fetch CRLs; no UI is wired
+  (`packages/ui`, `apps/desktop` are other agents' work). Real TSAs whose tokens exceed the 12 KiB
+  reserve would need a bigger `placeholderSize`.
+* **Adobe Acrobat is not available** to cross-check; independent checks are OpenSSL and pyHanko only.
+* cargo-fuzz targets `cms` and `sig_dict` (`packages/core/fuzz`) compile (`cargo check`); they were
+  **not run under libFuzzer** here (no nightly/cargo-fuzz; the stable SanitizerCoverage release build
+  was abandoned to stay within the shared machine's disk budget). The stable smoke fuzz above runs
+  instead, in every `cargo test`.
+* Verification: RSA keys > 4096 bits, curves other than P-256/P-384, Ed25519 and `adbe.x509.rsa_sha1`
+  are reported `unsupported`; signed attributes and TBS certificates are verified over their
+  received bytes, but OCSP responses are verified over a DER re-encoding (fine for DER responders).
+  Chain building does not process name constraints, policies or path-length limits; revocation of
+  intermediates is reported only through warnings; no AIA fetching.
+* Modification classification is object-level: a later update that re-writes an object with
+  semantically equal content is invisible (correct), and "unused object" additions are reported as
+  allowed. Changes to `/Outlines`, `/PageLabels` and similar catalog entries count as allowed for
+  approval-only documents and disallowed under certification.
+* Page rotation of visible signatures is compensated with the form `/Matrix` (tested for 90°).
+* `rsa 0.9` has RUSTSEC-2023-0071 (Marvin); signing uses blinding, nothing is decrypted.
+* The JSON password parameter is wiped only in our copy (the JS/serde strings are outside Rust's
+  control); the key and decrypted PKCS#12 buffers are zeroized.
 
 ## Desktop host (Tauri 2), CI and packaging
 
@@ -228,3 +306,220 @@ cannot describe them): the generator now wraps such words in `/ActualText` (as r
 * Files opened in an earlier session leave the fs scope; saving them asks for a location again.
 * The macOS Dock name is "ZOOD PDF" (no `ar.lproj` localisation of the bundle name yet); the window title switches
   to "زود PDF" with the UI locale.
+
+## iOS / iPadOS app (`apps/ios`, native SwiftUI)
+
+**Not compiled for iOS here.** This machine is Linux: no Xcode, no iOS SDK, no simulator. The app and
+widget sources have never been built with the iOS SDK, so small compile errors in the SwiftUI layer are
+possible; nothing about the UI is proven yet. What *was* compiled and tested here:
+
+| Checked on Linux | How | Result |
+| --- | --- | --- |
+| `ZoodKit` package (engine wrapper + pure logic) compiled with Swift 6.3, Swift 6 language mode, `-strict-concurrency=complete -warnings-as-errors` | `bash scripts/ios/test-linux.sh` | builds clean |
+| FFI bridge to the real engine (`libwarraq_core.a`, feature `ffi`, cargo profile `ios`) through `warraq.h`: open/info, garbage → `parse_error`, rotate as incremental update (original bytes kept), delete/insert/move/extract, bad params / unknown method errors, `doc.rebase` (unchanged + incremental), AES-256 protect → `password_required` → reopen with user/owner password → remove, `pdf.merge`, `methods.list`, metadata, `text.plain`, 16 documents in parallel; `warraq.h` copy equals the engine header | swift-testing, `ZoodEngineTests` | 13 tests pass |
+| Arabic search normalisation (mirror of the web rules), page ranges with Arabic-Indic/Persian digits and «،», Umm al-Qura Hijri + Gregorian dates with locale numerals, safe file names (bidi-spoof removal), recents store (dedupe, cap, stars, tags, thumbnails, forget-thumbnail, path-escape), scan geometry (corner ordering, ID-1 real size, right-to-left book order), deep links, AI prompt/request body/SSE parsing | swift-testing, `ZoodCoreTests` | 30 tests pass |
+| Every app/widget/test source parses (`swiftc -parse`, Swift 6) | `bash scripts/ios/parse-check.sh` | 29 files parse |
+| String Catalogs: every key used in Swift exists in English and Arabic, Arabic plural forms (zero…other), no unused keys, App Shortcuts phrases in both languages | `python3 scripts/ios/check-strings.py` | 256 app keys, 13 widget keys, 7 phrases |
+| `build.sh` / `build-core.sh` fail clearly on non-macOS; all iOS scripts pass `shellcheck` | run on Linux | as designed |
+
+Total on Linux: **43 swift-testing tests** in 10 suites.
+
+**Written, needs a Mac to run (owner action):** `scripts/ios/build-core.sh` (XCFramework, LTO off),
+`xcodegen generate`, simulator build and tests (`Tests/ZoodPDFTests`: PDFKit ink → `doc.rebase`
+incremental save, highlight annotations, invisible OCR text layer readable by PDFKit, ID-card A4 page,
+Vision runtime language check, compress never grows a file, unique file names; `Tests/ZoodPDFUITests`:
+Arabic and English tours Home → document → Pencil stroke → Save → Organize → Scan with screenshots into
+`docs/design/ios/`). `docs/design/ios/` is empty until then.
+
+**Implemented (🟡 until run on a simulator):** iPad `NavigationSplitView` (Home, Recents, Starred, Tags,
+tools) and iPhone tabs; Home hero «ملفات PDF، من جديد», six action cards, Recents grid with PDFKit
+thumbnails, Gregorian · Hijri dates, ⋯ menus, search; glass materials with Reduce Motion / Reduce
+Transparency / Increase Contrast handled; document view (PDFKit, toolbar with "Page x of y · Edited",
+thumbnails rail, prev/next, share, save, unsaved-changes prompt); floating Pencil palette (pen, marker,
+highlighter, eraser, text highlight, 6 colours, width, undo) turning PencilKit strokes into PDF ink
+annotations; Organize (rotate/reorder by drag/delete/insert blank or file/extract, page-range field);
+Protect/remove (engine); Combine (new file) and drop-a-PDF → "Combine with this document / Open in New
+Window"; Compress (new file); Convert (PNG/JPEG pages, text); AI assistant (bring-your-own Anthropic key in
+the Keychain, exact text shown before Send, streaming, `claude-opus-5` default, model editable); Scan to
+PDF (dark camera screen, mode strip Document · Whiteboard · ID Card · Book; VisionKit for Document; own
+AVFoundation capture with live rectangle detection and draggable corners for the others; photo import);
+widgets (Recents small/medium/large, Scan, Lock Screen circular/rectangular/inline, Control Center
+"Scan to PDF"); App Intents + App Shortcuts (Open recent, Scan, Combine, Compress; phrases en + ar);
+Core Spotlight indexing of recents with engine `text.plain`; multiple windows (`WindowGroup(for: URL.self)`),
+drag & drop of PDFs between windows; Files app (open in place, app Documents folder visible).
+
+**Limits / honest notes:**
+* The OCR text layer is written by Core Text (invisible text mode) while the scan PDF is generated with
+  `UIGraphicsPDFRenderer`; the engine has no OCR-layer method yet, so the per-word ActualText rule of the
+  web OCR does not apply to iOS scans. Arabic OCR is used only if `supportedRecognitionLanguages()`
+  reports Arabic at runtime; otherwise the scanner says so and recognises English only.
+* Markup on a **password-protected** file cannot be saved incrementally (PDFKit re-writes the encryption):
+  the user chooses "Keep Password" (AES-256 whole rewrite with the password they typed, original
+  permissions) or "Save Without Password".
+* Undo covers markup strokes and engine steps (whole-file snapshots, capped at 300 MB); no redo.
+* Not on iOS yet (web/desktop only): Fill & sign, form preparation, redaction, digital signatures, page
+  marks, Office export/import (iOS Convert makes pictures and text), compare, standards, accessibility
+  tools, batch, library indexing, cloud drives. Local AI servers (Ollama/LM Studio on localhost) are not
+  offered on iOS.
+* Page labels inside PDFKit's own thumbnail rail use PDFKit's digits.
+* No Apple team: simulator only. A device build needs `DEVELOPMENT_TEAM`, automatic signing and the App
+  Group `group.sa.zood.pdf` registered for `sa.zood.pdf.ios` and `sa.zood.pdf.ios.widgets`.
+
+**Owner actions:** install Xcode 26+ and Rust; `brew install xcodegen`; run `bash scripts/ios/build.sh`
+(iPhone 17 + iPad Pro 13-inch (M4) simulators, time-boxed tests, screenshots into `docs/design/ios/`);
+fix any SwiftUI compile errors it reports; for a device, set the Apple team as above.
+
+## Export and Compare (`warraq-office`, Export sheet, Compare panel)
+
+Architecture: ADR 0013. Engine methods: `export.docx|xlsx|pptx|html|markdown|text` (document), `export.zip`
+(static), `export.png` (feature `render` only), `compare.text` (document + other PDF as blob),
+`compare.visual` / `compare.report` (static).
+
+### Proven by tests
+| What | Test |
+| --- | --- |
+| Text export of 13 Arabic/Urdu/Persian corpus files (Chrome-made + synthetic Word/LibreOffice-style) equals the logical truth at ≥ 99.8 % (the acid floor) | `warraq-office/tests/export.rs::text_export_of_the_arabic_corpus_equals_the_logical_truth` |
+| DOCX: required parts present and well-formed (quick-xml); every Arabic paragraph has `<w:bidi/>`, every run holding Arabic letters has `<w:rtl/>`; document.xml text ≥ 99 % of the truth; `w:lang w:bidi="ar-SA"`; title in core properties | `export.rs::docx_has_bidi_arabic_paragraphs_in_logical_order` (news/Amiri, mixed, synthetic Word, tashkeel) |
+| XLSX of a generated ruled Arabic table: sheet `جدول 1`, RTL view, A1 = rightmost header, Western/Arabic-Indic numbers as numbers (`٣٥٠` → 350, `٧` → 7) | `export.rs::xlsx_of_a_generated_arabic_table_has_the_right_cells` |
+| XLSX of the Chrome-made corpus table (borders drawn as 1-unit filled rectangles): 5 rows, `المنتج` in A1, D2 = 13500 | `export.rs::chrome_table_corpus_file_becomes_a_spreadsheet` |
+| Row/column spans from missing rules → XLSX `mergeCell`, DOCX `gridSpan` | `export.rs::merged_cells_become_spans`, `table.rs` unit tests |
+| DOCX/HTML/Markdown keep the table between the paragraphs before/after it; HTML `lang`/`dir`, `<th>` row, headings, no scripts | `export.rs::docx_and_html_keep_the_table_structure` |
+| Prose (two columns, news, lists, English) is never taken for a table | `export.rs::two_column_prose_is_not_a_table` |
+| PPTX: one slide per page, all parts well-formed, RTL paragraphs | `export.rs::pptx_has_one_slide_per_page_with_positioned_text` |
+| Independent readers open our files: python-docx (paragraphs, table cell), openpyxl (RTL view, values), python-pptx (2 slides) | `export.rs::python_office_readers_open_our_files` (skips when not installed; ran here) |
+| Page ranges and typed errors (`page_out_of_range`, `invalid_params`) | `export.rs::page_ranges_and_bad_params`, `warraq-core/tests/export_compare_methods.rs` |
+| Compare: identical → no changes; one changed word (ثلاثين → عشرين) found with one rectangle on each document at the right place; insertions/deletions across pages; tashkeel ignored by default and detected on request | `warraq-office/tests/compare.rs` |
+| Diff correctness (ops rebuild the target), Myers minimality, 50 000-word unrelated inputs stay bounded | `compare.rs` unit tests |
+| Visual diff: changed region box, overlay PNG, size mismatch/garbage rejected | `compare.rs::visual_diff_finds_the_changed_region`, `tests/no_panic.rs` |
+| HTML report: `lang`/`dir` from locale, `<del>`/`<ins>` with `dir`, Arabic-Indic counts, data-URI images, no scripts, no URLs | `compare.rs::html_report_contains_the_change_and_no_scripts`, `export_compare_methods.rs` |
+| No panic on 600 mutated content streams through rules → tables → every writer; 3000 mutated ZIPs; random rasters | `warraq-office/tests/no_panic.rs` (`WARRAQ_SMOKE_CASES`) |
+| RPC: all methods registered; exports leave the document unchanged; `export.zip` rejects paths/duplicates | `warraq-core/tests/export_compare_methods.rs` |
+| **UI, en + ar**: Export sheet → Word of `sample-ar.pdf` → saved via the save picker → unzipped in the test: paragraphs in logical order (`هذا ملف اختبار صغير لتطبيق زود PDF، مكتوب باللغة العربية.`), all `w:bidi`, Heading1, page 2 after page 1; no network | `tests/e2e/export-compare.spec.ts` |
+| **UI, en + ar**: Excel of the Arabic table fixture → cells A1 `المنتج`, A2 `حاسوب محمول`, D2 13500, localised sheet name | `export-compare.spec.ts` |
+| **UI, en + ar**: Pictures with a page range typed in Arabic-Indic digits (`١-٢`); an out-of-range page disables Export; ZIP of two 144-dpi PNGs | `export-compare.spec.ts` |
+| **UI, en + ar**: Compare `compare-v1.pdf` with `compare-v2.pdf` chosen through the file chooser → exactly one change `ثلاثين → عشرين`; clicking it shows both pages with one highlight each; the visual pass lists page 1 only; the saved HTML report contains the change, the overlay image and no script | `export-compare.spec.ts` |
+| **UI**: Convert card → file chooser → Export sheet → text export | `export-compare.spec.ts`, `App.test.tsx` |
+| Page-range parser (Arabic-Indic/Persian digits, `،`, en dash), file names, engine call shapes, panel store | `exporter.test.ts`, `comparer.test.ts`, `panels.test.ts` |
+
+### Not done / limits (honest)
+* **Fidelity**: exports are structured documents, not layout copies. Fonts, colours, images (DOCX "images
+  optional": not done), lists, columns, footnotes and links are not reproduced; PPTX places one text box per
+  paragraph/cell at its PDF position with a substitute font (slack added), so text may reflow. Headings come from
+  font size only; italic from font names/descriptors only (synthetic slant is not detected).
+* **Tables**: ruled grids need both horizontal and vertical rules (booktabs-style tables with only horizontal rules
+  fall back to alignment detection); alignment tables need ≥ 3 rows with the same column count, so tables with
+  empty cells in the text-only style may be missed; tables spanning pages are two tables; nested tables are
+  flattened; rotated pages (`/Rotate`) are not handled for rules.
+* **Compare**: word-level only (no character-level highlight inside a word, no moved-block detection); a change
+  adjacent to a deletion on another page is reported as one change spanning both pages; the visual pass covers the
+  first 30 pages at 480 px width and compares pages by index (an inserted page makes later pages differ); both
+  files must open without a password (a protected revised file fails with an error toast).
+* **PNG export** uses PDFium in the viewer; the engine's `export.png` (hayro) is only compiled with the `render`
+  feature and has no test of its own here (the existing `pages.render` test covers the renderer).
+* The fuzz targets `ruling_tables` and `zip_read` (`packages/core/fuzz`) compile; they were not run under
+  cargo-fuzz here (no nightly). The stable smoke test above runs in `verify.sh`.
+* python-docx/openpyxl/python-pptx are not part of CI images; the reader test skips without them.
+* Desktop and extension hosts use the same UI and engine code but have no Export/Compare spec of their own.
+
+## Scan & OCR (`packages/ui/src/ocr`, `warraq-core/src/ocr`, ADR 0016)
+
+tesseract.js 7 (LSTM-only cores) with tessdata 4.1.0 "best-int" models for `ara`, `eng`, `fas`, `urd`, all served
+from the app's origin (`ocr/`); models fetched by `scripts/fetch-ocr-models.sh` (pinned SHA-256, git-ignored cache,
+not committed: 28 MB). Own preprocessing in a worker; the engine writes the invisible text layer.
+
+### Proven by tests
+| What | Test |
+| --- | --- |
+| Preprocessing on synthetic images: known rotations recovered within 0.3° (±15°), shadow gradient flattened, Sauvola, despeckle bounds, homography/warp, header-only size checks (64 MP / 16 000 px) | `ocr/preprocess.test.ts` |
+| Language codes, tesseract word tree → words with lines | `ocr/recognizer.test.ts` |
+| `ocr.addTextLayer`: invisible `3 Tr` text, `Tz` to the word box, words read back in logical order (Arabic, tashkeel, digits in RTL words), existing text kept, one incremental update (original bytes a prefix), several pages in one commit, low-confidence words skipped, `/Direction` never written, rotated matrix on a crooked page, `/Rotate` pages, hostile params rejected | `warraq-core/tests/ocr.rs` |
+| RTL words: visual order in `/ReversedChars`, no ActualText (PDFium-searchable); a space glyph after each word keeps tightly set Arabic words apart | `ocr.rs::rtl_words_…`, `tightly_set_words_stay_separate` |
+| `ocr.createPdf`: pages from JPEG (DCT passthrough) and 1-bit/gray images with a text layer; hostile/truncated images rejected | `ocr.rs` |
+| **Make searchable (e2e, ar)**: scanned Arabic PDF → Scan & OCR (Arabic by default, Arabic-Indic numerals, «صفحة واحدة بلا نص») → progress → **viewer Ctrl+F finds «الحكومية»** → Save: original bytes a prefix, 2 revisions, no `/Direction`; engine `text.plain` of the saved bytes contains the words; reopened, viewer search finds «التحول»; zero non-localhost requests, zero CSP errors | `ocr.spec.ts` |
+| **Scan pages (e2e)**: crooked 8° photo → skew **detected 8.x°** (within 0.5°) → cleaned preview → Create PDF opens in the viewer → Save: 1 page, image + `/Lang (ar)`, Arabic text read back | `ocr.spec.ts` |
+| Cancel stops recognition, document unchanged; a 30 000 × 30 000 PNG header is refused before decoding | `ocr.spec.ts` |
+| **MV3 extension**: the same scan works under the extension CSP (worker from its file, no `blob:` worker, no `unsafe-eval`) | `ocr.spec.ts` |
+
+### Measured accuracy (2026-09-26, headless Chromium, the real UI path)
+Character accuracy = 1 − Levenshtein / truth length, after NFC, bidi controls and tatweel removed and whitespace
+collapsed; first number with tashkeel removed from both sides, in brackets with tashkeel kept. `pnpm ocr:bench`
+("Make searchable" + Save + engine `text.plain`), floors in `tests/ocr/baseline.json` (tolerance 2 points),
+raw results in `tests/ocr/results.json`. E2E pages: `scan-ar` (straight, title + first paragraph) **97.3 %**,
+`crooked8-ar` (Scan pages from a crooked JPEG) **71.3 %**.
+
+| Page (300 dpi, image-only PDF) | Languages | Straight | Crooked 5° | Crooked 8° | Shadowed |
+| --- | --- | --- | --- | --- | --- |
+| Arabic news (Amiri) | ar | 89.0 % (88.5 %) | 75.2 % (75.0 %) | 87.3 % (86.8 %) | 96.1 % (95.6 %) |
+| Arabic, full tashkeel (Amiri) | ar | 50.2 % (35.2 %) | 41.5 % (29.8 %) | 53.1 % (39.1 %) | 38.2 % (23.3 %) |
+| Urdu Nastaliq | ur | 83.0 % (83.0 %) | 83.0 % (83.0 %) | 80.5 % (80.5 %) | 83.0 % (83.0 %) |
+| Persian (Vazirmatn) | fa | 96.1 % (96.1 %) | 96.1 % (96.1 %) | 96.1 % (96.1 %) | 96.5 % (96.5 %) |
+| Mixed Arabic/English (Naskh) | ar+en | 89.0 % (88.7 %) | 90.9 % (90.6 %) | 91.3 % (91.0 %) | 88.8 % (88.5 %) |
+
+About 4–8 s per page on this 4-core container.
+
+### Not done / limits (honest)
+* **Tashkeel**: the Arabic model drops most diacritics (35 % with tashkeel kept on the fully vocalised page, ~50 %
+  without); Quranic/vocalised text is not usable as OCR output.
+* **Accuracy is uneven across variants** of the same page (Arabic news: 75 % crooked 5° vs 96 % shadowed): errors
+  are mostly line merges and alef-maqsura/yaa confusions from the model, not investigated further; the Scan tab's
+  binarisation costs accuracy on clean photos (crooked8-ar 71 %).
+* Urdu Nastaliq tops out around 83 % (tessdata `urd` is trained on Naskh-like fonts).
+* **Desktop**: the web UI runs in Tauri (same CSP allowances) but no desktop spec runs OCR; the camera uses
+  `getUserMedia` (web) — no native camera bridge, the file picker is the desktop path.
+* The first OCR needs the core and the chosen model from the app's origin (Arabic ~2.5 MB, English 23 MB); the
+  service worker caches them on first use, not at install.
+* PDFium in the viewer reads the RTL words through `/ReversedChars`; readers that ignore that marker see visual
+  order (same as Chrome's own Arabic PDFs).
+
+## Organize, Combine, Compress
+
+Engine: `warraq-pdf` (`outline.rs`, `import.rs`, compact writer in `writer.rs`) and `warraq-core`
+(`methods/organize.rs`, `ops/{image,geometry,compress}.rs`). UI: `packages/ui/src/{organize,combine,compress}`,
+`services/{coreOps,history,ranges,zip}.ts`, panels via `tools/panels.ts`. Undo model and Compress-as-new-file: ADR 0007.
+
+### Proven by tests
+| What | Test |
+| --- | --- |
+| Outline read with every destination form (explicit, `/Dests` name, name tree, `GoTo` action, `/D` dict); cycles/depth bounded; pypdf reads the outlines we write (Arabic titles) | `warraq-pdf/tests/import.rs` |
+| Merge: one top-level bookmark per file with the file's own bookmarks nested and remapped; form fields merged, clashing names renamed (`name` → `name_2`, pypdf agrees); page labels kept per file (pypdf: `i ii iii i ii 1`) | `import.rs::merge_nests_each_files_outline_renames_fields_and_keeps_labels` |
+| Extract keeps only the bookmarks of extracted pages; incremental insert appends a bookmark entry + fields, original bytes a prefix | `import.rs` |
+| Compact rewrite: object streams + xref stream (PDF 1.5), smaller than the table form, readable by us and pypdf, incremental update on top works; AES-256 protection kept (pypdf decrypts) | `warraq-pdf/tests/compact.rs` |
+| `pages.insertImage`: JPEG embedded byte-for-byte (DCTDecode passthrough), PNG → Flate + `/SMask` from alpha, page size of the neighbour, picture centred and fitted; hostile/truncated pictures are errors (no panic); 100 MP / 64 k side bounds | `warraq-core/tests/organize.rs`, `ops/image.rs` tests |
+| `pages.trimMargins`: CropBox = text (font metrics) ∪ paths (white fills ignored) ∪ images, + margin; `dryRun`; blank page → `nothing_to_trim` | `organize.rs::trim_margins_…`, `ops/geometry.rs` tests |
+| `pages.replace` (one update), `pages.combine` (files at a position, one bookmark each), `pages.split` (every N, ranges, top-level bookmarks incl. leading pages; each part keeps its bookmark), `pages.boxes`, `doc.outline`, `pdf.merge` titles | `warraq-core/tests/organize.rs` |
+| `doc.compress`: placement-based downsampling (CTM at `Do`; 480 dpi → 150 dpi), JPEG re-encode (jpeg-encoder) / Flate for lossless in "high", masks/`/Decode`/special colour spaces/corrupt pictures skipped and reported, uncompressed streams Flate-compressed, duplicate streams/fonts stored once, thumbnails + PieceInfo dropped in "smallest"; presets ordered (smallest < balanced < high < original); **hayro raster of the output vs the original: mean pixel difference < 1.5/255 (balanced), < 3/255 (smallest)**; open document unchanged; protection kept | `organize.rs::compress_*` |
+| No panic / bounded time: 600 mutated documents (bookmarks, pictures) through boxes, trim, split, combine, replace, merge, compress | `warraq-core/tests/organize_smoke.rs` |
+| Page ranges incl. Arabic-Indic/Persian digits and «،» (`١-٣، ٥`), open ranges, errors with reasons, bounds | `ranges.test.ts` |
+| Store-only ZIP writer: CRC-32, UTF-8 names (bit 11), DOS date/time, unique/safe names, ZIP64 refused | `zip.test.ts` |
+| Undo/redo history of byte versions: order, redo cleared by new edits, out-of-sync refusal, count/byte bounds | `history.test.ts` |
+| Selection (click/shift/meta), RTL-mirrored keyboard focus, drop slot → `pages.move` target, crop margins ↔ CropBox for /Rotate 0/90/180/270, drawn rectangle → margins, drop-overlay halves mirrored in RTL | `organize/logic.test.ts` |
+| Organize/Combine/Compress are ready core tools (sidebar, More sheet, tool gallery, ⌘K) and open through the tool bus | `registry.test.ts`, `App.test.tsx`, `home.spec.ts` |
+| **Organize (e2e, en)**: rotate from the organize menu, drag page 6 before page 1, delete from the right-click menu, Add Page (neighbour size), Alt+→ moves the selection, undo + redo; saved via the save picker: original bytes are a prefix, 6 revisions, page order by page sizes, `/Rotate 90` on the right page; reopened | `organize.spec.ts` |
+| **Organize (e2e, ar)**: RTL grid (page 1 on the right), Arabic labels and plurals; insert a PDF from the ⋯ menu, insert JPEG + PNG pictures, replace page 1, crop by margins (CropBox `[40 0 420 550]`), trim margins; saved bytes: prefix, 10 pages in the expected order, JPEG bytes present verbatim | `organize.spec.ts` |
+| **Extract / Split (e2e)**: shift-click multi-select → Extract saves `organize-6 (pages 2-3).pdf` (document untouched); split by «١-٢، ٥» (reversed range rejected with a message) and by bookmarks → ZIP with named parts, each part's pages and bookmark checked | `organize.spec.ts` |
+| **Crop by drawing** a rectangle on the page preview → CropBox within 6 pt of the drawn area | `organize.spec.ts` |
+| **Phone width (390 px)**: organize grid fits (no horizontal overflow, ≥ 2 pages per row), ⋯ menu stays on screen, rotate from it | `organize.spec.ts` |
+| **Combine (e2e)**: from Home pick two files, reorder with the button alternative, combine → new unsaved “Combined.pdf” (8 pages); saved: page order and outline (one entry per file, the file's chapters nested with page indices) | `combine.spec.ts` |
+| **Drop on an open document (e2e, ar)**: split overlay; dropping on «دمج مع organize-6.pdf» (start half, right in RTL) appends as an incremental update (prefix, 8 pages, `sample-ar.pdf` bookmark at page 7); the other half («Open instead») opens the file as its own document | `combine.spec.ts` |
+| **Combine at a position (e2e)**: from the document tool picker, insert after page 2 | `combine.spec.ts` |
+| **Compress (e2e, en/ar)**: before/after sizes (`452.9 KB`, `٤٥٢٫٩ ك.ب`), “% smaller”, pictures recompressed; Save Compressed Copy → `photo-heavy (compressed).pdf` < ¼ of the original, 1 page, object streams; the open document is not edited; Open Compressed Copy opens an unsaved new document | `compress.spec.ts` |
+
+### Not done / not proven
+* **Desktop / extension**: the same UI runs there, but no spec exercises these tools in Tauri or in the MV3 page;
+  the desktop drop path (`onHostDrop` with a point but no HTML5 drag preview) shows the two halves as a choice
+  sheet — covered by code, not by a desktop test.
+* **Long-press** on touch screens opens the page menu (pointer timer) — not exercised by Playwright (no touch
+  emulation in the spec); right-click, ⋯ and Shift+F10 are.
+* **Trim margins** ignores clipping paths and shadings, and form XObject `/BBox` clipping; text boxes use font
+  ascent/descent (may leave a few points of space).
+* **Compress** does not re-encode CMYK/Indexed/Separation/Lab pictures, images with masks or `/Decode`, JPX,
+  JBIG2 or CCITT (reported as "left as they are"); fonts are not subset (only exact duplicates are shared).
+  Placement is measured on page content only (pictures used only in annotation appearances keep their resolution).
+* **Page labels** are merged only when pages are appended at the end (Combine from Home, append on drop); inserting
+  in the middle leaves the target's labels unchanged.
+* **Encrypted sources** for Insert from file / Combine need their password: the UI does not ask yet
+  (`password_required` is shown as an error).
+* Thumbnails in the grid are rendered by PDFium through the viewer; very large documents render them lazily.
+* Organize/Compress add ~0.6 MB to the wasm (warraq-text interpreter + JPEG/PNG codecs); the merged engine with
+  signing and Office export is ~5.1 MB unoptimised.
+

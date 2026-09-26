@@ -65,5 +65,16 @@ assert.equal(call(reopened, "doc.info").json.pageCount, 2);
 throwsCode(() => doc.call("no.such", "{}", []), "unknown_method");
 throwsCode(() => doc.call("pages.rotate", "not json", []), "invalid_params");
 
+// 6. Create PDF (warraq-create): DOCX fixture -> PDF that opens and reads back in Arabic.
+const docx = new Uint8Array(readFileSync(path.join(root, "tests/fixtures/create/report.docx")));
+const created = callStatic("create.fromFiles", JSON.stringify({ files: [{ name: "report.docx" }], locale: "ar" }), [docx]);
+const createdInfo = JSON.parse(created.json);
+assert.equal(createdInfo.documents[0].name, "report.pdf");
+assert.equal(createdInfo.documents[0].pageCount, 2);
+const createdDoc = WarraqDocument.open(created.blobs[0], undefined);
+const createdText = call(createdDoc, "text.plain").json.text;
+assert.ok(createdText.includes("تقرير الربع الأول"), createdText);
+throwsCode(() => callStatic("create.fromFiles", JSON.stringify({ files: [{ name: "a.docx" }] }), [new Uint8Array([80, 75, 3, 4])]), "malformed_input");
+
 const methods = JSON.parse(callStatic("methods.list", "", []).json);
 console.log(`wasm smoke OK — ${methods.document.length} document methods, ${methods.static.length} static`);

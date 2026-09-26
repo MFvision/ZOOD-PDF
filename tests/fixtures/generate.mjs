@@ -1,6 +1,7 @@
 // Generates the small fixture PDFs used by the e2e specs with Chromium's PDF printer (a "Chrome-made
 // PDF", like many real-world files). The Arabic fixture embeds Noto Naskh Arabic (OFL) from
 // @embedpdf/fonts-arabic so it renders the same everywhere. Run: node tests/fixtures/generate.mjs
+// (optionally followed by the file names to (re)generate, leaving the others untouched).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -34,11 +35,26 @@ const docs = {
       <p>هذا ملف اختبار صغير لتطبيق زود PDF، مكتوب باللغة العربية.</p>
       <p>العقد رقم ٢٠٢٦ بين الطرفين، والمبلغ ١٥٠٠ ريال سعودي.</p></div>
     <div class="page" lang="ar" dir="rtl"><h1>الصفحة الثانية</h1><p>تُستخدم هذه الصفحة لاختبار التنقل بين الصفحات.</p></div>`,
+  // Redact: an Arabic name to find with a tashkeel variant of the query, and personal data patterns.
+  'redact-ar.pdf': `
+    <div class="page" lang="ar" dir="rtl"><h1>خطاب رسمي</h1>
+      <p>كتب محمد بن عبدالله هذا الخطاب إلى مدير الإدارة.</p>
+      <p>ثم وقّع محمد على العقد في مدينة الرياض.</p>
+      <p>هذا السطر يبقى كما هو بعد التنقيح.</p></div>`,
+  'pii.pdf': `
+    <div class="page"><h1>Customer record</h1>
+      <p>Email: sara.k@example.com</p>
+      <p>National ID: 1010101010</p>
+      <p>IBAN: SA03 8000 0000 6080 1016 7519</p>
+      <p>Invalid ID stays: 1000000009</p>
+      <p lang="ar" dir="rtl">رقم الإقامة ٢٠٠٠٠٠٠٠٠٦</p></div>`,
 };
+const only = process.argv.slice(2);
 
 const browser = await chromium.launch();
 const page = await browser.newPage();
 for (const [name, body] of Object.entries(docs)) {
+  if (only.length && !only.includes(name)) continue;
   await page.setContent(`<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${body}</body></html>`);
   await page.evaluate(() => document.fonts.ready);
   const pdf = await page.pdf({ format: 'A4', printBackground: true, tagged: true });

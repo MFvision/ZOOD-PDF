@@ -34,9 +34,9 @@ export async function stubSavePicker(context: BrowserContext): Promise<void> {
       createWritable: async () => {
         const chunks: number[] = [];
         return {
-          // a loop, not push(...spread): large files exceed the argument limit
+          // A loop, not push(...bytes): spreading a large file overflows the call stack.
           write: async (b: Uint8Array) => {
-            for (const v of new Uint8Array(b)) chunks.push(v);
+            for (const x of new Uint8Array(b)) chunks.push(x);
           },
           close: async () => void w.__saved.push({ name: opts.suggestedName, bytes: chunks }),
         };
@@ -117,4 +117,25 @@ export function writeTemp(name: string, bytes: Buffer): string {
 
 export function latin1(b: Buffer): string {
   return b.toString('latin1');
+}
+
+/**
+ * Drags a redaction mark with EmbedPDF's redact tool across the first page (fractions of the page box)
+ * and waits until our Redact panel counts it. EmbedPDF attaches its pointer handlers a moment after the
+ * mode switch; a drag that lands before that draws nothing, so the drag is retried until it registers.
+ */
+export async function drawRedactionMark(page: Page, from: [number, number], to: [number, number]): Promise<void> {
+  const counter = page.locator('[data-testid=redact-marks]');
+  const before = Number((await counter.getAttribute('data-count')) ?? '0');
+  const count = async () => Number((await counter.getAttribute('data-count')) ?? '0');
+  await expect(async () => {
+    if ((await count()) > before) return; // an earlier drag registered late
+    const box = await pageBox(page, 0);
+    await page.mouse.move(box.x + box.width * from[0], box.y + box.height * from[1]);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * ((from[0] + to[0]) / 2), box.y + box.height * ((from[1] + to[1]) / 2), { steps: 5 });
+    await page.mouse.move(box.x + box.width * to[0], box.y + box.height * to[1], { steps: 5 });
+    await page.mouse.up();
+    await expect.poll(count, { timeout: 2_000 }).toBeGreaterThan(before);
+  }).toPass({ timeout: 20_000, intervals: [250, 500, 1_000] });
 }

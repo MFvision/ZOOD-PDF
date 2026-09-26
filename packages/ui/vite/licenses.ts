@@ -34,6 +34,11 @@ export const SHIPPED = [
   'zlibjs',
 ] as const;
 
+/** Non-npm assets bundled into the build, with their licence file (relative to packages/ui). */
+export const BUNDLED_ASSETS = [
+  { name: 'Liberation Fonts', version: '2.1', license: 'OFL-1.1', file: 'assets/fonts/liberation/OFL.txt', out: 'liberation-fonts-OFL.txt' },
+] as const;
+
 export const ALLOWED = /^(MIT|Apache-2\.0|BSD-2-Clause|BSD-3-Clause|ISC|Zlib|OFL-1\.1|CC0-1\.0|Unicode-3\.0)$/;
 
 const REPO = path.resolve(UI_ROOT, '../..');
@@ -83,6 +88,10 @@ export function zoodLicenses(): Plugin {
         for (const f of p.files) {
           this.emitFile({ type: 'asset', fileName: `licenses/${p.name.replace('@', '').replace('/', '-')}-${f.name}.txt`, source: f.text });
         }
+      }
+      for (const a of BUNDLED_ASSETS) {
+        index.push(`${a.name} ${a.version} (${a.license})`);
+        this.emitFile({ type: 'asset', fileName: `licenses/${a.out}`, source: fs.readFileSync(path.join(UI_ROOT, a.file), 'utf8') });
       }
       this.emitFile({ type: 'asset', fileName: 'licenses/INDEX.txt', source: `${index.join('\n')}\n` });
       const notices = path.join(REPO, 'THIRD-PARTY-NOTICES.md');

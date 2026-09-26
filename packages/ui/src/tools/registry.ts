@@ -5,6 +5,7 @@
  */
 import type { MessageKey } from '../i18n';
 import type { IconName } from '../app/icons';
+import { openToolPanel } from './panels';
 import { openScan } from '../ocr/store';
 
 export type ToolId =
@@ -44,8 +45,10 @@ export interface ToolDef {
   status: 'ready' | 'hidden';
   /** Viewer-backed tools: EmbedPDF commands executed when the tool is picked. */
   viewer?: { commands: string[] };
-  /** Core-backed tools: set by the agent implementing the tool. */
-  core?: { open: () => void | Promise<void> };
+  /** Core-backed tools: set by the agent implementing the tool. `docId`: the document to act on. */
+  core?: { open: (docId?: string) => void | Promise<void> };
+  /** Tools whose UI is a side panel (opened through tools/panels; one panel at a time). */
+  panel?: string;
   /** Needs an open document. */
   needsDocument: boolean;
 }
@@ -73,23 +76,33 @@ function tool(
 
 export const TOOLS: readonly ToolDef[] = [
   tool('edit', 'edit', 'blue'),
-  tool('organize', 'organize', 'indigo'),
+  // Organize / Combine / Compress: engine-backed panels (see tools/panels.ts).
+  tool('organize', 'organize', 'indigo', { status: 'ready', core: { open: (docId) => openToolPanel('organize', docId) } }),
   tool('comment', 'comment', 'yellow', { status: 'ready', viewer: { commands: ['mode:annotate'] } }),
   tool('fill-sign', 'sign', 'purple', { status: 'ready', viewer: { commands: ['mode:insert'] } }),
-  tool('protect', 'lock', 'graphite', { status: 'ready', viewer: { commands: ['document:protect'] } }),
-  tool('redact', 'redact', 'red', { status: 'ready', viewer: { commands: ['mode:redact'] } }),
-  tool('export', 'export', 'green'),
-  tool('create', 'create', 'blue', { needsDocument: false }),
-  tool('compare', 'compare', 'teal'),
+  // Redact: EmbedPDF draws the marks (mode:redact) and the engine applies them from the side panel.
+  // Protect: engine only (AES-256), in the side panel.
+  tool('protect', 'lock', 'graphite', { status: 'ready', panel: 'protect', core: { open: (docId) => openToolPanel('protect', docId) } }),
+  tool('redact', 'redact', 'red', {
+    status: 'ready',
+    viewer: { commands: ['mode:redact'] },
+    panel: 'redact',
+    core: { open: (docId) => openToolPanel('redact', docId) },
+  }),
+  // Export and Compare: core-backed panels (warraq-office), see tools/panels.ts.
+  tool('export', 'export', 'green', { status: 'ready', core: { open: (docId) => openToolPanel('export', docId) } }),
+  // Create PDF: warraq-create (own layout engine) via `create.fromFiles`; sheet in tools/create.
+  tool('create', 'create', 'blue', { needsDocument: false, status: 'ready', core: { open: () => openToolPanel('create') } }),
+  tool('compare', 'compare', 'teal', { status: 'ready', core: { open: (docId) => openToolPanel('compare', docId) } }),
   // Scan & OCR: its sheet offers "Make searchable" for the open PDF and "Scan pages" from images.
   tool('scan', 'scan', 'cyan', { status: 'ready', needsDocument: false, core: { open: () => openScan() } }),
-  tool('combine', 'combine', 'orange'),
-  tool('compress', 'compress', 'mint'),
+  tool('combine', 'combine', 'orange', { status: 'ready', needsDocument: false, core: { open: (docId) => openToolPanel('combine', docId) } }),
+  tool('compress', 'compress', 'mint', { status: 'ready', core: { open: (docId) => openToolPanel('compress', docId) } }),
   tool('prepare-form', 'form', 'pink', { status: 'ready', viewer: { commands: ['mode:form'] } }),
   tool('ai', 'sparkle', 'purple'),
   tool('page-marks', 'stamp', 'orange'),
   tool('digital-signature', 'certificate', 'indigo'),
-  tool('standards', 'badge', 'teal'),
+  tool('standards', 'badge', 'teal', { status: 'ready', panel: 'standards', core: { open: (docId) => openToolPanel('standards', docId) } }),
   tool('accessibility', 'accessibility', 'blue'),
   tool('batch', 'batch', 'graphite', { needsDocument: false }),
   tool('library', 'library', 'green', { needsDocument: false }),

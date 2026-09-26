@@ -52,6 +52,7 @@ pub struct RawGlyph {
     pub lang: Option<Rc<str>>,
     pub font: Option<FontKey>,
     pub bold: bool,
+    pub italic: bool,
 }
 
 #[derive(Clone)]
@@ -550,6 +551,7 @@ impl<'s, S: ContentSource + ?Sized> Interpreter<'s, S> {
                     lang: lang.clone(),
                     font: Some(font.key),
                     bold: font.bold || gs.mode == 2,
+                    italic: font.italic,
                 };
                 self.seq += 1;
                 self.emit(g);
@@ -654,6 +656,7 @@ impl<'s, S: ContentSource + ?Sized> Interpreter<'s, S> {
             lang: first.lang.clone(),
             font: first.font,
             bold: inner.iter().any(|g| g.bold),
+            italic: inner.iter().any(|g| g.italic),
         };
         if unit.text.is_empty() {
             return;

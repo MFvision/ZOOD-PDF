@@ -79,3 +79,23 @@ describe('looksProtected', () => {
     expect(looksProtected(enc('%PDF-1.7\n...trailer\n<< /Size 9 /Root 1 0 R >>\n%%EOF'))).toBe(false);
   });
 });
+
+// Protect: encrypted originals go through the engine with their password
+describe('encrypted originals', () => {
+  const enc = (s: string) => new TextEncoder().encode(s);
+  const plain = enc('%PDF-1.7\ntrailer\n<< /Size 3 /Root 1 0 R >>\n%%EOF');
+  const locked = enc('%PDF-1.7\ntrailer\n<< /Size 3 /Encrypt 5 0 R /Root 1 0 R >>\n%%EOF');
+
+  it('rebases even when PDFium saved the protected file decrypted (the engine re-encrypts)', () => {
+    expect(saveStrategy({ original: locked, pdfium: plain, redacted: false, encrypted: true })).toEqual({ mode: 'incremental' });
+  });
+
+  it('opens the original with the password the user typed', async () => {
+    const engine = fakeEngine({
+      call: vi.fn(async () => ({ json: { mode: 'incremental' }, blobs: [new Uint8Array([1, 2, 3, 4])] })) as EngineClient['call'],
+    });
+    const original = new Uint8Array([1, 2, 3]);
+    await rebaseOnOriginal(engine, original, new Uint8Array([7]), 'سر');
+    expect(engine.open).toHaveBeenCalledWith(expect.any(String), original, 'سر');
+  });
+});

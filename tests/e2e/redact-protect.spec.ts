@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { fixture, fixtureBytes, latin1, openViaCard, pageBox, pickTool, savedFiles, stubSavePicker, waitForDocument } from './helpers';
+import { fixture, fixtureBytes, latin1, openViaCard, drawRedactionMark, pickTool, savedFiles, stubSavePicker, waitForDocument } from './helpers';
+import { openInEngine } from './engine';
 
 test.describe('viewer-backed tools reachable from our tool picker', () => {
-  test('Redact: mark an area, apply, save as a whole rewrite; the recents preview is dropped', async ({ context, page }) => {
+  test('Redact: mark an area with EmbedPDF, apply through the engine, save as a whole rewrite; the recents preview is dropped', async ({ context, page }) => {
     await stubSavePicker(context);
     await page.goto('/');
     await openViaCard(page, fixture('sample-en.pdf'));
@@ -18,33 +19,38 @@ test.describe('viewer-backed tools reachable from our tool picker', () => {
     await pickTool(page, 'redact');
     await expect(page.locator('[data-epdf-i=redaction-toolbar]')).toBeVisible();
     await page.locator('[data-epdf-i=redact]').click();
-    const box = await pageBox(page, 0);
-    await page.mouse.move(box.x + box.width * 0.08, box.y + box.height * 0.145);
-    await page.mouse.down();
-    await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.17, { steps: 5 });
-    await page.mouse.move(box.x + box.width * 0.85, box.y + box.height * 0.185, { steps: 5 });
-    await page.mouse.up();
-    await page.locator('[data-epdf-i=apply-redaction]').click();
+    await drawRedactionMark(page, [0.08, 0.145], [0.85, 0.185]);
+    // EmbedPDF's PDFium "apply" is hidden; our panel applies the mark through the engine.
+    await expect(page.locator('[data-epdf-i=apply-redaction]')).toBeHidden();
+    await page.locator('[data-testid=redact-apply]').click();
+    await page.locator('[data-testid=redact-confirm]').click();
+    await waitForDocument(page);
     await expect(page.locator('[data-testid=document-view]:visible [data-testid=doc-status]')).toContainText('Edited');
 
     await page.locator('[data-testid=document-view]:visible [data-testid=save]').click();
-    await expect(page.locator('.hud')).toContainText('Saved');
+    await expect(page.locator('.hud', { hasText: 'Saved' })).toBeVisible();
     const [saved] = await savedFiles(page);
     const original = fixtureBytes('sample-en.pdf');
     // Whole rewrite: the original revision (with the redacted text) is not kept as a prefix.
     expect(saved!.bytes.subarray(0, original.length).equals(original)).toBe(false);
     expect(latin1(saved!.bytes)).toMatch(/^%PDF-/);
+    const reopened = await openInEngine(saved!.bytes);
+    expect(reopened.plain()).not.toContain('small two-page fixture');
+    expect(reopened.plain()).toContain('Highlight this sentence');
+    expect(reopened.info().revisions).toBe(1);
+    reopened.close();
 
     await page.getByRole('button', { name: 'Home' }).first().click();
     await expect(card.locator('.thumb-placeholder')).toBeVisible();
     await expect(card.locator('img.thumb-img')).toHaveCount(0);
   });
 
-  test('Protect opens EmbedPDF’s protection sheet', async ({ page }) => {
+  test('Protect opens the engine-backed panel, not EmbedPDF’s protection modal', async ({ page }) => {
     await page.goto('/');
     await openViaCard(page, fixture('sample-en.pdf'));
     await pickTool(page, 'protect');
-    await expect(page.getByText('Require password to open')).toBeVisible();
+    await expect(page.locator('[data-testid=protect-panel]')).toBeVisible();
+    await expect(page.getByText('Require password to open')).toHaveCount(0);
   });
 
   test('Fill & sign and Prepare form switch EmbedPDF to its insert and form tool strips', async ({ page }) => {
@@ -63,8 +69,8 @@ test.describe('viewer-backed tools reachable from our tool picker', () => {
     const page = await context.newPage();
     await page.goto('/');
     await openViaCard(page, fixture('sample-ar.pdf'));
-    await pickTool(page, 'protect');
-    await expect(page.getByText('طلب كلمة مرور للفتح')).toBeVisible();
+    await pickTool(page, 'redact');
+    await expect(page.locator('[data-epdf-i=redact]').getByRole('button')).toHaveAccessibleName(/تنقيح/);
     await context.close();
   });
 });

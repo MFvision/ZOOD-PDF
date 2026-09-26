@@ -2,7 +2,7 @@
  * Document window: unified toolbar (sidebar, title + "Page x of y · Edited", navigation, zoom, tool
  * gallery, inspector), a Pages sidebar with thumbnails, the EmbedPDF viewer and an inspector.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useApp } from '../services/AppContext';
 import type { OpenDocument } from '../services/state';
 import { formatBytes } from '../i18n';
@@ -11,6 +11,16 @@ import { Viewer, type ViewerApi } from '../viewer/Viewer';
 import { Icon } from './icons';
 import { IconButton, MenuButton, Tile, type MenuItem } from './primitives';
 import { runTool } from './useTools';
+import { closeToolPanel, panelFor, useToolPanel } from '../tools/panels';
+import { ExportSheet } from './ExportSheet';
+import { ComparePanel } from './ComparePanel';
+import { PageImage } from './PageImage';
+import { OrganizeView } from '../organize/OrganizeView';
+import { CompressSheet } from '../compress/CompressSheet';
+import { CombineSheet } from '../combine/CombineSheet';
+import { StandardsPanel } from './StandardsPanel';
+import { RedactPanel } from './RedactPanel';
+import { ProtectPanel } from './ProtectPanel';
 
 const wide = () => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 900px)').matches;
 
@@ -25,6 +35,8 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [tool, setTool] = useState<ToolId | null>(null);
   const total = doc.pageCount;
+  /** Redact / Protect panel open for this document (read when a new revision's viewer is ready). */
+  const panelRef = useRef<'redact' | 'protect' | null>(null);
 
   const onReady = useCallback(
     (viewer: ViewerApi, info: { pageCount: number }) => {
@@ -35,8 +47,15 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
       app.dispatch({ type: 'VIEWER_READY', id: doc.id, revision: doc.revision, pageCount: info.pageCount });
       if (doc.pendingTool) {
         const def = toolById(doc.pendingTool as ToolId);
-        if (def && runTool(def, viewer)) setTool(def.id);
+        if (def && runTool(def, viewer, doc.id)) setTool(def.id);
         app.dispatch({ type: 'TOOL_STARTED', id: doc.id });
+      } else {
+        // Still redacting / protecting after the engine rewrote the file (new revision, new viewer).
+        const open = panelRef.current;
+        if (open === 'redact') {
+          viewer.exec('mode:redact');
+          setTool('redact');
+        } else if (open === 'protect') setTool('protect');
       }
       // First-page picture for Recents, rendered by PDFium.
       viewer
@@ -51,20 +70,54 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
   const { registerViewer } = app;
   useEffect(() => () => registerViewer(doc.id, null), [registerViewer, doc.id]);
 
+  // Core-tool panels (Export sheet, Compare panel, Organize grid, Compress and Combine sheets)
+  // requested for this document.
+  const panel = useToolPanel();
+  const mine = panelFor(panel, doc.id, active);
+  const exportOpen = mine && panel?.tool === 'export';
+  const compareOpen = mine && panel?.tool === 'compare';
+  // Standards shares the one side-panel slot with Compare (opening one replaces the other).
+  const standardsOpen = mine && panel?.tool === 'standards';
+  // Redact and Protect (engine-backed) use the same side slot.
+  const redactOpen = mine && panel?.tool === 'redact';
+  const protectOpen = mine && panel?.tool === 'protect';
+  const sideOpen = compareOpen || standardsOpen || redactOpen || protectOpen;
+  useLayoutEffect(() => {
+    panelRef.current = redactOpen ? 'redact' : protectOpen ? 'protect' : null;
+  });
+  const organizing = mine && panel?.tool === 'organize';
+  const compressOpen = mine && panel?.tool === 'compress';
+  const combineOpen = mine && panel?.tool === 'combine';
+  const closePanel = (id: ToolId) => {
+    closeToolPanel(id);
+    setTool((cur) => (cur === id ? null : cur));
+  };
+  const apiRef = useRef(api);
+  useLayoutEffect(() => {
+    apiRef.current = api;
+  });
+
   const pick = (def: ToolDef | null) => {
     setGalleryOpen(false);
     if (!api) return;
+    // Organize replaces the page view: leave it for any other choice.
+    if (organizing && def?.id !== 'organize') closePanel('organize');
+    // Leaving Redact / Protect for another tool closes their panel.
+    if (redactOpen && def?.id !== 'redact') closePanel('redact');
+    if (protectOpen && def?.id !== 'protect') closePanel('protect');
     if (!def) {
       api.exec('mode:view');
       setTool(null);
       return;
     }
-    if (runTool(def, api) && def.id !== 'protect') setTool(def.id);
+    if (def.id === 'organize' || def.id === 'protect') api.exec('mode:view');
+    const sheet = def.id === 'export' || def.id === 'compress' || def.id === 'combine';
+    if (runTool(def, api, doc.id) && !sheet) setTool(def.id);
   };
 
   const status = doc.edited ? ` · ${t('doc.edited')}` : '';
   const tools = readyTools(app.platform);
-  const current = tool ? toolById(tool) : null;
+  const current = organizing ? toolById('organize') : tool ? toolById(tool) : null;
   const more: MenuItem[] = [
     { id: 'save-copy', label: t('doc.saveCopy'), icon: 'save', onSelect: () => void app.saveDocument(doc.id, { saveAs: true }) },
     { id: 'close', label: t('doc.close'), icon: 'close', onSelect: () => onRequestClose(doc.id) },
@@ -138,8 +191,8 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
           onClick={() => setInspectorOpen((v) => !v)}
         />
       </header>
-      <div className={`doc-body${pagesOpen ? ' pages-open' : ''}${inspectorOpen ? ' inspector-open' : ''}`}>
-        {pagesOpen && (
+      <div className={`doc-body${pagesOpen && !organizing ? ' pages-open' : ''}${inspectorOpen && !sideOpen ? ' inspector-open' : ''}${compareOpen ? ' compare-open' : ''}${standardsOpen || redactOpen || protectOpen ? ' tool-panel-open' : ''}`}>
+        {pagesOpen && !organizing && (
           <PagesPanel
             api={api}
             total={total}
@@ -159,6 +212,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
             documentId={`${doc.id}-r${doc.revision}`}
             locale={app.state.locale}
             scheme={app.scheme}
+            password={doc.password}
             onReady={onReady}
             onPageChange={(p) => setPage(p)}
             onZoomChange={(z) => setZoom(z)}
@@ -166,15 +220,46 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
             onSensitiveChange={() => app.markSensitive(doc.id)}
             onError={(m) => app.toast(`${t('toast.openFailed', { name: doc.name })} (${m})`, 'error')}
           />
-          {doc.switching && (
+          {organizing && (
+            <OrganizeView
+              doc={doc}
+              api={api}
+              onExit={(p) => {
+                closePanel('organize');
+                if (p) setTimeout(() => apiRef.current?.goToPage(p), 0);
+              }}
+            />
+          )}
+          {doc.switching && !organizing && (
             <div className="viewer-loading" aria-live="polite">
               <span className="spinner" />
               <span>{t('doc.loading')}</span>
             </div>
           )}
         </div>
-        {inspectorOpen && <Inspector doc={doc} onComments={() => api?.exec('panel:toggle-comment')} />}
+        {compareOpen ? (
+          <ComparePanel key={panel?.nonce} doc={doc} api={api} onClose={() => closePanel('compare')} />
+        ) : redactOpen ? (
+          <RedactPanel
+            key={panel?.nonce}
+            doc={doc}
+            api={api}
+            onClose={() => {
+              closePanel('redact');
+              api?.exec('mode:view');
+            }}
+          />
+        ) : protectOpen ? (
+          <ProtectPanel key={panel?.nonce} doc={doc} onClose={() => closePanel('protect')} />
+        ) : standardsOpen ? (
+          <StandardsPanel key={`${panel?.nonce}:${doc.revision}`} doc={doc} api={api} onClose={() => closePanel('standards')} />
+        ) : (
+          inspectorOpen && <Inspector doc={doc} onComments={() => api?.exec('panel:toggle-comment')} />
+        )}
       </div>
+      {exportOpen && <ExportSheet key={panel?.nonce} doc={doc} api={api} onClose={() => closePanel('export')} />}
+      {compressOpen && <CompressSheet key={panel?.nonce} doc={doc} onClose={() => closePanel('compress')} />}
+      {combineOpen && <CombineSheet key={panel?.nonce} docId={doc.id} onClose={() => closePanel('combine')} />}
     </section>
   );
 }
@@ -240,35 +325,6 @@ function PagesPanel({ api, total, page, revision, onPick }: { api: ViewerApi | n
       </ol>
     </nav>
   );
-}
-
-function PageImage({ api, index }: { api: ViewerApi | null; index: number }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    if (!api || !ref.current) return;
-    let alive = true;
-    let made: string | null = null;
-    const io = new IntersectionObserver((entries) => {
-      if (!entries.some((e) => e.isIntersecting)) return;
-      io.disconnect();
-      api
-        .renderPage(index, 160)
-        .then((blob) => {
-          if (!alive) return;
-          made = URL.createObjectURL(blob);
-          setUrl(made);
-        })
-        .catch(() => {});
-    });
-    io.observe(ref.current);
-    return () => {
-      alive = false;
-      io.disconnect();
-      if (made) URL.revokeObjectURL(made);
-    };
-  }, [api, index]);
-  return <span ref={ref} className="page-img">{url ? <img src={url} alt="" draggable={false} /> : <span className="page-skeleton" />}</span>;
 }
 
 function Inspector({ doc, onComments }: { doc: OpenDocument; onComments: () => void }) {

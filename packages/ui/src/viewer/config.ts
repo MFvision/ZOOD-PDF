@@ -75,9 +75,18 @@ export interface ViewerConfigInput {
   documentId: string;
   locale: Locale;
   scheme: 'light' | 'dark';
+  /** Password typed into OUR prompt (the engine checked it); EmbedPDF never asks on its own. */
+  password?: string;
 }
 
-export function buildViewerConfig({ bytes, name, documentId, locale, scheme }: ViewerConfigInput): PDFViewerConfig {
+/**
+ * EmbedPDF controls that would duplicate (and bypass) the engine-backed Redact and Protect tools: its
+ * PDFium "apply redaction" buttons (toolbar, annotation menu, redaction side panel) and its protection
+ * modal. Redaction marks are still drawn with EmbedPDF; applying them goes through `redact.apply`.
+ */
+export const ENGINE_OWNED_CATEGORIES = ['document-protect', 'redaction-apply', 'redaction-commit', 'annotation-redaction', 'panel-redaction'];
+
+export function buildViewerConfig({ bytes, name, documentId, locale, scheme, password }: ViewerConfigInput): PDFViewerConfig {
   // EmbedPDF may transfer the buffer to its worker: always hand it a private copy.
   const buffer = bytes.slice().buffer as ArrayBuffer;
   return {
@@ -95,10 +104,10 @@ export function buildViewerConfig({ bytes, name, documentId, locale, scheme }: V
     theme: { preference: scheme, light: themeColors, dark: themeColors },
     tabBar: 'never',
     // We own file handling: no Open / Close / Download / Export / fullscreen inside the viewer.
-    disabledCategories: ['document-open', 'document-close', 'document-export', 'document-fullscreen', 'document-capture'],
+    disabledCategories: ['document-open', 'document-close', 'document-export', 'document-fullscreen', 'document-capture', ...ENGINE_OWNED_CATEGORIES],
     documentManager: {
       maxDocuments: 1,
-      initialDocuments: [{ buffer, name, documentId, autoActivate: true }],
+      initialDocuments: [{ buffer, name, documentId, autoActivate: true, ...(password !== undefined ? { password } : {}) }],
     },
     i18n: { defaultLocale: 'en' },
     stamp: {

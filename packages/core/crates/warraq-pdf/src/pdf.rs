@@ -7,7 +7,8 @@ use crate::error::{PdfError, Result};
 use crate::limits::Limits;
 use crate::serialize::write_indirect;
 use crate::writer::{
-    new_id_element, write_new_file, write_xref_stream, write_xref_table, XrefKind, XrefRow,
+    new_id_element, write_compact_file, write_new_file, write_xref_stream, write_xref_table,
+    XrefKind, XrefRow,
 };
 use crate::xrefscan;
 use lopdf::xref::{XrefEntry, XrefType};
@@ -142,7 +143,7 @@ pub(crate) fn for_each_ref(
 }
 
 /// Replace every reference inside `obj` through `map` (bounded depth).
-pub(crate) fn map_refs(
+pub fn map_refs(
     obj: &mut Object,
     depth: usize,
     limits: &Limits,
@@ -411,6 +412,11 @@ impl Pdf {
     /// PDF header version.
     pub fn version(&self) -> &str {
         &self.doc.version
+    }
+
+    /// Set the header version written by the next full rewrite (e.g. `1.4` for PDF/A-1).
+    pub fn set_version(&mut self, version: &str) {
+        self.doc.version = version.to_string();
     }
 
     /// The (decrypted) trailer, without `/Encrypt`.
@@ -701,15 +707,49 @@ impl Pdf {
     /// Whole-file rewrite: garbage-collects unreachable objects, renumbers compactly,
     /// drops earlier revisions, and writes the requested protection.
     pub fn write_full(&self, protection: Protection) -> Result<Vec<u8>> {
-        let order = self.reachable()?;
+        self.rewrite(&self.doc.objects, protection, false)
+    }
+
+    /// Whole-file rewrite of `objects` (this document's objects, possibly modified) under this
+    /// document's trailer `/Root` and `/Info`: garbage-collects what they do not reach,
+    /// renumbers, and writes a classic file or — `compact` — object streams + an xref stream.
+    pub fn rewrite(
+        &self,
+        objects: &BTreeMap<ObjectId, Object>,
+        protection: Protection,
+        compact: bool,
+    ) -> Result<Vec<u8>> {
+        let mut order = Vec::new();
+        {
+            let mut seen = HashSet::new();
+            let mut queue = VecDeque::new();
+            for key in [b"Root".as_slice(), b"Info".as_slice()] {
+                if let Ok(Object::Reference(id)) = self.doc.trailer.get(key) {
+                    queue.push_back(*id);
+                }
+            }
+            while let Some(id) = queue.pop_front() {
+                if Some(id) == self.encrypt_ref || !seen.insert(id) {
+                    continue;
+                }
+                let Some(obj) = objects.get(&id) else {
+                    continue;
+                };
+                order.push(id);
+                if order.len() > self.limits.max_objects {
+                    return Err(PdfError::Limit("too many reachable objects".into()));
+                }
+                for_each_ref(obj, 0, &self.limits, &mut |r| queue.push_back(r))?;
+            }
+        }
         let map: BTreeMap<ObjectId, ObjectId> = order
             .iter()
             .enumerate()
             .map(|(i, id)| (*id, ((i + 1) as u32, 0)))
             .collect();
-        let mut objects = BTreeMap::new();
+        let mut new_objects = BTreeMap::new();
         for old in &order {
-            let Some(obj) = self.doc.objects.get(old) else {
+            let Some(obj) = objects.get(old) else {
                 continue;
             };
             let mut o = obj.clone();
@@ -719,9 +759,10 @@ impl Pdf {
                     .unwrap_or(Object::Null)
             })?;
             if let Some(new) = map.get(old) {
-                objects.insert(*new, o);
+                new_objects.insert(*new, o);
             }
         }
+        let mut objects = new_objects;
         let root = map
             .get(&self.root_id()?)
             .copied()
@@ -751,6 +792,17 @@ impl Pdf {
                 ext.set("ADBE", Object::Dictionary(adbe));
                 cat.set("Extensions", Object::Dictionary(ext));
             }
+        }
+        if compact {
+            return write_compact_file(
+                &version,
+                &objects,
+                root,
+                info,
+                id,
+                security.as_ref(),
+                &self.limits,
+            );
         }
         write_new_file(
             &version,

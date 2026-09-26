@@ -5,9 +5,9 @@
  * superscript alef, Quranic marks) from both sides; "with tashkeel" keeps them.
  */
 
-const INVISIBLE = /[​-‏‪-‮⁦-⁩﻿­]/g;
-const TATWEEL = /ـ/g;
-const TASHKEEL = /[ً-ٰٟۖ-ۭ࣓-ࣿ]/g;
+const INVISIBLE = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF\u00AD]/g;
+const TATWEEL = /\u0640/g;
+const TASHKEEL = /[\u064B-\u065F\u0670\u06D6-\u06ED\u08D3-\u08FF]/g;
 
 export function normalise(s: string, keepTashkeel: boolean): string {
   let t = s.normalize('NFC').replace(INVISIBLE, '').replace(TATWEEL, '');

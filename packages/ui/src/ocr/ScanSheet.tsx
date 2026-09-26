@@ -318,7 +318,9 @@ function ScanPanel({
   const [camera, setCamera] = useState(false);
   const urls = useRef(new Set<string>());
   const itemsRef = useRef(items);
-  itemsRef.current = items;
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
   const canCamera = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
   const angleFmt = useMemo(() => new Intl.NumberFormat(intlTag(app.state.locale), { minimumFractionDigits: 1, maximumFractionDigits: 1 }), [app.state.locale]);
 
@@ -345,7 +347,6 @@ function ScanPanel({
         patch(it.id, { busy: false });
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
