@@ -2065,6 +2065,7 @@ dependencies = [
  "thiserror",
  "warraq-create",
  "warraq-edit",
+ "warraq-marks",
  "warraq-office",
  "warraq-pdf",
  "warraq-redact",
@@ -2119,6 +2120,20 @@ dependencies = [
  "unicode-linebreak",
  "warraq-create",
  "warraq-pdf",
+ "warraq-text",
+]
+
+[[package]]
+name = "warraq-marks"
+version = "0.1.0"
+dependencies = [
+ "lopdf",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "warraq-edit",
+ "warraq-pdf",
+ "warraq-redact",
  "warraq-text",
 ]
 

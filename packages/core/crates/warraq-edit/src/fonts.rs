@@ -437,6 +437,32 @@ pub fn write_face(
         }
         FaceSource::Bundled(b) => *b,
     };
+    let (font_id, cid) = embed_bundled(pdf, face, b, used)?;
+    let resource =
+        crate::page::add_resource(pdf, page_id, b"Font", "ZE", Object::Reference(font_id))?;
+    Ok(Written { resource, cid })
+}
+
+/// Subset a bundled `face` to the glyphs in `used` and embed it as a new Type0/Identity-H font
+/// object (not added to any resource dictionary; Page marks put it in a form XObject).
+/// Returns the font object and the glyph id → CID map.
+pub fn embed_face(
+    pdf: &mut Pdf,
+    face: &Face,
+    used: &BTreeMap<u16, String>,
+) -> Result<(ObjectId, BTreeMap<u16, u16>)> {
+    match &face.source {
+        FaceSource::Bundled(b) => embed_bundled(pdf, face, *b, used),
+        FaceSource::Original { font, .. } => Ok((*font, used.keys().map(|g| (*g, *g)).collect())),
+    }
+}
+
+fn embed_bundled(
+    pdf: &mut Pdf,
+    face: &Face,
+    b: Bundled,
+    used: &BTreeMap<u16, String>,
+) -> Result<(ObjectId, BTreeMap<u16, u16>)> {
     let glyphs: Vec<u16> = used.keys().copied().collect();
     let remap = GlyphRemapper::new_from_glyphs_sorted(&glyphs);
     let vars: Vec<(subsetter::Tag, f32)> = b
@@ -547,9 +573,7 @@ pub fn write_face(
     );
     t0.set("ToUnicode", Object::Reference(tu_id));
     let font_id = pdf.add(Object::Dictionary(t0));
-    let resource =
-        crate::page::add_resource(pdf, page_id, b"Font", "ZE", Object::Reference(font_id))?;
-    Ok(Written { resource, cid })
+    Ok((font_id, cid))
 }
 
 #[cfg(test)]

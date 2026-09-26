@@ -1548,11 +1548,24 @@ dependencies = [
  "serde_json",
  "warraq-create",
  "warraq-edit",
+ "warraq-marks",
  "warraq-office",
  "warraq-pdf",
  "warraq-redact",
  "warraq-sign",
  "warraq-text",
+]
+
+[[package]]
+name = "warraq-marks"
+version = "0.1.0"
+dependencies = [
+ "lopdf",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "warraq-edit",
+ "warraq-pdf",
 ]
 
 [[package]]

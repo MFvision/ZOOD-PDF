@@ -23,6 +23,8 @@ mod compare;
 mod export;
 // Edit tool (warraq-edit).
 mod edit;
+// Page marks (warraq-marks).
+mod marks;
 
 /// Every namespace's `register` function.
 pub const NAMESPACES: &[fn(&mut Registry)] = &[
@@ -43,6 +45,8 @@ pub const NAMESPACES: &[fn(&mut Registry)] = &[
     compare::register,
     // Edit tool (warraq-edit).
     edit::register,
+    // Page marks (warraq-marks).
+    marks::register,
     #[cfg(feature = "render")]
     render::register,
 ];
