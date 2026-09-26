@@ -57,7 +57,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
       if (keep > 1) setTimeout(() => viewer.goToPage(keep), 0);
       // A (re)loaded viewer starts in reading mode, except under the Edit tool (its surface stays).
       setTool((cur) => (cur === 'edit' ? cur : null));
-      app.registerViewer(doc.id, viewer);
+      app.registerViewer(doc.id, viewer, doc.revision);
       app.dispatch({ type: 'VIEWER_READY', id: doc.id, revision: doc.revision, pageCount: info.pageCount });
       if (doc.pendingTool) {
         const def = toolById(doc.pendingTool as ToolId);
@@ -238,7 +238,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
             onReady={onReady}
             onPageChange={(p) => setPage(p)}
             onZoomChange={(z) => setZoom(z)}
-            onEdited={() => app.dispatch({ type: 'VIEWER_EDITED', id: doc.id })}
+            onEdited={() => app.dispatch({ type: 'VIEWER_EDITED', id: doc.id, revision: doc.revision })}
             onSensitiveChange={() => app.markSensitive(doc.id)}
             onError={(m) => app.toast(`${t('toast.openFailed', { name: doc.name })} (${m})`, 'error')}
             onLinkNavigate={(uri) => setLinkUrl(uri)}

@@ -525,9 +525,12 @@ function ContextMenu({ x, y, dir, label, onClose, children }: { x: number; y: nu
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const r = el.getBoundingClientRect();
-    const start = Math.max(8, Math.min(pos.start, window.innerWidth - r.width - 8));
-    const top = Math.max(8, Math.min(pos.top, window.innerHeight - r.height - 8));
+    // Layout size, not getBoundingClientRect(): the menu is mid pop-in (scaled to 0.96) right now, and
+    // a scaled measurement left it ~4 % too far towards the edge once the animation ended.
+    const width = el.offsetWidth;
+    const height = el.offsetHeight;
+    const start = Math.max(8, Math.min(pos.start, window.innerWidth - width - 8));
+    const top = Math.max(8, Math.min(pos.top, window.innerHeight - height - 8));
     if (start !== pos.start || top !== pos.top) setPos({ start, top });
     el.querySelector<HTMLElement>('[role=menuitem]:not(:disabled)')?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps

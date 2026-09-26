@@ -324,14 +324,15 @@ fn write_laid(
 ) -> Result<(Vec<u8>, Vec<String>)> {
     let mut written = Vec::new();
     let mut names = Vec::new();
-    for (face, used) in laid.faces.iter().zip(laid.used()) {
+    let (spans, maps) = laid.encode();
+    for (face, used) in laid.faces.iter().zip(laid.used(&maps)) {
         names.push(match &face.source {
             crate::fonts::FaceSource::Bundled(b) => b.base_name().to_string(),
             crate::fonts::FaceSource::Original { .. } => "original".to_string(),
         });
         written.push(write_face(pdf, page_id, face, &used)?);
     }
-    Ok((laid.content(&written, fill), names))
+    Ok((laid.content(&written, fill, &spans), names))
 }
 
 /// Replace the text of block `id` on page `index` by `text` (empty: delete it).

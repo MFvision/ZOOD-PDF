@@ -111,79 +111,32 @@ pub fn shape(text: &str, font_bytes: &[u8], size: f64) -> Result<ShapedRun> {
     })
 }
 
-/// Logical tokens of `text`: words and whitespace runs, as byte ranges.
-fn tokens(text: &str) -> Vec<Range<usize>> {
-    let mut out: Vec<Range<usize>> = Vec::new();
-    let mut cur: Option<(usize, bool)> = None;
-    for (i, c) in text.char_indices() {
-        let ws = c.is_whitespace();
-        match cur {
-            Some((s, w)) if w == ws => {
-                let _ = s;
-            }
-            Some((s, _)) => {
-                out.push(s..i);
-                cur = Some((i, ws));
-            }
-            None => cur = Some((i, ws)),
-        }
-    }
-    if let Some((s, _)) = cur {
-        out.push(s..text.len());
-    }
-    out
-}
-
 /// Group the glyphs of `run` per logical word (and per whitespace run) for `/ActualText`.
 ///
 /// Spans are contiguous in visual order. If a word's glyphs are split (a word mixing
 /// directions), the first piece carries the text and later pieces carry an empty string, so the
-/// text is never duplicated on read-back.
+/// text is never duplicated on read-back. Writers that also write a ToUnicode map use
+/// [`crate::encode::encode_line`] instead, which drops `/ActualText` where the viewer's PDFium would
+/// reverse it.
 pub fn actual_text_spans(run: &ShapedRun) -> Vec<ActualTextSpan> {
-    let toks = tokens(&run.text);
-    let token_of = |cluster: usize| toks.iter().position(|r| r.contains(&cluster));
-    let mut spans: Vec<ActualTextSpan> = Vec::new();
-    let mut used = vec![false; toks.len()];
-    let mut cur: Option<(Option<usize>, usize)> = None;
-    let mut close =
-        |tok: Option<usize>, start: usize, end: usize, spans: &mut Vec<ActualTextSpan>| {
-            let text = match tok {
-                Some(t) => {
-                    let first = !used.get(t).copied().unwrap_or(true);
-                    if let Some(u) = used.get_mut(t) {
-                        *u = true;
-                    }
-                    if first {
-                        toks.get(t)
-                            .and_then(|r| run.text.get(r.clone()))
-                            .unwrap_or("")
-                            .to_string()
-                    } else {
-                        String::new()
-                    }
-                }
-                None => String::new(),
-            };
-            spans.push(ActualTextSpan {
-                text,
-                glyphs: start..end,
-            });
-        };
-    for (i, g) in run.glyphs.iter().enumerate() {
-        let t = token_of(g.cluster);
-        match cur {
-            Some((ct, _)) if ct == t => {}
-            Some((ct, s)) => {
-                close(ct, s, i, &mut spans);
-                cur = Some((t, i));
-            }
-            None => cur = Some((t, i)),
-        }
-    }
-    if let Some((ct, s)) = cur {
-        close(ct, s, run.glyphs.len(), &mut spans);
-    }
-    spans
+    let clusters: Vec<usize> = run.glyphs.iter().map(|g| g.cluster).collect();
+    crate::encode::word_groups(&run.text, &clusters)
+        .into_iter()
+        .map(|(glyphs, text)| ActualTextSpan { text, glyphs })
+        .collect()
+}
+
+/// The glyphs of `run` as [`crate::encode::GlyphRef`]s of font 0.
+pub fn glyph_refs(run: &ShapedRun) -> Vec<crate::encode::GlyphRef> {
+    run.glyphs
+        .iter()
+        .map(|g| crate::encode::GlyphRef {
+            font: 0,
+            glyph_id: g.glyph_id,
+            cluster: g.cluster,
+            rtl: g.rtl,
+        })
+        .collect()
 }
 
 /// Encode a string as a PDF hex text string with a UTF-16BE BOM: `<FEFF…>`.
@@ -206,18 +159,56 @@ fn fmt(v: f64) -> String {
 }
 
 /// Content-stream operators drawing `run` at baseline origin `(x, y)` with the Type0
-/// (Identity-H) font resource `font_res`, one `/ActualText` span per word.
+/// (Identity-H) font resource `font_res`, one `/ActualText` span per word — for fonts written
+/// without a ToUnicode map (every word needs its ActualText then).
 pub fn content_stream(run: &ShapedRun, font_res: &str, x: f64, y: f64) -> Vec<u8> {
+    let spans: Vec<(std::ops::Range<usize>, Option<String>)> = actual_text_spans(run)
+        .into_iter()
+        .map(|s| (s.glyphs, Some(s.text)))
+        .collect();
+    draw(run, font_res, x, y, &spans)
+}
+
+/// Like [`content_stream`], for a font whose ToUnicode map the caller writes from `maps` (font 0,
+/// keyed by glyph id; see [`crate::encode::tounicode_cmap`]): right-to-left words are encoded by
+/// their glyphs and carry no `/ActualText` (ADR 0017).
+pub fn content_stream_encoded(
+    run: &ShapedRun,
+    font_res: &str,
+    x: f64,
+    y: f64,
+    maps: &mut crate::encode::ToUnicodeMaps,
+) -> Vec<u8> {
+    let spans: Vec<(std::ops::Range<usize>, Option<String>)> = crate::encode::encode_line(
+        &run.text,
+        &glyph_refs(run),
+        maps,
+        crate::encode::EncodeOptions::default(),
+    )
+    .into_iter()
+    .map(|s| (s.glyphs, s.actual_text))
+    .collect();
+    draw(run, font_res, x, y, &spans)
+}
+
+fn draw(
+    run: &ShapedRun,
+    font_res: &str,
+    x: f64,
+    y: f64,
+    spans: &[(std::ops::Range<usize>, Option<String>)],
+) -> Vec<u8> {
     let mut s = format!("BT\n/{font_res} {} Tf\n", fmt(run.size));
     let mut pen = x;
     let mut pen_y = y;
-    let spans = actual_text_spans(run);
-    for span in spans {
-        s.push_str(&format!(
-            "/Span <</ActualText {}>> BDC\n",
-            pdf_text_string_hex(&span.text)
-        ));
-        for g in run.glyphs.get(span.glyphs.clone()).unwrap_or(&[]) {
+    for (range, actual) in spans {
+        if let Some(t) = actual {
+            s.push_str(&format!(
+                "/Span <</ActualText {}>> BDC\n",
+                pdf_text_string_hex(t)
+            ));
+        }
+        for g in run.glyphs.get(range.clone()).unwrap_or(&[]) {
             s.push_str(&format!(
                 "1 0 0 1 {} {} Tm <{:04X}> Tj\n",
                 fmt(pen + g.x_offset),
@@ -227,7 +218,9 @@ pub fn content_stream(run: &ShapedRun, font_res: &str, x: f64, y: f64) -> Vec<u8
             pen += g.x_advance;
             pen_y += g.y_advance;
         }
-        s.push_str("EMC\n");
+        if actual.is_some() {
+            s.push_str("EMC\n");
+        }
     }
     s.push_str("ET\n");
     s.into_bytes()

@@ -52,14 +52,30 @@ describe('app reducer', () => {
   it('records viewer edits (EmbedPDF owns pending changes)', () => {
     let s = open();
     s = reducer(s, { type: 'CORE_REPLACED_BYTES', id: 'd1', bytes: bytes(7) });
-    s = reducer(s, { type: 'VIEWER_EDITED', id: 'd1' });
+    s = reducer(s, { type: 'VIEWER_READY', id: 'd1', revision: 1, pageCount: 1 });
+    s = reducer(s, { type: 'VIEWER_EDITED', id: 'd1', revision: 1 });
     expect(s.documents.d1?.edited).toBe(true);
     expect(s.documents.d1?.warraqOwnsDocument).toBe(false);
   });
 
+  it('ignores edit events of a viewer that is being replaced (redacted bytes must stay the document)', () => {
+    let s = open();
+    s = reducer(s, { type: 'VIEWER_READY', id: 'd1', revision: 0, pageCount: 1 });
+    s = reducer(s, { type: 'VIEWER_EDITED', id: 'd1', revision: 0 });
+    s = reducer(s, { type: 'CORE_REPLACED_BYTES', id: 'd1', bytes: bytes(7), wholeRewrite: true });
+    // A late event of the old viewer (PDFium committing its marks while exporting) …
+    s = reducer(s, { type: 'VIEWER_EDITED', id: 'd1', revision: 0 });
+    expect(s.documents.d1?.warraqOwnsDocument).toBe(true);
+    // … or of the new viewer while it initialises is not a user edit.
+    s = reducer(s, { type: 'VIEWER_EDITED', id: 'd1', revision: 1 });
+    expect(s.documents.d1?.warraqOwnsDocument).toBe(true);
+    expect(s.documents.d1?.bytes).toEqual(bytes(7));
+  });
+
   it('after save the saved bytes become the new original and the viewer reloads', () => {
     let s = open();
-    s = reducer(s, { type: 'VIEWER_EDITED', id: 'd1' });
+    s = reducer(s, { type: 'VIEWER_READY', id: 'd1', revision: 0, pageCount: 1 });
+    s = reducer(s, { type: 'VIEWER_EDITED', id: 'd1', revision: 0 });
     s = reducer(s, { type: 'SAVED', id: 'd1', bytes: bytes(1, 2, 3, 4), name: 'a.pdf' });
     const d = s.documents.d1!;
     expect(d.edited).toBe(false);
@@ -79,7 +95,7 @@ describe('app reducer', () => {
 
   it('ignores actions for unknown documents', () => {
     const s = initialState('en');
-    expect(reducer(s, { type: 'VIEWER_EDITED', id: 'nope' })).toBe(s);
+    expect(reducer(s, { type: 'VIEWER_EDITED', id: 'nope', revision: 0 })).toBe(s);
     expect(reducer(s, { type: 'CORE_REPLACED_BYTES', id: 'nope', bytes: bytes(1) })).toBe(s);
   });
 

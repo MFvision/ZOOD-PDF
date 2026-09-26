@@ -37,7 +37,8 @@ export interface AppServices {
   saveDocument(id: string, opts?: { saveAs?: boolean; bytes?: Uint8Array }): Promise<boolean>;
   updateRecent(id: string, patch: Partial<Pick<RecentItem, 'starred' | 'tags'>>): Promise<void>;
   removeRecent(id: string): Promise<void>;
-  registerViewer(docId: string, api: ViewerApi | null): void;
+  /** `revision`: the document revision the viewer shows; `viewer()` only hands out the current one. */
+  registerViewer(docId: string, api: ViewerApi | null, revision?: number): void;
   viewer(docId: string): ViewerApi | undefined;
   markSensitive(docId: string): void;
   storeThumbnail(docId: string, png: Uint8Array): Promise<void>;
@@ -128,12 +129,18 @@ export interface AppProviderProps {
 }
 
 export function AppProvider({ children, platform = 'web', host: hostProp, recents: recentsProp, engine: engineProp, initialLocale }: AppProviderProps) {
-  const [state, dispatch] = useReducer(reducer, undefined, () => initialState(initialLocale ?? startLocale()));
+  const [state, reactDispatch] = useReducer(reducer, undefined, () => initialState(initialLocale ?? startLocale()));
   const host = useMemo(() => hostProp ?? getHost(), [hostProp]);
   const recents = useMemo(() => recentsProp ?? createRecentsStore(), [recentsProp]);
   const engineRef = useRef<EngineClient | null>(engineProp ?? null);
   const getEngine = () => (engineRef.current ??= sharedEngine());
-  const viewers = useRef(new Map<string, ViewerApi>());
+  const viewers = useRef(new Map<string, { api: ViewerApi; revision: number }>());
+  // New bytes retire the document's viewer at once (not when React re-renders): nothing may export
+  // from it in between.
+  const dispatch = useCallback((a: Action) => {
+    if (a.type === 'CORE_REPLACED_BYTES' || a.type === 'SAVED' || a.type === 'CLOSE_DOCUMENT') viewers.current.delete(a.id);
+    reactDispatch(a);
+  }, []);
   const histories = useRef(new Map<string, History>());
   const [, setHistoryTick] = useState(0);
   const historyFor = (docId: string): History => {
@@ -179,6 +186,14 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
   useLayoutEffect(() => {
     stateRef.current = state;
   });
+  /** The viewer of the document's CURRENT revision. While a new revision loads (after a core edit, a
+   * redaction or a save) the previous viewer still exists but no longer shows the document: its PDFium
+   * copy (e.g. unredacted, with pending marks) must never be exported. */
+  const liveViewer = (docId: string): ViewerApi | undefined => {
+    const v = viewers.current.get(docId);
+    const doc = stateRef.current.documents[docId];
+    return v && doc && v.revision === doc.revision ? v.api : undefined;
+  };
   const [theme, setThemeState] = useState<ThemePref>(() => {
     const v = readPref(THEME_KEY);
     return v === 'light' || v === 'dark' ? v : 'system';
@@ -204,7 +219,7 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
     const id = `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     dispatch({ type: 'TOAST', toast: { id, message, tone } });
     setTimeout(() => dispatch({ type: 'DISMISS_TOAST', id }), tone === 'error' ? 6000 : 3200);
-  }, []);
+  }, [dispatch]);
 
   const refreshRecents = useCallback(async () => {
     try {
@@ -212,7 +227,7 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
     } catch {
       /* IndexedDB unavailable (private mode): recents simply stay empty */
     }
-  }, [recents]);
+  }, [dispatch, recents]);
 
   useEffect(() => {
     void refreshRecents();
@@ -239,7 +254,7 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
         void refreshRecents();
       }
     },
-    [recents, refreshRecents, t, toast, unlock],
+    [dispatch, recents, refreshRecents, t, toast, unlock],
   );
 
   const openFromHost = useCallback(async (tool?: string) => {
@@ -273,7 +288,7 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
       dispatch({ type: 'OPEN_DOCUMENT', id, name: item.name, bytes, recentId: item.id, password: lock.password });
       void refreshRecents();
     },
-    [openFromHost, recents, refreshRecents, t, toast, unlock],
+    [dispatch, openFromHost, recents, refreshRecents, t, toast, unlock],
   );
 
   const closeDocument = useCallback((id: string) => {
@@ -282,7 +297,7 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
     sensitive.current.delete(id);
     noPreview.current.delete(id);
     dispatch({ type: 'CLOSE_DOCUMENT', id });
-  }, []);
+  }, [dispatch]);
 
   const saveDocument = useCallback(
     async (id: string, opts: { saveAs?: boolean; bytes?: Uint8Array } = {}) => {
@@ -295,7 +310,7 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
         } else if (doc.warraqOwnsDocument) {
           out = doc.bytes; // the core already produced an incremental update
         } else if (doc.edited) {
-          const api = viewers.current.get(id);
+          const api = liveViewer(id);
           if (!api) throw new Error('viewer not ready');
           const pdfium = await api.exportBytes();
           const strategy = saveStrategy({
@@ -330,21 +345,21 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
         return false;
       }
     },
-    [host, recents, refreshRecents, t, toast],
+    [dispatch, host, recents, refreshRecents, t, toast],
   );
 
-  const registerViewer = useCallback((docId: string, api: ViewerApi | null) => {
-    if (api) viewers.current.set(docId, api);
+  const registerViewer = useCallback((docId: string, api: ViewerApi | null, revision?: number) => {
+    if (api) viewers.current.set(docId, { api, revision: revision ?? stateRef.current.documents[docId]?.revision ?? 0 });
     else viewers.current.delete(docId);
   }, []);
-  const viewer = useCallback((docId: string) => viewers.current.get(docId), []);
+  const viewer = useCallback((docId: string) => liveViewer(docId), []);
 
   const currentBytes = useCallback(
     async (docId: string, opts: { fromViewer?: boolean } = {}): Promise<Uint8Array> => {
       const doc = stateRef.current.documents[docId];
       if (!doc) throw new Error('document is not open');
       if (!opts.fromViewer && (!doc.edited || doc.warraqOwnsDocument)) return doc.bytes;
-      const api = viewers.current.get(docId);
+      const api = liveViewer(docId);
       if (!api) {
         if (opts.fromViewer) throw new Error('viewer not ready');
         return doc.bytes;
@@ -363,7 +378,7 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
     historyFor(docId).record(before, after, label);
     dispatch({ type: 'CORE_REPLACED_BYTES', id: docId, bytes: after });
     setHistoryTick((n) => n + 1);
-  }, []);
+  }, [dispatch]);
 
   const coreEdit = useCallback(
     async <J,>(docId: string, calls: CoreCall[], label: string): Promise<CoreResult<J> | null> => {
@@ -396,7 +411,7 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
       setHistoryTick((n) => n + 1);
       return true;
     },
-    [currentBytes],
+    [currentBytes, dispatch],
   );
 
   const services: AppServices = {

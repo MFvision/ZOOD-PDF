@@ -60,6 +60,8 @@ struct U {
     base: f64,
     size: f64,
     seq: usize,
+    /// The text-showing operator that drew it.
+    show: usize,
     space: bool,
     mark: bool,
     bbox: Rect,
@@ -141,6 +143,7 @@ pub fn layout_page(
             base: fy,
             size,
             seq: g.seq,
+            show: g.show,
             space,
             bbox: g.bbox,
             hidden: g.hidden,
@@ -657,7 +660,14 @@ fn visual_items(us: &[U], line: &[usize]) -> Vec<Item> {
             continue;
         }
         if let Some(p) = cur.last().and_then(|&l| us.get(l)) {
-            let wg = word_gap * p.size.max(u.size);
+            // One operator drawing Arabic glyphs apart (a kerning gap after a letter that does not
+            // join to the next one, e.g. ر in Cairo) is one word: producers that separate words
+            // without space glyphs draw each word with its own operator (Word style).
+            let wg = if !explicit_spaces && p.show == u.show && p.rtl() && u.rtl() {
+                0.25
+            } else {
+                word_gap
+            } * p.size.max(u.size);
             if gap((p.x0, p.x1), (u.x0, u.x1)) > wg {
                 chains.push(std::mem::take(&mut cur));
             }
@@ -1117,6 +1127,7 @@ mod tests {
             desc: -2.0,
             size: 10.0,
             seq,
+            show: seq,
             hidden: false,
             artifact: false,
             actual_text: false,
@@ -1146,6 +1157,26 @@ mod tests {
             &LayoutOptions::default(),
         )
         .plain
+    }
+
+    #[test]
+    fn kerning_gap_inside_one_show_operator_does_not_split_an_arabic_word() {
+        // A table cell "الرياض" drawn in one TJ with a kerning gap of 0.13 em after the non-joining
+        // ر (Cairo), no space glyphs on the line (Create PDF, glyph ToUnicode, no ActualText).
+        let mut v = visual_run("الرياض", 100.0, 700.0, 0);
+        for x in v.iter_mut().skip(3) {
+            x.origin.0 += 1.3;
+            x.bbox = Rect::new(x.bbox.x0 + 1.3, x.bbox.y0, x.bbox.x1 + 1.3, x.bbox.y1);
+        }
+        for x in &mut v {
+            x.show = 7;
+        }
+        assert_eq!(plain(v.clone()), "الرياض");
+        // Separate show operators (one TJ per word, Word style): the same gap separates words.
+        for (k, x) in v.iter_mut().enumerate() {
+            x.show = usize::from(k >= 3);
+        }
+        assert_eq!(plain(v), "الر ياض");
     }
 
     #[test]

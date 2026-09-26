@@ -120,7 +120,7 @@ fn rsa_invisible_bb_is_incremental_and_openssl_verifies() {
 }
 
 #[test]
-fn ecdsa_visible_arabic_appearance_has_actual_text() {
+fn ecdsa_visible_arabic_appearance_is_encoded_for_every_reader() {
     let original = plain(2);
     let pdf = Pdf::open(original.clone(), None).unwrap();
     let out = sign(
@@ -140,30 +140,30 @@ fn ecdsa_visible_arabic_appearance_has_actual_text() {
     assert!(out.bytes.starts_with(&original));
     openssl_verify("p256_visible", &out.bytes);
     let pdf = Pdf::open(out.bytes.clone(), None).unwrap();
-    // Find the appearance stream and check it draws glyphs with ActualText per word.
+    // Find the appearance stream: Arabic words are drawn WITHOUT /ActualText (PDFium would reverse
+    // it; their glyphs' ToUnicode entries carry the text, ADR 0017), Latin words keep it.
     let mut found = false;
     for obj in pdf.objects().values() {
         if let lopdf::Object::Stream(s) = obj {
             if s.dict.get(b"Subtype").and_then(|o| o.as_name()).ok() == Some(b"Form") {
                 let data = warraq_pdf::limits::decode_stream(s, pdf.limits()).unwrap();
                 let t = String::from_utf8_lossy(&data).to_string();
-                if t.contains("ActualText") {
+                if t.contains(" TJ") && t.contains("/F1 ") {
                     found = true;
-                    // "أحمد" as UTF-16BE inside the ActualText of the first word.
-                    let ahmad: String = "أحمد".encode_utf16().map(|u| format!("{u:04X}")).collect();
-                    assert!(t.contains(&ahmad), "ActualText for أحمد missing:\n{t}");
-                    let riyadh: String = "الرياض"
-                        .encode_utf16()
-                        .map(|u| format!("{u:04X}"))
-                        .collect();
-                    assert!(t.contains(&riyadh));
-                    assert!(t.contains(" TJ"), "glyphs drawn");
+                    let hex = |w: &str| -> String {
+                        w.encode_utf16().map(|u| format!("{u:04X}")).collect()
+                    };
+                    assert!(!t.contains(&hex("أحمد")), "no ActualText for أحمد:\n{t}");
+                    assert!(
+                        !t.contains(&hex("الرياض")),
+                        "no ActualText for الرياض:\n{t}"
+                    );
                     assert!(t.matches("BDC").count() == t.matches("EMC").count());
                 }
             }
         }
     }
-    assert!(found, "no appearance stream with ActualText");
+    assert!(found, "no appearance stream with text");
     let tail = String::from_utf8_lossy(&out.bytes[original.len()..]).to_string();
     assert!(tail.contains("/Subtype /Type0"));
     assert!(tail.contains("/Encoding /Identity-H"));

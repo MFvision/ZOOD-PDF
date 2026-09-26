@@ -259,9 +259,12 @@ test.describe('Organize', () => {
     await card(page, 3).getByTestId('page-more').click();
     const menu = page.getByTestId('page-menu');
     await expect(menu).toBeVisible();
+    // Where the menu comes to rest (after its pop-in): 8 px from the edges. The menu used to measure
+    // itself mid-animation (scaled to 0.96) and ended up past the right edge on a loaded machine.
+    await menu.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
     const m = (await menu.boundingBox())!;
-    expect(m.x).toBeGreaterThanOrEqual(0);
-    expect(m.x + m.width).toBeLessThanOrEqual(390);
+    expect(m.x).toBeGreaterThanOrEqual(8 - 0.5);
+    expect(m.x + m.width).toBeLessThanOrEqual(390 - 8 + 0.5);
     await op(page, () => menu.locator('[data-action=rotate-left]').click());
     const saved = await saveNow(page);
     expect((await inspectPdf(saved.bytes)).pages[2]!.rotate).toBe(270);
