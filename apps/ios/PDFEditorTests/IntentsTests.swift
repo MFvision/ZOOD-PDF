@@ -16,6 +16,8 @@ final class IntentsTests: XCTestCase {
 
     override func tearDown() async throws {
         try? FileManager.default.removeItem(at: folder)
+        // A route an intent posted must not wait for the next launch.
+        _ = AppRoute.takePending()
     }
 
     private func fixture(_ name: String) throws -> Data {

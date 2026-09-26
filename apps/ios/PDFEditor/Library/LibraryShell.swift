@@ -317,6 +317,20 @@ struct LibraryShell: View {
             restoredBookmark = nil
             library.refresh()
         }
+        // `-warraqFresh 1`: the home screen and nothing over it — no document
+        // restored from the last scene, no route another test left (a
+        // Shortcut's "Scan"), so the test sees what it looks for.
+        if UserDefaults.standard.bool(forKey: "warraqFresh") {
+            _ = AppRoute.takePending()
+            library.scanRequested = false
+            library.requestedSearch = nil
+            library.closeDocument()
+            restoredBookmark = nil
+            sectionID = LibrarySection.home.rawValue
+            if UserDefaults.standard.string(forKey: "warraqOpen") == nil {
+                return
+            }
+        }
         if let folder = UserDefaults.standard.string(forKey: "warraqImport"), !folder.isEmpty {
             let source = URL(filePath: folder, directoryHint: .isDirectory)
             let files = (try? FileManager.default.contentsOfDirectory(at: source, includingPropertiesForKeys: nil)) ?? []

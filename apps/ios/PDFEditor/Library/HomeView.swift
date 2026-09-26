@@ -48,7 +48,7 @@ struct HomeView: View {
             Text(Self.greeting())
                 .font(TextStyle.subheadline)
                 .foregroundStyle(Surface.secondaryLabel)
-            Text("Your documents, in one calm place.")
+            Text("PDFs, done right.")
                 .font(.system(.largeTitle, design: .default, weight: .bold))
                 .fixedSize(horizontal: false, vertical: true)
             Text("Open, scan, search — everything stays on this device.")
@@ -299,17 +299,7 @@ struct DocumentRow: View {
                             .foregroundStyle(Surface.secondaryLabel)
                             .lineLimit(1)
                     }
-                    Spacer(minLength: 0)
-                    Menu {
-                        menu(item, starred: starred)
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .foregroundStyle(Surface.secondaryLabel)
-                            .frame(width: 28, height: 28)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityLabel(Text("More"))
-                    .accessibilityIdentifier("home.more.\(item.name)")
+                    Spacer(minLength: 28)
                 }
             }
             .padding(Space.x5)
@@ -318,6 +308,22 @@ struct DocumentRow: View {
         }
         .buttonStyle(.pressable)
         .contextMenu { menu(item, starred: starred) }
+        // The ⋯ menu sits over the card, not inside its button, so its own
+        // tap is its own.
+        .overlay(alignment: .bottomTrailing) {
+            Menu {
+                menu(item, starred: starred)
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .foregroundStyle(Surface.secondaryLabel)
+                    .frame(width: 32, height: 32)
+                    .contentShape(Rectangle())
+            }
+            .padding(.trailing, Space.x3)
+            .padding(.bottom, Space.x3)
+            .accessibilityLabel(Text("More"))
+            .accessibilityIdentifier("home.more.\(item.name)")
+        }
         .accessibilityLabel(Text(item.name))
         .accessibilityHint(Text("Opens the document"))
         .accessibilityIdentifier(identifier(item))
@@ -333,6 +339,9 @@ struct DocumentRow: View {
 
     @ViewBuilder
     private func menu(_ item: LibraryItem, starred: Bool) -> some View {
+        Button("Open", systemImage: "doc.text") {
+            library.open(item)
+        }
         Button(starred ? "Unstar" : "Star", systemImage: starred ? "star.slash" : "star") {
             library.toggleStar(item.url)
         }

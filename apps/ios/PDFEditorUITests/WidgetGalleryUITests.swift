@@ -20,7 +20,7 @@ final class WidgetGalleryUITests: XCTestCase {
 
         // The app first, so the recents list has a document with a thumbnail.
         let app = XCUIApplication()
-        app.launchArguments = ["-AppleLanguages", "(en)", "-language", "en", "-appearance", "light",
+        app.launchArguments = ["-AppleLanguages", "(en)", "-language", "en", "-appearance", "light", "-warraqFresh", "1",
                                "-warraqImport", try XCTUnwrap(Bundle(for: WidgetGalleryUITests.self).resourceURL).path]
         app.launch()
         let status = app.staticTexts["library.indexedCount"]

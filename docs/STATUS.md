@@ -107,8 +107,8 @@ described here.
 **What works, as a person would see it**
 
 * **Home** (to the owner's design target of 2026-09-25, in SwiftUI materials over a soft
-  gradient — no photograph): a greeting by the time of day, the headline «مستنداتك، في مكان واحد
-  هادئ.» / "Your documents, in one calm place.", six large action cards — Open, Scan, Create (pictures
+  gradient — no photograph): a greeting by the time of day, the headline «ملفات PDF، من جديد.» /
+  "PDFs, done right." (the same as the desktop's), six large action cards — Open, Scan, Create (pictures
   into a PDF), Combine (files into one PDF), Search, Settings — each doing what it says today, then
   rows of real first pages with the file's name and date ("Today, 9:41 AM"): Recents, Starred,
   My documents, the chosen folder; a ⋯ menu on every card (Star, Open in New Window, Remove from

@@ -27,6 +27,7 @@ final class LibraryUITests: XCTestCase {
             "-AppleLocale", language == "ar" ? "ar_SA" : "en_US",
             "-language", language,
             "-appearance", appearance,
+            "-warraqFresh", "1",
         ] + extra
         if importCorpus {
             app.launchArguments += ["-warraqImport", try corpus]
@@ -61,8 +62,8 @@ final class LibraryUITests: XCTestCase {
         search("فاتوره", in: app)
         let firstHit = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'search.hit.'")).firstMatch
         XCTAssertTrue(firstHit.waitForExistence(timeout: 30), "a line matched")
-        XCTAssertTrue(app.staticTexts["search.document.coretext-sfarabic-mixed-invoice"].exists
-            || app.staticTexts["search.document.chrome-cairo-mixed-invoice"].exists, "an invoice answered")
+        XCTAssertTrue(app.descendants(matching: .any)["search.document.coretext-sfarabic-mixed-invoice"].exists
+            || app.descendants(matching: .any)["search.document.chrome-cairo-mixed-invoice"].exists, "an invoice answered")
 
         // A hit past the first page proves "at its page"; the first page otherwise.
         let hits = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'search.hit.'"))
@@ -81,9 +82,10 @@ final class LibraryUITests: XCTestCase {
         XCTAssertTrue(pageView.waitForExistence(timeout: 30), "the document opened")
         let status = app.staticTexts["document.status"]
         XCTAssertTrue(status.waitForExistence(timeout: 20))
+        // The toolbar's status and the page view's label both name the page.
         let shown = NSPredicate(format: "label CONTAINS %@ OR label CONTAINS %@", "\(page)", Self.arabicDigits("\(page)"))
-        expectation(for: shown, evaluatedWith: status)
-        waitForExpectations(timeout: 20)
+        let named = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == 'document.status' OR identifier == 'document.page'")).matching(shown).firstMatch
+        XCTAssertTrue(named.waitForExistence(timeout: 20), "opened at page \(page): status '\(status.label)', page '\(pageView.label)'")
 
         // The search is now one the widget offers.
         let searches = AppGroupProbe.searches()
@@ -100,7 +102,7 @@ final class LibraryUITests: XCTestCase {
         XCTAssertTrue(scansOnly.waitForExistence(timeout: 10))
         scansOnly.tap()
         app.buttons["sheet.done"].tap()
-        let scan = app.staticTexts["search.document.scan-arial-200dpi-bilevel"]
+        let scan = app.descendants(matching: .any)["search.document.scan-arial-200dpi-bilevel"]
         let anyHit = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'search.hit.'")).firstMatch
         if anyHit.waitForExistence(timeout: 30) {
             XCTAssertTrue(scan.exists, "with Scans only, the one document is the scan")
@@ -139,14 +141,14 @@ final class LibraryUITests: XCTestCase {
         for id in ["home.open", "home.scan", "home.create", "home.combine", "home.search", "home.settings"] {
             XCTAssertTrue(app.buttons[id].waitForExistence(timeout: 10), "\(id) is on the home screen")
         }
-        XCTAssertFalse(app.otherElements["home.row.starred"].exists, "nothing starred yet")
+        XCTAssertFalse(app.descendants(matching: .any)["home.row.starred"].exists, "nothing starred yet")
         let more = app.buttons["home.more.coretext-sfarabic-mixed-invoice"].firstMatch
         XCTAssertTrue(more.waitForExistence(timeout: 10), "the document's menu is on its card")
         more.tap()
         let star = app.buttons["home.star.coretext-sfarabic-mixed-invoice"].firstMatch
         let starByLabel = app.buttons["Star"].firstMatch
         if star.waitForExistence(timeout: 5) { star.tap() } else { XCTAssertTrue(starByLabel.waitForExistence(timeout: 5)); starByLabel.tap() }
-        XCTAssertTrue(app.otherElements["home.row.starred"].waitForExistence(timeout: 10), "the Starred row appeared")
+        XCTAssertTrue(app.descendants(matching: .any)["home.row.starred"].waitForExistence(timeout: 10), "the Starred row appeared")
         app.buttons["home.seeAll.starred"].firstMatch.tap()
         XCTAssertTrue(app.buttons["starred.coretext-sfarabic-mixed-invoice"].waitForExistence(timeout: 10), "the Starred section lists it")
         // Back home (the sidebar on iPad, the back button on iPhone); the
@@ -185,9 +187,14 @@ final class LibraryUITests: XCTestCase {
             ?? (UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone")
         for combo in [("ar", "light"), ("en", "dark")] {
             let suffix = "\(combo.0)-\(combo.1)-\(device)"
-            let app = try launch(language: combo.0, appearance: combo.1)
+            var app = try launch(language: combo.0, appearance: combo.1)
             waitForIndex(in: app, count: 5)
             try Screenshots.save(app, as: "home-\(suffix)", in: directory)
+            openTags(in: app)
+            try Screenshots.save(app, as: "library-tags-\(suffix)", in: directory)
+            // A fresh launch for the search, so nothing of the Tags screen is left.
+            app = try launch(language: combo.0, appearance: combo.1)
+            waitForIndex(in: app, count: 5)
             search(combo.0 == "ar" ? "فاتوره" : "invoice", in: app)
             _ = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'search.hit.'")).firstMatch.waitForExistence(timeout: 30)
             try Screenshots.save(app, as: "library-search-\(suffix)", in: directory)
@@ -195,10 +202,6 @@ final class LibraryUITests: XCTestCase {
             _ = app.switches["filters.scannedOnly"].waitForExistence(timeout: 10)
             try Screenshots.save(app, as: "library-filters-\(suffix)", in: directory)
             app.buttons["sheet.done"].tap()
-            let cancel = app.buttons["Cancel"].firstMatch
-            if cancel.exists { cancel.tap() } else if app.buttons["إلغاء"].firstMatch.exists { app.buttons["إلغاء"].firstMatch.tap() }
-            openTags(in: app)
-            try Screenshots.save(app, as: "library-tags-\(suffix)", in: directory)
         }
     }
 

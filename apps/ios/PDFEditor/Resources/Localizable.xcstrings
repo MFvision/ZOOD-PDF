@@ -760,9 +760,6 @@
     "With the lock on, the app asks for the passcode whenever it comes to the front. Nothing leaves this device either way." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مع تفعيل القفل، يطلب التطبيق رمز الدخول كلما عاد إلى الواجهة. لا شيء يغادر هذا الجهاز في كلتا الحالتين." } } }
     },
-    "the passcode" : {
-      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "رمز الدخول" } } }
-    },
     "Home" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "الرئيسية" } } }
     },
@@ -786,9 +783,6 @@
     },
     "Good evening" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مساء الخير" } } }
-    },
-    "Your documents, in one calm place." : {
-      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "مستنداتك، في مكان واحد هادئ." } } }
     },
     "Open, scan, search — everything stays on this device." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "افتح، امسح، ابحث — كل شيء يبقى على هذا الجهاز." } } }
@@ -846,6 +840,9 @@
     },
     "Pictures %@" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "صور %@" } } }
+    },
+    "PDFs, done right." : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "ملفات PDF، من جديد." } } }
     }
   },
   "version" : "1.0"

@@ -17,6 +17,7 @@ final class SettingsUITests: XCTestCase {
             "-AppleLocale", language == "ar" ? "ar_SA" : "en_US",
             "-language", language,
             "-appearance", "light",
+            "-warraqFresh", "1",
         ] + extra
         if importCorpus {
             app.launchArguments += ["-warraqImport", try XCTUnwrap(Bundle(for: SettingsUITests.self).resourceURL).path]
@@ -65,6 +66,7 @@ final class SettingsUITests: XCTestCase {
 
         openSettings(in: app)
         let delete = app.buttons["settings.deleteEverything"]
+        scrollTo(delete, in: app)
         XCTAssertTrue(delete.waitForExistence(timeout: 10))
         delete.tap()
         let confirm = app.buttons["settings.deleteConfirm"]
@@ -82,23 +84,36 @@ final class SettingsUITests: XCTestCase {
 
     func testTheAppLockAsksForFaceIDAndUnlocksOnAMatch() throws {
         let app = try launch(extra: ["-appLock", "1"])
-        let lock = app.otherElements["lock.screen"]
-        XCTAssertTrue(lock.waitForExistence(timeout: 30), "the app starts locked")
-        XCTAssertFalse(app.buttons["library.settings"].isHittable, "nothing behind the lock can be used")
-        guard ProcessInfo.processInfo.environment["WARRAQ_FACEID_DRIVER"] == "1" else {
+        let lock = app.descendants(matching: .any)["lock.screen"]
+        let driven = ProcessInfo.processInfo.environment["WARRAQ_FACEID_DRIVER"] == "1"
+        // With the driver posting a matching face every second, the lock can
+        // be gone before the test looks; without it, it must stay.
+        let sawLock = lock.waitForExistence(timeout: driven ? 5 : 30)
+        if !driven {
+            XCTAssertTrue(sawLock, "the app starts locked")
+            XCTAssertFalse(app.buttons["library.settings"].isHittable, "nothing behind the lock can be used")
             throw XCTSkip("no Face ID driver: run with WARRAQ_FACEID_DRIVER=1 while simctl posts a matching face")
         }
-        // The driver posts com.apple.BiometricKit_Sim.pearl.match every second.
         let unlocked = NSPredicate(format: "exists == false")
         expectation(for: unlocked, evaluatedWith: lock)
         waitForExpectations(timeout: 90)
         XCTAssertTrue(app.buttons["library.settings"].waitForExistence(timeout: 10), "the Library is usable again")
+        XCTAssertTrue(app.buttons["library.settings"].isHittable, "unlocked on the simulator's Face ID match")
+    }
+
+    /// Scrolls the Settings form until `element` is there (its lower
+    /// sections are not built until they come into view).
+    private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<6 where !element.exists {
+            app.swipeUp()
+        }
     }
 
     func testTheLockSwitchInSettings() throws {
         let app = try launch()
         openSettings(in: app)
         let lock = app.switches["settings.appLock"]
+        scrollTo(lock, in: app)
         XCTAssertTrue(lock.waitForExistence(timeout: 10))
         let before = lock.value as? String
         lock.tap()
