@@ -40,7 +40,7 @@ import type { AppAction, AppState } from './appReducer';
 import { readJson, readPreferences, writePreferences } from './preferences';
 import { drawPages, mountSheet } from '../print/printPages';
 import { keepFirstPage } from '../home/recentPicture';
-import { addRecent, clearRecent as clearStoredRecent, forgetRecentThumbnail, readRecent } from './recent';
+import { addRecent, clearRecent as clearStoredRecent, forgetRecentThumbnail, readRecent, removeRecent as removeStoredRecent } from './recent';
 import { isPdf, namedLikePdf } from './pdfFile';
 import { combinedFileName, downloadPdf, extractedFileName, pdfFileName, saveBytes, splitArchiveName } from './saveFile';
 import { zipSync } from 'fflate';
@@ -308,6 +308,13 @@ export interface AppServices {
    */
   transformFile: <T>(op: string, args: object, options?: { font?: boolean }) => Promise<{ result: T; changed: boolean }>;
   clearRecent: () => void;
+  /** Takes one file off the home screen's recent list; the file itself is not touched. */
+  removeRecent: (name: string) => void;
+  /**
+   * Organize pages: page `index` (0-based) replaced by every page of another
+   * PDF, as one change that can be undone. A protected file needs its password.
+   */
+  replacePageFromFile: (file: { name: string; bytes: ArrayBuffer }, index: number, password?: string) => Promise<InsertOutcome>;
   /** Replaces a paragraph and records it on the undo stack. */
   commitParagraph: (entry: EditEntry) => Promise<void>;
   /** Draws a new line of text at a point on a page, in page points. */
@@ -965,6 +972,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setRecent([]);
   }, []);
 
+  const removeRecent = useCallback((name: string) => {
+    setRecent(removeStoredRecent(name));
+  }, []);
+
   /**
    * One call per applied change, shared by commit, undo and redo: the core is
    * always asked for the same thing — "this paragraph now reads like this".
@@ -1205,6 +1216,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return done ? 'inserted' : 'failed';
     },
     [client, organizePages],
+  );
+
+  /**
+   * The page at `index` swapped for another file's pages: they go in after
+   * it and it comes out, as one step of the history — Undo puts the page back.
+   */
+  const replacePageFromFile = useCallback(
+    async (file: { name: string; bytes: ArrayBuffer }, index: number, password?: string): Promise<InsertOutcome> => {
+      const doc = documentRef.current;
+      if (!doc || stateRef.current.organize.busy) return 'failed';
+      let pages: number;
+      try {
+        const probe = await client.open(file.bytes.slice(0), password);
+        pages = probe.pageCount;
+        void probe.free();
+      } catch (error) {
+        if ((error as { code?: string } | null)?.code !== 'E_PASSWORD') return 'failed';
+        return password ? 'wrongPassword' : 'locked';
+      }
+      dispatch({ type: 'ORGANIZE_BUSY', busy: true });
+      try {
+        const before = await doc.save();
+        await doc.call<PageShape>('pages.insert_file', { at: index + 1, password: password ?? null }, [file.bytes.slice(0)]);
+        const { result } = await doc.call<PageShape>('pages.delete', { pages: [index] });
+        const history = organizeHistory.current;
+        history.undo = [...history.undo, before].slice(-ORGANIZE_HISTORY);
+        history.redo = [];
+        rememberSteps();
+        dispatch({
+          type: 'DOCUMENT_RESHAPED',
+          pageCount: result.pageCount,
+          pageSizes: result.pageSizes,
+          selection: Array.from({ length: pages }, (_, k) => index + k),
+        });
+        return 'inserted';
+      } catch {
+        dispatch({ type: 'ORGANIZE_BUSY', busy: false });
+        dispatch({ type: 'DOCUMENT_FAILED', error: 'organize.failed' });
+        return 'failed';
+      }
+    },
+    [client],
   );
 
   /** Every part through `pages.extract`, then one zip: one save, whatever the host. */
@@ -1765,6 +1818,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       saveReport,
       transformFile,
       clearRecent,
+      removeRecent,
+      replacePageFromFile,
       commitParagraph,
       rememberFileChange,
       addText,
@@ -1830,6 +1885,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       saveReport,
       transformFile,
       clearRecent,
+      removeRecent,
+      replacePageFromFile,
       commitParagraph,
       rememberFileChange,
       addText,

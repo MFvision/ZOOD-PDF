@@ -196,7 +196,7 @@ test.describe('Page marks are drawn into the file, read back in Arabic, and come
     // The tool first, from the home screen's gallery, then the file: the
     // panel must not stay disabled.
     await page.goto('/');
-    await page.getByRole('button', { name: 'Page marks', exact: true }).click();
+    await page.locator('.home .tool-cards-grid').getByRole('button', { name: 'Page marks', exact: true }).click();
     const p = panel(page);
     await expect(p.getByRole('heading', { name: 'Page marks' })).toBeVisible();
     await openPdf(page, THREE);
