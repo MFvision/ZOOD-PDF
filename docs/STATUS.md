@@ -232,18 +232,35 @@ Part C of the native app (`apps/ios/PDFEditor/Scan/`), built and proven on the s
 iPhone 17 and iPad Pro 13-inch (M5), iOS 27.0 runtime — because this Mac has no signing identity
 and the simulator has no camera. What is proven, what was measured, and what is not:
 
+**The screen** follows the owner's design target (`.tools/briefs/design-target.md`, the iPhone
+section): a dark camera screen titled "Scan to PDF" / «مسح إلى PDF», "Auto" at the top (the
+corners Vision finds; off, the whole photo with the handles to place by hand), the four corner
+handles on the page itself with a magnifier under the finger while one is dragged, the mode strip
+Document · Whiteboard · ID Card · Book along the bottom, and the large round shutter. A passport
+(ID-3) is a switch inside ID Card, so the strip has exactly those four.
+
 **Capture.** VisionKit's document camera (`VNDocumentCameraViewController`: automatic edges,
-auto-shutter, many pages a session) is wired and offered wherever `isSupported` is true. On the
-simulator it is not, so the shutter carries the photo symbol and the caption under it says "No
+auto-shutter, many pages a session) is wired and offered wherever there is a camera. **VisionKit's
+`isSupported` answers true on the iOS 27 simulator** although it has no camera, so the shutter also
+asks AVFoundation for a video device; on the simulator there is none, so the shutter carries the photo symbol and the caption under it says "No
 camera on this device — the shutter chooses a photo"; Photos (the system picker, many at once) and
 Files (any picture: JPEG, PNG, HEIC, TIFF, turned upright by EXIF) are always there. **The real camera
 has not been run by anyone**: the code path from the camera is the same as from a photo (a `CGImage`
 into the session), but it is unproven on a device.
 
 **The pipeline** (`ScanPipeline.swift`, pure functions on pictures, unit-tested on fixtures):
-Vision's `VNDetectDocumentSegmentationRequest` finds the page (its rectangle detector is the
-fallback, the whole photo the fallback's fallback); Core Image's perspective correction cuts it
-out; the corners can be dragged by hand with a magnifier over the fingertip, "Auto" asks Vision
+Vision's `VNDetectDocumentSegmentationRequest` finds the page when its answer is page-shaped,
+its `VNDetectRectanglesRequest` otherwise, the whole photo when neither answers. **On this
+simulator the segmentation model is not to be trusted**: `ScanPipelineTests` logs what both
+detectors say, and for every fixture — the synthetic page on a desk, the ID card, and the real
+`photo-arabic.jpg` — segmentation answers a band along the bottom quarter of the photo, full
+width, with 0.97–0.99 confidence (a 144 × 256 mask), and for the book spread the whole frame
+at confidence 0.0; the rectangle detector finds the page (confidence 1.0, corners on the page's
+edges), the card, and each of the spread's two pages. So a quad is taken only when it is
+plausible — convex, a tenth of the photo or more, no more than 4:1, and not a small band
+touching three of the photo's borders — which keeps the segmentation's band out and hands the
+photo to the rectangle detector; on a device the segmentation model may well behave, and then it
+is preferred, but that is unproven here. Core Image's perspective correction cuts the page out; the corners can be dragged by hand with a magnifier over the fingertip, "Auto" asks Vision
 again, "Whole" takes the whole photo. Deskew measures the lines' slant by the slant at which the
 rows of ink are most uneven (the same idea as the web's `deskew.ts`; ±15°, 0.1° steps) and turns the
 page level; shadows, stains and uneven light are divided away by the paper's own brightness (the
@@ -259,7 +276,9 @@ its unevenness (standard deviation over paper pixels) 19 → 13, the darkest ten
 188 → 205 — what remains is the scan's grain (`gen_scans.py` adds noise 7 and JPEG quality 60), which
 no division of the paper's brightness takes out; on the photo of a page under a lamp
 (`photo-arabic.jpg`), mean 219 → 245 and unevenness 15 → 6. The crooked corpus scan measures 8.0°
-and comes back under 0.6° after deskew. <<DETECT>>
+and comes back under 0.6° after deskew. The synthetic page on a desk (`tests/fixtures/scan/page-crooked.jpg`,
+turned 6°) is found by the rectangle detector, cut out to A4 proportions (aspect within 0.08 of
+1/√2) and level within 1°; the ID card's crop has a card's proportions (within 0.12 of 1.586).
 
 **OCR.** Vision's `VNRecognizeTextRequest` at the accurate level. **`supportedRecognitionLanguages()` on
 this simulator (iOS 27.0) answers, in this order:** `en-US, fr-FR, it-IT, de-DE, es-ES, pt-BR,
@@ -296,10 +315,18 @@ the interface by `ScanTests.testScansAPhotoFromTheLibraryIntoASearchablePDF`, wh
 file with the core linked into the UI test runner. The text itself: copy, share (the share sheet,
 Notes among its targets), "Save as note" (a `.txt` beside the PDF in the app's Documents).
 
+**Whiteboard mode** (`Enhancement.whiteboard`): glare and shadow divided away as above, the board
+(anything lighter than 78 % grey) pushed to white, the markers' colours deepened (saturation × 1.6)
+rather than thresholded away. Measured on the synthetic whiteboard fixture (blue, red and green
+marker text, a window's glare, a shadow): board mean 220 → 253, unevenness 29 → 10, and the blue
+and red strokes still counted as blue and red afterwards (`testWhiteboardKeepsMarkerColoursOnAWhiteBoard`).
+
 **ID mode**: the front and the back of a card on one A4 page at ID-1 size (85.60 × 53.98 mm, the
 rounded corners of ISO 7810), drawn at 300 dpi; a passport variant at ID-3 (125 × 88 mm). The
 slots are unit-tested to the point and the composed page checked pixel by pixel; the saved PDF is
-one A4 page (UI test `testIDModeComposesFrontAndBackOnOnePage`). <<ID>>
+one A4 page (UI test `testIDModeComposesFrontAndBackOnOnePage`). On the synthetic back side, whose dark
+magnetic band spans the card, the rectangle detector on the simulator cut the card along that band
+(the iPad screenshot shows the back clipped); the corners can be dragged out by hand, and Auto asks again.
 
 **Book mode**: the spread is split at its gutter — the darkest column band in the middle two
 fifths, when it is at least 12 % darker than the paper; down the middle otherwise, and the page says
@@ -310,7 +337,8 @@ page's curve, and each column is slid back up by it (a CPU warp, pixels between 
 gutter — the paper seen at a slant — and the shading of the fold are not undone, because neither
 Vision nor Core Image models the page's surface, and nothing here pretends to. Where fewer than
 three lines or fewer than half the columns are seen, the page is left as it is and the Enhance sheet
-says so. <<BOOK>>
+says so. Measured on the synthetic spread (23 lines found by Vision): a bow of 6 px is brought to 2 px;
+the deskew then takes out the tilt the flattening leaves.
 
 **Live Text** (`ImageAnalysisInteraction` over the page on the stage) is offered where
 `ImageAnalyzer.isSupported`; on the simulator it is not, so the control is not shown there and it
@@ -320,7 +348,7 @@ is unproven.
 Persian or Urdu model here (the web's Tesseract has both). A very dark or very large area of a page
 (a photograph, a heavy heading) lightens under the lighting step, which takes it for shadow. Book
 mode's flattening is a column shift, not a dewarp. Every screen was photographed and looked at on
-the simulator (`docs/design/ios/scan-*.jpg`); nothing was seen on a device.
+the simulator (`docs/design/ios/scan-*.jpg`, `settings-scan-*.jpg`); nothing was seen on a device.
 
 ## The Library: reading the files, measured (2026-09-20)
 
