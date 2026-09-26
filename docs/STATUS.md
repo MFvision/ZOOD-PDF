@@ -501,6 +501,9 @@ About 4–8 s per page on this 4-core container.
 * Urdu Nastaliq tops out around 83 % (tessdata `urd` is trained on Naskh-like fonts).
 * **Desktop**: the web UI runs in Tauri (same CSP allowances) but no desktop spec runs OCR; the camera uses
   `getUserMedia` (web) — no native camera bridge, the file picker is the desktop path.
+* **Dropped images** go to Create PDF (lead convention for non-PDF drops), not to Scan: a photo dropped on the
+  window becomes a plain image page; to OCR it, open Scan & OCR → Scan pages. Routing photo drops to Scan is left
+  undecided (no reliable way to tell a document photo from an illustration).
 * The first OCR needs the core and the chosen model from the app's origin (Arabic ~2.5 MB, English 23 MB); the
   service worker caches them on first use, not at install.
 * PDFium in the viewer reads the RTL words through `/ReversedChars`; readers that ignore that marker see visual
