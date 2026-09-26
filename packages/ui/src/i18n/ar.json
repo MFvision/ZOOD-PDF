@@ -480,5 +480,6 @@
   "preflight.layers": "يحوي طبقات",
   "preflight.boxes": "حدود الصفحات",
   "preflight.none": "لا شيء",
-  "preflight.yes": "نعم"
+  "preflight.yes": "نعم",
+  "standards.action.remove-alternates": "أُزيلت الصور البديلة ({count})"
 }

@@ -45,6 +45,8 @@ export interface ToolDef {
   viewer?: { commands: string[] };
   /** Core-backed tools: set by the agent implementing the tool. */
   core?: { open: () => void | Promise<void> };
+  /** Core-backed tools that show a panel next to the viewer of the current document. */
+  panel?: string;
   /** Needs an open document. */
   needsDocument: boolean;
 }
@@ -87,7 +89,7 @@ export const TOOLS: readonly ToolDef[] = [
   tool('ai', 'sparkle', 'purple'),
   tool('page-marks', 'stamp', 'orange'),
   tool('digital-signature', 'certificate', 'indigo'),
-  tool('standards', 'badge', 'teal'),
+  tool('standards', 'badge', 'teal', { status: 'ready', panel: 'standards', platforms: ['web', 'desktop', 'extension'] }),
   tool('accessibility', 'accessibility', 'blue'),
   tool('batch', 'batch', 'graphite', { needsDocument: false }),
   tool('library', 'library', 'green', { needsDocument: false }),

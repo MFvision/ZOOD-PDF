@@ -21,13 +21,17 @@ export function useStartTool() {
       if (app.state.route.name !== 'document' || app.state.route.id !== target) {
         app.dispatch({ type: 'SET_ROUTE', route: { name: 'document', id: target } });
       }
-      runTool(tool, app.viewer(target));
+      runTool(tool, app.viewer(target), (panel) => app.dispatch({ type: 'SET_PANEL', id: target, panel }));
     },
     [app],
   );
 }
 
-export function runTool(tool: ToolDef, viewer: { exec(cmd: string): void } | undefined): boolean {
+export function runTool(tool: ToolDef, viewer: { exec(cmd: string): void } | undefined, openPanel?: (panel: string) => void): boolean {
+  if (tool.panel && openPanel) {
+    openPanel(tool.panel);
+    return true;
+  }
   if (tool.viewer && viewer) {
     for (const cmd of tool.viewer.commands) viewer.exec(cmd);
     return true;

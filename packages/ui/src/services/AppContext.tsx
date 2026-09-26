@@ -37,6 +37,8 @@ export interface AppServices {
   viewer(docId: string): ViewerApi | undefined;
   markSensitive(docId: string): void;
   storeThumbnail(docId: string, png: Uint8Array): Promise<void>;
+  /** The engine client (core tools call warraq-core through it). */
+  engine(): EngineClient;
 }
 
 const Ctx = createContext<AppServices | null>(null);
@@ -291,6 +293,7 @@ export function AppProvider({ children, platform = 'web', host: hostProp, recent
       await recents.setThumbnail(rid, png);
       await refreshRecents();
     },
+    engine: getEngine,
   };
 
   return <Ctx.Provider value={services}>{children}</Ctx.Provider>;

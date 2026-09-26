@@ -11,6 +11,7 @@ import { Viewer, type ViewerApi } from '../viewer/Viewer';
 import { Icon } from './icons';
 import { IconButton, MenuButton, Tile, type MenuItem } from './primitives';
 import { runTool } from './useTools';
+import { StandardsPanel } from './StandardsPanel';
 
 const wide = () => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 900px)').matches;
 
@@ -35,7 +36,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
       app.dispatch({ type: 'VIEWER_READY', id: doc.id, revision: doc.revision, pageCount: info.pageCount });
       if (doc.pendingTool) {
         const def = toolById(doc.pendingTool as ToolId);
-        if (def && runTool(def, viewer)) setTool(def.id);
+        if (def && runTool(def, viewer, (panel) => app.dispatch({ type: 'SET_PANEL', id: doc.id, panel }))) setTool(def.id);
         app.dispatch({ type: 'TOOL_STARTED', id: doc.id });
       }
       // First-page picture for Recents, rendered by PDFium.
@@ -57,10 +58,18 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
     if (!def) {
       api.exec('mode:view');
       setTool(null);
+      if (doc.panel) app.dispatch({ type: 'SET_PANEL', id: doc.id, panel: undefined });
       return;
     }
-    if (runTool(def, api) && def.id !== 'protect') setTool(def.id);
+    if (def.panel) api.exec('mode:view');
+    else if (doc.panel) app.dispatch({ type: 'SET_PANEL', id: doc.id, panel: undefined });
+    if (runTool(def, api, (panel) => app.dispatch({ type: 'SET_PANEL', id: doc.id, panel })) && def.id !== 'protect') setTool(def.id);
   };
+  const closePanel = () => {
+    app.dispatch({ type: 'SET_PANEL', id: doc.id, panel: undefined });
+    setTool(null);
+  };
+  const panelOpen = doc.panel === 'standards';
 
   const status = doc.edited ? ` · ${t('doc.edited')}` : '';
   const tools = readyTools(app.platform);
@@ -138,7 +147,7 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
           onClick={() => setInspectorOpen((v) => !v)}
         />
       </header>
-      <div className={`doc-body${pagesOpen ? ' pages-open' : ''}${inspectorOpen ? ' inspector-open' : ''}`}>
+      <div className={`doc-body${pagesOpen ? ' pages-open' : ''}${inspectorOpen && !panelOpen ? ' inspector-open' : ''}${panelOpen ? ' tool-panel-open' : ''}`}>
         {pagesOpen && (
           <PagesPanel
             api={api}
@@ -173,7 +182,8 @@ export function DocumentView({ doc, active, onRequestClose }: { doc: OpenDocumen
             </div>
           )}
         </div>
-        {inspectorOpen && <Inspector doc={doc} onComments={() => api?.exec('panel:toggle-comment')} />}
+        {inspectorOpen && !panelOpen && <Inspector doc={doc} onComments={() => api?.exec('panel:toggle-comment')} />}
+        {panelOpen && <StandardsPanel key={`${doc.id}:${doc.revision}`} doc={doc} api={api} onClose={closePanel} />}
       </div>
     </section>
   );

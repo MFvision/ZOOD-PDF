@@ -480,5 +480,6 @@
   "preflight.layers": "Has layers",
   "preflight.boxes": "Page boxes",
   "preflight.none": "None",
-  "preflight.yes": "Yes"
+  "preflight.yes": "Yes",
+  "standards.action.remove-alternates": "Removed alternate pictures ({count})"
 }

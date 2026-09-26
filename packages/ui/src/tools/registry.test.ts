@@ -25,8 +25,8 @@ describe('tool registry', () => {
     expect(ready).toEqual(expect.arrayContaining<ToolId>(['comment', 'fill-sign', 'prepare-form', 'redact', 'protect']));
     for (const id of ready) {
       const tool = toolById(id)!;
-      // A ready tool must be wired to something: a viewer mode/command or a core implementation.
-      expect(tool.viewer ?? tool.core, id).toBeTruthy();
+      // A ready tool must be wired to something: a viewer mode/command, a core implementation or a core panel.
+      expect(tool.viewer ?? tool.core ?? tool.panel, id).toBeTruthy();
     }
   });
 
