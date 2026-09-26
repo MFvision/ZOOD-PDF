@@ -1,19 +1,172 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "ai.chip.email": {
+    "ai.apple.arabic": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Draft an email"
+            "value": "Arabic supported"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "صغ رسالة بريد"
+            "value": "يدعم العربية"
+          }
+        }
+      }
+    },
+    "ai.apple.needsNewerOS": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple’s on-device model needs iOS 26 or later."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يتطلب نموذج Apple على الجهاز نظام iOS 26 أو أحدث."
+          }
+        }
+      }
+    },
+    "ai.apple.notEligible": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This device doesn’t support Apple Intelligence."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا الجهاز لا يدعم Apple Intelligence."
+          }
+        }
+      }
+    },
+    "ai.apple.notEnabled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn on Apple Intelligence in Settings to use Apple’s on-device model."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فعّل Apple Intelligence من الإعدادات لاستخدام نموذج Apple على الجهاز."
+          }
+        }
+      }
+    },
+    "ai.apple.notReady": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple’s model is still downloading. Try again later."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يزال نموذج Apple قيد التنزيل. حاول لاحقًا."
+          }
+        }
+      }
+    },
+    "ai.apple.off": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not available"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "غير متاح"
+          }
+        }
+      }
+    },
+    "ai.apple.ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ready"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جاهز"
+          }
+        }
+      }
+    },
+    "ai.ask": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسأل"
+          }
+        }
+      }
+    },
+    "ai.backend.apple": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence (on-device)"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence (على الجهاز)"
+          }
+        }
+      }
+    },
+    "ai.backend.portable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloaded model (on-device)"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النموذج المُنزَّل (على الجهاز)"
           }
         }
       }
@@ -52,23 +205,6 @@
         }
       }
     },
-    "ai.chip.quiz": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Quiz"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "اختبار قصير"
-          }
-        }
-      }
-    },
     "ai.chip.summarize": {
       "extractionState": "manual",
       "localizations": {
@@ -103,19 +239,104 @@
         }
       }
     },
-    "ai.error.http %lld %@": {
+    "ai.cite %lld": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The AI service answered %1$lld: %2$@"
+            "value": "p. %lld"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "ردّت خدمة الذكاء الاصطناعي بالرمز %1$lld: %2$@"
+            "value": "ص %lld"
+          }
+        }
+      }
+    },
+    "ai.copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نسخ"
+          }
+        }
+      }
+    },
+    "ai.error.generation %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The model stopped: %@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "توقف النموذج: %@"
+          }
+        }
+      }
+    },
+    "ai.error.language": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The on-device model doesn’t support this language yet."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يدعم النموذج على الجهاز هذه اللغة بعد."
+          }
+        }
+      }
+    },
+    "ai.error.loadFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The model file could not be loaded. Delete it and download it again."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر تحميل ملف النموذج. احذفه ثم نزّله من جديد."
+          }
+        }
+      }
+    },
+    "ai.error.noModel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download the on-device model first (one time)."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نزّل النموذج على الجهاز أولًا (مرة واحدة فقط)."
           }
         }
       }
@@ -126,13 +347,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This document has no text to send (a scan without OCR?)."
+            "value": "This document has no text to read (a scan without OCR?)."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "لا يحتوي هذا المستند على نص يمكن إرساله (مسح ضوئي دون تعرف على النص؟)."
+            "value": "لا يحتوي هذا المستند على نص يمكن قراءته (مسح ضوئي دون تعرّف على النص؟)."
           }
         }
       }
@@ -154,92 +375,58 @@
         }
       }
     },
-    "ai.key.footer": {
+    "ai.error.runtimeMissing": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stored only in this device’s Keychain. Requests go straight from this device to api.anthropic.com."
+            "value": "The downloadable model runs only in device builds of the app. Apple Intelligence is used when available."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "يُحفظ في سلسلة مفاتيح هذا الجهاز فقط، وتذهب الطلبات مباشرة من جهازك إلى api.anthropic.com."
+            "value": "لا يعمل النموذج القابل للتنزيل إلا في إصدارات التطبيق المخصّصة للأجهزة، ويُستخدم Apple Intelligence عند توفره."
           }
         }
       }
     },
-    "ai.key.forget": {
+    "ai.error.tooLong": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Forget Key"
+            "value": "The text is too long for the on-device model. Try a single page."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "حذف المفتاح"
+            "value": "النص أطول مما يستوعبه النموذج على الجهاز. جرّب صفحة واحدة."
           }
         }
       }
     },
-    "ai.key.placeholder": {
+    "ai.model.checksumFailed": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "sk-ant-…"
+            "value": "The downloaded file doesn’t match the expected fingerprint and was deleted."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "sk-ant-…"
+            "value": "لا يطابق الملف المُنزَّل البصمة المتوقعة، لذا حُذف."
           }
         }
       }
     },
-    "ai.key.save": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Save Key"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "حفظ المفتاح"
-          }
-        }
-      }
-    },
-    "ai.key.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your Anthropic API key"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "مفتاح Anthropic الخاص بك"
-          }
-        }
-      }
-    },
-    "ai.model": {
+    "ai.model.choose": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -252,6 +439,312 @@
           "stringUnit": {
             "state": "translated",
             "value": "النموذج"
+          }
+        }
+      }
+    },
+    "ai.model.delete": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete Model"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حذف النموذج"
+          }
+        }
+      }
+    },
+    "ai.model.delete.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The model file will be removed from this device. You can download it again later."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سيُحذف ملف النموذج من هذا الجهاز، ويمكنك تنزيله مجددًا لاحقًا."
+          }
+        }
+      }
+    },
+    "ai.model.download %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download (%@)"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تنزيل (%@)"
+          }
+        }
+      }
+    },
+    "ai.model.downloading %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloading %@…"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ تنزيل %@…"
+          }
+        }
+      }
+    },
+    "ai.model.explain": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To answer without the internet, ZOOD PDF downloads a small open model once. It then works offline, with no account, key or fees."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "للإجابة دون اتصال بالإنترنت، يُنزّل «زود PDF» نموذجًا مفتوحًا صغيرًا مرة واحدة، ثم يعمل دون اتصال ودون حساب أو مفتاح أو رسوم."
+          }
+        }
+      }
+    },
+    "ai.model.footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qwen3 by Alibaba (Apache-2.0), run by llama.cpp. The file is checked against a fixed fingerprint and is not backed up to iCloud."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نموذج Qwen3 من Alibaba (رخصة Apache-2.0) يعمل بواسطة llama.cpp. يُطابَق الملف مع بصمة ثابتة، ولا يُنسخ احتياطيًا إلى iCloud."
+          }
+        }
+      }
+    },
+    "ai.model.import": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import a model file (.gguf)"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استيراد ملف نموذج (‎.gguf)"
+          }
+        }
+      }
+    },
+    "ai.model.noSpace": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not enough free space for the model."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد مساحة كافية للنموذج."
+          }
+        }
+      }
+    },
+    "ai.model.notGGUF": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file isn’t a GGUF model."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا الملف ليس نموذجًا بصيغة GGUF."
+          }
+        }
+      }
+    },
+    "ai.model.option %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "ai.model.pause": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إيقاف مؤقت"
+          }
+        }
+      }
+    },
+    "ai.model.paused": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download paused. It continues where it stopped."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "توقف التنزيل مؤقتًا، وسيُستأنف من حيث توقف."
+          }
+        }
+      }
+    },
+    "ai.model.recommended": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recommended for this device."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مُوصى به لهذا الجهاز."
+          }
+        }
+      }
+    },
+    "ai.model.resume": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resume"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استئناف"
+          }
+        }
+      }
+    },
+    "ai.model.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On-device model"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النموذج على الجهاز"
+          }
+        }
+      }
+    },
+    "ai.model.verifying": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking the file…"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ التحقق من الملف…"
+          }
+        }
+      }
+    },
+    "ai.onDevice": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runs on this device — nothing is sent anywhere"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يعمل على هذا الجهاز — لا يُرسَل أي شيء إلى أي مكان"
+          }
+        }
+      }
+    },
+    "ai.partial": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The document is long: the answer is based on the most relevant parts."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المستند طويل، لذا تستند الإجابة إلى أكثر أجزائه صلة."
           }
         }
       }
@@ -273,87 +766,53 @@
         }
       }
     },
-    "ai.preview": {
+    "ai.scope": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Preview"
+            "value": "Look at"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "معاينة"
+            "value": "النطاق"
           }
         }
       }
     },
-    "ai.preview.footer": {
+    "ai.scope.document": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sent to Anthropic with your key when you press Send."
+            "value": "Whole document"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "يُرسَل إلى Anthropic بمفتاحك عند الضغط على «إرسال»."
+            "value": "المستند كاملًا"
           }
         }
       }
     },
-    "ai.preview.title": {
+    "ai.scope.page %lld": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This exact text will be sent"
+            "value": "Page %lld"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "سيُرسَل هذا النص كما هو"
-          }
-        }
-      }
-    },
-    "ai.preview.truncated": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The document is long; only its beginning is included."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "المستند طويل، لذا أُدرجت بدايته فقط."
-          }
-        }
-      }
-    },
-    "ai.send": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Send"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إرسال"
+            "value": "الصفحة %lld"
           }
         }
       }
@@ -364,30 +823,115 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "API key"
+            "value": "AI & Voice Settings"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "مفتاح الواجهة البرمجية"
+            "value": "إعدادات الذكاء الاصطناعي والصوت"
           }
         }
       }
     },
-    "ai.subtitle": {
+    "ai.settings.apple": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nothing is sent until you press Send. You’ll see the exact text first."
+            "value": "Apple Intelligence"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "لا يُرسَل شيء حتى تضغط «إرسال»، وسترى النص المُرسَل كاملًا قبل ذلك."
+            "value": "Apple Intelligence"
+          }
+        }
+      }
+    },
+    "ai.settings.apple.footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Used first when it is on and supports the document’s language."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُستخدم أولًا متى كان مفعّلًا ويدعم لغة المستند."
+          }
+        }
+      }
+    },
+    "ai.settings.portable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloadable model"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النموذج القابل للتنزيل"
+          }
+        }
+      }
+    },
+    "ai.settings.portable.footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Used when Apple Intelligence is off, unavailable, or doesn’t support the language."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُستخدم عندما يكون Apple Intelligence متوقفًا أو غير متاح أو لا يدعم اللغة."
+          }
+        }
+      }
+    },
+    "ai.showPrompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show prompt"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عرض نص الطلب"
+          }
+        }
+      }
+    },
+    "ai.unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On-device AI isn’t available in this build on this device. Apple Intelligence needs iOS 26 on a supported device; the downloadable model needs a device build."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الذكاء الاصطناعي على الجهاز غير متاح في هذا الإصدار على هذا الجهاز. يتطلب Apple Intelligence نظام iOS 26 على جهاز مدعوم، ويتطلب النموذج القابل للتنزيل إصدارًا مخصّصًا للأجهزة."
           }
         }
       }
@@ -592,6 +1136,363 @@
           "stringUnit": {
             "state": "translated",
             "value": "ملفاتك تبقى على جهازك"
+          }
+        }
+      }
+    },
+    "autofill.addDetails": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add my details"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أضف بياناتي"
+          }
+        }
+      }
+    },
+    "autofill.apply %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fill (%lld)"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعبئة (%lld)"
+          }
+        }
+      }
+    },
+    "autofill.askModel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggest the rest with on-device AI"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اقترح الباقي بالذكاء الاصطناعي على الجهاز"
+          }
+        }
+      }
+    },
+    "autofill.checked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checked"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "محدد"
+          }
+        }
+      }
+    },
+    "autofill.done %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fields filled and saved: %lld"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الحقول التي عُبّئت وحُفظت: %lld"
+          }
+        }
+      }
+    },
+    "autofill.dropped %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggestions dropped because they couldn’t be verified: %lld"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اقتراحات استُبعدت لتعذّر التحقق منها: %lld"
+          }
+        }
+      }
+    },
+    "autofill.editDetails": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit my details"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عدّل بياناتي"
+          }
+        }
+      }
+    },
+    "autofill.error.malformed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The model’s answer couldn’t be read. Try again."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّرت قراءة إجابة النموذج. حاول مرة أخرى."
+          }
+        }
+      }
+    },
+    "autofill.modelHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download the on-device model in AI settings to get suggestions for other fields."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نزّل النموذج على الجهاز من إعدادات الذكاء الاصطناعي للحصول على اقتراحات لبقية الحقول."
+          }
+        }
+      }
+    },
+    "autofill.noFields": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Fillable Fields"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد حقول قابلة للتعبئة"
+          }
+        }
+      }
+    },
+    "autofill.noFields.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This PDF has no form fields."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يحتوي ملف PDF هذا على حقول نموذج."
+          }
+        }
+      }
+    },
+    "autofill.page %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Page %lld"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصفحة %lld"
+          }
+        }
+      }
+    },
+    "autofill.proposals %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proposed values (%lld)"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "القيم المقترحة (%lld)"
+          }
+        }
+      }
+    },
+    "autofill.review.footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only ticked values are written. The file is then saved as an update, keeping the original."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا تُكتب إلا القيم المحددة، ثم يُحفظ الملف كتحديث مع الإبقاء على الأصل."
+          }
+        }
+      }
+    },
+    "autofill.source.document %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From this document, page %lld"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "من هذا المستند، الصفحة %lld"
+          }
+        }
+      }
+    },
+    "autofill.source.model": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI suggestion"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اقتراح الذكاء الاصطناعي"
+          }
+        }
+      }
+    },
+    "autofill.source.profile %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From my details: %@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "من بياناتي: %@"
+          }
+        }
+      }
+    },
+    "autofill.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Values come from your details and this document. Review each one before it is filled."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تأتي القيم من بياناتك ومن هذا المستند. راجع كل قيمة قبل تعبئتها."
+          }
+        }
+      }
+    },
+    "autofill.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fill Form"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعبئة النموذج"
+          }
+        }
+      }
+    },
+    "autofill.unchecked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not checked"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "غير محدد"
+          }
+        }
+      }
+    },
+    "autofill.value": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Value"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "القيمة"
           }
         }
       }
@@ -950,6 +1851,23 @@
         }
       }
     },
+    "common.no": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا"
+          }
+        }
+      }
+    },
     "common.ok": {
       "extractionState": "manual",
       "localizations": {
@@ -1031,6 +1949,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "تراجع"
+          }
+        }
+      }
+    },
+    "common.yes": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yes"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نعم"
           }
         }
       }
@@ -2174,6 +3109,40 @@
         }
       }
     },
+    "intent.error.noModel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On-device AI isn’t ready. Open ZOOD PDF › AI settings to turn on Apple Intelligence or download the model."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الذكاء الاصطناعي على الجهاز غير جاهز. افتح «زود PDF» › إعدادات الذكاء الاصطناعي لتفعيل Apple Intelligence أو تنزيل النموذج."
+          }
+        }
+      }
+    },
+    "intent.error.noText": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This PDF has no text to summarize."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يحتوي ملف PDF هذا على نص لتلخيصه."
+          }
+        }
+      }
+    },
     "intent.error.protected %@": {
       "extractionState": "manual",
       "localizations": {
@@ -2242,6 +3211,57 @@
         }
       }
     },
+    "intent.readAloud.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens a recent PDF and reads it aloud with on-device voices."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يفتح ملف PDF حديثًا ويقرؤه بصوت عالٍ بأصوات الجهاز."
+          }
+        }
+      }
+    },
+    "intent.readAloud.short": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read Aloud"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "القراءة بصوت عالٍ"
+          }
+        }
+      }
+    },
+    "intent.readAloud.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read PDF Aloud"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قراءة ملف PDF بصوت عالٍ"
+          }
+        }
+      }
+    },
     "intent.scan.description": {
       "extractionState": "manual",
       "localizations": {
@@ -2306,6 +3326,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "وضع المسح"
+          }
+        }
+      }
+    },
+    "intent.summarize.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Summarizes a PDF with on-device AI. Nothing is sent anywhere."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يلخّص ملف PDF بالذكاء الاصطناعي على الجهاز دون إرسال أي شيء."
+          }
+        }
+      }
+    },
+    "intent.summarize.file": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ملف PDF"
+          }
+        }
+      }
+    },
+    "intent.summarize.short": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Summarize PDF"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تلخيص PDF"
+          }
+        }
+      }
+    },
+    "intent.summarize.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Summarize PDF"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تلخيص ملف PDF"
           }
         }
       }
@@ -2783,6 +3871,431 @@
         }
       }
     },
+    "profile.address": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Address"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "العنوان"
+          }
+        }
+      }
+    },
+    "profile.city": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "City"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المدينة"
+          }
+        }
+      }
+    },
+    "profile.clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear My Details"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مسح بياناتي"
+          }
+        }
+      }
+    },
+    "profile.clear.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your saved details will be deleted from this device."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ستُحذف بياناتك المحفوظة من هذا الجهاز."
+          }
+        }
+      }
+    },
+    "profile.dob": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date of birth"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تاريخ الميلاد"
+          }
+        }
+      }
+    },
+    "profile.dob.gregorian": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date of birth (Gregorian)"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تاريخ الميلاد (ميلادي)"
+          }
+        }
+      }
+    },
+    "profile.dob.hijri": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date of birth (Hijri)"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تاريخ الميلاد (هجري)"
+          }
+        }
+      }
+    },
+    "profile.email": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "البريد الإلكتروني"
+          }
+        }
+      }
+    },
+    "profile.employer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Employer"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جهة العمل"
+          }
+        }
+      }
+    },
+    "profile.firstName": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First name"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الاسم الأول"
+          }
+        }
+      }
+    },
+    "profile.footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stored only on this device, encrypted while it is locked, and never backed up or sent anywhere."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تُحفظ على هذا الجهاز فقط، وتبقى مشفّرة أثناء قفله، ولا تُنسخ احتياطيًا ولا تُرسَل إلى أي مكان."
+          }
+        }
+      }
+    },
+    "profile.jobTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Job title"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المسمى الوظيفي"
+          }
+        }
+      }
+    },
+    "profile.lastName": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last name"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسم العائلة"
+          }
+        }
+      }
+    },
+    "profile.nameArabic": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Full name (Arabic)"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الاسم الكامل (بالعربية)"
+          }
+        }
+      }
+    },
+    "profile.nameEnglish": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Full name (English)"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الاسم الكامل (بالإنجليزية)"
+          }
+        }
+      }
+    },
+    "profile.nationalID": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "National ID / Iqama number"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "رقم الهوية الوطنية / الإقامة"
+          }
+        }
+      }
+    },
+    "profile.nationalID.check": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This doesn’t look like a valid ID or Iqama number. Check the digits."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يبدو هذا رقم هوية أو إقامة صحيحًا. تحقّق من الأرقام."
+          }
+        }
+      }
+    },
+    "profile.nationality": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nationality"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الجنسية"
+          }
+        }
+      }
+    },
+    "profile.phone": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mobile number"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "رقم الجوال"
+          }
+        }
+      }
+    },
+    "profile.postalCode": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Postal code"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الرمز البريدي"
+          }
+        }
+      }
+    },
+    "profile.section.contact": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contact"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التواصل"
+          }
+        }
+      }
+    },
+    "profile.section.identity": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Identity"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الهوية"
+          }
+        }
+      }
+    },
+    "profile.section.name": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الاسم"
+          }
+        }
+      }
+    },
+    "profile.section.work": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Work"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "العمل"
+          }
+        }
+      }
+    },
+    "profile.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My Details"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بياناتي"
+          }
+        }
+      }
+    },
     "protect.applied": {
       "extractionState": "manual",
       "localizations": {
@@ -3187,6 +4700,380 @@
           "stringUnit": {
             "state": "translated",
             "value": "النطاق «%@» معكوس."
+          }
+        }
+      }
+    },
+    "read.next": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next paragraph"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الفقرة التالية"
+          }
+        }
+      }
+    },
+    "read.noText": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This document has no text to read."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يحتوي هذا المستند على نص للقراءة."
+          }
+        }
+      }
+    },
+    "read.nowPlaying.page %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Page %lld"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصفحة %lld"
+          }
+        }
+      }
+    },
+    "read.options": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading options"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "خيارات القراءة"
+          }
+        }
+      }
+    },
+    "read.pause": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إيقاف مؤقت"
+          }
+        }
+      }
+    },
+    "read.play": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Play"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تشغيل"
+          }
+        }
+      }
+    },
+    "read.position %lld %lld %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Page %1$lld · %2$lld of %3$lld"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصفحة %1$lld · %2$lld من %3$lld"
+          }
+        }
+      }
+    },
+    "read.previous": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous paragraph"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الفقرة السابقة"
+          }
+        }
+      }
+    },
+    "read.quality.default": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "افتراضي"
+          }
+        }
+      }
+    },
+    "read.quality.enhanced": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enhanced"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "محسّن"
+          }
+        }
+      }
+    },
+    "read.quality.premium": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premium"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فائق الجودة"
+          }
+        }
+      }
+    },
+    "read.speed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speed"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السرعة"
+          }
+        }
+      }
+    },
+    "read.speed.value %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@×"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@×"
+          }
+        }
+      }
+    },
+    "read.voices": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voices"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأصوات"
+          }
+        }
+      }
+    },
+    "read.voices.about": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About voices"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عن الأصوات"
+          }
+        }
+      }
+    },
+    "read.voices.arabic": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arabic"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "العربية"
+          }
+        }
+      }
+    },
+    "read.voices.english": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "English"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الإنجليزية"
+          }
+        }
+      }
+    },
+    "read.voices.getBetter": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download an Enhanced or Premium voice for more natural reading (see below)."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نزّل صوتًا محسّنًا أو فائق الجودة لقراءة أكثر طبيعية (انظر أدناه)."
+          }
+        }
+      }
+    },
+    "read.voices.howTo": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To add Premium voices such as Ava (English) or Majed (Arabic): Settings › Accessibility › Spoken Content › Voices › choose the language › download the voice. Reading always happens on the device."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لإضافة أصوات فائقة الجودة مثل Ava (للإنجليزية) أو Majed (للعربية): الإعدادات › تسهيلات الاستخدام › المحتوى المنطوق › الأصوات › اختر اللغة › نزّل الصوت. تتم القراءة دائمًا على الجهاز."
+          }
+        }
+      }
+    },
+    "read.voices.none": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No voice installed for this language."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يوجد صوت مثبّت لهذه اللغة."
+          }
+        }
+      }
+    },
+    "read.voices.selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "محدد"
+          }
+        }
+      }
+    },
+    "read.voices.siri": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siri voices can’t be used by apps; iOS keeps them for Siri. ZOOD PDF uses the best other voice installed on your device."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يمكن للتطبيقات استخدام أصوات Siri، إذ يخصّصها iOS لـ Siri وحده. يستخدم «زود PDF» أفضل صوت آخر مثبّت على جهازك."
           }
         }
       }
@@ -4095,13 +5982,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Summarize and ask questions"
+            "value": "Summarize, ask and translate on this device"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "لخّص المستند واطرح الأسئلة"
+            "value": "لخّص واسأل وترجم على هذا الجهاز"
           }
         }
       }
@@ -4242,6 +6129,40 @@
         }
       }
     },
+    "tool.fillForm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fill Form"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعبئة النموذج"
+          }
+        }
+      }
+    },
+    "tool.fillForm.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fill forms from your details, on this device"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "املأ النماذج من بياناتك على هذا الجهاز"
+          }
+        }
+      }
+    },
     "tool.more": {
       "extractionState": "manual",
       "localizations": {
@@ -4374,6 +6295,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "كلمة مرور وأذونات"
+          }
+        }
+      }
+    },
+    "tool.readAloud": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read Aloud"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "القراءة بصوت عالٍ"
+          }
+        }
+      }
+    },
+    "tool.readAloud.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listen with the best voices on your device"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استمع بأفضل الأصوات المثبّتة على جهازك"
           }
         }
       }

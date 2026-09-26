@@ -351,18 +351,22 @@ possible; nothing about the UI is proven yet. What *was* compiled and tested her
 | Checked on Linux | How | Result |
 | --- | --- | --- |
 | `ZoodKit` package (engine wrapper + pure logic) compiled with Swift 6.3, Swift 6 language mode, `-strict-concurrency=complete -warnings-as-errors` | `bash scripts/ios/test-linux.sh` | builds clean |
-| FFI bridge to the real engine (`libwarraq_core.a`, feature `ffi`, cargo profile `ios`) through `warraq.h`: open/info, garbage → `parse_error`, rotate as incremental update (original bytes kept), delete/insert/move/extract, bad params / unknown method errors, `doc.rebase` (unchanged + incremental), AES-256 protect → `password_required` → reopen with user/owner password → remove, `pdf.merge`, `methods.list`, metadata, `text.plain`, 16 documents in parallel; `warraq.h` copy equals the engine header | swift-testing, `ZoodEngineTests` | 13 tests pass |
-| Arabic search normalisation (mirror of the web rules), page ranges with Arabic-Indic/Persian digits and «،», Umm al-Qura Hijri + Gregorian dates with locale numerals, safe file names (bidi-spoof removal), recents store (dedupe, cap, stars, tags, thumbnails, forget-thumbnail, path-escape), scan geometry (corner ordering, ID-1 real size, right-to-left book order), deep links, AI prompt/request body/SSE parsing | swift-testing, `ZoodCoreTests` | 30 tests pass |
-| Every app/widget/test source parses (`swiftc -parse`, Swift 6) | `bash scripts/ios/parse-check.sh` | 29 files parse |
-| String Catalogs: every key used in Swift exists in English and Arabic, Arabic plural forms (zero…other), no unused keys, App Shortcuts phrases in both languages | `python3 scripts/ios/check-strings.py` | 256 app keys, 13 widget keys, 7 phrases |
+| FFI bridge to the real engine (`libwarraq_core.a`, feature `ffi`, cargo profile `ios`) through `warraq.h`: open/info, garbage → `parse_error`, rotate as incremental update (original bytes kept), delete/insert/move/extract, bad params / unknown method errors, `doc.rebase` (unchanged + incremental), AES-256 protect → `password_required` → reopen with user/owner password → remove, `pdf.merge`, `methods.list`, metadata, `text.plain`, per-page texts and paragraph boxes (`text.extract`) for AI/read-aloud, 16 documents in parallel; `warraq.h` copy equals the engine header | swift-testing, `ZoodEngineTests` | 14 tests pass |
+| Arabic search normalisation (mirror of the web rules), page ranges with Arabic-Indic/Persian digits and «،», Umm al-Qura Hijri + Gregorian dates with locale numerals, safe file names (bidi-spoof removal), recents store (dedupe, cap, stars, tags, thumbnails, forget-thumbnail, path-escape), scan geometry (corner ordering, ID-1 real size, right-to-left book order), deep links (incl. `zoodpdf://read`) | swift-testing, `ZoodCoreTests` | 27 tests pass |
+| Local-first AI logic (ADR 0015): per-page chunking (no word cut, Arabic sentence marks), BM25 retrieval over Arabic-normalised/stemmed terms finding the right page for Arabic questions, budgets, prompt templates for ask/summarize/explain/translate (ar↔en direction)/key points, prompt-injection sanitising (`<\|im_…\|>`, `</excerpts>`), ChatML with thinking off, streaming think-block filter, UTF-8 reassembly of token bytes, citation parsing (`[p. 3]`, `[ص ٣]`, ranges; non-existent pages stay text), backend choice, pinned model catalog (revision, size, SHA-256, RAM threshold, imports), GGUF header check | swift-testing, `ZoodCoreTests` | 17 tests pass |
+| Autofill: profile derived values (first/last names, DOB Gregorian → Umm al-Qura Hijri), Saudi ID/Iqama Luhn check, profile file encoding/versioning/missing keys, save/load/clear, Arabic + English label/field-name rules, JSON extraction from fenced/think output, validation accepting grounded values and **rejecting** unknown/read-only/signature fields, duplicates, over-long, control and bidi-override characters, `javascript:`/template tokens, non-options, non-booleans, unknown sources, profile mismatches and values not on the cited page; GBNF grammar | swift-testing, `ZoodCoreTests` | 9 tests pass |
+| Read-aloud: reading units per paragraph with per-sentence Arabic/English switching, page numbers skipped, grouping limit, speakable text (tatweel out, tashkeel kept), engine box → PDFKit page space, voice ranking (Premium > Enhanced > default, region, novelty/Personal Voice excluded, saved choice), speed mapping | swift-testing, `ZoodCoreTests` | 6 tests pass |
+| Every app/widget/test source parses (`swiftc -parse`, Swift 6) | `bash scripts/ios/parse-check.sh` | 41 files parse |
+| String Catalogs: every key used in Swift exists in English and Arabic, Arabic plural forms (zero…other), no unused keys, App Shortcuts phrases in both languages | `python3 scripts/ios/check-strings.py` | 371 app keys, 13 widget keys, 10 phrases |
+| llama.cpp XCFramework download + SHA-256 pin | `bash scripts/ios/fetch-llama.sh` (run on Linux) | archive verified, slices: ios-arm64, macos only |
 | `build.sh` / `build-core.sh` fail clearly on non-macOS; all iOS scripts pass `shellcheck` | run on Linux | as designed |
 
-Total on Linux: **43 swift-testing tests** in 10 suites.
+Total on Linux: **73 swift-testing tests** in 14 suites (the 3 bring-your-own-key AI tests were removed with that feature).
 
 **Written, needs a Mac to run (owner action):** `scripts/ios/build-core.sh` (XCFramework, LTO off),
 `xcodegen generate`, simulator build and tests (`Tests/ZoodPDFTests`: PDFKit ink → `doc.rebase`
 incremental save, highlight annotations, invisible OCR text layer readable by PDFKit, ID-card A4 page,
-Vision runtime language check, compress never grows a file, unique file names; `Tests/ZoodPDFUITests`:
+Vision runtime language check, compress never grows a file, unique file names; `Tests/LocalFirstTests`: autofill written into a PDFKit text widget and rebased incrementally, engine paragraph boxes selecting the same text in PDFKit, installed voices ranked, Foundation Models availability checked without crashing; `Tests/ZoodPDFUITests`:
 Arabic and English tours Home → document → Pencil stroke → Save → Organize → Scan with screenshots into
 `docs/design/ios/`). `docs/design/ios/` is empty until then.
 
@@ -374,12 +378,16 @@ thumbnails rail, prev/next, share, save, unsaved-changes prompt); floating Penci
 highlighter, eraser, text highlight, 6 colours, width, undo) turning PencilKit strokes into PDF ink
 annotations; Organize (rotate/reorder by drag/delete/insert blank or file/extract, page-range field);
 Protect/remove (engine); Combine (new file) and drop-a-PDF → "Combine with this document / Open in New
-Window"; Compress (new file); Convert (PNG/JPEG pages, text); AI assistant (bring-your-own Anthropic key in
-the Keychain, exact text shown before Send, streaming, `claude-opus-5` default, model editable); Scan to
+Window"; Compress (new file); Convert (PNG/JPEG pages, text); on-device AI assistant (ADR 0015: Apple
+Foundation Models when available and the language is supported, else Qwen3 via llama.cpp after a
+one-time pinned download or a Files import; ask with tappable page citations, summarize, explain
+simply, translate ar↔en, key points; "Show prompt"); Fill Form (autofill from "My details" + document
+text, per-field review with source, incremental save); Read Aloud (best installed voices, per-language
+switching, paragraph highlight, background audio, Now Playing, voice picker); Scan to
 PDF (dark camera screen, mode strip Document · Whiteboard · ID Card · Book; VisionKit for Document; own
 AVFoundation capture with live rectangle detection and draggable corners for the others; photo import);
 widgets (Recents small/medium/large, Scan, Lock Screen circular/rectangular/inline, Control Center
-"Scan to PDF"); App Intents + App Shortcuts (Open recent, Scan, Combine, Compress; phrases en + ar);
+"Scan to PDF"); App Intents + App Shortcuts (Open recent, Scan, Combine, Compress, Summarize PDF, Read PDF aloud; phrases en + ar);
 Core Spotlight indexing of recents with engine `text.plain`; multiple windows (`WindowGroup(for: URL.self)`),
 drag & drop of PDFs between windows; Files app (open in place, app Documents folder visible).
 
@@ -392,17 +400,36 @@ drag & drop of PDFs between windows; Files app (open in place, app Documents fol
   the user chooses "Keep Password" (AES-256 whole rewrite with the password they typed, original
   permissions) or "Save Without Password".
 * Undo covers markup strokes and engine steps (whole-file snapshots, capped at 300 MB); no redo.
-* Not on iOS yet (web/desktop only): Fill & sign, form preparation, redaction, digital signatures, page
+* **Local-first AI / autofill / read-aloud (ADR 0015) — honest state:** the logic is proven on Linux
+  (above); the app-side code is **syntax-checked only**: Foundation Models calls (written against the
+  iOS 26 SDK API: `SystemLanguageModel.default.availability`, `supportsLocale`, `LanguageModelSession`,
+  `streamResponse` snapshots, `@Generable` guided generation), the llama.cpp C calls (written against
+  the `llama.h` of release b11200, which was downloaded and read here), the background `URLSession`
+  download, PDFKit widget reading/writing, `AVSpeechSynthesizer`, `AVAudioSession`, MediaPlayer.
+  None has run. The llama.cpp XCFramework has **no simulator slice**, so the portable model works only
+  in device builds (the simulator offers Apple's model only). Arabic support of Apple's model is
+  decided at run time by `supportsLocale`; if it is missing, Arabic requests use Qwen3. No model
+  quality has been measured on real documents; Qwen3-0.6B in particular is weak.
+  The model download URL is Hugging Face (`huggingface.co/unsloth/…` at a fixed revision) — it needs
+  the network once; the SHA-256 pins make a changed file fail closed.
+* Not on iOS yet (web/desktop only): Fill & sign (signatures), form preparation, redaction, digital signatures, page
   marks, Office export/import (iOS Convert makes pictures and text), compare, standards, accessibility
   tools, batch, library indexing, cloud drives. Local AI servers (Ollama/LM Studio on localhost) are not
-  offered on iOS.
+  offered on iOS (the model runs inside the app).
 * Page labels inside PDFKit's own thumbnail rail use PDFKit's digits.
 * No Apple team: simulator only. A device build needs `DEVELOPMENT_TEAM`, automatic signing and the App
   Group `group.sa.zood.pdf` registered for `sa.zood.pdf.ios` and `sa.zood.pdf.ios.widgets`.
 
 **Owner actions:** install Xcode 26+ and Rust; `brew install xcodegen`; run `bash scripts/ios/build.sh`
-(iPhone 17 + iPad Pro 13-inch (M4) simulators, time-boxed tests, screenshots into `docs/design/ios/`);
-fix any SwiftUI compile errors it reports; for a device, set the Apple team as above.
+(fetches the pinned llama.cpp XCFramework; iPhone 17 + iPad Pro 13-inch (M4) simulators, time-boxed
+tests, screenshots into `docs/design/ios/`); fix any SwiftUI compile errors it reports; for a device,
+set the Apple team as above. Then on a **physical device**: (1) with Apple Intelligence on (iOS 26),
+ask/summarize an English and an Arabic PDF and note whether `supportsLocale` reports Arabic; (2) with
+it off, download Qwen3 (≈1.1 GB) in AI settings, lock the phone mid-download, confirm it resumes and
+verifies, then ask with flight mode on; (3) fill a real government form from "My details"; (4) read
+an Arabic/English document aloud with the screen locked and use the Lock Screen controls; download
+Ava (Premium) and Majed in Settings › Accessibility › Spoken Content › Voices and confirm they are
+picked.
 
 ## Export and Compare (`warraq-office`, Export sheet, Compare panel)
 
