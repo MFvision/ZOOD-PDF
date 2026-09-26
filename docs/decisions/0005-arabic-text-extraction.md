@@ -45,7 +45,9 @@ that matches what a reader sees, search it Arabic-aware, and write Arabic that r
    keeps an offset map so hits map back to glyph rectangles.
 8. **Writing**: `shape()` uses `harfrust` (MIT) per bidi run and returns glyphs in visual order with clusters;
    `actual_text_spans()` groups them per logical word for `/Span <</ActualText …>> BDC … EMC`. We never write
-   `/Direction /R2L` (PDFium would read lines backwards).
+   `/Direction /R2L` (PDFium would read lines backwards). *Amended by ADR 0018:* PDFium reverses an Arabic
+   ActualText, so writers go through `encode::encode_line`, which writes plain right-to-left words by their
+   glyphs' ToUnicode (visual order) and keeps ActualText for the rest.
 9. **Acid gate**: `tests/acid` compares every non-scanned corpus PDF with its truth (normalised character accuracy)
    against per-file baselines; any drop fails `verify.sh`.
 

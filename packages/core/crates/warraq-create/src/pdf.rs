@@ -111,6 +111,8 @@ struct FontOut {
     widths: HashMap<u16, f64>,
     /// The ToUnicode stream object (written after the content pass).
     tu: ObjectId,
+    /// ToUnicode texts by original glyph id, from `warraq_text::encode_line` (ADR 0018).
+    maps: warraq_text::ToUnicodeMaps,
 }
 
 fn subset_tag(glyphs: &[u16], id: FontId) -> String {
@@ -121,30 +123,6 @@ fn subset_tag(glyphs: &[u16], id: FontId) -> String {
     }
     (0..6)
         .map(|i| char::from(b'A' + ((h >> (i * 5)) % 26) as u8))
-        .collect()
-}
-
-/// Logical text for each glyph of a piece (first glyph of a cluster gets the cluster's text).
-fn cluster_texts(text: &str, clusters: &[usize]) -> Vec<Option<String>> {
-    let mut starts: Vec<usize> = clusters.to_vec();
-    starts.sort_unstable();
-    starts.dedup();
-    let mut seen = BTreeSet::new();
-    clusters
-        .iter()
-        .map(|c| {
-            if !seen.insert(*c) {
-                return None;
-            }
-            let end = starts
-                .iter()
-                .find(|s| **s > *c)
-                .copied()
-                .unwrap_or(text.len());
-            text.get(*c..end)
-                .map(str::to_string)
-                .filter(|s| !s.is_empty())
-        })
         .collect()
 }
 
@@ -344,6 +322,7 @@ pub fn write(layout: &Layout, doc: &Document, meta: &Meta) -> Result<Vec<u8>> {
                 unicode: BTreeMap::new(),
                 widths,
                 tu: tu_id,
+                maps: warraq_text::ToUnicodeMaps::new(),
             },
         );
     }
@@ -473,7 +452,30 @@ pub fn write(layout: &Layout, doc: &Document, meta: &Meta) -> Result<Vec<u8>> {
                     let skew = if piece.italic { "0.21" } else { "0" };
                     let _ = writeln!(cs, "1 0 {skew} 1 {} {} Tm", num(*x), num(*y));
                     let lang = lang_tag(&piece.lang);
-                    if piece.arabic || piece.stretched {
+                    // Right-to-left words are encoded by their glyphs (ToUnicode in visual order):
+                    // PDFium reverses an Arabic /ActualText. Words the glyphs cannot express
+                    // (tashkeel, kashida-stretched, …) keep it (warraq_text::encode, ADR 0018).
+                    let refs: Vec<warraq_text::GlyphRef> = piece
+                        .glyphs
+                        .iter()
+                        .map(|g| warraq_text::GlyphRef {
+                            font: 0,
+                            glyph_id: u32::from(g.gid),
+                            cluster: g.cluster,
+                            rtl: piece.rtl(),
+                        })
+                        .collect();
+                    let encoded = warraq_text::encode_line(
+                        &piece.text,
+                        &refs,
+                        &mut fo.maps,
+                        warraq_text::EncodeOptions {
+                            force_actual_text: piece.stretched,
+                        },
+                    );
+                    let needs_actual_text = piece.stretched
+                        || (piece.arabic && encoded.iter().any(|e| e.actual_text.is_some()));
+                    if needs_actual_text {
                         let _ = writeln!(
                             cs,
                             "/Span <</Lang ({lang}) /ActualText {}>> BDC",
@@ -482,18 +484,12 @@ pub fn write(layout: &Layout, doc: &Document, meta: &Meta) -> Result<Vec<u8>> {
                     } else {
                         let _ = writeln!(cs, "/Span <</Lang ({lang})>> BDC");
                     }
-                    // ToUnicode entries.
-                    if !piece.stretched {
-                        let clusters: Vec<usize> = piece.glyphs.iter().map(|g| g.cluster).collect();
-                        let texts = cluster_texts(&piece.text, &clusters);
-                        for (g, t) in piece.glyphs.iter().zip(texts) {
-                            if let (Some(ng), Some(t)) = (fo.remap.get(g.gid), t) {
-                                fo.unicode.entry(ng).or_insert(t);
+                    // ToUnicode entries: the encoder's (above); a stretched word's tatweels.
+                    if piece.stretched {
+                        if let Some(tg) = f.shape("\u{0640}", true).first() {
+                            if let Some(ng) = fo.remap.get(tg.gid) {
+                                fo.unicode.entry(ng).or_insert_with(|| "\u{0640}".into());
                             }
-                        }
-                    } else if let Some(tg) = f.shape("\u{0640}", true).first() {
-                        if let Some(ng) = fo.remap.get(tg.gid) {
-                            fo.unicode.entry(ng).or_insert_with(|| "\u{0640}".into());
                         }
                     }
                     // TJ with positioning.
@@ -618,7 +614,15 @@ pub fn write(layout: &Layout, doc: &Document, meta: &Meta) -> Result<Vec<u8>> {
         parent_tree.push(Object::Array(mcid_elems));
     }
     // ToUnicode streams.
-    for fo in fonts.values() {
+    for fo in fonts.values_mut() {
+        let entries: Vec<(u16, String)> = fo
+            .maps
+            .entries(0)
+            .filter_map(|(gid, t)| Some((fo.remap.get(u16::try_from(gid).ok()?)?, t.to_string())))
+            .collect();
+        for (ng, t) in entries {
+            fo.unicode.entry(ng).or_insert(t);
+        }
         objs.set(
             fo.tu,
             stream(Dictionary::new(), tounicode_cmap(&fo.unicode), true)?,
@@ -728,11 +732,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn cluster_texts_give_ligatures_their_whole_text() {
-        // Two glyphs of one cluster (lam-alef in Amiri), then one glyph.
-        let t = cluster_texts("لاب", &[4, 0, 0]);
-        // Visual order: glyph 0 is cluster 2 ("ب"), glyphs 1–2 are cluster 0 ("لا").
-        assert_eq!(t, vec![Some("ب".into()), Some("لا".into()), None]);
+    fn helpers() {
         assert_eq!(num(1.23456), "1.235");
         assert_eq!(num(2.0), "2");
         assert_eq!(lang_tag("ar-SA) /Evil"), "ar-SAEvil");

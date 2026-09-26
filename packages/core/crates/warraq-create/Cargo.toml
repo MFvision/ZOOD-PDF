@@ -13,6 +13,8 @@ serde.workspace = true
 serde_json.workspace = true
 lopdf.workspace = true
 warraq-pdf = { path = "../warraq-pdf" }
+# The shared text encoder (ToUnicode vs /ActualText per word, ADR 0018).
+warraq-text = { path = "../warraq-text" }
 harfrust = "0.13"
 read-fonts = "0.43"
 subsetter = "0.2.6"
@@ -26,7 +28,6 @@ weezl = "0.2"
 pulldown-cmark = { version = "0.13", default-features = false }
 
 [dev-dependencies]
-warraq-text = { path = "../warraq-text" }
 # Renders created pages in tests (pictures, CCITT polarity) and for visual checks.
 warraq-render = { path = "../warraq-render" }
 

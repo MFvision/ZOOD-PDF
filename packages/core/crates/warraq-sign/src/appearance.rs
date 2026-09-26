@@ -3,8 +3,10 @@
 //! Each line is shaped by warraq-text (`warraq_text::shape`: unicode-bidi visual runs shaped
 //! with HarfRust, the Rust port of HarfBuzz — contextual forms, lam-alef, marks) with the
 //! bundled Amiri subset, and drawn with an embedded, subsetted CID font (Identity-H,
-//! ToUnicode). Every word is wrapped in `/Span <</ActualText …>> BDC … EMC`
-//! (`warraq_text::actual_text_spans`) so extraction reads back the logical text.
+//! ToUnicode). Words are encoded by `warraq_text::encode_line` (ADR 0018): right-to-left words by
+//! their glyphs' ToUnicode entries in visual order (PDFium — Chrome and the viewer — reverses an
+//! Arabic `/ActualText`), everything else in `/Span <</ActualText …>> BDC … EMC`, so every reader
+//! reads back the logical text.
 
 use crate::error::{Result, SignError};
 use crate::pdfobj::{name, num, Edit};
@@ -155,8 +157,6 @@ struct Glyph {
     adv: f64,
     dx: f64,
     dy: f64,
-    /// Byte offset of the glyph's cluster in the line.
-    cluster: usize,
 }
 
 struct Font<'a> {
@@ -210,18 +210,15 @@ struct Line {
     glyphs: Vec<Glyph>,
     width: f64,
     rtl: bool,
-    /// `(logical text, glyph range)` per word / whitespace run.
-    spans: Vec<(String, std::ops::Range<usize>)>,
+    /// The glyphs for `warraq_text::encode_line`.
+    refs: Vec<warraq_text::GlyphRef>,
 }
 
 fn shape_line(font: &Font<'_>, text: &str) -> Result<Line> {
     // Shaping at size = units-per-em keeps every metric in font units.
     let run = warraq_text::shape(text, font.data, font.upem)
         .map_err(|e| SignError::Malformed(format!("shaping: {e}")))?;
-    let spans = warraq_text::actual_text_spans(&run)
-        .into_iter()
-        .map(|s| (s.text, s.glyphs))
-        .collect();
+    let refs = warraq_text::shape::glyph_refs(&run);
     let rtl = unicode_bidi::ParagraphBidiInfo::new(text, None)
         .paragraph_level
         .is_rtl();
@@ -235,12 +232,11 @@ fn shape_line(font: &Font<'_>, text: &str) -> Result<Line> {
                 adv: g.x_advance,
                 dx: g.x_offset,
                 dy: g.y_offset,
-                cluster: g.cluster,
             })
             .collect(),
         width: run.width,
         rtl,
-        spans,
+        refs,
     })
 }
 
@@ -322,7 +318,7 @@ pub fn build(
     );
     content.push_str("BT\n0.05 0.1 0.25 rg\n");
     let mut y = h - pad;
-    let mut to_unicode: BTreeMap<u16, String> = BTreeMap::new();
+    let mut maps = warraq_text::ToUnicodeMaps::new();
     for (i, line) in shaped.iter().enumerate() {
         let size = if i == 0 { s } else { s * ratio };
         let scale = size / font.upem;
@@ -335,20 +331,21 @@ pub fn build(
         };
         let _ = writeln!(content, "/F1 {} Tf", num_s(size));
         let mut pen = x0;
-        for (word, range) in &line.spans {
-            let _ = writeln!(content, "/Span <</ActualText {}>> BDC", utf16_hex(word));
+        let spans = warraq_text::encode_line(
+            &line.text,
+            &line.refs,
+            &mut maps,
+            warraq_text::EncodeOptions::default(),
+        );
+        for span in &spans {
+            let range = &span.glyphs;
+            if let Some(word) = &span.actual_text {
+                let _ = writeln!(content, "/Span <</ActualText {}>> BDC", utf16_hex(word));
+            }
             let _ = writeln!(content, "1 0 0 1 {} {} Tm", num_s(pen), num_s(y));
             let mut tj = String::new();
             for g in line.glyphs.get(range.clone()).unwrap_or_default() {
                 let new_gid = remap.get(g.gid).unwrap_or(0);
-                let cluster_text: String = line
-                    .text
-                    .get(g.cluster..)
-                    .unwrap_or_default()
-                    .chars()
-                    .take(1)
-                    .collect();
-                to_unicode.entry(new_gid).or_insert(cluster_text);
                 let hmtx_adv = glyph_advance(&font, g.gid);
                 if g.dx.abs() > 0.01 || g.dy.abs() > 0.01 {
                     if !tj.is_empty() {
@@ -375,7 +372,9 @@ pub fn build(
             if !tj.is_empty() {
                 let _ = writeln!(content, "[{tj}] TJ");
             }
-            content.push_str("EMC\n");
+            if span.actual_text.is_some() {
+                content.push_str("EMC\n");
+            }
         }
         y -= -font.descent * scale;
     }
@@ -393,6 +392,14 @@ pub fn build(
             num_s((h - ih) / 2.0)
         );
     }
+    // ToUnicode of the subset: the encoder's texts, by new glyph id.
+    let to_unicode: BTreeMap<u16, String> = maps
+        .entries(0)
+        .filter_map(|(gid, t)| {
+            let new_gid = remap.get(u16::try_from(gid).ok()?)?;
+            Some((new_gid, t.to_string()))
+        })
+        .collect();
     let font_id = embed_font(edit, &font, &remap, &to_unicode)?;
     let mut res = Dictionary::new();
     let mut fonts = Dictionary::new();

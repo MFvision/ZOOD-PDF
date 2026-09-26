@@ -102,7 +102,9 @@ port 4311; the extension spec loads `apps/extension/dist` unpacked). Architectur
 | Dark mode + reduced motion and Arabic light snapshots; increased contrast makes glass opaque; phone width: drawer (from the right in Arabic), no horizontal overflow, document view fits | `layout.spec.ts` |
 | Chrome MV3 extension: `_locales` en/ar names, no permissions, CSP `script-src 'self' 'wasm-unsafe-eval'; object-src 'self'`; the extension page opens a PDF with no CSP violations or external requests | `extension.spec.ts` |
 | Engine client: request ids, transferred blobs, typed `{code,message}` errors, worker crash and wasm trap (Rust panic) recreate the worker | `engine.test.ts` |
-| Reducer: synchronous `switching` + `warraqOwnsDocument` on core byte replacement; stale viewer-ready ignored | `state.test.ts` |
+| Reducer: synchronous `switching` + `warraqOwnsDocument` on core byte replacement; stale viewer-ready ignored; **edit events of a viewer being replaced (older revision, or still initialising) are ignored and the viewer registry is keyed by revision** — a late PDFium event after a redaction used to make the next Save export the old, unredacted document (seen under load in `redact-*.spec.ts`) | `state.test.ts`, `redact-engine.spec.ts`, `redact-protect.spec.ts` |
+| **Arabic-aware search and logical-order copy inside the EmbedPDF view** (SPEC §3, ADR 0018): the viewer answers EmbedPDF's `searchAllPages` with the engine's `redact.find` (tashkeel/alef/yaa folding) and `getTextSlices` (copy) with the engine's words under the selected characters, in logical order; PDFium stays for match-case/whole-word searches, rotated pages and errors. Ctrl+F finds «الاول» in a Chrome-made PDF where PDFium reads «األول», and a selected line copies as «تقرير الربع الأول»; Edit and Create PDF outputs searched and copied in the viewer | `viewer/arabicText.test.ts`, `arabic-text.spec.ts` |
+| The suite under a slow CPU: `tests/e2e/stress.config.ts` applies CDP `Emulation.setCPUThrottlingRate` (default 6×) to every page | used to reproduce and fix the load-only failures |
 | Every shipped npm package is under an allowed licence, listed in THIRD-PARTY-NOTICES.md, and its licence text is emitted into `licenses/` of every build | `vite/licenses.test.ts` |
 
 ### Not done / not proven
@@ -112,6 +114,8 @@ port 4311; the extension spec loads `apps/extension/dist` unpacked). Architectur
 * **Fill & sign / Prepare form / Protect**: reachable and working in the viewer, but no spec yet fills a field,
   places a signature or sets a password and then reopens the saved bytes.
 * **Snapshots** (`layout.spec.ts-snapshots`) are Linux/Chromium baselines; other OS fonts will differ.
+* Viewer search through the engine returns the match only (no surrounding context in EmbedPDF's result list);
+  copy on rotated pages falls back to PDFium's own (visual-order) text.
 * `prefers-reduced-transparency` is honoured in CSS but Playwright cannot emulate it; only `prefers-contrast`
   is tested.
 * EmbedPDF's own page-number overlay shows Latin digits in Arabic, and its canvas stays LTR (its layout uses
@@ -138,6 +142,15 @@ port 4311; the extension spec loads `apps/extension/dist` unpacked). Architectur
 * `normalize_for_search` with offset map, `search()` with per-line rectangles, `shape()` (harfrust) with per-word
   `/ActualText` spans and a content-stream helper; written Arabic is read back in logical order by the extractor
   (`tests/roundtrip.rs`, font without ToUnicode). `/Direction /R2L` is never written.
+* **`encode` — how every writer encodes a word (ADR 0018)**: right-to-left words without tashkeel are written
+  WITHOUT `/ActualText`, their glyphs' ToUnicode entries in visual order (multi-character glyphs as the
+  presentation-form ligature), because the viewer's PDFium (= Chrome's) reverses an Arabic ActualText
+  (measured: `ابحرم` for `مرحبا`, 0 search hits); LTR words, words with tashkeel, kashida-stretched words, words in a
+  page's own font and any conflict keep per-word ActualText. Edit, Create PDF, the signature appearance and
+  redaction overlays use it (`encode.rs` tests; `warraq-{edit,create,sign,redact}` read-back tests;
+  `tests/e2e/arabic-text.spec.ts` and `sign.spec.ts` read the saved bytes with the viewer's `pdfium.wasm` in Node).
+* A line without space glyphs keeps Arabic glyphs of ONE show operator in one word up to a 0.25 em gap (Cairo
+  kerns 0.12 em after `ر`: a Create PDF table cell «الرياض» used to split); `layout.rs` test, acid unchanged.
 * RPC-ready functions `text.extract`, `text.search`, `text.plain` (`warraq_text::call`); `warraq-core` still has to
   register them (lead integration).
 * Hostile input: no `unwrap`/`expect`/`panic`/indexing in library code, every loop bounded (`limits.rs`),
@@ -204,6 +217,10 @@ cannot describe them): the generator now wraps such words in `/ActualText` (as r
 * Visual order is genuinely ambiguous in a few cases (an LTR paragraph `Price: السعر 50%`; a number between a Latin
   and an Arabic word in an RTL line); we return the standard reading (documented in `bidi.rs` tests).
 * Vertical (`-V`) CJK layout is only approximated; Type3 glyph procedures are not interpreted.
+* **PDFium-based readers outside our viewer** (Chrome, Edge, …) still read these words of OUR output reversed:
+  words with tashkeel and kashida-justified words (Create PDF), which keep `/ActualText` because PDFium places
+  zero-width marks geometrically whatever the encoding; and they show `35%` as `%35` (PDFium's bidi has no W5
+  rule — Chrome-made PDFs too). Inside ZOOD PDF's viewer, search and copy go through the engine (below).
 * `warraq-core` does not register `text.extract` / `text.search` / `text.plain` yet (lead integration): a
   `methods/text.rs` needs `warraq_text::call(&DocSource::borrowed(doc.pdf().document()), method, params)` and an
   error mapping via `TextError::code()`.
@@ -223,7 +240,7 @@ pyhanko-certvalidator`). Test PKI: `tests/fixtures/sign/make_pki.sh` (committed 
 | PKCS#12: modern PBES2/AES-256 + SHA-256 MAC; legacy `-legacy` (RC2-40 certs + 3DES key, SHA-1 MAC), 3DES-only, RC2-40-only; RSA-2048, P-256, P-384; Arabic password; wrong password → `wrong_certificate_password`; 300 mutated/truncated files never panic | `warraq-sign/tests/pkcs12.rs` |
 | PAdES B-B as an incremental update (original bytes are a prefix), `/ByteRange` covers the whole file except `/Contents`, `ETSI.CAdES.detached`, second signature appends another revision; **`openssl cms -verify` accepts every produced CMS** (RSA, P-256, P-384, xref-stream file, AES-256 encrypted file, existing empty field) | `tests/sign.rs` |
 | Encrypted documents: `/Reason` is ciphertext on disk, `/Contents` is the raw CMS, reopening decrypts the reason | `tests/sign.rs::encrypted_document_…` |
-| Visible Arabic appearance: shaped by warraq-text/HarfRust (contextual forms differ from nominal glyphs; lam-alef), subsetted Type0 Identity-H Amiri with ToUnicode, per-word `/ActualText`; **warraq-text's extractor reads "أحمد بن سعيد" and "الرياض" back in logical order** | `tests/sign.rs::arabic_is_shaped_not_nominal`, `appearance_text_reads_back_in_logical_order` |
+| Visible Arabic appearance: shaped by warraq-text/HarfRust (contextual forms differ from nominal glyphs; lam-alef), subsetted Type0 Identity-H Amiri with ToUnicode; Arabic words encoded by their glyphs (no ActualText, ADR 0018), others with per-word `/ActualText`; **warraq-text's extractor reads "أحمد بن سعيد" and "الرياض" back in logical order** | `tests/sign.rs::arabic_is_shaped_not_nominal`, `appearance_text_reads_back_in_logical_order` |
 | Certification DocMDP P=1/2/3 (+ `/Perms`), FieldMDP All/Include/Exclude, field `/Lock` → FieldMDP; second certification and signing after P=1 refused; serverAuth-only and expired certificates cannot sign | `tests/sign.rs`, `tests/verify.rs` |
 | B-T: TSA request → `openssl ts -reply` → `finish` embeds the token in place (file length unchanged); responses for other data and garbage are rejected | `tests/ltv.rs` |
 | B-LT: OCSP request built by us answered by `openssl ocsp` (delegated responder), DSS with Certs/OCSPs/CRLs/VRI; verification reports `good (OCSP)`, level B-LT | `tests/ltv.rs` |
@@ -563,7 +580,7 @@ Engine: `warraq-pdf` (`outline.rs`, `import.rs`, compact writer in `writer.rs`) 
 | **Organize (e2e, ar)**: RTL grid (page 1 on the right), Arabic labels and plurals; insert a PDF from the ⋯ menu, insert JPEG + PNG pictures, replace page 1, crop by margins (CropBox `[40 0 420 550]`), trim margins; saved bytes: prefix, 10 pages in the expected order, JPEG bytes present verbatim | `organize.spec.ts` |
 | **Extract / Split (e2e)**: shift-click multi-select → Extract saves `organize-6 (pages 2-3).pdf` (document untouched); split by «١-٢، ٥» (reversed range rejected with a message) and by bookmarks → ZIP with named parts, each part's pages and bookmark checked | `organize.spec.ts` |
 | **Crop by drawing** a rectangle on the page preview → CropBox within 6 pt of the drawn area | `organize.spec.ts` |
-| **Phone width (390 px)**: organize grid fits (no horizontal overflow, ≥ 2 pages per row), ⋯ menu stays on screen, rotate from it | `organize.spec.ts` |
+| **Phone width (390 px)**: organize grid fits (no horizontal overflow, ≥ 2 pages per row), ⋯ menu comes to rest 8 px inside the screen (it measures its layout size, not its box mid pop-in — that left it 0.8 px off-screen under load), rotate from it | `organize.spec.ts` |
 | **Combine (e2e)**: from Home pick two files, reorder with the button alternative, combine → new unsaved “Combined.pdf” (8 pages); saved: page order and outline (one entry per file, the file's chapters nested with page indices) | `combine.spec.ts` |
 | **Drop on an open document (e2e, ar)**: split overlay; dropping on «دمج مع organize-6.pdf» (start half, right in RTL) appends as an incremental update (prefix, 8 pages, `sample-ar.pdf` bookmark at page 7); the other half («Open instead») opens the file as its own document | `combine.spec.ts` |
 | **Combine at a position (e2e)**: from the document tool picker, insert after page 2 | `combine.spec.ts` |

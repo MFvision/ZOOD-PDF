@@ -40,6 +40,8 @@ pub struct RawGlyph {
     pub size: f64,
     /// Content-stream order.
     pub seq: usize,
+    /// The text-showing operator (`Tj`, `TJ`, `'`, `"`) that drew the glyph, counted per page.
+    pub show: usize,
     /// Invisible text (render mode 3/7).
     pub hidden: bool,
     /// Inside `/Artifact` marked content (headers, footers, page marks).
@@ -143,6 +145,7 @@ pub struct Interpreter<'s, S: ContentSource + ?Sized> {
     glyphs: Vec<RawGlyph>,
     ops: usize,
     seq: usize,
+    shows: usize,
     marked: Vec<Marked>,
     forms: Vec<ObjectId>,
     dedupe: HashMap<(String, i64, i64), Vec<usize>>,
@@ -157,6 +160,7 @@ impl<'s, S: ContentSource + ?Sized> Interpreter<'s, S> {
             glyphs: Vec::new(),
             ops: 0,
             seq: 0,
+            shows: 0,
             marked: Vec::new(),
             forms: Vec::new(),
             dedupe: HashMap::new(),
@@ -174,6 +178,7 @@ impl<'s, S: ContentSource + ?Sized> Interpreter<'s, S> {
         self.forms.clear();
         self.ops = 0;
         self.seq = 0;
+        self.shows = 0;
         self.open_groups = 0;
         match self.run(&content, &resources, GState::new(Matrix::IDENTITY), 0) {
             // A hostile page hit a limit: keep what was read so far.
@@ -337,11 +342,13 @@ impl<'s, S: ContentSource + ?Sized> Interpreter<'s, S> {
                     tm = tlm;
                 }
                 b"Tj" => {
+                    self.shows += 1;
                     if let Some(Operand::Str(s)) = o.first() {
                         self.show(&gs, &mut tm, s);
                     }
                 }
                 b"'" => {
+                    self.shows += 1;
                     tlm = Matrix::translate(0.0, -gs.tl).then(&tlm);
                     tm = tlm;
                     if let Some(Operand::Str(s)) = o.first() {
@@ -349,6 +356,7 @@ impl<'s, S: ContentSource + ?Sized> Interpreter<'s, S> {
                     }
                 }
                 b"\"" => {
+                    self.shows += 1;
                     if let [aw, ac, Operand::Str(s)] = o {
                         gs.tw = aw.as_f64().unwrap_or(0.0);
                         gs.tc = ac.as_f64().unwrap_or(0.0);
@@ -358,6 +366,7 @@ impl<'s, S: ContentSource + ?Sized> Interpreter<'s, S> {
                     }
                 }
                 b"TJ" => {
+                    self.shows += 1;
                     if let Some(Operand::Array(items)) = o.first() {
                         for item in items {
                             match item {
@@ -544,6 +553,7 @@ impl<'s, S: ContentSource + ?Sized> Interpreter<'s, S> {
                     desc,
                     size,
                     seq: self.seq,
+                    show: self.shows,
                     hidden,
                     artifact,
                     actual_text: false,
@@ -649,6 +659,7 @@ impl<'s, S: ContentSource + ?Sized> Interpreter<'s, S> {
             desc,
             size,
             seq: first.seq,
+            show: first.show,
             hidden: inner.iter().all(|g| g.hidden),
             artifact: inner.iter().any(|g| g.artifact),
             actual_text: true,

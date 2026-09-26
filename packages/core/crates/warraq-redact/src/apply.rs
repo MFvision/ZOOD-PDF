@@ -527,6 +527,8 @@ struct OverlayFont {
     helv_id: Option<ObjectId>,
     widths: BTreeMap<u32, f64>,
     descendant: Option<ObjectId>,
+    /// ToUnicode texts of the overlay glyphs (`warraq_text::encode`, ADR 0018).
+    unicode: warraq_text::ToUnicodeMaps,
 }
 
 /// Apply redactions to `pdf` in memory (objects replaced / added). Call
@@ -638,6 +640,7 @@ pub fn apply(pdf: &mut Pdf, opts: &ApplyOptions) -> Result<ApplyReport> {
         helv_id: None,
         widths: BTreeMap::new(),
         descendant: None,
+        unicode: warraq_text::ToUnicodeMaps::new(),
     };
     for plan in &plans {
         let Some(info) = list.get(plan.page) else {
@@ -772,6 +775,16 @@ pub fn apply(pdf: &mut Pdf, opts: &ApplyOptions) -> Result<ApplyReport> {
             pdf.set(desc, Object::Dictionary(d));
         }
     }
+    // ... and its ToUnicode map (Identity-H: codes are glyph ids).
+    if let Some(font_id) = overlay.font_id {
+        let cmap = warraq_text::encode::tounicode_cmap(overlay.unicode.entries(0));
+        let tu = pdf.add(Object::Stream(flate_stream(Dictionary::new(), &cmap)));
+        if let Some(Object::Dictionary(d)) = pdf.get(font_id).cloned() {
+            let mut d = d;
+            d.set("ToUnicode", Object::Reference(tu));
+            pdf.set(font_id, Object::Dictionary(d));
+        }
+    }
     if !removed_annots.is_empty() {
         report.fields_removed = prune_fields(pdf, &removed_annots)?;
     }
@@ -835,8 +848,10 @@ fn overlay_ops(
             let x = r.x0 + (w - run.width) / 2.0;
             let y = r.y0 + (h - size * 0.7) / 2.0;
             let mut s = format!("q {ink}\n");
+            // Arabic overlay words are encoded by their glyphs (ToUnicode, written below), not
+            // /ActualText, which PDFium reverses.
             s.push_str(&String::from_utf8_lossy(
-                &warraq_text::shape::content_stream(&run, "WqOv", x, y),
+                &warraq_text::shape::content_stream_encoded(&run, "WqOv", x, y, &mut st.unicode),
             ));
             s.push_str("Q\n");
             Ok(s)

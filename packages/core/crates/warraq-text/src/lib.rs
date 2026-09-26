@@ -5,7 +5,9 @@
 //! * [`layout`] turns glyphs into words, lines, paragraphs and blocks in **logical order**
 //!   (columns by XY-cut, bidi with the W5 fix, the Nastaliq ordering rule).
 //! * [`normalize`] / [`search`] implement Arabic-aware search with rectangles.
-//! * [`shape`] shapes Arabic for writing into PDFs (harfrust) with per-word `/ActualText`.
+//! * [`shape`] shapes Arabic for writing into PDFs (harfrust); [`encode`] decides per word how
+//!   writers encode it (glyph ToUnicode in visual order, `/ActualText` where that cannot work) so
+//!   PDFium, Acrobat, pdf.js and our extractor all read it back in logical order (ADR 0018).
 //! * [`api`] exposes `text.extract`, `text.search`, `text.plain` and `text.readingUnits` for the
 //!   RPC layer ([`reading`] prepares paragraphs for read-aloud).
 //!
@@ -15,6 +17,7 @@
 pub mod api;
 pub mod bidi;
 pub mod cmap;
+pub mod encode;
 pub mod encoding;
 pub mod error;
 pub mod font;
@@ -32,6 +35,7 @@ pub mod shape;
 pub mod source;
 
 pub use api::{call, extract_all, extract_pages, plain_text, METHODS};
+pub use encode::{encode_line, EncodeOptions, EncodedSpan, GlyphRef, ToUnicodeMaps};
 pub use error::{Result, TextError};
 pub use layout::LayoutOptions;
 pub use model::PageText;

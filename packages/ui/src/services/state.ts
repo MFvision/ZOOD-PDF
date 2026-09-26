@@ -58,7 +58,10 @@ export type Action =
   | { type: 'TOOL_STARTED'; id: string }
   | { type: 'CLOSE_DOCUMENT'; id: string }
   | { type: 'VIEWER_READY'; id: string; revision: number; pageCount: number }
-  | { type: 'VIEWER_EDITED'; id: string }
+  /** An edit in the viewer showing `revision`. Events of a viewer being replaced (an older revision) or
+   * still initialising (`switching`) are not user edits and are ignored: otherwise a late PDFium event
+   * after a redaction made the old, unredacted viewer the source of the next save. */
+  | { type: 'VIEWER_EDITED'; id: string; revision: number }
   /** `wholeRewrite` (redaction, hidden-information removal, password changes): the earlier bytes are gone
    * for good, so later viewer edits are rebased on the new bytes, never on the old original. `password`:
    * the protection changed (null = removed). */
@@ -127,7 +130,9 @@ export function reducer(state: AppState, action: Action): AppState {
       );
     case 'VIEWER_EDITED':
       return updateDoc(state, action.id, (d) =>
-        d.edited && !d.warraqOwnsDocument ? d : { ...d, edited: true, warraqOwnsDocument: false },
+        d.revision !== action.revision || d.switching || (d.edited && !d.warraqOwnsDocument)
+          ? d
+          : { ...d, edited: true, warraqOwnsDocument: false },
       );
     case 'CORE_REPLACED_BYTES':
       return updateDoc(state, action.id, (d) => ({

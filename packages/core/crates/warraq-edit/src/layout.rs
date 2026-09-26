@@ -1,8 +1,10 @@
 //! Laying text into a box: paragraphs, UAX #14 line breaking, bidi (visual runs per line),
 //! per-character font choice with fallback, harfrust shaping, alignment; then content-stream
-//! operators with one `/Span <</ActualText …>> BDC … EMC` per logical word so every extractor
-//! reads the words back in logical order. `/Direction /R2L` is never written and glyphs are
-//! drawn once (fill only, `0 Tr`).
+//! operators with every word encoded by `warraq_text::encode_line` (ADR 0018): right-to-left words
+//! by their glyphs' ToUnicode entries in visual order (PDFium reverses an Arabic `/ActualText`),
+//! other words (and words in the page's own font, whose ToUnicode is not ours) in
+//! `/Span <</ActualText …>> BDC … EMC`, so every reader reads the words back in logical order.
+//! `/Direction /R2L` is never written and glyphs are drawn once (fill only, `0 Tr`).
 
 use std::collections::BTreeMap;
 use std::ops::Range;
@@ -12,8 +14,11 @@ use unicode_linebreak::{linebreaks, BreakOpportunity};
 
 use crate::content::fmt_num;
 use crate::error::{EditError, Result};
-use crate::fonts::{bundled, bundled_chain, is_ignorable, Face, FaceShaper, Family, Written};
+use crate::fonts::{
+    bundled, bundled_chain, is_ignorable, Face, FaceShaper, FaceSource, Family, Written,
+};
 use crate::geom::Rect;
+use warraq_text::{encode_line, EncodeOptions, EncodedSpan, GlyphRef, ToUnicodeMaps};
 
 /// Maximum characters laid out per call.
 pub const MAX_TEXT_CHARS: usize = 20_000;
@@ -59,11 +64,16 @@ pub struct Placed {
     pub adv: f64,
     /// Text this glyph stands for in the ToUnicode fallback ("" for secondary glyphs).
     pub text: String,
+    /// Byte offset of its cluster in the line's text, and whether it comes from a right-to-left run.
+    pub cluster: usize,
+    pub rtl: bool,
 }
 
 /// One line: glyphs in visual order and the ActualText spans over them.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Line {
+    /// Logical text of the line (what the glyph clusters index).
+    pub text: String,
     pub glyphs: Vec<Placed>,
     pub spans: Vec<(Range<usize>, String)>,
 }
@@ -78,24 +88,60 @@ pub struct Laid<'a> {
 }
 
 impl Laid<'_> {
-    /// Glyph ids (with fallback text) used per face.
-    pub fn used(&self) -> Vec<BTreeMap<u16, String>> {
+    /// How every word is written, per line, and the ToUnicode entries of every face (the page's own
+    /// fonts are locked: their words keep `/ActualText`).
+    pub fn encode(&self) -> (Vec<Vec<EncodedSpan>>, ToUnicodeMaps) {
+        let mut maps = ToUnicodeMaps::new();
+        for (i, f) in self.faces.iter().enumerate() {
+            if matches!(f.source, FaceSource::Original { .. }) {
+                maps.lock_font(i);
+            }
+        }
+        let spans = self
+            .lines
+            .iter()
+            .map(|l| {
+                let refs: Vec<GlyphRef> = l
+                    .glyphs
+                    .iter()
+                    .map(|g| GlyphRef {
+                        font: g.face,
+                        glyph_id: u32::from(g.gid),
+                        cluster: g.cluster,
+                        rtl: g.rtl,
+                    })
+                    .collect();
+                encode_line(&l.text, &refs, &mut maps, EncodeOptions::default())
+            })
+            .collect();
+        (spans, maps)
+    }
+
+    /// Glyph ids used per face, with their ToUnicode text from `maps` ("" when none).
+    pub fn used(&self, maps: &ToUnicodeMaps) -> Vec<BTreeMap<u16, String>> {
         let mut out = vec![BTreeMap::new(); self.faces.len()];
         for l in &self.lines {
             for g in &l.glyphs {
                 if let Some(m) = out.get_mut(g.face) {
-                    let e: &mut String = m.entry(g.gid).or_default();
-                    if e.is_empty() {
-                        e.clone_from(&g.text);
-                    }
+                    m.entry(g.gid).or_insert_with(|| {
+                        maps.get(g.face, u32::from(g.gid))
+                            .unwrap_or_default()
+                            .to_string()
+                    });
                 }
             }
         }
         out
     }
 
-    /// Content operators drawing the text with the faces written as `written[face]`.
-    pub fn content(&self, written: &[Written], fill: [f64; 3]) -> Vec<u8> {
+    /// Content operators drawing the text with the faces written as `written[face]` and the words
+    /// encoded as `spans` (from [`Laid::encode`]).
+    pub fn content(
+        &self,
+        written: &[Written],
+        fill: [f64; 3],
+        spans: &[Vec<EncodedSpan>],
+    ) -> Vec<u8> {
         let mut s = String::from("q\nBT\n");
         s.push_str(&format!(
             "{} {} {} rg\n0 Tr 0 Tc 0 Tw 100 Tz 0 Ts\n",
@@ -123,9 +169,16 @@ impl Laid<'_> {
                 fmt_num(g.y)
             ));
         };
-        for line in &self.lines {
-            for (range, text) in &line.spans {
-                let gs = line.glyphs.get(range.clone()).unwrap_or(&[]);
+        for (line, line_spans) in self.lines.iter().zip(spans) {
+            for span in line_spans {
+                let gs = line.glyphs.get(span.glyphs.clone()).unwrap_or(&[]);
+                let Some(text) = &span.actual_text else {
+                    // Encoded by its glyphs (ToUnicode, visual order): no marked content.
+                    for g in gs {
+                        glyph(&mut s, g);
+                    }
+                    continue;
+                };
                 // The word's advance range; glyphs drawn outside it (a tanween hanging over the
                 // space) are drawn in an empty ActualText span so no extractor merges the word
                 // with its neighbour or the space.
@@ -166,6 +219,7 @@ struct Shaped {
     gid: u16,
     /// Byte offset in the line.
     cluster: usize,
+    rtl: bool,
     adv: f64,
     x_off: f64,
     y_off: f64,
@@ -283,6 +337,7 @@ impl<'a> Ctx<'a> {
                         face: f,
                         gid: g.gid,
                         cluster: r.start + g.cluster,
+                        rtl,
                         adv: g.x_advance * k,
                         x_off: g.x_offset * k,
                         y_off: g.y_offset * k,
@@ -461,6 +516,8 @@ pub fn layout<'a>(req: &Request<'a>) -> Result<Laid<'a>> {
                     pen: x,
                     adv: g.adv,
                     text: g.text.clone(),
+                    cluster: g.cluster,
+                    rtl: g.rtl,
                 });
                 x += g.adv;
             }
@@ -469,7 +526,11 @@ pub fn layout<'a>(req: &Request<'a>) -> Result<Laid<'a>> {
             }
             let lb = Rect::new(x_start, y + desc, x_start + width, y + asc);
             bbox = Some(bbox.map_or(lb, |b| b.union(&lb)));
-            lines.push(Line { glyphs, spans });
+            lines.push(Line {
+                text: trimmed.to_string(),
+                glyphs,
+                spans,
+            });
         }
     }
     Ok(Laid {
