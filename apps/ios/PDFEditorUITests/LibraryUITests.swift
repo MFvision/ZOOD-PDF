@@ -167,7 +167,9 @@ final class LibraryUITests: XCTestCase {
         if star.waitForExistence(timeout: 5) { star.tap() } else { XCTAssertTrue(starByLabel.waitForExistence(timeout: 5), "the Star item is in the menu"); starByLabel.tap() }
         XCTAssertTrue(app.descendants(matching: .any)["home.row.starred"].waitForExistence(timeout: 10), "the Starred row appeared")
         openSection("starred", in: app)
-        XCTAssertTrue(app.descendants(matching: .any)["starred.\(name)"].waitForExistence(timeout: 10), "the Starred section lists it")
+        XCTAssertTrue(app.descendants(matching: .any)["library.grid"].waitForExistence(timeout: 20), "the Starred section opened")
+        let listed = app.descendants(matching: .any)["starred.\(name)"]
+        XCTAssertTrue(listed.waitForExistence(timeout: 20), "the Starred section lists \(name)")
         // Back home (the sidebar on iPad, the back button on iPhone); the
         // Search card opens the search field.
         if app.buttons["sidebar.home"].exists {
