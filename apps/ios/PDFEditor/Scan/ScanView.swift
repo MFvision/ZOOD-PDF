@@ -228,20 +228,28 @@ struct ScanView: View {
                 if let page = session.selected { session.remove(page.id) }
             }
             .accessibilityIdentifier("scan.delete")
-            if session.mode == .idCard {
-                Spacer()
-                Toggle("Passport size", isOn: $session.passport)
-                    .toggleStyle(.button)
-                    .accessibilityIdentifier("scan.passport")
-            }
         }
         .labelStyle(.iconOnly)
         .buttonStyle(.bordered)
         .controlSize(.regular)
         .tint(.white)
-        .disabled(session.pages.isEmpty && session.mode != .idCard)
+        .disabled(session.pages.isEmpty)
         .padding(.horizontal, Space.x5)
-        .padding(.bottom, Space.x3)
+        .padding(.bottom, session.mode == .idCard ? Space.x2 : Space.x3)
+        .overlay(alignment: .bottom) {
+            if session.mode == .idCard {
+                // On its own line under the actions, so a narrow screen does
+                // not squeeze it sideways.
+                Toggle("Passport size", systemImage: "book.closed", isOn: $session.passport)
+                    .toggleStyle(.button)
+                    .controlSize(.small)
+                    .tint(.white)
+                    .labelStyle(.titleAndIcon)
+                    .offset(y: 30)
+                    .accessibilityIdentifier("scan.passport")
+            }
+        }
+        .padding(.bottom, session.mode == .idCard ? 32 : 0)
     }
 
     /// Document · Whiteboard · ID Card · Book, the chosen one lit.
