@@ -5,7 +5,7 @@ import WarraqCore
 
 /// One hit of a search, as the core answered it: the page, the words, the
 /// words around them on the line, and the glyphs' boxes in stored space.
-struct SearchHit: Decodable, Identifiable, Equatable, Sendable {
+struct PageMatch: Decodable, Identifiable, Equatable, Sendable {
     let page: Int
     let text: String
     let before: String
@@ -22,7 +22,7 @@ struct SearchHit: Decodable, Identifiable, Equatable, Sendable {
 @MainActor @Observable
 final class DocumentSearch {
     var query = ""
-    private(set) var hits: [SearchHit] = []
+    private(set) var hits: [PageMatch] = []
     private(set) var total = 0
     private(set) var current = 0
     private(set) var searching = false
@@ -32,7 +32,7 @@ final class DocumentSearch {
     private var task: Task<Void, Never>?
 
     var hasHits: Bool { !hits.isEmpty }
-    var currentHit: SearchHit? { hits.indices.contains(current) ? hits[current] : nil }
+    var currentHit: PageMatch? { hits.indices.contains(current) ? hits[current] : nil }
     var currentSelection: PDFSelection? { selections.indices.contains(current) ? selections[current] : nil }
     var highlighted: [PDFSelection] { selections.compactMap { $0 } }
 
@@ -47,7 +47,7 @@ final class DocumentSearch {
         searching = true
         task = Task {
             struct Args: Encodable { let query: String }
-            struct Answer: Decodable { let matches: [SearchHit]; let total: Int }
+            struct Answer: Decodable { let matches: [PageMatch]; let total: Int }
             do {
                 guard let core = await model.readyEngine() else { throw CoreError.closed }
                 let reply = try await core.call(op: "view.search", args: Args(query: query))
@@ -94,7 +94,7 @@ final class DocumentSearch {
     /// The PDFKit selection covering a hit's boxes: the glyphs PDFKit
     /// finds inside them, which is what its highlight draws and what
     /// `go(to:)` scrolls to.
-    static func selection(for hit: SearchHit, in pdf: PDFDocument?) -> PDFSelection? {
+    static func selection(for hit: PageMatch, in pdf: PDFDocument?) -> PDFSelection? {
         guard let pdf, let page = pdf.page(at: hit.page), !hit.rects.isEmpty else { return nil }
         let frame = PageSpace.Frame(page: page)
         var whole: PDFSelection?
@@ -112,7 +112,7 @@ final class DocumentSearch {
 
     /// The hits' boxes on a page in user space, for a view that draws them
     /// itself where PDFKit finds no glyphs (a scan's invisible text layer).
-    static func userRects(of hits: [SearchHit], on pageIndex: Int, in pdf: PDFDocument?) -> [CGRect] {
+    static func userRects(of hits: [PageMatch], on pageIndex: Int, in pdf: PDFDocument?) -> [CGRect] {
         guard let pdf, let page = pdf.page(at: pageIndex) else { return [] }
         let frame = PageSpace.Frame(page: page)
         return hits.filter { $0.page == pageIndex }

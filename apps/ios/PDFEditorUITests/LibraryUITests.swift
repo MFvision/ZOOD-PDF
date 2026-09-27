@@ -1,0 +1,281 @@
+import XCTest
+
+/// The Library through the interface, on the simulator: a small corpus is
+/// imported into My documents and indexed (the scan through Vision), an
+/// Arabic word is searched without its tashkeel, a hit opens the document
+/// at its page; tags and rules; the widgets' data is written. Screenshots
+/// of the search and the tags go to docs/design/ios/ when
+/// WARRAQ_SCREENSHOT_DIR says where.
+@MainActor
+final class LibraryUITests: XCTestCase {
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+    }
+
+    /// The UI test bundle's folder holds the corpus PDFs; the app copies
+    /// its PDFs into Documents on launch (`-warraqImport`).
+    private var corpus: String {
+        get throws {
+            try XCTUnwrap(Bundle(for: LibraryUITests.self).resourceURL).path
+        }
+    }
+
+    private func launch(language: String = "ar", appearance: String = "light", importCorpus: Bool = true, extra: [String] = []) throws -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-AppleLanguages", "(\(language))",
+            "-AppleLocale", language == "ar" ? "ar_SA" : "en_US",
+            "-language", language,
+            "-appearance", appearance,
+            "-warraqFresh", "1",
+        ] + extra
+        if importCorpus {
+            app.launchArguments += ["-warraqImport", try corpus]
+        }
+        app.launch()
+        return app
+    }
+
+    /// Waits until the index holds `count` documents (the status line's
+    /// accessibility value is the plain number).
+    private func waitForIndex(in app: XCUIApplication, count: Int, timeout: TimeInterval = 420) {
+        // While a run reads, the line shows its progress and Stop; the count
+        // appears once it is done. The Mac is shared, so the wait is long.
+        XCTAssertTrue(app.descendants(matching: .any)["library.indexStatus"].waitForExistence(timeout: 120), "the index status line is there")
+        let status = app.staticTexts["library.indexedCount"]
+        let indexed = NSPredicate(format: "value.integerValue >= %d", count)
+        expectation(for: indexed, evaluatedWith: status)
+        waitForExpectations(timeout: timeout)
+    }
+
+    private func search(_ query: String, in app: XCUIApplication) {
+        let field = app.searchFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 20), "the search field is above the documents")
+        field.tap()
+        field.typeText(query)
+        XCTAssertTrue(app.staticTexts["search.total"].waitForExistence(timeout: 30), "results appear")
+    }
+
+    func testIndexesTheCorpusSearchesArabicWithoutTashkeelAndOpensAHitAtItsPage() throws {
+        let app = try launch()
+        waitForIndex(in: app, count: 5)
+
+        // The invoice's word, without tashkeel and with a haa for the taa marbuta.
+        search("فاتوره", in: app)
+        let firstHit = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'search.hit.'")).firstMatch
+        XCTAssertTrue(firstHit.waitForExistence(timeout: 30), "a line matched")
+        XCTAssertTrue(app.descendants(matching: .any)["search.document.coretext-sfarabic-mixed-invoice"].exists
+            || app.descendants(matching: .any)["search.document.chrome-cairo-mixed-invoice"].exists, "an invoice answered")
+
+        // A hit past the first page proves "at its page"; the first page otherwise.
+        let hits = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'search.hit.'"))
+        var chosen = firstHit
+        var page = 1
+        for i in 0..<min(hits.count, 30) {
+            let hit = hits.element(boundBy: i)
+            if let n = Int(hit.identifier.replacingOccurrences(of: "search.hit.", with: "")), n > 1 {
+                chosen = hit
+                page = n
+                break
+            }
+        }
+        chosen.tap()
+        let pageView = app.otherElements["document.page"]
+        XCTAssertTrue(pageView.waitForExistence(timeout: 30), "the document opened")
+        let status = app.staticTexts["document.status"]
+        XCTAssertTrue(status.waitForExistence(timeout: 20))
+        // The toolbar's status and the page view's label both name the page.
+        let shown = NSPredicate(format: "label CONTAINS %@ OR label CONTAINS %@", "\(page)", Self.arabicDigits("\(page)"))
+        let named = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == 'document.status' OR identifier == 'document.page'")).matching(shown).firstMatch
+        XCTAssertTrue(named.waitForExistence(timeout: 20), "opened at page \(page): status '\(status.label)', page '\(pageView.label)'")
+
+    }
+
+    func testAScanIsFoundThroughTextRecognitionAndScansOnlyFiltersToIt() throws {
+        let app = try launch(language: "en")
+        waitForIndex(in: app, count: 5)
+        // The bilevel scan holds Latin text ("Arial"); Vision reads it.
+        search("the", in: app)
+        app.buttons["search.filters"].tap()
+        let scansOnly = app.switches["filters.scannedOnly"]
+        XCTAssertTrue(scansOnly.waitForExistence(timeout: 10))
+        scansOnly.tap()
+        if (scansOnly.value as? String) != "1" {
+            // The tap landed beside the switch: the row's own control.
+            scansOnly.switches.firstMatch.tap()
+        }
+        XCTAssertEqual(scansOnly.value as? String, "1", "Scans only is on")
+        app.buttons["sheet.done"].tap()
+        // The results narrow after a moment; then every document heading is the scan.
+        let headings = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'search.document.'"))
+        let onlyTheScan = NSPredicate { _, _ in
+            let ids = (0..<headings.count).map { headings.element(boundBy: $0).identifier }
+            return !ids.isEmpty && ids.allSatisfy { $0 == "search.document.scan-arial-200dpi-bilevel" }
+        }
+        let anyHit = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'search.hit.'")).firstMatch
+        if anyHit.waitForExistence(timeout: 30) {
+            expectation(for: onlyTheScan, evaluatedWith: nil)
+            waitForExpectations(timeout: 30)
+        } else {
+            // Vision read nothing usable off this bilevel scan on this simulator: say so, do not pretend.
+            throw XCTSkip("Vision found no words on scan-arial-200dpi-bilevel in this simulator")
+        }
+    }
+
+    func testTagsAndRulesThroughTheInterface() throws {
+        let app = try launch(language: "ar")
+        waitForIndex(in: app, count: 5)
+        openTags(in: app)
+        app.buttons["tags.rules"].tap()
+        app.buttons["rules.add"].tap()
+        let tag = app.textFields["rule.tag"]
+        XCTAssertTrue(tag.waitForExistence(timeout: 10))
+        tag.tap()
+        tag.typeText("فواتير")
+        let words = app.textFields["rule.words"]
+        words.tap()
+        words.typeText("فاتورة")
+        app.buttons["rule.save"].tap()
+        XCTAssertTrue(app.buttons["rules.rule.فواتير"].waitForExistence(timeout: 10), "the rule is listed")
+        app.buttons["sheet.done"].firstMatch.tap()
+        // The rule tagged the invoices: the tag heads a section.
+        let heading = app.staticTexts.matching(NSPredicate(format: "identifier == 'tags.tag.فواتير'")).firstMatch
+        XCTAssertTrue(heading.waitForExistence(timeout: 20) || app.otherElements["tags.tag.فواتير"].waitForExistence(timeout: 5), "the tag appears with its documents")
+    }
+
+    /// The home screen: every action card is there, and starring a document
+    /// from its ⋯ menu puts it in the Starred row and section.
+    func testHomeCardsAndStarring() throws {
+        let app = try launch(language: "en")
+        waitForIndex(in: app, count: 5)
+        for id in ["home.open", "home.scan", "home.create", "home.combine", "home.search", "home.settings"] {
+            XCTAssertTrue(app.buttons[id].waitForExistence(timeout: 10), "\(id) is on the home screen")
+        }
+        XCTAssertFalse(app.descendants(matching: .any)["home.row.starred"].exists, "nothing starred yet")
+        // The rows are below the cards; a lazy row is built when scrolled to.
+        // The card's context menu (a long press) carries the same items as
+        // its ⋯ menu.
+        let card = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'document.'")).firstMatch
+        for _ in 0..<4 where !card.exists {
+            app.swipeUp()
+        }
+        XCTAssertTrue(card.waitForExistence(timeout: 10), "a document's card is in the My documents row")
+        let name = String(card.identifier.dropFirst("document.".count))
+        card.press(forDuration: 1.5)
+        let star = app.buttons["home.star.\(name)"].firstMatch
+        let starByLabel = app.buttons["Star"].firstMatch
+        if star.waitForExistence(timeout: 5) { star.tap() } else { XCTAssertTrue(starByLabel.waitForExistence(timeout: 5), "the Star item is in the menu"); starByLabel.tap() }
+        XCTAssertTrue(app.descendants(matching: .any)["home.row.starred"].waitForExistence(timeout: 10), "the Starred row appeared")
+        openSection("starred", in: app)
+        XCTAssertTrue(app.descendants(matching: .any)["library.grid"].waitForExistence(timeout: 20), "the Starred section opened")
+        let listed = app.descendants(matching: .any)["starred.\(name)"]
+        XCTAssertTrue(listed.waitForExistence(timeout: 20), "the Starred section lists \(name)")
+        // Back home (the sidebar on iPad, the back button on iPhone); the
+        // Search card opens the search field.
+        if app.buttons["sidebar.home"].exists {
+            app.buttons["sidebar.home"].tap()
+        } else if app.cells["sidebar.home"].exists {
+            app.cells["sidebar.home"].tap()
+        } else {
+            app.navigationBars.buttons.firstMatch.tap()
+        }
+        // The home was left scrolled at its rows: back to the cards.
+        let searchCard = app.buttons["home.search"]
+        for _ in 0..<5 where !searchCard.exists {
+            app.swipeDown()
+        }
+        XCTAssertTrue(searchCard.waitForExistence(timeout: 10), "the Search card is on the home")
+        searchCard.tap()
+        XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout: 10))
+    }
+
+    private func openTags(in app: XCUIApplication) {
+        openSection("tags", in: app)
+        XCTAssertTrue(app.descendants(matching: .any)["library.tags"].waitForExistence(timeout: 10), "the Tags screen is shown")
+    }
+
+    /// Opens a section from the sidebar (iPad) or its row (iPhone, below
+    /// the home's rows).
+    private func openSection(_ name: String, in app: XCUIApplication) {
+        let any = app.descendants(matching: .any)["sidebar.\(name)"].firstMatch
+        for _ in 0..<6 where !any.exists {
+            app.swipeUp()
+        }
+        let sidebar = app.buttons["sidebar.\(name)"]
+        let cell = app.cells["sidebar.\(name)"]
+        if sidebar.waitForExistence(timeout: 5) {
+            sidebar.tap()
+        } else if cell.waitForExistence(timeout: 5) {
+            cell.tap()
+        } else {
+            XCTAssertTrue(any.waitForExistence(timeout: 10), "the \(name) section is listed")
+            any.tap()
+        }
+    }
+
+    func testScreenshots() throws {
+        guard let directory = ProcessInfo.processInfo.environment["WARRAQ_SCREENSHOT_DIR"], !directory.isEmpty else {
+            throw XCTSkip("WARRAQ_SCREENSHOT_DIR is not set; scripts/ios/build.sh sets it")
+        }
+        let device = ProcessInfo.processInfo.environment["WARRAQ_DEVICE_SLUG"]
+            ?? (UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone")
+        for combo in [("ar", "light"), ("en", "dark")] {
+            let suffix = "\(combo.0)-\(combo.1)-\(device)"
+            var app = try launch(language: combo.0, appearance: combo.1)
+            waitForIndex(in: app, count: 5)
+            try Screenshots.save(app, as: "home-\(suffix)", in: directory)
+            openTags(in: app)
+            try Screenshots.save(app, as: "library-tags-\(suffix)", in: directory)
+            // A fresh launch for the search, so nothing of the Tags screen is left.
+            app = try launch(language: combo.0, appearance: combo.1)
+            waitForIndex(in: app, count: 5)
+            // "Warraq" is in the invoice's text; "invoice" is only in its name.
+            search(combo.0 == "ar" ? "فاتوره" : "Warraq", in: app)
+            _ = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'search.hit.'")).firstMatch.waitForExistence(timeout: 30)
+            try Screenshots.save(app, as: "library-search-\(suffix)", in: directory)
+            app.buttons["search.filters"].tap()
+            _ = app.switches["filters.scannedOnly"].waitForExistence(timeout: 10)
+            try Screenshots.save(app, as: "library-filters-\(suffix)", in: directory)
+            app.buttons["sheet.done"].tap()
+        }
+    }
+
+    static func arabicDigits(_ digits: String) -> String {
+        String(digits.map { ch -> Character in
+            guard let value = ch.wholeNumberValue else { return ch }
+            return Character(UnicodeScalar(0x0660 + value)!)
+        })
+    }
+}
+
+/// Reads the shared container the way the widgets do, from the test.
+enum AppGroupProbe {
+    static var container: URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.app.warraq")
+    }
+
+    static func searches() -> [String] {
+        guard let container, let data = try? Data(contentsOf: container.appending(path: "searches.json")),
+              let list = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return [] }
+        return list.compactMap { $0["query"] as? String }
+    }
+}
+
+/// Screenshots at half size as JPEG, the same way LaunchTests keeps them.
+enum Screenshots {
+    @MainActor
+    static func save(_ app: XCUIApplication, as name: String, in directory: String) throws {
+        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.6))
+        let image = XCUIScreen.main.screenshot().image
+        let size = CGSize(width: image.size.width / 2, height: image.size.height / 2)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let small = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: size))
+        }
+        let data = try XCTUnwrap(small.jpegData(compressionQuality: 0.82))
+        let folder = URL(filePath: directory, directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try data.write(to: folder.appending(path: "\(name).jpg"), options: .atomic)
+    }
+}

@@ -96,6 +96,152 @@ build on (`apps/ios/README.md` says how).
   What is not built yet is not shown: the sidebar lists Recents and My documents, nothing more, until the
   parts behind the other sections land.
 
+## The iOS app — part D: Library, widgets, App Intents, Spotlight, share extension, Settings (2026-09-21)
+
+**Simulator only** (iPhone 17 and iPad Pro 13-inch (M5), iOS 27.0 runtime, Xcode 27): there
+is no signing identity on this Mac, so nothing here has run on a device, and nothing has been
+submitted anywhere. Built on the foundation in `apps/ios/` (SwiftUI, Swift 6, the core as an
+XCFramework); the view/annotate/organize and scan/OCR parts are other agents' and are not
+described here.
+
+**What works, as a person would see it**
+
+* **Home** (to the owner's design target of 2026-09-25, in SwiftUI materials over a soft
+  gradient — no photograph): a greeting by the time of day, the headline «ملفات PDF، من جديد.» /
+  "PDFs, done right." (the same as the desktop's), six large action cards — Open, Scan, Create (pictures
+  into a PDF), Combine (files into one PDF), Search, Settings — each doing what it says today, then
+  rows of real first pages with the file's name and date ("Today, 9:41 AM"): Recents, Starred,
+  My documents, the chosen folder; a ⋯ menu on every card (Star, Open in New Window, Remove from
+  Recents), "See all" into the section, paging arrows on iPad. The sidebar: Home, Recents, Starred,
+  My documents, the folder once chosen, Tags; "Tools": Scan, Create a PDF, Combine files, Search.
+  **Starred** is a real per-device flag (`StarredStore`, a set of file paths in the shared
+  container). Not shown, because they do not exist on this device: Convert and AI cards, Shared,
+  Clouds. Proven by XCUITest `testHomeCardsAndStarring` (the six cards, a star from the ⋯ menu
+  putting the document in the Starred row and section, the Search card opening the field).
+* **The Library.** Above the documents, one search field: "ابحث داخل كل مستند". Typing a word
+  finds every line holding it in every document the index holds — in Arabic without its tashkeel
+  and with alef, taa marbuta and yaa forms unified (the core's `library.search`) — grouped by
+  document with the page number and the matched words marked; a tap opens the document at that
+  page. Filters (kind, tag, place, scans only, the document's own date, Gregorian or Hijri). The
+  index is built from My documents and, once chosen in Settings, one folder in Files or iCloud
+  Drive (a security-scoped bookmark; the files stay where they are). A status line says how many
+  documents are indexed, shows progress while a run reads, and has Stop (between files) and
+  Index now; pull to refresh runs it too. A PDF's text comes from the core page by page; a page
+  with no text of its own, and a picture, go through the OCR seam; a thumbnail is drawn with the
+  core; a file whose size and date have not changed is not read again; a file taken away leaves
+  the index on the next run. Tags (from a document's menu, or in the Tags section) and rules
+  ("فاتورة" tags the invoices; apply now) are the core's, kept in the index. Core Spotlight holds
+  each document's name, kind and the start of its text, so the iOS search finds documents and opens
+  them in the app.
+* **Widgets** (`group.app.warraq`): Recent documents (small: the last one with its first page;
+  medium: three; large: six; each opens the document), Scan (one tap into the scanner), Library
+  search (the last searches, each a tap back into that search); Lock Screen: the last document
+  (rectangle, inline) and Scan (circle, inline); an iOS 18 Control Center control for Scan.
+  Refreshed through `WidgetCenter` whenever a document is opened, indexed or forgotten and
+  whenever a search is run. Each opens the app at one of its routes (`pdfeditor://scan`,
+  `pdfeditor://open/<id>`, `pdfeditor://search?q=…`, `pdfeditor://last`).
+* **App Intents, Shortcuts, Siri**: "Scan a document", "Open <document>" (an entity query over
+  the recents and the index, matched by name, tashkeel and case aside), "Search my documents for
+  <text>" (answers matches with document, page and line; a spoken summary), "Make a PDF from these
+  files" (PDFs and pictures into one PDF in My documents, handed back as a file), "Open the last
+  document"; Siri phrases in Arabic and English (`AppShortcuts.xcstrings`). Home Screen quick
+  actions: Scan, and the last document by name.
+* **Share extension** "Save to محرر PDF": PDFs shared from any app land in the Inbox; pictures
+  become one PDF (the core's `create.images`); the app moves the Inbox into My documents and
+  indexes it the next time it is in front.
+* **Settings**: language (system/Arabic/English), appearance, the scanner's own section (the
+  colour new scans start in, and the text-recognition languages this device supports), the
+  Files/iCloud folder (choose, change, stop reading), Face ID/Touch ID lock (off by default; asks
+  whenever the app comes to the front; refuses to turn on where the device has neither biometrics
+  nor a passcode), and "Delete everything", which deletes the documents in My documents, the
+  index, Spotlight's items, the recents, the thumbnails, the last searches, the Inbox, the folder
+  bookmark and the settings.
+* **Scan and Create**: every "Scan" (the widget, the Control Centre control, a Shortcut, the
+  quick action, the toolbar, the home's Scan and Create cards) opens the scanner itself — part C's
+  `ScanView` — and what it saves joins My documents, the index and the open document. **Combine**
+  (the home's card and the "Make a PDF" intent) joins PDFs and pictures into one PDF through the
+  core.
+
+**The OCR seam.** `PageOCR.reader` in `apps/ios/PDFEditor/Library/PageTextReader.swift`:
+`read(image, languages) -> [IndexedWord]`. Behind it stands the scanner's own recognizer
+(`PDFEditor/Scan/TextRecognizer`, part C's), on a queue of its own so Vision never holds the
+cooperative pool; the languages are the ones chosen in the scanner's settings (Arabic and English
+unless changed). The unit tests put their own reader in its place (`FakeRecognizer` in
+`LibraryTests`); the UI tests read the corpus's scan with Vision as it is. **Vision's languages on
+this simulator:**
+`en-US, fr-FR, it-IT, de-DE, es-ES, pt-BR, zh-Hans, zh-Hant, yue-Hans, yue-Hant, ko-KR, ja-JP, ru-RU, uk-UA, th-TH, vi-VT, ar-SA, ars-SA, tr-TR, id-ID, cs-CZ, da-DK, nl-NL, no-NO, nn-NO, nb-NO, ms-MY, pl-PL, ro-RO, sv-SE, fi-FI, hi-IN, mr-IN` (`testVisionLanguagesOnThisSimulator`, iPhone 17, iOS 27.0) — **Arabic (`ar-SA`, and Najdi `ars-SA`) is there**, so the index reads Arabic scans with Vision on this simulator; the default OCR languages are Arabic and English.
+
+**Proven by** (all on the simulator; both devices — "iPhone 17 D" and "iPad Pro 13-inch (M5) D",
+private copies of iPhone 17 and iPad Pro 13-inch (M5), iOS 27.0). **43 unit tests, 0 failures**
+on each device; **17 UI tests, 1 skipped, 0 failures** on the iPad and the same set on the iPhone
+(`apps/ios/.build/logs/test-*.log`, `scripts/ios/build.sh`):
+
+* XCTest `LibraryTests` (6 tests): corpus files indexed, "فاتوره" (no tashkeel,
+  haa for taa marbuta) found in the invoice at page 1 with its span marked, a tashkeel-laden word of
+  `coretext-albayan-tashkeel` found from its bare form, filters by kind and tag, rules applied,
+  save/close/reopen, forget; a damaged index file set aside; the indexer reading a corpus folder
+  with a scan through the fake seam (2 read, 1 skipped, 1 page recognized), unchanged on the second
+  run, forgotten when the file is removed; Stop between files; the seam's line assembly.
+* XCTest `WidgetsAndRoutesTests`: the Recent documents and Library search timelines from a seeded
+  App Group container (newest first, only files still there, small = one), routes round-tripping
+  through their URLs, a posted route taken once, the quick actions' items and routes.
+* XCTest `IntentsTests`: documents resolved by name from the recents and the index file, the
+  search intent answering from the index file (and no index = no matches), "Make a PDF" joining
+  a PDF and two pictures into three pages with the Arabic intact, the opening intents leaving
+  their routes, five Shortcuts.
+* XCUITest `LibraryUITests`: the corpus imported and indexed (5 documents, the scan through
+  Vision), "فاتوره" searched, a hit tapped and the document open at that page (the toolbar's page
+  number), the search written for the widget; Scans only filtering to the scan (skipped with a
+  message if Vision read nothing off the bilevel scan); a rule written through the interface and
+  the tag appearing; the home's six cards, starring a document from its card's menu and finding it
+  in the Starred row and the Starred section, and the Search card opening the search field.
+* XCUITest `SettingsUITests`: the scanner's colour mode kept across a relaunch and the device's
+  recognition languages listed (their switches are the scanner's own tests'); Delete
+  everything emptying the Library (0 indexed, no documents, no recents); the app starting locked
+  with `-appLock 1` and unlocking on the simulator's Face ID match (`scripts/ios/build.sh` enrols a
+  face and posts matches through `simctl spawn … notifyutil`); the lock switch.
+* Screenshots in `docs/design/ios/`, on both simulators, in Arabic light and English dark, each
+  looked at: `home-*` (the home — greeting, headline, the six cards, the index status line, the
+  rows of real first pages with their dates; the iPad's in its content column beside the open
+  document, mirrored in Arabic), `library-search-*` (a search for «فاتوره» matching three
+  documents, the word marked in each line), `library-filters-*` (the filters sheet),
+  `library-tags-*` (the Tags screen), `widgets-gallery-1..4-*` (SpringBoard's widget gallery on
+  the app's entry: Recent documents drawing a real first page, then the other families),
+  `settings-full-en-light-*`.
+
+**Not done, limited, or not provable here — stated plainly**
+
+* Only PDFs, scans and pictures are read into the index on iOS: the Word/Excel/PowerPoint/HTML
+  readers of the web and desktop hosts are not in the app, and the kinds are not shown as filters.
+* A protected PDF is skipped by the index (its password is not asked for during a run).
+* The Files/iCloud folder is read to a depth of 8 and at most 4 000 files per run; iCloud files
+  not yet on the device are asked for and read on the run after they arrive. No watching: the
+  index is brought up to date when the app comes to the front, on pull to refresh, and on Index
+  now.
+* Vision's word boxes for the index are the line's box shared out by word length; the scan
+  feature's own measured boxes are what a text layer should use.
+* Widgets, the Control Center control, Siri, Shortcuts and the share sheet are proven as code
+  (timelines, entity queries, routes, the extension's saving) and through the app's handling of
+  each route; the widget gallery itself is photographed by `WidgetGalleryUITests` only where
+  SpringBoard's controls could be found — on the iPhone 17 simulator they were: the gallery
+  opened on the app's entry and four pages were photographed (`widgets-gallery-1..4`); the Lock
+  Screen and Control Center galleries are not driven.
+* **The scan-only filter is skipped where Vision reads nothing.**
+  `testAScanIsFoundThroughTextRecognitionAndScansOnlyFiltersToIt` skips with a message when
+  Vision finds no words on the corpus's bilevel scan; it skipped on both simulators, so the
+  "Scans only" filter is proven by the unit tests (`LibraryTests`, over a scan read through the
+  seam) and not through the interface.
+* **Shared simulators.** Several agents test on the same two booted simulators; two XCUITest
+  runners on one device kill each other ("Early unexpected exit … server died"), and a loaded
+  Mac (load 50–150) exhausts process slots mid-run. `scripts/ios/build.sh` now takes
+  `WARRAQ_IPHONE` / `WARRAQ_IPAD` for simulators of one's own — part D was proven on "iPhone 17 D"
+  and "iPad Pro 13-inch (M5) D", private copies of the same models, reported under the shared
+  names — and its Face ID matcher loop dies with the script rather than spinning.
+* The chosen-folder flow through the system's folder picker is not driven by a UI test (the
+  picker is another process); the bookmark, the listing and the keys are unit-tested through the
+  Documents folder, which uses the same code.
+* Nothing has run on a device; Face ID is the simulator's simulated sensor.
+
 ## Completed this session
 * **Phase 0** — landscape audit (92 live-verified records), Arabic corpus (48 files: 33 generated with ground truth, 15 real-world with provenance), acid harness across five engines plus our own, two prototypes, GATE 0 (`docs/research/02-decision.md`, ADR-0003/4/5).
 * **Phase 1** — architecture; Rust core (`warraq-text`, `warraq-pdf`, `warraq-render`, `warraq-core`) native and WASM; RTL-first React shell and web app; MV3 extension; Tauri desktop with native PDFium bundled; CI (rust, wasm gate, web, corpus gate, robustness, desktop matrix, release draft).

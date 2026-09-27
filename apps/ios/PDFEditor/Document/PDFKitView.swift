@@ -80,6 +80,11 @@ struct PDFKitView: UIViewRepresentable {
         host?.view = view
         context.coordinator.layout = layout
         context.coordinator.night = night
+        // Opened at a page (a search hit from the Library): go there once
+        // the view has laid out its pages.
+        if currentPage > 0, let page = document.page(at: min(currentPage, max(document.pageCount - 1, 0))) {
+            DispatchQueue.main.async { view.go(to: page) }
+        }
         return view
     }
 
