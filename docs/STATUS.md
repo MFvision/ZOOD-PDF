@@ -793,6 +793,32 @@ wrong one and opening with the right one, the password removed), and
 `docs/design/ios/`: search, thumbnails, night, reader, outline, goto, markup, stamps,
 signature, marks, pages, crop, export, protect).
 
+**What the last runs say, device by device** (`~/Developer/warraq/.tools/one-at-a-time.sh
+scripts/ios/build.sh --iphone` / `--ipad`, logs in `apps/ios/.build/logs/`; the Mac is
+shared with the other agents, and a loaded simulator is the difference between most of
+these numbers).
+* **iPhone 17** — unit **37 of 37**; interface **13 of 14**. The one failure is
+  `AnnotateUITests.testHighlightNoteStampAndSignatureSurviveSaveAndReopen`, which asks
+  for the signature sheet immediately after the stamp sheet has closed; under load the
+  second sheet does not open in the seconds the test waits. Every part of that flow
+  passes on its own elsewhere (the stamp in `AnnotateTests`, the signature in
+  `SignatureStoreTests` and in the screenshot run, which photographs the sheet).
+* **iPad Pro 13-inch (M5)** — unit **52 of 52** (part B's 37 and the scanner's); the
+  interface between **15 and 16 of 18** over the last runs, the two that fail being the
+  same stamp-then-signature flow and the screenshot run that walks it. The failures
+  moved from run to run while the machine was busy; what did *not* move, and was found
+  by driving the app by hand on the simulator, was a real defect, now fixed: **the
+  markup bar's Done stood over the last two tools** (Stamp and Signature), so a tap
+  meant for them ended the markup instead — the gap kept clear under the button was
+  narrower than the English word needs. Done now stands beside the tools.
+* Two more defects the iPad found and that are fixed here: **Go to page** floated its
+  number pad over its own buttons (it is a form sheet on iPad now), and **a hit in the
+  find bar's list of matches** could only be tapped where its text was drawn (the whole
+  row takes the tap now). The Library's **Open… and Settings** moved beside Scan over
+  the documents column, because the sidebar that held them is collapsed while a
+  document is open.
+* The scanner's own `ScanTests` (from part C, merged) pass on the iPad: 4 of 4.
+
 **Limits, stated plainly.**
 * *Word export is text only*, as on the web: paragraphs in reading order, never the
   layout. The core has no Word reader (the web's is TypeScript), so the round-trip is
@@ -836,6 +862,10 @@ signature, marks, pages, crop, export, protect).
   search reads everything), so a stamp is read back through the search, not the page's
   VoiceOver value.
 * *Print* opens the system's panel; the simulator has no printer.
+* *One interface test is not green*: the stamp-then-signature flow above. It is a
+  timing failure on a loaded simulator, not a defect anyone would meet — but it is
+  stated here rather than hidden, and it is the first thing to re-run on a quiet
+  machine.
 * Everything ran on the simulator only; no device, no Face ID, no real share targets.
 
 ## Next (in order)
