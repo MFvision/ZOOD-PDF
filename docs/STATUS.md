@@ -632,12 +632,40 @@ reduced transparency and reduced motion honoured.
 | --- | --- |
 | Toolbar | One unified toolbar in place of the ribbon and the status bar. It carries the document's title, with "Page n of m — Edited" under it; pages; zoom (which now drives EmbedPDF's zoom too); the markup toolbar; Edit text; a tool picker that opens a gallery of all nineteen tools; find; save; and the inspector. Its toggles follow what is really open in the view |
 | Inspector | The tools pane, restyled: grouped inset sections, action lists, and macOS checkboxes, radios, pop-up buttons, segmented controls, steppers and switches. Every panel, including ones added later, gets the look from shared classes |
-| Home | A document chooser. Recent files are shown as pages with a small picture of each first page, kept in this browser's storage and nowhere else: never for a file that needed a password, dropped the moment anything is marked for redaction, and dropped when the file is saved, since the saved file may no longer look like it (a new one is taken the next time it opens). Where the inert "Open from OneDrive / Google Drive" buttons used to be there is now a **Cloud drives** section — but only in a build that carries a client ID: each drive with its account, Open… and Sign out, and the drive files opened lately as pages that reopen from the drive (docs/cloud.md) |
+| Home | Rebuilt on 2026-09-25 to the owner's design target (see the section below). Recent files are shown as pages with a small picture of each first page, kept in this browser's storage and nowhere else: never for a file that needed a password, dropped the moment anything is marked for redaction, and dropped when the file is saved, since the saved file may no longer look like it (a new one is taken the next time it opens). The **Cloud drives** section is there only in a build that carries a client ID: each drive with its account, Open… and Sign out, and the drive files opened lately as pages that reopen from the drive (docs/cloud.md) |
 | Dialogs and overlays | Dialogs are sheets. Popovers come out of their trigger. Toasts are a HUD. The find bar sits under the toolbar. The drop overlay is a material with one or two targets. Settings (⌘,) holds language and appearance |
 | EmbedPDF | Themed with Warraq's tokens by reference. Its duplicated sidebar, zoom and search buttons and its floating page field (except on a phone) are gone. The rest of its bar is the markup toolbar, shown from Warraq's toolbar |
 | macOS app | The title bar is merged into the toolbar, with the traffic lights in it. The toolbar drags the window and a double click zooms it. The system menu bar is built from the page's own menu model, in the interface language; its checks follow EmbedPDF's own state, it is sent again after every item chosen there, its Undo and Redo reach the typing in whatever field has the focus, and About opens the page's own sheet. A shortcut the page handles never runs its menu item too |
 | Narrow windows | On a tablet the toolbar condenses. On a phone the inspector is a sheet, the sidebar floats over the page, and nothing scrolls sideways. On a touch screen (`pointer: coarse`) the controls, rows, toolbar and menu bar grow to 44-point targets; the look is the same |
 | App icon | New original artwork (`scripts/icon/make_icon.py`): a calligraphic و on a sheet of paper. Desktop and extension icons are regenerated from it |
+
+## The home screen and the shell's chrome (2026-09-25)
+
+The owner sent a competitor's marketing picture and said "this design is the target". The desktop and
+web home screen now has that structure — its layout, spacing and mood — on top of the existing tokens,
+with nothing of theirs: no name, no artwork, no photograph, no copy. `docs/design/README.md` describes
+the pieces; `docs/design/screenshots/home-*`, `organize-menu-en-light` show them. Proven through the
+interface by `apps/web/e2e/home.spec.ts` (six tests) with the older specs kept green.
+
+| | |
+| --- | --- |
+| The material | Frosted-glass panels over an original CSS gradient (sky, haze, green; navy in dark). Light and dark, RTL mirrored, solid under increased contrast and reduced transparency |
+| Sidebar | Home · Recents · Starred · Tags (· Clouds only when a build carries a cloud client ID), then all twenty tools. The bottom line says how big the Library's index is on this device, or that there is none — the app has no quota to show and shows none |
+| Search (⌘K) | Searches what this device really has: recent files by name, and the text of every Library document through the core's `library.search` when there is an index. A hit opens its file at the page of the match. A document that was added to the Library one file at a time cannot be read back by a browser: the hit says so, asks for the file, and opens it at the page once chosen |
+| + | Open PDF…, Create PDF…, Scan from file… (the file opens with Scan & OCR chosen) |
+| The hero | «ملفات PDF، من جديد.» / "PDFs, done right." and six action cards: Open PDF, Create PDF, Edit PDF, Convert, AI Assistant, More. Every one does something now |
+| Recents | A row of pages with the time each was opened, a ⋯ menu (Open, Star, Remove from recents) and ‹ › paging; "See all" is the Recents place |
+| Starred | A real per-device flag (`localStorage`, `warraq.starred`): on a recent file from its ⋯ menu, on a Library document from the star on a hit or a chosen document. The Starred place lists both and opens each — a Library document from where the Library found it; a recent file by asking for it, since only its name is kept |
+| Tags | The Library's tags with counts; one opens the Library tool held to that tag |
+| AI Assistant | Docked at the side with Summarize this document · Explain it simply · Translate · Find the key points · Make a quiz · Draft an email from it, and a question. Each chip is the AI tool's own action (Summarize, Translate) or a question worded for it; a chip opens the tool with the request chosen and asks for the PDF. The card names the provider (Anthropic with your key, or the local model's host); nothing leaves before the tool's Send button, which the test proves by watching both hosts |
+| No bell, no avatar | There are no accounts and no notifications, so none are drawn |
+| Organize | Every page has a context menu: Add Page, Delete Page, Extract Pages, Rotate Left, Rotate Right, Replace Page, Crop, Split PDF, Insert from File. Each is the panel's own operation on that page (with the rest of the selection when it is part of one); Replace Page is one step of the history, so Undo puts the page back; a protected file asks for its password in a sheet |
+| Phone | The sidebar becomes a strip of place chips, the cards go two to a row, the recents a grid of three, the AI card sits below; nothing scrolls sideways; every target takes a finger |
+
+Not done, and why: "Shared" (files that arrived by share or drop) is not a place — the app keeps no
+record of how a file arrived, and listing recents again under another name would be a façade. A
+greeting by the device's user name is not shown: a browser cannot know it. The Library's own picture of
+a starred document is shown where the Library made one; a document without one shows the Library's glyph.
 
 ## The app's name
 

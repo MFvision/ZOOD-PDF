@@ -55,6 +55,8 @@ Segoe UI on Windows, with Cairo and Inter bundled for the rest.
 | `--red` `--orange` `--yellow` `--green`      | system colours                | system colours                  | `--destructive` is red                                                |
 | `--focus`                                    | accent at 55 %                | accent at 55 %                  | The 3-px focus ring                                                   |
 | `--scrim`                                    | black at 22 %                 | black at 45 %                   | Behind a sheet                                                        |
+| `--home-gradient`                            | sky, haze, green on `#f5f6fa` | navy on `#1c1d22`               | The home screen's ground: an original CSS gradient, no picture        |
+| `--glass-panel` / `--glass-card` / `--glass-border` / `--glass-hover` | white at 52 / 66 / 60 / 80 % | dark grey at 52 / 58 %, white at 12 %, grey at 70 % | The home's frosted panels, cards, their 1-px edge, and a hover. Solid under increased contrast and reduced transparency |
 
 The older names (`--bg-app`, `--bg-panel`, `--fg-muted`, `--border`, `--accent-soft`, `--radius-m`…) are kept
 as aliases at the bottom of `tokens.css`. Panels written against them still get the new look. New code
@@ -152,12 +154,39 @@ Use `font-variant-numeric: tabular-nums` wherever numbers change in place, such 
 - **Inspector** (`RightPane`, `.inspector`): the tools as a list, or the chosen tool's panel under a header
   with its coloured tile and name. A tool panel's own `<h3>` is hidden there, because the header already
   names it.
-- **Home** (`home/`): the document chooser.
-  - A large title and the app icon, with **Open…** as the default button.
-  - Recent files as a grid of pages. The first tile opens a file or takes a drop. Each file shows a
-    thumbnail of its first page. Only the name and that small picture are stored, on this device, and never
-    for a password-protected file.
-  - The tools as a gallery.
+- **Home** (`home/`): glass panels over a soft gradient (the owner's design target of 2026-09-25).
+  - **The material.** `--home-gradient` is an original CSS gradient (sky, haze, a little green; a deep
+    navy in dark) drawn by `.home`; `.glass` panels sit on it with `--glass-panel` at about 52 % and a 1-px
+    `--glass-border` (white at 60 % in light, 12 % in dark); cards use `--glass-card`. Increased contrast and
+    reduced transparency make every one of them solid. Nothing here is a photograph or anyone else's artwork.
+  - **Sidebar** (`HomeSidebar`, `nav` "Home sections"): the app mark, name and tagline; Home, Recents,
+    Starred, Tags, and Clouds only in a build that carries a cloud client ID; a Tools heading and all twenty
+    tools with their tiles; at the bottom the size of the Library's index on this device — the only storage
+    the app has — or a line saying there is none. The place on screen takes the accent.
+  - **Top bar**: the search field (`HomeSearch`, a `searchbox` named "Search", ⌘K) and the primary **+**,
+    whose menu is Open PDF…, Create PDF…, Scan from file…. The search field really searches: recent files by
+    name, and the text of every Library document through the core's own `library.search` when this device
+    holds an index (`useLibraryIndex`, read-only). A hit opens its file at the page of the match
+    (`pendingPage.ts`, mounted in the shell so the request outlives the home screen). No bell, no avatar:
+    there are no accounts.
+  - **Hero**: the headline in the interface language («ملفات PDF، من جديد.» / "PDFs, done right.") and six
+    action cards (`HeroCards`): Open PDF, Create PDF, Edit PDF, Convert, AI Assistant, More. The first two
+    carry the commands' names ("Open…", "Create PDF…"); Edit and Convert choose their tool and ask for the
+    file; AI Assistant puts the caret in the assistant's question; More goes to the gallery.
+  - **Recents** (`RecentList`): a row of paper cards with the first page's picture, the name, when it was
+    opened ("Today, 9:41 AM", "Yesterday, …", a date — `dates.ts`), a ⋯ menu (Open, Star, Remove from
+    recents) and ‹ › paging; "See all" is the Recents place, a grid with the drop tile first. Only the name,
+    the small picture and the time are kept, on this device, never for a password-protected file.
+  - **Starred** (`state/starred.ts`, `StarredView`): a per-device flag. A recent file is starred from its ⋯
+    menu; a Library document from the star on a hit or on a chosen document. The view opens each: a Library
+    document from where the Library found it, a recent file by asking for it again.
+  - **Tags** (`TagsView`): the Library's tags with their counts; one opens the Library tool held to it.
+  - **AI Assistant** (`AiCard`, `complementary` "AI Assistant"): docked at the trailing edge, with the chips
+    Summarize this document · Explain it simply · Translate · Find the key points · Make a quiz · Draft an
+    email from it, and a question. Each chip is one of the AI tool's actions or a question worded for it
+    (`ai/request.ts`); a chip opens the tool with the request chosen and asks for the PDF. The card names the
+    provider that would receive it, and nothing is sent before the tool's own Send button.
+  - The tools as a gallery, and the cloud drives where a build has them.
 - **Overlays**:
   - Sheets (`components/Dialog.tsx`).
   - Popovers (`components/Popover.tsx`).
@@ -206,7 +235,8 @@ Use `font-variant-numeric: tabular-nums` wherever numbers change in place, such 
   - The toolbar keeps the sidebar, the title, the tool picker and save. Find, Edit text and the markup
     toolbar are in the menus (Edit › Find, Edit › Edit text, View › Markup toolbar).
   - EmbedPDF's floating page field returns, as the way to move between pages.
-  - The home grid uses three columns, and the tools gallery two.
+  - The home's sidebar becomes a strip of place chips at the top (the tools are in the gallery), the action
+    cards go two to a row, the recents row becomes a grid of three, and the AI card sits under the content.
   - Nothing ever scrolls sideways.
 - On a touch screen (`@media (pointer: coarse)`: a phone, a tablet), whatever the width, every target takes a
   finger: `--control-h` becomes 44 px and `--control-h-small` 36 px, the toolbar is 60 px with 44-px buttons,
@@ -238,6 +268,7 @@ Use `font-variant-numeric: tabular-nums` wherever numbers change in place, such 
 | `.field-error`, `.banner`, `.badge`             | Inline error, a notice under the toolbar, a small tag |                                                               |
 | `Dialog`                                        | Sheet                                         | Focuses the first field, or itself                                    |
 | `Popover`                                       | Anchored popover                              | Scales from its trigger, closes on Escape or an outside press, and returns focus |
+| `ContextMenu`                                   | The system's context menu at a point          | `role="menu"`, kept inside the window; arrow keys move, Escape or an outside press closes it, focus returns. Organize's pages (Add Page, Delete Page, Extract Pages, Rotate Left, Rotate Right, Replace Page, Crop, Split PDF, Insert from File) and the recents' ⋯ and the home's + use it |
 | `ToolIcon`                                      | A tool's glyph on its coloured tile           | Colours are in `tools/ToolIcon.tsx`. A new tool without one gets the accent |
 
 ### Adding a tool panel
@@ -294,7 +325,9 @@ pnpm --filter @warraq/web build
 WARRAQ_SCREENSHOTS=1 pnpm --filter @warraq/web exec playwright test e2e/design-screenshots.spec.ts
 ```
 
-- `home-en-light`, `home-ar-dark`: the document chooser; `home-tools-ar-light`: its tools.
+- `home-en-light`, `home-ar-dark`: the home screen; `home-search-en-light`: the search field with results;
+  `home-starred-ar-dark`: the Starred place; `home-tools-ar-light`: the tools gallery.
+- `organize-menu-en-light`: a page's context menu in Organize.
 - `document-en-light`, `document-ar-light`, `document-ar-dark`: a document open.
 - `gallery-en-light`, `gallery-ar-dark`: the tool picker's gallery, all sixteen.
 - `inspector-organize-en-light`, `inspector-compress-en-dark`: the inspector.

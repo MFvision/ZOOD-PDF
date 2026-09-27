@@ -7,6 +7,8 @@ import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { useRenderedCanvas } from '../viewer/useRenderedCanvas';
 import { useSharedObserver } from '../viewer/useSharedObserver';
 import type { SharedObserver } from '../viewer/useSharedObserver';
+import { PageMenu } from './PageMenu';
+import type { PageMenuState } from './PageMenu';
 import { orderMovingTo, positionsAfter, selectionAfterDelete } from './selection';
 import type { SelectHow } from './selection';
 import './organize.css';
@@ -27,9 +29,10 @@ interface TileProps {
   onPick: (event: MouseEvent, index: number) => void;
   onDragStart: (event: DragEvent, index: number) => void;
   onDragOver: (event: DragEvent, index: number) => void;
+  onMenu: (event: MouseEvent, index: number) => void;
 }
 
-function PageTile({ document, index, size, selected, focused, revision, dropSide, observer, label, onPick, onDragStart, onDragOver }: TileProps) {
+function PageTile({ document, index, size, selected, focused, revision, dropSide, observer, label, onPick, onDragStart, onDragOver, onMenu }: TileProps) {
   const ref = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [near, setNear] = useState(false);
@@ -60,6 +63,7 @@ function PageTile({ document, index, size, selected, focused, revision, dropSide
       data-page={index + 1}
       className={['organize-tile', selected && 'is-selected', dropSide && `drop-${dropSide}`].filter(Boolean).join(' ')}
       onClick={(event) => onPick(event, index)}
+      onContextMenu={(event) => onMenu(event, index)}
       onDragStart={(event) => onDragStart(event, index)}
       onDragOver={(event) => onDragOver(event, index)}
     >
@@ -90,6 +94,7 @@ export function OrganizeView() {
   const observer = useSharedObserver(gridRef, '400px 0px', 0);
   const [focusAt, setFocus] = useState(0);
   const [drop, setDrop] = useState<{ index: number; side: 'before' | 'after' } | null>(null);
+  const [menu, setMenu] = useState<PageMenuState | null>(null);
   const document = services.document;
   const info = state.document;
   const { selection, revision, busy } = state.organize;
@@ -118,6 +123,27 @@ export function OrganizeView() {
 
   const onPick = (event: MouseEvent, index: number) =>
     pick(index, event.shiftKey ? 'range' : event.metaKey || event.ctrlKey ? 'toggle' : 'only');
+
+  // The page's context menu: a right-click, or the keyboard's menu key
+  // (`contextmenu` without a point), on the page — which joins the
+  // selection when it is not already in it.
+  const onMenu = (event: MouseEvent, index: number) => {
+    event.preventDefault();
+    if (!selection.pages.includes(index)) pick(index, 'only');
+    else setFocus(index);
+    const tile = event.currentTarget as HTMLElement;
+    const box = tile.getBoundingClientRect();
+    const at = event.clientX || event.clientY ? { x: event.clientX, y: event.clientY } : { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+    setMenu({ index, at, from: tile });
+  };
+
+  // Crop's controls are in the panel: choose the page, then bring them into view.
+  const cropPage = (index: number) => {
+    pick(index, 'only');
+    const crop = window.document.querySelector<HTMLElement>('.pane-end .organize-crop');
+    crop?.scrollIntoView({ block: 'nearest' });
+    crop?.querySelector<HTMLElement>('button, input')?.focus({ preventScroll: true });
+  };
 
   const reorderTo = (target: number) => {
     const moving = selection.pages;
@@ -210,8 +236,10 @@ export function OrganizeView() {
           onPick={onPick}
           onDragStart={onDragStart}
           onDragOver={onDragOver}
+          onMenu={onMenu}
         />
       ))}
+      <PageMenu menu={menu} onClose={() => setMenu(null)} onCrop={cropPage} />
     </div>
   );
 }
