@@ -142,8 +142,8 @@ final class LibraryTests: XCTestCase {
         try Data("not a pdf".utf8).write(to: documents.appending(path: "broken.pdf"))
 
         let fake = FakeRecognizer(lines: ["عقد إيجار سكني", "المستأجر أحمد"])
-        PageText.reader = fake
-        defer { PageText.reader = ScannerPageTextReader() }
+        PageOCR.reader = fake
+        defer { PageOCR.reader = ScannerPageTextReader() }
 
         let index = try await LibraryIndex.open(at: folder.appending(path: "Index/library.wlx"))
         let indexer = LibraryIndexer(index: index, documentsFolder: documents, thumbnailsFolder: thumbnails)
@@ -219,7 +219,7 @@ final class LibraryTests: XCTestCase {
             IndexedWord(text: "أ", line: 0),
             IndexedWord(text: "ج", line: 1),
         ]
-        XCTAssertEqual(PageText.lines(of: words), ["أ", "ب ج"])
+        XCTAssertEqual(PageOCR.lines(of: words), ["أ", "ب ج"])
     }
 
     @MainActor

@@ -78,7 +78,7 @@ final class LibraryIndexer {
     }
 
     /// The OCR languages from the scanner's settings.
-    static var ocrLanguages: [String] { PageText.languages }
+    static var ocrLanguages: [String] { PageOCR.languages }
 
     // MARK: - The catalog
 
@@ -109,7 +109,7 @@ final class LibraryIndexer {
         error = nil
         summary = nil
         progress = IndexingProgress(done: 0, total: 0, current: "", stage: .listing)
-        let recognizer = PageText.reader
+        let recognizer = PageOCR.reader
         let languages = Self.ocrLanguages
         let worker = Worker(index: index, documentsFolder: documentsFolder, chosen: chosen, thumbnailsFolder: thumbnailsFolder,
                             knownKeysURL: knownKeysURL, recognizer: recognizer, languages: languages)
@@ -117,6 +117,10 @@ final class LibraryIndexer {
             let outcome = await worker.run { progress in
                 await MainActor.run { self?.progress = progress }
             }
+            // The catalog and the counts first, so that a run being over
+            // (no progress) means the grid and the status line are current.
+            let files = await worker.listedFiles
+            await self?.reloadCatalog(files: files)
             await MainActor.run {
                 guard let self else { return }
                 self.task = nil
@@ -127,10 +131,8 @@ final class LibraryIndexer {
                 case let .failure(failure):
                     self.error = failure.localizedDescription
                 }
+                WidgetCenter.shared.reloadAllTimelines()
             }
-            let files = await worker.listedFiles
-            await self?.reloadCatalog(files: files)
-            await MainActor.run { WidgetCenter.shared.reloadAllTimelines() }
         }
     }
 
@@ -404,7 +406,7 @@ final class LibraryIndexer {
                       let image = Self.cgImage(from: rendered) else { continue }
                 let words = (try? await recognizer.read(image, languages: languages)) ?? []
                 recognized += 1
-                let lines = PageText.lines(of: words).joined(separator: "\n")
+                let lines = PageOCR.lines(of: words).joined(separator: "\n")
                 if !lines.isEmpty, chars < Limits.charsPerDocument {
                     let kept = String(lines.prefix(Limits.charsPerDocument - chars))
                     chars += kept.count
@@ -429,7 +431,7 @@ final class LibraryIndexer {
             at.stage = .recognizing(page: 1, of: 1)
             await report(at)
             let words = (try? await recognizer.read(image, languages: languages)) ?? []
-            let text = PageText.lines(of: words).joined(separator: "\n")
+            let text = PageOCR.lines(of: words).joined(separator: "\n")
             let pages = text.isEmpty ? [] : [PageText(page: 1, text: String(text.prefix(Limits.charsPerDocument)))]
             let thumbnail = Self.decodeImage(bytes, maxPixels: Limits.thumbnailWidth).flatMap { UIImage(cgImage: $0).pngData() }
             return ReadDocument(kind: .image, pages: pages, pageCount: 1, recognized: 1, thumbnail: thumbnail)

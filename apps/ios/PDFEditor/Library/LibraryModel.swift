@@ -489,7 +489,7 @@ final class LibraryModel {
         try? FileManager.default.removeItem(at: AppGroup.thumbnailsURL)
         try? FileManager.default.removeItem(at: indexURL.deletingLastPathComponent())
         ChosenFolder.forget()
-        for key in [SettingsKey.language, SettingsKey.appearance, SettingsKey.scanMode, SettingsKey.ocrLanguages, SettingsKey.appLock, "AppleLanguages"] {
+        for key in [SettingsKey.language, SettingsKey.appearance, SettingsKey.scanColorMode, SettingsKey.ocrLanguages, SettingsKey.appLock, "AppleLanguages"] {
             UserDefaults.standard.removeObject(forKey: key)
         }
         _ = AppRoute.takePending()

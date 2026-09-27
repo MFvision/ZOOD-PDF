@@ -196,7 +196,7 @@ struct LibraryShell: View {
         .task {
             guard !restored else { return }
             restored = true
-            AppGroup.setFlag("cameraAvailable", ScanBridges.cameraAvailable)
+            AppGroup.setFlag("cameraAvailable", DocumentCameraView.isSupported)
             lock.lock()
             restoreScene()
         }

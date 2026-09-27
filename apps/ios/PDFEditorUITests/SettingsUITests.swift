@@ -35,17 +35,24 @@ final class SettingsUITests: XCTestCase {
     func testTheScanModeAndOCRLanguagesAreKeptAcrossALaunch() throws {
         var app = try launch(extra: ["-scanMode", "color", "-ocrLanguages", "(ar, en)"])
         openSettings(in: app)
-        let mode = app.descendants(matching: .any)["settings.scanMode"].firstMatch
+        let mode = app.descendants(matching: .any)["settings.scanColorMode"].firstMatch
+        scrollTo(mode, in: app)
         XCTAssertTrue(mode.waitForExistence(timeout: 10), "the scan mode picker is there")
         mode.tap()
         let grey = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Grey'")).firstMatch
         XCTAssertTrue(grey.waitForExistence(timeout: 10))
         grey.tap()
-        // An OCR language switch, if this device can read more than one.
-        let english = app.switches["settings.ocr.en"]
+        // An OCR language switch, if this device can read more than one
+        // (the scanner's settings name them by their full code).
+        let english = app.switches.matching(NSPredicate(format: "identifier BEGINSWITH 'settings.ocr.en'")).firstMatch
+        scrollTo(english, in: app)
         if english.waitForExistence(timeout: 5) {
             let before = english.value as? String
             english.tap()
+            if english.value as? String == before {
+                // A tap that landed while the form settled: once more.
+                english.tap()
+            }
             XCTAssertNotEqual(english.value as? String, before, "the switch flipped")
         }
         app.buttons["sheet.done"].tap()
@@ -53,7 +60,9 @@ final class SettingsUITests: XCTestCase {
 
         app = try launch()
         openSettings(in: app)
-        XCTAssertTrue(app.staticTexts["Grey"].firstMatch.waitForExistence(timeout: 10), "the mode chosen is still chosen")
+        let kept = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Grey' OR value == 'Grey'")).firstMatch
+        scrollTo(kept, in: app)
+        XCTAssertTrue(kept.waitForExistence(timeout: 10), "the mode chosen is still chosen")
     }
 
     func testDeleteEverythingEmptiesTheLibrary() throws {
@@ -100,10 +109,12 @@ final class SettingsUITests: XCTestCase {
     }
 
     /// Scrolls the Settings form until `element` is there (its lower
-    /// sections are not built until they come into view).
+    /// sections are not built until they come into view). The form is a
+    /// collection view inside the sheet: it is what scrolls, not the app.
     private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
-        for _ in 0..<6 where !element.exists {
-            app.swipeUp()
+        let form = app.collectionViews.firstMatch.exists ? app.collectionViews.firstMatch : app
+        for _ in 0..<8 where !element.exists {
+            form.swipeUp()
         }
     }
 

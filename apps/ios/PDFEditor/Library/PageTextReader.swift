@@ -16,7 +16,7 @@ protocol PageTextReading: Sendable {
     func read(_ image: CGImage, languages: [String]) async throws -> [IndexedWord]
 }
 
-enum PageText {
+enum PageOCR {
     @MainActor static var reader: any PageTextReading = ScannerPageTextReader()
 
     /// The languages the index reads scans with: the ones chosen in the

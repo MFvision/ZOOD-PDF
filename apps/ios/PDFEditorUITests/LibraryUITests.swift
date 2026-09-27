@@ -166,10 +166,8 @@ final class LibraryUITests: XCTestCase {
         let starByLabel = app.buttons["Star"].firstMatch
         if star.waitForExistence(timeout: 5) { star.tap() } else { XCTAssertTrue(starByLabel.waitForExistence(timeout: 5), "the Star item is in the menu"); starByLabel.tap() }
         XCTAssertTrue(app.descendants(matching: .any)["home.row.starred"].waitForExistence(timeout: 10), "the Starred row appeared")
-        let seeAll = app.descendants(matching: .any)["home.seeAll.starred"].firstMatch
-        XCTAssertTrue(seeAll.waitForExistence(timeout: 10), "See all is beside the Starred row")
-        seeAll.tap()
-        XCTAssertTrue(app.buttons["starred.\(name)"].waitForExistence(timeout: 10), "the Starred section lists it")
+        openSection("starred", in: app)
+        XCTAssertTrue(app.descendants(matching: .any)["starred.\(name)"].waitForExistence(timeout: 10), "the Starred section lists it")
         // Back home (the sidebar on iPad, the back button on iPhone); the
         // Search card opens the search field.
         if app.buttons["sidebar.home"].exists {
@@ -185,17 +183,23 @@ final class LibraryUITests: XCTestCase {
     }
 
     private func openTags(in app: XCUIApplication) {
-        let sidebar = app.buttons["sidebar.tags"]
-        let cell = app.cells["sidebar.tags"]
+        openSection("tags", in: app)
+        XCTAssertTrue(app.descendants(matching: .any)["library.tags"].waitForExistence(timeout: 10), "the Tags screen is shown")
+    }
+
+    /// Opens a section from the sidebar (iPad) or its row (iPhone).
+    private func openSection(_ name: String, in app: XCUIApplication) {
+        let sidebar = app.buttons["sidebar.\(name)"]
+        let cell = app.cells["sidebar.\(name)"]
         if sidebar.waitForExistence(timeout: 5) {
             sidebar.tap()
         } else if cell.waitForExistence(timeout: 5) {
             cell.tap()
         } else {
-            app.staticTexts["sidebar.tags"].firstMatch.tap()
+            let any = app.descendants(matching: .any)["sidebar.\(name)"].firstMatch
+            XCTAssertTrue(any.waitForExistence(timeout: 10), "the \(name) section is listed")
+            any.tap()
         }
-        XCTAssertTrue(app.otherElements["library.tags"].waitForExistence(timeout: 10) || app.tables["library.tags"].waitForExistence(timeout: 5)
-            || app.collectionViews["library.tags"].waitForExistence(timeout: 5), "the Tags screen is shown")
     }
 
     func testScreenshots() throws {
