@@ -30,13 +30,26 @@ enum LibrarySection: String, CaseIterable, Identifiable {
 struct LibraryShell: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.scenePhase) private var scenePhase
-    @State private var library = LibraryModel()
+    @State private var library: LibraryModel
     @SceneStorage("library.section") private var sectionID = LibrarySection.recents.rawValue
     @SceneStorage("library.document") private var restoredBookmark: String?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var showingSettings = false
     @State private var showingImporter = false
+    @State private var showingScanner = false
     @State private var restored = false
+
+    init() {
+        #if DEBUG
+        // A UI test keeps the app's documents in a folder of its own:
+        // `-warraqDocumentsFolder <path>`.
+        if let folder = UserDefaults.standard.string(forKey: "warraqDocumentsFolder"), !folder.isEmpty {
+            _library = State(initialValue: LibraryModel(documentsFolder: URL(filePath: folder, directoryHint: .isDirectory)))
+            return
+        }
+        #endif
+        _library = State(initialValue: LibraryModel())
+    }
 
     private var section: Binding<LibrarySection?> {
         Binding(
@@ -55,6 +68,13 @@ struct LibraryShell: View {
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
+        }
+        .fullScreenCover(isPresented: $showingScanner) {
+            ScanView(documentsFolder: library.documentsFolder) { url in
+                library.refresh()
+                library.open(url: url)
+            }
+            .appEnvironment()
         }
         .fileImporter(isPresented: $showingImporter, allowedContentTypes: [.pdf]) { result in
             if case let .success(url) = result {
@@ -104,6 +124,8 @@ struct LibraryShell: View {
         } content: {
             DocumentGrid(library: library, section: section.wrappedValue)
                 .navigationTitle(section.wrappedValue?.title ?? "Recents")
+                // The sidebar's bar is narrow: Scan sits over the documents.
+                .toolbar { ToolbarItem(placement: .primaryAction) { scanButton } }
         } detail: {
             if let opened = library.opened {
                 DocumentView(model: opened)
@@ -134,6 +156,9 @@ struct LibraryShell: View {
     @ToolbarContentBuilder
     private var libraryToolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
+            if sizeClass == .compact {
+                scanButton
+            }
             Button("Open…", systemImage: "folder.badge.plus") {
                 showingImporter = true
             }
@@ -145,12 +170,20 @@ struct LibraryShell: View {
         }
     }
 
+    private var scanButton: some View {
+        Button("Scan", systemImage: "doc.viewfinder") {
+            showingScanner = true
+        }
+        .accessibilityIdentifier("library.scan")
+    }
+
     // MARK: - Restoring
 
     private func restoreScene() {
         #if DEBUG
         // A UI test, or a run from the command line: `-warraqReset 1` starts
-        // from an empty Library, `-warraqOpen <path>` opens a file.
+        // from an empty Library, `-warraqOpen <path>` opens a file,
+        // `-warraqScan <path>[,…]` opens the scanner on those photos.
         if UserDefaults.standard.bool(forKey: "warraqReset") {
             try? library.store.clear()
             restoredBookmark = nil
@@ -158,6 +191,10 @@ struct LibraryShell: View {
         }
         if let path = UserDefaults.standard.string(forKey: "warraqOpen"), !path.isEmpty {
             library.open(url: URL(filePath: path))
+            return
+        }
+        if let photos = UserDefaults.standard.string(forKey: "warraqScan"), !photos.isEmpty {
+            showingScanner = true
             return
         }
         #endif

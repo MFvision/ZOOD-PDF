@@ -51,6 +51,9 @@ targets:
     sources:
       - path: PDFEditor
       - path: Shared
+      # The face the scanner's text layer is written in (OFL; THIRD-PARTY-NOTICES.md).
+      - path: ../../tests/fonts/Amiri-Regular.ttf
+        buildPhase: resources
     dependencies:
       - target: WarraqCore
         embed: false
@@ -59,6 +62,8 @@ targets:
       - target: Widgets
       - target: ShareExtension
       - sdk: PDFKit.framework
+      - sdk: Vision.framework
+      - sdk: VisionKit.framework
     entitlements:
       path: PDFEditor/PDFEditor.entitlements
       properties:
@@ -98,14 +103,19 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: app.warraq.ios
             CFBundleURLSchemes: [pdfeditor]
-        # Opened from Files, Mail, Safari and "Open in": PDFs. Images are
-        # registered by the scanner once it turns them into PDFs.
+        # Opened from Files, Mail, Safari and "Open in": PDFs, and pictures
+        # (shown as a one-page PDF of the picture, with the scanner offered).
         CFBundleDocumentTypes:
           - CFBundleTypeName: PDF document
             CFBundleTypeRole: Editor
             LSHandlerRank: Alternate
             LSItemContentTypes:
               - com.adobe.pdf
+          - CFBundleTypeName: Picture
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - public.image
         # The privacy strings are localized in InfoPlist.xcstrings (Arabic
         # and English); these are the fallbacks.
         NSCameraUsageDescription: "The camera scans paper documents into PDFs. Nothing leaves the device."
@@ -228,6 +238,29 @@ targets:
         buildPhase: resources
       - path: ../../tests/corpus/arabic/generated/variant-encrypted-rc4-40.pdf
         buildPhase: resources
+      # The scanner's pictures: the corpus's damaged scans (as PDFs, drawn
+      # at 300 dpi in the test), their truth, a shadowed photo, and the
+      # synthetic ID card, book spread and crooked page (tests/fixtures/scan).
+      - path: ../../tests/corpus/arabic/generated/scan-notonaskh-300dpi-shadowed-stained-jpeg.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/scan-notonaskh-300dpi-crooked-8deg-jpeg.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/truth/scan-notonaskh-300dpi-shadowed-stained-jpeg.txt
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/truth/scan-notonaskh-300dpi-crooked-8deg-jpeg.txt
+        buildPhase: resources
+      - path: ../../tests/fixtures/create/photo-arabic.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/id-front.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/id-back.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/book-spread.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/page-crooked.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/whiteboard.jpg
+        buildPhase: resources
     dependencies:
       - target: PDFEditor
       # The wrapper's code is already inside the host app; the tests need only
@@ -247,8 +280,26 @@ targets:
       - path: PDFEditorUITests
       - path: ../../tests/corpus/arabic/generated/coretext-sfarabic-mixed-invoice.pdf
         buildPhase: resources
+      - path: ../../tests/fixtures/create/photo-arabic.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/id-front.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/id-back.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/book-spread.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/page-crooked.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/whiteboard.jpg
+        buildPhase: resources
     dependencies:
       - target: PDFEditor
+      # The scanner's tests open the PDF the app saved with the core and
+      # search it: the wrapper and the core are linked into the runner.
+      - target: WarraqCore
+        embed: false
+      - framework: Vendor/WarraqCore.xcframework
+        embed: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.warraq.ios.uitests
