@@ -127,7 +127,7 @@ final class LaunchTests: XCTestCase {
         let page = app.otherElements["document.page"]
         _ = page.waitForExistence(timeout: 5)
         if page.exists, !app.buttons["library.open"].exists {
-            let notOurs = NSPredicate(format: "NOT (identifier BEGINSWITH 'document.')")
+            let notOurs = NSPredicate(format: "NOT (identifier IN {'document.info', 'document.share', 'document.save'})")
             let back = app.navigationBars.buttons.matching(notOurs).firstMatch
             if back.waitForExistence(timeout: 5) {
                 back.tap()

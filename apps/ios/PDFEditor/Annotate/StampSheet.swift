@@ -114,6 +114,7 @@ struct StampSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                        .accessibilityIdentifier("stamp.cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if working {

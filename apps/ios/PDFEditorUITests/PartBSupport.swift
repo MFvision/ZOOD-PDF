@@ -93,7 +93,7 @@ struct PartBApp {
     func tapMarkup(_ identifier: String) -> XCUIElement {
         settle()
         let button = app.buttons[identifier]
-        XCTAssertTrue(button.waitForExistence(timeout: 10), "markup button \(identifier): \(tree)")
+        XCTAssertTrue(poll(timeout: 30) { button.exists && button.isHittable }, "markup button \(identifier): \(tree)")
         let bar = app.descendants(matching: .any).matching(identifier: "markup.bar").firstMatch
         let screen = app.windows.firstMatch.frame
         var tries = 0
@@ -148,8 +148,13 @@ struct PartBApp {
     /// another is still on its way out does not open, and a tap on a
     /// control under a closing sheet is lost.
     func settle() {
-        let sheetControls = ["sheet.done", "stamp.add", "signature.place", "goto.go", "note.add", "crop.apply", "export.share.pdf", "Cancel", "إلغاء"]
-        _ = poll(timeout: 15) { sheetControls.allSatisfy { !self.app.buttons[$0].exists } }
+        let sheetControls = ["sheet.done", "stamp.add", "signature.place", "goto.go", "note.add", "crop.apply", "export.share.pdf", "stamp.cancel", "signature.cancel"]
+        _ = poll(timeout: 20) { sheetControls.allSatisfy { !self.app.buttons[$0].exists } }
+        // A sheet's buttons leave the tree as it starts to close; the screen
+        // under it takes taps again only once it has gone, and SwiftUI opens
+        // the next sheet only then (on iPad the second one did not open).
+        let done = app.buttons["markup.done"]
+        _ = poll(timeout: 20) { !done.exists || done.isHittable }
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.5))
     }
 
