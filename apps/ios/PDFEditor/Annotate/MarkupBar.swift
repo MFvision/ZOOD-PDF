@@ -15,13 +15,13 @@ struct MarkupBar: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        // The tools scroll under a Done that stays put at the end. The bar
-        // is cut to the width it is given: a horizontal scroll view's own
-        // ideal width is its content's, and a stack would grow to it, past
-        // the screen's edge (which is where Done ended up in a test run).
-        GeometryReader { geometry in
-            ZStack(alignment: .trailing) {
-                ScrollView(.horizontal, showsIndicators: false) {
+        // The tools scroll; Done stays at the end, beside them and never
+        // over them. (It used to sit on top with a fixed gap kept clear
+        // under it: on an iPad the gap was narrower than the English word,
+        // so the last two tools lay under the button and a tap on them
+        // ended the markup instead.)
+        HStack(spacing: 0) {
+            ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Space.x1) {
                     barButton("Undo", "arrow.uturn.backward", id: "markup.undo", enabled: undoManager?.canUndo == true) { undoManager?.undo() }
                     barButton("Redo", "arrow.uturn.forward", id: "markup.redo", enabled: undoManager?.canRedo == true) { undoManager?.redo() }
@@ -41,20 +41,18 @@ struct MarkupBar: View {
                     barButton("Stamp", "seal", id: "markup.stamp", action: openStamps)
                     barButton("Signature", "signature", id: "markup.signature", action: openSignature)
                 }
-                .padding(.leading, Space.x3)
-                .padding(.trailing, 88)
+                .padding(.horizontal, Space.x3)
             }
-            .frame(width: geometry.size.width, height: 44)
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
             .accessibilityIdentifier("markup.bar")
             Button("Done", action: done)
                 .font(TextStyle.headline)
                 .foregroundStyle(.white)
                 .padding(.horizontal, Space.x4)
                 .frame(height: 44)
-                .background(MarkupChrome.bar, ignoresSafeAreaEdges: [])
+                .fixedSize()
                 .accessibilityIdentifier("markup.done")
-            }
-            .frame(width: geometry.size.width, height: 44)
         }
         .frame(height: 44)
         .background(MarkupChrome.bar, ignoresSafeAreaEdges: [])
