@@ -154,7 +154,12 @@ struct PartBApp {
         // under it takes taps again only once it has gone, and SwiftUI opens
         // the next sheet only then (on iPad the second one did not open).
         let done = app.buttons["markup.done"]
-        _ = poll(timeout: 20) { !done.exists || done.isHittable }
+        if !poll(timeout: 20, { !done.exists || done.isHittable }) {
+            // A menu still open swallows every tap through its dismiss
+            // region; the Escape key closes it.
+            app.typeKey(XCUIKeyboardKey.escape, modifierFlags: [])
+            _ = poll(timeout: 10) { !done.exists || done.isHittable }
+        }
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.5))
     }
 
