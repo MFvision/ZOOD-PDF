@@ -149,27 +149,32 @@ described here.
 * **Share extension** "Save to محرر PDF": PDFs shared from any app land in the Inbox; pictures
   become one PDF (the core's `create.images`); the app moves the Inbox into My documents and
   indexes it the next time it is in front.
-* **Settings**: language (system/Arabic/English), appearance, the default scan mode (colour, grey,
-  black and white), OCR languages (the list is what Vision offers on this device), the
+* **Settings**: language (system/Arabic/English), appearance, the scanner's own section (the
+  colour new scans start in, and the text-recognition languages this device supports), the
   Files/iCloud folder (choose, change, stop reading), Face ID/Touch ID lock (off by default; asks
   whenever the app comes to the front; refuses to turn on where the device has neither biometrics
   nor a passcode), and "Delete everything", which deletes the documents in My documents, the
   index, Spotlight's items, the recents, the thumbnails, the last searches, the Inbox, the folder
   bookmark and the settings.
-* **Scan entry**: every "Scan" (widget, control, Shortcut, quick action, the toolbar) lands on
-  VisionKit's document camera where the device has one, and on a pictures-to-PDF sheet where it
-  does not (the simulator); either way the pages become a PDF through the core in the default scan
-  mode, saved among My documents, indexed and opened. The scan feature's own pipeline takes this
-  entry over.
+* **Scan and Create**: every "Scan" (the widget, the Control Centre control, a Shortcut, the
+  quick action, the toolbar, the home's Scan and Create cards) opens the scanner itself — part C's
+  `ScanView` — and what it saves joins My documents, the index and the open document. **Combine**
+  (the home's card and the "Make a PDF" intent) joins PDFs and pictures into one PDF through the
+  core.
 
-**The OCR seam.** `TextRecognizer.shared` in `apps/ios/Shared/TextRecognizer.swift`:
-`recognize(image, languages) -> [RecognizedWord]` (text, box, line). Vision's
-`VNRecognizeTextRequest` stands behind it by default; the scan agent's pipeline was not on main
-when this was built, so the unit tests drive the seam with a fake recognizer (`FakeRecognizer` in
-`LibraryTests`) and the UI test uses Vision as it is. **Vision's languages on this simulator:**
+**The OCR seam.** `PageOCR.reader` in `apps/ios/PDFEditor/Library/PageTextReader.swift`:
+`read(image, languages) -> [IndexedWord]`. Behind it stands the scanner's own recognizer
+(`PDFEditor/Scan/TextRecognizer`, part C's), on a queue of its own so Vision never holds the
+cooperative pool; the languages are the ones chosen in the scanner's settings (Arabic and English
+unless changed). The unit tests put their own reader in its place (`FakeRecognizer` in
+`LibraryTests`); the UI tests read the corpus's scan with Vision as it is. **Vision's languages on
+this simulator:**
 `en-US, fr-FR, it-IT, de-DE, es-ES, pt-BR, zh-Hans, zh-Hant, yue-Hans, yue-Hant, ko-KR, ja-JP, ru-RU, uk-UA, th-TH, vi-VT, ar-SA, ars-SA, tr-TR, id-ID, cs-CZ, da-DK, nl-NL, no-NO, nn-NO, nb-NO, ms-MY, pl-PL, ro-RO, sv-SE, fi-FI, hi-IN, mr-IN` (`testVisionLanguagesOnThisSimulator`, iPhone 17, iOS 27.0) — **Arabic (`ar-SA`, and Najdi `ars-SA`) is there**, so the index reads Arabic scans with Vision on this simulator; the default OCR languages are Arabic and English.
 
-**Proven by** (all on the simulator, both devices unless said):
+**Proven by** (all on the simulator; both devices — "iPhone 17 D" and "iPad Pro 13-inch (M5) D",
+private copies of iPhone 17 and iPad Pro 13-inch (M5), iOS 27.0). **43 unit tests, 0 failures**
+on each device; **17 UI tests, 1 skipped, 0 failures** on the iPad and the same set on the iPhone
+(`apps/ios/.build/logs/test-*.log`, `scripts/ios/build.sh`):
 
 * XCTest `LibraryTests` (6 tests): corpus files indexed, "فاتوره" (no tashkeel,
   haa for taa marbuta) found in the invoice at page 1 with its span marked, a tashkeel-laden word of
@@ -188,19 +193,21 @@ when this was built, so the unit tests drive the seam with a fake recognizer (`F
   Vision), "فاتوره" searched, a hit tapped and the document open at that page (the toolbar's page
   number), the search written for the widget; Scans only filtering to the scan (skipped with a
   message if Vision read nothing off the bilevel scan); a rule written through the interface and
-  the tag appearing.
-* XCUITest `SettingsUITests`: the scan mode and an OCR language kept across a relaunch; Delete
+  the tag appearing; the home's six cards, starring a document from its card's menu and finding it
+  in the Starred row and the Starred section, and the Search card opening the search field.
+* XCUITest `SettingsUITests`: the scanner's colour mode kept across a relaunch and the device's
+  recognition languages listed (their switches are the scanner's own tests'); Delete
   everything emptying the Library (0 indexed, no documents, no recents); the app starting locked
   with `-appLock 1` and unlocking on the simulator's Face ID match (`scripts/ios/build.sh` enrols a
   face and posts matches through `simctl spawn … notifyutil`); the lock switch.
-* Screenshots in `docs/design/ios/` (iPhone 17; each looked at): `home-ar-light-iPhone-17.jpg`
-  and `home-en-dark-iPhone-17.jpg` (the home: greeting, headline, the six cards, the index status
-  line — "5 documents indexed · 5 read · 1 pages recognized" in the dark English one, the scan
-  read by Vision), `library-search-*`, `library-filters-*` (the filters sheet), `library-tags-*`
-  (the Tags screen), `widgets-gallery-1..4-iPhone-17.jpg` (SpringBoard's widget gallery opened
-  on the app's entry: "Recent documents", then the next families), `settings-full-en-light-*`.
-  The iPad set is taken by the same tests on the iPad Pro 13-inch (M5) when
-  `scripts/ios/build.sh` reaches it (see "Not done", below).
+* Screenshots in `docs/design/ios/`, on both simulators, in Arabic light and English dark, each
+  looked at: `home-*` (the home — greeting, headline, the six cards, the index status line, the
+  rows of real first pages with their dates; the iPad's in its content column beside the open
+  document, mirrored in Arabic), `library-search-*` (a search for «فاتوره» matching three
+  documents, the word marked in each line), `library-filters-*` (the filters sheet),
+  `library-tags-*` (the Tags screen), `widgets-gallery-1..4-*` (SpringBoard's widget gallery on
+  the app's entry: Recent documents drawing a real first page, then the other families),
+  `settings-full-en-light-*`.
 
 **Not done, limited, or not provable here — stated plainly**
 
@@ -219,19 +226,17 @@ when this was built, so the unit tests drive the seam with a fake recognizer (`F
   SpringBoard's controls could be found — on the iPhone 17 simulator they were: the gallery
   opened on the app's entry and four pages were photographed (`widgets-gallery-1..4`); the Lock
   Screen and Control Center galleries are not driven.
-* **Shared simulators.** Several agents test on the same two booted simulators outside the
-  queue; two XCUITest runners on one device kill each other ("Early unexpected exit … server
-  died") and the machine's load (50–90) exhausts process slots. `scripts/ios/build.sh` now takes
-  `WARRAQ_IPHONE` / `WARRAQ_IPAD` for simulators of one's own (part D ran on "iPhone 17 D" and
-  "iPad Pro 13-inch (M5) D", reported under the shared names); its Face ID matcher loop dies with
-  the script. The last complete iPhone UI run before that change (`build13`): LaunchTests 2/3
-  (the third: the app could not be launched under load), LibraryUITests 3/5, SettingsUITests 1/4,
-  WidgetGalleryUITests 1/1 — the failures were the index status line not yet idle within the
-  wait, rows below the fold, the lock's switch tapped beside its control, and launch timeouts;
-  each is fixed in the tests (longer waits through the running state, scrolling, the row's own
-  switch) and re-run on the private simulators. The iPad stage had not been reached by any run
-  with the final code when this was written; the log of the last run is the verdict
-  (`apps/ios/.build/logs/test-iPad-Pro-13-inch-M5.log`).
+* **The scan-only filter is skipped where Vision reads nothing.**
+  `testAScanIsFoundThroughTextRecognitionAndScansOnlyFiltersToIt` skips with a message when
+  Vision finds no words on the corpus's bilevel scan; it skipped on both simulators, so the
+  "Scans only" filter is proven by the unit tests (`LibraryTests`, over a scan read through the
+  seam) and not through the interface.
+* **Shared simulators.** Several agents test on the same two booted simulators; two XCUITest
+  runners on one device kill each other ("Early unexpected exit … server died"), and a loaded
+  Mac (load 50–150) exhausts process slots mid-run. `scripts/ios/build.sh` now takes
+  `WARRAQ_IPHONE` / `WARRAQ_IPAD` for simulators of one's own — part D was proven on "iPhone 17 D"
+  and "iPad Pro 13-inch (M5) D", private copies of the same models, reported under the shared
+  names — and its Face ID matcher loop dies with the script rather than spinning.
 * The chosen-folder flow through the system's folder picker is not driven by a UI test (the
   picker is another process); the bookmark, the listing and the keys are unit-tested through the
   Documents folder, which uses the same code.

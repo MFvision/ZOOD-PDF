@@ -179,8 +179,13 @@ final class LibraryUITests: XCTestCase {
         } else {
             app.navigationBars.buttons.firstMatch.tap()
         }
-        XCTAssertTrue(app.buttons["home.search"].waitForExistence(timeout: 10))
-        app.buttons["home.search"].tap()
+        // The home was left scrolled at its rows: back to the cards.
+        let searchCard = app.buttons["home.search"]
+        for _ in 0..<5 where !searchCard.exists {
+            app.swipeDown()
+        }
+        XCTAssertTrue(searchCard.waitForExistence(timeout: 10), "the Search card is on the home")
+        searchCard.tap()
         XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout: 10))
     }
 
