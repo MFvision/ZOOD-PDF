@@ -113,6 +113,7 @@ struct SearchHitsSheet: View {
                             .tabularNumbers()
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .listRowBackground(index == search.current ? Color.accentColor.opacity(0.12) : nil)

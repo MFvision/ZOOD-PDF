@@ -69,7 +69,8 @@ final class PartBScreenshotTests: XCTestCase {
             ui.tapMarkup("markup.stamp")
             _ = app.buttons["stamp.approved"].waitForExistence(timeout: 10)
             try ui.screenshot("stamps-\(suffix)", in: directory)
-            app.buttons[combo.language == PartBApp.arabic ? "إلغاء" : "Cancel"].firstMatch.tap()
+            let stampsCancel = app.buttons[combo.language == PartBApp.arabic ? "إلغاء" : "Cancel"].firstMatch
+            if stampsCancel.exists { stampsCancel.tap() }
             ui.tapMarkup("markup.signature")
             var canvas = ui.signatureCanvas
             if !canvas.waitForExistence(timeout: 8) {
@@ -82,7 +83,8 @@ final class PartBScreenshotTests: XCTestCase {
                 a.press(forDuration: 0.05, thenDragTo: b, withVelocity: .slow, thenHoldForDuration: 0.05)
             }
             try ui.screenshot("signature-\(suffix)", in: directory)
-            app.buttons[combo.language == PartBApp.arabic ? "إلغاء" : "Cancel"].firstMatch.tap()
+            let cancel = app.buttons[combo.language == PartBApp.arabic ? "إلغاء" : "Cancel"].firstMatch
+            if cancel.exists { cancel.tap() }
             app.buttons["markup.done"].tap()
 
             // The marks list (the corpus file carries a note and a highlight).

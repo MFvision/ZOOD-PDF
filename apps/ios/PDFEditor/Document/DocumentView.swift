@@ -42,6 +42,8 @@ struct DocumentView: View {
     @State private var saveError: String?
     @State private var pageText: String?
     @State private var stampsAdded = 0
+    @State private var showingScanner = false
+    @State private var scanSaved: URL?
 
     private var compact: Bool { sizeClass == .compact }
 
@@ -159,6 +161,20 @@ struct DocumentView: View {
         } message: {
             Text(saveError ?? "")
         }
+        // A document opened from a picture: the scanner enhances and reads it.
+        .fullScreenCover(isPresented: $showingScanner) {
+            if let image = model.sourceImage {
+                ScanView(images: [image]) { url in
+                    scanSaved = url
+                }
+                .appEnvironment()
+            }
+        }
+        .alert("Saved to My documents", isPresented: Binding(get: { scanSaved != nil }, set: { if !$0 { scanSaved = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(verbatim: scanSaved?.lastPathComponent ?? "")
+        }
         .alert("Could not add the mark", isPresented: Binding(get: { editor?.error != nil }, set: { if !$0 { editor?.clearError() } })) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -251,6 +267,12 @@ struct DocumentView: View {
             ToolbarStatus(title: model.name, subtitle: status)
         }
         ToolbarItemGroup(placement: .primaryAction) {
+            if model.sourceImage != nil {
+                Button("Scan", systemImage: "doc.viewfinder") {
+                    showingScanner = true
+                }
+                .accessibilityIdentifier("document.scan")
+            }
             if model.isEdited, model.url != nil {
                 Button("Save", systemImage: "square.and.arrow.down", action: save)
                     .keyboardShortcut("s", modifiers: .command)

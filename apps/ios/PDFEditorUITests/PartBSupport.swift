@@ -148,8 +148,9 @@ struct PartBApp {
     /// another is still on its way out does not open, and a tap on a
     /// control under a closing sheet is lost.
     func settle() {
-        let sheetControls = ["sheet.done", "stamp.add", "signature.place", "goto.go", "note.add", "crop.apply", "export.share.pdf"]
+        let sheetControls = ["sheet.done", "stamp.add", "signature.place", "goto.go", "note.add", "crop.apply", "export.share.pdf", "Cancel", "إلغاء"]
         _ = poll(timeout: 15) { sheetControls.allSatisfy { !self.app.buttons[$0].exists } }
+        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.5))
     }
 
     /// Opens the More menu and taps the item with `identifier` (or, when
@@ -187,6 +188,15 @@ struct PartBApp {
     /// A drag across the page view, from and to fractions of its size.
     func drag(from: (Double, Double), to: (Double, Double), duration: TimeInterval = 0.05) {
         XCTAssertTrue(page.waitForExistence(timeout: 10), "the page view is there to drag on: \(tree)")
+        // The bars and (on iPad) the thumbnail strip move the pages as they
+        // arrive: drag once the page has stopped moving.
+        var last = page.frame
+        _ = poll(timeout: 10) {
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.4))
+            let now = self.page.frame
+            defer { last = now }
+            return now == last && now.width > 0
+        }
         let start = page.coordinate(withNormalizedOffset: CGVector(dx: from.0, dy: from.1))
         let end = page.coordinate(withNormalizedOffset: CGVector(dx: to.0, dy: to.1))
         start.press(forDuration: duration, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.1)
