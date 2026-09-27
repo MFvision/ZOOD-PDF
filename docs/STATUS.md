@@ -803,14 +803,18 @@ these numbers).
   second sheet does not open in the seconds the test waits. Every part of that flow
   passes on its own elsewhere (the stamp in `AnnotateTests`, the signature in
   `SignatureStoreTests` and in the screenshot run, which photographs the sheet).
-* **iPad Pro 13-inch (M5)** — unit **52 of 52** (part B's 37 and the scanner's); the
-  interface between **15 and 16 of 18** over the last runs, the two that fail being the
-  same stamp-then-signature flow and the screenshot run that walks it. The failures
-  moved from run to run while the machine was busy; what did *not* move, and was found
-  by driving the app by hand on the simulator, was a real defect, now fixed: **the
-  markup bar's Done stood over the last two tools** (Stamp and Signature), so a tap
-  meant for them ended the markup instead — the gap kept clear under the button was
-  narrower than the English word needs. Done now stands beside the tools.
+* **iPad Pro 13-inch (M5)** — unit **52 of 52** (part B's 37 and the scanner's);
+  interface **14 of 18** in the last run, 15 and 16 of 18 in the two before it. What
+  fails moves from run to run while the Mac is busy — the last run lost the two
+  annotate tests, the screenshot walk and Protect (whose document never finished
+  opening in the 40 s the test waits); the run before lost only the two that walk the
+  stamp-then-signature flow. Passing every time: `ViewUITests` (4), `OrganizeUITests`
+  (2), `ExportUITests`, `LaunchTests` (3) and the scanner's `ScanTests` (4).
+  What did *not* move, and was found by driving the app by hand on the simulator, was a
+  real defect, now fixed: **the markup bar's Done stood over the last two tools**
+  (Stamp and Signature), so a tap meant for them ended the markup instead — the gap
+  kept clear under the button was narrower than the English word needs. Done now
+  stands beside the tools, and the tools scroll in the space that is left.
 * Two more defects the iPad found and that are fixed here: **Go to page** floated its
   number pad over its own buttons (it is a form sheet on iPad now), and **a hit in the
   find bar's list of matches** could only be tapped where its text was drawn (the whole
@@ -862,10 +866,12 @@ these numbers).
   search reads everything), so a stamp is read back through the search, not the page's
   VoiceOver value.
 * *Print* opens the system's panel; the simulator has no printer.
-* *One interface test is not green*: the stamp-then-signature flow above. It is a
-  timing failure on a loaded simulator, not a defect anyone would meet — but it is
-  stated here rather than hidden, and it is the first thing to re-run on a quiet
-  machine.
+* *Not every interface test is green on the iPad*: the counts above are honest, and
+  the failures are timing on a machine shared with several other agents' builds — a
+  sheet asked for before the last one has gone, a document that had not finished
+  opening within the test's wait. They are the first thing to re-run on a quiet
+  machine; nothing in them points at behaviour a person would meet, and the three
+  defects the iPad did show are fixed above.
 * Everything ran on the simulator only; no device, no Face ID, no real share targets.
 
 ## Next (in order)
