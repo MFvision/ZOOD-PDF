@@ -1,5 +1,3 @@
-import CoreImage
-import CoreImage.CIFilterBuiltins
 import Foundation
 import ImageIO
 import UIKit
@@ -14,13 +12,13 @@ enum PDFMaker {
     static let maxPixels = 2600
 
     /// One page per picture, at the picture's own size, upright by EXIF.
-    static func pdf(fromPictures pictures: [Data], mode: ScanMode = .color) async throws -> Data {
+    static func pdf(fromPictures pictures: [Data]) async throws -> Data {
         struct Args: Encodable {
             let paper = "own"
             let orientation = "auto"
             let margin = 0
         }
-        let prepared = pictures.compactMap { prepare($0, mode: mode) }
+        let prepared = pictures.compactMap(prepare)
         guard !prepared.isEmpty else { throw CoreError.arguments("no picture could be read") }
         let reply = try await Core.callStatic(op: "create.images", args: Args(), blobs: prepared)
         guard let bytes = reply.blobs.first else { throw CoreError.badReply("create.images answered no bytes") }
@@ -50,9 +48,8 @@ enum PDFMaker {
         return CGImageSourceGetCount(source) > 0
     }
 
-    /// The picture bounded in size, upright, and in the scan mode asked
-    /// for, as JPEG (or PNG for black and white, which compresses better).
-    static func prepare(_ bytes: Data, mode: ScanMode) -> Data? {
+    /// The picture bounded in size and upright, as JPEG.
+    static func prepare(_ bytes: Data) -> Data? {
         guard let source = CGImageSourceCreateWithData(bytes as CFData, nil) else { return nil }
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
@@ -61,24 +58,7 @@ enum PDFMaker {
             kCGImageSourceShouldCache: false,
         ]
         guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
-        switch mode {
-        case .color:
-            return UIImage(cgImage: image).jpegData(compressionQuality: 0.85)
-        case .gray:
-            guard let grey = apply(CIFilter.photoEffectMono(), to: image) else { return nil }
-            return UIImage(cgImage: grey).jpegData(compressionQuality: 0.85)
-        case .blackAndWhite:
-            let threshold = CIFilter.colorThreshold()
-            threshold.threshold = 0.5
-            guard let mono = apply(CIFilter.photoEffectMono(), to: image), let bw = apply(threshold, to: mono) else { return nil }
-            return UIImage(cgImage: bw).pngData()
-        }
+        return UIImage(cgImage: image).jpegData(compressionQuality: 0.85)
     }
 
-    private static func apply<F: CIFilter & CIFilterProtocol>(_ filter: F, to image: CGImage) -> CGImage? {
-        let context = CIContext(options: [.useSoftwareRenderer: false])
-        filter.setValue(CIImage(cgImage: image), forKey: kCIInputImageKey)
-        guard let output = filter.outputImage else { return nil }
-        return context.createCGImage(output, from: output.extent)
-    }
 }

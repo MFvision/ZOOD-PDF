@@ -72,7 +72,7 @@ enum LibraryTool: String, CaseIterable, Identifiable {
 struct LibraryShell: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.scenePhase) private var scenePhase
-    @State private var library = LibraryModel()
+    @State private var library: LibraryModel
     @State private var lock = AppLock()
     @SceneStorage("library.section") private var sectionID = LibrarySection.home.rawValue
     @SceneStorage("library.document") private var restoredBookmark: String?
@@ -80,8 +80,19 @@ struct LibraryShell: View {
     @State private var showingSettings = false
     @State private var showingImporter = false
     @State private var showingCombiner = false
-    @State private var creating = false
     @State private var restored = false
+
+    init() {
+        #if DEBUG
+        // A UI test keeps the app's documents in a folder of its own:
+        // `-warraqDocumentsFolder <path>`.
+        if let folder = UserDefaults.standard.string(forKey: "warraqDocumentsFolder"), !folder.isEmpty {
+            _library = State(initialValue: LibraryModel(documentsFolder: URL(filePath: folder, directoryHint: .isDirectory)))
+            return
+        }
+        #endif
+        _library = State(initialValue: LibraryModel())
+    }
 
     private var section: Binding<LibrarySection?> {
         Binding(
@@ -98,7 +109,7 @@ struct LibraryShell: View {
         HomeActions(
             open: { showingImporter = true },
             scan: { library.scanRequested = true },
-            create: { creating = true },
+            create: { library.scanRequested = true },
             combine: { showingCombiner = true },
             search: { library.requestedSearch = "" },
             settings: { showingSettings = true }
@@ -121,11 +132,15 @@ struct LibraryShell: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView(library: library)
         }
-        .sheet(isPresented: $library.scanRequested) {
-            ScanEntry(library: library)
-        }
-        .sheet(isPresented: $creating) {
-            ScanEntry(library: library, picturesOnly: true)
+        // The scanner itself (part C): the camera where there is one, photos
+        // where there is none; what it saves joins the Library and its index.
+        .fullScreenCover(isPresented: $library.scanRequested) {
+            ScanView(documentsFolder: library.documentsFolder) { url in
+                library.refresh()
+                library.indexNow()
+                library.open(url: url)
+            }
+            .appEnvironment()
         }
         .fileImporter(isPresented: $showingImporter, allowedContentTypes: [.pdf]) { result in
             if case let .success(url) = result {
@@ -181,7 +196,7 @@ struct LibraryShell: View {
         .task {
             guard !restored else { return }
             restored = true
-            AppGroup.setFlag("cameraAvailable", ScanEntry.cameraAvailable)
+            AppGroup.setFlag("cameraAvailable", ScanBridges.cameraAvailable)
             lock.lock()
             restoreScene()
         }
@@ -357,6 +372,10 @@ struct LibraryShell: View {
         }
         if let path = UserDefaults.standard.string(forKey: "warraqOpen"), !path.isEmpty {
             library.open(url: URL(filePath: path))
+            return
+        }
+        if let photos = UserDefaults.standard.string(forKey: "warraqScan"), !photos.isEmpty {
+            library.scanRequested = true
             return
         }
         #endif

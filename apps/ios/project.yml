@@ -26,13 +26,11 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: "18.0"
     TARGETED_DEVICE_FAMILY: "1,2"
     SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
-    # Simulator only on this Mac: there is no signing identity here. Ad-hoc
-    # signing keeps the entitlements (the App Group) on the simulator; a
-    # device or TestFlight needs the owner's Apple Developer team.
-    CODE_SIGN_STYLE: Manual
-    CODE_SIGN_IDENTITY: "-"
-    DEVELOPMENT_TEAM: ""
-    PROVISIONING_PROFILE_SPECIFIER: ""
+    # The owner's Apple Developer team: Xcode signs automatically (a device,
+    # TestFlight) when it is signed in to that account; the simulator needs
+    # no identity at all.
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: AWV883QWPU
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
     LOCALIZATION_PREFERS_STRING_CATALOGS: YES
@@ -53,6 +51,9 @@ targets:
     sources:
       - path: PDFEditor
       - path: Shared
+      # The face the scanner's text layer is written in (OFL; THIRD-PARTY-NOTICES.md).
+      - path: ../../tests/fonts/Amiri-Regular.ttf
+        buildPhase: resources
     dependencies:
       - target: WarraqCore
         embed: false
@@ -116,14 +117,19 @@ targets:
           - UIApplicationShortcutItemType: app.warraq.ios.scan
             UIApplicationShortcutItemTitle: SHORTCUT_SCAN
             UIApplicationShortcutItemIconSymbolName: doc.viewfinder
-        # Opened from Files, Mail, Safari and "Open in": PDFs. Images are
-        # registered by the scanner once it turns them into PDFs.
+        # Opened from Files, Mail, Safari and "Open in": PDFs, and pictures
+        # (shown as a one-page PDF of the picture, with the scanner offered).
         CFBundleDocumentTypes:
           - CFBundleTypeName: PDF document
             CFBundleTypeRole: Editor
             LSHandlerRank: Alternate
             LSItemContentTypes:
               - com.adobe.pdf
+          - CFBundleTypeName: Picture
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - public.image
         # The privacy strings are localized in InfoPlist.xcstrings (Arabic
         # and English); these are the fallbacks.
         NSCameraUsageDescription: "The camera scans paper documents into PDFs. Nothing leaves the device."
@@ -260,6 +266,29 @@ targets:
         buildPhase: resources
       - path: ../../tests/corpus/arabic/generated/scan-arial-200dpi-bilevel.pdf
         buildPhase: resources
+      # The scanner's pictures: the corpus's damaged scans (as PDFs, drawn
+      # at 300 dpi in the test), their truth, a shadowed photo, and the
+      # synthetic ID card, book spread and crooked page (tests/fixtures/scan).
+      - path: ../../tests/corpus/arabic/generated/scan-notonaskh-300dpi-shadowed-stained-jpeg.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/scan-notonaskh-300dpi-crooked-8deg-jpeg.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/truth/scan-notonaskh-300dpi-shadowed-stained-jpeg.txt
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/truth/scan-notonaskh-300dpi-crooked-8deg-jpeg.txt
+        buildPhase: resources
+      - path: ../../tests/fixtures/create/photo-arabic.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/id-front.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/id-back.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/book-spread.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/page-crooked.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/whiteboard.jpg
+        buildPhase: resources
     dependencies:
       - target: PDFEditor
       # The wrapper's code is already inside the host app; the tests need only
@@ -288,8 +317,26 @@ targets:
         buildPhase: resources
       - path: ../../tests/corpus/arabic/generated/scan-arial-200dpi-bilevel.pdf
         buildPhase: resources
+      - path: ../../tests/fixtures/create/photo-arabic.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/id-front.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/id-back.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/book-spread.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/page-crooked.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/whiteboard.jpg
+        buildPhase: resources
     dependencies:
       - target: PDFEditor
+      # The scanner's tests open the PDF the app saved with the core and
+      # search it: the wrapper and the core are linked into the runner.
+      - target: WarraqCore
+        embed: false
+      - framework: Vendor/WarraqCore.xcframework
+        embed: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.warraq.ios.uitests

@@ -101,11 +101,9 @@ final class IntentsTests: XCTestCase {
         let text = try await core.extractText(page: 0)
         XCTAssertTrue(text.contains("فاتورة"), "the PDF's Arabic is intact")
 
-        // Black and white and grey modes still make pages.
-        let grey = try await PDFMaker.pdf(fromPictures: [photo], mode: .gray)
-        let bw = try await PDFMaker.pdf(fromPictures: [photo], mode: .blackAndWhite)
-        XCTAssertTrue(grey.starts(with: Data("%PDF".utf8)))
-        XCTAssertTrue(bw.starts(with: Data("%PDF".utf8)))
+        // A picture on its own makes a one-page PDF too.
+        let one = try await PDFMaker.pdf(fromPictures: [photo])
+        XCTAssertTrue(one.starts(with: Data("%PDF".utf8)))
     }
 
     /// Each opening intent posts its route; the host app takes it the moment

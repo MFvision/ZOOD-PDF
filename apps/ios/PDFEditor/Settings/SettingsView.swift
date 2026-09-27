@@ -10,36 +10,26 @@ struct SettingsView: View {
     let library: LibraryModel
     @AppStorage(SettingsKey.language) private var language: AppLanguage = .system
     @AppStorage(SettingsKey.appearance) private var appearance: AppAppearance = .system
-    @AppStorage(SettingsKey.scanMode) private var scanMode: ScanMode = .color
     @AppStorage(SettingsKey.appLock) private var appLock = false
-    @State private var ocrLanguages: Set<String> = Set(LibraryIndexer.ocrLanguages)
-    @State private var recognizable: [(code: String, name: String)] = []
     @State private var choosingFolder = false
     @State private var confirmingDelete = false
     @State private var deleting = false
     @State private var lockError: LocalizedStringKey?
     @Environment(\.dismiss) private var dismiss
 
-    /// The languages Vision can read on this device, with their names.
-    private static func recognizableLanguages() -> [(code: String, name: String)] {
-        let codes = VisionTextRecognizer.supportedLanguages().map { String($0.split(separator: "-")[0]).lowercased() }
-        return Array(Set(codes)).sorted().map { code in
-            (code, Locale.current.localizedString(forLanguageCode: code) ?? code)
-        }
-    }
-
     var body: some View {
         AppSheet(title: "Settings") {
             Form {
                 interface
-                scanning
+                // The scanner's own settings (part C): the colour mode and
+                // the OCR languages this device supports.
+                ScanSettingsSection()
                 folder
                 privacy
                 everything
                 about
             }
             .accessibilityIdentifier("settings.form")
-            .onAppear { recognizable = Self.recognizableLanguages() }
             .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [.folder]) { result in
                 if case let .success(url) = result {
                     library.choose(folder: url)
@@ -73,7 +63,6 @@ struct SettingsView: View {
         }
         .sensoryFeedback(.selection, trigger: language)
         .sensoryFeedback(.selection, trigger: appearance)
-        .sensoryFeedback(.selection, trigger: scanMode)
     }
 
     private var interface: some View {
@@ -94,39 +83,6 @@ struct SettingsView: View {
             Text("Interface")
         } footer: {
             Text("The system's own parts — alerts, the file browser — follow the language from the next launch. The Settings app can set it too.")
-        }
-    }
-
-    private var scanning: some View {
-        Section {
-            Picker("Default scan mode", selection: $scanMode) {
-                ForEach(ScanMode.allCases) { item in
-                    Text(item.title).tag(item)
-                }
-            }
-            .accessibilityIdentifier("settings.scanMode")
-            if recognizable.isEmpty {
-                LabeledContent("Text recognition") {
-                    Text("Not available on this device")
-                }
-            } else {
-                ForEach(recognizable, id: \.code) { language in
-                    Toggle(isOn: Binding(
-                        get: { ocrLanguages.contains(language.code) },
-                        set: { on in
-                            if on { ocrLanguages.insert(language.code) } else if ocrLanguages.count > 1 { ocrLanguages.remove(language.code) }
-                            UserDefaults.standard.set(ocrLanguages.sorted(), forKey: SettingsKey.ocrLanguages)
-                        }
-                    )) {
-                        Text(language.name)
-                    }
-                    .accessibilityIdentifier("settings.ocr.\(language.code)")
-                }
-            }
-        } header: {
-            Text("Scan and text recognition")
-        } footer: {
-            Text("The languages ticked are read off scans and pictures, on this device only. The list is what this device can read.")
         }
     }
 

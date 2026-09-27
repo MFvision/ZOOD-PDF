@@ -111,23 +111,21 @@ final class LibraryTests: XCTestCase {
 
     // MARK: - The indexer
 
-    /// A recognizer that answers fixed words for every picture, and counts
-    /// how often it was asked.
-    final class FakeRecognizer: TextRecognizing, @unchecked Sendable {
-        let words: [RecognizedWord]
+    /// A reader that answers fixed words for every picture, and counts how
+    /// often it was asked.
+    final class FakeRecognizer: PageTextReading, @unchecked Sendable {
+        let words: [IndexedWord]
         private let lock = NSLock()
         private var count = 0
         var calls: Int { lock.withLock { count } }
 
         init(lines: [String]) {
             words = lines.enumerated().flatMap { line, text in
-                text.split(separator: " ").enumerated().map { i, word in
-                    RecognizedWord(text: String(word), bbox: [Double(i * 50), Double(line * 20), Double(i * 50 + 40), Double(line * 20 + 16)], line: line)
-                }
+                text.split(separator: " ").map { IndexedWord(text: String($0), line: line) }
             }
         }
 
-        func recognize(_ image: CGImage, languages: [String]) async throws -> [RecognizedWord] {
+        func read(_ image: CGImage, languages: [String]) async throws -> [IndexedWord] {
             lock.withLock { count += 1 }
             XCTAssertGreaterThan(image.width, 100)
             return words
@@ -144,8 +142,8 @@ final class LibraryTests: XCTestCase {
         try Data("not a pdf".utf8).write(to: documents.appending(path: "broken.pdf"))
 
         let fake = FakeRecognizer(lines: ["عقد إيجار سكني", "المستأجر أحمد"])
-        TextRecognizer.shared = fake
-        defer { TextRecognizer.shared = VisionTextRecognizer() }
+        PageText.reader = fake
+        defer { PageText.reader = ScannerPageTextReader() }
 
         let index = try await LibraryIndex.open(at: folder.appending(path: "Index/library.wlx"))
         let indexer = LibraryIndexer(index: index, documentsFolder: documents, thumbnailsFolder: thumbnails)
@@ -209,7 +207,7 @@ final class LibraryTests: XCTestCase {
     }
 
     func testVisionLanguagesOnThisSimulator() {
-        let languages = VisionTextRecognizer.supportedLanguages()
+        let languages = TextRecognizer.supportedLanguages()
         // Recorded in docs/STATUS.md: whether Arabic is among them here.
         print("VISION_LANGUAGES: \(languages)")
         XCTAssertFalse(languages.isEmpty)
@@ -217,11 +215,11 @@ final class LibraryTests: XCTestCase {
 
     func testTheLinesOfAPageComeBackFromItsWords() {
         let words = [
-            RecognizedWord(text: "ب", bbox: [0, 0, 1, 1], line: 1),
-            RecognizedWord(text: "أ", bbox: [0, 0, 1, 1], line: 0),
-            RecognizedWord(text: "ج", bbox: [0, 0, 1, 1], line: 1),
+            IndexedWord(text: "ب", line: 1),
+            IndexedWord(text: "أ", line: 0),
+            IndexedWord(text: "ج", line: 1),
         ]
-        XCTAssertEqual(TextRecognizer.lines(of: words), ["أ", "ب ج"])
+        XCTAssertEqual(PageText.lines(of: words), ["أ", "ب ج"])
     }
 
     @MainActor

@@ -77,12 +77,8 @@ final class LibraryIndexer {
         self.knownKeysURL = index.fileURL.deletingLastPathComponent().appending(path: "library-keys.json")
     }
 
-    /// The OCR languages from Settings, as BCP-47 codes, Arabic and English
-    /// unless chosen otherwise.
-    static var ocrLanguages: [String] {
-        let chosen = UserDefaults.standard.stringArray(forKey: SettingsKey.ocrLanguages) ?? []
-        return chosen.isEmpty ? ["ar", "en"] : chosen
-    }
+    /// The OCR languages from the scanner's settings.
+    static var ocrLanguages: [String] { PageText.languages }
 
     // MARK: - The catalog
 
@@ -113,7 +109,7 @@ final class LibraryIndexer {
         error = nil
         summary = nil
         progress = IndexingProgress(done: 0, total: 0, current: "", stage: .listing)
-        let recognizer = TextRecognizer.shared
+        let recognizer = PageText.reader
         let languages = Self.ocrLanguages
         let worker = Worker(index: index, documentsFolder: documentsFolder, chosen: chosen, thumbnailsFolder: thumbnailsFolder,
                             knownKeysURL: knownKeysURL, recognizer: recognizer, languages: languages)
@@ -207,12 +203,12 @@ final class LibraryIndexer {
         let chosen: ChosenFolder?
         let thumbnailsFolder: URL
         let knownKeysURL: URL
-        let recognizer: any TextRecognizing
+        let recognizer: any PageTextReading
         let languages: [String]
         private(set) var listedFiles: [LibraryFile] = []
 
         init(index: LibraryIndex, documentsFolder: URL, chosen: ChosenFolder?, thumbnailsFolder: URL, knownKeysURL: URL,
-             recognizer: any TextRecognizing, languages: [String]) {
+             recognizer: any PageTextReading, languages: [String]) {
             self.index = index
             self.documentsFolder = documentsFolder
             self.chosen = chosen
@@ -406,9 +402,9 @@ final class LibraryIndexer {
                 await report(at)
                 guard let rendered = try? await core.renderPage(page, scale: Limits.renderScale),
                       let image = Self.cgImage(from: rendered) else { continue }
-                let words = (try? await recognizer.recognize(image, languages: languages)) ?? []
+                let words = (try? await recognizer.read(image, languages: languages)) ?? []
                 recognized += 1
-                let lines = TextRecognizer.lines(of: words).joined(separator: "\n")
+                let lines = PageText.lines(of: words).joined(separator: "\n")
                 if !lines.isEmpty, chars < Limits.charsPerDocument {
                     let kept = String(lines.prefix(Limits.charsPerDocument - chars))
                     chars += kept.count
@@ -432,8 +428,8 @@ final class LibraryIndexer {
             var at = progress
             at.stage = .recognizing(page: 1, of: 1)
             await report(at)
-            let words = (try? await recognizer.recognize(image, languages: languages)) ?? []
-            let text = TextRecognizer.lines(of: words).joined(separator: "\n")
+            let words = (try? await recognizer.read(image, languages: languages)) ?? []
+            let text = PageText.lines(of: words).joined(separator: "\n")
             let pages = text.isEmpty ? [] : [PageText(page: 1, text: String(text.prefix(Limits.charsPerDocument)))]
             let thumbnail = Self.decodeImage(bytes, maxPixels: Limits.thumbnailWidth).flatMap { UIImage(cgImage: $0).pngData() }
             return ReadDocument(kind: .image, pages: pages, pageCount: 1, recognized: 1, thumbnail: thumbnail)

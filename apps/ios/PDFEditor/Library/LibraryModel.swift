@@ -54,7 +54,8 @@ final class LibraryModel {
     /// A search asked for from outside (a widget, a Shortcut): the search
     /// field takes it.
     var requestedSearch: String?
-    /// A scan asked for from outside (a widget, the control, a Shortcut).
+    /// A scan asked for from outside (a widget, the control, a Shortcut),
+    /// and from the home screen's Scan and Create cards.
     var scanRequested = false
 
     let store: RecentsStore

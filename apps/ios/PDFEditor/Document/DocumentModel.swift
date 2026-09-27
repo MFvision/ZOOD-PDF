@@ -27,6 +27,9 @@ final class DocumentModel: Identifiable, Hashable {
     /// Library). Nil inside a `DocumentGroup` scene, which saves itself.
     let url: URL?
     let name: String
+    /// The picture this document was made from, when it was opened from a
+    /// photo (the scanner offers to enhance and read it).
+    var sourceImage: CGImage?
     private(set) var original: Data
     private(set) var edited: Data?
     private(set) var state: State = .loading
