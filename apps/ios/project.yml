@@ -73,6 +73,10 @@ targets:
       path: PDFEditor/Info.plist
       properties:
         CFBundleDisplayName: محرر PDF
+        # The app protects PDFs with AES/RC4 as the PDF standard defines them —
+        # published algorithms, no proprietary cryptography — so the encryption
+        # is of the exempt kind and App Store Connect need not ask each upload.
+        ITSAppUsesNonExemptEncryption: false
         CFBundleName: محرر PDF
         CFBundleShortVersionString: "0.1.0"
         CFBundleVersion: "1"
@@ -80,7 +84,6 @@ targets:
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [ar, en]
         LSRequiresIPhoneOS: true
-        ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
         UIApplicationSupportsMultipleScenes: true
         UIApplicationSceneManifest:
@@ -177,6 +180,10 @@ targets:
       path: Widgets/Info.plist
       properties:
         CFBundleDisplayName: محرر PDF
+        # The app protects PDFs with AES/RC4 as the PDF standard defines them —
+        # published algorithms, no proprietary cryptography — so the encryption
+        # is of the exempt kind and App Store Connect need not ask each upload.
+        ITSAppUsesNonExemptEncryption: false
         CFBundleShortVersionString: "0.1.0"
         CFBundleVersion: "1"
         # The String Catalogs' source language, so a missing table falls back to it.
@@ -207,6 +214,10 @@ targets:
       path: ShareExtension/Info.plist
       properties:
         CFBundleDisplayName: محرر PDF
+        # The app protects PDFs with AES/RC4 as the PDF standard defines them —
+        # published algorithms, no proprietary cryptography — so the encryption
+        # is of the exempt kind and App Store Connect need not ask each upload.
+        ITSAppUsesNonExemptEncryption: false
         CFBundleShortVersionString: "0.1.0"
         CFBundleVersion: "1"
         # The String Catalogs' source language, so a missing table falls back to it.
