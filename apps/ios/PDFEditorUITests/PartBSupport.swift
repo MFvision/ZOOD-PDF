@@ -87,30 +87,34 @@ struct PartBApp {
         XCTAssertTrue(found, "status holds \(text): \(status.exists ? status.label : "no status") \(found ? "" : tree)")
     }
 
-    /// A button of the markup bar, scrolled into reach when the bar is
-    /// wider than the screen (a phone, either reading direction).
+    /// A button of the markup bar. The bar scrolls when it is wider than
+    /// the space it has (a phone in either direction, an iPad beside the
+    /// thumbnails), so the button is brought into the window before it is
+    /// asked to take a tap.
     @discardableResult
     func tapMarkup(_ identifier: String) -> XCUIElement {
         settle()
         let button = app.buttons[identifier]
-        if !poll(timeout: 25, { button.exists && button.isHittable }) {
-            // Only when the bar is really gone: Markup is a switch, and a
-            // tap while it is on would end the markup instead.
-            let markup = app.buttons["document.markup"]
-            if !app.buttons["markup.done"].exists, markup.exists, markup.isHittable { markup.tap() }
-        }
-        XCTAssertTrue(poll(timeout: 20) { button.exists && button.isHittable }, "markup button \(identifier): \(tree)")
         let bar = app.descendants(matching: .any).matching(identifier: "markup.bar").firstMatch
-        let screen = app.windows.firstMatch.frame
-        var tries = 0
-        // Off the screen's edge (a frame outside the window), the bar is
-        // scrolled — one way in Arabic and the other in English.
-        while !screen.insetBy(dx: 2, dy: 0).contains(button.frame), bar.exists, tries < 8 {
-            // Towards the button: past the right edge, the content moves
-            // left; past the left edge, right.
-            if button.frame.minX < screen.minX + 2 { bar.swipeRight() } else { bar.swipeLeft() }
-            tries += 1
+        for attempt in 0..<2 {
+            guard poll(timeout: attempt == 0 ? 20 : 10, { button.exists }) else {
+                // The bar is gone: markup ended. Markup is a switch, so it
+                // is asked for again only when the bar is really absent.
+                let markup = app.buttons["document.markup"]
+                if !app.buttons["markup.done"].exists, markup.exists, markup.isHittable { markup.tap() }
+                continue
+            }
+            let screen = app.windows.firstMatch.frame
+            var tries = 0
+            // Off the edge (a frame outside the window), the bar is
+            // scrolled — one way in Arabic and the other in English.
+            while !screen.insetBy(dx: 2, dy: 0).contains(button.frame), bar.exists, tries < 8 {
+                if button.frame.minX < screen.minX + 2 { bar.swipeRight() } else { bar.swipeLeft() }
+                tries += 1
+            }
+            if poll(timeout: 10, { button.exists && button.isHittable }) { break }
         }
+        XCTAssertTrue(poll(timeout: 10) { button.exists && button.isHittable }, "markup button \(identifier): \(tree)")
         button.tap()
         return button
     }
