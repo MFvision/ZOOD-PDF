@@ -93,7 +93,12 @@ struct PartBApp {
     func tapMarkup(_ identifier: String) -> XCUIElement {
         settle()
         let button = app.buttons[identifier]
-        XCTAssertTrue(poll(timeout: 30) { button.exists && button.isHittable }, "markup button \(identifier): \(tree)")
+        if !poll(timeout: 25, { button.exists && button.isHittable }) {
+            // The bar is gone: markup ended, or a sheet has the screen.
+            let markup = app.buttons["document.markup"]
+            if markup.exists, markup.isHittable { markup.tap() }
+        }
+        XCTAssertTrue(poll(timeout: 20) { button.exists && button.isHittable }, "markup button \(identifier): \(tree)")
         let bar = app.descendants(matching: .any).matching(identifier: "markup.bar").firstMatch
         let screen = app.windows.firstMatch.frame
         var tries = 0

@@ -130,6 +130,7 @@ struct LibraryShell: View {
                     ToolbarItemGroup(placement: .primaryAction) {
                         scanButton
                         openButton
+                        settingsButton
                     }
                 }
         } detail: {
@@ -167,12 +168,16 @@ struct LibraryShell: View {
             }
             if sizeClass == .compact {
                 openButton
+                settingsButton
             }
-            Button("Settings", systemImage: "gearshape") {
-                showingSettings = true
-            }
-            .accessibilityIdentifier("library.settings")
         }
+    }
+
+    private var settingsButton: some View {
+        Button("Settings", systemImage: "gearshape") {
+            showingSettings = true
+        }
+        .accessibilityIdentifier("library.settings")
     }
 
     private var openButton: some View {
