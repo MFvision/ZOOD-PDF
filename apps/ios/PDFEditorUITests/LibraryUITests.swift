@@ -187,8 +187,13 @@ final class LibraryUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["library.tags"].waitForExistence(timeout: 10), "the Tags screen is shown")
     }
 
-    /// Opens a section from the sidebar (iPad) or its row (iPhone).
+    /// Opens a section from the sidebar (iPad) or its row (iPhone, below
+    /// the home's rows).
     private func openSection(_ name: String, in app: XCUIApplication) {
+        let any = app.descendants(matching: .any)["sidebar.\(name)"].firstMatch
+        for _ in 0..<6 where !any.exists {
+            app.swipeUp()
+        }
         let sidebar = app.buttons["sidebar.\(name)"]
         let cell = app.cells["sidebar.\(name)"]
         if sidebar.waitForExistence(timeout: 5) {
@@ -196,7 +201,6 @@ final class LibraryUITests: XCTestCase {
         } else if cell.waitForExistence(timeout: 5) {
             cell.tap()
         } else {
-            let any = app.descendants(matching: .any)["sidebar.\(name)"].firstMatch
             XCTAssertTrue(any.waitForExistence(timeout: 10), "the \(name) section is listed")
             any.tap()
         }
