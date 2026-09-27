@@ -3,9 +3,9 @@ import WidgetKit
 
 /// The last documents opened, from the recents list the app keeps in the
 /// shared container: small shows the last one with its first page, medium
-/// three, large six, and the Lock Screen's rectangle the last one's name.
-/// Tapping one opens it in the app (`pdfeditor://open/<id>`). The app asks
-/// for a reload whenever the list changes.
+/// three, large six; the Lock Screen's rectangle and inline line the last
+/// one's name. Tapping one opens it in the app (`pdfeditor://open/<id>`).
+/// The app asks for a reload whenever the list changes.
 struct RecentDocumentsWidget: Widget {
     static let kind = "app.warraq.ios.widgets.recents"
 
@@ -16,7 +16,7 @@ struct RecentDocumentsWidget: Widget {
         }
         .configurationDisplayName("Recent documents")
         .description("The documents you opened last.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular, .accessoryInline])
     }
 }
 
@@ -27,19 +27,26 @@ struct RecentsEntry: TimelineEntry {
 }
 
 struct RecentsProvider: TimelineProvider {
+    /// How many a widget can show at most (the large one).
+    static let capacity = 6
+
+    /// The entry for now, from the shared container.
+    static func entry(store: RecentsStore = RecentsStore()) -> RecentsEntry {
+        RecentsEntry(date: .now, documents: WidgetTimelines.recents(from: store, capacity: capacity), placeholder: false)
+    }
+
     func placeholder(in context: Context) -> RecentsEntry {
         RecentsEntry(date: .now, documents: [], placeholder: true)
     }
 
     func getSnapshot(in context: Context, completion: @escaping @Sendable (RecentsEntry) -> Void) {
-        completion(RecentsEntry(date: .now, documents: RecentsStore().load(), placeholder: false))
+        completion(Self.entry())
     }
 
     func getTimeline(in context: Context, completion: @escaping @Sendable (Timeline<RecentsEntry>) -> Void) {
         // The list changes when the app opens a document, and the app says
         // so through WidgetCenter; there is nothing to refresh on a clock.
-        let entry = RecentsEntry(date: .now, documents: RecentsStore().load(), placeholder: false)
-        completion(Timeline(entries: [entry], policy: .never))
+        completion(Timeline(entries: [Self.entry()], policy: .never))
     }
 }
 
@@ -49,7 +56,7 @@ struct RecentDocumentsView: View {
 
     private var shown: [RecentDocument] {
         let count: Int = switch family {
-        case .systemSmall, .accessoryRectangular: 1
+        case .systemSmall, .accessoryRectangular, .accessoryInline: 1
         case .systemMedium: 3
         default: 6
         }
@@ -65,6 +72,9 @@ struct RecentDocumentsView: View {
             switch family {
             case .accessoryRectangular:
                 accessory(shown[0])
+            case .accessoryInline:
+                Label(shown[0].name, systemImage: "doc.text")
+                    .widgetURL(AppRoute.open(id: shown[0].id).url)
             case .systemSmall:
                 single(shown[0])
             default:
@@ -86,11 +96,12 @@ struct RecentDocumentsView: View {
         VStack(alignment: .leading, spacing: 6) {
             Image(systemName: "doc.text").font(.title2).foregroundStyle(.secondary)
             Text("No documents yet").font(.headline)
-            if family != .accessoryRectangular {
+            if family != .accessoryRectangular, family != .accessoryInline {
                 Text("Open a PDF and it appears here.").font(.caption).foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .widgetURL(AppRoute.lastDocument.url)
     }
 
     private func single(_ document: RecentDocument) -> some View {
@@ -102,20 +113,21 @@ struct RecentDocumentsView: View {
                 .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .widgetURL(url(for: document))
+        .widgetURL(AppRoute.open(id: document.id).url)
     }
 
     private var grid: some View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
         return LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
             ForEach(shown) { document in
-                Link(destination: url(for: document)) {
+                Link(destination: AppRoute.open(id: document.id).url) {
                     VStack(alignment: .leading, spacing: 4) {
                         thumbnail(document)
                             .frame(maxWidth: .infinity)
                         Text(document.name).font(.caption2.weight(.semibold)).lineLimit(2)
                     }
                 }
+                .accessibilityLabel(Text(document.name))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -123,12 +135,12 @@ struct RecentDocumentsView: View {
 
     private func accessory(_ document: RecentDocument) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Label("Recent documents", systemImage: "doc.text").font(.caption2).foregroundStyle(.secondary)
+            Label("Last document", systemImage: "doc.text").font(.caption2).foregroundStyle(.secondary)
             Text(document.name).font(.headline).lineLimit(1)
             Text(document.lastOpened, format: .relative(presentation: .named)).font(.caption2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .widgetURL(url(for: document))
+        .widgetURL(AppRoute.open(id: document.id).url)
     }
 
     private func thumbnail(_ document: RecentDocument) -> some View {
@@ -145,9 +157,5 @@ struct RecentDocumentsView: View {
         }
         .aspectRatio(210 / 297, contentMode: .fit)
         .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
-    }
-
-    private func url(for document: RecentDocument) -> URL {
-        URL(string: "\(AppGroup.urlScheme)://open/\(document.id.uuidString)")!
     }
 }

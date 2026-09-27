@@ -42,6 +42,12 @@
         "ar" : { "stringUnit" : { "state" : "translated", "value" : "تصبح الصور التي تختارها صفحات في ملف PDF. لا شيء يغادر الجهاز." } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Photos you choose become pages of a PDF. Nothing leaves the device." } }
       }
+    },
+    "SHORTCUT_SCAN" : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "مسح مستند" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Scan a document" } }
+      }
     }
   },
   "version" : "1.0"

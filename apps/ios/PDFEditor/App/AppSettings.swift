@@ -76,6 +76,10 @@ enum AppAppearance: String, CaseIterable, Identifiable {
 enum SettingsKey {
     static let language = "language"
     static let appearance = "appearance"
+    // The scanner's own keys (`scanColorMode`, `ocrLanguages`) are its:
+    // `PDFEditor/Scan/ScanSettingsSection.swift`.
+    /// Face ID / Touch ID before the app shows anything; off by default.
+    static let appLock = "appLock"
 }
 
 /// Applies the chosen language and appearance to a scene's root view.
