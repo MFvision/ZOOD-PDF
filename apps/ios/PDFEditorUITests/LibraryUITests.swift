@@ -153,18 +153,22 @@ final class LibraryUITests: XCTestCase {
         }
         XCTAssertFalse(app.descendants(matching: .any)["home.row.starred"].exists, "nothing starred yet")
         // The rows are below the cards; a lazy row is built when scrolled to.
-        let more = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'home.more.'")).firstMatch
-        for _ in 0..<4 where !more.exists {
+        // The card's context menu (a long press) carries the same items as
+        // its ⋯ menu.
+        let card = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'document.'")).firstMatch
+        for _ in 0..<4 where !card.exists {
             app.swipeUp()
         }
-        XCTAssertTrue(more.waitForExistence(timeout: 10), "a document's menu is on its card")
-        let name = String(more.identifier.dropFirst("home.more.".count))
-        more.tap()
+        XCTAssertTrue(card.waitForExistence(timeout: 10), "a document's card is in the My documents row")
+        let name = String(card.identifier.dropFirst("document.".count))
+        card.press(forDuration: 1.5)
         let star = app.buttons["home.star.\(name)"].firstMatch
         let starByLabel = app.buttons["Star"].firstMatch
-        if star.waitForExistence(timeout: 5) { star.tap() } else { XCTAssertTrue(starByLabel.waitForExistence(timeout: 5)); starByLabel.tap() }
+        if star.waitForExistence(timeout: 5) { star.tap() } else { XCTAssertTrue(starByLabel.waitForExistence(timeout: 5), "the Star item is in the menu"); starByLabel.tap() }
         XCTAssertTrue(app.descendants(matching: .any)["home.row.starred"].waitForExistence(timeout: 10), "the Starred row appeared")
-        app.buttons["home.seeAll.starred"].firstMatch.tap()
+        let seeAll = app.descendants(matching: .any)["home.seeAll.starred"].firstMatch
+        XCTAssertTrue(seeAll.waitForExistence(timeout: 10), "See all is beside the Starred row")
+        seeAll.tap()
         XCTAssertTrue(app.buttons["starred.\(name)"].waitForExistence(timeout: 10), "the Starred section lists it")
         // Back home (the sidebar on iPad, the back button on iPhone); the
         // Search card opens the search field.

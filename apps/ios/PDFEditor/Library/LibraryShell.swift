@@ -226,12 +226,15 @@ struct LibraryShell: View {
                 }
             }
             .navigationTitle(Text(verbatim: AppName.isolated))
-            .toolbar { libraryToolbar }
         } content: {
+            // The actions sit with the content, where the design target puts
+            // them, and where they are in portrait too (the sidebar is then
+            // an overlay).
             SearchHost(library: library) {
                 content(for: section.wrappedValue ?? .home)
             }
             .navigationTitle(section.wrappedValue?.title ?? "Home")
+            .toolbar { libraryToolbar }
             .navigationDestination(for: LibrarySection.self) { section in
                 content(for: section)
                     .navigationTitle(section.title)
