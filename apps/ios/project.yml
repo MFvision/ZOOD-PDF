@@ -26,13 +26,11 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: "18.0"
     TARGETED_DEVICE_FAMILY: "1,2"
     SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
-    # Simulator only on this Mac: there is no signing identity here. Ad-hoc
-    # signing keeps the entitlements (the App Group) on the simulator; a
-    # device or TestFlight needs the owner's Apple Developer team.
-    CODE_SIGN_STYLE: Manual
-    CODE_SIGN_IDENTITY: "-"
-    DEVELOPMENT_TEAM: ""
-    PROVISIONING_PROFILE_SPECIFIER: ""
+    # The owner's Apple Developer team: Xcode signs automatically (a device,
+    # TestFlight) when it is signed in to that account; the simulator needs
+    # no identity at all.
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: AWV883QWPU
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
     LOCALIZATION_PREFERS_STRING_CATALOGS: YES
