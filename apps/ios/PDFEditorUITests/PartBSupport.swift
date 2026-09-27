@@ -94,9 +94,10 @@ struct PartBApp {
         settle()
         let button = app.buttons[identifier]
         if !poll(timeout: 25, { button.exists && button.isHittable }) {
-            // The bar is gone: markup ended, or a sheet has the screen.
+            // Only when the bar is really gone: Markup is a switch, and a
+            // tap while it is on would end the markup instead.
             let markup = app.buttons["document.markup"]
-            if markup.exists, markup.isHittable { markup.tap() }
+            if !app.buttons["markup.done"].exists, markup.exists, markup.isHittable { markup.tap() }
         }
         XCTAssertTrue(poll(timeout: 20) { button.exists && button.isHittable }, "markup button \(identifier): \(tree)")
         let bar = app.descendants(matching: .any).matching(identifier: "markup.bar").firstMatch
