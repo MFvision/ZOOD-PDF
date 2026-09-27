@@ -26,14 +26,26 @@ apps/ios/
                          (pictures → PDF, files → one PDF, through the core)
     Intents/             AppIntents: Open <document> (entity query), Search my documents, Make a PDF, the
                          Shortcuts phrases; IndexReader (the index read outside the Library's session)
-    Document/            DocumentModel, PDFEditorDocument (DocumentGroup), DocumentView, PDFKitView
+    Document/            DocumentModel, PDFEditorDocument (DocumentGroup), DocumentView (the screen, its
+                         toolbar and sheets), PDFKitView (PDFView, page overlays)
+    View/                PageSpace (user/stored/shown conversions), DocumentSearch (view.search + PDFKit
+                         highlights), SearchBar, PageThumbnails, OutlineView, ReaderModeView, GoToPageSheet,
+                         DocumentCommands, ViewSettings
+    Annotate/            AnnotationTool, AnnotationEditor (PDFKit annotations → file.rebase; the pen's
+                         kind/colour/width), PageOverlayView (gestures, PencilKit canvas), MarkupBar (the
+                         dark toolbar of the owner's design target, and PenPalette), NoteSheet, StampSheet
+                         (marks.add), SignatureStore/Sheet/Placer (images.add), AnnotationsListSheet
+    Organize/            PagesModel (pages.* ops), PagesGridView (lift-and-drop grid, the bar), CropSheet
+    Export/              Exporter, ExportSheet, DocxWriter, ZipWriter
+    Protect/             ProtectSheet (PDFKit's password writer; the core keeps it on appends)
     Settings/            SettingsView (with the scanner's own section), AppLock (Face ID / Touch ID)
     Scan/                ScanView (the scanner), ScanSession, ScanPipeline, TextRecognizer (Vision OCR),
                          IDPageComposer, BookScan, CornerEditor, the enhance/text/save sheets; PDFMaker
                          (pictures and files into one PDF, for Combine and the Make-a-PDF intent)
     Design/              Theme (tokens), Components (press style, toolbar status, sheet, grid cell, empty state)
     Resources/           Assets.xcassets (icon, accent), Localizable.xcstrings, InfoPlist.xcstrings,
-                         AppShortcuts.xcstrings (the Siri phrases)
+                         AppShortcuts.xcstrings (the Siri phrases); tests/fonts/Amiri-Regular.ttf, the face
+                         the core writes stamps, text boxes and PDF/A substitutes with
   WarraqCore/Sources/    the Swift wrapper: actor Core, CoreError, the typed results
   Shared/                AppGroup, RecentsStore, SearchesStore, StarredStore (the per-device star), AppRoute
                          (where widgets and intents send the app), TextRecognizer (the OCR seam),
@@ -196,7 +208,23 @@ xcodebuild -project apps/ios/PDFEditor.xcodeproj -scheme PDFEditor \
   Nothing touches the file until `model.save()` (Library documents) or
   the `DocumentGroup` scene saves (documents opened from outside).
 - Work that needs no open document (combining, the Library's index, OCR's
-  text layer, exports) is `Core.callStatic(op:args:blobs:)`.
+  text layer, exports) is `Core.callStatic(op:args:blobs:)`. When such a
+  call answers new bytes for the open document (a page mark, appearances
+  redrawn), `model.replace(bytes:undoManager:)` takes them: the core
+  reopens on them, PDFKit reloads, undo gets a step.
+- A change PDFKit makes to its own document (an annotation added or
+  removed) is committed with `model.commitPDFKitChanges(undoManager:)`:
+  PDFKit's whole rewrite goes to the core's `file.rebase`, which keeps
+  just the changed objects as an incremental update on the bytes as they
+  stand. `AnnotationEditor` does this for every mark.
+- The three coordinate spaces a page has — PDFKit's user space, the
+  core's stored space (points from the crop box's top-left, y down, before
+  `/Rotate`) and the page as shown — meet in `View/PageSpace.swift`; use
+  it rather than flipping y by hand.
+- A fast type-check without xcodebuild (no queue needed): the module and
+  sources compile with `swiftc -typecheck` against the simulator SDK; see
+  `apps/ios/.build/typecheck.sh` if it is still there, or run
+  `scripts/ios/build.sh --no-test --iphone`.
 - New sidebar sections join `LibrarySection`; new settings join
   `SettingsView`; new widgets join `WidgetsBundle`.
 

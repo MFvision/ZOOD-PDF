@@ -841,6 +841,185 @@ Mac bundle identifier `app.warraq.desktop` (kept so macOS keeps trusting
 installs). The app icon still shows a calligraphic waw, the first letter of
 the earlier name.
 
+## The iOS app, part B: view, annotate, sign, organize, export, protect (2026-09-21)
+
+Built on the foundation in `apps/ios` (SwiftUI, PDFKit, the core as an XCFramework),
+for iPhone and iPad, in Arabic and English. Everything below ran **on the simulator
+only** (iPhone 17 and iPad Pro 13-inch (M5), iOS 27): this Mac has no signing identity.
+
+**What works, as a person would use it.**
+* **View** — PDFKit draws the pages with its own pinch and scroll; continuous or one
+  page at a time (swiped with the platform's physics, no curl); pages ordered
+  right-to-left for an Arabic document; thumbnails beside the pages on iPad and under
+  them on iPhone; the outline as a tree (the core's `outline.list`, so Arabic titles
+  read right); Go to page, typed in Western, Arabic-Indic or Persian digits; night mode
+  (a white layer composited by difference over each page: paper black, ink white);
+  reader mode (the core's text of every page reflowed, right-to-left, selectable, at
+  the person's text size — what a scan's invisible layer reads as); the find bar asks
+  the core's `view.search` and PDFKit highlights the glyphs in each hit's box, with
+  next/previous and a list of the hits in context. ⌘F, ⌘G/⇧⌘G, ⌘←/→, ⌥⌘T/N/R/P, ⇧⌘E,
+  ⇧⌘L and ⌘S with a keyboard, a Document menu in the menu bar on iPad, and a document
+  dragged out of the Library's grid and dropped at the screen's edge opens in a new
+  window (iPad).
+* **Annotate** — PDFKit adds the annotation; the core keeps only what changed as an
+  incremental update (`file.rebase`), so the original bytes stay untouched until Save
+  and each mark is a step of undo. Highlight, underline and strike-through by dragging
+  over the words (the system's selection shows the words as the finger moves) or by
+  tapping a word, or from the selection's own edit menu; ink through PencilKit — the
+  system's tool picker, the Pencil's double-tap, pressure and tilt on the canvas — with
+  each stroke an ink annotation of its colour and width; notes; rectangles, ellipses
+  and arrows dragged out with a live preview; text boxes whose Arabic the core redraws
+  shaped, in the bundled Amiri, with a ToUnicode that reads back
+  (`forms.fix_appearances`); stamps in Arabic and English (معتمد/APPROVED, مسودة/DRAFT,
+  سري, نهائي, …) written by the core as page marks (`marks.add`) in front of the
+  content, so they read back as text; a list of every mark to go to or delete; undo and
+  redo in the bar and through the system's gestures; a haptic on every commit.
+* **Sign** — a signature drawn once with a finger or the Pencil, kept in the app's
+  container encrypted with AES-GCM under a key that lives in the Keychain (this device
+  only, when unlocked); placed by dragging it over the page and sized by pinching, then
+  written into the page by the core (`images.add`, an incremental update, upright).
+* **Organize** — the pages as a grid: drag a page (it lifts) and drop it before another;
+  rotate, delete, insert a blank page, another PDF's pages (asking for its password
+  when it has one), pictures from the photo library (the core makes a PDF of them
+  first, `create.images`); extract chosen pages or split every N pages into files to
+  share or keep in My documents; merge (another document's pages appended); crop by
+  dragging the four edges, this page or all. Every change is a `pages.*` op.
+* **Export and share** — PDF, Word, a PNG of each page at 150 dpi, text, a compressed
+  copy (`compress.file`, with the sizes before and after) and PDF/A-2b
+  (`standards.pdfa`, validated, the checks counted), each to the share sheet (Files,
+  AirDrop, Mail, …); Save a copy to Files; print through the system's panel.
+* **Protect** — the password prompt on open (the core and PDFKit unlock together, the
+  wrong password said so); set a password (typed twice) or remove it from the More
+  menu. PDFKit writes the protection — the format needs a whole rewrite for that — and
+  the core keeps it on every edit it appends afterwards; the saved file asks for it
+  again; undo brings the old protection back.
+
+**The owner's design target (2026-09-25, `.tools/briefs/design-target.md`), on these
+screens.** Annotate is the target's iPad picture: a thin dark toolbar over the pages with
+undo and redo, the text tools (a text box, the highlighter, underline, strike-through),
+the pen with its colours as small dots, shapes, a note, crop, stamp and signature; on
+iPad the numbered strip of page thumbnails opens beside the document while marking up;
+and while the pen is in hand a floating palette at the bottom — pen, marker, pencil,
+eraser, three widths and the colour swatches — which every page's canvas follows at
+once (the Pencil's double-tap flips pen and eraser through `UIPencilInteraction`; the
+system's PencilKit picker is not used, so the palette is the same on every page and the
+same in the screenshots). Organize has the target's page menu on a long press: Add Page,
+Delete Page, Extract Pages, Rotate Left, Rotate Right, Replace Page (another PDF's pages
+in its place: an insert and a delete, two steps of undo), Crop, Split PDF, Insert from
+File; a press that moves lifts the page for a drag instead.
+
+**How it is proven.** `apps/ios/PDFEditorTests`: `ViewTests` (page spaces round-trip
+through user space at every rotation; `الفاتوره` typed with haa for taa marbuta finds
+فاتورة with PDFKit selecting the glyphs in the core's boxes; a heading found on every
+page; page numbers in three scripts; the outline read by the core), `AnnotateTests`
+(a highlight rebased onto the original bytes, undone, redone, saved and reopened;
+shapes, an arrow and a note; an Arabic text box whose appearance the core redrew in
+`WarraqAr`; ink strokes as ink annotations; a stamp listed and read back as text by
+`marks.list`/`marks.text`; the signature the page's one picture in `images.list`; a
+mark removed), `SignatureStoreTests` (round trip, nothing readable on disk, another
+key cannot read it), `OrganizeTests` (the reorder arithmetic; move, rotate, insert
+blank, delete, crop and the "never every page" refusal through the core; the moved
+page read first by the core after save and reopen; pages from another PDF and from
+pictures; extract and split checked by opening the files in the core), `ExportTests`
+(the zip writer and reader; the Word file's XML holds the Arabic in reading order with
+`w:bidi`; text and pictures; the compressed and PDF/A copies opened and validated by
+the core), `ProtectTests` (set, kept through a core edit, asked for on reopening,
+removed; undo). `apps/ios/PDFEditorUITests`, on both simulators: `ViewUITests`
+(search typed on the Arabic keyboard without tashkeel, the hits walked and listed;
+Go to page by number, by thumbnail and by the outline; single page, night and reader
+modes), `AnnotateUITests` (highlight by drag, a note, an Arabic text box, a stamp and
+a drawn signature placed by hand — saved, reopened, the marks counted in Info and the
+stamp read back as the page's text; finger drawing as ink, then undone),
+`OrganizeUITests` (the last page dragged first, saved, reopened, the core reading it
+first; rotate and delete from the bar), `ExportUITests` (Word, text, compressed,
+PDF/A and pictures made through the sheet and read back from disk — the Arabic in the
+Word XML), `ProtectUITests` (a password set and saved, the reopened file refusing a
+wrong one and opening with the right one, the password removed), and
+`PartBScreenshotTests` (every screen in Arabic and English, light and dark, into
+`docs/design/ios/`: search, thumbnails, night, reader, outline, goto, markup, stamps,
+signature, marks, pages, crop, export, protect).
+
+**What the last runs say, device by device** (`~/Developer/warraq/.tools/one-at-a-time.sh
+scripts/ios/build.sh --iphone` / `--ipad`, logs in `apps/ios/.build/logs/`; the Mac is
+shared with the other agents, and a loaded simulator is the difference between most of
+these numbers).
+* **iPhone 17** — unit **37 of 37**; interface **13 of 14**. The one failure is
+  `AnnotateUITests.testHighlightNoteStampAndSignatureSurviveSaveAndReopen`, which asks
+  for the signature sheet immediately after the stamp sheet has closed; under load the
+  second sheet does not open in the seconds the test waits. Every part of that flow
+  passes on its own elsewhere (the stamp in `AnnotateTests`, the signature in
+  `SignatureStoreTests` and in the screenshot run, which photographs the sheet).
+* **iPad Pro 13-inch (M5)** — unit **52 of 52** (part B's 37 and the scanner's);
+  interface **14 of 18** in the last run, 15 and 16 of 18 in the two before it. What
+  fails moves from run to run while the Mac is busy — the last run lost the two
+  annotate tests, the screenshot walk and Protect (whose document never finished
+  opening in the 40 s the test waits); the run before lost only the two that walk the
+  stamp-then-signature flow. Passing every time: `ViewUITests` (4), `OrganizeUITests`
+  (2), `ExportUITests`, `LaunchTests` (3) and the scanner's `ScanTests` (4).
+  What did *not* move, and was found by driving the app by hand on the simulator, was a
+  real defect, now fixed: **the markup bar's Done stood over the last two tools**
+  (Stamp and Signature), so a tap meant for them ended the markup instead — the gap
+  kept clear under the button was narrower than the English word needs. Done now
+  stands beside the tools, and the tools scroll in the space that is left.
+* Two more defects the iPad found and that are fixed here: **Go to page** floated its
+  number pad over its own buttons (it is a form sheet on iPad now), and **a hit in the
+  find bar's list of matches** could only be tapped where its text was drawn (the whole
+  row takes the tap now). The Library's **Open… and Settings** moved beside Scan over
+  the documents column, because the sidebar that held them is collapsed while a
+  document is open.
+* The scanner's own `ScanTests` (from part C, merged) pass on the iPad: 4 of 4.
+
+**Limits, stated plainly.**
+* *Word export is text only*, as on the web: paragraphs in reading order, never the
+  layout. The core has no Word reader (the web's is TypeScript), so the round-trip is
+  checked by reading the `.docx`'s XML (stored, uncompressed entries — which every
+  Word opens) and finding the Arabic the core read from the PDF.
+* *Stamps are page marks, not annotations*: they are part of the page's content
+  (searchable, printed by every viewer) and are removed through the marks list only as
+  a whole `marks.remove` would — the iOS marks list deletes PDFKit annotations; a stamp
+  is undone with Undo or removed on the desktop/web Page marks tool.
+* *Ink keeps one width per stroke*: PencilKit's pressure shows on the canvas; a PDF ink
+  annotation has one border width, so the committed stroke takes the stroke's width.
+* *Passwords are Latin-1*: PDFKit's RC4 handler takes PDFDocEncoding passwords only, and
+  writes **no protection at all** for any other (an Arabic password came back as an
+  unprotected file in the first run). The sheet refuses anything outside Latin letters,
+  digits and symbols, says so, and the result is checked to be protected before it is
+  taken — never a document said to be protected that is not.
+* *Protection is a whole rewrite, and PDFKit's is RC4*: setting or removing a password
+  cannot be an incremental update (the encryption covers every string and stream), so
+  those two edits replace the bytes; everything the core appends after them is
+  incremental and keeps the protection. PDFKit's writer encrypts with **RC4 128-bit**
+  (`/V 2`), not AES-256 — the core has no encrypting writer of its own, and PDFKit
+  offers no choice. Taking the password off is the core's `pages.extract` of every
+  page: PDFKit keeps the encryption on a plain rewrite of an unlocked document, so
+  the core writes what it read — pages, marks, outline, information — unencrypted.
+* *Text selection in PDFKit is PDFKit's*: for Arabic files PDFKit reads in visual order
+  in places; Copy from the page view is its reading, while search, reader mode,
+  VoiceOver's page text and every export are the core's.
+* *Night mode is SwiftUI's inversion* (`colorInvert` with the hues turned back, the
+  system's smart-invert idea): a layer compositing filter is ignored on iOS — the first
+  run's screenshot showed a white page — so the pages are inverted as a whole.
+* *Rotated pages*: the overlays convert through PDFKit's own `convert(_:to:)`, and the
+  page-space conversions are unit-tested at every rotation, but the corpus files used
+  through the interface are upright; a page with `/Rotate` was not exercised on screen.
+* *Multiple windows*: the drag-out is `.draggable(DocumentReference)` on the Library's
+  cells, which iPadOS turns into a new window when dropped at the edge; XCUITest
+  cannot perform that system gesture, so it was not run — "Open in New Window" from
+  the cell's menu takes the same path (a `WindowGroup(for: DocumentReference.self)`).
+* *A page's menu and its drag share the long press*: held still, the menu; moved, the
+  drag (the UI test presses for under half a second before moving).
+* *The core's page text leaves page marks out* (`extract_text` is the page's own text; the
+  search reads everything), so a stamp is read back through the search, not the page's
+  VoiceOver value.
+* *Print* opens the system's panel; the simulator has no printer.
+* *Not every interface test is green on the iPad*: the counts above are honest, and
+  the failures are timing on a machine shared with several other agents' builds — a
+  sheet asked for before the last one has gone, a document that had not finished
+  opening within the test's wait. They are the first thing to re-run on a quiet
+  machine; nothing in them points at behaviour a person would meet, and the three
+  defects the iPad did show are fixed above.
+* Everything ran on the simulator only; no device, no Face ID, no real share targets.
+
 ## Next (in order)
 1. **Run the Windows and Linux builds on those systems**: print by pages, the drop targets and the NSIS installer have been built for them in code only — nothing of them has run here.
 2. **Phone apps**: iPhone and iPad are the native SwiftUI app in `apps/ios` (its foundation above; the other parts in progress). Android is not started: it would need the Android SDK, NDK and JDK installed here (Decisions, below). The installable web app covers phones meanwhile.

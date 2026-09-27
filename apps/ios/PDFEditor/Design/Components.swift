@@ -24,12 +24,24 @@ extension ButtonStyle where Self == PressableStyle {
 /// The toolbar's title block: the document's name and, under it, its
 /// state — "Page 3 of 9", "Edited" — the one place these are shown.
 struct ToolbarStatus: View {
-    let title: String
+    let title: Text
     let subtitle: Text?
+
+    /// A name as it is (a file's).
+    init(title: String, subtitle: Text?) {
+        self.title = Text(title)
+        self.subtitle = subtitle
+    }
+
+    /// A title from the String Catalog.
+    init(title: Text, subtitle: Text?) {
+        self.title = title
+        self.subtitle = subtitle
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            Text(title)
+            title
                 .font(TextStyle.headline)
                 .lineLimit(1)
             if let subtitle {
@@ -41,7 +53,8 @@ struct ToolbarStatus: View {
                     .accessibilityIdentifier("document.status")
             }
         }
-        .accessibilityElement(children: .combine)
+        // Two elements, the name and the state: VoiceOver reads them in
+        // turn, and the state keeps its identifier whatever it says.
     }
 }
 

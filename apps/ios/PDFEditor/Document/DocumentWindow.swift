@@ -1,9 +1,16 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// A document named for a window of its own: a bookmark to the file (which
 /// keeps the access a file chosen in Files granted) and its name for the
-/// window's title. Codable, so the scene comes back after a relaunch.
-struct DocumentReference: Codable, Hashable {
+/// window's title. Codable, so the scene comes back after a relaunch;
+/// Transferable, so a document dragged out of the Library and dropped at
+/// the screen's edge opens in a new window on iPad.
+struct DocumentReference: Codable, Hashable, Transferable {
+    static var transferRepresentation: some TransferRepresentation {
+        CodableRepresentation(contentType: .warraqDocumentReference)
+    }
+
     let bookmark: Data
     let name: String
 

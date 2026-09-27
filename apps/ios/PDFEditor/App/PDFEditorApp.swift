@@ -25,5 +25,8 @@ struct PDFEditorApp: App {
             }
             .appEnvironment()
         }
+        .commands {
+            DocumentCommands()
+        }
     }
 }

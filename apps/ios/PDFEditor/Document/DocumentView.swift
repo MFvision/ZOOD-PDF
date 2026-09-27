@@ -3,9 +3,10 @@ import SwiftUI
 import WarraqCore
 
 /// A document on screen: PDFKit draws the pages; the toolbar's title block
-/// names the file and the page; Info shows what the core read; Share hands
-/// the bytes as they stand to the share sheet; Save appears once there is
-/// something to save.
+/// names the file and the page; around it the find bar, the markup bar,
+/// the thumbnails, and the sheets — pages, outline, export, protect, info.
+/// Everything that changes the document goes through the model, so undo,
+/// the edited state and Save are one thing everywhere.
 ///
 /// The page view is one accessibility element whose value is the current
 /// page's text in logical order from the core — so VoiceOver reads Arabic
@@ -13,48 +14,197 @@ import WarraqCore
 struct DocumentView: View {
     @Bindable var model: DocumentModel
     @Environment(\.undoManager) private var undoManager
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage(ViewSettingsKey.layout) private var layout: PageLayout = .continuous
+    @AppStorage(ViewSettingsKey.night) private var night = false
+    @State private var search = DocumentSearch()
+    @State private var host = PDFViewHost()
+    @State private var thumbnails = PageThumbnailCache()
+    @State private var editor: AnnotationEditor?
+    @State private var pagesModel: PagesModel?
+    @State private var showingSearch = false
+    @State private var showingThumbnails = false
+    @State private var thumbnailsForMarkup = false
+    @State private var readerMode = false
+    @State private var markup = false
     @State private var showingInfo = false
+    @State private var showingOutline = false
+    @State private var showingGoTo = false
+    @State private var showingPages = false
+    @State private var showingExport = false
+    @State private var showingProtect = false
+    @State private var showingMarks = false
+    @State private var showingStamps = false
+    @State private var showingSignature = false
+    @State private var showingCrop = false
+    @State private var placingSignature: UIImage?
     @State private var saveError: String?
     @State private var pageText: String?
+    @State private var stampsAdded = 0
     @State private var showingScanner = false
     @State private var scanSaved: URL?
 
+    private var compact: Bool { sizeClass == .compact }
+
     var body: some View {
-        content
-            .navigationTitle(model.name)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { toolbar }
-            .toolbarRole(.editor)
-            .sheet(isPresented: $showingInfo) {
-                DocumentInfoSheet(model: model)
+        VStack(spacing: 0) {
+            if showingSearch, model.isReady, !readerMode {
+                SearchBar(search: search, model: model) {
+                    closeSearch()
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
-            // A document opened from a picture: the scanner enhances and reads it.
-            .fullScreenCover(isPresented: $showingScanner) {
-                if let image = model.sourceImage {
-                    ScanView(images: [image]) { url in
-                        scanSaved = url
+            if markup, let editor {
+                MarkupBar(editor: editor, undoManager: undoManager,
+                          openStamps: { showingStamps = true },
+                          openSignature: { showingSignature = true },
+                          openCrop: { showingCrop = true },
+                          done: finishMarkup)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+            HStack(spacing: 0) {
+                if showingThumbnails, model.isReady, !compact {
+                    ThumbnailsSidebar(model: model, cache: thumbnails, width: 150, horizontal: false)
+                    Divider()
+                }
+                ZStack {
+                    content
+                    if let image = placingSignature {
+                        SignaturePlacer(image: image, model: model, host: host, undoManager: undoManager) {
+                            placingSignature = nil
+                        }
+                        .transition(.opacity)
                     }
-                    .appEnvironment()
+                }
+                .overlay(alignment: .bottom) {
+                    // The floating pen palette, over the pages' foot. An
+                    // overlay, so its width (more than an iPhone's) never
+                    // sizes the pages, the stack and the bar above them.
+                    if markup, let editor, editor.tool == .ink {
+                        PenPalette(editor: editor)
+                            .padding(.horizontal, Space.x5)
+                            .padding(.bottom, Space.x5)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    // On iPhone the strip sits above the bottom bar, inside
+                    // the safe area the bar leaves.
+                    if showingThumbnails, model.isReady, compact {
+                        VStack(spacing: 0) {
+                            Divider()
+                            ThumbnailsSidebar(model: model, cache: thumbnails, width: 72, horizontal: true)
+                                .frame(height: 144)
+                        }
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
             }
-            .alert("Saved to My documents", isPresented: Binding(get: { scanSaved != nil }, set: { if !$0 { scanSaved = nil } })) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(verbatim: scanSaved?.lastPathComponent ?? "")
+        }
+        .animation(Motion.travel(reduceMotion: reduceMotion), value: showingSearch)
+        .animation(Motion.travel(reduceMotion: reduceMotion), value: markup)
+        .animation(Motion.travel(reduceMotion: reduceMotion), value: showingThumbnails)
+        .navigationTitle(model.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { toolbar }
+        .toolbarRole(.editor)
+        .focusedSceneValue(\.documentActions, actions)
+        .sheet(isPresented: $showingInfo) {
+            DocumentInfoSheet(model: model)
+        }
+        .sheet(isPresented: $showingOutline) {
+            OutlineSheet(model: model)
+        }
+        .sheet(isPresented: $showingGoTo) {
+            GoToPageSheet(model: model)
+        }
+        .sheet(isPresented: $showingPages) {
+            if let pagesModel {
+                PagesGridView(pages: pagesModel, cache: thumbnails)
             }
-            .alert("Could not save", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(saveError ?? "")
+        }
+        .sheet(isPresented: $showingExport) {
+            ExportSheet(model: model)
+        }
+        .sheet(isPresented: $showingProtect) {
+            ProtectSheet(model: model, undoManager: undoManager)
+        }
+        .sheet(isPresented: $showingMarks) {
+            if let editor {
+                AnnotationsListSheet(model: model, editor: editor)
             }
-            .task(id: model.id) {
-                if model.state == .loading {
-                    await model.load()
+        }
+        .sheet(isPresented: $showingCrop) {
+            if let pagesModel {
+                CropSheet(pages: pagesModel, cache: thumbnails, page: model.currentPage)
+            }
+        }
+        .sheet(isPresented: $showingStamps) {
+            StampSheet(model: model, undoManager: undoManager) {
+                stampsAdded += 1
+            }
+        }
+        .sheet(isPresented: $showingSignature) {
+            SignatureSheet(store: SignatureStore()) { image in
+                editor?.tool = nil
+                placingSignature = image
+            }
+        }
+        .sheet(item: Binding(get: { editor?.pending }, set: { editor?.pending = $0 })) { placement in
+            if let editor {
+                NoteSheet(placement: placement, editor: editor)
+            }
+        }
+        .alert("Could not save", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(saveError ?? "")
+        }
+        // A document opened from a picture: the scanner enhances and reads it.
+        .fullScreenCover(isPresented: $showingScanner) {
+            if let image = model.sourceImage {
+                ScanView(images: [image]) { url in
+                    scanSaved = url
                 }
+                .appEnvironment()
             }
-            .task(id: textKey) {
-                pageText = await model.text(ofPage: model.currentPage)
+        }
+        .alert("Saved to My documents", isPresented: Binding(get: { scanSaved != nil }, set: { if !$0 { scanSaved = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(verbatim: scanSaved?.lastPathComponent ?? "")
+        }
+        .alert("Could not add the mark", isPresented: Binding(get: { editor?.error != nil }, set: { if !$0 { editor?.clearError() } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(editor?.error ?? "")
+        }
+        .sensoryFeedback(.success, trigger: editor?.commits ?? 0)
+        .sensoryFeedback(.success, trigger: stampsAdded)
+        .task(id: model.id) {
+            if editor == nil {
+                editor = AnnotationEditor(model: model)
+                pagesModel = PagesModel(model: model)
             }
+            if model.state == .loading {
+                await model.load()
+            }
+        }
+        .task(id: textKey) {
+            pageText = await model.text(ofPage: model.currentPage)
+        }
+        .onChange(of: undoManager, initial: true) { _, manager in
+            editor?.undoManager = manager
+            pagesModel?.undoManager = manager
+        }
+        .onChange(of: model.revision) {
+            // The bytes changed: the hits' selections belong to the old pages.
+            if showingSearch { search.run(in: model) }
+        }
+        .onChange(of: search.current) {
+            if let hit = search.currentHit { model.currentPage = hit.page }
+        }
     }
 
     /// When the page's text must be read again: another page, an edit, or
@@ -63,10 +213,11 @@ struct DocumentView: View {
         let page: Int
         let edited: Bool
         let ready: Bool
+        let revision: Int
     }
 
     private var textKey: TextKey {
-        TextKey(page: model.currentPage, edited: model.isEdited, ready: model.isReady)
+        TextKey(page: model.currentPage, edited: model.isEdited, ready: model.isReady, revision: model.revision)
     }
 
     @ViewBuilder
@@ -84,11 +235,20 @@ struct DocumentView: View {
             EmptyState(symbol: "doc.questionmark", title: "Cannot open this file", message: "\(code): \(message)")
                 .background(Surface.underPage)
         case .ready:
-            if let pdf = model.pdf {
-                PDFKitView(document: pdf, displaysRTL: model.isRightToLeft, currentPage: $model.currentPage)
-                    .ignoresSafeArea(edges: .bottom)
+            if readerMode {
+                ReaderModeView(model: model)
+            } else if let pdf = model.pdf {
+                PDFKitView(document: pdf, displaysRTL: model.isRightToLeft, layout: layout, night: night,
+                           editor: editor, tool: editor?.tool, inkSignature: editor?.inkSignature ?? "", host: host,
+                           highlights: search.highlighted, currentHighlight: showingSearch ? search.currentSelection : nil,
+                           currentPage: $model.currentPage)
+                    // Night mode: the pages inverted, hues turned back so a
+                    // blue heading stays blue (the system's own smart invert).
+                    .colorInvert(if: night)
+                    .hueRotation(.degrees(night ? 180 : 0))
+                    .ignoresSafeArea(edges: showingThumbnails && compact ? [] : .bottom)
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(Text("Page \(model.currentPage + 1) of \(model.pageCount)"))
+                    .accessibilityLabel(pageLabel)
                     .accessibilityValue(Text(pageText ?? ""))
                     .accessibilityIdentifier("document.page")
             } else {
@@ -98,6 +258,8 @@ struct DocumentView: View {
             }
         }
     }
+
+    // MARK: - Toolbar
 
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
@@ -112,32 +274,176 @@ struct DocumentView: View {
                 .accessibilityIdentifier("document.scan")
             }
             if model.isEdited, model.url != nil {
-                Button("Save", systemImage: "square.and.arrow.down") {
-                    Task {
-                        do {
-                            try await model.save()
-                        } catch {
-                            saveError = error.localizedDescription
-                        }
-                    }
-                }
-                .accessibilityIdentifier("document.save")
+                Button("Save", systemImage: "square.and.arrow.down", action: save)
+                    .keyboardShortcut("s", modifiers: .command)
+                    .accessibilityIdentifier("document.save")
             }
-            ShareLink(item: SharedPDF(model: model), preview: SharePreview(model.name, image: Image(systemName: "doc.richtext")))
+            if !compact {
+                findAndMarkup
+                Button("Pages", systemImage: "square.grid.2x2") { showingPages = true }
+                    .disabled(!model.isReady)
+                    .accessibilityIdentifier("document.pages")
+                Button("Thumbnails", systemImage: showingThumbnails ? "sidebar.leading" : "sidebar.leading") {
+                    showingThumbnails.toggle()
+                }
                 .disabled(!model.isReady)
-                .accessibilityIdentifier("document.share")
+                .accessibilityIdentifier("document.thumbnails.toggle")
+            }
+            moreMenu
+            if !compact {
+                ShareLink(item: SharedPDF(model: model), preview: SharePreview(model.name, image: Image(systemName: "doc.richtext")))
+                    .disabled(!model.isReady)
+                    .accessibilityIdentifier("document.share")
+            }
             Button("Info", systemImage: "info.circle") {
                 showingInfo = true
             }
             .disabled(!model.isReady)
             .accessibilityIdentifier("document.info")
         }
+        if compact {
+            // The phone: the title block stays in the navigation bar, and
+            // the tools sit under the thumb — the view modes in More.
+            ToolbarItemGroup(placement: .bottomBar) {
+                findAndMarkup
+                Spacer()
+                Button("Thumbnails", systemImage: "rectangle.grid.1x2") { showingThumbnails.toggle() }
+                    .disabled(!model.isReady)
+                    .accessibilityIdentifier("document.thumbnails.toggle")
+                Spacer()
+                Button("Pages", systemImage: "square.grid.2x2") { showingPages = true }
+                    .disabled(!model.isReady)
+                    .accessibilityIdentifier("document.pages")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var findAndMarkup: some View {
+        if !readerMode {
+            Button("Find", systemImage: "magnifyingglass") {
+                if showingSearch { closeSearch() } else { showingSearch = true }
+            }
+            .keyboardShortcut("f", modifiers: .command)
+            .disabled(!model.isReady)
+            .accessibilityIdentifier("document.search")
+            Button("Markup", systemImage: markup ? "pencil.tip.crop.circle.fill" : "pencil.tip.crop.circle") {
+                if markup { finishMarkup() } else { startMarkup() }
+            }
+            .disabled(!model.isReady)
+            .accessibilityIdentifier("document.markup")
+        }
+    }
+
+    private var moreMenu: some View {
+        Menu {
+            Picker("Layout", selection: $layout) {
+                ForEach(PageLayout.allCases) { item in
+                    Label(item.title, systemImage: item.symbol).tag(item)
+                }
+            }
+            .pickerStyle(.inline)
+            Toggle("Night mode", systemImage: "moon", isOn: $night)
+            Toggle("Reader mode", systemImage: "doc.plaintext", isOn: $readerMode)
+            if compact {
+                Toggle("Thumbnails", systemImage: "rectangle.grid.1x2", isOn: $showingThumbnails)
+            }
+            Divider()
+            Button("Outline", systemImage: "list.bullet.indent") { showingOutline = true }
+                .accessibilityIdentifier("document.outline")
+            Button("Go to page…", systemImage: "number") { showingGoTo = true }
+                .keyboardShortcut("g", modifiers: [.command, .option])
+            Button("Marks", systemImage: "pencil.and.outline") { showingMarks = true }
+                .accessibilityIdentifier("document.marks")
+            if compact {
+                Button("Pages", systemImage: "square.grid.2x2") { showingPages = true }
+            }
+            Divider()
+            Button("Export…", systemImage: "square.and.arrow.up.on.square") { showingExport = true }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
+                .accessibilityIdentifier("document.export")
+            Button("Protect…", systemImage: model.password != nil || model.metadata?.encrypted == true ? "lock.fill" : "lock") { showingProtect = true }
+                .keyboardShortcut("l", modifiers: [.command, .shift])
+                .accessibilityIdentifier("document.protect")
+            if compact {
+                ShareLink(item: SharedPDF(model: model), preview: SharePreview(model.name, image: Image(systemName: "doc.richtext")))
+                    .accessibilityIdentifier("document.share")
+            }
+        } label: {
+            Label("More", systemImage: "ellipsis.circle")
+        }
+        .disabled(!model.isReady)
+        .accessibilityIdentifier("document.more")
+    }
+
+    /// The page element's label: the page, and whether the document is edited.
+    private var pageLabel: Text {
+        let page = Text("Page \(model.currentPage + 1) of \(model.pageCount)")
+        return model.isEdited ? page + Text(verbatim: ", ") + Text("Edited") : page
     }
 
     private var status: Text? {
         guard model.isReady else { return nil }
         let page = Text("Page \(model.currentPage + 1) of \(model.pageCount)")
         return model.isEdited ? page + Text(verbatim: " — ") + Text("Edited") : page
+    }
+
+    // MARK: - Actions
+
+    private var actions: DocumentActions {
+        DocumentActions(canSave: model.isEdited && model.url != nil, perform: perform)
+    }
+
+    /// The menu bar's and the keyboard's way in.
+    private func perform(_ action: DocumentAction) {
+        switch action {
+        case .find: if !readerMode { showingSearch = true }
+        case .goToPage: showingGoTo = true
+        case .nextPage: model.currentPage = min(model.currentPage + 1, max(model.pageCount - 1, 0))
+        case .previousPage: model.currentPage = max(model.currentPage - 1, 0)
+        case .toggleThumbnails: showingThumbnails.toggle()
+        case .toggleNight: night.toggle()
+        case .toggleReader: readerMode.toggle()
+        case .showPages: showingPages = true
+        case .export: showingExport = true
+        case .protect: showingProtect = true
+        case .save: save()
+        }
+    }
+
+    private func closeSearch() {
+        showingSearch = false
+        search.clear()
+    }
+
+    /// Markup on iPad shows the numbered strip of pages beside the
+    /// document, as the design target does; it goes back with Done.
+    private func startMarkup() {
+        markup = true
+        if !compact, !showingThumbnails {
+            showingThumbnails = true
+            thumbnailsForMarkup = true
+        }
+    }
+
+    private func finishMarkup() {
+        editor?.commitInk()
+        editor?.tool = nil
+        markup = false
+        if thumbnailsForMarkup {
+            showingThumbnails = false
+            thumbnailsForMarkup = false
+        }
+    }
+
+    private func save() {
+        Task {
+            do {
+                try await model.save()
+            } catch {
+                saveError = error.localizedDescription
+            }
+        }
     }
 }
 
@@ -176,6 +482,7 @@ struct PasswordPrompt: View {
                 .font(TextStyle.body)
                 .foregroundStyle(Surface.secondaryLabel)
                 .multilineTextAlignment(.center)
+                .accessibilityIdentifier("document.password.hint")
             SecureField("Password", text: $password)
                 .textFieldStyle(.roundedBorder)
                 .textContentType(.password)
@@ -193,6 +500,7 @@ struct PasswordPrompt: View {
             .buttonStyle(.borderedProminent)
             .disabled(password.isEmpty || opening)
             .keyboardShortcut(.defaultAction)
+            .accessibilityIdentifier("document.password.open")
         }
         .padding(Space.x8)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -209,8 +517,8 @@ struct PasswordPrompt: View {
     }
 }
 
-/// What the core read from the file: its own information, and which engine
-/// draws it.
+/// What the core read from the file: its own information, the marks on
+/// it, and which engine draws it.
 struct DocumentInfoSheet: View {
     let model: DocumentModel
 
@@ -226,8 +534,13 @@ struct DocumentInfoSheet: View {
                         Text(model.pageCount, format: .number)
                             .tabularNumbers()
                     }
+                    LabeledContent("Marks") {
+                        Text(markCount, format: .number)
+                            .tabularNumbers()
+                            .accessibilityIdentifier("info.marks")
+                    }
                     LabeledContent("Protected") {
-                        model.metadata?.encrypted == true ? Text("Yes") : Text("No")
+                        model.password != nil || model.metadata?.encrypted == true ? Text("Yes") : Text("No")
                     }
                     LabeledContent("Reading direction") {
                         model.isRightToLeft ? Text("Right to left") : Text("Left to right")
@@ -242,11 +555,31 @@ struct DocumentInfoSheet: View {
         }
     }
 
+    /// The marks a person made (PDFKit's count of annotations that are not
+    /// links or form fields).
+    private var markCount: Int {
+        guard let pdf = model.pdf else { return 0 }
+        return (0..<pdf.pageCount).reduce(0) { total, index in
+            total + (pdf.page(at: index)?.annotations.filter(\.isMarkup).count ?? 0)
+        }
+    }
+
     private func row(_ label: LocalizedStringKey, _ value: String?) -> some View {
         LabeledContent(label) {
             Text(value?.isEmpty == false ? value! : "—")
                 .foregroundStyle(value?.isEmpty == false ? Surface.label : Surface.tertiaryLabel)
                 .multilineTextAlignment(.trailing)
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func colorInvert(if inverted: Bool) -> some View {
+        if inverted {
+            colorInvert()
+        } else {
+            self
         }
     }
 }
