@@ -344,6 +344,22 @@ the deskew then takes out the tilt the flattening leaves.
 `ImageAnalyzer.isSupported`; on the simulator it is not, so the control is not shown there and it
 is unproven.
 
+**What ran, and what still fails (2026-09-27, both simulators, through the queue, one full
+attempt each after the design change).** `ScanPipelineTests`: 15/15 passed on iPhone 17 and 15/15 on
+iPad Pro 13-inch (M5). `ScanTests` (XCUITest): `testIDModeComposesFrontAndBackOnOnePage` and
+`testBookModeSplitsASpreadIntoTwoPages` passed on both. `testScansAPhotoFromTheLibraryIntoASearchablePDF`
+— the photo picked from the simulator's library (put there by `simctl addmedia`), a corner dragged, the
+page cut out, enhanced with the original held for comparison, the text read and copied, the PDF saved
+and opened with the core in the runner — got as far as the core's search on iPhone and **failed there**:
+the layer of that run's page (black-and-white by one threshold, a corner dragged inwards) had no «محرر»;
+the test now chooses grey and searches for words away from the dragged edge, and that version has not
+had a green run yet. On iPad the same test reached the text sheet and Vision's reading did not show
+within 120 s. `testScanScreenshots` passed on iPhone (40 pictures: nine screens × Arabic/English ×
+light/dark, plus the Settings section) and **failed on iPad** at the Settings screenshot (the text
+recognition section's switches were not found after a swipe), after making the nine Arabic-light
+pictures; the iPad's other combinations are not photographed. The machine was shared with two other
+iOS agents at load 30–100 and twice refused to fork; runs that died to that are not counted.
+
 **Not done, or limited.** The real camera, above. Vision reads the languages it reads: there is no
 Persian or Urdu model here (the web's Tesseract has both). A very dark or very large area of a page
 (a photograph, a heavy heading) lightens under the lighting step, which takes it for shadow. Book
