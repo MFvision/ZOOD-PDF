@@ -83,6 +83,14 @@ struct SettingsView: View {
                 }
             }
             .accessibilityIdentifier("settings.appearance")
+            // Near the top, where someone looking for it will find it: the
+            // tour is shown once and this is the only way back to it.
+            Button {
+                showingOnboarding = true
+            } label: {
+                Label("Show the welcome tour", systemImage: "sparkles")
+            }
+            .accessibilityIdentifier("settings.onboarding")
         } header: {
             Text("Interface")
         } footer: {
@@ -154,12 +162,6 @@ struct SettingsView: View {
 
     private var about: some View {
         Section("About") {
-            Button {
-                showingOnboarding = true
-            } label: {
-                Label("Show the welcome tour", systemImage: "sparkles")
-            }
-            .accessibilityIdentifier("settings.onboarding")
             LabeledContent("Version", value: Self.appVersion)
             LabeledContent("Core", value: Core.version)
             LabeledContent("Privacy") {

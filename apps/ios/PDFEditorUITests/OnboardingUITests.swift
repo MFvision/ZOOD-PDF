@@ -62,7 +62,13 @@ final class OnboardingUITests: XCTestCase {
 
         // And Settings brings it back for anyone who wants it again.
         again.buttons["home.settings"].tap()
+        XCTAssertTrue(again.descendants(matching: .any)["settings.form"].waitForExistence(timeout: 20), "Settings opened")
         let entry = again.buttons["settings.onboarding"]
+        if !entry.waitForExistence(timeout: 10) {
+            // A row below the fold on a phone: a list makes its rows as they
+            // scroll in, as the scanner's own tests note.
+            again.swipeUp()
+        }
         XCTAssertTrue(entry.waitForExistence(timeout: 20), "Settings offers the tour")
         entry.tap()
         XCTAssertTrue(again.descendants(matching: .any)["onboarding"].waitForExistence(timeout: 20))
