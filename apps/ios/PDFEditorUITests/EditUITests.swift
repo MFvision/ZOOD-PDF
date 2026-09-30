@@ -37,9 +37,20 @@ final class EditUITests: XCTestCase {
                       "the edit bar: \(ui.tree)")
     }
 
-    /// The field on the page, once a paragraph or a point has opened it.
-    private func field(_ ui: PartBApp) -> XCUIElement {
-        ui.app.textViews["edit.field"]
+    /// Whether the field on the page is open. The field lives inside
+    /// PDFKit's page overlay, and PDFKit's page lists its own text elements
+    /// to accessibility rather than its subviews, so the field is known by
+    /// the bar: while it is open the bar holds only Cancel and Apply.
+    private func fieldIsOpen(_ ui: PartBApp, timeout: TimeInterval = 20) -> Bool {
+        ui.app.buttons["edit.apply"].waitForExistence(timeout: timeout)
+    }
+
+    /// The page view's value, the core's text of the page, once the editor
+    /// is closed again (while it is open the view is a container).
+    private func pageText(after ui: PartBApp) -> String {
+        tapEdit(ui, "edit.done")
+        _ = ui.poll(timeout: 20) { !ui.app.buttons["edit.done"].exists }
+        return ui.page.value as? String ?? ""
     }
 
     // MARK: - The text already on the page
@@ -50,39 +61,32 @@ final class EditUITests: XCTestCase {
         ui.waitForPage(containing: "الفصل")
         openEditor(ui)
 
-        // The paragraphs are listed in the inspector on iPad and reachable
-        // on the page everywhere; the inspector's row is the reliable one.
+        // The paragraphs are listed in the inspector on iPad; on a phone the
+        // text itself is tapped, a little further down each time until a
+        // tap lands in a paragraph.
         let row = ui.app.buttons["edit.paragraph.0"]
         if row.waitForExistence(timeout: 20) {
             row.tap()
         } else {
-            // A phone: tap the text itself, in the top third of the page.
-            ui.page.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
+            for y in [0.22, 0.3, 0.4, 0.5] where !fieldIsOpen(ui, timeout: 4) {
+                ui.page.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: y)).tap()
+            }
         }
-        XCTAssertTrue(field(ui).waitForExistence(timeout: 20), "the field opens over the paragraph: \(ui.tree)")
+        XCTAssertTrue(fieldIsOpen(ui), "the field opens over the paragraph: \(ui.tree)")
 
+        // The field starts from the paragraph's text with the caret at its
+        // end: cleared, then the Arabic typed in its place.
         let replacement = "نصٌّ جديدٌ بالتشكيل"
-        field(ui).tap()
-        field(ui).press(forDuration: 1.2)
-        if ui.app.menuItems["Select All"].waitForExistence(timeout: 3) {
-            ui.app.menuItems["Select All"].tap()
-        } else if ui.app.menuItems["تحديد الكل"].exists {
-            ui.app.menuItems["تحديد الكل"].tap()
-        } else {
-            // No edit menu on this run: clear it a character at a time.
-            let length = (field(ui).value as? String)?.count ?? 0
-            field(ui).typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: min(length, 400)))
-        }
-        field(ui).typeText(replacement)
+        ui.app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 400))
+        ui.app.typeText(replacement)
         tapEdit(ui, "edit.apply")
 
         ui.waitForEdited()
-        XCTAssertTrue(ui.poll(timeout: 30) { !self.field(ui).exists }, "the field closes")
-        XCTAssertTrue(ui.poll(timeout: 40) { (ui.page.value as? String)?.contains(replacement) == true },
-                      "the core reads the new Arabic off the page: \(ui.page.value ?? "")")
+        XCTAssertTrue(ui.poll(timeout: 30) { !ui.app.buttons["edit.apply"].exists }, "the field closes")
+        let text = pageText(after: ui)
+        XCTAssertTrue(text.contains(replacement), "the core reads the new Arabic off the page: \(text.prefix(300))")
 
         // Saved and opened again: it is in the file, not only on screen.
-        tapEdit(ui, "edit.done")
         let save = ui.app.buttons["document.save"]
         XCTAssertTrue(save.waitForExistence(timeout: 20), "Save: \(ui.tree)")
         save.tap()
@@ -90,8 +94,8 @@ final class EditUITests: XCTestCase {
         ui.app.terminate()
 
         ui = try PartBApp.launch(language: PartBApp.arabic, file: file)
-        let text = ui.waitForPage(containing: replacement)
-        XCTAssertTrue(text.contains(replacement), "and it is in the file: \(text.prefix(200))")
+        let reopened = ui.waitForPage(containing: replacement)
+        XCTAssertTrue(reopened.contains(replacement), "and it is in the file: \(reopened.prefix(200))")
     }
 
     // MARK: - A line where the finger lands
@@ -103,14 +107,13 @@ final class EditUITests: XCTestCase {
         tapEdit(ui, "edit.addLine")
         tapEdit(ui, "edit.color.red")
         // Low on the page, in the margin under the invoice's own words.
-        ui.page.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.88)).tap()
-        XCTAssertTrue(field(ui).waitForExistence(timeout: 20), "the field opens where the finger landed: \(ui.tree)")
-        field(ui).tap()
-        field(ui).typeText("سطرٌ مضاف")
+        ui.page.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.8)).tap()
+        XCTAssertTrue(fieldIsOpen(ui), "the field opens where the finger landed: \(ui.tree)")
+        ui.app.typeText("سطرٌ مضاف")
         tapEdit(ui, "edit.apply")
         ui.waitForEdited()
-        XCTAssertTrue(ui.poll(timeout: 40) { (ui.page.value as? String)?.contains("سطرٌ مضاف") == true },
-                      "the added line is part of the page's text: \(ui.page.value ?? "")")
+        let text = pageText(after: ui)
+        XCTAssertTrue(text.contains("سطرٌ مضاف"), "the added line is part of the page's text: \(text.suffix(300))")
     }
 
     // MARK: - Links

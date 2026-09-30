@@ -74,6 +74,7 @@ final class EditPageLayer: UIView, UITextViewDelegate, UIGestureRecognizerDelega
         preview.lineDashPattern = [6, 4]
         pan.maximumNumberOfTouches = 1
         pan.delegate = self
+        tap.delegate = self
         addGestureRecognizer(pan)
         addGestureRecognizer(tap)
         // A pointer — a trackpad, a mouse, the Pencil hovering over the
@@ -236,6 +237,9 @@ final class EditPageLayer: UIView, UITextViewDelegate, UIGestureRecognizerDelega
             field = view
             addSubview(view)
             view.becomeFirstResponder()
+            // Again once the tap that opened it has finished: PDFKit's page
+            // can take the keyboard focus back at the end of the same touch.
+            DispatchQueue.main.async { [weak view] in view?.becomeFirstResponder() }
             // The keyboard takes the bottom of the screen and SwiftUI gives
             // the pages the rest; bring what is being typed into what is
             // left, or the field would be behind the keyboard.
@@ -483,10 +487,27 @@ final class EditPageLayer: UIView, UITextViewDelegate, UIGestureRecognizerDelega
     /// Everywhere else — all of the text mode — the touch goes through to
     /// PDFKit, so the pages still scroll under a finger while text is edited.
     override func gestureRecognizerShouldBegin(_ gesture: UIGestureRecognizer) -> Bool {
-        guard gesture === pan else { return true }
         guard let edit, !edit.working else { return false }
+        if gesture === tap {
+            // A tap is the editor's where it opens something: a paragraph, the
+            // new line's point, or anything at all in pictures and links
+            // (where a tap off every one of them lets go of the picked one).
+            guard edit.mode == .text else { return true }
+            guard edit.editing == nil, edit.placing == nil else { return false }
+            return edit.placingArmed
+                || edit.paragraph(at: storedPoint(gesture.location(in: self)), onPage: pageIndex) != nil
+        }
+        guard gesture === pan else { return true }
         if case .none = began(at: gesture.location(in: self), edit: edit) { return false }
         return true
+    }
+
+    /// PDFKit's own taps (selecting text, zooming) wait for the editor's:
+    /// the page's text view otherwise takes the first tap for itself — the
+    /// keyboard focus with it — and the paragraph under the finger does not
+    /// open until the second.
+    func gestureRecognizer(_ gesture: UIGestureRecognizer, shouldBeRequiredToFailBy other: UIGestureRecognizer) -> Bool {
+        gesture === tap && other.view !== self && !(other.view is UITextView && other.view?.superview === self)
     }
 
     private func selected(of edit: EditModel) -> PagePicture? {
