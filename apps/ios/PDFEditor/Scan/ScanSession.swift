@@ -54,12 +54,30 @@ enum ScanSide: String, Codable, Sendable {
     }
 }
 
+/// Where a picture came from, which settles whether a page still has to be
+/// found in it.
+enum ScanOrigin: Sendable {
+    /// VisionKit's document camera. It has already found the page, cut it out
+    /// and squared it: `VNDocumentCameraScan.imageOfPage(at:)` hands back the
+    /// page, not the photograph. Looking for a page in it again finds the
+    /// picture's own edges — or, worse, whatever the segmentation model makes
+    /// of a page that has no surroundings — and correcting by that bends a page
+    /// that was already straight. The owner's TestFlight scans came back with
+    /// the top-left corner higher than the rest for exactly this reason.
+    case documentCamera
+    /// A photograph: from Photos, from Files, or handed to the app. The page
+    /// has still to be found in it.
+    case picture
+}
+
 /// One captured page: the photo as taken, its corners, what the pipeline
 /// made of it, and what Vision read off it.
 struct ScanPage: Identifiable {
     let id: UUID
     var original: CGImage
     var quad: Quad
+    /// Where `original` came from: a camera's page is already cut out.
+    var origin: ScanOrigin = .picture
     var enhancement: Enhancement
     var side: ScanSide?
     /// The page inside its corners.
@@ -183,14 +201,18 @@ final class ScanSession {
         pages.first { $0.id == id }
     }
 
-    /// Takes photos into the session: the page found in each (Vision), or
-    /// in book mode the spread cut at its gutter into two pages.
-    func add(images: [CGImage], detect: Bool = true) async {
+    /// Takes pictures into the session: the page found in each (Vision), or
+    /// in book mode the spread cut at its gutter into two pages. A picture from
+    /// the document camera is already the page, so nothing is looked for in it
+    /// and nothing is corrected — the corners start on the whole picture, where
+    /// they can still be moved by hand.
+    func add(images: [CGImage], origin: ScanOrigin = .picture, detect: Bool = true) async {
+        let find = detect && origin == .picture
         for image in images.prefix(Self.maxPages - pages.count) {
             let placeholder = UUID()
             let mode = mode
             let detected = await Task.detached(priority: .userInitiated) { () -> (quad: Quad?, halves: (CGImage, CGImage)?) in
-                let quad = !detect ? nil : mode == .book ? ScanPipeline.detectSpread(in: image) : ScanPipeline.detectPage(in: image)
+                let quad = !find ? nil : mode == .book ? ScanPipeline.detectSpread(in: image) : ScanPipeline.detectPage(in: image)
                 guard mode == .book else { return (quad, nil) }
                 let spread = ScanPipeline.corrected(image, quad: quad ?? .whole(CGSize(width: image.width, height: image.height)))
                 let split = BookSplitter.split(spread)
@@ -198,14 +220,31 @@ final class ScanSession {
             }.value
             if let halves = detected.halves {
                 append(ScanPage(id: placeholder, original: halves.0, quad: .whole(CGSize(width: halves.0.width, height: halves.0.height)),
-                                enhancement: pageEnhancement(), side: .left))
+                                origin: origin, enhancement: pageEnhancement(), side: .left))
                 append(ScanPage(id: UUID(), original: halves.1, quad: .whole(CGSize(width: halves.1.width, height: halves.1.height)),
-                                enhancement: pageEnhancement(), side: .right))
+                                origin: origin, enhancement: pageEnhancement(), side: .right))
             } else {
                 let size = CGSize(width: image.width, height: image.height)
-                append(ScanPage(id: placeholder, original: image, quad: detected.quad ?? .whole(size), enhancement: pageEnhancement()))
+                append(ScanPage(id: placeholder, original: image, quad: detected.quad ?? .whole(size),
+                                origin: origin, enhancement: pageEnhancement()))
             }
         }
+    }
+
+    /// The corners Vision finds in a page's own picture, or the whole picture
+    /// for a page the camera has already cut out. "Auto" asks this again.
+    func findQuad(for id: UUID) async {
+        guard let page = pages.first(where: { $0.id == id }) else { return }
+        guard page.origin == .picture else {
+            setQuad(.whole(page.originalSize), for: id)
+            return
+        }
+        let image = page.original
+        let book = mode == .book
+        let found = await Task.detached(priority: .userInitiated) {
+            book ? ScanPipeline.detectSpread(in: image) : ScanPipeline.detectPage(in: image)
+        }.value
+        setQuad(found ?? .whole(page.originalSize), for: id)
     }
 
     /// The kind of ID page the mode composes, if any.
@@ -245,12 +284,16 @@ final class ScanSession {
         }
     }
 
-    /// Another photo in the place of a page.
-    func retake(_ id: UUID, with image: CGImage) async {
+    /// Another picture in the place of a page. A camera's page is already cut
+    /// out, as in `add(images:origin:detect:)`.
+    func retake(_ id: UUID, with image: CGImage, origin: ScanOrigin = .picture) async {
         guard let index = pages.firstIndex(where: { $0.id == id }) else { return }
-        let quad = await Task.detached(priority: .userInitiated) { ScanPipeline.detectPage(in: image) }.value
+        let quad = origin == .picture
+            ? await Task.detached(priority: .userInitiated) { ScanPipeline.detectPage(in: image) }.value
+            : nil
         guard let current = pages.firstIndex(where: { $0.id == id }), current == index || pages.indices.contains(current) else { return }
         pages[current].original = image
+        pages[current].origin = origin
         pages[current].quad = quad ?? .whole(CGSize(width: image.width, height: image.height))
         pages[current].corrected = nil
         pages[current].enhanced = nil

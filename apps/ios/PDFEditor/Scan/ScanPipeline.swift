@@ -59,6 +59,10 @@ struct Quad: Equatable, Sendable, Codable {
     }
 
     /// The page's size in pixels, as the longer of each pair of opposite edges.
+    /// This is how big the page is on the photo, not what shape it really is:
+    /// a page photographed at an angle has one edge nearer the lens and so
+    /// longer than the one opposite. `ScanPipeline.pageAspect(of:in:)` is what
+    /// answers the shape.
     var pageSize: CGSize {
         let top = hypot(topRight.x - topLeft.x, topRight.y - topLeft.y)
         let bottom = hypot(bottomRight.x - bottomLeft.x, bottomRight.y - bottomLeft.y)
@@ -97,6 +101,43 @@ struct Quad: Equatable, Sendable, Codable {
             if sign == 0 { sign = s } else if sign != s { return false }
         }
         return true
+    }
+}
+
+/// A point of the picture with a third coordinate, so that the lines through
+/// pairs of them and the points where those lines meet — a vanishing point —
+/// are cross products and dot products. Only `ScanPipeline.pageAspect` uses it.
+struct Homogeneous {
+    var x: CGFloat
+    var y: CGFloat
+    var z: CGFloat
+
+    init(_ point: CGPoint) {
+        x = point.x
+        y = point.y
+        z = 1
+    }
+
+    init(x: CGFloat, y: CGFloat, z: CGFloat) {
+        self.x = x
+        self.y = y
+        self.z = z
+    }
+
+    func cross(_ other: Homogeneous) -> Homogeneous {
+        Homogeneous(x: y * other.z - z * other.y, y: z * other.x - x * other.z, z: x * other.y - y * other.x)
+    }
+
+    func dot(_ other: Homogeneous) -> CGFloat {
+        x * other.x + y * other.y + z * other.z
+    }
+
+    func scaled(by k: CGFloat) -> Homogeneous {
+        Homogeneous(x: k * x, y: k * y, z: k * z)
+    }
+
+    func minus(_ other: Homogeneous) -> Homogeneous {
+        Homogeneous(x: x - other.x, y: y - other.y, z: z - other.z)
     }
 }
 
@@ -273,9 +314,107 @@ enum ScanPipeline {
             .clamped(to: size)
     }
 
+    // MARK: - How big the page really is
+
+    /// A camera's focal length in pixels is about this many times the longer
+    /// side of the picture it takes: a phone's main lens sees roughly 70°
+    /// across. It stands in where the corners cannot say what the lens was.
+    static let assumedFocalLengths: CGFloat = 1.1
+
+    /// A solved focal length is believed only inside this band of the
+    /// picture's longer side — from an ultra-wide to a modest telephoto.
+    /// Anything outside it is arithmetic, not a camera.
+    static let focalLengthBand: ClosedRange<CGFloat> = 0.5...4.0
+
+    /// Each pair of the page's edges must be at least this far from parallel
+    /// before their meeting point is worth solving the lens from. Below it the
+    /// two lines are so nearly parallel that a pixel of noise on a corner
+    /// throws the answer off by tens of percent (measured: ±8 px of noise on a
+    /// page tilted on one axis only gave errors up to 73 %).
+    static let minimumConvergence: CGFloat = 0.03
+
+    /// The width ÷ height of the rectangle the quad is a photograph of.
+    ///
+    /// The quad's own edges do not say it: a page tilted away from the lens
+    /// has its far edge shorter than its near one, so `Quad.pageSize` makes an
+    /// A4 page look anything from 17 % narrower to 57 % wider than it is
+    /// (measured in `ScanPipelineTests`). A rectangle seen by a pinhole
+    /// camera does say it, though: each pair of its edges meets at a vanishing
+    /// point, the two vanishing points give the lens's focal length, and the
+    /// focal length gives the rectangle's proportions (Zhang and He, *Whiteboard
+    /// scanning and image enhancement*, 2007 — the same construction Acrobat's
+    /// and every scanner app's crop uses). Where only one pair converges the
+    /// focal length cannot be solved and `assumedFocalLengths` stands in; where
+    /// neither does (the page was square to the lens) the edges are already
+    /// right and the answer comes out as their ratio.
+    ///
+    /// nil when the corners are degenerate — three in a line, or two the same.
+    static func pageAspect(of quad: Quad, in size: CGSize) -> CGFloat? {
+        let u0 = size.width / 2, v0 = size.height / 2
+        // The corners as homogeneous points, named as the construction names
+        // them: 1 top-left, 2 top-right, 3 bottom-left, 4 bottom-right.
+        let m1 = Homogeneous(quad.topLeft), m2 = Homogeneous(quad.topRight)
+        let m3 = Homogeneous(quad.bottomLeft), m4 = Homogeneous(quad.bottomRight)
+        let d2 = m2.cross(m4).dot(m3), d3 = m3.cross(m4).dot(m2)
+        guard abs(d2) > 1e-9, abs(d3) > 1e-9 else { return nil }
+        let k2 = m1.cross(m4).dot(m3) / d2
+        let k3 = m1.cross(m4).dot(m2) / d3
+        let n2 = m2.scaled(by: k2).minus(m1)
+        let n3 = m3.scaled(by: k3).minus(m1)
+
+        /// The squared length the vector would have on the sensor of a camera
+        /// with this focal length and its centre in the middle of the picture.
+        func squaredLength(_ n: Homogeneous, focal f: CGFloat) -> CGFloat {
+            let x = (n.x - u0 * n.z) / f, y = (n.y - v0 * n.z) / f
+            return x * x + y * y + n.z * n.z
+        }
+
+        let longest = max(size.width, size.height)
+        var focal = assumedFocalLengths * longest
+        // n2.z and n3.z are how far each pair of edges is from parallel.
+        if abs(n2.z) > minimumConvergence, abs(n3.z) > minimumConvergence {
+            let alongX = n2.x * n3.x - (n2.x * n3.z + n2.z * n3.x) * u0 + n2.z * n3.z * u0 * u0
+            let alongY = n2.y * n3.y - (n2.y * n3.z + n2.z * n3.y) * v0 + n2.z * n3.z * v0 * v0
+            let squared = -(alongX + alongY) / (n2.z * n3.z)
+            if squared > 0, squared.isFinite {
+                let solved = sqrt(squared)
+                if focalLengthBand.contains(solved / longest) { focal = solved }
+            }
+        }
+        let squared = squaredLength(n2, focal: focal) / squaredLength(n3, focal: focal)
+        guard squared > 0, squared.isFinite else { return nil }
+        let aspect = sqrt(squared)
+        // A page four times as wide as tall, or as tall as wide, is not a page:
+        // the corners were nonsense, so say nothing rather than a wrong shape.
+        guard aspect > 0.2, aspect < 5 else { return nil }
+        return aspect
+    }
+
+    /// How many pixels the page is drawn at once it is cut out: its true
+    /// proportions (`pageAspect`), at the density of whichever of its edges
+    /// the photo caught at the most pixels, and never above `maxSide`.
+    static func correctedSize(of quad: Quad, in size: CGSize) -> CGSize {
+        let edges = quad.pageSize
+        guard let aspect = pageAspect(of: quad, in: size), edges.width >= 1, edges.height >= 1 else { return edges }
+        // Whichever way the page was stretched on the photo, keep the detail:
+        // take the larger of the two sizes the aspect allows.
+        var width = max(edges.width, edges.height * aspect)
+        var height = width / aspect
+        let longest = max(width, height)
+        if longest > maxSide {
+            width *= maxSide / longest
+            height *= maxSide / longest
+        }
+        return CGSize(width: max(8, width.rounded()), height: max(8, height.rounded()))
+    }
+
     // MARK: - Cutting the page out
 
-    /// The page inside `quad`, cut out and made rectangular.
+    /// The page inside `quad`, cut out and made rectangular — and drawn at the
+    /// page's own proportions. Core Image's perspective correction undoes the
+    /// projection exactly, but it sizes its answer from the quad's own
+    /// extremes, which is not the page's shape; so the answer is scaled to
+    /// `correctedSize(of:in:)`.
     static func corrected(_ image: CGImage, quad: Quad) -> CGImage {
         let size = CGSize(width: image.width, height: image.height)
         let whole = Quad.whole(size)
@@ -294,7 +433,10 @@ enum ScanPipeline {
               output.extent.width.isFinite, output.extent.height.isFinite else {
             return image
         }
-        return render(output) ?? image
+        let target = correctedSize(of: quad, in: size)
+        let shaped = output.transformed(by: CGAffineTransform(scaleX: target.width / output.extent.width,
+                                                             y: target.height / output.extent.height))
+        return render(shaped) ?? render(output) ?? image
     }
 
     // MARK: - The enhancement

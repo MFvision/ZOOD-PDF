@@ -142,6 +142,8 @@ struct EmptyState: View {
     let message: LocalizedStringKey
     var actionTitle: LocalizedStringKey? = nil
     var action: (() -> Void)? = nil
+    /// The action button's identifier, so a UI test can press it.
+    var actionIdentifier: String? = nil
 
     var body: some View {
         ContentUnavailableView {
@@ -152,6 +154,7 @@ struct EmptyState: View {
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
                     .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier(actionIdentifier ?? "empty.action")
             }
         }
     }
