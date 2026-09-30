@@ -385,7 +385,9 @@ handles on the page itself with a magnifier under the finger while one is dragge
 Document · Whiteboard · ID Card · Book along the bottom, and the large round shutter. A passport
 (ID-3) is a switch inside ID Card, so the strip has exactly those four.
 
-**Capture.** VisionKit's document camera (`VNDocumentCameraViewController`: automatic edges,
+**Capture.** *(Superseded on 2026-09-30 — see "The scanner opens at the camera" below: the scanner
+now opens the camera itself, and a page the camera hands back is no longer cut out a second time.
+What follows is the record of 2026-09-21.)* VisionKit's document camera (`VNDocumentCameraViewController`: automatic edges,
 auto-shutter, many pages a session) is wired and offered wherever there is a camera. **VisionKit's
 `isSupported` answers true on the iOS 27 simulator** although it has no camera, so the shutter also
 asks AVFoundation for a video device; on the simulator there is none, so the shutter carries the photo symbol and the caption under it says "No
@@ -511,6 +513,183 @@ Persian or Urdu model here (the web's Tesseract has both). A very dark or very l
 (a photograph, a heavy heading) lightens under the lighting step, which takes it for shadow. Book
 mode's flattening is a column shift, not a dewarp. Every screen was photographed and looked at on
 the simulator (`docs/design/ios/scan-*.jpg`, `settings-scan-*.jpg`); nothing was seen on a device.
+
+## The iOS app: the scanner opens at the camera, the crop's geometry, and a welcome tour (2026-09-30)
+
+The owner installed the TestFlight build, scanned a real document with it and reported three things.
+All three were looked into on this Mac; what was found, what was changed and what is still unproven:
+
+### 1. "It doesn't open at the camera automatically"
+
+**The cause, exactly.** `ScanView` held `@State private var showingCamera = false` and presented
+VisionKit's document camera only from the shutter's action. Opening Scan therefore drew the dark
+stage with an empty-state message on it and nothing else — the "blackboard" the owner described —
+and the camera appeared only after the shutter was tapped.
+
+**What it does now.** The scanner asks for the camera and opens it in its own `.task`, the moment it
+appears with nothing on the stage. Every answer is handled and each one says what is true
+(`CameraAccess` in `apps/ios/PDFEditor/Scan/ScanBridges.swift`):
+
+| The answer | What the scanner does |
+| --- | --- |
+| Allowed | The document camera opens at once, with no tap. |
+| Never asked | The system's camera question is asked; on a yes the camera opens, on a no the next row. |
+| Refused | The stage says "The camera is off for ⁧محرر PDF⁩", with the path through Settings and an **Open Settings** button; the shutter still chooses a photo, and its caption says so. |
+| Restricted (a profile, Screen Time) | The stage says that instead, with the same way out. |
+| No camera at all (the simulator) | Today's behaviour, kept: the photo symbol on the shutter, "No camera on this device — the shutter chooses a photo", and a **Choose photos** button on the stage. |
+
+The camera is opened **once** by the scanner itself. Closing it leaves the scanner — reopening it
+would be a room with no door — and the shutter and the empty stage's button are the way back in. It
+is not opened over pictures the scanner was handed (`initialImages`: a photo from Files, from another
+app, or `-warraqScan` on the command line), nor when a page is already on the stage. Every other way
+in opens the camera, which is the point of them: the **Scan widget**, the **Control Center control**,
+the Shortcuts/Siri **App Intent**, the Home Screen **quick action**, the Library's toolbar and the
+home's Scan card all land on the scanner with nothing on the stage, so a single tap on the widget now
+reaches the camera. The permission is read again whenever the scanner comes back to the front, so a
+camera switched on in Settings is noticed.
+
+**How far it is proven.** `VNDocumentCameraViewController` cannot run on the simulator and this Mac
+has no device, so **the real camera is still unproven — nobody has seen it open.** What is proven is
+the scanner's own behaviour on each answer: `PDFEditorUITests/ScanCameraTests` drives the five states
+through a Debug-only `-warraqCamera ready|notAsked|denied|restricted|missing`, with a stand-in view
+in VisionKit's place where there is no camera, and reads the interface back — the camera opened with
+no tap, closing it not reopening it, the empty stage's reason and its Settings button, the Arabic
+wording, the photo fallback, and pictures handed in not being covered.
+
+### 2. "Some of the scans weren't proper: the top-left angle higher than any other" — and "it auto-resizes but has an issue with that"
+
+These are two separate faults with two separate causes. Both were found by measurement, not by
+reading the code, and both are held down by tests that fail without the fix.
+
+**The skew was a correction applied twice.** `VNDocumentCameraScan.imageOfPage(at:)` does not hand
+back the photograph: VisionKit has already found the page, cut it out and squared it. `ScanSession`
+nonetheless ran `ScanPipeline.detectPage` on it and corrected it again. On a picture that *is* the
+page there are no page edges to find, and `VNDetectDocumentSegmentationRequest` answers something
+that is not the page: on a 1240 × 1754 synthetic page it answered
+`(180,630) (1240,20) (1231,1754) (8,1747)` at confidence 0.67 — a quad whose top-left corner is 630
+pixels down the side — and `plausible()` let it through (convex, 0.74 of the picture, aspect in
+range). Correcting by it drags the page's top-left corner up and out: the picture comes back
+2163 × 1734 with one of its four marks cut away altogether. That is the owner's "top-left angle
+higher than any other".
+
+The fix is provenance: `ScanOrigin` (`.documentCamera` / `.picture`) travels with every page, and a
+camera's page is taken as it is — corners on the whole picture, nothing detected, nothing corrected.
+"Auto" on such a page answers the whole picture too. Pictures from Photos, Files, the share sheet and
+the launch arguments are found and cut out exactly as before.
+
+**The wrong output size was Core Image's — and this one is a smaller fault than the owner's words
+suggest.** `CIPerspectiveCorrection` undoes the projection exactly: the corrected page's corners come
+back square to within 0.04°, on every angle tried. It also picks the size of its answer itself, and
+that size is not the page's shape. Measured on synthetic pinhole photographs of an A4 page — the
+same test, run against the code as it stood on 2026-09-29 and again after the change
+(`ScanGeometryTests`, the numbers the tests print):
+
+| The photograph | Core Image's own size (before) | The page's proportions recovered (after) |
+| --- | --- | --- |
+| Square to the lens | −0.1 % | +0.1 % |
+| Tilted 12° back | −5.4 % | −1.6 % |
+| Tilted 28° back | −6.3 % | −7.0 % |
+| Turned 22° sideways | +3.3 % | +4.8 % |
+| Tilted 25° and turned 15° | −3.6 % | **+0.0 %** |
+| Tilted 30°, turned 18°, rolled 7° | −3.0 % | **−0.0 %** |
+| A card, tilted 26° and turned 16° | +4.2 % | **−0.0 %** |
+| Landscape A4, tilted 26° and turned 16° | +2.9 % | **+0.0 %** |
+
+`ScanPipeline.pageAspect(of:in:)` now reads the page's true proportions from its four corners: each
+pair of the page's edges meets at a vanishing point, the two vanishing points give the lens's focal
+length, and the focal length gives the rectangle's proportions (Zhang and He, *Whiteboard scanning
+and image enhancement*, 2007). **Where both pairs of edges converge — which is any photograph taken
+by hand, since one never holds a phone square on both axes — the answer is exact**, 0.0 % against
+3–4 % before, and that is the assertion the tests hold it to (2 %). Where the page is tilted on one
+axis alone the two vanishing points are nearly the same, the lens cannot be solved for, and an
+ordinary phone lens is assumed instead (1.1 × the picture's longer side); there the answer is no
+better than Core Image's, as the 28° row shows. A solved focal length outside 0.5–4 × the longer side
+is not believed. The tolerance for the assumed case is 15 %.
+
+Why the convergence guard (`minimumConvergence`, 0.03) matters: with ±4 px of noise on every corner,
+200 draws, the recovered shape moves by at most 1.6 % where both axes converge and 7.2 % where only
+one does. Without the guard, solving from two vanishing points that nearly coincide gave errors up to
+73 % on the same noise — worse than doing nothing.
+
+**What was *not* the fault.** An earlier measurement of this made the sizing look far worse (35–53 %
+out). That measurement used quadrilaterals chosen by hand, which are projections of a rectangle but
+not ones any camera with square pixels and its lens in the middle of the frame could produce; on
+photographs a camera could actually take, Core Image's sizing is 3–6 % out, not 35 %. The figure
+quoted here is the second one. So the visible skew the owner saw was the double correction, above;
+the sizing is a real but much smaller error, and it is now nil on the common case.
+
+**What the guess in the brief got wrong.** The brief suggested a corner-ordering error or a flip
+applied twice in `quad(from:in:)`. That is not it: with the page's true corners, `corrected` returns
+the page square to 0.04° with the top-left mark still in the top-left corner, on every angle tried.
+`quad(from:in:)`'s y-flip and the Core Image corner names are right. The "twice" was real, but it was
+the whole correction being applied twice, not a flip.
+
+**Tests.** `apps/ios/PDFEditorTests/ScanGeometryTests.swift`, 8 tests. The pictures they measure are
+made in the test file itself — a pinhole projection of a page of known shape, then every pixel laid
+down by the test's own projective mapping — so nothing of the pipeline's takes part in making what
+the pipeline is judged on. They hold the corrected page to **square within 1.5°**, to the page's own
+proportions **within 2 %** where the lens can be solved for and 15 % where it cannot, and check that
+the mark that was in the page's top-left corner is still there.
+
+**How the RED was established, and a warning about it.** The first version of these tests *passed*
+against the unfixed code, and that is worth writing down. Two reasons: the aspect tolerance was 15 %,
+which the old sizing already met (see the table above), and on the *synthetic* page the double
+correction does not reproduce on this simulator — the simulator's
+`VNDetectDocumentSegmentationRequest` answers a band along the bottom of a borderless picture, which
+`plausible()` throws away, so no second correction happened. (The nonsense quad quoted above was got
+by running the same detector on macOS, where the model behaves as a device's does.) The tests were
+sharpened until they do discriminate, and then run against the code as it stood on 2026-09-29:
+
+```
+Executed 8 tests, with 8 failures            # before the fix
+  testAnAngledPageComesBackSquareAndAtItsOwnProportions
+     tilted 25° and turned 15°:      0.5682 against 0.5891 (−3.6 %), tolerance 2 %
+     tilted 30°, turned 18°, roll 7°: 0.5717 against 0.5891 (−3.0 %)
+  testOtherShapesKeepTheirProportionsToo
+     a card:        1.3759 against 1.3210 (+4.2 %)
+     landscape A4:  1.2128 against 1.1788 (+2.9 %)
+  testTheDetectorIsNotRunOnAPageFromTheCamera
+     the camera's page was detected and cut out: 73,141 691,77 783,950 165,1015
+     instead of the whole picture, and came back 622 px wide instead of 859
+```
+
+`testTheDetectorIsNotRunOnAPageFromTheCamera` puts the same `page-crooked.jpg` through both paths —
+Vision *does* find the page in that one on this simulator, at confidence 1.0 — and asserts that the
+photograph is cut out and the camera's page is not. That is the one that shows the double correction
+on this machine: a page 859 px wide came back 622 px wide, a quarter of it gone.
+
+### 3. "Maybe it's missing an onboarding tutorial"
+
+It was. `apps/ios/PDFEditor/App/Onboarding.swift` is a four-screen walkthrough on the first launch,
+in Arabic and English, right-to-left in Arabic, built from the design tokens: what the app is and
+that nothing leaves the device; Scan; mark up and sign; organize, export, protect and the Library.
+Skip on the first screen, Next through, Start at the end; the answer is kept in the app's own
+defaults (`onboardingSeen`) so it is shown once, and Settings → About → **Show the welcome tour**
+opens it again. **No façade:** every line names something the app does today — the editor, redaction,
+forms, compare, batch, PAdES signatures, AI and the cloud are not on this device and are not
+mentioned. In Debug builds it stays out of the way unless a test asks for it (`-warraqOnboarding
+show|keep`), so it does not land on top of every other UI test; in a build anyone installs it is
+shown on the first launch. Proven by `PDFEditorUITests/OnboardingUITests` (shown, skipped, walked
+screen by screen, remembered across a relaunch, reopened from Settings, and Arabic with Skip on the
+right-hand side); photographed into `docs/design/ios/onboarding-*.jpg`.
+
+**One thing the camera change broke, and the fix.** The home's **Create** card and the sidebar's
+**Create a PDF** both open the same scanner, and "A PDF from pictures" is what that card promises —
+so with the scanner opening at the camera it would have put the camera in front of it. `ScanStart`
+now says which the scanner shows: Scan, the widget, the Control Center control, the Shortcut and the
+quick action go to the camera; Create goes to the photo picker
+(`ScanCameraTests.testCreateAPDFStartsAtThePicturesRatherThanTheCamera`).
+
+### Not done, and not claimed
+
+* **The real camera has still never been run by anyone.** Everything above about the camera is the
+  scanner's own behaviour, driven through a Debug launch argument on a simulator with no camera.
+* A page tilted steeply on one axis alone still comes out about 7 % from its true proportions,
+  because the lens cannot be recovered from such a photograph and one has to be assumed. Reading the
+  real focal length from the picture's EXIF would close that for pictures from Photos and Files; it
+  is not done, and a picture from the document camera carries none anyway.
+* The owner's other items in this report — the ZOOD logo, the liquid-glass and Zood themes, the PDF
+  editor itself, encryption, AI, cloud and PAdES signatures — are not this work and are not touched.
 
 ## The Library: reading the files, measured (2026-09-20)
 
