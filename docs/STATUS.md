@@ -1402,10 +1402,25 @@ one-simulator subset of `scripts/ios/build.sh`, under the machine-wide queue):
   `marks.text`, removed; a watermark on one page only and Bates numbers on every page;
   the preview). Core: `cargo test -p warraq-core -p warraq-pdf --lib` 121 + 232 passed,
   clippy clean, including the new `added_text_takes_the_colour_it_was_given…`.
-* XCUITest `EditUITests` — see the report of the last run below; the simulator runner
-  repeatedly failed to start ("Timed out while loading Accessibility") while the Mac was
-  under a load of ~110 from macOS's own media analysis, so not every UI test has a clean
-  run on both devices.
+* XCUITest `EditUITests`, last run on each device:
+  * **iPhone 17: 4 passed, 0 failed** (the screenshot test skipped without a directory) —
+    a paragraph tapped on the page, replaced with Arabic, Apply, the page's text read by
+    the core, Save, the app relaunched and the Arabic read off the file; a red Arabic line
+    added where the finger landed; a link drawn, given an address, removed; an Arabic
+    header added in Page marks, listed, removed.
+  * **iPad Pro 13-inch (M5): 2 passed, 2 failed.** Links and Page marks pass. The added
+    line passed in the run before and failed in this one (the field did not open on the
+    tap; the Mac was at a load of ~110 and one test took 975 s). **The paragraph test
+    fails on iPad in every run:** opened from the inspector's row, the field opens and
+    takes the keyboard, but after ⌘A and the typed Arabic, Apply leaves the page with
+    its heading only — the paragraph was replaced with nothing. The same flow passes on
+    the iPhone (tapped on the page) and the same core call passes on both devices in
+    XCTest, so the fault is between the inspector-opened field and what the simulator's
+    hardware keyboard delivers to it; it is not found. Until it is, treat **editing a
+    paragraph opened from the iPad inspector as unproven**; tapping the text on the page
+    is the path that is proven.
+  * The simulator runner also failed to start several times ("Timed out while loading
+    Accessibility") under that load; those runs are not counted.
 
 **Limits, stated plainly.**
 * The editor reads and acts on **the page on screen**. In continuous scroll the pages
