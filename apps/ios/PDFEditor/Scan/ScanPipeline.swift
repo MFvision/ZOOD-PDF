@@ -319,7 +319,7 @@ enum ScanPipeline {
     /// A camera's focal length in pixels is about this many times the longer
     /// side of the picture it takes: a phone's main lens sees roughly 70°
     /// across. It stands in where the corners cannot say what the lens was.
-    static let assumedFocalLengths: CGFloat = 1.1
+    static let assumedFocalLength: CGFloat = 1.1
 
     /// A solved focal length is believed only inside this band of the
     /// picture's longer side — from an ultra-wide to a modest telephoto.
@@ -337,14 +337,13 @@ enum ScanPipeline {
     ///
     /// The quad's own edges do not say it: a page tilted away from the lens
     /// has its far edge shorter than its near one, so `Quad.pageSize` makes an
-    /// A4 page look anything from 17 % narrower to 57 % wider than it is
-    /// (measured in `ScanPipelineTests`). A rectangle seen by a pinhole
+    /// A4 page look 14 % narrower turned 22° sideways and 31 % wider tilted 28°
+    /// back (measured in `ScanGeometryTests`). A rectangle seen by a pinhole
     /// camera does say it, though: each pair of its edges meets at a vanishing
     /// point, the two vanishing points give the lens's focal length, and the
     /// focal length gives the rectangle's proportions (Zhang and He, *Whiteboard
-    /// scanning and image enhancement*, 2007 — the same construction Acrobat's
-    /// and every scanner app's crop uses). Where only one pair converges the
-    /// focal length cannot be solved and `assumedFocalLengths` stands in; where
+    /// scanning and image enhancement*, 2007). Where only one pair converges the
+    /// focal length cannot be solved and `assumedFocalLength` stands in; where
     /// neither does (the page was square to the lens) the edges are already
     /// right and the answer comes out as their ratio.
     ///
@@ -370,7 +369,7 @@ enum ScanPipeline {
         }
 
         let longest = max(size.width, size.height)
-        var focal = assumedFocalLengths * longest
+        var focal = assumedFocalLength * longest
         // n2.z and n3.z are how far each pair of edges is from parallel.
         if abs(n2.z) > minimumConvergence, abs(n3.z) > minimumConvergence {
             let alongX = n2.x * n3.x - (n2.x * n3.z + n2.z * n3.x) * u0 + n2.z * n3.z * u0 * u0
