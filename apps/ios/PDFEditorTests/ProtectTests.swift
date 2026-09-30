@@ -77,7 +77,8 @@ final class ProtectTests: XCTestCase {
         let open = try await Core.open(bytes: reopened.bytes)
         let meta = try await open.metadata()
         XCTAssertFalse(meta.encrypted)
-        XCTAssertFalse(await Protect.status(of: reopened.bytes).protected)
+        let afterRemoval = await Protect.status(of: reopened.bytes)
+        XCTAssertFalse(afterRemoval.protected)
         XCTAssertEqual(reopened.pdf?.isLocked, false)
         reopened.close()
         model.close()
@@ -129,7 +130,8 @@ final class ProtectTests: XCTestCase {
         // host can open — the core is the same on all of them.
         try await Protect.setPassword(arabicPassword, on: model, undoManager: nil)
         let reopened = try await Core.open(bytes: model.bytes, password: arabicPassword)
-        XCTAssertGreaterThan(await reopened.pageCount, 0)
+        let pages = await reopened.pageCount
+        XCTAssertGreaterThan(pages, 0)
         do {
             _ = try await Core.open(bytes: model.bytes, password: "warraq")
             XCTFail("the old password still opens it")
@@ -173,7 +175,8 @@ final class ProtectTests: XCTestCase {
             on: model,
             undoManager: nil
         )
-        let permissions = try XCTUnwrap(await Protect.status(of: model.bytes).permissions)
+        let status = await Protect.status(of: model.bytes)
+        let permissions = try XCTUnwrap(status.permissions)
         XCTAssertTrue(permissions.print, "printing was allowed")
         XCTAssertFalse(permissions.copy, "copying was not")
         XCTAssertFalse(permissions.change, "changing was not")

@@ -58,7 +58,11 @@ struct ProtectSheet: View {
                 Text(error ?? "")
             }
         }
-        .presentationDetents([.medium, .large])
+        // The whole sheet at once: what protects the document, the password,
+        // the permissions and the button. At the medium detent the button sat
+        // under the keyboard, which a person cannot reach any more than the
+        // test could.
+        .presentationDetents([.large])
         .sensoryFeedback(.success, trigger: done)
         .task {
             // Reading /Encrypt needs no password, so this works even for a
