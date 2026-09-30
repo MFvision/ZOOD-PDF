@@ -29,7 +29,6 @@ final class EditPageLayer: UIView, UITextViewDelegate, UIGestureRecognizerDelega
     private var hover: CGPoint?
     private var handleViews: [UIView] = []
     private var field: UITextView?
-    private var fieldBox = CGRect.zero
     private lazy var pan = UIPanGestureRecognizer(target: self, action: #selector(panned(_:)))
     private lazy var tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
     /// What the current drag is doing, worked out when it began.
@@ -227,7 +226,6 @@ final class EditPageLayer: UIView, UITextViewDelegate, UIGestureRecognizerDelega
         let view = field ?? makeField()
         let rightToLeft = wanted.paragraph?.isRightToLeft ?? edit.draftIsRightToLeft
         view.frame = wanted.box
-        fieldBox = wanted.box
         view.font = .systemFont(ofSize: max(9, CGFloat(wanted.paragraph?.fontSize ?? edit.size) * viewScale))
         view.textAlignment = alignment(of: wanted.paragraph, rightToLeft: rightToLeft)
         view.semanticContentAttribute = rightToLeft ? .forceRightToLeft : .forceLeftToRight
