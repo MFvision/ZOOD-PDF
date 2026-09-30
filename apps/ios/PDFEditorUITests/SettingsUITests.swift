@@ -27,8 +27,7 @@ final class SettingsUITests: XCTestCase {
     }
 
     private func openSettings(in app: XCUIApplication) {
-        XCTAssertTrue(app.buttons["library.settings"].waitForExistence(timeout: 30))
-        app.buttons["library.settings"].tap()
+        app.homeSettingsCard().tap()
         XCTAssertTrue(app.otherElements["settings.form"].waitForExistence(timeout: 10) || app.collectionViews.firstMatch.waitForExistence(timeout: 5))
     }
 
@@ -91,14 +90,14 @@ final class SettingsUITests: XCTestCase {
         let sawLock = lock.waitForExistence(timeout: driven ? 5 : 30)
         if !driven {
             XCTAssertTrue(sawLock, "the app starts locked")
-            XCTAssertFalse(app.buttons["library.settings"].isHittable, "nothing behind the lock can be used")
+            XCTAssertFalse(app.buttons["home.settings"].isHittable, "nothing behind the lock can be used")
             throw XCTSkip("no Face ID driver: run with WARRAQ_FACEID_DRIVER=1 while simctl posts a matching face")
         }
         let unlocked = NSPredicate(format: "exists == false")
         expectation(for: unlocked, evaluatedWith: lock)
         waitForExpectations(timeout: 180)
-        XCTAssertTrue(app.buttons["library.settings"].waitForExistence(timeout: 10), "the Library is usable again")
-        XCTAssertTrue(app.buttons["library.settings"].isHittable, "unlocked on the simulator's Face ID match")
+        let card = app.homeSettingsCard(timeout: 10)
+        XCTAssertTrue(card.isHittable, "unlocked on the simulator's Face ID match")
     }
 
     /// Scrolls the Settings form until `element` is there (its lower

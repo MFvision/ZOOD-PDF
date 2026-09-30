@@ -11,6 +11,15 @@ struct HomeView: View {
     let actions: HomeActions
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.appTheme) private var theme
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    /// ZOOD's headings are set a weight heavier; the other themes keep the
+    /// system's bold.
+    private var headingWeight: Font.Weight {
+        ThemeStyle(theme: theme, scheme: scheme, reduceTransparency: reduceTransparency).headingWeight
+    }
 
     var body: some View {
         ScrollView {
@@ -37,7 +46,7 @@ struct HomeView: View {
             }
             .padding(.vertical, Space.x5)
         }
-        .background(HomeBackground())
+        .themedGround()
         .accessibilityIdentifier("library.home")
     }
 
@@ -45,11 +54,16 @@ struct HomeView: View {
 
     private var hero: some View {
         VStack(alignment: .leading, spacing: Space.x3) {
-            Text(Self.greeting())
-                .font(TextStyle.subheadline)
-                .foregroundStyle(Surface.secondaryLabel)
+            // The app's own mark, the same drawing as the icon on the Home
+            // Screen, beside the greeting.
+            HStack(spacing: Space.x4) {
+                ZoodMark(size: 34)
+                Text(Self.greeting())
+                    .font(TextStyle.subheadline)
+                    .foregroundStyle(Surface.secondaryLabel)
+            }
             Text("PDFs, done right.")
-                .font(.system(.largeTitle, design: .default, weight: .bold))
+                .font(.system(.largeTitle, design: .default, weight: headingWeight))
                 .fixedSize(horizontal: false, vertical: true)
             Text("Open, scan, search — everything stays on this device.")
                 .font(TextStyle.body)
@@ -85,8 +99,7 @@ struct HomeView: View {
                 .accessibilityIdentifier("sidebar.folder")
             }
         }
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Radius.sheet, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: Radius.sheet, style: .continuous).strokeBorder(Glass.edge, lineWidth: 1))
+        .themedCard()
         .padding(.horizontal, Space.x5)
     }
 
@@ -148,15 +161,24 @@ struct ActionCard: View {
     let tint: Color
     let id: String
     let action: () -> Void
+    @Environment(\.appTheme) private var theme
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    /// The tile's colour is the theme's: its own pastel on the system and
+    /// glass themes, ZOOD's gold on ZOOD's.
+    private var tile: Color {
+        ThemeStyle(theme: theme, scheme: scheme, reduceTransparency: reduceTransparency).tile(tint)
+    }
 
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: Space.x4) {
                 Image(systemName: symbol)
                     .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(tint)
+                    .foregroundStyle(tile)
                     .frame(width: 44, height: 44)
-                    .background(tint.opacity(0.16), in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+                    .background(tile.opacity(0.16), in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
                 VStack(alignment: .leading, spacing: Space.x1) {
                     Text(title)
                         .font(TextStyle.headline)
@@ -375,32 +397,12 @@ enum DocumentDate {
     }
 }
 
-/// The soft ground the glass sits on: a pale sky-to-white gradient in
-/// light, a deep blue-grey in dark. No photograph — nothing to license.
-struct HomeBackground: View {
-    @Environment(\.colorScheme) private var scheme
-
-    var body: some View {
-        LinearGradient(
-            colors: scheme == .dark
-                ? [Color(red: 0.09, green: 0.11, blue: 0.16), Color(red: 0.05, green: 0.06, blue: 0.09)]
-                : [Color(red: 0.86, green: 0.92, blue: 0.99), Color(red: 0.97, green: 0.98, blue: 1.0)],
-            startPoint: .top, endPoint: .bottom
-        )
-        .ignoresSafeArea()
-    }
-}
-
-/// The glass: a translucent panel with a thin light edge and a soft
-/// shadow, the same on every card.
-enum Glass {
-    static let edge = Color.white.opacity(0.14)
-}
-
 extension View {
+    /// A card on the home screen. The ground it sits on, the material it is
+    /// filled with and the edge around it are the chosen theme's
+    /// (`Design/Themes.swift`), so the same card is glass, system material or
+    /// ZOOD's paper without the screen knowing which.
     func glassCard(radius: CGFloat = Radius.sheet) -> some View {
-        background(.regularMaterial, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Glass.edge, lineWidth: 1))
-            .shadow(color: .black.opacity(0.06), radius: 10, y: 4)
+        themedCard(radius: radius)
     }
 }

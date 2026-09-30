@@ -110,6 +110,7 @@ struct DocumentView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbar }
         .toolbarRole(.editor)
+        .themedToolbar()
         .focusedSceneValue(\.documentActions, actions)
         .sheet(isPresented: $showingInfo) {
             DocumentInfoSheet(model: model)

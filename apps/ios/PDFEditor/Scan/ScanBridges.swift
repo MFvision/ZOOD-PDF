@@ -3,20 +3,96 @@ import SwiftUI
 import UIKit
 import VisionKit
 
+/// Whether the document camera can be opened, and when it cannot, why —
+/// so the scanner can say the true reason instead of showing a black stage.
+/// On the main actor, as VisionKit's own answer is.
+@MainActor
+enum CameraAccess: Equatable, Sendable {
+    /// There is a camera and the app may use it.
+    case ready
+    /// There is a camera; the person has not been asked yet.
+    case notAsked
+    /// The person said no. Only the Settings app can change that.
+    case denied
+    /// A configuration profile or Screen Time forbids the camera.
+    case restricted
+    /// There is no camera at all — the simulator. Photos instead.
+    case missing
+
+    /// What the scanner goes by: the state on this device, or what a UI test's
+    /// `-warraqCamera` says (Debug builds only).
+    static var now: CameraAccess {
+        #if DEBUG
+        if let overridden { return overridden }
+        #endif
+        return current
+    }
+
+    /// What the state is on this device right now. The permission is looked at
+    /// before the hardware: iOS hands out no capture device once access is
+    /// denied, and answering "this device has no camera" to someone who turned
+    /// the camera off would be a lie.
+    static var current: CameraAccess {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .denied: return .denied
+        case .restricted: return .restricted
+        case .authorized: return hasCamera ? .ready : .missing
+        case .notDetermined: return hasCamera ? .notAsked : .missing
+        @unknown default: return hasCamera ? .notAsked : .missing
+        }
+    }
+
+    /// VisionKit says the simulator supports the document camera; it has
+    /// no camera to show, so the device must have one too.
+    static var hasCamera: Bool {
+        VNDocumentCameraViewController.isSupported && AVCaptureDevice.default(for: .video) != nil
+    }
+
+    /// Asks, if asking is what is left to do, and answers the state afterwards.
+    /// The system panel appears once in the app's life; every later launch
+    /// reads the answer back from `now`.
+    static func asked() async -> CameraAccess {
+        #if DEBUG
+        // A UI test's answer is whatever it said; there is nothing to ask.
+        if let overridden { return overridden == .notAsked ? .ready : overridden }
+        #endif
+        guard current == .notAsked else { return current }
+        _ = await AVCaptureDevice.requestAccess(for: .video)
+        return current
+    }
+
+    /// Whether the document camera would show a picture if it were opened.
+    var opensCamera: Bool { self == .ready }
+
+    #if DEBUG
+    /// A UI test's `-warraqCamera ready|notAsked|denied|restricted|missing`.
+    /// The simulator has no camera and no way to deny one, so this is the only
+    /// way to walk the scanner through each answer on this machine.
+    static var overridden: CameraAccess? {
+        switch UserDefaults.standard.string(forKey: "warraqCamera") {
+        case "ready": .ready
+        case "notAsked": .notAsked
+        case "denied": .denied
+        case "restricted": .restricted
+        case "missing": .missing
+        default: nil
+        }
+    }
+    #endif
+}
+
 /// VisionKit's document camera: automatic edges, auto-shutter, a session of
 /// many pages, the pages handed back already cut out. Offered only where
-/// `VNDocumentCameraViewController.isSupported` — never on the simulator,
-/// which has no camera; the pipeline then works on photos instead.
+/// `CameraAccess.current.opensCamera` — never on the simulator, which has no
+/// camera; the pipeline then works on photos instead.
 struct DocumentCameraView: UIViewControllerRepresentable {
     let onScan: ([CGImage]) -> Void
     let onCancel: () -> Void
     let onError: (String) -> Void
 
-    /// VisionKit says the simulator supports the document camera; it has
-    /// no camera to show, so the device must have one too.
-    static var isSupported: Bool {
-        VNDocumentCameraViewController.isSupported && AVCaptureDevice.default(for: .video) != nil
-    }
+    /// Kept as it was for the code that only asks whether a camera exists;
+    /// `CameraAccess.current` is what the scanner asks.
+    static var isSupported: Bool { CameraAccess.hasCamera }
 
     func makeUIViewController(context: Context) -> VNDocumentCameraViewController {
         let controller = VNDocumentCameraViewController()
