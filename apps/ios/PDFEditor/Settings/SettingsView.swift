@@ -12,6 +12,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.appearance) private var appearance: AppAppearance = .system
     @AppStorage(SettingsKey.appLock) private var appLock = false
     @State private var choosingFolder = false
+    @State private var showingOnboarding = false
     @State private var confirmingDelete = false
     @State private var deleting = false
     @State private var lockError: LocalizedStringKey?
@@ -30,6 +31,9 @@ struct SettingsView: View {
                 about
             }
             .accessibilityIdentifier("settings.form")
+            .fullScreenCover(isPresented: $showingOnboarding) {
+                OnboardingView { showingOnboarding = false }
+            }
             .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [.folder]) { result in
                 if case let .success(url) = result {
                     library.choose(folder: url)
@@ -150,6 +154,12 @@ struct SettingsView: View {
 
     private var about: some View {
         Section("About") {
+            Button {
+                showingOnboarding = true
+            } label: {
+                Label("Show the welcome tour", systemImage: "sparkles")
+            }
+            .accessibilityIdentifier("settings.onboarding")
             LabeledContent("Version", value: Self.appVersion)
             LabeledContent("Core", value: Core.version)
             LabeledContent("Privacy") {
