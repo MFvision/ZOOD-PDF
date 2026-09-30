@@ -1414,6 +1414,10 @@ One real failure was found and fixed on the way: the Protect sheet, which now ca
 the permissions as well as the password, put its button under the keyboard at the
 medium detent, where neither the test nor a person could reach it. It opens large.
 
+All of these counts were seen again after `main` was merged in: Rust **483 of 483**
+(240 + 199 + 44), `cargo clippy --all-targets -D warnings` and `cargo fmt --check`
+clean, and iPhone 17 **28 of 28** unit and **3 of 3** interface.
+
 ## Next (in order)
 1. **Run the Windows and Linux builds on those systems**: print by pages, the drop targets and the NSIS installer have been built for them in code only — nothing of them has run here.
 2. **Phone apps**: iPhone and iPad are the native SwiftUI app in `apps/ios` (its foundation above; the other parts in progress). Android is not started: it would need the Android SDK, NDK and JDK installed here (Decisions, below). The installable web app covers phones meanwhile.
