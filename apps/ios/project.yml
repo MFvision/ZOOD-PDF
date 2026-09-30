@@ -283,6 +283,10 @@ targets:
         buildPhase: resources
       - path: ../../tests/corpus/arabic/generated/variant-encrypted-rc4-40.pdf
         buildPhase: resources
+      # Protected by another program with AES-256: ProtectTests opens it here
+      # and re-protects it, to show a file crosses between the hosts.
+      - path: ../../tests/corpus/arabic/generated/variant-encrypted-aes256.pdf
+        buildPhase: resources
       - path: ../../tests/corpus/arabic/generated/chrome-notonaskh-justified-3pages.pdf
         buildPhase: resources
       - path: ../../tests/corpus/arabic/generated/variant-arabic-metadata-outlines-annots.pdf
@@ -292,6 +296,33 @@ targets:
       - path: ../../tests/corpus/arabic/generated/coretext-albayan-tashkeel.pdf
         buildPhase: resources
       - path: ../../tests/corpus/arabic/generated/scan-arial-200dpi-bilevel.pdf
+        buildPhase: resources
+      # The signing fixtures (tests/fixtures/signatures, made by its make.sh;
+      # every key in there is public and every password is warraq-test). The
+      # hostile set is what a verifier must refuse as a document signer.
+      - path: ../../tests/fixtures/signatures/signer-rsa-aes.p12
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/signer-ec.p12
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/revoked-rsa.p12
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/root-rsa.cer
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/root-rsa.pem
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/intermediate-rsa.cer
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/signer-rsa.cer
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/empty-signature-field.pdf
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/hostile/web-server.p12
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/hostile/hostile-root.cer
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/hostile/docs-signer.p12
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/hostile/docs-ca.cer
         buildPhase: resources
       # The scanner's pictures: the corpus's damaged scans (as PDFs, drawn
       # at 300 dpi in the test), their truth, a shadowed photo, and the
@@ -357,6 +388,10 @@ targets:
       - path: ../../tests/fixtures/scan/page-crooked.jpg
         buildPhase: resources
       - path: ../../tests/fixtures/scan/whiteboard.jpg
+        buildPhase: resources
+      # The signing test signs a corpus file with this before it launches the
+      # app on it, so the interface is shown a real signature to report on.
+      - path: ../../tests/fixtures/signatures/signer-rsa-aes.p12
         buildPhase: resources
     dependencies:
       - target: PDFEditor

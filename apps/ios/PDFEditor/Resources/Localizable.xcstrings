@@ -5968,6 +5968,1496 @@
           }
         }
       }
+    },
+    "Allow, with the password": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المسموح به لمن يملك كلمة السر"
+          }
+        }
+      }
+    },
+    "Any language works, Arabic included. Anyone opening the document will be asked for it, and there is no way to recover a forgotten password.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تصلح أي لغة، والعربية منها. سيُطلب من كل من يفتح المستند إدخالها، ولا سبيل إلى استرجاع كلمة سر منسية."
+          }
+        }
+      }
+    },
+    "Change the password": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تغيير كلمة السر"
+          }
+        }
+      }
+    },
+    "Changing the document": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعديل المستند"
+          }
+        }
+      }
+    },
+    "Copying text and pictures": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نسخ النص والصور"
+          }
+        }
+      }
+    },
+    "It opens without a password: it carries only a permissions password.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُفتح بلا كلمة سر: لا يحمل سوى كلمة سر للصلاحيات."
+          }
+        }
+      }
+    },
+    "Printing": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الطباعة"
+          }
+        }
+      }
+    },
+    "Protected with %@.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "محمي بـ %@."
+          }
+        }
+      }
+    },
+    "The document records what it allows, and readers that honour it — this app among them — will. A reader that chooses to ignore it can. Reading aloud by a screen reader is always allowed.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يسجّل المستند ما يسمح به، وتلتزم به البرامج التي تحترمه — وهذا التطبيق منها. أما برنامج اختار تجاهله فيستطيع ذلك. وتظل القراءة بقارئ الشاشة مسموحة دائمًا."
+          }
+        }
+      }
+    },
+    "The password is too long. At most %lld bytes fit — about 63 Arabic letters, or 127 Latin ones.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كلمة السر طويلة. تتسع %lld بايت على الأكثر — نحو ٦٣ حرفًا عربيًا، أو ١٢٧ حرفًا لاتينيًا."
+          }
+        }
+      }
+    },
+    "This is an old, weak protection written by another program. Setting a password again replaces it with AES-256.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذه حماية قديمة وضعيفة كتبها برنامج آخر. تعيين كلمة السر من جديد يستبدلها بتشفير AES-256."
+          }
+        }
+      }
+    },
+    "%@ · valid until %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · صالحة حتى %2$@"
+          }
+        }
+      }
+    },
+    "A certificate file (.p12 or .pfx) is kept in this device's Keychain, not in a file the Files app can reach. Its password is never kept: it is typed each time.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُحفظ ملف الشهادة (‎.p12‎ أو ‎.pfx‎) في سلسلة مفاتيح هذا الجهاز، لا في ملف يصل إليه تطبيق الملفات. ولا تُحفظ كلمة سرها أبدًا: تُكتب في كل مرة."
+          }
+        }
+      }
+    },
+    "A certificate in the path is missing, so who signed cannot be established.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شهادة في المسار مفقودة، فلا تثبت هوية المُوقِّع."
+          }
+        }
+      }
+    },
+    "A certificate on the path may not have issued the one below it.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شهادة في المسار لا يحق لها إصدار ما دونها."
+          }
+        }
+      }
+    },
+    "A certificate was not valid at the time checked": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شهادة لم تكن صالحة في وقت الفحص"
+          }
+        }
+      }
+    },
+    "A document timestamp": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "طابع زمني للمستند"
+          }
+        }
+      }
+    },
+    "A locked form field changed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تغيّر حقل مقفل في النموذج"
+          }
+        }
+      }
+    },
+    "A signature that is not shown still signs the file; it just draws nothing on the page.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التوقيع غير الظاهر يوقّع الملف كغيره، غير أنه لا يرسم شيئًا على الصفحة."
+          }
+        }
+      }
+    },
+    "A signature was altered": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عُبث بتوقيع"
+          }
+        }
+      }
+    },
+    "An approval signature": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "توقيع موافقة"
+          }
+        }
+      }
+    },
+    "Another signature was added": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أُضيف توقيع آخر"
+          }
+        }
+      }
+    },
+    "Approval signature": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "توقيع موافقة"
+          }
+        }
+      }
+    },
+    "Bottom, at the end of the line": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أسفل الصفحة، عند نهاية السطر"
+          }
+        }
+      }
+    },
+    "Bottom, at the start of the line": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أسفل الصفحة، عند بداية السطر"
+          }
+        }
+      }
+    },
+    "Broken at %@: it may not issue certificates": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "منقطع عند %@: لا يحق له إصدار الشهادات"
+          }
+        }
+      }
+    },
+    "Certificate chain": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سلسلة الشهادات"
+          }
+        }
+      }
+    },
+    "Certificate": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الشهادة"
+          }
+        }
+      }
+    },
+    "Certificates you trust": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الشهادات التي تثق بها"
+          }
+        }
+      }
+    },
+    "Certification: filling forms and signing allowed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اعتماد: يُسمح بملء النماذج والتوقيع"
+          }
+        }
+      }
+    },
+    "Certification: forms, signing and comments allowed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اعتماد: يُسمح بالنماذج والتوقيع والتعليقات"
+          }
+        }
+      }
+    },
+    "Certification: no changes allowed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اعتماد: لا يُسمح بأي تغيير"
+          }
+        }
+      }
+    },
+    "Certified: filling forms and signing allowed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مُعتمد: يُسمح بملء النماذج والتوقيع"
+          }
+        }
+      }
+    },
+    "Certified: forms, signing and comments allowed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مُعتمد: يُسمح بالنماذج والتوقيع والتعليقات"
+          }
+        }
+      }
+    },
+    "Certified: no changes allowed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مُعتمد: لا يُسمح بأي تغيير"
+          }
+        }
+      }
+    },
+    "Changed after signing": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عُدِّل بعد التوقيع"
+          }
+        }
+      }
+    },
+    "Changed after this signature": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ما تغيّر بعد هذا التوقيع"
+          }
+        }
+      }
+    },
+    "Check again": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "افحص من جديد"
+          }
+        }
+      }
+    },
+    "Checking the signatures…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ فحص التوقيعات…"
+          }
+        }
+      }
+    },
+    "Comments changed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تغيّرت التعليقات"
+          }
+        }
+      }
+    },
+    "Contact": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وسيلة التواصل"
+          }
+        }
+      }
+    },
+    "Corner": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الركن"
+          }
+        }
+      }
+    },
+    "Could not do that": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر تنفيذ ذلك"
+          }
+        }
+      }
+    },
+    "Could not sign": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر التوقيع"
+          }
+        }
+      }
+    },
+    "Date: %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التاريخ: %@"
+          }
+        }
+      }
+    },
+    "Details": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التفاصيل"
+          }
+        }
+      }
+    },
+    "Digitally signed by %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وقّعه رقميًا %@"
+          }
+        }
+      }
+    },
+    "Empty signature fields: %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حقول توقيع فارغة: %@"
+          }
+        }
+      }
+    },
+    "Ends at %@, which browsers trust for web sites — not for who signs documents": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ينتهي عند %@، وهو ما تثق به المتصفحات للمواقع لا لمن يوقّع المستندات"
+          }
+        }
+      }
+    },
+    "Ends at a root nobody here trusts: %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ينتهي عند جذر لا يثق به أحد هنا: %@"
+          }
+        }
+      }
+    },
+    "Form fields were filled in": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مُلئت حقول النموذج"
+          }
+        }
+      }
+    },
+    "Import a certificate file…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استيراد ملف شهادة…"
+          }
+        }
+      }
+    },
+    "Incomplete: the certificate of %@ is missing": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ناقص: شهادة %@ مفقودة"
+          }
+        }
+      }
+    },
+    "Intact — the signer's identity is not verified": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سليم، لكن هوية المُوقِّع غير موثَّقة"
+          }
+        }
+      }
+    },
+    "Invalid": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "غير صالح"
+          }
+        }
+      }
+    },
+    "Issued by %@ · valid until %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صادرة عن %1$@ · صالحة حتى %2$@"
+          }
+        }
+      }
+    },
+    "Issued by %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صادرة عن %@"
+          }
+        }
+      }
+    },
+    "It was signed with a hash that is no longer strong enough.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وُقِّع ببصمة لم تعد قوية بما يكفي."
+          }
+        }
+      }
+    },
+    "Its certificates end at a root that browsers trust for web sites, not for document signers.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تنتهي شهاداته عند جذر تثق به المتصفحات للمواقع لا لموقِّعي المستندات."
+          }
+        }
+      }
+    },
+    "Its certificates end at a root you have not trusted.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تنتهي شهاداته عند جذر لم توثّقه."
+          }
+        }
+      }
+    },
+    "Its timestamp does not verify, so when it was signed is not established.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "طابعه الزمني لا يتحقق، فلم يثبت وقت التوقيع."
+          }
+        }
+      }
+    },
+    "Its timestamp does not verify: %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "طابعه الزمني لا يتحقق: %@"
+          }
+        }
+      }
+    },
+    "Its timestamp is from %@, an authority you do not trust: its time is not relied on.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "طابعه الزمني من %@، وهي جهة لا تثق بها: فلا يُعوَّل على وقتها."
+          }
+        }
+      }
+    },
+    "Location: %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المكان: %@"
+          }
+        }
+      }
+    },
+    "Lock the form fields once signed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أقفل حقول النموذج عند التوقيع"
+          }
+        }
+      }
+    },
+    "No certificate has been imported on this device yet.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم تُستورد أي شهادة على هذا الجهاز بعد."
+          }
+        }
+      }
+    },
+    "No certificate was found in that file.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم يُعثر على شهادة في ذلك الملف."
+          }
+        }
+      }
+    },
+    "No revocation data in the file for this certificate": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا بيانات إبطال في الملف لهذه الشهادة"
+          }
+        }
+      }
+    },
+    "Nobody you trust vouches for the signer.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا أحد تثق به يشهد للمُوقِّع."
+          }
+        }
+      }
+    },
+    "None yet, so no signer's identity is verified.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا شيء بعد، فلا تُوثَّق هوية أي مُوقِّع."
+          }
+        }
+      }
+    },
+    "Not checked": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم يُفحَص"
+          }
+        }
+      }
+    },
+    "Nothing is fetched while checking: revocation is only what the file itself carries, and no timestamp server is asked. A trusted timestamp and fresh revocation data need the network, and are added by the desktop app.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يُجلب شيء أثناء الفحص: الإبطال هو ما يحمله الملف نفسه لا غير، ولا يُسأل أي خادم طوابع زمنية. أما الطابع الزمني الموثوق وبيانات الإبطال الحديثة فيحتاجان إلى الشبكة، ويضيفهما تطبيق سطح المكتب."
+          }
+        }
+      }
+    },
+    "Nothing proves when it was signed.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا شيء يثبت وقت التوقيع."
+          }
+        }
+      }
+    },
+    "Nothing was added to the file after this signature.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم يُضف شيء إلى الملف بعد هذا التوقيع."
+          }
+        }
+      }
+    },
+    "Only the first signature in a file can certify it.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يعتمد الملفَ إلا أول توقيع فيه."
+          }
+        }
+      }
+    },
+    "Open the certificate": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "افتح الشهادة"
+          }
+        }
+      }
+    },
+    "Page content changed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تغيّر محتوى الصفحة"
+          }
+        }
+      }
+    },
+    "Reason and place": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السبب والمكان"
+          }
+        }
+      }
+    },
+    "Reason: %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السبب: %@"
+          }
+        }
+      }
+    },
+    "Remove this certificate from the device": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "احذف هذه الشهادة من الجهاز"
+          }
+        }
+      }
+    },
+    "Revocation data in the file: not revoked": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بيانات الإبطال في الملف: غير مُبطلة"
+          }
+        }
+      }
+    },
+    "Revocation data in the file: revoked": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بيانات الإبطال في الملف: مُبطلة"
+          }
+        }
+      }
+    },
+    "Revocation data in the file: status unknown": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بيانات الإبطال في الملف: الحالة غير معروفة"
+          }
+        }
+      }
+    },
+    "Show the signature on the page": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أظهر التوقيع على الصفحة"
+          }
+        }
+      }
+    },
+    "Sign this document…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وقّع هذا المستند…"
+          }
+        }
+      }
+    },
+    "Sign with": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وقّع بـ"
+          }
+        }
+      }
+    },
+    "Sign": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "توقيع"
+          }
+        }
+      }
+    },
+    "Signatures": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التوقيعات"
+          }
+        }
+      }
+    },
+    "Signatures…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التوقيعات…"
+          }
+        }
+      }
+    },
+    "Signed %@ — by the signer's own clock": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وُقِّع في %@ — بساعة المُوقِّع نفسه"
+          }
+        }
+      }
+    },
+    "Signed by": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وقّعه"
+          }
+        }
+      }
+    },
+    "Signing happens on this device. Nothing is sent anywhere: no timestamp server and no certificate authority is asked, so the signature carries the time of this device's own clock.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يجري التوقيع على هذا الجهاز. ولا يُرسل شيء إلى أي جهة: لا يُسأل خادم طوابع زمنية ولا جهة إصدار شهادات، فيحمل التوقيع وقت ساعة هذا الجهاز نفسه."
+          }
+        }
+      }
+    },
+    "Something changed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تغيّر شيء ما"
+          }
+        }
+      }
+    },
+    "Something this signature depends on is broken.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شيء يعتمد عليه هذا التوقيع معطوب."
+          }
+        }
+      }
+    },
+    "Stop trusting %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إلغاء الثقة بـ %@"
+          }
+        }
+      }
+    },
+    "That certificate is no longer on this device.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم تعد تلك الشهادة على هذا الجهاز."
+          }
+        }
+      }
+    },
+    "That is not the certificate's password.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ليست هذه كلمة سر الشهادة."
+          }
+        }
+      }
+    },
+    "The certificate is not for signing documents.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الشهادة ليست لتوقيع المستندات."
+          }
+        }
+      }
+    },
+    "The certificate's password": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كلمة سر الشهادة"
+          }
+        }
+      }
+    },
+    "The certificates were valid at the time checked": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كانت الشهادات صالحة في وقت الفحص"
+          }
+        }
+      }
+    },
+    "The document's information changed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تغيّرت معلومات المستند"
+          }
+        }
+      }
+    },
+    "The document's structure changed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تغيّر بناء المستند"
+          }
+        }
+      }
+    },
+    "The file does not match what was signed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الملف لا يطابق ما جرى توقيعه"
+          }
+        }
+      }
+    },
+    "The file does not match what was signed.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الملف لا يطابق ما جرى توقيعه."
+          }
+        }
+      }
+    },
+    "The file is signed as it stands, with every change made so far. Anything changed afterwards is added after the signature and listed when it is checked.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُوقَّع الملف كما هو، بكل ما أُجري عليه حتى الآن. وما يتغيّر بعد ذلك يُضاف بعد التوقيع ويُذكر عند الفحص."
+          }
+        }
+      }
+    },
+    "The file matches what was signed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الملف يطابق ما جرى توقيعه"
+          }
+        }
+      }
+    },
+    "The file was updated after this signature; the changes are listed above.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حُدِّث الملف بعد هذا التوقيع، والتغييرات مذكورة أعلاه."
+          }
+        }
+      }
+    },
+    "The form's fields changed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تغيّرت حقول النموذج"
+          }
+        }
+      }
+    },
+    "The range of the file the signature covers is not right": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المدى الذي يغطيه التوقيع من الملف غير سليم"
+          }
+        }
+      }
+    },
+    "The range of the file this signature covers is not right.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المدى الذي يغطيه هذا التوقيع من الملف غير سليم."
+          }
+        }
+      }
+    },
+    "The signature calls its signer %@ — the signer's own claim, not verified.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يسمّي التوقيع مُوقِّعه %@ — وهو ادّعاء المُوقِّع نفسه، غير موثَّق."
+          }
+        }
+      }
+    },
+    "The signature covers the file it belongs to": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يغطي التوقيع الملف الذي ينتمي إليه"
+          }
+        }
+      }
+    },
+    "The signature does not cover the revision it belongs to": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يغطي التوقيع المراجعة التي ينتمي إليها"
+          }
+        }
+      }
+    },
+    "The signature does not cover the revision it belongs to.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يغطي التوقيع المراجعة التي ينتمي إليها."
+          }
+        }
+      }
+    },
+    "The signature does not verify (%@)": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التوقيع لا يتحقق (%@)"
+          }
+        }
+      }
+    },
+    "The signature does not verify against the signer's certificate.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يتحقق التوقيع مقابل شهادة المُوقِّع."
+          }
+        }
+      }
+    },
+    "The signature verifies (%@)": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التوقيع يتحقق (%@)"
+          }
+        }
+      }
+    },
+    "The signatures in this file could not be checked.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر فحص التوقيعات في هذا الملف."
+          }
+        }
+      }
+    },
+    "The signer's certificate had been revoked before this was signed.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كانت شهادة المُوقِّع مُبطلة قبل هذا التوقيع."
+          }
+        }
+      }
+    },
+    "The signer's certificate has since been revoked.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أُبطلت شهادة المُوقِّع بعد ذلك."
+          }
+        }
+      }
+    },
+    "The signer's certificate is not allowed to sign.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شهادة المُوقِّع لا يُسمح لها بالتوقيع."
+          }
+        }
+      }
+    },
+    "The signer's certificate was not valid when this was signed.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم تكن شهادة المُوقِّع صالحة حين جرى هذا التوقيع."
+          }
+        }
+      }
+    },
+    "The timestamp verifies, but %@ is not an authority you trust": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يتحقق الطابع الزمني، لكن %@ ليست جهة تثق بها"
+          }
+        }
+      }
+    },
+    "This certificate is not allowed to sign.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذه الشهادة لا يُسمح لها بالتوقيع."
+          }
+        }
+      }
+    },
+    "This certificate is not valid today. A signature made with it will not check out.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذه الشهادة غير صالحة اليوم. ولن يتحقق توقيع يُصنع بها."
+          }
+        }
+      }
+    },
+    "This document is certified so that no changes are allowed, so it cannot be signed again.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا المستند مُعتمد بحيث لا يُسمح بأي تغيير، فلا يمكن توقيعه مرة أخرى."
+          }
+        }
+      }
+    },
+    "This document is certified so that no changes are allowed.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا المستند مُعتمد بحيث لا يُسمح بأي تغيير."
+          }
+        }
+      }
+    },
+    "This file could not be read as a certificate.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّرت قراءة هذا الملف كشهادة."
+          }
+        }
+      }
+    },
+    "This file has more signatures than are checked; this one was not.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "في هذا الملف توقيعات أكثر مما يُفحَص، وهذا منها لم يُفحَص."
+          }
+        }
+      }
+    },
+    "This file has no digital signatures.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توقيعات رقمية في هذا الملف."
+          }
+        }
+      }
+    },
+    "This file is too large to sign on this device.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا الملف أكبر من أن يُوقَّع على هذا الجهاز."
+          }
+        }
+      }
+    },
+    "This was signed with a web-server certificate, which says who owns a domain — not who signs documents.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وُقِّع هذا بشهادة خادم ويب، وهي تُثبت ملكية نطاق لا هوية من يوقّع المستندات."
+          }
+        }
+      }
+    },
+    "Timestamp verified: %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تحقق الطابع الزمني: %@"
+          }
+        }
+      }
+    },
+    "Timestamped %@ by %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "طُبع زمنيًا في %1$@ من %2$@"
+          }
+        }
+      }
+    },
+    "Top, at the end of the line": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أعلى الصفحة، عند نهاية السطر"
+          }
+        }
+      }
+    },
+    "Top, at the start of the line": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أعلى الصفحة، عند بداية السطر"
+          }
+        }
+      }
+    },
+    "Trust %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وثّق %@"
+          }
+        }
+      }
+    },
+    "Trust a certificate from a file…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وثّق شهادة من ملف…"
+          }
+        }
+      }
+    },
+    "Trust is kept on this device only. Trust a certificate only if you know it vouches for who signs documents — for example your organization's or your country's certification authority.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تُحفظ الثقة على هذا الجهاز وحده. لا توثّق شهادة إلا إذا كنت تعلم أنها تشهد لمن يوقّع المستندات — كجهة إصدار الشهادات في مؤسستك أو في بلدك."
+          }
+        }
+      }
+    },
+    "Trusted for timestamps: %@ (Mozilla's root store)": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "موثوق للطوابع الزمنية: %@ (مخزن جذور موزيلا)"
+          }
+        }
+      }
+    },
+    "Trusted: %@ (trusted by you on this device)": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "موثوق: %@ (وثَّقتَه على هذا الجهاز)"
+          }
+        }
+      }
+    },
+    "Unknown signer": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مُوقِّع مجهول"
+          }
+        }
+      }
+    },
+    "Use RSA-PSS padding": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استخدم حشو RSA-PSS"
+          }
+        }
+      }
+    },
+    "Valid": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صالح"
+          }
+        }
+      }
+    },
+    "Validation data in the file: %lld certificates, %lld status answers, %lld revocation lists.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بيانات التحقق في الملف: %1$lld شهادة، و%2$lld ردّ حالة، و%3$lld قائمة إبطال."
+          }
+        }
+      }
+    },
+    "Validation data was added": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أُضيفت بيانات تحقق"
+          }
+        }
+      }
+    },
+    "Who signed is not established": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم تثبت هوية المُوقِّع"
+          }
+        }
+      }
+    },
+    "— not permitted": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "— غير مسموح به"
+          }
+        }
+      }
+    },
+    "— permitted by this signature": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "— يسمح به هذا التوقيع"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
