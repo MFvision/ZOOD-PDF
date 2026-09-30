@@ -1376,6 +1376,37 @@ passes it through, and a new `warraq_add_text_colored` carries a `#rrggbb` acros
 ABI. All three are additive: `append_line` and `add_text` keep their signatures, and the
 WASM and desktop hosts are untouched.
 
+**iPad.** An inspector beside the pages; the arrow keys move the picked picture or link
+a point at a time (ten with Shift); a pointer — trackpad, mouse, or the Pencil hovering —
+lights the paragraph, picture or link a tap would open; ⌥⌘E opens the editor, ⌘Return
+applies, Escape cancels. The Pencil draws in markup, not here: nothing in editing is
+better done with a pen than a finger, so the editor gives it no job of its own.
+
+**Accessibility.** While the pages are only read, the page view is one element whose value
+is the core's text in logical order. While the editor is open it is a container, and the
+field being typed in is listed first (`DocumentPDFView.editField`) — PDFKit's page lists
+its own text to accessibility rather than its subviews, so without that VoiceOver would
+never reach the field.
+
+**How it is proven** (run 2026-09-30 through `apps/ios/.build/edit-tests.sh`, a
+one-simulator subset of `scripts/ios/build.sh`, under the machine-wide queue):
+* XCTest, **39 tests, 0 failures on iPhone 17 and 39, 0 on iPad Pro 13-inch (M5)** —
+  `EditGeometryTests` (14: the desktop's matrix arithmetic, the same cases), `EditTests`
+  (15: every core call on corpus files — a paragraph of Arabic with tashkeel replaced,
+  **saved, the file reopened and the core's reading equal to what was typed, in logical
+  order**, with the original bytes still the file's prefix; a line added in each of the
+  three faces and read back; undo; pictures placed, moved, cropped, replaced, deleted and
+  nudged; links added, moved, re-pointed, removed; refused addresses), `MarkSpecTests`
+  (10: page ranges in either script, digits, Bates padding, the spec's shape; an Arabic
+  header and `صفحة ١ من ٣` written, listed, kept out of the page's own text, read by
+  `marks.text`, removed; a watermark on one page only and Bates numbers on every page;
+  the preview). Core: `cargo test -p warraq-core -p warraq-pdf --lib` 121 + 232 passed,
+  clippy clean, including the new `added_text_takes_the_colour_it_was_given…`.
+* XCUITest `EditUITests` — see the report of the last run below; the simulator runner
+  repeatedly failed to start ("Timed out while loading Accessibility") while the Mac was
+  under a load of ~110 from macOS's own media analysis, so not every UI test has a clean
+  run on both devices.
+
 **Limits, stated plainly.**
 * The editor reads and acts on **the page on screen**. In continuous scroll the pages
   above and below show nothing to edit until one of them is the current page.

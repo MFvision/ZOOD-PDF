@@ -220,6 +220,9 @@ final class EditPageLayer: UIView, UITextViewDelegate, UIGestureRecognizerDelega
             if let field {
                 field.resignFirstResponder()
                 field.removeFromSuperview()
+                if (pdfView as? DocumentPDFView)?.editField === field {
+                    (pdfView as? DocumentPDFView)?.editField = nil
+                }
                 self.field = nil
             }
             return
@@ -236,6 +239,7 @@ final class EditPageLayer: UIView, UITextViewDelegate, UIGestureRecognizerDelega
         if field == nil {
             field = view
             addSubview(view)
+            (pdfView as? DocumentPDFView)?.editField = view
             view.becomeFirstResponder()
             // Again once the tap that opened it has finished: PDFKit's page
             // can take the keyboard focus back at the end of the same touch.

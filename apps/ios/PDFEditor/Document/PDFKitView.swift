@@ -258,6 +258,21 @@ final class DocumentPDFView: PDFView {
     /// picked picture or link, ten with Shift. Nil when nothing is picked,
     /// so the keys stay the view's own.
     var onNudge: ((CGFloat, CGFloat, Bool) -> Void)?
+    /// Edit PDF's field, while one is open. It lives inside a page's
+    /// overlay, and PDFKit's page lists its own text to accessibility
+    /// instead of its subviews, so the field is listed here, first — or
+    /// VoiceOver (and the keyboard's focus, for a test) would never find it.
+    weak var editField: UIView? {
+        didSet { UIAccessibility.post(notification: .layoutChanged, argument: editField) }
+    }
+
+    override var accessibilityElements: [Any]? {
+        get {
+            guard let editField else { return super.accessibilityElements }
+            return [editField] + (super.accessibilityElements ?? subviews)
+        }
+        set { super.accessibilityElements = newValue }
+    }
 
     override var keyCommands: [UIKeyCommand]? {
         guard onNudge != nil else { return super.keyCommands }

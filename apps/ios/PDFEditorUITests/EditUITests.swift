@@ -76,15 +76,20 @@ final class EditUITests: XCTestCase {
 
         // The field starts from the paragraph's text with the caret at its
         // end: cleared, then the Arabic typed in its place.
-        let replacement = "نصٌّ جديدٌ بالتشكيل"
-        ui.app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 400))
+        // Without tashkeel here: the simulator's keyboard does not type the
+        // marks one by one. Tashkeel through replaceParagraph and back off
+        // the saved file is proven in PDFEditorTests/EditTests.
+        let replacement = "نص جديد كتب في مكانه"
+        // Select all (the simulator's keyboard is a hardware one), then type
+        // over it; a run of deletes can outrun what is typed after it.
+        ui.app.typeKey("a", modifierFlags: .command)
         ui.app.typeText(replacement)
         tapEdit(ui, "edit.apply")
 
         ui.waitForEdited()
         XCTAssertTrue(ui.poll(timeout: 30) { !ui.app.buttons["edit.apply"].exists }, "the field closes")
         let text = pageText(after: ui)
-        XCTAssertTrue(text.contains(replacement), "the core reads the new Arabic off the page: \(text.prefix(300))")
+        XCTAssertTrue(text.contains(replacement), "the core reads the new Arabic off the page: \(text)")
 
         // Saved and opened again: it is in the file, not only on screen.
         let save = ui.app.buttons["document.save"]
@@ -107,7 +112,11 @@ final class EditUITests: XCTestCase {
         tapEdit(ui, "edit.addLine")
         tapEdit(ui, "edit.color.red")
         // Low on the page, in the margin under the invoice's own words.
-        ui.page.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.8)).tap()
+        // Low on the page, in the margin under the invoice's own words; a
+        // little higher if the first point was past the paper's foot.
+        for y in [0.78, 0.7, 0.6] where !fieldIsOpen(ui, timeout: 4) {
+            ui.page.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: y)).tap()
+        }
         XCTAssertTrue(fieldIsOpen(ui), "the field opens where the finger landed: \(ui.tree)")
         ui.app.typeText("سطرٌ مضاف")
         tapEdit(ui, "edit.apply")
