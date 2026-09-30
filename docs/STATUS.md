@@ -1104,8 +1104,25 @@ reimplemented.
 
 ### What the runs said
 
-*(counts filled in from the last runs of `scripts/ios/build.sh`; see the section
-below.)*
+**Rust** (`cargo test`, this worktree): `warraq-pdf` **240 passed, 0 failed** (3 ignored,
+one of them the new `writes_a_protected_file_for_an_outside_reader`, which is meant to be
+run by hand with `WARRAQ_PROTECT_OUT`); `warraq-sign` **44 passed, 0 failed**;
+`warraq-core` **199 passed, 0 failed** across its 14 binaries, including the 12 of
+`tool_protect.rs`. The libqpdf cross-check (`tests/tools/check_protection.py`) printed
+`agreed` and exited 0.
+
+**iOS**, both simulators, through the machine-wide queue
+(`apps/ios/.build/secure-tests.sh`, which builds and then runs only the classes this
+work added or changed; the whole scheme's run never won the queue while several agents
+were cycling it):
+* **iPhone 17** — unit **28 of 28** (`ProtectTests` 8, `SigningTests` 15,
+  `SigningIdentitiesTests` 5); interface **3 of 3** (`ProtectUITests`, and the two of
+  `SigningUITests`).
+* **iPad Pro 13-inch (M5)** — unit **28 of 28**; interface **3 of 3**.
+
+One real failure was found and fixed on the way: the Protect sheet, which now carries
+the permissions as well as the password, put its button under the keyboard at the
+medium detent, where neither the test nor a person could reach it. It opens large.
 
 ## Next (in order)
 1. **Run the Windows and Linux builds on those systems**: print by pages, the drop targets and the NSIS installer have been built for them in code only — nothing of them has run here.
