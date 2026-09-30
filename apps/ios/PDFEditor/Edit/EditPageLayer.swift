@@ -1,5 +1,6 @@
 import PDFKit
 import UIKit
+import WarraqCore
 
 /// Edit PDF over one page: the boxes of what can be edited, the handles of
 /// what is picked, and the field the text is typed in — inside the view
@@ -193,6 +194,13 @@ final class EditPageLayer: UIView, UITextViewDelegate, UIGestureRecognizerDelega
             field = view
             addSubview(view)
             view.becomeFirstResponder()
+            // The keyboard takes the bottom of the screen and SwiftUI gives
+            // the pages the rest; bring what is being typed into what is
+            // left, or the field would be behind the keyboard.
+            if let pdfView {
+                let onPage = pdfView.convert(convert(wanted.box, to: pdfView), to: page)
+                DispatchQueue.main.async { pdfView.go(to: onPage.insetBy(dx: 0, dy: -24), on: self.page) }
+            }
         }
     }
 
@@ -432,7 +440,7 @@ final class EditPageLayer: UIView, UITextViewDelegate, UIGestureRecognizerDelega
     /// placed, or anywhere in links (where a drag draws the link's box).
     /// Everywhere else — all of the text mode — the touch goes through to
     /// PDFKit, so the pages still scroll under a finger while text is edited.
-    func gestureRecognizerShouldBegin(_ gesture: UIGestureRecognizer) -> Bool {
+    override func gestureRecognizerShouldBegin(_ gesture: UIGestureRecognizer) -> Bool {
         guard gesture === pan else { return true }
         guard let edit, !edit.working else { return false }
         if case .none = began(at: gesture.location(in: self), edit: edit) { return false }

@@ -38,13 +38,15 @@ struct LinkSheet: View {
                         }
                     }
                 } else {
-                    Section("An address") {
+                    Section {
                         TextField("https://", text: $address)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .keyboardType(.URL)
                             .textContentType(.URL)
                             .accessibilityIdentifier("link.address")
+                    } header: {
+                        Text("An address")
                     } footer: {
                         Text("Web addresses and e-mail addresses only (http, https, mailto).")
                     }

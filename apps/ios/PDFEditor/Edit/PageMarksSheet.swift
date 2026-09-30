@@ -189,7 +189,7 @@ struct PageMarksSheet: View {
 
     @ViewBuilder
     private var bandSection: some View {
-        Section(form.kind == .header ? "Header" : "Footer") {
+        Section {
             TextField("Start", text: slot(0))
                 .accessibilityIdentifier("marks.band.start")
             TextField("Centre", text: slot(1))
@@ -203,6 +203,8 @@ struct PageMarksSheet: View {
             }
             .pickerStyle(.segmented)
             .accessibilityIdentifier("marks.band.calendar")
+        } header: {
+            form.kind == .header ? Text("Header") : Text("Footer")
         } footer: {
             Text("“Start” is the right-hand side in Arabic. {page}, {pages}, {date} and {file} are filled in page by page.")
         }
@@ -264,7 +266,7 @@ struct PageMarksSheet: View {
 
     @ViewBuilder
     private var batesSection: some View {
-        Section("Bates number") {
+        Section {
             TextField("Before", text: $form.batesPrefix)
                 .accessibilityIdentifier("marks.bates.prefix")
             TextField("After", text: $form.batesSuffix)
@@ -281,6 +283,8 @@ struct PageMarksSheet: View {
                 }
                 .accessibilityIdentifier("marks.bates.digits")
             }
+        } header: {
+            Text("Bates number")
         } footer: {
             Text(verbatim: MarkSpec.batesSample(form))
         }
@@ -382,9 +386,9 @@ struct PageMarksSheet: View {
             ForEach(marks) { mark in
                 HStack {
                     VStack(alignment: .leading, spacing: Space.x1) {
-                        Text(mark.title)
+                        mark.title
                             .font(TextStyle.callout)
-                        Text(mark.detail(of: model.pageCount))
+                        mark.detail(of: model.pageCount)
                             .font(TextStyle.caption)
                             .foregroundStyle(Surface.secondaryLabel)
                     }
@@ -497,11 +501,11 @@ struct PageMarkInfo: Decodable, Identifiable, Equatable, Sendable {
     }
 
     var title: Text {
-        let kindName: LocalizedStringResource = MarkSpec.Kind(rawValue: kind)?.title ?? "Watermark"
+        let kindName = MarkSpec.Kind(rawValue: kind).map { Text($0.title) } ?? Text("Watermark")
         if let text, !text.isEmpty {
-            return Text(kindName) + Text(verbatim: " — ") + Text(verbatim: text)
+            return kindName + Text(verbatim: " — ") + Text(verbatim: text)
         }
-        return Text(kindName)
+        return kindName
     }
 
     /// Which pages it is on, and where it sits.

@@ -223,7 +223,7 @@ final class EditModel {
 
     /// Arabic, Hebrew, Syriac, Thaana and the Arabic supplements: the ranges
     /// Unicode gives a right-to-left letter.
-    static func isRightToLeftScalar(_ scalar: Unicode.Scalar) -> Bool {
+    nonisolated static func isRightToLeftScalar(_ scalar: Unicode.Scalar) -> Bool {
         switch scalar.value {
         case 0x0590...0x08FF, 0xFB1D...0xFDFF, 0xFE70...0xFEFF, 0x10800...0x10FFF, 0x1E800...0x1EFFF:
             true

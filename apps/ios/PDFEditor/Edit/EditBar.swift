@@ -179,6 +179,13 @@ struct EditBar: View {
     @ViewBuilder
     private var pictureTools: some View {
         barButton("Add a picture", "photo.badge.plus", id: "edit.picture.add", selected: edit.pendingPicture != nil, action: openPicture)
+        if edit.pendingPicture != nil {
+            Text("Drag out a box on the page to put the picture there.")
+                .font(TextStyle.caption)
+                .foregroundStyle(.white.opacity(0.8))
+                .padding(.horizontal, Space.x3)
+                .accessibilityIdentifier("edit.picture.hint")
+        }
         if let picture = edit.picked {
             barButton("Turn", "rotate.right", id: "edit.picture.turn") {
                 Task { await edit.turn(picture, onPage: edit.selectedPicture?.page ?? 0) }
