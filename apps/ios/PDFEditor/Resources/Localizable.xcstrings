@@ -11,6 +11,16 @@
         }
       }
     },
+    "%@ needs the camera to scan paper. Nothing leaves this device.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يحتاج %@ إلى الكاميرا لمسح الورق. لا يخرج شيء من هذا الجهاز."
+          }
+        }
+      }
+    },
     "%@ will be deleted from this device.": {
       "localizations": {
         "ar": {
@@ -765,12 +775,42 @@
         }
       }
     },
+    "A configuration profile or Screen Time forbids the camera here. Choose photos from the library or from Files instead; the pages are found, straightened and cleaned the same way.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يمنع استخدامَ الكاميرا هنا ملفُّ تهيئة أو «مدة استخدام الجهاز». اختر صورًا من مكتبة الصور أو من «الملفات» بدلًا من ذلك؛ فتُكتشف حدود الصفحات وتُعدَّل وتُنظَّف بالطريقة نفسها."
+          }
+        }
+      }
+    },
     "A document keeps at least one page.": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
             "value": "يجب أن يبقى في المستند صفحة واحدة على الأقل."
+          }
+        }
+      }
+    },
+    "A library you can search across every document": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مكتبة تبحث في كل مستنداتك بحثًا واحدًا"
+          }
+        }
+      }
+    },
+    "A password on the file, and Face ID on the app": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كلمة سر على الملف، وقفل بـ Face ID على التطبيق"
           }
         }
       }
@@ -905,6 +945,16 @@
         }
       }
     },
+    "Arabic and English read on the device itself": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "العربية والإنجليزية تُقرآن على الجهاز نفسه"
+          }
+        }
+      }
+    },
     "Arabic is not among the languages this device's text recognition supports.": {
       "localizations": {
         "ar": {
@@ -931,6 +981,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "تُشكَّل الحروف العربية ويبقى النص قابلًا للبحث."
+          }
+        }
+      }
+    },
+    "Arabic read and searched properly, tashkeel and all": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "العربية تُقرأ ويُبحث فيها كما ينبغي، بالتشكيل وبدونه"
           }
         }
       }
@@ -1135,6 +1195,16 @@
         }
       }
     },
+    "Cards, passports, whiteboards and open books": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "البطاقات وجوازات السفر واللوحات البيضاء والكتب المفتوحة"
+          }
+        }
+      }
+    },
     "Centre": {
       "localizations": {
         "ar": {
@@ -1191,6 +1261,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "اختر أداة أخرى أو «تم» للاحتفاظ بالرسم."
+          }
+        }
+      }
+    },
+    "Choose photos": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختيار صور"
           }
         }
       }
@@ -1361,6 +1441,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "الزوايا"
+          }
+        }
+      }
+    },
+    "Corners found for you, or dragged by hand": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأركان تُكتشف تلقائيًا، أو تُحرَّك بإصبعك"
           }
         }
       }
@@ -2279,12 +2369,32 @@
         }
       }
     },
+    "Highlight, underline, strike through, draw, and leave notes. Draw your signature once with a finger or the Pencil and place it on any page afterwards.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ظلِّل وسطِّر واشطب وارسم واكتب ملاحظات. ارسم توقيعك مرة واحدة بإصبعك أو بقلم Apple Pencil، ثم ضعه على أي صفحة."
+          }
+        }
+      }
+    },
     "Highlights, notes, drawings and shapes you add appear here.": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
             "value": "يظهر هنا ما تضيفه من تمييز وملاحظات ورسوم وأشكال."
+          }
+        }
+      }
+    },
+    "Highlights, shapes, arrows and text boxes": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تظليل وأشكال وأسهم ومربعات نص"
           }
         }
       }
@@ -2749,6 +2859,16 @@
         }
       }
     },
+    "Mark it up, and sign it": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "علِّق عليه ووقِّعه"
+          }
+        }
+      }
+    },
     "Markdown": {
       "localizations": {
         "ar": {
@@ -2965,6 +3085,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "لا"
+          }
+        }
+      }
+    },
+    "No account, and nothing ever leaves this device": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بلا حساب، ولا يخرج شيء من هذا الجهاز"
           }
         }
       }
@@ -3279,6 +3409,26 @@
         }
       }
     },
+    "Open Settings": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فتح الإعدادات"
+          }
+        }
+      }
+    },
+    "Open a PDF from Files or from your own library and read it as it was written — Arabic in its own order, right to left, page by page.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "افتح ملف PDF من «الملفات» أو من مكتبتك واقرأه كما كُتب: العربية بترتيبها، من اليمين إلى اليسار، صفحةً صفحة."
+          }
+        }
+      }
+    },
     "Open a document": {
       "localizations": {
         "ar": {
@@ -3325,6 +3475,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "فتح آخر مستند لي في %@"
+          }
+        }
+      }
+    },
+    "Open the camera": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فتح الكاميرا"
           }
         }
       }
@@ -3415,6 +3575,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "فتح…"
+          }
+        }
+      }
+    },
+    "Organize, export, protect": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نظِّم وصدِّر واحمِ"
           }
         }
       }
@@ -4099,6 +4269,16 @@
         }
       }
     },
+    "Reorder, rotate, crop and delete pages, or combine files into one. Export to Word, plain text, pictures or PDF/A, and set a password on what should have one.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أعِد ترتيب الصفحات ودوِّرها واقتصَّها واحذفها، أو اجمع عدة ملفات في ملف واحد. صدِّر إلى Word أو نص أو صور أو PDF/A، وضع كلمة سر على ما يحتاج إليها."
+          }
+        }
+      }
+    },
     "Replace Page": {
       "localizations": {
         "ar": {
@@ -4379,6 +4559,26 @@
         }
       }
     },
+    "Scan opens the camera straight away. Point it at the page: the edges are found, the page is straightened and the paper cleaned, and the words on it are read so the PDF can be searched.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«المسح» يفتح الكاميرا مباشرة. وجِّهها إلى الصفحة: تُكتشف حدودها، وتُعدَّل الصفحة ويُنظَّف الورق، وتُقرأ كلماتها حتى يصبح الملف قابلًا للبحث."
+          }
+        }
+      }
+    },
+    "Scan paper into a PDF": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "امسح الورق إلى ملف PDF"
+          }
+        }
+      }
+    },
     "Scan the front, then the back": {
       "localizations": {
         "ar": {
@@ -4549,6 +4749,16 @@
         }
       }
     },
+    "Settings → %@ → Camera turns it back on. Until then, choose photos from the library or from Files; the pages are found, straightened and cleaned the same way.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يمكن إعادة تشغيلها من: الإعدادات ← %@ ← الكاميرا. وإلى أن يحدث ذلك، اختر صورًا من مكتبة الصور أو من «الملفات»؛ فتُكتشف حدود الصفحات وتُعدَّل وتُنظَّف بالطريقة نفسها."
+          }
+        }
+      }
+    },
     "Several files into one PDF": {
       "localizations": {
         "ar": {
@@ -4619,6 +4829,16 @@
         }
       }
     },
+    "Show the welcome tour": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عرض جولة الترحيب"
+          }
+        }
+      }
+    },
     "Showing the original": {
       "localizations": {
         "ar": {
@@ -4685,6 +4905,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "الحجم"
+          }
+        }
+      }
+    },
+    "Skip": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تخطّي"
           }
         }
       }
@@ -4785,6 +5015,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "المميّزة بنجمة"
+          }
+        }
+      }
+    },
+    "Start": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ابدأ"
           }
         }
       }
@@ -4985,6 +5225,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "تقرأ المكتبة ملفات PDF والصور في المجلد الذي تختاره، إلى جانب «مستنداتي»، وتبحث داخلها. تبقى الملفات في مكانها."
+          }
+        }
+      }
+    },
+    "The camera is not allowed here — the shutter chooses a photo": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الكاميرا غير مسموح بها هنا — زر الالتقاط يختار صورة"
+          }
+        }
+      }
+    },
+    "The camera is not allowed on this device": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الكاميرا غير مسموح بها على هذا الجهاز"
+          }
+        }
+      }
+    },
+    "The camera is off for %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الكاميرا مُعطَّلة لتطبيق %@"
+          }
+        }
+      }
+    },
+    "The camera is off for this app — the shutter chooses a photo": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الكاميرا مُعطَّلة لهذا التطبيق — زر الالتقاط يختار صورة"
           }
         }
       }
@@ -5449,6 +5729,16 @@
         }
       }
     },
+    "Welcome to %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أهلًا بك في %@"
+          }
+        }
+      }
+    },
     "Where": {
       "localizations": {
         "ar": {
@@ -5565,6 +5855,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "توقيعك"
+          }
+        }
+      }
+    },
+    "Your signature, kept on this device only": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "توقيعك محفوظ على هذا الجهاز وحده"
           }
         }
       }

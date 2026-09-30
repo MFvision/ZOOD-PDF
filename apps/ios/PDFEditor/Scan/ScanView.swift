@@ -1,21 +1,26 @@
 import PhotosUI
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
-/// Scan to PDF: a dark camera screen. The page on the stage with the
-/// corners Vision found as four handles that can be dragged there and
-/// then; "Auto" at the top (the corners found by Vision, or the whole
-/// photo); the mode strip along the bottom — Document · Whiteboard ·
-/// ID Card · Book — and the large round shutter. Where there is a camera
-/// the shutter opens VisionKit's document camera; where there is none
-/// (the simulator) the shutter takes a photo from the library and its
-/// caption says so; Files and Photos are always there. Save makes the PDF
-/// with its text layer and hands it back to the Library.
+/// Scan to PDF: a dark camera screen that opens **at the camera**. The moment
+/// the scanner appears with nothing on the stage, the document camera opens:
+/// asking for the camera first if it has never been asked, and saying the true
+/// reason — with the way to Settings — when the answer is no. Where there is no
+/// camera at all (the simulator) the stage says so and offers Photos and Files.
+/// After that: the page on the stage with the corners Vision found as four
+/// handles that can be dragged there and then; "Auto" at the top (the corners
+/// found by Vision, or the whole photo); the mode strip along the bottom —
+/// Document · Whiteboard · ID Card · Book — and the large round shutter, which
+/// opens the camera again. Save makes the PDF with its text layer and hands it
+/// back to the Library.
 struct ScanView: View {
     @State private var session: ScanSession
     let onSaved: (URL) -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
     @AppStorage(SettingsKey.scanColorMode) private var storedColorMode: ScanColorMode = .color
     @AppStorage(SettingsKey.ocrLanguages) private var storedLanguages = "ar,en"
     @State private var showingCamera = false
@@ -29,6 +34,17 @@ struct ScanView: View {
     @State private var captures = 0
     @State private var liveText = false
     @State private var loadedLaunchArguments = false
+    /// Whether the camera can be opened, and when not, why. Read when the
+    /// scanner appears and again whenever it comes back to the front, so a
+    /// permission changed in Settings is noticed.
+    @State private var access = CameraAccess.missing
+    /// The camera is opened by the scanner itself exactly once. After the
+    /// person closes it, only the shutter opens it again: reopening it on its
+    /// own would leave no way out of the scanner.
+    @State private var offeredCamera = false
+    /// Pictures a UI test handed in on the command line are on their way in,
+    /// so the camera must not cover them.
+    @State private var expectingLaunchPictures = false
     /// Auto: the corners Vision finds. Off: the whole photo, corners by hand.
     @State private var auto = true
     /// The photo with its corner handles on the stage (after a capture, or
@@ -37,11 +53,15 @@ struct ScanView: View {
     /// Pictures the scanner starts with: a photo handed to the app from
     /// Files or another app.
     private let initialImages: [CGImage]
+    /// What the scanner is to put in front of the person as it opens.
+    private let start: ScanStart
 
-    init(mode: ScanMode = .document, images: [CGImage] = [], documentsFolder: URL? = nil, onSaved: @escaping (URL) -> Void) {
+    init(mode: ScanMode = .document, start: ScanStart = .camera, images: [CGImage] = [],
+         documentsFolder: URL? = nil, onSaved: @escaping (URL) -> Void) {
         let folder = documentsFolder ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         _session = State(initialValue: ScanSession(mode: mode, documentsFolder: folder))
         initialImages = images
+        self.start = start
         self.onSaved = onSaved
     }
 
@@ -70,21 +90,17 @@ struct ScanView: View {
         .onAppear(perform: applyStoredSettings)
         .task {
             if !initialImages.isEmpty, session.pages.isEmpty {
-                take(initialImages)
+                take(initialImages, origin: .picture)
             }
             loadLaunchArguments()
+            await openCameraOnceOnAppearing()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Back from Settings, where the camera may have been switched on.
+            if phase == .active { access = CameraAccess.now }
         }
         .fullScreenCover(isPresented: $showingCamera) {
-            DocumentCameraView { images in
-                showingCamera = false
-                take(images)
-            } onCancel: {
-                showingCamera = false
-            } onError: { message in
-                showingCamera = false
-                session.error = LocalizedStringKey(message)
-            }
-            .ignoresSafeArea()
+            cameraCover
         }
         .photosPicker(isPresented: $showingPhotos, selection: $picked, maxSelectionCount: retaking == nil ? ScanSession.maxPages : 1, matching: .images)
         .onChange(of: picked) { _, items in
@@ -119,16 +135,12 @@ struct ScanView: View {
         .sensoryFeedback(.impact(weight: .medium), trigger: captures)
         .sensoryFeedback(.selection, trigger: session.mode)
         .onChange(of: auto) { _, on in
-            // Off: the whole photo; on: the corners found again.
+            // Off: the whole photo; on: the corners found again — except on a
+            // page the camera already cut out, where there is nothing to find.
             showingCorners = true
             for page in session.pages {
                 if on {
-                    let image = page.original
-                    let book = session.mode == .book
-                    Task {
-                        let found = await Task.detached { book ? ScanPipeline.detectSpread(in: image) : ScanPipeline.detectPage(in: image) }.value
-                        session.setQuad(found ?? .whole(page.originalSize), for: page.id)
-                    }
+                    Task { await session.findQuad(for: page.id) }
                 } else {
                     session.setQuad(.whole(page.originalSize), for: page.id)
                 }
@@ -137,6 +149,36 @@ struct ScanView: View {
     }
 
     // MARK: - Pieces
+
+    /// The camera, full screen. On a machine with no camera a UI test asks for
+    /// the camera's state anyway (`-warraqCamera`), and a stand-in takes
+    /// VisionKit's place so the test can see that the scanner opened the camera
+    /// as it appeared, and that closing it does not open it again.
+    @ViewBuilder
+    private var cameraCover: some View {
+        #if DEBUG
+        if CameraAccess.overridden != nil, !CameraAccess.hasCamera {
+            DocumentCameraStandIn { showingCamera = false }
+        } else {
+            documentCamera
+        }
+        #else
+        documentCamera
+        #endif
+    }
+
+    private var documentCamera: some View {
+        DocumentCameraView { images in
+            showingCamera = false
+            take(images, origin: .documentCamera)
+        } onCancel: {
+            showingCamera = false
+        } onError: { message in
+            showingCamera = false
+            session.error = LocalizedStringKey(message)
+        }
+        .ignoresSafeArea()
+    }
 
     @ViewBuilder
     private var stage: some View {
@@ -152,7 +194,12 @@ struct ScanView: View {
             }
             .padding(Space.x5)
         } else {
-            EmptyState(symbol: session.mode.symbol, title: emptyTitle, message: emptyMessage)
+            EmptyState(symbol: emptySymbol, title: emptyTitle, message: emptyMessage,
+                       actionTitle: emptyActionTitle, action: emptyAction, actionIdentifier: "scan.emptyAction")
+                // `children: .contain` so the button inside keeps its own
+                // identifier: naming a container without it folds the
+                // children into the container, as ScanStage's handles show.
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("scan.empty")
         }
     }
@@ -176,20 +223,69 @@ struct ScanView: View {
         return text
     }
 
+    // The empty stage says what the scanner is waiting for — and, when the
+    // camera cannot open, the true reason and the one thing to do about it.
+    // It is never a black screen with nothing on it.
+
+    private var emptySymbol: String {
+        switch access {
+        case .denied, .restricted: "exclamationmark.triangle"
+        case .missing: "photo.on.rectangle"
+        case .ready, .notAsked: session.mode.symbol
+        }
+    }
+
     private var emptyTitle: LocalizedStringKey {
-        switch session.mode {
-        case .document: "No pages yet"
-        case .whiteboard: "Scan a whiteboard"
-        case .idCard: session.passport ? "Scan the passport's page" : "Scan the front, then the back"
-        case .book: "Scan an open book"
+        switch access {
+        // The app's name reads right-to-left inside an English sentence.
+        case .denied: "The camera is off for \(AppName.isolated)"
+        case .restricted: "The camera is not allowed on this device"
+        case .missing: "No camera on this device"
+        case .ready, .notAsked:
+            switch session.mode {
+            case .document: "No pages yet"
+            case .whiteboard: "Scan a whiteboard"
+            case .idCard: session.passport ? "Scan the passport's page" : "Scan the front, then the back"
+            case .book: "Scan an open book"
+            }
         }
     }
 
     private var emptyMessage: LocalizedStringKey {
-        if DocumentCameraView.isSupported {
-            return "Point the camera at the page; it finds the edges and takes the picture. Or choose photos."
+        switch access {
+        case .denied:
+            "Settings → \(AppName.isolated) → Camera turns it back on. Until then, choose photos from the library or from Files; the pages are found, straightened and cleaned the same way."
+        case .restricted:
+            "A configuration profile or Screen Time forbids the camera here. Choose photos from the library or from Files instead; the pages are found, straightened and cleaned the same way."
+        case .missing:
+            "This device has no camera. Choose photos from the library or from Files; the pages are found, straightened and cleaned the same way."
+        case .notAsked:
+            "\(AppName.isolated) needs the camera to scan paper. Nothing leaves this device."
+        case .ready:
+            "Point the camera at the page; it finds the edges and takes the picture. Or choose photos."
         }
-        return "This device has no camera. Choose photos from the library or from Files; the pages are found, straightened and cleaned the same way."
+    }
+
+    private var emptyActionTitle: LocalizedStringKey? {
+        switch access {
+        case .denied, .restricted: "Open Settings"
+        case .missing: "Choose photos"
+        case .ready, .notAsked: "Open the camera"
+        }
+    }
+
+    private var emptyAction: (() -> Void)? {
+        switch access {
+        case .denied, .restricted:
+            { if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) } }
+        case .missing:
+            {
+                retaking = nil
+                showingPhotos = true
+            }
+        case .ready, .notAsked:
+            { Task { await openCamera() } }
+        }
     }
 
     private var actions: some View {
@@ -216,7 +312,7 @@ struct ScanView: View {
             Button("Retake", systemImage: "arrow.triangle.2.circlepath.camera") {
                 guard let page = session.selected else { return }
                 retaking = page.id
-                if DocumentCameraView.isSupported { showingCamera = true } else { showingPhotos = true }
+                Task { await openCameraOrPhotos() }
             }
             .accessibilityIdentifier("scan.retake")
             if LiveTextView.isSupported {
@@ -295,9 +391,9 @@ struct ScanView: View {
                 .buttonStyle(.pressable)
                 .accessibilityIdentifier("scan.files")
                 Spacer()
-                ShutterButton(cameraAvailable: DocumentCameraView.isSupported) {
+                ShutterButton(cameraAvailable: access.opensCamera || access == .notAsked) {
                     retaking = nil
-                    if DocumentCameraView.isSupported { showingCamera = true } else { showingPhotos = true }
+                    Task { await openCameraOrPhotos() }
                 }
                 Spacer()
                 Button {
@@ -314,7 +410,7 @@ struct ScanView: View {
             }
             .foregroundStyle(.white)
             .padding(.horizontal, Space.x7)
-            Text(DocumentCameraView.isSupported ? "Camera" : "No camera on this device — the shutter chooses a photo")
+            Text(shutterCaption)
                 .font(TextStyle.caption)
                 .foregroundStyle(Color.white.opacity(0.6))
                 .multilineTextAlignment(.center)
@@ -323,6 +419,18 @@ struct ScanView: View {
         .padding(.top, Space.x4)
         .padding(.bottom, Space.x5)
         .background(Color.black)
+    }
+
+    /// Under the shutter: what it will do, and why, when it cannot open the
+    /// camera. The shutter always does something — it chooses a photo where
+    /// the camera is unavailable — so the caption says which.
+    private var shutterCaption: LocalizedStringKey {
+        switch access {
+        case .ready, .notAsked: "Camera"
+        case .denied: "The camera is off for this app — the shutter chooses a photo"
+        case .restricted: "The camera is not allowed here — the shutter chooses a photo"
+        case .missing: "No camera on this device — the shutter chooses a photo"
+        }
     }
 
     @ToolbarContentBuilder
@@ -345,6 +453,48 @@ struct ScanView: View {
         }
     }
 
+    // MARK: - Opening the camera
+
+    /// The camera, the moment the scanner appears — the owner's first
+    /// complaint was that it did not. It opens only when the scanner has
+    /// nothing to show: with a page already on the stage, or pictures on their
+    /// way in from another app or the command line, the camera would cover
+    /// what the person came to see. It opens once: after that the shutter and
+    /// the empty stage's button are the way back to it, so cancelling the
+    /// camera leaves the scanner rather than reopening it for ever.
+    private func openCameraOnceOnAppearing() async {
+        guard !offeredCamera else { return }
+        offeredCamera = true
+        access = CameraAccess.now
+        guard session.pages.isEmpty, initialImages.isEmpty, !expectingLaunchPictures else { return }
+        switch start {
+        case .camera:
+            await openCamera(asking: true)
+        case .pictures:
+            // "Create a PDF": pictures are what was asked for.
+            showingPhotos = true
+        }
+    }
+
+    /// Opens the document camera, asking for it first when it has never been
+    /// asked for. Where there is no camera, nothing opens: the stage and the
+    /// shutter's caption say why.
+    private func openCamera(asking: Bool = true) async {
+        if access == .notAsked, asking {
+            access = await CameraAccess.asked()
+        }
+        guard access.opensCamera else { return }
+        showingCamera = true
+    }
+
+    /// The shutter and Retake: the camera where it can open, the photo library
+    /// where it cannot, so neither control is ever dead.
+    private func openCameraOrPhotos() async {
+        await openCamera()
+        guard !showingCamera else { return }
+        showingPhotos = true
+    }
+
     // MARK: - Taking pictures in
 
     private func applyStoredSettings() {
@@ -352,13 +502,13 @@ struct ScanView: View {
         session.chosenLanguages = storedLanguages.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
     }
 
-    private func take(_ images: [CGImage]) {
+    private func take(_ images: [CGImage], origin: ScanOrigin) {
         guard !images.isEmpty else { return }
         Task {
             if let retaking, let first = images.first {
-                await session.retake(retaking, with: first)
+                await session.retake(retaking, with: first, origin: origin)
             } else {
-                await session.add(images: images, detect: auto)
+                await session.add(images: images, origin: origin, detect: auto)
             }
             retaking = nil
             captures += 1
@@ -378,7 +528,7 @@ struct ScanView: View {
             retaking = nil
             return
         }
-        take(images)
+        take(images, origin: .picture)
     }
 
     private func load(_ urls: [URL]) async {
@@ -395,7 +545,7 @@ struct ScanView: View {
             retaking = nil
             return
         }
-        take(images)
+        take(images, origin: .picture)
     }
 
     /// A UI test, or a run from the command line: `-warraqScan <path>[,<path>…]`
@@ -416,10 +566,41 @@ struct ScanView: View {
         }
         guard let list = defaults.string(forKey: "warraqScan"), !list.isEmpty else { return }
         let urls = list.split(separator: ",").map { URL(filePath: String($0)) }
+        // Read before the camera is offered, so it does not cover them.
+        expectingLaunchPictures = true
         Task { await load(urls) }
         #endif
     }
 }
+
+#if DEBUG
+/// VisionKit's document camera cannot run on the simulator, so a UI test that
+/// walks the scanner through `-warraqCamera ready` gets this in its place: it
+/// proves only that the scanner opened the camera and that closing it is
+/// closing it. It exists in Debug builds alone and is never in a build anyone
+/// installs.
+struct DocumentCameraStandIn: View {
+    let onCancel: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            VStack(spacing: Space.x5) {
+                Image(systemName: "camera.viewfinder")
+                    .font(.system(size: 56, weight: .light))
+                Text(verbatim: "Document camera (Debug stand-in)")
+                    .font(TextStyle.callout)
+                Button("Cancel", action: onCancel)
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("scan.camera.cancel")
+            }
+            .foregroundStyle(.white)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("scan.camera")
+    }
+}
+#endif
 
 /// The page on the stage: the picture, and over it the corners Vision
 /// found as four handles while the page is still being cut out — they

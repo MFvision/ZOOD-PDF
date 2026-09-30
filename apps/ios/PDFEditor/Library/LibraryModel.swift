@@ -57,6 +57,10 @@ final class LibraryModel {
     /// A scan asked for from outside (a widget, the control, a Shortcut),
     /// and from the home screen's Scan and Create cards.
     var scanRequested = false
+    /// Where the scanner is to begin. "Scan" means the camera, and opens it;
+    /// "Create a PDF" means pictures into a PDF, and opens the photo picker —
+    /// the camera would be the wrong thing to put in front of that card.
+    var scanStart = ScanStart.camera
 
     let store: RecentsStore
     let searches: SearchesStore

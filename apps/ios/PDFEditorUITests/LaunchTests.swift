@@ -113,7 +113,7 @@ final class LaunchTests: XCTestCase {
             try save(app, as: "library-\(suffix)", in: directory)
 
             if combo.settings {
-                app.buttons["library.settings"].tap()
+                app.homeSettingsCard().tap()
                 XCTAssertTrue(app.buttons["sheet.done"].waitForExistence(timeout: 10), "the Settings sheet is up")
                 XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'hayro' OR label CONTAINS %@", "0.1")).firstMatch.waitForExistence(timeout: 5) || true)
                 try save(app, as: "settings-\(suffix)", in: directory)

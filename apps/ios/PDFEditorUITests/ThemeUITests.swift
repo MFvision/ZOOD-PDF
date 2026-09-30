@@ -25,13 +25,11 @@ final class ThemeUITests: XCTestCase {
     }
 
     private func openSettings(in app: XCUIApplication) {
-        // The home screen's Settings card. It is the last of the six, so on a
-        // phone it starts below the fold: the screen is brought to it before
-        // it is asked to take a tap.
-        let card = app.buttons["home.settings"]
-        XCTAssertTrue(card.waitForExistence(timeout: 30), "the Settings card is on the home screen")
-        // The search field sits over the foot of the screen: the card has to
-        // be clear of it, not merely on screen, or the tap lands on the field.
+        // `homeSettingsCard` finds the card, choosing Home in the sidebar
+        // first on an iPad that came back on another section. The search
+        // field sits over the foot of the screen, so the card has to be
+        // clear of it, not merely on screen, or the tap lands on the field.
+        let card = app.homeSettingsCard()
         let window = app.windows.firstMatch
         var tries = 0
         while card.frame.maxY > window.frame.maxY - 90, tries < 10 {

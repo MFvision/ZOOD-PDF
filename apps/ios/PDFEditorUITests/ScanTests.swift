@@ -272,8 +272,7 @@ final class ScanTests: XCTestCase {
             try save(app, as: "scan-whiteboard-\(suffix)", in: directory)
 
             app = launch(language: combo.language, appearance: combo.appearance)
-            XCTAssertTrue(app.buttons["library.settings"].waitForExistence(timeout: 30))
-            app.buttons["library.settings"].tap()
+            app.homeSettingsCard().tap()
             app.swipeUp()
             XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'settings.ocr.'")).firstMatch.waitForExistence(timeout: 15))
             try save(app, as: "settings-scan-\(suffix)", in: directory)
