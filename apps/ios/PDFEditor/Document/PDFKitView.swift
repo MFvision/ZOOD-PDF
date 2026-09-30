@@ -147,6 +147,11 @@ struct PDFKitView: UIViewRepresentable {
                 overlay.edit = edit
                 overlay.update(night: night, tool: tool)
             }
+            // One element while the pages are only read — the core's text of
+            // the page is its value — and a container while the editor is
+            // open, so the field the text is typed in, which lives inside a
+            // page's overlay, is reachable by VoiceOver and by a test.
+            view.isAccessibilityElement = edit == nil
             // The arrow keys are the editor's only while something is picked.
             if let edit, edit.hasSomethingPicked {
                 view.onNudge = { dx, dy, far in

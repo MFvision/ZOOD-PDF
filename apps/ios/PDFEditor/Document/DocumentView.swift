@@ -337,7 +337,11 @@ struct DocumentView: View {
                     .colorInvert(if: night)
                     .hueRotation(.degrees(night ? 180 : 0))
                     .ignoresSafeArea(edges: showingThumbnails && compact ? [] : .bottom)
-                    .accessibilityElement(children: .ignore)
+                    // One element while the pages are read, so VoiceOver gets
+                    // the core's text of the page in logical order; a
+                    // container while the editor is open, so the field over
+                    // the paragraph is reachable.
+                    .accessibilityElement(children: editing ? .contain : .ignore)
                     .accessibilityLabel(pageLabel)
                     .accessibilityValue(Text(pageText ?? ""))
                     .accessibilityIdentifier("document.page")

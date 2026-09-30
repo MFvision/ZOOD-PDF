@@ -401,6 +401,7 @@ struct PageMarksSheet: View {
                     .disabled(working)
                     .accessibilityIdentifier("marks.remove.\(mark.id)")
                 }
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("marks.item.\(mark.id)")
             }
         }

@@ -161,18 +161,19 @@ final class EditUITests: XCTestCase {
         start.tap()
         start.typeText("شركة زود")
         ui.app.buttons["marks.add"].tap()
-
-        XCTAssertTrue(ui.poll(timeout: 60) {
-            ui.app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'marks.item.'")).count > 0
+        // The form is a list: the marks on the document are its last section,
+        // below the fold until it is scrolled to.
+        let removes = ui.app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'marks.remove.'"))
+        XCTAssertTrue(ui.poll(timeout: 90) {
+            if removes.count > 0 { return true }
+            ui.app.swipeUp()
+            return removes.count > 0
         }, "the header is listed on the document: \(ui.tree)")
 
-        // Page numbers too, and then both are off the list once removed.
-        let removes = ui.app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'marks.remove.'"))
-        XCTAssertGreaterThan(removes.count, 0)
+        // And off the list once it is removed.
         removes.firstMatch.tap()
-        XCTAssertTrue(ui.poll(timeout: 60) {
-            ui.app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'marks.item.'")).count == 0
-        }, "and taken off again: \(ui.tree)")
+        XCTAssertTrue(ui.poll(timeout: 90) { removes.count == 0 },
+                      "and taken off again: \(ui.tree)")
     }
 
     // MARK: - Screenshots
