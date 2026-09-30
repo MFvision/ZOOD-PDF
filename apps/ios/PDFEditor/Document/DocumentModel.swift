@@ -184,6 +184,25 @@ final class DocumentModel: Identifiable, Hashable {
         return reply
     }
 
+    /// Runs an edit the core exposes on its own rather than as a tool
+    /// operation — the text edits (`replaceParagraph`, `addText`) — and takes
+    /// the result the same way `apply` does: the incremental bytes become the
+    /// edited document, PDFKit reloads, and undo gets a step back.
+    ///
+    /// `body` may make several of the core's calls, and they become one step
+    /// of undo (a paragraph replaced and a line added under it).
+    @discardableResult
+    func applyEdit<R: Sendable>(undoManager: UndoManager? = nil, _ body: @Sendable (Core) async throws -> R) async throws -> R {
+        guard let core = await readyEngine() else { throw CoreError.closed }
+        let before = edited
+        let result = try await body(core)
+        let bytes = try await core.save()
+        take(bytes: bytes)
+        pageCount = await core.pageCount
+        registerUndo(to: before, with: undoManager)
+        return result
+    }
+
     /// Takes bytes a static operation answered — a mark added, appearances
     /// redrawn, another engine's changes rebased — as the edited document:
     /// the core reopens on them, PDFKit reloads, and undo gets a step back.

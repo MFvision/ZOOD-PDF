@@ -1421,6 +1421,137 @@ All of these counts were seen again after `main` was merged in: Rust **483 of 48
 (240 + 199 + 44), `cargo clippy --all-targets -D warnings` and `cargo fmt --check`
 clean, and iPhone 17 **28 of 28** unit and **3 of 3** interface.
 
+## The iOS app — Edit PDF: text, pictures, links, page marks (2026-09-30)
+
+The owner's TestFlight report's headline gap was "it does not have any PDF editor".
+`apps/ios/PDFEditor/Edit/` is that editor, in SwiftUI over PDFKit's pages, driven by
+the core the desktop already uses — so these are the same tested operations with an
+iPhone and iPad front end, not a second implementation. Everything below ran **on the
+simulator only** (iPhone 17 and iPad Pro 13-inch (M5)): this Mac has no signing identity.
+
+**How it opens.** *Edit* in the toolbar (⌥⌘E) puts a dark bar over the pages, the same
+chrome as markup — undo, redo, which of the page's things is being edited (Text,
+Pictures, Links), that kind's own controls, Page marks, and Done. Only one of markup and
+the editor is ever in hand; starting either puts the other away. On iPad, and on an
+iPhone with room, an inspector sits beside the pages listing what this page holds —
+each paragraph with its text, each picture with its pixels, each link with where it
+goes — and what can be done to the one that is picked.
+
+**What works, as a person would use it.**
+* **Edit text.** The core reads the page's paragraphs (`paragraphs`); a tap on the page,
+  or a row of the inspector, opens the smallest one under the finger in a field laid
+  over it, carrying that paragraph's own direction, alignment and size. Apply replaces it
+  through `replaceParagraph`: reflowed, shaped by warraq-text, in one of the three
+  bundled faces (Amiri, Cairo, Inter), written through `show.rs::show_line` with an
+  ActualText that reads back. A paragraph closed unchanged writes nothing. When the core
+  says the new text had to be shrunk, or ran past the page, the app says so rather than
+  leaving it to be discovered.
+* **A line of text where the finger lands.** *Add a line of text*, then a tap: the field
+  opens at that point, and the line is drawn from it — leftwards in Arabic, rightwards in
+  Latin, as the core draws it with the same coordinate — in the chosen face, size and
+  colour.
+* **Pictures.** *Add a picture* takes one from Files (PNG and JPEG go to the core as they
+  are; anything else it does not read, a HEIC photo say, is drawn once into a PNG
+  upright by its own orientation) and a drag on the page puts it there, keeping its
+  proportions. A tap picks a picture; dragging it moves it, a handle resizes it, Crop
+  turns the handles into trimming ones, Turn takes it a quarter clockwise, Replace puts
+  other bytes in its place fitted inside what showed, Delete takes it off. A picture the
+  core will not edit — one whose bytes draw it elsewhere too — is listed as such and not
+  offered. All of it is `images.list/add/transform/replace/delete`.
+* **Links.** A drag on the page draws a link's box and asks where it goes: a web or
+  e-mail address, or a page of this document. A tap picks one; dragging moves it, a
+  handle resizes it, *Where it goes* re-points it, Remove takes it off
+  (`links.add/update/remove/list`). The core refuses an address that is not http, https
+  or mailto, and one with bidi controls or other invisible characters; the app shows the
+  refusal instead of writing it.
+* **Page marks.** *Page marks…* (in the editor's bar, and in the document's More menu)
+  writes watermarks, headers, footers, page numbers and Bates numbers through
+  `marks.add`, with the core's own drawing of the current page above the form as the
+  preview (`marks.preview`) — so what is chosen is what will be written. Headers and
+  footers have the three slots with the `{page}`, `{pages}`, `{date}` and `{file}`
+  tokens, in a Gregorian or Hijri (Umm al-Qura) date and Western or Arabic-Indic digits;
+  page numbers have the five formats (`1`, `1 / 9`, `Page 1 of 9`, `صفحة ١ من ٩`, roman),
+  a start number and "not on the first page"; Bates numbers a prefix, suffix, start and
+  padding. Pages are typed as `1-3, 5` in either script, or left empty for every page.
+  The marks already on the file are listed under the form with what they say and where,
+  and Remove takes one off leaving the page as it was.
+* **Undo and the original bytes.** Every change is one call to the core on the open
+  document, which answers an incremental update: the original bytes stay the literal
+  prefix of the file until Save, and each change is a step of undo like every other
+  tool's, in the bar and through the system's own gestures.
+
+**The core's one addition.** Everything above was already in the core except a colour for
+a line added at a point. `warraq_pdf::ops::append_line_in_color` sets the fill inside the
+line's own `q`/`Q` (so nothing drawn after it is repainted), `Document::add_text_in_color`
+passes it through, and a new `warraq_add_text_colored` carries a `#rrggbb` across the C
+ABI. All three are additive: `append_line` and `add_text` keep their signatures, and the
+WASM and desktop hosts are untouched.
+
+**iPad.** An inspector beside the pages; the arrow keys move the picked picture or link
+a point at a time (ten with Shift); a pointer — trackpad, mouse, or the Pencil hovering —
+lights the paragraph, picture or link a tap would open; ⌥⌘E opens the editor, ⌘Return
+applies, Escape cancels. The Pencil draws in markup, not here: nothing in editing is
+better done with a pen than a finger, so the editor gives it no job of its own.
+
+**Accessibility.** While the pages are only read, the page view is one element whose value
+is the core's text in logical order. While the editor is open it is a container, and the
+field being typed in is listed first (`DocumentPDFView.editField`) — PDFKit's page lists
+its own text to accessibility rather than its subviews, so without that VoiceOver would
+never reach the field.
+
+**How it is proven** (run 2026-09-30 through `apps/ios/.build/edit-tests.sh`, a
+one-simulator subset of `scripts/ios/build.sh`, under the machine-wide queue):
+* XCTest, **39 tests, 0 failures on iPhone 17 and 39, 0 on iPad Pro 13-inch (M5)** —
+  `EditGeometryTests` (14: the desktop's matrix arithmetic, the same cases), `EditTests`
+  (15: every core call on corpus files — a paragraph of Arabic with tashkeel replaced,
+  **saved, the file reopened and the core's reading equal to what was typed, in logical
+  order**, with the original bytes still the file's prefix; a line added in each of the
+  three faces and read back; undo; pictures placed, moved, cropped, replaced, deleted and
+  nudged; links added, moved, re-pointed, removed; refused addresses), `MarkSpecTests`
+  (10: page ranges in either script, digits, Bates padding, the spec's shape; an Arabic
+  header and `صفحة ١ من ٣` written, listed, kept out of the page's own text, read by
+  `marks.text`, removed; a watermark on one page only and Bates numbers on every page;
+  the preview). Core: `cargo test -p warraq-core -p warraq-pdf --lib` 121 + 232 passed,
+  clippy clean, including the new `added_text_takes_the_colour_it_was_given…`.
+* XCUITest `EditUITests`, last run on each device:
+  * **iPhone 17: 4 passed, 0 failed** (the screenshot test skipped without a directory) —
+    a paragraph tapped on the page, replaced with Arabic, Apply, the page's text read by
+    the core, Save, the app relaunched and the Arabic read off the file; a red Arabic line
+    added where the finger landed; a link drawn, given an address, removed; an Arabic
+    header added in Page marks, listed, removed.
+  * **iPad Pro 13-inch (M5): 2 passed, 2 failed.** Links and Page marks pass. The added
+    line passed in the run before and failed in this one (the field did not open on the
+    tap; the Mac was at a load of ~110 and one test took 975 s). **The paragraph test
+    fails on iPad in every run:** opened from the inspector's row, the field opens and
+    takes the keyboard, but after ⌘A and the typed Arabic, Apply leaves the page with
+    its heading only — the paragraph was replaced with nothing. The same flow passes on
+    the iPhone (tapped on the page) and the same core call passes on both devices in
+    XCTest, so the fault is between the inspector-opened field and what the simulator's
+    hardware keyboard delivers to it; it is not found. Until it is, treat **editing a
+    paragraph opened from the iPad inspector as unproven**; tapping the text on the page
+    is the path that is proven.
+  * The simulator runner also failed to start several times ("Timed out while loading
+    Accessibility") under that load; those runs are not counted.
+
+**Limits, stated plainly.**
+* The editor reads and acts on **the page on screen**. In continuous scroll the pages
+  above and below show nothing to edit until one of them is the current page.
+* **Colour applies to a line that is added, not to a paragraph that is replaced.** A
+  replaced paragraph keeps the colour the page draws it in; the core's
+  `replace_paragraph` takes no colour, as on the desktop.
+* The **size** in the bar is the new line's. A replaced paragraph keeps its own size,
+  which the core shrinks only if the new text would not otherwise fit.
+* A **picture watermark** is not offered on the phone: `marks.add` takes one, but the
+  sheet has no picture control yet, so there is none to press. Text watermarks are there.
+* **Changing a mark that is already on the file** means removing it and adding it again;
+  the sheet does not read an existing mark back into its form (the desktop's panel does).
+* The field on the page is a `UITextView` inside PDFKit's page overlay, so it scrolls and
+  zooms with the paper. When it opens, PDFKit is asked to bring it into view, and
+  SwiftUI's own keyboard avoidance gives the pages the space the keyboard leaves — but on
+  an iPhone, on a paragraph taller than that space, the last lines are still behind the
+  keyboard and have to be scrolled to inside the field.
+* Everything ran on the simulator. No device, no TestFlight from here.
+
 ## Next (in order)
 1. **Run the Windows and Linux builds on those systems**: print by pages, the drop targets and the NSIS installer have been built for them in code only — nothing of them has run here.
 2. **Phone apps**: iPhone and iPad are the native SwiftUI app in `apps/ios` (its foundation above; the other parts in progress). Android is not started: it would need the Android SDK, NDK and JDK installed here (Decisions, below). The installable web app covers phones meanwhile.

@@ -7458,6 +7458,666 @@
           }
         }
       }
+    },
+    "%lld by %lld pixels": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld × %2$lld بكسل"
+          }
+        }
+      }
+    },
+    "%lld lines, %lld points": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld أسطر، %2$lld نقطة"
+          }
+        }
+      }
+    },
+    "A page": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صفحة"
+          }
+        }
+      }
+    },
+    "Add a line of text": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إضافة سطر نص"
+          }
+        }
+      }
+    },
+    "Add a link": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إضافة رابط"
+          }
+        }
+      }
+    },
+    "Add a picture": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إضافة صورة"
+          }
+        }
+      }
+    },
+    "After": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بعده"
+          }
+        }
+      }
+    },
+    "An address": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عنوان"
+          }
+        }
+      }
+    },
+    "Apply": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تطبيق"
+          }
+        }
+      }
+    },
+    "Bates number": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترقيم بيتس"
+          }
+        }
+      }
+    },
+    "Before": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قبله"
+          }
+        }
+      }
+    },
+    "Calendar": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التقويم"
+          }
+        }
+      }
+    },
+    "Could not make that change": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر إجراء هذا التغيير"
+          }
+        }
+      }
+    },
+    "Digits": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عدد الخانات"
+          }
+        }
+      }
+    },
+    "Drag a box on the page to add a link.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسحب مربعًا على الصفحة لإضافة رابط."
+          }
+        }
+      }
+    },
+    "Drag out a box on the page to put the picture there.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسحب مربعًا على الصفحة لوضع الصورة فيه."
+          }
+        }
+      }
+    },
+    "Drag the box to move it, or a handle to resize it.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسحب المربع لتحريكه، أو اسحب مقبضًا لتغيير حجمه."
+          }
+        }
+      }
+    },
+    "Drag the picture to move it, or a handle to resize it; with Crop on, a handle trims it.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسحب الصورة لتحريكها، أو اسحب مقبضًا لتغيير حجمها؛ ومع تفعيل «قص» يقتطع المقبض منها."
+          }
+        }
+      }
+    },
+    "Drawn in more than one place, so it is not edited here.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مرسومة في أكثر من موضع، فلا تُحرَّر هنا."
+          }
+        }
+      }
+    },
+    "Edit": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تحرير"
+          }
+        }
+      }
+    },
+    "End": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النهاية"
+          }
+        }
+      }
+    },
+    "Font": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الخط"
+          }
+        }
+      }
+    },
+    "Footer": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تذييل الصفحة"
+          }
+        }
+      }
+    },
+    "Goes to": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يذهب إلى"
+          }
+        }
+      }
+    },
+    "Gregorian": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ميلادي"
+          }
+        }
+      }
+    },
+    "Header": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "رأس الصفحة"
+          }
+        }
+      }
+    },
+    "Hijri": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هجري"
+          }
+        }
+      }
+    },
+    "How it reads": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كيف يُقرأ"
+          }
+        }
+      }
+    },
+    "How solid": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "درجة الوضوح"
+          }
+        }
+      }
+    },
+    "In front of the page": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أمام محتوى الصفحة"
+          }
+        }
+      }
+    },
+    "Inside a form on the page: it stays within the form's box.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "داخل نموذج في الصفحة: تبقى ضمن إطاره."
+          }
+        }
+      }
+    },
+    "Links": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الروابط"
+          }
+        }
+      }
+    },
+    "Links on this page": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الروابط في هذه الصفحة"
+          }
+        }
+      }
+    },
+    "Margin": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الهامش"
+          }
+        }
+      }
+    },
+    "Not on the first page": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "دون الصفحة الأولى"
+          }
+        }
+      }
+    },
+    "Nowhere in this file": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا موضع له في هذا الملف"
+          }
+        }
+      }
+    },
+    "On this document": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "في هذا المستند"
+          }
+        }
+      }
+    },
+    "Page %lld of %lld, as the mark will be drawn on it.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصفحة %1$lld من %2$lld، كما ستُرسم عليها العلامة."
+          }
+        }
+      }
+    },
+    "Page marks": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "علامات الصفحات"
+          }
+        }
+      }
+    },
+    "Page marks…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "علامات الصفحات…"
+          }
+        }
+      }
+    },
+    "Pages %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصفحات %@"
+          }
+        }
+      }
+    },
+    "Pictures": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصور"
+          }
+        }
+      }
+    },
+    "Pictures on this page": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصور في هذه الصفحة"
+          }
+        }
+      }
+    },
+    "Put in": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إدراج"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إزالة"
+          }
+        }
+      }
+    },
+    "Replace": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استبدال"
+          }
+        }
+      }
+    },
+    "Start at": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يبدأ من"
+          }
+        }
+      }
+    },
+    "Text on this page": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النص في هذه الصفحة"
+          }
+        }
+      }
+    },
+    "That is not a range of this document's pages.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا ليس نطاقًا من صفحات هذا المستند."
+          }
+        }
+      }
+    },
+    "That picture could not be read.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّرت قراءة هذه الصورة."
+          }
+        }
+      }
+    },
+    "The bundled font is missing.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الخط المرفق مع التطبيق غير موجود."
+          }
+        }
+      }
+    },
+    "The new text is longer than the space it had; the rest is past the page.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النص الجديد أطول من المساحة المتاحة له؛ وما زاد خرج عن الصفحة."
+          }
+        }
+      }
+    },
+    "The new text was made smaller to fit the space it had.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صُغِّر النص الجديد ليتّسع في المساحة المتاحة له."
+          }
+        }
+      }
+    },
+    "The text was changed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تغيّر النص"
+          }
+        }
+      }
+    },
+    "This page has no links. Drag a box on the page to add one.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا روابط في هذه الصفحة. اسحب مربعًا على الصفحة لإضافة رابط."
+          }
+        }
+      }
+    },
+    "This page has no pictures. Add one and drag out where it goes.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا صور في هذه الصفحة. أضف صورة ثم اسحب موضعها."
+          }
+        }
+      }
+    },
+    "This page has no text the editor can take apart. A line can still be added to it.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا نص في هذه الصفحة يمكن للمحرر تفكيكه. ويمكن مع ذلك إضافة سطر إليها."
+          }
+        }
+      }
+    },
+    "Tiled": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "متكررة"
+          }
+        }
+      }
+    },
+    "Turn": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تدوير"
+          }
+        }
+      }
+    },
+    "Turn a quarter": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تدوير ربع دورة"
+          }
+        }
+      }
+    },
+    "Watermark": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "علامة مائية"
+          }
+        }
+      }
+    },
+    "Web addresses and e-mail addresses only (http, https, mailto).": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عناوين الويب والبريد فقط ‏(http وhttps وmailto)."
+          }
+        }
+      }
+    },
+    "What it says": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النص"
+          }
+        }
+      }
+    },
+    "Where it goes": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إلى أين يذهب"
+          }
+        }
+      }
+    },
+    "Where the link goes": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إلى أين يذهب الرابط"
+          }
+        }
+      }
+    },
+    "“Start” is the right-hand side in Arabic. {page}, {pages}, {date} and {file} are filled in page by page.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«البداية» هي الجهة اليمنى في العربية. وتُملأ ‎{page}‎ و‎{pages}‎ و‎{date}‎ و‎{file}‎ صفحةً صفحة."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -133,12 +133,17 @@ public actor Core {
     /// Draws a line of text at a point on the page (points from the top-left
     /// corner; `x` is where the line starts, so Arabic grows leftwards from
     /// it) in `font`, a TrueType or OpenType file the core subsets and embeds.
-    public func addText(page index: Int, x: Float, y: Float, size: Float, text: String, font: Data) throws {
+    ///
+    /// `color` is "#rrggbb"; nil draws in the colour the page's own content
+    /// leaves behind, which is black on nearly every page.
+    public func addText(page index: Int, x: Float, y: Float, size: Float, text: String, font: Data, color: String? = nil) throws {
         _ = try reply { handle in
             text.withCString { cText in
-                font.withUnsafeBytes { (buffer: UnsafeRawBufferPointer) in
-                    warraq_add_text(handle, index, x, y, size, cText,
-                                    buffer.baseAddress?.assumingMemoryBound(to: UInt8.self), buffer.count)
+                withOptionalCString(color) { cColor in
+                    font.withUnsafeBytes { (buffer: UnsafeRawBufferPointer) in
+                        warraq_add_text_colored(handle, index, x, y, size, cText, cColor,
+                                                buffer.baseAddress?.assumingMemoryBound(to: UInt8.self), buffer.count)
+                    }
                 }
             }
         }

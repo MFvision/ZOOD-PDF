@@ -32,6 +32,15 @@ enum PartB {
         return model
     }
 
+    /// The page's text as the core reads it, unwrapped: `XCTUnwrap` takes an
+    /// autoclosure, which cannot hold an `await`, so the reading happens here.
+    @MainActor
+    static func text(of model: DocumentModel, page: Int,
+                     file: StaticString = #filePath, line: UInt = #line) async throws -> String {
+        let text = await model.text(ofPage: page)
+        return try XCTUnwrap(text, "the core reads page \(page)", file: file, line: line)
+    }
+
     /// A small opaque picture, as a signature or a page would be.
     static func picture(width: Int = 120, height: Int = 60, color: UIColor = .black) -> UIImage {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: width, height: height))

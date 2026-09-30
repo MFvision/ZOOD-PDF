@@ -46,6 +46,11 @@ struct PDFKitView: UIViewRepresentable {
     let tool: AnnotationTool?
     /// The pen's kind, colour and width, so the canvases follow the palette.
     var inkSignature: String = ""
+    /// Edit PDF, when the editor is open: the overlays get its layer.
+    var edit: EditModel?
+    /// What the editor is doing, passed on its own so a change of mode, of
+    /// what is picked or of the lists reaches the layers over the pages.
+    var editSignature: String = ""
     let host: PDFViewHost?
     /// PDFKit draws these highlighted (the search's hits) and scrolls to
     /// `currentHighlight` when it changes.
@@ -135,6 +140,27 @@ struct PDFKitView: UIViewRepresentable {
                 overlay.applyInk()
             }
         }
+        if coordinator.editSignature != editSignature || coordinator.edit !== edit {
+            coordinator.editSignature = editSignature
+            coordinator.edit = edit
+            for overlay in coordinator.overlays.values {
+                overlay.edit = edit
+                overlay.update(night: night, tool: tool)
+            }
+            // One element while the pages are only read — the core's text of
+            // the page is its value — and a container while the editor is
+            // open, so the field the text is typed in, which lives inside a
+            // page's overlay, is reachable by VoiceOver and by a test.
+            view.isAccessibilityElement = edit == nil
+            // The arrow keys are the editor's only while something is picked.
+            if let edit, edit.hasSomethingPicked {
+                view.onNudge = { dx, dy, far in
+                    Task { await edit.nudge(dx: dx, dy: dy, far: far) }
+                }
+            } else {
+                view.onNudge = nil
+            }
+        }
         if view.highlightedSelections?.count != highlights.count || view.highlightedSelections?.first !== highlights.first {
             view.highlightedSelections = highlights.isEmpty ? nil : highlights
         }
@@ -182,6 +208,8 @@ struct PDFKitView: UIViewRepresentable {
         var lastReported = -1
         var overlays: [PDFPage: PageOverlayView] = [:]
         var inkSignature = ""
+        weak var edit: EditModel?
+        var editSignature = ""
 
         init(parent: PDFKitView) {
             self.parent = parent
@@ -200,12 +228,14 @@ struct PDFKitView: UIViewRepresentable {
 
         func pdfView(_ view: PDFView, overlayViewFor page: PDFPage) -> UIView? {
             if let overlay = overlays[page] {
+                overlay.edit = parent.edit ?? edit
                 overlay.update(night: night, tool: tool)
                 return overlay
             }
             guard let document = view.document else { return nil }
             let overlay = PageOverlayView(page: page, pageIndex: document.index(for: page), pdfView: view,
                                           editor: parent.editor ?? editor)
+            overlay.edit = parent.edit ?? edit
             overlay.update(night: night, tool: tool)
             overlays[page] = overlay
             return overlay
@@ -224,6 +254,54 @@ final class DocumentPDFView: PDFView {
     var onMarkup: ((AnnotationTool, PDFSelection) -> Void)?
     /// The interface's language (chosen in Settings, not always the system's).
     var locale: Locale = .current
+    /// Edit PDF's arrow keys, with a keyboard: a point at a time over the
+    /// picked picture or link, ten with Shift. Nil when nothing is picked,
+    /// so the keys stay the view's own.
+    var onNudge: ((CGFloat, CGFloat, Bool) -> Void)?
+    /// Edit PDF's field, while one is open. It lives inside a page's
+    /// overlay, and PDFKit's page lists its own text to accessibility
+    /// instead of its subviews, so the field is listed here, first — or
+    /// VoiceOver (and the keyboard's focus, for a test) would never find it.
+    weak var editField: UIView? {
+        didSet { UIAccessibility.post(notification: .layoutChanged, argument: editField) }
+    }
+
+    override var accessibilityElements: [Any]? {
+        get {
+            guard let editField else { return super.accessibilityElements }
+            return [editField] + (super.accessibilityElements ?? subviews)
+        }
+        set { super.accessibilityElements = newValue }
+    }
+
+    override var keyCommands: [UIKeyCommand]? {
+        guard onNudge != nil else { return super.keyCommands }
+        let keys = [UIKeyCommand.inputLeftArrow, UIKeyCommand.inputRightArrow,
+                    UIKeyCommand.inputUpArrow, UIKeyCommand.inputDownArrow]
+        // Which way each key moves is read back in `nudged`, from the
+        // command's own input and modifiers.
+        let commands = keys.flatMap { key in
+            [UIKeyModifierFlags(), .shift].map { modifiers -> UIKeyCommand in
+                let command = UIKeyCommand(title: "", action: #selector(nudged(_:)), input: key,
+                                           modifierFlags: modifiers)
+                command.wantsPriorityOverSystemBehavior = true
+                return command
+            }
+        }
+        return commands + (super.keyCommands ?? [])
+    }
+
+    @objc private func nudged(_ command: UIKeyCommand) {
+        guard let onNudge, let input = command.input else { return }
+        let far = command.modifierFlags.contains(.shift)
+        switch input {
+        case UIKeyCommand.inputLeftArrow: onNudge(-1, 0, far)
+        case UIKeyCommand.inputRightArrow: onNudge(1, 0, far)
+        case UIKeyCommand.inputUpArrow: onNudge(0, -1, far)
+        case UIKeyCommand.inputDownArrow: onNudge(0, 1, far)
+        default: break
+        }
+    }
 
     override func buildMenu(with builder: any UIMenuBuilder) {
         super.buildMenu(with: builder)

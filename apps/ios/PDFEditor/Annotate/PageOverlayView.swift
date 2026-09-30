@@ -15,7 +15,12 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
     weak var pdfView: PDFView?
     weak var editor: AnnotationEditor?
 
+    /// Edit PDF, when it is open: its own layer over the page, added beside
+    /// the markup gestures and removed when the editor closes.
+    weak var edit: EditModel?
+
     private var canvas: PKCanvasView?
+    private var editLayer: EditPageLayer?
     private let preview = CAShapeLayer()
     private lazy var pan = UIPanGestureRecognizer(target: self, action: #selector(panned(_:)))
     private lazy var tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
@@ -50,6 +55,7 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
     override func layoutSubviews() {
         super.layoutSubviews()
         canvas?.frame = bounds
+        editLayer?.frame = bounds
         preview.frame = bounds
     }
 
@@ -58,7 +64,7 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
     func update(night: Bool, tool: AnnotationTool?) {
         self.tool = tool
         let active = tool != nil
-        isUserInteractionEnabled = active
+        isUserInteractionEnabled = active || edit != nil
         pan.isEnabled = active && tool != .ink
         tap.isEnabled = active && tool != .ink
         if tool == .ink {
@@ -66,6 +72,29 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
         } else {
             hideCanvas()
         }
+        showEditLayer()
+    }
+
+    /// Edit PDF's layer: over the page while the editor is open, gone the
+    /// moment it closes, so nothing it drew is left on a page nobody is
+    /// editing.
+    private func showEditLayer() {
+        guard let edit, let pdfView else {
+            editLayer?.removeFromSuperview()
+            editLayer = nil
+            return
+        }
+        if let editLayer {
+            editLayer.edit = edit
+            editLayer.frame = bounds
+            editLayer.redraw()
+            return
+        }
+        let layer = EditPageLayer(page: page, pageIndex: pageIndex, pdfView: pdfView, edit: edit)
+        layer.frame = bounds
+        addSubview(layer)
+        editLayer = layer
+        layer.redraw()
     }
 
     private func showCanvas() {

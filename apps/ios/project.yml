@@ -57,6 +57,12 @@ targets:
       # The face the scanner's text layer is written in (OFL; THIRD-PARTY-NOTICES.md).
       - path: ../../tests/fonts/Amiri-Regular.ttf
         buildPhase: resources
+      # The other two faces Edit PDF offers for a replaced paragraph or a new
+      # line, the same three the desktop has (SIL OFL; THIRD-PARTY-NOTICES.md).
+      - path: ../../tests/fonts/Cairo-Variable.ttf
+        buildPhase: resources
+      - path: ../../tests/fonts/Inter-Variable.ttf
+        buildPhase: resources
     dependencies:
       - target: WarraqCore
         embed: false

@@ -441,6 +441,25 @@ impl Document {
         text: &str,
         font: &[u8],
     ) -> Result<(), CoreError> {
+        self.add_text_in_color(index, x, y, size, text, font, None)
+    }
+
+    /// `add_text` in a colour: `color` is RGB from 0 to 1, or `None` for the
+    /// colour the page's own content leaves behind (black on nearly every
+    /// page), which is what `add_text` has always drawn. The iPhone and iPad
+    /// app offers a colour beside the face and the size, so a line added to a
+    /// page can be told apart from what was printed on it.
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_text_in_color(
+        &mut self,
+        index: usize,
+        x: f32,
+        y: f32,
+        size: f32,
+        text: &str,
+        font: &[u8],
+        color: Option<[f32; 3]>,
+    ) -> Result<(), CoreError> {
         if text.trim().is_empty() {
             return Err(warraq_pdf::Error::Edit("there is no text to add".into()).into());
         }
@@ -451,7 +470,16 @@ impl Document {
         let (_, page_height) = self.page_size(index)?;
         // PDF y grows upwards from the bottom, and `append_line` wants a baseline.
         let baseline = page_height - y - size;
-        warraq_pdf::ops::append_line(self.pdf_mut(), index, text, font, size, x, baseline)?;
+        warraq_pdf::ops::append_line_in_color(
+            self.pdf_mut(),
+            index,
+            text,
+            font,
+            size,
+            x,
+            baseline,
+            color,
+        )?;
         self.refresh_after_edit()?;
         Ok(())
     }
@@ -661,6 +689,47 @@ mod tests {
         assert!(
             d.add_text(99, 10.0, 10.0, 12.0, "x", AMIRI).is_err(),
             "a page that does not exist must fail, not panic"
+        );
+    }
+
+    /// A colour asked for is a colour drawn, and it stays inside the line's
+    /// own graphics state: the red is in the page's stream, the text still
+    /// reads back, and the page's own words are still black afterwards (a
+    /// fill colour that leaked would repaint everything drawn after it).
+    #[test]
+    fn added_text_takes_the_colour_it_was_given_and_leaves_the_page_alone() {
+        const AMIRI: &[u8] = include_bytes!("../../../../tests/fonts/Amiri-Regular.ttf");
+        let added = "ملاحظة حمراء";
+        let mut d = Document::open(corpus("raw-amiri-cid-identity-tounicode.pdf"), None).unwrap();
+        let (width, height) = d.page_size(0).unwrap();
+        d.add_text_in_color(
+            0,
+            width * 0.7,
+            height - 48.0,
+            14.0,
+            added,
+            AMIRI,
+            Some([1.0, 0.0, 0.0]),
+        )
+        .unwrap();
+        let reopened = Document::open(d.save().unwrap(), None).unwrap();
+        assert!(
+            reopened.extract_text(0).unwrap().contains(added),
+            "the coloured line must read back like any other"
+        );
+        // The red pixels are the added line's; the page's own text is dark.
+        let page = d.render_page(0, 1.0).unwrap();
+        let red = page
+            .rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| p[0] > 180 && p[1] < 90 && p[2] < 90)
+            .count();
+        assert!(red > 0, "the line must be drawn in red");
+        assert!(
+            red * 40 < page.width as usize * page.height as usize,
+            "only the line may be red, not the page"
         );
     }
 

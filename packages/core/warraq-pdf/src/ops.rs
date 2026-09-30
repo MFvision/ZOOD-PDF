@@ -170,6 +170,23 @@ pub fn append_line(
     x_edge: f32,
     y: f32,
 ) -> Result<()> {
+    append_line_in_color(pdf, page_index, text, font, size, x_edge, y, None)
+}
+
+/// `append_line` in a colour: `color` is RGB from 0 to 1, set inside the
+/// line's own `q`/`Q` so nothing after it is painted in that colour. `None`
+/// leaves the fill colour the page's content ends with, as `append_line` does.
+#[allow(clippy::too_many_arguments)]
+pub fn append_line_in_color(
+    pdf: &mut PdfDocument,
+    page_index: usize,
+    text: &str,
+    font: &[u8],
+    size: f32,
+    x_edge: f32,
+    y: f32,
+    color: Option<[f32; 3]>,
+) -> Result<()> {
     let shaper = Shaper::new(font).map_err(|e| Error::Font(e.to_string()))?;
     let glyphs = shaper.shape_line(text);
     let subset = FontSubset::build(font, &shaper, &glyphs)?;
@@ -189,6 +206,12 @@ pub fn append_line(
         "Tf",
         vec![Object::Name(name), Object::Real(size)],
     ));
+    if let Some([r, g, b]) = color {
+        ops.push(Operation::new(
+            "rg",
+            vec![Object::Real(r), Object::Real(g), Object::Real(b)],
+        ));
+    }
     show_line(
         &mut ops,
         &subset,
