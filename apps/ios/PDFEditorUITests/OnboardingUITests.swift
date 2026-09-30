@@ -57,11 +57,20 @@ final class OnboardingUITests: XCTestCase {
         XCTAssertTrue(app.buttons["library.scan"].waitForExistence(timeout: 20))
 
         let again = launch("keep")
-        XCTAssertTrue(again.buttons["home.settings"].waitForExistence(timeout: 30))
+        XCTAssertTrue(again.buttons["library.scan"].waitForExistence(timeout: 30), "the Library came up")
         XCTAssertFalse(again.descendants(matching: .any)["onboarding"].exists, "finished means finished")
 
-        // And Settings brings it back for anyone who wants it again.
-        again.buttons["home.settings"].tap()
+        // And Settings brings it back for anyone who wants it again: the
+        // home's Settings card. On iPad the home is the split view's content
+        // column, and the scene can come back showing another section, so Home
+        // is chosen in the sidebar first when the card is not already there.
+        let settings = again.buttons["home.settings"]
+        if !settings.waitForExistence(timeout: 15) {
+            let home = again.descendants(matching: .any)["sidebar.home"]
+            if home.waitForExistence(timeout: 5) { home.tap() }
+        }
+        XCTAssertTrue(settings.waitForExistence(timeout: 20), "the home's Settings card")
+        settings.tap()
         XCTAssertTrue(again.descendants(matching: .any)["settings.form"].waitForExistence(timeout: 20), "Settings opened")
         let entry = again.buttons["settings.onboarding"]
         if !entry.waitForExistence(timeout: 10) {
