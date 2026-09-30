@@ -2169,6 +2169,16 @@
         }
       }
     },
+    "Glass chrome over a soft ground. Needs iOS 26 for the system's own glass; on older systems it uses the frosted materials instead.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "واجهة زجاجية فوق خلفية هادئة. تحتاج iOS 26 لزجاج النظام نفسه؛ وعلى الأنظمة الأقدم تُستخدم الخامات الضبابية بدلًا منه."
+          }
+        }
+      }
+    },
     "Go": {
       "localizations": {
         "ar": {
@@ -2605,6 +2615,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "رابط"
+          }
+        }
+      }
+    },
+    "Liquid Glass": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الزجاج السائل"
           }
         }
       }
@@ -4039,6 +4059,16 @@
         }
       }
     },
+    "Reduce Transparency is on in the system's settings, so every surface is drawn solid.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«تقليل الشفافية» مُفعَّل في إعدادات النظام، فتُرسم كل الأسطح مُصمتة."
+          }
+        }
+      }
+    },
     "Remove from Recents": {
       "localizations": {
         "ar": {
@@ -4799,6 +4829,16 @@
         }
       }
     },
+    "System": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سمة النظام"
+          }
+        }
+      }
+    },
     "System appearance": {
       "localizations": {
         "ar": {
@@ -5059,6 +5099,16 @@
         }
       }
     },
+    "The system's own materials and accent colour.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "خامات النظام ولونه المميّز."
+          }
+        }
+      }
+    },
     "The system's own parts — alerts, the file browser — follow the language from the next launch. The Settings app can set it too.": {
       "localizations": {
         "ar": {
@@ -5109,6 +5159,16 @@
         }
       }
     },
+    "Theme": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السمة"
+          }
+        }
+      }
+    },
     "There are no pages to save yet.": {
       "localizations": {
         "ar": {
@@ -5135,6 +5195,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "لا كاميرا في هذا الجهاز. اختر صورًا من المكتبة أو من الملفات؛ تُكتشف الصفحات وتُعدَّل وتُنظَّف بالطريقة نفسها."
+          }
+        }
+      }
+    },
+    "This device is on an older system, so the glass theme uses the frosted materials.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا الجهاز يعمل بنظام أقدم، فتستخدم السمة الزجاجية الخامات الضبابية."
           }
         }
       }
@@ -5495,6 +5565,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "توقيعك"
+          }
+        }
+      }
+    },
+    "ZOOD's own: ink and gold, with no translucency.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سمة زود: حِبر وذهب، بلا شفافية."
+          }
+        }
+      }
+    },
+    "Zood": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "زود"
           }
         }
       }
