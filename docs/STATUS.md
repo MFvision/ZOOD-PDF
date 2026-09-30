@@ -1321,10 +1321,13 @@ signing identity.
 The core could *read* every revision of the standard security handler and keep a file's
 protection on what it appended, but it could write none — so every host protected
 documents with whatever engine it had: PDFium on the desktop and web, PDFKit on iOS.
-Both write **RC4 with a Latin-1 password**. That is weak, and it cannot carry an Arabic
-password at all: the bytes outside Latin-1 are dropped, so the password that opens the
-file is not the one the person typed. (iOS refused Arabic passwords outright rather than
-write one that would not work; the desktop's batch step still writes PDFium's RC4.)
+PDFKit writes **RC4 with a Latin-1 password**: weak, and unable to carry an Arabic password
+(the bytes outside Latin-1 are dropped), so iOS refused Arabic passwords outright. PDFium
+does not have that fault: EmbedPDF's `EPDF_SetEncryption`, behind both the desktop/web
+Protect dialog and the batch step, writes **revision 6, AES-256** (`/V 5`, `/CFM /AESV3`)
+with the password as UTF-8 — checked on 2026-09-30 by encrypting a file with an Arabic
+password through it and opening it with libqpdf (pikepdf): the exact password opens it,
+one letter changed does not. (An earlier line here said PDFium wrote RC4; it was wrong.)
 
 `warraq_pdf::crypt::encrypt_document` now writes the handler at **revision 6 —
 AES-256-CBC, the password taken as UTF-8** — with algorithms 8, 9 and 10 of ISO 32000-2
