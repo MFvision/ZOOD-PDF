@@ -133,12 +133,17 @@ public actor Core {
     /// Draws a line of text at a point on the page (points from the top-left
     /// corner; `x` is where the line starts, so Arabic grows leftwards from
     /// it) in `font`, a TrueType or OpenType file the core subsets and embeds.
-    public func addText(page index: Int, x: Float, y: Float, size: Float, text: String, font: Data) throws {
+    ///
+    /// `color` is "#rrggbb"; nil draws in the colour the page's own content
+    /// leaves behind, which is black on nearly every page.
+    public func addText(page index: Int, x: Float, y: Float, size: Float, text: String, font: Data, color: String? = nil) throws {
         _ = try reply { handle in
             text.withCString { cText in
-                font.withUnsafeBytes { (buffer: UnsafeRawBufferPointer) in
-                    warraq_add_text(handle, index, x, y, size, cText,
-                                    buffer.baseAddress?.assumingMemoryBound(to: UInt8.self), buffer.count)
+                withOptionalCString(color) { cColor in
+                    font.withUnsafeBytes { (buffer: UnsafeRawBufferPointer) in
+                        warraq_add_text_colored(handle, index, x, y, size, cText, cColor,
+                                                buffer.baseAddress?.assumingMemoryBound(to: UInt8.self), buffer.count)
+                    }
                 }
             }
         }
@@ -175,6 +180,13 @@ public actor Core {
     public func call<A: Encodable>(op: String, args: A, blobs: [Data] = []) throws -> Reply {
         let json = String(decoding: try JSONEncoder().encode(args), as: UTF8.self)
         return try call(op: op, args: json, blobs: blobs)
+    }
+
+    /// Runs several of the reading and editing methods above as one turn on
+    /// the actor, for a host that needs them not to interleave with anything
+    /// else (a paragraph read, then replaced, then read again).
+    public func edit<R: Sendable>(_ body: @Sendable (isolated Core) throws -> R) throws -> R {
+        try body(self)
     }
 
     /// The document's bytes as edited: an incremental update appended to the

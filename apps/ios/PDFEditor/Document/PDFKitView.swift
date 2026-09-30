@@ -46,6 +46,11 @@ struct PDFKitView: UIViewRepresentable {
     let tool: AnnotationTool?
     /// The pen's kind, colour and width, so the canvases follow the palette.
     var inkSignature: String = ""
+    /// Edit PDF, when the editor is open: the overlays get its layer.
+    var edit: EditModel?
+    /// What the editor is doing, passed on its own so a change of mode, of
+    /// what is picked or of the lists reaches the layers over the pages.
+    var editSignature: String = ""
     let host: PDFViewHost?
     /// PDFKit draws these highlighted (the search's hits) and scrolls to
     /// `currentHighlight` when it changes.
@@ -135,6 +140,14 @@ struct PDFKitView: UIViewRepresentable {
                 overlay.applyInk()
             }
         }
+        if coordinator.editSignature != editSignature || coordinator.edit !== edit {
+            coordinator.editSignature = editSignature
+            coordinator.edit = edit
+            for overlay in coordinator.overlays.values {
+                overlay.edit = edit
+                overlay.update(night: night, tool: tool)
+            }
+        }
         if view.highlightedSelections?.count != highlights.count || view.highlightedSelections?.first !== highlights.first {
             view.highlightedSelections = highlights.isEmpty ? nil : highlights
         }
@@ -182,6 +195,8 @@ struct PDFKitView: UIViewRepresentable {
         var lastReported = -1
         var overlays: [PDFPage: PageOverlayView] = [:]
         var inkSignature = ""
+        weak var edit: EditModel?
+        var editSignature = ""
 
         init(parent: PDFKitView) {
             self.parent = parent
@@ -200,12 +215,14 @@ struct PDFKitView: UIViewRepresentable {
 
         func pdfView(_ view: PDFView, overlayViewFor page: PDFPage) -> UIView? {
             if let overlay = overlays[page] {
+                overlay.edit = parent.edit ?? edit
                 overlay.update(night: night, tool: tool)
                 return overlay
             }
             guard let document = view.document else { return nil }
             let overlay = PageOverlayView(page: page, pageIndex: document.index(for: page), pdfView: view,
                                           editor: parent.editor ?? editor)
+            overlay.edit = parent.edit ?? edit
             overlay.update(night: night, tool: tool)
             overlays[page] = overlay
             return overlay

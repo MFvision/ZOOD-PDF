@@ -562,6 +562,57 @@ pub unsafe extern "C" fn warraq_add_text(
     })
 }
 
+/// `warraq_add_text` in a colour: `color` is `#rrggbb`, or null for the
+/// page's own (black on nearly every page). Anything else is `E_ARGS`,
+/// rather than a line quietly drawn in a colour nobody asked for.
+///
+/// # Safety
+/// `doc` is an open handle; `text` and `color` NUL-terminated (`color` may be
+/// null); `font` as `bytes_in` asks.
+#[no_mangle]
+pub unsafe extern "C" fn warraq_add_text_colored(
+    doc: *mut WarraqDocument,
+    index: usize,
+    x: f32,
+    y: f32,
+    size: f32,
+    text: *const c_char,
+    color: *const c_char,
+    font: *const u8,
+    font_len: usize,
+) -> WarraqReply {
+    let doc = try_reply!(doc_in(doc));
+    let text = try_reply!(str_in(text, "text"));
+    let font = try_reply!(bytes_in(font, font_len, "font"));
+    let rgb = if color.is_null() {
+        None
+    } else {
+        let hex = try_reply!(str_in(color, "color"));
+        match hex_rgb(hex) {
+            Some(rgb) => Some(rgb),
+            None => return args_error(&format!("{hex} is not a #rrggbb colour")),
+        }
+    };
+    guarded(
+        || match doc.add_text_in_color(index, x, y, size, text, font, rgb) {
+            Ok(()) => json_out(&serde_json::json!({})),
+            Err(e) => error_out(&e),
+        },
+    )
+}
+
+/// `#rrggbb` as RGB from 0 to 1; `None` for anything that is not one.
+fn hex_rgb(hex: &str) -> Option<[f32; 3]> {
+    let digits = hex.strip_prefix('#').filter(|h| h.len() == 6)?;
+    let channel =
+        |k: usize| u8::from_str_radix(digits.get(k..k + 2)?, 16).ok().map(f32::from);
+    Some([
+        channel(0)? / 255.0,
+        channel(2)? / 255.0,
+        channel(4)? / 255.0,
+    ])
+}
+
 /// Replaces a paragraph with reflowed, shaped text; answers
 /// `{"linesDrawn","fontSubstituted","shrunk","overflowed","fontSize"}`.
 ///

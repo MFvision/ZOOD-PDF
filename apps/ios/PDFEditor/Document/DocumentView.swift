@@ -22,7 +22,11 @@ struct DocumentView: View {
     @State private var host = PDFViewHost()
     @State private var thumbnails = PageThumbnailCache()
     @State private var editor: AnnotationEditor?
+    @State private var edit: EditModel?
     @State private var pagesModel: PagesModel?
+    @State private var editing = false
+    @State private var showingMarksSheet = false
+    @State private var pickingPicture = false
     @State private var showingSearch = false
     @State private var showingThumbnails = false
     @State private var thumbnailsForMarkup = false
@@ -54,6 +58,13 @@ struct DocumentView: View {
                     closeSearch()
                 }
                 .transition(.move(edge: .top).combined(with: .opacity))
+            }
+            if editing, let edit {
+                EditBar(edit: edit, undoManager: undoManager,
+                        openPicture: { pickingPicture = true },
+                        openMarks: { showingMarksSheet = true },
+                        done: finishEditing)
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
             if markup, let editor {
                 MarkupBar(editor: editor, undoManager: undoManager,
@@ -100,8 +111,17 @@ struct DocumentView: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
+                if editing, let edit, !compact {
+                    // The editor's inspector, where there is room beside the
+                    // pages: what this page holds, and what can be done to it.
+                    Divider()
+                    EditInspector(edit: edit, openPicture: { pickingPicture = true })
+                        .frame(width: 280)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
         }
+        .animation(Motion.travel(reduceMotion: reduceMotion), value: editing)
         .animation(Motion.travel(reduceMotion: reduceMotion), value: showingSearch)
         .animation(Motion.travel(reduceMotion: reduceMotion), value: markup)
         .animation(Motion.travel(reduceMotion: reduceMotion), value: showingThumbnails)
@@ -139,6 +159,18 @@ struct DocumentView: View {
             if let pagesModel {
                 CropSheet(pages: pagesModel, cache: thumbnails, page: model.currentPage)
             }
+        }
+        .sheet(isPresented: $showingMarksSheet) {
+            PageMarksSheet(model: model, undoManager: undoManager)
+        }
+        .sheet(item: Binding(get: { edit?.draftLink }, set: { edit?.draftLink = $0 })) { draft in
+            if let edit {
+                LinkSheet(edit: edit, draft: draft, existing: edit.pickedLink)
+            }
+        }
+        // The picture a new one is placed from, or a picked one replaced with.
+        .fileImporter(isPresented: $pickingPicture, allowedContentTypes: [.image]) { result in
+            choosePicture(result)
         }
         .sheet(isPresented: $showingStamps) {
             StampSheet(model: model, undoManager: undoManager) {
@@ -182,14 +214,33 @@ struct DocumentView: View {
         }
         .sensoryFeedback(.success, trigger: editor?.commits ?? 0)
         .sensoryFeedback(.success, trigger: stampsAdded)
+        .alert("Could not make that change", isPresented: Binding(get: { edit?.error != nil }, set: { if !$0 { edit?.clearError() } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(edit?.error ?? "")
+        }
+        .alert("The text was changed", isPresented: Binding(get: { edit?.notice != nil }, set: { if !$0 { edit?.clearNotice() } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(edit?.notice ?? "")
+        }
+        .sensoryFeedback(.success, trigger: edit?.edits ?? 0)
         .task(id: model.id) {
             if editor == nil {
                 editor = AnnotationEditor(model: model)
                 pagesModel = PagesModel(model: model)
+                edit = EditModel(model: model)
             }
             if model.state == .loading {
                 await model.load()
             }
+        }
+        // What the page holds, read as the editor opens, as the page changes
+        // and again after each edit — reflowing a paragraph moves the ones
+        // under it, and a picture changed changes the page's list.
+        .task(id: editKey) {
+            guard editing, let edit else { return }
+            await edit.read(page: model.currentPage)
         }
         .task(id: textKey) {
             pageText = await model.text(ofPage: model.currentPage)
@@ -197,6 +248,7 @@ struct DocumentView: View {
         .onChange(of: undoManager, initial: true) { _, manager in
             editor?.undoManager = manager
             pagesModel?.undoManager = manager
+            edit?.undoManager = manager
         }
         .onChange(of: model.revision) {
             // The bytes changed: the hits' selections belong to the old pages.
@@ -220,6 +272,18 @@ struct DocumentView: View {
         TextKey(page: model.currentPage, edited: model.isEdited, ready: model.isReady, revision: model.revision)
     }
 
+    /// When the editor must read the page again.
+    private struct EditKey: Hashable {
+        let page: Int
+        let revision: Int
+        let editing: Bool
+        let ready: Bool
+    }
+
+    private var editKey: EditKey {
+        EditKey(page: model.currentPage, revision: model.revision, editing: editing, ready: model.isReady)
+    }
+
     @ViewBuilder
     private var content: some View {
         switch model.state {
@@ -239,7 +303,9 @@ struct DocumentView: View {
                 ReaderModeView(model: model)
             } else if let pdf = model.pdf {
                 PDFKitView(document: pdf, displaysRTL: model.isRightToLeft, layout: layout, night: night,
-                           editor: editor, tool: editor?.tool, inkSignature: editor?.inkSignature ?? "", host: host,
+                           editor: editor, tool: editor?.tool, inkSignature: editor?.inkSignature ?? "",
+                           edit: editing ? edit : nil, editSignature: editing ? (edit?.signature ?? "") : "",
+                           host: host,
                            highlights: search.highlighted, currentHighlight: showingSearch ? search.currentSelection : nil,
                            currentPage: $model.currentPage)
                     // Night mode: the pages inverted, hues turned back so a
@@ -332,6 +398,12 @@ struct DocumentView: View {
             }
             .disabled(!model.isReady)
             .accessibilityIdentifier("document.markup")
+            Button("Edit", systemImage: editing ? "textformat.alt" : "textformat") {
+                if editing { finishEditing() } else { startEditing() }
+            }
+            .keyboardShortcut("e", modifiers: [.command, .option])
+            .disabled(!model.isReady)
+            .accessibilityIdentifier("document.edit")
         }
     }
 
@@ -355,6 +427,8 @@ struct DocumentView: View {
                 .keyboardShortcut("g", modifiers: [.command, .option])
             Button("Marks", systemImage: "pencil.and.outline") { showingMarks = true }
                 .accessibilityIdentifier("document.marks")
+            Button("Page marks…", systemImage: "signature") { showingMarksSheet = true }
+                .accessibilityIdentifier("document.pageMarks")
             if compact {
                 Button("Pages", systemImage: "square.grid.2x2") { showingPages = true }
             }
@@ -419,10 +493,45 @@ struct DocumentView: View {
     /// Markup on iPad shows the numbered strip of pages beside the
     /// document, as the design target does; it goes back with Done.
     private func startMarkup() {
+        if editing { finishEditing() }
         markup = true
         if !compact, !showingThumbnails {
             showingThumbnails = true
             thumbnailsForMarkup = true
+        }
+    }
+
+    /// Edit PDF opens on the text, with the markup put away: the two lay
+    /// their own gestures over the same pages, so only one is ever in hand.
+    private func startEditing() {
+        if markup { finishMarkup() }
+        editing = true
+    }
+
+    private func finishEditing() {
+        edit?.cancel()
+        edit?.placingArmed = false
+        edit?.selectedPicture = nil
+        edit?.selectedLink = nil
+        edit?.pendingPicture = nil
+        editing = false
+    }
+
+    /// A picture chosen from Files, read while its security scope is held.
+    private func choosePicture(_ result: Result<URL, any Error>) {
+        guard let edit else { return }
+        switch result {
+        case let .success(url):
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            guard let bytes = try? Data(contentsOf: url) else {
+                edit.error = "That picture could not be read."
+                return
+            }
+            Task { await edit.choose(picture: bytes, forPage: model.currentPage) }
+        case .failure:
+            // The person closed the picker: nothing to say.
+            break
         }
     }
 
