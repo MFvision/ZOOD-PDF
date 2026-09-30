@@ -692,6 +692,19 @@ quick action go to the camera; Create goes to the photo picker
 | `PDFEditorUITests/ScanCameraTests` (new) | **9 tests, 0 failures** |
 | `PDFEditorUITests/OnboardingUITests` (new) | **4 tests, 0 failures**, the fourth writing the eight screenshots |
 
+**iPad Pro 13-inch (M5) simulator, iOS 27.0**, the same three new bundles:
+
+| Bundle | Result |
+| --- | --- |
+| `PDFEditorTests/ScanGeometryTests` | **8 tests, 0 failures** |
+| `PDFEditorUITests/ScanCameraTests` | **9 tests, 0 failures** |
+| `PDFEditorUITests/OnboardingUITests` | **3 tests, 0 failures** (the screenshots are taken on the iPhone) |
+
+One test failed on the iPad and not on the iPhone, and it was the test's fault, not the app's:
+it looked for the home's Settings card straight after a relaunch, and on iPad the home is the
+split view's content column, which can come back showing another section. It now waits for the
+Library and picks Home in the sidebar when the card is not already there.
+
 Against the pipeline and session as they stood on 2026-09-29, **3 of the 8**
 `ScanGeometryTests` fail (the run and its numbers are quoted above).
 
@@ -703,10 +716,10 @@ and "Show the welcome tour" sat in Settings' About section, below the fold on a 
 neither a test nor a person would find it without scrolling the whole screen — it is now in
 Interface, under Language and Appearance.
 
-**Not run here:** the iPad Pro 13-inch (M5) simulator, and the rest of the app's suites. The Mac
-was shared with three other iOS agents throughout (load averages 15–45, single builds queued
-20 minutes and more), so the runs were kept to the parts this work touches. Nothing about the
-iPad is claimed.
+**Not run here:** the rest of the app's suites, and `scripts/ios/build.sh` end to end. The Mac was
+shared with three other iOS agents throughout (load averages 15–45, single builds queued 20 minutes
+and more, one `ScanGeometryTests` case taking 890 s on the iPad under that load), so the runs were
+kept to the bundles this work touches. Nothing is claimed about the suites that were not run.
 
 **A separate, pre-existing breakage found on the way.** The accessibility identifier
 `library.settings` no longer exists anywhere in the app — the Library's Settings button was
