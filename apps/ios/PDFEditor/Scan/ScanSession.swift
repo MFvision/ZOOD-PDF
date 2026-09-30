@@ -54,6 +54,14 @@ enum ScanSide: String, Codable, Sendable {
     }
 }
 
+/// What the scanner puts in front of the person as it opens. "Scan" goes
+/// straight to the camera; "Create a PDF" is pictures into a PDF and goes to
+/// the photo picker, which is what that card promises.
+enum ScanStart: Sendable {
+    case camera
+    case pictures
+}
+
 /// Where a picture came from, which settles whether a page still has to be
 /// found in it.
 enum ScanOrigin: Sendable {

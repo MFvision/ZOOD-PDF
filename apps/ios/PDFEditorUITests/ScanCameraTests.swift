@@ -143,6 +143,19 @@ final class ScanCameraTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["scan.camera"].waitForExistence(timeout: 15))
     }
 
+    /// "Create a PDF" means pictures into a PDF, so it opens the photo picker,
+    /// not the camera — the same screen, a different thing asked for.
+    func testCreateAPDFStartsAtThePicturesRatherThanTheCamera() throws {
+        let app = launch(camera: "ready")
+        XCTAssertTrue(app.buttons["library.settings"].waitForExistence(timeout: 30))
+        let create = app.buttons["home.create"]
+        XCTAssertTrue(create.waitForExistence(timeout: 20), "the home's Create card")
+        create.tap()
+        XCTAssertTrue(app.buttons["scan.shutter"].waitForExistence(timeout: 20), "the scanner opened")
+        XCTAssertFalse(app.descendants(matching: .any)["scan.camera"].exists,
+                       "Create asks for pictures, so the camera is not what it puts in front of you")
+    }
+
     /// The same, in Arabic: the reasons are translated and the screen is
     /// right-to-left.
     func testTheReasonIsSaidInArabicToo() throws {

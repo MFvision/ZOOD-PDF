@@ -53,11 +53,15 @@ struct ScanView: View {
     /// Pictures the scanner starts with: a photo handed to the app from
     /// Files or another app.
     private let initialImages: [CGImage]
+    /// What the scanner is to put in front of the person as it opens.
+    private let start: ScanStart
 
-    init(mode: ScanMode = .document, images: [CGImage] = [], documentsFolder: URL? = nil, onSaved: @escaping (URL) -> Void) {
+    init(mode: ScanMode = .document, start: ScanStart = .camera, images: [CGImage] = [],
+         documentsFolder: URL? = nil, onSaved: @escaping (URL) -> Void) {
         let folder = documentsFolder ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         _session = State(initialValue: ScanSession(mode: mode, documentsFolder: folder))
         initialImages = images
+        self.start = start
         self.onSaved = onSaved
     }
 
@@ -459,7 +463,13 @@ struct ScanView: View {
         offeredCamera = true
         access = CameraAccess.now
         guard session.pages.isEmpty, initialImages.isEmpty, !expectingLaunchPictures else { return }
-        await openCamera(asking: true)
+        switch start {
+        case .camera:
+            await openCamera(asking: true)
+        case .pictures:
+            // "Create a PDF": pictures are what was asked for.
+            showingPhotos = true
+        }
     }
 
     /// Opens the document camera, asking for it first when it has never been

@@ -112,8 +112,16 @@ struct LibraryShell: View {
     private var actions: HomeActions {
         HomeActions(
             open: { showingImporter = true },
-            scan: { library.scanRequested = true },
-            create: { library.scanRequested = true },
+            scan: {
+                library.scanStart = .camera
+                library.scanRequested = true
+            },
+            // "Create a PDF" is pictures into a PDF: it starts at the photo
+            // picker, not at the camera.
+            create: {
+                library.scanStart = .pictures
+                library.scanRequested = true
+            },
             combine: { showingCombiner = true },
             search: { library.requestedSearch = "" },
             settings: { showingSettings = true }
@@ -149,10 +157,11 @@ struct LibraryShell: View {
             guard state == .unlocked, !showingOnboarding, Onboarding.shouldShow(seen: onboardingSeen) else { return }
             showingOnboarding = true
         }
-        // The scanner itself (part C): the camera where there is one, photos
-        // where there is none; what it saves joins the Library and its index.
+        // The scanner itself (part C): it opens at the camera where there is
+        // one and says why where there is not; what it saves joins the Library
+        // and its index.
         .fullScreenCover(isPresented: $library.scanRequested) {
-            ScanView(documentsFolder: library.documentsFolder) { url in
+            ScanView(start: library.scanStart, documentsFolder: library.documentsFolder) { url in
                 library.refresh()
                 library.indexNow()
                 library.open(url: url)
@@ -326,6 +335,7 @@ struct LibraryShell: View {
     private var libraryToolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
             Button("Scan", systemImage: "doc.viewfinder") {
+                library.scanStart = .camera
                 library.scanRequested = true
             }
             .accessibilityIdentifier("library.scan")
