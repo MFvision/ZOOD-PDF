@@ -41,7 +41,8 @@ struct EditBar: View {
             }
         }
         .frame(height: 44)
-        .background(MarkupChrome.bar, ignoresSafeAreaEdges: [])
+        // The chosen theme's bar, read on a dark scheme like the markup bar.
+        .themedSurface(.bar, in: Rectangle(), shadowed: false)
         .overlay(alignment: .bottom) {
             Rectangle().fill(.white.opacity(0.12)).frame(height: 0.5)
         }
