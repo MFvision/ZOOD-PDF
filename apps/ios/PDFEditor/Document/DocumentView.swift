@@ -143,6 +143,7 @@ struct DocumentView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
             .toolbarRole(.editor)
+            .themedToolbar()
             .focusedSceneValue(\.documentActions, actions)
             .task(id: model.id) {
                 if editor == nil {

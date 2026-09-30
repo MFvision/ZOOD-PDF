@@ -55,7 +55,9 @@ struct MarkupBar: View {
                 .accessibilityIdentifier("markup.done")
         }
         .frame(height: 44)
-        .background(MarkupChrome.bar, ignoresSafeAreaEdges: [])
+        // The bar is the chosen theme's, always read on a dark scheme: the
+        // design target's markup chrome is dark whatever the app is.
+        .themedSurface(.bar, in: Rectangle(), shadowed: false)
         .overlay(alignment: .bottom) {
             Rectangle().fill(.white.opacity(0.12)).frame(height: 0.5)
         }
@@ -144,11 +146,6 @@ struct MarkupBar: View {
     }
 }
 
-/// The dark glass the markup chrome is made of.
-enum MarkupChrome {
-    static var bar: some ShapeStyle { Color(white: 0.11).opacity(0.94) }
-}
-
 /// A tool's button on the dark bar: a white glyph, lit in the accent when
 /// the tool is in hand, answering on press.
 struct MarkupToolStyle: ButtonStyle {
@@ -187,9 +184,10 @@ struct PenPalette: View {
             row
             ScrollView(.horizontal, showsIndicators: false) { row }
         }
-        .background(.regularMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(.white.opacity(0.15), lineWidth: 0.5))
-        .shadow(color: .black.opacity(0.18), radius: 14, y: 6)
+        // The palette floats over the page, so it is the theme's bar
+        // material: the system's glass where the theme and the system have
+        // it, a frosted material otherwise, solid under Reduce Transparency.
+        .themedSurface(.bar, in: Capsule())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("pen.palette")
     }

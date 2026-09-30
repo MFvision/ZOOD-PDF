@@ -44,6 +44,68 @@ Before that, on 2026-09-19: the interface is rebuilt on EmbedPDF (ADR-0007); all
 
 Every one of the 48 corpus files opens. 63 tests green, clippy clean, `wasm32-unknown-unknown` compiles, core WASM 2.50 MB gzipped (budget 8 MB).
 
+## The ZOOD mark and the iOS themes (2026-09-30)
+
+The owner owns the brand **ZOOD**. He asked for the app to carry its logo, for "one of the themes
+[to] be the liquid glass for Apple devices, full all glass liquid", and for "one theme [to be] the
+Zood theme". All three are in. Nothing here is copied from Adobe, Apple or anyone else: the mark is
+drawn from nothing, and the glass is the system's own effect, called by its public name.
+
+**The mark.** A slab **Z** — ZOOD's initial in Latin, and the stroke of the Arabic zay — drawn as a
+leaflet folded in a Z: a head, a fold and a foot, three panels of one gold, each taking the light
+differently, on a deep ink ground. At 40 px the three panels read as one letter; close up they read
+as paper. `scripts/icon/make_zood_icon.py` draws it, `scripts/icon/svg2png.swift` rasterizes it (AppKit
+reads SVG on macOS; the repo has no other rasterizer), and `scripts/icon/make_zood_icons.sh` writes
+every derivative in one go:
+
+* **iOS**: `AppIcon.png`, `AppIcon-Dark.png` and `AppIcon-Tinted.png` in the app icon set — the three
+  appearances iOS asks for since 18 — full-bleed squares with **no alpha channel**, because the system
+  cuts its own shape and rejects an icon that carries one. The Arabic display name «محرر PDF» is
+  unchanged in `project.yml` and in App Store Connect.
+* **Desktop, the page and the web**: `apps/desktop/icon.svg`, `packages/ui/public/app-icon.svg`,
+  `apps/web/public/favicon.svg`, the 192/512 and maskable 192/512 PNGs and the 180-px apple-touch icon;
+  the web's `theme-color` and the manifest's `theme_color` are ZOOD's ink. The browser extension's four
+  PNGs too, and the Tauri bundle's `.icns`/`.ico` and PNGs (`pnpm --filter @warraq/desktop icons`,
+  2026-09-30).
+* The same letter is drawn inside the app by `ZoodLetter` / `ZoodMark`
+  (`apps/ios/PDFEditor/Design/ZoodMark.swift`), beside the greeting on the home screen. A test asserts
+  the app's paths land on the icon's own 1024-grid numbers, so the two cannot drift apart.
+* The old ورّاق icon and its generator (`scripts/icon/make_icon.py`) are gone.
+
+**The themes** (`apps/ios/PDFEditor/Design/Themes.swift`) sit beside the existing language and
+appearance settings in Settings › Interface, apply at once and are kept in `UserDefaults` under `theme`.
+
+| Theme | What it does | Where it degrades |
+|---|---|---|
+| System | what the app looked like before | — |
+| Liquid Glass | SwiftUI's `.glassEffect(.regular, in:)` on the home's cards and panels, the sheets' rows, the markup bar and the floating pen palette, over a ground with enough colour for glass to be glass | `.glassEffect` needs **iOS 26**. Below it the same surfaces are `.ultraThinMaterial` / `.regularMaterial` — the honest fallback — and Settings says so under the picker. Nothing is drawn that cannot work |
+| Zood | ink and gold: the brand's ground, warm paper in light and ink in dark, solid cards with a gold hairline, headings a weight heavier, every tool tile in the brand's gold, and the navigation and bottom bars in its own colour | it is opaque by design, so there is nothing to fall back to |
+
+**Accessibility.** **Reduce Transparency** makes every surface on every theme solid and removes the
+glass theme's ground highlight — a surface left "nearly" opaque reads as a bug. **Reduce Motion** loses
+nothing to the themes: nothing a theme draws travels, and a theme change cross-fades.
+
+**Proven** on the simulator only (this Mac has no signing identity), Xcode 27, iOS 27.0 runtime, on
+**both the iPhone 17 and the iPad Pro 13-inch (M5)**:
+
+* `PDFEditorTests/ThemeTests` — **10 unit tests, 0 failures** on each device: the three themes and their
+  round trip through `UserDefaults`; only the glass theme asking for the system's glass; ZOOD never
+  translucent; Reduce Transparency taking the glass off all three; `ThemeAvailability` answering with the
+  system rather than a guess; ZOOD's accent at or above 4.5:1 on its own ground in both schemes; ZOOD
+  drawing surfaces of its own rather than the system's; and the letter in the app being the same drawing,
+  on the same 1024-point grid, as the icon.
+* `PDFEditorUITests/ThemeUITests` — **3 UI tests, 0 failures** on each device: the picker offers all three
+  and the choice survives a relaunch; a theme chosen in Settings applies to the home screen at once; and
+  the screenshots.
+* After merging main (the welcome tour, the camera fix, the scan geometry), the **whole `PDFEditorTests`
+  bundle — 86 tests, 0 failures** — is green on the iPhone 17, so the themed surfaces broke nothing.
+* **Screenshots** in `docs/design/ios/theme-*` (24 of them): the home screen, Settings, and a document
+  with the markup bar and the pen palette out, for the glass and Zood themes, in Arabic and English,
+  light and dark, on both devices.
+
+**Not proven here.** Reduce Transparency is covered by the unit tests, not by a photograph: XCUITest
+cannot turn the system setting on. And the app has never run on a device.
+
 ## The iPhone and iPad app: the foundation (2026-09-21)
 
 The owner asked for the phone app to be rebuilt as a true Apple-native app. `apps/ios` is that app's
@@ -77,7 +139,7 @@ build on (`apps/ios/README.md` says how).
   and English, the app's name isolated inside English text. Design tokens and a small component set follow
   `docs/design/README.md`: system colours by role, the system text styles (Dynamic Type), a 4-point grid,
   press feedback on touch-down, critically damped motion, cross-fades under Reduce Motion. The icon is the
-  maskable variant of `scripts/icon/make_icon.py`.
+  ZOOD mark (`scripts/icon/make_zood_icon.py`, "The ZOOD mark and the iOS themes" below).
 * **Widgets and the share sheet, as far as the foundation goes.** A Recent documents widget (small, medium,
   large, Lock Screen rectangle) reads the recents list and thumbnails the app keeps in the App Group
   container and opens a document through `pdfeditor://open/<id>`; "Save to محرر PDF" in the share sheet
@@ -385,7 +447,9 @@ handles on the page itself with a magnifier under the finger while one is dragge
 Document · Whiteboard · ID Card · Book along the bottom, and the large round shutter. A passport
 (ID-3) is a switch inside ID Card, so the strip has exactly those four.
 
-**Capture.** VisionKit's document camera (`VNDocumentCameraViewController`: automatic edges,
+**Capture.** *(Superseded on 2026-09-30 — see "The scanner opens at the camera" below: the scanner
+now opens the camera itself, and a page the camera hands back is no longer cut out a second time.
+What follows is the record of 2026-09-21.)* VisionKit's document camera (`VNDocumentCameraViewController`: automatic edges,
 auto-shutter, many pages a session) is wired and offered wherever there is a camera. **VisionKit's
 `isSupported` answers true on the iOS 27 simulator** although it has no camera, so the shutter also
 asks AVFoundation for a video device; on the simulator there is none, so the shutter carries the photo symbol and the caption under it says "No
@@ -511,6 +575,232 @@ Persian or Urdu model here (the web's Tesseract has both). A very dark or very l
 (a photograph, a heavy heading) lightens under the lighting step, which takes it for shadow. Book
 mode's flattening is a column shift, not a dewarp. Every screen was photographed and looked at on
 the simulator (`docs/design/ios/scan-*.jpg`, `settings-scan-*.jpg`); nothing was seen on a device.
+
+## The iOS app: the scanner opens at the camera, the crop's geometry, and a welcome tour (2026-09-30)
+
+The owner installed the TestFlight build, scanned a real document with it and reported three things.
+All three were looked into on this Mac; what was found, what was changed and what is still unproven:
+
+### 1. "It doesn't open at the camera automatically"
+
+**The cause, exactly.** `ScanView` held `@State private var showingCamera = false` and presented
+VisionKit's document camera only from the shutter's action. Opening Scan therefore drew the dark
+stage with an empty-state message on it and nothing else — the "blackboard" the owner described —
+and the camera appeared only after the shutter was tapped.
+
+**What it does now.** The scanner asks for the camera and opens it in its own `.task`, the moment it
+appears with nothing on the stage. Every answer is handled and each one says what is true
+(`CameraAccess` in `apps/ios/PDFEditor/Scan/ScanBridges.swift`):
+
+| The answer | What the scanner does |
+| --- | --- |
+| Allowed | The document camera opens at once, with no tap. |
+| Never asked | The system's camera question is asked; on a yes the camera opens, on a no the next row. |
+| Refused | The stage says "The camera is off for ⁧محرر PDF⁩", with the path through Settings and an **Open Settings** button; the shutter still chooses a photo, and its caption says so. |
+| Restricted (a profile, Screen Time) | The stage says that instead, with the same way out. |
+| No camera at all (the simulator) | Today's behaviour, kept: the photo symbol on the shutter, "No camera on this device — the shutter chooses a photo", and a **Choose photos** button on the stage. |
+
+The camera is opened **once** by the scanner itself. Closing it leaves the scanner — reopening it
+would be a room with no door — and the shutter and the empty stage's button are the way back in. It
+is not opened over pictures the scanner was handed (`initialImages`: a photo from Files, from another
+app, or `-warraqScan` on the command line), nor when a page is already on the stage. Every other way
+in opens the camera, which is the point of them: the **Scan widget**, the **Control Center control**,
+the Shortcuts/Siri **App Intent**, the Home Screen **quick action**, the Library's toolbar and the
+home's Scan card all land on the scanner with nothing on the stage, so a single tap on the widget now
+reaches the camera. The permission is read again whenever the scanner comes back to the front, so a
+camera switched on in Settings is noticed.
+
+**How far it is proven.** `VNDocumentCameraViewController` cannot run on the simulator and this Mac
+has no device, so **the real camera is still unproven — nobody has seen it open.** What is proven is
+the scanner's own behaviour on each answer: `PDFEditorUITests/ScanCameraTests` drives the five states
+through a Debug-only `-warraqCamera ready|notAsked|denied|restricted|missing`, with a stand-in view
+in VisionKit's place where there is no camera, and reads the interface back — the camera opened with
+no tap, closing it not reopening it, the empty stage's reason and its Settings button, the Arabic
+wording, the photo fallback, and pictures handed in not being covered.
+
+### 2. "Some of the scans weren't proper: the top-left angle higher than any other" — and "it auto-resizes but has an issue with that"
+
+These are two separate faults with two separate causes. Both were found by measurement, not by
+reading the code, and both are held down by tests that fail without the fix.
+
+**The skew was a correction applied twice.** `VNDocumentCameraScan.imageOfPage(at:)` does not hand
+back the photograph: VisionKit has already found the page, cut it out and squared it. `ScanSession`
+nonetheless ran `ScanPipeline.detectPage` on it and corrected it again. On a picture that *is* the
+page there are no page edges to find, and `VNDetectDocumentSegmentationRequest` answers something
+that is not the page: on a 1240 × 1754 synthetic page it answered
+`(180,630) (1240,20) (1231,1754) (8,1747)` at confidence 0.67 — a quad whose top-left corner is 630
+pixels down the side — and `plausible()` let it through (convex, 0.74 of the picture, aspect in
+range). Correcting by it drags the page's top-left corner up and out: the picture comes back
+2163 × 1734 with one of its four marks cut away altogether. That is the owner's "top-left angle
+higher than any other".
+
+The fix is provenance: `ScanOrigin` (`.documentCamera` / `.picture`) travels with every page, and a
+camera's page is taken as it is — corners on the whole picture, nothing detected, nothing corrected.
+"Auto" on such a page answers the whole picture too. Pictures from Photos, Files, the share sheet and
+the launch arguments are found and cut out exactly as before.
+
+**The wrong output size was Core Image's — and this one is a smaller fault than the owner's words
+suggest.** `CIPerspectiveCorrection` undoes the projection exactly: the corrected page's corners come
+back square to within 0.04°, on every angle tried. It also picks the size of its answer itself, and
+that size is not the page's shape. Measured on synthetic pinhole photographs of an A4 page — the
+same test, run against the code as it stood on 2026-09-29 and again after the change
+(`ScanGeometryTests`, the numbers the tests print):
+
+| The photograph | Core Image's own size (before) | The page's proportions recovered (after) |
+| --- | --- | --- |
+| Square to the lens | −0.1 % | +0.1 % |
+| Tilted 12° back | −5.4 % | −1.6 % |
+| Tilted 28° back | −6.3 % | −7.0 % |
+| Turned 22° sideways | +3.3 % | +4.8 % |
+| Tilted 25° and turned 15° | −3.6 % | **+0.0 %** |
+| Tilted 30°, turned 18°, rolled 7° | −3.0 % | **−0.0 %** |
+| A card, tilted 26° and turned 16° | +4.2 % | **−0.0 %** |
+| Landscape A4, tilted 26° and turned 16° | +2.9 % | **+0.0 %** |
+
+`ScanPipeline.pageAspect(of:in:)` now reads the page's true proportions from its four corners: each
+pair of the page's edges meets at a vanishing point, the two vanishing points give the lens's focal
+length, and the focal length gives the rectangle's proportions (Zhang and He, *Whiteboard scanning
+and image enhancement*, 2007). **Where both pairs of edges converge — which is any photograph taken
+by hand, since one never holds a phone square on both axes — the answer is exact**, 0.0 % against
+3–4 % before, and that is the assertion the tests hold it to (2 %). Where the page is tilted on one
+axis alone the two vanishing points are nearly the same, the lens cannot be solved for, and an
+ordinary phone lens is assumed instead (1.1 × the picture's longer side); there the answer is no
+better than Core Image's, as the 28° row shows. A solved focal length outside 0.5–4 × the longer side
+is not believed. The tolerance for the assumed case is 15 %.
+
+Why the convergence guard (`minimumConvergence`, 0.03) matters: with ±4 px of noise on every corner,
+200 draws, the recovered shape moves by at most 1.6 % where both axes converge and 7.2 % where only
+one does. Without the guard, solving from two vanishing points that nearly coincide gave errors up to
+73 % on the same noise — worse than doing nothing.
+
+**What was *not* the fault.** An earlier measurement of this made the sizing look far worse (35–53 %
+out). That measurement used quadrilaterals chosen by hand, which are projections of a rectangle but
+not ones any camera with square pixels and its lens in the middle of the frame could produce; on
+photographs a camera could actually take, Core Image's sizing is 3–6 % out, not 35 %. The figure
+quoted here is the second one. So the visible skew the owner saw was the double correction, above;
+the sizing is a real but much smaller error, and it is now nil on the common case.
+
+**What the guess in the brief got wrong.** The brief suggested a corner-ordering error or a flip
+applied twice in `quad(from:in:)`. That is not it: with the page's true corners, `corrected` returns
+the page square to 0.04° with the top-left mark still in the top-left corner, on every angle tried.
+`quad(from:in:)`'s y-flip and the Core Image corner names are right. The "twice" was real, but it was
+the whole correction being applied twice, not a flip.
+
+**Tests.** `apps/ios/PDFEditorTests/ScanGeometryTests.swift`, 8 tests. The pictures they measure are
+made in the test file itself — a pinhole projection of a page of known shape, then every pixel laid
+down by the test's own projective mapping — so nothing of the pipeline's takes part in making what
+the pipeline is judged on. They hold the corrected page to **square within 1.5°**, to the page's own
+proportions **within 2 %** where the lens can be solved for and 15 % where it cannot, and check that
+the mark that was in the page's top-left corner is still there.
+
+**How the RED was established, and a warning about it.** The first version of these tests *passed*
+against the unfixed code, and that is worth writing down. Two reasons: the aspect tolerance was 15 %,
+which the old sizing already met (see the table above), and on the *synthetic* page the double
+correction does not reproduce on this simulator — the simulator's
+`VNDetectDocumentSegmentationRequest` answers a band along the bottom of a borderless picture, which
+`plausible()` throws away, so no second correction happened. (The nonsense quad quoted above was got
+by running the same detector on macOS, where the model behaves as a device's does.) The tests were
+sharpened until they do discriminate, and then run against the code as it stood on 2026-09-29:
+
+```
+Executed 8 tests, with 8 failures            # before the fix
+  testAnAngledPageComesBackSquareAndAtItsOwnProportions
+     tilted 25° and turned 15°:      0.5682 against 0.5891 (−3.6 %), tolerance 2 %
+     tilted 30°, turned 18°, roll 7°: 0.5717 against 0.5891 (−3.0 %)
+  testOtherShapesKeepTheirProportionsToo
+     a card:        1.3759 against 1.3210 (+4.2 %)
+     landscape A4:  1.2128 against 1.1788 (+2.9 %)
+  testTheDetectorIsNotRunOnAPageFromTheCamera
+     the camera's page was detected and cut out: 73,141 691,77 783,950 165,1015
+     instead of the whole picture, and came back 622 px wide instead of 859
+```
+
+`testTheDetectorIsNotRunOnAPageFromTheCamera` puts the same `page-crooked.jpg` through both paths —
+Vision *does* find the page in that one on this simulator, at confidence 1.0 — and asserts that the
+photograph is cut out and the camera's page is not. That is the one that shows the double correction
+on this machine: a page 859 px wide came back 622 px wide, a quarter of it gone.
+
+### 3. "Maybe it's missing an onboarding tutorial"
+
+It was. `apps/ios/PDFEditor/App/Onboarding.swift` is a four-screen walkthrough on the first launch,
+in Arabic and English, right-to-left in Arabic, built from the design tokens: what the app is and
+that nothing leaves the device; Scan; mark up and sign; organize, export, protect and the Library.
+Skip on the first screen, Next through, Start at the end; the answer is kept in the app's own
+defaults (`onboardingSeen`) so it is shown once, and Settings → About → **Show the welcome tour**
+opens it again. **No façade:** every line names something the app does today — the editor, redaction,
+forms, compare, batch, PAdES signatures, AI and the cloud are not on this device and are not
+mentioned. In Debug builds it stays out of the way unless a test asks for it (`-warraqOnboarding
+show|keep`), so it does not land on top of every other UI test; in a build anyone installs it is
+shown on the first launch. Proven by `PDFEditorUITests/OnboardingUITests` (shown, skipped, walked
+screen by screen, remembered across a relaunch, reopened from Settings, and Arabic with Skip on the
+right-hand side); photographed into `docs/design/ios/onboarding-*.jpg`.
+
+**One thing the camera change broke, and the fix.** The home's **Create** card and the sidebar's
+**Create a PDF** both open the same scanner, and "A PDF from pictures" is what that card promises —
+so with the scanner opening at the camera it would have put the camera in front of it. `ScanStart`
+now says which the scanner shows: Scan, the widget, the Control Center control, the Shortcut and the
+quick action go to the camera; Create goes to the photo picker
+(`ScanCameraTests.testCreateAPDFStartsAtThePicturesRatherThanTheCamera`).
+
+### What was run, and on what
+
+**iPhone 17 simulator, iOS 27.0** (`apps/ios/.build/scan-tests.sh`, through the machine's queue):
+
+| Bundle | Result |
+| --- | --- |
+| `PDFEditorTests/ScanGeometryTests` (new) | **8 tests, 0 failures** |
+| `PDFEditorTests/ScanPipelineTests` (the scanner's existing tests, for regressions) | **15 tests, 0 failures** |
+| — together | `Executed 23 tests, with 0 failures` |
+| `PDFEditorUITests/ScanCameraTests` (new) | **9 tests, 0 failures** |
+| `PDFEditorUITests/OnboardingUITests` (new) | **4 tests, 0 failures**, the fourth writing the eight screenshots |
+
+**iPad Pro 13-inch (M5) simulator, iOS 27.0**, the same three new bundles:
+
+| Bundle | Result |
+| --- | --- |
+| `PDFEditorTests/ScanGeometryTests` | **8 tests, 0 failures** |
+| `PDFEditorUITests/ScanCameraTests` | **9 tests, 0 failures** |
+| `PDFEditorUITests/OnboardingUITests` | **3 tests, 0 failures** (the screenshots are taken on the iPhone) |
+
+One test failed on the iPad and not on the iPhone, and it was the test's fault, not the app's:
+it looked for the home's Settings card straight after a relaunch, and on iPad the home is the
+split view's content column, which can come back showing another section. It now waits for the
+Library and picks Home in the sidebar when the card is not already there.
+
+Against the pipeline and session as they stood on 2026-09-29, **3 of the 8**
+`ScanGeometryTests` fail (the run and its numbers are quoted above).
+
+The first UI run failed 5 of 12, and the interface was wrong in two of those ways, not the
+tests: naming a container with `accessibilityIdentifier` and nothing else folds its children
+into it, so the empty stage's button and the camera stand-in's Cancel had no identifiers of
+their own (`accessibilityElement(children: .contain)` on both, as `ScanStage` already does);
+and "Show the welcome tour" sat in Settings' About section, below the fold on a phone, where
+neither a test nor a person would find it without scrolling the whole screen — it is now in
+Interface, under Language and Appearance.
+
+**Not run here:** the rest of the app's suites, and `scripts/ios/build.sh` end to end. The Mac was
+shared with three other iOS agents throughout (load averages 15–45, single builds queued 20 minutes
+and more, one `ScanGeometryTests` case taking 890 s on the iPad under that load), so the runs were
+kept to the bundles this work touches. Nothing is claimed about the suites that were not run.
+
+**A separate, pre-existing breakage found on the way.** The accessibility identifier
+`library.settings` no longer exists anywhere in the app — the Library's Settings button was
+dropped when its chrome was redesigned, and the home's `home.settings` card is the way in now —
+but `PDFEditorUITests/SettingsUITests` (lines 30, 31, 94, 100, 101), `ScanTests` (275, 276) and
+`LaunchTests` (116) still tap it. Those tests cannot be reaching Settings, so `SettingsUITests`
+is not exercising what this file says it does. It is not fixed here (it is not this work, and
+the file is another agent's), but it should not go unrecorded.
+
+### Not done, and not claimed
+
+* **The real camera has still never been run by anyone.** Everything above about the camera is the
+  scanner's own behaviour, driven through a Debug launch argument on a simulator with no camera.
+* A page tilted steeply on one axis alone still comes out about 7 % from its true proportions,
+  because the lens cannot be recovered from such a photograph and one has to be assumed. Reading the
+  real focal length from the picture's EXIF would close that for pictures from Photos and Files; it
+  is not done, and a picture from the document camera carries none anyway.
+* The owner's other items in this report — the ZOOD logo, the liquid-glass and Zood themes, the PDF
+  editor itself, encryption, AI, cloud and PAdES signatures — are not this work and are not touched.
 
 ## The Library: reading the files, measured (2026-09-20)
 
@@ -799,7 +1089,7 @@ reduced transparency and reduced motion honoured.
 | EmbedPDF | Themed with Warraq's tokens by reference. Its duplicated sidebar, zoom and search buttons and its floating page field (except on a phone) are gone. The rest of its bar is the markup toolbar, shown from Warraq's toolbar |
 | macOS app | The title bar is merged into the toolbar, with the traffic lights in it. The toolbar drags the window and a double click zooms it. The system menu bar is built from the page's own menu model, in the interface language; its checks follow EmbedPDF's own state, it is sent again after every item chosen there, its Undo and Redo reach the typing in whatever field has the focus, and About opens the page's own sheet. A shortcut the page handles never runs its menu item too |
 | Narrow windows | On a tablet the toolbar condenses. On a phone the inspector is a sheet, the sidebar floats over the page, and nothing scrolls sideways. On a touch screen (`pointer: coarse`) the controls, rows, toolbar and menu bar grow to 44-point targets; the look is the same |
-| App icon | New original artwork (`scripts/icon/make_icon.py`): a calligraphic و on a sheet of paper. Desktop and extension icons are regenerated from it |
+| App icon | The owner's own brand from 2026-09-30: the ZOOD mark (`scripts/icon/make_zood_icon.py`), a slab Z folded like a leaflet, in gold on ink. Original artwork. The desktop, web and extension icons are written from it by `scripts/icon/make_zood_icons.sh`, and the Tauri bundle's .icns/.ico by `pnpm --filter @warraq/desktop icons` |
 
 ## The home screen and the shell's chrome (2026-09-25)
 
@@ -1523,6 +1813,8 @@ was reproduced first by a test that failed, and each test passes now.
    Arabic strings read word for word from the English.
 
 ## Known gaps, stated plainly
+* **The iOS scanner's camera has never been run.** The scanner now opens the document camera as it appears, asks for it when it has never been asked, and says the true reason with a way to Settings when the answer is no — but `VNDocumentCameraViewController` cannot run on the simulator and this Mac has no signing identity, so nobody has seen a single frame from a real camera. Each of the five answers is walked through the interface with a Debug-only `-warraqCamera` and a stand-in in VisionKit's place (`PDFEditorUITests/ScanCameraTests`), which proves the scanner's side of it and nothing about VisionKit's. The one thing that would settle it is a run on a device.
+* **A page tilted on one axis alone still comes out about 7 % from its shape.** The scanner recovers a page's true proportions from the two vanishing points its corners make, which is exact when both pairs of edges converge — any photograph taken by hand. Tilted about one axis only, the two vanishing points nearly coincide, the lens cannot be recovered from them, and an ordinary phone's is assumed (1.1 × the picture's longer side): the answer is then no better than Core Image's own sizing. Reading the real focal length out of a photograph's EXIF would close it for pictures from Photos and Files; a picture from the document camera carries none.
 * **The Library has a core and no face yet.** `library.open/add/forget/search/document/tag/rules/stats/save/close` all work and are tested, the readers turn every kind of file into text, and the desktop host can walk a folder and keep an index — but nothing in the interface calls any of it: the panel is the one part still in flight. Until it lands, the Library cannot be used by a person.
 * **The Library's index is capped, and says so.** 200 000 documents; 2 000 000 characters and 400 000 words of any one document; 48 000 000 characters in the whole index — about 150 MB held, and something over five thousand documents the size of the Arabic corpus's (measured above). Past a cap a file is skipped with `indexFull`, or its text is cut with `truncated`; nothing fails silently, and nothing grows without end. A person with a bigger library than that needs a second index or a cap raised in one constant.
 * **The Library ranks with one rule, and it is a judgement.** BM25 with a phrase bonus (`packages/core/API.md`): a phrase beats scattered words, more matches beat fewer, a short document beats a long one on the same count, and a document holding the whole query beats one holding half of it. It was tested against those four statements, not against people searching their own files — nobody has used it yet.

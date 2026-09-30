@@ -68,6 +68,10 @@ struct AppSheet<Content: View>: View {
     var body: some View {
         NavigationStack {
             content
+                // The sheet's body takes the chosen theme's ground and its
+                // rows the theme's material; on the system theme nothing
+                // changes (Design/Themes.swift).
+                .themedScrollBackground()
                 .navigationTitle(title)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -142,6 +146,8 @@ struct EmptyState: View {
     let message: LocalizedStringKey
     var actionTitle: LocalizedStringKey? = nil
     var action: (() -> Void)? = nil
+    /// The action button's identifier, so a UI test can press it.
+    var actionIdentifier: String? = nil
 
     var body: some View {
         ContentUnavailableView {
@@ -152,6 +158,7 @@ struct EmptyState: View {
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
                     .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier(actionIdentifier ?? "empty.action")
             }
         }
     }
