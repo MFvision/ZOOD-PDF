@@ -147,7 +147,7 @@ final class ScanCameraTests: XCTestCase {
     /// not the camera — the same screen, a different thing asked for.
     func testCreateAPDFStartsAtThePicturesRatherThanTheCamera() throws {
         let app = launch(camera: "ready")
-        XCTAssertTrue(app.buttons["library.settings"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.buttons["home.settings"].waitForExistence(timeout: 30))
         let create = app.buttons["home.create"]
         XCTAssertTrue(create.waitForExistence(timeout: 20), "the home's Create card")
         create.tap()

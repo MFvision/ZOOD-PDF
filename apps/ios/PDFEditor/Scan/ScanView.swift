@@ -196,6 +196,10 @@ struct ScanView: View {
         } else {
             EmptyState(symbol: emptySymbol, title: emptyTitle, message: emptyMessage,
                        actionTitle: emptyActionTitle, action: emptyAction, actionIdentifier: "scan.emptyAction")
+                // `children: .contain` so the button inside keeps its own
+                // identifier: naming a container without it folds the
+                // children into the container, as ScanStage's handles show.
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("scan.empty")
         }
     }
@@ -592,6 +596,7 @@ struct DocumentCameraStandIn: View {
             }
             .foregroundStyle(.white)
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("scan.camera")
     }
 }

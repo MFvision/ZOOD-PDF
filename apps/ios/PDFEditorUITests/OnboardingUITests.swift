@@ -57,11 +57,11 @@ final class OnboardingUITests: XCTestCase {
         XCTAssertTrue(app.buttons["library.scan"].waitForExistence(timeout: 20))
 
         let again = launch("keep")
-        XCTAssertTrue(again.buttons["library.settings"].waitForExistence(timeout: 30))
+        XCTAssertTrue(again.buttons["home.settings"].waitForExistence(timeout: 30))
         XCTAssertFalse(again.descendants(matching: .any)["onboarding"].exists, "finished means finished")
 
         // And Settings brings it back for anyone who wants it again.
-        again.buttons["library.settings"].tap()
+        again.buttons["home.settings"].tap()
         let entry = again.buttons["settings.onboarding"]
         XCTAssertTrue(entry.waitForExistence(timeout: 20), "Settings offers the tour")
         entry.tap()
