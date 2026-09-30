@@ -25,6 +25,7 @@ pub mod ocr;
 pub mod pages;
 pub mod panes;
 pub mod patterns;
+pub mod protect;
 pub mod redact;
 pub mod signatures;
 pub mod standards;
@@ -88,6 +89,7 @@ pub fn call_static(op: &str, args: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, C
         Some(("marks", name)) => marks::call_static(name, args, blobs),
         Some(("ocr", name)) => ocr::call_static(name, args, blobs),
         Some(("pages", name)) => pages::call_static(name, args, blobs),
+        Some(("protect", name)) => protect::call_static(name, args, blobs),
         Some(("redact", name)) => redact::call_static(name, args, blobs),
         Some(("attachments", name)) => panes::attachments(name, args, blobs),
         Some(("layers", name)) => panes::layers(name, args, blobs),

@@ -51,6 +51,185 @@ pub fn is_encrypted(doc: &Document) -> bool {
     doc.trailer.get(b"Encrypt").is_ok()
 }
 
+/// What a reader may do with the document without the owner password — the
+/// `/P` bits of ISO 32000-2, table 22, as the three choices a person makes.
+///
+/// The bits the standard reserves are kept as it prescribes, so a file Warraq
+/// writes says exactly what it means to every other reader.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Permissions {
+    /// Print the document (bit 3), at full resolution (bit 12).
+    pub print: bool,
+    /// Copy text and pictures out (bit 5).
+    pub copy: bool,
+    /// Change it: the content (bit 4), comments (bit 6), form fields (bit 9)
+    /// and the order of the pages (bit 11).
+    pub change: bool,
+}
+
+/// Bits 1 and 2 are reserved and shall be 0; bits 7, 8 and 13 to 32 are
+/// reserved and shall be 1. Everything a person can choose starts cleared.
+const PERMISSIONS_BASE: i32 = 0xFFFF_F0C0u32 as i32;
+
+impl Permissions {
+    /// Everything allowed — what an unprotected document permits.
+    pub const ALL: Self = Self {
+        print: true,
+        copy: true,
+        change: true,
+    };
+
+    /// The `/P` value these permissions mean. Extraction for accessibility
+    /// (bit 10) is always granted: ISO 32000-2 deprecated withholding it, and
+    /// a document nobody with a screen reader can read is not one we write.
+    pub fn bits(self) -> i32 {
+        let mut p = PERMISSIONS_BASE | 512;
+        if self.print {
+            p |= 4 | 2048;
+        }
+        if self.copy {
+            p |= 16;
+        }
+        if self.change {
+            p |= 8 | 32 | 256 | 1024;
+        }
+        p
+    }
+
+    /// What a `/P` value in a file permits. A bit a file leaves out is a thing
+    /// it does not allow, whoever wrote it.
+    pub fn from_bits(p: i32) -> Self {
+        Self {
+            print: p & 4 != 0,
+            copy: p & 16 != 0,
+            change: p & 8 != 0,
+        }
+    }
+}
+
+/// How a file is protected, for the interface to report — never a key, never
+/// a password.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Description {
+    /// `"aes-256"`, `"aes-128"`, `"rc4-128"`, `"rc4-40"` or `"none"`.
+    pub method: &'static str,
+    /// The `/R` revision of the standard security handler.
+    pub revision: i64,
+    /// The file encryption key's length in bits.
+    pub key_bits: usize,
+    pub permissions: Permissions,
+    pub encrypt_metadata: bool,
+}
+
+/// What protection to write over a document. The open password is what a
+/// person is asked for; the owner password only lifts the permissions, and a
+/// caller that does not want one should pass something unguessable rather than
+/// the empty string, which would let anyone lift them.
+#[derive(Debug, Clone)]
+pub struct Protection {
+    pub open_password: String,
+    pub owner_password: String,
+    pub permissions: Permissions,
+    /// `false` leaves the XMP metadata stream readable without the password,
+    /// which is what a library or a search index wants.
+    pub encrypt_metadata: bool,
+}
+
+/// A password nobody knows: 24 random bytes in hex, for the owner password of
+/// a file whose owner wants no second password. An empty owner password would
+/// let any reader lift the permissions, which is worse than having none.
+pub fn unguessable_password() -> Result<String, CryptError> {
+    let mut bytes = [0u8; 24];
+    getrandom::fill(&mut bytes)
+        .map_err(|e| CryptError::Unsupported(format!("no source of randomness: {e}")))?;
+    Ok(bytes.iter().map(|b| format!("{b:02x}")).collect())
+}
+
+/// Encrypt `doc` — which must be plaintext, as it is after
+/// [`decrypt_document`] — with AES-256 under the standard security handler at
+/// revision 6, and name the new `/Encrypt` dictionary in its trailer.
+///
+/// Afterwards the document's strings and streams are ciphertext, so it can
+/// only be written whole: encryption covers every object in the file, and
+/// nothing but a full write can change what the objects already there say.
+/// The caller writes it with [`Document::save_to`].
+///
+/// # Errors
+///
+/// [`CryptError::Unsupported`] if `doc` is still encrypted (decrypt it first),
+/// or if the machine has no source of randomness — without one there is no key
+/// worth writing.
+pub fn encrypt_document(doc: &mut Document, protection: &Protection) -> Result<(), CryptError> {
+    if is_encrypted(doc) {
+        return Err(CryptError::Unsupported(
+            "the document is still encrypted; decrypt it before encrypting it again".into(),
+        ));
+    }
+    let (handler, file_key, dict) = Handler::new_aes256(
+        &protection.open_password,
+        &protection.owner_password,
+        protection.permissions.bits(),
+        protection.encrypt_metadata,
+    )?;
+
+    // Every object in the file, one by one. The /Encrypt dictionary itself is
+    // added afterwards, so it is never encrypted — nor is the cross-reference
+    // stream or a signature's /Contents, which `crypt_value` leaves alone.
+    let ids: Vec<ObjectId> = doc.objects.keys().copied().collect();
+    for id in ids {
+        if let Some(object) = doc.objects.get_mut(&id) {
+            crypt_value(&handler, &file_key, id, object, Direction::Encrypt)?;
+        }
+    }
+
+    // An /ID the file may not have had: readers expect one on an encrypted
+    // file, and revisions before 5 key themselves from it.
+    ensure_file_id(doc)?;
+
+    doc.max_id += 1;
+    let encrypt_id = (doc.max_id, 0);
+    doc.objects.insert(encrypt_id, Object::Dictionary(dict));
+    doc.trailer.set("Encrypt", Object::Reference(encrypt_id));
+    Ok(())
+}
+
+/// How the file in `bytes` is protected, or `None` when it is not protected at
+/// all or carries a handler this module does not implement. Reading this needs
+/// no password: the `/Encrypt` dictionary is the one part of a protected file
+/// that is in the clear.
+pub fn describe(bytes: &[u8]) -> Option<Description> {
+    let doc = load_preserving_ciphertext(bytes).ok()?;
+    if !is_encrypted(&doc) {
+        return None;
+    }
+    Handler::from_document(&doc).ok().map(|h| h.description())
+}
+
+/// Give the trailer a two-part `/ID` if it has none. The first part identifies
+/// the file and the second this revision of it, both 16 random bytes, which is
+/// what ISO 32000-2 §14.4 asks for.
+fn ensure_file_id(doc: &mut Document) -> Result<(), CryptError> {
+    if doc
+        .trailer
+        .get(b"ID")
+        .and_then(Object::as_array)
+        .is_ok_and(|a| a.len() == 2)
+    {
+        return Ok(());
+    }
+    let mut id = [0u8; 32];
+    getrandom::fill(&mut id)
+        .map_err(|e| CryptError::Unsupported(format!("no source of randomness: {e}")))?;
+    doc.trailer.set(
+        "ID",
+        Object::Array(vec![
+            Object::string_literal(id[..16].to_vec()),
+            Object::string_literal(id[16..].to_vec()),
+        ]),
+    );
+    Ok(())
+}
+
 /// Parse `bytes` with `lopdf` while keeping encrypted strings and streams
 /// intact, so that [`decrypt_document`] can decrypt them.
 ///
@@ -710,5 +889,264 @@ mod tests {
         assert_eq!(find(b"abcabc", b"abc", 4), None);
         assert_eq!(find(b"ab", b"abc", 0), None);
         assert_eq!(find(b"aab", b"ab", 0), Some(1));
+    }
+
+    // ----- writing protection -----------------------------------------------
+
+    /// A password in Arabic, to prove the writer takes one: revisions 5 and 6
+    /// hold the password as UTF-8, where every script fits.
+    const ARABIC: &str = "كلمة السر ١٢٣";
+
+    /// An unprotected corpus file to protect. Two of them, so that both a
+    /// classic cross-reference table and object streams are covered.
+    fn plain_corpus() -> Vec<u8> {
+        corpus("variant-linearized.pdf")
+    }
+
+    /// `bytes` protected with `open`/`owner`, written whole.
+    fn protect(bytes: &[u8], open: &str, owner: &str, permissions: Permissions) -> Vec<u8> {
+        let mut doc = load_preserving_ciphertext(bytes).unwrap();
+        if is_encrypted(&doc) {
+            decrypt_document(&mut doc, "").unwrap();
+        }
+        encrypt_document(
+            &mut doc,
+            &Protection {
+                open_password: open.to_string(),
+                owner_password: owner.to_string(),
+                permissions,
+                encrypt_metadata: true,
+            },
+        )
+        .unwrap();
+        let mut out = Vec::new();
+        doc.save_to(&mut out).unwrap();
+        out
+    }
+
+    /// What we write is what we read: the password opens it, the wrong one
+    /// does not, and the pages come back.
+    #[test]
+    fn a_document_we_protect_opens_with_its_password_and_no_other() {
+        let original = plain_corpus();
+        let pages = load_preserving_ciphertext(&original)
+            .unwrap()
+            .get_pages()
+            .len();
+        let sealed = protect(&original, "warraq", "owner", Permissions::ALL);
+
+        // It really is protected, and at revision 6 with AES-256.
+        let description = describe(&sealed).expect("protected");
+        assert_eq!(description.method, "aes-256");
+        assert_eq!(description.revision, 6);
+        assert_eq!(description.key_bits, 256);
+
+        // The open password opens it; so does the owner password.
+        for password in ["warraq", "owner"] {
+            let mut doc = load_preserving_ciphertext(&sealed).unwrap();
+            decrypt_document(&mut doc, password).unwrap();
+            assert_eq!(doc.get_pages().len(), pages, "with {password}");
+            assert!(!is_encrypted(&doc));
+        }
+
+        // Nothing else does.
+        let mut doc = load_preserving_ciphertext(&sealed).unwrap();
+        assert!(matches!(
+            decrypt_document(&mut doc, "warra"),
+            Err(CryptError::WrongPassword)
+        ));
+        let mut doc = load_preserving_ciphertext(&sealed).unwrap();
+        assert!(matches!(
+            decrypt_document(&mut doc, ""),
+            Err(CryptError::WrongPassword)
+        ));
+    }
+
+    /// The point of writing revision 6: an Arabic password round-trips
+    /// byte for byte, where the Latin-1 passwords of revisions 2 to 4 cannot
+    /// carry it at all.
+    #[test]
+    fn an_arabic_password_round_trips_exactly() {
+        let sealed = protect(&plain_corpus(), ARABIC, ARABIC, Permissions::ALL);
+        let mut doc = load_preserving_ciphertext(&sealed).unwrap();
+        decrypt_document(&mut doc, ARABIC).unwrap();
+        assert!(!doc.get_pages().is_empty());
+
+        // A password that differs only in one Arabic letter is refused, and so
+        // is one that differs only by a diacritic: nothing is folded away.
+        for wrong in ["كلمة السر ١٢٤", "كلمة السر", "كَلمة السر ١٢٣", ""]
+        {
+            let mut doc = load_preserving_ciphertext(&sealed).unwrap();
+            assert!(
+                matches!(
+                    decrypt_document(&mut doc, wrong),
+                    Err(CryptError::WrongPassword)
+                ),
+                "{wrong:?} must not open it"
+            );
+        }
+    }
+
+    /// The document's own bytes survive the round trip: the first page's
+    /// content stream comes back exactly as it went in.
+    ///
+    /// Object streams are the interesting case: their members are plaintext
+    /// objects of their own once expanded, so every one of them must be
+    /// encrypted individually on the way out.
+    #[test]
+    fn the_pages_bytes_survive_being_protected_and_opened() {
+        for name in [
+            "variant-linearized.pdf",
+            "variant-objectstreams-xrefstream.pdf",
+        ] {
+            let original = corpus(name);
+            let before = {
+                let doc = load_preserving_ciphertext(&original).unwrap();
+                page_content_and_producer(&doc)
+            };
+            let sealed = protect(&original, ARABIC, "owner", Permissions::ALL);
+            let mut doc = load_preserving_ciphertext(&sealed).unwrap();
+            decrypt_document(&mut doc, ARABIC).unwrap();
+            assert_eq!(page_content_and_producer(&doc), before, "{name}");
+        }
+    }
+
+    /// The permissions a person chooses are the `/P` bits a reader sees, and
+    /// they come back as they were set.
+    #[test]
+    fn permissions_are_written_and_read_back() {
+        for permissions in [
+            Permissions::ALL,
+            Permissions {
+                print: true,
+                copy: false,
+                change: false,
+            },
+            Permissions {
+                print: false,
+                copy: false,
+                change: false,
+            },
+        ] {
+            let sealed = protect(&plain_corpus(), "warraq", "owner", permissions);
+            let description = describe(&sealed).unwrap();
+            assert_eq!(description.permissions, permissions);
+        }
+        // The bits the standard reserves are exactly as it prescribes: 1 and 2
+        // clear, 7, 8 and 13 upwards set.
+        let bits = Permissions::ALL.bits();
+        assert_eq!(bits & 3, 0);
+        assert_eq!(bits & 0xFFFF_F000u32 as i32, 0xFFFF_F000u32 as i32);
+        assert_eq!(bits & 0xC0, 0xC0);
+        // Accessibility (bit 10) is granted even when nothing else is.
+        assert_eq!(
+            Permissions {
+                print: false,
+                copy: false,
+                change: false
+            }
+            .bits()
+                & 512,
+            512
+        );
+    }
+
+    /// A file that was already protected is re-protected with a new password:
+    /// the old one stops working and the new one works.
+    #[test]
+    fn the_password_of_a_protected_file_can_be_changed() {
+        let original = corpus("variant-encrypted-aes256.pdf");
+        let mut doc = load_preserving_ciphertext(&original).unwrap();
+        decrypt_document(&mut doc, USER).unwrap();
+        encrypt_document(
+            &mut doc,
+            &Protection {
+                open_password: ARABIC.to_string(),
+                owner_password: ARABIC.to_string(),
+                permissions: Permissions::ALL,
+                encrypt_metadata: true,
+            },
+        )
+        .unwrap();
+        let mut out = Vec::new();
+        doc.save_to(&mut out).unwrap();
+
+        let mut reopened = load_preserving_ciphertext(&out).unwrap();
+        decrypt_document(&mut reopened, ARABIC).unwrap();
+        assert_eq!(reopened.get_pages().len(), 3);
+        let mut reopened = load_preserving_ciphertext(&out).unwrap();
+        assert!(matches!(
+            decrypt_document(&mut reopened, USER),
+            Err(CryptError::WrongPassword)
+        ));
+    }
+
+    /// Encrypting a document that is still ciphertext would encrypt it twice,
+    /// so it is refused rather than attempted.
+    #[test]
+    fn a_still_encrypted_document_is_refused() {
+        let mut doc = loaded("variant-encrypted-aes256.pdf");
+        assert!(matches!(
+            encrypt_document(
+                &mut doc,
+                &Protection {
+                    open_password: "x".into(),
+                    owner_password: "x".into(),
+                    permissions: Permissions::ALL,
+                    encrypt_metadata: true,
+                }
+            ),
+            Err(CryptError::Unsupported(_))
+        ));
+    }
+
+    /// Writes a protected copy where `WARRAQ_PROTECT_OUT` says, so that an
+    /// implementation that is not ours can be pointed at it — the only way to
+    /// know our `/Encrypt` dictionary is right and not merely self-consistent.
+    /// Ignored by default because it writes outside the target directory:
+    ///
+    /// ```text
+    /// WARRAQ_PROTECT_OUT=/tmp/protected.pdf cargo test -p warraq-pdf \
+    ///   -- --ignored writes_a_protected_file_for_an_outside_reader
+    /// python3 tests/tools/check_protection.py /tmp/protected.pdf
+    /// ```
+    #[test]
+    #[ignore = "writes a file outside the target directory for an outside reader"]
+    fn writes_a_protected_file_for_an_outside_reader() {
+        let path = std::env::var("WARRAQ_PROTECT_OUT")
+            .expect("set WARRAQ_PROTECT_OUT to where the file should go");
+        let sealed = protect(
+            &plain_corpus(),
+            ARABIC,
+            "owner",
+            Permissions {
+                print: true,
+                copy: false,
+                change: false,
+            },
+        );
+        std::fs::write(&path, &sealed).unwrap();
+    }
+
+    /// An encrypted file needs an `/ID`, and one is made when the original had
+    /// none.
+    #[test]
+    fn a_file_without_an_id_is_given_one() {
+        let original = plain_corpus();
+        let mut doc = load_preserving_ciphertext(&original).unwrap();
+        doc.trailer.remove(b"ID");
+        encrypt_document(
+            &mut doc,
+            &Protection {
+                open_password: "warraq".into(),
+                owner_password: "owner".into(),
+                permissions: Permissions::ALL,
+                encrypt_metadata: true,
+            },
+        )
+        .unwrap();
+        let id = doc.trailer.get(b"ID").and_then(Object::as_array).unwrap();
+        assert_eq!(id.len(), 2);
+        assert_eq!(id[0].as_str().unwrap().len(), 16);
     }
 }

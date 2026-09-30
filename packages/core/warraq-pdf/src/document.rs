@@ -13,6 +13,9 @@ pub struct PdfDocument {
     /// Objects that existed already and that we changed.
     pub(crate) touched: std::collections::BTreeSet<u32>,
     pub(crate) was_encrypted: bool,
+    /// How the file was protected, read from `/Encrypt` before it was removed;
+    /// `None` for a plaintext file or a handler we do not implement.
+    protection: Option<crypt::Description>,
     /// Writes updates to an encrypted file that stay encrypted; `None` for a
     /// plaintext file, or one only `lopdf`'s own handler could open.
     pub(crate) sealer: Option<crypt::Sealer>,
@@ -53,6 +56,12 @@ impl PdfDocument {
         let mut doc =
             crypt::load_preserving_ciphertext(&bytes).map_err(|e| Error::Parse(e.to_string()))?;
         let encrypted = crypt::is_encrypted(&doc);
+        // Read while /Encrypt is still there; it is dropped as we decrypt.
+        let protection = if encrypted {
+            crypt::describe(&bytes)
+        } else {
+            None
+        };
         let mut sealer = None;
         if encrypted {
             match crypt::decrypt_document(&mut doc, password) {
@@ -77,6 +86,7 @@ impl PdfDocument {
             base_max_id,
             touched: Default::default(),
             was_encrypted: encrypted,
+            protection,
             sealer,
         })
     }
@@ -92,6 +102,7 @@ impl PdfDocument {
             base_max_id,
             touched: Default::default(),
             was_encrypted: false,
+            protection: None,
             sealer: None,
         }
     }
@@ -176,6 +187,27 @@ impl PdfDocument {
     /// objects have been decrypted in memory (unlike `lopdf`'s own flag).
     pub fn was_encrypted(&self) -> bool {
         self.was_encrypted
+    }
+
+    /// How the file we opened was protected, or `None` when it was not.
+    pub fn protection(&self) -> Option<&crypt::Description> {
+        self.protection.as_ref()
+    }
+
+    /// The whole document written out encrypted with AES-256 (`protection`),
+    /// whatever protection the file we opened had.
+    ///
+    /// Protection can only be written as a full rewrite: it covers every
+    /// object in the file, and an update appended to the old bytes would leave
+    /// those objects as they were. The objects in memory are left plaintext, so
+    /// the open document goes on working; only the answer is encrypted.
+    pub fn save_protected(&mut self, protection: &crypt::Protection) -> Result<Vec<u8>> {
+        let mut copy = self.doc.clone();
+        crypt::encrypt_document(&mut copy, protection).map_err(|e| Error::Edit(e.to_string()))?;
+        let mut out = Vec::with_capacity(self.original.len() + 4096);
+        copy.save_to(&mut out)
+            .map_err(|e| Error::Io(e.to_string()))?;
+        Ok(out)
     }
 
     pub fn original_bytes(&self) -> &[u8] {
