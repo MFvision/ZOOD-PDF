@@ -680,6 +680,42 @@ now says which the scanner shows: Scan, the widget, the Control Center control, 
 quick action go to the camera; Create goes to the photo picker
 (`ScanCameraTests.testCreateAPDFStartsAtThePicturesRatherThanTheCamera`).
 
+### What was run, and on what
+
+**iPhone 17 simulator, iOS 27.0** (`apps/ios/.build/scan-tests.sh`, through the machine's queue):
+
+| Bundle | Result |
+| --- | --- |
+| `PDFEditorTests/ScanGeometryTests` (new) | **8 tests, 0 failures** |
+| `PDFEditorTests/ScanPipelineTests` (the scanner's existing tests, for regressions) | **15 tests, 0 failures** |
+| — together | `Executed 23 tests, with 0 failures` |
+| `PDFEditorUITests/ScanCameraTests` (new) | **9 tests, 0 failures** |
+| `PDFEditorUITests/OnboardingUITests` (new) | **4 tests, 0 failures**, the fourth writing the eight screenshots |
+
+Against the pipeline and session as they stood on 2026-09-29, **3 of the 8**
+`ScanGeometryTests` fail (the run and its numbers are quoted above).
+
+The first UI run failed 5 of 12, and the interface was wrong in two of those ways, not the
+tests: naming a container with `accessibilityIdentifier` and nothing else folds its children
+into it, so the empty stage's button and the camera stand-in's Cancel had no identifiers of
+their own (`accessibilityElement(children: .contain)` on both, as `ScanStage` already does);
+and "Show the welcome tour" sat in Settings' About section, below the fold on a phone, where
+neither a test nor a person would find it without scrolling the whole screen — it is now in
+Interface, under Language and Appearance.
+
+**Not run here:** the iPad Pro 13-inch (M5) simulator, and the rest of the app's suites. The Mac
+was shared with three other iOS agents throughout (load averages 15–45, single builds queued
+20 minutes and more), so the runs were kept to the parts this work touches. Nothing about the
+iPad is claimed.
+
+**A separate, pre-existing breakage found on the way.** The accessibility identifier
+`library.settings` no longer exists anywhere in the app — the Library's Settings button was
+dropped when its chrome was redesigned, and the home's `home.settings` card is the way in now —
+but `PDFEditorUITests/SettingsUITests` (lines 30, 31, 94, 100, 101), `ScanTests` (275, 276) and
+`LaunchTests` (116) still tap it. Those tests cannot be reaching Settings, so `SettingsUITests`
+is not exercising what this file says it does. It is not fixed here (it is not this work, and
+the file is another agent's), but it should not go unrecorded.
+
 ### Not done, and not claimed
 
 * **The real camera has still never been run by anyone.** Everything above about the camera is the
