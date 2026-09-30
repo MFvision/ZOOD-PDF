@@ -52,7 +52,14 @@ struct DocumentView: View {
 
     private var compact: Bool { sizeClass == .compact }
 
+    // The screen in four parts — the stack of bars and pages, the chrome
+    // round it, the sheets and the alerts — each its own expression. Swift 6
+    // gives up type-checking one long enough to hold all of them.
     var body: some View {
+        alerts(on: sheets(on: chrome(on: stack)))
+    }
+
+    private var stack: some View {
         VStack(spacing: 0) {
             if showingSearch, model.isReady, !readerMode {
                 SearchBar(search: search, model: model) {
@@ -122,15 +129,58 @@ struct DocumentView: View {
                 }
             }
         }
-        .animation(Motion.travel(reduceMotion: reduceMotion), value: editing)
-        .animation(Motion.travel(reduceMotion: reduceMotion), value: showingSearch)
-        .animation(Motion.travel(reduceMotion: reduceMotion), value: markup)
-        .animation(Motion.travel(reduceMotion: reduceMotion), value: showingThumbnails)
-        .navigationTitle(model.name)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar { toolbar }
-        .toolbarRole(.editor)
-        .focusedSceneValue(\.documentActions, actions)
+    }
+
+    /// The window round the pages: the motion, the title, the toolbar, and
+    /// the work that keeps the models in step with the document.
+    private func chrome(on view: some View) -> some View {
+        view
+            .animation(Motion.travel(reduceMotion: reduceMotion), value: editing)
+            .animation(Motion.travel(reduceMotion: reduceMotion), value: showingSearch)
+            .animation(Motion.travel(reduceMotion: reduceMotion), value: markup)
+            .animation(Motion.travel(reduceMotion: reduceMotion), value: showingThumbnails)
+            .navigationTitle(model.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { toolbar }
+            .toolbarRole(.editor)
+            .focusedSceneValue(\.documentActions, actions)
+            .task(id: model.id) {
+                if editor == nil {
+                    editor = AnnotationEditor(model: model)
+                    pagesModel = PagesModel(model: model)
+                    edit = EditModel(model: model)
+                }
+                if model.state == .loading {
+                    await model.load()
+                }
+            }
+            // What the page holds, read as the editor opens, as the page
+            // changes and again after each edit — reflowing a paragraph moves
+            // the ones under it, and a picture changed changes the page's list.
+            .task(id: editKey) {
+                guard editing, let edit else { return }
+                await edit.read(page: model.currentPage)
+            }
+            .task(id: textKey) {
+                pageText = await model.text(ofPage: model.currentPage)
+            }
+            .onChange(of: undoManager, initial: true) { _, manager in
+                editor?.undoManager = manager
+                pagesModel?.undoManager = manager
+                edit?.undoManager = manager
+            }
+            .onChange(of: model.revision) {
+                // The bytes changed: the hits' selections belong to the old pages.
+                if showingSearch { search.run(in: model) }
+            }
+            .onChange(of: search.current) {
+                if let hit = search.currentHit { model.currentPage = hit.page }
+            }
+    }
+
+    /// Everything the screen puts over itself.
+    private func sheets(on view: some View) -> some View {
+        view
         .sheet(isPresented: $showingInfo) {
             DocumentInfoSheet(model: model)
         }
@@ -189,11 +239,6 @@ struct DocumentView: View {
                 NoteSheet(placement: placement, editor: editor)
             }
         }
-        .alert("Could not save", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(saveError ?? "")
-        }
         // A document opened from a picture: the scanner enhances and reads it.
         .fullScreenCover(isPresented: $showingScanner) {
             if let image = model.sourceImage {
@@ -203,61 +248,39 @@ struct DocumentView: View {
                 .appEnvironment()
             }
         }
-        .alert("Saved to My documents", isPresented: Binding(get: { scanSaved != nil }, set: { if !$0 { scanSaved = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(verbatim: scanSaved?.lastPathComponent ?? "")
-        }
-        .alert("Could not add the mark", isPresented: Binding(get: { editor?.error != nil }, set: { if !$0 { editor?.clearError() } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(editor?.error ?? "")
-        }
-        .sensoryFeedback(.success, trigger: editor?.commits ?? 0)
-        .sensoryFeedback(.success, trigger: stampsAdded)
-        .alert("Could not make that change", isPresented: Binding(get: { edit?.error != nil }, set: { if !$0 { edit?.clearError() } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(edit?.error ?? "")
-        }
-        .alert("The text was changed", isPresented: Binding(get: { edit?.notice != nil }, set: { if !$0 { edit?.clearNotice() } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(edit?.notice ?? "")
-        }
-        .sensoryFeedback(.success, trigger: edit?.edits ?? 0)
-        .task(id: model.id) {
-            if editor == nil {
-                editor = AnnotationEditor(model: model)
-                pagesModel = PagesModel(model: model)
-                edit = EditModel(model: model)
+    }
+
+    /// What went wrong, said once, and the haptic on what went right.
+    private func alerts(on view: some View) -> some View {
+        view
+            .alert("Could not save", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(saveError ?? "")
             }
-            if model.state == .loading {
-                await model.load()
+            .alert("Saved to My documents", isPresented: Binding(get: { scanSaved != nil }, set: { if !$0 { scanSaved = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(verbatim: scanSaved?.lastPathComponent ?? "")
             }
-        }
-        // What the page holds, read as the editor opens, as the page changes
-        // and again after each edit — reflowing a paragraph moves the ones
-        // under it, and a picture changed changes the page's list.
-        .task(id: editKey) {
-            guard editing, let edit else { return }
-            await edit.read(page: model.currentPage)
-        }
-        .task(id: textKey) {
-            pageText = await model.text(ofPage: model.currentPage)
-        }
-        .onChange(of: undoManager, initial: true) { _, manager in
-            editor?.undoManager = manager
-            pagesModel?.undoManager = manager
-            edit?.undoManager = manager
-        }
-        .onChange(of: model.revision) {
-            // The bytes changed: the hits' selections belong to the old pages.
-            if showingSearch { search.run(in: model) }
-        }
-        .onChange(of: search.current) {
-            if let hit = search.currentHit { model.currentPage = hit.page }
-        }
+            .alert("Could not add the mark", isPresented: Binding(get: { editor?.error != nil }, set: { if !$0 { editor?.clearError() } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(editor?.error ?? "")
+            }
+            .alert("Could not make that change", isPresented: Binding(get: { edit?.error != nil }, set: { if !$0 { edit?.clearError() } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(edit?.error ?? "")
+            }
+            .alert("The text was changed", isPresented: Binding(get: { edit?.notice != nil }, set: { if !$0 { edit?.clearNotice() } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(edit?.notice ?? "")
+            }
+            .sensoryFeedback(.success, trigger: editor?.commits ?? 0)
+            .sensoryFeedback(.success, trigger: stampsAdded)
+            .sensoryFeedback(.success, trigger: edit?.edits ?? 0)
     }
 
     /// When the page's text must be read again: another page, an edit, or

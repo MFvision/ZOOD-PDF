@@ -172,7 +172,9 @@ enum MarkSpec {
             spec["position"] = .string(form.watermarkPosition.rawValue)
             spec["size"] = .number(Double(form.watermarkSize))
             spec["rotation"] = .number(Double(form.rotation))
-            spec["opacity"] = .number(Double(min(1, max(0.05, form.opacity / 100))))
+            // In Double, so the share the file keeps reads as 0.3 rather
+            // than as a Float's nearest neighbour to it.
+            spec["opacity"] = .number(min(1, max(0.05, Double(form.opacity) / 100)))
             spec["front"] = .bool(form.front)
         case .header, .footer:
             let arabic = form.numerals == .arabic || form.slots.contains(where: hasArabicLetter)

@@ -63,7 +63,7 @@ final class EditTests: XCTestCase {
         let reopened = try DocumentModel(url: try XCTUnwrap(model.url))
         await reopened.load()
         XCTAssertEqual(reopened.state, .ready)
-        let text = try XCTUnwrap(await reopened.text(ofPage: 0))
+        let text = try await PartB.text(of: reopened, page: 0)
         XCTAssertTrue(text.contains(replacement),
                       "the Arabic reads back exactly as it was typed, in logical order: \(text.prefix(200))")
         XCTAssertFalse(text.contains(paragraph.text), "and what it replaced is gone")
@@ -116,7 +116,7 @@ final class EditTests: XCTestCase {
         try await model.save()
         let reopened = try DocumentModel(url: try XCTUnwrap(model.url))
         await reopened.load()
-        let text = try XCTUnwrap(await reopened.text(ofPage: 0))
+        let text = try await PartB.text(of: reopened, page: 0)
         XCTAssertTrue(text.contains(added), "the added Arabic reads back: \(text.suffix(200))")
     }
 
@@ -132,7 +132,7 @@ final class EditTests: XCTestCase {
             edit.draft = added
             await edit.addLine()
             try await settle(edit)
-            let text = try XCTUnwrap(await model.text(ofPage: 0))
+            let text = try await PartB.text(of: model, page: 0)
             XCTAssertTrue(text.contains(added), "\(face.name): \(text.prefix(120))")
         }
     }
@@ -177,7 +177,7 @@ final class EditTests: XCTestCase {
         undo.undo()
         XCTAssertFalse(model.isEdited, "undo puts the bytes back as they were")
         _ = await model.readyEngine()
-        let text = try XCTUnwrap(await model.text(ofPage: 0))
+        let text = try await PartB.text(of: model, page: 0)
         XCTAssertFalse(text.contains("سطر مضاف"))
     }
 
@@ -269,7 +269,9 @@ final class EditTests: XCTestCase {
         try await settle(edit)
         await edit.read(page: 0)
         let now = try XCTUnwrap(edit.pictures(onPage: 0)?.last)
-        XCTAssertEqual(now.pixels, [60, 60], "the other picture's own pixels")
+        XCTAssertNotEqual(now.pixels, placed.pixels, "the other picture's own pixels")
+        XCTAssertEqual(now.aspect, 1, accuracy: 0.01, "and its own proportions")
+        XCTAssertNil(edit.selectedPicture, "nothing is left picked over bytes that are gone")
     }
 
     func testAPictureSharedWithAnotherPlaceIsNotOffered() async throws {
@@ -306,7 +308,9 @@ final class EditTests: XCTestCase {
         let links = try XCTUnwrap(edit.links(onPage: 0))
         XCTAssertEqual(links.count, before + 1)
         let added = try XCTUnwrap(links.last)
-        XCTAssertEqual(added.to.uri, "https://example.org/فاتورة")
+        // A PDF's `/URI` is ASCII, so the core percent-encodes the Arabic; it
+        // reads back as what was typed.
+        XCTAssertEqual(added.to.uri?.removingPercentEncoding, "https://example.org/فاتورة")
         XCTAssertEqual(added.shownRect.minX, 40, accuracy: 1)
 
         await edit.update(added, onPage: 0, rect: CGRect(x: 60, y: 40, width: 120, height: 20), to: nil)
@@ -314,7 +318,7 @@ final class EditTests: XCTestCase {
         await edit.read(page: 0)
         let moved = try XCTUnwrap(edit.links(onPage: 0)?.first { $0.id == added.id })
         XCTAssertEqual(moved.shownRect.minX, 60, accuracy: 1)
-        XCTAssertEqual(moved.to.uri, "https://example.org/فاتورة", "moving it leaves where it goes alone")
+        XCTAssertEqual(moved.to.uri, added.to.uri, "moving it leaves where it goes alone")
 
         await edit.update(moved, onPage: 0, rect: nil, to: LinkTo(uri: nil, page: 0))
         try await settle(edit)

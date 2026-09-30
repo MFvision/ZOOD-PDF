@@ -121,7 +121,7 @@ final class MarkSpecTests: XCTestCase {
     func testAnArabicHeaderAndPageNumbersAreWrittenListedAndTakenOffAgain() async throws {
         let model = try await PartB.loadedModel("chrome-notonaskh-justified-3pages", in: folder)
         let original = model.bytes
-        let textBefore = try XCTUnwrap(await model.text(ofPage: 0))
+        let textBefore = try await PartB.text(of: model, page: 0)
 
         var header = MarkSpec.Form()
         header.kind = .header
@@ -143,7 +143,7 @@ final class MarkSpecTests: XCTestCase {
         XCTAssertEqual(Set(marks.map(\.kind)), ["header", "pageNumber"])
 
         // The core keeps its own marks out of the page's text.
-        let textAfter = try XCTUnwrap(await model.text(ofPage: 0))
+        let textAfter = try await PartB.text(of: model, page: 0)
         XCTAssertEqual(textAfter, textBefore, "a page mark is not part of the page's words")
 
         // What the marks say is on the page all the same: `marks.text` reads
@@ -158,7 +158,8 @@ final class MarkSpecTests: XCTestCase {
         struct Remove: Encodable { let password: String?; let ids: [Int] }
         let off = try await Core.callStatic(op: "marks.remove", args: Remove(password: nil, ids: marks.map(\.id)), blobs: [model.bytes])
         try await model.replace(bytes: try XCTUnwrap(off.blobs.first), undoManager: nil)
-        XCTAssertTrue(try await listed(model).isEmpty, "nothing is left")
+        let remaining = try await listed(model)
+        XCTAssertTrue(remaining.isEmpty, "nothing is left")
     }
 
     func testAWatermarkAndBatesNumbersAreWrittenOnTheChosenPagesOnly() async throws {
