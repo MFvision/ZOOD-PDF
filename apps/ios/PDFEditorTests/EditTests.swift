@@ -221,6 +221,39 @@ final class EditTests: XCTestCase {
         XCTAssertEqual((edit.pictures(onPage: 0) ?? []).count, before, "and it is off the page again")
     }
 
+    /// With a keyboard, the arrow keys move what is picked a point at a
+    /// time and ten with Shift — and do nothing when nothing is picked.
+    func testTheArrowKeysMoveWhatIsPicked() async throws {
+        let model = try await PartB.loadedModel("coretext-sfarabic-mixed-invoice", in: folder)
+        let edit = EditModel(model: model)
+        edit.undoManager = UndoManager()
+        await edit.read(page: 0)
+        XCTAssertFalse(edit.hasSomethingPicked)
+        await edit.nudge(dx: 1, dy: 0, far: false)
+        XCTAssertFalse(model.isEdited, "nothing picked, nothing moves")
+
+        let png = try XCTUnwrap(PartB.picture().pngData())
+        await edit.addPicture(png, in: CGRect(x: 60, y: 60, width: 120, height: 60), onPage: 0)
+        try await settle(edit)
+        await edit.read(page: 0)
+        let placed = try XCTUnwrap(edit.pictures(onPage: 0)?.last)
+        edit.selectedPicture = PictureRef(page: 0, id: placed.id)
+        XCTAssertTrue(edit.hasSomethingPicked)
+
+        await edit.nudge(dx: 1, dy: 0, far: false)
+        try await settle(edit)
+        await edit.read(page: 0)
+        let once = try XCTUnwrap(edit.pictures(onPage: 0)?.first { $0.id == placed.id })
+        XCTAssertEqual(EditGeometry.bounds(EditGeometry.corners(once.matrix, clip: once.clip)).minX, 61, accuracy: 0.5)
+
+        await edit.nudge(dx: 0, dy: 1, far: true)
+        try await settle(edit)
+        await edit.read(page: 0)
+        let twice = try XCTUnwrap(edit.pictures(onPage: 0)?.first { $0.id == placed.id })
+        XCTAssertEqual(EditGeometry.bounds(EditGeometry.corners(twice.matrix, clip: twice.clip)).minY, 70, accuracy: 0.5,
+                       "Shift moves it ten points")
+    }
+
     func testAPictureIsReplacedInPlace() async throws {
         let model = try await PartB.loadedModel("coretext-sfarabic-mixed-invoice", in: folder)
         let edit = EditModel(model: model)

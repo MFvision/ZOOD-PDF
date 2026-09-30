@@ -147,6 +147,14 @@ struct PDFKitView: UIViewRepresentable {
                 overlay.edit = edit
                 overlay.update(night: night, tool: tool)
             }
+            // The arrow keys are the editor's only while something is picked.
+            if let edit, edit.hasSomethingPicked {
+                view.onNudge = { dx, dy, far in
+                    Task { await edit.nudge(dx: dx, dy: dy, far: far) }
+                }
+            } else {
+                view.onNudge = nil
+            }
         }
         if view.highlightedSelections?.count != highlights.count || view.highlightedSelections?.first !== highlights.first {
             view.highlightedSelections = highlights.isEmpty ? nil : highlights
@@ -241,6 +249,39 @@ final class DocumentPDFView: PDFView {
     var onMarkup: ((AnnotationTool, PDFSelection) -> Void)?
     /// The interface's language (chosen in Settings, not always the system's).
     var locale: Locale = .current
+    /// Edit PDF's arrow keys, with a keyboard: a point at a time over the
+    /// picked picture or link, ten with Shift. Nil when nothing is picked,
+    /// so the keys stay the view's own.
+    var onNudge: ((CGFloat, CGFloat, Bool) -> Void)?
+
+    override var keyCommands: [UIKeyCommand]? {
+        guard onNudge != nil else { return super.keyCommands }
+        let keys = [UIKeyCommand.inputLeftArrow, UIKeyCommand.inputRightArrow,
+                    UIKeyCommand.inputUpArrow, UIKeyCommand.inputDownArrow]
+        // Which way each key moves is read back in `nudged`, from the
+        // command's own input and modifiers.
+        let commands = keys.flatMap { key in
+            [UIKeyModifierFlags(), .shift].map { modifiers -> UIKeyCommand in
+                let command = UIKeyCommand(title: "", action: #selector(nudged(_:)), input: key,
+                                           modifierFlags: modifiers)
+                command.wantsPriorityOverSystemBehavior = true
+                return command
+            }
+        }
+        return commands + (super.keyCommands ?? [])
+    }
+
+    @objc private func nudged(_ command: UIKeyCommand) {
+        guard let onNudge, let input = command.input else { return }
+        let far = command.modifierFlags.contains(.shift)
+        switch input {
+        case UIKeyCommand.inputLeftArrow: onNudge(-1, 0, far)
+        case UIKeyCommand.inputRightArrow: onNudge(1, 0, far)
+        case UIKeyCommand.inputUpArrow: onNudge(0, -1, far)
+        case UIKeyCommand.inputDownArrow: onNudge(0, 1, far)
+        default: break
+        }
+    }
 
     override func buildMenu(with builder: any UIMenuBuilder) {
         super.buildMenu(with: builder)

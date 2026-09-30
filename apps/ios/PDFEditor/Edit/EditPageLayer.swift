@@ -23,6 +23,10 @@ final class EditPageLayer: UIView, UITextViewDelegate, UIGestureRecognizerDelega
     private let shapes = CAShapeLayer()
     private let picked = CAShapeLayer()
     private let preview = CAShapeLayer()
+    private let hovered = CAShapeLayer()
+    /// Where a pointer (a trackpad, a mouse, the Pencil's hover) is, so the
+    /// thing under it can be lit before it is tapped.
+    private var hover: CGPoint?
     private var handleViews: [UIView] = []
     private var field: UITextView?
     private var fieldBox = CGRect.zero
@@ -53,11 +57,14 @@ final class EditPageLayer: UIView, UITextViewDelegate, UIGestureRecognizerDelega
         super.init(frame: .zero)
         backgroundColor = .clear
         isOpaque = false
-        for layer in [shapes, picked, preview] {
+        for layer in [hovered, shapes, picked, preview] {
             layer.fillColor = nil
             layer.lineJoin = .round
             self.layer.addSublayer(layer)
         }
+        hovered.fillColor = UIColor.tintColor.withAlphaComponent(0.12).cgColor
+        hovered.strokeColor = UIColor.tintColor.withAlphaComponent(0.5).cgColor
+        hovered.lineWidth = 1
         shapes.strokeColor = UIColor.tintColor.withAlphaComponent(0.55).cgColor
         shapes.lineWidth = 1
         shapes.lineDashPattern = [4, 3]
@@ -70,6 +77,9 @@ final class EditPageLayer: UIView, UITextViewDelegate, UIGestureRecognizerDelega
         pan.delegate = self
         addGestureRecognizer(pan)
         addGestureRecognizer(tap)
+        // A pointer — a trackpad, a mouse, the Pencil hovering over the
+        // glass — lights what a tap would open, before the tap.
+        addGestureRecognizer(UIHoverGestureRecognizer(target: self, action: #selector(hoverMoved(_:))))
         accessibilityIdentifier = "edit.layer.\(pageIndex)"
         isAccessibilityElement = false
     }
@@ -79,10 +89,43 @@ final class EditPageLayer: UIView, UITextViewDelegate, UIGestureRecognizerDelega
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        for layer in [shapes, picked, preview] {
+        for layer in [hovered, shapes, picked, preview] {
             layer.frame = bounds
         }
         redraw()
+    }
+
+    @objc private func hoverMoved(_ gesture: UIHoverGestureRecognizer) {
+        switch gesture.state {
+        case .began, .changed:
+            hover = gesture.location(in: self)
+        default:
+            hover = nil
+        }
+        showHover()
+    }
+
+    /// The box of the thing the pointer is over, filled faintly.
+    private func showHover() {
+        guard let edit, let hover, edit.editing == nil, edit.placing == nil else {
+            hovered.path = nil
+            return
+        }
+        let box: CGRect?
+        switch edit.mode {
+        case .text:
+            box = edit.paragraph(at: storedPoint(hover), onPage: pageIndex).map { viewRect(fromStored: $0.storedRect) }
+        case .pictures:
+            let at = shownPoint(hover)
+            box = (edit.pictures(onPage: pageIndex) ?? [])
+                .filter { $0.isEditable && EditGeometry.bounds(EditGeometry.corners($0.matrix, clip: $0.clip)).contains(at) }
+                .map { viewBox(of: $0) }
+                .min { $0.area < $1.area }
+        case .links:
+            box = (edit.links(onPage: pageIndex) ?? []).first { $0.shownRect.contains(shownPoint(hover)) }
+                .map { viewRect(fromShown: $0.shownRect) }
+        }
+        hovered.path = box.map { CGPath(roundedRect: $0, cornerWidth: 3, cornerHeight: 3, transform: nil) }
     }
 
     // MARK: - What the layer shows
@@ -128,6 +171,7 @@ final class EditPageLayer: UIView, UITextViewDelegate, UIGestureRecognizerDelega
         shapes.path = path
         picked.path = pickedPath
         showHandles(around: pickedBox, cropping: edit.mode == .pictures && edit.cropping)
+        showHover()
         showField()
     }
 

@@ -376,6 +376,26 @@ final class EditModel {
         pendingPicture = nil
     }
 
+    /// Moves what is picked by a key of the arrow keys — a point at a time,
+    /// ten with Shift — as the desktop's arrow keys nudge it. Nothing is
+    /// picked, nothing moves.
+    func nudge(dx: CGFloat, dy: CGFloat, far: Bool) async {
+        let step: CGFloat = far ? 10 : 1
+        if let picture = picked, let page = selectedPicture?.page {
+            await transform(picture, onPage: page,
+                            matrix: EditGeometry.translate(picture.matrix, dx: dx * step, dy: dy * step))
+        } else if let link = pickedLink, let page = selectedLink?.page {
+            await update(link, onPage: page,
+                         rect: EditGeometry.drag(link.shownRect, handle: nil, dx: dx * step, dy: dy * step))
+        }
+    }
+
+    /// Whether an arrow key would do anything: the bar and the pages only
+    /// take the key when it would.
+    var hasSomethingPicked: Bool {
+        picked != nil || pickedLink != nil
+    }
+
     /// Turns the picked picture a quarter clockwise, about the middle of
     /// what shows of it.
     func turn(_ picture: PagePicture, onPage index: Int) async {
