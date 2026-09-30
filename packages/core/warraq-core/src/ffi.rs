@@ -604,8 +604,11 @@ pub unsafe extern "C" fn warraq_add_text_colored(
 /// `#rrggbb` as RGB from 0 to 1; `None` for anything that is not one.
 fn hex_rgb(hex: &str) -> Option<[f32; 3]> {
     let digits = hex.strip_prefix('#').filter(|h| h.len() == 6)?;
-    let channel =
-        |k: usize| u8::from_str_radix(digits.get(k..k + 2)?, 16).ok().map(f32::from);
+    let channel = |k: usize| {
+        u8::from_str_radix(digits.get(k..k + 2)?, 16)
+            .ok()
+            .map(f32::from)
+    };
     Some([
         channel(0)? / 255.0,
         channel(2)? / 255.0,

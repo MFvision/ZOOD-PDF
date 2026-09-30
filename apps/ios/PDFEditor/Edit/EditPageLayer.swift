@@ -11,7 +11,7 @@ import UIKit
 /// release, like the markup tools: a drag shows where the picture or the
 /// link will land, and only the release calls the core.
 @MainActor
-final class EditPageLayer: UIView, UITextViewDelegate {
+final class EditPageLayer: UIView, UITextViewDelegate, UIGestureRecognizerDelegate {
     let page: PDFPage
     let pageIndex: Int
     weak var pdfView: PDFView?
@@ -66,6 +66,7 @@ final class EditPageLayer: UIView, UITextViewDelegate {
         preview.lineWidth = 2
         preview.lineDashPattern = [6, 4]
         pan.maximumNumberOfTouches = 1
+        pan.delegate = self
         addGestureRecognizer(pan)
         addGestureRecognizer(tap)
         accessibilityIdentifier = "edit.layer.\(pageIndex)"
@@ -424,6 +425,18 @@ final class EditPageLayer: UIView, UITextViewDelegate {
             guard box.width >= 8, box.height >= 8 else { break }
             Task { await edit.placePending(in: EditGeometry.fit(box, aspect: pending.aspect), onPage: pageIndex) }
         }
+    }
+
+    /// A one-finger drag is the editor's only where it would do something:
+    /// on the picked picture or its handles, with a picture waiting to be
+    /// placed, or anywhere in links (where a drag draws the link's box).
+    /// Everywhere else — all of the text mode — the touch goes through to
+    /// PDFKit, so the pages still scroll under a finger while text is edited.
+    func gestureRecognizerShouldBegin(_ gesture: UIGestureRecognizer) -> Bool {
+        guard gesture === pan else { return true }
+        guard let edit, !edit.working else { return false }
+        if case .none = began(at: gesture.location(in: self), edit: edit) { return false }
+        return true
     }
 
     private func selected(of edit: EditModel) -> PagePicture? {

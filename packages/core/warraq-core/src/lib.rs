@@ -721,7 +721,9 @@ mod tests {
         let page = d.render_page(0, 1.0).unwrap();
         let red = page
             .rgba
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .filter(|p| p[0] > 180 && p[1] < 90 && p[2] < 90)
             .count();
         assert!(red > 0, "the line must be drawn in red");

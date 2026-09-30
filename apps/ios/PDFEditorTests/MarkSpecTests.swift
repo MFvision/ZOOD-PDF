@@ -1,4 +1,5 @@
 @testable import PDFEditor
+import UIKit
 import WarraqCore
 import XCTest
 

@@ -94,6 +94,7 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
         layer.frame = bounds
         addSubview(layer)
         editLayer = layer
+        layer.redraw()
     }
 
     private func showCanvas() {

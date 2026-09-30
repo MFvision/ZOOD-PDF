@@ -182,13 +182,6 @@ public actor Core {
         return try call(op: op, args: json, blobs: blobs)
     }
 
-    /// Runs several of the reading and editing methods above as one turn on
-    /// the actor, for a host that needs them not to interleave with anything
-    /// else (a paragraph read, then replaced, then read again).
-    public func edit<R: Sendable>(_ body: @Sendable (isolated Core) throws -> R) throws -> R {
-        try body(self)
-    }
-
     /// The document's bytes as edited: an incremental update appended to the
     /// original wherever that is possible, so the original bytes stay as
     /// they were and nothing is written until the person saves.

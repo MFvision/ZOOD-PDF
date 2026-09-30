@@ -211,8 +211,10 @@ struct PageMarksSheet: View {
             // first is the one a person fills most often.
             HStack {
                 ForEach(MarkSpec.tokens, id: \.self) { token in
-                    Button(verbatim: token) {
+                    Button {
                         form.slots[lastSlot] += token
+                    } label: {
+                        Text(verbatim: token)
                     }
                     .buttonStyle(.bordered)
                     .accessibilityIdentifier("marks.token.\(token.dropFirst().dropLast())")

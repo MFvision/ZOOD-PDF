@@ -250,7 +250,7 @@ final class EditModel {
         let index = editing.paragraph.index
         do {
             let result = try await model.applyEdit(undoManager: undoManager) { core in
-                try core.replaceParagraph(page: page, paragraph: index, text: text, font: face)
+                try await core.replaceParagraph(page: page, paragraph: index, text: text, font: face)
             }
             notice = Self.notice(for: result)
             cancel()
@@ -290,8 +290,8 @@ final class EditModel {
         let hex = color.hex
         do {
             try await model.applyEdit(undoManager: undoManager) { core in
-                try core.addText(page: page, x: Float(point.x), y: Float(point.y),
-                                 size: size, text: trimmed, font: face, color: hex)
+                try await core.addText(page: page, x: Float(point.x), y: Float(point.y),
+                                       size: size, text: trimmed, font: face, color: hex)
             }
             cancel()
             placingArmed = false

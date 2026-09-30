@@ -1,5 +1,6 @@
 import PDFKit
 import SwiftUI
+import UniformTypeIdentifiers
 import WarraqCore
 
 /// A document on screen: PDFKit draws the pages; the toolbar's title block
