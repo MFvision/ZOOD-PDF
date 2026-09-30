@@ -266,6 +266,9 @@ struct LibraryShell: View {
                     }
                 }
             }
+            // The sidebar takes the theme's ground; on the system theme it
+            // keeps the system's own source-list material.
+            .themedScrollBackground()
             .navigationTitle(Text(verbatim: AppName.isolated))
         } content: {
             // The actions sit with the content, where the design target puts
@@ -276,6 +279,7 @@ struct LibraryShell: View {
             }
             .navigationTitle(section.wrappedValue?.title ?? "Home")
             .toolbar { libraryToolbar }
+            .themedToolbar()
             .navigationDestination(for: LibrarySection.self) { section in
                 content(for: section)
                     .navigationTitle(section.title)
@@ -321,6 +325,7 @@ struct LibraryShell: View {
             }
             .navigationTitle(Text(verbatim: AppName.isolated))
             .toolbar { libraryToolbar }
+            .themedToolbar()
             .navigationDestination(item: $library.opened) { model in
                 DocumentView(model: model)
             }
@@ -485,7 +490,7 @@ struct DocumentGrid: View {
             .padding(.horizontal, Space.x5)
             .padding(.vertical, Space.x4)
         }
-        .background(Surface.window)
+        .themedGround(systemColour: Surface.window)
         .overlay {
             if isEmpty {
                 emptyState

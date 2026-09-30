@@ -68,6 +68,10 @@ struct AppSheet<Content: View>: View {
     var body: some View {
         NavigationStack {
             content
+                // The sheet's body takes the chosen theme's ground and its
+                // rows the theme's material; on the system theme nothing
+                // changes (Design/Themes.swift).
+                .themedScrollBackground()
                 .navigationTitle(title)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {

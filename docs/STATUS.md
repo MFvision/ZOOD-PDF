@@ -44,6 +44,68 @@ Before that, on 2026-09-19: the interface is rebuilt on EmbedPDF (ADR-0007); all
 
 Every one of the 48 corpus files opens. 63 tests green, clippy clean, `wasm32-unknown-unknown` compiles, core WASM 2.50 MB gzipped (budget 8 MB).
 
+## The ZOOD mark and the iOS themes (2026-09-30)
+
+The owner owns the brand **ZOOD**. He asked for the app to carry its logo, for "one of the themes
+[to] be the liquid glass for Apple devices, full all glass liquid", and for "one theme [to be] the
+Zood theme". All three are in. Nothing here is copied from Adobe, Apple or anyone else: the mark is
+drawn from nothing, and the glass is the system's own effect, called by its public name.
+
+**The mark.** A slab **Z** — ZOOD's initial in Latin, and the stroke of the Arabic zay — drawn as a
+leaflet folded in a Z: a head, a fold and a foot, three panels of one gold, each taking the light
+differently, on a deep ink ground. At 40 px the three panels read as one letter; close up they read
+as paper. `scripts/icon/make_zood_icon.py` draws it, `scripts/icon/svg2png.swift` rasterizes it (AppKit
+reads SVG on macOS; the repo has no other rasterizer), and `scripts/icon/make_zood_icons.sh` writes
+every derivative in one go:
+
+* **iOS**: `AppIcon.png`, `AppIcon-Dark.png` and `AppIcon-Tinted.png` in the app icon set — the three
+  appearances iOS asks for since 18 — full-bleed squares with **no alpha channel**, because the system
+  cuts its own shape and rejects an icon that carries one. The Arabic display name «محرر PDF» is
+  unchanged in `project.yml` and in App Store Connect.
+* **Desktop, the page and the web**: `apps/desktop/icon.svg`, `packages/ui/public/app-icon.svg`,
+  `apps/web/public/favicon.svg`, the 192/512 and maskable 192/512 PNGs and the 180-px apple-touch icon;
+  the web's `theme-color` and the manifest's `theme_color` are ZOOD's ink. The browser extension's four
+  PNGs too. **Not written here**: the Tauri bundle's `.icns`/`.ico`, which still need
+  `pnpm --filter @warraq/desktop icons` — that was not run in this wave.
+* The same letter is drawn inside the app by `ZoodLetter` / `ZoodMark`
+  (`apps/ios/PDFEditor/Design/ZoodMark.swift`), beside the greeting on the home screen. A test asserts
+  the app's paths land on the icon's own 1024-grid numbers, so the two cannot drift apart.
+* The old ورّاق icon and its generator (`scripts/icon/make_icon.py`) are gone.
+
+**The themes** (`apps/ios/PDFEditor/Design/Themes.swift`) sit beside the existing language and
+appearance settings in Settings › Interface, apply at once and are kept in `UserDefaults` under `theme`.
+
+| Theme | What it does | Where it degrades |
+|---|---|---|
+| System | what the app looked like before | — |
+| Liquid Glass | SwiftUI's `.glassEffect(.regular, in:)` on the home's cards and panels, the sheets' rows, the markup bar and the floating pen palette, over a ground with enough colour for glass to be glass | `.glassEffect` needs **iOS 26**. Below it the same surfaces are `.ultraThinMaterial` / `.regularMaterial` — the honest fallback — and Settings says so under the picker. Nothing is drawn that cannot work |
+| Zood | ink and gold: the brand's ground, warm paper in light and ink in dark, solid cards with a gold hairline, headings a weight heavier, every tool tile in the brand's gold, and the navigation and bottom bars in its own colour | it is opaque by design, so there is nothing to fall back to |
+
+**Accessibility.** **Reduce Transparency** makes every surface on every theme solid and removes the
+glass theme's ground highlight — a surface left "nearly" opaque reads as a bug. **Reduce Motion** loses
+nothing to the themes: nothing a theme draws travels, and a theme change cross-fades.
+
+**Proven** on the simulator only (this Mac has no signing identity), Xcode 27, iOS 27.0 runtime, on
+**both the iPhone 17 and the iPad Pro 13-inch (M5)**:
+
+* `PDFEditorTests/ThemeTests` — **10 unit tests, 0 failures** on each device: the three themes and their
+  round trip through `UserDefaults`; only the glass theme asking for the system's glass; ZOOD never
+  translucent; Reduce Transparency taking the glass off all three; `ThemeAvailability` answering with the
+  system rather than a guess; ZOOD's accent at or above 4.5:1 on its own ground in both schemes; ZOOD
+  drawing surfaces of its own rather than the system's; and the letter in the app being the same drawing,
+  on the same 1024-point grid, as the icon.
+* `PDFEditorUITests/ThemeUITests` — **3 UI tests, 0 failures** on each device: the picker offers all three
+  and the choice survives a relaunch; a theme chosen in Settings applies to the home screen at once; and
+  the screenshots.
+* After merging main (the welcome tour, the camera fix, the scan geometry), the **whole `PDFEditorTests`
+  bundle — 86 tests, 0 failures** — is green on the iPhone 17, so the themed surfaces broke nothing.
+* **Screenshots** in `docs/design/ios/theme-*` (24 of them): the home screen, Settings, and a document
+  with the markup bar and the pen palette out, for the glass and Zood themes, in Arabic and English,
+  light and dark, on both devices.
+
+**Not proven here.** Reduce Transparency is covered by the unit tests, not by a photograph: XCUITest
+cannot turn the system setting on. And the app has never run on a device.
+
 ## The iPhone and iPad app: the foundation (2026-09-21)
 
 The owner asked for the phone app to be rebuilt as a true Apple-native app. `apps/ios` is that app's
@@ -77,7 +139,7 @@ build on (`apps/ios/README.md` says how).
   and English, the app's name isolated inside English text. Design tokens and a small component set follow
   `docs/design/README.md`: system colours by role, the system text styles (Dynamic Type), a 4-point grid,
   press feedback on touch-down, critically damped motion, cross-fades under Reduce Motion. The icon is the
-  maskable variant of `scripts/icon/make_icon.py`.
+  ZOOD mark (`scripts/icon/make_zood_icon.py`, "The ZOOD mark and the iOS themes" below).
 * **Widgets and the share sheet, as far as the foundation goes.** A Recent documents widget (small, medium,
   large, Lock Screen rectangle) reads the recents list and thumbnails the app keeps in the App Group
   container and opens a document through `pdfeditor://open/<id>`; "Save to محرر PDF" in the share sheet
@@ -1027,7 +1089,7 @@ reduced transparency and reduced motion honoured.
 | EmbedPDF | Themed with Warraq's tokens by reference. Its duplicated sidebar, zoom and search buttons and its floating page field (except on a phone) are gone. The rest of its bar is the markup toolbar, shown from Warraq's toolbar |
 | macOS app | The title bar is merged into the toolbar, with the traffic lights in it. The toolbar drags the window and a double click zooms it. The system menu bar is built from the page's own menu model, in the interface language; its checks follow EmbedPDF's own state, it is sent again after every item chosen there, its Undo and Redo reach the typing in whatever field has the focus, and About opens the page's own sheet. A shortcut the page handles never runs its menu item too |
 | Narrow windows | On a tablet the toolbar condenses. On a phone the inspector is a sheet, the sidebar floats over the page, and nothing scrolls sideways. On a touch screen (`pointer: coarse`) the controls, rows, toolbar and menu bar grow to 44-point targets; the look is the same |
-| App icon | New original artwork (`scripts/icon/make_icon.py`): a calligraphic و on a sheet of paper. Desktop and extension icons are regenerated from it |
+| App icon | The owner's own brand from 2026-09-30: the ZOOD mark (`scripts/icon/make_zood_icon.py`), a slab Z folded like a leaflet, in gold on ink. Original artwork. The desktop, web and extension icons are written from it by `scripts/icon/make_zood_icons.sh`; the Tauri bundle's .icns/.ico still need `pnpm --filter @warraq/desktop icons` |
 
 ## The home screen and the shell's chrome (2026-09-25)
 

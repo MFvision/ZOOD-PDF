@@ -10,6 +10,7 @@ struct SettingsView: View {
     let library: LibraryModel
     @AppStorage(SettingsKey.language) private var language: AppLanguage = .system
     @AppStorage(SettingsKey.appearance) private var appearance: AppAppearance = .system
+    @AppStorage(SettingsKey.theme) private var theme: AppTheme = .system
     @AppStorage(SettingsKey.appLock) private var appLock = false
     @State private var choosingFolder = false
     @State private var showingOnboarding = false
@@ -17,6 +18,7 @@ struct SettingsView: View {
     @State private var deleting = false
     @State private var lockError: LocalizedStringKey?
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         AppSheet(title: "Settings") {
@@ -67,6 +69,7 @@ struct SettingsView: View {
         }
         .sensoryFeedback(.selection, trigger: language)
         .sensoryFeedback(.selection, trigger: appearance)
+        .sensoryFeedback(.selection, trigger: theme)
     }
 
     private var interface: some View {
@@ -83,6 +86,12 @@ struct SettingsView: View {
                 }
             }
             .accessibilityIdentifier("settings.appearance")
+            Picker("Theme", selection: $theme) {
+                ForEach(AppTheme.allCases) { item in
+                    Text(item.title).tag(item)
+                }
+            }
+            .accessibilityIdentifier("settings.theme")
             // Near the top, where someone looking for it will find it: the
             // tour is shown once and this is the only way back to it.
             Button {
@@ -94,7 +103,19 @@ struct SettingsView: View {
         } header: {
             Text("Interface")
         } footer: {
-            Text("The system's own parts — alerts, the file browser — follow the language from the next launch. The Settings app can set it too.")
+            VStack(alignment: .leading, spacing: Space.x2) {
+                Text("The system's own parts — alerts, the file browser — follow the language from the next launch. The Settings app can set it too.")
+                // What the chosen theme is, and where it stops: the glass one
+                // says so on a system without the system's own glass.
+                Text(theme.caption)
+                if theme == .glass, !ThemeAvailability.hasLiquidGlass {
+                    Text("This device is on an older system, so the glass theme uses the frosted materials.")
+                }
+                if reduceTransparency {
+                    Text("Reduce Transparency is on in the system's settings, so every surface is drawn solid.")
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
