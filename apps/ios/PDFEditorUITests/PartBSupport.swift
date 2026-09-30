@@ -158,7 +158,7 @@ struct PartBApp {
     /// another is still on its way out does not open, and a tap on a
     /// control under a closing sheet is lost.
     func settle() {
-        let sheetControls = ["sheet.done", "stamp.add", "signature.place", "goto.go", "note.add", "crop.apply", "export.share.pdf", "stamp.cancel", "signature.cancel"]
+        let sheetControls = ["sheet.done", "stamp.add", "signature.place", "goto.go", "note.add", "crop.apply", "export.share.pdf", "stamp.cancel", "signature.cancel", "sign.cancel", "protect.cancel"]
         _ = poll(timeout: 20) { sheetControls.allSatisfy { !self.app.buttons[$0].exists } }
         // A sheet's buttons leave the tree as it starts to close; the screen
         // under it takes taps again only once it has gone, and SwiftUI opens

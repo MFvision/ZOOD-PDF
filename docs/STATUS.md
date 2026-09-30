@@ -890,9 +890,11 @@ only** (iPhone 17 and iPad Pro 13-inch (M5), iOS 27): this Mac has no signing id
   AirDrop, Mail, …); Save a copy to Files; print through the system's panel.
 * **Protect** — the password prompt on open (the core and PDFKit unlock together, the
   wrong password said so); set a password (typed twice) or remove it from the More
-  menu. PDFKit writes the protection — the format needs a whole rewrite for that — and
-  the core keeps it on every edit it appends afterwards; the saved file asks for it
-  again; undo brings the old protection back.
+  menu. The format needs a whole rewrite for that, and the core keeps the protection on
+  every edit it appends afterwards; the saved file asks for it again; undo brings the
+  old protection back. *(Part B wrote the protection with PDFKit — RC4, Latin-1
+  passwords. Since 2026-09-30 it is the core's AES-256: see "Protection and signatures
+  on iOS" below.)*
 
 **The owner's design target (2026-09-25, `.tools/briefs/design-target.md`), on these
 screens.** Annotate is the target's iPad picture: a thin dark toolbar over the pages with
@@ -980,19 +982,15 @@ these numbers).
   is undone with Undo or removed on the desktop/web Page marks tool.
 * *Ink keeps one width per stroke*: PencilKit's pressure shows on the canvas; a PDF ink
   annotation has one border width, so the committed stroke takes the stroke's width.
-* *Passwords are Latin-1*: PDFKit's RC4 handler takes PDFDocEncoding passwords only, and
-  writes **no protection at all** for any other (an Arabic password came back as an
-  unprotected file in the first run). The sheet refuses anything outside Latin letters,
-  digits and symbols, says so, and the result is checked to be protected before it is
-  taken — never a document said to be protected that is not.
-* *Protection is a whole rewrite, and PDFKit's is RC4*: setting or removing a password
-  cannot be an incremental update (the encryption covers every string and stream), so
-  those two edits replace the bytes; everything the core appends after them is
-  incremental and keeps the protection. PDFKit's writer encrypts with **RC4 128-bit**
-  (`/V 2`), not AES-256 — the core has no encrypting writer of its own, and PDFKit
-  offers no choice. Taking the password off is the core's `pages.extract` of every
-  page: PDFKit keeps the encryption on a plain rewrite of an unlocked document, so
-  the core writes what it read — pages, marks, outline, information — unencrypted.
+* *Passwords were Latin-1, and the protection was RC4* — **both fixed on 2026-09-30**;
+  see "Protection and signatures on iOS" below. PDFKit's RC4 handler took
+  PDFDocEncoding passwords only and wrote **no protection at all** for any other (an
+  Arabic password came back as an unprotected file in the first run). Protection is now
+  the core's AES-256 and the password is UTF-8.
+* *Protection is a whole rewrite*: setting, changing or removing a password cannot be an
+  incremental update (the encryption covers every string and stream), so those edits
+  replace the bytes in memory; everything the core appends after them is incremental
+  and keeps the protection, and the file on disk is untouched until Save.
 * *Text selection in PDFKit is PDFKit's*: for Arabic files PDFKit reads in visual order
   in places; Copy from the page view is its reading, while search, reader mode,
   VoiceOver's page text and every export are the core's.
@@ -1019,6 +1017,95 @@ these numbers).
   machine; nothing in them points at behaviour a person would meet, and the three
   defects the iPad did show are fixed above.
 * Everything ran on the simulator only; no device, no Face ID, no real share targets.
+
+## Protection and signatures on iOS (2026-09-30)
+
+Two things the owner asked for after the first TestFlight build — encryption, and
+signatures, "which is very important". Both now go through the shared Rust core, so
+what the phone writes the desktop reads and the other way round. Everything below ran
+on the simulator only (iPhone 17 and iPad Pro 13-inch (M5)); this Mac still has no
+signing identity.
+
+### The core learned to write protection
+
+The core could *read* every revision of the standard security handler and keep a file's
+protection on what it appended, but it could write none — so every host protected
+documents with whatever engine it had: PDFium on the desktop and web, PDFKit on iOS.
+Both write **RC4 with a Latin-1 password**. That is weak, and it cannot carry an Arabic
+password at all: the bytes outside Latin-1 are dropped, so the password that opens the
+file is not the one the person typed. (iOS refused Arabic passwords outright rather than
+write one that would not work; the desktop's batch step still writes PDFium's RC4.)
+
+`warraq_pdf::crypt::encrypt_document` now writes the handler at **revision 6 —
+AES-256-CBC, the password taken as UTF-8** — with algorithms 8, 9 and 10 of ISO 32000-2
+for `/U`, `/UE`, `/O`, `/OE` and `/Perms`. `protect.inspect` / `.set` / `.remove` put it
+behind the tool RPC (`packages/core/API.md`), with the same three permissions the
+desktop's batch step offers. An empty password is refused, and so is one over the 127
+bytes revisions 5 and 6 hold — cutting it would open the file for a string nobody typed.
+`protect.set` checks its own output before answering: the password must be needed and
+must work, or it is an error rather than a document said to be protected that is not.
+No owner password is sent from the interface: the core draws one at random and drops it,
+so nobody can lift the permissions afterwards.
+
+**Proved twice over.** 7 new tests in `warraq-pdf/src/crypt/mod.rs` and 12 in
+`warraq-core/tests/tool_protect.rs` (Arabic password in and out, wrong passwords
+refused, the pages' bytes unchanged through the round trip, object streams, permissions
+written and read back, a password changed, rubbish in without a panic). And because a
+round trip through our own reader only proves we are self-consistent,
+`tests/tools/check_protection.py` asks **libqpdf** (through pikepdf 9.11) what it reads:
+it reported `R6 /V 5`, `EncryptionMethod.aesv3` for streams and strings, a 256-bit key,
+`P = -1340`, the exact permissions that were set (print only, accessibility always), 3
+pages decrypted — and refused the wrong passwords. The Arabic password `كلمة السر ١٢٣`
+opened it in libqpdf as typed.
+
+### On iOS
+
+**Protect** now calls those ops. The sheet names what protects the document today and
+says when it is an old, weak protection another program wrote; sets or changes the
+password; offers printing, copying and changing as permissions, with a footer that says
+plainly that a reader may ignore them and that reading aloud by a screen reader is
+always allowed; and removes the password. Arabic passwords work, as typed.
+
+**Signatures** is a new screen in the More menu, the core's `signatures.*` throughout —
+the same code the desktop runs, including the trust policy, which is called and not
+reimplemented.
+
+* *Checking.* Every signature's status in the words the desktop uses: a signature that
+  is cryptographically intact but whose signer nobody the person trusts vouches for
+  reads **"Intact — the signer's identity is not verified"**, never "valid". One
+  sentence saying why; who signed (the certificate's name) as against the name the
+  signature claims for itself, marked as the unverified claim it is; what kind of
+  signature and what a certification allows; the time — marked **"by the signer's own
+  clock"** unless an authority trusted for timestamps stamped it; what changed after
+  signing and whether this signature permits it; and, inside Details, each check worded
+  so a failed one is never read as a passed one, plus the certificate chain.
+* *Trust.* The certificates the person trusts live in the **Keychain**, this device
+  only. A root can be trusted from an untrusted signature (the button names what would
+  be trusted) or imported from a `.cer`, `.pem` or `.p7b` through `signatures.certificates`.
+  With nothing trusted the screen says so: "None yet, so no signer's identity is verified."
+* *Signing.* A PKCS#12 file imported through Files goes **into the Keychain, not into
+  the app's Documents folder** — which the Files app shows, so a `.p12` written there
+  would be a private key anyone holding the phone could copy out. Its password is never
+  kept: it is typed to open the certificate and to sign. Approval or certification
+  (DocMDP 1–3), field locking, RSA-PSS for an RSA key, visible in a chosen corner of a
+  chosen page — the bottom of the Arabic side by default — or invisible.
+
+**Left out on purpose, and no control is shown for any of it.**
+* *Smart cards.* iOS has no PKCS#11 and no way to load a vendor's module, so the
+  desktop's card path cannot exist here.
+* *Trusted timestamps (PAdES B-T) and long-term validation (B-LT/B-LTA).* Both mean
+  sending something to a server — a digest to a timestamp authority, a certificate's
+  identity to an OCSP responder — and nothing is to leave the device unasked. They stay
+  the desktop's. The signing screen says the signature carries this device's own clock,
+  and the checking screen says that nothing is fetched while checking: revocation is
+  only what the file itself carries. A signature made here therefore reads as PAdES B-B.
+* *Dragging the signature's rectangle.* The desktop lets a person drag it on a preview;
+  here it is four corners. That works end to end, which a half-built drag would not.
+
+### What the runs said
+
+*(counts filled in from the last runs of `scripts/ios/build.sh`; see the section
+below.)*
 
 ## Next (in order)
 1. **Run the Windows and Linux builds on those systems**: print by pages, the drop targets and the NSIS installer have been built for them in code only — nothing of them has run here.
