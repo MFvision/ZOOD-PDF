@@ -67,24 +67,17 @@ struct OnboardingView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .always))
                 .indexViewStyle(.page(backgroundDisplayMode: .always))
-                Button {
-                    if isLast {
-                        onFinish()
-                    } else {
+                // Two buttons rather than one whose identifier changes under
+                // it: the last screen's is a different control, and a test
+                // finding it by name should not depend on SwiftUI reusing a
+                // view it has already made.
+                if isLast {
+                    button("Start", identifier: "onboarding.done", action: onFinish)
+                } else {
+                    button("Next", identifier: "onboarding.next") {
                         withAnimation(Motion.travel(reduceMotion: reduceMotion)) { page += 1 }
                     }
-                } label: {
-                    Text(isLast ? "Start" : "Next")
-                        .font(TextStyle.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, Space.x2)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .padding(.horizontal, Space.x7)
-                .padding(.top, Space.x5)
-                .padding(.bottom, Space.x8)
-                .accessibilityIdentifier(isLast ? "onboarding.done" : "onboarding.next")
             }
             .background(Surface.grouped)
             .navigationTitle("")
@@ -98,6 +91,22 @@ struct OnboardingView: View {
         }
         .accessibilityIdentifier("onboarding")
         .sensoryFeedback(.selection, trigger: page)
+    }
+
+    /// The one wide button along the bottom.
+    private func button(_ title: LocalizedStringKey, identifier: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(TextStyle.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, Space.x2)
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .padding(.horizontal, Space.x7)
+        .padding(.top, Space.x5)
+        .padding(.bottom, Space.x8)
+        .accessibilityIdentifier(identifier)
     }
 }
 
