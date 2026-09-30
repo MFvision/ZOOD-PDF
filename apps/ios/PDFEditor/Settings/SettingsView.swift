@@ -12,6 +12,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.appearance) private var appearance: AppAppearance = .system
     @AppStorage(SettingsKey.appLock) private var appLock = false
     @State private var choosingFolder = false
+    @State private var showingOnboarding = false
     @State private var confirmingDelete = false
     @State private var deleting = false
     @State private var lockError: LocalizedStringKey?
@@ -30,6 +31,9 @@ struct SettingsView: View {
                 about
             }
             .accessibilityIdentifier("settings.form")
+            .fullScreenCover(isPresented: $showingOnboarding) {
+                OnboardingView { showingOnboarding = false }
+            }
             .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [.folder]) { result in
                 if case let .success(url) = result {
                     library.choose(folder: url)
@@ -79,6 +83,14 @@ struct SettingsView: View {
                 }
             }
             .accessibilityIdentifier("settings.appearance")
+            // Near the top, where someone looking for it will find it: the
+            // tour is shown once and this is the only way back to it.
+            Button {
+                showingOnboarding = true
+            } label: {
+                Label("Show the welcome tour", systemImage: "sparkles")
+            }
+            .accessibilityIdentifier("settings.onboarding")
         } header: {
             Text("Interface")
         } footer: {
