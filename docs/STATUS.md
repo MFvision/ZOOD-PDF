@@ -85,18 +85,26 @@ appearance settings in Settings › Interface, apply at once and are kept in `Us
 glass theme's ground highlight — a surface left "nearly" opaque reads as a bug. **Reduce Motion** loses
 nothing to the themes: nothing a theme draws travels, and a theme change cross-fades.
 
-**Proven** on the simulator only (this Mac has no signing identity), Xcode 27, iOS 27.0 runtime:
+**Proven** on the simulator only (this Mac has no signing identity), Xcode 27, iOS 27.0 runtime, on
+**both the iPhone 17 and the iPad Pro 13-inch (M5)**:
 
-* `PDFEditorTests/ThemeTests` — **10 unit tests, 0 failures** on the iPhone 17: the three themes and
-  their round trip through `UserDefaults`; only the glass theme asking for the system's glass; ZOOD never
+* `PDFEditorTests/ThemeTests` — **10 unit tests, 0 failures** on each device: the three themes and their
+  round trip through `UserDefaults`; only the glass theme asking for the system's glass; ZOOD never
   translucent; Reduce Transparency taking the glass off all three; `ThemeAvailability` answering with the
   system rather than a guess; ZOOD's accent at or above 4.5:1 on its own ground in both schemes; ZOOD
-  drawing surfaces of its own rather than the system's; and the letter being the same drawing as the icon.
-* `PDFEditorUITests/ThemeUITests` — **3 UI tests, 0 failures** on the iPhone 17: the picker offers all
-  three and the choice survives a relaunch; a theme chosen in Settings applies to the home screen at once;
-  and the screenshots.
-* **Screenshots** in `docs/design/ios/theme-*`: the home screen, Settings and a document with the markup
-  bar out, for each of the glass and Zood themes, in Arabic and English, light and dark.
+  drawing surfaces of its own rather than the system's; and the letter in the app being the same drawing,
+  on the same 1024-point grid, as the icon.
+* `PDFEditorUITests/ThemeUITests` — **3 UI tests, 0 failures** on each device: the picker offers all three
+  and the choice survives a relaunch; a theme chosen in Settings applies to the home screen at once; and
+  the screenshots.
+* After merging main (the welcome tour, the camera fix, the scan geometry), the **whole `PDFEditorTests`
+  bundle — 86 tests, 0 failures** — is green on the iPhone 17, so the themed surfaces broke nothing.
+* **Screenshots** in `docs/design/ios/theme-*` (24 of them): the home screen, Settings, and a document
+  with the markup bar and the pen palette out, for the glass and Zood themes, in Arabic and English,
+  light and dark, on both devices.
+
+**Not proven here.** Reduce Transparency is covered by the unit tests, not by a photograph: XCUITest
+cannot turn the system setting on. And the app has never run on a device.
 
 ## The iPhone and iPad app: the foundation (2026-09-21)
 
