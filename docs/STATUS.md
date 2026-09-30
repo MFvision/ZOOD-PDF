@@ -65,8 +65,8 @@ every derivative in one go:
 * **Desktop, the page and the web**: `apps/desktop/icon.svg`, `packages/ui/public/app-icon.svg`,
   `apps/web/public/favicon.svg`, the 192/512 and maskable 192/512 PNGs and the 180-px apple-touch icon;
   the web's `theme-color` and the manifest's `theme_color` are ZOOD's ink. The browser extension's four
-  PNGs too. **Not written here**: the Tauri bundle's `.icns`/`.ico`, which still need
-  `pnpm --filter @warraq/desktop icons` — that was not run in this wave.
+  PNGs too, and the Tauri bundle's `.icns`/`.ico` and PNGs (`pnpm --filter @warraq/desktop icons`,
+  2026-09-30).
 * The same letter is drawn inside the app by `ZoodLetter` / `ZoodMark`
   (`apps/ios/PDFEditor/Design/ZoodMark.swift`), beside the greeting on the home screen. A test asserts
   the app's paths land on the icon's own 1024-grid numbers, so the two cannot drift apart.
@@ -1089,7 +1089,7 @@ reduced transparency and reduced motion honoured.
 | EmbedPDF | Themed with Warraq's tokens by reference. Its duplicated sidebar, zoom and search buttons and its floating page field (except on a phone) are gone. The rest of its bar is the markup toolbar, shown from Warraq's toolbar |
 | macOS app | The title bar is merged into the toolbar, with the traffic lights in it. The toolbar drags the window and a double click zooms it. The system menu bar is built from the page's own menu model, in the interface language; its checks follow EmbedPDF's own state, it is sent again after every item chosen there, its Undo and Redo reach the typing in whatever field has the focus, and About opens the page's own sheet. A shortcut the page handles never runs its menu item too |
 | Narrow windows | On a tablet the toolbar condenses. On a phone the inspector is a sheet, the sidebar floats over the page, and nothing scrolls sideways. On a touch screen (`pointer: coarse`) the controls, rows, toolbar and menu bar grow to 44-point targets; the look is the same |
-| App icon | The owner's own brand from 2026-09-30: the ZOOD mark (`scripts/icon/make_zood_icon.py`), a slab Z folded like a leaflet, in gold on ink. Original artwork. The desktop, web and extension icons are written from it by `scripts/icon/make_zood_icons.sh`; the Tauri bundle's .icns/.ico still need `pnpm --filter @warraq/desktop icons` |
+| App icon | The owner's own brand from 2026-09-30: the ZOOD mark (`scripts/icon/make_zood_icon.py`), a slab Z folded like a leaflet, in gold on ink. Original artwork. The desktop, web and extension icons are written from it by `scripts/icon/make_zood_icons.sh`, and the Tauri bundle's .icns/.ico by `pnpm --filter @warraq/desktop icons` |
 
 ## The home screen and the shell's chrome (2026-09-25)
 
