@@ -68,7 +68,7 @@ final class EditUITests: XCTestCase {
         if row.waitForExistence(timeout: 20) {
             row.tap()
         } else {
-            for y in [0.22, 0.3, 0.4, 0.5] where !fieldIsOpen(ui, timeout: 4) {
+            for y in stride(from: 0.2, through: 0.7, by: 0.04) where !fieldIsOpen(ui, timeout: 3) {
                 ui.page.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: y)).tap()
             }
         }
