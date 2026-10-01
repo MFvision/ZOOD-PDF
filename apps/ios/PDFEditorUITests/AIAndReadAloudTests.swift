@@ -187,6 +187,36 @@ final class AIAndReadAloudTests: XCTestCase {
         XCTAssertTrue(statusText.exists || (status.value as? String) == expected.status || status.label.hasSuffix(expected.status), "\(status.label)")
     }
 
+    /// The real model (no fake) over the Arabic form, where the framework
+    /// answers: whatever it proposes must be a detail of the profile or
+    /// words of the document — the never-invent rule, end to end — or the
+    /// sheet says in words why there is nothing.
+    func testTheRealModelsAutofillProposesOnlyProfileOrDocumentValues() throws {
+        guard expectedAvailability().status == "Available" else { throw XCTSkip("the framework says the model is not here") }
+        let ui = try launch(fixture: Self.form, fakeAI: false)
+        let pageText = ui.waitForPage(containing: "الاسم")
+        tapToolbar(ui, "document.ai")
+        let autofill = ui.app.buttons["ai.autofill"]
+        XCTAssertTrue(autofill.waitForExistence(timeout: 10))
+        autofill.tap()
+        let fill = ui.app.buttons["autofill.fill"]
+        let other = ui.app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'autofill.nothing', 'autofill.error', 'autofill.noProfile'}")).firstMatch
+        XCTAssertTrue(ui.poll(timeout: 180) { fill.exists || other.exists }, ui.tree)
+        if other.exists {
+            print("WARRAQ_AI_REAL_AUTOFILL: \(other.identifier) — \(other.label)")
+            XCTAssertNotEqual(other.identifier, "autofill.noProfile")
+            return
+        }
+        let profile = ["محمد الغماس", "Mohammed Alghammas", "1234567890", "m@example.com", "0500000000"]
+        let values = ui.app.textFields.matching(NSPredicate(format: "identifier BEGINSWITH 'autofill.value.'")).allElementsBoundByIndex
+        XCTAssertFalse(values.isEmpty)
+        for field in values {
+            let value = field.value as? String ?? ""
+            print("WARRAQ_AI_REAL_AUTOFILL: \(field.identifier) = \(value)")
+            XCTAssertTrue(profile.contains(value) || pageText.contains(value), "\(field.identifier) = \(value) is neither a detail nor the document's words")
+        }
+    }
+
     // MARK: - Read aloud
 
     func testReadsAloudWithTheBarAndTheSentence() throws {

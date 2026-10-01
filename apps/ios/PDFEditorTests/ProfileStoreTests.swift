@@ -42,6 +42,16 @@ final class ProfileStoreTests: XCTestCase {
         XCTAssertTrue(store.load().isEmpty, "deleting twice is fine")
     }
 
+    func testAProfileWithSomeKeysDecodesTheRestAsEmpty() throws {
+        let json = #"{"nameArabic":"محمد الغماس","email":"m@example.com"}"#
+        let profile = try JSONDecoder().decode(Profile.self, from: Data(json.utf8))
+        var expected = Profile()
+        expected.nameArabic = "محمد الغماس"
+        expected.email = "m@example.com"
+        XCTAssertEqual(profile, expected)
+        XCTAssertEqual(try JSONDecoder().decode(Profile.self, from: JSONEncoder().encode(profile)), profile)
+    }
+
     func testStoresAreSeparateByService() throws {
         let other = ProfileStore(service: "app.warraq.ios.tests.profile-other-\(UUID().uuidString)")
         defer { try? other.delete() }

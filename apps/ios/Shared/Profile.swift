@@ -20,6 +20,22 @@ public struct Profile: Codable, Equatable, Sendable {
 
     public init() {}
 
+    /// Any detail left out reads as empty: a profile kept by an older
+    /// build, or written by hand, has only the keys it has.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: ProfileKey.self)
+        for key in ProfileKey.allCases {
+            self[key] = try container.decodeIfPresent(String.self, forKey: key) ?? ""
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: ProfileKey.self)
+        for key in ProfileKey.allCases {
+            try container.encode(self[key], forKey: key)
+        }
+    }
+
     public var isEmpty: Bool {
         ProfileKey.allCases.allSatisfy { value($0).isEmpty }
     }
@@ -68,7 +84,7 @@ public struct Profile: Codable, Equatable, Sendable {
 /// One detail of the profile. The raw value is what the model is asked to
 /// answer with: it names a detail, never writes one, so nothing can be
 /// invented.
-public enum ProfileKey: String, Codable, CaseIterable, Sendable, Identifiable {
+public enum ProfileKey: String, Codable, CaseIterable, Sendable, Identifiable, CodingKey {
     case nameArabic
     case nameEnglish
     case nationalID
