@@ -2,8 +2,8 @@ import AVFoundation
 import SwiftUI
 
 /// The Settings section for read-aloud: the voice for Arabic, for English
-/// and for any other installed language (Premium and Enhanced voices
-/// first), the speed, and where more voices come from. Siri's voices are
+/// and for the device's own language (Premium and Enhanced voices first),
+/// the speed, and where more voices come from. Siri's voices are
 /// not offered to apps, so they are not here — said in so many words.
 struct ReadAloudSettingsSection: View {
     @State private var voices = AVSpeechSynthesisVoice.speechVoices()

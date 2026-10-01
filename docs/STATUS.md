@@ -39,7 +39,7 @@ Before that, on 2026-09-19: the interface is rebuilt on EmbedPDF (ADR-0007); all
 | No-mapping files | characters recovered from glyph shapes, at 100 % precision on held-out fonts |
 | Installed on this Mac | `/Applications/محرر PDF.app`, built from this tree — `scripts/install-macos.sh`, documented in `docs/install-macos.md`. Opens a PDF, renders every page, both thumbnails and full size |
 | Print | macOS: PDFKit prints the file itself, vectors and all. Windows and Linux: each page drawn by Warraq's core at 300 dpi and printed through the webview's own dialog — proven in Chrome, not yet run on either system (below). Browsers: the file through the browser's PDF viewer, which the page's security policy had been blocking without a word |
-| iPhone and iPad app | **The foundation is built, simulator only** (2026-09-21, below): a native SwiftUI app in `apps/ios` with the Rust core linked in as an XCFramework behind a C ABI. It opens a PDF from Files or its own Library, draws it with PDFKit in right-to-left page order for Arabic documents, reads its text in logical order through the core (VoiceOver gets it as the page's value), edits through the core as incremental updates with nothing written until Save, and has Settings for language and appearance that apply at once. Everything else — annotate, sign, organize, export, scan, OCR, the Library's search, the widgets, Shortcuts — is being built on it. **On-device AI and read-aloud** (2026-09-26, below): Apple's Foundation Models where iOS 26 has them (Ask, Summarize, Key points, Explain, Translate, Draft an email, Quiz; form autofill from a Keychain profile, reviewed before anything is written), and read-aloud with the installed voices, the sentence highlighted, across pages, with the Lock Screen's controls. Proven on the iPhone 17 and iPad Pro 13-inch (M5) simulators; no device, no signing identity here |
+| iPhone and iPad app | **The foundation is built, simulator only** (2026-09-21, below): a native SwiftUI app in `apps/ios` with the Rust core linked in as an XCFramework behind a C ABI. It opens a PDF from Files or its own Library, draws it with PDFKit in right-to-left page order for Arabic documents, reads its text in logical order through the core (VoiceOver gets it as the page's value), edits through the core as incremental updates with nothing written until Save, and has Settings for language and appearance that apply at once. Everything else — annotate, sign, organize, export, scan, OCR, the Library's search, the widgets, Shortcuts — is being built on it. **On-device AI and read aloud** (2026-10-01, below): Apple's Foundation Models where iOS 26+ has them (Ask, Summarize, Key points, Explain, Translate, Draft an email, Quiz; form autofill from a Keychain profile, reviewed before anything is written), and read aloud with the installed voices, the sentence highlighted, across pages, with the Lock Screen's controls. On the simulators the framework says the model is available but its safety check fails every request, so the real model has not answered here: the flow is proven with a fake engine behind the same protocol. No device, no signing identity here |
 | Install and offline (phones too) | the web app installs from the browser under its Arabic name, and after one visit opens and works with no network: a service worker keeps the app's own files — never a document. On phones and tablets every control is a 44-point target. Native iOS and Android apps are not built: the tools they need are not on this Mac (Decisions, below) |
 
 Every one of the 48 corpus files opens. 63 tests green, clippy clean, `wasm32-unknown-unknown` compiles, core WASM 2.50 MB gzipped (budget 8 MB).
@@ -106,6 +106,101 @@ nothing to the themes: nothing a theme draws travels, and a theme change cross-f
 **Not proven here.** Reduce Transparency is covered by the unit tests, not by a photograph: XCUITest
 cannot turn the system setting on. And the app has never run on a device.
 
+## On-device AI, form autofill and read aloud on iPhone and iPad (2026-10-01, part F)
+
+The owner's request (local-first AI, `.tools/briefs/local-ai.md`, part F): Apple's on-device model,
+the installed voices, a Keychain profile — nothing downloaded, no key, nothing leaving the device.
+Everything is in `apps/ios/PDFEditor/AI/`, `Speech/` and `Shared/Profile.swift`. **Simulator only**
+(iPhone 17 and iPad Pro 13-inch (M5), iOS 27.0 runtime): no signing identity on this Mac.
+
+**Foundation Models on these simulators, as observed (2026-10-01).** `SystemLanguageModel.default
+.availability` answers **`.available`** (`supportsLocale` is true for English and **false for
+Arabic**: even on a device, Arabic answers are not promised by the framework). But **no request is answered**: every
+`respond` — plain text and guided `@Generable` alike — fails after about 10 s in the framework's safety
+check with `com.apple.SensitiveContentAnalysisML error 15` ("SafetyGuardrailTextSanitizerBackend …
+Simulator is not supported"). The permissive guardrails
+(`SystemLanguageModel(guardrails: .permissiveContentTransformations)`) fail too
+(`FoundationModels.LanguageModelError -1`). So the real model has never produced an answer in this
+project: the plumbing around it is proven with a fake engine behind the same `AIEngine` protocol, and
+the real engine is proven as far as the simulator lets it — gated, called, and its failure said in words.
+
+* **Provider.** `AIEngine` is what the assistant and autofill talk to; `FoundationModelsEngine`
+  (`import FoundationModels`, a `LanguageModelSession` per request, guided generation with `@Generable`
+  for form values) is the only real one on a phone. It is gated on `#available(iOS 26, *)` (the app runs
+  from iOS 18) and `SystemLanguageModel.default.availability`; each reason the framework gives (device
+  not eligible, Apple Intelligence off — with a link to the Settings app —, model not ready, older system)
+  is its own sentence in Settings › AI on this device. Where the model is not available there is **no AI
+  button** in the document's toolbar, and Settings says why (no façade). Where the framework says
+  available but the safety check cannot run (the simulator), the sheet says "The on-device model did not
+  answer: its safety check cannot run on this device." `FakeEngine` exists for Debug runs only
+  (`-warraqFakeAI 1`): it answers "[fake] " and the first lines it was handed, and maps fields to profile
+  keys by the words in their labels.
+* **Tasks** (AI button › sheet): Ask about this PDF, Summarize, Key points, Explain simply, Translate
+  ar↔en, Draft an email, Quiz me. The text is the core's logical-order reading, so Arabic goes in as it
+  is read, up to a 6,000-character budget (the model's window is about 4,000 tokens); a note under the
+  answer says whether the whole document, its beginning only, or — for a question over a longer file —
+  the passages the core's Library index (`library.open/add/search/close` on the bytes, top 40 lines)
+  ranks for the question were read. Answers can be copied or shared. Not streamed: the whole answer
+  appears at once.
+* **Form autofill** (AI sheet › Fill the form from my profile). Fields are PDFKit's text widgets (read-only
+  ones skipped); each field's label is the core's line beside it (same band, before the field in its own
+  direction, else just above), compared in the core's stored space. The model is handed the fields, the
+  profile's **keys** — never its values — and the document's text, and answers by guided generation with
+  a key or a quote; `FormAutofill.check` keeps a key only when the profile holds it and a quote only when
+  it is in the document's text verbatim, so no value can be invented. Every proposal is reviewed: the
+  value can be changed, each field switched off; a field that already holds a value is proposed
+  **switched off**, with what it holds now shown, so replacing it is the person's choice. Fill writes
+  the values through PDFKit; the rewrite goes to the core as an incremental update (`file.rebase`) and
+  the core redraws the Arabic shaped in the bundled Amiri (`forms.fix_appearances`) — one step of undo,
+  nothing on disk until Save.
+* **A core fix found by this work.** `forms.fix_appearances` kept the text of an appearance with no
+  `/Tx` marked block — PDFKit writes none — and drew the new value after it, so the field showed and read
+  back its value twice ("الاسم الكامل: محمد الغماس محمد الغماس"). The old text objects now go and the
+  border stays (`warraq-pdf` test `text_another_writer_drew_without_a_marked_block_is_replaced_not_doubled`).
+  The desktop and web call the same op after PDFium, whose appearances carry the marked block, so their
+  path is unchanged; the whole core workspace's tests and clippy pass.
+* **Profile.** Name in Arabic and English, national ID/Iqama, phone, email, address, employer, date of
+  birth, IBAN — all optional, one Keychain item (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`), saved
+  as typed, deleted from Settings › Autofill profile, and by "Delete everything".
+* **Read aloud** (speaker button): `AVSpeechSynthesizer` with the installed voices. Sentences are cut
+  from the core's lines: a line joins the next only when it wraps (most of the text's width, no closing
+  mark, the next close below in the same size), so a heading, a table row or a form line is read on its
+  own; the sentence tokenizer cuts at "." "؟" "!", and a scrap cut off an abbreviation ("ر.س") stays
+  with its sentence. Each sentence's language picks its voice: Arabic when a third of its letters are
+  Arabic or it opens in Arabic, else the recognizer's guess when a voice for it is installed. The voice
+  is the one chosen in Settings, else the best installed — Premium over Enhanced over compact. The
+  sentence being read is highlighted (PDFKit highlight annotations over the core's line boxes, removed as
+  it moves on; reading stops before markup, editing, a signature or the AI sheet, whose commits write
+  PDFKit's document) and kept in view; reading goes on to the next page and stops at the end; previous /
+  play-pause / next, five speeds (0.75×–2×), Stop. A playback audio session in `spokenAudio` mode,
+  `UIBackgroundModes: audio`, and the Lock Screen's play/pause/next/previous with the document's name and
+  page. Whether sound is heard with the screen locked can only be confirmed on a device.
+* **Voices on these simulators**: one Arabic voice, **Majed (ar-001), compact**; 25 English voices, all
+  compact (the best-ranked is Albert, en-US); no Premium or Enhanced voice is installed on a fresh
+  simulator. Settings offers a voice for Arabic, English and the device's own language, a speed, a link
+  to the Settings app to download more, and says in its footer that Siri's voices are not offered to apps
+  (the API does not expose them).
+* **Proof.** XCTest (`AITests`, `FormAutofillTests`, `ProfileStoreTests`, `ReadAloudTests`): what the
+  framework says on the simulator and what the real engine does when asked (recorded, not asserted); the
+  framework's errors becoming the app's; the context budget, read back exactly; Library-index retrieval
+  equal to the page's lines that hold the word; the exact prompt the assistant hands an engine; the
+  invoice's eleven sentences and their languages, exactly; each sentence's highlight boxes, exactly; on
+  to the next page and back; the audio session and background mode; the speed kept; the Keychain round
+  trip; the form's four text fields with their labels and values; the fake mapping; the never-invent
+  check; keys never values handed to the engine; values written, read back exactly by the core
+  (`forms.inspect`, and the page's eleven lines, the name drawn once) and by PDFKit, an incremental
+  update, undone, redone, saved. XCUITest (`AIAndReadAloudTests`): a summary through the fake engine equal
+  to the page's first line; the Arabic form reviewed (three proposals, values and switches exact), the
+  name switched on, filled, the page's lines and the saved file read back exactly; the AI button and
+  Settings following the framework, and the real engine's failure stated; read aloud's bar, sentence,
+  next, previous and stop. Screenshots `ai-*`, `autofill-*`, `readaloud-*`, `settings-ai-*`, `profile-*` in
+  `docs/design/ios/`. Counts: COUNTS_PLACEHOLDER.
+* **Not done, and why.** OCR post-correction, PII suggestions and table extraction are not on iOS (the
+  brief lists them for the desktop's tool; on iOS they would need Redact, which another agent is
+  building, and a model that answers). Reading only a selection is not offered: reading starts at the
+  page on screen and goes on to the end of the document. Answers are not streamed. The llama.cpp fallback does not apply to a phone: where Apple's model is not there,
+  the app says so and shows no AI.
+
 ## The iPhone and iPad app: the foundation (2026-09-21)
 
 The owner asked for the phone app to be rebuilt as a true Apple-native app. `apps/ios` is that app's
@@ -157,67 +252,6 @@ build on (`apps/ios/README.md` says how).
   does not exist there), Face ID, the share sheet from another app, a Home Screen with the widget on it.
   What is not built yet is not shown: the sidebar lists Recents and My documents, nothing more, until the
   parts behind the other sections land.
-
-## On-device AI and read-aloud on iPhone and iPad (2026-09-26, part F of the local-first AI request)
-
-Apple's on-device model, the installed voices, a Keychain profile — nothing downloaded, no key, nothing
-leaving the device. Everything below is in `apps/ios/PDFEditor/AI/`, `Speech/` and `Shared/Profile.swift`.
-
-* **Provider.** `AIEngine` is what the assistant and autofill talk to; `FoundationModelsEngine` (iOS 26+,
-  `import FoundationModels`, a `LanguageModelSession` per request) is the only real one on a phone. It is
-  gated on `#available(iOS 26, *)` and `SystemLanguageModel.default.availability`, and the four reasons the
-  framework gives (device not eligible, Apple Intelligence off, model not ready, older system) are each a
-  sentence in Settings › AI on this device. Where it is not available there is **no AI button** in the
-  document's toolbar — Settings says why, and that is all (no façade). `FakeEngine` exists only in Debug
-  builds behind `-warraqFakeAI 1`: a keyword mapper that answers "[fake] …", so the panel, the never-invent
-  check, the review sheet and the writing of values are proven on a simulator without the model.
-* **Foundation Models on the simulators here: WARRAQ_AI_AVAILABILITY_PLACEHOLDER**
-* **Tasks** (AI button › sheet): Ask about this PDF, Summarize, Key points, Explain simply, Translate ar↔en,
-  Draft an email, Quiz. The text is the core's logical-order reading, so Arabic goes in as it is read, up
-  to a 6,000-character budget (the model's window is about 4,000 tokens and Arabic spends them fast); the
-  answer says whether the whole document, its beginning only, or — for a question over a longer file —
-  the passages the core's Library index (`library.open/add/search/close` on the bytes) ranks for the
-  question were read. Answers can be copied or shared.
-* **Form autofill.** Fields come from PDFKit's widget annotations (text fields only, read-only ones
-  skipped); each field's label is the core's text line beside it (the desktop's rule: same band, before
-  the field in its own direction, else just above). The model is handed the fields, the profile's **keys**
-  (never its values) and the document's text, and answers by guided generation (`@Generable`) with a key
-  or a quote; `FormAutofill.check` keeps a key only when the profile holds it and a quote only when it is
-  in the document's text verbatim, so nothing can be invented. Every proposal is reviewed — value editable,
-  each field switchable off — and only then PDFKit writes the values; the core then redraws them
-  (`forms.fix_appearances` with the bundled Noto Naskh Arabic) so Arabic reads back shaped, and the model
-  takes the bytes with an undo step. Limit, stated: PDFKit writes the whole file, so this one edit is not an
-  incremental update (nothing touches the file until Save all the same). Fields already holding a value
-  are not proposed again.
-* **Profile.** Name in Arabic and English, national ID/Iqama, phone, email, address, employer, date of
-  birth, IBAN — all optional, one Keychain item (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`), saved as
-  typed, deleted in one press from Settings › Autofill profile.
-* **Read aloud** (speaker button): `AVSpeechSynthesizer` with the installed voices. Sentences are cut from
-  the core's lines (a wrapped line joins the next; a heading is kept apart by its size; the sentence
-  tokenizer cuts at "." "؟" "!"); each sentence's language is detected for its voice (Arabic when a third
-  of its letters are); the voice is the one chosen in Settings, else the best installed one — Premium over
-  Enhanced over compact. The sentence being read is highlighted (PDFKit highlight annotations over the
-  core's line boxes, removed as it moves on, never in the saved bytes) and scrolled into view; reading
-  continues on the next page and stops at the end; previous / play-pause / next, five speeds, Stop. A
-  playback audio session in `spokenAudio` mode, `UIBackgroundModes: audio`, and the Lock Screen's
-  play/pause/next/previous with the document's name and page — set up as Apple documents it; whether
-  sound is heard with the screen locked can only be confirmed on a device. Siri's voices are not offered
-  to apps, and the Settings footer says so, with a link to the Settings app to download more.
-* **Voices on the simulators here: WARRAQ_VOICES_PLACEHOLDER**
-* **Proof.** XCTest: the Keychain profile (round trip, update, empty removes, separate services); the
-  context budget and the Library-index retrieval on a corpus file; the assistant through the fake engine
-  and without any engine; PDFKit's fields of the Arabic AcroForm corpus file with their labels, the fake
-  mapping, the never-invent check on six cases, page-space mapping both ways at 0° and 90°, and values
-  written, read back by PDFKit and by the core (`forms.inspect` and the page's shaped text), undone,
-  redone and saved; sentences and their boxes, language detection, voice ranking, and the reader stepping
-  through a corpus page to its end. XCUITest on both simulators: a summary through the fake engine with
-  the "what was read" note; the Arabic form filled from the seeded profile after review, one field left
-  out, Save appearing and the value on the page; no AI button without an engine and Settings stating the
-  reason; read-aloud's bar, sentence, next, pause and stop. Screenshots `ai-*`, `autofill-*`,
-  `readaloud-*`, `settings-ai-*`, `profile-*` in `docs/design/ios/`. Counts: WARRAQ_COUNTS_PLACEHOLDER.
-* **Not done, and why.** OCR post-correction, PII suggestions and table extraction are not on iOS: they
-  need the OCR and Redact tools, which parts C and D are building. The desktop's llama.cpp fallback does
-  not apply to a phone: below iOS 26 there is no on-device model, and the app says so instead of pretending.
 
 ## The iOS app — part D: Library, widgets, App Intents, Spotlight, share extension, Settings (2026-09-21)
 

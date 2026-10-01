@@ -47,6 +47,7 @@ final class AIAndReadAloudTests: XCTestCase {
         tapToolbar(ui, "document.ai")
         let run = ui.app.buttons["ai.run"]
         XCTAssertTrue(run.waitForExistence(timeout: 10), "the AI sheet is up")
+        XCTAssertFalse(ui.app.buttons["ai.autofill"].exists, "no form, so no autofill")
         run.tap()
         let answer = ui.app.staticTexts["ai.answer"]
         XCTAssertTrue(answer.waitForExistence(timeout: 30), "an answer appears")

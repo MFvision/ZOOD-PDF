@@ -1,3 +1,4 @@
+import PDFKit
 import SwiftUI
 
 /// The AI sheet over a document: a task, a question for "Ask", the answer,
@@ -46,18 +47,28 @@ struct AIPanel: View {
 
                 answerSection
 
-                Section {
-                    Button("Fill the form from my profile", systemImage: "rectangle.and.pencil.and.ellipsis") {
-                        onAutofill()
+                if hasTextFields {
+                    Section {
+                        Button("Fill the form from my profile", systemImage: "rectangle.and.pencil.and.ellipsis") {
+                            onAutofill()
+                        }
+                        .accessibilityIdentifier("ai.autofill")
+                    } footer: {
+                        Text("Proposes a value for the form's text fields from your profile or the document's own text. You review every value before anything is written.")
                     }
-                    .accessibilityIdentifier("ai.autofill")
-                } footer: {
-                    Text("Proposes a value for the form's text fields from your profile or the document's own text. You review every value before anything is written.")
                 }
             }
             .accessibilityIdentifier("ai.list")
         }
         .sensoryFeedback(.success, trigger: isAnswered)
+    }
+
+    /// Autofill is offered only for a document with text fields to fill.
+    private var hasTextFields: Bool {
+        guard let pdf = assistant.model.pdf else { return false }
+        return (0..<pdf.pageCount).contains { index in
+            pdf.page(at: index)?.annotations.contains { $0.type == "Widget" && $0.widgetFieldType == .text && !$0.isReadOnly } ?? false
+        }
     }
 
     private var isAnswered: Bool {
