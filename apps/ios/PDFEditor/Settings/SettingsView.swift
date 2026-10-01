@@ -29,6 +29,8 @@ struct SettingsView: View {
                 } footer: {
                     Text("The system's own parts — alerts, the file browser — follow the language from the next launch. The Settings app can set it too.")
                 }
+                AISettingsSection()
+                ReadAloudSettingsSection()
                 Section {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
                         Link(destination: url) {

@@ -17,10 +17,19 @@ apps/ios/
     Library/             LibraryShell (split view / stack), DocumentGrid, LibraryModel
     Document/            DocumentModel, PDFEditorDocument (DocumentGroup), DocumentView, PDFKitView
     Settings/            SettingsView
+    AI/                  On-device AI: AIEngine (the provider protocol, availability, the Debug fake),
+                         FoundationModelsEngine (Apple's model, iOS 26+, guided generation), AIAssistant
+                         (tasks, the text budget, Library-index retrieval), AIPanel + AutofillReviewSheet,
+                         FormAutofill (PDFKit fields + the core's labels, the never-invent check, writing),
+                         ProfileEditorView, AISettingsSection
+    Speech/              Read aloud: SentenceMap (the core's lines → sentences with boxes), SpeechVoices
+                         (installed voices ranked), ReadAloudController (AVSpeechSynthesizer, highlight,
+                         pages, lock-screen playback), ReadAloudBar, ReadAloudSettingsSection
     Design/              Theme (tokens), Components (press style, toolbar status, sheet, grid cell, empty state)
     Resources/           Assets.xcassets (icon, accent), Localizable.xcstrings, InfoPlist.xcstrings
   WarraqCore/Sources/    the Swift wrapper: actor Core, CoreError, the typed results
-  Shared/                AppGroup, RecentsStore — compiled into the app, the widgets and the share extension
+  Shared/                AppGroup, RecentsStore, Profile (the autofill profile, in the Keychain) — compiled
+                         into the app, the widgets and the share extension
   Widgets/               WidgetKit extension (app.warraq.ios.widgets): Recent documents
   ShareExtension/        "Save to محرر PDF" (app.warraq.ios.share)
   PDFEditorTests/        XCTest: the core wrapper, the document model, the recents store
@@ -107,8 +116,11 @@ xcodebuild -project apps/ios/PDFEditor.xcodeproj -scheme PDFEditor \
 - A UI test launches the app with its settings on the command line —
   `-language ar|en`, `-appearance light|dark` (the app's own UserDefaults
   keys), `-AppleLanguages (ar)` for the system's frameworks — and, in
-  Debug builds only, `-warraqReset 1` (an empty Library first) and
-  `-warraqOpen <path>` (open that file). Corpus files listed under the
+  Debug builds only, `-warraqReset 1` (an empty Library first),
+  `-warraqOpen <path>` (open that file), `-warraqFakeAI 1` (a fake AI
+  engine in place of Apple's model, so the panel, autofill and the review
+  sheet run on a simulator without the model) and `-warraqProfileJSON
+  '{…}'` (seed the autofill profile). Corpus files listed under the
   test target in `project.yml` are in the test bundle. Screenshots are
   written where `WARRAQ_SCREENSHOT_DIR` says, named
   `<screen>-<language>-<appearance>-<device>.jpg`.
@@ -120,6 +132,17 @@ xcodebuild -project apps/ios/PDFEditor.xcodeproj -scheme PDFEditor \
   the `DocumentGroup` scene saves (documents opened from outside).
 - Work that needs no open document (combining, the Library's index, OCR's
   text layer, exports) is `Core.callStatic(op:args:blobs:)`.
+- Something PDFKit wrote (a form's field values) becomes the document
+  through `DocumentModel.replace(bytes:undoManager:)`: the core reopens on
+  the bytes, PDFKit reloads, undo gets a step — but it is a whole-file
+  rewrite by PDFKit, not an incremental update; keep it for what the core
+  cannot write.
+- On-device AI goes through `AIEngine` (`AI/AIEngine.swift`): Apple's
+  Foundation Models when `AIEngines.availability()` says so, nothing
+  otherwise — the toolbar's AI button exists only then, and Settings says
+  why not. Form values reach the model as profile *keys*; it answers with
+  a key or a quote from the document, and `FormAutofill.check` drops
+  anything else, so no value can be invented.
 - New sidebar sections join `LibrarySection`; new settings join
   `SettingsView`; new widgets join `WidgetsBundle`.
 

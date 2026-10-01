@@ -53,6 +53,10 @@ targets:
     sources:
       - path: PDFEditor
       - path: Shared
+      # The core embeds this font (OFL) when it draws Arabic field values
+      # after form autofill.
+      - path: ../../tests/fonts/NotoNaskhArabic-Variable.ttf
+        buildPhase: resources
     dependencies:
       - target: WarraqCore
         embed: false
@@ -79,6 +83,8 @@ targets:
         LSRequiresIPhoneOS: true
         ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
+        # Read-aloud keeps speaking with the screen locked.
+        UIBackgroundModes: [audio]
         UIApplicationSupportsMultipleScenes: true
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
@@ -230,6 +236,9 @@ targets:
         buildPhase: resources
       - path: ../../tests/corpus/arabic/generated/variant-encrypted-rc4-40.pdf
         buildPhase: resources
+      # An Arabic AcroForm, for form autofill.
+      - path: ../../tests/corpus/arabic/generated/acroform-pdflib-arabic-fields.pdf
+        buildPhase: resources
     dependencies:
       - target: PDFEditor
       # The wrapper's code is already inside the host app; the tests need only
@@ -248,6 +257,8 @@ targets:
     sources:
       - path: PDFEditorUITests
       - path: ../../tests/corpus/arabic/generated/coretext-sfarabic-mixed-invoice.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/acroform-pdflib-arabic-fields.pdf
         buildPhase: resources
     dependencies:
       - target: PDFEditor

@@ -165,6 +165,19 @@ final class DocumentModel: Identifiable, Hashable {
         return reply
     }
 
+    /// Takes bytes another writer made (PDFKit, after a form fill) as the
+    /// edited document: the core reopens on them, PDFKit reloads, and the
+    /// undo manager gets a step back. Not an incremental update — PDFKit
+    /// writes the whole file — so it is for what the core cannot write.
+    func replace(bytes: Data, undoManager: UndoManager? = nil) async throws {
+        let before = edited
+        let core = try await Core.open(bytes: bytes, password: password)
+        self.core = core
+        take(bytes: bytes)
+        pageCount = await core.pageCount
+        registerUndo(to: before, with: undoManager)
+    }
+
     private func take(bytes: Data) {
         edited = bytes == original ? nil : bytes
         pageTexts.removeAll()

@@ -91,6 +91,7 @@ struct AppEnvironment: ViewModifier {
             .environment(\.layoutDirection, language.layoutDirection ?? systemDirection)
             .preferredColorScheme(appearance.colorScheme)
             .onChange(of: language, initial: true) { _, chosen in chosen.applyToSystem() }
+            .task { DebugLaunch.seedProfile() }
     }
 }
 

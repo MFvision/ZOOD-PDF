@@ -7,6 +7,8 @@ struct PDFKitView: UIViewRepresentable {
     let document: PDFDocument
     let displaysRTL: Bool
     @Binding var currentPage: Int
+    /// Read-aloud draws its highlight in this view and turns its pages.
+    var reader: ReadAloudController? = nil
 
     func makeUIView(context: Context) -> PDFView {
         let view = PDFView()
@@ -17,6 +19,7 @@ struct PDFKitView: UIViewRepresentable {
         view.pageShadowsEnabled = true
         view.backgroundColor = .secondarySystemBackground
         view.document = document
+        reader?.attach(view)
         NotificationCenter.default.addObserver(
             context.coordinator,
             selector: #selector(Coordinator.pageChanged(_:)),
@@ -28,6 +31,7 @@ struct PDFKitView: UIViewRepresentable {
 
     func updateUIView(_ view: PDFView, context: Context) {
         context.coordinator.parent = self
+        reader?.attach(view)
         if view.document !== document {
             // The bytes changed (an edit): show the same page of the new
             // document, and keep the direction the document asks for.

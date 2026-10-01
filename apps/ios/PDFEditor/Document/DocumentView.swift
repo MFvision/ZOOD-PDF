@@ -16,6 +16,11 @@ struct DocumentView: View {
     @State private var showingInfo = false
     @State private var saveError: String?
     @State private var pageText: String?
+    // On-device AI and read-aloud (AI/, Speech/): the assistant is made once
+    // the engine is known to be there; the reader lives as long as the view.
+    @State private var assistant: AIAssistant?
+    @State private var autofill: FormAutofillModel?
+    @State private var reader = ReadAloudController()
 
     var body: some View {
         content
@@ -26,6 +31,29 @@ struct DocumentView: View {
             .sheet(isPresented: $showingInfo) {
                 DocumentInfoSheet(model: model)
             }
+            .sheet(item: $assistant) { assistant in
+                AIPanel(assistant: assistant) {
+                    guard let engine = assistant.engine else { return }
+                    self.assistant = nil
+                    autofill = FormAutofillModel(model: model, engine: engine, profile: ProfileStore().load())
+                }
+            }
+            .sheet(item: $autofill) { autofill in
+                AutofillReviewSheet(autofill: autofill)
+            }
+            .safeAreaInset(edge: .bottom) {
+                if reader.isActive {
+                    ReadAloudBar(reader: reader)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(Motion.travel, value: reader.isActive)
+            .alert("Cannot read aloud", isPresented: Binding(get: { reader.error != nil }, set: { if !$0 { reader.error = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(reader.error ?? "")
+            }
+            .onDisappear { reader.stop() }
             .alert("Could not save", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
                 Button("OK", role: .cancel) {}
             } message: {
@@ -69,7 +97,7 @@ struct DocumentView: View {
                 .background(Surface.underPage)
         case .ready:
             if let pdf = model.pdf {
-                PDFKitView(document: pdf, displaysRTL: model.isRightToLeft, currentPage: $model.currentPage)
+                PDFKitView(document: pdf, displaysRTL: model.isRightToLeft, currentPage: $model.currentPage, reader: reader)
                     .ignoresSafeArea(edges: .bottom)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(Text("Page \(model.currentPage + 1) of \(model.pageCount)"))
@@ -104,6 +132,24 @@ struct DocumentView: View {
             ShareLink(item: SharedPDF(model: model), preview: SharePreview(model.name, image: Image(systemName: "doc.richtext")))
                 .disabled(!model.isReady)
                 .accessibilityIdentifier("document.share")
+            Button("Read aloud", systemImage: "speaker.wave.2") {
+                if reader.isActive {
+                    reader.stop()
+                } else {
+                    reader.start(model, from: model.currentPage)
+                }
+            }
+            .disabled(!model.isReady)
+            .accessibilityIdentifier("document.readAloud")
+            if AIEngines.availability().isAvailable {
+                // Only where Apple's model (or a Debug fake) answers: nowhere
+                // else is there an AI button to press.
+                Button("AI", systemImage: "sparkles") {
+                    assistant = AIAssistant(model: model)
+                }
+                .disabled(!model.isReady)
+                .accessibilityIdentifier("document.ai")
+            }
             Button("Info", systemImage: "info.circle") {
                 showingInfo = true
             }
