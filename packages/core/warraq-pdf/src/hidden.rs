@@ -1034,7 +1034,7 @@ impl PdfDocument {
     /// a submit action at its fields. Those object references are taken out
     /// of the structure elements' `/K`, and every other reference to `gone`
     /// becomes null.
-    fn unreach(&mut self, gone: &HashSet<ObjectId>) {
+    pub(crate) fn unreach(&mut self, gone: &HashSet<ObjectId>) {
         if gone.is_empty() {
             return;
         }

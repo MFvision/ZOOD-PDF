@@ -1,10 +1,12 @@
 //! Prepare form: finding where a flat form expects input (`detect`), making
 //! real fields there (`fields`), and giving them formats, validations and
 //! calculations that every reader runs — as Acrobat's own JavaScript — and
-//! that Warraq runs without a JavaScript engine (`script`, `run`).
+//! that Warraq runs without a JavaScript engine (`script`, `run`); and
+//! filling a form in by field name, for a host with no form engine (`fill`).
 pub mod detect;
 pub mod expr;
 pub mod fields;
+mod fill;
 pub mod format;
 pub mod hijri;
 pub mod run;
