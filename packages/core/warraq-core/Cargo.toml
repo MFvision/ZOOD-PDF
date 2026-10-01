@@ -23,6 +23,9 @@ regex = { version = "1", default-features = false, features = ["std", "unicode",
 # index. Pinned to the version warraq-pdf's security handler already pulls in,
 # so nothing new joins the dependency graph. MIT/Apache-2.0.
 sha2 = "0.11"
+# Compare (src/tools/compare.rs): words in canonical form before they are
+# matched. Already in the graph through warraq-text. MIT/Apache-2.0.
+unicode-normalization.workspace = true
 
 [lib]
 # staticlib: libwarraq_core.a for the iOS app (scripts/ios/build-core.sh).
