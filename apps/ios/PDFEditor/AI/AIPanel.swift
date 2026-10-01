@@ -52,7 +52,7 @@ struct AIPanel: View {
                     }
                     .accessibilityIdentifier("ai.autofill")
                 } footer: {
-                    Text("Proposes a value for each empty text field from your profile or the document's own text. You review every value before anything is written.")
+                    Text("Proposes a value for the form's text fields from your profile or the document's own text. You review every value before anything is written.")
                 }
             }
             .accessibilityIdentifier("ai.list")
@@ -176,7 +176,7 @@ struct AutofillReviewSheet: View {
                     } header: {
                         Text("Proposed values")
                     } footer: {
-                        Text("Review every value, and turn off any field that should stay as it is. Nothing is written until you press Fill.")
+                        Text("Review every value. A field that already holds something stays as it is unless you turn it on. Nothing is written until you press Fill.")
                     }
                     Section {
                         Button {
@@ -226,6 +226,13 @@ private struct ProposalRow: View {
                     source
                         .font(TextStyle.caption)
                         .foregroundStyle(Surface.secondaryLabel)
+                    if !proposal.field.current.isEmpty {
+                        Text("Now: \(proposal.field.current)")
+                            .font(TextStyle.caption)
+                            .foregroundStyle(Surface.secondaryLabel)
+                            .lineLimit(1)
+                            .accessibilityIdentifier("autofill.current.\(proposal.field.name)")
+                    }
                 }
             }
             .accessibilityIdentifier("autofill.accept.\(proposal.field.name)")

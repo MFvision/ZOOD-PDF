@@ -12,7 +12,8 @@ struct FillableField: Identifiable, Equatable, Sendable {
     let current: String
     /// Zero-based.
     let page: Int
-    /// In display space: points from the page's top-left corner.
+    /// In the core's stored space (points from the crop box's top-left,
+    /// y down, before `/Rotate`), where its text lines are.
     let rect: CGRect
 
     var id: String { name }
@@ -33,7 +34,9 @@ struct FillProposal: Identifiable, Equatable, Sendable {
     let field: FillableField
     var value: String
     let source: Source
-    var accepted = true
+    /// On for an empty field; off for one that already holds a value, so
+    /// replacing what is there is the person's own choice.
+    var accepted: Bool
 
     var id: String { field.name }
 }
@@ -59,7 +62,7 @@ enum FormAutofill {
                 guard let name = widget.fieldName, !name.isEmpty, !seen.contains(name) else { continue }
                 if widget.isReadOnly { continue }
                 seen.insert(name)
-                let rect = displayRect(of: widget.bounds, on: page)
+                let rect = storedRect(fromUser: widget.bounds, in: PageSpace.Frame(page: page))
                 let current = (widget.widgetStringValue ?? "").prefix(200)
                 var label = labelFor(rect: rect, lines: lines)
                 // What the field holds is drawn on the page too: not part of
@@ -104,22 +107,20 @@ enum FormAutofill {
         return best.map { String($0.line.text.trimmingCharacters(in: .whitespaces).prefix(120)) } ?? ""
     }
 
-    /// An annotation's bounds (PDF user space, y up, before the page's
-    /// rotation) as the core's display space (points from the top-left of
-    /// the page as shown).
-    static func displayRect(of bounds: CGRect, on page: PDFPage) -> CGRect {
-        PageSpace(page: page).displayRect(fromUser: bounds)
+    /// An annotation's bounds (PDF user space, y up) in the core's stored
+    /// space — the inverse of `PageSpace.userRect(fromStored:in:)` — so a
+    /// field and the lines beside it are compared in one space.
+    static func storedRect(fromUser r: CGRect, in frame: PageSpace.Frame) -> CGRect {
+        CGRect(x: r.minX - frame.crop.minX, y: frame.crop.maxY - r.maxY, width: r.width, height: r.height)
     }
 
     /// Asks the engine, then keeps only assignments the profile or the
     /// document really answers: a profile key must hold a value, a quote
     /// must appear in the document's text. Anything else is dropped.
     static func propose(fields: [FillableField], profile: Profile, documentText: String, engine: any AIEngine) async throws -> [FillProposal] {
-        let keys = profile.filledKeys
-        let candidates = fields.filter { $0.current.isEmpty }
-        if candidates.isEmpty { return [] }
-        let assignments = try await engine.assign(fields: candidates.map(\.description), profileKeys: keys, documentText: documentText)
-        return check(assignments, fields: candidates, profile: profile, documentText: documentText)
+        if fields.isEmpty { return [] }
+        let assignments = try await engine.assign(fields: fields.map(\.description), profileKeys: profile.filledKeys, documentText: documentText)
+        return check(assignments, fields: fields, profile: profile, documentText: documentText)
     }
 
     /// The never-invent rule, as code.
@@ -129,16 +130,21 @@ enum FormAutofill {
         var done: Set<String> = []
         for assignment in assignments {
             guard let field = byName[assignment.field], !done.contains(field.name) else { continue }
+            let proposal: FillProposal
             if let key = assignment.profileKey {
                 let value = profile.value(key)
                 guard !value.isEmpty else { continue }
-                out.append(FillProposal(field: field, value: value, source: .profile(key)))
-                done.insert(field.name)
+                proposal = FillProposal(field: field, value: value, source: .profile(key), accepted: field.current.isEmpty)
             } else if let quote = assignment.documentQuote?.trimmingCharacters(in: .whitespacesAndNewlines), !quote.isEmpty, quote.count <= 200,
                       documentText.contains(quote) {
-                out.append(FillProposal(field: field, value: quote, source: .document))
-                done.insert(field.name)
+                proposal = FillProposal(field: field, value: quote, source: .document, accepted: field.current.isEmpty)
+            } else {
+                continue
             }
+            // What the field already says is not a proposal.
+            if proposal.value == field.current.trimmingCharacters(in: .whitespacesAndNewlines) { continue }
+            out.append(proposal)
+            done.insert(field.name)
         }
         return out
     }
@@ -159,75 +165,12 @@ enum FormAutofill {
             widget.widgetStringValue = proposal.value
             written += 1
         }
-        guard written > 0, let bytes = pdf.dataRepresentation() else { return 0 }
-        var result = bytes
-        // The core draws the values shaped, with an embedded font, so Arabic
-        // reads back — a Debug run without the font keeps PDFKit's drawing.
-        if let font = Self.appearanceFont {
-            struct Args: Encodable { let password: String? }
-            if let reply = try? await Core.callStatic(op: "forms.fix_appearances", args: Args(password: nil), blobs: [bytes, font]),
-               let fixed = reply.blobs.first, !fixed.isEmpty {
-                result = fixed
-            }
-        }
-        try await model.replace(bytes: result, undoManager: undoManager)
+        guard written > 0 else { return 0 }
+        // PDFKit's rewrite goes to the core as an incremental update on the
+        // bytes as they stand, and the core redraws the values shaped in the
+        // bundled Arabic face (PDFKit's own appearances do not shape Arabic)
+        // so they read back — one step of undo.
+        try await model.commitPDFKitChanges(undoManager: undoManager, arabicFont: AppFonts.arabic)
         return written
-    }
-
-    /// The bundled Arabic font the core embeds when it draws field values.
-    static var appearanceFont: Data? {
-        guard let url = Bundle.main.url(forResource: "NotoNaskhArabic-Variable", withExtension: "ttf") else { return nil }
-        return try? Data(contentsOf: url)
-    }
-}
-
-/// The two coordinate spaces of a page: PDF user space (points, y up, the
-/// crop box's origin, before rotation) and display space (points from the
-/// top-left corner of the page as shown, after its rotation) — the core
-/// speaks the second, PDFKit's annotations the first.
-struct PageSpace: Equatable {
-    let crop: CGRect
-    /// 0, 90, 180 or 270.
-    let rotation: Int
-
-    init(crop: CGRect, rotation: Int) {
-        self.crop = crop
-        self.rotation = ((rotation % 360) + 360) % 360
-    }
-
-    init(page: PDFPage) {
-        self.init(crop: page.bounds(for: .cropBox), rotation: page.rotation)
-    }
-
-    /// A point in display space as a point in user space.
-    func userPoint(fromDisplay p: CGPoint) -> CGPoint {
-        switch rotation {
-        case 90: CGPoint(x: crop.minX + p.y, y: crop.minY + p.x)
-        case 180: CGPoint(x: crop.maxX - p.x, y: crop.minY + p.y)
-        case 270: CGPoint(x: crop.maxX - p.y, y: crop.maxY - p.x)
-        default: CGPoint(x: crop.minX + p.x, y: crop.maxY - p.y)
-        }
-    }
-
-    /// A point in user space as a point in display space.
-    func displayPoint(fromUser p: CGPoint) -> CGPoint {
-        switch rotation {
-        case 90: CGPoint(x: p.y - crop.minY, y: p.x - crop.minX)
-        case 180: CGPoint(x: crop.maxX - p.x, y: p.y - crop.minY)
-        case 270: CGPoint(x: crop.maxY - p.y, y: crop.maxX - p.x)
-        default: CGPoint(x: p.x - crop.minX, y: crop.maxY - p.y)
-        }
-    }
-
-    func userRect(fromDisplay r: CGRect) -> CGRect {
-        let a = userPoint(fromDisplay: CGPoint(x: r.minX, y: r.minY))
-        let b = userPoint(fromDisplay: CGPoint(x: r.maxX, y: r.maxY))
-        return CGRect(x: min(a.x, b.x), y: min(a.y, b.y), width: abs(a.x - b.x), height: abs(a.y - b.y))
-    }
-
-    func displayRect(fromUser r: CGRect) -> CGRect {
-        let a = displayPoint(fromUser: CGPoint(x: r.minX, y: r.minY))
-        let b = displayPoint(fromUser: CGPoint(x: r.maxX, y: r.maxY))
-        return CGRect(x: min(a.x, b.x), y: min(a.y, b.y), width: abs(a.x - b.x), height: abs(a.y - b.y))
     }
 }

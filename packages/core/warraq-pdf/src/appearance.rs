@@ -590,6 +590,10 @@ impl PdfDocument {
                 ops.splice(start + 1..end, text);
             }
             None => {
+                // No marked block (PDFKit's appearances have none): the old
+                // text objects go, or the value would be drawn — and read
+                // back — twice, once in the face that cannot shape it.
+                remove_text_objects(&mut ops);
                 ops.push(Operation::new("BMC", vec![Object::Name(b"Tx".to_vec())]));
                 ops.extend(text);
                 ops.push(Operation::new("EMC", vec![]));
@@ -635,6 +639,24 @@ impl PdfDocument {
         let _ = stream.compress();
         Ok(stream)
     }
+}
+
+/// Removes every text object (`BT … ET`) from an appearance's operators,
+/// keeping what is drawn around them (border, background). An unclosed
+/// `BT` takes the rest of the stream with it.
+fn remove_text_objects(ops: &mut Vec<Operation>) {
+    let mut inside = false;
+    ops.retain(|op| match op.operator.as_str() {
+        "BT" => {
+            inside = true;
+            false
+        }
+        "ET" if inside => {
+            inside = false;
+            false
+        }
+        _ => !inside,
+    });
 }
 
 /// Four numbers from a rectangle array, normalized so x0 ≤ x1 and y0 ≤ y1.
@@ -1002,6 +1024,27 @@ mod tests {
         let back = PdfDocument::open(saved, None).unwrap();
         let (stream, ops) = appearance(&back, field(&back, "Text2"));
         assert_eq!(letters(&drawn_text(&back, &stream, &ops)), letters(value));
+    }
+
+    #[test]
+    fn text_another_writer_drew_without_a_marked_block_is_replaced_not_doubled() {
+        // PDFKit writes a field's appearance with its own text object and no
+        // `/Tx BMC`: the redrawn value takes its place; the border stays.
+        let mut ops = Content::decode(
+            b"q 0 0 1 rg 0 0 100 20 re f Q BT /Helv 12 Tf 2 5 Td (old) Tj ET 0 g 0 0 100 20 re S",
+        )
+        .unwrap()
+        .operations;
+        remove_text_objects(&mut ops);
+        let left: Vec<&str> = ops.iter().map(|op| op.operator.as_str()).collect();
+        assert_eq!(left, ["q", "rg", "re", "f", "Q", "g", "re", "S"]);
+
+        let mut unclosed = Content::decode(b"0 g BT /Helv 12 Tf (x) Tj")
+            .unwrap()
+            .operations;
+        remove_text_objects(&mut unclosed);
+        let left: Vec<&str> = unclosed.iter().map(|op| op.operator.as_str()).collect();
+        assert_eq!(left, ["g"]);
     }
 
     #[test]

@@ -108,6 +108,7 @@ enum AIContextBuilder {
     /// lines with their pages, up to the budget. `bytes` is the document.
     static func retrieved(query: String, bytes: Data, name: String) async throws -> AIContext {
         struct Opened: Decodable { let handle: Int }
+        /// `page` is one-based, as the Library shows it.
         struct Hit: Decodable { let page: Int; let line: Int; let text: String }
         struct Hits: Decodable { let hits: [Hit] }
         struct Open: Encodable {}
@@ -127,13 +128,13 @@ enum AIContextBuilder {
         // Hits in page order read better than in score order; the score
         // chose them, the page orders them.
         for hit in found.hits.sorted(by: { ($0.page, $0.line) < ($1.page, $1.line) }) {
-            let piece = "[page \(hit.page + 1)] \(hit.text.trimmingCharacters(in: .whitespacesAndNewlines))\n"
+            let piece = "[page \(hit.page)] \(hit.text.trimmingCharacters(in: .whitespacesAndNewlines))\n"
             if out.count + piece.count > budget {
                 truncated = true
                 break
             }
             out += piece
-            if pages.last != hit.page { pages.append(hit.page) }
+            if pages.last != hit.page - 1 { pages.append(hit.page - 1) }
         }
         return AIContext(text: out.trimmingCharacters(in: .whitespacesAndNewlines), pages: pages, truncated: truncated || found.hits.count == 40, retrieved: true)
     }

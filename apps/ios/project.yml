@@ -26,13 +26,12 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: "18.0"
     TARGETED_DEVICE_FAMILY: "1,2"
     SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
-    # Simulator only on this Mac: there is no signing identity here. Ad-hoc
-    # signing keeps the entitlements (the App Group) on the simulator; a
-    # device or TestFlight needs the owner's Apple Developer team.
-    CODE_SIGN_STYLE: Manual
-    CODE_SIGN_IDENTITY: "-"
-    DEVELOPMENT_TEAM: ""
-    PROVISIONING_PROFILE_SPECIFIER: ""
+    # The owner's Apple Developer team: Xcode signs automatically (a device,
+    # TestFlight) when it is signed in to that account; the simulator needs
+    # no identity at all.
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: AWV883QWPU
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
     LOCALIZATION_PREFERS_STRING_CATALOGS: YES
@@ -53,9 +52,16 @@ targets:
     sources:
       - path: PDFEditor
       - path: Shared
-      # The core embeds this font (OFL) when it draws Arabic field values
-      # after form autofill.
-      - path: ../../tests/fonts/NotoNaskhArabic-Variable.ttf
+      # The Arabic face the core writes with (stamps, text boxes, PDF/A
+      # substitutes): Amiri, SIL OFL, subset on each write.
+      # The face the scanner's text layer is written in (OFL; THIRD-PARTY-NOTICES.md).
+      - path: ../../tests/fonts/Amiri-Regular.ttf
+        buildPhase: resources
+      # The other two faces Edit PDF offers for a replaced paragraph or a new
+      # line, the same three the desktop has (SIL OFL; THIRD-PARTY-NOTICES.md).
+      - path: ../../tests/fonts/Cairo-Variable.ttf
+        buildPhase: resources
+      - path: ../../tests/fonts/Inter-Variable.ttf
         buildPhase: resources
     dependencies:
       - target: WarraqCore
@@ -65,6 +71,12 @@ targets:
       - target: Widgets
       - target: ShareExtension
       - sdk: PDFKit.framework
+      - sdk: CoreSpotlight.framework
+      - sdk: LocalAuthentication.framework
+      - sdk: Vision.framework
+      - sdk: VisionKit.framework
+      - sdk: AppIntents.framework
+      - sdk: WidgetKit.framework
     entitlements:
       path: PDFEditor/PDFEditor.entitlements
       properties:
@@ -74,14 +86,17 @@ targets:
       path: PDFEditor/Info.plist
       properties:
         CFBundleDisplayName: محرر PDF
+        # The app protects PDFs with AES/RC4 as the PDF standard defines them —
+        # published algorithms, no proprietary cryptography — so the encryption
+        # is of the exempt kind and App Store Connect need not ask each upload.
+        ITSAppUsesNonExemptEncryption: false
         CFBundleName: محرر PDF
         CFBundleShortVersionString: "0.1.0"
-        CFBundleVersion: "1"
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # The String Catalogs' source language, so a missing table falls back to it.
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [ar, en]
         LSRequiresIPhoneOS: true
-        ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
         # Read-aloud keeps speaking with the screen locked.
         UIBackgroundModes: [audio]
@@ -102,18 +117,42 @@ targets:
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
         UISupportsDocumentBrowser: true
-        # Widgets open a document with pdfeditor://open/<id>.
+        # Widgets open a document with pdfeditor://open/<id>, the scanner
+        # with pdfeditor://scan, a search with pdfeditor://search?q=…
         CFBundleURLTypes:
           - CFBundleURLName: app.warraq.ios
             CFBundleURLSchemes: [pdfeditor]
-        # Opened from Files, Mail, Safari and "Open in": PDFs. Images are
-        # registered by the scanner once it turns them into PDFs.
+        # Spotlight results open in the app.
+        NSUserActivityTypes:
+          - com.apple.corespotlightitem
+        # The Home Screen's quick actions: Scan always; the last document
+        # is added by the app as documents are opened.
+        UIApplicationShortcutItems:
+          - UIApplicationShortcutItemType: app.warraq.ios.scan
+            UIApplicationShortcutItemTitle: SHORTCUT_SCAN
+            UIApplicationShortcutItemIconSymbolName: doc.viewfinder
+        # Opened from Files, Mail, Safari and "Open in": PDFs, and pictures
+        # (shown as a one-page PDF of the picture, with the scanner offered).
         CFBundleDocumentTypes:
           - CFBundleTypeName: PDF document
             CFBundleTypeRole: Editor
             LSHandlerRank: Alternate
             LSItemContentTypes:
               - com.adobe.pdf
+          - CFBundleTypeName: Picture
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - public.image
+        # The app's own drag types: a document dragged out of the Library
+        # to a new window, and a page moved inside the pages grid.
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: app.warraq.document-reference
+            UTTypeDescription: Document reference
+            UTTypeConformsTo: [public.data]
+          - UTTypeIdentifier: app.warraq.page
+            UTTypeDescription: Page
+            UTTypeConformsTo: [public.data]
         # The privacy strings are localized in InfoPlist.xcstrings (Arabic
         # and English); these are the fallbacks.
         NSCameraUsageDescription: "The camera scans paper documents into PDFs. Nothing leaves the device."
@@ -166,6 +205,9 @@ targets:
     sources:
       - path: Widgets
       - path: Shared
+    dependencies:
+      - sdk: AppIntents.framework
+      - sdk: Vision.framework
     entitlements:
       path: Widgets/Widgets.entitlements
       properties:
@@ -175,8 +217,12 @@ targets:
       path: Widgets/Info.plist
       properties:
         CFBundleDisplayName: محرر PDF
+        # The app protects PDFs with AES/RC4 as the PDF standard defines them —
+        # published algorithms, no proprietary cryptography — so the encryption
+        # is of the exempt kind and App Store Connect need not ask each upload.
+        ITSAppUsesNonExemptEncryption: false
         CFBundleShortVersionString: "0.1.0"
-        CFBundleVersion: "1"
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # The String Catalogs' source language, so a missing table falls back to it.
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [ar, en]
@@ -196,6 +242,11 @@ targets:
     sources:
       - path: ShareExtension
       - path: Shared
+    dependencies:
+      - target: WarraqCore
+        embed: false
+      - framework: Vendor/WarraqCore.xcframework
+        embed: false
     entitlements:
       path: ShareExtension/ShareExtension.entitlements
       properties:
@@ -205,8 +256,12 @@ targets:
       path: ShareExtension/Info.plist
       properties:
         CFBundleDisplayName: محرر PDF
+        # The app protects PDFs with AES/RC4 as the PDF standard defines them —
+        # published algorithms, no proprietary cryptography — so the encryption
+        # is of the exempt kind and App Store Connect need not ask each upload.
+        ITSAppUsesNonExemptEncryption: false
         CFBundleShortVersionString: "0.1.0"
-        CFBundleVersion: "1"
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # The String Catalogs' source language, so a missing table falls back to it.
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [ar, en]
@@ -214,8 +269,8 @@ targets:
           NSExtensionPointIdentifier: com.apple.share-services
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
           NSExtensionAttributes:
-            # Offered for anything shared that holds at least one PDF.
-            NSExtensionActivationRule: 'SUBQUERY(extensionItems, $extensionItem, SUBQUERY($extensionItem.attachments, $attachment, ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.adobe.pdf").@count >= 1).@count >= 1'
+            # Offered for anything shared that holds at least one PDF or picture.
+            NSExtensionActivationRule: 'SUBQUERY(extensionItems, $extensionItem, SUBQUERY($extensionItem.attachments, $attachment, (ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.adobe.pdf") OR (ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.image")).@count >= 1).@count >= 1'
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.warraq.ios.share
@@ -239,6 +294,70 @@ targets:
       # An Arabic AcroForm, for form autofill.
       - path: ../../tests/corpus/arabic/generated/acroform-pdflib-arabic-fields.pdf
         buildPhase: resources
+      # Protected by another program with AES-256: ProtectTests opens it here
+      # and re-protects it, to show a file crosses between the hosts.
+      - path: ../../tests/corpus/arabic/generated/variant-encrypted-aes256.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/chrome-notonaskh-justified-3pages.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/variant-arabic-metadata-outlines-annots.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/chrome-cairo-mixed-invoice.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/coretext-albayan-tashkeel.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/scan-arial-200dpi-bilevel.pdf
+        buildPhase: resources
+      # The signing fixtures (tests/fixtures/signatures, made by its make.sh;
+      # every key in there is public and every password is warraq-test). The
+      # hostile set is what a verifier must refuse as a document signer.
+      - path: ../../tests/fixtures/signatures/signer-rsa-aes.p12
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/signer-ec.p12
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/revoked-rsa.p12
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/root-rsa.cer
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/root-rsa.pem
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/intermediate-rsa.cer
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/signer-rsa.cer
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/empty-signature-field.pdf
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/hostile/web-server.p12
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/hostile/hostile-root.cer
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/hostile/docs-signer.p12
+        buildPhase: resources
+      - path: ../../tests/fixtures/signatures/hostile/docs-ca.cer
+        buildPhase: resources
+      # The scanner's pictures: the corpus's damaged scans (as PDFs, drawn
+      # at 300 dpi in the test), their truth, a shadowed photo, and the
+      # synthetic ID card, book spread and crooked page (tests/fixtures/scan).
+      - path: ../../tests/corpus/arabic/generated/scan-notonaskh-300dpi-shadowed-stained-jpeg.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/scan-notonaskh-300dpi-crooked-8deg-jpeg.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/truth/scan-notonaskh-300dpi-shadowed-stained-jpeg.txt
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/truth/scan-notonaskh-300dpi-crooked-8deg-jpeg.txt
+        buildPhase: resources
+      - path: ../../tests/fixtures/create/photo-arabic.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/id-front.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/id-back.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/book-spread.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/page-crooked.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/whiteboard.jpg
+        buildPhase: resources
     dependencies:
       - target: PDFEditor
       # The wrapper's code is already inside the host app; the tests need only
@@ -256,12 +375,45 @@ targets:
     platform: iOS
     sources:
       - path: PDFEditorUITests
+      # A small corpus the Library test imports and indexes.
       - path: ../../tests/corpus/arabic/generated/coretext-sfarabic-mixed-invoice.pdf
         buildPhase: resources
       - path: ../../tests/corpus/arabic/generated/acroform-pdflib-arabic-fields.pdf
         buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/variant-arabic-metadata-outlines-annots.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/chrome-cairo-mixed-invoice.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/coretext-albayan-tashkeel.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/chrome-notonaskh-justified-3pages.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/scan-arial-200dpi-bilevel.pdf
+        buildPhase: resources
+      - path: ../../tests/fixtures/create/photo-arabic.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/id-front.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/id-back.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/book-spread.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/page-crooked.jpg
+        buildPhase: resources
+      - path: ../../tests/fixtures/scan/whiteboard.jpg
+        buildPhase: resources
+      # The signing test signs a corpus file with this before it launches the
+      # app on it, so the interface is shown a real signature to report on.
+      - path: ../../tests/fixtures/signatures/signer-rsa-aes.p12
+        buildPhase: resources
     dependencies:
       - target: PDFEditor
+      # The scanner's tests open the PDF the app saved with the core and
+      # search it: the wrapper and the core are linked into the runner.
+      - target: WarraqCore
+        embed: false
+      - framework: Vendor/WarraqCore.xcframework
+        embed: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.warraq.ios.uitests

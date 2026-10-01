@@ -42,14 +42,14 @@ final class FormAutofillTests: XCTestCase {
         await model.load()
         XCTAssertEqual(model.state, .ready)
         let fields = await FormAutofill.fields(in: model)
-        let names = fields.map(\.name)
-        XCTAssertTrue(names.contains("الاسم الكامل"), "\(names)")
-        XCTAssertTrue(names.contains("رقم الهوية"), "\(names)")
-        XCTAssertTrue(names.contains("البريد الإلكتروني"), "\(names)")
-        XCTAssertFalse(names.contains { $0.hasPrefix("الجنس") }, "check boxes are not text fields: \(names)")
+        // The four text fields, in the page's order, each with the line
+        // printed beside it and what it holds; the check boxes are not text.
+        XCTAssertEqual(fields.map(\.name), ["الاسم الكامل", "رقم الهوية", "الجنسية", "البريد الإلكتروني"])
+        XCTAssertEqual(fields.map(\.label), ["الاسم الكامل:", "رقم الهوية:", "الجنسية:", "البريد الإلكتروني:"])
+        XCTAssertEqual(fields.map(\.current), ["محمد عبد الله", "1098765432", "", ""])
+        XCTAssertEqual(fields.map(\.page), [0, 0, 0, 0])
         for field in fields {
             XCTAssertGreaterThan(field.rect.width, 0)
-            XCTAssertEqual(field.page, 0)
         }
         model.close()
     }
@@ -60,12 +60,26 @@ final class FormAutofillTests: XCTestCase {
         let fields = await FormAutofill.fields(in: model)
         let text = await model.text(ofPage: 0) ?? ""
         let proposals = try await FormAutofill.propose(fields: fields, profile: profile, documentText: text, engine: FakeEngine())
-        let byField = Dictionary(uniqueKeysWithValues: proposals.map { ($0.field.name, $0) })
-        XCTAssertEqual(byField["الاسم الكامل"]?.value, "محمد الغماس")
-        XCTAssertEqual(byField["الاسم الكامل"]?.source, .profile(.nameArabic))
-        XCTAssertEqual(byField["رقم الهوية"]?.value, "1234567890")
-        XCTAssertEqual(byField["البريد الإلكتروني"]?.value, "m@example.com")
-        XCTAssertNil(byField["الجنسية"], "nothing in the profile answers nationality")
+        // Name, ID and email answered by the profile; nationality by
+        // nothing. The two fields that already hold a value are proposed
+        // switched off: replacing them is the person's choice.
+        XCTAssertEqual(proposals.map(\.field.name), ["الاسم الكامل", "رقم الهوية", "البريد الإلكتروني"])
+        XCTAssertEqual(proposals.map(\.value), ["محمد الغماس", "1234567890", "m@example.com"])
+        XCTAssertEqual(proposals.map(\.source), [.profile(.nameArabic), .profile(.nationalID), .profile(.email)])
+        XCTAssertEqual(proposals.map(\.accepted), [false, false, true])
+        model.close()
+    }
+
+    func testTheEngineIsHandedKeysNeverValues() async throws {
+        let model = try DocumentModel(url: try copyFixture("acroform-pdflib-arabic-fields"))
+        await model.load()
+        let fields = await FormAutofill.fields(in: model)
+        let engine = RecordingEngine()
+        await engine.set(answer: [FieldAssignment(field: "البريد الإلكتروني", profileKey: .email, documentQuote: nil)])
+        let proposals = try await FormAutofill.propose(fields: fields, profile: profile, documentText: "", engine: engine)
+        let handed = await engine.assignments
+        XCTAssertEqual(handed, [fields.map(\.description)])
+        XCTAssertEqual(proposals.map(\.value), ["m@example.com"])
         model.close()
     }
 
@@ -85,6 +99,16 @@ final class FormAutofillTests: XCTestCase {
         ], fields: [field, other], profile: profile, documentText: text)
         XCTAssertEqual(proposals.map(\.value), ["m@example.com", "Riyadh"])
         XCTAssertEqual(proposals.map(\.source), [.profile(.email), .document])
+        XCTAssertEqual(proposals.map(\.accepted), [true, true])
+
+        // A field that already says the same is not proposed; one that says
+        // something else is proposed switched off.
+        let same = FillableField(name: "email", label: "Email", tooltip: "", current: "m@example.com", page: 0, rect: .zero)
+        XCTAssertEqual(FormAutofill.check([FieldAssignment(field: "email", profileKey: .email, documentQuote: nil)],
+                                          fields: [same], profile: profile, documentText: text), [])
+        let other2 = FillableField(name: "email", label: "Email", tooltip: "", current: "old@example.com", page: 0, rect: .zero)
+        XCTAssertEqual(FormAutofill.check([FieldAssignment(field: "email", profileKey: .email, documentQuote: nil)],
+                                          fields: [other2], profile: profile, documentText: text).map(\.accepted), [false])
     }
 
     func testLabelsComeFromTheLineBesideTheField() {
@@ -102,23 +126,14 @@ final class FormAutofillTests: XCTestCase {
         XCTAssertEqual(FormAutofill.labelFor(rect: CGRect(x: 100, y: 500, width: 180, height: 16), lines: englishLines), "")
     }
 
-    func testPageSpaceMapsBothWays() {
-        let plain = PageSpace(crop: CGRect(x: 0, y: 0, width: 595, height: 842), rotation: 0)
-        let user = plain.userRect(fromDisplay: CGRect(x: 100, y: 50, width: 200, height: 20))
-        XCTAssertEqual(user, CGRect(x: 100, y: 772, width: 200, height: 20))
-        XCTAssertEqual(plain.displayRect(fromUser: user), CGRect(x: 100, y: 50, width: 200, height: 20))
-
-        // Rotated 90° clockwise: the page shows 842 wide; the user-space
-        // left edge is the displayed top.
-        let turned = PageSpace(crop: CGRect(x: 0, y: 0, width: 595, height: 842), rotation: 90)
-        let top = turned.userRect(fromDisplay: CGRect(x: 0, y: 0, width: 842, height: 10))
-        XCTAssertEqual(top, CGRect(x: 0, y: 0, width: 10, height: 842))
-        XCTAssertEqual(turned.displayRect(fromUser: top), CGRect(x: 0, y: 0, width: 842, height: 10))
-
-        // A crop box away from the origin.
-        let offset = PageSpace(crop: CGRect(x: 20, y: 30, width: 500, height: 700), rotation: 0)
-        XCTAssertEqual(offset.userPoint(fromDisplay: .zero), CGPoint(x: 20, y: 730))
-        XCTAssertEqual(offset.displayPoint(fromUser: CGPoint(x: 20, y: 730)), .zero)
+    func testAFieldsBoxIsComparedWithTheLinesInTheCoresSpace() {
+        // A crop box away from the origin: a widget's user-space bounds,
+        // into the core's stored space and back through PageSpace.
+        let frame = PageSpace.Frame(crop: CGRect(x: 20, y: 30, width: 500, height: 700), rotation: 0)
+        let user = CGRect(x: 120, y: 600, width: 200, height: 20)
+        let stored = FormAutofill.storedRect(fromUser: user, in: frame)
+        XCTAssertEqual(stored, CGRect(x: 100, y: 110, width: 200, height: 20))
+        XCTAssertEqual(PageSpace.userRect(fromStored: stored, in: frame), user)
     }
 
     func testWritesValuesThatReadBackAndLeavesTheFileUntilSave() async throws {
@@ -128,38 +143,58 @@ final class FormAutofillTests: XCTestCase {
         await model.load()
         let fields = await FormAutofill.fields(in: model)
         let text = await model.text(ofPage: 0) ?? ""
-        let proposals = try await FormAutofill.propose(fields: fields, profile: profile, documentText: text, engine: FakeEngine())
-        XCTAssertGreaterThanOrEqual(proposals.count, 3)
+        var proposals = try await FormAutofill.propose(fields: fields, profile: profile, documentText: text, engine: FakeEngine())
+        // The person turns on the name (it held another), keeps the email,
+        // and leaves the ID as it is.
+        proposals[0].accepted = true
+        XCTAssertEqual(proposals.filter(\.accepted).map(\.field.name), ["الاسم الكامل", "البريد الإلكتروني"])
 
         let undo = UndoManager()
         let written = try await FormAutofill.write(proposals, into: model, undoManager: undo)
-        XCTAssertEqual(written, proposals.count)
+        XCTAssertEqual(written, 2)
         XCTAssertTrue(model.isEdited)
         XCTAssertEqual(try Data(contentsOf: url), before, "nothing written to the file yet")
+        XCTAssertEqual(model.bytes.prefix(before.count), before, "an incremental update: the original bytes stand")
 
-        // PDFKit reads the values back from the new bytes…
-        let reread = try XCTUnwrap(PDFDocument(data: model.bytes))
-        let page = try XCTUnwrap(reread.page(at: 0))
-        let name = page.annotations.first { $0.fieldName == "الاسم الكامل" }
-        XCTAssertEqual(name?.widgetStringValue, "محمد الغماس")
-        let id = page.annotations.first { $0.fieldName == "رقم الهوية" }
-        XCTAssertEqual(id?.widgetStringValue, "1234567890")
-        // …and so does the core: the fields' values, and the Arabic drawn
-        // on the page shaped, read back in logical order.
+        // The core reads the values back from the new bytes, exactly; the
+        // field left alone keeps its own.
         struct Inspect: Encodable { let password: String? }
-        struct Field: Decodable { let name: String; let value: String }
+        struct Field: Decodable { let name: String; let value: String? }
         struct Report: Decodable { let fields: [Field] }
         let report: Report = try await Core.callStatic(op: "forms.inspect", args: Inspect(password: nil), blobs: [model.bytes]).decode()
-        XCTAssertEqual(report.fields.first { $0.name == "الاسم الكامل" }?.value, "محمد الغماس")
-        XCTAssertEqual(report.fields.first { $0.name == "رقم الهوية" }?.value, "1234567890")
-        let pageText = await model.text(ofPage: 0) ?? ""
-        XCTAssertTrue(pageText.contains("محمد الغماس"), "the value is drawn, shaped, and reads back: \(pageText)")
+        let values = Dictionary(report.fields.map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { a, _ in a })
+        XCTAssertEqual(values["الاسم الكامل"], "محمد الغماس")
+        XCTAssertEqual(values["البريد الإلكتروني"], "m@example.com")
+        XCTAssertEqual(values["رقم الهوية"], "1098765432")
+        XCTAssertEqual(values["الجنسية"], "")
+        // PDFKit too.
+        let reread = try XCTUnwrap(PDFDocument(data: model.bytes))
+        let page = try XCTUnwrap(reread.page(at: 0))
+        XCTAssertEqual(page.annotations.first { $0.fieldName == "الاسم الكامل" }?.widgetStringValue, "محمد الغماس")
+        // The Arabic value is drawn shaped, once, and reads back off the
+        // page in logical order.
+        let core = try XCTUnwrap(model.engine)
+        let lines = try await core.textLines(page: 0).map { $0.text.trimmingCharacters(in: .whitespaces) }
+        // (The core reads a field's drawing into the line of its label.)
+        XCTAssertEqual(lines, [
+            "نموذج طلب تجديد رخصة",
+            "الاسم الكامل: محمد الغماس",
+            "رقم الهوية: 1098765432",
+            "تاريخ الميلاد:",
+            "الجنسية:",
+            "البريد الإلكتروني: m@example.com",
+            "رقم الجوال:",
+            "الجنس: ذكر ☐ أنثى ☐",
+            "أقرّ بأن جميع البيانات المذكورة أعلاه صحيحة وأتحمل المسؤولية القانونية في حال ثبوت خلاف",
+            "ذلك.",
+            "التوقيع: ____________ التاريخ: ____/____/______",
+        ])
 
-        // Already-filled fields are not proposed again.
+        // Filled now: proposing again offers nothing for those two.
         let again = await FormAutofill.fields(in: model)
-        XCTAssertEqual(again.first { $0.name == "الاسم الكامل" }?.current, "محمد الغماس")
-        let more = try await FormAutofill.propose(fields: again, profile: profile, documentText: pageText, engine: FakeEngine())
-        XCTAssertFalse(more.contains { $0.field.name == "الاسم الكامل" })
+        XCTAssertEqual(again.map(\.current), ["محمد الغماس", "1098765432", "", "m@example.com"])
+        let more = try await FormAutofill.propose(fields: again, profile: profile, documentText: text, engine: FakeEngine())
+        XCTAssertEqual(more.map(\.field.name), ["رقم الهوية"])
 
         XCTAssertTrue(undo.canUndo)
         undo.undo()
@@ -168,8 +203,10 @@ final class FormAutofillTests: XCTestCase {
         XCTAssertTrue(model.isEdited)
 
         try await model.save()
-        XCTAssertNotEqual(try Data(contentsOf: url), before)
-        XCTAssertEqual(PDFDocument(url: url)?.page(at: 0)?.annotations.first { $0.fieldName == "رقم الهوية" }?.widgetStringValue, "1234567890")
+        let saved = try XCTUnwrap(PDFDocument(url: url)?.page(at: 0))
+        XCTAssertEqual(saved.annotations.first { $0.fieldName == "الاسم الكامل" }?.widgetStringValue, "محمد الغماس")
+        XCTAssertEqual(saved.annotations.first { $0.fieldName == "البريد الإلكتروني" }?.widgetStringValue, "m@example.com")
+        XCTAssertEqual(saved.annotations.first { $0.fieldName == "رقم الهوية" }?.widgetStringValue, "1098765432")
         model.close()
     }
 }

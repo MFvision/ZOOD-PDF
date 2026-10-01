@@ -35,6 +35,26 @@ public enum AppGroup {
         containerURL.appending(path: "recents.json")
     }
 
+    /// The last Library searches, for the Library search widget.
+    public static var searchesFileURL: URL {
+        containerURL.appending(path: "searches.json")
+    }
+
+    /// Small facts the app records for its widgets (whether a scan with a
+    /// camera is possible here), one file per flag in the container.
+    public static func setFlag(_ name: String, _ on: Bool) {
+        let url = ensure(containerURL).appending(path: "flag-\(name)")
+        if on {
+            try? Data().write(to: url, options: .atomic)
+        } else {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+
+    public static func flag(_ name: String) -> Bool {
+        FileManager.default.fileExists(atPath: containerURL.appending(path: "flag-\(name)").path)
+    }
+
     /// Makes a folder if it is not there yet.
     @discardableResult
     public static func ensure(_ url: URL) -> URL {

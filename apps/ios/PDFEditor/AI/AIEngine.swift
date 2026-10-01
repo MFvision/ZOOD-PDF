@@ -32,7 +32,7 @@ enum AIAvailability: Equatable, Sendable {
     /// The reason, as a sentence for the person.
     var message: LocalizedStringKey {
         switch self {
-        case .available: "Apple's on-device model answers here. Nothing leaves this device."
+        case .available: "The system's on-device model answers here. Nothing leaves this device."
         case .systemTooOld: "On-device AI needs iOS 26 or later."
         case .deviceNotEligible: "This device cannot run Apple Intelligence, so on-device AI is not available."
         case .appleIntelligenceOff: "Turn on Apple Intelligence in the Settings app to use on-device AI."
@@ -82,6 +82,9 @@ enum AIEngineError: Error, LocalizedError, Equatable {
     case refused
     /// Too much text for the model's window.
     case tooLong
+    /// The model's safety check could not run (as on the Simulator, where
+    /// the framework reports the model available but every request fails).
+    case safetyCheckUnavailable
     case failed(String)
 
     var errorDescription: String? {
@@ -89,6 +92,7 @@ enum AIEngineError: Error, LocalizedError, Equatable {
         case .unavailable: String(localized: "On-device AI is not available.")
         case .refused: String(localized: "The on-device model declined this request.")
         case .tooLong: String(localized: "This is too much text for the on-device model. Ask about a part of the document.")
+        case .safetyCheckUnavailable: String(localized: "The on-device model did not answer: its safety check cannot run on this device.")
         case let .failed(message): message
         }
     }

@@ -147,6 +147,40 @@ pub fn aes256_cbc_decrypt_no_padding(key: &[u8; 32], data: &[u8]) -> Vec<u8> {
     out
 }
 
+/// AES-256-CBC encryption with a zero IV and no padding: the inverse of
+/// [`aes256_cbc_decrypt_no_padding`], used by algorithms 8 and 9 to wrap the
+/// file encryption key into `/UE` and `/OE`. `data` is the 32-byte file key,
+/// so nothing needs padding.
+pub fn aes256_cbc_encrypt_no_padding(key: &[u8; 32], data: &[u8]) -> Vec<u8> {
+    let iv = [0u8; 16];
+    let usable = data.len() - data.len() % 16;
+    let mut out = data[..usable].to_vec();
+    let mut enc = Aes256CbcEnc::new(key.into(), (&iv).into());
+    for chunk in out.as_chunks_mut::<16>().0 {
+        enc.encrypt_block(block(chunk));
+    }
+    out
+}
+
+/// AES-256-ECB encryption of one 16-byte block, which is the single place the
+/// PDF standard security handler needs ECB: algorithm 10 encrypts the 16-byte
+/// `/Perms` value with the file key and no initialisation vector at all.
+pub fn aes256_ecb_encrypt_block(key: &[u8; 32], data: &mut [u8; 16]) {
+    use aes::cipher::{BlockCipherEncrypt as _, KeyInit as _};
+    let cipher = aes::Aes256::new(key.into());
+    cipher.encrypt_block(block(data));
+}
+
+/// AES-256-ECB decryption of one 16-byte block, which reads `/Perms` back.
+/// Only the tests need it: the reader takes the permissions from `/P`, as
+/// every other reader does, and `/Perms` exists here to be written correctly.
+#[cfg(test)]
+pub fn aes256_ecb_decrypt_block(key: &[u8; 32], data: &mut [u8; 16]) {
+    use aes::cipher::{BlockCipherDecrypt as _, KeyInit as _};
+    let cipher = aes::Aes256::new(key.into());
+    cipher.decrypt_block(block(data));
+}
+
 /// AES-128-CBC encryption in place with no padding, used by the hardened hash
 /// of algorithm 2.B. `data` is always a multiple of 16 bytes there (64
 /// repetitions of a block-aligned string), so nothing needs padding.

@@ -104,6 +104,20 @@ struct FoundationModelsEngine: AIEngine {
 
     /// The framework's errors as the app's.
     static func translate(_ error: any Error) -> AIEngineError {
+        // The guardrails' text check, which does not run on the Simulator
+        // ("Simulator is not supported"): there the framework says the model
+        // is available, and every request fails with this.
+        // It arrives wrapped in the framework's own error, whose description
+        // names the domain, or as that NSError itself.
+        let check = "com.apple.SensitiveContentAnalysisML"
+        var cause: NSError? = error as NSError
+        while let current = cause {
+            if current.domain == check { return .safetyCheckUnavailable }
+            cause = current.userInfo[NSUnderlyingErrorKey] as? NSError
+        }
+        if error.localizedDescription.contains(check) || String(describing: error).contains(check) {
+            return .safetyCheckUnavailable
+        }
         if let generation = error as? LanguageModelSession.GenerationError {
             switch generation {
             case .exceededContextWindowSize: return .tooLong

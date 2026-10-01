@@ -44,6 +44,68 @@ Before that, on 2026-09-19: the interface is rebuilt on EmbedPDF (ADR-0007); all
 
 Every one of the 48 corpus files opens. 63 tests green, clippy clean, `wasm32-unknown-unknown` compiles, core WASM 2.50 MB gzipped (budget 8 MB).
 
+## The ZOOD mark and the iOS themes (2026-09-30)
+
+The owner owns the brand **ZOOD**. He asked for the app to carry its logo, for "one of the themes
+[to] be the liquid glass for Apple devices, full all glass liquid", and for "one theme [to be] the
+Zood theme". All three are in. Nothing here is copied from Adobe, Apple or anyone else: the mark is
+drawn from nothing, and the glass is the system's own effect, called by its public name.
+
+**The mark.** A slab **Z** — ZOOD's initial in Latin, and the stroke of the Arabic zay — drawn as a
+leaflet folded in a Z: a head, a fold and a foot, three panels of one gold, each taking the light
+differently, on a deep ink ground. At 40 px the three panels read as one letter; close up they read
+as paper. `scripts/icon/make_zood_icon.py` draws it, `scripts/icon/svg2png.swift` rasterizes it (AppKit
+reads SVG on macOS; the repo has no other rasterizer), and `scripts/icon/make_zood_icons.sh` writes
+every derivative in one go:
+
+* **iOS**: `AppIcon.png`, `AppIcon-Dark.png` and `AppIcon-Tinted.png` in the app icon set — the three
+  appearances iOS asks for since 18 — full-bleed squares with **no alpha channel**, because the system
+  cuts its own shape and rejects an icon that carries one. The Arabic display name «محرر PDF» is
+  unchanged in `project.yml` and in App Store Connect.
+* **Desktop, the page and the web**: `apps/desktop/icon.svg`, `packages/ui/public/app-icon.svg`,
+  `apps/web/public/favicon.svg`, the 192/512 and maskable 192/512 PNGs and the 180-px apple-touch icon;
+  the web's `theme-color` and the manifest's `theme_color` are ZOOD's ink. The browser extension's four
+  PNGs too, and the Tauri bundle's `.icns`/`.ico` and PNGs (`pnpm --filter @warraq/desktop icons`,
+  2026-09-30).
+* The same letter is drawn inside the app by `ZoodLetter` / `ZoodMark`
+  (`apps/ios/PDFEditor/Design/ZoodMark.swift`), beside the greeting on the home screen. A test asserts
+  the app's paths land on the icon's own 1024-grid numbers, so the two cannot drift apart.
+* The old ورّاق icon and its generator (`scripts/icon/make_icon.py`) are gone.
+
+**The themes** (`apps/ios/PDFEditor/Design/Themes.swift`) sit beside the existing language and
+appearance settings in Settings › Interface, apply at once and are kept in `UserDefaults` under `theme`.
+
+| Theme | What it does | Where it degrades |
+|---|---|---|
+| System | what the app looked like before | — |
+| Liquid Glass | SwiftUI's `.glassEffect(.regular, in:)` on the home's cards and panels, the sheets' rows, the markup bar and the floating pen palette, over a ground with enough colour for glass to be glass | `.glassEffect` needs **iOS 26**. Below it the same surfaces are `.ultraThinMaterial` / `.regularMaterial` — the honest fallback — and Settings says so under the picker. Nothing is drawn that cannot work |
+| Zood | ink and gold: the brand's ground, warm paper in light and ink in dark, solid cards with a gold hairline, headings a weight heavier, every tool tile in the brand's gold, and the navigation and bottom bars in its own colour | it is opaque by design, so there is nothing to fall back to |
+
+**Accessibility.** **Reduce Transparency** makes every surface on every theme solid and removes the
+glass theme's ground highlight — a surface left "nearly" opaque reads as a bug. **Reduce Motion** loses
+nothing to the themes: nothing a theme draws travels, and a theme change cross-fades.
+
+**Proven** on the simulator only (this Mac has no signing identity), Xcode 27, iOS 27.0 runtime, on
+**both the iPhone 17 and the iPad Pro 13-inch (M5)**:
+
+* `PDFEditorTests/ThemeTests` — **10 unit tests, 0 failures** on each device: the three themes and their
+  round trip through `UserDefaults`; only the glass theme asking for the system's glass; ZOOD never
+  translucent; Reduce Transparency taking the glass off all three; `ThemeAvailability` answering with the
+  system rather than a guess; ZOOD's accent at or above 4.5:1 on its own ground in both schemes; ZOOD
+  drawing surfaces of its own rather than the system's; and the letter in the app being the same drawing,
+  on the same 1024-point grid, as the icon.
+* `PDFEditorUITests/ThemeUITests` — **3 UI tests, 0 failures** on each device: the picker offers all three
+  and the choice survives a relaunch; a theme chosen in Settings applies to the home screen at once; and
+  the screenshots.
+* After merging main (the welcome tour, the camera fix, the scan geometry), the **whole `PDFEditorTests`
+  bundle — 86 tests, 0 failures** — is green on the iPhone 17, so the themed surfaces broke nothing.
+* **Screenshots** in `docs/design/ios/theme-*` (24 of them): the home screen, Settings, and a document
+  with the markup bar and the pen palette out, for the glass and Zood themes, in Arabic and English,
+  light and dark, on both devices.
+
+**Not proven here.** Reduce Transparency is covered by the unit tests, not by a photograph: XCUITest
+cannot turn the system setting on. And the app has never run on a device.
+
 ## The iPhone and iPad app: the foundation (2026-09-21)
 
 The owner asked for the phone app to be rebuilt as a true Apple-native app. `apps/ios` is that app's
@@ -77,7 +139,7 @@ build on (`apps/ios/README.md` says how).
   and English, the app's name isolated inside English text. Design tokens and a small component set follow
   `docs/design/README.md`: system colours by role, the system text styles (Dynamic Type), a 4-point grid,
   press feedback on touch-down, critically damped motion, cross-fades under Reduce Motion. The icon is the
-  maskable variant of `scripts/icon/make_icon.py`.
+  ZOOD mark (`scripts/icon/make_zood_icon.py`, "The ZOOD mark and the iOS themes" below).
 * **Widgets and the share sheet, as far as the foundation goes.** A Recent documents widget (small, medium,
   large, Lock Screen rectangle) reads the recents list and thumbnails the app keeps in the App Group
   container and opens a document through `pdfeditor://open/<id>`; "Save to محرر PDF" in the share sheet
@@ -156,6 +218,152 @@ leaving the device. Everything below is in `apps/ios/PDFEditor/AI/`, `Speech/` a
 * **Not done, and why.** OCR post-correction, PII suggestions and table extraction are not on iOS: they
   need the OCR and Redact tools, which parts C and D are building. The desktop's llama.cpp fallback does
   not apply to a phone: below iOS 26 there is no on-device model, and the app says so instead of pretending.
+
+## The iOS app — part D: Library, widgets, App Intents, Spotlight, share extension, Settings (2026-09-21)
+
+**Simulator only** (iPhone 17 and iPad Pro 13-inch (M5), iOS 27.0 runtime, Xcode 27): there
+is no signing identity on this Mac, so nothing here has run on a device, and nothing has been
+submitted anywhere. Built on the foundation in `apps/ios/` (SwiftUI, Swift 6, the core as an
+XCFramework); the view/annotate/organize and scan/OCR parts are other agents' and are not
+described here.
+
+**What works, as a person would see it**
+
+* **Home** (to the owner's design target of 2026-09-25, in SwiftUI materials over a soft
+  gradient — no photograph): a greeting by the time of day, the headline «ملفات PDF، من جديد.» /
+  "PDFs, done right." (the same as the desktop's), six large action cards — Open, Scan, Create (pictures
+  into a PDF), Combine (files into one PDF), Search, Settings — each doing what it says today, then
+  rows of real first pages with the file's name and date ("Today, 9:41 AM"): Recents, Starred,
+  My documents, the chosen folder; a ⋯ menu on every card (Star, Open in New Window, Remove from
+  Recents), "See all" into the section, paging arrows on iPad. The sidebar: Home, Recents, Starred,
+  My documents, the folder once chosen, Tags; "Tools": Scan, Create a PDF, Combine files, Search.
+  **Starred** is a real per-device flag (`StarredStore`, a set of file paths in the shared
+  container). Not shown, because they do not exist on this device: Convert and AI cards, Shared,
+  Clouds. Proven by XCUITest `testHomeCardsAndStarring` (the six cards, a star from the ⋯ menu
+  putting the document in the Starred row and section, the Search card opening the field).
+* **The Library.** Above the documents, one search field: "ابحث داخل كل مستند". Typing a word
+  finds every line holding it in every document the index holds — in Arabic without its tashkeel
+  and with alef, taa marbuta and yaa forms unified (the core's `library.search`) — grouped by
+  document with the page number and the matched words marked; a tap opens the document at that
+  page. Filters (kind, tag, place, scans only, the document's own date, Gregorian or Hijri). The
+  index is built from My documents and, once chosen in Settings, one folder in Files or iCloud
+  Drive (a security-scoped bookmark; the files stay where they are). A status line says how many
+  documents are indexed, shows progress while a run reads, and has Stop (between files) and
+  Index now; pull to refresh runs it too. A PDF's text comes from the core page by page; a page
+  with no text of its own, and a picture, go through the OCR seam; a thumbnail is drawn with the
+  core; a file whose size and date have not changed is not read again; a file taken away leaves
+  the index on the next run. Tags (from a document's menu, or in the Tags section) and rules
+  ("فاتورة" tags the invoices; apply now) are the core's, kept in the index. Core Spotlight holds
+  each document's name, kind and the start of its text, so the iOS search finds documents and opens
+  them in the app.
+* **Widgets** (`group.app.warraq`): Recent documents (small: the last one with its first page;
+  medium: three; large: six; each opens the document), Scan (one tap into the scanner), Library
+  search (the last searches, each a tap back into that search); Lock Screen: the last document
+  (rectangle, inline) and Scan (circle, inline); an iOS 18 Control Center control for Scan.
+  Refreshed through `WidgetCenter` whenever a document is opened, indexed or forgotten and
+  whenever a search is run. Each opens the app at one of its routes (`pdfeditor://scan`,
+  `pdfeditor://open/<id>`, `pdfeditor://search?q=…`, `pdfeditor://last`).
+* **App Intents, Shortcuts, Siri**: "Scan a document", "Open <document>" (an entity query over
+  the recents and the index, matched by name, tashkeel and case aside), "Search my documents for
+  <text>" (answers matches with document, page and line; a spoken summary), "Make a PDF from these
+  files" (PDFs and pictures into one PDF in My documents, handed back as a file), "Open the last
+  document"; Siri phrases in Arabic and English (`AppShortcuts.xcstrings`). Home Screen quick
+  actions: Scan, and the last document by name.
+* **Share extension** "Save to محرر PDF": PDFs shared from any app land in the Inbox; pictures
+  become one PDF (the core's `create.images`); the app moves the Inbox into My documents and
+  indexes it the next time it is in front.
+* **Settings**: language (system/Arabic/English), appearance, the scanner's own section (the
+  colour new scans start in, and the text-recognition languages this device supports), the
+  Files/iCloud folder (choose, change, stop reading), Face ID/Touch ID lock (off by default; asks
+  whenever the app comes to the front; refuses to turn on where the device has neither biometrics
+  nor a passcode), and "Delete everything", which deletes the documents in My documents, the
+  index, Spotlight's items, the recents, the thumbnails, the last searches, the Inbox, the folder
+  bookmark and the settings.
+* **Scan and Create**: every "Scan" (the widget, the Control Centre control, a Shortcut, the
+  quick action, the toolbar, the home's Scan and Create cards) opens the scanner itself — part C's
+  `ScanView` — and what it saves joins My documents, the index and the open document. **Combine**
+  (the home's card and the "Make a PDF" intent) joins PDFs and pictures into one PDF through the
+  core.
+
+**The OCR seam.** `PageOCR.reader` in `apps/ios/PDFEditor/Library/PageTextReader.swift`:
+`read(image, languages) -> [IndexedWord]`. Behind it stands the scanner's own recognizer
+(`PDFEditor/Scan/TextRecognizer`, part C's), on a queue of its own so Vision never holds the
+cooperative pool; the languages are the ones chosen in the scanner's settings (Arabic and English
+unless changed). The unit tests put their own reader in its place (`FakeRecognizer` in
+`LibraryTests`); the UI tests read the corpus's scan with Vision as it is. **Vision's languages on
+this simulator:**
+`en-US, fr-FR, it-IT, de-DE, es-ES, pt-BR, zh-Hans, zh-Hant, yue-Hans, yue-Hant, ko-KR, ja-JP, ru-RU, uk-UA, th-TH, vi-VT, ar-SA, ars-SA, tr-TR, id-ID, cs-CZ, da-DK, nl-NL, no-NO, nn-NO, nb-NO, ms-MY, pl-PL, ro-RO, sv-SE, fi-FI, hi-IN, mr-IN` (`testVisionLanguagesOnThisSimulator`, iPhone 17, iOS 27.0) — **Arabic (`ar-SA`, and Najdi `ars-SA`) is there**, so the index reads Arabic scans with Vision on this simulator; the default OCR languages are Arabic and English.
+
+**Proven by** (all on the simulator; both devices — "iPhone 17 D" and "iPad Pro 13-inch (M5) D",
+private copies of iPhone 17 and iPad Pro 13-inch (M5), iOS 27.0). **43 unit tests, 0 failures**
+on each device; **17 UI tests, 1 skipped, 0 failures** on the iPad and the same set on the iPhone
+(`apps/ios/.build/logs/test-*.log`, `scripts/ios/build.sh`):
+
+* XCTest `LibraryTests` (6 tests): corpus files indexed, "فاتوره" (no tashkeel,
+  haa for taa marbuta) found in the invoice at page 1 with its span marked, a tashkeel-laden word of
+  `coretext-albayan-tashkeel` found from its bare form, filters by kind and tag, rules applied,
+  save/close/reopen, forget; a damaged index file set aside; the indexer reading a corpus folder
+  with a scan through the fake seam (2 read, 1 skipped, 1 page recognized), unchanged on the second
+  run, forgotten when the file is removed; Stop between files; the seam's line assembly.
+* XCTest `WidgetsAndRoutesTests`: the Recent documents and Library search timelines from a seeded
+  App Group container (newest first, only files still there, small = one), routes round-tripping
+  through their URLs, a posted route taken once, the quick actions' items and routes.
+* XCTest `IntentsTests`: documents resolved by name from the recents and the index file, the
+  search intent answering from the index file (and no index = no matches), "Make a PDF" joining
+  a PDF and two pictures into three pages with the Arabic intact, the opening intents leaving
+  their routes, five Shortcuts.
+* XCUITest `LibraryUITests`: the corpus imported and indexed (5 documents, the scan through
+  Vision), "فاتوره" searched, a hit tapped and the document open at that page (the toolbar's page
+  number), the search written for the widget; Scans only filtering to the scan (skipped with a
+  message if Vision read nothing off the bilevel scan); a rule written through the interface and
+  the tag appearing; the home's six cards, starring a document from its card's menu and finding it
+  in the Starred row and the Starred section, and the Search card opening the search field.
+* XCUITest `SettingsUITests`: the scanner's colour mode kept across a relaunch and the device's
+  recognition languages listed (their switches are the scanner's own tests'); Delete
+  everything emptying the Library (0 indexed, no documents, no recents); the app starting locked
+  with `-appLock 1` and unlocking on the simulator's Face ID match (`scripts/ios/build.sh` enrols a
+  face and posts matches through `simctl spawn … notifyutil`); the lock switch.
+* Screenshots in `docs/design/ios/`, on both simulators, in Arabic light and English dark, each
+  looked at: `home-*` (the home — greeting, headline, the six cards, the index status line, the
+  rows of real first pages with their dates; the iPad's in its content column beside the open
+  document, mirrored in Arabic), `library-search-*` (a search for «فاتوره» matching three
+  documents, the word marked in each line), `library-filters-*` (the filters sheet),
+  `library-tags-*` (the Tags screen), `widgets-gallery-1..4-*` (SpringBoard's widget gallery on
+  the app's entry: Recent documents drawing a real first page, then the other families),
+  `settings-full-en-light-*`.
+
+**Not done, limited, or not provable here — stated plainly**
+
+* Only PDFs, scans and pictures are read into the index on iOS: the Word/Excel/PowerPoint/HTML
+  readers of the web and desktop hosts are not in the app, and the kinds are not shown as filters.
+* A protected PDF is skipped by the index (its password is not asked for during a run).
+* The Files/iCloud folder is read to a depth of 8 and at most 4 000 files per run; iCloud files
+  not yet on the device are asked for and read on the run after they arrive. No watching: the
+  index is brought up to date when the app comes to the front, on pull to refresh, and on Index
+  now.
+* Vision's word boxes for the index are the line's box shared out by word length; the scan
+  feature's own measured boxes are what a text layer should use.
+* Widgets, the Control Center control, Siri, Shortcuts and the share sheet are proven as code
+  (timelines, entity queries, routes, the extension's saving) and through the app's handling of
+  each route; the widget gallery itself is photographed by `WidgetGalleryUITests` only where
+  SpringBoard's controls could be found — on the iPhone 17 simulator they were: the gallery
+  opened on the app's entry and four pages were photographed (`widgets-gallery-1..4`); the Lock
+  Screen and Control Center galleries are not driven.
+* **The scan-only filter is skipped where Vision reads nothing.**
+  `testAScanIsFoundThroughTextRecognitionAndScansOnlyFiltersToIt` skips with a message when
+  Vision finds no words on the corpus's bilevel scan; it skipped on both simulators, so the
+  "Scans only" filter is proven by the unit tests (`LibraryTests`, over a scan read through the
+  seam) and not through the interface.
+* **Shared simulators.** Several agents test on the same two booted simulators; two XCUITest
+  runners on one device kill each other ("Early unexpected exit … server died"), and a loaded
+  Mac (load 50–150) exhausts process slots mid-run. `scripts/ios/build.sh` now takes
+  `WARRAQ_IPHONE` / `WARRAQ_IPAD` for simulators of one's own — part D was proven on "iPhone 17 D"
+  and "iPad Pro 13-inch (M5) D", private copies of the same models, reported under the shared
+  names — and its Face ID matcher loop dies with the script rather than spinning.
+* The chosen-folder flow through the system's folder picker is not driven by a UI test (the
+  picker is another process); the bookmark, the listing and the keys are unit-tested through the
+  Documents folder, which uses the same code.
+* Nothing has run on a device; Face ID is the simulator's simulated sensor.
 
 ## Completed this session
 * **Phase 0** — landscape audit (92 live-verified records), Arabic corpus (48 files: 33 generated with ground truth, 15 real-world with provenance), acid harness across five engines plus our own, two prototypes, GATE 0 (`docs/research/02-decision.md`, ADR-0003/4/5).
@@ -286,6 +494,374 @@ step read the shadowed scan (363 words on 2 pages, both pictures replaced);
 Warraq's reader then read the layer back as Arabic. Nothing needed changing
 for the worker, its WebAssembly or its models. What this does not prove is
 how the panel looks there: no screen could be seen (below).
+
+## The iOS app: Scan and OCR (2026-09-21)
+
+Part C of the native app (`apps/ios/PDFEditor/Scan/`), built and proven on the simulator only —
+iPhone 17 and iPad Pro 13-inch (M5), iOS 27.0 runtime — because this Mac has no signing identity
+and the simulator has no camera. What is proven, what was measured, and what is not:
+
+**The screen** follows the owner's design target (`.tools/briefs/design-target.md`, the iPhone
+section): a dark camera screen titled "Scan to PDF" / «مسح إلى PDF», "Auto" at the top (the
+corners Vision finds; off, the whole photo with the handles to place by hand), the four corner
+handles on the page itself with a magnifier under the finger while one is dragged, the mode strip
+Document · Whiteboard · ID Card · Book along the bottom, and the large round shutter. A passport
+(ID-3) is a switch inside ID Card, so the strip has exactly those four.
+
+**Capture.** *(Superseded on 2026-09-30 — see "The scanner opens at the camera" below: the scanner
+now opens the camera itself, and a page the camera hands back is no longer cut out a second time.
+What follows is the record of 2026-09-21.)* VisionKit's document camera (`VNDocumentCameraViewController`: automatic edges,
+auto-shutter, many pages a session) is wired and offered wherever there is a camera. **VisionKit's
+`isSupported` answers true on the iOS 27 simulator** although it has no camera, so the shutter also
+asks AVFoundation for a video device; on the simulator there is none, so the shutter carries the photo symbol and the caption under it says "No
+camera on this device — the shutter chooses a photo"; Photos (the system picker, many at once) and
+Files (any picture: JPEG, PNG, HEIC, TIFF, turned upright by EXIF) are always there. **The real camera
+has not been run by anyone**: the code path from the camera is the same as from a photo (a `CGImage`
+into the session), but it is unproven on a device.
+
+**The pipeline** (`ScanPipeline.swift`, pure functions on pictures, unit-tested on fixtures):
+Vision's `VNDetectDocumentSegmentationRequest` finds the page when its answer is page-shaped,
+its `VNDetectRectanglesRequest` otherwise, the whole photo when neither answers. **On this
+simulator the segmentation model is not to be trusted**: `ScanPipelineTests` logs what both
+detectors say, and for every fixture — the synthetic page on a desk, the ID card, and the real
+`photo-arabic.jpg` — segmentation answers a band along the bottom quarter of the photo, full
+width, with 0.97–0.99 confidence (a 144 × 256 mask), and for the book spread the whole frame
+at confidence 0.0; the rectangle detector finds the page (confidence 1.0, corners on the page's
+edges), the card, and each of the spread's two pages. So a quad is taken only when it is
+plausible — convex, a tenth of the photo or more, no more than 4:1, and not a small band
+touching three of the photo's borders — which keeps the segmentation's band out and hands the
+photo to the rectangle detector; on a device the segmentation model may well behave, and then it
+is preferred, but that is unproven here. Core Image's perspective correction cuts the page out; the corners can be dragged by hand with a magnifier over the fingertip, "Auto" asks Vision
+again, "Whole" takes the whole photo. Deskew measures the lines' slant by the slant at which the
+rows of ink are most uneven (the same idea as the web's `deskew.ts`; ±15°, 0.1° steps) and turns the
+page level; shadows, stains and uneven light are divided away by the paper's own brightness (the
+bright end of each neighbourhood at a scale where letters vanish, smoothed); creases are smoothed
+(median, noise reduction, paper lighter than 82 % grey lifted to white — a fold that hides the ink
+is not brought back); unsharp mask; colour / grey / black-and-white by one threshold; auto-contrast
+stretches the darkest 0.5 % to black and the 99th percentile — the paper — to white. "Hold to
+compare" shows the page cut out but not enhanced for as long as the finger is down.
+
+**Measured on the corpus** (`ScanPipelineTests`, iPhone 17 simulator; the shadowed and stained scan
+drawn by PDFKit at 300 dpi, so pixel for pixel the corpus JPEG): the paper's mean grey 230 → 239 and
+its unevenness (standard deviation over paper pixels) 19 → 13, the darkest tenth of the paper
+188 → 205 — what remains is the scan's grain (`gen_scans.py` adds noise 7 and JPEG quality 60), which
+no division of the paper's brightness takes out; on the photo of a page under a lamp
+(`photo-arabic.jpg`), mean 219 → 245 and unevenness 15 → 6. The crooked corpus scan measures 8.0°
+and comes back under 0.6° after deskew. The synthetic page on a desk (`tests/fixtures/scan/page-crooked.jpg`,
+turned 6°) is found by the rectangle detector, cut out to A4 proportions (aspect within 0.08 of
+1/√2) and level within 1°; the ID card's crop has a card's proportions (within 0.12 of 1.586).
+
+**OCR.** Vision's `VNRecognizeTextRequest` at the accurate level. **`supportedRecognitionLanguages()` on
+this simulator (iOS 27.0) answers, in this order:** `en-US, fr-FR, it-IT, de-DE, es-ES, pt-BR,
+zh-Hans, zh-Hant, yue-Hans, yue-Hant, ko-KR, ja-JP, ru-RU, uk-UA, th-TH, vi-VT, ar-SA, ars-SA, tr-TR,
+id-ID, cs-CZ, da-DK, nl-NL, no-NO, nn-NO, nb-NO, ms-MY, pl-PL, ro-RO, sv-SE` … — **Arabic (`ar-SA`,
+and Najdi `ars-SA`) is there.** The interface still asks at runtime: Settings → Text recognition
+lists the device's own answer with a switch per language, and the text sheet and the save sheet
+say "Reads: Arabic, English"; on a device whose Vision lacked Arabic they would say so in orange
+instead of pretending. Word accuracy, the corpus measure (the share of the truth's words of three
+letters or more, tashkeel ignored, alef/taa marbuta/yaa unified), read as it is and after the whole
+enhancement:
+
+| Page | As it is | Enhanced |
+| --- | --- | --- |
+| Shadowed and stained scan, page 1 | 168/172 (98 %) | 169/172 (98 %) |
+| Shadowed and stained scan, page 2 | 162/164 (99 %) | 162/164 (99 %) |
+| 300 dpi scan, 8° crooked | 165/168 (98 %) | 164/168 (98 %) |
+| `photo-arabic.jpg` (a page under a lamp) | 166/168 (99 %) | 166/168 (99 %) |
+
+So Vision reads these pages through their shadows, stains and slant on its own — better than
+Tesseract read them cleaned (94 %, above) — and the enhancement is for the page a person sees and
+prints, not for the reading; it costs no words. (For comparison, the same measure on the web's
+Tesseract: 63 % raw and 94 % cleaned on the shadowed scan.)
+
+**The text layer.** The words go to the core's `ocr.add_text_layer` — a `create.images` PDF (A4, the
+picture fitted and centred, a JPEG as it is) plus `{index, words: [{text, bbox}], angle}` per page in
+points from the page's top-left, with the bundled Amiri face (OFL) — so every scan is a PDF with the
+same invisible, shaped, searchable layer the web and desktop write, its words kept in `/PieceInfo`
+for later correction. The page is read level: when deskew is on the angle is 0; when it is off the
+slant is measured before reading and passed as `angle`, and the core turns the layer back by it.
+Proven by `testAScanBecomesASearchablePDFThroughTheCore` (the photo → PDF → `Core.open` → `search("محرر")`
+finds page 0 for the page's «محرّر»; `ocr.layer_words` gives the words back at angle 0) and through
+the interface by `ScanTests.testScansAPhotoFromTheLibraryIntoASearchablePDF`, which opens the saved
+file with the core linked into the UI test runner. The text itself: copy, share (the share sheet,
+Notes among its targets), "Save as note" (a `.txt` beside the PDF in the app's Documents).
+
+**Whiteboard mode** (`Enhancement.whiteboard`): glare and shadow divided away as above, the board
+(anything lighter than 78 % grey) pushed to white, the markers' colours deepened (saturation × 1.6)
+rather than thresholded away. Measured on the synthetic whiteboard fixture (blue, red and green
+marker text, a window's glare, a shadow): board mean 220 → 253, unevenness 29 → 10, and the blue
+and red strokes still counted as blue and red afterwards (`testWhiteboardKeepsMarkerColoursOnAWhiteBoard`).
+
+**ID mode**: the front and the back of a card on one A4 page at ID-1 size (85.60 × 53.98 mm, the
+rounded corners of ISO 7810), drawn at 300 dpi; a passport variant at ID-3 (125 × 88 mm). The
+slots are unit-tested to the point and the composed page checked pixel by pixel; the saved PDF is
+one A4 page (UI test `testIDModeComposesFrontAndBackOnOnePage`). On the synthetic back side, whose dark
+magnetic band spans the card, the rectangle detector on the simulator cut the card along that band
+(the iPad screenshot shows the back clipped); the corners can be dragged out by hand, and Auto asks again.
+
+**Book mode**: the spread is split at its gutter — the darkest column band in the middle two
+fifths, when it is at least 12 % darker than the paper; down the middle otherwise, and the page says
+which. Curvature: the characters Vision finds along each line (`VNDetectTextRectanglesRequest` with
+character boxes) give each line's bow; the median bow per column bucket (24 across the page) is the
+page's curve, and each column is slid back up by it (a CPU warp, pixels between rows blended).
+**How far that honestly goes**: the lines come out level; the letters' compression towards the
+gutter — the paper seen at a slant — and the shading of the fold are not undone, because neither
+Vision nor Core Image models the page's surface, and nothing here pretends to. Where fewer than
+three lines or fewer than half the columns are seen, the page is left as it is and the Enhance sheet
+says so. Measured on the synthetic spread (23 lines found by Vision): a bow of 6 px is brought to 2 px;
+the deskew then takes out the tilt the flattening leaves.
+
+**Live Text** (`ImageAnalysisInteraction` over the page on the stage) is offered where
+`ImageAnalyzer.isSupported`; on the simulator it is not, so the control is not shown there and it
+is unproven.
+
+**What ran, and what still fails (2026-09-27, both simulators, through the queue, one full
+attempt each after the design change).** `ScanPipelineTests`: 15/15 passed on iPhone 17 and 15/15 on
+iPad Pro 13-inch (M5). `ScanTests` (XCUITest): `testIDModeComposesFrontAndBackOnOnePage` and
+`testBookModeSplitsASpreadIntoTwoPages` passed on both. `testScansAPhotoFromTheLibraryIntoASearchablePDF`
+— the photo picked from the simulator's library (put there by `simctl addmedia`), a corner dragged, the
+page cut out, enhanced with the original held for comparison, the text read and copied, the PDF saved
+and opened with the core in the runner — got as far as the core's search on iPhone and **failed there**:
+the layer of that run's page (black-and-white by one threshold, a corner dragged inwards) had no «محرر»;
+the test now chooses grey and searches for words away from the dragged edge, and that version has not
+had a green run yet. On iPad the same test reached the text sheet and Vision's reading did not show
+within 120 s. `testScanScreenshots` passed on iPhone (40 pictures: nine screens × Arabic/English ×
+light/dark, plus the Settings section) and **failed on iPad** at the Settings screenshot (the text
+recognition section's switches were not found after a swipe), after making the nine Arabic-light
+pictures; the iPad's other combinations are not photographed. The machine was shared with two other
+iOS agents at load 30–100 and twice refused to fork; runs that died to that are not counted.
+
+**Not done, or limited.** The real camera, above. Vision reads the languages it reads: there is no
+Persian or Urdu model here (the web's Tesseract has both). A very dark or very large area of a page
+(a photograph, a heavy heading) lightens under the lighting step, which takes it for shadow. Book
+mode's flattening is a column shift, not a dewarp. Every screen was photographed and looked at on
+the simulator (`docs/design/ios/scan-*.jpg`, `settings-scan-*.jpg`); nothing was seen on a device.
+
+## The iOS app: the scanner opens at the camera, the crop's geometry, and a welcome tour (2026-09-30)
+
+The owner installed the TestFlight build, scanned a real document with it and reported three things.
+All three were looked into on this Mac; what was found, what was changed and what is still unproven:
+
+### 1. "It doesn't open at the camera automatically"
+
+**The cause, exactly.** `ScanView` held `@State private var showingCamera = false` and presented
+VisionKit's document camera only from the shutter's action. Opening Scan therefore drew the dark
+stage with an empty-state message on it and nothing else — the "blackboard" the owner described —
+and the camera appeared only after the shutter was tapped.
+
+**What it does now.** The scanner asks for the camera and opens it in its own `.task`, the moment it
+appears with nothing on the stage. Every answer is handled and each one says what is true
+(`CameraAccess` in `apps/ios/PDFEditor/Scan/ScanBridges.swift`):
+
+| The answer | What the scanner does |
+| --- | --- |
+| Allowed | The document camera opens at once, with no tap. |
+| Never asked | The system's camera question is asked; on a yes the camera opens, on a no the next row. |
+| Refused | The stage says "The camera is off for ⁧محرر PDF⁩", with the path through Settings and an **Open Settings** button; the shutter still chooses a photo, and its caption says so. |
+| Restricted (a profile, Screen Time) | The stage says that instead, with the same way out. |
+| No camera at all (the simulator) | Today's behaviour, kept: the photo symbol on the shutter, "No camera on this device — the shutter chooses a photo", and a **Choose photos** button on the stage. |
+
+The camera is opened **once** by the scanner itself. Closing it leaves the scanner — reopening it
+would be a room with no door — and the shutter and the empty stage's button are the way back in. It
+is not opened over pictures the scanner was handed (`initialImages`: a photo from Files, from another
+app, or `-warraqScan` on the command line), nor when a page is already on the stage. Every other way
+in opens the camera, which is the point of them: the **Scan widget**, the **Control Center control**,
+the Shortcuts/Siri **App Intent**, the Home Screen **quick action**, the Library's toolbar and the
+home's Scan card all land on the scanner with nothing on the stage, so a single tap on the widget now
+reaches the camera. The permission is read again whenever the scanner comes back to the front, so a
+camera switched on in Settings is noticed.
+
+**How far it is proven.** `VNDocumentCameraViewController` cannot run on the simulator and this Mac
+has no device, so **the real camera is still unproven — nobody has seen it open.** What is proven is
+the scanner's own behaviour on each answer: `PDFEditorUITests/ScanCameraTests` drives the five states
+through a Debug-only `-warraqCamera ready|notAsked|denied|restricted|missing`, with a stand-in view
+in VisionKit's place where there is no camera, and reads the interface back — the camera opened with
+no tap, closing it not reopening it, the empty stage's reason and its Settings button, the Arabic
+wording, the photo fallback, and pictures handed in not being covered.
+
+### 2. "Some of the scans weren't proper: the top-left angle higher than any other" — and "it auto-resizes but has an issue with that"
+
+These are two separate faults with two separate causes. Both were found by measurement, not by
+reading the code, and both are held down by tests that fail without the fix.
+
+**The skew was a correction applied twice.** `VNDocumentCameraScan.imageOfPage(at:)` does not hand
+back the photograph: VisionKit has already found the page, cut it out and squared it. `ScanSession`
+nonetheless ran `ScanPipeline.detectPage` on it and corrected it again. On a picture that *is* the
+page there are no page edges to find, and `VNDetectDocumentSegmentationRequest` answers something
+that is not the page: on a 1240 × 1754 synthetic page it answered
+`(180,630) (1240,20) (1231,1754) (8,1747)` at confidence 0.67 — a quad whose top-left corner is 630
+pixels down the side — and `plausible()` let it through (convex, 0.74 of the picture, aspect in
+range). Correcting by it drags the page's top-left corner up and out: the picture comes back
+2163 × 1734 with one of its four marks cut away altogether. That is the owner's "top-left angle
+higher than any other".
+
+The fix is provenance: `ScanOrigin` (`.documentCamera` / `.picture`) travels with every page, and a
+camera's page is taken as it is — corners on the whole picture, nothing detected, nothing corrected.
+"Auto" on such a page answers the whole picture too. Pictures from Photos, Files, the share sheet and
+the launch arguments are found and cut out exactly as before.
+
+**The wrong output size was Core Image's — and this one is a smaller fault than the owner's words
+suggest.** `CIPerspectiveCorrection` undoes the projection exactly: the corrected page's corners come
+back square to within 0.04°, on every angle tried. It also picks the size of its answer itself, and
+that size is not the page's shape. Measured on synthetic pinhole photographs of an A4 page — the
+same test, run against the code as it stood on 2026-09-29 and again after the change
+(`ScanGeometryTests`, the numbers the tests print):
+
+| The photograph | Core Image's own size (before) | The page's proportions recovered (after) |
+| --- | --- | --- |
+| Square to the lens | −0.1 % | +0.1 % |
+| Tilted 12° back | −5.4 % | −1.6 % |
+| Tilted 28° back | −6.3 % | −7.0 % |
+| Turned 22° sideways | +3.3 % | +4.8 % |
+| Tilted 25° and turned 15° | −3.6 % | **+0.0 %** |
+| Tilted 30°, turned 18°, rolled 7° | −3.0 % | **−0.0 %** |
+| A card, tilted 26° and turned 16° | +4.2 % | **−0.0 %** |
+| Landscape A4, tilted 26° and turned 16° | +2.9 % | **+0.0 %** |
+
+`ScanPipeline.pageAspect(of:in:)` now reads the page's true proportions from its four corners: each
+pair of the page's edges meets at a vanishing point, the two vanishing points give the lens's focal
+length, and the focal length gives the rectangle's proportions (Zhang and He, *Whiteboard scanning
+and image enhancement*, 2007). **Where both pairs of edges converge — which is any photograph taken
+by hand, since one never holds a phone square on both axes — the answer is exact**, 0.0 % against
+3–4 % before, and that is the assertion the tests hold it to (2 %). Where the page is tilted on one
+axis alone the two vanishing points are nearly the same, the lens cannot be solved for, and an
+ordinary phone lens is assumed instead (1.1 × the picture's longer side); there the answer is no
+better than Core Image's, as the 28° row shows. A solved focal length outside 0.5–4 × the longer side
+is not believed. The tolerance for the assumed case is 15 %.
+
+Why the convergence guard (`minimumConvergence`, 0.03) matters: with ±4 px of noise on every corner,
+200 draws, the recovered shape moves by at most 1.6 % where both axes converge and 7.2 % where only
+one does. Without the guard, solving from two vanishing points that nearly coincide gave errors up to
+73 % on the same noise — worse than doing nothing.
+
+**What was *not* the fault.** An earlier measurement of this made the sizing look far worse (35–53 %
+out). That measurement used quadrilaterals chosen by hand, which are projections of a rectangle but
+not ones any camera with square pixels and its lens in the middle of the frame could produce; on
+photographs a camera could actually take, Core Image's sizing is 3–6 % out, not 35 %. The figure
+quoted here is the second one. So the visible skew the owner saw was the double correction, above;
+the sizing is a real but much smaller error, and it is now nil on the common case.
+
+**What the guess in the brief got wrong.** The brief suggested a corner-ordering error or a flip
+applied twice in `quad(from:in:)`. That is not it: with the page's true corners, `corrected` returns
+the page square to 0.04° with the top-left mark still in the top-left corner, on every angle tried.
+`quad(from:in:)`'s y-flip and the Core Image corner names are right. The "twice" was real, but it was
+the whole correction being applied twice, not a flip.
+
+**Tests.** `apps/ios/PDFEditorTests/ScanGeometryTests.swift`, 8 tests. The pictures they measure are
+made in the test file itself — a pinhole projection of a page of known shape, then every pixel laid
+down by the test's own projective mapping — so nothing of the pipeline's takes part in making what
+the pipeline is judged on. They hold the corrected page to **square within 1.5°**, to the page's own
+proportions **within 2 %** where the lens can be solved for and 15 % where it cannot, and check that
+the mark that was in the page's top-left corner is still there.
+
+**How the RED was established, and a warning about it.** The first version of these tests *passed*
+against the unfixed code, and that is worth writing down. Two reasons: the aspect tolerance was 15 %,
+which the old sizing already met (see the table above), and on the *synthetic* page the double
+correction does not reproduce on this simulator — the simulator's
+`VNDetectDocumentSegmentationRequest` answers a band along the bottom of a borderless picture, which
+`plausible()` throws away, so no second correction happened. (The nonsense quad quoted above was got
+by running the same detector on macOS, where the model behaves as a device's does.) The tests were
+sharpened until they do discriminate, and then run against the code as it stood on 2026-09-29:
+
+```
+Executed 8 tests, with 8 failures            # before the fix
+  testAnAngledPageComesBackSquareAndAtItsOwnProportions
+     tilted 25° and turned 15°:      0.5682 against 0.5891 (−3.6 %), tolerance 2 %
+     tilted 30°, turned 18°, roll 7°: 0.5717 against 0.5891 (−3.0 %)
+  testOtherShapesKeepTheirProportionsToo
+     a card:        1.3759 against 1.3210 (+4.2 %)
+     landscape A4:  1.2128 against 1.1788 (+2.9 %)
+  testTheDetectorIsNotRunOnAPageFromTheCamera
+     the camera's page was detected and cut out: 73,141 691,77 783,950 165,1015
+     instead of the whole picture, and came back 622 px wide instead of 859
+```
+
+`testTheDetectorIsNotRunOnAPageFromTheCamera` puts the same `page-crooked.jpg` through both paths —
+Vision *does* find the page in that one on this simulator, at confidence 1.0 — and asserts that the
+photograph is cut out and the camera's page is not. That is the one that shows the double correction
+on this machine: a page 859 px wide came back 622 px wide, a quarter of it gone.
+
+### 3. "Maybe it's missing an onboarding tutorial"
+
+It was. `apps/ios/PDFEditor/App/Onboarding.swift` is a four-screen walkthrough on the first launch,
+in Arabic and English, right-to-left in Arabic, built from the design tokens: what the app is and
+that nothing leaves the device; Scan; mark up and sign; organize, export, protect and the Library.
+Skip on the first screen, Next through, Start at the end; the answer is kept in the app's own
+defaults (`onboardingSeen`) so it is shown once, and Settings → About → **Show the welcome tour**
+opens it again. **No façade:** every line names something the app does today — the editor, redaction,
+forms, compare, batch, PAdES signatures, AI and the cloud are not on this device and are not
+mentioned. In Debug builds it stays out of the way unless a test asks for it (`-warraqOnboarding
+show|keep`), so it does not land on top of every other UI test; in a build anyone installs it is
+shown on the first launch. Proven by `PDFEditorUITests/OnboardingUITests` (shown, skipped, walked
+screen by screen, remembered across a relaunch, reopened from Settings, and Arabic with Skip on the
+right-hand side); photographed into `docs/design/ios/onboarding-*.jpg`.
+
+**One thing the camera change broke, and the fix.** The home's **Create** card and the sidebar's
+**Create a PDF** both open the same scanner, and "A PDF from pictures" is what that card promises —
+so with the scanner opening at the camera it would have put the camera in front of it. `ScanStart`
+now says which the scanner shows: Scan, the widget, the Control Center control, the Shortcut and the
+quick action go to the camera; Create goes to the photo picker
+(`ScanCameraTests.testCreateAPDFStartsAtThePicturesRatherThanTheCamera`).
+
+### What was run, and on what
+
+**iPhone 17 simulator, iOS 27.0** (`apps/ios/.build/scan-tests.sh`, through the machine's queue):
+
+| Bundle | Result |
+| --- | --- |
+| `PDFEditorTests/ScanGeometryTests` (new) | **8 tests, 0 failures** |
+| `PDFEditorTests/ScanPipelineTests` (the scanner's existing tests, for regressions) | **15 tests, 0 failures** |
+| — together | `Executed 23 tests, with 0 failures` |
+| `PDFEditorUITests/ScanCameraTests` (new) | **9 tests, 0 failures** |
+| `PDFEditorUITests/OnboardingUITests` (new) | **4 tests, 0 failures**, the fourth writing the eight screenshots |
+
+**iPad Pro 13-inch (M5) simulator, iOS 27.0**, the same three new bundles:
+
+| Bundle | Result |
+| --- | --- |
+| `PDFEditorTests/ScanGeometryTests` | **8 tests, 0 failures** |
+| `PDFEditorUITests/ScanCameraTests` | **9 tests, 0 failures** |
+| `PDFEditorUITests/OnboardingUITests` | **3 tests, 0 failures** (the screenshots are taken on the iPhone) |
+
+One test failed on the iPad and not on the iPhone, and it was the test's fault, not the app's:
+it looked for the home's Settings card straight after a relaunch, and on iPad the home is the
+split view's content column, which can come back showing another section. It now waits for the
+Library and picks Home in the sidebar when the card is not already there.
+
+Against the pipeline and session as they stood on 2026-09-29, **3 of the 8**
+`ScanGeometryTests` fail (the run and its numbers are quoted above).
+
+The first UI run failed 5 of 12, and the interface was wrong in two of those ways, not the
+tests: naming a container with `accessibilityIdentifier` and nothing else folds its children
+into it, so the empty stage's button and the camera stand-in's Cancel had no identifiers of
+their own (`accessibilityElement(children: .contain)` on both, as `ScanStage` already does);
+and "Show the welcome tour" sat in Settings' About section, below the fold on a phone, where
+neither a test nor a person would find it without scrolling the whole screen — it is now in
+Interface, under Language and Appearance.
+
+**Not run here:** the rest of the app's suites, and `scripts/ios/build.sh` end to end. The Mac was
+shared with three other iOS agents throughout (load averages 15–45, single builds queued 20 minutes
+and more, one `ScanGeometryTests` case taking 890 s on the iPad under that load), so the runs were
+kept to the bundles this work touches. Nothing is claimed about the suites that were not run.
+
+**A separate, pre-existing breakage found on the way.** The accessibility identifier
+`library.settings` no longer exists anywhere in the app — the Library's Settings button was
+dropped when its chrome was redesigned, and the home's `home.settings` card is the way in now —
+but `PDFEditorUITests/SettingsUITests` (lines 30, 31, 94, 100, 101), `ScanTests` (275, 276) and
+`LaunchTests` (116) still tap it. Those tests cannot be reaching Settings, so `SettingsUITests`
+is not exercising what this file says it does. It is not fixed here (it is not this work, and
+the file is another agent's), but it should not go unrecorded.
+
+### Not done, and not claimed
+
+* **The real camera has still never been run by anyone.** Everything above about the camera is the
+  scanner's own behaviour, driven through a Debug launch argument on a simulator with no camera.
+* A page tilted steeply on one axis alone still comes out about 7 % from its true proportions,
+  because the lens cannot be recovered from such a photograph and one has to be assumed. Reading the
+  real focal length from the picture's EXIF would close that for pictures from Photos and Files; it
+  is not done, and a picture from the document camera carries none anyway.
+* The owner's other items in this report — the ZOOD logo, the liquid-glass and Zood themes, the PDF
+  editor itself, encryption, AI, cloud and PAdES signatures — are not this work and are not touched.
 
 ## The Library: reading the files, measured (2026-09-20)
 
@@ -574,7 +1150,7 @@ reduced transparency and reduced motion honoured.
 | EmbedPDF | Themed with Warraq's tokens by reference. Its duplicated sidebar, zoom and search buttons and its floating page field (except on a phone) are gone. The rest of its bar is the markup toolbar, shown from Warraq's toolbar |
 | macOS app | The title bar is merged into the toolbar, with the traffic lights in it. The toolbar drags the window and a double click zooms it. The system menu bar is built from the page's own menu model, in the interface language; its checks follow EmbedPDF's own state, it is sent again after every item chosen there, its Undo and Redo reach the typing in whatever field has the focus, and About opens the page's own sheet. A shortcut the page handles never runs its menu item too |
 | Narrow windows | On a tablet the toolbar condenses. On a phone the inspector is a sheet, the sidebar floats over the page, and nothing scrolls sideways. On a touch screen (`pointer: coarse`) the controls, rows, toolbar and menu bar grow to 44-point targets; the look is the same |
-| App icon | New original artwork (`scripts/icon/make_icon.py`): a calligraphic و on a sheet of paper. Desktop and extension icons are regenerated from it |
+| App icon | The owner's own brand from 2026-09-30: the ZOOD mark (`scripts/icon/make_zood_icon.py`), a slab Z folded like a leaflet, in gold on ink. Original artwork. The desktop, web and extension icons are written from it by `scripts/icon/make_zood_icons.sh`, and the Tauri bundle's .icns/.ico by `pnpm --filter @warraq/desktop icons` |
 
 ## The home screen and the shell's chrome (2026-09-25)
 
@@ -615,6 +1191,441 @@ only the code name, left in the repository, crate and package names, and the
 Mac bundle identifier `app.warraq.desktop` (kept so macOS keeps trusting
 installs). The app icon still shows a calligraphic waw, the first letter of
 the earlier name.
+
+## The iOS app, part B: view, annotate, sign, organize, export, protect (2026-09-21)
+
+Built on the foundation in `apps/ios` (SwiftUI, PDFKit, the core as an XCFramework),
+for iPhone and iPad, in Arabic and English. Everything below ran **on the simulator
+only** (iPhone 17 and iPad Pro 13-inch (M5), iOS 27): this Mac has no signing identity.
+
+**What works, as a person would use it.**
+* **View** — PDFKit draws the pages with its own pinch and scroll; continuous or one
+  page at a time (swiped with the platform's physics, no curl); pages ordered
+  right-to-left for an Arabic document; thumbnails beside the pages on iPad and under
+  them on iPhone; the outline as a tree (the core's `outline.list`, so Arabic titles
+  read right); Go to page, typed in Western, Arabic-Indic or Persian digits; night mode
+  (a white layer composited by difference over each page: paper black, ink white);
+  reader mode (the core's text of every page reflowed, right-to-left, selectable, at
+  the person's text size — what a scan's invisible layer reads as); the find bar asks
+  the core's `view.search` and PDFKit highlights the glyphs in each hit's box, with
+  next/previous and a list of the hits in context. ⌘F, ⌘G/⇧⌘G, ⌘←/→, ⌥⌘T/N/R/P, ⇧⌘E,
+  ⇧⌘L and ⌘S with a keyboard, a Document menu in the menu bar on iPad, and a document
+  dragged out of the Library's grid and dropped at the screen's edge opens in a new
+  window (iPad).
+* **Annotate** — PDFKit adds the annotation; the core keeps only what changed as an
+  incremental update (`file.rebase`), so the original bytes stay untouched until Save
+  and each mark is a step of undo. Highlight, underline and strike-through by dragging
+  over the words (the system's selection shows the words as the finger moves) or by
+  tapping a word, or from the selection's own edit menu; ink through PencilKit — the
+  system's tool picker, the Pencil's double-tap, pressure and tilt on the canvas — with
+  each stroke an ink annotation of its colour and width; notes; rectangles, ellipses
+  and arrows dragged out with a live preview; text boxes whose Arabic the core redraws
+  shaped, in the bundled Amiri, with a ToUnicode that reads back
+  (`forms.fix_appearances`); stamps in Arabic and English (معتمد/APPROVED, مسودة/DRAFT,
+  سري, نهائي, …) written by the core as page marks (`marks.add`) in front of the
+  content, so they read back as text; a list of every mark to go to or delete; undo and
+  redo in the bar and through the system's gestures; a haptic on every commit.
+* **Sign** — a signature drawn once with a finger or the Pencil, kept in the app's
+  container encrypted with AES-GCM under a key that lives in the Keychain (this device
+  only, when unlocked); placed by dragging it over the page and sized by pinching, then
+  written into the page by the core (`images.add`, an incremental update, upright).
+* **Organize** — the pages as a grid: drag a page (it lifts) and drop it before another;
+  rotate, delete, insert a blank page, another PDF's pages (asking for its password
+  when it has one), pictures from the photo library (the core makes a PDF of them
+  first, `create.images`); extract chosen pages or split every N pages into files to
+  share or keep in My documents; merge (another document's pages appended); crop by
+  dragging the four edges, this page or all. Every change is a `pages.*` op.
+* **Export and share** — PDF, Word, a PNG of each page at 150 dpi, text, a compressed
+  copy (`compress.file`, with the sizes before and after) and PDF/A-2b
+  (`standards.pdfa`, validated, the checks counted), each to the share sheet (Files,
+  AirDrop, Mail, …); Save a copy to Files; print through the system's panel.
+* **Protect** — the password prompt on open (the core and PDFKit unlock together, the
+  wrong password said so); set a password (typed twice) or remove it from the More
+  menu. The format needs a whole rewrite for that, and the core keeps the protection on
+  every edit it appends afterwards; the saved file asks for it again; undo brings the
+  old protection back. *(Part B wrote the protection with PDFKit — RC4, Latin-1
+  passwords. Since 2026-09-30 it is the core's AES-256: see "Protection and signatures
+  on iOS" below.)*
+
+**The owner's design target (2026-09-25, `.tools/briefs/design-target.md`), on these
+screens.** Annotate is the target's iPad picture: a thin dark toolbar over the pages with
+undo and redo, the text tools (a text box, the highlighter, underline, strike-through),
+the pen with its colours as small dots, shapes, a note, crop, stamp and signature; on
+iPad the numbered strip of page thumbnails opens beside the document while marking up;
+and while the pen is in hand a floating palette at the bottom — pen, marker, pencil,
+eraser, three widths and the colour swatches — which every page's canvas follows at
+once (the Pencil's double-tap flips pen and eraser through `UIPencilInteraction`; the
+system's PencilKit picker is not used, so the palette is the same on every page and the
+same in the screenshots). Organize has the target's page menu on a long press: Add Page,
+Delete Page, Extract Pages, Rotate Left, Rotate Right, Replace Page (another PDF's pages
+in its place: an insert and a delete, two steps of undo), Crop, Split PDF, Insert from
+File; a press that moves lifts the page for a drag instead.
+
+**How it is proven.** `apps/ios/PDFEditorTests`: `ViewTests` (page spaces round-trip
+through user space at every rotation; `الفاتوره` typed with haa for taa marbuta finds
+فاتورة with PDFKit selecting the glyphs in the core's boxes; a heading found on every
+page; page numbers in three scripts; the outline read by the core), `AnnotateTests`
+(a highlight rebased onto the original bytes, undone, redone, saved and reopened;
+shapes, an arrow and a note; an Arabic text box whose appearance the core redrew in
+`WarraqAr`; ink strokes as ink annotations; a stamp listed and read back as text by
+`marks.list`/`marks.text`; the signature the page's one picture in `images.list`; a
+mark removed), `SignatureStoreTests` (round trip, nothing readable on disk, another
+key cannot read it), `OrganizeTests` (the reorder arithmetic; move, rotate, insert
+blank, delete, crop and the "never every page" refusal through the core; the moved
+page read first by the core after save and reopen; pages from another PDF and from
+pictures; extract and split checked by opening the files in the core), `ExportTests`
+(the zip writer and reader; the Word file's XML holds the Arabic in reading order with
+`w:bidi`; text and pictures; the compressed and PDF/A copies opened and validated by
+the core), `ProtectTests` (set, kept through a core edit, asked for on reopening,
+removed; undo). `apps/ios/PDFEditorUITests`, on both simulators: `ViewUITests`
+(search typed on the Arabic keyboard without tashkeel, the hits walked and listed;
+Go to page by number, by thumbnail and by the outline; single page, night and reader
+modes), `AnnotateUITests` (highlight by drag, a note, an Arabic text box, a stamp and
+a drawn signature placed by hand — saved, reopened, the marks counted in Info and the
+stamp read back as the page's text; finger drawing as ink, then undone),
+`OrganizeUITests` (the last page dragged first, saved, reopened, the core reading it
+first; rotate and delete from the bar), `ExportUITests` (Word, text, compressed,
+PDF/A and pictures made through the sheet and read back from disk — the Arabic in the
+Word XML), `ProtectUITests` (a password set and saved, the reopened file refusing a
+wrong one and opening with the right one, the password removed), and
+`PartBScreenshotTests` (every screen in Arabic and English, light and dark, into
+`docs/design/ios/`: search, thumbnails, night, reader, outline, goto, markup, stamps,
+signature, marks, pages, crop, export, protect).
+
+**What the last runs say, device by device** (`~/Developer/warraq/.tools/one-at-a-time.sh
+scripts/ios/build.sh --iphone` / `--ipad`, logs in `apps/ios/.build/logs/`; the Mac is
+shared with the other agents, and a loaded simulator is the difference between most of
+these numbers).
+* **iPhone 17** — unit **37 of 37**; interface **13 of 14**. The one failure is
+  `AnnotateUITests.testHighlightNoteStampAndSignatureSurviveSaveAndReopen`, which asks
+  for the signature sheet immediately after the stamp sheet has closed; under load the
+  second sheet does not open in the seconds the test waits. Every part of that flow
+  passes on its own elsewhere (the stamp in `AnnotateTests`, the signature in
+  `SignatureStoreTests` and in the screenshot run, which photographs the sheet).
+* **iPad Pro 13-inch (M5)** — unit **52 of 52** (part B's 37 and the scanner's);
+  interface **14 of 18** in the last run, 15 and 16 of 18 in the two before it. What
+  fails moves from run to run while the Mac is busy — the last run lost the two
+  annotate tests, the screenshot walk and Protect (whose document never finished
+  opening in the 40 s the test waits); the run before lost only the two that walk the
+  stamp-then-signature flow. Passing every time: `ViewUITests` (4), `OrganizeUITests`
+  (2), `ExportUITests`, `LaunchTests` (3) and the scanner's `ScanTests` (4).
+  What did *not* move, and was found by driving the app by hand on the simulator, was a
+  real defect, now fixed: **the markup bar's Done stood over the last two tools**
+  (Stamp and Signature), so a tap meant for them ended the markup instead — the gap
+  kept clear under the button was narrower than the English word needs. Done now
+  stands beside the tools, and the tools scroll in the space that is left.
+* Two more defects the iPad found and that are fixed here: **Go to page** floated its
+  number pad over its own buttons (it is a form sheet on iPad now), and **a hit in the
+  find bar's list of matches** could only be tapped where its text was drawn (the whole
+  row takes the tap now). The Library's **Open… and Settings** moved beside Scan over
+  the documents column, because the sidebar that held them is collapsed while a
+  document is open.
+* The scanner's own `ScanTests` (from part C, merged) pass on the iPad: 4 of 4.
+
+**Limits, stated plainly.**
+* *Word export is text only*, as on the web: paragraphs in reading order, never the
+  layout. The core has no Word reader (the web's is TypeScript), so the round-trip is
+  checked by reading the `.docx`'s XML (stored, uncompressed entries — which every
+  Word opens) and finding the Arabic the core read from the PDF.
+* *Stamps are page marks, not annotations*: they are part of the page's content
+  (searchable, printed by every viewer) and are removed through the marks list only as
+  a whole `marks.remove` would — the iOS marks list deletes PDFKit annotations; a stamp
+  is undone with Undo or removed on the desktop/web Page marks tool.
+* *Ink keeps one width per stroke*: PencilKit's pressure shows on the canvas; a PDF ink
+  annotation has one border width, so the committed stroke takes the stroke's width.
+* *Passwords were Latin-1, and the protection was RC4* — **both fixed on 2026-09-30**;
+  see "Protection and signatures on iOS" below. PDFKit's RC4 handler took
+  PDFDocEncoding passwords only and wrote **no protection at all** for any other (an
+  Arabic password came back as an unprotected file in the first run). Protection is now
+  the core's AES-256 and the password is UTF-8.
+* *Protection is a whole rewrite*: setting, changing or removing a password cannot be an
+  incremental update (the encryption covers every string and stream), so those edits
+  replace the bytes in memory; everything the core appends after them is incremental
+  and keeps the protection, and the file on disk is untouched until Save.
+* *Text selection in PDFKit is PDFKit's*: for Arabic files PDFKit reads in visual order
+  in places; Copy from the page view is its reading, while search, reader mode,
+  VoiceOver's page text and every export are the core's.
+* *Night mode is SwiftUI's inversion* (`colorInvert` with the hues turned back, the
+  system's smart-invert idea): a layer compositing filter is ignored on iOS — the first
+  run's screenshot showed a white page — so the pages are inverted as a whole.
+* *Rotated pages*: the overlays convert through PDFKit's own `convert(_:to:)`, and the
+  page-space conversions are unit-tested at every rotation, but the corpus files used
+  through the interface are upright; a page with `/Rotate` was not exercised on screen.
+* *Multiple windows*: the drag-out is `.draggable(DocumentReference)` on the Library's
+  cells, which iPadOS turns into a new window when dropped at the edge; XCUITest
+  cannot perform that system gesture, so it was not run — "Open in New Window" from
+  the cell's menu takes the same path (a `WindowGroup(for: DocumentReference.self)`).
+* *A page's menu and its drag share the long press*: held still, the menu; moved, the
+  drag (the UI test presses for under half a second before moving).
+* *The core's page text leaves page marks out* (`extract_text` is the page's own text; the
+  search reads everything), so a stamp is read back through the search, not the page's
+  VoiceOver value.
+* *Print* opens the system's panel; the simulator has no printer.
+* *Not every interface test is green on the iPad*: the counts above are honest, and
+  the failures are timing on a machine shared with several other agents' builds — a
+  sheet asked for before the last one has gone, a document that had not finished
+  opening within the test's wait. They are the first thing to re-run on a quiet
+  machine; nothing in them points at behaviour a person would meet, and the three
+  defects the iPad did show are fixed above.
+* Everything ran on the simulator only; no device, no Face ID, no real share targets.
+
+## Protection and signatures on iOS (2026-09-30)
+
+Two things the owner asked for after the first TestFlight build — encryption, and
+signatures, "which is very important". Both now go through the shared Rust core, so
+what the phone writes the desktop reads and the other way round. Everything below ran
+on the simulator only (iPhone 17 and iPad Pro 13-inch (M5)); this Mac still has no
+signing identity.
+
+### The core learned to write protection
+
+The core could *read* every revision of the standard security handler and keep a file's
+protection on what it appended, but it could write none — so every host protected
+documents with whatever engine it had: PDFium on the desktop and web, PDFKit on iOS.
+PDFKit writes **RC4 with a Latin-1 password**: weak, and unable to carry an Arabic password
+(the bytes outside Latin-1 are dropped), so iOS refused Arabic passwords outright. PDFium
+does not have that fault: EmbedPDF's `EPDF_SetEncryption`, behind both the desktop/web
+Protect dialog and the batch step, writes **revision 6, AES-256** (`/V 5`, `/CFM /AESV3`)
+with the password as UTF-8 — checked on 2026-09-30 by encrypting a file with an Arabic
+password through it and opening it with libqpdf (pikepdf): the exact password opens it,
+one letter changed does not. (An earlier line here said PDFium wrote RC4; it was wrong.)
+
+`warraq_pdf::crypt::encrypt_document` now writes the handler at **revision 6 —
+AES-256-CBC, the password taken as UTF-8** — with algorithms 8, 9 and 10 of ISO 32000-2
+for `/U`, `/UE`, `/O`, `/OE` and `/Perms`. `protect.inspect` / `.set` / `.remove` put it
+behind the tool RPC (`packages/core/API.md`), with the same three permissions the
+desktop's batch step offers. An empty password is refused, and so is one over the 127
+bytes revisions 5 and 6 hold — cutting it would open the file for a string nobody typed.
+`protect.set` checks its own output before answering: the password must be needed and
+must work, or it is an error rather than a document said to be protected that is not.
+No owner password is sent from the interface: the core draws one at random and drops it,
+so nobody can lift the permissions afterwards.
+
+**Proved twice over.** 7 new tests in `warraq-pdf/src/crypt/mod.rs` and 12 in
+`warraq-core/tests/tool_protect.rs` (Arabic password in and out, wrong passwords
+refused, the pages' bytes unchanged through the round trip, object streams, permissions
+written and read back, a password changed, rubbish in without a panic). And because a
+round trip through our own reader only proves we are self-consistent,
+`tests/tools/check_protection.py` asks **libqpdf** (through pikepdf 9.11) what it reads:
+it reported `R6 /V 5`, `EncryptionMethod.aesv3` for streams and strings, a 256-bit key,
+`P = -1340`, the exact permissions that were set (print only, accessibility always), 3
+pages decrypted — and refused the wrong passwords. The Arabic password `كلمة السر ١٢٣`
+opened it in libqpdf as typed.
+
+### On iOS
+
+**Protect** now calls those ops. The sheet names what protects the document today and
+says when it is an old, weak protection another program wrote; sets or changes the
+password; offers printing, copying and changing as permissions, with a footer that says
+plainly that a reader may ignore them and that reading aloud by a screen reader is
+always allowed; and removes the password. Arabic passwords work, as typed.
+
+**Signatures** is a new screen in the More menu, the core's `signatures.*` throughout —
+the same code the desktop runs, including the trust policy, which is called and not
+reimplemented.
+
+* *Checking.* Every signature's status in the words the desktop uses: a signature that
+  is cryptographically intact but whose signer nobody the person trusts vouches for
+  reads **"Intact — the signer's identity is not verified"**, never "valid". One
+  sentence saying why; who signed (the certificate's name) as against the name the
+  signature claims for itself, marked as the unverified claim it is; what kind of
+  signature and what a certification allows; the time — marked **"by the signer's own
+  clock"** unless an authority trusted for timestamps stamped it; what changed after
+  signing and whether this signature permits it; and, inside Details, each check worded
+  so a failed one is never read as a passed one, plus the certificate chain.
+* *Trust.* The certificates the person trusts live in the **Keychain**, this device
+  only. A root can be trusted from an untrusted signature (the button names what would
+  be trusted) or imported from a `.cer`, `.pem` or `.p7b` through `signatures.certificates`.
+  With nothing trusted the screen says so: "None yet, so no signer's identity is verified."
+* *Signing.* A PKCS#12 file imported through Files goes **into the Keychain, not into
+  the app's Documents folder** — which the Files app shows, so a `.p12` written there
+  would be a private key anyone holding the phone could copy out. Its password is never
+  kept: it is typed to open the certificate and to sign. Approval or certification
+  (DocMDP 1–3), field locking, RSA-PSS for an RSA key, visible in a chosen corner of a
+  chosen page — the bottom of the Arabic side by default — or invisible.
+
+**Left out on purpose, and no control is shown for any of it.**
+* *Smart cards.* iOS has no PKCS#11 and no way to load a vendor's module, so the
+  desktop's card path cannot exist here.
+* *Trusted timestamps (PAdES B-T) and long-term validation (B-LT/B-LTA).* Both mean
+  sending something to a server — a digest to a timestamp authority, a certificate's
+  identity to an OCSP responder — and nothing is to leave the device unasked. They stay
+  the desktop's. The signing screen says the signature carries this device's own clock,
+  and the checking screen says that nothing is fetched while checking: revocation is
+  only what the file itself carries. A signature made here therefore reads as PAdES B-B.
+* *Dragging the signature's rectangle.* The desktop lets a person drag it on a preview;
+  here it is four corners. That works end to end, which a half-built drag would not.
+
+### What the runs said
+
+**Rust** (`cargo test`, this worktree): `warraq-pdf` **240 passed, 0 failed** (3 ignored,
+one of them the new `writes_a_protected_file_for_an_outside_reader`, which is meant to be
+run by hand with `WARRAQ_PROTECT_OUT`); `warraq-sign` **44 passed, 0 failed**;
+`warraq-core` **199 passed, 0 failed** across its 14 binaries, including the 12 of
+`tool_protect.rs`. The libqpdf cross-check (`tests/tools/check_protection.py`) printed
+`agreed` and exited 0.
+
+**iOS**, both simulators, through the machine-wide queue
+(`apps/ios/.build/secure-tests.sh`, which builds and then runs only the classes this
+work added or changed; the whole scheme's run never won the queue while several agents
+were cycling it):
+* **iPhone 17** — unit **28 of 28** (`ProtectTests` 8, `SigningTests` 15,
+  `SigningIdentitiesTests` 5); interface **3 of 3** (`ProtectUITests`, and the two of
+  `SigningUITests`).
+* **iPad Pro 13-inch (M5)** — unit **28 of 28**; interface **3 of 3**.
+
+One real failure was found and fixed on the way: the Protect sheet, which now carries
+the permissions as well as the password, put its button under the keyboard at the
+medium detent, where neither the test nor a person could reach it. It opens large.
+
+All of these counts were seen again after `main` was merged in: Rust **483 of 483**
+(240 + 199 + 44), `cargo clippy --all-targets -D warnings` and `cargo fmt --check`
+clean, and iPhone 17 **28 of 28** unit and **3 of 3** interface.
+
+## The iOS app — Edit PDF: text, pictures, links, page marks (2026-09-30)
+
+The owner's TestFlight report's headline gap was "it does not have any PDF editor".
+`apps/ios/PDFEditor/Edit/` is that editor, in SwiftUI over PDFKit's pages, driven by
+the core the desktop already uses — so these are the same tested operations with an
+iPhone and iPad front end, not a second implementation. Everything below ran **on the
+simulator only** (iPhone 17 and iPad Pro 13-inch (M5)): this Mac has no signing identity.
+
+**How it opens.** *Edit* in the toolbar (⌥⌘E) puts a dark bar over the pages, the same
+chrome as markup — undo, redo, which of the page's things is being edited (Text,
+Pictures, Links), that kind's own controls, Page marks, and Done. Only one of markup and
+the editor is ever in hand; starting either puts the other away. On iPad, and on an
+iPhone with room, an inspector sits beside the pages listing what this page holds —
+each paragraph with its text, each picture with its pixels, each link with where it
+goes — and what can be done to the one that is picked.
+
+**What works, as a person would use it.**
+* **Edit text.** The core reads the page's paragraphs (`paragraphs`); a tap on the page,
+  or a row of the inspector, opens the smallest one under the finger in a field laid
+  over it, carrying that paragraph's own direction, alignment and size. Apply replaces it
+  through `replaceParagraph`: reflowed, shaped by warraq-text, in one of the three
+  bundled faces (Amiri, Cairo, Inter), written through `show.rs::show_line` with an
+  ActualText that reads back. A paragraph closed unchanged writes nothing. When the core
+  says the new text had to be shrunk, or ran past the page, the app says so rather than
+  leaving it to be discovered.
+* **A line of text where the finger lands.** *Add a line of text*, then a tap: the field
+  opens at that point, and the line is drawn from it — leftwards in Arabic, rightwards in
+  Latin, as the core draws it with the same coordinate — in the chosen face, size and
+  colour.
+* **Pictures.** *Add a picture* takes one from Files (PNG and JPEG go to the core as they
+  are; anything else it does not read, a HEIC photo say, is drawn once into a PNG
+  upright by its own orientation) and a drag on the page puts it there, keeping its
+  proportions. A tap picks a picture; dragging it moves it, a handle resizes it, Crop
+  turns the handles into trimming ones, Turn takes it a quarter clockwise, Replace puts
+  other bytes in its place fitted inside what showed, Delete takes it off. A picture the
+  core will not edit — one whose bytes draw it elsewhere too — is listed as such and not
+  offered. All of it is `images.list/add/transform/replace/delete`.
+* **Links.** A drag on the page draws a link's box and asks where it goes: a web or
+  e-mail address, or a page of this document. A tap picks one; dragging moves it, a
+  handle resizes it, *Where it goes* re-points it, Remove takes it off
+  (`links.add/update/remove/list`). The core refuses an address that is not http, https
+  or mailto, and one with bidi controls or other invisible characters; the app shows the
+  refusal instead of writing it.
+* **Page marks.** *Page marks…* (in the editor's bar, and in the document's More menu)
+  writes watermarks, headers, footers, page numbers and Bates numbers through
+  `marks.add`, with the core's own drawing of the current page above the form as the
+  preview (`marks.preview`) — so what is chosen is what will be written. Headers and
+  footers have the three slots with the `{page}`, `{pages}`, `{date}` and `{file}`
+  tokens, in a Gregorian or Hijri (Umm al-Qura) date and Western or Arabic-Indic digits;
+  page numbers have the five formats (`1`, `1 / 9`, `Page 1 of 9`, `صفحة ١ من ٩`, roman),
+  a start number and "not on the first page"; Bates numbers a prefix, suffix, start and
+  padding. Pages are typed as `1-3, 5` in either script, or left empty for every page.
+  The marks already on the file are listed under the form with what they say and where,
+  and Remove takes one off leaving the page as it was.
+* **Undo and the original bytes.** Every change is one call to the core on the open
+  document, which answers an incremental update: the original bytes stay the literal
+  prefix of the file until Save, and each change is a step of undo like every other
+  tool's, in the bar and through the system's own gestures.
+
+**The core's one addition.** Everything above was already in the core except a colour for
+a line added at a point. `warraq_pdf::ops::append_line_in_color` sets the fill inside the
+line's own `q`/`Q` (so nothing drawn after it is repainted), `Document::add_text_in_color`
+passes it through, and a new `warraq_add_text_colored` carries a `#rrggbb` across the C
+ABI. All three are additive: `append_line` and `add_text` keep their signatures, and the
+WASM and desktop hosts are untouched.
+
+**iPad.** An inspector beside the pages; the arrow keys move the picked picture or link
+a point at a time (ten with Shift); a pointer — trackpad, mouse, or the Pencil hovering —
+lights the paragraph, picture or link a tap would open; ⌥⌘E opens the editor, ⌘Return
+applies, Escape cancels. The Pencil draws in markup, not here: nothing in editing is
+better done with a pen than a finger, so the editor gives it no job of its own.
+
+**Accessibility.** While the pages are only read, the page view is one element whose value
+is the core's text in logical order. While the editor is open it is a container, and the
+field being typed in is listed first (`DocumentPDFView.editField`) — PDFKit's page lists
+its own text to accessibility rather than its subviews, so without that VoiceOver would
+never reach the field.
+
+**How it is proven** (run 2026-09-30 through `apps/ios/.build/edit-tests.sh`, a
+one-simulator subset of `scripts/ios/build.sh`, under the machine-wide queue):
+* XCTest, **39 tests, 0 failures on iPhone 17 and 39, 0 on iPad Pro 13-inch (M5)** —
+  `EditGeometryTests` (14: the desktop's matrix arithmetic, the same cases), `EditTests`
+  (15: every core call on corpus files — a paragraph of Arabic with tashkeel replaced,
+  **saved, the file reopened and the core's reading equal to what was typed, in logical
+  order**, with the original bytes still the file's prefix; a line added in each of the
+  three faces and read back; undo; pictures placed, moved, cropped, replaced, deleted and
+  nudged; links added, moved, re-pointed, removed; refused addresses), `MarkSpecTests`
+  (10: page ranges in either script, digits, Bates padding, the spec's shape; an Arabic
+  header and `صفحة ١ من ٣` written, listed, kept out of the page's own text, read by
+  `marks.text`, removed; a watermark on one page only and Bates numbers on every page;
+  the preview). Core: `cargo test -p warraq-core -p warraq-pdf --lib` 121 + 232 passed,
+  clippy clean, including the new `added_text_takes_the_colour_it_was_given…`.
+* XCUITest `EditUITests`, last run on each device:
+  * **iPhone 17: 4 passed, 0 failed** (the screenshot test skipped without a directory) —
+    a paragraph tapped on the page, replaced with Arabic, Apply, the page's text read by
+    the core, Save, the app relaunched and the Arabic read off the file; a red Arabic line
+    added where the finger landed; a link drawn, given an address, removed; an Arabic
+    header added in Page marks, listed, removed.
+  * **iPad Pro 13-inch (M5): 2 passed, 2 failed** in the editor agent's last run, at a
+    load of ~110. What was behind the two failures, found afterwards (2026-09-30/10-01) and
+    fixed, with what proves each:
+    - **The field did not open, as often as not** (the added-line test and, in some runs,
+      the paragraph). PDFKit asks for a page's overlay once, when it makes the page's view,
+      and `PDFKitView` handed the view its document *before* its overlay provider: pages
+      made in between had no overlay — no editor and no markup on them. A trace showed no
+      overlay requested at all in a failing run; after the swap, six to nine in each of
+      five runs, and the field opened in all five.
+    - **"Replaced with nothing" was not what happened.** The test's ⌘A never reached the
+      field (traced: its selection did not move), so the typing was *added* after the old
+      text; and the test's check that the field was open looked for the bar's Apply, which
+      shows whether or not a field was put on the page.
+    - **A real fault in the core, found by the stricter test:** `erase_area` missed two
+      glyphs of the replaced heading (runs Chrome lowered by the font's positioning, below
+      the box by more than the fifth of a size it allowed). They stayed on the page and read
+      back inside the new text. Half a size below now; `edit_readback.rs`
+      `a_replaced_paragraph_leaves_nothing_of_the_old_one` reads the whole page back in
+      Amiri, Cairo and Inter. This was in the shared core, so the desktop and web had it too.
+    - **After an edit the view moved half a page** on a tall iPad (the current page's index
+      paired with the other page's destination point). Fixed in `PDFKitView`.
+    - **The paragraph test now passes on both** (iPhone 17 and iPad Pro 13-inch (M5)): the
+      field itself must be open, it is emptied one scalar at a time and must then hold
+      exactly the typed Arabic, the inspector's row (the core's reading) must be exactly the
+      new text with nothing of the old, and the saved file reopened must find it by search.
+  * The simulator runner also failed to start several times ("Timed out while loading
+    Accessibility") under that load; those runs are not counted.
+
+**Limits, stated plainly.**
+* The editor reads and acts on **the page on screen**. In continuous scroll the pages
+  above and below show nothing to edit until one of them is the current page.
+* **Colour applies to a line that is added, not to a paragraph that is replaced.** A
+  replaced paragraph keeps the colour the page draws it in; the core's
+  `replace_paragraph` takes no colour, as on the desktop.
+* The **size** in the bar is the new line's. A replaced paragraph keeps its own size,
+  which the core shrinks only if the new text would not otherwise fit.
+* A **picture watermark** is not offered on the phone: `marks.add` takes one, but the
+  sheet has no picture control yet, so there is none to press. Text watermarks are there.
+* **Changing a mark that is already on the file** means removing it and adding it again;
+  the sheet does not read an existing mark back into its form (the desktop's panel does).
+* The field on the page is a `UITextView` inside PDFKit's page overlay, so it scrolls and
+  zooms with the paper. When it opens, PDFKit is asked to bring it into view, and
+  SwiftUI's own keyboard avoidance gives the pages the space the keyboard leaves — but on
+  an iPhone, on a paragraph taller than that space, the last lines are still behind the
+  keyboard and have to be scrolled to inside the field.
+* Everything ran on the simulator. No device, no TestFlight from here.
 
 ## Next (in order)
 1. **Run the Windows and Linux builds on those systems**: print by pages, the drop targets and the NSIS installer have been built for them in code only — nothing of them has run here.
@@ -1034,6 +2045,8 @@ was reproduced first by a test that failed, and each test passes now.
    Arabic strings read word for word from the English.
 
 ## Known gaps, stated plainly
+* **The iOS scanner's camera has never been run.** The scanner now opens the document camera as it appears, asks for it when it has never been asked, and says the true reason with a way to Settings when the answer is no — but `VNDocumentCameraViewController` cannot run on the simulator and this Mac has no signing identity, so nobody has seen a single frame from a real camera. Each of the five answers is walked through the interface with a Debug-only `-warraqCamera` and a stand-in in VisionKit's place (`PDFEditorUITests/ScanCameraTests`), which proves the scanner's side of it and nothing about VisionKit's. The one thing that would settle it is a run on a device.
+* **A page tilted on one axis alone still comes out about 7 % from its shape.** The scanner recovers a page's true proportions from the two vanishing points its corners make, which is exact when both pairs of edges converge — any photograph taken by hand. Tilted about one axis only, the two vanishing points nearly coincide, the lens cannot be recovered from them, and an ordinary phone's is assumed (1.1 × the picture's longer side): the answer is then no better than Core Image's own sizing. Reading the real focal length out of a photograph's EXIF would close it for pictures from Photos and Files; a picture from the document camera carries none.
 * **The Library has a core and no face yet.** `library.open/add/forget/search/document/tag/rules/stats/save/close` all work and are tested, the readers turn every kind of file into text, and the desktop host can walk a folder and keep an index — but nothing in the interface calls any of it: the panel is the one part still in flight. Until it lands, the Library cannot be used by a person.
 * **The Library's index is capped, and says so.** 200 000 documents; 2 000 000 characters and 400 000 words of any one document; 48 000 000 characters in the whole index — about 150 MB held, and something over five thousand documents the size of the Arabic corpus's (measured above). Past a cap a file is skipped with `indexFull`, or its text is cut with `truncated`; nothing fails silently, and nothing grows without end. A person with a bigger library than that needs a second index or a cap raised in one constant.
 * **The Library ranks with one rule, and it is a judgement.** BM25 with a phrase bonus (`packages/core/API.md`): a phrase beats scattered words, more matches beat fewer, a short document beats a long one on the same count, and a document holding the whole query beats one holding half of it. It was tested against those four statements, not against people searching their own files — nobody has used it yet.

@@ -229,9 +229,9 @@ final class ReadAloudController: NSObject {
     private func highlightCurrent() {
         clearHighlight()
         guard let sentence = currentSentence, let pdfPage = model?.pdf?.page(at: page) else { return }
-        let space = PageSpace(page: pdfPage)
+        let frame = PageSpace.Frame(page: pdfPage)
         for rect in sentence.rects {
-            let bounds = space.userRect(fromDisplay: rect.insetBy(dx: -1, dy: -1))
+            let bounds = PageSpace.userRect(fromStored: rect.insetBy(dx: -1, dy: -1), in: frame)
             let annotation = PDFAnnotation(bounds: bounds, forType: .highlight, withProperties: nil)
             annotation.color = UIColor.systemYellow.withAlphaComponent(0.45)
             annotation.quadrilateralPoints = [
@@ -247,7 +247,7 @@ final class ReadAloudController: NSObject {
         pdfView?.setNeedsDisplay()
         // Keep the sentence in view.
         if let pdfView, let first = sentence.rects.first {
-            let target = space.userRect(fromDisplay: first)
+            let target = PageSpace.userRect(fromStored: first, in: frame)
             let onScreen = pdfView.convert(target, from: pdfPage)
             if !pdfView.bounds.insetBy(dx: 0, dy: 40).contains(onScreen) {
                 pdfView.go(to: target.insetBy(dx: -20, dy: -80), on: pdfPage)

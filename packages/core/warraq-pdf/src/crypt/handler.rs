@@ -8,7 +8,9 @@
 //! * algorithm 2.B — the hardened hash of revision 6 (SHA-256/384/512),
 //! * algorithms 4 and 5 — checking a user password for R2 and R3/R4,
 //! * algorithm 7   — checking an owner password for R2–R4,
-//! * algorithm 1   — the per-object key of `/V` 1, 2 and 4.
+//! * algorithm 1   — the per-object key of `/V` 1, 2 and 4,
+//! * algorithms 8, 9 and 10 — writing `/U`, `/UE`, `/O`, `/OE` and `/Perms`
+//!   for a new revision-6 (AES-256) `/Encrypt` dictionary.
 
 use std::collections::BTreeMap;
 
@@ -423,6 +425,124 @@ impl Handler {
         }
     }
 
+    // ----- describing and writing protection --------------------------------
+
+    /// How this handler protects the file, for the interface to report.
+    pub(crate) fn description(&self) -> super::Description {
+        super::Description {
+            method: match (self.stream_method, self.key_len) {
+                (Method::Aes256, _) => "aes-256",
+                (Method::Aes128, _) => "aes-128",
+                (Method::Rc4, 5) => "rc4-40",
+                (Method::Rc4, _) => "rc4-128",
+                (Method::Identity, _) => "none",
+            },
+            revision: self.revision,
+            key_bits: self.key_len * 8,
+            permissions: super::Permissions::from_bits(self.permissions),
+            encrypt_metadata: self.encrypt_metadata,
+        }
+    }
+
+    /// A fresh revision-6 handler: a random 32-byte file key, `/U` and `/UE`
+    /// from the open password (algorithm 8), `/O` and `/OE` from the owner
+    /// password (algorithm 9) and `/Perms` from the permissions (algorithm 10).
+    ///
+    /// Answers the handler, the file key and the `/Encrypt` dictionary to
+    /// write. Nothing here keeps the passwords: they are hashed and dropped.
+    pub(crate) fn new_aes256(
+        open_password: &str,
+        owner_password: &str,
+        permissions: i32,
+        encrypt_metadata: bool,
+    ) -> Result<(Self, Vec<u8>, Dictionary), CryptError> {
+        let mut file_key = [0u8; 32];
+        random(&mut file_key)?;
+
+        // A handler with the shape of what is being written, so that `hash_2b`
+        // — algorithm 2.B, which reading and writing share — runs with
+        // revision 6's rules. Its /U…/OE are filled in below.
+        let mut handler = Self {
+            version: 5,
+            revision: 6,
+            key_len: 32,
+            owner_value: Vec::new(),
+            user_value: Vec::new(),
+            owner_encrypted: Vec::new(),
+            user_encrypted: Vec::new(),
+            permissions,
+            encrypt_metadata,
+            // Revision 6 does not mix the file /ID into the key at all.
+            id0: Vec::new(),
+            stream_method: Method::Aes256,
+            string_method: Method::Aes256,
+            filters: [
+                (b"StdCF".to_vec(), Method::Aes256),
+                (b"Identity".to_vec(), Method::Identity),
+            ]
+            .into_iter()
+            .collect(),
+        };
+
+        let open = utf8_password(open_password);
+        let owner = utf8_password(owner_password);
+
+        // Algorithm 8: /U is the validation hash over an 8-byte validation
+        // salt, then that salt and the 8-byte key salt; /UE wraps the file key
+        // under the hash over the key salt.
+        let mut salts = [0u8; 16];
+        random(&mut salts)?;
+        let mut user_value = handler.hash_2b(&open, &salts[..8], &[]);
+        user_value.extend_from_slice(&salts);
+        let user_encrypted = cipher::aes256_cbc_encrypt_no_padding(
+            &key32(&handler.hash_2b(&open, &salts[8..], &[]))?,
+            &file_key,
+        );
+
+        // Algorithm 9: the same, with the 48 bytes of /U mixed into the hash,
+        // so an owner password cannot be checked without the file's own /U.
+        let mut salts = [0u8; 16];
+        random(&mut salts)?;
+        let mut owner_value = handler.hash_2b(&owner, &salts[..8], &user_value);
+        owner_value.extend_from_slice(&salts);
+        let owner_encrypted = cipher::aes256_cbc_encrypt_no_padding(
+            &key32(&handler.hash_2b(&owner, &salts[8..], &user_value))?,
+            &file_key,
+        );
+
+        handler.user_value = user_value.clone();
+        handler.owner_value = owner_value.clone();
+        handler.user_encrypted = user_encrypted.clone();
+        handler.owner_encrypted = owner_encrypted.clone();
+
+        let perms = encode_perms(&file_key, permissions, encrypt_metadata)?;
+
+        let mut std_cf = Dictionary::new();
+        std_cf.set("CFM", Object::Name(b"AESV3".to_vec()));
+        std_cf.set("AuthEvent", Object::Name(b"DocOpen".to_vec()));
+        std_cf.set("Length", Object::Integer(32));
+        let mut cf = Dictionary::new();
+        cf.set("StdCF", Object::Dictionary(std_cf));
+
+        let mut dict = Dictionary::new();
+        dict.set("Filter", Object::Name(b"Standard".to_vec()));
+        dict.set("V", Object::Integer(5));
+        dict.set("R", Object::Integer(6));
+        dict.set("Length", Object::Integer(256));
+        dict.set("CF", Object::Dictionary(cf));
+        dict.set("StmF", Object::Name(b"StdCF".to_vec()));
+        dict.set("StrF", Object::Name(b"StdCF".to_vec()));
+        dict.set("U", Object::string_literal(user_value));
+        dict.set("O", Object::string_literal(owner_value));
+        dict.set("UE", Object::string_literal(user_encrypted));
+        dict.set("OE", Object::string_literal(owner_encrypted));
+        dict.set("Perms", Object::string_literal(perms));
+        dict.set("P", Object::Integer(i64::from(permissions)));
+        dict.set("EncryptMetadata", Object::Boolean(encrypt_metadata));
+
+        Ok((handler, file_key.to_vec(), dict))
+    }
+
     /// Decrypt one string or stream that belongs to object `id`.
     pub(crate) fn decrypt(
         &self,
@@ -515,9 +635,62 @@ fn utf8_password(password: &str) -> Vec<u8> {
     bytes[..end].to_vec()
 }
 
+/// Algorithm 10: the 16-byte `/Perms` value — the permissions, four 0xFF
+/// bytes, whether the metadata is encrypted, the marker "adb" and four random
+/// bytes — encrypted with the file key in AES-256-ECB. A reader that trusts
+/// `/Perms` cannot be lied to about the permissions by an edit of `/P`,
+/// because only the file key can produce it.
+fn encode_perms(
+    file_key: &[u8; 32],
+    permissions: i32,
+    encrypt_metadata: bool,
+) -> Result<Vec<u8>, CryptError> {
+    let mut perms = [0u8; 16];
+    perms[..4].copy_from_slice(&permissions.to_le_bytes());
+    perms[4..8].copy_from_slice(&[0xFF; 4]);
+    perms[8] = if encrypt_metadata { b'T' } else { b'F' };
+    perms[9..12].copy_from_slice(b"adb");
+    random(&mut perms[12..16])?;
+    cipher::aes256_ecb_encrypt_block(file_key, &mut perms);
+    Ok(perms.to_vec())
+}
+
+/// `bytes` as a 32-byte AES key. The hashes of algorithm 2.B are always at
+/// least 32 bytes long, so this never fails in practice; it is a `Result`
+/// rather than a panic because nothing derived from a file may panic.
+fn key32(bytes: &[u8]) -> Result<[u8; 32], CryptError> {
+    bytes
+        .get(..32)
+        .and_then(|k| k.try_into().ok())
+        .ok_or_else(|| CryptError::Unsupported("short intermediate key".into()))
+}
+
+/// Random bytes, or an error: a key we cannot make unpredictable we must not
+/// write.
+fn random(into: &mut [u8]) -> Result<(), CryptError> {
+    getrandom::fill(into)
+        .map_err(|e| CryptError::Unsupported(format!("no source of randomness: {e}")))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Algorithm 10 written and read back: the permissions and the metadata
+    /// flag survive the round trip, and the marker is where the spec puts it.
+    #[test]
+    fn perms_encodes_the_permissions_under_the_file_key() {
+        let key = [0x5Au8; 32];
+        let coded = encode_perms(&key, -3904, false).unwrap();
+        assert_eq!(coded.len(), 16);
+        let mut block: [u8; 16] = coded.try_into().unwrap();
+        cipher::aes256_ecb_decrypt_block(&key, &mut block);
+        assert_eq!(i32::from_le_bytes(block[..4].try_into().unwrap()), -3904);
+        assert_eq!(&block[4..8], &[0xFF; 4]);
+        assert_eq!(block[8], b'F');
+        assert_eq!(&block[9..12], b"adb");
+        assert_eq!(encode_perms(&key, -1, true).unwrap().len(), 16);
+    }
 
     #[test]
     fn padding_follows_algorithm_2_step_a() {

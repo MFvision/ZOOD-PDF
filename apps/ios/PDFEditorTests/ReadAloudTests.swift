@@ -1,4 +1,5 @@
 import AVFoundation
+import PDFKit
 @testable import PDFEditor
 import WarraqCore
 import XCTest
@@ -52,6 +53,7 @@ final class ReadAloudTests: XCTestCase {
         XCTAssertEqual(SpeechLanguage.detect("فاتورة ضريبية مبسطة"), "ar")
         XCTAssertEqual(SpeechLanguage.detect("Invoice no. 42 — فاتورة"), "ar", "a third Arabic is Arabic")
         XCTAssertEqual(SpeechLanguage.detect("This is a plain English sentence."), "en")
+        XCTAssertEqual(SpeechLanguage.detect("دعم فني (Premium Support) | 1,800.00"), "ar", "a sentence that opens in Arabic")
         XCTAssertEqual(SpeechLanguage.detect("12345", hint: "ar"), "ar", "digits alone follow the page")
     }
 
@@ -74,33 +76,139 @@ final class ReadAloudTests: XCTestCase {
         XCTAssertEqual(Array(SpeechVoices.languages(among: installed).prefix(2)), ["ar", "en"])
     }
 
-    func testStepsThroughACorpusPageAndStopsAtTheEnd() async throws {
+    /// Waits for the reader to have its page's sentences.
+    private func settle(_ reader: ReadAloudController) async throws {
+        for _ in 0..<300 where reader.state == .loading {
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertNotEqual(reader.state, .loading)
+    }
+
+    func testStepsThroughACorpusPageHighlightingEachSentenceAndStopsAtTheEnd() async throws {
+        let model = DocumentModel(bytes: try fixture("coretext-sfarabic-mixed-invoice"), name: "invoice")
+        await model.load()
+        let pdf = try XCTUnwrap(model.pdf)
+        let view = PDFView(frame: CGRect(x: 0, y: 0, width: 400, height: 800))
+        view.document = pdf
+        let reader = ReadAloudController()
+        reader.attach(view)
+        reader.start(model, from: 0)
+        try await settle(reader)
+        reader.pause()
+        XCTAssertEqual(reader.state, .paused)
+        XCTAssertEqual(reader.page, 0)
+        XCTAssertEqual(reader.index, 0)
+
+        // The sentences are the core's lines cut as SentenceMap cuts them:
+        // the same lines, read again here, give exactly the same sentences.
+        let core = try XCTUnwrap(model.engine)
+        let lines = try await core.textLines(page: 0)
+        let expected = SentenceMap.sentences(of: lines, hint: "ar")
+        XCTAssertEqual(reader.sentences, expected)
+        XCTAssertEqual(reader.sentences.first?.text, ReadAloudExpectations.invoiceFirstSentence)
+        XCTAssertEqual(reader.sentences.dropFirst().first?.text, ReadAloudExpectations.invoiceSecondSentence)
+        // Each line of the invoice is read on its own (headings, rows and
+        // totals do not wrap), and "ر.س" stays whole.
+        XCTAssertEqual(reader.sentences.map(\.text), ReadAloudExpectations.invoice)
+        XCTAssertEqual(reader.sentences.map(\.language), ["ar", "ar", "ar", "ar", "ar", "ar", "ar", "ar", "ar", "ar", "ar"])
+
+        // The sentence read is highlighted over its own lines, in PDFKit's
+        // space, and nothing else is.
+        func highlighted() -> [CGRect] {
+            (pdf.page(at: 0)?.annotations ?? []).filter { $0.type == "Highlight" }.map(\.bounds)
+        }
+        let frame = PageSpace.Frame(page: try XCTUnwrap(pdf.page(at: 0)))
+        func boxes(of sentence: SpokenSentence) -> [CGRect] {
+            sentence.rects.map { PageSpace.userRect(fromStored: $0.insetBy(dx: -1, dy: -1), in: frame) }
+        }
+        XCTAssertEqual(highlighted(), boxes(of: reader.sentences[0]))
+        reader.next()
+        XCTAssertEqual(reader.index, 1)
+        XCTAssertEqual(highlighted(), boxes(of: reader.sentences[1]))
+        reader.previous()
+        XCTAssertEqual(reader.index, 0)
+        XCTAssertEqual(highlighted(), boxes(of: reader.sentences[0]))
+
+        // Past the last sentence of the last page, reading stops and the
+        // highlight is gone.
+        for _ in 0..<reader.sentences.count { reader.next() }
+        XCTAssertEqual(reader.state, .idle)
+        XCTAssertFalse(reader.isActive)
+        XCTAssertEqual(highlighted(), [])
+        model.close()
+    }
+
+    func testGoesOnToTheNextPageAndBack() async throws {
+        let model = DocumentModel(bytes: try fixture("chrome-notonaskh-justified-3pages"), name: "three")
+        await model.load()
+        XCTAssertEqual(model.pageCount, 3)
+        let reader = ReadAloudController()
+        reader.start(model, from: 0)
+        try await settle(reader)
+        reader.pause()
+        let core = try XCTUnwrap(model.engine)
+        let pageOne = SentenceMap.sentences(of: try await core.textLines(page: 0), hint: "ar")
+        let pageTwo = SentenceMap.sentences(of: try await core.textLines(page: 1), hint: "ar")
+        XCTAssertEqual(reader.sentences, pageOne)
+        let count = reader.sentences.count
+        for _ in 0..<count { reader.next() }
+        for _ in 0..<100 where reader.sentences != pageTwo { try await Task.sleep(for: .milliseconds(100)) }
+        XCTAssertEqual(reader.page, 1, "on to page 2")
+        XCTAssertEqual(reader.index, 0)
+        XCTAssertEqual(reader.sentences, pageTwo)
+        XCTAssertEqual(reader.state, .paused, "a paused reading stays paused on the new page")
+        reader.previous()
+        for _ in 0..<100 where reader.sentences != pageOne { try await Task.sleep(for: .milliseconds(100)) }
+        XCTAssertEqual(reader.page, 0, "back to page 1")
+        XCTAssertEqual(reader.index, count - 1, "at its last sentence")
+        reader.stop()
+        model.close()
+    }
+
+    func testKeepsReadingWithTheScreenLocked() async throws {
+        // The app declares background audio, and reading sets a playback
+        // session for spoken audio: what iOS needs to keep the voice going
+        // with the screen locked.
+        let modes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String]
+        XCTAssertEqual(modes, ["audio"])
         let model = DocumentModel(bytes: try fixture("coretext-sfarabic-mixed-invoice"), name: "invoice")
         await model.load()
         let reader = ReadAloudController()
         reader.start(model, from: 0)
-        // The page's sentences are read from the core.
-        // The sentences arrive from the core off the main thread; poll for them.
-        for _ in 0..<200 where reader.state == .loading {
-            try await Task.sleep(for: .milliseconds(100))
-        }
-        XCTAssertNotEqual(reader.state, .loading)
-        XCTAssertGreaterThan(reader.sentences.count, 3)
-        XCTAssertEqual(reader.index, 0)
-        XCTAssertEqual(reader.page, 0)
-        XCTAssertEqual(reader.sentences.first?.language, "ar")
-        XCTAssertTrue(reader.sentences.contains { $0.text.contains("فاتورة") })
-
-        reader.pause()
-        XCTAssertEqual(reader.state, .paused)
-        reader.next()
-        XCTAssertEqual(reader.index, 1)
-        reader.previous()
-        XCTAssertEqual(reader.index, 0)
-        // Past the last sentence of the last page, reading stops.
-        for _ in 0..<reader.sentences.count { reader.next() }
-        XCTAssertEqual(reader.state, .idle)
-        XCTAssertFalse(reader.isActive)
+        try await settle(reader)
+        let session = AVAudioSession.sharedInstance()
+        XCTAssertEqual(session.category, .playback)
+        XCTAssertEqual(session.mode, .spokenAudio)
+        reader.stop()
         model.close()
     }
+
+    func testTheSpeedIsKept() {
+        let before = SpeechVoices.rate
+        defer { SpeechVoices.rate = before }
+        let reader = ReadAloudController()
+        reader.rate = ReadAloudBar.speeds[3].rate
+        XCTAssertEqual(SpeechVoices.rate, ReadAloudBar.speeds[3].rate)
+        XCTAssertEqual(ReadAloudController().rate, ReadAloudBar.speeds[3].rate)
+        XCTAssertEqual(ReadAloudBar.speeds.map(\.title), ["0.75×", "1×", "1.25×", "1.5×", "2×"])
+    }
+}
+
+/// The invoice's sentences as read aloud (the UI tests hold the same list).
+enum ReadAloudExpectations {
+    static let invoice = [
+        "فاتورة ضريبية مبسطة",
+        "رقم الفاتورة: INV-2026-0042",
+        "التاريخ: ١٦ سبتمبر ٢٠٢٦",
+        "العميل: شركة زود للتقنية",
+        "الوصف | الكمية | السعر | الإجمالي",
+        "اشتراك سنوي في خدمة Warraq Pro | 1 | 1,200.00 | 1,200.00",
+        "دعم فني (Premium Support) | 1,800.00 | 150.00 | 12",
+        "الإجمالي قبل الضريبة: 3,000.00 ر.س",
+        "ضريبة القيمة المضافة (%15): 450.00 ر.س",
+        "الإجمالي المستحق: 3,450.00 ر.س",
+        "شكراً لتعاملكم معنا — Thank you for your business",
+    ]
+    static let invoiceFirstSentence = invoice[0]
+    static let invoiceSecondSentence = invoice[1]
 }

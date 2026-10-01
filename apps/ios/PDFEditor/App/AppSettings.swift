@@ -76,20 +76,37 @@ enum AppAppearance: String, CaseIterable, Identifiable {
 enum SettingsKey {
     static let language = "language"
     static let appearance = "appearance"
+    /// The chrome's look — the system's, Liquid Glass, ZOOD's — from
+    /// `AppTheme`. A UI test passes `-theme glass`.
+    static let theme = "theme"
+    // The scanner's own keys (`scanColorMode`, `ocrLanguages`) are its:
+    // `PDFEditor/Scan/ScanSettingsSection.swift`.
+    /// Face ID / Touch ID before the app shows anything; off by default.
+    static let appLock = "appLock"
 }
 
 /// Applies the chosen language and appearance to a scene's root view.
 struct AppEnvironment: ViewModifier {
     @AppStorage(SettingsKey.language) private var language: AppLanguage = .system
     @AppStorage(SettingsKey.appearance) private var appearance: AppAppearance = .system
+    @AppStorage(SettingsKey.theme) private var theme: AppTheme = .system
     @Environment(\.locale) private var systemLocale
     @Environment(\.layoutDirection) private var systemDirection
 
     func body(content: Content) -> some View {
         content
+            // The accent is applied inside the theme, not over it: a
+            // modifier put outside `.environment(\.appTheme, …)` would read
+            // the theme that was there before, not the chosen one.
+            .modifier(ThemeTint())
+            // The theme reaches every themed surface from here, and a change
+            // to it cross-fades: nothing on screen travels, so Reduce Motion
+            // takes nothing away.
+            .environment(\.appTheme, theme)
             .environment(\.locale, language.locale ?? systemLocale)
             .environment(\.layoutDirection, language.layoutDirection ?? systemDirection)
             .preferredColorScheme(appearance.colorScheme)
+            .animation(Motion.quick, value: theme)
             .onChange(of: language, initial: true) { _, chosen in chosen.applyToSystem() }
             .task { DebugLaunch.seedProfile() }
     }

@@ -67,32 +67,40 @@ enum SpeechVoices {
     }
 
     /// The languages the read-aloud settings offer a voice for: Arabic and
-    /// English, then any other language with an installed voice.
-    static func languages(among all: [AVSpeechSynthesisVoice] = AVSpeechSynthesisVoice.speechVoices()) -> [String] {
-        var seen: [String] = ["ar", "en"]
-        for voice in all {
-            let base = String(voice.language.split(separator: "-").first ?? "")
-            if !base.isEmpty, !seen.contains(base) { seen.append(base) }
+    /// English, and the device's own language when it is another one with
+    /// an installed voice. Any other language a page is in is read with its
+    /// best installed voice.
+    static func languages(among all: [AVSpeechSynthesisVoice] = AVSpeechSynthesisVoice.speechVoices(),
+                          device: String? = Locale.current.language.languageCode?.identifier) -> [String] {
+        var out = ["ar", "en"]
+        if let device, !out.contains(device), !voices(for: device, among: all).isEmpty {
+            out.append(device)
         }
-        return seen
+        return out
     }
 }
 
 /// Which language a stretch of text is in, for the voice: Arabic when a
-/// third of its letters are Arabic (the recognizer is unsure on short
-/// mixed lines), else what the recognizer says, else English.
+/// third of its letters are Arabic or it opens in Arabic (the recognizer is
+/// unsure on short mixed lines), else what the recognizer says, else English.
 enum SpeechLanguage {
+    static func isArabic(_ scalar: Unicode.Scalar) -> Bool {
+        (0x0600...0x06FF).contains(scalar.value) || (0x0750...0x077F).contains(scalar.value) || (0x08A0...0x08FF).contains(scalar.value)
+    }
+
     static func detect(_ text: String, hint: String? = nil) -> String {
         var letters = 0
         var arabic = 0
         for scalar in text.unicodeScalars where scalar.properties.isAlphabetic {
             letters += 1
-            if (0x0600...0x06FF).contains(scalar.value) || (0x0750...0x077F).contains(scalar.value) || (0x08A0...0x08FF).contains(scalar.value) {
-                arabic += 1
-            }
+            if isArabic(scalar) { arabic += 1 }
         }
         if letters == 0 { return hint ?? "en" }
+        // Arabic when a third of the letters are, or when the sentence opens
+        // in Arabic ("دعم فني (Premium Support)"): an Arabic voice reads the
+        // English words in it, an English voice cannot read the Arabic.
         if arabic * 3 >= letters { return "ar" }
+        if let first = text.unicodeScalars.first(where: { $0.properties.isAlphabetic }), Self.isArabic(first) { return "ar" }
         // Another language only when a voice for it is installed: a short
         // English line the recognizer takes for Dutch should not fall silent.
         if let guess = NLLanguageRecognizer.dominantLanguage(for: text)?.rawValue, guess != "ar",

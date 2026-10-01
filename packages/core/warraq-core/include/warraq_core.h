@@ -114,6 +114,13 @@ WarraqReply warraq_add_text(WarraqDocument *doc, size_t index, float x, float y,
                             float size, const char *text,
                             const uint8_t *font, size_t font_len);
 
+/* warraq_add_text in a colour: color is "#rrggbb", or null for the page's
+ * own. Anything else answers WARRAQ_E_ARGS. Answers {}. */
+WarraqReply warraq_add_text_colored(WarraqDocument *doc, size_t index,
+                                    float x, float y, float size,
+                                    const char *text, const char *color,
+                                    const uint8_t *font, size_t font_len);
+
 /* Replaces a paragraph with reflowed, shaped text. Answers
  * {"linesDrawn","fontSubstituted","shrunk","overflowed","fontSize"}. */
 WarraqReply warraq_replace_paragraph(WarraqDocument *doc, size_t index,

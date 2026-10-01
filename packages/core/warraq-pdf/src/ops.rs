@@ -170,6 +170,23 @@ pub fn append_line(
     x_edge: f32,
     y: f32,
 ) -> Result<()> {
+    append_line_in_color(pdf, page_index, text, font, size, x_edge, y, None)
+}
+
+/// `append_line` in a colour: `color` is RGB from 0 to 1, set inside the
+/// line's own `q`/`Q` so nothing after it is painted in that colour. `None`
+/// leaves the fill colour the page's content ends with, as `append_line` does.
+#[allow(clippy::too_many_arguments)]
+pub fn append_line_in_color(
+    pdf: &mut PdfDocument,
+    page_index: usize,
+    text: &str,
+    font: &[u8],
+    size: f32,
+    x_edge: f32,
+    y: f32,
+    color: Option<[f32; 3]>,
+) -> Result<()> {
     let shaper = Shaper::new(font).map_err(|e| Error::Font(e.to_string()))?;
     let glyphs = shaper.shape_line(text);
     let subset = FontSubset::build(font, &shaper, &glyphs)?;
@@ -189,6 +206,12 @@ pub fn append_line(
         "Tf",
         vec![Object::Name(name), Object::Real(size)],
     ));
+    if let Some([r, g, b]) = color {
+        ops.push(Operation::new(
+            "rg",
+            vec![Object::Real(r), Object::Real(g), Object::Real(b)],
+        ));
+    }
     show_line(
         &mut ops,
         &subset,
@@ -452,10 +475,16 @@ pub fn erase_area(
     let (x1, y1) = (x0 + w, y0 + h);
     let mut blanked = 0;
     for r in runs {
-        // a run belongs to the box when its origin is inside, with a small vertical
-        // tolerance so a baseline sitting exactly on the edge still counts
-        let pad = 0.2 * r.size.max(1.0);
-        if r.x >= x0 - pad && r.x <= x1 + pad && r.y >= y0 - pad && r.y <= y1 + pad {
+        // A run belongs to the box when its origin is inside, with a small
+        // tolerance so a baseline sitting exactly on an edge still counts —
+        // and more below: the box's bottom is the last line's baseline plus a
+        // little, and Chrome sets some Arabic glyphs as runs of their own,
+        // lowered by the font's positioning, which left two letters of a
+        // replaced heading on the page. Half a size below still stops well
+        // short of the next line, whose baseline is at least a leading down.
+        let size = r.size.max(1.0);
+        let (pad, below) = (0.2 * size, 0.5 * size);
+        if r.x >= x0 - pad && r.x <= x1 + pad && r.y >= y0 - below && r.y <= y1 + pad {
             let op = &mut ops[r.op_index];
             match op.operator.as_str() {
                 "TJ" => op.operands = vec![Object::Array(vec![])],
