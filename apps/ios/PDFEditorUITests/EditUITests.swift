@@ -91,9 +91,15 @@ final class EditUITests: XCTestCase {
         // sent by XCUITest never reached the field (its selection did not
         // move), so the typing was added after the old text — which the old
         // check, that the new text was somewhere in the page, let through.
-        let old = (field.value as? String) ?? ""
-        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: old.count + 2))
-        XCTAssertTrue(ui.poll(timeout: 10) { ((field.value as? String) ?? "x").isEmpty }, "the field is empty: \(field.value ?? "")")
+        // One delete per scalar, not per letter: the keyboard takes a mark
+        // (a shadda) off on its own. Again while anything is left.
+        for _ in 0..<4 {
+            let left = (field.value as? String) ?? ""
+            if left.isEmpty { break }
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: left.unicodeScalars.count + 2))
+            _ = ui.poll(timeout: 5) { ((field.value as? String) ?? "x").isEmpty }
+        }
+        XCTAssertTrue(((field.value as? String) ?? "x").isEmpty, "the field is empty: \(field.value ?? "")")
         field.typeText(replacement)
         XCTAssertTrue(ui.poll(timeout: 10) { (field.value as? String) == replacement }, "the field holds just the new text: \(field.value ?? "")")
         tapEdit(ui, "edit.apply")
@@ -126,16 +132,13 @@ final class EditUITests: XCTestCase {
         ui.app.terminate()
 
         ui = try PartBApp.launch(language: PartBApp.arabic, file: file)
-        if inspector {
-            ui.waitForPage(containing: "الفصل")
-            openEditor(ui)
-            let again = ui.app.buttons["edit.paragraph.0"]
-            XCTAssertTrue(again.waitForExistence(timeout: 20), "the inspector lists the page again")
-            XCTAssertTrue(ui.poll(timeout: 20) { again.label.contains(replacement) }, "and it is in the file: \(again.label)")
-        } else {
-            let reopened = ui.waitForPage(containing: replacement)
-            XCTAssertTrue(reopened.contains(replacement), "and it is in the file: \(reopened.prefix(200))")
-        }
+        // Found by the document's search, which reads every page through the
+        // core: which page a tall iPad reopens on is PDFKit's to choose.
+        XCTAssertTrue(ui.page.waitForExistence(timeout: 40), "the document opened again")
+        ui.app.buttons["document.search"].tap()
+        ui.type("كتب في مكانه", into: "search.field")
+        XCTAssertTrue(ui.app.buttons["search.count"].waitForExistence(timeout: 20),
+                      "and it is in the file: \(ui.app.staticTexts["search.none"].exists ? "no matches" : "")")
     }
 
     // MARK: - A line where the finger lands
