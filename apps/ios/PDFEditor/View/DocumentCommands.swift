@@ -10,6 +10,9 @@ enum DocumentAction {
 /// The document view with focus answers these; the menu items call it.
 struct DocumentActions {
     let canSave: Bool
+    /// A field of Edit PDF is taking the typing: the arrow keys with ⌘ are
+    /// the caret's (the start and end of the line), not the pages'.
+    var typing = false
     let perform: (DocumentAction) -> Void
 }
 
@@ -34,7 +37,9 @@ struct DocumentCommands: Commands {
             item("Find…", .find, "f", .command)
             item("Go to Page…", .goToPage, "g", [.command, .option])
             item("Next Page", .nextPage, .rightArrow, .command)
+                .disabled(actions?.typing == true)
             item("Previous Page", .previousPage, .leftArrow, .command)
+                .disabled(actions?.typing == true)
             Divider()
             item("Thumbnails", .toggleThumbnails, "t", [.command, .option])
             item("Night Mode", .toggleNight, "n", [.command, .option])

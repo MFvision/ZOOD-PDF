@@ -41,8 +41,11 @@ final class EditUITests: XCTestCase {
     /// PDFKit's page overlay, and PDFKit's page lists its own text elements
     /// to accessibility rather than its subviews, so the field is known by
     /// the bar: while it is open the bar holds only Cancel and Apply.
+    /// The field itself, over the page — not the bar's Apply, which shows
+    /// as soon as the model is editing, whether or not a field was put on
+    /// the page to type in.
     private func fieldIsOpen(_ ui: PartBApp, timeout: TimeInterval = 20) -> Bool {
-        ui.app.buttons["edit.apply"].waitForExistence(timeout: timeout)
+        ui.app.textViews["edit.field"].waitForExistence(timeout: timeout)
     }
 
     /// The page view's value, the core's text of the page, once the editor
@@ -80,16 +83,40 @@ final class EditUITests: XCTestCase {
         // marks one by one. Tashkeel through replaceParagraph and back off
         // the saved file is proven in PDFEditorTests/EditTests.
         let replacement = "نص جديد كتب في مكانه"
-        // Select all (the simulator's keyboard is a hardware one), then type
-        // over it; a run of deletes can outrun what is typed after it.
-        ui.app.typeKey("a", modifierFlags: .command)
-        ui.app.typeText(replacement)
+        // The field takes the keyboard a moment after it appears (after the
+        // tap that opened it has finished).
+        let field = ui.app.textViews["edit.field"]
+        XCTAssertTrue(ui.poll(timeout: 10) { (field.value(forKey: "hasKeyboardFocus") as? Bool) == true }, "the field has the keyboard")
+        // Emptied, then the Arabic typed in its place. Not Select All: a ⌘A
+        // sent by XCUITest never reached the field (its selection did not
+        // move), so the typing was added after the old text — which the old
+        // check, that the new text was somewhere in the page, let through.
+        let old = (field.value as? String) ?? ""
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: old.count + 2))
+        XCTAssertTrue(ui.poll(timeout: 10) { ((field.value as? String) ?? "x").isEmpty }, "the field is empty: \(field.value ?? "")")
+        field.typeText(replacement)
+        XCTAssertTrue(ui.poll(timeout: 10) { (field.value as? String) == replacement }, "the field holds just the new text: \(field.value ?? "")")
         tapEdit(ui, "edit.apply")
 
         ui.waitForEdited()
         XCTAssertTrue(ui.poll(timeout: 30) { !ui.app.buttons["edit.apply"].exists }, "the field closes")
-        let text = pageText(after: ui)
-        XCTAssertTrue(text.contains(replacement), "the core reads the new Arabic off the page: \(text)")
+        // A longer text than the paragraph had is set smaller to fit its
+        // box, and the editor says so in an alert over everything else.
+        let fitted = ui.app.alerts.firstMatch
+        if fitted.waitForExistence(timeout: 3) { fitted.buttons.firstMatch.tap() }
+        // On iPad the inspector's row is the core's reading of the paragraph,
+        // read again after the edit; the page element holds the text of
+        // whichever page PDFKit calls current, and on a tall iPad two are on
+        // screen. On a phone that page is the one on screen.
+        let inspector = row.exists
+        if inspector {
+            XCTAssertTrue(ui.poll(timeout: 20) { row.label.contains(replacement) }, "the core reads the new Arabic back: \(row.label)")
+            XCTAssertFalse(row.label.contains("محرّك النصوص"), "and nothing of the old text is left: \(row.label)")
+            tapEdit(ui, "edit.done")
+        } else {
+            let text = pageText(after: ui)
+            XCTAssertTrue(text.contains(replacement), "the core reads the new Arabic off the page: \(text)")
+        }
 
         // Saved and opened again: it is in the file, not only on screen.
         let save = ui.app.buttons["document.save"]
@@ -99,8 +126,16 @@ final class EditUITests: XCTestCase {
         ui.app.terminate()
 
         ui = try PartBApp.launch(language: PartBApp.arabic, file: file)
-        let reopened = ui.waitForPage(containing: replacement)
-        XCTAssertTrue(reopened.contains(replacement), "and it is in the file: \(reopened.prefix(200))")
+        if inspector {
+            ui.waitForPage(containing: "الفصل")
+            openEditor(ui)
+            let again = ui.app.buttons["edit.paragraph.0"]
+            XCTAssertTrue(again.waitForExistence(timeout: 20), "the inspector lists the page again")
+            XCTAssertTrue(ui.poll(timeout: 20) { again.label.contains(replacement) }, "and it is in the file: \(again.label)")
+        } else {
+            let reopened = ui.waitForPage(containing: replacement)
+            XCTAssertTrue(reopened.contains(replacement), "and it is in the file: \(reopened.prefix(200))")
+        }
     }
 
     // MARK: - A line where the finger lands

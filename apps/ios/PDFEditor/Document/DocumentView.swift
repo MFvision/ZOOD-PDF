@@ -501,7 +501,9 @@ struct DocumentView: View {
     // MARK: - Actions
 
     private var actions: DocumentActions {
-        DocumentActions(canSave: model.isEdited && model.url != nil, perform: perform)
+        DocumentActions(canSave: model.isEdited && model.url != nil,
+                        typing: editing && (edit?.editing != nil || edit?.placing != nil),
+                        perform: perform)
     }
 
     /// The menu bar's and the keyboard's way in.
