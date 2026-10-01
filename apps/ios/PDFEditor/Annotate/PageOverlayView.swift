@@ -18,9 +18,15 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
     /// Edit PDF, when it is open: its own layer over the page, added beside
     /// the markup gestures and removed when the editor closes.
     weak var edit: EditModel?
+    /// Redact and Prepare form, when one is open: each its own layer, as
+    /// the editor's is.
+    weak var redact: RedactModel?
+    weak var form: FormModel?
 
     private var canvas: PKCanvasView?
     private var editLayer: EditPageLayer?
+    private var redactLayer: RedactPageLayer?
+    private var formLayer: FormPageLayer?
     private let preview = CAShapeLayer()
     private lazy var pan = UIPanGestureRecognizer(target: self, action: #selector(panned(_:)))
     private lazy var tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
@@ -56,6 +62,8 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
         super.layoutSubviews()
         canvas?.frame = bounds
         editLayer?.frame = bounds
+        redactLayer?.frame = bounds
+        formLayer?.frame = bounds
         preview.frame = bounds
     }
 
@@ -64,7 +72,7 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
     func update(night: Bool, tool: AnnotationTool?) {
         self.tool = tool
         let active = tool != nil
-        isUserInteractionEnabled = active || edit != nil
+        isUserInteractionEnabled = active || edit != nil || redact != nil || form != nil
         pan.isEnabled = active && tool != .ink
         tap.isEnabled = active && tool != .ink
         if tool == .ink {
@@ -73,6 +81,48 @@ final class PageOverlayView: UIView, PKCanvasViewDelegate, UIGestureRecognizerDe
             hideCanvas()
         }
         showEditLayer()
+        showRedactLayer()
+        showFormLayer()
+    }
+
+    /// Redact's layer, over the page while Redact is open.
+    private func showRedactLayer() {
+        guard let redact, let pdfView else {
+            redactLayer?.removeFromSuperview()
+            redactLayer = nil
+            return
+        }
+        if let redactLayer {
+            redactLayer.redact = redact
+            redactLayer.frame = bounds
+            redactLayer.redraw()
+            return
+        }
+        let layer = RedactPageLayer(page: page, pageIndex: pageIndex, pdfView: pdfView, redact: redact)
+        layer.frame = bounds
+        addSubview(layer)
+        redactLayer = layer
+        layer.redraw()
+    }
+
+    /// Prepare form's layer, over the page while it is open.
+    private func showFormLayer() {
+        guard let form, let pdfView else {
+            formLayer?.removeFromSuperview()
+            formLayer = nil
+            return
+        }
+        if let formLayer {
+            formLayer.form = form
+            formLayer.frame = bounds
+            formLayer.redraw()
+            return
+        }
+        let layer = FormPageLayer(page: page, pageIndex: pageIndex, pdfView: pdfView, form: form)
+        layer.frame = bounds
+        addSubview(layer)
+        formLayer = layer
+        layer.redraw()
     }
 
     /// Edit PDF's layer: over the page while the editor is open, gone the

@@ -51,6 +51,12 @@ struct PDFKitView: UIViewRepresentable {
     /// What the editor is doing, passed on its own so a change of mode, of
     /// what is picked or of the lists reaches the layers over the pages.
     var editSignature: String = ""
+    /// Redact and Prepare form, when one is open, each with what it draws
+    /// passed on its own so a change reaches the layers over the pages.
+    var redact: RedactModel?
+    var redactSignature: String = ""
+    var form: FormModel?
+    var formSignature: String = ""
     let host: PDFViewHost?
     /// PDFKit draws these highlighted (the search's hits) and scrolls to
     /// `currentHighlight` when it changes.
@@ -167,13 +173,34 @@ struct PDFKitView: UIViewRepresentable {
             // the page is its value — and a container while the editor is
             // open, so the field the text is typed in, which lives inside a
             // page's overlay, is reachable by VoiceOver and by a test.
-            view.isAccessibilityElement = edit == nil
+            view.isAccessibilityElement = edit == nil && redact == nil && form == nil
             // The arrow keys are the editor's only while something is picked.
             if let edit, edit.hasSomethingPicked {
                 view.onNudge = { dx, dy, far in
                     Task { await edit.nudge(dx: dx, dy: dy, far: far) }
                 }
-            } else {
+            } else if form == nil {
+                view.onNudge = nil
+            }
+        }
+        if coordinator.redactSignature != redactSignature || coordinator.redact !== redact
+            || coordinator.formSignature != formSignature || coordinator.form !== form {
+            coordinator.redactSignature = redactSignature
+            coordinator.redact = redact
+            coordinator.formSignature = formSignature
+            coordinator.form = form
+            for overlay in coordinator.overlays.values {
+                overlay.redact = redact
+                overlay.form = form
+                overlay.update(night: night, tool: tool)
+            }
+            view.isAccessibilityElement = edit == nil && redact == nil && form == nil
+            // The arrow keys move the picked draft of Prepare form.
+            if let form, form.picked != nil {
+                view.onNudge = { dx, dy, far in
+                    Task { @MainActor in form.nudge(dx: dx, dy: dy, far: far) }
+                }
+            } else if edit == nil {
                 view.onNudge = nil
             }
         }
@@ -226,6 +253,10 @@ struct PDFKitView: UIViewRepresentable {
         var inkSignature = ""
         weak var edit: EditModel?
         var editSignature = ""
+        weak var redact: RedactModel?
+        var redactSignature = ""
+        weak var form: FormModel?
+        var formSignature = ""
 
         init(parent: PDFKitView) {
             self.parent = parent
@@ -245,6 +276,8 @@ struct PDFKitView: UIViewRepresentable {
         func pdfView(_ view: PDFView, overlayViewFor page: PDFPage) -> UIView? {
             if let overlay = overlays[page] {
                 overlay.edit = parent.edit ?? edit
+                overlay.redact = parent.redact ?? redact
+                overlay.form = parent.form ?? form
                 overlay.update(night: night, tool: tool)
                 return overlay
             }
@@ -252,6 +285,8 @@ struct PDFKitView: UIViewRepresentable {
             let overlay = PageOverlayView(page: page, pageIndex: document.index(for: page), pdfView: view,
                                           editor: parent.editor ?? editor)
             overlay.edit = parent.edit ?? edit
+            overlay.redact = parent.redact ?? redact
+            overlay.form = parent.form ?? form
             overlay.update(night: night, tool: tool)
             overlays[page] = overlay
             return overlay
@@ -262,6 +297,11 @@ struct PDFKitView: UIViewRepresentable {
             // is scrolled away.
         }
     }
+}
+
+/// A view held weakly, in a list.
+private struct WeakView {
+    weak var view: UIView?
 }
 
 /// PDFView with the markup actions in the selection's edit menu: select
@@ -281,11 +321,27 @@ final class DocumentPDFView: PDFView {
     weak var editField: UIView? {
         didSet { UIAccessibility.post(notification: .layoutChanged, argument: editField) }
     }
+    /// Redact's and Prepare form's layers over the pages, listed for the
+    /// same reason as the field: each is an element of its own, a page a
+    /// finger (or VoiceOver's direct touch) marks or lays fields on.
+    var toolLayers: [UIView] {
+        toolLayerRefs.compactMap(\.view).filter { $0.window != nil }
+            .sorted { $0.accessibilityIdentifier ?? "" < $1.accessibilityIdentifier ?? "" }
+    }
+
+    private var toolLayerRefs: [WeakView] = []
+
+    func register(toolLayer: UIView) {
+        toolLayerRefs.removeAll { $0.view == nil || $0.view === toolLayer }
+        toolLayerRefs.append(WeakView(view: toolLayer))
+        UIAccessibility.post(notification: .layoutChanged, argument: nil)
+    }
 
     override var accessibilityElements: [Any]? {
         get {
-            guard let editField else { return super.accessibilityElements }
-            return [editField] + (super.accessibilityElements ?? subviews)
+            let tools = toolLayers
+            guard editField != nil || !tools.isEmpty else { return super.accessibilityElements }
+            return [editField].compactMap { $0 } + tools + (super.accessibilityElements ?? subviews)
         }
         set { super.accessibilityElements = newValue }
     }

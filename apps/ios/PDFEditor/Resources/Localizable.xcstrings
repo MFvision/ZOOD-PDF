@@ -8118,6 +8118,1386 @@
           }
         }
       }
+    },
+    "%@ (%lld)": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ (%2$lld)"
+          }
+        }
+      }
+    },
+    "%@, page %lld": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@، الصفحة %2$lld"
+          }
+        }
+      }
+    },
+    "A file can carry more than its pages show: who made it, scripts, attachments, earlier versions. Check it to see what this one carries.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قد يحمل الملف أكثر مما تُظهره صفحاته: من أنشأه، والنصوص البرمجية، والمرفقات، والنسخ السابقة. افحصه لترى ما يحمله هذا الملف."
+          }
+        }
+      }
+    },
+    "A list needs at least one option.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تحتاج القائمة إلى خيار واحد على الأقل."
+          }
+        }
+      }
+    },
+    "A pattern of your own": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نمط من عندك"
+          }
+        }
+      }
+    },
+    "A protected file cannot be cleaned: its password would be lost. Remove the password first.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يمكن تنظيف ملف محمي: ستضيع كلمة مروره. أزِل كلمة المرور أولًا."
+          }
+        }
+      }
+    },
+    "A protected file cannot be redacted: its password would be lost. Remove the password first.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يمكن حجب ملف محمي: ستضيع كلمة مروره. أزِل كلمة المرور أولًا."
+          }
+        }
+      }
+    },
+    "A regular expression, read left to right.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعبير نمطي، يُقرأ من اليسار إلى اليمين."
+          }
+        }
+      }
+    },
+    "Actions": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إجراءات"
+          }
+        }
+      }
+    },
+    "Apply takes out what is under the marks: the text, the pictures' pixels and the drawings, not just covered. You can undo until you save.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُزيل التطبيقُ ما تحت العلامات: النصَّ وبكسلات الصور والرسوم، لا أن يغطّيها فحسب. يمكنك التراجع ما لم تحفظ."
+          }
+        }
+      }
+    },
+    "Apply the redaction marks (%lld)?": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تطبيق علامات الحجب (%lld)؟"
+          }
+        }
+      }
+    },
+    "Apply…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تطبيق…"
+          }
+        }
+      }
+    },
+    "Arabic is drawn shaped into each field, so every reader shows it.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تُرسم العربية متّصلة الحروف في كل حقل، فيعرضها كل قارئ."
+          }
+        }
+      }
+    },
+    "Arabic is found with or without its diacritics, and whatever the form of alef, taa marbuta, yaa or the digits.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُعثر على العربية بتشكيلها أو دونه، وأيًّا كان شكل الألف أو التاء المربوطة أو الياء أو الأرقام."
+          }
+        }
+      }
+    },
+    "Attached files": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ملفات مرفقة"
+          }
+        }
+      }
+    },
+    "Attachments": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المرفقات"
+          }
+        }
+      }
+    },
+    "Bookmarks": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الإشارات المرجعية"
+          }
+        }
+      }
+    },
+    "Button": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "زر"
+          }
+        }
+      }
+    },
+    "Cannot be changed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يمكن تغييره"
+          }
+        }
+      }
+    },
+    "Card numbers": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أرقام البطاقات"
+          }
+        }
+      }
+    },
+    "Characters of text taken out: %lld.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الحروف المُزالة من النص: %lld."
+          }
+        }
+      }
+    },
+    "Check box": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مربع اختيار"
+          }
+        }
+      }
+    },
+    "Check the file": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فحص الملف"
+          }
+        }
+      }
+    },
+    "Choice": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "خيار"
+          }
+        }
+      }
+    },
+    "Choose a kind of field in the bar and drag a box on the page, or let Detect fields find where this form expects writing.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختر نوع الحقل من الشريط واسحب مربعًا على الصفحة، أو دع «اكتشاف الحقول» يجد المواضع التي ينتظر فيها هذا النموذج كتابةً."
+          }
+        }
+      }
+    },
+    "Choose all": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختيار الكل"
+          }
+        }
+      }
+    },
+    "Choose none": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عدم اختيار شيء"
+          }
+        }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إغلاق"
+          }
+        }
+      }
+    },
+    "Comments": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التعليقات"
+          }
+        }
+      }
+    },
+    "Comments and form fields removed: %lld.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التعليقات وحقول النماذج المُزالة: %lld."
+          }
+        }
+      }
+    },
+    "Could not fill the form": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّرت تعبئة النموذج"
+          }
+        }
+      }
+    },
+    "Could not make the fields": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر إنشاء الحقول"
+          }
+        }
+      }
+    },
+    "Could not redact": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر الحجب"
+          }
+        }
+      }
+    },
+    "Create makes them real fields in the file. You can undo until you save.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يجعلها «إنشاء» حقولًا حقيقية في الملف. يمكنك التراجع ما لم تحفظ."
+          }
+        }
+      }
+    },
+    "Created": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تاريخ الإنشاء"
+          }
+        }
+      }
+    },
+    "Date": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تاريخ"
+          }
+        }
+      }
+    },
+    "Date pattern": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نمط التاريخ"
+          }
+        }
+      }
+    },
+    "Dates": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التواريخ"
+          }
+        }
+      }
+    },
+    "Delete this field": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حذف هذا الحقل"
+          }
+        }
+      }
+    },
+    "Detect fields": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اكتشاف الحقول"
+          }
+        }
+      }
+    },
+    "Discard them": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تجاهلها"
+          }
+        }
+      }
+    },
+    "Drag a box on the page to draw the field.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسحب مربعًا على الصفحة لرسم الحقل."
+          }
+        }
+      }
+    },
+    "Drawings": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "رسوم"
+          }
+        }
+      }
+    },
+    "Drawings taken out: %lld.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الرسوم المُزالة: %lld."
+          }
+        }
+      }
+    },
+    "Earlier versions of the file and objects nothing uses go whatever is chosen. Earlier versions: %lld. Unused objects: %lld.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تُزال النسخ السابقة من الملف والكائنات غير المستخدمة أيًّا كان الاختيار. النسخ السابقة: %1$lld. الكائنات غير المستخدمة: %2$lld."
+          }
+        }
+      }
+    },
+    "Email addresses": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عناوين البريد الإلكتروني"
+          }
+        }
+      }
+    },
+    "Every field needs a name.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يحتاج كل حقل إلى اسم."
+          }
+        }
+      }
+    },
+    "Fields": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الحقول"
+          }
+        }
+      }
+    },
+    "Fields in the file": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الحقول في الملف"
+          }
+        }
+      }
+    },
+    "Fields made: %lld. Fill them with Fill form in the More menu.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الحقول المُنشأة: %lld. املأها من «تعبئة النموذج» في قائمة «المزيد»."
+          }
+        }
+      }
+    },
+    "Fields proposed: %lld. Move, resize or rename them, then Create.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الحقول المقترحة: %lld. انقلها أو غيّر حجمها أو أسماءها، ثم اختر «إنشاء»."
+          }
+        }
+      }
+    },
+    "Fill": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعبئة"
+          }
+        }
+      }
+    },
+    "Fill form": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعبئة النموذج"
+          }
+        }
+      }
+    },
+    "Fill form…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعبئة النموذج…"
+          }
+        }
+      }
+    },
+    "Find and redact": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "البحث والحجب"
+          }
+        }
+      }
+    },
+    "Form fields and their data": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حقول النماذج وبياناتها"
+          }
+        }
+      }
+    },
+    "Found": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ما عُثر عليه"
+          }
+        }
+      }
+    },
+    "Found: %lld": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النتائج: %lld"
+          }
+        }
+      }
+    },
+    "Help text": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نص المساعدة"
+          }
+        }
+      }
+    },
+    "Hidden information": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المعلومات المخفية"
+          }
+        }
+      }
+    },
+    "Hidden layers": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الطبقات المخفية"
+          }
+        }
+      }
+    },
+    "Hidden text": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النص المخفي"
+          }
+        }
+      }
+    },
+    "Highlights": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تظليلات"
+          }
+        }
+      }
+    },
+    "Hijri date": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تاريخ هجري"
+          }
+        }
+      }
+    },
+    "IBANs": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أرقام الآيبان"
+          }
+        }
+      }
+    },
+    "In a page mark": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "في علامة صفحة"
+          }
+        }
+      }
+    },
+    "Invisible text": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نص غير مرئي"
+          }
+        }
+      }
+    },
+    "Its letters cannot be placed on the page: mark it by hand.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر تحديد مواضع حروفه في الصفحة: حدِّده يدويًا."
+          }
+        }
+      }
+    },
+    "Keep them for later": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إبقاؤها لوقت لاحق"
+          }
+        }
+      }
+    },
+    "Keywords": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الكلمات المفتاحية"
+          }
+        }
+      }
+    },
+    "List": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قائمة"
+          }
+        }
+      }
+    },
+    "Mark %lld": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تحديد (%lld)"
+          }
+        }
+      }
+    },
+    "Mark an area": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تحديد منطقة"
+          }
+        }
+      }
+    },
+    "Mark text": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تحديد نص"
+          }
+        }
+      }
+    },
+    "Marked to redact": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المحدَّد للحجب"
+          }
+        }
+      }
+    },
+    "Marks: %lld": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "العلامات: %lld"
+          }
+        }
+      }
+    },
+    "Modified": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تاريخ التعديل"
+          }
+        }
+      }
+    },
+    "National ID and Iqama numbers": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أرقام الهوية الوطنية والإقامة"
+          }
+        }
+      }
+    },
+    "New fields": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حقول جديدة"
+          }
+        }
+      }
+    },
+    "New fields: %lld": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الحقول الجديدة: %lld"
+          }
+        }
+      }
+    },
+    "No more places for fields were found.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم يُعثر على مواضع أخرى للحقول."
+          }
+        }
+      }
+    },
+    "None": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا شيء"
+          }
+        }
+      }
+    },
+    "Notes": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ملاحظات"
+          }
+        }
+      }
+    },
+    "Nothing found.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم يُعثر على شيء."
+          }
+        }
+      }
+    },
+    "Nothing hidden was found.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم يُعثر على شيء مخفي."
+          }
+        }
+      }
+    },
+    "Nothing is marked yet. Tap a word, drag over text or an area, or find words and patterns to mark them.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم يُحدَّد شيء بعد. انقر كلمةً، أو اسحب فوق نص أو منطقة، أو ابحث عن كلمات وأنماط لتحديدها."
+          }
+        }
+      }
+    },
+    "Nothing under them is taken out until they are applied.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يُزال شيء مما تحتها حتى تُطبَّق."
+          }
+        }
+      }
+    },
+    "Off the page": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "خارج الصفحة"
+          }
+        }
+      }
+    },
+    "Options, one a line": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الخيارات، خيار في كل سطر"
+          }
+        }
+      }
+    },
+    "Page thumbnails": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصور المصغّرة للصفحات"
+          }
+        }
+      }
+    },
+    "Patterns": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأنماط"
+          }
+        }
+      }
+    },
+    "Phone numbers": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أرقام الهواتف"
+          }
+        }
+      }
+    },
+    "Pictures that could not be read, taken out whole: %lld.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصور التي تعذّرت قراءتها فأُزيلت كاملةً: %lld."
+          }
+        }
+      }
+    },
+    "Pictures whose pixels under the marks were taken out: %lld.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصور التي أُزيلت بكسلاتها تحت العلامات: %lld."
+          }
+        }
+      }
+    },
+    "Pop-ups": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نوافذ منبثقة"
+          }
+        }
+      }
+    },
+    "Prepare form": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إعداد النموذج"
+          }
+        }
+      }
+    },
+    "Private data of other programs": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بيانات خاصة لبرامج أخرى"
+          }
+        }
+      }
+    },
+    "Properties and metadata": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الخصائص والبيانات الوصفية"
+          }
+        }
+      }
+    },
+    "Radio button": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "زر اختيار"
+          }
+        }
+      }
+    },
+    "Redact": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حجب"
+          }
+        }
+      }
+    },
+    "Redacted": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تمّ الحجب"
+          }
+        }
+      }
+    },
+    "Remove every mark": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إزالة كل العلامات"
+          }
+        }
+      }
+    },
+    "Remove hidden information": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إزالة المعلومات المخفية"
+          }
+        }
+      }
+    },
+    "Remove this mark": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إزالة هذه العلامة"
+          }
+        }
+      }
+    },
+    "Remove what was chosen?": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إزالة ما اختير؟"
+          }
+        }
+      }
+    },
+    "Run on events": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعمل عند الأحداث"
+          }
+        }
+      }
+    },
+    "Run on opening": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعمل عند الفتح"
+          }
+        }
+      }
+    },
+    "Runs of text in a font whose letters could not be placed, taken out whole: %lld.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مقاطع النص المُزالة كاملةً لخطٍّ تعذّر تحديد مواضع حروفه: %lld."
+          }
+        }
+      }
+    },
+    "Save to keep it; until then you can undo.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "احفظ للإبقاء عليه؛ وحتى ذلك الحين يمكنك التراجع."
+          }
+        }
+      }
+    },
+    "Scripts": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نصوص برمجية"
+          }
+        }
+      }
+    },
+    "Scripts and actions": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النصوص البرمجية والإجراءات"
+          }
+        }
+      }
+    },
+    "Signature field": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حقل توقيع"
+          }
+        }
+      }
+    },
+    "Signed from Signatures": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُوقَّع من «التوقيعات»"
+          }
+        }
+      }
+    },
+    "Stamps": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أختام"
+          }
+        }
+      }
+    },
+    "Strike-throughs": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شطب"
+          }
+        }
+      }
+    },
+    "Subject": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الموضوع"
+          }
+        }
+      }
+    },
+    "Text boxes": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مربعات نص"
+          }
+        }
+      }
+    },
+    "Text field": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حقل نص"
+          }
+        }
+      }
+    },
+    "That pattern is not one the search understands.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا النمط لا يفهمه البحث."
+          }
+        }
+      }
+    },
+    "The drafts become fields in the file only when they are created.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا تصبح المسودّات حقولًا في الملف إلا حين تُنشأ."
+          }
+        }
+      }
+    },
+    "The fields are not made yet": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم تُنشأ الحقول بعد"
+          }
+        }
+      }
+    },
+    "The file is written again without it, and without its earlier versions. You can undo until you save; once saved, it cannot be brought back.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُكتب الملف من جديد دونه ودون نسخه السابقة. يمكنك التراجع ما لم تحفظ؛ وبعد الحفظ لا يمكن استعادته."
+          }
+        }
+      }
+    },
+    "The first %lld of %lld are listed.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تُعرض أول %1$lld من %2$lld."
+          }
+        }
+      }
+    },
+    "The marks are not applied": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم تُطبَّق العلامات"
+          }
+        }
+      }
+    },
+    "The picked field": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الحقل المحدَّد"
+          }
+        }
+      }
+    },
+    "The search did not finish.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم يكتمل البحث."
+          }
+        }
+      }
+    },
+    "This document has no form fields. Make some with Prepare form.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يحتوي هذا المستند على حقول نماذج. أنشئ بعضها من «إعداد النموذج»."
+          }
+        }
+      }
+    },
+    "This file is signed. Removing anything changes it after the signature, which will then show as changed.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا الملف موقَّع. إزالة أي شيء تغيّره بعد التوقيع، فسيظهر التوقيع على أنه عُدِّل."
+          }
+        }
+      }
+    },
+    "Underlines": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "خطوط سفلية"
+          }
+        }
+      }
+    },
+    "What is under the marks is taken out of the file, not just covered. You can undo until you save; once saved, it cannot be brought back.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُزال ما تحت العلامات من الملف، لا يُغطّى فحسب. يمكنك التراجع ما لم تحفظ؛ وبعد الحفظ لا يمكن استعادته."
+          }
+        }
+      }
+    },
+    "What is under the marks is taken out of the file, not just covered. You can undo until you save; once saved, it cannot be brought back. This file is signed: the signature will show it was changed.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُزال ما تحت العلامات من الملف، لا يُغطّى فحسب. يمكنك التراجع ما لم تحفظ؛ وبعد الحفظ لا يمكن استعادته. هذا الملف موقَّع: سيُظهر التوقيع أنه عُدِّل."
+          }
+        }
+      }
+    },
+    "What this button stands for": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ما يمثّله هذا الزر"
+          }
+        }
+      }
+    },
+    "White on white": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أبيض على أبيض"
+          }
+        }
+      }
+    },
+    "Words": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كلمات"
+          }
+        }
+      }
+    },
+    "Words to find": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كلمات للبحث عنها"
+          }
+        }
+      }
+    },
+    "XFA form": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نموذج XFA"
+          }
+        }
+      }
+    },
+    "XMP metadata": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بيانات XMP الوصفية"
+          }
+        }
+      }
+    },
+    "Your pattern": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نمطك"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

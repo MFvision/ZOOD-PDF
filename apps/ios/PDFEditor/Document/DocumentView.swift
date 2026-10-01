@@ -50,6 +50,8 @@ struct DocumentView: View {
     @State private var stampsAdded = 0
     @State private var showingScanner = false
     @State private var scanSaved: URL?
+    /// Redact and Prepare form (`DocumentTools`).
+    @State private var tools: DocumentTools?
 
     private var compact: Bool { sizeClass == .compact }
 
@@ -57,7 +59,17 @@ struct DocumentView: View {
     // round it, the sheets and the alerts — each its own expression. Swift 6
     // gives up type-checking one long enough to hold all of them.
     var body: some View {
-        alerts(on: sheets(on: chrome(on: stack)))
+        toolSheets(on: alerts(on: sheets(on: chrome(on: stack))))
+    }
+
+    /// Redact's and Prepare form's sheets and questions, once they exist.
+    @ViewBuilder
+    private func toolSheets(on view: some View) -> some View {
+        if let tools {
+            view.modifier(DocumentToolSheets(tools: tools))
+        } else {
+            view
+        }
     }
 
     private var stack: some View {
@@ -81,6 +93,21 @@ struct DocumentView: View {
                           openSignature: { showingSignature = true },
                           openCrop: { showingCrop = true },
                           done: finishMarkup)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+            if let tools, tools.redacting {
+                RedactBar(redact: tools.redact, undoManager: undoManager, inspectorShown: !compact,
+                          openFind: { tools.showingFind = true },
+                          openHidden: { tools.showingHidden = true },
+                          openMarks: { tools.showingMarks = true },
+                          apply: { tools.askToApply() },
+                          done: { tools.finishRedact() })
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+            if let tools, tools.preparing {
+                FormBar(form: tools.form, undoManager: undoManager, inspectorShown: !compact,
+                        openFields: { tools.showingFields = true },
+                        done: { tools.finishForm() })
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
             HStack(spacing: 0) {
@@ -128,6 +155,18 @@ struct DocumentView: View {
                         .frame(width: 280)
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
+                if let tools, tools.redacting, !compact {
+                    Divider()
+                    RedactMarksList(redact: tools.redact)
+                        .frame(width: 280)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
+                if let tools, tools.preparing, !compact {
+                    Divider()
+                    FormInspector(form: tools.form)
+                        .frame(width: 300)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
         }
     }
@@ -137,6 +176,8 @@ struct DocumentView: View {
     private func chrome(on view: some View) -> some View {
         view
             .animation(Motion.travel(reduceMotion: reduceMotion), value: editing)
+            .animation(Motion.travel(reduceMotion: reduceMotion), value: tools?.redacting)
+            .animation(Motion.travel(reduceMotion: reduceMotion), value: tools?.preparing)
             .animation(Motion.travel(reduceMotion: reduceMotion), value: showingSearch)
             .animation(Motion.travel(reduceMotion: reduceMotion), value: markup)
             .animation(Motion.travel(reduceMotion: reduceMotion), value: showingThumbnails)
@@ -151,6 +192,8 @@ struct DocumentView: View {
                     editor = AnnotationEditor(model: model)
                     pagesModel = PagesModel(model: model)
                     edit = EditModel(model: model)
+                    tools = DocumentTools(model: model)
+                    tools?.undoManager = undoManager
                 }
                 if model.state == .loading {
                     await model.load()
@@ -170,6 +213,12 @@ struct DocumentView: View {
                 editor?.undoManager = manager
                 pagesModel?.undoManager = manager
                 edit?.undoManager = manager
+                tools?.undoManager = manager
+            }
+            // The form's fields, read as Prepare form opens and after each change.
+            .task(id: FormKey(preparing: tools?.preparing ?? false, revision: model.revision, ready: model.isReady)) {
+                guard let tools, tools.preparing, model.isReady else { return }
+                await tools.form.readFields()
             }
             .onChange(of: model.revision) {
                 // The bytes changed: the hits' selections belong to the old pages.
@@ -301,6 +350,13 @@ struct DocumentView: View {
         TextKey(page: model.currentPage, edited: model.isEdited, ready: model.isReady, revision: model.revision)
     }
 
+    /// When Prepare form must read the form again.
+    private struct FormKey: Hashable {
+        let preparing: Bool
+        let revision: Int
+        let ready: Bool
+    }
+
     /// When the editor must read the page again.
     private struct EditKey: Hashable {
         let page: Int
@@ -334,6 +390,10 @@ struct DocumentView: View {
                 PDFKitView(document: pdf, displaysRTL: model.isRightToLeft, layout: layout, night: night,
                            editor: editor, tool: editor?.tool, inkSignature: editor?.inkSignature ?? "",
                            edit: editing ? edit : nil, editSignature: editing ? (edit?.signature ?? "") : "",
+                           redact: tools?.redacting == true ? tools?.redact : nil,
+                           redactSignature: tools?.redacting == true ? (tools?.redact.signature ?? "") : "",
+                           form: tools?.preparing == true ? tools?.form : nil,
+                           formSignature: tools?.preparing == true ? (tools?.form.signature ?? "") : "",
                            host: host,
                            highlights: search.highlighted, currentHighlight: showingSearch ? search.currentSelection : nil,
                            currentPage: $model.currentPage)
@@ -346,7 +406,7 @@ struct DocumentView: View {
                     // the core's text of the page in logical order; a
                     // container while the editor is open, so the field over
                     // the paragraph is reachable.
-                    .accessibilityElement(children: editing ? .contain : .ignore)
+                    .accessibilityElement(children: editing || tools?.redacting == true || tools?.preparing == true ? .contain : .ignore)
                     .accessibilityLabel(pageLabel)
                     .accessibilityValue(Text(pageText ?? ""))
                     .accessibilityIdentifier("document.page")
@@ -462,6 +522,14 @@ struct DocumentView: View {
                 .accessibilityIdentifier("document.marks")
             Button("Page marks…", systemImage: "signature") { showingMarksSheet = true }
                 .accessibilityIdentifier("document.pageMarks")
+            Button("Redact", systemImage: "rectangle.dashed.badge.record") { startRedact() }
+                .keyboardShortcut("r", modifiers: [.command, .option])
+                .accessibilityIdentifier("document.redact")
+            Button("Prepare form", systemImage: "rectangle.and.pencil.and.ellipsis") { startPrepare() }
+                .keyboardShortcut("p", modifiers: [.command, .option])
+                .accessibilityIdentifier("document.prepareForm")
+            Button("Fill form…", systemImage: "character.textbox") { tools?.showingFill = true }
+                .accessibilityIdentifier("document.fillForm")
             if compact {
                 Button("Pages", systemImage: "square.grid.2x2") { showingPages = true }
             }
@@ -532,6 +600,7 @@ struct DocumentView: View {
     /// document, as the design target does; it goes back with Done.
     private func startMarkup() {
         if editing { finishEditing() }
+        closeTools()
         markup = true
         if !compact, !showingThumbnails {
             showingThumbnails = true
@@ -543,7 +612,30 @@ struct DocumentView: View {
     /// their own gestures over the same pages, so only one is ever in hand.
     private func startEditing() {
         if markup { finishMarkup() }
+        closeTools()
         editing = true
+    }
+
+    /// Redact opens with the other tools put away: they lay their own
+    /// gestures over the same pages. Its marks wait in its model.
+    private func startRedact() {
+        if markup { finishMarkup() }
+        if editing { finishEditing() }
+        tools?.finishForm(force: true)
+        tools?.redacting = true
+    }
+
+    private func startPrepare() {
+        if markup { finishMarkup() }
+        if editing { finishEditing() }
+        tools?.finishRedact(force: true)
+        tools?.preparing = true
+    }
+
+    /// Redact and Prepare form put away; their marks and drafts are kept.
+    private func closeTools() {
+        tools?.finishRedact(force: true)
+        tools?.finishForm(force: true)
     }
 
     private func finishEditing() {
