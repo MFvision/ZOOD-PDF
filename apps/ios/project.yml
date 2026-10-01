@@ -63,6 +63,13 @@ targets:
         buildPhase: resources
       - path: ../../tests/fonts/Inter-Variable.ttf
         buildPhase: resources
+      # ZOOD's body face, Arabic and Latin, for the Zood theme (SIL OFL;
+      # THIRD-PARTY-NOTICES.md). Its licensed headline face, ITF Huwiya
+      # Arabic, is NOT in the repository: drop its .ttf files into
+      # PDFEditor/Resources/LicensedFonts/ (git-ignored) and they are bundled
+      # with the rest of PDFEditor/; without them the headlines use this face.
+      - path: ../../tests/fonts/Vazirmatn-Variable.ttf
+        buildPhase: resources
     dependencies:
       - target: WarraqCore
         embed: false

@@ -244,7 +244,7 @@ Use `font-variant-numeric: tabular-nums` wherever numbers change in place, such 
   look does not change, only the room around it. `e2e/pwa.spec.ts` fails on any smaller target in the shell.
 - Installed from the browser, the app is the web manifest's (`apps/web/public/manifest.webmanifest`): its
   icons are the app icon at 192 and 512 px and a **maskable** version for phones, where the tile fills the
-  square and the mark sits in the middle 80 % (`make_zood_icon.py --maskable`).
+  square and the mark sits in the middle 80 % (`scripts/icon/make_zood_icons.py`).
 
 ## Components
 
@@ -301,19 +301,32 @@ The document view (EmbedPDF 2.15.1) is themed through its own API in `embed/embe
 
 ## The app icon
 
-The app's mark is **ZOOD's**, the owner's brand: a slab **Z** — ZOOD's initial in Latin, and the stroke
-of the Arabic zay — drawn as a leaflet folded in a Z. Three panels of one gold (the head, the fold, the
-foot), each taking the light differently, on a deep ink ground. At a glance, and at 40 px, the three
-panels read as one letter; close up they read as paper. It is original artwork: it copies no other
-product's icon, letterform or colours.
+The app's icon is **ZOOD's own mark** — the owner's brand — exactly as the brand's identity package has
+it: the arcs and the swash that make its Z, cut from the Main Logo's Illustrator file (ZOOD New CI, "01.
+Logo Design", saved PDF-compatible) into `scripts/icon/zood/zood-mark.svg` with every path as the file
+holds it. Nothing is redrawn or traced. (Wave 1's slab Z, an invented letter, and its generator are gone.)
 
-- Colours: ink `#2B3560` → `#141C39` → `#080B1A`, gold `#FAD98C` → `#C68420`. The same numbers are
-  `ZoodPalette` in `apps/ios/PDFEditor/Design/Themes.swift`, so the icon and the Zood theme agree, and
-  `ZoodLetter` in `apps/ios/PDFEditor/Design/ZoodMark.swift` draws the same letter inside the app
-  (`ThemeTests.testTheLetterIsTheSameDrawingAsTheIcons` fails if the two drift apart).
-- The generator is `scripts/icon/make_zood_icon.py` (SVG) and the rasterizer `scripts/icon/svg2png.swift`
-  (AppKit reads SVG on macOS; the repo has no other rasterizer). `scripts/icon/make_zood_icons.sh` writes
-  every derivative at once:
+**Copper on navy**, the way the brand carries its mark when it is precious: foil-stamped in copper on the
+navy folder (guide p. 28). It is the brand's own pairing rather than a new one — the guide's 40 % navy as
+the ground and its 20 % bronze (Pantone 2318 C) as the mark, run from a lit edge to a shaded one as foil
+catches the light — and on a Home Screen of white and bright tiles a deep navy square with a warm metal
+mark reads at once and reads as ZOOD. Navy on beige (the guide's other pairing) was the alternative; it
+was set aside because a pale tile loses the mark's fine arcs at 60 px and looks like every light icon.
+
+- Colours: ground `#0A2A55` → `#041E42` (Pantone 282 C) → `#031631`; copper `#C9A27C` → `#977756`
+  (2318 C) → `#7A5C3F`. The mark is 60 % of the icon's width, centred, inside the middle 80 % that every
+  home-screen shape keeps, so the full-bleed square is also the maskable icon.
+- **Dark** (`AppIcon-Dark.png`): the same copper, a step brighter, on a deeper navy. **Tinted**
+  (`AppIcon-Tinted.png`): one grey ramp on black, which the system colours itself. All three 1024 px, no
+  alpha channel.
+- The same composition is drawn in the app by `ZoodMark` (`apps/ios/PDFEditor/Design/ZoodMark.swift`) from
+  the vector `ZoodMark` in the asset catalogue; `ZoodIcon` there and `MARK_WIDTH` in the generator are the
+  same numbers. `ThemeTests.testTheMarkInTheAppIsTheIconsOwnDrawing` renders the app's drawing at 120 px
+  and compares it, pixel by pixel, with the 120-px icon Xcode puts in the app.
+- `scripts/icon/make_zood_icons.py` composes the icons (SVG) and writes the vector PDFs for the asset
+  catalogue; `scripts/icon/svg2png.swift` rasterizes (AppKit reads SVG on macOS);
+  `scripts/icon/crop_pdf.swift` cut the brand's patterns out of its `.ai` files;
+  `scripts/icon/make_zood_icons.sh` writes every derivative at once:
 
 ```
 ./scripts/icon/make_zood_icons.sh
@@ -324,39 +337,92 @@ What it writes:
 
 | Where | What |
 | ----- | ---- |
-| `apps/ios/…/AppIcon.appiconset/AppIcon.png`, `-Dark.png`, `-Tinted.png` | the iOS icon in the three appearances iOS 18+ asks for; full-bleed squares with no alpha channel, because the system cuts its own shape and rejects an icon that carries one |
+| `apps/ios/…/AppIcon.appiconset/AppIcon.png`, `-Dark.png`, `-Tinted.png` | the iOS icon in its three appearances; full-bleed squares with no alpha channel |
+| `apps/ios/…/Assets.xcassets/ZoodMark`, `ZoodLogoMain`, `ZoodLogoVertical`, `ZoodLogoHorizontal` | the mark and the three logos, vector PDFs (Preserve Vector Data, template) |
+| `apps/ios/…/Assets.xcassets/ZoodPattern01`, `02`, `03` | the brand's three graphical elements, vectors from its package |
 | `apps/desktop/icon.svg`, `packages/ui/public/app-icon.svg`, `apps/web/public/favicon.svg` | the continuous-corner tile |
-| `apps/web/public/icons/*.png` | 192 and 512, the maskable pair (the mark inside the middle 80 %), and the 180-px apple-touch icon |
+| `apps/web/public/icons/*.png` | 192 and 512, the maskable pair, and the 180-px apple-touch icon |
 | `apps/extension/icons/icon{16,32,48,128}.png` | the browser extension |
 
-The web app's `theme-color` and the manifest's `theme_color` are ZOOD's ink (`#141c39`).
+The web app's `theme-color` and the manifest's `theme_color` are ZOOD's navy (`#041e42`).
+
+The logo, mark and patterns are ZOOD's trademarks and artwork, in the repository at the owner's request and
+not under its licence (THIRD-PARTY-NOTICES.md).
 
 ## The iOS themes
 
-`apps/ios/PDFEditor/Design/Themes.swift` adds a **theme** beside the existing language and appearance
-settings. It is a layer over the tokens in `Theme.swift`, not a replacement: every screen still asks for
-`Surface.label`, `Space` and `Radius`; what a theme changes is the material under them, the ground behind
-them and the accent on them.
+`apps/ios/PDFEditor/Design/Themes.swift` (the themes) and `Design/Brand.swift` (ZOOD's palette, type, logo
+and pattern) add a **theme** beside the language and appearance settings. It is a layer over the tokens in
+`Theme.swift`: every screen still asks for `Surface.label`, `Space` and `Radius`. Both themes follow the
+system's Light and Dark (or the appearance chosen in Settings).
 
 | Theme | What it is | Where it stops |
 | ----- | ---------- | -------------- |
 | **System** | what the app looked like before: the system's materials and the person's own accent | — |
-| **Liquid Glass** | SwiftUI's `.glassEffect(.regular, in:)` on every card, panel and floating bar, over a ground that carries enough colour for glass to be glass | `.glassEffect` is iOS 26; below it, the same surfaces are `.ultraThinMaterial` / `.regularMaterial`, and Settings says so under the picker |
-| **Zood** | ZOOD's own: ink and gold, warm paper in light, opaque throughout, headings a weight heavier, every tool tile in the brand's gold | it is never translucent by design, so there is nothing to fall back to |
+| **Liquid Glass** | the system's own glass (`.glassEffect(.regular, in:)`) on the **navigation and control layer only** — the markup and edit bars, the floating pen palette; the navigation, tool and tab bars are the system's own, which iOS 26 already makes glass. The content — pages, the home's cards, lists, sheets' rows — is solid on the system's own grouped ground, in the system's accent: legibility first, no tint of its own | `.glassEffect` is iOS 26; below it the bars are the system's `.bar` material, and Settings says so |
+| **Zood** | ZOOD's identity, below | opaque by design |
 
-- **Where it is applied:** the home screen's ground and cards, the Library's sidebar and grids, every
-  sheet's body and rows (`AppSheet`), the navigation and bottom bars, the markup bar and the floating pen
-  palette. The entry points are `themedGround()`, `themedCard()`, `themedBar()`,
-  `themedSurface(_:in:)`, `themedScrollBackground()` and `themedToolbar()`.
-- **Accessibility.** **Reduce Transparency** turns every surface on every theme into a solid colour, and
-  takes the glass theme's ground highlight away with it — a surface that was "nearly" opaque would read as
-  a bug. **Reduce Motion** is untouched by the themes: nothing a theme draws travels, and a theme change
-  cross-fades (`Motion.quick`). The Zood accent is a bronze on paper and a gold on ink, both at or above
-  4.5:1 against their own ground (`ThemeTests.testZoodsAccentCanCarryTextOnZoodsOwnGround`).
-- **Chosen and kept** in Settings › Interface, applied at once (the theme is in the environment, so every
-  themed surface redraws) and kept in `UserDefaults` under `theme`. A UI test passes `-theme glass`.
-- **RTL** needs nothing special: the grounds are gradients and the surfaces are shapes, and the one piece
-  of artwork, the ZOOD mark, is a letter that is the same in both directions.
+**What the glass theme dropped from wave 1**: the sky-to-violet gradient ground (it fought the documents
+for attention, and Apple's glass does not need a coloured ground — content scrolls under it), the glass on
+the home's cards and on every sheet's rows (content is never glass), the white highlight and the white
+hairlines (the system's glass draws its own edge).
+
+**Zood**, from the guide and the identity package:
+
+- **Palette, in its proportions** (guide p. 9): navy Pantone 282 C `#041E42` dominant — the type on paper,
+  the ground in dark, the plates of the tool tiles, the logo; beige 482 C at 60 % `#D6C6B8` as the paper,
+  with its 60 % tint `#E6DDD4` as the light ground and `#F5F1ED` (the beige at a quarter, the envelope's
+  stock, p. 30) for cards; bronze 2318 C `#977756` as the accent — the copper glyphs, the hairline edges,
+  the tint; light blue 291 C `#A7C6ED` sparingly — only as the frosted pattern on the navy. The tints are
+  the guide's 95/85/60 % toward white. Two steps are the app's own, because the guide's bronze does not reach
+  4.5:1 as text on either ground: `#73563A` (a darker bronze) on the paper and `#AE8B66` (a lighter one) on
+  the navy. **Light** = beige paper, navy type, copper accents; **dark** = navy ground, beige type, copper
+  accents.
+- **Contrast**: every text colour on every surface it is drawn on is at least 4.5:1, and white on the
+  deep bronze and navy on the light one (a filled button) too — `ThemeTests.testEveryTextOnZoodsGroundsPassesAA`.
+- **The colours reach every screen through the theme.** `Surface.label`, `secondaryLabel`, `grouped` …
+  are dynamic colours that read the theme from a UIKit trait bridged to `\.appTheme`
+  (`AppThemeKey: UITraitBridgedEnvironmentKey`), so a screen that asks for `Surface.label` gets navy on the
+  paper without knowing about themes (`testTheSurfaceTokensTakeZoodsColoursThroughTheTraits`).
+- **Type.** Headlines in **ITF Huwiya Arabic** — the face ZOOD bought (Light at display sizes, Regular
+  below), which has its own Latin. Body copy in **Vazirmatn** (OFL), Arabic and Latin, as the guide sets it.
+  `BrandType` in `Brand.swift` is the one place either is named; `.themeFont(_:)` (a `TypeRole`) gives a
+  text the theme's face, and `ThemeTypeface` makes Vazirmatn the default for text that names none.
+  Dynamic Type applies (`Font.custom(_:size:relativeTo:)`).
+- **Huwiya is never in the repository.** It is a commercial font: put its `.ttf` files in
+  `apps/ios/PDFEditor/Resources/LicensedFonts/` (ignored by version control) and the next build bundles
+  and registers them. Without them — a clean checkout, CI — the headlines are Vazirmatn Light, and the build
+  is otherwise identical (`testZoodsFacesAreInTheAppAndTheHeadlineFallsBackHonestly`). Both faces shape
+  Arabic with no fallback and no missing glyph (`testBothFacesShapeArabicAndCarryLatin`).
+- **The logo** (`ZoodLogo`): the Vertical logo on the welcome tour's first screen, the Main logo in
+  Settings › About, both themes and the system theme alike — the app is ZOOD's. Never stretched (the
+  artwork's own proportions); the guide gives no clear space, so the app keeps a quarter of the mark's
+  height clear all round. Elsewhere the mark alone, as the icon (`ZoodMark`).
+- **The graphical element** (`ZoodPattern`): the brand's own vectors. The woven Pattern 02 is a frosted
+  texture — navy at 7 % on the paper, light blue at 13 % on the navy — in the home screen's hero, in the
+  part the words do not use (a band along the top on a phone, the trailing third on an iPad); Pattern 01
+  (three lines, two bending) over the logo on the welcome tour. Never behind text, and gone under Increase
+  Contrast.
+- **Iconography**: the brand's own icons are wayfinding pictograms (washrooms, lifts, prayer rooms) with
+  nothing to say in a PDF editor, so they are not used; the app keeps SF Symbols, set at a light weight on
+  this theme to sit with the guide's thin single-weight line (p. 16).
+- **Bars**: the navigation and bottom bars take the theme's ground; the markup and edit bars its navy.
+
+**Accessibility, every theme.** **Reduce Transparency** makes every surface solid. **Increase Contrast**
+makes the glass theme's bars solid, firms every edge, and removes ZOOD's texture. **Reduce Motion** loses
+nothing: no theme moves anything, and a theme change cross-fades (`Motion.quick`).
+
+- **Where it is applied:** the home screen (hero, cards, rows), the Library's sidebar and grids, every
+  sheet's body (`AppSheet`), the navigation and bottom bars, the markup and edit bars and the pen palette,
+  the welcome tour, Settings. The entry points are `themedGround()`, `themedCard()`, `themedBar()`,
+  `themedSurface(_:in:)`, `themedScrollBackground()`, `themedToolbar()`, `themeFont(_:)` and
+  `.buttonStyle(.themedProminent)`.
+- **Not themed in type**: a sheet or tool that sets `TextStyle.*` itself keeps the system face on the Zood
+  theme (its colours still follow); only text that names no font, and the screens above, take Vazirmatn.
+- **Chosen and kept** in Settings › Interface, applied at once and kept in `UserDefaults` under `theme`.
+  A UI test passes `-theme glass`.
+- **RTL**: the logo is not mirrored (a logo is never flipped); the pattern and every layout follow the
+  reading direction.
 
 ## Screenshots
 

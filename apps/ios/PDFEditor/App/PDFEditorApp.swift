@@ -10,6 +10,11 @@ struct PDFEditorApp: App {
     /// For the Home Screen's quick actions, which UIKit delivers.
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
+    init() {
+        // ZOOD's faces, before the first scene draws (Design/Brand.swift).
+        BrandType.register()
+    }
+
     var body: some Scene {
         WindowGroup(id: "library") {
             LibraryShell()

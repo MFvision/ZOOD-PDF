@@ -1,11 +1,13 @@
+import CoreText
 import SwiftUI
 import XCTest
 @testable import PDFEditor
 
 /// The themes as rules rather than as pictures: what each one lets through,
-/// what the accessibility settings take away from it, whether its accent can
-/// be read on its own ground, and that the ZOOD letter is the same drawing in
-/// the app as in the icon.
+/// what the accessibility settings take away from it, whether every pair of
+/// ZOOD's text and ground passes WCAG AA, that ZOOD's colours reach the plain
+/// `Surface` tokens through the theme, that its faces are in the app and
+/// shape Arabic, and that the mark in the app is the icon's own drawing.
 @MainActor
 final class ThemeTests: XCTestCase {
     // MARK: - What a theme is
@@ -20,12 +22,22 @@ final class ThemeTests: XCTestCase {
         XCTAssertNil(AppTheme(rawValue: "liquid"), "an unknown value is not a theme")
     }
 
-    func testOnlyTheGlassThemeAsksForTheSystemsGlass() {
+    func testGlassIsOnlyEverTheBarsNeverTheContent() {
         for scheme in [ColorScheme.light, .dark] {
-            XCTAssertFalse(style(.system, scheme).wantsLiquidGlass)
-            XCTAssertTrue(style(.glass, scheme).wantsLiquidGlass)
-            XCTAssertFalse(style(.zood, scheme).wantsLiquidGlass, "ZOOD's whole point is that nothing is see-through")
+            let glass = style(.glass, scheme)
+            XCTAssertTrue(glass.wantsLiquidGlass(.bar), "the glass theme's bars are glass")
+            XCTAssertFalse(glass.wantsLiquidGlass(.card), "a card is content: never glass")
+            XCTAssertEqual("\(glass.cardFill)", "\(AnyShapeStyle(glass.solidCard))", "the glass theme's cards are solid")
+            XCTAssertFalse(style(.system, scheme).wantsLiquidGlass(.bar))
+            XCTAssertFalse(style(.zood, scheme).wantsLiquidGlass(.bar), "ZOOD's is opaque")
         }
+    }
+
+    func testTheGlassThemeHasNoColouredSkyUnderTheContent() {
+        // Wave 1's glass ground ran sky to violet; the content's ground is
+        // now the system's own grouped background, in light and in dark.
+        XCTAssertEqual("\(style(.glass, .light).ground)", "\(LinearGradient(colors: [Color(.systemGroupedBackground)], startPoint: .top, endPoint: .bottom))")
+        XCTAssertEqual("\(style(.glass, .dark).ground)", "\(style(.glass, .light).ground)", "it follows the system's appearance by itself")
     }
 
     func testZoodIsNeverTranslucentAndTheOthersAreUntilReduceTransparency() {
@@ -39,14 +51,22 @@ final class ThemeTests: XCTestCase {
             for scheme in [ColorScheme.light, .dark] {
                 let solid = style(theme, scheme, reduceTransparency: true)
                 XCTAssertFalse(solid.translucent, "\(theme) is solid under Reduce Transparency")
-                XCTAssertFalse(solid.wantsLiquidGlass, "\(theme) asks for no glass under Reduce Transparency")
+                XCTAssertFalse(solid.wantsLiquidGlass(.bar), "\(theme) asks for no glass under Reduce Transparency")
+                XCTAssertEqual("\(solid.barFill)", "\(AnyShapeStyle(solid.solidBar))")
             }
         }
     }
 
+    func testIncreaseContrastMakesTheBarsSolidAndTheEdgesFirm() {
+        let glass = ThemeStyle(theme: .glass, scheme: .light, reduceTransparency: false, increaseContrast: true)
+        XCTAssertFalse(glass.wantsLiquidGlass(.bar), "no glass under Increase Contrast")
+        XCTAssertEqual("\(glass.barFill)", "\(AnyShapeStyle(glass.solidBar))")
+        XCTAssertNotEqual("\(glass.edge)", "\(Color.clear)", "and the surfaces get an edge")
+        let zood = ThemeStyle(theme: .zood, scheme: .dark, reduceTransparency: false, increaseContrast: true)
+        XCTAssertGreaterThan(alpha(of: zood.edge), alpha(of: style(.zood, .dark).edge), "ZOOD's bronze hairline is firmer")
+    }
+
     func testTheGlassThemeSaysHonestlyWhetherThisSystemHasTheEffect() {
-        // The build runs on whatever the simulator is; the point is that the
-        // answer is the system's, not a guess, and that Settings can show it.
         if #available(iOS 26.0, *) {
             XCTAssertTrue(ThemeAvailability.hasLiquidGlass)
         } else {
@@ -54,81 +74,153 @@ final class ThemeTests: XCTestCase {
         }
     }
 
-    // MARK: - Colour
+    // MARK: - ZOOD's colours
 
-    func testZoodsAccentCanCarryTextOnZoodsOwnGround() {
-        // WCAG AA for body text is 4.5:1. The bronze is used on the warm
-        // paper and the gold on the ink; neither may fall under it.
-        XCTAssertGreaterThanOrEqual(contrast(ZoodPalette.accentOnPaper, ZoodPalette.paper), 4.5)
-        XCTAssertGreaterThanOrEqual(contrast(.white, ZoodPalette.accentOnPaper), 4.5, "white text on a filled bronze button")
-        XCTAssertGreaterThanOrEqual(contrast(ZoodPalette.accentOnInk, ZoodPalette.ink), 4.5)
-        XCTAssertGreaterThanOrEqual(contrast(ZoodPalette.accentOnInk, ZoodPalette.inkDeep), 4.5)
+    func testZoodsPaletteIsTheGuidesOwnNumbers() {
+        // Guide p. 9 and the identity package: Pantone 282 C, 482 C at 60 %,
+        // 2318 C, 291 C.
+        XCTAssertEqual(hex(ZoodPalette.navy), 0x041E42)
+        XCTAssertEqual(hex(ZoodPalette.beige), 0xD6C6B8)
+        XCTAssertEqual(hex(ZoodPalette.bronze), 0x977756)
+        XCTAssertEqual(hex(ZoodPalette.sky), 0xA7C6ED)
+        // The tints are the guide's 95/85/60 % toward white, worked out.
+        XCTAssertEqual(hex(ZoodPalette.navy95), 0x11294B)
+        XCTAssertEqual(hex(ZoodPalette.navy85), 0x2A405E)
+        XCTAssertEqual(hex(ZoodPalette.navy60), 0x68788E)
+        XCTAssertEqual(hex(ZoodPalette.beige60), 0xE6DDD4)
     }
 
-    func testZoodDrawsSurfacesOfItsOwn() {
-        // A theme that drew what the system already draws would be a choice
-        // that does nothing.
-        for scheme in [ColorScheme.light, .dark] {
-            XCTAssertNotEqual(
-                "\(components(of: style(.zood, scheme).solidCard))",
-                "\(components(of: style(.system, scheme).solidCard))",
-                "ZOOD's card is not the system's in \(scheme)"
-            )
-            XCTAssertNotEqual(
-                "\(components(of: style(.zood, scheme).edge))",
-                "\(components(of: style(.system, scheme).edge))",
-                "nor is its edge"
-            )
+    func testEveryTextOnZoodsGroundsPassesAA() {
+        // WCAG AA: 4.5:1 for text. Every text colour on every surface it is
+        // drawn on, on the paper (light) and on the navy (dark).
+        let paperGrounds = [ZoodPalette.beige60, ZoodPalette.paper, UIColor(hex: 0xE1D6CB)]
+        let navyGrounds = [ZoodPalette.navy, ZoodPalette.navy95, ZoodPalette.navyDeep]
+        for ground in paperGrounds {
+            for text in [ZoodPalette.inkOnPaper, ZoodPalette.secondaryOnPaper, ZoodPalette.tertiaryOnPaper, ZoodPalette.bronzeDeep] {
+                XCTAssertGreaterThanOrEqual(contrast(text, ground), 4.5, "#\(String(hex(text), radix: 16)) on #\(String(hex(ground), radix: 16))")
+            }
         }
-        XCTAssertNotEqual(
-            "\(components(of: style(.zood, .light).tint))",
-            "\(components(of: style(.zood, .dark).tint))",
-            "its accent turns over between light and dark"
-        )
+        for ground in navyGrounds {
+            for text in [ZoodPalette.inkOnNavy, ZoodPalette.secondaryOnNavy, ZoodPalette.tertiaryOnNavy, ZoodPalette.bronzeOnNavy] {
+                XCTAssertGreaterThanOrEqual(contrast(text, ground), 4.5, "#\(String(hex(text), radix: 16)) on #\(String(hex(ground), radix: 16))")
+            }
+        }
+        // A filled button: white on the deep bronze, navy on the light one.
+        XCTAssertGreaterThanOrEqual(contrast(.white, ZoodPalette.bronzeDeep), 4.5)
+        XCTAssertGreaterThanOrEqual(contrast(ZoodPalette.navy, ZoodPalette.bronzeOnNavy), 4.5)
+        XCTAssertEqual(hex(UIColor(style(.zood, .dark).onTint)), hex(ZoodPalette.navy))
+        XCTAssertEqual(hex(UIColor(style(.zood, .light).onTint)), 0xFFFFFF)
+        // The copper glyph on its navy plate (a tool's tile).
+        XCTAssertGreaterThanOrEqual(contrast(ZoodPalette.copperLight, ZoodPalette.navy), 4.5)
     }
 
-    func testZoodSetsItsHeadingsAWeightHeavier() {
-        XCTAssertEqual(style(.zood, .light).headingWeight, .heavy)
-        XCTAssertEqual(style(.glass, .light).headingWeight, .bold)
-        XCTAssertEqual(style(.system, .dark).headingWeight, .bold)
+    func testZoodsAccentIsTheBronzeAndTurnsOverWithTheScheme() {
+        XCTAssertEqual(hex(UIColor(style(.zood, .light).tint)), hex(ZoodPalette.bronzeDeep))
+        XCTAssertEqual(hex(UIColor(style(.zood, .dark).tint)), hex(ZoodPalette.bronzeOnNavy))
+        XCTAssertEqual(hex(UIColor(style(.zood, .light).solidCard)), hex(ZoodPalette.paper), "the card is the paper")
+        XCTAssertEqual(hex(UIColor(style(.zood, .dark).solidCard)), hex(ZoodPalette.navy95), "and the navy's 95 % tint")
+    }
+
+    func testTheSurfaceTokensTakeZoodsColoursThroughTheTraits() {
+        // UIKit: a dynamic colour resolved with the theme in its traits.
+        func resolved(_ colour: Color, _ theme: AppTheme, _ style: UIUserInterfaceStyle) -> UInt32 {
+            let traits = UITraitCollection { $0.appTheme = theme; $0.userInterfaceStyle = style }
+            return hex(UIColor(colour).resolvedColor(with: traits))
+        }
+        XCTAssertEqual(resolved(Surface.label, .zood, .light), hex(ZoodPalette.navy), "navy type on the paper")
+        XCTAssertEqual(resolved(Surface.label, .zood, .dark), hex(ZoodPalette.beige60), "beige type on the navy")
+        XCTAssertEqual(resolved(Surface.grouped, .zood, .light), hex(ZoodPalette.beige60))
+        XCTAssertEqual(resolved(Surface.label, .glass, .light), hex(UIColor.label.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))))
+
+        // SwiftUI: the same colour resolved from an environment that holds
+        // the theme — the path every `Text` takes. This is the bridge
+        // (`AppThemeKey: UITraitBridgedEnvironmentKey`) doing its work.
+        var environment = EnvironmentValues()
+        environment.colorScheme = .light
+        environment.appTheme = .zood
+        let zoodLabel = Surface.label.resolve(in: environment)
+        XCTAssertEqual(hex(UIColor(Color(zoodLabel))), hex(ZoodPalette.navy))
+        environment.appTheme = .system
+        XCTAssertNotEqual(hex(UIColor(Color(Surface.label.resolve(in: environment)))), hex(ZoodPalette.navy))
+    }
+
+    // MARK: - ZOOD's type
+
+    func testZoodsFacesAreInTheAppAndTheHeadlineFallsBackHonestly() {
+        BrandType.register()
+        for name in [BrandType.body.regular, BrandType.body.light, BrandType.body.semibold] {
+            XCTAssertNotNil(UIFont(name: name, size: 17), "Vazirmatn's \(name) is registered")
+        }
+        let licensed = Bundle.main.urls(forResourcesWithExtension: "ttf", subdirectory: nil)?
+            .contains { $0.lastPathComponent.hasPrefix(BrandType.licensedHeadlinePrefix) } ?? false
+        XCTAssertEqual(BrandType.hasLicensedHeadline, licensed, "Huwiya is used exactly when its files were bundled")
+    }
+
+    func testBothFacesShapeArabicAndCarryLatin() throws {
+        BrandType.register()
+        var faces = [BrandType.body.regular]
+        if BrandType.hasLicensedHeadline { faces.append(BrandType.licensedHeadline.light) }
+        for name in faces {
+            let font = CTFontCreateWithName(name as CFString, 34, nil)
+            XCTAssertEqual(CTFontCopyPostScriptName(font) as String, name, "\(name) is the face, not a substitute")
+            // «زود» and a sentence: every glyph from this face, none missing,
+            // and the letters joined — a joined ع is not the isolated one.
+            for text in ["زود", "عيش في رفاهية", "PDFs, done right."] {
+                let runs = glyphRuns(text, font: font)
+                XCTAssertFalse(runs.isEmpty)
+                for run in runs {
+                    XCTAssertEqual(run.font, name, "\(text) is set in \(name), with no fallback")
+                    XCTAssertFalse(run.glyphs.contains(0), "\(text) has no missing glyph in \(name)")
+                }
+            }
+            let isolated = try XCTUnwrap(glyphRuns("ع", font: font).first?.glyphs.first)
+            let initial = try XCTUnwrap(glyphRuns("عي", font: font).first?.glyphs)
+            XCTAssertFalse(initial.contains(isolated), "\(name) joins ع to what follows it")
+        }
     }
 
     // MARK: - The mark
 
-    func testTheLetterIsTheSameDrawingAsTheIcons() {
-        // scripts/icon/make_zood_icon.py draws the Z on a 1024 grid at
-        // 292…732 across and 308…716 down. The app's own paths must land on
-        // the same fractions, or the mark beside a title and the icon on the
-        // Home Screen would be two different letters.
-        let rect = CGRect(x: 0, y: 0, width: 1024, height: 1024)
-        let head = ZoodLetter.head(in: rect).boundingRect
-        let foot = ZoodLetter.foot(in: rect).boundingRect
-        XCTAssertEqual(head.minX, 292, accuracy: 0.5)
-        XCTAssertEqual(head.maxX, 732, accuracy: 0.5)
-        XCTAssertEqual(head.minY, 308, accuracy: 0.5)
-        XCTAssertEqual(head.height, 92, accuracy: 0.5)
-        XCTAssertEqual(foot.maxY, 716, accuracy: 0.5)
-        XCTAssertEqual(foot.height, 92, accuracy: 0.5)
-        XCTAssertEqual(head.width, foot.width, accuracy: 0.5, "the two bars are the same length")
+    func testTheMarkInTheAppIsTheIconsOwnDrawing() throws {
+        // The app icon iOS was given (scripts/icon/make_zood_icons.sh writes
+        // it; Xcode puts its 120-px rendering in the app bundle), against
+        // the app's own drawing of the same composition at the same size.
+        let url = try XCTUnwrap(
+            Bundle.main.urls(forResourcesWithExtension: "png", subdirectory: nil)?
+                .first { $0.lastPathComponent.hasPrefix("AppIcon60x60@2x") },
+            "the 120-px app icon is in the app"
+        )
+        let icon = try XCTUnwrap(UIImage(contentsOfFile: url.path)?.cgImage)
+        let side = icon.width
+        let renderer = ImageRenderer(content: ZoodMark(size: CGFloat(side), rounded: false))
+        renderer.scale = 1
+        let drawn = try XCTUnwrap(renderer.cgImage)
+        let iconPixels = pixels(icon, side: side)
+        let drawnPixels = pixels(drawn, side: side)
 
-        // The whole letter is square-ish and centred on the grid.
-        let whole = ZoodLetterShape().path(in: rect).boundingRect
-        XCTAssertEqual(whole.midX, 512, accuracy: 1)
-        XCTAssertEqual(whole.midY, 512, accuracy: 1)
-
-        // The diagonal runs from the head's trailing end down to the foot's
-        // leading one — a Z, not an S.
-        let fold = ZoodLetter.fold(in: rect)
-        XCTAssertTrue(fold.contains(CGPoint(x: 700, y: 420)), "the fold starts under the head's far end")
-        XCTAssertTrue(fold.contains(CGPoint(x: 330, y: 600)), "and lands over the foot's near end")
-        XCTAssertFalse(fold.contains(CGPoint(x: 330, y: 420)), "nothing of it under the head's near end")
+        // Where the copper is, in each: the mark's own shape.
+        func copper(_ p: [UInt8], _ i: Int) -> Bool { Int(p[i]) - Int(p[i + 2]) > 30 }
+        var both = 0, either = 0, difference = 0
+        for i in stride(from: 0, to: side * side * 4, by: 4) {
+            let a = copper(iconPixels, i), b = copper(drawnPixels, i)
+            if a && b { both += 1 }
+            if a || b { either += 1 }
+            for c in 0..<3 { difference += abs(Int(iconPixels[i + c]) - Int(drawnPixels[i + c])) }
+        }
+        XCTAssertGreaterThan(either, side * side / 20, "there is a copper mark to compare")
+        XCTAssertGreaterThan(Double(both) / Double(either), 0.9, "the copper lands in the same place in both")
+        XCTAssertLessThan(Double(difference) / Double(side * side * 3), 10, "and the colours are the same, to antialiasing")
     }
 
-    func testTheLetterScalesWithTheRectItIsDrawnIn() {
-        let small = ZoodLetterShape().path(in: CGRect(x: 0, y: 0, width: 32, height: 32)).boundingRect
-        let large = ZoodLetterShape().path(in: CGRect(x: 0, y: 0, width: 320, height: 320)).boundingRect
-        XCTAssertEqual(large.width / small.width, 10, accuracy: 0.01)
-        XCTAssertEqual(small.minX / 32, 292.0 / 1024, accuracy: 0.001)
+    func testTheLogoArtworkIsInTheCatalogueAsVectors() {
+        for name in ["ZoodMark", "ZoodLogoMain", "ZoodLogoVertical", "ZoodLogoHorizontal", "ZoodPattern01", "ZoodPattern02", "ZoodPattern03"] {
+            let image = UIImage(named: name)
+            XCTAssertNotNil(image, "\(name) is in the asset catalogue")
+            XCTAssertEqual(image?.renderingMode, .alwaysTemplate, "\(name) takes the theme's colour")
+        }
+        // Never stretched: the mark keeps the artwork's own proportions.
+        let mark = UIImage(named: "ZoodMark")!
+        XCTAssertEqual(mark.size.width / mark.size.height, ZoodIcon.markAspect, accuracy: 0.01)
     }
 
     // MARK: - Helpers
@@ -137,24 +229,57 @@ final class ThemeTests: XCTestCase {
         ThemeStyle(theme: theme, scheme: scheme, reduceTransparency: reduceTransparency)
     }
 
-    private func components(of colour: Color) -> [CGFloat] {
-        let resolved = UIColor(colour).cgColor.converted(to: CGColorSpace(name: CGColorSpace.sRGB)!, intent: .defaultIntent, options: nil)
+    private func components(of colour: UIColor) -> [CGFloat] {
+        let resolved = colour.cgColor.converted(to: CGColorSpace(name: CGColorSpace.sRGB)!, intent: .defaultIntent, options: nil)
         return resolved?.components ?? []
     }
 
+    private func hex(_ colour: UIColor) -> UInt32 {
+        let parts = components(of: colour)
+        guard parts.count >= 3 else { return 0 }
+        return parts.prefix(3).reduce(0) { ($0 << 8) | UInt32((min(max($1, 0), 1) * 255).rounded()) }
+    }
+
+    private func alpha(of colour: Color) -> CGFloat {
+        components(of: UIColor(colour)).last ?? 0
+    }
+
     /// WCAG's contrast ratio, from the two colours' relative luminance.
-    private func contrast(_ one: Color, _ other: Color) -> CGFloat {
+    private func contrast(_ one: UIColor, _ other: UIColor) -> CGFloat {
         let first = luminance(one)
         let second = luminance(other)
         return (max(first, second) + 0.05) / (min(first, second) + 0.05)
     }
 
-    private func luminance(_ colour: Color) -> CGFloat {
+    private func luminance(_ colour: UIColor) -> CGFloat {
         let parts = components(of: colour)
         guard parts.count >= 3 else { return 0 }
         func channel(_ value: CGFloat) -> CGFloat {
             value <= 0.03928 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
         }
         return 0.2126 * channel(parts[0]) + 0.7152 * channel(parts[1]) + 0.0722 * channel(parts[2])
+    }
+
+    private func glyphRuns(_ text: String, font: CTFont) -> [(font: String, glyphs: [CGGlyph])] {
+        let attributed = NSAttributedString(string: text, attributes: [.init(kCTFontAttributeName as String): font])
+        let line = CTLineCreateWithAttributedString(attributed)
+        let runs = CTLineGetGlyphRuns(line) as? [CTRun] ?? []
+        return runs.map { run in
+            let attributes = CTRunGetAttributes(run) as NSDictionary
+            let runFont = attributes[kCTFontAttributeName as String] as! CTFont
+            var glyphs = [CGGlyph](repeating: 0, count: CTRunGetGlyphCount(run))
+            CTRunGetGlyphs(run, CFRange(location: 0, length: 0), &glyphs)
+            return (CTFontCopyPostScriptName(runFont) as String, glyphs)
+        }
+    }
+
+    private func pixels(_ image: CGImage, side: Int) -> [UInt8] {
+        var data = [UInt8](repeating: 0, count: side * side * 4)
+        let context = CGContext(
+            data: &data, width: side, height: side, bitsPerComponent: 8, bytesPerRow: side * 4,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )!
+        context.draw(image, in: CGRect(x: 0, y: 0, width: side, height: side))
+        return data
     }
 }

@@ -1,9 +1,11 @@
 #!/bin/zsh
-# Writes every ZOOD app icon the repo ships, from the one generator
-# (scripts/icon/make_zood_icon.py) through the SVG rasterizer
-# (scripts/icon/svg2png.swift):
+# Writes every icon and every piece of logo artwork the repo ships, from
+# ZOOD's own logo (scripts/icon/zood/*.svg, cut from the brand's identity
+# package) through the composer (scripts/icon/make_zood_icons.py) and the SVG
+# rasterizer (scripts/icon/svg2png.swift):
 #
-#   apps/ios/…/Assets.xcassets/AppIcon.appiconset/  the iOS icon, light, dark and tinted
+#   apps/ios/…/Assets.xcassets/AppIcon.appiconset/  the iOS icon, default, dark and tinted
+#   apps/ios/…/Assets.xcassets/Zood*.imageset/      the mark and the lockups, as vector PDFs
 #   apps/desktop/icon.svg                            the desktop tile (continuous corners)
 #   packages/ui/public/app-icon.svg                  the in-page mark
 #   apps/web/public/favicon.svg + icons/*.png        the web app and its home-screen icons
@@ -18,41 +20,49 @@ export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Develope
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
-gen() { python3 "$repo/scripts/icon/make_zood_icon.py" "$@" > /dev/null; }
 png() { xcrun swift "$repo/scripts/icon/svg2png.swift" "$@" > /dev/null; }
 
-gen "$work/tile.svg"                      # the continuous-corner tile
-gen "$work/square.svg" --square           # full bleed, for a system that cuts its own shape
-gen "$work/square-dark.svg" --square --dark
-gen "$work/square-tinted.svg" --square --tinted
-gen "$work/maskable.svg" --maskable
-gen "$work/mark.svg" --mark-only
+python3 "$repo/scripts/icon/make_zood_icons.py" "$work" > /dev/null
+
+# ZOOD's navy (Pantone 282 C), under anything that may not carry alpha.
+navy="#041e42"
 
 # ---- iOS ------------------------------------------------------------------
 # One 1024 px icon in each appearance. No alpha channel: an iOS app icon that
 # carries one is rejected at upload.
-appicon="$repo/apps/ios/PDFEditor/Resources/Assets.xcassets/AppIcon.appiconset"
-png "$work/square.svg"        "$appicon/AppIcon.png"        1024 --opaque "#080b1a"
-png "$work/square-dark.svg"   "$appicon/AppIcon-Dark.png"   1024 --opaque "#04060f"
+assets="$repo/apps/ios/PDFEditor/Resources/Assets.xcassets"
+appicon="$assets/AppIcon.appiconset"
+png "$work/square.svg"        "$appicon/AppIcon.png"        1024 --opaque "$navy"
+png "$work/square-dark.svg"   "$appicon/AppIcon-Dark.png"   1024 --opaque "#010815"
 png "$work/square-tinted.svg" "$appicon/AppIcon-Tinted.png" 1024 --opaque "#000000"
+# The artwork the app draws itself, kept as vectors.
+for name in ZoodMark ZoodLogoMain ZoodLogoVertical ZoodLogoHorizontal; do
+  cp "$work/$name.pdf" "$assets/$name.imageset/$name.pdf"
+done
+# The brand's graphical elements, vectors cut from its identity package.
+for n in 01 02 03; do
+  cp "$repo/scripts/icon/zood/zood-pattern-$n.pdf" "$assets/ZoodPattern$n.imageset/ZoodPattern$n.pdf"
+done
 
 # ---- desktop, the page, the web -------------------------------------------
 cp "$work/tile.svg" "$repo/apps/desktop/icon.svg"
 cp "$work/tile.svg" "$repo/packages/ui/public/app-icon.svg"
 cp "$work/tile.svg" "$repo/apps/web/public/favicon.svg"
 icons="$repo/apps/web/public/icons"
-png "$work/tile.svg"     "$icons/icon-192.png"      192
-png "$work/tile.svg"     "$icons/icon-512.png"      512
-png "$work/maskable.svg" "$icons/maskable-192.png"  192
-png "$work/maskable.svg" "$icons/maskable-512.png"  512
+png "$work/tile.svg"   "$icons/icon-192.png"      192
+png "$work/tile.svg"   "$icons/icon-512.png"      512
+# Maskable: full bleed; the mark already sits inside the middle 80 %, the
+# part every home-screen shape keeps.
+png "$work/square.svg" "$icons/maskable-192.png"  192 --opaque "$navy"
+png "$work/square.svg" "$icons/maskable-512.png"  512 --opaque "$navy"
 # Safari fills an apple-touch-icon's transparency with black: it gets the
 # full-bleed square, whose corners Safari rounds itself.
-png "$work/square.svg"   "$icons/apple-touch-icon.png" 180 --opaque "#080b1a"
+png "$work/square.svg" "$icons/apple-touch-icon.png" 180 --opaque "$navy"
 
 # ---- the browser extension -------------------------------------------------
 extension="$repo/apps/extension/icons"
 for size in 16 32 48 128; do
-  png "$work/square.svg" "$extension/icon$size.png" "$size" --opaque "#080b1a"
+  png "$work/square.svg" "$extension/icon$size.png" "$size" --opaque "$navy"
 done
 
 echo "== wrote the ZOOD icons"

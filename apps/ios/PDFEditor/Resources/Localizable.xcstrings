@@ -2259,12 +2259,12 @@
         }
       }
     },
-    "Glass chrome over a soft ground. Needs iOS 26 for the system's own glass; on older systems it uses the frosted materials instead.": {
+    "Glass on the bars, toolbars and floating palettes only; documents and lists stay solid. Needs iOS 26 for the system's own glass; on older systems the bars use the frosted materials.": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "واجهة زجاجية فوق خلفية هادئة. تحتاج iOS 26 لزجاج النظام نفسه؛ وعلى الأنظمة الأقدم تُستخدم الخامات الضبابية بدلًا منه."
+            "value": "زجاج على الأشرطة وأشرطة الأدوات واللوحات العائمة وحدها، وتبقى المستندات والقوائم صلبة. يحتاج iOS 26 لزجاج النظام نفسه؛ وعلى الأنظمة الأقدم تستخدم الأشرطة الخامات الضبابية."
           }
         }
       }
@@ -5869,12 +5869,12 @@
         }
       }
     },
-    "ZOOD's own: ink and gold, with no translucency.": {
+    "ZOOD's own: navy, warm beige and copper, its typefaces and its pattern.": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "سمة زود: حِبر وذهب، بلا شفافية."
+            "value": "سمة زود: الكحلي والبيج الدافئ والنحاسي، بخطوطها ونقشها."
           }
         }
       }

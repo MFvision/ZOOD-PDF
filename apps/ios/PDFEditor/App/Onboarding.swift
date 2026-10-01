@@ -15,7 +15,7 @@ struct OnboardingView: View {
     /// The screens, in order.
     static let screens: [OnboardingScreen] = [
         OnboardingScreen(
-            symbol: "doc.richtext",
+            symbol: nil,
             title: "Welcome to \(AppName.isolated)",
             message: "Open a PDF from Files or from your own library and read it as it was written — Arabic in its own order, right to left, page by page.",
             points: [
@@ -79,7 +79,7 @@ struct OnboardingView: View {
                     }
                 }
             }
-            .background(Surface.grouped)
+            .themedGround(systemColour: Surface.grouped)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -97,11 +97,11 @@ struct OnboardingView: View {
     private func button(_ title: LocalizedStringKey, identifier: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(TextStyle.headline)
+                .themeFont(.headline)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, Space.x2)
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(.themedProminent)
         .controlSize(.large)
         .padding(.horizontal, Space.x7)
         .padding(.top, Space.x5)
@@ -112,7 +112,9 @@ struct OnboardingView: View {
 
 /// One screen of the tour.
 struct OnboardingScreen {
-    let symbol: String
+    /// The SF Symbol over the screen; nil for the first, which carries the
+    /// logo instead.
+    let symbol: String?
     let title: LocalizedStringKey
     let message: LocalizedStringKey
     let points: [OnboardingPoint]
@@ -128,21 +130,19 @@ struct OnboardingPoint: Identifiable {
 
 private struct OnboardingPage: View {
     let screen: OnboardingScreen
+    @Environment(\.appTheme) private var theme
 
     var body: some View {
         ScrollView {
             VStack(spacing: Space.x7) {
-                Image(systemName: screen.symbol)
-                    .font(.system(size: 72, weight: .light))
-                    .foregroundStyle(Color.accentColor)
-                    .padding(.top, Space.x9)
-                    .accessibilityHidden(true)
+                header
                 VStack(spacing: Space.x4) {
                     Text(screen.title)
-                        .font(TextStyle.largeTitle)
+                        .themeFont(.largeTitle)
+                        .foregroundStyle(Surface.label)
                         .multilineTextAlignment(.center)
                     Text(screen.message)
-                        .font(TextStyle.body)
+                        .themeFont(.body)
                         .foregroundStyle(Surface.secondaryLabel)
                         .multilineTextAlignment(.center)
                 }
@@ -150,13 +150,13 @@ private struct OnboardingPage: View {
                     ForEach(screen.points) { point in
                         Label {
                             Text(point.text)
-                                .font(TextStyle.callout)
+                                .themeFont(.callout)
                                 .foregroundStyle(Surface.label)
                                 .fixedSize(horizontal: false, vertical: true)
                         } icon: {
                             Image(systemName: point.symbol)
-                                .font(.title3)
-                                .foregroundStyle(Color.accentColor)
+                                .font(.title3.weight(theme == .zood ? .light : .regular))
+                                .foregroundStyle(.tint)
                                 .frame(width: 30)
                         }
                     }
@@ -171,6 +171,32 @@ private struct OnboardingPage: View {
             .frame(maxWidth: .infinity)
         }
         .accessibilityElement(children: .contain)
+    }
+
+    /// The first screen carries ZOOD's logo — the app is ZOOD's — with the
+    /// brand's three-line element over it on ZOOD's own theme; the others
+    /// carry the symbol of what they are about, in a thin line.
+    @ViewBuilder
+    private var header: some View {
+        if let symbol = screen.symbol {
+            Image(systemName: symbol)
+                .font(.system(size: 72, weight: theme == .zood ? .ultraLight : .light))
+                .foregroundStyle(.tint)
+                .padding(.top, Space.x9)
+                .accessibilityHidden(true)
+        } else {
+            VStack(spacing: 0) {
+                if theme == .zood {
+                    ZoodPattern(kind: .lines)
+                        .frame(width: 64, height: 88)
+                        .clipped()
+                        .mask(LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom))
+                }
+                ZoodLogo(kind: .vertical, height: 132)
+                    .accessibilityIdentifier("onboarding.logo")
+            }
+            .padding(.top, theme == .zood ? Space.x4 : Space.x8)
+        }
     }
 }
 

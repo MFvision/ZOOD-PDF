@@ -10,7 +10,7 @@ final class ThemeUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    private func launch(theme: String? = nil, language: String = "en", appearance: String = "light", fresh: Bool = true) -> XCUIApplication {
+    private func launch(theme: String? = nil, language: String = "en", appearance: String = "light", fresh: Bool = true, onboarding: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = [
             "-AppleLanguages", "(\(language))",
@@ -20,6 +20,7 @@ final class ThemeUITests: XCTestCase {
         ]
         if fresh { app.launchArguments += ["-warraqFresh", "1"] }
         if let theme { app.launchArguments += ["-theme", theme] }
+        if onboarding { app.launchArguments += ["-warraqOnboarding", "show"] }
         app.launch()
         return app
     }
@@ -96,7 +97,7 @@ final class ThemeUITests: XCTestCase {
         let chosen = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Liquid Glass' OR value == 'Liquid Glass'")).firstMatch
         XCTAssertTrue(chosen.waitForExistence(timeout: 15), "the picker now reads Liquid Glass")
         // The footer under it says what that theme is doing on this system.
-        let footer = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Glass chrome'")).firstMatch
+        let footer = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'floating palettes'")).firstMatch
         XCTAssertTrue(footer.waitForExistence(timeout: 15), "Settings says what the chosen theme does")
         app.buttons["sheet.done"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["library.home"].firstMatch.waitForExistence(timeout: 15), "back on the home screen, drawn in the new theme")
@@ -109,9 +110,11 @@ final class ThemeUITests: XCTestCase {
             throw XCTSkip("WARRAQ_SCREENSHOT_DIR is not set; scripts/ios/build.sh sets it")
         }
         let device = PartBApp.deviceSlug
+        // Each theme in light and in dark, each in both languages: the
+        // themes follow the appearance, and Arabic lays them out right to left.
         let combos: [(theme: String, language: String, appearance: String)] = [
-            ("glass", "en", "light"), ("glass", "ar", "dark"),
-            ("zood", "ar", "light"), ("zood", "en", "dark"),
+            ("glass", "en", "light"), ("glass", "ar", "dark"), ("glass", "ar", "light"), ("glass", "en", "dark"),
+            ("zood", "en", "light"), ("zood", "ar", "dark"), ("zood", "ar", "light"), ("zood", "en", "dark"),
         ]
         for combo in combos {
             let suffix = "\(combo.theme)-\(combo.language)-\(combo.appearance)-\(device)"
@@ -121,14 +124,25 @@ final class ThemeUITests: XCTestCase {
             XCTAssertTrue(app.descendants(matching: .any)["library.home"].firstMatch.waitForExistence(timeout: 40), "the home screen")
             try Screenshots.save(app, as: "theme-home-\(suffix)", in: directory)
 
-            // Settings, where the theme is chosen, on the same ground.
+            // Settings, where the theme is chosen, on the same ground; and
+            // its About, with ZOOD's logo.
             openSettings(in: app)
             let picker = app.descendants(matching: .any)["settings.theme"].firstMatch
             scrollTo(picker, in: app)
             XCTAssertTrue(picker.waitForExistence(timeout: 15))
             try Screenshots.save(app, as: "theme-settings-\(suffix)", in: directory)
+            let logo = app.descendants(matching: .any)["settings.logo"].firstMatch
+            scrollTo(logo, in: app)
+            XCTAssertTrue(logo.waitForExistence(timeout: 15), "About carries ZOOD's logo")
+            try Screenshots.save(app, as: "theme-about-\(suffix)", in: directory)
             app.buttons["sheet.done"].tap()
             app.terminate()
+
+            // The welcome tour's first screen, with the logo.
+            let tour = launch(theme: combo.theme, language: combo.language, appearance: combo.appearance, onboarding: true)
+            XCTAssertTrue(tour.descendants(matching: .any)["onboarding.logo"].firstMatch.waitForExistence(timeout: 40), "the tour opens on the logo")
+            try Screenshots.save(tour, as: "theme-welcome-\(suffix)", in: directory)
+            tour.terminate()
 
             // A document open, with the markup bar out: the chrome in the theme.
             let file = try PartBApp.copyFixture(PartBApp.outlines)

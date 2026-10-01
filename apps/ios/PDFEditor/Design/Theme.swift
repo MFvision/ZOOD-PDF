@@ -5,23 +5,31 @@ import SwiftUI
 // Type comes with them), a 4-point grid, the same radii as the desktop, and
 // motion that is feedback on what the person did — critically damped by
 // default, a little bounce only after a flick, a cross-fade under Reduce
-// Motion. Nothing here is a hard-coded colour.
+// Motion. Nothing here is a hard-coded colour: ZOOD's come from its palette.
 
-/// Surfaces and text, by what they are.
+/// Surfaces and text, by what they are. Each is the system's colour on the
+/// system and glass themes and ZOOD's own on the Zood theme — the paper and
+/// the navy of its guide — resolved from the theme in the traits
+/// (`Color.themed`, Design/Brand.swift), so a screen asks for `label` and
+/// gets the right ink whatever the theme.
 enum Surface {
     /// The window, the Library, the sheets' body.
-    static let window = Color(.systemBackground)
+    static let window = Color.themed(system: .systemBackground, paper: ZoodPalette.beige60, navy: ZoodPalette.navy)
     /// Grouped inset sections and cards.
-    static let grouped = Color(.systemGroupedBackground)
-    static let groupedCell = Color(.secondarySystemGroupedBackground)
+    static let grouped = Color.themed(system: .systemGroupedBackground, paper: ZoodPalette.beige60, navy: ZoodPalette.navy)
+    static let groupedCell = Color.themed(system: .secondarySystemGroupedBackground, paper: ZoodPalette.paper, navy: ZoodPalette.navy95)
     /// Behind the pages: the grey paper sits on.
-    static let underPage = Color(.secondarySystemBackground)
+    static let underPage = Color.themed(system: .secondarySystemBackground, paper: ZoodPalette.beige, navy: ZoodPalette.navyDeep)
     /// The paper itself.
     static let paper = Color.white
-    static let separator = Color(.separator)
-    static let label = Color.primary
-    static let secondaryLabel = Color.secondary
-    static let tertiaryLabel = Color(.tertiaryLabel)
+    static let separator = Color.themed(
+        system: .separator,
+        paper: ZoodPalette.bronze.withAlphaComponent(0.35),
+        navy: ZoodPalette.bronzeOnNavy.withAlphaComponent(0.32)
+    )
+    static let label = Color.themed(system: .label, paper: ZoodPalette.inkOnPaper, navy: ZoodPalette.inkOnNavy)
+    static let secondaryLabel = Color.themed(system: .secondaryLabel, paper: ZoodPalette.secondaryOnPaper, navy: ZoodPalette.secondaryOnNavy)
+    static let tertiaryLabel = Color.themed(system: .tertiaryLabel, paper: ZoodPalette.tertiaryOnPaper, navy: ZoodPalette.tertiaryOnNavy)
 }
 
 /// The 4-point grid.

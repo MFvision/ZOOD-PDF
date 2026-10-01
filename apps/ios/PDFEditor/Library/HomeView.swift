@@ -12,14 +12,6 @@ struct HomeView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.appTheme) private var theme
-    @Environment(\.colorScheme) private var scheme
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-
-    /// ZOOD's headings are set a weight heavier; the other themes keep the
-    /// system's bold.
-    private var headingWeight: Font.Weight {
-        ThemeStyle(theme: theme, scheme: scheme, reduceTransparency: reduceTransparency).headingWeight
-    }
 
     var body: some View {
         ScrollView {
@@ -59,18 +51,30 @@ struct HomeView: View {
             HStack(spacing: Space.x4) {
                 ZoodMark(size: 34)
                 Text(Self.greeting())
-                    .font(TextStyle.subheadline)
+                    .themeFont(.subheadline)
                     .foregroundStyle(Surface.secondaryLabel)
             }
             Text("PDFs, done right.")
-                .font(.system(.largeTitle, design: .default, weight: headingWeight))
+                .themeFont(.display)
+                .foregroundStyle(Surface.label)
                 .fixedSize(horizontal: false, vertical: true)
             Text("Open, scan, search — everything stays on this device.")
-                .font(TextStyle.body)
+                .themeFont(.body)
                 .foregroundStyle(Surface.secondaryLabel)
                 .fixedSize(horizontal: false, vertical: true)
         }
+        // On ZOOD's theme the hero is a panel of its own, as the brand's
+        // envelope is (guide p. 30): the woven pattern on the trailing side
+        // of an iPad's, along the top of a phone's — never under the words.
+        .frame(maxWidth: theme == .zood && sizeClass == .regular ? 440 : .infinity, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(theme == .zood ? Space.x6 : 0)
+        .padding(.top, theme == .zood && sizeClass != .regular ? ZoodHeroPanel.band : 0)
+        .background {
+            if theme == .zood {
+                ZoodHeroPanel(alongTop: sizeClass != .regular)
+            }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("home.hero")
     }
@@ -165,26 +169,26 @@ struct ActionCard: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
-    /// The tile's colour is the theme's: its own pastel on the system and
-    /// glass themes, ZOOD's gold on ZOOD's.
-    private var tile: Color {
-        ThemeStyle(theme: theme, scheme: scheme, reduceTransparency: reduceTransparency).tile(tint)
+    /// The tile is the theme's: its own pastel on the system and glass
+    /// themes, ZOOD's copper on navy on ZOOD's.
+    private var style: ThemeStyle {
+        ThemeStyle(theme: theme, scheme: scheme, reduceTransparency: reduceTransparency)
     }
 
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: Space.x4) {
                 Image(systemName: symbol)
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(tile)
+                    .font(.system(size: 22, weight: style.glyphWeight))
+                    .foregroundStyle(style.tile(tint).glyph)
                     .frame(width: 44, height: 44)
-                    .background(tile.opacity(0.16), in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+                    .background(style.tile(tint).plate, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
                 VStack(alignment: .leading, spacing: Space.x1) {
                     Text(title)
-                        .font(TextStyle.headline)
+                        .themeFont(.headline)
                         .foregroundStyle(Surface.label)
                     Text(hint)
-                        .font(TextStyle.caption)
+                        .themeFont(.caption)
                         .foregroundStyle(Surface.secondaryLabel)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
@@ -223,7 +227,8 @@ struct DocumentRow: View {
         VStack(alignment: .leading, spacing: Space.x3) {
             HStack {
                 Text(title)
-                    .font(TextStyle.title)
+                    .themeFont(.title)
+                    .foregroundStyle(Surface.label)
                 Spacer()
                 if !items.isEmpty {
                     NavigationLink(value: section) {
@@ -236,7 +241,7 @@ struct DocumentRow: View {
             .padding(.horizontal, Space.x5)
             if items.isEmpty, let emptyMessage {
                 Text(emptyMessage)
-                    .font(TextStyle.subheadline)
+                    .themeFont(.subheadline)
                     .foregroundStyle(Surface.secondaryLabel)
                     .padding(.horizontal, Space.x5)
             } else {
@@ -312,12 +317,12 @@ struct DocumentRow: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: Space.x1) {
                         Text(item.name)
-                            .font(TextStyle.callout)
+                            .themeFont(.callout)
                             .foregroundStyle(Surface.label)
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
                         Text(DocumentDate.text(item.date))
-                            .font(TextStyle.caption)
+                            .themeFont(.caption)
                             .foregroundStyle(Surface.secondaryLabel)
                             .lineLimit(1)
                     }
@@ -404,5 +409,33 @@ extension View {
     /// ZOOD's paper without the screen knowing which.
     func glassCard(radius: CGFloat = Radius.sheet) -> some View {
         themedCard(radius: radius)
+    }
+}
+
+/// ZOOD's hero panel: its paper (or its navy) as a card, the woven pattern
+/// in the part of it the words do not use, fading out before they begin.
+private struct ZoodHeroPanel: View {
+    /// A phone's: the pattern is a band along the top.
+    let alongTop: Bool
+    /// How tall that band is.
+    static let band: CGFloat = 64
+
+    var body: some View {
+        GeometryReader { proxy in
+            if alongTop {
+                ZoodPattern(kind: .woven)
+                    .frame(width: proxy.size.width, height: Self.band + Space.x6)
+                    .clipped()
+                    .mask(LinearGradient(colors: [.black, .black, .clear], startPoint: .top, endPoint: .bottom))
+            } else {
+                ZoodPattern(kind: .woven)
+                    .frame(width: proxy.size.width * 0.36, height: proxy.size.height)
+                    .clipped()
+                    .mask(LinearGradient(colors: [.clear, .black, .black], startPoint: .leading, endPoint: .trailing))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: Radius.sheet, style: .continuous))
+        .themedCard()
     }
 }
