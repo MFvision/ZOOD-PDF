@@ -40,6 +40,13 @@ apps/ios/
     Organize/            PagesModel (pages.* ops), PagesGridView (lift-and-drop grid, the bar), CropSheet
     Export/              Exporter, ExportSheet, DocxWriter, ZipWriter
     Protect/             ProtectSheet (PDFKit's password writer; the core keeps it on appends)
+    Compare/             Comparison (compare.text / compare.visual decoded, Comparer), CompareModel (the other
+                         version chosen and unlocked, the run, Next/Previous), CompareView (choosing, the
+                         counts, the changes, the pages side by side on iPad or switched on iPhone)
+    Batch/               BatchStep (the steps and their options, checked on reading), BatchEngine (each step
+                         through the core), BatchRun (one file at a time, states, names that never
+                         overwrite, Stop), BatchBackground (BGContinuedProcessingTask from iOS 26, the
+                         grace period before), BatchSequences (saved sequences), BatchView
     Settings/            SettingsView (with the scanner's own section, and the welcome tour again), AppLock (Face ID / Touch ID)
     Scan/                ScanView (the scanner), ScanSession, ScanPipeline, TextRecognizer (Vision OCR),
                          IDPageComposer, BookScan, CornerEditor, the enhance/text/save sheets; PDFMaker

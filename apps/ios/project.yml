@@ -77,6 +77,7 @@ targets:
       - sdk: VisionKit.framework
       - sdk: AppIntents.framework
       - sdk: WidgetKit.framework
+      - sdk: BackgroundTasks.framework
     entitlements:
       path: PDFEditor/PDFEditor.entitlements
       properties:
@@ -157,6 +158,11 @@ targets:
         NSPhotoLibraryUsageDescription: "Photos you choose become pages of a PDF. Nothing leaves the device."
         NSPhotoLibraryAddUsageDescription: "Pages you export as pictures are saved to your photos."
         NSFaceIDUsageDescription: "Face ID unlocks the app when you turn on the app lock."
+        # Batch keeps running in the background from iOS 26 as a continued-
+        # processing task, one identifier per run under this prefix
+        # (PDFEditor/Batch/BatchBackground.swift).
+        BGTaskSchedulerPermittedIdentifiers:
+          - app.warraq.ios.batch.*
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.warraq.ios
@@ -397,6 +403,10 @@ targets:
         buildPhase: resources
       # The signing test signs a corpus file with this before it launches the
       # app on it, so the interface is shown a real signature to report on.
+      # Compare's other version: the three-page file with one line added
+      # on its second page (made by compare.rs's make_compare_fixture).
+      - path: ../../tests/fixtures/compare/notonaskh-3pages-line-added.pdf
+        buildPhase: resources
       - path: ../../tests/fixtures/signatures/signer-rsa-aes.p12
         buildPhase: resources
     dependencies:

@@ -8118,6 +8118,1506 @@
           }
         }
       }
+    },
+    "Compare": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قارِن"
+          }
+        }
+      }
+    },
+    "Compare…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قارِن…"
+          }
+        }
+      }
+    },
+    "Reading both versions…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ قراءة النسختين…"
+          }
+        }
+      }
+    },
+    "Comparing how the pages look: %lld of %lld": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مقارنة مظهر الصفحات: %1$lld من %2$lld"
+          }
+        }
+      }
+    },
+    "Could not compare": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّرت المقارنة"
+          }
+        }
+      }
+    },
+    "Try again": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حاول مجددًا"
+          }
+        }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إغلاق"
+          }
+        }
+      }
+    },
+    "Change…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "غيّر…"
+          }
+        }
+      }
+    },
+    "Swap older and newer": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بدّل الأقدم بالأحدث"
+          }
+        }
+      }
+    },
+    "Versions": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النسختان"
+          }
+        }
+      }
+    },
+    "What the newer version has that the older does not is shown as added.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ما في النسخة الأحدث وليس في الأقدم يُعرض مضافًا."
+          }
+        }
+      }
+    },
+    "This file is protected": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا الملف محمي"
+          }
+        }
+      }
+    },
+    "That file could not be read as a PDF.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّرت قراءة هذا الملف بوصفه ملف PDF."
+          }
+        }
+      }
+    },
+    "Compare with": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قارِن مع"
+          }
+        }
+      }
+    },
+    "Choose from Files…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختر من «الملفات»…"
+          }
+        }
+      }
+    },
+    "Ignore tashkeel and tatweel": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تجاهل التشكيل والتطويل"
+          }
+        }
+      }
+    },
+    "Count أ and ا, ة and ه, ى and ي as one letter": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عُدّ أ وا، وة وه، وى وي حرفًا واحدًا"
+          }
+        }
+      }
+    },
+    "Options": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الخيارات"
+          }
+        }
+      }
+    },
+    "Digits are compared as written: ٢٠٢٦ and 2026 are a change.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تُقارَن الأرقام كما كُتبت: ٢٠٢٦ و2026 تغيير."
+          }
+        }
+      }
+    },
+    "Older": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأقدم"
+          }
+        }
+      }
+    },
+    "Newer": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأحدث"
+          }
+        }
+      }
+    },
+    "Show": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اعرض"
+          }
+        }
+      }
+    },
+    "Inserted": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أُدرج"
+          }
+        }
+      }
+    },
+    "Deleted": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حُذف"
+          }
+        }
+      }
+    },
+    "Replaced": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استُبدل"
+          }
+        }
+      }
+    },
+    "Pages look different": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صفحات يختلف مظهرها"
+          }
+        }
+      }
+    },
+    "%lld words added, %lld removed.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أُضيفت %1$lld كلمة، وحُذفت %2$lld."
+          }
+        }
+      }
+    },
+    "The older version has %lld pages, the newer %lld.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "في النسخة الأقدم %1$lld صفحة، وفي الأحدث %2$lld."
+          }
+        }
+      }
+    },
+    "Neither version has text to compare: the pages are compared by how they look.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا نصّ يُقارَن في أيّ من النسختين: تُقارَن الصفحات بمظهرها."
+          }
+        }
+      }
+    },
+    "Stopped: only the first %lld pages were compared by how they look.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أُوقفت: لم يُقارَن مظهر إلا أول %lld صفحة."
+          }
+        }
+      }
+    },
+    "No differences found.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم يُعثر على أي اختلاف."
+          }
+        }
+      }
+    },
+    "%lld changes in the text": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld تغيير في النص"
+          }
+        }
+      }
+    },
+    "The text is the same": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النص نفسه"
+          }
+        }
+      }
+    },
+    "Neither version has text to compare.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا نصّ يُقارَن في أيّ من النسختين."
+          }
+        }
+      }
+    },
+    "Every page reads the same, word for word.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كل صفحة تُقرأ كما هي، كلمةً بكلمة."
+          }
+        }
+      }
+    },
+    "Show page": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اعرض الصفحة"
+          }
+        }
+      }
+    },
+    "Removed: %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حُذف: %@"
+          }
+        }
+      }
+    },
+    "Added: %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أُضيف: %@"
+          }
+        }
+      }
+    },
+    "This page looks the same in both versions.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مظهر هذه الصفحة واحد في النسختين."
+          }
+        }
+      }
+    },
+    "%lld places look different on this page.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld موضع يختلف مظهره في هذه الصفحة."
+          }
+        }
+      }
+    },
+    "No such page": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد هذه الصفحة"
+          }
+        }
+      }
+    },
+    "This version has no page %lld.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ليس في هذه النسخة صفحة %lld."
+          }
+        }
+      }
+    },
+    "Older version, page %lld": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النسخة الأقدم، صفحة %lld"
+          }
+        }
+      }
+    },
+    "Newer version, page %lld": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النسخة الأحدث، صفحة %lld"
+          }
+        }
+      }
+    },
+    "No changes in the text": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا تغيير في النص"
+          }
+        }
+      }
+    },
+    "Change %lld of %lld": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التغيير %1$lld من %2$lld"
+          }
+        }
+      }
+    },
+    "Page %lld · %lld of %lld that look different": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صفحة %1$lld · %2$lld من %3$lld يختلف مظهرها"
+          }
+        }
+      }
+    },
+    "Page %lld · %lld look different": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صفحة %1$lld · %2$lld يختلف مظهرها"
+          }
+        }
+      }
+    },
+    "Batch": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "معالجة دفعية"
+          }
+        }
+      }
+    },
+    "Steps run over many files": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "خطوات تُشغَّل على ملفات كثيرة"
+          }
+        }
+      }
+    },
+    "Recognize text (OCR)": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التعرّف على النص (OCR)"
+          }
+        }
+      }
+    },
+    "Compress": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ضغط"
+          }
+        }
+      }
+    },
+    "Rotate pages": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تدوير الصفحات"
+          }
+        }
+      }
+    },
+    "Delete pages": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حذف صفحات"
+          }
+        }
+      }
+    },
+    "Keep only some pages": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الإبقاء على صفحات بعينها"
+          }
+        }
+      }
+    },
+    "Remove hidden information": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إزالة المعلومات المخفية"
+          }
+        }
+      }
+    },
+    "Protect with a password": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الحماية بكلمة سر"
+          }
+        }
+      }
+    },
+    "Pictures untouched": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصور كما هي"
+          }
+        }
+      }
+    },
+    "Balanced (150 dpi)": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "متوازن (150 نقطة في البوصة)"
+          }
+        }
+      }
+    },
+    "Smallest (96 dpi)": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأصغر (96 نقطة في البوصة)"
+          }
+        }
+      }
+    },
+    "Pages are written as 1-3, 5.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تُكتب الصفحات هكذا: 1-3، 5."
+          }
+        }
+      }
+    },
+    "Say which pages.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حدّد الصفحات."
+          }
+        }
+      }
+    },
+    "The mark says nothing yet.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا تقول العلامة شيئًا بعد."
+          }
+        }
+      }
+    },
+    "Choose what to remove.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختر ما يُزال."
+          }
+        }
+      }
+    },
+    "every page": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كل الصفحات"
+          }
+        }
+      }
+    },
+    "pages %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصفحات %@"
+          }
+        }
+      }
+    },
+    "Pages with no text of their own": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصفحات التي لا نص فيها"
+          }
+        }
+      }
+    },
+    "%lld° clockwise, ": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld° باتجاه عقارب الساعة، "
+          }
+        }
+      }
+    },
+    "%lld kinds of information": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld نوع من المعلومات"
+          }
+        }
+      }
+    },
+    "AES-256; the password is asked for when it runs": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AES-256؛ تُطلب كلمة السر عند التشغيل"
+          }
+        }
+      }
+    },
+    "Word (.docx)": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وورد (.docx)"
+          }
+        }
+      }
+    },
+    "Text (.txt)": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نص (.txt)"
+          }
+        }
+      }
+    },
+    "Add a step.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أضف خطوة."
+          }
+        }
+      }
+    },
+    "Export makes something other than a PDF: it has to be the last step.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التصدير يُخرج غير PDF، فلا بدّ أن يكون آخر خطوة."
+          }
+        }
+      }
+    },
+    "The file could not be read.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّرت قراءة الملف."
+          }
+        }
+      }
+    },
+    "This file is not a PDF that can be opened.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا الملف ليس PDF يمكن فتحه."
+          }
+        }
+      }
+    },
+    "This file is protected. Type its password under Passwords and run it again.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا الملف محمي. اكتب كلمة سره في «كلمات السر» وشغّل الدفعة مجددًا."
+          }
+        }
+      }
+    },
+    "The batch's password does not open this file.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كلمة سر الدفعة لا تفتح هذا الملف."
+          }
+        }
+      }
+    },
+    "Deleting those pages would leave no page.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حذف هذه الصفحات لا يُبقي أي صفحة."
+          }
+        }
+      }
+    },
+    "This file has none of those pages.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ليس في هذا الملف أيٌّ من هذه الصفحات."
+          }
+        }
+      }
+    },
+    "A protected file is not compressed: its protection would be lost.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يُضغط الملف المحمي: ستضيع حمايته."
+          }
+        }
+      }
+    },
+    "A signed file is not compressed: its signature would break.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يُضغط الملف الموقَّع: سينكسر توقيعه."
+          }
+        }
+      }
+    },
+    "Hidden information is not removed from a protected file.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا تُزال المعلومات المخفية من ملف محمي."
+          }
+        }
+      }
+    },
+    "This file has no text to export.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا نص في هذا الملف يُصدَّر."
+          }
+        }
+      }
+    },
+    "The new password is missing or too long.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كلمة السر الجديدة ناقصة أو طويلة جدًا."
+          }
+        }
+      }
+    },
+    "The step failed: %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعثّرت الخطوة: %@"
+          }
+        }
+      }
+    },
+    "The result could not be written: %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّرت كتابة النتيجة: %@"
+          }
+        }
+      }
+    },
+    "%lld of %lld files": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld من %2$lld ملف"
+          }
+        }
+      }
+    },
+    "processed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "معالَج"
+          }
+        }
+      }
+    },
+    "Add the files to run it on.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أضف الملفات التي يُشغَّل عليها."
+          }
+        }
+      }
+    },
+    "Type the new password for Protect.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اكتب كلمة السر الجديدة لخطوة الحماية."
+          }
+        }
+      }
+    },
+    "The two passwords are not the same.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كلمتا السر غير متطابقتين."
+          }
+        }
+      }
+    },
+    "Save the sequence": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "احفظ التسلسل"
+          }
+        }
+      }
+    },
+    "Its steps and their options are kept on this device. Passwords never are.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تُحفظ خطواته وخياراتها على هذا الجهاز، ولا تُحفظ كلمات السر أبدًا."
+          }
+        }
+      }
+    },
+    "Save…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "احفظ…"
+          }
+        }
+      }
+    },
+    "Run": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شغّل"
+          }
+        }
+      }
+    },
+    "Saved sequences": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التسلسلات المحفوظة"
+          }
+        }
+      }
+    },
+    "%lld steps": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld خطوة"
+          }
+        }
+      }
+    },
+    "Add a step": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أضف خطوة"
+          }
+        }
+      }
+    },
+    "Steps, in order": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الخطوات بالترتيب"
+          }
+        }
+      }
+    },
+    "Add from Files…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أضف من «الملفات»…"
+          }
+        }
+      }
+    },
+    "Add from My documents…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أضف من «مستنداتي»…"
+          }
+        }
+      }
+    },
+    "Each result is a new file in My documents. The originals are never changed.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كل نتيجة ملف جديد في «مستنداتي». لا تُغيَّر الملفات الأصلية أبدًا."
+          }
+        }
+      }
+    },
+    "Password of protected files (if any)": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كلمة سر الملفات المحمية (إن وُجدت)"
+          }
+        }
+      }
+    },
+    "New password": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كلمة السر الجديدة"
+          }
+        }
+      }
+    },
+    "New password again": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كلمة السر الجديدة مرة أخرى"
+          }
+        }
+      }
+    },
+    "Owner password (optional)": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كلمة سر المالك (اختيارية)"
+          }
+        }
+      }
+    },
+    "Passwords": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كلمات السر"
+          }
+        }
+      }
+    },
+    "Used for this run only and never saved.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تُستعمل لهذا التشغيل وحده ولا تُحفظ أبدًا."
+          }
+        }
+      }
+    },
+    "Added to each name": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُضاف إلى كل اسم"
+          }
+        }
+      }
+    },
+    "Results": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النتائج"
+          }
+        }
+      }
+    },
+    "It goes on if you leave the app; its progress is shown outside the app.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تستمر إن غادرت التطبيق، ويظهر تقدّمها خارجه."
+          }
+        }
+      }
+    },
+    "Keep the app open: iOS gives an app only a short time in the background, and the batch stops when it ends.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أبقِ التطبيق مفتوحًا: لا يمنح iOS التطبيق إلا وقتًا قصيرًا في الخلفية، وتتوقف الدفعة حين ينتهي."
+          }
+        }
+      }
+    },
+    "iOS stopped the batch while the app was in the background. The files it had not finished are marked; run them again with the app open.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أوقف iOS الدفعة والتطبيق في الخلفية. الملفات التي لم تكتمل معلَّمة؛ شغّلها مجددًا والتطبيق مفتوح."
+          }
+        }
+      }
+    },
+    "Done %lld · Failed %lld · Stopped %lld": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أُنجز %1$lld · تعذّر %2$lld · أُوقف %3$lld"
+          }
+        }
+      }
+    },
+    "Share the results": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شارك النتائج"
+          }
+        }
+      }
+    },
+    "Progress": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التقدّم"
+          }
+        }
+      }
+    },
+    "Waiting": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "في الانتظار"
+          }
+        }
+      }
+    },
+    "Reading…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ القراءة…"
+          }
+        }
+      }
+    },
+    "Step %lld of %lld: ": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الخطوة %1$lld من %2$lld: "
+          }
+        }
+      }
+    },
+    "Saved as %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حُفظ باسم %@"
+          }
+        }
+      }
+    },
+    "Not done at step %lld, ": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم يُنجَز عند الخطوة %lld، "
+          }
+        }
+      }
+    },
+    "Not done: ": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم يُنجَز: "
+          }
+        }
+      }
+    },
+    "Stopped before it was finished": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أُوقف قبل أن يكتمل"
+          }
+        }
+      }
+    },
+    "Stopped by the system before it was finished": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أوقفه النظام قبل أن يكتمل"
+          }
+        }
+      }
+    },
+    "No PDFs in My documents yet.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا ملفات PDF في «مستنداتي» بعد."
+          }
+        }
+      }
+    },
+    "Choose none": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ألغِ الاختيار"
+          }
+        }
+      }
+    },
+    "Choose all": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختر الكل"
+          }
+        }
+      }
+    },
+    "Which pages": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أيّ الصفحات"
+          }
+        }
+      }
+    },
+    "Read on this device in the languages chosen in the scanner's settings. The words become an invisible, searchable layer; the pages look as they did.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُقرأ على هذا الجهاز باللغات المختارة في إعدادات الماسح. تصير الكلمات طبقة خفية يُبحث فيها، وتبقى الصفحات كما كانت."
+          }
+        }
+      }
+    },
+    "Compression": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الضغط"
+          }
+        }
+      }
+    },
+    "Protected and signed files are left as they are and reported.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تُترك الملفات المحمية والموقَّعة كما هي ويُبلَّغ عنها."
+          }
+        }
+      }
+    },
+    "Drawn as the Page marks sheet draws them; {page}, {pages}, {date} and {file} are filled in for each file.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تُرسم كما ترسمها «علامات الصفحات»، وتُملأ {page} و{pages} و{date} و{file} لكل ملف."
+          }
+        }
+      }
+    },
+    "Document information (author, dates, …)": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "معلومات المستند (المؤلف والتواريخ…)"
+          }
+        }
+      }
+    },
+    "Scripts and actions": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "البرامج النصية والإجراءات"
+          }
+        }
+      }
+    },
+    "Attached files": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الملفات المرفقة"
+          }
+        }
+      }
+    },
+    "Comments and marks": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التعليقات والعلامات"
+          }
+        }
+      }
+    },
+    "Form fields": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حقول النماذج"
+          }
+        }
+      }
+    },
+    "Hidden layers": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الطبقات المخفية"
+          }
+        }
+      }
+    },
+    "Bookmarks": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الإشارات المرجعية"
+          }
+        }
+      }
+    },
+    "Page thumbnails": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مصغّرات الصفحات"
+          }
+        }
+      }
+    },
+    "Other programs' private data": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "البيانات الخاصة ببرامج أخرى"
+          }
+        }
+      }
+    },
+    "Hidden text": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النص المخفي"
+          }
+        }
+      }
+    },
+    "The file is written whole, without them and without its earlier versions.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُكتب الملف كاملًا من دونها ومن دون نسخه السابقة."
+          }
+        }
+      }
+    },
+    "Allow printing": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السماح بالطباعة"
+          }
+        }
+      }
+    },
+    "Allow copying text": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السماح بنسخ النص"
+          }
+        }
+      }
+    },
+    "Allow changes": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السماح بالتعديل"
+          }
+        }
+      }
+    },
+    "AES-256. The password is typed on the Batch screen when the sequence runs, and never saved with it.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AES-256. تُكتب كلمة السر في شاشة المعالجة الدفعية حين يُشغَّل التسلسل، ولا تُحفظ معه أبدًا."
+          }
+        }
+      }
+    },
+    "Export makes something other than a PDF, so it is always the last step.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التصدير يُخرج غير PDF، فهو دائمًا آخر خطوة."
+          }
+        }
+      }
+    },
+    "For example 1-3, 5. Pages a file does not have are passed over.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مثل 1-3، 5. تُتجاوز الصفحات التي ليست في الملف."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

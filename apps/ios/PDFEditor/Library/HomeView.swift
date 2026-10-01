@@ -132,6 +132,7 @@ struct HomeActions {
     var combine: () -> Void
     var search: () -> Void
     var settings: () -> Void
+    var batch: () -> Void = {}
 }
 
 /// The six large cards: an icon tile in its own pastel, a title, a hint.
@@ -147,6 +148,7 @@ struct ActionCardsRow: View {
             ActionCard(title: "Scan", hint: "Paper into a PDF", symbol: "doc.viewfinder", tint: .teal, id: "home.scan", action: actions.scan)
             ActionCard(title: "Create", hint: "A PDF from pictures", symbol: "photo.on.rectangle.angled", tint: .purple, id: "home.create", action: actions.create)
             ActionCard(title: "Combine", hint: "Several files into one PDF", symbol: "doc.on.doc", tint: .orange, id: "home.combine", action: actions.combine)
+            ActionCard(title: "Batch", hint: "Steps run over many files", symbol: "square.stack.3d.down.forward", tint: .green, id: "home.batch", action: actions.batch)
             ActionCard(title: "Search", hint: "Words inside every document", symbol: "text.magnifyingglass", tint: .indigo, id: "home.search", action: actions.search)
             ActionCard(title: "Settings", hint: "Language, scanning, the lock", symbol: "gearshape", tint: .gray, id: "home.settings", action: actions.settings)
         }

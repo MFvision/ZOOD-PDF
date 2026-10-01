@@ -39,6 +39,7 @@ struct DocumentView: View {
     @State private var showingPages = false
     @State private var showingExport = false
     @State private var showingProtect = false
+    @State private var showingCompare = false
     @State private var showingSignatures = false
     @State private var showingMarks = false
     @State private var showingStamps = false
@@ -202,6 +203,10 @@ struct DocumentView: View {
         }
         .sheet(isPresented: $showingProtect) {
             ProtectSheet(model: model, undoManager: undoManager)
+        }
+        .fullScreenCover(isPresented: $showingCompare) {
+            CompareView(model: model)
+                .appEnvironment()
         }
         .sheet(isPresented: $showingSignatures) {
             SignaturesSheet(model: model, undoManager: undoManager)
@@ -472,6 +477,8 @@ struct DocumentView: View {
             Button("Protect…", systemImage: model.password != nil || model.metadata?.encrypted == true ? "lock.fill" : "lock") { showingProtect = true }
                 .keyboardShortcut("l", modifiers: [.command, .shift])
                 .accessibilityIdentifier("document.protect")
+            Button("Compare…", systemImage: "square.split.2x1") { showingCompare = true }
+                .accessibilityIdentifier("document.compare")
             Button("Signatures…", systemImage: "signature") { showingSignatures = true }
                 .keyboardShortcut("d", modifiers: [.command, .shift])
                 .accessibilityIdentifier("document.signatures")

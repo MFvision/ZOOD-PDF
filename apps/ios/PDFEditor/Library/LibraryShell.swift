@@ -44,6 +44,7 @@ enum LibraryTool: String, CaseIterable, Identifiable {
     case create
     case combine
     case search
+    case batch
 
     var id: String { rawValue }
 
@@ -53,6 +54,7 @@ enum LibraryTool: String, CaseIterable, Identifiable {
         case .create: "Create a PDF"
         case .combine: "Combine files"
         case .search: "Search"
+        case .batch: "Batch"
         }
     }
 
@@ -62,6 +64,7 @@ enum LibraryTool: String, CaseIterable, Identifiable {
         case .create: "photo.on.rectangle.angled"
         case .combine: "doc.on.doc"
         case .search: "text.magnifyingglass"
+        case .batch: "square.stack.3d.down.forward"
         }
     }
 }
@@ -80,6 +83,7 @@ struct LibraryShell: View {
     @State private var showingSettings = false
     @State private var showingImporter = false
     @State private var showingCombiner = false
+    @State private var showingBatch = false
     @State private var restored = false
     /// The welcome tour: shown once, the first time the app is opened, and
     /// from Settings whenever it is asked for again.
@@ -124,7 +128,8 @@ struct LibraryShell: View {
             },
             combine: { showingCombiner = true },
             search: { library.requestedSearch = "" },
-            settings: { showingSettings = true }
+            settings: { showingSettings = true },
+            batch: { showingBatch = true }
         )
     }
 
@@ -144,6 +149,13 @@ struct LibraryShell: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView(library: library)
         }
+        // Batch: a sequence of steps over many files (Batch/).
+        .fullScreenCover(isPresented: $showingBatch) {
+            BatchView(library: library)
+                .appEnvironment()
+        }
+        // The Library for the screens that choose among its files (Compare).
+        .environment(library)
         // The welcome tour, over the Library on the first run — and only once
         // the app lock has let the person in.
         .fullScreenCover(isPresented: $showingOnboarding) {
@@ -304,6 +316,7 @@ struct LibraryShell: View {
         case .create: actions.create()
         case .combine: actions.combine()
         case .search: actions.search()
+        case .batch: actions.batch()
         }
     }
 
