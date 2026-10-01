@@ -1519,17 +1519,31 @@ one-simulator subset of `scripts/ios/build.sh`, under the machine-wide queue):
     the core, Save, the app relaunched and the Arabic read off the file; a red Arabic line
     added where the finger landed; a link drawn, given an address, removed; an Arabic
     header added in Page marks, listed, removed.
-  * **iPad Pro 13-inch (M5): 2 passed, 2 failed.** Links and Page marks pass. The added
-    line passed in the run before and failed in this one (the field did not open on the
-    tap; the Mac was at a load of ~110 and one test took 975 s). **The paragraph test
-    fails on iPad in every run:** opened from the inspector's row, the field opens and
-    takes the keyboard, but after ⌘A and the typed Arabic, Apply leaves the page with
-    its heading only — the paragraph was replaced with nothing. The same flow passes on
-    the iPhone (tapped on the page) and the same core call passes on both devices in
-    XCTest, so the fault is between the inspector-opened field and what the simulator's
-    hardware keyboard delivers to it; it is not found. Until it is, treat **editing a
-    paragraph opened from the iPad inspector as unproven**; tapping the text on the page
-    is the path that is proven.
+  * **iPad Pro 13-inch (M5): 2 passed, 2 failed** in the editor agent's last run, at a
+    load of ~110. What was behind the two failures, found afterwards (2026-09-30/10-01) and
+    fixed, with what proves each:
+    - **The field did not open, as often as not** (the added-line test and, in some runs,
+      the paragraph). PDFKit asks for a page's overlay once, when it makes the page's view,
+      and `PDFKitView` handed the view its document *before* its overlay provider: pages
+      made in between had no overlay — no editor and no markup on them. A trace showed no
+      overlay requested at all in a failing run; after the swap, six to nine in each of
+      five runs, and the field opened in all five.
+    - **"Replaced with nothing" was not what happened.** The test's ⌘A never reached the
+      field (traced: its selection did not move), so the typing was *added* after the old
+      text; and the test's check that the field was open looked for the bar's Apply, which
+      shows whether or not a field was put on the page.
+    - **A real fault in the core, found by the stricter test:** `erase_area` missed two
+      glyphs of the replaced heading (runs Chrome lowered by the font's positioning, below
+      the box by more than the fifth of a size it allowed). They stayed on the page and read
+      back inside the new text. Half a size below now; `edit_readback.rs`
+      `a_replaced_paragraph_leaves_nothing_of_the_old_one` reads the whole page back in
+      Amiri, Cairo and Inter. This was in the shared core, so the desktop and web had it too.
+    - **After an edit the view moved half a page** on a tall iPad (the current page's index
+      paired with the other page's destination point). Fixed in `PDFKitView`.
+    - **The paragraph test now passes on both** (iPhone 17 and iPad Pro 13-inch (M5)): the
+      field itself must be open, it is emptied one scalar at a time and must then hold
+      exactly the typed Arabic, the inspector's row (the core's reading) must be exactly the
+      new text with nothing of the old, and the saved file reopened must find it by search.
   * The simulator runner also failed to start several times ("Timed out while loading
     Accessibility") under that load; those runs are not counted.
 
