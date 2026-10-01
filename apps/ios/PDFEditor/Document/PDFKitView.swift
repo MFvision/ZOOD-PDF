@@ -106,20 +106,24 @@ struct PDFKitView: UIViewRepresentable {
             // The bytes changed (an edit): show the same place in the new
             // document, and keep the direction the document asks for.
             let destination = view.currentDestination
-            // The destination's point is in its own page's space, which is
-            // not always the current page: on a tall iPad two pages are on
-            // screen and PDFKit calls the one across the middle current,
-            // while the destination is the one at the top. Going to one's
-            // page at the other's point moved the view half a page on every
-            // edit.
+            // Where to be in the new document. When the change moved the
+            // page on purpose (Organize puts the view on a page it moved),
+            // the binding no longer says what the view last reported: go
+            // there. Otherwise stay exactly where the view was — on the
+            // destination's own page, because its point is in that page's
+            // space, and on a tall iPad that is not always the current page
+            // (two pages are on screen and PDFKit calls the one across the
+            // middle current): pairing the two moved the view half a page on
+            // every edit.
+            let moved = coordinator.lastReported >= 0 && coordinator.lastReported != currentPage
             let destinationIndex = destination?.page.flatMap { page in view.document.map { $0.index(for: page) } }
             let scale = view.scaleFactor
             coordinator.overlays.removeAll()
             view.document = document
             view.displaysRTL = displaysRTL
-            let index = min(destinationIndex ?? currentPage, max(document.pageCount - 1, 0))
+            let index = min(moved ? currentPage : (destinationIndex ?? currentPage), max(document.pageCount - 1, 0))
             if let page = document.page(at: index) {
-                if let destination {
+                if let destination, !moved {
                     // Fitted pages keep fitting; a zoom chosen by hand is kept.
                     if !view.autoScales { view.scaleFactor = scale }
                     view.go(to: PDFDestination(page: page, at: destination.point))
