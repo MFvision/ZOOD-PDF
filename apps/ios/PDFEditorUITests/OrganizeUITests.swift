@@ -26,8 +26,18 @@ final class OrganizeUITests: XCTestCase {
             XCTAssertTrue(third.waitForExistence(timeout: 15))
             third.press(forDuration: duration, thenDragTo: first, withVelocity: .slow, thenHoldForDuration: 0.5)
             if ui.app.buttons["Add Page"].waitForExistence(timeout: 2) {
-                // The context menu opened instead of the lift: close it.
-                ui.app.tap()
+                // The context menu opened instead of the lift: close it with
+                // a touch outside it, on the grid's title, which does nothing
+                // when tapped. (A tap on the app taps the screen's centre,
+                // which with the menu open below the first row is "Delete
+                // Page": it deleted the third page, and the reorder could
+                // never be seen.)
+                let bar = ui.app.otherElements["pages.grid"].navigationBars.firstMatch
+                if bar.exists {
+                    bar.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                } else {
+                    ui.app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
+                }
             }
             let done = ui.app.buttons["pages.done"]
             XCTAssertTrue(done.waitForExistence(timeout: 10))

@@ -1,6 +1,8 @@
 import PDFKit
 import PencilKit
 import SwiftUI
+import os
+let gateTrace = Logger(subsystem: "app.warraq.gate", category: "view") // GATE-TRACE
 
 /// The PDFView on screen, reachable from SwiftUI views that need its
 /// geometry (placing a signature) or its navigation (Go to page).
@@ -89,8 +91,11 @@ struct PDFKitView: UIViewRepresentable {
         host?.view = view
         context.coordinator.layout = layout
         context.coordinator.night = night
+        // The view starts on the binding's page (it goes there just below).
+        context.coordinator.lastReported = currentPage
         // Opened at a page (a search hit from the Library): go there once
         // the view has laid out its pages.
+        gateTrace.log("GATE make cur=\(currentPage) count=\(document.pageCount)") // GATE-TRACE
         if currentPage > 0, let page = document.page(at: min(currentPage, max(document.pageCount - 1, 0))) {
             DispatchQueue.main.async { view.go(to: page) }
         }
@@ -105,31 +110,38 @@ struct PDFKitView: UIViewRepresentable {
         if view.document !== document {
             // The bytes changed (an edit): show the same place in the new
             // document, and keep the direction the document asks for.
-            let destination = view.currentDestination
-            // Where to be in the new document. When the change moved the
-            // page on purpose (Organize puts the view on a page it moved),
-            // the binding no longer says what the view last reported: go
-            // there. Otherwise stay exactly where the view was — on the
-            // destination's own page, because its point is in that page's
-            // space, and on a tall iPad that is not always the current page
-            // (two pages are on screen and PDFKit calls the one across the
-            // middle current): pairing the two moved the view half a page on
-            // every edit.
-            let moved = coordinator.lastReported >= 0 && coordinator.lastReported != currentPage
-            let destinationIndex = destination?.page.flatMap { page in view.document.map { $0.index(for: page) } }
+            //
+            // When the change moved the page on purpose (Organize puts the
+            // view on a page it moved), the binding no longer says what the
+            // view last reported: go to that page. Otherwise the view stays
+            // exactly where it was, by its own scroll position. Not by
+            // PDFKit's `currentDestination`: on a tall iPad two pages are on
+            // screen and PDFKit calls the one across the middle current, and
+            // on iPhone, before the view had scrolled at all, it named page 2
+            // 561 pt down while page 1 was on screen, so going there after a
+            // reorder or a rotation showed the wrong page.
+            let moved = coordinator.lastReported != currentPage
+            let samePages = view.document?.pageCount == document.pageCount
+            // The scroll view around the pages; there is none while the pages
+            // are a page view controller (one page at a time).
+            let scroller = view.documentView?.superview as? UIScrollView
+            let offset = scroller?.contentOffset
             let scale = view.scaleFactor
+            gateTrace.log("GATE swap old=\(view.document?.pageCount ?? -1) new=\(document.pageCount) cur=\(currentPage) last=\(coordinator.lastReported) moved=\(moved) offset=\(String(describing: offset)) auto=\(view.autoScales)") // GATE-TRACE
             coordinator.overlays.removeAll()
             view.document = document
             view.displaysRTL = displaysRTL
-            let index = min(moved ? currentPage : (destinationIndex ?? currentPage), max(document.pageCount - 1, 0))
-            if let page = document.page(at: index) {
-                if let destination, !moved {
-                    // Fitted pages keep fitting; a zoom chosen by hand is kept.
-                    if !view.autoScales { view.scaleFactor = scale }
-                    view.go(to: PDFDestination(page: page, at: destination.point))
-                } else {
-                    view.go(to: page)
-                }
+            if !moved, samePages, let scroller, let offset {
+                // Fitted pages keep fitting; a zoom chosen by hand is kept.
+                if !view.autoScales { view.scaleFactor = scale }
+                view.layoutDocumentView()
+                let inset = scroller.adjustedContentInset
+                let lowest = max(-inset.top, scroller.contentSize.height - scroller.bounds.height + inset.bottom)
+                scroller.contentOffset = CGPoint(x: offset.x, y: min(max(offset.y, -inset.top), lowest))
+                gateTrace.log("GATE kept offset=\(String(describing: scroller.contentOffset))") // GATE-TRACE
+                DispatchQueue.main.async { gateTrace.log("GATE after offset=\(String(describing: scroller.contentOffset))") } // GATE-TRACE
+            } else if let page = document.page(at: min(max(currentPage, 0), max(document.pageCount - 1, 0))) {
+                view.go(to: page)
             }
         } else if view.displaysRTL != displaysRTL {
             view.displaysRTL = displaysRTL
@@ -193,6 +205,7 @@ struct PDFKitView: UIViewRepresentable {
         if let document = view.document, let page = view.currentPage, document.index(for: page) != currentPage,
            currentPage >= 0, currentPage < document.pageCount, coordinator.lastReported != currentPage,
            let target = document.page(at: currentPage) {
+            gateTrace.log("GATE outside go \(currentPage) from \(document.index(for: page))") // GATE-TRACE
             view.go(to: target)
         }
     }
@@ -236,6 +249,7 @@ struct PDFKitView: UIViewRepresentable {
                   let page = view.currentPage,
                   let document = view.document else { return }
             let index = document.index(for: page)
+            gateTrace.log("GATE pageChanged \(index) parent=\(self.parent.currentPage)") // GATE-TRACE
             lastReported = index
             if parent.currentPage != index {
                 parent.currentPage = index

@@ -205,6 +205,24 @@ struct PartBApp {
         app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN %@", ["signature.pkcanvas", "signature.canvas"])).firstMatch
     }
 
+    /// Opens the signature sheet from the markup bar at its canvas. The
+    /// signature is kept (encrypted) across launches, so on a simulator that
+    /// has run this before the sheet opens on the kept one, with no canvas:
+    /// "Draw a new one" brings the canvas. The bar's button is asked again
+    /// only when no sheet came up (it lies under an open sheet).
+    func openSignatureCanvas() -> XCUIElement {
+        let canvas = signatureCanvas
+        let drawNew = app.buttons["signature.new"]
+        for _ in 0..<2 {
+            tapMarkup("markup.signature")
+            if poll(timeout: 8, { canvas.exists || drawNew.exists }) { break }
+        }
+        if !canvas.exists, drawNew.waitForExistence(timeout: 2) {
+            drawNew.tap()
+        }
+        return canvas
+    }
+
     /// A drag across the page view, from and to fractions of its size.
     func drag(from: (Double, Double), to: (Double, Double), duration: TimeInterval = 0.05) {
         XCTAssertTrue(page.waitForExistence(timeout: 10), "the page view is there to drag on: \(tree)")

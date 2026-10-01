@@ -90,7 +90,28 @@ final class DocumentModel: Identifiable, Hashable {
 
     /// Opens the bytes in the core and in PDFKit. With an encrypted file
     /// the state becomes `.needsPassword` until the right one is given.
+    ///
+    /// A call made while a load is already running joins it rather than
+    /// opening the file a second time: the Library starts the load as it
+    /// opens a document and the document's screen asks again as it appears,
+    /// and a second load handed PDFKit a second document a moment after the
+    /// first, which the view took for an edit (on iPhone it then showed
+    /// page 2 of 3 of a document just opened at page 1).
     func load(password: String? = nil) async {
+        if password == nil, let running = loading {
+            await running.value
+            return
+        }
+        let task = Task { await performLoad(password: password) }
+        loading = task
+        await task.value
+        if loading == task { loading = nil }
+    }
+
+    /// The load in flight, which a second `load()` waits for.
+    private var loading: Task<Void, Never>?
+
+    private func performLoad(password: String?) async {
         state = .loading
         do {
             let core = try await Core.open(bytes: bytes, password: password)
