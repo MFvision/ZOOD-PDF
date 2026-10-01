@@ -1566,6 +1566,126 @@ one-simulator subset of `scripts/ios/build.sh`, under the machine-wide queue):
   keyboard and have to be scrolled to inside the field.
 * Everything ran on the simulator. No device, no TestFlight from here.
 
+## The iOS app — Redact, Prepare form and Fill form (2026-10-01)
+
+Two of the gaps wave 2 listed for iPhone and iPad, built in SwiftUI over the same core
+the desktop uses (`apps/ios/PDFEditor/Redact/`, `apps/ios/PDFEditor/Forms/`). Simulator
+only, as everything on iOS is.
+
+**What changed in the core, and why.** The desktop applies redaction marks with PDFium
+(EmbedPDF's redaction plugin); the phone has no PDFium. So the core learned to apply them
+itself — `redact.apply` (`warraq-pdf/src/redaction/`), shared by every host from now on,
+though only iOS calls it so far:
+* each marked page's content (and every form XObject it draws over a mark) is walked with
+  the bounded lexer and the graphics and text state followed; every glyph whose box (its
+  advance along the line, the font's ascent and descent across it) has its middle or two
+  fifths of its area under a mark is cut from its string, and an adjustment its width put
+  in its place, so the rest of the line stays exactly where it was; a glyph with no
+  advance (a haraka) goes with the one before it;
+* advances come from `/Widths`, a composite font's `/W` through its CMap (Identity or
+  embedded), a Type 3 font's matrix, or — for the 14 standard fonts with no `/Widths` —
+  Adobe's Core 14 metrics (generated from hayro-interpret's tables, `make_standard.py`). A
+  font whose advances are still guesses (another font with no widths, a predefined CJK
+  CMap) loses the **whole run** that touches a mark, never a guess at its neighbours;
+* marked content round cut text loses `/ActualText`, `/Alt` and `/E`, and so do the
+  structure elements holding its `/MCID` (the core writes Arabic words with an ActualText
+  that says the word in UTF-16 — it would have survived the glyphs);
+* pictures under a mark are drawn from a copy whose pixels there are zero, soft and
+  stencil masks too (a signature's shape can live in its mask); a picture the core cannot
+  decode (JBIG2, JPEG 2000, CCITT, an unknown colour space) is not drawn at all;
+* a path a quarter or more under a mark goes with the operators that built it; a rule or a
+  background that only crosses the mark stays;
+* annotations over a mark go, and the fields whose last widget they were (with their
+  values); the page's `/Thumb` and `/PieceInfo` go (a page mark keeps its words there, an
+  OCR layer its text); a black box is painted over each mark;
+* the file is written **whole** with no earlier revision and nothing unreferenced — an
+  incremental update would keep everything that was cut in the revision under it.
+Prepare form gained radio groups and lists in `forms.create`, `options`/`states` in
+`forms.inspect`, and `forms.fill` (values by name, calculations run, appearances drawn in
+the bundled Amiri, Arabic shaped). See `packages/core/API.md`.
+
+**Redact, as a person uses it.** *Redact* in the More menu (⌥⌘R) puts the dark bar over the
+pages. In *Mark text* a tap marks the word under the finger and a drag the text it crosses;
+in *Mark an area* a drag marks a box. Each mark is listed — beside the pages on iPad, in a
+sheet on a phone — by what the core reads under it (`view.text`, in logical order), its
+page, a tap to pick and Remove (Delete on a keyboard). *Find and redact* searches the
+Arabic-aware way (diacritics, alef, taa marbuta, yaa and digit forms), with the ready-made
+patterns — emails, phones, national ID and Iqama numbers, IBANs, card numbers, dates — and
+a pattern of one's own; each match with its page and the words round it, a badge when it
+is in a page mark, and a note when its letters cannot be placed (marked by hand instead).
+*Apply* (⌘Return) asks first: what is under the marks is taken out of the file, not
+covered; it can be undone until Save and not after; a signed file is said to be signed.
+Then a summary of what went (characters, pictures, drawings, annotations, runs). *Remove
+hidden information* reports what the file carries besides its pages, in the interface's
+language, and removes the chosen kinds (everything but hidden text, by default) with the
+file written whole, as on the desktop. A protected file is refused with the reason (its
+password would be lost) — the marks are kept for when the password is off. With a pointer,
+the word or the mark a tap would take is outlined first.
+
+**Prepare form and Fill form.** *Prepare form* (⌥⌘P): pick a kind in the bar — text, date,
+check box, radio button, list, signature — and drag a box on the page; radio buttons drawn
+one after another are one question. *Detect fields* lays the core's proposals over the page
+(named from their Arabic or English labels). Drafts are moved and resized on the page (the
+arrow keys move the picked one, Shift for ten), and named, typed, given help text, a
+direction, a date pattern, a list's options or what a radio button stands for in the
+inspector. *Create* makes them real AcroForm fields in one step of undo, as an update; the
+fields already in the file are outlined and listed. *Fill form…* in the More menu lists
+every field with the control its kind takes and writes what changed through `forms.fill`.
+
+**How it is proven.**
+* Core: `cargo test --workspace` green; fmt and clippy clean. New: `redaction::tests` (6:
+  a word cut with its neighbours' places kept, ActualText, a comment and private data
+  gone, pixels blanked and a drawing removed, text in a form cut from a copy, refusals,
+  hostile content), `redaction::{fonts, pixels}::tests` (8), `tools::redact::apply_tests`
+  (9, the adversarial set below), `forms::fill::tests` (2), `tools::forms::fill_tests` (1).
+* **Every adversarial check, and its result** (`warraq-core/src/tools/redact_apply_tests.rs`;
+  each one reads the redacted file back through the core's reader — `extract_text` of every
+  page and the Arabic-aware `redact.find` — and scans the raw bytes and every stream
+  inflated for the word in UTF-8, UTF-16BE, UTF-16LE and UTF-16BE hex in both cases):
+  - English names and both email patterns in `tests/fixtures/redact/contract.pdf`
+    (Helvetica with no `/Widths`): gone in every encoding; the line reads exactly
+    `Contract between Warraq Labs and Nadia` and `Contact: , phone +966 50 123 4567`, and
+    every kept char's span is where it was to 0.01 pt — **pass**;
+  - Arabic found without its shadda (`وراق` → `ورّاق`) and `نادية`: gone; the line reads
+    exactly `العقد بين شركة  والسيدة`, its kept words in place — **pass**;
+  - Arabic the core wrote itself, whose word carries an `/ActualText` in UTF-16BE: the
+    word is in the bytes before and nowhere after; the line reads `اسم الموظف سلامة` —
+    **pass**;
+  - `/Rotate` 90, 180 and 270 pages, an 8° slanting page, a line up the margin and a
+    footer marked as an artifact: 42 glyphs cut, every neighbouring line and word kept —
+    **pass**;
+  - a scan made a page with an OCR layer: the scan's pixels under the mark blanked (read
+    back from the core's rendering), the invisible word and its copy in `/PieceInfo`
+    gone, the other word still found — **pass**;
+  - a header محرر PDF drew: the word gone from the page and from what `marks.list` reads —
+    **pass**;
+  - a filled form field under a mark: the field gone and its value nowhere in the bytes
+    — **pass**;
+  - written whole (no earlier revision); a protected file refused; no marks or a page
+    past the end refused; 60 damaged copies of the contract refused or redacted, never a
+    panic — **pass**.
+* iOS XCTest and XCUITest: RUNS_PENDING
+
+**Limits, stated plainly.**
+* A picture the core cannot decode — JBIG2, JPEG 2000, CCITT fax (a black-and-white scan
+  is often one of these), a filter chain ending in one — is **taken out whole** when a mark
+  touches it, and the summary says how many. Better than leaving its pixels; worse than
+  blanking only the marked part, which the desktop's PDFium does.
+* Text in a font whose advances are guesses loses the whole run under a mark. Every
+  corpus file tested placed its glyphs; a predefined CJK CMap would not.
+* Vector drawings: a path a quarter or more under a mark goes; one mostly outside stays,
+  and the part of it under the mark is only covered by the box.
+* An inline image with a filter is taken out whole when a mark touches it; an unfiltered
+  one is blanked.
+* Prepare form moves, resizes and names **drafts**; a field already in the file is shown
+  and listed, not moved or renamed (the desktop's EmbedPDF form tool does that). Formats,
+  ranges and calculations (`forms.set_actions`) have no screen on iOS; a form's own
+  calculations do run when it is filled.
+* A field tapped on the page itself is PDFKit's to edit, in PDFKit's copy of the page;
+  nothing in the app writes that copy's field values to the file (no observer of them was
+  added, and none was tested). Fill form is the way to fill. Signature fields are signed
+  from Signatures.
+
 ## Next (in order)
 1. **Run the Windows and Linux builds on those systems**: print by pages, the drop targets and the NSIS installer have been built for them in code only — nothing of them has run here.
 2. **Phone apps**: iPhone and iPad are the native SwiftUI app in `apps/ios` (its foundation above; the other parts in progress). Android is not started: it would need the Android SDK, NDK and JDK installed here (Decisions, below). The installable web app covers phones meanwhile.
