@@ -475,10 +475,16 @@ pub fn erase_area(
     let (x1, y1) = (x0 + w, y0 + h);
     let mut blanked = 0;
     for r in runs {
-        // a run belongs to the box when its origin is inside, with a small vertical
-        // tolerance so a baseline sitting exactly on the edge still counts
-        let pad = 0.2 * r.size.max(1.0);
-        if r.x >= x0 - pad && r.x <= x1 + pad && r.y >= y0 - pad && r.y <= y1 + pad {
+        // A run belongs to the box when its origin is inside, with a small
+        // tolerance so a baseline sitting exactly on an edge still counts —
+        // and more below: the box's bottom is the last line's baseline plus a
+        // little, and Chrome sets some Arabic glyphs as runs of their own,
+        // lowered by the font's positioning, which left two letters of a
+        // replaced heading on the page. Half a size below still stops well
+        // short of the next line, whose baseline is at least a leading down.
+        let size = r.size.max(1.0);
+        let (pad, below) = (0.2 * size, 0.5 * size);
+        if r.x >= x0 - pad && r.x <= x1 + pad && r.y >= y0 - below && r.y <= y1 + pad {
             let op = &mut ops[r.op_index];
             match op.operator.as_str() {
                 "TJ" => op.operands = vec![Object::Array(vec![])],
