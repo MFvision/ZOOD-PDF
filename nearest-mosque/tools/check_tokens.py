@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Check shared/design/tokens.json: WCAG contrast of text on the header skies and key surfaces, and
-that the Android (Theme.kt) and iOS (Theme.swift) themes use exactly the token colours."""
+that the Android (Theme.kt) and iOS (Theme.swift, Sky.swift) themes use exactly the token colours."""
 import json
 import os
 import re
@@ -51,15 +51,15 @@ def main():
 
     sky_hex = {c.lstrip("#").upper() for k, v in t["sky"].items() if not k.startswith("_") for c in v.values()}
     kt = open(os.path.join(ROOT, "android/app/src/main/kotlin/sa/zood/nearmosque/ui/theme/Theme.kt")).read()
-    sw = open(os.path.join(ROOT, "ios/App/Support/Theme.swift")).read()
+    sw = "".join(open(os.path.join(ROOT, "ios/App/Support", f)).read() for f in ("Theme.swift", "Sky.swift"))
     used_kt = {m.upper() for m in re.findall(r"0xFF([0-9A-Fa-f]{6})", kt)}
     used_sw = {m.upper() for m in re.findall(r"hex: 0x([0-9A-Fa-f]{6})", sw)}
     allowed = set(col.values()) | sky_hex | {"8CC0DE", "F2B8B5", "FFFFFF"}  # dark-mode secondary/error accents
-    for label, used in (("Theme.kt", used_kt), ("Theme.swift", used_sw)):
+    for label, used in (("Theme.kt", used_kt), ("Theme.swift + Sky.swift", used_sw)):
         stray = used - allowed
         if stray:
             errors.append(f"{label} uses colours not in tokens.json: {sorted(stray)}")
-    for label, used in (("Theme.kt", used_kt), ("Theme.swift", used_sw)):
+    for label, used in (("Theme.kt", used_kt), ("Theme.swift + Sky.swift", used_sw)):
         if sky_hex - used:
             errors.append(f"{label} is missing sky colours: {sorted(sky_hex - used)}")
     if errors:

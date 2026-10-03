@@ -58,7 +58,7 @@ struct PrayerHero: View {
             .glass(Capsule())
     }
 
-    private var arcMode: QiblaArc<EmptyView>.Mode {
+    private var arcMode: ArcMode {
         guard snap.qiblaBearing != nil else { return .none }
         if case .live = compass { return .live }
         return .northUp
@@ -141,10 +141,11 @@ struct LocationPill: View {
 /// Large circle whose top is the phone's forward direction (live) or north (north-up). The disc sits
 /// at the top; the gold dot sits at `angle` degrees clockwise from the top, reached along the arc by
 /// the shortest path. The lower half fades out so content can sit inside. Geometry never mirrors.
+enum ArcMode: Equatable { case live, northUp, none }
+
 struct QiblaArc<Content: View>: View {
-    enum Mode: Equatable { case live, northUp, none }
     let angle: Double
-    let mode: Mode
+    let mode: ArcMode
     let aligned: Bool
     /// False when the caller already animates `angle` frame by frame (onboarding demo).
     var springs = true
@@ -153,7 +154,7 @@ struct QiblaArc<Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var shown: Double = 0
 
-    init(angle: Double, mode: Mode, aligned: Bool, springs: Bool = true, @ViewBuilder content: () -> Content) {
+    init(angle: Double, mode: ArcMode, aligned: Bool, springs: Bool = true, @ViewBuilder content: () -> Content) {
         self.angle = angle; self.mode = mode; self.aligned = aligned; self.springs = springs; self.content = content()
     }
 
@@ -191,7 +192,7 @@ private struct ArcLayer: View, Animatable {
     var angle: Double
     let center: CGPoint
     let radius: CGFloat
-    let mode: QiblaArc<EmptyView>.Mode
+    let mode: ArcMode
     let aligned: Bool
     var animatableData: Double { get { angle } set { angle = newValue } }
 
