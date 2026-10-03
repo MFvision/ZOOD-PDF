@@ -144,8 +144,18 @@ class SearchAndDataTest {
         val ct = tz.resolve(LatLng(-33.95, 18.47), ZoneId.of("Africa/Johannesburg"))
         assertEquals(ZoneId.of("Africa/Johannesburg"), ct.zoneId)
         assertFalse(ct.needsConfirmation)
+        // Phone zone alias with identical rules is kept as-is.
+        assertEquals(ZoneId.of("Africa/Maputo"), tz.resolve(LatLng(-33.95, 18.47), ZoneId.of("Africa/Maputo")).zoneId)
+        // At sea the phone's zone is used (like the website), without a prompt.
         val ocean = tz.resolve(LatLng(-40.0, -30.0), ZoneId.of("UTC"))
-        assertTrue(ocean.needsConfirmation)
+        assertEquals(ZoneId.of("UTC"), ocean.zoneId)
+        assertFalse(ocean.needsConfirmation)
+        // In Cape Town with the phone left on London time: the city's zone, confirmation requested.
+        val traveller = tz.resolve(LatLng(-33.95, 18.47), ZoneId.of("Europe/London"))
+        assertEquals(ZoneId.of("Africa/Johannesburg"), traveller.zoneId)
+        assertTrue(traveller.needsConfirmation)
+        // No phone zone and no nearby city: ask.
+        assertTrue(tz.resolve(LatLng(-40.0, -30.0), null).needsConfirmation)
         // A remote city never borrows the phone's zone.
         val makkah = cities.search("makkah").first()
         assertEquals("Asia/Riyadh", makkah.zoneId)

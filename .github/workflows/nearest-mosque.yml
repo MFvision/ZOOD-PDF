@@ -105,6 +105,72 @@ jobs:
             -destination 'generic/platform=iOS Simulator' -configuration Debug \
             CODE_SIGNING_ALLOWED=NO build | tee build.log | grep -E "error:|warning: .*NearMosque|BUILD (SUCCEEDED|FAILED)" || true
           grep -q "BUILD SUCCEEDED" build.log
+      - name: Run in the iOS Simulator and capture screenshots
+        working-directory: nearest-mosque/ios
+        run: |
+          set -euo pipefail
+          xcrun simctl list runtimes
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          rts=sorted([k for k in d if 'iOS' in k], key=lambda k: [int(x) for x in k.split('iOS-')[-1].split('-')])
+          for rt in reversed(rts):
+              for dev in d[rt]:
+                  if dev['name'].startswith('iPhone') and 'Pro' in dev['name'] and 'Max' not in dev['name']:
+                      print(dev['udid']); sys.exit()
+          ")
+          echo "Simulator $UDID"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcodebuild -project NearMosque.xcodeproj -scheme NearMosque -configuration Debug \
+            -destination "platform=iOS Simulator,id=$UDID" -derivedDataPath dd CODE_SIGNING_ALLOWED=NO build -quiet
+          APP=dd/Build/Products/Debug-iphonesimulator/NearMosque.app
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl privacy "$UDID" grant location sa.zood.nearmosque || true
+          xcrun simctl location "$UDID" set -33.9249,18.4241 || true
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryLevel 100 --cellularBars 4 || true
+          mkdir -p shots
+          shot() { name=$1; shift
+            xcrun simctl terminate "$UDID" sa.zood.nearmosque 2>/dev/null || true
+            xcrun simctl launch "$UDID" sa.zood.nearmosque "$@"
+            sleep 9
+            xcrun simctl io "$UDID" screenshot "shots/$name.png"
+          }
+          shot 01-onboarding-welcome -demoOnboarding YES -demoOnboardingPage 0 -languageOverride en
+          shot 02-onboarding-qibla -demoOnboarding YES -demoOnboardingPage 2 -languageOverride en
+          shot 03-onboarding-mosque -demoOnboarding YES -demoOnboardingPage 3 -languageOverride en
+          shot 04-onboarding-setup -demoOnboarding YES -demoOnboardingPage 5 -languageOverride en
+          shot 05-prayer-en -demoCity "Cape Town" -demoTab prayer -languageOverride en
+          shot 06-prayer-ar -demoCity "Cape Town" -demoTab prayer -languageOverride ar
+          shot 07-mosques-compass -demoCity "Cape Town" -demoTab mosques -demoMosqueMode 0 -languageOverride en
+          shot 08-mosques-map -demoCity "Cape Town" -demoTab mosques -demoMosqueMode 1 -languageOverride en
+          shot 09-ask-answer -demoCity "Cape Town" -demoTab ask -demoAsk YES -languageOverride en
+          shot 10-ask-ar -demoCity "Cape Town" -demoTab ask -languageOverride ar
+          ls -la shots
+          # Contact sheet (small JPEG) printed as base64 so it can be read from the job log.
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          import glob, base64, io
+          from PIL import Image
+          files = sorted(glob.glob("shots/*.png"))
+          ims = [Image.open(f).convert("RGB") for f in files]
+          w = 300; h = int(ims[0].height * w / ims[0].width)
+          cols = 5; rows = (len(ims) + cols - 1) // cols
+          sheet = Image.new("RGB", (cols * w, rows * h), "white")
+          for i, im in enumerate(ims):
+              sheet.paste(im.resize((w, h)), ((i % cols) * w, (i // cols) * h))
+          sheet.save("shots/contact-sheet.jpg", quality=70)
+          buf = io.BytesIO(); sheet.save(buf, "JPEG", quality=55)
+          b = base64.b64encode(buf.getvalue()).decode()
+          print("CONTACT_SHEET_BEGIN")
+          for i in range(0, len(b), 4000): print(b[i:i + 4000])
+          print("CONTACT_SHEET_END")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-simulator-screenshots
+          path: nearest-mosque/ios/shots/
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

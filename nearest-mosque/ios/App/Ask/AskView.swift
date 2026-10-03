@@ -73,85 +73,119 @@ struct AskView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
+                    header
                     if vm.turns.isEmpty { intro }
                     ForEach(vm.turns) { t in
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 10) {
                             HStack {
                                 Spacer(minLength: 40)
-                                Text(t.question).padding(.horizontal, 14).padding(.vertical, 10)
-                                    .foregroundStyle(.white).background(Theme.navy, in: RoundedRectangle(cornerRadius: 18))
+                                Text(t.question).padding(.horizontal, 16).padding(.vertical, 12)
+                                    .glass(RoundedRectangle(cornerRadius: 20, style: .continuous), tint: Theme.navy.opacity(0.55))
                             }
                             if let a = t.answer {
                                 AnswerCard(turn: t, answer: a, onRead: { reading = $0 })
+                                    .transition(.move(edge: .bottom).combined(with: .opacity))
                             } else {
-                                HStack {
-                                    ProgressView()
+                                HStack(spacing: 10) {
+                                    ProgressView().tint(.white)
                                     Text(l10n.t("answer_searching"))
-                                    Button(l10n.t("stop")) { vm.stop() }
+                                    Spacer()
+                                    Button(l10n.t("stop")) { vm.stop() }.glassButton()
                                 }
+                                .glassCard(padding: 12)
                             }
                         }
                         .id(t.id)
                     }
                 }
-                .padding()
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+                .animation(Theme.spring, value: vm.turns.map(\.answer?.question))
             }
+            .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
             .onChange(of: vm.turns.last?.answer?.question) { _, _ in
                 if let id = vm.turns.last?.id { withAnimation { proxy.scrollTo(id, anchor: .top) } }
             }
         }
+        .foregroundStyle(.white)
         .safeAreaInset(edge: .bottom) { inputBar }
-        .navigationTitle(l10n.t("tab_ask"))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                if !vm.turns.isEmpty {
-                    Button { vm.reset() } label: { Image(systemName: "square.and.pencil") }.accessibilityLabel(l10n.t("new_conversation"))
-                }
-            }
-            ToolbarItem(placement: .topBarTrailing) { SettingsButton(show: $showSettings) }
-        }
+        .skyBackground(horizon: 0.3, skyline: true)
+        .toolbar(.hidden, for: .navigationBar)
         .sheet(item: $reading) { ReaderView(citation: $0) }
+        #if DEBUG
+        .task(id: app.ready) {
+            // CI screenshots: `-demoAsk YES` asks the first common question.
+            guard app.ready, vm.turns.isEmpty, UserDefaults.standard.bool(forKey: "demoAsk"),
+                  let q = try? app.ask?.commonQuestions().first else { return }
+            vm.ask(app, common: q, displayed: q.question[l10n.language] ?? q.question["en"] ?? q.id)
+        }
+        #endif
+    }
+
+    private var header: some View {
+        HStack {
+            if !vm.turns.isEmpty {
+                GlassIconButton(systemImage: "square.and.pencil", label: l10n.t("new_conversation")) { withAnimation(Theme.spring) { vm.reset() } }
+            } else {
+                Color.clear.frame(width: 44, height: 44)
+            }
+            Spacer()
+            Text(l10n.t("ask_title")).font(.headline).lineLimit(1).minimumScaleFactor(0.8)
+            Spacer()
+            SettingsButton(show: $showSettings)
+        }
+        .padding(.top, 4)
+        .padding(.bottom, vm.turns.isEmpty ? 150 : 8)
     }
 
     private var intro: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(l10n.t("ask_title")).font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
-            Text(l10n.t("ask_subtitle")).foregroundStyle(.secondary)
+            Text(l10n.t("ask_subtitle")).foregroundStyle(.white.opacity(0.85))
             if LocalAnswerer.availability(language: l10n.language) != .available {
-                Text(l10n.t("ai_pack_not_installed")).font(.footnote).foregroundStyle(.secondary)
+                Label(l10n.t("ai_pack_not_installed"), systemImage: "lock.shield").font(.footnote).foregroundStyle(.white.opacity(0.75))
             }
             Text(l10n.t("common_questions")).font(.headline).padding(.top, 8).accessibilityAddTraits(.isHeader)
-            if !app.ready { ProgressView() }
+            if !app.ready { ProgressView().tint(.white) }
             let qs = (try? app.ask?.commonQuestions()) ?? []
-            FlowLayout(spacing: 8) {
-                ForEach(qs) { q in
-                    let text = q.question[l10n.language] ?? q.question["en"] ?? q.id
-                    Button { vm.ask(app, common: q, displayed: text) } label: {
-                        Text(text).multilineTextAlignment(.leading).padding(.horizontal, 12).padding(.vertical, 10)
+            GlassGroup(spacing: 8) {
+                FlowLayout(spacing: 8) {
+                    ForEach(qs) { q in
+                        let text = q.question[l10n.language] ?? q.question["en"] ?? q.id
+                        Button { vm.ask(app, common: q, displayed: text) } label: {
+                            Text(text).font(.subheadline).multilineTextAlignment(.leading)
+                                .padding(.horizontal, 14).padding(.vertical, 10)
+                                .frame(minHeight: 44)
+                                .contentShape(RoundedRectangle(cornerRadius: 18))
+                        }
+                        .buttonStyle(.plain)
+                        .glass(RoundedRectangle(cornerRadius: 18, style: .continuous), interactive: true)
                     }
-                    .buttonStyle(.bordered)
-                    .frame(minHeight: 44)
                 }
             }
         }
     }
 
     private var inputBar: some View {
-        HStack(spacing: 8) {
-            TextField(l10n.t(vm.turns.isEmpty ? "ask_placeholder" : "ask_follow_up_placeholder"), text: $input, axis: .vertical)
-                .lineLimit(1...4)
-                .focused($focused)
-                .submitLabel(.send)
-                .onSubmit(send)
-                .padding(.horizontal, 14).padding(.vertical, 10)
-                .glassChrome(cornerRadius: 22)
-            Button(action: send) { Image(systemName: "arrow.up").font(.headline).frame(width: 44, height: 44) }
+        GlassGroup(spacing: 10) {
+            HStack(spacing: 10) {
+                TextField(l10n.t(vm.turns.isEmpty ? "ask_placeholder" : "ask_follow_up_placeholder"), text: $input, axis: .vertical)
+                    .lineLimit(1...4)
+                    .focused($focused)
+                    .submitLabel(.send)
+                    .onSubmit(send)
+                    .padding(.horizontal, 18).padding(.vertical, 12)
+                    .glass(RoundedRectangle(cornerRadius: 24, style: .continuous), interactive: true)
+                Button(action: send) {
+                    Image(systemName: "arrow.up").font(.headline.weight(.bold)).frame(width: 30, height: 30)
+                }
                 .prominentButton()
                 .disabled(input.trimmingCharacters(in: .whitespaces).isEmpty || vm.busy)
                 .accessibilityLabel(l10n.t("ask_send"))
+            }
         }
-        .padding(.horizontal).padding(.vertical, 8)
+        .padding(.horizontal, 16).padding(.vertical, 8)
     }
 
     private func send() {
@@ -174,11 +208,11 @@ struct AnswerCard: View {
             case .common:
                 let q = answer.commonQuestion!
                 Text(q.isReviewed ? l10n.t("answer_common_reviewed", q.reviewedBy ?? "") : l10n.t("answer_common_unreviewed"))
-                    .font(.footnote.weight(.semibold)).foregroundStyle(Theme.accentText(scheme))
+                    .font(.footnote.weight(.semibold)).foregroundStyle(Theme.gold)
                 Text(q.summary[l10n.language] ?? q.summary["en"] ?? "")
             case .passages:
                 if let g = answer.generated {
-                    Text(l10n.t("answer_generated_on_device")).font(.footnote.weight(.semibold)).foregroundStyle(Theme.accentText(scheme))
+                    Text(l10n.t("answer_generated_on_device")).font(.footnote.weight(.semibold)).foregroundStyle(Theme.gold)
                     Text(g)
                 } else {
                     Text(l10n.t("answer_from_passages")).font(.headline)
@@ -200,11 +234,12 @@ struct AnswerCard: View {
                 }
             }
             if !["ar", "en"].contains(l10n.language), answer.kind != .insufficient {
-                Text(l10n.t("answer_language_note")).font(.caption).foregroundStyle(.secondary)
+                Text(l10n.t("answer_language_note")).font(.caption).foregroundStyle(.white.opacity(0.7))
             }
-            Text(l10n.t("answer_not_fatwa")).font(.caption).foregroundStyle(.secondary)
+            Text(l10n.t("answer_not_fatwa")).font(.caption).foregroundStyle(.white.opacity(0.7))
         }
-        .card()
+        .foregroundStyle(.white)
+        .glassCard()
     }
 }
 

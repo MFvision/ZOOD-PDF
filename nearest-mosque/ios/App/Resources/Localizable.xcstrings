@@ -2164,6 +2164,53 @@
         }
       }
     },
+    "current_prayer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الحالية"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جاری"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şimdiki"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sekarang"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En cours"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actual"
+          }
+        }
+      }
+    },
     "data_attribution_osm": {
       "extractionState": "manual",
       "localizations": {
@@ -3245,6 +3292,53 @@
         }
       }
     },
+    "get_directions": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get directions"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الاتجاهات"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "راستہ دیکھیں"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yol tarifi al"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Petunjuk arah"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Itinéraire"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cómo llegar"
+          }
+        }
+      }
+    },
     "heading_accuracy": {
       "extractionState": "manual",
       "localizations": {
@@ -4232,6 +4326,53 @@
         }
       }
     },
+    "map_attribution_ofm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Map © OpenFreeMap, OpenMapTiles, OpenStreetMap contributors"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الخريطة © OpenFreeMap وOpenMapTiles ومساهمو OpenStreetMap"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نقشہ © OpenFreeMap، OpenMapTiles، OpenStreetMap معاونین"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Harita © OpenFreeMap, OpenMapTiles, OpenStreetMap katkıcıları"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Peta © OpenFreeMap, OpenMapTiles, kontributor OpenStreetMap"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carte © OpenFreeMap, OpenMapTiles, contributeurs OpenStreetMap"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mapa © OpenFreeMap, OpenMapTiles, colaboradores de OpenStreetMap"
+          }
+        }
+      }
+    },
     "map_needs_internet": {
       "extractionState": "manual",
       "localizations": {
@@ -4937,6 +5078,53 @@
         }
       }
     },
+    "minutes_short": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld min"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld د"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld منٹ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld dk"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld mnt"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld min"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld min"
+          }
+        }
+      }
+    },
     "minutes_value": {
       "extractionState": "manual",
       "localizations": {
@@ -4980,6 +5168,53 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$lld min"
+          }
+        }
+      }
+    },
+    "mosque_ahead": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mosque ahead"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المسجد أمامك"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مسجد سامنے ہے"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cami önünüzde"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masjid di depan"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mosquée droit devant"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mezquita al frente"
           }
         }
       }
@@ -5744,6 +5979,1181 @@
         }
       }
     },
+    "onb_ask_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Answers quote the Qur’an with the verse reference, so you can always check the source."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تقتبس الإجابات من القرآن مع رقم الآية، لتتحقق من المصدر دائمًا."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جوابات قرآن سے آیت کے حوالے کے ساتھ اقتباس دیتے ہیں تاکہ آپ ہمیشہ ماخذ دیکھ سکیں۔"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cevaplar Kur’an’dan ayet numarasıyla alıntı yapar; kaynağı her zaman kontrol edebilirsiniz."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jawaban mengutip Al-Qur’an beserta nomor ayatnya, sehingga Anda selalu bisa memeriksa sumbernya."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les réponses citent le Coran avec la référence du verset, pour que vous puissiez toujours vérifier la source."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las respuestas citan el Corán con la referencia de la aleya, para que siempre puedas comprobar la fuente."
+          }
+        }
+      }
+    },
+    "onb_ask_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask anything about Islam"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسأل أي شيء عن الإسلام"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسلام کے بارے میں کچھ بھی پوچھیں"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İslam hakkında her şeyi sorun"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tanyakan apa saja tentang Islam"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posez vos questions sur l’islam"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pregunta lo que quieras sobre el islam"
+          }
+        }
+      }
+    },
+    "onb_back": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "رجوع"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "واپس"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geri"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kembali"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retour"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atrás"
+          }
+        }
+      }
+    },
+    "onb_demo_city": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your city"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مدينتك"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "آپ کا شہر"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şehriniz"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kota Anda"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre ville"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu ciudad"
+          }
+        }
+      }
+    },
+    "onb_demo_question": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How can I find peace in prayer?"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كيف أجد الطمأنينة في الصلاة؟"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نماز میں سکون کیسے پاؤں؟"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Namazda huzuru nasıl bulurum?"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bagaimana menemukan ketenangan dalam salat?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comment trouver la paix dans la prière ?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Cómo encuentro paz en la oración?"
+          }
+        }
+      }
+    },
+    "onb_location_set": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prayer times for %1$@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المواقيت لـ %1$@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ کے اوقات"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ için vakitler"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waktu salat untuk %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Horaires pour %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Horarios para %1$@"
+          }
+        }
+      }
+    },
+    "onb_mosque_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "See mosques around you on a live map or a compass, with distance and one-tap directions."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شاهد المساجد من حولك على خريطة حية أو بوصلة، مع المسافة والاتجاهات بلمسة واحدة."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اپنے آس پاس کی مساجد لائیو نقشے یا قطب نما پر دیکھیں، فاصلے اور ایک ٹیپ میں راستے کے ساتھ۔"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çevrenizdeki camileri canlı haritada veya pusulada, mesafe ve tek dokunuşla yol tarifiyle görün."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lihat masjid di sekitar Anda di peta langsung atau kompas, lengkap dengan jarak dan petunjuk arah sekali ketuk."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voyez les mosquées autour de vous sur une carte en direct ou une boussole, avec la distance et l’itinéraire en un geste."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mira las mezquitas a tu alrededor en un mapa en vivo o una brújula, con la distancia y la ruta con un toque."
+          }
+        }
+      }
+    },
+    "onb_mosque_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The nearest mosque"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أقرب مسجد"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قریب ترین مسجد"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En yakın cami"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masjid terdekat"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La mosquée la plus proche"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La mezquita más cercana"
+          }
+        }
+      }
+    },
+    "onb_next": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التالي"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اگلا"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İleri"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lanjut"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suivant"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siguiente"
+          }
+        }
+      }
+    },
+    "onb_page_a11y": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Page %1$lld of %2$lld"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصفحة %1$lld من %2$lld"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صفحہ %1$lld از %2$lld"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sayfa %1$lld / %2$lld"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Halaman %1$lld dari %2$lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Page %1$lld sur %2$lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Página %1$lld de %2$lld"
+          }
+        }
+      }
+    },
+    "onb_prayer_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Times are calculated on your phone for where you are. The sky changes with each prayer and a countdown shows what comes next."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تُحسب المواقيت على هاتفك لموقعك. تتغير السماء مع كل صلاة، ويعرض العدّ التنازلي الصلاة القادمة."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اوقات آپ کے مقام کے لیے آپ کے فون پر حساب ہوتے ہیں۔ ہر نماز کے ساتھ آسمان بدلتا ہے اور الٹی گنتی اگلی نماز دکھاتی ہے۔"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vakitler bulunduğunuz yer için telefonunuzda hesaplanır. Gökyüzü her namazla değişir, geri sayım sıradakini gösterir."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waktu dihitung di ponsel untuk lokasi Anda. Langit berubah di setiap waktu salat dan hitung mundur menunjukkan salat berikutnya."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les horaires sont calculés sur votre téléphone pour l’endroit où vous êtes. Le ciel change à chaque prière et un compte à rebours annonce la suivante."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los horarios se calculan en tu teléfono para donde estás. El cielo cambia con cada oración y una cuenta atrás muestra la siguiente."
+          }
+        }
+      }
+    },
+    "onb_prayer_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prayer times that follow the sky"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مواقيت تتبع السماء"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "آسمان کے ساتھ چلتے اوقات"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gökyüzünü izleyen vakitler"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waktu salat mengikuti langit"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Des horaires qui suivent le ciel"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Horarios que siguen al cielo"
+          }
+        }
+      }
+    },
+    "onb_qibla_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hold your phone flat and turn slowly. When the gold dot meets the Kaaba at the top, you’re facing the Qibla and it glows."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أمسك هاتفك بشكل مستوٍ واستدر ببطء. عندما تلتقي النقطة الذهبية بالكعبة في الأعلى فأنت باتجاه القبلة ويتوهج القرص."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فون کو سیدھا رکھیں اور آہستہ گھومیں۔ جب سنہری نقطہ اوپر کعبہ سے ملے تو آپ قبلہ رخ ہیں اور ڈسک چمکتی ہے۔"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telefonu düz tutun ve yavaşça dönün. Altın nokta üstteki Kâbe ile buluştuğunda kıbleye dönüksünüz ve disk parlar."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegang ponsel mendatar dan berputar perlahan. Saat titik emas bertemu Ka’bah di atas, Anda menghadap kiblat dan cakramnya bersinar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tenez le téléphone à plat et tournez lentement. Quand le point doré rejoint la Kaaba en haut, vous faites face à la qibla et le disque s’illumine."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sostén el teléfono en horizontal y gira despacio. Cuando el punto dorado llega a la Kaaba arriba, estás orientado a la alquibla y el disco brilla."
+          }
+        }
+      }
+    },
+    "onb_qibla_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Face the Qibla"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اتجه إلى القبلة"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قبلہ رخ ہوں"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kıbleye yönelin"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menghadap kiblat"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tournez-vous vers la qibla"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oriéntate hacia la alquibla"
+          }
+        }
+      }
+    },
+    "onb_replay": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show welcome tour"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عرض الجولة الترحيبية"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "خوش آمدید ٹور دکھائیں"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tanıtımı göster"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tampilkan tur pembuka"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revoir la présentation"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver el recorrido de bienvenida"
+          }
+        }
+      }
+    },
+    "onb_setup_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose your language and where to calculate prayer times. You can change both in Settings."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختر لغتك والمكان الذي تُحسب له المواقيت. يمكنك تغييرهما من الإعدادات."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اپنی زبان اور وہ مقام منتخب کریں جس کے لیے اوقات حساب ہوں۔ دونوں ترتیبات میں بدل سکتے ہیں۔"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dilinizi ve vakitlerin hesaplanacağı yeri seçin. İkisini de Ayarlar’dan değiştirebilirsiniz."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pilih bahasa dan lokasi untuk menghitung waktu salat. Keduanya bisa diubah di Pengaturan."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez votre langue et le lieu de calcul des horaires. Vous pourrez les modifier dans les réglages."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige tu idioma y dónde calcular los horarios. Puedes cambiar ambos en Ajustes."
+          }
+        }
+      }
+    },
+    "onb_setup_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Let’s set up"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لنبدأ الإعداد"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "آئیے سیٹ اپ کریں"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hadi ayarlayalım"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mari atur"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configurons"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vamos a configurarlo"
+          }
+        }
+      }
+    },
+    "onb_skip": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skip"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تخطٍّ"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "چھوڑیں"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geç"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lewati"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Omitir"
+          }
+        }
+      }
+    },
+    "onb_start": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get started"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ابدأ"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شروع کریں"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başla"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mulai"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commencer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empezar"
+          }
+        }
+      }
+    },
+    "onb_welcome_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prayer times, the Qibla, nearby mosques and answers from trusted sources, all on your phone and working offline."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مواقيت الصلاة والقبلة وأقرب المساجد وإجابات من مصادر موثوقة، كلها على هاتفك وتعمل دون إنترنت."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نماز کے اوقات، قبلہ، قریبی مساجد اور معتبر ذرائع سے جوابات، سب آپ کے فون پر اور بغیر انٹرنیٹ کے۔"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Namaz vakitleri, kıble, yakındaki camiler ve güvenilir kaynaklardan cevaplar; hepsi telefonunuzda ve çevrimdışı çalışır."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waktu salat, kiblat, masjid terdekat, dan jawaban dari sumber tepercaya, semuanya di ponsel Anda dan bisa tanpa internet."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Horaires de prière, qibla, mosquées proches et réponses tirées de sources fiables, sur votre téléphone et hors ligne."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Horarios de oración, la alquibla, mezquitas cercanas y respuestas de fuentes fiables, en tu teléfono y sin conexión."
+          }
+        }
+      }
+    },
+    "onb_welcome_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Assalamu alaikum"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السلام عليكم"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السلام علیکم"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esselâmü aleyküm"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Assalamualaikum"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Assalamou alaykoum"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Assalamu alaikum"
+          }
+        }
+      }
+    },
+    "online_offline_note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You’re offline. Showing downloaded mosques only."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أنت غير متصل. تُعرض المساجد المحمّلة فقط."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "آپ آف لائن ہیں۔ صرف ڈاؤن لوڈ کردہ مساجد دکھائی جا رہی ہیں۔"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çevrimdışısınız. Yalnızca indirilen camiler gösteriliyor."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anda sedang offline. Hanya masjid yang diunduh yang ditampilkan."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous êtes hors ligne. Seules les mosquées téléchargées sont affichées."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estás sin conexión. Solo se muestran las mezquitas descargadas."
+          }
+        }
+      }
+    },
+    "online_search": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search online for mosques"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "البحث عن المساجد عبر الإنترنت"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مساجد آن لائن تلاش کریں"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camileri çevrimiçi ara"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cari masjid secara online"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechercher des mosquées en ligne"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar mezquitas en línea"
+          }
+        }
+      }
+    },
+    "online_search_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adds live results to your downloaded data. Your approximate location (about 1 km) is sent to the map service. The live map also loads map images for the area you view."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يضيف نتائج مباشرة إلى بياناتك المحمّلة. يُرسل موقعك التقريبي (نحو 1 كم) إلى خدمة الخرائط. كما تحمّل الخريطة الحية صور المنطقة التي تشاهدها."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "آپ کے ڈاؤن لوڈ کردہ ڈیٹا میں براہ راست نتائج شامل کرتا ہے۔ آپ کا تقریبی مقام (تقریباً 1 کلومیٹر) نقشہ سروس کو بھیجا جاتا ہے۔ لائیو نقشہ دیکھے جانے والے علاقے کی تصاویر بھی لوڈ کرتا ہے۔"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndirilen verilere canlı sonuçlar ekler. Yaklaşık konumunuz (yaklaşık 1 km) harita hizmetine gönderilir. Canlı harita, baktığınız bölgenin görüntülerini de yükler."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menambahkan hasil langsung ke data unduhan Anda. Lokasi perkiraan Anda (sekitar 1 km) dikirim ke layanan peta. Peta langsung juga memuat gambar area yang Anda lihat."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoute des résultats en direct à vos données téléchargées. Votre position approximative (environ 1 km) est envoyée au service de cartes. La carte en direct charge aussi les images de la zone affichée."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añade resultados en vivo a tus datos descargados. Tu ubicación aproximada (unos 1 km) se envía al servicio de mapas. El mapa en vivo también carga imágenes de la zona que ves."
+          }
+        }
+      }
+    },
+    "online_searching": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Looking for more mosques online…"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ البحث عن مساجد أخرى عبر الإنترنت…"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مزید مساجد آن لائن تلاش ہو رہی ہیں…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çevrimiçi daha fazla cami aranıyor…"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mencari masjid lain secara online…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recherche d’autres mosquées en ligne…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando más mezquitas en línea…"
+          }
+        }
+      }
+    },
     "open_settings": {
       "extractionState": "manual",
       "localizations": {
@@ -6032,43 +7442,43 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your location is used on this phone to calculate prayer times and the Qibla, and to find nearby mosques. It is not sent anywhere."
+            "value": "Your location is used on this phone for prayer times, the Qibla and nearby mosques. Only an approximate location is sent, and only when online mosque search is on."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "يُستخدم موقعك على هذا الهاتف لحساب مواقيت الصلاة والقبلة والعثور على المساجد القريبة، ولا يُرسل إلى أي جهة."
+            "value": "يُستخدم موقعك على هذا الهاتف للمواقيت والقبلة والمساجد القريبة. لا يُرسل إلا موقع تقريبي، وفقط عند تفعيل البحث عن المساجد عبر الإنترنت."
           }
         },
         "ur": {
           "stringUnit": {
             "state": "translated",
-            "value": "آپ کا مقام اسی فون پر نماز کے اوقات، قبلہ اور قریبی مساجد کے لیے استعمال ہوتا ہے۔ یہ کہیں نہیں بھیجا جاتا۔"
+            "value": "آپ کا مقام اسی فون پر نماز کے اوقات، قبلہ اور قریبی مساجد کے لیے استعمال ہوتا ہے۔ صرف تقریبی مقام بھیجا جاتا ہے، اور صرف جب آن لائن مسجد تلاش آن ہو۔"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Konumunuz bu telefonda namaz vakitleri, kıble ve yakındaki camiler için kullanılır. Hiçbir yere gönderilmez."
+            "value": "Konumunuz bu telefonda namaz vakitleri, kıble ve yakındaki camiler için kullanılır. Yalnızca çevrimiçi cami araması açıkken yaklaşık konum gönderilir."
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lokasi Anda digunakan di ponsel ini untuk menghitung jadwal salat, kiblat, dan mencari masjid terdekat. Tidak dikirim ke mana pun."
+            "value": "Lokasi Anda digunakan di ponsel ini untuk waktu salat, kiblat, dan masjid terdekat. Hanya lokasi perkiraan yang dikirim, dan hanya saat pencarian masjid online aktif."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Votre position sert, sur ce téléphone, à calculer les horaires de prière et la qibla, et à trouver les mosquées proches. Elle n’est envoyée nulle part."
+            "value": "Votre position sert, sur ce téléphone, aux horaires, à la qibla et aux mosquées proches. Seule une position approximative est envoyée, et seulement si la recherche en ligne est activée."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu ubicación se usa en este teléfono para calcular los horarios de oración y la alquibla, y encontrar mezquitas cercanas. No se envía a ningún sitio."
+            "value": "Tu ubicación se usa en este teléfono para los horarios, la alquibla y las mezquitas cercanas. Solo se envía una ubicación aproximada, y solo con la búsqueda en línea activada."
           }
         }
       }
@@ -6737,43 +8147,43 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No account. Your location, questions and settings stay on this phone. Nothing is sent unless you open a link, a phone number or a maps app."
+            "value": "No account. Prayer times, the Qibla and your questions are worked out on this phone. With online search on, an approximate location (about 1 km) is sent to find mosques, and the live map loads images of the area you view. Nothing else leaves the phone."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "بلا حساب. يبقى موقعك وأسئلتك وإعداداتك على هذا الهاتف، ولا يُرسل شيء إلا إذا فتحت رابطًا أو رقم هاتف أو تطبيق خرائط."
+            "value": "بلا حساب. تُحسب المواقيت والقبلة وإجابات أسئلتك على هذا الهاتف. عند تفعيل البحث عبر الإنترنت يُرسل موقع تقريبي (نحو 1 كم) للعثور على المساجد، وتحمّل الخريطة الحية صور المنطقة التي تشاهدها. لا يُرسل شيء آخر."
           }
         },
         "ur": {
           "stringUnit": {
             "state": "translated",
-            "value": "کوئی اکاؤنٹ نہیں۔ آپ کا مقام، سوالات اور ترتیبات اسی فون پر رہتے ہیں۔ جب تک آپ لنک، فون نمبر یا میپس ایپ نہ کھولیں کچھ نہیں بھیجا جاتا۔"
+            "value": "کوئی اکاؤنٹ نہیں۔ نماز کے اوقات، قبلہ اور آپ کے سوالات اسی فون پر حل ہوتے ہیں۔ آن لائن تلاش آن ہو تو مساجد ڈھونڈنے کے لیے تقریبی مقام (تقریباً 1 کلومیٹر) بھیجا جاتا ہے، اور لائیو نقشہ دیکھے جانے والے علاقے کی تصاویر لوڈ کرتا ہے۔ اس کے علاوہ کچھ نہیں بھیجا جاتا۔"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hesap yok. Konumunuz, sorularınız ve ayarlarınız bu telefonda kalır. Bir bağlantı, telefon numarası veya harita uygulaması açmadıkça hiçbir şey gönderilmez."
+            "value": "Hesap yok. Namaz vakitleri, kıble ve sorularınız bu telefonda işlenir. Çevrimiçi arama açıkken camileri bulmak için yaklaşık konum (yaklaşık 1 km) gönderilir ve canlı harita baktığınız bölgenin görüntülerini yükler. Başka hiçbir şey telefondan çıkmaz."
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tanpa akun. Lokasi, pertanyaan, dan pengaturan Anda tetap di ponsel ini. Tidak ada yang dikirim kecuali Anda membuka tautan, nomor telepon, atau aplikasi peta."
+            "value": "Tanpa akun. Waktu salat, kiblat, dan pertanyaan Anda diproses di ponsel ini. Jika pencarian online aktif, lokasi perkiraan (sekitar 1 km) dikirim untuk mencari masjid, dan peta langsung memuat gambar area yang Anda lihat. Selain itu tidak ada yang dikirim."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun compte. Votre position, vos questions et vos réglages restent sur ce téléphone. Rien n’est envoyé sauf si vous ouvrez un lien, un numéro ou une app de cartes."
+            "value": "Aucun compte. Horaires, qibla et réponses sont calculés sur ce téléphone. Avec la recherche en ligne activée, une position approximative (environ 1 km) est envoyée pour trouver des mosquées, et la carte en direct charge les images de la zone affichée. Rien d’autre ne quitte le téléphone."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sin cuenta. Tu ubicación, preguntas y ajustes se quedan en este teléfono. No se envía nada salvo que abras un enlace, un número o una app de mapas."
+            "value": "Sin cuenta. Los horarios, la alquibla y tus preguntas se resuelven en este teléfono. Con la búsqueda en línea activada se envía una ubicación aproximada (unos 1 km) para encontrar mezquitas, y el mapa en vivo carga imágenes de la zona que ves. Nada más sale del teléfono."
           }
         }
       }
@@ -7107,6 +8517,53 @@
         }
       }
     },
+    "qibla_from_north_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No live compass: the gold dot shows the Qibla from north"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد بوصلة حية: النقطة الذهبية تُظهر القبلة من الشمال"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لائیو قطب نما نہیں: سنہری نقطہ شمال سے قبلہ دکھاتا ہے"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canlı pusula yok: altın nokta kıbleyi kuzeye göre gösterir"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tanpa kompas langsung: titik emas menunjukkan kiblat dari utara"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas de boussole en direct : le point doré indique la qibla depuis le nord"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin brújula en vivo: el punto dorado indica la alquibla desde el norte"
+          }
+        }
+      }
+    },
     "qibla_hold_flat": {
       "extractionState": "manual",
       "localizations": {
@@ -7197,6 +8654,53 @@
           "stringUnit": {
             "state": "translated",
             "value": "Elige una ubicación para encontrar la alquibla."
+          }
+        }
+      }
+    },
+    "qibla_move_phone": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn the phone toward the Qibla"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حرّك الهاتف باتجاه القبلة"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فون کو قبلہ کی طرف گھمائیں"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telefonu kıbleye çevirin"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Putar ponsel ke arah kiblat"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tournez le téléphone vers la qibla"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gira el teléfono hacia la alquibla"
           }
         }
       }
@@ -7432,6 +8936,53 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gira a la derecha %1$@°"
+          }
+        }
+      }
+    },
+    "qibla_you_are_facing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You’re facing the Qibla"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أنت باتجاه القبلة"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "آپ قبلہ رخ ہیں"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kıbleye dönüksünüz"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anda menghadap kiblat"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous faites face à la qibla"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estás orientado a la alquibla"
           }
         }
       }
@@ -7808,6 +9359,53 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pasajes relacionados"
+          }
+        }
+      }
+    },
+    "remaining_long": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ left"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "متبقٍّ %1$@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ باقی"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ kaldı"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ lagi"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "encore %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "faltan %1$@"
           }
         }
       }
@@ -8611,6 +10209,147 @@
         }
       }
     },
+    "source_offline_pack": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From your downloaded data"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "من بياناتك المحمّلة"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "آپ کے ڈاؤن لوڈ کردہ ڈیٹا سے"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndirilen verilerinizden"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dari data yang diunduh"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Depuis vos données téléchargées"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De tus datos descargados"
+          }
+        }
+      }
+    },
+    "source_online_apple": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live from Apple Maps"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مباشر من خرائط Apple"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Maps سے براہ راست"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Haritalar’dan canlı"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Langsung dari Apple Maps"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En direct de Plans d’Apple"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En vivo de Mapas de Apple"
+          }
+        }
+      }
+    },
+    "source_online_osm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live from OpenStreetMap"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مباشر من OpenStreetMap"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenStreetMap سے براہ راست"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenStreetMap’ten canlı"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Langsung dari OpenStreetMap"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En direct d’OpenStreetMap"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En vivo de OpenStreetMap"
+          }
+        }
+      }
+    },
     "source_open": {
       "extractionState": "manual",
       "localizations": {
@@ -8987,6 +10726,53 @@
         }
       }
     },
+    "supporting_passage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supporting passage"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نص داعم"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "معاون اقتباس"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destekleyen pasaj"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kutipan pendukung"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passage à l’appui"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pasaje de apoyo"
+          }
+        }
+      }
+    },
     "surrounding_context": {
       "extractionState": "manual",
       "localizations": {
@@ -9041,6 +10827,53 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ask AI"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسأل"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پوچھیں"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sor"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tanya"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demander"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preguntar"
+          }
+        }
+      }
+    },
+    "tab_ask_short": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask"
           }
         },
         "ar": {
@@ -9410,6 +11243,53 @@
         }
       }
     },
+    "upcoming": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upcoming"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "القادمة"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "آنے والی"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sıradaki"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Berikutnya"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À venir"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próxima"
+          }
+        }
+      }
+    },
     "use_device_language": {
       "extractionState": "manual",
       "localizations": {
@@ -9645,6 +11525,53 @@
         }
       }
     },
+    "view_compass": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compass"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "البوصلة"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قطب نما"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pusula"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kompas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boussole"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brújula"
+          }
+        }
+      }
+    },
     "view_list": {
       "extractionState": "manual",
       "localizations": {
@@ -9735,6 +11662,53 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mapa"
+          }
+        }
+      }
+    },
+    "walking_route": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walking route · %1$@ · %2$@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "طريق المشي · %1$@ · %2$@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پیدل راستہ · %1$@ · %2$@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yürüyüş rotası · %1$@ · %2$@"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rute jalan kaki · %1$@ · %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Itinéraire à pied · %1$@ · %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruta a pie · %1$@ · %2$@"
           }
         }
       }

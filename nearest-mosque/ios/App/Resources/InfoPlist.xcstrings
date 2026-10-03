@@ -55,43 +55,43 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your location is used on this phone to calculate prayer times and the Qibla, and to find nearby mosques. It is not sent anywhere."
+            "value": "Your location is used on this phone for prayer times, the Qibla and nearby mosques. Only an approximate location is sent, and only when online mosque search is on."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "يُستخدم موقعك على هذا الهاتف لحساب مواقيت الصلاة والقبلة والعثور على المساجد القريبة، ولا يُرسل إلى أي جهة."
+            "value": "يُستخدم موقعك على هذا الهاتف للمواقيت والقبلة والمساجد القريبة. لا يُرسل إلا موقع تقريبي، وفقط عند تفعيل البحث عن المساجد عبر الإنترنت."
           }
         },
         "ur": {
           "stringUnit": {
             "state": "translated",
-            "value": "آپ کا مقام اسی فون پر نماز کے اوقات، قبلہ اور قریبی مساجد کے لیے استعمال ہوتا ہے۔ یہ کہیں نہیں بھیجا جاتا۔"
+            "value": "آپ کا مقام اسی فون پر نماز کے اوقات، قبلہ اور قریبی مساجد کے لیے استعمال ہوتا ہے۔ صرف تقریبی مقام بھیجا جاتا ہے، اور صرف جب آن لائن مسجد تلاش آن ہو۔"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Konumunuz bu telefonda namaz vakitleri, kıble ve yakındaki camiler için kullanılır. Hiçbir yere gönderilmez."
+            "value": "Konumunuz bu telefonda namaz vakitleri, kıble ve yakındaki camiler için kullanılır. Yalnızca çevrimiçi cami araması açıkken yaklaşık konum gönderilir."
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lokasi Anda digunakan di ponsel ini untuk menghitung jadwal salat, kiblat, dan mencari masjid terdekat. Tidak dikirim ke mana pun."
+            "value": "Lokasi Anda digunakan di ponsel ini untuk waktu salat, kiblat, dan masjid terdekat. Hanya lokasi perkiraan yang dikirim, dan hanya saat pencarian masjid online aktif."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Votre position sert, sur ce téléphone, à calculer les horaires de prière et la qibla, et à trouver les mosquées proches. Elle n’est envoyée nulle part."
+            "value": "Votre position sert, sur ce téléphone, aux horaires, à la qibla et aux mosquées proches. Seule une position approximative est envoyée, et seulement si la recherche en ligne est activée."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu ubicación se usa en este teléfono para calcular los horarios de oración y la alquibla, y encontrar mezquitas cercanas. No se envía a ningún sitio."
+            "value": "Tu ubicación se usa en este teléfono para los horarios, la alquibla y las mezquitas cercanas. Solo se envía una ubicación aproximada, y solo con la búsqueda en línea activada."
           }
         }
       }

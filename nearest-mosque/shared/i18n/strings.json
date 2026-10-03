@@ -1791,13 +1791,13 @@
       "es": "Privacidad"
     },
     "privacy_body": {
-      "en": "No account. Your location, questions and settings stay on this phone. Nothing is sent unless you open a link, a phone number or a maps app.",
-      "ar": "بلا حساب. يبقى موقعك وأسئلتك وإعداداتك على هذا الهاتف، ولا يُرسل شيء إلا إذا فتحت رابطًا أو رقم هاتف أو تطبيق خرائط.",
-      "ur": "کوئی اکاؤنٹ نہیں۔ آپ کا مقام، سوالات اور ترتیبات اسی فون پر رہتے ہیں۔ جب تک آپ لنک، فون نمبر یا میپس ایپ نہ کھولیں کچھ نہیں بھیجا جاتا۔",
-      "tr": "Hesap yok. Konumunuz, sorularınız ve ayarlarınız bu telefonda kalır. Bir bağlantı, telefon numarası veya harita uygulaması açmadıkça hiçbir şey gönderilmez.",
-      "id": "Tanpa akun. Lokasi, pertanyaan, dan pengaturan Anda tetap di ponsel ini. Tidak ada yang dikirim kecuali Anda membuka tautan, nomor telepon, atau aplikasi peta.",
-      "fr": "Aucun compte. Votre position, vos questions et vos réglages restent sur ce téléphone. Rien n’est envoyé sauf si vous ouvrez un lien, un numéro ou une app de cartes.",
-      "es": "Sin cuenta. Tu ubicación, preguntas y ajustes se quedan en este teléfono. No se envía nada salvo que abras un enlace, un número o una app de mapas."
+      "en": "No account. Prayer times, the Qibla and your questions are worked out on this phone. With online search on, an approximate location (about 1 km) is sent to find mosques, and the live map loads images of the area you view. Nothing else leaves the phone.",
+      "ar": "بلا حساب. تُحسب المواقيت والقبلة وإجابات أسئلتك على هذا الهاتف. عند تفعيل البحث عبر الإنترنت يُرسل موقع تقريبي (نحو 1 كم) للعثور على المساجد، وتحمّل الخريطة الحية صور المنطقة التي تشاهدها. لا يُرسل شيء آخر.",
+      "ur": "کوئی اکاؤنٹ نہیں۔ نماز کے اوقات، قبلہ اور آپ کے سوالات اسی فون پر حل ہوتے ہیں۔ آن لائن تلاش آن ہو تو مساجد ڈھونڈنے کے لیے تقریبی مقام (تقریباً 1 کلومیٹر) بھیجا جاتا ہے، اور لائیو نقشہ دیکھے جانے والے علاقے کی تصاویر لوڈ کرتا ہے۔ اس کے علاوہ کچھ نہیں بھیجا جاتا۔",
+      "tr": "Hesap yok. Namaz vakitleri, kıble ve sorularınız bu telefonda işlenir. Çevrimiçi arama açıkken camileri bulmak için yaklaşık konum (yaklaşık 1 km) gönderilir ve canlı harita baktığınız bölgenin görüntülerini yükler. Başka hiçbir şey telefondan çıkmaz.",
+      "id": "Tanpa akun. Waktu salat, kiblat, dan pertanyaan Anda diproses di ponsel ini. Jika pencarian online aktif, lokasi perkiraan (sekitar 1 km) dikirim untuk mencari masjid, dan peta langsung memuat gambar area yang Anda lihat. Selain itu tidak ada yang dikirim.",
+      "fr": "Aucun compte. Horaires, qibla et réponses sont calculés sur ce téléphone. Avec la recherche en ligne activée, une position approximative (environ 1 km) est envoyée pour trouver des mosquées, et la carte en direct charge les images de la zone affichée. Rien d’autre ne quitte le téléphone.",
+      "es": "Sin cuenta. Los horarios, la alquibla y tus preguntas se resuelven en este teléfono. Con la búsqueda en línea activada se envía una ubicación aproximada (unos 1 km) para encontrar mezquitas, y el mapa en vivo carga imágenes de la zona que ves. Nada más sale del teléfono."
     },
     "clear_conversation_history": {
       "en": "Clear question history",
@@ -1881,13 +1881,391 @@
       "es": "%1$d:%2$02d"
     },
     "permission_location_ios": {
-      "en": "Your location is used on this phone to calculate prayer times and the Qibla, and to find nearby mosques. It is not sent anywhere.",
-      "ar": "يُستخدم موقعك على هذا الهاتف لحساب مواقيت الصلاة والقبلة والعثور على المساجد القريبة، ولا يُرسل إلى أي جهة.",
-      "ur": "آپ کا مقام اسی فون پر نماز کے اوقات، قبلہ اور قریبی مساجد کے لیے استعمال ہوتا ہے۔ یہ کہیں نہیں بھیجا جاتا۔",
-      "tr": "Konumunuz bu telefonda namaz vakitleri, kıble ve yakındaki camiler için kullanılır. Hiçbir yere gönderilmez.",
-      "id": "Lokasi Anda digunakan di ponsel ini untuk menghitung jadwal salat, kiblat, dan mencari masjid terdekat. Tidak dikirim ke mana pun.",
-      "fr": "Votre position sert, sur ce téléphone, à calculer les horaires de prière et la qibla, et à trouver les mosquées proches. Elle n’est envoyée nulle part.",
-      "es": "Tu ubicación se usa en este teléfono para calcular los horarios de oración y la alquibla, y encontrar mezquitas cercanas. No se envía a ningún sitio."
+      "en": "Your location is used on this phone for prayer times, the Qibla and nearby mosques. Only an approximate location is sent, and only when online mosque search is on.",
+      "ar": "يُستخدم موقعك على هذا الهاتف للمواقيت والقبلة والمساجد القريبة. لا يُرسل إلا موقع تقريبي، وفقط عند تفعيل البحث عن المساجد عبر الإنترنت.",
+      "ur": "آپ کا مقام اسی فون پر نماز کے اوقات، قبلہ اور قریبی مساجد کے لیے استعمال ہوتا ہے۔ صرف تقریبی مقام بھیجا جاتا ہے، اور صرف جب آن لائن مسجد تلاش آن ہو۔",
+      "tr": "Konumunuz bu telefonda namaz vakitleri, kıble ve yakındaki camiler için kullanılır. Yalnızca çevrimiçi cami araması açıkken yaklaşık konum gönderilir.",
+      "id": "Lokasi Anda digunakan di ponsel ini untuk waktu salat, kiblat, dan masjid terdekat. Hanya lokasi perkiraan yang dikirim, dan hanya saat pencarian masjid online aktif.",
+      "fr": "Votre position sert, sur ce téléphone, aux horaires, à la qibla et aux mosquées proches. Seule une position approximative est envoyée, et seulement si la recherche en ligne est activée.",
+      "es": "Tu ubicación se usa en este teléfono para los horarios, la alquibla y las mezquitas cercanas. Solo se envía una ubicación aproximada, y solo con la búsqueda en línea activada."
+    },
+    "onb_skip": {
+      "en": "Skip",
+      "ar": "تخطٍّ",
+      "ur": "چھوڑیں",
+      "tr": "Geç",
+      "id": "Lewati",
+      "fr": "Passer",
+      "es": "Omitir"
+    },
+    "onb_next": {
+      "en": "Next",
+      "ar": "التالي",
+      "ur": "اگلا",
+      "tr": "İleri",
+      "id": "Lanjut",
+      "fr": "Suivant",
+      "es": "Siguiente"
+    },
+    "onb_back": {
+      "en": "Back",
+      "ar": "رجوع",
+      "ur": "واپس",
+      "tr": "Geri",
+      "id": "Kembali",
+      "fr": "Retour",
+      "es": "Atrás"
+    },
+    "onb_start": {
+      "en": "Get started",
+      "ar": "ابدأ",
+      "ur": "شروع کریں",
+      "tr": "Başla",
+      "id": "Mulai",
+      "fr": "Commencer",
+      "es": "Empezar"
+    },
+    "onb_page_a11y": {
+      "en": "Page %1$d of %2$d",
+      "ar": "الصفحة %1$d من %2$d",
+      "ur": "صفحہ %1$d از %2$d",
+      "tr": "Sayfa %1$d / %2$d",
+      "id": "Halaman %1$d dari %2$d",
+      "fr": "Page %1$d sur %2$d",
+      "es": "Página %1$d de %2$d"
+    },
+    "onb_welcome_title": {
+      "en": "Assalamu alaikum",
+      "ar": "السلام عليكم",
+      "ur": "السلام علیکم",
+      "tr": "Esselâmü aleyküm",
+      "id": "Assalamualaikum",
+      "fr": "Assalamou alaykoum",
+      "es": "Assalamu alaikum"
+    },
+    "onb_welcome_body": {
+      "en": "Prayer times, the Qibla, nearby mosques and answers from trusted sources, all on your phone and working offline.",
+      "ar": "مواقيت الصلاة والقبلة وأقرب المساجد وإجابات من مصادر موثوقة، كلها على هاتفك وتعمل دون إنترنت.",
+      "ur": "نماز کے اوقات، قبلہ، قریبی مساجد اور معتبر ذرائع سے جوابات، سب آپ کے فون پر اور بغیر انٹرنیٹ کے۔",
+      "tr": "Namaz vakitleri, kıble, yakındaki camiler ve güvenilir kaynaklardan cevaplar; hepsi telefonunuzda ve çevrimdışı çalışır.",
+      "id": "Waktu salat, kiblat, masjid terdekat, dan jawaban dari sumber tepercaya, semuanya di ponsel Anda dan bisa tanpa internet.",
+      "fr": "Horaires de prière, qibla, mosquées proches et réponses tirées de sources fiables, sur votre téléphone et hors ligne.",
+      "es": "Horarios de oración, la alquibla, mezquitas cercanas y respuestas de fuentes fiables, en tu teléfono y sin conexión."
+    },
+    "onb_prayer_title": {
+      "en": "Prayer times that follow the sky",
+      "ar": "مواقيت تتبع السماء",
+      "ur": "آسمان کے ساتھ چلتے اوقات",
+      "tr": "Gökyüzünü izleyen vakitler",
+      "id": "Waktu salat mengikuti langit",
+      "fr": "Des horaires qui suivent le ciel",
+      "es": "Horarios que siguen al cielo"
+    },
+    "onb_prayer_body": {
+      "en": "Times are calculated on your phone for where you are. The sky changes with each prayer and a countdown shows what comes next.",
+      "ar": "تُحسب المواقيت على هاتفك لموقعك. تتغير السماء مع كل صلاة، ويعرض العدّ التنازلي الصلاة القادمة.",
+      "ur": "اوقات آپ کے مقام کے لیے آپ کے فون پر حساب ہوتے ہیں۔ ہر نماز کے ساتھ آسمان بدلتا ہے اور الٹی گنتی اگلی نماز دکھاتی ہے۔",
+      "tr": "Vakitler bulunduğunuz yer için telefonunuzda hesaplanır. Gökyüzü her namazla değişir, geri sayım sıradakini gösterir.",
+      "id": "Waktu dihitung di ponsel untuk lokasi Anda. Langit berubah di setiap waktu salat dan hitung mundur menunjukkan salat berikutnya.",
+      "fr": "Les horaires sont calculés sur votre téléphone pour l’endroit où vous êtes. Le ciel change à chaque prière et un compte à rebours annonce la suivante.",
+      "es": "Los horarios se calculan en tu teléfono para donde estás. El cielo cambia con cada oración y una cuenta atrás muestra la siguiente."
+    },
+    "onb_qibla_title": {
+      "en": "Face the Qibla",
+      "ar": "اتجه إلى القبلة",
+      "ur": "قبلہ رخ ہوں",
+      "tr": "Kıbleye yönelin",
+      "id": "Menghadap kiblat",
+      "fr": "Tournez-vous vers la qibla",
+      "es": "Oriéntate hacia la alquibla"
+    },
+    "onb_qibla_body": {
+      "en": "Hold your phone flat and turn slowly. When the gold dot meets the Kaaba at the top, you’re facing the Qibla and it glows.",
+      "ar": "أمسك هاتفك بشكل مستوٍ واستدر ببطء. عندما تلتقي النقطة الذهبية بالكعبة في الأعلى فأنت باتجاه القبلة ويتوهج القرص.",
+      "ur": "فون کو سیدھا رکھیں اور آہستہ گھومیں۔ جب سنہری نقطہ اوپر کعبہ سے ملے تو آپ قبلہ رخ ہیں اور ڈسک چمکتی ہے۔",
+      "tr": "Telefonu düz tutun ve yavaşça dönün. Altın nokta üstteki Kâbe ile buluştuğunda kıbleye dönüksünüz ve disk parlar.",
+      "id": "Pegang ponsel mendatar dan berputar perlahan. Saat titik emas bertemu Ka’bah di atas, Anda menghadap kiblat dan cakramnya bersinar.",
+      "fr": "Tenez le téléphone à plat et tournez lentement. Quand le point doré rejoint la Kaaba en haut, vous faites face à la qibla et le disque s’illumine.",
+      "es": "Sostén el teléfono en horizontal y gira despacio. Cuando el punto dorado llega a la Kaaba arriba, estás orientado a la alquibla y el disco brilla."
+    },
+    "onb_mosque_title": {
+      "en": "The nearest mosque",
+      "ar": "أقرب مسجد",
+      "ur": "قریب ترین مسجد",
+      "tr": "En yakın cami",
+      "id": "Masjid terdekat",
+      "fr": "La mosquée la plus proche",
+      "es": "La mezquita más cercana"
+    },
+    "onb_mosque_body": {
+      "en": "See mosques around you on a live map or a compass, with distance and one-tap directions.",
+      "ar": "شاهد المساجد من حولك على خريطة حية أو بوصلة، مع المسافة والاتجاهات بلمسة واحدة.",
+      "ur": "اپنے آس پاس کی مساجد لائیو نقشے یا قطب نما پر دیکھیں، فاصلے اور ایک ٹیپ میں راستے کے ساتھ۔",
+      "tr": "Çevrenizdeki camileri canlı haritada veya pusulada, mesafe ve tek dokunuşla yol tarifiyle görün.",
+      "id": "Lihat masjid di sekitar Anda di peta langsung atau kompas, lengkap dengan jarak dan petunjuk arah sekali ketuk.",
+      "fr": "Voyez les mosquées autour de vous sur une carte en direct ou une boussole, avec la distance et l’itinéraire en un geste.",
+      "es": "Mira las mezquitas a tu alrededor en un mapa en vivo o una brújula, con la distancia y la ruta con un toque."
+    },
+    "onb_ask_title": {
+      "en": "Ask anything about Islam",
+      "ar": "اسأل أي شيء عن الإسلام",
+      "ur": "اسلام کے بارے میں کچھ بھی پوچھیں",
+      "tr": "İslam hakkında her şeyi sorun",
+      "id": "Tanyakan apa saja tentang Islam",
+      "fr": "Posez vos questions sur l’islam",
+      "es": "Pregunta lo que quieras sobre el islam"
+    },
+    "onb_ask_body": {
+      "en": "Answers quote the Qur’an with the verse reference, so you can always check the source.",
+      "ar": "تقتبس الإجابات من القرآن مع رقم الآية، لتتحقق من المصدر دائمًا.",
+      "ur": "جوابات قرآن سے آیت کے حوالے کے ساتھ اقتباس دیتے ہیں تاکہ آپ ہمیشہ ماخذ دیکھ سکیں۔",
+      "tr": "Cevaplar Kur’an’dan ayet numarasıyla alıntı yapar; kaynağı her zaman kontrol edebilirsiniz.",
+      "id": "Jawaban mengutip Al-Qur’an beserta nomor ayatnya, sehingga Anda selalu bisa memeriksa sumbernya.",
+      "fr": "Les réponses citent le Coran avec la référence du verset, pour que vous puissiez toujours vérifier la source.",
+      "es": "Las respuestas citan el Corán con la referencia de la aleya, para que siempre puedas comprobar la fuente."
+    },
+    "onb_setup_title": {
+      "en": "Let’s set up",
+      "ar": "لنبدأ الإعداد",
+      "ur": "آئیے سیٹ اپ کریں",
+      "tr": "Hadi ayarlayalım",
+      "id": "Mari atur",
+      "fr": "Configurons",
+      "es": "Vamos a configurarlo"
+    },
+    "onb_setup_body": {
+      "en": "Choose your language and where to calculate prayer times. You can change both in Settings.",
+      "ar": "اختر لغتك والمكان الذي تُحسب له المواقيت. يمكنك تغييرهما من الإعدادات.",
+      "ur": "اپنی زبان اور وہ مقام منتخب کریں جس کے لیے اوقات حساب ہوں۔ دونوں ترتیبات میں بدل سکتے ہیں۔",
+      "tr": "Dilinizi ve vakitlerin hesaplanacağı yeri seçin. İkisini de Ayarlar’dan değiştirebilirsiniz.",
+      "id": "Pilih bahasa dan lokasi untuk menghitung waktu salat. Keduanya bisa diubah di Pengaturan.",
+      "fr": "Choisissez votre langue et le lieu de calcul des horaires. Vous pourrez les modifier dans les réglages.",
+      "es": "Elige tu idioma y dónde calcular los horarios. Puedes cambiar ambos en Ajustes."
+    },
+    "onb_location_set": {
+      "en": "Prayer times for %1$s",
+      "ar": "المواقيت لـ %1$s",
+      "ur": "%1$s کے اوقات",
+      "tr": "%1$s için vakitler",
+      "id": "Waktu salat untuk %1$s",
+      "fr": "Horaires pour %1$s",
+      "es": "Horarios para %1$s"
+    },
+    "onb_replay": {
+      "en": "Show welcome tour",
+      "ar": "عرض الجولة الترحيبية",
+      "ur": "خوش آمدید ٹور دکھائیں",
+      "tr": "Tanıtımı göster",
+      "id": "Tampilkan tur pembuka",
+      "fr": "Revoir la présentation",
+      "es": "Ver el recorrido de bienvenida"
+    },
+    "onb_demo_city": {
+      "en": "Your city",
+      "ar": "مدينتك",
+      "ur": "آپ کا شہر",
+      "tr": "Şehriniz",
+      "id": "Kota Anda",
+      "fr": "Votre ville",
+      "es": "Tu ciudad"
+    },
+    "onb_demo_question": {
+      "en": "How can I find peace in prayer?",
+      "ar": "كيف أجد الطمأنينة في الصلاة؟",
+      "ur": "نماز میں سکون کیسے پاؤں؟",
+      "tr": "Namazda huzuru nasıl bulurum?",
+      "id": "Bagaimana menemukan ketenangan dalam salat?",
+      "fr": "Comment trouver la paix dans la prière ?",
+      "es": "¿Cómo encuentro paz en la oración?"
+    },
+    "qibla_move_phone": {
+      "en": "Turn the phone toward the Qibla",
+      "ar": "حرّك الهاتف باتجاه القبلة",
+      "ur": "فون کو قبلہ کی طرف گھمائیں",
+      "tr": "Telefonu kıbleye çevirin",
+      "id": "Putar ponsel ke arah kiblat",
+      "fr": "Tournez le téléphone vers la qibla",
+      "es": "Gira el teléfono hacia la alquibla"
+    },
+    "qibla_you_are_facing": {
+      "en": "You’re facing the Qibla",
+      "ar": "أنت باتجاه القبلة",
+      "ur": "آپ قبلہ رخ ہیں",
+      "tr": "Kıbleye dönüksünüz",
+      "id": "Anda menghadap kiblat",
+      "fr": "Vous faites face à la qibla",
+      "es": "Estás orientado a la alquibla"
+    },
+    "qibla_from_north_hint": {
+      "en": "No live compass: the gold dot shows the Qibla from north",
+      "ar": "لا توجد بوصلة حية: النقطة الذهبية تُظهر القبلة من الشمال",
+      "ur": "لائیو قطب نما نہیں: سنہری نقطہ شمال سے قبلہ دکھاتا ہے",
+      "tr": "Canlı pusula yok: altın nokta kıbleyi kuzeye göre gösterir",
+      "id": "Tanpa kompas langsung: titik emas menunjukkan kiblat dari utara",
+      "fr": "Pas de boussole en direct : le point doré indique la qibla depuis le nord",
+      "es": "Sin brújula en vivo: el punto dorado indica la alquibla desde el norte"
+    },
+    "upcoming": {
+      "en": "Upcoming",
+      "ar": "القادمة",
+      "ur": "آنے والی",
+      "tr": "Sıradaki",
+      "id": "Berikutnya",
+      "fr": "À venir",
+      "es": "Próxima"
+    },
+    "current_prayer": {
+      "en": "Current",
+      "ar": "الحالية",
+      "ur": "جاری",
+      "tr": "Şimdiki",
+      "id": "Sekarang",
+      "fr": "En cours",
+      "es": "Actual"
+    },
+    "remaining_long": {
+      "en": "%1$s left",
+      "ar": "متبقٍّ %1$s",
+      "ur": "%1$s باقی",
+      "tr": "%1$s kaldı",
+      "id": "%1$s lagi",
+      "fr": "encore %1$s",
+      "es": "faltan %1$s"
+    },
+    "view_compass": {
+      "en": "Compass",
+      "ar": "البوصلة",
+      "ur": "قطب نما",
+      "tr": "Pusula",
+      "id": "Kompas",
+      "fr": "Boussole",
+      "es": "Brújula"
+    },
+    "walking_route": {
+      "en": "Walking route · %1$s · %2$s",
+      "ar": "طريق المشي · %1$s · %2$s",
+      "ur": "پیدل راستہ · %1$s · %2$s",
+      "tr": "Yürüyüş rotası · %1$s · %2$s",
+      "id": "Rute jalan kaki · %1$s · %2$s",
+      "fr": "Itinéraire à pied · %1$s · %2$s",
+      "es": "Ruta a pie · %1$s · %2$s"
+    },
+    "minutes_short": {
+      "en": "%1$d min",
+      "ar": "%1$d د",
+      "ur": "%1$d منٹ",
+      "tr": "%1$d dk",
+      "id": "%1$d mnt",
+      "fr": "%1$d min",
+      "es": "%1$d min"
+    },
+    "get_directions": {
+      "en": "Get directions",
+      "ar": "الاتجاهات",
+      "ur": "راستہ دیکھیں",
+      "tr": "Yol tarifi al",
+      "id": "Petunjuk arah",
+      "fr": "Itinéraire",
+      "es": "Cómo llegar"
+    },
+    "mosque_ahead": {
+      "en": "Mosque ahead",
+      "ar": "المسجد أمامك",
+      "ur": "مسجد سامنے ہے",
+      "tr": "Cami önünüzde",
+      "id": "Masjid di depan",
+      "fr": "Mosquée droit devant",
+      "es": "Mezquita al frente"
+    },
+    "source_offline_pack": {
+      "en": "From your downloaded data",
+      "ar": "من بياناتك المحمّلة",
+      "ur": "آپ کے ڈاؤن لوڈ کردہ ڈیٹا سے",
+      "tr": "İndirilen verilerinizden",
+      "id": "Dari data yang diunduh",
+      "fr": "Depuis vos données téléchargées",
+      "es": "De tus datos descargados"
+    },
+    "source_online_osm": {
+      "en": "Live from OpenStreetMap",
+      "ar": "مباشر من OpenStreetMap",
+      "ur": "OpenStreetMap سے براہ راست",
+      "tr": "OpenStreetMap’ten canlı",
+      "id": "Langsung dari OpenStreetMap",
+      "fr": "En direct d’OpenStreetMap",
+      "es": "En vivo de OpenStreetMap"
+    },
+    "source_online_apple": {
+      "en": "Live from Apple Maps",
+      "ar": "مباشر من خرائط Apple",
+      "ur": "Apple Maps سے براہ راست",
+      "tr": "Apple Haritalar’dan canlı",
+      "id": "Langsung dari Apple Maps",
+      "fr": "En direct de Plans d’Apple",
+      "es": "En vivo de Mapas de Apple"
+    },
+    "online_search": {
+      "en": "Search online for mosques",
+      "ar": "البحث عن المساجد عبر الإنترنت",
+      "ur": "مساجد آن لائن تلاش کریں",
+      "tr": "Camileri çevrimiçi ara",
+      "id": "Cari masjid secara online",
+      "fr": "Rechercher des mosquées en ligne",
+      "es": "Buscar mezquitas en línea"
+    },
+    "online_search_body": {
+      "en": "Adds live results to your downloaded data. Your approximate location (about 1 km) is sent to the map service. The live map also loads map images for the area you view.",
+      "ar": "يضيف نتائج مباشرة إلى بياناتك المحمّلة. يُرسل موقعك التقريبي (نحو 1 كم) إلى خدمة الخرائط. كما تحمّل الخريطة الحية صور المنطقة التي تشاهدها.",
+      "ur": "آپ کے ڈاؤن لوڈ کردہ ڈیٹا میں براہ راست نتائج شامل کرتا ہے۔ آپ کا تقریبی مقام (تقریباً 1 کلومیٹر) نقشہ سروس کو بھیجا جاتا ہے۔ لائیو نقشہ دیکھے جانے والے علاقے کی تصاویر بھی لوڈ کرتا ہے۔",
+      "tr": "İndirilen verilere canlı sonuçlar ekler. Yaklaşık konumunuz (yaklaşık 1 km) harita hizmetine gönderilir. Canlı harita, baktığınız bölgenin görüntülerini de yükler.",
+      "id": "Menambahkan hasil langsung ke data unduhan Anda. Lokasi perkiraan Anda (sekitar 1 km) dikirim ke layanan peta. Peta langsung juga memuat gambar area yang Anda lihat.",
+      "fr": "Ajoute des résultats en direct à vos données téléchargées. Votre position approximative (environ 1 km) est envoyée au service de cartes. La carte en direct charge aussi les images de la zone affichée.",
+      "es": "Añade resultados en vivo a tus datos descargados. Tu ubicación aproximada (unos 1 km) se envía al servicio de mapas. El mapa en vivo también carga imágenes de la zona que ves."
+    },
+    "online_offline_note": {
+      "en": "You’re offline. Showing downloaded mosques only.",
+      "ar": "أنت غير متصل. تُعرض المساجد المحمّلة فقط.",
+      "ur": "آپ آف لائن ہیں۔ صرف ڈاؤن لوڈ کردہ مساجد دکھائی جا رہی ہیں۔",
+      "tr": "Çevrimdışısınız. Yalnızca indirilen camiler gösteriliyor.",
+      "id": "Anda sedang offline. Hanya masjid yang diunduh yang ditampilkan.",
+      "fr": "Vous êtes hors ligne. Seules les mosquées téléchargées sont affichées.",
+      "es": "Estás sin conexión. Solo se muestran las mezquitas descargadas."
+    },
+    "online_searching": {
+      "en": "Looking for more mosques online…",
+      "ar": "جارٍ البحث عن مساجد أخرى عبر الإنترنت…",
+      "ur": "مزید مساجد آن لائن تلاش ہو رہی ہیں…",
+      "tr": "Çevrimiçi daha fazla cami aranıyor…",
+      "id": "Mencari masjid lain secara online…",
+      "fr": "Recherche d’autres mosquées en ligne…",
+      "es": "Buscando más mezquitas en línea…"
+    },
+    "map_attribution_ofm": {
+      "en": "Map © OpenFreeMap, OpenMapTiles, OpenStreetMap contributors",
+      "ar": "الخريطة © OpenFreeMap وOpenMapTiles ومساهمو OpenStreetMap",
+      "ur": "نقشہ © OpenFreeMap، OpenMapTiles، OpenStreetMap معاونین",
+      "tr": "Harita © OpenFreeMap, OpenMapTiles, OpenStreetMap katkıcıları",
+      "id": "Peta © OpenFreeMap, OpenMapTiles, kontributor OpenStreetMap",
+      "fr": "Carte © OpenFreeMap, OpenMapTiles, contributeurs OpenStreetMap",
+      "es": "Mapa © OpenFreeMap, OpenMapTiles, colaboradores de OpenStreetMap"
+    },
+    "supporting_passage": {
+      "en": "Supporting passage",
+      "ar": "نص داعم",
+      "ur": "معاون اقتباس",
+      "tr": "Destekleyen pasaj",
+      "id": "Kutipan pendukung",
+      "fr": "Passage à l’appui",
+      "es": "Pasaje de apoyo"
+    },
+    "tab_ask_short": {
+      "en": "Ask",
+      "ar": "اسأل",
+      "ur": "پوچھیں",
+      "tr": "Sor",
+      "id": "Tanya",
+      "fr": "Demander",
+      "es": "Preguntar"
     }
   }
 }

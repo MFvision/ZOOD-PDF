@@ -51,7 +51,7 @@ targets:
         CFBundleAllowMixedLocalizations: false
         LSRequiresIPhoneOS: true
         ITSAppUsesNonExemptEncryption: false
-        NSLocationWhenInUseUsageDescription: Your location is used on this phone to calculate prayer times and the Qibla, and to find nearby mosques. It is not sent anywhere.
+        NSLocationWhenInUseUsageDescription: Your location is used on this phone for prayer times, the Qibla and nearby mosques. Only an approximate location is sent, and only when online mosque search is on.
         UILaunchScreen:
           UIColorName: ""
         UIApplicationSceneManifest:

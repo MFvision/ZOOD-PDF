@@ -18,13 +18,29 @@ struct PrayerLocation: Codable, Equatable {
     var zone: TimeZone { TimeZone(identifier: zoneId) ?? .current }
 }
 
-/// Persistent settings (UserDefaults; nothing leaves the device).
+/// Persistent settings (UserDefaults). Missing keys decode to defaults so older saves keep working.
 struct StoredSettings: Codable, Equatable {
     var location: PrayerLocation?
     var followDevice = false
     var prayer = PrayerSettings()
     var methodChosenByUser = false
     var reminders: Set<PrayerEvent> = []
+    var onboarded = false
+    /// Live mosque results (Apple Maps search) added to downloaded data; disclosed in onboarding and Settings.
+    var onlineSearch = true
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        location = try c.decodeIfPresent(PrayerLocation.self, forKey: .location)
+        followDevice = try c.decodeIfPresent(Bool.self, forKey: .followDevice) ?? false
+        prayer = try c.decodeIfPresent(PrayerSettings.self, forKey: .prayer) ?? PrayerSettings()
+        methodChosenByUser = try c.decodeIfPresent(Bool.self, forKey: .methodChosenByUser) ?? false
+        reminders = try c.decodeIfPresent(Set<PrayerEvent>.self, forKey: .reminders) ?? []
+        onboarded = try c.decodeIfPresent(Bool.self, forKey: .onboarded) ?? false
+        onlineSearch = try c.decodeIfPresent(Bool.self, forKey: .onlineSearch) ?? true
+    }
 }
 
 /// App-wide state and services. The UI reads computed values only from local storage and
@@ -83,9 +99,25 @@ final class AppModel {
             storageError = error.localizedDescription
         }
         ready = true
+        #if DEBUG
+        applyDemoLaunchArguments()
+        #endif
         if settings.followDevice, location.isAuthorized { await useDeviceLocation(silent: true) }
         await rescheduleReminders()
     }
+
+    #if DEBUG
+    /// Simulator screenshots in CI: `-demoCity "Cape Town"` picks a city and skips onboarding;
+    /// `-demoOnboarding YES` shows the tour. Debug builds only.
+    private func applyDemoLaunchArguments() {
+        let d = UserDefaults.standard
+        if let name = d.string(forKey: "demoCity"), let city = cities?.search(name).first {
+            choose(city: city)
+            settings.onboarded = true
+        }
+        if d.bool(forKey: "demoOnboarding") { settings.onboarded = false }
+    }
+    #endif
 
     // MARK: Prayer location
 
@@ -133,6 +165,12 @@ final class AppModel {
 
     func rescheduleReminders() async {
         await Reminders.reschedule(location: settings.location, settings: settings.prayer, enabled: settings.reminders, l10n: l10n)
+    }
+
+    /// Sky for the prayer period in progress (night when no location is chosen yet).
+    func skyPeriod(now: Date) -> SkyPeriod {
+        guard settings.location != nil else { return .night }
+        return PrayerSnapshot(model: self, now: now).sky
     }
 
     // MARK: Prayer schedule (cached per location/settings/date; countdown recomputed from instants)

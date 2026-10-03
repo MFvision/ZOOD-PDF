@@ -1,0 +1,19 @@
+{
+  "_comment": "Hand-written sample in the Overpass API JSON format (out center tags) used by both cores' tests. Not real data.",
+  "version": 0.6,
+  "osm3s": {"timestamp_osm_base": "2026-10-01T12:00:00Z"},
+  "elements": [
+    {"type": "node", "id": 101, "lat": -33.9200, "lon": 18.4200,
+     "tags": {"amenity": "place_of_worship", "religion": "muslim", "name": "Masjid Test One", "name:ar": "مسجد الاختبار", "addr:housenumber": "12", "addr:street": "Long Street", "addr:city": "Cape Town", "phone": "+27 21 000 0000", "opening_hours": "Mo-Su 04:00-22:00"}},
+    {"type": "way", "id": 202, "center": {"lat": -33.9250, "lon": 18.4300},
+     "tags": {"building": "mosque", "religion": "muslim", "name": "Test Way Mosque", "website": "https://example.org"}},
+    {"type": "node", "id": 303, "lat": -33.9300, "lon": 18.4100,
+     "tags": {"amenity": "place_of_worship", "religion": "muslim", "place_of_worship": "musalla", "name": "Office Musalla"}},
+    {"type": "node", "id": 404, "lat": -33.9210, "lon": 18.4210,
+     "tags": {"amenity": "place_of_worship", "religion": "christian", "name": "Not A Mosque"}},
+    {"type": "relation", "id": 505, "center": {"lat": 91.0, "lon": 18.0},
+     "tags": {"amenity": "place_of_worship", "religion": "muslim", "name": "Invalid Coordinate"}},
+    {"type": "node", "id": 606, "lat": -33.9400, "lon": 18.4400,
+     "tags": {"amenity": "place_of_worship", "religion": "muslim"}}
+  ]
+}

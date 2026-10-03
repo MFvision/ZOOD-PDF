@@ -6,16 +6,25 @@ import UIKit
 /// Where the list is measured from. Selecting a point never moves "you are here".
 enum SearchOrigin: Equatable { case device, prayerCity(String), selectedPoint }
 
+enum OnlineState: Equatable { case off, searching, done, unavailable }
+
 @MainActor
 @Observable
 final class MosquesModel {
     var origin: SearchOrigin?
     var center: LatLng?
     var loading = false
+    /// Downloaded-data outcome (keeps the distinct empty states).
     var result: MosqueResult?
+    /// Downloaded records merged with live results, nearest first.
+    var items: [RankedMosque] = []
+    var online: OnlineState = .off
     var favorites: Set<String> = []
+    var routes: [String: WalkingRoute] = [:]
     private let generation = SearchGeneration()
+    private let routeService = RouteService()
     private var task: Task<Void, Never>?
+    static let radius = 25_000.0
 
     /// Cancels any search in flight; an older, slower result can never overwrite a newer one.
     func search(_ app: AppModel, center: LatLng, origin: SearchOrigin) {
@@ -25,12 +34,38 @@ final class MosquesModel {
         self.center = center
         self.origin = origin
         loading = true
+        routes = [:]
         let lang = app.l10n.language
+        let useOnline = app.settings.onlineSearch
         task = Task {
-            let r = try? await Task.detached { try repo.nearest(center, radiusMeters: 25_000, lang: lang) }.value
+            let r = try? await Task.detached { try repo.nearest(center, radiusMeters: Self.radius, lang: lang) }.value
             guard !Task.isCancelled, generation.isCurrent(gen) else { return }
             result = r
+            var offline: [RankedMosque] = []
+            if case let .found(list, _) = r { offline = list }
+            items = offline
             loading = false
+            guard useOnline else { online = .off; await loadRoutes(app, gen); return }
+            online = .searching
+            let live = await AppleMosqueSearch.search(center: center, radiusMeters: 10_000)
+            guard !Task.isCancelled, generation.isCurrent(gen) else { return }
+            if let live {
+                items = OnlineMosques.merge(center: center, offline: offline, online: live, radiusMeters: Self.radius)
+                online = .done
+            } else {
+                online = .unavailable
+            }
+            await loadRoutes(app, gen)
+        }
+    }
+
+    /// Walking routes for the closest few (online; silently skipped when unavailable).
+    private func loadRoutes(_ app: AppModel, _ gen: Int) async {
+        guard let from = app.location.position?.location, origin == .device else { return }
+        for r in items.prefix(3) where r.distanceMeters < 6_000 {
+            if let route = await routeService.walking(from: from, to: r.mosque), generation.isCurrent(gen) {
+                routes[r.id] = route
+            }
         }
     }
 
@@ -40,41 +75,99 @@ final class MosquesModel {
 struct MosquesView: View {
     @Environment(AppModel.self) private var app
     @Environment(Localization.self) private var l10n
-    @Environment(\.colorScheme) private var scheme
     @Binding var showSettings: Bool
     @State private var vm = MosquesModel()
-    @State private var mode = 0
+    @State private var mode = UserDefaults.standard.integer(forKey: "demoMosqueMode")
     @State private var favoritesOnly = false
     @State private var selected: RankedMosque?
+    @State private var mapSelection: String?
     @State private var locating = false
     @State private var denied = false
 
+    private var heading: Double? {
+        if case let .live(h, _, _) = app.location.compass { return h }
+        return nil
+    }
+
     var body: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Picker("", selection: $mode) {
-                    Label(l10n.t("view_list"), systemImage: "list.bullet").tag(0)
-                    Label(l10n.t("view_map"), systemImage: "map").tag(1)
-                }
-                .pickerStyle(.segmented)
-                Toggle(isOn: $favoritesOnly) { Label(l10n.t("favorites"), systemImage: "star") }
-                    .toggleStyle(.button)
+        VStack(spacing: 12) {
+            header
+            if let center = vm.center, !favoritesOnly, !vm.items.isEmpty {
+                visual(center)
             }
-            .padding(.horizontal)
-            originRow
-            content
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    statusRow
+                    content
+                }
+                .padding(.bottom, 24)
+            }
+            .scrollIndicators(.hidden)
         }
-        .navigationTitle(l10n.t("tab_mosques"))
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { SettingsButton(show: $showSettings) } }
+        .padding(.horizontal, 16)
+        .foregroundStyle(.white)
+        .skyBackground(horizon: 0.42)
+        .toolbar(.hidden, for: .navigationBar)
         .task(id: app.ready) { start() }
-        .onAppear { vm.refreshFavorites(app) }
-        .sheet(item: $selected) { r in
-            MosqueDetailView(ranked: r, favorite: vm.favorites.contains(r.id)) { on in
+        .onAppear { vm.refreshFavorites(app); app.location.beginHeading() }
+        .onDisappear { app.location.endHeading() }
+        .onChange(of: mapSelection) { _, id in
+            if let id, let r = vm.items.first(where: { $0.id == id }) { selected = r }
+        }
+        .sheet(item: $selected, onDismiss: { mapSelection = nil }) { r in
+            MosqueDetailView(ranked: r, favorite: vm.favorites.contains(r.id), canFavorite: r.mosque.packId.hasPrefix("mosques."),
+                             route: vm.routes[r.id]) { on in
                 try? app.mosques?.setFavorite(r.id, on)
                 vm.refreshFavorites(app)
             }
             .presentationDetents([.medium, .large])
         }
+    }
+
+    private var header: some View {
+        VStack(spacing: 12) {
+            HStack {
+                GlassIconButton(systemImage: favoritesOnly ? "star.fill" : "star", label: l10n.t("favorites")) {
+                    withAnimation(Theme.spring) { favoritesOnly.toggle() }
+                }
+                Spacer()
+                Text(l10n.t("tab_mosques")).font(.headline)
+                Spacer()
+                SettingsButton(show: $showSettings)
+            }
+            if vm.center != nil, !favoritesOnly {
+                GlassSegmented(selection: $mode, options: [
+                    (l10n.t("view_compass"), "safari"),
+                    (l10n.t("view_map"), "map"),
+                ])
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    @ViewBuilder private func visual(_ center: LatLng) -> some View {
+        Group {
+            if mode == 0 {
+                VStack(spacing: 8) {
+                    MosqueRadar(items: vm.items, center: center, heading: heading, selected: nil) { selected = $0 }
+                        .frame(maxHeight: 300)
+                    if let g = MosqueRadar.guidance(items: vm.items, center: center, heading: heading, l10n: l10n) {
+                        Text(g).font(.headline).foregroundStyle(g == l10n.t("mosque_ahead") ? Theme.gold : .white)
+                            .accessibilityAddTraits(.updatesFrequently)
+                    }
+                }
+            } else {
+                MosqueMap(items: vm.items, center: center, route: vm.items.first.flatMap { vm.routes[$0.id] }, selection: $mapSelection) {
+                    vm.search(app, center: $0, origin: .selectedPoint)
+                }
+                .id(center)
+                .frame(height: 320)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous).stroke(.white.opacity(0.25), lineWidth: 1))
+            }
+        }
+        .transition(.opacity)
+        .animation(Theme.spring, value: mode)
     }
 
     private func start() {
@@ -93,206 +186,179 @@ struct MosquesView: View {
         }
     }
 
-    @ViewBuilder private var originRow: some View {
-        if let o = vm.origin {
-            HStack {
-                switch o {
-                case .device: Text(l10n.t("searching_from_you"))
-                case let .prayerCity(name): Text(l10n.t("searching_from_city", name))
-                case .selectedPoint: Text(l10n.t("searching_from_point"))
+    @ViewBuilder private var statusRow: some View {
+        if let o = vm.origin, !favoritesOnly {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    switch o {
+                    case .device: Text(l10n.t("searching_from_you"))
+                    case let .prayerCity(name): Text(l10n.t("searching_from_city", name))
+                    case .selectedPoint: Text(l10n.t("searching_from_point"))
+                    }
+                    switch vm.online {
+                    case .searching: Text(l10n.t("online_searching")).foregroundStyle(.white.opacity(0.7))
+                    case .unavailable: Text(l10n.t("online_offline_note")).foregroundStyle(Theme.gold)
+                    default: EmptyView()
+                    }
                 }
+                .font(.footnote)
                 Spacer()
                 if o != .device {
-                    Button(action: useDevice) { Label(l10n.t("recenter"), systemImage: "location") }.buttonStyle(.bordered)
+                    Button(action: useDevice) { Label(l10n.t("recenter"), systemImage: "location.fill").font(.footnote) }.glassButton()
                 }
             }
-            .font(.subheadline).foregroundStyle(.secondary)
-            .padding(.horizontal)
         }
     }
 
     @ViewBuilder private var content: some View {
         if favoritesOnly {
             let favs = (try? app.mosques?.byIds(Array(vm.favorites))) ?? []
-            List(favs) { m in
+            ForEach(favs) { m in
                 let d = vm.center.map { Geo.distanceMeters($0, m.location) }
-                MosqueRow(mosque: m, distance: d, favorite: true).onTapGesture { selected = RankedMosque(mosque: m, distanceMeters: d ?? 0) }
+                let r = RankedMosque(mosque: m, distanceMeters: d ?? 0)
+                MosqueCard(ranked: r, nearest: false, favorite: true, route: nil, showDistance: d != nil) { selected = r }
             }
-            .listStyle(.plain)
         } else if vm.center == nil {
             VStack(alignment: .leading, spacing: 12) {
-                Text(l10n.t("mosques_need_location_title")).font(.title3.weight(.semibold))
-                Text(l10n.t(denied ? "location_denied" : "mosques_need_location_body"))
-                Button(action: useDevice) { Text(l10n.t(locating ? "locating" : "allow_location")).frame(maxWidth: .infinity, minHeight: 44) }
-                    .prominentButton().disabled(locating)
-                if let loc = app.settings.location {
-                    Button { vm.search(app, center: loc.location, origin: .prayerCity(loc.name)) } label: {
-                        Text(l10n.t("use_prayer_city", loc.name)).frame(maxWidth: .infinity, minHeight: 44)
+                Text(l10n.t("mosques_need_location_title")).font(.title3.weight(.semibold)).accessibilityAddTraits(.isHeader)
+                Text(l10n.t(denied ? "location_denied" : "mosques_need_location_body")).foregroundStyle(.white.opacity(0.85))
+                GlassGroup {
+                    VStack(spacing: 10) {
+                        Button(action: useDevice) {
+                            Label(l10n.t(locating ? "locating" : "allow_location"), systemImage: "location.fill").frame(maxWidth: .infinity, minHeight: 32)
+                        }
+                        .prominentButton().disabled(locating)
+                        if let loc = app.settings.location {
+                            Button { vm.search(app, center: loc.location, origin: .prayerCity(loc.name)) } label: {
+                                Text(l10n.t("use_prayer_city", loc.name)).frame(maxWidth: .infinity, minHeight: 32)
+                            }
+                            .glassButton()
+                        }
                     }
-                    .buttonStyle(.bordered)
                 }
             }
-            .card().padding(.horizontal)
-            Spacer()
-        } else if vm.loading && vm.result == nil {
-            ProgressView().frame(maxHeight: .infinity)
-        } else {
+            .glassCard(padding: 20)
+        } else if vm.loading && vm.items.isEmpty {
+            ProgressView().tint(.white).padding(.top, 40)
+        } else if !vm.items.isEmpty {
+            ForEach(Array(vm.items.prefix(40).enumerated()), id: \.element.id) { i, r in
+                MosqueCard(ranked: r, nearest: i == 0, favorite: vm.favorites.contains(r.id), route: vm.routes[r.id], showDistance: true) { selected = r }
+            }
+            Text(attribution).font(.caption).foregroundStyle(.white.opacity(0.6)).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 4)
+        } else if vm.online != .searching {
             switch vm.result {
-            case let .found(items, _):
-                if mode == 0 { list(items) } else {
-                    OfflinePlot(center: vm.center!, items: items, device: app.location.position?.location,
-                                onSelect: { selected = $0 }, onSearchHere: { vm.search(app, center: $0, origin: .selectedPoint) })
-                }
             case let .noRecordsInCoverage(name, radius):
                 empty(l10n.t("no_records_title"), l10n.t("no_records_body", name, Format.distance(radius, l10n: l10n)))
             case let .areaNotDownloaded(installed):
                 empty(l10n.t("region_not_downloaded_title"),
                       l10n.t("region_not_downloaded_body", installed.isEmpty ? l10n.t("region_none_installed") : ListFormatter.localizedString(byJoining: installed)))
-            case nil:
-                Spacer()
+            default:
+                EmptyView()
             }
         }
+    }
+
+    private var attribution: String {
+        var parts = [l10n.t("data_attribution_osm")]
+        if vm.items.contains(where: { $0.mosque.packId == OnlineMosques.applePackId }) { parts.append(l10n.t("source_online_apple")) }
+        return parts.joined(separator: " · ")
     }
 
     private func empty(_ title: String, _ body: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title).font(.headline).accessibilityAddTraits(.isHeader)
-            Text(body).font(.subheadline)
+            Text(body).font(.subheadline).foregroundStyle(.white.opacity(0.85))
         }
-        .card().padding(.horizontal).frame(maxHeight: .infinity, alignment: .top)
-    }
-
-    private func list(_ items: [RankedMosque]) -> some View {
-        List {
-            if let first = items.first {
-                Section {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(l10n.t("nearest_known_mosque")).font(.footnote.weight(.semibold)).foregroundStyle(Theme.accentText(scheme))
-                        Text(first.mosque.displayName(l10n.language) ?? l10n.t("mosque_unnamed")).font(.title3.weight(.semibold))
-                        Text(l10n.t("straight_line", Format.distance(first.distanceMeters, l10n: l10n)))
-                        if let a = first.mosque.address { Text(a).font(.subheadline).foregroundStyle(.secondary) }
-                        HStack {
-                            Button { ExternalMaps.directions(to: first.mosque.location, name: first.mosque.displayName(l10n.language)) } label: {
-                                Label(l10n.t("directions"), systemImage: "location.north.line.fill").frame(maxWidth: .infinity, minHeight: 44)
-                            }
-                            .prominentButton()
-                            Button(l10n.t("show_more_detail")) { selected = first }.buttonStyle(.bordered)
-                        }
-                        .padding(.top, 6)
-                    }
-                    .padding(.vertical, 6)
-                }
-            }
-            Section(l10n.plural("mosque_count", items.count)) {
-                ForEach(items.dropFirst()) { r in
-                    Button { selected = r } label: {
-                        MosqueRow(mosque: r.mosque, distance: r.distanceMeters, favorite: vm.favorites.contains(r.id))
-                    }
-                    .foregroundStyle(.primary)
-                }
-            }
-            Section { Text(l10n.t("data_attribution_osm")).font(.caption).foregroundStyle(.secondary) }
-        }
-        .listStyle(.insetGrouped)
+        .glassCard()
     }
 }
 
-struct MosqueRow: View {
+/// Glass mosque card: name, straight-line distance, walking route when known, one Directions button.
+struct MosqueCard: View {
     @Environment(Localization.self) private var l10n
-    let mosque: Mosque
-    let distance: Double?
+    let ranked: RankedMosque
+    let nearest: Bool
     let favorite: Bool
+    let route: WalkingRoute?
+    let showDistance: Bool
+    var onOpen: () -> Void
 
     var body: some View {
-        let name = mosque.displayName(l10n.language) ?? l10n.t("mosque_unnamed")
-        let dist = distance.map { Format.distance($0, l10n: l10n) } ?? ""
-        HStack(spacing: 12) {
-            Image(systemName: "building.columns.fill").foregroundStyle(Theme.navy).accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(name).font(.body.weight(.medium)).lineLimit(2)
-                let sub = [mosque.category == .prayer_space ? l10n.t("category_prayer_space") : nil, mosque.address].compactMap { $0 }.joined(separator: " · ")
-                if !sub.isEmpty { Text(sub).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
+        let m = ranked.mosque
+        let name = m.displayName(l10n.language) ?? l10n.t("mosque_unnamed")
+        VStack(alignment: .leading, spacing: 10) {
+            Button(action: onOpen) {
+                HStack(spacing: 12) {
+                    MosquePin(highlighted: nearest, size: 44)
+                    VStack(alignment: .leading, spacing: 3) {
+                        if nearest {
+                            Text(l10n.t("nearest_known_mosque")).font(.caption.weight(.semibold)).foregroundStyle(Theme.gold)
+                        }
+                        Text(name).font(.headline).lineLimit(2).multilineTextAlignment(.leading)
+                        if showDistance {
+                            Text(l10n.t("straight_line", Format.distance(ranked.distanceMeters, l10n: l10n))).font(.subheadline).foregroundStyle(.white.opacity(0.8))
+                        }
+                        if let route {
+                            Label(l10n.t("walking_route", Format.distance(route.meters, l10n: l10n), l10n.t("minutes_short", Int((route.seconds / 60).rounded()))),
+                                  systemImage: "figure.walk")
+                                .font(.footnote).foregroundStyle(.white.opacity(0.85))
+                        }
+                        if m.packId == OnlineMosques.applePackId {
+                            Text(l10n.t("source_online_apple")).font(.caption2).foregroundStyle(.white.opacity(0.6))
+                        } else if m.category == .prayer_space {
+                            Text(l10n.t("category_prayer_space")).font(.caption2).foregroundStyle(.white.opacity(0.6))
+                        }
+                    }
+                    Spacer(minLength: 4)
+                    if favorite { Image(systemName: "star.fill").foregroundStyle(Theme.gold).accessibilityHidden(true) }
+                    Image(systemName: l10n.isRTL ? "chevron.left" : "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.white.opacity(0.6))
+                }
+                .contentShape(Rectangle())
             }
-            Spacer()
-            if favorite { Image(systemName: "star.fill").foregroundStyle(Theme.gold).accessibilityHidden(true) }
-            Text(dist).monospacedDigit().foregroundStyle(Theme.navy)
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(l10n.t("mosque_detail_a11y", name, Format.distance(ranked.distanceMeters, l10n: l10n)))
+            Button { ExternalMaps.directions(to: m.location, name: name) } label: {
+                Label(l10n.t("get_directions"), systemImage: "location.north.line.fill").frame(maxWidth: .infinity, minHeight: 28)
+            }
+            .modifier(DirectionsStyle(prominent: nearest))
         }
-        .frame(minHeight: 48)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(l10n.t("mosque_detail_a11y", name, dist))
+        .foregroundStyle(.white)
+        .glassCard(padding: 14, tint: nearest ? Theme.gold.opacity(0.12) : nil)
     }
 }
 
-/// Offline view without map tiles: north-up, distance rings, pins by local projection. Drag to move
-/// the search point; "Search this area" re-runs the list there. The device marker stays real.
-struct OfflinePlot: View {
-    @Environment(Localization.self) private var l10n
-    let center: LatLng
-    let items: [RankedMosque]
-    let device: LatLng?
-    var onSelect: (RankedMosque) -> Void
-    var onSearchHere: (LatLng) -> Void
-    @State private var pan: CGSize = .zero
-    @GestureState private var drag: CGSize = .zero
-
-    private var maxDist: Double { max(500, items.map(\.distanceMeters).max() ?? 1000) * 1.1 }
-
-    private func project(_ p: LatLng, half: CGFloat) -> CGPoint {
-        let scale = half / maxDist
-        let dy = (p.latitude - center.latitude) * 111_320
-        let dx = (p.longitude - center.longitude) * 111_320 * cos(center.latitude * .pi / 180)
-        return CGPoint(x: half + dx * scale + pan.width + drag.width, y: half - dy * scale + pan.height + drag.height)
+private struct DirectionsStyle: ViewModifier {
+    let prominent: Bool
+    func body(content: Content) -> some View {
+        if prominent { content.prominentButton() } else { content.glassButton() }
     }
+}
+
+/// Two-option glass segmented control (Compass | Map) with a sliding gold-tinted thumb.
+struct GlassSegmented: View {
+    @Binding var selection: Int
+    let options: [(String, String)]
+    @Namespace private var ns
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            GeometryReader { geo in
-                let half = min(geo.size.width, geo.size.height) / 2
-                ZStack {
-                    ForEach(1...3, id: \.self) { k in
-                        Circle().stroke(Color.primary.opacity(0.15)).frame(width: half * 2 * CGFloat(k) / 3, height: half * 2 * CGFloat(k) / 3)
-                            .position(x: half + pan.width + drag.width, y: half + pan.height + drag.height)
-                    }
-                    Text(l10n.t("compass_north")).font(.caption.bold()).position(x: half, y: 8)
-                    ForEach(items) { r in
-                        Button { onSelect(r) } label: {
-                            Circle().fill(r.id == items.first?.id ? Theme.gold : Theme.navy).frame(width: 14, height: 14)
-                                .overlay(Circle().stroke(.white, lineWidth: 2)).frame(width: 44, height: 44)
+        HStack(spacing: 4) {
+            ForEach(Array(options.enumerated()), id: \.offset) { i, o in
+                Button { withAnimation(Theme.spring) { selection = i } } label: {
+                    Label(o.0, systemImage: o.1).font(.subheadline.weight(.semibold))
+                        .foregroundStyle(selection == i ? Theme.navyNight : .white)
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                        .background {
+                            if selection == i { Capsule().fill(Theme.gold).matchedGeometryEffect(id: "thumb", in: ns) }
                         }
-                        .position(project(r.mosque.location, half: half))
-                        .accessibilityLabel(r.mosque.displayName(l10n.language) ?? l10n.t("mosque_unnamed"))
-                    }
-                    if let d = device {
-                        Circle().fill(Color.blue).frame(width: 12, height: 12).background(Circle().fill(Color.blue.opacity(0.25)).frame(width: 28, height: 28))
-                            .position(project(d, half: half)).accessibilityHidden(true)
-                    }
+                        .contentShape(Capsule())
                 }
-                .frame(width: half * 2, height: half * 2)
-                .contentShape(Rectangle())
-                .gesture(DragGesture().updating($drag) { v, s, _ in s = v.translation }.onEnded { v in
-                    pan.width += v.translation.width; pan.height += v.translation.height
-                })
-                .environment(\.layoutDirection, .leftToRight)
-                .onChange(of: geo.size) { _, _ in pan = .zero }
-                .overlay(alignment: .bottom) {
-                    if pan != .zero {
-                        Button(l10n.t("search_this_area")) {
-                            let metersPerPoint = maxDist / half
-                            let east = -pan.width * metersPerPoint, north = pan.height * metersPerPoint
-                            let lat = min(90, max(-90, center.latitude + north / 111_320))
-                            var lng = center.longitude + east / (111_320 * max(1e-6, cos(center.latitude * .pi / 180)))
-                            lng = (lng + 540).truncatingRemainder(dividingBy: 360) - 180
-                            if let p = LatLng(lat, lng) { pan = .zero; onSearchHere(p) }
-                        }
-                        .prominentButton().padding(.bottom, 8)
-                    }
-                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selection == i ? .isSelected : [])
             }
-            .aspectRatio(1, contentMode: .fit)
-            Text(l10n.t("map_offline_plot")).font(.caption).foregroundStyle(.secondary)
         }
-        .padding()
-        .frame(maxHeight: .infinity, alignment: .top)
+        .padding(4)
+        .glass(Capsule())
     }
 }
 
@@ -300,7 +366,8 @@ enum ExternalMaps {
     /// Opens Apple Maps for directions (outside this app's offline guarantee).
     static func directions(to p: LatLng, name: String?) {
         var c = URLComponents(string: "https://maps.apple.com/")!
-        c.queryItems = [URLQueryItem(name: "daddr", value: "\(p.latitude),\(p.longitude)"), URLQueryItem(name: "q", value: name ?? "")]
+        c.queryItems = [URLQueryItem(name: "daddr", value: "\(p.latitude),\(p.longitude)"), URLQueryItem(name: "dirflg", value: "w"),
+                        URLQueryItem(name: "q", value: name ?? "")]
         if let url = c.url { UIApplication.shared.open(url) }
     }
 }

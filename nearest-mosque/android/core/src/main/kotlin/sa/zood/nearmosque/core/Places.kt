@@ -58,23 +58,33 @@ class CityIndex(val cities: List<City>) {
 data class ZoneSuggestion(val zoneId: ZoneId, val nearestCity: City?, val distanceMeters: Double?, val needsConfirmation: Boolean)
 
 /**
- * Time zone for arbitrary coordinates without a boundary database: the nearest bundled city's IANA
- * zone, flagged for confirmation when that city is far away. The phone's zone is only a tie-breaker.
+ * Time zone for a device fix. The phone's own zone (set by the network) is the authority, as on the
+ * website, whenever it is consistent with the location: same rules as the nearest bundled city, at
+ * sea or far from any city, or in a border band where the nearest city can be on the wrong side.
+ * Only when the phone is clearly set to another zone than a city within 30 km (a traveller with a
+ * manual clock) is the city's zone used, and the user is asked to confirm.
  */
-class TimeZoneResolver(private val cities: CityIndex, private val confidentWithinMeters: Double = 150_000.0) {
+class TimeZoneResolver(private val cities: CityIndex, private val borderBandMeters: Double = 30_000.0) {
     fun resolve(p: LatLng, deviceZone: ZoneId?): ZoneSuggestion {
         val nearest = cities.nearest(p)
         if (nearest == null) {
-            val z = deviceZone ?: ZoneId.of("UTC")
-            return ZoneSuggestion(z, null, null, needsConfirmation = true)
+            return ZoneSuggestion(deviceZone ?: ZoneId.of("UTC"), null, null, needsConfirmation = deviceZone == null)
         }
         val (city, d) = nearest
-        val zone = ZoneId.of(city.zoneId)
-        val far = d > confidentWithinMeters
-        // Near a city whose zone differs from the phone's, the point may be across a border.
-        val disagreesWithDevice = deviceZone != null && !sameRules(zone, deviceZone) && d > 30_000.0
-        return ZoneSuggestion(zone, city, d, needsConfirmation = far || disagreesWithDevice)
+        val cityZone = ZoneId.of(city.zoneId)
+        if (deviceZone == null) return ZoneSuggestion(cityZone, city, d, needsConfirmation = d > borderBandMeters)
+        return when {
+            sameRules(cityZone, deviceZone) -> ZoneSuggestion(deviceZone, city, d, needsConfirmation = false)
+            d > borderBandMeters -> ZoneSuggestion(deviceZone, city, d, needsConfirmation = false)
+            else -> ZoneSuggestion(cityZone, city, d, needsConfirmation = true)
+        }
     }
 
-    private fun sameRules(a: ZoneId, b: ZoneId): Boolean = a == b || a.rules == b.rules
+    /** Same zone, or the same offsets now and mid-January/mid-July this year (covers aliases). */
+    private fun sameRules(a: ZoneId, b: ZoneId, now: java.time.Instant = java.time.Instant.now()): Boolean {
+        if (a == b) return true
+        val year = now.atZone(java.time.ZoneOffset.UTC).year
+        val probes = listOf(now) + listOf(1, 7).map { java.time.LocalDate.of(year, it, 15).atStartOfDay(java.time.ZoneOffset.UTC).toInstant() }
+        return probes.all { a.rules.getOffset(it) == b.rules.getOffset(it) }
+    }
 }

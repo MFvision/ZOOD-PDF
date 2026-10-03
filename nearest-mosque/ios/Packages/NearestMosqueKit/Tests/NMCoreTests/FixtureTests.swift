@@ -203,6 +203,49 @@ final class DataTests: XCTestCase {
         XCTAssertEqual(idx.search("İstanbul").first?.name, "Istanbul")
         let tz = TimeZoneResolver(idx)
         XCTAssertFalse(tz.resolve(LatLng(-33.95, 18.47)!, deviceZone: TimeZone(identifier: "Africa/Johannesburg")).needsConfirmation)
-        XCTAssertTrue(tz.resolve(LatLng(-40, -30)!, deviceZone: TimeZone(identifier: "UTC")).needsConfirmation)
+        XCTAssertEqual(tz.resolve(LatLng(-33.95, 18.47)!, deviceZone: TimeZone(identifier: "Africa/Maputo")).zone.identifier, "Africa/Maputo")
+        let ocean = tz.resolve(LatLng(-40, -30)!, deviceZone: TimeZone(identifier: "UTC"))
+        XCTAssertEqual(ocean.zone.secondsFromGMT(), 0)
+        XCTAssertFalse(ocean.needsConfirmation)
+        let traveller = tz.resolve(LatLng(-33.95, 18.47)!, deviceZone: TimeZone(identifier: "Europe/London"))
+        XCTAssertEqual(traveller.zone.identifier, "Africa/Johannesburg")
+        XCTAssertTrue(traveller.needsConfirmation)
+        XCTAssertTrue(tz.resolve(LatLng(-40, -30)!, deviceZone: nil).needsConfirmation)
+    }
+}
+
+final class OnlineMosquesTests: XCTestCase {
+    private var sample: Data { try! Data(contentsOf: Fixtures.root.appendingPathComponent("shared/fixtures/overpass-sample.json")) }
+
+    func testParsesOnlyValidMuslimPlaces() {
+        let list = OnlineMosques.parseOverpass(sample)
+        XCTAssertEqual(list.map(\.sourceId), ["osm:node/101", "osm:way/202", "osm:node/303", "osm:node/606"])
+        XCTAssertEqual(list[0].displayName("en"), "Masjid Test One")
+        XCTAssertEqual(list[0].displayName("ar"), "مسجد الاختبار")
+        XCTAssertEqual(list[0].address, "12 Long Street, Cape Town")
+        XCTAssertEqual(list[0].sourceTimestamp, "2026-10-01T12:00:00Z")
+        XCTAssertEqual(list[2].category, .prayer_space)
+        XCTAssertEqual(list[1].location.latitude, -33.925, accuracy: 1e-9)
+        XCTAssertTrue(OnlineMosques.parseOverpass(Data("not json".utf8)).isEmpty)
+    }
+
+    func testQueryUsesRoundedCentreOnly() {
+        let q = OnlineMosques.overpassQuery(center: LatLng(-33.92487, 18.42401)!, radiusMeters: 5_000)
+        XCTAssertTrue(q.contains("(around:6600,-33.92,18.42)"), q)
+        XCTAssertFalse(q.contains("33.924"))
+        XCTAssertEqual(OnlineMosques.privacyRound(LatLng(0.001, -0.004)!).latitude, 0)
+    }
+
+    func testMergeKeepsDownloadedRecordsAndDropsNearbyDuplicates() {
+        let center = LatLng(-33.92, 18.42)!
+        let offline = Mosque(sourceId: "osm:node/1", packId: "mosques.za-cape-town", category: .mosque, names: ["default": "Offline"], location: LatLng(-33.9201, 18.4201)!)
+        let merged = OnlineMosques.merge(center: center, offline: [RankedMosque(mosque: offline, distanceMeters: Geo.distanceMeters(center, offline.location))],
+                                         online: OnlineMosques.parseOverpass(sample), radiusMeters: 5_000)
+        let ids = merged.map(\.mosque.sourceId)
+        XCTAssertEqual(ids.first, "osm:node/1")
+        XCTAssertFalse(ids.contains("osm:node/101"))
+        XCTAssertTrue(ids.contains("osm:way/202"))
+        XCTAssertEqual(merged.map(\.distanceMeters), merged.map(\.distanceMeters).sorted())
+        XCTAssertTrue(OnlineMosques.merge(center: LatLng(-33, 18)!, offline: [], online: OnlineMosques.parseOverpass(sample), radiusMeters: 100).isEmpty)
     }
 }

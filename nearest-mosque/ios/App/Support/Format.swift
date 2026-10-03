@@ -29,6 +29,12 @@ enum Format {
         return d.formatted(.time(pattern: pattern).locale(locale))
     }
 
+    /// "50 min, 28 sec" style remaining time in the interface language (hours hidden when zero).
+    static func remainingLong(_ seconds: TimeInterval, locale: Locale) -> String {
+        Duration.seconds(Int(max(0, seconds)))
+            .formatted(.units(allowed: [.hours, .minutes, .seconds], width: .abbreviated, maximumUnitCount: 3).locale(locale))
+    }
+
     static func number(_ v: Double, digits: Int, locale: Locale) -> String {
         v.formatted(.number.precision(.fractionLength(digits)).locale(locale))
     }

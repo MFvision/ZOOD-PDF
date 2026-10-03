@@ -7,13 +7,20 @@ struct MosqueDetailView: View {
     @Environment(\.openURL) private var openURL
     let ranked: RankedMosque
     @State var favorite: Bool
+    /// Only downloaded records can be favorites (live results have no stable record on the phone).
+    let canFavorite: Bool
+    let route: WalkingRoute?
     var onFavorite: (Bool) -> Void
 
-    init(ranked: RankedMosque, favorite: Bool, onFavorite: @escaping (Bool) -> Void) {
+    init(ranked: RankedMosque, favorite: Bool, canFavorite: Bool = true, route: WalkingRoute? = nil, onFavorite: @escaping (Bool) -> Void) {
         self.ranked = ranked
         self._favorite = State(initialValue: favorite)
+        self.canFavorite = canFavorite
+        self.route = route
         self.onFavorite = onFavorite
     }
+
+    private var isApple: Bool { ranked.mosque.packId == OnlineMosques.applePackId }
 
     var body: some View {
         let m = ranked.mosque
@@ -28,14 +35,20 @@ struct MosqueDetailView: View {
                         }
                     }
                     Spacer()
+                    if canFavorite {
                     Button {
                         favorite.toggle(); onFavorite(favorite)
                     } label: {
                         Image(systemName: favorite ? "star.fill" : "star").foregroundStyle(favorite ? Theme.gold : .secondary).frame(width: 44, height: 44)
                     }
                     .accessibilityLabel(l10n.t(favorite ? "favorite_remove" : "favorite_add"))
+                    }
                 }
                 Text(l10n.t(m.category == .prayer_space ? "category_prayer_space" : "category_mosque") + " · " + l10n.t("straight_line", Format.distance(ranked.distanceMeters, l10n: l10n)))
+                if let route {
+                    Label(l10n.t("walking_route", Format.distance(route.meters, l10n: l10n), l10n.t("minutes_short", Int((route.seconds / 60).rounded()))),
+                          systemImage: "figure.walk").font(.subheadline)
+                }
                 if let a = m.address { Text(a).font(.subheadline) }
                 Text(l10n.t("hours_unknown")).font(.subheadline).foregroundStyle(Theme.accentText(scheme))
                 if let h = m.openingHoursRaw { Text(l10n.t("hours_listed", h)).font(.subheadline) }
@@ -54,11 +67,15 @@ struct MosqueDetailView: View {
                     }
                     .disabled(m.website == nil)
                 }
-                .buttonStyle(.bordered)
+                .glassButton()
                 Text(l10n.t("external_maps_note")).font(.caption).foregroundStyle(.secondary)
-                Text(l10n.t("record_source", "OpenStreetMap " + m.sourceId.replacingOccurrences(of: "osm:", with: ""), String((m.sourceTimestamp ?? "").prefix(10))))
-                    .font(.caption).foregroundStyle(.secondary)
-                Text(l10n.t("data_attribution_osm")).font(.caption).foregroundStyle(.secondary)
+                if isApple {
+                    Text(l10n.t("source_online_apple")).font(.caption).foregroundStyle(.secondary)
+                } else {
+                    Text(l10n.t("record_source", "OpenStreetMap " + m.sourceId.replacingOccurrences(of: "osm:", with: ""), String((m.sourceTimestamp ?? "").prefix(10))))
+                        .font(.caption).foregroundStyle(.secondary)
+                    Text(l10n.t("data_attribution_osm")).font(.caption).foregroundStyle(.secondary)
+                }
             }
             .padding(20)
         }

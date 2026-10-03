@@ -33,18 +33,23 @@ def main():
         ("secondary text dark", col["textSecondaryDark"], col["cardDark"], 4.5),
         ("gold on dark card", col["gold"], col["cardDark"], 4.5),
     ]
-    for name, stops in t["sky"].items():
+    def blend(a, b, f):
+        return "".join("%02X" % round(int(a[i:i + 2], 16) * (1 - f) + int(b[i:i + 2], 16) * f) for i in (0, 2, 4))
+
+    for name, sky in t["sky"].items():
         if name.startswith("_"):
             continue
-        for s in stops:
-            checks.append((f"white on sky {name} {s}", "FFFFFF", s.lstrip("#").upper(), 4.5))
-            checks.append((f"gold (large) on sky {name} {s}", col["gold"], s.lstrip("#").upper(), 3.0))
+        s = {k: v.lstrip("#").upper() for k, v in sky.items()}
+        for stop in ("top", "mid", "low"):
+            checks.append((f"white on sky {name} {stop}", "FFFFFF", s[stop], 4.5))
+        checks.append((f"white on sky {name} mid + 20% glow", "FFFFFF", blend(s["mid"], s["glow"], 0.2), 4.5))
+        checks.append((f"white on sky {name} low + 25% glow", "FFFFFF", blend(s["low"], s["glow"], 0.25), 4.5))
     for name, a, b, need in checks:
         r = ratio(a, b)
         if r < need:
             errors.append(f"{name}: {r:.2f} < {need}")
 
-    sky_hex = {s.lstrip("#").upper() for k, v in t["sky"].items() if not k.startswith("_") for s in v}
+    sky_hex = {c.lstrip("#").upper() for k, v in t["sky"].items() if not k.startswith("_") for c in v.values()}
     kt = open(os.path.join(ROOT, "android/app/src/main/kotlin/sa/zood/nearmosque/ui/theme/Theme.kt")).read()
     sw = open(os.path.join(ROOT, "ios/App/Support/Theme.swift")).read()
     used_kt = {m.upper() for m in re.findall(r"0xFF([0-9A-Fa-f]{6})", kt)}
@@ -54,9 +59,9 @@ def main():
         stray = used - allowed
         if stray:
             errors.append(f"{label} uses colours not in tokens.json: {sorted(stray)}")
-    missing_sky = sky_hex - used_kt - {"F2A65A", "F7D9A8"}
-    if missing_sky - used_sw:
-        errors.append(f"sky colours unused on both platforms: {sorted(missing_sky - used_sw)}")
+    for label, used in (("Theme.kt", used_kt), ("Theme.swift", used_sw)):
+        if sky_hex - used:
+            errors.append(f"{label} is missing sky colours: {sorted(sky_hex - used)}")
     if errors:
         print("\n".join(errors))
         sys.exit(1)

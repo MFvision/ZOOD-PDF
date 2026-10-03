@@ -8,49 +8,15 @@ func qiblaGuidance(_ compass: CompassState, bearing: Double, l10n: Localization)
     case let .live(heading, _, calibrate):
         let rel = Angles.relativeToQibla(qiblaBearingTrue: bearing, headingTrue: heading)
         if calibrate { return l10n.t("qibla_calibrate") }
-        if abs(rel) <= 5 { return l10n.t("qibla_aligned") }
+        if abs(rel) <= 5 { return l10n.t("qibla_you_are_facing") }
         let deg = Format.degrees(abs(rel), locale: l10n.locale)
         return rel > 0 ? l10n.t("qibla_turn_right", deg) : l10n.t("qibla_turn_left", deg)
     }
 }
 
-struct QiblaCard: View {
-    @Environment(Localization.self) private var l10n
-    @Environment(\.colorScheme) private var scheme
-    let snap: PrayerSnapshot
-    let compass: CompassState
-    let aligned: Bool
-    var onOpen: () -> Void
-
-    var body: some View {
-        if let bearing = snap.qiblaBearing {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(l10n.t("qibla")).font(.headline).accessibilityAddTraits(.isHeader)
-                        Text(l10n.t("qibla_bearing", Format.degrees(bearing, locale: l10n.locale)))
-                        if let d = snap.qiblaDistance {
-                            Text(l10n.t("qibla_distance", Format.distance(d, l10n: l10n))).font(.subheadline).foregroundStyle(.secondary)
-                        }
-                        Text(qiblaGuidance(compass, bearing: bearing, l10n: l10n)).font(.subheadline).foregroundStyle(Theme.accentText(scheme))
-                    }
-                    Spacer()
-                    QiblaDial(bearing: bearing, compass: compass, aligned: aligned).frame(width: 96, height: 96)
-                }
-                Button(action: onOpen) {
-                    Label(l10n.t("qibla_open_compass"), systemImage: "location.north.circle").frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .prominentButton()
-            }
-            .card()
-            .padding(.horizontal)
-        }
-    }
-}
-
-/// Live: the ring turns so N points to true north and the gold arrow sits at the Qibla bearing on the
-/// ring, both by the shortest path across 359°/0°. Bearing-only: fixed north-up diagram.
-/// Compass geometry never mirrors with RTL text.
+/// Live: the ring turns so N points to true north and the Kaaba sits at the Qibla bearing on the ring,
+/// both by the shortest path across 359°/0°; a gold line runs from the centre to the Kaaba.
+/// Bearing-only: fixed north-up diagram. Compass geometry never mirrors with RTL text.
 struct QiblaDial: View {
     @Environment(Localization.self) private var l10n
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -68,34 +34,39 @@ struct QiblaDial: View {
         GeometryReader { geo in
             let size = min(geo.size.width, geo.size.height)
             ZStack {
-                if aligned { Circle().fill(Theme.gold.opacity(0.35)).blur(radius: 12) }
-                Circle().fill(Color.primary.opacity(0.06))
-                Circle().stroke(Color.primary.opacity(0.35), lineWidth: 1.5)
+                if aligned {
+                    Circle().fill(Theme.gold.opacity(0.35)).blur(radius: 30).scaleEffect(1.05)
+                }
+                Circle().fill(.clear).glass(Circle())
+                Circle().stroke(.white.opacity(0.35), lineWidth: 1)
                 ZStack {
                     ForEach(0..<72, id: \.self) { i in
-                        Rectangle().fill(Color.primary.opacity(i % 18 == 0 ? 0.7 : 0.25))
-                            .frame(width: i % 18 == 0 ? 2 : 1, height: size * (i % 18 == 0 ? 0.08 : 0.04))
-                            .offset(y: -size / 2 + size * 0.04 + 2)
+                        Rectangle().fill(.white.opacity(i % 18 == 0 ? 0.85 : 0.3))
+                            .frame(width: i % 18 == 0 ? 2 : 1, height: size * (i % 18 == 0 ? 0.06 : 0.03))
+                            .offset(y: -size / 2 + size * 0.05)
                             .rotationEffect(.degrees(Double(i) * 5))
                     }
-                    Text(l10n.t("compass_north")).font(.system(size: size * 0.13, weight: .bold)).foregroundStyle(.red)
-                        .offset(y: -size / 2 + size * 0.2)
-                    // Qibla arrow fixed to the ring at the true bearing.
+                    Text(l10n.t("compass_north")).font(.system(size: size * 0.07, weight: .bold)).foregroundStyle(Color(hex: 0xF2B8B5))
+                        .offset(y: -size / 2 + size * 0.15)
                     ZStack {
-                        Capsule().fill(Theme.gold).frame(width: 5, height: size * 0.41).offset(y: -size * 0.205)
-                        Circle().fill(Theme.gold).frame(width: 14, height: 14).offset(y: -size * 0.41)
+                        Capsule().fill(LinearGradient(colors: [Theme.gold.opacity(0.2), Theme.gold], startPoint: .bottom, endPoint: .top))
+                            .frame(width: 3, height: size * 0.3).offset(y: -size * 0.15)
+                        KaabaIcon(size: size * 0.13).offset(y: -size * 0.36)
                     }
                     .rotationEffect(.degrees(bearing))
                 }
                 .rotationEffect(.degrees(ring))
                 if case .live = compass {
-                    Capsule().fill(Color.primary.opacity(0.6)).frame(width: 3, height: 12).offset(y: -size / 2 + 4)
+                    // Forward direction of the phone.
+                    Capsule().fill(aligned ? Theme.gold : .white).frame(width: 4, height: 16).offset(y: -size / 2 - 2)
                 }
-                Circle().fill(Theme.navy).frame(width: 12, height: 12)
+                Circle().fill(Color(hex: 0x4F8EF7)).frame(width: 16, height: 16)
+                    .overlay(Circle().stroke(.white, lineWidth: 3))
             }
             .frame(width: size, height: size)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .aspectRatio(1, contentMode: .fit)
         .environment(\.layoutDirection, .leftToRight)
         .onAppear { ring = target }
         .onChange(of: target) { _, t in
@@ -107,46 +78,53 @@ struct QiblaDial: View {
     }
 }
 
-/// Full-screen compass. Heading runs only while visible.
+/// Full-screen compass on the sky. Heading runs only while visible.
 struct QiblaCompassView: View {
     @Environment(AppModel.self) private var model
     @Environment(Localization.self) private var l10n
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var scheme
     @State private var detector = AlignmentDetector()
     @State private var aligned = false
 
     var body: some View {
         let snap = PrayerSnapshot(model: model, now: Date())
         let compass = model.location.compass
-        VStack(spacing: 16) {
+        VStack(spacing: 18) {
             HStack {
-                Text(l10n.t("qibla")).font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(l10n.t("qibla")).font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
+                    Text(snap.location?.name ?? "").font(.subheadline).foregroundStyle(.white.opacity(0.8))
+                }
                 Spacer()
-                Button { dismiss() } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }
-                    .accessibilityLabel(l10n.t("close"))
-                    .glassChrome(cornerRadius: 22)
+                GlassIconButton(systemImage: "xmark", label: l10n.t("close")) { dismiss() }
             }
-            Text(snap.location?.name ?? "").foregroundStyle(.secondary)
+            Spacer(minLength: 0)
             if let bearing = snap.qiblaBearing {
-                QiblaDial(bearing: bearing, compass: compass, aligned: aligned).frame(maxWidth: 420).padding(.horizontal, 24)
+                QiblaDial(bearing: bearing, compass: compass, aligned: aligned).frame(maxWidth: 380).padding(.horizontal, 12)
                 Text(qiblaGuidance(compass, bearing: bearing, l10n: l10n)).font(.title2.weight(.semibold)).multilineTextAlignment(.center)
-                    .foregroundStyle(aligned ? Theme.accentText(scheme) : .primary)
+                    .foregroundStyle(aligned ? Theme.gold : .white)
                     .accessibilityAddTraits(.updatesFrequently)
-                Text(l10n.t("qibla_bearing", Format.degrees(bearing, locale: l10n.locale)))
+                GlassGroup(spacing: 8) {
+                    HStack(spacing: 8) {
+                        info(l10n.t("qibla_bearing", Format.degrees(bearing, locale: l10n.locale)))
+                        if let d = snap.qiblaDistance { info(l10n.t("qibla_distance", Format.distance(d, l10n: l10n))) }
+                    }
+                }
                 switch compass {
                 case let .live(_, accuracy, _):
-                    if let a = accuracy { Text(l10n.t("heading_accuracy", Format.degrees(a, locale: l10n.locale))).font(.subheadline).foregroundStyle(.secondary) }
+                    if let a = accuracy { Text(l10n.t("heading_accuracy", Format.degrees(a, locale: l10n.locale))).font(.footnote).foregroundStyle(.white.opacity(0.75)) }
                 case .bearingOnly:
-                    Text(l10n.t("qibla_north_up")).font(.subheadline).foregroundStyle(.secondary)
+                    Text(l10n.t("qibla_north_up")).font(.footnote).foregroundStyle(.white.opacity(0.75))
                 }
-                Text(l10n.t("qibla_hold_flat") + " · " + l10n.t("qibla_approximate")).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                Text(l10n.t("qibla_hold_flat") + " · " + l10n.t("qibla_approximate")).font(.footnote).foregroundStyle(.white.opacity(0.75)).multilineTextAlignment(.center)
             } else {
                 Text(l10n.t("qibla_location_needed"))
             }
-            Spacer()
+            Spacer(minLength: 0)
         }
+        .foregroundStyle(.white)
         .padding(20)
+        .skyBackground(horizon: 0.82)
         .sensoryFeedback(.success, trigger: aligned) { _, new in new }
         .onAppear { model.location.beginHeading() }
         .onDisappear { model.location.endHeading() }
@@ -155,5 +133,9 @@ struct QiblaCompassView: View {
             _ = detector.update(relativeDeg: Angles.relativeToQibla(qiblaBearingTrue: b, headingTrue: h), accuracyDeg: acc)
             aligned = detector.aligned
         }
+    }
+
+    private func info(_ text: String) -> some View {
+        Text(text).font(.footnote.weight(.medium)).padding(.horizontal, 12).padding(.vertical, 8).glass(Capsule())
     }
 }

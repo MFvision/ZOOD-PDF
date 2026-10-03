@@ -59,18 +59,33 @@ public struct ZoneSuggestion: Sendable {
     public let needsConfirmation: Bool
 }
 
-/// Time zone for arbitrary coordinates from the nearest bundled city, flagged for confirmation when far.
+/// Time zone for a device fix. The phone's own zone (set by the network) is the authority whenever it
+/// is consistent with the location: same rules as the nearest bundled city, far from any city, or in
+/// a border band where the nearest city can be on the wrong side. Only when the phone is clearly set
+/// to another zone than a city within 30 km is the city's zone used, with a confirmation.
 public struct TimeZoneResolver: Sendable {
     public let cities: CityIndex
-    public var confidentWithinMeters = 150_000.0
+    public var borderBandMeters = 30_000.0
     public init(_ cities: CityIndex) { self.cities = cities }
 
     public func resolve(_ p: LatLng, deviceZone: TimeZone?) -> ZoneSuggestion {
-        guard let (city, d) = cities.nearest(p), let zone = TimeZone(identifier: city.zoneId) else {
-            return ZoneSuggestion(zone: deviceZone ?? TimeZone(identifier: "UTC")!, nearestCity: nil, distanceMeters: nil, needsConfirmation: true)
+        guard let (city, d) = cities.nearest(p), let cityZone = TimeZone(identifier: city.zoneId) else {
+            return ZoneSuggestion(zone: deviceZone ?? TimeZone(identifier: "UTC")!, nearestCity: nil, distanceMeters: nil, needsConfirmation: deviceZone == nil)
         }
-        let far = d > confidentWithinMeters
-        let disagrees = deviceZone.map { $0.identifier != zone.identifier && $0.secondsFromGMT() != zone.secondsFromGMT() } ?? false
-        return ZoneSuggestion(zone: zone, nearestCity: city, distanceMeters: d, needsConfirmation: far || (disagrees && d > 30_000))
+        guard let device = deviceZone else {
+            return ZoneSuggestion(zone: cityZone, nearestCity: city, distanceMeters: d, needsConfirmation: d > borderBandMeters)
+        }
+        if Self.sameRules(cityZone, device) || d > borderBandMeters {
+            return ZoneSuggestion(zone: device, nearestCity: city, distanceMeters: d, needsConfirmation: false)
+        }
+        return ZoneSuggestion(zone: cityZone, nearestCity: city, distanceMeters: d, needsConfirmation: true)
+    }
+
+    /// Same identifier, or the same offsets now and at both solstices of this year (covers aliases).
+    static func sameRules(_ a: TimeZone, _ b: TimeZone, now: Date = Date()) -> Bool {
+        if a.identifier == b.identifier { return true }
+        let year = Calendar(identifier: .gregorian).component(.year, from: now)
+        let probes = [now] + [1, 7].compactMap { DateComponents(calendar: Calendar(identifier: .gregorian), timeZone: TimeZone(identifier: "UTC"), year: year, month: $0, day: 15).date }
+        return probes.allSatisfy { a.secondsFromGMT(for: $0) == b.secondsFromGMT(for: $0) }
     }
 }

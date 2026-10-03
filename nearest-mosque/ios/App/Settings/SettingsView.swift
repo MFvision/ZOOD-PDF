@@ -37,6 +37,10 @@ struct SettingsView: View {
                     }
                     Button(l10n.t("change")) { showCity = true }
                 }
+                Section {
+                    Toggle(l10n.t("online_search"), isOn: Binding(get: { app.settings.onlineSearch }, set: { app.settings.onlineSearch = $0 }))
+                } header: { Text(l10n.t("tab_mosques")) } footer: { Text(l10n.t("online_search_body")) }
+
                 Section(l10n.t("prayer_section")) {
                     Text(l10n.t(Format.methodKey(app.settings.prayer.method)))
                     Button(l10n.t("calculation")) { showCalc = true }
@@ -73,8 +77,15 @@ struct SettingsView: View {
                         }
                     }
                     Text("Adhan (MIT) · Batoul Apps; GRDB (MIT) · Gwendal Roué").font(.caption)
+                    Text("Map and live mosque results: Apple Maps (online)").font(.caption)
                 }
                 Section(l10n.t("privacy")) { Text(l10n.t("privacy_body")) }
+                Section {
+                    Button(l10n.t("onb_replay")) {
+                        dismiss()
+                        app.settings.onboarded = false
+                    }
+                }
                 Section(l10n.t("about")) {
                     Text(l10n.t("version_label", Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""))
                 }

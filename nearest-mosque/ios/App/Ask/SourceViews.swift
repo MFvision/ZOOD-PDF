@@ -23,28 +23,36 @@ struct SourceCard: View {
         let c = citation.chunk
         let doc = citation.documents[c.original.docId]
         VStack(alignment: .leading, spacing: 6) {
-            Text((index.map { "[\($0)] " } ?? "") + referenceLabel(c, l10n: l10n)).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.navy)
-            Text([doc?.title[l10n.language] ?? doc?.title["en"], doc?.edition].compactMap { $0 }.joined(separator: " · "))
-                .font(.caption).foregroundStyle(.secondary)
-            Text(l10n.t("exact_quote")).font(.caption2.weight(.semibold)).foregroundStyle(Theme.accentText(scheme))
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "book.closed").font(.title3).foregroundStyle(Theme.gold).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text((index.map { "[\($0)] " } ?? "") + referenceLabel(c, l10n: l10n)).font(.subheadline.weight(.semibold))
+                    Text(l10n.t("supporting_passage") + " · " + [doc?.title[l10n.language] ?? doc?.title["en"], doc?.edition].compactMap { $0 }.joined(separator: " · "))
+                        .font(.caption).foregroundStyle(.white.opacity(0.7))
+                }
+            }
+            Text(l10n.t("exact_quote")).font(.caption2.weight(.semibold)).foregroundStyle(Theme.gold)
             OriginalText(text: c.original.text, lang: c.original.lang)
             ForEach(c.allTranslations, id: \.docId) { t in
                 let td = citation.documents[t.docId]
                 Text(l10n.t("translation_by", [td?.translator, td?.year.map { String($0) }].compactMap { $0 }.joined(separator: ", ")))
-                    .font(.caption2.weight(.semibold)).foregroundStyle(Theme.accentText(scheme))
+                    .font(.caption2.weight(.semibold)).foregroundStyle(Theme.gold)
                 Text(t.text).font(.subheadline)
                     .environment(\.layoutDirection, .leftToRight)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            HStack {
-                Button(l10n.t("source_open")) { onRead(citation) }
-                if let u = c.url.flatMap({ URL(string: $0) }) { Button(l10n.t("source_original_link")) { openURL(u) } }
+            HStack(spacing: 16) {
+                Button { onRead(citation) } label: { Label(l10n.t("source_open"), systemImage: "text.book.closed") }
+                if let u = c.url.flatMap({ URL(string: $0) }) {
+                    Button { openURL(u) } label: { Label(l10n.t("source_original_link"), systemImage: "arrow.up.right.square") }
+                }
             }
-            .font(.subheadline)
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(Color(hex: 0x8CC0DE))
+            .padding(.top, 2)
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.sand.opacity(scheme == .dark ? 0.12 : 0.6), in: RoundedRectangle(cornerRadius: 16))
+        .foregroundStyle(.white)
+        .glassCard(padding: 14, cornerRadius: 20, tint: Color.white.opacity(0.04))
     }
 }
 
@@ -77,7 +85,7 @@ struct ReaderView: View {
         NavigationStack {
             List(around) { c in
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(referenceLabel(c, l10n: l10n)).font(.caption.weight(.semibold)).foregroundStyle(Theme.navy)
+                    Text(referenceLabel(c, l10n: l10n)).font(.caption.weight(.semibold)).foregroundStyle(Theme.gold)
                     OriginalText(text: c.original.text, lang: c.original.lang)
                     ForEach(c.allTranslations, id: \.docId) { Text($0.text).font(.subheadline).environment(\.layoutDirection, .leftToRight) }
                 }
