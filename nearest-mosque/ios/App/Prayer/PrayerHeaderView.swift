@@ -65,7 +65,7 @@ struct PrayerHeaderView: View {
             .padding(.top, topInset)
         }
         .frame(height: (expanded ? Theme.expandedHeader : Theme.homeHeader) + topInset)
-        .opacity(1 - collapse * 0.6)
+        .opacity(Double(1 - collapse * 0.6))
     }
 
     private var topInset: CGFloat {

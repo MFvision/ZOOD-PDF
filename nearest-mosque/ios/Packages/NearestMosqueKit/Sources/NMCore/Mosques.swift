@@ -34,6 +34,7 @@ public struct RankedMosque: Hashable, Identifiable, Sendable {
     public var id: String { mosque.sourceId }
     public let mosque: Mosque
     public let distanceMeters: Double
+    public init(mosque: Mosque, distanceMeters: Double) { self.mosque = mosque; self.distanceMeters = distanceMeters }
 }
 
 /// One JSON line of a mosque pack (tools/build_mosque_pack.py).

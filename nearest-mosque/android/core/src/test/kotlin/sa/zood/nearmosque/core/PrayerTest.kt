@@ -32,6 +32,7 @@ class PrayerTest {
     @Test
     fun goldenFixturesMatchIndependentReference() {
         val failures = mutableListOf<String>()
+        var worst = 0L
         for (c in fixture["cases"]!!.jsonArray.map { it.jsonObject }) {
             val id = c["id"]!!.jsonPrimitive.content
             val loc = LatLng(c["latitude"]!!.jsonPrimitive.double, c["longitude"]!!.jsonPrimitive.double)
@@ -50,11 +51,13 @@ class PrayerTest {
                 val want = OffsetDateTime.parse(value.jsonPrimitive.content).toInstant()
                 val got = s[event]!!
                 val diff = Math.abs(Duration.between(want, got).seconds)
+                worst = maxOf(worst, diff)
                 if (diff > tolerance) failures += "$id $key: got ${got.atZone(zone)} want ${want.atZone(zone)} (${diff}s)"
             }
             // Every event lands on (or, for late Isha, just after) the requested civil date.
             assertEquals("$id dhuhr date", date, s[PrayerEvent.DHUHR]!!.atZone(zone).toLocalDate())
         }
+        println("ADHAN_VS_REFERENCE_MAX_SECONDS=$worst")
         assertTrue(failures.joinToString("\n"), failures.isEmpty())
     }
 

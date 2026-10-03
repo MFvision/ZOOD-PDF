@@ -34,5 +34,6 @@ Packs are JSON-lines datasets with a manifest (`shared/schemas/pack-manifest.sch
 version, license/attribution, coverage, record count, and a SHA-256 per file. Install = verify hashes,
 then replace the pack's rows inside one SQLite transaction (atomic; on any failure the previous version
 stays). Built-in packs are installed on first launch and can be removed or restored; additional packs
-are imported from a file (`.nmpack` zip). Download-with-resume is designed (Range requests into a
-temp file, hash-verified, then the same transactional install) but no download server exists yet.
+are imported from Files (Android: a `.nmpack` zip; iOS: the unpacked pack folder). Download-with-resume
+is designed (Range requests into a temp file, hash-verified, then the same transactional install) but
+not built: no download server exists yet.
