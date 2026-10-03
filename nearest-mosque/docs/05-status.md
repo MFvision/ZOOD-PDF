@@ -48,7 +48,7 @@ Legend: **Done** = implemented and covered by automated tests or rendered screen
 | Android `:app:testDebugUnitTest` (Robolectric: Room/FTS4 install, rollback, retrieval parity, empty states, favorites; 10 screenshot tests) | Linux (local) + CI | 17 tests, 0 failures |
 | Android `:app:assembleDebug` | Linux (local) | `app-debug.apk` 16 MB |
 | `NearestMosqueKit` `swift test` (NMCore 13, NMData/GRDB FTS5 5) | Linux Swift 6.1 (local + CI) and macOS (CI) | 18 tests, 0 failures |
-| iOS app `xcodebuild` (simulator, unsigned) | GitHub macOS runner | see 5.4 |
+| iOS app `xcodebuild` (simulator, unsigned) | GitHub macOS runner, Xcode 26.3 | BUILD SUCCEEDED |
 | Strings / fixtures / tokens drift | CI | pass |
 
 Screenshots (Robolectric, rendered from the real database and calculations at 2026-10-03 05:30 SAST,
@@ -59,15 +59,31 @@ Cape Town, MWL) are produced by `./gradlew :app:recordRoborazziDebug` and upload
 * **No physical device or emulator testing** on either platform (this environment has no KVM and no
   Mac). Location fixes, compass accuracy, magnetic interference, haptics, notifications/alarms
   across reboot and Doze, Focus modes, performance, battery and memory are unmeasured.
-* iOS UI has been compiled in CI but never run; Liquid Glass and Foundation Models paths are compiled
-  only when the runner's Xcode includes the iOS 26 SDK.
+* iOS UI has been compiled in CI (Xcode 26.3) but never launched: no simulator or device run, so iOS
+  layout, Liquid Glass rendering and Foundation Models answers are unobserved.
 * VoiceOver/TalkBack, Dynamic Type at accessibility sizes, Reduce Motion/Transparency: implemented,
   not audited with assistive technology.
 * Translations other than English and Arabic are machine-assisted drafts.
 
-## 5.4 iOS CI build
+## 5.4 CI evidence
 
-Recorded after the CI run completes (see the commit history of this file).
+Workflow `Nearest Mosque apps`, run 3 (commit `0aff6fc`): **all four jobs green**
+(https://github.com/MFvision/ZOOD-PDF/actions/runs/37133699233).
+
+| Job | Result |
+|---|---|
+| Shared strings, design tokens, fixture regeneration | pass (no drift) |
+| Android: `:core:test`, `:app:testDebugUnitTest`, screenshots, `assembleDebug` | pass (ubuntu-24.04, JDK 21) |
+| NearestMosqueKit on Linux (Swift 6.1) | 18/18 |
+| iOS: package tests on macOS (CryptoKit path) | 18/18 |
+| iOS: `xcodebuild` simulator build, **Xcode 26.3** (iOS 26 SDK) | `BUILD SUCCEEDED`; Liquid Glass and Foundation Models code paths were compiled |
+
+The first two iOS builds failed on Apple-only issues (`Method` clashing with the Objective-C runtime
+type, a missing public initializer, a CGFloat/Double ambiguity); each was fixed and re-verified.
+
+The repository's pre-existing ZOOD PDF `CI` workflow is red on this branch in `core clippy` and
+`desktop tests` (Rust). It was already red on the base commit `e071214` (run 17), and this work
+touches no Rust or files those steps read.
 
 ## 5.5 Known limitations and next increments
 
