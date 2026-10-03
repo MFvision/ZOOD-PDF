@@ -5,7 +5,7 @@
 | | iOS | Android |
 |---|---|---|
 | Language / UI | Swift 6, SwiftUI | Kotlin 2.4, Jetpack Compose (Material 3) |
-| Minimum OS | **iOS 17.0** (Observation, modern SwiftUI) | **Android 8.0, API 26** (java.time, adaptive icons) |
+| Minimum OS | **iOS 18.0** (same devices as iOS 17: iPhone XS/XR and later; modern Tab API, scroll geometry) | **Android 8.0, API 26** (java.time, adaptive icons) |
 | Newer APIs gated | iOS 26: Liquid Glass (`glassEffect`, `GlassEffectContainer`, tab-bar minimize), Foundation Models | API 31+: exact alarms permission; API 33+: notification permission, per-app language |
 | Devices | iPhone; adaptive iPad layout (size classes) | Phones; adaptive width classes for tablets |
 | Storage | SQLite via **GRDB 7** (FTS5) | SQLite via **Room 2.8** (FTS4) |

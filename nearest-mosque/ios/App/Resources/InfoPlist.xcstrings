@@ -1,0 +1,100 @@
+{
+  "sourceLanguage": "en",
+  "version": "1.0",
+  "strings": {
+    "CFBundleDisplayName": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Near Mosque"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أقرب مسجد"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قریبی مسجد"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Near Mosque"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Near Mosque"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Near Mosque"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Near Mosque"
+          }
+        }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your location is used on this phone to calculate prayer times and the Qibla, and to find nearby mosques. It is not sent anywhere."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُستخدم موقعك على هذا الهاتف لحساب مواقيت الصلاة والقبلة والعثور على المساجد القريبة، ولا يُرسل إلى أي جهة."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "آپ کا مقام اسی فون پر نماز کے اوقات، قبلہ اور قریبی مساجد کے لیے استعمال ہوتا ہے۔ یہ کہیں نہیں بھیجا جاتا۔"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konumunuz bu telefonda namaz vakitleri, kıble ve yakındaki camiler için kullanılır. Hiçbir yere gönderilmez."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokasi Anda digunakan di ponsel ini untuk menghitung jadwal salat, kiblat, dan mencari masjid terdekat. Tidak dikirim ke mana pun."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre position sert, sur ce téléphone, à calculer les horaires de prière et la qibla, et à trouver les mosquées proches. Elle n’est envoyée nulle part."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu ubicación se usa en este teléfono para calcular los horarios de oración y la alquibla, y encontrar mezquitas cercanas. No se envía a ningún sitio."
+          }
+        }
+      }
+    }
+  }
+}

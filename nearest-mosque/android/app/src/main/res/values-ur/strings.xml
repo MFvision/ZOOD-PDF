@@ -130,6 +130,7 @@
     <string name="pack_kind_books">کتابیں: %1$s</string>
     <string name="pack_kind_cities">شہر اور ٹائم زون</string>
     <string name="pack_kind_mosques">مساجد: %1$s</string>
+    <string name="permission_location_ios">آپ کا مقام اسی فون پر نماز کے اوقات، قبلہ اور قریبی مساجد کے لیے استعمال ہوتا ہے۔ یہ کہیں نہیں بھیجا جاتا۔</string>
     <string name="polar_nearest">قریب ترین عرض بلد (48.5°)</string>
     <string name="polar_none">دستیاب نہیں دکھائیں</string>
     <string name="polar_rule">جب سورج طلوع یا غروب نہ ہو</string>

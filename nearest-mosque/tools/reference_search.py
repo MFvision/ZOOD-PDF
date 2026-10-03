@@ -44,6 +44,7 @@ CONTEXT_WEIGHT = 0.3
 MAX_PASSAGES = 5
 MIN_SCORE = 3.0
 MIN_COVERAGE = 0.5
+COORD_BASE = 0.0
 
 
 def is_arabic_letter(ch):
@@ -165,6 +166,9 @@ def retrieve(corpus, question, context=()):
             score += weights[t] * corpus.idf(t) * f * (K1 + 1) / (f + K1 * (1 - B + B * dl / corpus.avgdl))
         matched_user = sum(1 for t in content if t in tf)
         coverage = matched_user / len(content) if content else 0.0
+        # Coordination factor: passages that contain more of the question's own words rank higher.
+        if content:
+            score *= COORD_BASE + (1 - COORD_BASE) * coverage
         scored.append((score, coverage, matched_user, c["seq"], c["id"]))
     scored.sort(key=lambda x: (-x[0], x[3]))
     passages = [s for s in scored if s[0] >= MIN_SCORE and (s[1] >= MIN_COVERAGE or s[2] >= 2)][:MAX_PASSAGES]
@@ -215,6 +219,7 @@ RETRIEVAL_CASES = [
     {"id": "fr-qibla", "q": "Vers quelle direction prier ?", "expect": {"kind": "common", "commonQuestionId": "qibla"}},
     {"id": "ar-zakat", "q": "من يستحق الزكاة؟", "expect": {"kind": "common", "commonQuestionId": "zakat"}},
     {"id": "en-throne-verse", "q": "neither slumber nor sleep overtakes him", "expect": {"kind": "passages", "passagesTop": "quran:2:255"}},
+    {"id": "en-short-quote", "q": "neither slumber nor sleep", "expect": {"kind": "passages", "passagesTop": "quran:2:255"}},
     {"id": "ar-verse-text", "q": "لا تأخذه سنة ولا نوم", "expect": {"kind": "passages", "passagesTop": "quran:2:255"}},
     {"id": "en-unanswerable", "q": "What is the capital of France?", "expect": {"kind": "insufficient"}},
     {"id": "en-unanswerable-tech", "q": "How do I reset my router password?", "expect": {"kind": "insufficient"}},
@@ -253,7 +258,7 @@ def generate():
         json.dump({
             "description": "Ask AI retrieval expectations over packs/sources/quran-tanzil-pickthall. 'expect' is normative; 'referenceResult' records what tools/reference_search.py returned and implementations should match it exactly.",
             "parameters": {"k1": K1, "b": B, "expansionWeight": EXPANSION_WEIGHT, "contextWeight": CONTEXT_WEIGHT,
-                           "maxPassages": MAX_PASSAGES, "minScore": MIN_SCORE, "minCoverage": MIN_COVERAGE},
+                           "maxPassages": MAX_PASSAGES, "minScore": MIN_SCORE, "minCoverage": MIN_COVERAGE, "coordBase": COORD_BASE},
             "cases": RETRIEVAL_CASES,
         }, f, ensure_ascii=False, indent=2)
         f.write("\n")

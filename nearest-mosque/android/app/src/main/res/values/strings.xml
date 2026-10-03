@@ -130,6 +130,7 @@
     <string name="pack_kind_books">Books: %1$s</string>
     <string name="pack_kind_cities">Cities and time zones</string>
     <string name="pack_kind_mosques">Mosques: %1$s</string>
+    <string name="permission_location_ios">Your location is used on this phone to calculate prayer times and the Qibla, and to find nearby mosques. It is not sent anywhere.</string>
     <string name="polar_nearest">Nearest latitude (48.5°)</string>
     <string name="polar_none">Show as unavailable</string>
     <string name="polar_rule">When the sun doesn’t rise or set</string>

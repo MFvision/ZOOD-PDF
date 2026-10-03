@@ -134,6 +134,7 @@
     <string name="pack_kind_books">الكتب: %1$s</string>
     <string name="pack_kind_cities">المدن والمناطق الزمنية</string>
     <string name="pack_kind_mosques">المساجد: %1$s</string>
+    <string name="permission_location_ios">يُستخدم موقعك على هذا الهاتف لحساب مواقيت الصلاة والقبلة والعثور على المساجد القريبة، ولا يُرسل إلى أي جهة.</string>
     <string name="polar_nearest">أقرب عرض (48.5°)</string>
     <string name="polar_none">اعرضها غير متاحة</string>
     <string name="polar_rule">عند عدم شروق الشمس أو غروبها</string>

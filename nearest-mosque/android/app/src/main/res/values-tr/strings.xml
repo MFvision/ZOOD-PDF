@@ -130,6 +130,7 @@
     <string name="pack_kind_books">Kitaplar: %1$s</string>
     <string name="pack_kind_cities">Şehirler ve saat dilimleri</string>
     <string name="pack_kind_mosques">Camiler: %1$s</string>
+    <string name="permission_location_ios">Konumunuz bu telefonda namaz vakitleri, kıble ve yakındaki camiler için kullanılır. Hiçbir yere gönderilmez.</string>
     <string name="polar_nearest">En yakın enlem (48,5°)</string>
     <string name="polar_none">Kullanılamaz göster</string>
     <string name="polar_rule">Güneş doğmadığında veya batmadığında</string>

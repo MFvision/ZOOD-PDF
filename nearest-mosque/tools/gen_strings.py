@@ -88,6 +88,17 @@ def build_android(data, lang):
     return "\n".join(lines) + "\n"
 
 
+def build_ios_infoplist(data):
+    """InfoPlist.xcstrings: localized display name and permission purpose strings."""
+    keys = {"CFBundleDisplayName": "app_name", "NSLocationWhenInUseUsageDescription": "permission_location_ios"}
+    out = {"sourceLanguage": "en", "version": "1.0", "strings": {}}
+    for plist_key, src in keys.items():
+        entry = data["strings"][src]
+        out["strings"][plist_key] = {"extractionState": "manual", "localizations": {
+            lang: {"stringUnit": {"state": "translated", "value": entry[lang]}} for lang in data["languages"]}}
+    return json.dumps(out, ensure_ascii=False, indent=2) + "\n"
+
+
 def main():
     check = "--check" in sys.argv
     data = json.load(open(SRC, encoding="utf-8"))
@@ -95,7 +106,7 @@ def main():
     if errors:
         print("\n".join(errors))
         sys.exit(1)
-    outputs = {IOS_OUT: build_ios(data)}
+    outputs = {IOS_OUT: build_ios(data), IOS_OUT.replace("Localizable.xcstrings", "InfoPlist.xcstrings"): build_ios_infoplist(data)}
     for lang, d in ANDROID_DIR.items():
         outputs[os.path.join(ANDROID_RES, d, "strings.xml")] = build_android(data, lang)
     stale = []

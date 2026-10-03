@@ -130,6 +130,7 @@
     <string name="pack_kind_books">Libros: %1$s</string>
     <string name="pack_kind_cities">Ciudades y zonas horarias</string>
     <string name="pack_kind_mosques">Mezquitas: %1$s</string>
+    <string name="permission_location_ios">Tu ubicación se usa en este teléfono para calcular los horarios de oración y la alquibla, y encontrar mezquitas cercanas. No se envía a ningún sitio.</string>
     <string name="polar_nearest">Latitud más cercana (48,5°)</string>
     <string name="polar_none">Mostrar como no disponible</string>
     <string name="polar_rule">Cuando el sol no sale o no se pone</string>

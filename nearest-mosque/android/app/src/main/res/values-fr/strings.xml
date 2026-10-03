@@ -130,6 +130,7 @@
     <string name="pack_kind_books">Livres : %1$s</string>
     <string name="pack_kind_cities">Villes et fuseaux horaires</string>
     <string name="pack_kind_mosques">Mosquées : %1$s</string>
+    <string name="permission_location_ios">Votre position sert, sur ce téléphone, à calculer les horaires de prière et la qibla, et à trouver les mosquées proches. Elle n’est envoyée nulle part.</string>
     <string name="polar_nearest">Latitude la plus proche (48,5°)</string>
     <string name="polar_none">Afficher comme indisponible</string>
     <string name="polar_rule">Quand le soleil ne se lève ou ne se couche pas</string>

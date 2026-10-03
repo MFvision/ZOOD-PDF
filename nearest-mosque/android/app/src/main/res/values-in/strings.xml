@@ -129,6 +129,7 @@
     <string name="pack_kind_books">Buku: %1$s</string>
     <string name="pack_kind_cities">Kota dan zona waktu</string>
     <string name="pack_kind_mosques">Masjid: %1$s</string>
+    <string name="permission_location_ios">Lokasi Anda digunakan di ponsel ini untuk menghitung jadwal salat, kiblat, dan mencari masjid terdekat. Tidak dikirim ke mana pun.</string>
     <string name="polar_nearest">Lintang terdekat (48,5°)</string>
     <string name="polar_none">Tampilkan tidak tersedia</string>
     <string name="polar_rule">Saat matahari tidak terbit atau terbenam</string>

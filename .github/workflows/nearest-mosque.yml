@@ -1,0 +1,110 @@
+name: Nearest Mosque apps
+
+on:
+  push:
+    paths:
+      - "nearest-mosque/**"
+      - ".github/workflows/nearest-mosque.yml"
+  pull_request:
+    paths:
+      - "nearest-mosque/**"
+      - ".github/workflows/nearest-mosque.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nearest-mosque-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: nearest-mosque
+
+jobs:
+  shared:
+    name: Shared strings and fixtures are current
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Strings generated from shared/i18n/strings.json
+        run: python3 tools/gen_strings.py --check
+      - name: Golden fixtures regenerate identically
+        run: |
+          python3 tools/gen_fixtures.py
+          python3 tools/reference_search.py --gen
+          git diff --exit-code -- shared/fixtures
+
+  android:
+    name: Android (unit, Robolectric, screenshots, APK)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Test and assemble
+        working-directory: nearest-mosque/android
+        run: ./gradlew --no-daemon :core:test :app:testDebugUnitTest :app:recordRoborazziDebug :app:assembleDebug
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-screenshots-and-apk
+          path: |
+            nearest-mosque/android/app/build/screenshots/*.png
+            nearest-mosque/android/app/build/outputs/apk/debug/*.apk
+            nearest-mosque/android/*/build/test-results/**/*.xml
+
+  swift-linux:
+    name: NearestMosqueKit on Linux
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1"
+      - name: swift test
+        working-directory: nearest-mosque/ios/Packages/NearestMosqueKit
+        run: swift test
+
+  ios:
+    name: iOS app (Xcode, simulator build) and package tests
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - name: Select newest Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -z "$XC" ] && XC=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
+      - name: Package tests (macOS, CryptoKit path)
+        working-directory: nearest-mosque/ios/Packages/NearestMosqueKit
+        run: swift test
+      - name: Generate project
+        working-directory: nearest-mosque/ios
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Build for iOS Simulator
+        working-directory: nearest-mosque/ios
+        run: |
+          set -o pipefail
+          xcodebuild -project NearMosque.xcodeproj -scheme NearMosque \
+            -destination 'generic/platform=iOS Simulator' -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO build | tee build.log | grep -E "error:|warning: .*NearMosque|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" build.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ios-build-log
+          path: nearest-mosque/ios/build.log

@@ -1,0 +1,67 @@
+# XcodeGen spec: `xcodegen generate` (CI: .github/workflows/nearest-mosque.yml).
+name: NearMosque
+options:
+  bundleIdPrefix: sa.zood
+  deploymentTarget:
+    iOS: "18.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+packages:
+  NearestMosqueKit:
+    path: Packages/NearestMosqueKit
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: NO
+targets:
+  NearMosque:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: ../packs
+        type: folder
+        buildPhase: resources
+      - path: ../shared/content/stopwords.json
+        buildPhase: resources
+    dependencies:
+      - package: NearestMosqueKit
+        product: NMCore
+      - package: NearestMosqueKit
+        product: NMData
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: sa.zood.nearmosque
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: App/Info.plist
+        SUPPORTS_MACCATALYST: NO
+        ENABLE_PREVIEWS: YES
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Near Mosque
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleLocalizations: [en, ar, ur, tr, id, fr, es]
+        CFBundleAllowMixedLocalizations: false
+        LSRequiresIPhoneOS: true
+        ITSAppUsesNonExemptEncryption: false
+        NSLocationWhenInUseUsageDescription: Your location is used on this phone to calculate prayer times and the Qibla, and to find nearby mosques. It is not sent anywhere.
+        UILaunchScreen:
+          UIColorName: ""
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+schemes:
+  NearMosque:
+    build:
+      targets:
+        NearMosque: all
+    run:
+      config: Debug

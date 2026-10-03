@@ -157,7 +157,10 @@ class Retriever(
             var s = 0.0
             for ((t, f) in tf) s += weights.getValue(t) * idf.getValue(t) * f * (K1 + 1) / (f + K1 * (1 - B + B * dl / avgdl))
             val matched = content.count { it in tf }
-            S(c.id, c.seq, s, if (content.isEmpty()) 0.0 else matched.toDouble() / content.size, matched)
+            val coverage = if (content.isEmpty()) 0.0 else matched.toDouble() / content.size
+            // Coordination factor: passages containing more of the question's own words rank higher.
+            if (content.isNotEmpty()) s *= COORD_BASE + (1 - COORD_BASE) * coverage
+            S(c.id, c.seq, s, coverage, matched)
         }.sortedWith(compareByDescending<S> { it.score }.thenBy { it.seq })
         return scored.filter { it.score >= MIN_SCORE && (it.coverage >= MIN_COVERAGE || it.matched >= 2) }
             .take(MAX_PASSAGES)
@@ -202,6 +205,7 @@ class Retriever(
         const val MAX_PASSAGES = 5
         const val MIN_SCORE = 3.0
         const val MIN_COVERAGE = 0.5
+        const val COORD_BASE = 0.0
     }
 }
 

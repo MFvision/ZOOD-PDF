@@ -7,7 +7,8 @@
     "contextWeight": 0.3,
     "maxPassages": 5,
     "minScore": 3.0,
-    "minCoverage": 0.5
+    "minCoverage": 0.5,
+    "coordBase": 0.0
   },
   "cases": [
     {
@@ -23,13 +24,7 @@
       "referenceResult": {
         "kind": "common",
         "commonQuestionId": "wudu",
-        "passages": [
-          "quran:76:7",
-          "quran:22:67",
-          "quran:4:142",
-          "quran:21:104",
-          "quran:2:197"
-        ]
+        "passages": []
       }
     },
     {
@@ -223,11 +218,26 @@
         "kind": "passages",
         "commonQuestionId": null,
         "passages": [
+          "quran:2:255"
+        ]
+      }
+    },
+    {
+      "id": "en-short-quote",
+      "q": "neither slumber nor sleep",
+      "expect": {
+        "kind": "passages",
+        "passagesTop": "quran:2:255"
+      },
+      "referenceResult": {
+        "kind": "passages",
+        "commonQuestionId": null,
+        "passages": [
           "quran:2:255",
-          "quran:56:44",
-          "quran:75:31",
-          "quran:56:33",
-          "quran:20:107"
+          "quran:78:9",
+          "quran:51:17",
+          "quran:25:47",
+          "quran:7:97"
         ]
       }
     },
