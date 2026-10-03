@@ -10,9 +10,22 @@ public struct City: Hashable, Identifiable, Sendable {
     public let zoneId: String
     public let population: Int
 
-    /// An Arabic-script name for ar/ur interfaces when GeoNames has one.
+    /// For ar/ur interfaces a name written entirely in Arabic script (romanized mixtures such as
+    /// "kېp ټawn" are skipped), preferring spellings without Persian/Urdu letters for Arabic and with
+    /// them for Urdu; otherwise the Latin name.
     public func displayName(_ lang: String) -> String {
-        (lang == "ar" || lang == "ur") ? (arabicNames.first ?? name) : name
+        guard lang == "ar" || lang == "ur" else { return name }
+        let clean = arabicNames.filter(City.isPureArabicScript)
+        let urduStyle = clean.filter { $0.contains(where: { City.urduLetters.contains($0) }) }
+        let arabicStyle = clean.filter { !urduStyle.contains($0) }
+        return (lang == "ar" ? arabicStyle + urduStyle : urduStyle + arabicStyle).first ?? name
+    }
+
+    static let urduLetters: Set<Character> = Set("پچژگکیٹڈڑںےۃھ")
+
+    static func isPureArabicScript(_ s: String) -> Bool {
+        let letters = s.unicodeScalars.filter { CharacterSet.letters.contains($0) }
+        return !letters.isEmpty && letters.allSatisfy { (0x0600...0x06FF).contains($0.value) || (0x0750...0x077F).contains($0.value) || (0xFB50...0xFEFF).contains($0.value) }
     }
 }
 

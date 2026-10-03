@@ -210,17 +210,21 @@ struct LogoDisc: View {
     @State private var pulse = false
 
     var body: some View {
+        // The glow is a background so it never changes the disc's own size (a larger child in the
+        // ZStack would make the circles grow with it).
         ZStack {
-            Circle()
-                .fill(RadialGradient(colors: [Theme.gold.opacity(0.6), Theme.gold.opacity(0.25), .clear], center: .center, startRadius: 0, endRadius: size * 0.95))
-                .frame(width: size * 1.9, height: size * 1.9)
-                .scaleEffect(pulse ? 1.08 : 0.94)
-                .opacity(glow ? 1 : 0)
             Circle().fill(.white.opacity(0.94))
             Circle().stroke(glow ? Theme.gold : .white.opacity(0.7), lineWidth: glow ? 3 : 1.5)
             Image("LogoMark").resizable().scaledToFit().padding(size * 0.16)
         }
         .frame(width: size, height: size)
+        .background {
+            Circle()
+                .fill(RadialGradient(colors: [Theme.gold.opacity(0.6), Theme.gold.opacity(0.25), .clear], center: .center, startRadius: 0, endRadius: size * 0.95))
+                .frame(width: size * 1.9, height: size * 1.9)
+                .scaleEffect(pulse ? 1.08 : 0.94)
+                .opacity(glow ? 1 : 0)
+        }
         .shadow(color: glow ? Theme.gold.opacity(0.7) : .black.opacity(0.25), radius: glow ? 22 : 10, y: glow ? 0 : 4)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.5), value: glow)
         .onAppear {

@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -197,7 +198,7 @@ fun LogoDisc(glow: Boolean, modifier: Modifier = Modifier, size: Dp = Tokens.dis
     Box(modifier.size(size).clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
         if (glowAlpha > 0f) {
             Box(
-                Modifier.size(size * 1.9f).scale(k).alpha(glowAlpha)
+                Modifier.requiredSize(size * 1.9f).scale(k).alpha(glowAlpha)
                     .background(Brush.radialGradient(listOf(Tokens.gold.copy(alpha = 0.6f), Tokens.gold.copy(alpha = 0.25f), Color.Transparent)), CircleShape),
             )
         }

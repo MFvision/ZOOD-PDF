@@ -12,9 +12,25 @@ data class City(
     val zoneId: String,
     val population: Long,
 ) {
-    /** Name for display: an Arabic-script name for ar/ur interfaces when GeoNames has one. */
-    fun displayName(languageCode: String): String =
-        if ((languageCode == "ar" || languageCode == "ur") && arabicNames.isNotEmpty()) arabicNames.first() else name
+    /**
+     * Name for display: for ar/ur interfaces a name written entirely in Arabic script (GeoNames also
+     * carries romanized mixtures such as "kېp ټawn", which are skipped), preferring spellings without
+     * Persian/Urdu letters for Arabic and with them for Urdu; otherwise the Latin name.
+     */
+    fun displayName(languageCode: String): String {
+        if (languageCode != "ar" && languageCode != "ur") return name
+        val clean = arabicNames.filter(::isPureArabicScript)
+        val urduStyle = clean.filter { n -> n.any { it in URDU_LETTERS } }
+        val arabicStyle = clean - urduStyle.toSet()
+        return (if (languageCode == "ar") arabicStyle + urduStyle else urduStyle + arabicStyle).firstOrNull() ?: name
+    }
+
+    companion object {
+        private const val URDU_LETTERS = "پچژگکیٹڈڑںےۃھ"
+
+        fun isPureArabicScript(s: String): Boolean =
+            s.any { it.isLetter() } && s.all { !it.isLetter() || it.code in 0x0600..0x06FF || it.code in 0x0750..0x077F || it.code in 0xFB50..0xFEFF }
+    }
 }
 
 /** Offline city search over the bundled GeoNames list (sorted by population). */

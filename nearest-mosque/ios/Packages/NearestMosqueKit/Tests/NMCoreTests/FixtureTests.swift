@@ -201,6 +201,9 @@ final class DataTests: XCTestCase {
         XCTAssertEqual(idx.search("makk").first?.name, "Makkah")
         XCTAssertEqual(idx.search("مكة").first?.name, "Makkah")
         XCTAssertEqual(idx.search("İstanbul").first?.name, "Istanbul")
+        let ct = idx.search("cape town").first!
+        XCTAssertEqual(ct.displayName("ar"), "كيب تاون")
+        XCTAssertEqual(ct.displayName("ur"), "کیپ ٹاؤن")
         let tz = TimeZoneResolver(idx)
         XCTAssertFalse(tz.resolve(LatLng(-33.95, 18.47)!, deviceZone: TimeZone(identifier: "Africa/Johannesburg")).needsConfirmation)
         XCTAssertEqual(tz.resolve(LatLng(-33.95, 18.47)!, deviceZone: TimeZone(identifier: "Africa/Maputo")).zone.identifier, "Africa/Maputo")

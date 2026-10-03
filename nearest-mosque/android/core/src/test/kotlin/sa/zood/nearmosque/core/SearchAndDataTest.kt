@@ -139,6 +139,14 @@ class SearchAndDataTest {
     }
 
     @Test
+    fun cityDisplayNameSkipsRomanizedMixtures() {
+        val ct = cities.search("cape town").first()
+        assertEquals("كيب تاون", ct.displayName("ar"))
+        assertEquals("کیپ ٹاؤن", ct.displayName("ur"))
+        assertEquals("Cape Town", ct.displayName("en"))
+    }
+
+    @Test
     fun timeZoneResolution() {
         val tz = TimeZoneResolver(cities)
         val ct = tz.resolve(LatLng(-33.95, 18.47), ZoneId.of("Africa/Johannesburg"))
