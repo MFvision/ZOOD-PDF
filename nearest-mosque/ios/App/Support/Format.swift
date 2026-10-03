@@ -4,7 +4,7 @@ import NMCore
 /// Locale-aware formatting; every number, time and date the user sees goes through here.
 enum Format {
     static func prayerKey(_ e: PrayerEvent) -> String { "prayer_\(e.rawValue)" }
-    static func methodKey(_ m: Method) -> String { "method_\(m.rawValue)" }
+    static func methodKey(_ m: PrayerMethod) -> String { "method_\(m.rawValue)" }
 
     static func time(_ d: Date, zone: TimeZone, locale: Locale) -> String {
         var style = Date.FormatStyle(date: .omitted, time: .shortened, locale: locale, calendar: Calendar(identifier: .gregorian), timeZone: zone)

@@ -17,7 +17,8 @@ enum LocalAnswerer {
             let model = SystemLanguageModel.default
             switch model.availability {
             case .available:
-                return model.supportsLocale(Locale(identifier: language)) ? .available : .unavailable("language")
+                let wanted = Locale(identifier: language).language.languageCode
+                return model.supportedLanguages.contains { $0.languageCode == wanted } ? .available : .unavailable("language")
             case .unavailable(let reason):
                 return .unavailable(String(describing: reason))
             @unknown default:

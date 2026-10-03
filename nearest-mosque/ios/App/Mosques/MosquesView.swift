@@ -1,6 +1,7 @@
 import NMCore
 import NMData
 import SwiftUI
+import UIKit
 
 /// Where the list is measured from. Selecting a point never moves "you are here".
 enum SearchOrigin: Equatable { case device, prayerCity(String), selectedPoint }

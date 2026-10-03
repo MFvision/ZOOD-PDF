@@ -119,7 +119,7 @@ final class AppModel {
         return .ok
     }
 
-    func setMethod(_ m: Method) {
+    func setMethod(_ m: PrayerMethod) {
         settings.prayer.method = m
         settings.methodChosenByUser = true
         Task { await rescheduleReminders() }

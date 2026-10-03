@@ -1,5 +1,6 @@
 import NMCore
 import SwiftUI
+import UIKit
 
 /// Expanded / home header: atmospheric sky, translucent arc whose gold marker is the elapsed fraction
 /// of the current prayer period, and (expanded) the central logo disc that glows only when the phone

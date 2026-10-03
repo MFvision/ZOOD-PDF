@@ -50,7 +50,7 @@ public enum PrayerEvent: String, CaseIterable, Codable, Sendable {
 }
 
 /// Calculation conventions offered to the user; raw values match Kotlin and the fixtures.
-public enum Method: String, CaseIterable, Codable, Sendable {
+public enum PrayerMethod: String, CaseIterable, Codable, Sendable {
     case MUSLIM_WORLD_LEAGUE, UMM_AL_QURA, EGYPTIAN, KARACHI, NORTH_AMERICA, DUBAI, KUWAIT, QATAR, SINGAPORE, TURKEY, MOON_SIGHTING_COMMITTEE
 
     var adhan: CalculationMethod {
@@ -76,7 +76,7 @@ public enum HighLatRule: String, CaseIterable, Codable, Sendable { case AUTO, MI
 public enum PolarRule: String, Codable, Sendable { case UNAVAILABLE, NEAREST_LATITUDE }
 
 public struct PrayerSettings: Hashable, Codable, Sendable {
-    public var method: Method = .MUSLIM_WORLD_LEAGUE
+    public var method: PrayerMethod = .MUSLIM_WORLD_LEAGUE
     public var madhab: AsrMadhab = .SHAFI
     public var highLatitudeRule: HighLatRule = .AUTO
     public var polarRule: PolarRule = .UNAVAILABLE
@@ -85,7 +85,7 @@ public struct PrayerSettings: Hashable, Codable, Sendable {
     public var ramadanIshaExtension = true
     public var hijriAdjustmentDays = 0
 
-    public init(method: Method = .MUSLIM_WORLD_LEAGUE, madhab: AsrMadhab = .SHAFI, highLatitudeRule: HighLatRule = .AUTO, polarRule: PolarRule = .UNAVAILABLE) {
+    public init(method: PrayerMethod = .MUSLIM_WORLD_LEAGUE, madhab: AsrMadhab = .SHAFI, highLatitudeRule: HighLatRule = .AUTO, polarRule: PolarRule = .UNAVAILABLE) {
         self.method = method; self.madhab = madhab; self.highLatitudeRule = highLatitudeRule; self.polarRule = polarRule
     }
 }
@@ -161,7 +161,7 @@ public struct PrayerCalculator: Sendable {
     public static func remaining(_ now: Date, _ target: Date) -> TimeInterval { max(0, target.timeIntervalSince(now)) }
 
     /// Suggest a method for a country (ISO 3166 alpha-2). Language is never a convention.
-    public static func suggestedMethod(_ countryCode: String?) -> Method {
+    public static func suggestedMethod(_ countryCode: String?) -> PrayerMethod {
         switch countryCode?.uppercased() {
         case "SA", "YE": return .UMM_AL_QURA
         case "AE": return .DUBAI

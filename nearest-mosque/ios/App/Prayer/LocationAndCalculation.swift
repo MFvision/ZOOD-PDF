@@ -66,7 +66,7 @@ struct CalculationView: View {
             Form {
                 Section {
                     Picker(l10n.t("calculation_method"), selection: Binding(get: { model.settings.prayer.method }, set: { model.setMethod($0) })) {
-                        ForEach(Method.allCases, id: \.self) { Text(l10n.t(Format.methodKey($0))).tag($0) }
+                        ForEach(PrayerMethod.allCases, id: \.self) { Text(l10n.t(Format.methodKey($0))).tag($0) }
                     }
                     .pickerStyle(.inline)
                 } footer: { Text(l10n.t("method_suggested")) }

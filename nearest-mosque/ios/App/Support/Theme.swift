@@ -1,5 +1,6 @@
 import NMCore
 import SwiftUI
+import UIKit
 
 /// Values mirror shared/design/tokens.json.
 enum Theme {
@@ -17,10 +18,10 @@ enum Theme {
     /// Header sky for the prayer period in progress.
     static func sky(_ current: PrayerEvent?) -> [Color] {
         switch current {
-        case .fajr: return [Color(hex: 0x1B2A4A), Color(hex: 0x7A4F6D)]
-        case .sunrise, .dhuhr: return [Color(hex: 0x2F6E9A), Color(hex: 0x8CC0DE)]
-        case .asr: return [Color(hex: 0x3D6F8F), Color(hex: 0xE3B76B)]
-        case .maghrib: return [Color(hex: 0x2A1B3D), Color(hex: 0xC2504A)]
+        case .fajr: return [Color(hex: 0x1B2A4A), Color(hex: 0x5E3D56)]
+        case .sunrise, .dhuhr: return [Color(hex: 0x1E4D6E), Color(hex: 0x285A7C)]
+        case .asr: return [Color(hex: 0x2B5470), Color(hex: 0x5E4C24)]
+        case .maghrib: return [Color(hex: 0x2A1B3D), Color(hex: 0x8A3A36)]
         case .isha: return [Color(hex: 0x0E2F45), Color(hex: 0x24476B)]
         case nil: return [Color(hex: 0x081B29), Color(hex: 0x1A4D6E)]
         }

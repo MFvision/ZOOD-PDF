@@ -30,7 +30,7 @@ struct SourceCard: View {
             OriginalText(text: c.original.text, lang: c.original.lang)
             ForEach(c.allTranslations, id: \.docId) { t in
                 let td = citation.documents[t.docId]
-                Text(l10n.t("translation_by", [td?.translator, td?.year.map(String.init)].compactMap { $0 }.joined(separator: ", ")))
+                Text(l10n.t("translation_by", [td?.translator, td?.year.map { String($0) }].compactMap { $0 }.joined(separator: ", ")))
                     .font(.caption2.weight(.semibold)).foregroundStyle(Theme.accentText(scheme))
                 Text(t.text).font(.subheadline)
                     .environment(\.layoutDirection, .leftToRight)
@@ -38,7 +38,7 @@ struct SourceCard: View {
             }
             HStack {
                 Button(l10n.t("source_open")) { onRead(citation) }
-                if let u = c.url.flatMap(URL.init(string:)) { Button(l10n.t("source_original_link")) { openURL(u) } }
+                if let u = c.url.flatMap({ URL(string: $0) }) { Button(l10n.t("source_original_link")) { openURL(u) } }
             }
             .font(.subheadline)
         }

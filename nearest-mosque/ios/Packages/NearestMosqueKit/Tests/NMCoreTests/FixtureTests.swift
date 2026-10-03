@@ -48,7 +48,7 @@ final class PrayerFixtureTests: XCTestCase {
             let loc = LatLng(c["latitude"] as! Double, c["longitude"] as! Double)!
             let zone = TimeZone(identifier: c["timeZone"] as! String)!
             let date = CivilDate(iso: c["date"] as! String)!
-            var s = PrayerSettings(method: Method(rawValue: c["method"] as! String)!, madhab: AsrMadhab(rawValue: c["madhab"] as! String)!)
+            var s = PrayerSettings(method: PrayerMethod(rawValue: c["method"] as! String)!, madhab: AsrMadhab(rawValue: c["madhab"] as! String)!)
             if let r = c["highLatitudeRule"] as? String { s.highLatitudeRule = HighLatRule(rawValue: r)! }
             let sch = calc.schedule(loc, date: date, zone: zone, settings: s)
             guard let expected = c["expected"] as? [String: String] else {

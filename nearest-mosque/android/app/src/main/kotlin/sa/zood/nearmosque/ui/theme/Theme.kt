@@ -35,11 +35,11 @@ object Tokens {
 
     /** Header sky by the period that is current now (keyed by the event that started it). */
     fun sky(current: PrayerEvent?): Pair<Color, Color> = when (current) {
-        PrayerEvent.FAJR -> Color(0xFF1B2A4A) to Color(0xFF7A4F6D)
-        PrayerEvent.SUNRISE -> Color(0xFF2F6E9A) to Color(0xFF8CC0DE)
-        PrayerEvent.DHUHR -> Color(0xFF2F6E9A) to Color(0xFF8CC0DE)
-        PrayerEvent.ASR -> Color(0xFF3D6F8F) to Color(0xFFE3B76B)
-        PrayerEvent.MAGHRIB -> Color(0xFF2A1B3D) to Color(0xFFC2504A)
+        PrayerEvent.FAJR -> Color(0xFF1B2A4A) to Color(0xFF5E3D56)
+        PrayerEvent.SUNRISE -> Color(0xFF1E4D6E) to Color(0xFF285A7C)
+        PrayerEvent.DHUHR -> Color(0xFF1E4D6E) to Color(0xFF285A7C)
+        PrayerEvent.ASR -> Color(0xFF2B5470) to Color(0xFF5E4C24)
+        PrayerEvent.MAGHRIB -> Color(0xFF2A1B3D) to Color(0xFF8A3A36)
         PrayerEvent.ISHA -> Color(0xFF0E2F45) to Color(0xFF24476B)
         null -> Color(0xFF081B29) to Color(0xFF1A4D6E)
     }
