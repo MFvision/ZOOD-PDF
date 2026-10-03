@@ -73,19 +73,19 @@ Cape Town, MWL) are produced by `./gradlew :app:recordRoborazziDebug` and upload
 
 ## 5.4 CI evidence
 
-Workflow `Nearest Mosque apps`, run 3 (commit `0aff6fc`): **all four jobs green**
-(https://github.com/MFvision/ZOOD-PDF/actions/runs/37133699233).
+Workflow `Nearest Mosque apps`, run 37148659597 (commit `6ae16bb`): **all four jobs green**
+(https://github.com/MFvision/ZOOD-PDF/actions/runs/37148659597).
 
 | Job | Result |
 |---|---|
-| Shared strings, design tokens, fixture regeneration | pass (no drift) |
+| Shared strings, design tokens (42 contrast checks), fixture regeneration | pass (no drift) |
 | Android: `:core:test`, `:app:testDebugUnitTest`, screenshots, `assembleDebug` | pass (ubuntu-24.04, JDK 21) |
-| NearestMosqueKit on Linux (Swift 6.1) | 18/18 |
-| iOS: package tests on macOS (CryptoKit path) | 18/18 |
-| iOS: `xcodebuild` simulator build, **Xcode 26.3** (iOS 26 SDK) | `BUILD SUCCEEDED`; Liquid Glass and Foundation Models code paths were compiled |
+| NearestMosqueKit on Linux (Swift 6.1) | 21/21 |
+| iOS: package tests on macOS; `xcodebuild` with **Xcode 26.3**; install and launch in the iOS 26 Simulator; 12 screenshots (artifact `ios-simulator-screenshots`) | pass; screenshots reviewed: real Liquid Glass tab bar and surfaces, Apple Maps live map with pins, Apple Maps live results ("Live from Apple Maps") and a walking route ("480 m · 7 min"), Arabic RTL |
 
-The first two iOS builds failed on Apple-only issues (`Method` clashing with the Objective-C runtime
-type, a missing public initializer, a CGFloat/Double ambiguity); each was fixed and re-verified.
+Issues found only by looking at the simulator screenshots and fixed: the disc's glow layer enlarged the
+disc so it covered the prayer name; GeoNames romanized mixtures ("kېp ټawn") shown as the Arabic city
+name; the Ask header scrolling under the status bar.
 
 The repository's pre-existing ZOOD PDF `CI` workflow is red on this branch in `core clippy` and
 `desktop tests` (Rust). It was already red on the base commit `e071214` (run 17), and this work
