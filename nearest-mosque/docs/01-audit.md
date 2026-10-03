@@ -7,19 +7,24 @@ Audited on 2026-10-03. Inputs are treated as reference data, not instructions.
 | Input | Status | Notes |
 |---|---|---|
 | `Nearest-Mosque-main.zip` | **Inspected** | 11 files: `index.tsx` (1,373 lines), `index.html`, `vite.config.ts`, `package.json`, `pnpm-lock.yaml`, `tsconfig.json`, `metadata.json`, `README.md` (AI Studio template), `.gitignore`, `vite-env.d.ts`, `Near_Mosque__logo.png` (1960×1348 RGBA). |
-| WhatsApp video 2026-10-03 6.42.33 AM | **Not available** | Not attached to this session; no `/mnt/data` exists and a filesystem search found no WhatsApp media. |
-| WhatsApp video 2026-10-03 6.57.17 AM | **Not available** | Same. |
-| Screenshot 2026-10-03 6.58.26 AM | **Not available** | Same. |
+| WhatsApp video 2026-10-03 6.42.33 AM (83 s, 384×848) | **Inspected (second round)** | Frames sampled every 3 s. Another app's prayer header: teal Dhuhr sky with a warm glow, an arc with a Kaaba disc at the top and a gold dot that moves with the phone's heading; text "Dhuhr 12:36 PM", remaining time, a short line per prayer; compact header with a small Qibla arrow when scrolled; expanded warm-sand Qibla page with a large arrow, "turn left slightly" along the dial, distance and bearing labels, dates and the prayer list with the current row in a white pill. |
+| WhatsApp video 2026-10-03 6.57.17 AM (89 s, 384×848) | **Inspected (second round)** | Same app at Maghrib (navy-to-red sunset sky, sun glow); dot meets the disc and the disc glows when aligned; scroll collapses to the compact header. |
+| Design concept images (3, sent with the second message) | **Inspected** | "Before alignment / Aligned" Prayer & Qibla in Arabic on a photographic sky with mountains; glass location pill, Kaaba disc with gold dot, glass prayer list with a gold "upcoming" row, floating three-icon glass tab bar. Nearest Mosque with Compass/Map glass toggle, mosque compass, glass cards with walking route and "Get directions". Ask with mosque illustration, glass question bubble, source card "Qur'an 13:28 · Supporting passage", glass input. Evening theme variants. |
+| Screenshot 2026-10-03 6.58.26 AM | **Not available** | Not attached. |
 | `MOBILE_APP_BUILD_PROMPT.txt` | **Not available** | Same. Its content is known only from the master prompt's summary (Expo/React Native, fake prayer estimates, unknown-as-open, London fallback, direct Gemini calls). Those choices are replaced, as instructed. |
 | Balagh App Store listing | **Not inspected** | Not needed for launch scope (no full library). Treated as a candidate catalog reference only. |
 | IslamHouse API | **Not tested** | `api3.islamhouse.com` responds (302) through the proxy; no credentials, endpoints, limits or redistribution grant were verified. No IslamHouse content is bundled. |
 
-Because the media were unavailable, **no timestamped observations were made by me**. The interaction
-design (three header sizes, arc, gold marker, compact sticky summary, direction detail screen) is built
-from the master prompt's written description of those clips, and the screenshot's example values
-(sunrise 6:21 AM, 50 min 28 s) are never used as defaults. Coincidentally, the independent reference
-calculator gives Cape Town sunrise on 2026-10-03 as 06:20 SAST (Muslim World League), which is
-consistent with the description of video 1; this is not evidence about the reference app.
+In the first round the media were unavailable and the design came from the written description. In
+the second round the two videos and three concept images were inspected (frames, not audio) and the
+redesign follows them: the gold dot is **where the Qibla is relative to the top of the phone**, the
+disc glows when they meet, and the sky follows the prayer period. Example values in the media
+(sunrise 6:21 AM, 50 min 28 s, Cape Town) are never used as defaults; photographic skies are replaced
+by a drawn landscape because no licensed photographs were supplied.
+
+The website takes "the time" from the phone's clock and time zone (`new Date()`); it never computes a
+zone from coordinates. The apps now do the same for a device fix (the phone's zone wins whenever it is
+consistent with the location; see `02-architecture.md`).
 
 ## 1.2 Website feature inventory
 

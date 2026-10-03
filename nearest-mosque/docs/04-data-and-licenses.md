@@ -28,8 +28,20 @@ shown.
 | IslamHouse / Balagh catalog | API reachable but not tested; no credentials, limits, stable-ID or redistribution terms verified; Balagh's curation not inspected | Written permission per item/collection for offline redistribution, indexing and embedding; then `tools/build_*_pack.py` style ingestion with an inventory report (discovered / downloadable / indexed / failed / unsupported) |
 | Hadith collections (Arabic and translations) | Digital editions carry their own terms | A licensed edition with stable numbering |
 | Other Quran translations (ur, tr, id, fr, es) on Tanzil | Tanzil marks them non-commercial; translators/publishers hold rights | Permission from each translator/publisher |
-| Street-map tiles | `tile.openstreetmap.org` forbids offline packs; Google Places requires a Google map and restricts caching | A self-hosted or licensed vector tile extract (e.g. Protomaps/OpenMapTiles build) with style, glyphs and sprites; MapLibre Native |
+| Offline street-map tiles | Live maps now ship (below); offline map packs need a licensed or self-built extract | A self-hosted vector tile extract (Protomaps/OpenMapTiles build) with style, glyphs and sprites for MapLibre |
+| Google Places (the website's mosque source) | Needs a billed API key; shipping an unrestricted key in an app is unsafe, and Places content must be shown on a Google map with caching limits | A key restricted to the app's package/bundle ID and signing certificate, a server proxy if usage must be controlled, Google Maps SDK for display |
 | Time-zone boundaries | Not needed for city selection; nearest-city + confirmation covers arbitrary points | `timezone-boundary-builder` (ODbL) pack if exact boundaries are wanted |
+
+## 4.2b Online services used (live map and live results)
+
+| Service | Platform | Terms that matter | What is sent |
+|---|---|---|---|
+| Apple Maps (MapKit map, MKLocalSearch, MKDirections walking routes) | iOS | Free with the Apple Developer Program; results shown on Apple's map; Apple attribution is drawn by MapKit | Map area being viewed; search region centred on a 0.01° rounded point; route endpoints when a walking route is requested |
+| OpenFreeMap (`tiles.openfreemap.org`, "dark" style) | Android | Free, no key, no usage limits stated; attribution "OpenFreeMap © OpenMapTiles Data from OpenStreetMap" shown in the app | Tile requests for the area being viewed |
+| OpenStreetMap Overpass API (`overpass-api.de`) | Android | Public instance for light use; heavy production traffic should use a self-hosted or commercial instance; data ODbL | One query per search: a 0.01° rounded centre and a radius |
+
+None of these receive an account, device ID, prayer settings or questions. Online search can be
+switched off in Settings; the map images are only loaded when the Map view is open.
 
 ## 4.3 Software dependencies
 
@@ -44,8 +56,11 @@ shown.
 | kotlinx-serialization / coroutines | 1.9.0 / 1.10.2 | Apache-2.0 | Android |
 | Robolectric, Roborazzi (tests only) | 4.16.1 / 1.52.0 | MIT / Apache-2.0 | Android tests |
 | pyosmium (tools only) | 4.3.1 | BSD-2-Clause | pack building |
+| MapLibre Native Android | 13.0.2 | BSD-2-Clause | Android (live map) |
+| MapKit | system | Apple SDK | iOS (live map, search, routes) |
 
-No analytics, crash reporting, ads or network SDKs are included.
+No analytics, crash reporting or ads are included. The only network code is the live map and live
+mosque search described in 4.2b.
 
 ## 4.4 Brand assets
 

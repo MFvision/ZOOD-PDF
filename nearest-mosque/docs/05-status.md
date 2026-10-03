@@ -1,6 +1,6 @@
 # 5. Status, test results and limitations
 
-Snapshot: 2026-10-03, first complete offline flow. Not store-ready.
+Snapshot: 2026-10-03, second increment (Liquid Glass redesign, onboarding, live map and live results, phone time zone). Not store-ready.
 
 ## 5.1 Feature status
 
@@ -9,11 +9,16 @@ Legend: **Done** = implemented and covered by automated tests or rendered screen
 
 | Area | Android | iOS | Evidence / notes |
 |---|---|---|---|
-| Exactly three tabs + gear for everything else | Done | Built | Android screenshots; iOS `TabView` with three `Tab`s |
+| Exactly three tabs + gear for everything else | Done | Done | Android screenshots; iOS 26 simulator screenshots (system Liquid Glass tab bar) |
+| Quiet Glass design: sky per prayer period, glass surfaces, floating glass tab bar | Done | Done | iOS 26 simulator screenshots (real Liquid Glass); Android Robolectric screenshots (drawn glass) |
+| Animated onboarding (6 pages, language + location setup, replay from Settings) | Done | Done | Screenshots of each page on both platforms; Reduce Motion shows still frames |
+| Live street map | Built | Done | iOS: Apple Maps map rendered in the simulator with mosque pins. Android: MapLibre + OpenFreeMap; compiles and is wired, not rendered in tests (native GL) |
+| Live mosque results merged with downloaded data | Done | Done | Parser/merge tested in both cores (shared Overpass fixture); iOS simulator showed Apple Maps results and a walking route; Android Overpass client not exercised against the live service here (blocked by this environment's proxy) |
+| Mosque compass (bearing + distance per mosque, turns with heading) | Done | Done | Screenshots on both platforms (north-up; live heading needs a device) |
 | Seven languages, device default + persistent override, RTL (ar, ur) | Done | Built | 206 keys × 7 from one source; Android ar/ur/tr screenshots; iOS override via String Catalog bundles. Non-en/ar translations are drafts needing native review |
 | City picker with IANA zone, offline | Done | Built | 13,090 cities; search in Latin and Arabic script tested (both) |
 | Device location (foreground, at point of use), no default city | Done | Built | Android `LocationManager`; iOS Core Location. Not tested on hardware |
-| Time zone for device fix (nearest city, confirmation when uncertain) | Done | Done | Tests in both cores |
+| Time zone for device fix: phone's zone when consistent (like the website), city zone + confirmation only for a clear mismatch near a city | Done | Done | Tests in both cores (alias, at sea, traveller, no phone zone) |
 | Prayer times (11 methods, Asr, high-latitude rule, offsets) | Done | Done | 23 golden cases vs independent NOAA reference: worst deviation 84 s (Adhan rounds to the minute), tolerance 120 s, both platforms run the same file |
 | Date line, DST, midnight Isha, zero coordinates | Done | Done | Apia/Kiritimati, London/NY/Auckland DST, Oslo middle-of-night, (0,0) |
 | Polar day/night: unavailable unless the user picks nearest-latitude (48.5°) | Done | Done | Tromsø fixtures; UI card + estimated badge |
@@ -24,7 +29,6 @@ Legend: **Done** = implemented and covered by automated tests or rendered screen
 | Live compass (true heading), shortest-path rotation, smoothing, hysteresis alignment + haptic, bearing-only fallback | Built | Built | Math unit-tested; sensor paths need physical devices (see 5.3) |
 | Reminders (opt-in per prayer, bounded horizon, reboot/time-change rebuild) | Built | Built | Android 7 days of exact/inexact alarms; iOS ≤ 60 pending. Not tested on devices |
 | Mosque packs: offline nearest/list, straight-line distance, dedupe, distinct empty states | Done | Done | Robolectric (Room) and GRDB tests: found / not-downloaded / no-records; ranking deterministic |
-| Map/List toggle | Partial | Partial | "Map" is an offline direction-and-distance plot (no street tiles). Licensed offline vector tiles + MapLibre are next |
 | Mosque details, call/website/directions hand-off, favorites surviving pack updates | Done | Built | Favorites survival tested on both data layers |
 | Opening hours never shown as open | Done | Done | Status always unknown; raw tagged hours shown with source date |
 | Search races (generation tokens) | Done | Done | Unit-tested; UIs drop stale results |
@@ -44,11 +48,11 @@ Legend: **Done** = implemented and covered by automated tests or rendered screen
 | Suite | Where | Result |
 |---|---|---|
 | Python references (`gen_fixtures.py`, `reference_search.py --gen`) | Linux | 23 prayer, 14 Qibla, 12 normalization, 20 retrieval cases; 0 failures |
-| Android `:core:test` | Linux (local) + CI | 25 tests, 0 failures |
-| Android `:app:testDebugUnitTest` (Robolectric: Room/FTS4 install, rollback, retrieval parity, empty states, favorites; 10 screenshot tests) | Linux (local) + CI | 17 tests, 0 failures |
-| Android `:app:assembleDebug` | Linux (local) | `app-debug.apk` 16 MB |
-| `NearestMosqueKit` `swift test` (NMCore 13, NMData/GRDB FTS5 5) | Linux Swift 6.1 (local + CI) and macOS (CI) | 18 tests, 0 failures |
-| iOS app `xcodebuild` (simulator, unsigned) | GitHub macOS runner, Xcode 26.3 | BUILD SUCCEEDED |
+| Android `:core:test` (adds online parser/merge and time-zone cases) | Linux (local) + CI | 28 tests, 0 failures |
+| Android `:app:testDebugUnitTest` (Robolectric data layer + 16 screenshot tests incl. 6 onboarding) | Linux (local) + CI | 23 tests, 0 failures |
+| Android `:app:assembleDebug` | Linux (local) | `app-debug.apk` 76 MB (MapLibre native libraries for all ABIs; a Play bundle splits per device) |
+| `NearestMosqueKit` `swift test` (adds online parser/merge and time-zone cases) | Linux Swift 6.1 (local + CI) and macOS (CI) | 21 tests, 0 failures |
+| iOS app `xcodebuild` and launch in the iOS 26 Simulator (iPhone, Xcode 26.3) | GitHub macOS runner | Builds, installs, launches; screenshots of onboarding, Prayer (en/ar), compass, Mosques (compass, live map), Ask (en/ar) |
 | Strings / fixtures / tokens drift | CI | pass |
 
 Screenshots (Robolectric, rendered from the real database and calculations at 2026-10-03 05:30 SAST,
@@ -59,8 +63,10 @@ Cape Town, MWL) are produced by `./gradlew :app:recordRoborazziDebug` and upload
 * **No physical device or emulator testing** on either platform (this environment has no KVM and no
   Mac). Location fixes, compass accuracy, magnetic interference, haptics, notifications/alarms
   across reboot and Doze, Focus modes, performance, battery and memory are unmeasured.
-* iOS UI has been compiled in CI (Xcode 26.3) but never launched: no simulator or device run, so iOS
-  layout, Liquid Glass rendering and Foundation Models answers are unobserved.
+* iOS now runs in the iOS 26 Simulator in CI (screenshots reviewed), but not on a physical iPhone:
+  real compass heading, haptics, notifications and Foundation Models answers are unobserved.
+* Android's live map (MapLibre) and the Overpass request were not exercised here: Robolectric cannot
+  render native GL, and this environment's proxy blocks the Overpass host.
 * VoiceOver/TalkBack, Dynamic Type at accessibility sizes, Reduce Motion/Transparency: implemented,
   not audited with assistive technology.
 * Translations other than English and Arabic are machine-assisted drafts.
@@ -87,7 +93,8 @@ touches no Rust or files those steps read.
 
 ## 5.5 Known limitations and next increments
 
-1. Street map with licensed offline vector tiles (MapLibre) and regional pack downloads with resume.
+1. Offline street-map packs (self-built vector tiles) and regional pack downloads with resume;
+   Android walking routes (needs a routing service); optional Google Places with a restricted key.
 2. More mosque regions; measured coverage reports per region; congregation timetables as separate,
    dated data.
 3. Book ingestion pipeline (PDF/EPUB/HTML, OCR review), licensed hadith and translations, embeddings,

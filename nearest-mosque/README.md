@@ -4,13 +4,19 @@ A native rebuild of the Nearest Mosque website with exactly three tabs:
 
 * **Prayer & Qibla** — calculated prayer times (Adhan), countdown, Hijri date, true-north Qibla with a
   live compass when the phone has a reliable heading, reminders.
-* **Nearest Mosque** — nearest known mosque and a list from installed regional packs, offline; details,
-  favorites, hand-off to a maps app for directions.
+* **Nearest Mosque** — a mosque compass and a live street map (Apple Maps on iOS, OpenFreeMap +
+  MapLibre on Android); downloaded regional packs work offline and, when online, live results (Apple
+  Maps search / OpenStreetMap) fill in other areas; glass cards, walking routes on iOS, directions.
 * **Ask AI** — "Ask anything about Islam": answers that quote the books on the phone, with verse
   references and the original text; common questions in seven languages; on-device writing on
   supported iPhones (iOS 26), cited search everywhere else. No cloud calls.
 
-No account, no backend, no analytics. Works without a network from first launch.
+Design: Quiet Glass — a drawn sky for the current prayer period with Apple Liquid Glass on iOS 26
+(material fallback on iOS 18–25) and matching drawn glass on Android; an animated six-page welcome
+tour on first launch.
+
+No account, no backend, no analytics. Works without a network from first launch; the live map and
+live mosque results are the only network features and send only an approximate (≈1 km) location.
 
 | Folder | What |
 |---|---|
@@ -27,7 +33,7 @@ No account, no backend, no analytics. Works without a network from first launch.
 
 ```bash
 cd android
-./gradlew :core:test :app:testDebugUnitTest   # 42 tests incl. Robolectric + screenshots
+./gradlew :core:test :app:testDebugUnitTest   # 51 tests incl. Robolectric + screenshots
 ./gradlew :app:recordRoborazziDebug           # PNGs in app/build/screenshots
 ./gradlew :app:assembleDebug                  # app/build/outputs/apk/debug/app-debug.apk
 ```
@@ -49,7 +55,8 @@ python3 tools/check_tokens.py         # contrast + theme parity
 python3 tools/gen_fixtures.py && python3 tools/reference_search.py --gen
 ```
 
-CI: `.github/workflows/nearest-mosque.yml` runs all of the above, including an Xcode simulator build.
+CI: `.github/workflows/nearest-mosque.yml` runs all of the above, builds the iOS app with Xcode 26,
+launches it in the iOS Simulator and uploads screenshots (artifact `ios-simulator-screenshots`).
 
 ## Status
 

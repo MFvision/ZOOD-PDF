@@ -1,45 +1,56 @@
-# 6. Design direction
+# 6. Design: Quiet Glass
 
-All three concepts keep the same three tabs (Prayer & Qibla, Nearest Mosque, Ask AI) and the gear for
-everything else. They differ in layout emphasis, not structure.
+The design follows the user's reference videos and concept images (see `01-audit.md`): an atmospheric
+sky for the current prayer period, Liquid Glass surfaces, and the Qibla folded into the prayer header.
 
-| | Quiet Glass (**implemented**) | Daily Focus | Learn Simply |
-|---|---|---|---|
-| Prayer & Qibla | Atmospheric sky header keyed to the current prayer period, translucent arc with gold time-progress marker, central logo disc that glows when facing the Qibla; content in opaque cards | High-contrast summary bar (next prayer, countdown, Qibla bearing) and six large rows; no imagery | Same as Daily Focus with a short "what is this prayer" line per row |
-| Nearest Mosque | Nearest-known card with one Directions button, then a plain list; plot behind a toggle | Dense list with distance first | Same as Quiet Glass |
-| Ask AI | Large heading, chips, answer cards with source cards | Search-box-first, answers as compact rows | Very large prompts, reading-led answer with generous type, guided "learn step by step" flows |
-| Chrome | Liquid Glass on iOS 26 (tab bar, floating buttons, input field); materials before; Compose translucent header only | Opaque system chrome | Opaque system chrome |
+## Sky
 
-**Taken from the others:** Daily Focus's high-contrast schedule rows (next prayer highlighted, tabular
-digits, 48-pt rows) and Learn Simply's large Ask AI prompts, beginner wording and source cards.
+Seven skies (night, Fajr, sunrise, day, Asr, Maghrib, Isha) in `shared/design/tokens.json`: top, mid,
+horizon glow and ground/lake colours. The landscape is drawn, not photographed: gradient, stars at
+night, slow clouds, a horizon glow behind two mountain ridges, a lake with the glow's reflection, and a
+mosque skyline on the Ask tab. The horizon height differs per tab (0.64 Prayer, 0.42 Mosques, 0.30 Ask)
+and glides when switching tabs on Android. `tools/check_tokens.py` checks white text on every stop,
+including the glow blended in at its maximum where text can sit (42 checks).
 
-## Interaction states (from the written description of the reference clips)
+## Glass
 
-The clips themselves were not available to inspect (see `01-audit.md`). Implemented states:
+| | iOS | Android |
+|---|---|---|
+| Surfaces | Apple Liquid Glass (`glassEffect`, `GlassEffectContainer`) on iOS 26, tinted with the sky's ground colour at 35%; `ultraThinMaterial` with a specular rim on iOS 18–25; solid surface with Reduce Transparency | Drawn glass: translucent tint, top-to-bottom sheen, specular rim brighter at the top-left, soft shadow (the backdrop is a smooth procedural sky, so a blur pass adds nothing visible and keeps every API level identical) |
+| Tab bar | System Liquid Glass tab bar (minimizes on scroll, iOS 26) | Floating glass capsule with a gold bubble on the selected tab |
+| Buttons | `.glass` and gold `.glassProminent` (dark label: white on gold is under 4.5:1) | Same shapes and colours |
+| Appearance | Always dark scheme (the app always sits on a sky) | Same |
 
-1. **Home header** (236 pt + status bar): next prayer name, time, live countdown, arc with gold marker.
-2. **Expanded header** (360 pt): adds the central disc; opened with the chevron (explicit control) and
-   closed with it again; animated with a spring (response 0.42, damping 0.86), instant under Reduce
-   Motion.
-3. **Compact sticky summary**: appears when the header has scrolled away (scroll-linked, reversible);
-   shows event, time, countdown and a small Qibla indicator; its chevron scrolls back and expands.
-4. **Qibla detail**: full-screen dial; with a valid true heading the ring turns so N points north and
-   the gold arrow sits at the Qibla bearing; guidance "Turn right 35°" / "Facing the Qibla"; one light
-   haptic on entering alignment (≤ 5°, leaves at > 8°, only with accuracy ≤ 20°). Without heading it is
-   a labelled north-up diagram.
+## Interaction states
 
-The gold marker means **elapsed time in the current prayer period** (explicitly labelled for screen
-readers), not sun position; the disc glow means **alignment**, not decoration.
+1. **Home** — the arc: brand disc at the top, gold dot at the Qibla's direction relative to the top of
+   the phone, a white trail from the disc to the dot; next prayer, time (60 pt light), remaining time
+   ("7 hr, 5 min, 32 sec left") and guidance ("Turn the phone toward the Qibla").
+2. **Aligned** — dot under the disc (enter ≤ 5°, leave > 8°, accuracy ≤ 20°), disc glows and pulses,
+   gold arcs either side of the disc, "You're facing the Qibla", one success haptic.
+3. **No live heading** — the arc is north-up ("N" under the disc), the dot sits at the true bearing,
+   and the text says so; never a fake live arrow.
+4. **Compact** — scrolling past the arc pins a glass capsule with prayer, time, remaining time, a
+   small Qibla arrow and a button back to the top.
+5. **Full compass** — on the sky: glass dial turning with the heading, Kaaba at the Qibla bearing with
+   a gold line from the centre, guidance, bearing and distance chips, accuracy.
+
+## Onboarding
+
+Six pages on the sky with glass controls (Skip, Back, page dots, Next / Get started): welcome (logo
+disc with expanding rings), prayer times (sun travelling the arc, the active prayer highlighting),
+Qibla (dot travelling to the disc, then the glow), nearest mosque (pins dropping, a dashed route to the
+nearest), Ask (question bubble, typing dots, a source card rising), and setup (language chips, use my
+location / search a city, online-search disclosure). With Reduce Motion / animations off each
+illustration shows its final still frame and no animation runs.
 
 ## Accessibility
 
 * Visible labels on all three tabs; 44 pt (iOS) / 48 dp (Android) minimum targets.
-* Dynamic Type / font scale: no fixed-height text containers; the header name scales down before
-  truncating.
-* VoiceOver/TalkBack: the header is one element ("Dhuhr at 12:36 PM, in 7:05:32"); compass guidance
-  is a polite live region; reminder bells announce on/off per prayer; decorative art hidden.
-* Reduce Motion: springs replaced by instant updates (dial, header). Reduce Transparency (iOS): glass
-  becomes solid secondary background.
-* RTL: Arabic and Urdu mirror layout and navigation; compass, plot and arc geometry do not mirror;
-  data strings (Latin names/addresses) take their own direction (screenshots in `05-status.md`).
-* Colour: navy `#1A4D6E` on white 8.6:1; gold text uses `#8A6A1C` (4.9:1 on white) in light mode.
+* Dynamic Type / font scale: no fixed-height text containers; the big time scales down before truncating.
+* VoiceOver/TalkBack: the next prayer is one header element ("Dhuhr at 12:36 PM, in 7:05:32");
+  guidance is a polite live region; decorative art (sky, disc, illustrations) is hidden.
+* Reduce Motion: springs become instant, loops stop. Reduce Transparency (iOS): glass becomes solid.
+* RTL: Arabic and Urdu mirror layout and navigation; compass, arc, radar and map geometry do not
+  mirror; data strings (Latin names/addresses) keep their own direction.
+* Colour: white text checked on every sky; gold `#D4A843` used for accents and large text only.

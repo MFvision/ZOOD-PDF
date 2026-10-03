@@ -58,10 +58,12 @@ Platform adapters: LocationService, HeadingService, NotificationScheduler,
 | `PrayerLocation` (name, lat, lng, IANA zone, source = city / device) | City picker or "Follow my location" | prayer times, Qibla | map selection |
 | `SearchCenter` | device position, prayer city, or "Search this area" | mosque list ordering | — |
 
-Time zone: a picked city carries its own IANA zone. For a device fix, `TimeZoneResolver` takes the zone of
-the nearest bundled city; if that city is more than 150 km away, or the zone differs from the phone's
-zone while within 30 km of a zone change, the user is asked to confirm. The phone's zone is never
-assumed for a remotely selected city.
+Time zone: a picked city carries its own IANA zone. For a device fix, `TimeZoneResolver` uses **the
+phone's own zone** (set by the network, as the website relies on) whenever it is consistent with the
+location: same offsets as the nearest bundled city, far from any city (sea, desert), or more than 30 km
+from it (border band). Only when the phone is clearly on another zone than a city within 30 km (a
+traveller with a manual clock) is the city's zone used, and the user is asked to confirm. The phone's
+zone is never assumed for a remotely selected city. Tested in both cores.
 
 ## 2.5 Prayer calculation contract
 
@@ -133,15 +135,22 @@ answers.
 
 ## 2.9 Screens (exactly three tabs)
 
-1. **Prayer & Qibla** — collapsing header (expanded arc ⇄ home ⇄ compact sticky summary with event,
-   countdown and a small Qibla indicator; explicit expand/collapse button), city and method row,
-   Qibla card (bearing, distance, live dial or north-up diagram), today's six rows with reminder bells,
-   Gregorian + Hijri date. Detail sheets: city picker, calculation settings, full-screen compass.
-2. **Nearest Mosque** — nearest known mosque card (one primary Directions button), Map/List toggle,
-   list with straight-line distance, detail sheet (call, website, directions, favorite, source/date,
-   hours state), favorites filter, "Search this area" on the plot.
-3. **Ask AI** — "Ask anything about Islam", large field, Common questions chips, conversation with
-   answer cards and source cards, reader sheet (passage + surrounding verses offline + original link).
+1. **Prayer & Qibla** — on the sky for the current prayer period: glass location pill and gear; the
+   Qibla arc (brand disc at the top, gold dot = where the Qibla is relative to the top of the phone,
+   disc glows when aligned; north-up with the bearing when there is no live heading) with the next
+   prayer, time, remaining time and guidance inside; bearing and distance chips; glass schedule with
+   the upcoming row in gold and reminder bells; dates and method card; compact glass bar when
+   scrolled. Detail screens: city picker, calculation settings, full-screen compass.
+2. **Nearest Mosque** — Compass | Map glass toggle: a mosque compass (each mosque at its bearing and
+   distance, turning with the phone, "Mosque ahead") or the live street map with pins and "Search this
+   area"; glass cards (nearest first, straight-line distance, walking route on iOS, Directions); detail
+   sheet (call, website, directions, favorite for downloaded records, source/date, hours state);
+   favorites filter. Downloaded data plus optional live results.
+3. **Ask AI** — mosque skyline on the horizon, "Ask anything about Islam", glass common-question
+   chips, glass question bubbles, answer and source cards, glass input, reader sheet.
+
+First launch shows a six-page animated tour (welcome, prayer times, Qibla, nearest mosque, Ask, setup);
+it can be replayed from Settings.
 
 The gear button (top trailing on every tab) opens Settings: language, location, prayer calculation,
 reminders, Downloads (installed packs, import, restore), Sources & licenses, Privacy, About.

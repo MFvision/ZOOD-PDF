@@ -12,7 +12,10 @@ always opens, and is useful, with neither.
 | Current position | Location permission + GNSS/network fix | **Yes** (GNSS needs sky view, not data) | Manual city; position age and accuracy are shown. |
 | Live Qibla compass | Magnetometer + accelerometer/gyro (Android rotation vector; iOS Core Location heading) | **Yes** | Clearly labelled north-up bearing diagram, never a fake live arrow. |
 | Nearest mosques | An installed regional pack covering the search point | **Yes, after the pack is installed** | "This area isn't downloaded" with the list of installed areas. |
-| Map background (street map) | Licensed tiles | Not in this increment | The offline direction-and-distance plot and the list work everywhere a pack exists. |
+| Live mosque results (optional, on by default, disclosed in onboarding and Settings) | Internet; Apple Maps search (iOS) or OpenStreetMap Overpass (Android); only a centre rounded to 0.01° (~1 km) is sent | No | "You're offline. Showing downloaded mosques only." Downloaded records always win over online duplicates (60 m). |
+| Mosque compass (direction and distance to each mosque) | Location + heading sensors | **Yes** | North-up when there is no live heading. |
+| Live street map | Internet for map images: Apple Maps (iOS, MapKit), OpenFreeMap vector tiles (Android, MapLibre) | No | Pins and the list stay; the compass view needs no map. |
+| Walking route and time (iOS) | Internet (Apple Maps directions) | No | Straight-line distance only. |
 | Turn-by-turn navigation | External maps app + its road data | **Outside this app's guarantee** | The app opens Apple Maps / Google Maps / any `geo:` handler. |
 | Call a mosque / open its website | Telephony / internet | No (website) | Buttons shown only when the record has the field. |
 | Ask AI: cited search, common questions, reader | Installed book pack (starter pack bundled) | **Yes, always** | "I couldn't find this in your books" — never a guessed answer. |
@@ -22,11 +25,12 @@ always opens, and is useful, with neither.
 | Reminders | Notification permission (Android 13+), exact-alarm access (Android 12+) | **Yes** | Bounded horizon (iOS: 64 pending notifications ≈ 10 days of 6 reminders; Android: 7 days, rescheduled on boot/app open). |
 
 ## First launch without network
-1. App opens in the best supported device language (or the saved override).
+1. App opens in the best supported device language (or the saved override) with the animated
+   welcome tour; its last page sets language and location (both work offline).
 2. Prayer & Qibla asks to **choose a city** or **use my location**; both work offline.
 3. Times, countdown, Qibla bearing and (if sensors exist) the live compass work immediately.
 4. Nearest Mosque works where a bundled pack covers the point (Cape Town, Cairo, London in this build);
-   elsewhere it says the area isn't downloaded.
+   elsewhere it says the area isn't downloaded. With internet, live results fill in other areas.
 5. Ask AI answers from the bundled Quran + Pickthall pack with verse citations and the common questions.
 
 ## Provisioning
