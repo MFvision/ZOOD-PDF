@@ -1,0 +1,49 @@
+[
+  {
+    "id": "quran-ar-tanzil-simple",
+    "kind": "scripture",
+    "title": {
+      "en": "The Holy Quran (Arabic text)",
+      "ar": "القرآن الكريم"
+    },
+    "edition": "Tanzil Quran Text (Simple), version 1.1",
+    "publisher": "Tanzil Project",
+    "language": "ar",
+    "url": "https://tanzil.net/",
+    "license": {
+      "id": "CC-BY-3.0-verbatim",
+      "name": "Tanzil terms: CC BY 3.0, verbatim copies only",
+      "url": "https://tanzil.net/docs/text_license",
+      "attribution": "Quran text: Tanzil Project (tanzil.net)"
+    },
+    "retrievedAt": "2026-10-03",
+    "sourceSha256": "c8c2ea9e004cf3f4b7afc5ba00de859556f4ed09bd9cf5d1bc79e877406ef678",
+    "citation": "verse",
+    "textType": "selectable"
+  },
+  {
+    "id": "quran-en-pickthall",
+    "kind": "translation",
+    "title": {
+      "en": "The Meaning of the Glorious Koran",
+      "ar": "ترجمة معاني القرآن (بكثال)"
+    },
+    "translator": "Mohammed Marmaduke William Pickthall",
+    "year": 1930,
+    "edition": "Tanzil en.pickthall (last updated 2010-09-04)",
+    "publisher": "Tanzil Project (digitization)",
+    "language": "en",
+    "translationOf": "quran-ar-tanzil-simple",
+    "url": "https://tanzil.net/trans/en.pickthall",
+    "license": {
+      "id": "PD-work+Tanzil-noncommercial",
+      "name": "Public-domain translation; Tanzil digitization for non-commercial use",
+      "url": "https://tanzil.net/trans/",
+      "attribution": "Translation: M. M. Pickthall (1930), via tanzil.net"
+    },
+    "retrievedAt": "2026-10-03",
+    "sourceSha256": "4aabbfa9d96796f5a6b0217d2c39dce1a3084f772bf6f2650e37082a774e3cc7",
+    "citation": "verse",
+    "textType": "selectable"
+  }
+]

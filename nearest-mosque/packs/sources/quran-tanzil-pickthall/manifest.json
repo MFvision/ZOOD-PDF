@@ -1,0 +1,53 @@
+{
+  "id": "sources.quran-tanzil-pickthall",
+  "kind": "sources",
+  "schemaVersion": 1,
+  "version": 1,
+  "title": {
+    "en": "Quran with English translation (Pickthall)",
+    "ar": "القرآن الكريم مع ترجمة إنجليزية (بكثال)"
+  },
+  "languages": [
+    "ar",
+    "en"
+  ],
+  "recordCount": 6236,
+  "source": {
+    "name": "Tanzil Project",
+    "url": "https://tanzil.net/",
+    "builtAt": "2026-10-03T14:25:50Z"
+  },
+  "license": {
+    "id": "mixed",
+    "name": "See documents.json",
+    "url": "https://tanzil.net/docs/text_license",
+    "attribution": "Quran text: Tanzil Project (tanzil.net). Translation: M. M. Pickthall (1930)."
+  },
+  "files": [
+    {
+      "path": "chunks.jsonl",
+      "bytes": 4166561,
+      "sha256": "cbfff24bae8ab74003ade4ec77d72833b0e2254ac8818f6c223293754de9c30c"
+    },
+    {
+      "path": "documents.json",
+      "bytes": 1699,
+      "sha256": "fa999914d71764e08b602712cb2a961ea9d5ae19ca1f388b7f1a6058ba0ea57d"
+    },
+    {
+      "path": "common-questions.json",
+      "bytes": 34584,
+      "sha256": "aa1c7469b512b4d7a7707f4db034b943b505c966587312fe5bc4bceb209a60f4"
+    },
+    {
+      "path": "LICENSE-tanzil-quran-text.txt",
+      "bytes": 1105,
+      "sha256": "d648584786af682560b3b13516a6caa4fa548371f61093d82cd1de1ea6597e93"
+    },
+    {
+      "path": "NOTICE-pickthall.txt",
+      "bytes": 693,
+      "sha256": "3fc45aed39c97df871cd3882ac99353bade907e76775f4278efd483496a51df1"
+    }
+  ]
+}

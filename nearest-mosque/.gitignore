@@ -1,0 +1,16 @@
+# Gradle / Android
+android/.gradle/
+android/.kotlin/
+android/build/
+android/*/build/
+android/local.properties
+android/captures/
+# Xcode / SwiftPM
+ios/build/
+ios/*.xcodeproj
+ios/DerivedData/
+ios/**/.build/
+ios/**/.swiftpm/
+ios/Packages/**/Package.resolved
+# Python
+tools/__pycache__/

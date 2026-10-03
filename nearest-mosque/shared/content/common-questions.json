@@ -1,0 +1,271 @@
+{
+  "_comment": "Editorial 'Common questions' for Ask AI. Labelled 'Common questions' (never 'Most asked'). Every summary restates only what its cited passages say and names what they do not cover. reviewStatus must become 'reviewed' (with reviewer and date) before a release build may show a summary without the 'awaiting scholar review' label. Non-English summaries are draft translations. triggers are normalized-match keywords per language; expansion adds search terms that occur in the cited source text (Pickthall uses 'worship' for salah).",
+  "schemaVersion": 1,
+  "packId": "sources.quran-tanzil-pickthall",
+  "questions": [
+    {
+      "id": "wudu",
+      "citations": ["quran:5:6", "quran:4:43"],
+      "reviewStatus": "unreviewed", "reviewedBy": null, "reviewedAt": null,
+      "question": {
+        "en": "How do I perform wudu (ablution)?",
+        "ar": "كيف أتوضأ؟",
+        "ur": "وضو کیسے کروں؟",
+        "tr": "Abdest nasıl alınır?",
+        "id": "Bagaimana cara berwudu?",
+        "fr": "Comment faire les ablutions (wudu) ?",
+        "es": "¿Cómo se hace la ablución (wudu)?"
+      },
+      "summary": {
+        "en": "Verse 5:6 tells believers who rise for prayer to wash the face, wash the hands up to the elbows, wipe the head, and (wash) the feet up to the ankles. The same verse, and 4:43, allow dry purification with clean earth (tayammum) for someone who is ill, travelling, or cannot find water. The step-by-step method taught by the Prophet ﷺ comes from hadith books, which are not on your phone yet.",
+        "ar": "تأمر الآية 5:6 المؤمنين إذا قاموا إلى الصلاة بغسل الوجه، وغسل الأيدي إلى المرافق، ومسح الرأس، والأرجل إلى الكعبين. وتبيح الآية نفسها والآية 4:43 التيمم بالصعيد الطيب للمريض أو المسافر أو من لم يجد الماء. أما صفة الوضوء خطوة بخطوة كما علّمها النبي ﷺ فمصدرها كتب الحديث، وهي غير موجودة على هاتفك بعد.",
+        "ur": "آیت 5:6 نماز کے لیے اٹھنے والے مومنوں کو چہرہ دھونے، کہنیوں تک ہاتھ دھونے، سر کا مسح کرنے اور ٹخنوں تک پاؤں (دھونے) کا حکم دیتی ہے۔ یہی آیت اور 4:43 بیمار، مسافر یا پانی نہ پانے والے کے لیے پاک مٹی سے تیمم کی اجازت دیتی ہیں۔ نبی ﷺ کا سکھایا ہوا مکمل طریقہ حدیث کی کتابوں میں ہے، جو ابھی آپ کے فون پر نہیں۔",
+        "tr": "5:6. ayet, namaza kalkan müminlere yüzü yıkamayı, elleri dirseklere kadar yıkamayı, başı meshetmeyi ve ayakları topuklara kadar (yıkamayı) emreder. Aynı ayet ve 4:43, hasta, yolcu veya su bulamayan kişiye temiz toprakla teyemmüm izni verir. Peygamber’in ﷺ öğrettiği adım adım yöntem hadis kitaplarındadır; bunlar henüz telefonunuzda yok.",
+        "id": "Ayat 5:6 memerintahkan orang beriman yang hendak salat untuk membasuh muka, membasuh tangan sampai siku, mengusap kepala, dan (membasuh) kaki sampai mata kaki. Ayat yang sama dan 4:43 membolehkan tayamum dengan tanah yang bersih bagi yang sakit, bepergian, atau tidak menemukan air. Tata cara langkah demi langkah yang diajarkan Nabi ﷺ berasal dari kitab hadis, yang belum ada di ponsel Anda.",
+        "fr": "Le verset 5:6 demande aux croyants qui se lèvent pour la prière de se laver le visage, les mains jusqu’aux coudes, de passer les mains sur la tête et (de laver) les pieds jusqu’aux chevilles. Ce verset et 4:43 permettent la purification sèche avec une terre propre (tayammum) pour le malade, le voyageur ou celui qui ne trouve pas d’eau. La méthode détaillée enseignée par le Prophète ﷺ vient des recueils de hadiths, pas encore présents sur votre téléphone.",
+        "es": "El versículo 5:6 indica a los creyentes que se levantan para orar que laven el rostro, las manos hasta los codos, pasen las manos por la cabeza y (laven) los pies hasta los tobillos. Ese versículo y el 4:43 permiten la purificación seca con tierra limpia (tayammum) a quien está enfermo, de viaje o no encuentra agua. El método paso a paso que enseñó el Profeta ﷺ procede de los libros de hadiz, que aún no están en tu teléfono."
+      },
+      "triggers": {
+        "en": ["wudu", "wudhu", "wuzu", "ablution", "ablutions"],
+        "ar": ["وضوء", "الوضوء", "توضا", "اتوضا", "يتوضا"],
+        "ur": ["وضو", "وضوء"],
+        "tr": ["abdest"],
+        "id": ["wudu", "wudhu", "berwudu", "berwudhu"],
+        "fr": ["ablution", "ablutions", "wudu"],
+        "es": ["ablucion", "abluciones", "wudu"]
+      },
+      "expansion": ["wash", "faces", "elbows", "ankles", "rub", "heads", "water", "فاغسلوا", "وجوهكم", "المرافق", "الكعبين"]
+    },
+    {
+      "id": "prayer-times",
+      "citations": ["quran:4:103", "quran:11:114", "quran:17:78"],
+      "reviewStatus": "unreviewed", "reviewedBy": null, "reviewedAt": null,
+      "question": {
+        "en": "Why do Muslims pray at fixed times?",
+        "ar": "لماذا يصلي المسلمون في أوقات محددة؟",
+        "ur": "مسلمان مقررہ اوقات پر نماز کیوں پڑھتے ہیں؟",
+        "tr": "Müslümanlar neden belirli vakitlerde namaz kılar?",
+        "id": "Mengapa umat Islam salat pada waktu tertentu?",
+        "fr": "Pourquoi les musulmans prient-ils à heures fixes ?",
+        "es": "¿Por qué los musulmanes rezan a horas fijas?"
+      },
+      "summary": {
+        "en": "Verse 4:103 says that prayer at fixed times has been prescribed for the believers. Verse 11:114 mentions prayer at the two ends of the day and in parts of the night, and 17:78 mentions prayer from the going down of the sun until the dark of night, and the recitation at dawn. The exact five times are explained in hadith and by scholars; the Prayer & Qibla tab calculates them for your location.",
+        "ar": "تقول الآية 4:103 إن الصلاة كانت على المؤمنين كتابًا موقوتًا. وتذكر الآية 11:114 إقامة الصلاة طرفي النهار وزلفًا من الليل، وتذكر الآية 17:78 إقامة الصلاة لدلوك الشمس إلى غسق الليل وقرآن الفجر. أما تفصيل الأوقات الخمسة فمصدره الحديث وكلام العلماء، ويحسبها قسم «الصلاة والقبلة» لموقعك.",
+        "ur": "آیت 4:103 کہتی ہے کہ مومنوں پر نماز مقررہ اوقات میں فرض کی گئی ہے۔ آیت 11:114 دن کے دونوں کناروں اور رات کے کچھ حصوں میں نماز کا ذکر کرتی ہے، اور 17:78 سورج ڈھلنے سے رات کے اندھیرے تک نماز اور فجر کی قراءت کا ذکر کرتی ہے۔ پانچوں اوقات کی تفصیل حدیث اور علما سے آتی ہے؛ “نماز اور قبلہ” کا حصہ آپ کے مقام کے لیے انہیں شمار کرتا ہے۔",
+        "tr": "4:103. ayet, namazın müminlere belirli vakitlerde farz kılındığını söyler. 11:114. ayet günün iki ucunda ve gecenin bazı saatlerinde namazdan, 17:78. ayet ise güneşin kaymasından gecenin karanlığına kadar namazdan ve sabah okumasından söz eder. Beş vaktin ayrıntısı hadislerde ve âlimlerin açıklamalarındadır; Namaz ve Kıble bölümü bunları konumunuz için hesaplar.",
+        "id": "Ayat 4:103 menyatakan bahwa salat diwajibkan atas orang beriman pada waktu yang ditentukan. Ayat 11:114 menyebut salat pada kedua ujung siang dan sebagian malam, dan 17:78 menyebut salat sejak matahari tergelincir hingga gelap malam serta bacaan di waktu fajar. Rincian lima waktu dijelaskan dalam hadis dan oleh para ulama; tab Salat & Kiblat menghitungnya untuk lokasi Anda.",
+        "fr": "Le verset 4:103 dit que la prière a été prescrite aux croyants à des temps déterminés. Le verset 11:114 évoque la prière aux deux extrémités du jour et à certaines heures de la nuit, et 17:78 la prière du déclin du soleil jusqu’à l’obscurité de la nuit, ainsi que la récitation de l’aube. Le détail des cinq horaires vient des hadiths et des savants ; l’onglet Prière et qibla les calcule pour votre position.",
+        "es": "El versículo 4:103 dice que la oración ha sido prescrita a los creyentes en tiempos fijos. El 11:114 menciona la oración en los dos extremos del día y en parte de la noche, y el 17:78 la oración desde el declinar del sol hasta la oscuridad de la noche y la recitación del alba. El detalle de las cinco horas viene del hadiz y de los eruditos; la pestaña Oración y alquibla las calcula para tu ubicación."
+      },
+      "triggers": {
+        "en": ["prayer times", "five prayers", "fixed times", "pray five", "salah times", "salat times"],
+        "ar": ["مواقيت", "اوقات الصلاه", "الصلوات الخمس", "موقوتا"],
+        "ur": ["اوقات", "پانچ نمازیں", "نماز کے اوقات"],
+        "tr": ["namaz vakitleri", "vakit", "vakitlerde", "bes vakit"],
+        "id": ["waktu salat", "waktu sholat", "lima waktu", "waktu tertentu"],
+        "fr": ["heures fixes", "horaires de priere", "cinq prieres"],
+        "es": ["horas fijas", "horarios de oracion", "cinco oraciones"]
+      },
+      "expansion": ["worship", "fixed", "times", "ends", "day", "night", "dawn", "موقوتا", "الصلاه", "اقم"]
+    },
+    {
+      "id": "fasting",
+      "citations": ["quran:2:183", "quran:2:184", "quran:2:185"],
+      "reviewStatus": "unreviewed", "reviewedBy": null, "reviewedAt": null,
+      "question": {
+        "en": "Who has to fast in Ramadan?",
+        "ar": "من يجب عليه صيام رمضان؟",
+        "ur": "رمضان کے روزے کس پر فرض ہیں؟",
+        "tr": "Ramazan orucu kimlere farzdır?",
+        "id": "Siapa yang wajib berpuasa Ramadan?",
+        "fr": "Qui doit jeûner pendant le ramadan ?",
+        "es": "¿Quién debe ayunar en Ramadán?"
+      },
+      "summary": {
+        "en": "Verse 2:183 says fasting is prescribed for believers as it was for those before them, and 2:185 says whoever is present for the month of Ramadan should fast it. Someone who is sick or on a journey may fast the same number of other days instead (2:184–185). Verse 2:184 also mentions a ransom of feeding a person in need; scholars differ on whom that applies to. For your own situation, ask a qualified scholar.",
+        "ar": "تقول الآية 2:183 إن الصيام كُتب على المؤمنين كما كُتب على الذين من قبلهم، وتقول الآية 2:185 إن من شهد منكم الشهر فليصمه. ومن كان مريضًا أو على سفر فعدة من أيام أخر (2:184–185). وتذكر الآية 2:184 فدية طعام مسكين، وقد اختلف العلماء فيمن تنطبق عليه. ولحالتك الخاصة اسأل عالمًا مؤهلًا.",
+        "ur": "آیت 2:183 کہتی ہے کہ روزے مومنوں پر اسی طرح فرض کیے گئے جیسے پہلے لوگوں پر، اور 2:185 کہتی ہے کہ جو اس مہینے کو پائے وہ روزہ رکھے۔ بیمار یا مسافر دوسرے دنوں میں اتنی ہی گنتی پوری کرے (2:184–185)۔ آیت 2:184 ایک مسکین کو کھانا کھلانے کے فدیہ کا بھی ذکر کرتی ہے؛ علما میں اختلاف ہے کہ یہ کس پر لاگو ہوتا ہے۔ اپنی صورتِ حال کے لیے مستند عالم سے پوچھیں۔",
+        "tr": "2:183. ayet orucun, öncekilere farz kılındığı gibi müminlere de farz kılındığını; 2:185. ayet de bu aya erişenin oruç tutmasını söyler. Hasta veya yolcu olan, başka günlerde aynı sayıda gün tutar (2:184–185). 2:184. ayet bir yoksulu doyurma fidyesinden de söz eder; bunun kimlere uygulanacağı konusunda âlimler farklı görüştedir. Kendi durumunuz için yetkin bir âlime danışın.",
+        "id": "Ayat 2:183 menyatakan puasa diwajibkan atas orang beriman sebagaimana atas orang sebelum mereka, dan 2:185 menyatakan siapa yang hadir di bulan Ramadan hendaklah berpuasa. Yang sakit atau dalam perjalanan boleh menggantinya pada hari lain sebanyak hari yang ditinggalkan (2:184–185). Ayat 2:184 juga menyebut fidyah memberi makan orang miskin; ulama berbeda pendapat tentang kepada siapa itu berlaku. Untuk keadaan Anda, tanyakan kepada ulama yang berkompeten.",
+        "fr": "Le verset 2:183 dit que le jeûne est prescrit aux croyants comme il l’a été à ceux d’avant, et 2:185 que quiconque est présent pendant le mois de ramadan doit le jeûner. Le malade ou le voyageur jeûne un nombre égal d’autres jours (2:184–185). Le verset 2:184 mentionne aussi une compensation : nourrir un pauvre ; les savants divergent sur les personnes concernées. Pour votre cas, consultez un savant qualifié.",
+        "es": "El versículo 2:183 dice que el ayuno se prescribe a los creyentes como a quienes les precedieron, y el 2:185 que quien esté presente en el mes de Ramadán debe ayunarlo. Quien esté enfermo o de viaje ayunará otros días en igual número (2:184–185). El 2:184 menciona además una compensación: alimentar a un necesitado; los eruditos difieren sobre a quién se aplica. Para tu caso, consulta a un erudito cualificado."
+      },
+      "triggers": {
+        "en": ["fast", "fasting", "ramadan", "sawm"],
+        "ar": ["صيام", "الصيام", "صوم", "رمضان", "اصوم"],
+        "ur": ["روزہ", "روزے", "رمضان"],
+        "tr": ["oruc", "ramazan"],
+        "id": ["puasa", "ramadan", "ramadhan"],
+        "fr": ["jeune", "jeuner", "ramadan"],
+        "es": ["ayuno", "ayunar", "ramadan"]
+      },
+      "expansion": ["fasting", "fast", "ramadan", "sick", "journey", "days", "الصيام", "رمضان", "مريضا", "سفر"]
+    },
+    {
+      "id": "travel-prayer",
+      "citations": ["quran:4:101", "quran:4:43", "quran:5:6"],
+      "reviewStatus": "unreviewed", "reviewedBy": null, "reviewedAt": null,
+      "question": {
+        "en": "How do I pray while travelling?",
+        "ar": "كيف أصلي في السفر؟",
+        "ur": "سفر میں نماز کیسے پڑھوں؟",
+        "tr": "Yolculukta namaz nasıl kılınır?",
+        "id": "Bagaimana salat saat bepergian?",
+        "fr": "Comment prier en voyage ?",
+        "es": "¿Cómo rezo cuando viajo?"
+      },
+      "summary": {
+        "en": "Verse 4:101 says it is no sin to shorten the prayer when going forth in the land if one fears attack. When water cannot be found, including on a journey, 4:43 and 5:6 permit dry purification with clean earth. The rules for shortening and combining prayers on ordinary journeys come from hadith and scholarly works that are not on your phone yet.",
+        "ar": "تقول الآية 4:101 إنه لا جناح في قصر الصلاة عند الضرب في الأرض إن خيف أن يفتن الذين كفروا. وعند فقد الماء، ومنه حال السفر، تبيح الآيتان 4:43 و5:6 التيمم بالصعيد الطيب. أما أحكام القصر والجمع في السفر المعتاد فمصدرها الحديث وكتب العلماء، وهي غير موجودة على هاتفك بعد.",
+        "ur": "آیت 4:101 کہتی ہے کہ زمین میں سفر کرتے وقت اگر حملے کا خوف ہو تو نماز قصر کرنے میں کوئی گناہ نہیں۔ پانی نہ ملنے پر، سفر سمیت، آیات 4:43 اور 5:6 پاک مٹی سے تیمم کی اجازت دیتی ہیں۔ عام سفر میں قصر اور جمع کے احکام حدیث اور علما کی کتابوں سے آتے ہیں، جو ابھی آپ کے فون پر نہیں۔",
+        "tr": "4:101. ayet, yeryüzünde yolculuğa çıkıldığında saldırıya uğrama korkusu varsa namazı kısaltmakta günah olmadığını söyler. Yolculuk dahil su bulunamadığında 4:43 ve 5:6. ayetler temiz toprakla teyemmüme izin verir. Olağan yolculukta namazı kısaltma ve birleştirme hükümleri hadislerden ve âlimlerin eserlerinden gelir; bunlar henüz telefonunuzda yok.",
+        "id": "Ayat 4:101 menyatakan tidak berdosa meng-qasar salat ketika bepergian di bumi jika takut diserang. Bila air tidak ditemukan, termasuk dalam perjalanan, ayat 4:43 dan 5:6 membolehkan tayamum dengan tanah yang bersih. Aturan qasar dan jamak pada perjalanan biasa berasal dari hadis dan kitab ulama yang belum ada di ponsel Anda.",
+        "fr": "Le verset 4:101 dit qu’il n’y a pas de faute à raccourcir la prière lorsqu’on parcourt la terre si l’on craint une attaque. Faute d’eau, notamment en voyage, 4:43 et 5:6 permettent la purification sèche avec une terre propre. Les règles pour raccourcir et regrouper les prières lors d’un voyage ordinaire viennent des hadiths et d’ouvrages savants absents de votre téléphone.",
+        "es": "El versículo 4:101 dice que no es pecado acortar la oración al recorrer la tierra si se teme un ataque. Cuando no hay agua, también de viaje, 4:43 y 5:6 permiten la purificación seca con tierra limpia. Las normas para acortar y juntar oraciones en viajes ordinarios proceden del hadiz y de obras de eruditos que aún no están en tu teléfono."
+      },
+      "triggers": {
+        "en": ["travel", "travelling", "traveling", "journey", "trip", "shorten", "qasr"],
+        "ar": ["سفر", "السفر", "مسافر", "قصر", "اسافر"],
+        "ur": ["سفر", "مسافر", "قصر"],
+        "tr": ["yolculuk", "yolculukta", "seyahat", "seferi", "misafir"],
+        "id": ["bepergian", "perjalanan", "musafir", "qasar", "safar"],
+        "fr": ["voyage", "voyager", "voyageur"],
+        "es": ["viaje", "viajar", "viajo", "viajero"]
+      },
+      "expansion": ["journey", "curtail", "worship", "forth", "land", "water", "تقصروا", "سفر", "الارض"]
+    },
+    {
+      "id": "belief-god",
+      "citations": ["quran:112:1", "quran:112:2", "quran:112:3", "quran:112:4", "quran:2:255"],
+      "reviewStatus": "unreviewed", "reviewedBy": null, "reviewedAt": null,
+      "question": {
+        "en": "What do Muslims believe about God?",
+        "ar": "ماذا يعتقد المسلمون في الله؟",
+        "ur": "مسلمان اللہ کے بارے میں کیا عقیدہ رکھتے ہیں؟",
+        "tr": "Müslümanlar Allah hakkında neye inanır?",
+        "id": "Apa keyakinan umat Islam tentang Allah?",
+        "fr": "Que croient les musulmans au sujet de Dieu ?",
+        "es": "¿Qué creen los musulmanes sobre Dios?"
+      },
+      "summary": {
+        "en": "Surah Al-Ikhlas (112:1–4) describes Allah as One, the One on whom all depend, who neither begets nor was begotten, with none comparable to Him. The Throne Verse (2:255) says there is no deity but Him, the Ever-Living, the Sustainer; neither slumber nor sleep overtakes Him, and everything in the heavens and the earth belongs to Him.",
+        "ar": "تصف سورة الإخلاص (112:1–4) الله بأنه أحد، صمد، لم يلد ولم يولد، ولم يكن له كفوًا أحد. وتقول آية الكرسي (2:255) إنه لا إله إلا هو الحي القيوم، لا تأخذه سنة ولا نوم، له ما في السماوات وما في الأرض.",
+        "ur": "سورۂ اخلاص (112:1–4) اللہ کو ایک، بے نیاز، نہ کسی کو جننے والا نہ جنا گیا، اور جس کا کوئی ہمسر نہیں، بیان کرتی ہے۔ آیت الکرسی (2:255) کہتی ہے کہ اس کے سوا کوئی معبود نہیں، وہ زندہ اور سب کو قائم رکھنے والا ہے؛ نہ اسے اونگھ آتی ہے نہ نیند، اور آسمانوں اور زمین کی ہر چیز اسی کی ہے۔",
+        "tr": "İhlâs Suresi (112:1–4) Allah’ı bir, her şeyin kendisine muhtaç olduğu, doğurmamış ve doğurulmamış, hiçbir dengi olmayan olarak tanımlar. Âyetü’l-Kürsî (2:255) O’ndan başka ilah olmadığını, O’nun diri ve her şeyi ayakta tutan olduğunu, O’nu ne uyuklama ne uyku tutmadığını ve göklerde ve yerde olan her şeyin O’na ait olduğunu söyler.",
+        "id": "Surah Al-Ikhlas (112:1–4) menggambarkan Allah sebagai Yang Maha Esa, tempat bergantung segala sesuatu, tidak beranak dan tidak diperanakkan, dan tidak ada yang setara dengan-Nya. Ayat Kursi (2:255) menyatakan tidak ada tuhan selain Dia, Yang Mahahidup lagi terus-menerus mengurus makhluk-Nya; tidak mengantuk dan tidak tidur, dan milik-Nya apa yang ada di langit dan di bumi.",
+        "fr": "La sourate Al-Ikhlas (112:1–4) décrit Allah comme Unique, Celui dont tout dépend, qui n’engendre pas et n’a pas été engendré, et à qui nul n’est égal. Le verset du Trône (2:255) dit qu’il n’y a de divinité que Lui, le Vivant, Celui qui subsiste par Lui-même ; ni somnolence ni sommeil ne Le saisissent, et tout ce qui est dans les cieux et sur la terre Lui appartient.",
+        "es": "La sura Al-Ijlás (112:1–4) describe a Alá como Uno, Aquel de quien todo depende, que no engendra ni fue engendrado, y sin nadie comparable a Él. El versículo del Trono (2:255) dice que no hay divinidad sino Él, el Viviente, el Sustentador; no le alcanzan ni la somnolencia ni el sueño, y a Él pertenece cuanto hay en los cielos y en la tierra."
+      },
+      "triggers": {
+        "en": ["god", "allah", "tawhid", "oneness", "monotheism"],
+        "ar": ["الله", "التوحيد", "توحيد"],
+        "ur": ["اللہ", "خدا", "توحید"],
+        "tr": ["allah", "tanri", "tevhid"],
+        "id": ["allah", "tuhan", "tauhid"],
+        "fr": ["dieu", "allah", "unicite"],
+        "es": ["dios", "ala", "allah", "unicidad"]
+      },
+      "expansion": ["allah", "one", "begetteth", "deity", "alive", "eternal", "احد", "الصمد", "القيوم", "اله"]
+    },
+    {
+      "id": "core-beliefs",
+      "citations": ["quran:2:285", "quran:4:136", "quran:2:177"],
+      "reviewStatus": "unreviewed", "reviewedBy": null, "reviewedAt": null,
+      "question": {
+        "en": "What are the core beliefs of Islam?",
+        "ar": "ما أركان الإيمان في الإسلام؟",
+        "ur": "اسلام کے بنیادی عقائد کیا ہیں؟",
+        "tr": "İslam’ın temel inançları nelerdir?",
+        "id": "Apa saja keyakinan pokok dalam Islam?",
+        "fr": "Quelles sont les croyances fondamentales de l’islam ?",
+        "es": "¿Cuáles son las creencias básicas del islam?"
+      },
+      "summary": {
+        "en": "The Quran describes believers as those who believe in Allah, His angels, His scriptures, His messengers and the Last Day (2:285, 4:136, 2:177). Verse 2:177 joins this faith to action: giving wealth to relatives, orphans and the needy, establishing prayer, paying zakat, keeping promises and being patient in hardship. Belief in divine decree (qadar) is taught in hadith, which are not on your phone yet.",
+        "ar": "يصف القرآن المؤمنين بأنهم يؤمنون بالله وملائكته وكتبه ورسله واليوم الآخر (2:285، 4:136، 2:177). وتربط الآية 2:177 هذا الإيمان بالعمل: إيتاء المال ذوي القربى واليتامى والمساكين، وإقامة الصلاة، وإيتاء الزكاة، والوفاء بالعهد، والصبر في البأساء. أما الإيمان بالقدر فمصدره الحديث، وهو غير موجود على هاتفك بعد.",
+        "ur": "قرآن مومنوں کو وہ لوگ بتاتا ہے جو اللہ، اس کے فرشتوں، اس کی کتابوں، اس کے رسولوں اور آخرت کے دن پر ایمان رکھتے ہیں (2:285، 4:136، 2:177)۔ آیت 2:177 اس ایمان کو عمل سے جوڑتی ہے: رشتہ داروں، یتیموں اور مسکینوں کو مال دینا، نماز قائم کرنا، زکوٰۃ دینا، عہد پورا کرنا اور مشکل میں صبر۔ تقدیر پر ایمان حدیث میں سکھایا گیا ہے، جو ابھی آپ کے فون پر نہیں۔",
+        "tr": "Kur’an müminleri Allah’a, meleklerine, kitaplarına, peygamberlerine ve ahiret gününe inananlar olarak tanımlar (2:285, 4:136, 2:177). 2:177. ayet bu imanı amelle birleştirir: akrabaya, yetimlere ve yoksullara mal vermek, namazı kılmak, zekâtı vermek, sözünde durmak ve sıkıntıda sabretmek. Kadere iman hadislerde öğretilir; bunlar henüz telefonunuzda yok.",
+        "id": "Al-Qur’an menggambarkan orang beriman sebagai mereka yang beriman kepada Allah, malaikat-malaikat-Nya, kitab-kitab-Nya, rasul-rasul-Nya, dan hari akhir (2:285, 4:136, 2:177). Ayat 2:177 mengaitkan iman ini dengan amal: memberikan harta kepada kerabat, anak yatim, dan orang miskin, mendirikan salat, menunaikan zakat, menepati janji, dan sabar dalam kesulitan. Iman kepada takdir diajarkan dalam hadis, yang belum ada di ponsel Anda.",
+        "fr": "Le Coran décrit les croyants comme ceux qui croient en Allah, en Ses anges, en Ses Écritures, en Ses messagers et au Jour dernier (2:285, 4:136, 2:177). Le verset 2:177 relie cette foi aux actes : donner de ses biens aux proches, aux orphelins et aux nécessiteux, accomplir la prière, verser la zakat, tenir ses engagements et être patient dans l’épreuve. La croyance au décret divin (qadar) est enseignée dans les hadiths, absents de votre téléphone.",
+        "es": "El Corán describe a los creyentes como quienes creen en Alá, Sus ángeles, Sus Escrituras, Sus mensajeros y el Último Día (2:285, 4:136, 2:177). El 2:177 une esta fe a las obras: dar bienes a parientes, huérfanos y necesitados, establecer la oración, pagar el zakat, cumplir los compromisos y ser paciente en la adversidad. La creencia en el decreto divino (qadar) se enseña en el hadiz, que aún no está en tu teléfono."
+      },
+      "triggers": {
+        "en": ["beliefs", "belief", "faith", "iman", "pillars of faith", "articles of faith"],
+        "ar": ["اركان الايمان", "الايمان", "ايمان", "العقيده", "عقيده"],
+        "ur": ["عقائد", "عقیدہ", "ایمان"],
+        "tr": ["inanc", "inanclari", "iman", "imanin sartlari"],
+        "id": ["keyakinan", "iman", "rukun iman", "akidah"],
+        "fr": ["croyances", "croyance", "foi", "piliers de la foi"],
+        "es": ["creencias", "creencia", "fe", "pilares de la fe"]
+      },
+      "expansion": ["believeth", "angels", "scriptures", "messengers", "last", "day", "ملائكته", "كتبه", "رسله", "الاخر"]
+    },
+    {
+      "id": "zakat",
+      "citations": ["quran:9:60", "quran:2:43", "quran:2:110"],
+      "reviewStatus": "unreviewed", "reviewedBy": null, "reviewedAt": null,
+      "question": {
+        "en": "What is zakat and who receives it?",
+        "ar": "ما الزكاة ومن يستحقها؟",
+        "ur": "زکوٰۃ کیا ہے اور کون اس کا حق دار ہے؟",
+        "tr": "Zekât nedir ve kimlere verilir?",
+        "id": "Apa itu zakat dan siapa yang berhak menerimanya?",
+        "fr": "Qu’est-ce que la zakat et qui la reçoit ?",
+        "es": "¿Qué es el zakat y quién lo recibe?"
+      },
+      "summary": {
+        "en": "The Quran often pairs establishing prayer with paying zakat, the obligatory alms (2:43, 2:110). Verse 9:60 lists who may receive it: the poor, the needy, those who collect it, those whose hearts are to be reconciled, freeing captives, debtors, the cause of Allah, and the wayfarer. Amounts and thresholds (nisab) are explained in hadith and fiqh books that are not on your phone yet.",
+        "ar": "يقرن القرآن كثيرًا بين إقامة الصلاة وإيتاء الزكاة (2:43، 2:110). وتذكر الآية 9:60 مستحقيها: الفقراء، والمساكين، والعاملين عليها، والمؤلفة قلوبهم، وفي الرقاب، والغارمين، وفي سبيل الله، وابن السبيل. أما المقادير والنصاب فمصدرها الحديث وكتب الفقه، وهي غير موجودة على هاتفك بعد.",
+        "ur": "قرآن اکثر نماز قائم کرنے کے ساتھ زکوٰۃ ادا کرنے کا ذکر کرتا ہے (2:43، 2:110)۔ آیت 9:60 اس کے مستحقین بتاتی ہے: فقرا، مساکین، زکوٰۃ وصول کرنے والے، جن کے دل جوڑنے ہوں، غلام آزاد کرانا، قرض دار، اللہ کی راہ، اور مسافر۔ مقدار اور نصاب کی تفصیل حدیث اور فقہ کی کتابوں میں ہے، جو ابھی آپ کے فون پر نہیں۔",
+        "tr": "Kur’an namazı kılmayı sıklıkla zekât vermekle birlikte anar (2:43, 2:110). 9:60. ayet zekâtın verileceği yerleri sayar: fakirler, yoksullar, zekât toplayan görevliler, kalpleri ısındırılacak olanlar, köleler, borçlular, Allah yolu ve yolda kalmışlar. Miktarlar ve nisap hadis ve fıkıh kitaplarında açıklanır; bunlar henüz telefonunuzda yok.",
+        "id": "Al-Qur’an sering menyandingkan mendirikan salat dengan menunaikan zakat (2:43, 2:110). Ayat 9:60 menyebut penerimanya: fakir, miskin, amil zakat, mualaf, untuk memerdekakan budak, orang berutang, di jalan Allah, dan ibnu sabil. Kadar dan nisab dijelaskan dalam hadis dan kitab fikih yang belum ada di ponsel Anda.",
+        "fr": "Le Coran associe souvent l’accomplissement de la prière au versement de la zakat, l’aumône obligatoire (2:43, 2:110). Le verset 9:60 cite ses bénéficiaires : les pauvres, les nécessiteux, ceux qui la collectent, ceux dont les cœurs sont à gagner, l’affranchissement des captifs, les endettés, la cause d’Allah et le voyageur. Les montants et le seuil (nisab) sont expliqués dans les hadiths et les livres de fiqh, absents de votre téléphone.",
+        "es": "El Corán une a menudo establecer la oración y pagar el zakat, la limosna obligatoria (2:43, 2:110). El 9:60 enumera quién puede recibirlo: los pobres, los necesitados, quienes lo recaudan, aquellos cuyos corazones hay que ganar, la liberación de cautivos, los endeudados, la causa de Alá y el viajero. Las cantidades y el mínimo (nisab) se explican en el hadiz y los libros de fiqh, que aún no están en tu teléfono."
+      },
+      "triggers": {
+        "en": ["zakat", "zakah", "alms", "charity", "poor-due"],
+        "ar": ["زكاه", "الزكاه", "صدقه", "الصدقات"],
+        "ur": ["زکوة", "زکات", "زکوٰۃ", "صدقہ"],
+        "tr": ["zekat", "sadaka"],
+        "id": ["zakat", "sedekah"],
+        "fr": ["zakat", "aumone"],
+        "es": ["zakat", "limosna", "azaque"]
+      },
+      "expansion": ["alms", "poor", "needy", "debtors", "wayfarer", "poor-due", "الصدقات", "للفقراء", "والمساكين", "الزكاه"]
+    },
+    {
+      "id": "qibla",
+      "citations": ["quran:2:144", "quran:2:149", "quran:2:150"],
+      "reviewStatus": "unreviewed", "reviewedBy": null, "reviewedAt": null,
+      "question": {
+        "en": "Which direction do Muslims face when praying?",
+        "ar": "إلى أي اتجاه يتوجه المسلمون في الصلاة؟",
+        "ur": "مسلمان نماز میں کس سمت رخ کرتے ہیں؟",
+        "tr": "Müslümanlar namazda hangi yöne döner?",
+        "id": "Ke arah mana umat Islam menghadap saat salat?",
+        "fr": "Vers quelle direction les musulmans prient-ils ?",
+        "es": "¿Hacia qué dirección rezan los musulmanes?"
+      },
+      "summary": {
+        "en": "Verses 2:144 and 2:149–150 instruct believers to turn their faces toward the Sacred Mosque (al-Masjid al-Haram) in Makkah wherever they are. The Prayer & Qibla tab calculates that direction from your location; a phone compass is only approximate.",
+        "ar": "تأمر الآيات 2:144 و2:149–150 المؤمنين بتوجيه وجوههم شطر المسجد الحرام بمكة حيثما كانوا. ويحسب قسم «الصلاة والقبلة» هذا الاتجاه من موقعك، وبوصلة الهاتف تقريبية.",
+        "ur": "آیات 2:144 اور 2:149–150 مومنوں کو حکم دیتی ہیں کہ وہ جہاں بھی ہوں اپنا رخ مسجدِ حرام (مکہ) کی طرف کریں۔ “نماز اور قبلہ” کا حصہ آپ کے مقام سے یہ سمت شمار کرتا ہے؛ فون کا قطب نما صرف تخمینی ہے۔",
+        "tr": "2:144 ve 2:149–150. ayetler müminlere nerede olurlarsa olsunlar yüzlerini Mekke’deki Mescid-i Haram’a çevirmelerini emreder. Namaz ve Kıble bölümü bu yönü konumunuzdan hesaplar; telefon pusulası yalnızca yaklaşıktır.",
+        "id": "Ayat 2:144 dan 2:149–150 memerintahkan orang beriman menghadapkan wajah ke Masjidil Haram di Makkah di mana pun mereka berada. Tab Salat & Kiblat menghitung arah itu dari lokasi Anda; kompas ponsel hanya perkiraan.",
+        "fr": "Les versets 2:144 et 2:149–150 demandent aux croyants de tourner leur visage vers la Mosquée sacrée (al-Masjid al-Haram) à La Mecque, où qu’ils soient. L’onglet Prière et qibla calcule cette direction depuis votre position ; la boussole du téléphone n’est qu’approximative.",
+        "es": "Los versículos 2:144 y 2:149–150 ordenan a los creyentes volver el rostro hacia la Mezquita Sagrada (al-Masyid al-Haram) de La Meca dondequiera que estén. La pestaña Oración y alquibla calcula esa dirección desde tu ubicación; la brújula del teléfono solo es aproximada."
+      },
+      "triggers": {
+        "en": ["qibla", "qiblah", "kibla", "direction", "face when praying", "kaaba"],
+        "ar": ["قبله", "القبله", "اتجاه", "الكعبه"],
+        "ur": ["قبلہ", "قبلة", "سمت", "رخ", "کعبہ"],
+        "tr": ["kible", "yon", "kabe"],
+        "id": ["kiblat", "arah", "kabah"],
+        "fr": ["qibla", "direction", "kaaba"],
+        "es": ["alquibla", "qibla", "direccion", "kaaba"]
+      },
+      "expansion": ["qiblah", "inviolable", "place", "worship", "turn", "faces", "toward", "شطر", "المسجد", "الحرام", "قبله"]
+    }
+  ]
+}

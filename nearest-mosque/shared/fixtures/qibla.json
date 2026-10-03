@@ -1,0 +1,109 @@
+{
+  "description": "Great-circle initial bearing from true north to the Kaaba and haversine distance.",
+  "kaaba": {
+    "latitude": 21.4225241,
+    "longitude": 39.8261818
+  },
+  "toleranceDegrees": 0.05,
+  "distanceToleranceMeters": 2000,
+  "cases": [
+    {
+      "id": "makkah-near-kaaba",
+      "latitude": 21.423,
+      "longitude": 39.825,
+      "bearingDegrees": 113.392,
+      "distanceMeters": 133.3
+    },
+    {
+      "id": "riyadh",
+      "latitude": 24.6877,
+      "longitude": 46.7219,
+      "bearingDegrees": 244.1527,
+      "distanceMeters": 793277.3
+    },
+    {
+      "id": "cape-town",
+      "latitude": -33.9258,
+      "longitude": 18.4232,
+      "bearingDegrees": 23.3532,
+      "distanceMeters": 6558441.2
+    },
+    {
+      "id": "cairo",
+      "latitude": 30.0626,
+      "longitude": 31.2497,
+      "bearingDegrees": 136.2485,
+      "distanceMeters": 1287742.5
+    },
+    {
+      "id": "london",
+      "latitude": 51.5085,
+      "longitude": -0.1257,
+      "bearingDegrees": 118.9906,
+      "distanceMeters": 4793710.6
+    },
+    {
+      "id": "new-york",
+      "latitude": 40.7128,
+      "longitude": -74.006,
+      "bearingDegrees": 58.4817,
+      "distanceMeters": 10306317.4
+    },
+    {
+      "id": "jakarta",
+      "latitude": -6.2088,
+      "longitude": 106.8456,
+      "bearingDegrees": 295.1518,
+      "distanceMeters": 7920140.3
+    },
+    {
+      "id": "tokyo",
+      "latitude": 35.6762,
+      "longitude": 139.6503,
+      "bearingDegrees": 292.9987,
+      "distanceMeters": 9471862.2
+    },
+    {
+      "id": "auckland",
+      "latitude": -36.8485,
+      "longitude": 174.7633,
+      "bearingDegrees": 261.1973,
+      "distanceMeters": 15364609.4
+    },
+    {
+      "id": "sao-paulo",
+      "latitude": -23.5505,
+      "longitude": -46.6333,
+      "bearingDegrees": 68.9393,
+      "distanceMeters": 10602426.9
+    },
+    {
+      "id": "anchorage",
+      "latitude": 61.2181,
+      "longitude": -149.9003,
+      "bearingDegrees": 350.8831,
+      "distanceMeters": 10784512.3
+    },
+    {
+      "id": "zero-zero",
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "bearingDegrees": 58.5082,
+      "distanceMeters": 4932875.7
+    },
+    {
+      "id": "south-pole-ish",
+      "latitude": -89.0,
+      "longitude": 0.0,
+      "bearingDegrees": 39.5805,
+      "distanceMeters": 12304086.1
+    },
+    {
+      "id": "antipode-of-kaaba",
+      "latitude": -21.4225241,
+      "longitude": -140.1638182,
+      "bearingDegrees": 89.9982,
+      "distanceMeters": 20014079.3
+    }
+  ]
+}

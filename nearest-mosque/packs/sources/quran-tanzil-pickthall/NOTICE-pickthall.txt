@@ -1,0 +1,16 @@
+# --------------------------------------------------------------------
+#
+#  Quran Translation
+#  Name: Pickthall
+#  Translator: Mohammed Marmaduke William Pickthall
+#  Language: English
+#  ID: en.pickthall
+#  Last Update: September 4, 2010
+#  Source: Tanzil.net
+#
+# --------------------------------------------------------------------
+
+The Meaning of the Glorious Koran, M. M. Pickthall (London, 1930). The translator died in 1936;
+the work is in the public domain in life+70 jurisdictions and in the United States (published 1930).
+This digitization comes from tanzil.net, whose translation terms allow non-commercial use; see
+docs/04-data-and-licenses.md before any commercial distribution.

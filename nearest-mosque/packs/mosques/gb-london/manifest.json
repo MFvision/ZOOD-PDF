@@ -1,0 +1,44 @@
+{
+  "id": "mosques.gb-london",
+  "kind": "mosques",
+  "schemaVersion": 1,
+  "version": 1,
+  "title": {
+    "en": "London",
+    "ar": "لندن"
+  },
+  "coverage": {
+    "name": "London",
+    "bbox": {
+      "minLat": 51.278,
+      "minLng": -0.597,
+      "maxLat": 51.703,
+      "maxLng": 0.423
+    }
+  },
+  "recordCount": 255,
+  "categories": {
+    "mosque": 254,
+    "prayer_space": 1
+  },
+  "source": {
+    "name": "OpenStreetMap (extract via BBBike.org)",
+    "url": "https://download.bbbike.org/osm/bbbike/London/",
+    "snapshot": "2026-09-25T23:00:00Z",
+    "builtAt": "2026-10-03T14:13:53Z"
+  },
+  "license": {
+    "id": "ODbL-1.0",
+    "name": "Open Database License 1.0",
+    "url": "https://opendatacommons.org/licenses/odbl/1-0/",
+    "attribution": "© OpenStreetMap contributors",
+    "attributionUrl": "https://www.openstreetmap.org/copyright"
+  },
+  "files": [
+    {
+      "path": "mosques.jsonl",
+      "bytes": 63989,
+      "sha256": "244788153e2d1b98a3ad9e7441e495071d06ebe654018c3eb50d39a337b6356f"
+    }
+  ]
+}

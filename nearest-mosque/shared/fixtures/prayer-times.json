@@ -1,0 +1,429 @@
+{
+  "description": "Golden prayer times from tools/reference_prayer.py (NOAA solar algorithm, independent of Adhan). expected=null means the convention cannot produce ordinary times for that date; apps must report unavailable unless the user selected a documented fallback.",
+  "toleranceSeconds": 120,
+  "cases": [
+    {
+      "id": "makkah-umm-al-qura",
+      "note": "Makkah, Umm al-Qura (Isha = Maghrib + 90 min)",
+      "latitude": 21.4225,
+      "longitude": 39.8262,
+      "timeZone": "Asia/Riyadh",
+      "date": "2026-10-03",
+      "method": "UMM_AL_QURA",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-10-03T04:56:27+03:00",
+        "sunrise": "2026-10-03T06:12:26+03:00",
+        "dhuhr": "2026-10-03T12:09:45+03:00",
+        "asr": "2026-10-03T15:32:59+03:00",
+        "maghrib": "2026-10-03T18:06:47+03:00",
+        "isha": "2026-10-03T19:36:47+03:00"
+      }
+    },
+    {
+      "id": "riyadh-umm-al-qura-winter",
+      "note": "Riyadh winter solstice",
+      "latitude": 24.6877,
+      "longitude": 46.7219,
+      "timeZone": "Asia/Riyadh",
+      "date": "2026-12-21",
+      "method": "UMM_AL_QURA",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-12-21T05:09:11+03:00",
+        "sunrise": "2026-12-21T06:32:55+03:00",
+        "dhuhr": "2026-12-21T11:51:07+03:00",
+        "asr": "2026-12-21T14:49:37+03:00",
+        "maghrib": "2026-12-21T17:09:19+03:00",
+        "isha": "2026-12-21T18:39:19+03:00"
+      }
+    },
+    {
+      "id": "cape-town-mwl",
+      "note": "Southern hemisphere spring",
+      "latitude": -33.9258,
+      "longitude": 18.4232,
+      "timeZone": "Africa/Johannesburg",
+      "date": "2026-10-03",
+      "method": "MUSLIM_WORLD_LEAGUE",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-10-03T04:56:14+02:00",
+        "sunrise": "2026-10-03T06:20:44+02:00",
+        "dhuhr": "2026-10-03T12:36:21+02:00",
+        "asr": "2026-10-03T16:07:52+02:00",
+        "maghrib": "2026-10-03T18:50:30+02:00",
+        "isha": "2026-10-03T20:10:10+02:00"
+      }
+    },
+    {
+      "id": "cape-town-mwl-june",
+      "note": "Southern hemisphere winter",
+      "latitude": -33.9258,
+      "longitude": 18.4232,
+      "timeZone": "Africa/Johannesburg",
+      "date": "2026-06-21",
+      "method": "MUSLIM_WORLD_LEAGUE",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-06-21T06:21:48+02:00",
+        "sunrise": "2026-06-21T07:51:19+02:00",
+        "dhuhr": "2026-06-21T12:49:07+02:00",
+        "asr": "2026-06-21T15:26:58+02:00",
+        "maghrib": "2026-06-21T17:44:54+02:00",
+        "isha": "2026-06-21T19:09:23+02:00"
+      }
+    },
+    {
+      "id": "cairo-egyptian",
+      "note": "Egyptian General Authority",
+      "latitude": 30.0626,
+      "longitude": 31.2497,
+      "timeZone": "Africa/Cairo",
+      "date": "2026-10-03",
+      "method": "EGYPTIAN",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-10-03T05:22:58+03:00",
+        "sunrise": "2026-10-03T06:49:25+03:00",
+        "dhuhr": "2026-10-03T12:45:03+03:00",
+        "asr": "2026-10-03T16:06:32+03:00",
+        "maghrib": "2026-10-03T18:38:15+03:00",
+        "isha": "2026-10-03T19:55:18+03:00"
+      }
+    },
+    {
+      "id": "karachi-hanafi",
+      "note": "Hanafi Asr (shadow factor 2)",
+      "latitude": 24.8608,
+      "longitude": 67.0104,
+      "timeZone": "Asia/Karachi",
+      "date": "2026-10-03",
+      "method": "KARACHI",
+      "madhab": "HANAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-10-03T05:08:56+05:00",
+        "sunrise": "2026-10-03T06:24:42+05:00",
+        "dhuhr": "2026-10-03T12:22:03+05:00",
+        "asr": "2026-10-03T16:37:36+05:00",
+        "maghrib": "2026-10-03T18:17:02+05:00",
+        "isha": "2026-10-03T19:32:44+05:00"
+      }
+    },
+    {
+      "id": "istanbul-turkey",
+      "note": "Diyanet-style adjustments",
+      "latitude": 41.0082,
+      "longitude": 28.9784,
+      "timeZone": "Europe/Istanbul",
+      "date": "2026-10-03",
+      "method": "TURKEY",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-10-03T05:31:05+03:00",
+        "sunrise": "2026-10-03T06:55:33+03:00",
+        "dhuhr": "2026-10-03T12:58:08+03:00",
+        "asr": "2026-10-03T16:13:15+03:00",
+        "maghrib": "2026-10-03T18:50:04+03:00",
+        "isha": "2026-10-03T20:08:58+03:00"
+      }
+    },
+    {
+      "id": "dubai",
+      "note": "Dubai adjustments",
+      "latitude": 25.2048,
+      "longitude": 55.2708,
+      "timeZone": "Asia/Dubai",
+      "date": "2026-10-03",
+      "method": "DUBAI",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-10-03T04:54:54+04:00",
+        "sunrise": "2026-10-03T06:08:46+04:00",
+        "dhuhr": "2026-10-03T12:11:00+04:00",
+        "asr": "2026-10-03T15:34:22+04:00",
+        "maghrib": "2026-10-03T18:06:51+04:00",
+        "isha": "2026-10-03T19:20:39+04:00"
+      }
+    },
+    {
+      "id": "jakarta-singapore",
+      "note": "Equatorial, rounding up in Adhan",
+      "latitude": -6.2088,
+      "longitude": 106.8456,
+      "timeZone": "Asia/Jakarta",
+      "date": "2026-10-03",
+      "method": "SINGAPORE",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-10-03T04:19:22+07:00",
+        "sunrise": "2026-10-03T05:36:46+07:00",
+        "dhuhr": "2026-10-03T11:42:44+07:00",
+        "asr": "2026-10-03T14:46:36+07:00",
+        "maghrib": "2026-10-03T17:46:47+07:00",
+        "isha": "2026-10-03T18:56:09+07:00"
+      }
+    },
+    {
+      "id": "london-mwl-before-dst",
+      "note": "Day before BST starts",
+      "latitude": 51.5085,
+      "longitude": -0.1257,
+      "timeZone": "Europe/London",
+      "date": "2026-03-28",
+      "method": "MUSLIM_WORLD_LEAGUE",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-03-28T04:08:33+00:00",
+        "sunrise": "2026-03-28T05:45:06+00:00",
+        "dhuhr": "2026-03-28T12:06:31+00:00",
+        "asr": "2026-03-28T15:33:25+00:00",
+        "maghrib": "2026-03-28T18:27:00+00:00",
+        "isha": "2026-03-28T20:03:33+00:00"
+      }
+    },
+    {
+      "id": "london-mwl-dst-start",
+      "note": "BST starts 01:00 UTC",
+      "latitude": 51.5085,
+      "longitude": -0.1257,
+      "timeZone": "Europe/London",
+      "date": "2026-03-29",
+      "method": "MUSLIM_WORLD_LEAGUE",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-03-29T05:06:50+01:00",
+        "sunrise": "2026-03-29T06:42:49+01:00",
+        "dhuhr": "2026-03-29T13:06:13+01:00",
+        "asr": "2026-03-29T16:34:21+01:00",
+        "maghrib": "2026-03-29T19:28:41+01:00",
+        "isha": "2026-03-29T21:04:39+01:00"
+      }
+    },
+    {
+      "id": "london-mwl-dst-end",
+      "note": "BST ends",
+      "latitude": 51.5085,
+      "longitude": -0.1257,
+      "timeZone": "Europe/London",
+      "date": "2026-10-25",
+      "method": "MUSLIM_WORLD_LEAGUE",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-10-25T04:49:25+00:00",
+        "sunrise": "2026-10-25T06:41:34+00:00",
+        "dhuhr": "2026-10-25T11:45:32+00:00",
+        "asr": "2026-10-25T14:16:24+00:00",
+        "maghrib": "2026-10-25T16:46:42+00:00",
+        "isha": "2026-10-25T18:32:13+00:00"
+      }
+    },
+    {
+      "id": "london-mwl-summer",
+      "note": "Twilight persists; seventh-of-night bound",
+      "latitude": 51.5085,
+      "longitude": -0.1257,
+      "timeZone": "Europe/London",
+      "date": "2026-06-21",
+      "method": "MUSLIM_WORLD_LEAGUE",
+      "madhab": "SHAFI",
+      "highLatitudeRule": "SEVENTH_OF_THE_NIGHT",
+      "expected": {
+        "fajr": "2026-06-21T03:39:57+01:00",
+        "sunrise": "2026-06-21T04:43:04+01:00",
+        "dhuhr": "2026-06-21T13:03:19+01:00",
+        "asr": "2026-06-21T17:25:11+01:00",
+        "maghrib": "2026-06-21T21:21:34+01:00",
+        "isha": "2026-06-21T22:24:41+01:00"
+      }
+    },
+    {
+      "id": "new-york-isna-dst-start",
+      "note": "US DST starts",
+      "latitude": 40.7128,
+      "longitude": -74.006,
+      "timeZone": "America/New_York",
+      "date": "2026-03-08",
+      "method": "NORTH_AMERICA",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-03-08T06:04:03-04:00",
+        "sunrise": "2026-03-08T07:18:52-04:00",
+        "dhuhr": "2026-03-08T13:07:42-04:00",
+        "asr": "2026-03-08T16:21:50-04:00",
+        "maghrib": "2026-03-08T18:55:12-04:00",
+        "isha": "2026-03-08T20:10:10-04:00"
+      }
+    },
+    {
+      "id": "new-york-isna-dst-end",
+      "note": "US DST ends, Hanafi",
+      "latitude": 40.7128,
+      "longitude": -74.006,
+      "timeZone": "America/New_York",
+      "date": "2026-11-01",
+      "method": "NORTH_AMERICA",
+      "madhab": "HANAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-11-01T05:09:38-05:00",
+        "sunrise": "2026-11-01T06:26:23-05:00",
+        "dhuhr": "2026-11-01T11:40:33-05:00",
+        "asr": "2026-11-01T15:10:45-05:00",
+        "maghrib": "2026-11-01T16:52:11-05:00",
+        "isha": "2026-11-01T18:08:53-05:00"
+      }
+    },
+    {
+      "id": "auckland-mwl-dst-end",
+      "note": "Southern DST ends",
+      "latitude": -36.8485,
+      "longitude": 174.7633,
+      "timeZone": "Pacific/Auckland",
+      "date": "2026-04-05",
+      "method": "MUSLIM_WORLD_LEAGUE",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-04-05T05:11:23+12:00",
+        "sunrise": "2026-04-05T06:37:25+12:00",
+        "dhuhr": "2026-04-05T12:24:45+12:00",
+        "asr": "2026-04-05T15:39:11+12:00",
+        "maghrib": "2026-04-05T18:09:31+12:00",
+        "isha": "2026-04-05T19:30:25+12:00"
+      }
+    },
+    {
+      "id": "oslo-mwl-midsummer-seventh",
+      "note": "High latitude, seventh of the night",
+      "latitude": 59.9139,
+      "longitude": 10.7522,
+      "timeZone": "Europe/Oslo",
+      "date": "2026-06-21",
+      "method": "MUSLIM_WORLD_LEAGUE",
+      "madhab": "SHAFI",
+      "highLatitudeRule": "SEVENTH_OF_THE_NIGHT",
+      "expected": {
+        "fajr": "2026-06-21T03:09:25+02:00",
+        "sunrise": "2026-06-21T03:53:42+02:00",
+        "dhuhr": "2026-06-21T13:19:48+02:00",
+        "asr": "2026-06-21T18:00:27+02:00",
+        "maghrib": "2026-06-21T22:43:53+02:00",
+        "isha": "2026-06-21T23:28:11+02:00"
+      }
+    },
+    {
+      "id": "oslo-mwl-midsummer-middle",
+      "note": "High latitude, Isha after local midnight",
+      "latitude": 59.9139,
+      "longitude": 10.7522,
+      "timeZone": "Europe/Oslo",
+      "date": "2026-06-21",
+      "method": "MUSLIM_WORLD_LEAGUE",
+      "madhab": "SHAFI",
+      "highLatitudeRule": "MIDDLE_OF_THE_NIGHT",
+      "expected": {
+        "fajr": "2026-06-21T01:18:41+02:00",
+        "sunrise": "2026-06-21T03:53:42+02:00",
+        "dhuhr": "2026-06-21T13:19:48+02:00",
+        "asr": "2026-06-21T18:00:27+02:00",
+        "maghrib": "2026-06-21T22:43:53+02:00",
+        "isha": "2026-06-22T01:18:55+02:00"
+      }
+    },
+    {
+      "id": "apia-date-line",
+      "note": "UTC+13 west of 180°: local date differs from solar date",
+      "latitude": -13.8333,
+      "longitude": -171.7667,
+      "timeZone": "Pacific/Apia",
+      "date": "2026-10-03",
+      "method": "MUSLIM_WORLD_LEAGUE",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-10-03T04:58:03+13:00",
+        "sunrise": "2026-10-03T06:09:11+13:00",
+        "dhuhr": "2026-10-03T12:17:16+13:00",
+        "asr": "2026-10-03T15:33:22+13:00",
+        "maghrib": "2026-10-03T18:23:32+13:00",
+        "isha": "2026-10-03T19:30:35+13:00"
+      }
+    },
+    {
+      "id": "kiritimati-date-line",
+      "note": "UTC+14 at 157°W",
+      "latitude": 1.8721,
+      "longitude": -157.4278,
+      "timeZone": "Pacific/Kiritimati",
+      "date": "2026-10-03",
+      "method": "MUSLIM_WORLD_LEAGUE",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-10-03T05:07:20+14:00",
+        "sunrise": "2026-10-03T06:16:09+14:00",
+        "dhuhr": "2026-10-03T12:19:55+14:00",
+        "asr": "2026-10-03T15:28:37+14:00",
+        "maghrib": "2026-10-03T18:21:40+14:00",
+        "isha": "2026-10-03T19:26:29+14:00"
+      }
+    },
+    {
+      "id": "equator-zero-zero",
+      "note": "Zero coordinates are valid",
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "timeZone": "Africa/Abidjan",
+      "date": "2026-10-03",
+      "method": "MUSLIM_WORLD_LEAGUE",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": {
+        "fajr": "2026-10-03T04:36:57+00:00",
+        "sunrise": "2026-10-03T05:45:46+00:00",
+        "dhuhr": "2026-10-03T11:50:02+00:00",
+        "asr": "2026-10-03T14:56:24+00:00",
+        "maghrib": "2026-10-03T17:52:17+00:00",
+        "isha": "2026-10-03T18:57:07+00:00"
+      }
+    },
+    {
+      "id": "tromso-polar-night",
+      "note": "No sunrise: must be reported, never invented",
+      "latitude": 69.6492,
+      "longitude": 18.9553,
+      "timeZone": "Europe/Oslo",
+      "date": "2026-12-21",
+      "method": "MUSLIM_WORLD_LEAGUE",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": null
+    },
+    {
+      "id": "tromso-midnight-sun",
+      "note": "No sunset: must be reported, never invented",
+      "latitude": 69.6492,
+      "longitude": 18.9553,
+      "timeZone": "Europe/Oslo",
+      "date": "2026-06-21",
+      "method": "MUSLIM_WORLD_LEAGUE",
+      "madhab": "SHAFI",
+      "highLatitudeRule": null,
+      "expected": null
+    }
+  ]
+}

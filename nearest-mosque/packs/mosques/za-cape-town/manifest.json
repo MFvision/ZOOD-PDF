@@ -1,0 +1,44 @@
+{
+  "id": "mosques.za-cape-town",
+  "kind": "mosques",
+  "schemaVersion": 1,
+  "version": 1,
+  "title": {
+    "en": "Cape Town",
+    "ar": "كيب تاون"
+  },
+  "coverage": {
+    "name": "Cape Town",
+    "bbox": {
+      "minLat": -34.116,
+      "minLng": 18.278,
+      "maxLat": -33.7849999,
+      "maxLng": 18.754
+    }
+  },
+  "recordCount": 69,
+  "categories": {
+    "mosque": 69,
+    "prayer_space": 0
+  },
+  "source": {
+    "name": "OpenStreetMap (extract via BBBike.org)",
+    "url": "https://download.bbbike.org/osm/bbbike/CapeTown/",
+    "snapshot": "2026-09-25T23:00:00Z",
+    "builtAt": "2026-10-03T14:13:08Z"
+  },
+  "license": {
+    "id": "ODbL-1.0",
+    "name": "Open Database License 1.0",
+    "url": "https://opendatacommons.org/licenses/odbl/1-0/",
+    "attribution": "© OpenStreetMap contributors",
+    "attributionUrl": "https://www.openstreetmap.org/copyright"
+  },
+  "files": [
+    {
+      "path": "mosques.jsonl",
+      "bytes": 15045,
+      "sha256": "1e3e5ba0892a920527fa0133eecda5bc323032c55a6291c55a48cbc13f3d7012"
+    }
+  ]
+}

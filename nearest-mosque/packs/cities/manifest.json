@@ -1,0 +1,28 @@
+{
+  "id": "cities.world",
+  "kind": "cities",
+  "schemaVersion": 1,
+  "version": 1,
+  "title": {
+    "en": "World cities"
+  },
+  "recordCount": 13090,
+  "source": {
+    "name": "GeoNames cities15000",
+    "url": "https://download.geonames.org/export/dump/cities15000.zip",
+    "builtAt": "2026-10-03T14:14:11Z"
+  },
+  "license": {
+    "id": "CC-BY-4.0",
+    "name": "Creative Commons Attribution 4.0",
+    "url": "https://creativecommons.org/licenses/by/4.0/",
+    "attribution": "City data © GeoNames (geonames.org)"
+  },
+  "files": [
+    {
+      "path": "cities.tsv",
+      "bytes": 1185475,
+      "sha256": "549012fcadf9bb8f49b604c738a586f99cdd5862b90c92db0bd5414853838e4e"
+    }
+  ]
+}

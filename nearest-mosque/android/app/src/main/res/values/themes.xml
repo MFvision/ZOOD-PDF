@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.NearMosque" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+    <color name="window_background">#F2F2F7</color>
+    <color name="ic_launcher_background">#F4EEDF</color>
+    <color name="brand_navy">#1A4D6E</color>
+    <color name="brand_gold">#D4A843</color>
+</resources>

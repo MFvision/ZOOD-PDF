@@ -1,0 +1,130 @@
+{
+  "description": "Search-field normalization: NFKD, drop nonspacing marks, lowercase, letter map, split on non-letters/digits, light stemming. Displayed text is never normalized.",
+  "cases": [
+    {
+      "id": "arabic-tashkeel",
+      "input": "بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ",
+      "tokens": [
+        "بسم",
+        "الله",
+        "رحمن",
+        "رحيم"
+      ]
+    },
+    {
+      "id": "arabic-hamza-forms",
+      "input": "أإآ ٱلصلاة مُؤمن رئيس",
+      "tokens": [
+        "ااا",
+        "صلاه",
+        "مومن",
+        "رييس"
+      ]
+    },
+    {
+      "id": "arabic-prefixes",
+      "input": "والصلاة بالله للمؤمنين الوضوء",
+      "tokens": [
+        "صلاه",
+        "بالله",
+        "مومنين",
+        "وضو"
+      ]
+    },
+    {
+      "id": "arabic-indic-digits",
+      "input": "٢:٢٥٥ و ۱۲۳",
+      "tokens": [
+        "2",
+        "255",
+        "و",
+        "123"
+      ]
+    },
+    {
+      "id": "urdu-letters",
+      "input": "زکوٰۃ روزہ کیسے ہے",
+      "tokens": [
+        "زكوه",
+        "روزه",
+        "كيسي",
+        "هي"
+      ]
+    },
+    {
+      "id": "turkish-dotted",
+      "input": "İMSAK ıslak Abdest nasıl alınır?",
+      "tokens": [
+        "imsak",
+        "islak",
+        "abdest",
+        "nasil",
+        "alinir"
+      ]
+    },
+    {
+      "id": "french-accents",
+      "input": "Prières à l’heure fixée, déjà",
+      "tokens": [
+        "priere",
+        "a",
+        "l",
+        "heure",
+        "fixee",
+        "deja"
+      ]
+    },
+    {
+      "id": "spanish-accents",
+      "input": "¿Cómo se hace la ablución?",
+      "tokens": [
+        "como",
+        "se",
+        "hace",
+        "la",
+        "ablucion"
+      ]
+    },
+    {
+      "id": "english-plurals",
+      "input": "Prayers times ablutions this glass bus",
+      "tokens": [
+        "prayer",
+        "time",
+        "ablution",
+        "this",
+        "glass",
+        "bus"
+      ]
+    },
+    {
+      "id": "punctuation",
+      "input": "Hello—world! (test) 5:6, wudu.",
+      "tokens": [
+        "hello",
+        "world",
+        "test",
+        "5",
+        "6",
+        "wudu"
+      ]
+    },
+    {
+      "id": "presentation-forms",
+      "input": "ﻻ ﷲ",
+      "tokens": [
+        "لا",
+        "الله"
+      ]
+    },
+    {
+      "id": "indonesian",
+      "input": "Bagaimana cara berwudu?",
+      "tokens": [
+        "bagaimana",
+        "cara",
+        "berwudu"
+      ]
+    }
+  ]
+}
