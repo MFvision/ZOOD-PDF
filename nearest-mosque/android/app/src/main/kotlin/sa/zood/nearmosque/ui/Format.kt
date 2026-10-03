@@ -80,6 +80,21 @@ object Format {
         return if (h > 0) context.getString(R.string.duration_hms, h, m, sec) else context.getString(R.string.duration_ms, m, sec)
     }
 
+    /** "50 min, 28 sec" style remaining time in the interface language (hours omitted when zero). */
+    fun remainingLong(context: Context, d: Duration): String {
+        val s = d.seconds.coerceAtLeast(0)
+        val h = s / 3600
+        val m = (s % 3600) / 60
+        val sec = s % 60
+        val parts = buildList {
+            if (h > 0) add(android.icu.util.Measure(h, android.icu.util.MeasureUnit.HOUR))
+            if (h > 0 || m > 0) add(android.icu.util.Measure(m, android.icu.util.MeasureUnit.MINUTE))
+            add(android.icu.util.Measure(sec, android.icu.util.MeasureUnit.SECOND))
+        }
+        return android.icu.text.MeasureFormat.getInstance(locale(context), android.icu.text.MeasureFormat.FormatWidth.SHORT)
+            .formatMeasures(*parts.toTypedArray())
+    }
+
     fun number(context: Context, value: Double, fractionDigits: Int): String =
         NumberFormat.getNumberInstance(locale(context)).apply {
             minimumFractionDigits = fractionDigits

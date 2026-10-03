@@ -43,6 +43,8 @@ import sa.zood.nearmosque.data.ResolvedCitation
 import sa.zood.nearmosque.platform.ExternalActions
 import sa.zood.nearmosque.ui.theme.LocalExtraColors
 import sa.zood.nearmosque.ui.theme.QuranTextStyle
+import sa.zood.nearmosque.ui.glass.glass
+import androidx.compose.foundation.layout.width
 import sa.zood.nearmosque.ui.theme.Tokens
 
 /** "Quran 5:6 · Al-Maaida" (Arabic surah name for Arabic-script interfaces). */
@@ -64,33 +66,41 @@ fun SourceCard(r: ResolvedCitation, lang: String, onRead: (ResolvedCitation) -> 
     val context = LocalContext.current
     val c = r.chunk
     val original = r.documents[c.original.docId]
+    val white = androidx.compose.ui.graphics.Color.White
     Column(
         Modifier.fillMaxWidth().padding(top = 8.dp)
-            .background(Tokens.sand.copy(alpha = 0.55f), RoundedCornerShape(16.dp)).padding(12.dp),
+            .glass(RoundedCornerShape(20.dp), tint = white.copy(alpha = 0.04f), shadow = 4.dp).padding(14.dp),
     ) {
-        Text(referenceLabel(c, lang), style = MaterialTheme.typography.titleSmall, color = Tokens.navy)
-        Text(
-            listOfNotNull(original?.title?.get(lang) ?: original?.title?.get("en"), original?.edition).joinToString(" · "),
-            style = MaterialTheme.typography.bodySmall, color = LocalExtraColors.current.textSecondary,
-        )
+        Row(verticalAlignment = androidx.compose.ui.Alignment.Top) {
+            androidx.compose.material3.Icon(androidx.compose.ui.res.painterResource(R.drawable.ic_book), contentDescription = null, tint = Tokens.gold, modifier = Modifier.padding(top = 2.dp))
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text(referenceLabel(c, lang), style = MaterialTheme.typography.titleSmall, color = white)
+                Text(
+                    stringResource(R.string.supporting_passage) + " · " + listOfNotNull(original?.title?.get(lang) ?: original?.title?.get("en"), original?.edition).joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall, color = white.copy(alpha = 0.7f),
+                )
+            }
+        }
         Spacer(Modifier.height(6.dp))
-        Text(stringResource(R.string.exact_quote), style = MaterialTheme.typography.labelSmall, color = LocalExtraColors.current.accentText)
-        OriginalText(c.original.text, c.original.lang)
+        Text(stringResource(R.string.exact_quote), style = MaterialTheme.typography.labelSmall, color = Tokens.gold)
+        CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides white) { OriginalText(c.original.text, c.original.lang) }
         c.translations.forEach { t ->
             val doc = r.documents[t.docId]
             Spacer(Modifier.height(6.dp))
             Text(
                 stringResource(R.string.translation_by, listOfNotNull(doc?.translator, doc?.year?.toString()).joinToString(", ")),
-                style = MaterialTheme.typography.labelSmall, color = LocalExtraColors.current.accentText,
+                style = MaterialTheme.typography.labelSmall, color = Tokens.gold,
             )
             Text(
-                t.text,
+                t.text, color = white,
                 style = MaterialTheme.typography.bodyMedium.copy(textDirection = TextDirection.Ltr, localeList = LocaleList(t.lang)),
             )
         }
         Row {
-            TextButton(onClick = { onRead(r) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.source_open)) }
-            c.url?.let { url -> TextButton(onClick = { ExternalActions.open(context, url) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.source_original_link)) } }
+            val link = androidx.compose.ui.graphics.Color(0xFF8CC0DE)
+            TextButton(onClick = { onRead(r) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.source_open), color = link) }
+            c.url?.let { url -> TextButton(onClick = { ExternalActions.open(context, url) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.source_original_link), color = link) } }
         }
     }
 }
@@ -130,7 +140,7 @@ fun ReaderSheet(r: ResolvedCitation, vm: AskViewModel, onDismiss: () -> Unit) {
                             .background(if (cited) Tokens.gold.copy(alpha = 0.16f) else androidx.compose.ui.graphics.Color.Transparent, RoundedCornerShape(12.dp))
                             .padding(10.dp),
                     ) {
-                        Text(referenceLabel(c, lang), style = MaterialTheme.typography.labelLarge, color = Tokens.navy)
+                        Text(referenceLabel(c, lang), style = MaterialTheme.typography.labelLarge, color = Tokens.gold)
                         OriginalText(c.original.text, c.original.lang, emphasized = cited)
                         c.translations.forEach { t ->
                             Text(t.text, style = MaterialTheme.typography.bodyMedium.copy(textDirection = TextDirection.Ltr))

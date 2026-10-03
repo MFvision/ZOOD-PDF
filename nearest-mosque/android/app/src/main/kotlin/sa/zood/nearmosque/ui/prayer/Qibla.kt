@@ -54,36 +54,11 @@ import sa.zood.nearmosque.R
 import sa.zood.nearmosque.core.Angles
 import sa.zood.nearmosque.core.CompassState
 import sa.zood.nearmosque.ui.Format
-import sa.zood.nearmosque.ui.components.SectionCard
-import sa.zood.nearmosque.ui.theme.LocalExtraColors
+import sa.zood.nearmosque.ui.glass.glass
+import androidx.compose.ui.graphics.drawscope.translate
 import sa.zood.nearmosque.ui.theme.Tokens
 import kotlin.math.abs
 import kotlin.math.roundToInt
-
-@Composable
-fun QiblaCard(ui: PrayerUi, compass: CompassState, onOpenCompass: () -> Unit) {
-    val context = LocalContext.current
-    val bearing = ui.qiblaBearing ?: return
-    SectionCard(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.qibla), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
-                Text(stringResource(R.string.qibla_bearing, Format.degrees(context, bearing)), style = MaterialTheme.typography.bodyLarge)
-                ui.qiblaDistance?.let {
-                    Text(stringResource(R.string.qibla_distance, Format.distance(context, it)), style = MaterialTheme.typography.bodyMedium, color = LocalExtraColors.current.textSecondary)
-                }
-                Text(guidance(compass, bearing), style = MaterialTheme.typography.bodyMedium, color = LocalExtraColors.current.accentText)
-            }
-            QiblaDial(bearing, compass, aligned = false, modifier = Modifier.size(96.dp))
-        }
-        Spacer(Modifier.height(8.dp))
-        Button(onClick = onOpenCompass, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Icon(painterResource(R.drawable.ic_compass), contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.qibla_open_compass))
-        }
-    }
-}
 
 @Composable
 private fun guidance(compass: CompassState, bearing: Double): String {
@@ -94,7 +69,7 @@ private fun guidance(compass: CompassState, bearing: Double): String {
             val rel = Angles.relativeToQibla(bearing, compass.headingTrue)
             when {
                 compass.needsCalibration -> stringResource(R.string.qibla_calibrate)
-                abs(rel) <= 5 -> stringResource(R.string.qibla_aligned)
+                abs(rel) <= 5 -> stringResource(R.string.qibla_you_are_facing)
                 rel > 0 -> stringResource(R.string.qibla_turn_right, Format.degrees(context, abs(rel)))
                 else -> stringResource(R.string.qibla_turn_left, Format.degrees(context, abs(rel)))
             }
@@ -123,30 +98,33 @@ fun QiblaDial(bearing: Double, compass: CompassState, aligned: Boolean, modifier
     }
     val north = stringResource(R.string.compass_north)
     val desc = stringResource(R.string.qibla_dial_a11y, stringResource(R.string.qibla_bearing, Format.degrees(context, bearing)))
-    val onSurface = MaterialTheme.colorScheme.onSurface
+    val onSurface = Color.White
+    val kaaba = painterResource(R.drawable.ic_kaaba)
     val textPaint = remember { android.graphics.Paint().apply { isAntiAlias = true; textAlign = android.graphics.Paint.Align.CENTER } }
     Canvas(modifier.aspectRatio(1f).semantics { contentDescription = desc }) {
         val c = Offset(size.width / 2, size.height / 2)
         val r = size.minDimension / 2 - 4.dp.toPx()
         if (aligned) drawCircle(Brush.radialGradient(listOf(Tokens.gold.copy(alpha = 0.45f), Color.Transparent), c, r * 1.05f), r * 1.05f, c)
-        drawCircle(onSurface.copy(alpha = 0.08f), r, c)
-        drawCircle(onSurface.copy(alpha = 0.35f), r, c, style = Stroke(1.5.dp.toPx()))
+        drawCircle(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.05f))), r, c)
+        drawCircle(Brush.linearGradient(listOf(Color.White.copy(alpha = 0.55f), Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.25f))), r, c, style = Stroke(1.dp.toPx()))
         rotate(ring.value, c) {
             ticks(c, r, onSurface)
-            textPaint.color = android.graphics.Color.argb(255, 179, 38, 30)
+            textPaint.color = android.graphics.Color.argb(255, 242, 184, 181)
             textPaint.textSize = r * 0.22f
             drawContext.canvas.nativeCanvas.drawText(north, c.x, c.y - r + r * 0.32f, textPaint)
             // Qibla arrow fixed to the ring at the true bearing.
             rotate(bearing.toFloat(), c) {
-                val tip = Offset(c.x, c.y - r * 0.82f)
-                drawLine(Tokens.gold, c, tip, 5.dp.toPx(), StrokeCap.Round)
-                drawCircle(Tokens.gold, 7.dp.toPx(), tip)
-                drawCircle(Tokens.navy, 3.dp.toPx(), tip)
+                val tip = Offset(c.x, c.y - r * 0.62f)
+                drawLine(Brush.verticalGradient(listOf(Tokens.gold, Tokens.gold.copy(alpha = 0.15f)), startY = tip.y, endY = c.y), c, tip, 3.dp.toPx(), StrokeCap.Round)
+                val k = r * 0.26f
+                drawCircle(Color.White.copy(alpha = 0.9f), k * 0.72f, Offset(c.x, c.y - r * 0.74f))
+                translate(c.x - k / 2, c.y - r * 0.74f - k / 2) { with(kaaba) { draw(androidx.compose.ui.geometry.Size(k, k)) } }
             }
         }
         // Phone's forward direction.
-        if (live != null) drawLine(onSurface.copy(alpha = 0.6f), Offset(c.x, c.y - r - 2.dp.toPx()), Offset(c.x, c.y - r + 10.dp.toPx()), 3.dp.toPx(), StrokeCap.Round)
-        drawCircle(Tokens.navy, 6.dp.toPx(), c)
+        if (live != null) drawLine(if (aligned) Tokens.gold else Color.White, Offset(c.x, c.y - r - 2.dp.toPx()), Offset(c.x, c.y - r + 12.dp.toPx()), 4.dp.toPx(), StrokeCap.Round)
+        drawCircle(Color.White, 9.dp.toPx(), c)
+        drawCircle(sa.zood.nearmosque.ui.glass.BLUE, 6.dp.toPx(), c)
     }
 }
 
@@ -163,38 +141,53 @@ private fun DrawScope.ticks(c: Offset, r: Float, color: Color) {
     }
 }
 
-/** Full-screen compass. Sensors run only while this (or the Prayer tab) is visible. */
+/** Full-screen compass on the sky. Sensors run only while this (or a compass tab) is visible. */
 @Composable
 fun QiblaCompassScreen(ui: PrayerUi, compass: CompassState, aligned: Boolean, onClose: () -> Unit) {
     val context = LocalContext.current
     val bearing = ui.qiblaBearing ?: return
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    val sky = sa.zood.nearmosque.ui.theme.LocalSky.current
+    Box(Modifier.fillMaxSize()) {
+        sa.zood.nearmosque.ui.glass.SkyBackdrop(sky, Modifier.fillMaxSize(), horizon = 0.82f)
         Column(Modifier.fillMaxSize().safeDrawingPadding().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.qibla), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
-                IconButton(onClick = onClose) { Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.close)) }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.qibla), style = MaterialTheme.typography.headlineMedium, color = Color.White, modifier = Modifier.semantics { heading() })
+                    Text(ui.location?.name.orEmpty(), style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.8f))
+                }
+                sa.zood.nearmosque.ui.glass.GlassIconButton(androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Filled.Close), stringResource(R.string.close), onClose)
             }
-            Text(ui.location?.name.orEmpty(), style = MaterialTheme.typography.bodyLarge, color = LocalExtraColors.current.textSecondary)
             Spacer(Modifier.height(16.dp))
             Box(Modifier.fillMaxWidth().widthIn(max = 420.dp).weight(1f, fill = false), contentAlignment = Alignment.Center) {
-                QiblaDial(bearing, compass, aligned, Modifier.fillMaxWidth(0.86f))
+                QiblaDial(bearing, compass, aligned, Modifier.fillMaxWidth(0.9f))
             }
             Spacer(Modifier.height(16.dp))
             Text(
                 guidance(compass, bearing), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center,
-                color = if (aligned) LocalExtraColors.current.accentText else MaterialTheme.colorScheme.onSurface,
+                color = if (aligned) Tokens.gold else Color.White,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
-            Spacer(Modifier.height(8.dp))
-            Text(stringResource(R.string.qibla_bearing, Format.degrees(context, bearing)), style = MaterialTheme.typography.bodyLarge)
-            when (compass) {
-                is CompassState.Live -> compass.accuracyDeg?.let {
-                    Text(stringResource(R.string.heading_accuracy, it.roundToInt().toString()), style = MaterialTheme.typography.bodyMedium, color = LocalExtraColors.current.textSecondary)
-                }
-                CompassState.BearingOnly -> Text(stringResource(R.string.qibla_north_up), style = MaterialTheme.typography.bodyMedium, color = LocalExtraColors.current.textSecondary)
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                InfoChip(stringResource(R.string.qibla_bearing, Format.degrees(context, bearing)))
+                ui.qiblaDistance?.let { InfoChip(stringResource(R.string.qibla_distance, Format.distance(context, it))) }
             }
-            Spacer(Modifier.height(12.dp))
-            Text(stringResource(R.string.qibla_hold_flat) + " · " + stringResource(R.string.qibla_approximate), style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, color = LocalExtraColors.current.textSecondary)
+            Spacer(Modifier.height(8.dp))
+            val note = when (compass) {
+                is CompassState.Live -> compass.accuracyDeg?.let { stringResource(R.string.heading_accuracy, it.roundToInt().toString()) }
+                CompassState.BearingOnly -> stringResource(R.string.qibla_north_up)
+            }
+            note?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.75f)) }
+            Spacer(Modifier.height(8.dp))
+            Text(stringResource(R.string.qibla_hold_flat) + " · " + stringResource(R.string.qibla_approximate), style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.75f))
         }
     }
+}
+
+@Composable
+private fun InfoChip(text: String) {
+    Text(
+        text, color = Color.White, style = MaterialTheme.typography.labelMedium,
+        modifier = Modifier.glass(androidx.compose.foundation.shape.RoundedCornerShape(50), shadow = 4.dp).padding(horizontal = 12.dp, vertical = 8.dp),
+    )
 }

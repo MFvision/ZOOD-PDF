@@ -4,6 +4,9 @@
     <!-- Foreground location only, requested when the user taps "Use my location". No background location. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Live map images (OpenFreeMap) and optional live mosque search (OpenStreetMap Overpass). Everything else works offline. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Prayer reminders (opt-in per prayer). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />

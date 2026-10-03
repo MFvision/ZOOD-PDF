@@ -37,6 +37,8 @@ class AppContainer(
     inMemoryDb: Boolean = false,
     val clock: () -> Instant = Instant::now,
     settingsFile: java.io.File? = null,
+    /** Live mosque results; tests pass a fake or a source that is always unavailable. */
+    val online: sa.zood.nearmosque.data.OnlineMosqueSource = sa.zood.nearmosque.data.OverpassMosqueSource(),
 ) {
     private val app = context.applicationContext
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)

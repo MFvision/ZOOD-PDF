@@ -134,7 +134,7 @@ struct LocationPill: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .glass(Capsule(), interactive: true)
+        .glass(Capsule())
     }
 }
 
@@ -171,9 +171,11 @@ struct QiblaArc<Content: View>: View {
                     Text(l10n.t("compass_north")).font(.caption.weight(.bold)).foregroundStyle(.white.opacity(0.85))
                         .position(x: c.x, y: discY + Theme.discSize / 2 + 14)
                 }
+                // Content starts below the disc (never overlapping it), centred inside the circle.
                 content
                     .frame(width: r * 1.7)
-                    .position(x: c.x, y: c.y - r * 0.12)
+                    .padding(.top, discY + Theme.discSize / 2 + 26)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
             .environment(\.layoutDirection, .leftToRight)
         }

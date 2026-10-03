@@ -139,32 +139,27 @@ jobs:
           shot 01-onboarding-welcome -demoOnboarding YES -demoOnboardingPage 0 -languageOverride en
           shot 02-onboarding-qibla -demoOnboarding YES -demoOnboardingPage 2 -languageOverride en
           shot 03-onboarding-mosque -demoOnboarding YES -demoOnboardingPage 3 -languageOverride en
-          shot 04-onboarding-setup -demoOnboarding YES -demoOnboardingPage 5 -languageOverride en
+          shot 04-onboarding-ask -demoOnboarding YES -demoOnboardingPage 4 -languageOverride en
+          shot 04b-onboarding-setup -demoOnboarding YES -demoOnboardingPage 5 -languageOverride en
           shot 05-prayer-en -demoCity "Cape Town" -demoTab prayer -languageOverride en
           shot 06-prayer-ar -demoCity "Cape Town" -demoTab prayer -languageOverride ar
+          shot 06b-qibla-compass -demoCity "Cape Town" -demoTab prayer -demoCompass YES -languageOverride en
           shot 07-mosques-compass -demoCity "Cape Town" -demoTab mosques -demoMosqueMode 0 -languageOverride en
           shot 08-mosques-map -demoCity "Cape Town" -demoTab mosques -demoMosqueMode 1 -languageOverride en
           shot 09-ask-answer -demoCity "Cape Town" -demoTab ask -demoAsk YES -languageOverride en
           shot 10-ask-ar -demoCity "Cape Town" -demoTab ask -languageOverride ar
           ls -la shots
-          # Contact sheet (small JPEG) printed as base64 so it can be read from the job log.
-          python3 -m pip install --quiet pillow
-          python3 - <<'PY'
-          import glob, base64, io
+          # Contact sheet for quick review.
+          python3 -m venv /tmp/venv && /tmp/venv/bin/pip install --quiet pillow
+          /tmp/venv/bin/python - <<'PY'
+          import glob
           from PIL import Image
-          files = sorted(glob.glob("shots/*.png"))
-          ims = [Image.open(f).convert("RGB") for f in files]
-          w = 300; h = int(ims[0].height * w / ims[0].width)
-          cols = 5; rows = (len(ims) + cols - 1) // cols
-          sheet = Image.new("RGB", (cols * w, rows * h), "white")
+          ims = [Image.open(f).convert("RGB") for f in sorted(glob.glob("shots/*.png"))]
+          w = 300; h = int(ims[0].height * w / ims[0].width); cols = 6
+          sheet = Image.new("RGB", (cols * w, ((len(ims) + cols - 1) // cols) * h), "white")
           for i, im in enumerate(ims):
               sheet.paste(im.resize((w, h)), ((i % cols) * w, (i // cols) * h))
-          sheet.save("shots/contact-sheet.jpg", quality=70)
-          buf = io.BytesIO(); sheet.save(buf, "JPEG", quality=55)
-          b = base64.b64encode(buf.getvalue()).decode()
-          print("CONTACT_SHEET_BEGIN")
-          for i in range(0, len(b), 4000): print(b[i:i + 4000])
-          print("CONTACT_SHEET_END")
+          sheet.save("shots/contact-sheet.jpg", quality=80)
           PY
       - uses: actions/upload-artifact@v4
         if: always()

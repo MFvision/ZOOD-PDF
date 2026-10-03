@@ -90,7 +90,12 @@ struct PrayerView: View {
         .skyBackground()
         .toolbar(.hidden, for: .navigationBar)
         .sensoryFeedback(.success, trigger: aligned) { _, new in new }
-        .onAppear { model.location.beginHeading() }
+        .onAppear {
+            model.location.beginHeading()
+            #if DEBUG
+            if UserDefaults.standard.bool(forKey: "demoCompass") { showCompass = true }
+            #endif
+        }
         .onDisappear { model.location.endHeading() }
         .sheet(isPresented: $showCity) { CityPickerView() }
         .sheet(isPresented: $showCalc) { CalculationView() }

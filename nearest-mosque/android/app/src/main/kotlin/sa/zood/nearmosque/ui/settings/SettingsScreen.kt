@@ -66,6 +66,8 @@ fun SettingsScreen(
     prayer: PrayerUi,
     onPickCity: () -> Unit,
     onOpenCalculation: () -> Unit,
+    onReplayTour: () -> Unit,
+    onOnlineSearch: (Boolean) -> Unit,
     onClose: () -> Unit,
 ) {
     BackHandler(onBack = onClose)
@@ -112,6 +114,13 @@ fun SettingsScreen(
                 prayer.location?.let { Text(stringResource(R.string.time_zone_label, Format.zoneName(context, it.zoneId)), style = MaterialTheme.typography.bodySmall) }
                 OutlinedButton(onClick = onPickCity, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.change)) }
 
+                Section(stringResource(R.string.tab_mosques))
+                Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.online_search), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                    androidx.compose.material3.Switch(checked = prayer.settings?.onlineSearch ?: true, onCheckedChange = onOnlineSearch)
+                }
+                Text(stringResource(R.string.online_search_body), style = MaterialTheme.typography.bodySmall, color = LocalExtraColors.current.textSecondary)
+
                 Section(stringResource(R.string.prayer_section))
                 prayer.settings?.prayer?.let { Text(stringResource(Format.methodName(it.method)), style = MaterialTheme.typography.bodyLarge) }
                 OutlinedButton(onClick = onOpenCalculation, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.calculation)) }
@@ -152,10 +161,14 @@ fun SettingsScreen(
                         Text(m.license.name + " · " + m.license.url, style = MaterialTheme.typography.bodySmall, color = LocalExtraColors.current.textSecondary)
                         Spacer(Modifier.height(6.dp))
                     }
-                Text("Adhan (MIT) · Batoul Apps", style = MaterialTheme.typography.bodySmall)
+                Text("Adhan (MIT) · Batoul Apps; MapLibre Android (BSD-2-Clause)", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.map_attribution_ofm), style = MaterialTheme.typography.bodySmall)
 
                 Section(stringResource(R.string.privacy))
                 Text(stringResource(R.string.privacy_body), style = MaterialTheme.typography.bodyMedium)
+
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(onClick = onReplayTour, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.onb_replay)) }
 
                 Section(stringResource(R.string.about))
                 Text(stringResource(R.string.version_label, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodyMedium)

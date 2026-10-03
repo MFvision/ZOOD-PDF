@@ -14,6 +14,8 @@ import kotlinx.coroutines.launch
 import sa.zood.nearmosque.AppContainer
 import sa.zood.nearmosque.core.LatLng
 import sa.zood.nearmosque.core.Mosque
+import sa.zood.nearmosque.core.OnlineMosques
+import sa.zood.nearmosque.core.RankedMosque
 import sa.zood.nearmosque.core.SearchGeneration
 import sa.zood.nearmosque.data.MosqueResult
 import sa.zood.nearmosque.platform.LocationPermission
@@ -25,16 +27,24 @@ sealed interface SearchOrigin {
     data object SelectedPoint : SearchOrigin
 }
 
+enum class OnlineState { OFF, SEARCHING, DONE, UNAVAILABLE }
+
 data class MosquesUi(
     val origin: SearchOrigin? = null,
     val center: LatLng? = null,
     val loading: Boolean = false,
+    /** Downloaded-data outcome (keeps the distinct empty states). */
     val result: MosqueResult? = null,
+    /** Downloaded records merged with live results, nearest first. */
+    val items: List<RankedMosque> = emptyList(),
+    val online: OnlineState = OnlineState.OFF,
     val favorites: Set<String> = emptySet(),
     val favoritesOnly: Boolean = false,
     val favoriteMosques: List<Mosque> = emptyList(),
     val permissionDenied: Boolean = false,
     val locating: Boolean = false,
+    /** 0 = compass, 1 = map. */
+    val mode: Int = 0,
 )
 
 class MosquesViewModel(private val c: AppContainer) : ViewModel() {
@@ -49,10 +59,17 @@ class MosquesViewModel(private val c: AppContainer) : ViewModel() {
     /** Initial origin: the device if a fix exists, otherwise the prayer city; never a default city. */
     fun start(lang: String) = viewModelScope.launch {
         if (_ui.value.center != null) return@launch
+        val s = c.settings.settings.first()
+        _ui.value = _ui.value.copy(mode = if (s.mosqueView == "map") 1 else 0)
         val pos = c.devicePosition.value
         if (pos != null) { search(pos.location, SearchOrigin.Device, lang); return@launch }
-        val loc = c.settings.settings.first().prayerLocation
+        val loc = s.prayerLocation
         if (loc != null) search(loc.location, SearchOrigin.PrayerCity(loc.name), lang)
+    }
+
+    fun setMode(mode: Int) = viewModelScope.launch {
+        _ui.value = _ui.value.copy(mode = mode)
+        c.settings.setMosqueView(if (mode == 1) "map" else "compass")
     }
 
     fun useDevice(lang: String) = viewModelScope.launch {
@@ -90,11 +107,23 @@ class MosquesViewModel(private val c: AppContainer) : ViewModel() {
         _ui.value = _ui.value.copy(origin = origin, center = center, loading = true)
         job = viewModelScope.launch {
             val r = c.mosques.nearest(center, RADIUS_M, lang)
-            if (generation.isCurrent(gen)) _ui.value = _ui.value.copy(result = r, loading = false)
+            if (!generation.isCurrent(gen)) return@launch
+            val offline = (r as? MosqueResult.Found)?.items.orEmpty()
+            val useOnline = c.settings.settings.first().onlineSearch
+            _ui.value = _ui.value.copy(result = r, items = offline, loading = false, online = if (useOnline) OnlineState.SEARCHING else OnlineState.OFF)
+            if (!useOnline) return@launch
+            val live = c.online.search(center, ONLINE_RADIUS_M)
+            if (!generation.isCurrent(gen)) return@launch
+            _ui.value = if (live != null) {
+                _ui.value.copy(items = OnlineMosques.merge(center, offline, live, RADIUS_M), online = OnlineState.DONE)
+            } else {
+                _ui.value.copy(online = OnlineState.UNAVAILABLE)
+            }
         }
     }
 
     companion object {
         const val RADIUS_M = 25_000.0
+        const val ONLINE_RADIUS_M = 10_000.0
     }
 }

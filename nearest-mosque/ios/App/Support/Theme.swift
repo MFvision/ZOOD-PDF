@@ -197,7 +197,7 @@ struct GlassIconButton: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .glass(Circle(), interactive: true)
+        .glass(Circle())
         .accessibilityLabel(label)
     }
 }
@@ -211,8 +211,9 @@ struct LogoDisc: View {
 
     var body: some View {
         ZStack {
-            Circle().fill(Theme.gold.opacity(0.55)).frame(width: size * 1.6, height: size * 1.6)
-                .blur(radius: size * 0.3)
+            Circle()
+                .fill(RadialGradient(colors: [Theme.gold.opacity(0.6), Theme.gold.opacity(0.25), .clear], center: .center, startRadius: 0, endRadius: size * 0.95))
+                .frame(width: size * 1.9, height: size * 1.9)
                 .scaleEffect(pulse ? 1.08 : 0.94)
                 .opacity(glow ? 1 : 0)
             Circle().fill(.white.opacity(0.94))

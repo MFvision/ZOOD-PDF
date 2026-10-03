@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
@@ -38,7 +39,13 @@ class ScreenshotTest {
     private val fixed = ZonedDateTime.of(2026, 10, 3, 5, 30, 28, 0, ZoneId.of("Africa/Johannesburg")).toInstant()
 
     private fun container(location: PrayerLocation? = capeTown): AppContainer = runBlocking {
-        val c = AppContainer(compose.activity, inMemoryDb = true, clock = { fixed }, settingsFile = java.io.File.createTempFile("settings", ".preferences_pb").also { it.delete() })
+        // Still frames (system "remove animations"), and no network: live search returns nothing new.
+        android.provider.Settings.Global.putFloat(compose.activity.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
+        val c = AppContainer(
+            compose.activity, inMemoryDb = true, clock = { fixed },
+            settingsFile = java.io.File.createTempFile("settings", ".preferences_pb").also { it.delete() },
+            online = sa.zood.nearmosque.data.OnlineMosqueSource { _, _ -> emptyList() },
+        )
         c.packs.ensureBuiltins()
         c.start()
         if (location != null) {
@@ -48,9 +55,9 @@ class ScreenshotTest {
         c
     }
 
-    private fun shoot(name: String, tab: Tab, location: PrayerLocation? = capeTown, after: () -> Unit = {}) {
+    private fun shoot(name: String, tab: Tab, location: PrayerLocation? = capeTown, onboardingPage: Int? = null, after: () -> Unit = {}) {
         val c = container(location)
-        compose.setContent { NearMosqueTheme(dark = false) { AppRoot(c, initialTab = tab) } }
+        compose.setContent { NearMosqueTheme { AppRoot(c, initialTab = tab, showOnboarding = onboardingPage != null, onboardingPage = onboardingPage ?: 0) } }
         compose.waitForIdle()
         after()
         compose.waitForIdle()
@@ -64,8 +71,21 @@ class ScreenshotTest {
 
     @Test fun firstLaunchNoLocation() = shoot("prayer_first_launch_en", Tab.PRAYER, location = null)
 
-    @Test fun prayerExpanded() = shoot("prayer_expanded_en", Tab.PRAYER) {
-        compose.onNodeWithContentDescription("Expand").performClick()
+    @Test fun onboardingWelcome() = shoot("onboarding_welcome_en", Tab.PRAYER, location = null, onboardingPage = 0)
+
+    @Test fun onboardingQibla() = shoot("onboarding_qibla_en", Tab.PRAYER, location = null, onboardingPage = 2)
+
+    @Test fun onboardingMosque() = shoot("onboarding_mosque_en", Tab.PRAYER, location = null, onboardingPage = 3)
+
+    @Test fun onboardingAsk() = shoot("onboarding_ask_en", Tab.PRAYER, location = null, onboardingPage = 4)
+
+    @Test fun onboardingSetup() = shoot("onboarding_setup_en", Tab.PRAYER, location = null, onboardingPage = 5)
+
+    @Test @Config(qualifiers = "ar-w393dp-h852dp-xxhdpi")
+    fun onboardingArabic() = shoot("onboarding_qibla_ar", Tab.PRAYER, location = null, onboardingPage = 2)
+
+    @Test fun prayerScrolled() = shoot("prayer_scrolled_en", Tab.PRAYER) {
+        compose.onNodeWithText("Today’s prayer times").performScrollTo()
     }
 
     @Test fun mosquesList() = shoot("mosques_en", Tab.MOSQUES)

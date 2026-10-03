@@ -65,11 +65,14 @@ fun MosqueDetailSheet(r: RankedMosque, favorite: Boolean, onToggleFavorite: () -
                         Text(it, style = MaterialTheme.typography.bodyMedium.copy(textDirection = DataDirection), color = LocalExtraColors.current.textSecondary)
                     }
                 }
-                IconToggleButton(checked = favorite, onCheckedChange = { onToggleFavorite() }) {
-                    Icon(
-                        Icons.Filled.Star, tint = if (favorite) Tokens.gold else LocalExtraColors.current.textSecondary,
-                        contentDescription = stringResource(if (favorite) R.string.favorite_remove else R.string.favorite_add),
-                    )
+                // Only downloaded records can be favorites (live results have no stable record on the phone).
+                if (m.packId.startsWith("mosques.")) {
+                    IconToggleButton(checked = favorite, onCheckedChange = { onToggleFavorite() }) {
+                        Icon(
+                            Icons.Filled.Star, tint = if (favorite) Tokens.gold else LocalExtraColors.current.textSecondary,
+                            contentDescription = stringResource(if (favorite) R.string.favorite_remove else R.string.favorite_add),
+                        )
+                    }
                 }
             }
             Text(
@@ -101,6 +104,9 @@ fun MosqueDetailSheet(r: RankedMosque, favorite: Boolean, onToggleFavorite: () -
             Spacer(Modifier.height(12.dp))
             Text(stringResource(R.string.external_maps_note), style = MaterialTheme.typography.bodySmall, color = LocalExtraColors.current.textSecondary)
             val src = manifest?.source
+            if (m.packId == sa.zood.nearmosque.core.OnlineMosques.PACK_ID) {
+                Text(stringResource(R.string.source_online_osm), style = MaterialTheme.typography.bodySmall, color = LocalExtraColors.current.textSecondary)
+            }
             Text(
                 stringResource(R.string.record_source, "OpenStreetMap " + m.sourceId.removePrefix("osm:"), (m.sourceTimestamp ?: src?.snapshot ?: "").take(10)),
                 style = MaterialTheme.typography.bodySmall, color = LocalExtraColors.current.textSecondary,

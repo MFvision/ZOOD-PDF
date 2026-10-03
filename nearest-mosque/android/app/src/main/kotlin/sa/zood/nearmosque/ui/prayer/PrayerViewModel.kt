@@ -30,6 +30,7 @@ import sa.zood.nearmosque.data.AppSettings
 import sa.zood.nearmosque.data.PrayerLocation
 import sa.zood.nearmosque.platform.LocationPermission
 import sa.zood.nearmosque.platform.ReminderScheduler
+import sa.zood.nearmosque.ui.theme.SkyPeriod
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -46,6 +47,7 @@ data class PrayerUi(
     val fajrEndsAt: Instant? = null,
     val qiblaBearing: Double? = null,
     val qiblaDistance: Double? = null,
+    val sky: SkyPeriod = SkyPeriod.NIGHT,
 )
 
 sealed interface LocateState {
@@ -101,6 +103,7 @@ class PrayerViewModel(private val c: AppContainer) : ViewModel() {
             settings = s, location = loc, now = now, today = todaySchedule, tomorrow = cached[2], next = next,
             current = current, fajrEndsAt = calc.fajrEndsAt(todaySchedule, now),
             qiblaBearing = Qibla.bearing(loc.location), qiblaDistance = Qibla.distanceMeters(loc.location),
+            sky = SkyPeriod.at(now, todaySchedule[PrayerEvent.SUNRISE], current, hasLocation = true),
         )
     }
 
@@ -140,6 +143,9 @@ class PrayerViewModel(private val c: AppContainer) : ViewModel() {
         val s = c.settings.settings.first()
         s.prayerLocation?.let { c.settings.setPrayerLocation(it.copy(zoneId = zone, zoneConfirmed = true), s.followDevice) }
     }
+
+    fun setOnboarded(on: Boolean) = viewModelScope.launch { c.settings.setOnboarded(on) }
+    fun setOnlineSearch(on: Boolean) = viewModelScope.launch { c.settings.setOnlineSearch(on) }
 
     fun clearLocateState() { _locate.value = LocateState.Idle }
 

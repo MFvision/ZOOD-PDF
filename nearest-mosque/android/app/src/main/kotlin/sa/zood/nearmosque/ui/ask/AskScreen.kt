@@ -59,13 +59,23 @@ import sa.zood.nearmosque.core.AnswerKind
 import sa.zood.nearmosque.core.CommonQuestion
 import sa.zood.nearmosque.data.ResolvedCitation
 import sa.zood.nearmosque.ui.Format
-import sa.zood.nearmosque.ui.components.SectionCard
+import sa.zood.nearmosque.ui.glass.GlassButton
+import sa.zood.nearmosque.ui.glass.GlassButtonText
+import sa.zood.nearmosque.ui.glass.GlassCard
+import sa.zood.nearmosque.ui.glass.GlassIconButton
+import sa.zood.nearmosque.ui.glass.bottomBarPadding
+import sa.zood.nearmosque.ui.glass.glass
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import sa.zood.nearmosque.ui.theme.LocalExtraColors
 import sa.zood.nearmosque.ui.theme.Tokens
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AskScreen(vm: AskViewModel, onOpenSettings: () -> Unit, contentPadding: PaddingValues) {
+fun AskScreen(vm: AskViewModel, onOpenSettings: () -> Unit) {
     val context = LocalContext.current
     val lang = Format.languageCode(context)
     val ui by vm.ui.collectAsStateWithLifecycle()
@@ -73,48 +83,64 @@ fun AskScreen(vm: AskViewModel, onOpenSettings: () -> Unit, contentPadding: Padd
     var reading by remember { mutableStateOf<ResolvedCitation?>(null) }
     val list = rememberLazyListState()
     LaunchedEffect(ui.turns.size, ui.turns.lastOrNull()?.answer) { if (ui.turns.isNotEmpty()) list.animateScrollToItem(list.layoutInfo.totalItemsCount.coerceAtLeast(1) - 1) }
+    val white = androidx.compose.ui.graphics.Color.White
 
     Column(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
-        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.tab_ask), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = LocalExtraColors.current.textSecondary)
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             if (ui.turns.isNotEmpty()) {
-                IconButton(onClick = vm::newConversation) { Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.new_conversation)) }
+                GlassIconButton(rememberVectorPainter(Icons.Filled.Refresh), stringResource(R.string.new_conversation), vm::newConversation)
+            } else {
+                Spacer(Modifier.size(48.dp))
             }
-            IconButton(onClick = onOpenSettings) { Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings)) }
+            Text(
+                stringResource(R.string.ask_title), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = white,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1,
+            )
+            GlassIconButton(rememberVectorPainter(Icons.Filled.Settings), stringResource(R.string.settings), onOpenSettings)
         }
         LazyColumn(Modifier.weight(1f), state = list, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (ui.turns.isEmpty()) {
+                item("skyline-space") { Spacer(Modifier.height(130.dp)) }
                 item("intro") {
-                    Text(stringResource(R.string.ask_title), style = MaterialTheme.typography.displaySmall, modifier = Modifier.semantics { heading() })
+                    Text(stringResource(R.string.ask_title), style = MaterialTheme.typography.displaySmall, color = white, modifier = Modifier.semantics { heading() })
                     Spacer(Modifier.height(8.dp))
-                    Text(stringResource(R.string.ask_subtitle), style = MaterialTheme.typography.bodyLarge, color = LocalExtraColors.current.textSecondary)
+                    Text(stringResource(R.string.ask_subtitle), style = MaterialTheme.typography.bodyLarge, color = white.copy(alpha = 0.85f))
                     Spacer(Modifier.height(8.dp))
-                    Text(stringResource(R.string.ai_pack_not_installed), style = MaterialTheme.typography.bodySmall, color = LocalExtraColors.current.textSecondary)
+                    Text(stringResource(R.string.ai_pack_not_installed), style = MaterialTheme.typography.bodySmall, color = white.copy(alpha = 0.7f))
                 }
                 item("common") {
-                    Text(stringResource(R.string.common_questions), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp).semantics { heading() })
-                    Spacer(Modifier.height(8.dp))
-                    if (!ui.ready) CircularProgressIndicator(Modifier.size(24.dp))
+                    Text(stringResource(R.string.common_questions), style = MaterialTheme.typography.titleMedium, color = white, modifier = Modifier.padding(top = 8.dp).semantics { heading() })
+                    Spacer(Modifier.height(10.dp))
+                    if (!ui.ready) CircularProgressIndicator(Modifier.size(24.dp), color = white)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         ui.common.forEach { q ->
                             val text = q.question[lang] ?: q.question["en"] ?: q.id
-                            AssistChip(onClick = { vm.askCommon(q, text) }, label = { Text(text, Modifier.padding(vertical = 8.dp)) }, modifier = Modifier.heightIn(min = 48.dp))
+                            Text(
+                                text, color = white, style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.heightIn(min = 48.dp).glass(RoundedCornerShape(18.dp), shadow = 6.dp)
+                                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { vm.askCommon(q, text) }
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                            )
                         }
                     }
                 }
             }
             items(ui.turns, key = { it.id }) { t ->
                 Column {
-                    Surface(shape = RoundedCornerShape(18.dp), color = Tokens.navy, modifier = Modifier.align(Alignment.End)) {
-                        Text(t.question, Modifier.padding(horizontal = 14.dp, vertical = 10.dp), color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.bodyLarge)
-                    }
-                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        t.question, color = white, style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.align(Alignment.End).glass(RoundedCornerShape(20.dp), tint = Tokens.navy.copy(alpha = 0.55f), shadow = 6.dp)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                    )
+                    Spacer(Modifier.height(10.dp))
                     if (t.answer == null) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.answer_searching), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-                            TextButton(onClick = vm::stop) { Text(stringResource(R.string.stop)) }
+                        GlassCard(padding = 12.dp) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = white)
+                                Spacer(Modifier.width(10.dp))
+                                Text(stringResource(R.string.answer_searching), color = white, modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite })
+                                GlassButton(onClick = vm::stop) { GlassButtonText(stringResource(R.string.stop)) }
+                            }
                         }
                     } else {
                         AnswerCard(t, lang, onRead = { reading = it })
@@ -122,17 +148,25 @@ fun AskScreen(vm: AskViewModel, onOpenSettings: () -> Unit, contentPadding: Padd
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = contentPadding.calculateBottomPadding() + 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = input, onValueChange = { input = it }, modifier = Modifier.weight(1f),
-                placeholder = { Text(stringResource(if (ui.turns.isEmpty()) R.string.ask_placeholder else R.string.ask_follow_up_placeholder)) },
+        Row(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = bottomBarPadding(4.dp).calculateBottomPadding()).navigationBarsPadding(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextField(
+                value = input, onValueChange = { input = it }, modifier = Modifier.weight(1f).glass(RoundedCornerShape(26.dp), shadow = 6.dp),
+                placeholder = { Text(stringResource(if (ui.turns.isEmpty()) R.string.ask_placeholder else R.string.ask_follow_up_placeholder), color = white.copy(alpha = 0.7f)) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { vm.ask(input); input = "" }),
-                maxLines = 4, shape = RoundedCornerShape(24.dp),
+                maxLines = 4,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent, unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                    focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent, unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                    focusedTextColor = white, unfocusedTextColor = white, cursorColor = Tokens.gold,
+                ),
             )
-            Spacer(Modifier.width(8.dp))
-            FilledIconButton(onClick = { vm.ask(input); input = "" }, enabled = input.isNotBlank() && !ui.busy, modifier = Modifier.size(52.dp)) {
-                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.ask_send))
+            Spacer(Modifier.width(10.dp))
+            GlassButton(onClick = { vm.ask(input); input = "" }, prominent = true, enabled = input.isNotBlank() && !ui.busy, modifier = Modifier.size(56.dp)) {
+                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.ask_send), modifier = Modifier.size(20.dp))
             }
         }
     }
@@ -143,13 +177,13 @@ fun AskScreen(vm: AskViewModel, onOpenSettings: () -> Unit, contentPadding: Padd
 private fun AnswerCard(t: Turn, lang: String, onRead: (ResolvedCitation) -> Unit) {
     val a = t.answer ?: return
     var more by rememberSaveable(t.id) { mutableStateOf(false) }
-    SectionCard(Modifier.semantics(mergeDescendants = false) { liveRegion = LiveRegionMode.Polite }) {
+    GlassCard(Modifier.semantics(mergeDescendants = false) { liveRegion = LiveRegionMode.Polite }) {
         when (a.kind) {
             AnswerKind.COMMON -> {
                 val q = a.commonQuestion!!
                 Text(
                     if (q.isReviewed) stringResource(R.string.answer_common_reviewed, q.reviewedBy!!) else stringResource(R.string.answer_common_unreviewed),
-                    style = MaterialTheme.typography.labelLarge, color = LocalExtraColors.current.accentText,
+                    style = MaterialTheme.typography.labelLarge, color = Tokens.gold,
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(summaryFor(q, lang), style = MaterialTheme.typography.bodyLarge)
@@ -171,7 +205,7 @@ private fun AnswerCard(t: Turn, lang: String, onRead: (ResolvedCitation) -> Unit
         }
         if (t.related.isNotEmpty()) {
             TextButton(onClick = { more = !more }, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(stringResource(if (more) R.string.show_less_detail else R.string.show_more_detail))
+                Text(stringResource(if (more) R.string.show_less_detail else R.string.show_more_detail), color = androidx.compose.ui.graphics.Color(0xFF8CC0DE))
             }
             if (more) {
                 Text(stringResource(R.string.related_passages), style = MaterialTheme.typography.titleSmall)
@@ -179,10 +213,10 @@ private fun AnswerCard(t: Turn, lang: String, onRead: (ResolvedCitation) -> Unit
             }
         }
         if (lang != "ar" && lang != "en" && a.kind != AnswerKind.INSUFFICIENT) {
-            Text(stringResource(R.string.answer_language_note), style = MaterialTheme.typography.bodySmall, color = LocalExtraColors.current.textSecondary)
+            Text(stringResource(R.string.answer_language_note), style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.7f))
         }
         Spacer(Modifier.height(6.dp))
-        Text(stringResource(R.string.answer_not_fatwa), style = MaterialTheme.typography.bodySmall, color = LocalExtraColors.current.textSecondary)
+        Text(stringResource(R.string.answer_not_fatwa), style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.7f))
     }
 }
 

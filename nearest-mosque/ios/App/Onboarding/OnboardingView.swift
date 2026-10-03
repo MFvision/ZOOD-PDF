@@ -301,7 +301,7 @@ private struct SetupPage: View {
                                 .contentShape(Capsule())
                         }
                         .buttonStyle(.plain)
-                        .glass(Capsule(), interactive: true)
+                        .glass(Capsule())
                         .accessibilityAddTraits(selected ? .isSelected : [])
                     }
                 }

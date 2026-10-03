@@ -1,6 +1,5 @@
 package sa.zood.nearmosque.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -14,7 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import sa.zood.nearmosque.core.PrayerEvent
 
-/** Values mirror shared/design/tokens.json (checked by ThemeTokensTest). */
+/** Values mirror shared/design/tokens.json (checked by tools/check_tokens.py). The app always sits on a sky, so it uses the dark scheme. */
 object Tokens {
     val navy = Color(0xFF1A4D6E)
     val navyDeep = Color(0xFF0E2F45)
@@ -33,23 +32,53 @@ object Tokens {
     val textSecondaryDark = Color(0xFFA9B6C0)
     val danger = Color(0xFFB3261E)
 
-    /** Header sky by the period that is current now (keyed by the event that started it). */
-    fun sky(current: PrayerEvent?): Pair<Color, Color> = when (current) {
-        PrayerEvent.FAJR -> Color(0xFF1B2A4A) to Color(0xFF5E3D56)
-        PrayerEvent.SUNRISE -> Color(0xFF1E4D6E) to Color(0xFF285A7C)
-        PrayerEvent.DHUHR -> Color(0xFF1E4D6E) to Color(0xFF285A7C)
-        PrayerEvent.ASR -> Color(0xFF2B5470) to Color(0xFF5E4C24)
-        PrayerEvent.MAGHRIB -> Color(0xFF2A1B3D) to Color(0xFF8A3A36)
-        PrayerEvent.ISHA -> Color(0xFF0E2F45) to Color(0xFF24476B)
-        null -> Color(0xFF081B29) to Color(0xFF1A4D6E)
-    }
-
-    const val cardRadius = 20
+    const val cardRadius = 26
     const val sheetRadius = 28
-    const val expandedHeader = 360
-    const val homeHeader = 236
-    const val compactHeader = 72
+    const val discSize = 76
+    const val compactHeight = 64
 }
+
+/** The sky follows the prayer period in progress. Colours mirror shared/design/tokens.json ("sky"). */
+enum class SkyPeriod {
+    NIGHT, FAJR, SUNRISE, DAY, ASR, MAGHRIB, ISHA;
+
+    val hasStars: Boolean get() = this == NIGHT || this == ISHA || this == FAJR
+
+    companion object {
+        fun at(now: java.time.Instant, sunrise: java.time.Instant?, current: PrayerEvent?, hasLocation: Boolean): SkyPeriod {
+            if (!hasLocation) return NIGHT
+            return when (current) {
+                PrayerEvent.FAJR -> FAJR
+                PrayerEvent.SUNRISE -> if (sunrise != null && java.time.Duration.between(sunrise, now).seconds < 3600) SUNRISE else DAY
+                PrayerEvent.DHUHR -> DAY
+                PrayerEvent.ASR -> ASR
+                PrayerEvent.MAGHRIB -> MAGHRIB
+                PrayerEvent.ISHA -> ISHA
+                null -> NIGHT
+            }
+        }
+    }
+}
+
+@Immutable
+data class Sky(val period: SkyPeriod, val top: Color, val mid: Color, val glow: Color, val low: Color) {
+    /** Tint for glass over this sky, so white text stays legible where the horizon is bright. */
+    val glassTint: Color get() = low.copy(alpha = 0.35f)
+
+    companion object {
+        fun of(p: SkyPeriod): Sky = when (p) {
+            SkyPeriod.NIGHT -> Sky(p, Color(0xFF081B29), Color(0xFF12304A), Color(0xFF2C4C7A), Color(0xFF0B1A2C))
+            SkyPeriod.FAJR -> Sky(p, Color(0xFF141E3C), Color(0xFF3A3566), Color(0xFFC98A8A), Color(0xFF1E2242))
+            SkyPeriod.SUNRISE -> Sky(p, Color(0xFF1C3F7A), Color(0xFF345A99), Color(0xFFF3C98B), Color(0xFF26365E))
+            SkyPeriod.DAY -> Sky(p, Color(0xFF1C3F7A), Color(0xFF2F5590), Color(0xFFF7E0A8), Color(0xFF22406E))
+            SkyPeriod.ASR -> Sky(p, Color(0xFF173F5A), Color(0xFF23606F), Color(0xFFF2D27A), Color(0xFF1D3E4E))
+            SkyPeriod.MAGHRIB -> Sky(p, Color(0xFF1B1F45), Color(0xFF4A2F5E), Color(0xFFF08A5D), Color(0xFF2A1E3E))
+            SkyPeriod.ISHA -> Sky(p, Color(0xFF0A1430), Color(0xFF16264D), Color(0xFF3A4E86), Color(0xFF0B1530))
+        }
+    }
+}
+
+val LocalSky = staticCompositionLocalOf { Sky.of(SkyPeriod.NIGHT) }
 
 @Immutable
 data class ExtraColors(val card: Color, val textSecondary: Color, val accentText: Color)
@@ -57,7 +86,7 @@ data class ExtraColors(val card: Color, val textSecondary: Color, val accentText
 val LocalExtraColors = staticCompositionLocalOf { ExtraColors(Tokens.cardLight, Tokens.textSecondaryLight, Tokens.goldText) }
 
 @Composable
-fun NearMosqueTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+fun NearMosqueTheme(dark: Boolean = true, content: @Composable () -> Unit) {
     val scheme = if (dark) {
         darkColorScheme(
             primary = Tokens.gold, onPrimary = Tokens.navyNight, secondary = Color(0xFF8CC0DE),

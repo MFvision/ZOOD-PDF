@@ -40,6 +40,9 @@ data class AppSettings(
     val methodChosenByUser: Boolean,
     val reminders: Set<PrayerEvent>,
     val mosqueView: String,
+    val onboarded: Boolean = false,
+    /** Live mosque results (OpenStreetMap via Overpass) added to downloaded data; disclosed in onboarding and Settings. */
+    val onlineSearch: Boolean = true,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -66,6 +69,8 @@ class SettingsStore(private val store: DataStore<Preferences>) {
         val hijriAdj = intPreferencesKey("hijri_adj")
         val reminders = stringSetPreferencesKey("reminders")
         val mosqueView = stringPreferencesKey("mosque_view")
+        val onboarded = booleanPreferencesKey("onboarded")
+        val onlineSearch = booleanPreferencesKey("online_search")
         fun offset(e: PrayerEvent) = intPreferencesKey("offset_${e.name}")
     }
 
@@ -97,7 +102,9 @@ class SettingsStore(private val store: DataStore<Preferences>) {
             ),
             methodChosenByUser = p[K.methodByUser] ?: false,
             reminders = p[K.reminders].orEmpty().mapNotNull { runCatching { PrayerEvent.valueOf(it) }.getOrNull() }.toSet(),
-            mosqueView = p[K.mosqueView] ?: "list",
+            mosqueView = p[K.mosqueView] ?: "compass",
+            onboarded = p[K.onboarded] ?: false,
+            onlineSearch = p[K.onlineSearch] ?: true,
         )
     }
 
@@ -124,6 +131,8 @@ class SettingsStore(private val store: DataStore<Preferences>) {
     suspend fun setHijriAdjustment(days: Int) = store.edit { it[K.hijriAdj] = days.coerceIn(-2, 2) }
     suspend fun setOffset(e: PrayerEvent, minutes: Int) = store.edit { it[K.offset(e)] = minutes.coerceIn(-30, 30) }
     suspend fun setMosqueView(v: String) = store.edit { it[K.mosqueView] = v }
+    suspend fun setOnboarded(on: Boolean) = store.edit { it[K.onboarded] = on }
+    suspend fun setOnlineSearch(on: Boolean) = store.edit { it[K.onlineSearch] = on }
     suspend fun setReminder(e: PrayerEvent, on: Boolean) = store.edit { p ->
         val cur = p[K.reminders].orEmpty().toMutableSet()
         if (on) cur += e.name else cur -= e.name

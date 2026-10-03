@@ -70,11 +70,16 @@ struct AskView: View {
     @FocusState private var focused: Bool
 
     var body: some View {
+        VStack(spacing: 0) {
+        header.padding(.horizontal, 16)
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
-                    header
-                    if vm.turns.isEmpty { intro }
+                    if vm.turns.isEmpty {
+                        // Leaves the mosque skyline on the horizon visible above the intro.
+                        Color.clear.frame(height: 130)
+                        intro
+                    }
                     ForEach(vm.turns) { t in
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
@@ -108,6 +113,7 @@ struct AskView: View {
                 if let id = vm.turns.last?.id { withAnimation { proxy.scrollTo(id, anchor: .top) } }
             }
         }
+        }
         .foregroundStyle(.white)
         .safeAreaInset(edge: .bottom) { inputBar }
         .skyBackground(horizon: 0.3, skyline: true)
@@ -136,7 +142,7 @@ struct AskView: View {
             SettingsButton(show: $showSettings)
         }
         .padding(.top, 4)
-        .padding(.bottom, vm.turns.isEmpty ? 150 : 8)
+        .padding(.bottom, 8)
     }
 
     private var intro: some View {
@@ -160,7 +166,7 @@ struct AskView: View {
                                 .contentShape(RoundedRectangle(cornerRadius: 18))
                         }
                         .buttonStyle(.plain)
-                        .glass(RoundedRectangle(cornerRadius: 18, style: .continuous), interactive: true)
+                        .glass(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
                 }
             }
@@ -176,7 +182,7 @@ struct AskView: View {
                     .submitLabel(.send)
                     .onSubmit(send)
                     .padding(.horizontal, 18).padding(.vertical, 12)
-                    .glass(RoundedRectangle(cornerRadius: 24, style: .continuous), interactive: true)
+                    .glass(RoundedRectangle(cornerRadius: 24, style: .continuous))
                 Button(action: send) {
                     Image(systemName: "arrow.up").font(.headline.weight(.bold)).frame(width: 30, height: 30)
                 }
