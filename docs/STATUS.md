@@ -201,6 +201,31 @@ the real engine is proven as far as the simulator lets it — gated, called, and
   page on screen and goes on to the end of the document. Answers are not streamed. The llama.cpp fallback does not apply to a phone: where Apple's model is not there,
   the app says so and shows no AI.
 
+## The iOS build sent to TestFlight on 2026-10-05 — what was and was not proven
+
+Five branches were merged for it: ZOOD's real logo with the rebuilt Zood and Liquid Glass
+themes, the UI-test fixes, on-device AI with form autofill and read aloud, Redact with
+Prepare/Fill form, and Compare with Batch. Liquid Glass is the default look, and on iPhone a
+document opens out of its thumbnail (the system's zoom transition). ZOOD's licensed headline
+face (ITF Huwiya Arabic) is bundled from a git-ignored folder on the build machine.
+
+**Simulator only, iPhone 17 (iOS 27.0); the iPad was not run for this build.**
+* Unit tests: **208 passed, 0 failed.**
+* UI tests: 55 ran; 43 passed first time; of the 12 that failed, 6 were the tests' own way to
+  the home's Settings card (a lazy grid: the card is below the screen until scrolled to, and
+  XCUITest's own scroll re-made it mid-tap) and pass with `homeCard(_:)` in
+  `PDFEditorUITests/SettingsNavigation.swift`. **6 still fail**, each looked at in the test's
+  screen recording, where the app is doing its part and the test reaches for a control that is
+  off screen: `ThemeUITests` ×2 (reading the picker's value back), `ProtectUITests` (Remove is
+  below the fold of the sheet now that it carries permissions — the sheet reads "Protected
+  with AES-256"), `FormUITests` (a field is drawn; `form.fields` is further along the bar),
+  `AIAndReadAloudTests` autofill (the proposals from the profile are listed; Fill is below
+  the sheet's fold), `CompareBatchUITests` batch (two elements answer to
+  `batch.save.confirm`). These are tests to mend, not passes: none of the six is proven end
+  to end by a test.
+* Not run for this build: the iPad suite, `scripts/verify.sh` (web and desktop), and the
+  real camera on a device.
+
 ## The iPhone and iPad app: the foundation (2026-09-21)
 
 The owner asked for the phone app to be rebuilt as a true Apple-native app. `apps/ios` is that app's
