@@ -10,7 +10,11 @@ enum DebugLaunch {
     /// builds ignore the argument.
     static func seedProfile() {
         #if DEBUG
-        guard !seeded, let json = UserDefaults.standard.string(forKey: "warraqProfileJSON") else { return }
+        // Read from the arguments themselves: UserDefaults parses a value
+        // that starts with "{" as a property list, not as the JSON it is.
+        let arguments = ProcessInfo.processInfo.arguments
+        guard !seeded, let flag = arguments.firstIndex(of: "-warraqProfileJSON"), arguments.indices.contains(flag + 1) else { return }
+        let json = arguments[flag + 1]
         seeded = true
         let store = ProfileStore()
         if json.isEmpty {
