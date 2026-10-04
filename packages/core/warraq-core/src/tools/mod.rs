@@ -11,6 +11,7 @@ use serde::Serialize;
 use crate::{CoreError, Document};
 
 pub mod accessibility;
+pub mod compare;
 pub mod compress;
 pub mod create;
 pub mod export;
@@ -79,6 +80,7 @@ pub fn call(
 pub fn call_static(op: &str, args: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
     match op.split_once('.') {
         Some(("accessibility", name)) => accessibility::call_static(name, args, blobs),
+        Some(("compare", name)) => compare::call_static(name, args, blobs),
         Some(("compress", name)) => compress::call_static(name, args, blobs),
         Some(("create", name)) => create::call_static(name, args, blobs),
         Some(("file", name)) => file::call_static(name, args, blobs),

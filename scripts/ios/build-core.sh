@@ -6,6 +6,8 @@
 #
 #   scripts/ios/build-core.sh              # release ("ios" profile: unwinding, thin LTO)
 #   WARRAQ_IOS_DEBUG=1 scripts/ios/build-core.sh   # a debug build, quicker
+#   WARRAQ_IOS_SIM_ONLY=1 scripts/ios/build-core.sh # the simulator slice alone: half the
+#                                                   # time and disk, for tests; not for a device
 #
 # Run it through the machine-wide queue (~/Developer/warraq/.tools/one-at-a-time.sh)
 # and with a CARGO_TARGET_DIR of your own: the shared one can hand back another
@@ -37,6 +39,9 @@ else
 fi
 
 targets=(aarch64-apple-ios aarch64-apple-ios-sim)
+if [ "${WARRAQ_IOS_SIM_ONLY:-0}" = "1" ]; then
+  targets=(aarch64-apple-ios-sim)
+fi
 if [ "${WARRAQ_IOS_X86:-0}" = "1" ]; then
   targets+=(x86_64-apple-ios)
 fi
@@ -52,7 +57,9 @@ rm -rf "$stage"
 mkdir -p "$stage/device" "$stage/simulator" "$stage/include"
 cp "$include/warraq_core.h" "$include/module.modulemap" "$stage/include/"
 
-cp "$target_dir/aarch64-apple-ios/$profile_dir/libwarraq_core.a" "$stage/device/libwarraq_core.a"
+if [ "${WARRAQ_IOS_SIM_ONLY:-0}" != "1" ]; then
+  cp "$target_dir/aarch64-apple-ios/$profile_dir/libwarraq_core.a" "$stage/device/libwarraq_core.a"
+fi
 if [ "${WARRAQ_IOS_X86:-0}" = "1" ]; then
   # One simulator slice holding both architectures.
   lipo -create \
@@ -65,10 +72,12 @@ fi
 
 mkdir -p "$out"
 rm -rf "$out/WarraqCore.xcframework"
-xcodebuild -create-xcframework \
-  -library "$stage/device/libwarraq_core.a" -headers "$stage/include" \
-  -library "$stage/simulator/libwarraq_core.a" -headers "$stage/include" \
-  -output "$out/WarraqCore.xcframework"
+slices=()
+if [ "${WARRAQ_IOS_SIM_ONLY:-0}" != "1" ]; then
+  slices+=(-library "$stage/device/libwarraq_core.a" -headers "$stage/include")
+fi
+slices+=(-library "$stage/simulator/libwarraq_core.a" -headers "$stage/include")
+xcodebuild -create-xcframework "${slices[@]}" -output "$out/WarraqCore.xcframework"
 
 rm -rf "$stage"
 echo "== $out/WarraqCore.xcframework"

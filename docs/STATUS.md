@@ -1781,6 +1781,74 @@ every field with the control its kind takes and writes what changed through `for
   added, and none was tested). Fill form is the way to fill. Signature fields are signed
   from Signatures.
 
+## The iOS app — Compare and Batch (2026-10-01)
+
+Two more of the Mac's tools on iPhone and iPad, both through the Rust core the app links.
+
+**Compare** (the document's More menu › Compare…). The other version is chosen from Files,
+My documents or Recents; a protected one asks for its password; a file that is not a PDF is
+said to be one and not chosen. *Swap* says which is older. Two options as on the desktop:
+ignore tashkeel and tatweel; count أ/ا, ة/ه, ى/ي as one letter. Digits are compared as
+written (٢٠٢٦ against 2026 is a change).
+* **The comparison is the core's.** The desktop and web compare in the interface
+  (`packages/ui/src/compare`); a native host has no such layer, so the same rules — the word
+  key, Myers' shortest edit script, the joining of short matching runs, the passages with
+  eight words of context, the 8-pixel cell comparison of 480-pixel renders — are now
+  `packages/core/warraq-core/src/tools/compare.rs`, as `compare.text` and `compare.visual`
+  (`packages/core/API.md`). Its Rust tests are the interface's own cases plus a randomized
+  check that the script is minimal (its kept words equal the longest common subsequence).
+  The desktop still uses its TypeScript; the two are written to the same rules but are two
+  implementations.
+* **What it shows.** Counts first, each from the changes themselves: places *inserted*,
+  *deleted* and *replaced*, words added and removed, pages that look different; the page
+  counts when they differ; "neither version has text" for scans; a plain line when Stop cut
+  the visual pass short. Then *Text*: every change in reading order (Arabic in logical
+  order, laid out right to left whatever the interface language), its passage with the
+  removed words struck through and the added underlined, and the removed and added words
+  each on a line of their own; *Pages*: the page of the change drawn by the core for both
+  versions with the places that look different outlined — side by side on iPad, one at a
+  time behind an Older/Newer switch on iPhone. Previous and Next step through the changes
+  (Text) or through the pages that look different (Pages). Nothing is written to either file.
+* **Limits.** Pages are compared by position (page n with page n), as on the desktop: a
+  page inserted early makes every later page differ. The file's own earlier revisions are not
+  offered here (the desktop offers them); only another file. No report is exported.
+
+**Batch** (Home › Batch; on iPad also the sidebar's Tools). Steps, in order, each with its
+own options: recognize text (OCR: pages without text of their own, or every page; Vision,
+the scanner's recognizer, then the core's `ocr.add_text_layer`), compress (three levels,
+`compress.file`), rotate, delete pages, keep only some pages, page marks (watermark, header,
+footer or page number, drawn as the Page marks sheet draws them), remove hidden information
+(`redact.scrub`, the kinds chosen), protect (AES-256, `protect.set`, with print/copy/change
+permissions) and export (Word or text; it must be last). Files come from Files (several at
+once) or My documents and the chosen folder.
+* **One file at a time.** Each is read only when its turn comes; a protected one is opened
+  with the batch's password if one was typed; each step runs through the core; the result is
+  written as a **new** file in My documents — "name – processed.pdf", "… 2.pdf" when that is
+  taken — with `.withoutOverwriting`, never under the original's name. The originals are only
+  ever read. A file that cannot be read, is not a PDF, needs a password, or that a step
+  refuses (deleting every page, compressing a protected or signed file, …) is marked with the
+  reason and the step, and the batch goes on. Progress per file, Stop (after the step under
+  way), a summary (done · failed · stopped) and Share for the results.
+* **Saved sequences.** Named, kept in the app's defaults, newest first, loaded with a tap,
+  swiped away. A step has no field for a password, so none can be saved; Protect's password
+  is typed on the screen for each run.
+* **In the background.** From iOS 26 a run is submitted as a `BGContinuedProcessingTaskRequest`
+  (identifier `app.warraq.ios.batch.<run>`, permitted by a wildcard in Info.plist, strategy
+  *fail* so it never waits to start later); the system shows its progress outside the app and
+  the batch reports each file to it. Before iOS 26, or when the request is refused, the app
+  asks for the ordinary background grace period (`beginBackgroundTask`) and the screen says to
+  keep the app open. When the system takes the time back, the batch stops after the step under
+  way, the files not finished are marked "stopped by the system", and the screen says in a
+  sentence that iOS stopped it. **What is proven:** the stop path (the same call the expiration
+  handlers make) by a unit test. **What is not:** the continued-processing task actually running
+  with the app in the background — the simulator gives no way to drive it from a test, so it is
+  written to Apple's API and not seen to run here.
+* **Not offered on iOS:** Flatten (the desktop's goes through PDFium, which the app does not
+  have) and OCR cleanup (the desktop's Tesseract pipeline). The desktop's folder walk is not
+  here either: the files are picked.
+
+**How it is proven.** RESULTS_PLACEHOLDER
+
 ## Next (in order)
 1. **Run the Windows and Linux builds on those systems**: print by pages, the drop targets and the NSIS installer have been built for them in code only — nothing of them has run here.
 2. **Phone apps**: iPhone and iPad are the native SwiftUI app in `apps/ios` (its foundation above; the other parts in progress). Android is not started: it would need the Android SDK, NDK and JDK installed here (Decisions, below). The installable web app covers phones meanwhile.
