@@ -27,6 +27,9 @@ struct SettingsView: View {
                 // The scanner's own settings (part C): the colour mode and
                 // the OCR languages this device supports.
                 ScanSettingsSection()
+                // On-device AI, the form profile and read aloud (part F).
+                AISettingsSection()
+                ReadAloudSettingsSection()
                 folder
                 privacy
                 everything

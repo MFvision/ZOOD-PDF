@@ -105,6 +105,8 @@ targets:
         CFBundleLocalizations: [ar, en]
         LSRequiresIPhoneOS: true
         UILaunchScreen: {}
+        # Read-aloud keeps speaking with the screen locked.
+        UIBackgroundModes: [audio]
         UIApplicationSupportsMultipleScenes: true
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
@@ -296,6 +298,9 @@ targets:
         buildPhase: resources
       - path: ../../tests/corpus/arabic/generated/variant-encrypted-rc4-40.pdf
         buildPhase: resources
+      # An Arabic AcroForm, for form autofill.
+      - path: ../../tests/corpus/arabic/generated/acroform-pdflib-arabic-fields.pdf
+        buildPhase: resources
       # Protected by another program with AES-256: ProtectTests opens it here
       # and re-protects it, to show a file crosses between the hosts.
       - path: ../../tests/corpus/arabic/generated/variant-encrypted-aes256.pdf
@@ -379,6 +384,8 @@ targets:
       - path: PDFEditorUITests
       # A small corpus the Library test imports and indexes.
       - path: ../../tests/corpus/arabic/generated/coretext-sfarabic-mixed-invoice.pdf
+        buildPhase: resources
+      - path: ../../tests/corpus/arabic/generated/acroform-pdflib-arabic-fields.pdf
         buildPhase: resources
       - path: ../../tests/corpus/arabic/generated/variant-arabic-metadata-outlines-annots.pdf
         buildPhase: resources

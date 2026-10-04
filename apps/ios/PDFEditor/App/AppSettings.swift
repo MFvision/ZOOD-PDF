@@ -110,6 +110,7 @@ struct AppEnvironment: ViewModifier {
             .preferredColorScheme(appearance.colorScheme)
             .animation(Motion.quick, value: theme)
             .onChange(of: language, initial: true) { _, chosen in chosen.applyToSystem() }
+            .task { DebugLaunch.seedProfile() }
     }
 }
 

@@ -44,13 +44,22 @@ apps/ios/
     Scan/                ScanView (the scanner), ScanSession, ScanPipeline, TextRecognizer (Vision OCR),
                          IDPageComposer, BookScan, CornerEditor, the enhance/text/save sheets; PDFMaker
                          (pictures and files into one PDF, for Combine and the Make-a-PDF intent)
+    AI/                  On-device AI: AIEngine (the provider protocol, availability, the Debug fake),
+                         FoundationModelsEngine (Apple's model, iOS 26+, guided generation), AIAssistant
+                         (tasks, the text budget, Library-index retrieval), AIPanel + AutofillReviewSheet,
+                         FormAutofill (PDFKit fields + the core's labels, the never-invent check, writing),
+                         ProfileEditorView, AISettingsSection
+    Speech/              Read aloud: SentenceMap (the core's lines → sentences with boxes), SpeechVoices
+                         (installed voices ranked), ReadAloudController (AVSpeechSynthesizer, highlight,
+                         pages, lock-screen playback), ReadAloudBar, ReadAloudSettingsSection
     Design/              Theme (tokens), Components (press style, toolbar status, sheet, grid cell, empty state)
     Resources/           Assets.xcassets (icon, accent), Localizable.xcstrings, InfoPlist.xcstrings,
                          AppShortcuts.xcstrings (the Siri phrases); tests/fonts/Amiri-Regular.ttf, the face
                          the core writes stamps, text boxes and PDF/A substitutes with
   WarraqCore/Sources/    the Swift wrapper: actor Core, CoreError, the typed results
   Shared/                AppGroup, RecentsStore, SearchesStore, StarredStore (the per-device star), AppRoute
-                         (where widgets and intents send the app), TextRecognizer (the OCR seam),
+                         (where widgets and intents send the app), TextRecognizer (the OCR seam), Profile (the
+                         autofill profile, in the Keychain),
                          ScanDocumentIntent, WidgetTimelines —
                          compiled into the app, the widgets and the share extension
   Widgets/               WidgetKit extension (app.warraq.ios.widgets): Recent documents, Scan, Library
@@ -196,7 +205,10 @@ xcodebuild -project apps/ios/PDFEditor.xcodeproj -scheme PDFEditor \
   `-language ar|en`, `-appearance light|dark` (the app's own UserDefaults
   keys), `-AppleLanguages (ar)` for the system's frameworks — and, in
   Debug builds only, `-warraqReset 1` (an empty Library first),
-  `-warraqOpen <path>` (open that file), `-warraqDocumentsFolder <path>`
+  `-warraqOpen <path>` (open that file), `-warraqFakeAI 1` (a fake AI
+  engine in place of Apple's model, so the panel, autofill and the review
+  sheet run on a simulator without the model), `-warraqProfileJSON
+  '{…}'` (seed the autofill profile), `-warraqDocumentsFolder <path>`
   (the app's Documents folder for that run, so a test can read what it
   saved), `-warraqScan <path>[,<path>…]` (open the scanner on those
   photos), `-warraqScanMode document|idCard|passport|book`,
@@ -231,6 +243,12 @@ xcodebuild -project apps/ios/PDFEditor.xcodeproj -scheme PDFEditor \
   sources compile with `swiftc -typecheck` against the simulator SDK; see
   `apps/ios/.build/typecheck.sh` if it is still there, or run
   `scripts/ios/build.sh --no-test --iphone`.
+- On-device AI goes through `AIEngine` (`AI/AIEngine.swift`): Apple's
+  Foundation Models when `AIEngines.availability()` says so, nothing
+  otherwise — the toolbar's AI button exists only then, and Settings says
+  why not. Form values reach the model as profile *keys*; it answers with
+  a key or a quote from the document, and `FormAutofill.check` drops
+  anything else, so no value can be invented.
 - New sidebar sections join `LibrarySection`; new settings join
   `SettingsView`; new widgets join `WidgetsBundle`.
 

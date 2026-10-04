@@ -496,6 +496,11 @@ final class LibraryModel {
         for key in [SettingsKey.language, SettingsKey.appearance, SettingsKey.scanColorMode, SettingsKey.ocrLanguages, SettingsKey.appLock, "AppleLanguages"] {
             UserDefaults.standard.removeObject(forKey: key)
         }
+        // The autofill profile (Keychain) and read aloud's voices and speed.
+        try? ProfileStore().delete()
+        for key in UserDefaults.standard.dictionaryRepresentation().keys where key.hasPrefix("readAloud.") {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
         _ = AppRoute.takePending()
         indexer = nil
         refresh()

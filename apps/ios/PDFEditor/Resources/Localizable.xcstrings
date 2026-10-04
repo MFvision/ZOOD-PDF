@@ -905,6 +905,46 @@
         }
       }
     },
+    "Address": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "العنوان"
+          }
+        }
+      }
+    },
+    "AI": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الذكاء الاصطناعي"
+          }
+        }
+      }
+    },
+    "AI on this device": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الذكاء الاصطناعي على هذا الجهاز"
+          }
+        }
+      }
+    },
+    "Answer": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الإجابة"
+          }
+        }
+      }
+    },
     "Anyone opening the document will be asked for it. There is no way to recover a forgotten password.": {
       "localizations": {
         "ar": {
@@ -1005,6 +1045,26 @@
         }
       }
     },
+    "Ask about this PDF": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسأل عن هذا الملف"
+          }
+        }
+      }
+    },
+    "Ask the document": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسأل المستند"
+          }
+        }
+      }
+    },
     "Author": {
       "localizations": {
         "ar": {
@@ -1021,6 +1081,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "تلقائي"
+          }
+        }
+      }
+    },
+    "Autofill profile": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ملف التعبئة التلقائية"
+          }
+        }
+      }
+    },
+    "Available": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "متاح"
           }
         }
       }
@@ -1181,6 +1261,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "تعذّر فتح هذا الملف"
+          }
+        }
+      }
+    },
+    "Cannot read aloud": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّرت القراءة بصوت عالٍ"
           }
         }
       }
@@ -1515,6 +1605,16 @@
         }
       }
     },
+    "Could not keep your details in the Keychain.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر حفظ بياناتك في سلسلة المفاتيح."
+          }
+        }
+      }
+    },
     "Could not open": {
       "localizations": {
         "ar": {
@@ -1625,6 +1725,16 @@
         }
       }
     },
+    "Date of birth": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تاريخ الميلاد"
+          }
+        }
+      }
+    },
     "Default scan mode": {
       "localizations": {
         "ar": {
@@ -1709,6 +1819,16 @@
         }
       }
     },
+    "Delete my details": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حذف بياناتي"
+          }
+        }
+      }
+    },
     "Delete Page": {
       "localizations": {
         "ar": {
@@ -1769,6 +1889,16 @@
         }
       }
     },
+    "Delete your details from this device?": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هل تريد حذف بياناتك من هذا الجهاز؟"
+          }
+        }
+      }
+    },
     "Deletes every document kept by the app, its index and its settings.": {
       "localizations": {
         "ar": {
@@ -1819,12 +1949,32 @@
         }
       }
     },
+    "Download more voices": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تنزيل المزيد من الأصوات"
+          }
+        }
+      }
+    },
     "Downsampling pictures makes the file smallest; keeping them loses nothing.": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
             "value": "تقليل دقة الصور يجعل الملف أصغر ما يمكن؛ والإبقاء عليها لا يُفقد شيئًا."
+          }
+        }
+      }
+    },
+    "Draft an email": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صياغة بريد إلكتروني"
           }
         }
       }
@@ -1899,6 +2049,26 @@
         }
       }
     },
+    "Email": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "البريد الإلكتروني"
+          }
+        }
+      }
+    },
+    "Employer": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جهة العمل"
+          }
+        }
+      }
+    },
     "Enabled": {
       "localizations": {
         "ar": {
@@ -1935,6 +2105,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "تحسين"
+          }
+        }
+      }
+    },
+    "Enhanced": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "محسّن"
           }
         }
       }
@@ -2029,6 +2209,16 @@
         }
       }
     },
+    "Explain simply": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اشرح ببساطة"
+          }
+        }
+      }
+    },
     "Export": {
       "localizations": {
         "ar": {
@@ -2095,6 +2285,154 @@
           "stringUnit": {
             "state": "translated",
             "value": "الملفات جاهزة"
+          }
+        }
+      }
+    },
+    "Fill %lld fields": {
+      "localizations": {
+        "ar": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "تعبئة %lld حقول"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "تعبئة %lld حقلًا"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "تعبئة حقل واحد"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "تعبئة %lld حقل"
+                }
+              },
+              "two": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "تعبئة حقلين"
+                }
+              },
+              "zero": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "لا حقول للتعبئة"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Fill %lld field"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Fill %lld fields"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Fill the form": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعبئة النموذج"
+          }
+        }
+      }
+    },
+    "Fill the form from my profile": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعبئة النموذج من ملفي الشخصي"
+          }
+        }
+      }
+    },
+    "Filled %lld fields. Check them on the page, then save.": {
+      "localizations": {
+        "ar": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "عُبِّئت %lld حقول. راجعها في الصفحة ثم احفظ."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "عُبِّئ %lld حقلًا. راجعها في الصفحة ثم احفظ."
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "عُبِّئ حقل واحد. راجعه في الصفحة ثم احفظ."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "عُبِّئ %lld حقل. راجعها في الصفحة ثم احفظ."
+                }
+              },
+              "two": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "عُبِّئ حقلان. راجعهما في الصفحة ثم احفظ."
+                }
+              },
+              "zero": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "لم يُعبَّأ أي حقل."
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Filled %lld field. Check it on the page, then save."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Filled %lld fields. Check them on the page, then save."
+                }
+              }
+            }
           }
         }
       }
@@ -2235,6 +2573,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "من 1 إلى %lld"
+          }
+        }
+      }
+    },
+    "From the document's text": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "من نص المستند"
+          }
+        }
+      }
+    },
+    "From your profile": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "من ملفك الشخصي"
           }
         }
       }
@@ -2429,6 +2787,16 @@
         }
       }
     },
+    "IBAN": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الآيبان"
+          }
+        }
+      }
+    },
     "ID Card": {
       "localizations": {
         "ar": {
@@ -2575,6 +2943,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "حُفظت في مستنداتي"
+          }
+        }
+      }
+    },
+    "Kept in this device's Keychain, protected by its passcode. Used only when you fill a form, and never sent anywhere.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تُحفظ في سلسلة مفاتيح هذا الجهاز محميةً برمز دخوله. لا تُستخدم إلا عند تعبئة نموذج، ولا تُرسل إلى أي مكان."
+          }
+        }
+      }
+    },
+    "Key points": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النقاط الرئيسية"
           }
         }
       }
@@ -3009,6 +3397,36 @@
         }
       }
     },
+    "Name in Arabic": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الاسم بالعربية"
+          }
+        }
+      }
+    },
+    "Name in English": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الاسم بالإنجليزية"
+          }
+        }
+      }
+    },
+    "National ID or Iqama": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "رقم الهوية أو الإقامة"
+          }
+        }
+      }
+    },
     "New rule": {
       "localizations": {
         "ar": {
@@ -3055,6 +3473,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "الصفحة التالية"
+          }
+        }
+      }
+    },
+    "Next sentence": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الجملة التالية"
           }
         }
       }
@@ -3239,12 +3667,32 @@
         }
       }
     },
+    "No voice installed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا صوت مثبّت"
+          }
+        }
+      }
+    },
     "None of the chosen pictures could be read.": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
             "value": "تعذّرت قراءة أي من الصور المختارة."
+          }
+        }
+      }
+    },
+    "Not available": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "غير متاح"
           }
         }
       }
@@ -3309,6 +3757,16 @@
         }
       }
     },
+    "Nothing in your profile or the document answers these fields.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا شيء في ملفك الشخصي أو في المستند يناسب هذه الحقول."
+          }
+        }
+      }
+    },
     "Nothing leaves this device.": {
       "localizations": {
         "ar": {
@@ -3359,6 +3817,16 @@
         }
       }
     },
+    "Now: %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الآن: %@"
+          }
+        }
+      }
+    },
     "OK": {
       "localizations": {
         "ar": {
@@ -3375,6 +3843,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "متوقفة"
+          }
+        }
+      }
+    },
+    "On-device AI is not available on this device.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الذكاء الاصطناعي على الجهاز غير متاح على هذا الجهاز."
+          }
+        }
+      }
+    },
+    "On-device AI is not available.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الذكاء الاصطناعي على الجهاز غير متاح."
+          }
+        }
+      }
+    },
+    "On-device AI needs iOS 26 or later.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يحتاج الذكاء الاصطناعي على الجهاز إلى iOS 26 أو أحدث."
+          }
+        }
+      }
+    },
+    "On-device model": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النموذج على الجهاز"
           }
         }
       }
@@ -3595,6 +4103,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "الفهرس"
+          }
+        }
+      }
+    },
+    "Pause": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إيقاف مؤقت"
           }
         }
       }
@@ -3869,6 +4387,16 @@
         }
       }
     },
+    "Phone": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الهاتف"
+          }
+        }
+      }
+    },
     "Photos": {
       "localizations": {
         "ar": {
@@ -3969,6 +4497,16 @@
         }
       }
     },
+    "Play": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تشغيل"
+          }
+        }
+      }
+    },
     "Point the camera at the page; it finds the edges and takes the picture. Or choose photos.": {
       "localizations": {
         "ar": {
@@ -3999,6 +4537,16 @@
         }
       }
     },
+    "Premium": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "متميز"
+          }
+        }
+      }
+    },
     "Previous": {
       "localizations": {
         "ar": {
@@ -4015,6 +4563,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "الصفحة السابقة"
+          }
+        }
+      }
+    },
+    "Previous sentence": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الجملة السابقة"
           }
         }
       }
@@ -4049,6 +4607,26 @@
         }
       }
     },
+    "Proposed values": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "القيم المقترحة"
+          }
+        }
+      }
+    },
+    "Proposes a value for the form's text fields from your profile or the document's own text. You review every value before anything is written.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يقترح قيمة لحقول النص في النموذج من ملفك الشخصي أو من نص المستند نفسه. وتراجع كل قيمة قبل أن يُكتب أي شيء."
+          }
+        }
+      }
+    },
     "Protect": {
       "localizations": {
         "ar": {
@@ -4079,6 +4657,36 @@
         }
       }
     },
+    "Provider": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المزوّد"
+          }
+        }
+      }
+    },
+    "Quiz me": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختبرني"
+          }
+        }
+      }
+    },
+    "Read aloud": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "القراءة بصوت عالٍ"
+          }
+        }
+      }
+    },
     "Read text": {
       "localizations": {
         "ar": {
@@ -4089,12 +4697,42 @@
         }
       }
     },
+    "Read the beginning of the document only (pages %@): the on-device model reads a few pages at a time.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قرأ بداية المستند فقط (الصفحات %@): يقرأ النموذج على الجهاز بضع صفحات في المرة."
+          }
+        }
+      }
+    },
+    "Read the passages that match the question, on pages %@.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قرأ المقاطع المطابقة للسؤال في الصفحات %@."
+          }
+        }
+      }
+    },
     "Read the text": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
             "value": "قراءة النص"
+          }
+        }
+      }
+    },
+    "Read the whole document.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قرأ المستند كاملًا."
           }
         }
       }
@@ -4139,12 +4777,32 @@
         }
       }
     },
+    "Reading the form…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ قراءة النموذج…"
+          }
+        }
+      }
+    },
     "Reading the text…": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
             "value": "جارٍ قراءة النص…"
+          }
+        }
+      }
+    },
+    "Reading…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ القراءة…"
           }
         }
       }
@@ -4305,6 +4963,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "إعادة الالتقاط"
+          }
+        }
+      }
+    },
+    "Review every value. A field that already holds something stays as it is unless you turn it on. Nothing is written until you press Fill.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "راجع كل قيمة. الحقل الذي فيه شيء يبقى كما هو ما لم تفعّله. لا يُكتب شيء حتى تضغط «تعبئة»."
           }
         }
       }
@@ -4819,6 +5487,16 @@
         }
       }
     },
+    "Share the answer": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مشاركة الإجابة"
+          }
+        }
+      }
+    },
     "Sharpen": {
       "localizations": {
         "ar": {
@@ -4935,6 +5613,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "تنعيم الطيّات"
+          }
+        }
+      }
+    },
+    "Speed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السرعة"
           }
         }
       }
@@ -5069,6 +5757,16 @@
         }
       }
     },
+    "Summarize": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تلخيص"
+          }
+        }
+      }
+    },
     "System": {
       "localizations": {
         "ar": {
@@ -5145,6 +5843,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "التقاط صورة"
+          }
+        }
+      }
+    },
+    "Task": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المهمة"
           }
         }
       }
@@ -5349,6 +6057,46 @@
         }
       }
     },
+    "The model runs on this device. Nothing leaves it.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يعمل النموذج على هذا الجهاز، ولا يغادره شيء."
+          }
+        }
+      }
+    },
+    "The on-device model declined this request.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "رفض النموذج على الجهاز هذا الطلب."
+          }
+        }
+      }
+    },
+    "The on-device model did not answer: its safety check cannot run on this device.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم يُجب النموذج على الجهاز: فحص الأمان الخاص به لا يعمل على هذا الجهاز."
+          }
+        }
+      }
+    },
+    "The on-device model is not ready yet — it may still be downloading. Try again later.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النموذج على الجهاز غير جاهز بعد — قد يكون لا يزال يُنزَّل. حاول لاحقًا."
+          }
+        }
+      }
+    },
     "The outline could not be read.": {
       "localizations": {
         "ar": {
@@ -5375,6 +6123,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "تعذّر رسم الصفحات على هذا الجهاز."
+          }
+        }
+      }
+    },
+    "The system's on-device model answers here. Nothing leaves this device.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يجيب نموذج النظام على الجهاز هنا، ولا يغادر شيء هذا الجهاز."
           }
         }
       }
@@ -5459,12 +6217,32 @@
         }
       }
     },
+    "There is no text to read. Scan & OCR can add some.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا نص للقراءة. يمكن للمسح والتعرف الضوئي إضافته."
+          }
+        }
+      }
+    },
     "There is nothing to split at that size.": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
             "value": "لا شيء يُقسَّم بهذا الحجم."
+          }
+        }
+      }
+    },
+    "This device cannot run Apple Intelligence, so on-device AI is not available.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يمكن لهذا الجهاز تشغيل Apple Intelligence، لذا فالذكاء الاصطناعي على الجهاز غير متاح."
           }
         }
       }
@@ -5519,6 +6297,26 @@
         }
       }
     },
+    "This document has no text fields to fill.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا حقول نصية في هذا المستند يمكن تعبئتها."
+          }
+        }
+      }
+    },
+    "This document has no text to read. Scan & OCR can add some.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا نص في هذا المستند يمكن قراءته. يمكن للمسح والتعرف الضوئي إضافته."
+          }
+        }
+      }
+    },
     "This document is protected": {
       "localizations": {
         "ar": {
@@ -5545,6 +6343,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "لم يعد هذا الملف في مكانه."
+          }
+        }
+      }
+    },
+    "This is too much text for the on-device model. Ask about a part of the document.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا النص أكبر مما يستوعبه النموذج على الجهاز. اسأل عن جزء من المستند."
           }
         }
       }
@@ -5639,6 +6447,46 @@
         }
       }
     },
+    "Translate": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترجمة"
+          }
+        }
+      }
+    },
+    "Turn on Apple Intelligence": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تفعيل Apple Intelligence"
+          }
+        }
+      }
+    },
+    "Turn on Apple Intelligence in the Settings app to use on-device AI.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فعّل Apple Intelligence في تطبيق الإعدادات لاستخدام الذكاء الاصطناعي على الجهاز."
+          }
+        }
+      }
+    },
+    "Type a question first.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اكتب سؤالًا أولًا."
+          }
+        }
+      }
+    },
     "Underline": {
       "localizations": {
         "ar": {
@@ -5699,6 +6547,16 @@
         }
       }
     },
+    "Value": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "القيمة"
+          }
+        }
+      }
+    },
     "Version": {
       "localizations": {
         "ar": {
@@ -5715,6 +6573,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "يقرأ Vision الكلمات في كل صفحة، وتُضاف إلى ملف PDF طبقةً قابلة للبحث عند الحفظ."
+          }
+        }
+      }
+    },
+    "Voices are the system's, installed in the Settings app under Accessibility › Spoken Content › Voices; Premium and Enhanced voices sound best. Siri's voices are not offered to apps.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأصوات هي أصوات النظام، وتُثبَّت من تطبيق الإعدادات في: تسهيلات الاستخدام › المحتوى المنطوق › الأصوات؛ والأصوات المتميزة والمحسّنة أفضلها. أصوات Siri غير متاحة للتطبيقات."
           }
         }
       }
@@ -5845,6 +6713,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "نعم"
+          }
+        }
+      }
+    },
+    "Your details": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بياناتك"
+          }
+        }
+      }
+    },
+    "Your profile is empty. Add your details in Settings first.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ملفك الشخصي فارغ. أضف بياناتك في الإعدادات أولًا."
+          }
+        }
+      }
+    },
+    "Your question": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سؤالك"
           }
         }
       }

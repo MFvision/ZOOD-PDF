@@ -47,6 +47,12 @@ struct DocumentView: View {
     @State private var placingSignature: UIImage?
     @State private var saveError: String?
     @State private var pageText: String?
+    // On-device AI and read-aloud (AI/, Speech/): the assistant is made once
+    // the engine is known to be there; the reader lives as long as the view.
+    @State private var assistant: AIAssistant?
+    @State private var autofill: FormAutofillModel?
+    @State private var pendingAutofill: FormAutofillModel?
+    @State private var reader = ReadAloudController()
     @State private var stampsAdded = 0
     @State private var showingScanner = false
     @State private var scanSaved: URL?
@@ -178,6 +184,15 @@ struct DocumentView: View {
             .onChange(of: search.current) {
                 if let hit = search.currentHit { model.currentPage = hit.page }
             }
+            // Read aloud's bar, under the pages while it reads.
+            .safeAreaInset(edge: .bottom) {
+                if reader.isActive {
+                    ReadAloudBar(reader: reader)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(Motion.travel(reduceMotion: reduceMotion), value: reader.isActive)
+            .onDisappear { reader.stop() }
     }
 
     /// Everything the screen puts over itself.
@@ -236,6 +251,7 @@ struct DocumentView: View {
         .sheet(isPresented: $showingSignature) {
             SignatureSheet(store: SignatureStore()) { image in
                 editor?.tool = nil
+                reader.stop()
                 placingSignature = image
             }
         }
@@ -243,6 +259,24 @@ struct DocumentView: View {
             if let editor {
                 NoteSheet(placement: placement, editor: editor)
             }
+        }
+        // On-device AI: the assistant, then the autofill proposals to review.
+        .sheet(item: $assistant, onDismiss: {
+            // Autofill's review comes up once the AI sheet has gone: one
+            // sheet cannot be shown while another is still leaving.
+            if let pending = pendingAutofill {
+                pendingAutofill = nil
+                autofill = pending
+            }
+        }) { assistant in
+            AIPanel(assistant: assistant) {
+                guard let engine = assistant.engine else { return }
+                pendingAutofill = FormAutofillModel(model: model, engine: engine, profile: ProfileStore().load())
+                self.assistant = nil
+            }
+        }
+        .sheet(item: $autofill) { autofill in
+            AutofillReviewSheet(autofill: autofill)
         }
         // A document opened from a picture: the scanner enhances and reads it.
         .fullScreenCover(isPresented: $showingScanner) {
@@ -282,6 +316,11 @@ struct DocumentView: View {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(edit?.notice ?? "")
+            }
+            .alert("Cannot read aloud", isPresented: Binding(get: { reader.error != nil }, set: { if !$0 { reader.error = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(reader.error ?? "")
             }
             .sensoryFeedback(.success, trigger: editor?.commits ?? 0)
             .sensoryFeedback(.success, trigger: stampsAdded)
@@ -336,7 +375,7 @@ struct DocumentView: View {
                            edit: editing ? edit : nil, editSignature: editing ? (edit?.signature ?? "") : "",
                            host: host,
                            highlights: search.highlighted, currentHighlight: showingSearch ? search.currentSelection : nil,
-                           currentPage: $model.currentPage)
+                           currentPage: $model.currentPage, reader: reader)
                     // Night mode: the pages inverted, hues turned back so a
                     // blue heading stays blue (the system's own smart invert).
                     .colorInvert(if: night)
@@ -388,6 +427,7 @@ struct DocumentView: View {
                 .disabled(!model.isReady)
                 .accessibilityIdentifier("document.thumbnails.toggle")
             }
+            aiAndReadAloud
             moreMenu
             if !compact {
                 ShareLink(item: SharedPDF(model: model), preview: SharePreview(model.name, image: Image(systemName: "doc.richtext")))
@@ -437,6 +477,30 @@ struct DocumentView: View {
             .keyboardShortcut("e", modifiers: [.command, .option])
             .disabled(!model.isReady)
             .accessibilityIdentifier("document.edit")
+        }
+    }
+
+    /// Read aloud, and the AI button — only where Apple's model (or the
+    /// Debug fake) answers: nowhere else is there an AI button to press.
+    @ViewBuilder
+    private var aiAndReadAloud: some View {
+        Button("Read aloud", systemImage: reader.isActive ? "speaker.slash" : "speaker.wave.2") {
+            if reader.isActive {
+                reader.stop()
+            } else {
+                reader.start(model, from: model.currentPage)
+            }
+        }
+        .disabled(!model.isReady)
+        .accessibilityIdentifier("document.readAloud")
+        if AIEngines.availability().isAvailable {
+            Button("AI", systemImage: "sparkles") {
+                // Autofill writes PDFKit's document: no reading highlight in it.
+                reader.stop()
+                assistant = AIAssistant(model: model)
+            }
+            .disabled(!model.isReady)
+            .accessibilityIdentifier("document.ai")
         }
     }
 
@@ -532,6 +596,9 @@ struct DocumentView: View {
     /// document, as the design target does; it goes back with Done.
     private func startMarkup() {
         if editing { finishEditing() }
+        // Read aloud's highlight is a PDFKit annotation: a mark's commit
+        // writes PDFKit's document, so the reading stops first.
+        reader.stop()
         markup = true
         if !compact, !showingThumbnails {
             showingThumbnails = true
@@ -543,6 +610,7 @@ struct DocumentView: View {
     /// their own gestures over the same pages, so only one is ever in hand.
     private func startEditing() {
         if markup { finishMarkup() }
+        reader.stop()
         editing = true
     }
 

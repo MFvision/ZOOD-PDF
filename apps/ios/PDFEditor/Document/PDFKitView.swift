@@ -59,6 +59,8 @@ struct PDFKitView: UIViewRepresentable {
     var highlights: [PDFSelection] = []
     var currentHighlight: PDFSelection?
     @Binding var currentPage: Int
+    /// Read-aloud draws its highlight in this view and turns its pages.
+    var reader: ReadAloudController? = nil
 
     func makeUIView(context: Context) -> DocumentPDFView {
         let view = DocumentPDFView()
@@ -82,6 +84,7 @@ struct PDFKitView: UIViewRepresentable {
         // page's value is the core's text, on the SwiftUI element around it.
         view.isAccessibilityElement = true
         applyLayout(to: view)
+        reader?.attach(view)
         NotificationCenter.default.addObserver(
             context.coordinator,
             selector: #selector(Coordinator.pageChanged(_:)),
@@ -107,6 +110,7 @@ struct PDFKitView: UIViewRepresentable {
         coordinator.parent = self
         host?.view = view
         view.locale = context.environment.locale
+        reader?.attach(view)
         if view.document !== document {
             // The bytes changed (an edit): show the same place in the new
             // document, and keep the direction the document asks for.
