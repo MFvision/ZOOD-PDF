@@ -71,12 +71,7 @@ final class PartBScreenshotTests: XCTestCase {
             try ui.screenshot("stamps-\(suffix)", in: directory)
             let stampsCancel = app.buttons["stamp.cancel"]
             if stampsCancel.waitForExistence(timeout: 10) { stampsCancel.tap() }
-            ui.tapMarkup("markup.signature")
-            var canvas = ui.signatureCanvas
-            if !canvas.waitForExistence(timeout: 8) {
-                ui.tapMarkup("markup.signature")
-                canvas = ui.signatureCanvas
-            }
+            let canvas = ui.openSignatureCanvas()
             if canvas.waitForExistence(timeout: 10) {
                 let a = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.6))
                 let b = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.4))

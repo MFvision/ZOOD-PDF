@@ -20,6 +20,10 @@ final class OnboardingUITests: XCTestCase {
             "-language", language,
             "-appearance", appearance,
             "-warraqOnboarding", onboarding,
+            // The home and nothing over it: without this the scene brings
+            // back the document an earlier test left open, which on iPhone
+            // covers the Library the tour should land in.
+            "-warraqFresh", "1",
         ]
         app.launch()
         return app
@@ -61,16 +65,10 @@ final class OnboardingUITests: XCTestCase {
         XCTAssertFalse(again.descendants(matching: .any)["onboarding"].exists, "finished means finished")
 
         // And Settings brings it back for anyone who wants it again: the
-        // home's Settings card. On iPad the home is the split view's content
-        // column, and the scene can come back showing another section, so Home
-        // is chosen in the sidebar first when the card is not already there.
-        let settings = again.buttons["home.settings"]
-        if !settings.waitForExistence(timeout: 15) {
-            let home = again.descendants(matching: .any)["sidebar.home"]
-            if home.waitForExistence(timeout: 5) { home.tap() }
-        }
-        XCTAssertTrue(settings.waitForExistence(timeout: 20), "the home's Settings card")
-        settings.tap()
+        // home's Settings card (`homeSettingsCard` chooses Home in the iPad
+        // sidebar when needed, and brings the card clear of the phone's
+        // floating search field).
+        again.homeSettingsCard().tap()
         XCTAssertTrue(again.descendants(matching: .any)["settings.form"].waitForExistence(timeout: 20), "Settings opened")
         let entry = again.buttons["settings.onboarding"]
         if !entry.waitForExistence(timeout: 10) {

@@ -347,6 +347,7 @@ struct LibraryShell: View {
             Button("Open…", systemImage: "folder.badge.plus") {
                 showingImporter = true
             }
+            .accessibilityIdentifier("library.open")
         }
     }
 

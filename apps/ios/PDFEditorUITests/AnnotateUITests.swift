@@ -73,12 +73,7 @@ final class AnnotateUITests: XCTestCase {
         XCTAssertTrue(ui.app.buttons["markup.done"].waitForExistence(timeout: 20))
 
         // A signature drawn with the finger, then placed.
-        ui.tapMarkup("markup.signature")
-        var canvas = ui.signatureCanvas
-        if !canvas.waitForExistence(timeout: 8) {
-            ui.tapMarkup("markup.signature")
-            canvas = ui.signatureCanvas
-        }
+        let canvas = ui.openSignatureCanvas()
         XCTAssertTrue(canvas.waitForExistence(timeout: 30), "the signature canvas: \(ui.tree)")
         let a = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.6))
         let b = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
