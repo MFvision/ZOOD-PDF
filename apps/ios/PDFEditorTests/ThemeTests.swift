@@ -196,6 +196,8 @@ final class ThemeTests: XCTestCase {
         renderer.scale = 1
         let drawn = try XCTUnwrap(renderer.cgImage)
         let iconPixels = pixels(icon, side: side)
+        try UIImage(cgImage: drawn).pngData()!.write(to: URL(filePath: "/Users/mohammedalghammas/Developer/warraq/.claude/worktrees/agent-abd3a8362ee819ab1/apps/ios/.build/drawn.png"))
+        try UIImage(cgImage: icon).pngData()!.write(to: URL(filePath: "/Users/mohammedalghammas/Developer/warraq/.claude/worktrees/agent-abd3a8362ee819ab1/apps/ios/.build/icon.png"))
         let drawnPixels = pixels(drawn, side: side)
 
         // Where the copper is, in each: the mark's own shape.

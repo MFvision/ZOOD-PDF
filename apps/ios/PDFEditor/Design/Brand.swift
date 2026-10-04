@@ -52,7 +52,7 @@ enum ZoodPalette {
     // on the navy it is the paper's beige and two warm greys.
     static let inkOnPaper = navy
     static let secondaryOnPaper = navy85
-    static let tertiaryOnPaper = UIColor(hex: 0x4E6079)
+    static let tertiaryOnPaper = UIColor(hex: 0x485A73)
     static let inkOnNavy = beige60
     static let secondaryOnNavy = UIColor(hex: 0xB5AEA8)
     static let tertiaryOnNavy = UIColor(hex: 0x97938E)
