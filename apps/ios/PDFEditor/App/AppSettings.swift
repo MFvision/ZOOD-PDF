@@ -99,6 +99,8 @@ struct AppEnvironment: ViewModifier {
             // modifier put outside `.environment(\.appTheme, …)` would read
             // the theme that was there before, not the chosen one.
             .modifier(ThemeTint())
+            // ZOOD's body face for every text that names none, on its theme.
+            .modifier(ThemeTypeface())
             // The theme reaches every themed surface from here, and a change
             // to it cross-fades: nothing on screen travels, so Reduce Motion
             // takes nothing away.

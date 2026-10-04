@@ -42,11 +42,11 @@ struct ToolbarStatus: View {
     var body: some View {
         VStack(spacing: 0) {
             title
-                .font(TextStyle.headline)
+                .themeFont(.headline)
                 .lineLimit(1)
             if let subtitle {
                 subtitle
-                    .font(TextStyle.caption)
+                    .themeFont(.caption)
                     .foregroundStyle(Surface.secondaryLabel)
                     .tabularNumbers()
                     .lineLimit(1)
@@ -118,12 +118,12 @@ struct DocumentGridCell: View {
                 )
                 VStack(alignment: .leading, spacing: Space.x1) {
                     Text(name)
-                        .font(TextStyle.callout)
+                        .themeFont(.callout)
                         .foregroundStyle(Surface.label)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     detail
-                        .font(TextStyle.caption)
+                        .themeFont(.caption)
                         .foregroundStyle(Surface.secondaryLabel)
                         .tabularNumbers()
                         .lineLimit(1)
@@ -157,7 +157,7 @@ struct EmptyState: View {
         } actions: {
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.themedProminent)
                     .accessibilityIdentifier(actionIdentifier ?? "empty.action")
             }
         }

@@ -183,6 +183,10 @@ struct SettingsView: View {
 
     private var about: some View {
         Section("About") {
+            // ZOOD's logo, the app's maker, with its clear space round it.
+            ZoodLogo(kind: .main, height: 40)
+                .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("settings.logo")
             LabeledContent("Version", value: Self.appVersion)
             LabeledContent("Core", value: Core.version)
             LabeledContent("Privacy") {

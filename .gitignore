@@ -28,3 +28,7 @@ DerivedData/
 # XcodeGen writes these from project.yml on every build.
 apps/ios/**/Info.plist
 apps/ios/**/*.entitlements
+# ZOOD's licensed headline face (ITF Huwiya Arabic, a commercial font the owner
+# bought). Never committed: the app loads it from here when present and falls
+# back to an OFL face otherwise (docs/design/README.md, "The iOS themes").
+apps/ios/PDFEditor/Resources/LicensedFonts/
