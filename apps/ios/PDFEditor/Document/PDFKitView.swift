@@ -143,6 +143,13 @@ struct PDFKitView: UIViewRepresentable {
             } else if let page = document.page(at: min(max(currentPage, 0), max(document.pageCount - 1, 0))) {
                 view.go(to: page)
             }
+            // The binding is where the view was, not a page asked for from
+            // outside: PDFKit says which page is current once the new pages
+            // settle. (Left as it was, the go-to-page check below took the
+            // binding's page 2 for a request on a tall iPad, whose current
+            // page after the swap was page 1, and moved the view after every
+            // edit.)
+            coordinator.lastReported = currentPage
         } else if view.displaysRTL != displaysRTL {
             view.displaysRTL = displaysRTL
         }
