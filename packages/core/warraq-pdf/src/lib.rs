@@ -23,6 +23,7 @@ pub mod pages;
 mod pagework;
 pub mod picture;
 mod rebase;
+pub mod redaction;
 mod show;
 pub mod signature;
 pub mod standards;
@@ -52,6 +53,7 @@ pub use ocr::{OcrPage, OcrReport, OcrWord};
 pub use ops::{append_line, append_line_in_color, erase_area, replace_paragraph, replace_word};
 pub use outline::Bookmark;
 pub use pages::{combine, Margins};
+pub use redaction::{RedactMark, RedactReport};
 pub use text_walk::{locate_show_runs, Matrix, ShowRun};
 
 #[derive(Debug, thiserror::Error)]

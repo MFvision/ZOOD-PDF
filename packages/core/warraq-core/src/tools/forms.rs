@@ -63,6 +63,22 @@ struct CreateField {
     rtl: bool,
     #[serde(default)]
     pattern: Option<String>,
+    /// A list's options; a radio button's first entry is what it stands for.
+    #[serde(default)]
+    options: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct FillValue {
+    name: String,
+    value: String,
+}
+
+#[derive(Deserialize)]
+struct Fill {
+    #[serde(default)]
+    password: Option<String>,
+    values: Vec<FillValue>,
 }
 
 #[derive(Deserialize)]
@@ -276,6 +292,9 @@ fn report_json(report: &FormReport) -> Value {
                 "supported": supported,
                 "format": f.format.as_deref().map(describe_format).unwrap_or(Value::Null),
                 "range": f.validate.as_deref().map(describe_range).unwrap_or(Value::Null),
+                "options": f.options,
+                "states": f.states,
+                "editable": f.editable,
                 "calculate": f.calculate.as_deref().map(describe_calculation).unwrap_or(Value::Null),
             })
         })
@@ -455,11 +474,31 @@ pub fn call_static(name: &str, json: &str, blobs: Vec<Vec<u8>>) -> Result<Reply,
                     rect: f.rect,
                     rtl: f.rtl,
                     pattern: f.pattern,
+                    options: f.options,
                 })
                 .collect();
             let created = doc.create_fields(&fields)?;
             let bytes = saved(&mut doc)?;
             Ok(Reply::of(&json!({ "created": created }))?.with_blob(bytes))
+        }
+        // blobs: the PDF, then the face the values are drawn in.
+        "fill" => {
+            let a: Fill = args(json)?;
+            let (Some(pdf), Some(font)) = (blobs.next(), blobs.next()) else {
+                return Err(CoreError::Args(
+                    "forms.fill takes the PDF and a font".into(),
+                ));
+            };
+            let mut doc = warraq_pdf::PdfDocument::open(pdf, a.password.as_deref())?;
+            let values: Vec<(String, String)> =
+                a.values.into_iter().map(|v| (v.name, v.value)).collect();
+            let redraw = doc.fill_fields(&values)?;
+            let drawn = doc.redraw_appearances(&font, &redraw)?;
+            let bytes = saved(&mut doc)?;
+            Ok(
+                Reply::of(&json!({ "filled": values.len(), "drawn": drawn.fields }))?
+                    .with_blob(bytes),
+            )
         }
         // blobs: the PDF, then the face to draw calculated values with.
         "set_actions" => {
@@ -573,3 +612,7 @@ pub fn call_static(name: &str, json: &str, blobs: Vec<Vec<u8>>) -> Result<Reply,
         _ => Err(CoreError::UnknownOp(format!("forms.{name}"))),
     }
 }
+
+#[cfg(test)]
+#[path = "forms_fill_tests.rs"]
+mod fill_tests;

@@ -30,8 +30,13 @@ const MAX_NOTES: usize = 100;
 const NOTE_TEXT: usize = 400;
 
 const FLAG_READ_ONLY: i64 = 1;
+const FLAG_NO_TOGGLE_OFF: i64 = 1 << 14;
 const FLAG_RADIO: i64 = 1 << 15;
 const FLAG_PUSH: i64 = 1 << 16;
+const FLAG_COMBO: i64 = 1 << 17;
+const FLAG_EDIT: i64 = 1 << 18;
+/// Options a choice field is written or read with at most.
+const MAX_OPTIONS: usize = 500;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FieldKind {
@@ -76,6 +81,15 @@ pub struct FormField {
     pub format: Option<String>,
     pub validate: Option<String>,
     pub calculate: Option<String>,
+    /// A choice field's options (their export values), or what a check box
+    /// or radio button's states stand for: its `/Opt` entry where it has
+    /// one, else the state's own name.
+    pub options: Vec<String>,
+    /// A check box or radio button's on states, as its widgets name them,
+    /// one for each of `options`.
+    pub states: Vec<String>,
+    /// A combo box that takes text typed into it too.
+    pub editable: bool,
 }
 
 /// Whether the form is XFA, and which kind.
@@ -119,7 +133,8 @@ pub struct FormReport {
 #[derive(Debug, Clone, PartialEq)]
 pub struct NewField {
     pub page: usize,
-    /// `text`, `checkbox`, `date`, `hijri` or `signature`.
+    /// `text`, `checkbox`, `radio`, `choice`, `date`, `hijri` or `signature`.
+    /// Radio buttons asked for under one name are one field, a button each.
     pub kind: String,
     pub name: String,
     pub tooltip: String,
@@ -129,6 +144,9 @@ pub struct NewField {
     pub rtl: bool,
     /// The date pattern of a date or Hijri field.
     pub pattern: Option<String>,
+    /// A choice field's options; a radio button's first entry is what it
+    /// stands for (its `/Opt` entry: Arabic is kept as it is written).
+    pub options: Vec<String>,
 }
 
 /// How a field's value is shown and what it accepts.
@@ -519,6 +537,14 @@ impl PdfDocument {
         }
         let widget_ids: Vec<ObjectId> = if kids.is_empty() { vec![id] } else { kids };
         let mut widgets = Vec::new();
+        let mut states: Vec<String> = Vec::new();
+        for &widget in &widget_ids {
+            for state in self.on_states(widget) {
+                if !states.contains(&state) {
+                    states.push(state);
+                }
+            }
+        }
         for widget in widget_ids {
             let Ok(w) = self.doc.get_dictionary(widget) else {
                 continue;
@@ -584,6 +610,23 @@ impl PdfDocument {
             _ => String::new(),
         };
         let script = |key: &[u8]| here.actions.get(key).cloned();
+        let opt = self.options_of(dict);
+        let options = match kind {
+            FieldKind::Choice => opt,
+            FieldKind::Checkbox | FieldKind::Radio => states
+                .iter()
+                .map(|s| {
+                    s.parse::<usize>()
+                        .ok()
+                        .and_then(|i| opt.get(i).cloned())
+                        .unwrap_or_else(|| s.clone())
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
+        if !matches!(kind, FieldKind::Checkbox | FieldKind::Radio) {
+            states.clear();
+        }
         report.fields.push(FormField {
             name,
             kind,
@@ -599,7 +642,54 @@ impl PdfDocument {
             format: script(b"F"),
             validate: script(b"V"),
             calculate: script(b"C"),
+            options,
+            states,
+            editable: kind == FieldKind::Choice && here.flags & FLAG_EDIT != 0,
         });
+    }
+
+    /// A widget's on states: the names of its normal appearances but `Off`.
+    pub(crate) fn on_states(&self, widget: ObjectId) -> Vec<String> {
+        let Ok(w) = self.doc.get_dictionary(widget) else {
+            return Vec::new();
+        };
+        let normal = w
+            .get(b"AP")
+            .ok()
+            .map(|ap| self.form_value(ap))
+            .and_then(|ap| ap.as_dict().ok().and_then(|d| d.get(b"N").ok().cloned()))
+            .map(|n| self.form_value(&n));
+        match normal.as_ref().and_then(|n| n.as_dict().ok()) {
+            Some(states) => states
+                .iter()
+                .map(|(k, _)| String::from_utf8_lossy(k).into_owned())
+                .filter(|k| k != "Off")
+                .take(MAX_OPTIONS)
+                .collect(),
+            None => Vec::new(),
+        }
+    }
+
+    /// A field's `/Opt`: each entry's export value (the first of a pair).
+    fn options_of(&self, dict: &Dictionary) -> Vec<String> {
+        let Some(opt) = dict.get(b"Opt").ok().map(|o| self.form_value(o)) else {
+            return Vec::new();
+        };
+        opt.as_array()
+            .map(|items| {
+                items
+                    .iter()
+                    .take(MAX_OPTIONS)
+                    .filter_map(|item| match self.form_value(item) {
+                        Object::String(b, _) => Some(decode_text_string(&b)),
+                        Object::Array(pair) => pair
+                            .first()
+                            .and_then(|e| self.form_value(e).as_str().ok().map(decode_text_string)),
+                        _ => None,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     /// The object id of the terminal field called `name`.
@@ -848,6 +938,9 @@ impl PdfDocument {
         let mut taken = self.field_names();
         let mut created = Vec::new();
         let mut refs = Vec::new();
+        // Radio buttons by the name they were asked for: their field, its
+        // buttons, and each button's `/Opt` entry.
+        let mut radios: BTreeMap<String, (ObjectId, Vec<Object>, Vec<Object>)> = BTreeMap::new();
         for field in fields.iter().take(MAX_FIELDS) {
             let page = self.page_id(field.page)?;
             let frame = self.display_frame(field.page)?;
@@ -862,7 +955,10 @@ impl PdfDocument {
                     field.name
                 )));
             }
-            let name = unique_name(&field.name, &mut taken);
+            let name = match radios.get(&field.name) {
+                Some(_) if field.kind == "radio" => field.name.clone(),
+                _ => unique_name(&field.name, &mut taken),
+            };
             let (w, h) = if turn == 90 || turn == 270 {
                 (y1 - y0, x1 - x0)
             } else {
@@ -912,6 +1008,94 @@ impl PdfDocument {
                         )]),
                     );
                 }
+                "radio" => {
+                    // One field for every button asked for under this name;
+                    // each button is a widget below it, its state its index
+                    // and its `/Opt` entry what it stands for.
+                    dict.remove(b"T");
+                    dict.remove(b"TU");
+                    let parent = match radios.get(&field.name) {
+                        Some((parent, _, _)) => *parent,
+                        None => {
+                            let mut group = Dictionary::from_iter([
+                                ("FT", Object::Name(b"Btn".to_vec())),
+                                ("Ff", Object::Integer(FLAG_RADIO | FLAG_NO_TOGGLE_OFF)),
+                                ("T", text_string(&name)),
+                                ("V", Object::Name(b"Off".to_vec())),
+                            ]);
+                            if !field.tooltip.trim().is_empty() {
+                                group.set("TU", text_string(field.tooltip.trim()));
+                            }
+                            let parent = self.doc.add_object(group);
+                            radios.insert(field.name.clone(), (parent, Vec::new(), Vec::new()));
+                            refs.push(Object::Reference(parent));
+                            created.push(name.clone());
+                            parent
+                        }
+                    };
+                    let count = radios.get(&field.name).map_or(0, |(_, kids, _)| kids.len());
+                    let state = count.to_string();
+                    let label = field
+                        .options
+                        .first()
+                        .map(|o| o.trim().to_string())
+                        .filter(|o| !o.is_empty())
+                        .unwrap_or_else(|| (count + 1).to_string());
+                    dict.set("Parent", Object::Reference(parent));
+                    dict.set("AS", Object::Name(b"Off".to_vec()));
+                    dict.set("DA", Object::string_literal("/ZaDb 0 Tf 0 g"));
+                    mk.set("CA", Object::string_literal("l"));
+                    let on = self
+                        .doc
+                        .add_object(radio_appearance(w, h, true, matrix.clone()));
+                    let off = self.doc.add_object(radio_appearance(w, h, false, matrix));
+                    dict.set(
+                        "AP",
+                        Dictionary::from_iter([(
+                            "N",
+                            Object::Dictionary(Dictionary::from_iter([
+                                (state.as_str(), Object::Reference(on)),
+                                ("Off", Object::Reference(off)),
+                            ])),
+                        )]),
+                    );
+                    dict.set("MK", mk);
+                    let id = self.doc.add_object(dict);
+                    self.update_array(page, b"Annots", |annots| {
+                        annots.push(Object::Reference(id))
+                    })?;
+                    if let Some((_, kids, opt)) = radios.get_mut(&field.name) {
+                        kids.push(Object::Reference(id));
+                        opt.push(text_string(&label));
+                    }
+                    continue;
+                }
+                "choice" => {
+                    // A drop-down list of the options, Arabic as written; its
+                    // value is drawn by `fix_arabic_appearances` once chosen.
+                    dict.set("FT", Object::Name(b"Ch".to_vec()));
+                    dict.set("Ff", Object::Integer(FLAG_COMBO));
+                    let size = (h * 0.6).clamp(7.0, 12.0).round();
+                    dict.set("DA", Object::string_literal(format!("/Helv {size} Tf 0 g")));
+                    dict.set("Q", Object::Integer(if field.rtl { 2 } else { 0 }));
+                    let options: Vec<Object> = field
+                        .options
+                        .iter()
+                        .map(|o| o.trim())
+                        .filter(|o| !o.is_empty())
+                        .take(MAX_OPTIONS)
+                        .map(text_string)
+                        .collect();
+                    if options.is_empty() {
+                        return Err(Error::Edit(format!(
+                            "the list {} has no options",
+                            field.name
+                        )));
+                    }
+                    dict.set("Opt", Object::Array(options));
+                    let n = self.doc.add_object(empty_appearance(w, h, true, matrix));
+                    dict.set("AP", Dictionary::from_iter([("N", Object::Reference(n))]));
+                }
                 "signature" => {
                     dict.set("FT", Object::Name(b"Sig".to_vec()));
                     let n = self.doc.add_object(empty_appearance(w, h, false, matrix));
@@ -952,6 +1136,12 @@ impl PdfDocument {
             self.update_array(page, b"Annots", |annots| annots.push(Object::Reference(id)))?;
             refs.push(Object::Reference(id));
             created.push(name);
+        }
+        for (parent, kids, opt) in radios.into_values() {
+            if let Ok(group) = self.doc.get_dictionary_mut(parent) {
+                group.set("Kids", Object::Array(kids));
+                group.set("Opt", Object::Array(opt));
+            }
         }
         self.update_array(form, b"Fields", |list| list.extend(refs))?;
         Ok(created)
@@ -1429,6 +1619,42 @@ fn empty_appearance(w: f32, h: f32, text: bool, matrix: Option<Object>) -> Strea
     )
 }
 
+/// A circle round `(cx, cy)` as four Bézier quarters.
+fn circle(cx: f32, cy: f32, r: f32) -> String {
+    let k = 0.5523 * r;
+    let p = |x: f32, y: f32| format!("{x:.2} {y:.2}");
+    format!(
+        "{} m {} {} {} c {} {} {} c {} {} {} c {} {} {} c h",
+        p(cx + r, cy),
+        p(cx + r, cy + k),
+        p(cx + k, cy + r),
+        p(cx, cy + r),
+        p(cx - k, cy + r),
+        p(cx - r, cy + k),
+        p(cx - r, cy),
+        p(cx - r, cy - k),
+        p(cx - k, cy - r),
+        p(cx, cy - r),
+        p(cx + k, cy - r),
+        p(cx + r, cy - k),
+        p(cx + r, cy)
+    )
+}
+
+/// A radio button's appearance: a ring, with a dot in it when on. Drawn as
+/// paths, so it needs no font in any reader.
+fn radio_appearance(w: f32, h: f32, on: bool, matrix: Option<Object>) -> Stream {
+    let (cx, cy, r) = (w / 2.0, h / 2.0, (w.min(h) / 2.0 - 1.0).max(1.0));
+    let mut content = format!("q 0 G 1 w {} S Q\n", circle(cx, cy, r));
+    if on {
+        content.push_str(&format!(
+            "q 0 g {} f Q\n",
+            circle(cx, cy, (r * 0.5).max(0.5))
+        ));
+    }
+    form_xobject(w, h, matrix, content.into_bytes())
+}
+
 /// A check box's appearance: a tick when on, nothing when off. Drawn as a
 /// path, so it needs no font in any reader.
 fn check_appearance(w: f32, h: f32, on: bool, matrix: Option<Object>) -> Stream {
@@ -1476,6 +1702,7 @@ mod tests {
             rect,
             rtl: true,
             pattern: None,
+            options: Vec::new(),
         }
     }
 

@@ -7,6 +7,12 @@
 //! Those boxes become redaction marks in the viewer, which removes what is
 //! under them when the marks are applied.
 //!
+//! `redact.apply` takes out what lies under marks — the glyphs, the pixels,
+//! the drawings, the annotations, and the replacement text that would still
+//! say what they said (`warraq_pdf::redaction`) — for a host with no viewer
+//! of its own that redacts (the iPhone and iPad app); the file is written
+//! whole, as a scrubbed one is.
+//!
 //! `redact.inspect` and `redact.scrub` report and remove what a file carries
 //! besides its pages (`warraq_pdf::hidden`); the scrubbed file is written
 //! whole, with no earlier revision and nothing unreferenced left in it.
@@ -342,6 +348,45 @@ struct Password {
     password: Option<String>,
 }
 
+#[derive(Deserialize)]
+struct ApplyMark {
+    page: usize,
+    rects: Vec<Rect>,
+}
+
+#[derive(Deserialize, Default)]
+struct Apply {
+    #[serde(default)]
+    password: Option<String>,
+    /// Each mark's boxes, as `redact.find` answers a match's.
+    #[serde(default)]
+    marks: Vec<ApplyMark>,
+    /// The colour painted over each mark, `#rrggbb`; none with `null`.
+    #[serde(default = "black")]
+    fill: Option<String>,
+}
+
+fn black() -> Option<String> {
+    Some("#000000".into())
+}
+
+/// `#rrggbb` as RGB from 0 to 1.
+fn rgb(hex: &str) -> Result<[f32; 3], CoreError> {
+    let h = hex.trim_start_matches('#');
+    let channel = |i: usize| {
+        h.get(i..i + 2)
+            .and_then(|c| u8::from_str_radix(c, 16).ok())
+            .map(|v| v as f32 / 255.0)
+    };
+    match (h.len(), channel(0), channel(2), channel(4)) {
+        (6, Some(r), Some(g), Some(b)) => Ok([r, g, b]),
+        _ => Err(CoreError::Args(format!("{hex} is not a colour"))),
+    }
+}
+
+/// Boxes taken at most in one redaction.
+const MAX_MARKS: usize = 20_000;
+
 #[derive(Deserialize, Default)]
 struct Scrub {
     #[serde(default)]
@@ -379,6 +424,44 @@ pub fn call_static(name: &str, json: &str, blobs: Vec<Vec<u8>>) -> Result<Reply,
             .ok_or_else(|| CoreError::Args(format!("redact.{name} takes the PDF")))
     };
     match name {
+        "apply" => {
+            let a: Apply = args(json)?;
+            let marks: Vec<warraq_pdf::RedactMark> = a
+                .marks
+                .iter()
+                .flat_map(|m| {
+                    m.rects.iter().map(move |r| warraq_pdf::RedactMark {
+                        page: m.page,
+                        rect: [r.x, r.y, r.width, r.height],
+                    })
+                })
+                .collect();
+            if marks.is_empty() {
+                return Err(CoreError::Args("nothing is marked".into()));
+            }
+            if marks.len() > MAX_MARKS {
+                return Err(CoreError::Args("too many marks for one redaction".into()));
+            }
+            let fill = a.fill.as_deref().map(rgb).transpose()?;
+            let doc = warraq_pdf::PdfDocument::open(pdf()?, a.password.as_deref())?;
+            if doc.was_encrypted() {
+                return Reply::of(&serde_json::json!({ "refused": "protected" }));
+            }
+            let signed = doc.hidden_report().signed;
+            let (bytes, r) = doc.redacted(&marks, fill)?;
+            Ok(Reply::of(&serde_json::json!({
+                "pages": r.pages,
+                "glyphs": r.glyphs,
+                "runs": r.runs,
+                "images": r.images,
+                "imagesRemoved": r.images_removed,
+                "paths": r.paths,
+                "annotations": r.annotations,
+                "signed": signed,
+                "size": bytes.len(),
+            }))?
+            .with_blob(bytes))
+        }
         "inspect" => {
             let a: Password = args(json)?;
             let doc = warraq_pdf::PdfDocument::open(pdf()?, a.password.as_deref())?;
@@ -797,3 +880,7 @@ mod tests {
         assert_eq!(unrotate(half, 180, (600.0, 800.0)), r);
     }
 }
+
+#[cfg(test)]
+#[path = "redact_apply_tests.rs"]
+mod apply_tests;

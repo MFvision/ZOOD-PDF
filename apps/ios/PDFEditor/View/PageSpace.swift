@@ -46,6 +46,14 @@ enum PageSpace {
                height: r.height)
     }
 
+    /// A box of user space in stored space: the inverse of `userRect(fromStored:in:)`.
+    static func storedRect(fromUser r: CGRect, in frame: Frame) -> CGRect {
+        CGRect(x: r.minX - frame.crop.minX,
+               y: frame.crop.maxY - r.maxY,
+               width: r.width,
+               height: r.height)
+    }
+
     /// A point as shown, to user space (the inverse of the core's `Frame::user`).
     static func userPoint(fromShown p: CGPoint, in frame: Frame) -> CGPoint {
         let c = frame.crop

@@ -365,6 +365,12 @@ targets:
         buildPhase: resources
       - path: ../../tests/fixtures/scan/whiteboard.jpg
         buildPhase: resources
+      # Redact and Prepare form: the redaction contract (Latin, Arabic with
+      # tashkeel, emails, phones) and a flat Arabic invoice with its truth.
+      - path: ../../tests/fixtures/redact/contract.pdf
+        buildPhase: resources
+      - path: ../../tests/fixtures/forms/ar-invoice.pdf
+        buildPhase: resources
     dependencies:
       - target: PDFEditor
       # The wrapper's code is already inside the host app; the tests need only
@@ -412,6 +418,11 @@ targets:
       # The signing test signs a corpus file with this before it launches the
       # app on it, so the interface is shown a real signature to report on.
       - path: ../../tests/fixtures/signatures/signer-rsa-aes.p12
+        buildPhase: resources
+      # Redact and Prepare form through the interface.
+      - path: ../../tests/fixtures/redact/contract.pdf
+        buildPhase: resources
+      - path: ../../tests/fixtures/forms/ar-invoice.pdf
         buildPhase: resources
     dependencies:
       - target: PDFEditor
