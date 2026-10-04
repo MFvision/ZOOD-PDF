@@ -23,10 +23,12 @@ final class FormUITests: XCTestCase {
         let button = ui.app.buttons[identifier]
         let bar = ui.app.descendants(matching: .any).matching(identifier: "form.bar").firstMatch
         XCTAssertTrue(ui.poll(timeout: 20) { button.exists }, "form button \(identifier): \(ui.tree)")
-        let screen = ui.app.windows.firstMatch.frame
+        // The bar's tools scroll inside it (Apply and Done stay beside
+        // it): the button is brought inside the bar's own frame, not just
+        // the window's.
         var tries = 0
-        while !screen.insetBy(dx: 2, dy: 0).contains(button.frame), bar.exists, tries < 8 {
-            if button.frame.minX < screen.minX + 2 { bar.swipeRight() } else { bar.swipeLeft() }
+        while bar.exists, !bar.frame.insetBy(dx: 2, dy: 0).contains(button.frame), tries < 8 {
+            if button.frame.minX < bar.frame.minX + 2 { bar.swipeRight() } else { bar.swipeLeft() }
             tries += 1
         }
         XCTAssertTrue(ui.poll(timeout: 10) { button.exists && button.isHittable }, "form button \(identifier): \(ui.tree)")
