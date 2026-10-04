@@ -20,7 +20,7 @@ live mosque results are the only network features and send only an approximate (
 
 | Folder | What |
 |---|---|
-| `docs/` | `01-audit` (website and media audit), `02-architecture`, `03-offline-contract`, `04-data-and-licenses`, `05-status` (feature matrix, test results, limitations), `06-design` |
+| `docs/` | `01-audit` (website and media audit), `02-architecture`, `03-offline-contract`, `04-data-and-licenses`, `05-status` (feature matrix, test results, limitations), `06-design`, `07-testflight` (setup and test checklist) |
 | `shared/` | UI strings (7 languages, one source), design tokens, golden fixtures, common questions, stopwords, brand source |
 | `packs/` | Bundled data: cities (GeoNames), mosques for Cape Town / Cairo / London (OSM), Quran + Pickthall (Tanzil) |
 | `tools/` | Pack builders, independent prayer/Qibla reference, retrieval reference, strings generator, token checker |
