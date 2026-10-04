@@ -46,6 +46,9 @@ final class LibraryModel {
     private(set) var starred: Set<String> = []
     /// The document on screen, in the detail column or pushed on the stack.
     var opened: DocumentModel?
+    /// The thumbnail the open document was opened from, which it zooms out
+    /// of and back into; nil when it came from somewhere with no thumbnail.
+    var zoomSource: String?
     /// Something that went wrong opening a file, shown once: one of the
     /// app's own messages (a key of the String Catalog), or the system's.
     var error: LocalizedStringKey?
@@ -169,6 +172,7 @@ final class LibraryModel {
     }
 
     func open(_ item: LibraryItem) {
+        zoomSource = item.id
         if let key = item.key {
             open(key: key)
         } else if let id = item.recentID, let recent = recents.first(where: { $0.id == id }) {

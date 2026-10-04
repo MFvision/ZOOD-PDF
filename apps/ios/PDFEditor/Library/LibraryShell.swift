@@ -77,6 +77,7 @@ struct LibraryShell: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var library: LibraryModel
     @State private var lock = AppLock()
+    @Namespace private var zoom
     @SceneStorage("library.section") private var sectionID = LibrarySection.home.rawValue
     @SceneStorage("library.document") private var restoredBookmark: String?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
@@ -341,11 +342,16 @@ struct LibraryShell: View {
             .themedToolbar()
             .navigationDestination(item: $library.opened) { model in
                 DocumentView(model: model)
+                    .zoomed(from: library.zoomSource, in: zoom)
+                    // Once it is back in its thumbnail: a document opened
+                    // next from Files or a search has no thumbnail to leave.
+                    .onDisappear { if library.opened == nil { library.zoomSource = nil } }
             }
             .navigationDestination(for: LibrarySection.self) { section in
                 content(for: section)
                     .navigationTitle(section.title)
             }
+            .environment(\.zoomNamespace, zoom)
         }
     }
 
@@ -647,6 +653,7 @@ struct DocumentGrid: View {
         ) {
             library.open(item)
         }
+        .zoomSource(item.id)
         .contextMenu {
             starButton(item.url)
         }

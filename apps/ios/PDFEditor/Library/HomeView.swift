@@ -286,8 +286,11 @@ struct DocumentRow: View {
 
     private func card(_ item: LibraryItem) -> some View {
         let starred = library.isStarred(item.url)
+        // The same document can be in two rows; each card is its own source.
+        let source = "\(section).\(item.id)"
         return Button {
             library.open(item)
+            library.zoomSource = source
         } label: {
             VStack(alignment: .leading, spacing: Space.x3) {
                 Depth.page(
@@ -336,6 +339,7 @@ struct DocumentRow: View {
             .glassCard()
         }
         .buttonStyle(.pressable)
+        .zoomSource(source)
         .contextMenu { menu(item, starred: starred) }
         // The ⋯ menu sits over the card, not inside its button, so its own
         // tap is its own.

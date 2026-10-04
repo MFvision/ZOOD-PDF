@@ -10,7 +10,7 @@ struct SettingsView: View {
     let library: LibraryModel
     @AppStorage(SettingsKey.language) private var language: AppLanguage = .system
     @AppStorage(SettingsKey.appearance) private var appearance: AppAppearance = .system
-    @AppStorage(SettingsKey.theme) private var theme: AppTheme = .system
+    @AppStorage(SettingsKey.theme) private var theme: AppTheme = .glass
     @AppStorage(SettingsKey.appLock) private var appLock = false
     @State private var choosingFolder = false
     @State private var showingOnboarding = false
