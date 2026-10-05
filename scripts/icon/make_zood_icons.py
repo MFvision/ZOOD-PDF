@@ -79,17 +79,67 @@ def squircle(cx, cy, half, n=5.0, steps=256):
     return 'M' + ' L'.join(points) + ' Z'
 
 
+# "PDF" in ZOOD's own headline face (ITF Huwiya Arabic Bold), as outlines:
+# drawn once from the licensed font into paths, so the icon needs no font and
+# is the same on every machine. 1893.8 by 716.2, y down, from its top-left.
+PDF_W, PDF_H = 1893.8, 716.2
+PDF_D = 'M273.8 0.0Q441.2 0.0 516.2 50.6Q591.2 101.2 591.2 217.5Q591.2 332.5 516.2 383.8Q441.2 435.0 273.8 435.0L152.5 435.0L152.5 716.2L0.0 716.2L0.0 0.0ZM152.5 326.2L272.5 326.2Q361.2 326.2 401.2 300.6Q441.2 275.0 441.2 217.5Q441.2 158.8 401.2 133.1Q361.2 107.5 272.5 107.5L152.5 107.5ZM852.5 112.5L852.5 603.8L926.2 603.8Q992.5 603.8 1033.8 586.9Q1075.0 570.0 1098.1 538.8Q1121.2 507.5 1129.4 461.2Q1137.5 415.0 1137.5 357.5Q1137.5 300.0 1129.4 254.4Q1121.2 208.8 1098.1 177.5Q1075.0 146.2 1033.8 129.4Q992.5 112.5 926.2 112.5ZM926.2 0.0Q1027.5 0.0 1097.5 21.9Q1167.5 43.8 1210.6 88.8Q1253.8 133.8 1273.1 200.6Q1292.5 267.5 1292.5 357.5Q1292.5 447.5 1273.1 515.0Q1253.8 582.5 1210.6 627.5Q1167.5 672.5 1097.5 694.4Q1027.5 716.2 926.2 716.2L701.2 716.2L701.2 0.0ZM1412.5 0.0L1893.8 0.0L1893.8 113.8L1565.0 113.8L1565.0 312.5L1866.2 312.5L1866.2 426.2L1565.0 426.2L1565.0 716.2L1412.5 716.2Z'
+
+# The label along the icon's foot: a band of the brand's copper carrying a
+# pencil and "PDF", the way a tab names a folder — what the app is, readable
+# at the size of a home screen. The mark keeps the rest, a little smaller and
+# raised to sit in the middle of it. Shares of the icon's side.
+BAND = 0.23
+MARK_SHRINK = 0.84
+MARK_RAISE = 0.1016
+
+
+def label(ink, body, side):
+    """The band, the pencil and "PDF", in a square `side` across centred on 512."""
+    k = side / 1024
+    left, bottom = 512 - side / 2, 512 + side / 2
+    top = bottom - BAND * side
+    text_h = 107 * k                      # the letters' height
+    ts = text_h / PDF_H
+    text_w = PDF_W * ts
+    plen, pthick, gap = 150 * k, 42 * k, 30 * k
+    pext = plen * 0.72                    # the slanted pencil's width
+    x0 = 512 - (pext + gap + text_w) / 2
+    cy = (top + bottom) / 2
+    px, tx = x0 + pext / 2, x0 + pext + gap
+    t = pthick
+    return f'''  <clipPath id="body"><path d="{body}"/></clipPath>
+  <g clip-path="url(#body)">
+    <rect x="{left:.2f}" y="{top:.2f}" width="{side:.2f}" height="{BAND * side:.2f}" fill="url(#band)"/>
+  </g>
+  <g fill="{ink}">
+    <g transform="translate({px:.2f} {cy:.2f}) rotate(-45)">
+      <rect x="{-t / 2:.2f}" y="{-plen / 2:.2f}" width="{t:.2f}" height="{plen - t * 1.05:.2f}" rx="{t * 0.18:.2f}"/>
+      <path d="M{-t / 2:.2f} {plen / 2 - t * 0.95:.2f} H{t / 2:.2f} L0 {plen / 2:.2f} Z"/>
+    </g>
+    <path transform="translate({tx:.2f} {cy - text_h / 2:.2f}) scale({ts:.5f})" d="{PDF_D}"/>
+  </g>
+  <g clip-path="url(#body)" fill="#000000" fill-opacity="0.18">
+    <g transform="translate({px:.2f} {cy:.2f}) rotate(-45)">
+      <rect x="{-t / 2:.2f}" y="{-plen / 2 + t * 0.46:.2f}" width="{t:.2f}" height="{t * 0.16:.2f}"/>
+    </g>
+  </g>
+'''
+
+
 def icon(name, ground, metal, body, side):
-    """The mark, centred, `MARK_WIDTH` of `side` wide, on `ground`."""
-    scale = side * MARK_WIDTH / MARK_W
+    """The mark over the label: `MARK_WIDTH` of `side` wide before the label
+    takes its share, on `ground`."""
+    scale = side * MARK_WIDTH * MARK_SHRINK / MARK_W
     x = 512 - MARK_W * scale / 2
-    y = 512 - MARK_H * scale / 2
+    y = 512 - MARK_RAISE * side - MARK_H * scale / 2
     marks = '\n'.join(f'      <path d="{d}"/>' for d in MARK)
     svg = f'''<?xml version="1.0" encoding="UTF-8"?>
 <!-- محرر PDF's app icon: ZOOD's own mark (ZOOD visual identity, Bold Brands,
-     p. 8), copper on navy as the brand foil-stamps it (p. 28). ZOOD's
-     trademark, used at the owner's request. Written by
-     scripts/icon/make_zood_icons.py from scripts/icon/zood/zood-mark.svg. -->
+     p. 8), copper on navy as the brand foil-stamps it (p. 28), over a copper
+     label naming what the app does. ZOOD's trademark, used at the owner's
+     request. Written by scripts/icon/make_zood_icons.py from
+     scripts/icon/zood/zood-mark.svg. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
     <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
@@ -102,6 +152,11 @@ def icon(name, ground, metal, body, side):
       <stop offset="0.5" stop-color="{metal[1]}"/>
       <stop offset="1" stop-color="{metal[2]}"/>
     </linearGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="1" y2="0.35">
+      <stop offset="0" stop-color="{metal[0]}"/>
+      <stop offset="0.55" stop-color="{metal[1]}"/>
+      <stop offset="1" stop-color="{metal[2]}"/>
+    </linearGradient>
   </defs>
   <path d="{body}" fill="url(#ground)"/>
   <g fill="url(#metal)">
@@ -109,7 +164,7 @@ def icon(name, ground, metal, body, side):
 {marks}
     </g>
   </g>
-</svg>
+{label(ground[1], body, side)}</svg>
 '''
     with open(os.path.join(OUT, name), 'w', encoding='utf-8') as handle:
         handle.write(svg)

@@ -181,10 +181,11 @@ final class ThemeTests: XCTestCase {
 
     // MARK: - The mark
 
-    func testTheMarkInTheAppIsTheIconsOwnDrawing() throws {
+    func testTheAppIconIsTheMarkOverItsCopperLabel() throws {
         // The app icon iOS was given (scripts/icon/make_zood_icons.sh writes
-        // it; Xcode puts its 120-px rendering in the app bundle), against
-        // the app's own drawing of the same composition at the same size.
+        // it; Xcode puts its 120-px rendering in the app bundle): ZOOD's
+        // copper mark on navy, over a copper band along the foot that names
+        // the app ("PDF" and a pencil, in navy).
         let url = try XCTUnwrap(
             Bundle.main.urls(forResourcesWithExtension: "png", subdirectory: nil)?
                 .first { $0.lastPathComponent.hasPrefix("AppIcon60x60@2x") },
@@ -192,26 +193,21 @@ final class ThemeTests: XCTestCase {
         )
         let icon = try XCTUnwrap(UIImage(contentsOfFile: url.path)?.cgImage)
         let side = icon.width
-        let renderer = ImageRenderer(content: ZoodMark(size: CGFloat(side), rounded: false))
-        renderer.scale = 1
-        let drawn = try XCTUnwrap(renderer.cgImage)
-        let iconPixels = pixels(icon, side: side)
-        try UIImage(cgImage: drawn).pngData()!.write(to: URL(filePath: "/Users/mohammedalghammas/Developer/warraq/.claude/worktrees/agent-abd3a8362ee819ab1/apps/ios/.build/drawn.png"))
-        try UIImage(cgImage: icon).pngData()!.write(to: URL(filePath: "/Users/mohammedalghammas/Developer/warraq/.claude/worktrees/agent-abd3a8362ee819ab1/apps/ios/.build/icon.png"))
-        let drawnPixels = pixels(drawn, side: side)
-
-        // Where the copper is, in each: the mark's own shape.
-        func copper(_ p: [UInt8], _ i: Int) -> Bool { Int(p[i]) - Int(p[i + 2]) > 30 }
-        var both = 0, either = 0, difference = 0
-        for i in stride(from: 0, to: side * side * 4, by: 4) {
-            let a = copper(iconPixels, i), b = copper(drawnPixels, i)
-            if a && b { both += 1 }
-            if a || b { either += 1 }
-            for c in 0..<3 { difference += abs(Int(iconPixels[i + c]) - Int(drawnPixels[i + c])) }
+        let p = pixels(icon, side: side)
+        func copper(_ x: Int, _ y: Int) -> Bool { let i = (y * side + x) * 4; return Int(p[i]) - Int(p[i + 2]) > 30 }
+        func share(rows: Range<Int>) -> Double {
+            var n = 0
+            for y in rows { for x in 0..<side where copper(x, y) { n += 1 } }
+            return Double(n) / Double(rows.count * side)
         }
-        XCTAssertGreaterThan(either, side * side / 20, "there is a copper mark to compare")
-        XCTAssertGreaterThan(Double(both) / Double(either), 0.9, "the copper lands in the same place in both")
-        XCTAssertLessThan(Double(difference) / Double(side * side * 3), 10, "and the colours are the same, to antialiasing")
+        // The band: the foot of the icon is copper nearly all the way across
+        // (the letters and the pencil are the navy in it).
+        XCTAssertGreaterThan(share(rows: side * 80 / 100..<side * 98 / 100), 0.6, "a copper band along the foot")
+        // Above it: navy with the mark's copper strokes in the middle.
+        let upper = share(rows: side * 15 / 100..<side * 65 / 100)
+        XCTAssertGreaterThan(upper, 0.05, "the copper mark is above the band")
+        XCTAssertLessThan(upper, 0.4, "on navy, not on more copper")
+        XCTAssertLessThan(share(rows: 0..<side * 8 / 100), 0.02, "and the top of the icon is the navy ground")
     }
 
     func testTheLogoArtworkIsInTheCatalogueAsVectors() {
