@@ -14,6 +14,10 @@ on:
   workflow_dispatch:
   push:
     tags: ['v*']
+    # Pushing to this branch builds the installer and nothing else: the
+    # "Run workflow" button only exists for workflows on the default branch,
+    # and the general CI (which also builds on macOS) runs on main.
+    branches: ['windows-build']
 
 permissions:
   contents: read
