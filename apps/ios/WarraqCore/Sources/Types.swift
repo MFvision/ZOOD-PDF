@@ -53,6 +53,17 @@ public struct Paragraph: Codable, Sendable, Equatable {
     public let alignment: String
     public let fontSize: Float
     public let lineCount: Int
+    /// The face the file names for the paragraph — the font most of its
+    /// runs use: its family, cut by the core to letters, digits, spaces and
+    /// hyphens (empty when the file names none), its weight (100–900), its
+    /// slant, and "serif", "sans" or "unknown".
+    public let fontFamily: String?
+    public let fontWeight: Int?
+    public let fontItalic: Bool?
+    public let fontClass: String?
+    /// Its own font can draw the text it has now: an edit that keeps to
+    /// its letters is drawn in that very font (never for Arabic).
+    public let ownFont: Bool?
 }
 
 /// What replacing a paragraph did, so the interface can warn instead of

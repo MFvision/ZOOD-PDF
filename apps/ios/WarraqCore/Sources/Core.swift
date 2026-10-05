@@ -149,7 +149,12 @@ public actor Core {
         }
     }
 
-    /// Replaces a paragraph with reflowed, shaped text in `font`.
+    /// Replaces a paragraph with reflowed, shaped text in `font`. With no
+    /// font (empty data) the paragraph is redrawn in its OWN font, by that
+    /// font's character codes — nothing embedded, the same size and colour —
+    /// or, when its font cannot draw the text, the call throws
+    /// `CoreError.font` with a message that starts `E_OWN_FONT` and nothing
+    /// is changed (`CoreError.isOwnFontRefusal`).
     public func replaceParagraph(page index: Int, paragraph: Int, text: String, font: Data) throws -> ParagraphReplacement {
         try reply { handle in
             text.withCString { cText in

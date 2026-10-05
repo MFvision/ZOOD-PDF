@@ -97,3 +97,13 @@ public enum CoreError: Error, Sendable, Equatable {
 extension CoreError: CustomStringConvertible {
     public var description: String { message }
 }
+
+extension CoreError {
+    /// The paragraph's own font cannot draw the new text: the answer to
+    /// `replaceParagraph` with no font, after which the caller draws it in
+    /// a font of its choosing.
+    public var isOwnFontRefusal: Bool {
+        if case .font(let message) = self { return message.hasPrefix("E_OWN_FONT") }
+        return false
+    }
+}

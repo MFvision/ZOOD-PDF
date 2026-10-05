@@ -119,13 +119,14 @@ struct EditBar: View {
             edit.placingArmed.toggle()
         }
         Menu {
-            Picker("Font", selection: $edit.font) {
+            Picker("Font", selection: fontChoice) {
+                Text("Automatic").tag("auto")
                 ForEach(EditFace.allCases) { face in
-                    Text(verbatim: face.name).tag(face)
+                    Text(verbatim: face.name).tag(face.rawValue)
                 }
             }
         } label: {
-            Text(verbatim: edit.font.name)
+            Text(edit.fontLabel)
                 .font(TextStyle.subheadline)
                 .foregroundStyle(.white)
                 .padding(.horizontal, Space.x3)
@@ -173,6 +174,20 @@ struct EditBar: View {
                 .accessibilityIdentifier("edit.color.\(color.rawValue)")
             }
         }
+    }
+
+    /// The font control's choice: Automatic, or one of the bundled faces.
+    private var fontChoice: Binding<String> {
+        Binding(
+            get: { edit.automaticFont ? "auto" : edit.font.rawValue },
+            set: { chosen in
+                if let face = EditFace(rawValue: chosen) {
+                    edit.font = face
+                } else {
+                    edit.automaticFont = true
+                }
+            }
+        )
     }
 
     // MARK: - Pictures
