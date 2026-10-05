@@ -466,6 +466,18 @@ pub fn erase_area(
     page_index: usize,
     rect: (f32, f32, f32, f32),
 ) -> Result<usize> {
+    Ok(erase_area_keeping_fill(pdf, page_index, rect)?.0)
+}
+
+/// [`erase_area`], and the colour the blanked text was painted in: the
+/// operators that set it (see [`crate::text_walk::ShowRun::fill`]), of the
+/// colour most of the blanked runs share, for whatever is drawn in their
+/// place. Empty when they were in the default black.
+pub fn erase_area_keeping_fill(
+    pdf: &mut PdfDocument,
+    page_index: usize,
+    rect: (f32, f32, f32, f32),
+) -> Result<(usize, Vec<Operation>)> {
     let page_id = pdf.page_id(page_index)?;
     let content = Content::decode(&pdf.doc.get_page_content(page_id))
         .map_err(|e| Error::Edit(e.to_string()))?;
@@ -474,6 +486,7 @@ pub fn erase_area(
     let (x0, y0, w, h) = rect;
     let (x1, y1) = (x0 + w, y0 + h);
     let mut blanked = 0;
+    let mut fills: Vec<(Vec<usize>, usize)> = vec![];
     for r in runs {
         // A run belongs to the box when its origin is inside, with a small
         // tolerance so a baseline sitting exactly on an edge still counts —
@@ -485,6 +498,10 @@ pub fn erase_area(
         let size = r.size.max(1.0);
         let (pad, below) = (0.2 * size, 0.5 * size);
         if r.x >= x0 - pad && r.x <= x1 + pad && r.y >= y0 - below && r.y <= y1 + pad {
+            match fills.iter_mut().find(|(f, _)| *f == r.fill) {
+                Some((_, n)) => *n += 1,
+                None => fills.push((r.fill.clone(), 1)),
+            }
             let op = &mut ops[r.op_index];
             match op.operator.as_str() {
                 "TJ" => op.operands = vec![Object::Array(vec![])],
@@ -493,6 +510,13 @@ pub fn erase_area(
             blanked += 1;
         }
     }
+    // The first of the most shared: a paragraph is nearly always one colour.
+    let most = fills.iter().map(|(_, n)| *n).max().unwrap_or(0);
+    let fill: Vec<Operation> = fills
+        .iter()
+        .find(|(_, n)| *n == most)
+        .map(|(f, _)| f.iter().map(|&i| ops[i].clone()).collect())
+        .unwrap_or_default();
     let encoded = Content { operations: ops }
         .encode()
         .map_err(|e| Error::Edit(e.to_string()))?;
@@ -500,7 +524,20 @@ pub fn erase_area(
         .change_page_content(page_id, encoded)
         .map_err(|e| Error::Edit(e.to_string()))?;
     mark_page_objects(pdf, page_id);
-    Ok(blanked)
+    Ok((blanked, fill))
+}
+
+/// Where each text-showing operator of a page starts: its pen origin in PDF
+/// user space and its size. What a caller needs to tell whether two pieces
+/// of a line are drawn by runs of their own.
+pub fn show_run_origins(pdf: &PdfDocument, page_index: usize) -> Result<Vec<(f32, f32, f32)>> {
+    let page_id = pdf.page_id(page_index)?;
+    let content = Content::decode(&pdf.doc.get_page_content(page_id))
+        .map_err(|e| Error::Edit(e.to_string()))?;
+    Ok(crate::text_walk::locate_show_runs(&content.operations)
+        .into_iter()
+        .map(|r| (r.x, r.y, r.size))
+        .collect())
 }
 
 /// Erase a paragraph and draw `edit.text` in its place, reflowed to the box width
@@ -510,7 +547,9 @@ pub fn replace_paragraph(
     page_index: usize,
     edit: &ParagraphEdit<'_>,
 ) -> Result<Replacement> {
-    erase_area(pdf, page_index, edit.rect)?;
+    // What the paragraph was painted in, for the text that takes its place:
+    // white on a dark slide must not come back black.
+    let (_, fill) = erase_area_keeping_fill(pdf, page_index, edit.rect)?;
     let shaper = Shaper::new(edit.font).map_err(|e| Error::Font(e.to_string()))?;
     let (x0, _, w, box_height) = edit.rect;
     // Replacement text is rarely the same length as what it replaces. Rather than
@@ -576,6 +615,7 @@ pub fn replace_paragraph(
     let name = add_font_resource(pdf, page_id, font_id)?;
     let mut ops = reset_state_ops(pdf, page_id);
     ops.push(Operation::new("q", vec![]));
+    ops.extend(fill);
     ops.push(Operation::new("BT", vec![]));
     ops.push(Operation::new(
         "Tf",

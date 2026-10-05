@@ -3,8 +3,8 @@ use serde::Serialize;
 use warraq_pdf::PdfDocument;
 use warraq_render::RenderDoc;
 use warraq_text::{
-    detect_paragraphs, find_in_lines, reconstruct_lines, with_actual_text, Paragraph,
-    SearchNormalization, TextLine,
+    detect_paragraphs, edit_paragraphs, find_in_lines, reconstruct_lines, with_actual_text,
+    Paragraph, SearchNormalization, TextLine,
 };
 
 #[cfg(feature = "ffi")]
@@ -371,7 +371,50 @@ impl Document {
     /// (y down from the top-left corner, points at scale 1) so the UI can hit-test
     /// them against what it drew.
     pub fn paragraphs(&self, index: usize) -> Result<Vec<Paragraph>, CoreError> {
-        Ok(detect_paragraphs(&self.text_lines(index)?))
+        Ok(self.edit_view(index)?.1)
+    }
+
+    /// The lines of a page as the editor takes them, and their paragraphs
+    /// (whose `lines` index those lines): a page set in columns — cards side
+    /// by side, a table — cut into its columns, so each is a paragraph of its
+    /// own (`warraq_text::edit_paragraphs`).
+    ///
+    /// Replacing a paragraph blanks the text operators that start inside its
+    /// box, so a column can only be edited on its own when its text is drawn
+    /// by operators of its own. Where a piece cut from a line has none that
+    /// starts in it — the whole line is one operator, spaced out — the page
+    /// keeps its lines whole, as `detect_paragraphs` has them, rather than
+    /// let an edit to one column take its neighbour's text with it.
+    fn edit_view(&self, index: usize) -> Result<(Vec<TextLine>, Vec<Paragraph>), CoreError> {
+        let lines = self.text_lines(index)?;
+        let (pieces, was_cut, paragraphs) = edit_paragraphs(&lines);
+        if !was_cut.contains(&true) {
+            return Ok((pieces, paragraphs));
+        }
+        let (_, page_height) = self.page_size(index)?;
+        let runs = warraq_pdf::ops::show_run_origins(&self.pdf, index)?;
+        let own_runs = pieces.iter().zip(&was_cut).all(|(piece, cut)| {
+            if !cut {
+                return true;
+            }
+            let size = (piece.height / 1.2).max(1.0);
+            let (y0, y1) = (
+                page_height - (piece.y + piece.height),
+                page_height - piece.y,
+            );
+            runs.iter().any(|&(x, y, _)| {
+                x >= piece.x - 0.2 * size
+                    && x <= piece.x + piece.width + 0.2 * size
+                    && y >= y0 - 0.5 * size
+                    && y <= y1 + 0.2 * size
+            })
+        });
+        if own_runs {
+            Ok((pieces, paragraphs))
+        } else {
+            let paragraphs = detect_paragraphs(&lines);
+            Ok((lines, paragraphs))
+        }
     }
 
     /// Replace paragraph `para_index` of a page with `new_text`, reflowed to the
@@ -390,8 +433,7 @@ impl Document {
         font: &[u8],
     ) -> Result<ParagraphReplacement, CoreError> {
         let (_, page_height) = self.page_size(index)?;
-        let lines = self.text_lines(index)?;
-        let paragraphs = detect_paragraphs(&lines);
+        let (lines, paragraphs) = self.edit_view(index)?;
         let para = paragraphs
             .get(para_index)
             .ok_or(warraq_pdf::Error::Edit(format!(

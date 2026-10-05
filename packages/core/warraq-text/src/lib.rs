@@ -20,7 +20,8 @@ pub use normalize::{
     fold_presentation_forms, normalize_for_search, strip_marks, SearchNormalization,
 };
 pub use paragraph::{
-    detect_paragraphs, layout_paragraph, Alignment, LaidOutLine, LayoutBox, LayoutStyle, Paragraph,
+    detect_paragraphs, edit_paragraphs, layout_paragraph, Alignment, LaidOutLine, LayoutBox,
+    LayoutStyle, Paragraph,
 };
 pub use search::{find_in_lines, Match};
 pub use shape::{clusters, ShapedGlyph, Shaper};

@@ -66,6 +66,13 @@ pub struct ShowRun {
     pub size: f32,
     /// Resource name of the font in effect.
     pub font: Vec<u8>,
+    /// The operators that set the fill colour this run is painted in, as
+    /// indices into the operation list: the colour space (`cs`) when one
+    /// was chosen, then the colour (`g`, `rg`, `k`, `sc`, `scn`). Empty when
+    /// the content never set one (the default black). Kept as the operators
+    /// themselves, so text drawn in their place can repeat them exactly —
+    /// an ICC or spot colour as well as a device one.
+    pub fill: Vec<usize>,
 }
 
 fn num(o: &Object) -> f32 {
@@ -128,10 +135,17 @@ pub fn unbalanced_q(ops: &[Operation]) -> usize {
 ///
 /// Glyph advances are not computed (that needs the font's widths); the origin,
 /// size and font resource are enough to assign a run to a paragraph box.
+/// The fill colour in effect: the operator that chose its colour space, when
+/// one did, and the operator that set the colour, each by index.
+type Fill = (Option<usize>, Option<usize>);
+
 pub fn locate_show_runs(ops: &[Operation]) -> Vec<ShowRun> {
     let mut out = vec![];
     let mut ctm = Matrix::IDENTITY;
-    let mut stack: Vec<Matrix> = vec![];
+    // The fill colour is part of the graphics state `q` saves: the colour
+    // space's operator and the colour's, by index.
+    let mut fill: Fill = (None, None);
+    let mut stack: Vec<(Matrix, Fill)> = vec![];
     let mut tm = Matrix::IDENTITY;
     let mut tlm = Matrix::IDENTITY;
     let mut leading = 0.0f32;
@@ -140,8 +154,13 @@ pub fn locate_show_runs(ops: &[Operation]) -> Vec<ShowRun> {
     for (i, op) in ops.iter().enumerate() {
         let a = &op.operands;
         match op.operator.as_str() {
-            "q" => stack.push(ctm),
-            "Q" => ctm = stack.pop().unwrap_or(Matrix::IDENTITY),
+            "q" => stack.push((ctm, fill)),
+            "Q" => (ctm, fill) = stack.pop().unwrap_or((Matrix::IDENTITY, (None, None))),
+            // A device colour names its own space; `cs` chooses one and
+            // starts again from that space's first colour.
+            "g" | "rg" | "k" => fill = (None, Some(i)),
+            "cs" => fill = (Some(i), None),
+            "sc" | "scn" => fill.1 = Some(i),
             "cm" if a.len() >= 6 => {
                 ctm = Matrix([
                     num(&a[0]),
@@ -201,6 +220,7 @@ pub fn locate_show_runs(ops: &[Operation]) -> Vec<ShowRun> {
                     y,
                     size: size * full.scale(),
                     font: font.clone(),
+                    fill: [fill.0, fill.1].into_iter().flatten().collect(),
                 });
             }
             _ => {}

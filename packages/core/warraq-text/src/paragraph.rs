@@ -69,6 +69,158 @@ pub fn detect_paragraphs(lines: &[TextLine]) -> Vec<Paragraph> {
     out
 }
 
+/// The lines of a page as an editor needs them, and their paragraphs.
+///
+/// `reconstruct_lines` makes one line of everything on a baseline, which is
+/// right for reading across a page and wrong for editing a page set in
+/// columns — four cards side by side, a table's cells: their headings came
+/// back as one sentence, and replacing it redrew all four as one. Here a
+/// line is cut where a gap far wider than a word space runs through it, the
+/// pieces are gathered into columns by what is above them, and each
+/// column's paragraphs are found on their own.
+///
+/// Returns the pieces, a column after a column, with for each whether it was
+/// cut from a longer line, and the paragraphs, whose `lines` index the
+/// pieces. A page of one column comes back as `detect_paragraphs` has it.
+pub fn edit_paragraphs(lines: &[TextLine]) -> (Vec<TextLine>, Vec<bool>, Vec<Paragraph>) {
+    let mut pieces: Vec<(TextLine, bool)> = vec![];
+    for line in lines {
+        let cut = split_at_gutters(line);
+        let split = cut.len() > 1;
+        pieces.extend(cut.into_iter().map(|piece| (piece, split)));
+    }
+    // Columns, in the order their first piece is met. A piece joins the
+    // column whose last piece it follows.
+    struct Column {
+        members: Vec<usize>,
+        /// The extent of its pieces cut from longer lines, when it has any.
+        cut_extent: Option<(f32, f32)>,
+    }
+    let mut columns: Vec<Column> = vec![];
+    for (i, (piece, split)) in pieces.iter().enumerate() {
+        let size = (piece.height / 1.2).max(1.0);
+        let home = columns.iter().position(|column| {
+            let (last, last_split) =
+                &pieces[*column.members.last().expect("a column has a member")];
+            same_column(last, piece)
+                && match (*last_split, *split) {
+                    (true, true) | (false, false) => true,
+                    // A whole line under a column cut from longer lines
+                    // belongs to it only when it fits inside it; a line the
+                    // width of the page does not.
+                    (true, false) => column.cut_extent.is_some_and(|(x0, x1)| {
+                        piece.x >= x0 - size && piece.x + piece.width <= x1 + size
+                    }),
+                    // A piece of a cut line under a whole one: only when the
+                    // whole one was no wider than the piece's own column.
+                    (false, true) => {
+                        last.x >= piece.x - size
+                            && last.x + last.width <= piece.x + piece.width + size
+                    }
+                }
+        });
+        let column = match home {
+            Some(at) => &mut columns[at],
+            None => {
+                columns.push(Column {
+                    members: vec![],
+                    cut_extent: None,
+                });
+                columns.last_mut().expect("just pushed")
+            }
+        };
+        column.members.push(i);
+        if *split {
+            let (x0, x1) = column.cut_extent.unwrap_or((f32::MAX, f32::MIN));
+            column.cut_extent = Some((x0.min(piece.x), x1.max(piece.x + piece.width)));
+        }
+    }
+    let mut ordered: Vec<TextLine> = Vec::with_capacity(pieces.len());
+    let mut was_cut: Vec<bool> = Vec::with_capacity(pieces.len());
+    let mut paragraphs = vec![];
+    for column in &columns {
+        let start = ordered.len();
+        for &i in &column.members {
+            ordered.push(pieces[i].0.clone());
+            was_cut.push(pieces[i].1);
+        }
+        for range in paragraphs_in(&ordered[start..]) {
+            paragraphs.push((start + range.start, start + range.end));
+        }
+    }
+    let paragraphs = paragraphs
+        .into_iter()
+        .map(|(a, b)| paragraph_of(&ordered, a..b))
+        .collect();
+    (ordered, was_cut, paragraphs)
+}
+
+/// A line cut where a gutter runs through it: a gap between its letters much
+/// wider than a space between words, which is a quarter of the size or so and
+/// rarely a whole one even in justified text. The pieces are in reading
+/// order. A line with no such gap, or whose letters' places are unknown,
+/// comes back whole.
+fn split_at_gutters(line: &TextLine) -> Vec<TextLine> {
+    let chars: Vec<char> = line.text.chars().collect();
+    if line.turned.is_some() || line.spans.len() != chars.len() || chars.is_empty() {
+        return vec![line.clone()];
+    }
+    let gutter = 1.6 * (line.height / 1.2).max(1.0);
+    // The letters' extents, left to right; a run of them is a piece.
+    let mut inked: Vec<(f32, f32)> = chars
+        .iter()
+        .zip(&line.spans)
+        .filter(|(c, _)| !c.is_whitespace())
+        .map(|(_, &span)| span)
+        .collect();
+    inked.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let mut extents: Vec<(f32, f32)> = vec![];
+    for (x0, x1) in inked {
+        match extents.last_mut() {
+            Some(last) if x0 - last.1 <= gutter => last.1 = last.1.max(x1),
+            _ => extents.push((x0, x1)),
+        }
+    }
+    if extents.len() < 2 {
+        return vec![line.clone()];
+    }
+    if line.direction == Direction::Rtl {
+        extents.reverse();
+    }
+    extents
+        .into_iter()
+        .map(|(x0, x1)| {
+            // Its chars, in the line's own (logical) order, without the
+            // spaces that stood in the gutters either side.
+            let mut members: Vec<(char, (f32, f32))> = chars
+                .iter()
+                .zip(&line.spans)
+                .filter(|(_, span)| {
+                    let middle = (span.0 + span.1) / 2.0;
+                    middle >= x0 - 0.01 && middle <= x1 + 0.01
+                })
+                .map(|(c, span)| (*c, *span))
+                .collect();
+            while members.first().is_some_and(|(c, _)| c.is_whitespace()) {
+                members.remove(0);
+            }
+            while members.last().is_some_and(|(c, _)| c.is_whitespace()) {
+                members.pop();
+            }
+            TextLine {
+                text: members.iter().map(|(c, _)| *c).collect(),
+                x: x0,
+                y: line.y,
+                width: x1 - x0,
+                height: line.height,
+                direction: line.direction,
+                spans: members.iter().map(|(_, span)| *span).collect(),
+                turned: None,
+            }
+        })
+        .collect()
+}
+
 /// Whether `c` follows `p` down the same column: the same direction and
 /// size, a line's height or so below, and side by side with it.
 fn same_column(p: &TextLine, c: &TextLine) -> bool {
