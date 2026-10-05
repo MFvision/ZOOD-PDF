@@ -21,7 +21,11 @@ fn link_clang_runtime() {
         return;
     };
     let dir = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    if !dir.is_empty() && std::path::Path::new(&dir).join("libclang_rt.osx.a").exists() {
+    if !dir.is_empty()
+        && std::path::Path::new(&dir)
+            .join("libclang_rt.osx.a")
+            .exists()
+    {
         println!("cargo:rustc-link-search=native={dir}");
         println!("cargo:rustc-link-lib=static=clang_rt.osx");
     }

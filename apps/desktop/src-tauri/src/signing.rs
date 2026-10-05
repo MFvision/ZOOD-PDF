@@ -335,7 +335,10 @@ pub fn token_request(
                 Mechanism::RsaPkcsPss(PkcsPssParams {
                     hash_alg,
                     mgf,
-                    s_len: (hash.len() as u64).into(),
+                    // A PKCS#11 length is the platform's `unsigned long`:
+                    // 64 bits on macOS and Linux, 32 on Windows, where a
+                    // `u64` does not convert. A digest's length fits both.
+                    s_len: (hash.len() as std::ffi::c_ulong).into(),
                 }),
                 digest.to_vec(),
             )
