@@ -9,6 +9,8 @@ import { localAddress } from '../ai/providers';
 import { postAiRequest } from '../ai/request';
 import type { AiRequest } from '../ai/request';
 import { readSettings } from '../ai/store';
+import { DeviceSection } from '../ai/device/DeviceSection';
+import { useDeviceModel } from '../ai/device/useDeviceModel';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { toolColor } from '../tools/ToolIcon';
 
@@ -43,6 +45,11 @@ export const AiCard = forwardRef<HTMLTextAreaElement, { className?: string }>(fu
   const services = useServices();
   const [question, setQuestion] = useState('');
   const settings = readSettings();
+  // The on-device model, where the person first meets the assistant: when it
+  // is not on this machine yet, the one button that fetches it is here, not
+  // only in the tool's panel and Settings.
+  const device = useDeviceModel(settings.deviceModel);
+  const needsModel = settings.provider === 'device' && device.status !== null && device.status.kind !== 'ready';
   const address = localAddress(settings.localUrl);
   const provider =
     settings.provider === 'device'
@@ -68,6 +75,7 @@ export const AiCard = forwardRef<HTMLTextAreaElement, { className?: string }>(fu
           <p>{t('ai.card.intro')}</p>
         </div>
       </div>
+      {needsModel && <DeviceSection view={device} showDelete={false} />}
       <ul className="home-ai-chips" aria-label={t('ai.card.chips')}>
         {CHIPS.map((chip) => (
           <li key={chip.id}>
