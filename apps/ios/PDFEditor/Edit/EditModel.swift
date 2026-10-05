@@ -100,8 +100,14 @@ final class EditModel {
     /// A link area drawn and not yet given anywhere to go.
     var draftLink: DraftLink?
 
+    /// Automatic: each paragraph keeps its own font when the edit uses only
+    /// letters the document already has, and takes the closest face the app
+    /// carries otherwise (`EditFace.closest`). Choosing a face turns it off.
+    var automaticFont = true
     // The controls for a new line of text.
-    var font: EditFace = .amiri
+    var font: EditFace = .amiri {
+        didSet { automaticFont = false }
+    }
     var size: Float = 14
     var color: MarkupColor = .black
 
@@ -232,8 +238,28 @@ final class EditModel {
         }
     }
 
+    /// The face Automatic falls to for the open paragraph, or for a new line.
+    var closestFace: EditFace {
+        guard let editing else { return EditFace.closest(fontClass: nil, text: draft, rightToLeft: draftIsRightToLeft) }
+        return EditFace.closest(fontClass: editing.paragraph.fontClass,
+                                text: draft.isEmpty ? editing.paragraph.text : draft,
+                                rightToLeft: editing.paragraph.isRightToLeft)
+    }
+
+    /// What the font control says: the face chosen, or what Automatic comes
+    /// to for the open paragraph — its own font, or the closest face.
+    var fontLabel: LocalizedStringKey {
+        guard automaticFont else { return LocalizedStringKey(font.name) }
+        guard let editing else { return "Automatic" }
+        if editing.paragraph.ownFont == true { return "Automatic: the document's own font" }
+        return "Automatic: \(closestFace.name)"
+    }
+
     /// Replaces the open paragraph with `text`, reflowed and shaped by the
-    /// core in the chosen face. Nothing is written when the text is the same.
+    /// core. On Automatic the paragraph's own font is tried first — the core
+    /// draws with it when every letter is one the document has — and the
+    /// closest bundled face is embedded otherwise; a chosen face is embedded
+    /// as it is. Nothing is written when the text is the same.
     func commit() async {
         guard let editing, !working else { return }
         let text = draft
@@ -241,7 +267,9 @@ final class EditModel {
             cancel()
             return
         }
-        guard let face = font.bytes else {
+        let automatic = automaticFont
+        let drawn = automatic ? closestFace : font
+        guard let face = drawn.bytes else {
             error = "The bundled font is missing."
             return
         }
@@ -250,9 +278,16 @@ final class EditModel {
         let index = editing.paragraph.index
         do {
             let result = try await model.applyEdit(undoManager: undoManager) { core in
-                try await core.replaceParagraph(page: page, paragraph: index, text: text, font: face)
+                if automatic {
+                    do {
+                        return try await core.replaceParagraph(page: page, paragraph: index, text: text, font: Data())
+                    } catch let refusal as CoreError where refusal.isOwnFontRefusal {
+                        // Nothing was changed: drawn in the closest face instead.
+                    }
+                }
+                return try await core.replaceParagraph(page: page, paragraph: index, text: text, font: face)
             }
-            notice = Self.notice(for: result)
+            notice = Self.notice(for: result, drawnIn: drawn, automatic: automatic)
             cancel()
             edits += 1
         } catch {
@@ -263,9 +298,14 @@ final class EditModel {
 
     /// What is worth telling the person about a replacement: nothing when it
     /// simply fitted.
-    static func notice(for result: ParagraphReplacement) -> LocalizedStringKey? {
+    static func notice(for result: ParagraphReplacement, drawnIn face: EditFace? = nil, automatic: Bool = false) -> LocalizedStringKey? {
         if result.overflowed { return "The new text is longer than the space it had; the rest is past the page." }
         if result.shrunk { return "The new text was made smaller to fit the space it had." }
+        // On Automatic a substitution is worth a word: the paragraph's own
+        // font could not draw the new text. A chosen face is no surprise.
+        if automatic, result.fontSubstituted, let face {
+            return "The paragraph's own font does not have all the new letters, so the closest font the app carries, \(face.name), was used."
+        }
         return nil
     }
 
@@ -279,7 +319,9 @@ final class EditModel {
             cancel()
             return
         }
-        guard let face = font.bytes else {
+        // A new line has no paragraph to match: its script chooses the face.
+        let drawn = automaticFont ? EditFace.closest(fontClass: nil, text: trimmed, rightToLeft: false) : font
+        guard let face = drawn.bytes else {
             error = "The bundled font is missing."
             return
         }
@@ -546,6 +588,24 @@ enum EditFace: String, CaseIterable, Identifiable {
     /// The face's bytes from the app's bundle, read once.
     var bytes: Data? {
         EditFaceStore.bytes(of: self)
+    }
+
+    /// The closest face the app carries to a paragraph's own, by what the
+    /// file says of it and the script of the text: Arabic takes Amiri for a
+    /// serif, a Naskh or a face nothing is known of, and Cairo for a sans;
+    /// Latin takes Inter for a sans or an unknown face and Amiri for a
+    /// serif. Amiri and Cairo both carry Latin, so mixed text follows its
+    /// Arabic; an emptied paragraph keeps the script it was written in.
+    static func closest(fontClass: String?, text: String, rightToLeft: Bool) -> EditFace {
+        let hasArabic = text.unicodeScalars.contains { scalar in
+            switch scalar.value {
+            case 0x0600...0x06FF, 0x0750...0x077F, 0x08A0...0x08FF, 0xFB50...0xFDFF, 0xFE70...0xFEFF: true
+            default: false
+            }
+        }
+        let empty = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if hasArabic || (empty && rightToLeft) { return fontClass == "sans" ? .cairo : .amiri }
+        return fontClass == "serif" ? .amiri : .inter
     }
 }
 

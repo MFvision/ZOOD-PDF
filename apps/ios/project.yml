@@ -300,6 +300,9 @@ targets:
       # Corpus files, straight from tests/corpus, copied into the test bundle.
       - path: ../../tests/corpus/arabic/generated/coretext-sfarabic-mixed-invoice.pdf
         buildPhase: resources
+      # One Latin line in an embedded subset font (Edit text, Automatic font).
+      - path: ../../tests/fixtures/edit/own-font-subset.pdf
+        buildPhase: resources
       - path: ../../tests/corpus/arabic/generated/raw-amiri-cid-identity-tounicode.pdf
         buildPhase: resources
       - path: ../../tests/corpus/arabic/generated/variant-encrypted-rc4-40.pdf

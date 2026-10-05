@@ -69,6 +69,90 @@ final class EditTests: XCTestCase {
         XCTAssertFalse(text.contains(paragraph.text), "and what it replaced is gone")
     }
 
+    // MARK: - The font an edit is drawn in
+
+    /// The bytes as text, to look for a font's name in them.
+    private func latin(_ data: Data) -> String {
+        String(decoding: data, as: Unicode.Latin1.self)
+    }
+
+    func testAutomaticDrawsNewTextInTheDocumentsOwnFont() async throws {
+        // One line, "Meeting Intelligence quarterly", in an embedded subset
+        // the file calls Montserrat SemiBold: those letters and no others.
+        let model = try await PartB.loadedModel("own-font-subset", in: folder)
+        let edit = EditModel(model: model)
+        edit.undoManager = UndoManager()
+        XCTAssertTrue(edit.automaticFont, "the font control starts on Automatic")
+        await edit.read(page: 0)
+        let paragraph = try XCTUnwrap(edit.paragraphs(onPage: 0)?.first)
+        XCTAssertEqual(paragraph.fontFamily, "Montserrat")
+        XCTAssertEqual(paragraph.fontWeight, 600)
+        XCTAssertEqual(paragraph.fontClass, "sans")
+        XCTAssertEqual(paragraph.ownFont, true)
+
+        edit.begin(editing: paragraph, onPage: 0)
+        edit.draft = "Meeting gently"
+        await edit.commit()
+        try await settle(edit)
+        XCTAssertNil(edit.notice, "nothing was substituted, so nothing is said")
+        let text = try await PartB.text(of: model, page: 0)
+        XCTAssertEqual(text.trimmingCharacters(in: .whitespacesAndNewlines), "Meeting gently")
+        // A font embedded by the app is named WARRAQ+…; there is none.
+        XCTAssertFalse(latin(model.bytes).contains("WARRAQ+"), "no font was added: the paragraph's own drew it")
+    }
+
+    func testAutomaticFallsToTheClosestFaceWhenALetterIsMissingAndSaysSo() async throws {
+        let model = try await PartB.loadedModel("own-font-subset", in: folder)
+        let edit = EditModel(model: model)
+        edit.undoManager = UndoManager()
+        await edit.read(page: 0)
+        let paragraph = try XCTUnwrap(edit.paragraphs(onPage: 0)?.first)
+        edit.begin(editing: paragraph, onPage: 0)
+        // No b, o or x in the document's subset.
+        edit.draft = "Meeting box"
+        XCTAssertEqual(edit.closestFace, .inter, "a Latin sans: Inter, not the Naskh every edit used to come back in")
+        await edit.commit()
+        try await settle(edit)
+        XCTAssertNotNil(edit.notice, "the person is told which font was used")
+        let text = try await PartB.text(of: model, page: 0)
+        XCTAssertEqual(text.trimmingCharacters(in: .whitespacesAndNewlines), "Meeting box")
+        let bytes = latin(model.bytes)
+        XCTAssertTrue(bytes.contains("WARRAQ+Inter"), "Inter was embedded for it")
+        XCTAssertFalse(bytes.contains("WARRAQ+Amiri"))
+    }
+
+    func testAChosenFaceOverridesAutomatic() async throws {
+        let model = try await PartB.loadedModel("own-font-subset", in: folder)
+        let edit = EditModel(model: model)
+        edit.font = .amiri
+        XCTAssertFalse(edit.automaticFont, "choosing a face turns Automatic off")
+        await edit.read(page: 0)
+        let paragraph = try XCTUnwrap(edit.paragraphs(onPage: 0)?.first)
+        edit.begin(editing: paragraph, onPage: 0)
+        edit.draft = "Meeting gently"
+        await edit.commit()
+        try await settle(edit)
+        XCTAssertTrue(latin(model.bytes).contains("WARRAQ+Amiri"), "the chosen face was embedded")
+    }
+
+    func testTheClosestFaceFollowsTheParagraphsFaceAndTheScript() {
+        let closest = EditFace.closest
+        // Arabic: Amiri for a serif, a Naskh or an unknown face; Cairo for a sans.
+        XCTAssertEqual(closest("serif", "نص عربي", true), .amiri)
+        XCTAssertEqual(closest("unknown", "نص عربي", true), .amiri)
+        XCTAssertEqual(closest(nil, "نص عربي", true), .amiri)
+        XCTAssertEqual(closest("sans", "نص عربي", true), .cairo)
+        // Latin: Inter for a sans or an unknown face; Amiri for a serif.
+        XCTAssertEqual(closest("sans", "Family Budget", false), .inter)
+        XCTAssertEqual(closest(nil, "Family Budget", false), .inter)
+        XCTAssertEqual(closest("serif", "Family Budget", false), .amiri)
+        // Mixed text follows its Arabic, which Inter cannot draw.
+        XCTAssertEqual(closest("sans", "Invoice فاتورة 2026", false), .cairo)
+        // An emptied paragraph keeps the script it was written in.
+        XCTAssertEqual(closest("sans", " ", true), .cairo)
+        XCTAssertEqual(closest("sans", "", false), .inter)
+    }
+
     func testAParagraphIsFoundByWhereTheFingerLands() async throws {
         let model = try await PartB.loadedModel("coretext-sfarabic-mixed-invoice", in: folder)
         let edit = EditModel(model: model)

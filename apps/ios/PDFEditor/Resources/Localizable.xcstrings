@@ -1095,6 +1095,36 @@
         }
       }
     },
+    "Automatic": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تلقائي"
+          }
+        }
+      }
+    },
+    "Automatic: %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تلقائي: %@"
+          }
+        }
+      }
+    },
+    "Automatic: the document's own font": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تلقائي: خط المستند نفسه"
+          }
+        }
+      }
+    },
     "Available": {
       "localizations": {
         "ar": {
@@ -6123,6 +6153,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "تعذّر رسم الصفحات على هذا الجهاز."
+          }
+        }
+      }
+    },
+    "The paragraph's own font does not have all the new letters, so the closest font the app carries, %@, was used.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "خط الفقرة نفسه لا يحوي كل الحروف الجديدة، فاستُخدم أقرب خط يحمله التطبيق، وهو %@."
           }
         }
       }
