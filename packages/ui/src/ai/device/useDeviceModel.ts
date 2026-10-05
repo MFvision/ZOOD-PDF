@@ -51,6 +51,12 @@ export function useDefaultModel(chosen: DeviceModelId | null): DeviceModel {
   return chosen ? deviceModel(chosen) : fallback;
 }
 
+const DEVICE_MODEL_CHANGED = 'warraq:device-model-changed';
+
+function announceChange(): void {
+  globalThis.dispatchEvent?.(new Event(DEVICE_MODEL_CHANGED));
+}
+
 export function useDeviceModel(chosen: DeviceModelId | null): DeviceModelView {
   const model = useDefaultModel(chosen);
   const [status, setStatus] = useState<ModelState | null>(null);
@@ -79,6 +85,16 @@ export function useDeviceModel(chosen: DeviceModelId | null): DeviceModelView {
     void refresh();
   }, [refresh]);
 
+  // The model is one thing on the device, but this hook is used in more than
+  // one place at once (the AI panel and Settings): a download or a removal in
+  // one is told to the others, or the panel goes on believing in a model
+  // Settings has just deleted.
+  useEffect(() => {
+    const again = () => void refresh();
+    globalThis.addEventListener?.(DEVICE_MODEL_CHANGED, again);
+    return () => globalThis.removeEventListener?.(DEVICE_MODEL_CHANGED, again);
+  }, [refresh]);
+
   const download = useCallback(() => {
     if (abort.current) return;
     const controller = new AbortController();
@@ -94,6 +110,7 @@ export function useDeviceModel(chosen: DeviceModelId | null): DeviceModelView {
       } finally {
         abort.current = null;
         await refresh();
+        announceChange();
       }
     })();
   }, [engine, model.bytes, refresh]);
@@ -108,6 +125,7 @@ export function useDeviceModel(chosen: DeviceModelId | null): DeviceModelView {
       setError(failure instanceof Error ? failure.message : String(failure));
     }
     await refresh();
+    announceChange();
   }, [engine, refresh]);
 
   return { model, status, runtime, error, download, cancelDownload, remove, refresh };

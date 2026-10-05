@@ -66,7 +66,7 @@ test.describe('the AI tool on this device', () => {
     await download(page);
 
     await ai.getByRole('radio', { name: 'Ask a question' }).check();
-    await ai.getByLabel('Question').fill('What does the briefing say about climate finance?');
+    await ai.locator('textarea.ai-question').fill('What does the briefing say about climate finance?');
     await ai.getByRole('button', { name: 'Review what will be sent' }).click();
     const shown = preflight(page);
     await expect(shown).toContainText('Nowhere: the model runs inside the app on this device');
