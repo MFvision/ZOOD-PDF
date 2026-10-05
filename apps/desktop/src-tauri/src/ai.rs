@@ -172,10 +172,9 @@ pub fn ai_model_status<R: Runtime>(
 pub fn ai_model_delete<R: Runtime>(app: AppHandle<R>, state: State<'_, AiState>, id: String) -> Result<(), String> {
     let spec = model_spec(&id)?;
     // The loaded copy goes too: the file is unlinked, and a model held open
-    // would keep answering from a file the person believes gone.
-    if let Some(engine) = state.engine.lock().unwrap_or_else(|e| e.into_inner()).take() {
-        drop(engine);
-    }
+    // would keep answering from a file the person believes gone. Dropping
+    // the sender ends the engine thread.
+    state.engine.lock().unwrap_or_else(|e| e.into_inner()).take();
     let path = models_dir(&app)?.join(&spec.file);
     for file in [path.clone(), path.with_extension("gguf.sha256"), path.with_extension("gguf.part")] {
         match std::fs::remove_file(&file) {
@@ -317,62 +316,91 @@ fn download_model<R: Runtime>(
     let dir = models_dir(app)?;
     let target = dir.join(&spec.file);
     let part = target.with_extension("gguf.part");
-    let result = (|| {
-        let mut response = open_download(&spec.url)?;
-        let mut body = response.body_mut().as_reader();
-        let mut file = std::fs::File::create(&part).map_err(|e| format!("E_IO: {}: {e}", part.display()))?;
-        let mut hasher = Sha256::new();
-        let mut received: u64 = 0;
-        let mut announced: u64 = 0;
-        let mut buffer = vec![0u8; 256 * 1024];
-        loop {
-            if cancel.load(Ordering::Relaxed) {
-                return Err("E_CANCELLED: the download was stopped".to_string());
-            }
-            let n = body.read(&mut buffer).map_err(|e| format!("E_NET: {e}"))?;
-            if n == 0 {
-                break;
-            }
-            received += n as u64;
-            if received > spec.bytes {
-                return Err("E_VERIFY: the file is larger than the catalogue says".to_string());
-            }
-            hasher.update(&buffer[..n]);
-            file.write_all(&buffer[..n]).map_err(|e| format!("E_IO: {e}"))?;
-            if received - announced >= PROGRESS_EVERY {
-                announced = received;
-                if let Some(entry) = state.downloads.lock().unwrap_or_else(|e| e.into_inner()).get_mut(&spec.id) {
-                    entry.received = received;
-                }
-                let _ = app.emit(
-                    DOWNLOAD_EVENT,
-                    DownloadEvent { id: spec.id.clone(), received, total: spec.bytes },
-                );
-            }
-        }
-        file.sync_all().map_err(|e| format!("E_IO: {e}"))?;
-        drop(file);
-        let digest = hex::encode(hasher.finalize());
-        if received != spec.bytes || digest != spec.sha256 {
-            return Err(format!(
-                "E_VERIFY: the download did not match the catalogue (size {received}, sha256 {}…)",
-                &digest[..12]
-            ));
-        }
-        std::fs::write(target.with_extension("gguf.sha256"), &digest).map_err(|e| format!("E_IO: {e}"))?;
-        std::fs::rename(&part, &target).map_err(|e| format!("E_IO: {e}"))?;
-        let _ = app.emit(
-            DOWNLOAD_EVENT,
-            DownloadEvent { id: spec.id.clone(), received, total: spec.bytes },
-        );
-        Ok(())
-    })();
+    let result = stream_download(app, state, spec, &cancel, &target, &part);
     if result.is_err() {
         let _ = std::fs::remove_file(&part);
         let _ = std::fs::remove_file(target.with_extension("gguf.sha256"));
     }
     debug_log(format!("ai: download of {} -> {result:?}", spec.id));
     result
+}
+
+/// The body of `download_model`: everything that can fail, so a failure
+/// anywhere in it is cleaned up in one place.
+fn stream_download<R: Runtime>(
+    app: &AppHandle<R>,
+    state: &AiState,
+    spec: &ModelSpec,
+    cancel: &AtomicBool,
+    target: &Path,
+    part: &Path,
+) -> Result<(), String> {
+    let mut response = open_download(&spec.url)?;
+    let mut body = response.body_mut().as_reader();
+    let mut file =
+        std::fs::File::create(part).map_err(|e| format!("E_IO: {}: {e}", part.display()))?;
+    let mut hasher = Sha256::new();
+    let mut received: u64 = 0;
+    let mut announced: u64 = 0;
+    let mut buffer = vec![0u8; 256 * 1024];
+    loop {
+        if cancel.load(Ordering::Relaxed) {
+            return Err("E_CANCELLED: the download was stopped".to_string());
+        }
+        let n = body
+            .read(&mut buffer)
+            .map_err(|e| format!("E_NET: {e}"))?;
+        if n == 0 {
+            break;
+        }
+        received += n as u64;
+        if received > spec.bytes {
+            return Err("E_VERIFY: the file is larger than the catalogue says".to_string());
+        }
+        hasher.update(&buffer[..n]);
+        file.write_all(&buffer[..n])
+            .map_err(|e| format!("E_IO: {e}"))?;
+        if received - announced >= PROGRESS_EVERY {
+            announced = received;
+            if let Some(entry) = state
+                .downloads
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .get_mut(&spec.id)
+            {
+                entry.received = received;
+            }
+            let _ = app.emit(
+                DOWNLOAD_EVENT,
+                DownloadEvent {
+                    id: spec.id.clone(),
+                    received,
+                    total: spec.bytes,
+                },
+            );
+        }
+    }
+    file.sync_all().map_err(|e| format!("E_IO: {e}"))?;
+    drop(file);
+    let digest = hex::encode(hasher.finalize());
+    if received != spec.bytes || digest != spec.sha256 {
+        return Err(format!(
+            "E_VERIFY: the download did not match the catalogue (size {received}, sha256 {}…)",
+            &digest[..12]
+        ));
+    }
+    std::fs::write(target.with_extension("gguf.sha256"), &digest)
+        .map_err(|e| format!("E_IO: {e}"))?;
+    std::fs::rename(part, target).map_err(|e| format!("E_IO: {e}"))?;
+    let _ = app.emit(
+        DOWNLOAD_EVENT,
+        DownloadEvent {
+            id: spec.id.clone(),
+            received,
+            total: spec.bytes,
+        },
+    );
+    Ok(())
 }
 
 #[tauri::command]

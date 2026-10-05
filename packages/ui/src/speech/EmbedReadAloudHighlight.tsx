@@ -65,7 +65,8 @@ function placeBoxes(host: HTMLElement, registry: PluginRegistry, page: number, b
   const scrollBox = element.getBoundingClientRect();
   const placed: Placed[] = [];
   for (const box of boxes) {
-    const at = scroll.getRectPositionForPage(page, { origin: { x: box.x, y: box.y }, size: { width: box.width, height: box.height } });
+    // The scroll plugin counts pages from one; the reader's boxes from zero.
+    const at = scroll.getRectPositionForPage(page + 1, { origin: { x: box.x, y: box.y }, size: { width: box.width, height: box.height } });
     if (!at) continue;
     placed.push({
       left: scrollBox.left - hostBox.left + at.origin.x - scrollLeft,
