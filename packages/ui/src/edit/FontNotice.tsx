@@ -1,4 +1,4 @@
-import { TriangleAlert, X } from 'lucide-react';
+import { Info, TriangleAlert, X } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useT } from '../i18n/useT';
@@ -21,25 +21,30 @@ export function FontNotice() {
   // A face's name is Latin whatever the interface's language: isolated, so
   // it cannot reorder the Arabic sentence around it.
   const isolate = (name: string) => `\u2068${name}\u2069`;
+  // The paragraph's own family, found on the device or in the open library:
+  // the text matches the page, and the notice only says where it came from.
+  const matched = edit.fontSubstituted && (used?.source === 'installed' || used?.source === 'downloaded') && !edit.textShrunk;
   const said = !edit.fontSubstituted
     ? null
     : used === null
       ? t('edit.fontSubstituted')
-      : used.source === 'chosen'
-        ? t('edit.fontUsed.chosen', { name: isolate(used.name) })
-        : used.wanted?.toLowerCase() === used.name.toLowerCase()
-          ? t('edit.fontUsed.bundledSame', { name: isolate(used.name) })
-          : used.wanted
-            ? t('edit.fontUsed.bundled', { name: isolate(used.name), wanted: isolate(used.wanted) })
-            : t('edit.fontUsed.bundledUnknown', { name: isolate(used.name) });
+      : used.source === 'installed' || used.source === 'downloaded'
+        ? t(`edit.fontUsed.${used.source}`, { name: isolate(used.name) })
+        : used.source === 'chosen'
+          ? t('edit.fontUsed.chosen', { name: isolate(used.name) })
+          : used.wanted?.toLowerCase() === used.name.toLowerCase()
+            ? t('edit.fontUsed.bundledSame', { name: isolate(used.name) })
+            : used.wanted
+              ? t('edit.fontUsed.bundled', { name: isolate(used.name), wanted: isolate(used.wanted) })
+              : t('edit.fontUsed.bundledUnknown', { name: isolate(used.name) });
 
   return (
-    <div className="banner banner-warning" role="status">
-      <Icon of={TriangleAlert} />
+    <div className={matched ? 'banner banner-matched' : 'banner banner-warning'} role="status">
+      <Icon of={matched ? Info : TriangleAlert} />
       <span>
         {said !== null && (
           <>
-            <strong>{t('edit.fontSubstitutedTitle')}</strong> {said}{' '}
+            <strong>{t(used?.source === 'installed' || used?.source === 'downloaded' ? 'edit.fontMatchedTitle' : 'edit.fontSubstitutedTitle')}</strong> {said}{' '}
           </>
         )}
         {edit.textShrunk && t('edit.fontShrunk')}

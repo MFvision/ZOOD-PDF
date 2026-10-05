@@ -1013,7 +1013,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // Only "its own font cannot draw this" falls through; nothing was changed.
           if (!(err instanceof Error) || !err.message.includes('E_OWN_FONT')) throw err;
         }
-        const { used, bytes } = await resolveFont(face, text, paragraph?.direction ?? 'ltr', hostFontProviders());
+        const { used, bytes } = await resolveFont(face, text, paragraph?.direction ?? 'ltr', hostFontProviders(client));
         const result = await doc.replace_paragraph(page, paragraphIndex, text, bytes);
         return { fontSubstituted: result.fontSubstituted, fontUsed: used, shrunk: result.shrunk === true };
       } catch {
@@ -1022,7 +1022,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return null;
       }
     },
-    [],
+    [client],
   );
 
   // Edit PDF's own state (pictures or links, what is picked) belongs to Edit

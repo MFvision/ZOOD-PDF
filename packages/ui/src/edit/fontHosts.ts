@@ -9,7 +9,9 @@
  * (the Local Font Access API is deliberately not used: it prompts, exists
  * in one engine only and would tell a page what the person has installed).
  */
+import type { CoreClient } from '../core/client';
 import { invokeHost, isTauriHost } from '../core/host-tauri';
+import { canUseLibrary, fromLibrary } from './fontLibrary';
 import type { FontProviders, FoundFont, OriginalFace } from './fontMatch';
 
 async function installed(face: OriginalFace, text: string): Promise<FoundFont | null> {
@@ -26,9 +28,16 @@ async function installed(face: OriginalFace, text: string): Promise<FoundFont | 
   return { name: face.family, bytes };
 }
 
-/** The providers of the host the app is running in. */
-export function hostFontProviders(): FontProviders {
-  return isTauriHost() ? { installed } : {};
+/**
+ * The providers of the host the app is running in. C — the open library
+ * (`fontLibrary.ts`) — is the same code in the browser and in the desktop
+ * app's webview; it asks the person before its first request.
+ */
+export function hostFontProviders(client: CoreClient): FontProviders {
+  return {
+    ...(isTauriHost() ? { installed } : {}),
+    ...(canUseLibrary() ? { library: (face: OriginalFace, text: string) => fromLibrary(client, face, text) } : {}),
+  };
 }
 
 /** Whether Automatic can look among installed fonts here. */

@@ -176,3 +176,24 @@
   color: var(--text-muted);
   font-size: var(--font-s);
 }
+
+/* An edit drawn in the paragraph's own family, found elsewhere: told, not warned of. */
+.banner-matched {
+  color: var(--text);
+}
+
+/* Settings: the downloaded fonts' switch, their size and the control that deletes them. */
+.font-library-switch {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.font-library-kept {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-block-start: 8px;
+}

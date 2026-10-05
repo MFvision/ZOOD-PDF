@@ -1,7 +1,8 @@
 import { expect } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { INVOICE, enterEditText, openPdf, test } from './helpers';
+import { INVOICE, answer, chooseTool, enterEditText, neverAskedAboutFonts, openPdf, test } from './helpers';
 import { readable, textOf } from './pdfBytes';
 
 /**
@@ -11,15 +12,64 @@ import { readable, textOf } from './pdfBytes';
  */
 const SUBSET = fileURLToPath(new URL('../../../tests/fixtures/edit/own-font-subset.pdf', import.meta.url));
 
+/** The same line in a subset of Tajawal: an open family the app does not carry. */
+const TAJAWAL_PAGE = fileURLToPath(new URL('../../../tests/fixtures/edit/tajawal-subset.pdf', import.meta.url));
+const TAJAWAL_FONT = fileURLToPath(new URL('../../../tests/fonts/Tajawal-Regular.ttf', import.meta.url));
+
+/** The open font library's two hosts, answered here: nothing reaches them. */
+async function fakeLibrary(page: Page) {
+  const catalogue = await answer(page, 'https://api.fontsource.org/', () => ({
+    status: 200,
+    contentType: 'application/json',
+    headers: { 'access-control-allow-origin': '*' },
+    body: JSON.stringify({
+      id: 'tajawal',
+      family: 'Tajawal',
+      subsets: ['arabic', 'latin'],
+      weights: [200, 300, 400, 500, 700, 800, 900],
+      styles: ['normal'],
+      license: 'OFL-1.1',
+      category: 'sans-serif',
+    }),
+  }));
+  const files = await answer(page, 'https://cdn.jsdelivr.net/', () => ({
+    status: 200,
+    contentType: 'font/ttf',
+    headers: { 'access-control-allow-origin': '*' },
+    body: readFileSync(TAJAWAL_FONT),
+  }));
+  return { catalogue, files, all: () => [...catalogue, ...files].map((request) => request.url()) };
+}
+
+/**
+ * Edit text on a page with one thin line on it: too little ink for
+ * `enterEditText`'s measure of a drawn page, so the paragraph's box is
+ * waited for instead.
+ */
+async function enterEditOnSparsePage(page: Page): Promise<Locator> {
+  await chooseTool(page, 'Edit');
+  const first = page.locator('section[data-page="1"]');
+  await expect(first.locator('.edit-box').first()).toBeVisible();
+  return first;
+}
+
+/** Opens the first paragraph, types `text` over it and applies. */
+async function replaceFirst(first: Locator, text: string) {
+  await first.locator('.edit-box').first().click();
+  const area = first.locator('.paragraph-editor-area');
+  await area.fill(text);
+  await area.press(APPLY);
+}
+
 const APPLY = process.platform === 'darwin' ? 'Meta+Enter' : 'Control+Enter';
 
 /** How many font dictionaries a file's bytes hold, every revision counted. */
 const fontObjects = (bytes: Buffer) => (readable(bytes).match(/\/Type\s*\/Font\b(?!Descriptor)/g) ?? []).length;
 
 /** The Edit panel's font control. */
-const fontControl = (page: import('@playwright/test').Page) => page.locator('.tool-panel select:has(option[value="auto"])');
+const fontControl = (page: Page) => page.locator('.tool-panel select:has(option[value="auto"])');
 
-async function save(page: import('@playwright/test').Page): Promise<string> {
+async function save(page: Page): Promise<string> {
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('toolbar').getByRole('button', { name: 'Save' }).click(),
@@ -77,6 +127,7 @@ test.describe('replaced text keeps the font it was set in', () => {
     page,
     stayLocal: _stayLocal,
   }) => {
+    await neverAskedAboutFonts(page);
     await page.goto('/');
     await openPdf(page, SUBSET);
     const first = await enterEditText(page);
@@ -85,6 +136,9 @@ test.describe('replaced text keeps the font it was set in', () => {
     // No b, o or x in the subset.
     await area.fill('Meeting box');
     await area.press(APPLY);
+    // Montserrat is an open family: the one-time question is asked, and
+    // answered no — nothing is fetched (`stayLocal` would fail the test).
+    await page.getByRole('dialog', { name: 'Download matching fonts?' }).getByRole('button', { name: 'No, use the closest font' }).click();
     await expect(first.locator('.text-layer')).toContainText('Meeting box');
     const notice = page.locator('.banner-warning');
     await expect(notice).toContainText('Font substituted.');
@@ -145,6 +199,7 @@ test.describe('replaced text keeps the font it was set in', () => {
   });
 
   test('in Arabic the control and the notice read naturally', async ({ page, stayLocal: _stayLocal }) => {
+    await neverAskedAboutFonts(page);
     await page.goto('/');
     await openPdf(page, SUBSET);
     const first = await enterEditText(page);
@@ -158,9 +213,107 @@ test.describe('replaced text keeps the font it was set in', () => {
     const area = first.locator('.paragraph-editor-area');
     await area.fill('Meeting box');
     await area.press(APPLY);
+    // The question, in Arabic, saying what is sent and what is not.
+    const question = page.getByRole('dialog', { name: 'تنزيل الخطوط المطابقة؟' });
+    await expect(question).toContainText('Montserrat');
+    await expect(question).toContainText('لا يُرسَل إلا اسم الخط');
+    await expect(question).toContainText('أما المستند ونصه وكل ما عداه فيبقى على هذا الجهاز');
+    await question.getByRole('button', { name: 'لا، استخدم أقرب خط' }).click();
     const notice = page.locator('.banner-warning');
     await expect(notice).toContainText('جرى استبدال الخط.');
     await expect(notice).toContainText('أقرب خط يحمله التطبيق');
     await expect(notice).toContainText('Inter');
+  });
+
+  test('the open library: asked once, only the font\'s name is sent, and the family is embedded — not Amiri', async ({
+    page,
+    stayLocal: _stayLocal,
+  }) => {
+    const library = await fakeLibrary(page);
+    await neverAskedAboutFonts(page);
+    await page.goto('/');
+    await openPdf(page, TAJAWAL_PAGE);
+    const first = await enterEditOnSparsePage(page);
+    await first.locator('.edit-box').first().click();
+    await expect(page.getByTestId('edit-font-resolved')).toContainText("The document's own font (\u2068Tajawal\u2069)");
+    const area = first.locator('.paragraph-editor-area');
+    // No b, o or x in the document's subset of Tajawal.
+    await area.fill('Meeting box');
+    await area.press(APPLY);
+
+    // Asked first; until the answer, nothing has been fetched.
+    const question = page.getByRole('dialog', { name: 'Download matching fonts?' });
+    await expect(question).toContainText('Tajawal');
+    await expect(question).toContainText("Only the font's name is sent, to api.fontsource.org and cdn.jsdelivr.net.");
+    await expect(question).toContainText('The document, its text and everything else stay on this device.');
+    expect(library.all()).toEqual([]);
+    await question.getByRole('button', { name: 'Download matching fonts' }).click();
+
+    await expect(first.locator('.text-layer')).toContainText('Meeting box');
+    const notice = page.locator('.banner-matched');
+    await expect(notice).toContainText('Font matched.');
+    await expect(notice).toContainText('downloaded from the open font library');
+    await expect(notice).toContainText('Tajawal');
+    // Two requests, and the family's name is all there is in them.
+    expect(library.all()).toEqual([
+      'https://api.fontsource.org/v1/fonts/tajawal',
+      'https://cdn.jsdelivr.net/fontsource/fonts/tajawal@latest/latin-400-normal.ttf',
+    ]);
+    for (const request of [...library.catalogue, ...library.files]) {
+      expect(request.method()).toBe('GET');
+      expect(request.postData()).toBeNull();
+      expect(request.headers().cookie).toBeUndefined();
+      expect(request.headers().referer ?? '').toBe('');
+    }
+
+    // Another edit of the family asks no one: the font is kept on the device.
+    await replaceFirst(first, 'Meeting fox');
+    await expect(first.locator('.text-layer')).toContainText('Meeting fox');
+    await expect(page.getByRole('dialog', { name: 'Download matching fonts?' })).toHaveCount(0);
+    expect(library.all()).toHaveLength(2);
+
+    const saved = await save(page);
+    expect(await textOf(saved)).toBe('Meeting fox');
+    const text = readable(readFileSync(saved));
+    // The family the paragraph was set in is what is embedded.
+    expect(text).toContain('/BaseFont /WARRAQ+Tajawal');
+    expect(text).not.toContain('Amiri');
+    expect(text).not.toContain('WARRAQ+Inter');
+
+    // Settings: the switch is on, the fonts' size is shown, and they can be deleted.
+    await page.getByRole('menubar').getByRole('menuitem', { name: 'محرر PDF' }).click();
+    await page.getByRole('menuitem', { name: /^Settings…/ }).click();
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    const toggle = settings.getByRole('checkbox', { name: 'Download matching fonts automatically when editing text' });
+    await expect(toggle).toBeChecked();
+    const usage = settings.getByTestId('font-library-usage');
+    await expect(usage).toHaveText(/^Downloaded fonts: 1 \(\u2068\d+ kB\u2069\)$/);
+    await settings.getByRole('button', { name: 'Delete downloaded fonts' }).click();
+    await expect(usage).toHaveText('No fonts have been downloaded.');
+    expect(await page.evaluate(() => caches.has('warraq-fonts-v1'))).toBe(false);
+    // Off: the next edit that would need it takes the closest face, and asks no one.
+    await toggle.uncheck();
+    await settings.getByRole('button', { name: 'Close' }).click();
+    await replaceFirst(first, 'Meeting vox');
+    await expect(first.locator('.text-layer')).toContainText('Meeting vox');
+    expect(library.all()).toHaveLength(2);
+  });
+
+  test('answering no is remembered: nothing is ever fetched, and the closest face is used', async ({ page, stayLocal: _stayLocal }) => {
+    const library = await fakeLibrary(page);
+    await neverAskedAboutFonts(page);
+    await page.goto('/');
+    await openPdf(page, TAJAWAL_PAGE);
+    const first = await enterEditOnSparsePage(page);
+    await replaceFirst(first, 'Meeting box');
+    await page.getByRole('dialog', { name: 'Download matching fonts?' }).getByRole('button', { name: 'No, use the closest font' }).click();
+    await expect(first.locator('.text-layer')).toContainText('Meeting box');
+    await expect(page.locator('.banner-warning')).toContainText('Inter');
+    // Not asked a second time.
+    await replaceFirst(first, 'Meeting fox');
+    await expect(first.locator('.text-layer')).toContainText('Meeting fox');
+    await expect(page.getByRole('dialog', { name: 'Download matching fonts?' })).toHaveCount(0);
+    expect(library.all()).toEqual([]);
+    expect(readable(readFileSync(await save(page)))).toContain('/BaseFont /WARRAQ+Inter');
   });
 });

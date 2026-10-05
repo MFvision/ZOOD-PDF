@@ -67,13 +67,11 @@ pub fn system_font_dirs() -> Vec<PathBuf> {
 }
 
 fn is_font_file(path: &Path) -> bool {
-    path.extension()
-        .and_then(|e| e.to_str())
-        .is_some_and(|e| {
-            ["ttf", "ttc", "otf", "otc"]
-                .iter()
-                .any(|known| e.eq_ignore_ascii_case(known))
-        })
+    path.extension().and_then(|e| e.to_str()).is_some_and(|e| {
+        ["ttf", "ttc", "otf", "otc"]
+            .iter()
+            .any(|known| e.eq_ignore_ascii_case(known))
+    })
 }
 
 fn scan_dir(dir: &Path, depth: usize, files: &mut usize, out: &mut Vec<Installed>) {
@@ -183,12 +181,17 @@ mod tests {
 
     /// A folder of its own holding copies of the given test fonts.
     fn folder(tag: &str, names: &[&str]) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("warraq-installed-{tag}-{}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("warraq-installed-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("nested")).unwrap();
         for (i, name) in names.iter().enumerate() {
             // One of them a folder down, as a foundry's folder would be.
-            let to = if i == 0 { dir.join("nested") } else { dir.clone() };
+            let to = if i == 0 {
+                dir.join("nested")
+            } else {
+                dir.clone()
+            };
             std::fs::copy(fonts(name), to.join(Path::new(name).file_name().unwrap())).unwrap();
         }
         std::fs::write(dir.join("readme.txt"), b"not a font").unwrap();
@@ -200,10 +203,18 @@ mod tests {
     fn a_family_is_found_by_name_at_the_nearest_weight() {
         let dir = folder(
             "find",
-            &["Amiri-Regular.ttf", "Amiri-Bold.ttf", "static/Inter-Regular-static.ttf"],
+            &[
+                "Amiri-Regular.ttf",
+                "Amiri-Bold.ttf",
+                "static/Inter-Regular-static.ttf",
+            ],
         );
         let installed = scan(std::slice::from_ref(&dir));
-        assert_eq!(installed.len(), 3, "the text file and the broken one are passed over");
+        assert_eq!(
+            installed.len(),
+            3,
+            "the text file and the broken one are passed over"
+        );
         let bold = find(&installed, "Amiri", 700, false, "نص عربي").unwrap();
         assert_eq!((bold.family.as_str(), bold.weight), ("Amiri", 700));
         // What comes back is a font the shaper reads, with the text's glyphs.
@@ -213,9 +224,20 @@ mod tests {
             700
         );
         // SemiBold is not installed: Bold is the nearest within reach.
-        assert_eq!(find(&installed, "amiri", 600, false, "x").unwrap().weight, 700);
-        assert_eq!(find(&installed, "Amiri", 400, false, "x").unwrap().weight, 400);
-        assert_eq!(find(&installed, "Inter", 400, false, "Meeting").unwrap().family, "Inter");
+        assert_eq!(
+            find(&installed, "amiri", 600, false, "x").unwrap().weight,
+            700
+        );
+        assert_eq!(
+            find(&installed, "Amiri", 400, false, "x").unwrap().weight,
+            400
+        );
+        assert_eq!(
+            find(&installed, "Inter", 400, false, "Meeting")
+                .unwrap()
+                .family,
+            "Inter"
+        );
         // Nothing near enough, no such slant, no such family.
         assert_eq!(find(&installed, "Inter", 700, false, "x"), None);
         assert_eq!(find(&installed, "Amiri", 400, true, "x"), None);
@@ -262,12 +284,16 @@ mod tests {
         let arial = find(&installed, "Arial", 700, false, "Family Budget 2026")
             .expect("Arial Bold is installed on every Mac");
         assert_eq!((arial.family.as_str(), arial.weight), ("Arial", 700));
-        assert!(crate::Shaper::new(&arial.bytes).unwrap().covers("Family Budget 2026"));
+        assert!(crate::Shaper::new(&arial.bytes)
+            .unwrap()
+            .covers("Family Budget 2026"));
         // As a PDF spells it.
         assert!(find(&installed, "TimesNewRoman", 400, true, "Italic").is_some());
         let helvetica = find(&installed, "Helvetica", 400, false, "Collection")
             .expect("Helvetica is installed on every Mac, in a .ttc");
         assert!(!helvetica.bytes.starts_with(b"ttcf"));
-        assert!(crate::Shaper::new(&helvetica.bytes).unwrap().covers("Collection"));
+        assert!(crate::Shaper::new(&helvetica.bytes)
+            .unwrap()
+            .covers("Collection"));
     }
 }

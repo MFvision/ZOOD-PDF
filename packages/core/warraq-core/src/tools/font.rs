@@ -36,11 +36,15 @@ fn refusal(font: &[u8], check: &Check) -> (Option<&'static str>, Option<fontfile
     } else if !facts.embeddable {
         Some("not-embeddable")
     } else if check.family.as_deref().is_some_and(|wanted| {
+        // A file may name its family with a style in it: the open
+        // library's static files are cut from a variable font and all say
+        // "Montserrat Thin", whatever their weight. The family is what is
+        // left when the style words are taken off, as for a PDF's names.
         let wanted = fontfile::family_key(wanted);
-        !facts
-            .families
-            .iter()
-            .any(|name| fontfile::family_key(name) == wanted)
+        !facts.families.iter().any(|name| {
+            fontfile::family_key(name) == wanted
+                || fontfile::family_key(&warraq_pdf::face::parse_base_font(name).family) == wanted
+        })
     }) {
         Some("other-family")
     } else {

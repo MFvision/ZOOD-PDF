@@ -121,10 +121,19 @@ pub(crate) fn subset_name(font: &[u8], fallback: &str) -> String {
     else {
         return fallback.to_string();
     };
+    // The family without any style word the file put in it (the open
+    // library's static files all call themselves "… Thin"): the style is
+    // taken from the font's own weight and slant below.
     let family: String = face
         .families
         .first()
         .map(|name| {
+            let plain = crate::face::parse_base_font(name).family;
+            let name = if plain.is_empty() {
+                name.as_str()
+            } else {
+                &plain
+            };
             name.chars()
                 .filter(|c| c.is_ascii_alphanumeric())
                 .take(48)
@@ -714,6 +723,21 @@ mod tests {
             env!("CARGO_MANIFEST_DIR")
         ))
         .unwrap()
+    }
+
+    #[test]
+    fn an_embedded_subset_is_named_for_its_family_and_style() {
+        assert_eq!(subset_name(AMIRI, "Fallback"), "Amiri");
+        let bold = std::fs::read(format!(
+            "{}/../../../tests/fonts/Amiri-Bold.ttf",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        assert_eq!(subset_name(&bold, "Fallback"), "Amiri-Bold");
+        assert_eq!(subset_name(b"not a font", "Fallback"), "Fallback");
+        // The names it gives read back as the face they are.
+        let parts = crate::face::parse_base_font("WARRAQ+Amiri-Bold");
+        assert_eq!((parts.family.as_str(), parts.weight), ("Amiri", Some(700)));
     }
 
     #[test]

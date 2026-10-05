@@ -7,6 +7,8 @@ import { useI18n, useT } from '../i18n/useT';
 import { modKeyLabel } from '../shell/menuModel';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { EDIT_FONTS, editFontName } from './editFont';
+import { canUseInstalledFonts } from './fontHosts';
+import { canUseLibrary, libraryConsent, libraryId } from './fontLibrary';
 import { closestBundled, faceLabel, faceOf } from './fontMatch';
 import type { FontChoice } from './fontMatch';
 import { useParagraphs } from './useParagraphs';
@@ -179,6 +181,16 @@ function TextControls() {
   );
 }
 
+/** Where Automatic will look for a family before it settles for the closest face. */
+function lookup(family: string) {
+  const installed = canUseInstalledFonts();
+  // The library only when it could have the family and has not been refused.
+  const library = canUseLibrary() && libraryConsent() !== false && libraryId(family) !== null;
+  if (installed && library) return 'edit.autoLookupBoth' as const;
+  if (installed) return 'edit.autoLookupInstalled' as const;
+  return library ? ('edit.autoLookupLibrary' as const) : ('edit.autoClosestFor' as const);
+}
+
 /**
  * What Automatic resolves to for the open paragraph: the document's own
  * font when it can draw the paragraph's text, else the closest face the app
@@ -211,7 +223,7 @@ function ResolvedFont({
         : face?.family.toLowerCase() === bundled.toLowerCase()
           ? t('edit.autoBundledSame', { name: closest })
           : face
-            ? t('edit.autoClosestFor', { wanted: isolate(faceLabel(face)), name: closest })
+            ? t(lookup(face.family), { wanted: isolate(faceLabel(face)), name: closest })
             : t('edit.autoClosest', { name: closest })}
     </>
   );

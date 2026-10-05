@@ -5,6 +5,7 @@ import type { DropIntent } from '../state/AppContext';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { CloudSheets } from '../cloud/CloudSheets';
+import { FontLibraryQuestion } from '../edit/LibraryFonts';
 import { FontNotice } from '../edit/FontNotice';
 import { HomeScreen } from '../home/HomeScreen';
 import { PendingPage } from '../home/pendingPage';
@@ -193,6 +194,7 @@ export function Shell() {
         <AboutDialog />
         <SettingsDialog />
         <LinkConfirmDialog />
+        <FontLibraryQuestion />
         <CloudSheets />
         {state.toast && (
           <div key={state.toast.nonce} className="toast" role="status">

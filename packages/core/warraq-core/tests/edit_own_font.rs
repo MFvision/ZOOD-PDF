@@ -44,8 +44,13 @@ fn pdf(content: &str) -> Vec<u8> {
 /// calls `ABCDEF+Montserrat-SemiBold`, in blue: what a slide exported from
 /// a design tool carries. The subset has the letters of `text` and no others.
 fn subset_page(text: &str) -> Vec<u8> {
+    subset_page_in(text, INTER, "ABCDEF+Montserrat-SemiBold")
+}
+
+/// The same page, its subset cut from `font` and named `base_font`.
+fn subset_page_in(text: &str, font: &[u8], base_font: &str) -> Vec<u8> {
     let mut doc = Document::open(pdf("0.2 0.3 0.9 rg"), None).unwrap();
-    doc.add_text_in_color(0, 60.0, 100.0, 14.0, text, INTER, Some([0.2, 0.3, 0.9]))
+    doc.add_text_in_color(0, 60.0, 100.0, 14.0, text, font, Some([0.2, 0.3, 0.9]))
         .unwrap();
     let mut raw = lopdf::Document::load_mem(&doc.save().unwrap()).unwrap();
     for object in raw.objects.values_mut() {
@@ -57,10 +62,7 @@ fn subset_page(text: &str) -> Vec<u8> {
                 .get(key.as_bytes())
                 .is_ok_and(|n| n.as_name().is_ok_and(|n| n.starts_with(b"WARRAQ+")))
             {
-                dict.set(
-                    key,
-                    lopdf::Object::Name(b"ABCDEF+Montserrat-SemiBold".to_vec()),
-                );
+                dict.set(key, lopdf::Object::Name(base_font.as_bytes().to_vec()));
             }
         }
     }
@@ -276,4 +278,24 @@ fn write_the_fixture() {
     );
     std::fs::create_dir_all(std::path::Path::new(&path).parent().unwrap()).unwrap();
     std::fs::write(path, subset_page("Meeting Intelligence quarterly")).unwrap();
+    // The same line in a subset of Tajawal, an open family the app does not
+    // carry: the page the open-library test edits.
+    let tajawal = std::fs::read(format!(
+        "{}/../../../tests/fonts/Tajawal-Regular.ttf",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    let path = format!(
+        "{}/../../../tests/fixtures/edit/tajawal-subset.pdf",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    std::fs::write(
+        path,
+        subset_page_in(
+            "Meeting Intelligence quarterly",
+            &tajawal,
+            "ABCDEF+Tajawal-Regular",
+        ),
+    )
+    .unwrap();
 }

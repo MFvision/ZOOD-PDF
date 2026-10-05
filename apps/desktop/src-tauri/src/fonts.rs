@@ -54,7 +54,7 @@ pub fn font_installed(
     weight: u16,
     italic: bool,
     text: String,
-) -> tauri::ipc::Response {
+) -> Result<tauri::ipc::Response, String> {
     let text: String = text.chars().take(MAX_TEXT_CHARS).collect();
     let weight = weight.clamp(100, 900);
     let (read_at, faces) = state.listing(false);
@@ -63,5 +63,7 @@ pub fn font_installed(
         let (_, faces) = state.listing(true);
         found = installed::find(&faces, &family, weight, italic, &text);
     }
-    tauri::ipc::Response::new(found.map(|f| f.bytes).unwrap_or_default())
+    Ok(tauri::ipc::Response::new(
+        found.map(|f| f.bytes).unwrap_or_default(),
+    ))
 }
