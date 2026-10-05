@@ -30,7 +30,10 @@ import { EMBED_COMMANDS, NO_TOGGLES, addRedactionMarks, capability, disabledCate
 import type { RedactionMark, ViewCommand, ViewToggles } from '../embed/embedControl';
 import { installViewText } from '../embed/embedText';
 import { uuidV4 } from '@embedpdf/models';
-import { loadEditFont } from '../edit/editFont';
+import { editFontName, loadEditFont } from '../edit/editFont';
+import { hostFontProviders } from '../edit/fontHosts';
+import { faceOf, fontForNewText, resolveFont } from '../edit/fontMatch';
+import type { FontUsed } from '../edit/fontMatch';
 import { resetEditPdf } from '../edit/editPdf';
 import { canRedo as canRedoStack, canUndo as canUndoStack, isFileEntry, redo as redoStack, snapshotsIn, undo as undoStack } from '../edit/editStack';
 import type { EditEntry, StackStep } from '../edit/editStack';
@@ -983,14 +986,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * stack untouched so the UI never claims an edit the document does not have.
    */
   const replaceParagraph = useCallback(
-    async (page: number, paragraphIndex: number, text: string): Promise<boolean | null> => {
+    async (
+      page: number,
+      paragraphIndex: number,
+      text: string,
+    ): Promise<{ fontSubstituted: boolean; fontUsed?: FontUsed; shrunk: boolean } | null> => {
       const doc = documentRef.current;
       if (!doc || stateRef.current.edit.busy) return null;
       dispatch({ type: 'EDIT_BUSY', busy: true });
       try {
-        const font = await loadEditFont(stateRef.current.edit.font);
-        const result = await doc.replace_paragraph(page, paragraphIndex, text, font);
-        return result.fontSubstituted;
+        const choice = stateRef.current.edit.font;
+        if (choice !== 'auto') {
+          const result = await doc.replace_paragraph(page, paragraphIndex, text, await loadEditFont(choice));
+          const fontUsed: FontUsed = { source: 'chosen', name: editFontName(choice), wanted: null };
+          return { fontSubstituted: result.fontSubstituted, fontUsed, shrunk: result.shrunk === true };
+        }
+        // Automatic (`edit/fontMatch.ts`): the paragraph's own font first —
+        // no font handed over asks the core for it — then one found for it.
+        const paragraph = (await doc.paragraphs(page))[paragraphIndex];
+        const face = faceOf(paragraph);
+        try {
+          const result = await doc.replace_paragraph(page, paragraphIndex, text, new Uint8Array(0));
+          const fontUsed: FontUsed = { source: 'own', name: face?.family ?? '', wanted: face?.family ?? null };
+          return { fontSubstituted: result.fontSubstituted, fontUsed, shrunk: result.shrunk === true };
+        } catch (err) {
+          // Only "its own font cannot draw this" falls through; nothing was changed.
+          if (!(err instanceof Error) || !err.message.includes('E_OWN_FONT')) throw err;
+        }
+        const { used, bytes } = await resolveFont(face, text, paragraph?.direction ?? 'ltr', hostFontProviders());
+        const result = await doc.replace_paragraph(page, paragraphIndex, text, bytes);
+        return { fontSubstituted: result.fontSubstituted, fontUsed: used, shrunk: result.shrunk === true };
       } catch {
         dispatch({ type: 'EDIT_BUSY', busy: false });
         dispatch({ type: 'DOCUMENT_FAILED', error: 'edit.failed' });
@@ -1037,7 +1062,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       dispatch({ type: 'EDIT_BUSY', busy: true });
       try {
-        const font = await loadEditFont(stateRef.current.edit.font);
+        const font = await loadEditFont(fontForNewText(stateRef.current.edit.font, text));
         const before = await doc.save();
         await doc.add_text(page, x, y, size, text, font);
         rememberFileChange(page, before);
@@ -1055,9 +1080,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'EDIT_CANCEL' });
         return;
       }
-      const fontSubstituted = await replaceParagraph(entry.page, entry.paragraphIndex, entry.after);
-      if (fontSubstituted === null) return;
-      dispatch({ type: 'EDIT_APPLIED', entry, fontSubstituted });
+      const applied = await replaceParagraph(entry.page, entry.paragraphIndex, entry.after);
+      if (applied === null) return;
+      dispatch({ type: 'EDIT_APPLIED', entry, ...applied });
     },
     [replaceParagraph],
   );
@@ -1101,13 +1126,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         return;
       }
-      const fontSubstituted = await replaceParagraph(
-        change.page,
-        change.paragraphIndex,
-        change.text,
-      );
-      if (fontSubstituted === null) return;
-      dispatch({ type: 'EDIT_STEPPED', stack, page: change.page, fontSubstituted });
+      const applied = await replaceParagraph(change.page, change.paragraphIndex, change.text);
+      if (applied === null) return;
+      dispatch({ type: 'EDIT_STEPPED', stack, page: change.page, ...applied });
     },
     [replaceParagraph, restoreSnapshot],
   );

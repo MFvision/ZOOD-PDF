@@ -1,6 +1,5 @@
 import type { TKey } from '../i18n/messages';
-import { DEFAULT_EDIT_FONT } from '../edit/editFont';
-import type { EditFontId } from '../edit/editFont';
+import type { FontChoice, FontUsed } from '../edit/fontMatch';
 import type { CoreStatus, DocumentMetadata, PageSize } from '../core/types';
 import { applyEdit, EMPTY_EDIT_STACK } from '../edit/editStack';
 import type { EditEntry, EditStack } from '../edit/editStack';
@@ -31,8 +30,12 @@ export interface EditState {
   savedRevision: number;
   /** Per-page nonce: only the page that changed re-renders and re-reads boxes. */
   pageRevisions: Readonly<Record<number, number>>;
-  /** Brief §15.5: the bundled face was substituted and the user must be told. */
+  /** Brief §15.5: a font other than the paragraph's own was embedded and the user must be told. */
   fontSubstituted: boolean;
+  /** What the last edit was drawn in, and where that font came from. */
+  fontUsed: FontUsed | null;
+  /** An edit's text had to be made smaller to fit its box; the user is told. */
+  textShrunk: boolean;
   /** A core call is in flight; the editor and the undo buttons wait for it. */
   busy: boolean;
   /** Waiting for the click that says where new text should go. */
@@ -41,8 +44,8 @@ export interface EditState {
   adding: { page: number; x: number; y: number } | null;
   /** Points, chosen in the panel before placing. */
   addSize: number;
-  /** The bundled face an edit is shaped with. */
-  font: EditFontId;
+  /** The face an edit is shaped with: found for each paragraph, or a bundled one chosen. */
+  font: FontChoice;
 }
 
 export interface OrganizeState {
@@ -134,12 +137,12 @@ export type AppAction =
   | { type: 'EDIT_PLACE'; placing: boolean }
   | { type: 'EDIT_ADD_AT'; page: number; x: number; y: number }
   | { type: 'EDIT_ADD_SIZE'; size: number }
-  | { type: 'EDIT_FONT'; font: EditFontId }
+  | { type: 'EDIT_FONT'; font: FontChoice }
   | { type: 'EDIT_BUSY'; busy: boolean }
-  | { type: 'EDIT_APPLIED'; entry: EditEntry; fontSubstituted: boolean }
+  | { type: 'EDIT_APPLIED'; entry: EditEntry; fontSubstituted: boolean; fontUsed?: FontUsed; shrunk?: boolean }
   /** A picture, link or added-text change, the file before it kept as `snapshot` for undo. */
   | { type: 'EDIT_FILE_CHANGED'; page: number; snapshot: number }
-  | { type: 'EDIT_STEPPED'; stack: EditStack; page: number; fontSubstituted: boolean }
+  | { type: 'EDIT_STEPPED'; stack: EditStack; page: number; fontSubstituted: boolean; fontUsed?: FontUsed; shrunk?: boolean }
   | { type: 'EDIT_NOTICE_DISMISSED' }
   | { type: 'DOCUMENT_SAVED' }
   /** The file now has another name: saved under it in a cloud drive. */
@@ -163,11 +166,13 @@ export function createEditState(): EditState {
     savedRevision: 0,
     pageRevisions: {},
     fontSubstituted: false,
+    fontUsed: null,
+    textShrunk: false,
     busy: false,
     placing: false,
     adding: null,
     addSize: 14,
-    font: DEFAULT_EDIT_FONT,
+    font: 'auto',
   };
 }
 
@@ -177,7 +182,13 @@ export function hasUnsavedEdits(state: AppState): boolean {
 }
 
 /** Records one applied change: a new revision for the document and for `page`. */
-function bumpRevision(edit: EditState, page: number, fontSubstituted: boolean): EditState {
+function bumpRevision(
+  edit: EditState,
+  page: number,
+  fontSubstituted: boolean,
+  fontUsed?: FontUsed,
+  shrunk = false,
+): EditState {
   return {
     ...edit,
     editing: null,
@@ -187,6 +198,10 @@ function bumpRevision(edit: EditState, page: number, fontSubstituted: boolean): 
     revision: edit.revision + 1,
     pageRevisions: { ...edit.pageRevisions, [page]: (edit.pageRevisions[page] ?? 0) + 1 },
     fontSubstituted: edit.fontSubstituted || fontSubstituted,
+    // The notice speaks of the last substitution; an edit drawn in the
+    // paragraph's own font leaves an earlier one standing.
+    fontUsed: fontSubstituted ? (fontUsed ?? null) : edit.fontUsed,
+    textShrunk: edit.textShrunk || shrunk,
   };
 }
 
@@ -465,7 +480,7 @@ function reduce(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         edit: {
-          ...bumpRevision(state.edit, action.entry.page, action.fontSubstituted),
+          ...bumpRevision(state.edit, action.entry.page, action.fontSubstituted, action.fontUsed, action.shrunk),
           stack: applyEdit(state.edit.stack, action.entry),
         },
       };
@@ -481,12 +496,12 @@ function reduce(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         edit: {
-          ...bumpRevision(state.edit, action.page, action.fontSubstituted),
+          ...bumpRevision(state.edit, action.page, action.fontSubstituted, action.fontUsed, action.shrunk),
           stack: action.stack,
         },
       };
     case 'EDIT_NOTICE_DISMISSED':
-      return { ...state, edit: { ...state.edit, fontSubstituted: false } };
+      return { ...state, edit: { ...state.edit, fontSubstituted: false, fontUsed: null, textShrunk: false } };
     case 'DOCUMENT_SAVED':
       return { ...state, edit: { ...state.edit, savedRevision: state.edit.revision } };
     case 'DOCUMENT_RENAMED':

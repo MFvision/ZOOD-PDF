@@ -40,6 +40,13 @@ export interface ParagraphInfo {
   readonly alignment: TextAlignment;
   readonly font_size: number;
   readonly line_count: number;
+  /** The face the file names for the paragraph; `''` when it names none. */
+  readonly font_family?: string;
+  readonly font_weight?: number;
+  readonly font_italic?: boolean;
+  readonly font_class?: string;
+  /** Its own font can draw the text it has now. */
+  readonly own_font?: boolean;
   free(): void;
 }
 
@@ -141,6 +148,21 @@ export interface ParagraphData {
   alignment: TextAlignment;
   fontSize: number;
   lineCount: number;
+  /**
+   * The face the file names for the paragraph — sanitised by the core
+   * (letters, digits, spaces, hyphens, ≤ 64 characters); empty or absent
+   * when the file names none.
+   */
+  fontFamily?: string;
+  /** 100–900. */
+  fontWeight?: number;
+  fontItalic?: boolean;
+  fontClass?: 'serif' | 'sans' | 'unknown';
+  /**
+   * The paragraph's own font can draw the text it has now, so an edit that
+   * keeps to its letters is drawn in that very font (never for Arabic).
+   */
+  ownFont?: boolean;
 }
 
 /** Parsed result of `replace_paragraph`. */
@@ -151,8 +173,8 @@ export interface ReplaceParagraphResult {
   overflowed?: boolean;
   linesDrawn: number;
   /**
-   * The original face could not be reused and a bundled one was embedded.
-   * Brief §15.5: the user is always told, never silently corrupted.
+   * The text was drawn in a font other than the paragraph's own, which was
+   * embedded. Brief §15.5: the user is always told, never silently corrupted.
    */
   fontSubstituted: boolean;
 }

@@ -100,6 +100,10 @@ function textLines(doc: CoreDocument, index: number): ResultMap['text_lines'] {
   });
 }
 
+function fontClass(value: string | undefined): 'serif' | 'sans' | 'unknown' {
+  return value === 'serif' || value === 'sans' ? value : 'unknown';
+}
+
 function paragraphs(doc: CoreDocument, index: number): ResultMap['paragraphs'] {
   return doc.paragraphs(index).map((para) => {
     const data = {
@@ -113,6 +117,11 @@ function paragraphs(doc: CoreDocument, index: number): ResultMap['paragraphs'] {
       alignment: para.alignment,
       fontSize: para.font_size,
       lineCount: para.line_count,
+      fontFamily: para.font_family ?? '',
+      fontWeight: para.font_weight ?? 400,
+      fontItalic: para.font_italic ?? false,
+      fontClass: fontClass(para.font_class),
+      ownFont: para.own_font ?? false,
     };
     para.free();
     return data;

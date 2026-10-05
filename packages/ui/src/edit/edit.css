@@ -169,3 +169,10 @@
   color: var(--text-muted);
   font-size: var(--font-s);
 }
+
+/* What Automatic resolves to for the open paragraph, under the font control. */
+.edit-font-resolved {
+  margin-block-start: 8px;
+  color: var(--text-muted);
+  font-size: var(--font-s);
+}

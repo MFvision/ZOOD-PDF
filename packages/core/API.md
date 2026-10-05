@@ -66,6 +66,7 @@ Tool operations (`warraq-core/src/tools`), all answering JSON plus bytes:
 | `pages.crop` | `{pages: number[], margins: {top, right, bottom, left}}` (points, as each page is shown) | `{pageCount, pageSizes}` |
 | `pages.trim_margins` | `{pages: number[], padding?: number}` (points of white kept around what is printed; default 6; blank pages are left alone) | `{pageCount, pageSizes}` |
 | `file.rebase` (static) | `{password?: string}` + the file as opened + the same file written whole by another engine (PDFium, through EmbedPDF) | `{rebased: bool}` + the file's own bytes with the changes appended, when `rebased` (not when the protection differs) |
+| `font.check` (static) | `{text: string, family?: string}` + a font file a host found for an edit (installed, or downloaded from the open library) | `{usable: bool, reason: null \| "not-a-font" \| "too-large" \| "not-truetype" \| "not-embeddable" \| "other-family" \| "missing-glyphs", family, weight, italic, variable}` — usable only when the bytes are a TrueType-outline font (≤ 32 MB) of that family, whose licence bits (`OS/2.fsType`) allow embedding a subset, with a glyph for every character of `text` |
 | `pages.insert_file` | `{at: number, password?: string}` + the other file (its pages go in at `at`, with their form fields) | `{pageCount, pageSizes}` |
 | `pages.extract` | `{pages: number[]}` (in that order) | `{pageCount}` + the new file |
 | `pages.combine` (static) | `{passwords?: (string\|null)[]}` + one blob per file | `{pageCount}` + the new file |

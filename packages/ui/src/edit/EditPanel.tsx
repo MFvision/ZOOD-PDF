@@ -6,7 +6,11 @@ import { radioTabIndex, useRadioGroupKeyboard } from '../components/useRadioGrou
 import { useI18n, useT } from '../i18n/useT';
 import { modKeyLabel } from '../shell/menuModel';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
-import { EDIT_FONTS } from './editFont';
+import { EDIT_FONTS, editFontName } from './editFont';
+import { closestBundled, faceLabel, faceOf } from './fontMatch';
+import type { FontChoice } from './fontMatch';
+import { useParagraphs } from './useParagraphs';
+import type { RemoteDocument } from '../core/client';
 import { updateEditPdf, useEditPdf } from './editPdf';
 import type { EditKind } from './editPdf';
 import { ImagesInspector, LinksInspector } from './EditPdfInspector';
@@ -74,9 +78,9 @@ function TextControls() {
   const t = useT();
   const state = useAppState();
   const dispatch = useAppDispatch();
-  const { undoEdit, redoEdit } = useServices();
+  const { undoEdit, redoEdit, document } = useServices();
   const hasDocument = state.view === 'viewer' && state.document !== null && state.switching === null;
-  const { stack, active, busy, placing, addSize, font } = state.edit;
+  const { stack, active, busy, placing, addSize, font, editing, pageRevisions } = state.edit;
   const mod = modKeyLabel();
 
   return (
@@ -107,12 +111,10 @@ function TextControls() {
             value={font}
             disabled={!hasDocument}
             onChange={(event) =>
-              dispatch({
-                type: 'EDIT_FONT',
-                font: event.target.value as (typeof EDIT_FONTS)[number]['id'],
-              })
+              dispatch({ type: 'EDIT_FONT', font: event.target.value as FontChoice })
             }
           >
+            <option value="auto">{t('edit.fontAuto')}</option>
             {EDIT_FONTS.map((face) => (
               <option key={face.id} value={face.id}>
                 {face.name}
@@ -137,6 +139,20 @@ function TextControls() {
           </select>
         </label>
       </div>
+      {font === 'auto' && hasDocument && (
+        <p className="edit-font-resolved" data-testid="edit-font-resolved" aria-live="polite">
+          {editing && document ? (
+            <ResolvedFont
+              document={document}
+              page={editing.page}
+              paragraphIndex={editing.paragraphIndex}
+              revision={pageRevisions[editing.page] ?? 0}
+            />
+          ) : (
+            t('edit.autoIdle')
+          )}
+        </p>
+      )}
       <div className="edit-panel-actions">
         <IconButton
           label={t('edit.undo')}
@@ -159,6 +175,44 @@ function TextControls() {
         <li>{t('edit.hintAdd')}</li>
         <li>{t('edit.hintFont')}</li>
       </ul>
+    </>
+  );
+}
+
+/**
+ * What Automatic resolves to for the open paragraph: the document's own
+ * font when it can draw the paragraph's text, else the closest face the app
+ * carries — said before the edit is applied, and again by the notice after.
+ */
+function ResolvedFont({
+  document,
+  page,
+  paragraphIndex,
+  revision,
+}: {
+  document: RemoteDocument;
+  page: number;
+  paragraphIndex: number;
+  revision: number;
+}) {
+  const t = useT();
+  const paragraph = useParagraphs(document, page, revision)?.[paragraphIndex];
+  if (!paragraph) return null;
+  const face = faceOf(paragraph);
+  // A face's name stays as it is written, isolated from the sentence.
+  const isolate = (name: string) => `\u2068${name}\u2069`;
+  const bundled = editFontName(closestBundled(face, paragraph.text, paragraph.direction));
+  const closest = isolate(bundled);
+  return (
+    <>
+      <strong>{t('edit.fontResolved')}:</strong>{' '}
+      {paragraph.ownFont && face
+        ? t('edit.autoOwn', { name: isolate(faceLabel(face)) })
+        : face?.family.toLowerCase() === bundled.toLowerCase()
+          ? t('edit.autoBundledSame', { name: closest })
+          : face
+            ? t('edit.autoClosestFor', { wanted: isolate(faceLabel(face)), name: closest })
+            : t('edit.autoClosest', { name: closest })}
     </>
   );
 }

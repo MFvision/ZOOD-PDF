@@ -143,7 +143,8 @@ class MockDocument implements CoreDocument {
     if (para < 0 || para >= MOCK_PARAGRAPHS_PER_PAGE) {
       throw mockError('E_NOT_FOUND', `paragraph ${para} is not on page ${index}`);
     }
-    if (font.byteLength === 0) throw mockError('E_RENDER', 'no font supplied');
+    // No font asks for the paragraph's own, which the mock's Arabic never allows.
+    if (font.byteLength === 0) throw mockError('E_OWN_FONT', 'the paragraph\'s own font cannot draw this text');
     this.edits.set(`${index}:${para}`, text);
     this.revision += 1;
     // The mock has no real font table, so it always reports a substitution.

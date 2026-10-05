@@ -53,10 +53,10 @@ fn subset_page(text: &str) -> Vec<u8> {
             continue;
         };
         for key in ["BaseFont", "FontName"] {
-            if dict.get(key.as_bytes()).is_ok_and(|n| {
-                n.as_name()
-                    .is_ok_and(|n| n.windows(6).any(|w| w == b"Warraq"))
-            }) {
+            if dict
+                .get(key.as_bytes())
+                .is_ok_and(|n| n.as_name().is_ok_and(|n| n.starts_with(b"WARRAQ+")))
+            {
                 dict.set(
                     key,
                     lopdf::Object::Name(b"ABCDEF+Montserrat-SemiBold".to_vec()),
@@ -259,4 +259,21 @@ fn arabic_never_uses_the_documents_own_font() {
     // It goes on being shaped and embedded.
     let r = doc.replace_paragraph(0, 0, "نص جديد", AMIRI).unwrap();
     assert!(r.font_substituted);
+}
+
+/// Writes `tests/fixtures/edit/own-font-subset.pdf`, the page the browser
+/// test edits (`apps/web/e2e/edit-font.spec.ts`): one blue line in an
+/// embedded subset the file calls Montserrat SemiBold (the glyphs are
+/// Inter's — what matters is that the subset has those letters and no
+/// others). Run by hand when the fixture must change:
+/// `cargo test -p warraq-core --test edit_own_font -- --ignored`.
+#[test]
+#[ignore = "writes the browser test's fixture"]
+fn write_the_fixture() {
+    let path = format!(
+        "{}/../../../tests/fixtures/edit/own-font-subset.pdf",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    std::fs::create_dir_all(std::path::Path::new(&path).parent().unwrap()).unwrap();
+    std::fs::write(path, subset_page("Meeting Intelligence quarterly")).unwrap();
 }

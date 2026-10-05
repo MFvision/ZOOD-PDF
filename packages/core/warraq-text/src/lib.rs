@@ -4,7 +4,11 @@
 //! Everything here is pure Rust and compiles to native and wasm32 identically.
 pub mod bidi;
 pub mod extract;
+pub mod fontfile;
 pub mod glyphshape;
+/// Installed fonts are a native host's to read; a browser has none.
+#[cfg(not(target_arch = "wasm32"))]
+pub mod installed;
 pub mod normalize;
 pub mod paragraph;
 pub mod search;
