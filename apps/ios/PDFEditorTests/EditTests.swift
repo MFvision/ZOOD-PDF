@@ -73,7 +73,7 @@ final class EditTests: XCTestCase {
 
     /// The bytes as text, to look for a font's name in them.
     private func latin(_ data: Data) -> String {
-        String(decoding: data, as: Unicode.Latin1.self)
+        String(data: data, encoding: .isoLatin1) ?? ""
     }
 
     func testAutomaticDrawsNewTextInTheDocumentsOwnFont() async throws {
