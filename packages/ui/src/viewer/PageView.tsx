@@ -8,6 +8,7 @@ import { ImageLayer } from '../edit/ImageLayer';
 import { LinkLayer } from '../edit/LinkLayer';
 import { pageScale } from '../edit/geometry';
 import { useT } from '../i18n/useT';
+import { ReadAloudHighlight } from '../speech/ReadAloudHighlight';
 import { useAppState } from '../state/AppContext';
 import { TextOverlay } from './TextOverlay';
 import { useRenderedCanvas } from './useRenderedCanvas';
@@ -61,6 +62,7 @@ export function PageView({ document, index, size, zoom, dpr, near, visible, onVi
       style={{ inlineSize: size[0] * cssScale, blockSize: size[1] * cssScale }}
     >
       <canvas ref={canvasRef} className="page-canvas" />
+      {isNear && <ReadAloudHighlight index={index} scale={cssScale} />}
       {isNear && <TextOverlay document={document} index={index} scale={cssScale} revision={pageRevision} />}
       {isNear && edit.active && kind === 'text' && <EditLayer document={document} index={index} scale={cssScale} />}
       {isNear && edit.active && kind === 'images' && <ImageLayer document={document} index={index} scale={cssScale} />}

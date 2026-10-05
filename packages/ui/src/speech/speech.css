@@ -1,0 +1,66 @@
+/* Read aloud: the bar under the toolbar, and the sentence marked on the page. */
+.readaloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  min-block-size: 38px;
+  padding-block: var(--space-2);
+  padding-inline: var(--space-5);
+  background: var(--toolbar-background);
+  backdrop-filter: var(--blur-regular);
+  border-block-end: 0.5px solid var(--separator);
+}
+
+.readaloud-scope {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.readaloud-field {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: 12px;
+  color: var(--secondary-label);
+}
+
+.readaloud-field .select {
+  block-size: var(--control-h-small);
+  max-inline-size: 180px;
+}
+
+.readaloud-status {
+  flex: 1;
+  min-inline-size: 0;
+  font-size: 12px;
+  color: var(--secondary-label);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Warraq's own view: inside the page, under the text layer. */
+.read-aloud-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  direction: ltr;
+}
+
+.read-aloud-layer span,
+.read-aloud-embed span {
+  position: absolute;
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+/* EmbedPDF's view: over the viewer's host, in its physical coordinates. */
+.read-aloud-embed {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  direction: ltr;
+}
+

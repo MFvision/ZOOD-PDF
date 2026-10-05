@@ -11,13 +11,18 @@ export type TaskKind = 'summarize' | 'ask' | 'translate' | 'fixOcr' | 'fill' | '
 /**
  * How much document text one request may carry, in characters. Claude reads
  * a whole report (about 150,000 characters); a model on a laptop does well
- * with far less. A translation comes back about as long as it went, and so
- * do an OCR correction and a page's tables, so those are kept small enough
- * for their reply to fit.
+ * with far less; the on-device model has a window of 4,096 tokens, which
+ * Arabic fills at about 1.5 characters a token, so after its rules and its
+ * reply about 4,000 characters of the document fit — a question about a
+ * longer document goes with the passages that answer it (`device/retrieval.ts`).
+ * A translation comes back about as long as it went, and so do an OCR
+ * correction and a page's tables, so those are kept small enough for their
+ * reply to fit.
  */
 export function budgetFor(provider: ProviderId, task: TaskKind): number {
   const echoes = task === 'translate' || task === 'fixOcr' || task === 'tables';
   if (provider === 'claude') return echoes ? 20_000 : 150_000;
+  if (provider === 'device') return echoes ? 1_500 : 4_000;
   return echoes ? 6_000 : 16_000;
 }
 

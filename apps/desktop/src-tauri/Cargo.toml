@@ -60,6 +60,19 @@ warraq-text = { path = "../../../packages/core/warraq-text" }
 warraq-sign = { path = "../../../packages/core/warraq-sign" }
 cryptoki = "0.12"
 ureq = { version = "3", default-features = false, features = ["rustls"] }
+# The on-device model (src/ai.rs): llama.cpp through its Rust binding
+# (llama-cpp-2, MIT OR Apache-2.0; llama.cpp and ggml themselves MIT), built
+# from source by cmake. No OpenMP: ggml's own thread pool does the work, and
+# Apple's clang ships without libomp. Metal on the Mac is below.
+llama-cpp-2 = { version = "0.1.157", default-features = false }
+# The downloaded model's checksum (sha2, MIT OR Apache-2.0; already in the
+# core's graph) and its size shown in the interface.
+sha2 = "0.10"
+hex = "0.4"
+# The model's tokens decoded to text as they come (encoding_rs, Apache-2.0 OR
+# MIT, already in the graph through llama-cpp-2), and the machine's memory
+# size (libc on macOS and Linux; windows-sys, MIT OR Apache-2.0, on Windows).
+encoding_rs = "0.8"
 
 # Print (src/print.rs): PDFKit prints the PDF itself in the system's print
 # sheet. The same objc2 family Tauri already links (MIT OR Apache-2.0 OR Zlib).
@@ -69,7 +82,13 @@ ureq = { version = "3", default-features = false, features = ["rustls"] }
 # Windows, the Secret Service on Linux (which needs libdbus to build) — never
 # in a file (keyring, MIT OR Apache-2.0). Without a backend feature keyring
 # would keep it in memory only, so each platform names its own.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [target.'cfg(target_os = "macos")'.dependencies]
+# The on-device model runs on the GPU through Metal on a Mac; on Windows it
+# runs on the CPU (AVX2 where the machine has it, chosen by ggml at run time).
+llama-cpp-2 = { version = "0.1.157", default-features = false, features = ["metal"] }
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSData", "NSDictionary", "NSString", "NSURL"] }
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSPrintInfo", "NSPrintOperation", "NSResponder", "NSView", "NSWindow"] }
@@ -78,6 +97,7 @@ keyring = { version = "3.6", features = ["apple-native"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 keyring = { version = "3.6", features = ["windows-native"] }
+windows-sys = { version = "0.59", features = ["Win32_System_SystemInformation"] }
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 keyring = { version = "3.6", features = ["sync-secret-service", "crypto-rust"] }

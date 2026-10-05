@@ -1,7 +1,11 @@
 /**
- * The two places Warraq can ask a model about a document — the brief's "AI
- * features are bring-your-own-key or local":
+ * The three places Warraq can ask a model about a document — the brief's
+ * "local-first; AI features are bring-your-own-key or local":
  *
+ * - This device (the default): a small model run by llama.cpp inside the app
+ *   itself — in the desktop host, or in WebAssembly in the page (`device/`).
+ *   Nothing leaves the device, no key, no server; the model is downloaded
+ *   once, on a click.
  * - Claude, with the person's own Anthropic key, straight from this device to
  *   api.anthropic.com. There is no Warraq server in between and no key ships
  *   with the app.
@@ -13,7 +17,11 @@
  * one header Anthropic reads it from.
  */
 
-export type ProviderId = 'claude' | 'local';
+export type ProviderId = 'device' | 'claude' | 'local';
+export const PROVIDERS: readonly ProviderId[] = ['device', 'claude', 'local'];
+
+/** Room kept for the on-device model's reply, in tokens, inside its 4k window. */
+export const DEVICE_REPLY_TOKENS = 1024;
 
 /** The Messages API (`POST /v1/messages`, version 2023-06-01). */
 export const CLAUDE_ENDPOINT = 'https://api.anthropic.com/v1/messages';
@@ -336,7 +344,11 @@ export type Failure =
   | { kind: 'localDown'; url: string }
   | { kind: 'blocked'; url: string }
   | { kind: 'empty' }
-  | { kind: 'cancelled' };
+  | { kind: 'cancelled' }
+  /** The on-device model is not downloaded yet. */
+  | { kind: 'modelMissing' }
+  /** The on-device engine failed, in its own words. */
+  | { kind: 'device'; message: string };
 
 /** An HTTP error from `provider`, with its message when it gave one. */
 export function httpFailure(

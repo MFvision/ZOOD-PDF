@@ -23,6 +23,7 @@
     "@tesseract.js-data/eng": "1.0.0",
     "@tesseract.js-data/fas": "1.0.0",
     "@tesseract.js-data/urd": "1.0.0",
+    "@wllama/wllama": "3.6.1",
     "fflate": "^0.8.3",
     "lucide-react": "^1.46.0",
     "react": "^19.3.0",

@@ -12,12 +12,14 @@ use serde::Serialize;
 use tauri::{AppHandle, DragDropEvent, Emitter, Manager, Runtime, State, WindowEvent};
 use tauri_plugin_fs::FsExt;
 
+pub mod ai;
 pub mod batch;
 pub mod cloud;
 pub mod core_bridge;
 pub mod library;
 pub mod menu;
 pub mod print;
+pub mod profile;
 pub mod signing;
 
 /// Event sent to the webview when files are dropped on the window.
@@ -198,6 +200,10 @@ pub fn run() {
         .manage(cloud::CloudState::default())
         // The Library's walks under way, and its folder watcher.
         .manage(library::LibraryState::default())
+        // The on-device model: its downloads and its engine thread; and the
+        // person's details for filling forms, in the system's credential store.
+        .manage(ai::AiState::default())
+        .manage(profile::ProfileState::default())
         .on_menu_event(|app, event| menu::forward(app, event.id().as_ref()))
         // Points warraq-render at the bundled PDFium and starts the core thread
         // before the window can invoke anything (see `core_bridge`).
@@ -274,6 +280,17 @@ pub fn run() {
             library::library_index_delete,
             library::library_watch_start,
             library::library_watch_stop,
+            ai::ai_model_status,
+            ai::ai_model_download,
+            ai::ai_model_cancel_download,
+            ai::ai_model_delete,
+            ai::ai_runtime,
+            ai::ai_memory_bytes,
+            ai::ai_generate,
+            ai::ai_cancel,
+            profile::profile_get,
+            profile::profile_set,
+            profile::profile_delete,
         ])
         .on_window_event(|window, event| {
             // Forward OS file drops to the webview, after allowing the dropped

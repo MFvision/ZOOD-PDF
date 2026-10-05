@@ -743,6 +743,7 @@
 }
 
 .embed-host {
+  position: relative;
   inline-size: 100%;
   block-size: 100%;
 }

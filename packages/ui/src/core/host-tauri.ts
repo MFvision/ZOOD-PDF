@@ -47,6 +47,24 @@ function invoke(cmd: string, args?: unknown, options?: InvokeOptions): Promise<u
 }
 
 /**
+ * A command of the desktop host, for the parts of the interface that have
+ * commands of their own there (the on-device model, the person's details).
+ * Rejects outside Tauri; callers ask `isTauriHost()` first.
+ */
+export function invokeHost(cmd: string, args?: unknown): Promise<unknown> {
+  return invoke(cmd, args);
+}
+
+/** Subscribes to a host event by name; returns the unsubscribe. A no-op in a browser. */
+export function onHostEvent<T>(event: string, handle: (payload: T) => void): () => void {
+  const host = internals();
+  if (!host) return () => {};
+  return listen(host, event, ((received: { payload?: T }) => {
+    if (received?.payload !== undefined) handle(received.payload);
+  }) as (payload: never) => void);
+}
+
+/**
  * Tells the desktop host's `WARRAQ_DEBUG` log what happened in the webview
  * (the host prints nothing unless that is set). A no-op in a browser; never
  * fails the caller.

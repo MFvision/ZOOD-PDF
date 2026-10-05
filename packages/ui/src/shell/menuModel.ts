@@ -2,6 +2,7 @@ import { useCloud } from '../cloud/CloudContext';
 import { isTauriHost } from '../core/host-tauri';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import type { ThemeMode } from '../state/preferences';
+import { closeBar, openBar, readAloudState, useReadAloud } from '../speech/readAloud';
 import { useT } from '../i18n/useT';
 import { TOOLS } from '../tools/tools';
 import { useMarkupBar } from './markupBar';
@@ -124,6 +125,8 @@ export function useMenuModel(): MenuModel[] {
   const typing = useTyping();
   // EmbedPDF's own bar, shown from here too: on a phone the toolbar has no room for its button.
   const markup = useMarkupBar();
+  // Subscribed so the View menu's Read aloud check follows the bar.
+  useReadAloud();
   // A narrow window shows the inspector as a sheet only for a chosen tool
   // (panes.css): with none, "Tools pane" would change a check and show nothing.
   const noSheet = useInspectorHidden();
@@ -263,6 +266,14 @@ export function useMenuModel(): MenuModel[] {
           checked: services.embedShowing && markup.on,
           disabled: !hasDocument || !services.embedShowing,
           onSelect: () => markup.set(!markup.on),
+        },
+        {
+          id: 'read-aloud',
+          label: t('readAloud.label'),
+          role: 'menuitemcheckbox',
+          checked: hasDocument && readAloudState().open,
+          disabled: !hasDocument || organizing,
+          onSelect: () => (readAloudState().open ? closeBar() : openBar()),
         },
         { ...themeItem('system', `${t('theme.label')}: ${t('theme.system')}`), separatorBefore: true },
         themeItem('light', `${t('theme.label')}: ${t('theme.light')}`),

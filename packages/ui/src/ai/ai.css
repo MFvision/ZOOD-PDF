@@ -254,3 +254,40 @@
   white-space: nowrap;
   border: 0.5px solid var(--separator);
 }
+
+/* The on-device model: its facts, the download's progress. */
+.ai-device .ai-facts dd {
+  overflow-wrap: anywhere;
+}
+
+.ai-progress {
+  inline-size: 100%;
+  block-size: 6px;
+  accent-color: var(--accent);
+}
+
+/* The settings sheet's AI and reading sections, under the language and appearance rows. */
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-block: var(--space-4);
+  border-block-start: 0.5px solid var(--separator);
+}
+
+.settings-section h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* The person's details: nine short fields, two to a row where there is room. */
+.profile-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.profile-fields .field input {
+  inline-size: 100%;
+}
