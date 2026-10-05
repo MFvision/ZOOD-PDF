@@ -1878,6 +1878,100 @@ once) or My documents and the chosen folder.
 
 **How it is proven.** RESULTS_PLACEHOLDER
 
+## Edited text keeps the font it was set in (2026-10-06)
+
+**What was wrong.** A replaced paragraph came back in Amiri whatever it had been set in: the
+font menu's first face was drawn for every edit.
+
+**What happens now, on the web and the desktop app.** The font control starts on **Automatic**,
+shows what that comes to for the open paragraph, and an edit is drawn in the first of these that
+works — the notice says which was used and why, and when the text had to be made smaller to fit:
+
+| | Where the font comes from | When it applies |
+|---|---|---|
+| A | **The document's own font**, by its own character codes: the same font resource, size and colour; nothing is embedded | Left-to-right text (Latin, Greek, Cyrillic, digits, punctuation) whose every character the document's font already has a code for — through its `/ToUnicode`, or a simple font's `WinAnsi`/standard encoding — with widths the file states. **Never Arabic**: a subset maps several joining forms to one letter and cannot say which goes where, so Arabic is always reshaped by the app's own shaper. One missing letter and the whole paragraph goes to the next step: two faces are never mixed in a paragraph |
+| B | **A font installed on the computer** (desktop app only), found by the family's name among the system's and the person's font folders — no network | Same family (by name), same slant, a weight within 100 of the original's, TrueType outlines, licence bits (`OS/2.fsType`) that allow embedding a subset, and a glyph for every character of the text. A `.ttc` collection gives up the one face |
+| C | **The open font library** (Fontsource's files on jsDelivr), downloaded once and kept on the device | Only after the person answers **yes** to a question asked the first time it would help; until then, and after a no, nothing is fetched. Only the font's **name** is in the two requests (`api.fontsource.org/v1/fonts/{id}`, `cdn.jsdelivr.net/fontsource/fonts/{id}@latest/{subset}-{weight}-{style}.ttf`) — never the document. Only families under OFL, Apache or the Ubuntu licence; the file is capped at 5 MB and checked by the core (`font.check`: a font, of that family, embeddable, with the glyphs) before it is used. Settings → Fonts has the switch, the size of what was downloaded and a control that deletes it |
+| D | **The closest face the app carries** | Always: Arabic → Amiri (serif, Naskh or unknown) or Cairo (sans); Latin → Inter (sans or unknown) or Amiri (serif) |
+
+Choosing a face in the control (Amiri, Cairo, Inter) overrides all of it. A font the app embeds is
+now named for what it is (`WARRAQ+Inter`, `WARRAQ+Tajawal`), so the file says truthfully what its
+text is set in. The core reports each paragraph's face — family, weight, slant, serif or sans —
+from the `/BaseFont` name first and the font descriptor second, with the family cut to letters,
+digits, spaces and hyphens (≤ 64 characters) before any host sees it.
+
+**How it is proven** (2026-10-06, on this Mac; exact counts):
+
+* Core, `cargo test -p warraq-text -p warraq-pdf -p warraq-core --features warraq-core/ffi`: all
+  green — `warraq-pdf` 270 unit tests (10 for name parsing: subset tags, every weight spelling,
+  italics, Windows' and foundries' names, Arabic names, hostile names; the own-font codec; subset
+  naming), `warraq-text` 56 (font files: family/weight/slant, a collection's face taken out and
+  shaped identically, embedding bits, cut and hostile files; installed fonts, including **this
+  Mac's own Arial, Times New Roman Italic and Helvetica — out of its `.ttc`**), `warraq-core`
+  `edit_own_font` 6 (an embedded subset edited with letters it has → the same resource at 14 pt in
+  its blue, no font object added, read back exactly; a missing letter → `E_OWN_FONT`, nothing
+  changed, then a font of the host's; a standard font reused by its encoding; shrinking; Arabic
+  never), `tool_font` 3, `edit_columns` 3, `edit_readback` 2. `cargo fmt` and
+  `cargo clippy --all-targets -D warnings` clean.
+* Interface logic, `pnpm --filter @warraq/ui test`: 706 passed, 2 skipped (one of the skipped is
+  the opt-in network test). `fontMatch.test.ts` (the order A→B→C→D with stubbed hosts, the closest
+  face), `fontLibrary.test.ts` 14 with the network stubbed (nothing fetched before yes; no and
+  "not now"; the two addresses and nothing else in them; nearest weight; licence; what is not a
+  font; the cache; delete). The opt-in test `WARRAQ_NET_TESTS=1` was run once: it really
+  downloaded Montserrat SemiBold and the WASM core accepted it (15 of 15).
+* Through the interface, `apps/web/e2e/edit-font.spec.ts`: 8 of 8 on the production build with a
+  freshly built WASM core — Automatic and what it resolves to; the own font reused (the saved
+  file has no new font object and the replacement is `/FW1 14 Tf` in the line's colour); a
+  missing letter → Inter, said in the notice; a chosen face overriding; Arabic reshaped, never by
+  the document's codes; the Arabic interface; **the open library** with its two hosts answered by
+  the test (the question first and nothing fetched before the answer; two GET requests carrying
+  only `tajawal`; `/BaseFont /WARRAQ+Tajawal` in the saved file and no Amiri; the next edit
+  asking no one; Settings showing the size, deleting, switching off); and no remembered.
+  The ten other specs that edit a paragraph were run too: 54 of 59 passed in one parallel run;
+  the five that did not were Chrome dying under load on this 8 GB machine ("Target page … has been
+  closed") or waiting on the new question — the latter fixed by making "answered no" the default
+  for every browser test but the question's own; the four load failures passed when run alone.
+* Desktop host: `cargo check --lib --tests` of `apps/desktop/src-tauri` passes on macOS, and
+  `warraq-text` type-checks for `x86_64-pc-windows-msvc`. The policy tests
+  (`apps/web/src/csp.test.ts`, 19 of 19) pin the two new hosts in both policies, jsDelivr by the
+  fonts' folder only.
+
+**Not matched, and why.**
+
+* **Commercial fonts that are not installed** (Arial on a machine without it, Helvetica Neue, DIN
+  Next, Frutiger…): no open library carries them. The closest bundled face is used and the notice
+  says so. Families known to be closed are not even asked about.
+* **A weight or an italic the source lacks**: an installed or library face more than 100 away in
+  weight, or with the other slant, is passed over rather than drawn wrong.
+* **The bundled faces are drawn at their one weight**: Amiri Regular, and Cairo and Inter at their
+  variable fonts' default — a bold paragraph that falls to D comes back regular. Variable fonts
+  are never instanced; an installed variable font counts at its default weight only.
+* **OpenType fonts with PostScript outlines (`.otf`, CFF)** are passed over in B and C: the
+  embedder writes TrueType outlines only.
+* **Mixed-script paragraphs**: a library file holds one script's letters; a paragraph that needs
+  Arabic and Latin from a family whose Arabic file lacks the Latin (or the reverse) falls to D
+  rather than draw empty boxes.
+* **A does not apply** to Arabic and other shaped scripts, to Type 3 fonts, vertical writing,
+  fonts with a CMap of the file's own, fonts whose widths the file does not state, text inside
+  form XObjects, or a letter the document never used. Kerning and ligatures of the original are
+  not reproduced: letters are set by their plain advances. A paragraph drawn with a stretched or
+  condensed text matrix is redrawn unstretched.
+* **A font the app embedded** names its family, so a later edit of that paragraph matches the
+  embedded family, not the one the paragraph had before the first edit.
+* **The browser extension** does not reach the library (its policy names no outside host): A and
+  D only. **A browser has no installed fonts** to ask (the Local Font Access API is not used).
+* The desktop keeps downloaded fonts in the webview's Cache Storage (inside the app's data
+  folder), the same code as the browser — not in a folder of the host's own.
+
+**Unproven.** Nothing of this has run on **Windows**: the font folders there
+(`%WINDIR%\Fonts`, `%LOCALAPPDATA%\Microsoft\Windows\Fonts`) are read by code that type-checks
+for the Windows target and is exercised on macOS only. The desktop app itself was type-checked,
+not launched. **iPhone and iPad are unchanged** — still the three faces in the menu, Amiri first:
+the Swift for Automatic (A and D) is written and type-checks against the simulator SDK with its
+tests, on the branch `…-ios`, but could not be built or run here (2.4 GB of disk left; the
+XCFramework and the app's build need several), so it is not in this branch. B and C on iOS
+(CoreText, a download store) are not started.
+
 ## Next (in order)
 1. **Run the Windows and Linux builds on those systems**: print by pages, the drop targets and the NSIS installer have been built for them in code only — nothing of them has run here.
 2. **Phone apps**: iPhone and iPad are the native SwiftUI app in `apps/ios` (its foundation above; the other parts in progress). Android is not started: it would need the Android SDK, NDK and JDK installed here (Decisions, below). The installable web app covers phones meanwhile.
