@@ -22,7 +22,11 @@ fn peak_rss_mib() -> f64 {
         // SAFETY: getrusage fills the struct handed to it.
         if unsafe { libc::getrusage(libc::RUSAGE_SELF, &mut usage) } == 0 {
             // macOS reports bytes; Linux kilobytes.
-            let bytes = if cfg!(target_os = "macos") { usage.ru_maxrss as f64 } else { usage.ru_maxrss as f64 * 1024.0 };
+            let bytes = if cfg!(target_os = "macos") {
+                usage.ru_maxrss as f64
+            } else {
+                usage.ru_maxrss as f64 * 1024.0
+            };
             return bytes / (1024.0 * 1024.0);
         }
     }

@@ -65,7 +65,8 @@ pub fn checked(json: &str) -> Result<&str, String> {
     if json.len() > MAX_BYTES {
         return Err(format!("E_ARGS: a profile is at most {MAX_BYTES} bytes"));
     }
-    let value: serde_json::Value = serde_json::from_str(json).map_err(|e| format!("E_ARGS: not JSON: {e}"))?;
+    let value: serde_json::Value =
+        serde_json::from_str(json).map_err(|e| format!("E_ARGS: not JSON: {e}"))?;
     if !value.is_object() {
         return Err("E_ARGS: a profile is a JSON object".to_string());
     }

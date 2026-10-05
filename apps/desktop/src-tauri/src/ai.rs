@@ -142,7 +142,12 @@ pub fn ai_model_status<R: Runtime>(
     id: String,
 ) -> Result<ModelStatus, String> {
     let spec = model_spec(&id)?;
-    if let Some(download) = state.downloads.lock().unwrap_or_else(|e| e.into_inner()).get(&id) {
+    if let Some(download) = state
+        .downloads
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(&id)
+    {
         return Ok(ModelStatus {
             state: "downloading",
             bytes: 0,
@@ -169,14 +174,26 @@ pub fn ai_model_status<R: Runtime>(
 }
 
 #[tauri::command]
-pub fn ai_model_delete<R: Runtime>(app: AppHandle<R>, state: State<'_, AiState>, id: String) -> Result<(), String> {
+pub fn ai_model_delete<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AiState>,
+    id: String,
+) -> Result<(), String> {
     let spec = model_spec(&id)?;
     // The loaded copy goes too: the file is unlinked, and a model held open
     // would keep answering from a file the person believes gone. Dropping
     // the sender ends the engine thread.
-    state.engine.lock().unwrap_or_else(|e| e.into_inner()).take();
+    state
+        .engine
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .take();
     let path = models_dir(&app)?.join(&spec.file);
-    for file in [path.clone(), path.with_extension("gguf.sha256"), path.with_extension("gguf.part")] {
+    for file in [
+        path.clone(),
+        path.with_extension("gguf.sha256"),
+        path.with_extension("gguf.part"),
+    ] {
         match std::fs::remove_file(&file) {
             Ok(()) => {}
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
@@ -280,7 +297,9 @@ fn open_download(url: &str) -> Result<ureq::http::Response<ureq::Body>, String> 
     let agent = agent();
     let mut url = url.to_string();
     for _ in 0..=REDIRECTS {
-        let uri: ureq::http::Uri = url.parse().map_err(|_| format!("E_NET: bad address {url}"))?;
+        let uri: ureq::http::Uri = url
+            .parse()
+            .map_err(|_| format!("E_NET: bad address {url}"))?;
         let host = uri.host().unwrap_or("");
         if uri.scheme_str() != Some("https") || !allowed_host(host) {
             return Err(format!("E_NET: {host} is not one of the model's hosts"));
@@ -347,9 +366,7 @@ fn stream_download<R: Runtime>(
         if cancel.load(Ordering::Relaxed) {
             return Err("E_CANCELLED: the download was stopped".to_string());
         }
-        let n = body
-            .read(&mut buffer)
-            .map_err(|e| format!("E_NET: {e}"))?;
+        let n = body.read(&mut buffer).map_err(|e| format!("E_NET: {e}"))?;
         if n == 0 {
             break;
         }
@@ -418,7 +435,11 @@ pub async fn ai_model_download<R: Runtime>(
         }
         downloads.insert(
             id.clone(),
-            Downloading { received: 0, total: spec.bytes, cancel: cancel.clone() },
+            Downloading {
+                received: 0,
+                total: spec.bytes,
+                cancel: cancel.clone(),
+            },
         );
     }
     let handle = app.clone();
@@ -429,13 +450,22 @@ pub async fn ai_model_download<R: Runtime>(
     })
     .await
     .map_err(|e| format!("E_IO: {e}"))?;
-    state.downloads.lock().unwrap_or_else(|e| e.into_inner()).remove(&id);
+    state
+        .downloads
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .remove(&id);
     result
 }
 
 #[tauri::command]
 pub fn ai_model_cancel_download(state: State<'_, AiState>, id: String) {
-    if let Some(download) = state.downloads.lock().unwrap_or_else(|e| e.into_inner()).get(&id) {
+    if let Some(download) = state
+        .downloads
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(&id)
+    {
         download.cancel.store(true, Ordering::Relaxed);
     }
 }
@@ -498,8 +528,13 @@ impl Engine {
         } else {
             LlamaModelParams::default()
         };
-        let model = LlamaModel::load_from_file(&backend, path, &params).map_err(|e| format!("E_AI: cannot load the model: {e}"))?;
-        Ok(Self { backend, model, path: path.to_path_buf() })
+        let model = LlamaModel::load_from_file(&backend, path, &params)
+            .map_err(|e| format!("E_AI: cannot load the model: {e}"))?;
+        Ok(Self {
+            backend,
+            model,
+            path: path.to_path_buf(),
+        })
     }
 
     pub fn path(&self) -> &Path {
@@ -516,14 +551,23 @@ impl Engine {
     ) -> Result<Generated, String> {
         let started = Instant::now();
         let model = &self.model;
-        let template = model.chat_template(None).map_err(|e| format!("E_AI: the model has no chat template: {e}"))?;
+        let template = model
+            .chat_template(None)
+            .map_err(|e| format!("E_AI: the model has no chat template: {e}"))?;
         let chat: Vec<LlamaChatMessage> = request
             .messages
             .iter()
-            .map(|m| LlamaChatMessage::new(m.role.clone(), m.content.clone()).map_err(|e| format!("E_AI: {e}")))
+            .map(|m| {
+                LlamaChatMessage::new(m.role.clone(), m.content.clone())
+                    .map_err(|e| format!("E_AI: {e}"))
+            })
             .collect::<Result<_, _>>()?;
-        let prompt = model.apply_chat_template(&template, &chat, true).map_err(|e| format!("E_AI: {e}"))?;
-        let tokens = model.str_to_token(&prompt, AddBos::Always).map_err(|e| format!("E_AI: {e}"))?;
+        let prompt = model
+            .apply_chat_template(&template, &chat, true)
+            .map_err(|e| format!("E_AI: {e}"))?;
+        let tokens = model
+            .str_to_token(&prompt, AddBos::Always)
+            .map_err(|e| format!("E_AI: {e}"))?;
         let max_tokens = request.max_tokens.clamp(1, CONTEXT_TOKENS / 2);
         if tokens.len() as u32 + max_tokens > CONTEXT_TOKENS {
             return Err(format!(
@@ -532,29 +576,42 @@ impl Engine {
                 CONTEXT_TOKENS - max_tokens
             ));
         }
-        let threads = std::thread::available_parallelism().map(|n| n.get().min(8) as i32).unwrap_or(4);
+        let threads = std::thread::available_parallelism()
+            .map(|n| n.get().min(8) as i32)
+            .unwrap_or(4);
         let params = LlamaContextParams::default()
             .with_n_ctx(NonZeroU32::new(CONTEXT_TOKENS))
             .with_n_batch(BATCH as u32)
             .with_n_threads(threads)
             .with_n_threads_batch(threads);
-        let mut ctx = model.new_context(&self.backend, params).map_err(|e| format!("E_AI: {e}"))?;
+        let mut ctx = model
+            .new_context(&self.backend, params)
+            .map_err(|e| format!("E_AI: {e}"))?;
 
         // The prompt, in batches, with logits asked of its last token only.
         let mut batch = LlamaBatch::new(BATCH, 1);
         let last = tokens.len() - 1;
-        for (start, chunk) in tokens.chunks(BATCH).enumerate().map(|(i, c)| (i * BATCH, c)) {
+        for (start, chunk) in tokens
+            .chunks(BATCH)
+            .enumerate()
+            .map(|(i, c)| (i * BATCH, c))
+        {
             batch.clear();
             for (offset, token) in chunk.iter().enumerate() {
                 let pos = start + offset;
-                batch.add(*token, pos as i32, &[0], pos == last).map_err(|e| format!("E_AI: {e}"))?;
+                batch
+                    .add(*token, pos as i32, &[0], pos == last)
+                    .map_err(|e| format!("E_AI: {e}"))?;
             }
             ctx.decode(&mut batch).map_err(|e| format!("E_AI: {e}"))?;
         }
 
         let mut samplers = Vec::new();
         if let Some(grammar) = &request.grammar {
-            samplers.push(LlamaSampler::grammar(model, grammar, "root").map_err(|e| format!("E_AI: bad grammar: {e}"))?);
+            samplers.push(
+                LlamaSampler::grammar(model, grammar, "root")
+                    .map_err(|e| format!("E_AI: bad grammar: {e}"))?,
+            );
             samplers.push(LlamaSampler::greedy());
         } else {
             samplers.push(LlamaSampler::top_k(40));
@@ -577,7 +634,9 @@ impl Engine {
             if model.is_eog_token(token) {
                 break;
             }
-            let piece = model.token_to_piece(token, &mut decoder, false, None).map_err(|e| format!("E_AI: {e}"))?;
+            let piece = model
+                .token_to_piece(token, &mut decoder, false, None)
+                .map_err(|e| format!("E_AI: {e}"))?;
             if !piece.is_empty() {
                 text.push_str(&piece);
                 emit(&piece);
@@ -588,7 +647,9 @@ impl Engine {
                 break;
             }
             batch.clear();
-            batch.add(token, pos, &[0], true).map_err(|e| format!("E_AI: {e}"))?;
+            batch
+                .add(token, pos, &[0], true)
+                .map_err(|e| format!("E_AI: {e}"))?;
             ctx.decode(&mut batch).map_err(|e| format!("E_AI: {e}"))?;
             pos += 1;
         }
@@ -625,7 +686,9 @@ fn engine_thread(jobs: mpsc::Receiver<Job>) {
                 }
             }
         }
-        let Some(loaded) = engine.as_ref() else { continue };
+        let Some(loaded) = engine.as_ref() else {
+            continue;
+        };
         let result = loaded.generate(&job.request, &job.cancel, |piece| (job.token)(piece));
         let _ = job.reply.send(result);
     }
@@ -670,21 +733,42 @@ pub async fn ai_generate<R: Runtime>(
         path,
         cancel,
         token: Box::new(move |piece| {
-            let _ = handle.emit(TOKEN_EVENT, TokenEvent { id: event_id.clone(), text: piece.to_string() });
+            let _ = handle.emit(
+                TOKEN_EVENT,
+                TokenEvent {
+                    id: event_id.clone(),
+                    text: piece.to_string(),
+                },
+            );
         }),
         reply,
     };
-    sender.send(job).map_err(|_| "E_AI: the engine has stopped".to_string())?;
-    let result = tauri::async_runtime::spawn_blocking(move || answer.recv().unwrap_or_else(|_| Err("E_AI: the engine has stopped".to_string())))
-        .await
-        .map_err(|e| format!("E_AI: {e}"))?;
-    state.requests.lock().unwrap_or_else(|e| e.into_inner()).remove(&id);
+    sender
+        .send(job)
+        .map_err(|_| "E_AI: the engine has stopped".to_string())?;
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        answer
+            .recv()
+            .unwrap_or_else(|_| Err("E_AI: the engine has stopped".to_string()))
+    })
+    .await
+    .map_err(|e| format!("E_AI: {e}"))?;
+    state
+        .requests
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .remove(&id);
     result
 }
 
 #[tauri::command]
 pub fn ai_cancel(state: State<'_, AiState>, id: String) {
-    if let Some(flag) = state.requests.lock().unwrap_or_else(|e| e.into_inner()).get(&id) {
+    if let Some(flag) = state
+        .requests
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(&id)
+    {
         flag.store(true, Ordering::Relaxed);
     }
 }
@@ -750,12 +834,19 @@ mod tests {
         let request = GenerateRequest {
             id: "t".into(),
             model: "t".into(),
-            messages: vec![Message { role: "user".into(), content: "Say hello in one word.".into() }],
+            messages: vec![Message {
+                role: "user".into(),
+                content: "Say hello in one word.".into(),
+            }],
             grammar: None,
             max_tokens: 16,
         };
         let mut pieces = Vec::new();
-        let done = engine.generate(&request, &AtomicBool::new(false), |p| pieces.push(p.to_string())).unwrap();
+        let done = engine
+            .generate(&request, &AtomicBool::new(false), |p| {
+                pieces.push(p.to_string())
+            })
+            .unwrap();
         assert!(!done.text.trim().is_empty());
         assert_eq!(pieces.concat(), done.text);
         let stopped = engine.generate(&request, &AtomicBool::new(true), |_| {});

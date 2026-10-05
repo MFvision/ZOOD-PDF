@@ -20,9 +20,12 @@ export interface StubRecord {
 }
 
 export async function installDeviceStub(page: Page, answer: (messages: { role: string; content: string }[]) => string): Promise<void> {
+  // The answer is worked out here, in the test, and asked for from the page:
+  // nothing is built from source text in the page (no eval, as in the app).
+  await page.exposeFunction('__deviceStubAnswer', answer);
   await page.addInitScript(
-    ({ source }) => {
-      const answerFor = new Function('messages', `return (${source})(messages);`) as (messages: { role: string; content: string }[]) => string;
+    () => {
+      const answerFor = (globalThis as unknown as { __deviceStubAnswer: (messages: { role: string; content: string }[]) => Promise<string> }).__deviceStubAnswer;
       const record: StubRecord = { downloads: 0, removed: 0, ready: false, requests: [], aborted: 0 };
       (globalThis as unknown as { __deviceStub: StubRecord }).__deviceStub = record;
       (globalThis as unknown as { __WARRAQ_DEVICE_ENGINE__: unknown }).__WARRAQ_DEVICE_ENGINE__ = (model: { bytes: number }) => ({
@@ -51,7 +54,7 @@ export async function installDeviceStub(page: Page, answer: (messages: { role: s
           options: { grammar?: string; maxTokens: number; onToken: (t: string) => void; signal: AbortSignal },
         ) => {
           record.requests.push({ messages, grammar: options.grammar ?? null, maxTokens: options.maxTokens });
-          const text = answerFor(messages);
+          const text = await answerFor(messages);
           let out = '';
           for (const word of text.split(/(?<=\s)/)) {
             await new Promise((resolve) => setTimeout(resolve, 15));
@@ -63,7 +66,6 @@ export async function installDeviceStub(page: Page, answer: (messages: { role: s
         },
       });
     },
-    { source: answer.toString() },
   );
 }
 

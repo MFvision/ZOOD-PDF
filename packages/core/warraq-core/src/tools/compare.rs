@@ -1206,7 +1206,8 @@ mod tests {
     #[test]
     #[ignore]
     fn make_compare_fixture() {
-        let mut doc = Document::open(corpus("chrome-notonaskh-justified-3pages.pdf"), None).unwrap();
+        let mut doc =
+            Document::open(corpus("chrome-notonaskh-justified-3pages.pdf"), None).unwrap();
         let font = std::fs::read(format!(
             "{}/../../../tests/fonts/Amiri-Regular.ttf",
             env!("CARGO_MANIFEST_DIR")
@@ -1214,9 +1215,16 @@ mod tests {
         .unwrap();
         doc.add_text(1, 300.0, 760.0, 14.0, "سطر جديد للمقارنة", &font)
             .unwrap();
-        let folder = format!("{}/../../../tests/fixtures/compare", env!("CARGO_MANIFEST_DIR"));
+        let folder = format!(
+            "{}/../../../tests/fixtures/compare",
+            env!("CARGO_MANIFEST_DIR")
+        );
         std::fs::create_dir_all(&folder).unwrap();
-        std::fs::write(format!("{folder}/notonaskh-3pages-line-added.pdf"), doc.save().unwrap()).unwrap();
+        std::fs::write(
+            format!("{folder}/notonaskh-3pages-line-added.pdf"),
+            doc.save().unwrap(),
+        )
+        .unwrap();
     }
 
     #[test]
