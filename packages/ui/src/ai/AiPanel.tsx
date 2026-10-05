@@ -962,6 +962,7 @@ export function AiPanel() {
                         className="ai-cite"
                         dir={dir}
                         title={t('ai.goToPage', { page: piece.page })}
+                        aria-label={t('ai.goToPage', { page: piece.page })}
                         onClick={() => services.goToPage(piece.page)}
                       >
                         {t('ai.cite', { page: piece.page })}
