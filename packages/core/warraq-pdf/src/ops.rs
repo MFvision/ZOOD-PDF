@@ -109,6 +109,59 @@ pub(crate) fn add_font_resource(
     Ok(name)
 }
 
+/// The name a subset embedded for an edit goes by: the font's own family
+/// and style, as a PostScript name (`Montserrat-SemiBold`, `Amiri`), so the
+/// file says truthfully what its text is set in — and the next edit of the
+/// paragraph can look for that family again. `fallback` for a font that
+/// names no family in ASCII.
+pub(crate) fn subset_name(font: &[u8], fallback: &str) -> String {
+    let Some(face) = warraq_text::fontfile::faces(&mut std::io::Cursor::new(font))
+        .into_iter()
+        .next()
+    else {
+        return fallback.to_string();
+    };
+    // The family without any style word the file put in it (the open
+    // library's static files all call themselves "… Thin"): the style is
+    // taken from the font's own weight and slant below.
+    let family: String = face
+        .families
+        .first()
+        .map(|name| {
+            let plain = crate::face::parse_base_font(name).family;
+            let name = if plain.is_empty() {
+                name.as_str()
+            } else {
+                &plain
+            };
+            name.chars()
+                .filter(|c| c.is_ascii_alphanumeric())
+                .take(48)
+                .collect()
+        })
+        .unwrap_or_default();
+    if family.is_empty() {
+        return fallback.to_string();
+    }
+    let weight = match face.weight {
+        100 => "Thin",
+        200 => "ExtraLight",
+        300 => "Light",
+        500 => "Medium",
+        600 => "SemiBold",
+        700 => "Bold",
+        800 => "ExtraBold",
+        900 => "Black",
+        _ => "",
+    };
+    let style = format!("{weight}{}", if face.italic { "Italic" } else { "" });
+    if style.is_empty() {
+        family
+    } else {
+        format!("{family}-{style}")
+    }
+}
+
 /// Operators that restore the graphics state a page's content stream leaves
 /// dangling, so appended drawing happens in plain PDF user space.
 ///
@@ -190,7 +243,7 @@ pub fn append_line_in_color(
     let shaper = Shaper::new(font).map_err(|e| Error::Font(e.to_string()))?;
     let glyphs = shaper.shape_line(text);
     let subset = FontSubset::build(font, &shaper, &glyphs)?;
-    let font_id = embed_subset_font(&mut pdf.doc, &shaper, &subset, "Warraq");
+    let font_id = embed_subset_font(&mut pdf.doc, &shaper, &subset, &subset_name(font, "Warraq"));
     let page_id = pdf.page_id(page_index)?;
     let name = add_font_resource(pdf, page_id, font_id)?;
     let width: f32 = glyphs.iter().map(|g| g.x_advance).sum::<f32>() * size / 1000.0;
@@ -610,7 +663,12 @@ pub fn replace_paragraph(
         .flat_map(|l| l.glyphs.iter().cloned())
         .collect();
     let subset = FontSubset::build(edit.font, &shaper, &all)?;
-    let font_id = embed_subset_font(&mut pdf.doc, &shaper, &subset, "WarraqReflow");
+    let font_id = embed_subset_font(
+        &mut pdf.doc,
+        &shaper,
+        &subset,
+        &subset_name(edit.font, "WarraqReflow"),
+    );
     let page_id = pdf.page_id(page_index)?;
     let name = add_font_resource(pdf, page_id, font_id)?;
     let mut ops = reset_state_ops(pdf, page_id);
@@ -665,6 +723,21 @@ mod tests {
             env!("CARGO_MANIFEST_DIR")
         ))
         .unwrap()
+    }
+
+    #[test]
+    fn an_embedded_subset_is_named_for_its_family_and_style() {
+        assert_eq!(subset_name(AMIRI, "Fallback"), "Amiri");
+        let bold = std::fs::read(format!(
+            "{}/../../../tests/fonts/Amiri-Bold.ttf",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        assert_eq!(subset_name(&bold, "Fallback"), "Amiri-Bold");
+        assert_eq!(subset_name(b"not a font", "Fallback"), "Fallback");
+        // The names it gives read back as the face they are.
+        let parts = crate::face::parse_base_font("WARRAQ+Amiri-Bold");
+        assert_eq!((parts.family.as_str(), parts.weight), ("Amiri", Some(700)));
     }
 
     #[test]

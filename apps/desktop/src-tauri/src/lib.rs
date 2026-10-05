@@ -16,6 +16,7 @@ pub mod ai;
 pub mod batch;
 pub mod cloud;
 pub mod core_bridge;
+pub mod fonts;
 pub mod library;
 pub mod menu;
 pub mod print;
@@ -204,6 +205,7 @@ pub fn run() {
         // person's details for filling forms, in the system's credential store.
         .manage(ai::AiState::default())
         .manage(profile::ProfileState::default())
+        .manage(fonts::FontState::default())
         .on_menu_event(|app, event| menu::forward(app, event.id().as_ref()))
         // Points warraq-render at the bundled PDFium and starts the core thread
         // before the window can invoke anything (see `core_bridge`).
@@ -291,6 +293,7 @@ pub fn run() {
             profile::profile_get,
             profile::profile_set,
             profile::profile_delete,
+            fonts::font_installed,
         ])
         .on_window_event(|window, event| {
             // Forward OS file drops to the webview, after allowing the dropped

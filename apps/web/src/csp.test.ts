@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { CLAUDE_ENDPOINT, LM_STUDIO_URL, LOCAL_ALLOWED_ORIGINS, LOCAL_DEFAULT_URL } from '@warraq/ui/src/ai/providers';
 import { DEVICE_MODELS, MODEL_HOSTS } from '@warraq/ui/src/ai/device/models';
+import { LIBRARY_API, LIBRARY_FILES } from '@warraq/ui/src/edit/fontLibrary';
 import { stripMetaCsp } from '../vite.config';
 import { cloudConfig, oneDriveSources, shippedConfig, withCloudSources } from '../../../packages/ui/vite/cloudConfig';
 
@@ -19,9 +20,20 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const AI_SOURCES =
   'https://api.anthropic.com http://localhost:11434 http://127.0.0.1:11434 http://localhost:1234 http://127.0.0.1:1234';
 const MODEL_SOURCES = 'https://huggingface.co https://*.hf.co';
+/**
+ * The open font library (Edit text, Automatic font): the family a paragraph
+ * is set in, downloaded once and kept, so replaced text matches the page.
+ * Fontsource's catalogue says what a family has; jsDelivr serves its files —
+ * and of jsDelivr only the folder those files are in is opened, not the
+ * rest of that CDN. Only a font's name is ever in a request, and none is
+ * made until the person has answered the one-time question with yes.
+ * They are data for the core to check and embed (`connect-src`), never a
+ * stylesheet or a web font the page itself loads (`font-src` stays 'self').
+ */
+const FONT_SOURCES = 'https://api.fontsource.org https://cdn.jsdelivr.net/fontsource/fonts/';
 
 const EXPECTED_CSP =
-  `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; worker-src 'self' blob:; frame-src blob:; connect-src 'self' ${AI_SOURCES} ${MODEL_SOURCES}; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`;
+  `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; worker-src 'self' blob:; frame-src blob:; connect-src 'self' ${AI_SOURCES} ${MODEL_SOURCES} ${FONT_SOURCES}; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`;
 
 describe('apps/web index.html', () => {
   it('ships the strict Content-Security-Policy', () => {
@@ -99,7 +111,7 @@ describe('the desktop policy replaces the document one', () => {
   });
 
   it('lets the desktop reach its own IPC, which the document policy cannot know about', () => {
-    expect(directives(desktopCsp).get('connect-src')).toBe(`'self' ipc: http://ipc.localhost ${AI_SOURCES}`);
+    expect(directives(desktopCsp).get('connect-src')).toBe(`'self' ipc: http://ipc.localhost ${AI_SOURCES} ${FONT_SOURCES}`);
   });
 });
 
@@ -107,10 +119,15 @@ describe('the AI tool can reach its providers, and nothing else is opened up', (
   it('adds the same sources to both policies, and only these', () => {
     const extra = (connect: string | undefined, own: string[]) =>
       (connect ?? '').split(' ').filter((source) => !own.includes(source));
-    expect(extra(directives(EXPECTED_CSP).get('connect-src'), ["'self'"])).toEqual([...AI_SOURCES.split(' '), ...MODEL_SOURCES.split(' ')]);
-    expect(extra(directives(desktopCsp).get('connect-src'), ["'self'", 'ipc:', 'http://ipc.localhost'])).toEqual(
-      AI_SOURCES.split(' '),
-    );
+    expect(extra(directives(EXPECTED_CSP).get('connect-src'), ["'self'"])).toEqual([
+      ...AI_SOURCES.split(' '),
+      ...MODEL_SOURCES.split(' '),
+      ...FONT_SOURCES.split(' '),
+    ]);
+    expect(extra(directives(desktopCsp).get('connect-src'), ["'self'", 'ipc:', 'http://ipc.localhost'])).toEqual([
+      ...AI_SOURCES.split(' '),
+      ...FONT_SOURCES.split(' '),
+    ]);
   });
 
   it('allows exactly the addresses the tool uses by default', () => {
@@ -120,6 +137,21 @@ describe('the AI tool can reach its providers, and nothing else is opened up', (
     for (const model of DEVICE_MODELS) expect(new URL(model.url).origin).toBe('https://huggingface.co');
     expect(LOCAL_ALLOWED_ORIGINS).toContain(new URL(LOCAL_DEFAULT_URL).origin);
     expect(LOCAL_ALLOWED_ORIGINS).toContain(new URL(LM_STUDIO_URL).origin);
+  });
+});
+
+describe('the open font library is reached at exactly its two addresses', () => {
+  it("names the catalogue's host and only the fonts' folder of the CDN, in both policies", () => {
+    expect(FONT_SOURCES.split(' ')).toEqual([new URL(LIBRARY_API).origin, LIBRARY_FILES]);
+    // A folder, not the whole CDN: nothing else jsDelivr serves can be fetched.
+    expect(LIBRARY_FILES).toBe('https://cdn.jsdelivr.net/fontsource/fonts/');
+    for (const policy of [EXPECTED_CSP, desktopCsp]) {
+      const connect = directives(policy).get('connect-src') ?? '';
+      expect(connect.split(' ')).toEqual(expect.arrayContaining(FONT_SOURCES.split(' ')));
+      expect(connect).not.toMatch(/cdn\.jsdelivr\.net(\s|$)/);
+      // Downloaded fonts are data the core embeds; the page loads none itself.
+      expect(directives(policy).get('font-src')).toBe("'self'");
+    }
   });
 });
 
@@ -143,7 +175,7 @@ describe('the cloud drives reach exactly their own hosts, and only in a build th
     const csp = /Content-Security-Policy" content="([^"]*)"/.exec(withCloudSources(html, { onedrive: { clientId: APP, tenant: 'common' } }))?.[1] ?? '';
     const cloud = directives(csp);
     for (const [name, sources] of directives(EXPECTED_CSP)) if (name !== 'connect-src') expect(cloud.get(name)).toBe(sources);
-    expect(cloud.get('connect-src')).toBe(`'self' ${AI_SOURCES} ${MODEL_SOURCES} ${ONEDRIVE.join(' ')}`);
+    expect(cloud.get("connect-src")).toBe(`'self' ${AI_SOURCES} ${MODEL_SOURCES} ${FONT_SOURCES} ${ONEDRIVE.join(" ")}`);
     expect(oneDriveSources()).toEqual(ONEDRIVE);
   });
 

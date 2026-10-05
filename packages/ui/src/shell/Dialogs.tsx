@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { isTauriHost } from '../core/host-tauri';
 import { Dialog } from '../components/Dialog';
+import { FontLibrarySettings } from '../edit/LibraryFonts';
 import { APP_ICON } from '../components/appIcon';
 import { radioTabIndex, useRadioGroupKeyboard } from '../components/useRadioGroupKeyboard';
 import { useI18n, useT } from '../i18n/useT';
@@ -282,6 +283,7 @@ export function SettingsDialog() {
         {/* The AI tool's provider and on-device model, the person's details for forms, and the reading voices. */}
         {dialog === 'settings' && (
           <>
+            <FontLibrarySettings />
             <AiSettingsSection />
             <VoiceSettings />
           </>

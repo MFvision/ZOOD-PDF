@@ -42,6 +42,19 @@ pub struct ParagraphInfo {
     pub alignment: String,
     pub font_size: f32,
     pub line_count: usize,
+    /// The family the paragraph is set in as the file names it, sanitised
+    /// (letters, digits, spaces, hyphens; at most 64 characters); empty when
+    /// the file names none.
+    pub font_family: String,
+    /// 100–900.
+    pub font_weight: u16,
+    pub font_italic: bool,
+    /// "serif" | "sans" | "unknown"
+    pub font_class: String,
+    /// Whether the paragraph's own font can draw the text it has now: an
+    /// edit that keeps to its letters is then drawn in that very font
+    /// (`replace_paragraph` with an empty `font`).
+    pub own_font: bool,
 }
 
 #[wasm_bindgen]
@@ -139,13 +152,15 @@ impl Document {
     /// Paragraphs of a page in device space, for hit-testing an editor click.
     pub fn paragraphs(&self, index: usize) -> Result<Vec<ParagraphInfo>, JsError> {
         use warraq_text::Alignment;
+        let fonts = self.0.paragraph_fonts(index).map_err(js_err)?;
         Ok(self
             .0
             .paragraphs(index)
             .map_err(js_err)?
             .into_iter()
+            .zip(fonts)
             .enumerate()
-            .map(|(i, p)| ParagraphInfo {
+            .map(|(i, (p, font))| ParagraphInfo {
                 index: i,
                 text: p.text,
                 x: p.bbox.0,
@@ -166,6 +181,19 @@ impl Document {
                 .into(),
                 font_size: p.font_size,
                 line_count: p.lines.len(),
+                font_family: font
+                    .face
+                    .as_ref()
+                    .map(|f| f.family.clone())
+                    .unwrap_or_default(),
+                font_weight: font.face.as_ref().map_or(400, |f| f.weight),
+                font_italic: font.face.as_ref().is_some_and(|f| f.italic),
+                font_class: font
+                    .face
+                    .as_ref()
+                    .map_or("unknown", |f| f.class.as_str())
+                    .into(),
+                own_font: font.own_font,
             })
             .collect())
     }
@@ -189,8 +217,10 @@ impl Document {
             .map_err(js_err)
     }
 
-    /// Replace a paragraph with reflowed, shaped text. `font` is a face from the
-    /// bundled fallback chain. The returned JSON reports whether a substitution
+    /// Replace a paragraph with reflowed, shaped text. An empty `font` asks
+    /// for the paragraph's own font (`E_OWN_FONT` when it cannot draw the
+    /// text); otherwise `font` is the face the host chose — installed, from
+    /// the open library or bundled. The returned JSON reports whether a substitution
     /// happened, whether the text had to be shrunk to fit its box and whether it
     /// still overflows, so the UI can warn the user instead of silently spoiling
     /// the page.

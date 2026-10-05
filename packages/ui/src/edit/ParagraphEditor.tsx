@@ -5,6 +5,7 @@ import { useT } from '../i18n/useT';
 import { shortcutLetter } from '../shell/shortcutEcho';
 import { useAppState } from '../state/AppContext';
 import { editFontName } from './editFont';
+import { closestBundled, faceOf } from './fontMatch';
 import { paragraphRect } from './geometry';
 
 interface ParagraphEditorProps {
@@ -123,7 +124,15 @@ export function ParagraphEditor({
         spellCheck={false}
         style={{
           textAlign: paragraph.alignment,
-          fontFamily: `${editFontName(font)}, Amiri, Cairo, Inter, serif`,
+          // Automatic: the paragraph's own family when the browser has it
+          // (the name is the core's, cut to letters, digits, spaces and
+          // hyphens), then the closest face the app carries.
+          fontFamily:
+            font === 'auto'
+              ? `${paragraph.fontFamily ? `"${paragraph.fontFamily}", ` : ''}${editFontName(closestBundled(faceOf(paragraph), paragraph.text, paragraph.direction))}, Amiri, Cairo, Inter, serif`
+              : `${editFontName(font)}, Amiri, Cairo, Inter, serif`,
+          fontWeight: font === 'auto' ? paragraph.fontWeight : undefined,
+          fontStyle: font === 'auto' && paragraph.fontItalic ? 'italic' : undefined,
           fontSize: paragraph.fontSize * scale,
           lineHeight: lineHeight === undefined ? undefined : `${lineHeight}px`,
         }}

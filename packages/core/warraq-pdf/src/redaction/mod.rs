@@ -21,7 +21,7 @@ use lopdf::{Dictionary, Object, ObjectId, Stream};
 use crate::text_walk::Matrix;
 use crate::{Error, PdfDocument, Result};
 
-mod fonts;
+pub(crate) mod fonts;
 mod pixels;
 #[rustfmt::skip]
 mod standard;

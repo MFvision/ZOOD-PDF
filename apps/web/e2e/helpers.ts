@@ -84,10 +84,36 @@ export const test = base.extend<{ stayLocal: string[] }>({
         outside.push(`blocked by CSP: ${text.slice(0, 160)}`);
       }
     });
+    // Edit text asks once whether matching fonts may be downloaded from the
+    // open library, the first time an edit would be helped by it. Every test
+    // runs as a person who has answered no — nothing is fetched, and an edit
+    // never waits on a question the test is not about — except the tests of
+    // the question itself, which ask for it with `neverAskedAboutFonts`.
+    await page.addInitScript(() => {
+      try {
+        if (localStorage.getItem('warraq.fontLibrary') === null) localStorage.setItem('warraq.fontLibrary', JSON.stringify({ allowed: false }));
+      } catch {
+        /* no storage: the app asks, as it would */
+      }
+    });
     await use(outside);
     expect(outside, 'no request may leave the app, and none may go unanswered').toEqual([]);
   },
 });
+
+/**
+ * The app as a person finds it the first time: the question about
+ * downloading matching fonts has never been answered. Call before `goto`.
+ */
+export async function neverAskedAboutFonts(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    // Once: an answer given during the test survives a reload.
+    if (sessionStorage.getItem('e2e.fontQuestion') === null) {
+      sessionStorage.setItem('e2e.fontQuestion', 'unanswered');
+      localStorage.removeItem('warraq.fontLibrary');
+    }
+  });
+}
 
 /** What `answer` replies with: the options of `route.fulfill`. */
 export type Reply = Parameters<Route['fulfill']>[0];

@@ -16,6 +16,7 @@ pub mod compress;
 pub mod create;
 pub mod export;
 pub mod file;
+pub mod font;
 pub mod forms;
 pub mod forms_eval;
 pub mod images;
@@ -84,6 +85,7 @@ pub fn call_static(op: &str, args: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, C
         Some(("compress", name)) => compress::call_static(name, args, blobs),
         Some(("create", name)) => create::call_static(name, args, blobs),
         Some(("file", name)) => file::call_static(name, args, blobs),
+        Some(("font", name)) => font::call_static(name, args, blobs),
         Some(("forms", name)) => forms::call_static(name, args, blobs),
         Some(("images", name)) => images::call_static(name, args, blobs),
         Some(("library", name)) => library::call_static(name, args, blobs),

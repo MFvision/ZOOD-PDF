@@ -17,6 +17,12 @@ export class ParagraphInfo {
   readonly direction: "rtl" | "ltr";
   readonly alignment: "start" | "end" | "center" | "justify";
   readonly fontSize: number; readonly lineCount: number;
+  // The face the file names for the paragraph (the font most of its runs use):
+  readonly fontFamily: string;                 // sanitised: letters, digits, spaces, hyphens, ≤ 64 chars; "" when the file names none
+  readonly fontWeight: number;                 // 100–900
+  readonly fontItalic: boolean;
+  readonly fontClass: "serif" | "sans" | "unknown";
+  readonly ownFont: boolean;                   // its own font can draw the text it has now (never for right-to-left text)
   free(): void;
 }
 
@@ -32,7 +38,12 @@ export class Document {
 
   // editing (Phase 2)
   paragraphs(index: number): ParagraphInfo[];                    // device space, same coordinates as text_lines
-  replace_paragraph(index: number, para: number, text: string, font: Uint8Array): string; // JSON {lines_drawn, font_substituted}
+  replace_paragraph(index: number, para: number, text: string, font: Uint8Array): string; // JSON {lines_drawn, font_substituted, shrunk, overflowed, font_size}
+    // font EMPTY: redraw in the paragraph's OWN font resource by its own character codes (same size and
+    //   colour, nothing embedded; font_substituted false). Only left-to-right text whose every character
+    //   the document's font already has (Latin, Greek, Cyrillic, digits, punctuation — never Arabic);
+    //   otherwise throws "E_OWN_FONT: …" with nothing changed, and the host calls again with a font.
+    // font given: shaped and embedded as a subset (an installed, downloaded or bundled face the host chose).
   save(): Uint8Array;                                            // incremental update over the original bytes
 
   // tool operations (ADR-0008): one entry point for every tool's work
@@ -55,6 +66,7 @@ Tool operations (`warraq-core/src/tools`), all answering JSON plus bytes:
 | `pages.crop` | `{pages: number[], margins: {top, right, bottom, left}}` (points, as each page is shown) | `{pageCount, pageSizes}` |
 | `pages.trim_margins` | `{pages: number[], padding?: number}` (points of white kept around what is printed; default 6; blank pages are left alone) | `{pageCount, pageSizes}` |
 | `file.rebase` (static) | `{password?: string}` + the file as opened + the same file written whole by another engine (PDFium, through EmbedPDF) | `{rebased: bool}` + the file's own bytes with the changes appended, when `rebased` (not when the protection differs) |
+| `font.check` (static) | `{text: string, family?: string}` + a font file a host found for an edit (installed, or downloaded from the open library) | `{usable: bool, reason: null \| "not-a-font" \| "too-large" \| "not-truetype" \| "not-embeddable" \| "other-family" \| "missing-glyphs", family, weight, italic, variable}` — usable only when the bytes are a TrueType-outline font (≤ 32 MB) of that family, whose licence bits (`OS/2.fsType`) allow embedding a subset, with a glyph for every character of `text` |
 | `pages.insert_file` | `{at: number, password?: string}` + the other file (its pages go in at `at`, with their form fields) | `{pageCount, pageSizes}` |
 | `pages.extract` | `{pages: number[]}` (in that order) | `{pageCount}` + the new file |
 | `pages.combine` (static) | `{passwords?: (string\|null)[]}` + one blob per file | `{pageCount}` + the new file |

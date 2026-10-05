@@ -32,6 +32,11 @@ function recordingModule(substituted: boolean): { module: CoreModule; calls: Rep
     alignment: 'justify',
     font_size: 13,
     line_count: 4,
+    font_family: 'Noto Naskh Arabic',
+    font_weight: 700,
+    font_italic: false,
+    font_class: 'serif',
+    own_font: false,
     free: () => undefined,
   });
   const texts = ['الفقرة الأولى', 'الفقرة الثانية'];
@@ -88,6 +93,12 @@ describe('paragraph editing over the worker protocol', () => {
       alignment: 'justify',
       fontSize: 13,
       lineCount: 4,
+      // The face the file names, for the host that must find a font.
+      fontFamily: 'Noto Naskh Arabic',
+      fontWeight: 700,
+      fontItalic: false,
+      fontClass: 'serif',
+      ownFont: false,
     });
   });
 

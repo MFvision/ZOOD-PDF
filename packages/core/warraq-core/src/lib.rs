@@ -36,6 +36,10 @@ pub enum CoreError {
     /// another version, or never an index at all (`tools::library::format`).
     #[error("E_INDEX: {0}")]
     Index(String),
+    /// A paragraph asked to be redrawn in its own font, which cannot draw
+    /// the new text (`Document::replace_paragraph` with no font given).
+    #[error("E_OWN_FONT: the paragraph's own font cannot draw this text")]
+    OwnFont,
     /// Signing and verifying (`warraq_sign`), with their own codes:
     /// `E_P12_PASSWORD`, `E_P12`, `E_TSA`, `E_SIGN`, …
     #[error("{0}")]
@@ -64,6 +68,20 @@ pub struct ParagraphReplacement {
     pub overflowed: bool,
     /// The size actually used.
     pub font_size: f32,
+}
+
+/// What a paragraph of the edit view is set in, for the host that must
+/// choose a font for the text that replaces it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParagraphFont {
+    /// The face as the file names it — family, weight, slant, serif or
+    /// sans — of the font most of the paragraph's runs use; `None` when the
+    /// file names none (a Type 3 font, text inside a form).
+    pub face: Option<warraq_pdf::OriginalFace>,
+    /// Whether the paragraph's own font can draw the text it has now, so an
+    /// edit that keeps to its letters needs no other font
+    /// (`warraq_pdf::ownfont`). Never true for right-to-left text.
+    pub own_font: bool,
 }
 
 /// Which of a page's text a reading takes.
@@ -417,13 +435,43 @@ impl Document {
         }
     }
 
+    /// What each paragraph of a page is set in, in the order of
+    /// [`Document::paragraphs`]: its face as the file names it, and whether
+    /// its own font can draw its text.
+    pub fn paragraph_fonts(&self, index: usize) -> Result<Vec<ParagraphFont>, CoreError> {
+        let (_, page_height) = self.page_size(index)?;
+        let (_, paragraphs) = self.edit_view(index)?;
+        let mut fonts = warraq_pdf::ownfont::PageFonts::read(&self.pdf, index)?;
+        Ok(paragraphs
+            .iter()
+            .map(|para| {
+                let (x, y_top, w, h) = para.bbox;
+                let rect = (x, page_height - (y_top + h), w, h);
+                ParagraphFont {
+                    face: fonts.face_in(rect),
+                    own_font: para.direction == warraq_text::Direction::Ltr
+                        && fonts
+                            .own_font_in(rect)
+                            .is_some_and(|font| font.covers(&para.text)),
+                }
+            })
+            .collect())
+    }
+
     /// Replace paragraph `para_index` of a page with `new_text`, reflowed to the
     /// same box with correct shaping, bidi and alignment.
     ///
-    /// `font` is a face from the bundled fallback chain: a PDF embeds only a
-    /// subset of its fonts, so new characters generally cannot reuse the
-    /// document's own file. The returned flag says whether the original glyphs
-    /// were drawn with a different font, i.e. whether the user should be warned
+    /// With no `font` (an empty slice) the paragraph is redrawn in its OWN
+    /// font, by that font's own character codes: the same resource, size and
+    /// colour, nothing embedded (`warraq_pdf::ownfont`). That is possible only
+    /// for left-to-right text whose every character the document's font
+    /// already has; otherwise the answer is `E_OWN_FONT`, nothing is changed,
+    /// and the host asks again with a font.
+    ///
+    /// A `font` given is shaped and embedded as a subset: one installed on
+    /// the device, one from the open library or a bundled face, as the host
+    /// chose. The returned flag says whether the text was drawn with a font
+    /// other than the paragraph's own, i.e. whether the user should be told
     /// about a substitution (brief §15.5).
     pub fn replace_paragraph(
         &mut self,
@@ -442,6 +490,25 @@ impl Document {
         let (x, y_top, w, h) = para.bbox;
         let first = &lines[para.lines[0]];
         let size = (first.height / 1.2).max(1.0);
+        if font.is_empty() {
+            let edit = warraq_pdf::ownfont::OwnFontEdit {
+                rect: (x, page_height - (y_top + h), w, h),
+                text: new_text,
+                leading: para.leading.max(size * 1.15),
+                direction: para.direction,
+                alignment: para.alignment,
+            };
+            let r = warraq_pdf::ownfont::replace_paragraph_own_font(self.pdf_mut(), index, &edit)?
+                .ok_or(CoreError::OwnFont)?;
+            self.refresh_after_edit()?;
+            return Ok(ParagraphReplacement {
+                lines_drawn: r.lines_drawn,
+                font_substituted: false,
+                shrunk: r.shrunk,
+                overflowed: r.overflowed,
+                font_size: r.font_size,
+            });
+        }
         let edit = warraq_pdf::ops::ParagraphEdit {
             rect: (x, page_height - (y_top + h), w, h),
             first_baseline: page_height - (first.y + size),
