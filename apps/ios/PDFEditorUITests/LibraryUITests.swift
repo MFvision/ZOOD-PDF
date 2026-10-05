@@ -149,7 +149,9 @@ final class LibraryUITests: XCTestCase {
         let app = try launch(language: "en")
         waitForIndex(in: app, count: 5)
         for id in ["home.open", "home.scan", "home.create", "home.combine", "home.search", "home.settings"] {
-            XCTAssertTrue(app.buttons[id].waitForExistence(timeout: 10), "\(id) is on the home screen")
+            // The cards are a lazy grid: the later ones are made as the
+            // home is scrolled to them.
+            XCTAssertTrue(app.homeCard(id, timeout: 10).exists, "\(id) is on the home screen")
         }
         XCTAssertFalse(app.descendants(matching: .any)["home.row.starred"].exists, "nothing starred yet")
         // The rows are below the cards; a lazy row is built when scrolled to.

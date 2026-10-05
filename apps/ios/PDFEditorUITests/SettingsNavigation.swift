@@ -21,8 +21,16 @@ extension XCUIApplication {
             if card.exists, !field.exists || card.frame.maxY < field.frame.minY - 8 { break }
             // A short drag in the middle of the screen: a full swipe would
             // carry a card past the top as easily as bring it up.
-            let from = coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.62))
-            let to = coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.38))
+            // In the home's own column: on iPad the middle of the screen is
+            // the document's side of the split view, and a drag there scrolls
+            // nothing of the home. The Open card is always made, so its
+            // column is where the home is.
+            let anchor = buttons["home.open"]
+            let window = windows.firstMatch.frame
+            let x = anchor.exists ? anchor.frame.midX : window.midX
+            let origin = coordinate(withNormalizedOffset: .zero)
+            let from = origin.withOffset(CGVector(dx: x, dy: window.height * 0.62))
+            let to = origin.withOffset(CGVector(dx: x, dy: window.height * 0.38))
             from.press(forDuration: 0.05, thenDragTo: to)
         }
         XCTAssertTrue(card.waitForExistence(timeout: timeout), "the home's \(identifier) card")

@@ -78,7 +78,11 @@ final class AIAndReadAloudTests: XCTestCase {
         let name = ui.app.textFields["autofill.value.الاسم الكامل"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         XCTAssertEqual(name.value as? String, "محمد الغماس")
-        XCTAssertEqual(ui.app.staticTexts["autofill.current.الاسم الكامل"].label, "الآن: محمد عبد الله")
+        // The value is set apart from the sentence around it with Unicode's
+        // isolates, so a Latin value reads right inside Arabic; they are not
+        // part of what it says.
+        let current = ui.app.staticTexts["autofill.current.الاسم الكامل"].label.filter { !"\u{2066}\u{2067}\u{2068}\u{2069}".contains($0) }
+        XCTAssertEqual(current, "الآن: محمد عبد الله")
         XCTAssertEqual(ui.app.textFields["autofill.value.رقم الهوية"].value as? String, "1234567890")
         XCTAssertEqual(ui.app.textFields["autofill.value.البريد الإلكتروني"].value as? String, "m@example.com")
         XCTAssertFalse(ui.app.textFields["autofill.value.الجنسية"].exists, "nothing answers nationality: no proposal")
