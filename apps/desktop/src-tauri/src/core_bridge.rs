@@ -617,6 +617,14 @@ pub struct ParagraphDto {
     pub alignment: &'static str,
     pub font_size: f32,
     pub line_count: usize,
+    /// The face the file names for the paragraph: its family (sanitised;
+    /// empty when none), weight, slant and "serif" | "sans" | "unknown".
+    pub font_family: String,
+    pub font_weight: u16,
+    pub font_italic: bool,
+    pub font_class: &'static str,
+    /// Whether the paragraph's own font can draw the text it has now.
+    pub own_font: bool,
 }
 
 #[tauri::command(async)]
@@ -629,10 +637,14 @@ pub fn doc_paragraphs(
         let paragraphs = document
             .paragraphs(index as usize)
             .map_err(|e| e.to_string())?;
+        let fonts = document
+            .paragraph_fonts(index as usize)
+            .map_err(|e| e.to_string())?;
         Ok(paragraphs
             .into_iter()
+            .zip(fonts)
             .enumerate()
-            .map(|(i, p)| ParagraphDto {
+            .map(|(i, (p, font))| ParagraphDto {
                 index: i,
                 text: p.text,
                 x: p.bbox.0,
@@ -652,6 +664,15 @@ pub fn doc_paragraphs(
                 },
                 font_size: p.font_size,
                 line_count: p.lines.len(),
+                font_family: font
+                    .face
+                    .as_ref()
+                    .map(|f| f.family.clone())
+                    .unwrap_or_default(),
+                font_weight: font.face.as_ref().map_or(400, |f| f.weight),
+                font_italic: font.face.as_ref().is_some_and(|f| f.italic),
+                font_class: font.face.as_ref().map_or("unknown", |f| f.class.as_str()),
+                own_font: font.own_font,
             })
             .collect())
     })

@@ -158,6 +158,8 @@ fn code_of(error: &CoreError) -> i32 {
         CoreError::UnknownOp(_) => WARRAQ_E_UNKNOWN_OP,
         CoreError::Index(_) => WARRAQ_E_INDEX,
         CoreError::Sign(_) => WARRAQ_E_SIGN,
+        // The reply's name, `E_OWN_FONT`, is what a host tells it by.
+        CoreError::OwnFont => WARRAQ_E_FONT,
         CoreError::Pdf(_) | CoreError::Render(_) => match code_prefix(&error.to_string()) {
             "E_PARSE" => WARRAQ_E_PARSE,
             "E_PASSWORD" => WARRAQ_E_PASSWORD,
@@ -498,7 +500,11 @@ pub unsafe extern "C" fn warraq_metadata(doc: *mut WarraqDocument) -> WarraqRepl
 }
 
 /// `{"paragraphs":[{"index","text","x","y","width","height","direction",
-/// "alignment","fontSize","lineCount"}]}` in device space, for hit-testing.
+/// "alignment","fontSize","lineCount","fontFamily","fontWeight","fontItalic",
+/// "fontClass","ownFont"}]}` in device space, for hit-testing. The font
+/// fields are the face the file names for the paragraph (`fontFamily` empty
+/// when it names none, `fontClass` "serif" | "sans" | "unknown") and whether
+/// its own font can draw its text (`warraq_replace_paragraph` with no font).
 ///
 /// # Safety
 /// `doc` is an open handle.
@@ -506,34 +512,45 @@ pub unsafe extern "C" fn warraq_metadata(doc: *mut WarraqDocument) -> WarraqRepl
 pub unsafe extern "C" fn warraq_paragraphs(doc: *mut WarraqDocument, index: usize) -> WarraqReply {
     use warraq_text::Alignment;
     let doc = try_reply!(doc_in(doc));
-    guarded(|| match doc.paragraphs(index) {
-        Ok(paragraphs) => {
-            let paragraphs: Vec<serde_json::Value> = paragraphs
-                .into_iter()
-                .enumerate()
-                .map(|(i, p)| {
-                    serde_json::json!({
-                        "index": i,
-                        "text": p.text,
-                        "x": p.bbox.0,
-                        "y": p.bbox.1,
-                        "width": p.bbox.2,
-                        "height": p.bbox.3,
-                        "direction": direction_name(p.direction),
-                        "alignment": match p.alignment {
-                            Alignment::Start => "start",
-                            Alignment::End => "end",
-                            Alignment::Center => "center",
-                            Alignment::Justify => "justify",
-                        },
-                        "fontSize": p.font_size,
-                        "lineCount": p.lines.len(),
+    guarded(|| {
+        match doc
+            .paragraphs(index)
+            .and_then(|p| Ok((p, doc.paragraph_fonts(index)?)))
+        {
+            Ok((paragraphs, fonts)) => {
+                let paragraphs: Vec<serde_json::Value> = paragraphs
+                    .into_iter()
+                    .zip(fonts)
+                    .enumerate()
+                    .map(|(i, (p, font))| {
+                        serde_json::json!({
+                            "index": i,
+                            "text": p.text,
+                            "x": p.bbox.0,
+                            "y": p.bbox.1,
+                            "width": p.bbox.2,
+                            "height": p.bbox.3,
+                            "direction": direction_name(p.direction),
+                            "alignment": match p.alignment {
+                                Alignment::Start => "start",
+                                Alignment::End => "end",
+                                Alignment::Center => "center",
+                                Alignment::Justify => "justify",
+                            },
+                            "fontSize": p.font_size,
+                            "lineCount": p.lines.len(),
+                            "fontFamily": font.face.as_ref().map_or("", |f| f.family.as_str()),
+                            "fontWeight": font.face.as_ref().map_or(400, |f| f.weight),
+                            "fontItalic": font.face.as_ref().is_some_and(|f| f.italic),
+                            "fontClass": font.face.as_ref().map_or("unknown", |f| f.class.as_str()),
+                            "ownFont": font.own_font,
+                        })
                     })
-                })
-                .collect();
-            json_out(&serde_json::json!({ "paragraphs": paragraphs }))
+                    .collect();
+                json_out(&serde_json::json!({ "paragraphs": paragraphs }))
+            }
+            Err(e) => error_out(&e),
         }
-        Err(e) => error_out(&e),
     })
 }
 
@@ -618,6 +635,8 @@ fn hex_rgb(hex: &str) -> Option<[f32; 3]> {
 
 /// Replaces a paragraph with reflowed, shaped text; answers
 /// `{"linesDrawn","fontSubstituted","shrunk","overflowed","fontSize"}`.
+/// With no font (`font_len` 0) the paragraph is redrawn in its own font,
+/// or the reply is the error `E_OWN_FONT` and nothing is changed.
 ///
 /// # Safety
 /// `doc` is an open handle; `text` NUL-terminated; `font` as `bytes_in` asks.
@@ -811,6 +830,12 @@ mod tests {
         let first = &paragraphs["paragraphs"][0];
         assert_eq!(first["index"], 0);
         assert!(first["lineCount"].as_u64().unwrap() >= 1);
+        // The face the file names, and that Arabic never reuses its font.
+        assert_eq!(first["fontFamily"], "Geeza Pro");
+        assert_eq!(first["fontWeight"], 400);
+        assert_eq!(first["fontItalic"], false);
+        assert_eq!(first["fontClass"], "sans");
+        assert_eq!(first["ownFont"], false);
 
         let (picture, blobs) = ok(unsafe { warraq_render_page(doc, 0, 0.25) });
         let (w, h) = (

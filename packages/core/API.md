@@ -17,6 +17,12 @@ export class ParagraphInfo {
   readonly direction: "rtl" | "ltr";
   readonly alignment: "start" | "end" | "center" | "justify";
   readonly fontSize: number; readonly lineCount: number;
+  // The face the file names for the paragraph (the font most of its runs use):
+  readonly fontFamily: string;                 // sanitised: letters, digits, spaces, hyphens, ≤ 64 chars; "" when the file names none
+  readonly fontWeight: number;                 // 100–900
+  readonly fontItalic: boolean;
+  readonly fontClass: "serif" | "sans" | "unknown";
+  readonly ownFont: boolean;                   // its own font can draw the text it has now (never for right-to-left text)
   free(): void;
 }
 
@@ -32,7 +38,12 @@ export class Document {
 
   // editing (Phase 2)
   paragraphs(index: number): ParagraphInfo[];                    // device space, same coordinates as text_lines
-  replace_paragraph(index: number, para: number, text: string, font: Uint8Array): string; // JSON {lines_drawn, font_substituted}
+  replace_paragraph(index: number, para: number, text: string, font: Uint8Array): string; // JSON {lines_drawn, font_substituted, shrunk, overflowed, font_size}
+    // font EMPTY: redraw in the paragraph's OWN font resource by its own character codes (same size and
+    //   colour, nothing embedded; font_substituted false). Only left-to-right text whose every character
+    //   the document's font already has (Latin, Greek, Cyrillic, digits, punctuation — never Arabic);
+    //   otherwise throws "E_OWN_FONT: …" with nothing changed, and the host calls again with a font.
+    // font given: shaped and embedded as a subset (an installed, downloaded or bundled face the host chose).
   save(): Uint8Array;                                            // incremental update over the original bytes
 
   // tool operations (ADR-0008): one entry point for every tool's work

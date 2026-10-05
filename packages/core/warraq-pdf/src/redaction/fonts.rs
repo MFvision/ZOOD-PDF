@@ -44,7 +44,7 @@ enum Codes {
 
 /// One code of a string: where its bytes are, and what the font says of it.
 #[derive(Debug, Clone, PartialEq)]
-pub(super) struct Code {
+pub(crate) struct Code {
     /// Its bytes within the string.
     pub bytes: std::ops::Range<usize>,
     /// Advance along the writing direction, in text space for a size of 1.
@@ -54,7 +54,7 @@ pub(super) struct Code {
 }
 
 #[derive(Debug, Clone)]
-pub(super) struct Font {
+pub(crate) struct Font {
     codes: Codes,
     /// Simple fonts: the advance of each byte, for a size of 1.
     widths: Vec<f32>,
@@ -271,6 +271,17 @@ impl Font {
             ascent,
             descent,
             unsure,
+        }
+    }
+
+    /// How many bytes one code takes when every code takes the same: one
+    /// for a simple font, two for `Identity-H`/`-V`; `None` for a CMap of
+    /// the file's own, whose codes are not their glyphs' numbers.
+    pub fn code_len(&self) -> Option<usize> {
+        match self.codes {
+            Codes::Simple => Some(1),
+            Codes::Identity => Some(2),
+            Codes::Table { .. } => None,
         }
     }
 
