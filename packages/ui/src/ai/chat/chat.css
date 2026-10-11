@@ -1,0 +1,476 @@
+/* The assistant: a conversation that fills the inspector, its input fixed at the foot. */
+.ai-panel {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  min-block-size: 0;
+}
+
+.ai-head {
+  display: flex;
+  flex: none;
+  gap: var(--space-3);
+  align-items: center;
+  min-block-size: 46px;
+  padding-block: var(--space-3);
+  padding-inline: var(--space-5) var(--space-3);
+  border-block-end: 0.5px solid var(--separator);
+}
+
+.ai-head h3 {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin: 0;
+  font-size: var(--text-headline);
+  font-weight: 600;
+  letter-spacing: var(--track-body);
+}
+
+.ai-head h3 .lucide {
+  color: var(--accent);
+}
+
+.ai-head-title {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  align-items: flex-start;
+  min-inline-size: 0;
+}
+
+.ai-head-actions {
+  display: flex;
+  flex: none;
+  gap: var(--space-1);
+}
+
+/* Which model is answering, under the title: a quiet line that can be pressed. */
+.ai-model {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  max-inline-size: 100%;
+  padding: 0;
+  overflow: hidden;
+  font-size: var(--text-subheadline);
+  color: var(--secondary-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: none;
+  border: 0;
+}
+
+.ai-model-button:hover {
+  color: var(--label);
+}
+
+.ai-model-select {
+  padding: 0;
+  font: inherit;
+  font-weight: 500;
+  color: var(--label);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-6);
+}
+
+.ai-model-where::before {
+  content: "· ";
+}
+
+.ai-view {
+  flex: 1;
+  min-block-size: 0;
+  overflow: auto;
+}
+
+.ai-view[hidden] {
+  display: none;
+}
+
+.ai-chat {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-block-size: 0;
+}
+
+/* What is known of the document, and the one thing to do about it. */
+.ai-doc {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+  align-items: center;
+  padding-block: var(--space-4);
+  padding-inline: var(--space-5);
+  font-size: var(--text-callout);
+  line-height: var(--leading-body);
+  color: var(--secondary-label);
+  background: var(--quaternary-fill);
+  border-block-end: 0.5px solid var(--separator);
+}
+
+.ai-doc-quiet {
+  padding-block: var(--space-3);
+  font-size: var(--text-subheadline);
+  background: transparent;
+}
+
+.ai-doc-text {
+  flex: 1 1 160px;
+  min-inline-size: 0;
+}
+
+.ai-thread {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-block-size: 0;
+  padding: var(--space-5);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.ai-thread:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.ai-turns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.ai-turn {
+  min-inline-size: 0;
+  font-size: var(--text-body);
+  line-height: 1.5;
+}
+
+/* The person's words: a bubble at the trailing side, its tail corner squared. */
+.ai-turn-user {
+  align-self: flex-end;
+  max-inline-size: 88%;
+  padding-block: var(--space-3);
+  padding-inline: var(--space-5);
+  color: var(--accent-contrast);
+  background: var(--accent);
+  border-radius: var(--radius-16);
+  border-end-end-radius: var(--space-2);
+}
+
+.ai-turn-user p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* The assistant's: plain text across the pane, as a page reads. */
+.ai-turn-assistant {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-self: stretch;
+}
+
+.ai-turn-assistant .ai-answer-text p,
+.ai-turn-assistant .ai-answer-text li {
+  margin-block: 0 var(--space-3);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.ai-turn-assistant .ai-answer-text ul,
+.ai-turn-assistant .ai-answer-text ol {
+  padding-inline-start: var(--space-7);
+  margin-block: 0 var(--space-3);
+  margin-inline: 0;
+}
+
+.ai-turn-assistant .ai-answer-text > :last-child,
+.ai-turn-assistant .ai-answer-text li:last-child {
+  margin-block-end: 0;
+}
+
+.ai-answer-strong {
+  font-weight: 600;
+}
+
+.ai-turn-line,
+.ai-turn-wait {
+  margin: 0;
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+}
+
+.ai-turn-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  align-items: flex-start;
+  padding: var(--space-5);
+  background: var(--grouped-background);
+  border-radius: var(--radius-12);
+  box-shadow: 0 0 0 0.5px var(--separator);
+}
+
+.ai-turn-notice p {
+  margin: 0;
+}
+
+.ai-turn-event {
+  align-self: center;
+  max-inline-size: 92%;
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+  text-align: center;
+}
+
+.ai-turn-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: center;
+}
+
+.ai-turn-actions {
+  display: flex;
+  flex: none;
+  gap: var(--space-1);
+  margin-inline-start: calc(var(--space-3) * -1);
+}
+
+.ai-turn-action.icon-btn {
+  min-inline-size: 26px;
+  block-size: 26px;
+  padding-inline: 0;
+}
+
+.ai-turn-basis {
+  flex: 1 1 140px;
+  min-inline-size: 0;
+  margin: 0;
+  font-size: var(--text-subheadline);
+  color: var(--secondary-label);
+}
+
+/* Three dots while the first word is on its way. */
+.ai-dots {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  block-size: 18px;
+}
+
+.ai-dots i {
+  inline-size: 6px;
+  block-size: 6px;
+  background: var(--secondary-label);
+  border-radius: 50%;
+  animation: ai-dot 1.2s var(--ease-out) infinite;
+}
+
+.ai-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.ai-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes ai-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-dots i {
+    animation: none;
+  }
+}
+
+.ai-chat-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+  max-inline-size: 280px;
+  margin: auto;
+  color: var(--secondary-label);
+  text-align: center;
+}
+
+.ai-chat-empty h4 {
+  margin: 0;
+  font-size: var(--text-title3);
+  font-weight: 600;
+  color: var(--label);
+  letter-spacing: var(--track-title3);
+}
+
+.ai-chat-empty p {
+  margin: 0;
+  font-size: var(--text-callout);
+  line-height: var(--leading-body);
+}
+
+.ai-chat-mark {
+  display: grid;
+  place-items: center;
+  inline-size: 44px;
+  block-size: 44px;
+  margin-block-end: var(--space-3);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: var(--radius-12);
+}
+
+.ai-chat-setup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.ai-chat-setup .ai-group {
+  margin-block-start: 0;
+}
+
+.ai-chat-review {
+  margin-block-start: 0;
+}
+
+/* The quick actions: one row that scrolls sideways, so the thread keeps its height. */
+.ai-chips {
+  display: flex;
+  flex: none;
+  gap: var(--space-3);
+  padding-block: var(--space-4) var(--space-1);
+  padding-inline: var(--space-5);
+  margin: 0;
+  overflow-x: auto;
+  list-style: none;
+  border-block-start: 0.5px solid var(--separator);
+  scrollbar-width: none;
+}
+
+.ai-chips li {
+  flex: none;
+}
+
+.ai-chip {
+  min-block-size: 26px;
+  padding-block: var(--space-2);
+  padding-inline: var(--space-5);
+  font-size: var(--text-callout);
+  color: var(--label);
+  white-space: nowrap;
+  background: var(--control-background);
+  border: 0;
+  border-radius: var(--radius-capsule);
+  box-shadow: var(--shadow-control);
+  transition:
+    background-color var(--duration-quick) var(--ease-out),
+    transform var(--duration-press) var(--ease-out);
+}
+
+.ai-chip:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--control-background) 92%, var(--label));
+}
+
+.ai-chip:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.ai-chip:disabled {
+  color: var(--tertiary-label);
+}
+
+/* The input: one rounded field with its button inside, growing to a few lines. */
+.ai-composer {
+  display: flex;
+  flex: none;
+  gap: var(--space-3);
+  align-items: flex-end;
+  padding-block: var(--space-2);
+  padding-inline: var(--space-5) var(--space-2);
+  margin-block: var(--space-4) 0;
+  margin-inline: var(--space-5);
+  background: var(--control-background);
+  border-radius: 18px;
+  box-shadow: var(--shadow-control);
+}
+
+.ai-composer:focus-within {
+  box-shadow:
+    var(--shadow-control),
+    0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.ai-input {
+  flex: 1;
+  min-inline-size: 0;
+  max-block-size: 132px;
+  padding-block: var(--space-3);
+  padding-inline: 0;
+  font: inherit;
+  line-height: 1.4;
+  color: var(--label);
+  resize: none;
+  outline: none;
+  background: transparent;
+  border: 0;
+}
+
+.ai-input::placeholder {
+  color: var(--tertiary-label);
+}
+
+.ai-send.icon-btn {
+  min-inline-size: 28px;
+  min-block-size: 28px;
+  block-size: 28px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.ai-send.icon-btn:disabled {
+  color: var(--tertiary-label);
+  background: var(--secondary-fill);
+  box-shadow: none;
+}
+
+.ai-send-stop.icon-btn,
+.ai-send-stop.icon-btn:hover:not(:disabled) {
+  color: var(--window-background);
+  background: var(--label);
+}
+
+/* Where messages go: always said, under the input. */
+.ai-where {
+  flex: none;
+  padding-block: var(--space-3) var(--space-4);
+  padding-inline: var(--space-5);
+  margin: 0;
+  font-size: var(--text-subheadline);
+  line-height: var(--leading-body);
+  color: var(--secondary-label);
+  text-align: center;
+}

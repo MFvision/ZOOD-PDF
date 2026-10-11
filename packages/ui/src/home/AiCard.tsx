@@ -4,7 +4,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useI18n } from '../i18n/useT';
-import type { TKey } from '../i18n/messages';
+import { CHIPS } from '../ai/chat/chips';
 import { localAddress } from '../ai/providers';
 import { postAiRequest } from '../ai/request';
 import type { AiRequest } from '../ai/request';
@@ -14,32 +14,17 @@ import { useDeviceModel } from '../ai/device/useDeviceModel';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { toolColor } from '../tools/ToolIcon';
 
-interface Chip {
-  id: string;
-  label: TKey;
-  /** The request the chip makes of the AI tool: a task, and for a question its wording. */
-  request: (lang: 'ar' | 'en', prompt: (key: TKey) => string) => AiRequest;
-}
-
-const CHIPS: Chip[] = [
-  { id: 'summarize', label: 'ai.card.chip.summarize', request: () => ({ task: 'summarize' }) },
-  { id: 'explain', label: 'ai.card.chip.explain', request: (_, prompt) => ({ task: 'ask', question: prompt('ai.card.prompt.explain') }) },
-  { id: 'translate', label: 'ai.card.chip.translate', request: (lang) => ({ task: 'translate', to: lang }) },
-  { id: 'keyPoints', label: 'ai.card.chip.keyPoints', request: (_, prompt) => ({ task: 'ask', question: prompt('ai.card.prompt.keyPoints') }) },
-  { id: 'quiz', label: 'ai.card.chip.quiz', request: (_, prompt) => ({ task: 'ask', question: prompt('ai.card.prompt.quiz') }) },
-  { id: 'email', label: 'ai.card.chip.email', request: (_, prompt) => ({ task: 'ask', question: prompt('ai.card.prompt.email') }) },
-];
-
 /**
- * The AI Assistant, docked at the home screen's side: suggestion chips and a
- * question. Each chip is one of the AI tool's own actions, or a question
- * worded for it; pressing one opens the tool with that request chosen, and
- * — there being no document on the home screen — asks for the PDF it is
- * about. The tool then shows exactly what would go where, and sends nothing
- * until its Send button is pressed. The card says which provider that is.
+ * The AI Assistant, docked at the home screen's side: the chat's own quick
+ * actions and a question. Pressing one opens the AI tool and puts that
+ * request into its chat — of the open document, or, there being none on the
+ * home screen, of the PDF it then asks for. On this device nothing leaves;
+ * for Claude and a local server the chat shows what would go where first,
+ * and sends nothing until its Send button is pressed. The card says which
+ * provider that is.
  */
 export const AiCard = forwardRef<HTMLTextAreaElement, { className?: string }>(function AiCard({ className }, ref) {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const dispatch = useAppDispatch();
   const state = useAppState();
   const services = useServices();
@@ -79,7 +64,7 @@ export const AiCard = forwardRef<HTMLTextAreaElement, { className?: string }>(fu
       <ul className="home-ai-chips" aria-label={t('ai.card.chips')}>
         {CHIPS.map((chip) => (
           <li key={chip.id}>
-            <button type="button" className="home-chip" onClick={() => ask(chip.request(lang, (key) => t(key)))}>
+            <button type="button" className="home-chip" onClick={() => ask({ kind: chip.kind, text: t(chip.prompt) })}>
               {t(chip.label)}
             </button>
           </li>
@@ -90,7 +75,7 @@ export const AiCard = forwardRef<HTMLTextAreaElement, { className?: string }>(fu
         onSubmit={(event) => {
           event.preventDefault();
           if (question.trim().length === 0) return;
-          ask({ task: 'ask', question: question.trim() });
+          ask({ kind: 'question', text: question.trim() });
           setQuestion('');
         }}
       >

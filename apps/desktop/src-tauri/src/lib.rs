@@ -289,6 +289,7 @@ pub fn run() {
             ai::ai_runtime,
             ai::ai_memory_bytes,
             ai::ai_generate,
+            ai::ai_count_tokens,
             ai::ai_cancel,
             profile::profile_get,
             profile::profile_set,

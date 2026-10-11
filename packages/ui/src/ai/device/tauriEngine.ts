@@ -56,6 +56,11 @@ export function tauriEngine(model: DeviceModel): DeviceEngine {
     remove: async () => {
       await invokeHost('ai_model_delete', { id: model.id });
     },
+    countTokens: async (text: string) => {
+      const count = await invokeHost('ai_count_tokens', { model: model.id, text });
+      if (typeof count !== 'number') throw new Error('E_AI: no count');
+      return count;
+    },
     generate: async (messages: readonly ChatMessage[], options: GenerateOptions): Promise<Generated> => {
       requests += 1;
       const id = `${Date.now()}-${requests}`;
@@ -69,7 +74,7 @@ export function tauriEngine(model: DeviceModel): DeviceEngine {
       options.signal.addEventListener('abort', cancel);
       try {
         const done = (await invokeHost('ai_generate', {
-          request: { id, model: model.id, messages, grammar: options.grammar ?? null, maxTokens: options.maxTokens },
+          request: { id, model: model.id, messages, grammar: options.grammar ?? null, maxTokens: options.maxTokens, contextTokens: options.contextTokens ?? null },
         })) as Done;
         // The host's text is the whole answer; the events were its pieces.
         return { text: done.text || text, cutOff: done.cutOff, tokens: done.tokens, ms: done.ms };

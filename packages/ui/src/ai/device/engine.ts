@@ -29,6 +29,8 @@ export interface GenerateOptions {
   /** A GBNF grammar the answer must follow (from a JSON Schema, `grammar.ts`). */
   grammar?: string;
   maxTokens: number;
+  /** The window to run in, in tokens (`context.ts`); the engine's own default when not given. */
+  contextTokens?: number;
   onToken: (text: string) => void;
   signal: AbortSignal;
 }
@@ -55,6 +57,12 @@ export interface DeviceEngine {
   download(onProgress: (received: number, total: number) => void, signal: AbortSignal): Promise<void>;
   remove(): Promise<void>;
   generate(messages: readonly ChatMessage[], options: GenerateOptions): Promise<Generated>;
+  /**
+   * How many tokens `text` is for this model, where the engine can say: a
+   * document is measured with the model's own count, because a character is
+   * a quarter of a token in English and close to a whole one in Arabic.
+   */
+  countTokens?(text: string): Promise<number>;
 }
 
 /** What a test installs: a factory, so each page load gets a fresh engine. */
