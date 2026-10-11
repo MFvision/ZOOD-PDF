@@ -69,11 +69,16 @@ test('the extension viewer opens an Arabic PDF, and its AI tool needs no host pe
     });
     await page.locator('.pane-end .tool-card', { hasText: 'AI' }).click();
     const ai = page.locator('.pane-end');
+    await ai.getByRole('button', { name: 'Model settings', exact: true }).first().click();
     await ai.getByRole('radio', { name: /^Claude/ }).check();
     await ai.getByLabel('Anthropic API key').fill('sk-ant-api03-e2e-not-a-real-key');
-    await ai.getByRole('button', { name: 'Review what will be sent' }).click();
+    await ai.getByRole('button', { name: 'Back to the chat' }).click();
+    await ai.getByRole('list', { name: 'Suggestions' }).getByRole('button', { name: 'Summarize this document' }).click();
+    // The chat's review, then its Send: nothing has gone before it.
+    await expect(ai.getByRole('region', { name: 'What will be sent' })).toContainText('Anthropic, at api.anthropic.com');
+    expect(sent).toHaveLength(0);
     await ai.getByRole('button', { name: 'Send to Anthropic' }).click();
-    await expect(ai.getByRole('region', { name: 'Answer' })).toContainText('Read from the extension');
+    await expect(ai.getByRole('log', { name: 'Conversation' })).toContainText('Read from the extension');
     expect(sent).toHaveLength(1);
     expect(sent[0]).toContain('صباح الخير');
     expect(errors).toEqual([]);

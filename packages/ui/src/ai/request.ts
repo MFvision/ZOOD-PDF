@@ -1,17 +1,17 @@
-import type { Lang } from '../i18n/messages';
-import type { TaskKind } from './budget';
+import type { Ask } from './chat/answer';
 
 /**
- * A request handed to the AI panel from outside it — the home screen's
- * suggestion chips. It only chooses the panel's action and fills in its
- * question; the panel then shows what would be sent, and nothing goes
- * anywhere until the person presses Send there, as always.
+ * A request handed to the AI tool's chat from outside it — the home screen's
+ * assistant card: one of its chips, or a typed question. It goes into the
+ * chat of the document that is open (or of the one about to be opened) as
+ * the person's message. On this device that is all: nothing leaves. For
+ * Claude and a local server the chat's own rule holds — the first message
+ * about a document waits at "What will be sent" for its Send button.
  */
 export interface AiRequest {
-  task: TaskKind;
-  question?: string;
-  /** For a translation: the language to translate into. */
-  to?: Lang;
+  kind: Ask['kind'];
+  /** The words of the message. */
+  text: string;
 }
 
 let pending: AiRequest | null = null;

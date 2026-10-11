@@ -488,6 +488,11 @@ pub struct GenerateRequest {
     #[serde(default)]
     pub grammar: Option<String>,
     pub max_tokens: u32,
+    /// The window this request runs in, in tokens; the interface chooses it
+    /// from the machine's memory (`contextTokensFor`). `DEFAULT_CONTEXT` when
+    /// not given, and always kept inside what the engine allows.
+    #[serde(default)]
+    pub context_tokens: Option<u32>,
 }
 
 #[derive(Serialize, Clone, Debug, PartialEq)]
@@ -507,8 +512,21 @@ struct TokenEvent {
 }
 
 pub const TOKEN_EVENT: &str = "warraq://ai-token";
-/// The window: what the interface budgets its text against.
-pub const CONTEXT_TOKENS: u32 = 4096;
+/// The window when a request names none: what the interface budgets its
+/// text against on a machine whose memory it does not know.
+pub const DEFAULT_CONTEXT: u32 = 4096;
+/// The widest window a request may ask for. Qwen2.5 was trained on 32k; past
+/// 16k a laptop spends minutes reading the prompt.
+pub const MAX_CONTEXT: u32 = 16_384;
+const MIN_CONTEXT: u32 = 2048;
+
+/// The window a request runs in: what it asked for, inside the engine's bounds.
+pub fn context_for(request: &GenerateRequest) -> u32 {
+    request
+        .context_tokens
+        .unwrap_or(DEFAULT_CONTEXT)
+        .clamp(MIN_CONTEXT, MAX_CONTEXT)
+}
 const BATCH: usize = 512;
 
 /// The loaded model, on the engine's own thread.
@@ -521,12 +539,22 @@ pub struct Engine {
 impl Engine {
     /// Loads the model at `path`: onto the GPU on the Mac, into memory elsewhere.
     pub fn load(path: &Path) -> Result<Self, String> {
+        Self::load_with(path, cfg!(target_os = "macos").then_some(1000))
+    }
+
+    /// Loads the model with no layer on the graphics processor. The app never
+    /// does; the measuring example does, on a Mac, to see what a machine
+    /// without Metal makes of the same model.
+    pub fn load_on_processor(path: &Path) -> Result<Self, String> {
+        Self::load_with(path, Some(0))
+    }
+
+    fn load_with(path: &Path, gpu_layers: Option<u32>) -> Result<Self, String> {
         let mut backend = LlamaBackend::init().map_err(|e| format!("E_AI: {e}"))?;
         backend.void_logs();
-        let params = if cfg!(target_os = "macos") {
-            LlamaModelParams::default().with_n_gpu_layers(1000)
-        } else {
-            LlamaModelParams::default()
+        let params = match gpu_layers {
+            Some(layers) => LlamaModelParams::default().with_n_gpu_layers(layers),
+            None => LlamaModelParams::default(),
         };
         let model = LlamaModel::load_from_file(&backend, path, &params)
             .map_err(|e| format!("E_AI: cannot load the model: {e}"))?;
@@ -539,6 +567,16 @@ impl Engine {
 
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    /// How many tokens `text` is for this model: what a document is measured
+    /// with, so a budget is the model's own count and not a guess from the
+    /// number of characters.
+    pub fn count_tokens(&self, text: &str) -> Result<usize, String> {
+        self.model
+            .str_to_token(text, AddBos::Never)
+            .map(|tokens| tokens.len())
+            .map_err(|e| format!("E_AI: {e}"))
     }
 
     /// Answers `request`, handing each token to `emit` as it is sampled,
@@ -568,19 +606,20 @@ impl Engine {
         let tokens = model
             .str_to_token(&prompt, AddBos::Always)
             .map_err(|e| format!("E_AI: {e}"))?;
-        let max_tokens = request.max_tokens.clamp(1, CONTEXT_TOKENS / 2);
-        if tokens.len() as u32 + max_tokens > CONTEXT_TOKENS {
+        let context = context_for(request);
+        let max_tokens = request.max_tokens.clamp(1, context / 2);
+        if tokens.len() as u64 + u64::from(max_tokens) > u64::from(context) {
             return Err(format!(
                 "E_TOO_LONG: the request is {} tokens; the window holds {} with the reply",
                 tokens.len(),
-                CONTEXT_TOKENS - max_tokens
+                context - max_tokens
             ));
         }
         let threads = std::thread::available_parallelism()
             .map(|n| n.get().min(8) as i32)
             .unwrap_or(4);
         let params = LlamaContextParams::default()
-            .with_n_ctx(NonZeroU32::new(CONTEXT_TOKENS))
+            .with_n_ctx(NonZeroU32::new(context))
             .with_n_batch(BATCH as u32)
             .with_n_threads(threads)
             .with_n_threads_batch(threads);
@@ -596,6 +635,10 @@ impl Engine {
             .enumerate()
             .map(|(i, c)| (i * BATCH, c))
         {
+            // Reading a long prompt takes the CPU a while: Stop is heard between its batches too.
+            if cancel.load(Ordering::Relaxed) {
+                return Err("E_CANCELLED: stopped".to_string());
+            }
             batch.clear();
             for (offset, token) in chunk.iter().enumerate() {
                 let pos = start + offset;
@@ -614,6 +657,21 @@ impl Engine {
             );
             samplers.push(LlamaSampler::greedy());
         } else {
+            // A small model falls into saying one line over and over until
+            // its reply runs out (measured: a 95-page statute "summarized" as
+            // one sentence fifty times). What it has just written is made a
+            // little less likely, and going on with a run of words it has
+            // already written — beyond a citation's length — much less (DRY).
+            // Only the reply is looked at, so quoting the document is free.
+            samplers.push(LlamaSampler::penalties(model.n_vocab(), 128, 1.1, 0.0, 0.0));
+            samplers.push(LlamaSampler::dry(
+                model,
+                0.8,
+                1.75,
+                6,
+                1024,
+                ["\n", ":", "\"", "*"],
+            ));
             samplers.push(LlamaSampler::top_k(40));
             samplers.push(LlamaSampler::top_p(0.9, 1));
             samplers.push(LlamaSampler::temp(0.3));
@@ -662,17 +720,28 @@ impl Engine {
     }
 }
 
-/// One request for the engine thread, and where its answer goes.
+/// What the engine thread is asked: an answer, or a count of tokens.
+enum Work {
+    Generate {
+        request: GenerateRequest,
+        cancel: Arc<AtomicBool>,
+        token: Box<dyn Fn(&str) + Send>,
+        reply: mpsc::Sender<Result<Generated, String>>,
+    },
+    Count {
+        text: String,
+        reply: mpsc::Sender<Result<usize, String>>,
+    },
+}
+
+/// One piece of work for the engine thread, and the model file it is for.
 struct Job {
-    request: GenerateRequest,
     path: PathBuf,
-    cancel: Arc<AtomicBool>,
-    token: Box<dyn Fn(&str) + Send>,
-    reply: mpsc::Sender<Result<Generated, String>>,
+    work: Work,
 }
 
 /// The engine thread: loads the model named by the first job — and again
-/// only when a job names another file — and answers one job at a time.
+/// only when a job names another file — and does one job at a time.
 fn engine_thread(jobs: mpsc::Receiver<Job>) {
     let mut engine: Option<Engine> = None;
     for job in jobs {
@@ -681,7 +750,10 @@ fn engine_thread(jobs: mpsc::Receiver<Job>) {
             match Engine::load(&job.path) {
                 Ok(loaded) => engine = Some(loaded),
                 Err(e) => {
-                    let _ = job.reply.send(Err(e));
+                    match job.work {
+                        Work::Generate { reply, .. } => drop(reply.send(Err(e))),
+                        Work::Count { reply, .. } => drop(reply.send(Err(e))),
+                    }
                     continue;
                 }
             }
@@ -689,9 +761,72 @@ fn engine_thread(jobs: mpsc::Receiver<Job>) {
         let Some(loaded) = engine.as_ref() else {
             continue;
         };
-        let result = loaded.generate(&job.request, &job.cancel, |piece| (job.token)(piece));
-        let _ = job.reply.send(result);
+        match job.work {
+            Work::Generate {
+                request,
+                cancel,
+                token,
+                reply,
+            } => {
+                let result = loaded.generate(&request, &cancel, |piece| token(piece));
+                let _ = reply.send(result);
+            }
+            Work::Count { text, reply } => {
+                let _ = reply.send(loaded.count_tokens(&text));
+            }
+        }
     }
+}
+
+/// The channel to the engine thread, started on first use.
+fn engine_sender(state: &AiState) -> mpsc::Sender<Job> {
+    let mut engine = state.engine.lock().unwrap_or_else(|e| e.into_inner());
+    engine
+        .get_or_insert_with(|| {
+            let (tx, rx) = mpsc::channel();
+            std::thread::Builder::new()
+                .name("warraq-ai".into())
+                .spawn(move || engine_thread(rx))
+                .expect("engine thread");
+            tx
+        })
+        .clone()
+}
+
+/// The longest text one count is asked of: far more than a window holds.
+const COUNT_LIMIT: usize = 400_000;
+
+/// How many tokens `text` is for the model `model` — the interface measures
+/// a document's text with it before cutting it to the window.
+#[tauri::command]
+pub async fn ai_count_tokens<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AiState>,
+    model: String,
+    text: String,
+) -> Result<usize, String> {
+    if text.len() > COUNT_LIMIT {
+        return Err("E_TOO_LONG: too much text to count at once".to_string());
+    }
+    let spec = model_spec(&model)?;
+    let path = models_dir(&app)?.join(&spec.file);
+    if !is_verified(&path, spec) {
+        return Err("E_MODEL_MISSING: the on-device model is not downloaded".to_string());
+    }
+    let (reply, answer) = mpsc::channel();
+    engine_sender(&state)
+        .send(Job {
+            path,
+            work: Work::Count { text, reply },
+        })
+        .map_err(|_| "E_AI: the engine has stopped".to_string())?;
+    tauri::async_runtime::spawn_blocking(move || {
+        answer
+            .recv()
+            .unwrap_or_else(|_| Err("E_AI: the engine has stopped".to_string()))
+    })
+    .await
+    .map_err(|e| format!("E_AI: {e}"))?
 }
 
 #[tauri::command]
@@ -711,37 +846,27 @@ pub async fn ai_generate<R: Runtime>(
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .insert(request.id.clone(), cancel.clone());
-    let sender = {
-        let mut engine = state.engine.lock().unwrap_or_else(|e| e.into_inner());
-        engine
-            .get_or_insert_with(|| {
-                let (tx, rx) = mpsc::channel();
-                std::thread::Builder::new()
-                    .name("warraq-ai".into())
-                    .spawn(move || engine_thread(rx))
-                    .expect("engine thread");
-                tx
-            })
-            .clone()
-    };
+    let sender = engine_sender(&state);
     let (reply, answer) = mpsc::channel();
     let id = request.id.clone();
     let handle = app.clone();
     let event_id = id.clone();
     let job = Job {
-        request,
         path,
-        cancel,
-        token: Box::new(move |piece| {
-            let _ = handle.emit(
-                TOKEN_EVENT,
-                TokenEvent {
-                    id: event_id.clone(),
-                    text: piece.to_string(),
-                },
-            );
-        }),
-        reply,
+        work: Work::Generate {
+            request,
+            cancel,
+            token: Box::new(move |piece| {
+                let _ = handle.emit(
+                    TOKEN_EVENT,
+                    TokenEvent {
+                        id: event_id.clone(),
+                        text: piece.to_string(),
+                    },
+                );
+            }),
+            reply,
+        },
     };
     sender
         .send(job)
@@ -825,6 +950,33 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    #[test]
+    fn a_request_runs_in_the_window_it_names_inside_the_engines_bounds() {
+        let request = |context_tokens| GenerateRequest {
+            id: "t".into(),
+            model: "t".into(),
+            messages: Vec::new(),
+            grammar: None,
+            max_tokens: 16,
+            context_tokens,
+        };
+        assert_eq!(context_for(&request(None)), DEFAULT_CONTEXT);
+        assert_eq!(context_for(&request(Some(8192))), 8192);
+        assert_eq!(context_for(&request(Some(1))), 2048);
+        assert_eq!(context_for(&request(Some(u32::MAX))), MAX_CONTEXT);
+        // The interface's own words: an older one that names no window still parses.
+        let parsed: GenerateRequest = serde_json::from_str(
+            r#"{"id":"1","model":"qwen2.5-0.5b","messages":[{"role":"user","content":"x"}],"maxTokens":8}"#,
+        )
+        .unwrap();
+        assert_eq!(parsed.context_tokens, None);
+        let named: GenerateRequest = serde_json::from_str(
+            r#"{"id":"1","model":"qwen2.5-0.5b","messages":[],"grammar":null,"maxTokens":8,"contextTokens":8192}"#,
+        )
+        .unwrap();
+        assert_eq!(context_for(&named), 8192);
+    }
+
     /// The real model, once by hand: `WARRAQ_MODEL=path/to/model.gguf cargo test -- --ignored`.
     #[test]
     #[ignore]
@@ -840,6 +992,7 @@ mod tests {
             }],
             grammar: None,
             max_tokens: 16,
+            context_tokens: None,
         };
         let mut pieces = Vec::new();
         let done = engine
@@ -851,5 +1004,17 @@ mod tests {
         assert_eq!(pieces.concat(), done.text);
         let stopped = engine.generate(&request, &AtomicBool::new(true), |_| {});
         assert!(stopped.unwrap_err().starts_with("E_CANCELLED"));
+        // The model's own count of a text, and its refusal of a request over the window it was given.
+        assert!(engine.count_tokens("Say hello in one word.").unwrap() >= 5);
+        let long = GenerateRequest {
+            messages: vec![Message {
+                role: "user".into(),
+                content: "كلمة ".repeat(3000),
+            }],
+            context_tokens: Some(2048),
+            ..request.clone()
+        };
+        let refused = engine.generate(&long, &AtomicBool::new(false), |_| {});
+        assert!(refused.unwrap_err().starts_with("E_TOO_LONG"));
     }
 }

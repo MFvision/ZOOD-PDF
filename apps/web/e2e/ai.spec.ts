@@ -28,7 +28,11 @@ const OLLAMA = 'http://localhost:11434/';
 
 const panel = (page: Page) => page.locator('.pane-end');
 const preflight = (page: Page) => panel(page).getByRole('region', { name: 'What will be sent' });
-const reply = (page: Page) => panel(page).getByRole('region', { name: 'Answer' });
+const thread = (page: Page) => panel(page).getByRole('log', { name: 'Conversation' });
+const input = (page: Page) => panel(page).getByLabel('Message');
+const reply = (page: Page, index = 0) => thread(page).locator('.ai-turn-assistant').nth(index);
+const chip = (page: Page, name: string) => panel(page).getByRole('list', { name: 'Suggestions' }).getByRole('button', { name });
+const SUMMARIZE = 'Summarize this document: one or two sentences on what it is, then its main points, each with its page.';
 
 /** A reply the way the provider sends it — with the CORS header a browser needs to read it. */
 const json = (body: unknown, status = 200): Reply => ({
@@ -66,16 +70,29 @@ async function readWithWarraq(file: string): Promise<string[]> {
   }
 }
 
-/** What the person does before anything can be sent: Claude, their key, an action. */
-async function claudeFor(
-  page: Page,
-  action: 'Summarize' | 'Ask a question' | 'Translate',
-): Promise<Locator> {
+/** The assistant's settings, from its header; `chat` goes back to the conversation. */
+async function settings(page: Page): Promise<Locator> {
+  await panel(page).getByRole("button", { name: "Model settings", exact: true }).first().click();
+  return panel(page);
+}
+const chat = (page: Page) => panel(page).getByRole('button', { name: 'Back to the chat' }).click();
+
+/** What the person does before anything can be sent: Claude, and their key. */
+async function claudeFor(page: Page): Promise<Locator> {
   await chooseTool(page, 'AI');
-  const ai = panel(page);
+  const ai = await settings(page);
   await ai.getByRole('radio', { name: /^Claude/ }).check();
   await ai.getByLabel('Anthropic API key').fill(KEY);
-  await ai.getByRole('radio', { name: action }).check();
+  await chat(page);
+  await expect(ai).toContainText('Messages, and the text of the document they need, go to api.anthropic.com with your key.');
+  return ai;
+}
+
+/** A local model on this computer, as the settings offer it. */
+async function localFor(page: Page): Promise<Locator> {
+  await chooseTool(page, 'AI');
+  const ai = await settings(page);
+  await ai.getByRole('radio', { name: 'A local model on this computer' }).check();
   return ai;
 }
 
@@ -85,8 +102,8 @@ function sentText(request: Request): string {
   return body.messages.map((message) => message.content).join('\n');
 }
 
-test.describe('the AI tool sends nothing until Send, and then only what it showed', () => {
-  test('nothing leaves before Send; Send sends exactly the text Warraq read, and the key only in x-api-key', async ({
+test.describe('the assistant sends nothing until Send, and then only what it showed', () => {
+  test('nothing leaves before Send; Send sends exactly the text Warraq read, and the key only in x-api-key; later messages do not ask again', async ({
     page,
     stayLocal: _,
   }) => {
@@ -96,22 +113,26 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     const toLocal = await answer(page, OLLAMA, () => json({ error: 'not expected' }, 500));
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
-    const ai = await claudeFor(page, 'Summarize');
-    await ai.getByRole('button', { name: 'Review what will be sent' }).click();
+    const ai = await claudeFor(page);
+    await chip(page, 'Summarize this document').click();
 
     const pages = await readWithWarraq(WORD_EXPORT);
     const characters = pages.reduce((sum, text) => sum + text.length, 0);
     const shown = preflight(page);
     await expect(shown).toContainText('Anthropic, at api.anthropic.com');
     await expect(shown).toContainText('claude-sonnet-5');
-    await expect(shown).toContainText('1–2 of 2');
-    await expect(shown).toContainText(characters.toLocaleString('en-US'));
+    await expect(shown).toContainText(`All of it (pages: 2; characters: ${characters.toLocaleString('en-US')}), with each message.`);
+    // What is shown is the request itself, to the character.
+    await shown.getByText('Show exactly what will be sent').click();
+    const exact = (await shown.locator('pre').textContent()) ?? '';
+    await expect(shown).toContainText(`${(exact.length - 2).toLocaleString('en-US')} characters, shown below`);
     // Reading the document and showing what would go sent nothing anywhere.
     expect(toClaude).toHaveLength(0);
     expect(toLocal).toHaveLength(0);
 
     await shown.getByRole('button', { name: 'Send to Anthropic' }).click();
     await expect(reply(page)).toContainText('uneven recovery');
+    await expect(preflight(page)).toHaveCount(0);
     expect(toClaude).toHaveLength(1);
     expect(toLocal).toHaveLength(0);
 
@@ -127,9 +148,12 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     expect(body.model).toBe('claude-sonnet-5');
     expect(body.messages).toHaveLength(1);
     const text = sentText(request);
+    // Exactly what the review showed.
+    expect(`${body.system}\n\n${text}`).toBe(exact);
+    expect(text.endsWith(`Request: ${SUMMARIZE}`)).toBe(true);
     // Logical order, as Warraq reads it; PDFium's reader returns this Arabic reversed.
     expect(text).toContain('صباح الخير');
-    // Page by page, exactly what Warraq's reader gives, and as many characters as the preflight said.
+    // Page by page, exactly what Warraq's reader gives, and as many characters as the review said.
     pages.forEach((pageText, index) =>
       expect(text).toContain(`<page number="${index + 1}">\n${pageText}\n</page>`),
     );
@@ -150,9 +174,34 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     expect(request.postData()).not.toContain(KEY);
     // Nor is it kept on the device: "Remember" was not ticked.
     expect(await page.evaluate(() => JSON.stringify({ ...localStorage }))).not.toContain(KEY);
+
+    // The review is once for a document and a provider: the next message goes as it is sent, with the turn before it.
+    await input(page).fill('And what does it ask for?');
+    await input(page).press('Enter');
+    await expect(reply(page, 1)).toContainText('uneven recovery');
+    await expect(preflight(page)).toHaveCount(0);
+    expect(toClaude).toHaveLength(2);
+    expect(sentText(toClaude[1] as Request)).toContain(`<conversation>\nPerson: ${SUMMARIZE}\nAssistant: A briefing on an uneven recovery [p. 1] and on climate finance [p. 2].\n</conversation>`);
+
+    // Another provider is another destination: it is shown, and waits for its own Send.
+    await settings(page);
+    await ai.getByRole('radio', { name: 'A local model on this computer' }).check();
+    await chat(page);
+    await expect(ai).toContainText('go to the local model at http://localhost:11434, on this computer.');
+    await input(page).fill('Once more, locally.');
+    await input(page).press('Enter');
+    await expect(preflight(page)).toContainText('This computer, at http://localhost:11434');
+    expect(toLocal).toHaveLength(0);
+    // "Don't send" sends nothing, and hands the words back to the input.
+    await preflight(page).getByRole('button', { name: "Don't send" }).click();
+    await expect(preflight(page)).toHaveCount(0);
+    await expect(input(page)).toHaveValue('Once more, locally.');
+    await expect(thread(page).locator('.ai-turn-user')).toHaveCount(2);
+    expect(toLocal).toHaveLength(0);
+    expect(toClaude).toHaveLength(2);
   });
 
-  test('Ask: the answer cites its pages, and a citation goes to its page', async ({
+  test('a question: the answer cites its pages, and a citation goes to its page', async ({
     page,
     stayLocal: _,
   }) => {
@@ -161,21 +210,22 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     );
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
-    const ai = await claudeFor(page, 'Ask a question');
+    await claudeFor(page);
     const question = 'ماذا قال عن تغير المناخ؟';
-    await ai.getByLabel('Your question').fill(question);
-    await ai.getByRole('button', { name: 'Review what will be sent' }).click();
-    await expect(preflight(page)).toContainText('Your question is sent with the text.');
+    await input(page).fill(question);
+    await input(page).press('Enter');
     await preflight(page).getByRole('button', { name: 'Send to Anthropic' }).click();
 
     const answered = reply(page);
     await expect(answered).toContainText('خطة العمل المناخية');
-    expect(sentText(toClaude[0] as Request)).toContain(`Question: ${question}`);
+    expect(sentText(toClaude[0] as Request).endsWith(`Request: ${question}`)).toBe(true);
+    await expect(answered).toContainText('claude-sonnet-5 · From the whole document (pages: 2).');
     // Arabic reads right to left in the panel, whatever the interface language.
     const line = answered.locator('p[dir="auto"]').first();
     expect(await line.evaluate((node) => getComputedStyle(node).direction)).toBe('rtl');
 
-    const cite = answered.getByRole('button', { name: 'p. 2', exact: true });
+    const cite = answered.getByRole('button', { name: 'Go to page 2', exact: true });
+    await expect(cite).toHaveText('p. 2');
     await expect(cite).toBeVisible();
     await expect(cite).toHaveAttribute('title', 'Go to page 2');
     expect(await embedPage(page)).toBe(1);
@@ -183,24 +233,23 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     await expect.poll(() => embedPage(page)).toBe(2);
   });
 
-  test('Translate sends only the pages chosen', async ({ page, stayLocal: _ }) => {
+  test('Translate sends only the page on screen', async ({ page, stayLocal: _ }) => {
     const toClaude = await answer(page, ANTHROPIC, () =>
-      claudeSays('[p. 1]\nGood morning. I am pleased to meet you online.'),
+      claudeSays('Good morning. I am pleased to meet you online.'),
     );
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
-    const ai = await claudeFor(page, 'Translate');
-    await expect(ai.getByLabel('Direction')).toHaveValue('en');
-    await ai.getByRole('radio', { name: 'This page (1)' }).check();
-    await ai.getByRole('button', { name: 'Review what will be sent' }).click();
+    await claudeFor(page);
+    await chip(page, 'Translate').click();
     const [first] = await readWithWarraq(WORD_EXPORT);
-    await expect(preflight(page)).toContainText('1 of 2');
-    await expect(preflight(page)).toContainText((first ?? '').length.toLocaleString('en-US'));
     await preflight(page).getByRole('button', { name: 'Send to Anthropic' }).click();
     await expect(reply(page)).toContainText('Good morning');
+    await expect(reply(page)).toContainText('From page 1.');
+    expect(toClaude).toHaveLength(1);
     const text = sentText(toClaude[0] as Request);
     expect(text).toContain(`<page number="1">\n${first}\n</page>`);
     expect(text).not.toContain('<page number="2">');
+    // An Arabic page goes into English.
     expect(text).toContain('from Arabic into English');
   });
 
@@ -237,8 +286,8 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     }));
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
-    const ai = await claudeFor(page, 'Summarize');
-    await ai.getByRole('button', { name: 'Review what will be sent' }).click();
+    await claudeFor(page);
+    await chip(page, 'Summarize this document').click();
     await preflight(page).getByRole('button', { name: 'Send to Anthropic' }).click();
     await expect(reply(page)).toContainText('ملخص بالبث');
     await expect(reply(page)).not.toContainText('Reading.');
@@ -261,14 +310,14 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     );
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
-    const ai = await claudeFor(page, 'Summarize');
-    await ai.getByRole('button', { name: 'Review what will be sent' }).click();
+    await claudeFor(page);
+    await chip(page, 'Summarize this document').click();
     await preflight(page).getByRole('button', { name: 'Send to Anthropic' }).click();
-    await expect(ai.getByRole('alert')).toContainText(
+    await expect(reply(page).getByRole('alert')).toContainText(
       'Anthropic did not accept this API key (401)',
     );
     expect(toClaude).toHaveLength(1);
-    await expect(reply(page)).toHaveCount(0);
+    await expect(reply(page).locator('.ai-answer-text')).toHaveCount(0);
   });
 
   test('a local model: the text goes to this computer only, and the Anthropic key does not go with it', async ({
@@ -288,14 +337,16 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
     // A key typed for Claude first, to show it stays behind.
-    const ai = await claudeFor(page, 'Summarize');
+    const ai = await claudeFor(page);
+    await settings(page);
     await ai.getByRole('radio', { name: 'A local model on this computer' }).check();
     await expect(ai.getByText('The model runs on this computer')).toBeVisible();
     await expect(ai.getByLabel('Server address')).toHaveValue('http://localhost:11434');
     await expect(ai.getByLabel('Model name')).toHaveValue('gemma3');
-    await ai.getByRole('button', { name: 'Review what will be sent' }).click();
+    await chat(page);
+    await chip(page, 'Summarize this document').click();
     await expect(preflight(page)).toContainText('This computer, at http://localhost:11434');
-    await expect(preflight(page)).toContainText('1–2 of 2');
+    await expect(preflight(page)).toContainText('All of it (pages: 2;');
     expect(toLocal).toHaveLength(0);
     await preflight(page).getByRole('button', { name: 'Send to the local model' }).click();
     await expect(reply(page)).toContainText('ملخص محلي');
@@ -341,14 +392,13 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     );
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
-    await chooseTool(page, 'AI');
-    const ai = panel(page);
-    await ai.getByRole('radio', { name: 'A local model on this computer' }).check();
+    const ai = await localFor(page);
     await ai.getByLabel('Interface').selectOption('openai');
     await ai.getByLabel('Server address').fill('http://localhost:1234/v1');
     await ai.getByLabel('Model name').fill('qwen2.5');
     await expect(ai.getByText('connect only to ports')).toHaveCount(0);
-    await ai.getByRole('button', { name: 'Review what will be sent' }).click();
+    await chat(page);
+    await chip(page, 'Summarize this document').click();
     await preflight(page).getByRole('button', { name: 'Send to the local model' }).click();
     // Past the security policy, which would have stopped it before the network.
     await expect(reply(page)).toContainText('ملخص من LM Studio');
@@ -363,22 +413,21 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     const through = await refuse(page, 'http://localhost:11435/');
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
-    await chooseTool(page, 'AI');
-    const ai = panel(page);
-    await ai.getByRole('radio', { name: 'A local model on this computer' }).check();
+    const ai = await localFor(page);
     await ai.getByLabel('Server address').fill('http://localhost:11435');
     await expect(
       ai.getByText('connect only to ports 11434 (Ollama) and 1234 (LM Studio)'),
     ).toBeVisible();
-    await ai.getByRole('button', { name: 'Review what will be sent' }).click();
+    await chat(page);
+    await chip(page, 'Summarize this document').click();
     await preflight(page).getByRole('button', { name: 'Send to the local model' }).click();
-    await expect(ai.getByRole('alert')).toContainText(
+    await expect(reply(page).getByRole('alert')).toContainText(
       "This build's security policy does not allow connecting to http://localhost:11435",
     );
     expect(through).toHaveLength(0);
   });
 
-  test('redacted text is never sent: marked but not applied stops the review, applied is gone from the request', async ({
+  test('redacted text is never sent: marked but not applied stops the message, applied is gone from the request', async ({
     page,
     stayLocal: _,
   }) => {
@@ -398,20 +447,26 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     await expect.poll(() => pendingRedactions(page)).toBeGreaterThan(0);
 
     // Marked but not applied, the title is still in the file: the tool will not read it out.
-    let ai = await claudeFor(page, 'Summarize');
-    await ai.getByRole('button', { name: 'Review what will be sent' }).click();
-    await expect(ai.getByRole('alert')).toContainText('marked for redaction but not redacted yet');
+    await claudeFor(page);
+    await chip(page, 'Summarize this document').click();
+    await expect(thread(page).getByRole('alert')).toContainText('marked for redaction but not redacted yet');
     await expect(preflight(page)).toHaveCount(0);
+    await expect(thread(page).locator('.ai-turn-user')).toHaveCount(0);
+    expect(toClaude).toHaveLength(0);
 
     await chooseTool(page, 'Redact');
     await panel(page).getByRole('button', { name: 'Apply redactions', exact: true }).click();
     await expect.poll(() => pendingRedactions(page)).toBe(0);
 
     await chooseTool(page, 'AI');
-    ai = panel(page);
+    const ai = panel(page);
     // The key is still in memory from before; nothing else to type.
+    await settings(page);
     await expect(ai.getByLabel('Anthropic API key')).toHaveValue(KEY);
-    await ai.getByRole('button', { name: 'Review what will be sent' }).click();
+    await chat(page);
+    // The message that was stopped is still in the input.
+    await expect(input(page)).toHaveValue(SUMMARIZE);
+    await input(page).press('Enter');
     await preflight(page).getByRole('button', { name: 'Send to Anthropic' }).click();
     await expect(reply(page)).toContainText('An invoice');
     expect(toClaude).toHaveLength(1);
@@ -427,7 +482,7 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     const stored = () => page.evaluate(() => localStorage.getItem('warraq.ai.anthropicKey'));
     await page.goto('/');
     await page.locator('.tool-cards-grid .tool-card', { hasText: 'AI' }).click();
-    const ai = panel(page);
+    const ai = await settings(page);
     await ai.getByRole('radio', { name: /^Claude/ }).check();
     const remember = ai.getByRole('checkbox', { name: 'Remember this key on this device' });
     await expect(remember).not.toBeChecked();
@@ -439,6 +494,7 @@ test.describe('the AI tool sends nothing until Send, and then only what it showe
     expect(await stored()).toBe(KEY);
     await page.reload();
     await page.locator('.tool-cards-grid .tool-card', { hasText: 'AI' }).click();
+    await settings(page);
     await expect(ai.getByLabel('Anthropic API key')).toHaveValue(KEY);
     await expect(remember).toBeChecked();
 

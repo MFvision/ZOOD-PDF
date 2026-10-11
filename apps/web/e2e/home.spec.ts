@@ -102,7 +102,7 @@ test.describe('the home screen', () => {
     await expect(documentStatus(page)).toContainText('Page 3 of 3', { timeout: 60_000 });
   });
 
-  test('a suggestion chip opens the AI tool with that request chosen, names the provider, and sends nothing', async ({
+  test('a suggestion chip goes into the AI tool\'s chat, which names the provider and sends nothing before its Send', async ({
     page,
     stayLocal: _,
   }) => {
@@ -110,44 +110,50 @@ test.describe('the home screen', () => {
     const toLocal = await answer(page, OLLAMA, () => json({ error: 'must not be reached' }, 500));
     await home(page);
     const card = page.getByRole('complementary', { name: 'AI Assistant' });
-    await expect(card).toContainText('sends to Anthropic (Claude), with your own key, and only when you press Send there');
+    await expect(card).toContainText('The AI tool runs a model inside the app, on this device. Nothing is sent anywhere.');
     const chips = card.getByRole('list', { name: 'Suggestions' }).getByRole('button');
-    await expect(chips).toHaveText(['Summarize this document', 'Explain it simply', 'Translate', 'Find the key points', 'Make a quiz', 'Draft an email from it']);
+    await expect(chips).toHaveText(['Summarize this document', 'Find the key points', 'Explain it simply', 'Translate', 'Draft an email from it', 'Make a quiz']);
 
-    // A chip: the AI tool opens with its action chosen and the question written; the file is asked for.
+    // A chip: the AI tool opens with the request waiting in its chat; the file is asked for.
     await card.getByRole('button', { name: 'Make a quiz' }).click();
     await expect(aiPanel(page).getByRole('heading', { name: 'AI' })).toBeVisible();
-    await expect(aiPanel(page).getByRole('radio', { name: 'Ask a question' })).toBeChecked();
-    await expect(aiPanel(page).getByLabel('Your question')).toHaveValue(/quiz of five questions/);
-    await expect(aiPanel(page)).toContainText('Open a PDF to use this tool.');
+    const chat = aiPanel(page).getByRole('log', { name: 'Conversation' });
+    await expect(chat.locator('.ai-turn-user')).toContainText('quiz of five questions');
+    await expect(chat).toContainText('Choose a PDF first; the request is kept for it.');
 
     // Another chip while the tool is open changes the request in place.
-    await card.getByRole('button', { name: 'Summarize this document' }).click();
-    await expect(aiPanel(page).getByRole('radio', { name: 'Summarize' })).toBeChecked();
     await card.getByRole('button', { name: 'Explain it simply' }).click();
-    await expect(aiPanel(page).getByLabel('Your question')).toHaveValue(/Explain this document simply/);
+    await expect(chat.locator('.ai-turn-user')).toHaveCount(1);
+    await expect(chat.locator('.ai-turn-user')).toContainText('Explain this document simply');
 
-    // The file the request is about, then the tool's own review: it names the
-    // provider and the pages, and still nothing has left the app.
+    // The file the request is about. The on-device model is not downloaded, so the request waits in the input, and the chat says what is missing.
     await openPdf(page, WORD_EXPORT);
-    await expect(aiPanel(page).getByRole('radio', { name: 'Ask a question' })).toBeChecked();
+    const input = aiPanel(page).getByLabel('Message');
+    await expect(input).toHaveValue(/Explain this document simply/);
+    await expect(aiPanel(page)).toContainText('Download the on-device model first, or choose another provider.');
+    // With Claude instead: its key, and then the chat's own review before anything goes.
+    await aiPanel(page).getByRole('button', { name: 'Model settings', exact: true }).first().click();
     await aiPanel(page).getByRole('radio', { name: /^Claude/ }).check();
     await aiPanel(page).getByLabel('Anthropic API key').fill(KEY);
-    await aiPanel(page).getByRole('button', { name: 'Review what will be sent' }).click();
+    await aiPanel(page).getByRole('button', { name: 'Back to the chat' }).click();
+    await input.press('Enter');
+    // It names the provider and the document, and still nothing has left the app.
     const preflight = aiPanel(page).getByRole('region', { name: 'What will be sent' });
     await expect(preflight).toContainText('Anthropic, at api.anthropic.com');
+    await expect(preflight).toContainText('All of it (pages: 2;');
     await expect(preflight.getByRole('button', { name: 'Send to Anthropic' })).toBeVisible();
     expect(toClaude).toHaveLength(0);
     expect(toLocal).toHaveLength(0);
   });
 
-  test('a typed question goes to the AI tool the same way', async ({ page, stayLocal: _ }) => {
+  test('a typed question goes into the chat the same way', async ({ page, stayLocal: _ }) => {
     await home(page);
     const card = page.getByRole('complementary', { name: 'AI Assistant' });
     await card.getByLabel('Ask a question…').fill('ما موضوع هذا المستند؟');
     await card.getByRole('button', { name: 'Ask' }).click();
-    await expect(aiPanel(page).getByRole('radio', { name: 'Ask a question' })).toBeChecked();
-    await expect(aiPanel(page).getByLabel('Your question')).toHaveValue('ما موضوع هذا المستند؟');
+    const chat = aiPanel(page).getByRole('log', { name: 'Conversation' });
+    await expect(chat.locator('.ai-turn-user')).toHaveText('ما موضوع هذا المستند؟');
+    await expect(chat).toContainText('Choose a PDF first; the request is kept for it.');
   });
 
   test('Starred is a flag on this device: from a recent file’s ⋯ menu, listed under Starred, kept over a reload', async ({

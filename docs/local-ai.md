@@ -25,14 +25,16 @@ Foundation Models, AVSpeech) is documented with the iOS app.*
   information, tables — runs on the on-device model too. A data task's schema
   becomes a GBNF grammar the sampling follows (`ai/device/grammar.ts`), so the
   answer is JSON of the shape asked; it is still checked field by field.
-- **Long documents.** The model's window is 4,096 tokens (about 4,000
-  characters of Arabic after the rules and the reply). A question about a
-  longer document goes with the passages that answer it: the pages are put in
-  a Library index of their own (the same inverted index and Arabic-aware
-  ranking the Library searches folders with, on this device), the question is
-  the query, and the best lines with their neighbours go, in page order, each
-  inside its page's tag, so the answer still cites pages
-  (`ai/device/retrieval.ts`). The preflight says so, and which pages.
+- **A chat, and the whole document** (2026-10-11; docs/STATUS.md, "The
+  assistant: a chat over the whole document"). The tool is a conversation
+  about the open document. The model's window is 8,192 tokens on a computer
+  with 8 GB or more and 4,096 below that and in a browser; what fits of a
+  document is counted with the model's own tokenizer, not in characters. A
+  document that fits goes whole. A longer one is analyzed once — chunks
+  summarized, the summaries combined in rounds, an outline — and kept on the
+  device under the hash of its text; a summary is made from that, and a
+  question from the passages the Library's ranking picks (`library.*`, on this
+  device) together with the outline. Each answer says what it was made from.
 - **Form autofill from a profile.** Settings holds *My details for forms*:
   name in Arabic and English, national ID/Iqama, phone, e-mail, address,
   employer, date of birth, IBAN — all optional. They are kept encrypted at
@@ -59,14 +61,15 @@ Foundation Models, AVSpeech) is documented with the iOS app.*
 
 | Host | Engine | Model | Where it runs |
 |---|---|---|---|
-| Desktop (Tauri) | llama.cpp through `llama-cpp-2` (MIT), built from source by cmake; `src-tauri/src/ai.rs` | Qwen2.5-1.5B-Instruct Q4_K_M (1.1 GB) on a machine with 8 GB or more; Qwen2.5-0.5B-Instruct (491 MB) below that (`ai_memory_bytes`) | Metal on the Mac; the processor on Windows (AVX2 where present, chosen by ggml at run time). Context 4,096; tokens streamed to the webview as events |
+| Desktop (Tauri) | llama.cpp through `llama-cpp-2` (MIT), built from source by cmake; `src-tauri/src/ai.rs` | Qwen2.5-1.5B-Instruct Q4_K_M (1.1 GB) on a machine with 8 GB or more; Qwen2.5-0.5B-Instruct (491 MB) below that (`ai_memory_bytes`) | Metal on the Mac; the processor on Windows (AVX2 where present, chosen by ggml at run time). Context 8,192 from 8 GB of memory, 4,096 below (`ai/device/context.ts`; the request names it, the host keeps it within 2,048–16,384); `ai_count_tokens` gives the model's own count of a text; tokens streamed to the webview as events |
 | Web, PWA, extension | `@wllama/wllama` 3.6 (MIT), llama.cpp in WebAssembly, served from the app's own origin | Qwen2.5-0.5B-Instruct Q4_K_M, in the origin's private file system | Several threads where the page is cross-origin isolated, one otherwise; the panel says answers are weaker than on the desktop |
 | Tests (CI, e2e) | a stub installed on the page before the app loads (`apps/web/e2e/deviceStub.ts`), on the hook `ai/device/engine.ts` looks for | none downloaded | — |
 
 The desktop host runs one engine thread that owns the loaded model (loaded
 once and kept; reloaded only when another file is named), takes one request
-at a time, samples with top-k 40 / top-p 0.9 / temperature 0.3 — or greedily
-under a grammar — and stops on the model's end token, at the reply cap (1,024
+at a time, samples with a repetition penalty (1.1 over 128 tokens), DRY
+(0.8 / 1.75 past 6 tokens), top-k 40 / top-p 0.9 / temperature 0.3 — or
+greedily under a grammar — and stops on the model's end token, at the reply cap (1,024
 tokens), or on `ai_cancel`. The download streams into a `.part` file, hashed
 as it goes, and is renamed into place only once the size and digest match; a
 stopped or failed download leaves nothing behind.
@@ -77,14 +80,15 @@ desktop's policy is unchanged, since its host does the downloading.
 
 ## Proven by
 
-- `apps/web/e2e/ai-device.spec.ts`: the default provider, the download on the
-  button only, the licence and checksum shown first, a question on a long
-  document answered from its passages (the sent text is lines of the document,
-  within the window), a short document summarized whole with the answer
-  streamed, a form filled from the saved profile (the profile is ciphertext in
-  IndexedDB, the request carries the profile and the grammar, the reviewed
-  values are typed into the fields), and the model deleted from Settings.
-  `stayLocal` fails any of them if a request leaves the app.
+- `apps/web/e2e/ai-chat.spec.ts`: the chat on this device with the engine
+  faked — a 95-page document summarized from every page of it, the analysis
+  kept across a reload, the passage from a late page, Stop, a scan, an engine
+  that refuses what does not fit its window. `apps/web/e2e/ai-device.spec.ts`:
+  the default provider, the download on the button only, the licence and
+  checksum shown first, a form filled from the saved profile (the profile is
+  ciphertext in IndexedDB, the request carries the profile and the grammar,
+  the reviewed values are typed into the fields), and the model deleted from
+  Settings. `stayLocal` fails any of them if a request leaves the app.
 - `apps/web/e2e/read-aloud.spec.ts`: the page read in logical order with the
   Arabic voice, each sentence marked over EmbedPDF's page, pause, resume,
   stop; the whole document read on to page 2 at the chosen speed; the mark
@@ -98,14 +102,18 @@ desktop's policy is unchanged, since its host does the downloading.
 
 ## Limits, stated plainly
 
-- Answers from a 1.5B model are far weaker than Claude's: fine for a summary,
-  a plain question, a form's values; wrong more often on reasoning. The 0.5B
-  in a browser more so, and slowly on one thread.
+- Answers from a 1.5B model are far weaker than Claude's: it gets the gist of
+  a document and answers a plain question from the right passage, but rarely
+  cites pages, decays in long Arabic answers and restates itself on a
+  follow-up. The 0.5B — the only one a browser runs — cannot summarize a long
+  document at all (measured: docs/STATUS.md, "The assistant").
 - The selection is read aloud without a mark on the page (its place is not
   known); the page and the document are marked sentence by sentence.
 - Sentence boxes are the stretch of each line by its share of characters, not
   glyph-exact.
 - Voices are whatever the system has installed; a language without a voice is
   read with the nearest, and the bar says when there is none.
-- Windows has not been run here (no Windows machine): the CPU path, DPAPI store
-  and Microsoft voices are built from the same code and not proven by hand.
+- Windows has not been run here (no Windows machine): the CPU path, the token
+  count, the 8,192-token window, the DPAPI store and Microsoft voices are
+  built from the same code and not proven by hand. Nor was the browser's
+  engine run with a real model for the chat.

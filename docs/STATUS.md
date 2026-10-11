@@ -1,6 +1,7 @@
 # STATUS — Warraq
 
-*Updated 2026-09-26: the app is local-first. The AI tool's default provider is now **On this device** — llama.cpp inside the app (Metal on the Mac, the processor on Windows, WebAssembly in a browser) with Qwen2.5-Instruct, downloaded once on a click and verified, never in the installer — with every AI action running on it, passages retrieved through a Library index for long documents, and form autofill from a profile kept encrypted (Keychain / Credential Manager / WebCrypto); and the page is read aloud with the system's own voices, the sentence marked on the page in both views. Measured on this Mac below ("Local-first AI, measured"); `docs/local-ai.md` has the design.
+*Updated 2026-10-11: the AI tool is a chat over the whole document, on the web and the desktop. The owner's report from the Windows build — "only 4,000 characters", no summary of the whole document, "the answer doesn't appear", "there is no chat" — is answered in "The assistant: a chat over the whole document", below: the cause (the on-device budget was counted in characters, the model's window in tokens, and the host refused what overflowed), what replaced the one-shot form, how it is proven, and what the small model still does badly, measured on this Mac. **Windows itself was not run here.**
+Before that, 2026-09-26: the app is local-first. The AI tool's default provider is now **On this device** — llama.cpp inside the app (Metal on the Mac, the processor on Windows, WebAssembly in a browser) with Qwen2.5-Instruct, downloaded once on a click and verified, never in the installer — with every AI action running on it, passages retrieved through a Library index for long documents, and form autofill from a profile kept encrypted (Keychain / Credential Manager / WebCrypto); and the page is read aloud with the system's own voices, the sentence marked on the page in both views. Measured on this Mac below ("Local-first AI, measured"); `docs/local-ai.md` has the design.
 Before that, 2026-09-20: an adversarial review of the Apple-style redesign found ten distinct problems —
 the home screen keeping a picture of a page as it was before a redaction, the macOS menu bar's Undo and
 About, stale checks and pressed states, the keyboard in the tool picker and in Settings, the markup
@@ -43,10 +44,173 @@ Before that, on 2026-09-19: the interface is rebuilt on EmbedPDF (ADR-0007); all
 | iPhone and iPad app | **The foundation is built, simulator only** (2026-09-21, below): a native SwiftUI app in `apps/ios` with the Rust core linked in as an XCFramework behind a C ABI. It opens a PDF from Files or its own Library, draws it with PDFKit in right-to-left page order for Arabic documents, reads its text in logical order through the core (VoiceOver gets it as the page's value), edits through the core as incremental updates with nothing written until Save, and has Settings for language and appearance that apply at once. Everything else — annotate, sign, organize, export, scan, OCR, the Library's search, the widgets, Shortcuts — is being built on it. **On-device AI and read aloud** (2026-10-01, below): Apple's Foundation Models where iOS 26+ has them (Ask, Summarize, Key points, Explain, Translate, Draft an email, Quiz; form autofill from a Keychain profile, reviewed before anything is written), and read aloud with the installed voices, the sentence highlighted, across pages, with the Lock Screen's controls. On the simulators the framework says the model is available but its safety check fails every request, so the real model has not answered here: the flow is proven with a fake engine behind the same protocol. No device, no signing identity here |
 
 | iPhone and iPad app | **The foundation is built, simulator only** (2026-09-21, below): a native SwiftUI app in `apps/ios` with the Rust core linked in as an XCFramework behind a C ABI. It opens a PDF from Files or its own Library, draws it with PDFKit in right-to-left page order for Arabic documents, reads its text in logical order through the core (VoiceOver gets it as the page's value), edits through the core as incremental updates with nothing written until Save, and has Settings for language and appearance that apply at once. Everything else — annotate, sign, organize, export, scan, OCR, the Library's search, the widgets, Shortcuts — is being built on it. Proven on the iPhone 17 and iPad Pro 13-inch (M5) simulators; no device, no signing identity here |
-| AI on this device, form autofill, read aloud | **On this device** is the AI tool's default (2026-09-26): a small model inside the app — `llama-cpp-2` in the desktop host, `@wllama/wllama` in a browser — with Qwen2.5-1.5B-Instruct Q4_K_M (1.1 GB; 0.5B under 8 GB and in browsers), fetched only from the download button, from Qwen's Hugging Face repository, and kept once its SHA-256 matches; nothing ever leaves the device with it. Every AI action runs on it, data actions under a grammar, long documents as retrieved passages. *My details for forms* in Settings (nine optional fields) are kept encrypted at rest and fill forms after review. Read aloud from the toolbar: the page, the document or the selection, sentence by sentence in logical order, the sentence marked on the page in both views, with the system's offline voices for Arabic and English. Proven with the engine and the speech faked in the page (`ai-device.spec.ts`, `read-aloud.spec.ts`); the real model measured once by hand, below |
+| AI on this device, form autofill, read aloud | **On this device** is the AI tool's default (2026-09-26): a small model inside the app — `llama-cpp-2` in the desktop host, `@wllama/wllama` in a browser — with Qwen2.5-1.5B-Instruct Q4_K_M (1.1 GB; 0.5B under 8 GB and in browsers), fetched only from the download button, from Qwen's Hugging Face repository, and kept once its SHA-256 matches; nothing ever leaves the device with it. Every AI action runs on it, data actions under a grammar. Since 2026-10-11 the tool is a chat: a long document is analyzed once — every page summarized in chunks, the summaries combined, kept on the device — so a summary is of all of it, and a question is answered from retrieved passages and the outline ("The assistant", below). *My details for forms* in Settings (nine optional fields) are kept encrypted at rest and fill forms after review. Read aloud from the toolbar: the page, the document or the selection, sentence by sentence in logical order, the sentence marked on the page in both views, with the system's offline voices for Arabic and English. Proven with the engine and the speech faked in the page (`ai-device.spec.ts`, `read-aloud.spec.ts`); the real model measured once by hand, below |
 | Install and offline (phones too) | the web app installs from the browser under its Arabic name, and after one visit opens and works with no network: a service worker keeps the app's own files — never a document. On phones and tablets every control is a 44-point target. Native iOS and Android apps are not built: the tools they need are not on this Mac (Decisions, below) |
 
 Every one of the 48 corpus files opens. 63 tests green, clippy clean, `wasm32-unknown-unknown` compiles, core WASM 2.50 MB gzipped (budget 8 MB).
+
+## The assistant: a chat over the whole document (2026-10-11)
+
+Web and desktop. The iPhone and iPad app is not touched by this.
+
+**What was reported**, by the owner, from the Windows build: the AI takes only 4,000 characters,
+"very limited for each page"; asked to summarize the full document or a page "it doesn't do that,
+and the answer doesn't appear"; "there is no chat"; "the only thing you can do is copy".
+
+**The cause of the missing answer** — reproduced on this Mac with the real model, through the
+host's own `Engine::generate` (`packages/ui/src/ai/chat/realModel.test.ts`, the test named *the
+one-shot request as it was*), and kept as a test that fails on the old code
+(`chat/window.test.ts`):
+
+* The one-shot form gave the on-device model **4,000 characters** of the document, reckoning
+  1.5 characters a token. The model's window is counted in **tokens** (4,096, of which 1,024 were
+  kept for the reply), and the host refuses a request that does not fit (`E_TOO_LONG`). A text
+  that costs more tokens than reckoned overflowed: the corpus's Saudi copyright law
+  (`G_wipo_saudi_copyright_law…`, whose text layer is in a legacy encoding) is **1.21 characters
+  a token**, so its first 3,581 characters with the rules came to **3,198 tokens against the
+  3,072** the window held, and the request failed before a word was written. The panel then
+  showed one line of error under a long form; there was no answer.
+* A page of **more than 4,000 characters** — a dense page of English can be longer — could not
+  be sent at all: the form said the page did not fit and built no request.
+* Of a longer document **only the first pages that fitted** were ever sent (4 of the Rome
+  Statute's 95), the rest listed as left out; "summarize the document" summarized its opening.
+* What a character costs, counted by the model's own tokenizer on the first twelve pages of each
+  real-world corpus file: from 1.21 (that law) and 1.56–1.88 (font test sheets, an OCR'd
+  manuscript) to 2.10–2.79 for ordinary Arabic prose, and 4.7 for English. No fixed figure in
+  characters is safe for all of them.
+
+**Not established:** which of these the owner met — most likely the page that did not fit, by his
+words. Windows was not run here, so a fault particular to the Windows build cannot be ruled out
+from this Mac; what can be said is that every failure of a request is now shown in the
+conversation, in words, where the answer would have been.
+
+**What replaced it** (`packages/ui/src/ai/chat/`, the panel in `ai/AiPanel.tsx`):
+
+* **Chunks** (`chunks.ts`): the document's text — the core's logical-order reading, page by page
+  — in pieces that fit the window with room for the reply; whole pages packed together, a page
+  longer than a piece cut between its lines, every part keeping its page number.
+* **Analyze** (`analyze.ts`): each chunk summarized (map), the summaries combined a window's
+  worth at a time in rounds until what is left fits one request (reduce), then an outline. Each
+  summary is kept as it is made (`kept.ts`: IndexedDB, which in the desktop app is the webview's
+  store inside the app's data folder) under the SHA-256 of the text it was made from and the
+  model that made it — not the file's name — so it is done once, a page that changes is read
+  again while the rest is reused, and an analysis stopped half-way goes on from there. Settings
+  in the panel delete what is kept.
+* **A turn** (`answer.ts`): the document whole when it fits; from the analysis when the whole is
+  asked about (the chips, or words such as "summarize", "لخّص", "what is this about"); from
+  retrieved passages (the Library's ranking over this document, `device/retrieval.ts`) with the
+  outline when there is one, for a question — searched with the question before it too, so a
+  follow-up finds its subject; the page on screen, a piece at a time, for a translation. The last
+  two exchanges go with each request as they were said, older ones as the questions alone.
+* **The budget is the model's own count.** The desktop host counts tokens (`ai_count_tokens`);
+  the chat measures a sample of the document and sets its chunk size from that, and counts every
+  request before running it. Where the engine cannot count (wllama 3.6.1 in the browser offers
+  no tokenizer call in its public interface), an estimate by the kinds of characters with a margin of 1.6 — it came out
+  between 0.64 and 1.18 of the real count on the corpus — and, in both, a request the engine
+  still refuses is tried again with less (a chunk in halves, a turn with 0.6 of its material).
+  The four document tools (OCR correction, form fill, personal information, tables) keep their
+  one-shot form and get the same correction (`deviceBudget`).
+* **No silent truncation.** Under each answer: *From the whole document*, *From the analysis of
+  the whole document*, or *From passages on pages … of N; the rest was not read for this answer*
+  with those pages as buttons; a stopped or cut answer says so.
+* **Stop** is heard between the batches of a long prompt in the host now, not only between the
+  words of the reply.
+* **Repetition.** The first measured summary of the 95-page statute was one sentence fifty times
+  until the reply ran out. The host's sampler now carries a repetition penalty (1.1 over 128
+  tokens) and DRY (0.8 / 1.75, runs longer than 6 tokens), over the reply only; that exact loop
+  is gone in the runs below. The browser engine's sampling is unchanged.
+
+**Window and model, by the machine** (`device/context.ts`): 8,192 tokens on a computer with 8 GB
+or more, 4,096 below that and in every browser. Measured on this 8 GB Mac with Qwen2.5-1.5B:
+peak resident memory of the engine's process **about 1,260–1,310 MiB at 4,096 and 1,350–1,385 MiB
+at 8,192** over five runs (the 0.5B: 624–642 MiB at 4,096; with no layer on the graphics
+processor, 1,739 MiB for the 1.5B and 790 MiB for the 0.5B at 4,096) — the wider window costs under
+100 MiB. 16k was not measured and is
+not offered. Each turn's material is bounded besides (4,000 tokens on Metal, 2,000 on a
+processor or in WebAssembly) so the wait for the first word is not the whole window's.
+
+**Measured with the real model** (this Mac, 8 GB, Metal unless said; the chat's own code against
+the host's engine over standard input and output — everything but the webview's message channel;
+one run each, and the same run varied by up to 2× with what else the machine was doing):
+
+| Document | Model, window | Chunks, requests | Analysis + first summary | A question after it (first word) |
+|---|---|---|---|---|
+| Rome Statute, Arabic, 95 pages, 158,901 characters | 1.5B, 8,192 | 13 chunks, 15 requests, 84,992 prompt tokens | 343 s (210 s in a run before the sampler was changed) | 5.8 s |
+| its first 30 pages, 46,840 characters | 1.5B, 8,192 | 4 chunks, 6 requests | 112 s (63 s in a run before the language was named) | 5.9 s |
+| the same 30 pages | 1.5B, 4,096 | 10 chunks, 14 requests | 155 s | 4.0 s |
+| the same 30 pages | 0.5B, 4,096 | 10 chunks, 14 requests | 82 s | 1.2 s |
+| World Bank briefing, 2 pages, 4,502 characters (goes whole) | 1.5B, 4,096, **processor only** | 1 request, 1,937 prompt tokens | first word 9.8 s; 547 tokens written in 34.7 s | 12 s |
+| the same | 0.5B, 4,096, processor only | 1 request | first word 1.8 s | 2.0 s |
+
+A second summary of an analyzed document is one request (1.4–9.2 s in all). The processor-only rows are
+this Mac's processor (Apple silicon), not a Windows laptop's, which will be slower.
+
+**What the small model does badly, plainly** (from those runs' answers, read):
+
+* **Qwen2.5-0.5B cannot summarize a long document.** Its "summary" of the 30 pages restated the
+  request ("this document has 30 pages … one or two sentences … then its main points"); its
+  answer to "which crimes are within the court's jurisdiction" was garbled Arabic. It is the only
+  model a browser runs. It is usable for a short page that goes whole, and little more.
+* **Qwen2.5-1.5B** gets the gist: the opening sentences of its summaries of the statute were
+  right (a permanent court for genocide, crimes against humanity, war crimes and aggression, in
+  The Hague), and it answered the jurisdiction question correctly from the retrieved passages.
+  But the long Arabic summary of the 95 pages decayed after its first paragraph into a disordered,
+  partly repeated list of article headings with misspellings (one Chinese character among them)
+  and ran to the length limit; it **rarely cites pages** though told to (notes that name no page
+  are given their chunk's pages, and an answer from passages lists the pages read as buttons, so
+  the way to the page does not depend on it); a follow-up ("explain that in two sentences")
+  mostly restated the answer before; it invented a detail ("The Hague, land of Nobel") and
+  mislabelled a list. Told only to answer "in the language of the request" it answered an Arabic
+  request in English in more than one run; the request's language is now named outright (in Arabic too),
+  which fixed it in the runs after.
+* An English request for five points from the Arabic statute gave five mostly right points.
+* **A document whose text layer is not readable** — the legacy-encoded law reads as
+  "W³?ÝUM0…" — is summarized as nonsense: the assistant does not yet tell unreadable text from
+  text, only no text from some.
+* Claude and a capable local model do not have these limits; the chat, the analysis and the
+  review are the same for them.
+
+**Proven by** (stand-in engines that record what reaches the model; no model's wording is
+tested): unit tests 38, in three files — `chat/chat.test.ts` (a 60-page document
+against a 3,000-character budget: one request a chunk, **every page's text in exactly one of
+them**, every fact of every page in the last level, the outline, more than one round when the
+summaries overflow, the second analysis asking nothing, a stop after 3 summaries resuming at the
+4th, a chunk counted too long read as halves; a follow-up carrying the earlier turn; the passage
+from page 57 of 60; the no-text case), `chat/window.test.ts` (the cause, the corrected budgets,
+no request over the window at 0.75, 2.4 and 4 characters a token, the window and the model by
+memory), `chat/store.test.ts` (the conversation's rules, and the review: nothing reaches a remote
+runner before Send, once for a document and a destination, "Don't send" is not consent) — and in
+the browser, through the interface, 23 tests in four files (and the home card's two and the extension's one): `ai-chat.spec.ts`
+(the Rome Statute, 95 pages, on the web's 4k window: 58 chunks, each page's text reassembled
+from what reached the engine equal to what the core reads, the last request the person's own over
+summaries covering pages 1 to 95, then asked again with one request, then the page reloaded and
+the file reopened with one request; the passage from page 90; Stop on an answer and on an
+analysis; the scan; an engine that refuses like the host; Copy and Listen), `ai.spec.ts` (Claude
+and local servers faked: nothing before Send, the request equal to the text shown, the key in
+one header only, the next message without a second review, another provider reviewed again,
+"Don't send"), `ai-device.spec.ts`, `ai-extras.spec.ts`, `home.spec.ts`. The host: `cargo test`
+in `src-tauri` (the window a request names, kept inside the engine's bounds), and with the real
+model `the_real_model_answers_and_stops_when_asked` (its count of a text, its refusal over the
+window).
+
+**Limits, and what was not done:**
+
+* **Windows was not run.** The engine's processor path, `ai_count_tokens` and the 8,192-token
+  window are the same code as on the Mac and compile for Windows unchanged in kind, but nobody
+  has watched them answer there.
+* **The browser engine (wllama) was not run with a real model in this work.** Its budget rests
+  on the estimate above, and on its refusing an over-long request with an error that names the
+  context — which is what llama.cpp's server code does, read, not seen.
+* The analysis of a long document is slow on a processor alone: every page must be read once, at
+  the speed the machine reads (the 95 pages are about 85,000 tokens; at the 190 tokens a second
+  this Mac's processor read and the 22 a second it wrote, some 7 minutes of reading and 4 of
+  writing the summaries, and longer on an older laptop). It shows its
+  progress, can be stopped, and is kept.
+* The conversation itself is kept only while the app is open (the analysis is what is kept on
+  disk). Older turns are shortened by rule (the questions alone), not summarized by the model.
+* A translation is of the page on screen, not of a range or the whole document.
+* The desktop keeps the analysis in the webview's IndexedDB (inside the app's data folder), not
+  in a file of the host's own.
 
 ## The ZOOD mark and the iOS themes (2026-09-30)
 
@@ -449,7 +613,7 @@ alike when only one of them did anything.
 | Page marks (Warraq's engine) | four kinds: watermark (text or picture; size, colour, opacity, rotation, centre, a corner, an edge or tiled; in front of or behind the page), header and footer (three slots — start, centre, end, the start on the right in Arabic, detected from the text or chosen — with page number, page count, date and file name tokens; the date Gregorian or Hijri, in Western or Arabic-Indic digits), page numbers (`1`, `1 / 9`, `Page 1 of 9`, `صفحة 1 من 9`, roman — shown in the digits chosen, Western or Arabic-Indic; start number; no number on the first page) and Bates numbers (prefix, start, padded digits, suffix); any range of pages; the page on screen previewed with the mark as the core will draw it; the marks already in the file listed, each changed in place or taken off, or all at once. A new mark replaces one of the same kind on the same pages |
 | Organize pages (Warraq's engine) | a grid of every page: select (click, Shift, Cmd/Ctrl), drag to reorder or move earlier/later, rotate either way, delete (never the last page), insert a blank page, insert every page of another PDF after the selection (its password asked for if it has one), extract the selection as a new file, split into files — every so many pages or at each selected page, saved as one zip; crop by margins in millimetres as the page is shown, or trim the white margins away; undo and redo; keyboard throughout, mirrored in Arabic |
 | Compare (Warraq's engine) | what changed in the text between two versions — the file's own earlier revisions, or another PDF — word by word, with Arabic matching that follows the search (letter variants and diacritics optional); go to a change's page; and how each page looks, drawn and compared, with what looks different outlined — a drawing, a stamp or a picture the text cannot show; save the comparison, pictures included, as a report |
-| AI (on this device by default; or bring your own key, or a local server) | **On this device** (the default): a model inside the app answers every action below — streamed, Stop keeps what arrived — with nothing sent anywhere; the panel names the model, its licence, size and SHA-256, and downloads it only on its button; a question about a document longer than its 4k window goes as the passages a Library index of the document ranks for it, and the preflight says which pages; the form-fill action draws first on the details saved in Settings. Otherwise: summarize, ask about, or translate the document with Claude on the person's own Anthropic key, or a model on this computer (Ollama or LM Studio). Nothing is sent before Send, and the screen first shows exactly what will go and where; the answer is shown as it streams in ("thinking" while the model thinks first), Stop keeps what arrived, and answers cite their pages. Refuses while redactions are marked but not applied. Four actions answer with data, shown for review before anything changes (the answer's shape asked of each provider: Claude's structured outputs, Ollama's `format`, an OpenAI-compatible `response_format`): **Correct the OCR text** — the words Scan & OCR kept with each page are sent; each changed word is listed ("محزر ← محرّر"), and the ticked ones are written into the text layer over the boxes they were read from. **Fill in the form from my details** — only the form's text fields (name, the words printed beside each, what it holds) and the pasted details go; the proposed values are listed to edit or leave out, then typed into the fields; the details stay in memory unless "Remember on this device" is ticked. **Find personal information** — the model's findings (names, addresses, numbers) and, with nothing sent, Warraq's own patterns (e-mails, phones, ID and Iqama numbers, IBANs, cards, dates) are looked up on their pages; the ticked ones become the Redact tool's marks, applied only there. **Extract the tables** — found on this device by the Excel export's own detection (ruling lines or columns, nothing sent), or read by the model for tables without either; shown as tables, then saved as CSV (UTF-8 with a BOM) or an Excel workbook written by the Excel export (a sheet each, right to left when Arabic, numbers as numbers written the way they were, the core's merged cells kept) |
+| AI (on this device by default; or bring your own key, or a local server) | **A chat about the open document** (2026-10-11): the person's messages and the assistant's, newest at the bottom, the input fixed at the foot (Enter sends, Shift+Enter a new line), answers streamed with Stop, and under each answer Copy, Listen (read aloud, each sentence in the voice of its script), its page citations as buttons, and a line saying what it was made from. Quick actions over the input — Summarize, Key points, Explain simply, Translate (the page on screen, Arabic ↔ English), Draft an email, Quiz — each send a worded request into the same chat; the home screen's assistant card feeds it. The conversation belongs to the document, survives switching tools, and has New chat. **On this device** (the default) a model inside the app answers with nothing sent anywhere; the header names the model, and on a computer with 8 GB or more the larger one is a choice in that same place. A document that fits the model's window goes whole; a longer one is **analyzed** — every page read in chunks, each summarized, the summaries combined in rounds, an outline written, all kept on the device under the hash of the text — on the first request about the whole of it or from *Analyze this document*, with progress ("Reading pages 12–18 of 95"), Stop, and resuming from what is kept; a question is answered from the passages the Library's ranking picks, with the outline once there is one, and the answer says which pages were read. A scan with no text is said to be one, with a button to Scan & OCR. With Claude (the person's own Anthropic key) or a model on this computer (Ollama or LM Studio) the same chat; the first message about a document waits at *What will be sent* — destination, model, the document's size, the exact text — for its Send button, once for a document and a destination, and the line under the input always says where messages go. Refuses while redactions are marked but not applied. Four document tools answer with data, shown for review before anything changes (the answer's shape asked of each provider: Claude's structured outputs, Ollama's `format`, an OpenAI-compatible `response_format`): **Correct the OCR text** — the words Scan & OCR kept with each page are sent; each changed word is listed ("محزر ← محرّر"), and the ticked ones are written into the text layer over the boxes they were read from. **Fill in the form from my details** — only the form's text fields (name, the words printed beside each, what it holds) and the pasted details go; the proposed values are listed to edit or leave out, then typed into the fields; the details stay in memory unless "Remember on this device" is ticked. **Find personal information** — the model's findings (names, addresses, numbers) and, with nothing sent, Warraq's own patterns (e-mails, phones, ID and Iqama numbers, IBANs, cards, dates) are looked up on their pages; the ticked ones become the Redact tool's marks, applied only there. **Extract the tables** — found on this device by the Excel export's own detection (ruling lines or columns, nothing sent), or read by the model for tables without either; shown as tables, then saved as CSV (UTF-8 with a BOM) or an Excel workbook written by the Excel export (a sheet each, right to left when Arabic, numbers as numbers written the way they were, the core's merged cells kept) |
 | Combine (Warraq's engine) | add files (the open one comes first), reorder or remove them, unlock protected ones; the result opens in place, to save where you choose. The files chosen are not changed |
 | Export (Warraq's engine) | Word (.docx, text only: paragraphs, direction and alignment, not layout), **Excel** (.xlsx: the tables the core finds on each page — drawn with rules, whose missing borders are merged cells, or lined up in columns without them — cell for cell, numbers as numbers in the format they were written in, Arabic-Indic digits and `٫` `٬` included, percentages and losses in parentheses too; the rest of the page's text in rows; a sheet for each page or for each table; a right-to-left page is a right-to-left sheet with its first column as A), **PowerPoint** (.pptx: a slide for each page at its size, the page drawn *without its text* behind the text as editable text boxes where it was, in its lines, size and colour, right to left where it is Arabic; or the text alone; a scan keeps its picture and its recognised text stays invisible), plain text, Markdown, a self-contained web page, and page images (PNG, zipped). Built from Warraq's own reading of the file as it stands now — a redaction applied in the viewer never reaches an export; unapplied marks are warned about |
 | Create PDF (Warraq's engine) | choose files (or drop them on the window, or use Create PDF… on the home screen, which makes the PDF at once): list, reorder, remove; page size as each file says, A4 or Letter; portrait, landscape or as each page suits; a margin around pictures; *then read the text in the pictures* runs Scan & OCR on the new file before it opens. The panel names files it could not read, and says how many letters had no glyph and how many pictures were left out. **Word**: paragraphs with direction, alignment, spacing, indent and shading; bold, italic, underline, strike-through, colour and links inside them; headings; numbered and bulleted lists counted as Word counts; tables with widths, merged and shaded cells and repeated header rows; pictures at their size; sections of another page size; the header and footer with page numbers. **Excel**: every visible sheet as a paginated table (landscape when wide) showing what the cells show — number formats, dates, percentages, the value saved with a formula — merged cells across a row, right to left as the sheet is. **PowerPoint**: each slide a page of the slide's size and background, its text boxes where they are (placeholders placed by their layout, text sized by the master), bullets and numbering, theme colours, filled and outlined boxes, pictures, tables. **Web page**: a safe subset — headings, paragraphs, lists, tables with spans, quotations, preformatted text, pictures carried in the page; nothing runs and nothing is fetched. **Markdown** (CommonMark with GitHub tables), **text** (UTF-8, UTF-16 or Windows-1256), **CSV** |

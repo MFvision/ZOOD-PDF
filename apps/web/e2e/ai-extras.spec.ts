@@ -48,14 +48,20 @@ const claudeAnswers = (data: unknown) =>
 type Body = { system: string; messages: { content: string }[]; output_config?: { format: { type: string; schema: object } } };
 const bodyOf = (request: Request) => request.postDataJSON() as Body;
 
-async function withClaude(page: Page, action: string): Promise<Locator> {
+/** The assistant's document tools, with the model chosen in its settings first. */
+async function tools(page: Page, provider: RegExp | string, action: string, key?: string): Promise<Locator> {
   await chooseTool(page, 'AI');
   const ai = panel(page);
-  await ai.getByRole('radio', { name: /^Claude/ }).check();
-  await ai.getByLabel('Anthropic API key').fill(KEY);
+  await ai.getByRole('button', { name: 'Model settings', exact: true }).first().click();
+  await ai.getByRole('radio', { name: provider }).check();
+  if (key) await ai.getByLabel('Anthropic API key').fill(key);
+  await ai.getByRole('button', { name: 'Back to the chat' }).click();
+  await ai.getByRole('button', { name: 'Document tools' }).click();
   await ai.getByRole('radio', { name: action }).check();
   return ai;
 }
+
+const withClaude = (page: Page, action: string) => tools(page, /^Claude/, action, KEY);
 
 type Core = { call_static(op: string, args: string, blobs: Uint8Array[]): { json: string }; Document: { open(b: Uint8Array): { extract_text(i: number): string; free(): void } } };
 let core: Core | null = null;
@@ -213,10 +219,7 @@ test.describe('the AI tool answers with data, and nothing is changed before it i
     );
     await page.goto('/');
     await openPdf(page, INVOICE_TABLE);
-    await chooseTool(page, 'AI');
-    const ai = panel(page);
-    await ai.getByRole('radio', { name: 'A local model on this computer' }).check();
-    await ai.getByRole('radio', { name: 'Extract the tables' }).check();
+    const ai = await tools(page, 'A local model on this computer', 'Extract the tables');
     await ai.getByRole('radio', { name: 'This page (1)' }).check();
 
     // First on this device: the Excel export's own table detection, nothing sent.
