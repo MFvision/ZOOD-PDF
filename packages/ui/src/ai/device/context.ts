@@ -3,8 +3,10 @@
  * far more than the 4,096 tokens it was first given here; what limits it is
  * the machine: the key-value cache grows with the window, and so does the
  * time the prompt takes to read before the first word of an answer. Measured
- * on an 8 GB Mac (docs/STATUS.md, "The assistant"): 8,192 tokens fit with
- * room to spare, so that is what a computer with 8 GB or more gets; a smaller
+ * on an 8 GB Mac (docs/STATUS.md, "The assistant"): with the 1.5B model the
+ * engine's process peaks at about 1,260–1,310 MiB at 4,096 tokens and
+ * 1,350–1,385 MiB at 8,192 — the wider window costs under 100 MiB — so 8,192
+ * is what a computer with 8 GB or more gets; a smaller
  * one, and every browser (the model runs in WebAssembly there, on the CPU,
  * inside the tab's memory), keeps 4,096.
  */

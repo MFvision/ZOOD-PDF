@@ -249,6 +249,14 @@ test.describe('the assistant is a chat about the open document', () => {
     await chip(page, 'Summarize this document').click();
     await expect(answers(page).nth(0)).toContainText('FINAL from');
     expect((await stubRecord(page)).requests).toHaveLength(1);
+
+    // What is kept can be deleted, from the settings: the document is then no longer known.
+    await ai.getByRole('button', { name: 'Model settings', exact: true }).click();
+    await ai.getByRole('button', { name: /^Delete the kept analyses \(\d+ summaries\)$/ }).click();
+    await expect(ai.getByRole('button', { name: 'No analysis is kept' })).toBeDisabled();
+    await ai.getByRole('button', { name: 'Back to the chat' }).click();
+    await expect(ai).toContainText('Pages: 95 — more than the model reads at once.');
+    await expect(ai.getByRole('button', { name: 'Analyze this document' })).toBeEnabled();
   });
 
   test('a question on a long document is answered from the passage on a late page, and says which pages it read', async ({ page, stayLocal: _ }) => {

@@ -174,6 +174,11 @@ export function AiPanel() {
   }, [view, hasDocument, documentId, missing, runnerKey, env, conversation.busy]);
 
   const taken = useCallback(() => setIncoming(null), []);
+  // With the kept analyses gone, the document is looked at afresh on coming back to the chat.
+  const keptCleared = () => {
+    inspected.current = null;
+    if (documentId !== null) forgetKnown(documentId);
+  };
   const where =
     provider === 'device'
       ? t('ai.chat.whereDevice')
@@ -263,7 +268,7 @@ export function AiPanel() {
       )}
       {view === 'setup' && (
         <div className="ai-view">
-          <AiSetup settings={settings} update={update} device={device} runnable={runnable} apiKey={key} remember={remember} storeFailed={storeFailed} onKey={onKey} onRemember={onRemember} onForget={onForget} />
+          <AiSetup settings={settings} update={update} device={device} runnable={runnable} apiKey={key} remember={remember} storeFailed={storeFailed} onKey={onKey} onRemember={onRemember} onForget={onForget} onKeptCleared={keptCleared} />
         </div>
       )}
       {/* Kept while the chat is in front: a review half-way through is still there on coming back. */}

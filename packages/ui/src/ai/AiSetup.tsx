@@ -27,6 +27,8 @@ export interface AiSetupProps {
   onKey: (value: string) => void;
   onRemember: (value: boolean) => void;
   onForget: () => void;
+  /** The kept analyses were deleted: what the chat knew of the open document no longer holds. */
+  onKeptCleared: () => void;
 }
 
 /**
@@ -34,7 +36,7 @@ export interface AiSetupProps {
  * the Anthropic key, or the local server's address. The chat and the
  * document tools both use what is chosen here.
  */
-export function AiSetup({ settings, update, device, runnable, apiKey, remember, storeFailed, onKey, onRemember, onForget }: AiSetupProps) {
+export function AiSetup({ settings, update, device, runnable, apiKey, remember, storeFailed, onKey, onRemember, onForget, onKeptCleared }: AiSetupProps) {
   const { t } = useI18n();
   const [kept, setKept] = useState<number | null>(null);
   useEffect(() => {
@@ -137,7 +139,10 @@ export function AiSetup({ settings, update, device, runnable, apiKey, remember, 
             onClick={() =>
               void keptOnDevice()
                 .clear()
-                .then(() => setKept(0))
+                .then(() => {
+                  setKept(0);
+                  onKeptCleared();
+                })
             }
           />
         </div>
