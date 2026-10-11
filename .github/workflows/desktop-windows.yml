@@ -19,8 +19,11 @@ on:
     # and the general CI (which also builds on macOS) runs on main.
     branches: ['windows-build']
 
+# contents: write — the installer is published as a release, and the run's
+# outcome and the ends of its logs go to the `ci-logs` branch, so the build can
+# be followed with nothing but git.
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   windows:
@@ -47,7 +50,11 @@ jobs:
 
       # `tauri build` runs the web build first (beforeBuildCommand) and then
       # bundles the installer.
-      - run: pnpm --dir apps/desktop exec tauri build
+      - name: build the installer
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm --dir apps/desktop exec tauri build 2>&1 | tee build.log
         env:
           CI: 'true'
 
@@ -62,3 +69,53 @@ jobs:
             apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
             apps/desktop/src-tauri/target/release/*.exe
           if-no-files-found: error
+
+      # One page to download from. The file gets a plain name: the bundle's
+      # own is the app's Arabic name, which some download tools mangle.
+      - name: publish the installer as a release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="windows-$(date -u +%Y%m%d-%H%M)"
+          exe="$(ls apps/desktop/src-tauri/target/release/bundle/nsis/*.exe | head -n 1)"
+          cp "$exe" ZOOD-PDF-Setup.exe
+          gh release create "$tag" ZOOD-PDF-Setup.exe --target "$GITHUB_SHA" \
+            --title "Windows installer ($tag)" \
+            --notes "Built from $GITHUB_SHA on $(date -u +%Y-%m-%dT%H:%MZ). Unsigned: Windows will ask before running it."
+          echo "$tag" > release-tag.txt
+
+      # After the installer is out, so a failing test never withholds it: the
+      # core's own tests on Windows — among them the installed-font lookup
+      # against this machine's real fonts — and the desktop host's.
+      - name: test the core on Windows
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo test --release --manifest-path packages/core/Cargo.toml -p warraq-text -p warraq-pdf -p warraq-core 2>&1 | tee test-core.log
+
+      - name: test the desktop host on Windows
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --lib 2>&1 | tee test-desktop.log
+
+      - name: record the outcome
+        if: always()
+        shell: bash
+        run: |
+          mkdir ci-out && cd ci-out
+          git init -q && git checkout -q -b ci-logs
+          {
+            echo "status: ${{ job.status }}"
+            echo "commit: $GITHUB_SHA"
+            echo "run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "release: $(cat ../release-tag.txt 2>/dev/null || echo none)"
+            echo "finished: $(date -u +%Y-%m-%dT%H:%MZ)"
+          } > status.txt
+          for f in build test-core test-desktop; do
+            [ -f "../$f.log" ] && tail -n 250 "../$f.log" > "$f.log"
+          done
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -qm "Windows build: ${{ job.status }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-logs

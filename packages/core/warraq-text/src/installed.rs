@@ -296,4 +296,28 @@ mod tests {
             .unwrap()
             .covers("Collection"));
     }
+
+    /// The same on Windows, where it runs in CI: Arial out of
+    /// `%WINDIR%\\Fonts` by name and weight, Times New Roman as a PDF spells
+    /// it, and a face out of a collection — Windows keeps Cambria and the
+    /// CJK faces in `.ttc` files; Cambria is on every Windows since Vista.
+    #[cfg(windows)]
+    #[test]
+    fn this_pcs_own_fonts_are_found_by_name() {
+        let installed = scan(&system_font_dirs());
+        assert!(installed.len() > 20, "{} faces", installed.len());
+        let arial = find(&installed, "Arial", 700, false, "Family Budget 2026")
+            .expect("Arial Bold is installed on every Windows");
+        assert_eq!((arial.family.as_str(), arial.weight), ("Arial", 700));
+        assert!(crate::Shaper::new(&arial.bytes)
+            .unwrap()
+            .covers("Family Budget 2026"));
+        assert!(find(&installed, "TimesNewRoman", 400, true, "Italic").is_some());
+        let cambria = find(&installed, "Cambria", 400, false, "Collection")
+            .expect("Cambria is installed on every Windows, in a .ttc");
+        assert!(!cambria.bytes.starts_with(b"ttcf"));
+        assert!(crate::Shaper::new(&cambria.bytes)
+            .unwrap()
+            .covers("Collection"));
+    }
 }
