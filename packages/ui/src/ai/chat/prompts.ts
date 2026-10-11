@@ -49,6 +49,20 @@ export const NOTES_SYSTEM = [
   '- Write in the language the text is written in.',
 ].join('\n');
 
+/** Whether `text` is written mostly in Arabic letters. */
+export function mostlyArabic(text: string): boolean {
+  const arabic = text.match(/[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/g)?.length ?? 0;
+  const latin = text.match(/[A-Za-z]/g)?.length ?? 0;
+  return arabic > latin;
+}
+
+/**
+ * The language to write in, named outright and, for Arabic, in Arabic too: a
+ * small model told only "the language of the request" answers an Arabic
+ * question in English as often as not (measured, docs/STATUS.md).
+ */
+const writeIn = (text: string) => (mostlyArabic(text) ? 'Write in Modern Standard Arabic (اكتب بالعربية الفصحى).' : 'Write in English.');
+
 const pagesLabel = (from: number, to: number) => (from === to ? `page ${from}` : `pages ${from}–${to}`);
 
 /** The summaries, each inside a tag naming the pages it covers. */
@@ -63,7 +77,7 @@ export function notesPrompt(pages: readonly PageText[], from: number, to: number
     system: NOTES_SYSTEM,
     user: [
       documentText(pages),
-      `This is ${pagesLabel(from, to)} of a ${pageCount}-page document. Note its main points — what it is about, and the facts, names, numbers, dates and decisions in it — as a list of at most 8 items, one sentence each, each ending with its page as [p. N].`,
+      `This is ${pagesLabel(from, to)} of a ${pageCount}-page document. Note its main points — what it is about, and the facts, names, numbers, dates and decisions in it — as a list of at most 8 items, one sentence each, each ending with its page as [p. N]. ${writeIn(pages.map((page) => page.text).join(' ').slice(0, 2000))}`,
     ].join('\n\n'),
   };
 }
@@ -76,7 +90,7 @@ export function combinePrompt(parts: readonly Part[], pageCount: number): Prompt
     system: NOTES_SYSTEM,
     user: [
       summariesText(parts),
-      `These are notes on consecutive parts of a ${pageCount}-page document, covering ${pagesLabel(from, to)}. Combine them into one shorter set of notes on ${pagesLabel(from, to)}: the main points in their order, as a list of at most 10 items, one sentence each, keeping each point's page citation [p. N].`,
+      `These are notes on consecutive parts of a ${pageCount}-page document, covering ${pagesLabel(from, to)}. Combine them into one shorter set of notes on ${pagesLabel(from, to)}: the main points in their order, as a list of at most 10 items, one sentence each, keeping each point's page citation [p. N]. ${writeIn(parts.map((part) => part.text).join(' ').slice(0, 2000))}`,
     ].join('\n\n'),
   };
 }
@@ -87,7 +101,7 @@ export function outlinePrompt(parts: readonly Part[], pageCount: number): Prompt
     system: NOTES_SYSTEM,
     user: [
       summariesText(parts),
-      `These notes cover the whole of a ${pageCount}-page document, in order. Write its outline: first one sentence saying what the document is, then its parts in order, one line each starting with "- ", saying what that part covers and its pages as [p. N].`,
+      `These notes cover the whole of a ${pageCount}-page document, in order. Write its outline: first one sentence saying what the document is, then its parts in order, one line each starting with "- ", saying what that part covers and its pages as [p. N]. ${writeIn(parts.map((part) => part.text).join(' ').slice(0, 2000))}`,
     ].join('\n\n'),
   };
 }
@@ -128,6 +142,8 @@ export function turnPrompt(material: Material, history: readonly Said[], request
   }
   const conversation = conversationText(history);
   if (conversation) parts.push(conversation);
+  // Said last, where a small model attends most, and then the request itself.
+  parts.push(`Answer the request below from the material above, briefly, citing pages as [p. N]. Do not repeat yourself. ${writeIn(request)}`);
   parts.push(`Request: ${request.trim()}`);
   return { system: CHAT_SYSTEM, user: parts.join('\n\n') };
 }

@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { budgetFor, takeWithinBudget } from '../budget';
 import type { PageText } from '../budget';
-import { SMALL_CONTEXT, estimateTokens, replyTokensFor } from '../device/context';
+import { LARGE_CONTEXT, SMALL_CONTEXT, contextTokensFor, estimateTokens, materialTokensFor, replyTokensFor, turnTokensFor } from '../device/context';
 import type { ChatMessage, DeviceEngine, Generated, GenerateOptions } from '../device/engine';
 import { deviceBudget, generateOnDevice } from '../device/generate';
-import { deviceModel } from '../device/models';
+import { deviceModel, shortModelName } from '../device/models';
+import { runnableModels } from '../AiPanel';
 import { preflightFor } from '../preflight';
 import { DEVICE_REPLY_TOKENS } from '../providers';
 import { answerTurn } from './answer';
@@ -146,5 +147,44 @@ describe('the on-device window is counted in tokens', () => {
     expect(estimateTokens('2026')).toBe(4);
     expect(await charsPerToken({}, 'x'.repeat(400))).toBeCloseTo(4 / 1.6, 1);
     expect(engine.asked.length).toBeGreaterThan(0);
+  });
+});
+
+describe('the window and the model, by the machine', () => {
+  it('8,192 tokens on a computer with 8 GB or more, 4,096 below that and in every browser', () => {
+    expect(contextTokensFor(8, false)).toBe(LARGE_CONTEXT);
+    expect(contextTokensFor(16, false)).toBe(8192);
+    expect(contextTokensFor(4, false)).toBe(SMALL_CONTEXT);
+    // A machine that does not say is given the smaller.
+    expect(contextTokensFor(null, false)).toBe(4096);
+    expect(contextTokensFor(32, true)).toBe(4096);
+    // A quarter of the window, at most 1,024 tokens, is the reply's; the rules take 400; the rest is material.
+    expect(replyTokensFor(4096)).toBe(1024);
+    expect(replyTokensFor(8192)).toBe(1024);
+    expect(replyTokensFor(2048)).toBe(512);
+    expect(materialTokensFor(4096)).toBe(2672);
+    expect(materialTokensFor(8192)).toBe(6768);
+  });
+
+  it('a turn carries less where the machine reads slowly: the wait for the first word is bounded, the analysis is not', async () => {
+    expect(turnTokensFor('metal')).toBe(4000);
+    expect(turnTokensFor('cpu')).toBe(2000);
+    expect(turnTokensFor('wasm')).toBe(2000);
+    const sample = pagesOf(1)[0]!.text;
+    const metal = await deviceRunner(windowed(2.4, true), { contextTokens: LARGE_CONTEXT, runtime: 'metal', sample });
+    const cpu = await deviceRunner(windowed(2.4, true), { contextTokens: LARGE_CONTEXT, runtime: 'cpu', sample });
+    // The same window, so the same chunks and the same analysis; a smaller share of it for each answer.
+    expect(cpu.budget).toBe(metal.budget);
+    expect(cpu.turnBudget).toBeLessThan(metal.turnBudget);
+    expect(metal.turnBudget).toBeLessThan(metal.budget);
+    expect(cpu.turnBudget / cpu.budget).toBeCloseTo(2000 / 6768, 2);
+  });
+
+  it('both on-device models are offered where the machine can run the larger, the larger first; the small one alone elsewhere', () => {
+    expect(runnableModels(8, false).map((model) => model.id)).toEqual(['qwen2.5-1.5b', 'qwen2.5-0.5b']);
+    expect(runnableModels(4, false).map((model) => model.id)).toEqual(['qwen2.5-0.5b']);
+    expect(runnableModels(null, false).map((model) => model.id)).toEqual(['qwen2.5-0.5b']);
+    expect(runnableModels(16, true).map((model) => model.id)).toEqual(['qwen2.5-0.5b']);
+    expect(shortModelName('Qwen2.5 1.5B Instruct (Q4_K_M)')).toBe('Qwen2.5 1.5B');
   });
 });

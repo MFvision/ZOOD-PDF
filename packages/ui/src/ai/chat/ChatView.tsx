@@ -11,11 +11,14 @@ import { start as startReading, stop as stopReading, useReadAloud } from '../../
 import { AnswerText, spokenText } from './AnswerText';
 import type { Progress } from './analyze';
 import type { Ask, Basis } from './answer';
+import { deviceModel, shortModelName } from '../device/models';
 import { CHIPS } from './chips';
 import { analyzeNow, approve, ask, discard, setDraft, stop, useConversation } from './store';
 import type { AssistantTurn, Env, Note, Turn } from './store';
 
 const numbers = new Intl.NumberFormat('en-US');
+/** Page buttons under an answer made from passages, at most: the line above them names every page. */
+const PAGES_SHOWN = 16;
 
 export function failureNote(failure: Failure, provider: ProviderId): Note {
   switch (failure.kind) {
@@ -46,7 +49,7 @@ export function failureNote(failure: Failure, provider: ProviderId): Note {
     case 'empty':
       return { key: 'ai.empty' };
     case 'cancelled':
-      return { key: 'ai.chat.stopped' };
+      return { key: 'ai.cancelled' };
     case 'modelMissing':
       return { key: 'ai.modelMissing' };
     case 'device':
@@ -99,10 +102,7 @@ export function ChatView(props: ChatViewProps) {
 
   // In Arabic text a range such as 1–2 reads backwards unless it is isolated as left-to-right.
   const pageList = (pages: readonly number[]) => (dir === 'rtl' ? `⁦${formatPages(pages)}⁩` : formatPages(pages));
-  const range = (from: number, to: number) => {
-    const text = from === to ? String(from) : `${from}–${to}`;
-    return dir === 'rtl' ? `\u2066${text}\u2069` : text;
-  };
+  const range = (from: number, to: number) => (dir === 'rtl' ? `\u2066${from}–${to}\u2069` : `${from}–${to}`);
   const say = (note: Note) => t(note.key, note.params).trim();
 
   const send = (request: Ask) => {
@@ -181,7 +181,9 @@ export function ChatView(props: ChatViewProps) {
 
   const progressText = (at: Progress) =>
     at.stage === 'reading'
-      ? t('ai.chat.progressReading', { pages: range(at.from, at.to), total: at.pageCount })
+      ? at.from === at.to
+        ? t('ai.chat.progressReadingOne', { page: at.from, total: at.pageCount })
+        : t('ai.chat.progressReading', { pages: range(at.from, at.to), total: at.pageCount })
       : at.stage === 'combining'
         ? t('ai.chat.progressCombining', { done: at.done + 1, total: at.total })
         : t('ai.chat.progressOutline');
@@ -225,9 +227,7 @@ export function ChatView(props: ChatViewProps) {
         {turn.text.length > 0 && <AnswerText text={turn.text} pageCount={turn.pageCount} onPage={props.goToPage} />}
         {working && turn.text.length === 0 && !review && (
           <p className="ai-turn-wait">
-            {progress ? (
-              t('ai.chat.working')
-            ) : conversation.reading !== null ? (
+            {conversation.reading !== null && !progress ? (
               t('ai.reading', { page: conversation.reading })
             ) : turn.thinking ? (
               t('ai.thinking')
@@ -275,8 +275,20 @@ export function ChatView(props: ChatViewProps) {
             </div>
             {turn.basis && (
               <p className="ai-turn-basis">
-                <bdi dir="ltr">{turn.model}</bdi> · {basisText(turn.basis)}
+                <bdi dir="ltr">{turn.provider === 'device' ? shortModelName(deviceModel(turn.model).name) : turn.model}</bdi> · {basisText(turn.basis)}
               </p>
+            )}
+            {turn.basis?.kind === 'passages' && (
+              // The pages the passages came from, each a way there — whether or not the model cited them.
+              <ul className="ai-turn-pages" aria-label={t('ai.chat.pagesRead')}>
+                {turn.basis.pages.slice(0, PAGES_SHOWN).map((page) => (
+                  <li key={page}>
+                    <button type="button" className="ai-cite" dir={dir} title={t('ai.goToPage', { page })} aria-label={t('ai.goToPage', { page })} onClick={() => props.goToPage(page)}>
+                      {t('ai.cite', { page })}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         )}
@@ -314,7 +326,8 @@ export function ChatView(props: ChatViewProps) {
         </div>
       );
     }
-    if (known.whole) return <div className="ai-doc ai-doc-quiet">{t('ai.chat.docWhole', { total: known.pageCount })}</div>;
+    // A document the model reads whole needs nothing said about it.
+    if (known.whole) return null;
     if (known.analyzed) return <div className="ai-doc ai-doc-quiet">{t('ai.chat.docAnalyzed', { total: known.pageCount })}</div>;
     return (
       <div className="ai-doc">
@@ -342,6 +355,14 @@ export function ChatView(props: ChatViewProps) {
       >
         {missing !== null && hasDocument ? (
           <div className="ai-chat-setup">{props.setup}</div>
+        ) : !hasDocument && incoming ? (
+          // From the home screen, before its file is chosen: the request, where it will be asked.
+          <ol className="ai-turns">
+            <li className="ai-turn ai-turn-user">
+              <p dir="auto">{incoming.text}</p>
+            </li>
+            <li className="ai-turn ai-turn-event">{t('ai.card.needsFile')}</li>
+          </ol>
         ) : empty ? (
           <div className="ai-chat-empty">
             <span className="ai-chat-mark" aria-hidden="true">
@@ -429,7 +450,8 @@ export function ChatView(props: ChatViewProps) {
           id={inputId}
           ref={input}
           className="ai-input"
-          dir="auto"
+          // What is typed takes its own direction; the empty field's hint takes the interface's.
+          dir={draft.length === 0 ? dir : 'auto'}
           rows={1}
           maxLength={2000}
           placeholder={t(hasDocument ? 'ai.chat.placeholder' : 'tool.openFirst')}

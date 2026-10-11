@@ -17,7 +17,7 @@ import type { Env } from './chat/store';
 import { contextTokensFor } from './device/context';
 import { DeviceSection } from './device/DeviceSection';
 import { deviceEngine } from './device/engine';
-import { DEVICE_MODELS, deviceModel } from './device/models';
+import { DEVICE_MODELS, deviceModel, shortModelName } from './device/models';
 import type { DeviceModel, DeviceModelId } from './device/models';
 import { machineMemoryGiB, useDeviceModel } from './device/useDeviceModel';
 import { CLAUDE_HOST, localAddress } from './providers';
@@ -29,11 +29,6 @@ import './ai.css';
 import './chat/chat.css';
 
 type View = 'chat' | 'setup' | 'tasks';
-
-/** "Qwen2.5 1.5B": the model's name without its build details. */
-export function shortModelName(name: string): string {
-  return name.replace(/\s+Instruct\b.*$/i, '');
-}
 
 /**
  * The on-device models this machine can run, the better one first: both on
@@ -207,10 +202,7 @@ export function AiPanel() {
         {view === 'chat' ? (
           <>
             <div className="ai-head-title">
-              <h3>
-                <Icon of={Sparkles} />
-                {t('ai.card.title')}
-              </h3>
+              <Icon of={Sparkles} className="ai-head-mark" />
               {provider === 'device' && runnable.length > 1 ? (
                 // The larger model is one choice away, where this machine can run it.
                 <label className="ai-model">

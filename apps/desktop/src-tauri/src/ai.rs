@@ -539,12 +539,22 @@ pub struct Engine {
 impl Engine {
     /// Loads the model at `path`: onto the GPU on the Mac, into memory elsewhere.
     pub fn load(path: &Path) -> Result<Self, String> {
+        Self::load_with(path, cfg!(target_os = "macos").then_some(1000))
+    }
+
+    /// Loads the model with no layer on the graphics processor. The app never
+    /// does; the measuring example does, on a Mac, to see what a machine
+    /// without Metal makes of the same model.
+    pub fn load_on_processor(path: &Path) -> Result<Self, String> {
+        Self::load_with(path, Some(0))
+    }
+
+    fn load_with(path: &Path, gpu_layers: Option<u32>) -> Result<Self, String> {
         let mut backend = LlamaBackend::init().map_err(|e| format!("E_AI: {e}"))?;
         backend.void_logs();
-        let params = if cfg!(target_os = "macos") {
-            LlamaModelParams::default().with_n_gpu_layers(1000)
-        } else {
-            LlamaModelParams::default()
+        let params = match gpu_layers {
+            Some(layers) => LlamaModelParams::default().with_n_gpu_layers(layers),
+            None => LlamaModelParams::default(),
         };
         let model = LlamaModel::load_from_file(&backend, path, &params)
             .map_err(|e| format!("E_AI: cannot load the model: {e}"))?;
@@ -648,9 +658,20 @@ impl Engine {
             samplers.push(LlamaSampler::greedy());
         } else {
             // A small model falls into saying one line over and over until
-            // its reply runs out (seen on the corpus's OCR'd manuscript): what
-            // it has just written is made a little less likely.
+            // its reply runs out (measured: a 95-page statute "summarized" as
+            // one sentence fifty times). What it has just written is made a
+            // little less likely, and going on with a run of words it has
+            // already written — beyond a citation's length — much less (DRY).
+            // Only the reply is looked at, so quoting the document is free.
             samplers.push(LlamaSampler::penalties(model.n_vocab(), 128, 1.1, 0.0, 0.0));
+            samplers.push(LlamaSampler::dry(
+                model,
+                0.8,
+                1.75,
+                6,
+                1024,
+                ["\n", ":", "\"", "*"],
+            ));
             samplers.push(LlamaSampler::top_k(40));
             samplers.push(LlamaSampler::top_p(0.9, 1));
             samplers.push(LlamaSampler::temp(0.3));
@@ -929,6 +950,33 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    #[test]
+    fn a_request_runs_in_the_window_it_names_inside_the_engines_bounds() {
+        let request = |context_tokens| GenerateRequest {
+            id: "t".into(),
+            model: "t".into(),
+            messages: Vec::new(),
+            grammar: None,
+            max_tokens: 16,
+            context_tokens,
+        };
+        assert_eq!(context_for(&request(None)), DEFAULT_CONTEXT);
+        assert_eq!(context_for(&request(Some(8192))), 8192);
+        assert_eq!(context_for(&request(Some(1))), 2048);
+        assert_eq!(context_for(&request(Some(u32::MAX))), MAX_CONTEXT);
+        // The interface's own words: an older one that names no window still parses.
+        let parsed: GenerateRequest = serde_json::from_str(
+            r#"{"id":"1","model":"qwen2.5-0.5b","messages":[{"role":"user","content":"x"}],"maxTokens":8}"#,
+        )
+        .unwrap();
+        assert_eq!(parsed.context_tokens, None);
+        let named: GenerateRequest = serde_json::from_str(
+            r#"{"id":"1","model":"qwen2.5-0.5b","messages":[],"grammar":null,"maxTokens":8,"contextTokens":8192}"#,
+        )
+        .unwrap();
+        assert_eq!(context_for(&named), 8192);
+    }
+
     /// The real model, once by hand: `WARRAQ_MODEL=path/to/model.gguf cargo test -- --ignored`.
     #[test]
     #[ignore]
@@ -956,5 +1004,17 @@ mod tests {
         assert_eq!(pieces.concat(), done.text);
         let stopped = engine.generate(&request, &AtomicBool::new(true), |_| {});
         assert!(stopped.unwrap_err().starts_with("E_CANCELLED"));
+        // The model's own count of a text, and its refusal of a request over the window it was given.
+        assert!(engine.count_tokens("Say hello in one word.").unwrap() >= 5);
+        let long = GenerateRequest {
+            messages: vec![Message {
+                role: "user".into(),
+                content: "كلمة ".repeat(3000),
+            }],
+            context_tokens: Some(2048),
+            ..request.clone()
+        };
+        let refused = engine.generate(&long, &AtomicBool::new(false), |_| {});
+        assert!(refused.unwrap_err().starts_with("E_TOO_LONG"));
     }
 }

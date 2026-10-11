@@ -55,3 +55,8 @@ export function formatBytes(bytes: number): string {
 export function shortChecksum(sha256: string): string {
   return `${sha256.slice(0, 12)}…${sha256.slice(-8)}`;
 }
+
+/** "Qwen2.5 1.5B": the model's name without its build details, as the chat shows which model is answering. */
+export function shortModelName(name: string): string {
+  return name.replace(/\s+Instruct\b.*$/i, '');
+}

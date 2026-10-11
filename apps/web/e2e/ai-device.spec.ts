@@ -1,20 +1,20 @@
-import { readFileSync } from 'node:fs';
 import { expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { INVOICE, WORD_EXPORT, chooseTool, corpus, fieldValues, openPdf, test } from './helpers';
+import { INVOICE, chooseTool, corpus, fieldValues, openPdf, test } from './helpers';
 import { installDeviceStub, stubRecord } from './deviceStub';
 
 /**
  * "On this device": the default AI provider, with the engine faked in the
  * page (`deviceStub.ts`) so nothing is downloaded and nothing runs llama.cpp
- * here. `stayLocal` proves that no request leaves the app at any point —
- * not for the review, not for the answer, not for the profile.
+ * here: the model's download and removal, and a document tool run on it.
+ * The chat itself is in `ai-chat.spec.ts`. `stayLocal` proves that no
+ * request leaves the app at any point — not for the review, not for the
+ * answer, not for the profile.
  */
 
 const FORM = corpus('generated/acroform-pdflib-arabic-fields.pdf');
 const panel = (page: Page) => page.locator('.pane-end');
 const preflight = (page: Page) => panel(page).getByRole('region', { name: 'What will be sent' });
-const reply = (page: Page) => panel(page).getByRole('region', { name: 'Answer' });
 const review = (page: Page) => panel(page).getByRole('region', { name: 'To review' });
 
 /** The stub's answer: a sentence for words, a field's value for a form. */
@@ -32,81 +32,33 @@ const answer = (messages: { role: string; content: string }[]): string => {
 
 async function download(page: Page): Promise<void> {
   const ai = panel(page);
-  await expect(ai.getByRole('radio', { name: /^On this device/ })).toBeChecked();
   const button = ai.getByRole('button', { name: /^Download the on-device model \(491 MB, once\)/ });
   await expect(button).toBeVisible();
   expect((await stubRecord(page)).downloads).toBe(0);
   await button.click();
-  await expect(ai).toContainText('The model is on this device (491 MB) and runs on a test engine.');
+  // The chat opens once the model is there.
+  await expect(ai.getByRole('list', { name: 'Suggestions' }).getByRole('button', { name: 'Summarize this document' })).toBeEnabled();
   expect((await stubRecord(page)).downloads).toBe(1);
 }
 
-async function readWithWarraq(file: string): Promise<string[]> {
-  const root = new URL('../../../packages/ui/src/core-wasm/', import.meta.url);
-  const core = await import(new URL('warraq_core.js', root).href);
-  await core.default({ module_or_path: readFileSync(new URL('warraq_core_bg.wasm', root)) });
-  const doc = core.Document.open(new Uint8Array(readFileSync(file)));
-  try {
-    return Array.from({ length: doc.page_count() as number }, (_, index) => doc.extract_text(index) as string);
-  } finally {
-    doc.free();
-  }
-}
-
 test.describe('the AI tool on this device', () => {
-  test('is the default, downloads the model only on the button, and answers a question with the passages of a long document', async ({ page, stayLocal: _ }) => {
+  test('is the default, and downloads the model only on the button, its licence and checksum said first', async ({ page, stayLocal: _ }) => {
     await installDeviceStub(page, answer);
-    await page.goto('/');
-    await openPdf(page, WORD_EXPORT);
-    await chooseTool(page, 'AI');
-    // The panel says the model is not there, and offers its licence and checksum before any download.
-    const ai = panel(page);
-    await expect(ai).toContainText('Apache-2.0');
-    await expect(ai).toContainText('74a4da8c9fdb…93d7a9db');
-    await download(page);
-
-    await ai.getByRole('radio', { name: 'Ask a question' }).check();
-    await ai.locator('textarea.ai-question').fill('What does the briefing say about climate finance?');
-    await ai.getByRole('button', { name: 'Review what will be sent' }).click();
-    const shown = preflight(page);
-    await expect(shown).toContainText('Nowhere: the model runs inside the app on this device');
-    // Two long pages do not fit the small model's window: the passages that answer the question go instead.
-    const pages = await readWithWarraq(WORD_EXPORT);
-    expect(pages.reduce((sum, text) => sum + text.length, 0)).toBeGreaterThan(4000);
-    await expect(shown).toContainText('only the passages that seem to answer the question');
-    const characters = Number((await shown.locator('dd').nth(3).textContent())?.replace(/,/g, ''));
-    expect(characters).toBeGreaterThan(0);
-    expect(characters).toBeLessThanOrEqual(4000);
-    expect((await stubRecord(page)).requests).toHaveLength(0);
-
-    await shown.getByRole('button', { name: 'Run on this device' }).click();
-    await expect(reply(page)).toContainText('An answer on this device to "What does the briefing say about climate finance?"');
-    // The answer's citations are the page buttons.
-    await expect(reply(page).getByRole('button', { name: 'Go to page 2' })).toBeVisible();
-    const [request] = (await stubRecord(page)).requests;
-    expect(request!.messages[0]!.role).toBe('system');
-    expect(request!.messages[1]!.content).toContain('<page number="1">');
-    expect(request!.messages[1]!.content).toContain('Only the passages of this 2-page document');
-    expect(request!.messages[1]!.content).toContain('Question: What does the briefing say about climate finance?');
-    expect(request!.grammar).toBeNull();
-    // The passages are lines of the document, not something else.
-    const sent = /<page number="1">\n([\s\S]*?)\n<\/page>/.exec(request!.messages[1]!.content)?.[1] ?? '';
-    for (const line of sent.split('\n').filter((l) => l !== '…')) expect(pages[0]).toContain(line);
-  });
-
-  test('summarizes a short document whole, streaming the answer as it is written', async ({ page, stayLocal: _ }) => {
-    await installDeviceStub(page, (messages) => (messages[1]!.content.includes('<page number="1">') ? 'فاتورة ضريبية مبسطة [p. 1]. المجموع مذكور في الأسفل [p. 1].' : 'nothing'));
     await page.goto('/');
     await openPdf(page, INVOICE);
     await chooseTool(page, 'AI');
+    // The chat says the model is not there, and offers its licence and checksum before any download.
+    const ai = panel(page);
+    await expect(ai).toContainText('Apache-2.0');
+    await expect(ai).toContainText('74a4da8c9fdb…93d7a9db');
+    await expect(ai).toContainText('Download the on-device model first, or choose another provider.');
+    await expect(ai.getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
     await download(page);
-    await panel(page).getByRole('radio', { name: 'Summarize' }).check();
-    await panel(page).getByRole('button', { name: 'Review what will be sent' }).click();
-    await expect(preflight(page)).toContainText('1 of 1');
-    await expect(preflight(page)).not.toContainText('only the passages');
-    await preflight(page).getByRole('button', { name: 'Run on this device' }).click();
-    await expect(reply(page)).toContainText('فاتورة ضريبية مبسطة');
-    await expect(reply(page)).toContainText('From qwen2.5-0.5b, which read pages 1.');
+    // The settings name the provider, the model and what it runs on.
+    await ai.getByRole('button', { name: 'Model settings', exact: true }).click();
+    await expect(ai.getByRole('radio', { name: /^On this device/ })).toBeChecked();
+    await expect(ai).toContainText('The model is on this device (491 MB) and runs on a test engine.');
+    expect((await stubRecord(page)).requests).toHaveLength(0);
   });
 
   test('fills a form from the saved details: encrypted on this device, reviewed, then typed into the fields', async ({ page, stayLocal: _ }) => {
@@ -146,6 +98,7 @@ test.describe('the AI tool on this device', () => {
     await chooseTool(page, 'AI');
     await download(page);
     const ai = panel(page);
+    await ai.getByRole('button', { name: 'Document tools' }).click();
     await ai.getByRole('radio', { name: 'Fill in the form from my details' }).check();
     await expect(ai).toContainText('Your saved details (2 fields) are used first');
     await ai.getByLabel('Your details (name, ID number, address…)').fill('الجنسية: سعودي');
@@ -189,6 +142,6 @@ test.describe('the AI tool on this device', () => {
     expect((await stubRecord(page)).removed).toBe(1);
     await sheet.getByRole('button', { name: 'Close' }).click();
     await expect(panel(page)).toContainText('Download the on-device model first, or choose another provider.');
-    await expect(panel(page).getByRole('button', { name: 'Review what will be sent' })).toBeDisabled();
+    await expect(panel(page).getByRole('list', { name: 'Suggestions' }).getByRole('button', { name: 'Summarize this document' })).toBeDisabled();
   });
 });

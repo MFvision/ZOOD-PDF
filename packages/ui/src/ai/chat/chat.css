@@ -27,16 +27,16 @@
   letter-spacing: var(--track-body);
 }
 
-.ai-head h3 .lucide {
+.ai-head-mark {
+  flex: none;
   color: var(--accent);
 }
 
 .ai-head-title {
   display: flex;
   flex: 1;
-  flex-direction: column;
-  gap: 1px;
-  align-items: flex-start;
+  gap: var(--space-3);
+  align-items: center;
   min-inline-size: 0;
 }
 
@@ -46,39 +46,52 @@
   gap: var(--space-1);
 }
 
-/* Which model is answering, under the title: a quiet line that can be pressed. */
+/* Which model is answering, and where it runs: two short lines that can be pressed. */
 .ai-model {
-  display: inline-flex;
-  gap: var(--space-2);
-  align-items: baseline;
-  max-inline-size: 100%;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  min-inline-size: 0;
   padding: 0;
-  overflow: hidden;
   font-size: var(--text-subheadline);
+  line-height: 1.25;
   color: var(--secondary-label);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-align: start;
   background: none;
   border: 0;
 }
 
-.ai-model-button:hover {
+.ai-model bdi,
+.ai-model-select {
+  max-inline-size: 100%;
+  overflow: hidden;
+  font-size: var(--text-headline);
+  font-weight: 600;
   color: var(--label);
+  text-overflow: ellipsis;
+  letter-spacing: var(--track-body);
+  white-space: nowrap;
+}
+
+.ai-model-button:hover bdi {
+  color: var(--accent);
 }
 
 .ai-model-select {
   padding: 0;
-  font: inherit;
-  font-weight: 500;
-  color: var(--label);
+  font-family: inherit;
   cursor: pointer;
   background: transparent;
   border: 0;
   border-radius: var(--radius-6);
 }
 
-.ai-model-where::before {
-  content: "· ";
+.ai-model-where {
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ai-view {
@@ -116,7 +129,6 @@
 
 .ai-doc-quiet {
   padding-block: var(--space-3);
-  font-size: var(--text-subheadline);
   background: transparent;
 }
 
@@ -187,6 +199,10 @@
   margin-block: 0 var(--space-3);
   line-height: 1.55;
   overflow-wrap: anywhere;
+}
+
+.ai-turn-assistant .ai-answer-text ul {
+  list-style: disc;
 }
 
 .ai-turn-assistant .ai-answer-text ul,
@@ -261,6 +277,20 @@
   margin: 0;
   font-size: var(--text-subheadline);
   color: var(--secondary-label);
+}
+
+.ai-turn-pages {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.ai-turn-pages .ai-cite {
+  margin-inline: 0;
 }
 
 /* Three dots while the first word is on its way. */
@@ -369,6 +399,13 @@
   list-style: none;
   border-block-start: 0.5px solid var(--separator);
   scrollbar-width: none;
+
+  /* The row runs on past the edge: its end fades, to say there is more. */
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+
+.ai-chips:dir(rtl) {
+  mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
 }
 
 .ai-chips li {

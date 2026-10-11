@@ -5,7 +5,7 @@ import { CLAUDE_HOST } from '../providers';
 import type { Prompt } from '../providers';
 import { send } from '../send';
 import type { Outcome } from '../send';
-import { estimateTokens, materialTokensFor, replyTokensFor, SAFE_CHARS_PER_TOKEN } from '../device/context';
+import { estimateTokens, materialTokensFor, replyTokensFor, SAFE_CHARS_PER_TOKEN, turnTokensFor } from '../device/context';
 import type { DeviceEngine } from '../device/engine';
 
 /**
@@ -33,6 +33,12 @@ export interface Runner {
    * turns — one request can carry besides the rules and the request itself.
    */
   budget: number;
+  /**
+   * Characters of material one turn of the chat carries: `budget`, or less
+   * where the machine reads slowly, so the first word of an answer is not
+   * minutes away.
+   */
+  turnBudget: number;
   /** Characters of text one request can carry when the answer is as long as the text — a translation. */
   echoBudget: number;
   run(prompt: Prompt, options: RunOptions): Promise<Outcome>;
@@ -63,6 +69,7 @@ export function remoteRunner(settings: Exclude<ProviderSettings, { provider: 'de
     key: `${settings.provider}:${settings.model}`,
     destination,
     budget: budgetFor(settings.provider, 'ask'),
+    turnBudget: budgetFor(settings.provider, 'ask'),
     echoBudget: budgetFor(settings.provider, 'translate'),
     run: (prompt, options) => send(asPreflight(settings, destination, prompt), key, options.signal, { onText: options.onText, ...(fetcher ? { fetch: fetcher } : {}) }),
   };
@@ -123,6 +130,7 @@ export async function deviceRunner(engine: DeviceEngine, options: DeviceRunnerOp
     key: `device:${engine.model.id}`,
     destination: THIS_DEVICE,
     budget: Math.floor(materialTokensFor(context) * ratio),
+    turnBudget: Math.floor(Math.min(materialTokensFor(context), turnTokensFor(options.runtime)) * ratio),
     // A translation into Arabic takes up to twice the tokens of its English: half the reply's room.
     echoBudget: Math.max(200, Math.floor(reply * ratio * 0.5)),
     run: async (prompt, { signal, onText, brief }): Promise<Outcome> => {

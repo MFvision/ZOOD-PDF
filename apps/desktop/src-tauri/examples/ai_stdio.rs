@@ -12,7 +12,7 @@
 //! - `{"op":"count","text":"…"}` → `{"count":N}`;
 //! - `{"op":"memory"}` → `{"peakMiB":N}`, the process's peak so far.
 //!
-//! `packages/ui/src/ai/chat/realModel.manual.ts` drives it: the chat's own
+//! `packages/ui/src/ai/chat/realModel.test.ts` drives it: the chat's own
 //! chunking, analysis and answering, against `Engine::generate` — everything
 //! but the webview's message channel. Never part of the app.
 use std::io::{BufRead, Write};
@@ -60,12 +60,14 @@ fn peak_mib() -> f64 {
 }
 
 fn main() {
-    let model = PathBuf::from(
-        std::env::args()
-            .nth(1)
-            .expect("usage: ai_stdio MODEL.gguf"),
-    );
-    let engine = Engine::load(&model).expect("model loads");
+    let model = PathBuf::from(std::env::args().nth(1).expect("usage: ai_stdio MODEL.gguf"));
+    // WARRAQ_AI_CPU=1 keeps the model off the graphics processor: what a machine without Metal does.
+    let engine = if std::env::var_os("WARRAQ_AI_CPU").is_some() {
+        Engine::load_on_processor(&model)
+    } else {
+        Engine::load(&model)
+    }
+    .expect("model loads");
     let stdout = std::io::stdout();
     let say = |value: serde_json::Value| {
         let mut out = stdout.lock();

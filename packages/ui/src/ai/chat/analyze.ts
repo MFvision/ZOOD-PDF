@@ -1,3 +1,4 @@
+import { splitCitations } from '../citations';
 import type { Failure } from '../providers';
 import { halve } from './chunks';
 import type { Chunk } from './chunks';
@@ -54,6 +55,16 @@ export function clip(text: string, limit: number): string {
   return (line > limit / 2 ? cut.slice(0, line) : cut).trim();
 }
 
+/**
+ * Notes that name no page get their chunk's pages at the end: a small model
+ * often leaves the citations out, and without them nothing made from the
+ * notes later could say where in the document it came from.
+ */
+export function withPages(text: string, from: number, to: number): string {
+  if (splitCitations(text, Number.MAX_SAFE_INTEGER).some((piece) => piece.kind === 'page')) return text;
+  return `${text} ${from === to ? `[p. ${from}]` : `[pp. ${from}–${to}]`}`;
+}
+
 const chunkText = (chunk: Chunk) => chunk.pages.map((page) => `${page.page}\u0000${page.text}`).join('\u0001');
 const partsText = (parts: readonly Part[]) => parts.map((part) => `${part.from}-${part.to}\u0000${part.text}`).join('\u0001');
 const size = (parts: readonly Part[]) => summariesText(parts).length;
@@ -87,34 +98,40 @@ export async function analyze(chunks: readonly Chunk[], pageCount: number, runne
   let made = 0;
   const fail = (failure: Failure): Analyzed => ({ ok: false, failure });
 
-  /** One request whose answer is kept under `key`; a kept answer is not asked for again. */
-  const once = async (key: string, ask: () => ReturnType<Runner['run']>): Promise<{ ok: true; text: string } | { ok: false; failure: Failure }> => {
+  /**
+   * One request whose answer is kept under `key`; a kept answer is not asked
+   * for again — and `progress` is said only when the model is in fact asked,
+   * so an analysis that is all there already passes without a word.
+   */
+  const once = async (key: string, progress: Progress, ask: () => ReturnType<Runner['run']>, from?: number, to?: number): Promise<{ ok: true; text: string } | { ok: false; failure: Failure }> => {
     const had = await kept.get(key);
     if (had !== null) {
       reused += 1;
       return { ok: true, text: had };
     }
     if (signal.aborted) return { ok: false, failure: CANCELLED };
+    onProgress?.(progress);
     const outcome = await ask();
     // Stopped while it was being written: half a summary is not kept as one.
     if (signal.aborted) return { ok: false, failure: CANCELLED };
     if (!outcome.ok) return outcome;
-    const text = clip(outcome.answer.text, limit);
+    // Room is left for the pages `withPages` may add, so a summary never passes its limit.
+    const text = from === undefined || to === undefined ? clip(outcome.answer.text, limit) : withPages(clip(outcome.answer.text, limit - 20), from, to);
     await kept.put(key, text);
     made += 1;
     return { ok: true, text };
   };
 
   /** A chunk's summary; a chunk the model counts as too long is read as two halves. */
-  const read = async (chunk: Chunk, depth: number): Promise<{ ok: true; text: string } | { ok: false; failure: Failure }> => {
+  const read = async (chunk: Chunk, depth: number, progress: Progress): Promise<{ ok: true; text: string } | { ok: false; failure: Failure }> => {
     const key = `${runner.key}:c:${await textHash(chunkText(chunk))}`;
-    const result = await once(key, () => runner.run(notesPrompt(chunk.pages, chunk.from, chunk.to, pageCount), { signal, brief: true }));
+    const result = await once(key, progress, () => runner.run(notesPrompt(chunk.pages, chunk.from, chunk.to, pageCount), { signal, brief: true }), chunk.from, chunk.to);
     if (result.ok || result.failure.kind !== 'tooLarge' || depth >= 4) return result;
     const halves = halve(chunk);
     if (!halves) return result;
     const texts: string[] = [];
     for (const half of halves) {
-      const part = await read(half, depth + 1);
+      const part = await read(half, depth + 1, progress);
       if (!part.ok) return part;
       texts.push(part.text);
     }
@@ -126,8 +143,7 @@ export async function analyze(chunks: readonly Chunk[], pageCount: number, runne
   // Map.
   const first: Part[] = [];
   for (const [index, chunk] of chunks.entries()) {
-    onProgress?.({ stage: 'reading', from: chunk.from, to: chunk.to, pageCount, done: index, total: chunks.length });
-    const result = await read(chunk, 0);
+    const result = await read(chunk, 0, { stage: 'reading', from: chunk.from, to: chunk.to, pageCount, done: index, total: chunks.length });
     if (!result.ok) return fail(result.failure);
     first.push({ from: chunk.from, to: chunk.to, text: result.text });
   }
@@ -142,14 +158,13 @@ export async function analyze(chunks: readonly Chunk[], pageCount: number, runne
     if (groups.length >= level.length) return fail({ kind: 'tooLarge' });
     const next: Part[] = [];
     for (const [index, group] of groups.entries()) {
-      onProgress?.({ stage: 'combining', done: index, total: groups.length });
       const from = group[0]!.from;
       const to = group.at(-1)!.to;
       if (group.length === 1) {
         next.push(group[0]!);
         continue;
       }
-      const result = await once(`${runner.key}:g:${await textHash(partsText(group))}`, () => runner.run(combinePrompt(group, pageCount), { signal, brief: true }));
+      const result = await once(`${runner.key}:g:${await textHash(partsText(group))}`, { stage: 'combining', done: index, total: groups.length }, () => runner.run(combinePrompt(group, pageCount), { signal, brief: true }), from, to);
       if (!result.ok) return fail(result.failure);
       next.push({ from, to, text: result.text });
     }
@@ -157,8 +172,7 @@ export async function analyze(chunks: readonly Chunk[], pageCount: number, runne
     level = next;
   }
 
-  onProgress?.({ stage: 'outline' });
-  const outline = await once(`${runner.key}:o:${await textHash(partsText(level))}`, () => runner.run(outlinePrompt(level, pageCount), { signal, brief: true }));
+  const outline = await once(`${runner.key}:o:${await textHash(partsText(level))}`, { stage: 'outline' }, () => runner.run(outlinePrompt(level, pageCount), { signal, brief: true }));
   if (!outline.ok) return fail(outline.failure);
   // The mark `keptOutline` looks for: this document, with this model, is done.
   const hashes = await Promise.all(chunks.map((chunk) => textHash(chunkText(chunk))));

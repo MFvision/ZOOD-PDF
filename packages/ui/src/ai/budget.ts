@@ -11,10 +11,12 @@ export type TaskKind = 'summarize' | 'ask' | 'translate' | 'fixOcr' | 'fill' | '
 /**
  * How much document text one request may carry, in characters. Claude reads
  * a whole report (about 150,000 characters); a model on a laptop does well
- * with far less; the on-device model has a window of 4,096 tokens, which
- * Arabic fills at about 1.5 characters a token, so after its rules and its
- * reply about 4,000 characters of the document fit — a question about a
- * longer document goes with the passages that answer it (`device/retrieval.ts`).
+ * with far less. For the on-device model these are the figures of the
+ * one-shot document tools only, set for a text of 1.5 characters a token in
+ * a 4,096-token window — and brought down for a text that costs more by
+ * `deviceBudget` (`device/generate.ts`), since the window is counted in
+ * tokens, not characters. The chat does not use them on this device: its
+ * budget is the window itself, measured on the document (`chat/runner.ts`).
  * A translation comes back about as long as it went, and so do an OCR
  * correction and a page's tables, so those are kept small enough for their
  * reply to fit.

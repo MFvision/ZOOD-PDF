@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { PageText } from '../budget';
 import type { Prompt } from '../providers';
 import type { Outcome } from '../send';
-import { analyze, digest, groupParts, keptOutline, summaryLimit } from './analyze';
+import { analyze, digest, groupParts, keptOutline, summaryLimit, withPages } from './analyze';
 import { answerTurn, asksForOverview, carry, fitsWhole, searchQuery } from './answer';
 import type { DocumentText } from './answer';
 import { chunkPages, halve, splitText } from './chunks';
@@ -41,6 +41,7 @@ function recorder(budget: number, reply: (prompt: Prompt, index: number) => stri
     key: 'device:test',
     destination: 'this device',
     budget,
+    turnBudget: budget,
     echoBudget: Math.floor(budget / 4),
     run: async (prompt, options) => {
       asked.push({ prompt, brief: options.brief === true });
@@ -236,6 +237,21 @@ describe('analyze: a document far over the window', () => {
     expect(done.ok).toBe(true);
     if (!done.ok) return;
     for (let page = 1; page <= chunks[0]!.to; page += 1) expect(done.analysis.levels[0]![0]!.text).toContain(`V${page * 7} [p. ${page}]`);
+  });
+
+  it('notes that name no page are given their chunk\'s pages, so what is made from them can still say where it came from', async () => {
+    expect(withPages('- the court sits in The Hague', 3, 5)).toBe('- the court sits in The Hague [pp. 3–5]');
+    expect(withPages('- one page only', 7, 7)).toBe('- one page only [p. 7]');
+    expect(withPages('- cited already [p. 4]', 3, 5)).toBe('- cited already [p. 4]');
+    expect(withPages('- cited in Arabic [ص ٤]', 3, 5)).toBe('- cited in Arabic [ص ٤]');
+    const chunks = chunkPages(doc.pages, budget);
+    const runner = recorder(budget, (prompt) => (prompt.user.includes('Write its outline') ? 'the outline' : 'notes without a page'));
+    const done = await analyze(chunks, doc.pageCount, runner, memoryKept(), { signal: live() });
+    expect(done.ok).toBe(true);
+    if (!done.ok) return;
+    expect(done.analysis.levels[0]!.map((part) => part.text)).toEqual(chunks.map((chunk) => `notes without a page ${chunk.from === chunk.to ? `[p. ${chunk.from}]` : `[pp. ${chunk.from}–${chunk.to}]`}`));
+    const limit = summaryLimit(budget);
+    for (const level of done.analysis.levels) for (const part of level) expect(part.text.length).toBeLessThanOrEqual(limit);
   });
 
   it('a failure stops it and says why', async () => {

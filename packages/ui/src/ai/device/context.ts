@@ -65,3 +65,18 @@ export function estimateTokens(text: string): number {
   }
   return Math.ceil(tokens);
 }
+
+/**
+ * Tokens of material one turn of the chat carries at most, by where the
+ * model runs. The window bounds what can be read at once; this bounds the
+ * wait before the first word of an answer, which is the time the prompt
+ * takes to read: about 400 tokens a second on the Mac's graphics processor
+ * and a fraction of that on a processor alone (docs/STATUS.md). The
+ * analysis is not bound by it — it reads every page once, whatever the size
+ * of its steps — only each answer is.
+ */
+export function turnTokensFor(runtime: string): number {
+  if (runtime === 'metal') return 4000;
+  if (runtime === 'cpu' || runtime === 'wasm' || runtime === 'wasm-threads') return 2000;
+  return Number.POSITIVE_INFINITY;
+}

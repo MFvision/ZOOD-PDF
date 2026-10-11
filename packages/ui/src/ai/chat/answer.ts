@@ -7,7 +7,7 @@ import { analyze, clip, digest, keptOutline } from './analyze';
 import type { Analysis, Progress } from './analyze';
 import { chunkPages, splitText } from './chunks';
 import type { Kept } from './kept';
-import { translatePrompt, turnPrompt } from './prompts';
+import { mostlyArabic, translatePrompt, turnPrompt } from './prompts';
 import type { Material, Said } from './prompts';
 import type { Runner } from './runner';
 
@@ -116,7 +116,7 @@ export async function answerTurn(doc: DocumentText, ask: Ask, history: readonly 
   // Tried with all its room first; a request the model counts as too large is tried again with less.
   let scale = 1;
   for (let attempt = 0; ; attempt += 1) {
-    const budget = Math.floor(runner.budget * scale);
+    const budget = Math.floor(runner.turnBudget * scale);
     const said = carry(history, Math.floor(budget * 0.25));
     const room = budget - total(said);
     const built = await material(doc, ask, history, runner, room, options);
@@ -192,9 +192,7 @@ async function translate(doc: DocumentText, ask: Extract<Ask, { kind: 'translate
 
 /** The language a page is translated into: the other one of the two. */
 export function translationTarget(text: string): Lang {
-  const arabic = text.match(/[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/g)?.length ?? 0;
-  const latin = text.match(/[A-Za-z]/g)?.length ?? 0;
-  return arabic >= latin ? 'en' : 'ar';
+  return mostlyArabic(text) ? 'en' : 'ar';
 }
 
 /** The analysis on its own, from the "Analyze this document" button. */
@@ -214,6 +212,6 @@ export async function analyzeDocument(
 }
 
 /** Whether the document goes whole in one request: it needs no analysis. */
-export function fitsWhole(doc: DocumentText, runner: Pick<Runner, 'budget'>): boolean {
-  return doc.characters + doc.pages.length * 30 <= Math.floor(runner.budget * 0.75);
+export function fitsWhole(doc: DocumentText, runner: Pick<Runner, 'turnBudget'>): boolean {
+  return doc.characters + doc.pages.length * 30 <= Math.floor(runner.turnBudget * 0.75);
 }
