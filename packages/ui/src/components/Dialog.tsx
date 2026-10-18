@@ -25,10 +25,18 @@ export function Dialog({ open, title, onClose, children }: DialogProps) {
     if (!element) return;
     if (open && !element.open) {
       element.showModal();
-      // showModal focuses the first control, the close box: a field wants the
-      // caret instead, and a sheet with none takes the focus itself, so Tab
-      // starts from its top and nothing wears a focus ring it was not given.
-      const field = element.querySelector<HTMLElement>('[autofocus], input:not([type="hidden"]), textarea, select');
+      // showModal focuses the first control, the close box: a dialog that
+      // opens on a field wants the caret there instead, and any other sheet
+      // takes the focus itself, so Tab starts from its top and nothing wears
+      // a focus ring it was not given. Only the body's first control counts:
+      // a field further down (Settings' font search under its segmented
+      // controls) would make Tab start halfway down the sheet.
+      const first =
+        element.querySelector<HTMLElement>('[autofocus]') ??
+        element.querySelector<HTMLElement>(
+          '.dialog-body :is(input:not([type="hidden"]), textarea, select, button, a[href], [tabindex]:not([tabindex="-1"]))',
+        );
+      const field = first?.matches('[autofocus], input, textarea, select') ? first : null;
       (field ?? element).focus();
     }
     else if (!open && element.open) element.close();

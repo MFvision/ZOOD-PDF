@@ -50,13 +50,23 @@ fn corpus_bytes() -> Vec<u8> {
     std::fs::read(&path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()))
 }
 
+/// The engine each desktop build renders with: PDFium on the Mac, where its
+/// library is bundled; Warraq's own Rust renderer (hayro) on Windows, where it
+/// is not (apps/desktop/README.md), so the same checks below run against that.
+const EXPECTED_ENGINE: &str = if cfg!(target_os = "macos") {
+    "pdfium+hayro"
+} else {
+    "hayro"
+};
+
 #[test]
 fn renders_with_native_pdfium_and_reads_arabic_through_the_core_api() {
     point_at_pdfium();
     assert_eq!(
         detect_engine(),
-        "pdfium+hayro",
-        "the PDFium dynamic library did not bind; the host would silently fall back to hayro"
+        EXPECTED_ENGINE,
+        "the engine is not the one this platform's build ships with (on the Mac: the PDFium \
+         dynamic library did not bind, and the host would silently fall back to hayro)"
     );
 
     let mut registry = Registry::default();
@@ -122,7 +132,7 @@ fn renders_with_native_pdfium_and_reads_arabic_through_the_core_api() {
 
     let metadata = metadata_json(document, detect_engine()).expect("doc_metadata");
     assert!(
-        metadata.contains("\"engine\":\"pdfium+hayro\""),
+        metadata.contains(&format!("\"engine\":\"{EXPECTED_ENGINE}\"")),
         "{metadata}"
     );
     assert!(metadata.contains("\"pages\":1"), "{metadata}");

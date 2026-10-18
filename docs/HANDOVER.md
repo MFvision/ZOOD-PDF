@@ -7,7 +7,7 @@ this file current at the end of every job.
 
 | Platform | Latest build | What is in it |
 |---|---|---|
-| Windows | Release `windows-20261011-1538` (commit `d4b22e1`): https://github.com/MFvision/ZOOD-PDF/releases/download/windows-20261011-1538/ZOOD-PDF-Setup.exe | Everything below; the core and desktop tests pass on Windows |
+| Windows | Release `windows-20261018-1725` (PR #2, commit `73d5633`): https://github.com/MFvision/ZOOD-PDF/releases/download/windows-20261018-1725/ZOOD-PDF-Setup.exe | Everything below plus the Windows pilot (PDF document icon, recent files reopen, one window); the core and desktop tests pass on Windows |
 | macOS | Installed in /Applications from `d4b22e1` | Same as Windows |
 | iPhone / iPad | TestFlight build `202610052355` | Editor with columns, kept colour and Automatic font (own font, else closest bundled face); not the desktop's AI chat |
 | Web | Builds from `main` | Same as desktop, minus installed fonts |
@@ -33,16 +33,24 @@ chat with whole-document Analyze (desktop/web).
    an app.
 4. For Google Drive / OneDrive: his developer client IDs, when he wants that job.
 
-## The next job (agreed, not started)
-**A priced pilot**: item 3 of `docs/research/pdfcraft-comparison.md` — Windows basics:
-a document icon for `.pdf` files (a page carrying our mark, registered in the Tauri bundle's
-file association), recent files reopening directly by path instead of asking to locate them,
-and a second double-click going to the window already open. These are the owner's own
-backlog items 2 and 4. One agent, desktop only, no simulators. **Note the weekly usage %
-before and after** (`get_usage`; it was 23% of the week on 2026-10-18) so the rest of the
-list can be priced from a real number.
+## The Windows pilot (done 2026-10-18, PR #2, draft until the owner approves)
+PDFs get a document icon (`ZoodPDF.Document`, set by `src-tauri/windows/hooks.nsh`; shown once
+the app is Windows' default for PDFs), recent and starred files reopen by path
+(`src-tauri/src/recent.rs`), and a second launch hands its PDF to the open window
+(`tauri-plugin-single-instance`). The same PR fixed CI that was red on `app` before it: the
+corpus runner's passwords, a clippy 1.99 lint, the RSA-PSS salt's DER encoding (OpenSSL
+refused it), the Windows core_bridge test (hayro there by design), the Settings dialog's first
+focus and the read-aloud highlight (EmbedPDF 2.x counts pages from zero).
+Weekly usage: 23% before; the after figure could not be read from a cloud session (no
+`get_usage` there) — read it in the Claude app.
 
-Then, as he chooses, from the study's top ten (sizes there are PdfCraft's formula and run
+**Owner's next ask (not started)**: tabs. A second double-clicked PDF opens as a tab in the
+same window instead of replacing the open one, and pages can be dragged between tabs to
+organize them. The app holds one document at a time today (`AppContext`), so this is a job of
+its own.
+
+## After that
+As he chooses, from the study's top ten (sizes there are PdfCraft's formula and run
 high; our desktop jobs took 1–1.5 h of real time each): large-format printing (A0/A1 at true
 scale, tiling), autosave and crash recovery, command search (Ctrl/⌘+K), measuring, and the
 Workbench theme (`docs/research/pdfcraft-theme.md`, which also brings the theme choice to
@@ -57,7 +65,7 @@ desktop and web).
   was not completed — Redact's Find, drawn form-field placement and the lock tests still
   fail, cause not established.
 - **Browser e2e on this Mac is flaky** ("Target page … has been closed", a different 1–2 tests
-  per run, each passes alone); `read-aloud.spec.ts` test 1 also fails on older code.
+  per run, each passes alone).
 - **On-device AI quality**: the 0.5B model (the only one in a browser) cannot summarize long
   documents; the 1.5B gets the gist but degrades on long Arabic summaries and rarely cites.
   Options offered to the owner: a larger on-device model, or his own Claude key.

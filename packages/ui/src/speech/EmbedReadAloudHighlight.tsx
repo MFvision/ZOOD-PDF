@@ -40,18 +40,24 @@ interface Placed {
 /**
  * The element inside EmbedPDF that scrolls the pages: the one whose scroll
  * height is what the viewport plugin reports. Its box is where the marks'
- * coordinates start.
+ * coordinates start. When the page fits the window there is nothing to
+ * scroll, and the largest element that is set to scroll stands in.
  */
 function scroller(host: HTMLElement, viewport: Viewport): HTMLElement | null {
   const root = host.querySelector('embedpdf-container')?.shadowRoot;
   if (!root) return null;
   const { scrollHeight } = viewport.getMetrics();
+  const area = (element: HTMLElement) => element.clientWidth * element.clientHeight;
   let best: HTMLElement | null = null;
+  let fallback: HTMLElement | null = null;
   for (const element of root.querySelectorAll<HTMLElement>('*')) {
-    if (element.scrollHeight !== scrollHeight || element.clientHeight >= element.scrollHeight) continue;
-    if (!best || element.clientWidth * element.clientHeight > best.clientWidth * best.clientHeight) best = element;
+    if (element.scrollHeight === scrollHeight && element.clientHeight < element.scrollHeight) {
+      if (!best || area(element) > area(best)) best = element;
+    } else if (/auto|scroll/.test(getComputedStyle(element).overflowY)) {
+      if (!fallback || area(element) > area(fallback)) fallback = element;
+    }
   }
-  return best;
+  return best ?? fallback;
 }
 
 function placeBoxes(host: HTMLElement, registry: PluginRegistry, page: number, boxes: readonly PageBox[]): Placed[] {
@@ -65,8 +71,8 @@ function placeBoxes(host: HTMLElement, registry: PluginRegistry, page: number, b
   const scrollBox = element.getBoundingClientRect();
   const placed: Placed[] = [];
   for (const box of boxes) {
-    // The scroll plugin counts pages from one; the reader's boxes from zero.
-    const at = scroll.getRectPositionForPage(page + 1, { origin: { x: box.x, y: box.y }, size: { width: box.width, height: box.height } });
+    // Both count pages from zero (EmbedPDF 2.x adds the one itself).
+    const at = scroll.getRectPositionForPage(page, { origin: { x: box.x, y: box.y }, size: { width: box.width, height: box.height } });
     if (!at) continue;
     placed.push({
       left: scrollBox.left - hostBox.left + at.origin.x - scrollLeft,
