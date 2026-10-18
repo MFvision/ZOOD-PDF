@@ -89,6 +89,12 @@ test('the extension viewer opens an Arabic PDF, and its AI tool needs no host pe
     const exited = new Promise((resolve) => chrome.once('exit', resolve));
     chrome.kill();
     await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 5_000))]);
-    rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    // A helper process of Chrome's can outlive it and still be writing; a
+    // profile left in the temporary folder is not the test's failure.
+    try {
+      rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    } catch {
+      // Left for the system's temporary-folder sweep.
+    }
   }
 });
