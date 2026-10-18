@@ -1535,7 +1535,7 @@ impl PdfDocument {
         let mut name_dicts: HashSet<ObjectId> = HashSet::new();
         for (id, object) in &self.doc.objects {
             let is_unused = match object {
-                Object::Stream(s) => s.dict.get(b"OC").is_ok_and(&unused),
+                Object::Stream(s) => s.dict.get(b"OC").is_ok_and(unused),
                 Object::Dictionary(d) if off.contains(id) || d.has_type(b"OCMD") => {
                     unused(&Object::Reference(*id))
                 }

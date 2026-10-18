@@ -5,7 +5,9 @@ Usage: run_python.py <repo> [pdfium|mupdf ...]"""
 import json, os, sys, time, traceback
 from pathlib import Path
 REPO = Path(sys.argv[1]).resolve(); CORPUS = REPO / "tests/corpus/arabic"; SHOTS = REPO / "docs/research/screenshots"
-PASSWORDS = {"variant-encrypted-aes256.pdf": "warraq"}
+# User passwords of the encrypted corpus files (tests/corpus/arabic/generators/gen_encrypted.py);
+# the owner-only file opens with none.
+PASSWORDS = {f"variant-encrypted-{v}.pdf": "warraq" for v in ("aes256", "aes128", "rc4-128", "rc4-40")}
 MAX_PAGES_TEXT = 3
 
 def save_shot(img, cand, stem):
