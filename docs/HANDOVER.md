@@ -7,7 +7,7 @@ this file current at the end of every job.
 
 | Platform | Latest build | What is in it |
 |---|---|---|
-| Windows | Release `windows-20261018-1725` (PR #2, commit `73d5633`): https://github.com/MFvision/ZOOD-PDF/releases/download/windows-20261018-1725/ZOOD-PDF-Setup.exe | Everything below plus the Windows pilot (PDF document icon, recent files reopen, one window); the core and desktop tests pass on Windows |
+| Windows | Release `windows-20261018-1940` (PR #2, commit `62ef0a6`): https://github.com/MFvision/ZOOD-PDF/releases/download/windows-20261018-1940/ZOOD-PDF-Setup.exe | Everything below plus the Windows pilot (PDF document icon, recent files reopen, one window); the core and desktop tests pass on Windows |
 | macOS | Installed in /Applications from `d4b22e1` | Same as Windows |
 | iPhone / iPad | TestFlight build `202610052355` | Editor with columns, kept colour and Automatic font (own font, else closest bundled face); not the desktop's AI chat |
 | Web | Builds from `main` | Same as desktop, minus installed fonts |
