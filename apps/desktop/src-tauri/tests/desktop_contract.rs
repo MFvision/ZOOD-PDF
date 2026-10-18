@@ -330,3 +330,72 @@ fn the_index_is_written_where_the_persons_data_lives() {
         "nothing outside the tests may put the index in a temporary folder"
     );
 }
+
+/// The recent list opens a file again only through these commands; a missing
+/// one makes the home screen fall back, silently, to asking for the file.
+#[test]
+fn the_recent_commands_the_home_screen_invokes_are_registered() {
+    let lib = std::fs::read_to_string(manifest().join("src/lib.rs")).expect("lib.rs");
+    let host = repo_file("packages/ui/src/core/host-tauri.ts");
+    for command in ["recent_remember", "recent_path", "recent_forget"] {
+        assert!(
+            lib.contains(&format!("recent::{command}")),
+            "{command} is not registered in the invoke handler"
+        );
+        assert!(
+            host.contains(&format!("'{command}'")),
+            "host-tauri.ts no longer invokes {command}; the Rust side would be dead code"
+        );
+    }
+    assert!(
+        host.contains(&format!(
+            "OPEN_FILE_EVENT = '{}'",
+            warraq_desktop_lib::OPEN_FILE_EVENT
+        )),
+        "host-tauri.ts listens for a different OPEN_FILE_EVENT than lib.rs sends: a PDF \
+         double-clicked while the app runs would bring the window forward and open nothing"
+    );
+}
+
+/// Windows: a .pdf is associated with the app, under the file class whose
+/// icon the installer hook replaces with the document icon it installs.
+#[test]
+fn windows_gives_pdf_files_the_document_icon() {
+    let windows = json("tauri.windows.conf.json");
+    let bundle = &windows["bundle"];
+    let association = &bundle["fileAssociations"][0];
+    assert_eq!(association["ext"], serde_json::json!(["pdf"]));
+    let class = association["name"].as_str().expect("file class name");
+
+    // The Windows file replaces the resources list as a whole: PDFium's
+    // notices must stay in it beside the icon.
+    let resources: Vec<&str> = bundle["resources"]
+        .as_array()
+        .expect("resources")
+        .iter()
+        .filter_map(|r| r.as_str())
+        .collect();
+    for needed in [
+        "resources/pdfium/LICENSE",
+        "resources/windows/pdf-document.ico",
+    ] {
+        assert!(
+            resources.contains(&needed),
+            "tauri.windows.conf.json no longer bundles {needed}"
+        );
+    }
+    assert!(manifest()
+        .join("resources/windows/pdf-document.ico")
+        .is_file());
+
+    let hooks_path = bundle["windows"]["nsis"]["installerHooks"]
+        .as_str()
+        .expect("installerHooks");
+    let hooks = std::fs::read_to_string(manifest().join(hooks_path)).expect("hooks.nsh");
+    assert!(
+        hooks.contains(&format!(
+            "Software\\Classes\\{class}\\DefaultIcon\" \"\" \"$INSTDIR\\resources\\windows\\pdf-document.ico\""
+        )),
+        "the installer hook must set {class}'s icon to the installed document icon"
+    );
+}

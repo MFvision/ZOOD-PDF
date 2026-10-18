@@ -21,6 +21,7 @@ pub mod library;
 pub mod menu;
 pub mod print;
 pub mod profile;
+pub mod recent;
 pub mod signing;
 
 /// Event sent to the webview when files are dropped on the window.
@@ -32,6 +33,13 @@ pub const FILE_DROP_EVENT: &str = "warraq://file-drop";
 /// show where they would go: the webview sees none of the HTML drag events.
 /// Payload: [`FileDragPayload`].
 pub const FILE_DRAG_EVENT: &str = "warraq://file-drag";
+
+/// Event sent when a PDF was opened from outside while the app is already
+/// running — double-clicked in Explorer, or "Open with" — so the window that
+/// is open takes it instead of a second window starting. No payload: the
+/// interface claims the file with `startup_file`, the same as at boot, so a
+/// file that arrives before the interface listens is not lost.
+pub const OPEN_FILE_EVENT: &str = "warraq://open-file";
 
 #[derive(Clone, Serialize)]
 pub struct FileDropPayload {
@@ -67,13 +75,60 @@ fn logical<R: Runtime>(window: &tauri::Window<R>, at: &tauri::PhysicalPosition<f
 /// in-app drags carry none, and get no overlay.
 static DRAGGING_FILES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
-/// A PDF named on the command line: `warraq-desktop report.pdf`. It is handed
-/// to the UI once, when it boots, and is also the only way to exercise the
-/// whole desktop path — window, webview, core — without a person at the
-/// screen, which is what `WARRAQ_DEBUG=1` then reports on stdout.
+/// A PDF named on the command line: `warraq-desktop report.pdf`, which is how
+/// Explorer opens a double-clicked PDF. It is handed to the UI once, when it
+/// boots — or, when a second launch passed it on, when `OPEN_FILE_EVENT`
+/// says so. It is also the only way to exercise the whole desktop path —
+/// window, webview, core — without a person at the screen, which is what
+/// `WARRAQ_DEBUG=1` then reports on stdout.
 struct StartupFile(Mutex<Option<String>>);
 
-/// The startup file, consumed on the first call so a reload does not reopen it.
+/// The first existing file among a launch's arguments (after the program's
+/// own name), a relative one taken from where that launch started. Put in the
+/// file scope: a file named on the command line is as explicit a choice as
+/// one picked in the dialog.
+fn file_in_args<R: Runtime>(
+    app: &AppHandle<R>,
+    args: impl IntoIterator<Item = std::ffi::OsString>,
+    cwd: Option<&std::path::Path>,
+) -> Option<PathBuf> {
+    let path = args
+        .into_iter()
+        .skip(1)
+        .map(PathBuf::from)
+        .map(|path| match cwd {
+            Some(cwd) if path.is_relative() => cwd.join(path),
+            _ => path,
+        })
+        .find(|path| path.is_file())?;
+    if let Err(e) = app.fs_scope().allow_file(&path) {
+        eprintln!("warraq: cannot allow {}: {e}", path.display());
+    }
+    Some(path)
+}
+
+/// A second launch of the app (the person double-clicked another PDF): its
+/// file goes to the window already open, which comes to the front, and the
+/// second process exits (tauri-plugin-single-instance).
+fn second_launch<R: Runtime>(app: &AppHandle<R>, args: Vec<String>, cwd: String) {
+    let cwd = PathBuf::from(cwd);
+    let file = file_in_args(app, args.into_iter().map(Into::into), Some(&cwd));
+    core_bridge::debug_log(format!("second launch file = {file:?}"));
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+    let Some(file) = file else { return };
+    if let Some(slot) = app.try_state::<StartupFile>() {
+        if let Ok(mut slot) = slot.0.lock() {
+            *slot = Some(file.to_string_lossy().into_owned());
+        }
+    }
+    let _ = app.emit(OPEN_FILE_EVENT, ());
+}
+
+/// The waiting file, consumed on the first call so a reload does not reopen it.
 #[tauri::command]
 fn startup_file(state: State<'_, StartupFile>) -> Option<String> {
     let path = state.0.lock().ok().and_then(|mut slot| slot.take());
@@ -192,6 +247,11 @@ fn read_file_bytes<R: Runtime>(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // First, so a second launch hands its file over before anything else
+        // of it starts.
+        .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
+            second_launch(app, args, cwd)
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         // The macOS menu bar is the UI's model (src/menu.rs); until the UI
@@ -206,6 +266,7 @@ pub fn run() {
         .manage(ai::AiState::default())
         .manage(profile::ProfileState::default())
         .manage(fonts::FontState::default())
+        .manage(recent::RecentState::default())
         .on_menu_event(|app, event| menu::forward(app, event.id().as_ref()))
         // Points warraq-render at the bundled PDFium and starts the core thread
         // before the window can invoke anything (see `core_bridge`).
@@ -214,17 +275,7 @@ pub fn run() {
             println!("warraq: core engine = {}", bridge.engine());
             app.manage(bridge);
 
-            // A file named on the command line is as explicit a choice as one
-            // picked in the dialog, so it joins the same scope.
-            let startup = std::env::args_os()
-                .skip(1)
-                .map(PathBuf::from)
-                .find(|path| path.is_file());
-            if let Some(path) = &startup {
-                if let Err(e) = app.fs_scope().allow_file(path) {
-                    eprintln!("warraq: cannot allow {}: {e}", path.display());
-                }
-            }
+            let startup = file_in_args(app.handle(), std::env::args_os(), None);
             core_bridge::debug_log(format!("command line file = {startup:?}"));
 
             app.manage(StartupFile(Mutex::new(
@@ -295,6 +346,9 @@ pub fn run() {
             profile::profile_set,
             profile::profile_delete,
             fonts::font_installed,
+            recent::recent_remember,
+            recent::recent_path,
+            recent::recent_forget,
         ])
         .on_window_event(|window, event| {
             // Forward OS file drops to the webview, after allowing the dropped

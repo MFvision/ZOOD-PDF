@@ -13,13 +13,19 @@ import { getSharedCoreClient } from '../core/client';
 import { installDesktopFileBridge } from '../core/desktopFiles';
 import { CREATE_ACCEPT, CREATE_EXTENSIONS } from '../create/createPdf';
 import {
+  forgetRecentPath,
   isTauriHost,
+  keepNativePath,
+  nativePathOf,
+  onOpenFileRequest,
+  openRecentFile,
   pickFiles,
   pickPdfFile,
   printAvailable,
   printMode,
   printPdf,
   printWebview,
+  rememberRecentPath,
   savePdfFile,
   takeStartupFile,
 } from '../core/host-tauri';
@@ -191,6 +197,8 @@ export interface AppServices {
   closeDocument: () => void;
   /** Shows the file picker: the native panel on desktop, `<input type="file">` in a browser. */
   requestOpenFile: () => void;
+  /** Opens a recent file again: directly on the desktop, through the picker in a browser. */
+  openRecent: (name: string) => void;
   /**
    * Create PDF's picker: Word, Excel, PowerPoint, web pages, text and
    * pictures, several at once, which then go to `startCreate`. The same
@@ -347,7 +355,7 @@ const ServicesContext = createContext<AppServices | null>(null);
 
 /** A file the desktop host read for us, in the shape the open path expects. */
 function toFile(picked: PickedFile): File {
-  return new File([picked.bytes], picked.name, { type: 'application/pdf' });
+  return keepNativePath(new File([picked.bytes], picked.name, { type: 'application/pdf' }), picked.path);
 }
 
 /** A dropped or picked file whose name or type says PDF; see `pdfFile.ts`. */
@@ -541,6 +549,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // under the drive's own key (`cloud/`) — not among this device's.
         if (options?.recent !== false) {
           setRecent(addRecent(file.name));
+          // On the desktop, where it came from too, so it opens again directly.
+          const path = nativePathOf(file);
+          if (path) rememberRecentPath(file.name, path);
           void keepFirstPage(file.name, opened, password, () => !pictureBlocked.current);
         }
       } catch (err) {
@@ -670,17 +681,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })();
   }, [openFile]);
 
+  /**
+   * A recent file, by name: on the desktop it opens again from where it was
+   * last opened; in a browser, or once the file has moved, the picker asks
+   * for it as before (only the name is kept there).
+   */
+  const openRecent = useCallback(
+    (name: string) => {
+      if (!isTauriHost()) {
+        requestOpenFile();
+        return;
+      }
+      void (async () => {
+        const picked = await openRecentFile(name).catch(() => null);
+        if (picked) await openFile(toFile(picked));
+        else requestOpenFile();
+      })();
+    },
+    [openFile, requestOpenFile],
+  );
+
   // A file named on the command line, opened once. The host hands it over
-  // only the first time it is asked, so a reload does not reopen it.
+  // only the first time it is asked, so a reload does not reopen it. A PDF
+  // double-clicked while the app runs comes the same way, announced by the
+  // host: the open window takes it rather than a second one starting.
   useEffect(() => {
     let cancelled = false;
-    void takeStartupFile()
-      .then((picked) => {
-        if (picked && !cancelled) void openFile(toFile(picked));
-      })
-      .catch(() => {});
+    const take = () =>
+      void takeStartupFile()
+        .then((picked) => {
+          if (picked && !cancelled) void openFile(toFile(picked));
+        })
+        .catch(() => {});
+    take();
+    const stop = onOpenFileRequest(take);
     return () => {
       cancelled = true;
+      stop();
     };
   }, [openFile]);
 
@@ -972,10 +1009,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const clearRecent = useCallback(() => {
     clearStoredRecent();
+    forgetRecentPath();
     setRecent([]);
   }, []);
 
   const removeRecent = useCallback((name: string) => {
+    forgetRecentPath(name);
     setRecent(removeStoredRecent(name));
   }, []);
 
@@ -1804,6 +1843,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dropClaimed: dropLabel !== 'drop.overlay',
       closeDocument,
       requestOpenFile,
+      openRecent,
       requestCreateFiles,
       attachEmbed,
       embedRegistry: embed,
@@ -1871,6 +1911,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dropLabel,
       closeDocument,
       requestOpenFile,
+      openRecent,
       requestCreateFiles,
       attachEmbed,
       embed,

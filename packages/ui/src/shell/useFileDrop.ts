@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { onNativeFileDrag, onNativeFileDrop } from '../core/host-tauri';
+import { keepNativePath, onNativeFileDrag, onNativeFileDrop } from '../core/host-tauri';
 import type { DropPoint } from '../core/host-tauri';
 
 const hasFiles = (event: DragEvent) => Array.from(event.dataTransfer?.types ?? []).includes('Files');
@@ -55,7 +55,9 @@ export function useFileDrop(onFiles: (files: File[], at: DropPoint | null) => vo
       setDrag({ dragging: false, at: null });
       // Typed by name: a Word file or a picture dropped here is not a PDF.
       onFiles(
-        picked.map((file) => new File([file.bytes], file.name, { type: /\.pdf$/i.test(file.name) ? 'application/pdf' : '' })),
+        picked.map((file) =>
+          keepNativePath(new File([file.bytes], file.name, { type: /\.pdf$/i.test(file.name) ? 'application/pdf' : '' }), file.path),
+        ),
         at,
       );
     });

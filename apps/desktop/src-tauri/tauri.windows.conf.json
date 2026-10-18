@@ -1,6 +1,26 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "bundle": {
-    "targets": ["nsis"]
+    "targets": ["nsis"],
+    "resources": [
+      "resources/pdfium/LICENSE",
+      "resources/pdfium/VERSION",
+      "resources/pdfium/licenses/*",
+      "resources/windows/pdf-document.ico"
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["pdf"],
+        "name": "ZoodPDF.Document",
+        "description": "مستند PDF",
+        "mimeType": "application/pdf",
+        "role": "Editor"
+      }
+    ],
+    "windows": {
+      "nsis": {
+        "installerHooks": "windows/hooks.nsh"
+      }
+    }
   }
 }

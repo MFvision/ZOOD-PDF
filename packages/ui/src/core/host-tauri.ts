@@ -135,6 +135,26 @@ function toArrayBuffer(body: unknown): ArrayBuffer {
 export interface PickedFile {
   name: string;
   bytes: ArrayBuffer;
+  /** Where it was read from, so the recent list can open it again. */
+  path?: string;
+}
+
+/**
+ * The path each file read from this device came from, by the `File` the
+ * open path is handed: dropped, picked and double-clicked files all become
+ * plain `File`s on the way, and the recent list needs to know where they were.
+ */
+const nativePaths = new WeakMap<File, string>();
+
+/** Notes that `file` was read from `path` (a no-op without one). */
+export function keepNativePath(file: File, path: string | undefined): File {
+  if (path) nativePaths.set(file, path);
+  return file;
+}
+
+/** Where `file` was read from on this device, if it was. */
+export function nativePathOf(file: File): string | undefined {
+  return nativePaths.get(file);
 }
 
 /** Native open panel, then the bytes. `null` when the user cancels. */
@@ -143,7 +163,7 @@ export async function pickPdfFile(): Promise<PickedFile | null> {
     options: { multiple: false, directory: false, filters: PDF_FILTER },
   });
   if (typeof picked !== 'string') return null;
-  return { name: baseName(picked), bytes: toArrayBuffer(await readFile(picked)) };
+  return { name: baseName(picked), bytes: toArrayBuffer(await readFile(picked)), path: picked };
 }
 
 /** Any files the native open panel allows through `filters` (none: every file). */
@@ -176,14 +196,60 @@ function readFile(path: string): Promise<unknown> {
 }
 
 /**
- * A PDF named on the command line (`warraq-desktop report.pdf`), claimed once
- * at boot. `null` in a browser and whenever there is nothing waiting.
+ * A PDF named on the command line (`warraq-desktop report.pdf`, which is how
+ * Explorer opens a double-clicked PDF), claimed once — at boot, and again
+ * each time `onOpenFileRequest` fires. `null` in a browser and whenever
+ * there is nothing waiting.
  */
 export async function takeStartupFile(): Promise<PickedFile | null> {
   if (!internals()) return null;
   const path = await invoke('startup_file');
   if (typeof path !== 'string') return null;
-  return { name: baseName(path), bytes: toArrayBuffer(await readFile(path)) };
+  return { name: baseName(path), bytes: toArrayBuffer(await readFile(path)), path };
+}
+
+/** Emitted by `apps/desktop/src-tauri/src/lib.rs` when a second launch handed a PDF to this window. */
+export const OPEN_FILE_EVENT = 'warraq://open-file';
+
+/**
+ * Subscribes to PDFs opened from outside while the app runs (another one
+ * double-clicked in Explorer): each time, a file waits for `takeStartupFile`.
+ * A no-op in a browser.
+ */
+export function onOpenFileRequest(handle: () => void): () => void {
+  const host = internals();
+  if (!host) return () => {};
+  return listen(host, OPEN_FILE_EVENT, (() => handle()) as (payload: never) => void);
+}
+
+/* ------------------------------------------------------------ recent files */
+
+/**
+ * Keeps where a recent file was opened from (`src-tauri/src/recent.rs`), so
+ * choosing it on the home screen opens it again directly. The host refuses a
+ * path the person did not choose. Never fails the caller.
+ */
+export function rememberRecentPath(name: string, path: string): void {
+  if (!internals()) return;
+  invoke('recent_remember', { name, path }).catch(() => undefined);
+}
+
+/** Forgets where a recent file was, or every one when `name` is absent. Never fails the caller. */
+export function forgetRecentPath(name?: string): void {
+  if (!internals()) return;
+  invoke('recent_forget', { name: name ?? null }).catch(() => undefined);
+}
+
+/**
+ * The recent file `name`, read again from where it was last opened. `null`
+ * when that is not known or the file is no longer there (moved, renamed,
+ * deleted): the person is then asked for it.
+ */
+export async function openRecentFile(name: string): Promise<PickedFile | null> {
+  if (!internals()) return null;
+  const path = await invoke('recent_path', { name });
+  if (typeof path !== 'string') return null;
+  return { name: baseName(path), bytes: toArrayBuffer(await readFile(path)), path };
 }
 
 /* --------------------------------------------------------- dropped on the app */
@@ -251,6 +317,7 @@ export function onNativeFileDrop(onFiles: (files: PickedFile[], at: DropPoint | 
       paths.map(async (path) => ({
         name: baseName(path),
         bytes: toArrayBuffer(await readFile(path)),
+        path,
       })),
     )
       .then((files) => {

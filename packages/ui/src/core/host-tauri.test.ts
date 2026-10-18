@@ -5,17 +5,23 @@ import {
   FILE_DROP_EVENT,
   LIBRARY_SCAN_EVENT,
   LIBRARY_WATCH_EVENT,
+  OPEN_FILE_EVENT,
   deleteLibraryIndex,
+  forgetRecentPath,
   handleTauriRequest,
   hasLibraryHost,
   isTauriHost,
+  keepNativePath,
   libraryIndexFolder,
   listLibraryIndexes,
   loadLibraryIndex,
+  nativePathOf,
   onLibraryScan,
   onLibraryWatch,
   onNativeFileDrag,
   onNativeFileDrop,
+  onOpenFileRequest,
+  openRecentFile,
   pickFiles,
   pickLibraryFolders,
   pickPdfFile,
@@ -24,6 +30,7 @@ import {
   printPdf,
   printWebview,
   readLibraryFile,
+  rememberRecentPath,
   saveFileAs,
   saveLibraryIndex,
   savePdfFile,
@@ -409,6 +416,56 @@ describe('startup file', () => {
     expect(await takeStartupFile()).toBeNull();
     delete (globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
     expect(await takeStartupFile()).toBeNull();
+  });
+
+  it('carries where the file is, for the recent list', async () => {
+    fakeHost({ startup_file: 'C:\\Docs\\عقد.pdf', read_file_bytes: new Uint8Array([0x25]).buffer });
+    const picked = await takeStartupFile();
+    expect(picked).toMatchObject({ name: 'عقد.pdf', path: 'C:\\Docs\\عقد.pdf' });
+  });
+
+  it('is announced again when a second launch hands a file over', () => {
+    const calls = fakeHost();
+    let asked = 0;
+    onOpenFileRequest(() => (asked += 1));
+    expect(calls.find((c) => c.cmd === 'plugin:event|listen')?.args).toMatchObject({ event: OPEN_FILE_EVENT });
+    callbacks[0]?.({ payload: null });
+    expect(asked).toBe(1);
+  });
+});
+
+describe('recent files on the desktop', () => {
+  it('keeps where a file was read from on the File itself', () => {
+    const file = keepNativePath(new File([], 'a.pdf'), '/docs/a.pdf');
+    expect(nativePathOf(file)).toBe('/docs/a.pdf');
+    expect(nativePathOf(keepNativePath(new File([], 'b.pdf'), undefined))).toBeUndefined();
+  });
+
+  it('opens a recent file again from where the host says it is', async () => {
+    const calls = fakeHost({ recent_path: '/docs/تقرير.pdf', read_file_bytes: new Uint8Array([0x25]).buffer });
+    const picked = await openRecentFile('تقرير.pdf');
+    expect(picked).toMatchObject({ name: 'تقرير.pdf', path: '/docs/تقرير.pdf' });
+    expect(calls.find((c) => c.cmd === 'recent_path')?.args).toEqual({ name: 'تقرير.pdf' });
+  });
+
+  it('is null when the host no longer knows the file, and in a browser', async () => {
+    fakeHost({ recent_path: null });
+    expect(await openRecentFile('gone.pdf')).toBeNull();
+    delete (globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
+    expect(await openRecentFile('gone.pdf')).toBeNull();
+  });
+
+  it('remembers and forgets paths without failing the caller', async () => {
+    const calls = fakeHost({ recent_remember: new Error('E_SCOPE'), recent_forget: null });
+    rememberRecentPath('a.pdf', '/docs/a.pdf');
+    forgetRecentPath('a.pdf');
+    forgetRecentPath();
+    await vi.waitFor(() => expect(calls.filter((c) => c.cmd.startsWith('recent_')).length).toBe(3));
+    expect(calls.map((c) => c.args)).toEqual([
+      { name: 'a.pdf', path: '/docs/a.pdf' },
+      { name: 'a.pdf' },
+      { name: null },
+    ]);
   });
 });
 

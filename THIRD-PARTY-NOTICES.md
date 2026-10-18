@@ -46,6 +46,7 @@ licence text (`scripts/rust-licenses.mjs`).
 | The Umm al-Qura month lengths for 1356–1500 AH (`warraq-pdf/src/forms/hijri.rs` and `js/hijri-*.js`), read from ICU's Islamic Umm al-Qura calendar through Node's `Intl` (`tests/fixtures/forms/umalqura.mjs`) | Unicode License v3 (ICU data) | Hijri dates in Prepare form |
 | fflate | MIT | zip and deflate for Export (the Word, Excel and PowerPoint files, page images, PNG compression) and for reading the Office files Create PDF takes |
 | React, Vite, Tauri | MIT / MIT / Apache-2.0 OR MIT | UI and app shells |
+| `tauri-plugin-single-instance` 2 (desktop only; on Linux with `zbus` 5, `zvariant` 5 and their own crates) | MIT OR Apache-2.0; `zbus`, `zvariant`: MIT | One window for the app: a second launch (another PDF double-clicked) hands its file to the window already open |
 | muda (Tauri's menu library, already inside Tauri) | Apache-2.0 OR MIT | named directly only in the desktop tests, to parse the macOS menu bar's shortcuts as Tauri does |
 | `objc2`, `objc2-foundation`, `objc2-app-kit`, `objc2-pdf-kit` (macOS desktop) | MIT; Zlib OR Apache-2.0 OR MIT | Print, through PDFKit and the system print sheet |
 | `cssparser`, `cssparser-macros`, `selectors`, `dtoa-short`, `option-ext` (pulled in by Tauri, desktop only, unmodified; source on crates.io) | MPL-2.0 | Tauri's HTML handling and settings paths |

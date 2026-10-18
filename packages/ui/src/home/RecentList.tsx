@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Ellipsis, FileText, FolderOpen, Star, StarOf
 import { ContextMenu } from '../components/ContextMenu';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
+import { isTauriHost } from '../core/host-tauri';
 import { useI18n } from '../i18n/useT';
 import { useServices } from '../state/AppContext';
 import { readRecentDates, readRecentThumbnails } from '../state/recent';
@@ -19,13 +20,14 @@ interface RecentListProps {
 /**
  * Recent files as paper cards: each with the picture of its first page, its
  * name, when it was last opened, and a ⋯ menu (Open, Star, Remove from
- * recents). Only the name, that small picture and the time are kept, so
- * choosing one asks for the file again (a browser cannot reopen a file by
- * itself). The row pages with ‹ ›; the grid shows them all.
+ * recents). Only the name, that small picture and the time are kept, so in
+ * a browser choosing one asks for the file again (a browser cannot reopen a
+ * file by itself); the desktop app also keeps where it was, and opens it
+ * directly. The row pages with ‹ ›; the grid shows them all.
  */
 export function RecentList({ layout, onSeeAll }: RecentListProps) {
   const { t, lang, dir } = useI18n();
-  const { recent, requestOpenFile, clearRecent, removeRecent } = useServices();
+  const { recent, openRecent, clearRecent, removeRecent } = useServices();
   const starred = useStarred();
   const thumbnails = readRecentThumbnails();
   const dates = readRecentDates(recent);
@@ -62,7 +64,7 @@ export function RecentList({ layout, onSeeAll }: RecentListProps) {
 
   const starOf = (name: string) => starred.some((item) => item.id === starId('recent', name));
   const items = (name: string) => [
-    { id: 'open', label: t('file.open'), icon: <Icon of={FolderOpen} size={14} />, onSelect: requestOpenFile },
+    { id: 'open', label: t('file.open'), icon: <Icon of={FolderOpen} size={14} />, onSelect: () => openRecent(name) },
     {
       id: 'star',
       label: t(starOf(name) ? 'starred.remove' : 'starred.add', { name }),
@@ -109,7 +111,7 @@ export function RecentList({ layout, onSeeAll }: RecentListProps) {
         )}
         {recent.map((name) => (
           <li key={name} className="recent-card">
-            <button type="button" className="recent-item" onClick={requestOpenFile} title={t('home.recentOpen', { name })}>
+            <button type="button" className="recent-item" onClick={() => openRecent(name)} title={t('home.recentOpen', { name })}>
               <span className="recent-page">
                 {thumbnails[name] ? <img src={thumbnails[name]} alt="" /> : <Icon of={FileText} size={28} />}
                 {starOf(name) && (
@@ -144,7 +146,7 @@ export function RecentList({ layout, onSeeAll }: RecentListProps) {
         returnTo={menu?.from}
         onClose={() => setMenu(null)}
       />
-      <p className="home-note">{recent.length === 0 ? t('home.recentEmpty') : t('home.recentHint')}</p>
+      <p className="home-note">{recent.length === 0 ? t('home.recentEmpty') : t(isTauriHost() ? 'home.recentHintDesktop' : 'home.recentHint')}</p>
     </section>
   );
 }
