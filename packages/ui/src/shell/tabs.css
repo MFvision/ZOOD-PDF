@@ -111,6 +111,24 @@
   color: var(--secondary-label);
 }
 
+/* By touch, every target is 44 points. */
+@media (pointer: coarse) {
+  .tab-bar {
+    min-block-size: 48px;
+  }
+
+  .tab {
+    block-size: 44px;
+  }
+
+  .tab-close,
+  .tab-new {
+    inline-size: 44px;
+    block-size: 44px;
+    margin-inline-end: 0;
+  }
+}
+
 @media print {
   .tab-bar {
     display: none;

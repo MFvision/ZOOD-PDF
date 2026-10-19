@@ -26,6 +26,17 @@ async function closeDocument(page: Page) {
   await expect(page.locator('.home')).toBeVisible();
 }
 
+/** Closes every open tab, back to the home screen. */
+async function closeAll(page: Page) {
+  const tabs = page.getByRole('tablist', { name: 'Open documents' }).getByRole('tab');
+  for (let open = await tabs.count(); open > 1; open -= 1) {
+    await page.getByRole('menubar').getByRole('menuitem', { name: 'File', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Close document' }).click();
+    await expect(tabs).toHaveCount(open - 1);
+  }
+  await closeDocument(page);
+}
+
 /** The tile of a recent file on the home screen. */
 const tile = (page: Page, name: string) =>
   page.locator('.recent-item', { has: page.locator('.recent-name', { hasText: name.replace(/\.pdf$/i, '') }) });
@@ -94,6 +105,7 @@ test('saving forgets the picture, and a file that needs a password never gets on
   await expect(prompt).toBeHidden();
   await expect.poll(() => embedTiles(page)).toBeGreaterThan(0);
   await expect.poll(() => kept(page, NAME)).toBe(false);
-  await closeDocument(page);
+  // The protected copy opened in a second tab, beside the plain one.
+  await closeAll(page);
   await expect(tile(page, NAME).locator('img')).toHaveCount(0);
 });
