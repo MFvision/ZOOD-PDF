@@ -23,6 +23,7 @@ pub mod print;
 pub mod profile;
 pub mod quick;
 pub mod recent;
+pub mod ring;
 pub mod shell_menu;
 pub mod signing;
 
@@ -293,7 +294,13 @@ pub fn run() {
         .manage(profile::ProfileState::default())
         .manage(fonts::FontState::default())
         .manage(recent::RecentState::default())
-        .on_menu_event(|app, event| menu::forward(app, event.id().as_ref()))
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            ring::TRAY_OPEN => {
+                quick::show_editor(app);
+            }
+            ring::TRAY_QUIT => app.exit(0),
+            id => menu::forward(app, id),
+        })
         // Points warraq-render at the bundled PDFium and starts the core thread
         // before the window can invoke anything (see `core_bridge`).
         .setup(|app| {
@@ -317,10 +324,20 @@ pub fn run() {
             let args: Vec<String> = std::env::args_os()
                 .map(|a| a.to_string_lossy().into_owned())
                 .collect();
+            // Started at sign-in to keep the quick tools ready: no window,
+            // only the tray icon and the ring (src/ring.rs).
+            let hidden = args.iter().skip(1).any(|a| a == ring::BACKGROUND_FLAG);
+            ring::start(app.handle(), hidden);
+            #[cfg(target_os = "macos")]
+            if hidden {
+                app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            }
             let quick = quick::parse(&args, None);
             let startup = if let Some(request) = quick {
                 core_bridge::debug_log(format!("command line quick = {request:?}"));
                 quick::request(app.handle(), request);
+                None
+            } else if hidden {
                 None
             } else {
                 quick::show_editor(app.handle());
@@ -404,13 +421,40 @@ pub fn run() {
             quick_open_in_editor,
             shell_menu::shell_menu_set,
             shell_menu::shell_menu_state,
+            ring::ring_pick,
+            ring::ring_configure,
+            ring::ring_settings,
         ])
         .on_window_event(|window, event| {
-            // Forward OS file drops to the webview, after allowing the dropped
-            // files in the fs scope (a drop is as explicit a choice as a dialog).
+            // The last window of a run that is not kept in the background
+            // ends it: the ring's hidden window must not keep it alive.
+            if let WindowEvent::Destroyed = event {
+                let app = window.app_handle();
+                let others = app
+                    .webview_windows()
+                    .keys()
+                    .any(|label| label != window.label() && label != ring::LABEL);
+                if !others && !ring::background() {
+                    app.exit(0);
+                }
+                return;
+            }
             let WindowEvent::DragDrop(drag) = event else {
                 return;
             };
+            // Files let go on the ring (src/ring.rs).
+            if window.label() == ring::LABEL {
+                let at = match drag {
+                    DragDropEvent::Enter { position, .. }
+                    | DragDropEvent::Over { position }
+                    | DragDropEvent::Drop { position, .. } => Some(logical(window, position)),
+                    _ => None,
+                };
+                ring::on_drag(window, drag, at);
+                return;
+            }
+            // Forward OS file drops to the webview, after allowing the dropped
+            // files in the fs scope (a drop is as explicit a choice as a dialog).
             match drag {
                 DragDropEvent::Enter { paths, position } => {
                     let files = paths.iter().any(|p| p.is_file());
@@ -472,6 +516,16 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building Warraq")
         .run(|app, event| {
+            // Kept ready in the background: closing the last window does not
+            // end the app (the tray's Quit does).
+            if let tauri::RunEvent::ExitRequested {
+                api, code: None, ..
+            } = &event
+            {
+                if ring::background() {
+                    api.prevent_exit();
+                }
+            }
             // The Dock icon clicked when only a quick window was open (or none):
             // the editor comes.
             #[cfg(target_os = "macos")]

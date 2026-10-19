@@ -49,6 +49,9 @@ licence text (`scripts/rust-licenses.mjs`).
 | `tauri-plugin-single-instance` 2 (desktop only; on Linux with `zbus` 5, `zvariant` 5 and their own crates) | MIT OR Apache-2.0; `zbus`, `zvariant`: MIT | One window for the app: a second launch (another PDF double-clicked) hands its file to the window already open |
 | muda (Tauri's menu library, already inside Tauri) | Apache-2.0 OR MIT | named directly only in the desktop tests, to parse the macOS menu bar's shortcuts as Tauri does |
 | `objc2`, `objc2-foundation`, `objc2-app-kit`, `objc2-pdf-kit` (macOS desktop) | MIT; Zlib OR Apache-2.0 OR MIT | Print, through PDFKit and the system print sheet |
+| `block2` 0.6 (macOS desktop) | MIT | The quick tools' ring: the block its mouse monitor takes |
+| `tray-icon` (through Tauri's `tray-icon` feature; `muda` already listed) | MIT OR Apache-2.0 | The tray icon while the quick tools are kept ready |
+| Filee (github.com/KnifeLemon/Filee) — idea only, no code | MIT | The quick tools' ring and right-click menu follow its design |
 | `cssparser`, `cssparser-macros`, `selectors`, `dtoa-short`, `option-ext` (pulled in by Tauri, desktop only, unmodified; source on crates.io) | MPL-2.0 | Tauri's HTML handling and settings paths |
 
 No GPL, AGPL or LGPL component is shipped (`r-efi`, offered under MIT OR

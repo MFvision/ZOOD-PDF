@@ -12,6 +12,12 @@
   },
   "app": {
     "withGlobalTauri": false,
+    "macOSPrivateApi": true,
+    "trayIcon": {
+      "id": "main",
+      "iconPath": "icons/32x32.png",
+      "tooltip": "محرر PDF"
+    },
     "windows": [
       {
         "label": "main",

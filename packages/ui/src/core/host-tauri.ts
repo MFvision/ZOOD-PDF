@@ -309,6 +309,43 @@ export async function setShellMenu(on: boolean, lang: string): Promise<ShellMenu
   return (await invoke('shell_menu_set', { on, lang })) as ShellMenuState;
 }
 
+/* --------------------------------------------------------------------- ring */
+
+/** True in the ring's window (`src-tauri/src/ring.rs`). */
+export function isRingWindow(): boolean {
+  if (!internals()) return false;
+  try {
+    return new URLSearchParams(globalThis.location?.search ?? '').has('ring');
+  } catch {
+    return false;
+  }
+}
+
+export const RING_SHOW_EVENT = 'ring://show';
+export const RING_FILES_EVENT = 'ring://files';
+export const RING_OVER_EVENT = 'ring://over';
+export const RING_DROP_EVENT = 'ring://drop';
+
+/** The tool the files were let go on, or `none`. */
+export function ringPick(tool: string): Promise<void> {
+  return invoke('ring_pick', { tool }).then(() => undefined);
+}
+
+/** The ring's switches: the ring itself, and keeping the app ready at sign-in. */
+export interface RingSettings {
+  ring: boolean;
+  background: boolean;
+}
+
+export async function ringSettings(): Promise<RingSettings | null> {
+  if (!internals()) return null;
+  return (await invoke('ring_settings')) as RingSettings;
+}
+
+export async function configureRing(settings: RingSettings): Promise<RingSettings> {
+  return (await invoke('ring_configure', { ring: settings.ring, background: settings.background })) as RingSettings;
+}
+
 /* --------------------------------------------------------- dropped on the app */
 
 /** Emitted by `apps/desktop/src-tauri/src/lib.rs` after an OS drag-and-drop. */

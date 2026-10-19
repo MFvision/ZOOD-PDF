@@ -2034,5 +2034,21 @@
   "quick.settings.menu": "إظهار الأدوات السريعة في قائمة الزر الأيمن في مستكشف الملفات",
   "quick.settings.menuNoteWindows": "انقر بالزر الأيمن على ملفات PDF أو الصور أو ملفات Office. في ويندوز 11 تجدها تحت «إظهار خيارات إضافية» (أو اضغط Shift مع النقر بالزر الأيمن).",
   "quick.settings.menuNoteMac": "في Finder انقر بالزر الأيمن على الملفات واختر «إجراءات سريعة» (أو «الخدمات») ثم «أدوات PDF السريعة». ويمكنك إيقافها من إعدادات النظام ← لوحة المفاتيح ← اختصارات لوحة المفاتيح ← الخدمات.",
-  "quick.settings.failed": "تعذّر تغيير القائمة. حاول مرة أخرى، أو أعد تشغيل التطبيق."
+  "quick.settings.failed": "تعذّر تغيير القائمة. حاول مرة أخرى، أو أعد تشغيل التطبيق.",
+  "quick.short.compress": "ضغط",
+  "quick.short.word": "Word",
+  "quick.short.images": "صور",
+  "quick.short.ocr": "OCR",
+  "quick.short.combine": "دمج",
+  "quick.short.rotate": "تدوير",
+  "quick.short.extract": "استخراج",
+  "quick.short.protect": "حماية",
+  "quick.short.topdf": "إلى PDF",
+  "quick.short.all": "كل الأدوات",
+  "quick.ring.cancel": "أفلت هنا للإلغاء",
+  "quick.settings.ring": "إظهار الدائرة عند سحب الملفات مع الضغط على Ctrl (أو Option في الماك)",
+  "quick.settings.ringNote": "اضغط Ctrl واسحب الملفات من مستكشف الملفات أو Finder: تظهر دائرة أدوات عند المؤشر. أفلت الملفات على الأداة.",
+  "quick.settings.background": "إبقاء الأدوات السريعة جاهزة (تشغيل محرر PDF عند تسجيل الدخول دون نافذة)",
+  "quick.settings.backgroundNote": "تعمل الدائرة ما دام التطبيق مفتوحاً. مع تفعيل هذا الخيار يبدأ التطبيق عند تسجيل الدخول وينتظر في شريط المهام (شريط القوائم في الماك)، وإغلاق المحرر يُبقيه هناك.",
+  "quick.settings.howTo": "أرني كيف"
 }

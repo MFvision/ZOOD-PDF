@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { isTauriHost, setShellMenu, shellMenuState } from '../core/host-tauri';
-import type { ShellMenuState } from '../core/host-tauri';
+import { configureRing, isTauriHost, ringSettings, setShellMenu, shellMenuState } from '../core/host-tauri';
+import type { RingSettings, ShellMenuState } from '../core/host-tauri';
 import { useI18n } from '../i18n/useT';
 import { readJson, writeJson } from '../state/preferences';
 
@@ -16,18 +16,13 @@ import { readJson, writeJson } from '../state/preferences';
 const KEY = 'warraq.quickTools';
 
 export interface QuickPreferences {
-  /** The right-click menu (Windows). */
+  /** The right-click menu (Windows). The ring's switches are the host's (`ring.rs`). */
   menu: boolean;
-  /** The ring at the pointer when a file is dragged with Ctrl (Option on a Mac). */
-  ring: boolean;
 }
 
 export function readQuickPreferences(): QuickPreferences {
   const raw = readJson<Record<string, unknown>>(KEY, {});
-  return {
-    menu: typeof raw.menu === 'boolean' ? raw.menu : true,
-    ring: typeof raw.ring === 'boolean' ? raw.ring : true,
-  };
+  return { menu: typeof raw.menu === 'boolean' ? raw.menu : true };
 }
 
 export function writeQuickPreferences(patch: Partial<QuickPreferences>): QuickPreferences {
@@ -52,6 +47,7 @@ export function QuickSettings() {
   const { t, lang } = useI18n();
   const [prefs, setPrefs] = useState(readQuickPreferences);
   const [menu, setMenu] = useState<ShellMenuState | null>(null);
+  const [ring, setRing] = useState<RingSettings | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -59,6 +55,11 @@ export function QuickSettings() {
     void shellMenuState()
       .then((state) => {
         if (live) setMenu(state);
+      })
+      .catch(() => undefined);
+    void ringSettings()
+      .then((state) => {
+        if (live) setRing(state);
       })
       .catch(() => undefined);
     return () => {
@@ -76,6 +77,16 @@ export function QuickSettings() {
       .catch(() => setFailed(true));
   };
 
+  const changeRing = (patch: Partial<RingSettings>) => {
+    if (!ring) return;
+    const next = { ...ring, ...patch };
+    setRing(next);
+    setFailed(false);
+    configureRing(next)
+      .then(setRing)
+      .catch(() => setFailed(true));
+  };
+
   return (
     <section className="settings-section" aria-labelledby="settings-quick">
       <h3 id="settings-quick">{t('quick.settings.title')}</h3>
@@ -90,6 +101,20 @@ export function QuickSettings() {
       ) : (
         <p className="tool-panel-note">{t('quick.settings.menuNoteMac')}</p>
       )}
+      {ring ? (
+        <>
+          <label className="font-library-switch">
+            <input type="checkbox" checked={ring.ring} onChange={(event) => changeRing({ ring: event.target.checked })} />
+            <span>{t('quick.settings.ring')}</span>
+          </label>
+          <p className="tool-panel-note">{t('quick.settings.ringNote')}</p>
+          <label className="font-library-switch">
+            <input type="checkbox" checked={ring.background} onChange={(event) => changeRing({ background: event.target.checked })} />
+            <span>{t('quick.settings.background')}</span>
+          </label>
+          <p className="tool-panel-note">{t('quick.settings.backgroundNote')}</p>
+        </>
+      ) : null}
       {failed ? (
         <p className="tool-panel-note" role="alert">
           {t('quick.settings.failed')}

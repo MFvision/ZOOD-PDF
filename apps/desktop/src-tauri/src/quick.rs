@@ -225,6 +225,9 @@ pub fn show_editor<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
                 .ok()?
         }
     };
+    // A run started in the background has no Dock icon until the editor comes.
+    #[cfg(target_os = "macos")]
+    let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
     let _ = window.unminimize();
     let _ = window.show();
     let _ = window.set_focus();

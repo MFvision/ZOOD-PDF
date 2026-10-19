@@ -175,8 +175,9 @@ pub struct MenuState {
 mod registry {
     use super::KeySpec;
     use windows_sys::Win32::System::Registry::{
-        RegCloseKey, RegCreateKeyExW, RegDeleteTreeW, RegOpenKeyExW, RegSetValueExW, HKEY,
-        HKEY_CURRENT_USER, KEY_READ, KEY_WRITE, REG_DWORD, REG_OPTION_NON_VOLATILE, REG_SZ,
+        RegCloseKey, RegCreateKeyExW, RegDeleteKeyValueW, RegDeleteTreeW, RegOpenKeyExW,
+        RegSetValueExW, HKEY, HKEY_CURRENT_USER, KEY_READ, KEY_WRITE, REG_DWORD,
+        REG_OPTION_NON_VOLATILE, REG_SZ,
     };
 
     fn wide(text: &str) -> Vec<u16> {
@@ -260,6 +261,28 @@ mod registry {
         Ok(())
     }
 
+    /// Sets a string value, or deletes it when `value` is `None`.
+    pub fn set_value(path: &str, name: &str, value: Option<&str>) -> Result<(), String> {
+        match value {
+            Some(value) => write(&[KeySpec {
+                path: path.to_string(),
+                values: vec![(name.to_string(), value.to_string())],
+            }]),
+            None => {
+                let (path_w, name_w) = (wide(path), wide(name));
+                // SAFETY: NUL-terminated strings under the current user's key.
+                let code = unsafe {
+                    RegDeleteKeyValueW(HKEY_CURRENT_USER, path_w.as_ptr(), name_w.as_ptr())
+                };
+                // 2: not there, which is what was wanted.
+                if code != 0 && code != 2 {
+                    return Err(format!("E_IO: {path}: Windows error {code}"));
+                }
+                Ok(())
+            }
+        }
+    }
+
     pub fn exists(path: &str) -> bool {
         let path_w = wide(path);
         let mut handle: HKEY = std::ptr::null_mut();
@@ -280,6 +303,19 @@ pub use registry::{
 };
 
 const CLASSES: &str = r"Software\Classes";
+
+/// Where Windows starts programs at sign-in, for this account.
+#[cfg(target_os = "windows")]
+const RUN: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
+#[cfg(target_os = "windows")]
+const RUN_VALUE: &str = "ZoodPDF";
+
+/// Starts `command` at sign-in, or nothing when `None` (the ring's
+/// "Keep the quick tools ready", `ring.rs`).
+#[cfg(target_os = "windows")]
+pub fn set_run_at_sign_in(command: Option<String>) -> Result<(), String> {
+    registry::set_value(RUN, RUN_VALUE, command.as_deref())
+}
 
 /// Puts the menu in, in `lang`, pointing at this program; or takes it out.
 #[tauri::command]

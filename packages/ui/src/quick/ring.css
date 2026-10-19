@@ -1,0 +1,66 @@
+/* The ring (Ring.tsx): drawn on a transparent window at the pointer. */
+
+html.ring-page,
+html.ring-page body {
+  margin: 0;
+  background: transparent !important;
+  overflow: hidden;
+  user-select: none;
+}
+
+.ring {
+  width: 300px;
+  height: 300px;
+  font-family: var(--font-ui);
+}
+
+.ring-shadow {
+  fill: rgba(0, 0, 0, 0.18);
+  filter: blur(6px);
+}
+
+.ring-segment > path {
+  fill: var(--elevated-background, #fff);
+  stroke: var(--separator, rgba(0, 0, 0, 0.12));
+  stroke-width: 1;
+  transition: fill 80ms ease;
+}
+
+.ring-segment svg {
+  color: var(--accent);
+  fill: none;
+  pointer-events: none;
+}
+
+.ring-segment text {
+  fill: var(--label);
+  pointer-events: none;
+}
+
+.ring-segment text {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ring-segment-over > path {
+  fill: var(--accent);
+}
+
+.ring-segment-over svg {
+  color: var(--accent-contrast, #fff);
+}
+
+.ring-segment-over text {
+  fill: var(--accent-contrast, #fff);
+}
+
+.ring-hub {
+  fill: var(--window-background, #f5f5f7);
+  stroke: var(--separator, rgba(0, 0, 0, 0.12));
+}
+
+.ring-hub-text {
+  fill: var(--secondary-label);
+  font-size: 14px;
+  font-weight: 600;
+}

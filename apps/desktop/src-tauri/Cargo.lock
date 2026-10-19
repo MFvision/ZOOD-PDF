@@ -6067,6 +6067,7 @@ dependencies = [
 name = "warraq-desktop"
 version = "0.1.0"
 dependencies = [
+ "block2",
  "cryptoki",
  "encoding_rs",
  "hex",

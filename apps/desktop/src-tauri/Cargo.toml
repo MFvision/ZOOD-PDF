@@ -36,7 +36,9 @@ custom-protocol = ["tauri/custom-protocol"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# macos-private-api: the ring's transparent window on a Mac (src/ring.rs);
+# tray-icon: the icon that stays while the quick tools are kept ready.
+tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 # One window for the app: a second launch (another PDF double-clicked in
@@ -94,7 +96,10 @@ libc = "0.2"
 # runs on the CPU (AVX2 where the machine has it, chosen by ggml at run time).
 llama-cpp-2 = { version = "0.1.157", default-features = false, features = ["metal"] }
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSData", "NSDictionary", "NSString", "NSURL"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSData", "NSDictionary", "NSGeometry", "NSString", "NSURL", "objc2-core-foundation"] }
+# The ring's mouse monitor takes a block (src/ring.rs); MIT, already in the
+# tree through objc2-app-kit.
+block2 = "0.6"
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSPrintInfo", "NSPrintOperation", "NSResponder", "NSView", "NSWindow"] }
 objc2-pdf-kit = { version = "0.3", default-features = false, features = ["std", "PDFDocument", "objc2-app-kit"] }
 keyring = { version = "3.6", features = ["apple-native"] }
@@ -103,7 +108,7 @@ keyring = { version = "3.6", features = ["apple-native"] }
 keyring = { version = "3.6", features = ["windows-native"] }
 # The quick tools' Explorer menu (src/shell_menu.rs) is written to the
 # person's own registry classes.
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Registry", "Win32_System_SystemInformation"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_System_LibraryLoader", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 keyring = { version = "3.6", features = ["sync-secret-service", "crypto-rust"] }

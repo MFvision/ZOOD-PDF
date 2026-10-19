@@ -34,5 +34,7 @@
   !insertmacro ZOOD_REMOVE_TO_PDF ".html"
   !insertmacro ZOOD_REMOVE_TO_PDF ".htm"
   !insertmacro ZOOD_REMOVE_TO_PDF ".csv"
+  ; "Keep the quick tools ready" started the app at sign-in (src/ring.rs).
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "ZoodPDF"
   !insertmacro UPDATEFILEASSOC
 !macroend

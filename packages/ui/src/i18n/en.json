@@ -2034,5 +2034,21 @@
   "quick.settings.menu": "Show the quick tools in File Explorer's right-click menu",
   "quick.settings.menuNoteWindows": "Right-click PDFs, pictures or Office files. On Windows 11 they are under \"Show more options\" (or hold Shift while you right-click).",
   "quick.settings.menuNoteMac": "In Finder, right-click files and choose Quick Actions (or Services) → أدوات PDF السريعة. You can turn it off in System Settings → Keyboard → Keyboard Shortcuts → Services.",
-  "quick.settings.failed": "The menu could not be changed. Try again, or restart the app."
+  "quick.settings.failed": "The menu could not be changed. Try again, or restart the app.",
+  "quick.short.compress": "Compress",
+  "quick.short.word": "Word",
+  "quick.short.images": "Pictures",
+  "quick.short.ocr": "OCR",
+  "quick.short.combine": "Combine",
+  "quick.short.rotate": "Rotate",
+  "quick.short.extract": "Extract",
+  "quick.short.protect": "Protect",
+  "quick.short.topdf": "To PDF",
+  "quick.short.all": "All tools",
+  "quick.ring.cancel": "Let go here to cancel",
+  "quick.settings.ring": "Show the ring when I drag files with Ctrl held (Option on a Mac)",
+  "quick.settings.ringNote": "Hold Ctrl and drag files out of File Explorer or Finder: a ring of tools opens at the pointer. Let the files go on a tool.",
+  "quick.settings.background": "Keep the quick tools ready (start محرر PDF when I sign in, without a window)",
+  "quick.settings.backgroundNote": "The ring works while the app is running. With this on, it starts when you sign in and waits in the tray (menu bar on a Mac); closing the editor keeps it there.",
+  "quick.settings.howTo": "Show me how"
 }
