@@ -7,7 +7,7 @@ this file current at the end of every job.
 
 | Platform | Latest build | What is in it |
 |---|---|---|
-| Windows | Release `windows-20261018-1940` (PR #2, commit `62ef0a6`): https://github.com/MFvision/ZOOD-PDF/releases/download/windows-20261018-1940/ZOOD-PDF-Setup.exe | Everything below plus the Windows pilot (PDF document icon, recent files reopen, one window); the core and desktop tests pass on Windows |
+| Windows | Release `windows-20261019-1013` (PR #2, commit `58acfff`): https://github.com/MFvision/ZOOD-PDF/releases/download/windows-20261019-1013/ZOOD-PDF-Setup.exe | Everything below plus the Windows pilot, quick tools, tabs, tour, themes and the layout-keeping Word export; the core and desktop tests pass on Windows |
 | macOS | Installed in /Applications from `d4b22e1` | Same as Windows |
 | iPhone / iPad | TestFlight build `202610052355` | Editor with columns, kept colour and Automatic font (own font, else closest bundled face); not the desktop's AI chat |
 | Web | Builds from `main` | Same as desktop, minus installed fonts |
@@ -79,7 +79,9 @@ Weekly usage: 23% before; the after figure could not be read from a cloud sessio
   write `ring.log` (64 KB at most, no file names) in the app's data folder, saying what the
   watcher saw. The Windows workflow tries the ring for real (`scripts/ci/ring-check.ps1`:
   Ctrl+drag a file out of Explorer by synthetic input) and puts its log and a mid-drag
-  screenshot on `ci-logs` (`ring-check/`). The Mac side compiles (checked standalone for
+  screenshot on `ci-logs` (`ring-check/`); on `58acfff` the log said "ring shown" and the
+  screenshot shows the ring over Explorer (the step itself still reported failure after
+  that, cause not found; trust the log and screenshot). The Mac side compiles (checked standalone for
   x86_64-apple-darwin) but was **not run on a Mac**.
 - **AI suggestion chips could not scroll**: they now wrap onto more lines (`ai/chat/chat.css`).
 - **Themes**: Settings → Theme and View → Theme now choose Liquid Glass, Zood or Workbench on
