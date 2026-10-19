@@ -59,7 +59,11 @@ Start-Process explorer.exe $folder
 Start-Sleep -Seconds 6
 
 $root = [System.Windows.Automation.AutomationElement]::RootElement
-$named = New-Object System.Windows.Automation.PropertyCondition ([System.Windows.Automation.AutomationElement]::NameProperty), 'sample.pdf'
+# Explorer hides known extensions, so the item may be named either way.
+$name = [System.Windows.Automation.AutomationElement]::NameProperty
+$named = New-Object System.Windows.Automation.OrCondition `
+  (New-Object System.Windows.Automation.PropertyCondition $name, 'sample.pdf'),
+  (New-Object System.Windows.Automation.PropertyCondition $name, 'sample')
 $item = $null
 foreach ($try in 1..10) {
   $item = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $named)
