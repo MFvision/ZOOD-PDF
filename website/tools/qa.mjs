@@ -1,6 +1,7 @@
 // Automated QA in Chromium: every size × language × theme × Reduce Motion.
 // For each run it scrolls the whole story and checks that
-//   - nothing overflows sideways and nothing logs an error (CSP included),
+//   - nothing overflows sideways, nothing logs an error (CSP included) and
+//     nothing is fetched from another site,
 //   - the device dock never moves (its top edge stays within 1 px),
 //   - each chapter's stage numbers and actions reach their values,
 //   - the wall's phone lines up with the middle column and shows every screen,
@@ -54,6 +55,11 @@ async function run(name, w, h, touch, lang, theme, motion) {
   );
   page.on('pageerror', (e) => problems.push(`error: ${e.message}`));
   page.on('response', (r) => r.status() >= 400 && problems.push(`${r.status()} ${r.url()}`));
+  page.on('request', (r) => {
+    const url = new URL(r.url());
+    if (/^https?:$/.test(url.protocol) && url.origin !== new URL(SITE).origin)
+      problems.push(`third-party request: ${r.url()}`);
+  });
   await page.goto(`${SITE}${lang === 'en' ? '/en/' : '/'}`);
   await page.waitForTimeout(600);
 

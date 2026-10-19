@@ -798,6 +798,18 @@ main {
   border-radius: var(--r-card);
   padding: 28px 30px;
 }
+/* Over the navy desk the card turns navy too, in either theme. */
+.chapter.dusk .card {
+  --text: #f5f1ed;
+  --text-2: #b5aea8;
+  --accent: #ae8b66;
+  --sep: rgb(167 198 237 / 18%);
+  --band: rgb(151 119 86 / 50%);
+  --focus: #c9a27c;
+  color-scheme: dark;
+  background: rgb(17 41 75 / 92%);
+  color: var(--text);
+}
 .hero .card {
   background: none;
   border: 0;

@@ -61,7 +61,7 @@ changing the hero title or lead, or a legal page's title, run
 
 2. Add the screen: a file name in `SCREENS.files` and a description in
    `SCREENS.alt` (what a screen reader hears), then put the pictures at
-   `assets/ar/desktop/11-compare-light.webp`, `…-dark.webp`, and the same
+   `assets/ar/desktop/12-compare-light.webp`, `…-dark.webp`, and the same
    under `assets/en/`.
 
 Stage numbers: `pages` 1 to 5, `fan` 0 (stacked) to 1 (arc), `recede` 0 to 1
@@ -78,17 +78,24 @@ Put the link in to make it live. `PLATFORMS` holds each platform's status line.
 
 ## Screens
 
-The screens are taken from the real web app with the Zood colours laid over it
-(`tools/zood-look.css`; the shipping web and desktop apps do not have the Zood
-look yet). To take them again, from the repository root:
+The screens are taken from the real web app in its Zood look (Settings, Theme,
+Zood). That look is on the `windows-build` branch (the Windows pilot), so build
+the web app from a checkout of that branch. From the repository root:
 
 ```sh
-pnpm install && pnpm build:core && pnpm --filter @warraq/web build
+git worktree add ../zood-wb origin/windows-build
+(cd ../zood-wb && pnpm install && pnpm build:core && pnpm --filter @warraq/web build)
+(cd ../zood-wb/apps/web && npx vite preview --host 127.0.0.1 --port 4391) &
 python3 -m pip install pillow
 node website/tools/make-samples.mjs                 # invented sample PDFs
-(cd apps/web && npx vite preview --host 127.0.0.1 --port 4391) &
-node website/tools/capture-screens.mjs              # or: … capture-screens.mjs redact phone
+node website/tools/capture-screens.mjs              # or: … redact, phone, phone:sign
 ```
+
+Each screen shows a tool's finished work on an invented sample. Phone screens
+hide the desktop-style menu row and get a plain status bar, and the home
+screen hides its own tool count. The AI screen runs the app's panel on the
+stand-in engine its browser tests use (`apps/web/e2e/deviceStub.ts`); only the
+model's words are written by the script.
 
 Replace any picture with a marketing screenshot by saving it under the same
 name and size (phone 640 × 1386, tablet 1600 × 1200, desktop and browser

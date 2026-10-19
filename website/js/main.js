@@ -181,6 +181,7 @@ function chapterHtml(c, index) {
     'chapter',
     c.kind === 'hero' ? 'hero' : '',
     ['platforms', 'download'].includes(c.kind) ? 'short' : '',
+    c.stage?.dusk >= 1 ? 'dusk' : '',
   ]
     .filter(Boolean)
     .join(' ');

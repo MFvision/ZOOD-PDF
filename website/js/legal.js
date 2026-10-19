@@ -62,16 +62,16 @@ export const PAGES = {
             en: 'An online AI provider: if you choose one (such as Claude with your own key, or an OpenAI-compatible server you set up), the document text you ask about is sent to it. By default the assistant runs on your device.',
           },
           {
-            ar: 'نموذج الذكاء الاصطناعي على الجهاز: يُحمَّل مرة واحدة من Hugging Face حين تطلبه، ثم يعمل دون اتصال.',
-            en: 'The on-device AI model: downloaded once from Hugging Face when you ask for it, then it works offline.',
+            ar: 'نموذج الذكاء الاصطناعي على الجهاز: يُحمَّل مرة واحدة من Hugging Face حين تضغط لتحميله، ثم يعمل دون اتصال.',
+            en: 'The on-device AI model: downloaded once from Hugging Face when you click to get it, then it works offline.',
           },
           {
-            ar: 'ملفات لغات التعرّف على النص: تُحمَّل عند أول استخدام لكل لغة، ثم تعمل دون اتصال.',
-            en: 'OCR language files: downloaded the first time you use each language, then they work offline.',
+            ar: 'ملفات لغات التعرّف على النص: جزء من تطبيق سطح المكتب وإضافة المتصفح. تطبيق الويب يحمّلها من موقعه هو عند أول استخدام، لا من أي جهة أخرى.',
+            en: 'OCR language files: part of the desktop app and the browser extension. The web app fetches them from its own site the first time, never from anyone else.',
           },
           {
-            ar: 'مكتبة الخطوط المفتوحة: يسألك التطبيق مرة واحدة قبل أن يطلب خطًا ناقصًا من Fontsource، ولا يطلب شيئًا إن رفضت.',
-            en: 'The open font library: the app asks you once before fetching a missing font from Fontsource, and fetches nothing if you say no.',
+            ar: 'مكتبة الخطوط المفتوحة: يسألك التطبيق مرة واحدة قبل أن يطلب خطًا ناقصًا من Fontsource، ولا يُرسل إلا اسم الخط، ولا يطلب شيئًا إن رفضت.',
+            en: "The open font library: the app asks you once before fetching a missing font from Fontsource, sends only the font's name, and fetches nothing if you say no.",
           },
           {
             ar: 'Google Drive وOneDrive: حين يتوفران، يُفتح الملف ويُحفظ في حسابك أنت مباشرة، ولا يمر بنا.',
@@ -200,11 +200,16 @@ export const PAGES = {
           en: 'ZOOD PDF copies Arabic in reading order. If it still comes out backwards, send us the file so we can look.',
         },
       },
-      { h3: { ar: 'التعرّف على النص لا يعمل دون اتصال', en: 'OCR does not work offline' } },
+      {
+        h3: {
+          ar: 'التعرّف على النص لا يعمل دون اتصال في تطبيق الويب',
+          en: 'OCR does not work offline in the web app',
+        },
+      },
       {
         p: {
-          ar: 'تُحمَّل ملفات كل لغة عند أول استخدام لها. اتصل بالإنترنت مرة واحدة، ثم يعمل دون اتصال.',
-          en: 'Each language downloads the first time you use it. Connect once, then it works offline.',
+          ar: 'تطبيق الويب يحمّل ملفات كل لغة من موقعه عند أول استخدام لها. اتصل بالإنترنت مرة واحدة، ثم يعمل دون اتصال. تطبيق سطح المكتب وإضافة المتصفح يعملان دون اتصال من البداية.',
+          en: 'The web app fetches each language from its own site the first time you use it. Connect once, then it works offline. The desktop app and the browser extension work offline from the start.',
         },
       },
       { h3: { ar: 'هل يمكن التراجع عن التنقيح؟', en: 'Can I undo a redaction?' } },

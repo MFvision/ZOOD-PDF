@@ -103,7 +103,7 @@ export const CHAPTERS = [
     ],
     eyebrow: { ar: 'القراءة', en: 'Read' },
     title: {
-      ar: 'افتح ملف PDF و[[انتقل إلى ما تريد]] بسرعة.',
+      ar: 'افتح ملف PDF [[وانتقل إلى ما تريد]] بسرعة.',
       en: 'Open a PDF and [[find your place]] fast.',
     },
     points: [
@@ -130,7 +130,7 @@ export const CHAPTERS = [
     devices: [{ frame: 'desktop', screen: 'edit' }],
     eyebrow: { ar: 'التحرير', en: 'Edit' },
     title: {
-      ar: 'عدّل فقرة، و[[تنتظم الأسطر]] من حولها.',
+      ar: 'عدّل فقرة، [[وتنتظم الأسطر]] من حولها.',
       en: 'Change a paragraph and [[the lines reflow]] around it.',
     },
     points: [
@@ -174,7 +174,7 @@ export const CHAPTERS = [
     devices: [{ frame: 'desktop', screen: 'pages' }],
     eyebrow: { ar: 'الصفحات', en: 'Pages' },
     title: {
-      ar: 'رتّب ملفات PDF وادمجها و[[صغّر حجمها]] في مكان واحد.',
+      ar: 'رتّب ملفات PDF وادمجها [[وصغّر حجمها]] في مكان واحد.',
       en: 'Reorder, combine and [[shrink]] PDFs in one place.',
     },
     points: [
@@ -202,7 +202,7 @@ export const CHAPTERS = [
     ],
     eyebrow: { ar: 'التعبئة والتوقيع', en: 'Fill and sign' },
     title: {
-      ar: 'املأ النموذج و[[وقّعه]] في الحال.',
+      ar: 'املأ النموذج [[ووقّعه]] في الحال.',
       en: 'Fill in a form and [[sign it]] on the spot.',
     },
     points: [
@@ -267,11 +267,38 @@ export const CHAPTERS = [
         en: 'Crooked pages are straightened and cleaned up first.',
       },
       {
-        ar: 'تُحمَّل ملفات اللغة عند أول استخدام، ثم يعمل دون اتصال.',
-        en: 'Language files download on first use, then it works offline.',
+        ar: 'يعمل دون اتصال في تطبيق سطح المكتب وإضافة المتصفح. تطبيق الويب يحمّل ملفات اللغة من موقعه عند أول استخدام.',
+        en: 'Works offline in the desktop app and the browser extension. The web app fetches its language files from its own site the first time.',
       },
     ],
     note: { ar: 'التعرّف الكامل على النص: ', en: 'Full OCR: ', on: ON.allButMobile },
+  },
+  {
+    id: 'ai',
+    stage: { pages: 2, fan: 0.2, recede: 1, dusk: 0, pattern: 0 },
+    act: { find: [0.15, 0.6] },
+    devices: [{ frame: 'desktop', screen: 'ai' }],
+    eyebrow: { ar: 'المساعد الذكي', en: 'AI assistant' },
+    title: { ar: 'اسأل ملف PDF [[عمّا فيه]].', en: 'Ask your PDF [[a question]].' },
+    points: [
+      {
+        ar: 'لخّصه أو اشرحه أو ترجمه بين العربية والإنجليزية، وكل جواب يذكر الصفحات التي قرأها.',
+        en: 'Summarize it, explain it or translate it between Arabic and English. Each answer names the pages it read.',
+      },
+      {
+        ar: 'يعمل على جهازك افتراضيًا، فلا يغادره شيء.',
+        en: 'It runs on your device by default, so nothing leaves it.',
+      },
+      {
+        ar: 'أو استخدم مفتاحك الخاص لـ Claude أو نموذجًا محليًا، وترى النص قبل أن يُرسل.',
+        en: 'Or use your own Claude key or a local model, and see the exact text before it is sent.',
+      },
+    ],
+    note: {
+      ar: 'على آيفون وآيباد يعمل بنموذج النظام المدمج: ',
+      en: 'On iPhone and iPad it uses the model built into the system: ',
+      on: { ar: 'iOS 26 وما بعده', en: 'iOS 26 and later' },
+    },
   },
   {
     id: 'screens',
@@ -331,10 +358,10 @@ export const CHAPTERS = [
     id: 'inside',
     kind: 'inside',
     eyebrow: { ar: 'كل ما في التطبيق', en: 'Everything inside' },
-    title: { ar: '[[الأدوات العشرون]]', en: 'The [[twenty tools]], listed' },
+    title: { ar: '[[كل الأدوات]]', en: 'Every tool, [[listed]]' },
     lead: {
-      ar: 'ستّ عشرة أداة تعمل اليوم، وأربع قادمة لاحقًا. تحت كل أداة مكان توفرها حين لا تكون في كل النسخ.',
-      en: 'Sixteen tools work today and four are coming later. Each says where it works when it is not on every version.',
+      ar: 'ما يعمل اليوم أولًا، ثم ما يأتي لاحقًا. تحت كل أداة مكان توفرها حين لا تكون في كل النسخ.',
+      en: 'What works today first, then what is coming later. Each says where it works when it is not on every version.',
     },
   },
 ];
@@ -402,7 +429,7 @@ export const DOWNLOADS = [
   },
 ];
 
-// "Everything inside": the app's twenty tools (packages/ui/src/tools/tools.ts),
+// "Everything inside": the app's tools (packages/ui/src/tools/tools.ts),
 // their names as the app writes them (packages/ui/src/i18n). `on` is shown
 // only when a tool is not on every version.
 export const TOOLS = [
@@ -457,6 +484,13 @@ export const TOOLS = [
       en: 'Arabic, English, Persian and Urdu, with deskew and cleanup.',
     },
     on: ON.allButMobile,
+  },
+  {
+    name: { ar: 'المساعد الذكي', en: 'AI assistant' },
+    text: {
+      ar: 'اسأل المستند ولخّصه واشرحه وترجمه، على جهازك أو بمفتاحك الخاص.',
+      en: 'Ask about the document, summarize, explain and translate, on your device or with your own key.',
+    },
   },
   {
     name: { ar: 'دمج', en: 'Combine' },
@@ -526,8 +560,8 @@ export const TOOLS = [
   },
 ];
 
-// Partial (🟡) and planned (⬜) work, shown as "Coming later". The last four
-// tools of the twenty are here, then features that are not finished yet.
+// Partial (🟡) and planned (⬜) work, shown as "Coming later". Unfinished
+// tools come first, then other unfinished features.
 export const LATER = {
   title: { ar: 'قادم لاحقًا', en: 'Coming later' },
   lead: {
@@ -556,14 +590,6 @@ export const LATER = {
       text: {
         ar: 'الوسوم وترتيب القراءة والنص البديل والفاحص.',
         en: 'Tags, reading order, alt text and a checker.',
-      },
-      tool: true,
-    },
-    {
-      name: { ar: 'المساعد الذكي', en: 'AI assistant' },
-      text: {
-        ar: 'محادثة حول المستند تعمل على جهازك.',
-        en: 'A chat about your document that runs on your device.',
       },
       tool: true,
     },
@@ -601,11 +627,11 @@ export const LATER = {
 // The wall of screens: phone screens, by name. The middle column is the one
 // the phone shows; side columns glide past at different speeds.
 export const WALL = {
-  middle: ['home', 'read', 'search', 'comment', 'pages', 'sign', 'redact', 'scan'],
+  middle: ['home', 'read', 'search', 'comment', 'pages', 'sign', 'redact', 'scan', 'ai'],
   columns: [
-    ['search', 'sign', 'home', 'redact', 'pages', 'read'],
+    ['search', 'sign', 'ai', 'home', 'redact', 'pages', 'read'],
     ['comment', 'scan', 'read', 'home', 'sign', 'search'],
-    ['pages', 'redact', 'comment', 'scan', 'home', 'read'],
+    ['pages', 'redact', 'comment', 'ai', 'scan', 'home', 'read'],
     ['sign', 'home', 'search', 'read', 'comment', 'scan'],
   ],
   // Screen-reader names for the middle device's screens.
@@ -618,6 +644,7 @@ export const WALL = {
     sign: { ar: 'التوقيع', en: 'Signing' },
     redact: { ar: 'التنقيح', en: 'Redacting' },
     scan: { ar: 'التعرّف على النص', en: 'Scan and OCR' },
+    ai: { ar: 'المساعد الذكي', en: 'AI assistant' },
   },
 };
 
@@ -639,6 +666,7 @@ export const SCREENS = {
     sign: '08-sign',
     redact: '09-redact',
     scan: '10-scan',
+    ai: '11-ai',
   },
   alt: {
     home: {
@@ -654,12 +682,16 @@ export const SCREENS = {
       en: 'Searching an Arabic word in the document',
     },
     edit: { ar: 'تحرير فقرة عربية في المستند', en: 'Editing an Arabic paragraph in the document' },
-    comment: { ar: 'أدوات التعليق فوق صفحة', en: 'The comment tools over a page' },
+    comment: { ar: 'صفحة عليها تظليل وملاحظة', en: 'A page with highlights and a note' },
     pages: { ar: 'الصفحات المصغّرة جاهزة لإعادة الترتيب', en: 'Page thumbnails ready to reorder' },
     form: { ar: 'نموذج يُملأ في المتصفح', en: 'A form being filled in the browser' },
-    sign: { ar: 'إضافة توقيع إلى مستند', en: 'Adding a signature to a document' },
-    redact: { ar: 'تنقيح البيانات الخاصة في مستند', en: 'Redacting private details in a document' },
-    scan: { ar: 'صفحة ممسوحة ضوئيًا يُتعرّف على نصها', en: 'A scanned page being read into text' },
+    sign: { ar: 'نموذج مملوء وموقّع', en: 'A form filled in and signed' },
+    redact: { ar: 'بيانات خاصة مغطاة في فاتورة', en: 'Private details covered on an invoice' },
+    scan: { ar: 'صفحة ممسوحة ضوئيًا قُرئ نصها', en: 'A scanned page read into text' },
+    ai: {
+      ar: 'المساعد الذكي يلخّص المستند ويذكر صفحاته',
+      en: 'The AI assistant summarizing the document and citing its pages',
+    },
   },
   // Sample file name in the browser frame's address bar.
   browserFile: { ar: 'نموذج-طلب-تجريبي.pdf', en: 'sample-application-form.pdf' },
