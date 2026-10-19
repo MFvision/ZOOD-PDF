@@ -1,5 +1,7 @@
 import {
   EyeOff,
+  LockOpen,
+  Ratio,
   FileOutput,
   Layers,
   Lock,
@@ -88,6 +90,8 @@ export type StepId =
   | 'removeHidden'
   | 'flatten'
   | 'protect'
+  | 'unlock'
+  | 'resize'
   | 'export';
 
 export interface StepDefinition<O> {
@@ -281,6 +285,45 @@ const extractPages: StepDefinition<PagesStep> = {
     }),
 };
 
+/* ---------------------------------------------------------------- resize */
+
+/** Paper sizes in points, as a portrait sheet: each page is turned its own way on it. */
+export const PAPER_SIZES = {
+  a4: [595.28, 841.89],
+  letter: [612, 792],
+  legal: [612, 1008],
+  a3: [841.89, 1190.55],
+  a5: [419.53, 595.28],
+} as const;
+export type PaperSize = keyof typeof PAPER_SIZES;
+export const PAPERS = Object.keys(PAPER_SIZES) as PaperSize[];
+
+export interface ResizeStep {
+  pages: PageChoice;
+  paper: PaperSize;
+}
+
+const resize: StepDefinition<ResizeStep> = {
+  id: 'resize',
+  labelKey: 'batch.step.resize',
+  noteKey: 'batch.step.resizeNote',
+  icon: Ratio,
+  defaults: () => ({ pages: ALL_PAGES, paper: 'a4' }),
+  sanitize(raw) {
+    const given = record(raw);
+    return { pages: sanitizeChoice(given.pages), paper: oneOf(given.paper, PAPERS, 'a4') };
+  },
+  problem: (o) => (choiceValid(o.pages) ? null : 'batch.problem.pages'),
+  run: (doc, o, context) =>
+    withDocument(context, doc, async (open) => {
+      const pages = choosePages(o.pages, open.pageCount) ?? [];
+      if (pages.length === 0) return doc;
+      const [width, height] = PAPER_SIZES[o.paper];
+      await open.call('pages.resize', { pages, width, height });
+      return { ...doc, bytes: buffer(await open.save()) };
+    }),
+};
+
 /* ------------------------------------------------------------ page marks */
 
 export interface MarksStep {
@@ -447,6 +490,28 @@ const protect: StepDefinition<ProtectSpec> = {
   },
 };
 
+/* ---------------------------------------------------------------- unlock */
+
+/** The protection off, with the password the file was opened with. */
+const unlock: StepDefinition<Record<string, never>> = {
+  id: 'unlock',
+  labelKey: 'batch.step.unlock',
+  noteKey: 'batch.step.unlockNote',
+  icon: LockOpen,
+  defaults: () => ({}),
+  sanitize: () => ({}),
+  problem: () => null,
+  async run(doc, _o, context) {
+    if (!doc.password) {
+      const encrypted = await withDocument(context, doc, async (open) => open.info.encrypted);
+      if (!encrypted) throw new StepError('batch.error.notProtected');
+    }
+    const { blobs } = await context.client.callStatic('protect.remove', { password: doc.password ?? null }, [doc.bytes.slice(0)]);
+    if (!blobs[0]) throw new StepError('batch.error.failed');
+    return { ...doc, bytes: blobs[0], password: undefined };
+  },
+};
+
 /* ---------------------------------------------------------------- export */
 
 export interface ExportStep {
@@ -493,7 +558,7 @@ const exportStep: StepDefinition<ExportStep> = {
 export type AnyStep = StepDefinition<any>;
 
 /** Every step, in the order they are offered. */
-export const STEPS: readonly AnyStep[] = [ocr, compress, rotate, deletePages, extractPages, pageMarks, removeHidden, flatten, protect, exportStep];
+export const STEPS: readonly AnyStep[] = [ocr, compress, rotate, deletePages, extractPages, pageMarks, resize, removeHidden, flatten, protect, unlock, exportStep];
 
 export function findStep(id: string): AnyStep | undefined {
   return STEPS.find((step) => step.id === id);

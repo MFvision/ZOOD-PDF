@@ -8,6 +8,10 @@
      keeps the service on by default. -->
 <plist version="1.0">
 <dict>
+  <!-- The ring's keyboard shortcut reads which files are selected in Finder
+       (src/ring.rs, `shortcut`); macOS asks once before allowing it. -->
+  <key>NSAppleEventsUsageDescription</key>
+  <string>لفتح دائرة الأدوات السريعة على الملفات المحددة في Finder. To open the quick tools ring on the files selected in Finder.</string>
   <key>NSServices</key>
   <array>
     <dict>

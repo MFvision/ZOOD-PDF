@@ -1,13 +1,17 @@
 # Tries the ring on a real Windows desktop (CI) the way a person uses it, by
 # sending the same mouse and key input: starts the built app, opens File
 # Explorer on a folder with one PDF, and
-#   1. Ctrl+drags the file onto the ring's top tool (Compress) and lets go;
+#   1. Ctrl+drags the file onto the ring's top tool (Compress) and lets go:
+#      it runs on the ring, and sample-compressed.pdf appears beside it;
 #   2. Shift+drags it into the ring's middle, lets go, then clicks the bottom
-#      tool (Rotate);
+#      tool (Rotate): sample-rotated.pdf;
 #   3. with Explorer pushed into the screen's bottom-right corner, Ctrl+drags
-#      again and checks the ring is whole on the screen.
-# Each step is checked in the app's ring.log ("picked <tool> for 1 files")
-# and by where the app says it put the ring; screenshots go to $Out for ci-logs.
+#      again and checks the ring is whole on the screen;
+#   5. selects the file and presses Ctrl+Alt+Z: the ring opens holding it,
+#      and a click on Compress runs it;
+#   4. (a control) drags the file plainly onto the app's main window.
+# Each step is checked in the app's ring.log and in the folder, and by where
+# the app says it put the ring; screenshots go to $Out for ci-logs.
 param(
   [Parameter(Mandatory = $true)][string]$App,
   [Parameter(Mandatory = $true)][string]$Sample,
@@ -143,6 +147,14 @@ function QuickWindowOpened {
   }
   return [IntPtr]::Zero
 }
+# A result beside the sample, waited for (a tool on the ring writes it when done).
+function ResultAppears($name) {
+  foreach ($try in 1..40) {
+    if (Test-Path (Join-Path $folder $name)) { return $true }
+    Start-Sleep -Milliseconds 500
+  }
+  return $false
+}
 function CloseQuick($quick) {
   if ($quick -ne [IntPtr]::Zero) { [Input]::PostMessage($quick, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null }
   Start-Sleep -Seconds 2
@@ -159,11 +171,11 @@ if ($side -gt 0) {
   Shot 'ring-1-over-compress.png'
   [Input]::Mouse($cx, $cy - $middle, 0x0004); [Input]::Key(0x11, $true)
   Start-Sleep -Seconds 3
-  Check ((Log) -match 'picked compress for 1 files') 'letting go on Compress picks it'
-  $quick = QuickWindowOpened
-  Check ($quick -ne [IntPtr]::Zero) 'Compress opens its quick window'
+  Shot 'ring-1-running.png'
+  Check (ResultAppears 'sample-compressed.pdf') 'letting go on Compress makes sample-compressed.pdf at once'
+  Start-Sleep -Seconds 3
+  Check ((Log) -match 'done: 1 made, 0 failed') 'the ring says Compress is done'
   Shot 'ring-1-after.png'
-  CloseQuick $quick
 } else {
   [Input]::Mouse(10, 10, 0x0004); [Input]::Key(0x11, $true)
 }
@@ -180,17 +192,15 @@ if ($side -gt 0) {
   [Input]::Mouse($cx, $cy, 0x0004); [Input]::Key(0x10, $true)
   Start-Sleep -Seconds 1
   Shot 'ring-2-holding.png'
-  $lines = (Log) -split "`n" | Where-Object { $_ -match 'let go on the ring|picked' }
+  $lines = (Log) -split "`n" | Where-Object { $_ -match 'let go on the ring|picked|running a tool' }
   Check ($lines.Count -gt 0 -and $lines[-1] -match '1 files let go on the ring') 'letting go in the middle keeps the ring, holding the file'
   [Input]::Mouse($cx, $cy + $middle, 0); Start-Sleep -Milliseconds 300
   [Input]::Mouse($cx, $cy + $middle, 0x0002); Start-Sleep -Milliseconds 80
   [Input]::Mouse($cx, $cy + $middle, 0x0004)
   Start-Sleep -Seconds 3
-  Check ((Log) -match 'picked rotate for 1 files') 'clicking Rotate picks it'
-  $quick = QuickWindowOpened
-  Check ($quick -ne [IntPtr]::Zero) 'Rotate opens its quick window'
+  Check (ResultAppears 'sample-rotated.pdf') 'clicking Rotate makes sample-rotated.pdf'
   Shot 'ring-2-after.png'
-  CloseQuick $quick
+  Start-Sleep -Seconds 3
 } else {
   [Input]::Mouse(10, 10, 0x0004); [Input]::Key(0x10, $true)
 }
@@ -208,6 +218,37 @@ Check ($side -gt 0 -and $ring.Left -ge 0 -and $ring.Top -ge 0 -and $ring.Right -
   "near the corner the ring is whole on the screen (ring $($ring.Left),$($ring.Top)-$($ring.Right),$($ring.Bottom); work area $($area.Right)x$($area.Bottom))"
 [Input]::Mouse(20, 20, 0); Start-Sleep -Milliseconds 300
 [Input]::Mouse(20, 20, 0x0004); [Input]::Key(0x11, $true)
+Start-Sleep -Seconds 2
+
+# 5. The keyboard shortcut: select the file, Ctrl+Alt+Z, click Compress.
+$at = FileItem
+[Input]::Mouse($at[0], $at[1], 0); Start-Sleep -Milliseconds 300
+[Input]::Mouse($at[0], $at[1], 0x0002); Start-Sleep -Milliseconds 80
+[Input]::Mouse($at[0], $at[1], 0x0004); Start-Sleep -Seconds 1
+$before = ([regex]::Matches((Log), 'done: \d+ made')).Count
+[Input]::Key(0x11, $false); [Input]::Key(0x12, $false); [Input]::Key(0x5A, $false)
+Start-Sleep -Milliseconds 100
+[Input]::Key(0x5A, $true); [Input]::Key(0x12, $true); [Input]::Key(0x11, $true)
+Start-Sleep -Seconds 4
+Shot 'ring-5-shortcut.png'
+Check ((Log) -match 'shortcut: 1 files selected') 'Ctrl+Alt+Z takes the file selected in Explorer'
+$found = [regex]::Matches((Log), 'ring window at (-?\d+),(-?\d+) size (\d+)x(\d+)')
+if ($found.Count -gt 0) {
+  $m = $found[$found.Count - 1]
+  $side = [int]$m.Groups[3].Value
+  $cx = [int]$m.Groups[1].Value + $side / 2; $cy = [int]$m.Groups[2].Value + $side / 2
+  $middle = $side * 97 / 300
+  [Input]::Mouse($cx, $cy - $middle, 0); Start-Sleep -Milliseconds 300
+  [Input]::Mouse($cx, $cy - $middle, 0x0002); Start-Sleep -Milliseconds 80
+  [Input]::Mouse($cx, $cy - $middle, 0x0004)
+  $made = $false
+  foreach ($try in 1..40) {
+    if (([regex]::Matches((Log), 'done: 1 made')).Count -gt $before) { $made = $true; break }
+    Start-Sleep -Milliseconds 500
+  }
+  Shot 'ring-5-after.png'
+  Check $made 'after Ctrl+Alt+Z, clicking Compress runs it on the selected file'
+}
 Start-Sleep -Seconds 2
 
 # 4. Control: a plain drag (no key) onto the app's main window. If this does

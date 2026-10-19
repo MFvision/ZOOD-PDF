@@ -28,6 +28,7 @@ use tauri::{
 };
 
 use crate::quick::{self, QuickRequest, TOOLS};
+use tauri_plugin_fs::FsExt;
 
 pub const BACKGROUND_FLAG: &str = "--background";
 pub const LABEL: &str = "ring";
@@ -43,8 +44,15 @@ pub const SHOW_EVENT: &str = "ring://show";
 pub const FILES_EVENT: &str = "ring://files";
 pub const OVER_EVENT: &str = "ring://over";
 pub const DROP_EVENT: &str = "ring://drop";
+/// The ring opened by its keyboard shortcut, already holding the selected files.
+pub const HOLD_EVENT: &str = "ring://hold";
+/// Opens the ring at the pointer on the files selected in File Explorer or
+/// Finder, waiting for a click.
+pub const SHORTCUT: &str = "CommandOrControl+Alt+Z";
 
 static ENABLED: AtomicBool = AtomicBool::new(true);
+/// The ring is running a tool on files let go on it: no new ring until done.
+static BUSY: AtomicBool = AtomicBool::new(false);
 static BACKGROUND: AtomicBool = AtomicBool::new(false);
 static GESTURES: OnceLock<Mutex<Sender<Gesture>>> = OnceLock::new();
 static DROPPED: Mutex<Option<Vec<PathBuf>>> = Mutex::new(None);
@@ -199,6 +207,7 @@ pub fn start<R: Runtime>(app: &AppHandle<R>, start_hidden: bool) {
     windows::watch();
     #[cfg(target_os = "macos")]
     macos::watch();
+    shortcut::register(app);
 }
 
 fn ring_window<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
@@ -226,7 +235,7 @@ fn ring_window<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
 }
 
 fn show<R: Runtime>(app: &AppHandle<R>, x: f64, y: f64) {
-    if !enabled() {
+    if !enabled() || BUSY.load(Ordering::Relaxed) {
         return;
     }
     if let Ok(mut dropped) = DROPPED.lock() {
@@ -348,14 +357,53 @@ pub fn on_drag<R: Runtime>(
     }
 }
 
-/// The tool the files were let go on (`none`: the middle, or off the ring).
+/// The files let go on the ring, for a tool the ring runs itself (with its
+/// progress round the ring). They stay held, so `ring_pick` can still hand
+/// them to a quick window if the tool needs more (a password).
 #[tauri::command]
-pub fn ring_pick<R: Runtime>(app: AppHandle<R>, tool: String) {
+pub fn ring_take<R: Runtime>(app: AppHandle<R>) -> Vec<quick::QuickFile> {
     let files = DROPPED
+        .lock()
+        .ok()
+        .and_then(|d| d.clone())
+        .unwrap_or_default();
+    let scope = app.fs_scope();
+    for file in &files {
+        let _ = scope.allow_file(file);
+    }
+    BUSY.store(!files.is_empty(), Ordering::Relaxed);
+    log(&format!("running a tool on {} files", files.len()));
+    quick::files_of(files)
+}
+
+/// The ring finished its tool: it goes, and the next drag can open it.
+#[tauri::command]
+pub fn ring_done<R: Runtime>(app: AppHandle<R>, done: usize, failed: usize) {
+    if let Ok(mut dropped) = DROPPED.lock() {
+        *dropped = None;
+    }
+    BUSY.store(false, Ordering::Relaxed);
+    log(&format!("done: {done} made, {failed} failed"));
+    hide(&app);
+}
+
+/// The tool the files were let go on (`none`: the middle, or off the ring).
+/// `only`: of those files, these (the ones a tool run on the ring could not
+/// open without their password).
+#[tauri::command]
+pub fn ring_pick<R: Runtime>(app: AppHandle<R>, tool: String, only: Option<Vec<String>>) {
+    BUSY.store(false, Ordering::Relaxed);
+    let mut files = DROPPED
         .lock()
         .ok()
         .and_then(|mut d| d.take())
         .unwrap_or_default();
+    if let Some(only) = only {
+        files.retain(|file| {
+            only.iter()
+                .any(|path| file.as_path() == std::path::Path::new(path))
+        });
+    }
     hide(&app);
     log(&format!("picked {tool} for {} files", files.len()));
     if tool == "none" || files.is_empty() {
@@ -612,7 +660,7 @@ mod macos {
     const TICK: Duration = Duration::from_millis(30);
 
     /// The pointer, in points from the top-left of the main screen.
-    fn pointer() -> (f64, f64) {
+    pub(super) fn pointer() -> (f64, f64) {
         // SAFETY: NSEvent's and NSScreen's documented class messages.
         unsafe {
             let at: NSPoint = msg_send![class!(NSEvent), mouseLocation];
@@ -769,5 +817,169 @@ mod tests {
             .contains("<string>/Applications/محرر PDF.app/Contents/MacOS/warraq-desktop</string>"));
         assert!(plist.contains("<string>--background</string>"));
         assert!(launch_agent("a&b").contains("a&amp;b"));
+    }
+}
+
+/// The ring's keyboard shortcut: the files selected in File Explorer (the
+/// window in front) or Finder, and the ring at the pointer holding them,
+/// waiting for a click on a tool.
+mod shortcut {
+    use std::path::PathBuf;
+    use std::sync::atomic::Ordering;
+
+    use tauri::{AppHandle, Emitter, Runtime};
+    use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+
+    use super::{log, show, FilesPayload, BUSY, DROPPED, FILES_EVENT, HOLD_EVENT, LABEL, SHORTCUT};
+
+    /// The most files the shortcut takes, as a drag would.
+    const MAX_FILES: usize = 500;
+
+    pub fn register<R: Runtime>(app: &AppHandle<R>) {
+        let result = app
+            .global_shortcut()
+            .on_shortcut(SHORTCUT, |app, _, event| {
+                if event.state != ShortcutState::Pressed || !super::enabled() {
+                    return;
+                }
+                // Which window is in front, read now, before anything else can be.
+                let front = front_window();
+                let app = app.clone();
+                std::thread::spawn(move || open(&app, front));
+            });
+        match result {
+            Ok(()) => log("keyboard shortcut ready"),
+            Err(e) => log(&format!("the keyboard shortcut could not be set: {e}")),
+        }
+    }
+
+    fn open<R: Runtime>(app: &AppHandle<R>, front: isize) {
+        if BUSY.load(Ordering::Relaxed) {
+            return;
+        }
+        let files = parse(&selected(front));
+        log(&format!("shortcut: {} files selected", files.len()));
+        if files.is_empty() {
+            return;
+        }
+        let Some((x, y)) = pointer() else { return };
+        show(app, x, y);
+        let names = files
+            .iter()
+            .filter_map(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+            .collect();
+        if let Ok(mut dropped) = DROPPED.lock() {
+            *dropped = Some(files);
+        }
+        let _ = app.emit_to(LABEL, FILES_EVENT, FilesPayload { names });
+        let _ = app.emit_to(LABEL, HOLD_EVENT, ());
+    }
+
+    /// One path a line, as the scripts below print them: existing files only.
+    pub fn parse(output: &str) -> Vec<PathBuf> {
+        let mut files: Vec<PathBuf> = Vec::new();
+        for line in output.lines().map(str::trim).filter(|l| !l.is_empty()) {
+            let path = PathBuf::from(line);
+            if path.is_absolute() && path.is_file() && !files.contains(&path) {
+                files.push(path);
+                if files.len() >= MAX_FILES {
+                    break;
+                }
+            }
+        }
+        files
+    }
+
+    #[cfg(target_os = "windows")]
+    fn front_window() -> isize {
+        // SAFETY: no arguments; returns a handle or null.
+        unsafe { windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow() as isize }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    fn front_window() -> isize {
+        0
+    }
+
+    /// The selection of the File Explorer window in front, through the
+    /// Shell's own scripting interface.
+    #[cfg(target_os = "windows")]
+    fn selected(front: isize) -> String {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        let script = format!(
+            "$OutputEncoding=[Console]::OutputEncoding=[Text.Encoding]::UTF8;\
+             foreach($w in (New-Object -ComObject Shell.Application).Windows()){{\
+             if($w.HWND -eq {front}){{foreach($i in $w.Document.SelectedItems()){{$i.Path}}}}}}"
+        );
+        std::process::Command::new("powershell.exe")
+            .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+            .map(|out| String::from_utf8_lossy(&out.stdout).into_owned())
+            .unwrap_or_default()
+    }
+
+    /// Finder's selection (macOS asks once whether the app may read it).
+    #[cfg(target_os = "macos")]
+    fn selected(_front: isize) -> String {
+        std::process::Command::new("osascript")
+            .args([
+                "-e",
+                "tell application \"Finder\"",
+                "-e",
+                "set out to \"\"",
+                "-e",
+                "repeat with f in (get selection as alias list)",
+                "-e",
+                "set out to out & POSIX path of f & linefeed",
+                "-e",
+                "end repeat",
+                "-e",
+                "return out",
+                "-e",
+                "end tell",
+            ])
+            .output()
+            .map(|out| String::from_utf8_lossy(&out.stdout).into_owned())
+            .unwrap_or_default()
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    fn selected(_front: isize) -> String {
+        String::new()
+    }
+
+    /// Where the pointer is, in the units `show` takes.
+    #[cfg(target_os = "windows")]
+    fn pointer() -> Option<(f64, f64)> {
+        let mut at = windows_sys::Win32::Foundation::POINT { x: 0, y: 0 };
+        // SAFETY: writes the cursor's position into `at`.
+        let ok = unsafe { windows_sys::Win32::UI::WindowsAndMessaging::GetCursorPos(&mut at) };
+        (ok != 0).then(|| (f64::from(at.x), f64::from(at.y)))
+    }
+
+    #[cfg(target_os = "macos")]
+    fn pointer() -> Option<(f64, f64)> {
+        Some(super::macos::pointer())
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    fn pointer() -> Option<(f64, f64)> {
+        None
+    }
+
+    #[cfg(test)]
+    mod tests {
+        #[test]
+        fn only_existing_files_are_taken_once() {
+            let here = std::env::current_dir().unwrap().join("Cargo.toml");
+            let line = here.to_string_lossy().into_owned();
+            let output = format!(
+                "{line}\r\n\n{line}\nrelative.pdf\n/no/such/file.pdf\n{}\n",
+                std::env::temp_dir().display()
+            );
+            assert_eq!(super::parse(&output), vec![here]);
+        }
     }
 }

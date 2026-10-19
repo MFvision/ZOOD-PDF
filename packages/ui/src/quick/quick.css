@@ -168,3 +168,129 @@ body:has(.quick) {
     animation: none;
   }
 }
+
+/* A tool that asks: its options, and beside them the first file's pages. */
+.quick-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-block-size: 0;
+  overflow: hidden;
+}
+
+.quick-body-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  flex: 1;
+}
+
+.quick-body .quick-options {
+  min-block-size: 0;
+}
+
+.quick-preview {
+  min-block-size: 0;
+  overflow-y: auto;
+  padding: var(--space-3);
+  border-radius: var(--radius-12);
+  background: var(--grouped-background);
+}
+
+.quick-preview-loading {
+  min-block-size: 160px;
+}
+
+.quick-thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quick-thumb {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  transition: opacity var(--duration-quick, 120ms) ease;
+}
+
+.quick-thumb-sheet {
+  position: relative;
+  inline-size: 100%;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--separator), 0 1px 3px rgb(0 0 0 / 12%);
+  overflow: hidden;
+}
+
+.quick-thumb-inner {
+  position: absolute;
+  inset: 0;
+}
+
+.quick-thumb-page {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+/* Left out by the options: Extract does not keep it, Split puts it in no file. */
+.quick-thumb-out {
+  opacity: 0.3;
+}
+
+.quick-thumb-out .quick-thumb-sheet {
+  filter: grayscale(1);
+}
+
+/* Split's files, told apart by colour; a badge where each one starts. */
+.quick-thumb-part0 .quick-thumb-sheet { box-shadow: 0 0 0 2px var(--accent); }
+.quick-thumb-part1 .quick-thumb-sheet { box-shadow: 0 0 0 2px var(--green); }
+.quick-thumb-part2 .quick-thumb-sheet { box-shadow: 0 0 0 2px var(--orange, #f59e0b); }
+.quick-thumb-part3 .quick-thumb-sheet { box-shadow: 0 0 0 2px var(--purple, #8b5cf6); }
+
+.quick-thumb-badge {
+  position: absolute;
+  inset-block-start: -8px;
+  inset-inline-start: -4px;
+  z-index: 1;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.quick-thumb-mark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.quick-thumb-number,
+.quick-preview-more {
+  color: var(--secondary-label);
+  font-size: var(--text-caption1, 11px);
+}
+
+.quick-preview-more {
+  margin: var(--space-3) 0 0;
+  text-align: center;
+}
+
+@media (width <= 560px) {
+  .quick-body-preview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

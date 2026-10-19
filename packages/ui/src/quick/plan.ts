@@ -1,8 +1,30 @@
-import { Combine, FileImage, FileOutput, FileText, LayoutGrid, Lock, RotateCw, ScanText, Scissors, Shrink } from 'lucide-react';
+import {
+  Combine,
+  Droplets,
+  FileImage,
+  FileOutput,
+  FileSpreadsheet,
+  FileText,
+  FileType,
+  Hash,
+  LayoutGrid,
+  Lock,
+  LockOpen,
+  Presentation,
+  Ratio,
+  RotateCw,
+  ScanText,
+  Scissors,
+  Shrink,
+  Signature,
+  SquareSplitVertical,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { CREATE_EXTENSIONS } from '../create/createPdf';
 import type { TKey } from '../i18n/messages';
 import { findStep } from '../batch/steps';
+import { choosePages, parseList } from '../batch/pages';
+import { DEFAULT_FORM } from '../marks/markSpec';
 import type { StepId } from '../batch/steps';
 
 /**
@@ -12,7 +34,34 @@ import type { StepId } from '../batch/steps';
  * menu names (`src-tauri/src/shell_menu.rs`, `quick::TOOLS`).
  */
 
-export type QuickToolId = 'compress' | 'word' | 'images' | 'ocr' | 'combine' | 'protect' | 'rotate' | 'extract' | 'topdf';
+export type QuickToolId =
+  | 'compress'
+  | 'word'
+  | 'excel'
+  | 'powerpoint'
+  | 'text'
+  | 'images'
+  | 'ocr'
+  | 'combine'
+  | 'protect'
+  | 'unlock'
+  | 'rotate'
+  | 'extract'
+  | 'split'
+  | 'resize'
+  | 'numbers'
+  | 'watermark'
+  | 'sign'
+  | 'topdf';
+
+/**
+ * How a tool starts. `instant`: at once, nothing asked (on the ring, its
+ * progress goes round the ring). `ask`: it needs something only the person
+ * can say (a password, which pages, a paper size, the mark's text), so its
+ * window opens, with the pages to see while choosing. `editor`: the file
+ * opens in the editor at that tool.
+ */
+export type QuickMode = 'instant' | 'ask' | 'editor';
 
 export interface QuickTool {
   id: QuickToolId;
@@ -27,19 +76,31 @@ export interface QuickTool {
   takes: 'pdf' | 'other';
   /** At least this many files. */
   min?: number;
+  mode: QuickMode;
+  /** On the ring (the rest are under "All tools" there). */
+  ring?: boolean;
 }
 
 /** In the order the window shows them (the ring's order too). */
 export const QUICK_TOOLS: readonly QuickTool[] = [
-  { id: 'compress', labelKey: 'quick.tool.compress', noteKey: 'quick.note.compress', icon: Shrink, step: 'compress', takes: 'pdf' },
-  { id: 'word', labelKey: 'quick.tool.word', noteKey: 'quick.note.word', icon: FileText, step: 'export', options: { format: 'docx' }, takes: 'pdf' },
-  { id: 'images', labelKey: 'quick.tool.images', noteKey: 'quick.note.images', icon: FileImage, step: 'export', options: { format: 'png' }, takes: 'pdf' },
-  { id: 'ocr', labelKey: 'quick.tool.ocr', noteKey: 'quick.note.ocr', icon: ScanText, step: 'ocr', takes: 'pdf' },
-  { id: 'combine', labelKey: 'quick.tool.combine', noteKey: 'quick.note.combine', icon: Combine, takes: 'pdf', min: 2 },
-  { id: 'rotate', labelKey: 'quick.tool.rotate', noteKey: 'quick.note.rotate', icon: RotateCw, step: 'rotate', takes: 'pdf' },
-  { id: 'extract', labelKey: 'quick.tool.extract', noteKey: 'quick.note.extract', icon: Scissors, step: 'extractPages', takes: 'pdf' },
-  { id: 'protect', labelKey: 'quick.tool.protect', noteKey: 'quick.note.protect', icon: Lock, step: 'protect', takes: 'pdf' },
-  { id: 'topdf', labelKey: 'quick.tool.topdf', noteKey: 'quick.note.topdf', icon: FileOutput, takes: 'other' },
+  { id: 'compress', labelKey: 'quick.tool.compress', noteKey: 'quick.note.compress', icon: Shrink, step: 'compress', takes: 'pdf', mode: 'instant', ring: true },
+  { id: 'word', labelKey: 'quick.tool.word', noteKey: 'quick.note.word', icon: FileText, step: 'export', options: { format: 'docx' }, takes: 'pdf', mode: 'instant', ring: true },
+  { id: 'excel', labelKey: 'quick.tool.excel', noteKey: 'quick.note.excel', icon: FileSpreadsheet, step: 'export', options: { format: 'xlsx' }, takes: 'pdf', mode: 'instant', ring: true },
+  { id: 'powerpoint', labelKey: 'quick.tool.powerpoint', noteKey: 'quick.note.powerpoint', icon: Presentation, step: 'export', options: { format: 'pptx' }, takes: 'pdf', mode: 'instant', ring: true },
+  { id: 'text', labelKey: 'quick.tool.text', noteKey: 'quick.note.text', icon: FileType, step: 'export', options: { format: 'txt' }, takes: 'pdf', mode: 'instant' },
+  { id: 'images', labelKey: 'quick.tool.images', noteKey: 'quick.note.images', icon: FileImage, step: 'export', options: { format: 'png' }, takes: 'pdf', mode: 'instant' },
+  { id: 'ocr', labelKey: 'quick.tool.ocr', noteKey: 'quick.note.ocr', icon: ScanText, step: 'ocr', takes: 'pdf', mode: 'instant', ring: true },
+  { id: 'combine', labelKey: 'quick.tool.combine', noteKey: 'quick.note.combine', icon: Combine, takes: 'pdf', min: 2, mode: 'instant', ring: true },
+  { id: 'rotate', labelKey: 'quick.tool.rotate', noteKey: 'quick.note.rotate', icon: RotateCw, step: 'rotate', takes: 'pdf', mode: 'instant', ring: true },
+  { id: 'split', labelKey: 'quick.tool.split', noteKey: 'quick.note.split', icon: SquareSplitVertical, takes: 'pdf', mode: 'ask', ring: true },
+  { id: 'extract', labelKey: 'quick.tool.extract', noteKey: 'quick.note.extract', icon: Scissors, step: 'extractPages', takes: 'pdf', mode: 'ask' },
+  { id: 'resize', labelKey: 'quick.tool.resize', noteKey: 'quick.note.resize', icon: Ratio, step: 'resize', takes: 'pdf', mode: 'ask' },
+  { id: 'numbers', labelKey: 'quick.tool.numbers', noteKey: 'quick.note.numbers', icon: Hash, step: 'pageMarks', takes: 'pdf', mode: 'instant' },
+  { id: 'watermark', labelKey: 'quick.tool.watermark', noteKey: 'quick.note.watermark', icon: Droplets, step: 'pageMarks', takes: 'pdf', mode: 'ask' },
+  { id: 'sign', labelKey: 'quick.tool.sign', noteKey: 'quick.note.sign', icon: Signature, takes: 'pdf', mode: 'editor', ring: true },
+  { id: 'protect', labelKey: 'quick.tool.protect', noteKey: 'quick.note.protect', icon: Lock, step: 'protect', takes: 'pdf', mode: 'ask', ring: true },
+  { id: 'unlock', labelKey: 'quick.tool.unlock', noteKey: 'quick.note.unlock', icon: LockOpen, step: 'unlock', takes: 'pdf', mode: 'ask' },
+  { id: 'topdf', labelKey: 'quick.tool.topdf', noteKey: 'quick.note.topdf', icon: FileOutput, takes: 'other', mode: 'instant', ring: true },
 ];
 
 /** The icon of "every tool" in the ring and the window's chooser. */
@@ -83,7 +144,65 @@ export function startingOptions(tool: QuickTool): unknown {
   // Extract starts on every page's worth of choice: the first page alone
   // is the batch's cautious default, not what a person extracting means.
   if (tool.id === 'extract') return { ...options, pages: { which: 'list', list: '1-' } };
+  if (tool.id === 'numbers') return { ...options, form: { ...DEFAULT_FORM, section: 'pageNumber', numberPosition: 'bottom' } };
+  if (tool.id === 'watermark') return { ...options, form: { ...DEFAULT_FORM, section: 'watermark', watermarkText: '' } };
+  if (tool.id === 'split') return DEFAULT_SPLIT;
   return options;
+}
+
+/** The ring's tools for these files: the ring's own, then "All tools" in the hub's place on the ring. */
+export function ringToolsFor(names: readonly string[]): QuickTool[] {
+  return toolsFor(names).filter((tool) => tool.ring);
+}
+
+/* ----------------------------------------------------------------- split */
+
+/** Split: a file every so many pages, or one file per part of a list ("1-3, 4-9"). */
+export interface SplitOptions {
+  how: 'every' | 'ranges';
+  every: number;
+  ranges: string;
+}
+
+export const DEFAULT_SPLIT: SplitOptions = { how: 'every', every: 1, ranges: '' };
+
+/** The most files one split makes. */
+export const MAX_SPLIT_PARTS = 500;
+
+/** The pages of each new file, zero-based; null when the list does not read or nothing is left. */
+export function splitGroups(options: SplitOptions, count: number): number[][] | null {
+  if (count <= 0) return null;
+  const groups: number[][] = [];
+  if (options.how === 'every') {
+    const every = Math.max(1, Math.floor(options.every) || 1);
+    for (let from = 0; from < count && groups.length < MAX_SPLIT_PARTS; from += every) {
+      groups.push(Array.from({ length: Math.min(every, count - from) }, (_, k) => from + k));
+    }
+  } else {
+    const parts = options.ranges
+      .split(/[,،]/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    for (const part of parts) {
+      const pages = choosePages({ which: 'list', list: part }, count);
+      if (pages === null) return null;
+      if (pages.length > 0) groups.push(pages);
+      if (groups.length >= MAX_SPLIT_PARTS) break;
+    }
+  }
+  return groups.length > 0 ? groups : null;
+}
+
+/** Why a split's options cannot run, or null. */
+export function splitProblem(options: SplitOptions): TKey | null {
+  if (options.how === 'every') return Number.isFinite(options.every) && options.every >= 1 ? null : 'quick.problem.split';
+  const parts = options.ranges.split(/[,،]/).filter((part) => part.trim());
+  return parts.length > 0 && parts.every((part) => parseList(part) !== null) ? null : 'quick.problem.split';
+}
+
+/** The name of a split's part: "report-part2.pdf". */
+export function partName(first: string, suffix: string, part: number): string {
+  return combinedName(first, `${suffix}${part}`);
 }
 
 /** The name of a file made of several: "first-combined.pdf". */

@@ -37,8 +37,27 @@ pub const QUICK_FLAG: &str = "--quick";
 const TOOL_PREFIX: &str = "--tool=";
 /// The tools a menu entry may name; the window offers them all when none is named.
 pub const TOOLS: &[&str] = &[
-    "compress", "word", "images", "ocr", "combine", "protect", "rotate", "extract", "topdf",
+    "compress",
+    "word",
+    "excel",
+    "powerpoint",
+    "text",
+    "images",
+    "ocr",
+    "combine",
+    "protect",
+    "unlock",
+    "rotate",
+    "extract",
+    "split",
+    "resize",
+    "numbers",
+    "watermark",
+    "sign",
+    "topdf",
 ];
+/// The tool that is the editor's own: its file opens there, at that tool.
+pub const EDITOR_TOOLS: &[(&str, &str)] = &[("sign", "fillSign")];
 /// More than anyone selects by hand; a bound on what one request holds.
 const MAX_FILES: usize = 500;
 /// How long requests for the same tool are gathered before the window opens.
@@ -113,6 +132,14 @@ pub fn request<R: Runtime>(app: &AppHandle<R>, request: QuickRequest) {
             eprintln!("warraq: cannot allow {}: {e}", file.display());
         }
     }
+    // Signing is done in the editor, on the first file.
+    if let Some((_, editor_tool)) = EDITOR_TOOLS
+        .iter()
+        .find(|(tool, _)| request.tool.as_deref() == Some(*tool))
+    {
+        crate::open_in_editor_at(app, request.files.into_iter().next(), Some(editor_tool));
+        return;
+    }
     let Some(state) = app.try_state::<QuickState>() else {
         return;
     };
@@ -157,18 +184,23 @@ pub fn request<R: Runtime>(app: &AppHandle<R>, request: QuickRequest) {
 fn job_of(tool: Option<String>, files: Vec<PathBuf>) -> QuickJob {
     QuickJob {
         tool,
-        files: files
-            .into_iter()
-            .map(|path| QuickFile {
-                name: path
-                    .file_name()
-                    .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_default(),
-                size: std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0),
-                path: path.to_string_lossy().into_owned(),
-            })
-            .collect(),
+        files: files_of(files),
     }
+}
+
+/// Files as a quick window or the ring is given them.
+pub fn files_of(files: Vec<PathBuf>) -> Vec<QuickFile> {
+    files
+        .into_iter()
+        .map(|path| QuickFile {
+            name: path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default(),
+            size: std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0),
+            path: path.to_string_lossy().into_owned(),
+        })
+        .collect()
 }
 
 fn open_window<R: Runtime>(
@@ -187,7 +219,7 @@ fn open_window<R: Runtime>(
     let window =
         WebviewWindowBuilder::new(app, &label, WebviewUrl::App("index.html?quick=1".into()))
             .title("أدوات PDF السريعة — محرر PDF")
-            .inner_size(480.0, 600.0)
+            .inner_size(680.0, 620.0)
             .min_inner_size(400.0, 460.0)
             .center()
             .always_on_top(true)

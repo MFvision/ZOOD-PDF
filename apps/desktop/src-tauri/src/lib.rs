@@ -86,6 +86,10 @@ static DRAGGING_FILES: std::sync::atomic::AtomicBool = std::sync::atomic::Atomic
 /// `WARRAQ_DEBUG=1` then reports on stdout.
 struct StartupFile(Mutex<Option<String>>);
 
+/// The tool the waiting file opens at (Fill & sign, for a quick "Sign"),
+/// claimed once like the file.
+struct StartupTool(Mutex<Option<String>>);
+
 /// The first existing file among a launch's arguments (after the program's
 /// own name), a relative one taken from where that launch started. Put in the
 /// file scope: a file named on the command line is as explicit a choice as
@@ -130,9 +134,23 @@ fn second_launch<R: Runtime>(app: &AppHandle<R>, args: Vec<String>, cwd: String)
 /// Brings the editor to the front (opening it if this run started for a
 /// quick tool only) and hands it `file`, if any.
 fn open_in_editor<R: Runtime>(app: &AppHandle<R>, file: Option<PathBuf>) {
+    open_in_editor_at(app, file, None);
+}
+
+/// `open_in_editor`, with the editor's tool to open the file at.
+pub(crate) fn open_in_editor_at<R: Runtime>(
+    app: &AppHandle<R>,
+    file: Option<PathBuf>,
+    tool: Option<&str>,
+) {
     let fresh = app.get_webview_window("main").is_none();
     quick::show_editor(app);
     let Some(file) = file else { return };
+    if let Some(slot) = app.try_state::<StartupTool>() {
+        if let Ok(mut slot) = slot.0.lock() {
+            *slot = tool.map(str::to_string);
+        }
+    }
     if let Some(slot) = app.try_state::<StartupFile>() {
         if let Ok(mut slot) = slot.0.lock() {
             *slot = Some(file.to_string_lossy().into_owned());
@@ -144,14 +162,24 @@ fn open_in_editor<R: Runtime>(app: &AppHandle<R>, file: Option<PathBuf>) {
     }
 }
 
-/// Opens a quick tool's result in the editor ("Open" beside a result).
+/// Opens a quick tool's result in the editor ("Open" beside a result), or a
+/// file at the editor's tool for a quick tool that is the editor's (Sign).
 #[tauri::command]
-fn quick_open_in_editor<R: Runtime>(app: AppHandle<R>, path: String) -> Result<(), String> {
+fn quick_open_in_editor<R: Runtime>(
+    app: AppHandle<R>,
+    path: String,
+    tool: Option<String>,
+) -> Result<(), String> {
     let file = PathBuf::from(&path);
     if !file.is_absolute() || !file.is_file() || !app.fs_scope().is_allowed(&file) {
         return Err(format!("E_SCOPE: {path} is not a result of this run"));
     }
-    open_in_editor(&app, Some(file));
+    // "Sign" from the quick window: the file opens at Fill & sign.
+    let tool = quick::EDITOR_TOOLS
+        .iter()
+        .find(|(quick_tool, _)| tool.as_deref() == Some(*quick_tool))
+        .map(|(_, editor)| *editor);
+    open_in_editor_at(&app, Some(file), tool);
     Ok(())
 }
 
@@ -161,6 +189,12 @@ fn startup_file(state: State<'_, StartupFile>) -> Option<String> {
     let path = state.0.lock().ok().and_then(|mut slot| slot.take());
     core_bridge::debug_log(format!("startup file = {path:?}"));
     path
+}
+
+/// The tool the waiting file opens at, consumed like the file.
+#[tauri::command]
+fn startup_tool(state: State<'_, StartupTool>) -> Option<String> {
+    state.0.lock().ok().and_then(|mut slot| slot.take())
 }
 
 /// A line from the interface into the `WARRAQ_DEBUG` log: what EmbedPDF did in
@@ -279,6 +313,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
             second_launch(app, args, cwd)
         }))
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         // The macOS menu bar is the UI's model (src/menu.rs); until the UI
@@ -345,6 +380,7 @@ pub fn run() {
             };
             core_bridge::debug_log(format!("command line file = {startup:?}"));
 
+            app.manage(StartupTool(Mutex::new(None)));
             app.manage(StartupFile(Mutex::new(
                 startup.map(|path| path.to_string_lossy().into_owned()),
             )));
@@ -356,6 +392,7 @@ pub fn run() {
             open_url,
             read_file_bytes,
             startup_file,
+            startup_tool,
             ui_log,
             core_bridge::core_engine,
             core_bridge::doc_open,
@@ -422,6 +459,8 @@ pub fn run() {
             shell_menu::shell_menu_set,
             shell_menu::shell_menu_state,
             ring::ring_pick,
+            ring::ring_take,
+            ring::ring_done,
             ring::ring_configure,
             ring::ring_settings,
         ])

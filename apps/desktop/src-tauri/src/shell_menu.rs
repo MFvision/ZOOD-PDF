@@ -30,12 +30,25 @@ pub const TO_PDF_TYPES: &[&str] = &[
 const PDF_TOOLS: &[(&str, &str, &str)] = &[
     ("compress", "ضغط الحجم", "Compress"),
     ("word", "تحويل إلى Word", "Convert to Word"),
+    ("excel", "تحويل إلى Excel", "Convert to Excel"),
+    (
+        "powerpoint",
+        "تحويل إلى PowerPoint",
+        "Convert to PowerPoint",
+    ),
+    ("text", "تحويل إلى نص", "Convert to text"),
     ("images", "تحويل إلى صور", "Convert to pictures"),
     ("ocr", "التعرّف على النص (OCR)", "Recognize text (OCR)"),
     ("combine", "دمج في ملف واحد", "Combine into one file"),
     ("rotate", "تدوير الصفحات", "Rotate pages"),
     ("extract", "استخراج صفحات", "Extract pages"),
+    ("split", "تقسيم الملف", "Split into files"),
+    ("resize", "تغيير مقاس الصفحات", "Resize pages"),
+    ("numbers", "ترقيم الصفحات", "Number the pages"),
+    ("watermark", "إضافة علامة مائية", "Add a watermark"),
+    ("sign", "تعبئة وتوقيع", "Fill & sign"),
     ("protect", "حماية بكلمة مرور", "Protect with a password"),
+    ("unlock", "إزالة كلمة المرور", "Remove the password"),
 ];
 
 /// A registry key and the string values to set on it ("" is the default value).

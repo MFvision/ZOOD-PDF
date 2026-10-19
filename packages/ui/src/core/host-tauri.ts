@@ -208,6 +208,13 @@ export async function takeStartupFile(): Promise<PickedFile | null> {
   return { name: baseName(path), bytes: toArrayBuffer(await readFile(path)), path };
 }
 
+/** The editor tool the waiting file opens at (`fillSign` for a quick "Sign"), claimed once. */
+export async function takeStartupTool(): Promise<string | null> {
+  if (!internals()) return null;
+  const tool = await invoke('startup_tool');
+  return typeof tool === 'string' ? tool : null;
+}
+
 /** Emitted by `apps/desktop/src-tauri/src/lib.rs` when a second launch handed a PDF to this window. */
 export const OPEN_FILE_EVENT = 'warraq://open-file';
 
@@ -282,9 +289,9 @@ export function quickClose(): Promise<void> {
   return invoke('quick_close').then(() => undefined);
 }
 
-/** Opens a quick tool's result in the editor. */
-export function quickOpenInEditor(path: string): Promise<void> {
-  return invoke('quick_open_in_editor', { path }).then(() => undefined);
+/** Opens a quick tool's result in the editor, or a file at the editor's own tool for one (`sign`). */
+export function quickOpenInEditor(path: string, tool?: string): Promise<void> {
+  return invoke('quick_open_in_editor', { path, tool: tool ?? null }).then(() => undefined);
 }
 
 /**
@@ -325,10 +332,22 @@ export const RING_SHOW_EVENT = 'ring://show';
 export const RING_FILES_EVENT = 'ring://files';
 export const RING_OVER_EVENT = 'ring://over';
 export const RING_DROP_EVENT = 'ring://drop';
+/** The ring opened by its keyboard shortcut, already holding the selected files. */
+export const RING_HOLD_EVENT = 'ring://hold';
 
-/** The tool the files were let go on, or `none`. */
-export function ringPick(tool: string): Promise<void> {
-  return invoke('ring_pick', { tool }).then(() => undefined);
+/** The tool the files were let go on, or `none`; `only`, of those files, these paths. */
+export function ringPick(tool: string, only?: readonly string[]): Promise<void> {
+  return invoke('ring_pick', { tool, only: only ?? null }).then(() => undefined);
+}
+
+/** The files let go on the ring, for a tool the ring runs itself; they stay held for `ringPick`. */
+export async function ringTake(): Promise<QuickJob['files']> {
+  return ((await invoke('ring_take')) as QuickJob['files'] | null) ?? [];
+}
+
+/** The ring's tool finished: the ring goes. */
+export function ringDone(done: number, failed: number): Promise<void> {
+  return invoke('ring_done', { done, failed }).then(() => undefined);
 }
 
 /** The ring's switches: the ring itself, and keeping the app ready at sign-in. */

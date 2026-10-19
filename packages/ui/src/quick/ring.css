@@ -97,3 +97,33 @@ html.ring-page.ring-waiting body {
   font-size: 11px;
   font-weight: 600;
 }
+
+/* A tool running on the ring: the tools fade, and the progress goes round. */
+.ring-working .ring-segment {
+  opacity: 0.35;
+  transition: opacity 120ms ease;
+}
+
+.ring-progress-track,
+.ring-progress-bar {
+  fill: none;
+  stroke-width: 14;
+}
+
+.ring-progress-track {
+  stroke: rgb(0 0 0 / 10%);
+}
+
+.ring-progress-bar {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transition: stroke-dasharray 200ms ease;
+}
+
+.ring-progress-done .ring-progress-bar {
+  stroke: var(--green, #34c759);
+}
+
+.ring-progress-failed .ring-progress-bar {
+  stroke: var(--red, #ff3b30);
+}

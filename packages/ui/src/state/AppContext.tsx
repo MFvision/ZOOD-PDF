@@ -28,6 +28,7 @@ import {
   rememberRecentPath,
   savePdfFile,
   takeStartupFile,
+  takeStartupTool,
 } from '../core/host-tauri';
 import type { PickedFile } from '../core/host-tauri';
 import type { CoreClient, RemoteDocument } from '../core/client';
@@ -857,8 +858,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     const take = () =>
       void takeStartupFile()
-        .then((picked) => {
-          if (picked && !cancelled) void openFile(toFile(picked));
+        .then(async (picked) => {
+          if (!picked || cancelled) return;
+          // A quick "Sign" opens the file at Fill & sign.
+          const tool = await takeStartupTool();
+          await openFile(toFile(picked));
+          if (tool === 'fillSign' && !cancelled) dispatch({ type: 'SET_ACTIVE_TOOL', tool: 'fillSign' });
         })
         .catch(() => {});
     take();

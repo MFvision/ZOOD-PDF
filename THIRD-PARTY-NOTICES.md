@@ -47,6 +47,7 @@ licence text (`scripts/rust-licenses.mjs`).
 | fflate | MIT | zip and deflate for Export (the Word, Excel and PowerPoint files, page images, PNG compression) and for reading the Office files Create PDF takes |
 | React, Vite, Tauri | MIT / MIT / Apache-2.0 OR MIT | UI and app shells |
 | `tauri-plugin-single-instance` 2 (desktop only; on Linux with `zbus` 5, `zvariant` 5 and their own crates) | MIT OR Apache-2.0; `zbus`, `zvariant`: MIT | One window for the app: a second launch (another PDF double-clicked) hands its file to the window already open |
+| `tauri-plugin-global-shortcut` 2.3 (desktop; with `global-hotkey` 0.7, and on Linux `x11rb` 0.13, `gethostname` 1) | MIT OR Apache-2.0; `gethostname`: Apache-2.0 | The quick tools ring's keyboard shortcut, Ctrl+Alt+Z (Command+Option+Z), from any app |
 | muda (Tauri's menu library, already inside Tauri) | Apache-2.0 OR MIT | named directly only in the desktop tests, to parse the macOS menu bar's shortcuts as Tauri does |
 | `objc2`, `objc2-foundation`, `objc2-app-kit`, `objc2-pdf-kit` (macOS desktop) | MIT; Zlib OR Apache-2.0 OR MIT | Print, through PDFKit and the system print sheet |
 | `block2` 0.6 (macOS desktop) | MIT | The quick tools' ring: the block its mouse monitor takes |
