@@ -33,6 +33,7 @@ import { useFileDrop } from './useFileDrop';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { useNativeMenu } from './useNativeMenu';
 import { useShellMenuSync } from '../quick/QuickSettings';
+import { TabBar } from './TabBar';
 
 /**
  * The window: a unified toolbar over the document, the sidebar at its leading
@@ -115,6 +116,7 @@ export function Shell() {
       <div className="shell" data-native-menu={nativeMenu || undefined} data-view={state.view}>
         {!nativeMenu && <MenuBar />}
         <Toolbar />
+        {isViewer && <TabBar />}
         {warraqView && !organizing && state.find.open && <FindBar />}
         {isViewer && state.document !== null && !organizing && readAloud.open && <ReadAloudBar />}
         {state.error && (

@@ -59,6 +59,9 @@ import type { OcrLanguage } from '../ocr/engine';
 import { recognizeFile } from '../ocr/run';
 import type { OcrProgress, OcrScope, ReadOptions } from '../ocr/run';
 import { runSelfCheck } from '../ocr/selfCheck';
+import { requestPage } from '../home/pendingPage';
+import { MAX_TABS, insertAfter, neighbourOf, tabOf } from './tabs';
+import type { DocTab } from './tabs';
 
 /** What Scan & OCR did. */
 export interface OcrOutcome {
@@ -134,6 +137,8 @@ interface PageShape {
 export interface OpenOptions {
   /** `false` keeps it out of the home screen's recent files (a cloud file is listed with its drive). */
   recent?: boolean;
+  /** The parked tab this file is (`tabs.ts`): going back to it, not opening a new one. */
+  tab?: number;
 }
 
 /**
@@ -194,7 +199,19 @@ export interface AppServices {
   dropClaimed: boolean;
   /** Opens the first PDF in a drop or picker selection. */
   openFiles: (files: ArrayLike<File>) => Promise<void>;
+  /** Closes the live tab: the next one shows, or the home screen when it was the last. */
   closeDocument: () => void;
+  /** The documents open, in order (`tabs.ts`); the live one has no parked file. */
+  tabs: readonly DocTab<SaveTarget>[];
+  activeTab: number | null;
+  /** Shows a parked tab where it was left. */
+  activateTab: (key: number) => void;
+  closeTab: (key: number) => void;
+  /**
+   * Copies pages (0-based) of the live document to the end of a parked
+   * tab's, or, with `null`, into a new tab of their own.
+   */
+  copyPagesToTab: (key: number | null, pages: readonly number[]) => Promise<void>;
   /** Shows the file picker: the native panel on desktop, `<input type="file">` in a browser. */
   requestOpenFile: () => void;
   /** Opens a recent file again: directly on the desktop, through the picker in a browser. */
@@ -389,6 +406,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   const [document, setDocument] = useState<RemoteDocument | null>(null);
   const [documentBytes, setDocumentBytes] = useState<ArrayBuffer | null>(null);
+  const documentBytesRef = useRef<ArrayBuffer | null>(null);
+  useEffect(() => {
+    documentBytesRef.current = documentBytes;
+  }, [documentBytes]);
   const [documentPassword, setDocumentPassword] = useState<string | undefined>(undefined);
   const passwordRef = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -448,6 +469,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Async work reads the latest state through this ref, never a stale closure.
   const stateRef = useRef(state);
   const openSequence = useRef(0);
+  // Document tabs (`tabs.ts`). The refs are what async work reads; `commitTabs` keeps both.
+  const [tabs, setTabs] = useState<DocTab<SaveTarget>[]>([]);
+  const tabsRef = useRef<DocTab<SaveTarget>[]>([]);
+  const [activeTab, setActiveTabState] = useState<number | null>(null);
+  const activeTabRef = useRef<number | null>(null);
+  const nextTabKey = useRef(1);
+  const commitTabs = useCallback((next: DocTab<SaveTarget>[], live: number | null) => {
+    tabsRef.current = next;
+    activeTabRef.current = live;
+    setTabs(next);
+    setActiveTabState(live);
+  }, []);
+  /** The live document's file as it is now, edits and marks included; set once `readFile` exists below. */
+  const liveBytes = useRef<() => Promise<ArrayBuffer | null>>(async () => null);
+  // A file opened from a cloud drive is saved back to it (`cloud/`).
+  const saveTarget = useRef<SaveTarget | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   // What the hidden input was last opened for: Open (a PDF) or Create PDF (anything it reads).
   const inputPurpose = useRef<'open' | 'create'>('open');
@@ -513,10 +550,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'DOCUMENT_FAILED', error: 'error.notPdf' });
         return;
       }
+      // A file already open in a tab is shown there, not opened twice.
+      let switching = options?.tab;
+      if (switching === undefined) {
+        const open = tabOf(tabsRef.current, { name: file.name, size: file.size, path: nativePathOf(file) });
+        if (open) {
+          if (open.key === activeTabRef.current || !open.parked) return;
+          switching = open.key;
+          file = open.parked;
+          password = open.password;
+          options = { recent: false, tab: open.key };
+        } else if (tabsRef.current.length >= MAX_TABS) {
+          dispatch({ type: 'TOAST', key: 'tabs.full' });
+          return;
+        }
+      }
       openSequence.current += 1;
       const sequence = openSequence.current;
       dispatch({ type: 'DOCUMENT_LOADING', name: file.name });
       try {
+        // The live document, as it is now, for its tab while another shows.
+        const leaving = documentRef.current ? tabsRef.current.find((tab) => tab.key === activeTabRef.current) : undefined;
+        let parked: DocTab<SaveTarget> | null = null;
+        if (leaving) {
+          const now = await liveBytes.current().catch(() => null);
+          const kept = now ?? documentBytesRef.current;
+          if (kept) {
+            const edit = stateRef.current.edit;
+            parked = {
+              ...leaving,
+              parked: keepNativePath(new File([kept], leaving.name, { type: 'application/pdf' }), leaving.path),
+              page: stateRef.current.currentPage,
+              edited: leaving.edited || edit.revision !== edit.savedRevision,
+              save: saveTarget.current,
+            };
+          }
+        }
         const bytes = await file.arrayBuffer();
         // Kept before the core takes `bytes` over (it is transferred to the worker).
         const kept = bytes.slice(0);
@@ -527,6 +596,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         lockedFile.current = null;
         lockedOptions.current = undefined;
+        // The tabs: the one left is parked, the one opened is live.
+        let tabList = tabsRef.current.map((tab) => (parked && tab.key === parked.key ? parked : tab));
+        let live: number;
+        if (switching !== undefined && tabList.some((tab) => tab.key === switching)) {
+          const back = tabList.find((tab) => tab.key === switching)!;
+          tabList = tabList.map((tab) => (tab.key === switching ? { ...tab, parked: null } : tab));
+          live = switching;
+          saveTarget.current = back.save;
+          if (back.page > 1) requestPage(back.page);
+        } else {
+          live = nextTabKey.current++;
+          // Without a tab to go back to, the live document is let go of here.
+          if (!parked) tabList = tabList.filter((tab) => tab.key !== activeTabRef.current);
+          tabList = insertAfter(tabList, activeTabRef.current, {
+            key: live,
+            name: file.name,
+            path: nativePathOf(file),
+            size: file.size,
+            parked: null,
+            password,
+            page: 1,
+            edited: false,
+            save: null,
+          });
+          saveTarget.current = null;
+        }
+        commitTabs(tabList, live);
         void documentRef.current?.free();
         documentRef.current = opened;
         setDocument(opened);
@@ -566,7 +662,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'DOCUMENT_FAILED', error: errorKeyFor(err) });
       }
     },
-    [client, forgetLayerView],
+    [client, forgetLayerView, commitTabs],
   );
 
   const unlockFile = useCallback(
@@ -647,7 +743,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .catch(() => dispatch({ type: 'DOCUMENT_FAILED', error: 'create.failed' }));
   }, [startCreate]);
 
-  const closeDocument = useCallback(() => {
+  /** Lets go of the live document (its tab is the caller's business). */
+  const releaseDocument = useCallback(() => {
     openSequence.current += 1;
     void documentRef.current?.free();
     documentRef.current = null;
@@ -656,8 +753,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setDocumentPassword(undefined);
     setOpenedFile(null);
     forgetLayerView();
-    dispatch({ type: 'DOCUMENT_CLOSED' });
+    saveTarget.current = null;
   }, [forgetLayerView]);
+
+  const activateTab = useCallback(
+    (key: number) => {
+      const tab = tabsRef.current.find((t) => t.key === key);
+      if (!tab?.parked || key === activeTabRef.current) return;
+      void openFile(tab.parked, tab.password, { recent: false, tab: key });
+    },
+    [openFile],
+  );
+
+  const closeTab = useCallback(
+    (key: number) => {
+      const list = tabsRef.current;
+      if (key !== activeTabRef.current) {
+        commitTabs(
+          list.filter((tab) => tab.key !== key),
+          activeTabRef.current,
+        );
+        return;
+      }
+      const next = list.find((tab) => tab.key === neighbourOf(list, key));
+      const rest = list.filter((tab) => tab.key !== key);
+      releaseDocument();
+      if (next?.parked) {
+        commitTabs(rest, null);
+        void openFile(next.parked, next.password, { recent: false, tab: next.key });
+        return;
+      }
+      commitTabs([], null);
+      dispatch({ type: 'DOCUMENT_CLOSED' });
+    },
+    [commitTabs, openFile, releaseDocument],
+  );
+
+  const closeDocument = useCallback(() => {
+    const live = activeTabRef.current;
+    if (live !== null) {
+      closeTab(live);
+      return;
+    }
+    releaseDocument();
+    dispatch({ type: 'DOCUMENT_CLOSED' });
+  }, [closeTab, releaseDocument]);
 
   /**
    * A browser opens the hidden `<input type="file">`; the desktop webview
@@ -1390,6 +1530,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return bytes && withOwnLayers(bytes);
   }, [bytesFromEmbed, keepOwnBytes, withOwnLayers]);
 
+  useEffect(() => {
+    liveBytes.current = readFile;
+  }, [readFile]);
+
+  const copyPagesToTab = useCallback(
+    async (key: number | null, pages: readonly number[]) => {
+      const live = documentRef.current;
+      const from = stateRef.current.document;
+      if (!live || !from || pages.length === 0) return;
+      const target = key === null ? null : tabsRef.current.find((tab) => tab.key === key);
+      if (key !== null && !target?.parked) return;
+      try {
+        const { blobs } = await live.call<{ pageCount: number }>('pages.extract', { pages: [...pages] });
+        const extracted = blobs[0];
+        if (!extracted) throw new Error('E_EXTRACT: nothing came back');
+        if (!target?.parked) {
+          // Onto "+": the pages as a document of their own, in a new tab.
+          const name = extractedFileName(from.name, pages.map((page) => page + 1));
+          await openFile(new File([extracted], name, { type: 'application/pdf' }), undefined, { recent: false });
+          return;
+        }
+        const own = await target.parked.arrayBuffer();
+        const { blobs: made } = await client.callStatic<{ pageCount: number }>(
+          'pages.combine',
+          { passwords: [target.password ?? null, null] },
+          [own, extracted],
+        );
+        const joined = made[0];
+        if (!joined) throw new Error('E_COMBINE: nothing came back');
+        const file = keepNativePath(new File([joined], target.name, { type: 'application/pdf' }), target.path);
+        commitTabs(
+          tabsRef.current.map((tab) => (tab.key === target.key ? { ...tab, parked: file, edited: true } : tab)),
+          activeTabRef.current,
+        );
+        dispatch({ type: 'TOAST', key: 'tabs.copied' });
+      } catch {
+        dispatch({ type: 'DOCUMENT_FAILED', error: 'tabs.copyFailed' });
+      }
+    },
+    [client, commitTabs, openFile],
+  );
+
   const markForRedaction = useCallback((marks: readonly RedactionMark[]): number => {
     const registry = embedRef.current;
     if (!registry || !embedShowingRef.current) return 0;
@@ -1763,11 +1945,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         : doc.save();
   }, [bytesFromEmbed, keepOwnBytes, withOwnLayers]);
 
-  // A file opened from a cloud drive is saved back to it (`cloud/`).
-  const saveTarget = useRef<SaveTarget | null>(null);
   const claimSave = useCallback((target: SaveTarget | null) => {
     saveTarget.current = target;
   }, []);
+
+  /** The live tab's changes are saved: it shows as unchanged again. */
+  const markLiveSaved = useCallback(() => {
+    const live = activeTabRef.current;
+    if (tabsRef.current.some((tab) => tab.key === live && tab.edited)) {
+      commitTabs(
+        tabsRef.current.map((tab) => (tab.key === live ? { ...tab, edited: false } : tab)),
+        live,
+      );
+    }
+  }, [commitTabs]);
 
   const save = useCallback(
     async (toDevice: boolean) => {
@@ -1782,6 +1973,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (!outcome.saved) return;
           forgetRecentThumbnail(name);
           dispatch({ type: 'DOCUMENT_SAVED' });
+          markLiveSaved();
           dispatch({ type: 'TOAST', key: outcome.toast });
           return;
         }
@@ -1796,14 +1988,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // when the file is next opened (home/recentPicture.ts).
         forgetRecentThumbnail(name);
         // A copy on the device of a file that lives in a drive is not that file saved.
-        if (!toDevice || !saveTarget.current) dispatch({ type: 'DOCUMENT_SAVED' });
+        if (!toDevice || !saveTarget.current) {
+          dispatch({ type: 'DOCUMENT_SAVED' });
+          markLiveSaved();
+        }
         dispatch({ type: 'TOAST', key: 'file.saved' });
       } catch (error) {
         const tooLarge = String(error instanceof Error ? error.message : error).includes('E_SIGNED_TOO_LARGE');
         dispatch({ type: 'DOCUMENT_FAILED', error: tooLarge ? 'signatures.error.tooLarge' : 'file.saveFailed' });
       }
     },
-    [bytesForSave],
+    [bytesForSave, markLiveSaved],
   );
   const saveDocument = useCallback(() => save(false), [save]);
   const saveToDevice = useCallback(() => save(true), [save]);
@@ -1842,6 +2037,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dropLabel,
       dropClaimed: dropLabel !== 'drop.overlay',
       closeDocument,
+      tabs,
+      activeTab,
+      activateTab,
+      closeTab,
+      copyPagesToTab,
       requestOpenFile,
       openRecent,
       requestCreateFiles,
@@ -1910,6 +2110,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       claimDrops,
       dropLabel,
       closeDocument,
+      tabs,
+      activeTab,
+      activateTab,
+      closeTab,
+      copyPagesToTab,
       requestOpenFile,
       openRecent,
       requestCreateFiles,

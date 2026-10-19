@@ -2050,5 +2050,14 @@
   "quick.settings.ringNote": "Hold Ctrl and drag files out of File Explorer or Finder: a ring of tools opens at the pointer. Let the files go on a tool.",
   "quick.settings.background": "Keep the quick tools ready (start محرر PDF when I sign in, without a window)",
   "quick.settings.backgroundNote": "The ring works while the app is running. With this on, it starts when you sign in and waits in the tray (menu bar on a Mac); closing the editor keeps it there.",
-  "quick.settings.howTo": "Show me how"
+  "quick.settings.howTo": "Show me how",
+  "tabs.label": "Open documents",
+  "tabs.close": "Close {name}",
+  "tabs.open": "Open another PDF in a new tab",
+  "tabs.edited": "Unsaved changes",
+  "tabs.full": "Twelve documents are open: close one to open another.",
+  "tabs.copied": "The pages were copied to the end of that document. Save it there to keep them.",
+  "tabs.copyFailed": "The pages could not be copied to that document.",
+  "tabs.dragPages": "Pages: {count}",
+  "tabs.dropHint": "Drop on a tab to copy the pages there, or on + for a new document"
 }
