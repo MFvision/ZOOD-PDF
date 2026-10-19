@@ -32,3 +32,6 @@ apps/ios/**/*.entitlements
 # bought). Never committed: the app loads it from here when present and falls
 # back to an OFL face otherwise (docs/design/README.md, "The iOS themes").
 apps/ios/PDFEditor/Resources/LicensedFonts/
+
+# Website references from the owner (third-party videos): local only
+docs/research/website-refs/
