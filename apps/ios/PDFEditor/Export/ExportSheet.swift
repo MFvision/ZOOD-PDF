@@ -53,7 +53,8 @@ struct ExportSheet: View {
                 }
                 Section("Format") {
                     row(.pdf, "PDF", "doc.richtext", "The document as it stands.")
-                    row(.word, "Word", "doc.text", "Flowing paragraphs in reading order, Arabic right-to-left.")
+                    row(.word, "Word", "doc.text", "Each page as it looks: its pictures behind, its text in boxes to edit, in its own fonts and colours.")
+                    row(.wordText, "Word, text only", "text.justify.leading", "Flowing paragraphs in reading order, Arabic right-to-left.")
                     row(.images, "Page pictures", "photo.on.rectangle", "A PNG of each page at 150 dpi.")
                     row(.text, "Text", "text.alignright", "Every page's text in logical order.")
                     row(.compressed, "Compressed PDF", "arrow.down.right.and.arrow.up.left", "Pictures downsampled, streams recompressed, unused objects dropped.")
@@ -133,7 +134,9 @@ struct ExportSheet: View {
                 case .pdf:
                     result = ExportResult(format: format, files: [try Exporter.pdf(model)], note: nil)
                 case .word:
-                    result = ExportResult(format: format, files: [try await Exporter.word(model)], note: "Text only: the layout is not carried over.")
+                    result = ExportResult(format: format, files: [try await Exporter.word(model)], note: nil)
+                case .wordText:
+                    result = ExportResult(format: format, files: [try await Exporter.word(model, layout: false)], note: "Text only: the layout is not carried over.")
                 case .images:
                     let files = try Exporter.images(model)
                     result = ExportResult(format: format, files: files, note: "\(files.count) pictures.")

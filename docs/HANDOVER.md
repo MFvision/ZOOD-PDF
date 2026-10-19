@@ -8,8 +8,8 @@ this file current at the end of every job.
 | Platform | Latest build | What is in it |
 |---|---|---|
 | Windows | Release `windows-20261019-1013` (PR #2, commit `58acfff`): https://github.com/MFvision/ZOOD-PDF/releases/download/windows-20261019-1013/ZOOD-PDF-Setup.exe | Everything below plus the Windows pilot, quick tools, tabs, tour, themes and the layout-keeping Word export; the core and desktop tests pass on Windows |
-| macOS | Installed in /Applications from `d4b22e1` | Same as Windows |
-| iPhone / iPad | TestFlight build `202610052355` | Editor with columns, kept colour and Automatic font (own font, else closest bundled face); not the desktop's AI chat |
+| macOS | Installed in /Applications from PR #2 (2026-10-19) | Same as Windows; the ring with Option/Command not yet tried by hand on the Mac |
+| iPhone / iPad | TestFlight build `202610191832` | Editor with columns, kept colour and Automatic font; Word export keeps the layout (`DocxLayout.swift`, as `docxLayout.ts`), with "Word, text only" beside it; not the desktop's AI chat. Built before `pages.resize` reached the core (no iOS screen uses it) |
 | Web | Builds from `main` | Same as desktop, minus installed fonts |
 
 Since `d4b22e1`, `main` only gained documents (this file, `CLAUDE.md`, the backlog, the

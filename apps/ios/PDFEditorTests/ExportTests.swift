@@ -30,7 +30,7 @@ final class ExportTests: XCTestCase {
 
     func testWordExportCarriesTheArabicInReadingOrder() async throws {
         let model = try await PartB.loadedModel("coretext-sfarabic-mixed-invoice", in: folder)
-        let url = try await Exporter.word(model)
+        let url = try await Exporter.word(model, layout: false)
         XCTAssertEqual(url.pathExtension, "docx")
         let docx = try Data(contentsOf: url)
         let xml = try XCTUnwrap(ZipReader.entry(named: "word/document.xml", in: docx)).flatMap { String(data: $0, encoding: .utf8) }
@@ -46,6 +46,49 @@ final class ExportTests: XCTestCase {
             XCTAssertTrue(text.contains(word) && document.contains(word), word)
         }
         model.close()
+    }
+
+    func testWordExportKeepsTheLayout() async throws {
+        let model = try await PartB.loadedModel("coretext-sfarabic-mixed-invoice", in: folder)
+        let url = try await Exporter.word(model)
+        let docx = try Data(contentsOf: url)
+        let xml = try XCTUnwrap(ZipReader.entry(named: "word/document.xml", in: docx).flatMap { String(data: $0, encoding: .utf8) })
+        let size = try await XCTUnwrap(model.engine).pageSize(0)
+        // A section at the page's own size, with no margins.
+        XCTAssertTrue(xml.contains("<w:pgSz w:w=\"\(Int((size.width * 20).rounded()))\" w:h=\"\(Int((size.height * 20).rounded()))\""), String(xml.prefix(600)))
+        XCTAssertTrue(xml.contains("<w:pgMar w:top=\"0\" w:right=\"0\" w:bottom=\"0\" w:left=\"0\""))
+        // Each paragraph in a text box, right to left, in its own words and colour.
+        XCTAssertTrue(xml.contains("<wps:txbx><w:txbxContent>"))
+        XCTAssertTrue(xml.contains("<w:bidi/>") && xml.contains("<w:rtl/>"))
+        XCTAssertTrue(xml.contains("فاتورة ضريبية مبسطة"))
+        XCTAssertTrue(xml.contains("<w:color w:val=\""))
+        // The page picture, when there is one, sits behind and is in the package.
+        if xml.contains("r:embed=\"rIdPicture1\"") {
+            XCTAssertTrue(xml.contains("behindDoc=\"1\""))
+            let png = try XCTUnwrap(ZipReader.entry(named: "word/media/page1.png", in: docx))
+            XCTAssertTrue(png.starts(with: [0x89, 0x50, 0x4E, 0x47]))
+        }
+        model.close()
+    }
+
+    func testLayoutGroupsLinesIntoParagraphs() throws {
+        func line(_ text: String, y: Float, width: Float = 200) throws -> TextLine {
+            let json = "{\"text\":\"\(text)\",\"x\":\(300 - width),\"y\":\(y),\"width\":\(width),\"height\":12,\"direction\":\"rtl\"}"
+            return try JSONDecoder().decode(TextLine.self, from: Data(json.utf8))
+        }
+        // Two lines that wrap, a gap, then a short line of its own.
+        let lines = [try line("السطر الأول من الفقرة يمتد", y: 100), try line("حتى السطر الثاني", y: 114, width: 90),
+                     try line("فقرة أخرى", y: 160, width: 60)]
+        let groups = DocxLayout.group(lines, blocks: [])
+        XCTAssertEqual(groups.map(\.lines.count), [2, 1])
+        XCTAssertTrue(groups.allSatisfy(\.rightToLeft))
+        let box = DocxLayout.layout(groups[0])
+        XCTAssertEqual(box.pitch, 14)
+        XCTAssertEqual(box.lines, ["السطر الأول من الفقرة يمتد", "حتى السطر الثاني"])
+        // A right-to-left box widens to its left, where its lines run to.
+        let place = DocxLayout.place(box, scale: 1)
+        XCTAssertLessThan(place.x, box.x)
+        XCTAssertEqual(place.x + place.width, box.x + box.width, accuracy: 0.01)
     }
 
     func testParagraphXMLKeepsTheSchemaOrder() {

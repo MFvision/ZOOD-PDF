@@ -2059,6 +2059,16 @@
         }
       }
     },
+    "Each page as it looks: its pictures behind, its text in boxes to edit, in its own fonts and colours.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كل صفحة كما تبدو: صورها في الخلفية ونصها في مربعات قابلة للتحرير، بخطوطه وألوانه."
+          }
+        }
+      }
+    },
     "Edited": {
       "localizations": {
         "ar": {
@@ -6713,6 +6723,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Word"
+          }
+        }
+      }
+    },
+    "Word, text only": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Word، نص فقط"
           }
         }
       }
