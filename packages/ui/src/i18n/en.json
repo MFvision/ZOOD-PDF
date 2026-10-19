@@ -76,9 +76,9 @@
   "ai.key": "Anthropic API key",
   "ai.keyRejected": "Anthropic did not accept this API key (401). Check it, or create a new one in the Claude Console.",
   "ai.leftOut": "Not sent: pages {pages}. One request carries at most {budget} characters of text.",
-  "ai.local": "A local model on this computer",
+  "ai.local": "Ollama or LM Studio: a model server you install and run yourself",
   "ai.localApi": "Interface",
-  "ai.localDown": "Nothing answered at {url}. Make sure the local server is running (for Ollama: ollama serve) and allows this app's address (Ollama: OLLAMA_ORIGINS; LM Studio: turn on CORS in its server settings).",
+  "ai.localDown": "Nothing answered at {url}. That is the address of Ollama or LM Studio, a separate program you must install and start yourself. If you don't use one, use the built-in model instead.",
   "ai.localModel": "Model name",
   "ai.localNote": "The model runs on this computer, so the text stays on it. It must already be installed and running — with Ollama, for example: ollama pull gemma3.",
   "ai.localUrl": "Server address",
@@ -1846,7 +1846,7 @@
   "organize.replaced": "The page was replaced.",
   "organize.replacePassword": "“{name}” is protected. Enter its password to put its pages in place of this one.",
   "home.searchClear": "Clear the search",
-  "ai.device": "On this device (no key, nothing leaves the device)",
+  "ai.device": "Built into the app (recommended): no key, no server, nothing leaves the device",
   "ai.deviceNote": "A small model runs inside the app itself, on this computer. Nothing is sent anywhere, no key is needed, and it works offline once the model is downloaded.",
   "ai.deviceWebNote": "A small model runs inside this page, in WebAssembly. Nothing is sent anywhere and it works offline once the model is downloaded — but answers are weaker and slower than in the desktop app, which runs a larger model on the computer itself.",
   "ai.deviceModel": "Model",
@@ -2089,5 +2089,6 @@
   "tour.quick.p1Windows": "Right-click files in File Explorer → PDF Editor: quick tools. On Windows 11 it is under \"Show more options\".",
   "tour.quick.p1Mac": "Right-click files in Finder → Quick Actions (or Services) → أدوات PDF السريعة.",
   "tour.quick.p2": "Or hold Ctrl (Option on a Mac) while dragging files: a ring of tools opens at the pointer. Let go on a tool.",
-  "tour.quick.p3": "The result is saved beside the original, which stays as it was."
+  "tour.quick.p3": "The result is saved beside the original, which stays as it was.",
+  "ai.useDevice": "Use the built-in model instead"
 }

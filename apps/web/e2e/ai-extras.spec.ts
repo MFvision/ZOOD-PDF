@@ -219,7 +219,7 @@ test.describe('the AI tool answers with data, and nothing is changed before it i
     );
     await page.goto('/');
     await openPdf(page, INVOICE_TABLE);
-    const ai = await tools(page, 'A local model on this computer', 'Extract the tables');
+    const ai = await tools(page, 'Ollama or LM Studio: a model server you install and run yourself', 'Extract the tables');
     await ai.getByRole('radio', { name: 'This page (1)' }).check();
 
     // First on this device: the Excel export's own table detection, nothing sent.

@@ -264,6 +264,7 @@ export function AiPanel() {
           openOcr={() => dispatch({ type: 'SET_ACTIVE_TOOL', tool: 'ocr' })}
           incoming={incoming}
           onIncomingTaken={taken}
+          onUseDevice={() => update({ provider: 'device' })}
         />
       )}
       {view === 'setup' && (

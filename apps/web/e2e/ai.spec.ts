@@ -88,11 +88,11 @@ async function claudeFor(page: Page): Promise<Locator> {
   return ai;
 }
 
-/** A local model on this computer, as the settings offer it. */
+/** Ollama or LM Studio, as the settings offer it. */
 async function localFor(page: Page): Promise<Locator> {
   await chooseTool(page, 'AI');
   const ai = await settings(page);
-  await ai.getByRole('radio', { name: 'A local model on this computer' }).check();
+  await ai.getByRole('radio', { name: 'Ollama or LM Studio: a model server you install and run yourself' }).check();
   return ai;
 }
 
@@ -185,7 +185,7 @@ test.describe('the assistant sends nothing until Send, and then only what it sho
 
     // Another provider is another destination: it is shown, and waits for its own Send.
     await settings(page);
-    await ai.getByRole('radio', { name: 'A local model on this computer' }).check();
+    await ai.getByRole('radio', { name: 'Ollama or LM Studio: a model server you install and run yourself' }).check();
     await chat(page);
     await expect(ai).toContainText('go to the local model at http://localhost:11434, on this computer.');
     await input(page).fill('Once more, locally.');
@@ -339,7 +339,7 @@ test.describe('the assistant sends nothing until Send, and then only what it sho
     // A key typed for Claude first, to show it stays behind.
     const ai = await claudeFor(page);
     await settings(page);
-    await ai.getByRole('radio', { name: 'A local model on this computer' }).check();
+    await ai.getByRole('radio', { name: 'Ollama or LM Studio: a model server you install and run yourself' }).check();
     await expect(ai.getByText('The model runs on this computer')).toBeVisible();
     await expect(ai.getByLabel('Server address')).toHaveValue('http://localhost:11434');
     await expect(ai.getByLabel('Model name')).toHaveValue('gemma3');

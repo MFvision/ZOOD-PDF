@@ -56,7 +56,7 @@ test.describe('the AI tool on this device', () => {
     await download(page);
     // The settings name the provider, the model and what it runs on.
     await ai.getByRole('button', { name: 'Model settings', exact: true }).click();
-    await expect(ai.getByRole('radio', { name: /^On this device/ })).toBeChecked();
+    await expect(ai.getByRole('radio', { name: /^Built into the app/ })).toBeChecked();
     await expect(ai).toContainText('The model is on this device (491 MB) and runs on a test engine.');
     expect((await stubRecord(page)).requests).toHaveLength(0);
   });

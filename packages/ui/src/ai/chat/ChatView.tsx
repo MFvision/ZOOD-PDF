@@ -74,6 +74,13 @@ export interface ChatViewProps {
   /** A request waiting to be sent, from the home screen: taken once it can go. */
   incoming: { kind: Ask['kind']; text: string } | null;
   onIncomingTaken: () => void;
+  /** Switches to the built-in model, offered when a local server could not be reached. */
+  onUseDevice?: () => void;
+}
+
+/** A local server that did not answer, or that the app may not reach: the built-in model needs neither. */
+export function offersDevice(failure: Failure, provider: ProviderId): boolean {
+  return provider === 'local' && (failure.kind === 'localDown' || failure.kind === 'blocked');
 }
 
 /**
@@ -256,6 +263,11 @@ export function ChatView(props: ChatViewProps) {
             {say(failed)}
           </p>
         )}
+        {turn.failure && props.onUseDevice && offersDevice(turn.failure, turn.provider) && (
+          <button type="button" className="icon-btn icon-btn-labeled icon-btn-primary ai-use-device" onClick={props.onUseDevice}>
+            {t('ai.useDevice')}
+          </button>
+        )}
         {!working && turn.text.length > 0 && (
           <div className="ai-turn-foot">
             <div className="ai-turn-actions">
@@ -383,6 +395,11 @@ export function ChatView(props: ChatViewProps) {
           <p className="field-error" role="alert">
             {say(failureNote(conversation.failure.failure, conversation.failure.provider))}
           </p>
+        )}
+        {conversation.failure && props.onUseDevice && offersDevice(conversation.failure.failure, conversation.failure.provider) && (
+          <button type="button" className="icon-btn icon-btn-labeled icon-btn-primary ai-use-device" onClick={props.onUseDevice}>
+            {t('ai.useDevice')}
+          </button>
         )}
         {review && documentId !== null && (
           <section className="ai-preflight ai-chat-review" aria-labelledby={reviewId}>
