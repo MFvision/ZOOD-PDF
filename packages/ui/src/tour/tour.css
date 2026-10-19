@@ -1,0 +1,86 @@
+/* The welcome tour (`Tour.tsx`). */
+.tour {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 420px;
+  min-height: 300px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.tour-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-16);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.tour-title {
+  margin: 0;
+  font-size: var(--text-title2);
+}
+
+.tour-body {
+  margin: 0;
+  color: var(--secondary-label);
+  line-height: 1.5;
+}
+
+.tour-points {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: start;
+}
+
+.tour-points li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  line-height: 1.45;
+}
+
+.tour-points .lucide {
+  flex: none;
+  margin-top: 3px;
+  color: var(--accent);
+}
+
+.tour-link {
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.tour-dots {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.tour-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--fill);
+  cursor: pointer;
+}
+
+.tour-dot.is-current {
+  background: var(--accent);
+}

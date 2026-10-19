@@ -294,7 +294,10 @@ export function useMenuModel(): MenuModel[] {
     {
       id: 'help',
       label: t('menu.help'),
-      items: [{ id: 'shortcuts', label: t('help.shortcuts'), onSelect: () => dispatch({ type: 'DIALOG', dialog: 'shortcuts' }) }],
+      items: [
+        { id: 'tour', label: t('help.tour'), onSelect: () => dispatch({ type: 'DIALOG', dialog: 'tour' }) },
+        { id: 'shortcuts', label: t('help.shortcuts'), onSelect: () => dispatch({ type: 'DIALOG', dialog: 'shortcuts' }) },
+      ],
     },
   ];
   return menus.map((menu) => ({ ...menu, items: menu.items.map(withShortcut) }));

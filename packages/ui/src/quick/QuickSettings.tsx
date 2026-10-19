@@ -3,6 +3,8 @@ import { configureRing, isTauriHost, ringSettings, setShellMenu, shellMenuState 
 import type { RingSettings, ShellMenuState } from '../core/host-tauri';
 import { useI18n } from '../i18n/useT';
 import { readJson, writeJson } from '../state/preferences';
+import { useAppDispatch } from '../state/AppContext';
+import { openTourAt } from '../tour/Tour';
 
 /**
  * The quick tools' switches in Settings, and keeping the right-click menu
@@ -45,6 +47,7 @@ export function useShellMenuSync(): void {
 
 export function QuickSettings() {
   const { t, lang } = useI18n();
+  const dispatch = useAppDispatch();
   const [prefs, setPrefs] = useState(readQuickPreferences);
   const [menu, setMenu] = useState<ShellMenuState | null>(null);
   const [ring, setRing] = useState<RingSettings | null>(null);
@@ -115,6 +118,9 @@ export function QuickSettings() {
           <p className="tool-panel-note">{t('quick.settings.backgroundNote')}</p>
         </>
       ) : null}
+      <button type="button" className="icon-btn icon-btn-labeled" onClick={() => openTourAt('quick', () => dispatch({ type: 'DIALOG', dialog: 'tour' }))}>
+        {t('quick.settings.howTo')}
+      </button>
       {failed ? (
         <p className="tool-panel-note" role="alert">
           {t('quick.settings.failed')}

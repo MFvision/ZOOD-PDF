@@ -20,6 +20,7 @@ import { ReadAloudBar } from '../speech/ReadAloudBar';
 import { useReadAloud } from '../speech/readAloud';
 import { Viewer } from '../viewer/Viewer';
 import { AboutDialog, GoToPageDialog, PasswordDialog, SettingsDialog, ShortcutsDialog } from './Dialogs';
+import { WelcomeTour } from '../tour/Tour';
 import { FindBar } from './FindBar';
 import { LeftPane } from './LeftPane';
 import { MarkupBarContext, readMarkupBar, writeMarkupBar } from './markupBar';
@@ -197,6 +198,7 @@ export function Shell() {
         <ShortcutsDialog />
         <AboutDialog />
         <SettingsDialog />
+        <WelcomeTour />
         <LinkConfirmDialog />
         <FontLibraryQuestion />
         <CloudSheets />
