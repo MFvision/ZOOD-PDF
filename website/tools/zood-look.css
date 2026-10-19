@@ -1,0 +1,61 @@
+/* The Zood look laid over the web app while its screens are captured for the
+   website (tools/capture-screens.mjs). The palette is apps/ios/PDFEditor/Design/
+   Brand.swift's; the web app itself does not ship this look yet. */
+:root,
+:root[data-theme='light'] {
+  --accent: #73563a;
+  --accent-contrast: #fff;
+  --window-background: #f5f1ed;
+  --toolbar-background: #fbf9f7;
+  --sidebar-background: #efe8e1;
+  --content-background: #fbf9f7;
+  --under-page-background: #e1d6cb;
+  --grouped-background: #fbf9f7;
+  --elevated-background: #fbf9f7;
+  --control-background: #fbf9f7;
+  --control-border: rgb(151 119 86 / 34%);
+  --glass: #fbf9f7;
+  --glass-edge: rgb(151 119 86 / 28%);
+  --label: #041e42;
+  --secondary-label: #2a405e;
+  --tertiary-label: #68788e;
+  --separator: rgb(151 119 86 / 28%);
+  --opaque-separator: #d6c6b8;
+  --fill: rgb(151 119 86 / 16%);
+  --secondary-fill: rgb(151 119 86 / 11%);
+  --tertiary-fill: rgb(151 119 86 / 8%);
+  --home-gradient: linear-gradient(170deg, #f5f1ed 0%, #ece3da 60%, #e6ddd4 100%);
+  --glass-panel: #fbf9f7;
+  --glass-card: #fbf9f7;
+  --glass-border: rgb(151 119 86 / 28%);
+  --glass-hover: #f5f1ed;
+  --font-ui: 'Vazirmatn', 'Inter', system-ui, sans-serif;
+}
+:root[data-theme='dark'] {
+  --accent: #ae8b66;
+  --accent-contrast: #041e42;
+  --window-background: #11294b;
+  --toolbar-background: #041e42;
+  --sidebar-background: #0b2347;
+  --content-background: #041e42;
+  --under-page-background: #021631;
+  --grouped-background: #11294b;
+  --elevated-background: #11294b;
+  --control-background: #11294b;
+  --control-border: rgb(151 119 86 / 34%);
+  --glass: #11294b;
+  --glass-edge: rgb(151 119 86 / 26%);
+  --label: #f5f1ed;
+  --secondary-label: #b5aea8;
+  --tertiary-label: #97938e;
+  --separator: rgb(151 119 86 / 26%);
+  --opaque-separator: #2a405e;
+  --fill: rgb(174 139 102 / 18%);
+  --secondary-fill: rgb(174 139 102 / 12%);
+  --tertiary-fill: rgb(174 139 102 / 8%);
+  --home-gradient: linear-gradient(170deg, #11294b 0%, #041e42 60%, #021631 100%);
+  --glass-panel: #11294b;
+  --glass-card: #11294b;
+  --glass-border: rgb(151 119 86 / 26%);
+  --glass-hover: #2a405e;
+}
