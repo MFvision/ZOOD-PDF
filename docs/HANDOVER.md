@@ -93,6 +93,33 @@ Weekly usage: 23% before; the after figure could not be read from a cloud sessio
   `export.lines`). "Text only, flowing" keeps the old export. Checked in LibreOffice, **not in
   Microsoft Word**.
 
+## Quick tools, second round (2026-10-19 evening, the owner's rules)
+The owner's rules (team memory `quick-tools-ux`): **no confirm pop-ups**. A tool that needs
+nothing more runs the moment it is picked, and a window opens only for a password, pages, a paper
+size or a mark's text, **with a live preview of the pages**.
+- `quick/plan.ts`: each tool has `mode` (instant / ask / editor) and `ring`.
+  - New tools: excel, powerpoint, text, split, resize, numbers, watermark, sign (opens the editor
+    at Fill & sign: `open_in_editor_at`, `startup_tool`), unlock.
+  - New batch steps `resize` (core `pages.resize`) and `unlock` (`protect.remove`).
+- `quick/runQuick.ts` is the shared runner for both the quick window and the ring.
+- `quick/QuickPreview.tsx` draws thumbnails with the core's `render_page`. They show kept or
+  cut pages, split's files, each page on the new paper, and the watermark text.
+- **The ring runs instant tools itself**, with a progress circle, then a tick or cross
+  (`ring_take`, `ring_done`).
+  - Protected files go to their tool's window, which asks for the password (`ring_pick` with
+    `only`).
+- **Ctrl+Alt+Z (Command+Option+Z)** opens the ring at the pointer on the selection
+  (`tauri-plugin-global-shortcut`):
+  - Windows: Explorer's selection through Shell.Application (PowerShell);
+  - Mac: Finder's selection through osascript, which macOS asks about once
+    (NSAppleEventsUsageDescription).
+- The Windows ring check now expects result files beside the sample, tries the shortcut, and
+  does a plain drag onto the main window as a control (to tell a CI-only drag failure from a
+  ring failure).
+- Queued next, in order: iPhone/iPad home-screen widget (the ring's shortcut). Android: the
+  owner chose "website for now". The website videos and the explainer video belong to the
+  website thread.
+
 ## After that
 As he chooses, from the study's top ten (sizes there are PdfCraft's formula and run
 high; our desktop jobs took 1–1.5 h of real time each): large-format printing (A0/A1 at true
