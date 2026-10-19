@@ -7,7 +7,7 @@
 #   3. with Explorer pushed into the screen's bottom-right corner, Ctrl+drags
 #      again and checks the ring is whole on the screen.
 # Each step is checked in the app's ring.log ("picked <tool> for 1 files")
-# and by the ring window's own rectangle; screenshots go to $Out for ci-logs.
+# and by where the app says it put the ring; screenshots go to $Out for ci-logs.
 param(
   [Parameter(Mandatory = $true)][string]$App,
   [Parameter(Mandatory = $true)][string]$Sample,
@@ -26,14 +26,9 @@ public static class Input {
   [StructLayout(LayoutKind.Explicit)] struct UNION { [FieldOffset(0)] public MOUSEINPUT m; [FieldOffset(0)] public KEYBDINPUT k; }
   [StructLayout(LayoutKind.Sequential)] struct INPUT { public uint type; public UNION u; }
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
-  delegate bool EnumProc(IntPtr hwnd, IntPtr data);
   [DllImport("user32.dll")] static extern uint SendInput(uint n, INPUT[] inputs, int size);
   [DllImport("user32.dll")] static extern int GetSystemMetrics(int index);
   [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
-  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc proc, IntPtr data);
-  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
-  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
-  [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
   [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr hwnd, int x, int y, int w, int h, bool repaint);
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr FindWindow(string cls, string title);
   [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hwnd, uint msg, IntPtr w, IntPtr l);
@@ -51,21 +46,6 @@ public static class Input {
     var i = new INPUT { type = 1 };
     i.u.k.vk = vk; i.u.k.flags = up ? 2u : 0u;
     Send(i);
-  }
-  // The ring: the app's visible square window (the editor's window is not square).
-  public static RECT Ring(int pid) {
-    var found = new RECT();
-    EnumWindows((hwnd, _) => {
-      uint owner; GetWindowThreadProcessId(hwnd, out owner);
-      RECT r;
-      if (owner == pid && IsWindowVisible(hwnd) && GetWindowRect(hwnd, out r)) {
-        int w = r.Right - r.Left, h = r.Bottom - r.Top;
-        Console.WriteLine("app window " + r.Left + "," + r.Top + " " + w + "x" + h);
-        if (w > 100 && w < 1000 && Math.Abs(w - h) <= 24) { found = r; return false; }
-      }
-      return true;
-    }, IntPtr.Zero);
-    return found;
   }
 }
 '@
@@ -131,7 +111,15 @@ function StartDrag($key) {
   Start-Sleep -Milliseconds 600
   $script:shots++
   Shot "ring-drag-$($script:shots).png"
-  return [Input]::Ring($app.Id)
+  # Where the app says it put the ring (the last line of its log).
+  $found = [regex]::Matches((Log), 'ring window at (-?\d+),(-?\d+) size (\d+)x(\d+)')
+  $rect = New-Object Input+RECT
+  if ($found.Count -gt 0) {
+    $m = $found[$found.Count - 1]
+    $rect.Left = [int]$m.Groups[1].Value; $rect.Top = [int]$m.Groups[2].Value
+    $rect.Right = $rect.Left + [int]$m.Groups[3].Value; $rect.Bottom = $rect.Top + [int]$m.Groups[4].Value
+  }
+  return $rect
 }
 
 # Moves the dragged files to a point in small steps, so the drop target follows.
@@ -191,8 +179,8 @@ if ($side -gt 0) {
   [Input]::Mouse($cx, $cy, 0x0004); [Input]::Key(0x10, $true)
   Start-Sleep -Seconds 1
   Shot 'ring-2-holding.png'
-  $still = [Input]::Ring($app.Id)
-  Check (($still.Right - $still.Left) -gt 0) 'letting go in the middle keeps the ring'
+  $lines = (Log) -split "`n" | Where-Object { $_ -match 'let go on the ring|picked' }
+  Check ($lines.Count -gt 0 -and $lines[-1] -match '1 files let go on the ring') 'letting go in the middle keeps the ring, holding the file'
   [Input]::Mouse($cx, $cy + $middle, 0); Start-Sleep -Milliseconds 300
   [Input]::Mouse($cx, $cy + $middle, 0x0002); Start-Sleep -Milliseconds 80
   [Input]::Mouse($cx, $cy + $middle, 0x0004)

@@ -91,6 +91,10 @@ function RingWindow() {
   }, []);
 
   useEffect(() => {
+    document.documentElement.classList.toggle('ring-waiting', !visible);
+  }, [visible]);
+
+  useEffect(() => {
     if (!holding) return;
     const timer = window.setTimeout(() => void ringPick('none'), CLICK_WAIT_MS);
     return () => window.clearTimeout(timer);

@@ -12,10 +12,11 @@ html.ring-page body {
  * While the ring waits for files it is drawn with nothing to see, but not
  * fully transparent: Windows passes the mouse, and a drag, through pixels
  * with no alpha at all, so the drag would never reach the window. One step
- * of alpha is invisible and keeps the window under the pointer.
+ * of alpha is invisible and keeps the window under the pointer. Once the
+ * ring shows, its own drawing is under the pointer and the rest is clear.
  */
-html.ring-page body {
-  background: rgb(0 0 0 / 1%) !important;
+html.ring-page.ring-waiting body {
+  background: rgb(0 0 0 / 0.4%) !important;
 }
 
 .ring {

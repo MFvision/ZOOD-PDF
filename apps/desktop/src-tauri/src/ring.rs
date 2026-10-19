@@ -277,6 +277,12 @@ fn show<R: Runtime>(app: &AppHandle<R>, x: f64, y: f64) {
     }
     let _ = window.emit_to(LABEL, SHOW_EVENT, ());
     let _ = window.show();
+    if let (Ok(at), Ok(size)) = (window.outer_position(), window.outer_size()) {
+        log(&format!(
+            "ring window at {},{} size {}x{}",
+            at.x, at.y, size.width, size.height
+        ));
+    }
 }
 
 pub fn hide<R: Runtime>(app: &AppHandle<R>) {
