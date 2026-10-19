@@ -314,7 +314,8 @@ pub fn on_drag<R: Runtime>(
                 .iter()
                 .filter(|p| p.is_file())
                 .filter_map(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
-                .collect();
+                .collect::<Vec<String>>();
+            log(&format!("{} files dragged onto the ring", names.len()));
             let _ = window.emit_to(LABEL, FILES_EVENT, FilesPayload { names });
             if let Some((x, y)) = at {
                 let _ = window.emit_to(LABEL, OVER_EVENT, Some(PointPayload { x, y }));
@@ -326,6 +327,7 @@ pub fn on_drag<R: Runtime>(
             }
         }
         tauri::DragDropEvent::Leave => {
+            log("the drag left the ring");
             let _ = window.emit_to(LABEL, OVER_EVENT, None::<PointPayload>);
         }
         tauri::DragDropEvent::Drop { paths, .. } => {

@@ -64,6 +64,7 @@ Tool operations (`warraq-core/src/tools`), all answering JSON plus bytes:
 | `pages.delete` | `{pages: number[]}` (never every page) | `{pageCount, pageSizes}` |
 | `pages.insert_blank` | `{at: number, like: number}` (size and rotation of page `like`) | `{pageCount, pageSizes}` |
 | `pages.crop` | `{pages: number[], margins: {top, right, bottom, left}}` (points, as each page is shown) | `{pageCount, pageSizes}` |
+| `pages.resize` | `{pages: number[], width, height}` (points, the paper as a portrait sheet) | `{pageCount, pageSizes}`: each page scaled to fit and centred, a landscape page on the sheet turned |
 | `pages.trim_margins` | `{pages: number[], padding?: number}` (points of white kept around what is printed; default 6; blank pages are left alone) | `{pageCount, pageSizes}` |
 | `file.rebase` (static) | `{password?: string}` + the file as opened + the same file written whole by another engine (PDFium, through EmbedPDF) | `{rebased: bool}` + the file's own bytes with the changes appended, when `rebased` (not when the protection differs) |
 | `font.check` (static) | `{text: string, family?: string}` + a font file a host found for an edit (installed, or downloaded from the open library) | `{usable: bool, reason: null \| "not-a-font" \| "too-large" \| "not-truetype" \| "not-embeddable" \| "other-family" \| "missing-glyphs", family, weight, italic, variable}` — usable only when the bytes are a TrueType-outline font (≤ 32 MB) of that family, whose licence bits (`OS/2.fsType`) allow embedding a subset, with a glyph for every character of `text` |

@@ -54,7 +54,8 @@ public static class Input {
 function Shot($name) {
   $bitmap = New-Object System.Drawing.Bitmap ([Input]::Width), ([Input]::Height)
   $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-  $graphics.CopyFromScreen(0, 0, 0, 0, $bitmap.Size)
+  # CaptureBlt also takes layered windows, such as the drag picture.
+  $graphics.CopyFromScreen(0, 0, 0, 0, $bitmap.Size, [System.Drawing.CopyPixelOperation]'SourceCopy, CaptureBlt')
   $bitmap.Save((Join-Path $Out $name), [System.Drawing.Imaging.ImageFormat]::Png)
   $graphics.Dispose(); $bitmap.Dispose()
 }
@@ -208,6 +209,22 @@ Check ($side -gt 0 -and $ring.Left -ge 0 -and $ring.Top -ge 0 -and $ring.Right -
 [Input]::Mouse(20, 20, 0); Start-Sleep -Milliseconds 300
 [Input]::Mouse(20, 20, 0x0004); [Input]::Key(0x11, $true)
 Start-Sleep -Seconds 2
+
+# 4. Control: a plain drag (no key) onto the app's main window. If this does
+# not reach the app either, the test's synthetic drag never became a real
+# Windows drag, and steps 1-2 say nothing about the ring itself.
+$at = FileItem
+[Input]::Mouse($at[0], $at[1], 0); Start-Sleep -Milliseconds 300
+[Input]::Mouse($at[0], $at[1], 0x0002); Start-Sleep -Milliseconds 200
+foreach ($step in 1..20) {
+  [Input]::Mouse($at[0] - $step * ($at[0] - 400) / 20, $at[1] - $step * ($at[1] - 300) / 20, 0)
+  Start-Sleep -Milliseconds 50
+}
+Start-Sleep -Milliseconds 600
+Shot 'ring-4-plain-drag.png'
+[Input]::Mouse(400, 300, 0x0004)
+Start-Sleep -Seconds 2
+Check ((Log) -match 'files dragged over the main window') 'control: a plain drag reaches the main window'
 
 Set-Content (Join-Path $Out 'ring.log') (Log)
 Stop-Process -Id $app.Id -ErrorAction SilentlyContinue

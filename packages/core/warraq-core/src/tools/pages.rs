@@ -1,5 +1,5 @@
 //! Organize pages and Combine files: rotate, reorder, delete, insert a blank
-//! page or another file's pages, extract pages into a new file, combine files. The page structure is
+//! page or another file's pages, resize pages to a paper size, extract pages into a new file, combine files. The page structure is
 //! edited in Warraq's object layer (`warraq_pdf::pages`), so every change is an
 //! incremental update of the open file; extract and combine write new files.
 use serde::{Deserialize, Serialize};
@@ -18,6 +18,14 @@ struct Rotate {
     pages: Vec<usize>,
     /// 1 is 90° clockwise, -1 counter-clockwise.
     quarter_turns: i32,
+}
+
+#[derive(Deserialize)]
+struct Resize {
+    pages: Vec<usize>,
+    /// The paper, in points, as a portrait sheet; a landscape page goes on it turned.
+    width: f32,
+    height: f32,
 }
 
 #[derive(Deserialize)]
@@ -150,6 +158,10 @@ pub fn call(
         "rotate" => {
             let a: Rotate = args(json)?;
             doc.pdf_mut().rotate_pages(&a.pages, a.quarter_turns)?;
+        }
+        "resize" => {
+            let a: Resize = args(json)?;
+            doc.pdf_mut().resize_pages(&a.pages, (a.width, a.height))?;
         }
         "reorder" => {
             let a: Reorder = args(json)?;

@@ -458,6 +458,7 @@ pub fn run() {
             match drag {
                 DragDropEvent::Enter { paths, position } => {
                     let files = paths.iter().any(|p| p.is_file());
+                    ring::log("files dragged over the main window");
                     DRAGGING_FILES.store(files, std::sync::atomic::Ordering::Relaxed);
                     if files {
                         let (x, y) = logical(window, position);
