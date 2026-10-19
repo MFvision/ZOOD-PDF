@@ -16,6 +16,7 @@ import { appCreateEnvironment } from '../create/environment';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
+import { dictionaries } from '../i18n/messages';
 import { startRecognizer } from '../ocr/engine';
 import type { Recognizer } from '../ocr/engine';
 import { readPreferences } from '../state/preferences';
@@ -110,7 +111,9 @@ function QuickWindow() {
 
   const step: SequenceStep | null = tool?.step ? { key: 1, id: tool.step, options } : null;
   const problem = step ? findStep(step.id)?.problem(step.options as never) ?? null : null;
-  const suffix = tool ? t(`quick.suffix.${tool.id}` as TKey) : '';
+  // A converted file keeps its name: only its extension changes.
+  const suffixKey = tool ? (`quick.suffix.${tool.id}` as TKey) : null;
+  const suffix = suffixKey && suffixKey in dictionaries.en ? t(suffixKey) : '';
   const lockedNeeded = files.some((f) => isPdfName(f.name));
 
   const setState = (key: number, state: FileState) => setStates((current) => new Map(current).set(key, state));

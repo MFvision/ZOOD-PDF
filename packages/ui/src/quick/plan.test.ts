@@ -33,7 +33,8 @@ describe('the quick tools', () => {
 
   it('has every name and suffix in both languages', () => {
     for (const tool of QUICK_TOOLS) {
-      for (const key of [tool.labelKey, tool.noteKey, `quick.suffix.${tool.id}`]) {
+      const keepsName = ['word', 'images', 'topdf'].includes(tool.id);
+      for (const key of [tool.labelKey, tool.noteKey, ...(keepsName ? [] : [`quick.suffix.${tool.id}`])]) {
         expect(key in en, key).toBe(true);
         expect(key in ar, key).toBe(true);
       }

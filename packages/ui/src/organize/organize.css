@@ -14,6 +14,8 @@
 
 .organize-tile {
   position: relative;
+  touch-action: pan-y;
+  user-select: none;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -125,11 +127,6 @@
   background: var(--accent, #2563eb);
   color: var(--on-accent, #fff);
   font-size: 12px;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.2);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 20%);
   white-space: nowrap;
-}
-
-.organize-tile {
-  touch-action: pan-y;
-  user-select: none;
 }

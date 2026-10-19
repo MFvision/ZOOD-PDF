@@ -2021,14 +2021,11 @@
   "quick.note.protect": "كلمة مرور لفتح الملف، وما يُسمح للآخرين بفعله.",
   "quick.note.topdf": "ملف PDF من كل صورة أو ملف Word أو Excel أو PowerPoint أو نص أو صفحة ويب.",
   "quick.suffix.compress": "-مضغوط",
-  "quick.suffix.word": "",
-  "quick.suffix.images": "",
   "quick.suffix.ocr": "-قابل-للبحث",
   "quick.suffix.combine": "-مدمج",
   "quick.suffix.rotate": "-مدار",
   "quick.suffix.extract": "-صفحات",
   "quick.suffix.protect": "-محمي",
-  "quick.suffix.topdf": "",
   "quick.suffix.together": "-مجمّع",
   "quick.settings.title": "الأدوات السريعة",
   "quick.settings.menu": "إظهار الأدوات السريعة في قائمة الزر الأيمن في مستكشف الملفات",
@@ -2090,5 +2087,9 @@
   "tour.quick.p1Mac": "انقر بالزر الأيمن على الملفات في Finder ← «إجراءات سريعة» (أو «الخدمات») ← «أدوات PDF السريعة».",
   "tour.quick.p2": "أو اضغط Ctrl (‏Option على ماك) أثناء سحب الملفات: تظهر حلقة أدوات عند المؤشر. أفلت الملفات على الأداة.",
   "tour.quick.p3": "تُحفظ النتيجة بجانب الملف الأصلي، ويبقى الأصلي كما هو.",
-  "ai.useDevice": "استخدم النموذج المدمج بدلًا من ذلك"
+  "ai.useDevice": "استخدم النموذج المدمج بدلًا من ذلك",
+  "readAloud.ocrThenRead": "تعرّف على النص (OCR) ثم اقرأ",
+  "readAloud.recognizing": "جارٍ التعرّف على النص: الصفحة {page} من {of}…",
+  "readAloud.ocrFailed": "تعذّر التعرّف على النص. جرّب «مسح ضوئي وتعرّف على النص» من الأدوات.",
+  "readAloud.ocrNone": "لم يُعثر على كلمات في الصفحة."
 }

@@ -4,8 +4,8 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  max-width: 420px;
-  min-height: 300px;
+  max-inline-size: 420px;
+  min-block-size: 300px;
   margin: 0 auto;
   text-align: center;
 }
@@ -13,8 +13,8 @@
 .tour-icon {
   display: grid;
   place-items: center;
-  width: 64px;
-  height: 64px;
+  inline-size: 64px;
+  block-size: 64px;
   border-radius: var(--radius-16);
   background: var(--accent-soft);
   color: var(--accent);
@@ -35,7 +35,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 100%;
+  inline-size: 100%;
   margin: 4px 0 0;
   padding: 0;
   list-style: none;
@@ -51,7 +51,7 @@
 
 .tour-points .lucide {
   flex: none;
-  margin-top: 3px;
+  margin-block-start: 3px;
   color: var(--accent);
 }
 
@@ -67,13 +67,13 @@
 .tour-dots {
   display: flex;
   gap: 6px;
-  margin-top: auto;
-  padding-top: 8px;
+  margin-block-start: auto;
+  padding-block-start: 8px;
 }
 
 .tour-dot {
-  width: 8px;
-  height: 8px;
+  inline-size: 8px;
+  block-size: 8px;
   padding: 0;
   border: 0;
   border-radius: 50%;

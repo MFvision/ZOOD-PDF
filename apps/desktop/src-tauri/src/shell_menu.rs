@@ -302,6 +302,7 @@ pub use registry::{
     exists as registry_key_exists, remove as registry_remove, write as registry_write,
 };
 
+#[cfg_attr(target_os = "macos", allow(dead_code))]
 const CLASSES: &str = r"Software\Classes";
 
 /// Where Windows starts programs at sign-in, for this account.
@@ -544,7 +545,7 @@ mod tests {
         for path in verb_roots(&root) {
             assert!(registry_key_exists(&path), "{path}");
         }
-        registry_remove(&[root.clone()]).unwrap();
+        registry_remove(std::slice::from_ref(&root)).unwrap();
         assert!(!registry_key_exists(&verb_roots(&root)[0]));
     }
 }

@@ -2,7 +2,7 @@
 
 html:has(.quick),
 body:has(.quick) {
-  height: 100%;
+  block-size: 100%;
   margin: 0;
   background: var(--window-background);
 }
@@ -11,7 +11,7 @@ body:has(.quick) {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  height: 100vh;
+  block-size: 100vh;
   box-sizing: border-box;
   padding: var(--space-5);
   color: var(--label);
@@ -36,7 +36,7 @@ body:has(.quick) {
   list-style: none;
   margin: 0;
   padding: var(--space-2);
-  max-height: 34vh;
+  max-block-size: 34vh;
   overflow-y: auto;
   border-radius: var(--radius-12);
   background: var(--grouped-background);
@@ -48,11 +48,11 @@ body:has(.quick) {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
-  min-height: 36px;
+  min-block-size: 36px;
 }
 
 .quick-file + .quick-file {
-  border-top: 1px solid var(--separator);
+  border-block-start: 1px solid var(--separator);
 }
 
 .quick-file-name {
@@ -64,7 +64,7 @@ body:has(.quick) {
 .quick-file-note {
   color: var(--secondary-label);
   font-size: var(--text-footnote);
-  max-width: 220px;
+  max-inline-size: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -140,7 +140,7 @@ body:has(.quick) {
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-3);
-  margin-top: auto;
+  margin-block-start: auto;
 }
 
 .quick-summary {

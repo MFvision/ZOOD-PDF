@@ -9,19 +9,19 @@ html.ring-page body {
 }
 
 .ring {
-  width: 300px;
-  height: 300px;
+  inline-size: 300px;
+  block-size: 300px;
   font-family: var(--font-ui);
 }
 
 .ring-shadow {
-  fill: rgba(0, 0, 0, 0.18);
+  fill: rgb(0 0 0 / 18%);
   filter: blur(6px);
 }
 
 .ring-segment > path {
   fill: var(--elevated-background, #fff);
-  stroke: var(--separator, rgba(0, 0, 0, 0.12));
+  stroke: var(--separator, rgb(0 0 0 / 12%));
   stroke-width: 1;
   transition: fill 80ms ease;
 }
@@ -35,9 +35,6 @@ html.ring-page body {
 .ring-segment text {
   fill: var(--label);
   pointer-events: none;
-}
-
-.ring-segment text {
   font-size: 12px;
   font-weight: 600;
 }
@@ -56,7 +53,7 @@ html.ring-page body {
 
 .ring-hub {
   fill: var(--window-background, #f5f5f7);
-  stroke: var(--separator, rgba(0, 0, 0, 0.12));
+  stroke: var(--separator, rgb(0 0 0 / 12%));
 }
 
 .ring-hub-text {

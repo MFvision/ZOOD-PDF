@@ -1,4 +1,4 @@
-# Hand-over — where things stand (2026-10-18)
+# Hand-over — where things stand (2026-10-19)
 
 Written at the end of a very long first conversation so the next one can start fresh. Keep
 this file current at the end of every job.
@@ -44,10 +44,31 @@ focus and the read-aloud highlight (EmbedPDF 2.x counts pages from zero).
 Weekly usage: 23% before; the after figure could not be read from a cloud session (no
 `get_usage` there) — read it in the Claude app.
 
-**Owner's next ask (not started)**: tabs. A second double-clicked PDF opens as a tab in the
-same window instead of replacing the open one, and pages can be dragged between tabs to
-organize them. The app holds one document at a time today (`AppContext`), so this is a job of
-its own.
+## Added to PR #2 on 2026-10-19 (the owner asked for it all in one PR)
+- **Quick tools without opening the app** (idea from Filee, no code taken): right-click files
+  in Explorer (`src-tauri/src/shell_menu.rs`, HKCU keys, written at every start in the UI's
+  language) or Finder (a Services entry, `Info.plist` + `shell_menu.rs`) → a small window
+  (`packages/ui/src/quick/`) that compresses, converts to Word/pictures, OCRs, combines,
+  rotates, extracts, protects or makes a PDF from pictures/Office files, saving beside the
+  original. **Ctrl (Option) + drag** files out of Explorer/Finder shows a ring of tools at the
+  pointer (`src-tauri/src/ring.rs`, a low-level mouse hook on Windows, an NSEvent monitor on
+  macOS); an optional background mode starts at sign-in and waits in the tray.
+- **Document tabs** (`state/tabs.ts`, `shell/TabBar.tsx`): parked tabs keep their file,
+  page and unsaved changes; Organize's page drag (now pointer events, since the Windows
+  webview keeps HTML drag-and-drop for Explorer files) drops pages onto a tab (copied to its
+  end) or onto + (a new document).
+- **Welcome tour** (`tour/Tour.tsx`): opens once on the desktop app's first run, again from
+  Help → Welcome tour and Settings → Quick tools → Show me how.
+- **AI**: the providers are renamed (Built into the app (recommended) / Ollama or LM Studio);
+  the owner's Windows error was the Ollama choice with no Ollama installed. The error now says
+  so and offers a button to switch to the built-in model.
+- **Read aloud** on a page with no text offers OCR, then reads (web/desktop). On iPhone it
+  reads the page's picture with Vision without changing the file — **written, not built or
+  tested** (no Mac in that session).
+- **Bold**: a bold paragraph redrawn in a face with no bold is drawn with an outline in its
+  own colour (`ops::replace_paragraph`, `synthetic_bold`; test `warraq-core/tests/edit_bold.rs`).
+- **Not tested on real Windows or a Mac**: the right-click menu, the ring, background mode and
+  the tray. They compile for both and their logic has unit tests.
 
 ## After that
 As he chooses, from the study's top ten (sizes there are PdfCraft's formula and run
@@ -69,7 +90,6 @@ desktop and web).
 - **On-device AI quality**: the 0.5B model (the only one in a browser) cannot summarize long
   documents; the 1.5B gets the gist but degrades on long Arabic summaries and rarely cites.
   Options offered to the owner: a larger on-device model, or his own Claude key.
-- Bold paragraphs that fall back to a bundled face come back regular (no bold bundled).
 - Convert failed for the owner once on Windows — not reproduced (ask which file and format).
 
 ## Housekeeping
