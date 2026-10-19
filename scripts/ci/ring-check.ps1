@@ -60,7 +60,8 @@ public static class Input {
       RECT r;
       if (owner == pid && IsWindowVisible(hwnd) && GetWindowRect(hwnd, out r)) {
         int w = r.Right - r.Left, h = r.Bottom - r.Top;
-        if (w > 100 && w < 1000 && Math.Abs(w - h) <= 2) { found = r; return false; }
+        Console.WriteLine("app window " + r.Left + "," + r.Top + " " + w + "x" + h);
+        if (w > 100 && w < 1000 && Math.Abs(w - h) <= 24) { found = r; return false; }
       }
       return true;
     }, IntPtr.Zero);
@@ -79,6 +80,7 @@ function Shot($name) {
 }
 
 $failures = @()
+$shots = 0
 function Check($ok, $what) {
   if ($ok) { Write-Host "ok: $what" } else { Write-Host "FAILED: $what"; $script:failures += $what }
 }
@@ -127,6 +129,8 @@ function StartDrag($key) {
   # The ring takes the drag only once the pointer moves over it.
   foreach ($step in 1..10) { [Input]::Mouse($x + 24 + $step, $y + 12, 0); Start-Sleep -Milliseconds 60 }
   Start-Sleep -Milliseconds 600
+  $script:shots++
+  Shot "ring-drag-$($script:shots).png"
   return [Input]::Ring($app.Id)
 }
 
@@ -141,7 +145,7 @@ function DragTo($x, $y) {
 $quickTitle = 'أدوات PDF السريعة — محرر PDF'
 function QuickWindowOpened {
   foreach ($try in 1..10) {
-    $quick = [Input]::FindWindow($null, $quickTitle)
+    $quick = [Input]::FindWindow([NullString]::Value, $quickTitle)
     if ($quick -ne [IntPtr]::Zero) {
       Start-Sleep -Seconds 2
       return $quick
@@ -204,7 +208,7 @@ if ($side -gt 0) {
 Start-Sleep -Seconds 2
 
 # 3. Explorer in the bottom-right corner: the ring must stay whole on the screen.
-$explorer = [Input]::FindWindow('CabinetWClass', $null)
+$explorer = [Input]::FindWindow('CabinetWClass', [NullString]::Value)
 [Input]::MoveWindow($explorer, [Input]::Width - 330, [Input]::Height - 260, 900, 600, $true) | Out-Null
 Start-Sleep -Seconds 2
 $ring = StartDrag 0x11

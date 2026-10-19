@@ -8,6 +8,16 @@ html.ring-page body {
   user-select: none;
 }
 
+/*
+ * While the ring waits for files it is drawn with nothing to see, but not
+ * fully transparent: Windows passes the mouse, and a drag, through pixels
+ * with no alpha at all, so the drag would never reach the window. One step
+ * of alpha is invisible and keeps the window under the pointer.
+ */
+html.ring-page body {
+  background: rgb(0 0 0 / 1%) !important;
+}
+
 .ring {
   /* The drawing fills the window, whatever size the screen's scale made it. */
   inline-size: 100vw;
