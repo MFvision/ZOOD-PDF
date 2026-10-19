@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Merged by Tauri into the app's own Info.plist.
+     The quick tools in Finder's right-click menu (Quick Actions / Services):
+     macOS hands the selected files to the running app, which answers with
+     src/shell_menu.rs (`services`) and opens a quick tools window on them
+     (src/quick.rs). The port is the app's name; an empty NSRequiredContext
+     keeps the service on by default. -->
+<plist version="1.0">
+<dict>
+  <key>NSServices</key>
+  <array>
+    <dict>
+      <key>NSMenuItem</key>
+      <dict>
+        <key>default</key>
+        <string>أدوات PDF السريعة</string>
+      </dict>
+      <key>NSMessage</key>
+      <string>quickTools</string>
+      <key>NSPortName</key>
+      <string>محرر PDF</string>
+      <key>NSRequiredContext</key>
+      <dict/>
+      <key>NSSendFileTypes</key>
+      <array>
+        <string>com.adobe.pdf</string>
+        <string>public.image</string>
+        <string>org.openxmlformats.wordprocessingml.document</string>
+        <string>org.openxmlformats.spreadsheetml.sheet</string>
+        <string>org.openxmlformats.presentationml.presentation</string>
+        <string>public.plain-text</string>
+        <string>public.html</string>
+        <string>net.daringfireball.markdown</string>
+        <string>public.comma-separated-values-text</string>
+      </array>
+    </dict>
+  </array>
+</dict>
+</plist>

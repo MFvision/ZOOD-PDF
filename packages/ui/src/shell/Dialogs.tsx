@@ -11,6 +11,7 @@ import type { ThemeMode } from '../state/preferences';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { AiSettingsSection } from '../ai/AiSettings';
 import { VoiceSettings } from '../speech/VoiceSettings';
+import { QuickSettings } from '../quick/QuickSettings';
 import { formatShortcut } from './menuModel';
 
 function GoToPageForm({ total, initialPage, onGo, onCancel }: { total: number; initialPage: number; onGo: (page: number) => void; onCancel: () => void }) {
@@ -283,6 +284,7 @@ export function SettingsDialog() {
         {/* The AI tool's provider and on-device model, the person's details for forms, and the reading voices. */}
         {dialog === 'settings' && (
           <>
+            <QuickSettings />
             <FontLibrarySettings />
             <AiSettingsSection />
             <VoiceSettings />

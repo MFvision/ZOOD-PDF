@@ -252,6 +252,63 @@ export async function openRecentFile(name: string): Promise<PickedFile | null> {
   return { name: baseName(path), bytes: toArrayBuffer(await readFile(path)), path };
 }
 
+/* -------------------------------------------------------------- quick tools */
+
+/** What a quick tools window works on (`src-tauri/src/quick.rs`). */
+export interface QuickJob {
+  /** The tool the right-click menu named, or null for the chooser. */
+  tool: string | null;
+  files: { name: string; path: string; size: number }[];
+}
+
+/** True in a quick tools window, which the file manager opened: not the editor. */
+export function isQuickWindow(): boolean {
+  if (!internals()) return false;
+  try {
+    return new URLSearchParams(globalThis.location?.search ?? '').has('quick');
+  } catch {
+    return false;
+  }
+}
+
+/** This quick window's files and tool; null outside one. */
+export async function quickJob(): Promise<QuickJob | null> {
+  if (!internals()) return null;
+  return ((await invoke('quick_job')) as QuickJob | null) ?? null;
+}
+
+/** Closes this quick window (the app ends with it if nothing else is open). */
+export function quickClose(): Promise<void> {
+  return invoke('quick_close').then(() => undefined);
+}
+
+/** Opens a quick tool's result in the editor. */
+export function quickOpenInEditor(path: string): Promise<void> {
+  return invoke('quick_open_in_editor', { path }).then(() => undefined);
+}
+
+/**
+ * The file manager's right-click menu for the quick tools
+ * (`src-tauri/src/shell_menu.rs`): `registry` on Windows, where the app
+ * puts it in and takes it out; `service` on macOS, where the system's own
+ * settings do; `none` elsewhere.
+ */
+export interface ShellMenuState {
+  kind: 'registry' | 'service' | 'none';
+  on: boolean;
+}
+
+export async function shellMenuState(): Promise<ShellMenuState> {
+  if (!internals()) return { kind: 'none', on: false };
+  return (await invoke('shell_menu_state')) as ShellMenuState;
+}
+
+/** Puts the menu in, in `lang`, or takes it out. */
+export async function setShellMenu(on: boolean, lang: string): Promise<ShellMenuState> {
+  if (!internals()) return { kind: 'none', on: false };
+  return (await invoke('shell_menu_set', { on, lang })) as ShellMenuState;
+}
+
 /* --------------------------------------------------------- dropped on the app */
 
 /** Emitted by `apps/desktop/src-tauri/src/lib.rs` after an OS drag-and-drop. */

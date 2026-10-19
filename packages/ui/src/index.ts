@@ -1,4 +1,6 @@
 export { App } from './App';
+export { QuickApp } from './quick/QuickApp';
+export { isQuickWindow } from './core/host-tauri';
 export type { AppProps } from './App';
 export type { Lang, Direction, TKey } from './i18n/messages';
 export { CoreClient, RemoteDocument, getSharedCoreClient } from './core/client';

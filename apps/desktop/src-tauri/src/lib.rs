@@ -21,7 +21,9 @@ pub mod library;
 pub mod menu;
 pub mod print;
 pub mod profile;
+pub mod quick;
 pub mod recent;
+pub mod shell_menu;
 pub mod signing;
 
 /// Event sent to the webview when files are dropped on the window.
@@ -112,20 +114,44 @@ fn file_in_args<R: Runtime>(
 /// second process exits (tauri-plugin-single-instance).
 fn second_launch<R: Runtime>(app: &AppHandle<R>, args: Vec<String>, cwd: String) {
     let cwd = PathBuf::from(cwd);
+    // A quick tool picked in the file manager: a small window of its own,
+    // not the editor (src/quick.rs).
+    if let Some(request) = quick::parse(&args, Some(&cwd)) {
+        core_bridge::debug_log(format!("second launch quick = {request:?}"));
+        quick::request(app, request);
+        return;
+    }
     let file = file_in_args(app, args.into_iter().map(Into::into), Some(&cwd));
     core_bridge::debug_log(format!("second launch file = {file:?}"));
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.unminimize();
-        let _ = window.show();
-        let _ = window.set_focus();
-    }
+    open_in_editor(app, file);
+}
+
+/// Brings the editor to the front (opening it if this run started for a
+/// quick tool only) and hands it `file`, if any.
+fn open_in_editor<R: Runtime>(app: &AppHandle<R>, file: Option<PathBuf>) {
+    let fresh = app.get_webview_window("main").is_none();
+    quick::show_editor(app);
     let Some(file) = file else { return };
     if let Some(slot) = app.try_state::<StartupFile>() {
         if let Ok(mut slot) = slot.0.lock() {
             *slot = Some(file.to_string_lossy().into_owned());
         }
     }
-    let _ = app.emit(OPEN_FILE_EVENT, ());
+    // A window just made claims the file as it boots.
+    if !fresh {
+        let _ = app.emit(OPEN_FILE_EVENT, ());
+    }
+}
+
+/// Opens a quick tool's result in the editor ("Open" beside a result).
+#[tauri::command]
+fn quick_open_in_editor<R: Runtime>(app: AppHandle<R>, path: String) -> Result<(), String> {
+    let file = PathBuf::from(&path);
+    if !file.is_absolute() || !file.is_file() || !app.fs_scope().is_allowed(&file) {
+        return Err(format!("E_SCOPE: {path} is not a result of this run"));
+    }
+    open_in_editor(&app, Some(file));
+    Ok(())
 }
 
 /// The waiting file, consumed on the first call so a reload does not reopen it.
@@ -275,7 +301,31 @@ pub fn run() {
             println!("warraq: core engine = {}", bridge.engine());
             app.manage(bridge);
 
-            let startup = file_in_args(app.handle(), std::env::args_os(), None);
+            app.manage(quick::QuickState::default());
+            // Finder's "Quick PDF tools" service (src/shell_menu.rs).
+            #[cfg(target_os = "macos")]
+            {
+                let handle = app.handle().clone();
+                shell_menu::services::register(move |files| {
+                    quick::request(&handle, quick::QuickRequest { tool: None, files });
+                });
+            }
+
+            // Started for a quick tool: its window only, no editor. Otherwise
+            // the editor (`create: false` in tauri.conf.json, so that a quick
+            // launch never flashes it).
+            let args: Vec<String> = std::env::args_os()
+                .map(|a| a.to_string_lossy().into_owned())
+                .collect();
+            let quick = quick::parse(&args, None);
+            let startup = if let Some(request) = quick {
+                core_bridge::debug_log(format!("command line quick = {request:?}"));
+                quick::request(app.handle(), request);
+                None
+            } else {
+                quick::show_editor(app.handle());
+                file_in_args(app.handle(), std::env::args_os(), None)
+            };
             core_bridge::debug_log(format!("command line file = {startup:?}"));
 
             app.manage(StartupFile(Mutex::new(
@@ -349,6 +399,11 @@ pub fn run() {
             recent::recent_remember,
             recent::recent_path,
             recent::recent_forget,
+            quick::quick_job,
+            quick::quick_close,
+            quick_open_in_editor,
+            shell_menu::shell_menu_set,
+            shell_menu::shell_menu_state,
         ])
         .on_window_event(|window, event| {
             // Forward OS file drops to the webview, after allowing the dropped
@@ -414,6 +469,19 @@ pub fn run() {
                 _ => {}
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running Warraq");
+        .build(tauri::generate_context!())
+        .expect("error while building Warraq")
+        .run(|app, event| {
+            // The Dock icon clicked when only a quick window was open (or none):
+            // the editor comes.
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen {
+                has_visible_windows: false,
+                ..
+            } = event
+            {
+                quick::show_editor(app);
+            }
+            let _ = (app, event);
+        });
 }

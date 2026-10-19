@@ -32,6 +32,7 @@ import { intentAt, intentOfDrop } from './dropIntent';
 import { useFileDrop } from './useFileDrop';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { useNativeMenu } from './useNativeMenu';
+import { useShellMenuSync } from '../quick/QuickSettings';
 
 /**
  * The window: a unified toolbar over the document, the sidebar at its leading
@@ -46,6 +47,7 @@ export function Shell() {
   const { t, lang } = useI18n();
   const nativeMenu = hasNativeMenuBar();
   useKeyboardShortcuts();
+  useShellMenuSync();
 
   const [markupOn, setMarkupOn] = useState(readMarkupBar);
   const markupBar = useMemo(
