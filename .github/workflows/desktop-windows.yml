@@ -85,6 +85,14 @@ jobs:
             --notes "Built from $GITHUB_SHA on $(date -u +%Y-%m-%dT%H:%MZ). Unsigned: Windows will ask before running it."
           echo "$tag" > release-tag.txt
 
+      # The ring, tried as a person would: Ctrl held while dragging a file out
+      # of File Explorer. Its log and a mid-drag screenshot go to ci-logs.
+      - name: try the ring
+        id: ring
+        continue-on-error: true
+        shell: pwsh
+        run: ./scripts/ci/ring-check.ps1 -App apps/desktop/src-tauri/target/release/warraq-desktop.exe -Out ring-check
+
       # After the installer is out, so a failing test never withholds it: the
       # core's own tests on Windows — among them the installed-font lookup
       # against this machine's real fonts — and the desktop host's.
@@ -111,8 +119,10 @@ jobs:
             echo "commit: $GITHUB_SHA"
             echo "run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
             echo "release: $(cat ../release-tag.txt 2>/dev/null || echo none)"
+            echo "ring check: ${{ steps.ring.outcome }}"
             echo "finished: $(date -u +%Y-%m-%dT%H:%MZ)"
           } > status.txt
+          [ -d ../ring-check ] && cp -r ../ring-check ring-check
           for f in build test-core test-desktop; do
             [ -f "../$f.log" ] && tail -n 250 "../$f.log" > "$f.log"
           done

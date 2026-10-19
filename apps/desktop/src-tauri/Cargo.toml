@@ -97,9 +97,6 @@ libc = "0.2"
 llama-cpp-2 = { version = "0.1.157", default-features = false, features = ["metal"] }
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSData", "NSDictionary", "NSGeometry", "NSString", "NSURL", "objc2-core-foundation"] }
-# The ring's mouse monitor takes a block (src/ring.rs); MIT, already in the
-# tree through objc2-app-kit.
-block2 = "0.6"
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSPrintInfo", "NSPrintOperation", "NSResponder", "NSView", "NSWindow"] }
 objc2-pdf-kit = { version = "0.3", default-features = false, features = ["std", "PDFDocument", "objc2-app-kit"] }
 keyring = { version = "3.6", features = ["apple-native"] }

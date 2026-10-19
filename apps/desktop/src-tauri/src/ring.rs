@@ -1,12 +1,13 @@
-//! The ring: hold Ctrl (Option on a Mac) and drag files out of File
-//! Explorer or Finder, and a ring of tools opens at the pointer; let the
+//! The ring: hold Ctrl or Shift (Option or Command on a Mac) and drag files
+//! out of File Explorer or Finder, and a ring of tools opens at the pointer; let the
 //! files go on a tool and its quick window opens (`quick.rs`). The idea is
 //! Filee's (github.com/KnifeLemon/Filee, MIT); none of its code is used.
 //!
-//! A watcher sees the system's mouse — a low-level mouse hook on Windows, a
-//! global event monitor on macOS (which needs no permission for mouse
-//! events) — and only notices a drag that started in Explorer or Finder
-//! with the key held. The ring itself is a small transparent window that
+//! A watcher sees the system's mouse: a low-level mouse hook on Windows,
+//! and on macOS a look every few milliseconds at the mouse button, the keys
+//! and the system's drag pasteboard (none of which needs a permission). It
+//! only notices a drag of files that started with the key held, from
+//! Explorer on Windows and from any app on a Mac. The ring itself is a small transparent window that
 //! takes the drop like any window; the files it is given are the ones the
 //! person let go there. Nothing is read or kept from any other drag.
 //!
@@ -45,6 +46,13 @@ static ENABLED: AtomicBool = AtomicBool::new(true);
 static BACKGROUND: AtomicBool = AtomicBool::new(false);
 static GESTURES: OnceLock<Mutex<Sender<Gesture>>> = OnceLock::new();
 static DROPPED: Mutex<Option<Vec<PathBuf>>> = Mutex::new(None);
+static LOG: OnceLock<PathBuf> = OnceLock::new();
+/// The ring's log stops growing here; it is for finding why the ring did
+/// not open, so its first lines are the ones that matter.
+const LOG_LIMIT: u64 = 64 * 1024;
+/// How long after start the ring window is made, so the first drag finds
+/// it ready instead of waiting for a web view to load.
+const PREPARE_AFTER: Duration = Duration::from_secs(3);
 
 /// What the watchers see.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -91,6 +99,28 @@ pub fn send(gesture: Gesture) {
     }
 }
 
+/// One line in `ring.log` beside the app's data: what the watcher saw.
+/// Only what kind of window was pressed and whether the ring opened; never
+/// a file's name. It stays on this computer.
+pub fn log(line: &str) {
+    use std::io::Write;
+    let Some(path) = LOG.get() else { return };
+    if std::fs::metadata(path).map(|m| m.len()).unwrap_or(0) >= LOG_LIMIT {
+        return;
+    }
+    let seconds = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+    {
+        let _ = writeln!(file, "{seconds} {line}");
+    }
+}
+
 /// Does a drag from `start` to `now` count, with the key held?
 pub fn is_drag(start: (i32, i32), now: (i32, i32), key_held: bool) -> bool {
     let (dx, dy) = (now.0 - start.0, now.1 - start.1);
@@ -122,6 +152,13 @@ pub fn load_settings<R: Runtime>(app: &AppHandle<R>) -> RingSettings {
 /// `start_hidden`: this run began with `--background`.
 pub fn start<R: Runtime>(app: &AppHandle<R>, start_hidden: bool) {
     let settings = load_settings(app);
+    if let Some(path) = settings_path(app) {
+        let _ = LOG.set(path.with_file_name("ring.log"));
+    }
+    log(&format!(
+        "started; ring {}",
+        if settings.ring { "on" } else { "off" }
+    ));
     ENABLED.store(settings.ring, Ordering::Relaxed);
     BACKGROUND.store(settings.background || start_hidden, Ordering::Relaxed);
     show_tray(app, background());
@@ -144,6 +181,13 @@ pub fn start<R: Runtime>(app: &AppHandle<R>, start_hidden: bool) {
                     });
                 }
             }
+        }
+    });
+    let handle = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(PREPARE_AFTER);
+        if enabled() {
+            let _ = ring_window(&handle);
         }
     });
     #[cfg(target_os = "windows")]
@@ -172,7 +216,7 @@ fn ring_window<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
             .transparent(true);
     builder
         .build()
-        .map_err(|e| eprintln!("warraq: cannot make the ring: {e}"))
+        .map_err(|e| log(&format!("cannot make the ring window: {e}")))
         .ok()
 }
 
@@ -399,14 +443,14 @@ mod windows {
 
     use windows_sys::Win32::Foundation::{LPARAM, LRESULT, POINT, WPARAM};
     use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
-    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_CONTROL};
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_CONTROL, VK_SHIFT};
     use windows_sys::Win32::UI::WindowsAndMessaging::{
         CallNextHookEx, GetAncestor, GetClassNameW, GetMessageW, SetWindowsHookExW,
         WindowFromPoint, GA_ROOT, MSG, MSLLHOOKSTRUCT, WH_MOUSE_LL, WM_LBUTTONDOWN, WM_LBUTTONUP,
         WM_MOUSEMOVE,
     };
 
-    use super::{enabled, is_drag, is_file_manager_class, send, Gesture};
+    use super::{enabled, is_drag, is_file_manager_class, log, send, Gesture};
 
     static DOWN: AtomicBool = AtomicBool::new(false);
     static FROM_FILES: AtomicBool = AtomicBool::new(false);
@@ -432,6 +476,13 @@ mod windows {
         }
     }
 
+    /// Ctrl or Shift, held now.
+    fn held() -> bool {
+        // SAFETY: plain key state queries.
+        let down = |key: u16| (unsafe { GetAsyncKeyState(i32::from(key)) } as u16 & 0x8000) != 0;
+        down(VK_CONTROL) || down(VK_SHIFT)
+    }
+
     unsafe extern "system" fn hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
         if code >= 0 && lparam != 0 {
             // SAFETY: for WH_MOUSE_LL, lparam points at an MSLLHOOKSTRUCT.
@@ -443,23 +494,28 @@ mod windows {
                     SHOWN.store(false, Ordering::Relaxed);
                     START_X.store(point.0, Ordering::Relaxed);
                     START_Y.store(point.1, Ordering::Relaxed);
-                    let from_files = enabled() && is_file_manager_class(&class_at(info.pt));
+                    let class = class_at(info.pt);
+                    let from_files = enabled() && is_file_manager_class(&class);
                     FROM_FILES.store(from_files, Ordering::Relaxed);
+                    if held() {
+                        log(&format!(
+                            "press with Ctrl or Shift held, over a {class} window"
+                        ));
+                    }
                 }
                 WM_MOUSEMOVE
                     if DOWN.load(Ordering::Relaxed)
                         && FROM_FILES.load(Ordering::Relaxed)
                         && !SHOWN.load(Ordering::Relaxed) =>
                 {
-                    // SAFETY: a plain key state query.
-                    let control =
-                        (unsafe { GetAsyncKeyState(i32::from(VK_CONTROL)) } as u16 & 0x8000) != 0;
+                    let control = held();
                     let start = (
                         START_X.load(Ordering::Relaxed),
                         START_Y.load(Ordering::Relaxed),
                     );
                     if is_drag(start, point, control) {
                         SHOWN.store(true, Ordering::Relaxed);
+                        log("drag from the file manager with Ctrl or Shift: ring shown");
                         send(Gesture::Start {
                             x: f64::from(point.0),
                             y: f64::from(point.1),
@@ -488,9 +544,10 @@ mod windows {
                 let module = GetModuleHandleW(std::ptr::null());
                 let hook = SetWindowsHookExW(WH_MOUSE_LL, Some(hook), module, 0);
                 if hook.is_null() {
-                    eprintln!("warraq: the ring's mouse hook could not be set");
+                    log("the mouse hook could not be set");
                     return;
                 }
+                log("watching the mouse");
                 let mut message: MSG = std::mem::zeroed();
                 while GetMessageW(&mut message, std::ptr::null_mut(), 0, 0) > 0 {}
             }
@@ -500,26 +557,19 @@ mod windows {
 
 #[cfg(target_os = "macos")]
 mod macos {
-    use std::cell::Cell;
+    use std::time::Duration;
 
-    use block2::RcBlock;
-    use objc2::rc::Retained;
+    use objc2::rc::{autoreleasepool, Retained};
     use objc2::runtime::AnyObject;
     use objc2::{class, msg_send};
     use objc2_foundation::{NSPoint, NSRect, NSString};
 
-    use super::{enabled, is_drag, send, Gesture};
+    use super::{enabled, is_drag, log, send, Gesture};
 
-    const LEFT_DOWN: usize = 1;
-    const LEFT_UP: usize = 2;
-    const LEFT_DRAGGED: usize = 6;
     const OPTION_KEY: usize = 1 << 19;
-
-    thread_local! {
-        static DOWN: Cell<Option<(i32, i32)>> = const { Cell::new(None) };
-        static FROM_FINDER: Cell<bool> = const { Cell::new(false) };
-        static SHOWN: Cell<bool> = const { Cell::new(false) };
-    }
+    const COMMAND_KEY: usize = 1 << 20;
+    /// How often the mouse and the drag pasteboard are looked at.
+    const TICK: Duration = Duration::from_millis(30);
 
     /// The pointer, in points from the top-left of the main screen.
     fn pointer() -> (f64, f64) {
@@ -528,6 +578,10 @@ mod macos {
             let at: NSPoint = msg_send![class!(NSEvent), mouseLocation];
             let screens: Option<Retained<AnyObject>> = msg_send![class!(NSScreen), screens];
             let height = screens
+                .filter(|screens| {
+                    let count: usize = msg_send![&**screens, count];
+                    count > 0
+                })
                 .map(|screens| {
                     let main: Retained<AnyObject> = msg_send![&*screens, objectAtIndex: 0usize];
                     let frame: NSRect = msg_send![&*main, frame];
@@ -538,61 +592,88 @@ mod macos {
         }
     }
 
-    fn finder_in_front() -> bool {
-        // SAFETY: NSWorkspace's documented messages, each answered with an object or nil.
+    /// The system's drag pasteboard: every drag of files writes to it, so
+    /// its change count moves when one starts.
+    fn drag_pasteboard() -> Option<Retained<AnyObject>> {
+        let name = NSString::from_str("Apple CFPasteboard drag");
+        // SAFETY: NSPasteboard's documented class message; nil-checked.
+        unsafe { msg_send![class!(NSPasteboard), pasteboardWithName: &*name] }
+    }
+
+    fn change_count(board: &AnyObject) -> isize {
+        // SAFETY: NSPasteboard's documented property.
+        unsafe { msg_send![board, changeCount] }
+    }
+
+    /// Whether what is being dragged is files (file URLs).
+    fn holds_files(board: &AnyObject) -> bool {
+        // SAFETY: NSPasteboard's documented property, an NSArray of NSString.
         unsafe {
-            let workspace: Retained<AnyObject> = msg_send![class!(NSWorkspace), sharedWorkspace];
-            let app: Option<Retained<AnyObject>> = msg_send![&*workspace, frontmostApplication];
-            let Some(app) = app else { return false };
-            let id: Option<Retained<NSString>> = msg_send![&*app, bundleIdentifier];
-            id.is_some_and(|id| id.to_string() == "com.apple.finder")
+            let types: Option<Retained<AnyObject>> = msg_send![board, types];
+            let Some(types) = types else { return false };
+            let count: usize = msg_send![&*types, count];
+            (0..count.min(64)).any(|k| {
+                let item: Retained<NSString> = msg_send![&*types, objectAtIndex: k];
+                let item = item.to_string();
+                item == "public.file-url" || item == "NSFilenamesPboardType"
+            })
         }
     }
 
-    /// A global monitor of the left button: macOS asks no permission for it.
-    /// Called on the main thread, where its events arrive.
+    /// The left button and the modifier keys, as the system has them now.
+    fn buttons_and_keys() -> (bool, usize) {
+        // SAFETY: NSEvent's documented class properties.
+        unsafe {
+            let buttons: usize = msg_send![class!(NSEvent), pressedMouseButtons];
+            let flags: usize = msg_send![class!(NSEvent), modifierFlags];
+            (buttons & 1 != 0, flags)
+        }
+    }
+
+    /// Watches by looking: while another app drags, event monitors are not
+    /// told of the mouse, but the button, the keys and the drag pasteboard
+    /// can always be read. A drag of files that begins with Option (or
+    /// Command) held, and moves far enough, opens the ring.
     pub fn watch() {
-        let block = RcBlock::new(|event: *mut AnyObject| {
-            if event.is_null() {
-                return;
-            }
-            // SAFETY: the monitor hands a live NSEvent.
-            let (kind, flags): (usize, usize) =
-                unsafe { (msg_send![event, r#type], msg_send![event, modifierFlags]) };
-            let (x, y) = pointer();
-            let now = (x as i32, y as i32);
-            match kind {
-                LEFT_DOWN => {
-                    DOWN.set(Some(now));
-                    SHOWN.set(false);
-                    FROM_FINDER.set(enabled() && finder_in_front());
-                }
-                LEFT_DRAGGED => {
-                    if let (Some(start), true, false) = (DOWN.get(), FROM_FINDER.get(), SHOWN.get())
-                    {
-                        if is_drag(start, now, flags & OPTION_KEY != 0) {
-                            SHOWN.set(true);
-                            send(Gesture::Start { x, y });
+        std::thread::spawn(|| {
+            let mut down: Option<((i32, i32), isize)> = None;
+            let mut shown = false;
+            loop {
+                std::thread::sleep(TICK);
+                autoreleasepool(|_| {
+                    let Some(board) = drag_pasteboard() else {
+                        return;
+                    };
+                    let (pressed, flags) = buttons_and_keys();
+                    let (x, y) = pointer();
+                    let now = (x as i32, y as i32);
+                    match (pressed, down) {
+                        (true, None) => {
+                            down = Some((now, change_count(&board)));
+                            shown = false;
                         }
+                        (true, Some((start, count))) if !shown && enabled() => {
+                            let key = flags & (OPTION_KEY | COMMAND_KEY) != 0;
+                            if change_count(&board) != count
+                                && is_drag(start, now, key)
+                                && holds_files(&board)
+                            {
+                                shown = true;
+                                log("drag of files with Option or Command: ring shown");
+                                send(Gesture::Start { x, y });
+                            }
+                        }
+                        (false, Some(_)) => {
+                            down = None;
+                            if std::mem::take(&mut shown) {
+                                send(Gesture::End);
+                            }
+                        }
+                        _ => {}
                     }
-                }
-                LEFT_UP => {
-                    DOWN.set(None);
-                    if SHOWN.replace(false) {
-                        send(Gesture::End);
-                    }
-                }
-                _ => {}
+                });
             }
         });
-        let mask: u64 = (1 << LEFT_DOWN) | (1 << LEFT_UP) | (1 << LEFT_DRAGGED);
-        // SAFETY: NSEvent's documented class method; the monitor (and the
-        // block it keeps) lives for the app's life.
-        unsafe {
-            let monitor: Option<Retained<AnyObject>> = msg_send![class!(NSEvent), addGlobalMonitorForEventsMatchingMask: mask, handler: &*block];
-            std::mem::forget(monitor);
-        }
-        std::mem::forget(block);
     }
 }
 

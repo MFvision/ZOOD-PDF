@@ -50,8 +50,8 @@ Weekly usage: 23% before; the after figure could not be read from a cloud sessio
   language) or Finder (a Services entry, `Info.plist` + `shell_menu.rs`) → a small window
   (`packages/ui/src/quick/`) that compresses, converts to Word/pictures, OCRs, combines,
   rotates, extracts, protects or makes a PDF from pictures/Office files, saving beside the
-  original. **Ctrl (Option) + drag** files out of Explorer/Finder shows a ring of tools at the
-  pointer (`src-tauri/src/ring.rs`, a low-level mouse hook on Windows, an NSEvent monitor on
+  original. **Ctrl/Shift (Option/Command) + drag** files out of Explorer/Finder shows a ring of tools at the
+  pointer (`src-tauri/src/ring.rs`, a low-level mouse hook on Windows, drag-pasteboard polling on
   macOS); an optional background mode starts at sign-in and waits in the tray.
 - **Document tabs** (`state/tabs.ts`, `shell/TabBar.tsx`): parked tabs keep their file,
   page and unsaved changes; Organize's page drag (now pointer events, since the Windows
@@ -70,12 +70,32 @@ Weekly usage: 23% before; the after figure could not be read from a cloud sessio
 - **Not tested on real Windows or a Mac**: the right-click menu, the ring, background mode and
   the tray. They compile for both and their logic has unit tests.
 
+## The owner's test of that build (2026-10-19) and what changed
+- **The ring did not open** for him (he tried Ctrl, Command and Shift). It now accepts Ctrl
+  or Shift on Windows and Option or Command on a Mac, and the window is made a few seconds
+  after start so the first drag finds it ready. On a Mac it no longer uses an NSEvent monitor
+  (other apps' drags don't reach one); it polls the mouse button, the keys and the system's
+  drag pasteboard every 30 ms, and opens for a drag of files from any app. Both platforms
+  write `ring.log` (64 KB at most, no file names) in the app's data folder, saying what the
+  watcher saw. The Windows workflow tries the ring for real (`scripts/ci/ring-check.ps1`:
+  Ctrl+drag a file out of Explorer by synthetic input) and puts its log and a mid-drag
+  screenshot on `ci-logs` (`ring-check/`). The Mac side compiles (checked standalone for
+  x86_64-apple-darwin) but was **not run on a Mac**.
+- **AI suggestion chips could not scroll**: they now wrap onto more lines (`ai/chat/chat.css`).
+- **Themes**: Settings → Theme and View → Theme now choose Liquid Glass, Zood or Workbench on
+  desktop and web (`styles/looks.css`, `html[data-look]`); the old light/dark choice is now
+  labelled Appearance.
+- **PDF → Word lost everything but the words**: Word export now keeps each page as it looks
+  (`export/docxLayout.ts`): the page's pictures and drawing behind the text, each line as a
+  text box in its own font, size, weight and colour, table cells as separate boxes (core op
+  `export.lines`). "Text only, flowing" keeps the old export. Checked in LibreOffice, **not in
+  Microsoft Word**.
+
 ## After that
 As he chooses, from the study's top ten (sizes there are PdfCraft's formula and run
 high; our desktop jobs took 1–1.5 h of real time each): large-format printing (A0/A1 at true
-scale, tiling), autosave and crash recovery, command search (Ctrl/⌘+K), measuring, and the
-Workbench theme (`docs/research/pdfcraft-theme.md`, which also brings the theme choice to
-desktop and web).
+scale, tiling), autosave and crash recovery, command search (Ctrl/⌘+K), and measuring. (The Workbench theme and the theme choice on
+desktop and web are done.)
 
 ## Known open problems
 - **iPhone UI tests**: 6 of 55 failing at the last full run, each a test reaching for a
