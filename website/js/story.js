@@ -49,7 +49,7 @@ const ON = {
 
 // Each chapter:
 //   id          the #anchor, also used by the chapter index
-//   kind        'story' (default), 'wall', 'platforms', 'download', 'inside'
+//   kind        'story' (default), 'ring', 'wall', 'platforms', 'download', 'inside'
 //   stage       pose numbers the desk animates between:
 //               pages 1-5, fan 0-1 (stack to arc), recede 0-1 (pages step back),
 //               dusk 0-1 (desk turns to navy ink), pattern 0-1, frame 0-1 (bronze frame)
@@ -63,12 +63,49 @@ export const CHAPTERS = [
     stage: { pages: 3, fan: 0, recede: 0, dusk: 0, pattern: 1 },
     devices: [],
     eyebrow: { ar: 'زود PDF', en: 'ZOOD PDF' },
-    title: { ar: 'ملفات PDF، [[من جديد]].', en: 'PDFs, [[done right]].' },
+    title: {
+      ar: 'من كومة أوراق إلى [[ملف مرتّب]]، في ثوانٍ.',
+      en: 'From a pile of paper to [[one tidy file]], in seconds.',
+    },
     lead: {
       ar: 'اقرأ ملفات PDF وحرّرها ووقّعها، والعربية أولًا. بلا حساب.',
       en: 'Read, edit and sign PDFs, Arabic first. No account needed.',
     },
     cta: { href: '#download', label: { ar: 'حمّل التطبيق', en: 'Get the app' } },
+  },
+  {
+    id: 'ring',
+    kind: 'ring',
+    stage: { pages: 1, fan: 0, recede: 0, dusk: 0, pattern: 0 },
+    devices: [],
+    eyebrow: { ar: 'حلقة الأدوات', en: 'The tool ring' },
+    title: {
+      ar: 'اسحب الملف، اختر الأداة، [[وانتهى]].',
+      en: 'Drag the file, pick a tool, [[done]].',
+    },
+    lead: {
+      ar: 'دون أن تفتح التطبيق: اضغط Ctrl وأنت تسحب ملفاتك من المجلد، فتظهر الحلقة تحت المؤشر.',
+      en: 'No need to open the app: hold Ctrl as you drag files out of a folder, and the ring opens under your pointer.',
+    },
+    points: [
+      {
+        ar: 'تعرض الأدوات التي تناسب ملفاتك فقط: ضغط وتحويل وقراءة النص من الصور ودمج وتدوير وتقسيم وتوقيع وحماية.',
+        en: 'It shows only the tools that fit your files: compress, convert, read scanned text, combine, rotate, split, sign and protect.',
+      },
+      {
+        ar: 'أفلت الملفات على الأداة فتعمل فورًا، ويدور التقدّم حول الحلقة، وتُحفظ النتيجة بجانب الأصل.',
+        en: 'Let go on a tool and it runs at once, the progress goes round the ring, and the result lands beside the original.',
+      },
+      {
+        ar: 'وإن احتاجت الأداة كلمة مرور أو صفحات بعينها، تفتح نافذة صغيرة تعرض لك الصفحات.',
+        en: 'If a tool needs a password or certain pages, a small window opens with the pages in view.',
+      },
+    ],
+    note: {
+      ar: 'Ctrl+Alt+Z يفتحها على الملفات المحددة، والأدوات نفسها في قائمة الزر الأيمن. الحلقة: ',
+      en: 'Ctrl+Alt+Z opens it on the selected files, and the same tools are on the right-click menu. The ring: ',
+      on: { ar: 'ويندوز', en: 'Windows' },
+    },
   },
   {
     id: 'arabic',
@@ -77,8 +114,8 @@ export const CHAPTERS = [
     devices: [],
     eyebrow: { ar: 'العربية أولًا', en: 'Arabic first' },
     title: {
-      ar: 'انسخ العربية وابحث فيها [[كما تقرؤها]].',
-      en: 'Copy and search Arabic [[as you read it]].',
+      ar: 'انسخ العربية [[فتلصقها سليمة]]، وابحث عن أي كلمة.',
+      en: 'Copy Arabic that [[pastes right]], and find any word.',
     },
     points: [
       {
@@ -103,8 +140,8 @@ export const CHAPTERS = [
     ],
     eyebrow: { ar: 'القراءة', en: 'Read' },
     title: {
-      ar: 'افتح ملف PDF [[وانتقل إلى ما تريد]] بسرعة.',
-      en: 'Open a PDF and [[find your place]] fast.',
+      ar: 'تصل إلى الصفحة التي تريدها [[من أول مرة]].',
+      en: 'Land on the page you need, [[first time]].',
     },
     points: [
       {
@@ -130,8 +167,8 @@ export const CHAPTERS = [
     devices: [{ frame: 'desktop', screen: 'edit' }],
     eyebrow: { ar: 'التحرير', en: 'Edit' },
     title: {
-      ar: 'عدّل فقرة، [[وتنتظم الأسطر]] من حولها.',
-      en: 'Change a paragraph and [[the lines reflow]] around it.',
+      ar: 'عدّل أي PDF بالعربية [[كأنه مستند تكتبه]].',
+      en: 'Edit any PDF in Arabic [[like a document you wrote]].',
     },
     points: [
       {
@@ -154,7 +191,10 @@ export const CHAPTERS = [
     act: { mark: [0.1, 0.65] },
     devices: [{ frame: 'tablet', screen: 'comment' }],
     eyebrow: { ar: 'التعليقات', en: 'Comment' },
-    title: { ar: 'علّق على ملف PDF [[كما تعلّق على الورق]].', en: 'Mark up a PDF [[like paper]].' },
+    title: {
+      ar: 'راجع الملف [[كأنه على الورق]]، وأعده واضحًا.',
+      en: 'Review it [[like paper]], send it back clear.',
+    },
     points: [
       {
         ar: 'ظلّل النص أو ضع تحته خطًا أو اشطبه.',
@@ -174,8 +214,8 @@ export const CHAPTERS = [
     devices: [{ frame: 'desktop', screen: 'pages' }],
     eyebrow: { ar: 'الصفحات', en: 'Pages' },
     title: {
-      ar: 'رتّب ملفات PDF وادمجها [[وصغّر حجمها]] في مكان واحد.',
-      en: 'Reorder, combine and [[shrink]] PDFs in one place.',
+      ar: 'من عدة ملفات إلى [[ملف واحد]] يسهل إرساله.',
+      en: 'Many files into [[one]], small enough to send.',
     },
     points: [
       {
@@ -202,8 +242,8 @@ export const CHAPTERS = [
     ],
     eyebrow: { ar: 'التعبئة والتوقيع', en: 'Fill and sign' },
     title: {
-      ar: 'املأ النموذج [[ووقّعه]] في الحال.',
-      en: 'Fill in a form and [[sign it]] on the spot.',
+      ar: 'املأ النموذج [[ووقّعه]] دون أن تطبعه.',
+      en: 'Fill in the form and [[sign it]], no printer needed.',
     },
     points: [
       {
@@ -231,7 +271,10 @@ export const CHAPTERS = [
     act: { redact: [0.15, 0.7] },
     devices: [{ frame: 'desktop', screen: 'redact' }],
     eyebrow: { ar: 'التنقيح', en: 'Redact' },
-    title: { ar: 'احذف البيانات الخاصة [[نهائيًا]].', en: 'Remove private details [[for good]].' },
+    title: {
+      ar: 'شارك الملف [[وبياناتك الخاصة محذوفة]] فعلًا.',
+      en: 'Share the file with private details [[truly gone]].',
+    },
     points: [
       {
         ar: 'يُزال النص المنقّح من الملف نفسه، ولا يكتفي بتغطيته.',
@@ -254,8 +297,8 @@ export const CHAPTERS = [
     devices: [{ frame: 'desktop', screen: 'scan' }],
     eyebrow: { ar: 'المسح الضوئي والتعرّف على النص', en: 'Scan and OCR' },
     title: {
-      ar: 'حوّل الصفحة الممسوحة إلى [[نص يمكنك البحث فيه]].',
-      en: 'Turn a scan into [[text you can search]].',
+      ar: 'الورق القديم يصبح [[نصًا تبحث فيه]].',
+      en: 'Old paper becomes [[text you can search]].',
     },
     points: [
       {
@@ -279,7 +322,10 @@ export const CHAPTERS = [
     act: { find: [0.15, 0.6] },
     devices: [{ frame: 'desktop', screen: 'ai' }],
     eyebrow: { ar: 'المساعد الذكي', en: 'AI assistant' },
-    title: { ar: 'اسأل ملف PDF [[عمّا فيه]].', en: 'Ask your PDF [[a question]].' },
+    title: {
+      ar: 'خذ خلاصة الملف الطويل [[دون أن تقرأه كله]].',
+      en: 'Get the gist of a long file [[without reading it all]].',
+    },
     points: [
       {
         ar: 'لخّصه أو اشرحه أو ترجمه بين العربية والإنجليزية، وكل جواب يذكر الصفحات التي قرأها.',
@@ -307,8 +353,8 @@ export const CHAPTERS = [
     devices: [],
     eyebrow: { ar: 'الشاشات', en: 'Screens' },
     title: {
-      ar: 'كل شاشة [[صُمّمت لمستنداتك]].',
-      en: 'Every screen, [[made for your documents]].',
+      ar: 'كل ما تحتاجه [[على بُعد لمسة]].',
+      en: 'Everything you need, [[one tap away]].',
     },
   },
   {
@@ -317,7 +363,10 @@ export const CHAPTERS = [
     stage: { pages: 2, fan: 0.35, recede: 0.3, dusk: 0, pattern: 0 },
     devices: [],
     eyebrow: { ar: 'كل الأجهزة', en: 'Every platform' },
-    title: { ar: 'محرر واحد، [[على كل شاشة]].', en: 'One editor, [[on every screen]].' },
+    title: {
+      ar: 'ابدأ على هاتفك، [[وأكمل على حاسوبك]].',
+      en: 'Start on your phone, [[finish on your computer]].',
+    },
     lead: {
       ar: 'المحرّك نفسه في كل نسخة، فالملف يُفتح ويُحفظ بالطريقة نفسها أينما كنت.',
       en: 'Every version runs the same engine, so a file opens and saves the same way wherever you are.',

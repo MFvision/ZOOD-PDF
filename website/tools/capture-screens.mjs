@@ -15,6 +15,11 @@
 // Writes website/assets/<lang>/<device>/<file>-<theme>.webp via a PNG and
 // Python's Pillow (python3 -m pip install pillow).
 //
+// With --clips it records the chapters' screens instead, as short looping
+// videos of the tool at work (…-<theme>.webm and .mp4, made with ffmpeg). A
+// pointer is drawn where the mouse or finger is, since screen recordings have
+// none.
+//
 // Two things are presentation only: phone screens hide the desktop-style menu
 // row and get a plain status bar (as on a phone), and the home screen hides
 // its own tool count (the site does not count tools). The AI screen runs the
@@ -23,7 +28,8 @@
 // model's words, which are written below.
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { SCREENS } from '../js/story.js';
 
@@ -44,7 +50,15 @@ const DEVICES = {
 
 const L = (lang, ar, en) => (lang === 'ar' ? ar : en);
 const sample = (name, lang) => `${SAMPLES}${name}-${lang}.pdf`;
-const pause = (page, ms = 300) => page.waitForTimeout(ms);
+const CLIPS = process.argv.includes('--clips');
+// A full-size frame takes Chromium about 150 ms, so videos are recorded in
+// slow motion (every wait, step and keystroke this many times longer) and
+// played back at speed: about 20 frames a second.
+const SLOW = CLIPS ? 3 : 1;
+const pause = (page, ms = 300) => page.waitForTimeout(ms * SLOW);
+/** A beat that only videos need, so a motion can be seen. */
+const beat = (page, ms) => (CLIPS ? page.waitForTimeout(ms * SLOW) : Promise.resolve());
+const typing = () => ({ delay: CLIPS ? 55 * SLOW : 10 });
 
 const TOOLS = {
   edit: { ar: 'تحرير', en: 'Edit' },
@@ -102,15 +116,26 @@ async function pageBox(page) {
 
 async function drag(page, from, to, steps = 15) {
   await page.mouse.move(from[0], from[1]);
+  await beat(page, 250);
   await page.mouse.down();
-  await page.mouse.move(to[0], to[1], { steps });
+  for (let i = 1; i <= steps; i++) {
+    await page.mouse.move(
+      from[0] + ((to[0] - from[0]) * i) / steps,
+      from[1] + ((to[1] - from[1]) * i) / steps,
+    );
+    await beat(page, 22);
+  }
   await page.mouse.up();
 }
 
 async function stroke(page, points) {
   await page.mouse.move(...points[0]);
+  await beat(page, 250);
   await page.mouse.down();
-  for (const point of points.slice(1)) await page.mouse.move(...point);
+  for (const point of points.slice(1)) {
+    await page.mouse.move(...point);
+    await beat(page, 9);
+  }
   await page.mouse.up();
 }
 
@@ -193,6 +218,22 @@ async function filledForm(page, lang) {
   const out = `${SAMPLES}form-filled-${lang}.pdf`;
   if (existsSync(out)) return out;
   await open(page, sample('form', lang));
+  await fillForm(page, lang);
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page
+      .getByRole('toolbar')
+      .first()
+      .getByRole('button', { name: L(lang, 'حفظ', 'Save'), exact: true })
+      .click(),
+  ]);
+  await download.saveAs(out);
+  await page.goto(APP);
+  await page.locator('.shell').waitFor();
+  return out;
+}
+
+async function fillForm(page, lang) {
   await tool(page, lang, 'prepareForm');
   await pane(page)
     .getByRole('button', { name: L(lang, /اكتشاف الحقول/, /Detect fields/) })
@@ -213,22 +254,11 @@ async function filledForm(page, lang) {
   const count = Math.min(await fields.count(), FORM[lang].length);
   for (let i = 0; i < count; i++) {
     await fields.nth(i).click();
-    await fields.nth(i).fill(FORM[lang][i]);
+    if (CLIPS) await fields.nth(i).pressSequentially(FORM[lang][i], typing());
+    else await fields.nth(i).fill(FORM[lang][i]);
     await fields.nth(i).press('Tab');
     await pause(page, 250);
   }
-  const [download] = await Promise.all([
-    page.waitForEvent('download'),
-    page
-      .getByRole('toolbar')
-      .first()
-      .getByRole('button', { name: L(lang, 'حفظ', 'Save'), exact: true })
-      .click(),
-  ]);
-  await download.saveAs(out);
-  await page.goto(APP);
-  await page.locator('.shell').waitFor();
-  return out;
 }
 
 // The assistant's answer on the AI screen (see the note at the top).
@@ -239,37 +269,46 @@ const ANSWER = {
 
 async function standInModel(page, lang) {
   await page.exposeFunction('__deviceStubAnswer', () => ANSWER[lang]);
-  await page.addInitScript(() => {
-    const answerFor = globalThis.__deviceStubAnswer;
-    const state = { ready: false };
-    globalThis.__WARRAQ_DEVICE_ENGINE__ = (model) => ({
-      model,
-      runtime: async () => 'test',
-      memoryGiB: async () => 8,
-      status: async () =>
-        state.ready ? { kind: 'ready', bytes: model.bytes } : { kind: 'missing' },
-      download: async (onProgress) => {
-        onProgress(model.bytes, model.bytes);
-        state.ready = true;
-      },
-      remove: async () => {
-        state.ready = false;
-      },
-      generate: async (messages, options) => {
-        const text = await answerFor(messages);
-        let out = '';
-        for (const word of text.split(/(?<=\s)/)) {
-          await new Promise((resolve) => setTimeout(resolve, 5));
-          out += word;
-          options.onToken(word);
-        }
-        return { text: out, cutOff: false, tokens: out.length, ms: 1 };
-      },
-    });
-  });
+  await page.addInitScript(
+    ([wordMs, fastMs]) => {
+      const answerFor = globalThis.__deviceStubAnswer;
+      const state = { ready: false };
+      globalThis.__WARRAQ_DEVICE_ENGINE__ = (model) => ({
+        model,
+        runtime: async () => 'test',
+        memoryGiB: async () => 8,
+        status: async () =>
+          state.ready ? { kind: 'ready', bytes: model.bytes } : { kind: 'missing' },
+        download: async (onProgress) => {
+          onProgress(model.bytes, model.bytes);
+          state.ready = true;
+        },
+        remove: async () => {
+          state.ready = false;
+        },
+        generate: async (messages, options) => {
+          const text = await answerFor(messages);
+          // Only the answer to the question is paced; reading the document is not.
+          const asked = /لخّص هذا التقرير|Summarize this report/.test(
+            JSON.stringify(messages.at(-1) ?? ''),
+          );
+          let out = '';
+          for (const word of text.split(/(?<=\s)/)) {
+            await new Promise((resolve) => setTimeout(resolve, asked ? wordMs : fastMs));
+            out += word;
+            options.onToken(word);
+          }
+          return { text: out, cutOff: false, tokens: out.length, ms: 1 };
+        },
+      });
+    },
+    [CLIPS ? 70 * SLOW : 5, 5 * SLOW],
+  );
 }
 
-// What each screen shows. `device` adapts a flow to the frame it is for.
+// What each screen shows. `device` adapts a flow to the frame it is for; a
+// video starts at `rec.start()`, where the tool's work begins.
+const NOREC = { start() {}, pause() {}, resume() {} };
 const FLOWS = {
   home: async (page) => {
     // The site does not count tools; the home screen's own count is hidden.
@@ -279,8 +318,19 @@ const FLOWS = {
         if (/عشرون|twenty/i.test(p.textContent)) p.style.visibility = 'hidden';
     });
   },
-  read: async (page, lang) => {
+  read: async (page, lang, device, rec = NOREC) => {
     await open(page, sample('report', lang));
+    if (!CLIPS) return;
+    rec.start();
+    await pause(page, 900);
+    const b = await pageBox(page);
+    await page.mouse.move(b.x + b.width / 2, b.y + b.seen / 2);
+    // About one page down, at reading pace.
+    for (let i = 0; i < 50; i++) {
+      await page.mouse.wheel(0, b.height / 50);
+      await pause(page, 45);
+    }
+    await pause(page, 700);
   },
   search: async (page, lang) => {
     await open(page, sample('invoice', lang));
@@ -291,12 +341,43 @@ const FLOWS = {
     await box.press('Enter');
     await pause(page, 1500);
   },
-  edit: async (page, lang) => {
+  edit: async (page, lang, device, rec = NOREC) => {
     await open(page, sample('report', lang));
+    rec.start();
     await tool(page, lang, 'edit');
     await pause(page, 1500);
+    if (!CLIPS) return;
+    // A sentence added to a paragraph, which reflows in place: the tallest
+    // paragraph box on the first page.
+    const boxes = page.locator('section[data-page="1"] .edit-box');
+    let pick = null;
+    for (let i = 0; i < (await boxes.count()); i++) {
+      const box = await boxes.nth(i).boundingBox();
+      if (box && (!pick || box.height > pick.height)) pick = box;
+    }
+    await page.mouse.click(pick.x + pick.width * 0.5, pick.y + pick.height * 0.5);
+    await pause(page, 700);
+    const area = page.locator('.paragraph-editor-area');
+    await area.focus();
+    await area.press('Control+End');
+    await page.keyboard.type(
+      L(lang, ' راجعه الفريق وأقرّه.', ' The team has reviewed it.'),
+      typing(),
+    );
+    await pause(page, 600);
+    await page.keyboard.press('Control+Enter');
+    // The app may offer to download the matching font; the closest one will do.
+    const closest = page.getByRole('button', {
+      name: L(lang, 'لا، استخدم أقرب خط', 'No, use the closest font'),
+    });
+    await closest
+      .waitFor({ timeout: 2500 })
+      .then(() => pause(page, 500))
+      .then(() => closest.click())
+      .catch(() => {});
+    await pause(page, 1500);
   },
-  comment: async (page, lang, device) => {
+  comment: async (page, lang, device, rec = NOREC) => {
     await open(page, sample('report', lang));
     await tool(page, lang, 'comment');
     const phone = device === 'phone';
@@ -321,6 +402,7 @@ const FLOWS = {
       }
     }
     await pause(page, 1200);
+    rec.start();
     const b = await pageBox(page);
     const X = (f) => b.x + b.width * f;
     const Y = (f) => b.y + b.height * f;
@@ -352,17 +434,16 @@ const FLOWS = {
       await pause(page, 500);
       await page.mouse.click(cx - 73, cy + r * 0.5 + 34);
       await pause(page, 600);
-      await page.keyboard.type(L(lang, 'هل هذا الرقم نهائي؟', 'Is this number final?'), {
-        delay: 10,
-      });
+      await page.keyboard.type(L(lang, 'هل هذا الرقم نهائي؟', 'Is this number final?'), typing());
       await page.keyboard.press('Enter');
       await pause(page, 600);
     }
     await page.mouse.click(X(0.5), Y(0.8));
     await pause(page, 800);
   },
-  pages: async (page, lang, device) => {
+  pages: async (page, lang, device, rec = NOREC) => {
     await open(page, sample('report', lang));
+    rec.start();
     await tool(page, lang, 'organize');
     if (device === 'phone') return; // the sheet covers the pages there
     // Two pages chosen, ready to move or extract.
@@ -371,10 +452,24 @@ const FLOWS = {
       .getByRole('option');
     await tiles.nth(1).click();
     await pause(page, 300);
+    await beat(page, 400);
     await tiles.nth(2).click({ modifiers: ['Control'] });
     await pause(page, 600);
+    if (!CLIPS) return;
+    await pane(page)
+      .getByRole('button', { name: L(lang, 'تأخير', 'Move later'), exact: true })
+      .click();
+    await pause(page, 1500);
   },
-  form: async (page, lang) => {
+  form: async (page, lang, device, rec = NOREC) => {
+    if (CLIPS) {
+      // Fields found on a flat form, then filled in.
+      await open(page, sample('form', lang));
+      rec.start();
+      await fillForm(page, lang);
+      await pause(page, 800);
+      return;
+    }
     await open(page, await filledForm(page, lang));
     await tool(page, lang, 'fillSign');
     await pane(page)
@@ -382,9 +477,10 @@ const FLOWS = {
       .click();
     await pause(page, 1500);
   },
-  sign: async (page, lang, device) => {
+  sign: async (page, lang, device, rec = NOREC) => {
     await open(page, await filledForm(page, lang));
     await tool(page, lang, 'fillSign');
+    rec.start();
     await pane(page)
       .getByText(L(lang, 'إنشاء توقيع', 'Create a signature'), { exact: true })
       .click();
@@ -440,7 +536,7 @@ const FLOWS = {
     await page.mouse.click(pb.x + pb.width * 0.5, pb.y + pb.height * 0.8);
     await pause(page, 600);
   },
-  redact: async (page, lang, device) => {
+  redact: async (page, lang, device, rec = NOREC) => {
     await open(page, sample('invoice', lang));
     await tool(page, lang, 'redact');
     const boxes = pane(page).getByRole('checkbox');
@@ -449,6 +545,8 @@ const FLOWS = {
         .nth(i)
         .check({ timeout: 2000 })
         .catch(() => {});
+    rec.start();
+    await pause(page, 600);
     await pane(page)
       .getByRole('button', { name: L(lang, 'بحث', 'Find'), exact: true })
       .first()
@@ -489,7 +587,7 @@ const FLOWS = {
     await pause(page, 2500);
     await closeSheet(page, lang, device);
   },
-  scan: async (page, lang, device) => {
+  scan: async (page, lang, device, rec = NOREC) => {
     await open(page, sample('scan', lang));
     await tool(page, lang, 'ocr');
     const boxes = pane(page).getByRole('checkbox');
@@ -503,13 +601,19 @@ const FLOWS = {
       .getByRole('checkbox', { name: L(lang, /مكان الصورة/, /cleaned-up picture/) })
       .check()
       .catch(() => {});
+    rec.start();
+    await pause(page, 600);
     await pane(page)
       .getByRole('button', { name: L(lang, 'التعرّف على النص', 'Recognize text'), exact: true })
       .click();
+    // A video shows the start of the reading, then skips the wait.
+    await pause(page, 1800);
+    rec.pause();
     for (let i = 0; i < 240; i++) {
       await pause(page, 1000);
       if (!/قراءة الصفحة|Reading page/.test(await pane(page).textContent())) break;
     }
+    rec.resume();
     await pause(page, 1500);
     if (device === 'phone') await closeSheet(page, lang, device);
     else
@@ -517,7 +621,7 @@ const FLOWS = {
         el.querySelector('[class*="scroll"], .pane-body')?.scrollTo?.(0, 1e5),
       );
   },
-  ai: async (page, lang) => {
+  ai: async (page, lang, device, rec = NOREC) => {
     await open(page, sample('report', lang));
     await tool(page, lang, 'ai');
     await pane(page)
@@ -525,8 +629,11 @@ const FLOWS = {
       .first()
       .click();
     await pause(page, 1500);
+    rec.start();
     const input = pane(page).getByLabel(L(lang, 'الرسالة', 'Message'));
-    await input.fill(L(lang, 'لخّص هذا التقرير', 'Summarize this report'));
+    await input.click();
+    await input.pressSequentially(L(lang, 'لخّص هذا التقرير', 'Summarize this report'), typing());
+    await beat(page, 400);
     await input.press('Enter');
     await pause(page, 4000);
   },
@@ -553,15 +660,150 @@ async function dressPhone(page) {
   }, PHONE_BAR);
 }
 
-// Which devices need which screens (the chapters' devices plus the wall's phone).
-const NEEDS = {
-  phone: ['home', 'read', 'search', 'comment', 'pages', 'sign', 'redact', 'scan', 'ai'],
-  tablet: ['read', 'comment'],
-  desktop: ['edit', 'pages', 'sign', 'redact', 'scan', 'ai'],
-  browser: ['form'],
-};
+// A pointer drawn into videos: an arrow on a computer, a fingertip while a
+// touch screen is pressed.
+async function showPointer(page, touch) {
+  await page.evaluate(
+    ([touch, slow]) => {
+      const el = document.createElement('div');
+      el.setAttribute('aria-hidden', 'true');
+      el.style.cssText =
+        'position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none;transition:transform .16s ease-out;transform:translate(-80px,-80px)';
+      el.innerHTML = touch
+        ? '<div style="width:38px;height:38px;margin:-19px 0 0 -19px;border-radius:50%;background:rgb(4 30 66/.22);border:2px solid rgb(255 255 255/.9);box-shadow:0 1px 6px rgb(0 0 0/.3);opacity:0;transition:opacity .15s,transform .15s"></div>'
+        : '<svg width="24" height="24" viewBox="0 0 24 24" style="display:block;transition:transform .12s;transform-origin:3px 2px"><path d="M3 2l15 10.2-6.6 1.3 3.8 7.4-2.8 1.4-3.8-7.4L3 19.5z" fill="#fff" stroke="#041e42" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+      document.documentElement.append(el);
+      const mark = el.firstElementChild;
+      const move = (e) => (el.style.transform = `translate(${e.clientX}px,${e.clientY}px)`);
+      for (const type of ['mousemove', 'pointermove']) addEventListener(type, move, true);
+      addEventListener(
+        'pointerdown',
+        (e) => {
+          move(e);
+          if (touch) mark.style.opacity = '1';
+          mark.style.transform = 'scale(.85)';
+        },
+        true,
+      );
+      addEventListener(
+        'pointerup',
+        () => {
+          mark.style.transform = '';
+          if (touch) setTimeout(() => (mark.style.opacity = '0'), 180 * slow);
+        },
+        true,
+      );
+    },
+    [touch, SLOW],
+  );
+  // Glide to each click, so the pointer is seen arriving.
+  const click = page.mouse.click.bind(page.mouse);
+  page.mouse.click = async (x, y, options) => {
+    await page.mouse.move(x, y);
+    await page.waitForTimeout(260 * SLOW);
+    return click(x, y, options);
+  };
+}
 
-const only = process.argv.slice(2);
+// Records full-size frames as fast as Chromium takes them (its screencast
+// gives CSS-pixel frames only), from rec.start() on; rec.pause() skips a wait.
+async function recorder(page, size) {
+  const cdp = await page.context().newCDPSession(page);
+  const clip = { x: 0, y: 0, width: size.width, height: size.height, scale: size.scale };
+  // The app's own animations slow down with everything else.
+  await cdp.send('Animation.enable');
+  await cdp.send('Animation.setPlaybackRate', { playbackRate: 1 / SLOW });
+  const frames = [];
+  const now = () => Date.now() / 1000;
+  let state = 'off';
+  let skipped = 0;
+  let pausedAt = 0;
+  let loop = null;
+  const run = async () => {
+    while (state !== 'off') {
+      if (state === 'paused') {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        continue;
+      }
+      const t = (now() - skipped) / SLOW;
+      const shot = await cdp
+        .send('Page.captureScreenshot', { format: 'jpeg', quality: 92, clip })
+        .catch(() => null);
+      if (shot && state === 'on') frames.push({ data: shot.data, t });
+    }
+  };
+  return {
+    frames,
+    start() {
+      if (state !== 'off') return;
+      state = 'on';
+      loop = run();
+    },
+    pause() {
+      if (state !== 'on') return;
+      state = 'paused';
+      pausedAt = now();
+    },
+    resume() {
+      if (state !== 'paused') return;
+      skipped += now() - pausedAt;
+      state = 'on';
+    },
+    async stop() {
+      const end = (now() - skipped) / SLOW;
+      state = 'off';
+      await loop;
+      return end;
+    },
+  };
+}
+
+/** Frames to a video that holds its last frame, then loops on the page. */
+function encode(frames, end, out) {
+  const dir = mkdtempSync(`${tmpdir()}/zood-clip-`);
+  const list = [];
+  frames.forEach((frame, i) => {
+    const file = `${dir}/${String(i).padStart(5, '0')}.jpg`;
+    writeFileSync(file, Buffer.from(frame.data, 'base64'));
+    const next = i + 1 < frames.length ? frames[i + 1].t : end + 2.5;
+    list.push(`file '${file}'`, `duration ${Math.max(0.001, next - frame.t).toFixed(3)}`);
+  });
+  list.push(list.at(-2));
+  writeFileSync(`${dir}/list.txt`, list.join('\n'));
+  // WebM (VP9) for browsers without H.264, such as plain Chromium; MP4 for the rest.
+  const codecs = {
+    webm: ['-c:v', 'libvpx-vp9', '-crf', '40', '-b:v', '0', '-row-mt', '1', '-cpu-used', '2'],
+    mp4: ['-c:v', 'libx264', '-preset', 'slow', '-crf', '27', '-movflags', '+faststart'],
+  };
+  for (const [type, codec] of Object.entries(codecs)) {
+    execFileSync('ffmpeg', [
+      ...['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', `${dir}/list.txt`],
+      ...['-vf', 'fps=30,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p'],
+      ...codec,
+      '-an',
+      `${out}.${type}`,
+    ]);
+  }
+  rmSync(dir, { recursive: true, force: true });
+}
+
+// Which devices need which screens (the chapters' devices plus the wall's phone)
+// and which of them are videos (the chapters' devices).
+const NEEDS = CLIPS
+  ? {
+      phone: ['read'],
+      tablet: ['read', 'comment'],
+      desktop: ['edit', 'pages', 'sign', 'redact', 'scan', 'ai'],
+      browser: ['form'],
+    }
+  : {
+      phone: ['home', 'read', 'search', 'comment', 'pages', 'sign', 'redact', 'scan', 'ai'],
+      tablet: ['read', 'comment'],
+      desktop: ['edit', 'pages', 'sign', 'redact', 'scan', 'ai'],
+      browser: ['form'],
+    };
+
+const only = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
 });
@@ -600,10 +842,29 @@ for (const [device, screens] of Object.entries(NEEDS)) {
         await page.locator('.shell').waitFor();
         if (device === 'phone') await dressPhone(page);
         console.log(device, screen, lang, theme);
+        const rec = CLIPS ? await recorder(page, size) : NOREC;
+        if (CLIPS) await showPointer(page, device === 'phone' || device === 'tablet');
         try {
-          await FLOWS[screen](page, lang, device);
+          await FLOWS[screen](page, lang, device, rec);
         } catch (error) {
-          console.warn('  flow stopped:', String(error.message).split('\n')[0]);
+          console.warn(
+            '  flow stopped:',
+            process.env.DEBUG ? error.message : String(error.message).split('\n')[0],
+          );
+        }
+        if (CLIPS) {
+          await page.mouse.move(-50, -50);
+          await pause(page, 400);
+          const end = await rec.stop();
+          const dir = `${ROOT}assets/${lang}/${device}/`;
+          mkdirSync(dir, { recursive: true });
+          const { frames } = rec;
+          if (frames.length) {
+            encode(frames, end, `${dir}${SCREENS.files[screen]}-${theme}`);
+            console.log(`  ${frames.length} frames, ${(end - frames[0].t).toFixed(1)} s`);
+          } else console.warn('  nothing recorded');
+          await context.close();
+          continue;
         }
         if (device === 'phone' && !(await page.locator('#zood-status').count()))
           await dressPhone(page);

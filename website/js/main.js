@@ -17,19 +17,29 @@ import {
   WALL,
 } from './story.js';
 import { buildStage, phoneFrame, tabletFrame } from './desk.js';
+import { startDrip } from './drip.js';
+import { playGather } from './gather.js';
+import { ringScene, ringFrame } from './ring.js';
 
 const root = document.documentElement;
 export const lang = root.lang === 'en' ? 'en' : 'ar';
 export const t = (text) => (text && typeof text === 'object' ? text[lang] : (text ?? ''));
 const reduceQuery = matchMedia('(prefers-reduced-motion: reduce)');
 const darkQuery = matchMedia('(prefers-color-scheme: dark)');
+const narrow = matchMedia('(max-width: 899px)');
 let reduced = reduceQuery.matches;
 
 export const urlFor = (language, slug = '') =>
   (language === 'ar' ? '/' : '/en/') + (slug ? `${slug}/` : '');
 const resolvedTheme = () => root.dataset.theme ?? (darkQuery.matches ? 'dark' : 'light');
-const screenSrc = (device, name, theme = resolvedTheme()) =>
-  `/assets/${lang}/${device}/${SCREENS.files[name]}-${theme}.webp`;
+const screenSrc = (device, name, theme = resolvedTheme(), type = 'webp') =>
+  `/assets/${lang}/${device}/${SCREENS.files[name]}-${theme}.${type}`;
+// The chapters' screens are short videos of the tool at work, shown over the
+// still picture once they play; the still stays with Reduce Motion or Save Data.
+const clipsAllowed = () => !reduced && !navigator.connection?.saveData;
+const clipType = document.createElement('video').canPlayType('video/webm; codecs="vp9"')
+  ? 'webm'
+  : 'mp4';
 
 const escape = (s) =>
   String(s).replace(
@@ -153,7 +163,7 @@ export function headlineFont() {
 }
 
 // ---- The story --------------------------------------------------------------
-function chapterHtml(c, index) {
+function chapterBody(c, index) {
   const heading = index === 0 ? 'h1' : 'h2';
   const id = `h-${c.id}`;
   let body = `<p class="eyebrow">${escape(t(c.eyebrow))}</p><${heading} class="title" id="${id}">${titleHtml(c.title)}</${heading}>`;
@@ -177,6 +187,12 @@ function chapterHtml(c, index) {
   if (c.devices?.length) {
     body += `<p class="sr-only">${c.devices.map((d) => escape(t(UI.screen)) + escape(t(SCREENS.alt[d.screen]))).join('. ')}</p>`;
   }
+  return body;
+}
+
+function chapterHtml(c, index) {
+  const id = `h-${c.id}`;
+  const body = chapterBody(c, index);
   const cls = [
     'chapter',
     c.kind === 'hero' ? 'hero' : '',
@@ -186,6 +202,13 @@ function chapterHtml(c, index) {
     .filter(Boolean)
     .join(' ');
   return `<section class="${cls}" id="${c.id}" data-chapter="${index}" aria-labelledby="${id}"><div class="words"><div class="card">${body}</div></div></section>`;
+}
+
+// The ring: its own dark room, the words beside a scene the scroll plays.
+function ringHtml(c, index) {
+  return `<section class="ring-ch" id="${c.id}" data-chapter="${index}" aria-labelledby="h-${c.id}">
+    <div class="ring-stage"><div class="ring-words"><div class="card">${chapterBody(c, index)}</div></div>${ringScene(t, escape)}</div>
+  </section>`;
 }
 
 function wallHtml(c, index) {
@@ -236,7 +259,7 @@ function insideHtml(c) {
 function dockHtml() {
   const imgs = (device) => {
     const [w, h] = SCREENS[device].size;
-    return `<div class="screen"><img alt="" width="${w}" height="${h}" decoding="async"><img alt="" width="${w}" height="${h}" decoding="async"></div>`;
+    return `<div class="screen"><img alt="" width="${w}" height="${h}" decoding="async"><img alt="" width="${w}" height="${h}" decoding="async"><video muted loop playsinline disablepictureinpicture preload="none" width="${w}" height="${h}"></video></div>`;
   };
   return `<div class="dock" aria-hidden="true">
     <div class="device device-browser" data-frame="browser"><div class="browser-tabs"><div class="browser-tab">${escape(t(SCREENS.browserFile))}</div></div><div class="browser-bar"><div class="browser-address">${escape(t(SITE.name))} · ${escape(t(SCREENS.browserFile))}</div></div>${imgs('browser')}</div>
@@ -289,13 +312,21 @@ function startStory() {
   const main = document.createElement('main');
   main.id = 'main';
   main.innerHTML =
-    story.map((c, i) => (c.kind === 'wall' ? wallHtml(c, i) : chapterHtml(c, i))).join('') +
-    insideHtml(inside);
+    story
+      .map((c, i) =>
+        c.kind === 'wall' ? wallHtml(c, i) : c.kind === 'ring' ? ringHtml(c, i) : chapterHtml(c, i),
+      )
+      .join('') + insideHtml(inside);
 
   document.body.prepend(skip, topBar(''), stage, dock, index, main);
+  const drip = startDrip(
+    stage.querySelector('.desk-pattern'),
+    new URL('../assets/brand/pattern.svg', import.meta.url).href,
+  );
   document.body.append(footer());
 
   const sections = [...main.querySelectorAll('[data-chapter]')];
+  const ringAt = story.findIndex((c) => c.kind === 'ring');
   const insideEl = main.querySelector('.inside');
   const wall = main.querySelector('.wall');
   const wallCols = [...wall.querySelectorAll('.wall-col')];
@@ -337,6 +368,7 @@ function startStory() {
     // Document offsets, read once per resize rather than per frame.
     tops = sections.map((s) => s.getBoundingClientRect().top + scrollY);
     heights = sections.map((s) => s.offsetHeight);
+    drip.layout();
     insideTop = insideEl.getBoundingClientRect().top + scrollY;
     wallTop = wall.getBoundingClientRect().top + scrollY;
     wallHeight = wall.offsetHeight;
@@ -355,11 +387,30 @@ function startStory() {
     el.style.setProperty(name, v);
   }
 
+  function playClip(video, src) {
+    if (video.dataset.src === src) return;
+    video.dataset.src = src;
+    video.classList.remove('on');
+    video.pause();
+    if (!src) return;
+    video.addEventListener(
+      'playing',
+      () => video.dataset.src === src && video.classList.add('on'),
+      { once: true },
+    );
+    video.src = src;
+    video.play().catch(() => {});
+  }
+
   function setDevices(chapter) {
     const wanted = new Map((chapter?.devices ?? []).map((d) => [d.frame, d.screen]));
     for (const [frame, el] of Object.entries(frames)) {
       const screen = wanted.get(frame);
       el.classList.toggle('on', Boolean(screen));
+      playClip(
+        el.querySelector('.screen video'),
+        screen && clipsAllowed() ? screenSrc(frame, screen, undefined, clipType) : '',
+      );
       if (!screen) continue;
       const src = screenSrc(frame, screen);
       const [a, b] = el.querySelectorAll('.screen img');
@@ -392,6 +443,8 @@ function startStory() {
     const a = { ...POSE, ...story[i].stage };
     const b = { ...POSE, ...story[next].stage };
     for (const k of Object.keys(POSE)) write(stage, `--${k}`, a[k] + (b[k] - a[k]) * w);
+    // The pattern runs down as the chapter plays, and slides off as the next begins.
+    drip.set(clamp(ti / 0.8), next === i ? 0 : w, reduced);
 
     // Actions: each plays across its chapter, present while that chapter is.
     const values = Object.fromEntries(ACTIONS.map((n) => [n, { p: 0, on: 0 }]));
@@ -420,6 +473,28 @@ function startStory() {
       }
     }
 
+    // The ring plays across its room's scroll.
+    if (ringAt >= 0 && Math.abs(i - ringAt) <= 1) {
+      ringFrame(
+        sections[ringAt],
+        clamp((scrollY - tops[ringAt]) / (heights[ringAt] - vh)),
+        reduced,
+      );
+    }
+
+    // On a phone the cards rest under the devices; a card leaving upwards fades
+    // before it reaches them.
+    if (narrow.matches) {
+      const floor = dock.getBoundingClientRect().bottom;
+      for (let k = Math.max(0, i - 1); k <= Math.min(sections.length - 1, i + 1); k++) {
+        const card = sections[k].querySelector('.words');
+        if (!card) continue;
+        const top = card.getBoundingClientRect().top;
+        const o = clamp((top - floor + vh * 0.1) / (vh * 0.1)).toFixed(2);
+        if (card.style.opacity !== o) card.style.opacity = o;
+      }
+    }
+
     // Devices and the chapter index follow the chapter that holds the middle of the screen.
     const active = w >= 0.5 ? next : i;
     const pastStory = scrollY + vh * 0.5 >= insideTop;
@@ -429,7 +504,7 @@ function startStory() {
       setDevices(pastStory ? null : story[active]);
       const id = CHAPTERS[current].id;
       indexLinks.forEach((l) => l.setAttribute('aria-current', String(l.dataset.target === id)));
-      index.classList.toggle('dark', story[active]?.kind === 'wall' && !pastStory);
+      index.classList.toggle('dark', ['wall', 'ring'].includes(story[active]?.kind) && !pastStory);
       if (id !== lastHash) {
         lastHash = id;
         // The language switch keeps your place.
@@ -507,6 +582,7 @@ function startStory() {
   darkQuery.addEventListener('change', () => document.dispatchEvent(new Event('themechange')));
   reduceQuery.addEventListener('change', () => {
     reduced = reduceQuery.matches;
+    lastActive = -1;
     schedule();
   });
   addEventListener('scroll', schedule, { passive: true });
@@ -516,6 +592,7 @@ function startStory() {
   addEventListener('load', measure);
   measure();
   update();
+  if (!location.hash) playGather(stage, reduced);
   if (wallNear) wallImages();
 }
 

@@ -97,6 +97,12 @@ screen hides its own tool count. The AI screen runs the app's panel on the
 stand-in engine its browser tests use (`apps/web/e2e/deviceStub.ts`); only the
 model's words are written by the script.
 
+The chapters' devices also play a short looping video of the tool at work
+(WebM, or MP4 where WebM does not play, beside each picture), shown over the picture once
+it plays; with Reduce Motion or Save Data the picture stays. Record them with
+`node website/tools/capture-screens.mjs --clips` (needs ffmpeg). A drawn
+pointer shows where the mouse or finger is.
+
 Replace any picture with a marketing screenshot by saving it under the same
 name and size (phone 640 × 1386, tablet 1600 × 1200, desktop and browser
 1600 × 1000, WebP quality about 80).
@@ -134,6 +140,23 @@ revalidation of HTML, JS and CSS on every visit, and the security headers
 nothing outside the site). For auto-deploy on push, have the server pull the
 `app` branch and rebuild the image, or push the image from a GitHub Actions
 workflow to the server; the licensed font has to be added on the server side.
+
+## The opening, the pattern and the ring
+
+- `js/gather.js`: at load, at the top of the page, loose papers settle onto the
+  desk's stack, which then wears the ZOOD PDF mark (it fades once you scroll).
+  With Reduce Motion the page opens on the finished stack.
+- `js/drip.js`: the ZOOD pattern runs down the page like paint, each narrow
+  column at its own speed, while a chapter plays; it slides off as the next
+  chapter begins. With Reduce Motion it simply stands.
+- `js/ring.js`: the tool ring chapter (`kind: 'ring'` in `js/story.js`), drawn
+  after the app's own ring (`packages/ui/src/quick/Ring.tsx`, `ringGeometry.ts`,
+  `plan.ts`) and played by the scroll: files dragged out of a folder with Ctrl,
+  the ring opening, Compress picked, the progress, the results beside the
+  originals. The ring's tools follow `plan.ts`; programs' names are shown as the
+  files they make (docx, xlsx, pptx). The icons in `js/ring-icons.js` are
+  Lucide's, generated from the app's `lucide-react`. Claim only what the
+  Windows build does: keep the note's "Windows" until the Mac ring is tested.
 
 ## Motion, for whoever changes it
 
