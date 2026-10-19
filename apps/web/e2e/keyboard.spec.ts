@@ -82,7 +82,7 @@ test('Settings: each segmented control is one Tab stop, and the arrows choose wi
   const sheet = page.getByRole('dialog', { name: 'Settings' });
   await expect(sheet).toBeVisible();
   const language = sheet.getByRole('radiogroup', { name: 'Language' });
-  const theme = sheet.getByRole('radiogroup', { name: 'Theme' });
+  const theme = sheet.getByRole('radiogroup', { name: 'Appearance' });
 
   // Tab lands on the chosen option of each group, and leaves it in one step.
   await page.keyboard.press('Tab');

@@ -1,7 +1,7 @@
 import { useCloud } from '../cloud/CloudContext';
 import { isTauriHost } from '../core/host-tauri';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
-import type { ThemeMode } from '../state/preferences';
+import type { ThemeMode, UiLook } from '../state/preferences';
 import { closeBar, openBar, readAloudState, useReadAloud } from '../speech/readAloud';
 import { useT } from '../i18n/useT';
 import { TOOLS } from '../tools/tools';
@@ -137,6 +137,13 @@ export function useMenuModel(): MenuModel[] {
     role: 'menuitemradio',
     checked: state.theme === theme,
     onSelect: () => dispatch({ type: 'SET_THEME', theme }),
+  });
+  const lookItem = (look: UiLook): MenuItemModel => ({
+    id: `look-${look}`,
+    label: `${t('look.label')}: ${t(`look.${look}`)}`,
+    role: 'menuitemradio',
+    checked: state.look === look,
+    onSelect: () => dispatch({ type: 'SET_LOOK', look }),
   });
   const menus: MenuModel[] = [
     {
@@ -278,6 +285,9 @@ export function useMenuModel(): MenuModel[] {
         { ...themeItem('system', `${t('theme.label')}: ${t('theme.system')}`), separatorBefore: true },
         themeItem('light', `${t('theme.label')}: ${t('theme.light')}`),
         themeItem('dark', `${t('theme.label')}: ${t('theme.dark')}`),
+        { ...lookItem('glass'), separatorBefore: true },
+        lookItem('zood'),
+        lookItem('workbench'),
       ],
     },
     {

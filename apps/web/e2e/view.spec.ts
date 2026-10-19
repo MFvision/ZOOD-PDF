@@ -132,8 +132,24 @@ test.describe('the menus act on the page on screen', () => {
       );
     for (const theme of ['Dark', 'Light', 'System']) {
       await menu(page, 'View').click();
-      await page.getByRole('menuitemradio', { name: `Theme: ${theme}` }).click();
+      await page.getByRole('menuitemradio', { name: `Appearance: ${theme}` }).click();
       await expect.poll(preference).toBe(theme.toLowerCase());
     }
+  });
+
+  test('Settings and the View menu change the theme, and it is kept', async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    const look = () => page.evaluate(() => document.documentElement.dataset.look ?? 'glass');
+    const accent = () => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+    await page.keyboard.press('Control+,');
+    await page.getByRole('radiogroup', { name: 'Theme' }).getByRole('radio', { name: 'Zood' }).click();
+    await expect.poll(look).toBe('zood');
+    await expect.poll(accent).toBe('#73563a');
+    await page.keyboard.press('Escape');
+    await menu(page, 'View').click();
+    await page.getByRole('menuitemradio', { name: 'Theme: Workbench' }).click();
+    await expect.poll(accent).toBe('#1b63e0');
+    await page.reload();
+    await expect.poll(look).toBe('workbench');
   });
 });

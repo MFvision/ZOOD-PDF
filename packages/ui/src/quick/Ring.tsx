@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import '../styles/tokens.css';
+import '../styles/looks.css';
 import '../styles/fonts.css';
 import './ring.css';
 import { RING_DROP_EVENT, RING_FILES_EVENT, RING_OVER_EVENT, RING_SHOW_EVENT, onHostEvent, ringPick } from '../core/host-tauri';

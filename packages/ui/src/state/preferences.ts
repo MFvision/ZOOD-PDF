@@ -2,11 +2,14 @@ import type { Lang } from '../i18n/messages';
 
 /** Everything remembered between sessions (names only, no document bytes). */
 export type ThemeMode = 'system' | 'light' | 'dark';
+/** The look over the light/dark appearance (`styles/looks.css`). */
+export type UiLook = 'glass' | 'zood' | 'workbench';
 export type LeftTab = 'thumbnails' | 'bookmarks' | 'attachments' | 'layers' | 'comments';
 
 export interface Preferences {
   lang?: Lang;
   theme?: ThemeMode;
+  look?: UiLook;
   leftPaneOpen?: boolean;
   leftPaneWidth?: number;
   leftTab?: LeftTab;
@@ -36,6 +39,7 @@ export function writeJson(key: string, value: unknown): void {
 
 const LANGS = new Set<string>(['ar', 'en']);
 const THEMES = new Set<string>(['system', 'light', 'dark']);
+const LOOKS = new Set<string>(['glass', 'zood', 'workbench']);
 const TABS = new Set<string>(['thumbnails', 'bookmarks', 'attachments', 'layers', 'comments']);
 
 function pickBoolean(value: unknown): boolean | undefined {
@@ -55,6 +59,7 @@ export function sanitizePreferences(raw: unknown): Preferences {
   return {
     lang: typeof p.lang === 'string' && LANGS.has(p.lang) ? (p.lang as Lang) : undefined,
     theme: typeof p.theme === 'string' && THEMES.has(p.theme) ? (p.theme as ThemeMode) : undefined,
+    look: typeof p.look === 'string' && LOOKS.has(p.look) ? (p.look as UiLook) : undefined,
     leftPaneOpen: pickBoolean(p.leftPaneOpen),
     leftPaneWidth: pickWidth(p.leftPaneWidth),
     leftTab: typeof p.leftTab === 'string' && TABS.has(p.leftTab) ? (p.leftTab as LeftTab) : undefined,

@@ -387,25 +387,21 @@
   margin-block-start: 0;
 }
 
-/* The quick actions: one row that scrolls sideways, so the thread keeps its height. */
+/*
+ * The quick actions, wrapped onto as many rows as they need: a row that
+ * scrolled sideways could not be scrolled with a mouse wheel, and its
+ * last actions were out of reach.
+ */
 .ai-chips {
   display: flex;
   flex: none;
-  gap: var(--space-3);
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
   padding-block: var(--space-4) var(--space-1);
   padding-inline: var(--space-5);
   margin: 0;
-  overflow-x: auto;
   list-style: none;
   border-block-start: 0.5px solid var(--separator);
-  scrollbar-width: none;
-
-  /* The row runs on past the edge: its end fades, to say there is more. */
-  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
-}
-
-.ai-chips:dir(rtl) {
-  mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
 }
 
 .ai-chips li {

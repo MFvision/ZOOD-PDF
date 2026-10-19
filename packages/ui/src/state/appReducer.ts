@@ -4,7 +4,7 @@ import type { CoreStatus, DocumentMetadata, PageSize } from '../core/types';
 import { applyEdit, EMPTY_EDIT_STACK } from '../edit/editStack';
 import type { EditEntry, EditStack } from '../edit/editStack';
 import type { ToolId } from '../tools/tools';
-import type { LeftTab, Preferences, ThemeMode } from './preferences';
+import type { LeftTab, Preferences, ThemeMode, UiLook } from './preferences';
 import { clampZoom, nextZoomStep, previousZoomStep } from './zoom';
 import { NO_SELECTION, clampSelection, select, selectAll } from '../organize/selection';
 import type { SelectHow, Selection } from '../organize/selection';
@@ -67,6 +67,7 @@ export interface AppState {
   zoom: number;
   zoomMode: ZoomMode;
   theme: ThemeMode;
+  look: UiLook;
   leftPane: { open: boolean; width: number; tab: LeftTab };
   rightPane: { open: boolean; width: number; activeTool: ToolId | null };
   find: { open: boolean; query: string; matches: number[]; cursor: number; searched: boolean };
@@ -119,6 +120,7 @@ export type AppAction =
   | { type: 'SET_ZOOM_MODE'; mode: ZoomMode }
   | { type: 'FIT_ZOOM_COMPUTED'; zoom: number }
   | { type: 'SET_THEME'; theme: ThemeMode }
+  | { type: 'SET_LOOK'; look: UiLook }
   | { type: 'TOGGLE_LEFT_PANE'; open?: boolean }
   | { type: 'SET_LEFT_TAB'; tab: LeftTab }
   | { type: 'SET_LEFT_WIDTH'; width: number }
@@ -216,6 +218,7 @@ export function createInitialState(prefs: Preferences = {}): AppState {
     zoom: 1,
     zoomMode: 'fit-width',
     theme: prefs.theme ?? 'system',
+    look: prefs.look ?? 'glass',
     leftPane: {
       open: prefs.leftPaneOpen ?? true,
       width: clampPaneWidth(prefs.leftPaneWidth ?? DEFAULT_LEFT_WIDTH),
@@ -345,6 +348,8 @@ function reduce(state: AppState, action: AppAction): AppState {
       return Math.abs(state.zoom - action.zoom) < 0.0005 ? state : { ...state, zoom: action.zoom };
     case 'SET_THEME':
       return { ...state, theme: action.theme };
+    case 'SET_LOOK':
+      return { ...state, look: action.look };
     case 'TOGGLE_LEFT_PANE':
       return {
         ...state,

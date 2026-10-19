@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, CircleAlert, CircleCheck, CircleDashed, ExternalLink, FileText, Loader2, X } from 'lucide-react';
 import '../styles/tokens.css';
+import '../styles/looks.css';
 import '../styles/fonts.css';
 import '../styles/base.css';
 import '../styles/components.css';
@@ -71,8 +72,9 @@ function QuickWindow() {
 
   useEffect(() => {
     void client.init();
-    const theme = readPreferences().theme;
+    const { theme, look } = readPreferences();
     if (theme && theme !== 'system') document.documentElement.dataset.theme = theme;
+    if (look && look !== 'glass') document.documentElement.dataset.look = look;
     quickJob()
       .then((found) => {
         setJob(found);

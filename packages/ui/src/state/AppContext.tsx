@@ -524,6 +524,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     writePreferences({ theme: state.theme });
   }, [state.theme]);
 
+  // The look (styles/looks.css) on <html data-look>; Liquid Glass is none.
+  useEffect(() => {
+    const root = globalThis.document.documentElement;
+    if (state.look === 'glass') delete root.dataset.look;
+    else root.dataset.look = state.look;
+    writePreferences({ look: state.look });
+  }, [state.look]);
+
   const { open: leftOpen, width: leftWidth, tab: leftTab } = state.leftPane;
   const { open: rightOpen, width: rightWidth } = state.rightPane;
   useEffect(() => {

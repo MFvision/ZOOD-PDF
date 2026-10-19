@@ -7,7 +7,7 @@ import { APP_ICON } from '../components/appIcon';
 import { radioTabIndex, useRadioGroupKeyboard } from '../components/useRadioGroupKeyboard';
 import { useI18n, useT } from '../i18n/useT';
 import type { Lang, TKey } from '../i18n/messages';
-import type { ThemeMode } from '../state/preferences';
+import type { ThemeMode, UiLook } from '../state/preferences';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { AiSettingsSection } from '../ai/AiSettings';
 import { VoiceSettings } from '../speech/VoiceSettings';
@@ -254,7 +254,7 @@ function Segmented<T extends string>({
  * — which carries the language selector in a browser — is the system's there.
  */
 export function SettingsDialog() {
-  const { dialog, theme } = useAppState();
+  const { dialog, theme, look } = useAppState();
   const dispatch = useAppDispatch();
   const { t, lang, setLang } = useI18n();
   return (
@@ -280,6 +280,17 @@ export function SettingsDialog() {
             { value: 'dark', label: t('theme.dark') },
           ]}
           onChange={(next) => dispatch({ type: 'SET_THEME', theme: next })}
+        />
+        <Segmented<UiLook>
+          id="settings-look"
+          label={t('look.label')}
+          value={look}
+          options={[
+            { value: 'glass', label: t('look.glass') },
+            { value: 'zood', label: t('look.zood') },
+            { value: 'workbench', label: t('look.workbench') },
+          ]}
+          onChange={(next) => dispatch({ type: 'SET_LOOK', look: next })}
         />
         {/* The AI tool's provider and on-device model, the person's details for forms, and the reading voices. */}
         {dialog === 'settings' && (
