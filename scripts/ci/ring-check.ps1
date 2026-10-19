@@ -58,8 +58,7 @@ public static class Input {
 function Shot($name) {
   $bitmap = New-Object System.Drawing.Bitmap ([Input]::Width), ([Input]::Height)
   $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-  # CaptureBlt also takes layered windows, such as the drag picture.
-  $graphics.CopyFromScreen(0, 0, 0, 0, $bitmap.Size, [System.Drawing.CopyPixelOperation]'SourceCopy, CaptureBlt')
+  $graphics.CopyFromScreen(0, 0, 0, 0, $bitmap.Size)
   $bitmap.Save((Join-Path $Out $name), [System.Drawing.Imaging.ImageFormat]::Png)
   $graphics.Dispose(); $bitmap.Dispose()
 }
