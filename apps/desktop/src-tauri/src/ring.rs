@@ -127,7 +127,8 @@ pub fn log(line: &str) {
         .append(true)
         .open(path)
     {
-        let _ = writeln!(file, "{seconds} {line}");
+        // One write per line, so lines from two threads do not interleave.
+        let _ = file.write_all(format!("{seconds} {line}\n").as_bytes());
     }
 }
 

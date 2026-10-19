@@ -36,6 +36,7 @@ public static class Input {
   [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr hwnd, int x, int y, int w, int h, bool repaint);
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr FindWindow(string cls, string title);
   [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hwnd, uint msg, IntPtr w, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
   static void Send(INPUT i) { SendInput(1, new[] { i }, Marshal.SizeOf(typeof(INPUT))); }
   public static int Width { get { return GetSystemMetrics(0); } }
   public static int Height { get { return GetSystemMetrics(1); } }
@@ -82,7 +83,19 @@ Start-Sleep -Seconds 8
 Start-Process explorer.exe $folder
 Start-Sleep -Seconds 6
 
+# File Explorer in front: the app, still loading, can come up over it.
+function ExplorerToFront {
+  $explorer = [Input]::FindWindow('CabinetWClass', [NullString]::Value)
+  if ($explorer -ne [IntPtr]::Zero) {
+    # A tap of Alt lets this process hand the foreground over.
+    [Input]::Key(0x12, $false); [Input]::Key(0x12, $true)
+    [Input]::SetForegroundWindow($explorer) | Out-Null
+    Start-Sleep -Milliseconds 500
+  }
+}
+
 function FileItem {
+  ExplorerToFront
   $root = [System.Windows.Automation.AutomationElement]::RootElement
   # Explorer hides known extensions, so the item may be named either way.
   $name = [System.Windows.Automation.AutomationElement]::NameProperty
