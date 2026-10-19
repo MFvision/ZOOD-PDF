@@ -233,15 +233,18 @@ Check ($side -gt 0 -and $ring.Left -ge 0 -and $ring.Top -ge 0 -and $ring.Right -
 Start-Sleep -Seconds 2
 
 # 5. The keyboard shortcut: select the file, Ctrl+Alt+Z, click Compress.
-$at = FileItem
-[Input]::Mouse($at[0], $at[1], 0); Start-Sleep -Milliseconds 300
-[Input]::Mouse($at[0], $at[1], 0x0002); Start-Sleep -Milliseconds 80
-[Input]::Mouse($at[0], $at[1], 0x0004); Start-Sleep -Seconds 1
+# The file is still selected from the drags; a click on it now would start a rename.
+ExplorerToFront
 $before = ([regex]::Matches((Log), 'done: \d+ made')).Count
 [Input]::Key(0x11, $false); [Input]::Key(0x12, $false); [Input]::Key(0x5A, $false)
 Start-Sleep -Milliseconds 100
 [Input]::Key(0x5A, $true); [Input]::Key(0x12, $true); [Input]::Key(0x11, $true)
-Start-Sleep -Seconds 4
+# Reading Explorer's selection starts PowerShell, slow on a fresh runner.
+foreach ($try in 1..30) {
+  if ((Log) -match 'shortcut: \d+ files selected') { break }
+  Start-Sleep -Milliseconds 500
+}
+Start-Sleep -Seconds 2
 Shot 'ring-5-shortcut.png'
 Check ((Log) -match 'shortcut: 1 files selected') 'Ctrl+Alt+Z takes the file selected in Explorer'
 $found = [regex]::Matches((Log), 'ring window at (-?\d+),(-?\d+) size (\d+)x(\d+)')
