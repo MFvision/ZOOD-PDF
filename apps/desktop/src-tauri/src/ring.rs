@@ -1,13 +1,15 @@
 //! The ring: hold Ctrl or Shift (Option or Command on a Mac) and drag files
 //! out of File Explorer or Finder, and a ring of tools opens at the pointer; let the
-//! files go on a tool and its quick window opens (`quick.rs`). The idea is
+//! files go on a tool and its quick window opens (`quick.rs`); let them go in
+//! the middle and the ring stays, to click a tool. The idea is
 //! Filee's (github.com/KnifeLemon/Filee, MIT); none of its code is used.
 //!
 //! A watcher sees the system's mouse: a low-level mouse hook on Windows,
 //! and on macOS a look every few milliseconds at the mouse button, the keys
 //! and the system's drag pasteboard (none of which needs a permission). It
-//! only notices a drag of files that started with the key held, from
-//! Explorer on Windows and from any app on a Mac. The ring itself is a small transparent window that
+//! notices a drag that started with the key held, from any window. The ring
+//! is invisible until files are dragged over it, so a drag of anything else
+//! shows nothing (Filee's approach). The ring itself is a small transparent window that
 //! takes the drop like any window; the files it is given are the ones the
 //! person let go there. Nothing is read or kept from any other drag.
 //!
@@ -32,7 +34,7 @@ pub const LABEL: &str = "ring";
 /// The ring's side, in points.
 const SIDE: f64 = 300.0;
 /// How far the pointer moves, in pixels, before a press is a drag.
-pub const DRAG_START: i32 = 14;
+pub const DRAG_START: i32 = 8;
 /// After the button is let go, how long a drop on the ring has to arrive.
 const DROP_GRACE: Duration = Duration::from_millis(700);
 const SETTINGS_FILE: &str = "quick-tools.json";
@@ -127,12 +129,15 @@ pub fn is_drag(start: (i32, i32), now: (i32, i32), key_held: bool) -> bool {
     key_held && dx * dx + dy * dy >= DRAG_START * DRAG_START
 }
 
-/// The window classes of File Explorer's windows and of the desktop.
-pub fn is_file_manager_class(class: &str) -> bool {
-    matches!(
-        class,
-        "CabinetWClass" | "ExploreWClass" | "Progman" | "WorkerW"
-    )
+/// Where the ring's window goes: centred on the pointer, but moved as
+/// little as needed to stay whole inside `area` (the screen's work area:
+/// left, top, width, height), as Filee places its donut.
+pub fn place(at: (f64, f64), side: f64, area: (f64, f64, f64, f64)) -> (f64, f64) {
+    let (left, top, width, height) = area;
+    let clamp = |centre: f64, start: f64, length: f64| {
+        (centre - side / 2.0).clamp(start, (start + length - side).max(start))
+    };
+    (clamp(at.0, left, width), clamp(at.1, top, height))
 }
 
 fn settings_path<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
@@ -230,17 +235,45 @@ fn show<R: Runtime>(app: &AppHandle<R>, x: f64, y: f64) {
     let Some(window) = ring_window(app) else {
         return;
     };
-    if cfg!(target_os = "windows") {
-        let size = window
-            .outer_size()
-            .map(|s| (f64::from(s.width), f64::from(s.height)))
-            .unwrap_or((SIDE, SIDE));
-        let _ = window.set_position(tauri::PhysicalPosition::new(
-            x - size.0 / 2.0,
-            y - size.1 / 2.0,
-        ));
+    // The screen under the pointer, in the units the watcher gives: physical
+    // pixels on Windows, points on macOS. The window is sized for that
+    // screen's scale every time, so the ring is never larger than its window
+    // (a screen at 125% or 150% cut it off before), and kept whole on it.
+    let windows = cfg!(target_os = "windows");
+    let screens = app.available_monitors().unwrap_or_default();
+    let unit = |m: &tauri::Monitor| if windows { 1.0 } else { m.scale_factor() };
+    let screen = screens.iter().find(|m| {
+        let (left, top) = (
+            f64::from(m.position().x) / unit(m),
+            f64::from(m.position().y) / unit(m),
+        );
+        let (width, height) = (
+            f64::from(m.size().width) / unit(m),
+            f64::from(m.size().height) / unit(m),
+        );
+        x >= left && x < left + width && y >= top && y < top + height
+    });
+    let area = screen.map(|m| {
+        let work = m.work_area();
+        (
+            f64::from(work.position.x) / unit(m),
+            f64::from(work.position.y) / unit(m),
+            f64::from(work.size.width) / unit(m),
+            f64::from(work.size.height) / unit(m),
+        )
+    });
+    let side = if windows {
+        (SIDE * screen.map_or(1.0, |m| m.scale_factor())).round()
     } else {
-        let _ = window.set_position(tauri::LogicalPosition::new(x - SIDE / 2.0, y - SIDE / 2.0));
+        SIDE
+    };
+    let (left, top) = area.map_or((x - side / 2.0, y - side / 2.0), |a| place((x, y), side, a));
+    if windows {
+        let _ = window.set_size(tauri::PhysicalSize::new(side, side));
+        let _ = window.set_position(tauri::PhysicalPosition::new(left, top));
+    } else {
+        let _ = window.set_size(tauri::LogicalSize::new(side, side));
+        let _ = window.set_position(tauri::LogicalPosition::new(left, top));
     }
     let _ = window.emit_to(LABEL, SHOW_EVENT, ());
     let _ = window.show();
@@ -296,6 +329,7 @@ pub fn on_drag<R: Runtime>(
                 .take(500)
                 .cloned()
                 .collect();
+            log(&format!("{} files let go on the ring", files.len()));
             if let Ok(mut dropped) = DROPPED.lock() {
                 *dropped = Some(files);
             }
@@ -315,6 +349,7 @@ pub fn ring_pick<R: Runtime>(app: AppHandle<R>, tool: String) {
         .and_then(|mut d| d.take())
         .unwrap_or_default();
     hide(&app);
+    log(&format!("picked {tool} for {} files", files.len()));
     if tool == "none" || files.is_empty() {
         return;
     }
@@ -450,10 +485,9 @@ mod windows {
         WM_MOUSEMOVE,
     };
 
-    use super::{enabled, is_drag, is_file_manager_class, log, send, Gesture};
+    use super::{enabled, is_drag, log, send, Gesture};
 
     static DOWN: AtomicBool = AtomicBool::new(false);
-    static FROM_FILES: AtomicBool = AtomicBool::new(false);
     static SHOWN: AtomicBool = AtomicBool::new(false);
     static START_X: AtomicI32 = AtomicI32::new(0);
     static START_Y: AtomicI32 = AtomicI32::new(0);
@@ -494,10 +528,8 @@ mod windows {
                     SHOWN.store(false, Ordering::Relaxed);
                     START_X.store(point.0, Ordering::Relaxed);
                     START_Y.store(point.1, Ordering::Relaxed);
-                    let class = class_at(info.pt);
-                    let from_files = enabled() && is_file_manager_class(&class);
-                    FROM_FILES.store(from_files, Ordering::Relaxed);
                     if held() {
+                        let class = class_at(info.pt);
                         log(&format!(
                             "press with Ctrl or Shift held, over a {class} window"
                         ));
@@ -505,7 +537,7 @@ mod windows {
                 }
                 WM_MOUSEMOVE
                     if DOWN.load(Ordering::Relaxed)
-                        && FROM_FILES.load(Ordering::Relaxed)
+                        && enabled()
                         && !SHOWN.load(Ordering::Relaxed) =>
                 {
                     let control = held();
@@ -515,7 +547,7 @@ mod windows {
                     );
                     if is_drag(start, point, control) {
                         SHOWN.store(true, Ordering::Relaxed);
-                        log("drag from the file manager with Ctrl or Shift: ring shown");
+                        log("drag with Ctrl or Shift: ring placed at the pointer");
                         send(Gesture::Start {
                             x: f64::from(point.0),
                             y: f64::from(point.1),
@@ -683,16 +715,29 @@ mod tests {
 
     #[test]
     fn a_drag_counts_only_with_the_key_and_far_enough() {
-        assert!(!is_drag((0, 0), (5, 5), true));
-        assert!(is_drag((0, 0), (10, 10), true));
+        assert!(!is_drag((0, 0), (4, 4), true));
+        assert!(is_drag((0, 0), (6, 6), true));
         assert!(!is_drag((0, 0), (40, 0), false));
     }
 
     #[test]
-    fn only_the_file_manager_starts_the_ring() {
-        assert!(is_file_manager_class("CabinetWClass"));
-        assert!(is_file_manager_class("Progman"));
-        assert!(!is_file_manager_class("Chrome_WidgetWin_1"));
+    fn the_ring_stays_whole_on_the_screen() {
+        let screen = (0.0, 0.0, 1920.0, 1040.0);
+        // In the middle: centred on the pointer.
+        assert_eq!(place((800.0, 500.0), 300.0, screen), (650.0, 350.0));
+        // At the right and bottom edges: moved in just enough.
+        assert_eq!(place((1910.0, 1030.0), 300.0, screen), (1620.0, 740.0));
+        // At the top-left corner, and on a second screen to the left.
+        assert_eq!(place((3.0, 2.0), 450.0, screen), (0.0, 0.0));
+        assert_eq!(
+            place((-1900.0, 20.0), 450.0, (-1920.0, 0.0, 1920.0, 1080.0)),
+            (-1920.0, 0.0)
+        );
+        // A screen smaller than the ring: its top-left corner.
+        assert_eq!(
+            place((50.0, 50.0), 300.0, (0.0, 0.0, 200.0, 200.0)),
+            (0.0, 0.0)
+        );
     }
 
     #[test]

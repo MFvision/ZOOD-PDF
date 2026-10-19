@@ -1,10 +1,16 @@
-# Tries the ring on a real Windows desktop (CI): starts the built app, opens
-# File Explorer on a folder with one file, and drags that file with Ctrl held,
-# by sending the same mouse and key input a person makes. Passes when the
-# app writes "ring shown" to its ring.log. Leaves the log and a screenshot
-# taken mid-drag in the folder given, for the ci-logs branch.
+# Tries the ring on a real Windows desktop (CI) the way a person uses it, by
+# sending the same mouse and key input: starts the built app, opens File
+# Explorer on a folder with one PDF, and
+#   1. Ctrl+drags the file onto the ring's top tool (Compress) and lets go;
+#   2. Shift+drags it into the ring's middle, lets go, then clicks the bottom
+#      tool (Rotate);
+#   3. with Explorer pushed into the screen's bottom-right corner, Ctrl+drags
+#      again and checks the ring is whole on the screen.
+# Each step is checked in the app's ring.log ("picked <tool> for 1 files")
+# and by the ring window's own rectangle; screenshots go to $Out for ci-logs.
 param(
   [Parameter(Mandatory = $true)][string]$App,
+  [Parameter(Mandatory = $true)][string]$Sample,
   [Parameter(Mandatory = $true)][string]$Out
 )
 $ErrorActionPreference = 'Stop'
@@ -19,13 +25,25 @@ public static class Input {
   [StructLayout(LayoutKind.Sequential)] struct KEYBDINPUT { public ushort vk, scan; public uint flags, time; public IntPtr extra; public uint pad1, pad2; }
   [StructLayout(LayoutKind.Explicit)] struct UNION { [FieldOffset(0)] public MOUSEINPUT m; [FieldOffset(0)] public KEYBDINPUT k; }
   [StructLayout(LayoutKind.Sequential)] struct INPUT { public uint type; public UNION u; }
+  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+  delegate bool EnumProc(IntPtr hwnd, IntPtr data);
   [DllImport("user32.dll")] static extern uint SendInput(uint n, INPUT[] inputs, int size);
   [DllImport("user32.dll")] static extern int GetSystemMetrics(int index);
+  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc proc, IntPtr data);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
+  [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
+  [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr hwnd, int x, int y, int w, int h, bool repaint);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr FindWindow(string cls, string title);
+  [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hwnd, uint msg, IntPtr w, IntPtr l);
   static void Send(INPUT i) { SendInput(1, new[] { i }, Marshal.SizeOf(typeof(INPUT))); }
+  public static int Width { get { return GetSystemMetrics(0); } }
+  public static int Height { get { return GetSystemMetrics(1); } }
   public static void Mouse(int x, int y, uint flags) {
     var i = new INPUT { type = 0 };
-    i.u.m.dx = x * 65535 / (GetSystemMetrics(0) - 1);
-    i.u.m.dy = y * 65535 / (GetSystemMetrics(1) - 1);
+    i.u.m.dx = x * 65535 / (Width - 1);
+    i.u.m.dy = y * 65535 / (Height - 1);
     i.u.m.flags = flags | 0x8001; // ABSOLUTE | MOVE
     Send(i);
   }
@@ -34,60 +52,173 @@ public static class Input {
     i.u.k.vk = vk; i.u.k.flags = up ? 2u : 0u;
     Send(i);
   }
+  // The ring: the app's visible square window (the editor's window is not square).
+  public static RECT Ring(int pid) {
+    var found = new RECT();
+    EnumWindows((hwnd, _) => {
+      uint owner; GetWindowThreadProcessId(hwnd, out owner);
+      RECT r;
+      if (owner == pid && IsWindowVisible(hwnd) && GetWindowRect(hwnd, out r)) {
+        int w = r.Right - r.Left, h = r.Bottom - r.Top;
+        if (w > 100 && w < 1000 && Math.Abs(w - h) <= 2) { found = r; return false; }
+      }
+      return true;
+    }, IntPtr.Zero);
+    return found;
+  }
 }
 '@
+[Input]::SetProcessDPIAware() | Out-Null
 
 function Shot($name) {
-  $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-  $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+  $bitmap = New-Object System.Drawing.Bitmap ([Input]::Width), ([Input]::Height)
   $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-  $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+  $graphics.CopyFromScreen(0, 0, 0, 0, $bitmap.Size)
   $bitmap.Save((Join-Path $Out $name), [System.Drawing.Imaging.ImageFormat]::Png)
   $graphics.Dispose(); $bitmap.Dispose()
 }
 
+$failures = @()
+function Check($ok, $what) {
+  if ($ok) { Write-Host "ok: $what" } else { Write-Host "FAILED: $what"; $script:failures += $what }
+}
+
 $log = Join-Path $env:APPDATA 'app.warraq.desktop\ring.log'
 Remove-Item $log -ErrorAction SilentlyContinue
+function Log { if (Test-Path $log) { Get-Content $log -Raw } else { '' } }
 
 $folder = Join-Path $env:RUNNER_TEMP 'ring-check'
 New-Item -ItemType Directory -Force -Path $folder | Out-Null
-Set-Content -Path (Join-Path $folder 'sample.pdf') -Value '%PDF-1.4'
+Copy-Item $Sample (Join-Path $folder 'sample.pdf')
 
 $app = Start-Process -FilePath $App -PassThru
 Start-Sleep -Seconds 8
 Start-Process explorer.exe $folder
 Start-Sleep -Seconds 6
 
-$root = [System.Windows.Automation.AutomationElement]::RootElement
-# Explorer hides known extensions, so the item may be named either way.
-$name = [System.Windows.Automation.AutomationElement]::NameProperty
-$named = New-Object System.Windows.Automation.OrCondition `
-  (New-Object System.Windows.Automation.PropertyCondition $name, 'sample.pdf'),
-  (New-Object System.Windows.Automation.PropertyCondition $name, 'sample')
-$item = $null
-foreach ($try in 1..10) {
-  $item = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $named)
-  if ($item) { break }
-  Start-Sleep -Seconds 1
+function FileItem {
+  $root = [System.Windows.Automation.AutomationElement]::RootElement
+  # Explorer hides known extensions, so the item may be named either way.
+  $name = [System.Windows.Automation.AutomationElement]::NameProperty
+  $named = New-Object System.Windows.Automation.OrCondition `
+    (New-Object System.Windows.Automation.PropertyCondition $name, 'sample.pdf'),
+    (New-Object System.Windows.Automation.PropertyCondition $name, 'sample')
+  foreach ($try in 1..10) {
+    $item = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $named)
+    if ($item) {
+      $box = $item.Current.BoundingRectangle
+      return @([int]($box.X + 30), [int]($box.Y + $box.Height / 2))
+    }
+    Start-Sleep -Seconds 1
+  }
+  Shot 'ring-no-file.png'
+  throw 'File Explorer did not show the file'
 }
-if (-not $item) { Shot 'ring-no-file.png'; throw 'File Explorer did not show the file' }
-$box = $item.Current.BoundingRectangle
-$x = [int]($box.X + $box.Width / 2); $y = [int]($box.Y + $box.Height / 2)
-Write-Host "file at $x,$y"
 
-[Input]::Mouse($x, $y, 0); Start-Sleep -Milliseconds 300
-[Input]::Key(0x11, $false); Start-Sleep -Milliseconds 200   # Ctrl down
-[Input]::Mouse($x, $y, 0x0002); Start-Sleep -Milliseconds 200  # left down
-foreach ($step in 1..20) { [Input]::Mouse($x + $step * 8, $y + $step * 4, 0); Start-Sleep -Milliseconds 40 }
-Start-Sleep -Seconds 2
-Shot 'ring-mid-drag.png'
-[Input]::Mouse($x + 160, $y + 80, 0x0004)  # left up, away from the ring's tools
-[Input]::Key(0x11, $true)
+# Presses on the file with the key held and drags until the ring shows;
+# returns the ring's rectangle (still dragging).
+function StartDrag($key) {
+  $at = FileItem
+  $x = $at[0]; $y = $at[1]
+  [Input]::Mouse($x, $y, 0); Start-Sleep -Milliseconds 300
+  [Input]::Key($key, $false); Start-Sleep -Milliseconds 200
+  [Input]::Mouse($x, $y, 0x0002); Start-Sleep -Milliseconds 200   # left down
+  foreach ($step in 1..6) { [Input]::Mouse($x + $step * 4, $y + $step * 2, 0); Start-Sleep -Milliseconds 40 }
+  # The ring takes the drag only once the pointer moves over it.
+  foreach ($step in 1..10) { [Input]::Mouse($x + 24 + $step, $y + 12, 0); Start-Sleep -Milliseconds 60 }
+  Start-Sleep -Milliseconds 600
+  return [Input]::Ring($app.Id)
+}
+
+# Moves the dragged files to a point in small steps, so the drop target follows.
+function DragTo($x, $y) {
+  foreach ($step in 1..12) { [Input]::Mouse($x + 12 - $step, $y, 0); Start-Sleep -Milliseconds 50 }
+  Start-Sleep -Milliseconds 500
+}
+
+# The quick window a picked tool opens: there, then closed so the next step
+# can reach Explorer.
+$quickTitle = 'أدوات PDF السريعة — محرر PDF'
+function QuickWindowOpened {
+  foreach ($try in 1..10) {
+    $quick = [Input]::FindWindow($null, $quickTitle)
+    if ($quick -ne [IntPtr]::Zero) {
+      Start-Sleep -Seconds 2
+      return $quick
+    }
+    Start-Sleep -Milliseconds 500
+  }
+  return [IntPtr]::Zero
+}
+function CloseQuick($quick) {
+  if ($quick -ne [IntPtr]::Zero) { [Input]::PostMessage($quick, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null }
+  Start-Sleep -Seconds 2
+}
+
+# 1. Ctrl+drag onto Compress, the top tool.
+$ring = StartDrag 0x11
+$side = $ring.Right - $ring.Left
+Check ($side -gt 0) "the ring opened for a Ctrl+drag (ring $($ring.Left),$($ring.Top) side $side)"
+if ($side -gt 0) {
+  $cx = $ring.Left + $side / 2; $cy = $ring.Top + $side / 2
+  $middle = $side * 97 / 300   # between the hub and the outer edge
+  DragTo $cx ($cy - $middle)
+  Shot 'ring-1-over-compress.png'
+  [Input]::Mouse($cx, $cy - $middle, 0x0004); [Input]::Key(0x11, $true)
+  Start-Sleep -Seconds 3
+  Check ((Log) -match 'picked compress for 1 files') 'letting go on Compress picks it'
+  $quick = QuickWindowOpened
+  Check ($quick -ne [IntPtr]::Zero) 'Compress opens its quick window'
+  Shot 'ring-1-after.png'
+  CloseQuick $quick
+} else {
+  [Input]::Mouse(10, 10, 0x0004); [Input]::Key(0x11, $true)
+}
 Start-Sleep -Seconds 2
 
-if (Test-Path $log) { Copy-Item $log (Join-Path $Out 'ring.log') } else { Set-Content (Join-Path $Out 'ring.log') 'no ring.log was written' }
+# 2. Shift+drag into the middle, let go, then click Rotate, the bottom tool.
+$ring = StartDrag 0x10
+$side = $ring.Right - $ring.Left
+Check ($side -gt 0) 'the ring opened for a Shift+drag'
+if ($side -gt 0) {
+  $cx = $ring.Left + $side / 2; $cy = $ring.Top + $side / 2
+  $middle = $side * 97 / 300
+  DragTo $cx $cy
+  [Input]::Mouse($cx, $cy, 0x0004); [Input]::Key(0x10, $true)
+  Start-Sleep -Seconds 1
+  Shot 'ring-2-holding.png'
+  $still = [Input]::Ring($app.Id)
+  Check (($still.Right - $still.Left) -gt 0) 'letting go in the middle keeps the ring'
+  [Input]::Mouse($cx, $cy + $middle, 0); Start-Sleep -Milliseconds 300
+  [Input]::Mouse($cx, $cy + $middle, 0x0002); Start-Sleep -Milliseconds 80
+  [Input]::Mouse($cx, $cy + $middle, 0x0004)
+  Start-Sleep -Seconds 3
+  Check ((Log) -match 'picked rotate for 1 files') 'clicking Rotate picks it'
+  $quick = QuickWindowOpened
+  Check ($quick -ne [IntPtr]::Zero) 'Rotate opens its quick window'
+  Shot 'ring-2-after.png'
+  CloseQuick $quick
+} else {
+  [Input]::Mouse(10, 10, 0x0004); [Input]::Key(0x10, $true)
+}
+Start-Sleep -Seconds 2
+
+# 3. Explorer in the bottom-right corner: the ring must stay whole on the screen.
+$explorer = [Input]::FindWindow('CabinetWClass', $null)
+[Input]::MoveWindow($explorer, [Input]::Width - 330, [Input]::Height - 260, 900, 600, $true) | Out-Null
+Start-Sleep -Seconds 2
+$ring = StartDrag 0x11
+$side = $ring.Right - $ring.Left
+Shot 'ring-3-corner.png'
+$area = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+Check ($side -gt 0 -and $ring.Left -ge 0 -and $ring.Top -ge 0 -and $ring.Right -le $area.Right -and $ring.Bottom -le $area.Bottom) `
+  "near the corner the ring is whole on the screen (ring $($ring.Left),$($ring.Top)-$($ring.Right),$($ring.Bottom); work area $($area.Right)x$($area.Bottom))"
+[Input]::Mouse(20, 20, 0); Start-Sleep -Milliseconds 300
+[Input]::Mouse(20, 20, 0x0004); [Input]::Key(0x11, $true)
+Start-Sleep -Seconds 2
+
+Set-Content (Join-Path $Out 'ring.log') (Log)
 Stop-Process -Id $app.Id -ErrorAction SilentlyContinue
-$text = Get-Content (Join-Path $Out 'ring.log') -Raw
-Write-Host $text
-if ($text -notmatch 'ring shown') { throw 'the ring did not open' }
-Write-Host 'the ring opened'
+Write-Host (Log)
+if ($failures.Count -gt 0) { throw "ring check failed: $($failures -join '; ')" }
+Write-Host 'the ring works: it opens, its tools take a drop and a click, and it stays on the screen'

@@ -56,3 +56,18 @@ export function segmentAt(x: number, y: number, count: number): number | null {
   if (angle < 0) angle += 2 * Math.PI;
   return Math.floor((angle + step / 2) / step) % count;
 }
+
+/** Whether a point of the window is in the hub, the ring's middle. */
+export function inHub(x: number, y: number): boolean {
+  return Math.hypot(x - RING_SIZE / 2, y - RING_SIZE / 2) < RING_INNER;
+}
+
+/**
+ * A point the host gives, in the window's own pixels, as a point of the
+ * ring's drawing: the drawing is scaled to fill the window, whatever size
+ * the screen's scale made it.
+ */
+export function toRing(at: { x: number; y: number }, windowSide: number): { x: number; y: number } {
+  const scale = windowSide > 0 ? RING_SIZE / windowSide : 1;
+  return { x: at.x * scale, y: at.y * scale };
+}

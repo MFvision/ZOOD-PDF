@@ -9,9 +9,33 @@ html.ring-page body {
 }
 
 .ring {
-  inline-size: 300px;
-  block-size: 300px;
+  /* The drawing fills the window, whatever size the screen's scale made it. */
+  inline-size: 100vw;
+  block-size: 100vh;
   font-family: var(--font-ui);
+  opacity: 0;
+  transition: opacity 90ms ease;
+}
+
+.ring-visible {
+  opacity: 1;
+}
+
+.ring > svg {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.ring-segment[role='button'],
+.ring-hub-group[role='button'] {
+  cursor: pointer;
+}
+
+.ring-hub-close {
+  fill: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .ring-shadow {
@@ -58,6 +82,6 @@ html.ring-page body {
 
 .ring-hub-text {
   fill: var(--secondary-label);
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 600;
 }
