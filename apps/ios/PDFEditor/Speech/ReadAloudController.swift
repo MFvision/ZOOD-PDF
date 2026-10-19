@@ -150,7 +150,7 @@ final class ReadAloudController: NSObject {
     // MARK: - Reading
 
     /// Reads the page's lines from the core and cuts them into sentences.
-    private func load(page: Int, thenSpeak: Bool, fromEnd: Bool = false) async {
+    private func load(page: Int, thenSpeak: Bool, fromEnd: Bool = false, searchedFrom: Int? = nil) async {
         guard let model, let core = model.engine else {
             stop()
             return
@@ -161,12 +161,25 @@ final class ReadAloudController: NSObject {
         sentences = SentenceMap.sentences(of: lines, hint: hint)
         self.page = page
         if sentences.isEmpty {
-            // A page without text (a scan): on to the next, or the end.
+            // A page without text (a scan): on to the next. When none has
+            // any, the page reading began on is read off its picture instead.
             if page + 1 < model.pageCount {
-                await load(page: page + 1, thenSpeak: thenSpeak)
+                await load(page: page + 1, thenSpeak: thenSpeak, searchedFrom: searchedFrom ?? page)
             } else {
-                error = "There is no text to read. Scan & OCR can add some."
-                stop()
+                let first = searchedFrom ?? page
+                let recognized = await recognizedSentences(page: first, core: core)
+                if Task.isCancelled { return }
+                if recognized.isEmpty {
+                    error = "There is no text to read. Scan & OCR can add some."
+                    stop()
+                    return
+                }
+                sentences = recognized
+                self.page = first
+                index = 0
+                showPage()
+                state = thenSpeak ? .playing : .paused
+                if thenSpeak { speakCurrent() } else { updateNowPlaying() }
             }
             return
         }
@@ -179,6 +192,18 @@ final class ReadAloudController: NSObject {
             state = .paused
             highlightCurrent()
             updateNowPlaying()
+        }
+    }
+
+    /// The page's words read off its picture (Vision, on the device), as
+    /// sentences without boxes: the file is not changed, so there is nothing
+    /// on the page to highlight.
+    private func recognizedSentences(page: Int, core: Core) async -> [SpokenSentence] {
+        guard let rendered = try? await core.renderPage(page, scale: LibraryIndexer.Limits.renderScale),
+              let image = LibraryIndexer.Worker.cgImage(from: rendered),
+              let words = try? await PageOCR.reader.read(image, languages: PageOCR.languages) else { return [] }
+        return PageOCR.lines(of: words).map { line in
+            SpokenSentence(text: line, language: TextRecognizer.readsRightToLeft(line) ? "ar" : "en", rects: [])
         }
     }
 
