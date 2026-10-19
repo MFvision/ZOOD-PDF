@@ -22,6 +22,8 @@ const statusBar = (page: Page) => documentStatus(page);
 
 /** The start of page `n`'s text, as Warraq's own reader sees it in Edit text. */
 async function pageStart(page: Page, n: number): Promise<string> {
+  // The page first: its text layer is drawn only once it comes near the view.
+  await page.locator(`section[data-page="${n}"]`).scrollIntoViewIfNeeded();
   const layer = page.locator(`section[data-page="${n}"] .text-layer`);
   await layer.scrollIntoViewIfNeeded();
   await expect(layer).not.toBeEmpty();

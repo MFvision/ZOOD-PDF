@@ -509,8 +509,19 @@ impl Document {
                 font_size: r.font_size,
             });
         }
+        // A bold paragraph drawn in a face without bold (the bundled
+        // faces have one weight) is drawn heavier rather than come back regular.
+        let rect = (x, page_height - (y_top + h), w, h);
+        let was_bold = warraq_pdf::ownfont::PageFonts::read(&self.pdf, index)
+            .ok()
+            .and_then(|mut fonts| fonts.face_in(rect))
+            .is_some_and(|face| face.weight >= 600);
+        let drawn_weight = warraq_text::fontfile::faces(&mut std::io::Cursor::new(font))
+            .first()
+            .map(|face| face.weight);
+        let synthetic_bold = was_bold && drawn_weight.is_some_and(|weight| weight < 600);
         let edit = warraq_pdf::ops::ParagraphEdit {
-            rect: (x, page_height - (y_top + h), w, h),
+            rect,
             first_baseline: page_height - (first.y + size),
             text: new_text,
             font,
@@ -518,6 +529,7 @@ impl Document {
             leading: para.leading.max(size * 1.15),
             direction: para.direction,
             alignment: para.alignment,
+            synthetic_bold,
         };
         let r = warraq_pdf::ops::replace_paragraph(self.pdf_mut(), index, &edit)?;
         self.refresh_after_edit()?;
