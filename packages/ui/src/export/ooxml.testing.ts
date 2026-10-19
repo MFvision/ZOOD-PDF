@@ -188,6 +188,78 @@ export const PRESENTATION: Record<string, Model> = {
 };
 PRESENTATION['a:endParaRPr'] = PRESENTATION['a:rPr']!;
 
+const SHAPE_PROPERTIES = PRESENTATION['p:spPr']!;
+const RUN_PROPERTIES = [
+  'w:rStyle', 'w:rFonts', 'w:b', 'w:bCs', 'w:i', 'w:iCs', 'w:caps', 'w:smallCaps', 'w:strike', 'w:dstrike', 'w:outline', 'w:shadow',
+  'w:emboss', 'w:imprint', 'w:noProof', 'w:snapToGrid', 'w:vanish', 'w:webHidden', 'w:color', 'w:spacing', 'w:w', 'w:kern', 'w:position',
+  'w:sz', 'w:szCs', 'w:highlight', 'w:u', 'w:effect', 'w:bdr', 'w:shd', 'w:fitText', 'w:vertAlign', 'w:rtl', 'w:cs', 'w:em', 'w:lang',
+  'w:eastAsianLayout', 'w:specVanish', 'w:oMath',
+].map((name) => opt(name));
+
+/** WordprocessingML (§17) and its drawings (§20.4), as Word writes a floating picture and a text box. */
+export const WORDPROCESSING: Record<string, Model> = {
+  'w:document': { children: [opt('w:background'), opt('w:body')] },
+  'w:body': { children: [many('w:p', 'w:tbl', 'w:sdt'), opt('w:sectPr')] },
+  'w:p': { children: [opt('w:pPr'), many('w:r', 'w:hyperlink', 'w:bookmarkStart', 'w:bookmarkEnd')] },
+  'w:pPr': {
+    children: [
+      'w:pStyle', 'w:keepNext', 'w:keepLines', 'w:pageBreakBefore', 'w:framePr', 'w:widowControl', 'w:numPr', 'w:suppressLineNumbers',
+      'w:pBdr', 'w:shd', 'w:tabs', 'w:suppressAutoHyphens', 'w:kinsoku', 'w:wordWrap', 'w:overflowPunct', 'w:topLinePunct',
+      'w:autoSpaceDE', 'w:autoSpaceDN', 'w:bidi', 'w:adjustRightInd', 'w:snapToGrid', 'w:spacing', 'w:ind', 'w:contextualSpacing',
+      'w:mirrorIndents', 'w:suppressOverlap', 'w:jc', 'w:textDirection', 'w:textAlignment', 'w:textboxTightWrap', 'w:outlineLvl',
+      'w:divId', 'w:cnfStyle', 'w:rPr', 'w:sectPr', 'w:pPrChange',
+    ].map((name) => opt(name)),
+  },
+  'w:rPr': { children: [...RUN_PROPERTIES, opt('w14:textFill')] },
+  'w:r': { children: [opt('w:rPr'), many('w:t', 'w:br', 'w:tab', 'w:drawing', 'mc:AlternateContent')] },
+  'w:sectPr': {
+    children: [
+      many('w:headerReference', 'w:footerReference'),
+      ...['w:footnotePr', 'w:endnotePr', 'w:type', 'w:pgSz', 'w:pgMar', 'w:paperSrc', 'w:pgBorders', 'w:lnNumType', 'w:pgNumType', 'w:cols',
+        'w:formProt', 'w:vAlign', 'w:noEndnote', 'w:titlePg', 'w:textDirection', 'w:bidi', 'w:rtlGutter', 'w:docGrid', 'w:printerSettings',
+        'w:sectPrChange'].map((name) => opt(name)),
+    ],
+  },
+  'w:pgSz': { children: [], required: ['w:w', 'w:h'] },
+  'w:pgMar': { children: [], required: ['w:top', 'w:right', 'w:bottom', 'w:left', 'w:header', 'w:footer', 'w:gutter'] },
+  'mc:AlternateContent': { children: [some('mc:Choice'), opt('mc:Fallback')] },
+  'mc:Choice': { children: [], any: ['w:drawing'], required: ['Requires'] },
+  'w:drawing': { children: [one('wp:anchor', 'wp:inline')] },
+  'wp:anchor': {
+    children: [
+      one('wp:simplePos'), one('wp:positionH'), one('wp:positionV'), one('wp:extent'), opt('wp:effectExtent'),
+      one('wp:wrapNone', 'wp:wrapSquare', 'wp:wrapTight', 'wp:wrapThrough', 'wp:wrapTopAndBottom'), one('wp:docPr'),
+      opt('wp:cNvGraphicFramePr'), one('a:graphic'), opt('wp:extLst'),
+    ],
+    required: ['distT', 'distB', 'distL', 'distR', 'simplePos', 'relativeHeight', 'behindDoc', 'locked', 'layoutInCell', 'allowOverlap'],
+  },
+  'wp:simplePos': { children: [], required: ['x', 'y'] },
+  'wp:positionH': { children: [one('wp:align', 'wp:posOffset')], required: ['relativeFrom'] },
+  'wp:positionV': { children: [one('wp:align', 'wp:posOffset')], required: ['relativeFrom'] },
+  'wp:extent': { children: [], required: ['cx', 'cy'] },
+  'wp:docPr': { children: [opt('a:hlinkClick'), opt('a:hlinkHover'), opt('a:extLst')], required: ['id', 'name'] },
+  'a:graphic': { children: [one('a:graphicData')] },
+  'a:graphicData': { children: [], any: ['pic:pic', 'wps:wsp'], required: ['uri'] },
+  'pic:pic': { children: [one('pic:nvPicPr'), one('pic:blipFill'), one('pic:spPr')] },
+  'pic:nvPicPr': { children: [one('pic:cNvPr'), one('pic:cNvPicPr')] },
+  'pic:cNvPr': { children: [opt('a:hlinkClick'), opt('a:hlinkHover'), opt('a:extLst')], required: ['id', 'name'] },
+  'pic:blipFill': { children: [opt('a:blip'), opt('a:srcRect'), opt('a:tile', 'a:stretch')] },
+  'pic:spPr': SHAPE_PROPERTIES,
+  'wps:wsp': {
+    children: [opt('wps:cNvPr'), one('wps:cNvSpPr', 'wps:cNvCnPr'), one('wps:spPr'), opt('wps:style'), opt('wps:extLst'), opt('wps:txbx', 'wps:linkedTxbx'), one('wps:bodyPr')],
+  },
+  'wps:spPr': SHAPE_PROPERTIES,
+  'wps:txbx': { children: [one('w:txbxContent')] },
+  'w:txbxContent': { children: [some('w:p', 'w:tbl', 'w:sdt')] },
+  'wps:bodyPr': PRESENTATION['a:bodyPr']!,
+  'a:xfrm': PRESENTATION['a:xfrm']!,
+  'a:off': PRESENTATION['a:off']!,
+  'a:ext': PRESENTATION['a:ext']!,
+  'a:prstGeom': PRESENTATION['a:prstGeom']!,
+  'w:styles': { children: [opt('w:docDefaults'), opt('w:latentStyles'), many('w:style')] },
+  'w:docDefaults': { children: [opt('w:rPrDefault'), opt('w:pPrDefault')] },
+};
+
 interface Node {
   name: string;
   attrs: Map<string, string>;

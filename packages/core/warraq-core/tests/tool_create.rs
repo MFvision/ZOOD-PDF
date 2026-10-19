@@ -726,6 +726,33 @@ fn a_created_arabic_table_is_found_again_with_its_merged_cell() {
 }
 
 #[test]
+fn export_lines_cut_a_table_row_into_its_cells() {
+    let (pdf, _) = document(
+        json!([
+            { "type": "table", "headerRows": 1, "rows": [
+                [{ "text": "الصنف" }, { "text": "الكمية" }, { "text": "السعر" }],
+                [{ "text": "ورق" }, { "text": "١٢" }, { "text": "3.50" }],
+            ] },
+        ]),
+        vec![],
+    );
+    let mut doc = Document::open(pdf, None).unwrap();
+    let reply = doc.call("export.lines", r#"{"page":0}"#, vec![]).unwrap();
+    let v = value(&reply);
+    let texts: Vec<&str> = v["lines"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["text"].as_str().unwrap().trim())
+        .collect();
+    // Each cell its own piece, with a box of its own: none is a whole row.
+    for cell in ["الصنف", "الكمية", "السعر", "ورق", "3.50"] {
+        assert!(texts.contains(&cell), "{cell} in {texts:?}");
+    }
+    assert!(v["lines"][0]["width"].as_f64().unwrap() > 0.0);
+}
+
+#[test]
 fn a_fax_tiff_from_a_real_encoder_reads_black_on_white() {
     // libtiff's Group 4 (through Pillow): a 400 x 200 page at 200 dpi, a
     // black frame 4 pixels wide 20 in from the edge, white inside.

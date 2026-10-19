@@ -3,6 +3,10 @@
 //! - `export.tables` (Excel): what is on a page, top to bottom — the tables
 //!   its rules draw or its columns of text make (`crate::tables`), and the
 //!   lines around them, cut at their wide gaps. Text in reading order.
+//! - `export.lines` (Word and PowerPoint with the layout kept): the page's
+//!   lines as the editor has them — a line that crosses a table's columns
+//!   or cards side by side cut into one piece per column — so each piece
+//!   can be placed where it was.
 //! - `export.picture` (PowerPoint): the page drawn without its text, to go
 //!   behind the slide's editable text boxes; and whether the page's text was
 //!   invisible to begin with (a scan with a text layer), in which case the
@@ -72,6 +76,15 @@ pub fn call(
                 })
                 .collect();
             Reply::of(&json!({ "items": items }))
+        }
+        "lines" => {
+            let a: Page = args(json)?;
+            let (lines, _) = doc.edit_view(a.page)?;
+            let lines: Vec<Value> = lines
+                .iter()
+                .map(|l| json!({ "text": l.text, "x": l.x, "y": l.y, "width": l.width, "height": l.height, "direction": dir(l.direction) }))
+                .collect();
+            Reply::of(&json!({ "lines": lines }))
         }
         "picture" => {
             let a: Picture = args(json)?;

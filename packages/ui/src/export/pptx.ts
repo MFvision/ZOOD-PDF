@@ -1,6 +1,7 @@
 import { strToU8, zipSync } from 'fflate';
 import type { Zippable } from 'fflate';
 import type { TextAlignment, TextDirection } from '../core/types';
+import type { ExportFont } from './paragraphs';
 import { cleanText } from './text';
 
 /**
@@ -52,6 +53,10 @@ export interface SlideText {
    * where it stood.
    */
   vertical?: boolean;
+  /** The face the file names for it (Word uses it; PowerPoint keeps Arial). */
+  font?: ExportFont;
+  /** Already drawn in the page's picture: kept, but not drawn again. */
+  hidden?: boolean;
 }
 
 export interface Slide {
@@ -165,7 +170,7 @@ function slideXml(slide: Slide, size: { width: number; height: number }): string
       `<p:spPr><a:xfrm><a:off x="${emu(at.dx)}" y="${emu(at.dy)}"/><a:ext cx="${emu(slide.width * at.scale)}" cy="${emu(slide.height * at.scale)}"/></a:xfrm>` +
       '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>'
     : '';
-  const texts = slide.texts.map((text, k) => textBox(text, k + 3, at, slide.hiddenText)).join('');
+  const texts = slide.texts.map((text, k) => textBox(text, k + 3, at, slide.hiddenText || text.hidden === true)).join('');
   return (
     `${DECLARATION}<p:sld ${NS}><p:cSld><p:spTree>` +
     '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>' +

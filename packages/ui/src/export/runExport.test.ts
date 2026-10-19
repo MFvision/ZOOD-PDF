@@ -78,6 +78,7 @@ function fakeDocument(name: string, log: string[], failOn?: 'extract_text'): Exp
         const items = ITEMS[name]?.[page] ?? linesOf(pages[page]!.text).map((l): PageItem => ({ kind: 'line', text: l.text, direction: 'rtl', cells: [] }));
         return { result: { items } as T, blobs: [] };
       }
+      if (op === 'export.lines') return { result: { lines: linesOf(pages[page]!.text) } as T, blobs: [] };
       // `export.picture`: the page without its text, 2 by 2 and white.
       return { result: { width: 2, height: 2, textHidden: name === 'scan' } as T, blobs: [new Uint8Array(16).fill(255).buffer] };
     },
@@ -189,9 +190,12 @@ describe('what each format hands over', () => {
   it('writes no text file for a document without text', async () => {
     const { src, log } = source('scan');
     for (const format of ['txt', 'md', 'html', 'docx'] as const) {
-      expect(await exportCurrentFile(src, request(format)), format).toBeNull();
+      expect(await exportCurrentFile(src, request(format, { words: 'text' })), format).toBeNull();
     }
     expect(log.filter((entry) => entry.startsWith('free'))).toHaveLength(4);
+    // Word with the layout kept still has the scan's picture to give.
+    const kept = await exportCurrentFile(src, request('docx'));
+    expect(Object.keys(unzipSync(kept!.bytes))).toContain('word/media/page1.png');
   });
 });
 

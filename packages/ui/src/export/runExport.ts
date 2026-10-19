@@ -1,7 +1,9 @@
 import type { RemoteDocument } from '../core/client';
+import type { TextLineData } from '../core/types';
 import { documentStem, exportFileName, pageImageName, pagesArchiveName } from '../state/saveFile';
 import type { FileKind } from '../state/saveFile';
 import { buildDocx } from './docx';
+import { buildLayoutDocx } from './docxLayout';
 import { FILE_KINDS } from './formats';
 import type { ExportFormat } from './formats';
 import { paragraphsOf } from './paragraphs';
@@ -29,6 +31,8 @@ export interface ExportRequest {
   sheets?: SheetMode;
   /** PowerPoint only: each page's picture behind its text, or its text alone. */
   slides?: SlideMode;
+  /** Word only: the layout kept (the default), or flowing text alone. */
+  words?: WordMode;
   /** The open file's name; the export is named after it. */
   name: string;
   /** The page headings of Markdown and HTML, and Excel's sheets: "Page 3", "الصفحة 3". */
@@ -98,6 +102,8 @@ export async function exportDocument(doc: ExportableDocument, request: ExportReq
       return exportSheets(doc, request);
     case 'pptx':
       return exportSlides(doc, request);
+    case 'docx':
+      return request.words === 'text' ? exportText(doc, 'docx', request) : exportWordLayout(doc, request);
     default:
       return exportText(doc, request.format, request);
   }
@@ -105,6 +111,9 @@ export async function exportDocument(doc: ExportableDocument, request: ExportReq
 
 /** PowerPoint: each page's picture behind its text boxes, or only the text boxes. */
 export type SlideMode = 'picture' | 'text';
+
+/** Word: each page as it looks, or the text as flowing paragraphs. */
+export type WordMode = 'layout' | 'text';
 
 /**
  * Excel: what the core finds on each page (`export.tables`) — tables drawn
@@ -140,6 +149,20 @@ export function inkColour(
   height: number,
   box: { x: number; y: number; width: number; height: number },
 ): string {
+  return inkOf(full, bare, width, height, box) ?? '000000';
+}
+
+/**
+ * The ink of `inkColour`, or null where the two drawings do not differ: the
+ * text is part of the picture itself (letters a picture is painted through).
+ */
+export function inkOf(
+  full: Uint8Array | Uint8ClampedArray,
+  bare: Uint8Array | Uint8ClampedArray,
+  width: number,
+  height: number,
+  box: { x: number; y: number; width: number; height: number },
+): string | null {
   const x0 = Math.max(0, Math.floor(box.x));
   const y0 = Math.max(0, Math.floor(box.y));
   const x1 = Math.min(width, Math.ceil(box.x + box.width));
@@ -155,34 +178,39 @@ export function inkColour(
     }
   }
   const ink = strongest.length >= 4 ? strongest : faint;
-  if (ink.length === 0) return '000000';
+  if (ink.length === 0) return null;
   const mean = [0, 1, 2].map((c) => Math.round(ink.reduce((sum, px) => sum + px[c]!, 0) / ink.length));
   return mean.map((v) => v.toString(16).padStart(2, '0')).join('');
 }
 
-/** PowerPoint: each page a slide, its picture without text behind its paragraphs as text boxes. */
-async function exportSlides(doc: ExportableDocument, request: ExportRequest): Promise<ExportResult> {
-  const slides: Slide[] = [];
+/**
+ * Each page laid out as it is: its picture drawn without text (or, for a
+ * scan, as it is) and its paragraphs as boxes where they were, in their
+ * lines, size, colour and face. PowerPoint's slides and Word's layout pages.
+ * `withPicture` false: the boxes alone, in black.
+ */
+async function layoutPages(doc: ExportableDocument, request: ExportRequest, withPicture: boolean): Promise<{ pages: Slide[]; reduced: boolean }> {
+  const pages: Slide[] = [];
   let reduced = false;
   for (let index = 0; index < doc.pageCount; index += 1) {
     const [width, height] = doc.pageSizes[index] ?? [612, 792];
     const fits = Math.sqrt(MAX_PAGE_PIXELS / Math.max(1, width * SLIDE_SCALE * height * SLIDE_SCALE));
     const scale = fits < 1 ? SLIDE_SCALE * fits : SLIDE_SCALE;
-    if (fits < 1) reduced = true;
-    const textOnly = request.slides === 'text';
-    const [lines, blocks, picture] = await Promise.all([
-      doc.text_lines(index),
+    if (fits < 1 && withPicture) reduced = true;
+    // The editor's lines: one crossing a table's columns is cut into a piece per column.
+    const [{ result: { lines } }, blocks, picture] = await Promise.all([
+      doc.call<{ lines: TextLineData[] }>('export.lines', { page: index }),
       doc.paragraphs(index),
-      textOnly
-        ? Promise.resolve({ result: { width: 0, height: 0, textHidden: false }, blobs: [] as ArrayBuffer[] })
-        : doc.call<{ width: number; height: number; textHidden: boolean }>('export.picture', { page: index, scale }),
+      withPicture
+        ? doc.call<{ width: number; height: number; textHidden: boolean }>('export.picture', { page: index, scale })
+        : Promise.resolve({ result: { width: 0, height: 0, textHidden: false }, blobs: [] as ArrayBuffer[] }),
     ]);
     const bare = new Uint8Array(picture.blobs[0] ?? new ArrayBuffer(0));
     const { width: w, height: h, textHidden } = picture.result;
     const paragraphs = paragraphsOf(lines, blocks).filter((p) => (p.lines?.length ?? 0) > 0);
     // Only for the text's colour; a scan's text is invisible anyway, and
     // text alone is black.
-    const full = !textOnly && !textHidden && paragraphs.length > 0 ? await doc.render_page(index, scale) : null;
+    const full = withPicture && !textHidden && paragraphs.length > 0 ? await doc.render_page(index, scale) : null;
     const texts: SlideText[] = paragraphs.map((p) => {
       const own = p.lines!;
       const x = Math.min(...own.map((l) => l.x));
@@ -200,10 +228,10 @@ async function exportSlides(doc: ExportableDocument, request: ExportRequest): Pr
         : (p.fontSize ?? Math.max(4, Math.min(96, own[0]!.height / 1.2)));
       const steps = own.slice(1).map((l, k) => l.y - own[k]!.y);
       const pitch = steps.length > 0 ? steps.reduce((a, b) => a + b, 0) / steps.length : null;
-      const colour =
+      const ink =
         full && full.width === w && full.height === h
-          ? inkColour(full.rgba, bare, w, h, { x: box.x * scale, y: box.y * scale, width: box.width * scale, height: box.height * scale })
-          : '000000';
+          ? inkOf(full.rgba, bare, w, h, { x: box.x * scale, y: box.y * scale, width: box.width * scale, height: box.height * scale })
+          : undefined;
       return {
         ...box,
         lines: own.map((l) => l.text.trim()),
@@ -211,20 +239,45 @@ async function exportSlides(doc: ExportableDocument, request: ExportRequest): Pr
         alignment: p.alignment,
         size,
         pitch,
-        color: colour,
+        color: ink ?? '000000',
         vertical,
+        ...(p.font ? { font: p.font } : {}),
+        // Drawn into the picture already: there to find and copy, not to see twice.
+        ...(ink === null ? { hidden: true } : {}),
       };
     });
-    slides.push({
+    const hasPicture = w > 0 && h > 0 && bare.length >= w * h * 4 && (textHidden || !blank(bare));
+    pages.push({
       width,
       height,
-      picture: w > 0 && h > 0 && bare.length >= w * h * 4 ? encodePng(w, h, bare, scale * 72) : null,
+      picture: hasPicture ? encodePng(w, h, bare, scale * 72) : null,
       texts,
       hiddenText: textHidden,
     });
     request.onProgress?.(index + 1, doc.pageCount);
   }
-  return { bytes: buildPptx(slides), fileName: exportFileName(request.name, 'pptx'), kind: FILE_KINDS.pptx, reduced };
+  return { pages, reduced };
+}
+
+/** A picture that is white paper and nothing else: no use behind the text. */
+export function blank(rgba: Uint8Array | Uint8ClampedArray): boolean {
+  for (let p = 0; p < rgba.length; p += 4) {
+    if (rgba[p]! < 248 || rgba[p + 1]! < 248 || rgba[p + 2]! < 248) return false;
+  }
+  return true;
+}
+
+/** PowerPoint: each page a slide, its picture without text behind its paragraphs as text boxes. */
+async function exportSlides(doc: ExportableDocument, request: ExportRequest): Promise<ExportResult> {
+  const { pages, reduced } = await layoutPages(doc, request, request.slides !== 'text');
+  return { bytes: buildPptx(pages), fileName: exportFileName(request.name, 'pptx'), kind: FILE_KINDS.pptx, reduced };
+}
+
+/** Word, the layout kept: each page a Word page, its picture behind its paragraphs as text boxes. */
+async function exportWordLayout(doc: ExportableDocument, request: ExportRequest): Promise<ExportResult | null> {
+  const { pages, reduced } = await layoutPages(doc, request, true);
+  if (pages.every((page) => page.picture === null && page.texts.length === 0)) return null;
+  return { bytes: buildLayoutDocx(pages), fileName: exportFileName(request.name, 'docx'), kind: FILE_KINDS.docx, reduced };
 }
 
 /** Every page as Warraq's core reads it: the text in reading order, and as paragraphs. */

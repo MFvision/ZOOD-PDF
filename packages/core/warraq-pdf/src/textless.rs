@@ -9,7 +9,8 @@
 //! pages' own streams are read for their text rendering mode on the way:
 //! a page whose text is all invisible (render mode 3 or 7) is a scan with a
 //! recognised text layer, where the picture is the page and must keep what
-//! it shows.
+//! it shows. Text that clips (render modes 4 to 7) is kept: what is painted
+//! through it would go with it.
 use lopdf::{Object, ObjectId};
 
 use crate::lex::{ops, Operand};
@@ -58,6 +59,13 @@ fn strip(content: &[u8], tr: &mut Vec<i64>, shown: &mut TextShown) -> Option<Vec
                     shown.invisible += 1;
                 } else {
                     shown.visible += 1;
+                }
+                // Text that clips (modes 4 to 7) is the shape what follows
+                // is painted through — InDesign fills letters with pictures
+                // that way. Cut out, it would leave an empty clip, and the
+                // pictures with it; it stays, and is part of the picture.
+                if (4..=7).contains(&current) {
+                    continue;
                 }
                 out.extend_from_slice(&content[at..op.range.start]);
                 out.extend_from_slice(if name == b"Tj" || name == b"TJ" {
@@ -177,6 +185,13 @@ mod tests {
         assert!(!shown.only_invisible());
         let (_, shown) = stripped(b"q /Im0 Do Q BT 3 Tr (a) Tj (b) Tj ET");
         assert!(shown.only_invisible());
+    }
+
+    #[test]
+    fn text_that_clips_stays_so_what_is_painted_through_it_does() {
+        let (out, _) = stripped(b"q BT 7 Tr (Cover) Tj ET /Im1 Do Q BT 0 Tr (gone) Tj ET");
+        assert!(out.contains("(Cover) Tj"));
+        assert!(!out.contains("(gone)"));
     }
 
     #[test]

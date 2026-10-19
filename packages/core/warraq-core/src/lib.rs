@@ -403,7 +403,10 @@ impl Document {
     /// starts in it — the whole line is one operator, spaced out — the page
     /// keeps its lines whole, as `detect_paragraphs` has them, rather than
     /// let an edit to one column take its neighbour's text with it.
-    fn edit_view(&self, index: usize) -> Result<(Vec<TextLine>, Vec<Paragraph>), CoreError> {
+    pub(crate) fn edit_view(
+        &self,
+        index: usize,
+    ) -> Result<(Vec<TextLine>, Vec<Paragraph>), CoreError> {
         let lines = self.text_lines(index)?;
         let (pieces, was_cut, paragraphs) = edit_paragraphs(&lines);
         if !was_cut.contains(&true) {
