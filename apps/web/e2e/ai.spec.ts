@@ -102,6 +102,20 @@ function sentText(request: Request): string {
   return body.messages.map((message) => message.content).join('\n');
 }
 
+test('every suggestion can be seen and reached: they wrap instead of running off the panel', async ({ page, stayLocal: _ }) => {
+  await page.goto('/');
+  await openPdf(page, WORD_EXPORT);
+  await chooseTool(page, 'AI');
+  const list = panel(page).getByRole('list', { name: 'Suggestions' });
+  const box = await list.boundingBox();
+  const buttons = list.getByRole('button');
+  expect(await buttons.count()).toBeGreaterThan(1);
+  for (const button of await buttons.all()) {
+    const own = await button.boundingBox();
+    expect(own && box && own.x >= box.x - 1 && own.x + own.width <= box.x + box.width + 1, (await button.textContent()) ?? '').toBe(true);
+  }
+});
+
 test.describe('the assistant sends nothing until Send, and then only what it showed', () => {
   test('nothing leaves before Send; Send sends exactly the text Warraq read, and the key only in x-api-key; later messages do not ask again', async ({
     page,
