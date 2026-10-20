@@ -25,6 +25,7 @@ import { libraryScene, libraryFrame } from './library.js';
 import { phoneScene, phoneFrame as phoneRoomFrame } from './phone-room.js';
 import { familyScene, familyFrame } from './family.js';
 import { remoteScene, remoteFrame } from './remote.js';
+import { filmScene, filmFrame } from './film.js';
 
 const root = document.documentElement;
 export const lang = root.lang === 'en' ? 'en' : 'ar';
@@ -222,6 +223,7 @@ const ROOMS = {
   library: { scene: () => libraryScene(t, escape), frame: libraryFrame },
   phone: { scene: () => phoneScene(t, escape, media, phoneFrame()), frame: phoneRoomFrame },
   remote: { scene: () => remoteScene(t, escape, phoneFrame()), frame: remoteFrame },
+  film: { scene: () => filmScene(t, escape, lang), frame: filmFrame },
   family: {
     scene: () => familyScene(t, escape, media, { phone: phoneFrame(), tablet: tabletFrame() }),
     frame: familyFrame,

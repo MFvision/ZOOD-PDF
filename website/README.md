@@ -175,6 +175,9 @@ workflow to the server; the licensed font has to be added on the server side.
   each beat, and the drawn phone answers the visitor's pointer and presses;
   drawn, not recorded).
   Their look is the app's liquid glass (`packages/ui/src/styles/looks.css`).
+- `js/film.js`: the 30-second film after the opening. It plays without sound
+  while on screen and pauses when it leaves; a button turns the sound on. With
+  Reduce Motion or Save Data it waits on its poster.
 - `js/interact.js`: a ring of light from where a button or switch is pressed;
   the press and spring are in `css/site.css`. Off with Reduce Motion.
 
@@ -207,5 +210,10 @@ Android Chrome and desktop Firefox.
 - `tools/arabic-outlines.py`: the desk's Arabic lines (needs `fonttools uharfbuzz`).
 - `tools/make-og.mjs`: the social preview pictures.
 - `tools/make-shells.mjs`: the HTML files.
+- `tools/promo/make.mjs`: the film, `assets/film/film-<lang>.mp4`, `.webm` and
+  the `.webp` poster (needs ffmpeg; `CHROMIUM=<path>` picks the browser). The
+  scenes are `tools/promo/promo.js`, drawn around the app's own recordings;
+  the music is made from plain waves by `tools/promo/music.mjs`, so it is ours.
+  `--at=4,12.5` writes stills of those seconds to check a scene.
 - Fonts: `pyftsubset` from `tests/fonts/Vazirmatn-Variable.ttf` and
   `packages/ui/public/fonts/Inter-Variable.ttf`.

@@ -48,7 +48,7 @@ const ON = {
 
 // Each chapter:
 //   id          the #anchor, also used by the chapter index
-//   kind        'story' (default), 'ring', 'ai', 'library', 'phone', 'family', 'remote' (rooms), 'wall', 'platforms', 'download', 'inside'
+//   kind        'story' (default), 'ring', 'ai', 'library', 'phone', 'family', 'remote', 'film' (rooms), 'wall', 'platforms', 'download', 'inside'
 //   stage       pose numbers the desk animates between:
 //               pages 1-5, fan 0-1 (stack to arc), recede 0-1 (pages step back),
 //               dusk 0-1 (desk turns to navy ink), pattern 0-1, frame 0-1 (bronze frame)
@@ -71,6 +71,18 @@ export const CHAPTERS = [
       en: 'Read, edit and sign PDFs, Arabic first. No account needed.',
     },
     cta: { href: '#download', label: { ar: 'حمّل التطبيق', en: 'Get the app' } },
+  },
+  {
+    id: 'film',
+    kind: 'film',
+    stage: { pages: 1, fan: 0, recede: 1, dusk: 0, pattern: 0 },
+    devices: [],
+    eyebrow: { ar: 'في 30 ثانية', en: 'In 30 seconds' },
+    title: { ar: 'شاهد التطبيق [[على كل أجهزتك]].', en: 'Watch the app [[on every device]].' },
+    lead: {
+      ar: 'اقرأ بإصبعك، واكتب بالقلم، واسأل ملفك، ووقّع، واجعل هاتفك جهاز التحكّم.',
+      en: 'Read with a finger, write with the pen, ask your file, sign, and use your phone as the remote.',
+    },
   },
   {
     id: 'ring',
