@@ -39,14 +39,13 @@ pub fn tidy(account: &str) -> String {
 #[tauri::command]
 pub fn open_default_apps() -> bool {
     #[cfg(target_os = "windows")]
-    {
-        return std::process::Command::new("explorer")
-            .arg("ms-settings:defaultapps")
-            .spawn()
-            .is_ok();
-    }
+    let opened = std::process::Command::new("explorer")
+        .arg("ms-settings:defaultapps")
+        .spawn()
+        .is_ok();
     #[cfg(not(target_os = "windows"))]
-    false
+    let opened = false;
+    opened
 }
 
 #[cfg(test)]
