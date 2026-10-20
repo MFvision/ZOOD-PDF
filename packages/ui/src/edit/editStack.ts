@@ -1,3 +1,4 @@
+import { getSettings } from '../state/settings';
 /**
  * Undo/redo for Edit: paragraph edits, and picture and link changes.
  *
@@ -79,8 +80,10 @@ export function canRedo(stack: EditStack): boolean {
  * Past `MAX_FILE_ENTRIES` picture and link changes, the oldest history goes,
  * up to and with the oldest of them.
  */
-export function applyEdit(stack: EditStack, entry: StackEntry): EditStack {
+export function applyEdit(stack: EditStack, entry: StackEntry, limit: number = getSettings().undoSteps): EditStack {
   let entries = [...stack.entries.slice(0, stack.cursor), entry];
+  // Settings › History: so many steps back (50, 100 or 200), the oldest go first.
+  if (entries.length > limit) entries = entries.slice(entries.length - limit);
   while (entries.filter(isFileEntry).length > MAX_FILE_ENTRIES) {
     entries = entries.slice(entries.findIndex(isFileEntry) + 1);
   }

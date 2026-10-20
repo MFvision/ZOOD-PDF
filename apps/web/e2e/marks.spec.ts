@@ -139,7 +139,7 @@ test.describe('Page marks are drawn into the file, read back in Arabic, and come
     await expect(p.locator('.marks-item')).toHaveCount(2);
     await expect.poll(() => redInEmbed(page, [0.3, 0.35, 0.7, 0.65]), { timeout: 20_000 }).toBeLessThan(0.005);
     await p.getByRole('button', { name: 'إزالة كل العلامات' }).click();
-    await expect(p.getByText('لا علامات من محرر PDF في هذا الملف بعد.')).toBeVisible();
+    await expect(p.getByText('لا علامات من محرر زود PDF في هذا الملف بعد.')).toBeVisible();
     const cleaned = await saveAs(page, 'marks-cleaned');
     expect((await listMarks(cleaned)).marks).toEqual([]);
     expect((await marksText(cleaned, 0)).marks).toBe('');

@@ -19,7 +19,7 @@
   --under-page-background: #e1d6cb;
   --grouped-background: #fbf9f7;
   --elevated-background: rgb(251 249 247 / 92%);
-  --control-background: #fff;
+  --control-background: #fdfcfa;
   --control-border: rgb(4 30 66 / 16%);
   --glass: rgb(251 249 247 / 78%);
   --glass-edge: rgb(255 255 255 / 70%);
@@ -127,13 +127,13 @@
   --accent: #1b63e0;
   --accent-contrast: #fff;
   --window-background: #f1f1f3;
-  --toolbar-background: #fff;
-  --sidebar-background: #fff;
-  --content-background: #fff;
+  --toolbar-background: #fbfcfe;
+  --sidebar-background: #fbfcfe;
+  --content-background: #fcfcfe;
   --under-page-background: #e9e9eb;
-  --grouped-background: #fff;
-  --elevated-background: #fff;
-  --control-background: #fff;
+  --grouped-background: #fcfcfe;
+  --elevated-background: #fcfcfe;
+  --control-background: #fdfdfe;
   --control-border: #dadade;
   --glass: #fff;
   --glass-edge: #e8e8eb;
@@ -231,4 +231,192 @@
   --shadow-small: 0 0 0 1px #333339;
   --shadow-popover: 0 4px 16px rgb(0 0 0 / 35%), 0 0 0 1px #333339;
   --shadow-sheet: 0 8px 28px rgb(0 0 0 / 43%), 0 0 0 1px #333339;
+}
+
+/*
+ * Concept: the owner's concept image (an original rendering of it, no
+ * photograph): a landscape-coloured gradient — sky blue, lilac, a touch of
+ * green below — under frosted panels with a white edge, white cards, and a
+ * deep-indigo frosted sidebar. Structure in looks/concept.css.
+ */
+:root:root[data-look="concept"] {
+  --accent: #3b6ff5;
+  --accent-contrast: #fff;
+  --window-background: #e9ecf8;
+  --toolbar-background: rgb(255 255 255 / 55%);
+  --sidebar-background: rgb(255 255 255 / 42%);
+  --under-page-background: rgb(226 230 246 / 70%);
+  --elevated-background: rgb(250 251 255 / 88%);
+  --glass: rgb(255 255 255 / 62%);
+  --glass-edge: rgb(255 255 255 / 85%);
+  --label: #161a33;
+  --secondary-label: rgb(22 26 51 / 62%);
+  --tertiary-label: rgb(22 26 51 / 36%);
+  --home-gradient:
+    radial-gradient(70% 60% at 8% 0%, rgb(118 160 255 / 70%), transparent 70%),
+    radial-gradient(55% 55% at 92% 10%, rgb(196 168 255 / 62%), transparent 72%),
+    radial-gradient(60% 45% at 30% 100%, rgb(140 205 170 / 55%), transparent 70%),
+    radial-gradient(45% 40% at 100% 85%, rgb(170 190 255 / 50%), transparent 70%),
+    linear-gradient(170deg, #cfdcff 0%, #e4e2fb 45%, #e3efe9 100%);
+  --glass-panel: rgb(255 255 255 / 40%);
+  --glass-card: rgb(255 255 255 / 86%);
+  --glass-border: rgb(255 255 255 / 72%);
+  --glass-hover: rgb(255 255 255 / 95%);
+  --blur-regular: blur(24px) saturate(160%);
+  --radius-16: 16px;
+  --shadow-small: 0 1px 2px rgb(40 50 120 / 6%), 0 8px 24px rgb(40 50 120 / 10%);
+  --concept-rail: linear-gradient(180deg, rgb(54 62 128 / 58%), rgb(38 50 98 / 66%));
+  --concept-rail-label: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:root[data-look="concept"]:not([data-theme="light"]) {
+    --accent: #6b93ff;
+    --window-background: #12152a;
+    --toolbar-background: rgb(30 34 62 / 60%);
+    --sidebar-background: rgb(30 34 62 / 50%);
+    --under-page-background: rgb(18 21 42 / 70%);
+    --elevated-background: rgb(34 38 70 / 90%);
+    --glass: rgb(40 44 80 / 62%);
+    --glass-edge: rgb(255 255 255 / 14%);
+    --label: #eef0ff;
+    --secondary-label: rgb(238 240 255 / 62%);
+    --tertiary-label: rgb(238 240 255 / 36%);
+    --home-gradient:
+      radial-gradient(70% 60% at 8% 0%, rgb(60 90 200 / 55%), transparent 70%),
+      radial-gradient(55% 55% at 92% 10%, rgb(120 80 200 / 45%), transparent 72%),
+      radial-gradient(60% 45% at 30% 100%, rgb(40 110 90 / 45%), transparent 70%),
+      linear-gradient(170deg, #1a2048 0%, #1d1838 50%, #10221f 100%);
+    --glass-panel: rgb(30 34 66 / 46%);
+    --glass-card: rgb(44 48 86 / 72%);
+    --glass-border: rgb(255 255 255 / 12%);
+    --glass-hover: rgb(56 60 100 / 80%);
+    --concept-rail: linear-gradient(180deg, rgb(16 20 46 / 62%), rgb(10 14 34 / 70%));
+  }
+}
+
+:root:root[data-look="concept"][data-theme="dark"] {
+  --accent: #6b93ff;
+  --window-background: #12152a;
+  --toolbar-background: rgb(30 34 62 / 60%);
+  --sidebar-background: rgb(30 34 62 / 50%);
+  --under-page-background: rgb(18 21 42 / 70%);
+  --elevated-background: rgb(34 38 70 / 90%);
+  --glass: rgb(40 44 80 / 62%);
+  --glass-edge: rgb(255 255 255 / 14%);
+  --label: #eef0ff;
+  --secondary-label: rgb(238 240 255 / 62%);
+  --tertiary-label: rgb(238 240 255 / 36%);
+  --home-gradient:
+    radial-gradient(70% 60% at 8% 0%, rgb(60 90 200 / 55%), transparent 70%),
+    radial-gradient(55% 55% at 92% 10%, rgb(120 80 200 / 45%), transparent 72%),
+    radial-gradient(60% 45% at 30% 100%, rgb(40 110 90 / 45%), transparent 70%),
+    linear-gradient(170deg, #1a2048 0%, #1d1838 50%, #10221f 100%);
+  --glass-panel: rgb(30 34 66 / 46%);
+  --glass-card: rgb(44 48 86 / 72%);
+  --glass-border: rgb(255 255 255 / 12%);
+  --glass-hover: rgb(56 60 100 / 80%);
+  --concept-rail: linear-gradient(180deg, rgb(16 20 46 / 62%), rgb(10 14 34 / 70%));
+}
+
+/*
+ * Monochrome: greys only, black or white text, one neutral accent; every
+ * icon a plain line (looks/mono.css takes their tiles away).
+ */
+:root:root[data-look="mono"] {
+  --accent: #2c2c2e;
+  --accent-contrast: #fff;
+  --accent-soft: rgb(0 0 0 / 8%);
+  --selection: rgb(0 0 0 / 14%);
+  --window-background: #f4f4f4;
+  --toolbar-background: #f7f7f7;
+  --sidebar-background: #efefef;
+  --content-background: #fbfbfb;
+  --under-page-background: #e4e4e4;
+  --grouped-background: #fbfbfb;
+  --elevated-background: #fbfbfb;
+  --control-background: #fdfdfd;
+  --control-border: rgb(0 0 0 / 16%);
+  --glass: #fbfbfb;
+  --glass-edge: rgb(0 0 0 / 8%);
+  --label: #111;
+  --secondary-label: #5c5c5c;
+  --tertiary-label: #9a9a9a;
+  --red: #3a3a3a;
+  --orange: #4a4a4a;
+  --green: #3a3a3a;
+  --destructive: #111;
+  --focus: #111;
+  --home-gradient: linear-gradient(#f4f4f4, #f4f4f4);
+  --glass-panel: #f9f9f9;
+  --glass-card: #fff;
+  --glass-border: rgb(0 0 0 / 9%);
+  --glass-hover: #f0f0f0;
+  --blur-thin: none;
+  --blur-regular: none;
+  --blur-thick: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:root[data-look="mono"]:not([data-theme="light"]) {
+    --accent: #e8e8e8;
+    --accent-contrast: #111;
+    --accent-soft: rgb(255 255 255 / 10%);
+    --selection: rgb(255 255 255 / 18%);
+    --window-background: #161616;
+    --toolbar-background: #1c1c1c;
+    --sidebar-background: #1a1a1a;
+    --content-background: #121212;
+    --under-page-background: #0e0e0e;
+    --grouped-background: #1e1e1e;
+    --elevated-background: #222;
+    --control-background: #262626;
+    --control-border: rgb(255 255 255 / 16%);
+    --glass: #1e1e1e;
+    --glass-edge: rgb(255 255 255 / 8%);
+    --label: #f2f2f2;
+    --secondary-label: #a8a8a8;
+    --tertiary-label: #6c6c6c;
+    --red: #cfcfcf;
+    --orange: #bdbdbd;
+    --green: #cfcfcf;
+    --destructive: #f2f2f2;
+    --focus: #f2f2f2;
+    --home-gradient: linear-gradient(#161616, #161616);
+    --glass-panel: #1b1b1b;
+    --glass-card: #222;
+    --glass-border: rgb(255 255 255 / 8%);
+    --glass-hover: #2a2a2a;
+  }
+}
+
+:root:root[data-look="mono"][data-theme="dark"] {
+  --accent: #e8e8e8;
+  --accent-contrast: #111;
+  --accent-soft: rgb(255 255 255 / 10%);
+  --selection: rgb(255 255 255 / 18%);
+  --window-background: #161616;
+  --toolbar-background: #1c1c1c;
+  --sidebar-background: #1a1a1a;
+  --content-background: #121212;
+  --under-page-background: #0e0e0e;
+  --grouped-background: #1e1e1e;
+  --elevated-background: #222;
+  --control-background: #262626;
+  --control-border: rgb(255 255 255 / 16%);
+  --glass: #1e1e1e;
+  --glass-edge: rgb(255 255 255 / 8%);
+  --label: #f2f2f2;
+  --secondary-label: #a8a8a8;
+  --tertiary-label: #6c6c6c;
+  --red: #cfcfcf;
+  --orange: #bdbdbd;
+  --green: #cfcfcf;
+  --destructive: #f2f2f2;
+  --focus: #f2f2f2;
+  --home-gradient: linear-gradient(#161616, #161616);
+  --glass-panel: #1b1b1b;
+  --glass-card: #222;
+  --glass-border: rgb(255 255 255 / 8%);
+  --glass-hover: #2a2a2a;
 }

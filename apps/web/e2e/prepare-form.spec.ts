@@ -42,7 +42,7 @@ test.describe('what a form holds that ورّاق does not run is said, not done'
     await openPdf(page, fixture('scripts-not-run.pdf'));
     await chooseTool(page, 'Fill & sign');
     const notice = panel(page).locator('details.form-scripts');
-    await expect(notice.locator('summary')).toHaveText('Scripts in this form that ⁧محرر PDF⁩ does not run: 2');
+    await expect(notice.locator('summary')).toHaveText('Scripts in this form that ZOOD PDF does not run: 2');
     await notice.locator('summary').click();
     await expect(notice).toContainText('When the file opens');
     await expect(notice).toContainText("app.alert('Hello from the file')");

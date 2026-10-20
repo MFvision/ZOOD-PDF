@@ -141,7 +141,7 @@ test.describe('Redact: find and redact', () => {
     for (const spelling of spellings('Haddad')) expect(raw, spelling).not.toContain(spelling);
   });
 
-  test('a page mark محرر PDF drew is found, said to be one, and redacted', async ({ page, stayLocal: _ }) => {
+  test('a page mark محرر زود PDF drew is found, said to be one, and redacted', async ({ page, stayLocal: _ }) => {
     // A header written by Page marks, as the core writes it.
     const { call_static } = await core();
     const amiri = new Uint8Array(readFileSync(fileURLToPath(new URL('../../../tests/fonts/Amiri-Regular.ttf', import.meta.url))));

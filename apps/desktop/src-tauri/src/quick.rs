@@ -218,7 +218,7 @@ fn open_window<R: Runtime>(
     }
     let window =
         WebviewWindowBuilder::new(app, &label, WebviewUrl::App("index.html?quick=1".into()))
-            .title("أدوات PDF السريعة — محرر PDF")
+            .title("أدوات PDF السريعة — محرر زود PDF")
             .inner_size(680.0, 620.0)
             .min_inner_size(400.0, 460.0)
             .center()

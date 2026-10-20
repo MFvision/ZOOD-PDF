@@ -2,12 +2,15 @@ import { PdfAnnotationName } from '@embedpdf/models';
 import { PDFViewer } from '@embedpdf/react-pdf-viewer';
 import type { PDFViewerConfig, PluginRegistry } from '@embedpdf/react-pdf-viewer';
 import pdfiumWasmUrl from '@embedpdf/pdfium/pdfium.wasm?url';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import standardStamps from '../../public/stamps/en/manifest.json';
 import { isTauriHost, uiLog } from '../core/host-tauri';
 import type { Lang } from '../i18n/messages';
+import { pendingPage } from '../home/pendingPage';
 import { requestOpenLink } from '../links/openLink';
-import { capability, disabledCategories } from './embedControl';
+import { capability, disabledCategories, scrollToStart, setZoom, watchZoom } from './embedControl';
+import { applyOpenSettings, applyOpenZoom, pagePanelOpen, rememberedZoom, rememberZoom, setNightReading, setPagePanel, setSpreadDirection, spreadsRightToLeft } from './embedSettings';
+import { useSettings } from '../state/settings';
 import { setEmbedLanguage, setEmbedStrings } from './embedLanguage';
 import { installRtlStyles } from './embedRtl';
 import { EMBED_COLORS, installThemeStyles, removeDuplicatedChrome, showMarkupBar } from './embedTheme';
@@ -23,6 +26,9 @@ import { EMBED_COLORS, installThemeStyles, removeDuplicatedChrome, showMarkupBar
  * the strict CSP would block those requests anyway — silently, as a viewer
  * that never renders.
  */
+
+/** How long EmbedPDF takes to lay a newly opened file out and set its own zoom. */
+const OPEN_SETTLE_MS = 250;
 
 /** Windows charset of Arabic in PDFium's fallback table (`FontCharset.ARABIC`). */
 const ARABIC_CHARSET = 178;
@@ -119,11 +125,32 @@ function documentManager(registry: PluginRegistry): DocumentManager | null {
   return plugin?.provides?.() ?? null;
 }
 
+/** Whether night reading is on now: always, or while the app is dark. */
+function useNight(theme: EmbedViewerProps['theme'], setting: 'off' | 'on' | 'dark'): boolean {
+  const [systemDark, setSystemDark] = useState(() => globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
+  useEffect(() => {
+    const query = globalThis.matchMedia?.('(prefers-color-scheme: dark)');
+    if (!query) return;
+    const onChange = () => setSystemDark(query.matches);
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, []);
+  if (setting === 'on') return true;
+  if (setting === 'off') return false;
+  return theme === 'dark' || (theme === 'system' && systemDark);
+}
+
 export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = false, onRegistry, onError, onOpened }: EmbedViewerProps) {
   const registryRef = useRef<PluginRegistry | null>(null);
   /** EmbedPDF's element: its theme is set on it, not through the config it started with. */
   const containerRef = useRef<{ setTheme(preference: EmbedViewerProps['theme']): void } | null>(null);
   const openedRef = useRef<string | null>(null);
+  /** The file on screen by name, and the files already shown once while the app is open. */
+  const shownRef = useRef<string | null>(null);
+  const seenRef = useRef(new Set<string>());
+  const shadowRef = useRef<ShadowRoot | null>(null);
+  const settings = useSettings();
+  const night = useNight(theme, settings.nightReading);
   const langRef = useRef(lang);
   const markupRef = useRef(markupBar);
   // Its loading screens draw before its i18n plugin exists: their strings
@@ -169,6 +196,14 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
     // The new file first, then the old one closed: the view is never without a
     // document, and a close that fails cannot keep the new file out.
     const previous = openedRef.current;
+    // New bytes of the file on screen (an edit, a save): the zoom it was at,
+    // read now, before the new document's own starting zoom is remembered,
+    // and whether its page thumbnails were showing.
+    const same = shownRef.current === currentName;
+    const keptZoom = same ? rememberedZoom(currentName) : null;
+    const keptPanel = same ? pagePanelOpen(registry) : null;
+    // A file opened to go to a page (a search hit, a citation) is not sent back to the top.
+    const goingToPage = pendingPage() !== null;
     try {
       // A copy: the engine may take the buffer over, and Warraq keeps its own.
       const response = await manager
@@ -185,6 +220,38 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
       return;
     }
     if (previous) await manager.closeDocument(previous).toPromise().catch(() => undefined);
+    // An edit keeps the view the file was in: its page thumbnails, then its zoom.
+    if (same) {
+      setTimeout(() => {
+        if (shownRef.current !== currentName) return;
+        if (keptPanel !== null) setPagePanel(registry, keptPanel);
+        if (keptZoom !== null) setZoom(registry, keptZoom);
+      }, OPEN_SETTLE_MS);
+    }
+    // Settings › Viewing, for a file that has just come on screen (not for
+    // new bytes of the same one after an edit): the first time, the layout
+    // and zoom it says; when the file comes back (another tab, then this),
+    // the zoom it was left at. A view setting that fails never fails the open.
+    if (shownRef.current !== currentName) {
+      shownRef.current = currentName;
+      const again = seenRef.current.has(currentName);
+      seenRef.current.add(currentName);
+      // After EmbedPDF's own first layout, which sets its starting zoom.
+      setTimeout(() => {
+        if (shownRef.current !== currentName) return;
+        try {
+          if (again) applyOpenZoom(registry, 'remember', currentName);
+          else {
+            applyOpenSettings(registry, currentName);
+            // A new zoom keeps the middle of the view: a file just opened starts at its top.
+            if (!goingToPage) setTimeout(() => shownRef.current === currentName && scrollToStart(registry), 60);
+          }
+        } catch (error) {
+          uiLog(`view settings not applied to ${currentName}: ${String(error)}`);
+        }
+      }, OPEN_SETTLE_MS);
+      setSpreadDirection(shadowRef.current, spreadsRightToLeft(current));
+    }
   };
 
   // A different document, or new bytes after a Warraq edit, reopens it.
@@ -197,6 +264,16 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
   useEffect(() => {
     containerRef.current?.setTheme(theme);
   }, [theme]);
+
+  useEffect(() => {
+    setNightReading(shadowRef.current, night);
+  }, [night]);
+
+  // A change of the page-order setting shows at once on the file open now.
+  useEffect(() => {
+    setSpreadDirection(shadowRef.current, spreadsRightToLeft(bytes));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the bytes' own direction is set as they open
+  }, [settings.readingDirection]);
 
   // The markup bar, shown and hidden from Warraq's toolbar.
   useEffect(() => {
@@ -219,6 +296,8 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
         containerRef.current = container;
         installRtlStyles(container.shadowRoot);
         installThemeStyles(container.shadowRoot);
+        shadowRef.current = container.shadowRoot;
+        setNightReading(container.shadowRoot, night);
       }}
       onReady={(registry) => {
         uiLog('embedpdf ready');
@@ -228,6 +307,9 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
         setEmbedLanguage(registry, langRef.current);
         removeDuplicatedChrome(registry);
         watchEmbedLinks(registry);
+        watchZoom(registry, (zoom) => {
+          if (shownRef.current) rememberZoom(shownRef.current, zoom);
+        });
         onRegistry?.(registry);
         void open(registry, bytes, name, password);
       }}

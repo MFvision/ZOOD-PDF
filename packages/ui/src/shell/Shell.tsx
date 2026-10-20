@@ -13,13 +13,19 @@ import { LinkConfirmDialog } from '../links/LinkConfirmDialog';
 import { useI18n } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { EmbedViewer } from '../embed/EmbedViewer';
+import { EmbedPageMenu } from '../embed/EmbedPageMenu';
 import { OrganizeView } from '../organize/OrganizeView';
 import { SignatureBanner } from '../signatures/SignatureBanner';
 import { EmbedReadAloudHighlight } from '../speech/EmbedReadAloudHighlight';
 import { ReadAloudBar } from '../speech/ReadAloudBar';
 import { useReadAloud } from '../speech/readAloud';
 import { Viewer } from '../viewer/Viewer';
-import { AboutDialog, GoToPageDialog, PasswordDialog, SettingsDialog, ShortcutsDialog } from './Dialogs';
+import { AboutDialog, GoToPageDialog, PasswordDialog, ShortcutsDialog } from './Dialogs';
+import { SettingsWindow } from '../settings/SettingsWindow';
+import { SettingsEffects } from '../settings/SettingsEffects';
+import { useSettings } from '../state/settings';
+import { HistoryEffects } from '../history/HistoryEffects';
+import { VersionsDialog } from '../history/VersionsDialog';
 import { WelcomeTour } from '../tour/Tour';
 import { FindBar } from './FindBar';
 import { LeftPane } from './LeftPane';
@@ -36,6 +42,9 @@ import { useNativeMenu } from './useNativeMenu';
 import { useShellMenuSync } from '../quick/QuickSettings';
 import { RemoteLayer } from '../remote/RemoteLayer';
 import { TabBar } from './TabBar';
+import { useWorkbench } from './workbench';
+import { WorkbenchBar } from './WorkbenchBar';
+import { QuickBar, WorkbenchRail } from './WorkbenchRail';
 
 /**
  * The window: a unified toolbar over the document, the sidebar at its leading
@@ -47,6 +56,7 @@ export function Shell() {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const services = useServices();
+  const settings = useSettings();
   const { t, lang } = useI18n();
   const nativeMenu = hasNativeMenuBar();
   useKeyboardShortcuts();
@@ -92,7 +102,10 @@ export function Shell() {
     if (dragging) lastIntent.current = intent;
   }, [dragging, intent]);
 
-  const isViewer = state.view === 'viewer';
+  const workbench = useWorkbench();
+  // The Workbench look's Home tab: the home screen over the open documents.
+  const homeOver = state.view === 'viewer' && state.homeShown;
+  const isViewer = state.view === 'viewer' && !homeOver;
   // EmbedPDF shows the document (ADR-0007); Warraq's own viewer takes over in
   // Edit text, where its paragraph and add-text overlays are the point.
   const warraqView = isViewer && !services.embedShowing;
@@ -100,7 +113,7 @@ export function Shell() {
   const organizing = isViewer && state.rightPane.activeTool === 'organize';
   // On the home screen the gallery already lists every tool, so the inspector
   // only appears once a tool is chosen.
-  const inspector = state.rightPane.open && (isViewer || state.rightPane.activeTool !== null);
+  const inspector = state.rightPane.open && (isViewer || (!homeOver && state.rightPane.activeTool !== null));
   // The navigation pane: in Warraq's view with the pages; beside EmbedPDF's
   // (whose own sidebar has the pages) while a document pane — bookmarks,
   // attachments, layers — is chosen.
@@ -115,10 +128,22 @@ export function Shell() {
     <MarkupBarContext.Provider value={markupBar}>
       <NativeMenu enabled={nativeMenu} />
       <PendingPage />
-      <div className="shell" data-native-menu={nativeMenu || undefined} data-view={state.view}>
+      <div className="shell" data-tabs={settings.tabPosition} data-native-menu={nativeMenu || undefined} data-view={homeOver ? 'home' : state.view}>
         {!nativeMenu && <MenuBar />}
-        <Toolbar />
-        {isViewer && <TabBar />}
+        {workbench ? (
+          // Workbench: the tabs, with Home first, at the very top; the mode bar in the toolbar's place.
+          <>
+            <TabBar />
+            <WorkbenchBar />
+          </>
+        ) : (
+          <>
+            {isViewer && settings.tabPosition === 'top' && <TabBar />}
+            {/* The home screen has its own top bar; the macOS app keeps this strip as its title bar. */}
+            {(isViewer || hasNativeMenuBar()) && <Toolbar />}
+            {isViewer && settings.tabPosition === 'toolbar' && <TabBar />}
+          </>
+        )}
         {warraqView && !organizing && state.find.open && <FindBar />}
         {isViewer && state.document !== null && !organizing && readAloud.open && <ReadAloudBar />}
         {state.error && (
@@ -128,6 +153,7 @@ export function Shell() {
             <IconButton label={t('error.dismiss')} icon={<Icon of={X} />} onClick={() => dispatch({ type: 'ERROR_DISMISSED' })} />
           </div>
         )}
+        <HistoryEffects />
         <FontNotice />
         <SignatureBanner />
         {state.loadingName && (
@@ -144,7 +170,14 @@ export function Shell() {
           </div>
         )}
         <div className="shell-body" data-tool={state.rightPane.activeTool ?? undefined}>
-          {navigation && (
+          {/* Workbench: the tools down the leading side, the document's panes on the trailing one. */}
+          {workbench && inspector && (
+            <>
+              <RightPane />
+              <PaneResizer side="start" width={state.rightPane.width} onResize={(width) => dispatch({ type: 'SET_RIGHT_WIDTH', width })} />
+            </>
+          )}
+          {!workbench && navigation && (
             <>
               <LeftPane reading={!warraqView} />
               <PaneResizer side="start" width={state.leftPane.width} onResize={(width) => dispatch({ type: 'SET_LEFT_WIDTH', width })} />
@@ -154,9 +187,10 @@ export function Shell() {
             {!isViewer && <HomeScreen />}
             {/* EmbedPDF stays mounted under Warraq's editor, so switching into Edit
                 text keeps its engine, its state and the handover source alive. */}
-            {isViewer && services.documentBytes !== null && (
-              <div className="embed-host" hidden={warraqView} ref={setEmbedHost}>
+            {state.view === 'viewer' && services.documentBytes !== null && (
+              <div className="embed-host" hidden={warraqView || homeOver} ref={setEmbedHost}>
                 <EmbedReadAloudHighlight host={embedHost} registry={services.embedRegistry} />
+                <EmbedPageMenu host={embedHost} pageCount={state.document?.pageCount ?? 0} />
                 <EmbedViewer
                   bytes={services.documentBytes}
                   name={state.document?.name ?? 'document.pdf'}
@@ -186,19 +220,29 @@ export function Shell() {
                 <span>{t('switching.out')}</span>
               </div>
             )}
+            {workbench && isViewer && services.embedShowing && !organizing && <QuickBar />}
           </main>
-          {inspector && (
+          {!workbench && inspector && (
             <>
               <PaneResizer side="end" width={state.rightPane.width} onResize={(width) => dispatch({ type: 'SET_RIGHT_WIDTH', width })} />
               <RightPane />
             </>
           )}
+          {workbench && navigation && (
+            <>
+              <PaneResizer side="end" width={state.leftPane.width} onResize={(width) => dispatch({ type: 'SET_LEFT_WIDTH', width })} />
+              <LeftPane reading={!warraqView} />
+            </>
+          )}
+          {workbench && isViewer && state.document !== null && <WorkbenchRail />}
         </div>
         <GoToPageDialog />
         <PasswordDialog />
         <ShortcutsDialog />
         <AboutDialog />
-        <SettingsDialog />
+        <SettingsWindow />
+        <SettingsEffects />
+        <VersionsDialog />
         <WelcomeTour />
         <LinkConfirmDialog />
         <FontLibraryQuestion />

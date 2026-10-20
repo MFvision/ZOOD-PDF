@@ -147,7 +147,7 @@ function DragTo($x, $y) {
 
 # The quick window a picked tool opens: there, then closed so the next step
 # can reach Explorer.
-$quickTitle = 'أدوات PDF السريعة — محرر PDF'
+$quickTitle = 'أدوات PDF السريعة — محرر زود PDF'
 function QuickWindowOpened {
   foreach ($try in 1..10) {
     $quick = [Input]::FindWindow([NullString]::Value, $quickTitle)

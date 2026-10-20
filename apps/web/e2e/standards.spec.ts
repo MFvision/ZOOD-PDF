@@ -42,7 +42,7 @@ test.describe('Standards: PDF/A and PDF/X-4 copies, checked, and a preflight wit
     await expect(p.locator('.standards-findings li').first()).toContainText('§');
 
     await p.getByRole('button', { name: 'أنشئ نسخة PDF/A' }).click();
-    await expect(p.getByText('تستوفي النسخة PDF/A-2b في كل قاعدة يفحصها محرر PDF.')).toBeVisible();
+    await expect(p.getByText('تستوفي النسخة PDF/A-2b في كل قاعدة يفحصها محرر زود PDF.')).toBeVisible();
     const { path, suggested } = await download(page, 'احفظ النسخة', 'invoice-pdfa.pdf');
     expect(suggested).toBe('chrome-cairo-mixed-invoice-PDFA-2b.pdf');
 
@@ -60,7 +60,7 @@ test.describe('Standards: PDF/A and PDF/X-4 copies, checked, and a preflight wit
     await chooseTool(page, 'Standards');
     const p = panel(page);
     await p.getByRole('button', { name: 'Make a PDF/A copy' }).click();
-    await expect(p.getByText('The copy meets PDF/A-2b on every rule \u2067محرر PDF\u2069 checks.')).toBeVisible();
+    await expect(p.getByText('The copy meets PDF/A-2b on every rule ZOOD PDF checks.')).toBeVisible();
     await expect(p.locator('.standards-notes').first()).toContainText('was not in the file');
     await expect(p.locator('.standards-notes').first()).toContainText('Inter');
     // The open file is not changed.
@@ -84,7 +84,7 @@ test.describe('Standards: PDF/A and PDF/X-4 copies, checked, and a preflight wit
     await expect(p.getByText(/Warraq test press/)).toBeVisible();
     await expect(p.getByRole('textbox', { name: 'Printing condition' })).toHaveValue(/Warraq test press/);
     await convert.click();
-    await expect(p.getByText('The copy meets PDF/X-4 on every rule \u2067محرر PDF\u2069 checks.')).toBeVisible();
+    await expect(p.getByText('The copy meets PDF/X-4 on every rule ZOOD PDF checks.')).toBeVisible();
     const { path } = await download(page, 'Save the copy', 'invoice-pdfx.pdf');
     expect(readFileSync(path).subarray(0, 8).toString('latin1')).toBe('%PDF-1.6');
     const { result } = await callOn<Validation>('standards.pdfx_validate', path);

@@ -22,3 +22,8 @@ export const CHIPS: readonly Chip[] = [
   { id: 'email', label: 'ai.card.chip.email', prompt: 'ai.card.prompt.email', kind: 'overview' },
   { id: 'quiz', label: 'ai.card.chip.quiz', prompt: 'ai.card.prompt.quiz', kind: 'overview' },
 ];
+
+/** The chips Settings › AI shows, in its order. */
+export function chosenChips(order: readonly Chip['id'][], hidden: readonly Chip['id'][]): Chip[] {
+  return order.filter((id) => !hidden.includes(id)).flatMap((id) => CHIPS.filter((chip) => chip.id === id));
+}

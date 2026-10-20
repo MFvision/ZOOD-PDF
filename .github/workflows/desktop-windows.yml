@@ -4,7 +4,7 @@
 #
 # Run it: Actions → "desktop (Windows)" → Run workflow. On a v* tag it runs
 # on its own. The installer is NSIS (.exe): WiX's MSI cannot write the app's
-# Arabic name, محرر PDF (see apps/desktop/src-tauri/tauri.windows.conf.json).
+# Arabic name, ZOOD PDF (see apps/desktop/src-tauri/tauri.windows.conf.json).
 #
 # The app renders with its own Rust renderer here: PDFium's Windows library is
 # not bundled, and the host falls back to it (apps/desktop/README.md).

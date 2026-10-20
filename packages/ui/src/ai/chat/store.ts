@@ -5,12 +5,15 @@ import type { PageText } from '../budget';
 import type { Failure, Prompt, ProviderId } from '../providers';
 import type { Progress } from './analyze';
 import { keptOutline } from './analyze';
-import { analyzeDocument, answerTurn, fitsWhole } from './answer';
+import { analyzeDocument, answerTurn, fitsWhole, searchQuery } from './answer';
 import type { Ask, Basis, DocumentText } from './answer';
 import { chunkPages } from './chunks';
+import { getSettings } from '../../state/settings';
 import type { Kept } from './kept';
 import type { Said } from './prompts';
 import type { Runner } from './runner';
+import { answerLibrary, answerOpen } from './across';
+import type { FileBasis, LibraryLine, Scope, SourceDoc } from './across';
 
 /**
  * The conversations, one for each open document, kept outside React for as
@@ -46,6 +49,9 @@ export interface AssistantTurn {
   pageCount: number;
   /** The document had to be analyzed for this request: said in a line above the answer. */
   analyzed: boolean;
+  /** Asked across files (Open documents, Library): the files the answer was made from, which its citations name. */
+  files?: FileBasis[] | null;
+  scope?: Scope;
 }
 
 /** Something that happened in the chat that is neither side's words: an analysis finished, say. */
@@ -69,6 +75,8 @@ export interface Review {
   whole: boolean;
   /** Exactly what the first request carries. */
   prompt: Prompt;
+  /** Asked across files: the name of every file whose text this request carries. */
+  files?: string[];
 }
 
 /** What is known of the document once it has been read here. */
@@ -113,8 +121,38 @@ const approved = new Set<string>();
 const listeners = new Set<() => void>();
 let ids = 0;
 
+/**
+ * Settings › AI › Keep chat history: each document's finished turns, kept on
+ * this device under the file's own key (`bindChat`), and found again the
+ * next time the file is opened. Off, nothing is written.
+ */
+const chatKeys = new Map<number, string>();
+
+function keepChat(documentId: number, turns: readonly Turn[]): void {
+  const key = chatKeys.get(documentId);
+  if (!key || !getSettings().keepChats) return;
+  const finished = turns.filter((turn) => turn.role !== 'assistant' || turn.status !== 'working');
+  void import('./saved')
+    .then(({ savedChats }) => (finished.length > 0 ? savedChats.put(key, finished) : savedChats.delete(key)))
+    .catch(() => undefined);
+}
+
+/** Ties a conversation to its file, and brings back what was kept of it. */
+export async function bindChat(documentId: number, key: string): Promise<void> {
+  if (chatKeys.get(documentId) === key) return;
+  chatKeys.set(documentId, key);
+  if (!getSettings().keepChats || conversationOf(documentId).turns.length > 0) return;
+  const { savedChats } = await import('./saved');
+  const kept = await savedChats.get(key).catch(() => null);
+  if (!kept || kept.length === 0 || conversationOf(documentId).turns.length > 0) return;
+  ids = Math.max(ids, ...kept.map((turn) => turn.id));
+  update(documentId, (current) => ({ ...current, turns: kept }));
+}
+
 function update(documentId: number, change: (current: Conversation) => Conversation): void {
-  const next = change(conversations.get(documentId) ?? EMPTY);
+  const before = conversations.get(documentId);
+  const next = change(before ?? EMPTY);
+  if (!next.busy && (next.turns !== before?.turns || before?.busy)) keepChat(documentId, next.turns);
   conversations.delete(documentId);
   conversations.set(documentId, next);
   // The oldest conversation that is not at work goes when there are too many.
@@ -148,6 +186,10 @@ export interface Env {
   /** The model as chosen now; `sample` is some of the document's text, to measure it with. */
   makeRunner: (sample: string) => Promise<Runner>;
   kept: Kept;
+  /** Every document open in the window, read (Open documents). */
+  openDocuments?: (onPage: (page: number) => void, signal: AbortSignal) => Promise<SourceDoc[]>;
+  /** The lines the Library's index ranks highest for a query (Library). */
+  searchLibrary?: (query: string) => Promise<LibraryLine[]>;
 }
 
 /** The longest a document's text may be, a bound no document of a person's reaches. */
@@ -162,7 +204,12 @@ const READ_LIMIT = 6_000_000;
 export async function readWhole(services: Env['services'], onPage: (page: number) => void, signal: AbortSignal): Promise<DocumentText | null> {
   const bytes = await services.currentFileBytes();
   if (!bytes) return null;
-  const doc = await services.client.open(bytes, services.documentPassword);
+  return readBytes(services.client, bytes, services.documentPassword, onPage, signal);
+}
+
+/** Any file's text, read the same way: an open tab parked behind the live one, say. */
+export async function readBytes(client: Env['services']['client'], bytes: ArrayBuffer, password: string | undefined, onPage: (page: number) => void, signal: AbortSignal): Promise<DocumentText | null> {
+  const doc = await client.open(bytes, password);
   try {
     const pages: PageText[] = [];
     let characters = 0;
@@ -385,6 +432,133 @@ export async function ask(documentId: number, request: Ask, env: Env): Promise<v
   }
 }
 
+/**
+ * The same asking-first as `gated`, for a request across files: the review
+ * lists every file whose text the request carries. Approval holds for this
+ * conversation and destination while the set of files stays the same; one
+ * more file asks again.
+ */
+function gatedAcross(conversationId: number, runner: Runner, files: readonly SourceDoc[] | null): Runner {
+  if (runner.settings.provider === 'device') return runner;
+  return {
+    ...runner,
+    run: async (prompt, options) => {
+      // The files this request really carries, by the tags its text names them in.
+      const names = [...prompt.user.matchAll(/<file number="\d+" name="([^"]*)"/g)].map((match) => match[1] ?? '');
+      const key = `${approvalKey(conversationId, runner)}|${[...names].sort().join('\n')}`;
+      if (!approved.has(key)) {
+        const go = await new Promise<boolean>((resolve) => {
+          reviews.set(conversationId, resolve);
+          options.signal.addEventListener('abort', () => resolve(false), { once: true });
+          const sent = files?.filter((file) => names.includes(file.name.replace(/[<>"&]/g, ' '))) ?? [];
+          update(conversationId, (current) => ({
+            ...current,
+            review: {
+              provider: runner.settings.provider,
+              destination: runner.destination,
+              model: runner.settings.model,
+              pageCount: sent.reduce((sum, file) => sum + file.doc.pageCount, 0),
+              characters: sent.reduce((sum, file) => sum + file.doc.characters, 0),
+              whole: false,
+              prompt,
+              files: names,
+            },
+          }));
+        });
+        reviews.delete(conversationId);
+        update(conversationId, (current) => ({ ...current, review: null }));
+        if (!go) return { ok: false, failure: { kind: 'cancelled' } };
+        approved.add(key);
+      }
+      return runner.run(prompt, options);
+    },
+  };
+}
+
+/**
+ * A request across files, into `conversationId`'s chat: the document's own
+ * for Open documents, the Library's (`LIBRARY_CHAT`) for the Library.
+ */
+export async function askAcross(conversationId: number, text: string, env: Env, scope: Exclude<Scope, 'document'>): Promise<void> {
+  if (conversationOf(conversationId).busy || text.trim().length === 0) return;
+  const before = history(conversationOf(conversationId).turns);
+  const controller = start(conversationId);
+  const userId = (ids += 1);
+  const answerId = (ids += 1);
+  const patch = (change: Partial<AssistantTurn>) =>
+    update(conversationId, (current) => ({
+      ...current,
+      turns: current.turns.map((turn) => (turn.id === answerId && turn.role === 'assistant' ? { ...turn, ...change } : turn)),
+    }));
+  update(conversationId, (current) => ({
+    ...current,
+    turns: [
+      ...current.turns,
+      { id: userId, role: 'user', text: text.trim() },
+      { id: answerId, role: 'assistant', text: '', status: 'working', thinking: false, cutOff: false, failure: null, noText: null, basis: null, provider: 'device', model: '', pageCount: 0, analyzed: false, files: null, scope },
+    ],
+  }));
+  const withdraw = (notice: Note | null) =>
+    update(conversationId, (current) => ({ ...current, notice, turns: current.turns.filter((turn) => turn.id !== userId && turn.id !== answerId) }));
+  try {
+    if (scope === 'open' && env.services.pendingRedactions > 0) {
+      withdraw({ key: 'ai.redactPending' });
+      return;
+    }
+    let sources: SourceDoc[] = [];
+    let lines: LibraryLine[] = [];
+    if (scope === 'open') {
+      sources = (await env.openDocuments?.((page) => update(conversationId, (current) => ({ ...current, reading: page })), controller.signal).catch(() => null)) ?? [];
+      update(conversationId, (current) => ({ ...current, reading: null }));
+      if (sources.length === 0) {
+        withdraw({ key: 'ai.readFailed' });
+        return;
+      }
+    } else {
+      lines = (await env.searchLibrary?.(searchQuery(text, before)).catch(() => null)) ?? [];
+    }
+    if (controller.signal.aborted) {
+      patch({ status: 'stopped' });
+      return;
+    }
+    const sample = scope === 'open' ? sources.map((source) => source.doc.pages.map((page) => page.text).join('\n').slice(0, 2000)).join('\n') : lines.map((line) => line.text).join('\n');
+    const runner = await env.makeRunner(sample.slice(0, 6000));
+    patch({ provider: runner.settings.provider, model: runner.settings.model });
+    const options = {
+      client: env.services.client,
+      kept: env.kept,
+      signal: controller.signal,
+      onText: (written: string, thinking: boolean) => patch({ text: written, thinking }),
+      onProgress: (progress: Progress | null) => {
+        update(conversationId, (current) => ({ ...current, progress }));
+        if (progress) patch({ analyzed: true });
+      },
+    };
+    const turned =
+      scope === 'open'
+        ? await answerOpen(sources, text, before, gatedAcross(conversationId, runner, sources), options)
+        : await answerLibrary(lines, text, before, gatedAcross(conversationId, runner, null), options);
+    if (discarded.delete(conversationId)) {
+      withdraw(null);
+      return;
+    }
+    if (turned.ok) {
+      patch({ text: turned.answer.text, thinking: false, cutOff: turned.answer.cutOff, files: turned.files, status: controller.signal.aborted ? 'stopped' : 'done' });
+    } else if ('noText' in turned) {
+      patch({ status: 'noText', noText: 'document', text: '', files: [], scope });
+    } else if (turned.failure.kind === 'cancelled') {
+      patch({ status: 'stopped', thinking: false });
+    } else {
+      patch({ status: 'failed', failure: turned.failure, thinking: false });
+    }
+  } catch (error) {
+    patch({ status: 'failed', failure: { kind: 'device', message: error instanceof Error ? error.message : String(error) } });
+  } finally {
+    discarded.delete(conversationId);
+    finish(conversationId, controller);
+  }
+}
+
 /** "Analyze this document": the analysis on its own, with its progress, kept for every later request. */
 export async function analyzeNow(documentId: number, env: Env): Promise<void> {
   if (conversationOf(documentId).busy) return;
@@ -426,6 +600,14 @@ export async function analyzeNow(documentId: number, env: Env): Promise<void> {
 /** Stops whatever is being done for this document: what was written stays, marked as stopped. */
 export function stop(documentId: number): void {
   controllers.get(documentId)?.abort();
+}
+
+/** Every conversation forgotten: the ones open now that are not at work, and the ones kept on this device. */
+export async function forgetAllChats(): Promise<void> {
+  for (const [id, conversation] of [...conversations]) if (!conversation.busy) conversations.delete(id);
+  for (const listener of listeners) listener();
+  const { savedChats } = await import('./saved');
+  await savedChats.clear();
 }
 
 /** A new chat about the same document: the turns go; what is known of the document, and its analysis, stay. */

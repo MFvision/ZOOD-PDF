@@ -77,12 +77,14 @@ test.describe('Accessibility: checked, tagged in a reading order a person can ch
     await page.goto('/');
     await openPdf(page, INVOICE);
     await expect.poll(() => embedTiles(page)).toBeGreaterThan(0);
-    await page.waitForTimeout(500);
-    expect(await embedPixels(page, true)).toBe(0);
     const before = (await embedDocument(page)).id;
 
     await chooseTool(page, 'Accessibility');
     const p = panel(page);
+    // The page as drawn with the tool's pane open: the view fits the page to
+    // the room the pane leaves, so the comparison after tagging is like for like.
+    await page.waitForTimeout(1500);
+    expect(await embedPixels(page, true)).toBe(0);
     await p.getByRole('button', { name: 'Run the check' }).click();
     const results = p.getByRole('list', { name: 'Results' });
     await expect(results.locator('li', { hasText: 'The document is tagged' })).toContainText('Failed');

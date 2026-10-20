@@ -744,33 +744,33 @@ fn respond(stream: &mut TcpStream, status: u16, reason: &str, page: &str) {
 /// never repeats anything the request carried.
 const DONE_PAGE: &str = concat!(
     "<!doctype html><html lang=\"ar\" dir=\"rtl\"><head><meta charset=\"utf-8\">",
-    "<title>محرر PDF</title><style>",
+    "<title>ZOOD PDF</title><style>",
     "body{font:15px/1.6 system-ui,sans-serif;margin:0;display:grid;place-items:center;min-height:100vh;background:#f5f5f7;color:#1d1d1f}",
     "main{max-width:32em;padding:2em}h1{font-size:1.4em;margin:0 0 .4em}",
     "@media (prefers-color-scheme:dark){body{background:#1c1c1e;color:#f5f5f7}}",
     "</style></head><body><main>",
-    "<h1>تمّ تسجيل الدخول</h1><p>يمكنك إغلاق هذا التبويب والعودة إلى محرر PDF.</p>",
-    "<p lang=\"en\" dir=\"ltr\">Signed in. You can close this tab and go back to <bdi dir=\"rtl\">محرر PDF</bdi>.</p>",
+    "<h1>تمّ تسجيل الدخول</h1><p>يمكنك إغلاق هذا التبويب والعودة إلى محرر زود PDF.</p>",
+    "<p lang=\"en\" dir=\"ltr\">Signed in. You can close this tab and go back to ZOOD PDF.</p>",
     "</main></body></html>"
 );
 
 const NOT_DONE_PAGE: &str = concat!(
     "<!doctype html><html lang=\"ar\" dir=\"rtl\"><head><meta charset=\"utf-8\">",
-    "<title>محرر PDF</title><style>",
+    "<title>ZOOD PDF</title><style>",
     "body{font:15px/1.6 system-ui,sans-serif;margin:0;display:grid;place-items:center;min-height:100vh;background:#f5f5f7;color:#1d1d1f}",
     "main{max-width:32em;padding:2em}h1{font-size:1.4em;margin:0 0 .4em}",
     "@media (prefers-color-scheme:dark){body{background:#1c1c1e;color:#f5f5f7}}",
     "</style></head><body><main>",
-    "<h1>لم يكتمل تسجيل الدخول</h1><p>يمكنك إغلاق هذا التبويب؛ يوضّح محرر PDF ما حدث.</p>",
-    "<p lang=\"en\" dir=\"ltr\">Sign-in was not completed. You can close this tab; <bdi dir=\"rtl\">محرر PDF</bdi> says what happened.</p>",
+    "<h1>لم يكتمل تسجيل الدخول</h1><p>يمكنك إغلاق هذا التبويب؛ يوضّح محرر زود PDF ما حدث.</p>",
+    "<p lang=\"en\" dir=\"ltr\">Sign-in was not completed. You can close this tab; ZOOD PDF says what happened.</p>",
     "</main></body></html>"
 );
 
 const NOT_THIS_PAGE: &str = concat!(
     "<!doctype html><html lang=\"ar\" dir=\"rtl\"><head><meta charset=\"utf-8\">",
-    "<title>محرر PDF</title></head><body>",
-    "<p>ليس هذا ما ينتظره محرر PDF.</p>",
-    "<p lang=\"en\" dir=\"ltr\">This is not what <bdi dir=\"rtl\">محرر PDF</bdi> is waiting for.</p>",
+    "<title>ZOOD PDF</title></head><body>",
+    "<p>ليس هذا ما ينتظره محرر زود PDF.</p>",
+    "<p lang=\"en\" dir=\"ltr\">This is not what ZOOD PDF is waiting for.</p>",
     "</body></html>"
 );
 

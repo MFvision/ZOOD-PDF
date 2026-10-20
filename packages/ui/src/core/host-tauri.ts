@@ -35,6 +35,12 @@ function internals(): TauriInternals | null {
   return found && typeof found.invoke === 'function' ? found : null;
 }
 
+/** This window's label in the desktop app ("main", "doc-2"…); null in a browser. */
+export function currentWindowLabel(): string | null {
+  const found = (globalThis as { __TAURI_INTERNALS__?: { metadata?: { currentWindow?: { label?: string } } } }).__TAURI_INTERNALS__;
+  return found?.metadata?.currentWindow?.label ?? null;
+}
+
 /** True inside the Tauri webview, false in every browser. */
 export function isTauriHost(): boolean {
   return internals() !== null;
@@ -259,6 +265,18 @@ export async function openRecentFile(name: string): Promise<PickedFile | null> {
   return { name: baseName(path), bytes: toArrayBuffer(await readFile(path)), path };
 }
 
+/**
+ * The folder a recent file was last opened from, for the Workbench home's
+ * table; `null` in a browser, or when the desktop does not know it.
+ */
+export async function recentFolder(name: string): Promise<string | null> {
+  if (!internals()) return null;
+  const path = await invoke('recent_path', { name }).catch(() => null);
+  if (typeof path !== 'string') return null;
+  const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  return cut > 0 ? path.slice(0, cut) : null;
+}
+
 /* -------------------------------------------------------------- quick tools */
 
 /** What a quick tools window works on (`src-tauri/src/quick.rs`). */
@@ -310,10 +328,10 @@ export async function shellMenuState(): Promise<ShellMenuState> {
   return (await invoke('shell_menu_state')) as ShellMenuState;
 }
 
-/** Puts the menu in, in `lang`, or takes it out. */
-export async function setShellMenu(on: boolean, lang: string): Promise<ShellMenuState> {
+/** Puts the menu in, in `lang`, with `tools` in that order (all when empty), or takes it out. */
+export async function setShellMenu(on: boolean, lang: string, tools: readonly string[] = []): Promise<ShellMenuState> {
   if (!internals()) return { kind: 'none', on: false };
-  return (await invoke('shell_menu_set', { on, lang })) as ShellMenuState;
+  return (await invoke('shell_menu_set', { on, lang, tools })) as ShellMenuState;
 }
 
 /* --------------------------------------------------------------------- ring */
@@ -354,6 +372,10 @@ export function ringDone(done: number, failed: number): Promise<void> {
 export interface RingSettings {
   ring: boolean;
   background: boolean;
+  /** 0.85, 1 or 1.2 (`ring.rs`, SCALES). */
+  scale: number;
+  /** The keyboard shortcut, as Tauri writes one ("CommandOrControl+Alt+Z"). */
+  shortcut: string;
 }
 
 export async function ringSettings(): Promise<RingSettings | null> {
@@ -362,7 +384,35 @@ export async function ringSettings(): Promise<RingSettings | null> {
 }
 
 export async function configureRing(settings: RingSettings): Promise<RingSettings> {
-  return (await invoke('ring_configure', { ring: settings.ring, background: settings.background })) as RingSettings;
+  return (await invoke('ring_configure', { ring: settings.ring, background: settings.background, scale: settings.scale, shortcut: settings.shortcut })) as RingSettings;
+}
+
+/* ---------------------------------------------------------------- system */
+
+/** The signed-in person's name for the greeting; empty outside the desktop app. */
+export async function systemUserName(): Promise<string> {
+  if (!internals()) return '';
+  return ((await invoke('system_user_name')) as string) ?? '';
+}
+
+/** Opens Windows' Default apps page; false where there is none to open. */
+export async function openDefaultApps(): Promise<boolean> {
+  if (!internals()) return false;
+  return (await invoke('open_default_apps')) as boolean;
+}
+
+/**
+ * Opens a file this run may read in an editor window of its own (Settings ›
+ * Viewing › Open documents in: New windows; `src-tauri/src/doc_window.rs`).
+ */
+export async function openDocumentWindow(path: string): Promise<boolean> {
+  if (!internals()) return false;
+  try {
+    await invoke('open_document_window', { path });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /* --------------------------------------------------------- dropped on the app */
@@ -629,6 +679,18 @@ export async function writeBatchResult(bytes: Uint8Array, name: string, target: 
   if ('dir' in target) headers['x-warraq-dir'] = encodeURIComponent(target.dir);
   else headers['x-warraq-beside'] = encodeURIComponent(target.beside);
   return (await invoke('batch_write', bytes, { headers })) as string;
+}
+
+/* -------------------------------------------------------------------- share */
+
+/**
+ * Share › Email as an attachment (`src-tauri/src/share.rs`): the file as it
+ * stands is written to the app's own share folder and a new message opens
+ * in the person's mail program with it attached. Nothing is sent by the app.
+ */
+export async function emailAttachment(bytes: Uint8Array, name: string): Promise<void> {
+  const path = (await invoke('share_prepare', bytes, { headers: { 'x-warraq-name': encodeURIComponent(name) } })) as string;
+  await invoke('share_email', { path });
 }
 
 /**

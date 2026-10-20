@@ -17,6 +17,7 @@ import {
   isTauriHost,
   keepNativePath,
   nativePathOf,
+  openDocumentWindow,
   onOpenFileRequest,
   openRecentFile,
   pickFiles,
@@ -48,6 +49,8 @@ import type { TKey } from '../i18n/messages';
 import { appReducer, createInitialState, warraqOwnsDocument } from './appReducer';
 import type { AppAction, AppState } from './appReducer';
 import { readJson, readPreferences, writePreferences } from './preferences';
+import { getSettings } from './settings';
+import { fileKey, keepVersion, noteSaved } from '../history/versions';
 import { drawPages, mountSheet } from '../print/printPages';
 import { keepFirstPage } from '../home/recentPicture';
 import { addRecent, clearRecent as clearStoredRecent, forgetRecentThumbnail, readRecent, removeRecent as removeStoredRecent } from './recent';
@@ -425,6 +428,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // no picture of its first page until it is opened again (home/recentPicture.ts).
   const pictureBlocked = useRef(false);
   const documentRef = useRef<RemoteDocument | null>(null);
+  /** The file as it was last saved (or opened): what goes to its versions at the next save. */
+  const savedBytesRef = useRef<ArrayBuffer | null>(null);
   // The EmbedPDF view's registry (ADR-0007): the document as it holds it —
   // annotations, redactions, filled fields — is read back through its engine.
   const embedRef = useRef<PluginRegistry | null>(null);
@@ -569,6 +574,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           file = open.parked;
           password = open.password;
           options = { recent: false, tab: open.key };
+        } else if (getSettings().openIn === 'windows' && documentRef.current && nativePathOf(file) && (await openDocumentWindow(nativePathOf(file)!))) {
+          // Settings › Viewing: a second document gets a window of its own.
+          return;
         } else if (tabsRef.current.length >= MAX_TABS) {
           dispatch({ type: 'TOAST', key: 'tabs.full' });
           return;
@@ -637,6 +645,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setDocument(opened);
         setDocumentPassword(password);
         setDocumentBytes(kept);
+        savedBytesRef.current = kept;
         setOpenedFile(file);
         forgetLayerView();
         dispatch({
@@ -652,8 +661,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         pictureBlocked.current = false;
         // A file from a drive is listed with its drive, and pictured there
         // under the drive's own key (`cloud/`) — not among this device's.
-        if (options?.recent !== false) {
-          setRecent(addRecent(file.name));
+        if (options?.recent !== false && getSettings().keepRecent) {
+          setRecent(addRecent(file.name, Date.now(), file.size));
           // On the desktop, where it came from too, so it opens again directly.
           const path = nativePathOf(file);
           if (path) rememberRecentPath(file.name, path);
@@ -1973,6 +1982,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [commitTabs]);
 
+  /**
+   * After a save (Settings › History): the file as it was before goes to its
+   * earlier versions, and the tab needs no recovery copy any more.
+   */
+  const afterSave = useCallback((bytes: Uint8Array<ArrayBuffer>, name: string) => {
+    const tab = activeTabRef.current;
+    const path = tabsRef.current.find((one) => one.key === tab)?.path;
+    const before = savedBytesRef.current;
+    savedBytesRef.current = bytes.slice().buffer;
+    if (before) void keepVersion(fileKey(name, path), name, before).catch(() => undefined);
+    if (tab !== null) void noteSaved(tab, bytes).catch(() => undefined);
+  }, []);
+
   const save = useCallback(
     async (toDevice: boolean) => {
       const name = stateRef.current.document?.name;
@@ -1985,6 +2007,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const outcome = await target.save(bytes, name);
           if (!outcome.saved) return;
           forgetRecentThumbnail(name);
+          afterSave(bytes, name);
           dispatch({ type: 'DOCUMENT_SAVED' });
           markLiveSaved();
           dispatch({ type: 'TOAST', key: outcome.toast });
@@ -2002,6 +2025,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         forgetRecentThumbnail(name);
         // A copy on the device of a file that lives in a drive is not that file saved.
         if (!toDevice || !saveTarget.current) {
+          afterSave(bytes, name);
           dispatch({ type: 'DOCUMENT_SAVED' });
           markLiveSaved();
         }
@@ -2011,7 +2035,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'DOCUMENT_FAILED', error: tooLarge ? 'signatures.error.tooLarge' : 'file.saveFailed' });
       }
     },
-    [bytesForSave, markLiveSaved],
+    [bytesForSave, markLiveSaved, afterSave],
   );
   const saveDocument = useCallback(() => save(false), [save]);
   const saveToDevice = useCallback(() => save(true), [save]);

@@ -294,3 +294,8 @@ body:has(.quick) {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Settings › Appearance › Coloured icons off: the glyphs in the text colour. */
+html[data-icons="plain"] .quick-card svg {
+  color: var(--label);
+}
