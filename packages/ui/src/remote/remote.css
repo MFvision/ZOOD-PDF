@@ -286,3 +286,17 @@
     transition: none;
   }
 }
+
+/* The panel as a window: from the home screen and the menu. */
+.remote-dialog {
+  inline-size: 380px;
+  max-inline-size: calc(100vw - 24px);
+}
+
+.remote-dialog .remote-panel {
+  padding: 0;
+}
+
+.home-remote {
+  flex: 0 0 auto;
+}

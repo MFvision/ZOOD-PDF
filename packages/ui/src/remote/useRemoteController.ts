@@ -127,7 +127,7 @@ export function useRemoteController(): { reading: RemoteDocument | null; page: n
     (on: boolean) => {
       if (on && state.document === null) return;
       if (on) {
-        updateRemote({ presenting: true, page: state.currentPage, black: false, panelOpen: false });
+        updateRemote({ presenting: true, page: state.currentPage, black: false, panelOpen: false, sheetOpen: false });
         void setFullscreen(true);
       } else {
         endPresenting();
@@ -310,7 +310,7 @@ export function useRemoteController(): { reading: RemoteDocument | null; page: n
 
 /** Present mode from the PC's own controls. */
 export function startPresenting(currentPage: number): void {
-  updateRemote({ presenting: true, page: currentPage, black: false, panelOpen: false });
+  updateRemote({ presenting: true, page: currentPage, black: false, panelOpen: false, sheetOpen: false });
   void setFullscreen(true);
 }
 

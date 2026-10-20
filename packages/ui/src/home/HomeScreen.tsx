@@ -10,6 +10,7 @@ import { ToolCards } from '../tools/ToolCards';
 import { ToolGallery } from '../tools/ToolGallery';
 import { Popover } from '../components/Popover';
 import { AiCard } from './AiCard';
+import { RemoteHomeButton } from '../remote/RemoteLayer';
 import { HeroCards } from './HeroCards';
 import { HomeSearch } from './HomeSearch';
 import { HomeSidebar } from './HomeSidebar';
@@ -84,6 +85,7 @@ export function HomeScreen() {
           >
             <Icon of={Plus} size={18} />
           </button>
+          <RemoteHomeButton />
           <TopGreeting />
           <ContextMenu at={addMenu?.at ?? null} label={t('home.add')} items={addItems} returnTo={addMenu?.from} onClose={() => setAddMenu(null)} />
         </div>

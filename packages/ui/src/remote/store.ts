@@ -16,6 +16,8 @@ export interface Stroke {
 
 export interface RemoteView {
   panelOpen: boolean;
+  /** The panel as a window of its own: from the home screen or the menu, where no toolbar button is. */
+  sheetOpen: boolean;
   presenting: boolean;
   /** The page Present mode shows (1-based); the editor follows it. */
   page: number | null;
@@ -29,6 +31,7 @@ export interface RemoteView {
 
 const INITIAL: RemoteView = {
   panelOpen: false,
+  sheetOpen: false,
   presenting: false,
   page: null,
   black: false,
@@ -85,4 +88,9 @@ export function endPresenting(): void {
 export function resetRemoteView(): void {
   view = INITIAL;
   listeners.forEach((listener) => listener());
+}
+
+/** The phone remote's panel, as a window: from the home screen or the menu. */
+export function openRemoteSheet(): void {
+  updateRemote({ sheetOpen: true, panelOpen: false });
 }
