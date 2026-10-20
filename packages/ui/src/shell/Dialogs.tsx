@@ -4,6 +4,8 @@ import { isTauriHost } from '../core/host-tauri';
 import { Dialog } from '../components/Dialog';
 import { APP_ICON } from '../components/appIcon';
 import { useT } from '../i18n/useT';
+import { UpdateCheck } from '../updates/UpdateBanner';
+import { canUpdate } from '../updates/updates';
 import type { TKey } from '../i18n/messages';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { formatShortcut } from './menuModel';
@@ -196,6 +198,7 @@ export function AboutDialog() {
           {core && core.kind !== 'mock' ? ` · ${t('status.core', { version: core.version })}` : ''}
           {engine ? ` · ${engine}` : ''}
         </p>
+        {canUpdate() && <UpdateCheck />}
       </div>
     </Dialog>
   );

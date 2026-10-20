@@ -711,6 +711,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+.about-update {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.about-update p {
+  margin: 0;
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+}
+
 .settings {
   display: flex;
   flex-direction: column;

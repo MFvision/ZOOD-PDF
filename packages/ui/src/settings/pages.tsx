@@ -85,6 +85,7 @@ export function GeneralPage() {
           onChange={(startWith) => set({ startWith })}
         />
       </Group>
+      {canUpdate() && <UpdatesGroup />}
       {desktop && (
         <Group title={t('prefs.defaultApp')}>
           {windows ? (
