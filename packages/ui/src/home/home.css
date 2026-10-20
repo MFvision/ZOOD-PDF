@@ -1012,14 +1012,14 @@
   min-inline-size: 0;
 }
 
-.recent-empty-text h3 {
+.recent-empty-text .recent-empty-title {
   margin: 0 0 var(--space-1);
   font-size: var(--text-headline);
   font-weight: 600;
   color: var(--label);
 }
 
-.recent-empty-text p {
+.recent-empty-text p:not(.recent-empty-title) {
   margin: 0;
   font-size: var(--text-subheadline);
   color: var(--secondary-label);

@@ -77,21 +77,25 @@ test('Settings: each segmented control is one Tab stop, and the arrows choose wi
 }) => {
   await page.goto('/');
   // From the app menu: Chrome keeps ⌘, for its own settings.
-  await page.getByRole('menubar').getByRole('menuitem', { name: 'محرر زود PDF' }).click();
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'ZOOD PDF' }).click();
   await page.getByRole('menuitem', { name: /^Settings…/ }).click();
   const sheet = page.getByRole('dialog', { name: 'Settings' });
   await expect(sheet).toBeVisible();
+  const section = (name: string) => sheet.getByRole('navigation').getByRole('button', { name, exact: true }).click();
   const language = sheet.getByRole('radiogroup', { name: 'Language' });
-  const theme = sheet.getByRole('radiogroup', { name: 'Appearance' });
+  const opening = sheet.getByRole('radiogroup', { name: 'When the app opens' });
 
-  // Tab lands on the chosen option of each group, and leaves it in one step.
+  // Tab leaves a group in one step, onto the chosen option of the next.
+  await language.getByRole('radio', { name: 'English' }).focus();
   await page.keyboard.press('Tab');
-  await page.keyboard.press('Tab');
+  await expect(opening.locator('[role="radio"][aria-checked="true"]')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
   await expect(language.getByRole('radio', { name: 'English' })).toBeFocused();
-  await page.keyboard.press('Tab');
-  await expect(theme.getByRole('radio', { name: 'System' })).toBeFocused();
 
   // The arrows move and choose, in the reading direction, wrapping at the ends.
+  await section('Appearance');
+  const theme = sheet.getByRole('radiogroup', { name: 'Appearance' });
+  await theme.getByRole('radio', { name: 'System' }).focus();
   await page.keyboard.press('ArrowRight');
   await expect(theme.getByRole('radio', { name: 'Light' })).toBeFocused();
   await expect(theme.getByRole('radio', { name: 'Light' })).toHaveAttribute('aria-checked', 'true');
@@ -102,9 +106,9 @@ test('Settings: each segmented control is one Tab stop, and the arrows choose wi
   await expect(theme.getByRole('radio', { name: 'System' })).toBeFocused();
   await expect(theme.getByRole('radio', { name: 'System' })).toHaveAttribute('aria-checked', 'true');
 
-  // The language, by keyboard: the sheet turns right to left, and so do the arrows.
-  await page.keyboard.press('Shift+Tab');
-  await expect(language.getByRole('radio', { name: 'English' })).toBeFocused();
+  // The language, by keyboard: the window turns right to left, and so do the arrows.
+  await section('General');
+  await language.getByRole('radio', { name: 'English' }).focus();
   await page.keyboard.press('ArrowLeft');
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   const arabic = page.getByRole('dialog', { name: 'الإعدادات' }).getByRole('radiogroup', { name: 'اللغة' });

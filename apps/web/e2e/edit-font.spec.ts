@@ -284,6 +284,7 @@ test.describe('replaced text keeps the font it was set in', () => {
     await page.getByRole('menubar').getByRole('menuitem', { name: 'ZOOD PDF' }).click();
     await page.getByRole('menuitem', { name: /^Settings…/ }).click();
     const settings = page.getByRole('dialog', { name: 'Settings' });
+    await settings.getByRole('navigation').getByRole('button', { name: 'Fonts', exact: true }).click();
     const toggle = settings.getByRole('checkbox', { name: 'Download matching fonts automatically when editing text' });
     await expect(toggle).toBeChecked();
     const usage = settings.getByTestId('font-library-usage');

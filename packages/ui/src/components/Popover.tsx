@@ -20,6 +20,8 @@ interface Placement {
   top: number;
   left: number;
   origin: string;
+  /** The height there is room for on the side it opens to. */
+  room: number;
 }
 
 /** Below the anchor, centred on it, kept inside the window; above it when there is no room below. */
@@ -34,7 +36,8 @@ function place(anchor: DOMRect, box: { width: number; height: number }): Placeme
   const top = fitsBelow ? below : above;
   // The point of the anchor, in the popover's own coordinates: it grows from there.
   const x = Math.round(anchor.left + anchor.width / 2 - left);
-  return { top, left, origin: `${x}px ${fitsBelow ? '0' : '100%'}` };
+  const room = fitsBelow ? window.innerHeight - MARGIN - below : anchor.top - GAP - MARGIN;
+  return { top: fitsBelow ? top : Math.max(MARGIN, top), left, origin: `${x}px ${fitsBelow ? '0' : '100%'}`, room };
 }
 
 /**
@@ -121,6 +124,8 @@ export function Popover({ anchor, open, onClose, label, className, children }: P
         top: placement?.top ?? -9999,
         left: placement?.left ?? -9999,
         ['--popover-origin' as string]: placement?.origin,
+        // In a window too short for it, it scrolls rather than run off the edge.
+        maxBlockSize: placement ? Math.max(120, placement.room) : undefined,
         visibility: placement ? undefined : 'hidden',
       }}
       onKeyDown={onKeyDown}

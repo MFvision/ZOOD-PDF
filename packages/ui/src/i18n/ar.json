@@ -283,7 +283,6 @@
   "compress.refusedProtected": "هذا الملف محمي بكلمة مرور. النسخة الأصغر تُكتب من جديد فتفقد الحماية؛ أزل كلمة المرور بأداة الحماية أولًا إن أردت ذلك.",
   "compress.refusedSigned": "هذا الملف موقَّع رقميًا. النسخة الأصغر تُكتب من جديد فتُبطل التوقيع.",
   "compress.save": "حفظ النسخة الأصغر…",
-  "compress.sizes": "{before} ← {after}: أصغر بنسبة {percent}٪",
   "compress.smallest": "الأصغر (96 نقطة في البوصة)",
   "compress.smallestNote": "للقراءة على الشاشة؛ تفقد الصور بعض تفاصيلها عند الطباعة.",
   "compress.unchanged": "هذا الملف في أصغر حجم ممكن عند هذا المستوى، فلم يتغير شيء.",
@@ -2449,5 +2448,10 @@
   "tour.across.body": "اختر فوق محادثة الذكاء الاصطناعي ما تسأل عنه: هذا المستند، أو كل المستندات المفتوحة، أو مكتبتك كلها.",
   "tour.across.p1": "كل مصدر يذكر ملفه وصفحته، ويفتحه عندها.",
   "tour.across.p2": "أضف المجلدات في أداة المكتبة لتصبح قابلة للبحث.",
-  "tour.looksSettings": "افتح الإعدادات"
+  "tour.looksSettings": "افتح الإعدادات",
+  "home.recentEmptyOpen": "افتح ملفًا",
+  "home.recentEmptyCreate": "أنشئ ملف PDF جديدًا",
+  "compress.percent": "{percent}٪",
+  "compress.smaller": "أصغر",
+  "compress.beforeAfter": "{before} ← {after}"
 }

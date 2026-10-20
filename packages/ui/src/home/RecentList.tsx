@@ -164,17 +164,17 @@ export function RecentList({ layout: asked, onSeeAll }: RecentListProps) {
             <Icon of={FileText} size={26} />
           </span>
           <div className="recent-empty-text">
-            <h3>{t('home.recentEmptyTitle')}</h3>
+            <p className="recent-empty-title">{t('home.recentEmptyTitle')}</p>
             <p>{t('home.recentEmptyText')}</p>
           </div>
           <div className="recent-empty-actions">
             <button type="button" className="icon-btn icon-btn-labeled icon-btn-primary" onClick={requestOpenFile}>
               <Icon of={FolderOpen} size={16} />
-              <span>{t('home.add.open')}</span>
+              <span>{t('home.recentEmptyOpen')}</span>
             </button>
             <button type="button" className="icon-btn icon-btn-labeled" onClick={requestCreateFiles}>
               <Icon of={FilePlus2} size={16} />
-              <span>{t('home.add.create')}</span>
+              <span>{t('home.recentEmptyCreate')}</span>
             </button>
           </div>
         </div>

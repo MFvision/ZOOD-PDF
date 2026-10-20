@@ -19,6 +19,7 @@ interface Commands {
 }
 
 interface Scroll {
+  getCurrentPage(): number;
   scrollToPage(options: { pageNumber: number; behavior?: ScrollBehavior }): void;
   onPageChange: Hook<{ pageNumber: number; totalPages: number }>;
 }
@@ -172,8 +173,18 @@ export function printAllowed(registry: PluginRegistry): boolean {
   return document.isOwnerUnlocked === true || (document.permissions & PRINT_PERMISSION) !== 0;
 }
 
-export function scrollToPage(registry: PluginRegistry, page: number, behavior: ScrollBehavior = 'smooth'): void {
-  capability<Scroll>(registry, 'scroll')?.scrollToPage({ pageNumber: page, behavior });
+export function scrollToPage(registry: PluginRegistry, page: number): void {
+  capability<Scroll>(registry, 'scroll')?.scrollToPage({ pageNumber: page });
+}
+
+/**
+ * A file just opened back to the top of page 1, after its opening zoom moved
+ * the view — unless something has already taken it to another page (a
+ * search hit, a citation, the page it was left at).
+ */
+export function scrollToStart(registry: PluginRegistry): void {
+  const scroll = capability<Scroll>(registry, 'scroll');
+  if (scroll && scroll.getCurrentPage() <= 1) scroll.scrollToPage({ pageNumber: 1, behavior: 'instant' });
 }
 
 /**

@@ -262,7 +262,8 @@ test.describe('Export saves the document in other formats, Arabic in reading ord
     expect(readPng((await exportAs(page, 'Page images (.png)', '72 dpi')).bytes).red).toBe(0);
     await chooseTool(page, 'Comment');
     await useAction(page, 'Draw');
-    await drag(page, [0.1, 0.9], [0.9, 0.95]);
+    // Below the text, in the part of the page the window shows.
+    await drag(page, [0.1, 0.55], [0.9, 0.6]);
     // The ink tool turns the stroke into a drawing 800 ms after it ends.
     await expect.poll(() => annotationTypes(page), { message: 'the stroke became a drawing' }).toContain(15);
     await chooseTool(page, 'Export');

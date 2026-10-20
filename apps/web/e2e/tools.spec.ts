@@ -117,7 +117,7 @@ test.describe('each tool changes the file, not just the screen', () => {
     await openPdf(page, INVOICE);
     await chooseTool(page, 'Prepare form');
     await useAction(page, 'Text field');
-    await drag(page, [0.3, 0.8], [0.7, 0.85]);
+    await drag(page, [0.3, 0.55], [0.7, 0.6]);
     const saved = await save(page);
     expect(saved.text).toMatch(/\/AcroForm/);
     await page.goto('/');

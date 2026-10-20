@@ -213,10 +213,11 @@ async function walk(page: Page, lang: 'ar' | 'en', check: (texts: { where: strin
   // A drop-down field drawn on the page, from Prepare form: the options it starts with.
   await chooseTool(page, l.prepareForm);
   await useAction(page, l.dropdown);
+  // In the part of the page the window shows: a document opens at its top.
   const form = await pageBox(page);
-  await page.mouse.move(form.x + form.width * 0.3, form.y + form.height * 0.8);
+  await page.mouse.move(form.x + form.width * 0.3, form.y + form.height * 0.55);
   await page.mouse.down();
-  await page.mouse.move(form.x + form.width * 0.7, form.y + form.height * 0.85, { steps: 15 });
+  await page.mouse.move(form.x + form.width * 0.7, form.y + form.height * 0.6, { steps: 15 });
   await page.mouse.up();
   await expect(embed.getByText(l.firstOption).first()).toBeVisible();
   await look('a new drop-down field');
@@ -226,7 +227,7 @@ async function walk(page: Page, lang: 'ar' | 'en', check: (texts: { where: strin
   await tab(l.annotate).click();
   await button(l.text).click();
   const box = await pageBox(page);
-  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.85);
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.65);
   await page.keyboard.type('نص');
   await look('a text box');
   await button(l.style).click();

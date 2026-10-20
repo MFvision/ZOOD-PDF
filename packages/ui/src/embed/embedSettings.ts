@@ -1,5 +1,6 @@
 import type { PluginRegistry } from '@embedpdf/react-pdf-viewer';
 import { readJson, writeJson } from '../state/preferences';
+import { SHEET_QUERY } from '../shell/sheetDrag';
 import { getSettings } from '../state/settings';
 import type { OpenZoom, PageLayout } from '../state/settings';
 import { commandActive, runCommand, setZoom } from './embedControl';
@@ -72,14 +73,25 @@ export function applyOpenZoom(registry: PluginRegistry, zoom: OpenZoom, file: st
 /** Everything Settings › Viewing says about a document that has just opened. */
 export function applyOpenSettings(registry: PluginRegistry, file: string): void {
   const settings = getSettings();
+  // The page thumbnails first (EmbedPDF's own sidebar in this view), so the
+  // zoom fits the room they leave. At phone width they would cover the
+  // page, so they open only when asked for there.
+  setPagePanel(registry, settings.pagePanel && !globalThis.matchMedia?.(SHEET_QUERY).matches);
   applyPageLayout(registry, settings.pageLayout);
   // One page at a time fits each page already.
   if (settings.pageLayout !== 'single') applyOpenZoom(registry, settings.openZoom, file);
-  // The page thumbnails: EmbedPDF's own sidebar in this view.
-  if (commandActive(registry, SIDEBAR) !== settings.pagePanel) runCommand(registry, SIDEBAR);
 }
 
 const SIDEBAR = 'panel:toggle-sidebar';
+
+/** Whether the page thumbnails are showing. */
+export function pagePanelOpen(registry: PluginRegistry): boolean {
+  return commandActive(registry, SIDEBAR);
+}
+
+export function setPagePanel(registry: PluginRegistry, open: boolean): void {
+  if (commandActive(registry, SIDEBAR) !== open) runCommand(registry, SIDEBAR);
+}
 
 /* ---- Night reading and page order --------------------------------------- */
 

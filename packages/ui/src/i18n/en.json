@@ -283,7 +283,6 @@
   "compress.refusedProtected": "This file has a password. A smaller copy is written from scratch and would lose it; remove the password with Protect first if you want one.",
   "compress.refusedSigned": "This file is signed. A smaller copy is written from scratch and would break the signature.",
   "compress.save": "Save the smaller copy…",
-  "compress.sizes": "{before} → {after}: {percent}% smaller",
   "compress.smallest": "Smallest (96 dpi)",
   "compress.smallestNote": "For reading on a screen; images lose detail when printed.",
   "compress.unchanged": "This file is already as small as it gets at this level. Nothing was changed.",
@@ -2449,5 +2448,10 @@
   "tour.across.body": "Above the AI chat, choose what to ask about: this document, every open document, or your whole Library.",
   "tour.across.p1": "Each source names its file and page, and opens it there.",
   "tour.across.p2": "Add folders in the Library tool to make them searchable.",
-  "tour.looksSettings": "Open Settings"
+  "tour.looksSettings": "Open Settings",
+  "home.recentEmptyOpen": "Open a file",
+  "home.recentEmptyCreate": "Make a new PDF",
+  "compress.percent": "{percent}%",
+  "compress.smaller": "smaller",
+  "compress.beforeAfter": "{before} → {after}"
 }

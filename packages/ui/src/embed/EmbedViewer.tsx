@@ -7,8 +7,8 @@ import standardStamps from '../../public/stamps/en/manifest.json';
 import { isTauriHost, uiLog } from '../core/host-tauri';
 import type { Lang } from '../i18n/messages';
 import { requestOpenLink } from '../links/openLink';
-import { capability, disabledCategories, scrollToPage, watchZoom } from './embedControl';
-import { applyOpenSettings, applyOpenZoom, rememberZoom, setNightReading, setSpreadDirection, spreadsRightToLeft } from './embedSettings';
+import { capability, disabledCategories, scrollToStart, setZoom, watchZoom } from './embedControl';
+import { applyOpenSettings, applyOpenZoom, pagePanelOpen, rememberedZoom, rememberZoom, setNightReading, setPagePanel, setSpreadDirection, spreadsRightToLeft } from './embedSettings';
 import { useSettings } from '../state/settings';
 import { setEmbedLanguage, setEmbedStrings } from './embedLanguage';
 import { installRtlStyles } from './embedRtl';
@@ -195,6 +195,12 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
     // The new file first, then the old one closed: the view is never without a
     // document, and a close that fails cannot keep the new file out.
     const previous = openedRef.current;
+    // New bytes of the file on screen (an edit, a save): the zoom it was at,
+    // read now, before the new document's own starting zoom is remembered,
+    // and whether its page thumbnails were showing.
+    const same = shownRef.current === currentName;
+    const keptZoom = same ? rememberedZoom(currentName) : null;
+    const keptPanel = same ? pagePanelOpen(registry) : null;
     try {
       // A copy: the engine may take the buffer over, and Warraq keeps its own.
       const response = await manager
@@ -211,6 +217,14 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
       return;
     }
     if (previous) await manager.closeDocument(previous).toPromise().catch(() => undefined);
+    // An edit keeps the view the file was in: its page thumbnails, then its zoom.
+    if (same) {
+      setTimeout(() => {
+        if (shownRef.current !== currentName) return;
+        if (keptPanel !== null) setPagePanel(registry, keptPanel);
+        if (keptZoom !== null) setZoom(registry, keptZoom);
+      }, OPEN_SETTLE_MS);
+    }
     // Settings › Viewing, for a file that has just come on screen (not for
     // new bytes of the same one after an edit): the first time, the layout
     // and zoom it says; when the file comes back (another tab, then this),
@@ -227,7 +241,7 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
           else {
             applyOpenSettings(registry, currentName);
             // A new zoom keeps the middle of the view: a file just opened starts at its top.
-            setTimeout(() => shownRef.current === currentName && scrollToPage(registry, 1, 'instant'), 60);
+            setTimeout(() => shownRef.current === currentName && scrollToStart(registry), 60);
           }
         } catch (error) {
           uiLog(`view settings not applied to ${currentName}: ${String(error)}`);

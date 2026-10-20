@@ -65,11 +65,20 @@ test.describe('the home screen', () => {
   }) => {
     test.setTimeout(300_000);
     await home(page);
-    // The wordmark, the places and every tool are in the sidebar; no bell, no avatar.
+    // The wordmark, the places and the tools under eight headings are in the sidebar; no bell, no avatar.
     await expect(sidebar(page).locator('.home-brand-name bdi')).toHaveText('ZOOD PDF');
     for (const place of ['Home', 'Recents', 'Starred', 'Tags']) await expect(sidebar(page).getByRole('button', { name: place, exact: true })).toBeVisible();
     await expect(sidebar(page).getByRole('button', { name: 'Clouds' })).toHaveCount(0);
-    await expect(sidebar(page).getByRole('list', { name: 'Tools' }).getByRole('button')).toHaveCount(await page.locator('.home .tool-cards-grid .tool-card').count());
+    await expect(sidebar(page).getByRole('list', { name: 'Tools' }).getByRole('button')).toHaveText([
+      'Edit',
+      'Annotate',
+      'Organize',
+      'Convert',
+      'Compress',
+      'OCR',
+      'Protect',
+      'AI Assistant',
+    ]);
     await expect(page.locator('.home-topbar img, .home-topbar [aria-label*="otification"]')).toHaveCount(0);
 
     // The keyboard puts the caret in the field, and a name matches without its case.
@@ -150,7 +159,7 @@ test.describe('the home screen', () => {
     await home(page);
     const card = page.getByRole('complementary', { name: 'AI Assistant' });
     await card.getByLabel('Ask a question…').fill('ما موضوع هذا المستند؟');
-    await card.getByRole('button', { name: 'Ask' }).click();
+    await card.getByRole('button', { name: 'Ask', exact: true }).click();
     const chat = aiPanel(page).getByRole('log', { name: 'Conversation' });
     await expect(chat.locator('.ai-turn-user')).toHaveText('ما موضوع هذا المستند؟');
     await expect(chat).toContainText('Choose a PDF first; the request is kept for it.');
