@@ -2453,5 +2453,21 @@
   "home.recentEmptyCreate": "Make a new PDF",
   "compress.percent": "{percent}%",
   "compress.smaller": "smaller",
-  "compress.beforeAfter": "{before} → {after}"
+  "compress.beforeAfter": "{before} → {after}",
+  "updates.title": "Updates",
+  "updates.note": "Updates come from ZOOD's releases on GitHub and are installed only when they carry ZOOD's signature.",
+  "updates.auto": "Check for updates automatically",
+  "updates.autoHint": "Looks for a new version each time the app opens. Nothing is installed without your OK.",
+  "updates.check": "Check for updates",
+  "updates.checkHint": "See whether a newer version is out.",
+  "updates.checkNow": "Check now",
+  "updates.checking": "Checking…",
+  "updates.latest": "You have the latest version.",
+  "updates.failed": "Couldn't check for updates. Check your internet connection and try again.",
+  "updates.available": "Version {version} is ready.",
+  "updates.availableHint": "The app restarts to finish, so save your work first.",
+  "updates.install": "Update now",
+  "updates.later": "Later",
+  "updates.installing": "Installing the update…",
+  "updates.downloading": "Downloading the update… {percent}%"
 }

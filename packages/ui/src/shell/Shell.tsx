@@ -23,6 +23,7 @@ import { Viewer } from '../viewer/Viewer';
 import { AboutDialog, GoToPageDialog, PasswordDialog, ShortcutsDialog } from './Dialogs';
 import { SettingsWindow } from '../settings/SettingsWindow';
 import { SettingsEffects } from '../settings/SettingsEffects';
+import { UpdateBanner } from '../updates/UpdateBanner';
 import { useSettings } from '../state/settings';
 import { HistoryEffects } from '../history/HistoryEffects';
 import { VersionsDialog } from '../history/VersionsDialog';
@@ -154,6 +155,7 @@ export function Shell() {
         )}
         <HistoryEffects />
         <FontNotice />
+        <UpdateBanner />
         <SignatureBanner />
         {state.loadingName && (
           <div className="banner" role="status">

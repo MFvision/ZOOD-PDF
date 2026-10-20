@@ -34,6 +34,7 @@ import type { ThemeMode, UiLook } from '../state/preferences';
 import { ACCENTS, HOME_SECTIONS, resetSettings, updateSettings, useSettings } from '../state/settings';
 import type { Accent, AppSettings, HomeSection } from '../state/settings';
 import { openTourAt } from '../tour/Tour';
+import { appVersion, canUpdate, checkForUpdate, installUpdate, useUpdateState } from '../updates/updates';
 import { ActionRow, Choice, Group, OrderedList, Pick, Row, TextSetting, Toggle } from './controls';
 import { LookPreview } from './LookPreview';
 import { ShortcutField } from './ShortcutField';
@@ -815,6 +816,10 @@ export function AboutPage() {
     void navigator.clipboard?.writeText(text).then(() => setCopied(text));
   };
   const company = ABOUT.company[lang];
+  const [installed, setInstalled] = useState<string | null>(null);
+  useEffect(() => {
+    void appVersion().then(setInstalled);
+  }, []);
   return (
     <>
       <div className="prefs-about">
@@ -824,7 +829,7 @@ export function AboutPage() {
         </p>
         <p className="prefs-about-tagline">{t('app.tagline')}</p>
         <p className="prefs-about-version" dir="auto">
-          {t('prefs.aboutVersion', { version: ABOUT.version })}
+          {t('prefs.aboutVersion', { version: installed ?? ABOUT.version })}
           {core && core.kind !== 'mock' ? ` · ${t('status.core', { version: core.version })}` : ''}
         </p>
       </div>
@@ -861,6 +866,7 @@ export function AboutPage() {
           </Row>
         )}
       </Group>
+      {canUpdate() && <UpdatesGroup />}
       <Group title={t('prefs.aboutHelp')}>
         <ActionRow label={t('prefs.aboutSupport')} hint={t('prefs.aboutSupportHint')} action={t('prefs.aboutWrite')} onClick={() => openMail(supportMail(t('app.name')))} />
         <ActionRow label={t('help.tour')} action={t('prefs.tourShow')} onClick={() => openTourAt('welcome', () => dispatch({ type: 'DIALOG', dialog: 'tour' }))} />
@@ -890,6 +896,41 @@ export function AboutPage() {
         © {year} {ABOUT.copyright}
       </p>
     </>
+  );
+}
+
+/** Settings › About › Updates: the switch for checks at launch, and a check now. */
+function UpdatesGroup() {
+  const { t } = useI18n();
+  const settings = useSettings();
+  const update = useUpdateState();
+  const status =
+    update.phase === 'checking'
+      ? t('updates.checking')
+      : update.phase === 'latest'
+        ? t('updates.latest')
+        : update.phase === 'failed'
+          ? t('updates.failed')
+          : update.phase === 'available' && update.info
+            ? t('updates.available', { version: update.info.version })
+            : update.phase === 'installing'
+              ? t('updates.installing')
+              : t('updates.checkHint');
+  return (
+    <Group title={t('updates.title')} note={t('updates.note')}>
+      <Toggle label={t('updates.auto')} hint={t('updates.autoHint')} checked={settings.checkUpdates} onChange={(checkUpdates) => set({ checkUpdates })} />
+      {update.phase === 'available' ? (
+        <ActionRow label={t('updates.check')} hint={status} action={t('updates.install')} onClick={() => void installUpdate()} />
+      ) : (
+        <ActionRow
+          label={t('updates.check')}
+          hint={status}
+          action={t('updates.checkNow')}
+          disabled={update.phase === 'checking' || update.phase === 'installing'}
+          onClick={() => void checkForUpdate()}
+        />
+      )}
+    </Group>
   );
 }
 
