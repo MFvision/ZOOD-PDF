@@ -77,7 +77,10 @@ ureq = { version = "3", default-features = false, features = ["rustls"] }
 # (llama-cpp-2, MIT OR Apache-2.0; llama.cpp and ggml themselves MIT), built
 # from source by cmake. No OpenMP: ggml's own thread pool does the work, and
 # Apple's clang ships without libomp. Metal on the Mac is below.
-llama-cpp-2 = { version = "0.1.157", default-features = false }
+#
+# Ask ZOOD (src/ask.rs) gives the same engine pictures and speech: llama.cpp's
+# own multimodal library (mtmd, MIT), part of the same build.
+llama-cpp-2 = { version = "0.1.157", default-features = false, features = ["mtmd"] }
 # The downloaded model's checksum (sha2, MIT OR Apache-2.0; already in the
 # core's graph) and its size shown in the interface.
 sha2 = "0.10"
@@ -120,7 +123,7 @@ libc = "0.2"
 [target.'cfg(target_os = "macos")'.dependencies]
 # The on-device model runs on the GPU through Metal on a Mac; on Windows it
 # runs on the CPU (AVX2 where the machine has it, chosen by ggml at run time).
-llama-cpp-2 = { version = "0.1.157", default-features = false, features = ["metal"] }
+llama-cpp-2 = { version = "0.1.157", default-features = false, features = ["metal", "mtmd"] }
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSData", "NSDictionary", "NSGeometry", "NSString", "NSURL", "objc2-core-foundation"] }
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSPasteboard", "NSPrintInfo", "NSPrintOperation", "NSResponder", "NSView", "NSWindow"] }
@@ -130,6 +133,11 @@ enigo = "0.6"
 # The phone remote's shared clipboard, text and pictures (src/remote/clip.rs;
 # arboard, MIT OR Apache-2.0).
 arboard = "3.6"
+# Ask ZOOD's ear and eyes (src/ask/): the microphone while its shortcut is
+# held (cpal, Apache-2.0) and a picture of the screen when the person asks
+# about it (xcap, Apache-2.0). Mac and Windows only.
+cpal = "0.18"
+xcap = "0.9"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 keyring = { version = "3.6", features = ["windows-native"] }
@@ -138,6 +146,8 @@ keyring = { version = "3.6", features = ["windows-native"] }
 # only.
 enigo = "0.6"
 arboard = "3.6"
+cpal = "0.18"
+xcap = "0.9"
 # The quick tools' Explorer menu (src/shell_menu.rs) is written to the
 # person's own registry classes; Share › Email hands the file to the default
 # mail program through Simple MAPI (src/share.rs).

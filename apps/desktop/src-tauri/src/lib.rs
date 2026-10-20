@@ -14,6 +14,7 @@ use tauri_plugin_fs::FsExt;
 
 pub mod ai;
 pub mod arrival;
+pub mod ask;
 pub mod batch;
 pub mod cloud;
 pub mod core_bridge;
@@ -347,6 +348,7 @@ pub fn run() {
         .manage(recent::RecentState::default())
         .manage(updates::UpdateState::default())
         .manage(remote::RemoteState::default())
+        .manage(ask::AskState::default())
         .on_menu_event(|app, event| match event.id().as_ref() {
             ring::TRAY_OPEN => {
                 quick::show_editor(app);
@@ -491,6 +493,17 @@ pub fn run() {
             remote::remote_pc_control,
             remote::remote_forget,
             remote::remote_clipboard,
+            ask::ask_configure,
+            ask::ask_resize,
+            ask::ask_hide,
+            ask::ask_point,
+            ask::ask_point_last,
+            ask::ask_transcribe,
+            ask::ask_think,
+            ask::ask_moment,
+            ask::ask_run_tool,
+            ask::ask_open,
+            ask::ask_type,
             remote::remote_give,
             arrival::arrival_last,
             remote::remote_send,

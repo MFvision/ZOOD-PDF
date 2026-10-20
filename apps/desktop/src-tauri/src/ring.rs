@@ -127,6 +127,12 @@ fn scale() -> f64 {
     f64::from(SCALE.load(Ordering::Relaxed)) / 1000.0
 }
 
+/// The files selected in the File Explorer window in front, or in Finder:
+/// what the ring's shortcut opens on, and what Ask ZOOD runs a tool on.
+pub fn selected_files() -> Vec<PathBuf> {
+    shortcut::parse(&shortcut::selected(shortcut::front_window()))
+}
+
 pub fn enabled() -> bool {
     ENABLED.load(Ordering::Relaxed)
 }
@@ -702,7 +708,7 @@ mod windows {
 }
 
 #[cfg(target_os = "macos")]
-mod macos {
+pub(crate) mod macos {
     use std::time::Duration;
 
     use objc2::rc::{autoreleasepool, Retained};
@@ -718,7 +724,7 @@ mod macos {
     const TICK: Duration = Duration::from_millis(30);
 
     /// The pointer, in points from the top-left of the main screen.
-    pub(super) fn pointer() -> (f64, f64) {
+    pub(crate) fn pointer() -> (f64, f64) {
         // SAFETY: NSEvent's and NSScreen's documented class messages.
         unsafe {
             let at: NSPoint = msg_send![class!(NSEvent), mouseLocation];
@@ -991,20 +997,20 @@ mod shortcut {
     }
 
     #[cfg(target_os = "windows")]
-    fn front_window() -> isize {
+    pub(super) fn front_window() -> isize {
         // SAFETY: no arguments; returns a handle or null.
         unsafe { windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow() as isize }
     }
 
     #[cfg(not(target_os = "windows"))]
-    fn front_window() -> isize {
+    pub(super) fn front_window() -> isize {
         0
     }
 
     /// The selection of the File Explorer window in front, through the
     /// Shell's own scripting interface.
     #[cfg(target_os = "windows")]
-    fn selected(front: isize) -> String {
+    pub(super) fn selected(front: isize) -> String {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         let script = format!(
@@ -1022,7 +1028,7 @@ mod shortcut {
 
     /// Finder's selection (macOS asks once whether the app may read it).
     #[cfg(target_os = "macos")]
-    fn selected(_front: isize) -> String {
+    pub(super) fn selected(_front: isize) -> String {
         std::process::Command::new("osascript")
             .args([
                 "-e",
@@ -1046,7 +1052,7 @@ mod shortcut {
     }
 
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-    fn selected(_front: isize) -> String {
+    pub(super) fn selected(_front: isize) -> String {
         String::new()
     }
 

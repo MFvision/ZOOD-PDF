@@ -12,6 +12,10 @@
        (src/ring.rs, `shortcut`); macOS asks once before allowing it. -->
   <key>NSAppleEventsUsageDescription</key>
   <string>لفتح دائرة الأدوات السريعة على الملفات المحددة في Finder. To open the quick tools ring on the files selected in Finder.</string>
+  <!-- Ask ZOOD (src/ask/): the microphone only while its shortcut is held,
+       heard by the on-device model and never kept or sent. -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>ليسمع ZOOD طلبك وأنت تضغط على اختصار «اسأل ZOOD». يُفهم كلامك على جهازك ولا يُرسل إلى أي مكان. To hear you while you hold the Ask ZOOD shortcut. Your words are understood on this computer and never sent anywhere.</string>
   <key>NSServices</key>
   <array>
     <dict>
