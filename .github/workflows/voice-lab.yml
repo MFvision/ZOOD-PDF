@@ -64,6 +64,29 @@ jobs:
           name: lab-${{ matrix.engine }}-${{ runner.os }}
           path: lab-out
 
+  # The candidate voices pinned: revision, sizes, SHA-256 and model cards
+  # (where their training data and licence are named), with the Arabic
+  # voice itself kept on the `voice-lab-models` branch for local tests.
+  models:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: pin
+        env:
+          LAB_OUT: ${{ github.workspace }}/models-out
+        run: python scripts/voice-lab/models.py
+      - name: push
+        shell: bash
+        run: |
+          cd models-out
+          git init -q && git checkout -q -b voice-lab-models
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -qm "Pinned voices"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" voice-lab-models
+
   # How well each sample can be understood: Whisper (large-v3, run by
   # faster-whisper) writes down what it hears, and the character error rate
   # against the sentence that was read says how much of it came through.
