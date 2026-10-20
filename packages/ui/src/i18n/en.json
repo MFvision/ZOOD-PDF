@@ -2453,5 +2453,14 @@
   "home.recentEmptyCreate": "Make a new PDF",
   "compress.percent": "{percent}%",
   "compress.smaller": "smaller",
-  "compress.beforeAfter": "{before} → {after}"
+  "compress.beforeAfter": "{before} → {after}",
+  "prefs.menu": "Menu",
+  "prefs.menu.menus": "Sub-menus",
+  "prefs.menu.all": "All",
+  "prefs.menu.custom": "Custom",
+  "prefs.menu.menusHint": "Each word in the menu bar opens its list of commands.",
+  "prefs.menu.allHint": "Every command is a button: pick File, Edit, View… to see its commands.",
+  "prefs.menu.customHint": "The commands you tick are buttons beside the menus; the rest stay in the lists.",
+  "prefs.menuCommands": "Commands shown as buttons",
+  "prefs.menuCommandsHint": "They appear in the order of the menus."
 }

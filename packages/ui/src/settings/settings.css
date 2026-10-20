@@ -810,3 +810,41 @@ html[data-reduce-motion="on"] .prefs-kbd.is-listening {
 .banner-recovery .prefs-button {
   margin-inline-start: auto;
 }
+
+/* Appearance › Menu › Custom: the commands to show as buttons, menu by menu. */
+.prefs-menu-commands {
+  display: grid;
+  inline-size: 100%;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: var(--space-5);
+}
+
+.prefs-menu-group {
+  min-inline-size: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.prefs-menu-group legend {
+  padding: 0;
+  margin-block-end: var(--space-2);
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  color: var(--secondary-label);
+}
+
+.prefs-check {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  min-block-size: 24px;
+  font-size: var(--text-callout);
+  color: var(--label);
+}
+
+@media (pointer: coarse) {
+  .prefs-check {
+    min-block-size: 44px;
+  }
+}

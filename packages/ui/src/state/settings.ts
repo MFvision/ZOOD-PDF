@@ -18,6 +18,8 @@ export type StartWith = 'home' | 'reopen';
 export type PageLayout = 'single' | 'continuous' | 'two' | 'book';
 export type OpenZoom = 'fit-width' | 'fit-page' | 'actual' | 'remember';
 export type OpenIn = 'tabs' | 'windows';
+/** The menu bar in the window: drop-down menus, every command as a button, or chosen ones as buttons beside the menus. */
+export type MenuBarStyle = 'menus' | 'all' | 'custom';
 export type TabBar = 'always' | 'several';
 export type TabPosition = 'top' | 'toolbar';
 export type ReadingDirection = 'document' | 'rtl' | 'ltr';
@@ -46,6 +48,9 @@ export interface AppSettings {
   tabBar: TabBar;
   tabPosition: TabPosition;
   pagePanel: boolean;
+  menuBar: MenuBarStyle;
+  /** The commands shown as buttons when the menu is Custom, by their menu ids. */
+  menuBarItems: string[];
   toolsPanel: boolean;
   readingDirection: ReadingDirection;
   nightReading: NightReading;
@@ -96,6 +101,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   tabBar: 'always',
   tabPosition: 'top',
   pagePanel: true,
+  menuBar: 'menus',
+  menuBarItems: ['open', 'save', 'print', 'undo', 'redo', 'find', 'settings'],
   toolsPanel: true,
   readingDirection: 'document',
   nightReading: 'off',
@@ -181,6 +188,8 @@ export function sanitizeSettings(raw: unknown): AppSettings {
     tabBar: oneOf(s.tabBar, ['always', 'several'] as const, d.tabBar),
     tabPosition: oneOf(s.tabPosition, ['top', 'toolbar'] as const, d.tabPosition),
     pagePanel: bool(s.pagePanel, d.pagePanel),
+    menuBar: oneOf(s.menuBar, ['menus', 'all', 'custom'] as const, d.menuBar),
+    menuBarItems: Array.isArray(s.menuBarItems) ? names(s.menuBarItems, 40) : d.menuBarItems,
     toolsPanel: bool(s.toolsPanel, d.toolsPanel),
     readingDirection: oneOf(s.readingDirection, ['document', 'rtl', 'ltr'] as const, d.readingDirection),
     nightReading: oneOf(s.nightReading, ['off', 'on', 'dark'] as const, d.nightReading),

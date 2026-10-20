@@ -4,12 +4,15 @@ import { Languages } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { useI18n } from '../i18n/useT';
 import type { Lang } from '../i18n/messages';
+import { useSettings } from '../state/settings';
+import { MenuQuickCommands, MenuRibbon } from './MenuCommands';
 import { MenuDropdown } from './MenuDropdown';
 import { useMenuModel } from './menuModel';
 
 export function MenuBar() {
   const menus = useMenuModel();
   const { t, dir, lang, setLang } = useI18n();
+  const settings = useSettings();
   const [openId, setOpenId] = useState<string | null>(null);
   const barRef = useRef<HTMLDivElement>(null);
 
@@ -47,6 +50,22 @@ export function MenuBar() {
     event.preventDefault();
   };
 
+  const end = (
+    <div className="menubar-end">
+      <label className="menubar-lang">
+        <Icon of={Languages} size={16} />
+        <span className="sr-only">{t('lang.label')}</span>
+        <select className="select select-compact" value={lang} onChange={(event) => setLang(event.target.value as Lang)}>
+          <option value="ar">{t('lang.ar')}</option>
+          <option value="en">{t('lang.en')}</option>
+        </select>
+      </label>
+    </div>
+  );
+
+  // Settings › Appearance › Menu: every command on show, under the menus' names.
+  if (settings.menuBar === 'all') return <MenuRibbon menus={menus} end={end} />;
+
   return (
     <div ref={barRef} className="menubar" role="menubar" aria-label={t('menu.label')} onKeyDown={onKeyDown}>
       {menus.map((menu) => (
@@ -62,16 +81,8 @@ export function MenuBar() {
           onClose={() => setOpenId(null)}
         />
       ))}
-      <div className="menubar-end">
-        <label className="menubar-lang">
-          <Icon of={Languages} size={16} />
-          <span className="sr-only">{t('lang.label')}</span>
-          <select className="select select-compact" value={lang} onChange={(event) => setLang(event.target.value as Lang)}>
-            <option value="ar">{t('lang.ar')}</option>
-            <option value="en">{t('lang.en')}</option>
-          </select>
-        </label>
-      </div>
+      {settings.menuBar === 'custom' && <MenuQuickCommands menus={menus} ids={settings.menuBarItems} />}
+      {end}
     </div>
   );
 }

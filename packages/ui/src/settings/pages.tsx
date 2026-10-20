@@ -25,7 +25,7 @@ import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { QUICK_TOOLS } from '../quick/plan';
 import { readQuickPreferences, writeQuickPreferences } from '../quick/QuickSettings';
-import { formatShortcut, isApplePlatform, toAccelerator, useMenuModel } from '../shell/menuModel';
+import { formatShortcut, hasNativeMenuBar, isApplePlatform, toAccelerator, useMenuModel } from '../shell/menuModel';
 import type { MenuItemModel } from '../shell/menuModel';
 import { VoiceSettings } from '../speech/VoiceSettings';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
@@ -203,6 +203,8 @@ export function AppearancePage() {
           onChange={(iconSize) => set({ iconSize })}
         />
       </Group>
+      {/* The menu bar in the window; the macOS app uses the system's, at the top of the screen. */}
+      {!hasNativeMenuBar() && <MenuBarSettings />}
       <Group title={t('prefs.accent')} note={mono ? t('prefs.accentMono') : undefined}>
         <Row label={t('prefs.accent')} hint={t('prefs.accentHint')}>
           <div className="accent-swatches" role="radiogroup" aria-label={t('prefs.accent')}>
@@ -229,6 +231,47 @@ export function AppearancePage() {
         <Toggle label={t('prefs.reduceMotion')} hint={t('prefs.reduceMotionHint')} checked={settings.reduceMotion === 'on'} onChange={(on) => set({ reduceMotion: on ? 'on' : 'system' })} />
       </Group>
     </>
+  );
+}
+
+/** Settings › Appearance › Menu: drop-down menus, every command as a button, or the ones ticked here. */
+function MenuBarSettings() {
+  const { t } = useI18n();
+  const settings = useSettings();
+  const menus = useMenuModel();
+  const chosen = settings.menuBarItems;
+  const tick = (id: string, on: boolean) => set({ menuBarItems: on ? [...chosen, id] : chosen.filter((one) => one !== id) });
+  return (
+    <Group title={t('prefs.menu')}>
+      <Choice
+        label={t('prefs.menu')}
+        hint={t(`prefs.menu.${settings.menuBar}Hint`)}
+        value={settings.menuBar}
+        options={[
+          { value: 'menus', label: t('prefs.menu.menus') },
+          { value: 'all', label: t('prefs.menu.all') },
+          { value: 'custom', label: t('prefs.menu.custom') },
+        ]}
+        onChange={(menuBar) => set({ menuBar })}
+      />
+      {settings.menuBar === 'custom' && (
+        <Row label={t('prefs.menuCommands')} hint={t('prefs.menuCommandsHint')} stacked>
+          <div className="prefs-menu-commands">
+            {menus.map((menu) => (
+              <fieldset key={menu.id} className="prefs-menu-group">
+                <legend>{menu.id === 'app' ? <bdi>{menu.label}</bdi> : menu.label}</legend>
+                {menu.items.map((item) => (
+                  <label key={item.id} className="prefs-check">
+                    <input type="checkbox" checked={chosen.includes(item.id)} onChange={(event) => tick(item.id, event.target.checked)} />
+                    <span>{item.label}</span>
+                  </label>
+                ))}
+              </fieldset>
+            ))}
+          </div>
+        </Row>
+      )}
+    </Group>
   );
 }
 

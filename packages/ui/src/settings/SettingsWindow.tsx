@@ -47,7 +47,7 @@ const SECTIONS: readonly Section[] = [
     id: 'appearance',
     icon: Palette,
     title: 'prefs.appearance',
-    words: ['theme.label', 'look.label', 'prefs.icons', 'prefs.iconSize', 'prefs.accent', 'prefs.reduceTransparency', 'prefs.reduceMotion', 'look.concept', 'look.glass', 'look.zood', 'look.workbench', 'look.mono'],
+    words: ['theme.label', 'look.label', 'prefs.icons', 'prefs.iconSize', 'prefs.menu', 'prefs.menuCommands', 'prefs.accent', 'prefs.reduceTransparency', 'prefs.reduceMotion', 'look.concept', 'look.glass', 'look.zood', 'look.workbench', 'look.mono'],
     page: () => <AppearancePage />,
   },
   {

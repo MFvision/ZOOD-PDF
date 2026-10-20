@@ -189,6 +189,83 @@
   background: var(--separator);
 }
 
+/* Settings › Appearance › Menu: All (the ribbon) and Custom (chosen commands beside the menus). */
+.menubar-ribbon {
+  flex-direction: column;
+  align-items: stretch;
+  block-size: auto;
+  padding-block-end: var(--space-2);
+}
+
+.menubar-row {
+  display: flex;
+  align-items: center;
+  block-size: var(--menubar-h);
+}
+
+.ribbon-tabs {
+  display: flex;
+}
+
+.ribbon-tabs .menu-button[aria-selected="true"] {
+  color: var(--accent);
+  background: var(--fill);
+}
+
+.ribbon,
+.menubar-commands {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+  min-inline-size: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ribbon {
+  flex-wrap: wrap;
+  padding-block-start: var(--space-2);
+}
+
+.menubar-commands {
+  padding-inline-start: var(--space-4);
+  margin-inline-start: var(--space-4);
+  border-inline-start: 0.5px solid var(--separator);
+}
+
+.command-button {
+  flex: none;
+  block-size: 24px;
+  padding-inline: var(--space-4);
+  font-size: var(--text-callout);
+  color: var(--label);
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+}
+
+.command-button:hover:not(:disabled) {
+  background: var(--fill);
+}
+
+.command-button[aria-pressed="true"] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.command-button:disabled {
+  color: var(--tertiary-label);
+}
+
+.ribbon-separator {
+  flex: none;
+  inline-size: 1px;
+  block-size: 18px;
+  margin-inline: var(--space-2);
+  background: var(--separator);
+}
+
 /* ---- Unified toolbar ------------------------------------------------------- */
 .toolbar {
   position: relative;
@@ -825,6 +902,10 @@
 
   .menu-item {
     min-block-size: 44px;
+  }
+
+  .command-button {
+    block-size: 44px;
   }
 
   .menubar-lang .select {

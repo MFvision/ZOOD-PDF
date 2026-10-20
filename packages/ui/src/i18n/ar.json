@@ -2453,5 +2453,14 @@
   "home.recentEmptyCreate": "أنشئ ملف PDF جديدًا",
   "compress.percent": "{percent}٪",
   "compress.smaller": "أصغر",
-  "compress.beforeAfter": "{before} ← {after}"
+  "compress.beforeAfter": "{before} ← {after}",
+  "prefs.menu": "القائمة",
+  "prefs.menu.menus": "قوائم منسدلة",
+  "prefs.menu.all": "الكل",
+  "prefs.menu.custom": "مخصّصة",
+  "prefs.menu.menusHint": "كل كلمة في شريط القوائم تفتح قائمة أوامرها.",
+  "prefs.menu.allHint": "كل أمر زرٌّ ظاهر: اختر ملف أو تحرير أو عرض… لترى أوامره.",
+  "prefs.menu.customHint": "الأوامر التي تختارها تظهر أزرارًا بجانب القوائم، والباقي يبقى في القوائم.",
+  "prefs.menuCommands": "الأوامر الظاهرة كأزرار",
+  "prefs.menuCommandsHint": "تظهر بترتيب القوائم."
 }
