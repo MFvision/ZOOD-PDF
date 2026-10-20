@@ -11866,6 +11866,76 @@
           }
         }
       }
+    },
+    "Phone remote": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التحكم من الجوال"
+          }
+        }
+      }
+    },
+    "Scan a new code": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "امسح رمزًا جديدًا"
+          }
+        }
+      }
+    },
+    "Control ZOOD PDF on your computer": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تحكّم في ZOOD PDF على جهازك"
+          }
+        }
+      }
+    },
+    "On the computer, open ZOOD PDF and choose Phone remote in the toolbar. Then scan the QR code it shows. Your phone and computer need to be on the same Wi-Fi.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "على الجهاز، افتح ZOOD PDF واختر «التحكم من الجوال» من شريط الأدوات، ثم امسح رمز QR الذي يظهر. يجب أن يكون الجوال والجهاز على شبكة Wi-Fi نفسها."
+          }
+        }
+      }
+    },
+    "Scan the QR code": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "امسح رمز QR"
+          }
+        }
+      }
+    },
+    "This device can’t scan codes. Scan the code with the Camera app instead.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يستطيع هذا الجهاز مسح الرموز. امسح الرمز بتطبيق الكاميرا بدلًا من ذلك."
+          }
+        }
+      }
+    },
+    "That code isn’t a ZOOD PDF remote code. Scan the code from Phone remote on your computer.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا الرمز ليس رمز التحكم من ZOOD PDF. امسح الرمز من «التحكم من الجوال» على جهازك."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -167,6 +167,12 @@ targets:
         NSPhotoLibraryUsageDescription: "Photos you choose become pages of a PDF. Nothing leaves the device."
         NSPhotoLibraryAddUsageDescription: "Pages you export as pictures are saved to your photos."
         NSFaceIDUsageDescription: "Face ID unlocks the app when you turn on the app lock."
+        # The phone remote (PDFEditor/Remote/): the computer's remote page is
+        # plain http on the local network, sealed by the page itself with the
+        # key in the QR code. Local addresses only; the internet stays https.
+        NSLocalNetworkUsageDescription: "The phone remote connects to ZOOD PDF on your computer over your Wi-Fi."
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
         # Batch keeps running in the background from iOS 26 as a continued-
         # processing task, one identifier per run under this prefix
         # (PDFEditor/Batch/BatchBackground.swift).
