@@ -2424,5 +2424,20 @@
   "ai.card.askAllHint": "Answers from your Library, with each source",
   "ai.card.downloadLine": "The assistant runs on this device. It needs its model first.",
   "ai.card.download": "Download the AI ({size}, once)",
-  "ai.card.details": "Details"
+  "ai.card.details": "Details",
+  "group.edit": "Edit",
+  "group.annotate": "Annotate",
+  "group.organize": "Organize",
+  "group.convert": "Convert",
+  "group.compress": "Compress",
+  "group.ocr": "OCR",
+  "group.protect": "Protect",
+  "group.ai": "AI Assistant",
+  "home.groupMenu": "{group} tools",
+  "home.recentEmptyTitle": "Your recent files will appear here",
+  "home.recentEmptyText": "Open a PDF to start, or make one from Word, pictures or a web page.",
+  "share.label": "Share",
+  "share.sheet": "Share…",
+  "share.email": "Email as an attachment",
+  "share.failed": "The file could not be shared."
 }

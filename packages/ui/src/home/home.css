@@ -981,3 +981,61 @@
 .ai-device-details[open] summary {
   margin-block-end: var(--space-2);
 }
+
+/* ---- Recent, before anything was opened: a card with the two ways to begin ---- */
+
+.recent-empty {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  align-items: center;
+  padding: var(--space-6, 24px);
+  background: var(--glass-card, var(--grouped-background));
+  border: 1px dashed var(--opaque-separator);
+  border-radius: var(--radius-16, 16px);
+  overflow: hidden;
+}
+
+.recent-empty-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 52px;
+  block-size: 52px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 14px;
+}
+
+.recent-empty-text {
+  flex: 1 1 240px;
+  min-inline-size: 0;
+}
+
+.recent-empty-text h3 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-headline);
+  font-weight: 600;
+  color: var(--label);
+}
+
+.recent-empty-text p {
+  margin: 0;
+  font-size: var(--text-subheadline);
+  color: var(--secondary-label);
+}
+
+.recent-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* The grouped tools: the chevron at the row's end says a menu opens. */
+.home-nav-tools .home-nav-item > span:not(.tool-icon) {
+  flex: 1;
+}
+
+.home-nav-tools .home-nav-item > .lucide:last-child {
+  color: var(--tertiary-label);
+}

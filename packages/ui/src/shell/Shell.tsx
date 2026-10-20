@@ -13,6 +13,7 @@ import { LinkConfirmDialog } from '../links/LinkConfirmDialog';
 import { useI18n } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { EmbedViewer } from '../embed/EmbedViewer';
+import { EmbedPageMenu } from '../embed/EmbedPageMenu';
 import { OrganizeView } from '../organize/OrganizeView';
 import { SignatureBanner } from '../signatures/SignatureBanner';
 import { EmbedReadAloudHighlight } from '../speech/EmbedReadAloudHighlight';
@@ -188,6 +189,7 @@ export function Shell() {
             {state.view === 'viewer' && services.documentBytes !== null && (
               <div className="embed-host" hidden={warraqView || homeOver} ref={setEmbedHost}>
                 <EmbedReadAloudHighlight host={embedHost} registry={services.embedRegistry} />
+                <EmbedPageMenu host={embedHost} pageCount={state.document?.pageCount ?? 0} />
                 <EmbedViewer
                   bytes={services.documentBytes}
                   name={state.document?.name ?? 'document.pdf'}

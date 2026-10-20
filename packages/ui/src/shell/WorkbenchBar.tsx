@@ -12,6 +12,7 @@ import { ToolIcon } from '../tools/ToolIcon';
 import { TOOLS } from '../tools/tools';
 import type { ToolId } from '../tools/tools';
 import { hasNativeMenuBar } from './menuModel';
+import { ShareButton } from './ShareButton';
 import { matchTools, WORKBENCH_MODES } from './workbench';
 
 /**
@@ -108,6 +109,7 @@ export function WorkbenchBar() {
               onClick={() => (readAloud.open ? closeBar() : openBar())}
             />
             <IconButton label={t('file.save')} icon={<Icon of={Download} />} onClick={() => void services.saveDocument()} />
+            <ShareButton />
           </>
         )}
       </div>

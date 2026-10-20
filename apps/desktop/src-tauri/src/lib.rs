@@ -25,6 +25,7 @@ pub mod profile;
 pub mod quick;
 pub mod recent;
 pub mod ring;
+pub mod share;
 pub mod shell_menu;
 pub mod signing;
 pub mod system;
@@ -475,6 +476,8 @@ pub fn run() {
             ring::ring_done,
             ring::ring_configure,
             ring::ring_settings,
+            share::share_prepare,
+            share::share_email,
             system::system_user_name,
             system::open_default_apps,
         ])

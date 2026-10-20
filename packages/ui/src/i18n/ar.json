@@ -2423,6 +2423,21 @@
   "ai.card.askAll": "اسأل عن كل مستنداتي",
   "ai.card.askAllHint": "إجابات من مكتبتك مع كل مصدر",
   "ai.card.downloadLine": "يعمل المساعد على هذا الجهاز، ويحتاج إلى نموذجه أولًا.",
-  "ai.card.download": "تنزيل الذكاء الاصطناعي ({size}، مرة واحدة)",
-  "ai.card.details": "التفاصيل"
+  "ai.card.download": "تنزيل المساعد ({size}، مرة واحدة)",
+  "ai.card.details": "التفاصيل",
+  "group.edit": "تحرير",
+  "group.annotate": "تعليقات وتوقيع",
+  "group.organize": "تنظيم",
+  "group.convert": "تحويل",
+  "group.compress": "ضغط",
+  "group.ocr": "التعرّف على النص",
+  "group.protect": "حماية",
+  "group.ai": "المساعد الذكي",
+  "home.groupMenu": "أدوات {group}",
+  "home.recentEmptyTitle": "ستظهر ملفاتك الأخيرة هنا",
+  "home.recentEmptyText": "افتح ملف PDF للبدء، أو أنشئ واحدًا من Word أو الصور أو صفحة ويب.",
+  "share.label": "مشاركة",
+  "share.sheet": "مشاركة…",
+  "share.email": "إرسال بالبريد كمرفق",
+  "share.failed": "تعذّرت مشاركة الملف."
 }

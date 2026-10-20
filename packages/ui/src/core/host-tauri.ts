@@ -681,6 +681,18 @@ export async function writeBatchResult(bytes: Uint8Array, name: string, target: 
   return (await invoke('batch_write', bytes, { headers })) as string;
 }
 
+/* -------------------------------------------------------------------- share */
+
+/**
+ * Share › Email as an attachment (`src-tauri/src/share.rs`): the file as it
+ * stands is written to the app's own share folder and a new message opens
+ * in the person's mail program with it attached. Nothing is sent by the app.
+ */
+export async function emailAttachment(bytes: Uint8Array, name: string): Promise<void> {
+  const path = (await invoke('share_prepare', bytes, { headers: { 'x-warraq-name': encodeURIComponent(name) } })) as string;
+  await invoke('share_email', { path });
+}
+
 /**
  * The check the desktop host asks the interface to run by itself, from its
  * environment (`WARRAQ_SELFCHECK`, with `WARRAQ_DEBUG`): null in a browser

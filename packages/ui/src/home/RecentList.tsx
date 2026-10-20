@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Ellipsis, FileText, FolderOpen, LayoutGrid, List, Star, StarOff, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Ellipsis, FilePlus2, FileText, FolderOpen, LayoutGrid, List, Star, StarOff, Trash2 } from 'lucide-react';
 import { ContextMenu } from '../components/ContextMenu';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
@@ -54,7 +54,7 @@ function useRecentFolders(names: readonly string[], wanted: boolean): Record<str
  */
 export function RecentList({ layout: asked, onSeeAll }: RecentListProps) {
   const { t, lang, dir } = useI18n();
-  const { recent, openRecent, clearRecent, removeRecent } = useServices();
+  const { recent, openRecent, clearRecent, removeRecent, requestOpenFile, requestCreateFiles } = useServices();
   const switchable = asked === 'table';
   const [view, setView] = useState<TableView>(readView);
   const layout = switchable ? view : asked;
@@ -157,7 +157,28 @@ export function RecentList({ layout: asked, onSeeAll }: RecentListProps) {
           )}
         </div>
       </div>
-      {layout === 'table' ? (
+      {recent.length === 0 && layout !== 'grid' ? (
+        // Nothing opened yet: what to do first, not an empty shelf.
+        <div className="recent-empty">
+          <span className="recent-empty-mark" aria-hidden="true">
+            <Icon of={FileText} size={26} />
+          </span>
+          <div className="recent-empty-text">
+            <h3>{t('home.recentEmptyTitle')}</h3>
+            <p>{t('home.recentEmptyText')}</p>
+          </div>
+          <div className="recent-empty-actions">
+            <button type="button" className="icon-btn icon-btn-labeled icon-btn-primary" onClick={requestOpenFile}>
+              <Icon of={FolderOpen} size={16} />
+              <span>{t('home.add.open')}</span>
+            </button>
+            <button type="button" className="icon-btn icon-btn-labeled" onClick={requestCreateFiles}>
+              <Icon of={FilePlus2} size={16} />
+              <span>{t('home.add.create')}</span>
+            </button>
+          </div>
+        </div>
+      ) : layout === 'table' ? (
         recent.length > 0 && (
           <table className="recent-table">
             <thead>
@@ -255,7 +276,11 @@ export function RecentList({ layout: asked, onSeeAll }: RecentListProps) {
         returnTo={menu?.from}
         onClose={() => setMenu(null)}
       />
-      <p className="home-note">{recent.length === 0 ? t('home.recentEmpty') : t(isTauriHost() ? 'home.recentHintDesktop' : 'home.recentHint')}</p>
+      {recent.length > 0 ? (
+        <p className="home-note">{t(isTauriHost() ? 'home.recentHintDesktop' : 'home.recentHint')}</p>
+      ) : (
+        layout === 'grid' && <p className="home-note">{t('home.recentEmpty')}</p>
+      )}
     </section>
   );
 }
