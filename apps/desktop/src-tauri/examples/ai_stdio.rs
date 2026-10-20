@@ -100,6 +100,7 @@ fn main() {
                     grammar,
                     max_tokens,
                     context_tokens,
+                    media: Vec::new(),
                 };
                 match engine.generate(&request, &AtomicBool::new(false), |piece| {
                     say(json!({ "token": piece }))
