@@ -84,7 +84,7 @@ final class WidgetGalleryUITests: XCTestCase {
         search.tap()
         search.typeText("PDF")
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 1.0))
-        let entry = springboard.staticTexts["محرر PDF"].firstMatch
+        let entry = springboard.staticTexts.matching(NSPredicate(format: "label IN %@", ["ZOOD PDF", "محرر زود PDF"])).firstMatch
         if entry.waitForExistence(timeout: 5) {
             entry.tap()
         } else {

@@ -33,11 +33,11 @@
     "Nothing shared was a PDF." : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لم يكن بين ما شاركته ملف PDF." } } }
     },
-    "Saved to محرر PDF" : {
-      "localizations" : {
-        "ar" : { "stringUnit" : { "state" : "translated", "value" : "حُفظ في محرر PDF" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Saved to ⁧محرر PDF⁩" } }
-      }
+    "ZOOD PDF" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "محرر زود PDF" } } }
+    },
+    "Saved to ZOOD PDF" : {
+      "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "حُفظ في محرر زود PDF" } } }
     },
     "Saving…" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "جارٍ الحفظ…" } } }

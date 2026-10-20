@@ -42,12 +42,9 @@ const LANGS = new Set<string>(['ar', 'en']);
 const THEMES = new Set<string>(['system', 'light', 'dark']);
 const LOOKS = new Set<string>(LOOK_IDS);
 
-/**
- * The look before the person chooses one: Liquid Glass on Apple's systems,
- * where it is at home, and the concept look everywhere else.
- */
+/** The look before the person chooses one: ZOOD's own, on every system, from the first launch. */
 export function defaultLook(): UiLook {
-  return /Mac|iPhone|iPad|iPod/.test(globalThis.navigator?.platform ?? '') ? 'glass' : 'concept';
+  return 'zood';
 }
 const TABS = new Set<string>(['thumbnails', 'bookmarks', 'attachments', 'layers', 'comments']);
 

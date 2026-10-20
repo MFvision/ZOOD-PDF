@@ -89,7 +89,7 @@ enum SettingsKey {
 struct AppEnvironment: ViewModifier {
     @AppStorage(SettingsKey.language) private var language: AppLanguage = .system
     @AppStorage(SettingsKey.appearance) private var appearance: AppAppearance = .system
-    @AppStorage(SettingsKey.theme) private var theme: AppTheme = .glass
+    @AppStorage(SettingsKey.theme) private var theme: AppTheme = .standard
     @Environment(\.locale) private var systemLocale
     @Environment(\.layoutDirection) private var systemDirection
 

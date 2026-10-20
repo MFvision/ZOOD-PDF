@@ -4,7 +4,7 @@ import UIKit
 import UniformTypeIdentifiers
 import WarraqCore
 
-/// "Save to محرر PDF" in the share sheet: every PDF shared is copied into
+/// "Save to ZOOD PDF" in the share sheet: every PDF shared is copied into
 /// the shared container's Inbox, and every picture becomes a page of one
 /// new PDF there (the core's `create.images`); the app takes the Inbox
 /// into its own Documents folder and its Library the next time it is in
@@ -174,7 +174,7 @@ struct ShareView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 44))
                         .foregroundStyle(.green)
-                    Text("Saved to محرر PDF").font(.headline)
+                    Text("Saved to ZOOD PDF").font(.headline)
                     Text("\(count) files saved. Find them under My documents.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -189,7 +189,7 @@ struct ShareView: View {
             }
             .padding(32)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .navigationTitle(Text(verbatim: "\u{2067}محرر PDF\u{2069}"))
+            .navigationTitle(Text("ZOOD PDF"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

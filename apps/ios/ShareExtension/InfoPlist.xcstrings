@@ -4,8 +4,8 @@
     "CFBundleDisplayName" : {
       "extractionState" : "manual",
       "localizations" : {
-        "ar" : { "stringUnit" : { "state" : "translated", "value" : "حفظ في محرر PDF" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save to ⁧محرر PDF⁩" } }
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "حفظ في محرر زود PDF" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save to ZOOD PDF" } }
       }
     }
   },

@@ -164,9 +164,18 @@ struct EmptyState: View {
     }
 }
 
-/// The app's name, isolated right-to-left inside an English sentence so it
-/// reads as it does in Arabic: U+2067 … U+2069.
+/// The app's name in the interface's language — ZOOD PDF in English, محرر زود PDF
+/// in Arabic, as on the desktop and the web. `isolated` keeps the Arabic name
+/// right-to-left inside a sentence: U+2067 … U+2069.
 enum AppName {
-    static let plain = "محرر PDF"
-    static let isolated = "\u{2067}محرر PDF\u{2069}"
+    private static var arabic: Bool {
+        switch UserDefaults.standard.string(forKey: SettingsKey.language) {
+        case "ar": true
+        case "en": false
+        default: Bundle.main.preferredLocalizations.first == "ar"
+        }
+    }
+
+    static var plain: String { arabic ? "محرر زود PDF" : "ZOOD PDF" }
+    static var isolated: String { arabic ? "\u{2067}محرر زود PDF\u{2069}" : "ZOOD PDF" }
 }
