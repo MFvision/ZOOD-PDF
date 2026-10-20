@@ -616,9 +616,7 @@ mod tests {
     fn the_phone_page_pairs_and_presents() {
         use tauri::Listener;
 
-        let app = tauri::test::mock_builder()
-            .build(tauri::generate_context!())
-            .unwrap();
+        let app = tauri::test::mock_builder().build(crate::context()).unwrap();
         let handle = app.handle().clone();
         let (shared, url, _stop) = serve(&handle, false);
 

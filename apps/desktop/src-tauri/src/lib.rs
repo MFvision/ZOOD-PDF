@@ -318,6 +318,14 @@ fn read_file_bytes<R: Runtime>(
 /// mobile targets, not built yet: docs/STATUS.md) this is the app's entry
 /// point, as `main` is on the desktop.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// The app's context, made in this one place: on macOS it embeds the
+/// Info.plist under a fixed symbol, so a second `generate_context!` (the
+/// remote's end-to-end test runs the server in a mock app with the real
+/// assets) would not link.
+pub(crate) fn context<R: tauri::Runtime>() -> tauri::Context<R> {
+    tauri::generate_context!()
+}
+
 pub fn run() {
     tauri::Builder::default()
         // First, so a second launch hands its file over before anything else
@@ -590,7 +598,7 @@ pub fn run() {
                 _ => {}
             }
         })
-        .build(tauri::generate_context!())
+        .build(context())
         .expect("error while building Warraq")
         .run(|app, event| {
             // Kept ready in the background: closing the last window does not
