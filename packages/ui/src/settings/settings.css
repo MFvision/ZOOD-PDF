@@ -9,9 +9,13 @@
 .dialog.prefs-dialog {
   inline-size: min(calc(100vw - 32px), 880px);
   block-size: min(calc(100dvh - var(--sheet-top, var(--toolbar-h)) - 24px), 680px);
-  display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Only while open: a closed <dialog> must keep the browser's display: none. */
+.dialog.prefs-dialog[open] {
+  display: flex;
 }
 
 .prefs-dialog .dialog-body {

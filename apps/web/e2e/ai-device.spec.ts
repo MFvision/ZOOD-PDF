@@ -65,7 +65,7 @@ test.describe('the AI tool on this device', () => {
     await installDeviceStub(page, answer);
     await page.goto('/');
     // The details, saved once in Settings.
-    await page.getByRole('menubar').getByRole('menuitem', { name: 'محرر زود PDF' }).click();
+    await page.getByRole('menubar').getByRole('menuitem', { name: 'ZOOD PDF' }).click();
     await page.getByRole('menuitem', { name: /^Settings…/ }).click();
     const sheet = page.getByRole('dialog', { name: 'Settings' });
     await sheet.getByLabel('Name (Arabic)').fill('محمد علي');
@@ -131,7 +131,7 @@ test.describe('the AI tool on this device', () => {
     await openPdf(page, INVOICE);
     await chooseTool(page, 'AI');
     await download(page);
-    await page.getByRole('menubar').getByRole('menuitem', { name: 'محرر زود PDF' }).click();
+    await page.getByRole('menubar').getByRole('menuitem', { name: 'ZOOD PDF' }).click();
     await page.getByRole('menuitem', { name: /^Settings…/ }).click();
     const sheet = page.getByRole('dialog', { name: 'Settings' });
     await expect(sheet.getByLabel('The AI tool starts with')).toHaveValue('device');

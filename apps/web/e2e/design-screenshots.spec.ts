@@ -138,7 +138,7 @@ test('the tool picker’s gallery, Arabic, dark', async ({ page, stayLocal: _ })
 
 test('About', async ({ page, stayLocal: _ }) => {
   await start(page, 'en', 'dark');
-  await page.getByRole('menubar').getByRole('menuitem', { name: 'محرر زود PDF' }).click();
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'ZOOD PDF' }).click();
   await page.getByRole('menuitem', { name: /^About/ }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await shoot(page, 'about-en-dark');

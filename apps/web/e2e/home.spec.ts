@@ -66,7 +66,7 @@ test.describe('the home screen', () => {
     test.setTimeout(300_000);
     await home(page);
     // The wordmark, the places and every tool are in the sidebar; no bell, no avatar.
-    await expect(sidebar(page).locator('.home-brand-name bdi')).toHaveText('محرر زود PDF');
+    await expect(sidebar(page).locator('.home-brand-name bdi')).toHaveText('ZOOD PDF');
     for (const place of ['Home', 'Recents', 'Starred', 'Tags']) await expect(sidebar(page).getByRole('button', { name: place, exact: true })).toBeVisible();
     await expect(sidebar(page).getByRole('button', { name: 'Clouds' })).toHaveCount(0);
     await expect(sidebar(page).getByRole('list', { name: 'Tools' }).getByRole('button')).toHaveCount(await page.locator('.home .tool-cards-grid .tool-card').count());

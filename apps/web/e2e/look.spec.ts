@@ -40,13 +40,15 @@ test('the app’s name is set as Arabic even inside the English interface, so it
 }) => {
   for (const lang of ['en', 'ar'] as const) {
     await start(page, lang);
+    // ZOOD PDF in English; محرر زود PDF, the App Store name, in Arabic.
+    const name = lang === 'en' ? 'ZOOD PDF' : 'محرر زود PDF';
     const wordmark = page.locator('.home-brand-name bdi');
-    await expect(wordmark).toHaveText('محرر زود PDF');
+    await expect(wordmark).toHaveText(name);
     expect(await tracking(wordmark), `the home title, in ${lang}`).toBe(0);
-    // It reads right to left wherever it is set.
-    expect(await wordmark.evaluate((node) => getComputedStyle(node).direction)).toBe('rtl');
+    // The Arabic name reads right to left wherever it is set.
+    if (lang === 'ar') expect(await wordmark.evaluate((node) => getComputedStyle(node).direction)).toBe('rtl');
 
-    await page.getByRole('menubar').getByRole('menuitem', { name: 'محرر زود PDF' }).click();
+    await page.getByRole('menubar').getByRole('menuitem', { name }).click();
     await page.getByRole('menuitem', { name: /About|حول/ }).click();
     const about = page.getByRole('dialog').locator('.about-name bdi');
     await expect(about).toBeVisible();

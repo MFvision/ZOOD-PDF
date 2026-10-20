@@ -281,7 +281,7 @@ test.describe('replaced text keeps the font it was set in', () => {
     expect(text).not.toContain('WARRAQ+Inter');
 
     // Settings: the switch is on, the fonts' size is shown, and they can be deleted.
-    await page.getByRole('menubar').getByRole('menuitem', { name: 'محرر زود PDF' }).click();
+    await page.getByRole('menubar').getByRole('menuitem', { name: 'ZOOD PDF' }).click();
     await page.getByRole('menuitem', { name: /^Settings…/ }).click();
     const settings = page.getByRole('dialog', { name: 'Settings' });
     const toggle = settings.getByRole('checkbox', { name: 'Download matching fonts automatically when editing text' });

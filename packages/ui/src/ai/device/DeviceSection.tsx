@@ -22,12 +22,12 @@ const RUNTIME: Record<Runtime, TKey> = {
  * stop the download, or delete the file. Shown in the AI panel and in the
  * settings alike.
  */
-export function DeviceSection({ view, showDelete = true }: { view: DeviceModelView; showDelete?: boolean }) {
+export function DeviceSection({ view, showDelete = true, compact = false }: { view: DeviceModelView; showDelete?: boolean; compact?: boolean }) {
   const { t } = useI18n();
   const { model, status, runtime, error } = view;
   const size = formatBytes(model.bytes);
-  return (
-    <div className="ai-group ai-device" data-model-state={status?.kind ?? 'unknown'}>
+  const facts = (
+    <>
       <p className="tool-panel-note">{t(isTauriHost() ? 'ai.deviceNote' : 'ai.deviceWebNote')}</p>
       <dl className="ai-facts">
         <div>
@@ -45,6 +45,32 @@ export function DeviceSection({ view, showDelete = true }: { view: DeviceModelVi
           </dd>
         </div>
       </dl>
+      {status?.kind === 'missing' && <p className="tool-panel-note">{t('ai.deviceSource')}</p>}
+    </>
+  );
+  // The home screen's card: one line and one button; the model's name,
+  // licence, checksum and source are a click away under Details (and in
+  // Settings › AI), said before anything is fetched all the same.
+  if (compact && status?.kind === 'missing') {
+    return (
+      <div className="ai-group ai-device ai-device-compact" data-model-state="missing">
+        <p className="ai-device-line">{t('ai.card.downloadLine')}</p>
+        <IconButton label={t('ai.card.download', { size })} icon={<Icon of={Download} />} showLabel variant="primary" onClick={view.download} />
+        <details className="ai-device-details">
+          <summary>{t('ai.card.details')}</summary>
+          {facts}
+        </details>
+        {error && (
+          <p className="field-error" role="alert">
+            {t('ai.deviceDownloadFailed', { message: error })}
+          </p>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="ai-group ai-device" data-model-state={status?.kind ?? 'unknown'}>
+      {facts}
       {status === null && (
         <p className="tool-panel-note" role="status">
           <Icon of={Loader} className="spin" /> {t('ai.deviceChecking')}
@@ -57,7 +83,6 @@ export function DeviceSection({ view, showDelete = true }: { view: DeviceModelVi
       )}
       {status?.kind === 'missing' && (
         <>
-          <p className="tool-panel-note">{t('ai.deviceSource')}</p>
           <div className="tool-actions">
             <IconButton label={t('ai.deviceDownload', { size })} icon={<Icon of={Download} />} showLabel variant="primary" onClick={view.download} />
           </div>

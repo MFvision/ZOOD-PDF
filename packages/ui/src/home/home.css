@@ -925,3 +925,59 @@
     scroll-behavior: auto;
   }
 }
+
+/* "Ask about all my documents": the question box's question goes to the Library. */
+.home-ai-everything {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: var(--space-2);
+  align-items: center;
+  min-block-size: 28px;
+  padding-inline: var(--space-4);
+  font: inherit;
+  font-size: var(--text-footnote);
+  font-weight: 500;
+  color: var(--secondary-label);
+  background: transparent;
+  border: 1px solid var(--separator);
+  border-radius: 999px;
+}
+
+.home-ai-everything:hover:not(:disabled) {
+  background: var(--tertiary-fill);
+}
+
+.home-ai-everything[aria-pressed="true"] {
+  color: var(--accent-contrast, #fff);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.home-ai-everything:disabled {
+  opacity: 0.55;
+}
+
+/* ---- The model, not yet on this device: one line and one button ---- */
+
+.ai-device-compact {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.ai-device-line {
+  margin: 0;
+  font-size: var(--text-subheadline);
+  color: var(--secondary-label);
+}
+
+.ai-device-details summary {
+  font-size: var(--text-footnote);
+  color: var(--accent);
+  cursor: default;
+}
+
+.ai-device-details[open] summary {
+  margin-block-end: var(--space-2);
+}
