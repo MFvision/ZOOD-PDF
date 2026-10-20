@@ -662,7 +662,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // A file from a drive is listed with its drive, and pictured there
         // under the drive's own key (`cloud/`) — not among this device's.
         if (options?.recent !== false && getSettings().keepRecent) {
-          setRecent(addRecent(file.name));
+          setRecent(addRecent(file.name, Date.now(), file.size));
           // On the desktop, where it came from too, so it opens again directly.
           const path = nativePathOf(file);
           if (path) rememberRecentPath(file.name, path);

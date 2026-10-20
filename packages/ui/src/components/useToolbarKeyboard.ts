@@ -12,14 +12,16 @@ const FOCUSABLE = 'button, select, input, [tabindex="0"]';
  * pressed in a popover the toolbar opened (the tool picker, a portal) up to
  * the toolbar too, which took the focus out of the popover.
  */
-export function useToolbarKeyboard(dir: Direction) {
+export function useToolbarKeyboard(dir: Direction, orientation: 'horizontal' | 'vertical' = 'horizontal') {
   return useCallback(
     (event: KeyboardEvent<HTMLElement>) => {
       const target = event.target as HTMLElement;
       if (event.defaultPrevented || !event.currentTarget.contains(target)) return;
       if (target.matches('input, select, textarea')) return;
-      const forward = dir === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
-      const backward = dir === 'rtl' ? 'ArrowRight' : 'ArrowLeft';
+      // A column (`aria-orientation="vertical"`) moves with up and down.
+      const vertical = orientation === 'vertical';
+      const forward = vertical ? 'ArrowDown' : dir === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
+      const backward = vertical ? 'ArrowUp' : dir === 'rtl' ? 'ArrowRight' : 'ArrowLeft';
       let step: number;
       if (event.key === forward) step = 1;
       else if (event.key === backward) step = -1;
@@ -40,6 +42,6 @@ export function useToolbarKeyboard(dir: Direction) {
       items[next]?.focus();
       event.preventDefault();
     },
-    [dir],
+    [dir, orientation],
   );
 }

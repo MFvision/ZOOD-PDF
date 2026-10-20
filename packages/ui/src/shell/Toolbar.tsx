@@ -152,7 +152,8 @@ export function Toolbar() {
             )}
           </div>
         )}
-        <div className="toolbar-group">
+        {/* On the home screen every tool is in the sidebar and behind More. */}
+        <div className="toolbar-group" hidden={!hasDocument && state.view !== 'viewer'}>
           <button
             ref={setGalleryButton}
             type="button"

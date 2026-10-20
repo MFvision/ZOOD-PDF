@@ -7,7 +7,7 @@ import standardStamps from '../../public/stamps/en/manifest.json';
 import { isTauriHost, uiLog } from '../core/host-tauri';
 import type { Lang } from '../i18n/messages';
 import { requestOpenLink } from '../links/openLink';
-import { capability, disabledCategories, watchZoom } from './embedControl';
+import { capability, disabledCategories, scrollToPage, watchZoom } from './embedControl';
 import { applyOpenSettings, applyOpenZoom, rememberZoom, setNightReading, setSpreadDirection, spreadsRightToLeft } from './embedSettings';
 import { useSettings } from '../state/settings';
 import { setEmbedLanguage, setEmbedStrings } from './embedLanguage';
@@ -25,6 +25,9 @@ import { EMBED_COLORS, installThemeStyles, removeDuplicatedChrome, showMarkupBar
  * the strict CSP would block those requests anyway — silently, as a viewer
  * that never renders.
  */
+
+/** How long EmbedPDF takes to lay a newly opened file out and set its own zoom. */
+const OPEN_SETTLE_MS = 250;
 
 /** Windows charset of Arabic in PDFium's fallback table (`FontCharset.ARABIC`). */
 const ARABIC_CHARSET = 178;
@@ -199,17 +202,6 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
         .toPromise();
       openedRef.current = response.documentId;
       showMarkupBar(registry, markupRef.current);
-      // Settings › Viewing, for a file that has just come on screen (not for
-      // new bytes of the same one after an edit): the first time, the layout
-      // and zoom it says; when the file comes back (another tab, then this),
-      // the zoom it was left at.
-      if (shownRef.current !== currentName) {
-        shownRef.current = currentName;
-        if (seenRef.current.has(currentName)) applyOpenZoom(registry, 'remember', currentName);
-        else applyOpenSettings(registry, currentName);
-        seenRef.current.add(currentName);
-        setSpreadDirection(shadowRef.current, spreadsRightToLeft(current));
-      }
       uiLog(`embedpdf opened ${currentName}`);
       reportDrawn(currentName);
       onOpened?.(current);
@@ -219,6 +211,30 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
       return;
     }
     if (previous) await manager.closeDocument(previous).toPromise().catch(() => undefined);
+    // Settings › Viewing, for a file that has just come on screen (not for
+    // new bytes of the same one after an edit): the first time, the layout
+    // and zoom it says; when the file comes back (another tab, then this),
+    // the zoom it was left at. A view setting that fails never fails the open.
+    if (shownRef.current !== currentName) {
+      shownRef.current = currentName;
+      const again = seenRef.current.has(currentName);
+      seenRef.current.add(currentName);
+      // After EmbedPDF's own first layout, which sets its starting zoom.
+      setTimeout(() => {
+        if (shownRef.current !== currentName) return;
+        try {
+          if (again) applyOpenZoom(registry, 'remember', currentName);
+          else {
+            applyOpenSettings(registry, currentName);
+            // A new zoom keeps the middle of the view: a file just opened starts at its top.
+            setTimeout(() => shownRef.current === currentName && scrollToPage(registry, 1), 60);
+          }
+        } catch (error) {
+          uiLog(`view settings not applied to ${currentName}: ${String(error)}`);
+        }
+      }, OPEN_SETTLE_MS);
+      setSpreadDirection(shadowRef.current, spreadsRightToLeft(current));
+    }
   };
 
   // A different document, or new bytes after a Warraq edit, reopens it.

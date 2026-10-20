@@ -3,6 +3,7 @@ import { systemUserName } from '../core/host-tauri';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { useSettings } from '../state/settings';
+import { useAppState } from '../state/AppContext';
 
 /** Morning until noon, afternoon until five, evening after (and through the night). */
 export function partOfDay(hour: number): 'morning' | 'afternoon' | 'evening' {
@@ -19,13 +20,8 @@ const GREETING: Record<ReturnType<typeof partOfDay>, { alone: TKey; named: TKey 
 
 let systemName: Promise<string> | null = null;
 
-/**
- * The top of the home screen: "Good morning, Mohammed" with the line under
- * it, or the app's own headline when the greeting is off (Settings › Home
- * screen). The name is the one typed there, else the computer's user name
- * (desktop), else none.
- */
-export function Greeting() {
+/** "Good morning, Mohammed", or "Good morning" without a name; null with the greeting off. */
+function useGreeting(): string | null {
   const { t } = useI18n();
   const settings = useSettings();
   const [fallback, setFallback] = useState('');
@@ -46,12 +42,38 @@ export function Greeting() {
     return () => clearInterval(timer);
   }, []);
 
+  if (!settings.greeting) return null;
   const name = (settings.userName || fallback).trim().split(/\s+/)[0] ?? '';
   const keys = GREETING[partOfDay(hour)];
+  return name ? t(keys.named, { name }) : t(keys.alone);
+}
+
+/**
+ * The top of the home screen: "Good morning, Mohammed" with the line under
+ * it, or the app's own headline when the greeting is off (Settings › Home
+ * screen). The name is the one typed there, else the computer's user name
+ * (desktop), else none. In the Concept look the headline stays and the
+ * greeting goes to the top right (`TopGreeting`), as in the concept image.
+ */
+export function Greeting() {
+  const { t } = useI18n();
+  const { look } = useAppState();
+  const greeting = useGreeting();
   return (
     <header className="home-hero">
-      <h1>{settings.greeting ? (name ? t(keys.named, { name }) : t(keys.alone)) : t('home.headline')}</h1>
+      <h1>{greeting && look !== 'concept' ? greeting : t('home.headline')}</h1>
       <p>{t('home.subline')}</p>
     </header>
+  );
+}
+
+/** The greeting in the home screen's top bar: shown by the Concept look only (looks/concept.css). */
+export function TopGreeting() {
+  const greeting = useGreeting();
+  if (!greeting) return null;
+  return (
+    <p className="home-topbar-greeting" aria-hidden="true">
+      <strong>{greeting}</strong>
+    </p>
   );
 }

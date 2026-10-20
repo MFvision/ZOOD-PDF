@@ -18,20 +18,23 @@ export const LAYOUT_COMMANDS: Record<PageLayout, readonly string[]> = {
   continuous: ['scroll:vertical', 'spread:none'],
   // One page at a time: side by side, each fitted to the window, so a scroll
   // or an arrow key goes to the next page whole.
-  single: ['scroll:horizontal', 'spread:none', 'zoom:fit-page'],
+  single: ['scroll:horizontal', 'spread:none'],
   two: ['scroll:vertical', 'spread:odd'],
   // The cover on its own, then 2–3, 4–5…: how a printed book opens.
   book: ['scroll:vertical', 'spread:even'],
 };
 
-const ZOOM_COMMANDS: Record<Exclude<OpenZoom, 'remember'>, string> = {
-  'fit-width': 'zoom:fit-width',
-  'fit-page': 'zoom:fit-page',
-  actual: 'zoom:100',
+// Asked of the zoom plugin itself: its fit commands are toggles, and a
+// second "fit width" on a view already fitted would undo it.
+const ZOOMS: Record<Exclude<OpenZoom, 'remember'>, number | 'fit-page' | 'fit-width'> = {
+  'fit-width': 'fit-width',
+  'fit-page': 'fit-page',
+  actual: 1,
 };
 
 export function applyPageLayout(registry: PluginRegistry, layout: PageLayout): void {
   for (const command of LAYOUT_COMMANDS[layout]) runCommand(registry, command);
+  if (layout === 'single') setZoom(registry, 'fit-page');
 }
 
 /* ---- The zoom each file was last read at ("As last time for that file") ---- */
@@ -62,14 +65,8 @@ export function rememberedZoom(file: string): KeptZoom | null {
 }
 
 export function applyOpenZoom(registry: PluginRegistry, zoom: OpenZoom, file: string): void {
-  if (zoom !== 'remember') {
-    runCommand(registry, ZOOM_COMMANDS[zoom]);
-    return;
-  }
-  const kept = rememberedZoom(file);
-  if (kept === null) runCommand(registry, ZOOM_COMMANDS['fit-width']);
-  else if (typeof kept === 'number') setZoom(registry, kept);
-  else runCommand(registry, ZOOM_COMMANDS[kept]);
+  if (zoom !== 'remember') return setZoom(registry, ZOOMS[zoom]);
+  setZoom(registry, rememberedZoom(file) ?? 'fit-width');
 }
 
 /** Everything Settings › Viewing says about a document that has just opened. */

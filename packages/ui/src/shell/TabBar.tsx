@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
 import type { KeyboardEvent } from 'react';
-import { Plus, X } from 'lucide-react';
+import { House, Plus, X } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { useI18n } from '../i18n/useT';
-import { useAppState, useServices } from '../state/AppContext';
+import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { useSettings } from '../state/settings';
+import { useWorkbench } from './workbench';
 import './tabs.css';
 
 /**
@@ -13,13 +14,17 @@ import './tabs.css';
  * a tab are copied to the end of its document; onto "+", they become a new
  * document (`organize/OrganizeView.tsx` drags them; the tabs say where with
  * `data-tab-drop`). Ctrl+Tab and Ctrl+Shift+Tab go to the next and the
- * previous tab.
+ * previous tab. The Workbench look leads with a Home tab: the home screen
+ * over the documents, which stay open.
  */
 export function TabBar() {
   const services = useServices();
   const state = useAppState();
   const { t } = useI18n();
   const settings = useSettings();
+  const dispatch = useAppDispatch();
+  const workbench = useWorkbench();
+  const onHome = state.view !== 'viewer' || state.homeShown;
   const { tabs, activeTab, activateTab, closeTab } = services;
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -37,7 +42,7 @@ export function TabBar() {
   }, [tabs, activeTab, activateTab]);
 
   // Settings › Viewing: always, or only once there is a second document.
-  if (tabs.length < (settings.tabBar === 'several' ? 2 : 1)) return null;
+  if (!workbench && tabs.length < (settings.tabBar === 'several' ? 2 : 1)) return null;
 
   // Arrow keys move along the tabs, mirrored right to left by the browser's own order.
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -57,8 +62,23 @@ export function TabBar() {
   return (
     <div className="tab-bar">
       <div ref={listRef} className="tab-list" role="tablist" aria-label={t('tabs.label')} onKeyDown={onKeyDown}>
+        {workbench && (
+          <div className={['tab', 'tab-home', onHome && 'is-live'].filter(Boolean).join(' ')}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={onHome}
+              tabIndex={onHome ? 0 : -1}
+              className="tab-name"
+              onClick={() => dispatch({ type: 'SHOW_HOME', shown: true })}
+            >
+              <Icon of={House} size={14} />
+              <span>{t('workbench.home')}</span>
+            </button>
+          </div>
+        )}
         {tabs.map((tab) => {
-          const live = tab.key === activeTab;
+          const live = tab.key === activeTab && !onHome;
           const loading = live && state.loadingName !== null;
           return (
             <div
@@ -77,7 +97,10 @@ export function TabBar() {
                 className="tab-name"
                 title={tab.path ?? tab.name}
                 aria-busy={loading || undefined}
-                onClick={() => activateTab(tab.key)}
+                onClick={() => {
+                  dispatch({ type: 'SHOW_HOME', shown: false });
+                  activateTab(tab.key);
+                }}
               >
                 <span dir="auto">{tab.name}</span>
                 {tab.edited ? (

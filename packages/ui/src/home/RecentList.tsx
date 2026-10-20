@@ -1,20 +1,47 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Ellipsis, FileText, FolderOpen, Star, StarOff, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Ellipsis, FileText, FolderOpen, LayoutGrid, List, Star, StarOff, Trash2 } from 'lucide-react';
 import { ContextMenu } from '../components/ContextMenu';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
-import { isTauriHost } from '../core/host-tauri';
+import { isTauriHost, recentFolder } from '../core/host-tauri';
 import { useI18n } from '../i18n/useT';
 import { useServices } from '../state/AppContext';
-import { readRecentDates, readRecentThumbnails } from '../state/recent';
+import { readJson, writeJson } from '../state/preferences';
+import { readRecentDates, readRecentSizes, readRecentThumbnails } from '../state/recent';
 import { starId, toggleStarred, useStarred } from '../state/starred';
 import { describeDate } from './dates';
 import { DropZone } from './DropZone';
+import { formatBytes } from './useLibraryIndex';
 
 interface RecentListProps {
-  /** A row that pages sideways (the home view), or every file as a grid (the Recents view). */
-  layout: 'row' | 'grid';
+  /**
+   * A row that pages sideways (the home view), every file as a grid (the
+   * Recents view), or a table of name, date, size and place (the Workbench
+   * look's home), which a switch turns into the grid and back.
+   */
+  layout: 'row' | 'grid' | 'table';
   onSeeAll?: () => void;
+}
+
+type TableView = 'table' | 'grid';
+const VIEW_KEY = 'zood.recentView';
+const readView = (): TableView => (readJson<unknown>(VIEW_KEY, 'table') === 'grid' ? 'grid' : 'table');
+
+/** Where each recent file was, by name: asked of the desktop, which keeps the paths; nothing in a browser. */
+function useRecentFolders(names: readonly string[], wanted: boolean): Record<string, string> {
+  const [folders, setFolders] = useState<Record<string, string>>({});
+  const key = names.join('\n');
+  useEffect(() => {
+    if (!wanted || !isTauriHost()) return undefined;
+    let live = true;
+    void Promise.all(key.split('\n').filter(Boolean).map(async (name) => [name, await recentFolder(name)] as const)).then((found) => {
+      if (live) setFolders(Object.fromEntries(found.filter((entry): entry is readonly [string, string] => entry[1] !== null)));
+    });
+    return () => {
+      live = false;
+    };
+  }, [key, wanted]);
+  return folders;
 }
 
 /**
@@ -25,9 +52,18 @@ interface RecentListProps {
  * file by itself); the desktop app also keeps where it was, and opens it
  * directly. The row pages with ‹ ›; the grid shows them all.
  */
-export function RecentList({ layout, onSeeAll }: RecentListProps) {
+export function RecentList({ layout: asked, onSeeAll }: RecentListProps) {
   const { t, lang, dir } = useI18n();
   const { recent, openRecent, clearRecent, removeRecent } = useServices();
+  const switchable = asked === 'table';
+  const [view, setView] = useState<TableView>(readView);
+  const layout = switchable ? view : asked;
+  const sizes = readRecentSizes(recent);
+  const folders = useRecentFolders(recent, layout === 'table');
+  const chooseView = (next: TableView) => {
+    setView(next);
+    writeJson(VIEW_KEY, next);
+  };
   const starred = useStarred();
   const thumbnails = readRecentThumbnails();
   const dates = readRecentDates(recent);
@@ -95,6 +131,24 @@ export function RecentList({ layout, onSeeAll }: RecentListProps) {
               {t('home.recentClear')}
             </button>
           )}
+          {switchable && (
+            <span className="segmented recent-view-switch" role="radiogroup" aria-label={t('home.recentView')}>
+              {(['table', 'grid'] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  role="radio"
+                  className="segmented-item"
+                  aria-checked={view === option}
+                  aria-label={t(option === 'table' ? 'home.recentList' : 'home.recentGrid')}
+                  title={t(option === 'table' ? 'home.recentList' : 'home.recentGrid')}
+                  onClick={() => chooseView(option)}
+                >
+                  <Icon of={option === 'table' ? List : LayoutGrid} size={14} />
+                </button>
+              ))}
+            </span>
+          )}
           {layout === 'row' && recent.length > 0 && (
             <span className="home-paging">
               <IconButton label={t('home.recentPrev')} icon={<Icon of={ChevronLeft} mirror />} disabled={edges.start} onClick={() => page(-1)} />
@@ -103,6 +157,60 @@ export function RecentList({ layout, onSeeAll }: RecentListProps) {
           )}
         </div>
       </div>
+      {layout === 'table' ? (
+        recent.length > 0 && (
+          <table className="recent-table">
+            <thead>
+              <tr>
+                <th scope="col">{t('home.col.name')}</th>
+                <th scope="col">{t('home.col.opened')}</th>
+                <th scope="col">{t('home.col.size')}</th>
+                <th scope="col">{t('home.col.place')}</th>
+                <th scope="col">
+                  <span className="sr-only">{t('home.col.actions')}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {recent.map((name) => (
+                <tr key={name}>
+                  <td className="recent-table-name">
+                    <button type="button" className="recent-table-open" onClick={() => openRecent(name)} title={t('home.recentOpen', { name })}>
+                      <span className="recent-table-thumb" aria-hidden="true">
+                        {thumbnails[name] ? <img src={thumbnails[name]} alt="" /> : <Icon of={FileText} size={14} />}
+                      </span>
+                      {starOf(name) && (
+                        <span className="recent-table-star" role="img" aria-label={t('home.starred')}>
+                          <Icon of={Star} size={12} />
+                        </span>
+                      )}
+                      <span dir="auto">{name.replace(/\.pdf$/i, '')}</span>
+                    </button>
+                  </td>
+                  <td>{dates[name] !== undefined ? describeDate(dates[name], lang, t) : '—'}</td>
+                  <td>{sizes[name] !== undefined ? formatBytes(sizes[name], lang) : '—'}</td>
+                  <td className="recent-table-place" title={folders[name]} dir="auto">
+                    {folders[name] ?? (isTauriHost() ? '—' : t('home.placeBrowser'))}
+                  </td>
+                  <td>
+                    <IconButton
+                      className="recent-more"
+                      label={t('home.recentMenu', { name })}
+                      icon={<Icon of={Ellipsis} size={16} />}
+                      aria-haspopup="menu"
+                      aria-expanded={menu?.name === name}
+                      onClick={(event) => {
+                        const box = event.currentTarget.getBoundingClientRect();
+                        setMenu({ name, at: { x: dir === 'rtl' ? box.left : box.right - 200, y: box.bottom + 4 }, from: event.currentTarget });
+                      }}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )
+      ) : (
       <ul ref={scroller} className={layout === 'row' ? 'recent-row' : 'recent-grid'}>
         {layout === 'grid' && (
           <li>
@@ -139,6 +247,7 @@ export function RecentList({ layout, onSeeAll }: RecentListProps) {
           </li>
         ))}
       </ul>
+      )}
       <ContextMenu
         at={menu?.at ?? null}
         label={menu ? t('home.recentMenu', { name: menu.name }) : ''}

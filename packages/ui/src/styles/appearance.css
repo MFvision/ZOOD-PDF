@@ -3,34 +3,35 @@
  * icons, icon size, and reduced transparency or motion asked for in the app
  * rather than by the system. SettingsEffects puts each on <html> as a data
  * attribute; nothing is set when the setting is the look's own.
- * Imported after looks.css, so a chosen accent wins over the look's.
+ * Imported after looks.css, so a chosen accent wins over the look's —
+ * except Monochrome's, which has no colour to give up.
  */
 
 /* ---- Accent ------------------------------------------------------------------ */
 
-:root:root[data-accent="blue"] { --accent: #007aff; --accent-contrast: #fff; }
-:root:root[data-accent="purple"] { --accent: #9b51e0; --accent-contrast: #fff; }
-:root:root[data-accent="pink"] { --accent: #e0306e; --accent-contrast: #fff; }
-:root:root[data-accent="red"] { --accent: #e5352b; --accent-contrast: #fff; }
-:root:root[data-accent="orange"] { --accent: #e07800; --accent-contrast: #fff; }
-:root:root[data-accent="green"] { --accent: #26a148; --accent-contrast: #fff; }
-:root:root[data-accent="graphite"] { --accent: #6e6e73; --accent-contrast: #fff; }
+:root:root[data-accent="blue"]:not([data-look="mono"]) { --accent: #007aff; --accent-contrast: #fff; }
+:root:root[data-accent="purple"]:not([data-look="mono"]) { --accent: #9b51e0; --accent-contrast: #fff; }
+:root:root[data-accent="pink"]:not([data-look="mono"]) { --accent: #e0306e; --accent-contrast: #fff; }
+:root:root[data-accent="red"]:not([data-look="mono"]) { --accent: #e5352b; --accent-contrast: #fff; }
+:root:root[data-accent="orange"]:not([data-look="mono"]) { --accent: #e07800; --accent-contrast: #fff; }
+:root:root[data-accent="green"]:not([data-look="mono"]) { --accent: #26a148; --accent-contrast: #fff; }
+:root:root[data-accent="graphite"]:not([data-look="mono"]) { --accent: #6e6e73; --accent-contrast: #fff; }
 
 @media (prefers-color-scheme: dark) {
-  :root:root:not([data-theme="light"])[data-accent="blue"] { --accent: #0a84ff; }
-  :root:root:not([data-theme="light"])[data-accent="purple"] { --accent: #bf5af2; }
-  :root:root:not([data-theme="light"])[data-accent="pink"] { --accent: #ff375f; }
-  :root:root:not([data-theme="light"])[data-accent="red"] { --accent: #ff453a; }
-  :root:root:not([data-theme="light"])[data-accent="orange"] { --accent: #ff9f0a; --accent-contrast: #1c1c1e; }
-  :root:root:not([data-theme="light"])[data-accent="green"] { --accent: #30d158; --accent-contrast: #1c1c1e; }
-  :root:root:not([data-theme="light"])[data-accent="graphite"] { --accent: #98989d; --accent-contrast: #1c1c1e; }
+  :root:root:not([data-theme="light"])[data-accent="blue"]:not([data-look="mono"]) { --accent: #0a84ff; }
+  :root:root:not([data-theme="light"])[data-accent="purple"]:not([data-look="mono"]) { --accent: #bf5af2; }
+  :root:root:not([data-theme="light"])[data-accent="pink"]:not([data-look="mono"]) { --accent: #ff375f; }
+  :root:root:not([data-theme="light"])[data-accent="red"]:not([data-look="mono"]) { --accent: #ff453a; }
+  :root:root:not([data-theme="light"])[data-accent="orange"]:not([data-look="mono"]) { --accent: #ff9f0a; --accent-contrast: #1c1c1e; }
+  :root:root:not([data-theme="light"])[data-accent="green"]:not([data-look="mono"]) { --accent: #30d158; --accent-contrast: #1c1c1e; }
+  :root:root:not([data-theme="light"])[data-accent="graphite"]:not([data-look="mono"]) { --accent: #98989d; --accent-contrast: #1c1c1e; }
 }
 
-:root:root[data-theme="dark"][data-accent="blue"] { --accent: #0a84ff; }
-:root:root[data-theme="dark"][data-accent="purple"] { --accent: #bf5af2; }
-:root:root[data-theme="dark"][data-accent="pink"] { --accent: #ff375f; }
-:root:root[data-theme="dark"][data-accent="red"] { --accent: #ff453a; }
-:root:root[data-theme="dark"][data-accent="orange"] { --accent: #ff9f0a; --accent-contrast: #1c1c1e; }
+:root:root[data-theme="dark"][data-accent="blue"]:not([data-look="mono"]) { --accent: #0a84ff; }
+:root:root[data-theme="dark"][data-accent="purple"]:not([data-look="mono"]) { --accent: #bf5af2; }
+:root:root[data-theme="dark"][data-accent="pink"]:not([data-look="mono"]) { --accent: #ff375f; }
+:root:root[data-theme="dark"][data-accent="red"]:not([data-look="mono"]) { --accent: #ff453a; }
+:root:root[data-theme="dark"][data-accent="orange"]:not([data-look="mono"]) { --accent: #ff9f0a; --accent-contrast: #1c1c1e; }
 :root:root[data-theme="dark"][data-accent="green"] { --accent: #30d158; --accent-contrast: #1c1c1e; }
 :root:root[data-theme="dark"][data-accent="graphite"] { --accent: #98989d; --accent-contrast: #1c1c1e; }
 

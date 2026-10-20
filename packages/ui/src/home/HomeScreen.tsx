@@ -18,9 +18,10 @@ import { RecentList } from './RecentList';
 import { StarredView } from './StarredView';
 import { TagsView } from './TagsView';
 import { useLibraryIndex } from './useLibraryIndex';
-import { Greeting } from './Greeting';
+import { Greeting, TopGreeting } from './Greeting';
 import { useSettings } from '../state/settings';
 import { useStarred } from '../state/starred';
+import { useWorkbench } from '../shell/workbench';
 
 /**
  * The home screen: glass panels over a soft gradient. A sidebar of places
@@ -42,6 +43,8 @@ export function HomeScreen() {
   const [moreFrom, setMoreFrom] = useState<HTMLElement | null>(null);
   const settings = useSettings();
   const starred = useStarred();
+  // The Workbench look's plain home: recent files as a table.
+  const workbench = useWorkbench();
 
   const clouds = cloud.providers.length > 0;
   const shown: HomeView = view === 'clouds' && !clouds ? 'home' : view;
@@ -81,6 +84,7 @@ export function HomeScreen() {
           >
             <Icon of={Plus} size={18} />
           </button>
+          <TopGreeting />
           <ContextMenu at={addMenu?.at ?? null} label={t('home.add')} items={addItems} returnTo={addMenu?.from} onClose={() => setAddMenu(null)} />
         </div>
         <div className="home-body">
@@ -102,7 +106,7 @@ export function HomeScreen() {
                           />
                         );
                       case 'recent':
-                        return <RecentList key={section} layout="row" onSeeAll={() => setView('recents')} />;
+                        return <RecentList key={section} layout={workbench ? 'table' : 'row'} onSeeAll={() => setView('recents')} />;
                       case 'starred':
                         return starred.length > 0 ? (
                           <section key={section} className="home-section" aria-labelledby="home-starred">

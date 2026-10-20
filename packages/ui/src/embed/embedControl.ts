@@ -346,8 +346,8 @@ export function watchZoom(registry: PluginRegistry, onZoom: (zoom: EmbedZoom) =>
   return () => subscriptions.forEach((unsubscribe) => unsubscribe?.());
 }
 
-/** Sets EmbedPDF's zoom to a scale (1 is 100 %). */
-export function setZoom(registry: PluginRegistry, scale: number): void {
+/** Sets EmbedPDF's zoom to a scale (1 is 100 %), or fits the page or its width. */
+export function setZoom(registry: PluginRegistry, scale: number | 'fit-page' | 'fit-width'): void {
   capability<Zoom>(registry, 'zoom')?.requestZoom(scale);
 }
 

@@ -60,6 +60,11 @@ export interface OrganizeState {
 
 export interface AppState {
   view: 'home' | 'viewer';
+  /**
+   * The home screen shown over the open documents, which stay open behind it
+   * (the Workbench look's Home tab). Any document opening or closing ends it.
+   */
+  homeShown: boolean;
   document: DocumentInfo | null;
   loadingName: string | null;
   error: TKey | null;
@@ -123,6 +128,7 @@ export type AppAction =
   | { type: 'FIT_ZOOM_COMPUTED'; zoom: number }
   | { type: 'SET_THEME'; theme: ThemeMode }
   | { type: 'SET_LOOK'; look: UiLook }
+  | { type: 'SHOW_HOME'; shown: boolean }
   | { type: 'TOGGLE_LEFT_PANE'; open?: boolean }
   | { type: 'SET_LEFT_TAB'; tab: LeftTab }
   | { type: 'SET_LEFT_WIDTH'; width: number }
@@ -212,6 +218,7 @@ function bumpRevision(
 export function createInitialState(prefs: Preferences = {}): AppState {
   return {
     view: 'home',
+    homeShown: false,
     document: null,
     loadingName: null,
     error: null,
@@ -302,6 +309,7 @@ function reduce(state: AppState, action: AppAction): AppState {
           rightPane: { ...state.rightPane, open: getSettings().toolsPanel },
         }),
         view: 'viewer',
+        homeShown: false,
         document: action.document,
         loadingName: null,
         error: null,
@@ -326,6 +334,7 @@ function reduce(state: AppState, action: AppAction): AppState {
         ...state,
         switching: null,
         view: 'home',
+        homeShown: false,
         document: null,
         currentPage: 1,
         scrollRequest: null,
@@ -357,7 +366,10 @@ function reduce(state: AppState, action: AppAction): AppState {
     case 'SET_THEME':
       return { ...state, theme: action.theme };
     case 'SET_LOOK':
-      return { ...state, look: action.look };
+      // Only the Workbench look has a Home tab to come back from.
+      return { ...state, look: action.look, homeShown: action.look === 'workbench' && state.homeShown };
+    case 'SHOW_HOME':
+      return { ...state, homeShown: action.shown && state.view === 'viewer' };
     case 'TOGGLE_LEFT_PANE':
       return {
         ...state,
@@ -378,6 +390,8 @@ function reduce(state: AppState, action: AppAction): AppState {
       // Picking the Edit tool is what "enter Edit mode" means; leaving it exits.
       return {
         ...state,
+        // A tool works on the document: chosen from the home screen over it, it goes back to it.
+        homeShown: action.tool ? false : state.homeShown,
         rightPane: {
           ...state.rightPane,
           activeTool: action.tool,

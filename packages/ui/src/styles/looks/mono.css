@@ -1,0 +1,26 @@
+/*
+ * Monochrome (Settings › Appearance): the greys of looks.css, and every icon
+ * a plain line in the text colour, whatever Coloured icons says. Nothing
+ * here is tinted: the accent is the text colour's own grey.
+ */
+
+html[data-look="mono"] .tool-icon {
+  color: var(--label);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--separator);
+}
+
+html[data-look="mono"] .home-nav-item.is-current,
+html[data-look="mono"] .prefs-nav-item.is-current {
+  color: var(--label);
+  background: var(--fill);
+}
+
+html[data-look="mono"] .home-card {
+  box-shadow: none;
+  border: 1px solid var(--glass-border);
+}
+
+html[data-look="mono"] :is(.home-brand img, .prefs-about img) {
+  filter: grayscale(1);
+}

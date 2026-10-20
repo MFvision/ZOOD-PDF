@@ -265,6 +265,18 @@ export async function openRecentFile(name: string): Promise<PickedFile | null> {
   return { name: baseName(path), bytes: toArrayBuffer(await readFile(path)), path };
 }
 
+/**
+ * The folder a recent file was last opened from, for the Workbench home's
+ * table; `null` in a browser, or when the desktop does not know it.
+ */
+export async function recentFolder(name: string): Promise<string | null> {
+  if (!internals()) return null;
+  const path = await invoke('recent_path', { name }).catch(() => null);
+  if (typeof path !== 'string') return null;
+  const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  return cut > 0 ? path.slice(0, cut) : null;
+}
+
 /* -------------------------------------------------------------- quick tools */
 
 /** What a quick tools window works on (`src-tauri/src/quick.rs`). */

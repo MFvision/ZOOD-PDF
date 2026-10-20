@@ -127,3 +127,8 @@ html.ring-page.ring-waiting body {
 .ring-progress-failed .ring-progress-bar {
   stroke: var(--red, #ff3b30);
 }
+
+/* Settings › Appearance › Coloured icons off (and Monochrome, which turns it off): the glyphs in the text colour. */
+html[data-icons="plain"] .ring-segment:not(.ring-segment-over) svg {
+  color: var(--label);
+}
