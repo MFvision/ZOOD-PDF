@@ -41,9 +41,12 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.engine }}" = silma ] || [ "${{ matrix.engine }}" = habibi ]; then
-            pip install --index-url https://download.pytorch.org/whl/cpu torch torchaudio torchvision
+            # One matched set: torchcodec only loads against the torch it was built for.
+            pip install --index-url https://download.pytorch.org/whl/cpu torch==2.8.0 torchaudio==2.8.0 torchvision==0.23.0
+            pip install ${{ matrix.install }} torch==2.8.0 torchaudio==2.8.0 torchvision==0.23.0 torchcodec==0.7.0 2>&1 | tail -n 20
+          else
+            pip install ${{ matrix.install }} 2>&1 | tail -n 20
           fi
-          pip install ${{ matrix.install }} 2>&1 | tail -n 20
           pip show ${{ matrix.install }} 2>/dev/null | grep -E '^(Name|Version|License)' || true
       - name: run
         shell: bash
