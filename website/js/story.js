@@ -4,7 +4,7 @@
 // A title marks its highlighted phrase with [[ ]]. Screens live at
 // assets/<lang>/<device>/<name>-<theme>.webp (see SCREENS below).
 // Facts come only from docs/feature-matrix.md (✅ = shown in the chapters;
-// 🟡 and ⬜ = the "Coming later" list). README.md explains how to add a chapter.
+// 🟡 and ⬜ stay off the site until they work). README.md explains how to add a chapter.
 
 export const SITE = {
   name: { ar: 'زود PDF', en: 'ZOOD PDF' },
@@ -32,7 +32,6 @@ export const UI = {
   screen: { ar: 'شاشة: ', en: 'Screen: ' },
   comingSoon: { ar: 'قريبًا', en: 'Coming soon' },
   where: { ar: 'متوفر في: ', en: 'Available on: ' },
-  later: { ar: 'لاحقًا', en: 'Later' },
   noscript: {
     ar: 'هذه الصفحة تروي قصتها بجافاسكربت. قائمة الأدوات والصفحات القانونية تعمل من دونها.',
     en: 'This page tells its story with JavaScript. The legal pages work without it.',
@@ -49,7 +48,7 @@ const ON = {
 
 // Each chapter:
 //   id          the #anchor, also used by the chapter index
-//   kind        'story' (default), 'ring', 'wall', 'platforms', 'download', 'inside'
+//   kind        'story' (default), 'ring', 'ai', 'library', 'phone', 'family' (rooms), 'wall', 'platforms', 'download', 'inside'
 //   stage       pose numbers the desk animates between:
 //               pages 1-5, fan 0-1 (stack to arc), recede 0-1 (pages step back),
 //               dusk 0-1 (desk turns to navy ink), pattern 0-1, frame 0-1 (bronze frame)
@@ -106,6 +105,70 @@ export const CHAPTERS = [
       en: 'Ctrl+Alt+Z opens it on the selected files, and the same tools are on the right-click menu. The ring: ',
       on: { ar: 'ويندوز', en: 'Windows' },
     },
+  },
+  {
+    id: 'ai',
+    kind: 'ai',
+    stage: { pages: 1, fan: 0, recede: 0, dusk: 0, pattern: 0 },
+    devices: [],
+    eyebrow: { ar: 'المساعد الذكي', en: 'AI assistant' },
+    title: {
+      ar: 'خذ خلاصة الملف الطويل [[دون أن تقرأه كله]].',
+      en: 'Get the gist of a long file [[without reading it all]].',
+    },
+    lead: {
+      ar: 'اسأله عن الملف المفتوح، فيجيبك من صفحاته، والجواب يُكتب أمامك.',
+      en: 'Ask about the open file and it answers from its pages, writing as you watch.',
+    },
+    points: [
+      {
+        ar: 'لخّصه أو اشرحه أو ترجمه بين العربية والإنجليزية، وكل جواب يذكر الصفحات التي قرأها.',
+        en: 'Summarize it, explain it or translate it between Arabic and English. Each answer names the pages it read.',
+      },
+      {
+        ar: 'يعمل على جهازك افتراضيًا، فلا يغادره شيء.',
+        en: 'It runs on your device by default, so nothing leaves it.',
+      },
+      {
+        ar: 'أو استخدم مفتاحك الخاص لـ Claude أو نموذجًا محليًا، وترى النص قبل أن يُرسل.',
+        en: 'Or use your own Claude key or a local model, and see the exact text before it is sent.',
+      },
+    ],
+    note: {
+      ar: 'على آيفون وآيباد يعمل بنموذج النظام المدمج: ',
+      en: 'On iPhone and iPad it uses the model built into the system: ',
+      on: { ar: 'iOS 26 وما بعده', en: 'iOS 26 and later' },
+    },
+  },
+  {
+    id: 'library',
+    kind: 'library',
+    stage: { pages: 1, fan: 0, recede: 0, dusk: 0, pattern: 0 },
+    devices: [],
+    eyebrow: { ar: 'المكتبة', en: 'Library' },
+    title: {
+      ar: 'اكتب كلمة، [[فتجدها في كل ملفاتك]].',
+      en: 'Type a word, [[find it in every file]].',
+    },
+    lead: {
+      ar: 'أضف مجلدًا مرة واحدة، ثم ابحث في كل ما فيه دفعة واحدة، حتى الورق الممسوح والصور.',
+      en: 'Add a folder once, then search everything in it at once, scans and pictures included.',
+    },
+    points: [
+      {
+        ar: 'يجد الكلمة بتشكيلها أو من دونه، ويفتح الملف على الصفحة التي هي فيها.',
+        en: 'It finds the word with or without diacritics, and opens the file at its page.',
+      },
+      {
+        ar: 'ضع الوسوم بيدك، أو اكتب قاعدة: إن ورد «فاتورة» في النص، فوسمه «فواتير».',
+        en: 'Tag files yourself, or write a rule: if the text says “invoice”, tag it Invoices.',
+      },
+      {
+        ar: 'لا يغادر جهازك ملف ولا نص ولا بحث.',
+        en: 'No file, text or search leaves your device.',
+      },
+    ],
+    note: { ar: 'المكتبة: ', en: 'The Library: ', on: ON.desktopWeb },
   },
   {
     id: 'arabic',
@@ -317,33 +380,43 @@ export const CHAPTERS = [
     note: { ar: 'التعرّف الكامل على النص: ', en: 'Full OCR: ', on: ON.allButMobile },
   },
   {
-    id: 'ai',
-    stage: { pages: 2, fan: 0.2, recede: 1, dusk: 0, pattern: 0 },
-    act: { find: [0.15, 0.6] },
-    devices: [{ frame: 'desktop', screen: 'ai' }],
-    eyebrow: { ar: 'المساعد الذكي', en: 'AI assistant' },
+    id: 'phone',
+    kind: 'phone',
+    stage: { pages: 1, fan: 0, recede: 1, dusk: 0, pattern: 0 },
+    devices: [],
+    eyebrow: { ar: 'آيفون وآيباد', en: 'iPhone and iPad' },
     title: {
-      ar: 'خذ خلاصة الملف الطويل [[دون أن تقرأه كله]].',
-      en: 'Get the gist of a long file [[without reading it all]].',
+      ar: 'من الكاميرا إلى ملف تبحث فيه، [[على هاتفك]].',
+      en: 'From the camera to a file you can search, [[on your phone]].',
     },
     points: [
       {
-        ar: 'لخّصه أو اشرحه أو ترجمه بين العربية والإنجليزية، وكل جواب يذكر الصفحات التي قرأها.',
-        en: 'Summarize it, explain it or translate it between Arabic and English. Each answer names the pages it read.',
+        ar: 'امسح الورق بالكاميرا، فيُقرأ نصه العربي ويُحفظ ملفًا تبحث فيه.',
+        en: 'Scan paper with the camera: its Arabic text is read and saved as a file you can search.',
       },
       {
-        ar: 'يعمل على جهازك افتراضيًا، فلا يغادره شيء.',
-        en: 'It runs on your device by default, so nothing leaves it.',
+        ar: 'أدوات على الشاشة الرئيسية وشاشة القفل: آخر ملفاتك، والمسح، والبحث.',
+        en: 'Widgets on the Home and Lock Screen: your recent files, scanning and search.',
       },
       {
-        ar: 'أو استخدم مفتاحك الخاص لـ Claude أو نموذجًا محليًا، وترى النص قبل أن يُرسل.',
-        en: 'Or use your own Claude key or a local model, and see the exact text before it is sent.',
+        ar: 'واختصارات جاهزة، مثل «امسح مستندًا» و«افتح آخر ملف».',
+        en: 'Ready-made shortcuts, such as “Scan a document” and “Open the last document”.',
       },
     ],
-    note: {
-      ar: 'على آيفون وآيباد يعمل بنموذج النظام المدمج: ',
-      en: 'On iPhone and iPad it uses the model built into the system: ',
-      on: { ar: 'iOS 26 وما بعده', en: 'iOS 26 and later' },
+  },
+  {
+    id: 'family',
+    kind: 'family',
+    stage: { pages: 1, fan: 0, recede: 1, dusk: 0, pattern: 0 },
+    devices: [],
+    eyebrow: { ar: 'كل أجهزتك', en: 'Every device' },
+    title: {
+      ar: 'تطبيق واحد، [[على كل شاشة عندك]].',
+      en: 'One app, [[on every screen you own]].',
+    },
+    lead: {
+      ar: 'على ويندوز وماك وآيفون وآيباد والمتصفح، بالقلم أو بإصبعك أو بالفأرة.',
+      en: 'On Windows, Mac, iPhone, iPad and the browser, with a pen, a finger or a mouse.',
     },
   },
   {
@@ -409,8 +482,8 @@ export const CHAPTERS = [
     eyebrow: { ar: 'كل ما في التطبيق', en: 'Everything inside' },
     title: { ar: '[[كل الأدوات]]', en: 'Every tool, [[listed]]' },
     lead: {
-      ar: 'ما يعمل اليوم أولًا، ثم ما يأتي لاحقًا. تحت كل أداة مكان توفرها حين لا تكون في كل النسخ.',
-      en: 'What works today first, then what is coming later. Each says where it works when it is not on every version.',
+      ar: 'كل أداة هنا تعمل اليوم. تحت كل واحدة مكان توفرها حين لا تكون في كل النسخ.',
+      en: 'Every tool here works today. Each says where it works when it is not on every version.',
     },
   },
 ];
@@ -608,70 +681,6 @@ export const TOOLS = [
     on: ON.web,
   },
 ];
-
-// Partial (🟡) and planned (⬜) work, shown as "Coming later". Unfinished
-// tools come first, then other unfinished features.
-export const LATER = {
-  title: { ar: 'قادم لاحقًا', en: 'Coming later' },
-  lead: {
-    ar: 'أجزاء بدأ العمل عليها ولم تكتمل بعد. لن تظهر في التطبيق حتى تعمل كاملة.',
-    en: 'Work that has started but is not finished. None of it shows in the app until it works.',
-  },
-  items: [
-    {
-      name: { ar: 'التوقيع الرقمي', en: 'Digital signature' },
-      text: {
-        ar: 'توقيع بشهادة رقمية والتحقق منه.',
-        en: 'Signing with a digital certificate, and checking one.',
-      },
-      tool: true,
-    },
-    {
-      name: { ar: 'المعايير', en: 'Standards' },
-      text: {
-        ar: 'التحويل إلى PDF/A وPDF/X والفحص المسبق.',
-        en: 'Converting to PDF/A and PDF/X, and preflight.',
-      },
-      tool: true,
-    },
-    {
-      name: { ar: 'إتاحة الوصول', en: 'Accessibility' },
-      text: {
-        ar: 'الوسوم وترتيب القراءة والنص البديل والفاحص.',
-        en: 'Tags, reading order, alt text and a checker.',
-      },
-      tool: true,
-    },
-    {
-      name: { ar: 'التخزين السحابي', en: 'Cloud drives' },
-      text: {
-        ar: 'فتح الملفات وحفظها في Google Drive وOneDrive مباشرة من حسابك.',
-        en: 'Open and save files in Google Drive and OneDrive, straight from your account.',
-      },
-    },
-    {
-      name: { ar: 'القراءة بصوت عالٍ', en: 'Read aloud' },
-      text: {
-        ar: 'بأصوات جهازك، مع تمييز الجملة المقروءة.',
-        en: "With your device's voices, the sentence marked as it is read.",
-      },
-    },
-    {
-      name: { ar: 'التصدير على سطح المكتب', en: 'Export on the desktop' },
-      text: {
-        ar: 'التحويل إلى Word وExcel وPowerPoint في تطبيقي ويندوز وماك.',
-        en: 'Converting to Word, Excel and PowerPoint in the Windows and Mac apps.',
-      },
-    },
-    {
-      name: { ar: 'الطباعة على سطح المكتب', en: 'Printing on the desktop' },
-      text: {
-        ar: 'الطباعة الكاملة في تطبيقي ويندوز وماك.',
-        en: 'Full printing in the Windows and Mac apps.',
-      },
-    },
-  ],
-};
 
 // The wall of screens: phone screens, by name. The middle column is the one
 // the phone shows; side columns glide past at different speeds.

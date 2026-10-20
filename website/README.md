@@ -38,7 +38,8 @@ The phrase in `[[ ]]` gets the bronze band. A chapter has at most three
 email, address) that shows highlighted until you fill in `CONTACT` at the top.
 
 Only claim what `docs/feature-matrix.md` marks ✅. Partial (🟡) and planned (⬜)
-work goes in `LATER` (the "Coming later" list). The page titles and
+work stays off the site until it works: the owner wants nothing shown as
+"coming soon". The page titles and
 descriptions that search engines read live in the small HTML files; after
 changing the hero title or lead, or a legal page's title, run
 `node website/tools/make-shells.mjs` from the repository root.
@@ -157,6 +158,20 @@ workflow to the server; the licensed font has to be added on the server side.
   files they make (docx, xlsx, pptx). The icons in `js/ring-icons.js` are
   Lucide's, generated from the app's `lucide-react`. Claim only what the
   Windows build does: keep the note's "Windows" until the Mac ring is tested.
+- The glass rooms, each a chapter `kind` in `js/story.js` and a module with a
+  `scene` (markup) and a `frame(el, p, reduced)` the scroll calls, `p` 0-1
+  across the room (`ROOMS` in `js/main.js`; shared helpers in `js/motion.js`):
+  `js/ai-room.js` (a question typed into a glass card, the answer fanning out
+  with its pages, then the app's own AI recording), `js/library.js` (a shelf of
+  files, a word typed, the matches lit, one turning to show its page and tag;
+  drawn, not recorded), `js/phone-room.js` (the phone turning to face you while
+  glass cards for scanning, the widget and a shortcut slide out and are
+  pressed, each bringing up the app's own screen) and `js/family.js` (every
+  version together, after the concept the app was designed from: the pen
+  writing on the iPad, the phone scanning, the assistant's suggestions).
+  Their look is the app's liquid glass (`packages/ui/src/styles/looks.css`).
+- `js/interact.js`: a ring of light from where a button or switch is pressed;
+  the press and spring are in `css/site.css`. Off with Reduce Motion.
 
 ## Motion, for whoever changes it
 

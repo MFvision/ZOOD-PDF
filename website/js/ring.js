@@ -77,11 +77,33 @@ export function ringScene(t, escape) {
       </div>
     </div>
     <div class="rs-ghost">${fileIcon}${fileIcon}<b>2</b></div>
-    <div class="rs-ring"><svg viewBox="0 0 ${SIZE} ${SIZE}"><g class="rs-zoom">
+    <div class="rs-ring"><div class="rs-glass"></div><svg viewBox="0 0 ${SIZE} ${SIZE}">
+      <defs>
+        <linearGradient id="rs-sheen" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#fff" stop-opacity=".82"/>
+          <stop offset=".45" stop-color="#fff" stop-opacity=".46"/>
+          <stop offset="1" stop-color="#fff" stop-opacity=".66"/>
+        </linearGradient>
+        <linearGradient id="rs-rim" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#fff" stop-opacity=".95"/>
+          <stop offset=".5" stop-color="#fff" stop-opacity=".15"/>
+          <stop offset="1" stop-color="#fff" stop-opacity=".7"/>
+        </linearGradient>
+        <linearGradient id="rs-bronze" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#c9a27c" stop-opacity=".95"/>
+          <stop offset="1" stop-color="#8a6a4b" stop-opacity=".9"/>
+        </linearGradient>
+        <filter id="rs-liquid" x="-20%" y="-20%" width="140%" height="140%">
+          <feTurbulence type="fractalNoise" baseFrequency=".018" numOctaves="2" seed="7"/>
+          <feDisplacementMap in="SourceGraphic" scale="0" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+      </defs>
+      <g class="rs-zoom">
       <circle class="rs-shadow" cx="150" cy="150" r="${OUTER + 4}"/>${ring}
+      <circle class="rs-rim" cx="150" cy="150" r="${OUTER - 0.5}"/>
       <circle class="rs-track" cx="150" cy="150" r="${BAND}"/>
       <circle class="rs-bar-p" cx="150" cy="150" r="${BAND}" transform="rotate(-90 150 150)" stroke-dasharray="0 ${CIRC}"/>
-      <circle class="rs-hub" cx="150" cy="150" r="${INNER - 4}"/>
+      <circle class="rs-hub" cx="150" cy="150" r="${INNER - 4}"/><circle class="rs-rim" cx="150" cy="150" r="${INNER - 4.5}"/>
       <text class="rs-hub-text" x="150" y="155" text-anchor="middle" data-drop="${escape(t(WORDS.drop))}" data-done="${escape(t(WORDS.done))}">${escape(t(WORDS.drop))}</text>
       <svg class="rs-tick" x="132" y="104" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${ICONS.check}</svg>
     </g></svg></div>
@@ -146,13 +168,19 @@ export function ringFrame(el, p, reduced) {
   set('--ringin', ringin);
   // Scaled inside the drawing: a CSS scale on the box left the labels behind in Chromium.
   const z = 0.6 + ringin * 0.4;
-  scene
-    .querySelector('.rs-zoom')
-    .setAttribute(
-      'transform',
-      `translate(${150 * (1 - z)} ${150 * (1 - z)}) scale(${z.toFixed(3)})`,
-    );
-  set('--over', p >= 0.38 && p < 0.8 ? 1 : 0);
+  const zoom = scene.querySelector('.rs-zoom');
+  zoom.setAttribute(
+    'transform',
+    `translate(${150 * (1 - z)} ${150 * (1 - z)}) scale(${z.toFixed(3)})`,
+  );
+  // Liquid: the ring wobbles into shape as it opens, then holds still and sharp.
+  const wobble = reduced ? 0 : (1 - ringin) * 34;
+  scene.querySelector('#rs-liquid feDisplacementMap').setAttribute('scale', wobble.toFixed(1));
+  if (wobble > 0.5) zoom.setAttribute('filter', 'url(#rs-liquid)');
+  else zoom.removeAttribute('filter');
+  const over = p >= 0.38 && p < 0.8;
+  set('--over', over ? 1 : 0);
+  scene.classList.toggle('rs-over', over);
   const run = span(p, 0.44, 0.68);
   set('--run', p >= 0.44 ? 1 : 0);
   set('--done', p >= 0.7 ? 1 : 0);

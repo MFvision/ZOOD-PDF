@@ -8,7 +8,6 @@ import {
   DESK,
   DOWNLOADS,
   FOOTER,
-  LATER,
   PLATFORMS,
   SCREENS,
   SITE,
@@ -19,7 +18,12 @@ import {
 import { buildStage, phoneFrame, tabletFrame } from './desk.js';
 import { startDrip } from './drip.js';
 import { playGather } from './gather.js';
+import { startInteractions } from './interact.js';
 import { ringScene, ringFrame } from './ring.js';
+import { aiScene, aiFrame } from './ai-room.js';
+import { libraryScene, libraryFrame } from './library.js';
+import { phoneScene, phoneFrame as phoneRoomFrame } from './phone-room.js';
+import { familyScene, familyFrame } from './family.js';
 
 const root = document.documentElement;
 export const lang = root.lang === 'en' ? 'en' : 'ar';
@@ -169,7 +173,7 @@ function chapterBody(c, index) {
   let body = `<p class="eyebrow">${escape(t(c.eyebrow))}</p><${heading} class="title" id="${id}">${titleHtml(c.title)}</${heading}>`;
   if (c.lead) body += `<p class="lead">${escape(t(c.lead))}</p>`;
   if (c.points)
-    body += `<ul class="points">${c.points.map((p) => `<li>${escape(t(p))}</li>`).join('')}</ul>`;
+    body += `<ul class="points">${c.points.map((p, k) => `<li style="--pi:${k}">${escape(t(p))}</li>`).join('')}</ul>`;
   if (c.kind === 'platforms') {
     body += `<ul class="platforms">${PLATFORMS.map((p) => `<li><strong>${escape(t(p.name))}</strong><span>${escape(t(p.status))}</span></li>`).join('')}</ul>`;
   }
@@ -204,10 +208,28 @@ function chapterHtml(c, index) {
   return `<section class="${cls}" id="${c.id}" data-chapter="${index}" aria-labelledby="${id}"><div class="words"><div class="card">${body}</div></div></section>`;
 }
 
-// The ring: its own dark room, the words beside a scene the scroll plays.
-function ringHtml(c, index) {
-  return `<section class="ring-ch" id="${c.id}" data-chapter="${index}" aria-labelledby="h-${c.id}">
-    <div class="ring-stage"><div class="ring-words"><div class="card">${chapterBody(c, index)}</div></div>${ringScene(t, escape)}</div>
+// The rooms: the words beside a scene the scroll plays (js/ring.js and friends).
+// The ring's room is dark; the others are light glass that follows the theme.
+const media = {
+  size: (device) => SCREENS[device].size,
+  still: (device, name) => screenSrc(device, name),
+  clip: (device, name) => (clipsAllowed() ? screenSrc(device, name, undefined, clipType) : ''),
+};
+const ROOMS = {
+  ring: { scene: () => ringScene(t, escape), frame: ringFrame },
+  ai: { scene: () => aiScene(t, escape, media), frame: aiFrame },
+  library: { scene: () => libraryScene(t, escape), frame: libraryFrame },
+  phone: { scene: () => phoneScene(t, escape, media, phoneFrame()), frame: phoneRoomFrame },
+  family: {
+    scene: () => familyScene(t, escape, media, { phone: phoneFrame(), tablet: tabletFrame() }),
+    frame: familyFrame,
+  },
+};
+
+function roomHtml(c, index) {
+  const cls = c.kind === 'ring' ? 'ring-ch' : `ring-ch room room-${c.kind}`;
+  return `<section class="${cls}" id="${c.id}" data-chapter="${index}" aria-labelledby="h-${c.id}">
+    <div class="ring-stage"><div class="ring-words"><div class="card">${chapterBody(c, index)}</div></div>${ROOMS[c.kind].scene()}</div>
   </section>`;
 }
 
@@ -251,8 +273,6 @@ function insideHtml(c) {
   return `<section class="inside" id="${c.id}" aria-labelledby="h-${c.id}">
     <div class="inside-head"><p class="eyebrow">${escape(t(c.eyebrow))}</p><h2 class="title" id="h-${c.id}">${titleHtml(c.title)}</h2><p class="lead">${escape(t(c.lead))}</p></div>
     <ul class="tools">${TOOLS.map(tool).join('')}</ul>
-    <div class="later"><h3>${escape(t(LATER.title))}</h3><p class="lead">${escape(t(LATER.lead))}</p>
-      <ul class="tools">${LATER.items.map((x) => `<li><h3>${escape(t(x.name))}${x.tool ? '' : ''}<span class="badge">${escape(t(UI.later))}</span></h3><p>${escape(t(x.text))}</p></li>`).join('')}</ul></div>
   </section>`;
 }
 
@@ -314,7 +334,7 @@ function startStory() {
   main.innerHTML =
     story
       .map((c, i) =>
-        c.kind === 'wall' ? wallHtml(c, i) : c.kind === 'ring' ? ringHtml(c, i) : chapterHtml(c, i),
+        c.kind === 'wall' ? wallHtml(c, i) : ROOMS[c.kind] ? roomHtml(c, i) : chapterHtml(c, i),
       )
       .join('') + insideHtml(inside);
 
@@ -326,7 +346,7 @@ function startStory() {
   document.body.append(footer());
 
   const sections = [...main.querySelectorAll('[data-chapter]')];
-  const ringAt = story.findIndex((c) => c.kind === 'ring');
+  const rooms = story.flatMap((c, k) => (ROOMS[c.kind] ? [[k, ROOMS[c.kind].frame]] : []));
   const insideEl = main.querySelector('.inside');
   const wall = main.querySelector('.wall');
   const wallCols = [...wall.querySelectorAll('.wall-col')];
@@ -473,13 +493,10 @@ function startStory() {
       }
     }
 
-    // The ring plays across its room's scroll.
-    if (ringAt >= 0 && Math.abs(i - ringAt) <= 1) {
-      ringFrame(
-        sections[ringAt],
-        clamp((scrollY - tops[ringAt]) / (heights[ringAt] - vh)),
-        reduced,
-      );
+    // Each room plays across its own scroll, while it or a neighbour is on screen.
+    for (const [k, frame] of rooms) {
+      if (Math.abs(i - k) <= 1)
+        frame(sections[k], clamp((scrollY - tops[k]) / (heights[k] - vh)), reduced);
     }
 
     // On a phone the cards rest under the devices; a card leaving upwards fades
@@ -576,6 +593,13 @@ function startStory() {
 
   document.addEventListener('themechange', () => {
     lastActive = -1;
+    // The rooms' screens follow the theme too.
+    main.querySelectorAll('[data-screen]').forEach((m) => {
+      const [device, name] = m.dataset.screen.split(' ');
+      const src = m.tagName === 'VIDEO' ? media.clip(device, name) : media.still(device, name);
+      m.dataset.src = src;
+      if (m.getAttribute('src')) m.setAttribute('src', src);
+    });
     if (wallNear) wallImages();
     schedule();
   });
@@ -597,5 +621,6 @@ function startStory() {
 }
 
 headlineFont();
+startInteractions(() => reduced);
 if (root.dataset.page === 'story') startStory();
 else import('./legal-page.js').then((m) => m.startLegal(root.dataset.page));
