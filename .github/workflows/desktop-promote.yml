@@ -6,11 +6,16 @@
 # the apps read, and marks the release as the latest. Every installed app
 # offers the update on its next launch.
 #
+# Or push a tag stable-v<version> (git tag stable-v0.2.0 && git push origin
+# stable-v0.2.0), for a branch the Run workflow button does not list yet.
+#
 # To take a bad version back, release a higher one: an app only ever moves
 # to a newer version.
 name: desktop release (2. release to users)
 
 on:
+  push:
+    tags: ['stable-v*']
   workflow_dispatch:
     inputs:
       version:
@@ -31,11 +36,13 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      VERSION: ${{ inputs.version }}
+      VERSION: ${{ inputs.version || github.ref_name }}
     steps:
       - name: fetch the release's latest.json
         run: |
           set -eu
+          VERSION="${VERSION#stable-v}"
+          export VERSION
           gh release download "desktop-v$VERSION" --pattern latest.json --dir .
           node -e '
             const latest = require("./latest.json");
@@ -59,4 +66,5 @@ jobs:
 
       - name: mark the release as released
         run: |
+          VERSION="${VERSION#stable-v}"
           gh release edit "desktop-v$VERSION" --prerelease=false --latest --title "ZOOD PDF $VERSION"

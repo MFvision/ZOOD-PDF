@@ -31,12 +31,12 @@ first real release.
 
 ## Releasing a version (two steps, both in GitHub Actions)
 
-1. **desktop release (1. build)**: give the new version (higher than the
+1. **desktop release (1. build)** (or push a tag `desktop-v0.2.0`): give the new version (higher than the
    last released one, like `0.2.0`) and a line on what is new. It builds
    Windows and Mac (Apple silicon), signs the update files, and publishes a
    pre-release `desktop-v0.2.0` with the installers and its `latest.json`.
    No installed app sees it yet: download the installers and try them.
-2. **desktop release (2. release to users)**: give the same version. It puts
+2. **desktop release (2. release to users)** (or push a tag `stable-v0.2.0`): give the same version. It puts
    that release's `latest.json` on the stable channel and marks the release
    as the latest. Every installed app offers it on its next launch.
 

@@ -8,11 +8,17 @@
 # sees it yet: try the installers first, then run step 2,
 # desktop-promote.yml, which puts it on the stable channel.
 #
+# Or push a tag desktop-v<version> (git tag desktop-v0.2.0 && git push origin
+# desktop-v0.2.0): the same build, for a branch whose workflows the Run
+# workflow button does not list yet (it lists only the default branch's).
+#
 # The test builds of desktop-windows.yml are never on the channel: they are
 # not signed for updates and carry the version in tauri.conf.json.
 name: desktop release (1. build)
 
 on:
+  push:
+    tags: ['desktop-v*']
   workflow_dispatch:
     inputs:
       version:
@@ -25,6 +31,12 @@ on:
 
 permissions:
   contents: write
+
+# From the Run workflow form, or from the tag's name (each step drops the
+# tag's desktop-v).
+env:
+  VERSION: ${{ inputs.version || github.ref_name }}
+  NOTES: ${{ inputs.notes }}
 
 jobs:
   build:
@@ -42,9 +54,8 @@ jobs:
     steps:
       - name: check the version
         shell: bash
-        env:
-          VERSION: ${{ inputs.version }}
         run: |
+          VERSION="${VERSION#desktop-v}"
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::version must look like 0.2.0, not '$VERSION'"
             exit 1
@@ -87,19 +98,18 @@ jobs:
           CI: 'true'
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          VERSION: ${{ inputs.version }}
         run: |
           set -o pipefail
+          VERSION="${VERSION#desktop-v}"
           pnpm --dir apps/desktop exec tauri build \
             --config "{\"version\":\"$VERSION\",\"bundle\":{\"createUpdaterArtifacts\":true}}" 2>&1 | tee build.log
 
       # Plain file names: the bundle's own carry spaces, which make awkward URLs.
       - name: collect the files
         shell: bash
-        env:
-          VERSION: ${{ inputs.version }}
         run: |
           set -eu
+          VERSION="${VERSION#desktop-v}"
           bundle=apps/desktop/src-tauri/target/release/bundle
           mkdir out
           if [ "${{ matrix.platform }}" = windows-x86_64 ]; then
@@ -135,12 +145,10 @@ jobs:
       # platform names its update file in this release and that file's
       # signature, which the app checks against the key in tauri.conf.json.
       - name: write latest.json
-        env:
-          VERSION: ${{ inputs.version }}
-          NOTES: ${{ inputs.notes }}
-          BASE: ${{ github.server_url }}/${{ github.repository }}/releases/download/desktop-v${{ inputs.version }}
         run: |
           set -eu
+          VERSION="${VERSION#desktop-v}"
+          export VERSION BASE="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/desktop-v$VERSION"
           mkdir release
           node - <<'EOF'
           const fs = require('fs');
@@ -168,9 +176,8 @@ jobs:
       - name: publish the pre-release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ inputs.version }}
-          NOTES: ${{ inputs.notes }}
         run: |
+          VERSION="${VERSION#desktop-v}"
           gh release create "desktop-v$VERSION" release/* \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
             --title "ZOOD PDF $VERSION (testing)" \
