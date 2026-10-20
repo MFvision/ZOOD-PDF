@@ -79,6 +79,7 @@ Tool operations (`warraq-core/src/tools`), all answering JSON plus bytes:
 | `marks.remove` (static) | `{password?, ids?: number[], pages?: number[]}` (empty: all) + the PDF | `{removed}` + the file |
 | `marks.text` (static) | `{password?, page}` + the PDF | `{marks, page}`: what Warraq's page marks on the page say, and what the page says without them (other programs' artifacts are part of the page) |
 | `images.list` | `{page}` (also static, with `password?` + the PDF) | `{images: [{id, matrix, clip, pixels, inline, inForm, shared}]}`; `matrix` takes the unit square onto the page as shown (points, y down); `shared`: the bytes that draw it draw it elsewhere too (a form used twice or on another page, a content stream two pages list), so it is not edited. `E_EDIT` for a page past the walk's bounds |
+| `images.add` (static) | `{password?, page, matrix}` + the PDF + the picture | `{id}` + the file with the picture placed, as an update — what the phone remote's signature uses on a file the editor does not own |
 | `images.add` | `{page, matrix}` + the PNG/JPEG | `{id}` |
 | `images.transform` | `{page, id, matrix, clip?: [u0, v0, u1, v1]}` | `{images}`; a picture in a form may not leave the form's `/BBox` (`E_EDIT`) |
 | `images.replace` | `{page, id}` + the PNG/JPEG (fitted inside what showed) | `{images}` |
@@ -96,6 +97,7 @@ Tool operations (`warraq-core/src/tools`), all answering JSON plus bytes:
 | `outline.list` (static) | `{password?}` + the file | `{bookmarks: [{title, depth, page \| null, outside, open, children}]}` — `outside` for an entry that leaves the file (a web address, another file, a program); one with no page that is not is a heading |
 | `attachments.list` / `.get` (static) | `{password?, key?}` + the file | `{attachments: [{key, name, description, size, mime, page \| null}]}` / `{name, size}` + the attachment's bytes (never opened) |
 | `attachments.add` / `.remove` (static) | `{password?, name, description?}` + the file + the new file / `{password?, key}` + the file | the file with it, or without it, as an update |
+| `comments.list` (static) | `{password?}` + the file | `{notes: [{page, text, author \| null}]}` — each page's comments (sticky notes and any markup with text; not form fields, links, pop-ups or attachments), for the phone remote's presenter notes; at most 2000, each cut to 4000 characters |
 | `layers.list` (static) | `{password?}` + the file | `{layers: [{id, name, visible, locked, print, export}], order: [{id \| label, children}]}` |
 | `layers.show` (static) | `{password?, visible: id[]}` + the file | a copy whose default configuration shows exactly those (locked layers keep theirs), as an update |
 | `layers.restore` (static) | `{password?, rebase?: bool}` + the file with its own visibility + the same file as it stands | the second with the first's visibility — as an update of the first when `rebase` |

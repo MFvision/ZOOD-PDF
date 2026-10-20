@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <!-- The phone remote: served to a phone on the local network by the desktop app itself (apps/desktop/src-tauri/src/remote/server.rs), which sends its own Content-Security-Policy. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#041e42" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <title>ZOOD Remote</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/remote.tsx"></script>
+  </body>
+</html>

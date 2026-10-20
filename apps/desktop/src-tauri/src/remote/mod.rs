@@ -1,0 +1,694 @@
+//! The phone remote: a phone on the same Wi-Fi presents the open PDF, works
+//! the PC as its trackpad and keyboard, and swaps files and signatures with
+//! it. No account and nothing on the internet: the phone and the PC talk
+//! directly, locked with the key in the QR code the PC shows (`seal.rs`).
+//!
+//! This side is only the link. It listens while the person has the remote
+//! on (`server.rs`), carries PC control out itself when that is switched on
+//! (`input.rs`), remembers paired phones (`devices.rs`) and hands every
+//! other message to the interface as [`MESSAGE_EVENT`], where the document
+//! is (`packages/ui/src/remote/`). The interface answers with `remote_send`.
+
+pub mod devices;
+pub mod input;
+pub mod seal;
+pub mod server;
+
+use std::net::{IpAddr, Ipv4Addr, UdpSocket};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+use serde::Serialize;
+use serde_json::Value;
+use tauri::{AppHandle, Emitter, Manager, Runtime, State, Wry};
+use tokio::net::TcpListener;
+use tokio::sync::{mpsc, watch};
+
+use devices::Phones;
+use seal::SealKey;
+
+/// A phone's message for the interface. Payload: `{ peer, message }`;
+/// `message.t` is what it is (`joined` and `left` come from here).
+pub const MESSAGE_EVENT: &str = "warraq://remote-message";
+
+/// The remote's state changed: a phone came or went, a new code, PC control
+/// on or off. Payload: [`Status`].
+pub const STATUS_EVENT: &str = "warraq://remote-status";
+
+/// The port tried first, so a phone that saved the page finds it again.
+const PORT: u16 = 47800;
+
+/// How long a QR code pairs a new phone.
+const CODE_LIFE: Duration = Duration::from_secs(5 * 60);
+
+/// A phone connected now.
+pub struct Peer {
+    pub device: String,
+    pub name: String,
+    pub tx: mpsc::UnboundedSender<Value>,
+}
+
+/// The QR code on screen.
+struct Code {
+    key: SealKey,
+    until: Instant,
+    /// Milliseconds since 1970, for the interface.
+    until_ms: u64,
+}
+
+/// What the server and the commands share while the remote is on.
+pub struct Shared<R: Runtime> {
+    app: AppHandle<R>,
+    port: u16,
+    addresses: Vec<Ipv4Addr>,
+    code: Mutex<Option<Code>>,
+    phones: Mutex<Phones>,
+    peers: Mutex<server::Peers>,
+    next_peer: AtomicU64,
+    pc_control: AtomicBool,
+}
+
+impl<R: Runtime> Shared<R> {
+    /// The key of the code on screen, while it still pairs.
+    fn code(&self) -> Option<SealKey> {
+        let code = self.code.lock().ok()?;
+        code.as_ref()
+            .filter(|c| c.until > Instant::now())
+            .map(|c| c.key)
+    }
+
+    fn used_code(&self) {
+        if let Ok(mut code) = self.code.lock() {
+            *code = None;
+        }
+    }
+
+    fn new_code(&self) {
+        if let Ok(mut code) = self.code.lock() {
+            let until_ms = SystemTime::now()
+                .checked_add(CODE_LIFE)
+                .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(0);
+            *code = Some(Code {
+                key: seal::random_key(),
+                until: Instant::now() + CODE_LIFE,
+                until_ms,
+            });
+        }
+    }
+
+    fn pc_control_on(&self) -> bool {
+        self.pc_control.load(Ordering::Relaxed)
+    }
+
+    /// Tells the interface what changed.
+    fn changed(&self) {
+        let _ = self
+            .app
+            .emit(STATUS_EVENT, status_of(Some(self), &self.app));
+    }
+}
+
+struct Running {
+    shared: Arc<Shared<Wry>>,
+    stop: watch::Sender<bool>,
+}
+
+#[derive(Default)]
+pub struct RemoteState(Mutex<Option<Running>>);
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectedPhone {
+    pub peer: u64,
+    pub device: String,
+    pub name: String,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RememberedPhone {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Status {
+    pub running: bool,
+    /// The address the QR code holds, its key included; `None` while no code
+    /// pairs (used, run out, or no network).
+    pub url: Option<String>,
+    /// That address as a QR code, an SVG.
+    pub qr: Option<String>,
+    pub code_until: Option<u64>,
+    /// The page's address without the key, for a phone that was paired before.
+    pub address: Option<String>,
+    pub phones: Vec<ConnectedPhone>,
+    pub remembered: Vec<RememberedPhone>,
+    pub pc_control: bool,
+    pub pc_control_available: bool,
+}
+
+fn phones_file<R: Runtime>(app: &AppHandle<R>) -> Option<std::path::PathBuf> {
+    Some(app.path().app_data_dir().ok()?.join("remote-phones.json"))
+}
+
+/// The computer's name, as phones show it.
+pub fn pc_name() -> String {
+    for var in ["COMPUTERNAME", "HOSTNAME"] {
+        if let Ok(name) = std::env::var(var) {
+            if !name.trim().is_empty() {
+                return devices::tidy_name(&name);
+            }
+        }
+    }
+    String::new()
+}
+
+/// This PC's addresses on the local network, the one its traffic leaves by
+/// first. Asking the system which way it would reach a far address sends
+/// nothing.
+fn local_addresses() -> Vec<Ipv4Addr> {
+    let mut found: Vec<Ipv4Addr> = if_addrs::get_if_addrs()
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|i| !i.is_loopback())
+        .filter_map(|i| match i.ip() {
+            IpAddr::V4(ip) if ip.is_private() || ip.is_link_local() => Some(ip),
+            _ => None,
+        })
+        .collect();
+    let preferred = UdpSocket::bind("0.0.0.0:0")
+        .and_then(|s| {
+            s.connect("192.0.2.1:9")?;
+            s.local_addr()
+        })
+        .ok()
+        .and_then(|a| match a.ip() {
+            IpAddr::V4(ip) => Some(ip),
+            _ => None,
+        });
+    // Link-local addresses (169.254…) last: they reach only a cable.
+    found.sort_by_key(|ip| (Some(*ip) != preferred, ip.is_link_local()));
+    found.dedup();
+    found
+}
+
+fn qr_svg(text: &str) -> Option<String> {
+    use qrcode::render::svg;
+    let code = qrcode::QrCode::with_error_correction_level(text, qrcode::EcLevel::M).ok()?;
+    Some(
+        code.render::<svg::Color>()
+            .min_dimensions(232, 232)
+            .dark_color(svg::Color("#041e42"))
+            .light_color(svg::Color("#ffffff"))
+            .quiet_zone(true)
+            .build(),
+    )
+}
+
+fn status_of<R: Runtime>(shared: Option<&Shared<R>>, app: &AppHandle<R>) -> Status {
+    let Some(shared) = shared else {
+        let remembered = phones_file(app)
+            .map(|f| Phones::load(&f))
+            .unwrap_or_default()
+            .list()
+            .iter()
+            .map(|p| RememberedPhone {
+                id: p.id.clone(),
+                name: p.name.clone(),
+            })
+            .collect();
+        return Status {
+            running: false,
+            url: None,
+            qr: None,
+            code_until: None,
+            address: None,
+            phones: vec![],
+            remembered,
+            pc_control: false,
+            pc_control_available: input::AVAILABLE,
+        };
+    };
+    let address = shared
+        .addresses
+        .first()
+        .map(|ip| format!("http://{ip}:{}/", shared.port));
+    let (url, code_until) = match (&address, shared.code.lock().ok().as_deref()) {
+        (Some(address), Some(Some(code))) if code.until > Instant::now() => (
+            Some(format!("{address}#k={}", seal::key_to_url(&code.key))),
+            Some(code.until_ms),
+        ),
+        _ => (None, None),
+    };
+    let mut phones: Vec<ConnectedPhone> = shared
+        .peers
+        .lock()
+        .map(|p| {
+            p.iter()
+                .map(|(peer, p)| ConnectedPhone {
+                    peer: *peer,
+                    device: p.device.clone(),
+                    name: p.name.clone(),
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    phones.sort_by_key(|p| p.peer);
+    let remembered = shared
+        .phones
+        .lock()
+        .map(|p| {
+            p.list()
+                .iter()
+                .map(|p| RememberedPhone {
+                    id: p.id.clone(),
+                    name: p.name.clone(),
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    Status {
+        running: true,
+        qr: url.as_deref().and_then(qr_svg),
+        url,
+        code_until,
+        address,
+        phones,
+        remembered,
+        pc_control: shared.pc_control_on(),
+        pc_control_available: input::AVAILABLE,
+    }
+}
+
+fn running(state: &State<'_, RemoteState>) -> Option<Arc<Shared<Wry>>> {
+    state.0.lock().ok()?.as_ref().map(|r| r.shared.clone())
+}
+
+/// Turns the remote on (or keeps it on) with a fresh QR code.
+#[tauri::command]
+pub async fn remote_start(
+    app: AppHandle<Wry>,
+    state: State<'_, RemoteState>,
+) -> Result<Status, String> {
+    if let Some(shared) = running(&state) {
+        shared.new_code();
+        shared.changed();
+        return Ok(status_of(Some(&shared), &app));
+    }
+    let listener = match TcpListener::bind(("0.0.0.0", PORT)).await {
+        Ok(listener) => listener,
+        Err(_) => TcpListener::bind(("0.0.0.0", 0))
+            .await
+            .map_err(|e| format!("E_REMOTE: {e}"))?,
+    };
+    let port = listener
+        .local_addr()
+        .map_err(|e| format!("E_REMOTE: {e}"))?
+        .port();
+    let phones = phones_file(&app)
+        .map(|f| Phones::load(&f))
+        .unwrap_or_default();
+    let shared = Arc::new(Shared {
+        app: app.clone(),
+        port,
+        addresses: local_addresses(),
+        code: Mutex::new(None),
+        phones: Mutex::new(phones),
+        peers: Mutex::new(Default::default()),
+        next_peer: AtomicU64::new(1),
+        pc_control: AtomicBool::new(false),
+    });
+    shared.new_code();
+    let (stop, stopped) = watch::channel(false);
+    tauri::async_runtime::spawn(server::run(shared.clone(), listener, stopped));
+    core_bridge_log(format!(
+        "remote on, port {port}, addresses {:?}",
+        shared.addresses
+    ));
+    let status = status_of(Some(&shared), &app);
+    if let Ok(mut slot) = state.0.lock() {
+        *slot = Some(Running { shared, stop });
+    }
+    Ok(status)
+}
+
+fn core_bridge_log(message: String) {
+    crate::core_bridge::debug_log(message);
+}
+
+/// Turns the remote off: phones are let go and nothing listens.
+#[tauri::command]
+pub fn remote_stop(app: AppHandle<Wry>, state: State<'_, RemoteState>) -> Status {
+    let taken = state.0.lock().ok().and_then(|mut slot| slot.take());
+    if let Some(running) = taken {
+        running.shared.pc_control.store(false, Ordering::Relaxed);
+        let _ = running.stop.send(true);
+    }
+    let status = status_of::<Wry>(None, &app);
+    let _ = app.emit(STATUS_EVENT, status.clone());
+    status
+}
+
+#[tauri::command]
+pub fn remote_status(app: AppHandle<Wry>, state: State<'_, RemoteState>) -> Status {
+    status_of(running(&state).as_deref(), &app)
+}
+
+/// PC control on or off; only while the remote is on.
+#[tauri::command]
+pub fn remote_pc_control(app: AppHandle<Wry>, state: State<'_, RemoteState>, on: bool) -> Status {
+    let shared = running(&state);
+    if let Some(shared) = &shared {
+        shared
+            .pc_control
+            .store(on && input::AVAILABLE, Ordering::Relaxed);
+        let flag = serde_json::json!({ "t": "pcControl", "on": shared.pc_control_on() });
+        if let Ok(peers) = shared.peers.lock() {
+            for peer in peers.values() {
+                let _ = peer.tx.send(flag.clone());
+            }
+        }
+        shared.changed();
+    }
+    status_of(shared.as_deref(), &app)
+}
+
+/// Forgets a remembered phone; if it is connected, it is let go.
+#[tauri::command]
+pub fn remote_forget(app: AppHandle<Wry>, state: State<'_, RemoteState>, device: String) -> Status {
+    if let Some(shared) = running(&state) {
+        if let Ok(mut phones) = shared.phones.lock() {
+            phones.forget(&device);
+        }
+        if let Ok(mut peers) = shared.peers.lock() {
+            // Dropping its sender ends that phone's connection.
+            peers.retain(|_, p| p.device != device);
+        }
+        shared.changed();
+        return status_of(Some(&shared), &app);
+    }
+    if let Some(file) = phones_file(&app) {
+        Phones::load(&file).forget(&device);
+    }
+    status_of::<Wry>(None, &app)
+}
+
+/// Sends `message` to one phone, or to every connected phone.
+#[tauri::command]
+pub fn remote_send(state: State<'_, RemoteState>, message: Value, peer: Option<u64>) -> bool {
+    let Some(shared) = running(&state) else {
+        return false;
+    };
+    if !message.is_object() {
+        return false;
+    }
+    let Ok(peers) = shared.peers.lock() else {
+        return false;
+    };
+    let mut sent = false;
+    for (id, p) in peers.iter() {
+        if peer.is_none_or(|wanted| wanted == *id) {
+            sent |= p.tx.send(message.clone()).is_ok();
+        }
+    }
+    sent
+}
+
+/// Present mode fills the screen: the window goes full screen and back.
+#[tauri::command]
+pub fn remote_fullscreen(window: tauri::WebviewWindow<Wry>, on: bool) -> bool {
+    window.set_fullscreen(on).is_ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn draws_a_qr_code() {
+        let svg = qr_svg("http://192.168.1.4:47800/#k=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+            .unwrap();
+        assert!(svg.starts_with("<?xml") || svg.starts_with("<svg"));
+        assert!(svg.contains("#041e42"));
+    }
+
+    /// The remote on, on this machine only, for a test: what the server
+    /// shares, the QR code's address, and the switch that stops it.
+    fn serve<R: Runtime>(
+        app: &AppHandle<R>,
+        pc_control: bool,
+    ) -> (Arc<Shared<R>>, String, watch::Sender<bool>) {
+        let listener = tauri::async_runtime::block_on(TcpListener::bind(("127.0.0.1", 0))).unwrap();
+        let shared = Arc::new(Shared {
+            app: app.clone(),
+            port: listener.local_addr().unwrap().port(),
+            addresses: vec![Ipv4Addr::LOCALHOST],
+            code: Mutex::new(None),
+            phones: Mutex::new(Phones::default()),
+            peers: Mutex::new(Default::default()),
+            next_peer: AtomicU64::new(1),
+            pc_control: AtomicBool::new(pc_control),
+        });
+        shared.new_code();
+        let url = status_of(Some(&*shared), app).url.unwrap();
+        let (stop, stopped) = watch::channel(false);
+        tauri::async_runtime::spawn(server::run(shared.clone(), listener, stopped));
+        (shared, url, stop)
+    }
+
+    type Socket = tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>;
+
+    /// A phone, in Rust: pairs with the code in `url` as the phone page does
+    /// (`packages/ui/src/remote/phone/link.ts`) and hands back the open
+    /// connection, its key, and the messages that came first.
+    async fn pair(url: &str) -> (Socket, SealKey, Vec<Value>) {
+        use futures_util::SinkExt;
+        use tokio_tungstenite::tungstenite::Message;
+
+        let (address, code) = url.split_once("/#k=").unwrap();
+        let code: SealKey =
+            base64::Engine::decode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, code)
+                .unwrap()
+                .try_into()
+                .unwrap();
+        let host = address.trim_start_matches("http://");
+        let stream = tokio::net::TcpStream::connect(host).await.unwrap();
+        let (mut socket, _) = tokio_tungstenite::client_async(format!("ws://{host}/"), stream)
+            .await
+            .unwrap();
+        let Message::Text(challenge) = next(&mut socket).await else {
+            panic!("no challenge")
+        };
+        let challenge: Value = serde_json::from_str(challenge.as_str()).unwrap();
+        let challenge = challenge["c"].as_str().unwrap().to_string();
+        let inside = serde_json::json!({ "c": challenge, "name": "Test phone" }).to_string();
+        let hello = serde_json::json!({ "t": "hello", "device": null, "box": seal::to_base64(&seal::seal(&code, inside.as_bytes())) });
+        socket
+            .send(Message::Text(hello.to_string().into()))
+            .await
+            .unwrap();
+        let session = seal::session_key(&code, &challenge);
+        let mut first = Vec::new();
+        while first.len() < 2 {
+            let Message::Binary(sealed) = next(&mut socket).await else {
+                panic!("not sealed")
+            };
+            let plain = seal::open(&session, &sealed).expect("sealed with the code's key");
+            first.push(serde_json::from_slice(&plain).unwrap());
+        }
+        (socket, session, first)
+    }
+
+    async fn next(socket: &mut Socket) -> tokio_tungstenite::tungstenite::Message {
+        use futures_util::StreamExt;
+        let read = tokio::time::timeout(Duration::from_secs(5), socket.next());
+        read.await.unwrap().unwrap().unwrap()
+    }
+
+    async fn say(socket: &mut Socket, session: &SealKey, seq: u64, mut message: Value) {
+        use futures_util::SinkExt;
+        message["s"] = seq.into();
+        message["d"] = "p".into();
+        let sealed = seal::seal(session, message.to_string().as_bytes());
+        socket
+            .send(tokio_tungstenite::tungstenite::Message::Binary(
+                sealed.into(),
+            ))
+            .await
+            .unwrap();
+    }
+
+    #[test]
+    fn a_phone_pairs_and_its_messages_reach_the_interface() {
+        use tauri::Listener;
+
+        let app = tauri::test::mock_app();
+        let (shared, url, _stop) = serve(app.handle(), false);
+        let heard = Arc::new(Mutex::new(Vec::<Value>::new()));
+        let log = heard.clone();
+        app.handle().listen(MESSAGE_EVENT, move |event| {
+            log.lock()
+                .unwrap()
+                .push(serde_json::from_str(event.payload()).unwrap());
+        });
+
+        tauri::async_runtime::block_on(async {
+            let (mut socket, session, first) = pair(&url).await;
+            assert_eq!(first[0]["t"], "welcome");
+            assert_eq!(first[1]["t"], "ready");
+            assert_eq!(first[1]["pcControl"], false);
+            // The code is spent; the phone is remembered under its own key.
+            assert!(shared.code().is_none());
+            assert_eq!(shared.phones.lock().unwrap().list().len(), 1);
+
+            say(
+                &mut socket,
+                &session,
+                1,
+                serde_json::json!({ "t": "go", "page": 3 }),
+            )
+            .await;
+            // A replay of an old number is not taken, and the connection goes.
+            say(&mut socket, &session, 1, serde_json::json!({ "t": "next" })).await;
+            tokio::time::sleep(Duration::from_millis(300)).await;
+        });
+
+        let heard = heard.lock().unwrap();
+        let kinds: Vec<&str> = heard
+            .iter()
+            .filter_map(|e| e["message"]["t"].as_str())
+            .collect();
+        assert_eq!(kinds, ["joined", "go", "left"], "{heard:?}");
+        assert_eq!(heard[1]["message"]["page"], 3);
+    }
+
+    /// PC control for real: a paired phone's trackpad moves this machine's
+    /// pointer. Moves the pointer, so not in the everyday run; the Windows
+    /// build runs it (`.github/workflows/desktop-windows.yml`).
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
+    #[test]
+    #[ignore]
+    fn a_paired_phone_moves_the_pointer() {
+        use enigo::{Coordinate, Enigo, Mouse, Settings};
+
+        let mut enigo = Enigo::new(&Settings::default()).unwrap();
+        let (width, height) = enigo.main_display().unwrap();
+        enigo
+            .move_mouse(width / 2, height / 2, Coordinate::Abs)
+            .unwrap();
+        let before = enigo.location().unwrap();
+
+        let app = tauri::test::mock_app();
+        let (_shared, url, _stop) = serve(app.handle(), true);
+        tauri::async_runtime::block_on(async {
+            let (mut socket, session, first) = pair(&url).await;
+            assert_eq!(first[1]["pcControl"], true);
+            say(
+                &mut socket,
+                &session,
+                1,
+                serde_json::json!({ "t": "pc", "k": "move", "dx": 40, "dy": 30 }),
+            )
+            .await;
+            tokio::time::sleep(Duration::from_millis(800)).await;
+        });
+        let after = enigo.location().unwrap();
+        println!("pointer {before:?} -> {after:?}");
+        assert_ne!(before, after, "the pointer did not move");
+        assert!(
+            after.0 > before.0 && after.1 > before.1,
+            "{before:?} -> {after:?}"
+        );
+    }
+
+    /// The phone page end to end: the page this build serves (the web app's
+    /// `dist`, built with `vite build --mode tauri`), in a phone-sized
+    /// Chromium (`apps/web/e2e/remote-phone.mjs`), against this server, with
+    /// this test playing the PC's interface. Needs that build and Playwright,
+    /// so it is not in the everyday run: `cargo test remote -- --ignored`.
+    #[test]
+    #[ignore]
+    fn the_phone_page_pairs_and_presents() {
+        use tauri::Listener;
+
+        let app = tauri::test::mock_builder()
+            .build(tauri::generate_context!())
+            .unwrap();
+        let handle = app.handle().clone();
+        let (shared, url, _stop) = serve(&handle, false);
+
+        // The PC's interface, as far as a phone can tell: a three-page document.
+        let heard = Arc::new(Mutex::new(Vec::<String>::new()));
+        let pc = shared.clone();
+        let log = heard.clone();
+        let view = Mutex::new((1u64, false));
+        handle.listen(MESSAGE_EVENT, move |event| {
+            let event: Value = serde_json::from_str(event.payload()).unwrap();
+            let peer = event["peer"].as_u64().unwrap();
+            let message = &event["message"];
+            let t = message["t"].as_str().unwrap_or("").to_string();
+            log.lock().unwrap().push(t.clone());
+            let mut view = view.lock().unwrap();
+            let reply = match t.as_str() {
+                "next" => {
+                    view.0 = (view.0 + 1).min(3);
+                    None
+                }
+                "present" => {
+                    view.1 = message["on"].as_bool().unwrap_or(false);
+                    None
+                }
+                "picture" => {
+                    let page = message["page"].as_u64().unwrap();
+                    let svg = format!(
+                        "<svg xmlns='http://www.w3.org/2000/svg' width='90' height='120'><rect width='90' height='120' fill='white'/><text x='10' y='60'>{page}</text></svg>"
+                    );
+                    Some(serde_json::json!({
+                        "t": "picture", "page": page, "width": message["width"],
+                        "url": format!("data:image/svg+xml,{}", svg.replace('<', "%3C").replace('>', "%3E").replace('#', "%23")),
+                    }))
+                }
+                _ => None,
+            };
+            let state = serde_json::json!({
+                "t": "state",
+                "doc": { "name": "Talk.pdf", "pages": 3, "shapes": [0.75, 0.75, 0.75] },
+                "page": view.0, "presenting": view.1, "black": false, "rtl": false,
+                "notes": [{ "text": format!("Speaker note for page {}", view.0), "author": null }],
+            });
+            if let Some(peer) = pc.peers.lock().unwrap().get(&peer) {
+                let _ = peer.tx.send(reply.unwrap_or(state));
+            }
+        });
+
+        let script = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../web/e2e/remote-phone.mjs"
+        );
+        let status = std::process::Command::new("node")
+            .arg(script)
+            .arg(&url)
+            .status()
+            .expect("node");
+        assert!(status.success(), "the phone page's steps failed");
+
+        let heard = heard.lock().unwrap();
+        for t in ["joined", "picture", "next", "present", "laser", "left"] {
+            assert!(heard.iter().any(|h| h == t), "never heard {t}: {heard:?}");
+        }
+        // The phone that paired is remembered, and only it.
+        assert_eq!(shared.phones.lock().unwrap().list().len(), 1);
+    }
+
+    #[test]
+    fn local_addresses_are_private_and_ipv4() {
+        for ip in local_addresses() {
+            assert!(ip.is_private() || ip.is_link_local(), "{ip}");
+        }
+    }
+}

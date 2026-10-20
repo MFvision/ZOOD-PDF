@@ -1,5 +1,5 @@
 //! The document panes: bookmarks (`outline.list`), attachments
-//! (`attachments.*`) and layers (`layers.*`). Each takes the file as it stands
+//! (`attachments.*`), layers (`layers.*`) and comments (`comments.list`). Each takes the file as it stands
 //! and answers JSON, and a changed file where there is one — written as an
 //! update of the file's own bytes, sealed with its key if it has one.
 use std::collections::BTreeSet;
@@ -136,6 +136,24 @@ pub fn attachments(name: &str, json: &str, blobs: Vec<Vec<u8>>) -> Result<Reply,
             Ok(Reply::of(&serde_json::json!({ "removed": true }))?.with_blob(bytes))
         }
         _ => Err(CoreError::UnknownOp(format!("attachments.{name}"))),
+    }
+}
+
+/// `comments.list`: every page's comments, for a presenter's notes.
+pub fn comments(name: &str, json: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
+    let a: Args = args(json)?;
+    let mut blobs = blobs.into_iter();
+    match name {
+        "list" => {
+            let doc = PdfDocument::open(first(&mut blobs, "the PDF")?, a.password.as_deref())?;
+            let notes: Vec<serde_json::Value> = doc
+                .notes()
+                .into_iter()
+                .map(|n| serde_json::json!({ "page": n.page, "text": n.text, "author": n.author }))
+                .collect();
+            Reply::of(&serde_json::json!({ "notes": notes }))
+        }
+        _ => Err(CoreError::UnknownOp(format!("comments.{name}"))),
     }
 }
 

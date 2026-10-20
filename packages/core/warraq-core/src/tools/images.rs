@@ -107,8 +107,34 @@ pub fn call(
     }
 }
 
+#[derive(Deserialize)]
+struct SavedPlace {
+    #[serde(default)]
+    password: Option<String>,
+    page: usize,
+    matrix: [f32; 6],
+}
+
 pub fn call_static(name: &str, json_args: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, CoreError> {
     match name {
+        // A picture placed on a saved file — a signature drawn on the phone
+        // remote — answered with the file as an update of its own bytes.
+        // blobs: the PDF, then the picture.
+        "add" => {
+            let a: SavedPlace = args(json_args)?;
+            let mut blobs = blobs.into_iter();
+            let pdf = blobs
+                .next()
+                .ok_or_else(|| CoreError::Args("images.add takes the PDF".into()))?;
+            let picture = picture(blobs.collect(), "add")?;
+            let mut doc = PdfDocument::open(pdf, a.password.as_deref())?;
+            let id = doc.add_image(a.page, a.matrix, &picture)?;
+            let bytes = match doc.save_incremental() {
+                Ok(bytes) => bytes,
+                Err(_) => doc.save_to_vec()?,
+            };
+            Ok(Reply::of(&serde_json::json!({ "id": id }))?.with_blob(bytes))
+        }
         // The pictures of a saved file, without opening it in the editor.
         "list" => {
             let a: Saved = args(json_args)?;

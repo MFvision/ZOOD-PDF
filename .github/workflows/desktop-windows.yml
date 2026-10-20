@@ -109,6 +109,20 @@ jobs:
           set -o pipefail
           cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --lib 2>&1 | tee test-desktop.log
 
+      # The phone remote on Windows: the phone page this build serves, in
+      # Chrome at phone size, pairs with the remote's server, presents and
+      # turns pages, and is refused with a used or wrong code; then a paired
+      # phone's trackpad moves this machine's real pointer.
+      - name: try the phone remote
+        id: remote
+        continue-on-error: true
+        shell: bash
+        env:
+          CHROMIUM: 'C:\Program Files\Google\Chrome\Application\chrome.exe'
+        run: |
+          set -o pipefail
+          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --lib remote -- --include-ignored --nocapture --test-threads=1 2>&1 | tee test-remote.log
+
       - name: record the outcome
         if: always()
         shell: bash
@@ -121,10 +135,11 @@ jobs:
             echo "run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
             echo "release: $(cat ../release-tag.txt 2>/dev/null || echo none)"
             echo "ring check: ${{ steps.ring.outcome }}"
+            echo "remote check: ${{ steps.remote.outcome }}"
             echo "finished: $(date -u +%Y-%m-%dT%H:%MZ)"
           } > status.txt
           [ -d ../ring-check ] && cp -r ../ring-check ring-check
-          for f in build test-core test-desktop; do
+          for f in build test-core test-desktop test-remote; do
             [ -f "../$f.log" ] && tail -n 250 "../$f.log" > "$f.log"
           done
           git add -A

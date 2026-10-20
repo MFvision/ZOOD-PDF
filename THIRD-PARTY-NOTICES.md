@@ -53,6 +53,12 @@ licence text (`scripts/rust-licenses.mjs`).
 | `block2` 0.6 (macOS desktop) | MIT | The quick tools' ring: the block its mouse monitor takes |
 | `tray-icon` (through Tauri's `tray-icon` feature; `muda` already listed) | MIT OR Apache-2.0 | The tray icon while the quick tools are kept ready |
 | Filee (github.com/KnifeLemon/Filee) — idea only, no code | MIT | The quick tools' ring and right-click menu follow its design |
+| `tokio`, `tokio-tungstenite` and `tungstenite` (with `http`, `httparse`, `data-encoding`, `sha1`, `rand`, `bytes`, `mio`, `socket2`), `futures-util` (desktop only) | MIT; MIT; MIT OR Apache-2.0 (`data-encoding`, `bytes`, `mio`: MIT) | The phone remote: the local server a phone on the same Wi-Fi connects to, only while the remote is on |
+| RustCrypto `chacha20poly1305` with `chacha20`, `poly1305`, `aead`, `universal-hash`; `base64` (desktop only) | Apache-2.0 OR MIT | The phone remote: every message between the phone and the PC sealed with the key in the QR code |
+| `qrcode` 0.14, `if-addrs` 0.15 (desktop only) | MIT OR Apache-2.0; MIT OR BSD-3-Clause, taken under MIT | The phone remote: the QR code the PC shows, and the PC's address on the local network |
+| `enigo` 0.6 (Windows and macOS desktop; with `windows` on Windows, `core-graphics` and `objc2-*` on macOS) | MIT; MIT OR Apache-2.0 | The phone remote's PC control, when the person switches it on: the pointer, clicks, scrolling, typing and media keys as the system's own input |
+| `@noble/ciphers`, `@noble/hashes` (Paul Miller) | MIT | The phone remote's page, on the phone: ChaCha20-Poly1305 and SHA-256 in plain JavaScript, since a page on the local network has no WebCrypto |
+| Mousely — idea only, from its public website and video; no code, assets, protocol or branding | — | The phone remote follows the idea of a phone as the PC's presenter and trackpad |
 | `cssparser`, `cssparser-macros`, `selectors`, `dtoa-short`, `option-ext` (pulled in by Tauri, desktop only, unmodified; source on crates.io) | MPL-2.0 | Tauri's HTML handling and settings paths |
 
 No GPL, AGPL or LGPL component is shipped (`r-efi`, offered under MIT OR
