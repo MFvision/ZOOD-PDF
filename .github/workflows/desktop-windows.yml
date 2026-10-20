@@ -80,7 +80,8 @@ jobs:
           tag="windows-$(date -u +%Y%m%d-%H%M)"
           exe="$(ls apps/desktop/src-tauri/target/release/bundle/nsis/*.exe | head -n 1)"
           cp "$exe" ZOOD-PDF-Setup.exe
-          gh release create "$tag" ZOOD-PDF-Setup.exe --target "$GITHUB_SHA" \
+          # A test build: a pre-release, so "Latest" stays the real release.
+          gh release create "$tag" ZOOD-PDF-Setup.exe --target "$GITHUB_SHA" --prerelease \
             --title "Windows installer ($tag)" \
             --notes "Built from $GITHUB_SHA on $(date -u +%Y-%m-%dT%H:%MZ). Unsigned: Windows will ask before running it."
           echo "$tag" > release-tag.txt
