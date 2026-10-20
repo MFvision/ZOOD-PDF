@@ -31,6 +31,7 @@ import { ToolGallery } from '../tools/ToolGallery';
 import { useMarkupBar } from './markupBar';
 import { hasNativeMenuBar, useInspectorHidden } from './menuModel';
 import { PageInput } from './PageInput';
+import { ShareButton } from './ShareButton';
 import { ZoomControl } from './ZoomControl';
 
 /**
@@ -152,7 +153,8 @@ export function Toolbar() {
             )}
           </div>
         )}
-        <div className="toolbar-group">
+        {/* On the home screen every tool is in the sidebar and behind More. */}
+        <div className="toolbar-group" hidden={!hasDocument && state.view !== 'viewer'}>
           <button
             ref={setGalleryButton}
             type="button"
@@ -202,6 +204,7 @@ export function Toolbar() {
               onClick={() => (readAloud.open ? closeBar() : openBar())}
             />
             <IconButton label={t('file.save')} icon={<Icon of={Download} />} onClick={() => void services.saveDocument()} />
+            <ShareButton />
           </div>
         )}
         {(hasDocument || state.rightPane.activeTool !== null) && !noInspector && (

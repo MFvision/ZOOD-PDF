@@ -1,5 +1,6 @@
 import { Icon } from '../components/Icon';
 import { FormNotices } from '../forms/FormNotices';
+import { WalletFill } from '../ai/profile/WalletFill';
 import { IconButton } from '../components/IconButton';
 import { useT } from '../i18n/useT';
 import { useAppState, useServices } from '../state/AppContext';
@@ -41,6 +42,7 @@ export function EmbedToolPanel({ tool }: { tool: ToolDefinition }) {
       {(tool.id === 'comment' || tool.id === 'fillSign') && (
         <p className="tool-panel-note">{t('tool.arabicDrawNote')}</p>
       )}
+      {tool.id === 'fillSign' && ready && <WalletFill />}
       {tool.id === 'redact' && <p className="tool-panel-note">{t('tool.redactNote')}</p>}
     </div>
   );

@@ -1,0 +1,428 @@
+/*
+ * Workbench: flat white and light grey, 1 px borders, 6 px corners, one blue
+ * (tokens in looks.css), with its own layout (shell/workbench.ts): the tabs
+ * with Home first at the very top, the mode bar, the tools down the leading
+ * side, the panels behind a slim rail on the trailing side and a quick bar
+ * floating over the page.
+ */
+
+/* ---- Tabs: a flat strip, the live tab joined to the bar under it ---- */
+
+html[data-look="workbench"] .tab-bar {
+  min-block-size: 38px;
+  padding-inline: var(--space-2);
+  background: var(--window-background);
+  border-block-end: 1px solid var(--opaque-separator);
+}
+
+html[data-look="workbench"] .tab {
+  block-size: 32px;
+  border-radius: 6px 6px 0 0;
+}
+
+html[data-look="workbench"] .tab.is-live {
+  background: var(--toolbar-background);
+  box-shadow: 0 -1px 0 var(--opaque-separator), 1px 0 0 var(--opaque-separator), -1px 0 0 var(--opaque-separator);
+  margin-block-end: -1px;
+  block-size: 33px;
+}
+
+html[data-look="workbench"] .tab-home {
+  flex: none;
+  min-inline-size: 0;
+}
+
+html[data-look="workbench"] .tab-home .tab-name {
+  gap: var(--space-2);
+  padding-inline: var(--space-3);
+  font-weight: 600;
+}
+
+/* ---- The mode bar ---- */
+
+.workbench-bar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-4);
+  min-block-size: 44px;
+  padding-inline: var(--space-3);
+  background: var(--toolbar-background);
+  border-block-end: 1px solid var(--opaque-separator);
+}
+
+.workbench-bar[data-native-chrome] {
+  padding-inline-start: var(--traffic-lights);
+}
+
+[dir="rtl"] .workbench-bar[data-native-chrome] {
+  padding-inline: var(--space-3) var(--traffic-lights);
+}
+
+.workbench-modes {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.workbench-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  block-size: 30px;
+  padding-inline: var(--space-3);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--label);
+  font: inherit;
+  font-size: var(--text-callout);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.workbench-mode:hover {
+  background: var(--tertiary-fill);
+}
+
+.workbench-mode[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  box-shadow: inset 0 -2px 0 var(--accent);
+  border-radius: 6px 6px 0 0;
+}
+
+.workbench-mode:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.workbench-search {
+  position: relative;
+  flex: 0 1 280px;
+  min-inline-size: 140px;
+  margin-inline-start: auto;
+}
+
+.workbench-search .text-input {
+  inline-size: 100%;
+  block-size: 30px;
+  padding-inline-start: 30px;
+  border-radius: 6px;
+}
+
+.workbench-search-icon {
+  position: absolute;
+  inset-block-start: 8px;
+  inset-inline-start: 10px;
+  color: var(--tertiary-label);
+  pointer-events: none;
+}
+
+.workbench-search-results {
+  position: absolute;
+  inset-block-start: calc(100% + 4px);
+  inset-inline: 0;
+  z-index: 40;
+  max-block-size: 340px;
+  margin: 0;
+  padding: var(--space-1);
+  overflow-y: auto;
+  list-style: none;
+  background: var(--elevated-background);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+}
+
+.workbench-search-results li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: 32px;
+  padding-inline: var(--space-2);
+  border-radius: 6px;
+  font-size: var(--text-callout);
+  color: var(--label);
+}
+
+.workbench-search-results li[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.workbench-search-results li.workbench-search-none {
+  color: var(--secondary-label);
+}
+
+.workbench-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.workbench-actions:empty {
+  display: none;
+}
+
+/* ---- The tools on the leading side, the panes on the trailing one ---- */
+
+html[data-look="workbench"] .shell-body > .inspector {
+  background: var(--sidebar-background);
+  border-inline-start: 0;
+  border-inline-end: 1px solid var(--opaque-separator);
+}
+
+html[data-look="workbench"] .shell-body > .sidebar {
+  border-inline-end: 0;
+  border-inline-start: 1px solid var(--opaque-separator);
+}
+
+html[data-look="workbench"] .pane-header {
+  border-block-end: 1px solid var(--separator);
+}
+
+/* ---- The rail ---- */
+
+.workbench-rail {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  inline-size: 52px;
+  padding-block: var(--space-2);
+  background: var(--toolbar-background);
+  border-inline-start: 1px solid var(--opaque-separator);
+}
+
+.workbench-rail-panels,
+.workbench-rail-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.workbench-rail .icon-btn[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
+.workbench-rail-foot {
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--separator);
+}
+
+.workbench-rail-foot .page-input-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--text-caption1);
+  color: var(--secondary-label);
+}
+
+.workbench-rail-foot .page-input {
+  inline-size: 40px;
+  text-align: center;
+}
+
+.workbench-rail-foot .toolbar-zoom-value {
+  min-inline-size: 0;
+  inline-size: 46px;
+  padding-inline: 0;
+  border-radius: 6px;
+  font-size: var(--text-caption1);
+}
+
+/* ---- The quick bar over the page ---- */
+
+.quick-bar {
+  position: absolute;
+  inset-block-end: var(--space-5);
+  inset-inline-start: 50%;
+  z-index: 15;
+  display: flex;
+  gap: 2px;
+  padding: var(--space-1);
+  translate: -50% 0;
+  background: var(--elevated-background);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+}
+
+[dir="rtl"] .quick-bar {
+  translate: 50% 0;
+}
+
+/* ---- The home screen in this look: plain, flat, a table of recent files ---- */
+
+html[data-look="workbench"] .home-topbar {
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-look="workbench"] .home-section {
+  padding: var(--space-5);
+  background: var(--content-background);
+  border: 1px solid var(--opaque-separator);
+  border-radius: 6px;
+}
+
+.recent-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-callout);
+}
+
+.recent-table th {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  color: var(--secondary-label);
+  text-align: start;
+  border-block-end: 1px solid var(--opaque-separator);
+}
+
+.recent-table td {
+  padding: 0 var(--space-3);
+  block-size: 44px;
+  border-block-end: 1px solid var(--separator);
+  color: var(--secondary-label);
+  white-space: nowrap;
+}
+
+.recent-table tr:last-child td {
+  border-block-end: 0;
+}
+
+.recent-table tbody tr:hover {
+  background: var(--quaternary-fill);
+}
+
+.recent-table .recent-table-name {
+  inline-size: 100%;
+  max-inline-size: 0;
+  color: var(--label);
+}
+
+.recent-table .recent-table-open {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  inline-size: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: default;
+}
+
+.recent-table .recent-table-open > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recent-table .recent-table-thumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 24px;
+  block-size: 30px;
+  overflow: hidden;
+  border: 1px solid var(--opaque-separator);
+  border-radius: 2px;
+  background: #fff;
+  color: var(--tertiary-label);
+}
+
+.recent-table .recent-table-thumb img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.recent-table .recent-table-place {
+  max-inline-size: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A row's ⋯ sits at its end, not in a card's corner. */
+.recent-table .recent-more.icon-btn {
+  position: static;
+  background: transparent;
+  box-shadow: none;
+}
+
+.recent-table tbody tr:hover .recent-more.icon-btn,
+.recent-table .recent-more.icon-btn[aria-expanded="true"] {
+  background: var(--tertiary-fill);
+}
+
+.recent-view-switch {
+  display: inline-flex;
+}
+
+/* ---- Narrow windows: the modes keep their icons, the rail its panels ---- */
+
+@media (width <= 760px) {
+  .workbench-mode span {
+    display: none;
+  }
+
+  .workbench-mode:not(:has(svg)) span {
+    display: inline;
+  }
+
+  .workbench-search {
+    flex-basis: 160px;
+  }
+
+  .workbench-rail-foot {
+    display: none;
+  }
+
+  .recent-table .recent-table-place,
+  .recent-table th:nth-child(4),
+  .recent-table th:nth-child(3),
+  .recent-table td:nth-child(3) {
+    display: none;
+  }
+}
+
+/* ---- One blue: every tool's tile in the accent, lightly ---- */
+
+html[data-look="workbench"] .tool-icon {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+  box-shadow: none;
+}
+
+/* The home's sidebar keeps its places; the tools are behind All tools. */
+html[data-look="workbench"] .home-sidebar {
+  background: var(--sidebar-background);
+  border-inline-end: 1px solid var(--opaque-separator);
+  box-shadow: none;
+}
+
+html[data-look="workbench"] .home-card {
+  border: 1px solid var(--opaque-separator);
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+html[data-look="workbench"] .home-card:hover {
+  border-color: var(--accent);
+}
+
+html[data-look="workbench"] .home-sidebar .home-nav-heading,
+html[data-look="workbench"] .home-sidebar .home-nav-tools {
+  display: none;
+}

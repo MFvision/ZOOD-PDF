@@ -15,7 +15,7 @@ set -eu
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
 dest=${1:-/Applications}
-app_name="محرر PDF.app"
+app_name="ZOOD PDF.app"
 # Earlier installs of the same app were called these.
 old_names="Warraq.app ورّاق.app"
 built="$repo/apps/desktop/src-tauri/target/release/bundle/macos/$app_name"

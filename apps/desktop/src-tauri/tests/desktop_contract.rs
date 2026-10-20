@@ -236,15 +236,14 @@ fn the_bundle_is_built_for_the_desktop_host() {
     }
 }
 
-/// The app's name is محرر PDF in every build. WiX (the MSI builder) writes the
-/// installer in a Windows code page that has no Arabic, so Windows builds make
-/// only the NSIS installer, which is Unicode throughout.
+/// The app is ZOOD PDF in every build (محرر زود PDF in the Arabic interface).
+/// Windows builds make only the NSIS installer, which is Unicode throughout.
 #[test]
-fn the_arabic_name_is_bundled_where_it_can_be_written() {
+fn the_product_name_is_zood_pdf() {
     let config = json("tauri.conf.json");
-    assert_eq!(config["productName"], "محرر PDF");
+    assert_eq!(config["productName"], "ZOOD PDF");
     assert_eq!(config["mainBinaryName"], "warraq-desktop");
-    assert_eq!(config["app"]["windows"][0]["title"], "محرر PDF");
+    assert_eq!(config["app"]["windows"][0]["title"], "ZOOD PDF");
     let windows = json("tauri.windows.conf.json");
     assert_eq!(windows["bundle"]["targets"], serde_json::json!(["nsis"]));
 }

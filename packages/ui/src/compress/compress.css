@@ -35,7 +35,29 @@
   margin-block: 12px;
 }
 
-.compress-sizes {
+.compress-metric {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.compress-metric-value {
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.1;
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  color: var(--label);
+}
+
+.compress-metric-label {
+  font-size: var(--text-subheadline);
+  color: var(--secondary-label);
+}
+
+.compress-sizes {
+  margin-block: var(--space-1) 0;
+  font-size: var(--text-footnote);
+  font-variant-numeric: tabular-nums;
+  color: var(--secondary-label);
 }

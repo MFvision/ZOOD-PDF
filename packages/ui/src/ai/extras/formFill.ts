@@ -1,3 +1,4 @@
+import type { CoreClient } from '../../core/client';
 import type { TextLineData } from '../../core/types';
 import type { FormModel, PageRect } from '../../forms/formTypes';
 import type { Prompt } from '../providers';
@@ -94,7 +95,7 @@ export const FILL_SCHEMA = {
 } as const;
 
 const SYSTEM = [
-  'You help a person fill in a PDF form in محرر PDF, a PDF editor.',
+  'You help a person fill in a PDF form in ZOOD PDF, a PDF editor.',
   'The user message lists the form\'s fields inside <fields>, one per line: the field\'s name, the words printed beside it on the page, and what it holds now. Then come the person\'s details inside <details>.',
   'Rules:',
   '- Fill a field only with what the details say. Never invent, guess or complete a value; leave out any field the details do not answer.',
@@ -132,4 +133,22 @@ export function parseFill(answer: string, known: readonly FillField[]): FillValu
     if (field !== null && value !== null && names.has(field) && value.trim() !== '' && !out.has(field)) out.set(field, value.trim());
   }
   return [...out].map(([field, value]) => ({ field, value }));
+}
+
+/**
+ * The form of `bytes`, read with the words beside each of its text fields:
+ * smart fill's fields, and the Wallet's. Only the pages with a field are read.
+ */
+export async function readFillFields(client: CoreClient, bytes: ArrayBuffer, password: string | undefined): Promise<FillField[]> {
+  const { result: model } = await client.callStatic<FormModel>('forms.inspect', { password: password ?? null }, [bytes.slice(0)]);
+  const doc = await client.open(bytes, password);
+  const lines = new Map<number, TextLineData[]>();
+  try {
+    for (const page of new Set(model.fields.flatMap((field) => field.widgets.map((w) => w.page)))) {
+      if (page >= 0 && page < doc.pageCount) lines.set(page, await doc.text_lines(page));
+    }
+  } finally {
+    void doc.free();
+  }
+  return fillableFields(model, (page) => lines.get(page) ?? []);
 }

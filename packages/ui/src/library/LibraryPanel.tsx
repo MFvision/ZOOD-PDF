@@ -20,7 +20,7 @@ import { IconButton } from '../components/IconButton';
 import { Dialog } from '../components/Dialog';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
-import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
+import { useAppDispatch, useServices } from '../state/AppContext';
 import { LIBRARY_ACCEPT } from './kinds';
 import type { LibraryKind } from './kinds';
 import { badRange, filterCount, noFilters, toFilters, toggle } from './filters';
@@ -49,6 +49,7 @@ import {
   watchedFiles,
 } from './sources';
 import type { LibraryWatchAnswer, PassedOver } from './sources';
+import { requestPage } from '../home/pendingPage';
 import { starId, toggleStarred, useStarred } from '../state/starred';
 import { emptyMeta, libraryStore } from './store';
 import type { FileRecord, FolderRecord, LibraryMeta } from './store';
@@ -75,7 +76,6 @@ const PAGE_SIZE = 25;
 
 export function LibraryPanel() {
   const { t } = useI18n();
-  const state = useAppState();
   const dispatch = useAppDispatch();
   const services = useServices();
 
@@ -120,7 +120,6 @@ export function LibraryPanel() {
   const [shown, setShown] = useState(PAGE_SIZE);
   const [searching, setSearching] = useState(false);
   const [missing, setMissing] = useState<string | null>(null);
-  const [pendingPage, setPendingPage] = useState<number | null>(null);
   const [thumbs, setThumbs] = useState<ReadonlyMap<string, string>>(new Map());
 
   const [chosen, setChosen] = useState<IndexedDocument | null>(null);
@@ -433,36 +432,12 @@ export function LibraryPanel() {
           return;
         }
         await services.openFile(file);
-        setPendingPage(hit.page);
+        requestPage(hit.page);
       } catch (problem) {
         trouble(problem);
       }
     })();
   };
-
-  // EmbedPDF draws the file a moment after it is opened, and a page asked
-  // for before it has drawn is dropped. The page is asked for again until
-  // the view is really showing it, and then let go of.
-  const at = useRef(state.currentPage);
-  useEffect(() => {
-    at.current = state.currentPage;
-  }, [state.currentPage]);
-  const goToPage = services.goToPage;
-  const pages = state.document?.pageCount ?? 0;
-  useEffect(() => {
-    if (pendingPage === null || pages < pendingPage) return undefined;
-    let left = 24;
-    const timer = setInterval(() => {
-      left -= 1;
-      if (at.current === pendingPage || left <= 0) {
-        clearInterval(timer);
-        setPendingPage(null);
-        return;
-      }
-      goToPage(pendingPage);
-    }, 250);
-    return () => clearInterval(timer);
-  }, [goToPage, pages, pendingPage]);
 
   // The tags of a document chosen from a result are edited in their own
   // section further down the panel; bring it into view, or the press does

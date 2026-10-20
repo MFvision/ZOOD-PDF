@@ -322,7 +322,7 @@ pub fn read(bytes: &[u8]) -> Result<Index, CoreError> {
 
     let mut r = Reader::new(body);
     if r.take(MAGIC.len())? != MAGIC {
-        return Err(bad("not an index of محرر PDF"));
+        return Err(bad("not an index of ZOOD PDF"));
     }
     let version = r.u16()?;
     if version != FORMAT_VERSION {

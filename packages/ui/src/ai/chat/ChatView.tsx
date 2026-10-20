@@ -12,8 +12,15 @@ import { AnswerText, spokenText } from './AnswerText';
 import type { Progress } from './analyze';
 import type { Ask, Basis } from './answer';
 import { deviceModel, shortModelName } from '../device/models';
-import { CHIPS } from './chips';
-import { analyzeNow, approve, ask, discard, setDraft, stop, useConversation } from './store';
+import { chosenChips } from './chips';
+import { useSettings } from '../../state/settings';
+import { analyzeNow, approve, ask, askAcross, bindChat, discard, setDraft, stop, useConversation } from './store';
+import { LIBRARY_CHAT } from './across';
+import type { FileBasis, Scope } from './across';
+import { useAppDispatch, useAppState, useServices } from '../../state/AppContext';
+import { addFact, rememberRequest } from '../profile/wallet';
+import { loadWallet, saveWallet } from '../profile/walletState';
+import { fileKey } from '../../history/versions';
 import type { AssistantTurn, Env, Note, Turn } from './store';
 
 const numbers = new Intl.NumberFormat('en-US');
@@ -76,7 +83,21 @@ export interface ChatViewProps {
   onIncomingTaken: () => void;
   /** Switches to the built-in model, offered when a local server could not be reached. */
   onUseDevice?: () => void;
+  /** What this question is asked about (Settings › AI › What the AI can see, changed here for now). */
+  scope: Scope;
+  onScope: (scope: Scope) => void;
+  /** Documents open in the window, and whether the Library has an index to ask. */
+  openCount: number;
+  libraryReady: boolean;
+  /** A citation of another file: opens it at that page. */
+  onSource: (file: FileBasis, page: number, scope: Scope) => void;
 }
+
+const SCOPES: readonly { id: Scope; label: TKey }[] = [
+  { id: 'document', label: 'ai.scope.document' },
+  { id: 'open', label: 'ai.scope.open' },
+  { id: 'library', label: 'ai.scope.library' },
+];
 
 /** A local server that did not answer, or that the app may not reach: the built-in model needs neither. */
 export function offersDevice(failure: Failure, provider: ProviderId): boolean {
@@ -89,9 +110,19 @@ export function offersDevice(failure: Failure, provider: ProviderId): boolean {
  * quick actions over it; and under the input, always, where messages go.
  */
 export function ChatView(props: ChatViewProps) {
-  const { documentId, hasDocument, currentPage, missing, env, incoming, onIncomingTaken } = props;
+  const { hasDocument, currentPage, missing, env, incoming, onIncomingTaken, scope } = props;
+  // The Library has one conversation of its own; the open documents share the live document's.
+  const documentId = scope === 'library' ? LIBRARY_CHAT : props.documentId;
   const { t, dir } = useI18n();
+  const settings = useSettings();
   const conversation = useConversation(documentId);
+  const { document } = useAppState();
+  const dispatch = useAppDispatch();
+  const { tabs, activeTab } = useServices();
+  const chatFile = scope === 'library' ? 'library:' : document ? fileKey(document.name, tabs.find((tab) => tab.key === activeTab)?.path) : null;
+  useEffect(() => {
+    if (documentId !== null && chatFile) void bindChat(documentId, chatFile);
+  }, [documentId, chatFile, settings.keepChats]);
   const reading = useReadAloud();
   const [copied, setCopied] = useState<{ id: number; state: 'yes' | 'failed' } | null>(null);
   const [heard, setHeard] = useState<number | null>(null);
@@ -105,7 +136,8 @@ export function ChatView(props: ChatViewProps) {
   const inputId = useId();
   const reviewId = useId();
   const { turns, busy, progress, review, known, draft } = conversation;
-  const canSend = hasDocument && documentId !== null && missing === null && !busy;
+  const ready = scope === 'library' ? props.libraryReady : hasDocument;
+  const canSend = ready && documentId !== null && missing === null && !busy;
 
   // In Arabic text a range such as 1–2 reads backwards unless it is isolated as left-to-right.
   const pageList = (pages: readonly number[]) => (dir === 'rtl' ? `⁦${formatPages(pages)}⁩` : formatPages(pages));
@@ -115,12 +147,26 @@ export function ChatView(props: ChatViewProps) {
   const send = (request: Ask) => {
     if (!canSend || documentId === null) return false;
     pinned.current = true;
-    void ask(documentId, request, env);
+    // Across files, a translation is still of the page on screen: this document's.
+    if (scope === 'document' || request.kind === 'translate') void ask(props.documentId ?? documentId, request, env);
+    else void askAcross(documentId, request.text, env, scope);
     return true;
   };
   const sendTyped = () => {
     const text = draft.trim();
     if (text.length === 0) return;
+    // "Remember that …" goes to the Memory, on this device, and not to a model.
+    const fact = rememberRequest(text);
+    if (fact) {
+      void loadWallet(t('wallet.me'))
+        .then((wallet) => saveWallet(addFact(wallet, fact, 'chat')).then(() => wallet.memoryOn))
+        .then(
+          (on) => dispatch({ type: 'TOAST', key: on ? 'memory.remembered' : 'memory.rememberedOff' }),
+          () => dispatch({ type: 'TOAST', key: 'profile.failed' }),
+        );
+      if (documentId !== null) setDraft(documentId, '');
+      return;
+    }
     if (send({ kind: 'question', text }) && documentId !== null) setDraft(documentId, '');
   };
 
@@ -129,13 +175,14 @@ export function ChatView(props: ChatViewProps) {
     if (!incoming) return;
     if (canSend && documentId !== null) {
       pinned.current = true;
-      void ask(documentId, incoming.kind === 'translate' ? { kind: 'translate', text: incoming.text, page: currentPage } : { kind: incoming.kind, text: incoming.text }, env);
+      if (scope !== 'document' && incoming.kind !== 'translate') void askAcross(documentId, incoming.text, env, scope);
+      else void ask(props.documentId ?? documentId, incoming.kind === 'translate' ? { kind: 'translate', text: incoming.text, page: currentPage } : { kind: incoming.kind, text: incoming.text }, env);
       onIncomingTaken();
-    } else if (hasDocument && documentId !== null && missing !== null) {
+    } else if (ready && documentId !== null && missing !== null) {
       setDraft(documentId, incoming.text);
       onIncomingTaken();
     }
-  }, [incoming, canSend, documentId, hasDocument, missing, currentPage, env, onIncomingTaken]);
+  }, [incoming, canSend, documentId, props.documentId, scope, ready, missing, currentPage, env, onIncomingTaken]);
 
   // The newest words stay in view while the reader has not scrolled away from them.
   useLayoutEffect(() => {
@@ -231,7 +278,15 @@ export function ChatView(props: ChatViewProps) {
       <li key={turn.id} className="ai-turn ai-turn-assistant" aria-busy={working} data-status={turn.status}>
         <span className="sr-only">{t('ai.chat.assistant')}</span>
         {turn.analyzed && <p className="ai-turn-line">{t('ai.chat.analyzingFirst')}</p>}
-        {turn.text.length > 0 && <AnswerText text={turn.text} pageCount={turn.pageCount} onPage={props.goToPage} />}
+        {turn.text.length > 0 && (
+          <AnswerText
+            text={turn.text}
+            pageCount={turn.pageCount}
+            onPage={props.goToPage}
+            files={turn.files}
+            onSource={(file, page) => props.onSource(file, page, turn.scope ?? 'open')}
+          />
+        )}
         {working && turn.text.length === 0 && !review && (
           <p className="ai-turn-wait">
             {conversation.reading !== null && !progress ? (
@@ -250,7 +305,10 @@ export function ChatView(props: ChatViewProps) {
             )}
           </p>
         )}
-        {turn.status === 'noText' && (
+        {turn.status === 'noText' && turn.scope && turn.scope !== 'document' && (
+          <p className="ai-turn-line">{t(turn.scope === 'library' ? 'ai.scope.noMatch' : 'ai.scope.noText')}</p>
+        )}
+        {turn.status === 'noText' && !(turn.scope && turn.scope !== 'document') && (
           <div className="ai-turn-notice">
             <p>{t(turn.noText === 'page' ? 'ai.chat.noTextPage' : 'ai.chat.noTextDocument')}</p>
             <IconButton label={t('ai.chat.openOcr')} icon={<Icon of={ScanText} />} showLabel onClick={props.openOcr} />
@@ -290,6 +348,39 @@ export function ChatView(props: ChatViewProps) {
                 <bdi dir="ltr">{turn.provider === 'device' ? shortModelName(deviceModel(turn.model).name) : turn.model}</bdi> · {basisText(turn.basis)}
               </p>
             )}
+            {turn.files && turn.files.length > 0 && (
+              <>
+                <p className="ai-turn-basis">
+                  <bdi dir="ltr">{turn.provider === 'device' ? shortModelName(deviceModel(turn.model).name) : turn.model}</bdi> ·{' '}
+                  {t(turn.scope === 'library' ? 'ai.scope.basisLibrary' : 'ai.scope.basisOpen', { count: turn.files.length })}
+                </p>
+                {/* Every file the answer was made from, each page a way there — whether or not the model cited it. */}
+                <ul className="ai-turn-files" aria-label={t('ai.scope.filesRead')}>
+                  {turn.files.map((file) => (
+                    <li key={file.key}>
+                      <span className="ai-turn-file" dir="auto">
+                        {file.name}
+                      </span>
+                      <span className="ai-turn-pages">
+                        {file.pages.slice(0, 8).map((page) => (
+                          <button
+                            key={page}
+                            type="button"
+                            className="ai-cite"
+                            dir={dir}
+                            title={t('ai.goToFilePage', { name: file.name, page })}
+                            aria-label={t('ai.goToFilePage', { name: file.name, page })}
+                            onClick={() => props.onSource(file, page, turn.scope ?? 'open')}
+                          >
+                            {t('ai.cite', { page })}
+                          </button>
+                        ))}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
             {turn.basis?.kind === 'passages' && (
               // The pages the passages came from, each a way there — whether or not the model cited them.
               <ul className="ai-turn-pages" aria-label={t('ai.chat.pagesRead')}>
@@ -321,6 +412,15 @@ export function ChatView(props: ChatViewProps) {
   /** The line that says what is known of the document, with the one thing to do about it. */
   const documentLine = (): ReactNode => {
     if (!hasDocument || documentId === null) return null;
+    if (busy && progress && scope !== 'document') {
+      return (
+        <div className="ai-doc" role="status">
+          <span className="ai-doc-text">{progressText(progress)}</span>
+          <progress className="ai-progress" max={1} value={progressShare(progress)} aria-label={t('ai.chat.progress')} />
+        </div>
+      );
+    }
+    if (scope !== 'document') return null;
     if (busy && progress) {
       return (
         <div className="ai-doc" role="status">
@@ -352,6 +452,26 @@ export function ChatView(props: ChatViewProps) {
   const empty = turns.length === 0;
   return (
     <div className="ai-chat">
+      {/* What this question is about: the document, every open one, or the whole Library. */}
+      <div className="segmented ai-scope" role="radiogroup" aria-label={t('ai.scope.label')}>
+        {SCOPES.map((one) => {
+          const unavailable = one.id === 'library' ? !props.libraryReady : one.id === 'open' ? props.openCount < 1 : !hasDocument;
+          return (
+            <button
+              key={one.id}
+              type="button"
+              role="radio"
+              className="segmented-item"
+              aria-checked={scope === one.id}
+              disabled={busy || (unavailable && scope !== one.id)}
+              title={unavailable ? t(one.id === 'library' ? 'ai.scope.noLibrary' : 'tool.openFirst') : undefined}
+              onClick={() => props.onScope(one.id)}
+            >
+              {t(one.label)}
+            </button>
+          );
+        })}
+      </div>
       {documentLine()}
       <div
         ref={thread}
@@ -365,7 +485,7 @@ export function ChatView(props: ChatViewProps) {
           pinned.current = node.scrollHeight - node.scrollTop - node.clientHeight < 48;
         }}
       >
-        {missing !== null && hasDocument ? (
+        {missing !== null && ready ? (
           <div className="ai-chat-setup">{props.setup}</div>
         ) : !hasDocument && incoming ? (
           // From the home screen, before its file is chosen: the request, where it will be asked.
@@ -380,8 +500,22 @@ export function ChatView(props: ChatViewProps) {
             <span className="ai-chat-mark" aria-hidden="true">
               <Icon of={Sparkles} size={22} />
             </span>
-            <h4>{t(hasDocument ? 'ai.chat.emptyTitle' : 'ai.chat.emptyNoFile')}</h4>
-            <p>{t(hasDocument ? 'ai.chat.emptyText' : 'tool.openFirst')}</p>
+            {scope === 'library' ? (
+              <>
+                <h4>{t('ai.scope.libraryTitle')}</h4>
+                <p>{t(props.libraryReady ? 'ai.scope.libraryText' : 'ai.scope.noLibrary')}</p>
+              </>
+            ) : scope === 'open' && hasDocument ? (
+              <>
+                <h4>{t('ai.scope.openTitle', { count: props.openCount })}</h4>
+                <p>{t('ai.scope.openText')}</p>
+              </>
+            ) : (
+              <>
+                <h4>{t(hasDocument ? 'ai.chat.emptyTitle' : 'ai.chat.emptyNoFile')}</h4>
+                <p>{t(hasDocument ? 'ai.chat.emptyText' : 'tool.openFirst')}</p>
+              </>
+            )}
           </div>
         ) : (
           <ol className="ai-turns">{turns.map(renderTurn)}</ol>
@@ -413,10 +547,25 @@ export function ChatView(props: ChatViewProps) {
                 <dt>{t('ai.model')}</dt>
                 <dd dir="ltr">{review.model}</dd>
               </div>
-              <div>
-                <dt>{t('ai.chat.reviewDocument')}</dt>
-                <dd>{t(review.whole ? 'ai.chat.reviewWhole' : 'ai.chat.reviewParts', { total: review.pageCount, characters: numbers.format(review.characters) })}</dd>
-              </div>
+              {review.files ? (
+                <div>
+                  <dt>{t('ai.scope.reviewFiles', { count: review.files.length })}</dt>
+                  <dd>
+                    <ul className="ai-review-files">
+                      {review.files.map((name) => (
+                        <li key={name} dir="auto">
+                          {name}
+                        </li>
+                      ))}
+                    </ul>
+                  </dd>
+                </div>
+              ) : (
+                <div>
+                  <dt>{t('ai.chat.reviewDocument')}</dt>
+                  <dd>{t(review.whole ? 'ai.chat.reviewWhole' : 'ai.chat.reviewParts', { total: review.pageCount, characters: numbers.format(review.characters) })}</dd>
+                </div>
+              )}
               <div>
                 <dt>{t('ai.chat.reviewNow')}</dt>
                 <dd>{t('ai.chat.reviewNowCount', { characters: numbers.format(review.prompt.system.length + review.prompt.user.length) })}</dd>
@@ -436,12 +585,12 @@ export function ChatView(props: ChatViewProps) {
       </div>
 
       <ul className="ai-chips" aria-label={t('ai.card.chips')}>
-        {CHIPS.map((chip) => (
+        {chosenChips(settings.aiPrompts, settings.hiddenAiPrompts).map((chip) => (
           <li key={chip.id}>
             <button
               type="button"
               className="ai-chip"
-              disabled={!canSend}
+              disabled={!canSend || (chip.kind === 'translate' && !hasDocument)}
               onClick={() => {
                 const text = t(chip.prompt);
                 send(chip.kind === 'translate' ? { kind: 'translate', text, page: currentPage } : { kind: chip.kind, text });
@@ -471,8 +620,8 @@ export function ChatView(props: ChatViewProps) {
           dir={draft.length === 0 ? dir : 'auto'}
           rows={1}
           maxLength={2000}
-          placeholder={t(hasDocument ? 'ai.chat.placeholder' : 'tool.openFirst')}
-          disabled={!hasDocument}
+          placeholder={t(scope === 'library' ? (props.libraryReady ? 'ai.scope.placeholderLibrary' : 'ai.scope.noLibrary') : hasDocument ? (scope === 'open' ? 'ai.scope.placeholderOpen' : 'ai.chat.placeholder') : 'tool.openFirst')}
+          disabled={!ready}
           value={draft}
           onChange={(event) => documentId !== null && setDraft(documentId, event.target.value)}
           onKeyDown={(event) => {
@@ -497,7 +646,7 @@ export function ChatView(props: ChatViewProps) {
           <IconButton className="ai-send" label={t('ai.chat.send')} icon={<Icon of={ArrowUp} size={16} />} variant="primary" type="submit" disabled={!canSend || draft.trim().length === 0} />
         )}
       </form>
-      <p className="ai-where">{missing !== null && hasDocument ? t(missing) : props.where}</p>
+      <p className="ai-where">{missing !== null && ready ? t(missing) : props.where}</p>
     </div>
   );
 }

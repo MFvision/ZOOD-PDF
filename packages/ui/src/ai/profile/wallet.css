@@ -1,0 +1,145 @@
+/* Settings › My details, and Fill & sign's own part of it. */
+
+.wallet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.wallet h3 {
+  margin: var(--space-3) 0 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.wallet-profiles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.wallet-profile-tab {
+  padding: var(--space-1) var(--space-3);
+  border: 0.5px solid var(--control-border);
+  border-radius: 999px;
+  background: var(--control-background);
+  color: var(--label);
+  font: inherit;
+  font-size: var(--text-callout);
+  cursor: pointer;
+}
+
+.wallet-profile-tab[aria-selected="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.wallet-profile-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2);
+}
+
+.wallet-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-3);
+  border: 0.5px solid var(--separator);
+  border-radius: var(--radius-s);
+}
+
+.wallet-section legend {
+  padding-inline: var(--space-1);
+  font-size: var(--text-callout);
+  font-weight: 600;
+}
+
+.wallet-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-block-end: var(--space-3);
+  border-block-end: 0.5px solid var(--separator);
+}
+
+.wallet-item-head,
+.wallet-custom {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.wallet-item-head .text-input,
+.wallet-custom .text-input {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+/* A detail's box; a hidden ID or IBAN has its eye at the end. */
+.wallet-input {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.wallet-input .text-input {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.wallet-switch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-callout);
+}
+
+.wallet-facts {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wallet-facts li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-block: var(--space-1);
+  font-size: var(--text-callout);
+}
+
+.wallet-facts li + li {
+  border-block-start: 0.5px solid var(--separator);
+}
+
+.wallet-facts li > span:first-child {
+  flex: 1;
+}
+
+.wallet-fact-source {
+  color: var(--secondary-label);
+  font-size: var(--text-footnote);
+}
+
+.wallet-fill {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-block-start: var(--space-3);
+  border-block-start: 0.5px solid var(--separator);
+}
+
+.wallet-fill h4 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-callout);
+}

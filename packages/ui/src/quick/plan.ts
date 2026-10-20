@@ -1,3 +1,4 @@
+import { getSettings } from '../state/settings';
 import {
   Combine,
   Droplets,
@@ -151,8 +152,11 @@ export function startingOptions(tool: QuickTool): unknown {
 }
 
 /** The ring's tools for these files: the ring's own, then "All tools" in the hub's place on the ring. */
-export function ringToolsFor(names: readonly string[]): QuickTool[] {
-  return toolsFor(names).filter((tool) => tool.ring);
+export function ringToolsFor(names: readonly string[], chosen: readonly string[] = getSettings().ringTools): QuickTool[] {
+  const fitting = toolsFor(names);
+  // Settings › Quick tools: the person's tools, in their order, of those that fit.
+  if (chosen.length > 0) return chosen.flatMap((id) => fitting.filter((tool) => tool.id === id)).slice(0, 8);
+  return fitting.filter((tool) => tool.ring);
 }
 
 /* ----------------------------------------------------------------- split */

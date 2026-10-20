@@ -93,8 +93,20 @@ pub fn verb_roots(root: &str) -> Vec<String> {
     .collect()
 }
 
+/// The PDF tools the menu lists: the ones Settings chose, in that order, or
+/// all of them when it chose none. Unknown names are left out.
+pub fn chosen_tools(tools: &[String]) -> Vec<(&'static str, &'static str, &'static str)> {
+    if tools.is_empty() {
+        return PDF_TOOLS.to_vec();
+    }
+    tools
+        .iter()
+        .filter_map(|name| PDF_TOOLS.iter().find(|(tool, _, _)| tool == name).copied())
+        .collect()
+}
+
 /// Every key the menu needs, parents first.
-pub fn plan(root: &str, exe: &str, lang: &str) -> Vec<KeySpec> {
+pub fn plan(root: &str, exe: &str, lang: &str, tools: &[String]) -> Vec<KeySpec> {
     let ar = arabic(lang);
     let icon = format!("\"{exe}\",0");
     let roots = verb_roots(root);
@@ -105,9 +117,9 @@ pub fn plan(root: &str, exe: &str, lang: &str) -> Vec<KeySpec> {
             (
                 "MUIVerb",
                 if ar {
-                    "محرر PDF: أدوات سريعة"
+                    "محرر زود PDF: أدوات سريعة"
                 } else {
-                    "PDF Editor: quick tools"
+                    "ZOOD PDF: quick tools"
                 }
                 .to_string(),
             ),
@@ -116,7 +128,7 @@ pub fn plan(root: &str, exe: &str, lang: &str) -> Vec<KeySpec> {
             ("SubCommands", String::new()),
         ],
     )];
-    for (index, (tool, name_ar, name_en)) in PDF_TOOLS.iter().enumerate() {
+    for (index, (tool, name_ar, name_en)) in chosen_tools(tools).iter().enumerate() {
         let item = format!(r"{pdf}\shell\{:02}{tool}", index + 1);
         keys.push(key(
             item.clone(),
@@ -157,9 +169,9 @@ pub fn plan(root: &str, exe: &str, lang: &str) -> Vec<KeySpec> {
                 (
                     "MUIVerb",
                     if ar {
-                        "تحويل إلى PDF (محرر PDF)"
+                        "تحويل إلى PDF (محرر زود PDF)"
                     } else {
-                        "Convert to PDF (PDF Editor)"
+                        "Convert to PDF (ZOOD PDF)"
                     }
                     .to_string(),
                 ),
@@ -333,13 +345,20 @@ pub fn set_run_at_sign_in(command: Option<String>) -> Result<(), String> {
 
 /// Puts the menu in, in `lang`, pointing at this program; or takes it out.
 #[tauri::command]
-pub fn shell_menu_set(on: bool, lang: String) -> Result<MenuState, String> {
+pub fn shell_menu_set(
+    on: bool,
+    lang: String,
+    tools: Option<Vec<String>>,
+) -> Result<MenuState, String> {
+    let tools = tools.unwrap_or_default();
     #[cfg(target_os = "windows")]
     {
         let exe = std::env::current_exe().map_err(|e| format!("E_IO: {e}"))?;
         let exe = exe.to_string_lossy();
         if on {
-            registry::write(&plan(CLASSES, &exe, &lang))?;
+            // Out first: a tool taken off the list must not stay behind.
+            registry::remove(&verb_roots(CLASSES))?;
+            registry::write(&plan(CLASSES, &exe, &lang, &tools))?;
         } else {
             registry::remove(&verb_roots(CLASSES))?;
         }
@@ -350,7 +369,7 @@ pub fn shell_menu_set(on: bool, lang: String) -> Result<MenuState, String> {
     }
     #[cfg(target_os = "macos")]
     {
-        let _ = (on, lang);
+        let _ = (on, lang, tools);
         Ok(MenuState {
             kind: "service",
             on: true,
@@ -358,7 +377,7 @@ pub fn shell_menu_set(on: bool, lang: String) -> Result<MenuState, String> {
     }
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
-        let _ = (on, lang, CLASSES);
+        let _ = (on, lang, tools, CLASSES);
         Ok(MenuState {
             kind: "none",
             on: false,
@@ -486,17 +505,41 @@ mod tests {
     use super::*;
 
     #[test]
+    fn settings_choose_which_tools_the_menu_lists_and_in_what_order() {
+        let all = chosen_tools(&[]);
+        assert_eq!(all.len(), PDF_TOOLS.len());
+        let some = chosen_tools(&["word".into(), "nonsense".into(), "compress".into()]);
+        let names: Vec<&str> = some.iter().map(|(tool, _, _)| *tool).collect();
+        assert_eq!(names, ["word", "compress"]);
+        let keys = plan(
+            CLASSES,
+            "app.exe",
+            "en",
+            &["word".into(), "compress".into()],
+        );
+        let pdf = verb_roots(CLASSES)[0].clone();
+        assert!(keys
+            .iter()
+            .any(|k| k.path == format!(r"{pdf}\shell\01word")));
+        assert!(keys
+            .iter()
+            .any(|k| k.path == format!(r"{pdf}\shell\02compress")));
+        assert!(!keys.iter().any(|k| k.path.ends_with("excel")));
+    }
+
+    #[test]
     fn a_pdf_gets_a_submenu_of_tools_and_other_files_convert_to_pdf() {
         let keys = plan(
             CLASSES,
-            r"C:\Program Files\محرر PDF\warraq-desktop.exe",
+            r"C:\Program Files\ZOOD PDF\warraq-desktop.exe",
             "ar",
+            &[],
         );
         let root = r"Software\Classes\SystemFileAssociations\.pdf\shell\ZoodPDF.Quick";
         assert_eq!(keys[0].path, root);
         assert!(keys[0]
             .values
-            .contains(&("MUIVerb".into(), "محرر PDF: أدوات سريعة".into())));
+            .contains(&("MUIVerb".into(), "محرر زود PDF: أدوات سريعة".into())));
         assert!(keys[0]
             .values
             .contains(&("SubCommands".into(), String::new())));
@@ -508,7 +551,7 @@ mod tests {
             compress.values,
             vec![(
                 String::new(),
-                r#""C:\Program Files\محرر PDF\warraq-desktop.exe" --quick --tool=compress "%1""#
+                r#""C:\Program Files\ZOOD PDF\warraq-desktop.exe" --quick --tool=compress "%1""#
                     .to_string()
             )]
         );
@@ -528,15 +571,15 @@ mod tests {
 
     #[test]
     fn the_menu_follows_the_interface_language() {
-        let keys = plan(CLASSES, "app.exe", "en");
+        let keys = plan(CLASSES, "app.exe", "en", &[]);
         assert!(keys[0]
             .values
-            .contains(&("MUIVerb".into(), "PDF Editor: quick tools".into())));
+            .contains(&("MUIVerb".into(), "ZOOD PDF: quick tools".into())));
     }
 
     #[test]
     fn parents_come_before_their_children() {
-        let keys = plan(CLASSES, "app.exe", "ar");
+        let keys = plan(CLASSES, "app.exe", "ar", &[]);
         for (index, spec) in keys.iter().enumerate() {
             for later in &keys[index + 1..] {
                 assert!(
@@ -554,7 +597,7 @@ mod tests {
     #[test]
     fn the_registry_takes_the_menu_and_gives_it_back() {
         let root = format!(r"Software\WarraqTest{}", std::process::id());
-        registry_write(&plan(&root, r"C:\x\warraq-desktop.exe", "ar")).unwrap();
+        registry_write(&plan(&root, r"C:\x\warraq-desktop.exe", "ar", &[])).unwrap();
         for path in verb_roots(&root) {
             assert!(registry_key_exists(&path), "{path}");
         }

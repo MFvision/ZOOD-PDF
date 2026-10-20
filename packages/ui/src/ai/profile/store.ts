@@ -1,6 +1,5 @@
 import { invokeHost, isTauriHost } from '../../core/host-tauri';
-import { sanitizeProfile } from './profile';
-import type { Profile } from './profile';
+import type { Wallet } from './wallet';
 
 /**
  * Where the person's details are kept, encrypted at rest:
@@ -20,10 +19,11 @@ import type { Profile } from './profile';
 
 export type ProfileHome = 'keychain' | 'browser' | 'memory';
 
+/** The Wallet as stored: read back as data (`readWallet`), never trusted as it is. */
 export interface ProfileStore {
   where(): ProfileHome;
-  load(): Promise<Profile | null>;
-  save(profile: Profile): Promise<void>;
+  load(): Promise<unknown>;
+  save(wallet: Wallet): Promise<void>;
   clear(): Promise<void>;
 }
 
@@ -36,13 +36,13 @@ function keychainStore(): ProfileStore {
       const json = await invokeHost('profile_get');
       if (typeof json !== 'string' || json.length === 0) return null;
       try {
-        return sanitizeProfile(JSON.parse(json));
+        return JSON.parse(json) as unknown;
       } catch {
         return null;
       }
     },
-    save: async (profile) => {
-      await invokeHost('profile_set', { json: JSON.stringify(sanitizeProfile(profile)) });
+    save: async (wallet) => {
+      await invokeHost('profile_set', { json: JSON.stringify(wallet) });
     },
     clear: async () => {
       await invokeHost('profile_delete');
@@ -99,19 +99,19 @@ function browserStore(): ProfileStore {
         if (!sealed) return null;
         const key = await originKey(db);
         const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: sealed.iv }, key, sealed.data);
-        return sanitizeProfile(JSON.parse(new TextDecoder().decode(plain)));
+        return JSON.parse(new TextDecoder().decode(plain)) as unknown;
       } catch {
         return null;
       } finally {
         db.close();
       }
     },
-    save: async (profile) => {
+    save: async (wallet) => {
       const db = await openDb();
       try {
         const key = await originKey(db);
         const iv = crypto.getRandomValues(new Uint8Array(new ArrayBuffer(12)));
-        const data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(sanitizeProfile(profile))));
+        const data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(wallet)));
         await row(db, 'readwrite', (store) => store.put({ iv, data } satisfies Sealed, PROFILE_ROW));
       } finally {
         db.close();
@@ -131,12 +131,12 @@ function browserStore(): ProfileStore {
 /* -------------------------------------------------------------- memory */
 
 function memoryStore(): ProfileStore {
-  let kept: Profile | null = null;
+  let kept: string | null = null;
   return {
     where: () => 'memory',
-    load: async () => kept,
-    save: async (profile) => {
-      kept = sanitizeProfile(profile);
+    load: async () => (kept === null ? null : (JSON.parse(kept) as unknown)),
+    save: async (wallet) => {
+      kept = JSON.stringify(wallet);
     },
     clear: async () => {
       kept = null;

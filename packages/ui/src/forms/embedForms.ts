@@ -110,7 +110,9 @@ export function pagesOnScreen(registry: PluginRegistry): Map<number, PageOnScree
   } catch {
     return out;
   }
-  const rows = [...root.querySelectorAll<HTMLElement>('div')].filter(
+  // Within the page scroller: the page thumbnails beside it are laid out alike.
+  const scroller = mainScroller(root) ?? root;
+  const rows = [...scroller.querySelectorAll<HTMLElement>('div')].filter(
     (div) =>
       div.style.display === 'flex' &&
       div.style.justifyContent === 'center' &&
@@ -131,13 +133,15 @@ export function pagesOnScreen(registry: PluginRegistry): Map<number, PageOnScree
 }
 
 /** The part of the window EmbedPDF scrolls its pages in. */
+/** EmbedPDF's page scroller: the one element it scrolls by style. */
+function mainScroller(root: ShadowRoot): HTMLElement | undefined {
+  return [...root.querySelectorAll<HTMLElement>('div')].find((div) => div.style.overflow === 'auto');
+}
+
 export function viewportBox(): DOMRect | null {
   const root = shadowRoot();
   if (!root) return null;
-  const scroller = [...root.querySelectorAll<HTMLElement>('div')].find(
-    (div) => div.style.overflow === 'auto',
-  );
-  return scroller?.getBoundingClientRect() ?? null;
+  return mainScroller(root)?.getBoundingClientRect() ?? null;
 }
 
 /** Brings a point of a page (in points) into view. */

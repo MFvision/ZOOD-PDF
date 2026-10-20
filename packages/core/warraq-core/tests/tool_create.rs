@@ -225,9 +225,9 @@ fn an_arabic_document_reads_back_as_typed_in_reading_order() {
         "the number reads before the item"
     );
 
-    // What the file says about itself: made by محرر PDF, in Arabic.
+    // What the file says about itself: made by ZOOD PDF.
     let info = Document::open(pdf.clone(), None).unwrap().metadata();
-    assert_eq!(info.producer.as_deref(), Some("محرر PDF"));
+    assert_eq!(info.producer.as_deref(), Some("ZOOD PDF"));
     assert_eq!(info.title.as_deref(), Some("تقرير"));
     let raw = String::from_utf8_lossy(&pdf);
     assert!(raw.contains("/Lang"));

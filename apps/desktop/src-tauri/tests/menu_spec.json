@@ -1,11 +1,11 @@
 {
   "labels": {
-    "appName": "محرر PDF",
+    "appName": "ZOOD PDF",
     "services": "Services",
-    "hide": "Hide ⁧محرر PDF⁩",
+    "hide": "Hide ZOOD PDF",
     "hideOthers": "Hide Others",
     "showAll": "Show All",
-    "quit": "Quit ⁧محرر PDF⁩",
+    "quit": "Quit ZOOD PDF",
     "window": "Window",
     "minimize": "Minimize",
     "zoom": "Zoom",
@@ -20,9 +20,9 @@
   "menus": [
     {
       "id": "app",
-      "label": "محرر PDF",
+      "label": "ZOOD PDF",
       "items": [
-        { "id": "about", "label": "About ⁧محرر PDF⁩", "enabled": true, "separatorBefore": false },
+        { "id": "about", "label": "About ZOOD PDF", "enabled": true, "separatorBefore": false },
         { "id": "settings", "label": "Settings…", "accelerator": "CmdOrCtrl+,", "enabled": true, "separatorBefore": true }
       ]
     },

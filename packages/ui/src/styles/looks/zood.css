@@ -1,0 +1,96 @@
+/*
+ * Zood (Settings › Appearance): ZOOD's brand over the tokens in looks.css —
+ * navy, beige paper and bronze. Headings in ITF Huwiya Arabic where it is
+ * installed on the computer (it is a bought font and never ships with the
+ * app; elsewhere they fall back to the app's own faces), the brand's
+ * flowing-line pattern faint behind the home screen and empty places,
+ * icons in bronze rather than a rainbow, and the ZOOD mark in the sidebar.
+ */
+
+@font-face {
+  font-family: "Zood Headline";
+  font-weight: 400 900;
+  src:
+    local("ITF Huwiya Arabic Bold"),
+    local("ItfHuwiyaArabic-Bold"),
+    local("ITF Huwiya Arabic"),
+    local("ItfHuwiyaArabic-Regular");
+}
+
+html[data-look="zood"] {
+  --zood-icon: #73563a;
+  --zood-icon-tile: #efe6dc;
+  --zood-pattern: rgb(4 30 66 / 5%);
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-look="zood"]:not([data-theme="light"]) {
+    --zood-icon: #c9a77f;
+    --zood-icon-tile: #0b2547;
+    --zood-pattern: rgb(201 167 127 / 6%);
+  }
+}
+
+html[data-look="zood"][data-theme="dark"] {
+  --zood-icon: #c9a77f;
+  --zood-icon-tile: #0b2547;
+  --zood-pattern: rgb(201 167 127 / 6%);
+}
+
+html[data-look="zood"] :is(.home-hero h1, .prefs-page-title, .prefs-about-name, .home-section-header h2, .dialog-header h2) {
+  font-family: "Zood Headline", var(--font-ui);
+}
+
+/* ---- Bronze icons ------------------------------------------------------------------ */
+
+html[data-look="zood"] .tool-icon {
+  color: var(--zood-icon);
+  background: var(--zood-icon-tile);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--zood-icon) 22%, transparent);
+}
+
+html[data-look="zood"] .prefs-nav-icon {
+  color: var(--zood-icon);
+  background: var(--zood-icon-tile);
+}
+
+/* ---- The brand's pattern ---------------------------------------------------------- */
+
+html[data-look="zood"] .home {
+  position: relative;
+  isolation: isolate;
+}
+
+html[data-look="zood"] .home::before,
+html[data-look="zood"] .recent-empty::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+  background: var(--zood-pattern);
+  mask: url("./zood-pattern.svg") center / 960px auto repeat;
+}
+
+html[data-look="zood"] .recent-empty {
+  position: relative;
+  isolation: isolate;
+}
+
+/* ---- The ZOOD mark in the sidebar --------------------------------------------------- */
+
+html[data-look="zood"] .home-brand img {
+  content: url("./zood-mark.svg");
+  object-fit: contain;
+  filter: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-look="zood"]:not([data-theme="light"]) .home-brand img {
+    filter: brightness(0) invert(78%) sepia(30%) saturate(400%) hue-rotate(345deg);
+  }
+}
+
+html[data-look="zood"][data-theme="dark"] .home-brand img {
+  filter: brightness(0) invert(78%) sepia(30%) saturate(400%) hue-rotate(345deg);
+}

@@ -92,6 +92,9 @@ export const test = base.extend<{ stayLocal: string[] }>({
     await page.addInitScript(() => {
       try {
         if (localStorage.getItem('warraq.fontLibrary') === null) localStorage.setItem('warraq.fontLibrary', JSON.stringify({ allowed: false }));
+        // The tests reach tools through the home screen's grid of every tool,
+        // which Settings › Home screen turns off out of the box.
+        if (localStorage.getItem('zood.settings') === null) localStorage.setItem('zood.settings', JSON.stringify({ hiddenHomeSections: [] }));
       } catch {
         /* no storage: the app asks, as it would */
       }
