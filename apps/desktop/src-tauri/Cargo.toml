@@ -48,6 +48,10 @@ tauri-plugin-single-instance = "2"
 # The ring's keyboard shortcut, Ctrl+Alt+Z (Command+Option+Z), from any app
 # (src/ring.rs, `shortcut`). MIT OR Apache-2.0.
 tauri-plugin-global-shortcut = "2.3"
+# Updates from GitHub (src/updates.rs): the app asks the stable channel's
+# latest.json whether there is a newer version, and installs it only when its
+# signature matches the public key in tauri.conf.json. MIT OR Apache-2.0.
+tauri-plugin-updater = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # One core, two builds: the same crate that wasm-pack compiles for the web and

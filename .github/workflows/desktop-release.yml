@@ -1,0 +1,189 @@
+# Builds a release of the desktop app for people to update to (docs/updates.md).
+#
+# Step 1 of 2. Actions → "desktop release (1: build)" → Run workflow, with the
+# new version (higher than the last one released). It builds the Windows and
+# Mac apps with that version, signs the update files with the updater key
+# (the TAURI_SIGNING_PRIVATE_KEY secret), and publishes them as a PRE-release
+# named desktop-v<version>, with the latest.json the apps read. Nobody's app
+# sees it yet: try the installers first, then run step 2,
+# desktop-promote.yml, which puts it on the stable channel.
+#
+# Or push a tag desktop-v<version> (git tag desktop-v0.2.0 && git push origin
+# desktop-v0.2.0): the same build, for a branch whose workflows the Run
+# workflow button does not list yet (it lists only the default branch's).
+#
+# The test builds of desktop-windows.yml are never on the channel: they are
+# not signed for updates and carry the version in tauri.conf.json.
+name: desktop release (1. build)
+
+on:
+  push:
+    tags: ['desktop-v*']
+    # The same from a branch release/desktop-v<version>, for tools that can
+    # make a branch but not a tag.
+    branches: ['release/desktop-v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version, like 0.2.0 (higher than the last released one)'
+        required: true
+      notes:
+        description: 'What is new, one or two lines (shown in the app)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+# From the Run workflow form, or from the tag's name (each step drops the
+# tag's desktop-v).
+env:
+  VERSION: ${{ inputs.version || github.ref_name }}
+  NOTES: ${{ inputs.notes }}
+
+jobs:
+  build:
+    name: build (${{ matrix.platform }})
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows-x86_64
+          # Apple silicon only: the bundled PDFium (resources/pdfium) is arm64.
+          - os: macos-latest
+            platform: darwin-aarch64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: check the version
+        shell: bash
+        run: |
+          VERSION="${VERSION#release/}"; VERSION="${VERSION#desktop-v}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version must look like 0.2.0, not '$VERSION'"
+            exit 1
+          fi
+
+      - name: check the signing key is set
+        shell: bash
+        env:
+          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::the TAURI_SIGNING_PRIVATE_KEY secret is missing (docs/updates.md)"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            apps/desktop/src-tauri
+            packages/core
+
+      - run: pnpm install --frozen-lockfile
+
+      # The version is given here rather than committed, so a test build
+      # never claims a released version. createUpdaterArtifacts makes the
+      # signed update files (.sig) beside the installers.
+      - name: build the app
+        shell: bash
+        env:
+          CI: 'true'
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -o pipefail
+          VERSION="${VERSION#release/}"; VERSION="${VERSION#desktop-v}"
+          pnpm --dir apps/desktop exec tauri build \
+            --config "{\"version\":\"$VERSION\",\"bundle\":{\"createUpdaterArtifacts\":true}}" 2>&1 | tee build.log
+
+      # Plain file names: the bundle's own carry spaces, which make awkward URLs.
+      - name: collect the files
+        shell: bash
+        run: |
+          set -eu
+          VERSION="${VERSION#release/}"; VERSION="${VERSION#desktop-v}"
+          bundle=apps/desktop/src-tauri/target/release/bundle
+          mkdir out
+          if [ "${{ matrix.platform }}" = windows-x86_64 ]; then
+            exe="$(ls "$bundle"/nsis/*-setup.exe | head -n 1)"
+            cp "$exe" "out/ZOOD-PDF-Setup-$VERSION.exe"
+            cp "$exe.sig" "out/ZOOD-PDF-Setup-$VERSION.exe.sig"
+            echo "ZOOD-PDF-Setup-$VERSION.exe" > out/update-file.txt
+          else
+            app="$(ls "$bundle"/macos/*.app.tar.gz | head -n 1)"
+            cp "$app" "out/ZOOD-PDF-$VERSION-mac.app.tar.gz"
+            cp "$app.sig" "out/ZOOD-PDF-$VERSION-mac.app.tar.gz.sig"
+            cp "$(ls "$bundle"/dmg/*.dmg | head -n 1)" "out/ZOOD-PDF-$VERSION-mac.dmg"
+            echo "ZOOD-PDF-$VERSION-mac.app.tar.gz" > out/update-file.txt
+          fi
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.platform }}
+          path: out/*
+          if-no-files-found: error
+
+  release:
+    name: pre-release with latest.json
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      # latest.json: what the apps read (Tauri's updater format). Each
+      # platform names its update file in this release and that file's
+      # signature, which the app checks against the key in tauri.conf.json.
+      - name: write latest.json
+        run: |
+          set -eu
+          VERSION="${VERSION#release/}"; VERSION="${VERSION#desktop-v}"
+          export VERSION BASE="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/desktop-v$VERSION"
+          mkdir release
+          node - <<'EOF'
+          const fs = require('fs');
+          const platforms = {};
+          for (const platform of ['windows-x86_64', 'darwin-aarch64']) {
+            const dir = `artifacts/desktop-${platform}`;
+            const file = fs.readFileSync(`${dir}/update-file.txt`, 'utf8').trim();
+            platforms[platform] = {
+              signature: fs.readFileSync(`${dir}/${file}.sig`, 'utf8').trim(),
+              url: `${process.env.BASE}/${file}`,
+            };
+          }
+          const latest = {
+            version: process.env.VERSION,
+            notes: process.env.NOTES,
+            pub_date: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
+            platforms,
+          };
+          fs.writeFileSync('release/latest.json', JSON.stringify(latest, null, 2) + '\n');
+          console.log(JSON.stringify(latest, null, 2));
+          EOF
+          find artifacts -type f ! -name update-file.txt -exec cp {} release/ \;
+          ls -la release
+
+      - name: publish the pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${VERSION#release/}"; VERSION="${VERSION#desktop-v}"
+          gh release create "desktop-v$VERSION" release/* \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title "ZOOD PDF $VERSION (testing)" \
+            --notes "${NOTES:-ZOOD PDF $VERSION}
+
+          Not on the update channel yet. Try the installers, then run \"desktop release (2. release to users)\" with $VERSION. Built from $GITHUB_SHA."

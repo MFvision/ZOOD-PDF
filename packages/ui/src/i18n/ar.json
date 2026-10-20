@@ -2535,5 +2535,21 @@
   "memory.from.chat": "من المحادثة",
   "memory.from.form": "من نموذج",
   "memory.remembered": "حُفِظت في ذاكرتك.",
-  "memory.rememberedOff": "حُفِظت في ذاكرتك. فعّل الذاكرة من الإعدادات › بياناتي ليستخدمها الذكاء الاصطناعي."
+  "memory.rememberedOff": "حُفِظت في ذاكرتك. فعّل الذاكرة من الإعدادات › بياناتي ليستخدمها الذكاء الاصطناعي.",
+  "updates.title": "التحديثات",
+  "updates.note": "تصل التحديثات من إصدارات زود على GitHub، ولا تُثبَّت إلا إذا كانت موقّعة بتوقيع زود.",
+  "updates.auto": "البحث عن التحديثات تلقائيًا",
+  "updates.autoHint": "يبحث عن إصدار جديد كلما فتحت التطبيق، ولا يُثبَّت شيء دون موافقتك.",
+  "updates.check": "البحث عن تحديثات",
+  "updates.checkHint": "تحقّق من وجود إصدار أحدث.",
+  "updates.checkNow": "ابحث الآن",
+  "updates.checking": "جارٍ البحث…",
+  "updates.latest": "لديك أحدث إصدار.",
+  "updates.failed": "تعذّر البحث عن التحديثات. تأكد من اتصالك بالإنترنت ثم حاول مجددًا.",
+  "updates.available": "الإصدار {version} جاهز.",
+  "updates.availableHint": "سيُعاد تشغيل التطبيق لإكمال التحديث، فاحفظ عملك أولًا.",
+  "updates.install": "حدّث الآن",
+  "updates.later": "لاحقًا",
+  "updates.installing": "جارٍ تثبيت التحديث…",
+  "updates.downloading": "جارٍ تنزيل التحديث… {percent}٪"
 }

@@ -29,6 +29,7 @@ pub mod share;
 pub mod shell_menu;
 pub mod signing;
 pub mod system;
+pub mod updates;
 
 /// Event sent to the webview when files are dropped on the window.
 /// Payload: [`FileDropPayload`]. Every dropped path is added to the fs scope
@@ -327,6 +328,8 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        // Updates from the stable channel on GitHub (src/updates.rs).
+        .plugin(tauri_plugin_updater::Builder::new().build())
         // The macOS menu bar is the UI's model (src/menu.rs); until the UI
         // sends it, Tauri's default menu stands in.
         .manage(menu::MenuState::default())
@@ -340,6 +343,7 @@ pub fn run() {
         .manage(profile::ProfileState::default())
         .manage(fonts::FontState::default())
         .manage(recent::RecentState::default())
+        .manage(updates::UpdateState::default())
         .on_menu_event(|app, event| match event.id().as_ref() {
             ring::TRAY_OPEN => {
                 quick::show_editor(app);
@@ -466,6 +470,8 @@ pub fn run() {
             recent::recent_remember,
             recent::recent_path,
             recent::recent_forget,
+            updates::update_check,
+            updates::update_install,
             quick::quick_job,
             quick::quick_close,
             quick_open_in_editor,

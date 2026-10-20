@@ -398,3 +398,57 @@ fn windows_gives_pdf_files_the_document_icon() {
         "the installer hook must set {class}'s icon to the installed document icon"
     );
 }
+
+/// Updates (docs/updates.md): the apps read the stable channel only, never the
+/// test builds' releases, and install only what the project's key signed. The
+/// update files are made by the release workflow alone, so a test build never
+/// needs the private key.
+#[test]
+fn updates_come_signed_from_the_stable_channel() {
+    let config = json("tauri.conf.json");
+    let updater = &config["plugins"]["updater"];
+    assert_eq!(
+        updater["endpoints"],
+        serde_json::json!([
+            "https://github.com/MFvision/ZOOD-PDF/releases/download/updates-stable/latest.json"
+        ]),
+        "the updater must read the stable channel, which only the release workflow changes"
+    );
+    assert!(
+        updater["pubkey"]
+            .as_str()
+            .is_some_and(|key| key.len() > 100),
+        "the updater has no public key: it would refuse every update"
+    );
+    assert!(
+        config["bundle"]["createUpdaterArtifacts"].is_null(),
+        "update files belong to desktop-release.yml; here every test build would need the key"
+    );
+
+    let lib = std::fs::read_to_string(manifest().join("src/lib.rs")).expect("lib.rs");
+    let ui = repo_file("packages/ui/src/updates/updates.ts");
+    for command in ["update_check", "update_install"] {
+        assert!(
+            lib.contains(&format!("updates::{command}")),
+            "{command} is not registered in the invoke handler"
+        );
+        assert!(
+            ui.contains(&format!("'{command}'")),
+            "updates.ts no longer invokes {command}"
+        );
+    }
+    assert!(
+        ui.contains(&format!(
+            "'{}'",
+            warraq_desktop_lib::updates::PROGRESS_EVENT
+        )),
+        "updates.ts listens for a different progress event than updates.rs sends"
+    );
+    let workflow = repo_file(".github/workflows/desktop-release.yml");
+    for platform in ["windows-x86_64", "darwin-aarch64"] {
+        assert!(
+            workflow.contains(platform),
+            "desktop-release.yml no longer writes the {platform} update"
+        );
+    }
+}

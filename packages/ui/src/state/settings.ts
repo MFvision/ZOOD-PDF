@@ -82,6 +82,8 @@ export interface AppSettings {
   autosaveMinutes: 1 | 5;
   /** Keyboard shortcuts the person changed, by menu item id. */
   shortcuts: Record<string, string>;
+  /** Desktop: ask GitHub for a newer version at launch (updates/updates.ts). */
+  checkUpdates: boolean;
 }
 
 export const HOME_SECTIONS: readonly HomeSection[] = ['actions', 'recent', 'starred', 'tools', 'assistant', 'clouds'];
@@ -130,6 +132,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autosave: true,
   autosaveMinutes: 1,
   shortcuts: {},
+  checkUpdates: true,
 };
 
 const KEY = 'zood.settings';
@@ -216,6 +219,7 @@ export function sanitizeSettings(raw: unknown): AppSettings {
     autosave: bool(s.autosave, d.autosave),
     autosaveMinutes: oneOf(s.autosaveMinutes, [1, 5] as const, d.autosaveMinutes),
     shortcuts: shortcuts(s.shortcuts),
+    checkUpdates: bool(s.checkUpdates, d.checkUpdates),
   };
 }
 
