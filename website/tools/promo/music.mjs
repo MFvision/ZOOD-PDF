@@ -1,6 +1,6 @@
 // The film's music, made here from plain waves so nothing is licensed from
 // anyone: 120 beats a minute, C, G, A minor, F, a bar each; a soft pad and a
-// plucked arpeggio from the start, drums and bass when the first device lands,
+// plucked arpeggio from the start, drums and bass when the ring opens,
 // a whoosh into every cut, one hit for the closing name, then it rings out.
 // writeMusic(path) writes a 44.1 kHz 16-bit stereo WAV of the film's length.
 import { writeFileSync } from 'node:fs';
@@ -10,8 +10,8 @@ const LENGTH = 30;
 const BEAT = 0.5;
 const N = RATE * LENGTH;
 // Scene cuts (promo.js) and the closing name.
-const CUTS = [3, 7, 11, 14, 18, 21.5, 25];
-const NAME = 27.4;
+const CUTS = [2.5, 6.5, 9.5, 13, 15.5, 19, 22, 25.5];
+const NAME = 27.65;
 
 const hz = (midi) => 440 * 2 ** ((midi - 69) / 12);
 // Root (bass) and chord tones, one bar (four beats) each.
@@ -95,8 +95,8 @@ function makeMusic() {
 
   // Drums and bass from the first cut to the closing name; a short break
   // before the remote and before the close.
-  const groove = (t) => t >= 3 && t < NAME && !(t >= 21 && t < 21.5) && !(t >= 24.5 && t < 25);
-  for (let b = 3; b < NAME; b += BEAT) {
+  const groove = (t) => t >= 2.5 && t < NAME && !(t >= 21.5 && t < 22) && !(t >= 25 && t < 25.5);
+  for (let b = 2.5; b < NAME; b += BEAT) {
     if (!groove(b)) continue;
     // Kick: a falling sine with a click.
     const i0 = Math.floor(b * RATE);
@@ -107,7 +107,7 @@ function makeMusic() {
     }
     // Clap on two and four, from the iPad on.
     const beatNo = Math.round(b / BEAT) % 4;
-    if (b >= 7 && (beatNo === 1 || beatNo === 3)) {
+    if (b >= 6.5 && (beatNo === 1 || beatNo === 3)) {
       for (let k = 0; k < 0.2 * RATE; k++) {
         const t = k / RATE;
         const n = noise();
@@ -117,9 +117,9 @@ function makeMusic() {
     }
   }
   // Hats: offbeat eighths, sixteenths once the computer arrives.
-  for (let s = 3; s < NAME; s += BEAT / 4) {
+  for (let s = 2.5; s < NAME; s += BEAT / 4) {
     const q = Math.round(s / (BEAT / 4)) % 4;
-    if (!groove(s) || (s < 14 && q !== 2)) continue;
+    if (!groove(s) || (s < 15.5 && q !== 2)) continue;
     const i0 = Math.floor(s * RATE);
     let prev = 0;
     const amp = q === 2 ? 0.06 : 0.025;
@@ -131,7 +131,7 @@ function makeMusic() {
     }
   }
   // Bass: the bar's root on every eighth, round and short.
-  for (let s = 3; s < NAME; s += BEAT / 2) {
+  for (let s = 2.5; s < NAME; s += BEAT / 2) {
     if (!groove(s)) continue;
     const [root] = barAt(s);
     const f = hz(root - 12 + 12);
@@ -178,7 +178,7 @@ function makeMusic() {
     }
   }
   // Soft taps where a finger presses in the film.
-  for (const at of [4.0, 5.35, 24.05]) {
+  for (const at of [7.25, 8.26, 24.55]) {
     const i0 = Math.floor(at * RATE);
     for (let k = 0; k < 0.04 * RATE; k++) {
       const t = k / RATE;

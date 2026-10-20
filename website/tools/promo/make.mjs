@@ -7,7 +7,7 @@
 import { createServer } from 'node:http';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,7 +32,9 @@ const CLIPS = {
 };
 const LENGTH = 30;
 const FPS = 30;
-const POSTER = 26.6;
+const POSTER = 26.9;
+// The ring plays from 2.6 s to 6.3 s of the film (promo.js).
+const RING_FRAMES = 111;
 
 const ffmpeg = (...a) =>
   execFileSync('ffmpeg', ['-loglevel', 'error', '-y', ...a], { stdio: 'inherit' });
@@ -58,6 +60,7 @@ for (const lang of langs) {
 
 // 2. The site and the frames, over HTTP.
 const TYPES = {
+  '.png': 'image/png',
   '.html': 'text/html',
   '.js': 'text/javascript',
   '.css': 'text/css',
@@ -94,6 +97,48 @@ const browser = await chromium.launch(
 mkdirSync(OUT, { recursive: true });
 if (!at) writeMusic(join(TMP, 'music.wav'));
 for (const lang of langs) {
+  // The ring, as the site's own ring section plays it, one frame per film frame.
+  const ringDir = join(TMP, 'frames', lang, 'ring');
+  if (!existsSync(ringDir)) {
+    mkdirSync(ringDir, { recursive: true });
+    const site = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+    await site.goto(`${base}/${lang === 'en' ? 'en/' : ''}`);
+    await site.waitForTimeout(1500);
+    // Only the ring's drawing, over nothing, so the film's own colour shows behind it.
+    await site.evaluate(() => {
+      for (const el of document.body.children)
+        if (el.tagName !== 'MAIN') el.style.visibility = 'hidden';
+      for (const el of document.querySelectorAll('main > *'))
+        if (el.id !== 'ring') el.style.visibility = 'hidden';
+      for (const el of [
+        document.documentElement,
+        document.body,
+        document.getElementById('ring'),
+        document.querySelector('#ring .ring-stage'),
+      ])
+        el.style.background = 'transparent';
+      document.querySelector('#ring .ring-words').style.visibility = 'hidden';
+    });
+    for (let k = 0; k < RING_FRAMES; k++) {
+      await site.evaluate(
+        (p) => {
+          const r = document.getElementById('ring');
+          scrollTo(0, r.offsetTop + p * (r.offsetHeight - innerHeight));
+          return new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+        },
+        k / (RING_FRAMES - 1),
+      );
+      await site.waitForTimeout(60);
+      await site
+        .locator('#ring .rs')
+        .screenshot({
+          path: join(ringDir, `${String(k + 1).padStart(4, '0')}.png`),
+          omitBackground: true,
+        });
+    }
+    await site.close();
+  }
+  counts[lang].ring = readdirSync(ringDir).length;
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
   page.on('pageerror', (e) => console.error(e.message));
   await page.goto(`${base}/tools/promo/?lang=${lang}`);

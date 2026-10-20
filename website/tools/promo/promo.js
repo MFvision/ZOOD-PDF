@@ -23,8 +23,8 @@ export const CLIPS = {
   sign: 'desktop/08-sign-light',
 };
 const still = (path) => `/assets/${lang}/${path}-light.webp`;
-const frameAt = (clip, sec, count) =>
-  `/_frames/${lang}/${clip}/${String(Math.min(count, Math.max(1, Math.floor(sec * 30) + 1))).padStart(4, '0')}.jpg`;
+const frameAt = (clip, sec, count, type = 'jpg') =>
+  `/_frames/${lang}/${clip}/${String(Math.min(count, Math.max(1, Math.floor(sec * 30) + 1))).padStart(4, '0')}.${type}`;
 
 const WORDS = {
   name: { ar: 'محرر PDF', en: 'ZOOD PDF' },
@@ -34,6 +34,11 @@ const WORDS = {
   pen: { ar: ['اكتب', '[بالقلم]'], en: ['Write', 'with', '[the pen]'] },
   penOn: { ar: 'آيباد', en: 'iPad' },
   scan: { ar: ['صوّر', 'الورقة', '[فتصير', 'PDF]'], en: ['Snap', 'paper', 'into', '[a PDF]'] },
+  ring: {
+    ar: ['اسحب', 'الملف،', 'اختر', 'الأداة،', '[وانتهى]'],
+    en: ['Drag', 'the', 'file,', 'pick', 'a', 'tool,', '[done]'],
+  },
+  ringOn: { ar: 'ويندوز', en: 'Windows' },
   ai: {
     ar: ['اسأل', 'ملفك،', '[والجواب', 'بصفحاته]'],
     en: ['Ask', 'your', 'file.', '[Answers', 'cite', 'pages.]'],
@@ -87,6 +92,8 @@ stage.innerHTML = `
     <p class="tagline">${t(WORDS.tagline)}</p>
   </div>
 
+  <div class="ringshot"><img alt=""></div>
+  ${caption('ring', 'top dark')}<p class="chip ring-chip" data-chip="ring">${t(WORDS.ringOn)}</p>
   ${caption('read', 'side')}<p class="chip" data-chip="read">${t(WORDS.readOn)}</p>
   ${caption('pen', 'side')}<p class="chip" data-chip="pen">${t(WORDS.penOn)}</p>
   ${caption('scan', 'side')}
@@ -180,42 +187,85 @@ export function setCounts(c) {
 }
 
 // ---- The film --------------------------------------------------------------
-async function render(x) {
+// The ring comes second, so the later scenes were timed on a clock that
+// pauses for it: warp() turns film time into that clock.
+const KNOTS = [
+  [0, 0],
+  [2.5, 2.95],
+  [6.45, 2.96],
+  [6.5, 3],
+  [9.5, 7],
+  [13, 11],
+  [15.5, 14],
+  [19, 18],
+  [22, 21.5],
+  [25.5, 25],
+  [30, 30],
+];
+function warp(n) {
+  for (let k = 1; k < KNOTS.length; k++) {
+    const [n1, o1] = KNOTS[k];
+    const [n0, o0] = KNOTS[k - 1];
+    if (n <= n1) return mix(o0, o1, span(n, n0, n1));
+  }
+  return n;
+}
+// The ring's frames, captured from the site's own ring section (make.mjs).
+const RING = [2.6, 6.3];
+
+async function render(n) {
   pending.length = 0;
+  const x = warp(n);
   const bg = $('.bg');
-  // Scene colours: navy for the opening, the remote and the close; paper and
-  // soft tints between.
-  const tint =
-    x < 3
-      ? '#041e42'
-      : x < 7
-        ? '#f3efe9'
-        : x < 11
-          ? '#e8eef6'
-          : x < 14
-            ? '#f3efe9'
-            : x < 21.5
-              ? '#efe9e2'
-              : x < 25
-                ? '#041e42'
-                : '#f3efe9';
-  bg.style.background = tint;
-  // A circle of the next colour opens from the middle at each colour change.
+  // Scene colours: navy for the opening, the ring, the remote and the close;
+  // paper and soft tints between. A circle of the next colour opens from the
+  // middle at each change.
   const cuts = [
-    [3, '#f3efe9'],
-    [7, '#e8eef6'],
-    [11, '#f3efe9'],
-    [14, '#efe9e2'],
-    [21.5, '#041e42'],
-    [25, '#f3efe9'],
+    [0, '#041e42'],
+    [6.5, '#f3efe9'],
+    [9.5, '#e8eef6'],
+    [13, '#f3efe9'],
+    [15.5, '#efe9e2'],
+    [22, '#041e42'],
+    [25.5, '#f3efe9'],
   ];
+  bg.style.background = cuts.findLast(([c]) => n >= c)[1];
   const wipe = $('.wipe');
-  const cut = cuts.find(([c]) => x >= c - 0.4 && x < c);
+  const cut = cuts.find(([c]) => c > 0 && n >= c - 0.4 && n < c);
   if (cut) {
     wipe.style.visibility = 'visible';
     wipe.style.background = cut[1];
-    wipe.style.clipPath = `circle(${(ease(span(x, cut[0] - 0.4, cut[0])) * 1200).toFixed(0)}px at 50% 50%)`;
+    wipe.style.clipPath = `circle(${(ease(span(n, cut[0] - 0.4, cut[0])) * 1200).toFixed(0)}px at 50% 50%)`;
   } else wipe.style.visibility = 'hidden';
+
+  // The ring: drag files with Ctrl, the ring opens, drop on a tool (2.5-6.5).
+  {
+    const ring = $('.ringshot');
+    const on = n >= 2.45 && n < 6.5;
+    const inn = spring(span(n, 2.5, 3.1));
+    const out = ease(span(n, 6.1, 6.45));
+    put(ring, {
+      y: 270 + (1 - inn) * 200,
+      s: 0.9 + inn * 0.1 + out * 0.15,
+      o: on ? clamp(inn * 3) * (1 - out) : 0,
+      blur: out * 10,
+    });
+    if (on)
+      src(
+        ring.querySelector('img'),
+        frameAt(
+          'ring',
+          ((n - RING[0]) / (RING[1] - RING[0])) * (counts.ring / 30),
+          counts.ring,
+          'png',
+        ),
+      );
+    words('ring', n, 2.8, 6.35);
+    const chip = $('[data-chip="ring"]');
+    const cp = spring(span(n, 3.6, 4.1)) * (1 - ease(span(n, 6.0, 6.35)));
+    put(chip, { s: 0.5 + cp * 0.5, o: clamp(cp * 3) });
+  }
+
   vars(stage, { drift: x / LENGTH });
 
   // 1. The name (0-3).
@@ -244,7 +294,7 @@ async function render(x) {
     const shot = phone.querySelector('.shot');
     const touch = phone.querySelector('.touch');
     const cx = 960 + side * 420;
-    if (x >= 2.9 && x < 7.1) {
+    if (x >= 2.97 && x < 7.1) {
       const inn = spring(span(x, 3.0, 3.75));
       const out = ease(span(x, 6.65, 7.0));
       put(phone, {
