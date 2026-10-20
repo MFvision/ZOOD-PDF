@@ -1149,7 +1149,12 @@ mod tests {
                 assert!(part.file.ends_with(".gguf"));
             }
             // A model that sees or hears does so through its projector.
-            assert_eq!(model.sees || model.hears, model.projector.is_some(), "{}", model.id);
+            assert_eq!(
+                model.sees || model.hears,
+                model.projector.is_some(),
+                "{}",
+                model.id
+            );
         }
         assert!(model_spec("qwen2.5-1.5b").is_ok());
         assert!(model_spec("gpt-4").is_err());
