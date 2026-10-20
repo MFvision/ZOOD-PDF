@@ -96,6 +96,7 @@ pub fn call_static(op: &str, args: &str, blobs: Vec<Vec<u8>>) -> Result<Reply, C
         Some(("protect", name)) => protect::call_static(name, args, blobs),
         Some(("redact", name)) => redact::call_static(name, args, blobs),
         Some(("attachments", name)) => panes::attachments(name, args, blobs),
+        Some(("comments", name)) => panes::comments(name, args, blobs),
         Some(("layers", name)) => panes::layers(name, args, blobs),
         Some(("outline", name)) => panes::outline(name, args, blobs),
         Some(("signatures", name)) => signatures::call_static(name, args, blobs),

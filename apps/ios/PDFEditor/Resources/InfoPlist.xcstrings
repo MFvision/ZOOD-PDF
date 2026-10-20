@@ -29,6 +29,13 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Face ID unlocks the app when you turn on the app lock." } }
       }
     },
+    "NSLocalNetworkUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "يتصل التحكم من الجوال بتطبيق ZOOD PDF على جهازك عبر شبكة Wi-Fi." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The phone remote connects to ZOOD PDF on your computer over your Wi-Fi." } }
+      }
+    },
     "NSPhotoLibraryAddUsageDescription" : {
       "extractionState" : "manual",
       "localizations" : {

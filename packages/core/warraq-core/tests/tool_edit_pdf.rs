@@ -203,3 +203,46 @@ fn links_to_an_address_and_to_a_page_are_added_moved_and_removed() {
     assert_eq!(links.as_array().unwrap().len(), 1);
     assert_eq!(links[0]["to"]["page"], 1);
 }
+
+/// The phone remote's signature: a picture placed on a saved file, which
+/// comes back as an update of that file with the picture where it was put.
+#[test]
+fn a_picture_is_placed_on_a_saved_file() {
+    let original = corpus(THREE);
+    let reply = call_static(
+        "images.add",
+        &json!({ "page": 1, "matrix": [120, 0, 0, -60, 300, 700] }).to_string(),
+        vec![original.clone(), png(40, 20, [220, 20, 20])],
+    )
+    .unwrap();
+    assert!(value(&reply)["id"].is_string());
+    let changed = reply.blobs[0].clone();
+    assert!(
+        changed.starts_with(&original),
+        "an update of the file's own bytes"
+    );
+    let doc = Document::open(changed, None).unwrap();
+    let p = pixel(&doc, 1, 360.0, 670.0);
+    assert!(p[0] > 180 && p[1] < 80, "{p:?}");
+    assert!(call_static(
+        "images.add",
+        &json!({ "page": 1, "matrix": [1, 0, 0, 1, 0, 0] }).to_string(),
+        vec![original]
+    )
+    .is_err());
+}
+
+/// A presenter's notes: the comments of each page.
+#[test]
+fn comments_are_listed_page_by_page() {
+    let file = std::fs::read(format!(
+        "{}/../../../tests/fixtures/hidden/everything.pdf",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    let reply = call_static("comments.list", "{}", vec![file]).unwrap();
+    assert_eq!(
+        value(&reply)["notes"],
+        json!([{ "page": 0, "text": "COMMENT-SECRET", "author": "ANNOT-WRITER-SECRET" }])
+    );
+}

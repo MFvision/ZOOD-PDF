@@ -86,6 +86,22 @@ hex = "0.4"
 # MIT, already in the graph through llama-cpp-2), and the machine's memory
 # size (libc on macOS and Linux; windows-sys, MIT OR Apache-2.0, on Windows).
 encoding_rs = "0.8"
+# The phone remote (src/remote/): a small server on the local network only
+# while the person has it on, one WebSocket per phone (tokio-tungstenite, MIT),
+# every message sealed with ChaCha20-Poly1305 under the key the QR code
+# carries (chacha20poly1305, Apache-2.0 OR MIT), that QR code drawn as SVG
+# (qrcode, MIT OR Apache-2.0), the PC's addresses on the network (if-addrs,
+# MIT OR BSD-3-Clause) and keys from the system's random source (getrandom,
+# MIT OR Apache-2.0). tokio and futures-util are already in the tree through
+# Tauri.
+tokio = { version = "1", features = ["net", "sync", "time", "io-util", "macros", "rt"] }
+tokio-tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+chacha20poly1305 = "0.10"
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+if-addrs = "0.15"
+getrandom = "0.2"
+base64 = "0.22"
 
 # Print (src/print.rs): PDFKit prints the PDF itself in the system's print
 # sheet. The same objc2 family Tauri already links (MIT OR Apache-2.0 OR Zlib).
@@ -107,9 +123,14 @@ objc2-foundation = { version = "0.3", default-features = false, features = ["std
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSPrintInfo", "NSPrintOperation", "NSResponder", "NSView", "NSWindow"] }
 objc2-pdf-kit = { version = "0.3", default-features = false, features = ["std", "PDFDocument", "objc2-app-kit"] }
 keyring = { version = "3.6", features = ["apple-native"] }
+enigo = "0.6"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 keyring = { version = "3.6", features = ["windows-native"] }
+# The phone remote's PC control (src/remote/input.rs): the pointer, keys and
+# media keys, as the system's own input events (enigo, MIT). Mac and Windows
+# only.
+enigo = "0.6"
 # The quick tools' Explorer menu (src/shell_menu.rs) is written to the
 # person's own registry classes; Share › Email hands the file to the default
 # mail program through Simple MAPI (src/share.rs).

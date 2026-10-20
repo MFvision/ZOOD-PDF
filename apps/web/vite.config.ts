@@ -81,6 +81,8 @@ export default defineConfig(({ command, mode }) => ({
         main: fileURLToPath(new URL('index.html', import.meta.url)),
         // Where a browser sign-in comes back to (the OneDrive app's redirect URI).
         'oauth-callback': fileURLToPath(new URL('oauth-callback.html', import.meta.url)),
+        // The phone remote's page, which only the desktop serves (to a phone on its network).
+        ...(mode === 'tauri' ? { remote: fileURLToPath(new URL('remote.html', import.meta.url)) } : {}),
       },
     },
   },

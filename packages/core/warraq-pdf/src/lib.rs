@@ -35,7 +35,7 @@ pub mod tiff;
 pub mod tounicode;
 
 pub use appearance::{needs_shaping, AppearanceReport};
-pub use attachments::{Attachment, AttachmentPlace};
+pub use attachments::{Attachment, AttachmentPlace, PageNote};
 pub use compress::{CompressOptions, CompressReport, Refusal};
 pub use document::{Metadata, PdfDocument};
 pub use face::{FaceClass, OriginalFace};

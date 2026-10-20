@@ -24,6 +24,7 @@ pub mod print;
 pub mod profile;
 pub mod quick;
 pub mod recent;
+pub mod remote;
 pub mod ring;
 pub mod share;
 pub mod shell_menu;
@@ -344,6 +345,7 @@ pub fn run() {
         .manage(fonts::FontState::default())
         .manage(recent::RecentState::default())
         .manage(updates::UpdateState::default())
+        .manage(remote::RemoteState::default())
         .on_menu_event(|app, event| match event.id().as_ref() {
             ring::TRAY_OPEN => {
                 quick::show_editor(app);
@@ -482,6 +484,13 @@ pub fn run() {
             ring::ring_done,
             ring::ring_configure,
             ring::ring_settings,
+            remote::remote_start,
+            remote::remote_stop,
+            remote::remote_status,
+            remote::remote_pc_control,
+            remote::remote_forget,
+            remote::remote_send,
+            remote::remote_fullscreen,
             share::share_prepare,
             share::share_email,
             system::system_user_name,

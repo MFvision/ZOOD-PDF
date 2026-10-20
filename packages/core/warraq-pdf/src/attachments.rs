@@ -38,6 +38,19 @@ pub struct Attachment {
     pub place: AttachmentPlace,
 }
 
+/// The most notes `notes` lists, and the most characters it keeps of one.
+pub const MAX_NOTES: usize = 2_000;
+pub const MAX_NOTE: usize = 4_000;
+
+/// A comment on a page (`PdfDocument::notes`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct PageNote {
+    /// Zero-based.
+    pub page: usize,
+    pub text: String,
+    pub author: Option<String>,
+}
+
 fn text(doc: &PdfDocument, o: Option<&Object>) -> Option<String> {
     let o = doc.doc.dereference(o?).ok()?.1;
     Some(decode_text_string(o.as_str().ok()?))
@@ -169,6 +182,43 @@ impl PdfDocument {
                         text(self, annot.get(b"Contents").ok()).filter(|d| !d.trim().is_empty());
                 }
                 out.push(a);
+            }
+        }
+        out
+    }
+
+    /// The comments on the pages — sticky notes, and the text of any other
+    /// markup that carries some — page by page, for a presenter's notes.
+    /// Form fields, links and pop-ups are not comments. Bounded: at most
+    /// [`MAX_NOTES`] notes, each cut to [`MAX_NOTE`] characters.
+    pub fn notes(&self) -> Vec<PageNote> {
+        let mut out = vec![];
+        for (page, &page_id) in self.pages.iter().enumerate() {
+            for (_, annot) in self.page_annotations(page_id) {
+                let kind = annot
+                    .get(b"Subtype")
+                    .and_then(|s| s.as_name())
+                    .unwrap_or(b"");
+                if matches!(kind, b"Widget" | b"Link" | b"Popup" | b"FileAttachment") {
+                    continue;
+                }
+                let Some(body) = text(self, annot.get(b"Contents").ok()) else {
+                    continue;
+                };
+                let body: String = body.trim().chars().take(MAX_NOTE).collect();
+                if body.is_empty() {
+                    continue;
+                }
+                let author = text(self, annot.get(b"T").ok())
+                    .map(|a| a.trim().chars().take(80).collect::<String>());
+                out.push(PageNote {
+                    page,
+                    text: body,
+                    author: author.filter(|a| !a.is_empty()),
+                });
+                if out.len() >= MAX_NOTES {
+                    return out;
+                }
             }
         }
         out
@@ -445,6 +495,16 @@ mod tests {
             doc.attachment_bytes("p0:0").is_err(),
             "a comment is not an attachment"
         );
+    }
+
+    /// The fixture's sticky note is a presenter's note; its attachment is not.
+    #[test]
+    fn comments_are_listed_as_notes() {
+        let doc = PdfDocument::open(fixture(), None).unwrap();
+        let notes = doc.notes();
+        assert!(!notes.is_empty());
+        assert!(notes.iter().all(|n| n.page == 0 && !n.text.is_empty()));
+        assert!(notes.iter().all(|n| n.text != "An attached note"));
     }
 
     /// Added as an update, with an Arabic name and a clash, read back, then

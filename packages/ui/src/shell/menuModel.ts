@@ -8,6 +8,9 @@ import type { PageLayout } from '../state/settings';
 import { closeBar, openBar, readAloudState, useReadAloud } from '../speech/readAloud';
 import { useT } from '../i18n/useT';
 import { TOOLS } from '../tools/tools';
+import { remoteAvailable } from '../remote/host';
+import { openRemoteSheet } from '../remote/store';
+import { startPresenting } from '../remote/useRemoteController';
 import { useMarkupBar } from './markupBar';
 import { SHEET_QUERY } from './sheetDrag';
 import { undoTyping, useTyping } from './typing';
@@ -314,13 +317,24 @@ export function useMenuModel(): MenuModel[] {
     {
       id: 'tools',
       label: t('menu.tools'),
-      items: TOOLS.map((tool) => ({
-        id: `tool-${tool.id}`,
-        label: t(tool.labelKey),
-        role: 'menuitemradio' as const,
-        checked: state.rightPane.activeTool === tool.id,
-        onSelect: () => dispatch({ type: 'SET_ACTIVE_TOOL', tool: tool.id }),
-      })),
+      items: [
+        ...TOOLS.map((tool) => ({
+          id: `tool-${tool.id}`,
+          label: t(tool.labelKey),
+          role: 'menuitemradio' as const,
+          checked: state.rightPane.activeTool === tool.id,
+          onSelect: () => dispatch({ type: 'SET_ACTIVE_TOOL', tool: tool.id }),
+        })),
+        {
+          id: 'present',
+          label: t('present.start'),
+          disabled: state.document === null,
+          separatorBefore: true,
+          onSelect: () => startPresenting(state.currentPage),
+        },
+        // The phone remote: the desktop only (a browser cannot be reached from a phone).
+        ...(remoteAvailable() ? [{ id: 'phone-remote', label: t('remote.menu'), onSelect: openRemoteSheet }] : []),
+      ],
     },
     {
       id: 'help',

@@ -41,6 +41,7 @@ import { useFileDrop } from './useFileDrop';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { useNativeMenu } from './useNativeMenu';
 import { useShellMenuSync } from '../quick/QuickSettings';
+import { RemoteLayer } from '../remote/RemoteLayer';
 import { TabBar } from './TabBar';
 import { useWorkbench } from './workbench';
 import { WorkbenchBar } from './WorkbenchBar';
@@ -248,6 +249,7 @@ export function Shell() {
         <LinkConfirmDialog />
         <FontLibraryQuestion />
         <CloudSheets />
+        <RemoteLayer />
         {state.toast && (
           <div key={state.toast.nonce} className="toast" role="status">
             {t(state.toast.key)}

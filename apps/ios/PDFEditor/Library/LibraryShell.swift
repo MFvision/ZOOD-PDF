@@ -85,6 +85,8 @@ struct LibraryShell: View {
     @State private var showingImporter = false
     @State private var showingCombiner = false
     @State private var showingBatch = false
+    /// The phone remote for ZOOD PDF on a computer (Remote/RemoteView.swift).
+    @State private var showingRemote = false
     @State private var restored = false
     /// The welcome tour: shown once, the first time the app is opened, and
     /// from Settings whenever it is asked for again.
@@ -149,6 +151,10 @@ struct LibraryShell: View {
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView(library: library)
+        }
+        .fullScreenCover(isPresented: $showingRemote) {
+            RemoteView()
+                .appEnvironment()
         }
         // Batch: a sequence of steps over many files (Batch/).
         .fullScreenCover(isPresented: $showingBatch) {
@@ -367,6 +373,10 @@ struct LibraryShell: View {
                 showingImporter = true
             }
             .accessibilityIdentifier("library.open")
+            Button("Phone remote", systemImage: "iphone.radiowaves.left.and.right") {
+                showingRemote = true
+            }
+            .accessibilityIdentifier("library.remote")
         }
     }
 
