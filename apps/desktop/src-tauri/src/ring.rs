@@ -217,7 +217,7 @@ fn ring_window<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
     }
     let builder =
         WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("index.html?ring=1".into()))
-            .title("محرر PDF")
+            .title("ZOOD PDF")
             .inner_size(SIDE, SIDE)
             .decorations(false)
             .resizable(false)
@@ -459,7 +459,7 @@ pub fn show_tray<R: Runtime>(app: &AppHandle<R>, visible: bool) {
     };
     if visible {
         let menu = tauri::menu::MenuBuilder::new(app)
-            .text(TRAY_OPEN, "فتح محرر PDF")
+            .text(TRAY_OPEN, "فتح محرر زود PDF")
             .separator()
             .text(TRAY_QUIT, "إنهاء")
             .build();
@@ -813,9 +813,9 @@ mod tests {
 
     #[test]
     fn the_launch_agent_starts_the_app_in_the_background() {
-        let plist = launch_agent("/Applications/محرر PDF.app/Contents/MacOS/warraq-desktop");
+        let plist = launch_agent("/Applications/ZOOD PDF.app/Contents/MacOS/warraq-desktop");
         assert!(plist
-            .contains("<string>/Applications/محرر PDF.app/Contents/MacOS/warraq-desktop</string>"));
+            .contains("<string>/Applications/ZOOD PDF.app/Contents/MacOS/warraq-desktop</string>"));
         assert!(plist.contains("<string>--background</string>"));
         assert!(launch_agent("a&b").contains("a&amp;b"));
     }

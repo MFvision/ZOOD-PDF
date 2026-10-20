@@ -3,7 +3,7 @@ import type { Locator, Page } from '@playwright/test';
 import { INVOICE, openPdf, test } from './helpers';
 
 /**
- * How the shell looks after the rename to محرر PDF and the sixteenth tool:
+ * How the shell looks after the rename to محرر زود PDF and the sixteenth tool:
  * the name is Arabic inside an English interface, and every list of tools —
  * the picker's gallery, the home screen's grid, the inspector's list and the
  * Tools menu — holds all of them, in both languages and at phone width.
@@ -41,12 +41,12 @@ test('the app’s name is set as Arabic even inside the English interface, so it
   for (const lang of ['en', 'ar'] as const) {
     await start(page, lang);
     const wordmark = page.locator('.home-brand-name bdi');
-    await expect(wordmark).toHaveText('محرر PDF');
+    await expect(wordmark).toHaveText('محرر زود PDF');
     expect(await tracking(wordmark), `the home title, in ${lang}`).toBe(0);
     // It reads right to left wherever it is set.
     expect(await wordmark.evaluate((node) => getComputedStyle(node).direction)).toBe('rtl');
 
-    await page.getByRole('menubar').getByRole('menuitem', { name: 'محرر PDF' }).click();
+    await page.getByRole('menubar').getByRole('menuitem', { name: 'محرر زود PDF' }).click();
     await page.getByRole('menuitem', { name: /About|حول/ }).click();
     const about = page.getByRole('dialog').locator('.about-name bdi');
     await expect(about).toBeVisible();

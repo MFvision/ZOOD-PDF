@@ -46,7 +46,7 @@ export function HomeSidebar({ view, onView, clouds, index }: HomeSidebarProps) {
         <img src={APP_ICON} alt="" width={40} height={40} />
         <div className="home-brand-text">
           <p className="home-brand-name">
-            <bdi dir="rtl" lang="ar">{t('app.name')}</bdi>
+            <bdi>{t('app.name')}</bdi>
           </p>
           <p className="home-brand-tagline">{t('app.tagline')}</p>
         </div>

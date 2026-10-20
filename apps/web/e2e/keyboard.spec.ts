@@ -77,7 +77,7 @@ test('Settings: each segmented control is one Tab stop, and the arrows choose wi
 }) => {
   await page.goto('/');
   // From the app menu: Chrome keeps ⌘, for its own settings.
-  await page.getByRole('menubar').getByRole('menuitem', { name: 'محرر PDF' }).click();
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'محرر زود PDF' }).click();
   await page.getByRole('menuitem', { name: /^Settings…/ }).click();
   const sheet = page.getByRole('dialog', { name: 'Settings' });
   await expect(sheet).toBeVisible();

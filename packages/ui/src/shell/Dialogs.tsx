@@ -193,7 +193,7 @@ export function AboutDialog() {
       <div className="about">
         <img className="about-icon" src={APP_ICON} alt="" width={96} height={96} />
         <p className="about-name">
-          <bdi dir="rtl" lang="ar">{t('app.name')}</bdi>
+          <bdi>{t('app.name')}</bdi>
         </p>
         <p className="about-tagline">{t('app.tagline')}</p>
         <p>{t('about.body')}</p>

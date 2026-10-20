@@ -94,7 +94,7 @@ export const FILL_SCHEMA = {
 } as const;
 
 const SYSTEM = [
-  'You help a person fill in a PDF form in محرر PDF, a PDF editor.',
+  'You help a person fill in a PDF form in ZOOD PDF, a PDF editor.',
   'The user message lists the form\'s fields inside <fields>, one per line: the field\'s name, the words printed beside it on the page, and what it holds now. Then come the person\'s details inside <details>.',
   'Rules:',
   '- Fill a field only with what the details say. Never invent, guess or complete a value; leave out any field the details do not answer.',

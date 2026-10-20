@@ -4,7 +4,7 @@ import { join, relative } from 'node:path';
 import type { Plugin } from 'vite';
 
 /**
- * The web app's service worker, written by the build: محرر PDF installed from
+ * The web app's service worker, written by the build: ZOOD PDF installed from
  * the browser opens and works without a network.
  *
  * It keeps the files of the app itself — the page, its scripts and styles,
@@ -38,7 +38,7 @@ export function serviceWorkerSource(all: readonly string[]): string {
   const shell = kept.filter((file) => !ON_FIRST_USE.some((pattern) => pattern.test(file))).sort();
   const lazy = kept.filter((file) => ON_FIRST_USE.some((pattern) => pattern.test(file))).sort();
   const version = createHash('sha256').update(kept.sort().join('\n')).digest('hex').slice(0, 16);
-  return `// محرر PDF's service worker, written by the build (apps/web/pwa.ts). It keeps the
+  return `// ZOOD PDF's service worker, written by the build (apps/web/pwa.ts). It keeps the
 // app's own files on the device, and never a document: files people open are
 // read from their disk and never reach it.
 const VERSION = ${JSON.stringify(version)};

@@ -105,7 +105,7 @@ pub fn plan(root: &str, exe: &str, lang: &str) -> Vec<KeySpec> {
             (
                 "MUIVerb",
                 if ar {
-                    "محرر PDF: أدوات سريعة"
+                    "محرر زود PDF: أدوات سريعة"
                 } else {
                     "PDF Editor: quick tools"
                 }
@@ -157,7 +157,7 @@ pub fn plan(root: &str, exe: &str, lang: &str) -> Vec<KeySpec> {
                 (
                     "MUIVerb",
                     if ar {
-                        "تحويل إلى PDF (محرر PDF)"
+                        "تحويل إلى PDF (محرر زود PDF)"
                     } else {
                         "Convert to PDF (PDF Editor)"
                     }
@@ -489,14 +489,14 @@ mod tests {
     fn a_pdf_gets_a_submenu_of_tools_and_other_files_convert_to_pdf() {
         let keys = plan(
             CLASSES,
-            r"C:\Program Files\محرر PDF\warraq-desktop.exe",
+            r"C:\Program Files\ZOOD PDF\warraq-desktop.exe",
             "ar",
         );
         let root = r"Software\Classes\SystemFileAssociations\.pdf\shell\ZoodPDF.Quick";
         assert_eq!(keys[0].path, root);
         assert!(keys[0]
             .values
-            .contains(&("MUIVerb".into(), "محرر PDF: أدوات سريعة".into())));
+            .contains(&("MUIVerb".into(), "محرر زود PDF: أدوات سريعة".into())));
         assert!(keys[0]
             .values
             .contains(&("SubCommands".into(), String::new())));
@@ -508,7 +508,7 @@ mod tests {
             compress.values,
             vec![(
                 String::new(),
-                r#""C:\Program Files\محرر PDF\warraq-desktop.exe" --quick --tool=compress "%1""#
+                r#""C:\Program Files\ZOOD PDF\warraq-desktop.exe" --quick --tool=compress "%1""#
                     .to_string()
             )]
         );
