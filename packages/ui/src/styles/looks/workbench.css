@@ -372,7 +372,7 @@ html[data-look="workbench"] .home-section {
 
 /* ---- Narrow windows: the modes keep their icons, the rail its panels ---- */
 
-@media (max-width: 760px) {
+@media (width <= 760px) {
   .workbench-mode span {
     display: none;
   }

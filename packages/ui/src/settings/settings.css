@@ -480,7 +480,11 @@ html[data-look="mono"] .prefs-nav-icon {
   opacity: 0.35;
 }
 
-.accent-swatch[data-accent-swatch="look"] { --swatch: conic-gradient(#007aff, #af52de, #ff2d55, #ff9500, #34c759, #007aff); background: var(--swatch); }
+.accent-swatch[data-accent-swatch="look"] {
+  --swatch: conic-gradient(#007aff, #af52de, #ff2d55, #ff9500, #34c759, #007aff);
+
+  background: var(--swatch);
+}
 .accent-swatch[data-accent-swatch="blue"] { --swatch: #007aff; }
 .accent-swatch[data-accent-swatch="purple"] { --swatch: #af52de; }
 .accent-swatch[data-accent-swatch="pink"] { --swatch: #ff2d55; }
@@ -706,7 +710,7 @@ html[data-look="mono"] .prefs-nav-icon {
 
 /* ---- Narrow windows: the list becomes a strip over the page ---------------------- */
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .prefs {
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr;
