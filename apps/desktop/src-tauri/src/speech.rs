@@ -9,8 +9,10 @@
 //! and uses these commands when the answer is not `web`). Siri's own voices
 //! are not offered to any app by the system; Premium voices are the nearest.
 //!
-//! Elsewhere `speech_engine` answers `web` and the interface keeps Web
-//! Speech. Nothing here reaches the network.
+//! On Windows `speech_engine` answers `neural`: the interface keeps Web
+//! Speech for the system's voices and adds the natural ones `neural/`
+//! downloads and speaks. Elsewhere it answers `web`. Nothing here reaches
+//! the network.
 
 use serde::Serialize;
 
@@ -27,11 +29,14 @@ pub struct Voice {
 }
 
 /// Which engine reads aloud in this build: `apple` (AVSpeechSynthesizer on a
-/// Mac) or `web` (the webview's Web Speech).
+/// Mac), `neural` (Windows: the app's own natural voices, `neural/`, beside
+/// the system's through Web Speech) or `web` (the webview's Web Speech).
 #[tauri::command]
 pub fn speech_engine() -> &'static str {
     if cfg!(target_os = "macos") {
         "apple"
+    } else if crate::neural::AVAILABLE {
+        "neural"
     } else {
         "web"
     }

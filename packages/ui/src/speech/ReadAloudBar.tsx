@@ -4,7 +4,8 @@ import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
-import { useAppState, useServices } from '../state/AppContext';
+import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
+import { openSettingsAt } from '../settings/SettingsWindow';
 import { readOcrOptions } from '../ocr/run';
 import type { OcrProgress } from '../ocr/run';
 import { closeBar, pause, refreshVoices, resume, setRate, setVoice, start, stop, useReadAloud } from './readAloud';
@@ -34,6 +35,7 @@ export function ReadAloudBar() {
   const { t } = useI18n();
   const state = useAppState();
   const services = useServices();
+  const dispatch = useAppDispatch();
   const reading = useReadAloud();
 
   useEffect(() => {
@@ -95,10 +97,12 @@ export function ReadAloudBar() {
   const arabic = voicesFor(reading.voices, 'ar');
   const english = voicesFor(reading.voices, 'en');
   const busy = reading.active;
-  const quality = { premium: t('readAloud.premium'), enhanced: t('readAloud.enhanced') };
+  const quality = { premium: t('readAloud.premium'), enhanced: t('readAloud.enhanced'), natural: t('readAloud.natural') };
   // Apple's engine reads with whatever voices are downloaded; with only the
   // basic ones, the way to a natural voice is one click away.
   const basic = reading.engine === 'apple' && reading.voices.length > 0 && (onlyBasicVoice(reading.voices, 'ar') || onlyBasicVoice(reading.voices, 'en'));
+  // On Windows the app has natural voices of its own, downloaded in the settings.
+  const noNatural = reading.engine === 'neural' && !arabic.some((voice) => voice.natural);
 
   return (
     <div className="readaloud" role="region" aria-label={t('readAloud.label')}>
@@ -159,6 +163,15 @@ export function ReadAloudBar() {
       {basic ? (
         <span title={t('readAloud.betterVoiceHint')}>
           <IconButton label={t('readAloud.betterVoice')} icon={<Icon of={Sparkles} />} showLabel onClick={openVoiceSettings} />
+        </span>
+      ) : noNatural ? (
+        <span title={t('readAloud.naturalHint')}>
+          <IconButton
+            label={t('readAloud.betterVoice')}
+            icon={<Icon of={Sparkles} />}
+            showLabel
+            onClick={() => openSettingsAt('ai', () => dispatch({ type: 'DIALOG', dialog: 'settings' }))}
+          />
         </span>
       ) : null}
       <span className="readaloud-status" role="status">

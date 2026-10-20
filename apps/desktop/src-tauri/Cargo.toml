@@ -135,6 +135,11 @@ enigo = "0.6"
 # person's own registry classes; Share › Email hands the file to the default
 # mail program through Simple MAPI (src/share.rs).
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_System_LibraryLoader", "Win32_System_Mapi", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
+# Read aloud's natural voices (src/neural/): Piper voices and libtashkeel's
+# diacritizer, both ONNX, run by ONNX Runtime through ort (MIT OR
+# Apache-2.0; ONNX Runtime itself MIT), linked statically from the build
+# ort downloads at compile time. No runtime download of the engine.
+ort = { version = "=2.0.0-rc.12", default-features = false, features = ["std", "download-binaries", "tls-rustls", "api-22"] }
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 keyring = { version = "3.6", features = ["sync-secret-service", "crypto-rust"] }

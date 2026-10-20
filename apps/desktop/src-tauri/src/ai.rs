@@ -293,7 +293,7 @@ fn agent() -> ureq::Agent {
 }
 
 /// A GET of `url`, following redirects only to the catalogue's hosts.
-fn open_download(url: &str) -> Result<ureq::http::Response<ureq::Body>, String> {
+pub(crate) fn open_download(url: &str) -> Result<ureq::http::Response<ureq::Body>, String> {
     let agent = agent();
     let mut url = url.to_string();
     for _ in 0..=REDIRECTS {

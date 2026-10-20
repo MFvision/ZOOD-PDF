@@ -1,4 +1,5 @@
 import { invokeHost, isTauriHost } from '../core/host-tauri';
+import { NEURAL_PREFIX, NeuralPlayer, neuralVoices } from './neural';
 import { describeVoices } from './voices';
 import type { VoiceInfo } from './voices';
 
@@ -7,11 +8,13 @@ import type { VoiceInfo } from './voices';
  * as the browser offers them. In the desktop app on a Mac, the system's own
  * AVSpeechSynthesizer through the host (`apps/desktop/src-tauri/src/speech.rs`):
  * WebKit's Web Speech hides the Enhanced and Premium voices a Mac has
- * downloaded, which is why reading there sounded flat. The host says which
- * it is (`speech_engine`); anything else, or an older host, keeps Web Speech.
+ * downloaded, which is why reading there sounded flat. In the Windows app,
+ * the natural voices the app downloads and runs itself (`neural.ts`) beside
+ * the system's through Web Speech. The host says which it is
+ * (`speech_engine`); anything else, or an older host, keeps Web Speech.
  */
 
-export type EngineKind = 'web' | 'apple';
+export type EngineKind = 'web' | 'apple' | 'neural';
 
 export interface SpeechEngine {
   readonly kind: EngineKind;
@@ -109,6 +112,41 @@ function hostEngine(kind: EngineKind): SpeechEngine {
   };
 }
 
+/** The Windows app's engine: its own natural voices first, the system's through Web Speech too. */
+function neuralEngine(synth: WebSpeech | null): SpeechEngine {
+  const web = synth ? webEngine(synth) : null;
+  const player = new NeuralPlayer();
+  const natural = (voice: VoiceInfo | null) => (voice?.id.startsWith(NEURAL_PREFIX) ? voice.id.slice(NEURAL_PREFIX.length) : null);
+  return {
+    kind: 'neural',
+    voices: async () => {
+      const own: VoiceInfo[] = (await neuralVoices())
+        .filter((voice) => voice.state === 'ready')
+        .map((voice) => ({ id: NEURAL_PREFIX + voice.id, name: voice.name, lang: voice.lang, quality: 'premium', natural: true }));
+      return [...own, ...(web ? await web.voices() : [])];
+    },
+    speak: async (text, voice, lang, rate) => {
+      const id = natural(voice);
+      if (id) return player.speak(id, text, rate);
+      if (!web) throw new Error('E_SPEECH: no voice for this text');
+      return web.speak(text, voice, lang, rate);
+    },
+    cancel: () => {
+      player.cancel();
+      web?.cancel();
+    },
+    pause: () => {
+      player.pause();
+      web?.pause();
+    },
+    resume: () => {
+      player.resume();
+      web?.resume();
+    },
+    watchVoices: (listener) => web?.watchVoices(listener),
+  };
+}
+
 let chosen: Promise<SpeechEngine | null> | null = null;
 let known: SpeechEngine | null = null;
 
@@ -119,6 +157,7 @@ export function speechEngine(): Promise<SpeechEngine | null> {
     if (isTauriHost()) {
       const kind = await invokeHost('speech_engine').catch(() => 'web');
       if (kind === 'apple') return hostEngine(kind);
+      if (kind === 'neural') return neuralEngine(webSpeech());
     }
     const synth = webSpeech();
     return synth ? webEngine(synth) : null;

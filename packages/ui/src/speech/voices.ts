@@ -14,6 +14,8 @@ export interface VoiceInfo {
   lang: string;
   /** Marked by its name as a premium or enhanced voice: preferred. */
   quality: 'premium' | 'enhanced' | 'standard';
+  /** One of the app's own natural voices (Windows), not the system's. */
+  natural?: boolean;
 }
 
 export type VoiceLang = 'ar' | 'en';
@@ -61,7 +63,8 @@ export function onlyBasicVoice(voices: readonly VoiceInfo[], lang: VoiceLang): b
 }
 
 /** A voice's name as the lists show it: with its quality, unless the name already says it. */
-export function voiceLabel(voice: VoiceInfo, quality: { premium: string; enhanced: string }): string {
+export function voiceLabel(voice: VoiceInfo, quality: { premium: string; enhanced: string; natural: string }): string {
+  if (voice.natural) return `${voice.name} · ${quality.natural}`;
   if (voice.quality === 'standard' || QUALITY.test(voice.name)) return voice.name;
   return `${voice.name} · ${voice.quality === 'premium' ? quality.premium : quality.enhanced}`;
 }

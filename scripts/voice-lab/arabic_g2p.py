@@ -117,6 +117,11 @@ def word_phonemes(word, after_vowel):
         if ch == "ى" and not vowelled:
             out.append("ː" if out and out[-1] == "a" else "a")
             continue
+        if ch == "ة" and not vowelled:
+            # The pause form: "-a", no t.
+            if not out or out[-1] != "a":
+                out.append("a")
+            continue
         if ch == "آ":
             out.extend(["ʔ", "a", "ː"])
             continue

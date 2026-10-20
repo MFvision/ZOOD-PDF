@@ -3,6 +3,7 @@ import { isApplePlatform } from '../shell/menuModel';
 import { useI18n } from '../i18n/useT';
 import { refreshVoices, setRate, setVoice, speechSupported, useReadAloud } from './readAloud';
 import { openVoiceSettings } from './engines';
+import { NaturalVoices } from './NaturalVoices';
 import { onlyBasicVoice, voiceLabel, voicesFor } from './voices';
 
 const RATES = [0.75, 1, 1.25, 1.5, 2];
@@ -26,7 +27,7 @@ export function VoiceSettings() {
       </section>
     );
   }
-  const quality = { premium: t('readAloud.premium'), enhanced: t('readAloud.enhanced') };
+  const quality = { premium: t('readAloud.premium'), enhanced: t('readAloud.enhanced'), natural: t('readAloud.natural') };
   const basic = reading.engine === 'apple' && (onlyBasicVoice(reading.voices, 'ar') || onlyBasicVoice(reading.voices, 'en'));
   const pick = (lang: 'ar' | 'en') => (
     <label className="field">
@@ -56,6 +57,7 @@ export function VoiceSettings() {
           ))}
         </select>
       </label>
+      {reading.engine === 'neural' ? <NaturalVoices /> : null}
       {basic ? (
         <>
           <p className="tool-panel-note">{t('readAloud.betterVoiceHint')}</p>
