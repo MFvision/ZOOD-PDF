@@ -12,16 +12,18 @@ import { useAppState, useServices } from '../state/AppContext';
  * — carries it out.
  */
 let pending: number | null = null;
+let asked = 0;
 const listeners = new Set<() => void>();
 
 export function requestPage(page: number): void {
   pending = page;
+  asked += 1;
   for (const listener of listeners) listener();
 }
 
-/** The page asked for and not yet reached, if any. */
-export function pendingPage(): number | null {
-  return pending;
+/** How many pages have been asked for so far: a change says one was asked for since. */
+export function pageRequests(): number {
+  return pending === null ? asked : -1;
 }
 
 function subscribe(listener: () => void): () => void {

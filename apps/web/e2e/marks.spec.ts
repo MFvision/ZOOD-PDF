@@ -53,21 +53,28 @@ async function saveAs(page: Page, name: string): Promise<string> {
 async function redInEmbed(page: Page, box: [number, number, number, number]): Promise<number> {
   return page.evaluate(async ([x0, y0, x1, y1]) => {
     const root = document.querySelector('embedpdf-container')?.shadowRoot;
-    const images = root ? [...root.querySelectorAll('img')] : [];
-    let best: HTMLImageElement | null = null;
-    for (const image of images) {
+    const images = (root ? [...root.querySelectorAll('img')] : []).filter((image) => {
       const rect = image.getBoundingClientRect();
-      const onScreen = rect.width > 0 && rect.top < innerHeight && rect.bottom > 0;
-      if (onScreen && (!best || image.naturalWidth * image.naturalHeight > best.naturalWidth * best.naturalHeight)) best = image;
-    }
-    if (!best) return 0;
-    await best.decode().catch(() => undefined);
+      return rect.width > 0 && rect.top < innerHeight && rect.bottom > 0;
+    });
+    // The page is the largest picture on screen; at a high zoom EmbedPDF
+    // draws it again in tiles on top, and the page is put back together
+    // from all of them, as it is seen.
+    const area = (image: HTMLImageElement) => image.getBoundingClientRect().width * image.getBoundingClientRect().height;
+    const whole = images.reduce<HTMLImageElement | null>((best, image) => (!best || area(image) > area(best) ? image : best), null);
+    if (!whole) return 0;
+    const at = whole.getBoundingClientRect();
     const canvas = document.createElement('canvas');
-    canvas.width = best.naturalWidth;
-    canvas.height = best.naturalHeight;
+    canvas.width = Math.round(at.width);
+    canvas.height = Math.round(at.height);
     const context = canvas.getContext('2d');
     if (!context) return 0;
-    context.drawImage(best, 0, 0);
+    for (const image of [whole, ...images.filter((image) => image !== whole)]) {
+      const rect = image.getBoundingClientRect();
+      if (rect.left < at.left - 1 || rect.right > at.right + 1 || rect.top < at.top - 1 || rect.bottom > at.bottom + 1) continue;
+      await image.decode().catch(() => undefined);
+      context.drawImage(image, rect.left - at.left, rect.top - at.top, rect.width, rect.height);
+    }
     const [w, h] = [canvas.width, canvas.height];
     const data = context.getImageData(Math.floor(x0 * w), Math.floor(y0 * h), Math.max(1, Math.floor((x1 - x0) * w)), Math.max(1, Math.floor((y1 - y0) * h))).data;
     let red = 0;
