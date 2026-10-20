@@ -107,6 +107,31 @@ export const CHAPTERS = [
     },
   },
   {
+    id: 'phone',
+    kind: 'phone',
+    stage: { pages: 1, fan: 0, recede: 1, dusk: 0, pattern: 0 },
+    devices: [],
+    eyebrow: { ar: 'آيفون وآيباد', en: 'iPhone and iPad' },
+    title: {
+      ar: 'من الكاميرا إلى ملف تبحث فيه، [[على هاتفك]].',
+      en: 'From the camera to a file you can search, [[on your phone]].',
+    },
+    points: [
+      {
+        ar: 'امسح الورق بالكاميرا، فيُقرأ نصه العربي ويُحفظ ملفًا تبحث فيه.',
+        en: 'Scan paper with the camera: its Arabic text is read and saved as a file you can search.',
+      },
+      {
+        ar: 'أدوات على الشاشة الرئيسية وشاشة القفل: آخر ملفاتك، والمسح، والبحث.',
+        en: 'Widgets on the Home and Lock Screen: your recent files, scanning and search.',
+      },
+      {
+        ar: 'واختصارات جاهزة، مثل «امسح مستندًا» و«افتح آخر ملف».',
+        en: 'Ready-made shortcuts, such as “Scan a document” and “Open the last document”.',
+      },
+    ],
+  },
+  {
     id: 'ai',
     kind: 'ai',
     stage: { pages: 1, fan: 0, recede: 0, dusk: 0, pattern: 0 },
@@ -378,31 +403,6 @@ export const CHAPTERS = [
       },
     ],
     note: { ar: 'التعرّف الكامل على النص: ', en: 'Full OCR: ', on: ON.allButMobile },
-  },
-  {
-    id: 'phone',
-    kind: 'phone',
-    stage: { pages: 1, fan: 0, recede: 1, dusk: 0, pattern: 0 },
-    devices: [],
-    eyebrow: { ar: 'آيفون وآيباد', en: 'iPhone and iPad' },
-    title: {
-      ar: 'من الكاميرا إلى ملف تبحث فيه، [[على هاتفك]].',
-      en: 'From the camera to a file you can search, [[on your phone]].',
-    },
-    points: [
-      {
-        ar: 'امسح الورق بالكاميرا، فيُقرأ نصه العربي ويُحفظ ملفًا تبحث فيه.',
-        en: 'Scan paper with the camera: its Arabic text is read and saved as a file you can search.',
-      },
-      {
-        ar: 'أدوات على الشاشة الرئيسية وشاشة القفل: آخر ملفاتك، والمسح، والبحث.',
-        en: 'Widgets on the Home and Lock Screen: your recent files, scanning and search.',
-      },
-      {
-        ar: 'واختصارات جاهزة، مثل «امسح مستندًا» و«افتح آخر ملف».',
-        en: 'Ready-made shortcuts, such as “Scan a document” and “Open the last document”.',
-      },
-    ],
   },
   {
     id: 'family',
