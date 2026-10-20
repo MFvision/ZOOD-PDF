@@ -4,6 +4,7 @@ import { Plus, X } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { useI18n } from '../i18n/useT';
 import { useAppState, useServices } from '../state/AppContext';
+import { useSettings } from '../state/settings';
 import './tabs.css';
 
 /**
@@ -18,6 +19,7 @@ export function TabBar() {
   const services = useServices();
   const state = useAppState();
   const { t } = useI18n();
+  const settings = useSettings();
   const { tabs, activeTab, activateTab, closeTab } = services;
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +36,8 @@ export function TabBar() {
     return () => window.removeEventListener('keydown', onKey);
   }, [tabs, activeTab, activateTab]);
 
-  if (tabs.length === 0) return null;
+  // Settings › Viewing: always, or only once there is a second document.
+  if (tabs.length < (settings.tabBar === 'several' ? 2 : 1)) return null;
 
   // Arrow keys move along the tabs, mirrored right to left by the browser's own order.
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {

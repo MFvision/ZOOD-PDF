@@ -47,10 +47,16 @@ pub const DROP_EVENT: &str = "ring://drop";
 /// The ring opened by its keyboard shortcut, already holding the selected files.
 pub const HOLD_EVENT: &str = "ring://hold";
 /// Opens the ring at the pointer on the files selected in File Explorer or
-/// Finder, waiting for a click.
+/// Finder, waiting for a click, unless Settings chose other keys.
 pub const SHORTCUT: &str = "CommandOrControl+Alt+Z";
+/// The ring's size from Settings: small, as made, or large.
+pub const SCALES: [f64; 3] = [0.85, 1.0, 1.2];
 
 static ENABLED: AtomicBool = AtomicBool::new(true);
+/// The ring's scale (`SCALES`), in thousandths.
+static SCALE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1000);
+/// The keys the shortcut is on now, to take them off when they change.
+static CURRENT_SHORTCUT: Mutex<String> = Mutex::new(String::new());
 /// The ring is running a tool on files let go on it: no new ring until done.
 static BUSY: AtomicBool = AtomicBool::new(false);
 static BACKGROUND: AtomicBool = AtomicBool::new(false);
@@ -75,12 +81,25 @@ pub enum Gesture {
     End,
 }
 
-/// The ring's two switches, kept beside the app's data so a `--background`
-/// start (which runs no interface) knows them.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// The ring's settings, kept beside the app's data so a `--background`
+/// start (which runs no interface) knows them. Files written before the
+/// size and the shortcut existed read with their defaults.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RingSettings {
     pub ring: bool,
     pub background: bool,
+    #[serde(default = "default_scale")]
+    pub scale: f64,
+    #[serde(default = "default_shortcut")]
+    pub shortcut: String,
+}
+
+fn default_scale() -> f64 {
+    1.0
+}
+
+fn default_shortcut() -> String {
+    SHORTCUT.to_string()
 }
 
 impl Default for RingSettings {
@@ -88,8 +107,24 @@ impl Default for RingSettings {
         RingSettings {
             ring: true,
             background: false,
+            scale: default_scale(),
+            shortcut: default_shortcut(),
         }
     }
+}
+
+/// The nearest of the three sizes, so a hand-edited file cannot make a ring
+/// larger than any screen.
+pub fn nearest_scale(scale: f64) -> f64 {
+    SCALES
+        .iter()
+        .copied()
+        .min_by(|a, b| (a - scale).abs().total_cmp(&(b - scale).abs()))
+        .unwrap_or(1.0)
+}
+
+fn scale() -> f64 {
+    f64::from(SCALE.load(Ordering::Relaxed)) / 1000.0
 }
 
 pub fn enabled() -> bool {
@@ -174,6 +209,10 @@ pub fn start<R: Runtime>(app: &AppHandle<R>, start_hidden: bool) {
         if settings.ring { "on" } else { "off" }
     ));
     ENABLED.store(settings.ring, Ordering::Relaxed);
+    SCALE.store(
+        (nearest_scale(settings.scale) * 1000.0) as u32,
+        Ordering::Relaxed,
+    );
     BACKGROUND.store(settings.background || start_hidden, Ordering::Relaxed);
     show_tray(app, background());
     let (sender, receiver) = channel::<Gesture>();
@@ -208,7 +247,7 @@ pub fn start<R: Runtime>(app: &AppHandle<R>, start_hidden: bool) {
     windows::watch();
     #[cfg(target_os = "macos")]
     macos::watch();
-    shortcut::register(app);
+    shortcut::register(app, &settings.shortcut);
 }
 
 fn ring_window<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
@@ -218,7 +257,7 @@ fn ring_window<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
     let builder =
         WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("index.html?ring=1".into()))
             .title("ZOOD PDF")
-            .inner_size(SIDE, SIDE)
+            .inner_size(SIDE * scale(), SIDE * scale())
             .decorations(false)
             .resizable(false)
             .shadow(false)
@@ -273,9 +312,9 @@ fn show<R: Runtime>(app: &AppHandle<R>, x: f64, y: f64) {
         )
     });
     let side = if windows {
-        (SIDE * screen.map_or(1.0, |m| m.scale_factor())).round()
+        (SIDE * scale() * screen.map_or(1.0, |m| m.scale_factor())).round()
     } else {
-        SIDE
+        SIDE * scale()
     };
     let (left, top) = area.map_or((x - side / 2.0, y - side / 2.0), |a| place((x, y), side, a));
     if windows {
@@ -420,15 +459,33 @@ pub fn ring_pick<R: Runtime>(app: AppHandle<R>, tool: String, only: Option<Vec<S
     quick::request(&app, QuickRequest { tool, files });
 }
 
-/// The two switches from Settings: the ring, and keeping the app ready in
-/// the background (and starting it at sign-in).
+/// From Settings: the ring, keeping the app ready in the background (and
+/// starting it at sign-in), the ring's size and its keyboard shortcut. A
+/// shortcut the system will not take keeps the one before, and says so.
 #[tauri::command]
 pub fn ring_configure<R: Runtime>(
     app: AppHandle<R>,
     ring: bool,
     background: bool,
+    scale: Option<f64>,
+    shortcut: Option<String>,
 ) -> Result<RingSettings, String> {
-    let settings = RingSettings { ring, background };
+    let before = load_settings(&app);
+    let scale = nearest_scale(scale.unwrap_or(before.scale));
+    let mut settings = RingSettings {
+        ring,
+        background,
+        scale,
+        shortcut: before.shortcut.clone(),
+    };
+    if let Some(keys) = shortcut.filter(|keys| *keys != before.shortcut) {
+        shortcut::replace(&app, &keys)?;
+        settings.shortcut = keys;
+    }
+    SCALE.store((scale * 1000.0) as u32, Ordering::Relaxed);
+    if let Some(window) = app.get_webview_window(LABEL) {
+        let _ = window.set_size(tauri::LogicalSize::new(SIDE * scale, SIDE * scale));
+    }
     ENABLED.store(ring, Ordering::Relaxed);
     BACKGROUND.store(background, Ordering::Relaxed);
     if let Some(path) = settings_path(&app) {
@@ -803,12 +860,19 @@ mod tests {
             RingSettings::default(),
             RingSettings {
                 ring: true,
-                background: false
+                background: false,
+                scale: 1.0,
+                shortcut: SHORTCUT.to_string(),
             }
         );
+        // A file from before the size and the shortcut reads with their defaults.
         let read: RingSettings =
             serde_json::from_str(r#"{"ring":false,"background":true}"#).unwrap();
         assert!(!read.ring && read.background);
+        assert_eq!(read.scale, 1.0);
+        assert_eq!(read.shortcut, SHORTCUT);
+        assert_eq!(nearest_scale(9.0), 1.2);
+        assert_eq!(nearest_scale(0.1), 0.85);
     }
 
     #[test]
@@ -831,26 +895,61 @@ mod shortcut {
     use tauri::{AppHandle, Emitter, Runtime};
     use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
-    use super::{log, show, FilesPayload, BUSY, DROPPED, FILES_EVENT, HOLD_EVENT, LABEL, SHORTCUT};
+    use super::{
+        log, show, FilesPayload, BUSY, CURRENT_SHORTCUT, DROPPED, FILES_EVENT, HOLD_EVENT, LABEL,
+        SHORTCUT,
+    };
 
     /// The most files the shortcut takes, as a drag would.
     const MAX_FILES: usize = 500;
 
-    pub fn register<R: Runtime>(app: &AppHandle<R>) {
-        let result = app
-            .global_shortcut()
-            .on_shortcut(SHORTCUT, |app, _, event| {
-                if event.state != ShortcutState::Pressed || !super::enabled() {
-                    return;
-                }
-                // Which window is in front, read now, before anything else can be.
-                let front = front_window();
-                let app = app.clone();
-                std::thread::spawn(move || open(&app, front));
-            });
+    /// Puts the shortcut on `keys`, or on the default when those will not do.
+    pub fn register<R: Runtime>(app: &AppHandle<R>, keys: &str) {
+        if listen(app, keys).is_err() && keys != SHORTCUT {
+            log("the chosen shortcut could not be set; using the default");
+            let _ = listen(app, SHORTCUT);
+        }
+    }
+
+    /// Moves the shortcut to `keys`; on failure it stays where it was.
+    pub fn replace<R: Runtime>(app: &AppHandle<R>, keys: &str) -> Result<(), String> {
+        let old = CURRENT_SHORTCUT
+            .lock()
+            .map(|k| k.clone())
+            .unwrap_or_default();
+        if !old.is_empty() {
+            let _ = app.global_shortcut().unregister(old.as_str());
+        }
+        listen(app, keys).map_err(|e| {
+            if !old.is_empty() {
+                let _ = listen(app, &old);
+            }
+            format!("E_SHORTCUT: {e}")
+        })
+    }
+
+    fn listen<R: Runtime>(app: &AppHandle<R>, keys: &str) -> Result<(), String> {
+        let result = app.global_shortcut().on_shortcut(keys, |app, _, event| {
+            if event.state != ShortcutState::Pressed || !super::enabled() {
+                return;
+            }
+            // Which window is in front, read now, before anything else can be.
+            let front = front_window();
+            let app = app.clone();
+            std::thread::spawn(move || open(&app, front));
+        });
         match result {
-            Ok(()) => log("keyboard shortcut ready"),
-            Err(e) => log(&format!("the keyboard shortcut could not be set: {e}")),
+            Ok(()) => {
+                log("keyboard shortcut ready");
+                if let Ok(mut current) = CURRENT_SHORTCUT.lock() {
+                    *current = keys.to_string();
+                }
+                Ok(())
+            }
+            Err(e) => {
+                log(&format!("the keyboard shortcut could not be set: {e}"));
+                Err(e.to_string())
+            }
         }
     }
 

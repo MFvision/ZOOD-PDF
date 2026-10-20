@@ -19,7 +19,12 @@ import { EmbedReadAloudHighlight } from '../speech/EmbedReadAloudHighlight';
 import { ReadAloudBar } from '../speech/ReadAloudBar';
 import { useReadAloud } from '../speech/readAloud';
 import { Viewer } from '../viewer/Viewer';
-import { AboutDialog, GoToPageDialog, PasswordDialog, SettingsDialog, ShortcutsDialog } from './Dialogs';
+import { AboutDialog, GoToPageDialog, PasswordDialog, ShortcutsDialog } from './Dialogs';
+import { SettingsWindow } from '../settings/SettingsWindow';
+import { SettingsEffects } from '../settings/SettingsEffects';
+import { useSettings } from '../state/settings';
+import { HistoryEffects } from '../history/HistoryEffects';
+import { VersionsDialog } from '../history/VersionsDialog';
 import { WelcomeTour } from '../tour/Tour';
 import { FindBar } from './FindBar';
 import { LeftPane } from './LeftPane';
@@ -46,6 +51,7 @@ export function Shell() {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const services = useServices();
+  const settings = useSettings();
   const { t, lang } = useI18n();
   const nativeMenu = hasNativeMenuBar();
   useKeyboardShortcuts();
@@ -114,10 +120,11 @@ export function Shell() {
     <MarkupBarContext.Provider value={markupBar}>
       <NativeMenu enabled={nativeMenu} />
       <PendingPage />
-      <div className="shell" data-native-menu={nativeMenu || undefined} data-view={state.view}>
+      <div className="shell" data-tabs={settings.tabPosition} data-native-menu={nativeMenu || undefined} data-view={state.view}>
         {!nativeMenu && <MenuBar />}
+        {isViewer && settings.tabPosition === 'top' && <TabBar />}
         <Toolbar />
-        {isViewer && <TabBar />}
+        {isViewer && settings.tabPosition === 'toolbar' && <TabBar />}
         {warraqView && !organizing && state.find.open && <FindBar />}
         {isViewer && state.document !== null && !organizing && readAloud.open && <ReadAloudBar />}
         {state.error && (
@@ -127,6 +134,7 @@ export function Shell() {
             <IconButton label={t('error.dismiss')} icon={<Icon of={X} />} onClick={() => dispatch({ type: 'ERROR_DISMISSED' })} />
           </div>
         )}
+        <HistoryEffects />
         <FontNotice />
         <SignatureBanner />
         {state.loadingName && (
@@ -197,7 +205,9 @@ export function Shell() {
         <PasswordDialog />
         <ShortcutsDialog />
         <AboutDialog />
-        <SettingsDialog />
+        <SettingsWindow />
+        <SettingsEffects />
+        <VersionsDialog />
         <WelcomeTour />
         <LinkConfirmDialog />
         <FontLibraryQuestion />

@@ -2,12 +2,14 @@ import { PdfAnnotationName } from '@embedpdf/models';
 import { PDFViewer } from '@embedpdf/react-pdf-viewer';
 import type { PDFViewerConfig, PluginRegistry } from '@embedpdf/react-pdf-viewer';
 import pdfiumWasmUrl from '@embedpdf/pdfium/pdfium.wasm?url';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import standardStamps from '../../public/stamps/en/manifest.json';
 import { isTauriHost, uiLog } from '../core/host-tauri';
 import type { Lang } from '../i18n/messages';
 import { requestOpenLink } from '../links/openLink';
-import { capability, disabledCategories } from './embedControl';
+import { capability, disabledCategories, watchZoom } from './embedControl';
+import { applyOpenSettings, applyOpenZoom, rememberZoom, setNightReading, setSpreadDirection, spreadsRightToLeft } from './embedSettings';
+import { useSettings } from '../state/settings';
 import { setEmbedLanguage, setEmbedStrings } from './embedLanguage';
 import { installRtlStyles } from './embedRtl';
 import { EMBED_COLORS, installThemeStyles, removeDuplicatedChrome, showMarkupBar } from './embedTheme';
@@ -119,11 +121,32 @@ function documentManager(registry: PluginRegistry): DocumentManager | null {
   return plugin?.provides?.() ?? null;
 }
 
+/** Whether night reading is on now: always, or while the app is dark. */
+function useNight(theme: EmbedViewerProps['theme'], setting: 'off' | 'on' | 'dark'): boolean {
+  const [systemDark, setSystemDark] = useState(() => globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
+  useEffect(() => {
+    const query = globalThis.matchMedia?.('(prefers-color-scheme: dark)');
+    if (!query) return;
+    const onChange = () => setSystemDark(query.matches);
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, []);
+  if (setting === 'on') return true;
+  if (setting === 'off') return false;
+  return theme === 'dark' || (theme === 'system' && systemDark);
+}
+
 export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = false, onRegistry, onError, onOpened }: EmbedViewerProps) {
   const registryRef = useRef<PluginRegistry | null>(null);
   /** EmbedPDF's element: its theme is set on it, not through the config it started with. */
   const containerRef = useRef<{ setTheme(preference: EmbedViewerProps['theme']): void } | null>(null);
   const openedRef = useRef<string | null>(null);
+  /** The file on screen by name, and the files already shown once while the app is open. */
+  const shownRef = useRef<string | null>(null);
+  const seenRef = useRef(new Set<string>());
+  const shadowRef = useRef<ShadowRoot | null>(null);
+  const settings = useSettings();
+  const night = useNight(theme, settings.nightReading);
   const langRef = useRef(lang);
   const markupRef = useRef(markupBar);
   // Its loading screens draw before its i18n plugin exists: their strings
@@ -176,6 +199,17 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
         .toPromise();
       openedRef.current = response.documentId;
       showMarkupBar(registry, markupRef.current);
+      // Settings › Viewing, for a file that has just come on screen (not for
+      // new bytes of the same one after an edit): the first time, the layout
+      // and zoom it says; when the file comes back (another tab, then this),
+      // the zoom it was left at.
+      if (shownRef.current !== currentName) {
+        shownRef.current = currentName;
+        if (seenRef.current.has(currentName)) applyOpenZoom(registry, 'remember', currentName);
+        else applyOpenSettings(registry, currentName);
+        seenRef.current.add(currentName);
+        setSpreadDirection(shadowRef.current, spreadsRightToLeft(current));
+      }
       uiLog(`embedpdf opened ${currentName}`);
       reportDrawn(currentName);
       onOpened?.(current);
@@ -198,6 +232,16 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
     containerRef.current?.setTheme(theme);
   }, [theme]);
 
+  useEffect(() => {
+    setNightReading(shadowRef.current, night);
+  }, [night]);
+
+  // A change of the page-order setting shows at once on the file open now.
+  useEffect(() => {
+    setSpreadDirection(shadowRef.current, spreadsRightToLeft(bytes));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the bytes' own direction is set as they open
+  }, [settings.readingDirection]);
+
   // The markup bar, shown and hidden from Warraq's toolbar.
   useEffect(() => {
     markupRef.current = markupBar;
@@ -219,6 +263,8 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
         containerRef.current = container;
         installRtlStyles(container.shadowRoot);
         installThemeStyles(container.shadowRoot);
+        shadowRef.current = container.shadowRoot;
+        setNightReading(container.shadowRoot, night);
       }}
       onReady={(registry) => {
         uiLog('embedpdf ready');
@@ -228,6 +274,9 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
         setEmbedLanguage(registry, langRef.current);
         removeDuplicatedChrome(registry);
         watchEmbedLinks(registry);
+        watchZoom(registry, (zoom) => {
+          if (shownRef.current) rememberZoom(shownRef.current, zoom);
+        });
         onRegistry?.(registry);
         void open(registry, bytes, name, password);
       }}

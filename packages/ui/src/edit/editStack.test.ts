@@ -6,7 +6,7 @@ const first: EditEntry = { page: 0, paragraphIndex: 1, before: 'الأصل', aft
 const second: EditEntry = { page: 2, paragraphIndex: 0, before: 'قديم', after: 'حديث' };
 
 function stackOf(...entries: StackEntry[]): EditStack {
-  return entries.reduce(applyEdit, EMPTY_EDIT_STACK);
+  return entries.reduce((stack, entry) => applyEdit(stack, entry), EMPTY_EDIT_STACK);
 }
 
 describe('edit undo stack', () => {
@@ -105,5 +105,12 @@ describe('edit undo stack', () => {
     const step = undo(stackOf(first))!;
     expect(step.change.page).toBe(first.page);
     expect((step.change as EditChange).paragraphIndex).toBe(first.paragraphIndex);
+  });
+
+  it('keeps no more steps than Settings › History allows, the oldest going first', () => {
+    let stack = EMPTY_EDIT_STACK;
+    for (let n = 0; n < 60; n += 1) stack = applyEdit(stack, { page: 0, paragraphIndex: n, before: 'a', after: 'b' } as never, 50);
+    expect(stack.entries.length).toBe(50);
+    expect((stack.entries[0] as { paragraphIndex: number }).paragraphIndex).toBe(10);
   });
 });

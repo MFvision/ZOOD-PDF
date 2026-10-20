@@ -4,7 +4,8 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useI18n } from '../i18n/useT';
-import { CHIPS } from '../ai/chat/chips';
+import { chosenChips } from '../ai/chat/chips';
+import { useSettings } from '../state/settings';
 import { localAddress } from '../ai/providers';
 import { postAiRequest } from '../ai/request';
 import type { AiRequest } from '../ai/request';
@@ -29,6 +30,7 @@ export const AiCard = forwardRef<HTMLTextAreaElement, { className?: string }>(fu
   const state = useAppState();
   const services = useServices();
   const [question, setQuestion] = useState('');
+  const appSettings = useSettings();
   const settings = readSettings();
   // The on-device model, where the person first meets the assistant: when it
   // is not on this machine yet, the one button that fetches it is here, not
@@ -62,7 +64,7 @@ export const AiCard = forwardRef<HTMLTextAreaElement, { className?: string }>(fu
       </div>
       {needsModel && <DeviceSection view={device} showDelete={false} />}
       <ul className="home-ai-chips" aria-label={t('ai.card.chips')}>
-        {CHIPS.map((chip) => (
+        {chosenChips(appSettings.aiPrompts, appSettings.hiddenAiPrompts).map((chip) => (
           <li key={chip.id}>
             <button type="button" className="home-chip" onClick={() => ask({ kind: chip.kind, text: t(chip.prompt) })}>
               {t(chip.label)}

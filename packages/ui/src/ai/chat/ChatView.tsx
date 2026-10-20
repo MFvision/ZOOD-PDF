@@ -12,8 +12,11 @@ import { AnswerText, spokenText } from './AnswerText';
 import type { Progress } from './analyze';
 import type { Ask, Basis } from './answer';
 import { deviceModel, shortModelName } from '../device/models';
-import { CHIPS } from './chips';
-import { analyzeNow, approve, ask, discard, setDraft, stop, useConversation } from './store';
+import { chosenChips } from './chips';
+import { useSettings } from '../../state/settings';
+import { analyzeNow, approve, ask, bindChat, discard, setDraft, stop, useConversation } from './store';
+import { useAppState, useServices } from '../../state/AppContext';
+import { fileKey } from '../../history/versions';
 import type { AssistantTurn, Env, Note, Turn } from './store';
 
 const numbers = new Intl.NumberFormat('en-US');
@@ -91,7 +94,14 @@ export function offersDevice(failure: Failure, provider: ProviderId): boolean {
 export function ChatView(props: ChatViewProps) {
   const { documentId, hasDocument, currentPage, missing, env, incoming, onIncomingTaken } = props;
   const { t, dir } = useI18n();
+  const settings = useSettings();
   const conversation = useConversation(documentId);
+  const { document } = useAppState();
+  const { tabs, activeTab } = useServices();
+  const chatFile = document ? fileKey(document.name, tabs.find((tab) => tab.key === activeTab)?.path) : null;
+  useEffect(() => {
+    if (documentId !== null && chatFile) void bindChat(documentId, chatFile);
+  }, [documentId, chatFile, settings.keepChats]);
   const reading = useReadAloud();
   const [copied, setCopied] = useState<{ id: number; state: 'yes' | 'failed' } | null>(null);
   const [heard, setHeard] = useState<number | null>(null);
@@ -436,7 +446,7 @@ export function ChatView(props: ChatViewProps) {
       </div>
 
       <ul className="ai-chips" aria-label={t('ai.card.chips')}>
-        {CHIPS.map((chip) => (
+        {chosenChips(settings.aiPrompts, settings.hiddenAiPrompts).map((chip) => (
           <li key={chip.id}>
             <button
               type="button"

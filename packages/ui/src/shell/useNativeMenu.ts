@@ -80,6 +80,18 @@ export function useNativeMenu(enabled: boolean): void {
     });
   }, [enabled, spec, chosen]);
 
+  // With documents in windows of their own, the menu bar is the front
+  // window's: coming to the front, a window hands over its menu again.
+  useEffect(() => {
+    if (!enabled) return;
+    const onFocus = () => {
+      sent.current = '';
+      setChosen((n) => n + 1);
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [enabled]);
+
   // What the page handled itself: read once every listener has had the key.
   useEffect(() => {
     if (!enabled) return;

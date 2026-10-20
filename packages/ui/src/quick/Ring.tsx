@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import '../styles/tokens.css';
 import '../styles/looks.css';
+import '../styles/appearance.css';
 import '../styles/fonts.css';
 import './ring.css';
 import { getSharedCoreClient } from '../core/client';
@@ -9,6 +10,9 @@ import { I18nProvider } from '../i18n/I18nProvider';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import type { FileState } from '../batch/run';
+import { useSettings } from '../state/settings';
+import { defaultLook, readPreferences } from '../state/preferences';
+import { applyAppearance } from '../settings/SettingsEffects';
 import { ALL_TOOLS_ICON, findQuickTool, ringToolsFor, startingOptions } from './plan';
 import { runQuick, wantsPassword } from './runQuick';
 import { RING_INNER, RING_OUTER, RING_SIZE, inHub, ringSegments, segmentAt, toRing } from './ringGeometry';
@@ -93,10 +97,28 @@ function RingWindow() {
   const [over, setOver] = useState<number | null>(null);
   const segmentsRef = useRef<string[]>([]);
 
+  const settings = useSettings();
   const tools = useMemo(() => {
-    const fitting = ringToolsFor(names);
+    const fitting = ringToolsFor(names, settings.ringTools);
     return [...fitting.map((tool) => ({ id: tool.id as string, icon: tool.icon })), { id: 'all', icon: ALL_TOOLS_ICON }];
-  }, [names]);
+  }, [names, settings.ringTools]);
+
+  // The look, light or dark, and the icons the main window has chosen.
+  useEffect(() => {
+    const apply = () => {
+      const root = document.documentElement;
+      const { theme, look } = readPreferences();
+      if (theme && theme !== 'system') root.dataset.theme = theme;
+      else delete root.dataset.theme;
+      const shown = look ?? defaultLook();
+      if (shown !== 'glass') root.dataset.look = shown;
+      else delete root.dataset.look;
+      applyAppearance(root, settings);
+    };
+    apply();
+    window.addEventListener('storage', apply);
+    return () => window.removeEventListener('storage', apply);
+  }, [settings]);
   const segments = useMemo(() => ringSegments(tools.length), [tools.length]);
   useEffect(() => {
     segmentsRef.current = tools.map((tool) => tool.id);

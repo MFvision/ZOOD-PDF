@@ -2,6 +2,8 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, CircleAlert, CircleCheck, CircleDashed, ExternalLink, FileText, Loader2, X } from 'lucide-react';
 import '../styles/tokens.css';
 import '../styles/looks.css';
+import '../styles/appearance.css';
+import { applyAppearance } from '../settings/SettingsEffects';
 import '../styles/fonts.css';
 import '../styles/base.css';
 import '../styles/components.css';
@@ -14,7 +16,7 @@ import { isQuickWindow, quickClose, quickJob, quickOpenInEditor } from '../core/
 import type { QuickJob } from '../core/host-tauri';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { useI18n } from '../i18n/useT';
-import { readPreferences } from '../state/preferences';
+import { defaultLook, readPreferences } from '../state/preferences';
 import type { FileState } from '../batch/run';
 import { StepOptions } from '../batch/StepOptions';
 import { findStep } from '../batch/steps';
@@ -206,7 +208,9 @@ function QuickWindow() {
     void client.init();
     const { theme, look } = readPreferences();
     if (theme && theme !== 'system') document.documentElement.dataset.theme = theme;
-    if (look && look !== 'glass') document.documentElement.dataset.look = look;
+    const shown = look ?? defaultLook();
+    if (shown !== 'glass') document.documentElement.dataset.look = shown;
+    applyAppearance(document.documentElement);
     quickJob()
       .then(onJob)
       .catch(() => setLoadError(true));

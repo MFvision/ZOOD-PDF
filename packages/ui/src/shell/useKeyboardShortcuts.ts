@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { SHEET_QUERY } from './sheetDrag';
-import { shortcutLetter } from './shortcutEcho';
+import { comboOf, normalizeKeys, shortcutLetter } from './shortcutEcho';
+import { isApplePlatform, useMenuModel } from './menuModel';
+import type { MenuItemModel } from './menuModel';
 import { isEditable } from './typing';
 
 const isZoomInKey = (event: KeyboardEvent) =>
@@ -25,13 +27,35 @@ export function useKeyboardShortcuts(): void {
   const dispatch = useAppDispatch();
   const services = useServices();
   const stateRef = useRef(state);
+  // The commands whose keys the person changed (Settings › Keyboard), read at the key press.
+  const menus = useMenuModel();
+  const reboundRef = useRef<MenuItemModel[]>([]);
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
   useEffect(() => {
+    reboundRef.current = menus.flatMap((menu) => menu.items).filter((item) => item.defaultKeys !== undefined && item.keys !== item.defaultKeys);
+  });
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      // A changed shortcut first: its new keys run its command, and its old
+      // keys do nothing, so they are free for another.
+      if (reboundRef.current.length > 0 && !['Control', 'Meta', 'Alt', 'Shift'].includes(event.key)) {
+        const combo = normalizeKeys(comboOf(event, isApplePlatform()));
+        const chosen = reboundRef.current.find((item) => item.keys && normalizeKeys(item.keys) === combo);
+        if (chosen) {
+          event.preventDefault();
+          if (!chosen.disabled) chosen.onSelect?.();
+          return;
+        }
+        if (reboundRef.current.some((item) => item.defaultKeys && normalizeKeys(item.defaultKeys) === combo)) {
+          event.preventDefault();
+          return;
+        }
+      }
       const current = stateRef.current;
       const hasDocument = current.view === 'viewer' && current.document !== null;
       const mod = event.metaKey || event.ctrlKey;

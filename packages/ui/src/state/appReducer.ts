@@ -5,6 +5,8 @@ import { applyEdit, EMPTY_EDIT_STACK } from '../edit/editStack';
 import type { EditEntry, EditStack } from '../edit/editStack';
 import type { ToolId } from '../tools/tools';
 import type { LeftTab, Preferences, ThemeMode, UiLook } from './preferences';
+import { getSettings } from './settings';
+import { defaultLook } from './preferences';
 import { clampZoom, nextZoomStep, previousZoomStep } from './zoom';
 import { NO_SELECTION, clampSelection, select, selectAll } from '../organize/selection';
 import type { SelectHow, Selection } from '../organize/selection';
@@ -71,7 +73,7 @@ export interface AppState {
   leftPane: { open: boolean; width: number; tab: LeftTab };
   rightPane: { open: boolean; width: number; activeTool: ToolId | null };
   find: { open: boolean; query: string; matches: number[]; cursor: number; searched: boolean };
-  dialog: 'goto' | 'shortcuts' | 'about' | 'settings' | 'tour' | null;
+  dialog: 'goto' | 'shortcuts' | 'about' | 'settings' | 'tour' | 'versions' | null;
   /** A file that needs a password to open; `wrong` after a failed attempt. */
   passwordPrompt: { name: string; wrong: boolean } | null;
   /** Consumed by the viewer; the nonce makes repeated requests distinct. */
@@ -218,7 +220,7 @@ export function createInitialState(prefs: Preferences = {}): AppState {
     zoom: 1,
     zoomMode: 'fit-width',
     theme: prefs.theme ?? 'system',
-    look: prefs.look ?? 'glass',
+    look: prefs.look ?? defaultLook(),
     leftPane: {
       open: prefs.leftPaneOpen ?? true,
       width: clampPaneWidth(prefs.leftPaneWidth ?? DEFAULT_LEFT_WIDTH),
@@ -293,6 +295,12 @@ function reduce(state: AppState, action: AppAction): AppState {
     case 'DOCUMENT_OPENED':
       return {
         ...state,
+        // From the home screen, the panels open as Settings › Viewing says;
+        // between documents they stay as the person left them.
+        ...(state.view !== 'viewer' && {
+          leftPane: { ...state.leftPane, open: getSettings().pagePanel },
+          rightPane: { ...state.rightPane, open: getSettings().toolsPanel },
+        }),
         view: 'viewer',
         document: action.document,
         loadingName: null,

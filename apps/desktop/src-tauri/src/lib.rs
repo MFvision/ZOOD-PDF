@@ -16,6 +16,7 @@ pub mod ai;
 pub mod batch;
 pub mod cloud;
 pub mod core_bridge;
+pub mod doc_window;
 pub mod fonts;
 pub mod library;
 pub mod menu;
@@ -26,6 +27,7 @@ pub mod recent;
 pub mod ring;
 pub mod shell_menu;
 pub mod signing;
+pub mod system;
 
 /// Event sent to the webview when files are dropped on the window.
 /// Payload: [`FileDropPayload`]. Every dropped path is added to the fs scope
@@ -158,7 +160,7 @@ pub(crate) fn open_in_editor_at<R: Runtime>(
     }
     // A window just made claims the file as it boots.
     if !fresh {
-        let _ = app.emit(OPEN_FILE_EVENT, ());
+        let _ = app.emit_to("main", OPEN_FILE_EVENT, ());
     }
 }
 
@@ -185,7 +187,15 @@ fn quick_open_in_editor<R: Runtime>(
 
 /// The waiting file, consumed on the first call so a reload does not reopen it.
 #[tauri::command]
-fn startup_file(state: State<'_, StartupFile>) -> Option<String> {
+fn startup_file<R: Runtime>(
+    app: AppHandle<R>,
+    window: tauri::WebviewWindow<R>,
+    state: State<'_, StartupFile>,
+) -> Option<String> {
+    // A document window has a file of its own (doc_window.rs).
+    if doc_window::is_doc_window(window.label()) {
+        return doc_window::take(&app, window.label());
+    }
     let path = state.0.lock().ok().and_then(|mut slot| slot.take());
     core_bridge::debug_log(format!("startup file = {path:?}"));
     path
@@ -381,6 +391,7 @@ pub fn run() {
             core_bridge::debug_log(format!("command line file = {startup:?}"));
 
             app.manage(StartupTool(Mutex::new(None)));
+            app.manage(doc_window::DocWindowFiles::default());
             app.manage(StartupFile(Mutex::new(
                 startup.map(|path| path.to_string_lossy().into_owned()),
             )));
@@ -393,6 +404,7 @@ pub fn run() {
             read_file_bytes,
             startup_file,
             startup_tool,
+            doc_window::open_document_window,
             ui_log,
             core_bridge::core_engine,
             core_bridge::doc_open,
@@ -463,6 +475,8 @@ pub fn run() {
             ring::ring_done,
             ring::ring_configure,
             ring::ring_settings,
+            system::system_user_name,
+            system::open_default_apps,
         ])
         .on_window_event(|window, event| {
             // The last window of a run that is not kept in the background
@@ -501,20 +515,27 @@ pub fn run() {
                     DRAGGING_FILES.store(files, std::sync::atomic::Ordering::Relaxed);
                     if files {
                         let (x, y) = logical(window, position);
-                        let _ =
-                            window.emit(FILE_DRAG_EVENT, FileDragPayload { kind: "over", x, y });
+                        let _ = window.emit_to(
+                            window.label(),
+                            FILE_DRAG_EVENT,
+                            FileDragPayload { kind: "over", x, y },
+                        );
                     }
                 }
                 DragDropEvent::Over { position } => {
                     if DRAGGING_FILES.load(std::sync::atomic::Ordering::Relaxed) {
                         let (x, y) = logical(window, position);
-                        let _ =
-                            window.emit(FILE_DRAG_EVENT, FileDragPayload { kind: "over", x, y });
+                        let _ = window.emit_to(
+                            window.label(),
+                            FILE_DRAG_EVENT,
+                            FileDragPayload { kind: "over", x, y },
+                        );
                     }
                 }
                 DragDropEvent::Leave => {
                     DRAGGING_FILES.store(false, std::sync::atomic::Ordering::Relaxed);
-                    let _ = window.emit(
+                    let _ = window.emit_to(
+                        window.label(),
                         FILE_DRAG_EVENT,
                         FileDragPayload {
                             kind: "leave",
@@ -525,7 +546,8 @@ pub fn run() {
                 }
                 DragDropEvent::Drop { paths, position } => {
                     DRAGGING_FILES.store(false, std::sync::atomic::Ordering::Relaxed);
-                    let _ = window.emit(
+                    let _ = window.emit_to(
+                        window.label(),
                         FILE_DRAG_EVENT,
                         FileDragPayload {
                             kind: "leave",
@@ -546,8 +568,11 @@ pub fn run() {
                         .collect();
                     if !files.is_empty() {
                         let (x, y) = logical(window, position);
-                        let _ =
-                            window.emit(FILE_DROP_EVENT, FileDropPayload { paths: files, x, y });
+                        let _ = window.emit_to(
+                            window.label(),
+                            FILE_DROP_EVENT,
+                            FileDropPayload { paths: files, x, y },
+                        );
                     }
                 }
                 _ => {}

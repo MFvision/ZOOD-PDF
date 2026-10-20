@@ -1,4 +1,5 @@
 import { readJson, writeJson } from './preferences';
+import { getSettings } from './settings';
 
 /**
  * Recent files are remembered by name (no bytes, no paths), with a small
@@ -9,7 +10,6 @@ import { readJson, writeJson } from './preferences';
 const RECENT_KEY = 'warraq.recent';
 const THUMBS_KEY = 'warraq.recentThumbs';
 const DATES_KEY = 'warraq.recentDates';
-export const RECENT_LIMIT = 10;
 
 export function readRecent(): string[] {
   const list = readJson<unknown>(RECENT_KEY, []);
@@ -17,7 +17,10 @@ export function readRecent(): string[] {
 }
 
 export function addRecent(name: string, now: number = Date.now()): string[] {
-  const next = [name, ...readRecent().filter((n) => n !== name)].slice(0, RECENT_LIMIT);
+  const { keepRecent, recentLimit } = getSettings();
+  // Settings › History: with the list off, nothing about the file is kept.
+  if (!keepRecent) return readRecent();
+  const next = [name, ...readRecent().filter((n) => n !== name)].slice(0, recentLimit);
   writeJson(RECENT_KEY, next);
   writeJson(DATES_KEY, { ...readRecentDates(next), [name]: now });
   return next;

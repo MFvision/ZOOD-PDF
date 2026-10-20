@@ -1,0 +1,90 @@
+/*
+ * Settings › Appearance, over the look: the accent colour, plain or coloured
+ * icons, icon size, and reduced transparency or motion asked for in the app
+ * rather than by the system. SettingsEffects puts each on <html> as a data
+ * attribute; nothing is set when the setting is the look's own.
+ * Imported after looks.css, so a chosen accent wins over the look's.
+ */
+
+/* ---- Accent ------------------------------------------------------------------ */
+
+:root:root[data-accent="blue"] { --accent: #007aff; --accent-contrast: #fff; }
+:root:root[data-accent="purple"] { --accent: #9b51e0; --accent-contrast: #fff; }
+:root:root[data-accent="pink"] { --accent: #e0306e; --accent-contrast: #fff; }
+:root:root[data-accent="red"] { --accent: #e5352b; --accent-contrast: #fff; }
+:root:root[data-accent="orange"] { --accent: #e07800; --accent-contrast: #fff; }
+:root:root[data-accent="green"] { --accent: #26a148; --accent-contrast: #fff; }
+:root:root[data-accent="graphite"] { --accent: #6e6e73; --accent-contrast: #fff; }
+
+@media (prefers-color-scheme: dark) {
+  :root:root:not([data-theme="light"])[data-accent="blue"] { --accent: #0a84ff; }
+  :root:root:not([data-theme="light"])[data-accent="purple"] { --accent: #bf5af2; }
+  :root:root:not([data-theme="light"])[data-accent="pink"] { --accent: #ff375f; }
+  :root:root:not([data-theme="light"])[data-accent="red"] { --accent: #ff453a; }
+  :root:root:not([data-theme="light"])[data-accent="orange"] { --accent: #ff9f0a; --accent-contrast: #1c1c1e; }
+  :root:root:not([data-theme="light"])[data-accent="green"] { --accent: #30d158; --accent-contrast: #1c1c1e; }
+  :root:root:not([data-theme="light"])[data-accent="graphite"] { --accent: #98989d; --accent-contrast: #1c1c1e; }
+}
+
+:root:root[data-theme="dark"][data-accent="blue"] { --accent: #0a84ff; }
+:root:root[data-theme="dark"][data-accent="purple"] { --accent: #bf5af2; }
+:root:root[data-theme="dark"][data-accent="pink"] { --accent: #ff375f; }
+:root:root[data-theme="dark"][data-accent="red"] { --accent: #ff453a; }
+:root:root[data-theme="dark"][data-accent="orange"] { --accent: #ff9f0a; --accent-contrast: #1c1c1e; }
+:root:root[data-theme="dark"][data-accent="green"] { --accent: #30d158; --accent-contrast: #1c1c1e; }
+:root:root[data-theme="dark"][data-accent="graphite"] { --accent: #98989d; --accent-contrast: #1c1c1e; }
+
+/* ---- Plain icons ---------------------------------------------------------------- */
+
+/* The glyph alone, in the text colour, on a quiet tile: no colour anywhere. */
+html[data-icons="plain"] .tool-icon {
+  color: var(--label);
+  background: var(--secondary-fill);
+  box-shadow: none;
+}
+
+/* ---- Icon size -------------------------------------------------------------------- */
+
+html[data-icon-size="small"] {
+  --icon-scale: 0.86;
+}
+
+html[data-icon-size="large"] {
+  --icon-scale: 1.18;
+}
+
+html[data-icon-size] .tool-icon:not(.tool-icon-large) {
+  zoom: var(--icon-scale, 1);
+}
+
+html[data-icon-size] .toolbar .lucide,
+html[data-icon-size] .home-sidebar .lucide {
+  zoom: var(--icon-scale, 1);
+}
+
+/* ---- Reduce transparency (asked for in the app) ----------------------------------- */
+
+html[data-reduce-transparency="on"] {
+  --toolbar-background: var(--window-background);
+  --sidebar-background: var(--window-background);
+  --elevated-background: var(--grouped-background);
+  --glass: var(--grouped-background);
+  --glass-panel: var(--window-background);
+  --glass-card: var(--grouped-background);
+  --glass-border: var(--separator);
+  --home-gradient: none;
+  --blur-thin: none;
+  --blur-regular: none;
+  --blur-thick: none;
+}
+
+/* ---- Reduce motion (asked for in the app) ------------------------------------------- */
+
+html[data-reduce-motion="on"] *,
+html[data-reduce-motion="on"] *::before,
+html[data-reduce-motion="on"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

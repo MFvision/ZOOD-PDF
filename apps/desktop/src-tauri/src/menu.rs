@@ -34,7 +34,7 @@ use tauri::menu::{
     CheckMenuItem, Menu, MenuItem, MenuItemKind, PredefinedMenuItem, Submenu, HELP_SUBMENU_ID,
     WINDOW_SUBMENU_ID,
 };
-use tauri::{AppHandle, Emitter, Manager, Runtime, State};
+use tauri::{AppHandle, Emitter, Runtime, State};
 
 /// Sent to the webview when a menu item from the UI's model is chosen.
 /// Payload: the item's id, as the model has it.
@@ -367,8 +367,10 @@ pub fn set_menu<R: Runtime>(
 /// Forwards the model's items to the webview; the system's items act by themselves.
 pub fn forward<R: Runtime>(app: &AppHandle<R>, event_id: &str) {
     if let Some(id) = model_id(event_id) {
-        if let Some(window) = app.get_webview_window("main") {
-            let _ = window.emit(MENU_EVENT, id);
+        // The window in front: with documents in windows of their own, the
+        // menu bar's Save saves the one being looked at (doc_window.rs).
+        if let Some(label) = crate::doc_window::focused_editor(app) {
+            let _ = app.emit_to(label.as_str(), MENU_EVENT, id);
         }
     }
 }

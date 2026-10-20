@@ -2,16 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { isTauriHost } from '../core/host-tauri';
 import { Dialog } from '../components/Dialog';
-import { FontLibrarySettings } from '../edit/LibraryFonts';
 import { APP_ICON } from '../components/appIcon';
-import { radioTabIndex, useRadioGroupKeyboard } from '../components/useRadioGroupKeyboard';
-import { useI18n, useT } from '../i18n/useT';
-import type { Lang, TKey } from '../i18n/messages';
-import type { ThemeMode, UiLook } from '../state/preferences';
+import { useT } from '../i18n/useT';
+import type { TKey } from '../i18n/messages';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
-import { AiSettingsSection } from '../ai/AiSettings';
-import { VoiceSettings } from '../speech/VoiceSettings';
-import { QuickSettings } from '../quick/QuickSettings';
 import { formatShortcut } from './menuModel';
 
 function GoToPageForm({ total, initialPage, onGo, onCancel }: { total: number; initialPage: number; onGo: (page: number) => void; onCancel: () => void }) {
@@ -202,105 +196,6 @@ export function AboutDialog() {
           {core && core.kind !== 'mock' ? ` · ${t('status.core', { version: core.version })}` : ''}
           {engine ? ` · ${engine}` : ''}
         </p>
-      </div>
-    </Dialog>
-  );
-}
-
-/** One choice of the settings, as a segmented control (a radio group). */
-function Segmented<T extends string>({
-  id,
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  value: T;
-  options: ReadonlyArray<{ value: T; label: string }>;
-  onChange: (value: T) => void;
-}) {
-  const { dir } = useI18n();
-  const onKeyDown = useRadioGroupKeyboard(dir);
-  const noneChecked = !options.some((option) => option.value === value);
-  return (
-    <div className="settings-row">
-      <span className="settings-label" id={id}>
-        {label}
-      </span>
-      <div className="segmented" role="radiogroup" aria-labelledby={id} onKeyDown={onKeyDown}>
-        {options.map((option, index) => (
-          <button
-            key={option.value}
-            type="button"
-            role="radio"
-            aria-checked={option.value === value}
-            tabIndex={radioTabIndex(option.value === value, index === 0, noneChecked)}
-            className="segmented-item"
-            onClick={() => onChange(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Settings (⌘,): the interface language and the appearance. On the macOS app
- * this is where the language is chosen, since the menu bar drawn in the page
- * — which carries the language selector in a browser — is the system's there.
- */
-export function SettingsDialog() {
-  const { dialog, theme, look } = useAppState();
-  const dispatch = useAppDispatch();
-  const { t, lang, setLang } = useI18n();
-  return (
-    <Dialog open={dialog === 'settings'} title={t('settings.title')} onClose={() => dispatch({ type: 'DIALOG', dialog: null })}>
-      <div className="settings">
-        <Segmented<Lang>
-          id="settings-language"
-          label={t('lang.label')}
-          value={lang}
-          options={[
-            { value: 'ar', label: t('lang.ar') },
-            { value: 'en', label: t('lang.en') },
-          ]}
-          onChange={setLang}
-        />
-        <Segmented<ThemeMode>
-          id="settings-theme"
-          label={t('theme.label')}
-          value={theme}
-          options={[
-            { value: 'system', label: t('theme.system') },
-            { value: 'light', label: t('theme.light') },
-            { value: 'dark', label: t('theme.dark') },
-          ]}
-          onChange={(next) => dispatch({ type: 'SET_THEME', theme: next })}
-        />
-        <Segmented<UiLook>
-          id="settings-look"
-          label={t('look.label')}
-          value={look}
-          options={[
-            { value: 'glass', label: t('look.glass') },
-            { value: 'zood', label: t('look.zood') },
-            { value: 'workbench', label: t('look.workbench') },
-          ]}
-          onChange={(next) => dispatch({ type: 'SET_LOOK', look: next })}
-        />
-        {/* The AI tool's provider and on-device model, the person's details for forms, and the reading voices. */}
-        {dialog === 'settings' && (
-          <>
-            <QuickSettings />
-            <FontLibrarySettings />
-            <AiSettingsSection />
-            <VoiceSettings />
-          </>
-        )}
       </div>
     </Dialog>
   );

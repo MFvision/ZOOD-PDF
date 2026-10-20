@@ -8,6 +8,7 @@ import { keptOutline } from './analyze';
 import { analyzeDocument, answerTurn, fitsWhole } from './answer';
 import type { Ask, Basis, DocumentText } from './answer';
 import { chunkPages } from './chunks';
+import { getSettings } from '../../state/settings';
 import type { Kept } from './kept';
 import type { Said } from './prompts';
 import type { Runner } from './runner';
@@ -113,8 +114,38 @@ const approved = new Set<string>();
 const listeners = new Set<() => void>();
 let ids = 0;
 
+/**
+ * Settings › AI › Keep chat history: each document's finished turns, kept on
+ * this device under the file's own key (`bindChat`), and found again the
+ * next time the file is opened. Off, nothing is written.
+ */
+const chatKeys = new Map<number, string>();
+
+function keepChat(documentId: number, turns: readonly Turn[]): void {
+  const key = chatKeys.get(documentId);
+  if (!key || !getSettings().keepChats) return;
+  const finished = turns.filter((turn) => turn.role !== 'assistant' || turn.status !== 'working');
+  void import('./saved')
+    .then(({ savedChats }) => (finished.length > 0 ? savedChats.put(key, finished) : savedChats.delete(key)))
+    .catch(() => undefined);
+}
+
+/** Ties a conversation to its file, and brings back what was kept of it. */
+export async function bindChat(documentId: number, key: string): Promise<void> {
+  if (chatKeys.get(documentId) === key) return;
+  chatKeys.set(documentId, key);
+  if (!getSettings().keepChats || conversationOf(documentId).turns.length > 0) return;
+  const { savedChats } = await import('./saved');
+  const kept = await savedChats.get(key).catch(() => null);
+  if (!kept || kept.length === 0 || conversationOf(documentId).turns.length > 0) return;
+  ids = Math.max(ids, ...kept.map((turn) => turn.id));
+  update(documentId, (current) => ({ ...current, turns: kept }));
+}
+
 function update(documentId: number, change: (current: Conversation) => Conversation): void {
-  const next = change(conversations.get(documentId) ?? EMPTY);
+  const before = conversations.get(documentId);
+  const next = change(before ?? EMPTY);
+  if (!next.busy && (next.turns !== before?.turns || before?.busy)) keepChat(documentId, next.turns);
   conversations.delete(documentId);
   conversations.set(documentId, next);
   // The oldest conversation that is not at work goes when there are too many.
@@ -426,6 +457,14 @@ export async function analyzeNow(documentId: number, env: Env): Promise<void> {
 /** Stops whatever is being done for this document: what was written stays, marked as stopped. */
 export function stop(documentId: number): void {
   controllers.get(documentId)?.abort();
+}
+
+/** Every conversation forgotten: the ones open now that are not at work, and the ones kept on this device. */
+export async function forgetAllChats(): Promise<void> {
+  for (const [id, conversation] of [...conversations]) if (!conversation.busy) conversations.delete(id);
+  for (const listener of listeners) listener();
+  const { savedChats } = await import('./saved');
+  await savedChats.clear();
 }
 
 /** A new chat about the same document: the turns go; what is known of the document, and its analysis, stay. */
