@@ -211,14 +211,33 @@ img {
   margin-inline-end: auto;
   white-space: nowrap;
 }
-.brand-mark {
-  /* Clear space of a quarter of the mark's height on every side. */
-  width: 30px;
-  height: 24px;
-  margin: 6px;
+/* ZOOD's bilingual logo (assets/brand/logo-*.svg, from the brand guidelines):
+   the mark beside ZOOD over زود, the mark leading in each language, then PDF
+   after a hairline. It takes the colour of the text around it. */
+.logo {
+  display: block;
+  flex: none;
+  height: 40px;
+  aspect-ratio: 417.68 / 130;
   background: currentColor;
-  -webkit-mask: url('/assets/brand/mark.svg') center / contain no-repeat;
-  mask: url('/assets/brand/mark.svg') center / contain no-repeat;
+  -webkit-mask: url('/assets/brand/logo-en.svg') center / contain no-repeat;
+  mask: url('/assets/brand/logo-en.svg') center / contain no-repeat;
+}
+:root[lang='ar'] .logo {
+  -webkit-mask-image: url('/assets/brand/logo-ar.svg');
+  mask-image: url('/assets/brand/logo-ar.svg');
+}
+.logo-pdf {
+  padding-inline-start: 0.6em;
+  border-inline-start: 1.5px solid currentColor;
+  font:
+    700 1em/1.15 Inter,
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.04em;
+}
+.brand .logo-pdf {
+  font-size: 20px;
 }
 .switch {
   display: inline-flex;
@@ -274,8 +293,11 @@ img {
   .topbar {
     gap: 8px;
   }
-  .brand-name {
-    font-size: 16px;
+  .brand .logo {
+    height: 32px;
+  }
+  .brand .logo-pdf {
+    font-size: 17px;
   }
   .switch a {
     padding: 0 9px;
@@ -293,9 +315,11 @@ img {
   }
 }
 @media (max-width: 440px) {
-  /* The mark alone names the site on narrow phones; its link keeps the full name. */
-  .topbar .brand-name {
-    display: none;
+  .topbar .logo {
+    height: 28px;
+  }
+  .topbar .logo-pdf {
+    font-size: 15px;
   }
   .switch button {
     min-width: 40px;
@@ -457,12 +481,8 @@ img {
   opacity: 0;
   scale: 0.92;
 }
-.gather-mark {
-  width: 1.5em;
-  aspect-ratio: 507 / 410;
-  background: currentColor;
-  -webkit-mask: url('/assets/brand/mark.svg') center / contain no-repeat;
-  mask: url('/assets/brand/mark.svg') center / contain no-repeat;
+.gather-badge .logo {
+  height: 1.7em;
 }
 @media (prefers-reduced-motion: reduce) {
   .gather-badge {

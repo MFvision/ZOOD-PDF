@@ -69,7 +69,8 @@ const mix = (a, b, k) => a + (b - a) * k;
 
 // ---- The stage -------------------------------------------------------------
 const stage = document.getElementById('stage');
-const logo = await (await fetch('/assets/brand/mark.svg')).text();
+// ZOOD's full logo (the mark, ZOOD and زود), led by the mark in each language.
+const logo = await (await fetch(`/assets/brand/logo-${lang}.svg`)).text();
 const markup = logo.replace(/<\?xml[^>]*>|<!--[\s\S]*?-->/g, '');
 
 const caption = (key, cls = '') =>
@@ -87,8 +88,7 @@ stage.innerHTML = `
   <div class="blob b1"></div><div class="blob b2"></div>
 
   <div class="intro">
-    <div class="logo">${markup}</div>
-    <p class="name">${t(WORDS.name)}</p>
+    <div class="lockup"><div class="logo">${markup}</div><p class="name">PDF</p></div>
     <p class="tagline">${t(WORDS.tagline)}</p>
   </div>
 
@@ -135,8 +135,7 @@ stage.innerHTML = `
   </div>
 
   <div class="outro">
-    <div class="logo">${markup}</div>
-    <p class="name">${t(WORDS.name)}</p>
+    <div class="lockup"><div class="logo">${markup}</div><p class="name">PDF</p></div>
     <ul class="plats">${t(WORDS.platforms)
       .map((p) => `<li>${p}</li>`)
       .join('')}</ul>
@@ -275,10 +274,10 @@ async function render(n) {
     put(intro, { s: 1 + out * 0.5, o: 1 - out, blur: out * 12 });
     put(intro.querySelector('.logo'), {
       s: spring(span(x, 0.15, 1.0)),
-      r: (1 - ease(span(x, 0.15, 0.9))) * -25,
+      r: (1 - ease(span(x, 0.15, 0.9))) * -8,
     });
     put(intro.querySelector('.name'), {
-      y: (1 - spring(span(x, 0.7, 1.3))) * 60,
+      x: (1 - spring(span(x, 0.7, 1.3))) * side * -60,
       o: span(x, 0.7, 0.95),
     });
     put(intro.querySelector('.tagline'), {
@@ -469,10 +468,10 @@ async function render(n) {
     put(outro, { o: x > 27.3 ? 1 : 0 });
     put(outro.querySelector('.logo'), {
       s: spring(span(x, 27.4, 28.1)),
-      r: (1 - ease(span(x, 27.4, 28))) * 20,
+      r: (1 - ease(span(x, 27.4, 28))) * 6,
     });
     put(outro.querySelector('.name'), {
-      y: (1 - spring(span(x, 27.75, 28.3))) * 40,
+      x: (1 - spring(span(x, 27.75, 28.3))) * side * -40,
       o: span(x, 27.75, 28),
     });
     outro.querySelectorAll('.plats li').forEach((li, k) => {

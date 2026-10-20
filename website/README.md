@@ -18,7 +18,7 @@ js/desk-arabic.js                    generated: the Arabic sample lines as outli
 assets/<lang>/<device>/NN-name-<theme>.webp   app screens
 assets/fonts/                        Vazirmatn and Inter (SIL OFL 1.1)
 assets/fonts/licensed/               ITF Huwiya Arabic (NOT in git, see Fonts)
-assets/brand/                        ZOOD mark, pattern, app icons
+assets/brand/                        ZOOD logo (logo-ar/en.svg), mark, pattern, app icons
 assets/og/                           social preview pictures
 Caddyfile, Dockerfile                hosting
 tools/                               scripts that regenerate assets and run QA

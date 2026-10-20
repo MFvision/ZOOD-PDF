@@ -1,9 +1,9 @@
 // Draws the social preview pictures (assets/og/og-ar.png, og-en.png) from the
-// site's own fonts, mark and pattern.  node website/tools/make-og.mjs
+// site's own fonts, ZOOD's logo and pattern.  node website/tools/make-og.mjs
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { CHAPTERS, SITE } from '../js/story.js';
+import { CHAPTERS } from '../js/story.js';
 
 const { chromium } = createRequire(new URL('../../apps/web/package.json', import.meta.url))(
   '@playwright/test',
@@ -28,11 +28,12 @@ for (const lang of ['ar', 'en']) {
     .in{position:absolute;inset:90px 80px;display:flex;flex-direction:column;justify-content:space-between;width:640px}
     [dir=rtl] .in{right:80px;left:auto}
     .b{display:flex;align-items:center;gap:16px;font-size:34px;font-weight:600}
-    .m{width:58px;height:47px;background:#c9a27c;-webkit-mask:url(${svg('mark')}) center/contain no-repeat}
+    .m{height:64px;aspect-ratio:417.68/130;background:currentColor;-webkit-mask:url(${svg(`logo-${lang}`)}) center/contain no-repeat}
+    .b span+span{padding-inline-start:16px;border-inline-start:2px solid;font-family:I;font-weight:700;letter-spacing:.04em}
     h1{font-size:${lang === 'ar' ? 76 : 80}px;line-height:1.3;margin:0;font-weight:600}
     .hl{background:linear-gradient(transparent 58%,rgb(151 119 86/.6) 58%,rgb(151 119 86/.6) 94%,transparent 94%)}
     p{font-size:28px;color:#b5aea8;margin:18px 0 0}
-  </style></head><body><div class="p"></div><div class="in"><div class="b"><span class="m"></span>${SITE.name[lang]}</div><div><h1>${title}</h1><p>${hero.lead[lang]}</p></div></div></body></html>`;
+  </style></head><body><div class="p"></div><div class="in"><div class="b"><span class="m"></span><span>PDF</span></div><div><h1>${title}</h1><p>${hero.lead[lang]}</p></div></div></body></html>`;
   // Loaded from a file so the fonts and masks (file: URLs) are allowed.
   mkdirSync(`${ROOT}tools/samples/out`, { recursive: true });
   writeFileSync(`${ROOT}tools/samples/out/og-${lang}.html`, html);

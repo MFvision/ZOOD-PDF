@@ -713,16 +713,16 @@ export const TOOLS = [
   {
     name: { ar: 'إنشاء PDF', en: 'Create PDF' },
     text: {
-      ar: 'من مستندات Word وExcel وPowerPoint والصور وصفحات الويب والنصوص.',
-      en: 'From Word, Excel and PowerPoint files, pictures, web pages and text.',
+      ar: 'من ملفات docx وxlsx وpptx والصور وصفحات الويب والنصوص.',
+      en: 'From docx, xlsx and pptx files, pictures, web pages and text.',
     },
     on: ON.web,
   },
   {
     name: { ar: 'تصدير', en: 'Export' },
     text: {
-      ar: 'إلى Word وExcel وPowerPoint والصور وHTML والنص.',
-      en: 'To Word, Excel, PowerPoint, pictures, HTML and text.',
+      ar: 'إلى ملفات docx وxlsx وpptx والصور وHTML والنص.',
+      en: 'To docx, xlsx and pptx files, pictures, HTML and text.',
     },
     on: ON.web,
   },

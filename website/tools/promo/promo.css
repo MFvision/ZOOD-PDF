@@ -82,12 +82,18 @@ body {
 .intro {
   color: #f5f1ed;
 }
-.intro .logo,
-.outro .logo {
-  width: 300px;
+/* ZOOD's logo, then PDF after a hairline, as on the site. */
+.lockup {
+  display: flex;
+  align-items: center;
+  gap: 48px;
 }
-.intro .logo path {
-  fill: #f5f1ed;
+.intro .logo {
+  width: 600px;
+}
+.intro .logo path,
+.outro .logo path {
+  fill: currentColor;
 }
 .intro svg,
 .outro svg {
@@ -96,15 +102,16 @@ body {
   height: auto;
 }
 .name {
-  margin: 44px 0 0;
+  margin: 0;
+  padding-inline-start: 48px;
+  border-inline-start: 5px solid currentColor;
   font:
     800 128px/1.1 Inter,
-    Vazirmatn,
     sans-serif;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.02em;
 }
 .tagline {
-  margin: 22px 0 0;
+  margin: 48px 0 0;
   font:
     500 46px/1.4 Inter,
     Vazirmatn,
@@ -112,11 +119,15 @@ body {
   color: var(--sand);
 }
 .outro .logo {
-  width: 220px;
+  width: 440px;
+}
+.outro .lockup {
+  gap: 36px;
 }
 .outro .name {
-  margin-top: 30px;
-  font-size: 104px;
+  padding-inline-start: 36px;
+  border-width: 4px;
+  font-size: 94px;
 }
 .plats {
   display: flex;

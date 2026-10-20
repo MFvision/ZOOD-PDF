@@ -1,5 +1,5 @@
 // The opening: loose papers scattered across the screen drift in, straighten
-// and settle onto the desk's stack, which then wears the ZOOD PDF mark. Plays
+// and settle onto the desk's stack, which then wears the ZOOD PDF logo. Plays
 // once, at load, only at the top of the page; with Reduce Motion the page
 // opens on the finished stack.
 const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
@@ -23,7 +23,7 @@ export function playGather(stage, reduced) {
   const top = stage.querySelector('.sheet.top');
   const badge = document.createElement('div');
   badge.className = 'gather-badge';
-  badge.innerHTML = '<span class="gather-mark"></span><span>PDF</span>';
+  badge.innerHTML = '<span class="logo"></span><span class="logo-pdf">PDF</span>';
   stage.querySelector('.desk-move').append(badge);
   // The mark leaves as the reader scrolls into the story.
   const fade = () => badge.classList.toggle('away', scrollY > 40);

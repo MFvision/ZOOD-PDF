@@ -92,7 +92,7 @@ export function topBar(slug) {
   const bar = document.createElement('header');
   bar.className = 'topbar';
   const choice = root.dataset.theme ?? 'auto';
-  bar.innerHTML = `<a class="brand" href="${urlFor(lang)}${slug ? '' : '#top'}" aria-label="${escape(t(UI.home))}"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">${escape(t(SITE.name))}</span></a>
+  bar.innerHTML = `<a class="brand" href="${urlFor(lang)}${slug ? '' : '#top'}" aria-label="${escape(t(UI.home))}"><span class="logo" aria-hidden="true"></span><span class="logo-pdf" aria-hidden="true">PDF</span></a>
     <nav class="switch lang-switch" aria-label="${escape(t(UI.language))}">
       <a href="${urlFor('ar', slug)}" lang="ar" hreflang="ar" aria-current="${lang === 'ar'}">العربية</a>
       <a href="${urlFor('en', slug)}" lang="en" hreflang="en" aria-current="${lang === 'en'}">English</a>
@@ -137,7 +137,7 @@ export function footer() {
       `<li><a href="${SITE.sourceUrl}" rel="noopener">${escape(t(FOOTER.source))}</a></li>`,
     );
   el.innerHTML = `<div class="footer-in">
-    <a class="brand" href="${urlFor(lang)}"><span class="brand-mark" aria-hidden="true"></span><span>${escape(t(SITE.name))}</span></a>
+    <a class="brand" href="${urlFor(lang)}" aria-label="${escape(t(SITE.name))}"><span class="logo" aria-hidden="true"></span><span class="logo-pdf" aria-hidden="true">PDF</span></a>
     <p>${escape(t(FOOTER.tagline))}</p>
     <nav aria-label="${escape(t(FOOTER.links[0].label))} · ${escape(t(FOOTER.links[1].label))} · ${escape(t(FOOTER.links[2].label))}"><ul>${links.join('')}</ul></nav>
     <p>${escape(t(FOOTER.copyright))}</p>
@@ -172,7 +172,10 @@ export function headlineFont() {
 function chapterBody(c, index) {
   const heading = index === 0 ? 'h1' : 'h2';
   const id = `h-${c.id}`;
-  let body = `<p class="eyebrow">${escape(t(c.eyebrow))}</p><${heading} class="title" id="${id}">${titleHtml(c.title)}</${heading}>`;
+  // The opening's name is shown by ZOOD's logo (top bar and the stack's badge),
+  // so its words are only for screen readers there.
+  const eyebrow = `<p class="eyebrow${index === 0 ? ' sr-only' : ''}">${escape(t(c.eyebrow))}</p>`;
+  let body = `${eyebrow}<${heading} class="title" id="${id}">${titleHtml(c.title)}</${heading}>`;
   if (c.lead) body += `<p class="lead">${escape(t(c.lead))}</p>`;
   if (c.points)
     body += `<ul class="points">${c.points.map((p, k) => `<li style="--pi:${k}">${escape(t(p))}</li>`).join('')}</ul>`;
