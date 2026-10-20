@@ -57,9 +57,30 @@ struct Code {
     until_ms: u64,
 }
 
+/// What the remote needs from the app: a way to tell the interface, and the
+/// web app's own files, which hold the phone's page. The app is the host; a
+/// test can be one without a window (it then runs on any machine).
+pub trait Host: Send + Sync + 'static {
+    fn tell(&self, event: &str, payload: Value);
+    /// A file of the web app and its media type.
+    fn asset(&self, name: &str) -> Option<(Vec<u8>, String)>;
+}
+
+impl<R: Runtime> Host for AppHandle<R> {
+    fn tell(&self, event: &str, payload: Value) {
+        let _ = self.emit(event, payload);
+    }
+
+    fn asset(&self, name: &str) -> Option<(Vec<u8>, String)> {
+        self.asset_resolver()
+            .get(name.to_string())
+            .map(|asset| (asset.bytes, asset.mime_type))
+    }
+}
+
 /// What the server and the commands share while the remote is on.
-pub struct Shared<R: Runtime> {
-    app: AppHandle<R>,
+pub struct Shared<H: Host> {
+    host: H,
     port: u16,
     addresses: Vec<Ipv4Addr>,
     code: Mutex<Option<Code>>,
@@ -69,7 +90,7 @@ pub struct Shared<R: Runtime> {
     pc_control: AtomicBool,
 }
 
-impl<R: Runtime> Shared<R> {
+impl<H: Host> Shared<H> {
     /// The key of the code on screen, while it still pairs.
     fn code(&self) -> Option<SealKey> {
         let code = self.code.lock().ok()?;
@@ -105,14 +126,15 @@ impl<R: Runtime> Shared<R> {
 
     /// Tells the interface what changed.
     fn changed(&self) {
-        let _ = self
-            .app
-            .emit(STATUS_EVENT, status_of(Some(self), &self.app));
+        self.host.tell(
+            STATUS_EVENT,
+            serde_json::to_value(self.status()).unwrap_or_default(),
+        );
     }
 }
 
 struct Running {
-    shared: Arc<Shared<Wry>>,
+    shared: Arc<Shared<AppHandle<Wry>>>,
     stop: watch::Sender<bool>,
 }
 
@@ -210,7 +232,7 @@ fn qr_svg(text: &str) -> Option<String> {
     )
 }
 
-fn status_of<R: Runtime>(shared: Option<&Shared<R>>, app: &AppHandle<R>) -> Status {
+fn status_of<R: Runtime>(shared: Option<&Shared<AppHandle<R>>>, app: &AppHandle<R>) -> Status {
     let Some(shared) = shared else {
         let remembered = phones_file(app)
             .map(|f| Phones::load(&f))
@@ -234,58 +256,66 @@ fn status_of<R: Runtime>(shared: Option<&Shared<R>>, app: &AppHandle<R>) -> Stat
             pc_control_available: input::AVAILABLE,
         };
     };
-    let address = shared
-        .addresses
-        .first()
-        .map(|ip| format!("http://{ip}:{}/", shared.port));
-    let (url, code_until) = match (&address, shared.code.lock().ok().as_deref()) {
-        (Some(address), Some(Some(code))) if code.until > Instant::now() => (
-            Some(format!("{address}#k={}", seal::key_to_url(&code.key))),
-            Some(code.until_ms),
-        ),
-        _ => (None, None),
-    };
-    let mut phones: Vec<ConnectedPhone> = shared
-        .peers
-        .lock()
-        .map(|p| {
-            p.iter()
-                .map(|(peer, p)| ConnectedPhone {
-                    peer: *peer,
-                    device: p.device.clone(),
-                    name: p.name.clone(),
-                })
-                .collect()
-        })
-        .unwrap_or_default();
-    phones.sort_by_key(|p| p.peer);
-    let remembered = shared
-        .phones
-        .lock()
-        .map(|p| {
-            p.list()
-                .iter()
-                .map(|p| RememberedPhone {
-                    id: p.id.clone(),
-                    name: p.name.clone(),
-                })
-                .collect()
-        })
-        .unwrap_or_default();
-    Status {
-        running: true,
-        qr: url.as_deref().and_then(qr_svg),
-        url,
-        code_until,
-        address,
-        phones,
-        remembered,
-        pc_control: shared.pc_control_on(),
-        pc_control_available: input::AVAILABLE,
+    shared.status()
+}
+
+impl<H: Host> Shared<H> {
+    /// The remote's state while it is on.
+    fn status(&self) -> Status {
+        let shared = self;
+        let address = shared
+            .addresses
+            .first()
+            .map(|ip| format!("http://{ip}:{}/", shared.port));
+        let (url, code_until) = match (&address, shared.code.lock().ok().as_deref()) {
+            (Some(address), Some(Some(code))) if code.until > Instant::now() => (
+                Some(format!("{address}#k={}", seal::key_to_url(&code.key))),
+                Some(code.until_ms),
+            ),
+            _ => (None, None),
+        };
+        let mut phones: Vec<ConnectedPhone> = shared
+            .peers
+            .lock()
+            .map(|p| {
+                p.iter()
+                    .map(|(peer, p)| ConnectedPhone {
+                        peer: *peer,
+                        device: p.device.clone(),
+                        name: p.name.clone(),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        phones.sort_by_key(|p| p.peer);
+        let remembered = shared
+            .phones
+            .lock()
+            .map(|p| {
+                p.list()
+                    .iter()
+                    .map(|p| RememberedPhone {
+                        id: p.id.clone(),
+                        name: p.name.clone(),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        Status {
+            running: true,
+            qr: url.as_deref().and_then(qr_svg),
+            url,
+            code_until,
+            address,
+            phones,
+            remembered,
+            pc_control: shared.pc_control_on(),
+            pc_control_available: input::AVAILABLE,
+        }
     }
 }
 
-fn running(state: &State<'_, RemoteState>) -> Option<Arc<Shared<Wry>>> {
+fn running(state: &State<'_, RemoteState>) -> Option<Arc<Shared<AppHandle<Wry>>>> {
     state.0.lock().ok()?.as_ref().map(|r| r.shared.clone())
 }
 
@@ -314,7 +344,7 @@ pub async fn remote_start(
         .map(|f| Phones::load(&f))
         .unwrap_or_default();
     let shared = Arc::new(Shared {
-        app: app.clone(),
+        host: app.clone(),
         port,
         addresses: local_addresses(),
         code: Mutex::new(None),
@@ -437,15 +467,54 @@ mod tests {
         assert!(svg.contains("#041e42"));
     }
 
+    /// The app, as far as the remote can tell: the interface's events go
+    /// down a channel, and the web app's files come from its `dist`. No
+    /// window is made, so these tests run on any machine (a Tauri app in a
+    /// Windows test binary does not even load).
+    struct TestHost {
+        told: Mutex<std::sync::mpsc::Sender<Value>>,
+    }
+
+    impl Host for TestHost {
+        fn tell(&self, event: &str, payload: Value) {
+            if event == MESSAGE_EVENT {
+                let _ = self.told.lock().unwrap().send(payload);
+            }
+        }
+
+        fn asset(&self, name: &str) -> Option<(Vec<u8>, String)> {
+            let dist = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../web/dist");
+            let bytes = std::fs::read(dist.join(name)).ok()?;
+            let mime = match name.rsplit('.').next()? {
+                "html" => "text/html",
+                "js" => "text/javascript",
+                "css" => "text/css",
+                "svg" => "image/svg+xml",
+                "png" => "image/png",
+                "woff2" => "font/woff2",
+                _ => "application/octet-stream",
+            };
+            Some((bytes, mime.into()))
+        }
+    }
+
     /// The remote on, on this machine only, for a test: what the server
-    /// shares, the QR code's address, and the switch that stops it.
-    fn serve<R: Runtime>(
-        app: &AppHandle<R>,
+    /// shares, the QR code's address, what the interface is told, and the
+    /// switch that stops it.
+    fn serve(
         pc_control: bool,
-    ) -> (Arc<Shared<R>>, String, watch::Sender<bool>) {
+    ) -> (
+        Arc<Shared<TestHost>>,
+        String,
+        std::sync::mpsc::Receiver<Value>,
+        watch::Sender<bool>,
+    ) {
+        let (told, heard) = std::sync::mpsc::channel();
         let listener = tauri::async_runtime::block_on(TcpListener::bind(("127.0.0.1", 0))).unwrap();
         let shared = Arc::new(Shared {
-            app: app.clone(),
+            host: TestHost {
+                told: Mutex::new(told),
+            },
             port: listener.local_addr().unwrap().port(),
             addresses: vec![Ipv4Addr::LOCALHOST],
             code: Mutex::new(None),
@@ -455,10 +524,10 @@ mod tests {
             pc_control: AtomicBool::new(pc_control),
         });
         shared.new_code();
-        let url = status_of(Some(&*shared), app).url.unwrap();
+        let url = shared.status().url.unwrap();
         let (stop, stopped) = watch::channel(false);
         tauri::async_runtime::spawn(server::run(shared.clone(), listener, stopped));
-        (shared, url, stop)
+        (shared, url, heard, stop)
     }
 
     type Socket = tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>;
@@ -525,17 +594,7 @@ mod tests {
 
     #[test]
     fn a_phone_pairs_and_its_messages_reach_the_interface() {
-        use tauri::Listener;
-
-        let app = tauri::test::mock_app();
-        let (shared, url, _stop) = serve(app.handle(), false);
-        let heard = Arc::new(Mutex::new(Vec::<Value>::new()));
-        let log = heard.clone();
-        app.handle().listen(MESSAGE_EVENT, move |event| {
-            log.lock()
-                .unwrap()
-                .push(serde_json::from_str(event.payload()).unwrap());
-        });
+        let (shared, url, told, _stop) = serve(false);
 
         tauri::async_runtime::block_on(async {
             let (mut socket, session, first) = pair(&url).await;
@@ -558,7 +617,7 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(300)).await;
         });
 
-        let heard = heard.lock().unwrap();
+        let heard: Vec<Value> = told.try_iter().collect();
         let kinds: Vec<&str> = heard
             .iter()
             .filter_map(|e| e["message"]["t"].as_str())
@@ -583,8 +642,7 @@ mod tests {
             .unwrap();
         let before = enigo.location().unwrap();
 
-        let app = tauri::test::mock_app();
-        let (_shared, url, _stop) = serve(app.handle(), true);
+        let (_shared, url, _told, _stop) = serve(true);
         tauri::async_runtime::block_on(async {
             let (mut socket, session, first) = pair(&url).await;
             assert_eq!(first[1]["pcControl"], true);
@@ -614,53 +672,49 @@ mod tests {
     #[test]
     #[ignore]
     fn the_phone_page_pairs_and_presents() {
-        use tauri::Listener;
-
-        let app = tauri::test::mock_builder().build(crate::context()).unwrap();
-        let handle = app.handle().clone();
-        let (shared, url, _stop) = serve(&handle, false);
+        let (shared, url, told, _stop) = serve(false);
 
         // The PC's interface, as far as a phone can tell: a three-page document.
         let heard = Arc::new(Mutex::new(Vec::<String>::new()));
         let pc = shared.clone();
         let log = heard.clone();
-        let view = Mutex::new((1u64, false));
-        handle.listen(MESSAGE_EVENT, move |event| {
-            let event: Value = serde_json::from_str(event.payload()).unwrap();
-            let peer = event["peer"].as_u64().unwrap();
-            let message = &event["message"];
-            let t = message["t"].as_str().unwrap_or("").to_string();
-            log.lock().unwrap().push(t.clone());
-            let mut view = view.lock().unwrap();
-            let reply = match t.as_str() {
-                "next" => {
-                    view.0 = (view.0 + 1).min(3);
-                    None
-                }
-                "present" => {
-                    view.1 = message["on"].as_bool().unwrap_or(false);
-                    None
-                }
-                "picture" => {
-                    let page = message["page"].as_u64().unwrap();
-                    let svg = format!(
+        let mut view = (1u64, false);
+        std::thread::spawn(move || {
+            for event in told {
+                let peer = event["peer"].as_u64().unwrap();
+                let message = &event["message"];
+                let t = message["t"].as_str().unwrap_or("").to_string();
+                log.lock().unwrap().push(t.clone());
+                let reply = match t.as_str() {
+                    "next" => {
+                        view.0 = (view.0 + 1).min(3);
+                        None
+                    }
+                    "present" => {
+                        view.1 = message["on"].as_bool().unwrap_or(false);
+                        None
+                    }
+                    "picture" => {
+                        let page = message["page"].as_u64().unwrap();
+                        let svg = format!(
                         "<svg xmlns='http://www.w3.org/2000/svg' width='90' height='120'><rect width='90' height='120' fill='white'/><text x='10' y='60'>{page}</text></svg>"
                     );
-                    Some(serde_json::json!({
-                        "t": "picture", "page": page, "width": message["width"],
-                        "url": format!("data:image/svg+xml,{}", svg.replace('<', "%3C").replace('>', "%3E").replace('#', "%23")),
-                    }))
+                        Some(serde_json::json!({
+                            "t": "picture", "page": page, "width": message["width"],
+                            "url": format!("data:image/svg+xml,{}", svg.replace('<', "%3C").replace('>', "%3E").replace('#', "%23")),
+                        }))
+                    }
+                    _ => None,
+                };
+                let state = serde_json::json!({
+                    "t": "state",
+                    "doc": { "name": "Talk.pdf", "pages": 3, "shapes": [0.75, 0.75, 0.75] },
+                    "page": view.0, "presenting": view.1, "black": false, "rtl": false,
+                    "notes": [{ "text": format!("Speaker note for page {}", view.0), "author": null }],
+                });
+                if let Some(peer) = pc.peers.lock().unwrap().get(&peer) {
+                    let _ = peer.tx.send(reply.unwrap_or(state));
                 }
-                _ => None,
-            };
-            let state = serde_json::json!({
-                "t": "state",
-                "doc": { "name": "Talk.pdf", "pages": 3, "shapes": [0.75, 0.75, 0.75] },
-                "page": view.0, "presenting": view.1, "black": false, "rtl": false,
-                "notes": [{ "text": format!("Speaker note for page {}", view.0), "author": null }],
-            });
-            if let Some(peer) = pc.peers.lock().unwrap().get(&peer) {
-                let _ = peer.tx.send(reply.unwrap_or(state));
             }
         });
 

@@ -17,7 +17,6 @@ use std::time::{Duration, Instant};
 use futures_util::{SinkExt, StreamExt};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use tauri::{Emitter, Runtime};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{mpsc, watch};
@@ -25,7 +24,7 @@ use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::tungstenite::Message;
 
 use super::seal::{self, SealKey};
-use super::{input, Peer, Shared, MESSAGE_EVENT};
+use super::{input, Host, Peer, Shared, MESSAGE_EVENT};
 
 /// The largest message a phone may send: a photographed page or a PDF.
 pub const MAX_MESSAGE: usize = 64 * 1024 * 1024;
@@ -131,7 +130,7 @@ async fn respond(stream: &mut TcpStream, status: &str, kind: &str, extra: &str, 
 }
 
 /// Answers one request for the remote page or one of its files.
-async fn serve_page<R: Runtime>(shared: &Shared<R>, mut stream: TcpStream, head: Head) {
+async fn serve_page<H: Host>(shared: &Shared<H>, mut stream: TcpStream, head: Head) {
     let mut skip = vec![0u8; head.length];
     if stream.read_exact(&mut skip).await.is_err() {
         return;
@@ -144,22 +143,15 @@ async fn serve_page<R: Runtime>(shared: &Shared<R>, mut stream: TcpStream, head:
         respond(&mut stream, "404 Not Found", "text/plain", "", b"").await;
         return;
     };
-    match shared.app.asset_resolver().get(name.clone()) {
-        Some(asset) if asset_name_matches(&name, &asset.mime_type) => {
+    match shared.host.asset(&name) {
+        Some((bytes, mime)) if asset_name_matches(&name, &mime) => {
             let host = head.host.as_deref().unwrap_or("");
             let extra = if name.ends_with(".html") {
                 format!("Content-Security-Policy: {}\r\n", csp(host))
             } else {
                 String::new()
             };
-            respond(
-                &mut stream,
-                "200 OK",
-                &asset.mime_type,
-                &extra,
-                &asset.bytes,
-            )
-            .await;
+            respond(&mut stream, "200 OK", &mime, &extra, &bytes).await;
         }
         _ => respond(&mut stream, "404 Not Found", "text/plain", "", b"").await,
     }
@@ -191,8 +183,8 @@ async fn peek_head(stream: &TcpStream) -> Option<Head> {
 }
 
 /// Accepts connections until `stop` says otherwise.
-pub async fn run<R: Runtime>(
-    shared: Arc<Shared<R>>,
+pub async fn run<H: Host>(
+    shared: Arc<Shared<H>>,
     listener: TcpListener,
     mut stop: watch::Receiver<bool>,
 ) {
@@ -303,8 +295,8 @@ pub fn opened_in(key: &SealKey, last: &mut u64, sealed: &[u8]) -> Option<Value> 
 }
 
 /// One phone's WebSocket, from its hello to its last message.
-async fn connect<R: Runtime>(
-    shared: Arc<Shared<R>>,
+async fn connect<H: Host>(
+    shared: Arc<Shared<H>>,
     stream: TcpStream,
     mut stop: watch::Receiver<bool>,
 ) {
@@ -387,7 +379,7 @@ async fn connect<R: Runtime>(
         let _ = sink.send(m).await;
     }
     shared.changed();
-    let _ = shared.app.emit(
+    shared.host.tell(
         MESSAGE_EVENT,
         json!({ "peer": peer, "message": { "t": "joined" } }),
     );
@@ -436,7 +428,7 @@ async fn connect<R: Runtime>(
     }
     let _ = sink.close().await;
     shared.changed();
-    let _ = shared.app.emit(
+    shared.host.tell(
         MESSAGE_EVENT,
         json!({ "peer": peer, "message": { "t": "left" } }),
     );
@@ -444,7 +436,7 @@ async fn connect<R: Runtime>(
 
 /// What a phone's message does: PC control here, everything about the
 /// document in the interface.
-fn handle<R: Runtime>(shared: &Shared<R>, peer: u64, message: Value) {
+fn handle<H: Host>(shared: &Shared<H>, peer: u64, message: Value) {
     match message.get("t").and_then(Value::as_str) {
         Some("pc") => {
             if !shared.pc_control_on() {
@@ -455,9 +447,9 @@ fn handle<R: Runtime>(shared: &Shared<R>, peer: u64, message: Value) {
             }
         }
         Some(_) => {
-            let _ = shared
-                .app
-                .emit(MESSAGE_EVENT, json!({ "peer": peer, "message": message }));
+            shared
+                .host
+                .tell(MESSAGE_EVENT, json!({ "peer": peer, "message": message }));
         }
         None => {}
     }

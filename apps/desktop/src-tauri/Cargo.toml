@@ -140,8 +140,6 @@ keyring = { version = "3.6", features = ["sync-secret-service", "crypto-rust"] }
 # one it cannot read without a word). Already in the tree through tauri; MIT
 # OR Apache-2.0.
 muda = { version = "0.19", default-features = false }
-# The remote's end-to-end test runs its server in a mock app (src/remote/mod.rs).
-tauri = { version = "2", features = ["macos-private-api", "tray-icon", "test"] }
 
 # A test that prints through PDFKit into a file: AppKit wants the main thread,
 # which only a test without the harness runs on.
