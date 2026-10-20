@@ -1,5 +1,6 @@
 import { invokeHost, onHostEvent } from '../../core/host-tauri';
 import type { ChatMessage, DeviceEngine, Generated, GenerateOptions, ModelState, Runtime } from './engine';
+import { modelBytes } from './models';
 import type { DeviceModel } from './models';
 
 /**
@@ -37,7 +38,7 @@ export function tauriEngine(model: DeviceModel): DeviceEngine {
     status: async () => {
       const status = (await invokeHost('ai_model_status', { id: model.id })) as Status;
       if (status.state === 'ready') return { kind: 'ready', bytes: status.bytes };
-      if (status.state === 'downloading') return { kind: 'downloading', received: status.received ?? 0, total: status.total ?? model.bytes };
+      if (status.state === 'downloading') return { kind: 'downloading', received: status.received ?? 0, total: status.total ?? modelBytes(model) };
       return { kind: 'missing' } as ModelState;
     },
     download: async (onProgress, signal) => {

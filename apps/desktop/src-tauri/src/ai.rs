@@ -1136,15 +1136,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_catalogue_names_both_models_with_their_checksums() {
+    fn the_catalogue_names_every_file_with_its_checksum() {
         let list = catalogue();
-        assert_eq!(list.models.len(), 2);
+        assert!(list.models.len() >= 2);
         for model in &list.models {
-            assert_eq!(model.sha256.len(), 64, "{}", model.id);
-            assert!(model.sha256.bytes().all(|b| b.is_ascii_hexdigit()));
-            assert!(model.bytes > 100_000_000);
-            assert!(model.url.starts_with("https://huggingface.co/Qwen/"));
-            assert!(model.file.ends_with(".gguf"));
+            for part in model.parts() {
+                assert_eq!(part.sha256.len(), 64, "{}", model.id);
+                assert!(part.sha256.bytes().all(|b| b.is_ascii_hexdigit()));
+                assert!(part.bytes > 10_000_000, "{}", part.file);
+                assert!(part.url.starts_with("https://huggingface.co/"));
+                assert!(part.url.ends_with(&part.file));
+                assert!(part.file.ends_with(".gguf"));
+            }
+            // A model that sees or hears does so through its projector.
+            assert_eq!(model.sees || model.hears, model.projector.is_some(), "{}", model.id);
         }
         assert!(model_spec("qwen2.5-1.5b").is_ok());
         assert!(model_spec("gpt-4").is_err());

@@ -383,6 +383,7 @@ pub fn run() {
             // only the tray icon and the ring (src/ring.rs).
             let hidden = args.iter().skip(1).any(|a| a == ring::BACKGROUND_FLAG);
             ring::start(app.handle(), hidden);
+            ask::start(app.handle());
             #[cfg(target_os = "macos")]
             if hidden {
                 app.set_activation_policy(tauri::ActivationPolicy::Accessory);
@@ -494,6 +495,7 @@ pub fn run() {
             remote::remote_forget,
             remote::remote_clipboard,
             ask::ask_configure,
+            ask::ask_settings,
             ask::ask_resize,
             ask::ask_hide,
             ask::ask_point,

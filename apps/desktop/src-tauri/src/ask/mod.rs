@@ -73,12 +73,52 @@ pub struct AskState {
     settings: Mutex<Settings>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-struct Settings {
-    enabled: bool,
-    shortcut: String,
+/// Ask ZOOD's settings, kept beside the app's data so a start in the
+/// background (no interface) listens for the keys too.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Settings {
+    pub enabled: bool,
+    pub shortcut: String,
     /// The chosen model reads pictures and the person lets it see the screen.
-    sees: bool,
+    pub sees: bool,
+}
+
+const SETTINGS_FILE: &str = "ask.json";
+
+fn settings_path<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
+    Some(app.path().app_data_dir().ok()?.join(SETTINGS_FILE))
+}
+
+/// At start: the keys go on if Ask ZOOD was on.
+pub fn start<R: Runtime>(app: &AppHandle<R>) {
+    let saved: Settings = settings_path(app)
+        .and_then(|path| std::fs::read(path).ok())
+        .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+        .unwrap_or_default();
+    if saved.enabled {
+        let state = app.state::<AskState>();
+        if let Err(e) = ask_configure(app.clone(), state, true, Some(saved.shortcut), saved.sees) {
+            debug_log(format!("ask: {e}"));
+        }
+    }
+}
+
+/// Ask ZOOD's settings as the host holds them.
+#[tauri::command]
+pub fn ask_settings(state: State<'_, AskState>) -> Settings {
+    let settings = state
+        .settings
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
+    Settings {
+        shortcut: if settings.shortcut.is_empty() {
+            SHORTCUT.to_string()
+        } else {
+            settings.shortcut
+        },
+        ..settings
+    }
 }
 
 #[derive(Clone, Serialize)]
@@ -145,6 +185,12 @@ pub fn ask_configure<R: Runtime>(
                 let _ = listen(&app, &settings.shortcut);
             }
             return Err(format!("E_SHORTCUT: {e}"));
+        }
+    }
+    if let Some(path) = settings_path(&app) {
+        if let Ok(bytes) = serde_json::to_vec_pretty(&next) {
+            let _ = std::fs::create_dir_all(path.parent().unwrap_or(&path));
+            let _ = std::fs::write(path, bytes);
         }
     }
     *settings = next;
