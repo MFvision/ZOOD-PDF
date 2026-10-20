@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { BookOpen, Check, Layers, MousePointerClick, PanelRight, Sparkles } from 'lucide-react';
+import { BookOpen, Check, Layers, Library, MousePointerClick, Palette, PanelRight, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Dialog } from '../components/Dialog';
 import { Icon } from '../components/Icon';
 import { isTauriHost } from '../core/host-tauri';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
+import { openSettingsAt } from '../settings/SettingsWindow';
+import type { SectionId } from '../settings/SettingsWindow';
 import { isApplePlatform } from '../shell/menuModel';
 import { useAppDispatch, useAppState } from '../state/AppContext';
 import { readJson, writeJson } from '../state/preferences';
@@ -13,8 +15,9 @@ import './tour.css';
 
 /**
  * The welcome tour: a few screens on the desktop app's first run saying
- * what the app does and where things are — the side panel, tabs, the AI
- * tool and read aloud, and the quick tools that work without opening the
+ * what the app does and where things are — the side panel, tabs, the looks
+ * in Settings, the AI tool and read aloud, asking about every document at
+ * once, and the quick tools that work without opening the
  * app (desktop only). Help → Welcome tour, and Settings' quick tools, open
  * it again. Every line is about something the app does today.
  */
@@ -34,7 +37,15 @@ export function tourScreens(desktop: boolean, mac: boolean): Screen[] {
     { id: 'welcome', icon: BookOpen, title: 'tour.welcome.title', body: 'tour.welcome.body', points: ['tour.welcome.p1', 'tour.welcome.p2'] },
     { id: 'tools', icon: PanelRight, title: 'tour.tools.title', body: 'tour.tools.body', points: ['tour.tools.p1', 'tour.tools.p2'] },
     { id: 'tabs', icon: Layers, title: 'tour.tabs.title', body: 'tour.tabs.body', points: ['tour.tabs.p1', 'tour.tabs.p2'] },
+    {
+      id: 'looks',
+      icon: Palette,
+      title: 'tour.looks.title',
+      body: 'tour.looks.body',
+      points: [mac ? 'tour.looks.p1Mac' : 'tour.looks.p1Other', 'tour.looks.p2'],
+    },
     { id: 'ai', icon: Sparkles, title: 'tour.ai.title', body: 'tour.ai.body', points: ['tour.ai.p1', 'tour.ai.p2'] },
+    { id: 'across', icon: Library, title: 'tour.across.title', body: 'tour.across.body', points: ['tour.across.p1', 'tour.across.p2'] },
   ];
   if (desktop) {
     screens.push({
@@ -75,12 +86,12 @@ export function WelcomeTour() {
   const close = () => dispatch({ type: 'DIALOG', dialog: null });
   return (
     <Dialog open={open} title={t('tour.title')} onClose={close}>
-      {open ? <TourScreens desktop={desktop} onClose={close} onSettings={() => dispatch({ type: 'DIALOG', dialog: 'settings' })} /> : null}
+      {open ? <TourScreens desktop={desktop} onClose={close} onSettings={(section) => openSettingsAt(section, () => dispatch({ type: 'DIALOG', dialog: 'settings' }))} /> : null}
     </Dialog>
   );
 }
 
-function TourScreens({ desktop, onClose, onSettings }: { desktop: boolean; onClose: () => void; onSettings: () => void }) {
+function TourScreens({ desktop, onClose, onSettings }: { desktop: boolean; onClose: () => void; onSettings: (section: SectionId) => void }) {
   const { t } = useI18n();
   const [screens] = useState(() => tourScreens(desktop, isApplePlatform()));
   const [at, setAt] = useState(() => {
@@ -107,8 +118,13 @@ function TourScreens({ desktop, onClose, onSettings }: { desktop: boolean; onClo
             </li>
           ))}
         </ul>
+        {screen.id === 'looks' ? (
+          <button type="button" className="tour-link" onClick={() => onSettings('appearance')}>
+            {t('tour.looksSettings')}
+          </button>
+        ) : null}
         {screen.id === 'quick' ? (
-          <button type="button" className="tour-link" onClick={onSettings}>
+          <button type="button" className="tour-link" onClick={() => onSettings('quick')}>
             {t('tour.quickSettings')}
           </button>
         ) : null}

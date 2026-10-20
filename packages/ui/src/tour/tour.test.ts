@@ -5,9 +5,10 @@ import { tourScreens } from './Tour';
 
 describe('welcome tour', () => {
   it('shows the quick tools only in the desktop app, in the platform’s words', () => {
-    expect(tourScreens(false, false).map((s) => s.id)).toEqual(['welcome', 'tools', 'tabs', 'ai']);
+    expect(tourScreens(false, false).map((s) => s.id)).toEqual(['welcome', 'tools', 'tabs', 'looks', 'ai', 'across']);
     expect(tourScreens(true, false).at(-1)?.points[0]).toBe('tour.quick.p1Windows');
     expect(tourScreens(true, true).at(-1)?.points[0]).toBe('tour.quick.p1Mac');
+    expect(tourScreens(false, true).find((s) => s.id === 'looks')?.points[0]).toBe('tour.looks.p1Mac');
   });
 
   it('has every line in both languages', () => {

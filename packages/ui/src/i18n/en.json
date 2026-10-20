@@ -2439,5 +2439,15 @@
   "share.label": "Share",
   "share.sheet": "Share…",
   "share.email": "Email as an attachment",
-  "share.failed": "The file could not be shared."
+  "share.failed": "The file could not be shared.",
+  "tour.looks.title": "Make it yours",
+  "tour.looks.body": "Settings › Appearance has five looks: Concept, Liquid Glass, Zood, Workbench and Monochrome. Each comes in light and dark, or follows the system.",
+  "tour.looks.p1Mac": "Open Settings from the app menu, or press ⌘,",
+  "tour.looks.p1Other": "Open Settings from the app menu, or press Ctrl+,",
+  "tour.looks.p2": "Workbench lays the app out as a focused workspace: tabs at the top, tools down the side.",
+  "tour.across.title": "Ask about all your documents",
+  "tour.across.body": "Above the AI chat, choose what to ask about: this document, every open document, or your whole Library.",
+  "tour.across.p1": "Each source names its file and page, and opens it there.",
+  "tour.across.p2": "Add folders in the Library tool to make them searchable.",
+  "tour.looksSettings": "Open Settings"
 }
