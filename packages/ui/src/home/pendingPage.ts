@@ -19,6 +19,11 @@ export function requestPage(page: number): void {
   for (const listener of listeners) listener();
 }
 
+/** The page asked for and not yet reached, if any. */
+export function pendingPage(): number | null {
+  return pending;
+}
+
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);

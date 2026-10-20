@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import standardStamps from '../../public/stamps/en/manifest.json';
 import { isTauriHost, uiLog } from '../core/host-tauri';
 import type { Lang } from '../i18n/messages';
+import { pendingPage } from '../home/pendingPage';
 import { requestOpenLink } from '../links/openLink';
 import { capability, disabledCategories, scrollToStart, setZoom, watchZoom } from './embedControl';
 import { applyOpenSettings, applyOpenZoom, pagePanelOpen, rememberedZoom, rememberZoom, setNightReading, setPagePanel, setSpreadDirection, spreadsRightToLeft } from './embedSettings';
@@ -201,6 +202,8 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
     const same = shownRef.current === currentName;
     const keptZoom = same ? rememberedZoom(currentName) : null;
     const keptPanel = same ? pagePanelOpen(registry) : null;
+    // A file opened to go to a page (a search hit, a citation) is not sent back to the top.
+    const goingToPage = pendingPage() !== null;
     try {
       // A copy: the engine may take the buffer over, and Warraq keeps its own.
       const response = await manager
@@ -241,7 +244,7 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
           else {
             applyOpenSettings(registry, currentName);
             // A new zoom keeps the middle of the view: a file just opened starts at its top.
-            setTimeout(() => shownRef.current === currentName && scrollToStart(registry), 60);
+            if (!goingToPage) setTimeout(() => shownRef.current === currentName && scrollToStart(registry), 60);
           }
         } catch (error) {
           uiLog(`view settings not applied to ${currentName}: ${String(error)}`);
