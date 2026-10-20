@@ -1,0 +1,80 @@
+# Voice lab: open-source voices for read aloud on Windows, tried on GitHub's
+# machines. Each engine reads the same sentences (scripts/voice-lab/texts.py)
+# on the CPU; the samples (mp3) and the timings (results.jsonl) go to the
+# `voice-lab-results` branch, so they can be heard and compared with nothing
+# but git. Research only: nothing here ships in the app.
+name: voice lab
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/voice-lab/**'
+      - '.github/workflows/voice-lab.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  engine:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { engine: piper, os: windows-latest, install: 'piper-tts==1.8.0' }
+          - { engine: piper, os: ubuntu-latest, install: 'piper-tts==1.8.0' }
+          - { engine: silma, os: ubuntu-latest, install: 'silma-tts==1.0.5' }
+          - { engine: habibi, os: ubuntu-latest, install: 'habibi-tts==0.1.1' }
+          - { engine: kokoro, os: ubuntu-latest, install: 'kokoro-onnx==0.4.9 soundfile' }
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.engine }} on ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: FedericoCarboni/setup-ffmpeg@v3
+      - name: install
+        shell: bash
+        run: |
+          if [ "${{ matrix.engine }}" = silma ] || [ "${{ matrix.engine }}" = habibi ]; then
+            pip install --index-url https://download.pytorch.org/whl/cpu torch torchaudio torchvision
+          fi
+          pip install ${{ matrix.install }} 2>&1 | tail -n 20
+          pip show ${{ matrix.install }} 2>/dev/null | grep -E '^(Name|Version|License)' || true
+      - name: run
+        shell: bash
+        env:
+          LAB_OUT: ${{ github.workspace }}/lab-out/${{ matrix.engine }}-${{ runner.os }}
+          PYTHONIOENCODING: utf-8
+        working-directory: scripts/voice-lab
+        run: |
+          set -o pipefail
+          mkdir -p "$LAB_OUT"
+          python ${{ matrix.engine }}_lab.py 2>&1 | tee "$LAB_OUT/log.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lab-${{ matrix.engine }}-${{ runner.os }}
+          path: lab-out
+
+  results:
+    needs: engine
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: push the samples
+        shell: bash
+        run: |
+          mkdir out && cd out
+          git init -q && git checkout -q -b voice-lab-results
+          for dir in ../artifacts/*/; do cp -r "$dir"/* . 2>/dev/null || true; done
+          cat */results.jsonl > results.jsonl 2>/dev/null || true
+          echo "run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > status.txt
+          echo "commit: $GITHUB_SHA" >> status.txt
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -qm "Voice lab results"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" voice-lab-results
