@@ -16,6 +16,9 @@ name: desktop release (2. release to users)
 on:
   push:
     tags: ['stable-v*']
+    # The same from a branch release/stable-v<version>, for tools that can
+    # make a branch but not a tag.
+    branches: ['release/stable-v*']
   workflow_dispatch:
     inputs:
       version:
@@ -41,7 +44,7 @@ jobs:
       - name: fetch the release's latest.json
         run: |
           set -eu
-          VERSION="${VERSION#stable-v}"
+          VERSION="${VERSION#release/}"; VERSION="${VERSION#stable-v}"
           export VERSION
           gh release download "desktop-v$VERSION" --pattern latest.json --dir .
           node -e '
@@ -66,5 +69,5 @@ jobs:
 
       - name: mark the release as released
         run: |
-          VERSION="${VERSION#stable-v}"
+          VERSION="${VERSION#release/}"; VERSION="${VERSION#stable-v}"
           gh release edit "desktop-v$VERSION" --prerelease=false --latest --title "ZOOD PDF $VERSION"
