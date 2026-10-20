@@ -20,6 +20,7 @@ interface Commands {
 
 interface Scroll {
   getCurrentPage(): number;
+  getPageChangeState(): { isChanging: boolean; targetPage?: number };
   scrollToPage(options: { pageNumber: number; behavior?: ScrollBehavior }): void;
   onPageChange: Hook<{ pageNumber: number; totalPages: number }>;
 }
@@ -184,7 +185,10 @@ export function scrollToPage(registry: PluginRegistry, page: number): void {
  */
 export function scrollToStart(registry: PluginRegistry): void {
   const scroll = capability<Scroll>(registry, 'scroll');
-  if (scroll && scroll.getCurrentPage() <= 1) scroll.scrollToPage({ pageNumber: 1, behavior: 'instant' });
+  if (!scroll || scroll.getCurrentPage() > 1) return;
+  const change = scroll.getPageChangeState();
+  if (change.isChanging && (change.targetPage ?? 1) > 1) return;
+  scroll.scrollToPage({ pageNumber: 1, behavior: 'instant' });
 }
 
 /**
