@@ -1,0 +1,158 @@
+/* A file from the phone arriving (Arrival.tsx), on a transparent window over the screen. */
+
+html.arrival-page,
+html.arrival-page body {
+  margin: 0;
+  background: transparent !important;
+  overflow: hidden;
+  user-select: none;
+  pointer-events: none;
+}
+
+.arrival {
+  position: fixed;
+  inset: 0;
+
+  /* Screen sides, whatever the language: macOS puts new files on the right, Windows on the left. */
+  direction: ltr;
+  font-family: var(--font-ui, system-ui, sans-serif);
+}
+
+/* The light: a wide soft band of ZOOD's bronze and cream rising up the screen. */
+.arrival-sweep {
+  position: absolute;
+  inset-inline: -10%;
+  block-size: 60%;
+  inset-block-start: 100%;
+  background:
+    radial-gradient(60% 50% at 50% 50%, rgb(255 244 228 / 55%), transparent 70%),
+    linear-gradient(90deg, transparent, rgb(174 139 102 / 35%) 30%, rgb(214 236 255 / 30%) 55%, rgb(174 139 102 / 30%) 75%, transparent);
+  filter: blur(30px);
+  mix-blend-mode: screen;
+  animation: arrival-sweep 1.1s cubic-bezier(0.3, 0.6, 0.2, 1) forwards;
+}
+
+@keyframes arrival-sweep {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+
+  25% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-180%);
+  }
+}
+
+/* The file: up from the bottom middle, then to the corner where new files go. */
+.arrival-file {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  inline-size: 112px;
+  inset-block-start: 24px;
+  opacity: 0;
+  animation: arrival-fly 1.5s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards;
+}
+
+.arrival-end .arrival-file {
+  inset-inline-end: 24px;
+
+  --arrival-from-x: calc(-50vw + 80px);
+}
+
+.arrival-start .arrival-file {
+  inset-inline-start: 24px;
+
+  --arrival-from-x: calc(50vw - 80px);
+}
+
+@keyframes arrival-fly {
+  0% {
+    opacity: 0;
+    transform: translate(var(--arrival-from-x), calc(100vh - 80px)) scale(1.8) rotate(-6deg);
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  70% {
+    transform: translate(0, 6px) scale(0.98) rotate(0);
+  }
+
+  85% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+.arrival-face {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  inline-size: 72px;
+  block-size: 72px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow:
+    0 0 0 2px rgb(174 139 102 / 70%),
+    0 10px 30px rgb(4 30 66 / 35%),
+    0 0 40px rgb(255 236 210 / 60%);
+  color: #041e42;
+}
+
+.arrival-face img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.arrival-face svg {
+  inline-size: 36px;
+  block-size: 36px;
+}
+
+.arrival-name {
+  max-inline-size: 112px;
+  overflow: hidden;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgb(4 30 66 / 72%);
+  color: #fff;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrival-sweep {
+    display: none;
+  }
+
+  .arrival-file {
+    animation: arrival-fade 2.4s ease forwards;
+  }
+
+  @keyframes arrival-fade {
+    0%,
+    100% {
+      opacity: 0;
+    }
+
+    15%,
+    80% {
+      opacity: 1;
+    }
+  }
+}

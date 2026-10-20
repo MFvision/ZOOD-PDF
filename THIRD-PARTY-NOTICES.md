@@ -57,6 +57,7 @@ licence text (`scripts/rust-licenses.mjs`).
 | RustCrypto `chacha20poly1305` with `chacha20`, `poly1305`, `aead`, `universal-hash`; `base64` (desktop only) | Apache-2.0 OR MIT | The phone remote: every message between the phone and the PC sealed with the key in the QR code |
 | `qrcode` 0.14, `if-addrs` 0.15 (desktop only) | MIT OR Apache-2.0; MIT OR BSD-3-Clause, taken under MIT | The phone remote: the QR code the PC shows, and the PC's address on the local network |
 | `enigo` 0.6 (Windows and macOS desktop; with `windows` on Windows, `core-graphics` and `objc2-*` on macOS) | MIT; MIT OR Apache-2.0 | The phone remote's PC control, when the person switches it on: the pointer, clicks, scrolling, typing and media keys as the system's own input |
+| `arboard` 3.6 (Windows and macOS desktop), `png` 0.18 | MIT OR Apache-2.0 | The phone remote's shared clipboard: text and pictures copied on one device pasted on the other (pictures carried as PNG) |
 | `@noble/ciphers`, `@noble/hashes` (Paul Miller) | MIT | The phone remote's page, on the phone: ChaCha20-Poly1305 and SHA-256 in plain JavaScript, since a page on the local network has no WebCrypto |
 | Mousely — idea only, from its public website and video; no code, assets, protocol or branding | — | The phone remote follows the idea of a phone as the PC's presenter and trackpad |
 | `cssparser`, `cssparser-macros`, `selectors`, `dtoa-short`, `option-ext` (pulled in by Tauri, desktop only, unmodified; source on crates.io) | MPL-2.0 | Tauri's HTML handling and settings paths |

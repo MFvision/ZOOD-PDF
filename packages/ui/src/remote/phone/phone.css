@@ -59,10 +59,9 @@ button svg {
 }
 
 .phone-brand {
-  color: var(--ph-accent);
-  font-size: 30px;
-  font-weight: 800;
-  letter-spacing: 0.2em;
+  inline-size: min(220px, 60vw);
+  block-size: auto;
+  color: var(--ph-text);
 }
 
 .phone-message {
@@ -90,8 +89,16 @@ button svg {
 
 .phone-top {
   display: flex;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 10px 16px 6px;
+}
+
+.phone-top-logo {
+  inline-size: auto;
+  block-size: 26px;
+  color: var(--ph-text);
 }
 
 .phone-status {
@@ -611,7 +618,11 @@ button svg {
 }
 
 .phone-btn {
+  display: inline-flex;
   flex: 1;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
   min-block-size: 48px;
   padding: 0 16px;
   border: 0;
@@ -637,4 +648,285 @@ button svg {
   .phone-stage-wait {
     animation: none;
   }
+}
+
+/* Send: files flicked up to the computer, the shared clipboard, files from the computer. */
+
+.phone-send {
+  display: grid;
+  gap: 14px;
+  padding: 4px 16px 24px;
+}
+
+.phone-sub {
+  margin: 12px 0 6px;
+  color: var(--ph-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.phone-pick {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  min-block-size: 64px;
+  margin-block-start: 10px;
+  border: 1.5px dashed var(--ph-line);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--ph-text);
+  font-weight: 600;
+}
+
+.phone-flick-tray {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-block: 14px;
+}
+
+.phone-flick {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--ph-line);
+  border-radius: 16px;
+  background: var(--ph-raise-2);
+  touch-action: none;
+  user-select: none;
+  transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.phone-flick-face {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  background: var(--ph-raise);
+}
+
+.phone-flick-face img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.phone-flick-icon svg {
+  inline-size: 40px;
+  block-size: 40px;
+  color: var(--ph-accent);
+}
+
+.phone-flick-name {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.phone-flick-state {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--ph-muted);
+  font-size: 12px;
+}
+
+.phone-flick-state svg {
+  inline-size: 14px;
+  block-size: 14px;
+}
+
+.phone-flick-remove {
+  position: absolute;
+  inset-block-start: 4px;
+  inset-inline-end: 4px;
+  display: grid;
+  place-items: center;
+  inline-size: 28px;
+  block-size: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(4 30 66 / 70%);
+  color: var(--ph-text);
+}
+
+.phone-flick-remove svg {
+  inline-size: 16px;
+  block-size: 16px;
+}
+
+.phone-flick-sending {
+  animation: phone-flick-away 0.5s cubic-bezier(0.5, 0, 0.75, 0) forwards;
+}
+
+.phone-flick-landed {
+  border-color: rgb(127 209 161 / 45%);
+  animation: phone-flick-back 0.35s ease-out;
+}
+
+.phone-flick-landed .phone-flick-state {
+  color: var(--ph-ok);
+}
+
+.phone-flick-failed .phone-flick-state {
+  color: var(--ph-danger);
+}
+
+@keyframes phone-flick-away {
+  to {
+    opacity: 0.15;
+    transform: translateY(-70vh) scale(0.55) rotate(-4deg);
+  }
+}
+
+@keyframes phone-flick-back {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+.phone-clip {
+  display: grid;
+  gap: 10px;
+}
+
+.phone-clip-text {
+  max-block-size: 160px;
+  overflow: auto;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--ph-raise);
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.phone-clip-picture {
+  max-inline-size: 100%;
+  max-block-size: 240px;
+  border-radius: 12px;
+  justify-self: center;
+}
+
+.phone-clip-field {
+  inline-size: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--ph-line);
+  border-radius: 12px;
+  background: var(--ph-raise);
+  color: var(--ph-text);
+  font: inherit;
+  font-size: 16px;
+  resize: vertical;
+}
+
+.phone-clip-field + .phone-btn {
+  margin-block-start: 10px;
+}
+
+.phone-received {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.phone-received li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.phone-received img,
+.phone-received-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: 44px;
+  block-size: 44px;
+  border-radius: 8px;
+  background: var(--ph-raise);
+  color: var(--ph-accent);
+  object-fit: cover;
+}
+
+.phone-received-name {
+  flex: 1;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Trackpad or the phone's own keyboard, one switch between them. */
+
+.phone-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 0 16px 10px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--ph-raise);
+}
+
+.phone-mode {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ph-muted);
+  font-weight: 600;
+}
+
+.phone-mode-on {
+  background: var(--ph-accent);
+  color: var(--ph-accent-ink);
+}
+
+.phone-typing {
+  display: grid;
+  gap: 10px;
+  padding: 0 16px;
+}
+
+.phone-typing .phone-type {
+  min-block-size: 52px;
+}
+
+.phone-type-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.phone-key-label {
+  min-inline-size: 52px;
+  padding: 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.phone-type-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
 }

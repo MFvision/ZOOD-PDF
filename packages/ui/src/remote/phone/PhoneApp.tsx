@@ -13,18 +13,21 @@ import {
   Presentation,
   RotateCcw,
   Save,
+  Send,
   Square,
   Zap,
 } from 'lucide-react';
 import type { InkTool, PagePoint, PcMessage, PhoneMessage, RemoteDocumentState } from '../protocol';
 import { Files } from './Files';
+import { Logo } from './Logo';
+import { SendTab } from './Send';
 import type { RemoteLink } from './link';
 import { PhoneSession } from './session';
 import { phoneLang, ps } from './strings';
 import { Trackpad } from './Trackpad';
 import './phone.css';
 
-type Tab = 'present' | 'pc' | 'files';
+type Tab = 'present' | 'pc' | 'send' | 'files';
 type Mode = 'laser' | InkTool;
 
 export interface PhoneContext {
@@ -42,13 +45,15 @@ const THUMB_WIDTH = 180;
 
 /**
  * The phone remote, as the phone's browser shows it (served by the PC itself,
- * `remote.html`). Three tabs: Present (the page, laser, pen, notes, timer,
+ * `remote.html`). Four tabs: Present (the page, laser, pen, notes, timer,
  * next and previous), Trackpad (the PC's pointer and keyboard, when the PC
- * allows it) and Files (the PDF to and from the phone, a scan, a signature).
+ * allows it), Send (files flicked onto the PC's desktop, the shared
+ * clipboard, files from the PC) and Files (the PDF to and from the phone, a
+ * scan, a signature).
  */
 export function PhoneApp() {
   const [session] = useState(() => new PhoneSession());
-  const { link: linkState, pcName, pcControl, state } = useSyncExternalStore(session.subscribe, session.read, session.read);
+  const { link: linkState, pcName, pcControl, state, clip, received } = useSyncExternalStore(session.subscribe, session.read, session.read);
   const [tab, setTab] = useState<Tab>('present');
   const { send, picture } = session;
 
@@ -63,7 +68,7 @@ export function PhoneApp() {
   if (linkState !== 'open') {
     return (
       <main className="phone phone-center">
-        <div className="phone-brand">ZOOD</div>
+        <Logo className="phone-brand" />
         {linkState === 'connecting' && <div className="phone-spinner" aria-hidden="true" />}
         <p className="phone-message">{ps(linkState)}</p>
         {(linkState === 'closed' || linkState === 'refused') && (
@@ -87,6 +92,7 @@ export function PhoneApp() {
   return (
     <main className="phone">
       <header className="phone-top">
+        <Logo className="phone-top-logo" />
         <span className="phone-status">
           <span className="phone-live" aria-hidden="true" />
           {pcName ? ps('pcName', { name: pcName }) : ps('connected')}
@@ -95,11 +101,13 @@ export function PhoneApp() {
       <section className="phone-body">
         {tab === 'present' && <PresentTab context={context} state={state} />}
         {tab === 'pc' && <Trackpad send={send} enabled={pcControl} />}
+        {tab === 'send' && <SendTab send={send} clip={clip} received={received} onLanded={session.onLanded} />}
         {tab === 'files' && <Files context={context} />}
       </section>
       <nav className="phone-tabs" aria-label="ZOOD">
         <TabButton active={tab === 'present'} icon={<Presentation />} label={ps('tabPresent')} onClick={() => setTab('present')} />
         <TabButton active={tab === 'pc'} icon={<MousePointer2 />} label={ps('tabPc')} onClick={() => setTab('pc')} />
+        <TabButton active={tab === 'send'} icon={<Send />} label={ps('tabSend')} onClick={() => setTab('send')} />
         <TabButton active={tab === 'files'} icon={<FileText />} label={ps('tabFiles')} onClick={() => setTab('files')} />
       </nav>
     </main>

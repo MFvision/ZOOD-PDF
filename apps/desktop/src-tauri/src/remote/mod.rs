@@ -9,10 +9,12 @@
 //! other message to the interface as [`MESSAGE_EVENT`], where the document
 //! is (`packages/ui/src/remote/`). The interface answers with `remote_send`.
 
+pub mod clip;
 pub mod devices;
 pub mod input;
 pub mod seal;
 pub mod server;
+pub mod transfer;
 
 use std::net::{IpAddr, Ipv4Addr, UdpSocket};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -64,6 +66,10 @@ pub trait Host: Send + Sync + 'static {
     fn tell(&self, event: &str, payload: Value);
     /// A file of the web app and its media type.
     fn asset(&self, name: &str) -> Option<(Vec<u8>, String)>;
+    /// Where files flicked from a phone land: the Desktop.
+    fn landing_folder(&self) -> Option<std::path::PathBuf>;
+    /// A flicked file arrived at `path`: the PC shows it coming in.
+    fn landed(&self, path: &std::path::Path, mime: &str, picture: Option<&str>);
 }
 
 impl<R: Runtime> Host for AppHandle<R> {
@@ -75,6 +81,14 @@ impl<R: Runtime> Host for AppHandle<R> {
         self.asset_resolver()
             .get(name.to_string())
             .map(|asset| (asset.bytes, asset.mime_type))
+    }
+
+    fn landing_folder(&self) -> Option<std::path::PathBuf> {
+        transfer::landing_folder(self.path().desktop_dir().ok(), self.path().home_dir().ok())
+    }
+
+    fn landed(&self, path: &std::path::Path, mime: &str, picture: Option<&str>) {
+        crate::arrival::show(self, path, mime, picture);
     }
 }
 
@@ -88,6 +102,10 @@ pub struct Shared<H: Host> {
     peers: Mutex<server::Peers>,
     next_peer: AtomicU64,
     pc_control: AtomicBool,
+    /// The clipboard shared with the phones (`clip.rs`); on by default.
+    clipboard: AtomicBool,
+    /// The last clip either side put on the PC's clipboard, so it is not sent back.
+    last_clip: AtomicU64,
 }
 
 impl<H: Host> Shared<H> {
@@ -122,6 +140,22 @@ impl<H: Host> Shared<H> {
 
     fn pc_control_on(&self) -> bool {
         self.pc_control.load(Ordering::Relaxed)
+    }
+
+    fn clipboard_on(&self) -> bool {
+        self.clipboard.load(Ordering::Relaxed)
+    }
+
+    /// Sends `message` to every connected phone.
+    fn to_all(&self, message: &Value) -> bool {
+        let Ok(peers) = self.peers.lock() else {
+            return false;
+        };
+        let mut sent = false;
+        for peer in peers.values() {
+            sent |= peer.tx.send(message.clone()).is_ok();
+        }
+        sent
     }
 
     /// Tells the interface what changed.
@@ -172,6 +206,9 @@ pub struct Status {
     pub remembered: Vec<RememberedPhone>,
     pub pc_control: bool,
     pub pc_control_available: bool,
+    /// The clipboard is shared with the phones.
+    pub clipboard: bool,
+    pub clipboard_available: bool,
 }
 
 fn phones_file<R: Runtime>(app: &AppHandle<R>) -> Option<std::path::PathBuf> {
@@ -254,6 +291,8 @@ fn status_of<R: Runtime>(shared: Option<&Shared<AppHandle<R>>>, app: &AppHandle<
             remembered,
             pc_control: false,
             pc_control_available: input::AVAILABLE,
+            clipboard: clipboard_wanted(app),
+            clipboard_available: CLIPBOARD_AVAILABLE,
         };
     };
     shared.status()
@@ -311,6 +350,8 @@ impl<H: Host> Shared<H> {
             remembered,
             pc_control: shared.pc_control_on(),
             pc_control_available: input::AVAILABLE,
+            clipboard: shared.clipboard_on(),
+            clipboard_available: CLIPBOARD_AVAILABLE,
         }
     }
 }
@@ -352,10 +393,13 @@ pub async fn remote_start(
         peers: Mutex::new(Default::default()),
         next_peer: AtomicU64::new(1),
         pc_control: AtomicBool::new(false),
+        clipboard: AtomicBool::new(clipboard_wanted(&app) && CLIPBOARD_AVAILABLE),
+        last_clip: AtomicU64::new(0),
     });
     shared.new_code();
     let (stop, stopped) = watch::channel(false);
     tauri::async_runtime::spawn(server::run(shared.clone(), listener, stopped));
+    watch_clipboard(Arc::downgrade(&shared));
     core_bridge_log(format!(
         "remote on, port {port}, addresses {:?}",
         shared.addresses
@@ -365,6 +409,55 @@ pub async fn remote_start(
         *slot = Some(Running { shared, stop });
     }
     Ok(status)
+}
+
+/// Whether this system has a clipboard the remote can share.
+pub const CLIPBOARD_AVAILABLE: bool = cfg!(any(target_os = "windows", target_os = "macos"));
+
+fn clipboard_file<R: Runtime>(app: &AppHandle<R>) -> Option<std::path::PathBuf> {
+    Some(app.path().app_data_dir().ok()?.join("remote-clipboard"))
+}
+
+/// The person's choice from last time; on unless they turned it off.
+fn clipboard_wanted<R: Runtime>(app: &AppHandle<R>) -> bool {
+    clipboard_file(app)
+        .and_then(|f| std::fs::read_to_string(f).ok())
+        .is_none_or(|v| v.trim() != "off")
+}
+
+/// While the remote is on: what is copied on the PC goes to the phones.
+/// Ends by itself once the remote is off (the last `Arc` gone).
+fn watch_clipboard<H: Host>(shared: std::sync::Weak<Shared<H>>) {
+    if !CLIPBOARD_AVAILABLE {
+        return;
+    }
+    std::thread::spawn(move || {
+        // What was on the clipboard when the remote came on is not news.
+        let mut seen = clip::read().map(|c| c.fingerprint()).unwrap_or(0);
+        loop {
+            std::thread::sleep(Duration::from_millis(700));
+            let Some(shared) = shared.upgrade() else {
+                return;
+            };
+            let anyone = shared.peers.lock().map(|p| !p.is_empty()).unwrap_or(false);
+            if !shared.clipboard_on() || !anyone {
+                continue;
+            }
+            let Some(now) = clip::read() else {
+                continue;
+            };
+            let print = now.fingerprint();
+            if print == seen {
+                continue;
+            }
+            seen = print;
+            // The phone's own clip, just put there, does not go back to it.
+            if shared.last_clip.swap(0, Ordering::Relaxed) == print {
+                continue;
+            }
+            shared.to_all(&clip::to_phone(&now));
+        }
+    });
 }
 
 fn core_bridge_log(message: String) {
@@ -406,6 +499,41 @@ pub fn remote_pc_control(app: AppHandle<Wry>, state: State<'_, RemoteState>, on:
         shared.changed();
     }
     status_of(shared.as_deref(), &app)
+}
+
+/// The clipboard shared with the phones, on or off; remembered for next time.
+#[tauri::command]
+pub fn remote_clipboard(app: AppHandle<Wry>, state: State<'_, RemoteState>, on: bool) -> Status {
+    if let Some(file) = clipboard_file(&app) {
+        let _ = std::fs::write(file, if on { "on" } else { "off" });
+    }
+    let shared = running(&state);
+    if let Some(shared) = &shared {
+        shared
+            .clipboard
+            .store(on && CLIPBOARD_AVAILABLE, Ordering::Relaxed);
+        shared.changed();
+    }
+    status_of(shared.as_deref(), &app)
+}
+
+/// Files from the PC for the phones (`{ t: "give", name, mime, data }`), sent
+/// by the interface; the host only checks their size.
+#[tauri::command]
+pub fn remote_give(
+    state: State<'_, RemoteState>,
+    name: String,
+    mime: String,
+    data: String,
+) -> bool {
+    let Some(shared) = running(&state) else {
+        return false;
+    };
+    if data.len() > server::MAX_MESSAGE / 2 {
+        return false;
+    }
+    let name = transfer::safe_name(&name);
+    shared.to_all(&serde_json::json!({ "t": "give", "name": name, "mime": mime.chars().take(100).collect::<String>(), "data": data }))
 }
 
 /// Forgets a remembered phone; if it is connected, it is let go.
@@ -473,6 +601,7 @@ mod tests {
     /// Windows test binary does not even load).
     struct TestHost {
         told: Mutex<std::sync::mpsc::Sender<Value>>,
+        landing: std::path::PathBuf,
     }
 
     impl Host for TestHost {
@@ -496,6 +625,17 @@ mod tests {
             };
             Some((bytes, mime.into()))
         }
+
+        fn landing_folder(&self) -> Option<std::path::PathBuf> {
+            Some(self.landing.clone())
+        }
+
+        fn landed(&self, path: &std::path::Path, mime: &str, _picture: Option<&str>) {
+            let _ = self.told.lock().unwrap().send(serde_json::json!({
+                "landed": path.file_name().map(|n| n.to_string_lossy().to_string()),
+                "mime": mime,
+            }));
+        }
     }
 
     /// The remote on, on this machine only, for a test: what the server
@@ -514,6 +654,7 @@ mod tests {
         let shared = Arc::new(Shared {
             host: TestHost {
                 told: Mutex::new(told),
+                landing: std::env::temp_dir().join(format!("zood-landing-{}", seal::random_id())),
             },
             port: listener.local_addr().unwrap().port(),
             addresses: vec![Ipv4Addr::LOCALHOST],
@@ -522,6 +663,8 @@ mod tests {
             peers: Mutex::new(Default::default()),
             next_peer: AtomicU64::new(1),
             pc_control: AtomicBool::new(pc_control),
+            clipboard: AtomicBool::new(false),
+            last_clip: AtomicU64::new(0),
         });
         shared.new_code();
         let url = shared.status().url.unwrap();
@@ -664,6 +807,49 @@ mod tests {
         );
     }
 
+    #[test]
+    fn a_flicked_file_lands_on_the_desktop_and_the_phone_hears_where() {
+        use base64::Engine;
+        let (shared, url, told, _stop) = serve(false);
+        let landing = shared.host.landing.clone();
+        let reply = tauri::async_runtime::block_on(async {
+            let (mut socket, session, _first) = pair(&url).await;
+            let data = base64::engine::general_purpose::STANDARD.encode(b"%PDF-1.7 from the phone");
+            say(
+                &mut socket,
+                &session,
+                1,
+                serde_json::json!({ "t": "drop", "id": "a1", "name": "../Invoice.pdf", "mime": "application/pdf", "data": data }),
+            )
+            .await;
+            let tokio_tungstenite::tungstenite::Message::Binary(sealed) = next(&mut socket).await
+            else {
+                panic!("not sealed")
+            };
+            let plain = seal::open(&session, &sealed).unwrap();
+            serde_json::from_slice::<Value>(&plain).unwrap()
+        });
+        assert_eq!(reply["t"], "landed");
+        assert_eq!(reply["id"], "a1");
+        assert_eq!(reply["ok"], true);
+        assert_eq!(reply["name"], "Invoice.pdf");
+        assert_eq!(
+            std::fs::read(landing.join("Invoice.pdf")).unwrap(),
+            b"%PDF-1.7 from the phone"
+        );
+        // The PC showed it arriving; the document side heard only the phone come.
+        let heard: Vec<Value> = told.try_iter().collect();
+        assert!(
+            heard.iter().any(|h| h["landed"] == "Invoice.pdf"),
+            "{heard:?}"
+        );
+        assert!(
+            !heard.iter().any(|h| h["message"]["t"] == "drop"),
+            "{heard:?}"
+        );
+        let _ = std::fs::remove_dir_all(&landing);
+    }
+
     /// The phone page end to end: the page this build serves (the web app's
     /// `dist`, built with `vite build --mode tauri`), in a phone-sized
     /// Chromium (`apps/web/e2e/remote-phone.mjs`), against this server, with
@@ -681,10 +867,22 @@ mod tests {
         let mut view = (1u64, false);
         std::thread::spawn(move || {
             for event in told {
-                let peer = event["peer"].as_u64().unwrap();
+                // A file shown arriving is not a phone's message.
+                let Some(peer) = event["peer"].as_u64() else {
+                    continue;
+                };
                 let message = &event["message"];
                 let t = message["t"].as_str().unwrap_or("").to_string();
                 log.lock().unwrap().push(t.clone());
+                if t == "joined" {
+                    // What the host sends on its own: the PC's clipboard, and a file the person gave.
+                    if let Some(peer) = pc.peers.lock().unwrap().get(&peer) {
+                        let _ = peer
+                            .tx
+                            .send(serde_json::json!({ "t": "clip", "text": "Hello from the PC" }));
+                        let _ = peer.tx.send(serde_json::json!({ "t": "give", "name": "Notes from the PC.txt", "mime": "text/plain", "data": "aGVsbG8=" }));
+                    }
+                }
                 let reply = match t.as_str() {
                     "next" => {
                         view.0 = (view.0 + 1).min(3);
@@ -735,6 +933,10 @@ mod tests {
         }
         // The phone that paired is remembered, and only it.
         assert_eq!(shared.phones.lock().unwrap().list().len(), 1);
+        // The flicked file is on the "desktop", as sent.
+        let landed = shared.host.landing.join("Receipt.pdf");
+        assert_eq!(std::fs::read(&landed).unwrap(), b"%PDF-1.7 flicked");
+        let _ = std::fs::remove_dir_all(&shared.host.landing);
     }
 
     #[test]

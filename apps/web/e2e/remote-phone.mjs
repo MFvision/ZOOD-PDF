@@ -51,6 +51,28 @@ try {
   await page.getByRole('button', { name: 'Present', exact: true }).tap();
   step('PC control stays off until the PC allows it');
 
+  // Send: what the PC copied is here, a file the PC sent is here, and a file
+  // flicked up lands on the PC's desktop (the test's landing folder).
+  await page.getByRole('button', { name: 'Send', exact: true }).tap();
+  await expect(page.getByText('Hello from the PC')).toBeVisible();
+  await page.getByRole('button', { name: 'Copy', exact: true }).tap();
+  await expect(page.getByRole('button', { name: 'Copied', exact: true })).toBeVisible();
+  await expect(page.getByText('Notes from the PC.txt')).toBeVisible();
+  step('the PC\'s clipboard and a file from the PC');
+
+  await page.locator('.phone-send input[type=file]').setInputFiles({ name: 'Receipt.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 flicked') });
+  const card = page.locator('.phone-flick').first();
+  await expect(card).toContainText('Flick up to send');
+  const at = await card.boundingBox();
+  await page.mouse.move(at.x + at.width / 2, at.y + at.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(at.x + at.width / 2, at.y + at.height / 2 - 160, { steps: 6 });
+  await page.mouse.up();
+  await expect(card).toContainText('On the desktop');
+  step('a file flicked up landed on the desktop');
+
+  await page.getByRole('button', { name: 'Present', exact: true }).tap();
+
   // Closed and opened again: the phone is remembered, no code needed.
   await page.reload();
   await expect(page.getByText('Page 2 of 3')).toBeVisible();

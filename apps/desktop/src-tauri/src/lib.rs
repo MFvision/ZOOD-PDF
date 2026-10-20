@@ -13,6 +13,7 @@ use tauri::{AppHandle, DragDropEvent, Emitter, Manager, Runtime, State, WindowEv
 use tauri_plugin_fs::FsExt;
 
 pub mod ai;
+pub mod arrival;
 pub mod batch;
 pub mod cloud;
 pub mod core_bridge;
@@ -489,6 +490,9 @@ pub fn run() {
             remote::remote_status,
             remote::remote_pc_control,
             remote::remote_forget,
+            remote::remote_clipboard,
+            remote::remote_give,
+            arrival::arrival_last,
             remote::remote_send,
             remote::remote_fullscreen,
             share::share_prepare,

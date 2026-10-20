@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
-import { Keyboard, Presentation, Signature, Smartphone } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Keyboard, Presentation, Send, Signature, Smartphone } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { useI18n } from '../i18n/useT';
-import { forgetPhone, setPcControl, startRemote, stopRemote } from './host';
+import { forgetPhone, giveToPhone, setClipboardSharing, setPcControl, startRemote, stopRemote } from './host';
+import { MAX_FILE_BYTES, toBase64 } from './protocol';
 import type { RemoteStatus } from './host';
 import { updateRemote, useRemoteView } from './store';
 
@@ -77,6 +78,13 @@ export function RemotePanel() {
               {t('remote.feature.filesBody')}
             </span>
           </li>
+          <li>
+            <Icon of={Send} />
+            <span>
+              <strong>{t('remote.feature.flick')}</strong>
+              {t('remote.feature.flickBody')}
+            </span>
+          </li>
         </ul>
         <p className="remote-privacy">{t('remote.privacy')}</p>
         {failed && <p className="remote-error">{t('remote.failed')}</p>}
@@ -141,6 +149,18 @@ export function RemotePanel() {
         </label>
       )}
 
+      {status.clipboardAvailable && (
+        <label className="remote-switch">
+          <input type="checkbox" role="switch" checked={status.clipboard} disabled={busy} onChange={(e) => void run(() => setClipboardSharing(e.target.checked))} />
+          <span>
+            <strong>{t('remote.clipboard')}</strong>
+            <span className="remote-switch-body">{t('remote.clipboardBody')}</span>
+          </span>
+        </label>
+      )}
+
+      {status.phones.length > 0 && <GiveFiles />}
+
       {status.remembered.length > 0 && (
         <div className="remote-phones">
           <h3>{t('remote.remembered')}</h3>
@@ -162,6 +182,46 @@ export function RemotePanel() {
       <button type="button" className="icon-btn icon-btn-labeled remote-wide" disabled={busy} onClick={() => void run(stopRemote)}>
         {t('remote.turnOff')}
       </button>
+    </div>
+  );
+}
+
+/** Files from this computer to the connected phones, picked here. */
+function GiveFiles() {
+  const { t } = useI18n();
+  const input = useRef<HTMLInputElement | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+
+  const give = async (files: File[]) => {
+    for (const file of files) {
+      const sent = file.size <= MAX_FILE_BYTES && (await giveToPhone(file.name, file.type || 'application/octet-stream', toBase64(new Uint8Array(await file.arrayBuffer()))).catch(() => false));
+      setNote(t(sent ? 'remote.giveSent' : 'remote.giveFailed', { name: file.name }));
+    }
+  };
+
+  return (
+    <div className="remote-give">
+      <button type="button" className="icon-btn icon-btn-labeled remote-wide" onClick={() => input.current?.click()}>
+        <Icon of={Send} />
+        <span>{t('remote.give')}</span>
+      </button>
+      <p className="remote-switch-body">{t('remote.giveBody')}</p>
+      {note && (
+        <p className="remote-hint" role="status" dir="auto">
+          {note}
+        </p>
+      )}
+      <input
+        ref={input}
+        type="file"
+        multiple
+        hidden
+        onChange={(e) => {
+          const files = [...(e.target.files ?? [])];
+          e.target.value = '';
+          void give(files);
+        }}
+      />
     </div>
   );
 }
