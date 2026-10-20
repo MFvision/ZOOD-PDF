@@ -25,6 +25,14 @@ one-time question → D closest bundled; B and C on desktop/web only); the AI as
 chat with whole-document Analyze (desktop/web).
 
 ## Waiting on the owner
+- **Mac signing (agreed for 2026-10-21)**: the desktop-v0.2.0 dmg is ad-hoc signed and its
+  signature is incomplete ("code has no resources"), so other Macs will call it damaged. He
+  creates a *Developer ID Application* certificate in Xcode (Settings → Apple Accounts → team
+  AWV883QWPU → Manage Certificates); this Mac has only Apple Development and Apple
+  Distribution. Then: sign with hardened runtime, notarize (`notarytool`), staple, rebuild the
+  dmg, replace the release asset. On 2026-10-20 his Mac had the iPad TestFlight app ("محرر PDF
+  2", app.warraq.ios) beside the desktop app — he mistook it for the Mac app; 0.2.0 is now
+  installed as /Applications/ZOOD PDF.app.
 1. In App Store Connect → TestFlight, assign build `202610052355` to himself, or create an
    internal group with automatic distribution so later builds arrive on their own.
 2. Re-test on the latest Windows build: the AI chat and column editing (`docs/backlog/`
