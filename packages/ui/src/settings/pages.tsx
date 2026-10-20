@@ -15,6 +15,7 @@ import {
 } from '../core/host-tauri';
 import type { RingSettings, ShellMenuState } from '../core/host-tauri';
 import { AiSettingsSection } from '../ai/AiSettings';
+import { WalletEditor } from '../ai/profile/WalletEditor';
 import { CHIPS } from '../ai/chat/chips';
 import { forgetAllChats } from '../ai/chat/store';
 import { FontLibrarySettings } from '../edit/LibraryFonts';
@@ -782,6 +783,10 @@ export function FontsPage() {
       <FontLibrarySettings />
     </Group>
   );
+}
+
+export function WalletPage() {
+  return <WalletEditor />;
 }
 
 export function CloudPage() {

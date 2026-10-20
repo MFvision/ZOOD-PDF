@@ -17,7 +17,9 @@ import { useSettings } from '../../state/settings';
 import { analyzeNow, approve, ask, askAcross, bindChat, discard, setDraft, stop, useConversation } from './store';
 import { LIBRARY_CHAT } from './across';
 import type { FileBasis, Scope } from './across';
-import { useAppState, useServices } from '../../state/AppContext';
+import { useAppDispatch, useAppState, useServices } from '../../state/AppContext';
+import { addFact, rememberRequest } from '../profile/wallet';
+import { loadWallet, saveWallet } from '../profile/walletState';
 import { fileKey } from '../../history/versions';
 import type { AssistantTurn, Env, Note, Turn } from './store';
 
@@ -115,6 +117,7 @@ export function ChatView(props: ChatViewProps) {
   const settings = useSettings();
   const conversation = useConversation(documentId);
   const { document } = useAppState();
+  const dispatch = useAppDispatch();
   const { tabs, activeTab } = useServices();
   const chatFile = scope === 'library' ? 'library:' : document ? fileKey(document.name, tabs.find((tab) => tab.key === activeTab)?.path) : null;
   useEffect(() => {
@@ -152,6 +155,18 @@ export function ChatView(props: ChatViewProps) {
   const sendTyped = () => {
     const text = draft.trim();
     if (text.length === 0) return;
+    // "Remember that …" goes to the Memory, on this device, and not to a model.
+    const fact = rememberRequest(text);
+    if (fact) {
+      void loadWallet(t('wallet.me'))
+        .then((wallet) => saveWallet(addFact(wallet, fact, 'chat')).then(() => wallet.memoryOn))
+        .then(
+          (on) => dispatch({ type: 'TOAST', key: on ? 'memory.remembered' : 'memory.rememberedOff' }),
+          () => dispatch({ type: 'TOAST', key: 'profile.failed' }),
+        );
+      if (documentId !== null) setDraft(documentId, '');
+      return;
+    }
     if (send({ kind: 'question', text }) && documentId !== null) setDraft(documentId, '');
   };
 

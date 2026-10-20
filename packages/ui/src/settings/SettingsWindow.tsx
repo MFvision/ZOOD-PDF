@@ -12,6 +12,7 @@ import {
   Settings2,
   Sparkles,
   Type,
+  Wallet,
   Zap,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -20,7 +21,7 @@ import { Icon } from '../components/Icon';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { useAppDispatch, useAppState } from '../state/AppContext';
-import { AboutPage, AiPage, AppearancePage, CloudPage, FontsPage, GeneralPage, HistoryPage, HomePage, QuickPage, ShortcutsPage, ViewingPage } from './pages';
+import { AboutPage, AiPage, AppearancePage, CloudPage, FontsPage, GeneralPage, HistoryPage, HomePage, QuickPage, ShortcutsPage, ViewingPage, WalletPage } from './pages';
 import './settings.css';
 
 /**
@@ -30,7 +31,7 @@ import './settings.css';
  * the home screen's gear and the tour; `openSettingsAt` opens it at a section.
  */
 
-export type SectionId = 'general' | 'appearance' | 'viewing' | 'home' | 'quick' | 'ai' | 'history' | 'fonts' | 'cloud' | 'shortcuts' | 'about';
+export type SectionId = 'general' | 'appearance' | 'viewing' | 'home' | 'quick' | 'ai' | 'wallet' | 'history' | 'fonts' | 'cloud' | 'shortcuts' | 'about';
 
 interface Section {
   id: SectionId;
@@ -69,8 +70,15 @@ const SECTIONS: readonly Section[] = [
     id: 'ai',
     icon: Sparkles,
     title: 'prefs.ai',
-    words: ['settings.provider', 'settings.deviceModel', 'prefs.aiScope', 'prefs.keepChats', 'prefs.answerLanguage', 'prefs.aiPrompts', 'settings.speech', 'profile.title'],
+    words: ['settings.provider', 'settings.deviceModel', 'prefs.aiScope', 'prefs.keepChats', 'prefs.answerLanguage', 'prefs.aiPrompts', 'settings.speech'],
     page: () => <AiPage />,
+  },
+  {
+    id: 'wallet',
+    icon: Wallet,
+    title: 'prefs.wallet',
+    words: ['profile.title', 'wallet.addresses', 'wallet.banks', 'wallet.identity', 'memory.title'],
+    page: () => <WalletPage />,
   },
   {
     id: 'history',

@@ -9,6 +9,7 @@ import { analyzeDocument, answerTurn, fitsWhole, searchQuery } from './answer';
 import type { Ask, Basis, DocumentText } from './answer';
 import { chunkPages } from './chunks';
 import { getSettings } from '../../state/settings';
+import { memoryFor } from '../profile/walletState';
 import type { Kept } from './kept';
 import type { Said } from './prompts';
 import type { Runner } from './runner';
@@ -403,6 +404,7 @@ export async function ask(documentId: number, request: Ask, env: Env): Promise<v
       client: env.services.client,
       kept: env.kept,
       signal: controller.signal,
+      memory: await memoryFor(runner.settings.provider),
       onText: (text, thinking) => patch({ text, thinking }),
       onProgress: (progress) => {
         update(documentId, (current) => ({ ...current, progress }));

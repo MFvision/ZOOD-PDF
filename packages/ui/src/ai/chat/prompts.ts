@@ -131,8 +131,14 @@ export type Material =
   | { kind: 'passages'; pages: readonly PageText[]; outline: string | null; pageCount: number };
 
 /** One turn of the chat: the material, the conversation so far, the request. */
-export function turnPrompt(material: Material, history: readonly Said[], request: string): Prompt {
+export function turnPrompt(material: Material, history: readonly Said[], request: string, memory = ''): Prompt {
   const parts: string[] = [];
+  // What the person asked to be remembered about them: context for the answer, never a fact of the document.
+  if (memory.trim()) {
+    parts.push(
+      `<about_the_person>\n${memory.trim()}\n</about_the_person>\nThe person asked you to keep these notes about them in mind. Use them only to fit your answer to them; they are not part of the document, so never cite them as the document's.`,
+    );
+  }
   if (material.kind === 'whole') {
     parts.push(documentText(material.pages));
     parts.push(`This is the whole text of the ${material.pageCount}-page document.`);

@@ -1,3 +1,4 @@
+import type { CoreClient } from '../../core/client';
 import type { TextLineData } from '../../core/types';
 import type { FormModel, PageRect } from '../../forms/formTypes';
 import type { Prompt } from '../providers';
@@ -132,4 +133,22 @@ export function parseFill(answer: string, known: readonly FillField[]): FillValu
     if (field !== null && value !== null && names.has(field) && value.trim() !== '' && !out.has(field)) out.set(field, value.trim());
   }
   return [...out].map(([field, value]) => ({ field, value }));
+}
+
+/**
+ * The form of `bytes`, read with the words beside each of its text fields:
+ * smart fill's fields, and the Wallet's. Only the pages with a field are read.
+ */
+export async function readFillFields(client: CoreClient, bytes: ArrayBuffer, password: string | undefined): Promise<FillField[]> {
+  const { result: model } = await client.callStatic<FormModel>('forms.inspect', { password: password ?? null }, [bytes.slice(0)]);
+  const doc = await client.open(bytes, password);
+  const lines = new Map<number, TextLineData[]>();
+  try {
+    for (const page of new Set(model.fields.flatMap((field) => field.widgets.map((w) => w.page)))) {
+      if (page >= 0 && page < doc.pageCount) lines.set(page, await doc.text_lines(page));
+    }
+  } finally {
+    void doc.free();
+  }
+  return fillableFields(model, (page) => lines.get(page) ?? []);
 }

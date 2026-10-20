@@ -68,7 +68,7 @@ test.describe('the AI tool on this device', () => {
     await page.getByRole('menubar').getByRole('menuitem', { name: 'ZOOD PDF' }).click();
     await page.getByRole('menuitem', { name: /^Settings…/ }).click();
     const sheet = page.getByRole('dialog', { name: 'Settings' });
-    await sheet.getByRole('navigation').getByRole('button', { name: 'AI', exact: true }).click();
+    await sheet.getByRole('navigation').getByRole('button', { name: 'My details', exact: true }).click();
     await sheet.getByLabel('Name (Arabic)').fill('محمد علي');
     await sheet.getByLabel('E-mail').fill('m.ali@example.sa');
     await sheet.getByRole('button', { name: 'Save my details' }).click();

@@ -15,12 +15,13 @@ import { readDocument } from './readDocument';
 import { deviceEngine } from './device/engine';
 import { deviceBudget, generateOnDevice } from './device/generate';
 import type { DeviceModelView } from './device/useDeviceModel';
-import { profileDetails, profileIsEmpty } from './profile/profile';
-import { useProfile } from './profile/ProfileEditor';
+import { profileHasDetails, walletDetails } from './profile/wallet';
+import { useWallet } from './profile/walletState';
+import { openSettingsAt } from '../settings/SettingsWindow';
 import { send } from './send';
 import type { AiSettings } from './store';
 import { failureNote } from './chat/ChatView';
-import { fillableFields } from './extras/formFill';
+import { readFillFields } from './extras/formFill';
 import type { FillField } from './extras/formFill';
 import { pageText } from './extras/ocrFix';
 import type { LayerText } from './extras/ocrFix';
@@ -30,8 +31,6 @@ import { FormFillReview, OcrFixReview, PiiReview, TablesReview, findWithPatterns
 import { findTablesOnDevice } from './extras/tables';
 import type { Table } from './extras/tables';
 import { layerWords } from '../ocr/layer';
-import type { FormModel } from '../forms/formTypes';
-import type { TextLineData } from '../core/types';
 
 type Message = { key: TKey; params?: TParams };
 
@@ -79,7 +78,9 @@ export function AiTasks({ settings, apiKey, device }: { settings: AiSettings; ap
   const state = useAppState();
   const services = useServices();
   const dispatch = useAppDispatch();
-  const { profile, reload: reloadProfile } = useProfile();
+  const wallet = useWallet(t('wallet.me'));
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const profile = wallet?.profiles.find((one) => one.id === profileId) ?? wallet?.profiles[0] ?? null;
   const key = apiKey;
   const [task, setTask] = useState<DataTask>('fixOcr');
   const [scope, setScope] = useState<'current' | 'range'>('current');
@@ -125,7 +126,7 @@ export function AiTasks({ settings, apiKey, device }: { settings: AiSettings; ap
   const addressProblem: TKey | null =
     !localServer || address.ok ? null : address.reason === 'notLocal' ? 'ai.notLocal' : 'ai.invalidUrl';
   // The saved details, as smart fill sends them, before anything typed here.
-  const savedDetails = profile && !profileIsEmpty(profile) ? profileDetails(profile, lang) : '';
+  const savedDetails = profile && profileHasDetails(profile) ? walletDetails(profile, lang) : '';
   const allDetails = [savedDetails, details.trim()].filter(Boolean).join('\n');
   const missing: TKey | null =
     claude && key.trim().length === 0
@@ -235,18 +236,8 @@ export function AiTasks({ settings, apiKey, device }: { settings: AiSettings; ap
         // The form's fields, and the words beside each one on its page.
         const bytes = await services.currentFileBytes();
         if (!bytes) throw new Error('E_NOT_FOUND: no open file');
-        const { result: model } = await services.client.callStatic<FormModel>('forms.inspect', { password: services.documentPassword ?? null }, [bytes.slice(0)]);
-        const doc = await services.client.open(bytes, services.documentPassword);
-        const lines = new Map<number, TextLineData[]>();
-        try {
-          for (const page of new Set(model.fields.flatMap((field) => field.widgets.map((w) => w.page)))) {
-            if (page >= 0 && page < doc.pageCount) lines.set(page, await doc.text_lines(page));
-          }
-        } finally {
-          void doc.free();
-        }
+        const fields = await readFillFields(services.client, bytes, services.documentPassword);
         if (ticket !== generation.current) return;
-        const fields = fillableFields(model, (page) => lines.get(page) ?? []);
         if (fields.length === 0) {
           setNotice({ key: 'ai.fill.noFields' });
           return;
@@ -351,6 +342,25 @@ export function AiTasks({ settings, apiKey, device }: { settings: AiSettings; ap
       {task === 'fill' && (
         <div className="ai-group">
           {/* The saved details first (Settings keeps them encrypted); anything more is typed here. */}
+          {wallet && wallet.profiles.length > 1 && (
+            <label className="field">
+              <span>{t('wallet.useProfile')}</span>
+              <select
+                className="text-input"
+                value={profile?.id ?? ''}
+                onChange={(event) => {
+                  setProfileId(event.target.value);
+                  changed();
+                }}
+              >
+                {wallet.profiles.map((one) => (
+                  <option key={one.id} value={one.id}>
+                    {one.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <p className="tool-panel-note" data-profile={savedDetails ? 'saved' : 'empty'}>
             {savedDetails ? t('ai.fill.profileSaved', { count: savedDetails.split('\n').length }) : t('ai.fill.profileEmpty')}
           </p>
@@ -360,14 +370,9 @@ export function AiTasks({ settings, apiKey, device }: { settings: AiSettings; ap
               icon={<Icon of={FileSearch} />}
               showLabel
               onClick={() => {
-                dispatch({ type: 'DIALOG', dialog: 'settings' });
-                // When the sheet closes, the details it saved are read again.
-                const again = () => {
-                  void reloadProfile();
-                  changed();
-                  globalThis.document?.removeEventListener('close', again, true);
-                };
-                globalThis.document?.addEventListener('close', again, true);
+                // A saved change reaches this panel by itself; what would be sent changes with it.
+                openSettingsAt('wallet', () => dispatch({ type: 'DIALOG', dialog: 'settings' }));
+                changed();
               }}
             />
           </div>
