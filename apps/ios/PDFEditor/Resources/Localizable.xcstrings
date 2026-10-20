@@ -1145,6 +1145,16 @@
         }
       }
     },
+    "Basic voice. Get a natural one": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صوت أساسي. احصل على صوت طبيعي"
+          }
+        }
+      }
+    },
     "Black": {
       "localizations": {
         "ar": {
@@ -1969,6 +1979,16 @@
         }
       }
     },
+    "Don't show again": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا تُظهر هذا مجددًا"
+          }
+        }
+      }
+    },
     "Done": {
       "localizations": {
         "ar": {
@@ -2657,6 +2677,16 @@
         }
       }
     },
+    "Get a natural voice": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "احصل على صوت طبيعي"
+          }
+        }
+      }
+    },
     "Glass on the bars, toolbars and floating palettes only; documents and lists stay solid. Needs iOS 26 for the system's own glass; on older systems the bars use the frosted materials.": {
       "localizations": {
         "ar": {
@@ -2853,6 +2883,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "بطاقة هوية"
+          }
+        }
+      }
+    },
+    "In the Settings app, open Accessibility › Spoken Content › Voices, choose the language (Arabic: Majed), and download its Enhanced or Premium voice. The app then reads with it by itself. Siri's voices are not offered to apps.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "في تطبيق الإعدادات افتح تسهيلات الاستخدام › المحتوى المنطوق › الأصوات، واختر اللغة (للعربية: ماجد)، ثم نزّل صوتها المحسّن أو المميز. يقرأ التطبيق به بعدها تلقائيًا. أصوات Siri غير متاحة للتطبيقات."
           }
         }
       }

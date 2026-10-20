@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TextLineData } from '../core/types';
+import { resetSpeechEngine } from './engines';
 import { closeBar, pause, readAloudState, resume, setRate, start, stop } from './readAloud';
 import type { ReadingSource } from './readAloud';
 
@@ -31,6 +32,7 @@ beforeEach(() => {
   spoken.length = 0;
   paused = 0;
   cancelled = 0;
+  resetSpeechEngine();
   vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance);
   vi.stubGlobal('speechSynthesis', {
     getVoices: () => voices,
@@ -147,6 +149,7 @@ describe('read aloud', () => {
     await start(source([[line('   ', 10)]]), 'page');
     expect(readAloudState().notice).toBe('noText');
     vi.stubGlobal('speechSynthesis', undefined);
+    resetSpeechEngine();
     await start(source([[line('A.', 10)]]), 'page');
     expect(readAloudState().notice).toBe('unsupported');
     closeBar();

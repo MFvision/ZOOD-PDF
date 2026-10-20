@@ -6,9 +6,26 @@ import SwiftUI
 struct ReadAloudBar: View {
     @Bindable var reader: ReadAloudController
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var showVoiceTip = false
+    @AppStorage("readAloud.voiceTipDismissed") private var voiceTipDismissed = false
 
     var body: some View {
         VStack(spacing: Space.x3) {
+            // Only the compact voice for this language: the reading sounds
+            // robotic until an Enhanced or Premium one is downloaded, which
+            // only the Settings app can do.
+            if !voiceTipDismissed, let language = reader.currentSentence?.language, SpeechVoices.onlyBasic(for: language) {
+                Button {
+                    showVoiceTip = true
+                } label: {
+                    Label("Basic voice. Get a natural one", systemImage: "sparkles")
+                        .font(TextStyle.caption)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.tint)
+                .accessibilityIdentifier("readAloud.voiceTip")
+            }
             HStack(alignment: .top, spacing: Space.x3) {
                 Image(systemName: "waveform")
                     .foregroundStyle(.tint)
@@ -45,6 +62,12 @@ struct ReadAloudBar: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("readAloud.bar")
         .sensoryFeedback(.selection, trigger: reader.index)
+        .alert("Get a natural voice", isPresented: $showVoiceTip) {
+            Button("Don't show again") { voiceTipDismissed = true }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("In the Settings app, open Accessibility › Spoken Content › Voices, choose the language (Arabic: Majed), and download its Enhanced or Premium voice. The app then reads with it by itself. Siri's voices are not offered to apps.")
+        }
     }
 
     /// The speed, as multiples of the system's default rate.

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pause, Play, ScanText, Square, X } from 'lucide-react';
+import { Pause, Play, ScanText, Sparkles, Square, X } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useI18n } from '../i18n/useT';
@@ -10,7 +10,8 @@ import type { OcrProgress } from '../ocr/run';
 import { closeBar, pause, refreshVoices, resume, setRate, setVoice, start, stop, useReadAloud } from './readAloud';
 import type { Scope } from './readAloud';
 import { readingSource } from './readingSource';
-import { voicesFor } from './voices';
+import { openVoiceSettings } from './engines';
+import { onlyBasicVoice, voiceLabel, voicesFor } from './voices';
 import './speech.css';
 
 const RATES = [0.75, 1, 1.25, 1.5, 2];
@@ -94,6 +95,10 @@ export function ReadAloudBar() {
   const arabic = voicesFor(reading.voices, 'ar');
   const english = voicesFor(reading.voices, 'en');
   const busy = reading.active;
+  const quality = { premium: t('readAloud.premium'), enhanced: t('readAloud.enhanced') };
+  // Apple's engine reads with whatever voices are downloaded; with only the
+  // basic ones, the way to a natural voice is one click away.
+  const basic = reading.engine === 'apple' && reading.voices.length > 0 && (onlyBasicVoice(reading.voices, 'ar') || onlyBasicVoice(reading.voices, 'en'));
 
   return (
     <div className="readaloud" role="region" aria-label={t('readAloud.label')}>
@@ -135,7 +140,7 @@ export function ReadAloudBar() {
           <option value="">{t('readAloud.auto')}</option>
           {arabic.map((voice) => (
             <option key={voice.id} value={voice.id}>
-              {voice.name}
+              {voiceLabel(voice, quality)}
             </option>
           ))}
         </select>
@@ -146,11 +151,16 @@ export function ReadAloudBar() {
           <option value="">{t('readAloud.auto')}</option>
           {english.map((voice) => (
             <option key={voice.id} value={voice.id}>
-              {voice.name}
+              {voiceLabel(voice, quality)}
             </option>
           ))}
         </select>
       </label>
+      {basic ? (
+        <span title={t('readAloud.betterVoiceHint')}>
+          <IconButton label={t('readAloud.betterVoice')} icon={<Icon of={Sparkles} />} showLabel onClick={openVoiceSettings} />
+        </span>
+      ) : null}
       <span className="readaloud-status" role="status">
         {recognizing
           ? t('readAloud.recognizing', { page: Math.max(1, ocr.page), of: Math.max(1, ocr.of) })

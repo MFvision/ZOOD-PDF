@@ -29,6 +29,7 @@ pub mod ring;
 pub mod share;
 pub mod shell_menu;
 pub mod signing;
+pub mod speech;
 pub mod system;
 pub mod updates;
 
@@ -493,6 +494,13 @@ pub fn run() {
             remote::remote_fullscreen,
             share::share_prepare,
             share::share_email,
+            speech::speech_engine,
+            speech::speech_voices,
+            speech::speech_speak,
+            speech::speech_stop,
+            speech::speech_pause,
+            speech::speech_resume,
+            speech::speech_open_settings,
             system::system_user_name,
             system::open_default_apps,
         ])
