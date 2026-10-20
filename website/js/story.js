@@ -172,8 +172,8 @@ export const CHAPTERS = [
     devices: [],
     eyebrow: { ar: 'هاتفك جهاز تحكّم', en: 'Phone remote' },
     title: {
-      ar: 'امسح الرمز، [[فيصير هاتفك جهاز التحكّم]].',
-      en: 'Scan the code, and [[your phone is the remote]].',
+      ar: 'هاتفك يصير [[جهاز التحكّم بحاسوبك]].',
+      en: "Your phone becomes [[your computer's remote]].",
     },
     lead: {
       ar: 'بلا تطبيق ولا حساب: يفتح في متصفح أي هاتف على شبكة Wi-Fi نفسها، والاتصال مشفّر ولا يمر بالإنترنت.',
@@ -181,12 +181,12 @@ export const CHAPTERS = [
     },
     points: [
       {
-        ar: 'اعرض من هاتفك: قلّب الصفحات، وأشِر بالليزر، واكتب بالقلم، واقرأ ملاحظاتك والمؤقت أمامك.',
-        en: 'Present from your phone: turn pages, point with a laser, write with the pen, and read your notes with a timer in view.',
+        ar: 'اعرض من هاتفك: قلّب الصفحات، وأشِر بالليزر، وظلّل واكتب بالقلم، واقرأ ملاحظاتك والمؤقت أمامك.',
+        en: 'Present from your phone: turn pages, point with a laser, highlight and write with the pen, and read your notes with a timer in view.',
       },
       {
-        ar: 'اجعله لوحة لمس ولوحة مفاتيح للحاسوب، حين تفعّل ذلك من التطبيق.',
-        en: "Use it as the computer's trackpad and keyboard, once you switch that on in the app.",
+        ar: 'اجعله فأرة الحاسوب ولوحة مفاتيحه، وقلّب به أي عرض تقديمي وارفع الصوت، حين تفعّل ذلك من التطبيق.',
+        en: "Use it as the computer's mouse and keyboard, move through any slideshow and set the volume, once you switch that on in the app.",
       },
       {
         ar: 'أرسل الملف إلى هاتفك، أو صوّر صفحة فتصل ملفًا، أو وقّع على الهاتف فيظهر توقيعك في الملف.',

@@ -169,8 +169,10 @@ workflow to the server; the licensed font has to be added on the server side.
   pressed, each bringing up the app's own screen) and `js/family.js` (every
   version together, after the concept the app was designed from: the pen
   writing on the iPad, the phone scanning, the assistant's suggestions) and
-  `js/remote.js` (the desktop app's phone remote: a code scanned, then one
-  scroll step each for presenting, trackpad and keys, and files both ways;
+  `js/remote.js` (the desktop app's phone remote beside a computer: one quick
+  beat each for the laser, highlighting, pages, the mouse, the keyboard, any
+  slideshow and the volume, files both ways and a signature; labels jump to
+  each beat, and the drawn phone answers the visitor's pointer and presses;
   drawn, not recorded).
   Their look is the app's liquid glass (`packages/ui/src/styles/looks.css`).
 - `js/interact.js`: a ring of light from where a button or switch is pressed;
