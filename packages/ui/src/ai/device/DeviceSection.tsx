@@ -55,7 +55,7 @@ export function DeviceSection({ view, showDelete = true, compact = false }: { vi
     return (
       <div className="ai-group ai-device ai-device-compact" data-model-state="missing">
         <p className="ai-device-line">{t('ai.card.downloadLine')}</p>
-        <IconButton label={t('ai.card.download', { size })} icon={<Icon of={Download} />} showLabel variant="primary" onClick={view.download} />
+        <IconButton label={t('ai.card.download', { size })} icon={<Icon of={Download} />} showLabel onClick={view.download} />
         <details className="ai-device-details">
           <summary>{t('ai.card.details')}</summary>
           {facts}

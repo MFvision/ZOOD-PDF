@@ -95,9 +95,12 @@ export function CompressPanel() {
             <p>{t('compress.unchanged')}</p>
           ) : (
             <>
-              <p className="compress-sizes">
-                {t('compress.sizes', { before: formatSize(done.before, lang), after: formatSize(done.after, lang), percent: saved })}
+              {/* The number first, large; what it means, small, after it. */}
+              <p className="compress-metric">
+                <span className="compress-metric-value">{t('compress.percent', { percent: saved })}</span>{' '}
+                <span className="compress-metric-label">{t('compress.smaller')}</span>
               </p>
+              <p className="compress-sizes">{t('compress.beforeAfter', { before: formatSize(done.before, lang), after: formatSize(done.after, lang) })}</p>
               {done.images > 0 && <p className="tool-panel-note">{t('compress.images', { count: done.images })}</p>}
               <div className="tool-actions">
                 <IconButton
