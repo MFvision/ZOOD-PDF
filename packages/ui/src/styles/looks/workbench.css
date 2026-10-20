@@ -354,6 +354,18 @@ html[data-look="workbench"] .home-section {
   text-overflow: ellipsis;
 }
 
+/* A row's ⋯ sits at its end, not in a card's corner. */
+.recent-table .recent-more.icon-btn {
+  position: static;
+  background: transparent;
+  box-shadow: none;
+}
+
+.recent-table tbody tr:hover .recent-more.icon-btn,
+.recent-table .recent-more.icon-btn[aria-expanded="true"] {
+  background: var(--tertiary-fill);
+}
+
 .recent-view-switch {
   display: inline-flex;
 }

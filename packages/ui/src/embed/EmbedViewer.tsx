@@ -227,7 +227,7 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
           else {
             applyOpenSettings(registry, currentName);
             // A new zoom keeps the middle of the view: a file just opened starts at its top.
-            setTimeout(() => shownRef.current === currentName && scrollToPage(registry, 1), 60);
+            setTimeout(() => shownRef.current === currentName && scrollToPage(registry, 1, 'instant'), 60);
           }
         } catch (error) {
           uiLog(`view settings not applied to ${currentName}: ${String(error)}`);

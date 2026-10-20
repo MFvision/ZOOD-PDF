@@ -19,7 +19,7 @@ interface Commands {
 }
 
 interface Scroll {
-  scrollToPage(options: { pageNumber: number }): void;
+  scrollToPage(options: { pageNumber: number; behavior?: ScrollBehavior }): void;
   onPageChange: Hook<{ pageNumber: number; totalPages: number }>;
 }
 
@@ -172,8 +172,8 @@ export function printAllowed(registry: PluginRegistry): boolean {
   return document.isOwnerUnlocked === true || (document.permissions & PRINT_PERMISSION) !== 0;
 }
 
-export function scrollToPage(registry: PluginRegistry, page: number): void {
-  capability<Scroll>(registry, 'scroll')?.scrollToPage({ pageNumber: page });
+export function scrollToPage(registry: PluginRegistry, page: number, behavior: ScrollBehavior = 'smooth'): void {
+  capability<Scroll>(registry, 'scroll')?.scrollToPage({ pageNumber: page, behavior });
 }
 
 /**
