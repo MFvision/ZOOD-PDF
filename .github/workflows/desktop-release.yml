@@ -19,6 +19,9 @@ name: desktop release (1. build)
 on:
   push:
     tags: ['desktop-v*']
+    # The same from a branch release/desktop-v<version>, for tools that can
+    # make a branch but not a tag.
+    branches: ['release/desktop-v*']
   workflow_dispatch:
     inputs:
       version:
@@ -55,7 +58,7 @@ jobs:
       - name: check the version
         shell: bash
         run: |
-          VERSION="${VERSION#desktop-v}"
+          VERSION="${VERSION#release/}"; VERSION="${VERSION#desktop-v}"
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::version must look like 0.2.0, not '$VERSION'"
             exit 1
@@ -100,7 +103,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           set -o pipefail
-          VERSION="${VERSION#desktop-v}"
+          VERSION="${VERSION#release/}"; VERSION="${VERSION#desktop-v}"
           pnpm --dir apps/desktop exec tauri build \
             --config "{\"version\":\"$VERSION\",\"bundle\":{\"createUpdaterArtifacts\":true}}" 2>&1 | tee build.log
 
@@ -109,7 +112,7 @@ jobs:
         shell: bash
         run: |
           set -eu
-          VERSION="${VERSION#desktop-v}"
+          VERSION="${VERSION#release/}"; VERSION="${VERSION#desktop-v}"
           bundle=apps/desktop/src-tauri/target/release/bundle
           mkdir out
           if [ "${{ matrix.platform }}" = windows-x86_64 ]; then
@@ -147,7 +150,7 @@ jobs:
       - name: write latest.json
         run: |
           set -eu
-          VERSION="${VERSION#desktop-v}"
+          VERSION="${VERSION#release/}"; VERSION="${VERSION#desktop-v}"
           export VERSION BASE="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/desktop-v$VERSION"
           mkdir release
           node - <<'EOF'
@@ -177,7 +180,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${VERSION#desktop-v}"
+          VERSION="${VERSION#release/}"; VERSION="${VERSION#desktop-v}"
           gh release create "desktop-v$VERSION" release/* \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
             --title "ZOOD PDF $VERSION (testing)" \
