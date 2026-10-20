@@ -147,7 +147,7 @@ function DragTo($x, $y) {
 
 # The quick window a picked tool opens: there, then closed so the next step
 # can reach Explorer.
-$quickTitle = 'أدوات PDF السريعة — محرر زود PDF'
+$quickTitle = 'أدوات PDF السريعة — محرر PDF'
 function QuickWindowOpened {
   foreach ($try in 1..10) {
     $quick = [Input]::FindWindow([NullString]::Value, $quickTitle)
@@ -160,9 +160,11 @@ function QuickWindowOpened {
   return [IntPtr]::Zero
 }
 # A result beside the sample, waited for (a tool on the ring writes it when done).
-function ResultAppears($name) {
+# Named either way: "sample-compressed.pdf", or "sample (compressed).pdf" by
+# Settings › Quick tools' default pattern.
+function ResultAppears($word) {
   foreach ($try in 1..40) {
-    if (Test-Path (Join-Path $folder $name)) { return $true }
+    if ((Test-Path (Join-Path $folder "sample-$word.pdf")) -or (Test-Path (Join-Path $folder "sample ($word).pdf"))) { return $true }
     Start-Sleep -Milliseconds 500
   }
   return $false
@@ -184,7 +186,7 @@ if ($side -gt 0) {
   [Input]::Mouse($cx, $cy - $middle, 0x0004); [Input]::Key(0x11, $true)
   Start-Sleep -Seconds 3
   Shot 'ring-1-running.png'
-  Check (ResultAppears 'sample-compressed.pdf') 'letting go on Compress makes sample-compressed.pdf at once'
+  Check (ResultAppears 'compressed') 'letting go on Compress makes the compressed file at once'
   Start-Sleep -Seconds 3
   Check ((Log) -match 'done: 1 made, 0 failed') 'the ring says Compress is done'
   Shot 'ring-1-after.png'
@@ -210,7 +212,7 @@ if ($side -gt 0) {
   [Input]::Mouse($cx, $cy + $middle, 0x0002); Start-Sleep -Milliseconds 80
   [Input]::Mouse($cx, $cy + $middle, 0x0004)
   Start-Sleep -Seconds 3
-  Check (ResultAppears 'sample-rotated.pdf') 'clicking Rotate makes sample-rotated.pdf'
+  Check (ResultAppears 'rotated') 'clicking Rotate makes the rotated file'
   Shot 'ring-2-after.png'
   Start-Sleep -Seconds 3
 } else {
@@ -283,7 +285,7 @@ Start-Sleep -Seconds 2
 Check ((Log) -match 'files dragged over the main window') 'control: a plain drag reaches the main window'
 
 Set-Content (Join-Path $Out 'ring.log') (Log)
-Stop-Process -Id $app.Id -ErrorAction SilentlyContinue
+Get-Process -Name warraq-desktop -ErrorAction SilentlyContinue | Stop-Process -ErrorAction SilentlyContinue
 Write-Host (Log)
 if ($failures.Count -gt 0) { throw "ring check failed: $($failures -join '; ')" }
 Write-Host 'the ring works: it opens, its tools take a drop and a click, and it stays on the screen'
