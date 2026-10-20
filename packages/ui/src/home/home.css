@@ -957,6 +957,12 @@
   opacity: 0.55;
 }
 
+@media (pointer: coarse) {
+  .home-ai-everything {
+    min-block-size: 44px;
+  }
+}
+
 /* ---- The model, not yet on this device: one line and one button ---- */
 
 .ai-device-compact {

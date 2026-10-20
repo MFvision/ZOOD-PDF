@@ -35,6 +35,9 @@ export function thumbnailPage(path: readonly EventTarget[], pageCount: number): 
 export function EmbedPageMenu({ host, pageCount }: { host: HTMLElement | null; pageCount: number }) {
   const dispatch = useAppDispatch();
   const [menu, setMenu] = useState<PageMenuState | null>(null);
+  // Mounted from the first right-click on: until then the page holds no
+  // second file picker beside the one that opens documents.
+  const [used, setUsed] = useState(false);
 
   useEffect(() => {
     if (!host) return undefined;
@@ -47,12 +50,14 @@ export function EmbedPageMenu({ host, pageCount }: { host: HTMLElement | null; p
       dispatch({ type: 'ORGANIZE_SELECT', index, how: 'only' });
       const box = found.tile.getBoundingClientRect();
       const at = event.clientX || event.clientY ? { x: event.clientX, y: event.clientY } : { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+      setUsed(true);
       setMenu({ index, at, from: found.tile });
     };
     host.addEventListener('contextmenu', onMenu);
     return () => host.removeEventListener('contextmenu', onMenu);
   }, [host, pageCount, dispatch]);
 
+  if (!used) return null;
   return (
     <PageMenu
       menu={menu}
