@@ -1,4 +1,4 @@
-// The Privacy, Terms and Support pages, in both languages. Each page is a
+// The Privacy, Terms, Support and About pages, in both languages. Each page is a
 // list of blocks: { h } a heading, { p } a paragraph, { list } bullet points.
 // Text in {{double braces}} is a placeholder the owner still has to give
 // (legal entity, contact email, address); it shows highlighted until replaced.
@@ -7,6 +7,10 @@ export const CONTACT = {
   entity: { ar: '{{اسم الكيان القانوني لزود}}', en: '{{ZOOD legal entity}}' },
   email: '{{support email}}',
   address: { ar: '{{العنوان}}', en: '{{postal address}}' },
+  phone: '{{phone number}}',
+  founder: { ar: '{{محمد الغماس}}', en: '{{Muhammad Alghammas}}' },
+  cr: '{{commercial registration number}}',
+  vat: '{{VAT number}}',
 };
 
 export const UPDATED = { ar: 'آخر تحديث: ١٩ أكتوبر ٢٠٢٦', en: 'Last updated: 19 October 2026' };
@@ -221,6 +225,65 @@ export const PAGES = {
       },
       { h: { ar: 'العنوان', en: 'Address' } },
       { p: { ar: '{{entity}}، {{address}}', en: '{{entity}}, {{address}}' } },
+    ],
+  },
+  about: {
+    title: { ar: 'عن زود PDF', en: 'About ZOOD PDF' },
+    description: {
+      ar: 'من صنع زود PDF، ولمن، وكيف تتواصل معنا.',
+      en: 'Who makes ZOOD PDF, who it is for, and how to reach us.',
+    },
+    blocks: [
+      {
+        p: {
+          ar: 'زود PDF محرّر لملفات PDF يبدأ بالعربية: يقرأ ويحرّر ويوقّع ويمسح وينظّم ملفاتك على ويندوز وماك وآيفون وآيباد والمتصفح، وفي إضافة لكروم وإيدج.',
+          en: 'ZOOD PDF is an Arabic-first PDF editor. It reads, edits, signs, scans and organizes your files on Windows, Mac, iPhone, iPad and the browser, and as a Chrome and Edge extension.',
+        },
+      },
+      { h: { ar: 'من بناه', en: 'Who built it' } },
+      {
+        p: {
+          ar: 'بناه {{founder}}، مؤسس {{entity}}، ليكون للعربية محرّر PDF يكتبها ويقرؤها كما ينبغي.',
+          en: 'It was built by {{founder}}, founder of {{entity}}, so that Arabic has a PDF editor that reads and writes it properly.',
+        },
+      },
+      { h: { ar: 'للشركات', en: 'For companies' } },
+      {
+        list: [
+          {
+            ar: 'تبقى الملفات على أجهزة موظفيك. لا حساب، ولا بيانات استخدام، ولا يغادر ملف إلا بإجراء يختاره الموظف بنفسه.',
+            en: "Files stay on your staff's devices. No account, no usage data, and no file leaves unless the person chooses to send it.",
+          },
+          {
+            ar: 'يعمل تطبيق سطح المكتب والإضافة دون اتصال بالإنترنت.',
+            en: 'The desktop app and the extension work without an internet connection.',
+          },
+          {
+            ar: 'الشيفرة المصدرية مفتوحة برخصة Apache-2.0، فيستطيع فريقك مراجعتها.',
+            en: 'The source code is open under the Apache-2.0 licence, so your team can review it.',
+          },
+          {
+            ar: 'للتراخيص والتوزيع على أجهزة شركتك، تواصل معنا على {{email}}.',
+            en: 'For licensing and rolling it out across your company, write to {{email}}.',
+          },
+        ],
+      },
+      { h: { ar: 'الشركة', en: 'The company' } },
+      {
+        list: [
+          { ar: 'الاسم: {{entity}}', en: 'Name: {{entity}}' },
+          { ar: 'السجل التجاري: {{cr}}', en: 'Commercial registration: {{cr}}' },
+          { ar: 'الرقم الضريبي: {{vat}}', en: 'VAT number: {{vat}}' },
+          { ar: 'العنوان: {{address}}', en: 'Address: {{address}}' },
+        ],
+      },
+      { h: { ar: 'تواصل معنا', en: 'Contact' } },
+      {
+        list: [
+          { ar: 'البريد: {{email}}', en: 'Email: {{email}}' },
+          { ar: 'الهاتف: {{phone}}', en: 'Phone: {{phone}}' },
+        ],
+      },
     ],
   },
 };

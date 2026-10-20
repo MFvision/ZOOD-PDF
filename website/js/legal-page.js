@@ -8,10 +8,10 @@ const escape = (s) =>
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
   );
 
-// Fills {{entity}}, {{email}} and {{address}}; anything still in braces is shown as a placeholder.
+// Fills {{entity}}, {{email}} and the rest from CONTACT; anything still in braces is shown as a placeholder.
 function fill(text) {
-  const values = { entity: t(CONTACT.entity), email: CONTACT.email, address: t(CONTACT.address) };
-  const filled = t(text).replace(/\{\{(entity|email|address)\}\}/g, (_, k) => values[k]);
+  const values = Object.fromEntries(Object.entries(CONTACT).map(([k, v]) => [k, t(v)]));
+  const filled = t(text).replace(/\{\{(\w+)\}\}/g, (m, k) => values[k] ?? m);
   return escape(filled).replace(/\{\{(.*?)\}\}/g, '<span class="placeholder">$1</span>');
 }
 

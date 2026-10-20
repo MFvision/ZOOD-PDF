@@ -63,7 +63,7 @@ function shell(lang, slug) {
 }
 
 for (const lang of ['ar', 'en']) {
-  for (const slug of ['', 'privacy', 'terms', 'support']) {
+  for (const slug of ['', 'privacy', 'terms', 'support', 'about']) {
     const dir = ROOT + path(lang, slug).slice(1);
     mkdirSync(dir, { recursive: true });
     writeFileSync(`${dir}index.html`, shell(lang, slug));
