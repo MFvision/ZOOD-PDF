@@ -108,7 +108,7 @@ export function ringScene(t, escape) {
       <svg class="rs-tick" x="132" y="104" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${ICONS.check}</svg>
     </g></svg></div>
     <div class="rs-key" dir="ltr">Ctrl</div>
-    <div class="rs-pointer"><svg viewBox="0 0 24 24"><path d="M5 2.5 19 13l-6.2 1.2L9.4 20.5Z" fill="#fff" stroke="#041e42" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+    <div class="rs-pointer"><svg viewBox="0 0 24 24"><path d="M5 2.5 19 13l-6.2 1.2L9.4 20.5Z" fill="#fdfcfa" stroke="#041e42" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
   </div>`;
 }
 

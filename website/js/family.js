@@ -33,7 +33,7 @@ const spark =
   '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.6 4.6 2.9 6.9 7.5 7.5-4.6.6-6.9 2.9-7.5 7.5-.6-4.6-2.9-6.9-7.5-7.5 4.6-.6 6.9-2.9 7.5-7.5Z"/></svg>';
 // The pen: a slim barrel with a bronze tip, drawn pointing down-left.
 const pen =
-  '<svg viewBox="0 0 20 120" aria-hidden="true"><defs><linearGradient id="fam-pen" x1="0" x2="1"><stop offset="0" stop-color="#e9e4de"/><stop offset=".55" stop-color="#ffffff"/><stop offset="1" stop-color="#cfc8c0"/></linearGradient></defs><path d="M4 8a6 6 0 0 1 12 0v92H4Z" fill="url(#fam-pen)"/><path d="M4 100h12l-6 18Z" fill="#d6c6b8"/><path d="M8.6 114h2.8L10 118.5Z" fill="#977756"/></svg>';
+  '<svg viewBox="0 0 20 120" aria-hidden="true"><defs><linearGradient id="fam-pen" x1="0" x2="1"><stop offset="0" stop-color="#e9e4de"/><stop offset=".55" stop-color="#fdfcfa"/><stop offset="1" stop-color="#cfc8c0"/></linearGradient></defs><path d="M4 8a6 6 0 0 1 12 0v92H4Z" fill="url(#fam-pen)"/><path d="M4 100h12l-6 18Z" fill="#d6c6b8"/><path d="M8.6 114h2.8L10 118.5Z" fill="#977756"/></svg>';
 
 export function familyScene(t, escape, media, frames) {
   const shot = (device, name, clip) => {
