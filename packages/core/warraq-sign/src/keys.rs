@@ -240,9 +240,10 @@ impl SigAlg {
                     ]
                     .concat(),
                 );
-                let salt = der::asn1::Int::new(&(salt as u32).to_be_bytes())
-                    .and_then(|i| i.to_der())
-                    .map_err(crate::cms_err)?;
+                // DER's minimal INTEGER (`02 01 20` for 32): `Int::new` keeps the
+                // four bytes it is given, leading zeros and all, which OpenSSL
+                // refuses as "illegal padding".
+                let salt = (salt as u32).to_der().map_err(crate::cms_err)?;
                 let params = wrap(
                     0x30,
                     &[wrap(0xa0, &hash_id), wrap(0xa1, &mgf), wrap(0xa2, &salt)].concat(),

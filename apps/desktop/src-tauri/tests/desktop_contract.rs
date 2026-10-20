@@ -236,15 +236,14 @@ fn the_bundle_is_built_for_the_desktop_host() {
     }
 }
 
-/// The app's name is محرر PDF in every build. WiX (the MSI builder) writes the
-/// installer in a Windows code page that has no Arabic, so Windows builds make
-/// only the NSIS installer, which is Unicode throughout.
+/// The app is ZOOD PDF in every build (محرر زود PDF in the Arabic interface).
+/// Windows builds make only the NSIS installer, which is Unicode throughout.
 #[test]
-fn the_arabic_name_is_bundled_where_it_can_be_written() {
+fn the_product_name_is_zood_pdf() {
     let config = json("tauri.conf.json");
-    assert_eq!(config["productName"], "محرر PDF");
+    assert_eq!(config["productName"], "ZOOD PDF");
     assert_eq!(config["mainBinaryName"], "warraq-desktop");
-    assert_eq!(config["app"]["windows"][0]["title"], "محرر PDF");
+    assert_eq!(config["app"]["windows"][0]["title"], "ZOOD PDF");
     let windows = json("tauri.windows.conf.json");
     assert_eq!(windows["bundle"]["targets"], serde_json::json!(["nsis"]));
 }
@@ -329,4 +328,127 @@ fn the_index_is_written_where_the_persons_data_lives() {
                 .is_some_and(|before| !before.contains("temp_dir()")),
         "nothing outside the tests may put the index in a temporary folder"
     );
+}
+
+/// The recent list opens a file again only through these commands; a missing
+/// one makes the home screen fall back, silently, to asking for the file.
+#[test]
+fn the_recent_commands_the_home_screen_invokes_are_registered() {
+    let lib = std::fs::read_to_string(manifest().join("src/lib.rs")).expect("lib.rs");
+    let host = repo_file("packages/ui/src/core/host-tauri.ts");
+    for command in ["recent_remember", "recent_path", "recent_forget"] {
+        assert!(
+            lib.contains(&format!("recent::{command}")),
+            "{command} is not registered in the invoke handler"
+        );
+        assert!(
+            host.contains(&format!("'{command}'")),
+            "host-tauri.ts no longer invokes {command}; the Rust side would be dead code"
+        );
+    }
+    assert!(
+        host.contains(&format!(
+            "OPEN_FILE_EVENT = '{}'",
+            warraq_desktop_lib::OPEN_FILE_EVENT
+        )),
+        "host-tauri.ts listens for a different OPEN_FILE_EVENT than lib.rs sends: a PDF \
+         double-clicked while the app runs would bring the window forward and open nothing"
+    );
+}
+
+/// Windows: a .pdf is associated with the app, under the file class whose
+/// icon the installer hook replaces with the document icon it installs.
+#[test]
+fn windows_gives_pdf_files_the_document_icon() {
+    let windows = json("tauri.windows.conf.json");
+    let bundle = &windows["bundle"];
+    let association = &bundle["fileAssociations"][0];
+    assert_eq!(association["ext"], serde_json::json!(["pdf"]));
+    let class = association["name"].as_str().expect("file class name");
+
+    // The Windows file replaces the resources list as a whole: PDFium's
+    // notices must stay in it beside the icon.
+    let resources: Vec<&str> = bundle["resources"]
+        .as_array()
+        .expect("resources")
+        .iter()
+        .filter_map(|r| r.as_str())
+        .collect();
+    for needed in [
+        "resources/pdfium/LICENSE",
+        "resources/windows/pdf-document.ico",
+    ] {
+        assert!(
+            resources.contains(&needed),
+            "tauri.windows.conf.json no longer bundles {needed}"
+        );
+    }
+    assert!(manifest()
+        .join("resources/windows/pdf-document.ico")
+        .is_file());
+
+    let hooks_path = bundle["windows"]["nsis"]["installerHooks"]
+        .as_str()
+        .expect("installerHooks");
+    let hooks = std::fs::read_to_string(manifest().join(hooks_path)).expect("hooks.nsh");
+    assert!(
+        hooks.contains(&format!(
+            "Software\\Classes\\{class}\\DefaultIcon\" \"\" \"$INSTDIR\\resources\\windows\\pdf-document.ico\""
+        )),
+        "the installer hook must set {class}'s icon to the installed document icon"
+    );
+}
+
+/// Updates (docs/updates.md): the apps read the stable channel only, never the
+/// test builds' releases, and install only what the project's key signed. The
+/// update files are made by the release workflow alone, so a test build never
+/// needs the private key.
+#[test]
+fn updates_come_signed_from_the_stable_channel() {
+    let config = json("tauri.conf.json");
+    let updater = &config["plugins"]["updater"];
+    assert_eq!(
+        updater["endpoints"],
+        serde_json::json!([
+            "https://github.com/MFvision/ZOOD-PDF/releases/download/updates-stable/latest.json"
+        ]),
+        "the updater must read the stable channel, which only the release workflow changes"
+    );
+    assert!(
+        updater["pubkey"]
+            .as_str()
+            .is_some_and(|key| key.len() > 100),
+        "the updater has no public key: it would refuse every update"
+    );
+    assert!(
+        config["bundle"]["createUpdaterArtifacts"].is_null(),
+        "update files belong to desktop-release.yml; here every test build would need the key"
+    );
+
+    let lib = std::fs::read_to_string(manifest().join("src/lib.rs")).expect("lib.rs");
+    let ui = repo_file("packages/ui/src/updates/updates.ts");
+    for command in ["update_check", "update_install"] {
+        assert!(
+            lib.contains(&format!("updates::{command}")),
+            "{command} is not registered in the invoke handler"
+        );
+        assert!(
+            ui.contains(&format!("'{command}'")),
+            "updates.ts no longer invokes {command}"
+        );
+    }
+    assert!(
+        ui.contains(&format!(
+            "'{}'",
+            warraq_desktop_lib::updates::PROGRESS_EVENT
+        )),
+        "updates.ts listens for a different progress event than updates.rs sends"
+    );
+    let workflow = repo_file(".github/workflows/desktop-release.yml");
+    for platform in ["windows-x86_64", "darwin-aarch64"] {
+        assert!(
+            workflow.contains(platform),
+            "desktop-release.yml no longer writes the {platform} update"
+        );
+    }
 }

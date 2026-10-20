@@ -1,0 +1,73 @@
+# Releases a tried version to everyone (docs/updates.md).
+#
+# Step 2 of 2. Actions → "desktop release (2. release to users)" → Run
+# workflow, with a version step 1 (desktop-release.yml) built. It copies that
+# release's latest.json to the stable channel, the `updates-stable` release
+# the apps read, and marks the release as the latest. Every installed app
+# offers the update on its next launch.
+#
+# Or push a tag stable-v<version> (git tag stable-v0.2.0 && git push origin
+# stable-v0.2.0), for a branch the Run workflow button does not list yet.
+#
+# To take a bad version back, release a higher one: an app only ever moves
+# to a newer version.
+name: desktop release (2. release to users)
+
+on:
+  push:
+    tags: ['stable-v*']
+    # The same from a branch release/stable-v<version>, for tools that can
+    # make a branch but not a tag.
+    branches: ['release/stable-v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The tried version to release, like 0.2.0'
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-update-channel
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: put on the stable channel
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      VERSION: ${{ inputs.version || github.ref_name }}
+    steps:
+      - name: fetch the release's latest.json
+        run: |
+          set -eu
+          VERSION="${VERSION#release/}"; VERSION="${VERSION#stable-v}"
+          export VERSION
+          gh release download "desktop-v$VERSION" --pattern latest.json --dir .
+          node -e '
+            const latest = require("./latest.json");
+            if (latest.version !== process.env.VERSION) throw new Error(`latest.json says ${latest.version}, not ${process.env.VERSION}`);
+            for (const p of ["windows-x86_64", "darwin-aarch64"]) {
+              if (!latest.platforms?.[p]?.signature || !latest.platforms[p].url) throw new Error(`latest.json has no signed ${p} update`);
+            }
+            console.log(JSON.stringify(latest, null, 2));
+          '
+
+      # The channel is a pre-release so that it never shows as the latest
+      # download; its latest.json is what tauri.conf.json's updater endpoint names.
+      - name: update the stable channel
+        run: |
+          set -eu
+          if ! gh release view updates-stable >/dev/null 2>&1; then
+            gh release create updates-stable --prerelease --title "Update channel (stable)" \
+              --notes "The apps read latest.json here to find updates. Do not delete this release; change it only with the \"desktop release (2. release to users)\" workflow."
+          fi
+          gh release upload updates-stable latest.json --clobber
+
+      - name: mark the release as released
+        run: |
+          VERSION="${VERSION#release/}"; VERSION="${VERSION#stable-v}"
+          gh release edit "desktop-v$VERSION" --prerelease=false --latest --title "ZOOD PDF $VERSION"

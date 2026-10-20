@@ -225,9 +225,9 @@ fn an_arabic_document_reads_back_as_typed_in_reading_order() {
         "the number reads before the item"
     );
 
-    // What the file says about itself: made by محرر PDF, in Arabic.
+    // What the file says about itself: made by ZOOD PDF.
     let info = Document::open(pdf.clone(), None).unwrap().metadata();
-    assert_eq!(info.producer.as_deref(), Some("محرر PDF"));
+    assert_eq!(info.producer.as_deref(), Some("ZOOD PDF"));
     assert_eq!(info.title.as_deref(), Some("تقرير"));
     let raw = String::from_utf8_lossy(&pdf);
     assert!(raw.contains("/Lang"));
@@ -723,6 +723,33 @@ fn a_created_arabic_table_is_found_again_with_its_merged_cell() {
     assert_eq!(rows[2][1]["text"], "المجموع");
     assert_eq!(rows[2][1]["columns"], 2);
     assert!(rows[2][2].is_null());
+}
+
+#[test]
+fn export_lines_cut_a_table_row_into_its_cells() {
+    let (pdf, _) = document(
+        json!([
+            { "type": "table", "headerRows": 1, "rows": [
+                [{ "text": "الصنف" }, { "text": "الكمية" }, { "text": "السعر" }],
+                [{ "text": "ورق" }, { "text": "١٢" }, { "text": "3.50" }],
+            ] },
+        ]),
+        vec![],
+    );
+    let mut doc = Document::open(pdf, None).unwrap();
+    let reply = doc.call("export.lines", r#"{"page":0}"#, vec![]).unwrap();
+    let v = value(&reply);
+    let texts: Vec<&str> = v["lines"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["text"].as_str().unwrap().trim())
+        .collect();
+    // Each cell its own piece, with a box of its own: none is a whole row.
+    for cell in ["الصنف", "الكمية", "السعر", "ورق", "3.50"] {
+        assert!(texts.contains(&cell), "{cell} in {texts:?}");
+    }
+    assert!(v["lines"][0]["width"].as_f64().unwrap() > 0.0);
 }
 
 #[test]

@@ -1,0 +1,422 @@
+/*
+ * The looks over the light/dark appearance (Settings → Theme). Liquid Glass
+ * is tokens.css as it is; each look here re-points the same semantic tokens,
+ * so no component knows which look is on. The selectors repeat :root to
+ * outrank tokens.css's own blocks, the system accent's among them.
+ *
+ * Zood: ZOOD's navy, beige paper and bronze (apps/ios/PDFEditor/Design/Brand.swift).
+ * Workbench: flat, neutral grey, hairlines and one blue
+ * (docs/research/pdfcraft-theme.md, Part 2 · Tokens).
+ */
+
+:root:root[data-look="zood"] {
+  --accent: #73563a;
+  --accent-contrast: #fff;
+  --window-background: #f5f1ed;
+  --toolbar-background: rgb(245 241 237 / 90%);
+  --sidebar-background: rgb(230 221 212 / 82%);
+  --content-background: #fbf9f7;
+  --under-page-background: #e1d6cb;
+  --grouped-background: #fbf9f7;
+  --elevated-background: rgb(251 249 247 / 92%);
+  --control-background: #fdfcfa;
+  --control-border: rgb(4 30 66 / 16%);
+  --glass: rgb(251 249 247 / 78%);
+  --glass-edge: rgb(255 255 255 / 70%);
+  --label: #041e42;
+  --secondary-label: rgb(4 30 66 / 68%);
+  --tertiary-label: rgb(4 30 66 / 38%);
+  --quaternary-label: rgb(4 30 66 / 12%);
+  --separator: rgb(151 119 86 / 28%);
+  --opaque-separator: #d6c6b8;
+  --fill: rgb(151 119 86 / 16%);
+  --secondary-fill: rgb(151 119 86 / 11%);
+  --tertiary-fill: rgb(151 119 86 / 8%);
+  --quaternary-fill: rgb(151 119 86 / 5%);
+  --home-gradient:
+    radial-gradient(55% 50% at 12% 8%, rgb(167 198 237 / 35%), transparent 70%),
+    radial-gradient(50% 50% at 85% 90%, rgb(201 162 124 / 30%), transparent 70%),
+    linear-gradient(165deg, #e6ddd4 0%, #f5f1ed 55%, #e1d6cb 100%);
+  --glass-panel: rgb(245 241 237 / 72%);
+  --glass-card: rgb(251 249 247 / 82%);
+  --glass-border: rgb(151 119 86 / 26%);
+  --glass-hover: rgb(255 255 255 / 90%);
+  --shadow-small: 0 1px 3px rgb(4 30 66 / 10%), 0 0 0 0.5px rgb(151 119 86 / 18%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:root[data-look="zood"]:not([data-theme="light"]) {
+    --accent: #ae8b66;
+    --accent-contrast: #041e42;
+    --window-background: #11294b;
+    --toolbar-background: rgb(17 41 75 / 90%);
+    --sidebar-background: rgb(4 30 66 / 84%);
+    --content-background: #041e42;
+    --under-page-background: #021631;
+    --grouped-background: #11294b;
+    --elevated-background: rgb(17 41 75 / 94%);
+    --control-background: rgb(245 241 237 / 10%);
+    --control-border: rgb(174 139 102 / 32%);
+    --glass: rgb(17 41 75 / 72%);
+    --glass-edge: rgb(174 139 102 / 22%);
+    --label: #f5f1ed;
+    --secondary-label: rgb(245 241 237 / 68%);
+    --tertiary-label: rgb(245 241 237 / 36%);
+    --quaternary-label: rgb(245 241 237 / 14%);
+    --separator: rgb(174 139 102 / 26%);
+    --opaque-separator: #2a405e;
+    --fill: rgb(245 241 237 / 14%);
+    --secondary-fill: rgb(245 241 237 / 10%);
+    --tertiary-fill: rgb(245 241 237 / 7%);
+    --quaternary-fill: rgb(245 241 237 / 4%);
+    --home-gradient:
+      radial-gradient(55% 50% at 12% 8%, rgb(167 198 237 / 16%), transparent 70%),
+      radial-gradient(50% 50% at 85% 90%, rgb(174 139 102 / 18%), transparent 70%),
+      linear-gradient(165deg, #11294b 0%, #041e42 55%, #021631 100%);
+    --glass-panel: rgb(17 41 75 / 62%);
+    --glass-card: rgb(42 64 94 / 62%);
+    --glass-border: rgb(174 139 102 / 26%);
+    --glass-hover: rgb(42 64 94 / 86%);
+    --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(174 139 102 / 20%);
+  }
+}
+
+:root:root[data-look="zood"][data-theme="dark"] {
+  --accent: #ae8b66;
+  --accent-contrast: #041e42;
+  --window-background: #11294b;
+  --toolbar-background: rgb(17 41 75 / 90%);
+  --sidebar-background: rgb(4 30 66 / 84%);
+  --content-background: #041e42;
+  --under-page-background: #021631;
+  --grouped-background: #11294b;
+  --elevated-background: rgb(17 41 75 / 94%);
+  --control-background: rgb(245 241 237 / 10%);
+  --control-border: rgb(174 139 102 / 32%);
+  --glass: rgb(17 41 75 / 72%);
+  --glass-edge: rgb(174 139 102 / 22%);
+  --label: #f5f1ed;
+  --secondary-label: rgb(245 241 237 / 68%);
+  --tertiary-label: rgb(245 241 237 / 36%);
+  --quaternary-label: rgb(245 241 237 / 14%);
+  --separator: rgb(174 139 102 / 26%);
+  --opaque-separator: #2a405e;
+  --fill: rgb(245 241 237 / 14%);
+  --secondary-fill: rgb(245 241 237 / 10%);
+  --tertiary-fill: rgb(245 241 237 / 7%);
+  --quaternary-fill: rgb(245 241 237 / 4%);
+  --home-gradient:
+    radial-gradient(55% 50% at 12% 8%, rgb(167 198 237 / 16%), transparent 70%),
+    radial-gradient(50% 50% at 85% 90%, rgb(174 139 102 / 18%), transparent 70%),
+    linear-gradient(165deg, #11294b 0%, #041e42 55%, #021631 100%);
+  --glass-panel: rgb(17 41 75 / 62%);
+  --glass-card: rgb(42 64 94 / 62%);
+  --glass-border: rgb(174 139 102 / 26%);
+  --glass-hover: rgb(42 64 94 / 86%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(174 139 102 / 20%);
+}
+
+:root:root[data-look="workbench"] {
+  --radius-8: 6px;
+  --radius-10: 8px;
+  --radius-12: 8px;
+  --radius-16: 10px;
+  --blur-thin: none;
+  --blur-regular: none;
+  --blur-thick: none;
+  --accent: #1b63e0;
+  --accent-contrast: #fff;
+  --window-background: #f1f1f3;
+  --toolbar-background: #fbfcfe;
+  --sidebar-background: #fbfcfe;
+  --content-background: #fcfcfe;
+  --under-page-background: #e9e9eb;
+  --grouped-background: #fcfcfe;
+  --elevated-background: #fcfcfe;
+  --control-background: #fdfdfe;
+  --control-border: #dadade;
+  --glass: #fff;
+  --glass-edge: #e8e8eb;
+  --label: #222226;
+  --secondary-label: #5e5e66;
+  --tertiary-label: #9a9aa2;
+  --quaternary-label: #e4e4e9;
+  --separator: #e8e8eb;
+  --opaque-separator: #dadade;
+  --fill: #e4e4e9;
+  --secondary-fill: #ebebef;
+  --tertiary-fill: #f0f0f3;
+  --quaternary-fill: #f5f5f7;
+  --red: #d7373f;
+  --orange: #e68619;
+  --green: #2d9d5b;
+  --home-gradient: linear-gradient(#f1f1f3, #f1f1f3);
+  --glass-panel: #fff;
+  --glass-card: #fff;
+  --glass-border: #e8e8eb;
+  --glass-hover: #f0f0f3;
+  --shadow-control: 0 0 0 1px #dadade;
+  --shadow-small: 0 0 0 1px #e8e8eb;
+  --shadow-popover: 0 4px 16px rgb(0 0 0 / 12%), 0 0 0 1px #e8e8eb;
+  --shadow-sheet: 0 8px 28px rgb(0 0 0 / 15%), 0 0 0 1px #e8e8eb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:root[data-look="workbench"]:not([data-theme="light"]) {
+    --accent: #4b8bf5;
+    --accent-contrast: #fff;
+    --window-background: #19191c;
+    --toolbar-background: #26262a;
+    --sidebar-background: #26262a;
+    --content-background: #26262a;
+    --under-page-background: #1b1b1e;
+    --grouped-background: #2e2e33;
+    --elevated-background: #2e2e33;
+    --control-background: #2e2e33;
+    --control-border: #3c3c43;
+    --glass: #26262a;
+    --glass-edge: #333339;
+    --label: #ececef;
+    --secondary-label: #aeaeb6;
+    --tertiary-label: #6e6e76;
+    --quaternary-label: #3e3e45;
+    --separator: #333339;
+    --opaque-separator: #3c3c43;
+    --fill: #3e3e45;
+    --secondary-fill: #34343a;
+    --tertiary-fill: #2e2e33;
+    --quaternary-fill: #2a2a2e;
+    --home-gradient: linear-gradient(#19191c, #19191c);
+    --glass-panel: #26262a;
+    --glass-card: #2e2e33;
+    --glass-border: #333339;
+    --glass-hover: #34343a;
+    --shadow-control: 0 0 0 1px #3c3c43;
+    --shadow-small: 0 0 0 1px #333339;
+    --shadow-popover: 0 4px 16px rgb(0 0 0 / 35%), 0 0 0 1px #333339;
+    --shadow-sheet: 0 8px 28px rgb(0 0 0 / 43%), 0 0 0 1px #333339;
+  }
+}
+
+:root:root[data-look="workbench"][data-theme="dark"] {
+  --accent: #4b8bf5;
+  --accent-contrast: #fff;
+  --window-background: #19191c;
+  --toolbar-background: #26262a;
+  --sidebar-background: #26262a;
+  --content-background: #26262a;
+  --under-page-background: #1b1b1e;
+  --grouped-background: #2e2e33;
+  --elevated-background: #2e2e33;
+  --control-background: #2e2e33;
+  --control-border: #3c3c43;
+  --glass: #26262a;
+  --glass-edge: #333339;
+  --label: #ececef;
+  --secondary-label: #aeaeb6;
+  --tertiary-label: #6e6e76;
+  --quaternary-label: #3e3e45;
+  --separator: #333339;
+  --opaque-separator: #3c3c43;
+  --fill: #3e3e45;
+  --secondary-fill: #34343a;
+  --tertiary-fill: #2e2e33;
+  --quaternary-fill: #2a2a2e;
+  --home-gradient: linear-gradient(#19191c, #19191c);
+  --glass-panel: #26262a;
+  --glass-card: #2e2e33;
+  --glass-border: #333339;
+  --glass-hover: #34343a;
+  --shadow-control: 0 0 0 1px #3c3c43;
+  --shadow-small: 0 0 0 1px #333339;
+  --shadow-popover: 0 4px 16px rgb(0 0 0 / 35%), 0 0 0 1px #333339;
+  --shadow-sheet: 0 8px 28px rgb(0 0 0 / 43%), 0 0 0 1px #333339;
+}
+
+/*
+ * Concept: the owner's concept image (an original rendering of it, no
+ * photograph): a landscape-coloured gradient — sky blue, lilac, a touch of
+ * green below — under frosted panels with a white edge, white cards, and a
+ * deep-indigo frosted sidebar. Structure in looks/concept.css.
+ */
+:root:root[data-look="concept"] {
+  --accent: #3b6ff5;
+  --accent-contrast: #fff;
+  --window-background: #e9ecf8;
+  --toolbar-background: rgb(255 255 255 / 55%);
+  --sidebar-background: rgb(255 255 255 / 42%);
+  --under-page-background: rgb(226 230 246 / 70%);
+  --elevated-background: rgb(250 251 255 / 88%);
+  --glass: rgb(255 255 255 / 62%);
+  --glass-edge: rgb(255 255 255 / 85%);
+  --label: #161a33;
+  --secondary-label: rgb(22 26 51 / 62%);
+  --tertiary-label: rgb(22 26 51 / 36%);
+  --home-gradient:
+    radial-gradient(70% 60% at 8% 0%, rgb(118 160 255 / 70%), transparent 70%),
+    radial-gradient(55% 55% at 92% 10%, rgb(196 168 255 / 62%), transparent 72%),
+    radial-gradient(60% 45% at 30% 100%, rgb(140 205 170 / 55%), transparent 70%),
+    radial-gradient(45% 40% at 100% 85%, rgb(170 190 255 / 50%), transparent 70%),
+    linear-gradient(170deg, #cfdcff 0%, #e4e2fb 45%, #e3efe9 100%);
+  --glass-panel: rgb(255 255 255 / 40%);
+  --glass-card: rgb(255 255 255 / 86%);
+  --glass-border: rgb(255 255 255 / 72%);
+  --glass-hover: rgb(255 255 255 / 95%);
+  --blur-regular: blur(24px) saturate(160%);
+  --radius-16: 16px;
+  --shadow-small: 0 1px 2px rgb(40 50 120 / 6%), 0 8px 24px rgb(40 50 120 / 10%);
+  --concept-rail: linear-gradient(180deg, rgb(54 62 128 / 58%), rgb(38 50 98 / 66%));
+  --concept-rail-label: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:root[data-look="concept"]:not([data-theme="light"]) {
+    --accent: #6b93ff;
+    --window-background: #12152a;
+    --toolbar-background: rgb(30 34 62 / 60%);
+    --sidebar-background: rgb(30 34 62 / 50%);
+    --under-page-background: rgb(18 21 42 / 70%);
+    --elevated-background: rgb(34 38 70 / 90%);
+    --glass: rgb(40 44 80 / 62%);
+    --glass-edge: rgb(255 255 255 / 14%);
+    --label: #eef0ff;
+    --secondary-label: rgb(238 240 255 / 62%);
+    --tertiary-label: rgb(238 240 255 / 36%);
+    --home-gradient:
+      radial-gradient(70% 60% at 8% 0%, rgb(60 90 200 / 55%), transparent 70%),
+      radial-gradient(55% 55% at 92% 10%, rgb(120 80 200 / 45%), transparent 72%),
+      radial-gradient(60% 45% at 30% 100%, rgb(40 110 90 / 45%), transparent 70%),
+      linear-gradient(170deg, #1a2048 0%, #1d1838 50%, #10221f 100%);
+    --glass-panel: rgb(30 34 66 / 46%);
+    --glass-card: rgb(44 48 86 / 72%);
+    --glass-border: rgb(255 255 255 / 12%);
+    --glass-hover: rgb(56 60 100 / 80%);
+    --concept-rail: linear-gradient(180deg, rgb(16 20 46 / 62%), rgb(10 14 34 / 70%));
+  }
+}
+
+:root:root[data-look="concept"][data-theme="dark"] {
+  --accent: #6b93ff;
+  --window-background: #12152a;
+  --toolbar-background: rgb(30 34 62 / 60%);
+  --sidebar-background: rgb(30 34 62 / 50%);
+  --under-page-background: rgb(18 21 42 / 70%);
+  --elevated-background: rgb(34 38 70 / 90%);
+  --glass: rgb(40 44 80 / 62%);
+  --glass-edge: rgb(255 255 255 / 14%);
+  --label: #eef0ff;
+  --secondary-label: rgb(238 240 255 / 62%);
+  --tertiary-label: rgb(238 240 255 / 36%);
+  --home-gradient:
+    radial-gradient(70% 60% at 8% 0%, rgb(60 90 200 / 55%), transparent 70%),
+    radial-gradient(55% 55% at 92% 10%, rgb(120 80 200 / 45%), transparent 72%),
+    radial-gradient(60% 45% at 30% 100%, rgb(40 110 90 / 45%), transparent 70%),
+    linear-gradient(170deg, #1a2048 0%, #1d1838 50%, #10221f 100%);
+  --glass-panel: rgb(30 34 66 / 46%);
+  --glass-card: rgb(44 48 86 / 72%);
+  --glass-border: rgb(255 255 255 / 12%);
+  --glass-hover: rgb(56 60 100 / 80%);
+  --concept-rail: linear-gradient(180deg, rgb(16 20 46 / 62%), rgb(10 14 34 / 70%));
+}
+
+/*
+ * Monochrome: greys only, black or white text, one neutral accent; every
+ * icon a plain line (looks/mono.css takes their tiles away).
+ */
+:root:root[data-look="mono"] {
+  --accent: #2c2c2e;
+  --accent-contrast: #fff;
+  --accent-soft: rgb(0 0 0 / 8%);
+  --selection: rgb(0 0 0 / 14%);
+  --window-background: #f4f4f4;
+  --toolbar-background: #f7f7f7;
+  --sidebar-background: #efefef;
+  --content-background: #fbfbfb;
+  --under-page-background: #e4e4e4;
+  --grouped-background: #fbfbfb;
+  --elevated-background: #fbfbfb;
+  --control-background: #fdfdfd;
+  --control-border: rgb(0 0 0 / 16%);
+  --glass: #fbfbfb;
+  --glass-edge: rgb(0 0 0 / 8%);
+  --label: #111;
+  --secondary-label: #5c5c5c;
+  --tertiary-label: #9a9a9a;
+  --red: #3a3a3a;
+  --orange: #4a4a4a;
+  --green: #3a3a3a;
+  --destructive: #111;
+  --focus: #111;
+  --home-gradient: linear-gradient(#f4f4f4, #f4f4f4);
+  --glass-panel: #f9f9f9;
+  --glass-card: #fff;
+  --glass-border: rgb(0 0 0 / 9%);
+  --glass-hover: #f0f0f0;
+  --blur-thin: none;
+  --blur-regular: none;
+  --blur-thick: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:root[data-look="mono"]:not([data-theme="light"]) {
+    --accent: #e8e8e8;
+    --accent-contrast: #111;
+    --accent-soft: rgb(255 255 255 / 10%);
+    --selection: rgb(255 255 255 / 18%);
+    --window-background: #161616;
+    --toolbar-background: #1c1c1c;
+    --sidebar-background: #1a1a1a;
+    --content-background: #121212;
+    --under-page-background: #0e0e0e;
+    --grouped-background: #1e1e1e;
+    --elevated-background: #222;
+    --control-background: #262626;
+    --control-border: rgb(255 255 255 / 16%);
+    --glass: #1e1e1e;
+    --glass-edge: rgb(255 255 255 / 8%);
+    --label: #f2f2f2;
+    --secondary-label: #a8a8a8;
+    --tertiary-label: #6c6c6c;
+    --red: #cfcfcf;
+    --orange: #bdbdbd;
+    --green: #cfcfcf;
+    --destructive: #f2f2f2;
+    --focus: #f2f2f2;
+    --home-gradient: linear-gradient(#161616, #161616);
+    --glass-panel: #1b1b1b;
+    --glass-card: #222;
+    --glass-border: rgb(255 255 255 / 8%);
+    --glass-hover: #2a2a2a;
+  }
+}
+
+:root:root[data-look="mono"][data-theme="dark"] {
+  --accent: #e8e8e8;
+  --accent-contrast: #111;
+  --accent-soft: rgb(255 255 255 / 10%);
+  --selection: rgb(255 255 255 / 18%);
+  --window-background: #161616;
+  --toolbar-background: #1c1c1c;
+  --sidebar-background: #1a1a1a;
+  --content-background: #121212;
+  --under-page-background: #0e0e0e;
+  --grouped-background: #1e1e1e;
+  --elevated-background: #222;
+  --control-background: #262626;
+  --control-border: rgb(255 255 255 / 16%);
+  --glass: #1e1e1e;
+  --glass-edge: rgb(255 255 255 / 8%);
+  --label: #f2f2f2;
+  --secondary-label: #a8a8a8;
+  --tertiary-label: #6c6c6c;
+  --red: #cfcfcf;
+  --orange: #bdbdbd;
+  --green: #cfcfcf;
+  --destructive: #f2f2f2;
+  --focus: #f2f2f2;
+  --home-gradient: linear-gradient(#161616, #161616);
+  --glass-panel: #1b1b1b;
+  --glass-card: #222;
+  --glass-border: rgb(255 255 255 / 8%);
+  --glass-hover: #2a2a2a;
+}

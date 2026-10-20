@@ -1,10 +1,16 @@
 import { useCloud } from '../cloud/CloudContext';
 import { isTauriHost } from '../core/host-tauri';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
-import type { ThemeMode } from '../state/preferences';
+import { LOOK_IDS } from '../state/preferences';
+import type { ThemeMode, UiLook } from '../state/preferences';
+import { updateSettings, useSettings } from '../state/settings';
+import type { PageLayout } from '../state/settings';
 import { closeBar, openBar, readAloudState, useReadAloud } from '../speech/readAloud';
 import { useT } from '../i18n/useT';
 import { TOOLS } from '../tools/tools';
+import { remoteAvailable } from '../remote/host';
+import { openRemoteSheet } from '../remote/store';
+import { startPresenting } from '../remote/useRemoteController';
 import { useMarkupBar } from './markupBar';
 import { SHEET_QUERY } from './sheetDrag';
 import { undoTyping, useTyping } from './typing';
@@ -19,6 +25,8 @@ export interface MenuItemModel {
    * as the platform writes it; the macOS menu bar turns it into an accelerator.
    */
   keys?: string;
+  /** The keys before the person changed them in Settings, when they did. */
+  defaultKeys?: string;
   /** `keys` as this platform writes it: "⇧⌘Z", "Ctrl+Shift+Z". */
   shortcut?: string;
   disabled?: boolean;
@@ -99,6 +107,8 @@ function undoOrRedo(which: 'undo' | 'redo', document: () => void): void {
   if (!undoTyping(which)) document();
 }
 
+const PAGE_LAYOUTS: readonly PageLayout[] = ['continuous', 'single', 'two', 'book'];
+
 const withShortcut = (item: MenuItemModel): MenuItemModel =>
   item.keys ? { ...item, shortcut: formatShortcut(item.keys) } : item;
 
@@ -130,6 +140,7 @@ export function useMenuModel(): MenuModel[] {
   // A narrow window shows the inspector as a sheet only for a chosen tool
   // (panes.css): with none, "Tools pane" would change a check and show nothing.
   const noSheet = useInspectorHidden();
+  const settings = useSettings();
 
   const themeItem = (theme: ThemeMode, label: string): MenuItemModel => ({
     id: `theme-${theme}`,
@@ -137,6 +148,13 @@ export function useMenuModel(): MenuModel[] {
     role: 'menuitemradio',
     checked: state.theme === theme,
     onSelect: () => dispatch({ type: 'SET_THEME', theme }),
+  });
+  const lookItem = (look: UiLook): MenuItemModel => ({
+    id: `look-${look}`,
+    label: `${t('look.label')}: ${t(`look.${look}`)}`,
+    role: 'menuitemradio',
+    checked: state.look === look,
+    onSelect: () => dispatch({ type: 'SET_LOOK', look }),
   });
   const menus: MenuModel[] = [
     {
@@ -172,6 +190,12 @@ export function useMenuModel(): MenuModel[] {
           disabled: !hasDocument,
           ...(cloud.providers.length > 0 ? { separatorBefore: true } : {}),
           onSelect: () => void services.saveDocument(),
+        },
+        {
+          id: 'versions',
+          label: t('versions.menu'),
+          disabled: !hasDocument || settings.versions === 0,
+          onSelect: () => dispatch({ type: 'DIALOG', dialog: 'versions' }),
         },
         ...cloud.providers.map((provider) => ({
           id: `cloud-save-${provider}`,
@@ -275,27 +299,55 @@ export function useMenuModel(): MenuModel[] {
           disabled: !hasDocument || organizing,
           onSelect: () => (readAloudState().open ? closeBar() : openBar()),
         },
+        ...PAGE_LAYOUTS.map((layout, index) => ({
+          id: `layout-${layout}`,
+          label: `${t('prefs.pageLayout')}: ${t(`prefs.layout.${layout}`)}`,
+          role: 'menuitemradio' as const,
+          checked: settings.pageLayout === layout,
+          disabled: organizing,
+          separatorBefore: index === 0,
+          onSelect: () => updateSettings({ pageLayout: layout }),
+        })),
         { ...themeItem('system', `${t('theme.label')}: ${t('theme.system')}`), separatorBefore: true },
         themeItem('light', `${t('theme.label')}: ${t('theme.light')}`),
         themeItem('dark', `${t('theme.label')}: ${t('theme.dark')}`),
+        ...LOOK_IDS.map((look, index) => (index === 0 ? { ...lookItem(look), separatorBefore: true } : lookItem(look))),
       ],
     },
     {
       id: 'tools',
       label: t('menu.tools'),
-      items: TOOLS.map((tool) => ({
-        id: `tool-${tool.id}`,
-        label: t(tool.labelKey),
-        role: 'menuitemradio' as const,
-        checked: state.rightPane.activeTool === tool.id,
-        onSelect: () => dispatch({ type: 'SET_ACTIVE_TOOL', tool: tool.id }),
-      })),
+      items: [
+        ...TOOLS.map((tool) => ({
+          id: `tool-${tool.id}`,
+          label: t(tool.labelKey),
+          role: 'menuitemradio' as const,
+          checked: state.rightPane.activeTool === tool.id,
+          onSelect: () => dispatch({ type: 'SET_ACTIVE_TOOL', tool: tool.id }),
+        })),
+        {
+          id: 'present',
+          label: t('present.start'),
+          disabled: state.document === null,
+          separatorBefore: true,
+          onSelect: () => startPresenting(state.currentPage),
+        },
+        // The phone remote: the desktop only (a browser cannot be reached from a phone).
+        ...(remoteAvailable() ? [{ id: 'phone-remote', label: t('remote.menu'), onSelect: openRemoteSheet }] : []),
+      ],
     },
     {
       id: 'help',
       label: t('menu.help'),
-      items: [{ id: 'shortcuts', label: t('help.shortcuts'), onSelect: () => dispatch({ type: 'DIALOG', dialog: 'shortcuts' }) }],
+      items: [
+        { id: 'tour', label: t('help.tour'), onSelect: () => dispatch({ type: 'DIALOG', dialog: 'tour' }) },
+        { id: 'shortcuts', label: t('help.shortcuts'), onSelect: () => dispatch({ type: 'DIALOG', dialog: 'shortcuts' }) },
+      ],
     },
   ];
-  return menus.map((menu) => ({ ...menu, items: menu.items.map(withShortcut) }));
+  // Keys the person chose in Settings › Keyboard take the place of the defaults.
+  const chosen = settings.shortcuts;
+  const rebound = (item: MenuItemModel): MenuItemModel =>
+    item.id in chosen ? { ...item, defaultKeys: item.keys, keys: chosen[item.id] } : { ...item, defaultKeys: item.keys };
+  return menus.map((menu) => ({ ...menu, items: menu.items.map(rebound).map(withShortcut) }));
 }

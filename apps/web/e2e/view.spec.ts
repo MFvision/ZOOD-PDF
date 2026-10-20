@@ -91,9 +91,9 @@ test.describe('the menus act on the page on screen', () => {
     await chooseTool(page, 'Comment');
     await useAction(page, 'Draw');
     const box = await pageBox(page);
-    await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.85);
+    await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.55);
     await page.mouse.down();
-    await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.9, { steps: 15 });
+    await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.6, { steps: 15 });
     await page.mouse.up();
     await expect.poll(() => annotationTypes(page)).toContain(15);
 
@@ -132,8 +132,30 @@ test.describe('the menus act on the page on screen', () => {
       );
     for (const theme of ['Dark', 'Light', 'System']) {
       await menu(page, 'View').click();
-      await page.getByRole('menuitemradio', { name: `Theme: ${theme}` }).click();
+      await page.getByRole('menuitemradio', { name: `Appearance: ${theme}` }).click();
       await expect.poll(preference).toBe(theme.toLowerCase());
     }
+  });
+
+  test('Settings and the View menu change the theme, and it is kept', async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    const look = () => page.evaluate(() => document.documentElement.dataset.look ?? 'glass');
+    const accent = () => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    // Once the app is listening for its keys.
+    await expect(async () => {
+      await page.keyboard.press('Control+,');
+      await expect(settings).toBeVisible({ timeout: 1000 });
+    }).toPass();
+    await settings.getByRole('navigation').getByRole('button', { name: 'Appearance', exact: true }).click();
+    await settings.getByRole('radiogroup', { name: 'Look' }).getByRole('radio', { name: /^Zood/ }).click();
+    await expect.poll(look).toBe('zood');
+    await expect.poll(accent).toBe('#73563a');
+    await page.keyboard.press('Escape');
+    await menu(page, 'View').click();
+    await page.getByRole('menuitemradio', { name: 'Look: Workbench' }).click();
+    await expect.poll(accent).toBe('#1b63e0');
+    await page.reload();
+    await expect.poll(look).toBe('workbench');
   });
 });

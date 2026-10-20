@@ -4,7 +4,9 @@ import type { CoreStatus, DocumentMetadata, PageSize } from '../core/types';
 import { applyEdit, EMPTY_EDIT_STACK } from '../edit/editStack';
 import type { EditEntry, EditStack } from '../edit/editStack';
 import type { ToolId } from '../tools/tools';
-import type { LeftTab, Preferences, ThemeMode } from './preferences';
+import type { LeftTab, Preferences, ThemeMode, UiLook } from './preferences';
+import { getSettings } from './settings';
+import { defaultLook } from './preferences';
 import { clampZoom, nextZoomStep, previousZoomStep } from './zoom';
 import { NO_SELECTION, clampSelection, select, selectAll } from '../organize/selection';
 import type { SelectHow, Selection } from '../organize/selection';
@@ -58,6 +60,11 @@ export interface OrganizeState {
 
 export interface AppState {
   view: 'home' | 'viewer';
+  /**
+   * The home screen shown over the open documents, which stay open behind it
+   * (the Workbench look's Home tab). Any document opening or closing ends it.
+   */
+  homeShown: boolean;
   document: DocumentInfo | null;
   loadingName: string | null;
   error: TKey | null;
@@ -67,10 +74,11 @@ export interface AppState {
   zoom: number;
   zoomMode: ZoomMode;
   theme: ThemeMode;
+  look: UiLook;
   leftPane: { open: boolean; width: number; tab: LeftTab };
   rightPane: { open: boolean; width: number; activeTool: ToolId | null };
   find: { open: boolean; query: string; matches: number[]; cursor: number; searched: boolean };
-  dialog: 'goto' | 'shortcuts' | 'about' | 'settings' | null;
+  dialog: 'goto' | 'shortcuts' | 'about' | 'settings' | 'tour' | 'versions' | null;
   /** A file that needs a password to open; `wrong` after a failed attempt. */
   passwordPrompt: { name: string; wrong: boolean } | null;
   /** Consumed by the viewer; the nonce makes repeated requests distinct. */
@@ -119,6 +127,8 @@ export type AppAction =
   | { type: 'SET_ZOOM_MODE'; mode: ZoomMode }
   | { type: 'FIT_ZOOM_COMPUTED'; zoom: number }
   | { type: 'SET_THEME'; theme: ThemeMode }
+  | { type: 'SET_LOOK'; look: UiLook }
+  | { type: 'SHOW_HOME'; shown: boolean }
   | { type: 'TOGGLE_LEFT_PANE'; open?: boolean }
   | { type: 'SET_LEFT_TAB'; tab: LeftTab }
   | { type: 'SET_LEFT_WIDTH'; width: number }
@@ -208,6 +218,7 @@ function bumpRevision(
 export function createInitialState(prefs: Preferences = {}): AppState {
   return {
     view: 'home',
+    homeShown: false,
     document: null,
     loadingName: null,
     error: null,
@@ -216,6 +227,7 @@ export function createInitialState(prefs: Preferences = {}): AppState {
     zoom: 1,
     zoomMode: 'fit-width',
     theme: prefs.theme ?? 'system',
+    look: prefs.look ?? defaultLook(),
     leftPane: {
       open: prefs.leftPaneOpen ?? true,
       width: clampPaneWidth(prefs.leftPaneWidth ?? DEFAULT_LEFT_WIDTH),
@@ -290,7 +302,14 @@ function reduce(state: AppState, action: AppAction): AppState {
     case 'DOCUMENT_OPENED':
       return {
         ...state,
+        // From the home screen, the panels open as Settings › Viewing says;
+        // between documents they stay as the person left them.
+        ...(state.view !== 'viewer' && {
+          leftPane: { ...state.leftPane, open: getSettings().pagePanel },
+          rightPane: { ...state.rightPane, open: getSettings().toolsPanel },
+        }),
         view: 'viewer',
+        homeShown: false,
         document: action.document,
         loadingName: null,
         error: null,
@@ -315,6 +334,7 @@ function reduce(state: AppState, action: AppAction): AppState {
         ...state,
         switching: null,
         view: 'home',
+        homeShown: false,
         document: null,
         currentPage: 1,
         scrollRequest: null,
@@ -345,6 +365,11 @@ function reduce(state: AppState, action: AppAction): AppState {
       return Math.abs(state.zoom - action.zoom) < 0.0005 ? state : { ...state, zoom: action.zoom };
     case 'SET_THEME':
       return { ...state, theme: action.theme };
+    case 'SET_LOOK':
+      // Only the Workbench look has a Home tab to come back from.
+      return { ...state, look: action.look, homeShown: action.look === 'workbench' && state.homeShown };
+    case 'SHOW_HOME':
+      return { ...state, homeShown: action.shown && state.view === 'viewer' };
     case 'TOGGLE_LEFT_PANE':
       return {
         ...state,
@@ -365,6 +390,8 @@ function reduce(state: AppState, action: AppAction): AppState {
       // Picking the Edit tool is what "enter Edit mode" means; leaving it exits.
       return {
         ...state,
+        // A tool works on the document: chosen from the home screen over it, it goes back to it.
+        homeShown: action.tool ? false : state.homeShown,
         rightPane: {
           ...state.rightPane,
           activeTool: action.tool,

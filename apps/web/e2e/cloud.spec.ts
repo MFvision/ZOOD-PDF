@@ -141,7 +141,7 @@ test('a build with no drive configured shows no cloud control and allows no driv
   await expect(page.getByRole('heading', { name: 'Cloud drives' })).toHaveCount(0);
   await expect(page.getByText('OneDrive')).toHaveCount(0);
   await page.getByRole('menubar').getByRole('menuitem', { name: 'File', exact: true }).click();
-  await expect(page.getByRole('menu', { name: 'File' }).getByRole('menuitem')).toHaveText([/^Open…/, /^Save/, /^Print…/, /^Close document/]);
+  await expect(page.getByRole('menu', { name: 'File' }).getByRole('menuitem')).toHaveText([/^Open…/, /^Save/, /^Versions…/, /^Print…/, /^Close document/]);
   const policy = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
   expect(policy).not.toMatch(/microsoft|1drv|sharepoint|googleapis/);
 });
@@ -166,7 +166,8 @@ test.describe('OneDrive in the browser', () => {
     await oneDriveRow(page).getByRole('button', { name: 'Open from OneDrive…' }).click();
     await signIn(page);
     // The code was redeemed with the verifier, from the app's own origin, with no secret.
-    expect(fake.tokenRequests).toHaveLength(1);
+    // The page redeems it after the popup has closed, so this waits for it.
+    await expect.poll(() => fake.tokenRequests.length).toBe(1);
     expect(fake.tokenRequests[0]).toMatchObject({ grant_type: 'authorization_code', client_id: MS_CLIENT_ID, redirect_uri: `${CLOUD}/oauth-callback.html` });
     expect(fake.tokenRequests[0]).not.toHaveProperty('client_secret');
 

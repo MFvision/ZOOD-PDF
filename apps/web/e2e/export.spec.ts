@@ -14,8 +14,13 @@ const panel = (page: Page) => page.locator('.pane-end');
 
 /** Chooses a format (and a resolution), clicks Export, and returns the file the person gets. */
 async function exportAs(page: Page, format: string, dpi?: string): Promise<{ name: string; bytes: Uint8Array }> {
-  await panel(page).getByRole('radio', { name: format }).check();
+  // Word as flowing text is Word with its second choice.
+  const flowing = format === 'Word (.docx), text only';
+  await panel(page).getByRole('radio', { name: flowing ? 'Word (.docx)' : format }).check();
   if (dpi) await panel(page).getByRole('combobox', { name: 'Resolution' }).selectOption({ label: dpi });
+  if (format.startsWith('Word')) {
+    await panel(page).getByRole('combobox', { name: 'Word' }).selectOption({ label: flowing ? 'Text only, flowing' : 'Keep the layout' });
+  }
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     panel(page).getByRole('button', { name: 'Export', exact: true }).click(),
@@ -109,7 +114,7 @@ test.describe('Export saves the document in other formats, Arabic in reading ord
     await page.goto('/');
     await openPdf(page, WORD_EXPORT);
     await chooseTool(page, 'Export');
-    await expect(panel(page).getByText('Flowing paragraphs, right to left where the text is Arabic')).toBeVisible();
+    await expect(panel(page).getByText('Each page as it looks')).toBeVisible();
 
     // Plain text: UTF-8 with a byte-order mark, each page marked, in reading order.
     const txt = await exportAs(page, 'Plain text (.txt)');
@@ -167,6 +172,31 @@ test.describe('Export saves the document in other formats, Arabic in reading ord
     const greeting = page.locator('p', { hasText: GREETING });
     await expect(greeting).toBeVisible();
     expect(await greeting.evaluate((node) => getComputedStyle(node).direction)).toBe('rtl');
+  });
+
+  test('Word keeping the layout: the page picture behind text boxes in their own face, size and colour', async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    await openPdf(page, corpus('generated/chrome-cairo-mixed-invoice.pdf'));
+    await chooseTool(page, 'Export');
+    const docx = await exportAs(page, 'Word (.docx)');
+    const parts = unzipSync(docx.bytes);
+    for (const [name, data] of Object.entries(parts)) {
+      if (name.endsWith('.xml') || name.endsWith('.rels')) expect(await wellFormed(page, strFromU8(data)), name).toBe(true);
+    }
+    // The table's rules are in the page's picture, behind the text.
+    const picture = parts['word/media/page1.png']!;
+    expect([...picture.subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+    const xml = strFromU8(parts['word/document.xml']!);
+    expect(xml).toContain('behindDoc="1"');
+    // A text box per paragraph, and per table cell: each where it was.
+    const boxes = xml.match(/<wps:wsp>/g) ?? [];
+    expect(boxes.length).toBeGreaterThan(15);
+    expect(xml).toContain('w:ascii="Cairo"');
+    expect(xml).toMatch(/<w:bidi\/>.*?<w:t xml:space="preserve">فاتورة ضريبية مبسطة<\/w:t>/);
+    // The header row's cells are boxes of their own, not one line across the table.
+    for (const cell of ['الوصف', 'الكمية', 'السعر', 'الإجمالي']) expect(xml).toContain(`<w:t xml:space="preserve">${cell}</w:t>`);
+    // The page is the PDF's own size.
+    expect(xml).toContain('<w:pgSz w:w="11899" w:h="16838"/>');
   });
 
   test('a long document shows its progress, and the button waits for it', async ({ page, stayLocal: _ }) => {
@@ -232,7 +262,8 @@ test.describe('Export saves the document in other formats, Arabic in reading ord
     expect(readPng((await exportAs(page, 'Page images (.png)', '72 dpi')).bytes).red).toBe(0);
     await chooseTool(page, 'Comment');
     await useAction(page, 'Draw');
-    await drag(page, [0.1, 0.9], [0.9, 0.95]);
+    // Below the text, in the part of the page the window shows.
+    await drag(page, [0.1, 0.55], [0.9, 0.6]);
     // The ink tool turns the stroke into a drawing 800 ms after it ends.
     await expect.poll(() => annotationTypes(page), { message: 'the stroke became a drawing' }).toContain(15);
     await chooseTool(page, 'Export');

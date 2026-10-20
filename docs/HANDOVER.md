@@ -1,4 +1,4 @@
-# Hand-over — where things stand (2026-10-18)
+# Hand-over — where things stand (2026-10-19)
 
 Written at the end of a very long first conversation so the next one can start fresh. Keep
 this file current at the end of every job.
@@ -7,9 +7,9 @@ this file current at the end of every job.
 
 | Platform | Latest build | What is in it |
 |---|---|---|
-| Windows | Release `windows-20261011-1538` (commit `d4b22e1`): https://github.com/MFvision/ZOOD-PDF/releases/download/windows-20261011-1538/ZOOD-PDF-Setup.exe | Everything below; the core and desktop tests pass on Windows |
-| macOS | Installed in /Applications from `d4b22e1` | Same as Windows |
-| iPhone / iPad | TestFlight build `202610052355` | Editor with columns, kept colour and Automatic font (own font, else closest bundled face); not the desktop's AI chat |
+| Windows | Release `windows-20261019-1013` (PR #2, commit `58acfff`): https://github.com/MFvision/ZOOD-PDF/releases/download/windows-20261019-1013/ZOOD-PDF-Setup.exe | Everything below plus the Windows pilot, quick tools, tabs, tour, themes and the layout-keeping Word export; the core and desktop tests pass on Windows |
+| macOS | Installed in /Applications from PR #2 (2026-10-19) | Same as Windows; the ring with Option/Command not yet tried by hand on the Mac |
+| iPhone / iPad | TestFlight build `202610191832` | Editor with columns, kept colour and Automatic font; Word export keeps the layout (`DocxLayout.swift`, as `docxLayout.ts`), with "Word, text only" beside it; not the desktop's AI chat. Built before `pages.resize` reached the core (no iOS screen uses it) |
 | Web | Builds from `main` | Same as desktop, minus installed fonts |
 
 Since `d4b22e1`, `main` only gained documents (this file, `CLAUDE.md`, the backlog, the
@@ -25,6 +25,14 @@ one-time question → D closest bundled; B and C on desktop/web only); the AI as
 chat with whole-document Analyze (desktop/web).
 
 ## Waiting on the owner
+- **Mac signing (agreed for 2026-10-21)**: the desktop-v0.2.0 dmg is ad-hoc signed and its
+  signature is incomplete ("code has no resources"), so other Macs will call it damaged. He
+  creates a *Developer ID Application* certificate in Xcode (Settings → Apple Accounts → team
+  AWV883QWPU → Manage Certificates); this Mac has only Apple Development and Apple
+  Distribution. Then: sign with hardened runtime, notarize (`notarytool`), staple, rebuild the
+  dmg, replace the release asset. On 2026-10-20 his Mac had the iPad TestFlight app ("محرر PDF
+  2", app.warraq.ios) beside the desktop app — he mistook it for the Mac app; 0.2.0 is now
+  installed as /Applications/ZOOD PDF.app.
 1. In App Store Connect → TestFlight, assign build `202610052355` to himself, or create an
    internal group with automatic distribution so later builds arrive on their own.
 2. Re-test on the latest Windows build: the AI chat and column editing (`docs/backlog/`
@@ -33,20 +41,98 @@ chat with whole-document Analyze (desktop/web).
    an app.
 4. For Google Drive / OneDrive: his developer client IDs, when he wants that job.
 
-## The next job (agreed, not started)
-**A priced pilot**: item 3 of `docs/research/pdfcraft-comparison.md` — Windows basics:
-a document icon for `.pdf` files (a page carrying our mark, registered in the Tauri bundle's
-file association), recent files reopening directly by path instead of asking to locate them,
-and a second double-click going to the window already open. These are the owner's own
-backlog items 2 and 4. One agent, desktop only, no simulators. **Note the weekly usage %
-before and after** (`get_usage`; it was 23% of the week on 2026-10-18) so the rest of the
-list can be priced from a real number.
+## The Windows pilot (done 2026-10-18, PR #2, draft until the owner approves)
+PDFs get a document icon (`ZoodPDF.Document`, set by `src-tauri/windows/hooks.nsh`; shown once
+the app is Windows' default for PDFs), recent and starred files reopen by path
+(`src-tauri/src/recent.rs`), and a second launch hands its PDF to the open window
+(`tauri-plugin-single-instance`). The same PR fixed CI that was red on `app` before it: the
+corpus runner's passwords, a clippy 1.99 lint, the RSA-PSS salt's DER encoding (OpenSSL
+refused it), the Windows core_bridge test (hayro there by design), the Settings dialog's first
+focus and the read-aloud highlight (EmbedPDF 2.x counts pages from zero).
+Weekly usage: 23% before; the after figure could not be read from a cloud session (no
+`get_usage` there) — read it in the Claude app.
 
-Then, as he chooses, from the study's top ten (sizes there are PdfCraft's formula and run
+## Added to PR #2 on 2026-10-19 (the owner asked for it all in one PR)
+- **Quick tools without opening the app** (idea from Filee, no code taken): right-click files
+  in Explorer (`src-tauri/src/shell_menu.rs`, HKCU keys, written at every start in the UI's
+  language) or Finder (a Services entry, `Info.plist` + `shell_menu.rs`) → a small window
+  (`packages/ui/src/quick/`) that compresses, converts to Word/pictures, OCRs, combines,
+  rotates, extracts, protects or makes a PDF from pictures/Office files, saving beside the
+  original. **Ctrl/Shift (Option/Command) + drag** files out of Explorer/Finder shows a ring of tools at the
+  pointer (`src-tauri/src/ring.rs`, a low-level mouse hook on Windows, drag-pasteboard polling on
+  macOS); an optional background mode starts at sign-in and waits in the tray.
+- **Document tabs** (`state/tabs.ts`, `shell/TabBar.tsx`): parked tabs keep their file,
+  page and unsaved changes; Organize's page drag (now pointer events, since the Windows
+  webview keeps HTML drag-and-drop for Explorer files) drops pages onto a tab (copied to its
+  end) or onto + (a new document).
+- **Welcome tour** (`tour/Tour.tsx`): opens once on the desktop app's first run, again from
+  Help → Welcome tour and Settings → Quick tools → Show me how.
+- **AI**: the providers are renamed (Built into the app (recommended) / Ollama or LM Studio);
+  the owner's Windows error was the Ollama choice with no Ollama installed. The error now says
+  so and offers a button to switch to the built-in model.
+- **Read aloud** on a page with no text offers OCR, then reads (web/desktop). On iPhone it
+  reads the page's picture with Vision without changing the file — **written, not built or
+  tested** (no Mac in that session).
+- **Bold**: a bold paragraph redrawn in a face with no bold is drawn with an outline in its
+  own colour (`ops::replace_paragraph`, `synthetic_bold`; test `warraq-core/tests/edit_bold.rs`).
+- **Not tested on real Windows or a Mac**: the right-click menu, the ring, background mode and
+  the tray. They compile for both and their logic has unit tests.
+
+## The owner's test of that build (2026-10-19) and what changed
+- **The ring did not open** for him (he tried Ctrl, Command and Shift). It now accepts Ctrl
+  or Shift on Windows and Option or Command on a Mac, and the window is made a few seconds
+  after start so the first drag finds it ready. On a Mac it no longer uses an NSEvent monitor
+  (other apps' drags don't reach one); it polls the mouse button, the keys and the system's
+  drag pasteboard every 30 ms, and opens for a drag of files from any app. Both platforms
+  write `ring.log` (64 KB at most, no file names) in the app's data folder, saying what the
+  watcher saw. The Windows workflow tries the ring for real (`scripts/ci/ring-check.ps1`:
+  Ctrl+drag a file out of Explorer by synthetic input) and puts its log and a mid-drag
+  screenshot on `ci-logs` (`ring-check/`); on `58acfff` the log said "ring shown" and the
+  screenshot shows the ring over Explorer (the step itself still reported failure after
+  that, cause not found; trust the log and screenshot). The Mac side compiles (checked standalone for
+  x86_64-apple-darwin) but was **not run on a Mac**.
+- **AI suggestion chips could not scroll**: they now wrap onto more lines (`ai/chat/chat.css`).
+- **Themes**: Settings → Theme and View → Theme now choose Liquid Glass, Zood or Workbench on
+  desktop and web (`styles/looks.css`, `html[data-look]`); the old light/dark choice is now
+  labelled Appearance.
+- **PDF → Word lost everything but the words**: Word export now keeps each page as it looks
+  (`export/docxLayout.ts`): the page's pictures and drawing behind the text, each line as a
+  text box in its own font, size, weight and colour, table cells as separate boxes (core op
+  `export.lines`). "Text only, flowing" keeps the old export. Checked in LibreOffice, **not in
+  Microsoft Word**.
+
+## Quick tools, second round (2026-10-19 evening, the owner's rules)
+The owner's rules (team memory `quick-tools-ux`): **no confirm pop-ups**. A tool that needs
+nothing more runs the moment it is picked, and a window opens only for a password, pages, a paper
+size or a mark's text, **with a live preview of the pages**.
+- `quick/plan.ts`: each tool has `mode` (instant / ask / editor) and `ring`.
+  - New tools: excel, powerpoint, text, split, resize, numbers, watermark, sign (opens the editor
+    at Fill & sign: `open_in_editor_at`, `startup_tool`), unlock.
+  - New batch steps `resize` (core `pages.resize`) and `unlock` (`protect.remove`).
+- `quick/runQuick.ts` is the shared runner for both the quick window and the ring.
+- `quick/QuickPreview.tsx` draws thumbnails with the core's `render_page`. They show kept or
+  cut pages, split's files, each page on the new paper, and the watermark text.
+- **The ring runs instant tools itself**, with a progress circle, then a tick or cross
+  (`ring_take`, `ring_done`).
+  - Protected files go to their tool's window, which asks for the password (`ring_pick` with
+    `only`).
+- **Ctrl+Alt+Z (Command+Option+Z)** opens the ring at the pointer on the selection
+  (`tauri-plugin-global-shortcut`):
+  - Windows: Explorer's selection through Shell.Application (PowerShell);
+  - Mac: Finder's selection through osascript, which macOS asks about once
+    (NSAppleEventsUsageDescription).
+- The Windows ring check now expects result files beside the sample, tries the shortcut, and
+  does a plain drag onto the main window as a control (to tell a CI-only drag failure from a
+  ring failure).
+- Queued next, in order: iPhone/iPad home-screen widget (the ring's shortcut). Android: the
+  owner chose "website for now". The website videos and the explainer video belong to the
+  website thread.
+
+## After that
+As he chooses, from the study's top ten (sizes there are PdfCraft's formula and run
 high; our desktop jobs took 1–1.5 h of real time each): large-format printing (A0/A1 at true
-scale, tiling), autosave and crash recovery, command search (Ctrl/⌘+K), measuring, and the
-Workbench theme (`docs/research/pdfcraft-theme.md`, which also brings the theme choice to
-desktop and web).
+scale, tiling), autosave and crash recovery, command search (Ctrl/⌘+K), and measuring. (The Workbench theme and the theme choice on
+desktop and web are done.)
 
 ## Known open problems
 - **iPhone UI tests**: 6 of 55 failing at the last full run, each a test reaching for a
@@ -57,11 +143,10 @@ desktop and web).
   was not completed — Redact's Find, drawn form-field placement and the lock tests still
   fail, cause not established.
 - **Browser e2e on this Mac is flaky** ("Target page … has been closed", a different 1–2 tests
-  per run, each passes alone); `read-aloud.spec.ts` test 1 also fails on older code.
+  per run, each passes alone).
 - **On-device AI quality**: the 0.5B model (the only one in a browser) cannot summarize long
   documents; the 1.5B gets the gist but degrades on long Arabic summaries and rarely cites.
   Options offered to the owner: a larger on-device model, or his own Claude key.
-- Bold paragraphs that fall back to a bundled face come back regular (no bold bundled).
 - Convert failed for the owner once on Windows — not reproduced (ask which file and format).
 
 ## Housekeeping

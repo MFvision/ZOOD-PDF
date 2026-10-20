@@ -35,6 +35,12 @@ function internals(): TauriInternals | null {
   return found && typeof found.invoke === 'function' ? found : null;
 }
 
+/** This window's label in the desktop app ("main", "doc-2"…); null in a browser. */
+export function currentWindowLabel(): string | null {
+  const found = (globalThis as { __TAURI_INTERNALS__?: { metadata?: { currentWindow?: { label?: string } } } }).__TAURI_INTERNALS__;
+  return found?.metadata?.currentWindow?.label ?? null;
+}
+
 /** True inside the Tauri webview, false in every browser. */
 export function isTauriHost(): boolean {
   return internals() !== null;
@@ -135,6 +141,26 @@ function toArrayBuffer(body: unknown): ArrayBuffer {
 export interface PickedFile {
   name: string;
   bytes: ArrayBuffer;
+  /** Where it was read from, so the recent list can open it again. */
+  path?: string;
+}
+
+/**
+ * The path each file read from this device came from, by the `File` the
+ * open path is handed: dropped, picked and double-clicked files all become
+ * plain `File`s on the way, and the recent list needs to know where they were.
+ */
+const nativePaths = new WeakMap<File, string>();
+
+/** Notes that `file` was read from `path` (a no-op without one). */
+export function keepNativePath(file: File, path: string | undefined): File {
+  if (path) nativePaths.set(file, path);
+  return file;
+}
+
+/** Where `file` was read from on this device, if it was. */
+export function nativePathOf(file: File): string | undefined {
+  return nativePaths.get(file);
 }
 
 /** Native open panel, then the bytes. `null` when the user cancels. */
@@ -143,7 +169,7 @@ export async function pickPdfFile(): Promise<PickedFile | null> {
     options: { multiple: false, directory: false, filters: PDF_FILTER },
   });
   if (typeof picked !== 'string') return null;
-  return { name: baseName(picked), bytes: toArrayBuffer(await readFile(picked)) };
+  return { name: baseName(picked), bytes: toArrayBuffer(await readFile(picked)), path: picked };
 }
 
 /** Any files the native open panel allows through `filters` (none: every file). */
@@ -176,14 +202,217 @@ function readFile(path: string): Promise<unknown> {
 }
 
 /**
- * A PDF named on the command line (`warraq-desktop report.pdf`), claimed once
- * at boot. `null` in a browser and whenever there is nothing waiting.
+ * A PDF named on the command line (`warraq-desktop report.pdf`, which is how
+ * Explorer opens a double-clicked PDF), claimed once — at boot, and again
+ * each time `onOpenFileRequest` fires. `null` in a browser and whenever
+ * there is nothing waiting.
  */
 export async function takeStartupFile(): Promise<PickedFile | null> {
   if (!internals()) return null;
   const path = await invoke('startup_file');
   if (typeof path !== 'string') return null;
-  return { name: baseName(path), bytes: toArrayBuffer(await readFile(path)) };
+  return { name: baseName(path), bytes: toArrayBuffer(await readFile(path)), path };
+}
+
+/** The editor tool the waiting file opens at (`fillSign` for a quick "Sign"), claimed once. */
+export async function takeStartupTool(): Promise<string | null> {
+  if (!internals()) return null;
+  const tool = await invoke('startup_tool');
+  return typeof tool === 'string' ? tool : null;
+}
+
+/** Emitted by `apps/desktop/src-tauri/src/lib.rs` when a second launch handed a PDF to this window. */
+export const OPEN_FILE_EVENT = 'warraq://open-file';
+
+/**
+ * Subscribes to PDFs opened from outside while the app runs (another one
+ * double-clicked in Explorer): each time, a file waits for `takeStartupFile`.
+ * A no-op in a browser.
+ */
+export function onOpenFileRequest(handle: () => void): () => void {
+  const host = internals();
+  if (!host) return () => {};
+  return listen(host, OPEN_FILE_EVENT, (() => handle()) as (payload: never) => void);
+}
+
+/* ------------------------------------------------------------ recent files */
+
+/**
+ * Keeps where a recent file was opened from (`src-tauri/src/recent.rs`), so
+ * choosing it on the home screen opens it again directly. The host refuses a
+ * path the person did not choose. Never fails the caller.
+ */
+export function rememberRecentPath(name: string, path: string): void {
+  if (!internals()) return;
+  invoke('recent_remember', { name, path }).catch(() => undefined);
+}
+
+/** Forgets where a recent file was, or every one when `name` is absent. Never fails the caller. */
+export function forgetRecentPath(name?: string): void {
+  if (!internals()) return;
+  invoke('recent_forget', { name: name ?? null }).catch(() => undefined);
+}
+
+/**
+ * The recent file `name`, read again from where it was last opened. `null`
+ * when that is not known or the file is no longer there (moved, renamed,
+ * deleted): the person is then asked for it.
+ */
+export async function openRecentFile(name: string): Promise<PickedFile | null> {
+  if (!internals()) return null;
+  const path = await invoke('recent_path', { name });
+  if (typeof path !== 'string') return null;
+  return { name: baseName(path), bytes: toArrayBuffer(await readFile(path)), path };
+}
+
+/**
+ * The folder a recent file was last opened from, for the Workbench home's
+ * table; `null` in a browser, or when the desktop does not know it.
+ */
+export async function recentFolder(name: string): Promise<string | null> {
+  if (!internals()) return null;
+  const path = await invoke('recent_path', { name }).catch(() => null);
+  if (typeof path !== 'string') return null;
+  const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  return cut > 0 ? path.slice(0, cut) : null;
+}
+
+/* -------------------------------------------------------------- quick tools */
+
+/** What a quick tools window works on (`src-tauri/src/quick.rs`). */
+export interface QuickJob {
+  /** The tool the right-click menu named, or null for the chooser. */
+  tool: string | null;
+  files: { name: string; path: string; size: number }[];
+}
+
+/** True in a quick tools window, which the file manager opened: not the editor. */
+export function isQuickWindow(): boolean {
+  if (!internals()) return false;
+  try {
+    return new URLSearchParams(globalThis.location?.search ?? '').has('quick');
+  } catch {
+    return false;
+  }
+}
+
+/** This quick window's files and tool; null outside one. */
+export async function quickJob(): Promise<QuickJob | null> {
+  if (!internals()) return null;
+  return ((await invoke('quick_job')) as QuickJob | null) ?? null;
+}
+
+/** Closes this quick window (the app ends with it if nothing else is open). */
+export function quickClose(): Promise<void> {
+  return invoke('quick_close').then(() => undefined);
+}
+
+/** Opens a quick tool's result in the editor, or a file at the editor's own tool for one (`sign`). */
+export function quickOpenInEditor(path: string, tool?: string): Promise<void> {
+  return invoke('quick_open_in_editor', { path, tool: tool ?? null }).then(() => undefined);
+}
+
+/**
+ * The file manager's right-click menu for the quick tools
+ * (`src-tauri/src/shell_menu.rs`): `registry` on Windows, where the app
+ * puts it in and takes it out; `service` on macOS, where the system's own
+ * settings do; `none` elsewhere.
+ */
+export interface ShellMenuState {
+  kind: 'registry' | 'service' | 'none';
+  on: boolean;
+}
+
+export async function shellMenuState(): Promise<ShellMenuState> {
+  if (!internals()) return { kind: 'none', on: false };
+  return (await invoke('shell_menu_state')) as ShellMenuState;
+}
+
+/** Puts the menu in, in `lang`, with `tools` in that order (all when empty), or takes it out. */
+export async function setShellMenu(on: boolean, lang: string, tools: readonly string[] = []): Promise<ShellMenuState> {
+  if (!internals()) return { kind: 'none', on: false };
+  return (await invoke('shell_menu_set', { on, lang, tools })) as ShellMenuState;
+}
+
+/* --------------------------------------------------------------------- ring */
+
+/** True in the ring's window (`src-tauri/src/ring.rs`). */
+export function isRingWindow(): boolean {
+  if (!internals()) return false;
+  try {
+    return new URLSearchParams(globalThis.location?.search ?? '').has('ring');
+  } catch {
+    return false;
+  }
+}
+
+export const RING_SHOW_EVENT = 'ring://show';
+export const RING_FILES_EVENT = 'ring://files';
+export const RING_OVER_EVENT = 'ring://over';
+export const RING_DROP_EVENT = 'ring://drop';
+/** The ring opened by its keyboard shortcut, already holding the selected files. */
+export const RING_HOLD_EVENT = 'ring://hold';
+
+/** The tool the files were let go on, or `none`; `only`, of those files, these paths. */
+export function ringPick(tool: string, only?: readonly string[]): Promise<void> {
+  return invoke('ring_pick', { tool, only: only ?? null }).then(() => undefined);
+}
+
+/** The files let go on the ring, for a tool the ring runs itself; they stay held for `ringPick`. */
+export async function ringTake(): Promise<QuickJob['files']> {
+  return ((await invoke('ring_take')) as QuickJob['files'] | null) ?? [];
+}
+
+/** The ring's tool finished: the ring goes. */
+export function ringDone(done: number, failed: number): Promise<void> {
+  return invoke('ring_done', { done, failed }).then(() => undefined);
+}
+
+/** The ring's switches: the ring itself, and keeping the app ready at sign-in. */
+export interface RingSettings {
+  ring: boolean;
+  background: boolean;
+  /** 0.85, 1 or 1.2 (`ring.rs`, SCALES). */
+  scale: number;
+  /** The keyboard shortcut, as Tauri writes one ("CommandOrControl+Alt+Z"). */
+  shortcut: string;
+}
+
+export async function ringSettings(): Promise<RingSettings | null> {
+  if (!internals()) return null;
+  return (await invoke('ring_settings')) as RingSettings;
+}
+
+export async function configureRing(settings: RingSettings): Promise<RingSettings> {
+  return (await invoke('ring_configure', { ring: settings.ring, background: settings.background, scale: settings.scale, shortcut: settings.shortcut })) as RingSettings;
+}
+
+/* ---------------------------------------------------------------- system */
+
+/** The signed-in person's name for the greeting; empty outside the desktop app. */
+export async function systemUserName(): Promise<string> {
+  if (!internals()) return '';
+  return ((await invoke('system_user_name')) as string) ?? '';
+}
+
+/** Opens Windows' Default apps page; false where there is none to open. */
+export async function openDefaultApps(): Promise<boolean> {
+  if (!internals()) return false;
+  return (await invoke('open_default_apps')) as boolean;
+}
+
+/**
+ * Opens a file this run may read in an editor window of its own (Settings ›
+ * Viewing › Open documents in: New windows; `src-tauri/src/doc_window.rs`).
+ */
+export async function openDocumentWindow(path: string): Promise<boolean> {
+  if (!internals()) return false;
+  try {
+    await invoke('open_document_window', { path });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /* --------------------------------------------------------- dropped on the app */
@@ -251,6 +480,7 @@ export function onNativeFileDrop(onFiles: (files: PickedFile[], at: DropPoint | 
       paths.map(async (path) => ({
         name: baseName(path),
         bytes: toArrayBuffer(await readFile(path)),
+        path,
       })),
     )
       .then((files) => {
@@ -449,6 +679,18 @@ export async function writeBatchResult(bytes: Uint8Array, name: string, target: 
   if ('dir' in target) headers['x-warraq-dir'] = encodeURIComponent(target.dir);
   else headers['x-warraq-beside'] = encodeURIComponent(target.beside);
   return (await invoke('batch_write', bytes, { headers })) as string;
+}
+
+/* -------------------------------------------------------------------- share */
+
+/**
+ * Share › Email as an attachment (`src-tauri/src/share.rs`): the file as it
+ * stands is written to the app's own share folder and a new message opens
+ * in the person's mail program with it attached. Nothing is sent by the app.
+ */
+export async function emailAttachment(bytes: Uint8Array, name: string): Promise<void> {
+  const path = (await invoke('share_prepare', bytes, { headers: { 'x-warraq-name': encodeURIComponent(name) } })) as string;
+  await invoke('share_email', { path });
 }
 
 /**

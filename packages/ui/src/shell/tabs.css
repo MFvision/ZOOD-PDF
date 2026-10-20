@@ -1,0 +1,136 @@
+/* The document tabs (TabBar.tsx), under the toolbar. */
+
+.tab-bar {
+  display: flex;
+  flex: none;
+  align-items: flex-end;
+  gap: var(--space-1);
+  min-block-size: 34px;
+  padding-inline: var(--space-3);
+  padding-block-start: var(--space-1);
+  background: var(--toolbar-background);
+  border-block-end: 0.5px solid var(--separator);
+}
+
+.tab-list {
+  display: flex;
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tab {
+  display: flex;
+  flex: 0 1 200px;
+  min-inline-size: 96px;
+  align-items: center;
+  block-size: 30px;
+  border-radius: var(--radius-8) var(--radius-8) 0 0;
+  color: var(--secondary-label);
+  transition: background var(--duration-quick, 120ms) ease;
+}
+
+.tab:hover {
+  background: var(--tertiary-fill);
+}
+
+.tab.is-live {
+  background: var(--window-background);
+  color: var(--label);
+  box-shadow: 0 -0.5px 0 var(--separator), 0.5px 0 0 var(--separator), -0.5px 0 0 var(--separator);
+}
+
+/* Pages dragged from Organize over a tab, or over "+". */
+.tab.is-drop-target,
+.tab-new.is-drop-target {
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+}
+
+.tab-name {
+  display: flex;
+  flex: 1;
+  min-inline-size: 0;
+  align-items: center;
+  gap: var(--space-1);
+  block-size: 100%;
+  padding-inline: var(--space-3) var(--space-1);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: var(--text-footnote);
+  cursor: default;
+}
+
+.tab-name > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-name:focus-visible,
+.tab-close:focus-visible,
+.tab-new:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.tab-edited {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.tab-close,
+.tab-new {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 22px;
+  block-size: 22px;
+  margin-inline-end: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-6);
+  background: none;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.tab-close:hover,
+.tab-new:hover {
+  background: var(--secondary-fill);
+  opacity: 1;
+}
+
+.tab-new {
+  align-self: center;
+  inline-size: 28px;
+  block-size: 28px;
+  color: var(--secondary-label);
+}
+
+/* By touch, every target is 44 points. */
+@media (pointer: coarse) {
+  .tab-bar {
+    min-block-size: 48px;
+  }
+
+  .tab {
+    block-size: 44px;
+  }
+
+  .tab-close,
+  .tab-new {
+    inline-size: 44px;
+    block-size: 44px;
+    margin-inline-end: 0;
+  }
+}
+
+@media print {
+  .tab-bar {
+    display: none;
+  }
+}

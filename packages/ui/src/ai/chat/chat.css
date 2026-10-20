@@ -387,25 +387,21 @@
   margin-block-start: 0;
 }
 
-/* The quick actions: one row that scrolls sideways, so the thread keeps its height. */
+/*
+ * The quick actions, wrapped onto as many rows as they need: a row that
+ * scrolled sideways could not be scrolled with a mouse wheel, and its
+ * last actions were out of reach.
+ */
 .ai-chips {
   display: flex;
   flex: none;
-  gap: var(--space-3);
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
   padding-block: var(--space-4) var(--space-1);
   padding-inline: var(--space-5);
   margin: 0;
-  overflow-x: auto;
   list-style: none;
   border-block-start: 0.5px solid var(--separator);
-  scrollbar-width: none;
-
-  /* The row runs on past the edge: its end fades, to say there is more. */
-  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
-}
-
-.ai-chips:dir(rtl) {
-  mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
 }
 
 .ai-chips li {
@@ -510,4 +506,64 @@
   line-height: var(--leading-body);
   color: var(--secondary-label);
   text-align: center;
+}
+
+/* ---- What the question is about: this document, the open ones, the Library ---- */
+
+.ai-scope {
+  display: flex;
+  flex: none;
+  margin-block-end: var(--space-3);
+}
+
+.ai-scope .segmented-item {
+  flex: 1 1 0;
+  min-inline-size: 0;
+  padding-inline: var(--space-2);
+  font-size: var(--text-footnote);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A citation that names its file as well as its page. */
+.ai-cite.ai-cite-file {
+  max-inline-size: 100%;
+  white-space: nowrap;
+}
+
+.ai-turn-files {
+  display: flex;
+  flex: 1 1 100%;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.ai-turn-files > li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.ai-turn-file {
+  max-inline-size: 100%;
+  overflow: hidden;
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  color: var(--secondary-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-turn-files .ai-turn-pages {
+  flex: 0 1 auto;
+}
+
+.ai-review-files {
+  margin: 0;
+  padding-inline-start: var(--space-5);
 }

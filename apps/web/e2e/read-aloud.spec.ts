@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { INVOICE, WORD_EXPORT, embedPage, enterEditText, openPdf, test } from './helpers';
+import { INVOICE, WORD_EXPORT, corpus, embedPage, enterEditText, openPdf, test } from './helpers';
 
 /**
  * Read aloud, driven from the toolbar, with the browser's speech faked in
@@ -92,6 +92,18 @@ async function readWithWarraq(file: string): Promise<string[]> {
 const squash = (text: string) => text.replace(/\s+/g, ' ').trim();
 
 test.describe('read aloud', () => {
+  test('a scan with no text is offered OCR, and read once its text is found', async ({ page, stayLocal: _ }) => {
+    test.setTimeout(300_000);
+    await installSpeech(page);
+    await page.goto('/');
+    await openPdf(page, corpus('generated/scan-arial-200dpi-bilevel.pdf'));
+    await page.getByRole('toolbar').getByRole('button', { name: 'Read aloud' }).click();
+    await bar(page).getByRole('button', { name: 'This page' }).click();
+    await expect(bar(page)).toContainText('There is no text to read here');
+    await bar(page).getByRole('button', { name: 'Find the text (OCR), then read' }).click();
+    await expect.poll(async () => (await spoken(page)).map((s) => s.text).join(' '), { timeout: 240_000 }).toContain('فاتورة');
+  });
+
   test('reads the page in logical order with the Arabic voice, marks each sentence on the page, pauses, resumes and stops', async ({ page, stayLocal: _ }) => {
     await installSpeech(page);
     await page.goto('/');

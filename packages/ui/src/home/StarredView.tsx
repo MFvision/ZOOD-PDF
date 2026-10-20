@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { FileText, Library, StarOff } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
+import { isTauriHost } from '../core/host-tauri';
 import { useT } from '../i18n/useT';
 import { fileForKey, folderOf } from '../library/sources';
 import { useServices } from '../state/AppContext';
@@ -12,8 +13,8 @@ import type { LibraryIndex } from './useLibraryIndex';
 
 /**
  * Starred: the documents flagged on this device. A recent file opens the
- * way a recent file does (its name is all that is kept, so the file is asked
- * for); a Library document is read from where the Library found it. A star
+ * way a recent file does (directly on the desktop; in a browser its name is
+ * all that is kept, so the file is asked for); a Library document is read from where the Library found it. A star
  * comes off here too.
  */
 export function StarredView({ index }: { index: LibraryIndex }) {
@@ -50,7 +51,7 @@ export function StarredView({ index }: { index: LibraryIndex }) {
   const open = (item: StarredItem) => {
     setProblem(null);
     if (item.source === 'recent') {
-      services.requestOpenFile();
+      services.openRecent(item.name);
       return;
     }
     const key = item.id.slice('library:'.length);
@@ -104,7 +105,7 @@ export function StarredView({ index }: { index: LibraryIndex }) {
           })}
         </ul>
       )}
-      {starred.some((item) => item.source === 'recent') && <p className="home-note">{t('starred.recentNote')}</p>}
+      {starred.some((item) => item.source === 'recent') && <p className="home-note">{t(isTauriHost() ? 'starred.recentNoteDesktop' : 'starred.recentNote')}</p>}
     </section>
   );
 }

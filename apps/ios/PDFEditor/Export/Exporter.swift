@@ -13,6 +13,7 @@ enum Exporter {
     enum Format: String, CaseIterable, Identifiable {
         case pdf
         case word
+        case wordText
         case images
         case text
         case compressed
@@ -35,11 +36,16 @@ enum Exporter {
         return url
     }
 
-    /// Word: the core's paragraphs, `DocxWriter`.
-    static func word(_ model: DocumentModel) async throws -> URL {
+    /// Word: each page as it looks (`DocxLayout`, the default), or the
+    /// core's paragraphs as flowing text (`DocxWriter`).
+    static func word(_ model: DocumentModel, layout: Bool = true) async throws -> URL {
         guard let core = await model.readyEngine() else { throw CoreError.closed }
-        let pages = try await DocxWriter.pages(of: core)
-        let data = DocxWriter.docx(pages: pages, title: model.name)
+        let data: Data
+        if layout {
+            data = DocxLayout.docx(pages: try await DocxLayout.pages(of: core), title: model.name)
+        } else {
+            data = DocxWriter.docx(pages: try await DocxWriter.pages(of: core), title: model.name)
+        }
         let url = try folder().appending(path: "\(model.name).docx")
         try data.write(to: url)
         return url

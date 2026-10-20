@@ -30,7 +30,8 @@ interface HeroCardsProps {
   /** The AI card's question field, which the AI action card puts the caret in. */
   onAi: () => void;
   /** The tools gallery further down, which More scrolls to. */
-  onMore: () => void;
+  /** The More card: all the tools, shown from the card itself. */
+  onMore: (card: HTMLElement) => void;
 }
 
 /**
@@ -43,7 +44,7 @@ export function HeroCards({ onAi, onMore }: HeroCardsProps) {
   const t = useT();
   const dispatch = useAppDispatch();
   const { requestOpenFile, requestCreateFiles } = useServices();
-  const act = (id: string) => {
+  const act = (id: string, from: HTMLElement) => {
     switch (id) {
       case 'open':
         requestOpenFile();
@@ -63,14 +64,14 @@ export function HeroCards({ onAi, onMore }: HeroCardsProps) {
         onAi();
         break;
       default:
-        onMore();
+        onMore(from);
     }
   };
   return (
     <ul className="home-cards" aria-label={t('home.actions')}>
       {CARDS.map((card) => (
         <li key={card.id}>
-          <button type="button" className="home-card glass" aria-label={card.name ? t(card.name) : undefined} onClick={() => act(card.id)}>
+          <button type="button" className="home-card glass" aria-label={card.name ? t(card.name) : undefined} onClick={(event) => act(card.id, event.currentTarget)}>
             <span className="tool-icon tool-icon-large" style={{ '--tool-color': card.color } as CSSProperties} aria-hidden="true">
               <Icon of={card.icon} size={22} />
             </span>

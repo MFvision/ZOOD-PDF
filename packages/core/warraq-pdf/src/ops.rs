@@ -509,6 +509,32 @@ pub struct ParagraphEdit<'a> {
     pub leading: f32,
     pub direction: Direction,
     pub alignment: Alignment,
+    /// Draw the text heavier than `font` is: the paragraph was bold and the
+    /// face it falls back to has no bold, so each letter is also outlined in
+    /// its own colour (`Tr 2`) rather than come back regular.
+    pub synthetic_bold: bool,
+}
+
+/// How thick the outline of synthetic bold is, as a share of the font size.
+const SYNTHETIC_BOLD_STROKE: f32 = 0.035;
+
+/// The fill colour operators as their stroke twins (`rg` → `RG`…), so an
+/// outline is drawn in the same colour as the letters.
+fn as_stroke(fill: &[Operation]) -> Vec<Operation> {
+    fill.iter()
+        .filter_map(|op| {
+            let stroke = match op.operator.as_str() {
+                "g" => "G",
+                "rg" => "RG",
+                "k" => "K",
+                "cs" => "CS",
+                "sc" => "SC",
+                "scn" => "SCN",
+                _ => return None,
+            };
+            Some(Operation::new(stroke, op.operands.clone()))
+        })
+        .collect()
 }
 
 /// Blank every text-showing operator whose pen origin lies inside `rect`
@@ -673,12 +699,23 @@ pub fn replace_paragraph(
     let name = add_font_resource(pdf, page_id, font_id)?;
     let mut ops = reset_state_ops(pdf, page_id);
     ops.push(Operation::new("q", vec![]));
+    if edit.synthetic_bold {
+        ops.extend(as_stroke(&fill));
+        ops.push(Operation::new(
+            "w",
+            vec![Object::Real(font_size * SYNTHETIC_BOLD_STROKE)],
+        ));
+        ops.push(Operation::new("j", vec![Object::Integer(1)]));
+    }
     ops.extend(fill);
     ops.push(Operation::new("BT", vec![]));
     ops.push(Operation::new(
         "Tf",
         vec![Object::Name(name), Object::Real(font_size)],
     ));
+    if edit.synthetic_bold {
+        ops.push(Operation::new("Tr", vec![Object::Integer(2)]));
+    }
     for line in &lines {
         show_line(
             &mut ops,
@@ -805,6 +842,7 @@ mod tests {
             leading: 20.0,
             direction: Direction::Rtl,
             alignment: Alignment::Start,
+            synthetic_bold: false,
         };
         let r = replace_paragraph(&mut d, 0, &edit).unwrap();
         assert!(
@@ -817,6 +855,55 @@ mod tests {
         let content =
             String::from_utf8_lossy(&d2.doc.get_page_content(d2.page_id(0).unwrap())).to_string();
         assert!(content.contains("/FW1 14"), "the reflow font must be used");
+    }
+
+    #[test]
+    fn a_bold_paragraph_in_a_regular_face_is_outlined_in_its_colour() {
+        let mut d =
+            PdfDocument::open(corpus("raw-amiri-cid-identity-tounicode.pdf"), None).unwrap();
+        let edit = ParagraphEdit {
+            rect: (56.0, 700.0, 483.0, 90.0),
+            first_baseline: 775.0,
+            text: "فقرة عريضة",
+            font: AMIRI,
+            font_size: 14.0,
+            leading: 20.0,
+            direction: Direction::Rtl,
+            alignment: Alignment::Start,
+            synthetic_bold: true,
+        };
+        replace_paragraph(&mut d, 0, &edit).unwrap();
+        let bytes = d.save_to_vec().unwrap();
+        let d2 = PdfDocument::open(bytes, None).unwrap();
+        let ops = Content::decode(&d2.doc.get_page_content(d2.page_id(0).unwrap()))
+            .unwrap()
+            .operations;
+        let tr = ops.iter().rposition(|op| op.operator == "Tr").expect("Tr");
+        assert_eq!(ops[tr].operands[0].as_i64().unwrap(), 2);
+        let w = ops.iter().rposition(|op| op.operator == "w").expect("w");
+        assert!((ops[w].operands[0].as_float().unwrap() - 14.0 * 0.035).abs() < 0.01);
+        // The outline takes the letters' colour, whatever operator set it.
+        let fill = ops[..tr]
+            .iter()
+            .rposition(|op| matches!(op.operator.as_str(), "g" | "rg" | "k" | "sc" | "scn"));
+        let stroke = ops[..tr]
+            .iter()
+            .rposition(|op| matches!(op.operator.as_str(), "G" | "RG" | "K" | "SC" | "SCN"));
+        if let (Some(f), Some(s)) = (fill, stroke) {
+            assert_eq!(ops[f].operands, ops[s].operands);
+        }
+    }
+
+    #[test]
+    fn stroke_twins_of_fill_colours() {
+        let fill = vec![
+            Operation::new("rg", vec![1.into(), 0.into(), 0.into()]),
+            Operation::new("cs", vec![Object::Name(b"DeviceGray".to_vec())]),
+            Operation::new("sc", vec![0.5.into()]),
+            Operation::new("gs", vec![Object::Name(b"G0".to_vec())]),
+        ];
+        let names: Vec<String> = as_stroke(&fill).into_iter().map(|op| op.operator).collect();
+        assert_eq!(names, ["RG", "CS", "SC"]);
     }
 
     #[test]

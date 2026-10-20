@@ -8,7 +8,7 @@ import { saveBytes } from '../state/saveFile';
 import { DEFAULT_RESOLUTION, EXPORT_FORMATS, RESOLUTIONS } from './formats';
 import type { ExportFormat } from './formats';
 import { exportCurrentFile } from './runExport';
-import type { SlideMode } from './runExport';
+import type { SlideMode, WordMode } from './runExport';
 import type { SheetMode } from './tables';
 import './export.css';
 
@@ -29,6 +29,7 @@ export function ExportPanel() {
   const [dpi, setDpi] = useState<number>(DEFAULT_RESOLUTION);
   const [sheets, setSheets] = useState<SheetMode>('page');
   const [slides, setSlides] = useState<SlideMode>('picture');
+  const [words, setWords] = useState<WordMode>('layout');
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   // Set when this copy needs a password the app does not have: one set in Protect.
@@ -59,6 +60,7 @@ export function ExportPanel() {
           dpi,
           sheets,
           slides,
+          words,
           name,
           pageLabel: (page) => t('viewer.page', { page }),
           tableLabel: (n) => t('export.tableLabel', { n }),
@@ -140,6 +142,15 @@ export function ExportPanel() {
           <select className="select" value={sheets} disabled={running} onChange={(event) => setSheets(event.target.value as SheetMode)}>
             <option value="page">{t('export.sheetsPage')}</option>
             <option value="table">{t('export.sheetsTable')}</option>
+          </select>
+        </label>
+      )}
+      {format === 'docx' && (
+        <label className="export-resolution">
+          <span>{t('export.words')}</span>
+          <select className="select" value={words} disabled={running} onChange={(event) => setWords(event.target.value as WordMode)}>
+            <option value="layout">{t('export.wordsLayout')}</option>
+            <option value="text">{t('export.wordsText')}</option>
           </select>
         </label>
       )}

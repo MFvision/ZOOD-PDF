@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { DragEvent, KeyboardEvent, MouseEvent } from 'react';
+import type { KeyboardEvent, MouseEvent, PointerEvent as ReactPointerEvent } from 'react';
 import type { RemoteDocument } from '../core/client';
 import type { PageSize } from '../core/types';
 import { useI18n } from '../i18n/useT';
@@ -27,12 +27,11 @@ interface TileProps {
   observer: SharedObserver;
   label: string;
   onPick: (event: MouseEvent, index: number) => void;
-  onDragStart: (event: DragEvent, index: number) => void;
-  onDragOver: (event: DragEvent, index: number) => void;
+  onPress: (event: ReactPointerEvent, index: number) => void;
   onMenu: (event: MouseEvent, index: number) => void;
 }
 
-function PageTile({ document, index, size, selected, focused, revision, dropSide, observer, label, onPick, onDragStart, onDragOver, onMenu }: TileProps) {
+function PageTile({ document, index, size, selected, focused, revision, dropSide, observer, label, onPick, onPress, onMenu }: TileProps) {
   const ref = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [near, setNear] = useState(false);
@@ -59,13 +58,12 @@ function PageTile({ document, index, size, selected, focused, revision, dropSide
       aria-selected={selected}
       aria-label={label}
       tabIndex={focused ? 0 : -1}
-      draggable
       data-page={index + 1}
+      data-index={index}
       className={['organize-tile', selected && 'is-selected', dropSide && `drop-${dropSide}`].filter(Boolean).join(' ')}
       onClick={(event) => onPick(event, index)}
       onContextMenu={(event) => onMenu(event, index)}
-      onDragStart={(event) => onDragStart(event, index)}
-      onDragOver={(event) => onDragOver(event, index)}
+      onPointerDown={(event) => onPress(event, index)}
     >
       <canvas
         ref={canvasRef}
@@ -79,10 +77,16 @@ function PageTile({ document, index, size, selected, focused, revision, dropSide
   );
 }
 
+/** How far, in CSS pixels, a press moves before it is a drag. */
+const DRAG_START = 6;
+
 /**
  * Organize pages, the pages: a grid of every page, to select, drag into a new
- * order, and act on from `OrganizePanel`. Keyboard: arrows move (mirrored
- * right to left), Space toggles, Shift+arrow extends, Cmd/Ctrl+A selects
+ * order — or onto another document's tab, which copies them there
+ * (`shell/TabBar.tsx`) — and act on from `OrganizePanel`. The drag follows
+ * the pointer itself rather than the browser's drag and drop, which the
+ * desktop's webview keeps for files from outside on Windows. Keyboard:
+ * arrows move (mirrored right to left), Space toggles, Shift+arrow extends, Cmd/Ctrl+A selects
  * all, Delete deletes.
  */
 export function OrganizeView() {
@@ -95,6 +99,18 @@ export function OrganizeView() {
   const [focusAt, setFocus] = useState(0);
   const [drop, setDrop] = useState<{ index: number; side: 'before' | 'after' } | null>(null);
   const [menu, setMenu] = useState<PageMenuState | null>(null);
+  // A page drag under way: where it began, and whether it has moved enough to be one.
+  const press = useRef<{ pointer: number; x: number; y: number; index: number; moving: boolean } | null>(null);
+  const [ghost, setGhost] = useState<{ x: number; y: number; count: number } | null>(null);
+  const overTab = useRef<HTMLElement | null>(null);
+  const dropRef = useRef<{ index: number; side: 'before' | 'after' } | null>(null);
+  const draggedRef = useRef(false);
+  const actions = useRef<{ reorder: (target: number) => void; copy: (tab: number | null) => void; pick: () => void; pages: () => number }>({
+    reorder: () => undefined,
+    copy: () => undefined,
+    pick: () => undefined,
+    pages: () => 0,
+  });
   const document = services.document;
   const info = state.document;
   const { selection, revision, busy } = state.organize;
@@ -114,6 +130,67 @@ export function OrganizeView() {
     dispatch({ type: 'ORGANIZE_SELECT', index: request.page - 1, how: 'only' });
   }, [request, dispatch]);
 
+  // The drag itself, on the window: it goes on over the tabs, outside the grid.
+  useEffect(() => {
+    const markTab = (element: HTMLElement | null) => {
+      if (overTab.current === element) return;
+      overTab.current?.classList.remove('is-drop-target');
+      element?.classList.add('is-drop-target');
+      overTab.current = element;
+    };
+    const finish = () => {
+      press.current = null;
+      markTab(null);
+      dropRef.current = null;
+      setDrop(null);
+      setGhost(null);
+    };
+    const onMove = (event: PointerEvent) => {
+      const at = press.current;
+      if (!at || event.pointerId !== at.pointer) return;
+      if (!at.moving) {
+        if (Math.hypot(event.clientX - at.x, event.clientY - at.y) < DRAG_START) return;
+        at.moving = true;
+        actions.current.pick();
+      }
+      event.preventDefault();
+      setGhost({ x: event.clientX, y: event.clientY, count: actions.current.pages() });
+      const under = window.document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
+      markTab(under?.closest<HTMLElement>('[data-tab-drop]') ?? null);
+      const tile = under?.closest<HTMLElement>('.organize-tile');
+      if (tile && gridRef.current?.contains(tile)) {
+        const box = tile.getBoundingClientRect();
+        const firstHalf = dir === 'rtl' ? event.clientX > box.left + box.width / 2 : event.clientX < box.left + box.width / 2;
+        const next = { index: Number(tile.dataset.index), side: firstHalf ? ('before' as const) : ('after' as const) };
+        dropRef.current = next;
+        setDrop(next);
+      } else {
+        dropRef.current = null;
+        setDrop(null);
+      }
+    };
+    const onUp = (event: PointerEvent) => {
+      const at = press.current;
+      if (!at || event.pointerId !== at.pointer) return;
+      if (at.moving) {
+        draggedRef.current = true;
+        const tab = overTab.current?.dataset.tabDrop;
+        const target = dropRef.current;
+        if (tab !== undefined) actions.current.copy(tab === 'new' ? null : Number(tab));
+        else if (target) actions.current.reorder(target.side === 'before' ? target.index : target.index + 1);
+      }
+      finish();
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', finish);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', finish);
+    };
+  }, [dir]);
+
   if (!document || !info) return null;
 
   const pick = (index: number, how: SelectHow) => {
@@ -121,8 +198,14 @@ export function OrganizeView() {
     dispatch({ type: 'ORGANIZE_SELECT', index, how });
   };
 
-  const onPick = (event: MouseEvent, index: number) =>
+  const onPick = (event: MouseEvent, index: number) => {
+    // The click that ends a drag is not a choice.
+    if (draggedRef.current) {
+      draggedRef.current = false;
+      return;
+    }
     pick(index, event.shiftKey ? 'range' : event.metaKey || event.ctrlKey ? 'toggle' : 'only');
+  };
 
   // The page's context menu: a right-click, or the keyboard's menu key
   // (`contextmenu` without a point), on the page — which joins the
@@ -145,29 +228,25 @@ export function OrganizeView() {
     crop?.querySelector<HTMLElement>('button, input')?.focus({ preventScroll: true });
   };
 
-  const reorderTo = (target: number) => {
-    const moving = selection.pages;
-    const order = orderMovingTo(count, moving, target);
-    if (order) void services.organizePages('reorder', { order }, () => positionsAfter(order, moving));
-  };
-
-  const onDragStart = (event: DragEvent, index: number) => {
-    if (!selection.pages.includes(index)) pick(index, 'only');
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', String(index + 1));
-  };
-
-  const onDragOver = (event: DragEvent, index: number) => {
-    event.preventDefault();
-    const box = event.currentTarget.getBoundingClientRect();
-    const firstHalf = dir === 'rtl' ? event.clientX > box.left + box.width / 2 : event.clientX < box.left + box.width / 2;
-    setDrop({ index, side: firstHalf ? 'before' : 'after' });
-  };
-
-  const onDrop = (event: DragEvent) => {
-    event.preventDefault();
-    if (drop && !busy) reorderTo(drop.side === 'before' ? drop.index : drop.index + 1);
-    setDrop(null);
+  // A press on a page: a drag once it moves (mouse and pen; a finger scrolls
+  // the grid). It carries the selection, or this page alone when the page is
+  // not in it, and what to do with them at the end.
+  const onPress = (event: ReactPointerEvent, index: number) => {
+    if (event.button !== 0 || event.pointerType === 'touch' || busy) return;
+    draggedRef.current = false;
+    press.current = { pointer: event.pointerId, x: event.clientX, y: event.clientY, index, moving: false };
+    const moving = selection.pages.includes(index) ? [...selection.pages].sort((a, b) => a - b) : [index];
+    actions.current = {
+      pick: () => {
+        if (!selection.pages.includes(index)) pick(index, 'only');
+      },
+      pages: () => moving.length,
+      reorder: (target) => {
+        const order = orderMovingTo(count, moving, target);
+        if (order) void services.organizePages('reorder', { order }, () => positionsAfter(order, moving));
+      },
+      copy: (tab) => void services.copyPagesToTab(tab, moving),
+    };
   };
 
   /** How many tiles sit in one row, for the up and down arrows. */
@@ -216,10 +295,6 @@ export function OrganizeView() {
       aria-multiselectable="true"
       aria-busy={busy}
       onKeyDown={onKeyDown}
-      onDrop={onDrop}
-      onDragLeave={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDrop(null);
-      }}
     >
       {info.pageSizes.map((size, index) => (
         <PageTile
@@ -234,11 +309,15 @@ export function OrganizeView() {
           observer={observer}
           label={t('viewer.page', { page: index + 1 })}
           onPick={onPick}
-          onDragStart={onDragStart}
-          onDragOver={onDragOver}
+          onPress={onPress}
           onMenu={onMenu}
         />
       ))}
+      {ghost ? (
+        <div className="organize-drag-ghost" style={{ insetInlineStart: 0, left: ghost.x + 14, top: ghost.y + 14 }} aria-hidden="true">
+          {t('tabs.dragPages', { count: ghost.count })}
+        </div>
+      ) : null}
       <PageMenu menu={menu} onClose={() => setMenu(null)} onCrop={cropPage} />
     </div>
   );

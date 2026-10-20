@@ -14,7 +14,8 @@ import { HIDDEN_KINDS } from '../redact/findings';
 import type { HiddenKind } from '../redact/findings';
 import type { PageChoice, PageWhich } from './pages';
 import type { ProtectSpec } from './pdfium';
-import type { CompressStep, ExportStep, HiddenStep, MarksStep, OcrStep, PagesStep, RotateStep, SequenceStep } from './steps';
+import { PAPERS } from './steps';
+import type { CompressStep, ExportStep, HiddenStep, MarksStep, OcrStep, PagesStep, PaperSize, ResizeStep, RotateStep, SequenceStep } from './steps';
 
 /**
  * The controls of one step of a batch, in the inspector's grouped style: a
@@ -152,6 +153,25 @@ function RotateOptions({ value, onChange }: { value: RotateStep; onChange: (valu
           <option value={1}>{t('batch.turn.clockwise')}</option>
           <option value={2}>{t('batch.turn.half')}</option>
           <option value={3}>{t('batch.turn.counter')}</option>
+        </select>
+      </label>
+      <PagesField value={value.pages} onChange={(pages) => onChange({ ...value, pages })} />
+    </>
+  );
+}
+
+function ResizeOptions({ value, onChange }: { value: ResizeStep; onChange: (value: ResizeStep) => void }) {
+  const { t } = useI18n();
+  return (
+    <>
+      <label className="field">
+        <span>{t('batch.paper')}</span>
+        <select className="select" value={value.paper} onChange={(event) => onChange({ ...value, paper: event.target.value as PaperSize })}>
+          {PAPERS.map((paper) => (
+            <option key={paper} value={paper}>
+              {t(`batch.paper.${paper}` as TKey)}
+            </option>
+          ))}
         </select>
       </label>
       <PagesField value={value.pages} onChange={(pages) => onChange({ ...value, pages })} />
@@ -385,7 +405,10 @@ export function StepOptions({ step, onChange }: { step: SequenceStep; onChange: 
       return <ProtectOptions value={step.options as ProtectSpec} onChange={onChange} />;
     case 'export':
       return <ExportOptions value={step.options as ExportStep} onChange={onChange} />;
+    case 'resize':
+      return <ResizeOptions value={step.options as ResizeStep} onChange={onChange} />;
     case 'flatten':
+    case 'unlock':
       return null;
   }
 }

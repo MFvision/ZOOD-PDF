@@ -13,6 +13,16 @@ export interface ExportParagraph {
   fontSize: number | null;
   /** The lines it was drawn on, with their boxes: where PowerPoint puts it. */
   lines?: readonly TextLineData[];
+  /** The face the file names for it, when it names one. */
+  font?: ExportFont;
+}
+
+/** A paragraph's face, as the file names it. */
+export interface ExportFont {
+  family: string;
+  /** 100–900. */
+  weight: number;
+  italic: boolean;
 }
 
 /** Sizes outside this range are the core measuring something odd, not type. */
@@ -196,6 +206,7 @@ export function paragraphsOf(lines: readonly TextLineData[], blocks: readonly Pa
       alignment: block?.alignment ?? 'start',
       fontSize: size !== undefined && size >= BELIEVABLE_SIZE.min && size <= BELIEVABLE_SIZE.max ? size : null,
       lines: group.lines,
+      ...(block?.fontFamily ? { font: { family: block.fontFamily, weight: block.fontWeight ?? 400, italic: block.fontItalic ?? false } } : {}),
     };
   });
 }

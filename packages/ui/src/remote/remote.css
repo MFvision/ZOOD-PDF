@@ -1,0 +1,302 @@
+/* The phone remote's panel, and Present mode (remote/). */
+
+.remote-anchor {
+  display: inline-flex;
+}
+
+.remote-button-connected {
+  color: var(--accent);
+}
+
+.remote-popover {
+  inline-size: 340px;
+  max-inline-size: calc(100vw - 24px);
+}
+
+.remote-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6);
+}
+
+.remote-head {
+  display: flex;
+  gap: var(--space-5);
+  align-items: flex-start;
+}
+
+.remote-head-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 36px;
+  block-size: 36px;
+  border-radius: var(--radius-10);
+  background: var(--secondary-fill);
+  color: var(--secondary-label);
+}
+
+.remote-head-icon.remote-on {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.remote-title {
+  margin: 0;
+  font-size: var(--text-title3);
+  font-weight: 600;
+}
+
+.remote-sub,
+.remote-privacy,
+.remote-hint,
+.remote-timer,
+.remote-switch-body {
+  margin: 0;
+  color: var(--secondary-label);
+  font-size: var(--text-callout);
+  line-height: var(--leading-body);
+}
+
+.remote-features {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.remote-features li {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+}
+
+.remote-features li > svg {
+  flex: none;
+  margin-block-start: 2px;
+  color: var(--accent);
+}
+
+.remote-code {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  align-items: center;
+  text-align: center;
+}
+
+.remote-qr {
+  padding: var(--space-4);
+  border-radius: var(--radius-10);
+  background: #fff;
+  box-shadow: var(--shadow-small);
+  line-height: 0;
+}
+
+.remote-qr svg {
+  inline-size: 200px;
+  block-size: 200px;
+}
+
+.remote-scan {
+  margin: 0;
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+}
+
+.remote-hint code {
+  font-family: var(--font-mono);
+  user-select: all;
+}
+
+.remote-switch {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  padding: var(--space-5);
+  border-radius: var(--radius-10);
+  background: var(--tertiary-fill);
+  cursor: pointer;
+}
+
+.remote-switch > span {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.remote-switch input {
+  flex: none;
+  margin-block-start: 3px;
+  accent-color: var(--accent);
+}
+
+.remote-phones h3 {
+  margin: 0 0 var(--space-2);
+  color: var(--secondary-label);
+  font-size: var(--text-subheadline);
+  font-weight: 600;
+}
+
+.remote-phones ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.remote-phones li {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding-block: var(--space-2);
+}
+
+.remote-phones li > span:first-child {
+  flex: 1;
+}
+
+.remote-dot {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: #34c759;
+}
+
+.remote-error {
+  margin: 0;
+  color: var(--destructive, #c0392b);
+  font-size: var(--text-callout);
+}
+
+.remote-wide {
+  justify-content: center;
+  inline-size: 100%;
+}
+
+/* ---- Present mode ---------------------------------------------------- */
+
+.present {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  background: #000;
+  color: #fff;
+}
+
+.present-stage {
+  display: grid;
+  position: absolute;
+  inset: 0;
+  place-items: center;
+  overflow: hidden;
+}
+
+.present-page {
+  position: relative;
+  transition: transform 160ms ease-out;
+}
+
+.present-canvas,
+.present-ink {
+  display: block;
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+}
+
+.present-laser-glow {
+  fill: rgb(255 59 48 / 35%);
+}
+
+.present-laser-dot {
+  fill: #ff3b30;
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+.present-black {
+  position: absolute;
+  inset: 0;
+  background: #000;
+}
+
+.present-controls {
+  display: flex;
+  position: absolute;
+  inset-block-end: 20px;
+  inset-inline-start: 50%;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  transform: translateX(-50%);
+  transition: opacity 300ms ease;
+  border-radius: 999px;
+  background: rgb(20 20 20 / 72%);
+  backdrop-filter: blur(12px);
+}
+
+[dir="rtl"] .present-controls {
+  transform: translateX(50%);
+}
+
+.present-idle .present-controls {
+  opacity: 0;
+}
+
+.present-idle {
+  cursor: none;
+}
+
+.present-btn {
+  display: grid;
+  place-items: center;
+  inline-size: 34px;
+  block-size: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.present-btn:hover:not(:disabled) {
+  background: rgb(255 255 255 / 14%);
+}
+
+.present-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.present-count {
+  min-inline-size: 96px;
+  font-size: var(--text-callout);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .present-page,
+  .present-controls {
+    transition: none;
+  }
+}
+
+/* The panel as a window: from the home screen and the menu. */
+.remote-dialog {
+  inline-size: 380px;
+  max-inline-size: calc(100vw - 24px);
+}
+
+.remote-dialog .remote-panel {
+  padding: 0;
+}
+
+.home-remote {
+  flex: 0 0 auto;
+}

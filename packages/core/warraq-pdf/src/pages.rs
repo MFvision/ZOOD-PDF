@@ -352,6 +352,124 @@ impl PdfDocument {
         Ok(())
     }
 
+    /// Puts the pages at `indices` on paper of `size` (width, height in
+    /// points, as a portrait sheet): each page's visible part is scaled to
+    /// fit and centred, keeping its proportions, and a landscape page goes on
+    /// the sheet turned landscape. The content is drawn through a new
+    /// transform wrapped around its streams; links and other annotations
+    /// move with it. As an update of this file.
+    pub fn resize_pages(&mut self, indices: &[usize], size: (f32, f32)) -> Result<()> {
+        let (short, long) = (size.0.min(size.1), size.0.max(size.1));
+        if !(MIN_CROPPED..=14_400.0).contains(&short) || long > 14_400.0 {
+            return Err(Error::Edit(format!(
+                "a page of {} by {} points cannot be made",
+                size.0, size.1
+            )));
+        }
+        let mut plans = Vec::new();
+        for index in self.page_set(indices)? {
+            let id = self.page_id(index)?;
+            let dict = self.doc.get_dictionary(id).map_err(parse)?;
+            let media = self
+                .rect(self.inherited(dict, b"MediaBox"))
+                .unwrap_or([0.0, 0.0, 612.0, 792.0]);
+            let crop = self.rect(self.inherited(dict, b"CropBox")).unwrap_or(media);
+            let [x0, y0, x1, y1] = [
+                crop[0].max(media[0]),
+                crop[1].max(media[1]),
+                crop[2].min(media[2]),
+                crop[3].min(media[3]),
+            ];
+            let (w, h) = ((x1 - x0).max(1.0), (y1 - y0).max(1.0));
+            let turned = matches!(self.page_rotation(index)?, 90 | 270);
+            // The sheet as the page is shown, then back in the page's own
+            // (unturned) space, where the content is drawn.
+            let shown_landscape = if turned { h > w } else { w > h };
+            let (sw, sh) = if shown_landscape {
+                (long, short)
+            } else {
+                (short, long)
+            };
+            let (tw, th) = if turned { (sh, sw) } else { (sw, sh) };
+            let scale = (tw / w).min(th / h);
+            let dx = (tw - w * scale) / 2.0 - x0 * scale;
+            let dy = (th - h * scale) / 2.0 - y0 * scale;
+            plans.push((id, [x0, y0, w, h], (tw, th), scale, dx, dy));
+        }
+        for (id, [x0, y0, w, h], (tw, th), scale, dx, dy) in plans {
+            // Clipped to what was visible, so nothing cropped away comes back.
+            let before = format!(
+                "q {scale:.6} 0 0 {scale:.6} {dx:.4} {dy:.4} cm {x0:.4} {y0:.4} {w:.4} {h:.4} re W n\n"
+            );
+            let open = self
+                .doc
+                .add_object(lopdf::Stream::new(Dictionary::new(), before.into_bytes()));
+            let close = self
+                .doc
+                .add_object(lopdf::Stream::new(Dictionary::new(), b"\nQ\n".to_vec()));
+            let page = self.doc.get_dictionary(id).map_err(parse)?;
+            let mut streams = vec![Object::Reference(open)];
+            match page.get(b"Contents") {
+                Ok(Object::Array(items)) => streams.extend(items.iter().cloned()),
+                Ok(Object::Reference(r)) => {
+                    // A reference to an array of streams, or to one stream.
+                    match self.doc.get_object(*r) {
+                        Ok(Object::Array(items)) => streams.extend(items.iter().cloned()),
+                        _ => streams.push(Object::Reference(*r)),
+                    }
+                }
+                _ => {}
+            }
+            streams.push(Object::Reference(close));
+            // Each annotation's box follows the content.
+            let annots: Vec<ObjectId> = match page.get(b"Annots") {
+                Ok(Object::Array(items)) => {
+                    items.iter().filter_map(|o| o.as_reference().ok()).collect()
+                }
+                Ok(Object::Reference(r)) => self
+                    .doc
+                    .get_object(*r)
+                    .and_then(Object::as_array)
+                    .map(|items| items.iter().filter_map(|o| o.as_reference().ok()).collect())
+                    .unwrap_or_default(),
+                _ => Vec::new(),
+            };
+            for annot in annots.into_iter().take(10_000) {
+                let moved = self
+                    .doc
+                    .get_dictionary(annot)
+                    .ok()
+                    .and_then(|a| self.rect(a.get(b"Rect").ok()))
+                    .map(|r| {
+                        [
+                            r[0] * scale + dx,
+                            r[1] * scale + dy,
+                            r[2] * scale + dx,
+                            r[3] * scale + dy,
+                        ]
+                    });
+                if let (Some(moved), Ok(a)) = (moved, self.doc.get_dictionary_mut(annot)) {
+                    a.set(
+                        "Rect",
+                        moved.iter().map(|v| Object::Real(*v)).collect::<Vec<_>>(),
+                    );
+                    self.mark_touched(annot);
+                }
+            }
+            let page = self.doc.get_dictionary_mut(id).map_err(parse)?;
+            page.set("Contents", Object::Array(streams));
+            page.set(
+                "MediaBox",
+                vec![0.into(), 0.into(), Object::Real(tw), Object::Real(th)],
+            );
+            for key in [&b"CropBox"[..], b"BleedBox", b"TrimBox", b"ArtBox"] {
+                page.remove(key);
+            }
+            self.mark_touched(id);
+        }
+        Ok(())
+    }
+
     /// Inserts every page of `other` at position `at` (0 puts them first,
     /// `page_count()` last), with everything they use and their form fields,
     /// as an update of this file. Returns how many pages came in.
@@ -874,6 +992,41 @@ mod tests {
             assert!((back.page_size(0).unwrap().0 - w2).abs() < 0.01);
             assert_eq!(back.page_size(1).unwrap(), other, "only the chosen page");
         }
+    }
+
+    #[test]
+    fn resizing_puts_each_page_on_the_paper_whole_and_turned_its_way() {
+        const A4: (f32, f32) = (595.28, 841.89);
+        let mut doc = PdfDocument::open(corpus(THREE), None).unwrap();
+        let (w, h) = doc.page_size(0).unwrap();
+        // The second page shown landscape: it goes on A4 turned landscape.
+        doc.rotate_pages(&[1], 1).unwrap();
+        doc.resize_pages(&[0, 1], A4).unwrap();
+        let near =
+            |a: (f32, f32), b: (f32, f32)| (a.0 - b.0).abs() < 0.01 && (a.1 - b.1).abs() < 0.01;
+        assert!(
+            near(doc.page_size(0).unwrap(), A4),
+            "{:?}",
+            doc.page_size(0)
+        );
+        assert!(
+            near(doc.page_size(1).unwrap(), (A4.1, A4.0)),
+            "{:?}",
+            doc.page_size(1)
+        );
+        assert!(
+            near(doc.page_size(2).unwrap(), (w, h)),
+            "only the chosen pages"
+        );
+        // The content is wrapped, not replaced: the page's own stream is still there.
+        let page = doc.doc.get_dictionary(doc.page_id(0).unwrap()).unwrap();
+        let streams = page.get(b"Contents").unwrap().as_array().unwrap().len();
+        assert!(streams >= 3);
+        let mut back = reopen(&mut doc);
+        assert!(near(back.page_size(0).unwrap(), A4));
+        assert!(near(back.page_size(1).unwrap(), (A4.1, A4.0)));
+        // Paper no one can make is refused.
+        assert!(back.resize_pages(&[0], (5.0, 5.0)).is_err());
     }
 
     #[test]

@@ -16,12 +16,21 @@ pub mod ai;
 pub mod batch;
 pub mod cloud;
 pub mod core_bridge;
+pub mod doc_window;
 pub mod fonts;
 pub mod library;
 pub mod menu;
 pub mod print;
 pub mod profile;
+pub mod quick;
+pub mod recent;
+pub mod remote;
+pub mod ring;
+pub mod share;
+pub mod shell_menu;
 pub mod signing;
+pub mod system;
+pub mod updates;
 
 /// Event sent to the webview when files are dropped on the window.
 /// Payload: [`FileDropPayload`]. Every dropped path is added to the fs scope
@@ -32,6 +41,13 @@ pub const FILE_DROP_EVENT: &str = "warraq://file-drop";
 /// show where they would go: the webview sees none of the HTML drag events.
 /// Payload: [`FileDragPayload`].
 pub const FILE_DRAG_EVENT: &str = "warraq://file-drag";
+
+/// Event sent when a PDF was opened from outside while the app is already
+/// running — double-clicked in Explorer, or "Open with" — so the window that
+/// is open takes it instead of a second window starting. No payload: the
+/// interface claims the file with `startup_file`, the same as at boot, so a
+/// file that arrives before the interface listens is not lost.
+pub const OPEN_FILE_EVENT: &str = "warraq://open-file";
 
 #[derive(Clone, Serialize)]
 pub struct FileDropPayload {
@@ -67,18 +83,131 @@ fn logical<R: Runtime>(window: &tauri::Window<R>, at: &tauri::PhysicalPosition<f
 /// in-app drags carry none, and get no overlay.
 static DRAGGING_FILES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
-/// A PDF named on the command line: `warraq-desktop report.pdf`. It is handed
-/// to the UI once, when it boots, and is also the only way to exercise the
-/// whole desktop path — window, webview, core — without a person at the
-/// screen, which is what `WARRAQ_DEBUG=1` then reports on stdout.
+/// A PDF named on the command line: `warraq-desktop report.pdf`, which is how
+/// Explorer opens a double-clicked PDF. It is handed to the UI once, when it
+/// boots — or, when a second launch passed it on, when `OPEN_FILE_EVENT`
+/// says so. It is also the only way to exercise the whole desktop path —
+/// window, webview, core — without a person at the screen, which is what
+/// `WARRAQ_DEBUG=1` then reports on stdout.
 struct StartupFile(Mutex<Option<String>>);
 
-/// The startup file, consumed on the first call so a reload does not reopen it.
+/// The tool the waiting file opens at (Fill & sign, for a quick "Sign"),
+/// claimed once like the file.
+struct StartupTool(Mutex<Option<String>>);
+
+/// The first existing file among a launch's arguments (after the program's
+/// own name), a relative one taken from where that launch started. Put in the
+/// file scope: a file named on the command line is as explicit a choice as
+/// one picked in the dialog.
+fn file_in_args<R: Runtime>(
+    app: &AppHandle<R>,
+    args: impl IntoIterator<Item = std::ffi::OsString>,
+    cwd: Option<&std::path::Path>,
+) -> Option<PathBuf> {
+    let path = args
+        .into_iter()
+        .skip(1)
+        .map(PathBuf::from)
+        .map(|path| match cwd {
+            Some(cwd) if path.is_relative() => cwd.join(path),
+            _ => path,
+        })
+        .find(|path| path.is_file())?;
+    if let Err(e) = app.fs_scope().allow_file(&path) {
+        eprintln!("warraq: cannot allow {}: {e}", path.display());
+    }
+    Some(path)
+}
+
+/// A second launch of the app (the person double-clicked another PDF): its
+/// file goes to the window already open, which comes to the front, and the
+/// second process exits (tauri-plugin-single-instance).
+fn second_launch<R: Runtime>(app: &AppHandle<R>, args: Vec<String>, cwd: String) {
+    let cwd = PathBuf::from(cwd);
+    // A quick tool picked in the file manager: a small window of its own,
+    // not the editor (src/quick.rs).
+    if let Some(request) = quick::parse(&args, Some(&cwd)) {
+        core_bridge::debug_log(format!("second launch quick = {request:?}"));
+        quick::request(app, request);
+        return;
+    }
+    let file = file_in_args(app, args.into_iter().map(Into::into), Some(&cwd));
+    core_bridge::debug_log(format!("second launch file = {file:?}"));
+    open_in_editor(app, file);
+}
+
+/// Brings the editor to the front (opening it if this run started for a
+/// quick tool only) and hands it `file`, if any.
+fn open_in_editor<R: Runtime>(app: &AppHandle<R>, file: Option<PathBuf>) {
+    open_in_editor_at(app, file, None);
+}
+
+/// `open_in_editor`, with the editor's tool to open the file at.
+pub(crate) fn open_in_editor_at<R: Runtime>(
+    app: &AppHandle<R>,
+    file: Option<PathBuf>,
+    tool: Option<&str>,
+) {
+    let fresh = app.get_webview_window("main").is_none();
+    quick::show_editor(app);
+    let Some(file) = file else { return };
+    if let Some(slot) = app.try_state::<StartupTool>() {
+        if let Ok(mut slot) = slot.0.lock() {
+            *slot = tool.map(str::to_string);
+        }
+    }
+    if let Some(slot) = app.try_state::<StartupFile>() {
+        if let Ok(mut slot) = slot.0.lock() {
+            *slot = Some(file.to_string_lossy().into_owned());
+        }
+    }
+    // A window just made claims the file as it boots.
+    if !fresh {
+        let _ = app.emit_to("main", OPEN_FILE_EVENT, ());
+    }
+}
+
+/// Opens a quick tool's result in the editor ("Open" beside a result), or a
+/// file at the editor's tool for a quick tool that is the editor's (Sign).
 #[tauri::command]
-fn startup_file(state: State<'_, StartupFile>) -> Option<String> {
+fn quick_open_in_editor<R: Runtime>(
+    app: AppHandle<R>,
+    path: String,
+    tool: Option<String>,
+) -> Result<(), String> {
+    let file = PathBuf::from(&path);
+    if !file.is_absolute() || !file.is_file() || !app.fs_scope().is_allowed(&file) {
+        return Err(format!("E_SCOPE: {path} is not a result of this run"));
+    }
+    // "Sign" from the quick window: the file opens at Fill & sign.
+    let tool = quick::EDITOR_TOOLS
+        .iter()
+        .find(|(quick_tool, _)| tool.as_deref() == Some(*quick_tool))
+        .map(|(_, editor)| *editor);
+    open_in_editor_at(&app, Some(file), tool);
+    Ok(())
+}
+
+/// The waiting file, consumed on the first call so a reload does not reopen it.
+#[tauri::command]
+fn startup_file<R: Runtime>(
+    app: AppHandle<R>,
+    window: tauri::WebviewWindow<R>,
+    state: State<'_, StartupFile>,
+) -> Option<String> {
+    // A document window has a file of its own (doc_window.rs).
+    if doc_window::is_doc_window(window.label()) {
+        return doc_window::take(&app, window.label());
+    }
     let path = state.0.lock().ok().and_then(|mut slot| slot.take());
     core_bridge::debug_log(format!("startup file = {path:?}"));
     path
+}
+
+/// The tool the waiting file opens at, consumed like the file.
+#[tauri::command]
+fn startup_tool(state: State<'_, StartupTool>) -> Option<String> {
+    state.0.lock().ok().and_then(|mut slot| slot.take())
 }
 
 /// A line from the interface into the `WARRAQ_DEBUG` log: what EmbedPDF did in
@@ -192,8 +321,16 @@ fn read_file_bytes<R: Runtime>(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // First, so a second launch hands its file over before anything else
+        // of it starts.
+        .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
+            second_launch(app, args, cwd)
+        }))
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        // Updates from the stable channel on GitHub (src/updates.rs).
+        .plugin(tauri_plugin_updater::Builder::new().build())
         // The macOS menu bar is the UI's model (src/menu.rs); until the UI
         // sends it, Tauri's default menu stands in.
         .manage(menu::MenuState::default())
@@ -206,7 +343,16 @@ pub fn run() {
         .manage(ai::AiState::default())
         .manage(profile::ProfileState::default())
         .manage(fonts::FontState::default())
-        .on_menu_event(|app, event| menu::forward(app, event.id().as_ref()))
+        .manage(recent::RecentState::default())
+        .manage(updates::UpdateState::default())
+        .manage(remote::RemoteState::default())
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            ring::TRAY_OPEN => {
+                quick::show_editor(app);
+            }
+            ring::TRAY_QUIT => app.exit(0),
+            id => menu::forward(app, id),
+        })
         // Points warraq-render at the bundled PDFium and starts the core thread
         // before the window can invoke anything (see `core_bridge`).
         .setup(|app| {
@@ -214,19 +360,45 @@ pub fn run() {
             println!("warraq: core engine = {}", bridge.engine());
             app.manage(bridge);
 
-            // A file named on the command line is as explicit a choice as one
-            // picked in the dialog, so it joins the same scope.
-            let startup = std::env::args_os()
-                .skip(1)
-                .map(PathBuf::from)
-                .find(|path| path.is_file());
-            if let Some(path) = &startup {
-                if let Err(e) = app.fs_scope().allow_file(path) {
-                    eprintln!("warraq: cannot allow {}: {e}", path.display());
-                }
+            app.manage(quick::QuickState::default());
+            // Finder's "Quick PDF tools" service (src/shell_menu.rs).
+            #[cfg(target_os = "macos")]
+            {
+                let handle = app.handle().clone();
+                shell_menu::services::register(move |files| {
+                    quick::request(&handle, quick::QuickRequest { tool: None, files });
+                });
             }
+
+            // Started for a quick tool: its window only, no editor. Otherwise
+            // the editor (`create: false` in tauri.conf.json, so that a quick
+            // launch never flashes it).
+            let args: Vec<String> = std::env::args_os()
+                .map(|a| a.to_string_lossy().into_owned())
+                .collect();
+            // Started at sign-in to keep the quick tools ready: no window,
+            // only the tray icon and the ring (src/ring.rs).
+            let hidden = args.iter().skip(1).any(|a| a == ring::BACKGROUND_FLAG);
+            ring::start(app.handle(), hidden);
+            #[cfg(target_os = "macos")]
+            if hidden {
+                app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            }
+            let quick = quick::parse(&args, None);
+            let startup = if let Some(request) = quick {
+                core_bridge::debug_log(format!("command line quick = {request:?}"));
+                quick::request(app.handle(), request);
+                None
+            } else if hidden {
+                None
+            } else {
+                quick::show_editor(app.handle());
+                file_in_args(app.handle(), std::env::args_os(), None)
+            };
             core_bridge::debug_log(format!("command line file = {startup:?}"));
 
+            app.manage(StartupTool(Mutex::new(None)));
+            app.manage(doc_window::DocWindowFiles::default());
             app.manage(StartupFile(Mutex::new(
                 startup.map(|path| path.to_string_lossy().into_owned()),
             )));
@@ -238,6 +410,8 @@ pub fn run() {
             open_url,
             read_file_bytes,
             startup_file,
+            startup_tool,
+            doc_window::open_document_window,
             ui_log,
             core_bridge::core_engine,
             core_bridge::doc_open,
@@ -295,33 +469,91 @@ pub fn run() {
             profile::profile_set,
             profile::profile_delete,
             fonts::font_installed,
+            recent::recent_remember,
+            recent::recent_path,
+            recent::recent_forget,
+            updates::update_check,
+            updates::update_install,
+            quick::quick_job,
+            quick::quick_close,
+            quick_open_in_editor,
+            shell_menu::shell_menu_set,
+            shell_menu::shell_menu_state,
+            ring::ring_pick,
+            ring::ring_take,
+            ring::ring_done,
+            ring::ring_configure,
+            ring::ring_settings,
+            remote::remote_start,
+            remote::remote_stop,
+            remote::remote_status,
+            remote::remote_pc_control,
+            remote::remote_forget,
+            remote::remote_send,
+            remote::remote_fullscreen,
+            share::share_prepare,
+            share::share_email,
+            system::system_user_name,
+            system::open_default_apps,
         ])
         .on_window_event(|window, event| {
-            // Forward OS file drops to the webview, after allowing the dropped
-            // files in the fs scope (a drop is as explicit a choice as a dialog).
+            // The last window of a run that is not kept in the background
+            // ends it: the ring's hidden window must not keep it alive.
+            if let WindowEvent::Destroyed = event {
+                let app = window.app_handle();
+                let others = app
+                    .webview_windows()
+                    .keys()
+                    .any(|label| label != window.label() && label != ring::LABEL);
+                if !others && !ring::background() {
+                    app.exit(0);
+                }
+                return;
+            }
             let WindowEvent::DragDrop(drag) = event else {
                 return;
             };
+            // Files let go on the ring (src/ring.rs).
+            if window.label() == ring::LABEL {
+                let at = match drag {
+                    DragDropEvent::Enter { position, .. }
+                    | DragDropEvent::Over { position }
+                    | DragDropEvent::Drop { position, .. } => Some(logical(window, position)),
+                    _ => None,
+                };
+                ring::on_drag(window, drag, at);
+                return;
+            }
+            // Forward OS file drops to the webview, after allowing the dropped
+            // files in the fs scope (a drop is as explicit a choice as a dialog).
             match drag {
                 DragDropEvent::Enter { paths, position } => {
                     let files = paths.iter().any(|p| p.is_file());
+                    ring::log("files dragged over the main window");
                     DRAGGING_FILES.store(files, std::sync::atomic::Ordering::Relaxed);
                     if files {
                         let (x, y) = logical(window, position);
-                        let _ =
-                            window.emit(FILE_DRAG_EVENT, FileDragPayload { kind: "over", x, y });
+                        let _ = window.emit_to(
+                            window.label(),
+                            FILE_DRAG_EVENT,
+                            FileDragPayload { kind: "over", x, y },
+                        );
                     }
                 }
                 DragDropEvent::Over { position } => {
                     if DRAGGING_FILES.load(std::sync::atomic::Ordering::Relaxed) {
                         let (x, y) = logical(window, position);
-                        let _ =
-                            window.emit(FILE_DRAG_EVENT, FileDragPayload { kind: "over", x, y });
+                        let _ = window.emit_to(
+                            window.label(),
+                            FILE_DRAG_EVENT,
+                            FileDragPayload { kind: "over", x, y },
+                        );
                     }
                 }
                 DragDropEvent::Leave => {
                     DRAGGING_FILES.store(false, std::sync::atomic::Ordering::Relaxed);
-                    let _ = window.emit(
+                    let _ = window.emit_to(
+                        window.label(),
                         FILE_DRAG_EVENT,
                         FileDragPayload {
                             kind: "leave",
@@ -332,7 +564,8 @@ pub fn run() {
                 }
                 DragDropEvent::Drop { paths, position } => {
                     DRAGGING_FILES.store(false, std::sync::atomic::Ordering::Relaxed);
-                    let _ = window.emit(
+                    let _ = window.emit_to(
+                        window.label(),
                         FILE_DRAG_EVENT,
                         FileDragPayload {
                             kind: "leave",
@@ -353,13 +586,39 @@ pub fn run() {
                         .collect();
                     if !files.is_empty() {
                         let (x, y) = logical(window, position);
-                        let _ =
-                            window.emit(FILE_DROP_EVENT, FileDropPayload { paths: files, x, y });
+                        let _ = window.emit_to(
+                            window.label(),
+                            FILE_DROP_EVENT,
+                            FileDropPayload { paths: files, x, y },
+                        );
                     }
                 }
                 _ => {}
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running Warraq");
+        .build(tauri::generate_context!())
+        .expect("error while building Warraq")
+        .run(|app, event| {
+            // Kept ready in the background: closing the last window does not
+            // end the app (the tray's Quit does).
+            if let tauri::RunEvent::ExitRequested {
+                api, code: None, ..
+            } = &event
+            {
+                if ring::background() {
+                    api.prevent_exit();
+                }
+            }
+            // The Dock icon clicked when only a quick window was open (or none):
+            // the editor comes.
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen {
+                has_visible_windows: false,
+                ..
+            } = event
+            {
+                quick::show_editor(app);
+            }
+            let _ = (app, event);
+        });
 }

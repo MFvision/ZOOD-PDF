@@ -1,0 +1,134 @@
+/* The ring (Ring.tsx): drawn on a transparent window at the pointer. */
+
+html.ring-page,
+html.ring-page body {
+  margin: 0;
+  background: transparent !important;
+  overflow: hidden;
+  user-select: none;
+}
+
+/*
+ * While the ring waits for files it is drawn with nothing to see, but not
+ * fully transparent: Windows passes the mouse, and a drag, through pixels
+ * with no alpha at all, so the drag would never reach the window. 1% alpha
+ * (less is rounded away) is all but invisible and keeps the window under
+ * the pointer. Once the
+ * ring shows, its own drawing is under the pointer and the rest is clear.
+ */
+html.ring-page.ring-waiting body {
+  background: rgb(0 0 0 / 1%) !important;
+}
+
+.ring {
+  /* The drawing fills the window, whatever size the screen's scale made it. */
+  inline-size: 100vw;
+  block-size: 100vh;
+  font-family: var(--font-ui);
+  opacity: 0;
+  transition: opacity 90ms ease;
+}
+
+.ring-visible {
+  opacity: 1;
+}
+
+.ring > svg {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.ring-segment[role='button'],
+.ring-hub-group[role='button'] {
+  cursor: pointer;
+}
+
+.ring-hub-close {
+  fill: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ring-shadow {
+  fill: rgb(0 0 0 / 18%);
+  filter: blur(6px);
+}
+
+.ring-segment > path {
+  fill: var(--elevated-background, #fff);
+  stroke: var(--separator, rgb(0 0 0 / 12%));
+  stroke-width: 1;
+  transition: fill 80ms ease;
+}
+
+.ring-segment svg {
+  color: var(--accent);
+  fill: none;
+  pointer-events: none;
+}
+
+.ring-segment text {
+  fill: var(--label);
+  pointer-events: none;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ring-segment-over > path {
+  fill: var(--accent);
+}
+
+.ring-segment-over svg {
+  color: var(--accent-contrast, #fff);
+}
+
+.ring-segment-over text {
+  fill: var(--accent-contrast, #fff);
+}
+
+.ring-hub {
+  fill: var(--window-background, #f5f5f7);
+  stroke: var(--separator, rgb(0 0 0 / 12%));
+}
+
+.ring-hub-text {
+  fill: var(--secondary-label);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* A tool running on the ring: the tools fade, and the progress goes round. */
+.ring-working .ring-segment {
+  opacity: 0.35;
+  transition: opacity 120ms ease;
+}
+
+.ring-progress-track,
+.ring-progress-bar {
+  fill: none;
+  stroke-width: 14;
+}
+
+.ring-progress-track {
+  stroke: rgb(0 0 0 / 10%);
+}
+
+.ring-progress-bar {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transition: stroke-dasharray 200ms ease;
+}
+
+.ring-progress-done .ring-progress-bar {
+  stroke: var(--green, #34c759);
+}
+
+.ring-progress-failed .ring-progress-bar {
+  stroke: var(--red, #ff3b30);
+}
+
+/* Settings › Appearance › Coloured icons off (and Monochrome, which turns it off): the glyphs in the text colour. */
+html[data-icons="plain"] .ring-segment:not(.ring-segment-over) svg {
+  color: var(--label);
+}

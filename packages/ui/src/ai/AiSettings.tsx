@@ -6,7 +6,6 @@ import type { DeviceModelId } from './device/models';
 import { useDeviceModel } from './device/useDeviceModel';
 import { PROVIDERS } from './providers';
 import type { ProviderId } from './providers';
-import { ProfileEditor } from './profile/ProfileEditor';
 import { readSettings, writeSettings } from './store';
 import type { AiSettings as Settings } from './store';
 import './ai.css';
@@ -53,8 +52,6 @@ export function AiSettingsSection() {
         </select>
       </label>
       <DeviceSection view={device} />
-      <h3>{t('profile.title')}</h3>
-      <ProfileEditor />
     </section>
   );
 }

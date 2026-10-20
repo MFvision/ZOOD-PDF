@@ -36,9 +36,22 @@ custom-protocol = ["tauri/custom-protocol"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# macos-private-api: the ring's transparent window on a Mac (src/ring.rs);
+# tray-icon: the icon that stays while the quick tools are kept ready.
+tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
+# One window for the app: a second launch (another PDF double-clicked in
+# Explorer) hands its file to the window already open and exits (src/lib.rs,
+# `second_launch`). MIT OR Apache-2.0.
+tauri-plugin-single-instance = "2"
+# The ring's keyboard shortcut, Ctrl+Alt+Z (Command+Option+Z), from any app
+# (src/ring.rs, `shortcut`). MIT OR Apache-2.0.
+tauri-plugin-global-shortcut = "2.3"
+# Updates from GitHub (src/updates.rs): the app asks the stable channel's
+# latest.json whether there is a newer version, and installs it only when its
+# signature matches the public key in tauri.conf.json. MIT OR Apache-2.0.
+tauri-plugin-updater = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # One core, two builds: the same crate that wasm-pack compiles for the web and
@@ -73,6 +86,22 @@ hex = "0.4"
 # MIT, already in the graph through llama-cpp-2), and the machine's memory
 # size (libc on macOS and Linux; windows-sys, MIT OR Apache-2.0, on Windows).
 encoding_rs = "0.8"
+# The phone remote (src/remote/): a small server on the local network only
+# while the person has it on, one WebSocket per phone (tokio-tungstenite, MIT),
+# every message sealed with ChaCha20-Poly1305 under the key the QR code
+# carries (chacha20poly1305, Apache-2.0 OR MIT), that QR code drawn as SVG
+# (qrcode, MIT OR Apache-2.0), the PC's addresses on the network (if-addrs,
+# MIT OR BSD-3-Clause) and keys from the system's random source (getrandom,
+# MIT OR Apache-2.0). tokio and futures-util are already in the tree through
+# Tauri.
+tokio = { version = "1", features = ["net", "sync", "time", "io-util", "macros", "rt"] }
+tokio-tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+chacha20poly1305 = "0.10"
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+if-addrs = "0.15"
+getrandom = "0.2"
+base64 = "0.22"
 
 # Print (src/print.rs): PDFKit prints the PDF itself in the system's print
 # sheet. The same objc2 family Tauri already links (MIT OR Apache-2.0 OR Zlib).
@@ -90,14 +119,22 @@ libc = "0.2"
 # runs on the CPU (AVX2 where the machine has it, chosen by ggml at run time).
 llama-cpp-2 = { version = "0.1.157", default-features = false, features = ["metal"] }
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSData", "NSDictionary", "NSString", "NSURL"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSData", "NSDictionary", "NSGeometry", "NSString", "NSURL", "objc2-core-foundation"] }
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSPrintInfo", "NSPrintOperation", "NSResponder", "NSView", "NSWindow"] }
 objc2-pdf-kit = { version = "0.3", default-features = false, features = ["std", "PDFDocument", "objc2-app-kit"] }
 keyring = { version = "3.6", features = ["apple-native"] }
+enigo = "0.6"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 keyring = { version = "3.6", features = ["windows-native"] }
-windows-sys = { version = "0.59", features = ["Win32_System_SystemInformation"] }
+# The phone remote's PC control (src/remote/input.rs): the pointer, keys and
+# media keys, as the system's own input events (enigo, MIT). Mac and Windows
+# only.
+enigo = "0.6"
+# The quick tools' Explorer menu (src/shell_menu.rs) is written to the
+# person's own registry classes; Share › Email hands the file to the default
+# mail program through Simple MAPI (src/share.rs).
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_System_LibraryLoader", "Win32_System_Mapi", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 keyring = { version = "3.6", features = ["sync-secret-service", "crypto-rust"] }

@@ -1,6 +1,6 @@
 /**
  * Registers the service worker the build writes (`pwa.ts`), which keeps the
- * app's own files on the device so an installed محرر PDF opens offline.
+ * app's own files on the device so an installed ZOOD PDF opens offline.
  *
  * Only the web build has one: the desktop app (`--mode tauri`) serves its
  * files from itself, and a dev server's files change under it.

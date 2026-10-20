@@ -56,7 +56,7 @@ test.describe('the AI tool on this device', () => {
     await download(page);
     // The settings name the provider, the model and what it runs on.
     await ai.getByRole('button', { name: 'Model settings', exact: true }).click();
-    await expect(ai.getByRole('radio', { name: /^On this device/ })).toBeChecked();
+    await expect(ai.getByRole('radio', { name: /^Built into the app/ })).toBeChecked();
     await expect(ai).toContainText('The model is on this device (491 MB) and runs on a test engine.');
     expect((await stubRecord(page)).requests).toHaveLength(0);
   });
@@ -65,9 +65,10 @@ test.describe('the AI tool on this device', () => {
     await installDeviceStub(page, answer);
     await page.goto('/');
     // The details, saved once in Settings.
-    await page.getByRole('menubar').getByRole('menuitem', { name: 'محرر PDF' }).click();
+    await page.getByRole('menubar').getByRole('menuitem', { name: 'ZOOD PDF' }).click();
     await page.getByRole('menuitem', { name: /^Settings…/ }).click();
     const sheet = page.getByRole('dialog', { name: 'Settings' });
+    await sheet.getByRole('navigation').getByRole('button', { name: 'My details', exact: true }).click();
     await sheet.getByLabel('Name (Arabic)').fill('محمد علي');
     await sheet.getByLabel('E-mail').fill('m.ali@example.sa');
     await sheet.getByRole('button', { name: 'Save my details' }).click();
@@ -131,9 +132,10 @@ test.describe('the AI tool on this device', () => {
     await openPdf(page, INVOICE);
     await chooseTool(page, 'AI');
     await download(page);
-    await page.getByRole('menubar').getByRole('menuitem', { name: 'محرر PDF' }).click();
+    await page.getByRole('menubar').getByRole('menuitem', { name: 'ZOOD PDF' }).click();
     await page.getByRole('menuitem', { name: /^Settings…/ }).click();
     const sheet = page.getByRole('dialog', { name: 'Settings' });
+    await sheet.getByRole('navigation').getByRole('button', { name: 'AI', exact: true }).click();
     await expect(sheet.getByLabel('The AI tool starts with')).toHaveValue('device');
     await expect(sheet.getByLabel('On-device model')).toHaveValue('');
     await expect(sheet).toContainText('For this machine: Qwen2.5 0.5B Instruct (Q4_K_M)');

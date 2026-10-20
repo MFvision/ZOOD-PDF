@@ -2,6 +2,8 @@ import { Fragment } from 'react';
 import type { ReactNode } from 'react';
 import { useI18n } from '../../i18n/useT';
 import { splitCitations } from '../citations';
+import { splitSourceCitations } from './across';
+import type { FileBasis } from './across';
 
 /**
  * An answer's words on the page. The model is asked for plain text with
@@ -46,10 +48,37 @@ export function spokenText(text: string): string {
     .replace(/\s*[[(]\s*(?:pp?\.?|ص\.?)\s*[0-9٠-٩][0-9٠-٩\s,،\-–—]*[\])]/giu, '');
 }
 
-export function AnswerText({ text, pageCount, onPage }: { text: string; pageCount: number; onPage: (page: number) => void }) {
+interface AnswerTextProps {
+  text: string;
+  pageCount: number;
+  onPage: (page: number) => void;
+  /** An answer across files: its citations name a file and a page, and open that file there. */
+  files?: readonly FileBasis[] | null;
+  onSource?: (file: FileBasis, page: number) => void;
+}
+
+export function AnswerText({ text, pageCount, onPage, files, onSource }: AnswerTextProps) {
   const { t, dir } = useI18n();
   const line = (value: string): ReactNode =>
-    splitCitations(value, pageCount).map((piece, at) =>
+    files && onSource
+      ? splitSourceCitations(value, files).map((piece, at) =>
+          piece.kind === 'text' ? (
+            <Fragment key={at}>{piece.text}</Fragment>
+          ) : (
+            <button
+              key={at}
+              type="button"
+              className="ai-cite ai-cite-file"
+              dir={dir}
+              title={t('ai.goToFilePage', { name: piece.file.name, page: piece.page })}
+              aria-label={t('ai.goToFilePage', { name: piece.file.name, page: piece.page })}
+              onClick={() => onSource(piece.file, piece.page)}
+            >
+              <bdi>{shortName(piece.file.name)}</bdi> · {t('ai.cite', { page: piece.page })}
+            </button>
+          ),
+        )
+      : splitCitations(value, pageCount).map((piece, at) =>
       piece.kind === 'text' ? (
         <Fragment key={at}>{piece.text}</Fragment>
       ) : (
@@ -82,4 +111,10 @@ export function AnswerText({ text, pageCount, onPage }: { text: string; pageCoun
       })}
     </div>
   );
+}
+
+/** A file's name as a citation shows it: no ".pdf", and no longer than a short phrase. */
+export function shortName(name: string): string {
+  const bare = name.replace(/\.pdf$/i, '');
+  return bare.length > 24 ? `${bare.slice(0, 22)}…` : bare;
 }

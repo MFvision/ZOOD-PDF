@@ -12,7 +12,14 @@ import { ChatView } from './chat/ChatView';
 import { keptOnDevice } from './chat/kept';
 import { deviceRunner, remoteRunner } from './chat/runner';
 import type { Runner } from './chat/runner';
-import { forgetKnown, inspect, newChat, useConversation } from './chat/store';
+import { forgetKnown, inspect, newChat, readBytes, useConversation } from './chat/store';
+import { LIBRARY_CHAT } from './chat/across';
+import type { FileBasis, Scope, SourceDoc } from './chat/across';
+import { hasLibrary, searchLibrary } from './chat/library';
+import { useSettings } from '../state/settings';
+import { requestPage } from '../home/pendingPage';
+import { fileForKey } from '../library/sources';
+import { libraryStore } from '../library/store';
 import type { Env } from './chat/store';
 import { contextTokensFor } from './device/context';
 import { DeviceSection } from './device/DeviceSection';
@@ -61,6 +68,10 @@ export function AiPanel() {
   const [storeFailed, setStoreFailed] = useState(false);
   const [view, setView] = useState<View>('chat');
   const [incoming, setIncoming] = useState<AiRequest | null>(() => takeAiRequest());
+  // Settings › AI › What the AI can see, and the switch at the top of the chat that changes it for now.
+  const appSettings = useSettings();
+  // A request from the home screen's "Ask about all my documents" comes with its scope.
+  const [scope, setScope] = useState<Scope>(() => incoming?.scope ?? appSettings.aiScope);
   const [memory, setMemory] = useState<number | null>(null);
   const inBrowser = !isTauriHost();
 
@@ -80,15 +91,27 @@ export function AiPanel() {
       onAiRequest((request) => {
         takeAiRequest();
         setView('chat');
+        if (request.scope) setScope(request.scope);
         setIncoming(request);
       }),
     [],
   );
 
+  const [libraryReady, setLibraryReady] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void hasLibrary().then((ready) => {
+      if (alive) setLibraryReady(ready);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const documentId = state.document?.id ?? null;
   const documentOpen = state.view === 'viewer' && documentId !== null;
   const hasDocument = documentOpen && state.switching === null;
-  const conversation = useConversation(documentId);
+  const conversation = useConversation(scope === 'library' ? LIBRARY_CHAT : documentId);
 
   const address = localAddress(settings.localUrl);
   const provider = settings.provider;
@@ -157,21 +180,61 @@ export function AiPanel() {
       },
       kept: keptOnDevice(),
       makeRunner,
+      // Every open tab: the live one as it stands now, the parked ones as they were left.
+      openDocuments: async (onPage, signal) => {
+        const services = latest.current;
+        const read: SourceDoc[] = [];
+        for (const tab of services.tabs) {
+          if (signal.aborted) break;
+          const live = tab.key === services.activeTab;
+          const bytes = live ? await services.currentFileBytes() : await tab.parked?.arrayBuffer();
+          if (!bytes) continue;
+          const doc = await readBytes(services.client, bytes, live ? services.documentPassword : tab.password, onPage, signal).catch(() => null);
+          if (doc) read.push({ key: String(tab.key), name: tab.name, doc });
+        }
+        return read;
+      },
+      searchLibrary: (query) => searchLibrary(latest.current.client, query),
     }),
     [makeRunner],
+  );
+
+  /** A citation of another file: an open tab is brought forward, a Library document opened, at its page. */
+  const openSource = useCallback(
+    (file: FileBasis, page: number, from: Scope) => {
+      void (async () => {
+        const services = latest.current;
+        if (from === 'open') {
+          const key = Number(file.key);
+          if (key !== services.activeTab) services.activateTab(key);
+          requestPage(page);
+          return;
+        }
+        const meta = await libraryStore().readMeta().catch(() => null);
+        const opened = meta ? await fileForKey(meta, file.key, new Map()).catch(() => null) : null;
+        if (!opened) {
+          dispatch({ type: 'TOAST', key: 'ai.scope.fileMissing' });
+          return;
+        }
+        // The answer is in the Library's chat, which stays where it is.
+        await services.openFile(opened);
+        requestPage(page);
+      })();
+    },
+    [dispatch],
   );
 
   // What is known of the document — its length, whether it is analyzed — is read once for each model.
   const inspected = useRef<string | null>(null);
   const runnerKey = `${provider}|${modelId}|${base}|${contextTokens}`;
   useEffect(() => {
-    if (view !== 'chat' || !hasDocument || documentId === null || missing !== null || conversation.busy) return;
+    if (view !== 'chat' || scope !== 'document' || !hasDocument || documentId === null || missing !== null || conversation.busy) return;
     const mark = `${documentId}|${runnerKey}`;
     if (inspected.current === mark) return;
     if (inspected.current !== null) forgetKnown(documentId);
     inspected.current = mark;
     void inspect(documentId, env);
-  }, [view, hasDocument, documentId, missing, runnerKey, env, conversation.busy]);
+  }, [view, scope, hasDocument, documentId, missing, runnerKey, env, conversation.busy]);
 
   const taken = useCallback(() => setIncoming(null), []);
   // With the kept analyses gone, the document is looked at afresh on coming back to the chat.
@@ -237,8 +300,8 @@ export function AiPanel() {
               <IconButton
                 label={t('ai.chat.new')}
                 icon={<Icon of={MessageSquarePlus} />}
-                disabled={documentId === null || conversation.turns.length === 0}
-                onClick={() => documentId !== null && newChat(documentId)}
+                disabled={(scope !== 'library' && documentId === null) || conversation.turns.length === 0}
+                onClick={() => newChat(scope === 'library' ? LIBRARY_CHAT : (documentId ?? LIBRARY_CHAT))}
               />
               <IconButton label={t('ai.chat.tools')} icon={<Icon of={Wrench} />} onClick={() => setView('tasks')} />
               <IconButton label={t('ai.chat.openSetup')} icon={<Icon of={Settings2} />} onClick={() => setView('setup')} />
@@ -264,6 +327,12 @@ export function AiPanel() {
           openOcr={() => dispatch({ type: 'SET_ACTIVE_TOOL', tool: 'ocr' })}
           incoming={incoming}
           onIncomingTaken={taken}
+          onUseDevice={() => update({ provider: 'device' })}
+          scope={scope}
+          onScope={setScope}
+          openCount={hasDocument ? services.tabs.length : 0}
+          libraryReady={libraryReady}
+          onSource={openSource}
         />
       )}
       {view === 'setup' && (

@@ -19,7 +19,9 @@ interface Commands {
 }
 
 interface Scroll {
-  scrollToPage(options: { pageNumber: number }): void;
+  getCurrentPage(): number;
+  getPageChangeState(): { isChanging: boolean; targetPage?: number };
+  scrollToPage(options: { pageNumber: number; behavior?: ScrollBehavior }): void;
   onPageChange: Hook<{ pageNumber: number; totalPages: number }>;
 }
 
@@ -174,6 +176,19 @@ export function printAllowed(registry: PluginRegistry): boolean {
 
 export function scrollToPage(registry: PluginRegistry, page: number): void {
   capability<Scroll>(registry, 'scroll')?.scrollToPage({ pageNumber: page });
+}
+
+/**
+ * A file just opened back to the top of page 1, after its opening zoom moved
+ * the view — unless something has already taken it to another page (a
+ * search hit, a citation, the page it was left at).
+ */
+export function scrollToStart(registry: PluginRegistry): void {
+  const scroll = capability<Scroll>(registry, 'scroll');
+  if (!scroll || scroll.getCurrentPage() > 1) return;
+  const change = scroll.getPageChangeState();
+  if (change.isChanging && (change.targetPage ?? 1) > 1) return;
+  scroll.scrollToPage({ pageNumber: 1, behavior: 'instant' });
 }
 
 /**
@@ -346,8 +361,8 @@ export function watchZoom(registry: PluginRegistry, onZoom: (zoom: EmbedZoom) =>
   return () => subscriptions.forEach((unsubscribe) => unsubscribe?.());
 }
 
-/** Sets EmbedPDF's zoom to a scale (1 is 100 %). */
-export function setZoom(registry: PluginRegistry, scale: number): void {
+/** Sets EmbedPDF's zoom to a scale (1 is 100 %), or fits the page or its width. */
+export function setZoom(registry: PluginRegistry, scale: number | 'fit-page' | 'fit-width'): void {
   capability<Zoom>(registry, 'zoom')?.requestZoom(scale);
 }
 

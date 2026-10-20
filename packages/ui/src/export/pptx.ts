@@ -1,6 +1,7 @@
 import { strToU8, zipSync } from 'fflate';
 import type { Zippable } from 'fflate';
 import type { TextAlignment, TextDirection } from '../core/types';
+import type { ExportFont } from './paragraphs';
 import { cleanText } from './text';
 
 /**
@@ -52,6 +53,10 @@ export interface SlideText {
    * where it stood.
    */
   vertical?: boolean;
+  /** The face the file names for it (Word uses it; PowerPoint keeps Arial). */
+  font?: ExportFont;
+  /** Already drawn in the page's picture: kept, but not drawn again. */
+  hidden?: boolean;
 }
 
 export interface Slide {
@@ -165,7 +170,7 @@ function slideXml(slide: Slide, size: { width: number; height: number }): string
       `<p:spPr><a:xfrm><a:off x="${emu(at.dx)}" y="${emu(at.dy)}"/><a:ext cx="${emu(slide.width * at.scale)}" cy="${emu(slide.height * at.scale)}"/></a:xfrm>` +
       '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>'
     : '';
-  const texts = slide.texts.map((text, k) => textBox(text, k + 3, at, slide.hiddenText)).join('');
+  const texts = slide.texts.map((text, k) => textBox(text, k + 3, at, slide.hiddenText || text.hidden === true)).join('');
   return (
     `${DECLARATION}<p:sld ${NS}><p:cSld><p:spTree>` +
     '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>' +
@@ -205,8 +210,8 @@ function themeXml(): string {
   const fill = '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>';
   const line = (w: number) => `<a:ln w="${w}"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln>`;
   return (
-    `${DECLARATION}<a:theme xmlns:a="${A}" name="محرر PDF"><a:themeElements>` +
-    '<a:clrScheme name="محرر PDF">' +
+    `${DECLARATION}<a:theme xmlns:a="${A}" name="ZOOD PDF"><a:themeElements>` +
+    '<a:clrScheme name="ZOOD PDF">' +
     '<a:dk1><a:srgbClr val="000000"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1>' +
     colour('dk2', '1F2937') +
     colour('lt2', 'F3F4F6') +
@@ -219,9 +224,9 @@ function themeXml(): string {
     colour('hlink', '007AFF') +
     colour('folHlink', '5856D6') +
     '</a:clrScheme>' +
-    `<a:fontScheme name="محرر PDF"><a:majorFont><a:latin typeface="${font}"/><a:ea typeface=""/><a:cs typeface="${font}"/></a:majorFont>` +
+    `<a:fontScheme name="ZOOD PDF"><a:majorFont><a:latin typeface="${font}"/><a:ea typeface=""/><a:cs typeface="${font}"/></a:majorFont>` +
     `<a:minorFont><a:latin typeface="${font}"/><a:ea typeface=""/><a:cs typeface="${font}"/></a:minorFont></a:fontScheme>` +
-    '<a:fmtScheme name="محرر PDF">' +
+    '<a:fmtScheme name="ZOOD PDF">' +
     `<a:fillStyleLst>${fill}${fill}${fill}</a:fillStyleLst>` +
     `<a:lnStyleLst>${line(6350)}${line(12700)}${line(19050)}</a:lnStyleLst>` +
     '<a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst>' +

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { strFromU8, unzipSync, unzlibSync } from 'fflate';
+import { strFromU8, unzipSync } from 'fflate';
 import { PRESENTATION, SPREADSHEET, validate } from '../../../packages/ui/src/export/ooxml.testing';
 import { WORD_EXPORT, chooseTool, corpus, openPdf, test } from './helpers';
 
@@ -30,46 +30,6 @@ async function checkParts(page: Page, files: Record<string, Uint8Array>, models:
     expect(parsed, `${path} is well formed`).toBe(0);
     expect(validate(xml, models), path).toEqual([]);
   }
-}
-
-/** Dark pixels in a PNG, read without Warraq's code (filter types 0–4, grey or RGB). */
-function inkOf(png: Uint8Array): { width: number; height: number; ink: number } {
-  const view = new DataView(png.buffer, png.byteOffset, png.byteLength);
-  let width = 0;
-  let height = 0;
-  let channels = 1;
-  const parts: Uint8Array[] = [];
-  for (let at = 8; at < png.length; ) {
-    const length = view.getUint32(at);
-    const type = String.fromCharCode(...png.subarray(at + 4, at + 8));
-    if (type === 'IHDR') {
-      width = view.getUint32(at + 8);
-      height = view.getUint32(at + 12);
-      channels = png[at + 17] === 2 ? 3 : png[at + 17] === 6 ? 4 : 1;
-    }
-    if (type === 'IDAT') parts.push(png.subarray(at + 8, at + 8 + length));
-    at += 12 + length;
-  }
-  const joined = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
-  parts.reduce((o, p) => (joined.set(p, o), o + p.length), 0);
-  const raw = unzlibSync(joined);
-  const stride = width * channels;
-  const pixels = new Uint8Array(stride * height);
-  for (let y = 0; y < height; y += 1) {
-    const filter = raw[y * (stride + 1)]!;
-    for (let x = 0; x < stride; x += 1) {
-      const left = x >= channels ? pixels[y * stride + x - channels]! : 0;
-      const up = y > 0 ? pixels[(y - 1) * stride + x]! : 0;
-      const corner = x >= channels && y > 0 ? pixels[(y - 1) * stride + x - channels]! : 0;
-      const guess = left + up - corner;
-      const paeth = [left, up, corner].reduce((best, v) => (Math.abs(guess - v) < Math.abs(guess - best) ? v : best));
-      const predictor = [0, left, up, (left + up) >> 1, paeth][filter] ?? 0;
-      pixels[y * stride + x] = (raw[y * (stride + 1) + 1 + x]! + predictor) & 0xff;
-    }
-  }
-  let ink = 0;
-  for (let i = 0; i < pixels.length; i += channels) if (pixels[i]! < 128) ink += 1;
-  return { width, height, ink };
 }
 
 test.describe('Export to Excel and PowerPoint', () => {
@@ -113,11 +73,9 @@ test.describe('Export to Excel and PowerPoint', () => {
     // In reading order, as Warraq reads it, not PDFium's visual order.
     expect(first).toContain('صباح الخير');
     expect(first).toContain('rtl="1"');
-    const picture = files['ppt/media/page1.png']!;
-    expect([...picture.subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
-    // A page of text without its text is nearly blank.
-    const bare = inkOf(picture);
-    expect(bare.ink / (bare.width * bare.height)).toBeLessThan(0.002);
+    // A page of text without its text is blank paper: no picture is put behind it.
+    expect(files['ppt/media/page1.png']).toBeUndefined();
+    expect(first).not.toContain('r:embed');
 
     const textOnly = await exportAs(page, 'PowerPoint (.pptx)', ['Slides', 'Text only']);
     expect(Object.keys(textOnly.files).some((p) => p.startsWith('ppt/media/'))).toBe(false);

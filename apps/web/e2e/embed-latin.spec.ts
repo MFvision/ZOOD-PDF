@@ -81,7 +81,7 @@ const LABELS = {
   ar: {
     language: 'العربية',
     markupBar: 'شريط أدوات التعليق',
-    loading: 'جارٍ تشغيل محرّك العرض…',
+    loading: ['جارٍ تشغيل محرّك العرض…', 'جارٍ تجهيز أدوات العرض…'],
     modes: ['تعليق', 'أشكال', 'إدراج', 'نموذج', 'تنقيح', 'عرض'],
     annotate: 'تعليق',
     insert: 'إدراج',
@@ -114,7 +114,7 @@ const LABELS = {
   en: {
     language: 'English',
     markupBar: 'Markup toolbar',
-    loading: 'Initializing PDF engine...',
+    loading: ['Initializing PDF engine...', 'Initializing plugins...'],
     modes: ['Annotate', 'Shapes', 'Insert', 'Form', 'Redact', 'View'],
     annotate: 'Annotate',
     insert: 'Insert',
@@ -187,8 +187,9 @@ async function walk(page: Page, lang: 'ar' | 'en', check: (texts: { where: strin
     (window as unknown as { __loaded: boolean }).__loaded = true;
     return [...(window as unknown as { __whileLoading: Set<string> }).__whileLoading];
   });
-  // The loading screen was seen, in the language on screen.
-  expect(whileLoading).toContain(l.loading);
+  // The loading screen was seen, in the language on screen (its first step
+  // can pass between two frames on a fast machine).
+  expect(whileLoading.filter((text) => l.loading.includes(text))).not.toHaveLength(0);
   const loading = check(whileLoading.map((text) => ({ where: 'loading', text })));
   if (loading.length > 0) seen.set('loading', loading);
 
@@ -213,10 +214,11 @@ async function walk(page: Page, lang: 'ar' | 'en', check: (texts: { where: strin
   // A drop-down field drawn on the page, from Prepare form: the options it starts with.
   await chooseTool(page, l.prepareForm);
   await useAction(page, l.dropdown);
+  // In the part of the page the window shows: a document opens at its top.
   const form = await pageBox(page);
-  await page.mouse.move(form.x + form.width * 0.3, form.y + form.height * 0.8);
+  await page.mouse.move(form.x + form.width * 0.3, form.y + form.height * 0.55);
   await page.mouse.down();
-  await page.mouse.move(form.x + form.width * 0.7, form.y + form.height * 0.85, { steps: 15 });
+  await page.mouse.move(form.x + form.width * 0.7, form.y + form.height * 0.6, { steps: 15 });
   await page.mouse.up();
   await expect(embed.getByText(l.firstOption).first()).toBeVisible();
   await look('a new drop-down field');
@@ -226,7 +228,7 @@ async function walk(page: Page, lang: 'ar' | 'en', check: (texts: { where: strin
   await tab(l.annotate).click();
   await button(l.text).click();
   const box = await pageBox(page);
-  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.85);
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.65);
   await page.keyboard.type('نص');
   await look('a text box');
   await button(l.style).click();

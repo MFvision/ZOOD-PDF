@@ -46,7 +46,7 @@ const RULE_GREY: f32 = 0.7;
 const BORDER_GREY: f32 = 0.55;
 const HEADER_SHADE: [f32; 3] = [0.93, 0.93, 0.94];
 /// The app's name, as a made file's /Producer and /Creator say it.
-pub const APP_NAME: &str = "محرر PDF";
+pub const APP_NAME: &str = "ZOOD PDF";
 /// In a header or footer, where the page's number goes.
 pub const PAGE_NUMBER: char = '\u{E000}';
 /// In a header or footer, where the number of pages goes.

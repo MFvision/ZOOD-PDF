@@ -64,6 +64,8 @@ export interface TurnOptions {
   onText?: (text: string, thinking: boolean) => void;
   /** The analysis is being made, for this request: where it has got to. */
   onProgress?: (progress: Progress | null) => void;
+  /** The person's Memory, when they keep one and it may go to this model. */
+  memory?: string;
 }
 
 /**
@@ -118,11 +120,11 @@ export async function answerTurn(doc: DocumentText, ask: Ask, history: readonly 
   for (let attempt = 0; ; attempt += 1) {
     const budget = Math.floor(runner.turnBudget * scale);
     const said = carry(history, Math.floor(budget * 0.25));
-    const room = budget - total(said);
+    const room = budget - total(said) - (options.memory?.length ?? 0);
     const built = await material(doc, ask, history, runner, room, options);
     if (!built.ok) return built;
     if (signal.aborted) return { ok: false, failure: { kind: 'cancelled' } };
-    const outcome = await runner.run(turnPrompt(built.material, said, ask.text), { signal, onText });
+    const outcome = await runner.run(turnPrompt(built.material, said, ask.text, options.memory), { signal, onText });
     if (outcome.ok) return { ok: true, answer: outcome.answer, basis: built.basis };
     if (outcome.failure.kind !== 'tooLarge' || attempt >= 3) return outcome;
     scale *= 0.6;

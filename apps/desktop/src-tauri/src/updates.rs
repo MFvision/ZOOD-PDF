@@ -1,0 +1,98 @@
+//! Updates from GitHub (docs/updates.md). The app asks the stable channel —
+//! one fixed release, `updates-stable`, whose `latest.json` names the newest
+//! version released to users — whether there is something newer than itself.
+//! The test builds published on every run of the Windows workflow are never
+//! on that channel: a version reaches it only through the "Release to users"
+//! workflow, after it was tried.
+//!
+//! An update is installed only when its signature matches the public key in
+//! tauri.conf.json (`plugins.updater.pubkey`); the private key lives in the
+//! repository's secrets, nowhere else. The interface asks first, always:
+//! `update_check` says what there is, `update_install` installs what the
+//! last check found and restarts into it.
+
+use std::sync::Mutex;
+
+use serde::Serialize;
+use tauri::{AppHandle, Emitter, State};
+use tauri_plugin_updater::{Update, UpdaterExt};
+
+/// The update the last check found, kept until the person installs it.
+#[derive(Default)]
+pub struct UpdateState(Mutex<Option<Update>>);
+
+/// What the interface shows about an update.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateInfo {
+    pub version: String,
+    pub current_version: String,
+    /// The release notes, when the release has any.
+    pub notes: Option<String>,
+}
+
+/// Download progress, sent as `update-progress` while an update downloads.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateProgress {
+    pub downloaded: u64,
+    /// Unknown when the server does not say how large the file is.
+    pub total: Option<u64>,
+}
+
+pub const PROGRESS_EVENT: &str = "update-progress";
+
+fn info(update: &Update) -> UpdateInfo {
+    UpdateInfo {
+        version: update.version.clone(),
+        current_version: update.current_version.clone(),
+        notes: update
+            .body
+            .as_ref()
+            .map(|body| body.trim().to_string())
+            .filter(|body| !body.is_empty()),
+    }
+}
+
+/// Asks the stable channel for a newer version. `None` when this is the
+/// newest; an error (`E_UPDATE: …`) when the channel could not be read.
+#[tauri::command]
+pub async fn update_check(
+    app: AppHandle,
+    state: State<'_, UpdateState>,
+) -> Result<Option<UpdateInfo>, String> {
+    let updater = app.updater().map_err(|e| format!("E_UPDATE: {e}"))?;
+    let found = updater
+        .check()
+        .await
+        .map_err(|e| format!("E_UPDATE: {e}"))?;
+    let shown = found.as_ref().map(info);
+    *state.0.lock().map_err(|e| format!("E_UPDATE: {e}"))? = found;
+    Ok(shown)
+}
+
+/// Downloads the update the last check found, checks its signature, installs
+/// it and restarts into it. On Windows the installer closes the app itself.
+#[tauri::command]
+pub async fn update_install(app: AppHandle, state: State<'_, UpdateState>) -> Result<(), String> {
+    let update = state
+        .0
+        .lock()
+        .map_err(|e| format!("E_UPDATE: {e}"))?
+        .take()
+        .ok_or_else(|| "E_UPDATE: no update to install".to_string())?;
+    let mut downloaded = 0u64;
+    let progress = app.clone();
+    update
+        .download_and_install(
+            move |chunk, total| {
+                downloaded += chunk as u64;
+                let _ = progress.emit(PROGRESS_EVENT, UpdateProgress { downloaded, total });
+            },
+            || {},
+        )
+        .await
+        .map_err(|e| format!("E_UPDATE: {e}"))?;
+    crate::core_bridge::debug_log(format!("update {} installed, restarting", update.version));
+    app.restart()
+}
