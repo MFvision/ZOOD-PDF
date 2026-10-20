@@ -21,10 +21,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # SILMA (silma-tts==1.0.5) and Habibi MSA (habibi-tts==0.1.1) were
+          # tried here on 2026-10-20 (run 39481080681): 8 to 17 seconds of CPU
+          # per second of speech, far from usable on a PC, so they are out.
           - { engine: piper, os: windows-latest, install: 'piper-tts==1.8.0' }
-          - { engine: piper, os: ubuntu-latest, install: 'piper-tts==1.8.0' }
-          - { engine: silma, os: ubuntu-latest, install: 'silma-tts==1.0.5' }
-          - { engine: habibi, os: ubuntu-latest, install: 'habibi-tts==0.1.1' }
           - { engine: kokoro, os: ubuntu-latest, install: 'kokoro-onnx==0.4.9 soundfile' }
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.engine }} on ${{ matrix.os }}
@@ -86,7 +86,7 @@ jobs:
           PYTHONIOENCODING: utf-8
         run: |
           sudo apt-get update -q && sudo apt-get install -y -q ffmpeg >/dev/null
-          pip install -q faster-whisper==1.1.1 jiwer==3.1.0
+          pip install -q faster-whisper==1.1.1 jiwer==3.1.0 requests
           python scripts/voice-lab/understand.py artifacts 2>&1 | tee artifacts/understand.txt
       - name: push the samples
         shell: bash
