@@ -168,7 +168,10 @@ workflow to the server; the licensed font has to be added on the server side.
   glass cards for scanning, the widget and a shortcut slide out and are
   pressed, each bringing up the app's own screen) and `js/family.js` (every
   version together, after the concept the app was designed from: the pen
-  writing on the iPad, the phone scanning, the assistant's suggestions).
+  writing on the iPad, the phone scanning, the assistant's suggestions) and
+  `js/remote.js` (the desktop app's phone remote: a code scanned, then one
+  scroll step each for presenting, trackpad and keys, and files both ways;
+  drawn, not recorded).
   Their look is the app's liquid glass (`packages/ui/src/styles/looks.css`).
 - `js/interact.js`: a ring of light from where a button or switch is pressed;
   the press and spring are in `css/site.css`. Off with Reduce Motion.

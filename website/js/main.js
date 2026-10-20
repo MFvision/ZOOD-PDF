@@ -24,6 +24,7 @@ import { aiScene, aiFrame } from './ai-room.js';
 import { libraryScene, libraryFrame } from './library.js';
 import { phoneScene, phoneFrame as phoneRoomFrame } from './phone-room.js';
 import { familyScene, familyFrame } from './family.js';
+import { remoteScene, remoteFrame } from './remote.js';
 
 const root = document.documentElement;
 export const lang = root.lang === 'en' ? 'en' : 'ar';
@@ -220,6 +221,7 @@ const ROOMS = {
   ai: { scene: () => aiScene(t, escape, media), frame: aiFrame },
   library: { scene: () => libraryScene(t, escape), frame: libraryFrame },
   phone: { scene: () => phoneScene(t, escape, media, phoneFrame()), frame: phoneRoomFrame },
+  remote: { scene: () => remoteScene(t, escape, phoneFrame()), frame: remoteFrame },
   family: {
     scene: () => familyScene(t, escape, media, { phone: phoneFrame(), tablet: tabletFrame() }),
     frame: familyFrame,

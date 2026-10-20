@@ -48,7 +48,7 @@ const ON = {
 
 // Each chapter:
 //   id          the #anchor, also used by the chapter index
-//   kind        'story' (default), 'ring', 'ai', 'library', 'phone', 'family' (rooms), 'wall', 'platforms', 'download', 'inside'
+//   kind        'story' (default), 'ring', 'ai', 'library', 'phone', 'family', 'remote' (rooms), 'wall', 'platforms', 'download', 'inside'
 //   stage       pose numbers the desk animates between:
 //               pages 1-5, fan 0-1 (stack to arc), recede 0-1 (pages step back),
 //               dusk 0-1 (desk turns to navy ink), pattern 0-1, frame 0-1 (bronze frame)
@@ -163,6 +163,40 @@ export const CHAPTERS = [
       ar: 'على آيفون وآيباد يعمل بنموذج النظام المدمج: ',
       en: 'On iPhone and iPad it uses the model built into the system: ',
       on: { ar: 'iOS 26 وما بعده', en: 'iOS 26 and later' },
+    },
+  },
+  {
+    id: 'remote',
+    kind: 'remote',
+    stage: { pages: 1, fan: 0, recede: 1, dusk: 0, pattern: 0 },
+    devices: [],
+    eyebrow: { ar: 'هاتفك جهاز تحكّم', en: 'Phone remote' },
+    title: {
+      ar: 'امسح الرمز، [[فيصير هاتفك جهاز التحكّم]].',
+      en: 'Scan the code, and [[your phone is the remote]].',
+    },
+    lead: {
+      ar: 'بلا تطبيق ولا حساب: يفتح في متصفح أي هاتف على شبكة Wi-Fi نفسها، والاتصال مشفّر ولا يمر بالإنترنت.',
+      en: "No app and no account: it opens in any phone's browser on the same Wi-Fi, encrypted and never over the internet.",
+    },
+    points: [
+      {
+        ar: 'اعرض من هاتفك: قلّب الصفحات، وأشِر بالليزر، واكتب بالقلم، واقرأ ملاحظاتك والمؤقت أمامك.',
+        en: 'Present from your phone: turn pages, point with a laser, write with the pen, and read your notes with a timer in view.',
+      },
+      {
+        ar: 'اجعله لوحة لمس ولوحة مفاتيح للحاسوب، حين تفعّل ذلك من التطبيق.',
+        en: "Use it as the computer's trackpad and keyboard, once you switch that on in the app.",
+      },
+      {
+        ar: 'أرسل الملف إلى هاتفك، أو صوّر صفحة فتصل ملفًا، أو وقّع على الهاتف فيظهر توقيعك في الملف.',
+        en: 'Send the file to your phone, photograph a page and it arrives as a PDF, or sign on the phone and the signature lands in the file.',
+      },
+    ],
+    note: {
+      ar: 'جهاز التحكّم: ',
+      en: 'The phone remote: ',
+      on: { ar: 'تطبيق ويندوز وماك', en: 'the Windows and Mac app' },
     },
   },
   {
