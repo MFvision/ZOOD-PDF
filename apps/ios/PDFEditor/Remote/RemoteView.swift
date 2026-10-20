@@ -217,7 +217,7 @@ struct RemoteWebView: UIViewRepresentable {
             if RemoteAddress.isLocal(target) || ["blob", "data", "about"].contains(target.scheme ?? "") {
                 return .allow
             }
-            UIApplication.shared.open(target)
+            await UIApplication.shared.open(target)
             return .cancel
         }
     }
