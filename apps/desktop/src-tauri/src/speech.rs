@@ -109,32 +109,34 @@ pub fn speech_resume<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
 #[tauri::command]
 pub fn speech_open_settings() -> Result<(), String> {
     #[cfg(target_os = "macos")]
-    let (program, args): (&str, &[&str]) = (
+    let opener: Option<(&str, &str)> = Some((
         "/usr/bin/open",
-        &["x-apple.systempreferences:com.apple.preference.universalaccess?SpokenContent"],
-    );
+        "x-apple.systempreferences:com.apple.preference.universalaccess?SpokenContent",
+    ));
     #[cfg(target_os = "windows")]
-    let (program, args): (&str, &[&str]) = ("explorer.exe", &["ms-settings:speech"]);
-    #[cfg(all(unix, not(target_os = "macos")))]
-    return Err("E_SPEECH: no speech settings to open on this system".into());
-    #[cfg(any(target_os = "macos", target_os = "windows"))]
-    {
-        let mut child = std::process::Command::new(program)
-            .args(args)
-            .spawn()
-            .map_err(|e| format!("E_SPEECH: {e}"))?;
-        std::thread::spawn(move || {
-            let _ = child.wait();
-        });
-        Ok(())
-    }
+    let opener: Option<(&str, &str)> = Some(("explorer.exe", "ms-settings:speech"));
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    let opener: Option<(&str, &str)> = None;
+    let (program, page) = opener.ok_or("E_SPEECH: no speech settings to open on this system")?;
+    let mut child = std::process::Command::new(program)
+        .arg(page)
+        .spawn()
+        .map_err(|e| format!("E_SPEECH: {e}"))?;
+    std::thread::spawn(move || {
+        let _ = child.wait();
+    });
+    Ok(())
 }
 
 /// The interface's speed (1 normal, 0.5 to 2) as AVSpeechUtterance's rate,
 /// whose normal is 0.5 on a scale of 0 to 1 that speeds up steeply past
 /// about 0.75: half speed is 0.35, double speed 0.75.
 pub fn apple_rate(rate: f32) -> f32 {
-    let rate = if rate.is_finite() { rate.clamp(0.5, 2.0) } else { 1.0 };
+    let rate = if rate.is_finite() {
+        rate.clamp(0.5, 2.0)
+    } else {
+        1.0
+    };
     if rate >= 1.0 {
         0.5 + (rate - 1.0) * 0.25
     } else {
@@ -182,7 +184,10 @@ mod apple {
     /// Ends the wait on `utterance`, if it is the one being read.
     fn ended(utterance: *const AnyObject, how: &'static str) {
         let mut pending = PENDING.lock().unwrap_or_else(|e| e.into_inner());
-        if pending.as_ref().is_some_and(|(id, _)| *id == utterance as usize) {
+        if pending
+            .as_ref()
+            .is_some_and(|(id, _)| *id == utterance as usize)
+        {
             if let Some((_, sender)) = pending.take() {
                 let _ = sender.send(how);
             }
@@ -299,7 +304,9 @@ mod apple {
             }
         })
         .map_err(|e| format!("E_SPEECH: {e}"))?;
-        receiver.await.map_err(|_| "E_SPEECH: the voice stopped".to_string())
+        receiver
+            .await
+            .map_err(|_| "E_SPEECH: the voice stopped".to_string())
     }
 
     pub enum Control {
@@ -323,7 +330,8 @@ mod apple {
             if let Control::Stop = what {
                 // A stop before the sentence began says nothing through the
                 // delegate; whoever waits is let go here.
-                if let Some((_, waiting)) = PENDING.lock().unwrap_or_else(|e| e.into_inner()).take() {
+                if let Some((_, waiting)) = PENDING.lock().unwrap_or_else(|e| e.into_inner()).take()
+                {
                     let _ = waiting.send("cancelled");
                 }
             }
