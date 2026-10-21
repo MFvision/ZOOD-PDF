@@ -1,0 +1,134 @@
+/*
+ * Show me / Do it for me (GuideLayer.tsx): a glowing pointer over the app,
+ * a ring round the control it points at and a card with the step. Only the
+ * card takes clicks. The layer is laid out left to right, because it places
+ * things in screen pixels; the card's words keep the language's direction. The glide and the glow are under
+ * prefers-reduced-motion: no-preference and the app's own Reduce motion.
+ */
+.guide-layer {
+  --guide-hue: var(--accent);
+
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+}
+
+.guide-ring {
+  position: fixed;
+  border: 2px solid var(--guide-hue);
+  border-radius: var(--radius-10);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--guide-hue) 22%, transparent), 0 0 24px color-mix(in srgb, var(--guide-hue) 45%, transparent);
+}
+
+.guide-pointer {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: 30px;
+  block-size: 34px;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--guide-hue) 70%, transparent)) drop-shadow(0 2px 3px rgb(0 0 0 / 35%));
+}
+
+.guide-pointer svg {
+  display: block;
+  fill: #fff;
+  stroke: var(--guide-hue);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.guide-pointer-press {
+  position: absolute;
+  inset-block-start: -10px;
+  inset-inline-start: -10px;
+  inline-size: 26px;
+  block-size: 26px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--guide-hue) 40%, transparent);
+  opacity: 0;
+  transform: scale(0.4);
+}
+
+.guide-layer[data-phase="pressing"] .guide-pointer-press {
+  opacity: 1;
+  transform: scale(1.3);
+}
+
+.guide-card {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  color: var(--label);
+  pointer-events: auto;
+  background: var(--window-background);
+  border: 1px solid color-mix(in srgb, var(--guide-hue) 35%, var(--separator));
+  border-radius: var(--radius-12);
+  box-shadow: var(--shadow-popover), 0 0 30px color-mix(in srgb, var(--guide-hue) 20%, transparent);
+}
+
+.guide-card-head {
+  display: flex;
+  gap: var(--space-4);
+  justify-content: space-between;
+  margin: 0;
+  font-size: var(--text-callout);
+  font-weight: 600;
+  color: var(--guide-hue);
+}
+
+.guide-card-count {
+  font-weight: 400;
+  color: var(--secondary-label);
+}
+
+.guide-card-say {
+  margin: 0;
+  font-size: var(--text-title3);
+  line-height: 1.5;
+}
+
+.guide-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.guide-layer[data-phase="done"] .guide-card {
+  border-color: var(--green);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .guide-pointer {
+    transition: transform 700ms var(--ease-out);
+  }
+
+  .guide-ring {
+    transition: left 700ms var(--ease-out), top 700ms var(--ease-out), width 700ms var(--ease-out), height 700ms var(--ease-out);
+    animation: guide-glow 1.6s ease-in-out infinite;
+  }
+
+  .guide-pointer-press {
+    transition: opacity var(--duration-quick) ease, transform var(--duration-regular) var(--ease-out);
+  }
+
+  .guide-card {
+    transition: top 500ms var(--ease-out), left 500ms var(--ease-out);
+    animation: motion-rise var(--duration-regular) var(--ease-out);
+  }
+}
+
+html[data-reduce-motion="on"] .guide-pointer,
+html[data-reduce-motion="on"] .guide-ring,
+html[data-reduce-motion="on"] .guide-card {
+  transition: none;
+  animation: none;
+}
+
+@keyframes guide-glow {
+  50% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--guide-hue) 10%, transparent), 0 0 34px color-mix(in srgb, var(--guide-hue) 55%, transparent);
+  }
+}

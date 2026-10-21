@@ -1,0 +1,9 @@
+# Only index.php answers. The settings, the code it includes, the cron job
+# and the tests are never served.
+Options -Indexes
+<FilesMatch "^(config|config\.sample|lib|sync)\.php$">
+  Require all denied
+</FilesMatch>
+<FilesMatch "\.(md|sql|mjs|sh)$">
+  Require all denied
+</FilesMatch>

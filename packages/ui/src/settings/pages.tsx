@@ -37,6 +37,9 @@ import type { ThemeMode, UiLook } from '../state/preferences';
 import { ACCENTS, HOME_SECTIONS, resetSettings, updateSettings, useSettings } from '../state/settings';
 import type { Accent, AppSettings, HomeSection } from '../state/settings';
 import { openTourAt } from '../tour/Tour';
+import { openSupportAt } from '../support/open';
+import type { SupportTab } from '../support/open';
+import { readTickets } from '../support/tickets';
 import { appVersion, canUpdate, checkForUpdate, installUpdate, useUpdateState } from '../updates/updates';
 import { ActionRow, Choice, Group, OrderedList, Pick, Row, TextSetting, Toggle } from './controls';
 import { LookPreview } from './LookPreview';
@@ -924,6 +927,7 @@ export function AboutPage() {
       </Group>
       {canUpdate() && <UpdatesGroup />}
       <Group title={t('prefs.aboutHelp')}>
+        <ActionRow label={t('help.support')} hint={t('prefs.supportHint')} action={t('prefs.open')} onClick={() => openSupportAt('ask', () => dispatch({ type: 'DIALOG', dialog: 'support' }))} />
         <ActionRow label={t('prefs.aboutSupport')} hint={t('prefs.aboutSupportHint')} action={t('prefs.aboutWrite')} onClick={() => openMail(supportMail(t('app.name')))} />
         <ActionRow label={t('help.tour')} action={t('prefs.tourShow')} onClick={() => openTourAt('welcome', () => dispatch({ type: 'DIALOG', dialog: 'tour' }))} />
         <ActionRow label={t('prefs.shortcuts')} action={t('prefs.open')} onClick={() => dispatch({ type: 'DIALOG', dialog: 'shortcuts' })} />
@@ -951,6 +955,27 @@ export function AboutPage() {
       <p className="prefs-copyright" dir="ltr">
         © {year} {ABOUT.copyright}
       </p>
+    </>
+  );
+}
+
+/**
+ * Settings › Support: the ways into Help & Support, each at its own tab,
+ * and what it sends (only what the person sends, when they send it).
+ */
+export function SupportPage() {
+  const { t } = useI18n();
+  const dispatch = useAppDispatch();
+  const go = (tab: SupportTab) => openSupportAt(tab, () => dispatch({ type: 'DIALOG', dialog: 'support' }));
+  const reports = readTickets().length;
+  return (
+    <>
+      <Group title={t('help.support')} note={t('prefs.supportNote')}>
+        <ActionRow label={t('support.tab.ask')} hint={t('prefs.supportAskHint')} action={t('prefs.open')} onClick={() => go('ask')} />
+        <ActionRow label={t('support.tab.learn')} hint={t('prefs.supportLearnHint')} action={t('prefs.open')} onClick={() => go('learn')} />
+        <ActionRow label={t('help.report')} hint={reports > 0 ? t('prefs.supportReports', { n: reports }) : t('prefs.supportReportHint')} action={t('prefs.open')} onClick={() => go('report')} />
+        <ActionRow label={t('help.ideas')} hint={t('prefs.supportIdeasHint')} action={t('prefs.open')} onClick={() => go('ideas')} />
+      </Group>
     </>
   );
 }

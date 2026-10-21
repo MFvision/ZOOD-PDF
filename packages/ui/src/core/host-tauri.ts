@@ -2,6 +2,7 @@ import type { RequestKind, RequestMap, ResultMap } from './protocol';
 import { decodeFrame, encodeFrame } from './frame';
 import type { CoreStatus, DocumentMetadata, PageSize, ParagraphData, TextLineData } from './types';
 import { parseReplaceResult } from './handlers';
+import { note } from '../support/log';
 
 /**
  * Desktop host adapter: routes the core protocol to the natively linked
@@ -76,6 +77,7 @@ export function onHostEvent<T>(event: string, handle: (payload: T) => void): () 
  * fails the caller.
  */
 export function uiLog(message: string): void {
+  note('info', message);
   if (!isTauriHost()) return;
   invoke('ui_log', { message }).catch(() => undefined);
 }

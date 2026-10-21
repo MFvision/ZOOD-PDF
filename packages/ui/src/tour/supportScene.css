@@ -1,0 +1,198 @@
+/*
+ * The tour's Help & Support scene (supportScene.tsx): a question, its guide,
+ * the pointer that shows and then does it, a report reaching "fixed" and an
+ * idea getting a vote. Phases come from usePhases; with motion reduced the
+ * scene stays on the phase picked.
+ */
+.support-mock {
+  position: relative;
+  inline-size: 100%;
+  max-inline-size: 380px;
+  block-size: 250px;
+  font-size: var(--text-callout);
+}
+
+.support-mock > span {
+  position: absolute;
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  opacity: 0;
+  transition:
+    opacity var(--duration-regular) var(--ease-out),
+    transform var(--duration-sheet) var(--spring),
+    inset var(--duration-sheet) var(--ease-out);
+}
+
+.support-mock-q {
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  padding: var(--space-4) var(--space-5);
+  color: var(--accent-contrast);
+  background: var(--hue);
+  border-radius: var(--radius-12);
+  transform: translateY(8px);
+}
+
+.support-mock-answer {
+  inset-block-start: 44px;
+  inset-inline-start: 0;
+  flex-direction: column;
+  align-items: flex-start !important;
+  inline-size: 250px;
+  padding: var(--space-5);
+  background: var(--window-background);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-12);
+  box-shadow: var(--shadow-small);
+  transform: translateY(10px);
+}
+
+.support-mock-buttons {
+  display: flex;
+  gap: var(--space-3);
+  margin-block-start: var(--space-3);
+}
+
+.support-mock-show,
+.support-mock-do {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-footnote);
+  border-radius: var(--radius-capsule);
+}
+
+.support-mock-show {
+  color: var(--accent-contrast);
+  background: var(--hue);
+}
+
+.support-mock-do {
+  border: 1px solid var(--separator);
+}
+
+.support-mock-tool {
+  inset-block-end: 6px;
+  inset-inline-end: 12px;
+  padding: var(--space-4) var(--space-6);
+  font-weight: 600;
+  background: var(--window-background);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-10);
+}
+
+.support-mock-pointer {
+  inset-block-start: 160px;
+  inset-inline-start: 200px;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--hue) 70%, transparent));
+}
+
+.support-mock-pointer svg {
+  fill: #fff;
+  stroke: var(--hue);
+  stroke-width: 2;
+}
+
+.support-mock-ticket,
+.support-mock-idea {
+  inset-inline: 0;
+  padding: var(--space-5);
+  background: var(--window-background);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-12);
+  box-shadow: var(--shadow-small);
+  transform: translateY(14px);
+}
+
+.support-mock-ticket {
+  inset-block-start: 40px;
+}
+
+.support-mock-ticket > span:nth-child(2) {
+  flex: 1;
+}
+
+.support-mock-status {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: 2px var(--space-4);
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  border-radius: var(--radius-capsule);
+}
+
+.support-mock-idea {
+  inset-block-start: 120px;
+}
+
+.support-mock-vote {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  inline-size: 40px;
+  padding: var(--space-2) 0;
+  font-weight: 700;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-8);
+  transition: background var(--duration-quick) ease, color var(--duration-quick) ease;
+}
+
+/* Phases 0–3: the question, the guide, the pointer showing and then doing. */
+.support-mock:is([data-phase="0"], [data-phase="1"], [data-phase="2"], [data-phase="3"]) .support-mock-q,
+.support-mock:is([data-phase="1"], [data-phase="2"], [data-phase="3"]) .support-mock-answer,
+.support-mock:is([data-phase="2"], [data-phase="3"]) .support-mock-tool,
+.support-mock:is([data-phase="2"], [data-phase="3"]) .support-mock-pointer {
+  opacity: 1;
+  transform: none;
+}
+
+.support-mock[data-phase="2"] .support-mock-pointer {
+  inset-block-start: 128px;
+  inset-inline-start: 46px;
+}
+
+.support-mock[data-phase="3"] .support-mock-pointer {
+  inset-block-start: 222px;
+  inset-inline-start: calc(100% - 70px);
+}
+
+.support-mock[data-phase="3"] .support-mock-tool {
+  border-color: var(--hue);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--hue) 22%, transparent), 0 0 22px color-mix(in srgb, var(--hue) 45%, transparent);
+}
+
+/* Phases 4–5: a report reaches "fixed", an idea gets a vote. */
+.support-mock:is([data-phase="4"], [data-phase="5"]) .support-mock-ticket,
+.support-mock[data-phase="5"] .support-mock-idea {
+  opacity: 1;
+  transform: none;
+}
+
+.support-mock[data-phase="5"] .support-mock-vote {
+  color: var(--accent-contrast);
+  background: var(--hue);
+  border-color: var(--hue);
+}
+
+.tour-support-open {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  align-items: center;
+  margin-block-start: var(--space-6);
+}
+
+html[data-reduce-motion="on"] .support-mock > span {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .support-mock > span {
+    transition: none;
+  }
+}

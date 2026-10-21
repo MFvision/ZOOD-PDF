@@ -17,6 +17,8 @@ import type { Chapter, ChapterId } from './chapters';
 import { AiScene, BasicsScene, DoneScene, FilmScene, LookScene, QuickScene, RemoteScene, WelcomeScene } from './scenes';
 import type { TourProgress } from './scenes';
 import { AskScene } from './askScene';
+import { SupportScene } from './supportScene';
+import { openSupportAt } from '../support/open';
 import './tour.css';
 
 /**
@@ -54,12 +56,20 @@ export function WelcomeTour() {
   const close = () => dispatch({ type: 'DIALOG', dialog: null });
   return (
     <Dialog open={open} title={t('tour.title')} onClose={close} className="tour-dialog">
-      {open ? <TourBook desktop={desktop} ask={ask} onClose={close} onSettings={(section) => openSettingsAt(section, () => dispatch({ type: 'DIALOG', dialog: 'settings' }))} /> : null}
+      {open ? (
+        <TourBook
+          desktop={desktop}
+          ask={ask}
+          onClose={close}
+          onSettings={(section) => openSettingsAt(section, () => dispatch({ type: 'DIALOG', dialog: 'settings' }))}
+          onSupport={() => openSupportAt('ask', () => dispatch({ type: 'DIALOG', dialog: 'support' }))}
+        />
+      ) : null}
     </Dialog>
   );
 }
 
-function TourBook({ desktop, ask, onClose, onSettings }: { desktop: boolean; ask: boolean; onClose: () => void; onSettings: (section: SectionId) => void }) {
+function TourBook({ desktop, ask, onClose, onSettings, onSupport }: { desktop: boolean; ask: boolean; onClose: () => void; onSettings: (section: SectionId) => void; onSupport: () => void }) {
   const { t, dir } = useI18n();
   const [chapters] = useState(() => tourChapters(desktop, ask));
   const [at, setAt] = useState(() => {
@@ -137,7 +147,7 @@ function TourBook({ desktop, ask, onClose, onSettings }: { desktop: boolean; ask
         <div ref={stage} className="tour-scroll" aria-live="polite">
           <div key={chapter.id} className="tour-chapter">
             <ChapterHead chapter={chapter} n={at + 1} total={chapters.length} />
-            <Scene chapter={chapter} progress={progress} onProgress={(patch) => setProgress((before) => ({ ...before, ...patch }))} onSettings={onSettings} />
+            <Scene chapter={chapter} progress={progress} onProgress={(patch) => setProgress((before) => ({ ...before, ...patch }))} onSettings={onSettings} onSupport={onSupport} />
           </div>
         </div>
         <div className="tour-actions">
@@ -173,7 +183,7 @@ function ChapterHead({ chapter, n, total }: { chapter: Chapter; n: number; total
   );
 }
 
-function Scene({ chapter, progress, onProgress, onSettings }: { chapter: Chapter; progress: TourProgress; onProgress: (patch: Partial<TourProgress>) => void; onSettings: (section: SectionId) => void }) {
+function Scene({ chapter, progress, onProgress, onSettings, onSupport }: { chapter: Chapter; progress: TourProgress; onProgress: (patch: Partial<TourProgress>) => void; onSettings: (section: SectionId) => void; onSupport: () => void }) {
   switch (chapter.id) {
     case 'welcome':
       return <WelcomeScene />;
@@ -191,6 +201,8 @@ function Scene({ chapter, progress, onProgress, onSettings }: { chapter: Chapter
       return <RemoteScene />;
     case 'ai':
       return <AiScene />;
+    case 'support':
+      return <SupportScene onOpen={onSupport} />;
     case 'done':
       return <DoneScene progress={progress} />;
   }
