@@ -139,7 +139,7 @@ button svg {
   display: grid;
   position: sticky;
   inset-block-end: 0;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
   border-block-start: 1px solid var(--ph-line);
   background: rgb(4 30 66 / 92%);

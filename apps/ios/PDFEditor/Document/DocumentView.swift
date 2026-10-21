@@ -530,12 +530,14 @@ struct DocumentView: View {
         if compact {
             // The phone: the title block stays in the navigation bar, and
             // the tools sit under the thumb — the view modes in More.
+            // Sign has a button of its own here (the owner looked for it in
+            // vain under More); Thumbnails stays in More.
             ToolbarItemGroup(placement: .bottomBar) {
                 findAndMarkup
                 Spacer()
-                Button("Thumbnails", systemImage: "rectangle.grid.1x2") { showingThumbnails.toggle() }
+                Button("Sign", systemImage: "signature") { showingSignatures = true }
                     .disabled(!model.isReady)
-                    .accessibilityIdentifier("document.thumbnails.toggle")
+                    .accessibilityIdentifier("document.sign")
                 Spacer()
                 Button("Pages", systemImage: "square.grid.2x2") { showingPages = true }
                     .disabled(!model.isReady)
@@ -603,6 +605,7 @@ struct DocumentView: View {
             Toggle("Reader mode", systemImage: "doc.plaintext", isOn: $screen.readerMode)
             if compact {
                 Toggle("Thumbnails", systemImage: "rectangle.grid.1x2", isOn: $screen.showingThumbnails)
+                    .accessibilityIdentifier("document.thumbnails.toggle")
             }
             Divider()
             Button("Outline", systemImage: "list.bullet.indent") { showingOutline = true }

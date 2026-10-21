@@ -10,20 +10,32 @@ import WebKit
 ///
 /// The page keeps its pairing in the web view's own storage, so the next
 /// time the remote opens straight on the computer it was paired with.
+///
+/// A file the computer sends is saved by the page as a download; a web view
+/// does nothing with one by itself, so it is taken here: a PDF goes to
+/// `onPDF` (the Library keeps and opens it), anything else to the share sheet.
 struct RemoteView: View {
+    var onPDF: (URL) -> Void = { _ in }
     @Environment(\.dismiss) private var dismiss
     /// The last computer's address, without its key: paired phones need no code.
     @AppStorage("remote.lastAddress") private var lastAddress = ""
     @State private var address: URL?
     @State private var scanning = false
     @State private var problem: LocalizedStringKey?
+    @State private var received: ReceivedFile?
 
     var body: some View {
         NavigationStack {
             Group {
                 if let address {
-                    RemoteWebView(url: address)
-                        .ignoresSafeArea(edges: .bottom)
+                    RemoteWebView(url: address) { file in
+                        if file.pathExtension.lowercased() == "pdf" {
+                            onPDF(file)
+                        } else {
+                            received = ReceivedFile(url: file)
+                        }
+                    }
+                    .ignoresSafeArea(edges: .bottom)
                 } else {
                     start
                 }
@@ -42,6 +54,10 @@ struct RemoteView: View {
                     }
                 }
             }
+        }
+        .sheet(item: $received) { file in
+            ReceivedSheet(file: file)
+                .presentationDetents([.medium])
         }
         .sheet(isPresented: $scanning) {
             RemoteScanner { text in
@@ -181,9 +197,39 @@ struct RemoteScanner: UIViewControllerRepresentable {
     }
 }
 
-/// The computer's remote page. Links that would leave it open in Safari.
+/// A file the computer sent that is not a PDF, to keep with the share sheet.
+struct ReceivedFile: Identifiable {
+    let url: URL
+    var id: URL { url }
+}
+
+private struct ReceivedSheet: View {
+    let file: ReceivedFile
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "arrow.down.doc")
+                .font(.system(size: 44))
+                .foregroundStyle(.tint)
+            Text(file.url.lastPathComponent)
+                .font(.headline)
+                .multilineTextAlignment(.center)
+            ShareLink(item: file.url) {
+                Label("Save or share", systemImage: "square.and.arrow.up")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+        }
+        .padding(24)
+    }
+}
+
+/// The computer's remote page. Links that would leave it open in Safari;
+/// a file the page saves (one sent from the computer) lands in `onFile`.
 struct RemoteWebView: UIViewRepresentable {
     let url: URL
+    var onFile: (URL) -> Void = { _ in }
 
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
@@ -206,19 +252,60 @@ struct RemoteWebView: UIViewRepresentable {
         }
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator() }
+    func makeCoordinator() -> Coordinator { Coordinator(onFile: onFile) }
 
     @MainActor
-    final class Coordinator: NSObject, WKNavigationDelegate {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKDownloadDelegate {
         var loaded: URL?
+        let onFile: (URL) -> Void
+        /// Where each download is being written, until it finishes.
+        private var destinations: [ObjectIdentifier: URL] = [:]
+
+        init(onFile: @escaping (URL) -> Void) {
+            self.onFile = onFile
+        }
 
         func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {
             guard let target = action.request.url else { return .cancel }
+            if action.shouldPerformDownload { return .download }
             if RemoteAddress.isLocal(target) || ["blob", "data", "about"].contains(target.scheme ?? "") {
                 return .allow
             }
             await UIApplication.shared.open(target)
             return .cancel
+        }
+
+        func webView(_ webView: WKWebView, decidePolicyFor response: WKNavigationResponse) async -> WKNavigationResponsePolicy {
+            response.canShowMIMEType ? .allow : .download
+        }
+
+        func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
+            download.delegate = self
+        }
+
+        func webView(_ webView: WKWebView, navigationResponse: WKNavigationResponse, didBecome download: WKDownload) {
+            download.delegate = self
+        }
+
+        func download(_ download: WKDownload, decideDestinationUsing response: URLResponse, suggestedFilename: String) async -> URL? {
+            // A folder of its own per file, so the name stays the sender's.
+            let folder = FileManager.default.temporaryDirectory
+                .appending(path: "remote-received", directoryHint: .isDirectory)
+                .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let name = (suggestedFilename as NSString).lastPathComponent
+            let destination = folder.appending(path: name.isEmpty ? "file" : name)
+            destinations[ObjectIdentifier(download)] = destination
+            return destination
+        }
+
+        func downloadDidFinish(_ download: WKDownload) {
+            guard let destination = destinations.removeValue(forKey: ObjectIdentifier(download)) else { return }
+            onFile(destination)
+        }
+
+        func download(_ download: WKDownload, didFailWithError error: any Error, resumeData: Data?) {
+            destinations.removeValue(forKey: ObjectIdentifier(download))
         }
     }
 }
