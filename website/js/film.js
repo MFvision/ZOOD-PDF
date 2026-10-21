@@ -2,7 +2,8 @@
 // app's own screens, with music made there too). It plays without sound while
 // its room is on screen and pauses when it leaves; a button turns the sound
 // on, and the player's own controls are there. With Reduce Motion or Save
-// Data it waits on its poster until someone presses play.
+// Data it waits on its poster until someone presses play. Narrow screens get
+// the 720p copy (about a third of the size).
 const WORDS = {
   label: { ar: 'فيلم قصير عن التطبيق', en: 'A short film of the app' },
   soundOn: { ar: 'شغّل الصوت', en: 'Sound on' },
@@ -15,6 +16,8 @@ export function filmScene(t, escape, lang) {
   const base = new URL(`../assets/film/film-${lang}`, import.meta.url).href;
   return `<div class="film">
     <video class="film-video" controls muted playsinline preload="none" width="1920" height="1080" poster="${base}.webp" aria-label="${escape(t(WORDS.label))}">
+      <source src="${base}-720.webm" type="video/webm" media="(max-width: 760px)">
+      <source src="${base}-720.mp4" type="video/mp4" media="(max-width: 760px)">
       <source src="${base}.webm" type="video/webm">
       <source src="${base}.mp4" type="video/mp4">
     </video>

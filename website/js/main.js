@@ -28,6 +28,10 @@ import { remoteScene, remoteFrame } from './remote.js';
 import { filmScene, filmFrame } from './film.js';
 import { fabricButton, wireFabric } from './fabric.js';
 import { foldScene, foldFrame } from './fold-room.js';
+import { askScene, askFrame } from './ask-room.js';
+import { tourScene, tourFrame } from './tour-room.js';
+import { startPageMorph } from './page-morph.js';
+import { startFoldable } from './foldable.js';
 
 const root = document.documentElement;
 export const lang = root.lang === 'en' ? 'en' : 'ar';
@@ -182,13 +186,13 @@ function chapterBody(c, index) {
   if (c.points)
     body += `<ul class="points">${c.points.map((p, k) => `<li style="--pi:${k}">${escape(t(p))}</li>`).join('')}</ul>`;
   if (c.kind === 'platforms') {
-    body += `<ul class="platforms">${PLATFORMS.map((p) => `<li><strong>${escape(t(p.name))}</strong><span>${escape(t(p.status))}</span></li>`).join('')}</ul>`;
+    body += `<ul class="platforms">${PLATFORMS.map((p, k) => `<li style="--li:${k}"><strong>${escape(t(p.name))}</strong><span>${escape(t(p.status))}</span></li>`).join('')}</ul>`;
   }
   if (c.kind === 'download') {
-    body += `<ul class="downloads">${DOWNLOADS.map((d) =>
+    body += `<ul class="downloads">${DOWNLOADS.map((d, k) =>
       d.href
-        ? `<li><a href="${escape(d.href)}" rel="noopener">${escape(t(d.label))}</a></li>`
-        : `<li><span class="soon">${escape(t(d.label))} <span>${escape(t(UI.comingSoon))}</span></span></li>`,
+        ? `<li style="--li:${k}"><a href="${escape(d.href)}" rel="noopener">${escape(t(d.label))}</a></li>`
+        : `<li style="--li:${k}"><span class="soon">${escape(t(d.label))} <span>${escape(t(UI.comingSoon))}</span></span></li>`,
     ).join('')}</ul>`;
   }
   if (c.note) body += `<p class="note">${escape(t(c.note))}${escape(t(c.note.on))}.</p>`;
@@ -225,6 +229,8 @@ const media = {
 const ROOMS = {
   ring: { scene: () => ringScene(t, escape), frame: ringFrame },
   ai: { scene: () => aiScene(t, escape, media), frame: aiFrame },
+  ask: { scene: () => askScene(t, escape), frame: askFrame },
+  tour: { scene: () => tourScene(t, escape), frame: tourFrame },
   library: { scene: () => libraryScene(t, escape), frame: libraryFrame },
   phone: { scene: () => phoneScene(t, escape, media, phoneFrame()), frame: phoneRoomFrame },
   remote: { scene: () => remoteScene(t, escape, phoneFrame()), frame: remoteFrame },
@@ -645,6 +651,10 @@ document.addEventListener('visibilitychange', () => {
     }
   }
 });
+startPageMorph();
+// The shells load this script with blocking="render", so the first frame waits
+// for the page this builds: no empty flash, and a page-to-page transition
+// lands on the finished page (which is why the Duo page is imported up front).
 if (root.dataset.page === 'story') startStory();
-else if (root.dataset.page === 'iphone-duo') import('./foldable.js').then((m) => m.startFoldable());
+else if (root.dataset.page === 'iphone-duo') startFoldable();
 else import('./legal-page.js').then((m) => m.startLegal(root.dataset.page));

@@ -34,6 +34,7 @@ function shell(lang, slug) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="same-origin">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
 <link rel="canonical" href="${url}">
@@ -57,7 +58,7 @@ function shell(lang, slug) {
 <link rel="preload" href="/assets/fonts/${lang === 'ar' ? 'vazirmatn' : 'inter'}.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/site.css">${slug && slug !== 'iphone-duo' ? '' : '\n<link rel="stylesheet" href="/css/foldable.css">'}
 <script src="/js/boot.js"></script>
-<script type="module" src="/js/main.js"></script>
+<script type="module" src="/js/main.js" blocking="render"></script>
 </head>
 <body>
 <noscript><p style="padding:96px 16px 0;max-width:760px;margin:auto">${esc(UI.noscript[lang])}</p></noscript>

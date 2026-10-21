@@ -1,8 +1,8 @@
 // The remote room: a computer and a phone side by side, and the phone runs the
 // computer, one ability per scroll beat, quick to read at a glance: the laser,
 // the highlighter and turning pages while presenting; then the computer's own
-// mouse, keyboard, any slideshow and the volume; then files both ways and a
-// signature. A row of labels names each beat and jumps to it, and the phone
+// mouse, keyboard, any slideshow and the volume; then files both ways, a file
+// flicked up onto the computer's desktop, and a signature. A row of labels names each beat and jumps to it, and the phone
 // can be tried: move over its screen and the laser or the pointer follows,
 // press its buttons and they work. A drawing of the desktop app's phone
 // remote (packages/ui/src/remote/phone), not a recording.
@@ -11,14 +11,15 @@ import { clamp, ease, mix, setter, span, spring } from './motion.js';
 // The beats, in scroll order: where each starts and ends, which tab the phone
 // shows, what the computer shows, and which point of the words it belongs to.
 const BEATS = [
-  { id: 'laser', s: 0.02, e: 0.15, tab: 0, screen: 'show', point: 0 },
-  { id: 'mark', s: 0.15, e: 0.27, tab: 0, screen: 'show', point: 0 },
-  { id: 'pages', s: 0.27, e: 0.36, tab: 0, screen: 'show', point: 0 },
-  { id: 'mouse', s: 0.36, e: 0.49, tab: 1, screen: 'desk', point: 1 },
-  { id: 'keys', s: 0.49, e: 0.61, tab: 1, screen: 'desk', point: 1 },
-  { id: 'slides', s: 0.61, e: 0.74, tab: 1, screen: 'desk', point: 1 },
-  { id: 'files', s: 0.74, e: 0.87, tab: 2, screen: 'edit', point: 2 },
-  { id: 'sign', s: 0.87, e: 1, tab: 2, screen: 'edit', point: 2 },
+  { id: 'laser', s: 0.02, e: 0.14, tab: 0, screen: 'show', point: 0 },
+  { id: 'mark', s: 0.14, e: 0.25, tab: 0, screen: 'show', point: 0 },
+  { id: 'pages', s: 0.25, e: 0.33, tab: 0, screen: 'show', point: 0 },
+  { id: 'mouse', s: 0.33, e: 0.45, tab: 1, screen: 'desk', point: 1 },
+  { id: 'keys', s: 0.45, e: 0.56, tab: 1, screen: 'desk', point: 1 },
+  { id: 'slides', s: 0.56, e: 0.68, tab: 1, screen: 'desk', point: 1 },
+  { id: 'files', s: 0.68, e: 0.78, tab: 2, screen: 'edit', point: 2 },
+  { id: 'flick', s: 0.78, e: 0.89, tab: 2, screen: 'desk', point: 2 },
+  { id: 'sign', s: 0.89, e: 1, tab: 2, screen: 'edit', point: 2 },
 ];
 
 const WORDS = {
@@ -30,6 +31,7 @@ const WORDS = {
     keys: { ar: 'لوحة المفاتيح', en: 'Keyboard' },
     slides: { ar: 'العروض والصوت', en: 'Slides and volume' },
     files: { ar: 'الملفات', en: 'Files' },
+    flick: { ar: 'مرّر ملفًا', en: 'Flick a file' },
     sign: { ar: 'التوقيع', en: 'Signature' },
   },
   show: { ar: 'اعرض كل ميزة', en: 'Show each feature' },
@@ -63,6 +65,12 @@ const WORDS = {
     ],
   },
   saved: { ar: 'حُفظ في جوالك', en: 'Saved on your phone' },
+  flickName: { ar: 'إيصال.pdf', en: 'Receipt.pdf' },
+  flickHint: { ar: 'اسحب للأعلى لإرساله إلى الجهاز', en: 'Swipe up to send it to the computer' },
+  fromPc: { ar: 'من الجهاز', en: 'From the computer' },
+  pcName: { ar: 'ملاحظات.txt', en: 'Notes.txt' },
+  save: { ar: 'حفظ', en: 'Save' },
+  done: { ar: 'تم', en: 'Done' },
   drawSig: { ar: 'ارسم توقيعك', en: 'Draw your signature' },
   signPage: { ar: 'وقّع الصفحة 1', en: 'Sign page 1' },
   signed: { ar: 'تم التوقيع', en: 'Signed' },
@@ -190,6 +198,7 @@ export function remoteScene(t, escape, frame) {
         <div class="rm-wapp rm-deck"><p class="rm-wbar">${e(WORDS.deck)}</p><div class="rm-dview">${deckSlides}</div></div>
         <div class="rm-dock"><i></i><i></i><i></i><i></i><i></i></div>
         <div class="rm-hud"><span>${ICONS.speaker}</span><b><i></i></b></div>
+        <span class="rm-dfile"><i>${ICONS.file}</i><small>${e(WORDS.flickName)}</small></span>
         <span class="rm-click"></span>
         <span class="rm-ptr">${cursor}</span>
       </div>
@@ -216,6 +225,10 @@ export function remoteScene(t, escape, frame) {
       <div class="rm-panel rm-p2">${rows}
         <p class="rm-toast">${ICONS.check}${e(WORDS.saved)}</p>
         <div class="rm-signpad"><small>${e(WORDS.drawSig)}</small>${sig('rm-sig-phone')}<span class="rm-signbtn" data-k="signBtn">${e(WORDS.signPage)}</span></div>
+      </div>
+      <div class="rm-flick"><span class="rm-fglow"></span><span class="rm-fwave"></span>
+        <div class="rm-fsend"><div class="rm-fcard">${ICONS.file}</div><p class="rm-fname">${e(WORDS.flickName)}</p><p class="rm-fhint">${ICONS.up}${e(WORDS.flickHint)}</p></div>
+        <div class="rm-fcatch"><small>${e(WORDS.fromPc)}</small><div class="rm-fcard">${ICONS.file}</div><p class="rm-fname">${e(WORDS.pcName)}</p><span class="rm-fbtns"><span class="rm-fsave" data-k="fsave">${e(WORDS.save)}</span><span>${e(WORDS.done)}</span></span></div>
       </div>
       <div class="rm-sheet"><p class="rm-input">${typed}<u></u><small>${e(WORDS.typeHere)}</small></p><div class="rm-krows">${keyRows}<span><i class="sp"></i></span></div></div>
       <nav class="rm-tabs">${tabs}</nav>
@@ -274,6 +287,12 @@ function script(b, t, rtl, scene) {
     sigd: 0,
     sigp: 0,
     signed: 0,
+    fon: 0,
+    fk: 0,
+    fglow: 0,
+    fwave: 0,
+    fland: 0,
+    fcatch: 0,
   };
   const id = BEATS[b].id;
   const tops = BARS.map((_, k) => barTop(k));
@@ -437,6 +456,38 @@ function script(b, t, rtl, scene) {
     s.flyon = s.back ? Math.sin(back * Math.PI) : Math.sin(out * Math.PI);
     s.saved = spring(span(t, 0.55, 0.6)) * (1 - span(t, 0.7, 0.74));
     s.newp = spring(span(t, 0.9, 0.98));
+  } else if (id === 'flick') {
+    // A file flicked up off the phone lands on the computer's desktop, in a
+    // glow and a wave of light; then one from the computer drops in.
+    s.fon = ease(span(t, 0, 0.08)) * (1 - ease(span(t, 0.94, 1)));
+    s.touch =
+      t < 0.36
+        ? along(
+            [
+              [0.04, 50, 36],
+              [0.16, 50, 36],
+              [0.34, 50, 6],
+            ],
+            t,
+          )
+        : inside(t, 0.72, 0.9)
+          ? along(
+              [
+                [0.72, 60, 60],
+                [0.8, ...X([31, 59])],
+              ],
+              t,
+            )
+          : null;
+    s.fk = ease(span(t, 0.16, 0.34));
+    s.fglow = Math.max(
+      Math.sin(span(t, 0.14, 0.5) * Math.PI),
+      Math.sin(span(t, 0.52, 0.86) * Math.PI),
+    );
+    s.fwave = span(t, 0.2, 0.42);
+    s.fland = spring(span(t, 0.36, 0.5));
+    s.fcatch = spring(span(t, 0.54, 0.7));
+    s.press = inside(t, 0.8, 0.86) ? 'fsave' : '';
   } else if (id === 'sign') {
     s.pad = spring(span(t, 0.12, 0.22)) * (1 - span(t, 0.72, 0.8));
     s.sigd = span(t, 0.25, 0.55);
@@ -537,7 +588,7 @@ export function remoteFrame(el, p, reduced) {
   if (b < 0) b = 0;
   // With Reduce Motion each beat is one still picture: its finished state.
   const t = reduced
-    ? ({ files: 0.99, sign: 0.97 }[BEATS[b].id] ?? 0.9)
+    ? ({ files: 0.99, flick: 0.76, sign: 0.97 }[BEATS[b].id] ?? 0.9)
     : span(p, BEATS[b].s, BEATS[b].e);
   const s = script(b, t, rtl, scene);
 
@@ -630,4 +681,10 @@ export function remoteFrame(el, p, reduced) {
   set('--sigd', s.sigd);
   set('--sigp', s.sigp);
   set('--signed', s.signed);
+  set('--fon', s.fon);
+  set('--fk', s.fk);
+  set('--fglow', s.fglow);
+  set('--fwave', s.fwave);
+  set('--fland', s.fland);
+  set('--fcatch', s.fcatch);
 }

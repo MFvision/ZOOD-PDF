@@ -137,7 +137,7 @@ docker run -d -p 80:80 -p 443:443 -v caddy_data:/data zood-pdf-site
 The `Caddyfile` sets the domain (`pdf.zood.sa`, override with
 `SITE_ADDRESS`), compression, a week's caching for pictures and fonts,
 revalidation of HTML, JS and CSS on every visit, and the security headers
-(nosniff, no referrer, no framing, HSTS, a content security policy that allows
+(nosniff, no referrer to other sites, no framing, HSTS, a content security policy that allows
 nothing outside the site). For auto-deploy on push, have the server pull the
 `app` branch and rebuild the image, or push the image from a GitHub Actions
 workflow to the server; the licensed font has to be added on the server side.
@@ -177,7 +177,8 @@ workflow to the server; the licensed font has to be added on the server side.
   Their look is the app's liquid glass (`packages/ui/src/styles/looks.css`).
 - `js/film.js`: the 30-second film after the opening. It plays without sound
   while on screen and pauses when it leaves; a button turns the sound on. With
-  Reduce Motion or Save Data it waits on its poster.
+  Reduce Motion or Save Data it waits on its poster. Screens up to 760px wide
+  get the 720p copy (`film-<lang>-720.*`).
 - `js/fabric.js`: the download button, a velvet cushion drawn in SVG and lit
   by an SVG filter. It swells toward the pointer and squeezes when pressed;
   blue in the dark theme, navy in the light one. Still with Reduce Motion.
@@ -187,6 +188,25 @@ workflow to the server; the licensed font has to be added on the server side.
   highlights carousel shows it folded (iPhone screens) or open (iPad screens).
   `js/fold-room.js` is its small section on the home page. Check it with
   `node website/tools/qa-foldable.mjs`.
+- `js/page-morph.js`: moving between pages, the pages cross-fade and the top
+  bar stays put (`@view-transition` in `css/site.css`); between the home page
+  and the iPhone Duo page the phone carries across. The shells load
+  `js/main.js` with `blocking="render"` so the new page is built before the
+  transition, and set the referrer policy to same-origin, which the browser
+  needs to tell the script which page it came from. Off with Reduce Motion.
+- Privacy, platforms and downloads: the privacy frame closes in around the
+  page and its lock shuts; the platform and download rows follow their card
+  in, one after another.
+- `js/ask-room.js`: Ask ZOOD. An email waits for a reply, the right Ctrl key
+  is tapped twice, the island drops in, reads the window and writes the reply
+  word by word ("Nothing was sent"); then "Coming up" slides in. Drawn, with
+  the app's own words (`packages/ui/src/ask`).
+- `js/tour-room.js`: the welcome tour, drawn: its eight chapters tick off one
+  by one as you scroll (`packages/ui/src/tour`).
+- The phone room also shows the iPhone's tabs, "Open with" and the five app
+  icons (`assets/brand/icons/`, from the iOS app's icon previews); the remote
+  room has a Flick beat: a file goes up off the phone in a glow and a wave of
+  light and lands on the computer's desktop, then one comes back.
 - `js/interact.js`: a ring of light from where a button or switch is pressed;
   the press and spring are in `css/site.css`. Off with Reduce Motion.
 

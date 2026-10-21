@@ -1,7 +1,8 @@
 // Makes the film: node website/tools/promo/make.mjs [ar|en ...] [--at=t1,t2 ...]
 // Pulls frames out of the app's recordings, serves the site and them,
 // captures promo.js frame by frame in Chromium, writes the music (music.mjs)
-// and encodes assets/film/film-<lang>.mp4, .webm and a .webp poster.
+// and encodes assets/film/film-<lang>.mp4, .webm (and -720 copies for phones)
+// and a .webp poster.
 // With --at it only writes stills of those moments, to check a scene.
 // Needs ffmpeg and the repo's Playwright (as tools/capture-screens.mjs does).
 import { createServer } from 'node:http';
@@ -129,12 +130,10 @@ for (const lang of langs) {
         k / (RING_FRAMES - 1),
       );
       await site.waitForTimeout(60);
-      await site
-        .locator('#ring .rs')
-        .screenshot({
-          path: join(ringDir, `${String(k + 1).padStart(4, '0')}.png`),
-          omitBackground: true,
-        });
+      await site.locator('#ring .rs').screenshot({
+        path: join(ringDir, `${String(k + 1).padStart(4, '0')}.png`),
+        omitBackground: true,
+      });
     }
     await site.close();
   }
@@ -162,56 +161,25 @@ for (const lang of langs) {
   if (!at) {
     const frames = join(shots, '%05d.jpg');
     const music = join(TMP, 'music.wav');
-    ffmpeg(
-      '-framerate',
-      String(FPS),
-      '-i',
-      frames,
-      '-i',
-      music,
-      '-c:v',
-      'libx264',
-      '-preset',
-      'slow',
-      '-crf',
-      '24',
-      '-pix_fmt',
-      'yuv420p',
-      '-c:a',
-      'aac',
-      '-b:a',
-      '160k',
-      '-movflags',
-      '+faststart',
-      '-shortest',
-      join(OUT, `film-${lang}.mp4`),
-    );
-    ffmpeg(
-      '-framerate',
-      String(FPS),
-      '-i',
-      frames,
-      '-i',
-      music,
-      '-c:v',
-      'libvpx-vp9',
-      '-crf',
-      '36',
-      '-b:v',
-      '0',
-      '-row-mt',
-      '1',
-      '-deadline',
-      'good',
-      '-cpu-used',
-      '2',
-      '-c:a',
-      'libopus',
-      '-b:a',
-      '128k',
-      '-shortest',
-      join(OUT, `film-${lang}.webm`),
-    );
+    // Full HD, and a 720p copy for phones (film.js picks it on narrow screens).
+    for (const [suffix, size] of [
+      ['', []],
+      ['-720', ['-vf', 'scale=1280:-2']],
+    ]) {
+      ffmpeg(
+        ...['-framerate', String(FPS), '-i', frames, '-i', music, ...size],
+        ...['-c:v', 'libx264', '-preset', 'slow', '-crf', '24', '-pix_fmt', 'yuv420p'],
+        ...['-c:a', 'aac', '-b:a', suffix ? '128k' : '160k', '-movflags', '+faststart'],
+        ...['-shortest', join(OUT, `film-${lang}${suffix}.mp4`)],
+      );
+      ffmpeg(
+        ...['-framerate', String(FPS), '-i', frames, '-i', music, ...size],
+        ...['-c:v', 'libvpx-vp9', '-crf', '36', '-b:v', '0', '-row-mt', '1'],
+        ...['-deadline', 'good', '-cpu-used', '2'],
+        ...['-c:a', 'libopus', '-b:a', suffix ? '96k' : '128k'],
+        ...['-shortest', join(OUT, `film-${lang}${suffix}.webm`)],
+      );
+    }
     ffmpeg(
       '-i',
       join(shots, `${String(Math.round(POSTER * FPS)).padStart(5, '0')}.jpg`),
