@@ -36,7 +36,7 @@ function host(scenario) {
   };
   /** The window the person tapped in, drawn as a picture: what the host's xcap would take. */
   async function windowPicture() {
-    const canvas = new OffscreenCanvas(1100, 420);
+    const canvas = new globalThis.OffscreenCanvas(1100, 420);
     const g = canvas.getContext('2d');
     g.fillStyle = '#ffffff';
     g.fillRect(0, 0, 1100, 420);
