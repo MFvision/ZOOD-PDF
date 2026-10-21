@@ -44,6 +44,13 @@ enum SpeechVoices {
         }
     }
 
+    /// Whether every installed voice for `language` is the compact default
+    /// (or there is none): reading then sounds robotic, and the bar offers
+    /// the way to a natural voice.
+    static func onlyBasic(for language: String, among all: [AVSpeechSynthesisVoice] = AVSpeechSynthesisVoice.speechVoices()) -> Bool {
+        (voices(for: language, among: all).first.map(rank) ?? 1) < 2
+    }
+
     /// The quality, as a word beside the voice's name.
     static func qualityTitle(_ voice: AVSpeechSynthesisVoice) -> String? {
         switch voice.quality {

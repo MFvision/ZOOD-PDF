@@ -4,11 +4,14 @@ import type { PageBox } from '../embed/embedControl';
 import { readJson, writeJson } from '../state/preferences';
 import { pageText, sentenceBoxes, splitSentences } from './sentences';
 import type { Sentence } from './sentences';
-import { describeVoices, pickVoice } from './voices';
+import { knownEngine, speechAvailable, speechEngine } from './engines';
+import type { EngineKind, SpeechEngine } from './engines';
+import { pickVoice } from './voices';
 import type { VoiceInfo, VoiceLang } from './voices';
 
 /**
- * Read aloud, with the system's own voices through Web Speech: the page on
+ * Read aloud, with the system's own voices (`engines.ts`: Apple's speech
+ * engine in the Mac app, Web Speech elsewhere): the page on
  * screen, the whole document from it, or what is selected. One utterance a
  * sentence; the sentence being read is marked on the page in both views
  * (`ReadAloudHighlight`, `EmbedReadAloudHighlight`), and reading goes on
@@ -38,6 +41,8 @@ export interface ReadAloudState {
   boxes: { page: number; rects: PageBox[] } | null;
   rate: number;
   voices: VoiceInfo[];
+  /** Which engine the voices are from, once known. */
+  engine: EngineKind | null;
   /** The chosen voice for each language (its id), or null for the best installed. */
   voiceAr: string | null;
   voiceEn: string | null;
@@ -84,6 +89,7 @@ let state: ReadAloudState = {
   sentence: null,
   boxes: null,
   voices: [],
+  engine: null,
   notice: null,
   ...savedSettings(),
 };
@@ -112,36 +118,27 @@ export function useReadAloud(): ReadAloudState {
 
 /* --------------------------------------------------------------- speech */
 
-/** The speech engine, as this file uses it — so a test can hand in its own. */
-export interface Speech {
-  getVoices(): SpeechSynthesisVoice[];
-  speak(utterance: SpeechSynthesisUtterance): void;
-  cancel(): void;
-  pause(): void;
-  resume(): void;
-  addEventListener?(type: 'voiceschanged', listener: () => void): void;
-}
-
-function speech(): Speech | null {
-  const synth = (globalThis as { speechSynthesis?: Speech }).speechSynthesis;
-  return synth && typeof SpeechSynthesisUtterance !== 'undefined' ? synth : null;
-}
-
 export function speechSupported(): boolean {
-  return speech() !== null;
+  return speechAvailable();
 }
 
-let voicesWatched = false;
+let voicesWatched: SpeechEngine | null = null;
 
-/** Reads the system's voices, and again when the browser reports more. */
+/** Reads the installed voices, and again when the engine reports more. */
 export function refreshVoices(): void {
-  const synth = speech();
-  if (!synth) return;
-  set({ voices: describeVoices(synth.getVoices()) });
-  if (!voicesWatched) {
-    voicesWatched = true;
-    synth.addEventListener?.('voiceschanged', () => set({ voices: describeVoices(synth.getVoices()) }));
-  }
+  void speechEngine().then(async (engine) => {
+    if (!engine) return;
+    const load = () =>
+      engine
+        .voices()
+        .then((voices) => set({ voices, engine: engine.kind }))
+        .catch(() => undefined);
+    await load();
+    if (voicesWatched !== engine) {
+      voicesWatched = engine;
+      engine.watchVoices(() => void load());
+    }
+  });
 }
 
 export function setRate(rate: number): void {
@@ -164,6 +161,9 @@ let source: ReadingSource | null = null;
 export function openBar(): void {
   refreshVoices();
   set({ open: true, notice: speechSupported() ? null : 'unsupported' });
+  void speechEngine().then((engine) => {
+    if (!engine && state.open) set({ notice: 'unsupported' });
+  });
 }
 
 export function closeBar(): void {
@@ -173,7 +173,7 @@ export function closeBar(): void {
 
 export function stop(): void {
   run += 1;
-  speech()?.cancel();
+  knownEngine()?.cancel();
   source?.close();
   source = null;
   set({ active: false, paused: false, page: null, sentence: null, boxes: null });
@@ -181,38 +181,21 @@ export function stop(): void {
 
 export function pause(): void {
   if (!state.active || state.paused) return;
-  speech()?.pause();
+  knownEngine()?.pause();
   set({ paused: true });
 }
 
 export function resume(): void {
   if (!state.active || !state.paused) return;
-  speech()?.resume();
+  knownEngine()?.resume();
   set({ paused: false });
 }
 
 /** Reads one sentence; resolves when it ends, rejects when the engine fails on it. */
-function speak(synth: Speech, sentence: Sentence, fallback: VoiceLang): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const utterance = new SpeechSynthesisUtterance(sentence.text);
-    const lang: VoiceLang = sentence.lang === 'other' ? fallback : sentence.lang;
-    const voice = pickVoice(state.voices, lang, lang === 'ar' ? state.voiceAr : state.voiceEn);
-    if (voice) {
-      const system = synth.getVoices().find((candidate) => candidate.voiceURI === voice.id);
-      if (system) utterance.voice = system;
-      utterance.lang = voice.lang;
-    } else {
-      utterance.lang = lang === 'ar' ? 'ar-SA' : 'en-US';
-    }
-    utterance.rate = state.rate;
-    utterance.onend = () => resolve();
-    utterance.onerror = (event) => {
-      // Stopping cancels the utterance, which the browser reports as an error of its own.
-      if (event.error === 'interrupted' || event.error === 'canceled') resolve();
-      else reject(new Error(event.error));
-    };
-    synth.speak(utterance);
-  });
+function speak(engine: SpeechEngine, sentence: Sentence, fallback: VoiceLang): Promise<void> {
+  const lang: VoiceLang = sentence.lang === 'other' ? fallback : sentence.lang;
+  const voice = pickVoice(state.voices, lang, lang === 'ar' ? state.voiceAr : state.voiceEn);
+  return engine.speak(sentence.text, voice, lang === 'ar' ? 'ar-SA' : 'en-US', state.rate);
 }
 
 /** The main language of a page, for sentences with no script of their own (numbers, say). */
@@ -232,13 +215,18 @@ function mainLanguage(sentences: readonly Sentence[]): VoiceLang {
  */
 export async function start(next: ReadingSource, scope: Scope): Promise<void> {
   stop();
-  const synth = speech();
-  if (!synth) {
+  const ticket = ++run;
+  const engine = await speechEngine();
+  if (ticket !== run) return;
+  if (!engine) {
     set({ open: true, notice: 'unsupported' });
     return;
   }
-  refreshVoices();
-  const ticket = ++run;
+  if (state.voices.length === 0 || state.engine !== engine.kind) {
+    const voices = await engine.voices().catch(() => []);
+    if (ticket !== run) return;
+    set({ voices, engine: engine.kind });
+  }
   source = next;
   set({ open: true, active: true, paused: false, scope, notice: null });
   const alive = () => ticket === run;
@@ -257,7 +245,7 @@ export async function start(next: ReadingSource, scope: Scope): Promise<void> {
       for (const sentence of sentences) {
         if (!alive()) return;
         set({ sentence });
-        await speak(synth, sentence, fallback);
+        await speak(engine, sentence, fallback);
       }
     } else {
       const last = scope === 'page' ? next.currentPage : next.pageCount;
@@ -274,7 +262,7 @@ export async function start(next: ReadingSource, scope: Scope): Promise<void> {
         for (const sentence of sentences) {
           if (!alive()) return;
           set({ sentence, boxes: { page: page - 1, rects: sentenceBoxes(lines, sentence) } });
-          await speak(synth, sentence, fallback);
+          await speak(engine, sentence, fallback);
           read += 1;
         }
       }

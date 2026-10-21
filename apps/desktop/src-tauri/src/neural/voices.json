@@ -1,0 +1,23 @@
+{
+  "_comment": "The natural voices the Windows app can download for reading aloud: Piper voices (VITS, ONNX) from the Piper project's own Hugging Face repository, pinned to one revision. Read by src/neural/mod.rs, which keeps a file only once its size and SHA-256 match these (the values Hugging Face publishes for each file). The voices are spoken with the app's own Arabic rules (arabic.rs), not espeak-ng.",
+  "voices": [
+    {
+      "id": "ar-kareem",
+      "name": "Kareem",
+      "lang": "ar",
+      "source": "https://huggingface.co/rhasspy/piper-voices/tree/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/ar/ar_JO/kareem/medium",
+      "model": {
+        "file": "ar_JO-kareem-medium.onnx",
+        "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/ar/ar_JO/kareem/medium/ar_JO-kareem-medium.onnx",
+        "bytes": 63201294,
+        "sha256": "9e95cab07b679da603bba17c4dec7ab3111320571964ee95c0379603c086491e"
+      },
+      "config": {
+        "file": "ar_JO-kareem-medium.onnx.json",
+        "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/ar/ar_JO/kareem/medium/ar_JO-kareem-medium.onnx.json",
+        "bytes": 5024,
+        "sha256": "ea6d9b9d9076dbdb6bf5c98c6a141ef154959d2359709b37855727964e7d6c4d"
+      }
+    }
+  ]
+}

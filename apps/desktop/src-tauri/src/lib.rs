@@ -20,6 +20,7 @@ pub mod doc_window;
 pub mod fonts;
 pub mod library;
 pub mod menu;
+pub mod neural;
 pub mod print;
 pub mod profile;
 pub mod quick;
@@ -29,6 +30,7 @@ pub mod ring;
 pub mod share;
 pub mod shell_menu;
 pub mod signing;
+pub mod speech;
 pub mod system;
 pub mod updates;
 
@@ -341,6 +343,7 @@ pub fn run() {
         // The on-device model: its downloads and its engine thread; and the
         // person's details for filling forms, in the system's credential store.
         .manage(ai::AiState::default())
+        .manage(neural::NeuralState::default())
         .manage(profile::ProfileState::default())
         .manage(fonts::FontState::default())
         .manage(recent::RecentState::default())
@@ -493,6 +496,18 @@ pub fn run() {
             remote::remote_fullscreen,
             share::share_prepare,
             share::share_email,
+            speech::speech_engine,
+            speech::speech_voices,
+            speech::speech_speak,
+            speech::speech_stop,
+            speech::speech_pause,
+            speech::speech_resume,
+            speech::speech_open_settings,
+            neural::speech_neural_voices,
+            neural::speech_neural_download,
+            neural::speech_neural_cancel_download,
+            neural::speech_neural_delete,
+            neural::speech_synthesize,
             system::system_user_name,
             system::open_default_apps,
         ])
