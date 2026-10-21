@@ -50,7 +50,7 @@ const ON = {
 // Each chapter:
 //   id          the #anchor, also used by the chapter index
 //   kind        'story' (default), 'ring', 'ai', 'ask', 'library', 'phone', 'family', 'remote', 'film',
-//               'fold', 'tour' (rooms), 'wall', 'platforms', 'download', 'inside'
+//               'fold', 'tour', 'helper' (rooms), 'wall', 'platforms', 'download', 'inside'
 //   stage       pose numbers the desk animates between:
 //               pages 1-5, fan 0-1 (stack to arc), recede 0-1 (pages step back),
 //               dusk 0-1 (desk turns to navy ink), pattern 0-1, frame 0-1 (bronze frame)
@@ -186,30 +186,64 @@ export const CHAPTERS = [
     devices: [],
     eyebrow: { ar: 'اسأل ZOOD', en: 'Ask ZOOD' },
     title: {
-      ar: 'اضغط مرتين، [[فتُكتب مسودة ردّك]].',
-      en: 'Tap twice, [[and your reply is drafted]].',
+      ar: 'اضغط مرة لتتكلّم، [[ومرتين ليُكتب ردّك]].',
+      en: 'Tap once to talk, [[twice to get your reply written]].',
     },
     lead: {
-      ar: 'في أي تطبيق، اضغط Ctrl الأيمن مرتين (أو ⌘ في ماك): يقرأ ZOOD النافذة ويكتب الرد بأسلوبك في مكانه. لا يرسل شيئًا عنك.',
-      en: 'In any app, tap the right Ctrl key twice (⌘ on a Mac). ZOOD reads the window and writes the reply your way, right there. It never sends anything for you.',
+      ar: 'اضغط Ctrl الأيمن (أو ⌘ الأيمن في ماك) مرة وقل ما تريد. واضغطه مرتين في خانة رد في أي تطبيق، فيكتب ZOOD الرد بأسلوبك دون أن يرسله.',
+      en: 'Tap the right Ctrl key (right ⌘ on a Mac) once and say what you want. Tap it twice in a reply box in any app and ZOOD writes the reply your way, without sending it.',
     },
     points: [
       {
-        ar: 'تحدّث إليه أو اكتب له في الشريط أعلى الشاشة: لخّص صفحة، أو ترجمها، أو افتح ملفًا من مكتبتك.',
-        en: 'Talk or type to it at the top of the screen: summarize a page, translate it, or open a file from your Library.',
+        ar: 'تتوهّج حواف الشاشة مع صوتك وهو يستمع، والطلبات السريعة مثل تصغير ملف تُنفَّذ فورًا.',
+        en: 'The screen edges glow with your voice while it listens, and quick asks like shrinking a file run at once.',
       },
       {
-        ar: 'يتذكّر ما في مكتبتك، ويعرض المواعيد القريبة في ملفاتك: دفعات مستحقة، وعقودًا تنتهي، بالهجري أيضًا.',
-        en: 'It knows what is in your Library and shows the dates coming up in your files: payments due, contracts ending, in Hijri dates too.',
+        ar: 'يعرض المواعيد القريبة في ملفاتك، بالهجري أيضًا.',
+        en: 'It shows the dates coming up in your files, in Hijri too.',
       },
       {
-        ar: 'بعد تنزيل نموذجه مرة واحدة يعمل كله على جهازك، بلا سحابة ولا حساب. وسرعته تختلف من حاسوب لآخر.',
-        en: 'After a one-time model download, everything runs on your device, with no cloud and no account. Its speed depends on your computer.',
+        ar: 'زر «إعداد» واحد، ثم يعمل كله على جهازك بلا سحابة. سرعته تختلف من حاسوب لآخر.',
+        en: 'One Set up button, then it all runs on your device with no cloud. Its speed depends on your computer.',
       },
     ],
     note: {
       ar: 'اسأل ZOOD: ',
       en: 'Ask ZOOD: ',
+      on: { ar: 'تطبيق ويندوز وماك', en: 'the Windows and Mac app' },
+    },
+  },
+  {
+    id: 'helper',
+    kind: 'helper',
+    stage: { pages: 1, fan: 0, recede: 0, dusk: 0, pattern: 0 },
+    devices: [],
+    eyebrow: { ar: 'المحادثة والمساعدة', en: 'Chat and help' },
+    title: {
+      ar: 'اسأله أي شيء، [[حتى دون ملف مفتوح]].',
+      en: 'Ask it anything, [[even with no file open]].',
+    },
+    lead: {
+      ar: 'تبويب «المحادثة» يعمل دون إنترنت، ويحيّيك باسمك، وينفّذ ما تطلبه مثل «اذهب للصفحة 5».',
+      en: 'The Chat tab works offline, greets you by name, and does what you ask, like “go to page 5”.',
+    },
+    points: [
+      {
+        ar: 'قل «رتّب مجلد التنزيلات» فيرتّبه حسب النوع أو الشهر. ترى الخطة أولًا، و«تراجع» يعيد كل شيء.',
+        en: 'Say “organize my Downloads” and it sorts them by type or month. You see the plan first, and Undo puts it all back.',
+      },
+      {
+        ar: 'اسأل كيف تفعل شيئًا: «أرني» يقودك بمؤشر متوهّج، و«نفّذها عني» ينفّذ الخطوات في التطبيق.',
+        en: 'Ask how to do something: Show me leads you with a glowing pointer, and Do it for me does the steps in the app.',
+      },
+      {
+        ar: 'مؤشر ZOOD منفصل عن فأرتك، فلا يحرّكها أبدًا.',
+        en: "ZOOD's pointer is its own, so your mouse is never moved.",
+      },
+    ],
+    note: {
+      ar: 'المحادثة والمساعدة: ',
+      en: 'Chat and help: ',
       on: { ar: 'تطبيق ويندوز وماك', en: 'the Windows and Mac app' },
     },
   },
@@ -526,6 +560,36 @@ export const CHAPTERS = [
     },
   },
   {
+    id: 'help',
+    stage: { pages: 1, fan: 0, recede: 0.15, dusk: 0, pattern: 1 },
+    devices: [],
+    eyebrow: { ar: 'المساعدة والدعم', en: 'Help & Support' },
+    title: { ar: 'المساعدة [[داخل التطبيق]].', en: 'Help that lives [[inside the app]].' },
+    lead: {
+      ar: 'افتح «المساعدة والدعم» من قائمة المساعدة أو من الإعدادات، أو قل «مساعدة» لـ«اسأل ZOOD». بلا حساب.',
+      en: 'Open Help & Support from the Help menu or Settings, or just say “help” to Ask ZOOD. No account needed.',
+    },
+    points: [
+      {
+        ar: 'مقالات بالعربية والإنجليزية عن كل خطوة، كل واحدة منها دليل PDF أيضًا، مع مقاطع فيديو وأجوبة الأسئلة الشائعة.',
+        en: 'How-to articles in Arabic and English, each one also a PDF guide, with videos and answers to common questions.',
+      },
+      {
+        ar: 'أبلغ عن مشكلة بخصوصية: ترى ما سيُرفق قبل أن ترسله، ويخبرك التطبيق حين تُحل.',
+        en: 'Report a problem privately. You see what gets attached before you send it, and the app tells you when it is fixed.',
+      },
+      {
+        ar: 'اقترح فكرة أو صوّت لأفكار غيرك، صوتًا واحدًا لكل جهاز. نقرأ أكثرها طلبًا كل أسبوع.',
+        en: "Suggest an idea or vote for other people's, one vote per device. We read the most wanted ones every week.",
+      },
+    ],
+    note: {
+      ar: 'المساعدة والدعم: ',
+      en: 'Help & Support: ',
+      on: { ar: 'تطبيق ويندوز وماك', en: 'the Windows and Mac app' },
+    },
+  },
+  {
     id: 'family',
     kind: 'family',
     stage: { pages: 1, fan: 0, recede: 1, dusk: 0, pattern: 0 },
@@ -738,8 +802,32 @@ export const TOOLS = [
   {
     name: { ar: 'اسأل ZOOD', en: 'Ask ZOOD' },
     text: {
-      ar: 'تحدّث إليه أو اكتب له في أي تطبيق، واضغط Ctrl الأيمن مرتين لمسودة رد بأسلوبك. يعمل على جهازك.',
-      en: 'Talk or type to it in any app, and tap the right Ctrl key twice for a reply drafted your way. It runs on your device.',
+      ar: 'اضغط Ctrl الأيمن مرة وتكلّم في أي تطبيق، ومرتين لمسودة رد بأسلوبك. يعمل على جهازك.',
+      en: 'Tap the right Ctrl key once and talk, in any app, or twice for a reply drafted your way. It runs on your device.',
+    },
+    on: ON.desktop,
+  },
+  {
+    name: { ar: 'المحادثة', en: 'Chat' },
+    text: {
+      ar: 'اسأل الذكاء أي شيء دون ملف مفتوح ودون إنترنت، أو اطلب منه أمرًا في التطبيق.',
+      en: 'Ask the AI anything with no file open and no internet, or tell it to do something in the app.',
+    },
+    on: ON.desktop,
+  },
+  {
+    name: { ar: 'رتّب حاسوبك', en: 'Organize your computer' },
+    text: {
+      ar: 'رتّب التنزيلات أو سطح المكتب حسب النوع أو الشهر، مع معاينة قبل التنفيذ وزر تراجع.',
+      en: 'Tidy Downloads or the Desktop by type or by month, with a preview first and Undo.',
+    },
+    on: ON.desktop,
+  },
+  {
+    name: { ar: 'المساعدة والدعم', en: 'Help & Support' },
+    text: {
+      ar: 'مقالات وأدلة PDF، و«أرني» و«نفّذها عني»، والإبلاغ عن مشكلة، والتصويت على الأفكار.',
+      en: 'Articles and PDF guides, Show me and Do it for me, reporting a problem, and voting on ideas.',
     },
     on: ON.desktop,
   },
@@ -820,8 +908,8 @@ export const TOOLS = [
   {
     name: { ar: 'تصدير', en: 'Export' },
     text: {
-      ar: 'إلى ملفات docx وxlsx وpptx والصور وHTML والنص.',
-      en: 'To docx, xlsx and pptx files, pictures, HTML and text.',
+      ar: 'إلى ملفات docx وxlsx وpptx والصور وHTML وMarkdown والنص. تبقى الجداول جداول قابلة للتعديل، وتبقى الروابط قابلة للنقر.',
+      en: 'To docx, xlsx and pptx files, pictures, HTML, Markdown and text. Tables stay editable tables and links stay clickable.',
     },
     on: ON.web,
   },

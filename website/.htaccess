@@ -1,0 +1,45 @@
+# ZOOD PDF website on Hostinger (Apache or LiteSpeed): the same rules as the
+# Caddyfile. Upload the folder that tools/pack.sh makes into the domain's
+# public_html, this file included.
+
+Options -Indexes
+DirectoryIndex index.html
+ErrorDocument 404 /index.html
+
+# HTTPS only.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "same-origin"
+  Header always set X-Frame-Options "DENY"
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+  # Nothing outside this site is ever loaded. Inline style attributes carry the
+  # per-element motion numbers; no inline script is allowed.
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+  Header unset X-Powered-By
+
+  # Pictures, fonts and films are cached for a week; pages, scripts and styles
+  # are checked again on every visit.
+  <FilesMatch "\.(webp|png|svg|woff2|mp4|webm)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+  <FilesMatch "\.(html|js|css)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_mime.c>
+  AddType text/javascript .js .mjs
+  AddType font/woff2 .woff2
+  AddType image/webp .webp
+  AddType video/webm .webm
+  AddType video/mp4 .mp4
+</IfModule>

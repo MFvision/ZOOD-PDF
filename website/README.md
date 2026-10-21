@@ -34,8 +34,9 @@ title: { ar: 'ملفات PDF، [[من جديد]].', en: 'PDFs, [[done right]].' 
 
 The phrase in `[[ ]]` gets the bronze band. A chapter has at most three
 `points`. Keep both languages saying the same thing. The legal pages are in
-`js/legal.js`; text in `{{double braces}}` is a placeholder (legal entity,
-email, address) that shows highlighted until you fill in `CONTACT` at the top.
+`js/legal.js`; `{{entity}}`, `{{email}}` and `{{phone}}` come from `CONTACT` at
+the top, the same details the app shows in Settings › About. Anything else in
+`{{double braces}}` shows highlighted as a placeholder.
 
 Only claim what `docs/feature-matrix.md` marks ✅. Partial (🟡) and planned (⬜)
 work stays off the site until it works: the owner wants nothing shown as
@@ -126,8 +127,17 @@ node website/tools/serve.mjs 8080      # http://127.0.0.1:8080, same headers as 
 
 ## Host it
 
-Any static host with HTTPS works; serve the folder at the domain's root. The
-simple option is Caddy in Docker (certificates are automatic):
+Any static host with HTTPS works; serve the folder at the domain's root.
+
+**Hostinger** (or any Apache or LiteSpeed host): run `sh website/tools/pack.sh`
+on the Mac that has the licensed font in `assets/fonts/licensed/`. It makes
+`website/zood-pdf-site.zip` with only what the site serves, `.htaccess`
+included (HTTPS redirect, the same security headers and caching as the
+Caddyfile). In hPanel, point `pdf.zood.sa` at a folder, turn on its free SSL,
+open File Manager there, upload the zip and extract it so `index.html` sits at
+the top. The zip carries the licensed font: keep it private.
+
+**Caddy in Docker** (certificates are automatic):
 
 ```sh
 docker build -t zood-pdf-site website/
@@ -197,10 +207,15 @@ workflow to the server; the licensed font has to be added on the server side.
 - Privacy, platforms and downloads: the privacy frame closes in around the
   page and its lock shuts; the platform and download rows follow their card
   in, one after another.
-- `js/ask-room.js`: Ask ZOOD. An email waits for a reply, the right Ctrl key
-  is tapped twice, the island drops in, reads the window and writes the reply
-  word by word ("Nothing was sent"); then "Coming up" slides in. Drawn, with
-  the app's own words (`packages/ui/src/ask`).
+- `js/ask-room.js`: Ask ZOOD in three acts. One tap: the screen's edges glow
+  with the voice, the island grows out of the notch, listens, and makes a file
+  smaller with a one-line answer. Two taps in an email: it reads the window
+  and writes the reply word by word ("Nothing was sent"). Then "Coming up"
+  slides in. Drawn, with the app's own words (`packages/ui/src/ask`).
+- `js/helper-room.js`: the AI panel's Chat tab with no file open. "Organize
+  my Downloads" shows the plan, the loose files fly into their folders, with
+  Undo; "How do I save this as docx?" offers Show me, and ZOOD's glowing
+  pointer flies to Export and opens it.
 - `js/tour-room.js`: the welcome tour, drawn: its eight chapters tick off one
   by one as you scroll (`packages/ui/src/tour`).
 - The phone room also shows the iPhone's tabs, "Open with" and the five app

@@ -30,6 +30,7 @@ import { fabricButton, wireFabric } from './fabric.js';
 import { foldScene, foldFrame } from './fold-room.js';
 import { askScene, askFrame } from './ask-room.js';
 import { tourScene, tourFrame } from './tour-room.js';
+import { helperScene, helperFrame } from './helper-room.js';
 import { startPageMorph } from './page-morph.js';
 import { startFoldable } from './foldable.js';
 
@@ -231,6 +232,7 @@ const ROOMS = {
   ai: { scene: () => aiScene(t, escape, media), frame: aiFrame },
   ask: { scene: () => askScene(t, escape), frame: askFrame },
   tour: { scene: () => tourScene(t, escape), frame: tourFrame },
+  helper: { scene: () => helperScene(t, escape), frame: helperFrame },
   library: { scene: () => libraryScene(t, escape), frame: libraryFrame },
   phone: { scene: () => phoneScene(t, escape, media, phoneFrame()), frame: phoneRoomFrame },
   remote: { scene: () => remoteScene(t, escape, phoneFrame()), frame: remoteFrame },
