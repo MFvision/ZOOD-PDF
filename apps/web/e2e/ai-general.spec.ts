@@ -84,9 +84,13 @@ test.describe('the general chat', () => {
     // The general conversation is still there, and commands now reach the document.
     await expect(chat(page)).toContainText('A general answer to "hello".');
     const input = panel(page).getByLabel('Message');
-    await input.fill('go to page 2');
+    // The fixture's page count differs between corpus versions: page 1 is in every one, page 9999 in none.
+    await input.fill('go to page 9999');
     await input.press('Enter');
-    await expect(chat(page)).toContainText('Went to page 2.');
+    await expect(chat(page)).toContainText(/This document has \d+ pages?\./);
+    await input.fill('go to page 1');
+    await input.press('Enter');
+    await expect(chat(page)).toContainText('Went to page 1.');
     await input.fill('what is this file called?');
     await input.press('Enter');
     await expect(chat(page).locator('.ai-turn-assistant')).toHaveCount(2);
