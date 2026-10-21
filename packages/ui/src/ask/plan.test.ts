@@ -13,43 +13,97 @@ function me(): WalletProfile {
   return profile;
 }
 
-const withFiles: Moment = { files: ['Contract.pdf', 'Invoice.pdf'], screen: false, profiles: [me()] };
+const withFiles: Moment = {
+  files: ['Contract.pdf', 'Invoice.pdf'],
+  screen: false,
+  profiles: [me()],
+};
 const seeing: Moment = { ...withFiles, screen: true };
 const nothing: Moment = { files: [], screen: false, profiles: [] };
 
 describe('what Ask ZOOD decides', () => {
   it('runs a tool on the selected files', () => {
-    const decision = readDecision('{"say":"Compressing them.","act":"tool","tool":"compress","query":"","fields":[],"profile":"Me"}', withFiles);
+    const decision = readDecision(
+      '{"say":"Compressing them.","act":"tool","tool":"compress","query":"","fields":[],"profile":"Me"}',
+      withFiles,
+    );
     expect(decision).toMatchObject({ act: 'tool', tool: 'compress', say: 'Compressing them.' });
   });
 
   it('says what is missing instead of running a tool on nothing', () => {
-    const decision = readDecision('{"say":"Select the files first.","act":"tool","tool":"compress","query":"","fields":[],"profile":"none"}', nothing);
+    const decision = readDecision(
+      '{"say":"Select the files first.","act":"tool","tool":"compress","query":"","fields":[],"profile":"none"}',
+      nothing,
+    );
     expect(decision).toMatchObject({ act: 'answer', tool: null });
   });
 
   it('types only details that have a value, in the order asked', () => {
-    const decision = readDecision('{"say":"Typing them.","act":"fill","tool":"none","query":"","fields":["nationalId","email","phone","custom.Membership"],"profile":"Me"}', withFiles);
+    const decision = readDecision(
+      '{"say":"Typing them.","act":"fill","tool":"none","query":"","fields":["nationalId","email","phone","custom.Membership"],"profile":"Me"}',
+      withFiles,
+    );
     expect(decision?.act).toBe('fill');
     expect(decision?.fields).toEqual(['nationalId', 'phone', 'custom.Membership']);
   });
 
   it('points only with a picture of the screen, and only on it', () => {
-    const point = '{"say":"Click Save.","act":"point","tool":"none","query":"","fields":[],"profile":"Me","x":1500,"y":420}';
+    const point =
+      '{"say":"Click Save.","act":"point","tool":"none","query":"","fields":[],"profile":"Me","x":1500,"y":420}';
     expect(readDecision(point, seeing)).toMatchObject({ act: 'point', x: 1000, y: 420 });
     expect(readDecision(point, withFiles)).toMatchObject({ act: 'answer' });
   });
 
   it('finds with words, and answers without them', () => {
-    expect(readDecision('{"say":"Looking.","act":"find","tool":"none","query":"عقد الإيجار","fields":[],"profile":"Me"}', withFiles)).toMatchObject({ act: 'find', query: 'عقد الإيجار' });
-    expect(readDecision('{"say":"What should I look for?","act":"find","tool":"none","query":"  ","fields":[],"profile":"Me"}', withFiles)).toMatchObject({ act: 'answer' });
+    expect(
+      readDecision(
+        '{"say":"Looking.","act":"find","tool":"none","query":"عقد الإيجار","fields":[],"profile":"Me"}',
+        withFiles,
+      ),
+    ).toMatchObject({ act: 'find', query: 'عقد الإيجار' });
+    expect(
+      readDecision(
+        '{"say":"What should I look for?","act":"find","tool":"none","query":"  ","fields":[],"profile":"Me"}',
+        withFiles,
+      ),
+    ).toMatchObject({ act: 'answer' });
+  });
+
+  it('writes where the cursor is, and shows a longer answer to read', () => {
+    const write =
+      '{"say":"Here is your reply.","act":"write","tool":"none","query":"","fields":[],"profile":"Me","text":"Hi Sara,\\nThursday works for me."}';
+    expect(readDecision(write, withFiles)).toMatchObject({
+      act: 'write',
+      text: 'Hi Sara,\nThursday works for me.',
+    });
+    expect(
+      readDecision(
+        '{"say":"What should I write?","act":"write","tool":"none","query":"","fields":[],"profile":"Me","text":""}',
+        withFiles,
+      ),
+    ).toMatchObject({ act: 'answer', text: '' });
+    expect(
+      readDecision(
+        '{"say":"A summary.","act":"answer","tool":"none","query":"","fields":[],"profile":"Me","text":"Three points."}',
+        withFiles,
+      ),
+    ).toMatchObject({ act: 'answer', text: 'Three points.' });
+    expect(
+      readDecision(
+        '{"say":"Compressing.","act":"tool","tool":"compress","query":"","fields":[],"profile":"Me","text":"stray"}',
+        withFiles,
+      ),
+    ).toMatchObject({ text: '' });
   });
 
   it('refuses what is not a decision', () => {
     expect(readDecision('not json', withFiles)).toBeNull();
     expect(readDecision('[1,2]', withFiles)).toBeNull();
     expect(readDecision('{"act":"answer","say":""}', withFiles)).toBeNull();
-    expect(readDecision('{"act":"format the disk","say":"No."}', withFiles)).toMatchObject({ act: 'answer', say: 'No.' });
+    expect(readDecision('{"act":"format the disk","say":"No."}', withFiles)).toMatchObject({
+      act: 'answer',
+      say: 'No.',
+    });
   });
 });
 
@@ -75,6 +129,19 @@ describe('how the model is asked', () => {
     expect(prompt).not.toContain('"point"');
     expect(systemPrompt(seeing)).toContain('"point"');
     expect(systemPrompt(nothing)).toContain('no files are selected');
+  });
+
+  it('tells the model the window it was asked in, and how the person writes', () => {
+    const prompt = systemPrompt({
+      ...withFiles,
+      window: { app: 'Outlook', title: 'RE: Rent', text: 'When will you pay?' },
+      style: { about: 'I sign as Mohammed.', examples: '' },
+    });
+    expect(prompt).toContain('Outlook — RE: Rent');
+    expect(prompt).toContain('When will you pay?');
+    expect(prompt).toContain('I sign as Mohammed.');
+    expect(prompt).toContain('"write"');
+    expect(decisionGrammar(withFiles)).toContain('"\\"write\\""');
   });
 
   it('knows which details a profile can fill', () => {

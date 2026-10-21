@@ -166,6 +166,22 @@ high; our desktop jobs took 1–1.5 h of real time each): large-format printing 
 scale, tiling), autosave and crash recovery, command search (Ctrl/⌘+K), and measuring. (The Workbench theme and the theme choice on
 desktop and web are done.)
 
+## Ask ZOOD taps (2026-10-21, stacked on PR #8; idea from Sentient OS, AGPL, no code taken)
+- **Double tap** the tap key (right Ctrl; right Command on a Mac; Settings can pick right Alt/Option
+  or right Shift) in any app: `src/ask/tap.rs` reads key states every 12 ms (a modifier alone can't
+  be a global shortcut; a key held with anything else is never a tap). The focused window is
+  captured (`eye::capture_front`), the island reads its words with the app's Tesseract when the
+  model is text-only (`packages/ui/src/ask/read.ts`), drafts with `draft.ts` (writing style from
+  Settings › AI › Ask ZOOD, Library lines from `memory.ts`), and pastes via clipboard + Ctrl/Cmd+V
+  with the clipboard put back (`src/ask/hands.rs`). Never sent. Away from a conversation it shows
+  up to three ideas. Write it again = app's Undo, then a new draft.
+- **One tap** opens the island with the keyboard for a typed request; new action `write` puts text
+  at the cursor (also for spoken requests).
+- **Home › Coming up** (`ask/today.ts`, `TodayCard.tsx`): deadline lines in the Library with a date
+  from 7 days back to 30 ahead (day-first, Arabic/English months, Hijri Umm al-Qura).
+- Tests: `apps/web/e2e/ask-tap.mjs` (real OCR in Chromium). **Not tried on real Windows or a Mac**:
+  the key watcher, window capture, paste and focus hand-back compile for both (checked standalone).
+
 ## Known open problems
 - **iPhone UI tests**: 6 of 55 failing at the last full run, each a test reaching for a
   control below the fold or a duplicate identifier (theme picker ×2, Protect's Remove, form

@@ -7,8 +7,9 @@ import { readJson, writeJson } from '../state/preferences';
 /**
  * Ask ZOOD's choices: on or off, its keys, the model that decides — one
  * that also reads the screen, or the lighter text model the AI tool uses —
- * and whether that model is shown the screen. The host keeps what it needs
- * to listen for the keys (`src-tauri/src/ask/`); the rest is kept here.
+ * whether that model is shown the screen, and the tap key (twice drafts a
+ * reply, once opens typing). The host keeps what it needs to listen for
+ * the keys (`src-tauri/src/ask/`); the rest is kept here.
  */
 
 export interface AskPreferences {
@@ -19,16 +20,40 @@ export interface AskPreferences {
   screen: boolean;
   /** The keys to hold, as the settings write them (`Mod+Shift+Space`). */
   shortcut: string;
+  /** The tap key is watched: twice drafts a reply where the cursor is. */
+  taps: boolean;
+  tapKey: TapKey;
+  /** One tap opens a box to type a request in. */
+  tapToType: boolean;
 }
+
+/** Right Ctrl (right Command on a Mac), right Alt (Option), right Shift. */
+export const TAP_KEYS = ['right-main', 'right-alt', 'right-shift'] as const;
+export type TapKey = (typeof TAP_KEYS)[number];
 
 const KEY = 'warraq.ask';
 export const DEFAULT_SHORTCUT = 'Mod+Shift+Space';
 
 export function readAskPreferences(): AskPreferences {
   const raw = readJson<Partial<AskPreferences>>(KEY, {});
-  const brain = typeof raw.brain === 'string' && brainChoices().some((model) => model.id === raw.brain) ? raw.brain : null;
-  const shortcut = typeof raw.shortcut === 'string' && raw.shortcut.length > 0 && raw.shortcut.length < 60 ? raw.shortcut : DEFAULT_SHORTCUT;
-  return { enabled: raw.enabled !== false, brain, screen: raw.screen !== false, shortcut };
+  const brain =
+    typeof raw.brain === 'string' && brainChoices().some((model) => model.id === raw.brain)
+      ? raw.brain
+      : null;
+  const shortcut =
+    typeof raw.shortcut === 'string' && raw.shortcut.length > 0 && raw.shortcut.length < 60
+      ? raw.shortcut
+      : DEFAULT_SHORTCUT;
+  const tapKey = TAP_KEYS.includes(raw.tapKey as TapKey) ? (raw.tapKey as TapKey) : 'right-main';
+  return {
+    enabled: raw.enabled !== false,
+    brain,
+    screen: raw.screen !== false,
+    shortcut,
+    taps: raw.taps !== false,
+    tapKey,
+    tapToType: raw.tapToType !== false,
+  };
 }
 
 export function writeAskPreferences(next: AskPreferences): void {
@@ -42,14 +67,44 @@ export function earModels(): DeviceModel[] {
 
 /** The models that can decide, the one that sees first. */
 export function brainChoices(): DeviceModel[] {
-  return [...DEVICE_MODELS.filter((model) => model.sees && !model.hears), ...DEVICE_MODELS.filter((model) => !model.sees && !model.hears)];
+  return [
+    ...DEVICE_MODELS.filter((model) => model.sees && !model.hears),
+    ...DEVICE_MODELS.filter((model) => !model.sees && !model.hears),
+  ];
 }
 
-/** Ask ZOOD is in this build: the desktop, on Windows or a Mac, with a model that hears in the catalogue. */
+/** Ask ZOOD is in this build: the desktop, on Windows or a Mac. Typing and the taps need only the model that decides. */
 export function askAvailable(): boolean {
-  if (!isTauriHost() || earModels().length === 0) return false;
-  const platform = (globalThis.navigator?.platform || globalThis.navigator?.userAgent || '').toLowerCase();
+  if (!isTauriHost()) return false;
+  const platform = (
+    globalThis.navigator?.platform ||
+    globalThis.navigator?.userAgent ||
+    ''
+  ).toLowerCase();
   return platform.includes('win') || platform.includes('mac');
+}
+
+/** Speaking to Ask ZOOD is in this build: a model that hears is in the catalogue. */
+export function voiceAvailable(): boolean {
+  return askAvailable() && earModels().length > 0;
+}
+
+/** The tap key's name on this computer, as the settings and the tour say it. */
+export function tapKeyLabel(key: TapKey, mac: boolean, lang: 'ar' | 'en'): string {
+  const names: Record<TapKey, [string, string, string, string]> = {
+    // Windows en, Mac en, Windows ar, Mac ar.
+    'right-main': ['Right Ctrl', 'Right Command ⌘', 'Ctrl الأيمن', 'Command ⌘ الأيمن'],
+    'right-alt': ['Right Alt', 'Right Option ⌥', 'Alt الأيمن', 'Option ⌥ الأيمن'],
+    'right-shift': ['Right Shift', 'Right Shift ⇧', 'Shift الأيمن', 'Shift ⇧ الأيمن'],
+  };
+  const [winEn, macEn, winAr, macAr] = names[key];
+  return lang === 'ar' ? (mac ? macAr : winAr) : mac ? macEn : winEn;
+}
+
+export function onMac(): boolean {
+  return (globalThis.navigator?.platform || globalThis.navigator?.userAgent || '')
+    .toLowerCase()
+    .includes('mac');
 }
 
 /**
@@ -65,7 +120,10 @@ export function defaultBrainFor(memoryGiB: number | null): DeviceModel {
 }
 
 export function chosenBrain(prefs: AskPreferences, memoryGiB: number | null): DeviceModel {
-  return (prefs.brain && DEVICE_MODELS.find((model) => model.id === prefs.brain)) || defaultBrainFor(memoryGiB);
+  return (
+    (prefs.brain && DEVICE_MODELS.find((model) => model.id === prefs.brain)) ||
+    defaultBrainFor(memoryGiB)
+  );
 }
 
 /** Whether every file of a model is downloaded and checked. */
@@ -82,6 +140,9 @@ export interface HostAskSettings {
   enabled: boolean;
   shortcut: string;
   sees: boolean;
+  taps: boolean;
+  tapKey: string;
+  tapToType: boolean;
 }
 
 export async function hostAskSettings(): Promise<HostAskSettings | null> {
@@ -92,14 +153,32 @@ export async function hostAskSettings(): Promise<HostAskSettings | null> {
   }
 }
 
+export interface AskReadiness {
+  /** Holding the keys to speak works: both models are here. */
+  voice: boolean;
+  /** The tap key works: the model that decides is here. */
+  taps: boolean;
+}
+
 /**
- * Tells the host to listen for the keys — only when Ask ZOOD is on and both
- * its models are here, so the keys never open an island that cannot answer.
+ * Tells the host what to listen for — the keys to hold only when both
+ * models are here, the tap key once the model that decides is — so neither
+ * ever opens an island that cannot answer.
  */
-export async function configureAsk(prefs: AskPreferences, memoryGiB: number | null): Promise<boolean> {
+export async function configureAsk(
+  prefs: AskPreferences,
+  memoryGiB: number | null,
+): Promise<AskReadiness> {
   const brain = chosenBrain(prefs, memoryGiB);
   const ear = earModels()[0];
-  const ready = prefs.enabled && ear !== undefined && (await modelReady(ear)) && (await modelReady(brain));
-  await invokeHost('ask_configure', { enabled: ready, shortcut: toAccelerator(prefs.shortcut), sees: Boolean(brain.sees && prefs.screen) });
-  return ready;
+  const brainReady = prefs.enabled && (await modelReady(brain));
+  const voice = brainReady && ear !== undefined && (await modelReady(ear));
+  const taps = brainReady && prefs.taps;
+  await invokeHost('ask_configure', {
+    enabled: voice,
+    shortcut: toAccelerator(prefs.shortcut),
+    sees: Boolean(brain.sees && prefs.screen),
+    taps: { on: taps, key: prefs.tapKey, toType: prefs.tapToType },
+  });
+  return { voice, taps };
 }
