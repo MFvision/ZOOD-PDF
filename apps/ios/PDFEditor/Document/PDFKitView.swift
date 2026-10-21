@@ -252,11 +252,19 @@ struct PDFKitView: UIViewRepresentable {
         switch layout {
         case .continuous:
             view.usePageViewController(false)
+            view.displaysAsBook = false
             view.displayMode = .singlePageContinuous
         case .single:
+            view.displaysAsBook = false
             view.displayMode = .singlePage
             // Apple's own page swipe, no curl.
             view.usePageViewController(true, withViewOptions: [UIPageViewController.OptionsKey.interPageSpacing: 12])
+        case .book:
+            // Facing pages, scrolled; the reading direction (displaysRTL)
+            // puts an Arabic book's first page on the right.
+            view.usePageViewController(false)
+            view.displayMode = .twoUpContinuous
+            view.displaysAsBook = true
         }
     }
 

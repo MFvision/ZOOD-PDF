@@ -160,9 +160,10 @@ enum Exporter {
         info.outputType = .general
         controller.printInfo = info
         controller.printingItem = model.bytes
-        // On iPad the panel is a popover and needs somewhere to point at.
-        if UIDevice.current.userInterfaceIdiom == .pad,
-           let window = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first {
+        // On iPad, and on iPhone Duo unfolded (a regular width), the panel
+        // can be a popover and needs somewhere to point at.
+        if let window = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first,
+           UIDevice.current.userInterfaceIdiom == .pad || window.traitCollection.horizontalSizeClass == .regular {
             let anchor = CGRect(x: window.bounds.midX - 1, y: window.bounds.midY - 1, width: 2, height: 2)
             controller.present(from: anchor, in: window, animated: true, completionHandler: nil)
         } else {

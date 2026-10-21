@@ -128,6 +128,24 @@ size or a mark's text, **with a live preview of the pages**.
   owner chose "website for now". The website videos and the explainer video belong to the
   website thread.
 
+## iPhone Duo (folding iPhone), 2026-10-21
+Apple's folding iPhone (announced 2026-09-09, in shops 2026-10-23): a 5.4" outer screen that
+behaves like any iPhone (compact) and a 7.6" inner screen (about 626 x 890 points) that reports a
+regular size class both ways. The app adapts by size and width, not by device:
+- `Document/DocumentScreen.swift`: everything the document screen has open (the tool, the sheet,
+  read aloud, the AI conversation) lives outside the view, so a fold or unfold, which swaps the
+  Library's phone stack for its split view, keeps it. The view holds it; the model points weakly.
+- `LibraryShell`: below 900 points wide (Duo unfolded, iPad portrait) the split view is a book,
+  the section on one half and the document on the other, split at the fold; an opened document
+  takes the whole screen and the split button brings the Library back.
+- `DocumentView`: a pane under 520 points gets the phone's bars instead of the inspectors. New
+  layout **Two pages** (PDFKit two-up as a book, RTL-aware), offered only where it is wide enough.
+- `.github/workflows/ios-compile.yml` compiles the app and its tests for the simulator on a
+  GitHub Mac on each PR touching `apps/ios` (nothing signed or published).
+- Not used yet: the iOS 27.1 SDK's own fold APIs (`reservedRegions`, `onHingeChange`,
+  `ArrangementView`); they need Xcode 27.1, and the layouts above work without them.
+- Not tried on a real Duo or its simulator.
+
 ## After that
 As he chooses, from the study's top ten (sizes there are PdfCraft's formula and run
 high; our desktop jobs took 1–1.5 h of real time each): large-format printing (A0/A1 at true
