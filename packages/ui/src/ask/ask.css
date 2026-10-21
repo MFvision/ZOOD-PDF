@@ -439,3 +439,39 @@ html.ask-point-page body {
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------- listening */
+
+/* The voice as a line of bars that runs right to left, newest on the right. */
+.ask-wave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  block-size: 34px;
+  margin: 10px 2px 0;
+}
+
+.ask-wave i {
+  --h: 0;
+
+  flex: none;
+  inline-size: 4px;
+  block-size: calc(4px + var(--h) * 30px);
+  border-radius: 3px;
+  background: linear-gradient(180deg, #f4e3cc, var(--ask-bronze));
+  opacity: calc(0.35 + var(--h) * 0.65);
+  transition:
+    block-size 90ms linear,
+    opacity 90ms linear;
+}
+
+.ask-wave i:last-child {
+  box-shadow: 0 0 10px rgb(232 184 120 / 60%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ask-wave i {
+    transition: none;
+  }
+}

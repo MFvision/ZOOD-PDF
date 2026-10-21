@@ -7,8 +7,8 @@ import { readJson, writeJson } from '../state/preferences';
 /**
  * Ask ZOOD's choices: on or off, its keys, the model that decides — one
  * that also reads the screen, or the lighter text model the AI tool uses —
- * whether that model is shown the screen, and the tap key (twice drafts a
- * reply, once opens typing). The host keeps what it needs to listen for
+ * whether that model is shown the screen, the tap key (once listens — or
+ * opens typing — twice drafts a reply) and the glow while it listens. The host keeps what it needs to listen for
  * the keys (`src-tauri/src/ask/`); the rest is kept here.
  */
 
@@ -23,9 +23,15 @@ export interface AskPreferences {
   /** The tap key is watched: twice drafts a reply where the cursor is. */
   taps: boolean;
   tapKey: TapKey;
-  /** One tap opens a box to type a request in. */
-  tapToType: boolean;
+  /** What one tap does: listen until tapped again, open a box to type in, or nothing. */
+  oneTap: OneTap;
+  /** The edges of the screen glow while Ask ZOOD listens. */
+  glow: boolean;
 }
+
+/** `speak` falls back to `type` until a model that hears is downloaded. */
+export const ONE_TAPS = ['speak', 'type', 'off'] as const;
+export type OneTap = (typeof ONE_TAPS)[number];
 
 /** Right Ctrl (right Command on a Mac), right Alt (Option), right Shift. */
 export const TAP_KEYS = ['right-main', 'right-alt', 'right-shift'] as const;
@@ -45,6 +51,13 @@ export function readAskPreferences(): AskPreferences {
       ? raw.shortcut
       : DEFAULT_SHORTCUT;
   const tapKey = TAP_KEYS.includes(raw.tapKey as TapKey) ? (raw.tapKey as TapKey) : 'right-main';
+  // Before one tap could listen it only typed, or did nothing when switched off.
+  const legacy = raw as { tapToType?: unknown };
+  const oneTap = ONE_TAPS.includes(raw.oneTap as OneTap)
+    ? (raw.oneTap as OneTap)
+    : legacy.tapToType === false
+      ? 'off'
+      : 'speak';
   return {
     enabled: raw.enabled !== false,
     brain,
@@ -52,7 +65,8 @@ export function readAskPreferences(): AskPreferences {
     shortcut,
     taps: raw.taps !== false,
     tapKey,
-    tapToType: raw.tapToType !== false,
+    oneTap,
+    glow: raw.glow !== false,
   };
 }
 
@@ -143,6 +157,8 @@ export interface HostAskSettings {
   taps: boolean;
   tapKey: string;
   tapToType: boolean;
+  tapSpeaks: boolean;
+  glow: boolean;
 }
 
 export async function hostAskSettings(): Promise<HostAskSettings | null> {
@@ -158,6 +174,10 @@ export interface AskAccess {
   applies: boolean;
   accessibility: boolean;
   screen: boolean;
+  /** `ask` until the system has asked; on Windows, `denied` when a Privacy switch is off. */
+  microphone: 'allowed' | 'denied' | 'ask';
+  /** Input Monitoring on a Mac: keys pressed with the tap key are seen, so ⌘C is not a tap. */
+  input: boolean;
 }
 
 export async function askAccess(): Promise<AskAccess | null> {
@@ -169,7 +189,9 @@ export async function askAccess(): Promise<AskAccess | null> {
 }
 
 /** Asks the system for one permission and opens its list in System Settings. */
-export async function askAllow(kind: 'accessibility' | 'screen' | 'microphone'): Promise<void> {
+export type AskPermission = 'microphone' | 'input' | 'accessibility' | 'screen';
+
+export async function askAllow(kind: AskPermission): Promise<void> {
   try {
     await invokeHost('ask_allow', { kind });
   } catch {
@@ -178,10 +200,31 @@ export async function askAllow(kind: 'accessibility' | 'screen' | 'microphone'):
 }
 
 export interface AskReadiness {
-  /** Holding the keys to speak works: both models are here. */
+  /** Speaking works, by one tap or the keys held: both models are here. */
   voice: boolean;
   /** The tap key works: the model that decides is here. */
   taps: boolean;
+}
+
+/** What one tap does now: listening needs the model that hears, else it types. */
+export function oneTapDoes(prefs: AskPreferences, ready: AskReadiness): 'speak' | 'type' | null {
+  if (!ready.taps || prefs.oneTap === 'off') return null;
+  return prefs.oneTap === 'speak' && ready.voice ? 'speak' : 'type';
+}
+
+/**
+ * The permissions still missing for what Ask ZOOD is set to do, in the
+ * order the setup asks for them. An older host that cannot say asks none.
+ */
+export function missingAccess(access: AskAccess | null, prefs: AskPreferences, sees: boolean): AskPermission[] {
+  if (!access) return [];
+  const missing: AskPermission[] = [];
+  if (voiceAvailable() && access.microphone !== 'allowed') missing.push('microphone');
+  if (!access.applies) return missing;
+  if (prefs.taps && !access.input) missing.push('input');
+  if (!access.accessibility) missing.push('accessibility');
+  if (sees && prefs.screen && !access.screen) missing.push('screen');
+  return missing;
 }
 
 /** What answers now, from the downloads and the choices: the host is told nothing. */
@@ -210,7 +253,13 @@ export async function configureAsk(
     enabled: voice,
     shortcut: toAccelerator(prefs.shortcut),
     sees: Boolean(brain.sees && prefs.screen),
-    taps: { on: taps, key: prefs.tapKey, toType: prefs.tapToType },
+    taps: {
+      on: taps,
+      key: prefs.tapKey,
+      toType: prefs.oneTap !== 'off',
+      speak: prefs.oneTap === 'speak',
+    },
+    glow: prefs.glow,
   });
   return { voice, taps };
 }

@@ -13,6 +13,7 @@ import {
   Search,
   Send,
   Sparkles,
+  Square,
   X,
 } from 'lucide-react';
 import '../styles/tokens.css';
@@ -46,8 +47,11 @@ import type { Draft, DocumentLine } from './draft';
 import { recall } from './memory';
 import { decisionGrammar, languageOf, readDecision, systemPrompt } from './plan';
 import type { AskTool, Decision, Moment } from './plan';
+import { pushLevel, quietEnough, watchQuiet } from './listen';
+import type { QuietWatch } from './listen';
 import { readWindow, warmUp } from './read';
-import { chosenBrain, earModels, onMac, readAskPreferences } from './settings';
+import { chosenBrain, earModels, onMac, readAskPreferences, tapKeyLabel } from './settings';
+import { isolate } from '../signatures/model';
 import { readStyle } from './style';
 import { speak, stopSpeaking } from './voice';
 
@@ -113,8 +117,8 @@ function momentOf(raw: unknown): HostMoment {
 
 type Phase =
   | { kind: 'idle' }
-  | { kind: 'listening'; screen: boolean }
-  | { kind: 'short' }
+  | { kind: 'listening'; screen: boolean; tapped: boolean }
+  | { kind: 'short'; tapped: boolean }
   | { kind: 'hearing' }
   | { kind: 'typing' }
   | { kind: 'reading' }
@@ -154,8 +158,11 @@ function errorKey(error: unknown): { message: TKey; detail: string } {
 }
 
 /**
- * Ask ZOOD's island: a small card at the top of the screen — while the keys
- * are held and after, after a tap of the tap key, or with a box to type in.
+ * Ask ZOOD's island: a small card at the top of the screen — while it
+ * listens (from one tap until the next, or while the keys are held) and
+ * after, after a double tap of the tap key, or with a box to type in.
+ * Listening, it draws the voice as a moving line, stops by itself once the
+ * person goes quiet after a tap, and offers Done and Type instead.
  * It shows what was heard or typed, the answer, and when there is something
  * to do, what it will be with Do it and Cancel. A double tap's reply is
  * pasted straight away (it is never sent) and the island says where, with
@@ -164,10 +171,15 @@ function errorKey(error: unknown): { message: TKey; detail: string } {
  * cursor where text is put.
  */
 function Island() {
-  const { t } = useI18n();
+  const { t, lang: uiLang } = useI18n();
   const settings = useSettings();
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [level, setLevel] = useState(0);
+  const [bars, setBars] = useState<number[]>([]);
+  /** After a tap: when the person has gone quiet. Null while the keys are held. */
+  const quiet = useRef<QuietWatch | null>(null);
+  /** The last listening began with a tap. */
+  const lastTapped = useRef(false);
   const [typed, setTyped] = useState('');
   const [copied, setCopied] = useState(false);
   const card = useRef<HTMLDivElement | null>(null);
@@ -431,22 +443,33 @@ function Island() {
       setCopied(false);
     };
     const stops = [
-      onHostEvent<{ screen: boolean }>('ask://listen', (payload) => {
+      onHostEvent<{ screen: boolean; tapped?: boolean }>('ask://listen', (payload) => {
         restart();
         setLevel(0);
-        setPhase({ kind: 'listening', screen: payload.screen });
+        setBars([]);
+        const tapped = payload.tapped === true;
+        quiet.current = tapped ? watchQuiet(performance.now()) : null;
+        lastTapped.current = tapped;
+        setPhase({ kind: 'listening', screen: payload.screen, tapped });
       }),
-      onHostEvent<number>('ask://level', (value) =>
-        setLevel((before) => before * 0.4 + value * 0.6),
-      ),
+      onHostEvent<number>('ask://level', (value) => {
+        setLevel((before) => before * 0.4 + value * 0.6);
+        setBars((before) => pushLevel(before, value));
+        if (quiet.current && quietEnough(quiet.current, performance.now(), value)) {
+          quiet.current = null;
+          void invokeHost('ask_stop').catch(() => undefined);
+        }
+      }),
       onHostEvent<{ seconds: number; short: boolean; problem?: string }>('ask://heard', (heard) => {
+        const tapped = quiet.current !== null || lastTapped.current;
+        quiet.current = null;
         if (heard.problem)
           return setPhase({
             kind: 'problem',
             message: 'ask.problem.mic',
             detail: heard.problem.replace(/^E_[A-Z_]+:\s*/, ''),
           });
-        if (heard.short) return setPhase({ kind: 'short' });
+        if (heard.short) return setPhase({ kind: 'short', tapped });
         void hear();
       }),
       onHostEvent<{ kind: 'draft' | 'type'; screen: boolean }>('ask://tap', (tap) => {
@@ -465,6 +488,14 @@ function Island() {
   }, []);
 
   const fail = (error: unknown) => setPhase({ kind: 'problem', ...errorKey(error) });
+
+  /** While listening: the person would rather type. */
+  const typeInstead = () => {
+    quiet.current = null;
+    setTyped('');
+    setPhase({ kind: 'typing' });
+    void invokeHost('ask_type_instead').catch(() => undefined);
+  };
 
   const doIt = (decision: Decision, profile: WalletProfile | null) => {
     stopSpeaking();
@@ -505,6 +536,7 @@ function Island() {
     phase.kind === 'reading' ||
     phase.kind === 'drafting';
   const mac = onMac();
+  const tapKey = isolate(tapKeyLabel(readAskPreferences().tapKey, mac, uiLang === 'ar' ? 'ar' : 'en'));
 
   return (
     <div
@@ -536,7 +568,9 @@ function Island() {
           {phase.kind === 'listening'
             ? t(phase.screen ? 'ask.listeningScreen' : 'ask.listening')
             : phase.kind === 'short'
-              ? t('ask.holdToTalk')
+              ? phase.tapped
+                ? t('ask.tapToTalk', { tap: tapKey })
+                : t('ask.holdToTalk')
               : phase.kind === 'hearing'
                 ? t('ask.hearing')
                 : phase.kind === 'thinking'
@@ -566,6 +600,36 @@ function Island() {
           <X />
         </button>
       </div>
+      {phase.kind === 'listening' && (
+        <div className="ask-listen">
+          <span className="ask-wave" dir="ltr" aria-hidden="true">
+            {Array.from({ length: 24 }, (_, index) => {
+              const value = bars[bars.length - 24 + index] ?? 0;
+              return <i key={index} style={{ '--h': value.toFixed(3) } as React.CSSProperties} />;
+            })}
+          </span>
+          <p className="ask-detail">
+            {phase.tapped ? t('ask.tapAgain', { tap: tapKey }) : t('ask.letGo')}
+          </p>
+          {phase.tapped && (
+            <div className="ask-actions">
+              <button
+                type="button"
+                className="ask-do"
+                onClick={() => {
+                  quiet.current = null;
+                  void invokeHost('ask_stop').catch(() => undefined);
+                }}
+              >
+                <Square /> {t('ask.done')}
+              </button>
+              <button type="button" className="ask-cancel" onClick={typeInstead}>
+                <Keyboard /> {t('ask.typeInstead')}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       {phase.kind === 'problem' && phase.detail && <p className="ask-detail">{phase.detail}</p>}
       {phase.kind === 'typing' && (
         <form
