@@ -4,15 +4,15 @@
     "CFBundleDisplayName" : {
       "extractionState" : "manual",
       "localizations" : {
-        "ar" : { "stringUnit" : { "state" : "translated", "value" : "محرر PDF" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "محرر PDF" } }
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "محرر زود PDF" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "ZOOD PDF" } }
       }
     },
     "CFBundleName" : {
       "extractionState" : "manual",
       "localizations" : {
-        "ar" : { "stringUnit" : { "state" : "translated", "value" : "محرر PDF" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "محرر PDF" } }
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "محرر زود PDF" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "ZOOD PDF" } }
       }
     },
     "NSCameraUsageDescription" : {

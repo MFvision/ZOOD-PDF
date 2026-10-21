@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from '@warraq/ui';
 
 if (typeof chrome !== 'undefined' && chrome.i18n) {
-  document.title = chrome.i18n.getMessage('viewerTitle') || 'Warraq';
+  document.title = chrome.i18n.getMessage('viewerTitle') || 'ZOOD PDF';
 }
 
 const container = document.getElementById('root');

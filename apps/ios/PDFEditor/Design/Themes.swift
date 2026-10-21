@@ -30,6 +30,9 @@ enum AppTheme: String, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
+    /// The theme before the person chooses one: ZOOD's own, from the first launch.
+    static let standard: AppTheme = .zood
+
     var title: LocalizedStringKey {
         switch self {
         case .system: "System"

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// محرر PDF. Three kinds of scene: the Library (the first window); a
+/// ZOOD PDF (محرر زود PDF). Three kinds of scene: the Library (the first window); a
 /// document in a window of its own, opened from the Library on iPad; and
 /// documents handed to the app from outside — Files, Mail, Safari, "Open
 /// in" — which open in a document scene of their own. All take the chosen

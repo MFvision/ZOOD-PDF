@@ -1,7 +1,9 @@
-# محرر PDF (ZOOD PDF) — project instructions
+# ZOOD PDF (محرر زود PDF) — project instructions
 
 An open, account-free, Arabic-first PDF editor (code name **Warraq**) for the owner's company
-**ZOOD** (zood.sa). The App Store name is «محرر زود PDF»; the app's own name is «محرر PDF».
+**ZOOD** (zood.sa). The App Store name is «محرر زود PDF»; the app's own name is ZOOD PDF in English and
+«محرر زود PDF» in Arabic on every platform, and the Zood look is the default from the first
+launch (owner, 2026-10-20).
 Platforms: Windows and macOS (Tauri), web, Chrome extension, iPhone and iPad (SwiftUI).
 
 **Read `docs/HANDOVER.md` first** — where things stand now and what is next. The full,
