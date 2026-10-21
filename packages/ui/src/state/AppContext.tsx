@@ -1930,8 +1930,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const goToPage = useCallback((page: number) => {
     const registry = embedRef.current;
-    if (registry && embedShowingRef.current) scrollToPage(registry, page);
-    else dispatch({ type: 'SCROLL_TO_PAGE', page });
+    // EmbedPDF's view not attached yet: nothing can move. Saying the page
+    // changed anyway would tell a waiting search hit it had arrived.
+    if (embedShowingRef.current) {
+      if (registry) scrollToPage(registry, page);
+    } else dispatch({ type: 'SCROLL_TO_PAGE', page });
   }, []);
 
   const canUndo = organizing
