@@ -19,8 +19,8 @@ describe('welcome tour', () => {
     expect(newSince(2, true)).toBe('ask');
     expect(newSince(3, true)).toBe('ask');
     expect(newSince(2, false)).toBe('welcome');
-    expect(newSince(3, true)).toBe('support');
-    expect(newSince(3, false)).toBe('support');
+    expect(newSince(4, true)).toBe('support');
+    expect(newSince(4, false)).toBe('support');
   });
 
   it('has every chapter in both languages', () => {
