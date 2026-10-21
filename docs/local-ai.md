@@ -129,3 +129,15 @@ desktop's policy is unchanged, since its host does the downloading.
   count, the 8,192-token window, the DPAPI store and Microsoft voices are
   built from the same code and not proven by hand. Nor was the browser's
   engine run with a real model for the chat.
+
+## Quick decider, measured (2026-10-21, 4-core cloud CPU, no GPU)
+
+`decide.rs` with the real Jev-Style 0.8B file over the quick lane's 27 options and 42
+requests (21 English, 21 Saudi Arabic): **37 of 42 picked right**, and no wrong pick
+runs by itself (three are under 60% and asked with two buttons, one waits for Do it, one
+goes on to the larger model). Each decision took about **10 s on this slow CPU** (the
+prompt is about 1,500 tokens, all 27 options read twice by the model's layout); the
+publisher measures about 0.4–0.5 s with Metal on a Mac, and a current Windows laptop
+should be several times faster than this machine. Not yet timed on a real Mac or
+Windows PC. Run it again with
+`ZOOD_DECIDER=<gguf> ZOOD_DECIDER_CASES=<json> cargo test --release --lib -- --ignored --exact decide::tests::real_model_picks_the_quick_actions --nocapture`.

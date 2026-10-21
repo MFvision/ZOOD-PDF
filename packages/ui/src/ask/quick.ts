@@ -34,7 +34,10 @@ export type QuickKey =
 /**
  * Each option as the decider reads it: English, with the Arabic a person
  * says for it. The Arabic words lifted the right answers from 36 to 39 of 42
- * test requests (half in Saudi Arabic) on the real model.
+ * test requests (half in Saudi Arabic) on the real model with 19 options; with
+ * all of these it picks 37 of 42 (`decide.rs`, the ignored real-model test),
+ * and no miss runs on its own: three are asked, one waits for Do it, and
+ * one goes on to the larger model.
  */
 export const QUICK_OPTIONS: Readonly<Record<QuickKey, string>> = {
   compress: 'make PDF files smaller in size / تصغير حجم الملف',
