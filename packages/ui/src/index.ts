@@ -1,6 +1,9 @@
 export { App } from './App';
 export { QuickApp } from './quick/QuickApp';
 export { RingApp } from './quick/Ring';
+export { ArrivalApp, isArrivalWindow } from './remote/Arrival';
+export { AskApp, isAskWindow } from './ask/Island';
+export { AskPointApp, isAskPointWindow } from './ask/Point';
 export { isQuickWindow, isRingWindow } from './core/host-tauri';
 export type { AppProps } from './App';
 export type { Lang, Direction, TKey } from './i18n/messages';

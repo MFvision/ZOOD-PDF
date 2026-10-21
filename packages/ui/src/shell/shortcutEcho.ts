@@ -29,6 +29,7 @@ function baseKey(event: KeyLike): string {
   if (code === 'Equal' || code === 'NumpadAdd') return '=';
   if (code === 'Minus' || code === 'NumpadSubtract') return '-';
   if (code === 'Comma') return ',';
+  if (code === 'Space') return 'Space';
   if (/^F\d{1,2}$/.test(code)) return code;
   const key = event.key === '+' ? '=' : event.key;
   return key.length === 1 ? key.toUpperCase() : key;

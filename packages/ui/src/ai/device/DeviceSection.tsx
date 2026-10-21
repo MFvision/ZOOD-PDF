@@ -5,7 +5,7 @@ import { isTauriHost } from '../../core/host-tauri';
 import { useI18n } from '../../i18n/useT';
 import type { TKey } from '../../i18n/messages';
 import type { Runtime } from './engine';
-import { formatBytes, MODEL_LICENCE, shortChecksum } from './models';
+import { formatBytes, MODEL_LICENCE, modelBytes, shortChecksum } from './models';
 import type { DeviceModelView } from './useDeviceModel';
 
 const RUNTIME: Record<Runtime, TKey> = {
@@ -25,7 +25,7 @@ const RUNTIME: Record<Runtime, TKey> = {
 export function DeviceSection({ view, showDelete = true, compact = false }: { view: DeviceModelView; showDelete?: boolean; compact?: boolean }) {
   const { t } = useI18n();
   const { model, status, runtime, error } = view;
-  const size = formatBytes(model.bytes);
+  const size = formatBytes(modelBytes(model));
   const facts = (
     <>
       <p className="tool-panel-note">{t(isTauriHost() ? 'ai.deviceNote' : 'ai.deviceWebNote')}</p>
@@ -36,7 +36,7 @@ export function DeviceSection({ view, showDelete = true, compact = false }: { vi
         </div>
         <div>
           <dt>{t('ai.deviceLicence')}</dt>
-          <dd dir="ltr">{MODEL_LICENCE}</dd>
+          <dd dir="ltr">{model.licence ?? MODEL_LICENCE}</dd>
         </div>
         <div>
           <dt>{t('ai.deviceChecksum')}</dt>

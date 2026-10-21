@@ -358,6 +358,11 @@ export function ringPick(tool: string, only?: readonly string[]): Promise<void> 
   return invoke('ring_pick', { tool, only: only ?? null }).then(() => undefined);
 }
 
+/** A phone is connected to the remote now: the ring offers "To phone". */
+export function ringPhone(): Promise<boolean> {
+  return invoke('ring_phone').then((on) => on === true, () => false);
+}
+
 /** The files let go on the ring, for a tool the ring runs itself; they stay held for `ringPick`. */
 export async function ringTake(): Promise<QuickJob['files']> {
   return ((await invoke('ring_take')) as QuickJob['files'] | null) ?? [];

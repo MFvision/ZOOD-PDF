@@ -15,6 +15,8 @@ import {
 } from '../core/host-tauri';
 import type { RingSettings, ShellMenuState } from '../core/host-tauri';
 import { AiSettingsSection } from '../ai/AiSettings';
+import { AskSettings } from '../ask/AskSettings';
+import { askAvailable } from '../ask/settings';
 import { WalletEditor } from '../ai/profile/WalletEditor';
 import { CHIPS } from '../ai/chat/chips';
 import { forgetAllChats } from '../ai/chat/store';
@@ -646,6 +648,11 @@ export function AiPage() {
       <Group title={t('prefs.aiWhere')}>
         <AiSettingsSection />
       </Group>
+      {askAvailable() && (
+        <Group title={t('ask.settings.title')} note={t('ask.settings.note')}>
+          <AskSettings />
+        </Group>
+      )}
       <Group title={t('prefs.aiScope')} note={t('prefs.aiScopeNote')}>
         <Choice
           label={t('prefs.aiScope')}

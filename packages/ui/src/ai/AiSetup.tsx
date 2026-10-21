@@ -6,7 +6,7 @@ import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { keptOnDevice } from './chat/kept';
 import { DeviceSection } from './device/DeviceSection';
-import { DEVICE_MODELS, formatBytes } from './device/models';
+import { DEVICE_MODELS, formatBytes, modelBytes } from './device/models';
 import type { DeviceModel } from './device/models';
 import type { DeviceModelView } from './device/useDeviceModel';
 import { CLAUDE_MODELS, LOCAL_ALLOWED_ORIGINS, PROVIDERS, localAddress } from './providers';
@@ -69,7 +69,7 @@ export function AiSetup({ settings, update, device, runnable, apiKey, remember, 
               <select className="select" value={device.model.id} onChange={(event) => update({ deviceModel: DEVICE_MODELS.find((model) => model.id === event.target.value)?.id ?? null })}>
                 {runnable.map((model) => (
                   <option key={model.id} value={model.id}>
-                    {t(model.id === 'qwen2.5-1.5b' ? 'ai.setup.modelLarger' : 'ai.setup.modelSmaller', { name: model.name, size: formatBytes(model.bytes) })}
+                    {t(model.id !== runnable[runnable.length - 1]?.id ? 'ai.setup.modelLarger' : 'ai.setup.modelSmaller', { name: model.name, size: formatBytes(modelBytes(model)) })}
                   </option>
                 ))}
               </select>

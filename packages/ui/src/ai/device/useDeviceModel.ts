@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { invokeHost, isTauriHost } from '../../core/host-tauri';
 import { deviceEngine } from './engine';
 import type { DeviceEngine, ModelState, Runtime } from './engine';
-import { defaultModelFor, deviceModel } from './models';
+import { defaultModelFor, deviceModel, modelBytes } from './models';
 import type { DeviceModel, DeviceModelId } from './models';
 
 /**
@@ -100,7 +100,7 @@ export function useDeviceModel(chosen: DeviceModelId | null): DeviceModelView {
     const controller = new AbortController();
     abort.current = controller;
     setError(null);
-    setStatus({ kind: 'downloading', received: 0, total: model.bytes });
+    setStatus({ kind: 'downloading', received: 0, total: modelBytes(model) });
     void (async () => {
       try {
         const current = await engine();
@@ -113,7 +113,7 @@ export function useDeviceModel(chosen: DeviceModelId | null): DeviceModelView {
         announceChange();
       }
     })();
-  }, [engine, model.bytes, refresh]);
+  }, [engine, model, refresh]);
 
   const cancelDownload = useCallback(() => abort.current?.abort(), []);
 

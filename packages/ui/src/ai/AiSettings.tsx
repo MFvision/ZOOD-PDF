@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { isTauriHost } from '../core/host-tauri';
 import { useI18n } from '../i18n/useT';
 import { DeviceSection } from './device/DeviceSection';
-import { DEVICE_MODELS, formatBytes } from './device/models';
+import { chatModels, formatBytes, modelBytes } from './device/models';
 import type { DeviceModelId } from './device/models';
 import { useDeviceModel } from './device/useDeviceModel';
 import { PROVIDERS } from './providers';
@@ -44,9 +45,9 @@ export function AiSettingsSection() {
         <span>{t('settings.deviceModel')}</span>
         <select className="select" dir="ltr" value={settings.deviceModel ?? ''} onChange={(event) => update({ deviceModel: (event.target.value || null) as DeviceModelId | null })}>
           <option value="">{t('settings.deviceModelAuto', { name: device.model.name })}</option>
-          {DEVICE_MODELS.map((model) => (
+          {chatModels(!isTauriHost()).map((model) => (
             <option key={model.id} value={model.id}>
-              {model.name} — {formatBytes(model.bytes)}
+              {model.name} — {formatBytes(modelBytes(model))}
             </option>
           ))}
         </select>

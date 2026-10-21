@@ -28,6 +28,8 @@ use super::{input, Host, Peer, Shared, MESSAGE_EVENT};
 
 /// The largest message a phone may send: a photographed page or a PDF.
 pub const MAX_MESSAGE: usize = 64 * 1024 * 1024;
+/// The largest file a phone flicks across, before base64 (as the phone's `MAX_FILE_BYTES`).
+pub const MAX_FILE: usize = 40 * 1024 * 1024;
 /// The most a request's head may take before it is turned away.
 const MAX_HEAD: usize = 8 * 1024;
 /// How long a phone has to say hello.
@@ -436,7 +438,7 @@ async fn connect<H: Host>(
 
 /// What a phone's message does: PC control here, everything about the
 /// document in the interface.
-fn handle<H: Host>(shared: &Shared<H>, peer: u64, message: Value) {
+fn handle<H: Host>(shared: &Arc<Shared<H>>, peer: u64, message: Value) {
     match message.get("t").and_then(Value::as_str) {
         Some("pc") => {
             if !shared.pc_control_on() {
@@ -446,6 +448,18 @@ fn handle<H: Host>(shared: &Shared<H>, peer: u64, message: Value) {
                 input::perform(act);
             }
         }
+        Some("drop") => land(shared, peer, message),
+        Some("clip") => {
+            if !shared.clipboard_on() {
+                return;
+            }
+            if let Some(clip) = super::clip::from_phone(&message) {
+                shared
+                    .last_clip
+                    .store(clip.fingerprint(), Ordering::Relaxed);
+                super::clip::write(&clip);
+            }
+        }
         Some(_) => {
             shared
                 .host
@@ -453,6 +467,65 @@ fn handle<H: Host>(shared: &Shared<H>, peer: u64, message: Value) {
         }
         None => {}
     }
+}
+
+/// A file flicked from the phone: written to the Desktop on a thread of its
+/// own (a large one must not hold up the phone's other messages), shown
+/// arriving, and the phone told where it went.
+fn land<H: Host>(shared: &Arc<Shared<H>>, peer: u64, message: Value) {
+    let (Some(name), Some(data)) = (
+        message
+            .get("name")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+        message
+            .get("data")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+    ) else {
+        return;
+    };
+    let mime: String = message
+        .get("mime")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .chars()
+        .take(100)
+        .collect();
+    let id = message
+        .get("id")
+        .and_then(Value::as_str)
+        .map(|s| s.chars().take(40).collect::<String>());
+    let shared = shared.clone();
+    std::thread::spawn(move || {
+        let saved = shared
+            .host
+            .landing_folder()
+            .ok_or_else(|| "E_IO: no Desktop".to_string())
+            .and_then(|folder| super::transfer::save(&folder, &name, &data, MAX_FILE));
+        let reply = match &saved {
+            Ok(path) => {
+                let picture = mime.starts_with("image/") && data.len() < 6_000_000;
+                shared
+                    .host
+                    .landed(path, &mime, picture.then_some(data.as_str()));
+                let shown = path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                json!({ "t": "landed", "id": id, "name": shown, "ok": true })
+            }
+            Err(e) => {
+                crate::core_bridge::debug_log(format!("remote: a flicked file was not saved: {e}"));
+                json!({ "t": "landed", "id": id, "name": name, "ok": false })
+            }
+        };
+        if let Ok(peers) = shared.peers.lock() {
+            if let Some(p) = peers.get(&peer) {
+                let _ = p.tx.send(reply);
+            }
+        }
+    });
 }
 
 /// The phones connected now, by peer number.

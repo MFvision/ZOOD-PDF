@@ -1,0 +1,246 @@
+/* A file from the phone arriving (Arrival.tsx), on a transparent window over the screen. */
+
+html.arrival-page,
+html.arrival-page body {
+  margin: 0;
+  background: transparent !important;
+  overflow: hidden;
+  user-select: none;
+  pointer-events: none;
+}
+
+.arrival {
+  position: fixed;
+  inset: 0;
+
+  /* Screen sides, whatever the language: macOS puts new files on the right, Windows on the left. */
+  direction: ltr;
+  font-family: var(--font-ui, system-ui, sans-serif);
+}
+
+/* The screen's edges light up while a file passes, as the phone's do. */
+.arrival-edge {
+  --edge-power: 0.8;
+
+  opacity: 0;
+  animation: arrival-edge 2.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes arrival-edge {
+  12% {
+    opacity: 1;
+  }
+
+  45% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/* The light at the bottom edge: where the phone is, and where files go through. */
+.arrival-source {
+  position: absolute;
+  inset-inline: 20%;
+  inset-block-end: -32%;
+  block-size: 56%;
+  border-radius: 50%;
+  background:
+    radial-gradient(48% 48% at 50% 50%, rgb(255 248 236 / 90%), transparent 70%),
+    radial-gradient(70% 60% at 50% 55%, rgb(174 139 102 / 50%), rgb(158 197 255 / 22%) 60%, transparent 80%);
+  filter: blur(34px);
+  opacity: 0;
+  transform: scale(0.7);
+  animation: arrival-source 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes arrival-source {
+  25% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}
+
+.arrival-out .arrival-source {
+  animation-delay: 0.6s;
+}
+
+/*
+ * The file, placed by the screen's own pixels (set by Arrival.tsx): from
+ * the bottom edge, up to the middle, large, held a second, then to the
+ * corner where new files go.
+ */
+.arrival-file {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  inline-size: 112px;
+  opacity: 0;
+  translate: -50% -36px;
+  animation: arrival-fly 3.6s 0.25s forwards;
+}
+
+@keyframes arrival-fly {
+  0% {
+    opacity: 0;
+    filter: blur(14px) brightness(1.8);
+    transform: translate(var(--gate-x), var(--gate-y)) scale(0.5);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  /* Shown large in the middle, as if opened, and held. */
+  30% {
+    filter: none;
+    transform: translate(var(--middle-x), var(--middle-y)) scale(4);
+  }
+
+  58% {
+    transform: translate(var(--middle-x), var(--middle-y)) scale(3.92);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+
+  76% {
+    opacity: 1;
+    transform: translate(var(--corner-x), var(--corner-y)) scale(1);
+  }
+
+  92% {
+    opacity: 1;
+    transform: translate(var(--corner-x), var(--corner-y)) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(var(--corner-x), var(--corner-y)) scale(1);
+  }
+}
+
+/* The name only once the file has settled: large, the picture speaks. */
+.arrival-in .arrival-name {
+  opacity: 0;
+  animation: arrival-name 3.6s 0.25s forwards;
+}
+
+@keyframes arrival-name {
+  0%,
+  70% {
+    opacity: 0;
+  }
+
+  78%,
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Going to the phone: lifts where it was, then drawn down into the light. */
+.arrival-out .arrival-file {
+  animation: arrival-depart 1.15s forwards;
+}
+
+@keyframes arrival-depart {
+  0% {
+    opacity: 0;
+    transform: translate(var(--from-x), var(--from-y)) scale(1);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  26% {
+    opacity: 1;
+    filter: none;
+    transform: translate(var(--from-x), calc(var(--from-y) - 14px)) scale(1.35);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.7, 0.2);
+  }
+
+  100% {
+    opacity: 0;
+    filter: blur(6px) brightness(2);
+    transform: translate(var(--gate-x), var(--gate-y)) scale(0.3);
+  }
+}
+
+.arrival-face {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  inline-size: 72px;
+  block-size: 72px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow:
+    0 0 0 2px rgb(174 139 102 / 70%),
+    0 10px 30px rgb(4 30 66 / 35%),
+    0 0 40px rgb(255 236 210 / 60%);
+  color: #041e42;
+}
+
+.arrival-face img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.arrival-face svg {
+  inline-size: 36px;
+  block-size: 36px;
+}
+
+.arrival-name {
+  max-inline-size: 112px;
+  overflow: hidden;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgb(4 30 66 / 72%);
+  color: #fff;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrival-edge,
+  .arrival-source {
+    display: none;
+  }
+
+  .arrival-in .arrival-file {
+    transform: translate(var(--corner-x), var(--corner-y));
+    animation: arrival-fade 2.4s ease forwards;
+  }
+
+  .arrival-out .arrival-file {
+    transform: translate(var(--from-x), var(--from-y));
+    animation: arrival-fade 1.2s ease forwards;
+  }
+
+  .arrival-in .arrival-name {
+    opacity: 1;
+    animation: none;
+  }
+
+  @keyframes arrival-fade {
+    0%,
+    100% {
+      opacity: 0;
+    }
+
+    15%,
+    80% {
+      opacity: 1;
+    }
+  }
+}

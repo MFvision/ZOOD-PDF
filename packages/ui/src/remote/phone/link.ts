@@ -1,4 +1,4 @@
-import type { HostMessage, PcControl, PcMessage, PhoneMessage } from '../protocol';
+import type { HostMessage, PcControl, PcMessage, PhoneMessage, PhoneToHost } from '../protocol';
 import { bytesToBase64, keyFromText, open, seal, sessionKey } from './seal';
 
 /**
@@ -166,7 +166,7 @@ export class RemoteLink {
   }
 
   /** Sends one message; quietly nothing while not connected. */
-  send(message: PhoneMessage | PcControl): boolean {
+  send(message: PhoneMessage | PcControl | PhoneToHost): boolean {
     if (!this.socket || !this.session || this.socket.readyState !== WebSocket.OPEN) return false;
     this.outSeq += 1;
     const plain = new TextEncoder().encode(JSON.stringify({ ...message, s: this.outSeq, d: 'p' }));

@@ -24,7 +24,7 @@ import type { Env } from './chat/store';
 import { contextTokensFor } from './device/context';
 import { DeviceSection } from './device/DeviceSection';
 import { deviceEngine } from './device/engine';
-import { DEVICE_MODELS, deviceModel, shortModelName } from './device/models';
+import { DEVICE_MODELS, chatModels, deviceModel, modelBytes, shortModelName } from './device/models';
 import type { DeviceModel, DeviceModelId } from './device/models';
 import { machineMemoryGiB, useDeviceModel } from './device/useDeviceModel';
 import { CLAUDE_HOST, localAddress } from './providers';
@@ -44,7 +44,12 @@ type View = 'chat' | 'setup' | 'tasks';
  */
 export function runnableModels(memoryGiB: number | null, inBrowser: boolean): DeviceModel[] {
   if (inBrowser || memoryGiB === null || memoryGiB < 7.5) return [deviceModel('qwen2.5-0.5b')];
-  return [deviceModel('qwen2.5-1.5b'), deviceModel('qwen2.5-0.5b')];
+  // A larger model that also reads pictures (Ask ZOOD's) chats too, on a
+  // machine with the memory for it.
+  const larger = chatModels(false)
+    .filter((model) => model.projector && model.ramGiB <= memoryGiB + 0.5)
+    .sort((a, b) => modelBytes(b) - modelBytes(a));
+  return [...larger, deviceModel('qwen2.5-1.5b'), deviceModel('qwen2.5-0.5b')];
 }
 
 /**

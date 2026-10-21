@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Keyboard, Play, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CornerDownLeft, Delete, Keyboard, MousePointer2, Play, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from 'lucide-react';
 import type { PcControl } from '../protocol';
 import { ps } from './strings';
 
@@ -20,7 +20,8 @@ function accelerate(d: number): number {
 }
 
 /**
- * The PC's trackpad and keyboard, on the phone. The surface is a field of
+ * The PC's trackpad and keyboard, on the phone, one switch between them: the
+ * keyboard is the phone's own. The trackpad's surface is a field of
  * dots that light up around the finger. Gestures are the laptop's own: one
  * finger moves, a tap clicks, two fingers scroll, a two-finger tap is a
  * right-click, and a held touch drags.
@@ -77,7 +78,7 @@ export function Trackpad({ send, enabled }: { send: Send; enabled: boolean }) {
       observer.disconnect();
       cancelAnimationFrame(frame.current);
     };
-  }, [enabled]);
+  }, [enabled, typing]);
 
   const gesture = useRef({ moved: false, two: false, dragging: false, holdTimer: 0, scrollX: 0, scrollY: 0, lastX: 0, lastY: 0 });
 
@@ -178,84 +179,123 @@ export function Trackpad({ send, enabled }: { send: Send; enabled: boolean }) {
     send({ t: 'pc', k: 'key', key: k });
   };
 
+  const modes = (
+    <div className="phone-modes" role="tablist">
+      <button type="button" role="tab" aria-selected={!typing} className={`phone-mode${typing ? '' : ' phone-mode-on'}`} onClick={() => setTyping(false)}>
+        <MousePointer2 />
+        <span>{ps('modeTrackpad')}</span>
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={typing}
+        className={`phone-mode${typing ? ' phone-mode-on' : ''}`}
+        onClick={() => {
+          setTyping(true);
+          // Inside the tap, so the phone opens its own keyboard.
+          input.current?.focus();
+        }}
+      >
+        <Keyboard />
+        <span>{ps('modeKeyboard')}</span>
+      </button>
+    </div>
+  );
+
+  // The phone's own keyboard: a field kept focused, what changes in it typed on the PC.
+  const field = (
+    <input
+      ref={input}
+      className="phone-type"
+      dir="auto"
+      placeholder={ps('typeHere')}
+      autoCapitalize="off"
+      autoComplete="off"
+      autoCorrect="off"
+      spellCheck={false}
+      enterKeyHint="send"
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          send({ t: 'pc', k: 'key', key: 'enter' });
+          event.currentTarget.value = '';
+          typed.current = '';
+        } else if (event.key === 'Backspace' && event.currentTarget.value === '') {
+          // Nothing left in the field to delete: the PC's character goes.
+          send({ t: 'pc', k: 'key', key: 'backspace' });
+        }
+      }}
+      onInput={(event) => {
+        // What changed since the last input, sent as keystrokes: this
+        // also catches Android's word-at-a-time keyboards and dictation.
+        const now = event.currentTarget.value;
+        const before = typed.current;
+        let same = 0;
+        while (same < now.length && same < before.length && now[same] === before[same]) same += 1;
+        for (let i = 0; i < Math.min(50, before.length - same); i += 1) send({ t: 'pc', k: 'key', key: 'backspace' });
+        const added = now.slice(same);
+        if (added) send({ t: 'pc', k: 'text', s: added });
+        typed.current = now;
+        if (now.length > 200) {
+          event.currentTarget.value = '';
+          typed.current = '';
+        }
+      }}
+    />
+  );
+
   return (
     <div className="phone-pc">
-      <div className="phone-pad" ref={surface} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
-        <canvas ref={canvas} aria-hidden="true" />
-        <p className="phone-pad-hint">{ps('trackpadHint')}</p>
+      {modes}
+      {/* One field in one place for both modes, so the tap that switches to the keyboard keeps it focused. */}
+      <div className={typing ? 'phone-typing' : 'phone-type-hidden'}>
+        {field}
+        {typing && (
+          <>
+            <p className="phone-muted">{ps('typeHint')}</p>
+            <div className="phone-type-keys">
+              <button type="button" className="phone-icon-btn phone-key-label" onClick={key('tab')}>Tab</button>
+              <button type="button" className="phone-icon-btn phone-key-label" onClick={key('escape')}>Esc</button>
+              <button type="button" className="phone-icon-btn" aria-label="⌫" onClick={key('backspace')}><Delete /></button>
+              <button type="button" className="phone-icon-btn" aria-label="←" onClick={key('left')}><ArrowLeft /></button>
+              <button type="button" className="phone-icon-btn" aria-label="↑" onClick={key('up')}><ArrowUp /></button>
+              <button type="button" className="phone-icon-btn" aria-label="↓" onClick={key('down')}><ArrowDown /></button>
+              <button type="button" className="phone-icon-btn" aria-label="→" onClick={key('right')}><ArrowRight /></button>
+              <button type="button" className="phone-icon-btn" aria-label="↵" onClick={key('enter')}><CornerDownLeft /></button>
+            </div>
+          </>
+        )}
       </div>
-      <div className="phone-clicks">
-        <button type="button" className="phone-click" onClick={() => send({ t: 'pc', k: 'click', b: 'left' })}>
-          {ps('left')}
-        </button>
-        <button type="button" className="phone-click" onClick={() => send({ t: 'pc', k: 'click', b: 'right' })}>
-          {ps('right')}
-        </button>
-      </div>
-      <div className="phone-keys">
-        <button type="button" className={`phone-icon-btn phone-kbd${typing ? ' phone-tool-on' : ''}`} aria-label={ps('keyboard')} onClick={() => {
-          setTyping(true);
-          window.setTimeout(() => input.current?.focus(), 0);
-        }}>
-          <Keyboard />
-        </button>
-        <button type="button" className="phone-icon-btn" aria-label="←" onClick={key('left')}><ArrowLeft /></button>
-        <button type="button" className="phone-icon-btn" aria-label="↑" onClick={key('up')}><ArrowUp /></button>
-        <button type="button" className="phone-icon-btn" aria-label="↓" onClick={key('down')}><ArrowDown /></button>
-        <button type="button" className="phone-icon-btn" aria-label="→" onClick={key('right')}><ArrowRight /></button>
-      </div>
-      {typing && (
-        <input
-          ref={input}
-          className="phone-type"
-          dir="auto"
-          placeholder={ps('typeHere')}
-          autoCapitalize="off"
-          autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
-          enterKeyHint="send"
-          onBlur={() => {
-            setTyping(false);
-            typed.current = '';
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              send({ t: 'pc', k: 'key', key: 'enter' });
-              event.currentTarget.value = '';
-              typed.current = '';
-            } else if (event.key === 'Backspace' && event.currentTarget.value === '') {
-              // Nothing left in the field to delete: the PC's character goes.
-              send({ t: 'pc', k: 'key', key: 'backspace' });
-            }
-          }}
-          onInput={(event) => {
-            // What changed since the last input, sent as keystrokes: this
-            // also catches Android's word-at-a-time keyboards and dictation.
-            const now = event.currentTarget.value;
-            const before = typed.current;
-            let same = 0;
-            while (same < now.length && same < before.length && now[same] === before[same]) same += 1;
-            for (let i = 0; i < Math.min(50, before.length - same); i += 1) send({ t: 'pc', k: 'key', key: 'backspace' });
-            const added = now.slice(same);
-            if (added) send({ t: 'pc', k: 'text', s: added });
-            typed.current = now;
-            if (now.length > 200) {
-              event.currentTarget.value = '';
-              typed.current = '';
-            }
-          }}
-        />
+      {!typing && (
+        <>
+          <div className="phone-pad" ref={surface} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
+            <canvas ref={canvas} aria-hidden="true" />
+            <p className="phone-pad-hint">{ps('trackpadHint')}</p>
+          </div>
+          <div className="phone-clicks">
+            <button type="button" className="phone-click" onClick={() => send({ t: 'pc', k: 'click', b: 'left' })}>
+              {ps('left')}
+            </button>
+            <button type="button" className="phone-click" onClick={() => send({ t: 'pc', k: 'click', b: 'right' })}>
+              {ps('right')}
+            </button>
+          </div>
+          <div className="phone-keys">
+            <button type="button" className="phone-icon-btn" aria-label="←" onClick={key('left')}><ArrowLeft /></button>
+            <button type="button" className="phone-icon-btn" aria-label="↑" onClick={key('up')}><ArrowUp /></button>
+            <button type="button" className="phone-icon-btn" aria-label="↓" onClick={key('down')}><ArrowDown /></button>
+            <button type="button" className="phone-icon-btn" aria-label="→" onClick={key('right')}><ArrowRight /></button>
+          </div>
+          <div className="phone-media">
+            <button type="button" className="phone-icon-btn" aria-label={ps('volDown')} onClick={key('voldown')}><Volume1 /></button>
+            <button type="button" className="phone-icon-btn" aria-label={ps('mute')} onClick={key('mute')}><VolumeX /></button>
+            <button type="button" className="phone-icon-btn" aria-label={ps('volUp')} onClick={key('volup')}><Volume2 /></button>
+            <button type="button" className="phone-icon-btn" aria-label={ps('previous')} onClick={key('prev')}><SkipBack /></button>
+            <button type="button" className="phone-icon-btn" aria-label={ps('play')} onClick={key('play')}><Play /></button>
+            <button type="button" className="phone-icon-btn" aria-label={ps('next')} onClick={key('next')}><SkipForward /></button>
+          </div>
+        </>
       )}
-      <div className="phone-media">
-        <button type="button" className="phone-icon-btn" aria-label={ps('volDown')} onClick={key('voldown')}><Volume1 /></button>
-        <button type="button" className="phone-icon-btn" aria-label={ps('mute')} onClick={key('mute')}><VolumeX /></button>
-        <button type="button" className="phone-icon-btn" aria-label={ps('volUp')} onClick={key('volup')}><Volume2 /></button>
-        <button type="button" className="phone-icon-btn" aria-label={ps('previous')} onClick={key('prev')}><SkipBack /></button>
-        <button type="button" className="phone-icon-btn" aria-label={ps('play')} onClick={key('play')}><Play /></button>
-        <button type="button" className="phone-icon-btn" aria-label={ps('next')} onClick={key('next')}><SkipForward /></button>
-      </div>
     </div>
   );
 }

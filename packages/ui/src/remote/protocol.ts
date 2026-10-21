@@ -71,7 +71,22 @@ export type PcMessage =
 export type HostMessage =
   | { t: 'welcome'; device: string; key: string }
   | { t: 'ready'; pc: string; pcControl: boolean }
-  | { t: 'pcControl'; on: boolean };
+  | { t: 'pcControl'; on: boolean }
+  /** Copied on the PC (`remote/clip.rs`): text, or a picture as PNG base64. */
+  | { t: 'clip'; text?: string; png?: string }
+  /** A flicked file was saved on the PC's Desktop under `name`, or not. */
+  | { t: 'landed'; id: string | null; name: string; ok: boolean }
+  /** A file the person sent from the PC to the phone (`remote_give`). */
+  | { t: 'give'; name: string; mime: string; data: string };
+
+/**
+ * What the host itself handles from the phone (`remote/server.rs`): a file
+ * flicked onto the PC's Desktop, and the phone's clipboard for the PC's.
+ */
+export type PhoneToHost =
+  | { t: 'drop'; id: string; name: string; mime: string; data: string }
+  | { t: 'clip'; text: string }
+  | { t: 'clip'; png: string };
 
 /** PC control: carried out by the host itself (`remote/input.rs`). */
 export type PcControl =

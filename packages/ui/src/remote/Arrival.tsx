@@ -1,0 +1,102 @@
+import { useEffect, useState } from 'react';
+import { File as FileIcon, FileText, ImageIcon } from 'lucide-react';
+import { invokeHost, isTauriHost, onHostEvent } from '../core/host-tauri';
+import './light.css';
+import './arrival.css';
+
+/** What the host sends as a file moves (`src-tauri/src/arrival.rs`). */
+interface Arrived {
+  /** `in`: from the phone; `out`: to it. */
+  way?: 'in' | 'out';
+  /** Where a file going out was, in the page's pixels; the middle without one. */
+  from?: { x: number; y: number } | null;
+  name: string;
+  kind: 'picture' | 'pdf' | 'file';
+  picture: string | null;
+}
+
+const ARRIVE_EVENT = 'arrival://file';
+
+/** True in the arrival window. */
+export function isArrivalWindow(): boolean {
+  if (!isTauriHost()) return false;
+  try {
+    return new URLSearchParams(globalThis.location?.search ?? '').has('arrival');
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Files moving between the phone and the PC, seen on the PC's screen, in the
+ * same light as the phone's (`light.css`). One flicked from the phone: light
+ * runs round the screen's edges, a wave leaves the bottom edge, and the file
+ * comes up out of it, sharpening, to be shown large in the middle for a
+ * moment, then settles at the Desktop's corner (where Windows and macOS put
+ * new files) with its name. One sent to the phone: it lifts where it was,
+ * then is drawn down into the light at the bottom edge, and the wave goes
+ * out as it passes. The window is transparent and lets clicks through; the
+ * host hides it after.
+ */
+export function ArrivalApp() {
+  const [arrived, setArrived] = useState<(Arrived & { key: number }) | null>(null);
+
+  useEffect(() => {
+    document.documentElement.classList.add('arrival-page');
+    let key = 0;
+    const take = (file: Arrived | null) => {
+      if (file) setArrived({ ...file, key: (key += 1) });
+    };
+    const stop = onHostEvent<Arrived>(ARRIVE_EVENT, take);
+    // The first file can come before this view has loaded.
+    void invokeHost('arrival_last').then((file) => take(file as Arrived | null), () => undefined);
+    return stop;
+  }, []);
+
+  if (!arrived) return null;
+  const Icon = arrived.kind === 'pdf' ? FileText : arrived.kind === 'picture' ? ImageIcon : FileIcon;
+  const face = <div className="arrival-face">{arrived.picture ? <img src={arrived.picture} alt="" /> : <Icon />}</div>;
+  const name = (
+    <span className="arrival-name" dir="auto">
+      {arrived.name}
+    </span>
+  );
+
+  const width = globalThis.innerWidth || 1280;
+  const height = globalThis.innerHeight || 800;
+  // Where the file goes through: the bottom edge's middle.
+  const gate = { x: width / 2, y: height + 40 };
+  const place = (name: string, x: number, y: number) => ({ [`--${name}-x`]: `${Math.round(x)}px`, [`--${name}-y`]: `${Math.round(y)}px` });
+
+  if (arrived.way === 'out') {
+    const from = arrived.from ?? { x: width / 2, y: height / 2 };
+    const style = { ...place('from', from.x, from.y), ...place('gate', gate.x, gate.y) } as React.CSSProperties;
+    return (
+      <div key={arrived.key} className="arrival arrival-out" aria-hidden="true">
+        <div className="flick-edge arrival-edge" />
+        <div className="arrival-source" />
+        <div className="flick-wave" style={{ '--wave-x': '50%', '--wave-y': '100%', '--wave-delay': '0.9s' } as React.CSSProperties} />
+        <div className="arrival-file" style={style}>
+          {face}
+          {name}
+        </div>
+      </div>
+    );
+  }
+
+  // macOS puts new files at the top right, Windows at the top left.
+  const mac = /Mac/i.test(navigator.platform || navigator.userAgent);
+  const corner = { x: mac ? width - 80 : 80, y: 73 };
+  const style = { ...place('gate', gate.x, gate.y), ...place('middle', width / 2, height / 2), ...place('corner', corner.x, corner.y) } as React.CSSProperties;
+  return (
+    <div key={arrived.key} className="arrival arrival-in" aria-hidden="true">
+      <div className="flick-edge arrival-edge" />
+      <div className="arrival-source" />
+      <div className="flick-wave" style={{ '--wave-x': '50%', '--wave-y': '100%', '--wave-delay': '0.15s' } as React.CSSProperties} />
+      <div className="arrival-file" style={style}>
+        {face}
+        {name}
+      </div>
+    </div>
+  );
+}
