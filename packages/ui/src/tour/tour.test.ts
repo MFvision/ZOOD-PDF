@@ -10,7 +10,7 @@ describe('welcome tour', () => {
   });
 
   it('teaches Ask ZOOD only where it is in the build', () => {
-    expect(tourChapters(true, true).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'quick', 'ask', 'remote', 'ai', 'done']);
+    expect(tourChapters(true, true).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'quick', 'ask', 'quickask', 'remote', 'ai', 'done']);
     expect(tourChapters(false, true).map((c) => c.id)).not.toContain('ask');
   });
 
@@ -18,6 +18,7 @@ describe('welcome tour', () => {
     expect(newSince(0, true)).toBe('welcome');
     expect(newSince(2, true)).toBe('ask');
     expect(newSince(3, true)).toBe('ask');
+    expect(newSince(4, true)).toBe('quickask');
     expect(newSince(2, false)).toBe('welcome');
   });
 

@@ -57,6 +57,15 @@ Foundation Models, AVSpeech) is documented with the iOS app.*
   its scroll geometry; as a layer of Warraq's own page in Edit text), and
   reading goes on to the next page.
 
+- **Quick asks** (2026-10-21, desktop only, with Ask ZOOD). A second, much
+  smaller model, Jev-Style 0.8B Decision v3 (Apache-2.0, 529 MB, its own
+  download in Ask ZOOD's setup), does not write: it scores each of the quick
+  lane's options for what the person said and Ask ZOOD acts on the best one
+  (a tool on the selected files, finding a file, tidying a folder, undoing a
+  tidy) with a one-line reply, or offers the two best when under 60% sure.
+  Anything that needs words written goes to the model above. See
+  docs/HANDOVER.md, "Quick asks and tidying".
+
 ## How it is built
 
 | Host | Engine | Model | Where it runs |
@@ -99,6 +108,9 @@ desktop's policy is unchanged, since its host does the downloading.
   `packages/ui/src/speech/*.test.ts`); the catalogue, the host allow-list and
   the file verification in Rust (`src-tauri/src/ai.rs`).
 - The real model, once by hand on this Mac: `docs/STATUS.md`, "Local-first AI, measured".
+
+- The quick decider, by hand on the 4-core cloud CPU: see "Quick decider,
+  measured" below.
 
 ## Limits, stated plainly
 

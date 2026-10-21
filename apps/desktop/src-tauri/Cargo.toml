@@ -89,6 +89,10 @@ hex = "0.4"
 # MIT, already in the graph through llama-cpp-2), and the machine's memory
 # size (libc on macOS and Linux; windows-sys, MIT OR Apache-2.0, on Windows).
 encoding_rs = "0.8"
+# The day a file was last changed, on the computer's own calendar, for Ask
+# ZOOD's tidy by month or date (src/ask/tidy.rs). chrono, MIT OR Apache-2.0,
+# already in the graph.
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 # The phone remote (src/remote/): a small server on the local network only
 # while the person has it on, one WebSocket per phone (tokio-tungstenite, MIT),
 # every message sealed with ChaCha20-Poly1305 under the key the QR code
