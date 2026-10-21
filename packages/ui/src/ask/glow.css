@@ -1,0 +1,108 @@
+/* Ask ZOOD's glow (Glow.tsx): the edges of the screen while it listens. */
+
+html.ask-glow-page,
+html.ask-glow-page body {
+  margin: 0;
+  background: transparent !important;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+html.ask-glow-page .ask-glow {
+  position: fixed;
+}
+
+
+.ask-glow {
+  --level: 0;
+  --ask-glow-a: #e8b878;
+  --ask-glow-b: #ae8b66;
+  --ask-glow-c: #d9825c;
+  --ask-glow-d: #f6e2c4;
+  --ask-glow-band: 7px;
+
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+
+.ask-glow.is-on {
+  opacity: 1;
+}
+
+/* The warm light inside the edges, fuller as the voice rises. */
+.ask-glow-haze {
+  position: absolute;
+  inset: 0;
+  box-shadow:
+    inset 0 0 calc(110px + var(--level) * 150px) calc(26px + var(--level) * 56px) rgb(214 118 78 / 62%),
+    inset 0 0 calc(44px + var(--level) * 60px) calc(10px + var(--level) * 22px) rgb(232 178 112 / 78%),
+    inset 0 0 calc(14px + var(--level) * 16px) calc(3px + var(--level) * 5px) rgb(248 228 198 / 90%);
+  opacity: calc(0.7 + var(--level) * 0.3);
+  transition:
+    box-shadow 110ms linear,
+    opacity 110ms linear;
+}
+
+/* The band: a ring of colour cut out of a square that turns beneath it. */
+.ask-glow-band {
+  position: absolute;
+  inset: 0;
+  padding: var(--ask-glow-band);
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  filter: blur(2.5px) saturate(1.15);
+}
+
+.ask-glow-spin {
+  position: absolute;
+  inset: 50%;
+  inline-size: 300vmax;
+  block-size: 300vmax;
+  translate: -50% -50%;
+  background: conic-gradient(
+    from 0deg,
+    var(--ask-glow-a),
+    var(--ask-glow-c) 22%,
+    var(--ask-glow-b) 40%,
+    var(--ask-glow-d) 58%,
+    var(--ask-glow-a) 76%,
+    var(--ask-glow-c) 88%,
+    var(--ask-glow-a)
+  );
+  animation: ask-glow-turn 5.5s linear infinite;
+}
+
+.ask-glow.is-on .ask-glow-band {
+  animation: ask-glow-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes ask-glow-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes ask-glow-in {
+  from {
+    opacity: 0;
+    scale: 1.015;
+  }
+}
+
+.ask-glow.is-still .ask-glow-spin,
+.ask-glow.is-still .ask-glow-band {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ask-glow-spin,
+  .ask-glow.is-on .ask-glow-band {
+    animation: none;
+  }
+}

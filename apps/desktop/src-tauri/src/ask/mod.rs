@@ -17,16 +17,21 @@
 //! typed where the cursor is, a point on the screen shown. Nothing is kept
 //! once the island is gone.
 //!
-//! A key tapped on its own (`tap.rs`) asks without speaking: tapped twice,
-//! the window in front is read and a reply is drafted in the person's way
-//! of writing and pasted where their cursor is (`hands.rs`), never sent;
-//! tapped once, the island takes the keyboard for a typed request. Both
-//! need only the model that decides: one that reads pictures sees the
-//! window, a text one is given the window's words, read by the island.
+//! A key tapped on its own (`tap.rs`): tapped once, Ask ZOOD listens —
+//! the edges of the screen glow (`glow` below) — until it is tapped again
+//! or the person goes quiet, with no keys to keep held; or, when Settings
+//! say so or nothing hears yet, the island takes the keyboard for a typed
+//! request. Tapped twice, the window in front is read and a reply is
+//! drafted in the person's way of writing and pasted where their cursor is
+//! (`hands.rs`), never sent. Drafting and typing need only the model that
+//! decides: one that reads pictures sees the window, a text one is given
+//! the window's words, read by the island.
 
+pub mod access;
 pub mod ear;
 pub mod eye;
 pub mod hands;
+pub mod notch;
 pub mod tap;
 
 use std::path::PathBuf;
@@ -46,13 +51,16 @@ use crate::core_bridge::debug_log;
 
 pub const LABEL: &str = "ask";
 pub const POINT_LABEL: &str = "ask-point";
+/// The glow round the edges of the screen while Ask ZOOD listens.
+pub const GLOW_LABEL: &str = "ask-glow";
 /// Hold to speak, unless Settings chose other keys.
 pub const SHORTCUT: &str = "CommandOrControl+Shift+Space";
-/// The keys went down: listening. Payload: [`Listening`].
+/// Listening began, by the keys held or a tap. Payload: [`Listening`].
 pub const LISTEN_EVENT: &str = "ask://listen";
 /// How loud the person is, 0..1, while listening.
 pub const LEVEL_EVENT: &str = "ask://level";
-/// The keys came up. Payload: [`Heard`].
+/// Listening ended: the keys came up, the key was tapped again, or the
+/// island stopped it. Payload: [`Heard`].
 pub const HEARD_EVENT: &str = "ask://heard";
 /// The point to show. Payload: [`Point`].
 pub const POINT_EVENT: &str = "ask://point";
@@ -84,16 +92,27 @@ struct Moment {
     typing: bool,
 }
 
+/// How the microphone was opened: by keys that are held, or by a tap that
+/// leaves it open until a second tap, the island or the time limit ends it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Opened {
+    Held,
+    Tapped,
+}
+
 #[derive(Default)]
 pub struct AskState {
     moment: Mutex<Moment>,
-    recording: Mutex<Option<ear::Recording>>,
+    recording: Mutex<Option<(ear::Recording, Opened)>>,
     settings: Mutex<Settings>,
 }
 
+/// Counts the times listening began, so a time limit only ends its own.
+static LISTEN_TURN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 /// Ask ZOOD's settings, kept beside the app's data so a start in the
 /// background (no interface) listens for the keys too.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Settings {
     pub enabled: bool,
     pub shortcut: String,
@@ -108,6 +127,28 @@ pub struct Settings {
     /// One tap opens the typing box; off, only double taps count.
     #[serde(default = "yes")]
     pub tap_to_type: bool,
+    /// One tap listens, when a model that hears is here (it goes before
+    /// `tap_to_type`, which is then what one tap does without one).
+    #[serde(default = "yes")]
+    pub tap_speaks: bool,
+    /// The edges of the screen glow while listening.
+    #[serde(default = "yes")]
+    pub glow: bool,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Settings {
+            enabled: false,
+            shortcut: String::new(),
+            sees: false,
+            taps: false,
+            tap_key: String::new(),
+            tap_to_type: true,
+            tap_speaks: true,
+            glow: true,
+        }
+    }
 }
 
 fn yes() -> bool {
@@ -123,6 +164,9 @@ pub struct TapChoice {
     pub key: String,
     #[serde(default = "yes")]
     pub to_type: bool,
+    /// One tap listens, when speaking is on.
+    #[serde(default)]
+    pub speak: bool,
 }
 
 const SETTINGS_FILE: &str = "ask.json";
@@ -143,6 +187,7 @@ pub fn start<R: Runtime>(app: &AppHandle<R>) {
             on: saved.taps,
             key: saved.tap_key.clone(),
             to_type: saved.tap_to_type,
+            speak: saved.tap_speaks,
         };
         if let Err(e) = ask_configure(
             app.clone(),
@@ -151,6 +196,7 @@ pub fn start<R: Runtime>(app: &AppHandle<R>) {
             Some(saved.shortcut),
             saved.sees,
             Some(taps),
+            Some(saved.glow),
         ) {
             debug_log(format!("ask: {e}"));
         }
@@ -192,6 +238,8 @@ pub struct Tapped {
 pub struct Listening {
     /// A picture of the screen was taken for the model.
     pub screen: bool,
+    /// Opened by a tap: it listens until tapped again, with no keys held.
+    pub tapped: bool,
 }
 
 #[derive(Clone, Serialize)]
@@ -217,9 +265,9 @@ pub struct Point {
 /* ----------------------------------------------------------- shortcut */
 
 /// From Settings and at start: speaking to Ask ZOOD on or off and its
-/// keys, whether the chosen model is shown the screen, and the taps (left
-/// as they were when not given). Keys the system will not take are an
-/// error, and the ones before stay.
+/// keys, whether the chosen model is shown the screen, the taps and the
+/// glow (left as they were when not given). Keys the system will not take
+/// are an error, and the ones before stay.
 #[tauri::command]
 pub fn ask_configure<R: Runtime>(
     app: AppHandle<R>,
@@ -228,6 +276,7 @@ pub fn ask_configure<R: Runtime>(
     shortcut: Option<String>,
     sees: bool,
     taps: Option<TapChoice>,
+    glow: Option<bool>,
 ) -> Result<(), String> {
     use tauri_plugin_global_shortcut::GlobalShortcutExt;
     let keys = shortcut
@@ -238,6 +287,7 @@ pub fn ask_configure<R: Runtime>(
         on: settings.taps,
         key: settings.tap_key.clone(),
         to_type: settings.tap_to_type,
+        speak: settings.tap_speaks,
     });
     let next = Settings {
         enabled,
@@ -246,6 +296,8 @@ pub fn ask_configure<R: Runtime>(
         taps: taps.on,
         tap_key: tap::TapKey::from_name(&taps.key).name().to_string(),
         tap_to_type: taps.to_type,
+        tap_speaks: taps.speak,
+        glow: glow.unwrap_or(settings.glow),
     };
     if *settings == next {
         return Ok(());
@@ -254,7 +306,7 @@ pub fn ask_configure<R: Runtime>(
     tap::configure(
         next.taps,
         tap::TapKey::from_name(&next.tap_key),
-        next.tap_to_type,
+        next.tap_to_type || (next.tap_speaks && next.enabled),
         move |tap| {
             let app = handle.clone();
             std::thread::spawn(move || tapped(&app, tap));
@@ -314,30 +366,31 @@ fn listen<R: Runtime>(app: &AppHandle<R>, keys: &str) -> Result<(), String> {
             let app = app.clone();
             match event.state {
                 ShortcutState::Pressed => {
-                    std::thread::spawn(move || pressed(&app));
+                    std::thread::spawn(move || pressed(&app, Opened::Held));
                 }
                 ShortcutState::Released => {
-                    std::thread::spawn(move || released(&app));
+                    std::thread::spawn(move || released(&app, Some(Opened::Held)));
                 }
             }
         })
         .map_err(|e| e.to_string())
 }
 
-/// The keys went down: listen, look, note the files, show the island.
-fn pressed<R: Runtime>(app: &AppHandle<R>) {
+/// The keys went down, or the key was tapped once: listen, look, note the
+/// files, show the island and the glow.
+fn pressed<R: Runtime>(app: &AppHandle<R>, opened: Opened) {
     if PAUSED.load(Ordering::Relaxed) {
         return;
     }
     let state = app.state::<AskState>();
     // The picture goes to a model that sees; the window's words are read
     // for a text model when the person let the taps read the window.
-    let (sees, reads) = state
+    let (sees, reads, glow) = state
         .settings
         .lock()
-        .map(|s| (s.enabled && s.sees, s.enabled && s.taps))
-        .unwrap_or((false, false));
-    {
+        .map(|s| (s.enabled && s.sees, s.enabled && s.taps, s.glow))
+        .unwrap_or((false, false, true));
+    let (turn, failed) = {
         let mut recording = state.recording.lock().unwrap_or_else(|e| e.into_inner());
         if recording.is_some() {
             return; // The keys repeating while held.
@@ -347,6 +400,7 @@ fn pressed<R: Runtime>(app: &AppHandle<R>) {
         let handle = app.clone();
         let started = ear::start(move |level| {
             let _ = handle.emit_to(LABEL, LEVEL_EVENT, level);
+            let _ = handle.emit_to(GLOW_LABEL, LEVEL_EVENT, level);
         });
         let mut moment = state.moment.lock().unwrap_or_else(|e| e.into_inner());
         *moment = Moment {
@@ -354,10 +408,43 @@ fn pressed<R: Runtime>(app: &AppHandle<R>) {
             monitor: monitor_at_pointer(app),
             ..Moment::default()
         };
-        match started {
-            Ok(listening) => *recording = Some(listening),
-            Err(e) => debug_log(format!("ask: {e}")),
-        }
+        let failed = match started {
+            Ok(listening) => {
+                *recording = Some((listening, opened));
+                None
+            }
+            Err(e) => {
+                debug_log(format!("ask: {e}"));
+                Some(e)
+            }
+        };
+        (LISTEN_TURN.fetch_add(1, Ordering::Relaxed) + 1, failed)
+    };
+    // No keys to let go of after a tap: a microphone that did not open is
+    // said at once, as letting go would have.
+    if let (Some(problem), Opened::Tapped) = (&failed, opened) {
+        show_island(app);
+        let _ = app.emit_to(
+            LABEL,
+            HEARD_EVENT,
+            Heard {
+                seconds: 0.0,
+                short: false,
+                problem: Some(problem.clone()),
+            },
+        );
+        return;
+    }
+    // A tap leaves the microphone open, so it is closed by itself at the
+    // longest anyone asks, even if the island never says the person is done.
+    if opened == Opened::Tapped {
+        let later = app.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_secs(u64::from(ear::MAX_SECONDS)));
+            if LISTEN_TURN.load(Ordering::Relaxed) == turn {
+                released(&later, Some(Opened::Tapped));
+            }
+        });
     }
     hide_point(app);
     // The window in front before the island is on it.
@@ -377,7 +464,17 @@ fn pressed<R: Runtime>(app: &AppHandle<R>) {
         }
     }
     show_island(app);
-    let _ = app.emit_to(LABEL, LISTEN_EVENT, Listening { screen: looked });
+    if glow {
+        show_glow(app);
+    }
+    let _ = app.emit_to(
+        LABEL,
+        LISTEN_EVENT,
+        Listening {
+            screen: looked,
+            tapped: opened == Opened::Tapped,
+        },
+    );
     // Reading Explorer's selection takes a moment; the island is up already.
     let files = crate::ring::selected_files();
     if let Ok(mut moment) = state.moment.lock() {
@@ -385,15 +482,41 @@ fn pressed<R: Runtime>(app: &AppHandle<R>) {
     };
 }
 
-/// The tap key was tapped: the window in front is looked at, and the island
-/// shows — to draft a reply, or, with the keyboard, to take a typed request.
+/// The tap key was tapped. Once, Ask ZOOD listens (`pressed`) — or, while
+/// it listens after a tap, stops. Otherwise the window in front is looked
+/// at, and the island shows — to draft a reply, or, with the keyboard, to
+/// take a typed request.
 fn tapped<R: Runtime>(app: &AppHandle<R>, tap: tap::Tap) {
     if PAUSED.load(Ordering::Relaxed) {
         return;
     }
     let state = app.state::<AskState>();
-    if state.recording.lock().map(|r| r.is_some()).unwrap_or(false) {
-        return; // Speaking already.
+    let listening = state
+        .recording
+        .lock()
+        .map(|r| r.as_ref().map(|(_, opened)| *opened))
+        .unwrap_or(None);
+    match listening {
+        // Tapped again, once or twice: that is all the person had to say.
+        Some(Opened::Tapped) => return released(app, Some(Opened::Tapped)),
+        Some(Opened::Held) => return, // Speaking with the keys held already.
+        None => {}
+    }
+    let (speaks, to_type) = state
+        .settings
+        .lock()
+        .map(|s| (s.enabled && s.tap_speaks, s.tap_to_type))
+        .unwrap_or((false, true));
+    if tap == tap::Tap::Once && speaks {
+        // A tap while the island has the keyboard is the person reaching
+        // for their own app again, not a question.
+        if state.moment.lock().map(|m| m.typing).unwrap_or(false) {
+            return;
+        }
+        return pressed(app, Opened::Tapped);
+    }
+    if tap == tap::Tap::Once && !to_type {
+        return;
     }
     let typing = tap == tap::Tap::Once;
     // A tap while the island is up and has the keyboard is the person
@@ -451,17 +574,31 @@ fn tapped<R: Runtime>(app: &AppHandle<R>, tap: tap::Tap) {
     }
 }
 
-/// The keys came up: what was heard waits for `ask_transcribe`.
-fn released<R: Runtime>(app: &AppHandle<R>) {
-    if PAUSED.load(Ordering::Relaxed) {
+/// Listening ends — the keys came up (`Held`), the key was tapped again or
+/// the time ran out (`Tapped`), or the island said so (`None`, either way):
+/// what was heard waits for `ask_transcribe`.
+fn released<R: Runtime>(app: &AppHandle<R>, how: Option<Opened>) {
+    if PAUSED.load(Ordering::Relaxed) && how == Some(Opened::Held) {
         return;
     }
     let state = app.state::<AskState>();
-    let recording = state
-        .recording
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .take();
+    let recording = {
+        let mut recording = state.recording.lock().unwrap_or_else(|e| e.into_inner());
+        match (recording.as_ref(), how) {
+            // Keys let go after a tap opened the microphone: it stays open.
+            (Some((_, opened)), Some(how)) if *opened != how => return,
+            // Let go of keys the island already stopped: nothing to say.
+            (None, Some(Opened::Held)) => {
+                hide_glow(app);
+                return;
+            }
+            (None, _) => return,
+            _ => {}
+        }
+        recording.take().map(|(listening, _)| listening)
+    };
+    LISTEN_TURN.fetch_add(1, Ordering::Relaxed);
+    hide_glow(app);
     let heard = match recording.map(ear::Recording::finish) {
         Some(Ok(sound)) => {
             let seconds = sound.seconds();
@@ -486,6 +623,41 @@ fn released<R: Runtime>(app: &AppHandle<R>) {
         },
     };
     let _ = app.emit_to(LABEL, HEARD_EVENT, heard);
+}
+
+/// From the island: the person is done speaking — they went quiet after a
+/// tap, or pressed Stop. The same as the keys coming up.
+#[tauri::command]
+pub fn ask_stop<R: Runtime>(app: AppHandle<R>) {
+    std::thread::spawn(move || released(&app, None));
+}
+
+/// From the island, while it listens: the person would rather type. What
+/// was heard is dropped and the island takes the keyboard, as one tap does
+/// when one tap types.
+#[tauri::command]
+pub fn ask_type_instead<R: Runtime>(app: AppHandle<R>, state: State<'_, AskState>) {
+    let recording = state
+        .recording
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .take();
+    LISTEN_TURN.fetch_add(1, Ordering::Relaxed);
+    hide_glow(&app);
+    if let Some((listening, _)) = recording {
+        drop(listening.finish());
+    }
+    if let Ok(mut moment) = state.moment.lock() {
+        moment.typing = true;
+        moment.sound = None;
+    }
+    let handle = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        if let Some(window) = handle.get_webview_window(LABEL) {
+            let _ = window.set_focusable(true);
+            let _ = window.set_focus();
+        }
+    });
 }
 
 /* ------------------------------------------------------------- windows */
@@ -531,20 +703,96 @@ fn show_island<R: Runtime>(app: &AppHandle<R>) {
             .transparent(true)
             .build()
             {
-                Ok(window) => window,
+                Ok(window) => {
+                    notch::above_menu_bar(&window);
+                    window
+                }
                 Err(e) => {
                     debug_log(format!("ask: cannot make the island: {e}"));
                     return;
                 }
             },
         };
+        // Flush with the top of the screen, in the middle: it grows out of
+        // the notch, or out of the one it draws where there is none.
         if let Some((position, size, scale)) = place {
             let width = (ISLAND_WIDTH * scale).round() as i32;
             let x = position.x + (size.width as i32 - width) / 2;
-            let y = position.y + (24.0 * scale).round() as i32;
-            let _ = window.set_position(PhysicalPosition::new(x, y));
+            let _ = window.set_position(PhysicalPosition::new(x, position.y));
         }
         let _ = window.show();
+    });
+}
+
+/// The notch of the screen the island is on, for it to grow out of; none
+/// where the island draws its own.
+#[tauri::command]
+pub fn ask_notch(state: State<'_, AskState>) -> Option<notch::Notch> {
+    let (position, size, _) = state.moment.lock().ok()?.monitor?;
+    notch::find(position, size)
+}
+
+/// The glow round the edges of the screen the person is on, while Ask ZOOD
+/// listens: a window over the whole of that screen that every click goes
+/// through (`packages/ui/src/ask/Glow.tsx` draws it, from the voice's level).
+fn show_glow<R: Runtime>(app: &AppHandle<R>) {
+    let place = app
+        .state::<AskState>()
+        .moment
+        .lock()
+        .ok()
+        .and_then(|m| m.monitor);
+    let Some((position, size, _)) = place else {
+        return;
+    };
+    let handle = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        let window = match handle.get_webview_window(GLOW_LABEL) {
+            Some(window) => window,
+            None => match WebviewWindowBuilder::new(
+                &handle,
+                GLOW_LABEL,
+                WebviewUrl::App("index.html?askglow=1".into()),
+            )
+            .title("ZOOD PDF")
+            .decorations(false)
+            .resizable(false)
+            .shadow(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .focused(false)
+            .focusable(false)
+            .visible(false)
+            .transparent(true)
+            .build()
+            {
+                Ok(window) => {
+                    notch::above_menu_bar(&window);
+                    window
+                }
+                Err(e) => {
+                    debug_log(format!("ask: cannot make the glow: {e}"));
+                    return;
+                }
+            },
+        };
+        let _ = window.set_position(position);
+        // A pixel short of the whole screen: Windows takes a window on top
+        // that covers all of it for a full-screen app, and hides the taskbar.
+        let _ = window.set_size(PhysicalSize::new(size.width, size.height.saturating_sub(1)));
+        let _ = window.set_ignore_cursor_events(true);
+        let _ = window.show();
+        let _ = window.emit_to(GLOW_LABEL, LISTEN_EVENT, true);
+    });
+}
+
+fn hide_glow<R: Runtime>(app: &AppHandle<R>) {
+    let handle = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        if let Some(window) = handle.get_webview_window(GLOW_LABEL) {
+            let _ = window.emit_to(GLOW_LABEL, LISTEN_EVENT, false);
+            let _ = window.hide();
+        }
     });
 }
 
@@ -566,6 +814,17 @@ pub fn ask_resize<R: Runtime>(app: AppHandle<R>, height: f64) {
 /// had the keyboard, the app before it gets the keyboard back.
 #[tauri::command]
 pub fn ask_hide<R: Runtime>(app: AppHandle<R>, state: State<'_, AskState>) {
+    // Closed while it listened after a tap: the microphone goes too.
+    let recording = state
+        .recording
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .take();
+    if let Some((listening, _)) = recording {
+        LISTEN_TURN.fetch_add(1, Ordering::Relaxed);
+        drop(listening.finish());
+    }
+    hide_glow(&app);
     let front = state
         .moment
         .lock()
@@ -1115,6 +1374,18 @@ mod tests {
         );
         assert_eq!(clean_transcript("  open settings "), "open settings");
         assert_eq!(clean_transcript("language None<asr_text>"), "");
+    }
+
+    #[test]
+    fn settings_from_before_one_tap_listened_listen_and_glow() {
+        let old: Settings = serde_json::from_str(
+            r#"{"enabled":true,"shortcut":"CommandOrControl+Shift+Space","sees":false,
+                "taps":true,"tap_key":"right-main","tap_to_type":false}"#,
+        )
+        .unwrap();
+        assert!(old.tap_speaks && old.glow && !old.tap_to_type);
+        let choice: TapChoice = serde_json::from_str(r#"{"on":true,"key":"right-alt"}"#).unwrap();
+        assert!(choice.to_type && !choice.speak);
     }
 
     #[test]

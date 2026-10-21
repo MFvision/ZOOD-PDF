@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { Check, Mic, Reply, Send, Sparkles } from 'lucide-react';
+import { Check, Keyboard, Mic, Reply, Send, Sparkles, Square } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { useReducedMotion } from '../components/useReducedMotion';
 import { machineMemoryGiB } from '../ai/device/useDeviceModel';
@@ -9,6 +9,8 @@ import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { BETWEEN_MS, freshTapper, ignoredWith, isHoldKeys, stepTap, tapKeyCode } from '../ask/keys';
 import type { Tap } from '../ask/keys';
+import { AskSetup } from '../ask/AskSetup';
+import { GlowEdges } from '../ask/Glow';
 import { askAvailable, askReadiness, onMac, readAskPreferences, tapKeyLabel, voiceAvailable } from '../ask/settings';
 import type { AskReadiness } from '../ask/settings';
 import type { SectionId } from '../settings/SettingsWindow';
@@ -16,21 +18,24 @@ import { isolate } from '../signatures/model';
 import { Glow } from './scenes';
 
 /**
- * Ask ZOOD's chapter: the one key and its three moves, practised for real.
- * The page reads its own key events the way the host reads the keyboard
+ * Ask ZOOD's chapter: the one key and its moves, practised for real. The
+ * page reads its own key events the way the host reads the keyboard
  * (`ask/keys.ts`), and the host is paused meanwhile — so tapping here never
- * opens the island, and the keys to hold reach the page. A pretend reply box
- * fills with a draft on a double tap, a typing box opens on a single one,
- * and holding the keys shows the island listening (nothing is recorded).
+ * opens the island, and the keys to hold reach the page. One tap makes a
+ * pretend screen glow and the island listen until the next tap (nothing is
+ * recorded); a pretend reply box fills with a draft on a double tap. When
+ * one tap types instead, a typing box opens on it, and holding the keys
+ * shows the island listening. Until Ask ZOOD is set up, its one-button
+ * setup is here too.
  */
 
-type Part = 'twice' | 'once' | 'hold';
+type Part = 'speak' | 'twice' | 'once' | 'hold';
 
 /** Shorter than this is not a question, as the host has it. */
 const SHORTEST_HOLD_MS = 400;
 const WRITING_MS = 1100;
 
-const PART_LABEL: Record<Part, TKey> = { twice: 'tour.ask.tabTwice', once: 'tour.ask.tabOnce', hold: 'tour.ask.tabHold' };
+const PART_LABEL: Record<Part, TKey> = { speak: 'tour.ask.tabSpeak', twice: 'tour.ask.tabTwice', once: 'tour.ask.tabOnce', hold: 'tour.ask.tabHold' };
 
 export function AskScene({ onPractised, onSettings }: { onPractised: () => void; onSettings: (section: SectionId) => void }) {
   const { t, lang } = useI18n();
@@ -38,11 +43,18 @@ export function AskScene({ onPractised, onSettings }: { onPractised: () => void;
   const mac = onMac();
   // Key names stay whole inside an Arabic sentence.
   const tap = isolate(tapKeyLabel(prefs.tapKey, mac, lang === 'ar' ? 'ar' : 'en'));
-  const parts: Part[] = [...(prefs.taps ? (['twice'] as const) : []), ...(prefs.taps && prefs.tapToType ? (['once'] as const) : []), ...(voiceAvailable() ? (['hold'] as const) : [])];
+  const voice = voiceAvailable();
+  // One tap listens when it can hear; else, unless switched off, it types.
+  const speaks = prefs.taps && voice && prefs.oneTap === 'speak';
+  const types = prefs.taps && !speaks && prefs.oneTap !== 'off';
+  const parts: Part[] = [...(speaks ? (['speak'] as const) : []), ...(prefs.taps ? (['twice'] as const) : []), ...(types ? (['once'] as const) : []), ...(voice && !speaks ? (['hold'] as const) : [])];
   const [part, setPart] = useState<Part>(parts[0] ?? 'twice');
   const [down, setDown] = useState<ReadonlySet<string>>(new Set());
   // Each try starts its part again: a counter, so the same move twice replays.
-  const [tries, setTries] = useState<Record<Part, number>>({ twice: 0, once: 0, hold: 0 });
+  const [tries, setTries] = useState<Record<Part, number>>({ speak: 0, twice: 0, once: 0, hold: 0 });
+  /** The pretend listening after one tap: it ends at the next tap. */
+  const [speaking, setSpeaking] = useState<'idle' | 'listening' | 'done'>('idle');
+  const listening = useRef(false);
   const [holding, setHolding] = useState(false);
   const [held, setHeld] = useState<'short' | 'long' | null>(null);
   const [ready, setReady] = useState<AskReadiness | null>(null);
@@ -88,11 +100,20 @@ export function AskScene({ onPractised, onSettings }: { onPractised: () => void;
       practised.current();
     };
     const show = () => setDown(new Set(pressed));
+    const listen = (on: boolean) => {
+      listening.current = on;
+      setPart('speak');
+      setSpeaking(on ? 'listening' : 'done');
+      if (!on) practised.current();
+    };
     const read = () => {
       const other = [...pressed].some((one) => one !== code && !ignored.includes(one));
       const result: Tap | null = prefs.taps ? stepTap(tapper, performance.now(), pressed.has(code), other) : null;
-      if (result === 'twice') tried('twice');
-      else if (result === 'once' && prefs.tapToType) tried('once');
+      // While it listens, any tap is the one that ends it.
+      if (result && listening.current) listen(false);
+      else if (result === 'twice') tried('twice');
+      else if (result === 'once' && speaks) listen(true);
+      else if (result === 'once' && types) tried('once');
     };
     const endHold = () => {
       if (holdStart === null) return;
@@ -159,7 +180,7 @@ export function AskScene({ onPractised, onSettings }: { onPractised: () => void;
       window.removeEventListener('pointerup', onPointerUp, true);
       window.removeEventListener('blur', onBlur);
     };
-  }, [prefs, mac]);
+  }, [prefs, mac, speaks, types]);
 
   const tapDown = down.has(tapKeyCode(prefs.tapKey, mac));
 
@@ -179,19 +200,33 @@ export function AskScene({ onPractised, onSettings }: { onPractised: () => void;
         </div>
       )}
       <div key={part} className="tour-part">
+        {part === 'speak' && (
+          <SpeakPractice
+            tap={tap}
+            lit={tapDown}
+            state={speaking}
+            onShow={() => {
+              const on = speaking !== 'listening';
+              listening.current = on;
+              setSpeaking(on ? 'listening' : 'done');
+              if (!on) practised.current();
+            }}
+          />
+        )}
         {part === 'twice' && <TwicePractice tap={tap} lit={tapDown} run={tries.twice} onShow={() => tried('twice')} />}
         {part === 'once' && <OncePractice tap={tap} lit={tapDown} run={tries.once} onShow={() => tried('once')} />}
         {part === 'hold' && <HoldPractice shortcut={prefs.shortcut} mac={mac} down={down} holding={holding} held={held} onShow={() => tried('hold')} />}
       </div>
-      {ready && (
-        <p className={ready.taps || ready.voice ? 'ask-ready is-on' : 'ask-ready'} role="status">
-          <Icon of={ready.taps || ready.voice ? Check : Sparkles} size={14} />
-          <span>{t(ready.taps || ready.voice ? 'tour.ask.ready' : 'tour.ask.notReady')}</span>
+      {ready && (ready.taps || ready.voice) && (
+        <p className="ask-ready is-on" role="status">
+          <Icon of={Check} size={14} />
+          <span>{t('tour.ask.ready')}</span>
           <button type="button" className="link-btn" onClick={() => onSettings('ai')}>
             {t('tour.ask.openSettings')}
           </button>
         </p>
       )}
+      {ready && !(ready.taps || ready.voice) && askAvailable() && prefs.enabled && <AskSetup compact />}
     </div>
   );
 }
@@ -211,6 +246,70 @@ function BottomRow({ mac, tapKey, lit }: { mac: boolean; tapKey: string; lit: bo
           {index === target && <span className="kb-badge">{t('tour.ask.yourKey')}</span>}
         </span>
       ))}
+    </div>
+  );
+}
+
+/** The voice the pretend glow and line move with: a few overlapping waves, still with Reduce Motion. */
+function usePretendVoice(on: boolean): number {
+  const reduced = useReducedMotion();
+  const [level, setLevel] = useState(0);
+  useEffect(() => {
+    if (!on || reduced) return;
+    const start = performance.now();
+    const timer = window.setInterval(() => {
+      const at = (performance.now() - start) / 1000;
+      const wave = 0.5 + 0.3 * Math.sin(at * 5.1) + 0.2 * Math.sin(at * 11.7 + 1);
+      setLevel(Math.max(0, Math.min(1, wave * (0.6 + 0.4 * Math.sin(at * 1.3) ** 2))));
+    }, 70);
+    return () => window.clearInterval(timer);
+  }, [on, reduced]);
+  return !on ? 0 : reduced ? 0.5 : level;
+}
+
+/** One tap: a pretend screen glows round its edges and the island listens, until the next tap. */
+function SpeakPractice({ tap, lit, state, onShow }: { tap: string; lit: boolean; state: 'idle' | 'listening' | 'done'; onShow: () => void }) {
+  const { t } = useI18n();
+  const on = state === 'listening';
+  const level = usePretendVoice(on);
+  return (
+    <div className="tour-split">
+      <div>
+        <p className="tour-note">{t('tour.ask.speakHow', { tap })}</p>
+        <TryLine text={t(on ? 'tour.ask.speakStop' : 'tour.ask.speakTry', { tap })} keys={[tap]} lit={lit} done={state === 'done'} />
+        {state === 'done' ? (
+          <p className="ask-done" role="status">
+            <Icon of={Check} size={14} />
+            {t('tour.ask.speakDone')}
+          </p>
+        ) : (
+          <button type="button" className="link-btn tour-link" onClick={onShow}>
+            {t(on ? 'tour.ask.speakStopMe' : 'tour.ask.showMe')}
+          </button>
+        )}
+        <p className="tour-note ask-more">
+          <Icon of={Keyboard} size={13} /> {t('tour.ask.speakTypeInstead')}
+        </p>
+      </div>
+      <div className="tour-stage ask-stage ask-glow-stage">
+        <GlowEdges level={level} on={on} />
+        {on ? (
+          <span className="ask-island-mock is-listening ask-listen-mock" role="status">
+            <Icon of={Mic} size={13} />
+            <span>{t('tour.ask.listening')}</span>
+            <span className="ask-wave-mock" aria-hidden="true">
+              {[0.6, 1, 0.75, 0.9, 0.5].map((weight, index) => (
+                <i key={index} style={{ '--h': (level * weight).toFixed(3) } as CSSProperties} />
+              ))}
+            </span>
+            <Icon of={Square} size={11} />
+          </span>
+        ) : (
+          <span className="ask-waiting" aria-hidden="true">
+            <kbd className={lit ? 'keycap is-down' : 'keycap'}>{tap}</kbd>
+          </span>
+        )}
+      </div>
     </div>
   );
 }

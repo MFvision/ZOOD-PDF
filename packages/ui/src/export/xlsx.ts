@@ -67,7 +67,12 @@ export function sheetNames(wanted: readonly string[]): string[] {
 export function formatCode(format: NumberFormat): string {
   const whole = format.grouped ? '#,##0' : '0';
   const decimals = format.decimals > 0 ? `.${'0'.repeat(format.decimals)}` : '';
-  return `${whole}${decimals}${format.percent ? '%' : ''}`;
+  const number = `${whole}${decimals}${format.percent ? '%' : ''}`;
+  const currency = format.currency;
+  if (!currency) return number;
+  // In quotes, so a sign of letters reads as itself and not as a code.
+  const symbol = `"${currency.symbol.replace(/"/g, '')}"`;
+  return currency.before ? `${symbol}${number}` : `${number} ${symbol}`;
 }
 
 /** The formats Excel has built in, by code; the rest are the workbook's own from 164. */
@@ -76,9 +81,23 @@ const BUILT_IN_FORMATS: Record<string, number> = { General: 0, '0': 1, '0.00': 2
 /** The cell styles a workbook uses: each a number format, with the plain one first. */
 class Styles {
   private codes = new Map<string, number>();
-  private xfs = new Map<number, number>([[0, 0]]);
+  /** Each cell format, as "number format id:font id", in the order written; the first is the default. */
+  private xfs = new Map<string, number>([['0:0', 0]]);
 
   index(cell: SheetCell): number {
+    // A linked cell is blue and underlined (font 1), as Excel shows a link.
+    const font = cell.link && cell.value.kind === 'text' ? 1 : 0;
+    const key = `${this.format(cell)}:${font}`;
+    let xf = this.xfs.get(key);
+    if (xf === undefined) {
+      xf = this.xfs.size;
+      this.xfs.set(key, xf);
+    }
+    return xf;
+  }
+
+  /** The number format of a cell: 0, General, for text and plain whole numbers. */
+  private format(cell: SheetCell): number {
     if (cell.value.kind !== 'number') return 0;
     const code = formatCode(cell.value.format);
     // A plain whole number is what General shows anyway.
@@ -88,12 +107,7 @@ class Styles {
       id = 164 + this.codes.size;
       this.codes.set(code, id);
     }
-    let xf = this.xfs.get(id);
-    if (xf === undefined) {
-      xf = this.xfs.size;
-      this.xfs.set(id, xf);
-    }
-    return xf;
+    return id;
   }
 
   xml(): string {
@@ -102,11 +116,16 @@ class Styles {
         ? `<numFmts count="${this.codes.size}">${[...this.codes].map(([code, id]) => `<numFmt numFmtId="${id}" formatCode="${xmlAttribute(code)}"/>`).join('')}</numFmts>`
         : '';
     const xfs = [...this.xfs.keys()]
-      .map((id) => `<xf numFmtId="${id}" fontId="0" fillId="0" borderId="0" xfId="0"${id > 0 ? ' applyNumberFormat="1"' : ''}/>`)
+      .map((key) => {
+        const [id, font] = key.split(':').map(Number) as [number, number];
+        return `<xf numFmtId="${id}" fontId="${font}" fillId="0" borderId="0" xfId="0"${id > 0 ? ' applyNumberFormat="1"' : ''}${font > 0 ? ' applyFont="1"' : ''}/>`;
+      })
       .join('');
+    const name = xmlAttribute(XLSX_FONT);
     return (
       `${DECLARATION}<styleSheet xmlns="${MAIN}">${numFmts}` +
-      `<fonts count="1"><font><sz val="11"/><name val="${xmlAttribute(XLSX_FONT)}"/><family val="2"/></font></fonts>` +
+      `<fonts count="2"><font><sz val="11"/><name val="${name}"/><family val="2"/></font>` +
+      `<font><u/><sz val="11"/><color rgb="FF0563C1"/><name val="${name}"/><family val="2"/></font></fonts>` +
       '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
       '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
       '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
@@ -117,9 +136,10 @@ class Styles {
   }
 }
 
-function worksheetXml(sheet: Sheet, styles: Styles, first: boolean): string {
+function worksheetXml(sheet: Sheet, styles: Styles, first: boolean, links: string[] = []): string {
   const rows: string[] = [];
   const merges: string[] = [];
+  const hyperlinks: string[] = [];
   let lastColumn = 0;
   sheet.rows.slice(0, LIMITS.rows).forEach((row, r) => {
     const cells: string[] = [];
@@ -137,7 +157,12 @@ function worksheetXml(sheet: Sheet, styles: Styles, first: boolean): string {
         cells.push(`<c r="${ref}"${style}><v>${cell.value.value}</v></c>`);
       } else if (cell.value.text.length > 0) {
         const text = cell.value.text.slice(0, LIMITS.cell);
-        cells.push(`<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlText(text)}</t></is></c>`);
+        cells.push(`<c r="${ref}"${style} t="inlineStr"><is><t xml:space="preserve">${xmlText(text)}</t></is></c>`);
+        if (cell.link) {
+          let k = links.indexOf(cell.link);
+          if (k < 0) k = links.push(cell.link) - 1;
+          hyperlinks.push(`<hyperlink ref="${ref}" r:id="rIdLink${k + 1}"/>`);
+        }
       }
     });
     if (cells.length > 0) rows.push(`<row r="${r + 1}">${cells.join('')}</row>`);
@@ -149,10 +174,11 @@ function worksheetXml(sheet: Sheet, styles: Styles, first: boolean): string {
     .join('');
   const cols = widths ? `<cols>${widths}</cols>` : '';
   const mergeCells = merges.length > 0 ? `<mergeCells count="${merges.length}">${merges.join('')}</mergeCells>` : '';
-  // CT_Worksheet's order: dimension, sheetViews, sheetFormatPr, cols, sheetData, …, mergeCells, …, pageMargins.
+  const hyperlinkList = hyperlinks.length > 0 ? `<hyperlinks>${hyperlinks.join('')}</hyperlinks>` : '';
+  // CT_Worksheet's order: dimension, sheetViews, sheetFormatPr, cols, sheetData, …, mergeCells, …, hyperlinks, …, pageMargins.
   return (
     `${DECLARATION}<worksheet xmlns="${MAIN}" xmlns:r="${REL}">${dimension}${view}<sheetFormatPr defaultRowHeight="15"/>${cols}` +
-    `<sheetData>${rows.join('')}</sheetData>${mergeCells}` +
+    `<sheetData>${rows.join('')}</sheetData>${mergeCells}${hyperlinkList}` +
     '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>'
   );
 }
@@ -196,7 +222,14 @@ export function xlsxParts(sheets: readonly Sheet[]): Record<string, string> {
   const styles = new Styles();
   const parts: Record<string, string> = {};
   sheets.forEach((sheet, k) => {
-    parts[`xl/worksheets/sheet${k + 1}.xml`] = worksheetXml(sheet, styles, k === 0);
+    const links: string[] = [];
+    parts[`xl/worksheets/sheet${k + 1}.xml`] = worksheetXml(sheet, styles, k === 0, links);
+    if (links.length > 0) {
+      parts[`xl/worksheets/_rels/sheet${k + 1}.xml.rels`] =
+        `${DECLARATION}<Relationships xmlns="${PACKAGE_REL}">` +
+        links.map((uri, n) => `<Relationship Id="rIdLink${n + 1}" Type="${REL}/hyperlink" Target="${xmlAttribute(uri)}" TargetMode="External"/>`).join('') +
+        '</Relationships>';
+    }
   });
   parts['[Content_Types].xml'] = contentTypesXml(sheets.length);
   parts['_rels/.rels'] = packageRelsXml();

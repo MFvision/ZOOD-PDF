@@ -196,6 +196,24 @@ practice button; `ask/ReadyHint.tsx` shows a one-time card the first time Ask ZO
 iOS: nothing (Ask ZOOD is not on iPhone/iPad). **Not tried on real Windows or a Mac** (the pause
 and the page's view of right Ctrl/Command).
 
+## One tap to talk, with the screen glowing (2026-10-21, stacked on PR #18)
+The owner: voice took too many steps (permissions, a download, holding three keys). Like
+Claude's Mac app (Caps Lock once to start, again to stop), **one tap of the Ask key** (right
+Ctrl / right ⌘) now listens until the next tap, or until the person goes quiet
+(`ask/listen.ts`: 1.6 s quiet after speaking, 8 s if nothing is said; host stops at 60 s).
+While it listens a click-through window over the screen glows round its edges in ZOOD bronze
+and gold, swelling with the voice (`ask/Glow.tsx`, `glow.css`, host `show_glow`, label
+`ask-glow`), and the island draws the voice as a moving line with **Done** and **Type instead**.
+Settings › AI › Ask ZOOD › Tap once: Talk / Type a request / Nothing (talk falls back to typing
+until the hearing model is in); a Glow switch. Holding Ctrl/⌘+Shift+Space still works. Double
+tap is unchanged. **One-button setup** (`ask/AskSetup.tsx`, in Settings and the tour chapter):
+downloads the hearing and deciding models together, then asks each missing permission in turn
+(Mac: microphone via a short open of it, Input Monitoring via `IOHIDRequestAccess`,
+Accessibility, Screen Recording; Windows: the microphone privacy switches, read from the
+registry) and tells the host to listen. Input Monitoring matters on a Mac: without it ⌘C made
+with the right ⌘ reads as a tap. Tour version 4 re-shows the Ask chapter, whose first tab is
+now "Tap once: talk" with a pretend glowing screen. **Not tried on real Windows or a Mac.**
+
 ## Known open problems
 - **iPhone UI tests**: 6 of 55 failing at the last full run, each a test reaching for a
   control below the fold or a duplicate identifier (theme picker ×2, Protect's Remove, form
