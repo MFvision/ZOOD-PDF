@@ -335,6 +335,7 @@ function Island() {
         window: tapped ? { app: moment.app, title: moment.title, text } : null,
         style: readStyle(),
         documents,
+        language: languageOf(words),
       };
       request.current = `${id}-think`;
       const done = (await invokeHost('ask_think', {

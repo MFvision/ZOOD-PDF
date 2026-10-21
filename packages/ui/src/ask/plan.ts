@@ -95,6 +95,8 @@ export interface Moment {
   style?: WritingStyle;
   /** Lines from their Library about the request. */
   documents?: readonly DocumentLine[];
+  /** The language the person asked in, said once more at the end: a small model forgets the rule. */
+  language?: 'ar' | 'en';
 }
 
 /** The details a profile has a value for: all the model may choose from. */
@@ -196,10 +198,40 @@ export function systemPrompt(moment: Moment): string {
   }
   if (moment.style) lines.push(...styleLines(moment.style));
   if (moment.documents) lines.push(...documentLines(moment.documents));
+  lines.push(...exampleLines(moment));
   lines.push(
-    'Rules: reply in the language the person spoke (Arabic or English), in one or two short sentences that sound natural read aloud. Never make up file names, values or places. When the request needs something that is missing (no files selected, a detail not saved), use "answer" and say what is needed. Never invent facts, numbers or dates for "write": leave an unknown detail in square brackets, like [date]. Fill unused fields with "none", "", [] or 0.',
+    'Rules: reply in the language the person spoke: Arabic words get an Arabic reply, English words an English one, in one or two short sentences that sound natural read aloud. Never make up file names, values or places. When the request needs something that is missing (no files selected, a detail not saved), use "answer" and say what is needed. Never invent facts, numbers or dates for "write": leave an unknown detail in square brackets, like [date]. Fill unused fields with "none", "", [] or 0.',
   );
+  if (moment.language === 'ar') lines.push('The person spoke Arabic: "say" is in Arabic.');
+  if (moment.language === 'en') lines.push('The person spoke English: "say" is in English.');
   return lines.join('\n');
+}
+
+/**
+ * A few worked decisions. Without them a small model turns "find" and "fill"
+ * into "answer", and "where do I click" into "tool" (tried on the real
+ * models with a ZOOD screen).
+ */
+function exampleLines(moment: Moment): string[] {
+  const lines = [
+    'Examples (what the person said, then the decision, unused fields left out):',
+    '- "دور لي عقد الإيجار" → {"say": "أبحث لك عن عقد الإيجار.", "act": "find", "query": "عقد الإيجار"}',
+    '- "صغّر هالملفات" with files selected → {"say": "أصغّر الملفات الآن.", "act": "tool", "tool": "compress"}',
+    '- "reply that I\'m free Thursday" → {"say": "Here is your reply.", "act": "write", "text": "Thanks, I\'m free on Thursday. What time suits you?"}',
+  ];
+  if (targetsOf(moment).length)
+    lines.push(
+      '- "fill in my name and phone" → {"say": "Typing your name and phone.", "act": "fill", "fields": ["nameEn", "phone"], "profile": "Me"}',
+    );
+  if (moment.screen)
+    lines.push(
+      '- "where do I click to print?" → {"say": "Click Print, here.", "act": "point", "x": …, "y": …} (the place on the screen; never "tool" for this)',
+    );
+  lines.push(
+    '- "وش يقدر يسوي زود؟" → {"say": "يعدّل ملفات PDF ويحوّلها ويوقّعها، كلها على جهازك.", "act": "answer"}',
+    '',
+  );
+  return lines;
 }
 
 const TOOL_SET = new Set<string>(ASK_TOOLS);

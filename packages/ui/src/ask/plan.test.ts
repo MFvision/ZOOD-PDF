@@ -131,6 +131,17 @@ describe('how the model is asked', () => {
     expect(systemPrompt(nothing)).toContain('no files are selected');
   });
 
+  it('shows the model a worked example of each action it may take', () => {
+    const prompt = systemPrompt(withFiles);
+    expect(prompt).toContain('"act": "find"');
+    expect(prompt).toContain('"act": "fill"');
+    expect(prompt).toContain('"act": "write"');
+    expect(prompt).not.toContain('"act": "point"');
+    expect(systemPrompt(seeing)).toContain('"act": "point"');
+    expect(systemPrompt(nothing)).not.toContain('"act": "fill"');
+    expect(systemPrompt({ ...withFiles, language: 'en' })).toMatch(/spoke English: "say" is in English\.$/);
+  });
+
   it('tells the model the window it was asked in, and how the person writes', () => {
     const prompt = systemPrompt({
       ...withFiles,
