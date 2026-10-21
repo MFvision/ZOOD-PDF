@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ArrowUp, Check, Copy, ScanText, Sparkles, Square, Volume2, VolumeX } from 'lucide-react';
+import { ArrowUp, Check, Copy, FolderOpen, ScanText, Sparkles, Square, Volume2, VolumeX } from 'lucide-react';
 import { Icon } from '../../components/Icon';
 import { IconButton } from '../../components/IconButton';
 import { useI18n } from '../../i18n/useT';
@@ -636,6 +636,8 @@ export function ChatView(props: ChatViewProps) {
               <>
                 <h4>{t(hasDocument ? 'ai.chat.emptyTitle' : 'ai.chat.emptyNoFile')}</h4>
                 <p>{t(hasDocument ? 'ai.chat.emptyText' : 'tool.openFirst')}</p>
+                {/* Not a dead end: the file it needs is one button away. */}
+                {!hasDocument && <IconButton label={t('home.card.open')} icon={<Icon of={FolderOpen} />} showLabel variant="primary" onClick={() => services.requestOpenFile()} />}
               </>
             )}
           </div>
