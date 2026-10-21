@@ -45,7 +45,10 @@ const shoot = async (page, name) => out && page.screenshot({ path: join(out, `${
 const errors = [];
 
 async function show(payload, moments) {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  // VIDEO: also film it at its own speed, for a person to watch.
+  const video = process.env.VIDEO && out ? { recordVideo: { dir: out, size: { width: 1280, height: 800 } } } : {};
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, ...video });
+  const page = await context.newPage();
   page.on('pageerror', (error) => errors.push(String(error)));
   // A desktop to see the window over.
   await page.addInitScript(host, payload);
@@ -53,29 +56,37 @@ async function show(payload, moments) {
   await page.addStyleTag({ content: 'html.arrival-page body { background: linear-gradient(160deg, #1c4a5a, #0b1d2a) !important; }' });
   await expect(page.locator('.arrival-file')).toBeVisible();
   await expect(page.locator('.arrival-name')).toHaveText(payload.name);
-  // Each moment, held still: every animation set to that time since the file came.
-  for (const [ms, name] of moments) {
-    await page.evaluate((time) => {
-      for (const animation of globalThis.document.getAnimations()) {
-        animation.pause();
-        animation.currentTime = time;
-      }
-    }, ms);
-    await shoot(page, name);
+  if (process.env.VIDEO) {
+    await page.waitForTimeout(4200);
+  } else {
+    // Each moment, held still: every animation set to that time since the file came.
+    for (const [ms, name] of moments) {
+      await page.evaluate((time) => {
+        for (const animation of globalThis.document.getAnimations()) {
+          animation.pause();
+          animation.currentTime = time;
+        }
+      }, ms);
+      await shoot(page, name);
+    }
   }
-  await page.close();
+  await context.close();
 }
 
 try {
   await show({ way: 'in', name: 'Photo from the phone.png', kind: 'picture', picture, from: null }, [
-    [300, 'in-rising'],
-    [1100, 'in-large'],
-    [2900, 'in-corner'],
+    [250, 'in-edge'],
+    [600, 'in-rising'],
+    [900, 'in-sharpening'],
+    [1600, 'in-large'],
+    [3200, 'in-corner'],
   ]);
   console.log('arrival: from the phone, risen, large, then at the corner');
   await show({ way: 'out', name: 'Contract.pdf', kind: 'pdf', picture: null, from: { x: 300, y: 260 } }, [
     [250, 'out-lifted'],
-    [1300, 'out-leaving'],
+    [700, 'out-drawn'],
+    [1000, 'out-passing'],
+    [1300, 'out-wave'],
   ]);
   console.log('arrival: to the phone, lifted where it was, then off the bottom');
   if (errors.length) throw new Error(`errors on the page:\n${errors.join('\n')}`);

@@ -19,7 +19,8 @@ const step = (name) => console.log(`phone: ${name}`);
 const shot = (page, name) => (process.env.SHOTS ? page.screenshot({ path: `${process.env.SHOTS}/${name}.png` }) : undefined);
 
 try {
-  const context = await browser.newContext(phone);
+  // VIDEO (with SHOTS): film the phone's screen too.
+  const context = await browser.newContext(process.env.VIDEO && process.env.SHOTS ? { ...phone, recordVideo: { dir: process.env.SHOTS, size: phone.viewport } } : phone);
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error)));
@@ -84,6 +85,8 @@ try {
   await shot(page, 'launch');
   await page.mouse.move(at.x + at.width / 2, at.y + at.height / 2 - 200, { steps: 3 });
   await page.mouse.up();
+  await page.waitForTimeout(450);
+  await shot(page, 'launched');
   await expect(stage).toBeHidden();
   const card = page.locator('.phone-flick').first();
   await expect(card).toContainText('On the desktop');

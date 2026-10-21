@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { File as FileIcon, FileText, ImageIcon } from 'lucide-react';
 import { invokeHost, isTauriHost, onHostEvent } from '../core/host-tauri';
+import './light.css';
 import './arrival.css';
 
 /** What the host sends as a file moves (`src-tauri/src/arrival.rs`). */
@@ -27,13 +28,15 @@ export function isArrivalWindow(): boolean {
 }
 
 /**
- * Files moving between the phone and the PC, seen on the PC's screen. One
- * flicked from the phone: a soft light sweeps up the screen, the file rises
- * from below, is shown large in the middle for a moment, then settles at the
- * Desktop's corner (where Windows and macOS put new files) with its name.
- * One sent to the phone: it lifts where it was and flies off the bottom of
- * the screen, toward the phone, into a burst of light. The window is
- * transparent and lets clicks through; the host hides it after.
+ * Files moving between the phone and the PC, seen on the PC's screen, in the
+ * same light as the phone's (`light.css`). One flicked from the phone: light
+ * runs round the screen's edges, a wave leaves the bottom edge, and the file
+ * comes up out of it, sharpening, to be shown large in the middle for a
+ * moment, then settles at the Desktop's corner (where Windows and macOS put
+ * new files) with its name. One sent to the phone: it lifts where it was,
+ * then is drawn down into the light at the bottom edge, and the wave goes
+ * out as it passes. The window is transparent and lets clicks through; the
+ * host hides it after.
  */
 export function ArrivalApp() {
   const [arrived, setArrived] = useState<(Arrived & { key: number }) | null>(null);
@@ -59,16 +62,20 @@ export function ArrivalApp() {
     </span>
   );
 
+  const width = globalThis.innerWidth || 1280;
+  const height = globalThis.innerHeight || 800;
+  // Where the file goes through: the bottom edge's middle.
+  const gate = { x: width / 2, y: height + 40 };
+  const place = (name: string, x: number, y: number) => ({ [`--${name}-x`]: `${Math.round(x)}px`, [`--${name}-y`]: `${Math.round(y)}px` });
+
   if (arrived.way === 'out') {
-    const width = globalThis.innerWidth || 1280;
-    const height = globalThis.innerHeight || 800;
-    const x = arrived.from?.x ?? width / 2;
-    const y = arrived.from?.y ?? height / 2;
-    // To the bottom edge's middle, and on past it.
-    const style = { left: x, top: y, '--depart-x': `${width / 2 - x}px`, '--depart-y': `${height - y + 160}px` } as React.CSSProperties;
+    const from = arrived.from ?? { x: width / 2, y: height / 2 };
+    const style = { ...place('from', from.x, from.y), ...place('gate', gate.x, gate.y) } as React.CSSProperties;
     return (
       <div key={arrived.key} className="arrival arrival-out" aria-hidden="true">
-        <div className="arrival-flare" />
+        <div className="flick-edge arrival-edge" />
+        <div className="arrival-source" />
+        <div className="flick-wave" style={{ '--wave-x': '50%', '--wave-y': '100%', '--wave-delay': '0.9s' } as React.CSSProperties} />
         <div className="arrival-file" style={style}>
           {face}
           {name}
@@ -77,11 +84,16 @@ export function ArrivalApp() {
     );
   }
 
+  // macOS puts new files at the top right, Windows at the top left.
   const mac = /Mac/i.test(navigator.platform || navigator.userAgent);
+  const corner = { x: mac ? width - 80 : 80, y: 73 };
+  const style = { ...place('gate', gate.x, gate.y), ...place('middle', width / 2, height / 2), ...place('corner', corner.x, corner.y) } as React.CSSProperties;
   return (
-    <div key={arrived.key} className={`arrival arrival-${mac ? 'end' : 'start'}`} aria-hidden="true">
-      <div className="arrival-sweep" />
-      <div className="arrival-file">
+    <div key={arrived.key} className="arrival arrival-in" aria-hidden="true">
+      <div className="flick-edge arrival-edge" />
+      <div className="arrival-source" />
+      <div className="flick-wave" style={{ '--wave-x': '50%', '--wave-y': '100%', '--wave-delay': '0.15s' } as React.CSSProperties} />
+      <div className="arrival-file" style={style}>
         {face}
         {name}
       </div>

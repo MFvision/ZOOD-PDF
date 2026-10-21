@@ -1076,14 +1076,14 @@ button svg {
 .phone-launch-gone {
   position: absolute;
   pointer-events: none;
-  animation: phone-launch-away 0.55s cubic-bezier(0.5, 0, 0.75, 0) forwards;
+  animation: phone-launch-away 0.45s cubic-bezier(0.5, 0, 0.75, 0) forwards;
 }
 
 @keyframes phone-launch-away {
   to {
     opacity: 0;
-    transform: translateY(-85vh) scale(0.35);
-    filter: brightness(1.8);
+    transform: translateY(-80vh) scale(0.3);
+    filter: blur(6px) brightness(2);
   }
 }
 
@@ -1147,23 +1147,75 @@ button svg {
 }
 
 .phone-catch-file {
-  animation: phone-catch-drop 0.9s cubic-bezier(0.2, 0.9, 0.25, 1.05) both;
+  animation: phone-catch-drop 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
 }
 
 @keyframes phone-catch-drop {
   0% {
     opacity: 0;
-    transform: translateY(-60vh) scale(0.35);
-    filter: brightness(1.8);
+    transform: translateY(-55vh) scale(0.3);
+    filter: blur(14px) brightness(2);
   }
 
-  25% {
+  30% {
     opacity: 1;
   }
 
   100% {
     transform: none;
     filter: none;
+  }
+}
+
+/* The edges flare as the file comes, then settle to a glow. */
+.phone-catch-edge {
+  --edge-power: 0.9;
+
+  animation: phone-catch-edge 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes phone-catch-edge {
+  0% {
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.35;
+  }
+}
+
+/* Then the words and buttons, one after the other. */
+.phone-catch-from,
+.phone-catch-name,
+.phone-catch-more,
+.phone-catch-actions {
+  animation: phone-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.phone-catch > .phone-catch-from {
+  animation-delay: 0.2s;
+}
+
+.phone-catch > .phone-catch-name {
+  animation-delay: 0.7s;
+}
+
+.phone-catch > .phone-catch-more {
+  animation-delay: 0.76s;
+}
+
+.phone-catch > .phone-catch-actions {
+  animation-delay: 0.82s;
+}
+
+@keyframes phone-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
 }
 
@@ -1189,7 +1241,12 @@ button svg {
   .phone-catch-glow,
   .phone-launch-card,
   .phone-catch-file,
-  .phone-launch-hint svg {
+  .phone-launch-hint svg,
+  .phone-catch-edge,
+  .phone-catch-from,
+  .phone-catch-name,
+  .phone-catch-more,
+  .phone-catch-actions {
     animation: none;
   }
 

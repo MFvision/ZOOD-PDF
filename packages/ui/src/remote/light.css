@@ -1,0 +1,144 @@
+/*
+ * The light files travel through between the phone and the computer, shared
+ * by the phone's page (Send.tsx, Catch.tsx) and the PC's overlay
+ * (Arrival.tsx). Two pieces:
+ *
+ * - The edge glow: light running round the screen's edges, as a voice assistant shows it is
+ *   listening, here in ZOOD's bronze and cream with a cool blue, lilac and
+ *   coral. `--edge-power` (0 to 1) makes it brighter and wider.
+ * - The wave: a ring of light that leaves the edge a file went through (or
+ *   came from) and crosses the screen, with a faint split of colour at its
+ *   rim, as light through glass does. Placed at `--wave-x`, `--wave-y`.
+ *
+ * Motion language (all three surfaces): out-expo for what arrives
+ * (0.16, 1, 0.3, 1), in-quart for what leaves (0.5, 0, 0.75, 0), and steps
+ * of 150 / 300 / 600 / 1200 ms. Only transform, opacity and filter move.
+ */
+
+@property --edge-turn {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.flick-edge {
+  --edge-power: 0.4;
+
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: calc(0.35 + var(--edge-power) * 0.65);
+  transition: opacity 0.3s ease;
+}
+
+/*
+ * The colours, turning: a sharp line at the very edge, and its glow falling
+ * inward, strong at the edge and soft further in (masks that fade from each
+ * side, so there is no inner border and nothing to blur).
+ */
+.flick-edge::before,
+.flick-edge::after {
+  --edge-reach: calc(10px + var(--edge-power) * 46px);
+
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(
+    from var(--edge-turn),
+    #f0b46c,
+    #ffd7a3 10%,
+    #5aa9ff 30%,
+    #9a7bff 48%,
+    #ff7a8a 64%,
+    #ff9a5c 80%,
+    #f0b46c
+  );
+  content: "";
+  animation: flick-edge-turn 6s linear infinite;
+}
+
+.flick-edge::before {
+  padding: calc(1.5px + var(--edge-power) * 2px);
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+}
+
+.flick-edge::after {
+  --edge-fall: #000, rgb(0 0 0 / 55%) calc(var(--edge-reach) * 0.2), rgb(0 0 0 / 22%) calc(var(--edge-reach) * 0.5), rgb(0 0 0 / 6%) calc(var(--edge-reach) * 0.8), transparent var(--edge-reach);
+
+  opacity: 0.85;
+  mask:
+    linear-gradient(to right, var(--edge-fall)),
+    linear-gradient(to left, var(--edge-fall)),
+    linear-gradient(to bottom, var(--edge-fall)),
+    linear-gradient(to top, var(--edge-fall));
+}
+
+@keyframes flick-edge-turn {
+  to {
+    --edge-turn: 360deg;
+  }
+}
+
+/* The wave: a disc the screen's size, grown from nothing at its edge. */
+.flick-wave {
+  position: absolute;
+  inset-block-start: var(--wave-y, 0);
+  inset-inline-start: var(--wave-x, 50%);
+  inline-size: 120vmax;
+  block-size: 120vmax;
+  margin-block-start: -60vmax;
+  margin-inline-start: -60vmax;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle,
+      transparent 0 60%,
+      rgb(255 243 224 / 0%) 62%,
+      rgb(255 243 224 / 45%) 65.4%,
+      rgb(255 255 255 / 80%) 66.3%,
+      rgb(142 197 255 / 35%) 67.1%,
+      rgb(185 164 255 / 18%) 67.9%,
+      transparent 69.5%
+    ),
+    radial-gradient(circle, rgb(255 243 224 / 0%) 30%, rgb(255 243 224 / 14%) 60%, transparent 66%);
+  filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.04);
+  animation: flick-wave 1.5s cubic-bezier(0.22, 1, 0.36, 1) var(--wave-delay, 0s) forwards;
+
+  /* Screen places, whatever the language. */
+  direction: ltr;
+}
+
+@keyframes flick-wave {
+  0% {
+    opacity: 0;
+    transform: scale(0.04);
+  }
+
+  8% {
+    opacity: 1;
+  }
+
+  65% {
+    opacity: 0.75;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flick-edge::before,
+  .flick-edge::after {
+    animation: none;
+  }
+
+  .flick-wave {
+    display: none;
+  }
+}

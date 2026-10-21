@@ -6,6 +6,7 @@ import type { RemoteLink } from './link';
 import { bytesToBase64 } from './seal';
 import type { PcClip, Received } from './session';
 import { ps } from './strings';
+import '../light.css';
 
 type Send = RemoteLink['send'];
 type Landed = Extract<HostMessage, { t: 'landed' }>;
@@ -166,9 +167,10 @@ export function SendTab({
 }
 
 /**
- * The chosen files, one at a time on the dark full screen: a light waits at
- * the top, toward the computer, and grows as the file is pulled up; let go
- * and the file flies up into it, and the next one comes.
+ * The chosen files, one at a time on the dark full screen: light runs round
+ * the screen's edges and waits at the top, toward the computer, and both
+ * grow as the file is pulled up; let go and the file is drawn up into the
+ * light, a wave goes out from the top as it passes, and the next one comes.
  */
 function LaunchStage({ queue, pcName, onFlick, onClose }: { queue: Item[]; pcName: string; onFlick: (item: Item) => void; onClose: () => void }) {
   const item = queue[0];
@@ -212,7 +214,9 @@ function LaunchStage({ queue, pcName, onFlick, onClose }: { queue: Item[]; pcNam
   const pull = Math.min(1, Math.max(0, -lift / 220));
   return (
     <div className="phone-launch" role="dialog" aria-modal="true" aria-label={ps('flickTitle')} style={{ '--pull': pull } as React.CSSProperties}>
+      <div className="flick-edge" style={{ '--edge-power': gone ? 1 : 0.2 + pull * 0.8 } as React.CSSProperties} aria-hidden="true" />
       <div key={gone?.id ?? 'glow'} className={`phone-launch-glow${gone ? ' phone-launch-glow-flash' : ''}`} aria-hidden="true" />
+      {gone && <div key={`wave-${gone.id}`} className="flick-wave" style={{ '--wave-x': '50%', '--wave-y': '0px', '--wave-delay': '0.3s' } as React.CSSProperties} aria-hidden="true" />}
       <button type="button" className="phone-launch-close" aria-label={ps('back')} onClick={onClose}>
         <X />
       </button>
