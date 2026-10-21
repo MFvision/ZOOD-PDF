@@ -36,8 +36,22 @@ describe('numbers as numbers', () => {
     expect(parseNumber('\u200F1,250\u200F')?.value).toBe(1250);
   });
 
+  it('reads amounts of money, and shows them with their sign where it was', () => {
+    expect(parseNumber('$12,000')).toEqual({ value: 12000, format: { decimals: 0, grouped: true, percent: false, currency: { symbol: '$', before: true } } });
+    expect(parseNumber('3.50 ر.س')).toEqual({ value: 3.5, format: { decimals: 2, grouped: false, percent: false, currency: { symbol: 'ر.س', before: false } } });
+    expect(parseNumber('-$5')?.value).toBe(-5);
+    expect(parseNumber('($1,234.50)')?.value).toBe(-1234.5);
+    expect(formatCode(parseNumber('$48,500.75')!.format)).toBe('"$"#,##0.00');
+    expect(formatCode(parseNumber('١٬٢٥٠ ر.س')!.format)).toBe('#,##0 "ر.س"');
+  });
+
+  it('keeps the decimal a percentage was written with', () => {
+    expect(parseNumber('4.1%')?.value).toBe(0.041);
+    expect(parseNumber('-6.1%')?.value).toBe(-0.061);
+  });
+
   it('keeps codes, dates, phone numbers and words as text', () => {
-    for (const text of ['007', 'INV-2026-0042', '12/09/2026', '+966 50 123 4567', '3.50 ر.س', '1,20', '١٢ كتابًا', '', '1234567890123456']) {
+    for (const text of ['007', 'INV-2026-0042', '12/09/2026', '+966 50 123 4567', '1,20', '١٢ كتابًا', '', '1234567890123456', '$', 'ر.س']) {
       expect(parseNumber(text), text).toBeNull();
     }
   });

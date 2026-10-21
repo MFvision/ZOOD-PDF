@@ -1,7 +1,10 @@
 import { strToU8, zipSync } from 'fflate';
 import type { Zippable } from 'fflate';
-import { DOCX_FONT } from './docx';
+import type { TextLink } from '../core/types';
+import { DOCX_FONT, DocxLinks, HYPERLINK_STYLE, linkedRuns, readsRtl, wordGrid } from './docx';
+import type { ExportFont } from './paragraphs';
 import type { Slide, SlideText } from './pptx';
+import type { LayoutTable } from './structure';
 import { cleanText } from './text';
 
 /**
@@ -11,6 +14,10 @@ import { cleanText } from './text';
  * in its lines, face, size, weight and colour, right to left where it is
  * Arabic. A scanned page keeps its picture, and its recognised text rides on
  * it invisibly, as it does in the PDF.
+ *
+ * A table is a Word table where it was, its columns and rows as the page
+ * drew them (the rules and fills stay in the picture behind), so its cells
+ * can be typed in and grow as a table's do. Links stay links.
  *
  * The boxes are what Word itself writes for a text box (a WordprocessingML
  * shape, in the AlternateContent Word puts around one), so Word, LibreOffice
@@ -74,14 +81,42 @@ export function wordPage(page: Pick<Slide, 'width' | 'height'>): { width: number
   return { width: w * scale, height: h * scale, scale };
 }
 
+/**
+ * Families whose names run words together on purpose: read from a
+ * PostScript name a word at a time, they come back spaced ("Deja Vu Sans"),
+ * and Word, which knows them unspaced, would set another face.
+ */
+const JOINED: readonly [RegExp, string][] = [
+  [/^Deja Vu\b/, 'DejaVu'],
+  [/^Open Symbol$/, 'OpenSymbol'],
+  [/^Free (Sans|Serif|Mono)\b/, 'Free$1'],
+  [/^Te X Gyre\b/, 'TeX Gyre'],
+  [/^Tex Gyre\b/, 'TeX Gyre'],
+];
+
+/** The family as Word knows it. */
+export function wordFamily(family: string): string {
+  let out = family.trim();
+  for (const [pattern, joined] of JOINED) out = out.replace(pattern, joined);
+  return out;
+}
+
 /** The face a box is set in: the file's own family when it names one. */
-function faceOf(text: SlideText): string {
-  const family = text.font?.family.trim();
-  return family && family.length > 0 ? family : DOCX_FONT;
+function faceOf(text: Pick<SlideText, 'font'>): string {
+  const family = text.font ? wordFamily(text.font.family) : '';
+  return family.length > 0 ? family : DOCX_FONT;
+}
+
+/** How a run looks: what `runProperties` needs. */
+interface RunLook {
+  font?: ExportFont;
+  size: number;
+  color: string;
+  direction: SlideText['direction'];
 }
 
 /** A run's properties, in the schema's order (rFonts, b, bCs, i, iCs, color, sz, szCs, rtl, then w14). */
-function runProperties(text: SlideText, scale: number, hidden: boolean): string {
+function runProperties(text: RunLook, scale: number, hidden: boolean): string {
   const face = xmlAttribute(faceOf(text));
   const bold = (text.font?.weight ?? 400) >= 600;
   const italic = text.font?.italic ?? false;
@@ -108,11 +143,30 @@ function justification(text: SlideText): string {
   return '';
 }
 
+/** A run's text: kept exactly, spaces and all. */
+function runText(text: string): string {
+  return `<w:t xml:space="preserve">${xmlText(text)}</w:t>`;
+}
+
+/** The runs of one line of a box, its links as Word links (looking as they did on the page). */
+function lineRuns(line: string, links: readonly TextLink[] | undefined, properties: string, docxLinks: DocxLinks | undefined, broken: boolean): string {
+  const text = cleanText(line).replace(/[\t\n\r]+/g, ' ');
+  let first = broken;
+  const content = (piece: string) => {
+    const br = first ? '<w:br/>' : '';
+    first = false;
+    return `${br}${runText(piece)}`;
+  };
+  // Links only where cleaning left the text as it was, so their places hold.
+  const runs = linkedRuns(text, text === line ? links : undefined, properties, docxLinks, content, false);
+  return runs || (broken ? `<w:r><w:rPr>${properties}</w:rPr><w:br/></w:r>` : '');
+}
+
 /** The box's paragraph: its lines, broken where the page broke them. */
-function boxParagraph(text: SlideText, scale: number, hidden: boolean): string {
+function boxParagraph(text: SlideText, scale: number, hidden: boolean, links?: DocxLinks): string {
   const rPr = runProperties(text, scale, hidden);
-  const lines = text.lines.map((line) => cleanText(line).replace(/[\t\n\r]+/g, ' '));
-  const runs = lines.map((line, k) => `<w:r>${rPr}${k > 0 ? '<w:br/>' : ''}<w:t xml:space="preserve">${xmlText(line)}</w:t></w:r>`).join('');
+  const properties = rPr.slice('<w:rPr>'.length, -'</w:rPr>'.length);
+  const runs = text.lines.map((line, k) => lineRuns(line, text.links?.[k], properties, links, k > 0)).join('');
   const pitch = text.pitch !== null && text.pitch > 0 ? text.pitch : text.size * 1.2;
   return (
     // The schema's order: bidi, spacing, jc, rPr.
@@ -210,8 +264,66 @@ function sectionXml(size: { width: number; height: number }): string {
   );
 }
 
+/** Word's `w:jc` for a cell: logical, so in a right-to-left cell "right" is its end. */
+const CELL_JC = { start: '', center: '<w:jc w:val="center"/>', end: '<w:jc w:val="right"/>' } as const;
+
+/**
+ * A table where the page had it: a floating Word table at its place, its
+ * columns as wide and its rows at least as tall as the page drew them,
+ * without borders (the picture behind draws the page's own), each cell's
+ * text in its colour, place and direction.
+ */
+export function layoutTableXml(table: LayoutTable, scale: number, hidden: boolean, links?: DocxLinks): string {
+  const rtl = table.direction === 'rtl';
+  const columns = (rtl ? [...table.widths].reverse() : table.widths).map((w) => Math.max(1, twips(w * scale)));
+  const grid = wordGrid(table);
+  const rows = grid.map((row, r) => {
+    let column = 0;
+    const cells = row.map((cell) => {
+      const at = column;
+      column += cell.span;
+      const w = columns.slice(at, at + cell.span).reduce((a, b) => a + b, 0);
+      const span = cell.span > 1 ? `<w:gridSpan w:val="${cell.span}"/>` : '';
+      if ('continues' in cell) return `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${span}<w:vMerge/></w:tcPr><w:p/></w:tc>`;
+      const look = table.looks[r]?.[table.rows[r]!.indexOf(cell.cell)] ?? null;
+      const text = cleanText(cell.cell.text).replace(/[\t\n\r]+/g, ' ').trim();
+      const cellRtl = readsRtl(text) ?? rtl;
+      const rPr = runProperties({ font: table.font, size: table.size, color: look?.color ?? '000000', direction: cellRtl ? 'rtl' : 'ltr' }, scale, hidden || look?.hidden === true);
+      const properties = rPr.slice('<w:rPr>'.length, -'</w:rPr>'.length);
+      const runs = linkedRuns(text, text === cell.cell.text ? cell.cell.links : undefined, properties, links, runText, false);
+      const valign = look?.place.valign === 'top' ? '' : `<w:vAlign w:val="${look?.place.valign ?? 'center'}"/>`;
+      const merge = cell.rows > 1 ? '<w:vMerge w:val="restart"/>' : '';
+      const paragraph =
+        '<w:p><w:pPr>' +
+        (cellRtl ? '<w:bidi/>' : '') +
+        '<w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>' +
+        CELL_JC[look?.place.align ?? 'start'] +
+        `${rPr}</w:pPr>${runs}</w:p>`;
+      return `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${span}${merge}${valign}</w:tcPr>${paragraph}</w:tc>`;
+    });
+    const height = Math.max(1, twips((table.heights[r] ?? 0) * scale));
+    return `<w:tr><w:trPr><w:trHeight w:val="${height}" w:hRule="atLeast"/></w:trPr>${cells.join('')}</w:tr>`;
+  });
+  const borders = ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map((side) => `<w:${side} w:val="nil"/>`).join('');
+  // Word sets a table's text, not its edge, where it is placed: the edge is a margin further out.
+  const margin = twips(Math.max(0, table.margin) * scale);
+  return (
+    '<w:tbl><w:tblPr>' +
+    `<w:tblpPr w:leftFromText="0" w:rightFromText="0" w:topFromText="0" w:bottomFromText="0" w:vertAnchor="page" w:horzAnchor="page" w:tblpX="${twips(table.left * scale) + margin}" w:tblpY="${twips(table.top * scale)}"/>` +
+    '<w:tblOverlap w:val="overlap"/>' +
+    (rtl ? '<w:bidiVisual/>' : '') +
+    `<w:tblW w:w="${columns.reduce((a, b) => a + b, 0)}" w:type="dxa"/><w:tblBorders>${borders}</w:tblBorders><w:tblLayout w:type="fixed"/>` +
+    // The same either side, so it means the same in a table of either direction.
+    `<w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="${margin}" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="${margin}" w:type="dxa"/></w:tblCellMar>` +
+    `</w:tblPr><w:tblGrid>${columns.map((c) => `<w:gridCol w:w="${c}"/>`).join('')}</w:tblGrid>${rows.join('')}</w:tbl>`
+  );
+}
+
 /** `word/document.xml`, and the pictures it refers to, by relationship id. */
-export function layoutDocumentXml(pages: readonly Slide[]): { xml: string; pictures: { relId: string; target: string; bytes: Uint8Array }[] } {
+export function layoutDocumentXml(
+  pages: readonly Slide[],
+  links?: DocxLinks,
+): { xml: string; pictures: { relId: string; target: string; bytes: Uint8Array }[] } {
   const pictures: { relId: string; target: string; bytes: Uint8Array }[] = [];
   const body: string[] = [];
   let id = 1;
@@ -231,10 +343,12 @@ export function layoutDocumentXml(pages: readonly Slide[]): { xml: string; pictu
     }
     for (const text of page.texts) {
       const place = boxPlace(text, size.scale);
-      const graphic = textBoxGraphic(boxParagraph(text, size.scale, page.hiddenText || text.hidden === true), place.width, place.height, place.turned);
+      const graphic = textBoxGraphic(boxParagraph(text, size.scale, page.hiddenText || text.hidden === true, links), place.width, place.height, place.turned);
       runs.push(drawingRun({ id, name: `Text ${id}`, ...place, behind: false, graphic }, true));
       id += 1;
     }
+    // Its tables float where they were, held by the paragraph after them.
+    for (const table of page.tables ?? []) body.push(layoutTableXml(table, size.scale, page.hiddenText, links));
     // One small paragraph per page holds its objects; the page's section ends with it.
     const last = index === pages.length - 1;
     body.push(
@@ -256,6 +370,7 @@ function stylesXml(): string {
     '<w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:pPrDefault>' +
     '</w:docDefaults>' +
     '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>' +
+    HYPERLINK_STYLE +
     '</w:styles>'
   );
 }
@@ -280,24 +395,26 @@ function packageRelsXml(): string {
   );
 }
 
-function documentRelsXml(pictures: readonly { relId: string; target: string }[]): string {
+function documentRelsXml(pictures: readonly { relId: string; target: string }[], links: DocxLinks): string {
   return (
     `${DECLARATION}<Relationships xmlns="${PACKAGE_REL}">` +
     `<Relationship Id="rId1" Type="${R}/styles" Target="styles.xml"/>` +
     pictures.map((p) => `<Relationship Id="${p.relId}" Type="${R}/image" Target="${p.target}"/>`).join('') +
+    links.relationships() +
     '</Relationships>'
   );
 }
 
 /** The .docx: XML parts deflated, the page pictures (already compressed) stored. */
 export function buildLayoutDocx(pages: readonly Slide[]): Uint8Array<ArrayBuffer> {
-  const { xml, pictures } = layoutDocumentXml(pages);
+  const links = new DocxLinks();
+  const { xml, pictures } = layoutDocumentXml(pages, links);
   const files: Zippable = {
     '[Content_Types].xml': strToU8(contentTypesXml()),
     '_rels/.rels': strToU8(packageRelsXml()),
     'word/document.xml': strToU8(xml),
     'word/styles.xml': strToU8(stylesXml()),
-    'word/_rels/document.xml.rels': strToU8(documentRelsXml(pictures)),
+    'word/_rels/document.xml.rels': strToU8(documentRelsXml(pictures, links)),
   };
   for (const picture of pictures) files[`word/${picture.target}`] = [picture.bytes, { level: 0 }];
   return zipSync(files) as Uint8Array<ArrayBuffer>;

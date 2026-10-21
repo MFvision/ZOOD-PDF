@@ -1,4 +1,4 @@
-import type { ParagraphData, TextAlignment, TextDirection, TextLineData } from '../core/types';
+import type { ParagraphData, TextAlignment, TextDirection, TextLineData, TextLink } from '../core/types';
 
 /**
  * One paragraph of an export: its text in reading order, and how it sat on the
@@ -15,6 +15,8 @@ export interface ExportParagraph {
   lines?: readonly TextLineData[];
   /** The face the file names for it, when it names one. */
   font?: ExportFont;
+  /** The stretches of `text` that link to a web or mail address. */
+  links?: TextLink[];
 }
 
 /** A paragraph's face, as the file names it. */
@@ -30,6 +32,12 @@ const BELIEVABLE_SIZE = { min: 4, max: 96 };
 
 /** How much more space than usual above a line starts a new paragraph. */
 const GAP = { sameBlock: 1.3, acrossBlocks: 1.15 };
+
+/**
+ * A line that starts a list item: a bullet — as text, or a symbol font's
+ * private-use one — then a space.
+ */
+const LIST_ITEM = /^\s*[•◦▪▫■□●○‣⁃➢➤❖✓✔\uF0B7\uF06C\uF09F\uF0A7\uF06E\uF0A8\uF0D8\uF0E0\uF076\uF0FC]\s/u;
 
 /** Combining marks (tashkeel) and format controls take no room on the line. */
 const ZERO_WIDTH = /[\p{M}\p{Cf}]/gu;
@@ -126,6 +134,8 @@ function continues(group: Group, next: TextLineData, nextOwner: number, page: Pa
   const nextBlock = page.blocks[nextOwner];
   const sameBlock = prevOwner >= 0 && prevOwner === nextOwner;
   if (!finite(prev) || !finite(next)) return false;
+  // A list's next item is a paragraph of its own.
+  if (LIST_ITEM.test(next.text)) return false;
   // Inside one of the core's paragraphs a change of direction is no break —
   // an Arabic line may open with an English word — but anywhere else it is.
   if (!sameBlock && next.direction !== prev.direction) return false;
@@ -166,6 +176,39 @@ function dominant(lines: readonly TextLineData[], fallback: TextDirection | unde
 }
 
 /**
+ * A line's text without the spaces at its ends, and its links moved to match.
+ */
+export function trimLine(line: Pick<TextLineData, 'text' | 'links'>): { text: string; links: TextLink[] } {
+  const lead = line.text.length - line.text.trimStart().length;
+  const text = line.text.trim();
+  const links = (line.links ?? []).flatMap((link) => {
+    const from = Math.max(0, link.from - lead);
+    const to = Math.min(text.length, link.to - lead);
+    return to > from ? [{ from, to, uri: link.uri }] : [];
+  });
+  return { text, links };
+}
+
+/** Lines made one paragraph's text, joined by a space, their links kept in place. */
+function joinLines(lines: readonly TextLineData[]): { text: string; links: TextLink[] } {
+  let text = '';
+  const links: TextLink[] = [];
+  lines.forEach((line, k) => {
+    const own = trimLine(line);
+    if (k > 0) text += ' ';
+    const at = text.length;
+    // One link across a line break is one link, its break included.
+    for (const link of own.links) {
+      const last = links[links.length - 1];
+      if (last && last.uri === link.uri && last.to === at - 1 && link.from === 0) last.to = at + link.to;
+      else links.push({ from: at + link.from, to: at + link.to, uri: link.uri });
+    }
+    text += own.text;
+  });
+  return { text, links };
+}
+
+/**
  * Paragraphs of a page, from the core's lines (in reading order) and the
  * paragraphs its editor finds.
  *
@@ -200,8 +243,10 @@ export function paragraphsOf(lines: readonly TextLineData[], blocks: readonly Pa
   return groups.map((group) => {
     const block = blocks[group.owners.find((owner) => owner >= 0) ?? -1];
     const size = block?.fontSize;
+    const { text, links } = joinLines(group.lines);
     return {
-      text: group.lines.map((line) => line.text.trim()).join(' '),
+      text,
+      ...(links.length > 0 ? { links } : {}),
       direction: dominant(group.lines, block?.direction),
       alignment: block?.alignment ?? 'start',
       fontSize: size !== undefined && size >= BELIEVABLE_SIZE.min && size <= BELIEVABLE_SIZE.max ? size : null,

@@ -135,6 +135,15 @@ export interface TextLineData {
   width: number;
   height: number;
   direction: TextDirection;
+  /** Export only (`export.lines`): the letters a web or mail link covers. */
+  links?: TextLink[];
+}
+
+/** Letters `from` up to `to` (UTF-16 offsets into the text) link to `uri`. */
+export interface TextLink {
+  from: number;
+  to: number;
+  uri: string;
 }
 
 export interface ParagraphData {
