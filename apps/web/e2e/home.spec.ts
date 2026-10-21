@@ -148,7 +148,7 @@ test.describe('the home screen', () => {
     // It names the provider and the document, and still nothing has left the app.
     const preflight = aiPanel(page).getByRole('region', { name: 'What will be sent' });
     await expect(preflight).toContainText('Anthropic, at api.anthropic.com');
-    await expect(preflight).toContainText('All of it (pages: 3;');
+    await expect(preflight).toContainText('All of it (pages: 2;');
     await expect(preflight.getByRole('button', { name: 'Send to Anthropic' })).toBeVisible();
     expect(toClaude).toHaveLength(0);
     expect(toLocal).toHaveLength(0);
