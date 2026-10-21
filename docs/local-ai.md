@@ -136,7 +136,7 @@ desktop's policy is unchanged, since its host does the downloading.
 requests (21 English, 21 Saudi Arabic): **37 of 42 picked right**, and no wrong pick
 runs by itself (three are under 60% and asked with two buttons, one waits for Do it, one
 goes on to the larger model). Each decision took about **10 s on this slow CPU** (the
-prompt is about 1,500 tokens, all 27 options read twice by the model's layout); the
+model's layout reads all 27 options twice, so the prompt is long); the
 publisher measures about 0.4–0.5 s with Metal on a Mac, and a current Windows laptop
 should be several times faster than this machine. Not yet timed on a real Mac or
 Windows PC. Run it again with
