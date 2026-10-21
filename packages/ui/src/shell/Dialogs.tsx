@@ -187,8 +187,9 @@ function AskShortcutRows({ onPractise }: { onPractise: () => void }) {
   const prefs = readAskPreferences();
   const tap = tapKeyLabel(prefs.tapKey, onMac(), lang === 'ar' ? 'ar' : 'en');
   const rows = [
+    ...(prefs.taps && prefs.oneTap === 'speak' && voiceAvailable() ? [{ keys: tap, label: t('shortcuts.askSpeak') }] : []),
     ...(prefs.taps ? [{ keys: `${tap} ×2`, label: t('shortcuts.askTwice') }] : []),
-    ...(prefs.taps && prefs.tapToType ? [{ keys: tap, label: t('shortcuts.askOnce') }] : []),
+    ...(prefs.taps && (prefs.oneTap === 'type' || (prefs.oneTap === 'speak' && !voiceAvailable())) ? [{ keys: tap, label: t('shortcuts.askOnce') }] : []),
     ...(voiceAvailable() ? [{ keys: formatShortcut(prefs.shortcut), label: t('shortcuts.askHold') }] : []),
   ];
   if (rows.length === 0) return null;

@@ -135,6 +135,22 @@ pub struct TableCell {
     pub text: String,
     pub rows: usize,
     pub columns: usize,
+    /// Where its text is, `[x0, y0, x1, y1]` in page space; `None` when it
+    /// has none.
+    pub bounds: Option<[f32; 4]>,
+}
+
+/// Two boxes' union.
+fn grow(a: Option<[f32; 4]>, b: [f32; 4]) -> Option<[f32; 4]> {
+    Some(match a {
+        Some(a) => [
+            a[0].min(b[0]),
+            a[1].min(b[1]),
+            a[2].max(b[2]),
+            a[3].max(b[3]),
+        ],
+        None => b,
+    })
 }
 
 /// A table found on a page. Its grid runs left to right and top to bottom as
@@ -143,8 +159,13 @@ pub struct TableCell {
 pub struct FoundTable {
     /// The top of the table, in page space (y down).
     pub top: f32,
+    /// Its left edge, in page space.
+    pub left: f32,
     /// Its columns' widths, left to right, in points.
     pub widths: Vec<f32>,
+    /// Its rows' heights, top to bottom, in points: from rule to rule, or
+    /// from one line of text to the next.
+    pub heights: Vec<f32>,
     pub grid: Vec<Vec<Option<TableCell>>>,
     /// The direction most of its text reads in: a right-to-left table's
     /// first column is its rightmost.
@@ -415,7 +436,7 @@ fn direction_of_all<'a>(texts: impl Iterator<Item = &'a str>) -> Direction {
 }
 
 /// A ruled grid's cells filled with the text inside them.
-fn fill_grid(grid: &Grid, texts: Vec<Vec<String>>) -> FoundTable {
+fn fill_grid(grid: &Grid, texts: Vec<Vec<String>>, bounds: Vec<Option<[f32; 4]>>) -> FoundTable {
     let cols = grid.xs.len() - 1;
     let rows = grid.ys.len() - 1;
     let table: Vec<Vec<Option<TableCell>>> = (0..rows)
@@ -430,6 +451,7 @@ fn fill_grid(grid: &Grid, texts: Vec<Vec<String>>) -> FoundTable {
                             text: texts[k].join(" "),
                             rows,
                             columns,
+                            bounds: bounds[k],
                         }
                     })
                 })
@@ -445,7 +467,9 @@ fn fill_grid(grid: &Grid, texts: Vec<Vec<String>>) -> FoundTable {
     );
     FoundTable {
         top: grid.ys[0],
+        left: grid.xs[0],
         widths: grid.xs.windows(2).map(|w| w[1] - w[0]).collect(),
+        heights: grid.ys.windows(2).map(|w| w[1] - w[0]).collect(),
         grid: table,
         direction,
         ruled: true,
@@ -453,16 +477,17 @@ fn fill_grid(grid: &Grid, texts: Vec<Vec<String>>) -> FoundTable {
 }
 
 /// Lines of cells, one after another, laid out as a table: columns are the
-/// bands across the page where the fullest rows have cells.
-fn aligned_table(rows: &[(f32, Vec<LineCell>)]) -> Option<FoundTable> {
+/// bands across the page where the fullest rows have cells. Each row is
+/// its line's top, its cells, and its line's height.
+fn aligned_table(rows: &[(f32, Vec<LineCell>, f32)]) -> Option<FoundTable> {
     if rows.len() < 2 {
         return None;
     }
-    let most = rows.iter().map(|(_, c)| c.len()).max()?;
+    let most = rows.iter().map(|(_, c, _)| c.len()).max()?;
     let mut spans: Vec<(f32, f32)> = rows
         .iter()
-        .filter(|(_, c)| c.len() == most)
-        .flat_map(|(_, c)| c.iter().map(|cell| (cell.x0, cell.x1)))
+        .filter(|(_, c, _)| c.len() == most)
+        .flat_map(|(_, c, _)| c.iter().map(|cell| (cell.x0, cell.x1)))
         .collect();
     spans.sort_by(|a, b| a.0.total_cmp(&b.0));
     let mut bands: Vec<(f32, f32)> = Vec::new();
@@ -477,8 +502,9 @@ fn aligned_table(rows: &[(f32, Vec<LineCell>)]) -> Option<FoundTable> {
     }
     let cols = bands.len();
     let mut grid: Vec<Vec<Option<TableCell>>> = Vec::with_capacity(rows.len());
-    for (_, cells) in rows {
+    for (y, cells, height) in rows {
         let mut texts: Vec<Vec<&str>> = vec![Vec::new(); cols];
+        let mut extents: Vec<Vec<(f32, f32)>> = vec![Vec::new(); cols];
         let mut covers: Vec<(usize, usize)> = vec![(usize::MAX, 0); cols];
         for cell in cells {
             // The bands the cell stands over: more than one is a merge.
@@ -505,6 +531,7 @@ fn aligned_table(rows: &[(f32, Vec<LineCell>)]) -> Option<FoundTable> {
             };
             let last = over.last().copied().unwrap_or(first);
             texts[first].push(&cell.text);
+            extents[first].push((cell.x0, cell.x1));
             covers[first] = (covers[first].0.min(first), covers[first].1.max(last));
         }
         let mut row: Vec<Option<TableCell>> = vec![None; cols];
@@ -520,10 +547,14 @@ fn aligned_table(rows: &[(f32, Vec<LineCell>)]) -> Option<FoundTable> {
                 j += 1;
             }
             let text: Vec<&str> = (k..=end).flat_map(|j| texts[j].iter().copied()).collect();
+            let bounds = (k..=end)
+                .flat_map(|j| extents[j].iter().copied())
+                .fold(None, |a, (x0, x1)| grow(a, [x0, *y, x1, *y + *height]));
             row[k] = Some(TableCell {
                 text: text.join(" "),
                 rows: 1,
                 columns: end - k + 1,
+                bounds,
             });
             k = end + 1;
         }
@@ -531,13 +562,24 @@ fn aligned_table(rows: &[(f32, Vec<LineCell>)]) -> Option<FoundTable> {
     }
     let direction = direction_of_all(
         rows.iter()
-            .flat_map(|(_, c)| c.iter().map(|c| c.text.as_str())),
+            .flat_map(|(_, c, _)| c.iter().map(|c| c.text.as_str())),
     );
     let mut widths: Vec<f32> = bands.windows(2).map(|w| w[1].0 - w[0].0).collect();
     widths.push(bands[cols - 1].1 - bands[cols - 1].0);
+    // A row reaches down to the next; the last, to the foot of its line.
+    let heights = rows
+        .iter()
+        .enumerate()
+        .map(|(k, (y, _, height))| match rows.get(k + 1) {
+            Some((next, _, _)) => (next - y).max(*height),
+            None => *height,
+        })
+        .collect();
     Some(FoundTable {
         top: rows[0].0,
+        left: bands[0].0,
         widths,
+        heights,
         grid,
         direction,
         ruled: false,
@@ -546,57 +588,146 @@ fn aligned_table(rows: &[(f32, Vec<LineCell>)]) -> Option<FoundTable> {
 
 /// What is on a page, in order from its top: the tables its rules draw,
 /// then tables whose columns line up without rules, and every other line.
+/// Rules that cross words draw no table.
 pub fn page_items(lines: &[TextLine], drawn: &[Drawn]) -> Vec<PageItem> {
     let mut grids = grids(drawn);
     // A grid with text in fewer than two of its cells is a frame or a
     // decoration: its text is read as lines.
-    let (texts, _) = assign(lines, &grids);
+    let (texts, bounds, _) = assign(lines, &grids);
+    // Nor is a grid whose rules cut through words, or whose text spills out
+    // of its cells (boxes ticked beside a form's answers): its text is read
+    // as lines.
+    let cuts = word_cuts(lines, &grids);
     let keep: Vec<bool> = texts
         .iter()
-        .map(|cells| cells.iter().filter(|c| !c.is_empty()).count() >= 2)
+        .zip(&cuts)
+        .zip(grids.iter().zip(&bounds))
+        .map(|((cells, cuts), (grid, bounds))| {
+            *cuts == 0 && side_by_side(grid, cells) && text_fits(grid, bounds)
+        })
         .collect();
     let mut k = 0;
     grids.retain(|_| {
         k += 1;
         keep[k - 1]
     });
-    let (texts, outside) = assign(lines, &grids);
-    finish_items(grids, texts, outside)
+    let (texts, bounds, outside) = assign(lines, &grids);
+    finish_items(grids, texts, bounds, outside)
+}
+
+/// Whether some row of a grid has text in two cells side by side. A grid
+/// with one piece of text to a row — lines underlined or boxed one by one,
+/// a question over its answer — is lines, however its rules divide it.
+fn side_by_side(grid: &Grid, texts: &[Vec<String>]) -> bool {
+    let cols = grid.xs.len() - 1;
+    let mut filled = vec![0usize; grid.ys.len() - 1];
+    for (k, text) in texts.iter().enumerate() {
+        if !text.is_empty() {
+            filled[k / cols] += 1;
+        }
+    }
+    filled.iter().any(|&n| n >= 2)
+}
+
+/// Whether the text of each of a grid's cells keeps inside it, give or take
+/// a little: type a hair wider than its cell, or set over its rule.
+fn text_fits(grid: &Grid, bounds: &[Option<[f32; 4]>]) -> bool {
+    let cols = grid.xs.len() - 1;
+    bounds.iter().enumerate().all(|(k, b)| {
+        let Some([x0, y0, x1, y1]) = *b else {
+            return true;
+        };
+        let (rows, columns) = grid.spans.get(&k).copied().unwrap_or((1, 1));
+        let (r, c) = (k / cols, k % cols);
+        let (left, right) = (grid.xs[c], grid.xs[(c + columns).min(cols)]);
+        let (top, bottom) = (grid.ys[r], grid.ys[(r + rows).min(grid.ys.len() - 1)]);
+        let slack = 2.0f32.max(0.15 * (right - left));
+        x0 >= left - slack && x1 <= right + slack && y0 >= top - slack && y1 <= bottom + slack
+    })
+}
+
+/// For each char of `line`: the grid and the cell it is in, if any.
+fn places(line: &TextLine, grids: &[Grid]) -> Vec<Option<(usize, usize)>> {
+    let count = line.text.chars().count();
+    let cy = line.y + line.height / 2.0;
+    let whole = line.spans.len() != count;
+    (0..count)
+        .map(|k| {
+            let cx = if whole {
+                line.x + line.width / 2.0
+            } else {
+                (line.spans[k].0 + line.spans[k].1) / 2.0
+            };
+            grids.iter().enumerate().find_map(|(g, grid)| {
+                let c = band(&grid.xs, cx)?;
+                let r = band(&grid.ys, cy)?;
+                Some((g, grid.owner[r * (grid.xs.len() - 1) + c]))
+            })
+        })
+        .collect()
+}
+
+/// For each grid, how many words its rules cut: two letters side by side
+/// in a line that fall in different cells, or one in the grid and one out.
+/// A table's text keeps to its cells; boxes drawn for a form's fields, or
+/// shading behind a line, cross words.
+fn word_cuts(lines: &[TextLine], grids: &[Grid]) -> Vec<usize> {
+    let mut cuts = vec![0; grids.len()];
+    for line in lines {
+        let chars: Vec<char> = line.text.chars().collect();
+        let places = places(line, grids);
+        for k in 1..chars.len() {
+            if !(chars[k - 1].is_alphanumeric() && chars[k].is_alphanumeric())
+                || places[k - 1] == places[k]
+            {
+                continue;
+            }
+            for (g, _) in [places[k - 1], places[k]].into_iter().flatten() {
+                cuts[g] += 1;
+            }
+        }
+    }
+    cuts
 }
 
 /// The text of each cell of each grid, line by line; and the lines, or what
 /// is left of them, outside every grid.
 #[allow(clippy::type_complexity)]
-fn assign(lines: &[TextLine], grids: &[Grid]) -> (Vec<Vec<Vec<String>>>, Vec<TextLine>) {
+fn assign(
+    lines: &[TextLine],
+    grids: &[Grid],
+) -> (
+    Vec<Vec<Vec<String>>>,
+    Vec<Vec<Option<[f32; 4]>>>,
+    Vec<TextLine>,
+) {
     let mut texts: Vec<Vec<Vec<String>>> = grids
         .iter()
         .map(|g| vec![Vec::new(); (g.xs.len() - 1) * (g.ys.len() - 1)])
         .collect();
+    // Where each cell's letters are.
+    let mut bounds: Vec<Vec<Option<[f32; 4]>>> = grids
+        .iter()
+        .map(|g| vec![None; (g.xs.len() - 1) * (g.ys.len() - 1)])
+        .collect();
     let mut outside: Vec<TextLine> = Vec::new();
     for line in lines {
         let chars: Vec<char> = line.text.chars().collect();
-        let cy = line.y + line.height / 2.0;
         let whole = line.spans.len() != chars.len();
-        // For each char: the grid and cell it is in, if any.
-        let places: Vec<Option<(usize, usize)>> = (0..chars.len())
-            .map(|k| {
-                let cx = if whole {
-                    line.x + line.width / 2.0
-                } else {
-                    (line.spans[k].0 + line.spans[k].1) / 2.0
-                };
-                grids.iter().enumerate().find_map(|(g, grid)| {
-                    let c = band(&grid.xs, cx)?;
-                    let r = band(&grid.ys, cy)?;
-                    Some((g, grid.owner[r * (grid.xs.len() - 1) + c]))
-                })
-            })
-            .collect();
+        let places = places(line, grids);
         // Spaces take the place of what is next to them.
         let mut pieces: Vec<((usize, usize), String)> = Vec::new();
         let mut rest = String::new();
         let mut rest_spans = Vec::new();
         for (k, c) in chars.iter().enumerate() {
+            if let (Some((g, cell)), false) = (places[k], c.is_whitespace()) {
+                let (x0, x1) = if whole {
+                    (line.x, line.x + line.width)
+                } else {
+                    line.spans[k]
+                };
+                bounds[g][cell] = grow(bounds[g][cell], [x0, line.y, x1, line.y + line.height]);
+            }
             match places[k] {
                 Some(place) => match pieces.last_mut() {
                     Some((p, text)) if *p == place => text.push(*c),
@@ -634,24 +765,29 @@ fn assign(lines: &[TextLine], grids: &[Grid]) -> (Vec<Vec<Vec<String>>>, Vec<Tex
             }
         }
     }
-    (texts, outside)
+    (texts, bounds, outside)
 }
 
 fn finish_items(
     grids: Vec<Grid>,
     texts: Vec<Vec<Vec<String>>>,
+    bounds: Vec<Vec<Option<[f32; 4]>>>,
     outside: Vec<TextLine>,
 ) -> Vec<PageItem> {
     let mut items: Vec<PageItem> = grids
         .iter()
         .zip(texts)
-        .map(|(grid, texts)| PageItem::Table(fill_grid(grid, texts)))
+        .zip(bounds)
+        .map(|((grid, texts), bounds)| PageItem::Table(fill_grid(grid, texts, bounds)))
         .collect();
     // Outside the rules: runs of lines of several cells, close together, are
     // tables; everything else is a line.
     let mut run: Vec<(f32, Vec<LineCell>, TextLine)> = Vec::new();
     let flush = |run: &mut Vec<(f32, Vec<LineCell>, TextLine)>, items: &mut Vec<PageItem>| {
-        let rows: Vec<(f32, Vec<LineCell>)> = run.iter().map(|(y, c, _)| (*y, c.clone())).collect();
+        let rows: Vec<(f32, Vec<LineCell>, f32)> = run
+            .iter()
+            .map(|(y, c, line)| (*y, c.clone(), line.height))
+            .collect();
         match aligned_table(&rows) {
             Some(table) => items.push(PageItem::Table(table)),
             None => {
@@ -858,6 +994,81 @@ mod tests {
                 vec![Some("Item".into()), Some("Qty".into())],
                 vec![Some("Paper".into()), Some("12".into())],
             ]
+        );
+    }
+
+    #[test]
+    fn a_table_knows_where_it_is_and_where_its_cells_text_is() {
+        let rules = grid_rules(&[100.0, 200.0, 300.0], &[100.0, 120.0, 150.0]);
+        let lines = vec![
+            placed("Item", 110.0, 105.0),
+            placed("Qty", 210.0, 105.0),
+            placed("Paper", 110.0, 130.0),
+            placed("12", 210.0, 130.0),
+        ];
+        let PageItem::Table(t) = &page_items(&lines, &rules)[0] else {
+            panic!()
+        };
+        assert_eq!((t.left, t.top), (100.0, 100.0));
+        assert_eq!(t.heights, vec![20.0, 30.0]);
+        assert_eq!(
+            t.grid[1][0].as_ref().unwrap().bounds,
+            Some([110.0, 130.0, 135.0, 140.0])
+        );
+    }
+
+    #[test]
+    fn lines_boxed_one_by_one_are_no_table() {
+        // A question and its answer, each in a box of its own: one text to a row.
+        let mut rules = grid_rules(&[100.0, 150.0, 300.0], &[100.0, 120.0, 140.0]);
+        rules.retain(|r| r.horizontal || r.at != 150.0);
+        rules.push(rule(150.0, 120.0, 150.0, 140.0));
+        let lines = vec![
+            placed("Your project", 100.0, 105.0),
+            placed("Answer", 160.0, 125.0),
+        ];
+        let items = page_items(&lines, &rules);
+        assert!(
+            items
+                .iter()
+                .all(|item| matches!(item, PageItem::Line { .. })),
+            "{items:?}"
+        );
+    }
+
+    #[test]
+    fn boxes_smaller_than_the_text_beside_them_are_no_table() {
+        // Two tick boxes, 4 points wide, each with a letter twice its width over it.
+        let rules = grid_rules(&[100.0, 104.0, 108.0], &[100.0, 112.0, 124.0]);
+        let letter = |text: &str, x: f32, y: f32| TextLine {
+            spans: vec![(x, x + 10.0)],
+            width: 10.0,
+            ..placed(text, x, y)
+        };
+        let lines = vec![letter("Y", 97.0, 101.0), letter("N", 101.0, 113.0)];
+        let items = page_items(&lines, &rules);
+        assert!(
+            items
+                .iter()
+                .all(|item| matches!(item, PageItem::Line { .. })),
+            "{items:?}"
+        );
+    }
+
+    #[test]
+    fn rules_that_cut_through_words_are_no_table() {
+        // A form's boxes drawn across a sentence: "Name" and "here" are cut in two.
+        let rules = grid_rules(&[100.0, 112.0, 300.0], &[100.0, 120.0, 140.0]);
+        let lines = vec![
+            placed("Name of the applicant", 100.0, 105.0),
+            placed("Write it here", 100.0, 125.0),
+        ];
+        let items = page_items(&lines, &rules);
+        assert!(
+            items
+                .iter()
+                .all(|item| matches!(item, PageItem::Line { .. })),
+            "{items:?}"
         );
     }
 

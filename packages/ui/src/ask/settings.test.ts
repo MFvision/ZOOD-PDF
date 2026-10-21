@@ -6,12 +6,14 @@ import {
   DEFAULT_SHORTCUT,
   defaultBrainFor,
   earModels,
+  missingAccess,
+  oneTapDoes,
   readAskPreferences,
   tapKeyLabel,
   writeAskPreferences,
 } from './settings';
 
-const TAPS = { taps: true, tapKey: 'right-main', tapToType: true } as const;
+const TAPS = { taps: true, tapKey: 'right-main', oneTap: 'speak', glow: true } as const;
 
 /** A `localStorage` for the node test environment. */
 beforeEach(() => {
@@ -48,7 +50,8 @@ describe('Ask ZOOD settings', () => {
       shortcut: 'Mod+Alt+K',
       taps: false,
       tapKey: 'right-alt',
-      tapToType: false,
+      oneTap: 'type',
+      glow: false,
     } as const;
     writeAskPreferences(mine);
     expect(readAskPreferences()).toEqual(mine);
@@ -83,6 +86,35 @@ describe('Ask ZOOD settings', () => {
     const ears = new Set(earModels().map((model) => model.id));
     expect(brainChoices().some((model) => ears.has(model.id))).toBe(false);
     expect(brainChoices().map((model) => model.id)).toContain('qwen2.5-1.5b');
+  });
+
+  it('turns one tap that only typed, or did nothing, into the new choice', () => {
+    localStorage.setItem('warraq.ask', JSON.stringify({ tapToType: false }));
+    expect(readAskPreferences().oneTap).toBe('off');
+    localStorage.setItem('warraq.ask', JSON.stringify({ tapToType: true }));
+    expect(readAskPreferences().oneTap).toBe('speak');
+    localStorage.setItem('warraq.ask', JSON.stringify({ oneTap: 'shout' }));
+    expect(readAskPreferences().oneTap).toBe('speak');
+  });
+
+  it('listens on one tap only once it can hear, and types until then', () => {
+    const prefs = readAskPreferences();
+    expect(oneTapDoes(prefs, { voice: true, taps: true })).toBe('speak');
+    expect(oneTapDoes(prefs, { voice: false, taps: true })).toBe('type');
+    expect(oneTapDoes(prefs, { voice: true, taps: false })).toBeNull();
+    expect(oneTapDoes({ ...prefs, oneTap: 'type' }, { voice: true, taps: true })).toBe('type');
+    expect(oneTapDoes({ ...prefs, oneTap: 'off' }, { voice: true, taps: true })).toBeNull();
+  });
+
+  it('asks a Mac for Input Monitoring and Accessibility, and Windows for nothing but a switched-off microphone', () => {
+    const prefs = readAskPreferences();
+    const mac = { applies: true, accessibility: false, screen: false, microphone: 'allowed', input: false } as const;
+    expect(missingAccess(mac, prefs, true)).toEqual(['input', 'accessibility', 'screen']);
+    expect(missingAccess({ ...mac, input: true, accessibility: true, screen: true }, prefs, true)).toEqual([]);
+    expect(missingAccess(mac, { ...prefs, taps: false, screen: false }, true)).toEqual(['accessibility']);
+    const windows = { applies: false, accessibility: true, screen: true, microphone: 'allowed', input: true } as const;
+    expect(missingAccess(windows, prefs, true)).toEqual([]);
+    expect(missingAccess(null, prefs, true)).toEqual([]);
   });
 
   it('names the tap key as each computer has it', () => {

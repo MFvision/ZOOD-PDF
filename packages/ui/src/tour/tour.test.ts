@@ -17,6 +17,7 @@ describe('welcome tour', () => {
   it('opens a tour seen before at what is new', () => {
     expect(newSince(0, true)).toBe('welcome');
     expect(newSince(2, true)).toBe('ask');
+    expect(newSince(3, true)).toBe('ask');
     expect(newSince(2, false)).toBe('welcome');
   });
 

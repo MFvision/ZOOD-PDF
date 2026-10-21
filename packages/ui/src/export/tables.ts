@@ -6,6 +6,8 @@ export interface FoundCell {
   text: string;
   rows: number;
   columns: number;
+  /** Where its text is on the page, `[x, y, width, height]` in points; absent when it has none. */
+  box?: [number, number, number, number];
 }
 
 /** A table the core found: its grid left to right as drawn; `null` where a merged cell covers. */
@@ -16,6 +18,11 @@ export interface TableItem {
   /** Its columns' widths in points, left to right. */
   widths: number[];
   rows: (FoundCell | null)[][];
+  /** Where it is on the page, in points from the top-left corner. */
+  left?: number;
+  top?: number;
+  /** Its rows' heights in points, top to bottom. */
+  heights?: number[];
 }
 
 /** A line of text outside every table, cut at its wide gaps (left to right). */
@@ -33,12 +40,19 @@ export interface NumberFormat {
   decimals: number;
   grouped: boolean;
   percent: boolean;
+  /** A currency written with it ("$12,000", "1,250.50 ر.س"), and on which side. */
+  currency?: { symbol: string; before: boolean };
 }
+
+/** Currency signs a number may carry before or after it, and the riyal's abbreviation. */
+const CURRENCY = /^(\$|€|£|¥|﷼|ر\.س\.?|SAR|USD|EUR)\s*(.+)$|^(.+?)\s*(\$|€|£|¥|﷼|ر\.س\.?|SAR|USD|EUR)$/u;
 
 export type SheetValue = { kind: 'number'; value: number; format: NumberFormat; text: string } | { kind: 'text'; text: string };
 
 export interface SheetCell {
   value: SheetValue;
+  /** A web or mail address the cell's text links to. */
+  link?: string;
   /** How many rows and columns it covers when it is merged. */
   rows?: number;
   columns?: number;
@@ -85,6 +99,14 @@ export function parseNumber(raw: string): { value: number; format: NumberFormat 
     negative = true;
     text = paren[1]!.trim();
   }
+  let currency: NumberFormat['currency'];
+  // "-$5" as well as "$-5".
+  const minus = /^-\s*(?=\D)/.exec(text);
+  const money = CURRENCY.exec(minus ? text.slice(minus[0].length) : text);
+  if (money) {
+    currency = money[1] ? { symbol: money[1], before: true } : { symbol: money[4]!, before: false };
+    text = `${minus ? '-' : ''}${(money[2] ?? money[3]!).trim()}`;
+  }
   let percent = false;
   if (text.endsWith('%') || text.startsWith('%')) {
     percent = true;
@@ -104,8 +126,12 @@ export function parseNumber(raw: string): { value: number; format: NumberFormat 
   let value = Number(`${whole.replace(/,/g, '')}${m[2] ? `.${m[2]}` : ''}`);
   if (!Number.isFinite(value)) return null;
   if (negative) value = -value;
-  if (percent) value /= 100;
-  return { value, format: { decimals: Math.min(m[2]?.length ?? 0, 10), grouped: whole.includes(','), percent } };
+  // A hundredth by division is not always the decimal written: 4.1% is 0.041, not 0.040999999999999995.
+  if (percent) value = Number((value / 100).toPrecision(15));
+  return {
+    value,
+    format: { decimals: Math.min(m[2]?.length ?? 0, 10), grouped: whole.includes(','), percent, ...(currency && !percent ? { currency } : {}) },
+  };
 }
 
 export function valueOf(raw: string): SheetValue {
@@ -213,4 +239,67 @@ function trim(rows: (SheetCell | null)[][]): (SheetCell | null)[][] {
 /** Whether a sheet has anything in it. */
 export function sheetHasText(sheet: Sheet): boolean {
   return sheet.rows.some((row) => row.some((cell) => cell !== null && cell.value.text !== ''));
+}
+
+/**
+ * Gives each cell whose text holds a linked stretch of the document's text
+ * that link, as a sheet links a whole cell.
+ */
+export function linkSheets(sheets: readonly Sheet[], linked: readonly { text: string; uri: string }[]): void {
+  const usable = linked.filter((l) => l.text.trim().length > 1);
+  if (usable.length === 0) return;
+  for (const sheet of sheets) {
+    for (const cell of sheet.rows.flat()) {
+      if (!cell || cell.value.kind !== 'text' || cell.link) continue;
+      const found = usable.find((l) => cell.value.text.includes(l.text.trim()));
+      if (found) cell.link = found.uri;
+    }
+  }
+}
+
+/**
+ * A table without the columns and rows that hold nothing: rules a little
+ * apart, or a frame drawn round a table, make grid lines no column of text
+ * stands between. What each takes up goes to its neighbour (the one before
+ * it, or after the first), so the table keeps its size; a merged cell over
+ * it covers one fewer.
+ */
+export function compactTable(table: TableItem): TableItem {
+  const columns = table.widths.length || Math.max(0, ...table.rows.map((r) => r.length));
+  const filled = (cell: FoundCell | null | undefined) => cell !== null && cell !== undefined && cell.text.trim().length > 0;
+  const keepColumn = Array.from({ length: columns }, (_, c) => table.rows.some((row) => filled(row[c])));
+  const keepRow = table.rows.map((row) => row.some(filled));
+  if (keepColumn.every(Boolean) && keepRow.every(Boolean)) return table;
+  if (!keepColumn.some(Boolean)) return { ...table, widths: [], rows: [], ...(table.heights ? { heights: [] } : {}) };
+  // A cell keeps its text; it covers only the columns and rows that stay.
+  const kept = (from: number, span: number, keep: boolean[]) => keep.slice(from, from + Math.max(1, span)).filter(Boolean).length;
+  const rows = table.rows.flatMap((row, r) => {
+    if (!keepRow[r]) return [];
+    const out: (FoundCell | null)[] = [];
+    for (let c = 0; c < columns; c += 1) {
+      if (!keepColumn[c]) continue;
+      const cell = row[c];
+      out.push(cell ? { ...cell, columns: Math.max(1, kept(c, cell.columns, keepColumn)), rows: Math.max(1, kept(r, cell.rows, keepRow)) } : null);
+    }
+    return [out];
+  });
+  /** Each removed size given to the kept one before it, or after it for those first. */
+  const fold = (sizes: readonly number[], keep: readonly boolean[]) => {
+    const out: number[] = [];
+    let carried = 0;
+    sizes.forEach((size, k) => {
+      if (keep[k]) {
+        out.push(size + carried);
+        carried = 0;
+      } else if (out.length > 0) out[out.length - 1]! += size;
+      else carried += size;
+    });
+    return out;
+  };
+  return {
+    ...table,
+    rows,
+    widths: fold(table.widths, keepColumn),
+    ...(table.heights ? { heights: fold(table.heights, keepRow) } : {}),
+  };
 }

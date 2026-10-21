@@ -2,16 +2,18 @@ import type { RemoteDocument } from '../core/client';
 import type { TextLineData } from '../core/types';
 import { documentStem, exportFileName, pageImageName, pagesArchiveName } from '../state/saveFile';
 import type { FileKind } from '../state/saveFile';
-import { buildDocx } from './docx';
+import { buildDocx, readsRtl } from './docx';
 import { buildLayoutDocx } from './docxLayout';
 import { FILE_KINDS } from './formats';
 import type { ExportFormat } from './formats';
-import { paragraphsOf } from './paragraphs';
+import { paragraphsOf, trimLine } from './paragraphs';
 import { encodePng, zipImages } from './png';
 import { buildPptx } from './pptx';
 import type { Slide, SlideText } from './pptx';
-import { pageSheet, sheetHasText, tableSheets } from './tables';
+import { compactTable, linkSheets, pageSheet, sheetHasText, tableSheets } from './tables';
 import type { PageItem, Sheet, SheetMode } from './tables';
+import { cellBoxes, cellPlace, linesIn, outsideTables, pageTables, tableBox } from './structure';
+import type { LayoutTable } from './structure';
 import { buildHtml, buildMarkdown, buildText, cleanText } from './text';
 import type { ExportPage } from './text';
 import { buildXlsx } from './xlsx';
@@ -123,14 +125,24 @@ export type WordMode = 'layout' | 'text';
  */
 async function exportSheets(doc: ExportableDocument, request: ExportRequest): Promise<ExportResult | null> {
   const pages: PageItem[][] = [];
+  const linked: { text: string; uri: string }[] = [];
   for (let index = 0; index < doc.pageCount; index += 1) {
-    const { result } = await doc.call<{ items: PageItem[] }>('export.tables', { page: index });
-    pages.push(result.items);
+    const [{ result }, { result: read }] = await Promise.all([
+      doc.call<{ items: PageItem[] }>('export.tables', { page: index }),
+      doc.call<{ lines: TextLineData[] }>('export.lines', { page: index, reading: true }),
+    ]);
+    // Tables without their empty columns and rows; one with nothing in it is no table.
+    pages.push(result.items.flatMap((item): PageItem[] => (item.kind !== 'table' ? [item] : [compactTable(item)].filter((table) => table.rows.length > 0))));
+    for (const line of read.lines) {
+      const own = trimLine(line);
+      for (const link of own.links) linked.push({ text: own.text.slice(link.from, link.to), uri: link.uri });
+    }
     request.onProgress?.(index + 1, doc.pageCount);
   }
   let sheets: Sheet[] = request.sheets === 'table' ? tableSheets(pages, (k) => request.tableLabel?.(k) ?? `Table ${k}`) : [];
   if (sheets.length === 0) sheets = pages.map((items, index) => pageSheet(items, request.pageLabel(index + 1)));
   if (!sheets.some(sheetHasText)) return null;
+  linkSheets(sheets, linked);
   return { bytes: buildXlsx(sheets), fileName: exportFileName(request.name, 'xlsx'), kind: FILE_KINDS.xlsx, reduced: false };
 }
 
@@ -189,7 +201,12 @@ export function inkOf(
  * lines, size, colour and face. PowerPoint's slides and Word's layout pages.
  * `withPicture` false: the boxes alone, in black.
  */
-async function layoutPages(doc: ExportableDocument, request: ExportRequest, withPicture: boolean): Promise<{ pages: Slide[]; reduced: boolean }> {
+async function layoutPages(
+  doc: ExportableDocument,
+  request: ExportRequest,
+  withPicture: boolean,
+  withTables = false,
+): Promise<{ pages: Slide[]; reduced: boolean }> {
   const pages: Slide[] = [];
   let reduced = false;
   for (let index = 0; index < doc.pageCount; index += 1) {
@@ -198,19 +215,25 @@ async function layoutPages(doc: ExportableDocument, request: ExportRequest, with
     const scale = fits < 1 ? SLIDE_SCALE * fits : SLIDE_SCALE;
     if (fits < 1 && withPicture) reduced = true;
     // The editor's lines: one crossing a table's columns is cut into a piece per column.
-    const [{ result: { lines } }, blocks, picture] = await Promise.all([
+    const [{ result: { lines } }, blocks, picture, items] = await Promise.all([
       doc.call<{ lines: TextLineData[] }>('export.lines', { page: index }),
       doc.paragraphs(index),
       withPicture
         ? doc.call<{ width: number; height: number; textHidden: boolean }>('export.picture', { page: index, scale })
         : Promise.resolve({ result: { width: 0, height: 0, textHidden: false }, blobs: [] as ArrayBuffer[] }),
+      withTables ? doc.call<{ items: PageItem[] }>('export.tables', { page: index }).then((reply) => reply.result.items) : Promise.resolve([] as PageItem[]),
     ]);
     const bare = new Uint8Array(picture.blobs[0] ?? new ArrayBuffer(0));
     const { width: w, height: h, textHidden } = picture.result;
-    const paragraphs = paragraphsOf(lines, blocks).filter((p) => (p.lines?.length ?? 0) > 0);
+    const found = pageTables(items, lines);
+    const paragraphs = paragraphsOf(outsideTables(lines, found), blocks).filter((p) => (p.lines?.length ?? 0) > 0);
     // Only for the text's colour; a scan's text is invisible anyway, and
     // text alone is black.
-    const full = withPicture && !textHidden && paragraphs.length > 0 ? await doc.render_page(index, scale) : null;
+    const full = withPicture && !textHidden && (paragraphs.length > 0 || found.length > 0) ? await doc.render_page(index, scale) : null;
+    const inkAt = (box: { x: number; y: number; width: number; height: number }) =>
+      full && full.width === w && full.height === h
+        ? inkOf(full.rgba, bare, w, h, { x: box.x * scale, y: box.y * scale, width: box.width * scale, height: box.height * scale })
+        : undefined;
     const texts: SlideText[] = paragraphs.map((p) => {
       const own = p.lines!;
       const x = Math.min(...own.map((l) => l.x));
@@ -228,13 +251,11 @@ async function layoutPages(doc: ExportableDocument, request: ExportRequest, with
         : (p.fontSize ?? Math.max(4, Math.min(96, own[0]!.height / 1.2)));
       const steps = own.slice(1).map((l, k) => l.y - own[k]!.y);
       const pitch = steps.length > 0 ? steps.reduce((a, b) => a + b, 0) / steps.length : null;
-      const ink =
-        full && full.width === w && full.height === h
-          ? inkOf(full.rgba, bare, w, h, { x: box.x * scale, y: box.y * scale, width: box.width * scale, height: box.height * scale })
-          : undefined;
+      const ink = inkAt(box);
+      const trimmed = own.map(trimLine);
       return {
         ...box,
-        lines: own.map((l) => l.text.trim()),
+        lines: trimmed.map((l) => l.text),
         direction: p.direction,
         alignment: p.alignment,
         size,
@@ -244,7 +265,34 @@ async function layoutPages(doc: ExportableDocument, request: ExportRequest, with
         ...(p.font ? { font: p.font } : {}),
         // Drawn into the picture already: there to find and copy, not to see twice.
         ...(ink === null ? { hidden: true } : {}),
+        ...(trimmed.some((l) => l.links.length > 0) ? { links: trimmed.map((l) => l.links) } : {}),
       };
+    });
+    const tables: LayoutTable[] = found.map((table) => {
+      const inside = linesIn(lines, tableBox(table));
+      // The table's type: the size and face most of its cells are set in.
+      const sized = paragraphsOf(inside, blocks);
+      const sizes = inside.map((l) => l.height / 1.2).sort((a, b) => a - b);
+      const size = sized.find((p) => p.fontSize !== null)?.fontSize ?? Math.max(4, Math.min(96, sizes[Math.floor(sizes.length / 2)] ?? 10));
+      const boxes = cellBoxes(table);
+      const looks = table.rows.map((row, r) =>
+        row.map((cell, c) => {
+          const box = boxes[r]?.[c];
+          if (!cell || !box) return null;
+          // Where the core found its letters; failing that, the lines in it.
+          const own: Pick<TextLineData, 'x' | 'y' | 'width' | 'height' | 'direction'>[] = cell.box
+            ? [{ x: cell.box[0], y: cell.box[1], width: cell.box[2], height: cell.box[3], direction: readsRtl(cell.text) ? 'rtl' : 'ltr' }]
+            : linesIn(inside, box);
+          const ink = own.length > 0 ? inkAt(own.reduce((a, l) => union(a, l), { x: own[0]!.x, y: own[0]!.y, width: 0, height: 0 })) : undefined;
+          return { color: ink ?? '000000', place: cellPlace(box, own), ...(ink === null ? { hidden: true } : {}) };
+        }),
+      );
+      const font = sized.find((p) => p.font)?.font;
+      const insets = looks.flat().flatMap((look) => (look && look.place.align !== 'center' ? [look.place.inset] : [])).sort((a, b) => a - b);
+      // Half the usual inset: a cell's text a little nearer its side, rather
+      // than wrapped when Word's face is a little wider than the page's.
+      const margin = Math.min(6, (insets[Math.floor(insets.length / 2)] ?? 2) / 2);
+      return { ...table, size, looks, margin, ...(font ? { font } : {}) };
     });
     const hasPicture = w > 0 && h > 0 && bare.length >= w * h * 4 && (textHidden || !blank(bare));
     pages.push({
@@ -253,10 +301,18 @@ async function layoutPages(doc: ExportableDocument, request: ExportRequest, with
       picture: hasPicture ? encodePng(w, h, bare, scale * 72) : null,
       texts,
       hiddenText: textHidden,
+      ...(tables.length > 0 ? { tables } : {}),
     });
     request.onProgress?.(index + 1, doc.pageCount);
   }
   return { pages, reduced };
+}
+
+/** The smallest box round two. */
+function union(a: { x: number; y: number; width: number; height: number }, b: { x: number; y: number; width: number; height: number }) {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return { x, y, width: Math.max(a.x + a.width, b.x + b.width) - x, height: Math.max(a.y + a.height, b.y + b.height) - y };
 }
 
 /** A picture that is white paper and nothing else: no use behind the text. */
@@ -275,18 +331,34 @@ async function exportSlides(doc: ExportableDocument, request: ExportRequest): Pr
 
 /** Word, the layout kept: each page a Word page, its picture behind its paragraphs as text boxes. */
 async function exportWordLayout(doc: ExportableDocument, request: ExportRequest): Promise<ExportResult | null> {
-  const { pages, reduced } = await layoutPages(doc, request, true);
-  if (pages.every((page) => page.picture === null && page.texts.length === 0)) return null;
+  const { pages, reduced } = await layoutPages(doc, request, true, true);
+  if (pages.every((page) => page.picture === null && page.texts.length === 0 && !page.tables)) return null;
   return { bytes: buildLayoutDocx(pages), fileName: exportFileName(request.name, 'docx'), kind: FILE_KINDS.docx, reduced };
 }
 
-/** Every page as Warraq's core reads it: the text in reading order, and as paragraphs. */
+/**
+ * Every page as Warraq's core reads it: the text in reading order, its
+ * tables, and the rest as paragraphs, links and all.
+ */
 async function readPages(doc: ExportableDocument, onProgress: ExportRequest['onProgress']): Promise<ExportPage[]> {
   const pages: ExportPage[] = [];
   for (let index = 0; index < doc.pageCount; index += 1) {
     const text = await doc.extract_text(index);
-    const [lines, blocks] = await Promise.all([doc.text_lines(index), doc.paragraphs(index)]);
-    pages.push({ number: index + 1, text, paragraphs: paragraphsOf(lines, blocks) });
+    const [
+      {
+        result: { lines },
+      },
+      {
+        result: { items },
+      },
+      blocks,
+    ] = await Promise.all([
+      doc.call<{ lines: TextLineData[] }>('export.lines', { page: index, reading: true }),
+      doc.call<{ items: PageItem[] }>('export.tables', { page: index }),
+      doc.paragraphs(index),
+    ]);
+    const tables = pageTables(items, lines);
+    pages.push({ number: index + 1, text, paragraphs: paragraphsOf(outsideTables(lines, tables), blocks), tables });
     onProgress?.(index + 1, doc.pageCount);
   }
   return pages;

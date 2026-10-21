@@ -9,7 +9,7 @@ import { useAppDispatch, useAppState } from '../state/AppContext';
 import { readJson, writeJson } from '../state/preferences';
 import { isolate } from '../signatures/model';
 import { openTourAt } from '../tour/openAt';
-import { askAvailable, askReadiness, onMac, readAskPreferences, tapKeyLabel } from './settings';
+import { askAvailable, askReadiness, onMac, oneTapDoes, readAskPreferences, tapKeyLabel } from './settings';
 import type { AskReadiness } from './settings';
 
 /**
@@ -69,8 +69,9 @@ export function AskReadyHint() {
         <Icon of={X} size={14} />
       </button>
       <ul className="ask-hint-list">
+        {oneTapDoes(prefs, ready) === 'speak' && <li>{t('ask.hint.speak', { tap })}</li>}
         {ready.taps && <li>{t('ask.hint.twice', { tap })}</li>}
-        {ready.taps && prefs.tapToType && <li>{t('ask.hint.once', { tap })}</li>}
+        {oneTapDoes(prefs, ready) === 'type' && <li>{t('ask.hint.once', { tap })}</li>}
         {ready.voice && <li>{t('ask.hint.hold', { keys: isolate(formatShortcut(prefs.shortcut)) })}</li>}
       </ul>
       <div className="ask-hint-actions">
