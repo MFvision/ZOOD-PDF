@@ -47,14 +47,14 @@ final class OnboardingUITests: XCTestCase {
     func testTheTourIsWalkedThroughRememberedAndFoundAgainInSettings() throws {
         let app = launch("show")
         XCTAssertTrue(app.descendants(matching: .any)["onboarding"].waitForExistence(timeout: 30))
-        // Four screens: Next three times, then Start.
-        for page in 0..<3 {
+        // Six screens: Next five times, then Start.
+        for page in 0..<5 {
             XCTAssertTrue(app.descendants(matching: .any)["onboarding.page.\(page)"].waitForExistence(timeout: 10),
                           "screen \(page + 1)")
             XCTAssertTrue(app.buttons["onboarding.next"].exists, "screen \(page + 1) has Next")
             app.buttons["onboarding.next"].tap()
         }
-        XCTAssertTrue(app.descendants(matching: .any)["onboarding.page.3"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.descendants(matching: .any)["onboarding.page.5"].waitForExistence(timeout: 10))
         let done = app.buttons["onboarding.done"]
         XCTAssertTrue(done.waitForExistence(timeout: 10), "the last screen finishes rather than going on")
         done.tap()
@@ -110,10 +110,10 @@ final class OnboardingUITests: XCTestCase {
         for (language, appearance) in [("ar", "light"), ("en", "dark")] {
             let app = launch("show", language: language, appearance: appearance)
             XCTAssertTrue(app.descendants(matching: .any)["onboarding"].waitForExistence(timeout: 30))
-            for page in 0..<4 {
+            for page in 0..<6 {
                 XCTAssertTrue(app.descendants(matching: .any)["onboarding.page.\(page)"].waitForExistence(timeout: 10))
                 try save(as: "onboarding-\(page + 1)-\(language)-\(appearance)-\(device)", in: directory)
-                if page < 3 { app.buttons["onboarding.next"].tap() }
+                if page < 5 { app.buttons["onboarding.next"].tap() }
             }
             app.buttons["onboarding.done"].tap()
         }
