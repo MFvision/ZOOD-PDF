@@ -38,6 +38,8 @@ struct HomeView: View {
             }
             .padding(.vertical, Space.x5)
         }
+        // Pulling down reads the Library's folders again.
+        .refreshable { library.refresh() }
         .themedGround()
         .accessibilityIdentifier("library.home")
     }

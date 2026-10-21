@@ -83,6 +83,10 @@ enum SettingsKey {
     // `PDFEditor/Scan/ScanSettingsSection.swift`.
     /// Face ID / Touch ID before the app shows anything; off by default.
     static let appLock = "appLock"
+    /// Tabs or the classic stack on iPhone (`MenuStyle`).
+    static let menuStyle = "menuStyle"
+    /// The screen the app opens on (`StartScreen`).
+    static let startScreen = "startScreen"
 }
 
 /// Applies the chosen language and appearance to a scene's root view.

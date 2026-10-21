@@ -91,6 +91,17 @@ struct LibraryShell: View {
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     /// The window's width, for the two-pane book layout (`bookWidth`).
     @State private var width: CGFloat = 0
+    /// The iPhone's menu: the tab bar, or the classic stack (Settings).
+    @AppStorage(SettingsKey.menuStyle) private var menuStyle: MenuStyle = .tabs
+    /// The screen the app opens on (Settings › Open with).
+    @AppStorage(SettingsKey.startScreen) private var startScreen: StartScreen = .lastPlace
+    @SceneStorage("library.tab") private var tabID = AppTab.home.rawValue
+    /// The tab a document was opened in: it is pushed on that tab's stack.
+    @State private var openedIn: AppTab?
+    @State private var showingCreate = false
+    @State private var pendingCreate: CreateChoice?
+    /// The classic stack's sections, so Open with › My files can start there.
+    @State private var classicPath: [LibrarySection] = []
     @State private var showingSettings = false
     @State private var showingImporter = false
     @State private var showingCombiner = false
@@ -155,7 +166,11 @@ struct LibraryShell: View {
     var body: some View {
         Group {
             if sizeClass == .compact {
-                compact
+                if menuStyle == .tabs {
+                    tabs
+                } else {
+                    compact
+                }
             } else {
                 regular
             }
@@ -376,7 +391,7 @@ struct LibraryShell: View {
     // MARK: - iPhone
 
     private var compact: some View {
-        NavigationStack {
+        NavigationStack(path: $classicPath) {
             SearchHost(library: library) {
                 HomeView(library: library, actions: actions)
             }
@@ -395,6 +410,124 @@ struct LibraryShell: View {
                     .navigationTitle(section.title)
             }
             .environment(\.zoomNamespace, zoom)
+        }
+    }
+
+    // MARK: - iPhone, tabs
+
+    private var currentTab: AppTab { AppTab(rawValue: tabID) ?? .home }
+
+    /// The tab bar's selection: the create button opens its sheet and
+    /// leaves the tab that was on screen where it is.
+    private var tabSelection: Binding<AppTab> {
+        Binding(
+            get: { currentTab },
+            set: { tab in
+                if tab == .create {
+                    showingCreate = true
+                } else {
+                    tabID = tab.rawValue
+                }
+            }
+        )
+    }
+
+    private var tabs: some View {
+        TabView(selection: tabSelection) {
+            Tab("Home", systemImage: "house", value: AppTab.home) {
+                tabStack(.home) {
+                    SearchHost(library: library) {
+                        HomeView(library: library, actions: actions)
+                    }
+                    .navigationTitle(Text(verbatim: AppName.isolated))
+                    .toolbar { libraryToolbar }
+                }
+            }
+            Tab("My files", systemImage: "folder", value: AppTab.files) {
+                tabStack(.files) {
+                    FilesTab(library: library)
+                        .navigationTitle("My files")
+                }
+            }
+            Tab("Create", systemImage: "plus.circle.fill", value: AppTab.create) {
+                Color.clear
+            }
+            Tab("Tools", systemImage: "square.grid.2x2", value: AppTab.tools) {
+                tabStack(.tools) {
+                    ToolsTab(run: runFromTools, remote: { showingRemote = true })
+                        .navigationTitle("Tools")
+                }
+            }
+            Tab("Me", systemImage: "person.crop.circle", value: AppTab.me) {
+                tabStack(.me) {
+                    MeTab(settings: { showingSettings = true })
+                        .navigationTitle("Me")
+                }
+            }
+        }
+        .sheet(isPresented: $showingCreate, onDismiss: takeCreate) {
+            CreateSheet { pendingCreate = $0 }
+                .appEnvironment()
+        }
+        .onChange(of: library.opened?.id, initial: true) { _, opened in
+            // A document opens on the stack of the tab it was opened from
+            // (a widget's or a search's too: the tab on screen).
+            if opened == nil {
+                openedIn = nil
+            } else if openedIn == nil {
+                openedIn = currentTab
+            }
+        }
+    }
+
+    /// One tab's stack: its root, the document pushed over it with the tab
+    /// bar put away, and the Library's sections. The edge swipe goes back.
+    private func tabStack<Root: View>(_ tab: AppTab, @ViewBuilder root: () -> Root) -> some View {
+        NavigationStack {
+            root()
+                .themedToolbar()
+                .navigationDestination(item: document(in: tab)) { model in
+                    DocumentView(model: model)
+                        .toolbar(.hidden, for: .tabBar)
+                        .zoomed(from: library.zoomSource, in: zoom)
+                        .onDisappear { if library.opened == nil { library.zoomSource = nil } }
+                }
+                .navigationDestination(for: LibrarySection.self) { section in
+                    content(for: section)
+                        .navigationTitle(section.title)
+                }
+                .environment(\.zoomNamespace, zoom)
+        }
+    }
+
+    private func document(in tab: AppTab) -> Binding<DocumentModel?> {
+        Binding(
+            get: { openedIn == tab ? library.opened : nil },
+            set: { model in
+                if model == nil, openedIn == tab {
+                    library.opened = nil
+                }
+            }
+        )
+    }
+
+    private func runFromTools(_ tool: LibraryTool) {
+        if tool == .search {
+            // The search field lives on Home.
+            tabID = AppTab.home.rawValue
+        }
+        run(tool)
+    }
+
+    /// The create sheet's choice, once the sheet has gone.
+    private func takeCreate() {
+        guard let choice = pendingCreate else { return }
+        pendingCreate = nil
+        switch choice {
+        case .scan: actions.scan()
+        case .pictures: actions.create()
+        case .open: actions.open()
+        case .combine: actions.combine()
         }
     }
 
@@ -473,11 +606,28 @@ struct LibraryShell: View {
             return
         }
         #endif
-        if let restoredBookmark, let data = Data(base64Encoded: restoredBookmark) {
-            var stale = false
-            if let url = try? URL(resolvingBookmarkData: data, bookmarkDataIsStale: &stale) {
-                library.open(url: url)
+        switch startScreen {
+        case .lastPlace:
+            if let restoredBookmark, let data = Data(base64Encoded: restoredBookmark) {
+                var stale = false
+                if let url = try? URL(resolvingBookmarkData: data, bookmarkDataIsStale: &stale) {
+                    library.open(url: url)
+                }
             }
+        case .home:
+            tabID = AppTab.home.rawValue
+            sectionID = LibrarySection.home.rawValue
+        case .scanner:
+            tabID = AppTab.home.rawValue
+            library.scanStart = .camera
+            library.scanRequested = true
+        case .files:
+            tabID = AppTab.files.rawValue
+            sectionID = LibrarySection.documents.rawValue
+            classicPath = [.documents]
+        case .remote:
+            tabID = AppTab.home.rawValue
+            showingRemote = true
         }
     }
 }
@@ -557,6 +707,7 @@ struct DocumentGrid: View {
             .padding(.horizontal, Space.x5)
             .padding(.vertical, Space.x4)
         }
+        .refreshable { library.refresh() }
         .themedGround(systemColour: Surface.window)
         .overlay {
             if isEmpty {

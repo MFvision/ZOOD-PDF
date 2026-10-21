@@ -11986,6 +11986,226 @@
           }
         }
       }
+    },
+    "Tabs": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تبويبات"
+          }
+        }
+      }
+    },
+    "Classic": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الكلاسيكي"
+          }
+        }
+      }
+    },
+    "Where I left off": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حيث توقفت"
+          }
+        }
+      }
+    },
+    "The scanner": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الماسح الضوئي"
+          }
+        }
+      }
+    },
+    "My files": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ملفاتي"
+          }
+        }
+      }
+    },
+    "Navy": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كحلي"
+          }
+        }
+      }
+    },
+    "Sky": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سماوي"
+          }
+        }
+      }
+    },
+    "Bronze": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "برونزي"
+          }
+        }
+      }
+    },
+    "Menu style": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شكل القائمة"
+          }
+        }
+      }
+    },
+    "Open with": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يفتح التطبيق على"
+          }
+        }
+      }
+    },
+    "App icon": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أيقونة التطبيق"
+          }
+        }
+      }
+    },
+    "Menu and start": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "القائمة والبدء"
+          }
+        }
+      }
+    },
+    "Tabs puts Home, My files, Create, Tools and Me along the bottom. Open with is the screen the app starts on.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التبويبات تضع الرئيسية وملفاتي وإنشاء والأدوات وأنا في أسفل الشاشة. «يفتح التطبيق على» هي الشاشة التي يبدأ بها التطبيق."
+          }
+        }
+      }
+    },
+    "Cannot change the icon": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر تغيير الأيقونة"
+          }
+        }
+      }
+    },
+    "Scan paper": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مسح ورقة"
+          }
+        }
+      }
+    },
+    "Photos to PDF": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صور إلى PDF"
+          }
+        }
+      }
+    },
+    "Open from Files": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فتح من «الملفات»"
+          }
+        }
+      }
+    },
+    "Tools": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأدوات"
+          }
+        }
+      }
+    },
+    "Me": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أنا"
+          }
+        }
+      }
+    },
+    "Your computer": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حاسوبك"
+          }
+        }
+      }
+    },
+    "Present, use the phone as a trackpad, and send files to ZOOD PDF on your computer.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اعرض، واستخدم الجوال لوحة لمس، وأرسل الملفات إلى ZOOD PDF على حاسوبك."
+          }
+        }
+      }
+    },
+    "All settings": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كل الإعدادات"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

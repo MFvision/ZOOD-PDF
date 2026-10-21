@@ -35,6 +35,14 @@ appicon="$assets/AppIcon.appiconset"
 png "$work/square.svg"        "$appicon/AppIcon.png"        1024 --opaque "$navy"
 png "$work/square-dark.svg"   "$appicon/AppIcon-Dark.png"   1024 --opaque "#010815"
 png "$work/square-tinted.svg" "$appicon/AppIcon-Tinted.png" 1024 --opaque "#000000"
+# The icons Settings › App icon offers (alternate icons), and the small
+# pictures of each the picker shows.
+for pair in Paper:paper Sky:sky Black:black Bronze:bronze; do
+  key=${pair%%:*}; file=${pair##*:}
+  png "$work/alt-$file.svg" "$assets/AppIcon-$key.appiconset/AppIcon-$key.png" 1024 --opaque "$navy"
+  png "$work/alt-$file.svg" "$assets/AppIconPreview$key.imageset/AppIconPreview$key.png" 180 --opaque "$navy"
+done
+png "$work/square.svg" "$assets/AppIconPreviewNavy.imageset/AppIconPreviewNavy.png" 180 --opaque "$navy"
 # The artwork the app draws itself, kept as vectors.
 for name in ZoodMark ZoodLogoMain ZoodLogoVertical ZoodLogoHorizontal; do
   cp "$work/$name.pdf" "$assets/$name.imageset/$name.pdf"
