@@ -5,13 +5,14 @@ import type { PageText } from '../budget';
 import type { Failure, Prompt, ProviderId } from '../providers';
 import type { Progress } from './analyze';
 import { keptOutline } from './analyze';
-import { analyzeDocument, answerTurn, fitsWhole, searchQuery } from './answer';
+import { analyzeDocument, answerTurn, carry, fitsWhole, searchQuery } from './answer';
 import type { Ask, Basis, DocumentText } from './answer';
 import { chunkPages } from './chunks';
 import { getSettings } from '../../state/settings';
 import { memoryFor } from '../profile/walletState';
 import type { Kept } from './kept';
-import type { Said } from './prompts';
+import { generalPrompt } from './prompts';
+import type { GeneralContext, Said } from './prompts';
 import type { Runner } from './runner';
 import { answerLibrary, answerOpen } from './across';
 import type { FileBasis, LibraryLine, Scope, SourceDoc } from './across';
@@ -481,7 +482,7 @@ function gatedAcross(conversationId: number, runner: Runner, files: readonly Sou
  * A request across files, into `conversationId`'s chat: the document's own
  * for Open documents, the Library's (`LIBRARY_CHAT`) for the Library.
  */
-export async function askAcross(conversationId: number, text: string, env: Env, scope: Exclude<Scope, 'document'>): Promise<void> {
+export async function askAcross(conversationId: number, text: string, env: Env, scope: Exclude<Scope, 'document' | 'chat'>): Promise<void> {
   if (conversationOf(conversationId).busy || text.trim().length === 0) return;
   const before = history(conversationOf(conversationId).turns);
   const controller = start(conversationId);
@@ -559,6 +560,76 @@ export async function askAcross(conversationId: number, text: string, env: Env, 
     discarded.delete(conversationId);
     finish(conversationId, controller);
   }
+}
+
+/**
+ * The general chat: a request about anything, answered by the chosen model
+ * from the conversation so far and nothing of any document. Off this device,
+ * the first request waits at the review as a document's does.
+ */
+export async function askGeneral(conversationId: number, text: string, env: Env, context: Omit<GeneralContext, 'memory'> = {}): Promise<void> {
+  if (conversationOf(conversationId).busy || text.trim().length === 0) return;
+  const before = history(conversationOf(conversationId).turns);
+  const controller = start(conversationId);
+  const userId = (ids += 1);
+  const answerId = (ids += 1);
+  const patch = (change: Partial<AssistantTurn>) =>
+    update(conversationId, (current) => ({
+      ...current,
+      turns: current.turns.map((turn) => (turn.id === answerId && turn.role === 'assistant' ? { ...turn, ...change } : turn)),
+    }));
+  update(conversationId, (current) => ({
+    ...current,
+    turns: [
+      ...current.turns,
+      { id: userId, role: 'user', text: text.trim() },
+      { id: answerId, role: 'assistant', text: '', status: 'working', thinking: false, cutOff: false, failure: null, noText: null, basis: null, provider: 'device', model: '', pageCount: 0, analyzed: false, scope: 'chat' },
+    ],
+  }));
+  try {
+    const runner = await env.makeRunner([...before.map((said) => said.text), text].join('\n').slice(-6000));
+    patch({ provider: runner.settings.provider, model: runner.settings.model });
+    const memory = await memoryFor(runner.settings.provider);
+    const asked = gated(conversationId, runner, { pageCount: 0, pages: [], characters: 0 });
+    // Tried with the whole conversation's room first; a request the model counts as too large carries less of it.
+    let scale = 1;
+    for (let attempt = 0; ; attempt += 1) {
+      const said = carry(before, Math.floor(runner.turnBudget * 0.6 * scale) - memory.length);
+      const outcome = await asked.run(generalPrompt(said, text, { ...context, memory }), { signal: controller.signal, onText: (written, thinking) => patch({ text: written, thinking }) });
+      if (discarded.delete(conversationId)) {
+        update(conversationId, (current) => ({ ...current, turns: current.turns.filter((turn) => turn.id !== userId && turn.id !== answerId), draft: text }));
+        return;
+      }
+      if (outcome.ok) {
+        patch({ text: outcome.answer.text, thinking: false, cutOff: outcome.answer.cutOff, status: controller.signal.aborted ? 'stopped' : 'done' });
+        return;
+      }
+      if (outcome.failure.kind === 'tooLarge' && attempt < 3 && before.length > 0) {
+        scale *= 0.5;
+        continue;
+      }
+      if (outcome.failure.kind === 'cancelled') patch({ status: 'stopped', thinking: false });
+      else patch({ status: 'failed', failure: outcome.failure, thinking: false });
+      return;
+    }
+  } catch (error) {
+    patch({ status: 'failed', failure: { kind: 'device', message: error instanceof Error ? error.message : String(error) } });
+  } finally {
+    discarded.delete(conversationId);
+    finish(conversationId, controller);
+  }
+}
+
+/**
+ * Something the chat did in the app at the person's word ("open compress"):
+ * their words, and a line saying what was done, with no model asked.
+ */
+export function noteDone(conversationId: number, text: string, note: Note): void {
+  update(conversationId, (current) => ({
+    ...current,
+    notice: null,
+    turns: [...current.turns, { id: (ids += 1), role: 'user', text: text.trim() }, { id: (ids += 1), role: 'event', note }],
+  }));
 }
 
 /** "Analyze this document": the analysis on its own, with its progress, kept for every later request. */

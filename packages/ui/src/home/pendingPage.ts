@@ -43,10 +43,13 @@ export function PendingPage(): null {
     at.current = state.currentPage;
   }, [state.currentPage]);
   const goToPage = services.goToPage;
-  const pages = state.view === 'viewer' ? (state.document?.pageCount ?? 0) : 0;
+  // Only once the file's bytes are there to draw: before that a page asked
+  // for moves nothing, and the count alone would say it had arrived.
+  const pages = state.view === 'viewer' && services.documentBytes !== null ? (state.document?.pageCount ?? 0) : 0;
   useEffect(() => {
     if (wanted === null || pages < wanted) return undefined;
-    let left = 24;
+    // Up to 20 s: a slow machine can take that long to draw a big file the first time.
+    let left = 80;
     const timer = setInterval(() => {
       left -= 1;
       if (at.current === wanted || left <= 0) {

@@ -1,7 +1,9 @@
 import { strToU8, zipSync } from 'fflate';
 import type { Zippable } from 'fflate';
-import type { TextAlignment, TextDirection } from '../core/types';
+import type { TextAlignment, TextDirection, TextLink } from '../core/types';
 import type { ExportFont } from './paragraphs';
+import { linkedPieces } from './structure';
+import type { LayoutTable } from './structure';
 import { cleanText } from './text';
 
 /**
@@ -57,6 +59,8 @@ export interface SlideText {
   font?: ExportFont;
   /** Already drawn in the page's picture: kept, but not drawn again. */
   hidden?: boolean;
+  /** For each of `lines`, the stretches of it that link to a web or mail address. */
+  links?: TextLink[][];
 }
 
 export interface Slide {
@@ -68,6 +72,8 @@ export interface Slide {
   texts: SlideText[];
   /** The text was invisible on the page (a scan's text layer): it stays so. */
   hiddenText: boolean;
+  /** Tables set as tables where they were (Word); their text is not among `texts`. */
+  tables?: LayoutTable[];
 }
 
 function xmlText(text: string): string {
@@ -122,18 +128,36 @@ function algn(alignment: TextAlignment, direction: TextDirection): string {
   return alignment === 'end' ? end : start;
 }
 
-function textBox(text: SlideText, id: number, at: ReturnType<typeof placement>, hidden: boolean): string {
+/** A slide's links: each address once, as the relationships its runs point to. */
+class SlideLinks {
+  readonly uris: string[] = [];
+
+  id(uri: string): string {
+    let k = this.uris.indexOf(uri);
+    if (k < 0) k = this.uris.push(uri) - 1;
+    return `rIdLink${k + 1}`;
+  }
+}
+
+function textBox(text: SlideText, id: number, at: ReturnType<typeof placement>, hidden: boolean, links: SlideLinks): string {
   const size = Math.round(Math.min(400, Math.max(1, text.size * at.scale)) * 100);
   const rtl = text.direction === 'rtl';
   const fill = hidden
     ? '<a:solidFill><a:srgbClr val="000000"><a:alpha val="0"/></a:srgbClr></a:solidFill>'
     : `<a:solidFill><a:srgbClr val="${/^[0-9a-f]{6}$/i.test(text.color) ? text.color.toUpperCase() : '000000'}"/></a:solidFill>`;
   const font = xmlAttribute(PPTX_FONT);
-  const runProperties = (tag: 'rPr' | 'endParaRPr') =>
-    `<a:${tag} lang="${rtl ? 'ar-SA' : 'en-US'}" sz="${size}" dirty="0">${fill}<a:latin typeface="${font}"/><a:cs typeface="${font}"/></a:${tag}>`;
-  const lines = text.lines.map((line) => cleanText(line).replace(/[\t\n]+/g, ' '));
-  const runs = lines
-    .map((line) => `<a:r>${runProperties('rPr')}<a:t>${xmlText(line)}</a:t></a:r>`)
+  // The link comes after the faces, as the schema orders a run's properties.
+  const runProperties = (tag: 'rPr' | 'endParaRPr', uri?: string) =>
+    `<a:${tag} lang="${rtl ? 'ar-SA' : 'en-US'}" sz="${size}" dirty="0">${fill}<a:latin typeface="${font}"/><a:cs typeface="${font}"/>` +
+    `${uri ? `<a:hlinkClick r:id="${links.id(uri)}"/>` : ''}</a:${tag}>`;
+  const runs = text.lines
+    .map((raw, k) => {
+      const line = cleanText(raw).replace(/[\t\n]+/g, ' ');
+      // Links only where cleaning left the line as it was, so their places hold.
+      const pieces = linkedPieces(line, line === raw ? text.links?.[k] : undefined).filter((piece) => piece.text.length > 0);
+      if (pieces.length === 0) pieces.push({ text: '' });
+      return pieces.map((piece) => `<a:r>${runProperties('rPr', piece.uri)}<a:t>${xmlText(piece.text)}</a:t></a:r>`).join('');
+    })
     .join(`<a:br>${runProperties('rPr')}</a:br>`);
   const spacing =
     text.pitch !== null && text.pitch > 0
@@ -162,7 +186,7 @@ function textBox(text: SlideText, id: number, at: ReturnType<typeof placement>, 
   );
 }
 
-function slideXml(slide: Slide, size: { width: number; height: number }): string {
+function slideXml(slide: Slide, size: { width: number; height: number }, links: SlideLinks): string {
   const at = placement(slide, size);
   const picture = slide.picture
     ? '<p:pic><p:nvPicPr><p:cNvPr id="2" name="Page"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>' +
@@ -170,7 +194,7 @@ function slideXml(slide: Slide, size: { width: number; height: number }): string
       `<p:spPr><a:xfrm><a:off x="${emu(at.dx)}" y="${emu(at.dy)}"/><a:ext cx="${emu(slide.width * at.scale)}" cy="${emu(slide.height * at.scale)}"/></a:xfrm>` +
       '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>'
     : '';
-  const texts = slide.texts.map((text, k) => textBox(text, k + 3, at, slide.hiddenText || text.hidden === true)).join('');
+  const texts = slide.texts.map((text, k) => textBox(text, k + 3, at, slide.hiddenText || text.hidden === true, links)).join('');
   return (
     `${DECLARATION}<p:sld ${NS}><p:cSld><p:spTree>` +
     '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>' +
@@ -179,11 +203,12 @@ function slideXml(slide: Slide, size: { width: number; height: number }): string
   );
 }
 
-function slideRelsXml(k: number, picture: boolean): string {
+function slideRelsXml(k: number, picture: boolean, links: SlideLinks): string {
   return (
     `${DECLARATION}<Relationships xmlns="${PACKAGE_REL}">` +
     `<Relationship Id="rId1" Type="${REL}/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>` +
     (picture ? `<Relationship Id="rId2" Type="${REL}/image" Target="../media/page${k}.png"/>` : '') +
+    links.uris.map((uri, n) => `<Relationship Id="rIdLink${n + 1}" Type="${REL}/hyperlink" Target="${xmlAttribute(uri)}" TargetMode="External"/>`).join('') +
     '</Relationships>'
   );
 }
@@ -318,8 +343,9 @@ export function buildPptx(slides: readonly Slide[]): Uint8Array<ArrayBuffer> {
     ),
   };
   slides.forEach((slide, k) => {
-    files[`ppt/slides/slide${k + 1}.xml`] = strToU8(slideXml(slide, size));
-    files[`ppt/slides/_rels/slide${k + 1}.xml.rels`] = strToU8(slideRelsXml(k + 1, slide.picture !== null));
+    const links = new SlideLinks();
+    files[`ppt/slides/slide${k + 1}.xml`] = strToU8(slideXml(slide, size, links));
+    files[`ppt/slides/_rels/slide${k + 1}.xml.rels`] = strToU8(slideRelsXml(k + 1, slide.picture !== null, links));
     // Already compressed: stored as they are.
     if (slide.picture) files[`ppt/media/page${k + 1}.png`] = [slide.picture, { level: 0 }];
   });

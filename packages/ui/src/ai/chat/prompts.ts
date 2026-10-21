@@ -176,3 +176,60 @@ export function translatePrompt(page: PageText, to: Lang): Prompt {
     user: `${documentText([page])}\n\nTranslate the text of this page from ${from} into ${LANGUAGE[to]}.`,
   };
 }
+
+/**
+ * The general chat: the model as a plain assistant, about anything, with or
+ * without a document open. It cannot press the app's buttons — the chat does
+ * that itself for a short command (`commands.ts`) — so it is told those
+ * commands, to hand the person the words that do what they ask.
+ */
+export const GENERAL_SYSTEM = [
+  'You are ZOOD, the assistant built into ZOOD PDF, a PDF editor. You run entirely on the person\'s own computer, offline: nothing they write leaves it.',
+  'Help with anything they ask, as a capable general assistant would: questions, explanations, writing and rewriting, emails and messages, translation, ideas, plans, sums.',
+  'Rules:',
+  '- Be accurate. When you do not know, or are not sure, say so; never invent facts, names, numbers, quotes or sources.',
+  '- You cannot browse the internet and know nothing after your training; say so when asked about news, prices or recent events.',
+  '- Keep answers short and to the point unless more is asked for. Write plain text, without Markdown headings, bold or tables. Start list items with "- ".',
+  '- You cannot press buttons yourself. When the person wants something done in ZOOD PDF, tell them the short command that does it when typed here, in quotes: "open a file", "open compress", "open combine", "convert to Word", "open sign", "open OCR", "go to page 5", "dark mode", "light mode", "open settings", "my library", "home", "start the tour". In Arabic: "افتح ملف"، "افتح الضغط"، "اذهب للصفحة 5"، "الوضع الليلي"، "افتح الإعدادات"، "افتح المكتبة".',
+  '- ZOOD PDF can: edit PDF text, organize and rotate pages, comment and highlight, fill and sign forms, protect with a password, redact, convert to and from Word, Excel and PowerPoint, OCR scanned Arabic and English, combine, compress, add watermarks and page numbers, compare two PDFs, read aloud, search a Library of documents, and work from a phone as a remote.',
+  '- To ask about a PDF itself, the person opens it and chooses "This document" at the top of this chat.',
+].join('\n');
+
+/** What the general chat knows of the moment it is asked in. */
+export interface GeneralContext {
+  /** The person's name, when they gave one (Settings) or the computer's account has one. */
+  name?: string;
+  /** Now, as the person's clock says it. */
+  now?: Date;
+  /** The interface's language, for the date as it is written. */
+  lang?: Lang;
+  /** The name of the PDF open in the window, when one is. */
+  documentName?: string | null;
+  /** The person's Memory, when they keep one and it may go to this model. */
+  memory?: string;
+}
+
+/** Now, written out: the day, the date, the time. */
+export function nowText(now: Date): string {
+  const day = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const time = now.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return `${day}, ${time}`;
+}
+
+/** One turn of the general chat: who and when, the conversation so far, the request. */
+export function generalPrompt(history: readonly Said[], request: string, context: GeneralContext = {}): Prompt {
+  const parts: string[] = [];
+  const facts: string[] = [];
+  if (context.name?.trim()) facts.push(`The person's name is ${context.name.trim().slice(0, 60)}. Use it now and then, not in every answer.`);
+  if (context.now) facts.push(`It is now ${nowText(context.now)}, local time.`);
+  if (context.documentName) facts.push(`The PDF open in ZOOD now is "${context.documentName.replace(/["<>]/g, ' ').slice(0, 120)}"; you have not been given its text.`);
+  if (facts.length > 0) parts.push(facts.join('\n'));
+  if (context.memory?.trim()) {
+    parts.push(`<about_the_person>\n${context.memory.trim()}\n</about_the_person>\nThe person asked you to keep these notes about them in mind. Use them only to fit your answer to them.`);
+  }
+  const conversation = conversationText(history);
+  if (conversation) parts.push(conversation);
+  parts.push(`Answer the request below. Do not repeat yourself. ${answerIn(request)}`);
+  parts.push(`Request: ${request.trim()}`);
+  return { system: GENERAL_SYSTEM, user: parts.join('\n\n') };
+}

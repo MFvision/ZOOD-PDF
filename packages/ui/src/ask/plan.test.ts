@@ -54,6 +54,23 @@ describe('what Ask ZOOD decides', () => {
     expect(readDecision(point, withFiles)).toMatchObject({ act: 'answer' });
   });
 
+  it('guides, explains and does only with a picture of the screen', () => {
+    const show =
+      '{"say":"Click Sign first.","act":"show","tool":"none","query":"","fields":[],"profile":"Me","x":120,"y":40}';
+    expect(readDecision(show, seeing)).toMatchObject({ act: 'show', x: 120, y: 40 });
+    expect(readDecision(show, withFiles)).toMatchObject({ act: 'answer' });
+    const doIt =
+      '{"say":"Opening Settings.","act":"do","tool":"none","query":"","fields":[],"profile":"Me","x":"left","y":40}';
+    // A step with no place on the screen is not done.
+    expect(readDecision(doIt, seeing)).toMatchObject({ act: 'answer' });
+    const explain =
+      '{"say":"This is the print window.","act":"explain","tool":"none","query":"","fields":[],"profile":"Me","x":0,"y":0}';
+    expect(readDecision(explain, seeing)).toMatchObject({ act: 'explain' });
+    expect(readDecision(explain, withFiles)).toMatchObject({ act: 'answer' });
+    expect(decisionGrammar(seeing)).toContain('"\\"explain\\""');
+    expect(decisionGrammar(withFiles)).not.toContain('"\\"do\\""');
+  });
+
   it('finds with words, and answers without them', () => {
     expect(
       readDecision(

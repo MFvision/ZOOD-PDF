@@ -30,6 +30,7 @@
 pub mod access;
 pub mod ear;
 pub mod eye;
+pub mod guide;
 pub mod hands;
 pub mod notch;
 pub mod tap;
@@ -261,6 +262,9 @@ pub struct Point {
     pub x: f64,
     pub y: f64,
     pub label: String,
+    /// ZOOD's pointer guiding step by step (it flies from step to step and
+    /// stays until the guide ends), rather than a ring that goes by itself.
+    pub guide: bool,
 }
 
 /* ----------------------------------------------------------- shortcut */
@@ -448,6 +452,7 @@ fn pressed<R: Runtime>(app: &AppHandle<R>, opened: Opened) {
         });
     }
     hide_point(app);
+    guide::stop_watching();
     // The window in front before the island is on it.
     let shot = if sees || reads {
         eye::capture_front()
@@ -526,6 +531,7 @@ fn tapped<R: Runtime>(app: &AppHandle<R>, tap: tap::Tap) {
         return;
     }
     hide_point(app);
+    guide::stop_watching();
     let front = focus::remember();
     let monitor = monitor_at_pointer(app);
     let shot = eye::capture_front()
@@ -811,6 +817,28 @@ pub fn ask_resize<R: Runtime>(app: AppHandle<R>, height: f64) {
     }
 }
 
+/// Moves the island out of the guide's way — to the bottom middle of the
+/// screen, above the taskbar or the Dock — when the step the pointer shows
+/// is under it, and back to the top after.
+#[tauri::command]
+pub fn ask_island_aside<R: Runtime>(app: AppHandle<R>, state: State<'_, AskState>, aside: bool) {
+    let Some((position, size, scale)) = state.moment.lock().ok().and_then(|m| m.monitor) else {
+        return;
+    };
+    let Some(window) = app.get_webview_window(LABEL) else {
+        return;
+    };
+    let width = (ISLAND_WIDTH * scale).round() as i32;
+    let x = position.x + (size.width as i32 - width) / 2;
+    let y = if aside {
+        let height = window.outer_size().map(|s| s.height as i32).unwrap_or(0);
+        position.y + size.height as i32 - height - (96.0 * scale).round() as i32
+    } else {
+        position.y
+    };
+    let _ = window.set_position(PhysicalPosition::new(x, y));
+}
+
 /// The island goes, with the point, and the moment is forgotten. When it
 /// had the keyboard, the app before it gets the keyboard back.
 #[tauri::command]
@@ -826,6 +854,8 @@ pub fn ask_hide<R: Runtime>(app: AppHandle<R>, state: State<'_, AskState>) {
         drop(listening.finish());
     }
     hide_glow(&app);
+    hide_point(&app);
+    guide::stop_watching();
     let front = state
         .moment
         .lock()
@@ -874,7 +904,10 @@ fn hide_point<R: Runtime>(app: &AppHandle<R>) {
 
 /// Shows where to click next: a ring on the screen the question was asked
 /// on, at `x`, `y` in thousandths of it, as the model answered. The window
-/// covers that screen, lets every click through, and goes by itself.
+/// covers that screen, lets every click through, and goes by itself — or,
+/// for a `guide` (Show me, Explain this, Do it for me), ZOOD's pointer,
+/// which flies there and stays until the guide moves it or ends. Answers
+/// where it landed, 0..1 of the screen.
 #[tauri::command]
 pub fn ask_point<R: Runtime>(
     app: AppHandle<R>,
@@ -882,29 +915,28 @@ pub fn ask_point<R: Runtime>(
     x: f64,
     y: f64,
     label: String,
-) -> Result<(), String> {
+    guide: Option<bool>,
+) -> Result<guide::Clicked, String> {
     let (place, areas) = state
         .moment
         .lock()
         .ok()
         .and_then(|m| {
-            let areas = m
-                .screen
-                .as_ref()
-                .and_then(|s| s.window.map(|w| (w, s.monitor)));
+            let areas = m.screen.as_ref().map(|s| (s.monitor, s.window));
             m.monitor.map(|place| (place, areas))
         })
         .ok_or_else(|| "E_ASK: there is no screen to point at".to_string())?;
-    let (fx, fy) = eye::fraction(x, y);
     // The picture was of a window: the point is placed on its screen.
     let (fx, fy) = match areas {
-        Some((window, monitor)) => eye::on_monitor(fx, fy, window, monitor),
-        None => (fx, fy),
+        Some((monitor, window)) => guide::place(x, y, monitor, window).0,
+        None => eye::fraction(x, y),
     };
+    let guiding = guide == Some(true);
     let point = Point {
         x: fx,
         y: fy,
-        label: label.chars().take(80).collect(),
+        label: label.chars().take(120).collect(),
+        guide: guiding,
     };
     if let Ok(mut last) = LAST_POINT.lock() {
         *last = Some(point.clone());
@@ -941,19 +973,30 @@ pub fn ask_point<R: Runtime>(
         let _ = window.set_position(position);
         let _ = window.set_size(size);
         let _ = window.set_ignore_cursor_events(true);
+        notch::above_menu_bar(&window);
         let _ = window.show();
         let _ = window.emit_to(POINT_LABEL, POINT_EVENT, point);
     })
     .map_err(|e| format!("E_ASK: {e}"))?;
-    let later = app.clone();
     let turn = POINT_TURN.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
-    std::thread::spawn(move || {
-        std::thread::sleep(POINT_STAYS);
-        if POINT_TURN.load(std::sync::atomic::Ordering::Relaxed) == turn {
-            hide_point(&later);
-        }
-    });
-    Ok(())
+    if !guiding {
+        let later = app.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(POINT_STAYS);
+            if POINT_TURN.load(std::sync::atomic::Ordering::Relaxed) == turn {
+                hide_point(&later);
+            }
+        });
+    }
+    Ok(guide::Clicked { x: fx, y: fy })
+}
+
+/// The guide ended: the pointer goes, and clicks are no longer watched.
+#[tauri::command]
+pub fn ask_guide_end<R: Runtime>(app: AppHandle<R>) {
+    POINT_TURN.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    guide::stop_watching();
+    hide_point(&app);
 }
 
 static LAST_POINT: Mutex<Option<Point>> = Mutex::new(None);
@@ -1089,6 +1132,8 @@ pub struct MomentView {
     pub title: String,
     /// Its picture can be read for words (`ask_window_png`).
     pub readable: bool,
+    /// ZOOD PDF itself was in front: Do it for me may click there.
+    pub ours: bool,
 }
 
 /// What the island may tell the model about the moment.
@@ -1114,6 +1159,7 @@ pub fn ask_moment(state: State<'_, AskState>) -> MomentView {
             .map(|w| w.1.chars().take(200).collect())
             .unwrap_or_default(),
         readable: moment.sharp.is_some(),
+        ours: focus::is_ours(&moment.front),
     }
 }
 
@@ -1346,9 +1392,36 @@ mod focus {
         }
     }
 
+    /// The app in front was ZOOD PDF itself.
+    #[cfg(target_os = "windows")]
+    pub fn is_ours(front: &Front) -> bool {
+        if front.handle == 0 {
+            return false;
+        }
+        let mut pid = 0u32;
+        // SAFETY: a window handle read from the system; a stale one answers 0.
+        unsafe {
+            windows_sys::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId(
+                front.handle as _,
+                &mut pid,
+            );
+        }
+        pid == std::process::id()
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn is_ours(front: &Front) -> bool {
+        front.handle > 0 && front.handle as u32 == std::process::id()
+    }
+
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     pub fn remember() -> Front {
         Front::default()
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    pub fn is_ours(_front: &Front) -> bool {
+        false
     }
 
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]

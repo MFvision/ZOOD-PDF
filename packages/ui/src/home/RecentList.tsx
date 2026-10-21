@@ -78,7 +78,8 @@ export function RecentList({ layout: asked, onSeeAll }: RecentListProps) {
     const measure = () => {
       const travelled = Math.abs(list.scrollLeft);
       const room = list.scrollWidth - list.clientWidth;
-      setEdges({ start: travelled <= 1, end: travelled >= room - 1 });
+      // A few pixels of slack: snapping to the first card scrolls past the row's padding.
+      setEdges({ start: travelled <= 8, end: travelled >= room - 8 });
     };
     measure();
     list.addEventListener('scroll', measure, { passive: true });
@@ -232,7 +233,13 @@ export function RecentList({ layout: asked, onSeeAll }: RecentListProps) {
           </table>
         )
       ) : (
-      <ul ref={scroller} className={layout === 'row' ? 'recent-row' : 'recent-grid'}>
+      <ul
+        ref={scroller}
+        className={layout === 'row' ? 'recent-row' : 'recent-grid'}
+        // More pages past an edge: that edge fades instead of cutting a card in half.
+        data-more-start={layout === 'row' && !edges.start ? '' : undefined}
+        data-more-end={layout === 'row' && !edges.end ? '' : undefined}
+      >
         {layout === 'grid' && (
           <li>
             <DropZone />

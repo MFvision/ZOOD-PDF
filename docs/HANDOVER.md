@@ -214,6 +214,27 @@ registry) and tells the host to listen. Input Monitoring matters on a Mac: witho
 with the right ⌘ reads as a tap. Tour version 4 re-shows the Ask chapter, whose first tab is
 now "Tap once: talk" with a pretend glowing screen. **Not tried on real Windows or a Mac.**
 
+## Ask ZOOD talks back, shows, explains and does (2026-10-21)
+The owner's go on the notch/Sentient OS doc (all four now). **Talk back**: answers are said in
+the Read aloud engines (`speech/engines.ts`: Mac AVSpeech through the host incl. Premium
+voices, Windows' own natural voices e.g. Kareem, Web Speech elsewhere), the voice and speed
+chosen in Read aloud (`ask/voice.ts`). Settings › Ask ZOOD › Talk back: When I speak (default)
+/ Always / Never; a tap of the key stops it. **Show me / Explain this / Do it for me**
+(`ask/guide.ts`, island phase `guide`, host `ask/guide.rs`): new decision acts `show`,
+`explain`, `do` (only with a model that sees). ZOOD's pointer (Point.tsx `GuidePointer`,
+class `ask-pointer`) flies out of the island to each step and stays; Show me waits for the
+person's click near the step (`ask_watch_clicks`, mouse button polled, 5 min max) or "I clicked
+it", then `ask_look_again` retakes the picture and the model gives the next step (max 8).
+Explain this asks for up to 6 parts in one look and walks them while speaking. Do it for me
+clicks (`ask_click`, enigo) **only when ZOOD PDF was in front** (`focus::is_ours`); elsewhere it
+points. It asks before a step or goal that sends/deletes/pays/signs (`risky`, EN+AR), and
+stops with `E_MOVED` when the person moved the mouse (Go on resumes). The island moves to the
+bottom (`ask_island_aside`) when a step is under it. Settings switch "Let Ask ZOOD click
+inside ZOOD PDF". Tour v5: Ask chapter tab "Show me and do it" plays all three on a pretend
+window; Help › "Ask ZOOD: Show Me, Explain and Do It" opens it. The quick-actions thread adds
+an `organize` act and a quick decider at the top of `respond` (separate files). **Not tried on
+real Windows or a Mac; coordinates depend on the vision model's accuracy.**
+
 ## Known open problems
 - **iPhone UI tests**: 6 of 55 failing at the last full run, each a test reaching for a
   control below the fold or a duplicate identifier (theme picker ×2, Protect's Remove, form
@@ -254,7 +275,7 @@ link, nothing deleted or overwritten (" (2)" instead), each move journalled to
 `tidy-undo.json` so **Undo** (button, or "undo") puts every file back and removes the folders it
 made. Folders must be inside the home folder and not the home folder itself. The decider is in
 Ask ZOOD's one-button setup and in Settings › AI › Ask ZOOD › Quick decider; without it asks go
-to the larger model as before. Tour version 5: a **Quick asks** chapter (`tour/quickAskScene.tsx`)
+to the larger model as before. Tour version 6: a **Quick asks** chapter (`tour/quickAskScene.tsx`)
 and Help › Quick asks and tidying. Tests: `quick.test.ts`, `decide.rs` and `tidy.rs` unit tests
 (apply and undo on a real folder), and an ignored real-model test (`real_model_picks_the_quick_actions`,
 see `docs/local-ai.md`). **Not tried on real Windows or a Mac** (the cloud CPU only).

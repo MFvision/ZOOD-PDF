@@ -18,7 +18,8 @@ describe('welcome tour', () => {
     expect(newSince(0, true)).toBe('welcome');
     expect(newSince(2, true)).toBe('ask');
     expect(newSince(3, true)).toBe('ask');
-    expect(newSince(4, true)).toBe('quickask');
+    expect(newSince(4, true)).toBe('ask');
+    expect(newSince(5, true)).toBe('quickask');
     expect(newSince(2, false)).toBe('welcome');
   });
 

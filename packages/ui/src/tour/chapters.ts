@@ -41,13 +41,14 @@ export function tourChapters(desktop: boolean, ask = false): Chapter[] {
 }
 
 /** The tour as it was last seen: a newer tour opens once more on its own, at what is new. */
-export const TOUR_VERSION = 5;
+export const TOUR_VERSION = 6;
 /**
  * Where a tour seen before opens, by the version it was seen at: Ask ZOOD
- * came in version 3, one tap to talk (with its setup) in version 4, and
- * quick asks with tidying in version 5.
+ * came in version 3, one tap to talk (with its setup) in version 4,
+ * Show me, Explain this and Do it for me in version 5, and quick asks
+ * with tidying in version 6.
  */
 export function newSince(version: number, ask: boolean): ChapterId {
   if (!ask || version < 2) return 'welcome';
-  return version >= 4 ? 'quickask' : 'ask';
+  return version >= 5 ? 'quickask' : 'ask';
 }

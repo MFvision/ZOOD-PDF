@@ -516,8 +516,9 @@
   margin-block-end: var(--space-3);
 }
 
+/* Four choices in a narrow panel: each takes the room its words need, the short ones less. */
 .ai-scope .segmented-item {
-  flex: 1 1 0;
+  flex: 1 1 auto;
   min-inline-size: 0;
   padding-inline: var(--space-2);
   font-size: var(--text-footnote);

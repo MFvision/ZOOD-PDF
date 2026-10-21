@@ -24,6 +24,7 @@ import {
   earModels,
   onMac,
   ONE_TAPS,
+  TALK_BACKS,
   oneTapDoes,
   readAskPreferences,
   TAP_KEYS,
@@ -184,6 +185,22 @@ export function AskSettings() {
           onChange={(glow) => update({ glow })}
         />
       )}
+      <Pick
+        label={t('ask.settings.talkBack')}
+        hint={t('ask.settings.talkBackHint', { tap: tapKey })}
+        value={prefs.talkBack}
+        options={TALK_BACKS.map((one) => ({
+          value: one,
+          label: t(`ask.settings.talkBack.${one}`),
+        }))}
+        onChange={(talkBack) => update({ talkBack })}
+      />
+      <Toggle
+        label={t('ask.settings.doForMe')}
+        hint={t('ask.settings.doForMeHint')}
+        checked={prefs.doForMe}
+        onChange={(doForMe) => update({ doForMe })}
+      />
       {access?.applies && prefs.enabled && (
         <>
           <h4 className="prefs-subhead">{t('ask.access.title')}</h4>
