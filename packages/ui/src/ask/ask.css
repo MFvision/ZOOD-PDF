@@ -309,7 +309,7 @@ html.ask-point-page body {
 }
 
 /* A double tap away from a conversation: what Ask ZOOD can do here. */
-.ask-ideas {
+.ask-idea-list {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -318,7 +318,7 @@ html.ask-point-page body {
   list-style: none;
 }
 
-.ask-ideas button {
+.ask-idea-list button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -332,11 +332,11 @@ html.ask-point-page body {
   cursor: pointer;
 }
 
-.ask-ideas button:hover {
+.ask-idea-list button:hover {
   background: rgb(174 139 102 / 28%);
 }
 
-.ask-ideas svg {
+.ask-idea-list svg {
   inline-size: 13px;
   block-size: 13px;
   color: #e6cfb1;

@@ -99,6 +99,18 @@ interface HostMoment {
   readable: boolean;
 }
 
+/** The host's moment, with what an older host or a voice question leaves out filled in. */
+function momentOf(raw: unknown): HostMoment {
+  const value = (raw ?? {}) as Partial<HostMoment>;
+  return {
+    files: Array.isArray(value.files) ? value.files : [],
+    screen: value.screen === true,
+    app: typeof value.app === 'string' ? value.app : '',
+    title: typeof value.title === 'string' ? value.title : '',
+    readable: value.readable === true,
+  };
+}
+
 type Phase =
   | { kind: 'idle' }
   | { kind: 'listening'; screen: boolean }
@@ -236,7 +248,8 @@ function Island() {
 
   /** The words of the window in front, for a model that does not see it. */
   const wordsOfWindow = (moment: HostMoment, brain: DeviceModel): Promise<string> => {
-    if (brain.sees || !moment.readable) return Promise.resolve('');
+    // A model that sees is shown the picture itself, when the host took one for it.
+    if ((brain.sees && moment.screen) || !moment.readable) return Promise.resolve('');
     windowText.current ??= readWindow().catch(() => '');
     return windowText.current;
   };
@@ -258,7 +271,7 @@ function Island() {
     asked += 1;
     const id = `ask-${Date.now()}-${asked}`;
     try {
-      const moment = (await invokeHost('ask_moment')) as HostMoment;
+      const moment = momentOf(await invokeHost('ask_moment'));
       const sees = Boolean(brain.sees) && moment.screen;
       if (!sees && !moment.readable)
         return setPhase({ kind: 'problem', message: 'ask.problem.screen' });
@@ -308,7 +321,7 @@ function Island() {
     asked += 1;
     const id = `ask-${Date.now()}-${asked}`;
     try {
-      const moment = (await invokeHost('ask_moment')) as HostMoment;
+      const moment = momentOf(await invokeHost('ask_moment'));
       const wallet = await loadWallet(t('wallet.me')).catch(() => null);
       const screen = moment.screen && Boolean(brain.sees);
       setPhase({ kind: 'thinking', words, screen });
@@ -664,7 +677,7 @@ function Island() {
             </p>
           )}
           {phase.draft.ideas.length > 0 && (
-            <ul className="ask-ideas">
+            <ul className="ask-idea-list">
               {phase.draft.ideas.map((idea) => (
                 <li key={idea}>
                   <button type="button" dir="auto" onClick={() => void respond(idea, false)}>

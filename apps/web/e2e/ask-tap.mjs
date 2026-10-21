@@ -42,6 +42,7 @@ function host(scenario) {
     g.fillRect(0, 0, 1100, 420);
     g.fillStyle = '#111111';
     g.font = '30px Arial, sans-serif';
+    g.direction = 'ltr';
     scenario.window.lines.forEach((line, k) => g.fillText(line, 40, 70 + k * 56));
     const blob = await canvas.convertToBlob({ type: 'image/png' });
     return await blob.arrayBuffer();
@@ -135,9 +136,9 @@ async function island(scenario) {
     ],
   });
   await page.evaluate(() => globalThis.__emit('ask://tap', { kind: 'draft', screen: true, app: 'Chrome', title: 'Lease agreement' }));
-  await expect(page.locator('.ask-ideas button')).toHaveCount(2, { timeout: 60_000 });
+  await expect(page.locator('.ask-idea-list button')).toHaveCount(2, { timeout: 60_000 });
   await shoot(page, '3-ideas-ar');
-  await page.locator('.ask-ideas button').first().click();
+  await page.locator('.ask-idea-list button').first().click();
   await expect(page.locator('.ask-text')).toHaveText('يدفع المستأجر الإيجار شهريًا.');
   await shoot(page, '4-summary-ar');
   const asks = await calls(page, 'ask_think');
