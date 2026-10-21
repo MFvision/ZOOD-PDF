@@ -1970,6 +1970,7 @@
   "readAloud.reading": "Reading page {page}…",
   "readAloud.done": "Finished reading.",
   "readAloud.noText": "There is no text to read here. A scanned page can be read after Scan & OCR.",
+  "readAloud.noSelection": "Select the text to read first, then press The selection.",
   "readAloud.noVoices": "The system has no voice for this text, or reading stopped. Install a voice in the system’s settings and try again.",
   "readAloud.unsupported": "This browser cannot read aloud (no speech synthesis).",
   "readAloud.moreVoices": "The voices are the system’s own, offline. More — Arabic ones too — can be added in the system’s speech settings.",
