@@ -19,48 +19,66 @@ struct DocumentView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(ViewSettingsKey.layout) private var layout: PageLayout = .continuous
     @AppStorage(ViewSettingsKey.night) private var night = false
-    @State private var search = DocumentSearch()
-    @State private var host = PDFViewHost()
-    @State private var thumbnails = PageThumbnailCache()
-    @State private var editor: AnnotationEditor?
-    @State private var edit: EditModel?
-    @State private var pagesModel: PagesModel?
-    @State private var editing = false
-    @State private var showingMarksSheet = false
-    @State private var pickingPicture = false
-    @State private var showingSearch = false
-    @State private var showingThumbnails = false
-    @State private var thumbnailsForMarkup = false
-    @State private var readerMode = false
-    @State private var markup = false
-    @State private var showingInfo = false
-    @State private var showingOutline = false
-    @State private var showingGoTo = false
-    @State private var showingPages = false
-    @State private var showingExport = false
-    @State private var showingProtect = false
-    @State private var showingCompare = false
-    @State private var showingSignatures = false
-    @State private var showingMarks = false
-    @State private var showingStamps = false
-    @State private var showingSignature = false
-    @State private var showingCrop = false
-    @State private var placingSignature: UIImage?
-    @State private var saveError: String?
-    @State private var pageText: String?
-    // On-device AI and read-aloud (AI/, Speech/): the assistant is made once
-    // the engine is known to be there; the reader lives as long as the view.
-    @State private var assistant: AIAssistant?
-    @State private var autofill: FormAutofillModel?
-    @State private var pendingAutofill: FormAutofillModel?
-    @State private var reader = ReadAloudController()
-    @State private var stampsAdded = 0
-    @State private var showingScanner = false
-    @State private var scanSaved: URL?
-    /// Redact and Prepare form (`DocumentTools`).
-    @State private var tools: DocumentTools?
+    /// What the screen has open, kept across a fold (`DocumentScreen`).
+    @State private var screen: DocumentScreen
+    /// How wide the screen is: the half of an unfolded iPhone Duo beside the
+    /// Library gets the phone's bars, not the inspectors.
+    @State private var width: CGFloat = 0
 
-    private var compact: Bool { sizeClass == .compact }
+    init(model: DocumentModel) {
+        _model = Bindable(wrappedValue: model)
+        _screen = State(initialValue: model.screen)
+    }
+
+    // The screen's state by its old names, so the view reads as before.
+    private var search: DocumentSearch { screen.search }
+    private var host: PDFViewHost { screen.host }
+    private var thumbnails: PageThumbnailCache { screen.thumbnails }
+    private var editor: AnnotationEditor? { get { screen.editor } nonmutating set { screen.editor = newValue } }
+    private var edit: EditModel? { get { screen.edit } nonmutating set { screen.edit = newValue } }
+    private var pagesModel: PagesModel? { get { screen.pagesModel } nonmutating set { screen.pagesModel = newValue } }
+    private var editing: Bool { get { screen.editing } nonmutating set { screen.editing = newValue } }
+    private var showingMarksSheet: Bool { get { screen.showingMarksSheet } nonmutating set { screen.showingMarksSheet = newValue } }
+    private var pickingPicture: Bool { get { screen.pickingPicture } nonmutating set { screen.pickingPicture = newValue } }
+    private var showingSearch: Bool { get { screen.showingSearch } nonmutating set { screen.showingSearch = newValue } }
+    private var showingThumbnails: Bool { get { screen.showingThumbnails } nonmutating set { screen.showingThumbnails = newValue } }
+    private var thumbnailsForMarkup: Bool { get { screen.thumbnailsForMarkup } nonmutating set { screen.thumbnailsForMarkup = newValue } }
+    private var readerMode: Bool { get { screen.readerMode } nonmutating set { screen.readerMode = newValue } }
+    private var markup: Bool { get { screen.markup } nonmutating set { screen.markup = newValue } }
+    private var showingInfo: Bool { get { screen.showingInfo } nonmutating set { screen.showingInfo = newValue } }
+    private var showingOutline: Bool { get { screen.showingOutline } nonmutating set { screen.showingOutline = newValue } }
+    private var showingGoTo: Bool { get { screen.showingGoTo } nonmutating set { screen.showingGoTo = newValue } }
+    private var showingPages: Bool { get { screen.showingPages } nonmutating set { screen.showingPages = newValue } }
+    private var showingExport: Bool { get { screen.showingExport } nonmutating set { screen.showingExport = newValue } }
+    private var showingProtect: Bool { get { screen.showingProtect } nonmutating set { screen.showingProtect = newValue } }
+    private var showingCompare: Bool { get { screen.showingCompare } nonmutating set { screen.showingCompare = newValue } }
+    private var showingSignatures: Bool { get { screen.showingSignatures } nonmutating set { screen.showingSignatures = newValue } }
+    private var showingMarks: Bool { get { screen.showingMarks } nonmutating set { screen.showingMarks = newValue } }
+    private var showingStamps: Bool { get { screen.showingStamps } nonmutating set { screen.showingStamps = newValue } }
+    private var showingSignature: Bool { get { screen.showingSignature } nonmutating set { screen.showingSignature = newValue } }
+    private var showingCrop: Bool { get { screen.showingCrop } nonmutating set { screen.showingCrop = newValue } }
+    private var placingSignature: UIImage? { get { screen.placingSignature } nonmutating set { screen.placingSignature = newValue } }
+    private var saveError: String? { get { screen.saveError } nonmutating set { screen.saveError = newValue } }
+    private var pageText: String? { get { screen.pageText } nonmutating set { screen.pageText = newValue } }
+    private var assistant: AIAssistant? { get { screen.assistant } nonmutating set { screen.assistant = newValue } }
+    private var autofill: FormAutofillModel? { get { screen.autofill } nonmutating set { screen.autofill = newValue } }
+    private var pendingAutofill: FormAutofillModel? { get { screen.pendingAutofill } nonmutating set { screen.pendingAutofill = newValue } }
+    private var reader: ReadAloudController { screen.reader }
+    private var stampsAdded: Int { get { screen.stampsAdded } nonmutating set { screen.stampsAdded = newValue } }
+    private var showingScanner: Bool { get { screen.showingScanner } nonmutating set { screen.showingScanner = newValue } }
+    private var scanSaved: URL? { get { screen.scanSaved } nonmutating set { screen.scanSaved = newValue } }
+    private var tools: DocumentTools? { get { screen.tools } nonmutating set { screen.tools = newValue } }
+
+    /// The phone's arrangement: a compact size class (iPhone, iPhone Duo
+    /// folded), or a pane too narrow for an inspector beside the pages (the
+    /// document on one half of an unfolded iPhone Duo, the Library on the other).
+    private var compact: Bool { sizeClass == .compact || (width > 0 && width < 520) }
+
+    /// The layout the pages are drawn in: Book (two pages side by side, one
+    /// each side of the fold) wants a wide screen, and is Continuous elsewhere.
+    private var shownLayout: PageLayout { layout == .book && compact ? .continuous : layout }
+
+    private var layouts: [PageLayout] { PageLayout.allCases.filter { $0 != .book || !compact } }
 
     // The screen in four parts — the stack of bars and pages, the chrome
     // round it, the sheets and the alerts — each its own expression. Swift 6
@@ -242,50 +260,54 @@ struct DocumentView: View {
                 }
             }
             .animation(Motion.travel(reduceMotion: reduceMotion), value: reader.isActive)
-            .onDisappear { reader.stop() }
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+            // Read aloud stops when the document leaves the screen — not when
+            // a fold puts it on the other screen (`DocumentScreen`).
+            .onAppear { screen.appeared() }
+            .onDisappear { screen.disappeared() }
     }
 
     /// Everything the screen puts over itself.
     private func sheets(on view: some View) -> some View {
         view
-        .sheet(isPresented: $showingInfo) {
+        .sheet(isPresented: $screen.showingInfo) {
             DocumentInfoSheet(model: model)
         }
-        .sheet(isPresented: $showingOutline) {
+        .sheet(isPresented: $screen.showingOutline) {
             OutlineSheet(model: model)
         }
-        .sheet(isPresented: $showingGoTo) {
+        .sheet(isPresented: $screen.showingGoTo) {
             GoToPageSheet(model: model)
         }
-        .sheet(isPresented: $showingPages) {
+        .sheet(isPresented: $screen.showingPages) {
             if let pagesModel {
                 PagesGridView(pages: pagesModel, cache: thumbnails)
             }
         }
-        .sheet(isPresented: $showingExport) {
+        .sheet(isPresented: $screen.showingExport) {
             ExportSheet(model: model)
         }
-        .sheet(isPresented: $showingProtect) {
+        .sheet(isPresented: $screen.showingProtect) {
             ProtectSheet(model: model, undoManager: undoManager)
         }
-        .fullScreenCover(isPresented: $showingCompare) {
+        .fullScreenCover(isPresented: $screen.showingCompare) {
             CompareView(model: model)
                 .appEnvironment()
         }
-        .sheet(isPresented: $showingSignatures) {
+        .sheet(isPresented: $screen.showingSignatures) {
             SignaturesSheet(model: model, undoManager: undoManager)
         }
-        .sheet(isPresented: $showingMarks) {
+        .sheet(isPresented: $screen.showingMarks) {
             if let editor {
                 AnnotationsListSheet(model: model, editor: editor)
             }
         }
-        .sheet(isPresented: $showingCrop) {
+        .sheet(isPresented: $screen.showingCrop) {
             if let pagesModel {
                 CropSheet(pages: pagesModel, cache: thumbnails, page: model.currentPage)
             }
         }
-        .sheet(isPresented: $showingMarksSheet) {
+        .sheet(isPresented: $screen.showingMarksSheet) {
             PageMarksSheet(model: model, undoManager: undoManager)
         }
         .sheet(item: Binding(get: { edit?.draftLink }, set: { edit?.draftLink = $0 })) { draft in
@@ -294,15 +316,15 @@ struct DocumentView: View {
             }
         }
         // The picture a new one is placed from, or a picked one replaced with.
-        .fileImporter(isPresented: $pickingPicture, allowedContentTypes: [.image]) { result in
+        .fileImporter(isPresented: $screen.pickingPicture, allowedContentTypes: [.image]) { result in
             choosePicture(result)
         }
-        .sheet(isPresented: $showingStamps) {
+        .sheet(isPresented: $screen.showingStamps) {
             StampSheet(model: model, undoManager: undoManager) {
                 stampsAdded += 1
             }
         }
-        .sheet(isPresented: $showingSignature) {
+        .sheet(isPresented: $screen.showingSignature) {
             SignatureSheet(store: SignatureStore()) { image in
                 editor?.tool = nil
                 reader.stop()
@@ -315,7 +337,7 @@ struct DocumentView: View {
             }
         }
         // On-device AI: the assistant, then the autofill proposals to review.
-        .sheet(item: $assistant, onDismiss: {
+        .sheet(item: $screen.assistant, onDismiss: {
             // Autofill's review comes up once the AI sheet has gone: one
             // sheet cannot be shown while another is still leaving.
             if let pending = pendingAutofill {
@@ -329,11 +351,11 @@ struct DocumentView: View {
                 self.assistant = nil
             }
         }
-        .sheet(item: $autofill) { autofill in
+        .sheet(item: $screen.autofill) { autofill in
             AutofillReviewSheet(autofill: autofill)
         }
         // A document opened from a picture: the scanner enhances and reads it.
-        .fullScreenCover(isPresented: $showingScanner) {
+        .fullScreenCover(isPresented: $screen.showingScanner) {
             if let image = model.sourceImage {
                 ScanView(images: [image]) { url in
                     scanSaved = url
@@ -431,7 +453,7 @@ struct DocumentView: View {
             if readerMode {
                 ReaderModeView(model: model)
             } else if let pdf = model.pdf {
-                PDFKitView(document: pdf, displaysRTL: model.isRightToLeft, layout: layout, night: night,
+                PDFKitView(document: pdf, displaysRTL: model.isRightToLeft, layout: shownLayout, night: night,
                            editor: editor, tool: editor?.tool, inkSignature: editor?.inkSignature ?? "",
                            edit: editing ? edit : nil, editSignature: editing ? (edit?.signature ?? "") : "",
                            redact: tools?.redacting == true ? tools?.redact : nil,
@@ -572,15 +594,15 @@ struct DocumentView: View {
     private var moreMenu: some View {
         Menu {
             Picker("Layout", selection: $layout) {
-                ForEach(PageLayout.allCases) { item in
+                ForEach(layouts) { item in
                     Label(item.title, systemImage: item.symbol).tag(item)
                 }
             }
             .pickerStyle(.inline)
             Toggle("Night mode", systemImage: "moon", isOn: $night)
-            Toggle("Reader mode", systemImage: "doc.plaintext", isOn: $readerMode)
+            Toggle("Reader mode", systemImage: "doc.plaintext", isOn: $screen.readerMode)
             if compact {
-                Toggle("Thumbnails", systemImage: "rectangle.grid.1x2", isOn: $showingThumbnails)
+                Toggle("Thumbnails", systemImage: "rectangle.grid.1x2", isOn: $screen.showingThumbnails)
             }
             Divider()
             Button("Outline", systemImage: "list.bullet.indent") { showingOutline = true }

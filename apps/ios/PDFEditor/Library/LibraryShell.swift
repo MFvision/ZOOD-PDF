@@ -72,6 +72,14 @@ enum LibraryTool: String, CaseIterable, Identifiable {
 /// The Library: a three-column split view on iPad (sections and tools, the
 /// section, the document), a stack on iPhone with Home at its root. Which
 /// section and which document are on screen come back with the scene.
+///
+/// On a screen with room for two panes but not three — iPhone Duo unfolded
+/// (about 626 by 890 points), an iPad in portrait or in a narrow window — it
+/// is a book: the section on one half and the document on the other, the
+/// fold between them, the sections in a sidebar over the left. A document
+/// opened there takes the whole screen; the split view's button brings the
+/// Library back beside it. Folding the phone moves the same document, with
+/// whatever it had open, onto the outer screen's stack (`DocumentScreen`).
 struct LibraryShell: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.scenePhase) private var scenePhase
@@ -81,6 +89,8 @@ struct LibraryShell: View {
     @SceneStorage("library.section") private var sectionID = LibrarySection.home.rawValue
     @SceneStorage("library.document") private var restoredBookmark: String?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    /// The window's width, for the two-pane book layout (`bookWidth`).
+    @State private var width: CGFloat = 0
     @State private var showingSettings = false
     @State private var showingImporter = false
     @State private var showingCombiner = false
@@ -136,6 +146,12 @@ struct LibraryShell: View {
         )
     }
 
+    /// Room for two panes, not three: below this the three columns would
+    /// leave the pages a strip.
+    static let bookBreakpoint: CGFloat = 900
+
+    private var bookWidth: Bool { width > 0 && width < Self.bookBreakpoint }
+
     var body: some View {
         Group {
             if sizeClass == .compact {
@@ -144,6 +160,7 @@ struct LibraryShell: View {
                 regular
             }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .overlay {
             if lock.state != .unlocked {
                 LockScreen(lock: lock)
@@ -303,6 +320,8 @@ struct LibraryShell: View {
                 content(for: section)
                     .navigationTitle(section.title)
             }
+            // A book: the section takes the half up to the fold.
+            .modifier(BookColumn(width: bookWidth ? width / 2 : nil))
         } detail: {
             if let opened = library.opened {
                 DocumentView(model: opened)
@@ -315,6 +334,24 @@ struct LibraryShell: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
+        .onChange(of: library.opened?.id) {
+            arrangeBook()
+        }
+        .onChange(of: bookWidth, initial: true) { wasBook, isBook in
+            if isBook {
+                arrangeBook()
+            } else if wasBook {
+                columnVisibility = .all
+            }
+        }
+    }
+
+    /// On a book-width screen a document opened takes the whole screen and
+    /// the Library comes back when it is closed. Wider screens keep their
+    /// columns as the person left them.
+    private func arrangeBook() {
+        guard bookWidth else { return }
+        columnVisibility = library.opened != nil ? .detailOnly : .doubleColumn
     }
 
     private func run(_ tool: LibraryTool) {
@@ -681,6 +718,21 @@ extension View {
             draggable(reference)
         } else {
             self
+        }
+    }
+}
+
+/// The section's column on a book-width screen: half the window, so the
+/// split falls on iPhone Duo's fold. Elsewhere the split view's own widths.
+private struct BookColumn: ViewModifier {
+    let width: CGFloat?
+
+    func body(content: Content) -> some View {
+        if let width {
+            let half = max(width, 280)
+            content.navigationSplitViewColumnWidth(min: 280, ideal: half, max: half)
+        } else {
+            content
         }
     }
 }

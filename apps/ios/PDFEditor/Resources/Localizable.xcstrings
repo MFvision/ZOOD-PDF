@@ -5657,6 +5657,16 @@
         }
       }
     },
+    "Two pages": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صفحتان متقابلتان"
+          }
+        }
+      }
+    },
     "Size": {
       "localizations": {
         "ar": {
