@@ -1,6 +1,9 @@
 import { schemaToGrammar } from '../ai/device/grammar';
 import { ALL_TARGETS, TARGET_WORDS, valueOf } from '../ai/profile/wallet';
 import type { Target, WalletProfile } from '../ai/profile/wallet';
+import { documentLines, fitWindowText, styleLines } from './draft';
+import type { DocumentLine } from './draft';
+import type { WritingStyle } from './style';
 
 /**
  * What Ask ZOOD decides, and how the model is asked for it.
@@ -59,7 +62,7 @@ const TOOL_WORDS: Record<AskTool, string> = {
   topdf: 'make a PDF of pictures or Office files',
 };
 
-export type Act = 'answer' | 'tool' | 'find' | 'fill' | 'point';
+export type Act = 'answer' | 'tool' | 'find' | 'fill' | 'point' | 'write';
 
 export interface Decision {
   /** What is said aloud and shown: one or two short sentences. */
@@ -75,6 +78,8 @@ export interface Decision {
   /** Where to click, in thousandths of the screen. */
   x: number;
   y: number;
+  /** What is written where the cursor is. */
+  text: string;
 }
 
 /** What the model is told about the moment it is asked in. */
@@ -84,23 +89,33 @@ export interface Moment {
   /** A picture of the screen goes with the question. */
   screen: boolean;
   profiles: readonly WalletProfile[];
+  /** The window the person was in, after a tap: its words when the model does not see it. */
+  window?: { app: string; title: string; text: string } | null;
+  /** How the person writes, for what is written for them. */
+  style?: WritingStyle;
+  /** Lines from their Library about the request. */
+  documents?: readonly DocumentLine[];
 }
 
 /** The details a profile has a value for: all the model may choose from. */
 export function filledTargets(profile: WalletProfile | undefined): Target[] {
   if (!profile) return [];
   const known: Target[] = ALL_TARGETS.filter((target) => valueOf(profile, target) !== '');
-  for (const custom of profile.custom) if (custom.value.trim() && custom.label.trim()) known.push(`custom.${custom.label}`);
+  for (const custom of profile.custom)
+    if (custom.value.trim() && custom.label.trim()) known.push(`custom.${custom.label}`);
   return known;
 }
 
 function acts(moment: Moment): Act[] {
-  return moment.screen ? ['answer', 'tool', 'find', 'fill', 'point'] : ['answer', 'tool', 'find', 'fill'];
+  return moment.screen
+    ? ['answer', 'write', 'tool', 'find', 'fill', 'point']
+    : ['answer', 'write', 'tool', 'find', 'fill'];
 }
 
 function targetsOf(moment: Moment): Target[] {
   const all = new Set<Target>();
-  for (const profile of moment.profiles) for (const target of filledTargets(profile)) all.add(target);
+  for (const profile of moment.profiles)
+    for (const target of filledTargets(profile)) all.add(target);
   return [...all];
 }
 
@@ -121,12 +136,15 @@ export function decisionGrammar(moment: Moment): string {
     properties.x = { type: 'integer' };
     properties.y = { type: 'integer' };
   }
+  properties.text = { type: 'string' };
   return schemaToGrammar({ type: 'object', properties, required: Object.keys(properties) });
 }
 
 /** The instructions the model is given, in English: the reply follows the person's language. */
 export function systemPrompt(moment: Moment): string {
-  const files = moment.files.length ? moment.files.map((name) => `- ${name}`).join('\n') : '(no files are selected)';
+  const files = moment.files.length
+    ? moment.files.map((name) => `- ${name}`).join('\n')
+    : '(no files are selected)';
   const tools = ASK_TOOLS.map((tool) => `- ${tool}: ${TOOL_WORDS[tool]}`).join('\n');
   const details = targetsOf(moment)
     .map((target) => {
@@ -136,18 +154,21 @@ export function systemPrompt(moment: Moment): string {
     .join('\n');
   const profiles = moment.profiles.map((profile) => profile.name).join(', ');
   const lines = [
-    'You are Ask ZOOD, the assistant of ZOOD PDF, running on the person\'s own computer. The person held a key and spoke; you get their words as text (it may have small mistakes). Decide one action and a short reply.',
+    "You are Ask ZOOD, the assistant of ZOOD PDF, running on the person's own computer. The person spoke or typed a request; you get their words as text (spoken words may have small mistakes). Decide one action and a short reply.",
     '',
     'Actions:',
+    '- "write": write text for the person where their cursor is — a reply, an email, a message, an answer in a form — when they ask you to write, reply, answer or draft something. Put the whole text in "text", written as them, in the language they asked in unless they asked for another. It is pasted for them to read and send themselves.',
     '- "tool": run a ZOOD quick tool on the selected files. Only when files are selected. Put the tool in "tool".',
     '- "find": find a document in the person\'s Library. Put the words to search for in "query", in the language the document is likely written in.',
     '- "fill": type the person\'s saved details where their cursor is, in order, pressing Tab between them. Put the details in "fields" and the profile in "profile".',
   ];
   if (moment.screen) {
-    lines.push('- "point": show the person where to click next on the screen in the picture. Put the place in "x" and "y", in thousandths of the picture\'s width and height (0 to 1000).');
+    lines.push(
+      '- "point": show the person where to click next on the screen in the picture. Put the place in "x" and "y", in thousandths of the picture\'s width and height (0 to 1000).',
+    );
   }
   lines.push(
-    '- "answer": only answer: a question about ZOOD PDF or about the screen, or anything that fits no action.',
+    '- "answer": only answer: a question about ZOOD PDF or about the screen, a summary or a translation they want to read, or anything that fits no action. A longer answer (a summary, a translation) goes in "text", and "say" says what it is.',
     '',
     'Selected files:',
     files,
@@ -160,7 +181,23 @@ export function systemPrompt(moment: Moment): string {
     '',
     'ZOOD PDF can also: edit PDF text, fill and sign forms, read aloud, compare two PDFs, redact, translate with the on-device AI, search the Library, and be used from a phone as a remote.',
     '',
-    'Rules: reply in the language the person spoke (Arabic or English), in one or two short sentences that sound natural read aloud. Never make up file names, values or places. When the request needs something that is missing (no files selected, a detail not saved), use "answer" and say what is needed. Fill unused fields with "none", "", [] or 0.',
+  );
+  if (moment.window) {
+    const where = [moment.window.app, moment.window.title].filter(Boolean).join(' — ');
+    lines.push(`The person was working in: ${where || 'an app'}.`);
+    if (moment.window.text)
+      lines.push(
+        'Its text, read from the screen (may have small reading mistakes):',
+        '<window>',
+        fitWindowText(moment.window.text, 2400),
+        '</window>',
+      );
+    lines.push('');
+  }
+  if (moment.style) lines.push(...styleLines(moment.style));
+  if (moment.documents) lines.push(...documentLines(moment.documents));
+  lines.push(
+    'Rules: reply in the language the person spoke (Arabic or English), in one or two short sentences that sound natural read aloud. Never make up file names, values or places. When the request needs something that is missing (no files selected, a detail not saved), use "answer" and say what is needed. Never invent facts, numbers or dates for "write": leave an unknown detail in square brackets, like [date]. Fill unused fields with "none", "", [] or 0.',
   );
   return lines.join('\n');
 }
@@ -179,22 +216,44 @@ export function readDecision(text: string, moment: Moment): Decision | null {
   }
   const say = typeof raw.say === 'string' ? raw.say.trim().slice(0, 400) : '';
   let act: Act = acts(moment).includes(raw.act as Act) ? (raw.act as Act) : 'answer';
-  const tool = typeof raw.tool === 'string' && TOOL_SET.has(raw.tool) ? (raw.tool as AskTool) : null;
+  const tool =
+    typeof raw.tool === 'string' && TOOL_SET.has(raw.tool) ? (raw.tool as AskTool) : null;
   const query = typeof raw.query === 'string' ? raw.query.trim().slice(0, 200) : '';
   const profile = moment.profiles.find((one) => one.name === raw.profile) ?? moment.profiles[0];
   const allowed = new Set(filledTargets(profile));
-  const fields = Array.isArray(raw.fields) ? (raw.fields.filter((field) => typeof field === 'string' && allowed.has(field as Target)) as Target[]).slice(0, 20) : [];
-  const coordinate = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? Math.min(1000, Math.max(0, Math.round(value))) : -1);
+  const fields = Array.isArray(raw.fields)
+    ? (
+        raw.fields.filter(
+          (field) => typeof field === 'string' && allowed.has(field as Target),
+        ) as Target[]
+      ).slice(0, 20)
+    : [];
+  const coordinate = (value: unknown) =>
+    typeof value === 'number' && Number.isFinite(value)
+      ? Math.min(1000, Math.max(0, Math.round(value)))
+      : -1;
   const x = coordinate(raw.x);
   const y = coordinate(raw.y);
+  const written = typeof raw.text === 'string' ? raw.text.trim().slice(0, 8000) : '';
 
   // What cannot be done is not done: it is said instead.
   if (act === 'tool' && (!tool || moment.files.length === 0)) act = 'answer';
   if (act === 'find' && !query) act = 'answer';
   if (act === 'fill' && fields.length === 0) act = 'answer';
   if (act === 'point' && (x < 0 || y < 0 || !moment.screen)) act = 'answer';
-  if (!say && act === 'answer') return null;
-  return { say, act, tool: act === 'tool' ? tool : null, query, fields: act === 'fill' ? fields : [], profile: profile?.name ?? '', x, y };
+  if (act === 'write' && !written) act = 'answer';
+  if (!say && !written && act === 'answer') return null;
+  return {
+    say,
+    act,
+    tool: act === 'tool' ? tool : null,
+    query,
+    fields: act === 'fill' ? fields : [],
+    profile: profile?.name ?? '',
+    x,
+    y,
+    text: act === 'write' || act === 'answer' ? written : '',
+  };
 }
 
 /**

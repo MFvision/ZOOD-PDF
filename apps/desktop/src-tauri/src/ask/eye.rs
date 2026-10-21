@@ -18,6 +18,9 @@ pub struct Screen {
     /// The monitor: its top-left and size, in the units the system placed
     /// it in (pixels on Windows, points on a Mac).
     pub monitor: Area,
+    /// The window the picture is of, in the same units, when it is not the
+    /// whole screen.
+    pub window: Option<Area>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -28,14 +31,23 @@ pub struct Area {
     pub height: f64,
 }
 
+/// The longest side of the picture read for its words (`ask_window_png`),
+/// when the chosen model reads text only: sharp enough for the recogniser.
+pub const READ_SIDE: u32 = 2400;
+
 /// RGBA pixels made at most `MAX_SIDE` on their longest side, as RGB. Each
 /// new pixel is the average of the ones it covers, so text stays readable.
 pub fn shrink(width: u32, height: u32, rgba: &[u8]) -> (u32, u32, Vec<u8>) {
+    shrink_to(width, height, rgba, MAX_SIDE)
+}
+
+/// [`shrink`] to at most `side` on the longest side.
+pub fn shrink_to(width: u32, height: u32, rgba: &[u8], side: u32) -> (u32, u32, Vec<u8>) {
     let longest = width.max(height).max(1);
-    let (w, h) = if longest <= MAX_SIDE {
+    let (w, h) = if longest <= side {
         (width, height)
     } else {
-        let scale = f64::from(MAX_SIDE) / f64::from(longest);
+        let scale = f64::from(side) / f64::from(longest);
         (
             ((f64::from(width) * scale).round() as u32).max(1),
             ((f64::from(height) * scale).round() as u32).max(1),
@@ -67,6 +79,21 @@ pub fn shrink(width: u32, height: u32, rgba: &[u8]) -> (u32, u32, Vec<u8>) {
         }
     }
     (w, h, rgb)
+}
+
+/// A point at `fx`, `fy` (0..1) of a window's picture, as 0..1 of the
+/// screen it is on, kept on that screen.
+pub fn on_monitor(fx: f64, fy: f64, window: Area, monitor: Area) -> (f64, f64) {
+    let across = |f: f64, start: f64, size: f64, m_start: f64, m_size: f64| {
+        if m_size <= 0.0 {
+            return f;
+        }
+        ((start - m_start + f * size) / m_size).clamp(0.0, 1.0)
+    };
+    (
+        across(fx, window.x, window.width, monitor.x, monitor.width),
+        across(fy, window.y, window.height, monitor.y, monitor.height),
+    )
 }
 
 /// Where a point the model gave — thousandths of the picture across and
@@ -110,7 +137,96 @@ pub fn capture() -> Result<Screen, String> {
         height,
         rgb,
         monitor: area,
+        window: None,
     })
+}
+
+/// The window the person is working in, for a tap: its app and title, the
+/// picture the model is shown, and a sharper one to read the words from.
+#[derive(Clone, Debug)]
+pub struct Front {
+    pub app: String,
+    pub title: String,
+    pub screen: Screen,
+    /// RGB at most [`READ_SIDE`] on its longest side.
+    pub sharp: (u32, u32, Vec<u8>),
+}
+
+/// The focused window, or the screen under the pointer when no window says
+/// it is focused (a Mac's full-screen app, a desktop with nothing open).
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+pub fn capture_front() -> Result<Front, String> {
+    let focused = xcap::Window::all().ok().and_then(|all| {
+        all.into_iter().find(|w| {
+            w.is_focused().unwrap_or(false)
+                && !w.is_minimized().unwrap_or(true)
+                && w.width().unwrap_or(0) > 80
+                && w.height().unwrap_or(0) > 60
+                // ZOOD's own island and pointer are never what is asked about.
+                && w.pid().ok() != Some(std::process::id())
+        })
+    });
+    let Some(window) = focused else {
+        let screen = capture()?;
+        let sharp = (screen.width, screen.height, screen.rgb.clone());
+        return Ok(Front {
+            app: String::new(),
+            title: String::new(),
+            screen,
+            sharp,
+        });
+    };
+    let error = |e: xcap::XCapError| format!("E_SCREEN: {e}");
+    let monitor = window.current_monitor().map_err(error)?;
+    let area = Area {
+        x: f64::from(monitor.x().map_err(error)?),
+        y: f64::from(monitor.y().map_err(error)?),
+        width: f64::from(monitor.width().map_err(error)?),
+        height: f64::from(monitor.height().map_err(error)?),
+    };
+    let place = Area {
+        x: f64::from(window.x().map_err(error)?),
+        y: f64::from(window.y().map_err(error)?),
+        width: f64::from(window.width().map_err(error)?),
+        height: f64::from(window.height().map_err(error)?),
+    };
+    let image = window.capture_image().map_err(error)?;
+    let (width, height) = (image.width(), image.height());
+    let (w, h, rgb) = shrink(width, height, image.as_raw());
+    Ok(Front {
+        app: window.app_name().unwrap_or_default(),
+        title: window.title().unwrap_or_default(),
+        screen: Screen {
+            width: w,
+            height: h,
+            rgb,
+            monitor: area,
+            window: Some(place),
+        },
+        sharp: shrink_to(width, height, image.as_raw(), READ_SIDE),
+    })
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+pub fn capture_front() -> Result<Front, String> {
+    Err("E_SCREEN: Ask ZOOD sees the screen on Windows and macOS".to_string())
+}
+
+/// RGB pixels as a PNG, for the island's recogniser.
+pub fn png_of(width: u32, height: u32, rgb: &[u8]) -> Option<Vec<u8>> {
+    if width == 0 || height == 0 || rgb.len() != (width * height * 3) as usize {
+        return None;
+    }
+    let mut out = Vec::new();
+    {
+        let mut encoder = png::Encoder::new(&mut out, width, height);
+        encoder.set_color(png::ColorType::Rgb);
+        encoder.set_depth(png::BitDepth::Eight);
+        encoder.set_compression(png::Compression::Fast);
+        let mut writer = encoder.write_header().ok()?;
+        writer.write_image_data(rgb).ok()?;
+    }
+    Some(out)
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
@@ -163,6 +279,35 @@ mod tests {
         assert_eq!(rgb.len(), (1280 * 720 * 3) as usize);
         assert_eq!(&rgb[..3], &[255, 255, 255]);
         assert_eq!(&rgb[3..6], &[100, 100, 100]);
+    }
+
+    #[test]
+    fn a_window_is_read_sharper_than_it_is_shown() {
+        let (w, h) = (3000u32, 1500u32);
+        let rgba = vec![200u8; (w * h * 4) as usize];
+        assert_eq!(shrink_to(w, h, &rgba, READ_SIDE).0, READ_SIDE);
+        assert_eq!(shrink(w, h, &rgba).0, MAX_SIDE);
+        let png = png_of(2, 1, &[1, 2, 3, 4, 5, 6]).unwrap();
+        assert!(png.starts_with(b"\x89PNG"));
+        assert!(png_of(2, 2, &[0; 3]).is_none());
+    }
+
+    #[test]
+    fn a_point_in_a_window_is_placed_on_its_screen() {
+        let monitor = Area {
+            x: 1920.0,
+            y: 0.0,
+            width: 1920.0,
+            height: 1080.0,
+        };
+        let window = Area {
+            x: 2400.0,
+            y: 100.0,
+            width: 960.0,
+            height: 540.0,
+        };
+        assert_eq!(on_monitor(0.5, 0.5, window, monitor), (0.5, 370.0 / 1080.0));
+        assert_eq!(on_monitor(1.0, 1.0, window, monitor).0, 0.75);
     }
 
     #[test]

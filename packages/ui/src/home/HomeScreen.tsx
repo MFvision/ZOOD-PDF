@@ -10,6 +10,7 @@ import { ToolCards } from '../tools/ToolCards';
 import { ToolGallery } from '../tools/ToolGallery';
 import { Popover } from '../components/Popover';
 import { AiCard } from './AiCard';
+import { TodayCard } from '../ask/TodayCard';
 import { RemoteHomeButton } from '../remote/RemoteLayer';
 import { HeroCards } from './HeroCards';
 import { HomeSearch } from './HomeSearch';
@@ -94,6 +95,8 @@ export function HomeScreen() {
             {shown === 'home' && (
               <>
                 <Greeting />
+                {/* Deadlines found in the Library's documents; nothing when there are none. */}
+                <TodayCard index={index} />
                 {/* Settings › Home screen: the sections shown, in the person's order. */}
                 {settings.homeSections
                   .filter((section) => !settings.hiddenHomeSections.includes(section))

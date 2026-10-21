@@ -243,6 +243,117 @@ html.ask-point-page body {
   text-overflow: ellipsis;
 }
 
+/* A request typed after one tap of the tap key. */
+.ask-type {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-block-start: 10px;
+}
+
+.ask-type textarea {
+  flex: 1;
+  box-sizing: border-box;
+  min-block-size: 44px;
+  max-block-size: 160px;
+  padding: 9px 12px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 14px;
+  color: var(--ask-ink);
+  background: rgb(255 255 255 / 6%);
+  font: inherit;
+  resize: none;
+  outline: none;
+}
+
+.ask-type textarea:focus {
+  border-color: var(--ask-bronze);
+  box-shadow: 0 0 0 3px rgb(174 139 102 / 30%);
+}
+
+.ask-type textarea::placeholder {
+  color: var(--ask-muted);
+}
+
+.ask-send {
+  display: grid;
+  place-items: center;
+  inline-size: 38px;
+  block-size: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #1a1714;
+  background: linear-gradient(180deg, #e6cfb1, var(--ask-bronze));
+  cursor: pointer;
+}
+
+.ask-send:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ask-send svg,
+.ask-cancel svg {
+  inline-size: 15px;
+  block-size: 15px;
+}
+
+/* A longer answer (a summary, a translation) to read, copy or put at the cursor. */
+.ask-text {
+  max-block-size: 260px;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 14px;
+}
+
+/* A double tap away from a conversation: what Ask ZOOD can do here. */
+.ask-ideas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-ideas button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid rgb(174 139 102 / 45%);
+  border-radius: 999px;
+  color: var(--ask-ink);
+  background: rgb(174 139 102 / 14%);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ask-ideas button:hover {
+  background: rgb(174 139 102 / 28%);
+}
+
+.ask-ideas svg {
+  inline-size: 13px;
+  block-size: 13px;
+  color: #e6cfb1;
+}
+
+/* Drafting: the light gathers while the reply is written. */
+.ask-drafting .ask-orb,
+.ask-reading .ask-orb {
+  animation: ask-gather 1.2s ease-in-out infinite;
+}
+
+@keyframes ask-gather {
+  50% {
+    box-shadow: 0 0 22px 6px rgb(214 178 135 / 70%);
+  }
+}
+
 /* ------------------------------------------------------------ pointer */
 
 .ask-point {
@@ -322,6 +433,8 @@ html.ask-point-page body {
 @media (prefers-reduced-motion: reduce) {
   .ask-island,
   .ask-listening .ask-orb,
+  .ask-drafting .ask-orb,
+  .ask-reading .ask-orb,
   .ask-point-ring {
     animation: none;
   }

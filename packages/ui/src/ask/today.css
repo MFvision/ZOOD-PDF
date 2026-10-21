@@ -1,0 +1,83 @@
+/* Coming up (TodayCard.tsx): deadlines found in the Library, on the home screen. */
+.today .home-section-header h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.today .home-note {
+  margin-block: 0 var(--space-3);
+}
+
+.today-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.today-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--separator, transparent);
+  border-radius: var(--radius-8, 10px);
+  background: var(--control-background);
+}
+
+.today-open {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 20px minmax(90px, auto) 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 2px var(--space-3);
+  min-inline-size: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.today-open > svg {
+  grid-row: span 2;
+  color: var(--accent);
+}
+
+.today-when {
+  display: grid;
+  grid-row: span 2;
+  font-weight: 600;
+}
+
+.today-when small {
+  color: var(--secondary-label);
+  font-weight: 400;
+}
+
+.today-item.is-late .today-when {
+  color: var(--red, #c0392b);
+}
+
+.today-name {
+  overflow: hidden;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.today-line {
+  overflow: hidden;
+  color: var(--secondary-label);
+  font-size: var(--text-footnote, 12px);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.today-dismiss {
+  margin-inline-end: var(--space-2);
+}
