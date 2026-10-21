@@ -146,6 +146,20 @@ regular size class both ways. The app adapts by size and width, not by device:
   `ArrangementView`); they need Xcode 27.1, and the layouts above work without them.
 - Not tried on a real Duo or its simulator.
 
+## Welcome tour and app motion (2026-10-21)
+The owner found the old tour boring and two-coloured and wanted it to train people. Desktop
+and web: `tour/` is now a large sheet with chapters down the side (`chapters.ts`; scenes in
+`scenes.tsx`): language, look and light/dark chosen in it, the website's film
+(`public/film/`, WebM then MP4; the web's service worker never keeps the MP4s), an animated
+"open and edit" window, a right-click demo and a ring **practice area** (Ctrl/Shift or
+Option/Command + drag a sample file, same geometry as the real ring), the real phone-remote
+QR (`RemotePanel`), the AI and read aloud, and a finish list. Desktop shows it once more to
+people who saw the old one (`warraq.tour` version 2). `styles/motion.css` adds press, hover,
+screen/panel/tab entrances, busy sheen and the sidebar mark's sheen; `components/ZoodMark.tsx`
+is the brand mark with a loop. Everything stops under Reduce Motion (system or Settings).
+iOS: six tour screens (a Make it yours screen and a phone-remote screen) with motion,
+**written without an iOS compiler** — run `scripts/ios/build.sh` before TestFlight.
+
 ## After that
 As he chooses, from the study's top ten (sizes there are PdfCraft's formula and run
 high; our desktop jobs took 1–1.5 h of real time each): large-format printing (A0/A1 at true

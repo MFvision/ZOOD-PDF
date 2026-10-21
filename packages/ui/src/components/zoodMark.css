@@ -1,0 +1,54 @@
+/* ZOOD's mark (ZoodMark.tsx): its strokes rise in one by one, then a sheen crosses them. */
+.zood-mark {
+  display: block;
+  overflow: visible;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .zood-mark-loop .zood-mark-stroke {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: zood-mark-rise 6s var(--ease-out) infinite both;
+    animation-delay: calc(var(--i) * 90ms);
+  }
+
+  .zood-mark-loop .zood-mark-shine {
+    animation: zood-mark-shine 6s var(--ease-in-out, ease-in-out) infinite;
+  }
+}
+
+@keyframes zood-mark-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(14%) scale(0.96);
+  }
+
+  12%,
+  88% {
+    opacity: 1;
+    transform: none;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-6%);
+  }
+}
+
+@keyframes zood-mark-shine {
+  0%,
+  22% {
+    transform: translateX(0);
+  }
+
+  50%,
+  100% {
+    transform: translateX(1040px);
+  }
+}
+
+/* Reduce Motion asked for in the app: still, not frozen on a faded frame. */
+html[data-reduce-motion="on"] .zood-mark-stroke,
+html[data-reduce-motion="on"] .zood-mark-shine {
+  animation: none !important;
+}

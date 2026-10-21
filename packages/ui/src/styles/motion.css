@@ -1,0 +1,400 @@
+/*
+ * Motion across the app, in one place so it reads as one system: a press
+ * answers the finger at once, a hover lifts what can be clicked and wakes
+ * its icon, screens and panels come in from where they live, work that is
+ * running shimmers, and ZOOD's mark catches the light now and then. Short,
+ * springy and never in the way (tokens.css's durations and curves).
+ *
+ * All of it is under prefers-reduced-motion: no-preference; the app's own
+ * Reduce motion (appearance.css) stops what is left, and the loops here are
+ * named at the end so they stop still rather than on a faded frame.
+ */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* ---- Press: the control gives under the pointer ---------------------------------- */
+  .icon-btn:active:not(:disabled, [aria-disabled="true"]) {
+    transform: scale(0.92);
+  }
+
+  .push-btn:active:not(:disabled, [aria-disabled="true"]),
+  .icon-btn-labeled:not(.toolbar *, .menubar *):active:not(:disabled, [aria-disabled="true"]),
+  .icon-btn-primary:active:not(:disabled, [aria-disabled="true"]) {
+    transform: scale(0.97);
+  }
+
+  .push-btn,
+  .segmented-item,
+  .home-nav-item,
+  .tool-card,
+  .tab,
+  .tab-new,
+  .home-chip {
+    transition-property: background-color, color, box-shadow, transform, opacity;
+    transition-duration: var(--duration-quick);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .segmented-item:active:not(:disabled),
+  .home-nav-item:active,
+  .tool-card:active,
+  .tab-new:active,
+  .home-chip:active {
+    transform: scale(0.96);
+    transition-duration: 0ms;
+  }
+
+  /* ---- Hover: icons wake up ---------------------------------------------------------- */
+  .icon-btn .lucide:not(.spin),
+  .home-nav-item .lucide,
+  .tool-card .tool-icon,
+  .home-card .tool-icon,
+  .prefs-nav-icon {
+    transition: transform var(--duration-regular) var(--spring);
+  }
+
+  .icon-btn:hover:not(:disabled, [aria-disabled="true"]) .lucide:not(.spin, .mirror-rtl) {
+    transform: translateY(-1px) scale(1.08);
+  }
+
+  .home-nav-item:hover .lucide {
+    transform: scale(1.12);
+  }
+
+  .tool-card:hover .tool-icon {
+    transform: scale(1.08) rotate(-4deg);
+  }
+
+  .tool-card:hover .tool-card-chevron {
+    transform: translateX(2px);
+  }
+
+  [dir="rtl"] .tool-card:hover .tool-card-chevron {
+    transform: translateX(-2px) scaleX(-1);
+  }
+
+  .tool-card-chevron {
+    transition: transform var(--duration-regular) var(--spring);
+  }
+
+  /* Cards lift a little, and their icon tile tilts. */
+  .home-card,
+  .recent-item {
+    transition:
+      background-color var(--duration-quick) var(--ease-out),
+      box-shadow var(--duration-regular) var(--ease-out),
+      transform var(--duration-regular) var(--spring);
+  }
+
+  .home-card:hover,
+  .recent-item:hover {
+    transform: translateY(-2px);
+  }
+
+  .home-card:hover .tool-icon {
+    animation: motion-wiggle 520ms var(--ease-out);
+  }
+
+  .recent-item:hover .recent-page {
+    box-shadow: 0 8px 22px rgb(0 0 0 / 14%);
+    transform: translateY(-1px) rotate(-0.6deg);
+  }
+
+  .recent-page {
+    transition:
+      box-shadow var(--duration-regular) var(--ease-out),
+      transform var(--duration-regular) var(--spring);
+  }
+
+  .home-card:active,
+  .recent-item:active {
+    transform: scale(0.98);
+    transition-duration: 0ms;
+  }
+
+  /* ---- Screens on and off --------------------------------------------------------------- */
+  .shell-main > .home,
+  .shell-main > .embed-host,
+  .shell-main > .viewer,
+  .shell-main > .organize {
+    animation: motion-screen-in var(--duration-sheet) var(--ease-out) backwards;
+  }
+
+  .home-content > *,
+  .home-cards > li {
+    animation: motion-rise 420ms var(--ease-out) backwards;
+  }
+
+  .home-content > :nth-child(2) {
+    animation-delay: 50ms;
+  }
+
+  .home-content > :nth-child(3) {
+    animation-delay: 100ms;
+  }
+
+  .home-content > :nth-child(n + 4) {
+    animation-delay: 150ms;
+  }
+
+  .home-cards > li:nth-child(2) {
+    animation-delay: 40ms;
+  }
+
+  .home-cards > li:nth-child(3) {
+    animation-delay: 80ms;
+  }
+
+  .home-cards > li:nth-child(4) {
+    animation-delay: 120ms;
+  }
+
+  .home-cards > li:nth-child(5) {
+    animation-delay: 160ms;
+  }
+
+  .home-cards > li:nth-child(n + 6) {
+    animation-delay: 200ms;
+  }
+
+  /* The side panel slides in from its own edge; a tool's options follow it. */
+  .inspector {
+    animation: motion-from-end var(--duration-sheet) var(--spring) backwards;
+  }
+
+  .pane-body > * {
+    animation: motion-rise var(--duration-regular) var(--ease-out) backwards;
+  }
+
+  /* A new tab grows into the bar. */
+  .tab {
+    animation: motion-tab-in var(--duration-regular) var(--spring) backwards;
+  }
+
+  /* The HUD's tick pops as it lands. */
+  .toast > .lucide {
+    animation: motion-pop 420ms var(--spring) 80ms backwards;
+  }
+
+  /* ---- Work running ------------------------------------------------------------------------ */
+  [aria-busy="true"]:is(button, .icon-btn, .push-btn) {
+    position: relative;
+    overflow: hidden;
+  }
+
+  [aria-busy="true"]:is(button, .icon-btn, .push-btn)::after {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    content: "";
+    background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 35%) 50%, transparent 80%);
+    animation: motion-sheen 1.3s ease-in-out infinite;
+  }
+
+  .switching {
+    animation: motion-fade-in var(--duration-regular) var(--ease-out) 120ms backwards;
+  }
+
+  .banner {
+    animation: motion-banner-in var(--duration-regular) var(--ease-out) backwards;
+  }
+
+  /* ---- ZOOD's mark catches the light ---------------------------------------------------------- */
+  .home-brand-icon::after {
+    animation: motion-brand-sheen 7s ease-in-out 1.2s infinite;
+  }
+
+  .home-brand:hover .home-brand-icon img {
+    transform: rotate(-6deg) scale(1.06);
+  }
+
+  .home-brand-icon img {
+    transition: transform var(--duration-sheet) var(--spring);
+  }
+
+  .recent-empty-mark {
+    animation: motion-float 3.2s ease-in-out infinite;
+  }
+}
+
+/* The mark's sheen: a strip of light over the icon, outside the animation it is off-stage. */
+.home-brand-icon {
+  position: relative;
+  display: block;
+  flex: none;
+  overflow: hidden;
+  border-radius: 22%;
+}
+
+.home-brand-icon img {
+  display: block;
+}
+
+.home-brand-icon::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background: linear-gradient(115deg, transparent 40%, rgb(255 255 255 / 55%) 50%, transparent 60%) 100% 0 / 300% 100% no-repeat;
+}
+
+/* The Zood look shows the bare mark, not a tile: the light falls on the strokes only. */
+html[data-look="zood"] .home-brand-icon {
+  border-radius: 0;
+}
+
+html[data-look="zood"] .home-brand-icon::after {
+  mask: url("./looks/zood-mark.svg") center / contain no-repeat;
+}
+
+/* An indeterminate progress bar moves, wherever one is drawn. */
+@media (prefers-reduced-motion: no-preference) {
+  progress:not([value])::-webkit-progress-bar {
+    background: linear-gradient(90deg, var(--fill) 0%, var(--accent) 50%, var(--fill) 100%) 0 0 / 200% 100%;
+    animation: motion-indeterminate 1.4s linear infinite;
+  }
+}
+
+html[data-reduce-motion="on"] .home-brand-icon::after,
+html[data-reduce-motion="on"] .recent-empty-mark,
+html[data-reduce-motion="on"] [aria-busy="true"]::after,
+html[data-reduce-motion="on"] .home-card .tool-icon {
+  animation: none !important;
+}
+
+@keyframes motion-screen-in {
+  from {
+    opacity: 0;
+    transform: scale(0.992);
+  }
+}
+
+@keyframes motion-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes motion-from-end {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+[dir="rtl"] .inspector {
+  animation-name: motion-from-end-rtl;
+}
+
+/* Workbench keeps its tools on the leading side. */
+.shell-body > .inspector:first-child {
+  animation-name: motion-from-start;
+}
+
+[dir="rtl"] .shell-body > .inspector:first-child {
+  animation-name: motion-from-end;
+}
+
+@keyframes motion-from-end-rtl {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+
+@keyframes motion-from-start {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+
+@keyframes motion-tab-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.94);
+  }
+}
+
+@keyframes motion-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) rotate(-20deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes motion-wiggle {
+  0%,
+  100% {
+    transform: none;
+  }
+
+  30% {
+    transform: rotate(-8deg) scale(1.08);
+  }
+
+  60% {
+    transform: rotate(5deg) scale(1.08);
+  }
+}
+
+@keyframes motion-sheen {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes motion-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes motion-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes motion-brand-sheen {
+  0%,
+  70% {
+    background-position: 100% 0;
+  }
+
+  85%,
+  100% {
+    background-position: 0% 0;
+  }
+}
+
+@keyframes motion-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes motion-indeterminate {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: -100% 0;
+  }
+}

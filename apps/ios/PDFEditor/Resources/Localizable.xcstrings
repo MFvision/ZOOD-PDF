@@ -1435,6 +1435,16 @@
         }
       }
     },
+    "Choose the language and the look. The tour changes as you pick, and Settings has them again.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختر اللغة والمظهر. تتغيّر الجولة مع اختيارك، وتجدهما في الإعدادات متى شئت."
+          }
+        }
+      }
+    },
     "Chosen folder": {
       "localizations": {
         "ar": {
@@ -3307,6 +3317,16 @@
         }
       }
     },
+    "Make it yours": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اجعله على ذوقك"
+          }
+        }
+      }
+    },
     "Making the PDF…": {
       "localizations": {
         "ar": {
@@ -3453,6 +3473,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "نقل إلى اليمين"
+          }
+        }
+      }
+    },
+    "Move through slides while you present": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تنقّل بين الشرائح وأنت تعرض"
           }
         }
       }
@@ -3923,6 +3953,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "متوقفة"
+          }
+        }
+      }
+    },
+    "On a Windows PC or a Mac with %@, open Phone remote there, then scan its code from Phone remote in your Library.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "على حاسوب ويندوز أو ماك فيه %@، افتح «التحكم من الجوال» هناك، ثم امسح رمزه من «التحكم من الجوال» في مكتبتك."
           }
         }
       }
@@ -5467,6 +5507,16 @@
         }
       }
     },
+    "Send files and signatures both ways": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أرسل الملفات والتوقيعات في الاتجاهين"
+          }
+        }
+      }
+    },
     "Set a password": {
       "localizations": {
         "ar": {
@@ -6227,6 +6277,16 @@
         }
       }
     },
+    "The phone and the computer on the same Wi-Fi": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الجوال والحاسوب على شبكة الواي فاي نفسها"
+          }
+        }
+      }
+    },
     "The system's on-device model answers here. Nothing leaves this device.": {
       "localizations": {
         "ar": {
@@ -6833,6 +6893,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "بياناتك"
+          }
+        }
+      }
+    },
+    "Your phone as a remote": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جوالك جهاز تحكم"
           }
         }
       }
