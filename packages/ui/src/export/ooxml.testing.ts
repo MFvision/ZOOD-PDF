@@ -47,6 +47,8 @@ export const SPREADSHEET: Record<string, Model> = {
   cols: { children: [some('col')] },
   col: { children: [], required: ['min', 'max'] },
   sheetData: { children: [many('row')] },
+  hyperlinks: { children: [some('hyperlink')] },
+  hyperlink: { children: [], required: ['ref'] },
   row: { children: [many('c'), opt('extLst')] },
   c: { children: [opt('f'), opt('v'), opt('is'), opt('extLst')] },
   is: { children: [opt('t'), many('r'), many('rPh'), opt('phoneticPr')] },
@@ -256,6 +258,28 @@ export const WORDPROCESSING: Record<string, Model> = {
   'a:off': PRESENTATION['a:off']!,
   'a:ext': PRESENTATION['a:ext']!,
   'a:prstGeom': PRESENTATION['a:prstGeom']!,
+  'w:hyperlink': { children: [many('w:r')] },
+  'w:tbl': { children: [one('w:tblPr'), one('w:tblGrid'), many('w:tr')] },
+  'w:tblPr': {
+    children: [
+      'w:tblStyle', 'w:tblpPr', 'w:tblOverlap', 'w:bidiVisual', 'w:tblStyleRowBandSize', 'w:tblStyleColBandSize', 'w:tblW', 'w:jc',
+      'w:tblCellSpacing', 'w:tblInd', 'w:tblBorders', 'w:shd', 'w:tblLayout', 'w:tblCellMar', 'w:tblLook',
+    ].map((name) => opt(name)),
+  },
+  'w:tblBorders': { children: ['w:top', 'w:left', 'w:start', 'w:bottom', 'w:right', 'w:end', 'w:insideH', 'w:insideV'].map((name) => opt(name)) },
+  'w:tblCellMar': { children: ['w:top', 'w:left', 'w:start', 'w:bottom', 'w:right', 'w:end'].map((name) => opt(name)) },
+  'w:tblGrid': { children: [some('w:gridCol')] },
+  'w:gridCol': { children: [], required: ['w:w'] },
+  'w:tr': { children: [opt('w:tblPrEx'), opt('w:trPr'), some('w:tc')] },
+  'w:trPr': { children: [], any: ['w:trHeight', 'w:cantSplit', 'w:tblHeader', 'w:jc', 'w:hidden'] },
+  'w:tc': { children: [opt('w:tcPr'), some('w:p', 'w:tbl')] },
+  'w:tcPr': {
+    children: [
+      'w:cnfStyle', 'w:tcW', 'w:gridSpan', 'w:hMerge', 'w:vMerge', 'w:tcBorders', 'w:shd', 'w:noWrap', 'w:tcMar', 'w:textDirection',
+      'w:tcFitText', 'w:vAlign', 'w:hideMark',
+    ].map((name) => opt(name)),
+  },
+  'w:style': { children: [], any: ['w:name', 'w:aliases', 'w:basedOn', 'w:next', 'w:link', 'w:uiPriority', 'w:semiHidden', 'w:unhideWhenUsed', 'w:qFormat', 'w:pPr', 'w:rPr'] },
   'w:styles': { children: [opt('w:docDefaults'), opt('w:latentStyles'), many('w:style')] },
   'w:docDefaults': { children: [opt('w:rPrDefault'), opt('w:pPrDefault')] },
 };
