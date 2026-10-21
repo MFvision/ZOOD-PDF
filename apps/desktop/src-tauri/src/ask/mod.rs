@@ -30,6 +30,7 @@ pub mod hands;
 pub mod tap;
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -282,6 +283,30 @@ pub fn ask_configure<R: Runtime>(
     Ok(())
 }
 
+/// The welcome tour's practice is on screen: the keys and the taps are the
+/// tour's, so practising them never opens the island or drafts a reply into
+/// the tour. Not kept: the next start listens as Settings say.
+static PAUSED: AtomicBool = AtomicBool::new(false);
+
+/// From the tour: let go of the keys to hold (the system would keep them
+/// from the page) and ignore the taps, or take both back.
+#[tauri::command]
+pub fn ask_pause<R: Runtime>(app: AppHandle<R>, state: State<'_, AskState>, paused: bool) {
+    use tauri_plugin_global_shortcut::GlobalShortcutExt;
+    if PAUSED.swap(paused, Ordering::Relaxed) == paused {
+        return;
+    }
+    let settings = state.settings.lock().unwrap_or_else(|e| e.into_inner());
+    if !settings.enabled {
+        return;
+    }
+    if paused {
+        let _ = app.global_shortcut().unregister(settings.shortcut.as_str());
+    } else if let Err(e) = listen(&app, &settings.shortcut) {
+        debug_log(format!("ask: {e}"));
+    }
+}
+
 fn listen<R: Runtime>(app: &AppHandle<R>, keys: &str) -> Result<(), String> {
     use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
     app.global_shortcut()
@@ -301,6 +326,9 @@ fn listen<R: Runtime>(app: &AppHandle<R>, keys: &str) -> Result<(), String> {
 
 /// The keys went down: listen, look, note the files, show the island.
 fn pressed<R: Runtime>(app: &AppHandle<R>) {
+    if PAUSED.load(Ordering::Relaxed) {
+        return;
+    }
     let state = app.state::<AskState>();
     // The picture goes to a model that sees; the window's words are read
     // for a text model when the person let the taps read the window.
@@ -360,6 +388,9 @@ fn pressed<R: Runtime>(app: &AppHandle<R>) {
 /// The tap key was tapped: the window in front is looked at, and the island
 /// shows — to draft a reply, or, with the keyboard, to take a typed request.
 fn tapped<R: Runtime>(app: &AppHandle<R>, tap: tap::Tap) {
+    if PAUSED.load(Ordering::Relaxed) {
+        return;
+    }
     let state = app.state::<AskState>();
     if state.recording.lock().map(|r| r.is_some()).unwrap_or(false) {
         return; // Speaking already.
@@ -422,6 +453,9 @@ fn tapped<R: Runtime>(app: &AppHandle<R>, tap: tap::Tap) {
 
 /// The keys came up: what was heard waits for `ask_transcribe`.
 fn released<R: Runtime>(app: &AppHandle<R>) {
+    if PAUSED.load(Ordering::Relaxed) {
+        return;
+    }
     let state = app.state::<AskState>();
     let recording = state
         .recording

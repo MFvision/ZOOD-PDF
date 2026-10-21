@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import en from '../i18n/en.json';
 import ar from '../i18n/ar.json';
-import { tourChapters } from './chapters';
+import { newSince, tourChapters } from './chapters';
 
 describe('welcome tour', () => {
   it('shows the quick tools and the phone remote only in the desktop app', () => {
@@ -9,8 +9,19 @@ describe('welcome tour', () => {
     expect(tourChapters(true).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'quick', 'remote', 'ai', 'done']);
   });
 
+  it('teaches Ask ZOOD only where it is in the build', () => {
+    expect(tourChapters(true, true).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'quick', 'ask', 'remote', 'ai', 'done']);
+    expect(tourChapters(false, true).map((c) => c.id)).not.toContain('ask');
+  });
+
+  it('opens a tour seen before at what is new', () => {
+    expect(newSince(0, true)).toBe('welcome');
+    expect(newSince(2, true)).toBe('ask');
+    expect(newSince(2, false)).toBe('welcome');
+  });
+
   it('has every chapter in both languages', () => {
-    const keys = tourChapters(true).flatMap((c) => [c.label, c.title, c.body]);
+    const keys = tourChapters(true, true).flatMap((c) => [c.label, c.title, c.body]);
     for (const key of keys) {
       expect((en as Record<string, string>)[key], key).toBeTruthy();
       expect((ar as Record<string, string>)[key], key).toBeTruthy();

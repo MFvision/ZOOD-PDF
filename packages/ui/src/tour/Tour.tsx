@@ -10,10 +10,13 @@ import { openSettingsAt } from '../settings/SettingsWindow';
 import type { SectionId } from '../settings/SettingsWindow';
 import { useAppDispatch, useAppState } from '../state/AppContext';
 import { readJson, writeJson } from '../state/preferences';
-import { TOUR_VERSION, tourChapters } from './chapters';
+import { askAvailable } from '../ask/settings';
+import { TOUR_VERSION, newSince, tourChapters } from './chapters';
+import { openTourAt, takeStartAt } from './openAt';
 import type { Chapter, ChapterId } from './chapters';
 import { AiScene, BasicsScene, DoneScene, FilmScene, LookScene, QuickScene, RemoteScene, WelcomeScene } from './scenes';
 import type { TourProgress } from './scenes';
+import { AskScene } from './askScene';
 import './tour.css';
 
 /**
@@ -29,14 +32,7 @@ import './tour.css';
 
 const SEEN_KEY = 'warraq.tour';
 
-/** Where the next opening starts: the quick tools' chapter from Settings, else the first. */
-let startAt: string | null = null;
-
-/** Opens the tour at one chapter (by id). */
-export function openTourAt(id: string, open: () => void): void {
-  startAt = id;
-  open();
-}
+export { openTourAt } from './openAt';
 
 export function WelcomeTour() {
   const { dialog } = useAppState();
@@ -44,35 +40,36 @@ export function WelcomeTour() {
   const { t } = useI18n();
   // Decided once, at start: the host does not change under a running window.
   const [desktop] = useState(isTauriHost);
+  const [ask] = useState(askAvailable);
 
-  // The desktop app opens it by itself on its first run, and once when the tour is new.
+  // The desktop app opens it by itself on its first run, and once when the tour is new, at what is new.
   useEffect(() => {
-    if (!desktop || (readJson<{ version?: number }>(SEEN_KEY, {}).version ?? 0) >= TOUR_VERSION) return;
+    const seen = readJson<{ version?: number }>(SEEN_KEY, {}).version ?? 0;
+    if (!desktop || seen >= TOUR_VERSION) return;
     writeJson(SEEN_KEY, { seen: true, version: TOUR_VERSION });
-    dispatch({ type: 'DIALOG', dialog: 'tour' });
-  }, [desktop, dispatch]);
+    openTourAt(newSince(seen, ask), () => dispatch({ type: 'DIALOG', dialog: 'tour' }));
+  }, [desktop, ask, dispatch]);
 
   const open = dialog === 'tour';
   const close = () => dispatch({ type: 'DIALOG', dialog: null });
   return (
     <Dialog open={open} title={t('tour.title')} onClose={close} className="tour-dialog">
-      {open ? <TourBook desktop={desktop} onClose={close} onSettings={(section) => openSettingsAt(section, () => dispatch({ type: 'DIALOG', dialog: 'settings' }))} /> : null}
+      {open ? <TourBook desktop={desktop} ask={ask} onClose={close} onSettings={(section) => openSettingsAt(section, () => dispatch({ type: 'DIALOG', dialog: 'settings' }))} /> : null}
     </Dialog>
   );
 }
 
-function TourBook({ desktop, onClose, onSettings }: { desktop: boolean; onClose: () => void; onSettings: (section: SectionId) => void }) {
+function TourBook({ desktop, ask, onClose, onSettings }: { desktop: boolean; ask: boolean; onClose: () => void; onSettings: (section: SectionId) => void }) {
   const { t, dir } = useI18n();
-  const [chapters] = useState(() => tourChapters(desktop));
+  const [chapters] = useState(() => tourChapters(desktop, ask));
   const [at, setAt] = useState(() => {
-    const wanted = startAt ? chapters.findIndex((chapter) => chapter.id === startAt) : 0;
-    startAt = null;
-    return Math.max(0, wanted);
+    const id = takeStartAt();
+    return Math.max(0, id ? chapters.findIndex((chapter) => chapter.id === id) : 0);
   });
   // Which way the last move went, so the next chapter comes in from that side.
   const [heading, setHeading] = useState<1 | -1>(1);
   const [seen, setSeen] = useState<ReadonlySet<ChapterId>>(() => new Set([chapters[at]!.id]));
-  const [progress, setProgress] = useState<TourProgress>({ film: false, ring: false });
+  const [progress, setProgress] = useState<TourProgress>({ film: false, ring: false, ask: false });
   const stage = useRef<HTMLDivElement>(null);
 
   const chapter = chapters[Math.min(at, chapters.length - 1)]!;
@@ -188,6 +185,8 @@ function Scene({ chapter, progress, onProgress, onSettings }: { chapter: Chapter
       return <BasicsScene />;
     case 'quick':
       return <QuickScene onPractised={() => onProgress({ ring: true })} onSettings={onSettings} />;
+    case 'ask':
+      return <AskScene onPractised={() => onProgress({ ask: true })} onSettings={onSettings} />;
     case 'remote':
       return <RemoteScene />;
     case 'ai':

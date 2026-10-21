@@ -4,9 +4,13 @@ import { DeviceSection } from '../ai/device/DeviceSection';
 import { formatBytes, modelBytes, shortModelName } from '../ai/device/models';
 import { machineMemoryGiB, useDeviceModel } from '../ai/device/useDeviceModel';
 import { useI18n } from '../i18n/useT';
-import { Pick, Row, Toggle } from '../settings/controls';
+import { ActionRow, Pick, Row, Toggle } from '../settings/controls';
 import { ShortcutField } from '../settings/ShortcutField';
 import { formatShortcut } from '../shell/menuModel';
+import { isolate } from '../signatures/model';
+import { useAppDispatch } from '../state/AppContext';
+import { openTourAt } from '../tour/openAt';
+import { noteAskReady } from './ReadyHint';
 import {
   brainChoices,
   chosenBrain,
@@ -36,6 +40,7 @@ import type { WritingStyle } from './style';
  */
 export function AskSettings() {
   const { t, lang } = useI18n();
+  const dispatch = useAppDispatch();
   const [prefs, setPrefs] = useState<AskPreferences>(readAskPreferences);
   const [style, setStyle] = useState<WritingStyle>(readStyle);
   const [memory, setMemory] = useState<number | null>(null);
@@ -66,6 +71,7 @@ export function AskSettings() {
         if (!live) return;
         setReady(on);
         setRefused(false);
+        noteAskReady(on);
       },
       (error: unknown) => {
         if (!live) return;
@@ -89,9 +95,10 @@ export function AskSettings() {
     writeStyle(next);
   };
 
-  const keys = formatShortcut(prefs.shortcut);
+  // Key names stay whole inside an Arabic sentence.
+  const keys = isolate(formatShortcut(prefs.shortcut));
   const mac = onMac();
-  const tapKey = tapKeyLabel(prefs.tapKey, mac, lang === 'ar' ? 'ar' : 'en');
+  const tapKey = isolate(tapKeyLabel(prefs.tapKey, mac, lang === 'ar' ? 'ar' : 'en'));
   const fallback = defaultBrainFor(memory);
   const status =
     ready === null
@@ -136,6 +143,12 @@ export function AskSettings() {
         hint={t('ask.settings.tapToTypeHint', { tap: tapKey })}
         checked={prefs.tapToType}
         onChange={(tapToType) => update({ tapToType })}
+      />
+      <ActionRow
+        label={t('ask.settings.practise')}
+        hint={t('ask.settings.practiseHint')}
+        action={t('ask.hint.practise')}
+        onClick={() => openTourAt('ask', () => dispatch({ type: 'DIALOG', dialog: 'tour' }))}
       />
       {voice && (
         <Row label={t('ask.settings.keys')} hint={t('ask.settings.keysHint')}>

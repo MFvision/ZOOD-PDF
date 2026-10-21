@@ -160,6 +160,17 @@ export interface AskReadiness {
   taps: boolean;
 }
 
+/** What answers now, from the downloads and the choices: the host is told nothing. */
+export async function askReadiness(
+  prefs: AskPreferences,
+  memoryGiB: number | null,
+): Promise<AskReadiness> {
+  const ear = earModels()[0];
+  const brainReady = prefs.enabled && (await modelReady(chosenBrain(prefs, memoryGiB)));
+  const voice = brainReady && ear !== undefined && (await modelReady(ear));
+  return { voice, taps: brainReady && prefs.taps };
+}
+
 /**
  * Tells the host what to listen for — the keys to hold only when both
  * models are here, the tap key once the model that decides is — so neither
@@ -170,10 +181,7 @@ export async function configureAsk(
   memoryGiB: number | null,
 ): Promise<AskReadiness> {
   const brain = chosenBrain(prefs, memoryGiB);
-  const ear = earModels()[0];
-  const brainReady = prefs.enabled && (await modelReady(brain));
-  const voice = brainReady && ear !== undefined && (await modelReady(ear));
-  const taps = brainReady && prefs.taps;
+  const { voice, taps } = await askReadiness(prefs, memoryGiB);
   await invokeHost('ask_configure', {
     enabled: voice,
     shortcut: toAccelerator(prefs.shortcut),
