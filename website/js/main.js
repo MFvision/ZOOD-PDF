@@ -633,6 +633,18 @@ function startStory() {
 
 headlineFont();
 startInteractions(() => reduced);
+// A hidden tab plays nothing: its videos pause and pick up where they were on return.
+document.addEventListener('visibilitychange', () => {
+  for (const v of document.querySelectorAll('video')) {
+    if (document.hidden && !v.paused) {
+      v.dataset.resume = '1';
+      v.pause();
+    } else if (!document.hidden && v.dataset.resume) {
+      delete v.dataset.resume;
+      v.play().catch(() => {});
+    }
+  }
+});
 if (root.dataset.page === 'story') startStory();
 else if (root.dataset.page === 'iphone-duo') import('./foldable.js').then((m) => m.startFoldable());
 else import('./legal-page.js').then((m) => m.startLegal(root.dataset.page));

@@ -50,6 +50,7 @@
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --quick: 160ms;
   --regular: 260ms;
+  --slow: 520ms;
   --large: 340ms;
   --r-control: 6px;
   --r-button: 8px;
@@ -982,7 +983,7 @@ main {
   background: var(--band);
   transform: scaleX(0);
   transform-origin: 0 50%;
-  transition: transform 520ms var(--ease);
+  transition: transform var(--slow) var(--ease);
   transition-delay: calc(var(--wi) * 45ms + 160ms);
 }
 [dir='rtl'] .title .hl .w::before {
@@ -1339,7 +1340,7 @@ main {
   width: 9%;
   translate: 20% 20%;
   opacity: calc(var(--drag) * 0.85);
-  transition: opacity 0.2s;
+  transition: opacity var(--quick) var(--ease);
   z-index: 3;
 }
 .rs-ghost svg {
@@ -1380,7 +1381,7 @@ main {
     system-ui,
     sans-serif;
   opacity: var(--key);
-  transition: opacity 0.2s;
+  transition: opacity var(--quick) var(--ease);
   z-index: 4;
 }
 .rs-ring {
@@ -1437,13 +1438,13 @@ main {
 }
 .rs-seg {
   opacity: calc(1 - var(--run) * 0.65);
-  transition: opacity 0.2s;
+  transition: opacity var(--quick) var(--ease);
 }
 .rs-target {
   /* The picked tool swells out of the ring a little, like a drop. */
   transform: translateY(calc(var(--over) * -5px)) scale(calc(1 + var(--over) * 0.04));
   transform-origin: 150px 150px;
-  transition: transform 0.25s cubic-bezier(0.3, 1.6, 0.5, 1);
+  transition: transform var(--regular) var(--spring);
 }
 .rs-over .rs-target > path {
   fill: url(#rs-bronze);
@@ -1479,7 +1480,7 @@ main {
 .rs-tick {
   color: #73563a;
   opacity: var(--done);
-  transition: opacity 0.2s;
+  transition: opacity var(--quick) var(--ease);
 }
 @media (prefers-reduced-motion: reduce) {
   .rs * {
@@ -2659,7 +2660,7 @@ main {
   z-index: -1;
   background: linear-gradient(105deg, transparent 30%, rgb(255 255 255 / 28%) 50%, transparent 70%);
   transform: translateX(-120%);
-  transition: transform 700ms var(--ease);
+  transition: transform var(--slow) var(--ease);
 }
 .button:hover::after {
   transform: translateX(120%);
@@ -2797,7 +2798,7 @@ main {
   transform: translateY(28px) scale(0.96);
 }
 .points li::before {
-  transition: transform 520ms var(--spring);
+  transition: transform var(--slow) var(--spring);
   transition-delay: calc(300ms + var(--pi, 0) * 90ms);
 }
 .js section:not(.seen) .points li::before {
@@ -3219,7 +3220,7 @@ main {
   position: absolute;
   inset: 0;
   opacity: 0;
-  transition: opacity 0.35s var(--ease);
+  transition: opacity var(--regular) var(--ease);
 }
 .rm[data-screen='show'] .rm-l-show,
 .rm[data-screen='desk'] .rm-l-desk,
@@ -3243,7 +3244,7 @@ main {
   position: absolute;
   inset: 0;
   font-size: var(--fs);
-  transition: opacity 0.3s var(--ease);
+  transition: opacity var(--regular) var(--ease);
 }
 .rm-stitle {
   position: absolute;
@@ -3726,7 +3727,7 @@ main {
 .rm[data-tab='2'] .rm-p2 {
   opacity: 1;
   visibility: visible;
-  transition: opacity 0.25s var(--ease);
+  transition: opacity var(--regular) var(--ease);
 }
 .rm-panel svg {
   width: 1.1cqi;
@@ -4000,7 +4001,7 @@ main {
   background: #041e42;
   color: #f5f1ed;
   font: 600 0.8cqi/1 var(--font-body);
-  transition: transform 0.25s var(--spring);
+  transition: transform var(--regular) var(--spring);
 }
 .rm-signbtn.down {
   background: var(--bronze);
@@ -4074,7 +4075,7 @@ main {
   padding-bottom: 1.2cqi;
   font-size: 0.72cqi;
   color: rgb(245 241 237 / 62%);
-  transition: transform 0.25s var(--spring);
+  transition: transform var(--regular) var(--spring);
 }
 .rm-tab svg {
   width: 1.3cqi;
