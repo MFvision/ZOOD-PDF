@@ -215,6 +215,8 @@ mod system {
 
 #[cfg(target_os = "macos")]
 mod system {
+    use objc2::{class, msg_send};
+
     use super::TapKey;
 
     pub const AVAILABLE: bool = true;
@@ -225,26 +227,66 @@ mod system {
     #[link(name = "CoreGraphics", kind = "framework")]
     extern "C" {
         fn CGEventSourceKeyState(state: i32, key: u16) -> bool;
-        fn CGEventSourceButtonState(state: i32, button: u32) -> bool;
     }
 
-    fn down(code: u16) -> bool {
-        // SAFETY: plain state queries with a documented state id.
-        unsafe { CGEventSourceKeyState(COMBINED, code) }
-    }
+    // The modifier flags as NSEvent has them: the device-independent ones,
+    // and below them which hand's key it is (IOKit's NX_DEVICE* masks).
+    const SHIFT: usize = 1 << 17;
+    const CONTROL: usize = 1 << 18;
+    const OPTION: usize = 1 << 19;
+    const COMMAND: usize = 1 << 20;
+    const LEFT_CONTROL: usize = 0x0001;
+    const LEFT_SHIFT: usize = 0x0002;
+    const RIGHT_SHIFT: usize = 0x0004;
+    const LEFT_COMMAND: usize = 0x0008;
+    const RIGHT_COMMAND: usize = 0x0010;
+    const LEFT_OPTION: usize = 0x0020;
+    const RIGHT_OPTION: usize = 0x0040;
+    const RIGHT_CONTROL: usize = 0x2000;
+    const HANDS: usize = LEFT_CONTROL
+        | LEFT_SHIFT
+        | RIGHT_SHIFT
+        | LEFT_COMMAND
+        | RIGHT_COMMAND
+        | LEFT_OPTION
+        | RIGHT_OPTION
+        | RIGHT_CONTROL;
 
     /// The tap key, and whether any other key or mouse button is down.
+    ///
+    /// The modifiers and the buttons are read from NSEvent, which any app
+    /// may do (the ring reads them the same way): reading keys through
+    /// CGEventSourceKeyState needs Input Monitoring, which is never asked
+    /// for, so on its own the tap key read as never down outside the app.
+    /// The letter keys still come from there, where it is allowed; where it
+    /// is not they read as up, and only a modifier or a button spoils a tap.
     pub fn read(key: TapKey) -> (bool, bool) {
-        // kVK_RightCommand, kVK_RightOption, kVK_RightShift.
-        let code = match key {
-            TapKey::RightMain => 0x36,
-            TapKey::RightAlt => 0x3D,
-            TapKey::RightShift => 0x3C,
+        // SAFETY: NSEvent's documented class properties.
+        let (flags, buttons): (usize, usize) = unsafe {
+            (
+                msg_send![class!(NSEvent), modifierFlags],
+                msg_send![class!(NSEvent), pressedMouseButtons],
+            )
         };
-        let other = (0u16..=0x7F).any(|k| k != code && down(k))
-            // SAFETY: plain button state queries.
-            || (0..3).any(|button| unsafe { CGEventSourceButtonState(COMBINED, button) });
-        (down(code), other)
+        let (hand, generic) = match key {
+            TapKey::RightMain => (RIGHT_COMMAND, COMMAND),
+            TapKey::RightAlt => (RIGHT_OPTION, OPTION),
+            TapKey::RightShift => (RIGHT_SHIFT, SHIFT),
+        };
+        let (down, other_modifier) = if flags & HANDS != 0 {
+            (flags & hand != 0, flags & HANDS & !hand != 0)
+        } else {
+            // No hands reported: any Command (or Option, Shift) counts.
+            let all = SHIFT | CONTROL | OPTION | COMMAND;
+            (flags & generic != 0, flags & all & !generic != 0)
+        };
+        // The modifiers themselves are 0x36 to 0x3E; Caps Lock (0x39) is a
+        // state, not a press.
+        let letter = (0u16..=0x7F)
+            .filter(|code| !(0x36..=0x3E).contains(code))
+            // SAFETY: a plain key state query with a documented state id.
+            .any(|code| unsafe { CGEventSourceKeyState(COMBINED, code) });
+        (down, other_modifier || buttons != 0 || letter)
     }
 }
 

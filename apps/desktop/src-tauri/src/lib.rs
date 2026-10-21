@@ -499,6 +499,8 @@ pub fn run() {
             remote::remote_forget,
             remote::remote_clipboard,
             ask::ask_configure,
+            ask::access::ask_access,
+            ask::access::ask_allow,
             ask::ask_pause,
             ask::ask_settings,
             ask::ask_resize,

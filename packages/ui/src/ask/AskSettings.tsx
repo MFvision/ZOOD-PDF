@@ -12,6 +12,8 @@ import { useAppDispatch } from '../state/AppContext';
 import { openTourAt } from '../tour/openAt';
 import { noteAskReady } from './ReadyHint';
 import {
+  askAccess,
+  askAllow,
   brainChoices,
   chosenBrain,
   configureAsk,
@@ -25,7 +27,7 @@ import {
   voiceAvailable,
   writeAskPreferences,
 } from './settings';
-import type { AskPreferences, AskReadiness } from './settings';
+import type { AskAccess, AskPreferences, AskReadiness } from './settings';
 import { MAX_ABOUT, MAX_EXAMPLES, readStyle, writeStyle } from './style';
 import type { WritingStyle } from './style';
 
@@ -46,6 +48,7 @@ export function AskSettings() {
   const [memory, setMemory] = useState<number | null>(null);
   const [ready, setReady] = useState<AskReadiness | null>(null);
   const [refused, setRefused] = useState(false);
+  const [access, setAccess] = useState<AskAccess | null>(null);
   const brain = chosenBrain(prefs, memory);
   const voice = voiceAvailable();
   const earView = useDeviceModel(earModels()[0]?.id ?? null);
@@ -58,6 +61,19 @@ export function AskSettings() {
     void machineMemoryGiB().then((value) => live && setMemory(value));
     return () => {
       live = false;
+    };
+  }, []);
+
+  // A Mac's permissions: read again whenever the window comes back, as it
+  // does from System Settings once a switch is turned on.
+  useEffect(() => {
+    let live = true;
+    const read = () => void askAccess().then((value) => live && setAccess(value));
+    read();
+    window.addEventListener('focus', read);
+    return () => {
+      live = false;
+      window.removeEventListener('focus', read);
     };
   }, []);
 
@@ -144,6 +160,34 @@ export function AskSettings() {
         checked={prefs.tapToType}
         onChange={(tapToType) => update({ tapToType })}
       />
+      {access?.applies && prefs.enabled && (
+        <>
+          <h4 className="prefs-subhead">{t('ask.access.title')}</h4>
+          <p className="tool-panel-note">{t('ask.access.note')}</p>
+          <ActionRow
+            label={t('ask.access.accessibility')}
+            hint={t(access.accessibility ? 'ask.access.allowed' : 'ask.access.accessibilityHint')}
+            action={t(access.accessibility ? 'ask.access.open' : 'ask.access.allow')}
+            onClick={() => void askAllow('accessibility')}
+          />
+          {brain.sees && prefs.screen && (
+            <ActionRow
+              label={t('ask.access.screen')}
+              hint={t(access.screen ? 'ask.access.allowed' : 'ask.access.screenHint')}
+              action={t(access.screen ? 'ask.access.open' : 'ask.access.allow')}
+              onClick={() => void askAllow('screen')}
+            />
+          )}
+          {voice && (
+            <ActionRow
+              label={t('ask.access.microphone')}
+              hint={t('ask.access.microphoneHint')}
+              action={t('ask.access.open')}
+              onClick={() => void askAllow('microphone')}
+            />
+          )}
+        </>
+      )}
       <ActionRow
         label={t('ask.settings.practise')}
         hint={t('ask.settings.practiseHint')}

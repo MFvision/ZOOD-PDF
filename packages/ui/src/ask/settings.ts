@@ -153,6 +153,30 @@ export async function hostAskSettings(): Promise<HostAskSettings | null> {
   }
 }
 
+/** What a Mac allows ZOOD PDF (src/ask/access.rs); on Windows nothing applies. */
+export interface AskAccess {
+  applies: boolean;
+  accessibility: boolean;
+  screen: boolean;
+}
+
+export async function askAccess(): Promise<AskAccess | null> {
+  try {
+    return (await invokeHost('ask_access')) as AskAccess;
+  } catch {
+    return null;
+  }
+}
+
+/** Asks the system for one permission and opens its list in System Settings. */
+export async function askAllow(kind: 'accessibility' | 'screen' | 'microphone'): Promise<void> {
+  try {
+    await invokeHost('ask_allow', { kind });
+  } catch {
+    // Not a desktop host: nothing to allow.
+  }
+}
+
 export interface AskReadiness {
   /** Holding the keys to speak works: both models are here. */
   voice: boolean;
