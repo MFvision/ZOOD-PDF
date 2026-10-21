@@ -182,6 +182,20 @@ desktop and web are done.)
 - Tests: `apps/web/e2e/ask-tap.mjs` (real OCR in Chromium). **Not tried on real Windows or a Mac**:
   the key watcher, window capture, paste and focus hand-back compile for both (checked standalone).
 
+## Teaching the Ask ZOOD keys (2026-10-21)
+The owner: the keys are important and no one knows them. Desktop on Windows/Mac only (where
+Ask ZOOD is): a tour chapter **Ask ZOOD** (`tour/askScene.tsx`) shows the keyboard's bottom row
+with the person's key lit, then three practice tabs that react to the real keys: double tap
+fills a pretend reply box with a draft, one tap opens a typing box, hold shows the island
+listening (nothing recorded). The page reads its own key events with the host's tap logic
+ported line for line (`ask/keys.ts`, same tests as `tap.rs`); while the chapter is open the host
+is paused (`ask_pause`: shortcut unregistered so the page gets it, taps ignored). Tour version 3:
+people who saw version 2 get it once more, opened at this chapter. Help › Ask ZOOD keys and the
+Keyboard shortcuts sheet point to it; Settings › AI › Ask ZOOD has plainer wording and a
+practice button; `ask/ReadyHint.tsx` shows a one-time card the first time Ask ZOOD can answer.
+iOS: nothing (Ask ZOOD is not on iPhone/iPad). **Not tried on real Windows or a Mac** (the pause
+and the page's view of right Ctrl/Command).
+
 ## Known open problems
 - **iPhone UI tests**: 6 of 55 failing at the last full run, each a test reaching for a
   control below the fold or a duplicate identifier (theme picker ×2, Protect's Remove, form

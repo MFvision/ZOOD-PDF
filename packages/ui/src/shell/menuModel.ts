@@ -8,7 +8,9 @@ import type { PageLayout } from '../state/settings';
 import { closeBar, openBar, readAloudState, useReadAloud } from '../speech/readAloud';
 import { useT } from '../i18n/useT';
 import { TOOLS } from '../tools/tools';
+import { askAvailable } from '../ask/settings';
 import { remoteAvailable } from '../remote/host';
+import { openTourAt } from '../tour/openAt';
 import { openRemoteSheet } from '../remote/store';
 import { startPresenting } from '../remote/useRemoteController';
 import { useMarkupBar } from './markupBar';
@@ -341,6 +343,8 @@ export function useMenuModel(): MenuModel[] {
       label: t('menu.help'),
       items: [
         { id: 'tour', label: t('help.tour'), onSelect: () => dispatch({ type: 'DIALOG', dialog: 'tour' }) },
+        // Ask ZOOD's keys work in every app, so they have their own way in: the tour's practice.
+        ...(askAvailable() ? [{ id: 'ask-keys', label: t('help.askKeys'), onSelect: () => openTourAt('ask', () => dispatch({ type: 'DIALOG', dialog: 'tour' })) }] : []),
         { id: 'shortcuts', label: t('help.shortcuts'), onSelect: () => dispatch({ type: 'DIALOG', dialog: 'shortcuts' }) },
       ],
     },

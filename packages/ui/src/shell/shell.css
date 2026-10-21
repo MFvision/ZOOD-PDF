@@ -757,6 +757,13 @@
   letter-spacing: 0.05em;
 }
 
+/* Ask ZOOD's keys work in every app, so they stand apart from the app's own. */
+.shortcuts-subhead {
+  margin-block: var(--space-7) var(--space-3);
+  font-size: var(--text-headline);
+  font-weight: 600;
+}
+
 .about {
   display: flex;
   flex-direction: column;

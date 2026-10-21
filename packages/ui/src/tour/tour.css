@@ -2140,3 +2140,451 @@ html[data-reduce-motion="on"] .mock[data-phase="2"] .mock-line-edit > span {
     transform: rotate(var(--a)) translateY(-90px) scale(0.6);
   }
 }
+
+/* ---------------------------------------------------------------- Ask ZOOD */
+
+.ask-where {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: center;
+  margin-block-end: var(--space-7);
+}
+
+/* The keyboard's bottom row, drawn left to right as on the keyboard. */
+.kb-row {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  background: color-mix(in srgb, var(--hue) 6%, var(--grouped-background));
+  border: 1px solid color-mix(in srgb, var(--hue) 20%, var(--separator));
+  border-radius: var(--radius-12);
+}
+
+.kb-key {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-inline-size: 34px;
+  block-size: 30px;
+  padding-inline: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--secondary-label);
+  background: var(--background);
+  border: 1px solid var(--separator);
+  border-radius: 6px;
+  box-shadow: 0 1px 0 var(--separator);
+}
+
+.kb-space {
+  min-inline-size: 96px;
+}
+
+.kb-key.is-target {
+  color: #fff;
+  background: var(--hue);
+  border-color: var(--hue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hue) 28%, transparent);
+}
+
+.kb-key.is-down,
+.keycap.is-down {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.kb-badge {
+  position: absolute;
+  inset-block-start: calc(100% + 6px);
+  inset-inline-start: 50%;
+  padding: 2px 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--hue);
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--hue) 12%, var(--background));
+  border-radius: var(--radius-capsule);
+  transform: translateX(-50%);
+}
+
+.keycap {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 64px;
+  block-size: 52px;
+  padding-inline: 14px;
+  font-family: inherit;
+  font-size: var(--text-body);
+  font-weight: 700;
+  color: var(--label);
+  background: var(--background);
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--hue) 35%, var(--separator));
+  transition:
+    transform 90ms var(--ease-out),
+    box-shadow 90ms var(--ease-out),
+    background-color 90ms var(--ease-out);
+}
+
+.keycap.is-down {
+  color: #fff;
+  background: var(--hue);
+}
+
+.keycap-small {
+  min-inline-size: 0;
+  block-size: 24px;
+  padding-inline: 8px;
+  font-size: 11px;
+  border-radius: 6px;
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--hue) 35%, var(--separator));
+}
+
+.ask-try {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  margin-block: var(--space-5);
+  font-weight: 600;
+  color: var(--label);
+}
+
+.ask-try > span:nth-child(2) {
+  flex: 1 1 0;
+  min-inline-size: 0;
+}
+
+.ask-try-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 20px;
+  block-size: 20px;
+  color: #fff;
+  border: 2px solid color-mix(in srgb, var(--hue) 50%, var(--separator));
+  border-radius: 50%;
+}
+
+.ask-try.is-done .ask-try-mark {
+  background: var(--green, #2f9e55);
+  border-color: var(--green, #2f9e55);
+}
+
+.ask-try-keys {
+  display: flex;
+  flex-basis: 100%;
+  gap: 4px;
+  padding-inline-start: 28px;
+}
+
+.ask-done,
+.ask-nudge {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.ask-done {
+  color: var(--green, #2f9e55);
+}
+
+.ask-done svg {
+  flex: none;
+  margin-block-start: 4px;
+}
+
+.ask-nudge {
+  margin-block-end: var(--space-4);
+  color: var(--orange, #c26a00);
+}
+
+.ask-stage {
+  min-block-size: 280px;
+}
+
+/* A pretend conversation: the message in, and the reply box the draft goes into. */
+.mail-mock {
+  position: relative;
+  display: grid;
+  gap: var(--space-5);
+  inline-size: min(100%, 360px);
+  padding: var(--space-6);
+  background: var(--background);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-12);
+  box-shadow: var(--shadow-small);
+}
+
+.mail-in {
+  display: flex;
+  gap: var(--space-4);
+  font-size: var(--text-callout);
+  line-height: 1.5;
+}
+
+.mail-in > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.mail-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 30px;
+  block-size: 30px;
+  font-weight: 700;
+  color: #fff;
+  background: #2f7de1;
+  border-radius: 50%;
+}
+
+.mail-reply {
+  display: grid;
+  gap: var(--space-3);
+  min-block-size: 112px;
+  padding: var(--space-4);
+  border: 2px solid color-mix(in srgb, var(--hue) 55%, var(--separator));
+  border-radius: var(--radius-8);
+}
+
+.mail-reply-head {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  font-size: var(--text-subheadline);
+  color: var(--secondary-label);
+}
+
+.mail-reply-text {
+  font-size: var(--text-callout);
+  line-height: 1.55;
+}
+
+.mail-caret {
+  display: inline-block;
+  inline-size: 2px;
+  block-size: 1.1em;
+  vertical-align: text-bottom;
+  background: var(--hue);
+}
+
+.mail-send {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  justify-self: end;
+  padding: 3px 10px;
+  font-size: var(--text-subheadline);
+  font-weight: 600;
+  color: #fff;
+  background: #2f7de1;
+  border-radius: var(--radius-capsule);
+}
+
+/* The island, at the top of the stage as Ask ZOOD shows it at the top of the screen. */
+.ask-island-mock {
+  position: absolute;
+  inset-block-start: -14px;
+  inset-inline-start: 50%;
+  z-index: 2;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 14px;
+  font-size: var(--text-subheadline);
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  background: #14161c;
+  border-radius: var(--radius-capsule);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 22%);
+  transform: translateX(-50%);
+}
+
+.ask-island-mock .chat-bars i {
+  background: var(--hue);
+}
+
+.ask-hold-mock {
+  position: relative;
+  display: grid;
+  gap: var(--space-7);
+  place-items: center;
+  padding-block-start: 64px;
+}
+
+.ask-hold-mock .ask-island-mock {
+  inset-block-start: 0;
+}
+
+.ask-caps {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.ask-type-mock {
+  display: grid;
+  gap: var(--space-4);
+  inline-size: min(100%, 360px);
+  padding: var(--space-5);
+  color: #fff;
+  background: #14161c;
+  border-radius: var(--radius-16);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 25%);
+}
+
+.ask-island-head {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: var(--text-subheadline);
+  font-weight: 700;
+  color: color-mix(in srgb, var(--hue) 60%, #fff);
+}
+
+.ask-type-mock .text-input {
+  color: #fff;
+  background: rgb(255 255 255 / 8%);
+  border-color: rgb(255 255 255 / 18%);
+}
+
+.ask-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ask-example {
+  padding: 3px 10px;
+  font: inherit;
+  font-size: var(--text-subheadline);
+  color: #fff;
+  cursor: pointer;
+  background: rgb(255 255 255 / 10%);
+  border: 0;
+  border-radius: var(--radius-capsule);
+}
+
+.ask-example:hover {
+  background: color-mix(in srgb, var(--hue) 45%, transparent);
+}
+
+.ask-waiting {
+  display: grid;
+  place-items: center;
+}
+
+.ask-ready {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  margin: var(--space-6) 0 0;
+  font-size: var(--text-callout);
+  color: var(--secondary-label);
+}
+
+.ask-ready.is-on svg {
+  color: var(--green, #2f9e55);
+}
+
+@media (width <= 720px) {
+  .ask-where {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kb-row {
+    overflow-x: auto;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mail-caret {
+    animation: ask-blink 1s steps(1) infinite;
+  }
+
+  .mail-mock[data-stage="done"] .mail-reply-text > span {
+    animation: ask-word 260ms var(--ease-out) backwards;
+    animation-delay: calc(var(--w) * 55ms);
+  }
+
+  .ask-island-mock {
+    animation: ask-island-in 320ms var(--spring) backwards;
+  }
+
+  .ask-island-mock.is-busy svg {
+    animation: ask-spin 1.4s linear infinite;
+  }
+
+  .ask-island-mock.is-listening .chat-bars i {
+    animation: chat-bar 600ms ease-in-out infinite alternate;
+  }
+
+  .ask-island-mock.is-listening .chat-bars i:nth-child(2) {
+    animation-delay: 110ms;
+  }
+
+  .ask-island-mock.is-listening .chat-bars i:nth-child(3) {
+    animation-delay: 220ms;
+  }
+
+  .ask-island-mock.is-listening .chat-bars i:nth-child(4) {
+    animation-delay: 330ms;
+  }
+
+  .ask-type-mock,
+  .ask-done {
+    animation: tour-rise 360ms var(--spring) backwards;
+  }
+
+  .ask-nudge {
+    animation: practice-shake 420ms var(--ease-out);
+  }
+
+  .kb-key.is-target:not(.is-down) {
+    animation: ask-beckon 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes ask-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes ask-word {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes ask-island-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px) scale(0.85);
+  }
+}
+
+@keyframes ask-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ask-beckon {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--hue) 28%, transparent);
+  }
+
+  50% {
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--hue) 12%, transparent);
+  }
+}

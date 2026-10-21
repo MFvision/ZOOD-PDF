@@ -23,6 +23,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { ZoodMark } from '../components/ZoodMark';
 import { useReducedMotion } from '../components/useReducedMotion';
+import { askAvailable } from '../ask/settings';
 import { isTauriHost } from '../core/host-tauri';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
@@ -43,6 +44,7 @@ import '../remote/remote.css';
 export interface TourProgress {
   film: boolean;
   ring: boolean;
+  ask: boolean;
 }
 
 // The website's film (website/assets/film): WebM first, MP4 (H.264) where WebM does not play.
@@ -156,7 +158,7 @@ export function WelcomeScene() {
 }
 
 /** Soft colour moving slowly behind a stage, in the chapter's hue and the look's accent. */
-function Glow() {
+export function Glow() {
   return (
     <div className="tour-glow" aria-hidden="true">
       <span />
@@ -749,6 +751,7 @@ export function DoneScene({ progress }: { progress: TourProgress }) {
     ...(desktop
       ? [
           { text: t('tour.done.ring'), done: progress.ring },
+          ...(askAvailable() ? [{ text: t('tour.done.ask'), done: progress.ask }] : []),
           { text: t('tour.done.phone'), done: phone },
         ]
       : []),

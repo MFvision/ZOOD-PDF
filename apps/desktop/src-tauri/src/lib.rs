@@ -499,6 +499,7 @@ pub fn run() {
             remote::remote_forget,
             remote::remote_clipboard,
             ask::ask_configure,
+            ask::ask_pause,
             ask::ask_settings,
             ask::ask_resize,
             ask::ask_hide,

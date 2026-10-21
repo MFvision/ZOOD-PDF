@@ -28,6 +28,7 @@ import { useSettings } from '../state/settings';
 import { HistoryEffects } from '../history/HistoryEffects';
 import { VersionsDialog } from '../history/VersionsDialog';
 import { WelcomeTour } from '../tour/Tour';
+import { AskReadyHint } from '../ask/ReadyHint';
 import { FindBar } from './FindBar';
 import { LeftPane } from './LeftPane';
 import { MarkupBarContext, readMarkupBar, writeMarkupBar } from './markupBar';
@@ -246,6 +247,7 @@ export function Shell() {
         <SettingsEffects />
         <VersionsDialog />
         <WelcomeTour />
+        <AskReadyHint />
         <LinkConfirmDialog />
         <FontLibraryQuestion />
         <CloudSheets />
