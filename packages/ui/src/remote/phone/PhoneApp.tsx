@@ -18,6 +18,7 @@ import {
   Zap,
 } from 'lucide-react';
 import type { InkTool, PagePoint, PcMessage, PhoneMessage, RemoteDocumentState } from '../protocol';
+import { Catch } from './Catch';
 import { Files } from './Files';
 import { Logo } from './Logo';
 import { SendTab } from './Send';
@@ -53,7 +54,7 @@ const THUMB_WIDTH = 180;
  */
 export function PhoneApp() {
   const [session] = useState(() => new PhoneSession());
-  const { link: linkState, pcName, pcControl, state, clip, received } = useSyncExternalStore(session.subscribe, session.read, session.read);
+  const { link: linkState, pcName, pcControl, state, clip, received, catching } = useSyncExternalStore(session.subscribe, session.read, session.read);
   const [tab, setTab] = useState<Tab>('present');
   const { send, picture } = session;
 
@@ -101,7 +102,7 @@ export function PhoneApp() {
       <section className="phone-body">
         {tab === 'present' && <PresentTab context={context} state={state} />}
         {tab === 'pc' && <Trackpad send={send} enabled={pcControl} />}
-        {tab === 'send' && <SendTab send={send} clip={clip} received={received} onLanded={session.onLanded} />}
+        {tab === 'send' && <SendTab send={send} clip={clip} received={received} pcName={pcName} onLanded={session.onLanded} />}
         {tab === 'files' && <Files context={context} />}
       </section>
       <nav className="phone-tabs" aria-label="ZOOD">
@@ -110,6 +111,7 @@ export function PhoneApp() {
         <TabButton active={tab === 'send'} icon={<Send />} label={ps('tabSend')} onClick={() => setTab('send')} />
         <TabButton active={tab === 'files'} icon={<FileText />} label={ps('tabFiles')} onClick={() => setTab('files')} />
       </nav>
+      {catching && <Catch file={catching.file} count={catching.count} pcName={pcName} onDone={session.putAway} />}
     </main>
   );
 }

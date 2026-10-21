@@ -1,11 +1,12 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { Smartphone } from 'lucide-react';
 import '../styles/tokens.css';
 import '../styles/looks.css';
 import '../styles/appearance.css';
 import '../styles/fonts.css';
 import './ring.css';
 import { getSharedCoreClient } from '../core/client';
-import { RING_DROP_EVENT, RING_FILES_EVENT, RING_HOLD_EVENT, RING_OVER_EVENT, RING_SHOW_EVENT, onHostEvent, ringDone, ringPick, ringTake } from '../core/host-tauri';
+import { RING_DROP_EVENT, RING_FILES_EVENT, RING_HOLD_EVENT, RING_OVER_EVENT, RING_SHOW_EVENT, onHostEvent, ringDone, ringPhone, ringPick, ringTake } from '../core/host-tauri';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
@@ -49,6 +50,7 @@ const SHORT: Record<string, TKey> = {
   watermark: 'quick.short.watermark',
   sign: 'quick.short.sign',
   unlock: 'quick.short.unlock',
+  phone: 'quick.short.phone',
   all: 'quick.short.all',
 };
 
@@ -95,13 +97,15 @@ function RingWindow() {
   // Files were let go in the hub: the ring stays, and a click picks the tool.
   const [holding, setHolding] = useState(false);
   const [over, setOver] = useState<number | null>(null);
+  // A phone connected to the remote: the files can go to it ("To phone").
+  const [phone, setPhone] = useState(false);
   const segmentsRef = useRef<string[]>([]);
 
   const settings = useSettings();
   const tools = useMemo(() => {
     const fitting = ringToolsFor(names, settings.ringTools);
-    return [...fitting.map((tool) => ({ id: tool.id as string, icon: tool.icon })), { id: 'all', icon: ALL_TOOLS_ICON }];
-  }, [names, settings.ringTools]);
+    return [...fitting.map((tool) => ({ id: tool.id as string, icon: tool.icon })), ...(phone ? [{ id: 'phone', icon: Smartphone }] : []), { id: 'all', icon: ALL_TOOLS_ICON }];
+  }, [names, settings.ringTools, phone]);
 
   // The look, light or dark, and the icons the main window has chosen.
   useEffect(() => {
@@ -182,6 +186,7 @@ function RingWindow() {
         setOver(null);
         setVisible(false);
         setHolding(false);
+        void ringPhone().then(setPhone);
       }),
       onHostEvent<{ names: string[] }>(RING_FILES_EVENT, (payload) => {
         if (payload.names.length === 0) return;

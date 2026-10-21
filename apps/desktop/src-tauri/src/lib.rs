@@ -484,6 +484,7 @@ pub fn run() {
             shell_menu::shell_menu_set,
             shell_menu::shell_menu_state,
             ring::ring_pick,
+            ring::ring_phone,
             ring::ring_take,
             ring::ring_done,
             ring::ring_configure,

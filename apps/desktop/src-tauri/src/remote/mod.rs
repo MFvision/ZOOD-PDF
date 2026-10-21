@@ -518,9 +518,11 @@ pub fn remote_clipboard(app: AppHandle<Wry>, state: State<'_, RemoteState>, on: 
 }
 
 /// Files from the PC for the phones (`{ t: "give", name, mime, data }`), sent
-/// by the interface; the host only checks their size.
+/// by the interface; the host only checks their size. The file is seen
+/// leaving the screen for the phone.
 #[tauri::command]
 pub fn remote_give(
+    app: AppHandle<Wry>,
     state: State<'_, RemoteState>,
     name: String,
     mime: String,
@@ -529,11 +531,102 @@ pub fn remote_give(
     let Some(shared) = running(&state) else {
         return false;
     };
-    if data.len() > server::MAX_MESSAGE / 2 {
+    if data.len() > MAX_GIVE_DATA {
         return false;
     }
     let name = transfer::safe_name(&name);
-    shared.to_all(&serde_json::json!({ "t": "give", "name": name, "mime": mime.chars().take(100).collect::<String>(), "data": data }))
+    let mime: String = mime.chars().take(100).collect();
+    let sent = shared.to_all(&give_message(&name, &mime, &data));
+    if sent {
+        crate::arrival::depart(&app, &name, &mime, small_picture(&mime, &data), None);
+    }
+    sent
+}
+
+/// The most one file sent to the phones may be, as the phone's page says
+/// (`MAX_FILE_BYTES`, `protocol.ts`), and as base64 (a message holds it).
+const MAX_GIVE_BYTES: u64 = 40 * 1024 * 1024;
+const MAX_GIVE_DATA: usize = (MAX_GIVE_BYTES as usize).div_ceil(3) * 4;
+/// A picture this small (as base64) is also shown flying to the phone.
+const MAX_SHOWN_PICTURE: usize = 8 * 1024 * 1024;
+
+fn give_message(name: &str, mime: &str, data: &str) -> Value {
+    serde_json::json!({ "t": "give", "name": name, "mime": mime, "data": data })
+}
+
+fn small_picture<'a>(mime: &str, data: &'a str) -> Option<&'a str> {
+    (mime.starts_with("image/") && data.len() <= MAX_SHOWN_PICTURE).then_some(data)
+}
+
+/// A file's type, from its name, for the phone to show and save it right.
+pub fn mime_of(name: &str) -> &'static str {
+    let lower = name.to_ascii_lowercase();
+    let ext = lower.rsplit_once('.').map_or("", |(_, ext)| ext);
+    match ext {
+        "pdf" => "application/pdf",
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "heic" => "image/heic",
+        "txt" => "text/plain",
+        "csv" => "text/csv",
+        "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "mp4" => "video/mp4",
+        "mov" => "video/quicktime",
+        "mp3" => "audio/mpeg",
+        "zip" => "application/zip",
+        _ => "application/octet-stream",
+    }
+}
+
+/// A phone is connected now (the ring then offers "To phone").
+pub fn has_phone<R: Runtime>(app: &AppHandle<R>) -> bool {
+    app.try_state::<RemoteState>()
+        .and_then(|state| state.0.lock().ok()?.as_ref().map(|r| r.shared.clone()))
+        .and_then(|shared| shared.peers.lock().ok().map(|peers| !peers.is_empty()))
+        .unwrap_or(false)
+}
+
+/// Files on this computer for every connected phone, let go on the ring's
+/// "To phone": each is seen flying off the screen from `from` (the
+/// pointer). Files too large for one message are left. How many went.
+pub fn give_paths<R: Runtime>(
+    app: &AppHandle<R>,
+    files: &[std::path::PathBuf],
+    from: Option<(f64, f64)>,
+) -> usize {
+    use base64::Engine;
+    let Some(shared) = app
+        .try_state::<RemoteState>()
+        .and_then(|state| state.0.lock().ok()?.as_ref().map(|r| r.shared.clone()))
+    else {
+        return 0;
+    };
+    let mut sent = 0;
+    for path in files.iter().take(20) {
+        let fits = std::fs::metadata(path).is_ok_and(|m| m.is_file() && m.len() <= MAX_GIVE_BYTES);
+        let Some(bytes) = fits.then(|| std::fs::read(path).ok()).flatten() else {
+            continue;
+        };
+        let name = transfer::safe_name(
+            &path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default(),
+        );
+        let mime = mime_of(&name);
+        let data = base64::engine::general_purpose::STANDARD.encode(&bytes);
+        if shared.to_all(&give_message(&name, mime, &data)) {
+            if sent == 0 {
+                crate::arrival::depart(app, &name, mime, small_picture(mime, &data), from);
+            }
+            sent += 1;
+        }
+    }
+    sent
 }
 
 /// Forgets a remembered phone; if it is connected, it is let go.
@@ -586,6 +679,14 @@ pub fn remote_fullscreen(window: tauri::WebviewWindow<Wry>, on: bool) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn files_for_the_phone_are_typed_by_their_name() {
+        assert_eq!(mime_of("Scan.PDF"), "application/pdf");
+        assert_eq!(mime_of("photo.jpeg"), "image/jpeg");
+        assert_eq!(mime_of("no-extension"), "application/octet-stream");
+        const { assert!(MAX_GIVE_DATA < server::MAX_MESSAGE) };
+    }
 
     #[test]
     fn draws_a_qr_code() {

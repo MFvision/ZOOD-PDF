@@ -34,6 +34,8 @@ export interface PhoneSnapshot {
   clip: PcClip | null;
   /** Files the PC sent, newest first. */
   received: readonly Received[];
+  /** Files from the PC just come, shown full screen until put away: the newest, and how many came with it. */
+  catching: { file: Received; count: number } | null;
 }
 
 /**
@@ -42,7 +44,7 @@ export interface PhoneSnapshot {
  * The page reads it with `useSyncExternalStore`.
  */
 export class PhoneSession {
-  private snapshot: PhoneSnapshot = { link: 'connecting', pcName: '', pcControl: false, state: null, pictures: new Map(), clip: null, received: [] };
+  private snapshot: PhoneSnapshot = { link: 'connecting', pcName: '', pcControl: false, state: null, pictures: new Map(), clip: null, received: [], catching: null };
   private landedHandler: ((message: LandedMessage) => void) | null = null;
   private nextReceived = 1;
   private readonly listeners = new Set<() => void>();
@@ -143,8 +145,14 @@ export class PhoneSession {
     };
     const kept = [file, ...this.snapshot.received];
     for (const old of kept.slice(KEEP_RECEIVED)) URL.revokeObjectURL(old.url);
-    this.update({ received: kept.slice(0, KEEP_RECEIVED) });
+    const count = Math.min(KEEP_RECEIVED, (this.snapshot.catching?.count ?? 0) + 1);
+    this.update({ received: kept.slice(0, KEEP_RECEIVED), catching: { file, count } });
   }
+
+  /** The full-screen catch is put away; the files stay under "From the computer". */
+  readonly putAway = (): void => {
+    this.update({ catching: null });
+  };
 
   readonly onDone = (handle: ((message: DoneMessage) => void) | null): void => {
     this.doneHandler = handle;

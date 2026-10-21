@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowUp, Check, ClipboardCopy, Download, File as FileIcon, FileText, ImagePlus, X } from 'lucide-react';
 import { MAX_FILE_BYTES } from '../protocol';
 import type { HostMessage } from '../protocol';
@@ -35,14 +35,19 @@ export function SendTab({
   send,
   clip,
   received,
+  pcName,
   onLanded,
 }: {
   send: Send;
   clip: PcClip | null;
   received: readonly Received[];
+  pcName: string;
   onLanded: (handle: ((message: Landed) => void) | null) => void;
 }) {
   const [items, setItems] = useState<Item[]>([]);
+  // The full-screen stage the chosen files are swiped up from, one by one.
+  const [staging, setStaging] = useState(false);
+  const closeStage = useCallback(() => setStaging(false), []);
   const picker = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -72,6 +77,7 @@ export function SendTab({
       status: 'ready' as Status,
     }));
     setItems((list) => [...fresh, ...list].slice(0, 30));
+    if (fresh.length > 0) setStaging(true);
   };
 
   const go = async (item: Item) => {
@@ -92,9 +98,12 @@ export function SendTab({
   };
 
   const waiting = items.filter((i) => i.status === 'ready' || i.status === 'failed');
+  // In the order they were chosen.
+  const queue = items.filter((i) => i.status === 'ready').reverse();
 
   return (
     <div className="phone-send">
+      {staging && <LaunchStage queue={queue} pcName={pcName} onFlick={(item) => void go(item)} onClose={closeStage} />}
       <section className="phone-card">
         <h2>{ps('flickTitle')}</h2>
         <p className="phone-muted">{ps('flickBody')}</p>
@@ -152,6 +161,92 @@ export function SendTab({
           </ul>
         )}
       </section>
+    </div>
+  );
+}
+
+/**
+ * The chosen files, one at a time on the dark full screen: a light waits at
+ * the top, toward the computer, and grows as the file is pulled up; let go
+ * and the file flies up into it, and the next one comes.
+ */
+function LaunchStage({ queue, pcName, onFlick, onClose }: { queue: Item[]; pcName: string; onFlick: (item: Item) => void; onClose: () => void }) {
+  const item = queue[0];
+  const [lift, setLift] = useState(0);
+  const [gone, setGone] = useState<Item | null>(null);
+  const start = useRef<{ y: number; at: number; id: number } | null>(null);
+
+  useEffect(() => {
+    if (!gone) return;
+    const timer = window.setTimeout(() => setGone(null), 600);
+    return () => window.clearTimeout(timer);
+  }, [gone]);
+  // All sent, and the last one has flown: the stage goes.
+  useEffect(() => {
+    if (!item && !gone) onClose();
+  }, [item, gone, onClose]);
+
+  const down = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    start.current = { y: event.clientY, at: performance.now(), id: event.pointerId };
+  };
+  const move = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!start.current || start.current.id !== event.pointerId) return;
+    setLift(Math.max(-500, Math.min(30, event.clientY - start.current.y)));
+  };
+  const up = (event: React.PointerEvent<HTMLDivElement>) => {
+    const begun = start.current;
+    start.current = null;
+    if (!begun || !item) return;
+    const dy = event.clientY - begun.y;
+    const speed = dy / Math.max(1, performance.now() - begun.at);
+    setLift(0);
+    if (dy <= -FLICK_DISTANCE || (dy <= -FLICK_MIN && speed <= -FLICK_SPEED)) {
+      setGone(item);
+      onFlick(item);
+    }
+  };
+
+  const face = (one: Item) =>
+    one.preview ? <img src={one.preview} alt="" draggable={false} /> : <span className="phone-launch-icon">{one.file.type === 'application/pdf' ? <FileText /> : <FileIcon />}</span>;
+  const pull = Math.min(1, Math.max(0, -lift / 220));
+  return (
+    <div className="phone-launch" role="dialog" aria-modal="true" aria-label={ps('flickTitle')} style={{ '--pull': pull } as React.CSSProperties}>
+      <div key={gone?.id ?? 'glow'} className={`phone-launch-glow${gone ? ' phone-launch-glow-flash' : ''}`} aria-hidden="true" />
+      <button type="button" className="phone-launch-close" aria-label={ps('back')} onClick={onClose}>
+        <X />
+      </button>
+      {queue.length > 1 && <p className="phone-launch-count">{ps('launchLeft', { count: queue.length })}</p>}
+      {gone && (
+        <div key={`gone-${gone.id}`} className="phone-launch-card phone-launch-gone" aria-hidden="true">
+          {face(gone)}
+        </div>
+      )}
+      {item && (
+        <>
+          <div
+            key={item.id}
+            className="phone-launch-card"
+            style={lift ? { transform: `translateY(${lift}px) scale(${1 - pull * 0.12})`, transition: 'none' } : undefined}
+            onPointerDown={down}
+            onPointerMove={move}
+            onPointerUp={up}
+            onPointerCancel={() => {
+              start.current = null;
+              setLift(0);
+            }}
+          >
+            {face(item)}
+          </div>
+          <p className="phone-launch-name" dir="auto">
+            {item.file.name}
+          </p>
+          <p className="phone-launch-hint">
+            <ArrowUp />
+            <span>{pcName ? ps('launchHint', { name: pcName }) : ps('launchHintPc')}</span>
+          </p>
+        </>
+      )}
     </div>
   );
 }

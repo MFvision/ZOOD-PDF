@@ -48,7 +48,7 @@ html.arrival-page body {
   }
 }
 
-/* The file: up from the bottom middle, then to the corner where new files go. */
+/* The file: up from the bottom middle, large in the middle for a moment, then to the corner where new files go. */
 .arrival-file {
   position: absolute;
   display: grid;
@@ -57,7 +57,7 @@ html.arrival-page body {
   inline-size: 112px;
   inset-block-start: 24px;
   opacity: 0;
-  animation: arrival-fly 1.5s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards;
+  animation: arrival-fly 3.2s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards;
 }
 
 .arrival-end .arrival-file {
@@ -75,25 +75,104 @@ html.arrival-page body {
 @keyframes arrival-fly {
   0% {
     opacity: 0;
-    transform: translate(var(--arrival-from-x), calc(100vh - 80px)) scale(1.8) rotate(-6deg);
+    transform: translate(var(--arrival-from-x), calc(100vh - 40px)) scale(0.6);
   }
 
-  15% {
+  10% {
     opacity: 1;
   }
 
-  70% {
-    transform: translate(0, 6px) scale(0.98) rotate(0);
+  /* Shown large in the middle, as if opened. */
+  28% {
+    transform: translate(var(--arrival-from-x), calc(50vh - 75px)) scale(4);
   }
 
-  85% {
-    opacity: 1;
+  50% {
+    transform: translate(var(--arrival-from-x), calc(50vh - 75px)) scale(3.9);
+  }
+
+  72% {
+    transform: translate(0, 4px) scale(0.98);
+  }
+
+  78% {
     transform: translate(0, 0) scale(1);
+  }
+
+  92% {
+    opacity: 1;
   }
 
   100% {
     opacity: 0;
     transform: translate(0, 0) scale(1);
+  }
+}
+
+/* Going to the phone: lifts where it was, then off the bottom edge. */
+.arrival-out .arrival-file {
+  inset-block-start: auto;
+  translate: -50% -50%;
+  animation: arrival-depart 1.7s cubic-bezier(0.55, 0, 0.3, 1) forwards;
+}
+
+@keyframes arrival-depart {
+  0% {
+    opacity: 0;
+    transform: scale(1);
+  }
+
+  12% {
+    opacity: 1;
+    transform: translateY(-14px) scale(1.7);
+  }
+
+  35% {
+    opacity: 1;
+    transform: translateY(-18px) scale(1.75);
+  }
+
+  85% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(var(--depart-x), var(--depart-y)) scale(0.35) rotate(4deg);
+  }
+}
+
+/* The light it goes into, at the bottom edge, flaring as it passes. */
+.arrival-flare {
+  position: absolute;
+  inset-inline: 15%;
+  inset-block-end: -30%;
+  block-size: 60%;
+  border-radius: 50%;
+  background:
+    radial-gradient(50% 50% at 50% 50%, rgb(255 248 236 / 85%), transparent 70%),
+    radial-gradient(70% 60% at 50% 60%, rgb(174 139 102 / 45%), rgb(214 236 255 / 25%) 60%, transparent 80%);
+  filter: blur(36px);
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: arrival-flare 1.9s ease-out forwards;
+}
+
+@keyframes arrival-flare {
+  0%,
+  40% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+
+  80% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
   }
 }
 
@@ -136,11 +215,13 @@ html.arrival-page body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .arrival-sweep {
+  .arrival-sweep,
+  .arrival-flare {
     display: none;
   }
 
-  .arrival-file {
+  .arrival-file,
+  .arrival-out .arrival-file {
     animation: arrival-fade 2.4s ease forwards;
   }
 
