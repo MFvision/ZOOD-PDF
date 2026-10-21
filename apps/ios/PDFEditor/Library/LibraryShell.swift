@@ -185,8 +185,13 @@ struct LibraryShell: View {
             SettingsView(library: library)
         }
         .fullScreenCover(isPresented: $showingRemote) {
-            RemoteView()
-                .appEnvironment()
+            // A PDF sent from the computer joins the Library and opens.
+            RemoteView { file in
+                guard let bytes = try? Data(contentsOf: file) else { return }
+                showingRemote = false
+                _ = try? library.adopt(bytes: bytes, name: file.deletingPathExtension().lastPathComponent)
+            }
+            .appEnvironment()
         }
         // Batch: a sequence of steps over many files (Batch/).
         .fullScreenCover(isPresented: $showingBatch) {
@@ -396,7 +401,15 @@ struct LibraryShell: View {
                 HomeView(library: library, actions: actions)
             }
             .navigationTitle(Text(verbatim: AppName.isolated))
-            .toolbar { libraryToolbar }
+            .toolbar {
+                libraryToolbar
+                // Classic has no Me tab: Settings sits where people look
+                // for it, at the top, not only at the bottom of Home.
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Settings", systemImage: "gearshape") { showingSettings = true }
+                        .accessibilityIdentifier("library.settings")
+                }
+            }
             .themedToolbar()
             .navigationDestination(item: $library.opened) { model in
                 DocumentView(model: model)

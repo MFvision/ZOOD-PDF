@@ -3707,6 +3707,16 @@
         }
       }
     },
+    "No text could be read on these pages, even from their pictures.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّرت قراءة أي نص في هذه الصفحات، حتى من صورها."
+          }
+        }
+      }
+    },
     "No outline": {
       "localizations": {
         "ar": {
@@ -5233,6 +5243,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "حفظ كملاحظة"
+          }
+        }
+      }
+    },
+    "Save or share": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "احفظ أو شارك"
           }
         }
       }
