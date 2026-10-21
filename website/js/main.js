@@ -26,6 +26,8 @@ import { phoneScene, phoneFrame as phoneRoomFrame } from './phone-room.js';
 import { familyScene, familyFrame } from './family.js';
 import { remoteScene, remoteFrame } from './remote.js';
 import { filmScene, filmFrame } from './film.js';
+import { fabricButton, wireFabric } from './fabric.js';
+import { foldScene, foldFrame } from './fold-room.js';
 
 const root = document.documentElement;
 export const lang = root.lang === 'en' ? 'en' : 'ar';
@@ -190,7 +192,7 @@ function chapterBody(c, index) {
     ).join('')}</ul>`;
   }
   if (c.note) body += `<p class="note">${escape(t(c.note))}${escape(t(c.note.on))}.</p>`;
-  if (c.cta) body += `<a class="button" href="${c.cta.href}">${escape(t(c.cta.label))}</a>`;
+  if (c.cta) body += fabricButton(c.cta.href, escape(t(c.cta.label)));
   if (c.more)
     body += `<a class="text-link" href="${urlFor(lang, c.more.href.replace(/\/$/, ''))}">${escape(t(c.more.label))}</a>`;
   if (c.devices?.length) {
@@ -227,6 +229,7 @@ const ROOMS = {
   phone: { scene: () => phoneScene(t, escape, media, phoneFrame()), frame: phoneRoomFrame },
   remote: { scene: () => remoteScene(t, escape, phoneFrame()), frame: remoteFrame },
   film: { scene: () => filmScene(t, escape, lang), frame: filmFrame },
+  fold: { scene: () => foldScene(media), frame: foldFrame },
   family: {
     scene: () => familyScene(t, escape, media, { phone: phoneFrame(), tablet: tabletFrame() }),
     frame: familyFrame,
@@ -623,6 +626,7 @@ function startStory() {
   addEventListener('load', measure);
   measure();
   update();
+  wireFabric(main, () => reduced);
   if (!location.hash) playGather(stage, reduced);
   if (wallNear) wallImages();
 }
@@ -630,4 +634,5 @@ function startStory() {
 headlineFont();
 startInteractions(() => reduced);
 if (root.dataset.page === 'story') startStory();
+else if (root.dataset.page === 'iphone-duo') import('./foldable.js').then((m) => m.startFoldable());
 else import('./legal-page.js').then((m) => m.startLegal(root.dataset.page));

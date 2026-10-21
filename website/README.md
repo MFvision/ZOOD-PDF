@@ -178,6 +178,15 @@ workflow to the server; the licensed font has to be added on the server side.
 - `js/film.js`: the 30-second film after the opening. It plays without sound
   while on screen and pauses when it leaves; a button turns the sound on. With
   Reduce Motion or Save Data it waits on its poster.
+- `js/fabric.js`: the download button, a velvet cushion drawn in SVG and lit
+  by an SVG filter. It swells toward the pointer and squeezes when pressed;
+  blue in the dark theme, navy in the light one. Still with Reduce Motion.
+- `js/foldable.js`, `js/foldable-copy.js`, `css/foldable.css`: the iPhone Duo
+  page (`/iphone-duo/`), an Apple-style white gallery. The device is drawn in
+  CSS 3D (`js/fold-device.js`): it turns and unfolds as the hero scrolls; the
+  highlights carousel shows it folded (iPhone screens) or open (iPad screens).
+  `js/fold-room.js` is its small section on the home page. Check it with
+  `node website/tools/qa-foldable.mjs`.
 - `js/interact.js`: a ring of light from where a button or switch is pressed;
   the press and spring are in `css/site.css`. Off with Reduce Motion.
 

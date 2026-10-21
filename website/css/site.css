@@ -2671,6 +2671,79 @@ main {
   transform: scale(0.95);
   transition-duration: var(--quick);
 }
+/* The cloth download button (js/fabric.js): blue velvet in the dark theme,
+   ZOOD navy in the light one. The cloth is drawn in the SVG, so the box
+   itself is clear and lets the cloth swell past its edges. */
+.button.fabric {
+  --fabric: #10306e;
+  --fabric-ink: #f2f5fb;
+  min-height: 60px;
+  padding: 0 34px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--fabric-ink);
+  overflow: visible;
+  box-shadow: none;
+  font-size: 17px;
+  font-weight: 700;
+  -webkit-tap-highlight-color: transparent;
+  transition: none;
+}
+:root[data-theme='dark'] .button.fabric {
+  --fabric: #1d46cc;
+  --fabric-ink: #eef3ff;
+  background: none;
+  color: var(--fabric-ink);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .button.fabric {
+    --fabric: #1d46cc;
+    --fabric-ink: #eef3ff;
+    background: none;
+    color: var(--fabric-ink);
+  }
+}
+.button.fabric:hover,
+.button.fabric:active {
+  transform: none;
+}
+.button.fabric::after {
+  display: none;
+}
+.fabric-cloth {
+  position: absolute;
+  inset: -16px;
+  z-index: -1;
+  overflow: visible;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 14px rgb(2 10 30 / 0.45));
+}
+.fabric-body {
+  fill: var(--fabric);
+  transition: fill var(--regular) var(--ease);
+}
+.fabric-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  /* Ink sunk into the nap: a shade below, a little light above. */
+  text-shadow:
+    0 1px 1px rgb(0 0 0 / 0.35),
+    0 -1px 0 rgb(255 255 255 / 0.08);
+  opacity: 0.94;
+  will-change: transform;
+}
+.fabric-icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.35));
+}
+.button.fabric:focus-visible {
+  outline: 2px solid var(--fabric);
+  outline-offset: 10px;
+}
 .tap {
   position: absolute;
   z-index: -1;
@@ -4200,5 +4273,47 @@ main {
     inset-inline-end: 8px;
     padding: 8px 12px;
     font-size: 13px;
+  }
+}
+
+/* ---- The iPhone Duo room (js/fold-room.js) ---------------------------- */
+.room-fold {
+  height: 200svh;
+}
+.room-fold .ring-stage {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr;
+  justify-items: center;
+  align-items: start;
+  gap: 2svh;
+  padding-block: calc(var(--bar) + 4svh) 4svh;
+  padding-inline: max(var(--gutter), 5vw);
+}
+.room-fold .card {
+  max-width: 900px;
+  padding: 0;
+  text-align: center;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.room-fold .lead {
+  margin-top: 8px;
+}
+.fold-room {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.fold-room .fd-device {
+  --size: min(760px, 92vw, 52svh * 1.42);
+}
+@media (max-width: 760px) {
+  .room-fold {
+    height: 170svh;
   }
 }

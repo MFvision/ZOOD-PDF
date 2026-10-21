@@ -7,6 +7,10 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { SITE, CHAPTERS, UI } from '../js/story.js';
 import { PAGES } from '../js/legal.js';
+import { FOLD } from '../js/foldable-copy.js';
+
+// Pages with their own words: the legal pages and the iPhone Duo page.
+const META = { ...PAGES, 'iphone-duo': FOLD };
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const hero = CHAPTERS[0];
@@ -21,9 +25,9 @@ const path = (lang, slug) => (lang === 'ar' ? '/' : '/en/') + (slug ? `${slug}/`
 function shell(lang, slug) {
   const name = SITE.name[lang];
   const title = slug
-    ? `${PAGES[slug].title[lang]} · ${name}`
+    ? `${META[slug].title[lang]} · ${name}`
     : `${name}: ${plain(hero.title[lang])}`;
-  const description = slug ? PAGES[slug].description[lang] : hero.lead[lang];
+  const description = slug ? META[slug].description[lang] : hero.lead[lang];
   const url = SITE.url + path(lang, slug);
   return `<!doctype html>
 <html lang="${lang}" dir="${lang === 'ar' ? 'rtl' : 'ltr'}" data-page="${slug || 'story'}">
@@ -51,7 +55,7 @@ function shell(lang, slug) {
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
 <link rel="preload" href="/assets/fonts/${lang === 'ar' ? 'vazirmatn' : 'inter'}.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/css/site.css">
+<link rel="stylesheet" href="/css/site.css">${slug && slug !== 'iphone-duo' ? '' : '\n<link rel="stylesheet" href="/css/foldable.css">'}
 <script src="/js/boot.js"></script>
 <script type="module" src="/js/main.js"></script>
 </head>
@@ -63,7 +67,7 @@ function shell(lang, slug) {
 }
 
 for (const lang of ['ar', 'en']) {
-  for (const slug of ['', 'privacy', 'terms', 'support']) {
+  for (const slug of ['', 'iphone-duo', 'privacy', 'terms', 'support']) {
     const dir = ROOT + path(lang, slug).slice(1);
     mkdirSync(dir, { recursive: true });
     writeFileSync(`${dir}index.html`, shell(lang, slug));

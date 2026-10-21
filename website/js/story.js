@@ -451,6 +451,22 @@ export const CHAPTERS = [
     note: { ar: 'التعرّف الكامل على النص: ', en: 'Full OCR: ', on: ON.allButMobile },
   },
   {
+    id: 'foldable',
+    kind: 'fold',
+    stage: { pages: 1, fan: 0, recede: 1, dusk: 0, pattern: 0 },
+    devices: [],
+    eyebrow: { ar: 'جديد: آيفون Duo', en: 'New: iPhone Duo' },
+    title: {
+      ar: 'افتح الهاتف، [[تتّسع الصفحة]].',
+      en: 'Unfold the phone. [[The page opens up.]]',
+    },
+    lead: {
+      ar: 'محرر PDF مطويًّا في يد واحدة، ومفتوحًا على الصفحة كاملة.',
+      en: 'PDF Editor folded in one hand, and open to the whole page.',
+    },
+    more: { href: 'iphone-duo/', label: { ar: 'اكتشف الصفحة', en: 'See the page' } },
+  },
+  {
     id: 'family',
     kind: 'family',
     stage: { pages: 1, fan: 0, recede: 1, dusk: 0, pattern: 0 },
