@@ -61,8 +61,8 @@ export const AiCard = forwardRef<HTMLTextAreaElement, { className?: string }>(fu
   const ask = (request: AiRequest) => {
     postAiRequest(request);
     dispatch({ type: 'SET_ACTIVE_TOOL', tool: 'ai' });
-    // The Library needs no open file; a question about one document asks for it.
-    if (state.document === null && request.scope !== 'library') services.requestOpenFile();
+    // The Library and the general chat need no open file; a chip about one document asks for it.
+    if (state.document === null && request.scope !== 'library' && request.scope !== 'chat') services.requestOpenFile();
   };
 
   return (
@@ -91,7 +91,14 @@ export const AiCard = forwardRef<HTMLTextAreaElement, { className?: string }>(fu
         onSubmit={(event) => {
           event.preventDefault();
           if (question.trim().length === 0) return;
-          ask(everything && library ? { kind: 'question', text: question.trim(), scope: 'library' } : { kind: 'question', text: question.trim() });
+          // With no document open, a typed question is for the general chat: about anything, nothing to choose first.
+          ask(
+            everything && library
+              ? { kind: 'question', text: question.trim(), scope: 'library' }
+              : state.document === null
+                ? { kind: 'question', text: question.trim(), scope: 'chat' }
+                : { kind: 'question', text: question.trim() },
+          );
           setQuestion('');
         }}
       >
@@ -125,7 +132,7 @@ export const AiCard = forwardRef<HTMLTextAreaElement, { className?: string }>(fu
         <Icon of={Library} size={14} />
         <span>{t('ai.card.askAll')}</span>
       </button>
-      <p className="home-ai-note">{state.document === null && !everything ? `${t('ai.card.needsFile')} ${provider}` : provider}</p>
+      <p className="home-ai-note">{state.document === null && !everything ? `${t('ai.card.anything')} ${provider}` : provider}</p>
     </aside>
   );
 });

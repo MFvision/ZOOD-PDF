@@ -22,10 +22,13 @@ import type { Runner } from './runner';
  * for a request about the whole of it, otherwise the passages the request's
  * words point to. From the Library, the lines its index ranks highest.
  */
-export type Scope = 'document' | 'open' | 'library';
+export type Scope = 'chat' | 'document' | 'open' | 'library';
 
 /** The Library's own conversation: one for the whole index, beside each document's. */
 export const LIBRARY_CHAT = -1;
+
+/** The general chat's own conversation: about anything, with or without a document open. */
+export const GENERAL_CHAT = -2;
 
 /** A file as the prompt numbers it, and what of it went. */
 export interface FileBasis {
@@ -83,7 +86,7 @@ function fileText(file: FileMaterial): string {
 }
 
 /** One turn across files: the files' material, the conversation so far, the request. */
-export function acrossPrompt(files: readonly FileMaterial[], history: readonly Said[], request: string, scope: Exclude<Scope, 'document'>): Prompt {
+export function acrossPrompt(files: readonly FileMaterial[], history: readonly Said[], request: string, scope: Exclude<Scope, 'document' | 'chat'>): Prompt {
   const parts: string[] = [files.map(fileText).join('\n')];
   const told = files.map((file) => {
     const { ref, name, how, pageCount } = file.basis;
@@ -206,7 +209,7 @@ export type TurnedAcross =
  * it is given; a request the model counts as too large is built again with
  * less, as for one document.
  */
-async function turnAcross(build: (room: number) => Promise<Built>, request: string, history: readonly Said[], runner: Runner, options: AcrossOptions, scope: Exclude<Scope, 'document'>): Promise<TurnedAcross> {
+async function turnAcross(build: (room: number) => Promise<Built>, request: string, history: readonly Said[], runner: Runner, options: AcrossOptions, scope: Exclude<Scope, 'document' | 'chat'>): Promise<TurnedAcross> {
   let scale = 1;
   for (let attempt = 0; ; attempt += 1) {
     const budget = Math.floor(runner.turnBudget * scale);

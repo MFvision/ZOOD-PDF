@@ -14,8 +14,13 @@ import type { Ask, Basis } from './answer';
 import { deviceModel, shortModelName } from '../device/models';
 import { chosenChips } from './chips';
 import { useSettings } from '../../state/settings';
-import { analyzeNow, approve, ask, askAcross, bindChat, discard, setDraft, stop, useConversation } from './store';
-import { LIBRARY_CHAT } from './across';
+import { analyzeNow, approve, ask, askAcross, askGeneral, bindChat, conversationOf, discard, noteDone, setDraft, stop, useConversation } from './store';
+import { GENERAL_CHAT, LIBRARY_CHAT } from './across';
+import { commandOf, NO_FILE_TOOLS } from './commands';
+import type { Command } from './commands';
+import { findTool } from '../../tools/tools';
+import { systemUserName } from '../../core/host-tauri';
+import { partOfDay } from '../../home/Greeting';
 import type { FileBasis, Scope } from './across';
 import { useAppDispatch, useAppState, useServices } from '../../state/AppContext';
 import { addFact, rememberRequest } from '../profile/wallet';
@@ -71,6 +76,8 @@ export interface ChatViewProps {
   currentPage: number;
   /** Why nothing can be asked yet (no key, no model…), or null when it can. */
   missing: TKey | null;
+  /** Whether the model is there is still being found out: a request from the home screen waits for the answer. */
+  settling?: boolean;
   /** What stands in the thread while something is missing: the model's download, a way to the settings. */
   setup: ReactNode;
   env: Env;
@@ -94,10 +101,22 @@ export interface ChatViewProps {
 }
 
 const SCOPES: readonly { id: Scope; label: TKey }[] = [
+  { id: 'chat', label: 'ai.scope.chat' },
   { id: 'document', label: 'ai.scope.document' },
   { id: 'open', label: 'ai.scope.open' },
   { id: 'library', label: 'ai.scope.library' },
 ];
+
+/** The general chat's suggestions: a question for the model, or a command the chat does itself. */
+const GENERAL_CHIPS: readonly { id: string; label: TKey; prompt: TKey; draft?: boolean }[] = [
+  { id: 'help', label: 'ai.general.chipHelp', prompt: 'ai.general.chipHelpPrompt' },
+  { id: 'open', label: 'ai.general.chipOpen', prompt: 'ai.general.chipOpenPrompt' },
+  { id: 'email', label: 'ai.general.chipEmail', prompt: 'ai.general.chipEmailPrompt', draft: true },
+  { id: 'library', label: 'ai.general.chipLibrary', prompt: 'ai.general.chipLibraryPrompt' },
+];
+
+/** The computer account's name, asked of the host once. */
+let accountName: Promise<string> | null = null;
 
 /** A local server that did not answer, or that the app may not reach: the built-in model needs neither. */
 export function offersDevice(failure: Failure, provider: ProviderId): boolean {
@@ -111,15 +130,28 @@ export function offersDevice(failure: Failure, provider: ProviderId): boolean {
  */
 export function ChatView(props: ChatViewProps) {
   const { hasDocument, currentPage, missing, env, incoming, onIncomingTaken, scope } = props;
-  // The Library has one conversation of its own; the open documents share the live document's.
-  const documentId = scope === 'library' ? LIBRARY_CHAT : props.documentId;
+  // The Library and the general chat have one conversation each; the open documents share the live document's.
+  const documentId = scope === 'library' ? LIBRARY_CHAT : scope === 'chat' ? GENERAL_CHAT : props.documentId;
   const { t, dir } = useI18n();
   const settings = useSettings();
   const conversation = useConversation(documentId);
-  const { document } = useAppState();
+  const state = useAppState();
+  const { document } = state;
+  // The person's name, for the general chat to call them by: theirs from Settings, or the computer account's.
+  const [account, setAccount] = useState('');
+  useEffect(() => {
+    if (settings.userName) return;
+    let alive = true;
+    void (accountName ??= systemUserName().catch(() => '')).then((name) => alive && setAccount(name));
+    return () => {
+      alive = false;
+    };
+  }, [settings.userName]);
+  const personName = (settings.userName || account).trim().split(/\s+/)[0] ?? '';
   const dispatch = useAppDispatch();
-  const { tabs, activeTab } = useServices();
-  const chatFile = scope === 'library' ? 'library:' : document ? fileKey(document.name, tabs.find((tab) => tab.key === activeTab)?.path) : null;
+  const services = useServices();
+  const { tabs, activeTab } = services;
+  const chatFile = scope === 'library' ? 'library:' : scope === 'chat' ? 'general:' : document ? fileKey(document.name, tabs.find((tab) => tab.key === activeTab)?.path) : null;
   useEffect(() => {
     if (documentId !== null && chatFile) void bindChat(documentId, chatFile);
   }, [documentId, chatFile, settings.keepChats]);
@@ -136,7 +168,7 @@ export function ChatView(props: ChatViewProps) {
   const inputId = useId();
   const reviewId = useId();
   const { turns, busy, progress, review, known, draft } = conversation;
-  const ready = scope === 'library' ? props.libraryReady : hasDocument;
+  const ready = scope === 'chat' ? true : scope === 'library' ? props.libraryReady : hasDocument;
   const canSend = ready && documentId !== null && missing === null && !busy;
 
   // In Arabic text a range such as 1–2 reads backwards unless it is isolated as left-to-right.
@@ -144,9 +176,75 @@ export function ChatView(props: ChatViewProps) {
   const range = (from: number, to: number) => (dir === 'rtl' ? `\u2066${from}–${to}\u2069` : `${from}–${to}`);
   const say = (note: Note) => t(note.key, note.params).trim();
 
+  /** Does what a command says, in the app; what was done, said in the chat. */
+  const perform = (command: Command): Note => {
+    const pageCount = hasDocument ? (state.document?.pageCount ?? 0) : 0;
+    switch (command.kind) {
+      case 'tool': {
+        const name = t(findTool(command.tool)?.labelKey ?? 'tool.ai');
+        const needsFile = !hasDocument && !NO_FILE_TOOLS.includes(command.tool);
+        dispatch({ type: 'SET_ACTIVE_TOOL', tool: command.tool });
+        if (needsFile) services.requestOpenFile();
+        return { key: needsFile ? 'ai.do.toolFile' : 'ai.do.tool', params: { name } };
+      }
+      case 'openFile':
+        services.requestOpenFile();
+        return { key: 'ai.do.openFile' };
+      case 'home':
+        if (hasDocument) dispatch({ type: 'SHOW_HOME', shown: true });
+        return { key: 'ai.do.home' };
+      case 'settings':
+        dispatch({ type: 'DIALOG', dialog: 'settings' });
+        return { key: 'ai.do.settings' };
+      case 'tour':
+        dispatch({ type: 'DIALOG', dialog: 'tour' });
+        return { key: 'ai.do.tour' };
+      case 'shortcuts':
+        dispatch({ type: 'DIALOG', dialog: 'shortcuts' });
+        return { key: 'ai.do.shortcuts' };
+      case 'theme':
+        dispatch({ type: 'SET_THEME', theme: command.theme });
+        return { key: command.theme === 'dark' ? 'ai.do.dark' : 'ai.do.light' };
+      case 'page':
+        if (pageCount === 0) return { key: 'ai.do.needsFile' };
+        if (command.page < 1 || command.page > pageCount) return { key: 'ai.do.noPage', params: { total: pageCount } };
+        props.goToPage(command.page);
+        return { key: 'ai.do.page', params: { page: command.page } };
+      case 'find':
+        if (pageCount === 0) return { key: 'ai.do.needsFile' };
+        dispatch({ type: 'FIND_OPEN' });
+        dispatch({ type: 'FIND_QUERY', query: command.query });
+        return { key: 'ai.do.find', params: { query: command.query } };
+      case 'zoom':
+        if (pageCount === 0) return { key: 'ai.do.needsFile' };
+        dispatch({ type: command.direction === 'in' ? 'ZOOM_IN' : 'ZOOM_OUT' });
+        return { key: command.direction === 'in' ? 'ai.do.zoomIn' : 'ai.do.zoomOut' };
+    }
+  };
+
+  /**
+   * A short command is done at once, with no model asked. In the general
+   * chat every command; about documents, not "find", which there is a question.
+   */
+  const commanded = (text: string): boolean => {
+    // An answer being written does not hold a command up: it asks no model.
+    if (documentId === null) return false;
+    const command = commandOf(text);
+    if (!command || (command.kind === 'find' && scope !== 'chat')) return false;
+    pinned.current = true;
+    noteDone(documentId, text, perform(command));
+    return true;
+  };
+
+  const generalContext = () => ({ name: personName, now: new Date(), documentName: hasDocument ? (document?.name ?? null) : null });
+
   const send = (request: Ask) => {
     if (!canSend || documentId === null) return false;
     pinned.current = true;
+    if (scope === 'chat') {
+      if (!commanded(request.text)) void askGeneral(documentId, request.text, env, generalContext());
+      return true;
+    }
     // Across files, a translation is still of the page on screen: this document's.
     if (scope === 'document' || request.kind === 'translate') void ask(props.documentId ?? documentId, request, env);
     else void askAcross(documentId, request.text, env, scope);
@@ -167,22 +265,41 @@ export function ChatView(props: ChatViewProps) {
       if (documentId !== null) setDraft(documentId, '');
       return;
     }
+    if (commanded(text) && documentId !== null) {
+      setDraft(documentId, '');
+      return;
+    }
     if (send({ kind: 'question', text }) && documentId !== null) setDraft(documentId, '');
   };
+
+  // The effect below sends with what this render knows: the person's name, the open document.
+  const latestSend = useRef(send);
+  useLayoutEffect(() => {
+    latestSend.current = send;
+  });
 
   // A request from the home screen goes as soon as it can; until then it waits in the input.
   useEffect(() => {
     if (!incoming) return;
     if (canSend && documentId !== null) {
       pinned.current = true;
-      if (scope !== 'document' && incoming.kind !== 'translate') void askAcross(documentId, incoming.text, env, scope);
+      // Kept in the input while the model was on its way, and left as it was: it goes now, and leaves the input.
+      const waiting = conversationOf(documentId).draft;
+      if (waiting.trim() === incoming.text.trim()) setDraft(documentId, '');
+      else if (waiting.trim().length > 0) {
+        onIncomingTaken();
+        return;
+      }
+      if (scope === 'chat') latestSend.current({ kind: 'question', text: incoming.text });
+      else if (scope !== 'document' && incoming.kind !== 'translate') void askAcross(documentId, incoming.text, env, scope);
       else void ask(props.documentId ?? documentId, incoming.kind === 'translate' ? { kind: 'translate', text: incoming.text, page: currentPage } : { kind: incoming.kind, text: incoming.text }, env);
       onIncomingTaken();
-    } else if (ready && documentId !== null && missing !== null) {
+    } else if (ready && documentId !== null && missing !== null && !props.settling) {
       setDraft(documentId, incoming.text);
-      onIncomingTaken();
+      // The model being fetched: the request waits in the input, and goes by itself once the model is there.
+      if (missing !== 'ai.needDeviceModel') onIncomingTaken();
     }
-  }, [incoming, canSend, documentId, props.documentId, scope, ready, missing, currentPage, env, onIncomingTaken]);
+  }, [incoming, canSend, documentId, props.documentId, scope, ready, missing, props.settling, currentPage, env, onIncomingTaken]);
 
   // The newest words stay in view while the reader has not scrolled away from them.
   useLayoutEffect(() => {
@@ -464,7 +581,7 @@ export function ChatView(props: ChatViewProps) {
               className="segmented-item"
               aria-checked={scope === one.id}
               disabled={busy || (unavailable && scope !== one.id)}
-              title={unavailable ? t(one.id === 'library' ? 'ai.scope.noLibrary' : 'tool.openFirst') : undefined}
+              title={unavailable ? t(one.id === 'library' ? 'ai.scope.noLibrary' : 'tool.openFirst') : t(one.label)}
               onClick={() => props.onScope(one.id)}
             >
               {t(one.label)}
@@ -487,7 +604,7 @@ export function ChatView(props: ChatViewProps) {
       >
         {missing !== null && ready ? (
           <div className="ai-chat-setup">{props.setup}</div>
-        ) : !hasDocument && incoming ? (
+        ) : !hasDocument && incoming && (scope === 'document' || scope === 'open') ? (
           // From the home screen, before its file is chosen: the request, where it will be asked.
           <ol className="ai-turns">
             <li className="ai-turn ai-turn-user">
@@ -500,7 +617,12 @@ export function ChatView(props: ChatViewProps) {
             <span className="ai-chat-mark" aria-hidden="true">
               <Icon of={Sparkles} size={22} />
             </span>
-            {scope === 'library' ? (
+            {scope === 'chat' ? (
+              <>
+                <h4>{t(personName ? 'ai.general.titleName' : 'ai.general.title', { greeting: t(`home.greeting.${partOfDay(new Date().getHours())}` as TKey), name: personName })}</h4>
+                <p>{t('ai.general.text')}</p>
+              </>
+            ) : scope === 'library' ? (
               <>
                 <h4>{t('ai.scope.libraryTitle')}</h4>
                 <p>{t(props.libraryReady ? 'ai.scope.libraryText' : 'ai.scope.noLibrary')}</p>
@@ -560,7 +682,7 @@ export function ChatView(props: ChatViewProps) {
                     </ul>
                   </dd>
                 </div>
-              ) : (
+              ) : review.pageCount === 0 ? null : (
                 <div>
                   <dt>{t('ai.chat.reviewDocument')}</dt>
                   <dd>{t(review.whole ? 'ai.chat.reviewWhole' : 'ai.chat.reviewParts', { total: review.pageCount, characters: numbers.format(review.characters) })}</dd>
@@ -585,7 +707,26 @@ export function ChatView(props: ChatViewProps) {
       </div>
 
       <ul className="ai-chips" aria-label={t('ai.card.chips')}>
-        {chosenChips(settings.aiPrompts, settings.hiddenAiPrompts).map((chip) => (
+        {scope === 'chat' && GENERAL_CHIPS.map((chip) => (
+          <li key={chip.id}>
+            <button
+              type="button"
+              className="ai-chip"
+              disabled={!canSend}
+              onClick={() => {
+                const text = t(chip.prompt);
+                // "Write an email…" is finished by the person: it goes into the input, not to the model.
+                if (chip.draft) {
+                  if (documentId !== null) setDraft(documentId, text);
+                } else send({ kind: 'question', text });
+                input.current?.focus();
+              }}
+            >
+              {t(chip.label)}
+            </button>
+          </li>
+        ))}
+        {scope !== 'chat' && chosenChips(settings.aiPrompts, settings.hiddenAiPrompts).map((chip) => (
           <li key={chip.id}>
             <button
               type="button"
@@ -620,7 +761,7 @@ export function ChatView(props: ChatViewProps) {
           dir={draft.length === 0 ? dir : 'auto'}
           rows={1}
           maxLength={2000}
-          placeholder={t(scope === 'library' ? (props.libraryReady ? 'ai.scope.placeholderLibrary' : 'ai.scope.noLibrary') : hasDocument ? (scope === 'open' ? 'ai.scope.placeholderOpen' : 'ai.chat.placeholder') : 'tool.openFirst')}
+          placeholder={t(scope === 'chat' ? 'ai.general.placeholder' : scope === 'library' ? (props.libraryReady ? 'ai.scope.placeholderLibrary' : 'ai.scope.noLibrary') : hasDocument ? (scope === 'open' ? 'ai.scope.placeholderOpen' : 'ai.chat.placeholder') : 'tool.openFirst')}
           disabled={!ready}
           value={draft}
           onChange={(event) => documentId !== null && setDraft(documentId, event.target.value)}
