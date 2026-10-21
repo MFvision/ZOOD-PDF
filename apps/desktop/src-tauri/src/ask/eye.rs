@@ -141,6 +141,31 @@ pub fn capture() -> Result<Screen, String> {
     })
 }
 
+/// The screen at `area` again (the one looked at before), for the next step
+/// of Show me or Do it for me.
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+pub fn capture_at(area: Area) -> Result<Screen, String> {
+    let (cx, cy) = (area.x + area.width / 2.0, area.y + area.height / 2.0);
+    let monitor =
+        xcap::Monitor::from_point(cx as i32, cy as i32).map_err(|e| format!("E_SCREEN: {e}"))?;
+    let image = monitor
+        .capture_image()
+        .map_err(|e| format!("E_SCREEN: {e}"))?;
+    let (width, height, rgb) = shrink(image.width(), image.height(), image.as_raw());
+    Ok(Screen {
+        width,
+        height,
+        rgb,
+        monitor: area,
+        window: None,
+    })
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+pub fn capture_at(_area: Area) -> Result<Screen, String> {
+    Err("E_SCREEN: Ask ZOOD sees the screen on Windows and macOS".to_string())
+}
+
 /// The window the person is working in, for a tap: its app and title, the
 /// picture the model is shown, and a sharper one to read the words from.
 #[derive(Clone, Debug)]

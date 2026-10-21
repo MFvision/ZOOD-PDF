@@ -9,9 +9,11 @@ import {
   Mic,
   MousePointerClick,
   PenLine,
+  Play,
   RotateCcw,
   Search,
   Send,
+  SkipForward,
   Sparkles,
   Square,
   X,
@@ -46,6 +48,20 @@ import {
 } from './draft';
 import type { Draft, DocumentLine } from './draft';
 import { recall } from './memory';
+import {
+  ending,
+  explainPrompt,
+  MAX_STEPS,
+  near,
+  nextStepPrompt,
+  partsGrammar,
+  readingTime,
+  readNextStep,
+  readParts,
+  risky,
+  stepGrammar,
+} from './guide';
+import type { GuideMode, Step } from './guide';
 import { decisionGrammar, languageOf, readDecision, systemPrompt } from './plan';
 import type { AskTool, Decision, Moment } from './plan';
 import { pushLevel, quietEnough, watchQuiet } from './listen';
@@ -54,7 +70,7 @@ import { readWindow, warmUp } from './read';
 import { chosenBrain, earModels, onMac, readAskPreferences, tapKeyLabel } from './settings';
 import { isolate } from '../signatures/model';
 import { readStyle } from './style';
-import { speak, stopSpeaking } from './voice';
+import { shouldTalk, stopSpeaking, talk } from './voice';
 
 /** True in Ask ZOOD's island window. */
 export function isAskWindow(): boolean {
@@ -102,6 +118,8 @@ interface HostMoment {
   app: string;
   title: string;
   readable: boolean;
+  /** ZOOD PDF itself was in front. */
+  ours: boolean;
 }
 
 /** The host's moment, with what an older host or a voice question leaves out filled in. */
@@ -113,8 +131,22 @@ function momentOf(raw: unknown): HostMoment {
     app: typeof value.app === 'string' ? value.app : '',
     title: typeof value.title === 'string' ? value.title : '',
     readable: value.readable === true,
+    ours: value.ours === true,
   };
 }
+
+/**
+ * Where a guide is: waiting for the person's click (Show me), looking at
+ * the screen again, clicking (Do it for me), asking before a step that
+ * sends, deletes, pays or signs, stopped because the mouse moved, or
+ * saying a part (Explain this).
+ */
+type GuideWait = 'click' | 'looking' | 'busy' | 'confirm' | 'paused' | 'telling';
+
+const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+
+/** How long Show me waits for one click before it stops. */
+const CLICK_WAITS_MS = 5 * 60_000;
 
 type Phase =
   | { kind: 'idle' }
@@ -136,6 +168,18 @@ type Phase =
   | { kind: 'said'; words: string; decision: Decision }
   | { kind: 'placed'; words: string; say: string; text: string; app: string }
   | { kind: 'ideas'; draft: Draft }
+  | {
+      kind: 'guide';
+      mode: GuideMode;
+      words: string;
+      say: string;
+      /** The step, from 1; for an explanation, the part and how many there are. */
+      step: number;
+      of: number;
+      wait: GuideWait;
+      /** Do it for me was asked outside ZOOD PDF: it only points there. */
+      onlyPoints: boolean;
+    }
   | { kind: 'problem'; message: TKey; detail?: string };
 
 /** How long an answer stays once said, and a list or a question waits. */
@@ -185,6 +229,8 @@ function Island() {
   const lastTapped = useRef(false);
   /** The screen's notch, in points, for the island to grow out of; null where it draws its own. */
   const [notch, setNotch] = useState<{ width: number; height: number } | null>(null);
+  /** Moved to the bottom of the screen, out of the way of the step the pointer shows. */
+  const [aside, setAside] = useState(false);
   /** Shrinking back into the notch before the window goes. */
   const [leaving, setLeaving] = useState(false);
   const leaveTimer = useRef(0);
@@ -195,6 +241,35 @@ function Island() {
   const request = useRef<string | null>(null);
   /** The tapped window's words, read once per moment. */
   const windowText = useRef<Promise<string> | null>(null);
+  /** Counts the guides begun: a guide whose turn has passed stops. */
+  const guideTurn = useRef(0);
+  /** What the guide waits for: the person's Next, Go on or Stop, or their click. */
+  const waiter = useRef<((choice: 'next' | 'stop') => void) | null>(null);
+  /** The step on the screen, 0..1, that a click near counts as done. */
+  const target = useRef<{ x: number; y: number } | null>(null);
+
+  const waitFor = (atMost = 0) =>
+    new Promise<'next' | 'stop'>((resolve) => {
+      waiter.current = resolve;
+      if (atMost) window.setTimeout(() => resolve('stop'), atMost);
+    });
+  const answer = (choice: 'next' | 'stop') => {
+    const resolve = waiter.current;
+    waiter.current = null;
+    resolve?.(choice);
+  };
+  /** Ends a guide, if one is running: the pointer goes and clicks are no longer watched. */
+  const endGuide = () => {
+    const running = target.current !== null || waiter.current !== null;
+    guideTurn.current += 1;
+    target.current = null;
+    answer('stop');
+    if (running) {
+      void invokeHost('ask_guide_end').catch(() => undefined);
+      void invokeHost('ask_island_aside', { aside: false }).catch(() => undefined);
+      setAside(false);
+    }
+  };
 
   // The look the main window chose.
   useEffect(() => {
@@ -228,6 +303,7 @@ function Island() {
   }, []);
 
   const close = () => {
+    endGuide();
     stopSpeaking();
     if (request.current)
       void invokeHost('ai_cancel', { id: request.current }).catch(() => undefined);
@@ -247,6 +323,13 @@ function Island() {
     );
   };
   const closeLater = useEffectEvent(close);
+  const endGuideNow = useEffectEvent(endGuide);
+  /** A click while Show me waits: near the step, it counts as done. */
+  const onClicked = useEffectEvent((clicked: { x: number; y: number }) => {
+    const step = target.current;
+    const aspect = globalThis.screen ? screen.width / screen.height : 16 / 9;
+    if (step && near(clicked, step, aspect)) answer('next');
+  });
 
   // An answer goes by itself after a while; a question waits longer.
   useEffect(() => {
@@ -335,7 +418,10 @@ function Island() {
       request.current = null;
       const result = readDraft(done.text);
       if (!result) return setPhase({ kind: 'problem', message: 'ask.problem.noDraft' });
-      if (result.kind === 'reply') return await place('', result.say, result.text, moment.app);
+      if (result.kind === 'reply') {
+        if (shouldTalk(prefs.talkBack, false)) void talk(result.say);
+        return await place('', result.say, result.text, moment.app);
+      }
       setPhase({ kind: 'ideas', draft: result });
     } catch (error) {
       request.current = null;
@@ -393,7 +479,9 @@ function Island() {
         y: -1,
         text: '',
       };
-      if (spoken) speak(decision.say);
+      if (decision.act === 'show' || decision.act === 'do' || decision.act === 'explain')
+        return await guide(decision.act, words, decision, moment.ours, spoken, brain.id);
+      if (shouldTalk(prefs.talkBack, spoken)) void talk(decision.say);
       if (decision.act === 'write')
         return await place(words, decision.say, decision.text, moment.app);
       if (decision.act === 'tool')
@@ -428,6 +516,180 @@ function Island() {
     }
   };
 
+  /** One more question to the model about the screen as it is now. */
+  const askScreen = async (model: string, system: string, user: string, grammar: string) => {
+    asked += 1;
+    const id = `ask-${Date.now()}-${asked}-guide`;
+    request.current = id;
+    const done = (await invokeHost('ask_think', {
+      request: {
+        id,
+        model,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+        grammar,
+        maxTokens: 600,
+        contextTokens: 8192,
+        screen: true,
+      },
+    })) as { text: string };
+    request.current = null;
+    return done.text;
+  };
+
+  /**
+   * Show me, Do it for me and Explain this (`guide.ts`): ZOOD's pointer goes
+   * to each step, says it, and waits for the person's click (Show me) or
+   * clicks itself — inside ZOOD PDF only, asking first before a step that
+   * sends, deletes, pays or signs, and stopping when the person moves the
+   * mouse — then looks again for the next step. Explain this walks the
+   * parts of the screen in one look. Stop, a tap of the key or closing the
+   * island ends it at once.
+   */
+  const guide = async (
+    mode: GuideMode,
+    words: string,
+    first: Decision,
+    ours: boolean,
+    spoken: boolean,
+    model: string,
+  ) => {
+    endGuide();
+    const turn = (guideTurn.current += 1);
+    const live = () => guideTurn.current === turn;
+    const prefs = readAskPreferences();
+    const talks = shouldTalk(prefs.talkBack, spoken);
+    const language = languageOf(words);
+    const acting = mode === 'do' && ours && prefs.doForMe;
+    const onlyPoints = mode === 'do' && !acting;
+    const show = (say: string, step: number, of: number, wait: GuideWait) =>
+      live() && setPhase({ kind: 'guide', mode, words, say, step, of, wait, onlyPoints });
+    const finish = (say: string) => {
+      if (!live()) return;
+      endGuide();
+      if (talks) void talk(say);
+      setPhase({
+        kind: 'said',
+        words,
+        decision: { ...first, act: 'answer', say, text: '', x: -1, y: -1 },
+      });
+    };
+    const point = async (step: Step) => {
+      const placed = (await invokeHost('ask_point', {
+        x: step.x,
+        y: step.y,
+        label: step.say,
+        guide: true,
+      })) as { x: number; y: number };
+      target.current = placed;
+      // A step under the island: the island moves to the bottom, out of its way.
+      const box = card.current?.getBoundingClientRect();
+      const width = globalThis.screen?.width ?? 0;
+      const height = globalThis.screen?.height ?? 0;
+      if (box && width && height) {
+        const under =
+          Math.abs(placed.x - 0.5) * width < box.width / 2 + 40 &&
+          placed.y * height < box.height + 60;
+        setAside(under);
+        await invokeHost('ask_island_aside', { aside: under }).catch(() => undefined);
+      }
+    };
+    try {
+      if (mode === 'explain') {
+        show(first.say, 0, 0, 'looking');
+        const read = readParts(
+          await askScreen(model, explainPrompt(words, language), words, partsGrammar()),
+        );
+        if (!live()) return;
+        if (!read || read.parts.length === 0)
+          return finish(read?.say || first.say || ending('lost', language));
+        const intro = read.say || first.say;
+        for (const [index, part] of read.parts.entries()) {
+          await point(part);
+          if (!live()) return;
+          show(index === 0 && intro ? `${intro} ${part.say}` : part.say, index + 1, read.parts.length, 'telling');
+          const heard = Promise.all([
+            talks ? talk(index === 0 && intro ? `${intro} ${part.say}` : part.say) : sleep(readingTime(part.say)),
+            sleep(1400),
+          ]).then(() => 'next' as const);
+          const choice = await Promise.race([heard, waitFor()]);
+          if (choice === 'stop' || !live()) return;
+          stopSpeaking();
+        }
+        return finish(intro || ending('explained', language));
+      }
+
+      // A goal that itself sends, deletes, pays or signs is asked about once, first.
+      if (acting && risky(words)) {
+        show(first.say, 1, 0, 'confirm');
+        if ((await waitFor()) === 'stop' || !live()) return;
+      }
+      const taken: string[] = [];
+      let step: Step | null = { say: first.say, x: first.x, y: first.y };
+      for (let index = 1; step && index <= MAX_STEPS; index += 1) {
+        await point(step);
+        if (!live()) return;
+        if (acting) {
+          if (risky(step.say)) {
+            show(step.say, index, 0, 'confirm');
+            if ((await waitFor()) === 'stop' || !live()) return;
+          }
+          show(step.say, index, 0, 'busy');
+          // The pointer lands and the step is said before the click.
+          await Promise.all([talks ? Promise.race([talk(step.say), sleep(2600)]) : undefined, sleep(1100)]);
+          let resume = false;
+          for (;;) {
+            if (!live()) return;
+            try {
+              await invokeHost('ask_click', { x: step.x, y: step.y, resume });
+              break;
+            } catch (error) {
+              if (!String(error).includes('E_MOVED')) throw error;
+              show(step.say, index, 0, 'paused');
+              if ((await waitFor()) === 'stop' || !live()) return;
+              resume = true;
+              show(step.say, index, 0, 'busy');
+            }
+          }
+          await sleep(900);
+        } else {
+          show(step.say, index, 0, 'click');
+          if (talks) void talk(step.say);
+          void invokeHost('ask_watch_clicks', { on: true }).catch(() => undefined);
+          const choice = await waitFor(CLICK_WAITS_MS);
+          void invokeHost('ask_watch_clicks', { on: false }).catch(() => undefined);
+          if (choice === 'stop' || !live()) return choice === 'stop' && live() ? close() : undefined;
+          // What the click opened has time to show.
+          await sleep(700);
+        }
+        taken.push(step.say);
+        show(step.say, index, 0, 'looking');
+        await invokeHost('ask_look_again');
+        if (!live()) return;
+        const next = readNextStep(
+          await askScreen(
+            model,
+            nextStepPrompt(words, taken, acting ? 'do' : 'show', language),
+            'What is the next step?',
+            stepGrammar(),
+          ),
+        );
+        if (!live()) return;
+        if (!next) return finish(ending('lost', language));
+        if (next.done) return finish(next.say || ending('done', language));
+        step = next.step;
+      }
+      finish(ending('tooMany', language));
+    } catch (error) {
+      if (!live()) return;
+      endGuide();
+      request.current = null;
+      setPhase({ kind: 'problem', ...errorKey(error) });
+    }
+  };
+
   /** The tap's draft, from the host's event. */
   const onDraft = useEffectEvent(() => void draft());
 
@@ -452,6 +714,7 @@ function Island() {
 
   useEffect(() => {
     const restart = () => {
+      endGuideNow();
       window.clearTimeout(leaveTimer.current);
       setLeaving(false);
       void invokeHost('ask_notch').then(
@@ -495,6 +758,7 @@ function Island() {
         if (heard.short) return setPhase({ kind: 'short', tapped });
         void hear();
       }),
+      onHostEvent<{ x: number; y: number }>('ask://clicked', onClicked),
       onHostEvent<{ kind: 'draft' | 'type'; screen: boolean }>('ask://tap', (tap) => {
         restart();
         if (tap.kind === 'type') {
@@ -558,6 +822,18 @@ function Island() {
     phase.kind === 'thinking' ||
     phase.kind === 'reading' ||
     phase.kind === 'drafting';
+  const guideTitle = (guiding: Extract<Phase, { kind: 'guide' }>) => {
+    const name = t(
+      guiding.mode === 'explain'
+        ? 'ask.guide.explainTitle'
+        : guiding.mode === 'do' && !guiding.onlyPoints
+          ? 'ask.guide.doTitle'
+          : 'ask.guide.showTitle',
+    );
+    if (guiding.mode === 'explain')
+      return guiding.of ? `${name} · ${t('ask.guide.partOf', { n: guiding.step, of: guiding.of })}` : name;
+    return guiding.step ? `${name} · ${t('ask.guide.stepN', { n: guiding.step })}` : name;
+  };
   const mac = onMac();
   const tapKey = isolate(
     tapKeyLabel(readAskPreferences().tapKey, mac, uiLang === 'ar' ? 'ar' : 'en'),
@@ -568,7 +844,8 @@ function Island() {
       className={[
         'ask-island',
         `ask-${phase.kind}`,
-        notch ? 'has-notch' : '',
+        notch && !aside ? 'has-notch' : '',
+        aside ? 'is-aside' : '',
         leaving ? 'is-leaving' : '',
       ]
         .filter(Boolean)
@@ -597,6 +874,12 @@ function Island() {
             <PenLine />
           ) : phase.kind === 'ideas' ? (
             <Sparkles />
+          ) : phase.kind === 'guide' ? (
+            phase.wait === 'looking' ? (
+              <Loader className="spin" />
+            ) : (
+              <MousePointerClick />
+            )
           ) : (
             <Mic />
           )}
@@ -624,6 +907,8 @@ function Island() {
                           : t('ask.placed')
                         : phase.kind === 'typing'
                           ? t('ask.typeTitle')
+                          : phase.kind === 'guide'
+                            ? guideTitle(phase)
                           : phase.kind === 'problem'
                             ? t(phase.message)
                             : t('ask.settings.title')}
@@ -668,6 +953,52 @@ function Island() {
         </div>
       )}
       {phase.kind === 'problem' && phase.detail && <p className="ask-detail">{phase.detail}</p>}
+      {phase.kind === 'guide' && (
+        <div className="ask-plan ask-guide-card">
+          <p className="ask-words" dir="auto">
+            {languageOf(phase.words) === 'ar' ? `«${phase.words}»` : `“${phase.words}”`}
+          </p>
+          {phase.say && (
+            <p className="ask-say" dir="auto">
+              {phase.say}
+            </p>
+          )}
+          <p className="ask-detail">
+            {phase.wait === 'click'
+              ? t(phase.onlyPoints ? 'ask.guide.onlyPoints' : 'ask.guide.clickThere')
+              : phase.wait === 'looking'
+                ? t('ask.guide.looking')
+                : phase.wait === 'busy'
+                  ? t('ask.guide.clicking')
+                  : phase.wait === 'confirm'
+                    ? t('ask.guide.confirm')
+                    : phase.wait === 'paused'
+                      ? t('ask.guide.paused')
+                      : t('ask.guide.telling')}
+          </p>
+          <div className="ask-actions">
+            {phase.wait === 'confirm' && (
+              <button type="button" className="ask-do" onClick={() => answer('next')}>
+                <Check /> {t('ask.guide.doStep')}
+              </button>
+            )}
+            {phase.wait === 'paused' && (
+              <button type="button" className="ask-do" onClick={() => answer('next')}>
+                <Play /> {t('ask.guide.goOn')}
+              </button>
+            )}
+            {(phase.wait === 'click' || phase.wait === 'telling') && (
+              <button type="button" className="ask-do" onClick={() => answer('next')}>
+                <SkipForward className="ask-flip" />{' '}
+                {t(phase.wait === 'click' ? 'ask.guide.didIt' : 'ask.guide.next')}
+              </button>
+            )}
+            <button type="button" className="ask-cancel" onClick={() => close()}>
+              <Square /> {t('ask.guide.stop')}
+            </button>
+          </div>
+        </div>
+      )}
       {phase.kind === 'typing' && (
         <form
           className="ask-type"

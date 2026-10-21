@@ -62,7 +62,16 @@ const TOOL_WORDS: Record<AskTool, string> = {
   topdf: 'make a PDF of pictures or Office files',
 };
 
-export type Act = 'answer' | 'tool' | 'find' | 'fill' | 'point' | 'write';
+export type Act =
+  | 'answer'
+  | 'tool'
+  | 'find'
+  | 'fill'
+  | 'point'
+  | 'write'
+  | 'show'
+  | 'explain'
+  | 'do';
 
 export interface Decision {
   /** What is said aloud and shown: one or two short sentences. */
@@ -75,7 +84,7 @@ export interface Decision {
   fields: Target[];
   /** The profile whose details are typed. */
   profile: string;
-  /** Where to click, in thousandths of the screen. */
+  /** Where to click (the first step of show and do), in thousandths of the screen. */
   x: number;
   y: number;
   /** What is written where the cursor is. */
@@ -110,7 +119,7 @@ export function filledTargets(profile: WalletProfile | undefined): Target[] {
 
 function acts(moment: Moment): Act[] {
   return moment.screen
-    ? ['answer', 'write', 'tool', 'find', 'fill', 'point']
+    ? ['answer', 'write', 'tool', 'find', 'fill', 'point', 'show', 'explain', 'do']
     : ['answer', 'write', 'tool', 'find', 'fill'];
 }
 
@@ -166,7 +175,10 @@ export function systemPrompt(moment: Moment): string {
   ];
   if (moment.screen) {
     lines.push(
-      '- "point": show the person where to click next on the screen in the picture. Put the place in "x" and "y", in thousandths of the picture\'s width and height (0 to 1000).',
+      '- "point": show the person where to click next on the screen in the picture, when one click is all they need. Put the place in "x" and "y", in thousandths of the picture\'s width and height (0 to 1000).',
+      '- "show": guide the person step by step to do something that takes several clicks ("show me how", "how do I", "walk me through"). Put the FIRST click in "x" and "y" and what to do there in "say"; the next steps are asked for after they click.',
+      '- "explain": explain what is on the screen, part by part ("explain this", "what is this screen", "what does this do"). "say" is one short sentence; the parts are asked for next.',
+      '- "do": do it for them, clicking the steps ("do it for me", "do it", "you do it", "سوها لي"). Put the FIRST click in "x" and "y" and what is being clicked in "say".',
     );
   }
   lines.push(
@@ -226,6 +238,9 @@ function exampleLines(moment: Moment): string[] {
   if (moment.screen)
     lines.push(
       '- "where do I click to print?" → {"say": "Click Print, here.", "act": "point", "x": …, "y": …} (the place on the screen; never "tool" for this)',
+      '- "وريني كيف أضيف توقيع" → {"say": "اضغط على توقيع أولًا.", "act": "show", "x": …, "y": …}',
+      '- "explain this screen" → {"say": "This is the print window; I\'ll walk you through it.", "act": "explain"}',
+      '- "do it for me: turn on dark mode" → {"say": "Opening Settings.", "act": "do", "x": …, "y": …}',
     );
   lines.push(
     '- "وش يقدر يسوي زود؟" → {"say": "يعدّل ملفات PDF ويحوّلها ويوقّعها، كلها على جهازك.", "act": "answer"}',
@@ -272,7 +287,9 @@ export function readDecision(text: string, moment: Moment): Decision | null {
   if (act === 'tool' && (!tool || moment.files.length === 0)) act = 'answer';
   if (act === 'find' && !query) act = 'answer';
   if (act === 'fill' && fields.length === 0) act = 'answer';
-  if (act === 'point' && (x < 0 || y < 0 || !moment.screen)) act = 'answer';
+  if ((act === 'point' || act === 'show' || act === 'do') && (x < 0 || y < 0 || !moment.screen))
+    act = 'answer';
+  if (act === 'explain' && !moment.screen) act = 'answer';
   if (act === 'write' && !written) act = 'answer';
   if (!say && !written && act === 'answer') return null;
   return {

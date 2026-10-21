@@ -13,7 +13,7 @@ import {
   writeAskPreferences,
 } from './settings';
 
-const TAPS = { taps: true, tapKey: 'right-main', oneTap: 'speak', glow: true } as const;
+const TAPS = { taps: true, tapKey: 'right-main', oneTap: 'speak', glow: true, talkBack: 'spoken', doForMe: true } as const;
 
 /** A `localStorage` for the node test environment. */
 beforeEach(() => {
@@ -52,6 +52,8 @@ describe('Ask ZOOD settings', () => {
       tapKey: 'right-alt',
       oneTap: 'type',
       glow: false,
+      talkBack: 'never',
+      doForMe: false,
     } as const;
     writeAskPreferences(mine);
     expect(readAskPreferences()).toEqual(mine);
