@@ -19,6 +19,9 @@ describe('welcome tour', () => {
     expect(newSince(2, true)).toBe('ask');
     expect(newSince(3, true)).toBe('ask');
     expect(newSince(2, false)).toBe('welcome');
+    // Version 5 brought the AI's chat about anything and its commands.
+    expect(newSince(4, true)).toBe('ai');
+    expect(newSince(4, false)).toBe('ai');
   });
 
   it('has every chapter in both languages', () => {

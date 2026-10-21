@@ -40,11 +40,13 @@ export function tourChapters(desktop: boolean, ask = false): Chapter[] {
 }
 
 /** The tour as it was last seen: a newer tour opens once more on its own, at what is new. */
-export const TOUR_VERSION = 4;
+export const TOUR_VERSION = 5;
 /**
  * Where a tour seen before opens, by the version it was seen at: Ask ZOOD
- * came in version 3, and one tap to talk (with its setup) in version 4.
+ * came in version 3, and one tap to talk (with its setup) in version 4;
+ * the AI's chat about anything, and its commands, in version 5.
  */
 export function newSince(version: number, ask: boolean): ChapterId {
+  if (version >= 4) return 'ai';
   return version >= 2 && ask ? 'ask' : 'welcome';
 }

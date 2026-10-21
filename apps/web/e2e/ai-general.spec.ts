@@ -99,3 +99,26 @@ test.describe('the general chat', () => {
     await page.screenshot({ path: test.info().outputPath('general-chat.png') });
   });
 });
+
+test('Help › AI chat and commands opens the tour at the chat, and its practice says what a command does without doing it', async ({ page, stayLocal: _ }) => {
+  await page.addInitScript(() => localStorage.setItem('warraq.preferences', JSON.stringify({ lang: 'en' })));
+  await page.goto('/');
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'Help' }).click();
+  await page.getByRole('menuitem', { name: 'AI chat and commands' }).click();
+  const tour = page.getByRole('dialog', { name: 'Welcome tour' });
+  await expect(tour.getByRole('tab', { name: 'Chat and commands' })).toHaveAttribute('aria-selected', 'true');
+  const field = tour.getByLabel('Try a command');
+  await field.fill('dark mode');
+  await tour.getByRole('button', { name: 'Try', exact: true }).click();
+  await expect(tour.getByRole('status')).toHaveText('In the chat, this switches to dark mode.');
+  // Only said: the theme is as it was.
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'dark');
+  await field.fill('افتح الضغط');
+  await tour.getByRole('button', { name: 'Try', exact: true }).click();
+  await expect(tour.getByRole('status')).toHaveText('In the chat, this opens Compress.');
+  await field.fill('what is the capital of Japan?');
+  await tour.getByRole('button', { name: 'Try', exact: true }).click();
+  await expect(tour.getByRole('status')).toHaveText('Not a command: in the chat, the AI answers this as a question.');
+  await tour.getByRole('tab', { name: 'About a PDF' }).click();
+  await expect(tour).toContainText('Ask about this document, every open one, or your whole Library.');
+});

@@ -2628,3 +2628,44 @@ html[data-reduce-motion="on"] .mock[data-phase="2"] .mock-line-edit > span {
   align-items: center;
   margin-block-start: var(--space-5);
 }
+
+/* ---- AI: try a command ---------------------------------------------------------------------- */
+.tour-try {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-block-start: var(--space-6);
+}
+
+.tour-try-label {
+  font-size: var(--text-subheadline);
+  font-weight: 600;
+}
+
+.tour-try-row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.tour-try-row .text-input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.tour-try-said {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin: 0;
+  font-size: var(--text-subheadline);
+  color: var(--secondary-label);
+}
+
+.tour-try-said.is-command {
+  color: var(--label);
+}
+
+.tour-try-said.is-command .lucide {
+  flex: none;
+  color: var(--system-green, #2f9e75);
+}
