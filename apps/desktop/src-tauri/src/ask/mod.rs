@@ -24,6 +24,7 @@
 //! need only the model that decides: one that reads pictures sees the
 //! window, a text one is given the window's words, read by the island.
 
+pub mod access;
 pub mod ear;
 pub mod eye;
 pub mod hands;
