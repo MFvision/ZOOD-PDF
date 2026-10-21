@@ -10,6 +10,7 @@ import { formatShortcut } from '../shell/menuModel';
 import { isolate } from '../signatures/model';
 import { useAppDispatch } from '../state/AppContext';
 import { openTourAt } from '../tour/openAt';
+import { AskSetup } from './AskSetup';
 import { noteAskReady } from './ReadyHint';
 import {
   askAccess,
@@ -21,6 +22,8 @@ import {
   defaultBrainFor,
   earModels,
   onMac,
+  ONE_TAPS,
+  oneTapDoes,
   readAskPreferences,
   TAP_KEYS,
   tapKeyLabel,
@@ -32,9 +35,10 @@ import { MAX_ABOUT, MAX_EXAMPLES, readStyle, writeStyle } from './style';
 import type { WritingStyle } from './style';
 
 /**
- * Settings › AI › Ask ZOOD: on or off; the tap key (twice drafts a reply
- * where the cursor is, once opens a box to type a request); the keys to
- * hold to speak; the model that decides (the one that also reads the
+ * Settings › AI › Ask ZOOD: the one-button setup until it is all there; on
+ * or off; the tap key (once listens until tapped again — or opens a box to
+ * type a request — twice drafts a reply where the cursor is); the glow
+ * while it listens; the keys to hold to speak; the model that decides (the one that also reads the
  * screen, or the lighter text model) and whether it may see the screen;
  * how the person writes; and the downloads it needs — each with its size,
  * licence and checksum said before anything is fetched. The host listens
@@ -116,22 +120,26 @@ export function AskSettings() {
   const mac = onMac();
   const tapKey = isolate(tapKeyLabel(prefs.tapKey, mac, lang === 'ar' ? 'ar' : 'en'));
   const fallback = defaultBrainFor(memory);
+  const once = ready ? oneTapDoes(prefs, ready) : null;
   const status =
     ready === null
       ? '…'
       : !prefs.enabled
         ? t('ask.settings.off')
-        : ready.taps && ready.voice
-          ? t('ask.settings.readyAll', { tap: tapKey, keys })
-          : ready.taps
-            ? voice
-              ? t('ask.settings.readyTapsNeedEar', { tap: tapKey })
-              : t('ask.settings.readyTaps', { tap: tapKey })
-            : ready.voice
-              ? t('ask.settings.ready', { keys })
-              : t('ask.settings.needsModel');
+        : once === 'speak'
+          ? t('ask.settings.readySpeak', { tap: tapKey })
+          : ready.taps && ready.voice
+            ? t('ask.settings.readyAll', { tap: tapKey, keys })
+            : ready.taps
+              ? voice
+                ? t('ask.settings.readyTapsNeedEar', { tap: tapKey })
+                : t('ask.settings.readyTaps', { tap: tapKey })
+              : ready.voice
+                ? t('ask.settings.ready', { keys })
+                : t('ask.settings.needsModel');
   return (
     <>
+      {prefs.enabled && <AskSetup key={`${prefs.oneTap}-${String(prefs.taps)}`} />}
       <Toggle
         label={t('ask.settings.on')}
         hint={t('ask.settings.onHintTaps', { tap: tapKey })}
@@ -154,16 +162,40 @@ export function AskSettings() {
         }))}
         onChange={(tapKey) => update({ tapKey })}
       />
-      <Toggle
-        label={t('ask.settings.tapToType')}
-        hint={t('ask.settings.tapToTypeHint', { tap: tapKey })}
-        checked={prefs.tapToType}
-        onChange={(tapToType) => update({ tapToType })}
+      <Pick
+        label={t('ask.settings.oneTap')}
+        hint={t(voice ? 'ask.settings.oneTapHint' : 'ask.settings.oneTapHintTyped', {
+          tap: tapKey,
+        })}
+        value={voice ? prefs.oneTap : prefs.oneTap === 'off' ? 'off' : 'type'}
+        options={ONE_TAPS.filter((one) => voice || one !== 'speak').map((one) => ({
+          value: one,
+          label: t(`ask.settings.oneTap.${one}`),
+        }))}
+        onChange={(oneTap) => update({ oneTap })}
       />
+      {voice && (
+        <Toggle
+          label={t('ask.settings.glow')}
+          hint={t('ask.settings.glowHint')}
+          checked={prefs.glow}
+          onChange={(glow) => update({ glow })}
+        />
+      )}
       {access?.applies && prefs.enabled && (
         <>
           <h4 className="prefs-subhead">{t('ask.access.title')}</h4>
           <p className="tool-panel-note">{t('ask.access.note')}</p>
+          {prefs.taps && (
+            <ActionRow
+              label={t('ask.access.input')}
+              hint={t(access.input ? 'ask.access.allowed' : 'ask.access.inputHint', {
+                tap: tapKey,
+              })}
+              action={t(access.input ? 'ask.access.open' : 'ask.access.allow')}
+              onClick={() => void askAllow('input')}
+            />
+          )}
           <ActionRow
             label={t('ask.access.accessibility')}
             hint={t(access.accessibility ? 'ask.access.allowed' : 'ask.access.accessibilityHint')}
@@ -181,12 +213,24 @@ export function AskSettings() {
           {voice && (
             <ActionRow
               label={t('ask.access.microphone')}
-              hint={t('ask.access.microphoneHint')}
-              action={t('ask.access.open')}
+              hint={t(
+                access.microphone === 'allowed'
+                  ? 'ask.access.allowed'
+                  : 'ask.access.microphoneHint',
+              )}
+              action={t(access.microphone === 'ask' ? 'ask.access.allow' : 'ask.access.open')}
               onClick={() => void askAllow('microphone')}
             />
           )}
         </>
+      )}
+      {access && !access.applies && voice && prefs.enabled && access.microphone === 'denied' && (
+        <ActionRow
+          label={t('ask.access.microphone')}
+          hint={t('ask.access.microphoneOffWindows')}
+          action={t('ask.access.open')}
+          onClick={() => void askAllow('microphone')}
+        />
       )}
       <ActionRow
         label={t('ask.settings.practise')}

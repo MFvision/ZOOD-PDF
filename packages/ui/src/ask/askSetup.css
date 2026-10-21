@@ -1,0 +1,116 @@
+/* Ask ZOOD's one-button setup (AskSetup.tsx), in Settings and the welcome tour. */
+
+.ask-setup {
+  display: grid;
+  gap: 12px;
+  margin-block: 4px 16px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--accent, #ae8b66) 35%, transparent);
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--accent, #ae8b66) 16%, transparent), transparent 62%),
+    var(--bg-elevated);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-reduce-motion='on']) .ask-setup {
+    animation: motion-rise 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+.ask-setup.is-compact {
+  margin-block: 0;
+  padding: 12px 14px;
+}
+
+.ask-setup-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.ask-setup-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 36px;
+  block-size: 36px;
+  border-radius: 50%;
+  color: #1a1714;
+  background: radial-gradient(circle at 35% 30%, #f4e3cc, #ae8b66);
+  box-shadow: 0 0 18px rgb(214 178 135 / 45%);
+}
+
+.ask-setup-title {
+  margin: 0;
+  font-weight: 650;
+}
+
+.ask-setup-note {
+  margin: 2px 0 0;
+  color: var(--text-muted, inherit);
+  font-size: 0.92em;
+}
+
+.ask-setup-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-setup-steps li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.ask-setup-mark-small {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 20px;
+  block-size: 20px;
+  margin-block-start: 1px;
+  border: 1.5px solid color-mix(in srgb, currentcolor 35%, transparent);
+  border-radius: 50%;
+}
+
+.ask-setup-steps li.is-done .ask-setup-mark-small {
+  border-color: transparent;
+  color: #1a1714;
+  background: #ae8b66;
+}
+
+.ask-setup-steps li.is-done .ask-setup-step {
+  color: var(--text-muted, inherit);
+}
+
+.ask-setup-step {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+}
+
+.ask-setup-hint,
+.ask-setup-error {
+  color: var(--text-muted, inherit);
+  font-size: 0.88em;
+}
+
+.ask-setup-error {
+  color: var(--danger, #c0392b);
+}
+
+.ask-setup-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ask-setup-done {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-block: 4px 12px;
+}

@@ -1,4 +1,5 @@
-//! Ask ZOOD's ear: the default microphone, only while the shortcut is held.
+//! Ask ZOOD's ear: the default microphone, only while the shortcut is held
+//! or from one tap of the tap key until the next (or a minute at most).
 //!
 //! What is heard is kept in memory as mono samples for the on-device model
 //! to read (`ai.rs`, a model that hears) and dropped once it has; nothing is
@@ -125,12 +126,17 @@ mod system {
         let mut told = 0;
         while !stop.load(Ordering::Relaxed) {
             std::thread::sleep(Duration::from_millis(60));
-            let heard = heard.lock().map(|h| h.clone()).unwrap_or_default();
-            if heard.len() > told {
-                tell(level(&heard[told..]));
-                told = heard.len();
+            // Only what came since the last look is read: a tap may keep
+            // the microphone open for the whole minute.
+            let (now, loud) = heard
+                .lock()
+                .map(|h| (h.len(), (h.len() > told).then(|| level(&h[told..]))))
+                .unwrap_or((told, None));
+            if let Some(loud) = loud {
+                tell(loud);
+                told = now;
             }
-            if heard.len() >= (rate * MAX_SECONDS) as usize {
+            if now >= (rate * MAX_SECONDS) as usize {
                 break;
             }
         }
