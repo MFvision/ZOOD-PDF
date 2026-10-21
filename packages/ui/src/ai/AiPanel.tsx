@@ -13,7 +13,7 @@ import { keptOnDevice } from './chat/kept';
 import { deviceRunner, remoteRunner } from './chat/runner';
 import type { Runner } from './chat/runner';
 import { forgetKnown, inspect, newChat, readBytes, useConversation } from './chat/store';
-import { LIBRARY_CHAT } from './chat/across';
+import { GENERAL_CHAT, LIBRARY_CHAT } from './chat/across';
 import type { FileBasis, Scope, SourceDoc } from './chat/across';
 import { hasLibrary, searchLibrary } from './chat/library';
 import { useSettings } from '../state/settings';
@@ -75,8 +75,8 @@ export function AiPanel() {
   const [incoming, setIncoming] = useState<AiRequest | null>(() => takeAiRequest());
   // Settings › AI › What the AI can see, and the switch at the top of the chat that changes it for now.
   const appSettings = useSettings();
-  // A request from the home screen's "Ask about all my documents" comes with its scope.
-  const [scope, setScope] = useState<Scope>(() => incoming?.scope ?? appSettings.aiScope);
+  // A request from the home screen's "Ask about all my documents" comes with its scope; with no document open, the chat is about anything.
+  const [scope, setScope] = useState<Scope>(() => (incoming ? (incoming.scope ?? 'document') : state.view === 'viewer' && state.document ? appSettings.aiScope : 'chat'));
   const [memory, setMemory] = useState<number | null>(null);
   const inBrowser = !isTauriHost();
 
@@ -96,7 +96,8 @@ export function AiPanel() {
       onAiRequest((request) => {
         takeAiRequest();
         setView('chat');
-        if (request.scope) setScope(request.scope);
+        // A suggestion about a document is for the document, even from the general chat.
+        setScope((current) => request.scope ?? (current === 'chat' ? 'document' : current));
         setIncoming(request);
       }),
     [],
@@ -116,7 +117,17 @@ export function AiPanel() {
   const documentId = state.document?.id ?? null;
   const documentOpen = state.view === 'viewer' && documentId !== null;
   const hasDocument = documentOpen && state.switching === null;
-  const conversation = useConversation(scope === 'library' ? LIBRARY_CHAT : documentId);
+  const conversationId = scope === 'library' ? LIBRARY_CHAT : scope === 'chat' ? GENERAL_CHAT : documentId;
+  const conversation = useConversation(conversationId);
+
+  // The document closed: the chat goes on about anything. A document opened from the general chat: the chat turns to it.
+  const openedId = documentOpen ? documentId : null;
+  const [lastOpened, setLastOpened] = useState(openedId);
+  if (lastOpened !== openedId) {
+    setLastOpened(openedId);
+    if (openedId === null && (scope === 'document' || scope === 'open')) setScope('chat');
+    else if (openedId !== null && lastOpened === null && scope === 'chat' && !incoming) setScope(appSettings.aiScope);
+  }
 
   const address = localAddress(settings.localUrl);
   const provider = settings.provider;
@@ -305,8 +316,8 @@ export function AiPanel() {
               <IconButton
                 label={t('ai.chat.new')}
                 icon={<Icon of={MessageSquarePlus} />}
-                disabled={(scope !== 'library' && documentId === null) || conversation.turns.length === 0}
-                onClick={() => newChat(scope === 'library' ? LIBRARY_CHAT : (documentId ?? LIBRARY_CHAT))}
+                disabled={conversationId === null || conversation.turns.length === 0}
+                onClick={() => conversationId !== null && newChat(conversationId)}
               />
               <IconButton label={t('ai.chat.tools')} icon={<Icon of={Wrench} />} onClick={() => setView('tasks')} />
               <IconButton label={t('ai.chat.openSetup')} icon={<Icon of={Settings2} />} onClick={() => setView('setup')} />
@@ -325,6 +336,7 @@ export function AiPanel() {
           hasDocument={hasDocument}
           currentPage={state.currentPage}
           missing={missing}
+          settling={provider === 'device' && device.status === null}
           setup={setup}
           env={env}
           where={where}

@@ -155,14 +155,15 @@ test.describe('the home screen', () => {
     expect(toLocal).toHaveLength(0);
   });
 
-  test('a typed question goes into the chat the same way', async ({ page, stayLocal: _ }) => {
+  test('a typed question with no document open goes to the general chat, with no file asked for', async ({ page, stayLocal: _ }) => {
     await home(page);
     const card = page.getByRole('complementary', { name: 'AI Assistant' });
-    await card.getByLabel('Ask a question…').fill('ما موضوع هذا المستند؟');
+    await card.getByLabel('Ask a question…').fill('اكتب لي رسالة شكر لزميلي');
     await card.getByRole('button', { name: 'Ask', exact: true }).click();
-    const chat = aiPanel(page).getByRole('log', { name: 'Conversation' });
-    await expect(chat.locator('.ai-turn-user')).toHaveText('ما موضوع هذا المستند؟');
-    await expect(chat).toContainText('Choose a PDF first; the request is kept for it.');
+    await expect(aiPanel(page).getByRole('radio', { name: 'Chat', exact: true })).toBeChecked();
+    // The on-device model is not downloaded here: the question waits in the input, and the chat says what is missing.
+    await expect(aiPanel(page).getByLabel('Message')).toHaveValue('اكتب لي رسالة شكر لزميلي');
+    await expect(aiPanel(page)).toContainText('Download the on-device model first, or choose another provider.');
   });
 
   test('Starred is a flag on this device: from a recent file’s ⋯ menu, listed under Starred, kept over a reload', async ({
