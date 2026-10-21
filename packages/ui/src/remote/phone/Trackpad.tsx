@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { buzz } from './buzz';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CornerDownLeft, Delete, Keyboard, MousePointer2, Play, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from 'lucide-react';
 import type { PcControl } from '../protocol';
 import { ps } from './strings';
@@ -107,7 +108,7 @@ export function Trackpad({ send, enabled }: { send: Send; enabled: boolean }) {
       g.holdTimer = window.setTimeout(() => {
         if (!g.moved && fingers.current.size === 1) {
           g.dragging = true;
-          navigator.vibrate?.(20);
+          buzz(20);
           send({ t: 'pc', k: 'press' });
         }
       }, HOLD_MS);
@@ -164,7 +165,7 @@ export function Trackpad({ send, enabled }: { send: Send; enabled: boolean }) {
         send({ t: 'pc', k: 'release' });
         g.dragging = false;
       } else if (!g.moved && quick) {
-        navigator.vibrate?.(6);
+        buzz(6);
         send({ t: 'pc', k: 'click', b: g.two ? 'right' : 'left' });
       }
       g.two = false;
@@ -175,7 +176,7 @@ export function Trackpad({ send, enabled }: { send: Send; enabled: boolean }) {
   if (!enabled) return <p className="phone-empty">{ps('pcOff')}</p>;
 
   const key = (k: Extract<PcControl, { k: 'key' }>['key']) => () => {
-    navigator.vibrate?.(6);
+    buzz(6);
     send({ t: 'pc', k: 'key', key: k });
   };
 

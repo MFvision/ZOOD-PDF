@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { buzz } from './buzz';
 import {
   ChevronLeft,
   ChevronRight,
@@ -123,14 +124,6 @@ function TabButton({ active, icon, label, onClick }: { active: boolean; icon: Re
       <span>{label}</span>
     </button>
   );
-}
-
-function buzz(ms = 8): void {
-  try {
-    navigator.vibrate?.(ms);
-  } catch {
-    // Not every phone can.
-  }
 }
 
 /** Where a pointer is on an element, 0–1 from its top-left. */

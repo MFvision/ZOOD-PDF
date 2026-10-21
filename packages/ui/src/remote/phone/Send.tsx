@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { buzz } from './buzz';
 import { ArrowUp, Check, ClipboardCopy, Download, File as FileIcon, FileText, ImagePlus, X } from 'lucide-react';
 import { MAX_FILE_BYTES } from '../protocol';
 import type { HostMessage } from '../protocol';
@@ -87,7 +88,7 @@ export function SendTab({
       return;
     }
     setItems((list) => list.map((i) => (i.id === item.id ? { ...i, status: 'sending' } : i)));
-    navigator.vibrate?.(12);
+    buzz(12);
     const data = bytesToBase64(new Uint8Array(await item.file.arrayBuffer()));
     const ok = send({ t: 'drop', id: item.id, name: item.file.name, mime: item.file.type || 'application/octet-stream', data });
     if (!ok) setItems((list) => list.map((i) => (i.id === item.id ? { ...i, status: 'failed' } : i)));

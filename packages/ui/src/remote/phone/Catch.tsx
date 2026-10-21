@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { buzz } from './buzz';
 import { Download, File as FileIcon, FileText } from 'lucide-react';
 import type { Received } from './session';
 import { ps } from './strings';
@@ -12,11 +13,7 @@ import '../light.css';
  */
 export function Catch({ file, count, pcName, onDone }: { file: Received; count: number; pcName: string; onDone: () => void }) {
   useEffect(() => {
-    try {
-      navigator.vibrate?.([10, 60, 18]);
-    } catch {
-      // Not every phone can.
-    }
+    buzz([10, 60, 18]);
   }, [file.id]);
 
   return (
