@@ -503,6 +503,27 @@
   scroll-snap-align: start;
 }
 
+/* A card cut by the edge reads as broken: the edge with more past it fades out instead. */
+.recent-row[data-more-end] {
+  mask-image: linear-gradient(to right, #000 calc(100% - 72px), transparent);
+}
+
+.recent-row[data-more-start] {
+  mask-image: linear-gradient(to left, #000 calc(100% - 72px), transparent);
+}
+
+.recent-row[data-more-start][data-more-end] {
+  mask-image: linear-gradient(to right, transparent, #000 72px, #000 calc(100% - 72px), transparent);
+}
+
+[dir="rtl"] .recent-row[data-more-end] {
+  mask-image: linear-gradient(to left, #000 calc(100% - 72px), transparent);
+}
+
+[dir="rtl"] .recent-row[data-more-start] {
+  mask-image: linear-gradient(to right, #000 calc(100% - 72px), transparent);
+}
+
 .recent-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
