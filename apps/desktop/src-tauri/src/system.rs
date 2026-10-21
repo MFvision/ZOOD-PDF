@@ -40,14 +40,35 @@ fn windows_display_name() -> Option<String> {
     if ok == 0 || size == 0 {
         return None;
     }
-    let name = String::from_utf16_lossy(&buffer[..size as usize]).trim().to_string();
+    let name = String::from_utf16_lossy(&buffer[..size as usize])
+        .trim()
+        .to_string();
     (!name.is_empty()).then_some(name)
 }
 
 /// Account names that belong to a computer, not a person.
 const NOT_A_NAME: &[&str] = &[
-    "admin", "administrator", "user", "users", "owner", "guest", "default", "root", "pc", "desktop", "laptop", "home",
-    "office", "staff", "test", "local", "windows", "mac", "macbook", "student", "public",
+    "admin",
+    "administrator",
+    "user",
+    "users",
+    "owner",
+    "guest",
+    "default",
+    "root",
+    "pc",
+    "desktop",
+    "laptop",
+    "home",
+    "office",
+    "staff",
+    "test",
+    "local",
+    "windows",
+    "mac",
+    "macbook",
+    "student",
+    "public",
 ];
 
 /// A name as a greeting would say it: "mohammed.f" is "Mohammed", "Ahmad Ali"
@@ -58,7 +79,9 @@ pub fn tidy(account: &str) -> String {
         .split(['.', '_', '-', ' '])
         .find(|part| !part.is_empty())
         .unwrap_or("");
-    if NOT_A_NAME.contains(&first.to_lowercase().as_str()) || first.chars().any(|c| c.is_ascii_digit() || c == '@') {
+    if NOT_A_NAME.contains(&first.to_lowercase().as_str())
+        || first.chars().any(|c| c.is_ascii_digit() || c == '@')
+    {
         return String::new();
     }
     let mut chars = first.chars();
