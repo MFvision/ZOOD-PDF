@@ -31,6 +31,7 @@ pub mod access;
 pub mod ear;
 pub mod eye;
 pub mod hands;
+pub mod notch;
 pub mod tap;
 
 use std::path::PathBuf;
@@ -702,21 +703,33 @@ fn show_island<R: Runtime>(app: &AppHandle<R>) {
             .transparent(true)
             .build()
             {
-                Ok(window) => window,
+                Ok(window) => {
+                    notch::above_menu_bar(&window);
+                    window
+                }
                 Err(e) => {
                     debug_log(format!("ask: cannot make the island: {e}"));
                     return;
                 }
             },
         };
+        // Flush with the top of the screen, in the middle: it grows out of
+        // the notch, or out of the one it draws where there is none.
         if let Some((position, size, scale)) = place {
             let width = (ISLAND_WIDTH * scale).round() as i32;
             let x = position.x + (size.width as i32 - width) / 2;
-            let y = position.y + (24.0 * scale).round() as i32;
-            let _ = window.set_position(PhysicalPosition::new(x, y));
+            let _ = window.set_position(PhysicalPosition::new(x, position.y));
         }
         let _ = window.show();
     });
+}
+
+/// The notch of the screen the island is on, for it to grow out of; none
+/// where the island draws its own.
+#[tauri::command]
+pub fn ask_notch(state: State<'_, AskState>) -> Option<notch::Notch> {
+    let (position, size, _) = state.moment.lock().ok()?.monitor?;
+    notch::find(position, size)
 }
 
 /// The glow round the edges of the screen the person is on, while Ask ZOOD
@@ -753,7 +766,10 @@ fn show_glow<R: Runtime>(app: &AppHandle<R>) {
             .transparent(true)
             .build()
             {
-                Ok(window) => window,
+                Ok(window) => {
+                    notch::above_menu_bar(&window);
+                    window
+                }
                 Err(e) => {
                     debug_log(format!("ask: cannot make the glow: {e}"));
                     return;

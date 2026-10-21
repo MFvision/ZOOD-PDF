@@ -32,6 +32,7 @@ import { invokeHost, isTauriHost, onHostEvent } from '../core/host-tauri';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
+import { prefersReducedMotion } from '../components/useReducedMotion';
 import { applyAppearance } from '../settings/SettingsEffects';
 import { useSettings } from '../state/settings';
 import { defaultLook, readPreferences } from '../state/preferences';
@@ -141,6 +142,8 @@ type Phase =
 const SAID_STAYS_MS = 9000;
 const WAITS_MS = 25000;
 const SHORT_STAYS_MS = 2600;
+/** How long the island takes to go back into the notch. */
+const LEAVE_MS = 200;
 /** A draft's note stays long enough to press Write it again. */
 const PLACED_STAYS_MS = 14000;
 /** How long typing waits for the first key before the box goes. */
@@ -180,6 +183,11 @@ function Island() {
   const quiet = useRef<QuietWatch | null>(null);
   /** The last listening began with a tap. */
   const lastTapped = useRef(false);
+  /** The screen's notch, in points, for the island to grow out of; null where it draws its own. */
+  const [notch, setNotch] = useState<{ width: number; height: number } | null>(null);
+  /** Shrinking back into the notch before the window goes. */
+  const [leaving, setLeaving] = useState(false);
+  const leaveTimer = useRef(0);
   const [typed, setTyped] = useState('');
   const [copied, setCopied] = useState(false);
   const card = useRef<HTMLDivElement | null>(null);
@@ -226,8 +234,17 @@ function Island() {
     request.current = null;
     windowText.current = null;
     setTyped('');
-    setPhase({ kind: 'idle' });
-    void invokeHost('ask_hide').catch(() => undefined);
+    // It goes back into the notch first, unless motion is reduced.
+    window.clearTimeout(leaveTimer.current);
+    setLeaving(true);
+    leaveTimer.current = window.setTimeout(
+      () => {
+        setLeaving(false);
+        setPhase({ kind: 'idle' });
+        void invokeHost('ask_hide').catch(() => undefined);
+      },
+      prefersReducedMotion() ? 0 : LEAVE_MS,
+    );
   };
   const closeLater = useEffectEvent(close);
 
@@ -435,6 +452,12 @@ function Island() {
 
   useEffect(() => {
     const restart = () => {
+      window.clearTimeout(leaveTimer.current);
+      setLeaving(false);
+      void invokeHost('ask_notch').then(
+        (found) => setNotch((found as { width: number; height: number } | null) ?? null),
+        () => setNotch(null),
+      );
       stopSpeaking();
       if (request.current)
         void invokeHost('ai_cancel', { id: request.current }).catch(() => undefined);
@@ -536,11 +559,25 @@ function Island() {
     phase.kind === 'reading' ||
     phase.kind === 'drafting';
   const mac = onMac();
-  const tapKey = isolate(tapKeyLabel(readAskPreferences().tapKey, mac, uiLang === 'ar' ? 'ar' : 'en'));
+  const tapKey = isolate(
+    tapKeyLabel(readAskPreferences().tapKey, mac, uiLang === 'ar' ? 'ar' : 'en'),
+  );
 
   return (
     <div
-      className={`ask-island ask-${phase.kind}`}
+      className={[
+        'ask-island',
+        `ask-${phase.kind}`,
+        notch ? 'has-notch' : '',
+        leaving ? 'is-leaving' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      style={
+        (notch
+          ? { '--notch-w': `${notch.width}px`, '--notch-h': `${notch.height}px` }
+          : undefined) as unknown as React.CSSProperties
+      }
       ref={card}
       role="status"
       aria-live="polite"

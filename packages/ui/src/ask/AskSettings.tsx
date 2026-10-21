@@ -164,7 +164,9 @@ export function AskSettings() {
       />
       <Pick
         label={t('ask.settings.oneTap')}
-        hint={t(voice ? 'ask.settings.oneTapHint' : 'ask.settings.oneTapHintTyped', { tap: tapKey })}
+        hint={t(voice ? 'ask.settings.oneTapHint' : 'ask.settings.oneTapHintTyped', {
+          tap: tapKey,
+        })}
         value={voice ? prefs.oneTap : prefs.oneTap === 'off' ? 'off' : 'type'}
         options={ONE_TAPS.filter((one) => voice || one !== 'speak').map((one) => ({
           value: one,
@@ -187,7 +189,9 @@ export function AskSettings() {
           {prefs.taps && (
             <ActionRow
               label={t('ask.access.input')}
-              hint={t(access.input ? 'ask.access.allowed' : 'ask.access.inputHint', { tap: tapKey })}
+              hint={t(access.input ? 'ask.access.allowed' : 'ask.access.inputHint', {
+                tap: tapKey,
+              })}
               action={t(access.input ? 'ask.access.open' : 'ask.access.allow')}
               onClick={() => void askAllow('input')}
             />
@@ -209,7 +213,11 @@ export function AskSettings() {
           {voice && (
             <ActionRow
               label={t('ask.access.microphone')}
-              hint={t(access.microphone === 'allowed' ? 'ask.access.allowed' : 'ask.access.microphoneHint')}
+              hint={t(
+                access.microphone === 'allowed'
+                  ? 'ask.access.allowed'
+                  : 'ask.access.microphoneHint',
+              )}
               action={t(access.microphone === 'ask' ? 'ask.access.allow' : 'ask.access.open')}
               onClick={() => void askAllow('microphone')}
             />

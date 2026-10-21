@@ -9,7 +9,18 @@ import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { isolate } from '../signatures/model';
 import { noteAskReady } from './ReadyHint';
-import { askAccess, askAllow, chosenBrain, configureAsk, earModels, missingAccess, onMac, readAskPreferences, tapKeyLabel, voiceAvailable } from './settings';
+import {
+  askAccess,
+  askAllow,
+  chosenBrain,
+  configureAsk,
+  earModels,
+  missingAccess,
+  onMac,
+  readAskPreferences,
+  tapKeyLabel,
+  voiceAvailable,
+} from './settings';
 import type { AskAccess, AskPermission } from './settings';
 
 /**
@@ -93,7 +104,8 @@ export function AskSetup({ compact = false }: { compact?: boolean }) {
         const now = await askAccess();
         if (!live.current) return;
         setAccess(now);
-        if (!missingAccess(now, prefs, Boolean(brain.sees)).includes(kind) || Date.now() > until) break;
+        if (!missingAccess(now, prefs, Boolean(brain.sees)).includes(kind) || Date.now() > until)
+          break;
       }
     }
     if (!live.current) return;
@@ -103,7 +115,9 @@ export function AskSetup({ compact = false }: { compact?: boolean }) {
 
   const mac = onMac();
   const tap = isolate(tapKeyLabel(prefs.tapKey, mac, lang === 'ar' ? 'ar' : 'en'));
-  const size = views.filter((view) => !ready(view)).reduce((sum, view) => sum + modelBytes(view.model), 0);
+  const size = views
+    .filter((view) => !ready(view))
+    .reduce((sum, view) => sum + modelBytes(view.model), 0);
 
   if (done)
     return (
@@ -114,7 +128,10 @@ export function AskSetup({ compact = false }: { compact?: boolean }) {
     );
 
   return (
-    <section className={compact ? 'ask-setup is-compact' : 'ask-setup'} aria-labelledby="ask-setup-title">
+    <section
+      className={compact ? 'ask-setup is-compact' : 'ask-setup'}
+      aria-labelledby="ask-setup-title"
+    >
       <div className="ask-setup-head">
         <span className="ask-setup-mark" aria-hidden="true">
           <Icon of={voice ? Mic : Sparkles} size={18} />
@@ -123,7 +140,9 @@ export function AskSetup({ compact = false }: { compact?: boolean }) {
           <p id="ask-setup-title" className="ask-setup-title">
             {t('ask.setup.title')}
           </p>
-          <p className="ask-setup-note">{t(voice ? 'ask.setup.note' : 'ask.setup.noteTyped', { tap })}</p>
+          <p className="ask-setup-note">
+            {t(voice ? 'ask.setup.note' : 'ask.setup.noteTyped', { tap })}
+          </p>
         </div>
       </div>
       <ul className="ask-setup-steps">
@@ -136,7 +155,11 @@ export function AskSetup({ compact = false }: { compact?: boolean }) {
               <span className="ask-setup-step">
                 {t(view === ear && voice ? 'ask.setup.hearing' : 'ask.setup.deciding')}
                 {status?.kind === 'downloading' && (
-                  <progress className="ai-progress" max={status.total || 1} value={status.received} />
+                  <progress
+                    className="ai-progress"
+                    max={status.total || 1}
+                    value={status.received}
+                  />
                 )}
                 {view.error && <span className="ask-setup-error">{view.error}</span>}
               </span>
@@ -148,15 +171,32 @@ export function AskSetup({ compact = false }: { compact?: boolean }) {
             <StepMark state={asking === kind ? 'busy' : 'todo'} />
             <span className="ask-setup-step">
               {t(PERMISSION_LABEL[kind])}
-              {asking === kind && <span className="ask-setup-hint">{t(mac ? 'ask.setup.waitingMac' : 'ask.setup.waitingWindows')}</span>}
+              {asking === kind && (
+                <span className="ask-setup-hint">
+                  {t(mac ? 'ask.setup.waitingMac' : 'ask.setup.waitingWindows')}
+                </span>
+              )}
             </span>
           </li>
         ))}
       </ul>
       <div className="ask-setup-actions">
-        <button type="button" className="icon-btn icon-btn-labeled icon-btn-primary" disabled={running} onClick={() => void start()}>
-          <Icon of={running ? Loader : Download} size={14} className={running ? 'spin' : undefined} />
-          {running ? t('ask.setup.working') : size > 0 ? t('ask.setup.go', { size: formatBytes(size) }) : t('ask.setup.goAllow')}
+        <button
+          type="button"
+          className="icon-btn icon-btn-labeled icon-btn-primary"
+          disabled={running}
+          onClick={() => void start()}
+        >
+          <Icon
+            of={running ? Loader : Download}
+            size={14}
+            className={running ? 'spin' : undefined}
+          />
+          {running
+            ? t('ask.setup.working')
+            : size > 0
+              ? t('ask.setup.go', { size: formatBytes(size) })
+              : t('ask.setup.goAllow')}
         </button>
       </div>
     </section>
@@ -166,7 +206,11 @@ export function AskSetup({ compact = false }: { compact?: boolean }) {
 function StepMark({ state }: { state: 'done' | 'busy' | 'todo' }) {
   return (
     <span className="ask-setup-mark-small" aria-hidden="true">
-      {state === 'done' ? <Icon of={Check} size={12} /> : state === 'busy' ? <Icon of={Loader} size={12} className="spin" /> : null}
+      {state === 'done' ? (
+        <Icon of={Check} size={12} />
+      ) : state === 'busy' ? (
+        <Icon of={Loader} size={12} className="spin" />
+      ) : null}
     </span>
   );
 }

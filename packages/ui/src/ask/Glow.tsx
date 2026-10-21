@@ -26,7 +26,9 @@ export function GlowEdges({ level, on = true }: { level: number; on?: boolean })
   const reduced = useReducedMotion();
   return (
     <div
-      className={['ask-glow', on ? 'is-on' : '', reduced ? 'is-still' : ''].filter(Boolean).join(' ')}
+      className={['ask-glow', on ? 'is-on' : '', reduced ? 'is-still' : '']
+        .filter(Boolean)
+        .join(' ')}
       style={{ '--level': Math.max(0, Math.min(1, level)).toFixed(3) } as CSSProperties}
       aria-hidden="true"
     >
@@ -58,7 +60,9 @@ export function AskGlowApp() {
         setLevel(0);
         setOn(listening);
       }),
-      onHostEvent<number>('ask://level', (value) => setLevel((before) => before * 0.5 + value * 0.5)),
+      onHostEvent<number>('ask://level', (value) =>
+        setLevel((before) => before * 0.5 + value * 0.5),
+      ),
     ];
     return () => stops.forEach((stop) => stop());
   }, []);

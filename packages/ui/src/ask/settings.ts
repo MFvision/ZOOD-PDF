@@ -216,7 +216,11 @@ export function oneTapDoes(prefs: AskPreferences, ready: AskReadiness): 'speak' 
  * The permissions still missing for what Ask ZOOD is set to do, in the
  * order the setup asks for them. An older host that cannot say asks none.
  */
-export function missingAccess(access: AskAccess | null, prefs: AskPreferences, sees: boolean): AskPermission[] {
+export function missingAccess(
+  access: AskAccess | null,
+  prefs: AskPreferences,
+  sees: boolean,
+): AskPermission[] {
   if (!access) return [];
   const missing: AskPermission[] = [];
   if (voiceAvailable() && access.microphone !== 'allowed') missing.push('microphone');

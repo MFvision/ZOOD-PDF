@@ -506,6 +506,7 @@ pub fn run() {
             ask::ask_resize,
             ask::ask_hide,
             ask::ask_stop,
+            ask::ask_notch,
             ask::ask_type_instead,
             ask::ask_point,
             ask::ask_point_last,
