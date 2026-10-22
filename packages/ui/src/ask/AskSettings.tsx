@@ -11,6 +11,7 @@ import { isolate } from '../signatures/model';
 import { useAppDispatch } from '../state/AppContext';
 import { openTourAt } from '../tour/openAt';
 import { AskSetup } from './AskSetup';
+import { quickModel } from './quick';
 import { noteAskReady } from './ReadyHint';
 import {
   askAccess,
@@ -58,6 +59,7 @@ export function AskSettings() {
   const voice = voiceAvailable();
   const earView = useDeviceModel(earModels()[0]?.id ?? null);
   const brainView = useDeviceModel(brain.id);
+  const quickView = useDeviceModel(quickModel()?.id ?? null);
   const aboutId = useId();
   const examplesId = useId();
 
@@ -346,6 +348,13 @@ export function AskSettings() {
         {t('ask.settings.brainModel', { name: shortModelName(brain.name) })}
       </h4>
       <DeviceSection view={brainView} />
+      {quickModel() && (
+        <>
+          <h4 className="prefs-subhead">{t('ask.settings.quickModel')}</h4>
+          <p className="tool-panel-note">{t('ask.settings.quickHint')}</p>
+          <DeviceSection view={quickView} />
+        </>
+      )}
       <p className="tool-panel-note" role="status">
         {status}
       </p>

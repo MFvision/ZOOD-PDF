@@ -18,6 +18,7 @@ pub mod ask;
 pub mod batch;
 pub mod cloud;
 pub mod core_bridge;
+pub mod decide;
 pub mod doc_window;
 pub mod fonts;
 pub mod library;
@@ -345,6 +346,8 @@ pub fn run() {
         // The on-device model: its downloads and its engine thread; and the
         // person's details for filling forms, in the system's credential store.
         .manage(ai::AiState::default())
+        .manage(decide::DecideState::default())
+        .manage(ask::tidy::TidyState::default())
         .manage(neural::NeuralState::default())
         .manage(profile::ProfileState::default())
         .manage(fonts::FontState::default())
@@ -472,6 +475,8 @@ pub fn run() {
             ai::ai_generate,
             ai::ai_count_tokens,
             ai::ai_cancel,
+            decide::ai_decide,
+            decide::ai_decide_warm,
             profile::profile_get,
             profile::profile_set,
             profile::profile_delete,
@@ -519,6 +524,10 @@ pub fn run() {
             ask::ask_think,
             ask::ask_moment,
             ask::ask_run_tool,
+            ask::tidy::ask_tidy_plan,
+            ask::tidy::ask_tidy_apply,
+            ask::tidy::ask_tidy_last,
+            ask::tidy::ask_tidy_undo,
             ask::ask_open,
             ask::ask_type,
             ask::ask_paste,

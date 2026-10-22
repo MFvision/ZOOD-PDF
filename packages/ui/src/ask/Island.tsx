@@ -4,6 +4,7 @@ import {
   ClipboardPaste,
   Copy,
   FileText,
+  FolderInput,
   Keyboard,
   Loader,
   Mic,
@@ -33,6 +34,7 @@ import { getSharedCoreClient } from '../core/client';
 import { invokeHost, isTauriHost, onHostEvent } from '../core/host-tauri';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { useI18n } from '../i18n/useT';
+import { translate } from '../i18n/messages';
 import type { TKey } from '../i18n/messages';
 import { prefersReducedMotion } from '../components/useReducedMotion';
 import { applyAppearance } from '../settings/SettingsEffects';
@@ -65,6 +67,21 @@ import type { GuideMode, Step } from './guide';
 import { decisionGrammar, languageOf, readDecision, systemPrompt } from './plan';
 import type { AskTool, Decision, Moment } from './plan';
 import { pushLevel, quietEnough, watchQuiet } from './listen';
+import {
+  CERTAIN,
+  QUICK_OPTIONS,
+  QUICK_QUESTION,
+  decide,
+  isQuick,
+  optionLabel,
+  quickDecision,
+  quickReady,
+  readQuick,
+  tidyChoice,
+  tidyNames,
+  warmQuick,
+} from './quick';
+import type { QuickKey, TidyPreview } from './quick';
 import type { QuietWatch } from './listen';
 import { readWindow, warmUp } from './read';
 import { chosenBrain, earModels, onMac, readAskPreferences, tapKeyLabel } from './settings';
@@ -166,6 +183,9 @@ type Phase =
     }
   | { kind: 'found'; words: string; decision: Decision; hits: Hit[] }
   | { kind: 'said'; words: string; decision: Decision }
+  | { kind: 'choose'; words: string; keys: [QuickKey, QuickKey]; spoken: boolean }
+  | { kind: 'tidy'; words: string; preview: TidyPreview; working: boolean }
+  | { kind: 'tidied'; words: string; say: string; undo: boolean }
   | { kind: 'placed'; words: string; say: string; text: string; app: string }
   | { kind: 'ideas'; draft: Draft }
   | {
@@ -344,12 +364,16 @@ function Island() {
               ? TYPING_WAITS_MS
               : phase.kind === 'confirm' ||
                   phase.kind === 'found' ||
+                  phase.kind === 'choose' ||
+                  phase.kind === 'tidy' ||
+                  phase.kind === 'tidied' ||
                   phase.kind === 'problem' ||
                   phase.kind === 'ideas'
                 ? WAITS_MS
                 : 0;
     if (!stays || (phase.kind === 'typing' && typed)) return;
     if (phase.kind === 'said' && phase.decision.text) return; // Something to read: it stays.
+    if (phase.kind === 'tidy' && phase.working) return;
     const timer = window.setTimeout(() => closeLater(), stays);
     return () => window.clearTimeout(timer);
   }, [phase, typed]);
@@ -429,17 +453,138 @@ function Island() {
     }
   };
 
+  /** Said aloud as Settings › Talk back has it. */
+  const aloud = (say: string, spoken: boolean) => {
+    if (shouldTalk(readAskPreferences().talkBack, spoken)) void talk(say);
+  };
+
+  /** A short fixed reply, shown and said. */
+  const sayOnly = (words: string, say: string, spoken: boolean) => {
+    aloud(say, spoken);
+    setPhase({
+      kind: 'said',
+      words,
+      decision: {
+        say,
+        act: 'answer',
+        tool: null,
+        query: '',
+        fields: [],
+        profile: '',
+        x: -1,
+        y: -1,
+        text: '',
+      },
+    });
+  };
+
+  /** The Library's files for a "find", at most five, each once. */
+  const showFound = async (words: string, decision: Decision) => {
+    const hits = await searchLibrary(getSharedCoreClient(), decision.query).catch(() => []);
+    const seen = new Set<string>();
+    const files = hits.filter((hit) => !seen.has(hit.key) && seen.add(hit.key)).slice(0, 5);
+    setPhase({ kind: 'found', words, decision, hits: files });
+  };
+
+  const toolName = (tool: AskTool, language: 'ar' | 'en') => translate(language, TOOL_NAME[tool]);
+
+  /**
+   * The quick lane: the small decider picks the action, and a quick one is
+   * done here with a short fixed reply. False when the larger model is to
+   * answer instead (no decider downloaded, or words to write, or the screen).
+   */
+  const quickLane = async (
+    words: string,
+    spoken: boolean,
+    moment: HostMoment,
+    chosen?: QuickKey,
+  ): Promise<boolean> => {
+    const model = await quickReady();
+    if (!model) return false;
+    const language = languageOf(words);
+    let key: QuickKey;
+    let sure = 1;
+    if (chosen) key = chosen;
+    else {
+      const ranked = await decide(model, words, QUICK_QUESTION, QUICK_OPTIONS).catch(() => null);
+      if (!ranked) return false;
+      const outcome = readQuick(ranked);
+      if (outcome.kind === 'model') return false;
+      if (outcome.kind === 'choose') {
+        aloud(translate(language, 'ask.quick.choose'), spoken);
+        setPhase({ kind: 'choose', words, keys: outcome.keys, spoken });
+        return true;
+      }
+      key = outcome.key;
+      sure = outcome.p;
+    }
+    if (!isQuick(key)) return false;
+    if (key === 'organize') {
+      const { place, how } = await tidyChoice(model, words, moment.files.length);
+      const preview = (await invokeHost('ask_tidy_plan', {
+        request: { place, how, names: tidyNames(language) },
+      })) as TidyPreview;
+      if (preview.count === 0) {
+        sayOnly(
+          words,
+          translate(language, 'ask.tidy.nothing', { folder: preview.folderName }),
+          spoken,
+        );
+        return true;
+      }
+      aloud(
+        translate(language, `ask.tidy.plan.${preview.how}` as TKey, {
+          count: preview.count,
+          folder: preview.folderName,
+        }),
+        spoken,
+      );
+      setPhase({ kind: 'tidy', words, preview, working: false });
+      return true;
+    }
+    if (key === 'undo') {
+      const last = await invokeHost('ask_tidy_last');
+      if (!last) {
+        sayOnly(words, translate(language, 'ask.tidy.nothingToUndo'), spoken);
+        return true;
+      }
+      const back = (await invokeHost('ask_tidy_undo')) as number;
+      sayOnly(words, translate(language, 'ask.tidy.undone', { count: back }), spoken);
+      return true;
+    }
+    const decision = quickDecision(key, words, moment.files.length, toolName);
+    if (decision.act === 'tool' && decision.tool && sure >= CERTAIN) {
+      // Sure enough: it runs at once, the one-line reply staying on the island.
+      await invokeHost('ask_run_tool', { tool: decision.tool });
+      sayOnly(words, decision.say, spoken);
+      return true;
+    }
+    aloud(decision.say, spoken);
+    if (decision.act === 'tool' && decision.tool) {
+      // A little less sure: Do it first.
+      setPhase({ kind: 'confirm', words, decision, profile: null, files: moment.files.length });
+      return true;
+    }
+    if (decision.act === 'find') {
+      await showFound(words, decision);
+      return true;
+    }
+    setPhase({ kind: 'said', words, decision });
+    return true;
+  };
+
   /** A request, spoken or typed: decide, then do or show. */
-  const respond = async (words: string, spoken: boolean) => {
+  const respond = async (words: string, spoken: boolean, chosen?: QuickKey) => {
     const prefs = readAskPreferences();
     const brain = chosenBrain(prefs, await machineMemoryGiB());
     asked += 1;
     const id = `ask-${Date.now()}-${asked}`;
     try {
       const moment = momentOf(await invokeHost('ask_moment'));
-      const wallet = await loadWallet(t('wallet.me')).catch(() => null);
       const screen = moment.screen && Boolean(brain.sees);
       setPhase({ kind: 'thinking', words, screen });
+      if (await quickLane(words, spoken, moment, chosen)) return;
+      const wallet = await loadWallet(t('wallet.me')).catch(() => null);
       const text = await wordsOfWindow(moment, brain);
       const tapped = moment.app !== '' || moment.title !== '' || text !== '';
       const documents = await lookUp(moment.title, `${text}\n${words}`);
@@ -499,12 +644,7 @@ function Island() {
           null;
         return setPhase({ kind: 'confirm', words, decision, profile, files: 0 });
       }
-      if (decision.act === 'find') {
-        const hits = await searchLibrary(getSharedCoreClient(), decision.query).catch(() => []);
-        const seen = new Set<string>();
-        const files = hits.filter((hit) => !seen.has(hit.key) && seen.add(hit.key)).slice(0, 5);
-        return setPhase({ kind: 'found', words, decision, hits: files });
-      }
+      if (decision.act === 'find') return await showFound(words, decision);
       if (decision.act === 'point')
         await invokeHost('ask_point', { x: decision.x, y: decision.y, label: decision.say }).catch(
           () => undefined,
@@ -609,9 +749,16 @@ function Island() {
         for (const [index, part] of read.parts.entries()) {
           await point(part);
           if (!live()) return;
-          show(index === 0 && intro ? `${intro} ${part.say}` : part.say, index + 1, read.parts.length, 'telling');
+          show(
+            index === 0 && intro ? `${intro} ${part.say}` : part.say,
+            index + 1,
+            read.parts.length,
+            'telling',
+          );
           const heard = Promise.all([
-            talks ? talk(index === 0 && intro ? `${intro} ${part.say}` : part.say) : sleep(readingTime(part.say)),
+            talks
+              ? talk(index === 0 && intro ? `${intro} ${part.say}` : part.say)
+              : sleep(readingTime(part.say)),
             sleep(1400),
           ]).then(() => 'next' as const);
           const choice = await Promise.race([heard, waitFor()]);
@@ -638,7 +785,10 @@ function Island() {
           }
           show(step.say, index, 0, 'busy');
           // The pointer lands and the step is said before the click.
-          await Promise.all([talks ? Promise.race([talk(step.say), sleep(2600)]) : undefined, sleep(1100)]);
+          await Promise.all([
+            talks ? Promise.race([talk(step.say), sleep(2600)]) : undefined,
+            sleep(1100),
+          ]);
           let resume = false;
           for (;;) {
             if (!live()) return;
@@ -660,7 +810,8 @@ function Island() {
           void invokeHost('ask_watch_clicks', { on: true }).catch(() => undefined);
           const choice = await waitFor(CLICK_WAITS_MS);
           void invokeHost('ask_watch_clicks', { on: false }).catch(() => undefined);
-          if (choice === 'stop' || !live()) return choice === 'stop' && live() ? close() : undefined;
+          if (choice === 'stop' || !live())
+            return choice === 'stop' && live() ? close() : undefined;
           // What the click opened has time to show.
           await sleep(700);
         }
@@ -737,6 +888,7 @@ function Island() {
         quiet.current = tapped ? watchQuiet(performance.now()) : null;
         lastTapped.current = tapped;
         setPhase({ kind: 'listening', screen: payload.screen, tapped });
+        warmQuick();
       }),
       onHostEvent<number>('ask://level', (value) => {
         setLevel((before) => before * 0.4 + value * 0.6);
@@ -764,6 +916,7 @@ function Island() {
         if (tap.kind === 'type') {
           setTyped('');
           setPhase({ kind: 'typing' });
+          warmQuick();
           // The recogniser starts while the person types.
           if (tap.screen) warmUp();
           return;
@@ -797,6 +950,39 @@ function Island() {
     }
   };
 
+  const tidyNow = (words: string, preview: TidyPreview) => {
+    stopSpeaking();
+    setPhase({ kind: 'tidy', words, preview, working: true });
+    const language = languageOf(words);
+    void invokeHost('ask_tidy_apply').then(
+      (count) =>
+        setPhase({
+          kind: 'tidied',
+          words,
+          say: translate(language, 'ask.tidy.done', {
+            count: count as number,
+            folder: preview.folderName,
+          }),
+          undo: (count as number) > 0,
+        }),
+      fail,
+    );
+  };
+
+  const untidy = (words: string) => {
+    const language = languageOf(words);
+    void invokeHost('ask_tidy_undo').then(
+      (count) =>
+        setPhase({
+          kind: 'tidied',
+          words,
+          say: translate(language, 'ask.tidy.undone', { count: count as number }),
+          undo: false,
+        }),
+      fail,
+    );
+  };
+
   const copy = (text: string) => {
     void invokeHost('ask_copy', { text }).then(() => setCopied(true), fail);
   };
@@ -812,6 +998,9 @@ function Island() {
     phase.kind === 'confirm' ||
     phase.kind === 'found' ||
     phase.kind === 'said' ||
+    phase.kind === 'choose' ||
+    phase.kind === 'tidy' ||
+    phase.kind === 'tidied' ||
     phase.kind === 'thinking' ||
     phase.kind === 'placed'
       ? phase.words
@@ -820,6 +1009,7 @@ function Island() {
   const busy =
     phase.kind === 'hearing' ||
     phase.kind === 'thinking' ||
+    (phase.kind === 'tidy' && phase.working) ||
     phase.kind === 'reading' ||
     phase.kind === 'drafting';
   const guideTitle = (guiding: Extract<Phase, { kind: 'guide' }>) => {
@@ -831,7 +1021,9 @@ function Island() {
           : 'ask.guide.showTitle',
     );
     if (guiding.mode === 'explain')
-      return guiding.of ? `${name} · ${t('ask.guide.partOf', { n: guiding.step, of: guiding.of })}` : name;
+      return guiding.of
+        ? `${name} · ${t('ask.guide.partOf', { n: guiding.step, of: guiding.of })}`
+        : name;
     return guiding.step ? `${name} · ${t('ask.guide.stepN', { n: guiding.step })}` : name;
   };
   const mac = onMac();
@@ -909,9 +1101,9 @@ function Island() {
                           ? t('ask.typeTitle')
                           : phase.kind === 'guide'
                             ? guideTitle(phase)
-                          : phase.kind === 'problem'
-                            ? t(phase.message)
-                            : t('ask.settings.title')}
+                            : phase.kind === 'problem'
+                              ? t(phase.message)
+                              : t('ask.settings.title')}
         </span>
         <button
           type="button"
@@ -1160,6 +1352,82 @@ function Island() {
               {t('ask.cancel')}
             </button>
           </div>
+        </div>
+      )}
+      {phase.kind === 'choose' && (
+        <div className="ask-plan">
+          <p dir={lang === 'ar' ? 'rtl' : 'ltr'}>{translate(lang ?? 'en', 'ask.quick.choose')}</p>
+          <div className="ask-actions">
+            {phase.keys.map((key) => (
+              <button
+                key={key}
+                type="button"
+                className="ask-do"
+                onClick={() => void respond(phase.words, phase.spoken, key)}
+              >
+                {optionLabel(key, lang ?? 'en', toolName)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {phase.kind === 'tidy' && (
+        <div className="ask-plan">
+          <p dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+            <FolderInput className="ask-inline-icon" />{' '}
+            {translate(lang ?? 'en', `ask.tidy.plan.${phase.preview.how}` as TKey, {
+              count: phase.preview.count,
+              folder: phase.preview.folderName,
+            })}
+          </p>
+          <ul className="ask-tidy-moves">
+            {phase.preview.moves.slice(0, 5).map(([from, to]) => (
+              <li key={from}>
+                <bdi dir="auto">{from}</bdi>
+                <span aria-hidden="true">{lang === 'ar' ? '←' : '→'}</span>
+                <bdi dir="auto">{to}</bdi>
+              </li>
+            ))}
+            {phase.preview.count > 5 && (
+              <li className="ask-tidy-more">
+                {translate(lang ?? 'en', 'ask.tidy.more', { count: phase.preview.count - 5 })}
+              </li>
+            )}
+          </ul>
+          <p className="ask-detail">{translate(lang ?? 'en', 'ask.tidy.note')}</p>
+          <div className="ask-actions">
+            <button
+              type="button"
+              className="ask-do"
+              disabled={phase.working}
+              onClick={() => tidyNow(phase.words, phase.preview)}
+            >
+              {phase.working ? <Loader className="spin" /> : <Check />}{' '}
+              {translate(lang ?? 'en', phase.working ? 'ask.tidy.working' : 'ask.tidy.go')}
+            </button>
+            <button
+              type="button"
+              className="ask-cancel"
+              disabled={phase.working}
+              onClick={() => close()}
+            >
+              {t('ask.cancel')}
+            </button>
+          </div>
+        </div>
+      )}
+      {phase.kind === 'tidied' && (
+        <div className="ask-plan">
+          <p className="ask-say" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+            {phase.say}
+          </p>
+          {phase.undo && (
+            <div className="ask-actions">
+              <button type="button" className="ask-cancel" onClick={() => untidy(phase.words)}>
+                <RotateCcw /> {translate(lang ?? 'en', 'ask.tidy.undo')}
+              </button>
+            </div>
+          )}
         </div>
       )}
       {phase.kind === 'found' && (

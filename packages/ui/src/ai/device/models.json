@@ -43,6 +43,18 @@
       "hears": true
     },
     {
+      "id": "jev-style-0.8b",
+      "name": "Jev-Style 0.8B Decision v3 (Q4_K_M)",
+      "file": "Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf",
+      "url": "https://huggingface.co/chaoliangUNSW/Jev-Style-0.8B-Decision-v3-GGUF/resolve/main/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf",
+      "sha256": "0a19bc29bacc33e0d871146c8612b24dd14c2ed2e61cedeb7a928b0852628bac",
+      "bytes": 529296864,
+      "repo": "chaoliangUNSW/Jev-Style-0.8B-Decision-v3-GGUF",
+      "ramGiB": 2,
+      "licence": "Apache-2.0",
+      "decides": true
+    },
+    {
       "id": "qwen3-vl-4b",
       "name": "Qwen3-VL 4B Instruct (Q4_K_M)",
       "file": "Qwen3VL-4B-Instruct-Q4_K_M.gguf",

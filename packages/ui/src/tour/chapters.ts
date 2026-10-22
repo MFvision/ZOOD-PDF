@@ -1,4 +1,4 @@
-import { Clapperboard, Hand, Keyboard, MousePointerClick, Palette, PartyPopper, Smartphone, Sparkles } from 'lucide-react';
+import { Clapperboard, FolderInput, Hand, Keyboard, MousePointerClick, Palette, PartyPopper, Smartphone, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { TKey } from '../i18n/messages';
 
@@ -10,7 +10,7 @@ import type { TKey } from '../i18n/messages';
  * from start to end (Monochrome turns the hues grey).
  */
 
-export type ChapterId = 'welcome' | 'look' | 'film' | 'basics' | 'quick' | 'ask' | 'remote' | 'ai' | 'done';
+export type ChapterId = 'welcome' | 'look' | 'film' | 'basics' | 'quick' | 'ask' | 'quickask' | 'remote' | 'ai' | 'done';
 
 export interface Chapter {
   id: ChapterId;
@@ -30,6 +30,7 @@ const ALL: readonly Chapter[] = [
   { id: 'basics', icon: Hand, label: 'tour.ch.basics', title: 'tour.basics.title', body: 'tour.basics.body', hue: '#2f7de1' },
   { id: 'quick', icon: MousePointerClick, label: 'tour.ch.quick', title: 'tour.quick.title', body: 'tour.quick.body', hue: '#e09a1a', desktopOnly: true },
   { id: 'ask', icon: Keyboard, label: 'tour.ch.ask', title: 'tour.ask.title', body: 'tour.ask.body', hue: '#d4467e', desktopOnly: true, askOnly: true },
+  { id: 'quickask', icon: FolderInput, label: 'tour.ch.quickask', title: 'tour.quickask.title', body: 'tour.quickask.body', hue: '#1f9bb4', desktopOnly: true, askOnly: true },
   { id: 'remote', icon: Smartphone, label: 'tour.ch.remote', title: 'tour.remote.title', body: 'tour.remote.body', hue: '#2f9e75', desktopOnly: true },
   { id: 'ai', icon: Sparkles, label: 'tour.ch.ai', title: 'tour.ai.title', body: 'tour.ai.body', hue: '#7b61ff' },
   { id: 'done', icon: PartyPopper, label: 'tour.ch.done', title: 'tour.done.title', body: 'tour.done.body', hue: '#ae8b66' },
@@ -40,12 +41,14 @@ export function tourChapters(desktop: boolean, ask = false): Chapter[] {
 }
 
 /** The tour as it was last seen: a newer tour opens once more on its own, at what is new. */
-export const TOUR_VERSION = 5;
+export const TOUR_VERSION = 6;
 /**
  * Where a tour seen before opens, by the version it was seen at: Ask ZOOD
- * came in version 3, one tap to talk (with its setup) in version 4, and
- * Show me, Explain this and Do it for me in version 5.
+ * came in version 3, one tap to talk (with its setup) in version 4,
+ * Show me, Explain this and Do it for me in version 5, and quick asks
+ * with tidying in version 6.
  */
 export function newSince(version: number, ask: boolean): ChapterId {
-  return version >= 2 && ask ? 'ask' : 'welcome';
+  if (!ask || version < 2) return 'welcome';
+  return version >= 5 ? 'quickask' : 'ask';
 }

@@ -7230,6 +7230,7 @@ dependencies = [
  "arboard",
  "base64 0.22.1",
  "chacha20poly1305",
+ "chrono",
  "cpal",
  "cryptoki",
  "encoding_rs",

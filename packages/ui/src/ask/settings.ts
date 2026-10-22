@@ -93,7 +93,7 @@ export function earModels(): DeviceModel[] {
 export function brainChoices(): DeviceModel[] {
   return [
     ...DEVICE_MODELS.filter((model) => model.sees && !model.hears),
-    ...DEVICE_MODELS.filter((model) => !model.sees && !model.hears),
+    ...DEVICE_MODELS.filter((model) => !model.sees && !model.hears && !model.decides),
   ];
 }
 

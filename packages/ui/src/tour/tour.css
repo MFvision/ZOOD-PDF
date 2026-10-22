@@ -2629,6 +2629,90 @@ html[data-reduce-motion="on"] .mock[data-phase="2"] .mock-line-edit > span {
   margin-block-start: var(--space-5);
 }
 
+/* Quick asks: what was said, and the island's one-line answer under it. */
+.quickask-mock {
+  display: grid;
+  gap: var(--space-4);
+  inline-size: min(100%, 340px);
+}
+
+.quickask-said {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-self: center;
+  padding: 5px 12px;
+  margin: 0;
+  font-size: var(--text-subheadline);
+  color: var(--secondary-label);
+  background: var(--background);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-capsule);
+}
+
+.quickask-island {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  font-size: var(--text-subheadline);
+  color: #fff;
+  background: #14161c;
+  border-radius: 22px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 22%);
+  animation: quickask-in 260ms ease-out;
+}
+
+.quickask-line {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+  font-weight: 600;
+}
+
+.quickask-moves {
+  display: grid;
+  gap: 2px;
+  padding: 0;
+  margin: 0;
+  color: rgb(255 255 255 / 70%);
+  list-style: none;
+}
+
+.quickask-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.quickask-button {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 12px;
+  font-weight: 600;
+  background: rgb(255 255 255 / 14%);
+  border-radius: var(--radius-capsule);
+}
+
+.quickask-button.is-main {
+  color: #14161c;
+  background: var(--hue);
+}
+
+@keyframes quickask-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quickask-island {
+    animation: none;
+  }
+}
+
 /* Show me, Explain this and Do it for me, on a pretend ZOOD window. */
 .guide-stage {
   place-items: stretch;

@@ -255,3 +255,27 @@ real Windows or a Mac; coordinates depend on the vision model's accuracy.**
 - Xcode's Apple account signs out from time to time; the owner signs back in.
 - Old agent worktrees under `.claude/worktrees/` can be removed once merged; two named
   ones (`frosty-bartik-…`, `wonderful-thompson-…`) belong to the owner's other sessions.
+
+## Quick asks and tidying (2026-10-21; idea from the Pragmatic Coder video on Jev, no code taken)
+The owner: a quick action ("make these smaller", "organize my Downloads") should not need a 3 GB
+model thinking. Ask ZOOD now has a **quick lane**: a small decision model, Jev-Style 0.8B
+Decision v3 (Apache-2.0, a Qwen3.5-0.8B fine-tune, 529 MB Q4_K_M, pinned in `models.json` with
+`"decides": true`), ranks 27 options with a probability each without writing a word
+(`src-tauri/src/decide.rs`: the model's own prompt layout and " yes"/" no" readout, ported from
+its Apache-2.0 Python runtime; its own thread beside the main engine, sharing one llama backend,
+`ai::backend()`). `packages/ui/src/ask/quick.ts` reads the ranking: a tool, *find* or *organize*
+at 0.8 or above is done at once with a one-line reply in the person's language; 0.6–0.8 shows
+the usual confirm card; under 0.6 the island offers the two best guesses as buttons. Writing,
+filling, summarizing, translating, showing and answering go to the larger model as before.
+**Tidying** (`src-tauri/src/ask/tidy.rs`): Downloads, Desktop, Documents or the selected folder
+or files, by kind, by month, renamed by date, or invoices gathered (by name, or a PDF's first
+page). The host makes the plan and keeps it (the page can't name files), the island shows the
+moves, **Tidy now** applies them; only top-level files move, one level down, never through a
+link, nothing deleted or overwritten (" (2)" instead), each move journalled to
+`tidy-undo.json` so **Undo** (button, or "undo") puts every file back and removes the folders it
+made. Folders must be inside the home folder and not the home folder itself. The decider is in
+Ask ZOOD's one-button setup and in Settings › AI › Ask ZOOD › Quick decider; without it asks go
+to the larger model as before. Tour version 6: a **Quick asks** chapter (`tour/quickAskScene.tsx`)
+and Help › Quick asks and tidying. Tests: `quick.test.ts`, `decide.rs` and `tidy.rs` unit tests
+(apply and undo on a real folder), and an ignored real-model test (`real_model_picks_the_quick_actions`,
+see `docs/local-ai.md`). **Not tried on real Windows or a Mac** (the cloud CPU only).

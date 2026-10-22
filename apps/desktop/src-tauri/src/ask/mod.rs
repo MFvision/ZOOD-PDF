@@ -34,6 +34,7 @@ pub mod guide;
 pub mod hands;
 pub mod notch;
 pub mod tap;
+pub mod tidy;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
