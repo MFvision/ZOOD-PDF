@@ -16,10 +16,13 @@ import { ReachScene } from './reachScene';
 import { TOUR_VERSION, newChapters, tourChapters } from './chapters';
 import { openTourAt, openTourWith, takeStartAt, takeStartOnly } from './openAt';
 import type { Chapter, ChapterId } from './chapters';
-import { AiScene, BasicsScene, DoneScene, FilmScene, LookScene, QuickScene, RemoteScene, WelcomeScene } from './scenes';
+import { AiScene, BasicsScene, DoneScene, FilmScene, LookScene, QuickScene, WelcomeScene } from './scenes';
 import type { TourProgress } from './scenes';
 import { AskScene } from './askScene';
+import { PhoneScene } from './phoneScene';
 import { SupportScene } from './supportScene';
+import { FoldersScene } from './foldersScene';
+import { showHomeView } from '../home/homeView';
 import { openSupportAt } from '../support/open';
 import './tour.css';
 
@@ -93,13 +96,18 @@ export function WelcomeTour() {
           onClose={close}
           onSettings={(section) => openSettingsAt(section, () => dispatch({ type: 'DIALOG', dialog: 'settings' }))}
           onSupport={() => openSupportAt('ask', () => dispatch({ type: 'DIALOG', dialog: 'support' }))}
+          onFolders={() => {
+            close();
+            dispatch({ type: 'SHOW_HOME', shown: true });
+            showHomeView('folders');
+          }}
         />
       ) : null}
     </Dialog>
   );
 }
 
-function TourBook({ desktop, ask, onClose, onSettings, onSupport }: { desktop: boolean; ask: boolean; onClose: () => void; onSettings: (section: SectionId) => void; onSupport: () => void }) {
+function TourBook({ desktop, ask, onClose, onSettings, onSupport, onFolders }: { desktop: boolean; ask: boolean; onClose: () => void; onSettings: (section: SectionId) => void; onSupport: () => void; onFolders: () => void }) {
   const { t, dir } = useI18n();
   // The whole tour, or only the chapters an update brought.
   const [{ chapters, whole }] = useState(() => {
@@ -200,6 +208,7 @@ function TourBook({ desktop, ask, onClose, onSettings, onSupport }: { desktop: b
               onProgress={(patch) => setProgress((before) => ({ ...before, ...patch }))}
               onSettings={onSettings}
               onSupport={onSupport}
+              onFolders={onFolders}
               onChapter={(id) => go(chapters.findIndex((one) => one.id === id))}
               has={(id) => chapters.some((one) => one.id === id)}
             />
@@ -247,6 +256,7 @@ function Scene({
   onProgress,
   onSettings,
   onSupport,
+  onFolders,
   onChapter,
   has,
 }: {
@@ -255,6 +265,7 @@ function Scene({
   onProgress: (patch: Partial<TourProgress>) => void;
   onSettings: (section: SectionId) => void;
   onSupport: () => void;
+  onFolders: () => void;
   onChapter: (id: ChapterId) => void;
   has: (id: ChapterId) => boolean;
 }) {
@@ -267,6 +278,8 @@ function Scene({
       return <FilmScene onWatched={() => onProgress({ film: true })} />;
     case 'basics':
       return <BasicsScene />;
+    case 'folders':
+      return <FoldersScene onOpen={onFolders} />;
     case 'quick':
       return <QuickScene onPractised={() => onProgress({ ring: true })} onSettings={onSettings} />;
     case 'ask':
@@ -276,7 +289,7 @@ function Scene({
     case 'reach':
       return <ReachScene onSettings={onSettings} />;
     case 'remote':
-      return <RemoteScene />;
+      return <PhoneScene />;
     case 'ai':
       return <AiScene />;
     case 'support':

@@ -52,6 +52,9 @@
   border-radius: var(--radius-s);
   box-shadow: var(--shadow-2);
   resize: none;
+
+  /* The box grows to fit what is typed; a scrollbar would only hide lines. */
+  overflow: hidden;
 }
 
 .paragraph-editor-area:focus-visible {

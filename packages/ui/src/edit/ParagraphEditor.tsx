@@ -1,12 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import type { ParagraphData } from '../core/types';
 import { useT } from '../i18n/useT';
 import { shortcutLetter } from '../shell/shortcutEcho';
 import { useAppState } from '../state/AppContext';
-import { editFontName } from './editFont';
+import { editPreviewStack } from './editFont';
 import { closestBundled, faceOf } from './fontMatch';
 import { paragraphRect } from './geometry';
+
+/** Inner padding of the editing box, in CSS px. */
+const EDITOR_PAD = 4;
+/** Padding plus the 2px border: how far the box reaches past the paragraph. */
+const EDITOR_OUTSET = EDITOR_PAD + 2;
 
 interface ParagraphEditorProps {
   paragraph: ParagraphData;
@@ -99,16 +104,34 @@ export function ParagraphEditor({
   const rect = paragraphRect(paragraph, scale);
   const lineHeight =
     paragraph.lineCount > 0 ? (paragraph.height / paragraph.lineCount) * scale : undefined;
+  // The box is never shorter than one full line of the editing face. A PDF's
+  // line pitch can be tighter than the face's own line, and a box cut to the
+  // paragraph's exact height clipped the text being typed.
+  const minContent = Math.max(rect.blockSize, lineHeight ?? 0, paragraph.fontSize * scale * 1.5);
+
+  // The box grows with what is typed, so every line stays in view instead of
+  // scrolling out of a one-line window.
+  const [contentHeight, setContentHeight] = useState(minContent);
+  useLayoutEffect(() => {
+    const area = areaRef.current;
+    if (!area) return;
+    const previous = area.style.blockSize;
+    area.style.blockSize = '0px';
+    const needed = area.scrollHeight - 2 * EDITOR_PAD;
+    area.style.blockSize = previous;
+    setContentHeight(Math.max(minContent, needed));
+  }, [text, minContent, rect.inlineSize, font]);
 
   return (
     <div
       ref={containerRef}
       className="paragraph-editor"
       style={{
-        insetInlineStart: rect.inlineStart,
-        insetBlockStart: rect.blockStart,
-        inlineSize: rect.inlineSize,
-        blockSize: rect.blockSize,
+        // Padding and border sit outside the paragraph, so the text in the box
+        // lines up with the text on the page rather than being squeezed inside.
+        insetInlineStart: rect.inlineStart - EDITOR_OUTSET,
+        insetBlockStart: rect.blockStart - EDITOR_OUTSET,
+        inlineSize: rect.inlineSize + 2 * EDITOR_OUTSET,
       }}
       onKeyDown={onKeyDown}
     >
@@ -129,12 +152,17 @@ export function ParagraphEditor({
           // hyphens), then the closest face the app carries.
           fontFamily:
             font === 'auto'
-              ? `${paragraph.fontFamily ? `"${paragraph.fontFamily}", ` : ''}${editFontName(closestBundled(faceOf(paragraph), paragraph.text, paragraph.direction))}, Amiri, Cairo, Inter, serif`
-              : `${editFontName(font)}, Amiri, Cairo, Inter, serif`,
+              ? editPreviewStack(
+                  closestBundled(faceOf(paragraph), paragraph.text, paragraph.direction),
+                  paragraph.fontFamily,
+                )
+              : editPreviewStack(font),
           fontWeight: font === 'auto' ? paragraph.fontWeight : undefined,
           fontStyle: font === 'auto' && paragraph.fontItalic ? 'italic' : undefined,
           fontSize: paragraph.fontSize * scale,
           lineHeight: lineHeight === undefined ? undefined : `${lineHeight}px`,
+          padding: EDITOR_PAD,
+          blockSize: contentHeight + 2 * EDITOR_OUTSET,
         }}
         onChange={(event) => setText(event.target.value)}
       />

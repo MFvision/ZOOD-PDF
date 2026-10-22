@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FilePlus2, FolderOpen, Plus, ScanText, ShieldCheck } from 'lucide-react';
 import { CloudHome } from '../cloud/CloudHome';
 import { useCloud } from '../cloud/CloudContext';
@@ -13,6 +13,8 @@ import { AiCard } from './AiCard';
 import { TodayCard } from '../ask/TodayCard';
 import { RemoteHomeButton } from '../remote/RemoteLayer';
 import { HeroCards } from './HeroCards';
+import { FoldersView } from './FoldersView';
+import { onHomeView, takeHomeView } from './homeView';
 import { HomeSearch } from './HomeSearch';
 import { HomeSidebar } from './HomeSidebar';
 import type { HomeView } from './HomeSidebar';
@@ -30,7 +32,7 @@ import { useWorkbench } from '../shell/workbench';
  * and tools at the leading edge; a top bar with the search field and the
  * "+" menu; the headline over six action cards; the recent files as a row
  * of pages; and the AI Assistant docked at the trailing edge. The other
- * places — Recents, Starred, Tags, Clouds — take the middle when chosen.
+ * places — Recents, Starred, Tags, Folders — take the middle when chosen.
  */
 export function HomeScreen() {
   const { t, dir } = useI18n();
@@ -39,7 +41,15 @@ export function HomeScreen() {
   const { requestOpenFile, requestCreateFiles } = useServices();
   const cloud = useCloud();
   const index = useLibraryIndex();
-  const [view, setView] = useState<HomeView>('home');
+  const [view, setView] = useState<HomeView>(() => takeHomeView() ?? 'home');
+  useEffect(
+    () =>
+      onHomeView((asked) => {
+        takeHomeView();
+        setView(asked);
+      }),
+    [],
+  );
   const [addMenu, setAddMenu] = useState<{ at: { x: number; y: number }; from: HTMLElement } | null>(null);
   const question = useRef<HTMLTextAreaElement>(null);
   const tools = useRef<HTMLElement>(null);
@@ -55,7 +65,7 @@ export function HomeScreen() {
   const aiCard = !aiPanel && !settings.hiddenHomeSections.includes('assistant');
 
   const clouds = cloud.providers.length > 0;
-  const shown: HomeView = view === 'clouds' && !clouds ? 'home' : view;
+  const shown: HomeView = view;
 
   const addItems = [
     { id: 'open', label: t('home.add.open'), icon: <Icon of={FolderOpen} size={14} />, onSelect: requestOpenFile },
@@ -74,7 +84,7 @@ export function HomeScreen() {
 
   return (
     <div className="home" data-view={shown}>
-      <HomeSidebar view={shown} onView={setView} clouds={clouds} index={index} />
+      <HomeSidebar view={shown} onView={setView} index={index} />
       <div className="home-main">
         <div className="home-topbar glass">
           <HomeSearch index={index} />
@@ -151,7 +161,7 @@ export function HomeScreen() {
             {shown === 'recents' && <RecentList layout="grid" />}
             {shown === 'starred' && <StarredView index={index} />}
             {shown === 'tags' && <TagsView index={index} />}
-            {shown === 'clouds' && <CloudHome />}
+            {shown === 'folders' && <FoldersView index={index} />}
             <p className="home-privacy">
               <Icon of={ShieldCheck} size={14} />
               <span>{t(clouds ? 'home.privacyCloud' : 'home.privacy')}</span>

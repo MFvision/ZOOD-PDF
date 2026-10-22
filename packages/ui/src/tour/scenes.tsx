@@ -2,12 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import {
   Check,
-  ChevronLeft,
   ChevronRight,
   FileText,
   Folder,
   Languages,
-  Laptop,
   MessageCircle,
   MousePointer2,
   PenLine,
@@ -15,7 +13,6 @@ import {
   ShieldCheck,
   Signature,
   SquareTerminal,
-  Smartphone,
   Sparkles,
   Type,
   UserX,
@@ -31,7 +28,6 @@ import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { QUICK_TOOLS } from '../quick/plan';
 import { RING_INNER, RING_OUTER, RING_SIZE, inHub, ringSegments, segmentAt } from '../quick/ringGeometry';
-import { RemotePanel } from '../remote/RemotePanel';
 import { useRemoteView } from '../remote/store';
 import { LookPreview } from '../settings/LookPreview';
 import type { SectionId } from '../settings/SettingsWindow';
@@ -647,42 +643,6 @@ function RingPractice({ onPractised }: { onPractised: () => void }) {
           {t('tour.quick.ringClick')}
         </button>
       )}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------- Phone remote */
-
-export function RemoteScene() {
-  const { t } = useI18n();
-  const { phase } = usePhases(4, 1500);
-  return (
-    <div className="tour-scene tour-split">
-      <div className="tour-stage tour-remote-stage" aria-hidden="true">
-        <Glow />
-        <div className="remote-mock" data-phase={phase}>
-          <span className="remote-mock-laptop">
-            <Icon of={Laptop} size={84} />
-            <span className="remote-mock-slide">{t('tour.remote.slide', { n: phase + 1 })}</span>
-          </span>
-          <span className="remote-mock-waves">
-            <i />
-            <i />
-            <i />
-          </span>
-          <span className="remote-mock-phone">
-            <Icon of={Smartphone} size={64} />
-            <span className="remote-mock-keys">
-              <Icon of={ChevronRight} size={12} mirror />
-              <Icon of={ChevronLeft} size={12} mirror />
-            </span>
-          </span>
-        </div>
-      </div>
-      <div className="tour-remote-panel">
-        <RemotePanel />
-        <p className="tour-note">{t('tour.remote.later')}</p>
-      </div>
     </div>
   );
 }

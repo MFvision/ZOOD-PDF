@@ -28,3 +28,17 @@
   font-style: normal;
   font-display: swap;
 }
+
+/*
+ * Cairo again, without the Arabic-only range. The UI face above hands Latin to
+ * Inter on purpose, but the in-place editor must show Cairo's own Latin and
+ * digits: that is what the core embeds, so "INV-2026" previews in the same
+ * shapes the page will get instead of falling through to Amiri's serif.
+ */
+@font-face {
+  font-family: "ZOOD Edit Cairo";
+  src: url("../../public/fonts/Cairo-Variable.ttf") format("truetype");
+  font-weight: 200 1000;
+  font-style: normal;
+  font-display: swap;
+}
