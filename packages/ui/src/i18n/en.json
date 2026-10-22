@@ -2256,7 +2256,7 @@
   "tour.basics.title": "Open, edit, save",
   "tour.basics.body": "Watch where everything is, or click a step to see it.",
   "tour.basics.s1": "Drop a PDF on the window, or double-click one in your files.",
-  "tour.basics.s2": "Every tool is in the side panel: edit text, annotate, sign, organize, convert, protect.",
+  "tour.basics.s2": "Every tool is in the sidebar, in one long list or in groups (the button beside Tools switches): edit text, annotate, sign, organize, convert, protect.",
   "tour.basics.s3": "Click any text on the page to edit it in its own font.",
   "tour.basics.s4": "Each PDF gets its own tab. Drag pages onto a tab to copy them there.",
   "tour.basics.s5": "Nothing changes the original until you save.",
@@ -3130,5 +3130,12 @@
   "tour.ask.guide.explainDone": "That's Explain this: one look, then part by part.",
   "tour.ask.guide.doDone": "That's Do it for me: it clicks inside ZOOD PDF.",
   "tour.ask.guide.safe": "Do it for me clicks only inside ZOOD PDF; in other apps it points. It asks before sending, deleting, paying or signing, and moving your mouse stops it.",
-  "help.askGuide": "Ask ZOOD: Show Me, Explain and Do It"
+  "help.askGuide": "Ask ZOOD: Show Me, Explain and Do It",
+  "home.toolsShowAll": "Show all tools in one list",
+  "home.toolsShowGrouped": "Show tools in groups",
+  "prefs.sidebarTools": "Tools in the sidebar",
+  "prefs.sidebarTools.all": "All tools",
+  "prefs.sidebarTools.grouped": "Grouped",
+  "prefs.sidebarTools.allHint": "Every tool in one long list, ready with one click. The button beside Tools on the home screen switches too.",
+  "prefs.sidebarTools.groupedHint": "Eight headings, each opening a short menu of its tools. The button beside Tools on the home screen switches too."
 }

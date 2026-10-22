@@ -85,6 +85,37 @@
   letter-spacing: var(--track-small);
 }
 
+.home-nav-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: var(--space-5) 0 0;
+}
+
+.home-nav-heading-row .home-nav-heading {
+  margin: 0;
+}
+
+/* Long list or headings: a quiet button at the end of the Tools heading. */
+.home-nav-heading-switch {
+  display: grid;
+  place-items: center;
+  inline-size: 26px;
+  block-size: 26px;
+  padding: 0;
+  margin-inline-end: var(--space-2);
+  color: var(--secondary-label);
+  cursor: pointer;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-6);
+}
+
+.home-nav-heading-switch:hover {
+  color: var(--label);
+  background: var(--tertiary-fill);
+}
+
 .home-nav-item {
   display: flex;
   gap: var(--space-4);
@@ -858,6 +889,7 @@
   }
 
   .home-nav-heading,
+  .home-nav-heading-row,
   .home-nav-tools,
   .home-storage {
     display: none;
