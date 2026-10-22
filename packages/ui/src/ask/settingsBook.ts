@@ -283,6 +283,17 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
     names: ['my name', 'your name for me', 'what you call me', 'اسمي', 'الاسم'],
   },
   {
+    id: 'sidebarTools',
+    section: 'home',
+    label: 'prefs.sidebarTools',
+    kind: 'choice',
+    choices: [
+      { value: 'all', label: 'prefs.sidebarTools.all', words: ['all tools', 'one list', 'long list', 'full list', 'كل الادوات', 'قائمه واحده', 'قائمه طويله'] },
+      { value: 'grouped', label: 'prefs.sidebarTools.grouped', words: ['grouped', 'groups', 'in groups', 'مجموعات', 'مجموعه'] },
+    ],
+    names: ['tools in the sidebar', 'sidebar tools', 'tools list', 'الادوات في الشريط الجانبي', 'ادوات الشريط الجانبي', 'قائمه الادوات'],
+  },
+  {
     id: 'recentLimit',
     section: 'home',
     label: 'prefs.recentLimit',
