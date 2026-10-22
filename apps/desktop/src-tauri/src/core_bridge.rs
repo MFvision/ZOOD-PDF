@@ -135,20 +135,24 @@ impl CoreBridge {
         &self,
         job: impl FnOnce(&mut Registry) -> T + Send + 'static,
     ) -> Result<T, String> {
-        let (reply, answer) = channel::<T>();
+        let (reply, answer) = channel::<Result<T, String>>();
         {
-            let jobs = self
-                .jobs
-                .lock()
-                .map_err(|_| "E_CORE: the core thread queue is poisoned".to_string())?;
+            let jobs = self.jobs.lock().unwrap_or_else(|e| e.into_inner());
             jobs.send(Box::new(move |registry| {
-                let _ = reply.send(job(registry));
+                // A panic inside one job (a malformed PDF tripping a bug in
+                // the core) answers that call with an error instead of taking
+                // the core thread, and with it every open document, down.
+                let value = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    job(registry)
+                }))
+                .map_err(|_| "E_CORE: internal error".to_string());
+                let _ = reply.send(value);
             }))
             .map_err(|_| "E_CORE: the core thread is gone".to_string())?;
         }
         answer
             .recv()
-            .map_err(|_| "E_CORE: the core thread stopped while answering".to_string())
+            .map_err(|_| "E_CORE: the core thread stopped while answering".to_string())?
     }
 
     /// `call` for the common "look the document up, then read it" shape.

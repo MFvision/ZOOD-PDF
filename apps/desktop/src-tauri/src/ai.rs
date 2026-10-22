@@ -982,38 +982,51 @@ struct Job {
 fn engine_thread(jobs: mpsc::Receiver<Job>) {
     let mut engine: Option<Engine> = None;
     for job in jobs {
-        if engine
-            .as_ref()
-            .is_none_or(|e| e.path() != job.path || e.projector() != job.projector.as_deref())
-        {
+        // A panic in one job drops its reply, so that request fails, and
+        // throws the engine away so the next job loads it afresh; the thread
+        // itself lives on.
+        let ran = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            engine_job(&mut engine, job)
+        }));
+        if ran.is_err() {
             engine = None;
-            match Engine::load_with_projector(&job.path, job.projector.as_deref()) {
-                Ok(loaded) => engine = Some(loaded),
-                Err(e) => {
-                    match job.work {
-                        Work::Generate { reply, .. } => drop(reply.send(Err(e))),
-                        Work::Count { reply, .. } => drop(reply.send(Err(e))),
-                    }
-                    continue;
+        }
+    }
+}
+
+/// One job on the engine thread, loading the model first when it must.
+fn engine_job(engine: &mut Option<Engine>, job: Job) {
+    if engine
+        .as_ref()
+        .is_none_or(|e| e.path() != job.path || e.projector() != job.projector.as_deref())
+    {
+        *engine = None;
+        match Engine::load_with_projector(&job.path, job.projector.as_deref()) {
+            Ok(loaded) => *engine = Some(loaded),
+            Err(e) => {
+                match job.work {
+                    Work::Generate { reply, .. } => drop(reply.send(Err(e))),
+                    Work::Count { reply, .. } => drop(reply.send(Err(e))),
                 }
+                return;
             }
         }
-        let Some(loaded) = engine.as_ref() else {
-            continue;
-        };
-        match job.work {
-            Work::Generate {
-                request,
-                cancel,
-                token,
-                reply,
-            } => {
-                let result = loaded.generate(&request, &cancel, |piece| token(piece));
-                let _ = reply.send(result);
-            }
-            Work::Count { text, reply } => {
-                let _ = reply.send(loaded.count_tokens(&text));
-            }
+    }
+    let Some(loaded) = engine.as_ref() else {
+        return;
+    };
+    match job.work {
+        Work::Generate {
+            request,
+            cancel,
+            token,
+            reply,
+        } => {
+            let result = loaded.generate(&request, &cancel, |piece| token(piece));
+            let _ = reply.send(result);
+        }
+        Work::Count { text, reply } => {
+            let _ = reply.send(loaded.count_tokens(&text));
         }
     }
 }

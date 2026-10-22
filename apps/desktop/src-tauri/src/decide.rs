@@ -288,25 +288,39 @@ pub struct DecideState {
 fn decider_thread(jobs: mpsc::Receiver<Job>) {
     let mut loaded: Option<Decider> = None;
     for job in jobs {
-        if loaded.as_ref().is_none_or(|d| d.path != job.path) {
+        // A panic in one decision answers it with an error and throws the
+        // model away, to be loaded afresh; the thread itself lives on.
+        let reply = job.reply.clone();
+        let ran = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            decider_job(&mut loaded, job)
+        }));
+        if ran.is_err() {
             loaded = None;
-            match Decider::load(&job.path) {
-                Ok(decider) => loaded = Some(decider),
-                Err(e) => {
-                    let _ = job.reply.send(Err(e));
-                    continue;
-                }
+            let _ = reply.send(Err("E_AI: internal error".to_string()));
+        }
+    }
+}
+
+/// One job on the decider's thread, loading the model first when it must.
+fn decider_job(loaded: &mut Option<Decider>, job: Job) {
+    if loaded.as_ref().is_none_or(|d| d.path != job.path) {
+        *loaded = None;
+        match Decider::load(&job.path) {
+            Ok(decider) => *loaded = Some(decider),
+            Err(e) => {
+                let _ = job.reply.send(Err(e));
+                return;
             }
         }
-        let Some(decider) = loaded.as_ref() else {
-            continue;
-        };
-        let answer = match &job.request {
-            Some(request) => decider.decide(request).map(Some),
-            None => Ok(None),
-        };
-        let _ = job.reply.send(answer);
     }
+    let Some(decider) = loaded.as_ref() else {
+        return;
+    };
+    let answer = match &job.request {
+        Some(request) => decider.decide(request).map(Some),
+        None => Ok(None),
+    };
+    let _ = job.reply.send(answer);
 }
 
 fn sender(state: &DecideState) -> mpsc::Sender<Job> {
