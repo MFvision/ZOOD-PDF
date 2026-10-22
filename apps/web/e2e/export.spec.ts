@@ -143,8 +143,8 @@ test.describe('Export saves the document in other formats, Arabic in reading ord
     expect(xml).toMatch(/<w:p><w:pPr><w:bidi\/><\/w:pPr><w:r><w:rPr>(<w:sz w:val="\d+"\/><w:szCs w:val="\d+"\/>)?<w:rtl\/><\/w:rPr><w:t xml:space="preserve">صباح الخير\./);
     expect(xml.match(/<w:pageBreakBefore\/>/g)).toHaveLength(1);
     expect(xml).not.toContain(GREETING_VISUAL);
-    // The date reads left to right: no w:bidi and no w:rtl on it.
-    expect(xml).toContain('<w:p><w:r><w:rPr><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr><w:t xml:space="preserve">06/13/2021</w:t></w:r></w:p>');
+    // The date reads left to right: no w:bidi and no w:rtl on it; it is set in italic, as in the PDF.
+    expect(xml).toContain('<w:p><w:r><w:rPr><w:i/><w:iCs/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr><w:t xml:space="preserve">06/13/2021</w:t></w:r></w:p>');
 
     // Page images: one PNG per page in one zip, drawn at the chosen resolution.
     const zip = await exportAs(page, 'Page images (.png)', '72 dpi');
@@ -188,12 +188,15 @@ test.describe('Export saves the document in other formats, Arabic in reading ord
     expect([...picture.subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
     const xml = strFromU8(parts['word/document.xml']!);
     expect(xml).toContain('behindDoc="1"');
-    // A text box per paragraph, and per table cell: each where it was.
+    // A text box per paragraph, and the table an editable table where it was, a cell per cell.
     const boxes = xml.match(/<wps:wsp>/g) ?? [];
-    expect(boxes.length).toBeGreaterThan(15);
+    const cells = xml.match(/<w:tc>/g) ?? [];
+    expect(xml).toContain('<w:tblpPr');
+    expect(cells.length).toBeGreaterThanOrEqual(12);
+    expect(boxes.length + cells.length).toBeGreaterThan(15);
     expect(xml).toContain('w:ascii="Cairo"');
     expect(xml).toMatch(/<w:bidi\/>.*?<w:t xml:space="preserve">فاتورة ضريبية مبسطة<\/w:t>/);
-    // The header row's cells are boxes of their own, not one line across the table.
+    // The header row's cells are cells of their own, not one line across the table.
     for (const cell of ['الوصف', 'الكمية', 'السعر', 'الإجمالي']) expect(xml).toContain(`<w:t xml:space="preserve">${cell}</w:t>`);
     // The page is the PDF's own size.
     expect(xml).toContain('<w:pgSz w:w="11899" w:h="16838"/>');

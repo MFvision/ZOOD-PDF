@@ -2628,3 +2628,226 @@ html[data-reduce-motion="on"] .mock[data-phase="2"] .mock-line-edit > span {
   align-items: center;
   margin-block-start: var(--space-5);
 }
+
+/* Quick asks: what was said, and the island's one-line answer under it. */
+.quickask-mock {
+  display: grid;
+  gap: var(--space-4);
+  inline-size: min(100%, 340px);
+}
+
+.quickask-said {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-self: center;
+  padding: 5px 12px;
+  margin: 0;
+  font-size: var(--text-subheadline);
+  color: var(--secondary-label);
+  background: var(--background);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-capsule);
+}
+
+.quickask-island {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  font-size: var(--text-subheadline);
+  color: #fff;
+  background: #14161c;
+  border-radius: 22px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 22%);
+  animation: quickask-in 260ms ease-out;
+}
+
+.quickask-line {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+  font-weight: 600;
+}
+
+.quickask-moves {
+  display: grid;
+  gap: 2px;
+  padding: 0;
+  margin: 0;
+  color: rgb(255 255 255 / 70%);
+  list-style: none;
+}
+
+.quickask-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.quickask-button {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 12px;
+  font-weight: 600;
+  background: rgb(255 255 255 / 14%);
+  border-radius: var(--radius-capsule);
+}
+
+.quickask-button.is-main {
+  color: #14161c;
+  background: var(--hue);
+}
+
+@keyframes quickask-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quickask-island {
+    animation: none;
+  }
+}
+
+/* Show me, Explain this and Do it for me, on a pretend ZOOD window. */
+.guide-stage {
+  place-items: stretch;
+  padding: var(--space-5);
+}
+
+.guide-stage .ask-island-mock {
+  position: absolute;
+  inset-block-start: 8px;
+  inset-inline-start: 50%;
+  translate: -50% 0;
+}
+
+.guide-stage .ask-pointer {
+  position: absolute;
+  z-index: 2;
+}
+
+.guide-stage .ask-guide-label {
+  max-inline-size: 180px;
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
+.guide-mock {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: var(--space-3);
+  min-block-size: 220px;
+  padding: var(--space-3);
+  margin-block-start: 34px;
+  color: var(--label);
+  background: var(--background);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-12);
+  transition: background 0.4s ease, color 0.4s ease;
+}
+
+.guide-stage.is-dark .guide-mock {
+  color: #f2efe9;
+  background: #1f1d1b;
+}
+
+.guide-mock-bar {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.guide-mock-tool {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 8px;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--label) 6%, transparent);
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.guide-mock-tool:last-child {
+  margin-inline-start: auto;
+}
+
+.guide-mock-tool.is-target {
+  border-color: #d6b287;
+}
+
+.guide-mock-tool.is-pressed {
+  background: color-mix(in srgb, #ae8b66 35%, transparent);
+}
+
+.guide-mock-page {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: var(--space-4);
+  font: inherit;
+  background: color-mix(in srgb, var(--label) 4%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--label) 18%, transparent);
+  border-radius: 8px;
+}
+
+.guide-mock-page i {
+  display: block;
+  block-size: 6px;
+  background: color-mix(in srgb, currentcolor 18%, transparent);
+  border-radius: 3px;
+}
+
+.guide-mock-page i:nth-child(2) {
+  inline-size: 80%;
+}
+
+.guide-mock-page i:nth-child(3) {
+  inline-size: 60%;
+}
+
+.guide-mock-signature {
+  position: absolute;
+  inset-block-end: 14px;
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  color: #2f5fb3;
+  font-family: cursive;
+  font-size: 18px;
+}
+
+.guide-mock-menu {
+  position: absolute;
+  inset-block-start: 76px;
+  inset-inline-end: 22px;
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--label);
+  background: var(--background);
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
+}
+
+.guide-mock-switch {
+  inline-size: 28px;
+  block-size: 16px;
+  background: color-mix(in srgb, var(--label) 20%, transparent);
+  border-radius: 8px;
+  transition: background 0.3s ease;
+}
+
+.guide-mock-switch.is-on {
+  background: #ae8b66;
+}

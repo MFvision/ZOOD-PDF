@@ -149,6 +149,9 @@
   flex-direction: column;
   min-inline-size: 0;
   min-block-size: 0;
+
+  /* Sized by the room it has, not the window: a side panel takes some. */
+  container: home-main / inline-size;
 }
 
 .home-topbar {
@@ -188,6 +191,7 @@
   gap: var(--space-9);
   min-inline-size: 0;
   max-inline-size: 1040px;
+  container: home-content / inline-size;
 }
 
 /* ---- Search ------------------------------------------------------------------ */
@@ -359,7 +363,7 @@
 
 .home-cards {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-5);
   padding: 0;
   margin: 0;
@@ -411,6 +415,20 @@
   font-size: var(--text-callout);
   line-height: 1.3;
   color: var(--secondary-label);
+}
+
+/* The six cards in one row only when each has room for its words; else
+   three and three, or two by two when narrow. Never squeezed. */
+@container home-content (width >= 900px) {
+  .home-cards {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@container home-content (width < 460px) {
+  .home-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* ---- Sections ------------------------------------------------------------------- */
@@ -483,6 +501,27 @@
 .recent-row > li {
   flex: 0 0 150px;
   scroll-snap-align: start;
+}
+
+/* A card cut by the edge reads as broken: the edge with more past it fades out instead. */
+.recent-row[data-more-end] {
+  mask-image: linear-gradient(to right, #000 calc(100% - 72px), transparent);
+}
+
+.recent-row[data-more-start] {
+  mask-image: linear-gradient(to left, #000 calc(100% - 72px), transparent);
+}
+
+.recent-row[data-more-start][data-more-end] {
+  mask-image: linear-gradient(to right, transparent, #000 72px, #000 calc(100% - 72px), transparent);
+}
+
+[dir="rtl"] .recent-row[data-more-end] {
+  mask-image: linear-gradient(to left, #000 calc(100% - 72px), transparent);
+}
+
+[dir="rtl"] .recent-row[data-more-start] {
+  mask-image: linear-gradient(to right, #000 calc(100% - 72px), transparent);
 }
 
 .recent-grid {
@@ -746,7 +785,10 @@
 }
 
 /* ---- Narrower windows ------------------------------------------------------------- */
-@media (width <= 1180px) {
+
+/* The docked AI goes under the content when the middle has too little room
+   for both (a narrow window, or a side panel open). */
+@container home-main (width <= 1000px) {
   .home-body {
     flex-direction: column;
   }
@@ -764,10 +806,6 @@
 
   .home-ai-chips .home-chip {
     inline-size: auto;
-  }
-
-  .home-cards {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

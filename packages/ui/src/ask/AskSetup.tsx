@@ -9,6 +9,7 @@ import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { isolate } from '../signatures/model';
 import { noteAskReady } from './ReadyHint';
+import { quickModel } from './quick';
 import {
   askAccess,
   askAllow,
@@ -65,6 +66,8 @@ export function AskSetup({ compact = false }: { compact?: boolean }) {
   const voice = voiceAvailable();
   const ear = useDeviceModel(earModels()[0]?.id ?? null);
   const decide = useDeviceModel(brain.id);
+  // The quick decider: quick asks answer in about half a second.
+  const quick = useDeviceModel(quickModel()?.id ?? null);
 
   useEffect(() => {
     live.current = true;
@@ -78,7 +81,7 @@ export function AskSetup({ compact = false }: { compact?: boolean }) {
     };
   }, []);
 
-  const views = voice ? [ear, decide] : [decide];
+  const views = [...(voice ? [ear] : []), decide, ...(quickModel() ? [quick] : [])];
   const missing = missingAccess(access, prefs, Boolean(brain.sees));
   const modelsReady = views.every(ready);
   const done = modelsReady && missing.length === 0;
@@ -153,7 +156,13 @@ export function AskSetup({ compact = false }: { compact?: boolean }) {
             <li key={view.model.id} className={`is-${state}`}>
               <StepMark state={state} />
               <span className="ask-setup-step">
-                {t(view === ear && voice ? 'ask.setup.hearing' : 'ask.setup.deciding')}
+                {t(
+                  view === ear && voice
+                    ? 'ask.setup.hearing'
+                    : view === quick
+                      ? 'ask.setup.quick'
+                      : 'ask.setup.deciding',
+                )}
                 {status?.kind === 'downloading' && (
                   <progress
                     className="ai-progress"

@@ -349,6 +349,9 @@ export function useMenuModel(): MenuModel[] {
         { id: 'tour', label: t('help.tour'), separatorBefore: true, onSelect: () => dispatch({ type: 'DIALOG', dialog: 'tour' }) },
         // Ask ZOOD's keys work in every app, so they have their own way in: the tour's practice.
         ...(askAvailable() ? [{ id: 'ask-keys', label: t('help.askKeys'), onSelect: () => openTourAt('ask', () => dispatch({ type: 'DIALOG', dialog: 'tour' })) }] : []),
+        // Show me, Explain this and Do it for me, played on a pretend window.
+        ...(askAvailable() ? [{ id: 'ask-guide', label: t('help.askGuide'), onSelect: () => openTourAt('ask', () => dispatch({ type: 'DIALOG', dialog: 'tour' }), 'guide') }] : []),
+        ...(askAvailable() ? [{ id: 'quick-asks', label: t('help.quickAsks'), onSelect: () => openTourAt('quickask', () => dispatch({ type: 'DIALOG', dialog: 'tour' })) }] : []),
         { id: 'shortcuts', label: t('help.shortcuts'), onSelect: () => dispatch({ type: 'DIALOG', dialog: 'shortcuts' }) },
       ],
     },

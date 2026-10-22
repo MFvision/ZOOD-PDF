@@ -8,7 +8,8 @@ import { readJson, writeJson } from '../state/preferences';
  * Ask ZOOD's choices: on or off, its keys, the model that decides — one
  * that also reads the screen, or the lighter text model the AI tool uses —
  * whether that model is shown the screen, the tap key (once listens — or
- * opens typing — twice drafts a reply) and the glow while it listens. The host keeps what it needs to listen for
+ * opens typing — twice drafts a reply), the glow while it listens, when it
+ * talks back, and whether it may click inside ZOOD PDF. The host keeps what it needs to listen for
  * the keys (`src-tauri/src/ask/`); the rest is kept here.
  */
 
@@ -27,7 +28,14 @@ export interface AskPreferences {
   oneTap: OneTap;
   /** The edges of the screen glow while Ask ZOOD listens. */
   glow: boolean;
+  /** When the answer is said aloud: after a spoken question, always, or never. */
+  talkBack: TalkBack;
+  /** Inside ZOOD PDF, Ask ZOOD may click the steps itself; elsewhere it only points. */
+  doForMe: boolean;
 }
+
+export const TALK_BACKS = ['spoken', 'always', 'never'] as const;
+export type TalkBack = (typeof TALK_BACKS)[number];
 
 /** `speak` falls back to `type` until a model that hears is downloaded. */
 export const ONE_TAPS = ['speak', 'type', 'off'] as const;
@@ -67,6 +75,8 @@ export function readAskPreferences(): AskPreferences {
     tapKey,
     oneTap,
     glow: raw.glow !== false,
+    talkBack: TALK_BACKS.includes(raw.talkBack as TalkBack) ? (raw.talkBack as TalkBack) : 'spoken',
+    doForMe: raw.doForMe !== false,
   };
 }
 
@@ -83,7 +93,7 @@ export function earModels(): DeviceModel[] {
 export function brainChoices(): DeviceModel[] {
   return [
     ...DEVICE_MODELS.filter((model) => model.sees && !model.hears),
-    ...DEVICE_MODELS.filter((model) => !model.sees && !model.hears),
+    ...DEVICE_MODELS.filter((model) => !model.sees && !model.hears && !model.decides),
   ];
 }
 

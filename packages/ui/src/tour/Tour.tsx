@@ -11,6 +11,7 @@ import type { SectionId } from '../settings/SettingsWindow';
 import { useAppDispatch, useAppState } from '../state/AppContext';
 import { readJson, writeJson } from '../state/preferences';
 import { askAvailable } from '../ask/settings';
+import { QuickAskScene } from './quickAskScene';
 import { TOUR_VERSION, newSince, tourChapters } from './chapters';
 import { openTourAt, takeStartAt } from './openAt';
 import type { Chapter, ChapterId } from './chapters';
@@ -197,6 +198,8 @@ function Scene({ chapter, progress, onProgress, onSettings, onSupport }: { chapt
       return <QuickScene onPractised={() => onProgress({ ring: true })} onSettings={onSettings} />;
     case 'ask':
       return <AskScene onPractised={() => onProgress({ ask: true })} onSettings={onSettings} />;
+    case 'quickask':
+      return <QuickAskScene onSettings={onSettings} />;
     case 'remote':
       return <RemoteScene />;
     case 'ai':

@@ -12,8 +12,8 @@ export interface AiRequest {
   kind: Ask['kind'];
   /** The words of the message. */
   text: string;
-  /** What it is asked about, when not the open document: "Ask about all my documents" asks the Library. */
-  scope?: 'document' | 'open' | 'library';
+  /** What it is asked about, when not the open document: "Ask about all my documents" asks the Library; with no document, the general chat. */
+  scope?: 'chat' | 'document' | 'open' | 'library';
 }
 
 let pending: AiRequest | null = null;
