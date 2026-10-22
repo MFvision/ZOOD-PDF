@@ -139,9 +139,11 @@ export function LibraryPanel() {
     setError(problem instanceof Error ? problem.message : String(problem));
   }, []);
 
-  // A folder picker in a browser: an attribute React does not know.
-  useEffect(() => {
-    folderInput.current?.setAttribute('webkitdirectory', '');
+  // A folder picker in a browser: an attribute React does not know, set
+  // whenever the input appears (it is not there while the index opens).
+  const folderInputRef = useCallback((input: HTMLInputElement | null) => {
+    folderInput.current = input;
+    input?.setAttribute('webkitdirectory', '');
   }, []);
 
   // The Tags view asks for a tag while the panel is already open.
@@ -941,7 +943,7 @@ export function LibraryPanel() {
           <IconButton label={t('library.addFolder')} icon={<Icon of={FolderOpen} />} showLabel disabled={running} onClick={addFolder} />
         </div>
         <input ref={filesInput} type="file" accept={LIBRARY_ACCEPT} multiple className="sr-only" tabIndex={-1} aria-hidden="true" onChange={onInput} />
-        <input ref={folderInput} type="file" multiple className="sr-only" tabIndex={-1} aria-hidden="true" onChange={onInput} />
+        <input ref={folderInputRef} type="file" multiple className="sr-only" tabIndex={-1} aria-hidden="true" onChange={onInput} />
         <label className="library-choice">
           <input type="checkbox" checked={recognize} disabled={running} onChange={(event) => setRecognize(event.target.checked)} />
           <span>{t('library.recognize')}</span>

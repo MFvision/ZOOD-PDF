@@ -95,7 +95,7 @@
 /* The pages inside: they stand low, and rise and fan as the folder opens. */
 .folder-pages {
   position: absolute;
-  inset: 18% 9%;
+  inset: 28% 9% 18%;
 }
 
 .folder-page {
@@ -265,13 +265,13 @@
 .folder:focus-visible,
 .folder.is-peek {
   --lean: -16deg;
-  --rise: 16px;
+  --rise: 24px;
   --fan: 0.45;
 }
 
 .folder.is-open {
   --lean: -30deg;
-  --rise: 34px;
+  --rise: 44px;
   --fan: 1;
 }
 
