@@ -71,7 +71,7 @@ test.describe('the home screen', () => {
     // A build with no drive has no cloud control: Folders shows the person's own folders only.
     await sidebar(page).getByRole('button', { name: 'Folders', exact: true }).click();
     await expect(page.getByRole('button', { name: 'New folder' })).toBeVisible();
-    await expect(page.getByText('Cloud drives')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Cloud drives' })).toHaveCount(0);
     await sidebar(page).getByRole('button', { name: 'Home', exact: true }).click();
     await expect(sidebar(page).getByRole('list', { name: 'Tools' }).getByRole('button')).toHaveText([
       'Edit',
