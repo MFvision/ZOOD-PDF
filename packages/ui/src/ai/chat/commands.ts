@@ -116,7 +116,8 @@ export function commandOf(text: string): Command | null {
   const page = /^(?:(?:go|jump|skip|move|take me) ?(?:to)? |(?:روح|اذهب|انتقل|ودني|خذني|افتح)(?: الي| لل| ل)? ?)?(?:the )?(?:page|(?:ال)?صفحه|ل?لصفحه) (?:number |رقم )?(\d{1,5})$/.exec(words);
   if (page) return { kind: 'page', page: Number(page[1]) };
   // "Find invoice", "search for the fee", "ابحث عن الرسوم".
-  const find = /^(?:find|search for|search|look for|ابحث عن|ابحث|دور علي|دور)\s+(.+)$/.exec(words);
+  // A bare "دوّر" is also "rotate" ("دور الصفحات"): it searches only with "على" or "عن".
+  const find = /^(?:find|search for|search|look for|ابحث عن|ابحث|دور علي|دور عن)\s+(.+)$/.exec(words);
   if (find) {
     // The words looked for as they were typed, with their marks: the words before them dropped.
     const said = text.trim().replace(/[.!؟?،,؛;:"'«»()]+/g, ' ').split(/\s+/).filter(Boolean);

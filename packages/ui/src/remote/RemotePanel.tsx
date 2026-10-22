@@ -33,16 +33,15 @@ export function RemotePanel() {
     }
   };
 
-  // The code's countdown, and a new code when it runs out while the panel is open.
+  // The code's countdown. A code that runs out is not renewed by itself: a panel left open on a shared or
+  // projected screen would otherwise keep showing a code anyone could photograph and pair with.
   const until = status?.codeUntil ?? null;
   useEffect(() => {
     if (!status?.running) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [status?.running]);
-  useEffect(() => {
-    if (status?.running && until !== null && now > until) void startRemote().then((s) => updateRemote({ status: s }), () => undefined);
-  }, [status?.running, until, now]);
+  const expired = until !== null && now > until;
 
   if (!status?.running) {
     return (
@@ -113,7 +112,7 @@ export function RemotePanel() {
 
       {status.address === null ? (
         <p className="remote-error">{t('remote.noNetwork')}</p>
-      ) : status.qr ? (
+      ) : status.qr && !expired ? (
         <div className="remote-code">
           {/* The host's own SVG of its own address: no outside markup. */}
           <div className="remote-qr" role="img" aria-label={t('remote.qrLabel')} dangerouslySetInnerHTML={{ __html: status.qr }} />
@@ -127,7 +126,7 @@ export function RemotePanel() {
         </div>
       ) : (
         <div className="remote-code">
-          <p className="remote-scan">{t('remote.codeUsed')}</p>
+          <p className="remote-scan">{t(status.qr ? 'remote.codeExpired' : 'remote.codeUsed')}</p>
           <button type="button" className="icon-btn icon-btn-labeled" disabled={busy} onClick={() => void run(startRemote)}>
             {t('remote.newCode')}
           </button>

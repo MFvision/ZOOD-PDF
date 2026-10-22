@@ -321,32 +321,38 @@ export const ARTICLES: readonly Article[] = [
   {
     id: 'ask-zood',
     category: 'ai',
-    title: { ar: 'اسأل ZOOD في أي برنامج', en: 'Ask ZOOD in any app' },
-    summary: { ar: 'مفتاح واحد: اطلب بصوتك أو اكتب، في أي برنامج.', en: 'One key: speak or type a request, in any app.' },
+    title: { ar: 'اسأل زود في أي برنامج', en: 'Ask ZOOD in any app' },
+    summary: { ar: 'اطلب بصوتك أو اكتب، في أي برنامج، بمفتاح تختاره.', en: 'Speak or type a request, in any app, with a key you choose.' },
     steps: [
-      { ar: 'اضغط Ctrl+Shift+Space (أو ⌘⇧Space على ماك) واستمر بالضغط وتكلم.', en: 'Hold Ctrl+Shift+Space (⌘⇧Space on a Mac) and speak.', pic: 'ask-keys' },
-      { ar: 'أو اضغط مرة لتكتب طلبك، ومرتين في خانة رد ليكتب الرد.', en: 'Or tap once to type a request, or twice in a reply box and it writes the reply.' },
+      {
+        ar: 'اضغط مفتاحك مرة واحدة (Ctrl الأيمن، أو Command ⌘ الأيمن على ماك، ما لم تغيّره) وقل ما تريد. اضغطه مرة أخرى أو توقف عن الكلام.',
+        en: 'Tap your key once (Right Ctrl, or Right Command ⌘ on a Mac, unless you changed it) and say what you want. Tap it again or just stop talking.',
+        pic: 'ask-keys',
+      },
+      { ar: 'في خانة رد بأي برنامج، اضغط المفتاح نفسه مرتين بسرعة فيكتب الرد عنك، ولا يُرسله.', en: 'In a reply box in any app, tap the same key twice quickly and it writes the reply for you. It never sends it.' },
+      { ar: 'أو استمر بالضغط على مفاتيح «اضغط مطوّلًا لتتكلّم» وتكلّم، ثم اتركها. هذه مفاتيح أخرى غير مفتاحك.', en: 'Or hold the Hold to talk keys and speak, then let go. These are different keys from your tap key.' },
       { ar: 'أو انقر أيقونة ZOOD في شريط المهام (شريط القوائم في الماك)، أو فقاعة ZOOD على حافة الشاشة. شغّل الفقاعة من الإعدادات › الذكاء الاصطناعي.', en: 'Or click the ZOOD icon in the tray (the menu bar on a Mac), or the ZOOD bubble on the edge of the screen. Turn the bubble on in Settings › AI.', pic: 'ask-bubble' },
-      { ar: 'قل «سوّها لي»: داخل ZOOD PDF ينفّذ أوامره فورًا ويضيء كل زر يستخدمه، وفي البرامج الأخرى يضغط الأزرار بأسمائها بعد موافقتك. شغّلها أو أوقفها من الإعدادات › الذكاء الاصطناعي.', en: 'Say “do it for me”: inside ZOOD PDF it runs its own commands at once and lights each button it uses; in other apps it presses buttons by their names after you agree. Turn it on or off in Settings › AI.', pic: 'ask-doit' },
-      { ar: 'غيّر المفاتيح من الإعدادات › الذكاء الاصطناعي.', en: 'Change the keys in Settings › AI.' },
+      { ar: 'قل «سوّها لي»: داخل محرر زود PDF ينفّذ أوامره فورًا ويضيء كل زر يستخدمه، وفي البرامج الأخرى يضغط الأزرار بأسمائها بعد موافقتك. شغّلها أو أوقفها من الإعدادات › الذكاء الاصطناعي.', en: 'Say “do it for me”: inside ZOOD PDF it runs its own commands at once and lights each button it uses; in other apps it presses buttons by their names after you agree. Turn it on or off in Settings › AI.', pic: 'ask-doit' },
+      { ar: 'غيّر المفاتيح من الإعدادات › الذكاء الاصطناعي › اسأل زود.', en: 'Change the keys in Settings › AI › Ask ZOOD.' },
     ],
     tips: [{ ar: 'على ماك يحتاج إذن «تسجيل المدخلات» و«تسهيلات الاستخدام» والميكروفون.', en: 'On a Mac it needs Input Monitoring, Accessibility and the microphone.' }],
     keywords: ['ask zood', 'voice', 'keys', 'shortcut', 'assistant', 'bubble', 'tray', 'do it for me', 'اسال زود', 'صوت', 'مفاتيح', 'اختصار', 'مساعد', 'فقاعه', 'نفذها'],
     tour: 'ask',
     desktopOnly: true,
-    guide: { steps: [{ say: { ar: 'هذه إعدادات «اسأل ZOOD»: المفاتيح والصوت.', en: 'These are the Ask ZOOD settings: keys and voice.' }, run: 'settings:ai' }] },
+    guide: { steps: [{ say: { ar: 'هذه إعدادات «اسأل زود»: المفاتيح والصوت.', en: 'These are the Ask ZOOD settings: keys and voice.' }, run: 'settings:ai' }] },
   },
   {
     id: 'quick-tools',
     category: 'desktop',
     title: { ar: 'أدوات سريعة دون فتح التطبيق', en: 'Quick tools without opening the app' },
-    summary: { ar: 'زر الفأرة الأيمن أو الدائرة: اضغط، دمج، تحويل مباشرة.', en: 'Right-click or the ring: compress, combine, convert straight away.' },
+    summary: { ar: 'زر الفأرة الأيمن أو الحلقة: ضغط، دمج، تحويل مباشرة.', en: 'Right-click or the ring: compress, combine, convert straight away.' },
     steps: [
       { ar: 'حدّد ملفًا أو أكثر في المجلد واضغط بالزر الأيمن، ثم اختر الأداة. تفتح نافذة صغيرة فيها كل الأدوات: اضغط الأداة التي تريدها.', en: 'Select one or more files in a folder, right-click, then choose the tool. A small window with every tool opens: press the one you want.', pic: 'quick-window' },
-      { ar: 'أو اسحب الملفات مع الضغط على Ctrl أو Shift فتظهر الدائرة عند المؤشر. أفلت الملفات على الأداة فتعمل فورًا، والنتيجة تُحفظ بجانب الأصل.', en: 'Or drag the files with Ctrl or Shift held and the ring appears at the pointer. Let go on a tool and it runs straight away; the result is saved beside the original.', pic: 'quick-ring' },
+      { ar: 'في ويندوز 11 تجدها تحت «إظهار خيارات إضافية» في أسفل القائمة.', en: 'On Windows 11 it is under "Show more options" at the bottom of the menu.' },
+      { ar: 'أو اسحب الملفات مع الضغط على Ctrl أو Shift فتظهر الحلقة عند المؤشر. أفلت الملفات على الأداة فتعمل فورًا، والنتيجة تُحفظ بجانب الأصل.', en: 'Or drag the files with Ctrl or Shift held and the ring appears at the pointer. Let go on a tool and it runs straight away; the result is saved beside the original.', pic: 'quick-ring' },
       { ar: 'من الإعدادات › الأدوات السريعة: شغّل قائمة الزر الأيمن واختر أدواتها وترتيبها.', en: 'In Settings › Quick tools, turn on the right-click menu and choose its tools and their order.', pic: 'quick-menu-setting' },
-      { ar: 'وفي القسم نفسه: شغّل الدائرة أو أوقفها، واختر أدواتها ومفتاح فتحها (Ctrl+Alt+Z).', en: 'In the same place, turn the ring on or off and choose its tools and its key (Ctrl+Alt+Z).', pic: 'quick-ring-setting' },
-      { ar: 'واختر المفتاح الذي تضغطه أثناء السحب لتظهر الدائرة: Ctrl أو Shift أو Alt أو مفتاح ويندوز (على ماك: Option أو Command).', en: 'And choose the key you hold while dragging to bring up the ring: Ctrl, Shift, Alt or the Windows key (Option or Command on a Mac).', pic: 'quick-ring-key' },
+      { ar: 'وفي القسم نفسه: شغّل الحلقة أو أوقفها، واختر أدواتها ومفتاح فتحها (Ctrl+Alt+Z).', en: 'In the same place, turn the ring on or off and choose its tools and its key (Ctrl+Alt+Z).', pic: 'quick-ring-setting' },
+      { ar: 'واختر المفتاح الذي تضغطه أثناء السحب لتظهر الحلقة: Ctrl أو Shift أو Alt أو مفتاح ويندوز (على ماك: Option أو Command).', en: 'And choose the key you hold while dragging to bring up the ring: Ctrl, Shift, Alt or the Windows key (Option or Command on a Mac).', pic: 'quick-ring-key' },
     ],
     keywords: ['quick', 'right click', 'ring', 'context menu', 'سريعه', 'زر ايمن', 'الحلقه', 'قائمه', 'دائره'],
     tour: 'quick',
@@ -496,7 +502,7 @@ export const FAQ: readonly { q: Bilingual; a: Bilingual; keywords: string[] }[] 
 export const KNOWN_ISSUES: readonly Bilingual[] = [
   { ar: 'التحويل إلى docx ينقل النص بفقرات متدفقة، لا الشكل الدقيق للصفحة.', en: 'A docx export carries the text as flowing paragraphs, not the exact page layout.' },
   { ar: 'الطباعة على ويندوز ترسل الصفحات صورًا عالية الدقة (300 نقطة)، لا نصًّا متجهيًا.', en: 'Printing on Windows sends the pages as sharp pictures (300 dpi), not as vector text.' },
-  { ar: 'على ماك، «اسأل ZOOD» لا يعمل خارج التطبيق قبل منح أذونات تسجيل المدخلات وتسهيلات الاستخدام والميكروفون.', en: 'On a Mac, Ask ZOOD does not work outside the app until Input Monitoring, Accessibility and the microphone are allowed.' },
+  { ar: 'على ماك، «اسأل زود» لا يعمل خارج التطبيق قبل منح أذونات تسجيل المدخلات وتسهيلات الاستخدام والميكروفون.', en: 'On a Mac, Ask ZOOD does not work outside the app until Input Monitoring, Accessibility and the microphone are allowed.' },
 ];
 
 export function articleById(id: string): Article | undefined {

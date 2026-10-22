@@ -519,8 +519,9 @@ pub fn remote_clipboard(app: AppHandle<Wry>, state: State<'_, RemoteState>, on: 
 
 /// Files from the PC for the phones (`{ t: "give", name, mime, data }`), sent
 /// by the interface; the host only checks their size. The file is seen
-/// leaving the screen for the phone.
-#[tauri::command]
+/// leaving the screen for the phone. Off the main thread, as a large file
+/// takes a while to send.
+#[tauri::command(async)]
 pub fn remote_give(
     app: AppHandle<Wry>,
     state: State<'_, RemoteState>,

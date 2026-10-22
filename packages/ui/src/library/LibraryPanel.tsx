@@ -18,6 +18,7 @@ import {
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { Dialog } from '../components/Dialog';
+import { friendlyError, rawMessage } from '../batch/friendlyError';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { useAppDispatch, useServices } from '../state/AppContext';
@@ -91,6 +92,8 @@ export function LibraryPanel() {
   const [opening, setOpening] = useState(true);
   const [engine, setEngine] = useState<'ready' | 'missing' | 'failed'>('ready');
   const [error, setError] = useState<string | null>(null);
+  /** The engine's own words behind the sentence in `error`, for its tooltip only. */
+  const [errorDetail, setErrorDetail] = useState<{ shown: string; detail: string } | null>(null);
   const [meta, setMeta] = useState<LibraryMeta>(emptyMeta);
   const [stats, setStats] = useState<LibraryStats | null>(null);
 
@@ -135,9 +138,17 @@ export function LibraryPanel() {
   const [tagged, setTagged] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const trouble = useCallback((problem: unknown) => {
-    setError(problem instanceof Error ? problem.message : String(problem));
-  }, []);
+  // A failure reads as one of our sentences; the engine's words go to the
+  // log and the banner's tooltip, never its text.
+  const trouble = useCallback(
+    (problem: unknown) => {
+      const detail = rawMessage(problem);
+      const shown = /E_INDEX/.test(detail) ? t('library.error.index') : t(friendlyError(problem, 'step', 'library'));
+      setError(shown);
+      setErrorDetail({ shown, detail });
+    },
+    [t],
+  );
 
   // A folder picker in a browser: an attribute React does not know, set
   // whenever the input appears (it is not there while the index opens).
@@ -1173,7 +1184,9 @@ export function LibraryPanel() {
       {error && (
         <div className="banner banner-error" role="alert">
           <Icon of={CircleAlert} />
-          <span dir="auto">{t('library.error', { detail: error })}</span>
+          <span dir="auto" title={errorDetail?.shown === error ? errorDetail.detail : undefined}>
+            {t('library.error', { detail: error })}
+          </span>
           <IconButton label={t('error.dismiss')} icon={<Icon of={X} />} onClick={() => setError(null)} />
         </div>
       )}

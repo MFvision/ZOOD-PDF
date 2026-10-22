@@ -1,0 +1,50 @@
+.crash-guard {
+  display: grid;
+  place-content: center;
+  gap: 12px;
+  min-block-size: 100vh;
+  padding: 24px;
+  font-family: system-ui, sans-serif;
+  text-align: center;
+  color: #1f1b16;
+  background: #faf7f2;
+}
+
+.crash-guard h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.crash-guard p {
+  max-inline-size: 420px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.crash-guard-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.crash-guard button {
+  padding: 8px 16px;
+  border: 1px solid #c9bba6;
+  border-radius: 999px;
+  font: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.crash-guard .crash-guard-main {
+  border-color: transparent;
+  color: #fff;
+  background: #8a6a43;
+}
+
+@media (prefers-color-scheme: dark) {
+  .crash-guard {
+    color: #f1ebe2;
+    background: #1d1a17;
+  }
+}

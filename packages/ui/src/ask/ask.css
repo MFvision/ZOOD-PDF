@@ -259,6 +259,7 @@ html.ask-point-page body {
 
 .ask-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-block-start: 10px;
 }
@@ -713,4 +714,10 @@ html.ask-point-page body {
 
 [dir='rtl'] .ask-flip {
   transform: scaleX(-1);
+}
+
+.ask-held {
+  max-block-size: 160px;
+  overflow-y: auto;
+  white-space: pre-wrap;
 }

@@ -182,7 +182,8 @@ pub(crate) fn percent_decode(text: &str) -> Option<String> {
 }
 
 /// The PDFs in a folder chosen in the dialog (which put it in the fs scope).
-#[tauri::command]
+/// Off the main thread, as a large folder takes a while to walk.
+#[tauri::command(async)]
 pub fn batch_list_folder<R: Runtime>(
     app: AppHandle<R>,
     path: String,
@@ -206,8 +207,8 @@ pub fn batch_list_folder<R: Runtime>(
 /// Writes one result. The body is the file; the headers say where, both
 /// percent-encoded: `x-warraq-name`, a plain file name, and either
 /// `x-warraq-dir`, a folder chosen in the dialog, or `x-warraq-beside`, a
-/// file chosen there (the result goes into its folder).
-#[tauri::command]
+/// file chosen there (the result goes into its folder). Off the main thread.
+#[tauri::command(async)]
 pub fn batch_write<R: Runtime>(
     app: AppHandle<R>,
     request: tauri::ipc::Request<'_>,

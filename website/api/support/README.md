@@ -72,7 +72,7 @@ both. The relay needs no Composer packages.
 | label `hidden`, or closed as not planned | removed from the board |
 
 Vote counts are written into each idea issue's description, and the weekly
-review reads them from there. If `ideas_need_approval` is on, only ideas labelled `approved` show.
+review reads them from there. `ideas_need_approval` is on by default: a new idea shows to the person who sent it, and to everyone once you label it `approved`.
 
 ## Limits
 

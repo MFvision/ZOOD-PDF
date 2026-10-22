@@ -4,3 +4,5 @@ README.md
 Dockerfile
 package.json
 .gitignore
+# The PHP support relay runs on Apache (Hostinger), never as static files: its config holds secrets.
+api

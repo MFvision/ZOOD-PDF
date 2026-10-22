@@ -138,7 +138,7 @@ fn web_links(doc: &mut Document, page: usize) -> Vec<([f32; 4], String)> {
         .unwrap_or_default()
         .into_iter()
         .filter_map(|link| match link.target {
-            LinkTarget::Uri(uri) if warraq_pdf::allowed_uri(&uri) => Some((link.rect, uri)),
+            LinkTarget::Uri(uri) => warraq_pdf::safe_uri(&uri).map(|uri| (link.rect, uri)),
             _ => None,
         })
         .collect()

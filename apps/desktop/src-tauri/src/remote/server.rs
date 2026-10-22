@@ -10,14 +10,16 @@
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::atomic::Ordering;
+use std::pin::Pin;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::task::{Context, Poll};
 use std::time::{Duration, Instant};
 
 use futures_util::{SinkExt, StreamExt};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadBuf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{mpsc, watch};
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
@@ -36,6 +38,88 @@ const MAX_HEAD: usize = 8 * 1024;
 const HELLO_WAIT: Duration = Duration::from_secs(15);
 /// The most messages a phone may send in a second; more are dropped.
 const MAX_PER_SECOND: u32 = 240;
+/// The most a connection may send before its hello is admitted: the upgrade
+/// request and a hello, nowhere near a full message.
+const HELLO_BUDGET: usize = MAX_HEAD + 64 * 1024;
+/// The most connections that may be waiting to say hello at once.
+const MAX_UNPAIRED: usize = 8;
+/// How often a phone is pinged, and how many pings it may leave unanswered
+/// before it is taken for gone.
+const PING_EVERY: Duration = Duration::from_secs(20);
+const MAX_MISSED_PINGS: u32 = 2;
+
+/// Connections still waiting to be admitted.
+static UNPAIRED: AtomicUsize = AtomicUsize::new(0);
+
+/// One place among the `MAX_UNPAIRED`, given back when dropped.
+struct Unpaired;
+
+impl Unpaired {
+    fn take() -> Option<Self> {
+        if UNPAIRED.fetch_add(1, Ordering::Relaxed) >= MAX_UNPAIRED {
+            UNPAIRED.fetch_sub(1, Ordering::Relaxed);
+            return None;
+        }
+        Some(Unpaired)
+    }
+}
+
+impl Drop for Unpaired {
+    fn drop(&mut self) {
+        UNPAIRED.fetch_sub(1, Ordering::Relaxed);
+    }
+}
+
+/// The connection under a phone's WebSocket, which reads at most `budget`
+/// bytes until the hello is admitted (`usize::MAX` after), so a peer that
+/// has not paired cannot make the host hold a message of many megabytes.
+struct Limited {
+    inner: TcpStream,
+    budget: Arc<AtomicUsize>,
+}
+
+impl AsyncRead for Limited {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<std::io::Result<()>> {
+        let before = buf.filled().len();
+        let ready = Pin::new(&mut self.inner).poll_read(cx, buf);
+        if let Poll::Ready(Ok(())) = ready {
+            let read = buf.filled().len() - before;
+            let left = self.budget.load(Ordering::Relaxed);
+            if left != usize::MAX {
+                if read > left {
+                    return Poll::Ready(Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "too much before the hello",
+                    )));
+                }
+                self.budget.store(left - read, Ordering::Relaxed);
+            }
+        }
+        ready
+    }
+}
+
+impl AsyncWrite for Limited {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<std::io::Result<usize>> {
+        Pin::new(&mut self.inner).poll_write(cx, buf)
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
+        Pin::new(&mut self.inner).poll_flush(cx)
+    }
+
+    fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
+        Pin::new(&mut self.inner).poll_shutdown(cx)
+    }
+}
 
 /// What a request asked for, read from its head.
 #[derive(Debug, PartialEq)]
@@ -302,6 +386,18 @@ async fn connect<H: Host>(
     stream: TcpStream,
     mut stop: watch::Receiver<bool>,
 ) {
+    // Only a few connections at a time may be waiting to pair.
+    let Some(unpaired) = Unpaired::take() else {
+        return;
+    };
+    // The socket's own limits are for an admitted phone and cannot change
+    // after it opens, so until the hello is admitted the stream under it
+    // gives out only `HELLO_BUDGET` bytes.
+    let budget = Arc::new(AtomicUsize::new(HELLO_BUDGET));
+    let stream = Limited {
+        inner: stream,
+        budget: budget.clone(),
+    };
     let config = WebSocketConfig::default()
         .max_message_size(Some(MAX_MESSAGE * 2))
         .max_frame_size(Some(MAX_MESSAGE * 2));
@@ -331,6 +427,8 @@ async fn connect<H: Host>(
             .await;
         return;
     };
+    budget.store(usize::MAX, Ordering::Relaxed);
+    drop(unpaired);
 
     // This connection is locked with the key its hello came in. A new
     // phone's own key only reaches it inside the welcome, for next time.
@@ -388,9 +486,22 @@ async fn connect<H: Host>(
 
     let mut window = Instant::now();
     let mut count = 0u32;
+    // Pinged now and then: a phone that stops answering (its Wi-Fi gone, the
+    // page asleep) is let go instead of staying in the list.
+    let mut ping = tokio::time::interval_at(tokio::time::Instant::now() + PING_EVERY, PING_EVERY);
+    let mut missed = 0u32;
     loop {
         tokio::select! {
             _ = stop.changed() => break,
+            _ = ping.tick() => {
+                if missed >= MAX_MISSED_PINGS {
+                    break;
+                }
+                missed += 1;
+                if sink.send(Message::Ping(Vec::new().into())).await.is_err() {
+                    break;
+                }
+            }
             outgoing = rx.recv() => {
                 let Some(message) = outgoing else { break };
                 let Some(m) = sealed_out(&session, &mut out_seq, message) else { continue };
@@ -400,6 +511,7 @@ async fn connect<H: Host>(
             }
             incoming = source.next() => {
                 let Some(Ok(frame)) = incoming else { break };
+                missed = 0;
                 let bytes = match frame {
                     Message::Binary(bytes) => bytes,
                     Message::Close(_) => break,

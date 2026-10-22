@@ -141,7 +141,7 @@ export function useMenuModel(): MenuModel[] {
   // Subscribed so the View menu's Read aloud check follows the bar.
   useReadAloud();
   // A narrow window shows the inspector as a sheet only for a chosen tool
-  // (panes.css): with none, "Tools pane" would change a check and show nothing.
+  // (panes.css): with none, "Tools panel" would change a check and show nothing.
   const noSheet = useInspectorHidden();
   const settings = useSettings();
 
@@ -197,7 +197,8 @@ export function useMenuModel(): MenuModel[] {
         {
           id: 'versions',
           label: t('versions.menu'),
-          disabled: !hasDocument || settings.versions === 0,
+          // Open even with versions off: the dialog says so and offers to turn them on.
+          disabled: !hasDocument,
           onSelect: () => dispatch({ type: 'DIALOG', dialog: 'versions' }),
         },
         ...cloud.providers.map((provider) => ({
@@ -349,12 +350,9 @@ export function useMenuModel(): MenuModel[] {
         { id: 'tour', label: t('help.tour'), separatorBefore: true, onSelect: () => dispatch({ type: 'DIALOG', dialog: 'tour' }) },
         // Ask ZOOD's keys work in every app, so they have their own way in: the tour's practice.
         ...(askAvailable() ? [{ id: 'ask-keys', label: t('help.askKeys'), onSelect: () => openTourAt('ask', () => dispatch({ type: 'DIALOG', dialog: 'tour' })) }] : []),
-        // Show me, Explain this and Do it for me, played on a pretend window.
-        ...(askAvailable() ? [{ id: 'ask-guide', label: t('help.askGuide'), onSelect: () => openTourAt('ask', () => dispatch({ type: 'DIALOG', dialog: 'tour' }), 'guide') }] : []),
-        ...(askAvailable() ? [{ id: 'quick-asks', label: t('help.quickAsks'), onSelect: () => openTourAt('quickask', () => dispatch({ type: 'DIALOG', dialog: 'tour' })) }] : []),
-        ...(isTauriHost() ? [{ id: 'always-ready', label: t('help.reach'), onSelect: () => openTourAt('reach', () => dispatch({ type: 'DIALOG', dialog: 'tour' })) }] : []),
-        // The AI's chat about anything and the commands it does: the tour's AI chapter, with its practice.
-        { id: 'ai-chat', label: t('help.aiChat'), onSelect: () => openTourAt('ai', () => dispatch({ type: 'DIALOG', dialog: 'tour' })) },
+        // The tour's other chapters (Show me and Do it for me, quick asks,
+        // Always ready, the AI's chat) are in the tour's own list and in
+        // Help & Support's articles, so the menu stays short.
         { id: 'shortcuts', label: t('help.shortcuts'), onSelect: () => dispatch({ type: 'DIALOG', dialog: 'shortcuts' }) },
       ],
     },

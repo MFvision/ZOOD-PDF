@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import en from '../i18n/en.json';
 import ar from '../i18n/ar.json';
-import { newSince, tourChapters } from './chapters';
+import { newChapters, newSince, tourChapters } from './chapters';
 
 describe('welcome tour', () => {
   it('shows the quick tools and the phone remote only in the desktop app', () => {
@@ -30,6 +30,20 @@ describe('welcome tour', () => {
     expect(newSince(9, true)).toBe('folders');
     expect(newSince(10, false)).toBe('folders');
     expect(newSince(10, true, false)).toBe('folders');
+  });
+
+  it('after an update shows only the chapters that are new here', () => {
+    // Never seen, or seen before Ask ZOOD: the whole tour.
+    expect(newChapters(0, true, true)).toBeNull();
+    expect(newChapters(1, false, false)).toBeNull();
+    expect(newChapters(10, true, true)).toEqual(['folders']);
+    expect(newChapters(9, true, true)).toEqual(['folders', 'remote']);
+    expect(newChapters(8, true, true)).toEqual(['folders', 'reach', 'remote']);
+    expect(newChapters(6, true, true)).toEqual(['folders', 'reach', 'remote', 'ai', 'support']);
+    expect(newChapters(4, true, true)).toEqual(['folders', 'ask', 'quickask', 'reach', 'remote', 'ai', 'support']);
+    expect(newChapters(6, false, false)).toEqual(['folders', 'ai', 'support']);
+    // On the web a tour seen at 11 has nothing new: it does not open.
+    expect(newChapters(11, false, false)).toEqual([]);
   });
 
   it('has every chapter in both languages', () => {

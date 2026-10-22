@@ -21,7 +21,7 @@ function settings(): array
         $config = require $file;
         $config += [
             'allowed_origins' => ['*'],
-            'ideas_need_approval' => false,
+            'ideas_need_approval' => true,
             'github_api' => 'https://api.github.com',
             'github_token' => '',
             'github_repo' => '',
@@ -191,11 +191,13 @@ function file_ticket(array $ticket, array $payload): int
         github('PUT', "/contents/$path", ['message' => "Picture for ticket {$ticket['id']}", 'content' => $data]);
         $picture = "\n\n![picture](https://github.com/{$c['github_repo']}/blob/HEAD/$path?raw=true)";
     }
+    // The app's facts are the sender's words too: no mentions, markup or new lines in the issue.
+    $fact = fn($value) => mb_substr(preg_replace('/[@<>`\[\]\r\n|*_#!]+/u', ' ', (string) $value), 0, 80);
     $facts = implode(' · ', array_filter([
-        (string) ($payload['app'] ?? ''),
-        (string) ($payload['platform'] ?? ''),
-        (string) ($payload['lang'] ?? ''),
-        (string) ($payload['screen'] ?? ''),
+        $fact($payload['app'] ?? ''),
+        $fact($payload['platform'] ?? ''),
+        $fact($payload['lang'] ?? ''),
+        $fact($payload['screen'] ?? ''),
     ]));
     $contact = ($payload['contact'] ?? '') !== '' ? "\n**Contact:** " . str_replace('@', '@' . "\u{200B}", (string) $payload['contact']) : '';
     $log = ($payload['log'] ?? '') !== ''

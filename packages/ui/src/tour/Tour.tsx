@@ -13,8 +13,8 @@ import { readJson, writeJson } from '../state/preferences';
 import { askAvailable } from '../ask/settings';
 import { QuickAskScene } from './quickAskScene';
 import { ReachScene } from './reachScene';
-import { TOUR_VERSION, newSince, tourChapters } from './chapters';
-import { openTourAt, takeStartAt } from './openAt';
+import { TOUR_VERSION, newChapters, tourChapters } from './chapters';
+import { openTourAt, openTourWith, takeStartAt, takeStartOnly } from './openAt';
 import type { Chapter, ChapterId } from './chapters';
 import { AiScene, BasicsScene, DoneScene, FilmScene, LookScene, QuickScene, WelcomeScene } from './scenes';
 import type { TourProgress } from './scenes';
@@ -28,9 +28,10 @@ import './tour.css';
 
 /**
  * The welcome tour: the first impression, the training and the help centre
- * in one. It opens by itself on the desktop app's first run (and once more
- * when the tour is new), and again from Help › Welcome tour and Settings'
- * quick tools. Chapters down the side, each with a scene that moves: choose
+ * in one. It opens by itself on the desktop app's first run, and after an
+ * update with only the chapters that are new; again from Help › Welcome tour
+ * (where it was left) and Settings' quick tools. It counts as seen once it
+ * is finished or skipped, not when it is merely put on screen. Chapters down the side, each with a scene that moves: choose
  * the language and the look here and the tour changes with them, watch the
  * film, see where the tools are, practise the ring on sample files, connect
  * the phone with the real code, and meet the AI. Every line is about
@@ -38,6 +39,25 @@ import './tour.css';
  */
 
 const SEEN_KEY = 'warraq.tour';
+/** The chapter the whole tour was left at, so Help › Welcome tour opens there again. */
+const PLACE_KEY = 'warraq.tour.at';
+
+function readPlace(): string | null {
+  try {
+    return globalThis.localStorage?.getItem(PLACE_KEY) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function writePlace(id: string | null): void {
+  try {
+    if (id) globalThis.localStorage?.setItem(PLACE_KEY, id);
+    else globalThis.localStorage?.removeItem(PLACE_KEY);
+  } catch {
+    // Private windows and blocked storage: the tour starts at the beginning next time.
+  }
+}
 
 export { openTourAt } from './openAt';
 
@@ -49,18 +69,26 @@ export function WelcomeTour() {
   const [desktop] = useState(isTauriHost);
   const [ask] = useState(askAvailable);
 
-  // The desktop app opens it by itself on its first run, and once when the tour is new, at what is new.
+  // The desktop app opens it by itself on its first run, and after an update
+  // with only what is new; with nothing new here it is simply marked seen.
   useEffect(() => {
     const seen = readJson<{ version?: number }>(SEEN_KEY, {}).version ?? 0;
     if (!desktop || seen >= TOUR_VERSION) return;
-    writeJson(SEEN_KEY, { seen: true, version: TOUR_VERSION });
-    openTourAt(newSince(seen, ask, desktop), () => dispatch({ type: 'DIALOG', dialog: 'tour' }));
+    const show = () => dispatch({ type: 'DIALOG', dialog: 'tour' });
+    const fresh = newChapters(seen, ask, desktop);
+    if (fresh === null) openTourAt('welcome', show);
+    else if (fresh.length > 0) openTourWith(fresh, show);
+    else writeJson(SEEN_KEY, { seen: true, version: TOUR_VERSION });
   }, [desktop, ask, dispatch]);
 
   const open = dialog === 'tour';
-  const close = () => dispatch({ type: 'DIALOG', dialog: null });
+  // Finished, skipped or closed: seen, so it does not open by itself again.
+  const close = () => {
+    writeJson(SEEN_KEY, { seen: true, version: TOUR_VERSION });
+    dispatch({ type: 'DIALOG', dialog: null });
+  };
   return (
-    <Dialog open={open} title={t('tour.title')} onClose={close} className="tour-dialog">
+    <Dialog open={open} title={t('tour.title')} onClose={close} className="tour-dialog" closeOnBackdrop={false}>
       {open ? (
         <TourBook
           desktop={desktop}
@@ -81,9 +109,16 @@ export function WelcomeTour() {
 
 function TourBook({ desktop, ask, onClose, onSettings, onSupport, onFolders }: { desktop: boolean; ask: boolean; onClose: () => void; onSettings: (section: SectionId) => void; onSupport: () => void; onFolders: () => void }) {
   const { t, dir } = useI18n();
-  const [chapters] = useState(() => tourChapters(desktop, ask));
+  // The whole tour, or only the chapters an update brought.
+  const [{ chapters, whole }] = useState(() => {
+    const all = tourChapters(desktop, ask);
+    const only = takeStartOnly();
+    const some = only ? all.filter((chapter) => only.includes(chapter.id)) : [];
+    return some.length > 0 ? { chapters: some, whole: false } : { chapters: all, whole: true };
+  });
+  // A chapter asked for, else (the whole tour) where it was left.
   const [at, setAt] = useState(() => {
-    const id = takeStartAt();
+    const id = takeStartAt() ?? (whole ? readPlace() : null);
     return Math.max(0, id ? chapters.findIndex((chapter) => chapter.id === id) : 0);
   });
   // Which way the last move went, so the next chapter comes in from that side.
@@ -94,6 +129,16 @@ function TourBook({ desktop, ask, onClose, onSettings, onSupport, onFolders }: {
 
   const chapter = chapters[Math.min(at, chapters.length - 1)]!;
   const last = at >= chapters.length - 1;
+
+  useEffect(() => {
+    if (whole) writePlace(chapter.id);
+  }, [whole, chapter.id]);
+
+  // Finished: the next opening from the menu starts at the beginning.
+  const finish = () => {
+    if (whole) writePlace(null);
+    onClose();
+  };
 
   const go = (index: number) => {
     const next = Math.max(0, Math.min(chapters.length - 1, index));
@@ -157,23 +202,35 @@ function TourBook({ desktop, ask, onClose, onSettings, onSupport, onFolders }: {
         <div ref={stage} className="tour-scroll" aria-live="polite">
           <div key={chapter.id} className="tour-chapter">
             <ChapterHead chapter={chapter} n={at + 1} total={chapters.length} />
-            <Scene chapter={chapter} progress={progress} onProgress={(patch) => setProgress((before) => ({ ...before, ...patch }))} onSettings={onSettings} onSupport={onSupport} onFolders={onFolders} />
+            <Scene
+              chapter={chapter}
+              progress={progress}
+              onProgress={(patch) => setProgress((before) => ({ ...before, ...patch }))}
+              onSettings={onSettings}
+              onSupport={onSupport}
+              onFolders={onFolders}
+              onChapter={(id) => go(chapters.findIndex((one) => one.id === id))}
+              has={(id) => chapters.some((one) => one.id === id)}
+            />
           </div>
         </div>
         <div className="tour-actions">
-          {at === 0 ? (
+          {!last && (
             <button type="button" className="icon-btn icon-btn-labeled" onClick={onClose}>
               {t('tour.skip')}
             </button>
-          ) : (
-            <button type="button" className="icon-btn icon-btn-labeled" onClick={() => go(at - 1)}>
-              {t('tour.back')}
-            </button>
           )}
-          <button type="button" className="icon-btn icon-btn-labeled icon-btn-primary tour-next" onClick={last ? onClose : () => go(at + 1)}>
-            <span>{last ? t('tour.done') : t('tour.next')}</span>
-            {!last && <Icon of={NextArrow} size={15} />}
-          </button>
+          <span className="tour-actions-end">
+            {at > 0 && (
+              <button type="button" className="icon-btn icon-btn-labeled" onClick={() => go(at - 1)}>
+                {t('tour.back')}
+              </button>
+            )}
+            <button type="button" className="icon-btn icon-btn-labeled icon-btn-primary tour-next" onClick={last ? finish : () => go(at + 1)}>
+              <span>{last ? t('tour.done') : t('tour.next')}</span>
+              {!last && <Icon of={NextArrow} size={15} />}
+            </button>
+          </span>
         </div>
       </section>
     </div>
@@ -193,7 +250,25 @@ function ChapterHead({ chapter, n, total }: { chapter: Chapter; n: number; total
   );
 }
 
-function Scene({ chapter, progress, onProgress, onSettings, onSupport, onFolders }: { chapter: Chapter; progress: TourProgress; onProgress: (patch: Partial<TourProgress>) => void; onSettings: (section: SectionId) => void; onSupport: () => void; onFolders: () => void }) {
+function Scene({
+  chapter,
+  progress,
+  onProgress,
+  onSettings,
+  onSupport,
+  onFolders,
+  onChapter,
+  has,
+}: {
+  chapter: Chapter;
+  progress: TourProgress;
+  onProgress: (patch: Partial<TourProgress>) => void;
+  onSettings: (section: SectionId) => void;
+  onSupport: () => void;
+  onFolders: () => void;
+  onChapter: (id: ChapterId) => void;
+  has: (id: ChapterId) => boolean;
+}) {
   switch (chapter.id) {
     case 'welcome':
       return <WelcomeScene />;
@@ -220,6 +295,6 @@ function Scene({ chapter, progress, onProgress, onSettings, onSupport, onFolders
     case 'support':
       return <SupportScene onOpen={onSupport} />;
     case 'done':
-      return <DoneScene progress={progress} />;
+      return <DoneScene progress={progress} onChapter={(id) => has(id) && onChapter(id)} />;
   }
 }

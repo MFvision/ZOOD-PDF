@@ -21,6 +21,8 @@ export interface Chapter {
   hue: string;
   desktopOnly?: boolean;
   askOnly?: boolean;
+  /** The tour version that last brought something new to this chapter. */
+  since?: number;
 }
 
 const ALL: readonly Chapter[] = [
@@ -28,14 +30,14 @@ const ALL: readonly Chapter[] = [
   { id: 'look', icon: Palette, label: 'tour.ch.look', title: 'tour.look.title', body: 'tour.look.body', hue: '#8e5bd8' },
   { id: 'film', icon: Clapperboard, label: 'tour.ch.film', title: 'tour.film.title', body: 'tour.film.body', hue: '#e0603d' },
   { id: 'basics', icon: Hand, label: 'tour.ch.basics', title: 'tour.basics.title', body: 'tour.basics.body', hue: '#2f7de1' },
-  { id: 'folders', icon: FolderOpen, label: 'tour.ch.folders', title: 'tour.folders.title', body: 'tour.folders.body', hue: '#3c6db0' },
+  { id: 'folders', icon: FolderOpen, label: 'tour.ch.folders', title: 'tour.folders.title', body: 'tour.folders.body', hue: '#3c6db0', since: 11 },
   { id: 'quick', icon: MousePointerClick, label: 'tour.ch.quick', title: 'tour.quick.title', body: 'tour.quick.body', hue: '#e09a1a', desktopOnly: true },
-  { id: 'ask', icon: Keyboard, label: 'tour.ch.ask', title: 'tour.ask.title', body: 'tour.ask.body', hue: '#d4467e', desktopOnly: true, askOnly: true },
-  { id: 'quickask', icon: FolderInput, label: 'tour.ch.quickask', title: 'tour.quickask.title', body: 'tour.quickask.body', hue: '#1f9bb4', desktopOnly: true, askOnly: true },
-  { id: 'reach', icon: BellRing, label: 'tour.ch.reach', title: 'tour.reach.title', body: 'tour.reach.body', hue: '#c0663a', desktopOnly: true },
-  { id: 'remote', icon: Smartphone, label: 'tour.ch.remote', title: 'tour.remote.title', body: 'tour.remote.body', hue: '#2f9e75', desktopOnly: true },
-  { id: 'ai', icon: Sparkles, label: 'tour.ch.ai', title: 'tour.ai.title', body: 'tour.ai.body', hue: '#7b61ff' },
-  { id: 'support', icon: LifeBuoy, label: 'tour.ch.support', title: 'tour.support.title', body: 'tour.support.body', hue: '#4f8a10' },
+  { id: 'ask', icon: Keyboard, label: 'tour.ch.ask', title: 'tour.ask.title', body: 'tour.ask.body', hue: '#d4467e', desktopOnly: true, askOnly: true, since: 5 },
+  { id: 'quickask', icon: FolderInput, label: 'tour.ch.quickask', title: 'tour.quickask.title', body: 'tour.quickask.body', hue: '#1f9bb4', desktopOnly: true, askOnly: true, since: 6 },
+  { id: 'reach', icon: BellRing, label: 'tour.ch.reach', title: 'tour.reach.title', body: 'tour.reach.body', hue: '#c0663a', desktopOnly: true, since: 9 },
+  { id: 'remote', icon: Smartphone, label: 'tour.ch.remote', title: 'tour.remote.title', body: 'tour.remote.body', hue: '#2f9e75', desktopOnly: true, since: 10 },
+  { id: 'ai', icon: Sparkles, label: 'tour.ch.ai', title: 'tour.ai.title', body: 'tour.ai.body', hue: '#7b61ff', since: 8 },
+  { id: 'support', icon: LifeBuoy, label: 'tour.ch.support', title: 'tour.support.title', body: 'tour.support.body', hue: '#4f8a10', since: 7 },
   { id: 'done', icon: PartyPopper, label: 'tour.ch.done', title: 'tour.done.title', body: 'tour.done.body', hue: '#ae8b66' },
 ];
 
@@ -60,4 +62,17 @@ export function newSince(version: number, ask: boolean, _desktop = true): Chapte
   if (version >= 6) return 'ai';
   if (!ask || version < 2) return 'welcome';
   return version >= 5 ? 'quickask' : 'ask';
+}
+
+/**
+ * What a tour seen at `version` has not shown yet, for this build: after an
+ * update only these open, not the whole tour again. Empty when nothing is
+ * new here. A tour never seen (or seen before Ask ZOOD, version 2) is all new,
+ * and opens whole: `null`.
+ */
+export function newChapters(version: number, ask: boolean, desktop: boolean): ChapterId[] | null {
+  if (version < 2) return null;
+  return tourChapters(desktop, ask)
+    .filter((chapter) => (chapter.since ?? 0) > version)
+    .map((chapter) => chapter.id);
 }

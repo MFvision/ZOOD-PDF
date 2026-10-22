@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { FileDown, KeyRound, ListChecks, Loader, PenLine, Trash2, Usb } from 'lucide-react';
+import { FileDown, FolderOpen, KeyRound, ListChecks, Loader, PenLine, Trash2, Usb } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
-import { isTauriHost, pkcs11Certificates, pkcs11Sign } from '../core/host-tauri';
+import { isTauriHost, pickModulePath, pkcs11Certificates, pkcs11Sign } from '../core/host-tauri';
 import type { TokenCertificate } from '../core/host-tauri';
 import { loadEditFont } from '../edit/editFont';
 import { useI18n } from '../i18n/useT';
@@ -37,6 +37,7 @@ function errorKey(error: unknown): TKey {
   if (message.includes('E_P12')) return 'signatures.error.p12';
   if (message.includes('E_SIGN_CERTIFY_FIRST')) return 'signatures.error.certifyFirst';
   if (message.includes('E_SIGN_CERTIFIED')) return 'signatures.error.certified';
+  if (message.includes('E_PKCS11_MODULE')) return 'signatures.error.module';
   if (message.includes('E_PKCS11_PIN')) return 'signatures.error.pin';
   if (message.includes('E_PKCS11_LOGIN')) return 'signatures.error.tokenLogin';
   if (message.includes('E_SIGNED_TOO_LARGE')) return 'signatures.error.tooLarge';
@@ -277,6 +278,15 @@ export function SignForm({ onSigned }: { onSigned: () => void }) {
             <span>{t('signatures.token.module')}</span>
             <input className="text-input" dir="ltr" spellCheck={false} placeholder="/usr/local/lib/opensc-pkcs11.so" value={module} onChange={(event) => setModule(event.target.value)} />
           </label>
+          <div className="tool-actions">
+            <IconButton
+              label={t('signatures.token.chooseModule')}
+              icon={<Icon of={FolderOpen} />}
+              showLabel
+              disabled={busy !== null}
+              onClick={() => void pickModulePath().then((path) => path && setModule(path), () => undefined)}
+            />
+          </div>
           <label className="field">
             <span>{t('signatures.token.pin')}</span>
             <input className="text-input" type="password" autoComplete="off" value={pin} onChange={(event) => setPin(event.target.value)} />

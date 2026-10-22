@@ -12,10 +12,16 @@ interface DialogProps {
   children: ReactNode;
   /** A dialog of its own kind (the Settings window), styled by this class. */
   className?: string;
+  /**
+   * Whether a click on the dimmed page around it closes it (the default). A
+   * long sheet the person works through (the tour, Help & Support) says no,
+   * so a stray click does not lose their place.
+   */
+  closeOnBackdrop?: boolean;
 }
 
 /** Native <dialog>: focus trapping, Escape handling and the backdrop come for free. */
-export function Dialog({ open, title, onClose, children, className }: DialogProps) {
+export function Dialog({ open, title, onClose, children, className, closeOnBackdrop = true }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const openRef = useRef(open);
   const titleId = useId();
@@ -53,7 +59,7 @@ export function Dialog({ open, title, onClose, children, className }: DialogProp
   };
 
   const onBackdropClick = (event: MouseEvent<HTMLDialogElement>) => {
-    if (event.target === ref.current) onClose();
+    if (closeOnBackdrop && event.target === ref.current) onClose();
   };
 
   // Explicit Escape handling: some embedders do not turn the key into a native close request.

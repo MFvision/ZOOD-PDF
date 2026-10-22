@@ -132,7 +132,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   hiddenAiPrompts: [],
   keepRecent: true,
   undoSteps: 100,
-  versions: 0,
+  versions: 5,
   autosave: true,
   autosaveMinutes: 1,
   shortcuts: {},

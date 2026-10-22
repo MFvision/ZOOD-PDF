@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Dialog } from '../components/Dialog';
+import { isTauriHost } from '../core/host-tauri';
 import { Icon } from '../components/Icon';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
@@ -41,6 +42,8 @@ interface Section {
   /** The names of its settings, for the search. */
   words: readonly TKey[];
   page: () => ReactNode;
+  /** Only the desktop app has it (the right-click menu and the ring): the web leaves it out. */
+  desktopOnly?: boolean;
 }
 
 const SECTIONS: readonly Section[] = [
@@ -66,6 +69,7 @@ const SECTIONS: readonly Section[] = [
     title: 'prefs.quick',
     words: ['quick.settings.menu', 'quick.settings.ring', 'prefs.ringTools', 'prefs.menuTools', 'prefs.ringShortcut', 'prefs.ringSize', 'prefs.output', 'prefs.outputPattern', 'quick.settings.background'],
     page: () => <QuickPage />,
+    desktopOnly: true,
   },
   {
     id: 'ai',
@@ -89,7 +93,7 @@ const SECTIONS: readonly Section[] = [
     page: () => <HistoryPage />,
   },
   { id: 'fonts', icon: Type, title: 'prefs.fonts', words: ['fontLibrary.title'], page: () => <FontsPage /> },
-  { id: 'cloud', icon: Cloud, title: 'prefs.cloud', words: ['prefs.cloudSoon'], page: () => <CloudPage /> },
+  { id: 'cloud', icon: Cloud, title: 'prefs.cloud', words: ['prefs.cloudDrives', 'cloud.name.onedrive', 'cloud.name.gdrive', 'cloud.signOut'], page: () => <CloudPage /> },
   { id: 'shortcuts', icon: Keyboard, title: 'prefs.shortcuts', words: ['shortcuts.title'], page: () => <ShortcutsPage /> },
   { id: 'support', icon: LifeBuoy, title: 'prefs.support', words: ['help.support', 'help.report', 'help.ideas', 'support.tab.learn'], page: () => <SupportPage /> },
   { id: 'about', icon: Info, title: 'prefs.about', words: ['help.about', 'help.tour'], page: () => <AboutPage /> },
@@ -140,11 +144,13 @@ export function SettingsWindow() {
     }
   }
 
+  // Decided once: the host does not change under a running window.
+  const [sections] = useState(() => (isTauriHost() ? SECTIONS : SECTIONS.filter((one) => !one.desktopOnly)));
   const matches = useMemo(() => {
     const words = searchable(query.trim());
-    if (!words) return SECTIONS;
-    return SECTIONS.filter((section) => [section.title, ...section.words].some((key) => searchable(t(key)).includes(words)));
-  }, [query, t]);
+    if (!words) return sections;
+    return sections.filter((section) => [section.title, ...section.words].some((key) => searchable(t(key)).includes(words)));
+  }, [query, t, sections]);
 
   // A search that leaves the page on screen out shows the first it finds.
   const current = matches.length > 0 && !matches.some((section) => section.id === chosen) ? matches[0]!.id : chosen;

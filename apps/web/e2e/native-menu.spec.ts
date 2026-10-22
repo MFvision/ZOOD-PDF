@@ -101,7 +101,7 @@ test('the checks on Fit width, Fit page and the navigation pane follow the view,
   expect((await item(page, 'fit-page'))?.checked).toBe(false);
 
   // The toolbar's sidebar button runs EmbedPDF's own toggle; its pressed look and the menu's check follow it.
-  const sidebar = page.getByRole('toolbar').getByRole('button', { name: 'Sidebar' });
+  const sidebar = page.getByRole('toolbar').getByRole('button', { name: 'Pages panel' });
   const before = (await sidebar.getAttribute('aria-pressed')) === 'true';
   await sidebar.click();
   await expect(sidebar).toHaveAttribute('aria-pressed', String(!before));

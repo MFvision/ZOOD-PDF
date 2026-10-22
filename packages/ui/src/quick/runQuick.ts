@@ -11,6 +11,7 @@ import { startRecognizer } from '../ocr/engine';
 import type { Recognizer } from '../ocr/engine';
 import { startPdfium } from '../batch/pdfium';
 import type { PdfiumTools } from '../batch/pdfium';
+import { friendlyError, rawMessage } from '../batch/friendlyError';
 import { runBatch } from '../batch/run';
 import type { FileState } from '../batch/run';
 import type { SequenceStep } from '../batch/steps';
@@ -56,8 +57,8 @@ export function quickSuffix(tool: QuickTool, t: (key: TKey) => string): string {
 const failure = (error: unknown): FileState => ({
   state: 'failed',
   step: null,
-  key: 'batch.error.step',
-  message: String((error as Error)?.message ?? error).slice(0, 300),
+  key: friendlyError(error),
+  message: rawMessage(error),
 });
 
 const baseName = (path: string) => path.split(/[\\/]/).pop() ?? path;
