@@ -383,7 +383,11 @@ export interface RingSettings {
   scale: number;
   /** The keyboard shortcut, as Tauri writes one ("CommandOrControl+Alt+Z"). */
   shortcut: string;
+  /** The key held while dragging that opens the ring; `any` is Ctrl or Shift (Option or Command on a Mac). */
+  dragKey: RingDragKey;
 }
+
+export type RingDragKey = 'any' | 'ctrl' | 'shift' | 'alt' | 'meta';
 
 export async function ringSettings(): Promise<RingSettings | null> {
   if (!internals()) return null;
@@ -391,7 +395,7 @@ export async function ringSettings(): Promise<RingSettings | null> {
 }
 
 export async function configureRing(settings: RingSettings): Promise<RingSettings> {
-  return (await invoke('ring_configure', { ring: settings.ring, background: settings.background, scale: settings.scale, shortcut: settings.shortcut })) as RingSettings;
+  return (await invoke('ring_configure', { ring: settings.ring, background: settings.background, scale: settings.scale, shortcut: settings.shortcut, dragKey: settings.dragKey })) as RingSettings;
 }
 
 /* ---------------------------------------------------------------- system */

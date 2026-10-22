@@ -92,6 +92,70 @@ pub struct RingSettings {
     pub scale: f64,
     #[serde(default = "default_shortcut")]
     pub shortcut: String,
+    /// The key held while dragging that opens the ring (`DragKey`).
+    #[serde(default = "default_drag_key", rename = "dragKey")]
+    pub drag_key: String,
+}
+
+/// The key that, held while files are dragged, opens the ring. `Any` is
+/// as made: Ctrl or Shift on Windows, Option or Command on a Mac.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DragKey {
+    Any,
+    Ctrl,
+    Shift,
+    /// Alt on Windows; Option on a Mac.
+    Alt,
+    /// The Windows key; Command on a Mac.
+    Meta,
+}
+
+impl DragKey {
+    pub fn from_name(name: &str) -> DragKey {
+        match name {
+            "ctrl" => DragKey::Ctrl,
+            "shift" => DragKey::Shift,
+            "alt" => DragKey::Alt,
+            "meta" => DragKey::Meta,
+            _ => DragKey::Any,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            DragKey::Any => "any",
+            DragKey::Ctrl => "ctrl",
+            DragKey::Shift => "shift",
+            DragKey::Alt => "alt",
+            DragKey::Meta => "meta",
+        }
+    }
+
+    fn code(self) -> u8 {
+        match self {
+            DragKey::Any => 0,
+            DragKey::Ctrl => 1,
+            DragKey::Shift => 2,
+            DragKey::Alt => 3,
+            DragKey::Meta => 4,
+        }
+    }
+
+    fn from_code(code: u8) -> DragKey {
+        match code {
+            1 => DragKey::Ctrl,
+            2 => DragKey::Shift,
+            3 => DragKey::Alt,
+            4 => DragKey::Meta,
+            _ => DragKey::Any,
+        }
+    }
+}
+
+static DRAG_KEY: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
+
+fn drag_key() -> DragKey {
+    DragKey::from_code(DRAG_KEY.load(Ordering::Relaxed))
 }
 
 fn default_scale() -> f64 {
@@ -102,6 +166,10 @@ fn default_shortcut() -> String {
     SHORTCUT.to_string()
 }
 
+fn default_drag_key() -> String {
+    DragKey::Any.name().to_string()
+}
+
 impl Default for RingSettings {
     fn default() -> Self {
         RingSettings {
@@ -109,6 +177,7 @@ impl Default for RingSettings {
             background: false,
             scale: default_scale(),
             shortcut: default_shortcut(),
+            drag_key: default_drag_key(),
         }
     }
 }
@@ -220,6 +289,10 @@ pub fn start<R: Runtime>(app: &AppHandle<R>, start_hidden: bool) {
         if settings.ring { "on" } else { "off" }
     ));
     ENABLED.store(settings.ring, Ordering::Relaxed);
+    DRAG_KEY.store(
+        DragKey::from_name(&settings.drag_key).code(),
+        Ordering::Relaxed,
+    );
     SCALE.store(
         (nearest_scale(settings.scale) * 1000.0) as u32,
         Ordering::Relaxed,
@@ -496,14 +569,17 @@ pub fn ring_configure<R: Runtime>(
     background: bool,
     scale: Option<f64>,
     shortcut: Option<String>,
+    drag_key: Option<String>,
 ) -> Result<RingSettings, String> {
     let before = load_settings(&app);
     let scale = nearest_scale(scale.unwrap_or(before.scale));
+    let key = DragKey::from_name(drag_key.as_deref().unwrap_or(&before.drag_key));
     let mut settings = RingSettings {
         ring,
         background,
         scale,
         shortcut: before.shortcut.clone(),
+        drag_key: key.name().to_string(),
     };
     if let Some(keys) = shortcut.filter(|keys| *keys != before.shortcut) {
         shortcut::replace(&app, &keys)?;
@@ -514,6 +590,7 @@ pub fn ring_configure<R: Runtime>(
         let _ = window.set_size(tauri::LogicalSize::new(SIDE * scale, SIDE * scale));
     }
     ENABLED.store(ring, Ordering::Relaxed);
+    DRAG_KEY.store(key.code(), Ordering::Relaxed);
     BACKGROUND.store(background, Ordering::Relaxed);
     if let Some(path) = settings_path(&app) {
         let bytes = serde_json::to_vec(&settings).map_err(|e| format!("E_IO: {e}"))?;
@@ -619,14 +696,14 @@ mod windows {
 
     use windows_sys::Win32::Foundation::POINT;
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
-        GetAsyncKeyState, VK_CONTROL, VK_LBUTTON, VK_RBUTTON, VK_SHIFT,
+        GetAsyncKeyState, VK_CONTROL, VK_LBUTTON, VK_LWIN, VK_MENU, VK_RBUTTON, VK_RWIN, VK_SHIFT,
     };
     use windows_sys::Win32::UI::WindowsAndMessaging::{
         GetAncestor, GetClassNameW, GetCursorPos, GetSystemMetrics, WindowFromPoint, GA_ROOT,
         SM_SWAPBUTTON,
     };
 
-    use super::{enabled, is_drag, log, send, Gesture};
+    use super::{drag_key, enabled, is_drag, log, send, DragKey, Gesture};
 
     /// How often the mouse and the keys are looked at.
     const TICK: Duration = Duration::from_millis(15);
@@ -654,9 +731,15 @@ mod windows {
         (unsafe { GetAsyncKeyState(i32::from(key)) } as u16 & 0x8000) != 0
     }
 
-    /// Ctrl or Shift, held now.
+    /// The key chosen in Settings (Ctrl or Shift as made), held now.
     fn held() -> bool {
-        down(VK_CONTROL) || down(VK_SHIFT)
+        match drag_key() {
+            DragKey::Any => down(VK_CONTROL) || down(VK_SHIFT),
+            DragKey::Ctrl => down(VK_CONTROL),
+            DragKey::Shift => down(VK_SHIFT),
+            DragKey::Alt => down(VK_MENU),
+            DragKey::Meta => down(VK_LWIN) || down(VK_RWIN),
+        }
     }
 
     /// The button that drags: the left one, or the right one when the
@@ -694,15 +777,13 @@ mod windows {
                         shown = false;
                         if held() {
                             let class = class_at(point);
-                            log(&format!(
-                                "press with Ctrl or Shift held, over a {class} window"
-                            ));
+                            log(&format!("press with the key held, over a {class} window"));
                         }
                     }
                     (true, Some(from)) if !shown && enabled() => {
                         if is_drag(from, now, held()) {
                             shown = true;
-                            log("drag with Ctrl or Shift: ring placed at the pointer");
+                            log("drag with the key held: ring placed at the pointer");
                             send(Gesture::Start {
                                 x: f64::from(now.0),
                                 y: f64::from(now.1),
@@ -731,8 +812,10 @@ pub(crate) mod macos {
     use objc2::{class, msg_send};
     use objc2_foundation::{NSPoint, NSRect, NSString};
 
-    use super::{enabled, is_drag, log, send, Gesture};
+    use super::{drag_key, enabled, is_drag, log, send, DragKey, Gesture};
 
+    const SHIFT_KEY: usize = 1 << 17;
+    const CONTROL_KEY: usize = 1 << 18;
     const OPTION_KEY: usize = 1 << 19;
     const COMMAND_KEY: usize = 1 << 20;
     /// How often the mouse and the drag pasteboard are looked at.
@@ -820,13 +903,20 @@ pub(crate) mod macos {
                             shown = false;
                         }
                         (true, Some((start, count))) if !shown && enabled() => {
-                            let key = flags & (OPTION_KEY | COMMAND_KEY) != 0;
+                            let wanted = match drag_key() {
+                                DragKey::Any => OPTION_KEY | COMMAND_KEY,
+                                DragKey::Ctrl => CONTROL_KEY,
+                                DragKey::Shift => SHIFT_KEY,
+                                DragKey::Alt => OPTION_KEY,
+                                DragKey::Meta => COMMAND_KEY,
+                            };
+                            let key = flags & wanted != 0;
                             if change_count(&board) != count
                                 && is_drag(start, now, key)
                                 && holds_files(&board)
                             {
                                 shown = true;
-                                log("drag of files with Option or Command: ring shown");
+                                log("drag of files with the key held: ring shown");
                                 send(Gesture::Start { x, y });
                             }
                         }
@@ -884,6 +974,7 @@ mod tests {
                 background: false,
                 scale: 1.0,
                 shortcut: SHORTCUT.to_string(),
+                drag_key: "any".to_string(),
             }
         );
         // A file from before the size and the shortcut reads with their defaults.
@@ -892,6 +983,9 @@ mod tests {
         assert!(!read.ring && read.background);
         assert_eq!(read.scale, 1.0);
         assert_eq!(read.shortcut, SHORTCUT);
+        assert_eq!(read.drag_key, "any");
+        assert_eq!(DragKey::from_name("shift"), DragKey::Shift);
+        assert_eq!(DragKey::from_name("nonsense"), DragKey::Any);
         assert_eq!(nearest_scale(9.0), 1.2);
         assert_eq!(nearest_scale(0.1), 0.85);
     }
