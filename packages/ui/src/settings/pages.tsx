@@ -16,6 +16,8 @@ import {
 } from '../core/host-tauri';
 import type { RingDragKey, RingSettings, ShellMenuState } from '../core/host-tauri';
 import { AiSettingsSection } from '../ai/AiSettings';
+import { isolate } from '../cloud/CloudBrowser';
+import { useCloud } from '../cloud/CloudContext';
 import { AskSettings } from '../ask/AskSettings';
 import { askAvailable } from '../ask/settings';
 import { WalletEditor } from '../ai/profile/WalletEditor';
@@ -836,13 +838,42 @@ export function WalletPage() {
   return <WalletEditor />;
 }
 
+/**
+ * Each drive this build offers, who is signed in to it (as this device
+ * remembers) and Sign out; signing in starts where the files are opened.
+ * A build with no drive says so plainly, not "coming soon".
+ */
 export function CloudPage() {
   const { t } = useI18n();
+  const cloud = useCloud();
+  if (cloud.providers.length === 0) {
+    return (
+      <Group>
+        <Row label={t('prefs.cloudDrives')} hint={t('prefs.cloudNotHere')}>
+          <span />
+        </Row>
+      </Group>
+    );
+  }
   return (
-    <Group note={t('prefs.cloudNote')}>
-      <Row label={t('prefs.cloudDrives')} hint={t('prefs.cloudSoon')}>
-        <span className="prefs-badge">{t('prefs.soon')}</span>
-      </Row>
+    <Group note={t(cloud.desktop ? 'cloud.home.noteDesktop' : 'cloud.home.noteWeb')}>
+      {cloud.providers.map((provider) => {
+        const account = cloud.accounts[provider];
+        const drive = t(`cloud.name.${provider}`);
+        return account ? (
+          <ActionRow
+            key={provider}
+            label={drive}
+            hint={t('cloud.account.as', { who: isolate(account.email || account.name) })}
+            action={t('cloud.signOut')}
+            onClick={() => void cloud.signOut(provider)}
+          />
+        ) : (
+          <Row key={provider} label={drive} hint={t('prefs.cloudSignInHint', { open: t(provider === 'onedrive' ? 'cloud.menu.open.onedrive' : 'cloud.menu.open.gdrive') })}>
+            <span />
+          </Row>
+        );
+      })}
     </Group>
   );
 }
