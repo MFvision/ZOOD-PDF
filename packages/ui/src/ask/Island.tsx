@@ -117,7 +117,11 @@ export function isAskWindow(): boolean {
   }
 }
 
+/** Terminals and consoles, by their app names: a line pasted there runs. */
+const TERMINAL = /\b(?:terminal|iterm2?|powershell|pwsh|cmd|command prompt|conhost|windowsterminal|warp|alacritty|kitty|wezterm|ghostty|putty)\b/i;
+
 /** The quick tools' names, as the island says them. */
+
 const TOOL_NAME: Record<AskTool, TKey> = {
   compress: 'quick.tool.compress',
   word: 'quick.tool.word',
@@ -206,7 +210,8 @@ type Phase =
   | { kind: 'pick'; words: string; offers: Picked[]; spoken: boolean }
   | { kind: 'tidy'; words: string; preview: TidyPreview; working: boolean }
   | { kind: 'tidied'; words: string; say: string; undo: boolean }
-  | { kind: 'placed'; words: string; say: string; text: string; app: string }
+  /** A draft pasted where the cursor was; `held`: not pasted yet, shown first (`heldWhy`: it quotes the Library, or the window is a terminal). */
+  | { kind: 'placed'; words: string; say: string; text: string; app: string; held?: 'library' | 'terminal' }
   | { kind: 'ideas'; draft: Draft }
   | {
       kind: 'guide';
@@ -416,8 +421,16 @@ function Island() {
   const lookUp = async (title: string, text: string): Promise<DocumentLine[]> =>
     recall(getSharedCoreClient(), lookupWords(title, text)).catch(() => []);
 
-  /** Pastes `text` where the cursor was, and says so. */
-  const place = async (words: string, say: string, text: string, app: string) => {
+  /**
+   * Pastes `text` where the cursor was, and says so. A draft that quotes the
+   * person's own documents is shown first and pasted only when they say so
+   * (what the window said picked those lines, and the window may be someone
+   * else's words); into a terminal, where a pasted line runs as a command,
+   * it is never pasted, only shown to copy.
+   */
+  const place = async (words: string, say: string, text: string, app: string, quotes = false) => {
+    if (TERMINAL.test(app)) return setPhase({ kind: 'placed', words, say, text, app, held: 'terminal' });
+    if (quotes) return setPhase({ kind: 'placed', words, say, text, app, held: 'library' });
     await invokeHost('ask_paste', { text });
     setPhase({ kind: 'placed', words, say, text, app });
   };
@@ -466,7 +479,7 @@ function Island() {
       if (!result) return setPhase({ kind: 'problem', message: 'ask.problem.noDraft' });
       if (result.kind === 'reply') {
         if (shouldTalk(prefs.talkBack, false)) void talk(result.say);
-        return await place('', result.say, result.text, moment.app);
+        return await place('', result.say, result.text, moment.app, documents.length > 0);
       }
       setPhase({ kind: 'ideas', draft: result });
     } catch (error) {
@@ -667,7 +680,7 @@ function Island() {
         return await guide(decision.act, words, decision, moment.ours, spoken, brain.id);
       if (shouldTalk(prefs.talkBack, spoken)) void talk(decision.say);
       if (decision.act === 'write')
-        return await place(words, decision.say, decision.text, moment.app);
+        return await place(words, decision.say, decision.text, moment.app, documents.length > 0);
       if (decision.act === 'tool')
         return setPhase({
           kind: 'confirm',
@@ -1014,11 +1027,10 @@ function Island() {
         await pointAt(step);
         if (!live()) return;
         if (acting) {
-          // Another app: one Do it first, and again before what sends, deletes, pays or signs.
-          if (index === 0 || risky(control.name)) {
-            show(bookEnding('pressIn', language, { name: control.name }), index + 1, 'confirm');
-            if ((await waitFor()) === 'stop' || !live()) return;
-          }
+          // Another app: every click asks first. A button's name there is the app's (or a web page's) to choose,
+          // so "Continue" may pay or send: no name is trusted to be harmless.
+          show(bookEnding('pressIn', language, { name: control.name }), index + 1, 'confirm');
+          if ((await waitFor()) === 'stop' || !live()) return;
           show(control.name, index + 1, 'busy');
           if (talks) void talk(control.name);
           await sleep(500);
@@ -1449,7 +1461,9 @@ function Island() {
                         ? t('ask.draftingIn', { app: phase.app })
                         : t('ask.drafting')
                       : phase.kind === 'placed'
-                        ? phase.app
+                        ? phase.held
+                          ? t('ask.heldTitle')
+                          : phase.app
                           ? t('ask.placedIn', { app: phase.app })
                           : t('ask.placed')
                         : phase.kind === 'typing'
@@ -1628,14 +1642,35 @@ function Island() {
               {phase.say}
             </p>
           )}
-          <p className="ask-detail">{t(mac ? 'ask.placedHintMac' : 'ask.placedHint')}</p>
+          {phase.held ? (
+            <>
+              <p className="ask-say ask-held" dir="auto">
+                {phase.text}
+              </p>
+              <p className="ask-detail">{t(phase.held === 'terminal' ? 'ask.heldTerminal' : 'ask.heldLibrary')}</p>
+            </>
+          ) : (
+            <p className="ask-detail">{t(mac ? 'ask.placedHintMac' : 'ask.placedHint')}</p>
+          )}
           <div className="ask-actions">
+            {phase.held === 'library' && (
+              <button
+                type="button"
+                className="ask-do"
+                onClick={() => {
+                  const { held: _held, ...shown } = phase;
+                  void invokeHost('ask_paste', { text: phase.text }).then(() => setPhase(shown), fail);
+                }}
+              >
+                <PenLine /> {t('ask.heldPaste')}
+              </button>
+            )}
             <button
               type="button"
               className="ask-cancel"
               onClick={() => {
                 // The draft just pasted is undone first, in the app it went to.
-                void invokeHost('ask_undo').then(
+                void (phase.held ? Promise.resolve() : invokeHost('ask_undo')).then(
                   () => (phase.words ? respond(phase.words, false) : draft()),
                   fail,
                 );

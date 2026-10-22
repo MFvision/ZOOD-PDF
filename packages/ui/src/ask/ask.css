@@ -715,3 +715,9 @@ html.ask-point-page body {
 [dir='rtl'] .ask-flip {
   transform: scaleX(-1);
 }
+
+.ask-held {
+  max-block-size: 160px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}

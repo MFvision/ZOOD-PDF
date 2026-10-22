@@ -204,6 +204,8 @@ try {
             $id = (string) ($input['idea'] ?? '');
             if (!preg_match('/^[0-9a-f]{16}$/', $id)) throw new Fail(400, 'idea');
             $on = ($input['on'] ?? false) === true;
+            // A few votes for one idea from one address a day (a home, an office), not hundreds from new install ids.
+            if ($on) limit('vote-idea-ip', "$ip:$id", 5, 86400);
             $who = hash_of($install);
             $pdo = db();
             $found = $pdo->prepare('SELECT id FROM zs_ideas WHERE id = ? AND hidden = 0');

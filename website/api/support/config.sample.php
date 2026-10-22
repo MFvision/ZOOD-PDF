@@ -22,7 +22,8 @@ return [
     // app in; the relay takes no cookies, so nothing is exposed by it.
     'allowed_origins' => ['*'],
 
-    // New ideas show for everyone at once. Set to true to show only the ones
-    // you label "approved" on GitHub.
-    'ideas_need_approval' => false,
+    // New ideas show only to the person who sent them until you label them
+    // "approved" on GitHub, so nobody can put words on everyone's screen.
+    // Set to false to show every new idea to everyone at once.
+    'ideas_need_approval' => true,
 ];
