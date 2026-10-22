@@ -102,6 +102,61 @@ pub fn allowed_uri(uri: &str) -> bool {
         && !uri.chars().any(hides_itself)
 }
 
+/// The address as Warraq writes or opens it, when `allowed_uri` takes it:
+/// trimmed, and an e-mail address without `attach` or `attachment` fields,
+/// which some mail apps act on to attach a file from the person's disk.
+pub fn safe_uri(uri: &str) -> Option<String> {
+    if !allowed_uri(uri) {
+        return None;
+    }
+    let trimmed = uri.trim();
+    if !trimmed.to_ascii_lowercase().starts_with("mailto:") {
+        return Some(trimmed.to_string());
+    }
+    let Some((to, query)) = trimmed.split_once('?') else {
+        return Some(trimmed.to_string());
+    };
+    let kept: Vec<&str> = query
+        .split('&')
+        .filter(|field| {
+            let key = field.split('=').next().unwrap_or("");
+            let key = percent_decoded_key(key).to_ascii_lowercase();
+            key != "attach" && key != "attachment"
+        })
+        .collect();
+    Some(if kept.is_empty() {
+        to.to_string()
+    } else {
+        format!("{to}?{}", kept.join("&"))
+    })
+}
+
+/// A field name with its `%XX` escapes undone, so `att%61ch` is seen for
+/// what it is. A bad escape is kept as written.
+fn percent_decoded_key(key: &str) -> String {
+    let bytes = key.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let hex = (bytes[i] == b'%')
+            .then(|| bytes.get(i + 1..i + 3))
+            .flatten()
+            .and_then(|h| std::str::from_utf8(h).ok())
+            .and_then(|h| u8::from_str_radix(h, 16).ok());
+        match hex {
+            Some(byte) => {
+                out.push(byte);
+                i += 3;
+            }
+            None => {
+                out.push(bytes[i]);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
 /// Where a link is kept: an object of its own, or written straight into
 /// the page's `/Annots` at a place.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -324,17 +379,17 @@ impl PdfDocument {
     fn link_action(&self, target: &LinkTarget) -> Result<(&'static str, Object)> {
         match target {
             LinkTarget::Uri(uri) => {
-                if !allowed_uri(uri) {
+                let Some(uri) = safe_uri(uri) else {
                     return Err(Error::Edit(
                         "E_LINK: only web (http, https) and e-mail (mailto) addresses can be linked".into(),
                     ));
-                }
+                };
                 Ok((
                     "A",
                     Object::Dictionary(dictionary! {
                         "Type" => "Action",
                         "S" => "URI",
-                        "URI" => Object::String(ascii_uri(uri.trim()).into_bytes(), StringFormat::Literal),
+                        "URI" => Object::String(ascii_uri(&uri).into_bytes(), StringFormat::Literal),
                     }),
                 ))
             }
@@ -620,6 +675,32 @@ mod tests {
             "  https://example.org/{}  ",
             "a".repeat(4000)
         )));
+    }
+
+    #[test]
+    fn an_e_mail_address_loses_its_attachments() {
+        assert_eq!(
+            safe_uri("mailto:nadia@example.sa?subject=Hi&attach=/etc/passwd").as_deref(),
+            Some("mailto:nadia@example.sa?subject=Hi")
+        );
+        assert_eq!(
+            safe_uri(" MAILTO:a@b.sa?Attachment=C:%5Ckeys&ATTACH=x&body=y ").as_deref(),
+            Some("MAILTO:a@b.sa?body=y")
+        );
+        assert_eq!(
+            safe_uri("mailto:a@b.sa?att%61ch=~/.ssh/id_rsa").as_deref(),
+            Some("mailto:a@b.sa")
+        );
+        assert_eq!(
+            safe_uri("mailto:a@b.sa?subject=attach").as_deref(),
+            Some("mailto:a@b.sa?subject=attach")
+        );
+        // Web addresses are left as they are, only trimmed.
+        assert_eq!(
+            safe_uri(" https://example.org/?attach=1 ").as_deref(),
+            Some("https://example.org/?attach=1")
+        );
+        assert_eq!(safe_uri("file:///etc/passwd"), None);
     }
 
     /// A link written straight into `/Annots`, not as an object of its own

@@ -253,10 +253,10 @@ fn debug_selfcheck<R: Runtime>(app: AppHandle<R>) -> Option<String> {
 /// handed to the system's opener as one argument, never through a shell.
 #[tauri::command]
 fn open_url(url: String) -> Result<(), String> {
-    let url = url.trim().to_string();
-    if !warraq_core::allowed_uri(&url) {
+    // An e-mail address is opened without `attach` fields (`safe_uri`).
+    let Some(url) = warraq_core::safe_uri(&url) else {
         return Err("E_LINK: only web and e-mail addresses are opened".into());
-    }
+    };
     let mut child = opener(&url).spawn().map_err(|e| format!("E_LINK: {e}"))?;
     // Reaped once the opener hands the address over and exits.
     std::thread::spawn(move || {

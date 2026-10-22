@@ -47,7 +47,7 @@ pub use layers::{Layer, LayerNode, Layers};
 /// For the fuzzer (`packages/core/fuzz`): the content lexer's promises.
 #[doc(hidden)]
 pub use lex::ranges_hold as lex_ranges_hold;
-pub use links::{allowed_uri, LinkInfo, LinkTarget};
+pub use links::{allowed_uri, safe_uri, LinkInfo, LinkTarget};
 pub use marks::{
     Anchor, Digits, HAlign, MarkContent, MarkInfo, MarkKind, NumberFormat, PageMark, SlotDirection,
     VAlign,
