@@ -24,6 +24,7 @@ pub mod fonts;
 pub mod library;
 pub mod menu;
 pub mod neural;
+pub mod presence;
 pub mod print;
 pub mod profile;
 pub mod quick;
@@ -360,6 +361,7 @@ pub fn run() {
                 quick::show_editor(app);
             }
             ring::TRAY_QUIT => app.exit(0),
+            id if presence::on_menu(app, id) => {}
             id => menu::forward(app, id),
         })
         // Points warraq-render at the bundled PDFium and starts the core thread
@@ -390,6 +392,7 @@ pub fn run() {
             let hidden = args.iter().skip(1).any(|a| a == ring::BACKGROUND_FLAG);
             ring::start(app.handle(), hidden);
             ask::start(app.handle());
+            presence::start(app.handle());
             #[cfg(target_os = "macos")]
             if hidden {
                 app.set_activation_policy(tauri::ActivationPolicy::Accessory);
@@ -520,6 +523,15 @@ pub fn run() {
             ask::guide::ask_look_again,
             ask::guide::ask_watch_clicks,
             ask::guide::ask_click,
+            ask::book::ask_book,
+            ask::book::ask_command,
+            ask::book::ask_command_stop,
+            ask::book::ask_relay_reply,
+            ask::book::ask_open_editor,
+            ask::controls::ask_controls,
+            presence::presence_ask,
+            presence::presence_settings,
+            presence::presence_configure,
             ask::ask_transcribe,
             ask::ask_think,
             ask::ask_moment,

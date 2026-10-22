@@ -5,6 +5,7 @@ export { ArrivalApp, isArrivalWindow } from './remote/Arrival';
 export { AskApp, isAskWindow } from './ask/Island';
 export { AskPointApp, isAskPointWindow } from './ask/Point';
 export { AskGlowApp, isAskGlowWindow } from './ask/Glow';
+export { AskBubbleApp, isAskBubbleWindow } from './ask/Bubble';
 export { isQuickWindow, isRingWindow } from './core/host-tauri';
 export type { AppProps } from './App';
 export type { Lang, Direction, TKey } from './i18n/messages';

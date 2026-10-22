@@ -38,6 +38,9 @@ final class DocumentModel: Identifiable, Hashable {
     private(set) var pageCount = 0
     /// The page on screen, zero-based; the view keeps it.
     var currentPage = 0
+    /// Ask ZOOD was asked for from outside (the Control Center, a widget,
+    /// Siri): the assistant opens once the document is ready.
+    var asksZood = false
     /// True when most of the first page reads right-to-left: the pages are
     /// then ordered right-to-left too.
     private(set) var isRightToLeft = false

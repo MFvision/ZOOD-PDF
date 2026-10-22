@@ -417,6 +417,17 @@ final class LibraryModel {
             if let recent = store.load().first {
                 open(recent)
             }
+        case .askZood:
+            // The document on screen, or the one opened last; the document
+            // opens the assistant once it has loaded (`DocumentView`).
+            if opened == nil, let recent = store.load().first {
+                open(recent)
+            }
+            if let opened {
+                opened.asksZood = true
+            } else {
+                error = "Open a PDF first, then ask ZOOD about it."
+            }
         }
     }
 

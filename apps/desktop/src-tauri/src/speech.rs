@@ -149,6 +149,20 @@ pub fn apple_rate(rate: f32) -> f32 {
     }
 }
 
+/// Whether a Mac voice is fit to read to someone: not one of the 1980s-style
+/// voices macOS still lists without marking them as novelties — Eloquence's
+/// (Eddy, Flo, Reed, Rocko, Sandy, Shelley, the grandparents) and the old
+/// MacinTalk ones (Fred, Ralph, Kathy, Junior…). Ranked by name, Eddy could
+/// come first among the standard English voices and read every answer.
+/// Alex, an old identifier but a natural voice, stays.
+pub fn readable_voice(id: &str) -> bool {
+    let id = id.to_ascii_lowercase();
+    if id.contains(".eloquence.") {
+        return false;
+    }
+    !id.starts_with("com.apple.speech.synthesis.voice.") || id.ends_with(".alex")
+}
+
 /// `premium`, `enhanced` or `standard`, from AVSpeechSynthesisVoiceQuality.
 pub fn quality_name(quality: isize) -> &'static str {
     match quality {
@@ -169,7 +183,7 @@ mod apple {
     use objc2_foundation::NSString;
     use tokio::sync::oneshot;
 
-    use super::{quality_name, Voice};
+    use super::{quality_name, readable_voice, Voice};
 
     // AVSpeechSynthesizer and its voices live in AVFAudio, which AVFoundation
     // re-exports.
@@ -258,8 +272,12 @@ mod apple {
                     }
                 }
                 let quality: isize = msg_send![&*voice, quality];
+                let id = text(msg_send![&*voice, identifier]);
+                if !readable_voice(&id) {
+                    continue;
+                }
                 out.push(Voice {
-                    id: text(msg_send![&*voice, identifier]),
+                    id,
                     name: text(msg_send![&*voice, name]),
                     lang: text(msg_send![&*voice, language]),
                     quality: quality_name(quality),
@@ -356,6 +374,16 @@ mod tests {
         assert!(apple_rate(1.25) > apple_rate(1.0));
         assert_eq!(apple_rate(9.0), apple_rate(2.0));
         assert_eq!(apple_rate(f32::NAN), 0.5);
+    }
+
+    #[test]
+    fn the_robotic_voices_are_left_out() {
+        assert!(!readable_voice("com.apple.eloquence.en-US.Eddy"));
+        assert!(!readable_voice("com.apple.speech.synthesis.voice.Fred"));
+        assert!(readable_voice("com.apple.speech.synthesis.voice.Alex"));
+        assert!(readable_voice("com.apple.voice.compact.en-US.Samantha"));
+        assert!(readable_voice("com.apple.voice.premium.en-US.Zoe"));
+        assert!(readable_voice("com.apple.voice.compact.ar-001.Maged"));
     }
 
     #[test]

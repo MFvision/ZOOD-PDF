@@ -1,6 +1,16 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Ask ${applicationName}" : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "اسأل ${applicationName}" } }
+      }
+    },
+    "Ask ${applicationName} about my document" : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "اسأل ${applicationName} عن مستندي" } }
+      }
+    },
     "Make a PDF with ${applicationName}" : {
       "localizations" : {
         "ar" : { "stringUnit" : { "state" : "translated", "value" : "أنشئ PDF بـ ${applicationName}" } }

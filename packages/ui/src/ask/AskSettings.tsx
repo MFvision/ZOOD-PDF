@@ -5,12 +5,16 @@ import { formatBytes, modelBytes, shortModelName } from '../ai/device/models';
 import { machineMemoryGiB, useDeviceModel } from '../ai/device/useDeviceModel';
 import { useI18n } from '../i18n/useT';
 import { ActionRow, Pick, Row, Toggle } from '../settings/controls';
+import { openVoiceSettings } from '../speech/engines';
+import { refreshVoices, useReadAloud } from '../speech/readAloud';
+import { onlyBasicVoice } from '../speech/voices';
 import { ShortcutField } from '../settings/ShortcutField';
 import { formatShortcut } from '../shell/menuModel';
 import { isolate } from '../signatures/model';
 import { useAppDispatch } from '../state/AppContext';
 import { openTourAt } from '../tour/openAt';
 import { AskSetup } from './AskSetup';
+import { configurePresence, presenceSettings } from './presence';
 import { quickModel } from './quick';
 import { noteAskReady } from './ReadyHint';
 import {
@@ -55,11 +59,25 @@ export function AskSettings() {
   const [ready, setReady] = useState<AskReadiness | null>(null);
   const [refused, setRefused] = useState(false);
   const [access, setAccess] = useState<AskAccess | null>(null);
+  /** The ZOOD bubble is on the screen (`src-tauri/src/presence.rs`); null outside the desktop. */
+  const [bubble, setBubble] = useState<boolean | null>(null);
+  useEffect(() => {
+    void presenceSettings().then((presence) => setBubble(presence?.bubble ?? null));
+  }, []);
   const brain = chosenBrain(prefs, memory);
   const voice = voiceAvailable();
   const earView = useDeviceModel(earModels()[0]?.id ?? null);
   const brainView = useDeviceModel(brain.id);
   const quickView = useDeviceModel(quickModel()?.id ?? null);
+  // Talk back in the system's basic voice: the way to a natural one, beside it.
+  const reading = useReadAloud();
+  useEffect(() => {
+    refreshVoices();
+  }, []);
+  const basicVoice =
+    reading.engine === 'apple' &&
+    reading.voices.length > 0 &&
+    (onlyBasicVoice(reading.voices, 'ar') || onlyBasicVoice(reading.voices, 'en'));
   const aboutId = useId();
   const examplesId = useId();
 
@@ -195,12 +213,31 @@ export function AskSettings() {
         }))}
         onChange={(talkBack) => update({ talkBack })}
       />
+      {basicVoice && prefs.talkBack !== 'never' && (
+        <ActionRow
+          label={t('readAloud.betterVoice')}
+          hint={t('readAloud.betterVoiceHint')}
+          action={t('prefs.open')}
+          onClick={openVoiceSettings}
+        />
+      )}
       <Toggle
         label={t('ask.settings.doForMe')}
         hint={t('ask.settings.doForMeHint')}
         checked={prefs.doForMe}
         onChange={(doForMe) => update({ doForMe })}
       />
+      {bubble !== null && (
+        <Toggle
+          label={t('ask.settings.bubble')}
+          hint={t('ask.settings.bubbleHint')}
+          checked={bubble}
+          onChange={(on) => {
+            setBubble(on);
+            void configurePresence({ bubble: on });
+          }}
+        />
+      )}
       {access?.applies && prefs.enabled && (
         <>
           <h4 className="prefs-subhead">{t('ask.access.title')}</h4>
