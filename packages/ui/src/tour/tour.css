@@ -2959,6 +2959,7 @@ html[data-reduce-motion="on"] .mock[data-phase="2"] .mock-line-edit > span {
     outline-color: transparent;
     box-shadow: none;
   }
+
   12%,
   45% {
     outline-color: #d9825c;

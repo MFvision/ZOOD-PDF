@@ -13,10 +13,10 @@ html.ask-bubble-page body {
   inset: 6px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(201, 162, 124, 0.55);
+  border: 1px solid rgb(201 162 124 / 55%);
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #fffaf3, #f3e6d4 70%);
-  box-shadow: 0 6px 18px rgba(40, 28, 16, 0.28);
+  box-shadow: 0 6px 18px rgb(40 28 16 / 28%);
   cursor: pointer;
   padding: 0;
   transition: transform 160ms ease, box-shadow 160ms ease;
@@ -24,7 +24,7 @@ html.ask-bubble-page body {
 
 .ask-bubble:hover {
   transform: scale(1.06);
-  box-shadow: 0 8px 22px rgba(40, 28, 16, 0.34);
+  box-shadow: 0 8px 22px rgb(40 28 16 / 34%);
 }
 
 .ask-bubble:focus-visible {
@@ -34,23 +34,23 @@ html.ask-bubble-page body {
 
 .ask-bubble.is-listening {
   box-shadow:
-    0 0 0 3px rgba(232, 184, 120, 0.6),
-    0 0 18px 6px rgba(217, 130, 92, 0.55);
+    0 0 0 3px rgb(232 184 120 / 60%),
+    0 0 18px 6px rgb(217 130 92 / 55%);
   animation: ask-bubble-breathe 1.4s ease-in-out infinite;
 }
 
 @keyframes ask-bubble-breathe {
   50% {
     box-shadow:
-      0 0 0 5px rgba(232, 184, 120, 0.4),
-      0 0 26px 10px rgba(217, 130, 92, 0.4);
+      0 0 0 5px rgb(232 184 120 / 40%),
+      0 0 26px 10px rgb(217 130 92 / 40%);
   }
 }
 
 @media (prefers-color-scheme: dark) {
   .ask-bubble {
     background: radial-gradient(circle at 35% 30%, #3a2c20, #1f1812 75%);
-    border-color: rgba(201, 162, 124, 0.45);
+    border-color: rgb(201 162 124 / 45%);
   }
 }
 
