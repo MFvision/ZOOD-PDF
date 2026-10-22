@@ -8,11 +8,13 @@ import {
   Folder,
   Languages,
   Laptop,
+  MessageCircle,
   MousePointer2,
   PenLine,
   RotateCcw,
   ShieldCheck,
   Signature,
+  SquareTerminal,
   Smartphone,
   Sparkles,
   Type,
@@ -38,6 +40,9 @@ import { useAppDispatch, useAppState } from '../state/AppContext';
 import { LOOK_IDS } from '../state/preferences';
 import type { ThemeMode } from '../state/preferences';
 import { useSettings } from '../state/settings';
+import { commandOf } from '../ai/chat/commands';
+import type { Command } from '../ai/chat/commands';
+import { findTool } from '../tools/tools';
 import '../remote/remote.css';
 
 /** What the person did on the way, for the last chapter's list. */
@@ -683,7 +688,146 @@ export function RemoteScene() {
 
 /* ----------------------------------------------------------------------- AI */
 
+/** What a command typed into the AI chat does, said in the tour's practice. */
+function commandWords(command: Command, t: ReturnType<typeof useI18n>['t']): string {
+  switch (command.kind) {
+    case 'tool':
+      return t('tour.ai.does.tool', { name: t(findTool(command.tool)?.labelKey ?? 'tool.ai') });
+    case 'openFile':
+      return t('tour.ai.does.openFile');
+    case 'home':
+      return t('tour.ai.does.home');
+    case 'settings':
+      return t('tour.ai.does.settings');
+    case 'tour':
+      return t('tour.ai.does.tour');
+    case 'shortcuts':
+      return t('tour.ai.does.shortcuts');
+    case 'theme':
+      return t(command.theme === 'dark' ? 'tour.ai.does.dark' : 'tour.ai.does.light');
+    case 'page':
+      return t('tour.ai.does.page', { page: command.page });
+    case 'find':
+      return t('tour.ai.does.find', { query: command.query });
+    case 'zoom':
+      return t(command.direction === 'in' ? 'tour.ai.does.zoomIn' : 'tour.ai.does.zoomOut');
+  }
+}
+
+/**
+ * The AI chapter, in two parts: the chat about anything with the commands
+ * it does in the app (first, as Help › AI chat and commands opens it), and
+ * the chat about a document with read aloud.
+ */
 export function AiScene() {
+  const { t } = useI18n();
+  const [part, setPart] = useState<'chat' | 'document'>('chat');
+  return (
+    <div className="tour-scene">
+      <div className="tour-choice" role="tablist" aria-label={t('tour.ch.ai')}>
+        {(['chat', 'document'] as const).map((one) => (
+          <button key={one} type="button" role="tab" aria-selected={part === one} className="tour-choice-item" onClick={() => setPart(one)}>
+            {t(one === 'chat' ? 'tour.ai.tabChat' : 'tour.ai.tabDocument')}
+          </button>
+        ))}
+      </div>
+      <div key={part} className="tour-part">
+        {part === 'chat' ? <AiChatPart /> : <AiDocumentPart />}
+      </div>
+    </div>
+  );
+}
+
+function AiChatPart() {
+  const { t } = useI18n();
+  const { phase, pick, playing, replay } = usePhases(4, 2000);
+  const [tried, setTried] = useState('');
+  const [said, setSaid] = useState<{ command: boolean; text: string } | null>(null);
+  const steps: { icon: LucideIcon; text: TKey }[] = [
+    { icon: MessageCircle, text: 'tour.ai.p3' },
+    { icon: SquareTerminal, text: 'tour.ai.p4' },
+  ];
+  const words = t('tour.ai.chatAnswer').split(' ');
+  const tryIt = () => {
+    const text = tried.trim();
+    if (!text) return;
+    // Only said here, not done: the practice changes nothing in the app.
+    const command = commandOf(text);
+    setSaid(command ? { command: true, text: commandWords(command, t) } : { command: false, text: t('tour.ai.notCommand') });
+  };
+  return (
+    <div className="tour-split">
+      <div>
+        <Steps steps={steps} phase={phase >= 3 ? 1 : 0} onPick={(n) => pick(n === 0 ? 2 : 3)} />
+        {!playing && <Replay onClick={replay} />}
+        <form
+          className="tour-try"
+          onSubmit={(event) => {
+            event.preventDefault();
+            tryIt();
+          }}
+        >
+          <label className="tour-try-label" htmlFor="tour-ai-try">
+            {t('tour.ai.tryLabel')}
+          </label>
+          <div className="tour-try-row">
+            <input
+              id="tour-ai-try"
+              className="text-input"
+              dir="auto"
+              maxLength={60}
+              placeholder={t('tour.ai.tryPlaceholder')}
+              value={tried}
+              onChange={(event) => {
+                setTried(event.target.value);
+                setSaid(null);
+              }}
+            />
+            <button type="submit" className="icon-btn icon-btn-labeled icon-btn-primary" disabled={tried.trim().length === 0}>
+              {t('tour.ai.tryGo')}
+            </button>
+          </div>
+          {said && (
+            <p className={said.command ? 'tour-try-said is-command' : 'tour-try-said'} role="status">
+              {said.command && <Icon of={Check} size={13} />}
+              <span>{said.text}</span>
+            </p>
+          )}
+        </form>
+      </div>
+      <div className="tour-stage">
+        <Glow />
+        <div className="chat-mock" data-phase={phase} aria-hidden="true">
+          <span className="chat-q">{t('tour.ai.chatQuestion')}</span>
+          <span className="chat-typing">
+            <i />
+            <i />
+            <i />
+          </span>
+          <span className="chat-a">
+            <span className="chat-a-head">
+              <Icon of={Sparkles} size={13} />
+              {t('app.name')}
+            </span>
+            <span className="chat-a-text">
+              {words.map((word, index) => (
+                <span key={index} style={{ '--w': index } as CSSProperties}>
+                  {word}{' '}
+                </span>
+              ))}
+            </span>
+          </span>
+          <span className="chat-speaker">
+            <Icon of={Check} size={15} />
+            {t('tour.ai.chatCommand')}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AiDocumentPart() {
   const { t } = useI18n();
   const { phase, pick, playing, replay } = usePhases(4, 2000);
   const steps: { icon: LucideIcon; text: TKey }[] = [
@@ -692,7 +836,7 @@ export function AiScene() {
   ];
   const words = t('tour.ai.answer').split(' ');
   return (
-    <div className="tour-scene tour-split">
+    <div className="tour-split">
       <div>
         <Steps steps={steps} phase={phase >= 3 ? 1 : 0} onPick={(n) => pick(n === 0 ? 2 : 3)} />
         {!playing && <Replay onClick={replay} />}

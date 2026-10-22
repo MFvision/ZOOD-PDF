@@ -21,8 +21,10 @@ describe('welcome tour', () => {
     expect(newSince(4, true)).toBe('ask');
     expect(newSince(5, true)).toBe('quickask');
     expect(newSince(2, false)).toBe('welcome');
-    expect(newSince(6, true)).toBe('support');
-    expect(newSince(6, false)).toBe('support');
+    // Version 7 brought Help & Support, and version 8 the AI's chat and its commands, which comes first.
+    expect(newSince(6, true)).toBe('ai');
+    expect(newSince(7, true)).toBe('ai');
+    expect(newSince(7, false)).toBe('ai');
   });
 
   it('has every chapter in both languages', () => {
