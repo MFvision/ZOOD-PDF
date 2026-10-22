@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useServices } from '../state/AppContext';
 import { coreLibrary } from '../library/ops';
 import type { LibraryOps, LibraryStats, SearchHit } from '../library/ops';
+import { onLibraryChanged } from '../library/request';
 import { emptyMeta, libraryStore } from '../library/store';
 import type { LibraryMeta, LibraryStore } from '../library/store';
 
@@ -33,6 +34,20 @@ export function useLibraryIndex(): LibraryIndex {
   const [meta, setMeta] = useState<LibraryMeta>(emptyMeta);
   const [stats, setStats] = useState<LibraryStats | null>(null);
   const handle = useRef<number | null>(null);
+  // Read again when the Library panel changes what it keeps, a moment later
+  // so a run of changes (each file read) is read once.
+  const [version, setVersion] = useState(0);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const off = onLibraryChanged(() => {
+      clearTimeout(timer);
+      timer = setTimeout(() => setVersion((one) => one + 1), 400);
+    });
+    return () => {
+      clearTimeout(timer);
+      off();
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -41,7 +56,10 @@ export function useLibraryIndex(): LibraryIndex {
       try {
         const kept = await store.readIndex().catch(() => null);
         if (!kept || kept.byteLength === 0) {
-          if (alive) setStatus('none');
+          if (alive) {
+            setStatus('none');
+            setMeta(emptyMeta());
+          }
           return;
         }
         const { handle: id } = await library.open(kept);
@@ -66,7 +84,7 @@ export function useLibraryIndex(): LibraryIndex {
       handle.current = null;
       if (id !== null) void library.close(id).catch(() => undefined);
     };
-  }, [store]);
+  }, [store, version]);
 
   const search = useCallback(async (query: string, limit: number) => {
     const id = handle.current;

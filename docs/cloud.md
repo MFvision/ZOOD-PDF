@@ -16,7 +16,9 @@ it does afterwards.
 
 ## What a person sees, once it is configured
 
-* **Home screen — Cloud drives.** Each drive you configured, who is signed in
+* **Home screen — Folders → Cloud drives.** Each drive is a folder beside the
+  person's own (clicking it opens the drive, signing in first). The home
+  screen's **Cloud drives** section has each drive you configured, who is signed in
   to it (as this device remembers; the drive is not asked), **Open…** and
   **Sign out** — and the drive files opened lately as pages, which reopen from
   the drive with one click.
@@ -148,6 +150,18 @@ WARRAQ_GOOGLE_CLIENT_ID=123456789012-abcdefghijklmnop.apps.googleusercontent.com
 A value that cannot be an app's ID **fails the build** rather than shipping a
 button that cannot sign in. Leaving a variable unset removes that drive
 entirely.
+
+**On GitHub** (the Windows and Mac installers and the auto-update releases),
+the same three names are read from the repository's **Actions variables**
+(Settings → Secrets and variables → Actions → *Variables* tab, not *Secrets*:
+these IDs are public, and are in every copy of the app anyway). Add
+`WARRAQ_ONEDRIVE_CLIENT_ID` and/or `WARRAQ_GOOGLE_CLIENT_ID` there and the
+next build has the drive; nothing else changes. Both
+`desktop-release.yml` and `desktop-windows.yml` pass them to the build.
+
+Once a drive is in the build it appears on the home screen under
+**Folders → Cloud drives**, as a folder beside the person's own, and in the
+File menu.
 
 ---
 

@@ -57,6 +57,10 @@ jobs:
           pnpm --dir apps/desktop exec tauri build 2>&1 | tee build.log
         env:
           CI: 'true'
+          # The cloud drives' public app IDs (docs/cloud.md); unset, no drive.
+          WARRAQ_ONEDRIVE_CLIENT_ID: ${{ vars.WARRAQ_ONEDRIVE_CLIENT_ID }}
+          WARRAQ_ONEDRIVE_TENANT: ${{ vars.WARRAQ_ONEDRIVE_TENANT }}
+          WARRAQ_GOOGLE_CLIENT_ID: ${{ vars.WARRAQ_GOOGLE_CLIENT_ID }}
 
       - name: what was built
         shell: bash
