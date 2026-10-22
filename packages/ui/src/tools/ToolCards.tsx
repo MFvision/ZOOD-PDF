@@ -30,6 +30,7 @@ export function ToolCards({ layout }: { layout: 'list' | 'grid' }) {
             <button
               type="button"
               className={cx('tool-card', !tool.implemented && 'tool-card-pending')}
+              data-command={`tool-${tool.id}`}
               onClick={() => dispatch({ type: 'SET_ACTIVE_TOOL', tool: tool.id })}
             >
               <ToolIcon tool={tool} size={layout === 'grid' ? 'large' : 'regular'} />

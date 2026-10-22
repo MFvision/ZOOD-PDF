@@ -1,6 +1,31 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Ask ZOOD" : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "اسأل زود" } }
+      }
+    },
+    "Opens your last document with ZOOD's on-device assistant, ready for a question." : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "يفتح آخر مستند لك مع مساعد زود على الجهاز، جاهزًا لسؤالك." } }
+      }
+    },
+    "Ask ZOOD about your last document, on the phone." : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "اسأل زود عن آخر مستند لك، على الهاتف." } }
+      }
+    },
+    "About your last document." : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "عن آخر مستند لك." } }
+      }
+    },
+    "Opens your last document with the assistant ready." : {
+      "localizations" : {
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "يفتح آخر مستند لك والمساعد جاهز." } }
+      }
+    },
     "No documents yet" : {
       "localizations" : { "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا مستندات بعد" } } }
     },

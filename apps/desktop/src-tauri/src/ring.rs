@@ -542,12 +542,8 @@ pub fn show_tray<R: Runtime>(app: &AppHandle<R>, visible: bool) {
         return;
     };
     if visible {
-        let menu = tauri::menu::MenuBuilder::new(app)
-            .text(TRAY_OPEN, "فتح محرر زود PDF")
-            .separator()
-            .text(TRAY_QUIT, "إنهاء")
-            .build();
-        if let Ok(menu) = menu {
+        // Ask ZOOD, the editor, recent files, Settings, the bubble, Quit (`presence.rs`).
+        if let Ok(menu) = crate::presence::tray_menu(app) {
             let _ = tray.set_menu(Some(menu));
         }
     }

@@ -79,6 +79,7 @@ export function MenuDropdown({ menu, app, open, onToggle, onHover, onClose }: Me
         role="menuitem"
         aria-haspopup="menu"
         aria-expanded={open}
+        data-menu={menu.id}
         className={app ? 'menu-button menu-button-app' : 'menu-button'}
         // A menu opens on the press, as the system's do; the click that
         // follows would only close it again.
@@ -113,6 +114,7 @@ export function MenuDropdown({ menu, app, open, onToggle, onHover, onClose }: Me
                 aria-checked={item.role && item.role !== 'menuitem' ? Boolean(item.checked) : undefined}
                 aria-disabled={item.disabled || undefined}
                 className="menu-item"
+                data-command={item.id}
                 tabIndex={-1}
                 onClick={() => select(item)}
               >

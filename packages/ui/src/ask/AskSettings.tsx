@@ -11,6 +11,7 @@ import { isolate } from '../signatures/model';
 import { useAppDispatch } from '../state/AppContext';
 import { openTourAt } from '../tour/openAt';
 import { AskSetup } from './AskSetup';
+import { configurePresence, presenceSettings } from './presence';
 import { quickModel } from './quick';
 import { noteAskReady } from './ReadyHint';
 import {
@@ -55,6 +56,11 @@ export function AskSettings() {
   const [ready, setReady] = useState<AskReadiness | null>(null);
   const [refused, setRefused] = useState(false);
   const [access, setAccess] = useState<AskAccess | null>(null);
+  /** The ZOOD bubble is on the screen (`src-tauri/src/presence.rs`); null outside the desktop. */
+  const [bubble, setBubble] = useState<boolean | null>(null);
+  useEffect(() => {
+    void presenceSettings().then((presence) => setBubble(presence?.bubble ?? null));
+  }, []);
   const brain = chosenBrain(prefs, memory);
   const voice = voiceAvailable();
   const earView = useDeviceModel(earModels()[0]?.id ?? null);
@@ -201,6 +207,17 @@ export function AskSettings() {
         checked={prefs.doForMe}
         onChange={(doForMe) => update({ doForMe })}
       />
+      {bubble !== null && (
+        <Toggle
+          label={t('ask.settings.bubble')}
+          hint={t('ask.settings.bubbleHint')}
+          checked={bubble}
+          onChange={(on) => {
+            setBubble(on);
+            void configurePresence({ bubble: on });
+          }}
+        />
+      )}
       {access?.applies && prefs.enabled && (
         <>
           <h4 className="prefs-subhead">{t('ask.access.title')}</h4>

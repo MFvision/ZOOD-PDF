@@ -1,0 +1,60 @@
+/* Ask ZOOD's light on a button of the editor (askBridge.ts): what Do it for me
+   is pressing, or what Show me wants pressed. It lets every click through. */
+
+.ask-spot {
+  position: fixed;
+  z-index: 2147483000;
+  pointer-events: none;
+  border-radius: 12px;
+  border: 2px solid #d9825c;
+  box-shadow:
+    0 0 0 4px rgba(232, 184, 120, 0.35),
+    0 0 24px 6px rgba(217, 130, 92, 0.45);
+  animation: ask-spot-in 220ms ease-out both, ask-spot-breathe 1.6s ease-in-out 220ms infinite;
+}
+
+.ask-spot-label {
+  position: absolute;
+  top: calc(100% + 8px);
+  inset-inline-start: 0;
+  max-width: 260px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #2b2118;
+  color: #f6e2c4;
+  font: 600 13px/1.35 system-ui, sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.ask-spot-label[data-above='true'] {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
+@keyframes ask-spot-in {
+  from {
+    opacity: 0;
+    transform: scale(1.15);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ask-spot-breathe {
+  50% {
+    box-shadow:
+      0 0 0 6px rgba(232, 184, 120, 0.22),
+      0 0 30px 10px rgba(217, 130, 92, 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ask-spot {
+    animation: none;
+  }
+}

@@ -33,3 +33,19 @@ public struct OpenLastDocumentIntent: AppIntent {
         return .result()
     }
 }
+
+/// "Ask ZOOD": opens the document on screen, or the one opened last, with
+/// the on-device assistant ready for a question. Nothing leaves the phone.
+public struct AskZoodIntent: AppIntent {
+    public static let title: LocalizedStringResource = "Ask ZOOD"
+    public static let description = IntentDescription("Opens your last document with ZOOD's on-device assistant, ready for a question.")
+    public static let openAppWhenRun = true
+
+    public init() {}
+
+    @MainActor
+    public func perform() async throws -> some IntentResult {
+        AppRoute.askZood.post()
+        return .result()
+    }
+}

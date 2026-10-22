@@ -36,7 +36,8 @@ import { FindBar } from './FindBar';
 import { LeftPane } from './LeftPane';
 import { MarkupBarContext, readMarkupBar, writeMarkupBar } from './markupBar';
 import { MenuBar } from './MenuBar';
-import { hasNativeMenuBar } from './menuModel';
+import { hasNativeMenuBar, useMenuModel } from './menuModel';
+import { useAskBridge } from './askBridge';
 import { PaneResizer } from './PaneResizer';
 import { RightPane } from './RightPane';
 import { Toolbar } from './Toolbar';
@@ -135,6 +136,7 @@ export function Shell() {
   return (
     <MarkupBarContext.Provider value={markupBar}>
       <NativeMenu enabled={nativeMenu} />
+      <AskBridge nativeMenu={nativeMenu} />
       <PendingPage />
       <div className="shell" data-tabs={settings.tabPosition} data-native-menu={nativeMenu || undefined} data-view={homeOver ? 'home' : state.view}>
         {!nativeMenu && <MenuBar />}
@@ -299,6 +301,12 @@ export function Shell() {
 /** The macOS menu bar (`useNativeMenu`), inside the markup bar's provider: its View menu shows that bar. */
 function NativeMenu({ enabled }: { enabled: boolean }) {
   useNativeMenu(enabled);
+  return null;
+}
+
+/** Ask ZOOD's command book in this editor window (`askBridge.ts`): the same menus, run without a click. */
+function AskBridge({ nativeMenu }: { nativeMenu: boolean }) {
+  useAskBridge(useMenuModel(), nativeMenu);
   return null;
 }
 

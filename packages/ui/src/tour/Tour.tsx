@@ -12,6 +12,7 @@ import { useAppDispatch, useAppState } from '../state/AppContext';
 import { readJson, writeJson } from '../state/preferences';
 import { askAvailable } from '../ask/settings';
 import { QuickAskScene } from './quickAskScene';
+import { ReachScene } from './reachScene';
 import { TOUR_VERSION, newSince, tourChapters } from './chapters';
 import { openTourAt, takeStartAt } from './openAt';
 import type { Chapter, ChapterId } from './chapters';
@@ -50,7 +51,7 @@ export function WelcomeTour() {
     const seen = readJson<{ version?: number }>(SEEN_KEY, {}).version ?? 0;
     if (!desktop || seen >= TOUR_VERSION) return;
     writeJson(SEEN_KEY, { seen: true, version: TOUR_VERSION });
-    openTourAt(newSince(seen, ask), () => dispatch({ type: 'DIALOG', dialog: 'tour' }));
+    openTourAt(newSince(seen, ask, desktop), () => dispatch({ type: 'DIALOG', dialog: 'tour' }));
   }, [desktop, ask, dispatch]);
 
   const open = dialog === 'tour';
@@ -200,6 +201,8 @@ function Scene({ chapter, progress, onProgress, onSettings, onSupport }: { chapt
       return <AskScene onPractised={() => onProgress({ ask: true })} onSettings={onSettings} />;
     case 'quickask':
       return <QuickAskScene onSettings={onSettings} />;
+    case 'reach':
+      return <ReachScene onSettings={onSettings} />;
     case 'remote':
       return <RemoteScene />;
     case 'ai':
