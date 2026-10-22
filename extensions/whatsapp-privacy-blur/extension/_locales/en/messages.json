@@ -38,6 +38,12 @@
   "hoverPeekHint": {
     "message": "Point at a blurred area to read it"
   },
+  "peekOne": {
+    "message": "Reveal one at a time"
+  },
+  "peekOneHint": {
+    "message": "Hovering shows only the chat or message under the mouse"
+  },
   "smooth": {
     "message": "Smooth reveal"
   },

@@ -9,8 +9,10 @@ no store listing, and no way to update itself.
 * **Blur contacts, chat, or both.** Contacts blurs the chat list. Chat blurs the open chat (name,
   messages, message box). Newly opened chats appear already blurred.
 * **Blur strength** from 1 to 20.
-* **Hover to peek.** Point at a blurred area to read it; move away and it blurs again.
-  Turn it off if you prefer to use the blur button only.
+* **Hover to peek, one at a time.** Point at a chat in the list or a message in the chat and
+  only that one becomes readable; everything else stays blurred. Only the messages are blurred,
+  not the chat wallpaper behind them. Turn off "Reveal one at a time" to reveal the whole area
+  instead, or turn off hover entirely and use the blur button.
 * **Smooth or instant** reveal.
 * **Your draft stays readable** while you type in the message box.
 * **Floating toolbar** on the page: drag handle, strength slider, blur on/off, what to blur,
@@ -69,7 +71,10 @@ sold or hijacked and silently updated with new code; a folder on your disk can't
 ## If WhatsApp changes its layout
 
 The blur targets two element ids WhatsApp has used for years: `#pane-side` (chat list) and
-`#main` (open chat). If an update renames them, edit the selectors in `extension/content.css`.
+`#main` (open chat). Inside them, each chat and each message is found by the `role="row"` or
+`role="listitem"` marker WhatsApp adds for screen readers. If WhatsApp ever drops those markers,
+the whole area is blurred instead, so nothing is left readable. If an update renames the ids,
+edit the selectors in `extension/content.css`.
 
 ## Files
 

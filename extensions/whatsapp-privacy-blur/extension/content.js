@@ -37,6 +37,7 @@
     html.toggleAttribute('data-wpb-off', !state.enabled);
     html.setAttribute('data-wpb-mode', state.mode);
     html.toggleAttribute('data-wpb-nopeek', !state.peek);
+    html.toggleAttribute('data-wpb-peekall', !state.peekOne);
     html.toggleAttribute('data-wpb-instant', !state.smooth);
     html.style.setProperty('--wpb-blur', `${state.amount}px`);
   }
@@ -151,10 +152,12 @@
     const fold = el('button');
 
     const peek = el('input', { type: 'checkbox' });
+    const peekOne = el('input', { type: 'checkbox' });
     const smooth = el('input', { type: 'checkbox' });
     const hide = el('button', { className: 'text', textContent: t('hideToolbar') });
     const menu = el('div', { className: 'menu', hidden: true, dir: t('@@bidi_dir') }, [
       el('label', {}, [el('span', { textContent: t('hoverPeek') }), peek]),
+      el('label', {}, [el('span', { textContent: t('peekOne') }), peekOne]),
       el('label', {}, [el('span', { textContent: t('smooth') }), smooth]),
       hide,
     ]);
@@ -180,6 +183,7 @@
       update({ collapsed: !state.collapsed }, true);
     });
     peek.addEventListener('change', () => update({ peek: peek.checked }, true));
+    peekOne.addEventListener('change', () => update({ peekOne: peekOne.checked }, true));
     smooth.addEventListener('change', () => update({ smooth: smooth.checked }, true));
     hide.addEventListener('click', () => update({ toolbar: false }, true));
 
@@ -227,6 +231,8 @@
         setIcon(fold, state.collapsed ? 'expand' : 'collapse');
         fold.title = state.collapsed ? t('expand') : t('collapse');
         peek.checked = state.peek;
+        peekOne.checked = state.peekOne;
+        peekOne.disabled = !state.peek;
         smooth.checked = state.smooth;
         if (state.pos) {
           place(state.pos.x, state.pos.y);

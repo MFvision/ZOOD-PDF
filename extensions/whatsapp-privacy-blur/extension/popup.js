@@ -33,7 +33,7 @@
     save({ amount: Number(amount.value) });
   });
 
-  for (const key of ['peek', 'smooth', 'toolbar']) {
+  for (const key of ['peek', 'peekOne', 'smooth', 'toolbar']) {
     const box = $(key);
     box.checked = s[key];
     box.addEventListener('change', () => save({ [key]: box.checked }));
