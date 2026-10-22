@@ -431,6 +431,18 @@ export function HomePage() {
           onChange={(items, hidden) => set({ homeSections: [...items, ...HOME_SECTIONS.filter((one) => !items.includes(one))], hiddenHomeSections: hidden })}
         />
       </Group>
+      <Group title={t('prefs.sidebarTools')}>
+        <Choice
+          label={t('prefs.sidebarTools')}
+          hint={t(settings.sidebarTools === 'all' ? 'prefs.sidebarTools.allHint' : 'prefs.sidebarTools.groupedHint')}
+          value={settings.sidebarTools}
+          options={[
+            { value: 'all', label: t('prefs.sidebarTools.all') },
+            { value: 'grouped', label: t('prefs.sidebarTools.grouped') },
+          ]}
+          onChange={(sidebarTools) => set({ sidebarTools })}
+        />
+      </Group>
       <Group title={t('prefs.recent')}>
         <Choice
           label={t('prefs.recentLimit')}

@@ -24,6 +24,8 @@ export type TabBar = 'always' | 'several';
 export type TabPosition = 'top' | 'toolbar';
 export type ReadingDirection = 'document' | 'rtl' | 'ltr';
 export type NightReading = 'off' | 'on' | 'dark';
+/** The home sidebar's tools: every tool in one long list (as Acrobat's All tools), or under eight headings with a short menu each. */
+export type SidebarTools = 'all' | 'grouped';
 export type HomeSection = 'actions' | 'recent' | 'starred' | 'tools' | 'assistant' | 'clouds';
 export type OutputPlace = 'beside' | 'folder' | 'ask';
 export type RingSize = 'small' | 'medium' | 'large';
@@ -60,6 +62,7 @@ export interface AppSettings {
   homeSections: HomeSection[];
   hiddenHomeSections: HomeSection[];
   recentLimit: 10 | 20 | 50;
+  sidebarTools: SidebarTools;
   /** Quick tools outside the app (the switches themselves live with the host). */
   shellMenuTools: string[];
   ringTools: string[];
@@ -114,6 +117,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   // The tools are in the sidebar and behind More (part 5 of the plan): the grid is there to turn back on.
   hiddenHomeSections: ['tools'],
   recentLimit: 20,
+  sidebarTools: 'all',
   shellMenuTools: [],
   ringTools: [],
   ringShortcut: 'Mod+Alt+Z',
@@ -201,6 +205,7 @@ export function sanitizeSettings(raw: unknown): AppSettings {
     homeSections: ordered(s.homeSections, HOME_SECTIONS),
     hiddenHomeSections: subset(s.hiddenHomeSections, HOME_SECTIONS, d.hiddenHomeSections),
     recentLimit: oneOf(s.recentLimit, [10, 20, 50] as const, d.recentLimit),
+    sidebarTools: oneOf(s.sidebarTools, ['all', 'grouped'] as const, d.sidebarTools),
     shellMenuTools: names(s.shellMenuTools),
     ringTools: names(s.ringTools, 8),
     ringShortcut: text(s.ringShortcut, d.ringShortcut, 40),

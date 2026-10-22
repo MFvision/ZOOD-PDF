@@ -65,11 +65,18 @@ test.describe('the home screen', () => {
   }) => {
     test.setTimeout(300_000);
     await home(page);
-    // The wordmark, the places and the tools under eight headings are in the sidebar; no bell, no avatar.
+    // The wordmark, the places and every tool in one long list are in the sidebar; no bell, no avatar.
     await expect(sidebar(page).locator('.home-brand-name bdi')).toHaveText('ZOOD PDF');
     for (const place of ['Home', 'Recents', 'Starred', 'Tags']) await expect(sidebar(page).getByRole('button', { name: place, exact: true })).toBeVisible();
     await expect(sidebar(page).getByRole('button', { name: 'Clouds' })).toHaveCount(0);
-    await expect(sidebar(page).getByRole('list', { name: 'Tools' }).getByRole('button')).toHaveText([
+    const tools = sidebar(page).getByRole('list', { name: 'Tools' }).getByRole('button');
+    await expect(tools).toHaveCount(20);
+    await expect(tools.filter({ hasText: 'Prepare form' })).toBeVisible();
+    // The button beside Tools puts them under eight headings, and the choice outlives a reload.
+    await sidebar(page).getByRole('button', { name: 'Show tools in groups' }).click();
+    await page.reload();
+    await expect(page.locator('.home')).toBeVisible();
+    await expect(tools).toHaveText([
       'Edit',
       'Annotate',
       'Organize',
@@ -79,6 +86,8 @@ test.describe('the home screen', () => {
       'Protect',
       'AI Assistant',
     ]);
+    await sidebar(page).getByRole('button', { name: 'Show all tools in one list' }).click();
+    await expect(tools).toHaveCount(20);
     await expect(page.locator('.home-topbar img, .home-topbar [aria-label*="otification"]')).toHaveCount(0);
 
     // The keyboard puts the caret in the field, and a name matches without its case.

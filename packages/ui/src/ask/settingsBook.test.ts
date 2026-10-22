@@ -23,6 +23,8 @@ describe('the settings book', () => {
     expect(ask('open documents in new windows')).toEqual(['openIn', 'windows']);
     expect(ask('turn on autosave')).toEqual(['autosave', 'on']);
     expect(ask('start ZOOD at login')).toEqual(['background', 'on']);
+    expect(ask('show the sidebar tools in groups')).toEqual(['sidebarTools', 'grouped']);
+    expect(ask('set the tools list to all tools')).toEqual(['sidebarTools', 'all']);
   });
 
   it('reads Arabic requests to change a setting', () => {
