@@ -33,6 +33,11 @@ test.describe('Help & Support', () => {
     await support(page).getByRole('textbox', { name: /What do you want to do/ }).fill('how do I make my file smaller');
     await support(page).getByRole('button', { name: 'Ask', exact: true }).last().click();
     await expect(support(page).getByRole('heading', { name: 'Make a file smaller' })).toBeVisible();
+    // Each step shows the real app, with the control it names lit up.
+    const pictures = support(page).locator('.support-step-pic');
+    await expect(pictures).toHaveCount(3);
+    await pictures.first().scrollIntoViewIfNeeded();
+    await expect.poll(() => pictures.first().evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(1080);
 
     await openPdf(page, INVOICE);
     await page.keyboard.press('F1');

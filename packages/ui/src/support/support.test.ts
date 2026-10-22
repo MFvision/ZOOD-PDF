@@ -11,6 +11,7 @@ import type { Draft } from './tickets';
 import { loadIdeas, postIdea, sortIdeas, validIdea, vote } from './ideas';
 import type { Idea } from './ideas';
 import { LIMITS, SUPPORT } from './config';
+import { motionUrl, shotUrl } from './guideShots';
 
 function installStorage(): Map<string, string> {
   const items = new Map<string, string>();
@@ -69,6 +70,17 @@ describe('the help articles', () => {
         if (step.target?.kind === 'label') expect((en as Record<string, string>)[step.target.label], step.target.label).toBeTruthy();
       }
     }
+  });
+
+  it('have a picture in both languages for every step that names one', () => {
+    const steps = ARTICLES.flatMap((article) => article.steps);
+    expect(steps.filter((step) => step.pic).length).toBeGreaterThan(50);
+    for (const step of steps.filter((one) => one.pic)) {
+      expect(shotUrl(step.pic, 'ar'), `${step.pic}-ar.jpg`).toBeTruthy();
+      expect(shotUrl(step.pic, 'en'), `${step.pic}-en.jpg`).toBeTruthy();
+      expect(Boolean(motionUrl(step.pic, 'ar')), `${step.pic}: both moving or neither`).toBe(Boolean(motionUrl(step.pic, 'en')));
+    }
+    expect(shotUrl(undefined, 'en')).toBeNull();
   });
 
   it('leave out what only the desktop app has, in a browser', () => {

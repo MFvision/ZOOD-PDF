@@ -19,6 +19,12 @@ export interface Bilingual {
   en: string;
 }
 
+/** A step of an article, with the picture that shows it (`scripts/support/make-shots.mjs`). */
+export interface Step extends Bilingual {
+  /** The picture's name: `public/guides/shots/<pic>-<lang>.jpg`. */
+  pic?: string;
+}
+
 export type Category = 'start' | 'edit' | 'pages' | 'sign' | 'convert' | 'protect' | 'ai' | 'desktop' | 'support';
 
 export const CATEGORIES: readonly { id: Category; title: Bilingual }[] = [
@@ -63,7 +69,7 @@ export interface Article {
   category: Category;
   title: Bilingual;
   summary: Bilingual;
-  steps: Bilingual[];
+  steps: Step[];
   tips?: Bilingual[];
   /** Other words people use for it, either language. */
   keywords: string[];
@@ -98,9 +104,10 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'فتح ملف PDF', en: 'Open a PDF' },
     summary: { ar: 'ثلاث طرق لفتح ملف، والملف يبقى على جهازك.', en: 'Three ways to open a file. It never leaves your device.' },
     steps: [
-      { ar: 'في الصفحة الرئيسية اضغط «فتح أو إنشاء» ثم «فتح PDF…».', en: 'On the home screen, press Open or create, then Open PDF….' },
-      { ar: 'أو اسحب الملف وأفلته في نافذة التطبيق.', en: 'Or drag the file onto the app window and drop it.' },
-      { ar: 'أو افتح ملفًا سابقًا من «الأخيرة» بضغطة واحدة.', en: 'Or open a recent file from Recents with one click.' },
+      { ar: 'في الصفحة الرئيسية اضغط زر «+» (فتح أو إنشاء) في الأعلى.', en: 'On the home screen, press the + button (Open or create) at the top.', pic: 'open-add' },
+      { ar: 'اختر «فتح PDF…» ثم اختر ملفك من النافذة.', en: 'Choose Open PDF…, then pick your file in the window.', pic: 'open-menu' },
+      { ar: 'يُفتح الملف ويظهر اسمه في الأعلى. أو اسحب الملف وأفلته في نافذة التطبيق.', en: 'The file opens with its name at the top. You can also drag a file onto the window and drop it.', pic: 'open-done' },
+      { ar: 'الملفات التي فتحتها تظهر في «الأخيرة» بصورة صفحتها الأولى: اضغطها لتفتحها مرة أخرى.', en: 'Files you opened appear under Recent with a picture of their first page: click one to open it again.', pic: 'open-recent' },
     ],
     tips: [{ ar: 'اختصار الفتح: Ctrl+O (أو ⌘O على ماك).', en: 'Shortcut: Ctrl+O (⌘O on a Mac).' }],
     keywords: ['open', 'file', 'load', 'فتح', 'ملف', 'افتح', 'تحميل'],
@@ -113,7 +120,7 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'حفظ التعديلات', en: 'Save your changes' },
     summary: { ar: 'الملف الأصلي لا يتغير حتى تحفظ.', en: 'The original file stays untouched until you save.' },
     steps: [
-      { ar: 'اضغط زر «حفظ» في الشريط العلوي، أو Ctrl+S (⌘S على ماك).', en: 'Press Save in the top bar, or Ctrl+S (⌘S on a Mac).' },
+      { ar: 'اضغط زر الحفظ في الشريط العلوي، أو Ctrl+S (⌘S على ماك).', en: 'Press the Save button in the top bar, or Ctrl+S (⌘S on a Mac).', pic: 'save-button' },
       { ar: 'على الكمبيوتر يُحفظ في الملف نفسه، وفي المتصفح يُنزَّل نسخة جديدة.', en: 'On the computer it saves into the same file; in a browser it downloads a new copy.' },
     ],
     tips: [{ ar: 'كل نسخة محفوظة تظهر في «النسخ السابقة» فتستطيع الرجوع إليها.', en: 'Every saved version is kept under Versions, so you can go back.' }],
@@ -126,9 +133,10 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'تعديل النص داخل PDF', en: 'Edit the text in a PDF' },
     summary: { ar: 'غيّر الكلمات في مكانها، والعربية تبقى صحيحة.', en: 'Change words where they are, with Arabic kept correct.' },
     steps: [
-      { ar: 'افتح الملف واضغط «تحرير النص» في الشريط العلوي.', en: 'Open the file and press Edit text in the top bar.' },
-      { ar: 'اضغط على الفقرة التي تريدها واكتب. يعاد ترتيب السطور بنفسه.', en: 'Click the paragraph you want and type. The lines reflow by themselves.' },
-      { ar: 'للتراجع: Ctrl+Z. ثم احفظ.', en: 'To undo: Ctrl+Z. Then save.' },
+      { ar: 'افتح الملف، ثم اختر «تحرير» من قائمة الأدوات.', en: 'Open the file, then choose Edit in the tools list.', pic: 'edit-tool' },
+      { ar: 'اضغط «تحرير النص».', en: 'Press Edit text.', pic: 'edit-mode' },
+      { ar: 'اضغط على الفقرة واكتب. تُعاد السطور بنفسها، والعربية تبقى متصلة. Ctrl+Enter يطبّق التغيير، وEsc يلغيه.', en: 'Click the paragraph and type. The lines reflow by themselves and Arabic stays joined. Ctrl+Enter applies the change; Esc cancels it.', pic: 'edit-paragraph' },
+      { ar: 'ثم احفظ الملف.', en: 'Then save the file.' },
     ],
     tips: [{ ar: 'لإضافة سطر جديد في أي مكان استخدم أداة «تحرير».', en: 'To add a new line anywhere, use the Edit tool.' }],
     keywords: ['edit', 'text', 'change', 'word', 'type', 'تعديل', 'تحرير', 'نص', 'كلام', 'كلمه', 'اكتب', 'غير'],
@@ -140,9 +148,9 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'التظليل والملاحظات', en: 'Highlight and add notes' },
     summary: { ar: 'ظلّل وسطّر واكتب ملاحظات وارسم على الصفحة.', en: 'Highlight, underline, add sticky notes and draw on the page.' },
     steps: [
-      { ar: 'افتح أداة «تعليق».', en: 'Open the Comment tool.' },
-      { ar: 'اختر «تظليل» ثم حدّد النص بالفأرة.', en: 'Choose Highlight, then select the text with the mouse.' },
-      { ar: 'للملاحظة اختر «ملاحظة لاصقة» واضغط مكانها في الصفحة.', en: 'For a note, choose Sticky note and click where it goes.' },
+      { ar: 'افتح الملف، ثم اختر «تعليق» من قائمة الأدوات.', en: 'Open the file, then choose Comment in the tools list.', pic: 'comment-tool' },
+      { ar: 'اختر «تظليل» ثم حدّد النص بالفأرة. وبجانبه التسطير والشطب.', en: 'Choose Highlight, then select the text with the mouse. Underline and Strike out are next to it.', pic: 'comment-highlight' },
+      { ar: 'للملاحظة اختر «ملاحظة لاصقة» واضغط مكانها في الصفحة. ومنها أيضًا مربع نص ورسم حر وأسهم.', en: 'For a note, choose Sticky note and click where it goes. Text box, Draw and Arrow are there too.', pic: 'comment-note' },
     ],
     keywords: ['comment', 'highlight', 'note', 'annotate', 'draw', 'تعليق', 'تظليل', 'ملاحظه', 'علق', 'رسم', 'خط'],
     guide: tool('comment', { ar: 'هذه أداة التعليق.', en: 'This is the Comment tool.' }),
@@ -153,9 +161,10 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'تدوير الصفحات وحذفها وترتيبها', en: 'Rotate, delete and reorder pages' },
     summary: { ar: 'كل الصفحات أمامك: اسحب لترتيبها.', en: 'All the pages in front of you: drag to reorder.' },
     steps: [
-      { ar: 'افتح أداة «تنظيم الصفحات».', en: 'Open the Organize pages tool.' },
-      { ar: 'اسحب الصفحة إلى مكانها الجديد.', en: 'Drag a page to its new place.' },
-      { ar: 'حدّد صفحة واستخدم الأزرار: تدوير، حذف، استخراج، إدراج.', en: 'Select a page and use the buttons: rotate, delete, extract, insert.' },
+      { ar: 'افتح الملف، ثم اختر «تنظيم الصفحات» من قائمة الأدوات.', en: 'Open the file, then choose Organize pages in the tools list.', pic: 'organize-tool' },
+      { ar: 'تظهر كل الصفحات. اضغط صفحة لتحديدها، واسحبها لتغيير مكانها.', en: 'All the pages appear. Click a page to select it, and drag it to move it.', pic: 'organize-grid' },
+      { ar: 'مع صفحة محددة استخدم الأزرار: تدوير، حذف، استخراج كملف جديد، إدراج صفحة.', en: 'With a page selected, use the buttons: rotate, delete, extract as a new file, insert a page.', pic: 'organize-buttons' },
+      { ar: 'اضغط «تم» ثم احفظ الملف.', en: 'Press Done, then save the file.', pic: 'organize-done' },
     ],
     keywords: ['pages', 'rotate', 'delete', 'reorder', 'move', 'extract', 'split', 'صفحات', 'صفحه', 'تدوير', 'حذف', 'ترتيب', 'نقل', 'استخراج', 'تقسيم', 'فصل'],
     guide: tool('organize', { ar: 'افتح تنظيم الصفحات من هنا.', en: 'Open Organize pages from here.' }),
@@ -166,9 +175,9 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'دمج عدة ملفات في ملف واحد', en: 'Combine several files into one' },
     summary: { ar: 'ملفات PDF وصور وملفات أوفيس في PDF واحد.', en: 'PDFs, pictures and Office files into one PDF.' },
     steps: [
-      { ar: 'افتح أداة «دمج».', en: 'Open the Combine tool.' },
-      { ar: 'أضف الملفات واسحبها لترتيبها.', en: 'Add the files and drag them into order.' },
-      { ar: 'اضغط زر الدمج واحفظ الملف الجديد.', en: 'Press Combine and save the new file.' },
+      { ar: 'اختر «دمج» من قائمة الأدوات. الملف المفتوح يكون أولها.', en: 'Choose Combine in the tools list. The open file is the first one.', pic: 'combine-tool' },
+      { ar: 'اضغط «إضافة ملفات…» واختر الملفات الأخرى، ثم رتّبها بالأسهم.', en: 'Press Add files…, pick the other files, then put them in order with the arrows.', pic: 'combine-add' },
+      { ar: 'اضغط زر «دمج الصفحات» واحفظ الملف الجديد.', en: 'Press Combine pages and save the new file.', pic: 'combine-go' },
     ],
     tips: [{ ar: 'على الكمبيوتر: حدّد الملفات في المجلد واضغط بالزر الأيمن ثم «دمج» دون فتح التطبيق.', en: 'On the computer: select the files in a folder, right-click and choose Combine, without opening the app.' }],
     keywords: ['combine', 'merge', 'join', 'دمج', 'ادمج', 'جمع', 'ضم', 'ملفات'],
@@ -180,9 +189,9 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'تصغير حجم الملف', en: 'Make a file smaller' },
     summary: { ar: 'اضغط الملف ليُرسل بالبريد أو واتساب بسهولة.', en: 'Compress it so it goes by e-mail or WhatsApp easily.' },
     steps: [
-      { ar: 'افتح أداة «ضغط».', en: 'Open the Compress tool.' },
-      { ar: 'اختر مستوى الضغط واضغط «ضغط».', en: 'Choose how strong, then press Compress.' },
-      { ar: 'يظهر الحجم قبل وبعد. احفظ النتيجة.', en: 'You see the size before and after. Save the result.' },
+      { ar: 'افتح الملف، ثم اختر «ضغط» من قائمة الأدوات.', en: 'Open the file, then choose Compress in the tools list.', pic: 'compress-tool' },
+      { ar: 'اختر مقدار الضغط. «صور أصغر» يناسب الإرسال والطباعة.', en: 'Choose how much to shrink it. Smaller images suits sharing and printing.', pic: 'compress-level' },
+      { ar: 'اضغط «ضغط». يظهر الحجم قبل وبعد، ثم احفظ النسخة الأصغر.', en: 'Press Compress. You see the size before and after; then save the smaller copy.', pic: 'compress-go' },
     ],
     keywords: ['compress', 'smaller', 'size', 'reduce', 'shrink', 'ضغط', 'حجم', 'تصغير', 'صغر', 'كبير', 'ثقيل'],
     guide: tool('compress', { ar: 'افتح أداة الضغط من هنا.', en: 'Open Compress from here.' }),
@@ -193,9 +202,10 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'تعبئة نموذج وتوقيعه', en: 'Fill in a form and sign it' },
     summary: { ar: 'اكتب في الحقول ووقّع بخطك أو بصورة توقيعك.', en: 'Type into the fields and sign by hand or with a picture of your signature.' },
     steps: [
-      { ar: 'افتح أداة «تعبئة وتوقيع».', en: 'Open the Fill & sign tool.' },
-      { ar: 'اضغط على أي حقل واكتب فيه.', en: 'Click any field and type.' },
-      { ar: 'اضغط «إنشاء توقيع»: ارسمه أو اكتبه أو اختر صورته، ثم ضعه على الصفحة.', en: 'Press Create a signature: draw it, type it or pick a picture, then place it on the page.' },
+      { ar: 'افتح النموذج، ثم اختر «تعبئة وتوقيع» من قائمة الأدوات.', en: 'Open the form, then choose Fill & sign in the tools list.', pic: 'sign-tool' },
+      { ar: 'اضغط «تعبئة حقول النموذج» ثم اضغط أي حقل في الصفحة واكتب.', en: 'Press Fill form fields, then click any field on the page and type.', pic: 'sign-fields' },
+      { ar: 'اضغط «إنشاء توقيع»: ارسمه أو اكتبه أو اختر صورته.', en: 'Press Create a signature: draw it, type it or pick a picture of it.', pic: 'sign-create' },
+      { ar: 'اضغط «وضع التوقيع» ثم اضغط مكانه في الصفحة، واحفظ.', en: 'Press Place signature, click where it goes on the page, and save.', pic: 'sign-place' },
     ],
     tips: [{ ar: 'بياناتك (الاسم والعنوان والبنك) في الإعدادات › بياناتي تملأ النماذج بضغطة، وتبقى على جهازك.', en: 'Your details (name, address, bank) in Settings › My details fill forms in one click, and stay on your device.' }],
     keywords: ['sign', 'signature', 'fill', 'form', 'field', 'توقيع', 'وقع', 'تعبئه', 'نموذج', 'حقل', 'امضاء'],
@@ -208,9 +218,9 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'قراءة ملف ممسوح ضوئيًا (OCR)', en: 'Read a scanned file (OCR)' },
     summary: { ar: 'حوّل صور الصفحات إلى نص تبحث فيه وتنسخه، بالعربية والإنجليزية.', en: 'Turn page pictures into text you can search and copy, in Arabic and English.' },
     steps: [
-      { ar: 'افتح الملف الممسوح وافتح أداة «مسح ضوئي وتعرّف على النص».', en: 'Open the scanned file and open Scan & OCR.' },
-      { ar: 'اختر اللغة واضغط بدء التعرّف.', en: 'Choose the language and start.' },
-      { ar: 'بعد الانتهاء صار النص قابلًا للبحث والنسخ. احفظ الملف.', en: 'When it finishes, the text can be searched and copied. Save the file.' },
+      { ar: 'افتح الملف الممسوح، ثم اختر «مسح ضوئي وتعرّف على النص» من قائمة الأدوات.', en: 'Open the scanned file, then choose Scan & OCR in the tools list.', pic: 'ocr-tool' },
+      { ar: 'اختر لغات الصفحة: العربية والإنجليزية محددتان مسبقًا.', en: 'Choose the languages on the page: Arabic and English are already ticked.', pic: 'ocr-langs' },
+      { ar: 'اضغط «التعرّف على النص». بعد الانتهاء يصير النص قابلًا للبحث والنسخ. احفظ الملف.', en: 'Press Recognize text. When it finishes, the text can be searched and copied. Save the file.', pic: 'ocr-go' },
     ],
     keywords: ['ocr', 'scan', 'scanned', 'picture', 'recognize', 'مسح', 'ضوئي', 'ممسوح', 'صوره', 'تعرف', 'نسخ'],
     guide: tool('ocr', { ar: 'افتح أداة المسح والتعرّف من هنا.', en: 'Open Scan & OCR from here.' }),
@@ -221,9 +231,9 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'تحويل PDF إلى docx أو xlsx أو pptx', en: 'Turn a PDF into docx, xlsx or pptx' },
     summary: { ar: 'صدّر النص والجداول والشرائح، والعربية من اليمين لليسار.', en: 'Export the text, tables and slides, with Arabic right to left.' },
     steps: [
-      { ar: 'افتح أداة «تصدير».', en: 'Open the Export tool.' },
-      { ar: 'اختر النوع: مستند docx أو جدول xlsx أو شرائح pptx أو صور أو نص.', en: 'Choose the kind: a .docx document, an .xlsx sheet, .pptx slides, pictures or text.' },
-      { ar: 'اضغط تصدير واحفظ الملف.', en: 'Press Export and save the file.' },
+      { ar: 'افتح الملف، ثم اختر «تصدير» من قائمة الأدوات.', en: 'Open the file, then choose Export in the tools list.', pic: 'export-tool' },
+      { ar: 'اختر النوع: مستند docx أو جدول xlsx أو شرائح pptx أو صور أو نص.', en: 'Choose the kind: a docx document, an xlsx sheet, pptx slides, pictures or text.', pic: 'export-kind' },
+      { ar: 'اضغط «تصدير» واحفظ الملف.', en: 'Press Export and save the file.', pic: 'export-go' },
     ],
     tips: [{ ar: 'التحويل إلى docx ينقل النص بفقرات متدفقة، لا الشكل الدقيق للصفحة.', en: 'A docx export carries the text as flowing paragraphs, not the exact page layout.' }],
     keywords: ['export', 'convert', 'word', 'excel', 'powerpoint', 'docx', 'xlsx', 'pptx', 'تصدير', 'تحويل', 'حول', 'وورد', 'اكسل', 'باوربوينت', 'جدول'],
@@ -235,9 +245,9 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'إنشاء PDF من مستند أو صور', en: 'Make a PDF from a document or pictures' },
     summary: { ar: 'ملفات docx وxlsx وpptx والصور إلى PDF.', en: 'docx, xlsx and pptx files and pictures to PDF.' },
     steps: [
-      { ar: 'في الصفحة الرئيسية اضغط «فتح أو إنشاء» ثم «إنشاء PDF…».', en: 'On the home screen, press Open or create, then Create PDF….' },
-      { ar: 'اختر الملف أو الصور.', en: 'Pick the file or the pictures.' },
-      { ar: 'راجع النتيجة واحفظها.', en: 'Check the result and save it.' },
+      { ar: 'في الصفحة الرئيسية اضغط زر «+» ثم «إنشاء PDF…».', en: 'On the home screen, press the + button, then Create PDF….', pic: 'create-menu' },
+      { ar: 'اضغط «إضافة ملفات…» واختر المستند أو الصور. عدة ملفات تصير PDF واحدًا بالترتيب.', en: 'Press Add files… and pick the document or the pictures. Several files become one PDF, in order.', pic: 'create-add' },
+      { ar: 'اختر حجم الصفحة إن أردت، ثم اضغط «إنشاء PDF» واحفظه.', en: 'Choose the page size if you like, then press Create PDF and save it.', pic: 'create-go' },
     ],
     keywords: ['create', 'make', 'new', 'word to pdf', 'image to pdf', 'انشاء', 'انشئ', 'جديد', 'صور', 'تحويل'],
     guide: { steps: [OPEN, { say: { ar: 'اختر «إنشاء PDF…».', en: 'Choose Create PDF….' }, target: { kind: 'label', label: 'home.add.create' } }] },
@@ -248,8 +258,8 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'وضع كلمة مرور على ملف', en: 'Put a password on a file' },
     summary: { ar: 'لا يفتح الملف إلا من يعرف كلمة المرور.', en: 'Only someone with the password can open it.' },
     steps: [
-      { ar: 'افتح أداة «حماية».', en: 'Open the Protect tool.' },
-      { ar: 'اضغط «تعيين كلمة مرور» واكتبها مرتين.', en: 'Press Set a password and type it twice.' },
+      { ar: 'افتح الملف، ثم اختر «حماية» من قائمة الأدوات.', en: 'Open the file, then choose Protect in the tools list.', pic: 'protect-tool' },
+      { ar: 'اضغط «تعيين كلمة مرور» واكتبها مرتين.', en: 'Press Set a password and type it twice.', pic: 'protect-set' },
       { ar: 'احفظ الملف. احتفظ بكلمة المرور، فلا يمكن استرجاعها.', en: 'Save the file. Keep the password: it cannot be recovered.' },
     ],
     keywords: ['password', 'protect', 'lock', 'encrypt', 'secure', 'حمايه', 'كلمه مرور', 'رقم سري', 'قفل', 'تشفير'],
@@ -261,9 +271,10 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'إخفاء معلومات حساسة نهائيًا', en: 'Remove private details for good' },
     summary: { ar: 'التنقيح يحذف النص فعلًا، لا يغطيه فقط.', en: 'Redaction really removes the text, it does not just cover it.' },
     steps: [
-      { ar: 'افتح أداة «تنقيح».', en: 'Open the Redact tool.' },
-      { ar: 'حدّد النص أو المنطقة، أو ابحث عن كلمة لتحديدها في كل الصفحات.', en: 'Mark the text or an area, or search for a word to mark it on every page.' },
-      { ar: 'اضغط «تطبيق التنقيح» ثم احفظ.', en: 'Press Apply redactions, then save.' },
+      { ar: 'افتح الملف، ثم اختر «تنقيح» من قائمة الأدوات.', en: 'Open the file, then choose Redact in the tools list.', pic: 'redact-tool' },
+      { ar: 'اضغط «تحديد نص للتنقيح» وحدّد النص، أو «تحديد منطقة» لجزء من الصفحة.', en: 'Press Mark text to redact and select the text, or Mark an area for part of the page.', pic: 'redact-mark' },
+      { ar: 'أو اكتب كلمة في «كلمات للبحث» لتحديدها في كل الصفحات، ومعها البريد والأرقام والهويات إن أردت.', en: 'Or type a word under Words to find to mark it on every page, with e-mails, numbers and IDs too if you like.', pic: 'redact-find' },
+      { ar: 'اضغط «تطبيق التنقيح» ثم احفظ. النص يُحذف فعلًا من الملف.', en: 'Press Apply redactions, then save. The text is really removed from the file.', pic: 'redact-apply' },
     ],
     keywords: ['redact', 'hide', 'remove', 'black out', 'private', 'تنقيح', 'اخفاء', 'حذف', 'سري', 'معلومات'],
     guide: tool('redact', { ar: 'هذه أداة التنقيح.', en: 'This is Redact.' }),
@@ -274,8 +285,9 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'مقارنة نسختين', en: 'Compare two versions' },
     summary: { ar: 'يظهر ما أضيف وما حُذف كلمة بكلمة.', en: 'Shows what was added and removed, word by word.' },
     steps: [
-      { ar: 'افتح النسخة الأولى وافتح أداة «مقارنة».', en: 'Open the first version and open Compare.' },
-      { ar: 'اختر النسخة الأخرى: ملف آخر أو نسخة محفوظة سابقًا.', en: 'Choose the other one: another file or an earlier saved version.' },
+      { ar: 'افتح النسخة الأولى، ثم اختر «مقارنة» من قائمة الأدوات.', en: 'Open the first version, then choose Compare in the tools list.', pic: 'compare-tool' },
+      { ar: 'اختر ما تقارن به: نسخة محفوظة سابقًا من الملف نفسه، أو ملف PDF آخر.', en: 'Choose what to compare it with: an earlier saved revision of the same file, or another PDF.', pic: 'compare-other' },
+      { ar: 'اضغط «مقارنة». يظهر ما أضيف وما حُذف كلمة بكلمة.', en: 'Press Compare. What was added and removed shows word by word.', pic: 'compare-go' },
     ],
     keywords: ['compare', 'difference', 'diff', 'changes', 'مقارنه', 'قارن', 'فرق', 'اختلاف', 'تغييرات'],
     guide: tool('compare', { ar: 'افتح أداة المقارنة من هنا.', en: 'Open Compare from here.' }),
@@ -286,7 +298,7 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'الاستماع إلى الملف', en: 'Listen to a file' },
     summary: { ar: 'يقرأ لك التطبيق الصفحة بصوت عربي أو إنجليزي.', en: 'The app reads the page to you in an Arabic or English voice.' },
     steps: [
-      { ar: 'افتح الملف واضغط «القراءة بصوت» في الشريط العلوي.', en: 'Open the file and press Read aloud in the top bar.' },
+      { ar: 'افتح الملف واضغط زر «القراءة بصوت» في الشريط العلوي.', en: 'Open the file and press Read aloud in the top bar.', pic: 'read-button' },
       { ar: 'اختر: هذه الصفحة، أو من هنا إلى النهاية، أو النص المحدد.', en: 'Choose: this page, from here to the end, or the selection.' },
       { ar: 'غيّر السرعة والصوت من الشريط نفسه.', en: 'Change the speed and the voice in the same bar.' },
     ],
@@ -299,9 +311,8 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'اسأل الذكاء الاصطناعي عن ملفك', en: 'Ask the AI about your file' },
     summary: { ar: 'لخّص واسأل وترجم. يعمل على جهازك دون إنترنت بعد تنزيله.', en: 'Summarize, ask and translate. It runs on your device, offline, once downloaded.' },
     steps: [
-      { ar: 'افتح أداة «الذكاء الاصطناعي».', en: 'Open the AI tool.' },
-      { ar: 'أول مرة: نزّل النموذج المحلي من الإعدادات › الذكاء الاصطناعي.', en: 'The first time: download the on-device model in Settings › AI.' },
-      { ar: 'اكتب سؤالك. الجواب يذكر الصفحة التي جاء منها.', en: 'Type your question. The answer names the page it came from.' },
+      { ar: 'افتح الملف، ثم اختر «الذكاء الاصطناعي» من قائمة الأدوات.', en: 'Open the file, then choose AI in the tools list.', pic: 'ai-tool' },
+      { ar: 'أول مرة: نزّل النموذج مرة واحدة (يعمل بعدها دون إنترنت). ثم اكتب سؤالك. الجواب يذكر الصفحة التي جاء منها.', en: 'The first time, download the model once (it then works offline). Then type your question. The answer names the page it came from.', pic: 'ai-ask' },
     ],
     keywords: ['ai', 'chat', 'ask', 'summary', 'summarize', 'translate', 'ذكاء', 'اصطناعي', 'محادثه', 'اسال', 'سؤال', 'تلخيص', 'لخص', 'ترجمه'],
     tour: 'ai',
@@ -316,13 +327,16 @@ export const ARTICLES: readonly Article[] = [
       {
         ar: 'اضغط مفتاحك مرة واحدة (Ctrl الأيمن، أو Command ⌘ الأيمن على ماك، ما لم تغيّره) وقل ما تريد. اضغطه مرة أخرى أو توقف عن الكلام.',
         en: 'Tap your key once (Right Ctrl, or Right Command ⌘ on a Mac, unless you changed it) and say what you want. Tap it again or just stop talking.',
+        pic: 'ask-keys',
       },
       { ar: 'في خانة رد بأي برنامج، اضغط المفتاح نفسه مرتين بسرعة فيكتب الرد عنك، ولا يُرسله.', en: 'In a reply box in any app, tap the same key twice quickly and it writes the reply for you. It never sends it.' },
       { ar: 'أو استمر بالضغط على مفاتيح «اضغط مطوّلًا لتتكلّم» وتكلّم، ثم اتركها. هذه مفاتيح أخرى غير مفتاحك.', en: 'Or hold the Hold to talk keys and speak, then let go. These are different keys from your tap key.' },
+      { ar: 'أو انقر أيقونة ZOOD في شريط المهام (شريط القوائم في الماك)، أو فقاعة ZOOD على حافة الشاشة. شغّل الفقاعة من الإعدادات › الذكاء الاصطناعي.', en: 'Or click the ZOOD icon in the tray (the menu bar on a Mac), or the ZOOD bubble on the edge of the screen. Turn the bubble on in Settings › AI.', pic: 'ask-bubble' },
+      { ar: 'قل «سوّها لي»: داخل محرر زود PDF ينفّذ أوامره فورًا ويضيء كل زر يستخدمه، وفي البرامج الأخرى يضغط الأزرار بأسمائها بعد موافقتك. شغّلها أو أوقفها من الإعدادات › الذكاء الاصطناعي.', en: 'Say “do it for me”: inside ZOOD PDF it runs its own commands at once and lights each button it uses; in other apps it presses buttons by their names after you agree. Turn it on or off in Settings › AI.', pic: 'ask-doit' },
       { ar: 'غيّر المفاتيح من الإعدادات › الذكاء الاصطناعي › اسأل زود.', en: 'Change the keys in Settings › AI › Ask ZOOD.' },
     ],
     tips: [{ ar: 'على ماك يحتاج إذن «تسجيل المدخلات» و«تسهيلات الاستخدام» والميكروفون.', en: 'On a Mac it needs Input Monitoring, Accessibility and the microphone.' }],
-    keywords: ['ask zood', 'voice', 'keys', 'shortcut', 'assistant', 'اسال زود', 'صوت', 'مفاتيح', 'اختصار', 'مساعد'],
+    keywords: ['ask zood', 'voice', 'keys', 'shortcut', 'assistant', 'bubble', 'tray', 'do it for me', 'اسال زود', 'صوت', 'مفاتيح', 'اختصار', 'مساعد', 'فقاعه', 'نفذها'],
     tour: 'ask',
     desktopOnly: true,
     guide: { steps: [{ say: { ar: 'هذه إعدادات «اسأل زود»: المفاتيح والصوت.', en: 'These are the Ask ZOOD settings: keys and voice.' }, run: 'settings:ai' }] },
@@ -333,10 +347,12 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'أدوات سريعة دون فتح التطبيق', en: 'Quick tools without opening the app' },
     summary: { ar: 'زر الفأرة الأيمن أو الحلقة: ضغط، دمج، تحويل مباشرة.', en: 'Right-click or the ring: compress, combine, convert straight away.' },
     steps: [
-      { ar: 'حدّد ملفًا أو أكثر في المجلد واضغط بالزر الأيمن، ثم اختر «محرر زود PDF: أدوات سريعة» والأداة.', en: 'Select one or more files in a folder, right-click, then choose ZOOD PDF: quick tools and the tool.' },
+      { ar: 'حدّد ملفًا أو أكثر في المجلد واضغط بالزر الأيمن، ثم اختر الأداة. تفتح نافذة صغيرة فيها كل الأدوات: اضغط الأداة التي تريدها.', en: 'Select one or more files in a folder, right-click, then choose the tool. A small window with every tool opens: press the one you want.', pic: 'quick-window' },
       { ar: 'في ويندوز 11 تجدها تحت «إظهار خيارات إضافية» في أسفل القائمة.', en: 'On Windows 11 it is under "Show more options" at the bottom of the menu.' },
-      { ar: 'أو اسحب الملفات مع الضغط على المفتاح الذي اخترته في الإعدادات › الأدوات السريعة لتظهر الحلقة، وأفلتها على الأداة.', en: 'Or drag the files while holding the key you chose in Settings › Quick tools to bring up the ring, and drop them on a tool.' },
-      { ar: 'رتّب الأدوات من الإعدادات › الأدوات السريعة.', en: 'Arrange the tools in Settings › Quick tools.' },
+      { ar: 'أو اسحب الملفات مع الضغط على Ctrl أو Shift فتظهر الحلقة عند المؤشر. أفلت الملفات على الأداة فتعمل فورًا، والنتيجة تُحفظ بجانب الأصل.', en: 'Or drag the files with Ctrl or Shift held and the ring appears at the pointer. Let go on a tool and it runs straight away; the result is saved beside the original.', pic: 'quick-ring' },
+      { ar: 'من الإعدادات › الأدوات السريعة: شغّل قائمة الزر الأيمن واختر أدواتها وترتيبها.', en: 'In Settings › Quick tools, turn on the right-click menu and choose its tools and their order.', pic: 'quick-menu-setting' },
+      { ar: 'وفي القسم نفسه: شغّل الحلقة أو أوقفها، واختر أدواتها ومفتاح فتحها (Ctrl+Alt+Z).', en: 'In the same place, turn the ring on or off and choose its tools and its key (Ctrl+Alt+Z).', pic: 'quick-ring-setting' },
+      { ar: 'واختر المفتاح الذي تضغطه أثناء السحب لتظهر الحلقة: Ctrl أو Shift أو Alt أو مفتاح ويندوز (على ماك: Option أو Command).', en: 'And choose the key you hold while dragging to bring up the ring: Ctrl, Shift, Alt or the Windows key (Option or Command on a Mac).', pic: 'quick-ring-key' },
     ],
     keywords: ['quick', 'right click', 'ring', 'context menu', 'سريعه', 'زر ايمن', 'الحلقه', 'قائمه', 'دائره'],
     tour: 'quick',
@@ -349,8 +365,8 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'التحكم من الجوال', en: 'Control it from your phone' },
     summary: { ar: 'اعرض الصفحات وحرّك المؤشر وأرسل الملفات من جوالك.', en: 'Present, move the pointer and send files from your phone.' },
     steps: [
-      { ar: 'من قائمة أدوات اختر «التحكم من الجوال…».', en: 'In the Tools menu, choose Phone remote….' },
-      { ar: 'امسح الرمز بكاميرا الجوال. الجهازان على الشبكة نفسها.', en: 'Scan the code with the phone camera. Both must be on the same network.' },
+      { ar: 'من قائمة أدوات اختر «التحكم من الجوال…»، أو اضغط زره أعلى الشاشة الرئيسية.', en: 'In the Tools menu, choose Phone remote…, or press its button at the top of Home.', pic: 'remote-menu' },
+      { ar: 'امسح الرمز بكاميرا الجوال. الجهازان على شبكة الواي فاي نفسها.', en: 'Scan the code with the phone camera. Both must be on the same Wi-Fi.', pic: 'remote-code' },
     ],
     keywords: ['phone', 'remote', 'mobile', 'present', 'qr', 'جوال', 'هاتف', 'تحكم', 'عرض', 'ريموت'],
     tour: 'remote',
@@ -379,8 +395,9 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'البحث في كل ملفاتك', en: 'Search across all your files' },
     summary: { ar: 'المكتبة تبحث في كل الملفات التي أضفتها، لا في الملف المفتوح فقط.', en: 'The Library searches every file you added, not just the open one.' },
     steps: [
-      { ar: 'افتح أداة «المكتبة» وأضف مجلدًا.', en: 'Open the Library tool and add a folder.' },
-      { ar: 'اكتب كلمة: تظهر الملفات والصفحات التي فيها.', en: 'Type a word: the files and pages with it appear.' },
+      { ar: 'اختر «المكتبة» من قائمة الأدوات.', en: 'Choose Library in the tools list.', pic: 'library-tool' },
+      { ar: 'اضغط «إضافة مجلد…» واختر المجلد الذي فيه ملفاتك.', en: 'Press Add a folder… and choose the folder with your files.', pic: 'library-add' },
+      { ar: 'اكتب كلمة في البحث: تظهر الملفات والصفحات التي فيها.', en: 'Type a word in the search: the files and pages with it appear.' },
     ],
     keywords: ['library', 'search', 'find', 'folder', 'مكتبه', 'بحث', 'ابحث', 'مجلد', 'ملفاتي'],
     guide: tool('library', { ar: 'افتح المكتبة من هنا.', en: 'Open the Library from here.' }),
@@ -391,8 +408,8 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'تغيير اللغة والشكل', en: 'Change the language and the look' },
     summary: { ar: 'عربي أو إنجليزي، فاتح أو داكن، وعدة أشكال.', en: 'Arabic or English, light or dark, and several looks.' },
     steps: [
-      { ar: 'افتح الإعدادات › عام لتغيير اللغة.', en: 'Open Settings › General to change the language.' },
-      { ar: 'وافتح الإعدادات › المظهر للون والشكل وحجم الأيقونات.', en: 'Open Settings › Appearance for the colours, the look and the icon size.' },
+      { ar: 'افتح الإعدادات من قائمة التطبيق، ثم «عام» واختر اللغة.', en: 'Open Settings from the app menu, then General, and choose the language.', pic: 'look-language' },
+      { ar: 'في «المظهر» اختر فاتحًا أو داكنًا، والشكل، واللون، وحجم الأيقونات.', en: 'Under Appearance, choose light or dark, the look, the colour and the icon size.', pic: 'look-appearance' },
     ],
     keywords: ['language', 'arabic', 'english', 'dark', 'theme', 'look', 'لغه', 'عربي', 'انجليزي', 'داكن', 'مظهر', 'شكل', 'الوان'],
     tour: 'look',
@@ -417,7 +434,7 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'جعل ZOOD PDF البرنامج الافتراضي', en: 'Make ZOOD PDF the default for PDFs' },
     summary: { ar: 'لتفتح ملفات PDF فيه بضغطتين.', en: 'So PDFs open in it with a double-click.' },
     steps: [
-      { ar: 'ويندوز: الإعدادات › عام › «فتح التطبيقات الافتراضية»، ثم اختر ZOOD PDF لملفات ‎.pdf.', en: 'Windows: Settings › General › Open Default apps, then choose ZOOD PDF for .pdf.' },
+      { ar: 'ويندوز: الإعدادات › عام › «فتح التطبيقات الافتراضية»، ثم اختر ZOOD PDF لملفات ‎.pdf.', en: 'Windows: Settings › General › Open Default apps, then choose ZOOD PDF for .pdf.', pic: 'default-app' },
       { ar: 'ماك: حدّد ملف PDF في Finder، ثم «ملف › إظهار المعلومات»، واختر ZOOD PDF تحت «فتح باستخدام» ثم «تغيير الكل».', en: 'Mac: select a PDF in Finder, File › Get Info, choose ZOOD PDF under Open with, then Change All.' },
     ],
     keywords: ['default', 'double click', 'associate', 'افتراضي', 'تلقائي', 'يفتح'],
@@ -431,11 +448,11 @@ export const ARTICLES: readonly Article[] = [
     summary: { ar: 'التحديثات تصل وحدها، أو اطلبها الآن.', en: 'Updates arrive by themselves, or ask for one now.' },
     steps: [
       { ar: 'عند وجود تحديث يظهر شريط صغير: اضغط «تحديث».', en: 'When there is an update a small bar appears: press Update.' },
-      { ar: 'أو افتح الإعدادات › حول › «البحث عن تحديث».', en: 'Or open Settings › About › Check for updates.' },
+      { ar: 'أو افتح الإعدادات › عام، ثم اضغط «ابحث الآن» بجانب «البحث عن تحديثات».', en: 'Or open Settings › General and press Check now beside Check for updates.', pic: 'updates-check' },
     ],
     keywords: ['update', 'version', 'upgrade', 'new version', 'تحديث', 'حدث', 'نسخه جديده', 'اصدار'],
     desktopOnly: true,
-    guide: { steps: [{ say: { ar: 'التحديثات هنا.', en: 'Updates are here.' }, run: 'settings:about' }] },
+    guide: { steps: [{ say: { ar: 'التحديثات هنا.', en: 'Updates are here.' }, run: 'settings:general' }] },
   },
   {
     id: 'report',
@@ -443,10 +460,10 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'الإبلاغ عن مشكلة أو اقتراح فكرة', en: 'Report a problem or suggest an idea' },
     summary: { ar: 'دون حساب: اكتب المشكلة وتابع حالتها، أو صوّت للأفكار.', en: 'No account: write the problem and follow its status, or vote for ideas.' },
     steps: [
-      { ar: 'افتح مساعدة › المساعدة والدعم، ثم «الإبلاغ عن مشكلة».', en: 'Open Help › Help & Support, then Report a problem.' },
-      { ar: 'اكتب ما حدث. ترى كل ما سيُرسل وتختار إرفاق السجل والصورة.', en: 'Write what happened. You see everything that will be sent and choose whether to attach the log and a picture.' },
+      { ar: 'افتح مساعدة › المساعدة والدعم (أو اضغط F1).', en: 'Open Help › Help & Support (or press F1).', pic: 'help-menu' },
+      { ar: 'في «الإبلاغ عن مشكلة» اكتب ما حدث. ترى كل ما سيُرسل قبل الإرسال، وتختار إرفاق السجل والصورة.', en: 'Under Report a problem, write what happened. You see everything before it is sent, and choose whether to attach the log and a picture.', pic: 'help-report' },
       { ar: 'تظهر حالة بلاغك في القائمة نفسها: مفتوح، قيد العمل، تم الإصلاح.', en: 'Its status shows in the same list: open, in progress, fixed.' },
-      { ar: 'وفي «الأفكار» اكتب فكرتك أو صوّت لأفكار غيرك.', en: 'In Ideas, write your own idea or vote for others.' },
+      { ar: 'وفي «الأفكار» اكتب فكرتك أو صوّت لأفكار غيرك، دون حساب.', en: 'Under Ideas, write your own idea or vote for others, with no account.', pic: 'help-ideas' },
     ],
     keywords: ['report', 'problem', 'bug', 'support', 'ticket', 'idea', 'feedback', 'vote', 'بلاغ', 'مشكله', 'خطا', 'دعم', 'فكره', 'اقتراح', 'تصويت', 'شكوى'],
   },
