@@ -1,0 +1,688 @@
+/*
+ * The tour's phone chapter (phoneScene.tsx): a card with its steps down the
+ * side and the step itself beside them. The code sits in a dark frame whose
+ * corners breathe while a beam sweeps it; the pill under it turns to a tick
+ * when the phone arrives; a step blurs away and the next one rises in. The
+ * loops are under prefers-reduced-motion: no-preference; the step changes
+ * stay, as fades, with motion reduced.
+ */
+.phone-card {
+  --frame: color-mix(in srgb, var(--hue) 18%, #0d1117);
+
+  display: grid;
+  grid-template-columns: 196px minmax(0, 1fr);
+  min-block-size: 330px;
+  overflow: hidden;
+  background: var(--window-background);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-16);
+  box-shadow: var(--shadow-sheet);
+  container-type: inline-size;
+}
+
+/* ---- The side: the steps ---- */
+.phone-card-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-5);
+  color: #fff;
+  background:
+    radial-gradient(120% 70% at 0% 0%, color-mix(in srgb, var(--hue) 70%, #fff 10%), transparent 70%),
+    linear-gradient(170deg, color-mix(in srgb, var(--hue) 82%, #000), color-mix(in srgb, var(--hue) 45%, #05080d));
+}
+
+.phone-card-mark {
+  display: grid;
+  place-items: center;
+  inline-size: 34px;
+  block-size: 34px;
+  background: rgb(255 255 255 / 14%);
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: var(--radius-10);
+}
+
+.phone-card-eyebrow {
+  margin-block-start: var(--space-3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.phone-card-heading {
+  font-size: var(--text-title3);
+  line-height: var(--leading-tight);
+}
+
+.phone-steps {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: 0;
+  margin: var(--space-5) 0 0;
+  list-style: none;
+}
+
+/* The line the dots sit on. */
+.phone-steps::before {
+  position: absolute;
+  inset-block: 10px;
+  inset-inline-start: 10px;
+  inline-size: 1px;
+  content: "";
+  background: rgb(255 255 255 / 22%);
+}
+
+.phone-steps li {
+  position: relative;
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  opacity: 0.6;
+  transition: opacity var(--duration-regular) var(--ease-out);
+}
+
+.phone-steps li.is-current,
+.phone-steps li.is-done {
+  opacity: 1;
+}
+
+.phone-steps li > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.phone-steps li strong {
+  font-size: var(--text-footnote);
+}
+
+.phone-steps li > span:last-child > span {
+  opacity: 0.75;
+}
+
+.phone-steps-dot {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 21px;
+  block-size: 21px;
+  font-size: 10px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--hue) 60%, #05080d);
+  border: 1px solid rgb(255 255 255 / 40%);
+  border-radius: 50%;
+  transition:
+    background var(--duration-regular) var(--ease-out),
+    color var(--duration-regular) var(--ease-out),
+    transform var(--duration-sheet) var(--spring);
+}
+
+.is-current .phone-steps-dot {
+  color: var(--hue);
+  background: #fff;
+  border-color: #fff;
+  box-shadow: 0 0 0 4px rgb(255 255 255 / 18%);
+}
+
+.is-done .phone-steps-dot {
+  color: var(--hue);
+  background: #fff;
+  border-color: #fff;
+}
+
+.phone-card-foot {
+  margin-block-start: auto;
+  font-size: 10.5px;
+  line-height: 1.4;
+  opacity: 0.65;
+}
+
+/* ---- The step ---- */
+.phone-card-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-6);
+  align-items: center;
+  padding: var(--space-7);
+  transition:
+    opacity var(--duration-regular) var(--ease-out),
+    filter var(--duration-regular) var(--ease-out),
+    transform var(--duration-regular) var(--ease-out);
+}
+
+.phone-card-main.is-leaving {
+  opacity: 0;
+  filter: blur(6px);
+  transform: scale(0.985);
+}
+
+.phone-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.phone-card-text h3 {
+  margin: 0;
+  font-size: var(--text-title2);
+  line-height: var(--leading-tight);
+}
+
+.phone-card-text p {
+  margin: 0;
+  font-size: var(--text-callout);
+  line-height: var(--leading-body);
+  color: var(--secondary-label);
+}
+
+.phone-card-of {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--hue);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.phone-card-text .phone-card-link,
+.phone-card-text .phone-card-small {
+  font-size: var(--text-footnote);
+}
+
+.phone-card-link code {
+  font-family: var(--font-mono);
+  color: var(--label);
+}
+
+.phone-card-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-block-start: var(--space-3);
+}
+
+.phone-card-buttons .icon-btn .lucide {
+  margin-inline-start: 2px;
+}
+
+/* ZOOD PDF › Phone remote › Scan */
+.phone-card-path {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.phone-card-path li {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--hue) 10%, var(--grouped-background));
+  border: 1px solid color-mix(in srgb, var(--hue) 25%, var(--separator));
+  border-radius: var(--radius-capsule);
+}
+
+.phone-card-path li + li::before {
+  margin-inline-end: 4px;
+  color: var(--tertiary-label);
+  content: "›";
+}
+
+html[dir="rtl"] .phone-card-path li + li::before {
+  content: "‹";
+}
+
+/* ---- The frame the code sits in ---- */
+.phone-frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-6) var(--space-6) var(--space-5);
+  background:
+    radial-gradient(80% 60% at 50% 0%, color-mix(in srgb, var(--hue) 35%, transparent), transparent),
+    var(--frame);
+  border-radius: 22px;
+  box-shadow:
+    0 18px 40px -18px color-mix(in srgb, var(--hue) 60%, #000),
+    inset 0 0 0 1px rgb(255 255 255 / 8%);
+}
+
+.phone-frame-corners {
+  position: absolute;
+  inset: 14px 14px 46px;
+  pointer-events: none;
+}
+
+.phone-frame-corners i {
+  position: absolute;
+  inline-size: 18px;
+  block-size: 18px;
+  border: 2px solid rgb(255 255 255 / 85%);
+}
+
+.phone-frame-corners i:nth-child(1) {
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  border-block-end: 0;
+  border-inline-end: 0;
+  border-start-start-radius: 7px;
+}
+
+.phone-frame-corners i:nth-child(2) {
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  border-block-end: 0;
+  border-inline-start: 0;
+  border-start-end-radius: 7px;
+}
+
+.phone-frame-corners i:nth-child(3) {
+  inset-block-end: 0;
+  inset-inline-start: 0;
+  border-block-start: 0;
+  border-inline-end: 0;
+  border-end-start-radius: 7px;
+}
+
+.phone-frame-corners i:nth-child(4) {
+  inset-block-end: 0;
+  inset-inline-end: 0;
+  border-block-start: 0;
+  border-inline-start: 0;
+  border-end-end-radius: 7px;
+}
+
+.phone-frame-tile {
+  position: relative;
+  padding: 10px;
+  overflow: hidden;
+  line-height: 0;
+  background: #fff;
+  border-radius: 12px;
+}
+
+.phone-frame-qr {
+  display: block;
+  inline-size: 148px;
+  block-size: 148px;
+  color: #000;
+}
+
+.phone-frame-host svg {
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.phone-frame-empty {
+  background:
+    linear-gradient(90deg, transparent, rgb(0 0 0 / 6%), transparent) 0 0 / 200% 100%,
+    repeating-conic-gradient(rgb(0 0 0 / 8%) 0 25%, transparent 0 50%) 0 0 / 14px 14px;
+  border-radius: 4px;
+}
+
+.phone-frame-beam {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 0;
+  block-size: 34px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--hue) 30%, transparent) 80%, var(--hue));
+  opacity: 0;
+}
+
+.phone-frame-pill {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  max-inline-size: 190px;
+  padding: 5px 11px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgb(255 255 255 / 85%);
+  white-space: nowrap;
+  background: rgb(255 255 255 / 10%);
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: var(--radius-capsule);
+  transition:
+    background var(--duration-regular) var(--ease-out),
+    color var(--duration-regular) var(--ease-out);
+}
+
+.phone-frame-dot {
+  inline-size: 6px;
+  block-size: 6px;
+  background: color-mix(in srgb, var(--hue) 60%, #fff);
+  border-radius: 50%;
+}
+
+.phone-frame[data-state="done"] .phone-frame-pill {
+  color: #0d1117;
+  background: #fff;
+}
+
+.phone-frame[data-state="done"] .phone-frame-tile {
+  box-shadow: 0 0 0 3px var(--hue);
+}
+
+/* ---- Ready: the tick and the phone ---- */
+.phone-card-done {
+  display: grid;
+  place-items: center;
+  inline-size: 40px;
+  block-size: 40px;
+  color: var(--accent-contrast, #fff);
+  background: var(--hue);
+  border-radius: 50%;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--hue) 18%, transparent);
+}
+
+.phone-card-can {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0;
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-callout);
+  list-style: none;
+}
+
+.phone-card-can li {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.phone-card-can .lucide {
+  color: var(--hue);
+}
+
+.phone-mock {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  inline-size: 132px;
+  block-size: 252px;
+  padding: 30px 10px 12px;
+  background: var(--grouped-background);
+  border: 5px solid #11151b;
+  border-radius: 28px;
+  box-shadow: 0 22px 40px -22px rgb(0 0 0 / 55%);
+}
+
+.phone-mock-notch {
+  position: absolute;
+  inset-block-start: 8px;
+  inset-inline: 0;
+  inline-size: 40px;
+  block-size: 11px;
+  margin-inline: auto;
+  background: #11151b;
+  border-radius: 8px;
+}
+
+.phone-mock-title {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.phone-mock-slide {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--hue);
+  background: var(--window-background);
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+}
+
+.phone-mock-keys {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.phone-mock-keys > span {
+  display: grid;
+  place-items: center;
+  block-size: 34px;
+  background: var(--secondary-fill);
+  border-radius: 9px;
+}
+
+.phone-mock-keys > span.is-next {
+  color: var(--accent-contrast, #fff);
+  background: var(--hue);
+}
+
+/* ---- Narrow ---- */
+@container (max-width: 560px) {
+  .phone-card-main {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+}
+
+@media (width <= 720px) {
+  .phone-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .phone-steps {
+    flex-direction: row;
+    margin-block-start: var(--space-3);
+  }
+
+  .phone-steps::before {
+    display: none;
+  }
+}
+
+/* ---- Motion ---- */
+@media (prefers-reduced-motion: no-preference) {
+  .phone-card-main {
+    animation: phone-rise 420ms var(--ease-out) backwards;
+  }
+
+  .phone-frame {
+    animation: phone-pop 520ms var(--spring) 80ms backwards;
+  }
+
+  .phone-frame[data-state="waiting"] .phone-frame-corners {
+    animation: phone-breathe 2.4s ease-in-out infinite;
+  }
+
+  .phone-frame[data-state="waiting"] .phone-frame-beam {
+    animation: phone-beam 2.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  }
+
+  .phone-frame[data-state="waiting"] .phone-frame-dot {
+    animation: phone-blink 1.2s ease-in-out infinite;
+  }
+
+  .phone-frame[data-state="done"] .phone-frame-pill {
+    animation: phone-pop 420ms var(--spring);
+  }
+
+  .phone-frame-empty {
+    animation: phone-shimmer 1.2s linear infinite;
+  }
+
+  .is-current .phone-steps-dot {
+    animation: phone-pop 420ms var(--spring);
+  }
+
+  .is-done .phone-steps-dot {
+    animation: phone-tick 480ms var(--spring);
+  }
+
+  .phone-card-path li,
+  .phone-card-can li {
+    animation: phone-rise 420ms var(--ease-out) backwards;
+    animation-delay: calc(260ms + var(--i) * 120ms);
+  }
+
+  .phone-card-done {
+    animation: phone-tick 600ms var(--spring) 120ms backwards;
+  }
+
+  .phone-mock {
+    animation:
+      phone-rise 560ms var(--ease-out) 160ms backwards,
+      remote-float 3.4s ease-in-out 800ms infinite;
+  }
+
+  .phone-mock-slide > span {
+    animation: phone-slide 2.8s var(--ease-out) infinite;
+  }
+
+  .phone-mock-keys > span.is-next {
+    animation: phone-press 2.8s var(--ease-out) infinite;
+  }
+}
+
+html[data-reduce-motion="on"] .phone-card-main {
+  transition: opacity var(--duration-regular) linear;
+}
+
+html[data-reduce-motion="on"] .phone-card-main.is-leaving {
+  filter: none;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phone-card-main {
+    transition: opacity var(--duration-regular) linear;
+  }
+
+  .phone-card-main.is-leaving {
+    filter: none;
+    transform: none;
+  }
+}
+
+@keyframes phone-rise {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(10px);
+  }
+}
+
+@keyframes phone-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes phone-tick {
+  0% {
+    transform: scale(0.4);
+  }
+
+  60% {
+    transform: scale(1.15);
+  }
+}
+
+@keyframes phone-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(0.95);
+  }
+}
+
+@keyframes phone-beam {
+  0% {
+    opacity: 0;
+    transform: translateY(-34px);
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  85% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(168px);
+  }
+}
+
+@keyframes phone-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes phone-shimmer {
+  to {
+    background-position: -200% 0, 0 0;
+  }
+}
+
+@keyframes phone-slide {
+  0%,
+  45% {
+    opacity: 1;
+    transform: none;
+  }
+
+  55% {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+
+  56% {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+
+  70%,
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes phone-press {
+  0%,
+  40%,
+  60%,
+  100% {
+    transform: none;
+  }
+
+  48% {
+    transform: scale(0.9);
+  }
+}

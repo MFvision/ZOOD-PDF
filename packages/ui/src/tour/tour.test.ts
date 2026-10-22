@@ -28,6 +28,10 @@ describe('welcome tour', () => {
     // Version 9 brought Always ready: the tray, the bubble and Do it for me by ZOOD's own commands (the desktop's).
     expect(newSince(8, true)).toBe('reach');
     expect(newSince(8, true, false)).toBe('welcome');
+    // Version 10 brought the phone app's code in the phone chapter.
+    expect(newSince(9, true)).toBe('remote');
+    expect(newSince(9, false)).toBe('remote');
+    expect(newSince(9, true, false)).toBe('welcome');
   });
 
   it('has every chapter in both languages', () => {
