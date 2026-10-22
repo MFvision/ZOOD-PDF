@@ -77,6 +77,7 @@ import {
   stepWords,
 } from './book';
 import type { BookEntry, BookStep, Control, Intent } from './book';
+import { settingAsked, settingsPageAsked, settingWords } from './settingsBook';
 import { decisionGrammar, languageOf, readDecision, systemPrompt } from './plan';
 import type { AskTool, Decision, Moment } from './plan';
 import { pushLevel, quietEnough, watchQuiet } from './listen';
@@ -600,6 +601,8 @@ function Island() {
       setPhase({ kind: 'thinking', words, screen });
       // Inside ZOOD PDF its own commands come first: no picture, no wait.
       if (!chosen && moment.ours && (await bookLane(words, spoken))) return;
+      // A setting, by its name, from anywhere: Settings opens at it.
+      if (!chosen && (await settingsLane(words, spoken))) return;
       if (await quickLane(words, spoken, moment, chosen)) return;
       // Another app: its buttons by their names, before any picture is read.
       if (!chosen && !moment.ours && (await controlsLane(words, spoken))) return;
@@ -762,6 +765,71 @@ function Island() {
       steps.push(step);
     }
     await runBook(said ?? 'do', words, steps, spoken);
+    return true;
+  };
+
+  /**
+   * Settings by their names (`settingsBook.ts`): "turn on dark mode",
+   * "غيّر اللغة للإنجليزي", "make the icons bigger", "change the settings".
+   * ZOOD PDF's window comes forward with Settings open at the setting, its
+   * row lit, and the change made — or, for Show me, left to the person.
+   * False when no setting and no Settings page is named.
+   */
+  const settingsLane = async (words: string, spoken: boolean): Promise<boolean> => {
+    const said = intentOf(words);
+    // "What does night reading do?" is answered, not done.
+    if (!said && /[?؟]/.test(words)) return false;
+    const language = languageOf(words);
+    const asked = settingAsked(words, true);
+    let step: BookStep;
+    let named = { name: '', choice: '' };
+    if (asked) {
+      named = settingWords(asked.entry, asked.value, language);
+      step = { id: 'setting', setting: asked.entry.id, value: asked.value, label: named.choice ? `${named.name}: ${named.choice}` : named.name };
+    } else {
+      const page = settingsPageAsked(words);
+      if (page === undefined) return false;
+      step = { id: 'setting', setting: `page:${page ?? 'general'}`, value: null, label: translate(language, 'settings.title') };
+    }
+    endGuide();
+    const turn = (guideTurn.current += 1);
+    const live = () => guideTurn.current === turn;
+    const mode: Intent = said === 'show' ? 'show' : 'do';
+    const talks = shouldTalk(readAskPreferences().talkBack, spoken);
+    setPhase({ kind: 'guide', mode, words, say: step.label, step: 1, of: 1, wait: mode === 'show' ? 'click' : 'busy', onlyPoints: false });
+    if (talks && mode === 'show') void talk(step.label);
+    try {
+      // From the tray or another app, ZOOD PDF's window comes first.
+      if (await invokeHost('ask_open_editor').catch(() => false)) await sleep(2500);
+      if (!live()) return true;
+      let done: { ran: boolean; reason?: string };
+      if (mode === 'show') {
+        const clicked = invokeHost('ask_command', { step, mode: 'show' }).then(
+          (answer) => answer as { ran: boolean; reason?: string },
+          () => ({ ran: false, reason: 'stopped' }),
+        );
+        done = await Promise.race([clicked, waitFor().then((choice) => ({ ran: choice === 'next', reason: 'said' }))]);
+        void invokeHost('ask_command_stop').catch(() => undefined);
+      } else {
+        done = (await invokeHost('ask_command', { step, mode: 'do' })) as { ran: boolean; reason?: string };
+      }
+      if (!live()) return true;
+      endGuide();
+      if (done.reason === 'said' && !done.ran) return true;
+      const vars = { name: named.name, choice: named.choice };
+      const say = !asked
+        ? translate(language, 'ask.setting.page')
+        : !done.ran
+          ? translate(language, done.reason === 'hidden' ? 'ask.setting.hidden' : 'ask.setting.failed', vars)
+          : mode === 'show' || asked.value === null
+            ? translate(language, 'ask.setting.here', vars)
+            : translate(language, done.reason === 'same' ? 'ask.setting.same' : 'ask.setting.done', vars);
+      sayOnly(words, say, spoken);
+    } catch (error) {
+      if (!live()) return true;
+      endGuide();
+      setPhase({ kind: 'problem', ...errorKey(error) });
+    }
     return true;
   };
 

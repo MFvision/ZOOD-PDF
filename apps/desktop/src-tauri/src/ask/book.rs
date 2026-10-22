@@ -14,7 +14,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use serde_json::{json, Value};
-use tauri::{AppHandle, Emitter, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tokio::sync::oneshot;
 
 use crate::doc_window::focused_editor;
@@ -95,6 +95,16 @@ pub async fn ask_command<R: Runtime>(
         waits,
     )
     .await
+}
+
+/// The editor in front, opened when ZOOD PDF has no window (a setting asked
+/// for from the tray or another app). True when it was opened just now, so
+/// the island gives it a moment to load before the step is sent.
+#[tauri::command]
+pub async fn ask_open_editor<R: Runtime>(app: AppHandle<R>) -> bool {
+    let fresh = app.get_webview_window("main").is_none();
+    crate::quick::show_editor(&app);
+    fresh
 }
 
 /// Ends a Show me step that waits for a click.

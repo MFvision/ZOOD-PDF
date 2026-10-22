@@ -38,6 +38,9 @@ export interface BookStep {
   query?: string;
   /** Its name, said and shown: "Save". */
   label: string;
+  /** A setting (`id` "setting"): which, and the choice to set; null shows it (`settingsBook.ts`). */
+  setting?: string;
+  value?: string | null;
 }
 
 /** What the person asked for: to be shown, to have it done, or neither. */
