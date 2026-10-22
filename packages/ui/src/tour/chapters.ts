@@ -43,17 +43,19 @@ export function tourChapters(desktop: boolean, ask = false): Chapter[] {
 }
 
 /** The tour as it was last seen: a newer tour opens once more on its own, at what is new. */
-export const TOUR_VERSION = 9;
+export const TOUR_VERSION = 10;
 /**
  * Where a tour seen before opens, by the version it was seen at: Ask ZOOD
  * came in version 3, one tap to talk (with its setup) in version 4,
  * Show me, Explain this and Do it for me in version 5, quick asks with
  * tidying in version 6, Help & Support in version 7, the AI's chat about
  * anything, with its commands, in version 8, and Always ready (the tray
- * icon, the bubble, and Do it for me by ZOOD's own commands) in version 9.
- * Always ready is the desktop's: elsewhere a tour seen at 8 has nothing new.
+ * icon, the bubble, and Do it for me by ZOOD's own commands) in version 9,
+ * and the phone app's code, with connecting in steps, in version 10. Both
+ * are the desktop's: elsewhere a tour seen at 8 or 9 has nothing new.
  */
 export function newSince(version: number, ask: boolean, desktop = true): ChapterId {
+  if (version >= 9) return desktop ? 'remote' : 'welcome';
   if (version >= 8) return desktop ? 'reach' : 'welcome';
   if (version >= 6) return 'ai';
   if (!ask || version < 2) return 'welcome';

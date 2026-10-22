@@ -15,7 +15,8 @@ export interface StubRecord {
   downloads: number;
   removed: number;
   ready: boolean;
-  requests: { messages: { role: string; content: string }[]; grammar: string | null; maxTokens: number }[];
+  /** Every request, with `done` once its answer was written to the end (not stopped half-way). */
+  requests: { messages: { role: string; content: string }[]; grammar: string | null; maxTokens: number; done?: boolean }[];
   aborted: number;
   /** Requests the engine refused as over its window. */
   refused: number;
@@ -74,7 +75,8 @@ export async function installDeviceStub(page: Page, answer: (messages: { role: s
               throw new Error(`E_TOO_LONG: the request is ${tokens} tokens; the window holds ${context - options.maxTokens} with the reply`);
             }
           }
-          record.requests.push({ messages, grammar: options.grammar ?? null, maxTokens: options.maxTokens });
+          const request: StubRecord['requests'][number] = { messages, grammar: options.grammar ?? null, maxTokens: options.maxTokens };
+          record.requests.push(request);
           const text = await answerFor(messages);
           let out = '';
           for (const word of text.split(/(?<=\s)/)) {
@@ -86,6 +88,7 @@ export async function installDeviceStub(page: Page, answer: (messages: { role: s
             out += word;
             options.onToken(word);
           }
+          request.done = true;
           return { text: out, cutOff: false, tokens: out.length, ms: 1 };
         },
       });

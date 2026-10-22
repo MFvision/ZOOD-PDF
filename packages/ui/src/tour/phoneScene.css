@@ -1,0 +1,1175 @@
+/*
+ * The tour's phone chapter (phoneScene.tsx): a card with its three steps down
+ * the side, the step's words, and a short film beside them. The film is one
+ * stage (.pf) whose data attributes say the beat: data-step picks what the
+ * computer's screen shows (the app's code, the computer's code, the slides),
+ * data-pose where the phone is, data-screen what the phone shows, and
+ * data-slide / data-cursor the slide and the pointer. Everything moves by
+ * transitions between beats; the loops are under prefers-reduced-motion:
+ * no-preference, and with motion reduced the film stands on one beat a step.
+ */
+.phone-card {
+  --frame: color-mix(in srgb, var(--hue) 16%, #0b0f15);
+
+  display: grid;
+  grid-template-columns: 172px minmax(0, 1fr);
+  min-block-size: 330px;
+  overflow: hidden;
+  background: var(--window-background);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-16);
+  box-shadow: var(--shadow-sheet);
+}
+
+/* ---- The side: the steps ---- */
+.phone-card-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-5);
+  color: #fff;
+  background:
+    radial-gradient(120% 70% at 0% 0%, color-mix(in srgb, var(--hue) 70%, #fff 10%), transparent 70%),
+    linear-gradient(170deg, color-mix(in srgb, var(--hue) 82%, #000), color-mix(in srgb, var(--hue) 45%, #05080d));
+}
+
+.phone-card-mark {
+  display: grid;
+  place-items: center;
+  inline-size: 34px;
+  block-size: 34px;
+  background: rgb(255 255 255 / 14%);
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: var(--radius-10);
+}
+
+.phone-card-eyebrow {
+  margin-block-start: var(--space-3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.phone-card-heading {
+  font-size: var(--text-headline);
+  line-height: var(--leading-tight);
+}
+
+.phone-steps {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 0;
+  margin: var(--space-4) 0 0;
+  list-style: none;
+}
+
+/* The line the dots sit on. */
+.phone-steps::before {
+  position: absolute;
+  inset-block: 12px;
+  inset-inline-start: 10px;
+  inline-size: 1px;
+  content: "";
+  background: rgb(255 255 255 / 22%);
+}
+
+.phone-steps button {
+  position: relative;
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  inline-size: 100%;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  opacity: 0.6;
+  transition: opacity var(--duration-regular) var(--ease-out);
+}
+
+.phone-steps button:hover,
+.phone-steps .is-current button,
+.phone-steps .is-done button {
+  opacity: 1;
+}
+
+.phone-steps button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.phone-steps button > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.phone-steps strong {
+  font-size: var(--text-footnote);
+}
+
+.phone-steps button > span:last-child > span {
+  opacity: 0.75;
+}
+
+.phone-steps-dot {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 21px;
+  block-size: 21px;
+  font-size: 10px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--hue) 60%, #05080d);
+  border: 1px solid rgb(255 255 255 / 40%);
+  border-radius: 50%;
+  transition:
+    background var(--duration-regular) var(--ease-out),
+    color var(--duration-regular) var(--ease-out);
+}
+
+.is-current .phone-steps-dot,
+.is-done .phone-steps-dot {
+  color: var(--hue);
+  background: #fff;
+  border-color: #fff;
+}
+
+.is-current .phone-steps-dot {
+  box-shadow: 0 0 0 4px rgb(255 255 255 / 18%);
+}
+
+.phone-card-foot {
+  margin-block-start: auto;
+  font-size: 10.5px;
+  line-height: 1.4;
+  opacity: 0.65;
+}
+
+/* ---- The step's words ---- */
+.phone-card-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-5);
+  align-items: center;
+  padding: var(--space-6);
+}
+
+.phone-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.phone-card-text h3 {
+  margin: 0;
+  font-size: var(--text-title3);
+  line-height: var(--leading-tight);
+}
+
+.phone-card-text p {
+  margin: 0;
+  font-size: var(--text-callout);
+  line-height: var(--leading-body);
+  color: var(--secondary-label);
+}
+
+.phone-card-of {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--hue);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.phone-card-text .phone-card-link,
+.phone-card-text .phone-card-small {
+  font-size: var(--text-footnote);
+}
+
+.phone-card-link code {
+  font-family: var(--font-mono);
+  color: var(--label);
+}
+
+.phone-card-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-block-start: var(--space-2);
+}
+
+.phone-card-can {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-callout);
+  list-style: none;
+}
+
+.phone-card-can li {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding: 4px 8px;
+  margin-inline-start: -8px;
+  border-radius: 8px;
+  transition:
+    background var(--duration-regular) var(--ease-out),
+    color var(--duration-regular) var(--ease-out);
+}
+
+.phone-card-can .lucide {
+  color: var(--hue);
+}
+
+.phone-card-can li.is-now {
+  font-weight: 600;
+  background: color-mix(in srgb, var(--hue) 12%, transparent);
+}
+
+/* ---- The film ---- */
+.pf {
+  --dir: 1;
+  --ease-film: cubic-bezier(0.32, 0.72, 0, 1);
+
+  position: relative;
+  inline-size: 256px;
+  block-size: 256px;
+}
+
+html[dir="rtl"] .pf {
+  --dir: -1;
+}
+
+/* The computer's screen: a dark frame for a code, then a laptop for the slides. */
+.pf-screen {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: 172px;
+  block-size: 204px;
+  overflow: hidden;
+  background:
+    radial-gradient(80% 60% at 50% 0%, color-mix(in srgb, var(--hue) 35%, transparent), transparent),
+    var(--frame);
+  border-radius: 20px;
+  box-shadow:
+    0 18px 40px -18px color-mix(in srgb, var(--hue) 60%, #000),
+    inset 0 0 0 1px rgb(255 255 255 / 8%);
+  transition:
+    inline-size 700ms var(--ease-film),
+    block-size 700ms var(--ease-film),
+    border-radius 700ms var(--ease-film);
+}
+
+.pf[data-step="2"] .pf-screen {
+  inline-size: 220px;
+  block-size: 150px;
+  border-radius: 12px;
+}
+
+.pf-base {
+  position: absolute;
+  inset-block-start: 150px;
+  inset-inline-start: -10px;
+  inline-size: 240px;
+  block-size: 9px;
+  background: linear-gradient(#c9ced6, #9aa1ab);
+  border-radius: 0 0 10px 10px;
+  opacity: 0;
+  transform: scaleX(0.6);
+  transition:
+    opacity 400ms var(--ease-out),
+    transform 700ms var(--ease-film);
+}
+
+.pf[data-step="2"] .pf-base {
+  opacity: 1;
+  transform: none;
+  transition-delay: 250ms;
+}
+
+.pf-corners {
+  position: absolute;
+  inset: 12px 12px 40px;
+  pointer-events: none;
+  transition: opacity 300ms var(--ease-out);
+}
+
+.pf[data-step="2"] .pf-corners {
+  opacity: 0;
+}
+
+.pf-corners i {
+  position: absolute;
+  inline-size: 16px;
+  block-size: 16px;
+  border: 2px solid rgb(255 255 255 / 85%);
+}
+
+.pf-corners i:nth-child(1) {
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  border-block-end: 0;
+  border-inline-end: 0;
+  border-start-start-radius: 7px;
+}
+
+.pf-corners i:nth-child(2) {
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  border-block-end: 0;
+  border-inline-start: 0;
+  border-start-end-radius: 7px;
+}
+
+.pf-corners i:nth-child(3) {
+  inset-block-end: 0;
+  inset-inline-start: 0;
+  border-block-start: 0;
+  border-inline-end: 0;
+  border-end-start-radius: 7px;
+}
+
+.pf-corners i:nth-child(4) {
+  inset-block-end: 0;
+  inset-inline-end: 0;
+  border-block-start: 0;
+  border-inline-start: 0;
+  border-end-end-radius: 7px;
+}
+
+/* What the screen shows: one layer a step, crossing with a blur. */
+.pf-layer {
+  position: absolute;
+  opacity: 0;
+  filter: blur(6px);
+  transform: scale(0.94);
+  transition:
+    opacity 450ms var(--ease-out),
+    filter 450ms var(--ease-out),
+    transform 600ms var(--ease-film);
+}
+
+.pf[data-step="0"] .pf-qr-app,
+.pf[data-step="1"] .pf-qr-pc,
+.pf[data-step="2"] .pf-desk {
+  opacity: 1;
+  filter: none;
+  transform: none;
+  transition-delay: 120ms;
+}
+
+.pf-qr {
+  inset-block-start: 22px;
+  inset-inline-start: 22px;
+  display: block;
+  inline-size: 128px;
+  block-size: 128px;
+  padding: 8px;
+  overflow: hidden;
+  line-height: 0;
+  color: #000;
+  background: #fff;
+  border-radius: 10px;
+}
+
+.pf-qr-svg,
+.pf-host,
+.pf-host svg {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+/* The film's computer code: the same marks turned, so it reads as another code. */
+.pf-pc-code {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  color: #041e42;
+  transform: rotate(90deg) scaleX(-1);
+}
+
+.pf-making {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  background: repeating-conic-gradient(rgb(0 0 0 / 8%) 0 25%, transparent 0 50%) 0 0 / 12px 12px;
+  border-radius: 4px;
+}
+
+.pf-beam {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 0;
+  block-size: 30px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--hue) 30%, transparent) 80%, var(--hue));
+  opacity: 0;
+}
+
+/* The slides on the computer. */
+.pf-desk {
+  inset: 10px 10px 38px;
+}
+
+.pf-slides {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.pf-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: #fdfcfa;
+  transform: translateX(calc(100% * var(--dir)));
+  transition: transform 600ms var(--ease-film);
+}
+
+.pf-slide i {
+  inline-size: 60%;
+  block-size: 9px;
+  background: var(--hue);
+  border-radius: 3px;
+}
+
+.pf-slide b {
+  inline-size: 85%;
+  block-size: 5px;
+  background: #d9dde3;
+  border-radius: 3px;
+}
+
+.pf-slide b + b {
+  inline-size: 55%;
+}
+
+.pf-slide em {
+  position: absolute;
+  inset-block-end: 6px;
+  inset-inline-end: 10px;
+  font-size: 22px;
+  font-style: normal;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--hue) 35%, #fff);
+}
+
+.pf-slide[data-n="2"] i {
+  inline-size: 40%;
+  background: #e0603d;
+}
+
+.pf-slide[data-n="3"] i {
+  inline-size: 70%;
+  background: #7b61ff;
+}
+
+.pf[data-slide="1"] .pf-slide[data-n="1"],
+.pf[data-slide="2"] .pf-slide[data-n="2"],
+.pf[data-slide="3"] .pf-slide[data-n="3"] {
+  transform: none;
+}
+
+.pf[data-slide="2"] .pf-slide[data-n="1"],
+.pf[data-slide="3"] .pf-slide[data-n="1"],
+.pf[data-slide="3"] .pf-slide[data-n="2"] {
+  transform: translateX(calc(-100% * var(--dir)));
+}
+
+.pf-pointer {
+  position: absolute;
+  inset-block-start: 45%;
+  inset-inline-start: 45%;
+  color: #0b0f15;
+  filter: drop-shadow(0 1px 0 #fff);
+  opacity: 0;
+  transition:
+    inset 900ms var(--ease-film),
+    opacity 300ms var(--ease-out);
+}
+
+.pf[data-cursor="1"] .pf-pointer {
+  inset-block-start: 62%;
+  inset-inline-start: 28%;
+  opacity: 1;
+}
+
+.pf[data-cursor="2"] .pf-pointer {
+  inset-block-start: 30%;
+  inset-inline-start: 66%;
+  opacity: 1;
+}
+
+.pf-landed {
+  position: absolute;
+  inset-block-end: 6px;
+  inset-inline-start: 8px;
+  display: grid;
+  place-items: center;
+  inline-size: 30px;
+  block-size: 36px;
+  color: var(--hue);
+  background: #fff;
+  border: 1px solid #d9dde3;
+  border-radius: 5px;
+  box-shadow: 0 6px 14px -6px rgb(0 0 0 / 45%);
+  opacity: 0;
+  transform: translateY(30px) scale(0.6);
+  transition:
+    opacity 300ms var(--ease-out),
+    transform 600ms var(--spring);
+}
+
+.pf[data-screen="send"] .pf-landed {
+  opacity: 1;
+  transform: none;
+  transition-delay: 1700ms;
+}
+
+/* The status pill, at the foot of the screen. */
+.pf-pill {
+  position: absolute;
+  inset-block-end: 9px;
+  inset-inline: 0;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  inline-size: max-content;
+  max-inline-size: calc(100% - 16px);
+  padding: 4px 10px;
+  margin-inline: auto;
+  overflow: hidden;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgb(255 255 255 / 88%);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgb(255 255 255 / 11%);
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: var(--radius-capsule);
+  transition:
+    background 300ms var(--ease-out),
+    color 300ms var(--ease-out);
+}
+
+.pf-pill.is-done {
+  color: #0b0f15;
+  background: #fff;
+}
+
+.pf-dot {
+  flex: none;
+  inline-size: 6px;
+  block-size: 6px;
+  background: color-mix(in srgb, var(--hue) 60%, #fff);
+  border-radius: 50%;
+}
+
+/* ---- The phone ---- */
+.pf-phone {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-end: 0;
+  inline-size: 88px;
+  block-size: 176px;
+  padding: 22px 6px 8px;
+  background: #0b0f15;
+  border-radius: 22px;
+  box-shadow:
+    0 22px 36px -18px rgb(0 0 0 / 60%),
+    inset 0 0 0 1px rgb(255 255 255 / 10%);
+  transition:
+    transform 700ms var(--ease-film),
+    opacity 400ms var(--ease-out);
+}
+
+.pf[data-pose="scan"] .pf-phone {
+  transform: translateY(-44px) rotate(calc(-6deg * var(--dir)));
+}
+
+/* While the real code is shown, the phone steps out of its way. */
+.pf[data-live] .pf-phone {
+  opacity: 0;
+  transform: translateX(calc(30px * var(--dir))) scale(0.9);
+}
+
+.pf[data-step="2"] .pf-phone {
+  transform: translate(calc(6px * var(--dir)), 0);
+}
+
+.pf-notch {
+  position: absolute;
+  inset-block-start: 8px;
+  inset-inline: 0;
+  inline-size: 28px;
+  block-size: 8px;
+  margin-inline: auto;
+  background: #1d232c;
+  border-radius: 6px;
+}
+
+.pf-display {
+  position: relative;
+  display: block;
+  block-size: 100%;
+  overflow: hidden;
+  background: var(--window-background);
+  border-radius: 14px;
+}
+
+.pf-view {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  font-size: 9.5px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 350ms var(--ease-out),
+    transform 450ms var(--ease-film);
+}
+
+.pf[data-screen="camera"] .pf-camera,
+.pf[data-screen="store"] .pf-store,
+.pf[data-screen="download"] .pf-store,
+.pf[data-screen="open"] .pf-store,
+.pf[data-screen="library"] .pf-library,
+.pf[data-screen="press"] .pf-library,
+.pf[data-screen="connected"] .pf-connected,
+.pf[data-screen="remote"] .pf-remote,
+.pf[data-screen="pad"] .pf-pad,
+.pf[data-screen="send"] .pf-send {
+  opacity: 1;
+  transform: none;
+}
+
+/* The camera: what it sees. */
+.pf-camera {
+  background: #0b0f15;
+}
+
+.pf-cam-corners {
+  position: absolute;
+  inset: 26% 14%;
+  border: 2px solid rgb(255 255 255 / 70%);
+  border-radius: 8px;
+  mask: conic-gradient(#000 0 0) top left / 30% 30% no-repeat, conic-gradient(#000 0 0) top right / 30% 30% no-repeat, conic-gradient(#000 0 0) bottom left / 30% 30% no-repeat, conic-gradient(#000 0 0) bottom right / 30% 30% no-repeat;
+}
+
+.pf-cam-code {
+  inline-size: 44px;
+  block-size: 44px;
+  padding: 3px;
+  line-height: 0;
+  color: #000;
+  background: #fff;
+  border-radius: 4px;
+  opacity: 0.85;
+  transform: perspective(200px) rotateY(calc(14deg * var(--dir)));
+}
+
+.pf[data-step="1"] .pf-cam-code {
+  color: #041e42;
+}
+
+.pf-cam-beam {
+  position: absolute;
+  inset-inline: 14%;
+  inset-block-start: 26%;
+  block-size: 2px;
+  background: var(--hue);
+  box-shadow: 0 0 8px var(--hue);
+  opacity: 0;
+}
+
+/* The store: Get, the ring filling, Open. */
+.pf-app-icon {
+  display: grid;
+  place-items: center;
+  inline-size: 42px;
+  block-size: 42px;
+  background: linear-gradient(160deg, #0d2a52, #041e42);
+  border-radius: 11px;
+  box-shadow: 0 6px 12px -6px rgb(0 0 0 / 50%);
+}
+
+.pf-store strong {
+  font-size: 10px;
+}
+
+.pf-get {
+  position: relative;
+  display: grid;
+  place-items: center;
+  inline-size: 52px;
+  block-size: 22px;
+}
+
+.pf-get > * {
+  grid-area: 1 / 1;
+  transition:
+    opacity 250ms var(--ease-out),
+    transform 400ms var(--spring);
+}
+
+.pf-get-word {
+  display: grid;
+  place-items: center;
+  inline-size: 52px;
+  block-size: 20px;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--hue);
+  border-radius: var(--radius-capsule);
+}
+
+.pf-ring {
+  inline-size: 22px;
+  block-size: 22px;
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.6);
+}
+
+.pf-ring circle {
+  fill: none;
+  stroke: var(--hue);
+  stroke-dasharray: 56.6;
+  stroke-dashoffset: 56.6;
+  stroke-linecap: round;
+  stroke-width: 3;
+  transition: stroke-dashoffset 1000ms linear;
+}
+
+.pf-get-open {
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+.pf[data-screen="download"] .pf-get-get,
+.pf[data-screen="open"] .pf-get-get {
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+.pf[data-screen="download"] .pf-ring {
+  opacity: 1;
+  transform: rotate(-90deg);
+}
+
+.pf[data-screen="download"] .pf-ring circle,
+.pf[data-screen="open"] .pf-ring circle {
+  stroke-dashoffset: 0;
+}
+
+.pf[data-screen="open"] .pf-get-open {
+  opacity: 1;
+  transform: none;
+}
+
+/* The app's library, with Phone remote. */
+.pf-library {
+  justify-content: flex-start;
+  padding-block-start: 10px;
+}
+
+.pf-app-bar {
+  display: flex;
+  justify-content: space-between;
+  inline-size: 100%;
+  color: var(--secondary-label);
+}
+
+.pf-remote-btn {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  padding: 6px 4px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--hue);
+  border-radius: 8px;
+  transition:
+    transform 200ms var(--ease-out),
+    box-shadow 300ms var(--ease-out);
+}
+
+.pf[data-screen="press"] .pf-remote-btn {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--hue) 30%, transparent);
+  transform: scale(0.93);
+}
+
+.pf-file-row {
+  inline-size: 100%;
+  block-size: 16px;
+  background: var(--secondary-fill);
+  border-radius: 5px;
+}
+
+/* Connected. */
+.pf-big-check {
+  display: grid;
+  place-items: center;
+  inline-size: 40px;
+  block-size: 40px;
+  color: #fff;
+  background: var(--hue);
+  border-radius: 50%;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--hue) 20%, transparent);
+  transform: scale(0.4);
+  transition: transform 500ms var(--spring) 150ms;
+}
+
+.pf[data-screen="connected"] .pf-big-check {
+  transform: none;
+}
+
+/* The remote: the slide and the two keys. */
+.pf-remote {
+  justify-content: space-between;
+}
+
+.pf-mini-slide {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  inline-size: 100%;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--hue);
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+}
+
+.pf-keys {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  inline-size: 100%;
+}
+
+.pf-keys > span {
+  display: grid;
+  place-items: center;
+  block-size: 30px;
+  background: var(--secondary-fill);
+  border-radius: 8px;
+}
+
+.pf-keys > .pf-next {
+  color: #fff;
+  background: var(--hue);
+}
+
+/* The trackpad: a finger moving the pointer. */
+.pf-pad {
+  margin: 8px;
+  background: color-mix(in srgb, var(--hue) 8%, var(--grouped-background));
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+}
+
+.pf-finger {
+  position: absolute;
+  inset-block-start: 45%;
+  inset-inline-start: 40%;
+  inline-size: 18px;
+  block-size: 18px;
+  background: color-mix(in srgb, var(--hue) 45%, transparent);
+  border: 2px solid var(--hue);
+  border-radius: 50%;
+  transition: inset 900ms var(--ease-film);
+}
+
+.pf[data-cursor="1"] .pf-finger {
+  inset-block-start: 62%;
+  inset-inline-start: 22%;
+}
+
+.pf[data-cursor="2"] .pf-finger {
+  inset-block-start: 26%;
+  inset-inline-start: 62%;
+}
+
+/* Send: a file flicked up to the computer. */
+.pf-flick {
+  display: grid;
+  place-items: center;
+  inline-size: 36px;
+  block-size: 44px;
+  color: var(--hue);
+  background: #fff;
+  border: 1px solid var(--separator);
+  border-radius: 6px;
+  box-shadow: 0 8px 16px -8px rgb(0 0 0 / 40%);
+  opacity: 0;
+}
+
+.pf-swipe {
+  color: var(--hue);
+  transform: scale(1.4);
+}
+
+/* ---- Narrow ---- */
+@media (width <= 900px) {
+  .phone-card-main {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+}
+
+@media (width <= 720px) {
+  .phone-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .phone-steps {
+    flex-direction: row;
+    margin-block-start: var(--space-3);
+  }
+
+  .phone-steps::before {
+    display: none;
+  }
+}
+
+/* ---- Motion ---- */
+@media (prefers-reduced-motion: no-preference) {
+  .phone-card-text {
+    animation: pf-rise 420ms var(--ease-out) backwards;
+  }
+
+  .phone-card-text > * {
+    animation: pf-rise 420ms var(--ease-out) backwards;
+  }
+
+  .phone-card-text > :nth-child(2) {
+    animation-delay: 60ms;
+  }
+
+  .phone-card-text > :nth-child(3) {
+    animation-delay: 120ms;
+  }
+
+  .phone-card-text > :nth-child(n + 4) {
+    animation-delay: 180ms;
+  }
+
+  .is-current .phone-steps-dot {
+    animation: pf-pop 420ms var(--spring);
+  }
+
+  .is-done .phone-steps-dot {
+    animation: pf-tick 480ms var(--spring);
+  }
+
+  .pf-corners {
+    animation: pf-breathe 2.4s ease-in-out infinite;
+  }
+
+  .pf[data-pose="scan"][data-screen="camera"] .pf-beam {
+    animation: pf-beam 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  }
+
+  .pf[data-pose="scan"][data-screen="camera"] .pf-cam-beam {
+    animation: pf-cam-beam 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  }
+
+  .pf-pill:not(.is-done) .pf-dot {
+    animation: pf-blink 1.1s ease-in-out infinite;
+  }
+
+  .pf-pill.is-done {
+    animation: pf-pop 420ms var(--spring);
+  }
+
+  .pf[data-step="2"] .pf-phone {
+    animation: pf-float 3.4s ease-in-out 700ms infinite;
+  }
+
+  .pf[data-slide="2"] .pf-next {
+    animation: pf-press-a 500ms var(--ease-out);
+  }
+
+  .pf[data-slide="3"] .pf-next {
+    animation: pf-press-b 500ms var(--ease-out);
+  }
+
+  .pf[data-screen="send"] .pf-flick {
+    animation: pf-flick 2300ms var(--ease-film) both;
+  }
+
+  .pf[data-screen="send"] .pf-swipe {
+    animation: pf-blink 900ms ease-in-out infinite;
+  }
+
+  .pf[data-live] .pf-qr-pc {
+    animation: pf-pop 500ms var(--spring);
+  }
+}
+
+html[data-reduce-motion="on"] .pf *,
+html[data-reduce-motion="on"] .phone-card * {
+  transition-duration: 0ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf *,
+  .phone-card * {
+    transition-duration: 0ms !important;
+  }
+}
+
+@keyframes pf-rise {
+  from {
+    opacity: 0;
+    filter: blur(5px);
+    transform: translateY(8px);
+  }
+}
+
+@keyframes pf-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+
+@keyframes pf-tick {
+  0% {
+    transform: scale(0.4);
+  }
+
+  60% {
+    transform: scale(1.15);
+  }
+}
+
+@keyframes pf-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(0.96);
+  }
+}
+
+@keyframes pf-beam {
+  0% {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+
+  15%,
+  85% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(128px);
+  }
+}
+
+@keyframes pf-cam-beam {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+
+  15%,
+  85% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(70px);
+  }
+}
+
+@keyframes pf-blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes pf-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+
+  50% {
+    translate: 0 -5px;
+  }
+}
+
+@keyframes pf-press-a {
+  40% {
+    transform: scale(0.88);
+  }
+}
+
+@keyframes pf-press-b {
+  40% {
+    transform: scale(0.88);
+  }
+}
+
+@keyframes pf-flick {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  15%,
+  42% {
+    opacity: 1;
+    transform: none;
+  }
+
+  52% {
+    opacity: 1;
+    transform: translateY(6px) scale(0.95);
+  }
+
+  82%,
+  100% {
+    opacity: 0;
+    transform: translateY(-110px) scale(0.6);
+  }
+}

@@ -16,9 +16,10 @@ import { ReachScene } from './reachScene';
 import { TOUR_VERSION, newSince, tourChapters } from './chapters';
 import { openTourAt, takeStartAt } from './openAt';
 import type { Chapter, ChapterId } from './chapters';
-import { AiScene, BasicsScene, DoneScene, FilmScene, LookScene, QuickScene, RemoteScene, WelcomeScene } from './scenes';
+import { AiScene, BasicsScene, DoneScene, FilmScene, LookScene, QuickScene, WelcomeScene } from './scenes';
 import type { TourProgress } from './scenes';
 import { AskScene } from './askScene';
+import { PhoneScene } from './phoneScene';
 import { SupportScene } from './supportScene';
 import { openSupportAt } from '../support/open';
 import './tour.css';
@@ -204,7 +205,7 @@ function Scene({ chapter, progress, onProgress, onSettings, onSupport }: { chapt
     case 'reach':
       return <ReachScene onSettings={onSettings} />;
     case 'remote':
-      return <RemoteScene />;
+      return <PhoneScene />;
     case 'ai':
       return <AiScene />;
     case 'support':
