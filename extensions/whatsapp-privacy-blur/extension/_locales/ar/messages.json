@@ -1,0 +1,86 @@
+{
+  "extName": {
+    "message": "تمويه الخصوصية لواتساب ويب"
+  },
+  "extDescription": {
+    "message": "موّه قائمة المحادثات أو المحادثة المفتوحة أو كليهما في واتساب ويب. بلا اتصال بالشبكة وبلا جمع بيانات."
+  },
+  "cmdToggle": {
+    "message": "تشغيل التمويه أو إيقافه"
+  },
+  "enabled": {
+    "message": "تشغيل التمويه أو إيقافه"
+  },
+  "blurOn": {
+    "message": "التمويه يعمل. انقر لإيقافه"
+  },
+  "blurOff": {
+    "message": "التمويه متوقف. انقر لتشغيله"
+  },
+  "whatToBlur": {
+    "message": "ما الذي يُموَّه"
+  },
+  "mode_contacts": {
+    "message": "جهات الاتصال"
+  },
+  "mode_chat": {
+    "message": "المحادثة"
+  },
+  "mode_both": {
+    "message": "الاثنان"
+  },
+  "strength": {
+    "message": "قوة التمويه"
+  },
+  "hoverPeek": {
+    "message": "إظهار عند المرور"
+  },
+  "hoverPeekHint": {
+    "message": "مرّر المؤشر فوق المنطقة لقراءتها"
+  },
+  "peekOne": {
+    "message": "إظهار عنصر واحد فقط"
+  },
+  "peekOneHint": {
+    "message": "يظهر فقط ما تحت المؤشر: محادثة واحدة أو رسالة واحدة"
+  },
+  "smooth": {
+    "message": "إظهار تدريجي"
+  },
+  "smoothHint": {
+    "message": "ظهور واختفاء ناعم بدل التبديل الفوري"
+  },
+  "showToolbar": {
+    "message": "إظهار الشريط على الصفحة"
+  },
+  "showToolbarHint": {
+    "message": "الشريط العائم الصغير في واتساب ويب"
+  },
+  "hideToolbar": {
+    "message": "إخفاء الشريط (أعِده من زر الإضافة)"
+  },
+  "moveToolbar": {
+    "message": "اسحب للتحريك"
+  },
+  "settings": {
+    "message": "الإعدادات"
+  },
+  "collapse": {
+    "message": "تصغير"
+  },
+  "expand": {
+    "message": "توسيع"
+  },
+  "resetPosition": {
+    "message": "إعادة الشريط إلى مكانه"
+  },
+  "shortcut": {
+    "message": "اختصار لوحة المفاتيح:"
+  },
+  "shortcutNotSet": {
+    "message": "غير محدد"
+  },
+  "privacyNote": {
+    "message": "هذه الإضافة لا تتصل بالشبكة ولا تقرأ محادثاتك. الإعدادات تبقى على هذا الجهاز."
+  }
+}

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Privacy Blur</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <header>
+      <img src="icons/icon-32.png" alt="" width="28" height="28">
+      <h1 data-i18n="extName"></h1>
+      <label class="switch">
+        <input type="checkbox" id="enabled" data-i18n-title="enabled">
+        <span></span>
+      </label>
+    </header>
+
+    <section>
+      <h2 data-i18n="whatToBlur"></h2>
+      <div class="seg">
+        <label><input type="radio" name="mode" value="contacts"><span data-i18n="mode_contacts"></span></label>
+        <label><input type="radio" name="mode" value="chat"><span data-i18n="mode_chat"></span></label>
+        <label><input type="radio" name="mode" value="both"><span data-i18n="mode_both"></span></label>
+      </div>
+    </section>
+
+    <section>
+      <h2><span data-i18n="strength"></span> <output id="amountOut"></output></h2>
+      <input type="range" id="amount" min="1" max="20" step="1">
+    </section>
+
+    <section class="opts">
+      <label class="row">
+        <span><b data-i18n="hoverPeek"></b><small data-i18n="hoverPeekHint"></small></span>
+        <input type="checkbox" id="peek">
+      </label>
+      <label class="row">
+        <span><b data-i18n="peekOne"></b><small data-i18n="peekOneHint"></small></span>
+        <input type="checkbox" id="peekOne">
+      </label>
+      <label class="row">
+        <span><b data-i18n="smooth"></b><small data-i18n="smoothHint"></small></span>
+        <input type="checkbox" id="smooth">
+      </label>
+      <label class="row">
+        <span><b data-i18n="showToolbar"></b><small data-i18n="showToolbarHint"></small></span>
+        <input type="checkbox" id="toolbar">
+      </label>
+    </section>
+
+    <footer>
+      <p class="keys"><span data-i18n="shortcut"></span> <kbd id="shortcut"></kbd></p>
+      <button type="button" id="resetPos" data-i18n="resetPosition"></button>
+      <p class="privacy" data-i18n="privacyNote"></p>
+    </footer>
+
+    <script src="defaults.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
