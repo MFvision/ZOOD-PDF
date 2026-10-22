@@ -575,12 +575,12 @@ export const CHAPTERS = [
         en: 'How-to articles in Arabic and English, each one also a PDF guide, with videos and answers to common questions.',
       },
       {
-        ar: 'أبلغ عن مشكلة بخصوصية: ترى ما سيُرفق قبل أن ترسله، ويخبرك التطبيق حين تُحل.',
-        en: 'Report a problem privately. You see what gets attached before you send it, and the app tells you when it is fixed.',
+        ar: 'اسأل «كيف أفعل…؟» فيجيبك من المقالات على جهازك، ثم «أرني» أو «نفّذها عني».',
+        en: 'Ask “how do I…?” and it answers from the articles on your device, then offers Show me or Do it for me.',
       },
       {
-        ar: 'اقترح فكرة أو صوّت لأفكار غيرك، صوتًا واحدًا لكل جهاز. نقرأ أكثرها طلبًا كل أسبوع.',
-        en: "Suggest an idea or vote for other people's, one vote per device. We read the most wanted ones every week.",
+        ar: 'أبلغ عن مشكلة بخصوصية: ترى ما سيُرفق وتوافق عليه قبل أن يُرسل.',
+        en: 'Report a problem privately. You see what gets attached and agree before it is sent.',
       },
     ],
     note: {
@@ -678,14 +678,17 @@ export const PLATFORMS = [
   {
     id: 'windows',
     name: { ar: 'ويندوز', en: 'Windows' },
-    status: { ar: 'نسخة تجريبية للاختبار، غير موقّعة بعد.', en: 'A test build, not yet signed.' },
+    status: {
+      ar: 'الإصدار 0.4.3، ويحدّث نفسه. غير موقّع بعد، فقد ينبّهك ويندوز قبل تشغيله أول مرة.',
+      en: 'Version 0.4.3, and it updates itself. Not signed yet, so Windows may warn you the first time it runs.',
+    },
   },
   {
     id: 'mac',
     name: { ar: 'ماك', en: 'Mac' },
     status: {
-      ar: 'جاهز، وينتظر توثيق Apple قبل التوزيع.',
-      en: 'Built, waiting for Apple notarisation before release.',
+      ar: 'الإصدار 0.4.3، ويحدّث نفسه. إلى أن يُضاف توثيق Apple، اسمح بفتحه مرة من الإعدادات › الخصوصية والأمن.',
+      en: "Version 0.4.3, and it updates itself. Until Apple's notarisation is added, allow it once in System Settings › Privacy & Security.",
     },
   },
   {
@@ -721,8 +724,16 @@ export const PLATFORMS = [
 
 // The download chapter. A button with href null reads "Coming soon".
 export const DOWNLOADS = [
-  { id: 'windows', label: { ar: 'ويندوز', en: 'Windows' }, href: null },
-  { id: 'mac', label: { ar: 'ماك', en: 'Mac' }, href: null },
+  {
+    id: 'windows',
+    label: { ar: 'ويندوز', en: 'Windows' },
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.3/ZOOD-PDF-Setup-0.4.3.exe',
+  },
+  {
+    id: 'mac',
+    label: { ar: 'ماك', en: 'Mac' },
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.3/ZOOD-PDF-0.4.3-mac.dmg',
+  },
   {
     id: 'ios',
     label: { ar: 'آيفون وآيباد (App Store)', en: 'iPhone and iPad (App Store)' },
@@ -826,8 +837,8 @@ export const TOOLS = [
   {
     name: { ar: 'المساعدة والدعم', en: 'Help & Support' },
     text: {
-      ar: 'مقالات وأدلة PDF، و«أرني» و«نفّذها عني»، والإبلاغ عن مشكلة، والتصويت على الأفكار.',
-      en: 'Articles and PDF guides, Show me and Do it for me, reporting a problem, and voting on ideas.',
+      ar: 'مقالات وأدلة PDF، و«أرني» و«نفّذها عني»، والإبلاغ عن مشكلة.',
+      en: 'Articles and PDF guides, Show me and Do it for me, and reporting a problem.',
     },
     on: ON.desktop,
   },

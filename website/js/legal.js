@@ -181,8 +181,8 @@ export const PAGES = {
       { h: { ar: 'المساعدة داخل التطبيق', en: 'Help inside the app' } },
       {
         p: {
-          ar: 'في تطبيق ويندوز وماك افتح «المساعدة والدعم» من قائمة المساعدة أو من الإعدادات، أو قل «مساعدة» لـ«اسأل ZOOD». فيه أربعة أقسام:',
-          en: 'In the Windows and Mac app, open Help & Support from the Help menu or from Settings, or say “help” to Ask ZOOD. It has four parts:',
+          ar: 'في تطبيق ويندوز وماك افتح «المساعدة والدعم» من قائمة المساعدة أو من الإعدادات، أو قل «مساعدة» لـ«اسأل ZOOD». وفيه:',
+          en: 'In the Windows and Mac app, open Help & Support from the Help menu or from Settings, or say “help” to Ask ZOOD. It has:',
         },
       },
       {
@@ -196,12 +196,8 @@ export const PAGES = {
             en: 'Learn: articles in Arabic and English, each one also a PDF guide, with videos.',
           },
           {
-            ar: 'أبلغ عن مشكلة: ترى ما سيُرفق (السجل، ولقطة الشاشة إن أردت) وتوافق قبل الإرسال، ثم تتابع حالتها في التطبيق.',
-            en: 'Report a problem: you see what gets attached (the log, and a screenshot if you want) and agree before it is sent, then follow its status in the app.',
-          },
-          {
-            ar: 'الأفكار: اقترح فكرة أو صوّت لغيرها، صوتًا واحدًا لكل جهاز، بلا حساب.',
-            en: 'Ideas: suggest an idea or vote for others, one vote per device, with no account.',
+            ar: 'أبلغ عن مشكلة: ترى ما سيُرفق (السجل، ولقطة الشاشة إن أردت) وتوافق قبل أن يُرسل إلينا بالبريد.',
+            en: 'Report a problem: you see what gets attached (the log, and a screenshot if you want) and agree before it is emailed to us.',
           },
         ],
       },
