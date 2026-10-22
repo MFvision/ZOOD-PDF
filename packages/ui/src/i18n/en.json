@@ -2234,7 +2234,7 @@
   "tour.step": "Step {n} of {total}",
   "tour.chapters": "Chapters",
   "tour.chapterOf": "Chapter {n} of {total}",
-  "tour.minutes": "About two minutes",
+  "tour.minutes": "About 5 minutes",
   "tour.helpNote": "Open this tour any time from Help › Welcome tour.",
   "tour.quickSettings": "Open the quick tools' settings",
   "tour.looksSettings": "More in Settings › Appearance",

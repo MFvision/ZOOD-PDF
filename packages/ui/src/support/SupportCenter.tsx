@@ -83,7 +83,7 @@ export function SupportCenter() {
   const open = dialog === 'support';
   const close = () => dispatch({ type: 'DIALOG', dialog: null });
   return (
-    <Dialog open={open} title={t('support.title')} onClose={close} className="support-dialog">
+    <Dialog open={open} title={t('support.title')} onClose={close} className="support-dialog" closeOnBackdrop={false}>
       {open ? <SupportBook onClose={close} /> : null}
     </Dialog>
   );

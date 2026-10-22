@@ -27,3 +27,20 @@ export function takeStartAt(): string | null {
   startAt = null;
   return id;
 }
+
+let startOnly: readonly string[] | null = null;
+
+/** Opens the tour with only these chapters (what is new since the last one seen), from the first. */
+export function openTourWith(ids: readonly string[], open: () => void): void {
+  startOnly = ids;
+  startAt = ids[0] ?? null;
+  startPart = null;
+  open();
+}
+
+/** The chapters the opening is limited to, once: null for the whole tour. */
+export function takeStartOnly(): readonly string[] | null {
+  const ids = startOnly;
+  startOnly = null;
+  return ids;
+}
