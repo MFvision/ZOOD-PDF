@@ -3171,5 +3171,10 @@
   "ask.setting.hidden": "I couldn't find {name} in Settings on this computer.",
   "ask.setting.unknown": "I don't know a setting by that name yet, so I opened Settings for you. You can search it at the top, or tell me the name you see there.",
   "ask.pick.title": "Did you mean one of these?",
-  "ask.pick.other": "Something else"
+  "ask.pick.other": "Something else",
+  "crash.title": "Something went wrong in this window",
+  "crash.body": "ZOOD PDF hit a mistake while drawing this window. Reload it to carry on; an open file's autosaved copy will be offered back.",
+  "crash.reload": "Reload",
+  "crash.copy": "Copy details",
+  "crash.copied": "Copied"
 }

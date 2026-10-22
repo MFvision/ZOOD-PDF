@@ -1,4 +1,5 @@
 export { App } from './App';
+export { CrashGuard } from './components/CrashGuard';
 export { QuickApp } from './quick/QuickApp';
 export { RingApp } from './quick/Ring';
 export { ArrivalApp, isArrivalWindow } from './remote/Arrival';

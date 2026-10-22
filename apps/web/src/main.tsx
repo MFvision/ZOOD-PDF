@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App, ArrivalApp, AskApp, AskBubbleApp, AskGlowApp, AskPointApp, QuickApp, RingApp, isArrivalWindow, isAskBubbleWindow, isAskGlowWindow, isAskPointWindow, isAskWindow, isQuickWindow, isRingWindow } from '@warraq/ui';
+import { App, ArrivalApp, CrashGuard, AskApp, AskBubbleApp, AskGlowApp, AskPointApp, QuickApp, RingApp, isArrivalWindow, isAskBubbleWindow, isAskGlowWindow, isAskPointWindow, isAskWindow, isQuickWindow, isRingWindow } from '@warraq/ui';
 import { registerServiceWorker } from './registerServiceWorker';
 
 const root = document.getElementById('root');
@@ -25,7 +25,9 @@ const Root = isAskWindow()
             : App;
 createRoot(root).render(
   <StrictMode>
-    <Root />
+    <CrashGuard>
+      <Root />
+    </CrashGuard>
   </StrictMode>,
 );
 
