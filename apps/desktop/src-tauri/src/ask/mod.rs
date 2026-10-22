@@ -1179,14 +1179,17 @@ pub fn ask_moment(state: State<'_, AskState>) -> MomentView {
 
 /// The window in front at the tap, as a PNG, for the island to read its
 /// words with the app's own recogniser when the model reads text only.
-#[tauri::command]
+/// Encoded off the main thread, and without holding the moment meanwhile.
+#[tauri::command(async)]
 pub fn ask_window_png(state: State<'_, AskState>) -> Result<tauri::ipc::Response, String> {
-    let moment = state.moment.lock().map_err(|e| e.to_string())?;
-    let (width, height, rgb) = moment
+    let (width, height, rgb) = state
+        .moment
+        .lock()
+        .map_err(|e| e.to_string())?
         .sharp
-        .as_ref()
+        .clone()
         .ok_or_else(|| "E_ASK: no picture of the window was taken".to_string())?;
-    let png = eye::png_of(*width, *height, rgb)
+    let png = eye::png_of(width, height, &rgb)
         .ok_or_else(|| "E_ASK: the picture could not be made".to_string())?;
     Ok(tauri::ipc::Response::new(png))
 }
@@ -1264,7 +1267,7 @@ pub fn ask_run_tool<R: Runtime>(
 /// Opens a Library file the island found, in the editor. Only a file the
 /// app may already read (a folder the person added to the Library).
 #[tauri::command]
-pub fn ask_open<R: Runtime>(
+pub async fn ask_open<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, AskState>,
     path: String,

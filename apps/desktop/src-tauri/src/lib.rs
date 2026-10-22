@@ -176,7 +176,7 @@ pub(crate) fn open_in_editor_at<R: Runtime>(
 /// Opens a quick tool's result in the editor ("Open" beside a result), or a
 /// file at the editor's tool for a quick tool that is the editor's (Sign).
 #[tauri::command]
-fn quick_open_in_editor<R: Runtime>(
+async fn quick_open_in_editor<R: Runtime>(
     app: AppHandle<R>,
     path: String,
     tool: Option<String>,
@@ -288,7 +288,8 @@ fn core_version() -> String {
 /// `ArrayBuffer` on the JS side; no JSON array of numbers for multi-megabyte
 /// PDFs). Only paths the user chose through the dialog plugin, or dropped on
 /// the window, are in the fs scope; anything else is refused with `E_SCOPE`.
-#[tauri::command]
+/// Off the main thread, so a large file does not freeze every window.
+#[tauri::command(async)]
 fn read_file_bytes<R: Runtime>(
     app: AppHandle<R>,
     path: String,
