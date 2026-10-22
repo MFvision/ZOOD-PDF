@@ -4,6 +4,7 @@ import { formatBytes } from '../ai/device/models';
 import { useI18n } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { useSettings } from '../state/settings';
+import { openSettingsAt } from '../settings/SettingsWindow';
 import { deleteVersion, fileKey, listVersions, readVersion } from './versions';
 import type { VersionInfo } from './versions';
 
@@ -15,7 +16,7 @@ export function versionTime(at: number, lang: 'ar' | 'en'): string {
 
 /**
  * File › Versions: the file as it was before each save (Settings › History
- * keeps 5 or 20). A version opens in a tab of its own to look at, or is put
+ * keeps 5 or 20). With versions off it says so and offers to turn them on. A version opens in a tab of its own to look at, or is put
  * back into the document, which then shows as changed until it is saved.
  */
 export function VersionsDialog() {
@@ -97,6 +98,11 @@ export function VersionsDialog() {
         </ul>
       )}
       <div className="dialog-actions">
+        {settings.versions === 0 && (
+          <button type="button" className="icon-btn icon-btn-labeled icon-btn-primary" onClick={() => openSettingsAt('history', () => dispatch({ type: 'DIALOG', dialog: 'settings' }))}>
+            {t('versions.turnOn')}
+          </button>
+        )}
         <button type="button" className="icon-btn icon-btn-labeled" onClick={close}>
           {t('versions.done')}
         </button>

@@ -197,7 +197,8 @@ export function useMenuModel(): MenuModel[] {
         {
           id: 'versions',
           label: t('versions.menu'),
-          disabled: !hasDocument || settings.versions === 0,
+          // Open even with versions off: the dialog says so and offers to turn them on.
+          disabled: !hasDocument,
           onSelect: () => dispatch({ type: 'DIALOG', dialog: 'versions' }),
         },
         ...cloud.providers.map((provider) => ({
