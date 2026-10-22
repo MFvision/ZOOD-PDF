@@ -23,9 +23,30 @@ const WORDS = {
   },
   shortcut: { ar: 'اختصار', en: 'Shortcut' },
   open: { ar: 'افتح آخر ملف', en: 'Open the last document' },
+  tabs: {
+    ar: ['الرئيسية', 'ملفاتي', 'إنشاء', 'الأدوات', 'أنا'],
+    en: ['Home', 'My files', 'Create', 'Tools', 'Me'],
+  },
+  openWith: { ar: 'يفتح التطبيق على', en: 'Open with' },
+  lastPlace: { ar: 'حيث توقفت', en: 'Where I left off' },
+  icon: { ar: 'أيقونة التطبيق', en: 'App icon' },
 };
-// What each card brings up on the phone, in order.
+// The app's own icon choices (apps/ios … AppIconPreview*), in its order.
+const ICONS = ['navy', 'paper', 'sky', 'black', 'bronze'];
+const tabIcon = (d) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const TAB_ICONS = [
+  tabIcon('<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/>'),
+  tabIcon('<path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
+  tabIcon('<path d="M12 6v12M6 12h12"/>'),
+  tabIcon(
+    '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-2.5z"/>',
+  ),
+  tabIcon('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
+];
+// The phone's screens, and which one each card brings up, in order.
 const SCREENS = ['scan', 'home', 'read'];
+const SHOWS = [0, 1, 2, 1, 1];
 
 export function phoneScene(t, escape, media, frame) {
   const [w, h] = media.size('phone');
@@ -44,6 +65,18 @@ export function phoneScene(t, escape, media, frame) {
       <div class="ph-phone"><div class="screen">${imgs}<div class="ph-scanline"></div></div>${frame}</div>
       <div class="ph-card glass c0" style="--k:0"><span class="ph-icon">${camera}</span><span class="ph-text"><b>${escape(t(WORDS.scan))}</b><small>${escape(t(WORDS.scanSub))}</small></span>${tick}</div>
       <div class="ph-card glass c1 ph-widget" style="--k:1"><b class="ph-wtitle">${escape(t(WORDS.recent))}</b><ul>${rows}</ul>${tick}</div>
+      <div class="ph-card glass c3 ph-tabs" style="--k:3"><span class="ph-tabrow">${t(WORDS.tabs)
+        .map(
+          (x, k) =>
+            `<span class="${k === 2 ? 'ph-plus' : ''}"><i>${TAB_ICONS[k]}</i>${escape(x)}</span>`,
+        )
+        .join(
+          '',
+        )}</span><small class="ph-open">${escape(t(WORDS.openWith))}: <b>${escape(t(WORDS.lastPlace))}</b></small>${tick}</div>
+      <div class="ph-card glass c4 ph-icons" style="--k:4"><b class="ph-wtitle">${escape(t(WORDS.icon))}</b><span class="ph-irow">${ICONS.map(
+        (c, k) =>
+          `<img alt="" width="64" height="64" decoding="async" class="${k === 4 ? 'pick' : ''}" src="${new URL(`../assets/brand/icons/${c}.webp`, import.meta.url).href}">`,
+      ).join('')}</span>${tick}</div>
       <div class="ph-card glass c2" style="--k:2"><span class="ph-icon bolt">${bolt}</span><span class="ph-text"><small>${escape(t(WORDS.shortcut))}</small><b>${escape(t(WORDS.open))}</b></span>${tick}</div>
     </div>
   </div>`;
@@ -52,7 +85,7 @@ export function phoneScene(t, escape, media, frame) {
 export function phoneFrame(el, p, reduced) {
   const scene = el.querySelector('.ph');
   if (!scene) return;
-  if (reduced) p = stepped(p, [0.08, 0.36, 0.62, 0.9]);
+  if (reduced) p = stepped(p, [0.08, 0.34, 0.5, 0.66, 0.82, 0.97]);
   const set = (scene.__set ??= setter(scene));
   // The screens load with the room.
   scene.querySelectorAll('.ph-phone img:not([src])').forEach((img) => (img.src = img.dataset.src));
@@ -60,9 +93,10 @@ export function phoneFrame(el, p, reduced) {
   set('--in', ease(span(p, 0, 0.12)));
   set('--up', ease(span(p, 0.02, 0.22)));
   set('--drift', clamp(p));
-  let showing = 0;
-  scene.querySelectorAll('.ph-card').forEach((card, k) => {
-    const s = 0.16 + k * 0.24;
+  let last = 0;
+  scene.querySelectorAll('.ph-card').forEach((card) => {
+    const k = +card.style.getPropertyValue('--k');
+    const s = 0.12 + k * 0.16;
     const out = spring(span(p, s, s + 0.1));
     // Pressed in, let go, then the tick pops.
     const press = span(p, s + 0.11, s + 0.13) * (1 - span(p, s + 0.13, s + 0.16));
@@ -70,10 +104,11 @@ export function phoneFrame(el, p, reduced) {
     card.style.setProperty('--a', out.toFixed(3));
     card.style.setProperty('--press', press.toFixed(3));
     card.style.setProperty('--done', done.toFixed(3));
-    if (p >= s + 0.13) showing = k;
+    if (p >= s + 0.13) last = Math.max(last, k);
   });
+  const showing = SHOWS[last];
   scene
     .querySelectorAll('.ph-phone img')
     .forEach((img, k) => img.classList.toggle('on', k === showing));
-  set('--scan', showing === 0 ? span(p, 0.29, 0.4) : 0);
+  set('--scan', showing === 0 ? span(p, 0.25, 0.36) : 0);
 }

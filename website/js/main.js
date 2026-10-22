@@ -26,6 +26,13 @@ import { phoneScene, phoneFrame as phoneRoomFrame } from './phone-room.js';
 import { familyScene, familyFrame } from './family.js';
 import { remoteScene, remoteFrame } from './remote.js';
 import { filmScene, filmFrame } from './film.js';
+import { fabricButton, wireFabric } from './fabric.js';
+import { foldScene, foldFrame } from './fold-room.js';
+import { askScene, askFrame } from './ask-room.js';
+import { tourScene, tourFrame } from './tour-room.js';
+import { helperScene, helperFrame } from './helper-room.js';
+import { startPageMorph } from './page-morph.js';
+import { startFoldable } from './foldable.js';
 
 const root = document.documentElement;
 export const lang = root.lang === 'en' ? 'en' : 'ar';
@@ -139,7 +146,7 @@ export function footer() {
   el.innerHTML = `<div class="footer-in">
     <a class="brand" href="${urlFor(lang)}" aria-label="${escape(t(SITE.name))}"><span class="logo" aria-hidden="true"></span><span class="logo-pdf" aria-hidden="true">PDF</span></a>
     <p>${escape(t(FOOTER.tagline))}</p>
-    <nav aria-label="${escape(t(FOOTER.links[0].label))} · ${escape(t(FOOTER.links[1].label))} · ${escape(t(FOOTER.links[2].label))}"><ul>${links.join('')}</ul></nav>
+    <nav aria-label="${FOOTER.links.map((l) => escape(t(l.label))).join(' · ')}"><ul>${links.join('')}</ul></nav>
     <p>${escape(t(FOOTER.copyright))}</p>
     <p>${escape(t(FOOTER.marks))}</p>
   </div>`;
@@ -180,17 +187,17 @@ function chapterBody(c, index) {
   if (c.points)
     body += `<ul class="points">${c.points.map((p, k) => `<li style="--pi:${k}">${escape(t(p))}</li>`).join('')}</ul>`;
   if (c.kind === 'platforms') {
-    body += `<ul class="platforms">${PLATFORMS.map((p) => `<li><strong>${escape(t(p.name))}</strong><span>${escape(t(p.status))}</span></li>`).join('')}</ul>`;
+    body += `<ul class="platforms">${PLATFORMS.map((p, k) => `<li style="--li:${k}"><strong>${escape(t(p.name))}</strong><span>${escape(t(p.status))}</span></li>`).join('')}</ul>`;
   }
   if (c.kind === 'download') {
-    body += `<ul class="downloads">${DOWNLOADS.map((d) =>
+    body += `<ul class="downloads">${DOWNLOADS.map((d, k) =>
       d.href
-        ? `<li><a href="${escape(d.href)}" rel="noopener">${escape(t(d.label))}</a></li>`
-        : `<li><span class="soon">${escape(t(d.label))} <span>${escape(t(UI.comingSoon))}</span></span></li>`,
+        ? `<li style="--li:${k}"><a href="${escape(d.href)}" rel="noopener">${escape(t(d.label))}</a></li>`
+        : `<li style="--li:${k}"><span class="soon">${escape(t(d.label))} <span>${escape(t(UI.comingSoon))}</span></span></li>`,
     ).join('')}</ul>`;
   }
   if (c.note) body += `<p class="note">${escape(t(c.note))}${escape(t(c.note.on))}.</p>`;
-  if (c.cta) body += `<a class="button" href="${c.cta.href}">${escape(t(c.cta.label))}</a>`;
+  if (c.cta) body += fabricButton(c.cta.href, escape(t(c.cta.label)));
   if (c.more)
     body += `<a class="text-link" href="${urlFor(lang, c.more.href.replace(/\/$/, ''))}">${escape(t(c.more.label))}</a>`;
   if (c.devices?.length) {
@@ -223,10 +230,14 @@ const media = {
 const ROOMS = {
   ring: { scene: () => ringScene(t, escape), frame: ringFrame },
   ai: { scene: () => aiScene(t, escape, media), frame: aiFrame },
+  ask: { scene: () => askScene(t, escape), frame: askFrame },
+  tour: { scene: () => tourScene(t, escape), frame: tourFrame },
+  helper: { scene: () => helperScene(t, escape), frame: helperFrame },
   library: { scene: () => libraryScene(t, escape), frame: libraryFrame },
   phone: { scene: () => phoneScene(t, escape, media, phoneFrame()), frame: phoneRoomFrame },
   remote: { scene: () => remoteScene(t, escape, phoneFrame()), frame: remoteFrame },
   film: { scene: () => filmScene(t, escape, lang), frame: filmFrame },
+  fold: { scene: () => foldScene(media), frame: foldFrame },
   family: {
     scene: () => familyScene(t, escape, media, { phone: phoneFrame(), tablet: tabletFrame() }),
     frame: familyFrame,
@@ -623,11 +634,29 @@ function startStory() {
   addEventListener('load', measure);
   measure();
   update();
+  wireFabric(main, () => reduced);
   if (!location.hash) playGather(stage, reduced);
   if (wallNear) wallImages();
 }
 
 headlineFont();
 startInteractions(() => reduced);
+// A hidden tab plays nothing: its videos pause and pick up where they were on return.
+document.addEventListener('visibilitychange', () => {
+  for (const v of document.querySelectorAll('video')) {
+    if (document.hidden && !v.paused) {
+      v.dataset.resume = '1';
+      v.pause();
+    } else if (!document.hidden && v.dataset.resume) {
+      delete v.dataset.resume;
+      v.play().catch(() => {});
+    }
+  }
+});
+startPageMorph();
+// The shells load this script with blocking="render", so the first frame waits
+// for the page this builds: no empty flash, and a page-to-page transition
+// lands on the finished page (which is why the Duo page is imported up front).
 if (root.dataset.page === 'story') startStory();
+else if (root.dataset.page === 'iphone-duo') startFoldable();
 else import('./legal-page.js').then((m) => m.startLegal(root.dataset.page));

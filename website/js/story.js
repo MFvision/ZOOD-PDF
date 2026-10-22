@@ -44,11 +44,13 @@ const ON = {
   desktopWeb: { ar: 'ويندوز وماك والويب', en: 'Windows, Mac and web' },
   web: { ar: 'تطبيق الويب', en: 'The web app' },
   mobile: { ar: 'آيفون وآيباد', en: 'iPhone and iPad' },
+  desktop: { ar: 'ويندوز وماك', en: 'Windows and Mac' },
 };
 
 // Each chapter:
 //   id          the #anchor, also used by the chapter index
-//   kind        'story' (default), 'ring', 'ai', 'library', 'phone', 'family', 'remote', 'film' (rooms), 'wall', 'platforms', 'download', 'inside'
+//   kind        'story' (default), 'ring', 'ai', 'ask', 'library', 'phone', 'family', 'remote', 'film',
+//               'fold', 'tour', 'helper' (rooms), 'wall', 'platforms', 'download', 'inside'
 //   stage       pose numbers the desk animates between:
 //               pages 1-5, fan 0-1 (stack to arc), recede 0-1 (pages step back),
 //               dusk 0-1 (desk turns to navy ink), pattern 0-1, frame 0-1 (bronze frame)
@@ -134,12 +136,12 @@ export const CHAPTERS = [
         en: 'Scan paper with the camera: its Arabic text is read and saved as a file you can search.',
       },
       {
-        ar: 'أدوات على الشاشة الرئيسية وشاشة القفل: آخر ملفاتك، والمسح، والبحث.',
-        en: 'Widgets on the Home and Lock Screen: your recent files, scanning and search.',
+        ar: 'أدوات على الشاشة الرئيسية وشاشة القفل لآخر ملفاتك والمسح والبحث، واختصارات جاهزة مثل «افتح آخر ملف».',
+        en: 'Widgets on the Home and Lock Screen for recent files, scanning and search, and ready-made shortcuts such as “Open the last document”.',
       },
       {
-        ar: 'واختصارات جاهزة، مثل «امسح مستندًا» و«افتح آخر ملف».',
-        en: 'Ready-made shortcuts, such as “Scan a document” and “Open the last document”.',
+        ar: 'تبويبات تعرفها أسفل الشاشة، واختر الشاشة التي يفتح عليها التطبيق، ومن خمس أيقونات له.',
+        en: 'Familiar tabs along the bottom, the screen the app opens on, and five app icons to choose from.',
       },
     ],
   },
@@ -178,6 +180,74 @@ export const CHAPTERS = [
     },
   },
   {
+    id: 'ask',
+    kind: 'ask',
+    stage: { pages: 1, fan: 0, recede: 0, dusk: 0, pattern: 0 },
+    devices: [],
+    eyebrow: { ar: 'اسأل ZOOD', en: 'Ask ZOOD' },
+    title: {
+      ar: 'اضغط مرة لتتكلّم، [[ومرتين ليُكتب ردّك]].',
+      en: 'Tap once to talk, [[twice to get your reply written]].',
+    },
+    lead: {
+      ar: 'اضغط Ctrl الأيمن (أو ⌘ الأيمن في ماك) مرة وقل ما تريد. واضغطه مرتين في خانة رد في أي تطبيق، فيكتب ZOOD الرد بأسلوبك دون أن يرسله.',
+      en: 'Tap the right Ctrl key (right ⌘ on a Mac) once and say what you want. Tap it twice in a reply box in any app and ZOOD writes the reply your way, without sending it.',
+    },
+    points: [
+      {
+        ar: 'تتوهّج حواف الشاشة مع صوتك وهو يستمع، والطلبات السريعة مثل تصغير ملف تُنفَّذ فورًا.',
+        en: 'The screen edges glow with your voice while it listens, and quick asks like shrinking a file run at once.',
+      },
+      {
+        ar: 'يعرض المواعيد القريبة في ملفاتك، بالهجري أيضًا.',
+        en: 'It shows the dates coming up in your files, in Hijri too.',
+      },
+      {
+        ar: 'زر «إعداد» واحد، ثم يعمل كله على جهازك بلا سحابة. سرعته تختلف من حاسوب لآخر.',
+        en: 'One Set up button, then it all runs on your device with no cloud. Its speed depends on your computer.',
+      },
+    ],
+    note: {
+      ar: 'اسأل ZOOD: ',
+      en: 'Ask ZOOD: ',
+      on: { ar: 'تطبيق ويندوز وماك', en: 'the Windows and Mac app' },
+    },
+  },
+  {
+    id: 'helper',
+    kind: 'helper',
+    stage: { pages: 1, fan: 0, recede: 0, dusk: 0, pattern: 0 },
+    devices: [],
+    eyebrow: { ar: 'المحادثة والمساعدة', en: 'Chat and help' },
+    title: {
+      ar: 'اسأله أي شيء، [[حتى دون ملف مفتوح]].',
+      en: 'Ask it anything, [[even with no file open]].',
+    },
+    lead: {
+      ar: 'تبويب «المحادثة» يعمل دون إنترنت، ويحيّيك باسمك، وينفّذ ما تطلبه مثل «اذهب للصفحة 5».',
+      en: 'The Chat tab works offline, greets you by name, and does what you ask, like “go to page 5”.',
+    },
+    points: [
+      {
+        ar: 'قل «رتّب مجلد التنزيلات» فيرتّبه حسب النوع أو الشهر. ترى الخطة أولًا، و«تراجع» يعيد كل شيء.',
+        en: 'Say “organize my Downloads” and it sorts them by type or month. You see the plan first, and Undo puts it all back.',
+      },
+      {
+        ar: 'اسأل كيف تفعل شيئًا: «أرني» يقودك بمؤشر متوهّج، و«نفّذها عني» ينفّذ الخطوات في التطبيق.',
+        en: 'Ask how to do something: Show me leads you with a glowing pointer, and Do it for me does the steps in the app.',
+      },
+      {
+        ar: 'مؤشر ZOOD منفصل عن فأرتك، فلا يحرّكها أبدًا.',
+        en: "ZOOD's pointer is its own, so your mouse is never moved.",
+      },
+    ],
+    note: {
+      ar: 'المحادثة والمساعدة: ',
+      en: 'Chat and help: ',
+      on: { ar: 'تطبيق ويندوز وماك', en: 'the Windows and Mac app' },
+    },
+  },
+  {
     id: 'remote',
     kind: 'remote',
     stage: { pages: 1, fan: 0, recede: 1, dusk: 0, pattern: 0 },
@@ -201,8 +271,8 @@ export const CHAPTERS = [
         en: "Use it as the computer's mouse and keyboard, move through any slideshow and set the volume, once you switch that on in the app.",
       },
       {
-        ar: 'أرسل الملف إلى هاتفك، أو صوّر صفحة فتصل ملفًا، أو وقّع على الهاتف فيظهر توقيعك في الملف.',
-        en: 'Send the file to your phone, photograph a page and it arrives as a PDF, or sign on the phone and the signature lands in the file.',
+        ar: 'أرسل الملف إلى هاتفك، أو صوّر صفحة فتصل ملفًا، أو مرّر ملفًا من هاتفك للأعلى فيصل إلى سطح مكتب الحاسوب، أو وقّع على الهاتف فيظهر توقيعك في الملف.',
+        en: "Send the file to your phone, photograph a page and it arrives as a PDF, flick a file up off your phone onto the computer's desktop, or sign on the phone and the signature lands in the file.",
       },
     ],
     note: {
@@ -451,6 +521,75 @@ export const CHAPTERS = [
     note: { ar: 'التعرّف الكامل على النص: ', en: 'Full OCR: ', on: ON.allButMobile },
   },
   {
+    id: 'foldable',
+    kind: 'fold',
+    stage: { pages: 1, fan: 0, recede: 1, dusk: 0, pattern: 0 },
+    devices: [],
+    eyebrow: { ar: 'جديد: آيفون Duo', en: 'New: iPhone Duo' },
+    title: {
+      ar: 'افتح الهاتف، [[تتّسع الصفحة]].',
+      en: 'Unfold the phone. [[The page opens up.]]',
+    },
+    lead: {
+      ar: 'محرر PDF مطويًّا في يد واحدة، ومفتوحًا على الصفحة كاملة.',
+      en: 'PDF Editor folded in one hand, and open to the whole page.',
+    },
+    more: { href: 'iphone-duo/', label: { ar: 'اكتشف الصفحة', en: 'See the page' } },
+  },
+  {
+    id: 'tour',
+    kind: 'tour',
+    stage: { pages: 1, fan: 0, recede: 0, dusk: 0, pattern: 0 },
+    devices: [],
+    eyebrow: { ar: 'جولة تعريفية', en: 'Welcome tour' },
+    title: { ar: 'تتعلّمه [[في دقيقتين]].', en: 'Learn it [[in about two minutes]].' },
+    lead: {
+      ar: 'أول مرة تفتحه، تأخذك جولة من ثمانية فصول: تختار لغتك ومظهرك، وتجرّب الدائرة بيدك، وتصل جوالك. وتعود إليها متى شئت من «مساعدة».',
+      en: 'The first time you open it, an eight-chapter tour sets your language and look, lets you practise the ring and connects your phone. Open it again any time from Help.',
+    },
+    points: [
+      {
+        ar: 'والتطبيق كله يتحرك معك: الأزرار تستجيب للمستك، والشاشات تنزلق بهدوء، ويحترم خيار تقليل الحركة.',
+        en: 'And the whole app moves with you: buttons answer your press, screens glide in, and Reduce Motion is respected.',
+      },
+    ],
+    note: {
+      ar: 'الجولة: ',
+      en: 'The tour: ',
+      on: { ar: 'ويندوز وماك والويب', en: 'Windows, Mac and the web' },
+    },
+  },
+  {
+    id: 'help',
+    stage: { pages: 1, fan: 0, recede: 0.15, dusk: 0, pattern: 1 },
+    devices: [],
+    eyebrow: { ar: 'المساعدة والدعم', en: 'Help & Support' },
+    title: { ar: 'المساعدة [[داخل التطبيق]].', en: 'Help that lives [[inside the app]].' },
+    lead: {
+      ar: 'افتح «المساعدة والدعم» من قائمة المساعدة أو من الإعدادات، أو قل «مساعدة» لـ«اسأل ZOOD». بلا حساب.',
+      en: 'Open Help & Support from the Help menu or Settings, or just say “help” to Ask ZOOD. No account needed.',
+    },
+    points: [
+      {
+        ar: 'مقالات بالعربية والإنجليزية عن كل خطوة، كل واحدة منها دليل PDF أيضًا، مع مقاطع فيديو وأجوبة الأسئلة الشائعة.',
+        en: 'How-to articles in Arabic and English, each one also a PDF guide, with videos and answers to common questions.',
+      },
+      {
+        ar: 'اسأل «كيف أفعل…؟» فيجيبك من المقالات على جهازك، ثم «أرني» أو «نفّذها عني».',
+        en: 'Ask “how do I…?” and it answers from the articles on your device, then offers Show me or Do it for me.',
+      },
+      {
+        ar: 'أبلغ عن مشكلة بخصوصية: ترى ما سيُرفق وتوافق عليه قبل أن يُرسل.',
+        en: 'Report a problem privately. You see what gets attached and agree before it is sent.',
+      },
+    ],
+    note: {
+      ar: 'المساعدة والدعم: ',
+      en: 'Help & Support: ',
+      on: { ar: 'تطبيق ويندوز وماك', en: 'the Windows and Mac app' },
+    },
+  },
+  {
     id: 'family',
     kind: 'family',
     stage: { pages: 1, fan: 0, recede: 1, dusk: 0, pattern: 0 },
@@ -539,14 +678,17 @@ export const PLATFORMS = [
   {
     id: 'windows',
     name: { ar: 'ويندوز', en: 'Windows' },
-    status: { ar: 'نسخة تجريبية للاختبار، غير موقّعة بعد.', en: 'A test build, not yet signed.' },
+    status: {
+      ar: 'الإصدار 0.4.3، ويحدّث نفسه. غير موقّع بعد، فقد ينبّهك ويندوز قبل تشغيله أول مرة.',
+      en: 'Version 0.4.3, and it updates itself. Not signed yet, so Windows may warn you the first time it runs.',
+    },
   },
   {
     id: 'mac',
     name: { ar: 'ماك', en: 'Mac' },
     status: {
-      ar: 'جاهز، وينتظر توثيق Apple قبل التوزيع.',
-      en: 'Built, waiting for Apple notarisation before release.',
+      ar: 'الإصدار 0.4.3، ويحدّث نفسه. إلى أن يُضاف توثيق Apple، اسمح بفتحه مرة من الإعدادات › الخصوصية والأمن.',
+      en: "Version 0.4.3, and it updates itself. Until Apple's notarisation is added, allow it once in System Settings › Privacy & Security.",
     },
   },
   {
@@ -582,8 +724,16 @@ export const PLATFORMS = [
 
 // The download chapter. A button with href null reads "Coming soon".
 export const DOWNLOADS = [
-  { id: 'windows', label: { ar: 'ويندوز', en: 'Windows' }, href: null },
-  { id: 'mac', label: { ar: 'ماك', en: 'Mac' }, href: null },
+  {
+    id: 'windows',
+    label: { ar: 'ويندوز', en: 'Windows' },
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.3/ZOOD-PDF-Setup-0.4.3.exe',
+  },
+  {
+    id: 'mac',
+    label: { ar: 'ماك', en: 'Mac' },
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.3/ZOOD-PDF-0.4.3-mac.dmg',
+  },
   {
     id: 'ios',
     label: { ar: 'آيفون وآيباد (App Store)', en: 'iPhone and iPad (App Store)' },
@@ -661,6 +811,54 @@ export const TOOLS = [
     },
   },
   {
+    name: { ar: 'اسأل ZOOD', en: 'Ask ZOOD' },
+    text: {
+      ar: 'اضغط Ctrl الأيمن مرة وتكلّم في أي تطبيق، ومرتين لمسودة رد بأسلوبك. يعمل على جهازك.',
+      en: 'Tap the right Ctrl key once and talk, in any app, or twice for a reply drafted your way. It runs on your device.',
+    },
+    on: ON.desktop,
+  },
+  {
+    name: { ar: 'المحادثة', en: 'Chat' },
+    text: {
+      ar: 'اسأل الذكاء أي شيء دون ملف مفتوح ودون إنترنت، أو اطلب منه أمرًا في التطبيق.',
+      en: 'Ask the AI anything with no file open and no internet, or tell it to do something in the app.',
+    },
+    on: ON.desktop,
+  },
+  {
+    name: { ar: 'رتّب حاسوبك', en: 'Organize your computer' },
+    text: {
+      ar: 'رتّب التنزيلات أو سطح المكتب حسب النوع أو الشهر، مع معاينة قبل التنفيذ وزر تراجع.',
+      en: 'Tidy Downloads or the Desktop by type or by month, with a preview first and Undo.',
+    },
+    on: ON.desktop,
+  },
+  {
+    name: { ar: 'المساعدة والدعم', en: 'Help & Support' },
+    text: {
+      ar: 'مقالات وأدلة PDF، و«أرني» و«نفّذها عني»، والإبلاغ عن مشكلة.',
+      en: 'Articles and PDF guides, Show me and Do it for me, and reporting a problem.',
+    },
+    on: ON.desktop,
+  },
+  {
+    name: { ar: 'مواعيد قريبة', en: 'Coming up' },
+    text: {
+      ar: 'الدفعات والعقود والرخص التي تقترب مواعيدها في ملفات مكتبتك، بالهجري أيضًا.',
+      en: 'Payments, contracts and licences coming due in your Library files, in Hijri dates too.',
+    },
+    on: ON.desktop,
+  },
+  {
+    name: { ar: 'مرّر إلى الحاسوب', en: 'Flick to the computer' },
+    text: {
+      ar: 'اسحب ملفًا على جوالك للأعلى فيصل إلى سطح مكتب الحاسوب، والعكس.',
+      en: "Flick a file up on your phone and it lands on the computer's desktop, and back.",
+    },
+    on: ON.desktop,
+  },
+  {
     name: { ar: 'دمج', en: 'Combine' },
     text: { ar: 'اجمع عدة ملفات في ملف PDF واحد.', en: 'Put several files together in one PDF.' },
   },
@@ -721,8 +919,8 @@ export const TOOLS = [
   {
     name: { ar: 'تصدير', en: 'Export' },
     text: {
-      ar: 'إلى ملفات docx وxlsx وpptx والصور وHTML والنص.',
-      en: 'To docx, xlsx and pptx files, pictures, HTML and text.',
+      ar: 'إلى ملفات docx وxlsx وpptx والصور وHTML وMarkdown والنص. تبقى الجداول جداول قابلة للتعديل، وتبقى الروابط قابلة للنقر.',
+      en: 'To docx, xlsx and pptx files, pictures, HTML, Markdown and text. Tables stay editable tables and links stay clickable.',
     },
     on: ON.web,
   },
@@ -817,6 +1015,7 @@ export const FOOTER = {
     { href: 'privacy/', label: { ar: 'الخصوصية', en: 'Privacy' } },
     { href: 'terms/', label: { ar: 'الشروط', en: 'Terms' } },
     { href: 'support/', label: { ar: 'الدعم', en: 'Support' } },
+    { href: 'help/', label: { ar: 'الأدلة', en: 'Guides' } },
   ],
   source: { ar: 'الشيفرة المصدرية (Apache-2.0)', en: 'Source code (Apache-2.0)' },
   copyright: { ar: '© ٢٠٢٦ زود', en: '© 2026 ZOOD' },

@@ -34,8 +34,9 @@ title: { ar: 'ملفات PDF، [[من جديد]].', en: 'PDFs, [[done right]].' 
 
 The phrase in `[[ ]]` gets the bronze band. A chapter has at most three
 `points`. Keep both languages saying the same thing. The legal pages are in
-`js/legal.js`; text in `{{double braces}}` is a placeholder (legal entity,
-email, address) that shows highlighted until you fill in `CONTACT` at the top.
+`js/legal.js`; `{{entity}}`, `{{email}}` and `{{phone}}` come from `CONTACT` at
+the top, the same details the app shows in Settings › About. Anything else in
+`{{double braces}}` shows highlighted as a placeholder.
 
 Only claim what `docs/feature-matrix.md` marks ✅. Partial (🟡) and planned (⬜)
 work stays off the site until it works: the owner wants nothing shown as
@@ -126,8 +127,22 @@ node website/tools/serve.mjs 8080      # http://127.0.0.1:8080, same headers as 
 
 ## Host it
 
-Any static host with HTTPS works; serve the folder at the domain's root. The
-simple option is Caddy in Docker (certificates are automatic):
+Any static host with HTTPS works; serve the folder at the domain's root.
+
+**Hostinger** (or any Apache or LiteSpeed host): run `sh website/tools/pack.sh`
+on the Mac that has the licensed font in `assets/fonts/licensed/`. It makes
+`website/zood-pdf-site.zip` with only what the site serves, `.htaccess`
+included (HTTPS redirect, the same security headers and caching as the
+Caddyfile). In hPanel, point `pdf.zood.sa` at a folder, turn on its free SSL,
+open File Manager there, upload the zip and extract it so `index.html` sits at
+the top. The zip carries the licensed font: keep it private.
+The zip also carries the help pages (`help/`, made by
+`scripts/support/make-guides.mjs`) and the support relay (`api/support/`);
+the relay needs its one-time setup (`api/support/README.md`: database,
+`config.php`, cron) before reports and ideas reach GitHub. Until then the
+app sends reports by e-mail.
+
+**Caddy in Docker** (certificates are automatic):
 
 ```sh
 docker build -t zood-pdf-site website/
@@ -137,7 +152,7 @@ docker run -d -p 80:80 -p 443:443 -v caddy_data:/data zood-pdf-site
 The `Caddyfile` sets the domain (`pdf.zood.sa`, override with
 `SITE_ADDRESS`), compression, a week's caching for pictures and fonts,
 revalidation of HTML, JS and CSS on every visit, and the security headers
-(nosniff, no referrer, no framing, HSTS, a content security policy that allows
+(nosniff, no referrer to other sites, no framing, HSTS, a content security policy that allows
 nothing outside the site). For auto-deploy on push, have the server pull the
 `app` branch and rebuild the image, or push the image from a GitHub Actions
 workflow to the server; the licensed font has to be added on the server side.
@@ -177,7 +192,41 @@ workflow to the server; the licensed font has to be added on the server side.
   Their look is the app's liquid glass (`packages/ui/src/styles/looks.css`).
 - `js/film.js`: the 30-second film after the opening. It plays without sound
   while on screen and pauses when it leaves; a button turns the sound on. With
-  Reduce Motion or Save Data it waits on its poster.
+  Reduce Motion or Save Data it waits on its poster. Screens up to 760px wide
+  get the 720p copy (`film-<lang>-720.*`).
+- `js/fabric.js`: the download button, a velvet cushion drawn in SVG and lit
+  by an SVG filter. It swells toward the pointer and squeezes when pressed;
+  blue in the dark theme, navy in the light one. Still with Reduce Motion.
+- `js/foldable.js`, `js/foldable-copy.js`, `css/foldable.css`: the iPhone Duo
+  page (`/iphone-duo/`), an Apple-style white gallery. The device is drawn in
+  CSS 3D (`js/fold-device.js`): it turns and unfolds as the hero scrolls; the
+  highlights carousel shows it folded (iPhone screens) or open (iPad screens).
+  `js/fold-room.js` is its small section on the home page. Check it with
+  `node website/tools/qa-foldable.mjs`.
+- `js/page-morph.js`: moving between pages, the pages cross-fade and the top
+  bar stays put (`@view-transition` in `css/site.css`); between the home page
+  and the iPhone Duo page the phone carries across. The shells load
+  `js/main.js` with `blocking="render"` so the new page is built before the
+  transition, and set the referrer policy to same-origin, which the browser
+  needs to tell the script which page it came from. Off with Reduce Motion.
+- Privacy, platforms and downloads: the privacy frame closes in around the
+  page and its lock shuts; the platform and download rows follow their card
+  in, one after another.
+- `js/ask-room.js`: Ask ZOOD in three acts. One tap: the screen's edges glow
+  with the voice, the island grows out of the notch, listens, and makes a file
+  smaller with a one-line answer. Two taps in an email: it reads the window
+  and writes the reply word by word ("Nothing was sent"). Then "Coming up"
+  slides in. Drawn, with the app's own words (`packages/ui/src/ask`).
+- `js/helper-room.js`: the AI panel's Chat tab with no file open. "Organize
+  my Downloads" shows the plan, the loose files fly into their folders, with
+  Undo; "How do I save this as docx?" offers Show me, and ZOOD's glowing
+  pointer flies to Export and opens it.
+- `js/tour-room.js`: the welcome tour, drawn: its eight chapters tick off one
+  by one as you scroll (`packages/ui/src/tour`).
+- The phone room also shows the iPhone's tabs, "Open with" and the five app
+  icons (`assets/brand/icons/`, from the iOS app's icon previews); the remote
+  room has a Flick beat: a file goes up off the phone in a glow and a wave of
+  light and lands on the computer's desktop, then one comes back.
 - `js/interact.js`: a ring of light from where a button or switch is pressed;
   the press and spring are in `css/site.css`. Off with Reduce Motion.
 

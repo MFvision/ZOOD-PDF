@@ -1,7 +1,8 @@
 // Touch feedback: a ring of light spreads from the point where a control is
 // pressed (css/site.css has the press and spring of the control itself).
 // Skipped with Reduce Motion.
-const SELECTOR = '.button, .switch a, .switch button, .downloads a';
+// The cloth button (fabric.js) answers a press with its own squeeze.
+const SELECTOR = '.button:not(.fabric), .switch a, .switch button, .downloads a';
 
 export function startInteractions(reduced) {
   addEventListener(

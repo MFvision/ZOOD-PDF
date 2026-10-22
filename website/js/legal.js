@@ -1,15 +1,15 @@
 // The Privacy, Terms and Support pages, in both languages. Each page is a
 // list of blocks: { h } a heading, { p } a paragraph, { list } bullet points.
-// Text in {{double braces}} is a placeholder the owner still has to give
-// (legal entity, contact email, address); it shows highlighted until replaced.
+// {{entity}}, {{email}} and {{phone}} come from CONTACT, the same details the
+// app shows in Settings › About (packages/ui/src/settings/about.ts).
 
 export const CONTACT = {
-  entity: { ar: '{{اسم الكيان القانوني لزود}}', en: '{{ZOOD legal entity}}' },
-  email: '{{support email}}',
-  address: { ar: '{{العنوان}}', en: '{{postal address}}' },
+  entity: { ar: 'زود', en: 'ZOOD' },
+  email: 'app@zood.sa',
+  phone: '920000077',
 };
 
-export const UPDATED = { ar: 'آخر تحديث: ١٩ أكتوبر ٢٠٢٦', en: 'Last updated: 19 October 2026' };
+export const UPDATED = { ar: 'آخر تحديث: ٢١ أكتوبر ٢٠٢٦', en: 'Last updated: 21 October 2026' };
 
 export const PAGES = {
   privacy: {
@@ -107,8 +107,8 @@ export const PAGES = {
       { h: { ar: 'التواصل', en: 'Contact' } },
       {
         p: {
-          ar: 'المسؤول عن التطبيق: {{entity}}، {{address}}. للأسئلة عن الخصوصية: {{email}}.',
-          en: 'The app is provided by {{entity}}, {{address}}. Privacy questions: {{email}}.',
+          ar: 'المسؤول عن التطبيق: {{entity}} (zood.sa). للأسئلة عن الخصوصية: {{email}}.',
+          en: 'The app is provided by {{entity}} (zood.sa). Privacy questions: {{email}}.',
         },
       },
     ],
@@ -182,11 +182,28 @@ export const PAGES = {
           en: 'We answer in Arabic and English. Write to {{email}} with your device and app version, and attach the file if you can and it holds nothing private.',
         },
       },
+      { h: { ar: 'المساعدة داخل التطبيق', en: 'Help inside the app' } },
       {
         p: {
-          ar: 'أدلة خطوة بخطوة في pdf.zood.sa/help. وفي التطبيق: مساعدة › المساعدة والدعم (أو F1)؛ اسأل بكلماتك فيريك الطريق أو ينفّذه عنك، وأبلغ عن مشكلة دون حساب وتابع حالتها حتى تُصلح، وصوّت للأفكار.',
-          en: 'Step-by-step guides are at pdf.zood.sa/en/help. In the app: Help › Help & Support (or F1). Ask in your own words and it shows you the way or does it for you; report a problem with no account and follow it until it is fixed; and vote for ideas.',
+          ar: 'في تطبيق ويندوز وماك افتح مساعدة › المساعدة والدعم (أو F1)، أو قل «مساعدة» لـ«اسأل ZOOD». وفيه:',
+          en: 'In the Windows and Mac app, open Help › Help & Support (or F1), or say “help” to Ask ZOOD. It has:',
         },
+      },
+      {
+        list: [
+          {
+            ar: 'اسأل بكلماتك: يجيبك من الأدلة على جهازك، ثم «أرني» أو «نفّذها عني».',
+            en: 'Ask in your own words: it answers from the guides on your device, then offers Show me or Do it for me.',
+          },
+          {
+            ar: 'أدلة خطوة بخطوة بالعربية والإنجليزية، كل واحد منها ملف PDF أيضًا. وهي هنا كذلك: pdf.zood.sa/help.',
+            en: 'Step-by-step guides in Arabic and English, each one also a PDF. They are here too: pdf.zood.sa/en/help.',
+          },
+          {
+            ar: 'أبلغ عن مشكلة دون حساب: ترى ما سيُرفق (السجل، ولقطة الشاشة إن أردت) وتوافق قبل أن يُرسل.',
+            en: 'Report a problem with no account: you see what gets attached (the log, and a screenshot if you want) and agree before it is sent.',
+          },
+        ],
       },
       { h: { ar: 'أسئلة شائعة', en: 'Common questions' } },
       { h3: { ar: 'هل أحتاج إلى حساب؟', en: 'Do I need an account?' } },
@@ -229,8 +246,13 @@ export const PAGES = {
           en: 'Before you save, yes. After you save, the text is gone from the file for good, so keep a copy of the original.',
         },
       },
-      { h: { ar: 'العنوان', en: 'Address' } },
-      { p: { ar: '{{entity}}، {{address}}', en: '{{entity}}, {{address}}' } },
+      { h: { ar: 'التواصل', en: 'Contact' } },
+      {
+        p: {
+          ar: 'البريد: {{email}}. الهاتف: {{phone}}.',
+          en: 'Email: {{email}}. Phone: {{phone}}.',
+        },
+      },
     ],
   },
 };

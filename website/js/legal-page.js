@@ -8,11 +8,17 @@ const escape = (s) =>
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
   );
 
-// Fills {{entity}}, {{email}} and {{address}}; anything still in braces is shown as a placeholder.
+// Fills {{entity}}, {{email}} (a mail link) and {{phone}} (a call link); anything
+// else in braces is shown as a placeholder.
 function fill(text) {
-  const values = { entity: t(CONTACT.entity), email: CONTACT.email, address: t(CONTACT.address) };
-  const filled = t(text).replace(/\{\{(entity|email|address)\}\}/g, (_, k) => values[k]);
-  return escape(filled).replace(/\{\{(.*?)\}\}/g, '<span class="placeholder">$1</span>');
+  const values = {
+    entity: escape(t(CONTACT.entity)),
+    email: `<a href="mailto:${escape(CONTACT.email)}">${escape(CONTACT.email)}</a>`,
+    phone: `<a href="tel:${escape(CONTACT.phone)}" dir="ltr">${escape(CONTACT.phone)}</a>`,
+  };
+  return escape(t(text))
+    .replace(/\{\{(entity|email|phone)\}\}/g, (_, k) => values[k])
+    .replace(/\{\{(.*?)\}\}/g, '<span class="placeholder">$1</span>');
 }
 
 export function startLegal(slug) {
