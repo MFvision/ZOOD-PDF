@@ -14,6 +14,8 @@
 //! What is tested here without a card: the HTTP exchange (against a local
 //! server) and the signer's encodings. Signing on a real card is not — see
 //! docs/STATUS.md.
+use std::net::{IpAddr, ToSocketAddrs};
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use cryptoki::context::{CInitializeArgs, CInitializeFlags, Pkcs11};
@@ -24,6 +26,8 @@ use cryptoki::object::{Attribute, AttributeType, CertificateType, ObjectClass, O
 use cryptoki::session::{Session, UserType};
 use cryptoki::types::AuthPin;
 use tauri::ipc::{InvokeBody, Request, Response};
+use tauri::{AppHandle, Runtime};
+use tauri_plugin_fs::FsExt;
 use warraq_sign::chain::Cert;
 use warraq_sign::keys::{KeyKind, Padding, Signer};
 use warraq_sign::HashAlg;
@@ -34,6 +38,8 @@ use crate::core_bridge::{debug_log, decode_frame, encode_frame};
 /// are a few kilobytes, a large CA's revocation list some megabytes.
 const MAX_ANSWER: u64 = 16 * 1024 * 1024;
 const TIMEOUT: Duration = Duration::from_secs(20);
+/// Redirects followed, each to an address checked as the first was.
+const MAX_REDIRECTS: usize = 3;
 
 fn header(request: &Request<'_>, name: &str) -> Option<String> {
     request
@@ -88,13 +94,87 @@ fn checked_url(url: &str) -> Result<&str, String> {
     }
 }
 
+/// Whether `ip` is on the open internet: not this machine, the local
+/// network, a link-local or carrier-grade NAT range, nor unspecified.
+fn public_ip(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(v4) => {
+            let [a, b, ..] = v4.octets();
+            !(v4.is_loopback()
+                || v4.is_private()
+                || v4.is_link_local()
+                || v4.is_unspecified()
+                || v4.is_broadcast()
+                || v4.is_multicast()
+                || a == 0
+                || (a == 100 && (64..128).contains(&b)))
+        }
+        IpAddr::V6(v6) => {
+            if let Some(v4) = v6.to_ipv4_mapped() {
+                return public_ip(IpAddr::V4(v4));
+            }
+            let first = v6.segments()[0];
+            !(v6.is_loopback()
+                || v6.is_unspecified()
+                || v6.is_multicast()
+                || first & 0xfe00 == 0xfc00
+                || first & 0xffc0 == 0xfe80)
+        }
+    }
+}
+
+/// Refuses an address whose host is, or resolves to, anything but the open
+/// internet. The status and issuer addresses come from the PDF being
+/// checked, which must not make the app reach the person's router or a
+/// service on their own machine.
+fn checked_host(url: &str) -> Result<(), String> {
+    let parsed = tauri::Url::parse(url).map_err(|_| format!("E_NET: not a web address: {url}"))?;
+    let host = parsed
+        .host_str()
+        .map(|h| h.trim_start_matches('[').trim_end_matches(']'))
+        .ok_or_else(|| format!("E_NET: not a web address: {url}"))?;
+    let port = parsed.port_or_known_default().unwrap_or(80);
+    let addresses: Vec<IpAddr> = match host.parse::<IpAddr>() {
+        Ok(ip) => vec![ip],
+        Err(_) => (host, port)
+            .to_socket_addrs()
+            .map_err(|e| format!("E_NET: {host}: {e}"))?
+            .map(|a| a.ip())
+            .collect(),
+    };
+    if addresses.is_empty() || !addresses.into_iter().all(public_ip) {
+        return Err(format!("E_NET_LOCAL: {host} is not on the open internet"));
+    }
+    Ok(())
+}
+
 /// POSTs `body` (when there is one, as `content_type`) or GETs `url`, and
-/// answers the response's bytes. A status other than 2xx is an error.
+/// answers the response's bytes. A status other than 2xx is an error. Only
+/// a host on the open internet is asked, and each redirect is checked again.
 pub fn exchange(url: &str, body: &[u8], content_type: Option<&str>) -> Result<Vec<u8>, String> {
-    let url = checked_url(url)?;
+    let mut url = checked_url(url)?.to_string();
+    for _ in 0..=MAX_REDIRECTS {
+        checked_host(&url)?;
+        match fetch(&url, body, content_type)? {
+            Fetched::Body(bytes) => return Ok(bytes),
+            Fetched::Moved(to) => url = checked_url(&to)?.to_string(),
+        }
+    }
+    Err("E_NET: too many redirects".into())
+}
+
+/// What one request answered: the body, or where it was sent on to.
+enum Fetched {
+    Body(Vec<u8>),
+    Moved(String),
+}
+
+/// One request to `url`, redirects not followed. A redirect's target is
+/// made absolute against `url`.
+fn fetch(url: &str, body: &[u8], content_type: Option<&str>) -> Result<Fetched, String> {
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_global(Some(TIMEOUT))
-        .max_redirects(3)
+        .max_redirects(0)
         .user_agent("Warraq")
         .build()
         .into();
@@ -110,11 +190,27 @@ pub fn exchange(url: &str, body: &[u8], content_type: Option<&str>) -> Result<Ve
             .send(body)
     };
     let mut response = result.map_err(|e| format!("E_NET: {e}"))?;
+    let status = response.status();
+    if status.is_redirection() {
+        let location = response
+            .headers()
+            .get("location")
+            .and_then(|v| v.to_str().ok())
+            .ok_or_else(|| format!("E_NET: {status} without a location"))?;
+        let to = tauri::Url::parse(url)
+            .and_then(|base| base.join(location))
+            .map_err(|_| format!("E_NET: a bad redirect: {location}"))?;
+        return Ok(Fetched::Moved(to.to_string()));
+    }
+    if !status.is_success() {
+        return Err(format!("E_NET: {status}"));
+    }
     response
         .body_mut()
         .with_config()
         .limit(MAX_ANSWER)
         .read_to_vec()
+        .map(Fetched::Body)
         .map_err(|e| format!("E_NET: {e}"))
 }
 
@@ -154,11 +250,118 @@ fn token_err(e: TokenError) -> String {
     }
 }
 
-/// The module loaded and initialised.
-fn module(path: &str) -> Result<Pkcs11, String> {
-    if path.trim().is_empty() {
+/// Folders a PKCS#11 module is looked for in when only its file name is
+/// given (`opensc-pkcs11.so`).
+fn module_folders() -> Vec<PathBuf> {
+    let mut folders: Vec<PathBuf> = Vec::new();
+    if cfg!(target_os = "windows") {
+        if let Some(system) = std::env::var_os("SystemRoot") {
+            folders.push(PathBuf::from(system).join("System32"));
+        }
+    } else if cfg!(target_os = "macos") {
+        for folder in ["/Library/OpenSC/lib", "/usr/local/lib", "/opt/homebrew/lib"] {
+            folders.push(folder.into());
+        }
+    } else {
+        for folder in [
+            "/usr/lib",
+            "/usr/lib64",
+            "/usr/local/lib",
+            "/usr/lib/pkcs11",
+            "/usr/lib64/pkcs11",
+            "/usr/lib/x86_64-linux-gnu",
+            "/usr/lib/x86_64-linux-gnu/pkcs11",
+            "/usr/lib/aarch64-linux-gnu",
+            "/usr/lib/aarch64-linux-gnu/pkcs11",
+        ] {
+            folders.push(folder.into());
+        }
+    }
+    folders
+}
+
+/// Where system-wide software is installed, which a module named by its
+/// full path must be under (unless the person chose it in the dialog).
+fn module_roots() -> Vec<PathBuf> {
+    let mut roots: Vec<PathBuf> = Vec::new();
+    if cfg!(target_os = "windows") {
+        for name in ["SystemRoot", "ProgramFiles", "ProgramFiles(x86)"] {
+            if let Some(root) = std::env::var_os(name) {
+                roots.push(root.into());
+            }
+        }
+    } else if cfg!(target_os = "macos") {
+        for root in [
+            "/usr/lib",
+            "/usr/local/lib",
+            "/Library",
+            "/opt/homebrew/lib",
+            "/opt/local/lib",
+        ] {
+            roots.push(root.into());
+        }
+    } else {
+        for root in [
+            "/usr/lib",
+            "/usr/lib64",
+            "/usr/local/lib",
+            "/lib",
+            "/lib64",
+            "/opt",
+        ] {
+            roots.push(root.into());
+        }
+    }
+    // Compared with the module's real path, so these are made real too.
+    roots
+        .into_iter()
+        .filter_map(|root| std::fs::canonicalize(root).ok())
+        .collect()
+}
+
+/// The module the interface named, if the app may load it: a native library
+/// runs with the app's rights, so only a file the person chose in the
+/// dialog (`allowed`), one under where system software is installed, or a
+/// bare file name found in a standard module folder is taken.
+fn module_path(path: &str, allowed: impl Fn(&Path) -> bool) -> Result<PathBuf, String> {
+    let path = path.trim();
+    if path.is_empty() {
         return Err("E_PKCS11: no module".into());
     }
+    let named = Path::new(path);
+    let is_library = |p: &Path| {
+        p.extension()
+            .and_then(|e| e.to_str())
+            .is_some_and(|e| ["so", "dylib", "dll"].contains(&e.to_ascii_lowercase().as_str()))
+            || p.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n.contains(".so."))
+    };
+    let refused = || format!("E_PKCS11_MODULE: {path} is not a module the app may load");
+    if !is_library(named) {
+        return Err(refused());
+    }
+    if named.components().count() == 1 {
+        return module_folders()
+            .into_iter()
+            .map(|folder| folder.join(named))
+            .find(|candidate| candidate.is_file())
+            .ok_or_else(refused);
+    }
+    if !named.is_absolute() {
+        return Err(refused());
+    }
+    let real = std::fs::canonicalize(named).map_err(|e| format!("E_PKCS11: {path}: {e}"))?;
+    if allowed(named) || allowed(&real) || module_roots().iter().any(|root| real.starts_with(root))
+    {
+        Ok(real)
+    } else {
+        Err(refused())
+    }
+}
+
+/// The module loaded and initialised; `path` comes from `module_path`.
+fn module(path: &Path) -> Result<Pkcs11, String> {
     let pkcs11 = Pkcs11::new(path).map_err(token_err)?;
     match pkcs11.initialize(CInitializeArgs::new(CInitializeFlags::OS_LOCKING_OK)) {
         Ok(()) | Err(TokenError::Pkcs11(RvError::CryptokiAlreadyInitialized, _)) => Ok(pkcs11),
@@ -228,8 +431,13 @@ fn login_to_list(listed_without: usize, tokens: usize, pin: &str) -> bool {
 
 /// The certificates on every token the module sees.
 #[tauri::command(async)]
-pub fn pkcs11_certificates(request: Request<'_>) -> Result<String, String> {
+pub fn pkcs11_certificates<R: Runtime>(
+    app: AppHandle<R>,
+    request: Request<'_>,
+) -> Result<String, String> {
     let path = percent_decoded(&header(&request, "x-warraq-module").ok_or("E_ARGS: no module")?)?;
+    let scope = app.fs_scope();
+    let path = module_path(&path, |p| scope.is_allowed(p))?;
     let pin = hex_decoded(&header(&request, "x-warraq-pin-hex").unwrap_or_default())?;
     let pkcs11 = module(&path)?;
     let slots = pkcs11.get_slots_with_token().map_err(token_err)?;
@@ -261,7 +469,11 @@ pub fn pkcs11_certificates(request: Request<'_>) -> Result<String, String> {
             "notAfter": warraq_sign::time::iso(cert.not_after()),
         }));
     }
-    debug_log(format!("pkcs11: {} certificate(s) in {path}", listed.len()));
+    debug_log(format!(
+        "pkcs11: {} certificate(s) in {}",
+        listed.len(),
+        path.display()
+    ));
     serde_json::to_string(&listed).map_err(|e| e.to_string())
 }
 
@@ -389,8 +601,13 @@ impl Signer for TokenSigner<'_> {
 /// and `x-warraq-key-id` say where; the body is the frame `signatures.sign`
 /// takes, less the certificate file; the answer is its frame.
 #[tauri::command(async)]
-pub fn pkcs11_sign(request: Request<'_>) -> Result<Response, String> {
+pub fn pkcs11_sign<R: Runtime>(
+    app: AppHandle<R>,
+    request: Request<'_>,
+) -> Result<Response, String> {
     let path = percent_decoded(&header(&request, "x-warraq-module").ok_or("E_ARGS: no module")?)?;
+    let scope = app.fs_scope();
+    let path = module_path(&path, |p| scope.is_allowed(p))?;
     let pin = hex_decoded(&header(&request, "x-warraq-pin-hex").unwrap_or_default())?;
     let slot_id: u64 = header(&request, "x-warraq-slot")
         .and_then(|s| s.parse().ok())
@@ -511,12 +728,16 @@ mod tests {
             stream.write_all(answer).unwrap();
             String::from_utf8_lossy(&seen).into_owned()
         });
-        let answer = exchange(
+        // `fetch`, not `exchange`: the local server is on this machine,
+        // which `exchange` refuses.
+        let Fetched::Body(answer) = fetch(
             &format!("http://127.0.0.1:{port}/tsr"),
             b"digest",
             Some("application/timestamp-query"),
         )
-        .unwrap();
+        .unwrap() else {
+            panic!("not a body");
+        };
         assert_eq!(answer, b"\x30\x03\x02\x01\x00");
         let request = server.join().unwrap();
         assert!(request.starts_with("POST /tsr "), "{request}");
@@ -529,8 +750,76 @@ mod tests {
     #[test]
     fn an_unreachable_server_is_an_error_not_a_hang() {
         // Port 9 (discard) on this machine is closed.
-        let e = exchange("http://127.0.0.1:9/ocsp", b"", None).unwrap_err();
+        let e = fetch("http://127.0.0.1:9/ocsp", b"", None).err().unwrap();
         assert!(e.starts_with("E_NET"), "{e}");
+    }
+
+    #[test]
+    fn only_a_module_the_app_may_load_is_loaded() {
+        let refused = |path: &str| {
+            module_path(path, |_| false)
+                .unwrap_err()
+                .starts_with("E_PKCS11")
+        };
+        assert!(refused(""));
+        assert!(refused("evil.txt"));
+        assert!(refused("relative/dir/opensc-pkcs11.so"));
+        assert!(refused("no-such-module-anywhere.so"));
+        // A library the person did not choose, outside system folders.
+        let dir = std::env::temp_dir().join(format!("warraq-pkcs11-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let module = dir.join("planted.so");
+        std::fs::write(&module, b"not a library").unwrap();
+        let text = module.to_string_lossy().into_owned();
+        assert!(module_path(&text, |_| false)
+            .unwrap_err()
+            .starts_with("E_PKCS11_MODULE"));
+        // The same file, chosen in the dialog.
+        assert!(module_path(&text, |p| p == module.as_path()).is_ok());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn only_hosts_on_the_open_internet_are_asked() {
+        for local in [
+            "127.0.0.1",
+            "10.1.2.3",
+            "172.16.0.1",
+            "172.31.255.255",
+            "192.168.1.1",
+            "169.254.169.254",
+            "100.64.0.1",
+            "100.127.255.255",
+            "0.0.0.0",
+            "::1",
+            "::",
+            "fc00::1",
+            "fd12:3456::1",
+            "fe80::1",
+            "::ffff:127.0.0.1",
+            "::ffff:192.168.0.1",
+        ] {
+            assert!(!public_ip(local.parse().unwrap()), "{local}");
+        }
+        for public in [
+            "8.8.8.8",
+            "1.1.1.1",
+            "100.128.0.1",
+            "172.32.0.1",
+            "2606:4700::1111",
+        ] {
+            assert!(public_ip(public.parse().unwrap()), "{public}");
+        }
+        for url in [
+            "http://127.0.0.1:9/ocsp",
+            "http://localhost/crl",
+            "http://[::1]/ocsp",
+            "http://169.254.169.254/latest/meta-data",
+            "http://2130706433/",
+        ] {
+            let e = exchange(url, b"", None).unwrap_err();
+            assert!(e.starts_with("E_NET_LOCAL"), "{url}: {e}");
+        }
     }
 
     /// The card is asked for exactly what a software key would sign: checked

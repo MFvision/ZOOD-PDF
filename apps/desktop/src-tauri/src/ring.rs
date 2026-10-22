@@ -543,10 +543,15 @@ pub fn ring_pick<R: Runtime>(app: AppHandle<R>, tool: String, only: Option<Vec<S
         return;
     }
     // To the phone: the files fly off the screen from where they were let go.
+    // Read and sent on a thread of its own, so large files do not freeze
+    // the windows.
     if tool == PHONE {
         let from = crate::ask::eye::pointer();
-        let sent = crate::remote::give_paths(&app, &files, Some(from));
-        log(&format!("{sent} of {} files to the phone", files.len()));
+        let app = app.clone();
+        std::thread::spawn(move || {
+            let sent = crate::remote::give_paths(&app, &files, Some(from));
+            log(&format!("{sent} of {} files to the phone", files.len()));
+        });
         return;
     }
     let tool = match tool.as_str() {

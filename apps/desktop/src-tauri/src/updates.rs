@@ -12,6 +12,7 @@
 //! last check found and restarts into it.
 
 use std::sync::Mutex;
+use std::time::Duration;
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
@@ -42,6 +43,11 @@ pub struct UpdateProgress {
 
 pub const PROGRESS_EVENT: &str = "update-progress";
 
+/// How long asking the channel, and downloading the update, may take before
+/// they are given up: a stalled connection fails instead of hanging forever.
+const CHECK_TIMEOUT: Duration = Duration::from_secs(30);
+const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+
 fn info(update: &Update) -> UpdateInfo {
     UpdateInfo {
         version: update.version.clone(),
@@ -61,7 +67,11 @@ pub async fn update_check(
     app: AppHandle,
     state: State<'_, UpdateState>,
 ) -> Result<Option<UpdateInfo>, String> {
-    let updater = app.updater().map_err(|e| format!("E_UPDATE: {e}"))?;
+    let updater = app
+        .updater_builder()
+        .timeout(CHECK_TIMEOUT)
+        .build()
+        .map_err(|e| format!("E_UPDATE: {e}"))?;
     let found = updater
         .check()
         .await
@@ -73,14 +83,17 @@ pub async fn update_check(
 
 /// Downloads the update the last check found, checks its signature, installs
 /// it and restarts into it. On Windows the installer closes the app itself.
+/// The update stays kept until it is installed, so a failed download can be
+/// tried again.
 #[tauri::command]
 pub async fn update_install(app: AppHandle, state: State<'_, UpdateState>) -> Result<(), String> {
-    let update = state
+    let mut update = state
         .0
         .lock()
         .map_err(|e| format!("E_UPDATE: {e}"))?
-        .take()
+        .clone()
         .ok_or_else(|| "E_UPDATE: no update to install".to_string())?;
+    update.timeout = Some(DOWNLOAD_TIMEOUT);
     let mut downloaded = 0u64;
     let progress = app.clone();
     update
@@ -93,6 +106,12 @@ pub async fn update_install(app: AppHandle, state: State<'_, UpdateState>) -> Re
         )
         .await
         .map_err(|e| format!("E_UPDATE: {e}"))?;
+    if let Ok(mut kept) = state.0.lock() {
+        *kept = None;
+    }
     crate::core_bridge::debug_log(format!("update {} installed, restarting", update.version));
-    app.restart()
+    // `request_restart`, not `restart`: it goes through `RunEvent::Exit`,
+    // where the macOS Quit fix in lib.rs must still run.
+    app.request_restart();
+    Ok(())
 }

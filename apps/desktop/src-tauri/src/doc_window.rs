@@ -52,7 +52,7 @@ pub fn take<R: Runtime>(app: &AppHandle<R>, label: &str) -> Option<String> {
 
 /// Opens `path` (a file this run may already read) in a new editor window.
 #[tauri::command]
-pub fn open_document_window<R: Runtime>(
+pub async fn open_document_window<R: Runtime>(
     app: AppHandle<R>,
     files: State<'_, DocWindowFiles>,
     path: String,

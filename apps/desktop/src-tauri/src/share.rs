@@ -43,8 +43,8 @@ pub fn safe_name(name: &str) -> String {
 }
 
 /// Writes the document (the raw body; its name percent-encoded in
-/// `x-warraq-name`) for sharing, and returns where.
-#[tauri::command]
+/// `x-warraq-name`) for sharing, and returns where. Off the main thread.
+#[tauri::command(async)]
 pub fn share_prepare(request: Request<'_>) -> Result<String, String> {
     let InvokeBody::Raw(bytes) = request.body() else {
         return Err("E_ARGS: the document travels as a raw body".into());

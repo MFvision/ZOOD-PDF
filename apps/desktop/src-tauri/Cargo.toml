@@ -184,8 +184,9 @@ harness = false
 [profile.release]
 opt-level = 3
 lto = "thin"
-# A panic must never unwind through PDFium's FFI boundary, which is undefined
-# behaviour. The cost is that `cargo test --release` cannot work — a test
-# harness needs unwinding — so the desktop tests run in the dev profile.
-panic = "abort"
+# Panics unwind, so the core and AI threads can catch one bad job and answer
+# it with an error instead of closing the app. Unwinding through PDFium's FFI
+# boundary is still safe: since Rust 1.81 a panic leaving an `extern "C"`
+# frame aborts on its own rather than being undefined behaviour.
+panic = "unwind"
 strip = true
