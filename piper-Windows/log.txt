@@ -1,0 +1,33 @@
+python 3.11.9, cpus 4
+INFO:__main__:Downloaded: ar_JO-kareem-medium
+INFO:__main__:Downloaded: ar_JO-kareem-low
+INFO:__main__:Downloaded: en_US-ryan-high
+INFO:__main__:Downloaded: en_GB-cori-high
+[piper-ar_JO-kareem-medium] ar1: 0.99s for 12.24s of audio (RTF 0.081)
+[piper-ar_JO-kareem-medium] ar2: 0.59s for 10.43s of audio (RTF 0.057)
+[piper-ar_JO-kareem-medium] ar3: 0.76s for 12.57s of audio (RTF 0.06)
+[piper-ar_JO-kareem-medium-no-tashkeel] ar1: 0.54s for 9.86s of audio (RTF 0.055)
+[piper-ar_JO-kareem-medium-no-tashkeel] ar2: 0.51s for 9.43s of audio (RTF 0.055)
+[piper-ar_JO-kareem-medium-no-tashkeel] ar3: 0.65s for 10.76s of audio (RTF 0.06)
+[piper-ar_JO-kareem-low] ar1: 0.75s for 12.10s of audio (RTF 0.062)
+[piper-ar_JO-kareem-low] ar2: 0.42s for 10.37s of audio (RTF 0.041)
+[piper-ar_JO-kareem-low] ar3: 0.49s for 11.71s of audio (RTF 0.042)
+[piper-ar_JO-kareem-low-no-tashkeel] ar1: 0.38s for 9.89s of audio (RTF 0.039)
+[piper-ar_JO-kareem-low-no-tashkeel] ar2: 0.37s for 8.83s of audio (RTF 0.041)
+[piper-ar_JO-kareem-low-no-tashkeel] ar3: 0.44s for 10.05s of audio (RTF 0.044)
+[piper-en_US-ryan-high] en1: 1.73s for 3.98s of audio (RTF 0.434)
+[piper-en_US-ryan-high] en2: 1.57s for 3.88s of audio (RTF 0.404)
+[piper-en_GB-cori-high] en1: 1.83s for 4.47s of audio (RTF 0.408)
+[piper-en_GB-cori-high] en2: 1.70s for 4.06s of audio (RTF 0.418)
+[ar_JO-kareem-medium-zood-g2p] jasʕˈudunaː ʔˈan nˈurħiba bˈikum fˈiː tːaqrˈiːri sːanˈawijːi liʃːˈarika, wˈalːaðiː jastˈaʕridˤu ʔˈabraza lʔindʒaːzˈaːti lːˈatiː taħˈaqːaqat χilˈaːla lʕˈaːmi lmˈaːdˤiː.
+[piper-ar_JO-kareem-medium-zood-g2p] ar1: 0.88s for 11.53s of audio (RTF 0.077)
+[ar_JO-kareem-medium-zood-g2p] balˈaɣati lʔiːraːdˈaːtu θalˈaːθata malaːjˈiːn rijˈaːl, bizijˈaːdati qˈadrihaː χˈamsata ʕˈaʃara bilmˈiʔati muqaːrˈanatan bilʕˈaːmi sːˈaːbiqi.
+[piper-ar_JO-kareem-medium-zood-g2p] ar2: 0.57s for 10.39s of audio (RTF 0.055)
+[ar_JO-kareem-medium-zood-g2p] jˈurdʒaː qirˈaːʔatu ʃːurˈuːtˤi walʔaħkˈaːmi biʕinˈaːjatin qˈabla tːawqˈiːʕi ʕˈalaː lʕˈaqdi, waʔirsˈaːlu nˈusχatin muwaqːˈaʕatin ʔˈilaː qˈismi lmawˈaːridi lbaʃarˈijːati.
+[piper-ar_JO-kareem-medium-zood-g2p] ar3: 0.65s for 11.99s of audio (RTF 0.054)
+[ar_JO-kareem-low-zood-g2p] jasʕˈudunaː ʔˈan nˈurħiba bˈikum fˈiː tːaqrˈiːri sːanˈawijːi liʃːˈarika, wˈalːaðiː jastˈaʕridˤu ʔˈabraza lʔindʒaːzˈaːti lːˈatiː taħˈaqːaqat χilˈaːla lʕˈaːmi lmˈaːdˤiː.
+[piper-ar_JO-kareem-low-zood-g2p] ar1: 0.70s for 11.42s of audio (RTF 0.061)
+[ar_JO-kareem-low-zood-g2p] balˈaɣati lʔiːraːdˈaːtu θalˈaːθata malaːjˈiːn rijˈaːl, bizijˈaːdati qˈadrihaː χˈamsata ʕˈaʃara bilmˈiʔati muqaːrˈanatan bilʕˈaːmi sːˈaːbiqi.
+[piper-ar_JO-kareem-low-zood-g2p] ar2: 0.41s for 10.02s of audio (RTF 0.041)
+[ar_JO-kareem-low-zood-g2p] jˈurdʒaː qirˈaːʔatu ʃːurˈuːtˤi walʔaħkˈaːmi biʕinˈaːjatin qˈabla tːawqˈiːʕi ʕˈalaː lʕˈaqdi, waʔirsˈaːlu nˈusχatin muwaqːˈaʕatin ʔˈilaː qˈismi lmawˈaːridi lbaʃarˈijːati.
+[piper-ar_JO-kareem-low-zood-g2p] ar3: 0.49s for 11.39s of audio (RTF 0.043)

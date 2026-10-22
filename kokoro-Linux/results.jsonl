@@ -1,0 +1,6 @@
+{"engine": "kokoro-af_heart", "sample": "en1", "lang": "en", "seconds": 0.94, "audio_seconds": 4.46, "rtf": 0.211}
+{"engine": "kokoro-af_heart", "sample": "en2", "lang": "en", "seconds": 0.91, "audio_seconds": 4.29, "rtf": 0.212}
+{"engine": "kokoro-am_michael", "sample": "en1", "lang": "en", "seconds": 1.12, "audio_seconds": 5.1, "rtf": 0.219}
+{"engine": "kokoro-am_michael", "sample": "en2", "lang": "en", "seconds": 1.03, "audio_seconds": 4.65, "rtf": 0.222}
+{"engine": "kokoro-bf_emma", "sample": "en1", "lang": "en", "seconds": 0.96, "audio_seconds": 4.33, "rtf": 0.222}
+{"engine": "kokoro-bf_emma", "sample": "en2", "lang": "en", "seconds": 0.92, "audio_seconds": 4.05, "rtf": 0.228}

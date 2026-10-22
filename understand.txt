@@ -1,0 +1,42 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+{"engine": "kokoro-af_heart", "sample": "en1", "cer": 0.0, "heard": "Welcome to the annual report, which reviews the main achievements of the past year."}
+{"engine": "kokoro-af_heart", "sample": "en2", "cer": 0.0, "heard": "Please read the terms and conditions carefully before signing the contract."}
+{"engine": "kokoro-am_michael", "sample": "en1", "cer": 0.0, "heard": "Welcome to the Annual Report, which reviews the main achievements of the past year."}
+{"engine": "kokoro-am_michael", "sample": "en2", "cer": 0.0, "heard": "Please read the terms and conditions carefully before signing the contract."}
+{"engine": "kokoro-bf_emma", "sample": "en1", "cer": 0.0, "heard": "Welcome to the annual report, which reviews the main achievements of the past year."}
+{"engine": "kokoro-bf_emma", "sample": "en2", "cer": 0.0, "heard": "Please read the terms and conditions carefully before signing the contract."}
+{"engine": "piper-ar_JO-kareem-low", "sample": "ar1", "cer": 0.0, "heard": "يسعدنا أن نرحب بكم في التقرير السنوي للشركة والذي يستعرض أبرز الإنجازات التي تحققت خلال العام الماضي"}
+{"engine": "piper-ar_JO-kareem-low", "sample": "ar2", "cer": 0.183, "heard": "بلغت الإيرادات ثلاثة ملايين ريال بزيادة قدرها 15% مقارنة بالعام السابق"}
+{"engine": "piper-ar_JO-kareem-low", "sample": "ar3", "cer": 0.01, "heard": "يرجى قراءة الشروط والأحكام بعناية قبل التوقيع على العقد وإرسال نسهة موقعة إلى قسم الموارد البشرية"}
+{"engine": "piper-ar_JO-kareem-low-no-tashkeel", "sample": "ar1", "cer": 0.13, "heard": "يسعدنا نحبكم في التقرير السنوي الشكت والذي يستعرض أبرز الإنجازات التي تحتلال العام الماضي"}
+{"engine": "piper-ar_JO-kareem-low-no-tashkeel", "sample": "ar2", "cer": 0.378, "heard": "بوضع الإيرادة 3 ملايين ريال  يتقدرها 15% مقارنة بالعام السابق"}
+{"engine": "piper-ar_JO-kareem-low-no-tashkeel", "sample": "ar3", "cer": 0.062, "heard": "يجا قراءة الشروط والإحكام بعنية قبل التوقيع على العقد  وسال نسخة موقع إلى قسم الموارد البشرية"}
+{"engine": "piper-ar_JO-kareem-low-zood-g2p", "sample": "ar1", "cer": 0.03, "heard": "يسعدنا أن نرحب بكم في التقرير سنوي للشركة والذي يستعرض أباز الإنجازات التي تحققت خلال العام الماضي"}
+{"engine": "piper-ar_JO-kareem-low-zood-g2p", "sample": "ar2", "cer": 0.183, "heard": "بلغت الإيرادات ثلاثة ملايين ريال بزيادة قدرها 15% مقارنة بالعام السابق"}
+{"engine": "piper-ar_JO-kareem-low-zood-g2p", "sample": "ar3", "cer": 0.041, "heard": "يرجى قراءة شروط والأحكام بعناية قبل التوقيع على العقد وإرسال مسهة موقعة إلى قسم الموارد البشرية"}
+{"engine": "piper-ar_JO-kareem-medium", "sample": "ar1", "cer": 0.0, "heard": "يسعدنا أن نرحب بكم في التقرير السنوي للشركة والذي يستعرض أبرز الإنجازات التي تحققت خلال العام الماضي"}
+{"engine": "piper-ar_JO-kareem-medium", "sample": "ar2", "cer": 0.183, "heard": "بلغت الإيرادات ثلاثة ملايين ريال بزيادة قدرها 15% مقارنة بالعام السابق"}
+{"engine": "piper-ar_JO-kareem-medium", "sample": "ar3", "cer": 0.0, "heard": "يرجى قراءة الشروط والأحكام بعناية قبل التوقيع على العقد  وإرسال نسخة موقعة إلى قسم الموارد البشرية"}
+{"engine": "piper-ar_JO-kareem-medium-no-tashkeel", "sample": "ar1", "cer": 0.19, "heard": "سدنا نحبكم في التقرير السنوي الشكت  وذي يستعرض أبرز الإنجازات التي تقتل العام الماضي"}
+{"engine": "piper-ar_JO-kareem-medium-no-tashkeel", "sample": "ar2", "cer": 0.341, "heard": "بغت الإيرادة 3 ملايين ريال زي تقدرها 15% مقارنة بالعام السابق"}
+{"engine": "piper-ar_JO-kareem-medium-no-tashkeel", "sample": "ar3", "cer": 0.082, "heard": "إرجاء قراءة الشروط والأحكام بعنائيها قبل التوقيع على العقد  ورسال نسخ موقع إلى قسم الموارد البشرية"}
+{"engine": "piper-ar_JO-kareem-medium-zood-g2p", "sample": "ar1", "cer": 0.05, "heard": "يسعدنا أن نرحب بكم في تقرير سنوي للشركة  والذي يستعرض أباز الإنجازات التي تحققت خلال العام الماضي"}
+{"engine": "piper-ar_JO-kareem-medium-zood-g2p", "sample": "ar2", "cer": 0.0, "heard": "بلغت الإيرادات ثلاثة ملايين ريال بزيادة قدرها خمسة عشر بالمئة مقارنة بالعام السابق"}
+{"engine": "piper-ar_JO-kareem-medium-zood-g2p", "sample": "ar3", "cer": 0.041, "heard": "يرجى قراءة شروط والأحكام بعناية قبل التوقيع على العقد  وإرسال نصفة موقعة إلى قسم الموارد البشرية"}
+{"engine": "piper-en_GB-cori-high", "sample": "en1", "cer": 0.0, "heard": "welcome to the annual report which reviews the main achievements of the past year"}
+{"engine": "piper-en_GB-cori-high", "sample": "en2", "cer": 0.0, "heard": "Please read the terms and conditions carefully before signing the contract."}
+{"engine": "piper-en_US-ryan-high", "sample": "en1", "cer": 0.0, "heard": "Welcome to the annual report which reviews the main achievements of the past year."}
+{"engine": "piper-en_US-ryan-high", "sample": "en2", "cer": 0.0, "heard": "Please read the terms and conditions carefully before signing the contract."}
+
+mean character error rate by engine (lower is clearer):
+  kokoro-af_heart                               0.000  (2 samples)
+  kokoro-am_michael                             0.000  (2 samples)
+  kokoro-bf_emma                                0.000  (2 samples)
+  piper-en_GB-cori-high                         0.000  (2 samples)
+  piper-en_US-ryan-high                         0.000  (2 samples)
+  piper-ar_JO-kareem-medium-zood-g2p            0.030  (3 samples)
+  piper-ar_JO-kareem-medium                     0.061  (3 samples)
+  piper-ar_JO-kareem-low                        0.064  (3 samples)
+  piper-ar_JO-kareem-low-zood-g2p               0.085  (3 samples)
+  piper-ar_JO-kareem-low-no-tashkeel            0.190  (3 samples)
+  piper-ar_JO-kareem-medium-no-tashkeel         0.204  (3 samples)

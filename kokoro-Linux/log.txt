@@ -1,0 +1,8 @@
+[0;93m2026-10-22 07:55:35.119530219 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+python 3.11.17, cpus 4
+[kokoro-af_heart] en1: 0.94s for 4.46s of audio (RTF 0.211)
+[kokoro-af_heart] en2: 0.91s for 4.29s of audio (RTF 0.212)
+[kokoro-am_michael] en1: 1.12s for 5.10s of audio (RTF 0.219)
+[kokoro-am_michael] en2: 1.03s for 4.65s of audio (RTF 0.222)
+[kokoro-bf_emma] en1: 0.96s for 4.33s of audio (RTF 0.222)
+[kokoro-bf_emma] en2: 0.92s for 4.05s of audio (RTF 0.228)
