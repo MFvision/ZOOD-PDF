@@ -55,6 +55,7 @@ import { loadIdeas, postIdea, readIdeaDraft, sortIdeas, validIdea, vote, writeId
 import type { Idea, IdeaSort } from './ideas';
 import { SUPPORT, LIMITS } from './config';
 import { guidePdfUrl } from './guidePdfs';
+import { motionUrl, shotUrl } from './guideShots';
 import './support.css';
 
 /**
@@ -394,11 +395,21 @@ function ArticleCard({ article, actions, lead }: { article: Article; actions: Ar
         </p>
       </header>
       <ol className="support-steps">
-        {article.steps.map((step, index) => (
-          <li key={index} dir="auto" style={{ ['--i' as string]: index }}>
-            {step[lang]}
-          </li>
-        ))}
+        {article.steps.map((step, index) => {
+          const pic = shotUrl(step.pic, lang);
+          const motion = motionUrl(step.pic, lang);
+          return (
+            <li key={index} dir="auto" style={{ ['--i' as string]: index }}>
+              {step[lang]}
+              {pic && (
+                <picture>
+                  {motion && <source srcSet={motion} type="image/webp" media="(prefers-reduced-motion: no-preference)" />}
+                  <img className="support-step-pic" src={pic} alt="" loading="lazy" decoding="async" />
+                </picture>
+              )}
+            </li>
+          );
+        })}
       </ol>
       {article.tips && (
         <ul className="support-tips">

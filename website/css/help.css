@@ -154,6 +154,16 @@ h1 {
   margin-bottom: 6px;
 }
 
+.help-article ol li img {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  height: auto;
+  margin: 8px 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
 .help-tips {
   padding: 10px 14px 10px 2em;
   margin: 12px 0 0;
