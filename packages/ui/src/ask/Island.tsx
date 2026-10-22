@@ -64,11 +64,26 @@ import {
   stepGrammar,
 } from './guide';
 import type { GuideMode, Step } from './guide';
+import {
+  asksFirst,
+  bookEnding,
+  bookOptions,
+  controlNamed,
+  controlOptions,
+  intentOf,
+  partsOf,
+  stepFor,
+  stepOf,
+  stepWords,
+} from './book';
+import type { BookEntry, BookStep, Control, Intent } from './book';
+import { settingAsked, settingsPageAsked, settingWords } from './settingsBook';
 import { decisionGrammar, languageOf, readDecision, systemPrompt } from './plan';
 import type { AskTool, Decision, Moment } from './plan';
 import { pushLevel, quietEnough, watchQuiet } from './listen';
 import {
   CERTAIN,
+  SURE,
   QUICK_OPTIONS,
   QUICK_QUESTION,
   decide,
@@ -285,6 +300,7 @@ function Island() {
     target.current = null;
     answer('stop');
     if (running) {
+      void invokeHost('ask_command_stop').catch(() => undefined);
       void invokeHost('ask_guide_end').catch(() => undefined);
       void invokeHost('ask_island_aside', { aside: false }).catch(() => undefined);
       setAside(false);
@@ -583,7 +599,13 @@ function Island() {
       const moment = momentOf(await invokeHost('ask_moment'));
       const screen = moment.screen && Boolean(brain.sees);
       setPhase({ kind: 'thinking', words, screen });
+      // Inside ZOOD PDF its own commands come first: no picture, no wait.
+      if (!chosen && moment.ours && (await bookLane(words, spoken))) return;
+      // A setting, by its name, from anywhere: Settings opens at it.
+      if (!chosen && (await settingsLane(words, spoken))) return;
       if (await quickLane(words, spoken, moment, chosen)) return;
+      // Another app: its buttons by their names, before any picture is read.
+      if (!chosen && !moment.ours && (await controlsLane(words, spoken))) return;
       const wallet = await loadWallet(t('wallet.me')).catch(() => null);
       const text = await wordsOfWindow(moment, brain);
       const tapped = moment.app !== '' || moment.title !== '' || text !== '';
@@ -679,6 +701,300 @@ function Island() {
     return done.text;
   };
 
+  /** ZOOD's pointer to a step, staying there; the island moves aside when it is under it. */
+  const pointAt = async (step: Step) => {
+    const placed = (await invokeHost('ask_point', {
+      x: step.x,
+      y: step.y,
+      label: step.say,
+      guide: true,
+    })) as { x: number; y: number };
+    target.current = placed;
+    // A step under the island: the island moves to the bottom, out of its way.
+    const box = card.current?.getBoundingClientRect();
+    const width = globalThis.screen?.width ?? 0;
+    const height = globalThis.screen?.height ?? 0;
+    if (box && width && height) {
+      const under =
+        Math.abs(placed.x - 0.5) * width < box.width / 2 + 40 &&
+        placed.y * height < box.height + 60;
+      setAside(under);
+      await invokeHost('ask_island_aside', { aside: under }).catch(() => undefined);
+    }
+  };
+
+  /** The step a part names that no words matched, by the small decider, when it is sure. */
+  const decided = async (
+    part: string,
+    question: string,
+    options: Record<string, string>,
+  ): Promise<string | null> => {
+    const model = await quickReady();
+    if (!model) return null;
+    const ranked = await decide(model, part, question, options).catch(() => null);
+    const top = ranked?.[0];
+    return top && top.key !== 'none' && top.p >= SURE ? top.key : null;
+  };
+
+  /**
+   * ZOOD's command book (`book.ts`): inside ZOOD PDF, what was asked is
+   * matched to the app's own commands and run in the editor
+   * (`shell/askBridge.ts`) — no picture, no model reading the screen. False
+   * when a part of the request is not a command, for the models to answer.
+   */
+  const bookLane = async (words: string, spoken: boolean): Promise<boolean> => {
+    const said = intentOf(words);
+    // A question about a command ("what does Print do?") is answered, not done.
+    if (!said && /[?؟]|^(?:what|why|which|who|is|are|does|ما |ماذا|وش |ايش|ليش|لماذا|هل )/i.test(words.trim()))
+      return false;
+    const book = (await invokeHost('ask_book').catch(() => null)) as { entries?: BookEntry[] } | null;
+    const entries = book?.entries ?? [];
+    if (entries.length === 0) return false;
+    const parts = partsOf(words);
+    if (parts.length === 0) return false;
+    const steps: BookStep[] = [];
+    for (const part of parts) {
+      let step = stepOf(part, entries);
+      // Only an outright "do it" or "show me" is worth the decider's guess.
+      if (!step && said) {
+        const id = await decided(part, 'Which ZOOD PDF command does the person want?', bookOptions(entries));
+        const entry = id ? entries.find((one) => one.id === id) : undefined;
+        if (entry) step = stepFor(entry, part);
+      }
+      if (!step) return false;
+      steps.push(step);
+    }
+    await runBook(said ?? 'do', words, steps, spoken);
+    return true;
+  };
+
+  /**
+   * Settings by their names (`settingsBook.ts`): "turn on dark mode",
+   * "غيّر اللغة للإنجليزي", "make the icons bigger", "change the settings".
+   * ZOOD PDF's window comes forward with Settings open at the setting, its
+   * row lit, and the change made — or, for Show me, left to the person.
+   * False when no setting and no Settings page is named.
+   */
+  const settingsLane = async (words: string, spoken: boolean): Promise<boolean> => {
+    const said = intentOf(words);
+    // "What does night reading do?" is answered, not done.
+    if (!said && /[?؟]/.test(words)) return false;
+    const language = languageOf(words);
+    const asked = settingAsked(words, true);
+    let step: BookStep;
+    let named = { name: '', choice: '' };
+    if (asked) {
+      named = settingWords(asked.entry, asked.value, language);
+      step = { id: 'setting', setting: asked.entry.id, value: asked.value, label: named.choice ? `${named.name}: ${named.choice}` : named.name };
+    } else {
+      const page = settingsPageAsked(words);
+      if (page === undefined) return false;
+      step = { id: 'setting', setting: `page:${page ?? 'general'}`, value: null, label: translate(language, 'settings.title') };
+    }
+    endGuide();
+    const turn = (guideTurn.current += 1);
+    const live = () => guideTurn.current === turn;
+    const mode: Intent = said === 'show' ? 'show' : 'do';
+    const talks = shouldTalk(readAskPreferences().talkBack, spoken);
+    setPhase({ kind: 'guide', mode, words, say: step.label, step: 1, of: 1, wait: mode === 'show' ? 'click' : 'busy', onlyPoints: false });
+    if (talks && mode === 'show') void talk(step.label);
+    try {
+      // From the tray or another app, ZOOD PDF's window comes first.
+      if (await invokeHost('ask_open_editor').catch(() => false)) await sleep(2500);
+      if (!live()) return true;
+      let done: { ran: boolean; reason?: string };
+      if (mode === 'show') {
+        const clicked = invokeHost('ask_command', { step, mode: 'show' }).then(
+          (answer) => answer as { ran: boolean; reason?: string },
+          () => ({ ran: false, reason: 'stopped' }),
+        );
+        done = await Promise.race([clicked, waitFor().then((choice) => ({ ran: choice === 'next', reason: 'said' }))]);
+        void invokeHost('ask_command_stop').catch(() => undefined);
+      } else {
+        done = (await invokeHost('ask_command', { step, mode: 'do' })) as { ran: boolean; reason?: string };
+      }
+      if (!live()) return true;
+      endGuide();
+      if (done.reason === 'said' && !done.ran) return true;
+      const vars = { name: named.name, choice: named.choice };
+      const say = !asked
+        ? translate(language, 'ask.setting.page')
+        : !done.ran
+          ? translate(language, done.reason === 'hidden' ? 'ask.setting.hidden' : 'ask.setting.failed', vars)
+          : mode === 'show' || asked.value === null
+            ? translate(language, 'ask.setting.here', vars)
+            : translate(language, done.reason === 'same' ? 'ask.setting.same' : 'ask.setting.done', vars);
+      sayOnly(words, say, spoken);
+    } catch (error) {
+      if (!live()) return true;
+      endGuide();
+      setPhase({ kind: 'problem', ...errorKey(error) });
+    }
+    return true;
+  };
+
+  /** Runs the book's steps in the editor: one by one, lit; Show me waits for each click. */
+  const runBook = async (mode: Intent, words: string, steps: BookStep[], spoken: boolean) => {
+    endGuide();
+    const turn = (guideTurn.current += 1);
+    const live = () => guideTurn.current === turn;
+    const language = languageOf(words);
+    const talks = shouldTalk(readAskPreferences().talkBack, spoken);
+    const show = (say: string, step: number, wait: GuideWait) =>
+      live() && setPhase({ kind: 'guide', mode, words, say, step, of: steps.length, wait, onlyPoints: false });
+    const finish = (say: string) => {
+      if (!live()) return;
+      endGuide();
+      sayOnly(words, say, spoken);
+    };
+    try {
+      for (const [index, step] of steps.entries()) {
+        const say = stepWords(step);
+        if (mode === 'do') {
+          if (asksFirst(step)) {
+            show(say, index + 1, 'confirm');
+            if ((await waitFor()) === 'stop' || !live()) return;
+          }
+          show(say, index + 1, 'busy');
+          if (talks) void talk(say);
+          const done = (await invokeHost('ask_command', { step, mode: 'do' })) as { ran: boolean; reason?: string };
+          if (!live()) return;
+          if (!done.ran)
+            return finish(bookEnding(done.reason === 'page' ? 'page' : done.reason === 'missing' ? 'missing' : 'disabled', language, { name: say }));
+          continue;
+        }
+        show(say, index + 1, 'click');
+        if (talks) void talk(say);
+        const clicked = invokeHost('ask_command', { step, mode: 'show' }).then(
+          (done) => done as { ran: boolean; reason?: string; menu?: string },
+          () => ({ ran: false, reason: 'stopped' }),
+        );
+        const choice = await Promise.race([clicked, waitFor().then((said) => ({ ran: said === 'next', reason: 'said' }))]);
+        void invokeHost('ask_command_stop').catch(() => undefined);
+        if (!live()) return;
+        if (choice.reason === 'said' && !choice.ran) return;
+        if (!choice.ran && choice.reason === 'hidden') {
+          // No button on the screen for it (a Mac's menus are the system's): where it is, in words.
+          const entry = ((await invokeHost('ask_book').catch(() => null)) as { entries?: BookEntry[] } | null)?.entries?.find(
+            (one) => one.id === step.id,
+          );
+          show(bookEnding('menu', language, { name: say, menu: entry?.menu ?? '' }), index + 1, 'click');
+          if ((await waitFor(CLICK_WAITS_MS)) === 'stop' || !live()) return;
+        } else if (!choice.ran && choice.reason !== 'said') return finish(bookEnding('missing', language, { name: say }));
+        await sleep(300);
+      }
+      finish(ending('done', language));
+    } catch (error) {
+      if (!live()) return;
+      endGuide();
+      setPhase({ kind: 'problem', ...errorKey(error) });
+    }
+  };
+
+  /**
+   * Other apps, by their buttons' names (`ask/controls.rs`): "click Print",
+   * "show me where Share is", "اضغط حفظ ثم إرسال". Each part of the request
+   * is matched to a button the window lists, and ZOOD's pointer goes there;
+   * Do it for me clicks it, after one Do it for the whole request. False
+   * when the first part names no button, for the picture to be read instead.
+   */
+  const controlsLane = async (words: string, spoken: boolean): Promise<boolean> => {
+    const said = intentOf(words);
+    if (!said) return false;
+    const parts = partsOf(words);
+    if (parts.length === 0) return false;
+    const read = async () => ((await invokeHost('ask_controls').catch(() => null)) as Control[] | null) ?? [];
+    const pick = async (part: string, controls: Control[]) => {
+      const named = controlNamed(part, controls);
+      if (named) return named;
+      const key = await decided(part, 'Which button should be clicked?', controlOptions(controls));
+      return key === null ? null : (controls[Number(key)] ?? null);
+    };
+    const controls = await read();
+    if (controls.length === 0) return false;
+    const first = await pick(parts[0] ?? '', controls);
+    if (!first) return false;
+    await runControls(said, words, parts, first, read, pick, spoken);
+    return true;
+  };
+
+  /** Points at (or clicks) each part's button in turn: see `controlsLane`. */
+  const runControls = async (
+    said: Intent,
+    words: string,
+    parts: string[],
+    first: Control,
+    read: () => Promise<Control[]>,
+    pick: (part: string, controls: Control[]) => Promise<Control | null>,
+    spoken: boolean,
+  ) => {
+    endGuide();
+    const turn = (guideTurn.current += 1);
+    const live = () => guideTurn.current === turn;
+    const language = languageOf(words);
+    const prefs = readAskPreferences();
+    const talks = shouldTalk(prefs.talkBack, spoken);
+    const acting = said === 'do' && prefs.doForMe;
+    const mode: GuideMode = acting ? 'do' : 'show';
+    const show = (say: string, step: number, wait: GuideWait) =>
+      live() &&
+      setPhase({ kind: 'guide', mode, words, say, step, of: parts.length, wait, onlyPoints: said === 'do' && !acting });
+    const finish = (say: string) => {
+      if (!live()) return;
+      endGuide();
+      sayOnly(words, say, spoken);
+    };
+    try {
+      let control: Control | null = first;
+      for (const [index, part] of parts.entries()) {
+        if (index > 0) {
+          await sleep(600);
+          control = await pick(part, await read());
+        }
+        if (!live()) return;
+        if (!control) return finish(bookEnding('notFound', language, { name: part }));
+        const step = { say: control.name, x: control.x, y: control.y };
+        await pointAt(step);
+        if (!live()) return;
+        if (acting) {
+          // Another app: one Do it first, and again before what sends, deletes, pays or signs.
+          if (index === 0 || risky(control.name)) {
+            show(bookEnding('pressIn', language, { name: control.name }), index + 1, 'confirm');
+            if ((await waitFor()) === 'stop' || !live()) return;
+          }
+          show(control.name, index + 1, 'busy');
+          if (talks) void talk(control.name);
+          await sleep(500);
+          let resume = false;
+          for (;;) {
+            if (!live()) return;
+            try {
+              await invokeHost('ask_click', { x: control.x, y: control.y, resume, control: true });
+              break;
+            } catch (error) {
+              if (!String(error).includes('E_MOVED')) throw error;
+              show(control.name, index + 1, 'paused');
+              if ((await waitFor()) === 'stop' || !live()) return;
+              resume = true;
+            }
+          }
+          continue;
+        }
+        show(control.name, index + 1, 'click');
+        if (talks) void talk(control.name);
+        void invokeHost('ask_watch_clicks', { on: true }).catch(() => undefined);
+        const choice = await waitFor(CLICK_WAITS_MS);
+        void invokeHost('ask_watch_clicks', { on: false }).catch(() => undefined);
+        if (choice === 'stop' || !live()) return choice === 'stop' && live() ? close() : undefined;
+      }
+      finish(ending('done', language));
+    } catch (error) {
+      if (!live()) return;
+      endGuide();
+      setPhase({ kind: 'problem', ...errorKey(error) });
+    }
+  };
+
   /**
    * Show me, Do it for me and Explain this (`guide.ts`): ZOOD's pointer goes
    * to each step, says it, and waits for the person's click (Show me) or
@@ -716,26 +1032,7 @@ function Island() {
         decision: { ...first, act: 'answer', say, text: '', x: -1, y: -1 },
       });
     };
-    const point = async (step: Step) => {
-      const placed = (await invokeHost('ask_point', {
-        x: step.x,
-        y: step.y,
-        label: step.say,
-        guide: true,
-      })) as { x: number; y: number };
-      target.current = placed;
-      // A step under the island: the island moves to the bottom, out of its way.
-      const box = card.current?.getBoundingClientRect();
-      const width = globalThis.screen?.width ?? 0;
-      const height = globalThis.screen?.height ?? 0;
-      if (box && width && height) {
-        const under =
-          Math.abs(placed.x - 0.5) * width < box.width / 2 + 40 &&
-          placed.y * height < box.height + 60;
-        setAside(under);
-        await invokeHost('ask_island_aside', { aside: under }).catch(() => undefined);
-      }
-    };
+    const point = pointAt;
     try {
       if (mode === 'explain') {
         show(first.say, 0, 0, 'looking');

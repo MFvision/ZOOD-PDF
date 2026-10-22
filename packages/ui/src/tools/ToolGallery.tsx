@@ -26,6 +26,7 @@ export function ToolGallery({ onChoose }: { onChoose: (tool: ToolId) => void }) 
             aria-checked={active}
             tabIndex={active || (rightPane.activeTool === null && tool === TOOLS[0]) ? 0 : -1}
             className="tool-gallery-item"
+            data-command={`tool-${tool.id}`}
             onClick={() => onChoose(tool.id)}
             onKeyDown={(event) => {
               const items = Array.from(event.currentTarget.parentElement?.children ?? []) as HTMLElement[];

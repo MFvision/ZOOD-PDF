@@ -237,5 +237,8 @@ struct PDFEditorShortcuts: AppShortcutsProvider {
         AppShortcut(intent: OpenLastDocumentIntent(),
                     phrases: ["Open my last document in \(.applicationName)"],
                     shortTitle: "Last document", systemImageName: "clock.arrow.circlepath")
+        AppShortcut(intent: AskZoodIntent(),
+                    phrases: ["Ask \(.applicationName)", "Ask \(.applicationName) about my document"],
+                    shortTitle: "Ask ZOOD", systemImageName: "sparkles")
     }
 }

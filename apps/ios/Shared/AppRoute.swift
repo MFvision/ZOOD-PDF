@@ -3,7 +3,8 @@ import Foundation
 /// Where a widget, a Control Center control, a Shortcut, a Home Screen
 /// quick action or a Spotlight result sends the app: the same few places,
 /// however they were asked for. As a URL (`pdfeditor://scan`,
-/// `pdfeditor://open/<id>`, `pdfeditor://search?q=…`, `pdfeditor://last`)
+/// `pdfeditor://open/<id>`, `pdfeditor://search?q=…`, `pdfeditor://last`,
+/// `pdfeditor://ask`)
 /// for widgets, which can only open links; as a value posted through the
 /// shared container for intents, which may run in another process before
 /// the app comes to the front.
@@ -18,6 +19,8 @@ public enum AppRoute: Equatable, Sendable {
     case search(String)
     /// Open the document opened last.
     case lastDocument
+    /// Ask ZOOD about the document on screen, or the one opened last.
+    case askZood
 
     public static let notification = Notification.Name("app.warraq.ios.route")
     /// Where a route waits: a file in the shared container, which every
@@ -45,6 +48,8 @@ public enum AppRoute: Equatable, Sendable {
             parts.queryItems = query.isEmpty ? nil : [URLQueryItem(name: "q", value: query)]
         case .lastDocument:
             parts.host = "last"
+        case .askZood:
+            parts.host = "ask"
         }
         // Every component above is one the scheme can carry.
         return parts.url ?? URL(string: "\(AppGroup.urlScheme)://scan")!
@@ -66,6 +71,8 @@ public enum AppRoute: Equatable, Sendable {
             self = .search(parts?.queryItems?.first(where: { $0.name == "q" })?.value ?? "")
         case "last":
             self = .lastDocument
+        case "ask":
+            self = .askZood
         default:
             return nil
         }
