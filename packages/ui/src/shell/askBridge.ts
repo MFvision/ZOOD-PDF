@@ -292,7 +292,8 @@ export function useAskBridge(menus: readonly MenuModel[], nativeMenu: boolean): 
       };
       const before = await settingNow(entry, setters).catch(() => null);
       if (mode === 'show') {
-        if (!row) return { ran: false, reason: 'hidden' };
+        // A page of its own ("my details", "fonts"): the page is what was asked for.
+        if (!row) return entry.kind === 'show' ? { ran: true, before } : { ran: false, reason: 'hidden' };
         return { ...(await clickIn(row, step.label || name)), before };
       }
       if (row) light(row, step.label || name);
@@ -310,6 +311,12 @@ export function useAskBridge(menus: readonly MenuModel[], nativeMenu: boolean): 
       const changed = await applySetting(entry, step.value, setters).catch(() => false);
       await sleep(SETTING_SHOWN_MS - LIT_MS);
       unlight();
+      // A setting the host keeps is read by the page when it opens: Settings opens afresh to show the change.
+      if (changed && entry.host) {
+        send({ type: 'DIALOG', dialog: null });
+        await sleep(60);
+        openSettingsAt(entry.section, () => send({ type: 'DIALOG', dialog: 'settings' }));
+      }
       return changed ? { ran: true, before } : { ran: false, reason: 'disabled', before };
     };
 

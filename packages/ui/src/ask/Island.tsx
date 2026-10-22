@@ -31,7 +31,7 @@ import { loadWallet } from '../ai/profile/walletState';
 import { targetWords, valueOf } from '../ai/profile/wallet';
 import type { Target, WalletProfile } from '../ai/profile/wallet';
 import { getSharedCoreClient } from '../core/client';
-import { invokeHost, isTauriHost, onHostEvent } from '../core/host-tauri';
+import { invokeHost, isTauriHost, onHostEvent, uiLog } from '../core/host-tauri';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { useI18n } from '../i18n/useT';
 import { translate } from '../i18n/messages';
@@ -77,7 +77,10 @@ import {
   stepWords,
 } from './book';
 import type { BookEntry, BookStep, Control, Intent } from './book';
-import { settingAsked, settingsPageAsked, settingWords } from './settingsBook';
+import { settingAsked, settingFirst, settingsPageAsked, settingWords, unknownSetting } from './settingsBook';
+import type { SettingAsk } from './settingsBook';
+import { fuzzyOffers, fuzzyPick } from './fuzzy';
+import type { Picked } from './fuzzy';
 import { decisionGrammar, languageOf, readDecision, systemPrompt } from './plan';
 import type { AskTool, Decision, Moment } from './plan';
 import { pushLevel, quietEnough, watchQuiet } from './listen';
@@ -199,6 +202,8 @@ type Phase =
   | { kind: 'found'; words: string; decision: Decision; hits: Hit[] }
   | { kind: 'said'; words: string; decision: Decision }
   | { kind: 'choose'; words: string; keys: [QuickKey, QuickKey]; spoken: boolean }
+  /** No command or setting clearly named: the few it could be, to choose from (`fuzzy.ts`). */
+  | { kind: 'pick'; words: string; offers: Picked[]; spoken: boolean }
   | { kind: 'tidy'; words: string; preview: TidyPreview; working: boolean }
   | { kind: 'tidied'; words: string; say: string; undo: boolean }
   | { kind: 'placed'; words: string; say: string; text: string; app: string }
@@ -381,6 +386,7 @@ function Island() {
               : phase.kind === 'confirm' ||
                   phase.kind === 'found' ||
                   phase.kind === 'choose' ||
+                  phase.kind === 'pick' ||
                   phase.kind === 'tidy' ||
                   phase.kind === 'tidied' ||
                   phase.kind === 'problem' ||
@@ -590,7 +596,7 @@ function Island() {
   };
 
   /** A request, spoken or typed: decide, then do or show. */
-  const respond = async (words: string, spoken: boolean, chosen?: QuickKey) => {
+  const respond = async (words: string, spoken: boolean, chosen?: QuickKey, past = false) => {
     const prefs = readAskPreferences();
     const brain = chosenBrain(prefs, await machineMemoryGiB());
     asked += 1;
@@ -600,12 +606,23 @@ function Island() {
       const screen = moment.screen && Boolean(brain.sees);
       setPhase({ kind: 'thinking', words, screen });
       // Inside ZOOD PDF its own commands come first: no picture, no wait.
-      if (!chosen && moment.ours && (await bookLane(words, spoken))) return;
+      // A setting named with its choice, or a page of Settings, before the menus: "keep 20 versions", "AI settings".
+      const named = !chosen && !past;
+      if (named && settingFirst(words, true) && (await settingsLane(words, spoken))) return;
+      if (named && moment.ours && (await bookLane(words, spoken))) return;
       // A setting, by its name, from anywhere: Settings opens at it.
-      if (!chosen && (await settingsLane(words, spoken))) return;
+      if (named && (await settingsLane(words, spoken))) return;
+      // Named by its words, not as a phrase: done when one is clearly meant, offered when a few could be.
+      if (named && (await fuzzyLane(words, spoken, moment.ours))) return;
+      // "Change the …" that names no setting we know: Settings, said plainly, never a tool guessed instead.
+      if (named && unknownSetting(words)) {
+        uiLog(`ask: no setting matched "${words}"`);
+        await settingsLane(words, spoken, true);
+        return;
+      }
       if (await quickLane(words, spoken, moment, chosen)) return;
       // Another app: its buttons by their names, before any picture is read.
-      if (!chosen && !moment.ours && (await controlsLane(words, spoken))) return;
+      if (!chosen && !past && !moment.ours && (await controlsLane(words, spoken))) return;
       const wallet = await loadWallet(t('wallet.me')).catch(() => null);
       const text = await wordsOfWindow(moment, brain);
       const tapped = moment.app !== '' || moment.title !== '' || text !== '';
@@ -775,19 +792,19 @@ function Island() {
    * row lit, and the change made — or, for Show me, left to the person.
    * False when no setting and no Settings page is named.
    */
-  const settingsLane = async (words: string, spoken: boolean): Promise<boolean> => {
+  const settingsLane = async (words: string, spoken: boolean, unknown = false, forced?: SettingAsk): Promise<boolean> => {
     const said = intentOf(words);
     // "What does night reading do?" is answered, not done.
-    if (!said && /[?؟]/.test(words)) return false;
+    if (!unknown && !forced && !said && /[?؟]/.test(words)) return false;
     const language = languageOf(words);
-    const asked = settingAsked(words, true);
+    const asked = forced ?? (unknown ? null : settingAsked(words, true));
     let step: BookStep;
     let named = { name: '', choice: '' };
     if (asked) {
       named = settingWords(asked.entry, asked.value, language);
       step = { id: 'setting', setting: asked.entry.id, value: asked.value, label: named.choice ? `${named.name}: ${named.choice}` : named.name };
     } else {
-      const page = settingsPageAsked(words);
+      const page = unknown ? null : settingsPageAsked(words);
       if (page === undefined) return false;
       step = { id: 'setting', setting: `page:${page ?? 'general'}`, value: null, label: translate(language, 'settings.title') };
     }
@@ -817,8 +834,10 @@ function Island() {
       endGuide();
       if (done.reason === 'said' && !done.ran) return true;
       const vars = { name: named.name, choice: named.choice };
-      const say = !asked
-        ? translate(language, 'ask.setting.page')
+      const say = unknown
+        ? translate(language, 'ask.setting.unknown')
+        : !asked
+          ? translate(language, 'ask.setting.page')
         : !done.ran
           ? translate(language, done.reason === 'hidden' ? 'ask.setting.hidden' : 'ask.setting.failed', vars)
           : mode === 'show' || asked.value === null
@@ -831,6 +850,44 @@ function Island() {
       setPhase({ kind: 'problem', ...errorKey(error) });
     }
     return true;
+  };
+
+  /** The book's entries now, inside ZOOD PDF; none from another app. */
+  const bookNow = async (ours: boolean): Promise<BookEntry[]> =>
+    ours ? (((await invokeHost('ask_book').catch(() => null)) as { entries?: BookEntry[] } | null)?.entries ?? []) : [];
+
+  /** Runs what was picked, by its words or by the person's choice. */
+  const runPicked = async (picked: Picked, words: string, spoken: boolean) => {
+    if (picked.kind === 'book') await runBook(intentOf(words) ?? 'do', words, [picked.step], spoken);
+    else await settingsLane(words, spoken, false, picked.ask);
+  };
+
+  /**
+   * Commands and settings by their words one by one (`fuzzy.ts`): "lock it
+   * with a password" is Protect. Done when one is clearly meant; when a few
+   * could be, they are offered, and nothing is done until one is chosen.
+   * False when none comes close, for the models.
+   */
+  const fuzzyLane = async (words: string, spoken: boolean, ours: boolean): Promise<boolean> => {
+    if (!intentOf(words) && /[?؟]|^(?:what|why|which|who|is|are|does|ما |ماذا|وش |ايش|ليش|لماذا|هل )/i.test(words.trim())) return false;
+    const entries = await bookNow(ours);
+    const sure = fuzzyPick(words, entries, true);
+    if (sure) {
+      await runPicked(sure, words, spoken);
+      return true;
+    }
+    const offers = fuzzyOffers(words, entries, true);
+    if (offers.length === 0) return false;
+    aloud(translate(languageOf(words), 'ask.pick.title'), spoken);
+    setPhase({ kind: 'pick', words, offers, spoken });
+    return true;
+  };
+
+  /** What an offer is called on its button, in the language of the request. */
+  const offerName = (picked: Picked, language: 'ar' | 'en') => {
+    if (picked.kind === 'book') return stepWords(picked.step);
+    const { name, choice } = settingWords(picked.ask.entry, picked.ask.value, language);
+    return choice ? `${name}: ${choice}` : name;
   };
 
   /** Runs the book's steps in the editor: one by one, lit; Show me waits for each click. */
@@ -1296,6 +1353,7 @@ function Island() {
     phase.kind === 'found' ||
     phase.kind === 'said' ||
     phase.kind === 'choose' ||
+    phase.kind === 'pick' ||
     phase.kind === 'tidy' ||
     phase.kind === 'tidied' ||
     phase.kind === 'thinking' ||
@@ -1665,6 +1723,26 @@ function Island() {
                 {optionLabel(key, lang ?? 'en', toolName)}
               </button>
             ))}
+          </div>
+        </div>
+      )}
+      {phase.kind === 'pick' && (
+        <div className="ask-plan">
+          <p dir={lang === 'ar' ? 'rtl' : 'ltr'}>{translate(lang ?? 'en', 'ask.pick.title')}</p>
+          <div className="ask-actions">
+            {phase.offers.map((picked) => (
+              <button
+                key={picked.kind === 'book' ? picked.step.id : picked.ask.entry.id}
+                type="button"
+                className="ask-do"
+                onClick={() => void runPicked(picked, phase.words, phase.spoken)}
+              >
+                {offerName(picked, lang ?? 'en')}
+              </button>
+            ))}
+            <button type="button" className="ask-cancel" onClick={() => void respond(phase.words, phase.spoken, undefined, true)}>
+              {translate(lang ?? 'en', 'ask.pick.other')}
+            </button>
           </div>
         </div>
       )}

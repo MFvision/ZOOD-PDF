@@ -54,38 +54,75 @@ export const MAX_BOOK_STEPS = 6;
  * `normalize`d), beside its name in the menu. The decider reads them too.
  */
 export const BOOK_WORDS: Readonly<Record<string, string>> = {
-  open: 'open a file, open a pdf / افتح ملف، فتح ملف',
-  save: 'save the file / حفظ، احفظ الملف',
-  versions: 'earlier versions of the file / النسخ السابقه',
-  print: 'print / طباعه، اطبع',
-  close: 'close the file / اغلاق الملف، سكر الملف',
-  undo: 'undo / تراجع',
-  redo: 'redo / اعاده',
-  'edit-mode': 'edit mode, edit the text / وضع التحرير، تعديل النص',
+  open: 'open a file, open a pdf, open another file / افتح ملف، فتح ملف، افتح ملف ثاني',
+  save: 'save, save the file, save it, save my changes / حفظ، احفظ، احفظ الملف، احفظه، احفظ التعديلات',
+  versions: 'earlier versions, earlier versions of the file, older versions, version history / النسخ السابقه، نسخ سابقه، النسخ القديمه',
+  'save-device': 'save a copy, save a copy on this device / احفظ نسخه، احفظ نسخه علي الجهاز',
+  print: 'print, print it / طباعه، اطبع، اطبعه',
+  close: 'close, close the file, close the document, close it / اغلاق الملف، سكر الملف، سكر، اقفل الملف، سكره',
+  undo: 'undo, undo that, go back a step, take that back / تراجع، رجع اللي سويته، ارجع خطوه، تراجع عن اخر شي',
+  redo: 'redo, redo that / اعاده، اعد، اعد الخطوه',
+  'edit-mode': 'edit mode, edit the text, change the text, type on the pdf / وضع التحرير، تعديل النص، عدل النص، عدل الكلام، اكتب علي الملف',
   find: 'find, search in the file / بحث، ابحث في الملف',
   goto: 'go to a page / الذهاب الي صفحه، روح للصفحه',
-  'zoom-in': 'zoom in, bigger / تكبير، كبر',
-  'zoom-out': 'zoom out, smaller / تصغير العرض، صغر',
-  'fit-width': 'fit to width / ملاءمه العرض',
-  'fit-page': 'fit the whole page / ملاءمه الصفحه',
+  'zoom-in': 'zoom in, bigger, make it bigger / تكبير، كبر، كبر الصفحه',
+  'zoom-out': 'zoom out, make the page smaller / تصغير العرض، صغر الصفحه، صغر العرض',
+  'fit-width': 'fit to width, fit width / ملاءمه العرض',
+  'fit-page': 'fit the whole page, fit page / ملاءمه الصفحه',
   actual: 'actual size, 100% / الحجم الفعلي',
-  'left-pane': 'thumbnails, page list, side panel / الصور المصغره، قائمه الصفحات',
-  'right-pane': 'tools panel / لوحه الادوات',
-  markup: 'markup bar, highlight, draw / شريط التعليقات، تظليل',
-  'read-aloud': 'read aloud, read it to me / القراءه بصوت، اقرا لي',
-  present: 'present, slideshow / عرض تقديمي',
-  'phone-remote': 'phone remote / التحكم من الجوال',
+  'left-pane': 'thumbnails, page list, side panel, navigation pane, show thumbnails, hide the side panel / الصور المصغره، المصغرات، قائمه الصفحات، اللوحه الجانبيه',
+  'pane-bookmarks': 'bookmarks, show bookmarks, table of contents / الاشارات المرجعيه، الفهرس، المحتويات',
+  'pane-attachments': 'attachments, attached files, show attachments / المرفقات، الملفات المرفقه',
+  'pane-layers': 'layers / الطبقات',
+  'right-pane': 'tools panel, tools pane / لوحه الادوات',
+  markup: 'markup bar, markup toolbar, draw, pen / شريط التعليقات، شريط التعليق، قلم، رسم',
+  'read-aloud': 'read aloud, read it to me, read the file, read it out loud, stop reading / القراءه بصوت، اقرا لي، اقرا الملف، اقرا الملف بصوت، اقراه، وقف القراءه',
+  present: 'present, slideshow, start presenting, presentation mode, full screen presentation / عرض تقديمي، ابدا العرض، وضع العرض',
+  'phone-remote': 'phone remote, connect my phone, use my phone, remote control, pair my phone / التحكم من الجوال، اوصل جوالي، اربط جوالي، جوالي، الريموت',
   settings: 'settings, preferences / الاعدادات',
-  about: 'about zood pdf, version / حول التطبيق، الاصدار',
-  support: 'help and support / المساعده والدعم',
-  report: 'report a problem / الابلاغ عن مشكله',
-  ideas: 'suggest an idea / اقتراح فكره',
-  tour: 'the tour, tutorial / الجوله التعريفيه',
-  shortcuts: 'keyboard shortcuts / اختصارات لوحه المفاتيح',
-  home: 'home screen / الشاشه الرئيسيه',
+  about: 'about zood pdf, about zood, about the app, version, which version, what version / حول التطبيق، الاصدار، كم الاصدار، عن التطبيق',
+  support: 'help and support, help, i need help, support / المساعده والدعم، مساعده، ساعدني، الدعم',
+  report: 'report a problem, report a bug, something is broken, send a complaint / الابلاغ عن مشكله، ابلغ عن مشكله، بلغ عن مشكله، فيه مشكله، شكوي',
+  ideas: 'suggest an idea, i have an idea, send feedback, feature request / اقتراح فكره، عندي اقتراح، عندي فكره، اقترح',
+  tour: 'the tour, tutorial, welcome tour, start the tour, show me around / الجوله التعريفيه، الجوله، الشرح، ابدا الجوله',
+  'ask-keys': 'ask zood keys lesson, learn the ask zood keys / درس مفاتيح اسال زود',
+  shortcuts: 'keyboard shortcuts, list of shortcuts / اختصارات لوحه المفاتيح، الاختصارات',
+  home: 'home screen, go home, back to home, main screen / الشاشه الرئيسيه، الرئيسيه، ارجع للرئيسيه، روح للرئيسيه',
   'theme-dark': 'dark mode / الوضع الليلي، داكن',
   'theme-light': 'light mode / الوضع النهاري، فاتح',
   'theme-system': 'theme like the system / مثل النظام',
+  'layout-continuous': 'continuous scrolling, scroll pages / تمرير متصل',
+  'layout-single': 'one page at a time, single page / صفحه واحده',
+  'layout-two': 'two pages side by side, two pages / صفحتين جنب بعض، صفحتين',
+  'layout-book': 'book view, like a book / عرض الكتاب، مثل الكتاب',
+};
+
+/**
+ * The words a tool is asked by, beside its name: what people say when they
+ * want it ("add a password", "حط علامة مائية"). Its name in both languages
+ * counts too (`toolWords`).
+ */
+export const TOOL_WORDS: Readonly<Record<string, string>> = {
+  edit: 'edit, edit the pdf, edit pdf / تحرير، عدل الملف، تعديل الملف',
+  organize: 'rotate, rotate pages, rotate the pages, delete a page, delete page, delete pages, remove a page, remove pages, split, split the pdf, split the file, extract pages, extract a page, reorder pages, move pages, insert pages, add pages, crop / دور الصفحات، تدوير، احذف صفحه، احذف الصفحه، حذف صفحات، شيل صفحه، قسم الملف، تقسيم، افصل الصفحات، استخرج صفحات، رتب الصفحات، اضف صفحات، قص',
+  comment: 'comment, add a comment, add comments, add a note, annotate, highlight, sticky note / تعليق، اضف تعليق، تعليقات، ملاحظه، اضف ملاحظه، ظلل، تظليل',
+  fillSign: 'sign, sign it, sign the file, sign the document, add my signature, signature, fill, fill the form, fill in the form, fill and sign / وقع، وقع الملف، توقيع، اضف توقيعي، توقيعي، عبي، عبي النموذج، تعبئه النموذج، املا النموذج',
+  protect: 'password, add a password, set a password, remove the password, unlock, unlock the file, protect, protect the file, lock the file, encrypt / كلمه مرور، حط كلمه مرور، ضع كلمه مرور، شيل كلمه المرور، ازل كلمه المرور، افتح القفل، احمي الملف، قفل الملف، رقم سري، باسورد',
+  redact: 'redact, black out, hide names, hide personal information, black out names / حجب، احجب، احجب الاسماء، اخف المعلومات، تنقيح، طمس',
+  export: 'convert, export, convert to word, export to word, convert to excel, export to excel, convert to powerpoint, convert to images, save as word, save as excel, save it as word, to word, to excel / تحويل، حول، حوله وورد، حول الي وورد، حول الملف الي وورد، حول الي اكسل، حول الملف الي اكسل، حول لبوربوينت، صدر، تصدير',
+  compare: 'compare, compare two files, compare files, what changed, differences / مقارنه، قارن، قارن ملفين، قارن الملفين، وش الفرق، الفروقات',
+  ocr: 'ocr, text recognition, make it searchable, make the scan searchable, recognize text, scanned pdf, picture to text / التعرف علي النص، حول الصوره لنص، حول الصوره الي نص، نص من صوره، خله قابل للبحث، ملف ممسوح',
+  combine: 'combine, merge, merge files, merge pdfs, combine files, join files / دمج، ادمج، ادمج الملفات، دمج الملفات، اجمع الملفات',
+  create: 'create, create a pdf, create a new pdf, new pdf, make a pdf, new file, blank pdf / انشاء، انشئ ملف، انشئ ملف جديد، ملف جديد، سوي ملف جديد',
+  compress: 'compress, compress it, make the file smaller, reduce the size, reduce file size, shrink the file, smaller file / ضغط، اضغط الملف، صغر حجم الملف، قلل الحجم، قلل حجم الملف، خفف الملف، صغر الملف',
+  prepareForm: 'prepare a form, make a form, create a form, add form fields, form fields / اعداد نموذج، سوي نموذج، انشئ نموذج، اضف حقول، حقول النموذج',
+  ai: 'ask the ai, ai assistant, ai chat, chat with the file, ask about the file / الذكاء الاصطناعي، اسال الذكاء، محادثه، كلم الملف',
+  pageMarks: 'watermark, add a watermark, page numbers, add page numbers, number the pages, header, footer, header and footer, bates numbers / علامه مائيه، حط علامه مائيه، اضف علامه مائيه، ارقام الصفحات، اضف ارقام الصفحات، رقم الصفحات، ترقيم، راس الصفحه، تذييل',
+  certificates: 'digital signature, certificate, sign with a certificate, digital id / التوقيع الرقمي، شهاده رقميه، الهويه الرقميه',
+  standards: 'pdf/a, pdf a, standards, archive format / معايير، ارشفه، pdf/a',
+  accessibility: 'accessibility, check accessibility, accessibility check, screen reader check / امكانيه الوصول، اتاحه الوصول، فحص الوصول',
+  batch: 'batch, batch processing, many files at once, all files in a folder / معالجه دفعيه، دفعه، ملفات كثيره مره وحده',
+  library: 'library, my library, my documents / المكتبه، مكتبتي، مستنداتي',
 };
 
 /** Commands that ask first in Do it for me: they close, overwrite, print. */
@@ -99,7 +136,10 @@ export function asksFirst(step: BookStep): boolean {
 /** The words of a tool's command: its name in both languages. */
 function toolWords(id: string): string | null {
   const tool = TOOLS.find((one) => `tool-${one.id}` === id);
-  return tool ? `${translate('en', tool.labelKey)} / ${translate('ar', tool.labelKey)}` : null;
+  if (!tool) return null;
+  const names = `${translate('en', tool.labelKey)} / ${translate('ar', tool.labelKey)}`;
+  const more = TOOL_WORDS[tool.id];
+  return more ? `${names}, ${more}` : names;
 }
 
 /** What the decider reads for an entry. */
@@ -192,21 +232,27 @@ export function pageIn(part: string): number | undefined {
 }
 
 /** The names an entry is asked by, as compared. */
-function namesOf(entry: BookEntry): string[] {
+export function namesOf(entry: BookEntry): string[] {
   const hint = BOOK_WORDS[entry.id] ?? toolWords(entry.id) ?? '';
   return [entry.label, ...hint.split(/\s*[/،,]\s*/)]
     .map((name) => normalize(name.replace(/[…•]/g, '')))
     .filter((name) => name.length >= 3);
 }
 
-/** `name` is in `text` as whole words. */
+/** `name` is in `text` as whole words: as said, or with the little words ("the", "a", "ال") left out of both. */
 function hasWords(text: string, name: string): boolean {
-  return ` ${text} `.includes(` ${name} `) || ` ${text} `.includes(` ال${name} `);
+  if (` ${text} `.includes(` ${name} `) || ` ${text} `.includes(` ال${name} `)) return true;
+  const bare = (words: string) => ` ${words.split(' ').filter((word) => !LITTLE.has(word)).map((word) => (word.length > 4 ? word.replace(/^ال/, '') : word)).join(' ')} `;
+  const plainName = bare(name).trim();
+  return plainName.length >= 3 && bare(text).includes(` ${plainName} `);
 }
+
+/** Words that change nothing of what is asked. */
+const LITTLE = new Set(['the', 'a', 'an', 'my', 'this', 'that', 'it', 'of', 'please', 'هذا', 'هذي', 'هذه', 'لي', 'علي', 'الي', 'في']);
 
 /** Words that say nothing of which command: "print this document" is "print". */
 const FILLER =
-  /(?:^|\s)(?:the|a|an|it|this|that|these|file|document|pdf|page|pages|for|me|now|my|please|button|هذا|هذي|هذه|الملف|ملف|المستند|لي|الحين|الان|زر)(?=\s|$)/g;
+  /(?:^|\s)(?:the|a|an|it|this|that|these|file|document|pdf|for|me|now|my|please|button|هذا|هذي|هذه|الملف|ملف|المستند|لي|الحين|الان|زر)(?=\s|$)/g;
 
 /** How much of the part a name says, 0..1: a name must be most of what was said. */
 function coverage(text: string, name: string): number {

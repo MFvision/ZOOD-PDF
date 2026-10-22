@@ -3163,5 +3163,8 @@
   "ask.setting.here": "Here's {name}, lit in Settings.",
   "ask.setting.page": "Here are the settings.",
   "ask.setting.failed": "I couldn't change {name} from here. It's lit in Settings for you.",
-  "ask.setting.hidden": "I couldn't find {name} in Settings on this computer."
+  "ask.setting.hidden": "I couldn't find {name} in Settings on this computer.",
+  "ask.setting.unknown": "I don't know a setting by that name yet, so I opened Settings for you. You can search it at the top, or tell me the name you see there.",
+  "ask.pick.title": "Did you mean one of these?",
+  "ask.pick.other": "Something else"
 }

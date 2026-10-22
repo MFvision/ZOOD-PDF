@@ -50,7 +50,8 @@ describe('the settings book', () => {
     expect(ask('open settings')).toBeNull();
     expect(ask('undo')).toBeNull();
     expect(ask('show earlier versions')).toBeNull();
-    expect(ask('check for updates')).toBeNull();
+    // Updates are a row of Settings › About now: shown, not changed.
+    expect(ask('check for updates')).toEqual(['checkNow', null]);
     expect(ask('show the recent files')).toBeNull();
     expect(ask('remove the background')).toBeNull();
     expect(ask('ارسم دائرة')).toBeNull();

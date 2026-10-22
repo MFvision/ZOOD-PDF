@@ -1,4 +1,5 @@
-import { configureRing, ringSettings } from '../core/host-tauri';
+import { configureRing, ringSettings, setShellMenu, shellMenuState } from '../core/host-tauri';
+import { readQuickPreferences, writeQuickPreferences } from '../quick/QuickSettings';
 import { translate } from '../i18n/messages';
 import type { TKey } from '../i18n/messages';
 import type { SectionId } from '../settings/SettingsWindow';
@@ -51,6 +52,8 @@ export interface SettingEntry {
   desktop?: boolean;
   /** Its label is not one of its names (it is also a menu command's: "Earlier versions"). */
   unnamed?: boolean;
+  /** Kept by the host, not in the page's state: Settings opens afresh after a change, to show it. */
+  host?: boolean;
 }
 
 const SIZES: readonly SettingChoice[] = [
@@ -70,6 +73,14 @@ const LOOK_NAME: Record<UiLook, TKey> = {
   zood: 'look.zood',
   workbench: 'look.workbench',
   mono: 'look.mono',
+};
+
+const LOOK_WORDS: Record<UiLook, readonly string[]> = {
+  concept: ['concept', 'كونسبت'],
+  glass: ['glass', 'liquid glass', 'زجاج', 'زجاجي', 'الزجاج'],
+  zood: ['zood', 'zood look', 'زود'],
+  workbench: ['workbench', 'classic', 'منضده', 'كلاسيكي'],
+  mono: ['mono', 'monochrome', 'black and white', 'grey', 'احادي', 'ابيض واسود', 'رمادي'],
 };
 
 /** Every setting Ask ZOOD can change or show, page by page as Settings lists them. */
@@ -93,7 +104,7 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
       { value: 'home', label: 'prefs.startWith.home', words: ['home', 'home screen', 'رئيسيه', 'شاشه رئيسيه'] },
       { value: 'reopen', label: 'prefs.startWith.reopen', words: ['reopen', 'last files', 'last documents', 'اخر الملفات', 'اخر المستندات'] },
     ],
-    names: ['when the app opens', 'when it opens', 'start with', 'startup', 'on start', 'at launch', 'عند فتح التطبيق', 'عند فتح البرنامج', 'عند التشغيل', 'البدايه'],
+    names: ['open with the last files', 'reopen the last files', 'when the app opens', 'when it opens', 'start with', 'startup', 'on start', 'at launch', 'عند فتح التطبيق', 'عند فتح البرنامج', 'عند التشغيل', 'البدايه'],
   },
   {
     id: 'checkUpdates',
@@ -124,7 +135,7 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
     section: 'appearance',
     label: 'look.label',
     kind: 'choice',
-    choices: LOOK_IDS.map((look) => ({ value: look, label: LOOK_NAME[look] })),
+    choices: LOOK_IDS.map((look) => ({ value: look, label: LOOK_NAME[look], words: LOOK_WORDS[look] })),
     names: ['look', 'style', 'app look', 'design', 'skin', 'مظهر عام', 'شكل', 'شكل التطبيق', 'ستايل', 'تصميم'],
   },
   {
@@ -141,6 +152,26 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
     kind: 'choice',
     choices: SIZES,
     names: ['icon size', 'icons size', 'icons', 'size of the icons', 'حجم الايقونات', 'ايقونات'],
+  },
+  {
+    id: 'menuBar',
+    section: 'appearance',
+    label: 'prefs.menu',
+    kind: 'choice',
+    choices: [
+      { value: 'menus', label: 'prefs.menu.menus', words: ['sub menus', 'sub-menus', 'submenus', 'drop down', 'dropdown', 'drop down menus', 'menus', 'classic', 'normal menus', 'منسدله', 'قوائم منسدله', 'قوائم', 'كلاسيكي', 'عادي'] },
+      { value: 'all', label: 'prefs.menu.all', words: ['all', 'all commands', 'every command', 'everything', 'all buttons', 'الكل', 'كل الاوامر', 'كل الازرار', 'كلها'] },
+      { value: 'custom', label: 'prefs.menu.custom', words: ['custom', 'my own', 'my buttons', 'choose', 'مخصصه', 'مخصص', 'اختار بنفسي', 'ازراري'] },
+    ],
+    names: ['menu', 'menus', 'menu bar', 'menu style', 'the menu', 'top menu', 'menu at the top', 'app menu', 'قائمه', 'قايمه', 'القوائم', 'شريط القوائم', 'شكل القائمه', 'شكل القوائم', 'نوع القائمه', 'القائمه العلويه', 'المنيو', 'منيو'],
+  },
+  {
+    id: 'menuBarItems',
+    section: 'appearance',
+    label: 'prefs.menu',
+    kind: 'show',
+    names: ['commands shown as buttons', 'buttons in the menu', 'menu buttons', 'tools in the menu bar', 'buttons on the menu bar', 'الاوامر الظاهره كازرار', 'الاوامر اللي تطلع كازرار', 'اوامر القائمه', 'ازرار القائمه', 'ازرار الشريط'],
+    unnamed: true,
   },
   {
     id: 'accent',
@@ -226,7 +257,7 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
       { value: 'tabs', label: 'prefs.openIn.tabs', words: ['tabs', 'tab', 'تبويبات', 'تبويب'] },
       { value: 'windows', label: 'prefs.openIn.windows', words: ['windows', 'new windows', 'new window', 'نوافذ', 'نافذه', 'نوافذ جديده'] },
     ],
-    names: ['open documents in', 'open files in', 'open in', 'tabs or windows', 'فتح المستندات في', 'فتح الملفات في'],
+    names: ['open documents in', 'open files in', 'open new files in', 'new files in', 'new documents in', 'open in', 'tabs or windows', 'فتح المستندات في', 'فتح الملفات في', 'افتح الملفات في', 'افتح المستندات في'],
     desktop: true,
   },
   {
@@ -292,7 +323,21 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
       { value: '20', label: '20', words: ['twenty', 'عشرين'] },
       { value: '50', label: '50', words: ['fifty', 'خمسين'] },
     ],
-    names: ['how many recent files', 'recent files limit', 'number of recent files', 'عدد الملفات الاخيره', 'عدد الملفات المحفوظه'],
+    names: ['10 recent files', '20 recent files', '50 recent files', 'how many recent files', 'recent files limit', 'number of recent files', 'عدد الملفات الاخيره', 'عدد الملفات المحفوظه'],
+  },
+  {
+    id: 'homeSections',
+    section: 'home',
+    label: 'prefs.homeSections',
+    kind: 'show',
+    names: ['home sections', 'sections of the home screen', 'what the home screen shows', 'home screen sections', 'home layout', 'tools on the home screen', 'recent files on home', 'اقسام الرئيسيه', 'اقسام الشاشه الرئيسيه', 'ترتيب الرئيسيه', 'شكل الرئيسيه'],
+  },
+  {
+    id: 'clearRecent',
+    section: 'home',
+    label: 'prefs.clearRecent',
+    kind: 'show',
+    names: ['clear recent files', 'clear the recent files', 'delete recent files', 'clear recents', 'clear history of files', 'مسح الملفات الاخيره', 'امسح الملفات الاخيره', 'احذف الملفات الاخيره', 'حذف الملفات الاخيره'],
   },
   // Quick tools
   {
@@ -341,7 +386,7 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
     label: 'prefs.ringSize',
     kind: 'choice',
     choices: SIZES,
-    names: ['ring size', 'size of the ring', 'حجم الحلقه', 'حجم الدائره'],
+    names: ['ring size', 'size of the ring', 'ring bigger', 'ring smaller', 'bigger ring', 'smaller ring', 'حجم الحلقه', 'حجم الدائره', 'كبر الحلقه', 'صغر الحلقه', 'حلقه اكبر', 'حلقه اصغر'],
     desktop: true,
   },
   {
@@ -349,10 +394,149 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
     section: 'quick',
     label: 'prefs.ringShortcut',
     kind: 'show',
-    names: ['ring shortcut', 'shortcut', 'quick tools shortcut', 'اختصار الحلقه', 'الاختصار', 'اختصار'],
+    names: ['ring shortcut', 'shortcut', 'quick tools shortcut', 'shortcut for the ring', 'ring keyboard shortcut', 'اختصار الحلقه', 'الاختصار', 'اختصار'],
+    desktop: true,
+    unnamed: true,
+  },
+  {
+    id: 'shellMenu',
+    section: 'quick',
+    label: 'quick.settings.menu',
+    kind: 'toggle',
+    names: ['right click menu', 'right-click menu', 'explorer menu', 'file explorer menu', 'context menu', 'quick tools in the right click menu', 'right click', 'قائمه الزر الايمن', 'الزر الايمن', 'قائمه الكليك يمين', 'كليك يمين', 'قائمه المستكشف', 'القائمه المختصره'],
+    desktop: true,
+    host: true,
+  },
+  {
+    id: 'shellMenuTools',
+    section: 'quick',
+    label: 'prefs.menuTools',
+    kind: 'show',
+    names: ['tools in the right click menu', 'right click tools', 'tools in the explorer menu', 'ادوات الزر الايمن', 'ادوات قائمه الزر الايمن', 'الادوات في قائمه الزر الايمن'],
     desktop: true,
   },
+  {
+    id: 'ringTools',
+    section: 'quick',
+    label: 'prefs.ringTools',
+    kind: 'show',
+    names: ['tools on the ring', 'what is on the ring', 'whats on the ring', 'ring tools', 'tools in the ring', 'what the ring shows', 'ادوات الحلقه', 'الادوات علي الحلقه', 'ادوات الدائره'],
+    desktop: true,
+  },
+  {
+    id: 'ringDragKey',
+    section: 'quick',
+    label: 'prefs.ringDragKey',
+    kind: 'show',
+    names: ['drag key', 'key to hold while dragging', 'ring key', 'hold key', 'مفتاح السحب', 'المفتاح اثناء السحب', 'زر السحب'],
+    desktop: true,
+  },
+  {
+    id: 'output',
+    section: 'quick',
+    label: 'prefs.output',
+    kind: 'choice',
+    choices: [
+      { value: 'beside', label: 'prefs.output.beside', words: ['next to the original', 'beside the original', 'same folder', 'جنب الملف الاصلي', 'بجانب الاصلي', 'نفس المجلد', 'جنب الاصلي'] },
+      { value: 'ask', label: 'prefs.output.ask', words: ['ask me', 'ask each time', 'ask every time', 'اسالني', 'اسالني كل مره', 'في كل مره'] },
+    ],
+    names: ['save results', 'where results go', 'where to save results', 'results', 'output', 'حفظ النتائج', 'مكان حفظ النتائج', 'النتائج', 'وين تنحفظ النتائج'],
+  },
+  {
+    id: 'outputFolder',
+    section: 'quick',
+    label: 'prefs.output',
+    kind: 'show',
+    names: ['output folder', 'results folder', 'folder for results', 'مجلد النتائج', 'مجلد الحفظ'],
+    unnamed: true,
+  },
+  {
+    id: 'outputPattern',
+    section: 'quick',
+    label: 'prefs.outputPattern',
+    kind: 'show',
+    names: ['file names of results', 'result file names', 'names of the results', 'naming of results', 'اسماء ملفات النتائج', 'اسماء النتائج', 'تسميه النتائج'],
+  },
   // AI and Ask ZOOD
+  {
+    id: 'askOn',
+    section: 'ai',
+    label: 'ask.settings.on',
+    kind: 'toggle',
+    names: ['ask zood', 'the assistant', 'voice assistant', 'اسال زود', 'المساعد', 'المساعد الصوتي'],
+    desktop: true,
+    host: true,
+    unnamed: true,
+  },
+  {
+    id: 'taps',
+    section: 'ai',
+    label: 'ask.settings.taps',
+    kind: 'toggle',
+    names: ['tap twice', 'double tap', 'tap twice to write', 'reply drafting', 'write a reply', 'ضغطتين', 'ضغطتان', 'الضغط مرتين', 'كتابه الرد'],
+    desktop: true,
+    host: true,
+  },
+  {
+    id: 'tapKey',
+    section: 'ai',
+    label: 'ask.settings.tapKey',
+    kind: 'show',
+    names: ['tap key', 'the key i tap', 'right ctrl', 'right control', 'right command', 'مفتاح الضغط', 'المفتاح اللي اضغطه', 'كنترول اليمين'],
+    desktop: true,
+    unnamed: true,
+  },
+  {
+    id: 'oneTap',
+    section: 'ai',
+    label: 'ask.settings.oneTap',
+    kind: 'choice',
+    choices: [
+      { value: 'speak', label: 'ask.settings.oneTap.speak', words: ['listen', 'speak', 'talk', 'voice', 'يسمعني', 'اتكلم', 'صوت'] },
+      { value: 'type', label: 'ask.settings.oneTap.type', words: ['type', 'typing', 'write', 'box', 'اكتب', 'كتابه'] },
+      { value: 'off', label: 'ask.settings.oneTap.off', words: ['nothing', 'off', 'ولا شي', 'لا شي'] },
+    ],
+    on: 'speak',
+    off: 'off',
+    names: ['tap once', 'one tap', 'single tap', 'ضغطه واحده', 'الضغطه الواحده'],
+    desktop: true,
+    host: true,
+  },
+  {
+    id: 'glow',
+    section: 'ai',
+    label: 'ask.settings.glow',
+    kind: 'toggle',
+    names: ['glow', 'screen glow', 'the glow', 'glowing edges', 'توهج', 'التوهج', 'اضاءه الشاشه'],
+    desktop: true,
+    host: true,
+  },
+  {
+    id: 'askScreen',
+    section: 'ai',
+    label: 'ask.settings.screen',
+    kind: 'toggle',
+    names: ['see the screen', 'see my screen', 'look at the screen', 'look at my screen', 'screen reading', 'يشوف الشاشه', 'يشوف شاشتي', 'رؤيه الشاشه', 'يقرا الشاشه'],
+    desktop: true,
+    host: true,
+  },
+  {
+    id: 'brain',
+    section: 'ai',
+    label: 'ask.settings.brain',
+    kind: 'show',
+    names: ['ask zood model', 'the model that decides', 'assistant model', 'smarter model', 'نموذج اسال زود', 'النموذج الذي يقرر', 'نموذج المساعد'],
+    desktop: true,
+  },
+  {
+    id: 'askAccess',
+    section: 'ai',
+    label: 'ask.access.microphone',
+    kind: 'show',
+    names: ['permissions', 'microphone permission', 'microphone access', 'screen recording permission', 'accessibility permission', 'input monitoring', 'الصلاحيات', 'صلاحيه الميكروفون', 'اذن الميكروفون', 'الاذونات', 'الميكروفون'],
+    desktop: true,
+    unnamed: true,
+  },
   {
     id: 'talkBack',
     section: 'ai',
@@ -365,7 +549,8 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
     ],
     on: 'always',
     off: 'never',
-    names: ['talk back', 'talking back', 'speak answers', 'spoken answers', 'voice answers', 'read answers aloud', 'answer out loud', 'الرد بالصوت', 'الرد الصوتي', 'رد بالصوت', 'الكلام'],
+    host: true,
+    names: ['talk back', 'talking back', 'speak answers', 'spoken answers', 'voice answers', 'read answers aloud', 'answer out loud', 'الرد بالصوت', 'الرد الصوتي', 'رد بالصوت', 'ترد بالصوت', 'ترد علي بالصوت', 'تكلم', 'تتكلم', 'الكلام'],
     desktop: true,
   },
   {
@@ -373,7 +558,8 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
     section: 'ai',
     label: 'ask.settings.doForMe',
     kind: 'toggle',
-    names: ['let ask zood do it for me', 'do it for me setting', 'clicking for me', 'التنفيذ عني', 'التنفيذ عنك', 'التنفيذ بدالي'],
+    host: true,
+    names: ['let ask zood do it for me', 'do it for me setting', 'do it for me', 'clicking for me', 'التنفيذ عني', 'التنفيذ عنك', 'التنفيذ بدالي'],
     desktop: true,
   },
   {
@@ -397,7 +583,8 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
     section: 'ai',
     label: 'settings.speech',
     kind: 'show',
-    names: ['voice', 'voices', 'reading voice', 'read aloud voice', 'speaking voice', 'reading speed', 'الصوت', 'الاصوات', 'صوت القراءه', 'سرعه القراءه', 'القراءه بصوت'],
+    names: ['voice', 'voices', 'reading voice', 'read aloud voice', 'read aloud settings', 'speaking voice', 'reading speed', 'الصوت', 'الاصوات', 'صوت القراءه', 'سرعه القراءه', 'اعدادات القراءه بصوت'],
+    unnamed: true,
   },
   {
     id: 'aiScope',
@@ -417,14 +604,43 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
     label: 'prefs.answerLanguage',
     kind: 'choice',
     choices: [{ value: 'question', label: 'prefs.answer.question', words: ['same language', 'language of the question', 'لغه السؤال', 'نفس اللغه'] }, ...LANGUAGES],
-    names: ['answer language', 'answers in', 'answer in', 'reply language', 'replies in', 'لغه الاجابه', 'لغه الرد', 'الردود'],
+    names: ['answer language', 'answers in', 'answer in', 'answer me in', 'reply language', 'replies in', 'reply in', 'رد علي', 'جاوبني', 'جاوب', 'لغه الاجابه', 'لغه الرد', 'الردود'],
   },
   {
     id: 'keepChats',
     section: 'ai',
     label: 'prefs.keepChats',
     kind: 'toggle',
-    names: ['keep chats', 'keep chat history', 'save chats', 'حفظ المحادثات', 'الاحتفاظ بالمحادثات'],
+    names: ['keep chats', 'keep chat history', 'save chats', 'saving chats', 'حفظ المحادثات', 'الاحتفاظ بالمحادثات'],
+  },
+  {
+    id: 'aiModel',
+    section: 'ai',
+    label: 'prefs.aiWhere',
+    kind: 'show',
+    names: ['ai model', 'the model', 'language model', 'which model', 'where the ai runs', 'ai provider', 'download the ai', 'bigger model', 'smaller model', 'نموذج الذكاء الاصطناعي', 'نموذج الذكاء', 'النموذج', 'الموديل', 'موديل الذكاء', 'تحميل الذكاء الاصطناعي'],
+  },
+  {
+    id: 'aiPrompts',
+    section: 'ai',
+    label: 'prefs.aiPrompts',
+    kind: 'show',
+    names: ['suggested prompts', 'prompt suggestions', 'quick prompts', 'الطلبات المقترحه', 'الاقتراحات'],
+  },
+  {
+    id: 'forgetChats',
+    section: 'ai',
+    label: 'prefs.forgetChats',
+    kind: 'show',
+    names: ['delete chat history', 'delete all chats', 'clear chats', 'clear chat history', 'forget chats', 'حذف المحادثات', 'احذف المحادثات', 'مسح المحادثات', 'امسح المحادثات', 'حذف سجل المحادثات'],
+  },
+  // My details
+  {
+    id: 'wallet',
+    section: 'wallet',
+    label: 'prefs.wallet',
+    kind: 'show',
+    names: ['my details', 'my info', 'my information', 'wallet', 'my wallet', 'my profile', 'my address', 'my id', 'add my details', 'بياناتي', 'معلوماتي', 'المحفظه', 'محفظتي', 'عنواني', 'هويتي', 'ملفي الشخصي'],
   },
   // History and privacy
   {
@@ -458,7 +674,7 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
     ],
     on: '5',
     off: '0',
-    names: ['versions to keep', 'how many versions', 'keep versions', 'عدد النسخ', 'حفظ النسخ'],
+    names: ['versions to keep', 'how many versions', 'keep versions', 'keep 5 versions', 'keep 20 versions', 'keep no versions', '5 versions', '20 versions', 'احفظ 5 نسخ', 'احفظ 20 نسخه', 'عدد النسخ', 'حفظ النسخ'],
     unnamed: true,
   },
   {
@@ -468,6 +684,45 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
     kind: 'toggle',
     names: ['autosave', 'auto save', 'automatic save', 'automatic saving', 'recovery', 'الحفظ التلقائي', 'حفظ تلقائي'],
   },
+  {
+    id: 'autosaveMinutes',
+    section: 'history',
+    label: 'prefs.autosaveEvery',
+    kind: 'choice',
+    choices: [
+      { value: '1', label: '1', words: ['every minute', 'one minute', '1 minute', 'كل دقيقه', 'دقيقه'] },
+      { value: '5', label: '5', words: ['every five minutes', 'five minutes', '5 minutes', 'كل خمس دقايق', 'خمس دقايق', 'خمس دقائق'] },
+    ],
+    names: ['autosave every', 'autosave interval', 'how often to autosave', 'كل كم الحفظ التلقائي', 'مده الحفظ التلقائي'],
+    unnamed: true,
+  },
+  {
+    id: 'resetAll',
+    section: 'general',
+    label: 'prefs.resetAll',
+    kind: 'show',
+    names: ['reset all settings', 'reset settings', 'factory reset', 'default settings', 'اعاده الاعدادات', 'اعاده كل الاعدادات', 'رجع الاعدادات', 'الاعدادات الافتراضيه'],
+  },
+  {
+    id: 'defaultApp',
+    section: 'general',
+    label: 'prefs.defaultApp',
+    kind: 'show',
+    names: ['default app', 'default pdf app', 'default pdf reader', 'default program', 'open pdfs with zood', 'البرنامج الافتراضي', 'التطبيق الافتراضي', 'البرنامج الافتراضي للبي دي اف'],
+    desktop: true,
+  },
+  {
+    id: 'checkNow',
+    section: 'about',
+    label: 'updates.check',
+    kind: 'show',
+    names: ['check for updates', 'look for updates', 'updates', 'what version', 'which version', 'my version', 'update the app', 'new version', 'any updates', 'تحديثات', 'التحديثات', 'تحديث التطبيق', 'نسخه جديده', 'اصدار جديد'],
+    desktop: true,
+  },
+  // Pages of their own
+  { id: 'fonts', section: 'fonts', label: 'prefs.fonts', kind: 'show', names: ['fonts', 'install a font', 'add a font', 'الخطوط', 'خط جديد', 'اضف خط'] },
+  { id: 'cloud', section: 'cloud', label: 'prefs.cloud', kind: 'show', names: ['google drive', 'onedrive', 'one drive', 'cloud drives', 'cloud', 'جوجل درايف', 'ون درايف', 'التخزين السحابي', 'السحابه'] },
+  { id: 'shortcuts', section: 'shortcuts', label: 'prefs.shortcuts', kind: 'show', unnamed: true, names: ['keyboard shortcut', 'change a shortcut', 'change a keyboard shortcut', 'change the shortcuts', 'اختصارات لوحه المفاتيح', 'اختصار لوحه المفاتيح'] },
 ];
 
 /** A request read: the setting, and the choice it names (null: none named, so the row is shown). */
@@ -490,10 +745,11 @@ function says(said: string, name: string): boolean {
   return words.length > 0 && ` ${said} `.includes(` ${words} `);
 }
 
+// A bare "on" counts only at the end ("turn the ring on"): "the tools on the ring" asks for no switch.
 const ON =
-  /\b(?:turn(?:ed)? (?:it )?on|switch(?:ed)? (?:it )?on|enable|enabled|activate|show|start|allow|let|bring back|put back)\b|(?:^| )(?:on|شغل|شغلي|تشغيل|فعل|فعلي|تفعيل|اظهر|اظهار|ابدا|اسمح|رجع)(?= |$)/;
+  /\b(?:turn(?:ed)? (?:it )?on|switch(?:ed)? (?:it )?on|enable|enabled|activate|show|start|allow|let|bring back|put back|add|put)\b|(?:^| )on$|(?:^| )(?:شغل|شغلي|تشغيل|فعل|فعلي|تفعيل|اظهر|اظهار|ابدا|اسمح|رجع)(?= |$)/;
 const OFF =
-  /\b(?:turn(?:ed)? (?:it )?off|switch(?:ed)? (?:it )?off|disable|disabled|deactivate|hide|stop|remove|get rid of|no more|don'?t|do not|without)\b|(?:^| )(?:off|طفي|اطفي|طف|اطف|وقف|اوقف|ايقاف|الغ|الغي|الغاء|عطل|تعطيل|اخف|اخفي|اخفاء|بدون|شيل|امسح|لا تخلي|ما ابي|ما ابغي|ما ابغى|لا)(?= |$)/;
+  /\b(?:turn(?:ed)? (?:it )?off|switch(?:ed)? (?:it )?off|disable|disabled|deactivate|hide|stop|remove|get rid of|no more|don'?t|do not|without)\b|(?:^| )off$|(?:^| )(?:طفي|اطفي|طف|اطف|وقف|اوقف|ايقاف|الغ|الغي|الغاء|عطل|تعطيل|اخف|اخفي|اخفاء|بدون|شيل|امسح|لا تخلي|ما ابي|ما ابغي|ما ابغى|لا)(?= |$)/;
 
 /** What a verb on its own asks of a switch: "on", "off", or nothing said. */
 export function switchOf(words: string): 'on' | 'off' | null {
@@ -504,13 +760,13 @@ export function switchOf(words: string): 'on' | 'off' | null {
 }
 
 /** The choices' names in both languages, longest first. */
-function choiceNames(choice: SettingChoice): string[] {
+export function choiceNames(choice: SettingChoice): string[] {
   const label = choice.label.includes('.') ? [translate('en', choice.label as TKey), translate('ar', choice.label as TKey)] : [choice.label];
   return [...label, ...(choice.words ?? [])];
 }
 
 /** The choice `said` names for `entry`, by the longest name said; null for none. */
-function choiceSaid(entry: SettingEntry, said: string): string | null {
+export function choiceSaid(entry: SettingEntry, said: string): string | null {
   let best: { value: string; length: number } | null = null;
   for (const choice of entry.choices ?? []) {
     for (const name of choiceNames(choice)) {
@@ -519,6 +775,51 @@ function choiceSaid(entry: SettingEntry, said: string): string | null {
     }
   }
   return best?.value ?? null;
+}
+
+/** Words that ask about a setting, beside the setting's name: change it, where is it, turn it on. */
+const ABOUT_SETTING =
+  /\b(?:start|change|set|edit|adjust|switch|turn|make|use|enable|disable|show|hide|remove|stop|where|keep|put|open|choose|pick|reset|clear|delete|check|add|install|connect)\b|(?:^| )(?:on|off)$|(?:^| )(?:غير|غيري|بدل|عدل|اضبط|حول|خل|خلي|اجعل|شغل|فعل|طف|طفي|اطفي|وقف|الغ|اظهر|اخف|شيل|وين|حط|افتح|اختار|اختر|رجع|امسح|احذف|اضف|ضيف|ركب|اربط|دور|ابي|ابغي|ابغى|لا)(?= |$)/;
+
+/** Whether `words` ask to change, find or switch a setting, not only name it. */
+export function asksAboutSetting(words: string): boolean {
+  return ABOUT_SETTING.test(plain(words)) || ABOUT_SETTING.test(normalize(words));
+}
+
+/**
+ * Whether a request is for Settings before ZOOD's menu commands: a setting
+ * named with a choice ("keep 20 versions"), named as most of what was said
+ * ("ask zood keys"), or a page of Settings named ("AI settings").
+ */
+export function settingFirst(words: string, desktop = true): boolean {
+  const asked = settingAsked(words, desktop);
+  if (asked && asked.value !== null) return true;
+  if (settingsPageAsked(words)) return true;
+  if (!asked) return false;
+  const said = plain(words).replace(/\b(?:change|set|edit|the|my|a|please|check for|look for|search for|open)\b|(?:^| )(?:غير|عدل|لو سمحت|دور علي|دور عن|ابحث عن|افتح)(?= |$)/g, ' ').replace(/\s+/g, ' ').trim();
+  const name = [...asked.entry.names, translate('en', asked.entry.label), translate('ar', asked.entry.label)]
+    .filter((one) => !one.startsWith('!') && says(plain(words), one))
+    .reduce((longest, one) => Math.max(longest, plain(one).length), 0);
+  return said.length > 0 && name / said.length >= 0.6;
+}
+
+/** "Change", "customise", "غيّر": the start of a request to change something about the app. */
+const CHANGE_START =
+  /^(?:(?:please|can you|could you|i want to|i'd like to|how do i|zood) )*(?:change|customi[sz]e|set|adjust|switch|rearrange|move|edit) |^(?:(?:لو سمحت|ممكن|ابي|ابغي|ابغى|ابيك|زود) )*(?:غير|غيري|بدل|عدل|اضبط|خصص|رتب|حرك|انقل) /;
+/** What the request is about when it is a file or its pages, not the app: "change the text", "غيّر الصفحة". */
+const ABOUT_FILE =
+  /\b(?:word|excel|powerpoint|pdf|pdfs|file|files|page|pages|image|images|text|picture|font size of|name of the file|signature|password)\b|(?:وورد|اكسل|بوربوينت|ملف|ملفات|صفحه|صفحات|صوره|صور|نص|الكلام|توقيع|كلمه المرور)/;
+
+/**
+ * A request to change something about the app that names no setting here:
+ * "change the menu" before the menu's setting was listed. It is answered
+ * plainly (Settings opens, and the person is told no setting by that name
+ * was found) instead of being handed to the quick model, which can only
+ * pick a tool and once answered such a request with "convert to Excel".
+ */
+export function unknownSetting(words: string): boolean {
+  const said = plain(words);
+  return CHANGE_START.test(`${said} `) && !ABOUT_FILE.test(said) && settingAsked(words, true) === null;
 }
 
 /** "Switch to", "make it", "حول ل", "خليه": a choice named alone is asked for. */
@@ -544,10 +845,12 @@ export function settingAsked(words: string, desktop = true): SettingAsk | null {
       if (!found || length > found.length) found = { entry, invert, length };
     }
   }
-  if (!found) return bareChoice(words, said, desktop);
+  if (!found) return bareChoice(words, said, desktop) ?? choiceAlone(words, said, desktop);
   const { entry, invert } = found;
-  if (entry.kind === 'show') return { entry, value: null };
   const named = entry.kind === 'choice' ? choiceSaid(entry, said) : null;
+  // A setting only named in passing ("print my name in bold") is not asked about.
+  if (!named && !asksAboutSetting(words) && found.length / Math.max(1, said.length) < 0.5) return null;
+  if (entry.kind === 'show') return { entry, value: null };
   const asked = switchOf(words);
   // "Turn off dark mode" names the choice it turns off.
   if (named && asked === 'off' && entry.on && entry.off && (named === entry.on || named === entry.off)) {
@@ -570,6 +873,22 @@ function bareChoice(words: string, said: string, desktop: boolean): SettingAsk |
     if (value) return { entry, value };
   }
   return null;
+}
+
+/**
+ * A choice so plainly one setting's that it names the setting too: "read
+ * right to left", "save results next to the original". Only a choice of
+ * two words or more, of one setting alone, and asked about.
+ */
+function choiceAlone(words: string, said: string, desktop: boolean): SettingAsk | null {
+  if (!asksAboutSetting(words) && !/^(?:read|reading|اقرا|القراءه)(?= |$)/.test(said)) return null;
+  const found: SettingAsk[] = [];
+  for (const entry of SETTINGS_BOOK) {
+    if (entry.kind !== 'choice' || (entry.desktop && !desktop)) continue;
+    const long = (entry.choices ?? []).filter((choice) => choiceNames(choice).some((name) => plain(name).includes(' ') && plain(name).length >= 8 && says(said, name)));
+    if (long.length > 0) found.push({ entry, value: choiceSaid(entry, said) });
+  }
+  return found.length === 1 && found[0]?.value ? found[0] : null;
 }
 
 /** The words for Settings itself: "open the settings", "change the settings", "إعدادات الذكاء". */
@@ -647,8 +966,19 @@ export async function settingNow(entry: SettingEntry, setters: SettingSetters): 
     }
     case 'ringSize':
       return settings.ringSize;
+    case 'shellMenu': {
+      const menu = await shellMenuState().catch(() => null);
+      return menu && menu.kind === 'registry' ? (menu.on && readQuickPreferences().menu ? 'on' : 'off') : null;
+    }
     case 'talkBack':
       return readAskPreferences().talkBack;
+    case 'askOn':
+    case 'taps':
+    case 'glow':
+    case 'askScreen':
+      return readAskPreferences()[ASK_SWITCH[entry.id]] ? 'on' : 'off';
+    case 'oneTap':
+      return readAskPreferences().oneTap;
     case 'doForMe':
       return readAskPreferences().doForMe ? 'on' : 'off';
     case 'bubble': {
@@ -662,6 +992,9 @@ export async function settingNow(entry: SettingEntry, setters: SettingSetters): 
     }
   }
 }
+
+/** Ask ZOOD's switches, by the book's ids. */
+const ASK_SWITCH = { askOn: 'enabled', taps: 'taps', glow: 'glow', askScreen: 'screen' } as const;
 
 /** Changes `entry` to `value` (as `settingAsked` names it). Resolves false when it cannot be changed here. */
 export async function applySetting(entry: SettingEntry, value: string, setters: SettingSetters): Promise<boolean> {
@@ -700,6 +1033,24 @@ export async function applySetting(entry: SettingEntry, value: string, setters: 
       }
       return true;
     }
+    case 'shellMenu': {
+      const menu = await shellMenuState().catch(() => null);
+      // A Mac's Quick Actions are the system's to switch, in System Settings.
+      if (!menu || menu.kind !== 'registry') return false;
+      writeQuickPreferences({ menu: on });
+      await setShellMenu(on, setters.lang, getSettings().shellMenuTools);
+      return true;
+    }
+    case 'askOn':
+    case 'taps':
+    case 'glow':
+    case 'askScreen':
+      writeAskPreferences({ ...readAskPreferences(), [ASK_SWITCH[entry.id]]: on });
+      return true;
+    case 'oneTap':
+      if (value !== 'speak' && value !== 'type' && value !== 'off') return false;
+      writeAskPreferences({ ...readAskPreferences(), oneTap: value });
+      return true;
     case 'talkBack':
       writeAskPreferences({ ...readAskPreferences(), talkBack: value as TalkBack });
       return true;
