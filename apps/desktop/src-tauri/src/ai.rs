@@ -150,6 +150,9 @@ pub struct AiState {
     downloads: Mutex<HashMap<String, Downloading>>,
     /// Requests under way, by id, each with the flag that stops it.
     requests: Mutex<HashMap<String, Arc<AtomicBool>>>,
+    /// Ids stopped before their request began (`ai_cancel` can overtake
+    /// `ai_generate`), each kept for `CANCEL_KEPT` from when it was stopped.
+    cancelled: Mutex<HashMap<String, Instant>>,
     /// The engine thread, started on the first request.
     engine: Mutex<Option<mpsc::Sender<Job>>>,
 }
@@ -344,6 +347,8 @@ struct DownloadEvent {
 pub const DOWNLOAD_EVENT: &str = "warraq://ai-download";
 const REDIRECTS: usize = 5;
 const PROGRESS_EVERY: u64 = 1 << 20;
+/// How long a download may go without a byte before it is given up.
+const STALL: Duration = Duration::from_secs(60);
 
 fn agent() -> ureq::Agent {
     ureq::Agent::config_builder()
@@ -441,19 +446,48 @@ fn stream_download<R: Runtime>(
     target: &Path,
     part: &Path,
 ) -> Result<(), String> {
-    let mut response = open_download(&spec.url)?;
-    let mut body = response.body_mut().as_reader();
+    let response = open_download(&spec.url)?;
     let mut file =
         std::fs::File::create(part).map_err(|e| format!("E_IO: {}: {e}", part.display()))?;
+    // Read on a thread of its own, so a connection that stalls neither keeps
+    // Stop from working nor hangs the download: the loop below waits for it
+    // a second at a time, and gives up after `STALL` without a byte. A
+    // reader left blocked ends with its connection.
+    let (chunks, arrived) = mpsc::sync_channel::<std::io::Result<Vec<u8>>>(4);
+    std::thread::spawn(move || {
+        let mut body = response.into_body().into_reader();
+        loop {
+            let mut chunk = vec![0u8; 256 * 1024];
+            let read = body.read(&mut chunk).map(|n| {
+                chunk.truncate(n);
+                chunk
+            });
+            let more = matches!(&read, Ok(chunk) if !chunk.is_empty());
+            if chunks.send(read).is_err() || !more {
+                break;
+            }
+        }
+    });
     let mut hasher = Sha256::new();
     let mut received: u64 = 0;
     let mut announced: u64 = 0;
-    let mut buffer = vec![0u8; 256 * 1024];
+    let mut last_byte = Instant::now();
     loop {
         if cancel.load(Ordering::Relaxed) {
             return Err("E_CANCELLED: the download was stopped".to_string());
         }
-        let n = body.read(&mut buffer).map_err(|e| format!("E_NET: {e}"))?;
+        let buffer = match arrived.recv_timeout(Duration::from_secs(1)) {
+            Ok(read) => read.map_err(|e| format!("E_NET: {e}"))?,
+            Err(mpsc::RecvTimeoutError::Timeout) if last_byte.elapsed() < STALL => continue,
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                return Err("E_NET: the download stalled".to_string())
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                return Err("E_NET: the download stopped".to_string())
+            }
+        };
+        last_byte = Instant::now();
+        let n = buffer.len();
         if n == 0 {
             break;
         }
@@ -1103,11 +1137,17 @@ pub async fn run<R: Runtime>(
         return Err("E_AI: this model is not one that sees or hears".to_string());
     }
     let cancel = Arc::new(AtomicBool::new(false));
-    state
-        .requests
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .insert(request.id.clone(), cancel.clone());
+    {
+        let mut requests = state.requests.lock().unwrap_or_else(|e| e.into_inner());
+        let stopped_before = state
+            .cancelled
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&request.id)
+            .is_some_and(|at| at.elapsed() < CANCEL_KEPT);
+        cancel.store(stopped_before, Ordering::Relaxed);
+        requests.insert(request.id.clone(), cancel.clone());
+    }
     let sender = engine_sender(state);
     let (reply, answer) = mpsc::channel();
     let id = request.id.clone();
@@ -1149,15 +1189,23 @@ pub async fn run<R: Runtime>(
     result
 }
 
+/// How long a stop for a request that has not begun is remembered, and how
+/// many such stops at most.
+const CANCEL_KEPT: Duration = Duration::from_secs(30);
+const MAX_CANCELLED: usize = 64;
+
 #[tauri::command]
 pub fn ai_cancel(state: State<'_, AiState>, id: String) {
-    if let Some(flag) = state
-        .requests
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .get(&id)
-    {
+    let requests = state.requests.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(flag) = requests.get(&id) {
         flag.store(true, Ordering::Relaxed);
+        return;
+    }
+    // Not begun yet: it is stopped as it begins.
+    let mut cancelled = state.cancelled.lock().unwrap_or_else(|e| e.into_inner());
+    cancelled.retain(|_, at| at.elapsed() < CANCEL_KEPT);
+    if cancelled.len() < MAX_CANCELLED {
+        cancelled.insert(id, Instant::now());
     }
 }
 
