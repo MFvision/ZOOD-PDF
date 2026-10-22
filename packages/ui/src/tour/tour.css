@@ -217,6 +217,12 @@ html[data-look="mono"] .tour-eyebrow {
   border-block-start: 1px solid var(--separator);
 }
 
+.tour-actions-end {
+  display: flex;
+  gap: var(--space-4);
+  margin-inline-start: auto;
+}
+
 .tour-next .lucide {
   transition: transform var(--duration-regular) var(--spring);
 }
@@ -1712,6 +1718,17 @@ html[data-look="mono"] .tour-glow {
   white-space: nowrap;
   font-size: var(--text-callout);
   color: var(--tertiary-label);
+}
+
+/* A "Not yet" that goes back to its chapter. */
+.tour-summary-go {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
 
 /* ---- Narrow windows: the chapters become a strip at the top -------------------------------------------- */

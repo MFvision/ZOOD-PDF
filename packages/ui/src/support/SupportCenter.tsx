@@ -83,7 +83,7 @@ export function SupportCenter() {
   const open = dialog === 'support';
   const close = () => dispatch({ type: 'DIALOG', dialog: null });
   return (
-    <Dialog open={open} title={t('support.title')} onClose={close} className="support-dialog">
+    <Dialog open={open} title={t('support.title')} onClose={close} className="support-dialog" closeOnBackdrop={false}>
       {open ? <SupportBook onClose={close} /> : null}
     </Dialog>
   );
@@ -370,16 +370,21 @@ function ArticleCard({ article, actions, lead }: { article: Article; actions: Ar
   const services = useServices();
   const dispatch = useAppDispatch();
   const [opening, setOpening] = useState(false);
+  const [failed, setFailed] = useState<TKey | null>(null);
   const pdf = guidePdfUrl(article.id, lang);
   const openPdf = async () => {
     if (!pdf) return;
     setOpening(true);
+    setFailed(null);
     try {
       const response = await fetch(pdf);
+      if (!response.ok) throw new Error(`E_NET: ${response.status}`);
       const bytes = await response.arrayBuffer();
       const name = `${lang === 'ar' ? 'دليل' : 'Guide'} - ${article.title[lang]}.pdf`;
       await services.openFile(new File([bytes], name, { type: 'application/pdf' }), undefined, { recent: false });
       dispatch({ type: 'DIALOG', dialog: null });
+    } catch {
+      setFailed('support.pdfFailed');
     } finally {
       setOpening(false);
     }
@@ -429,7 +434,7 @@ function ArticleCard({ article, actions, lead }: { article: Article; actions: Ar
           </button>
         )}
         {video && (
-          <button type="button" className="icon-btn icon-btn-labeled" onClick={() => void openOutside(video)}>
+          <button type="button" className="icon-btn icon-btn-labeled" onClick={() => void openOutside(video).then((ok) => setFailed(ok ? null : 'link.openFailed'))}>
             <Icon of={Clapperboard} size={14} />
             {t('support.video')}
           </button>
@@ -441,17 +446,30 @@ function ArticleCard({ article, actions, lead }: { article: Article; actions: Ar
           </button>
         )}
       </div>
+      {failed && (
+        <p className="field-error" role="alert">
+          {t(failed)}
+        </p>
+      )}
     </article>
   );
 }
 
-async function openOutside(url: string): Promise<void> {
-  if (isTauriHost()) await openExternalUrl(url).catch(() => undefined);
-  else globalThis.open(url, '_blank', 'noopener');
+/** Opens a web page outside the app; false when it could not (the caller says so). */
+async function openOutside(url: string): Promise<boolean> {
+  if (isTauriHost()) return openExternalUrl(url).then(() => true, () => false);
+  // With noopener a browser gives back no window, so only a throw means it failed.
+  try {
+    globalThis.open(url, '_blank', 'noopener');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function LearnPage({ desktop, actions, article, onArticle }: { desktop: boolean; actions: ArticleActions; article: string | null; onArticle: (id: string | null) => void }) {
   const { t, lang } = useI18n();
+  const [webFailed, setWebFailed] = useState(false);
   const list = useMemo(() => articlesFor(desktop), [desktop]);
   const shown = article ? articleById(article) : undefined;
   if (shown) {
@@ -505,11 +523,16 @@ function LearnPage({ desktop, actions, article, onArticle }: { desktop: boolean;
           ))}
         </ul>
       </section>
-      <button type="button" className="support-link-row support-web" onClick={() => void openOutside(SUPPORT.website[lang])}>
+      <button type="button" className="support-link-row support-web" onClick={() => void openOutside(SUPPORT.website[lang]).then((ok) => setWebFailed(!ok))}>
         <Icon of={Globe} size={15} />
         <span>{t('support.learn.website')}</span>
         <Icon of={ArrowRight} size={14} mirror />
       </button>
+      {webFailed && (
+        <p className="field-error" role="alert">
+          {t('link.openFailed')}
+        </p>
+      )}
     </div>
   );
 }
@@ -532,12 +555,13 @@ const STATUS_LABEL: Record<Ticket['status'], TKey> = {
 
 function ReportPage() {
   const { t, lang } = useI18n();
-  const [draft, setDraft] = useState<Draft>({ kind: 'bug', text: '', contact: '', includeLog: true, picture: null });
+  const [draft, setDraft] = useState<Draft>({ kind: 'bug', text: '', contact: '', includeLog: false, picture: null });
   const [stage, setStage] = useState<'write' | 'review' | 'sending' | 'sent' | 'offline' | 'busy' | 'failed'>('write');
   const [pictureError, setPictureError] = useState(false);
   const [tickets, setTickets] = useState<Ticket[]>(readTickets);
   const [last, setLast] = useState<Ticket | null>(null);
   const [checking, setChecking] = useState(() => readTickets().some((one) => one.via === 'relay' && one.token));
+  const [checkFailed, setCheckFailed] = useState(false);
   const facts = useMemo(() => systemFacts(lang), [lang]);
   const fileInput = useRef<HTMLInputElement>(null);
   const logLines = recentLog().length;
@@ -548,7 +572,7 @@ function ReportPage() {
     let live = true;
     refreshTickets()
       .then((list) => live && setTickets(list))
-      .catch(() => undefined)
+      .catch(() => live && setCheckFailed(true))
       .finally(() => live && setChecking(false));
     return () => {
       live = false;
@@ -592,7 +616,7 @@ function ReportPage() {
     setStage('sent');
   };
   const reset = () => {
-    setDraft({ kind: 'bug', text: '', contact: '', includeLog: true, picture: null });
+    setDraft({ kind: 'bug', text: '', contact: '', includeLog: false, picture: null });
     setStage('write');
     setLast(null);
   };
@@ -758,6 +782,11 @@ function ReportPage() {
       {tickets.length > 0 && (
         <section className="support-tickets" aria-busy={checking || undefined}>
           <p className="support-section-title">{t('support.report.mine')}</p>
+          {checkFailed && (
+            <p className="support-muted" role="status">
+              {t('support.report.checkFailed')}
+            </p>
+          )}
           <ul>
             {tickets.map((ticket) => (
               <li key={ticket.id} className="support-ticket" data-status={ticket.status}>

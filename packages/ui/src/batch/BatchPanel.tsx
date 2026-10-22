@@ -350,7 +350,11 @@ export function BatchPanel() {
                       <span className="batch-file-name" dir="auto" title={input.relative ?? input.path ?? input.name}>
                         {input.relative ?? input.name}
                       </span>
-                      {state && <span className="batch-file-state" dir="auto">{stateText(state)}</span>}
+                      {state && (
+                        <span className="batch-file-state" dir="auto" title={state.state === 'failed' ? state.message : undefined}>
+                          {stateText(state)}
+                        </span>
+                      )}
                     </span>
                     {!running && (
                       <IconButton

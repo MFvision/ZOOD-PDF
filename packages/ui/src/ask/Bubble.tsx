@@ -3,6 +3,8 @@ import './bubble.css';
 import { ZoodMark } from '../components/ZoodMark';
 import { invokeHost, isTauriHost, onHostEvent } from '../core/host-tauri';
 import { applyAppearance } from '../settings/SettingsEffects';
+import { I18nProvider } from '../i18n/I18nProvider';
+import { useT } from '../i18n/useT';
 
 /** True in the ZOOD bubble's own window (`src-tauri/src/presence.rs`). */
 export function isAskBubbleWindow(): boolean {
@@ -25,6 +27,15 @@ const DRAG_FROM = 4;
  * stays the one Ask ZOOD helps with.
  */
 export function AskBubbleApp() {
+  return (
+    <I18nProvider>
+      <AskBubble />
+    </I18nProvider>
+  );
+}
+
+function AskBubble() {
+  const t = useT();
   const [listening, setListening] = useState(false);
   const pressed = useRef<{ x: number; y: number } | null>(null);
 
@@ -45,8 +56,8 @@ export function AskBubbleApp() {
     <button
       type="button"
       className={listening ? 'ask-bubble is-listening' : 'ask-bubble'}
-      aria-label="Ask ZOOD — اسأل زود"
-      title="Ask ZOOD — اسأل زود"
+      aria-label={t('ask.bubble')}
+      title={t('ask.bubble')}
       onPointerDown={(event) => {
         if (event.button !== 0) return;
         pressed.current = { x: event.screenX, y: event.screenY };

@@ -232,6 +232,9 @@ function QuickWindow() {
     }
   };
 
+  /** The engine's own words for a failure, kept to the tooltip (they are in the log too). */
+  const failedDetail = (state: FileState | undefined) => (state?.state === 'failed' ? state.message : undefined);
+
   const stateIcon = (state: FileState | undefined) => {
     switch (state?.state) {
       case 'working':
@@ -275,7 +278,7 @@ function QuickWindow() {
             <span className="quick-file-name" dir="auto" title={file.path}>
               {file.name}
             </span>
-            <span className="quick-file-note">
+            <span className="quick-file-note" title={failedDetail(states.get(key))}>
               {states.has(key) ? describe(states.get(key)) : formatSize(file.size, lang)}
             </span>
             {phase === 'done' && outputs.get(key) && /\.pdf$/i.test(outputs.get(key)!) ? (

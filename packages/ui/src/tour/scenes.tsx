@@ -35,6 +35,7 @@ import { RemotePanel } from '../remote/RemotePanel';
 import { useRemoteView } from '../remote/store';
 import { LookPreview } from '../settings/LookPreview';
 import type { SectionId } from '../settings/SettingsWindow';
+import type { ChapterId } from './chapters';
 import { isApplePlatform } from '../shell/menuModel';
 import { useAppDispatch, useAppState } from '../state/AppContext';
 import { LOOK_IDS } from '../state/preferences';
@@ -882,21 +883,22 @@ function AiDocumentPart() {
 
 /* --------------------------------------------------------------------- Done */
 
-export function DoneScene({ progress }: { progress: TourProgress }) {
+/** The tour's last page: what was set and tried; a "Not yet" goes back to its chapter. */
+export function DoneScene({ progress, onChapter }: { progress: TourProgress; onChapter: (id: ChapterId) => void }) {
   const { t, lang } = useI18n();
   const { look } = useAppState();
   const { status } = useRemoteView();
   const [desktop] = useState(isTauriHost);
   const phone = (status?.phones.length ?? 0) > 0 || (status?.remembered.length ?? 0) > 0;
-  const rows: { text: string; done: boolean }[] = [
+  const rows: { text: string; done: boolean; chapter?: ChapterId }[] = [
     { text: t('tour.done.lang', { value: t(`lang.${lang}`) }), done: true },
     { text: t('tour.done.look', { value: t(`look.${look}`) }), done: true },
-    { text: t('tour.done.film'), done: progress.film },
+    { text: t('tour.done.film'), done: progress.film, chapter: 'film' },
     ...(desktop
       ? [
-          { text: t('tour.done.ring'), done: progress.ring },
-          ...(askAvailable() ? [{ text: t('tour.done.ask'), done: progress.ask }] : []),
-          { text: t('tour.done.phone'), done: phone },
+          { text: t('tour.done.ring'), done: progress.ring, chapter: 'quick' as const },
+          ...(askAvailable() ? [{ text: t('tour.done.ask'), done: progress.ask, chapter: 'ask' as const }] : []),
+          { text: t('tour.done.phone'), done: phone, chapter: 'remote' as const },
         ]
       : []),
   ];
@@ -924,7 +926,14 @@ export function DoneScene({ progress }: { progress: TourProgress }) {
               {row.done ? <Icon of={Check} size={13} /> : null}
             </span>
             <span>{row.text}</span>
-            {!row.done && <span className="tour-summary-later">{t('tour.done.notYet')}</span>}
+            {!row.done &&
+              (row.chapter ? (
+                <button type="button" className="tour-summary-later tour-summary-go" onClick={() => onChapter(row.chapter!)}>
+                  {t('tour.done.notYet')}
+                </button>
+              ) : (
+                <span className="tour-summary-later">{t('tour.done.notYet')}</span>
+              ))}
           </li>
         ))}
       </ul>

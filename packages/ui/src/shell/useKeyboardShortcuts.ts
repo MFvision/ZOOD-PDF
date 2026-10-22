@@ -61,7 +61,9 @@ export function useKeyboardShortcuts(): void {
       const hasDocument = current.view === 'viewer' && current.document !== null;
       const mod = event.metaKey || event.ctrlKey;
 
-      if (event.key === 'F1' && !mod && !event.altKey && !event.shiftKey) {
+      // Help & Support: F1, and on a Mac also ⌘? (the Mac's own help key).
+      const macHelp = event.key === '?' && event.metaKey && !event.ctrlKey && !event.altKey && isApplePlatform();
+      if ((event.key === 'F1' && !mod && !event.altKey && !event.shiftKey) || macHelp) {
         event.preventDefault();
         openSupportAt('ask', () => dispatch({ type: 'DIALOG', dialog: 'support' }));
         return;
