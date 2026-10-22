@@ -3147,5 +3147,11 @@
   "tour.reach.note": "Everything stays on this computer. Inside ZOOD nothing is read from the screen; in other apps only the buttons’ names are read, never what you type.",
   "tour.reach.ready": "Keep ZOOD ready",
   "tour.reach.readyHint": "Starts ZOOD when you sign in, with no window, and keeps its icon in the tray (the menu bar on a Mac). Closing the editor keeps it there.",
-  "tour.reach.bubbleHint": "A small round ZOOD button on the edge of the screen, above every app. Off until you turn it on."
+  "tour.reach.bubbleHint": "A small round ZOOD button on the edge of the screen, above every app. Off until you turn it on.",
+  "ask.setting.done": "Done. {name}: {choice}.",
+  "ask.setting.same": "{name} is already {choice}.",
+  "ask.setting.here": "Here's {name}, lit in Settings.",
+  "ask.setting.page": "Here are the settings.",
+  "ask.setting.failed": "I couldn't change {name} from here. It's lit in Settings for you.",
+  "ask.setting.hidden": "I couldn't find {name} in Settings on this computer."
 }

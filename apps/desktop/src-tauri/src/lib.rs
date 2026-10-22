@@ -527,6 +527,7 @@ pub fn run() {
             ask::book::ask_command,
             ask::book::ask_command_stop,
             ask::book::ask_relay_reply,
+            ask::book::ask_open_editor,
             ask::controls::ask_controls,
             presence::presence_ask,
             presence::presence_settings,

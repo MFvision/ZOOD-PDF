@@ -4,6 +4,10 @@ import { useI18n } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import type { BookEntry, BookStep } from '../ask/book';
 import { configurePresence } from '../ask/presence';
+import { applySetting, settingEntry, settingNow } from '../ask/settingsBook';
+import type { SettingSetters } from '../ask/settingsBook';
+import { openSettingsAt } from '../settings/SettingsWindow';
+import type { SectionId } from '../settings/SettingsWindow';
 import type { MenuModel } from './menuModel';
 import './askSpot.css';
 
@@ -19,6 +23,10 @@ import './askSpot.css';
  * is lit with what to do, and the step is done when the person clicks it;
  * a command inside a closed menu lights that menu first. On a Mac, where the
  * menus are the system's, a step with no button of its own says where it is.
+ *
+ * A setting (`ask/settingsBook.ts`) is run in Settings itself: the window
+ * opens at its page, its row is lit, and it is changed — or, for Show me,
+ * the row stays lit until the person changes it.
  */
 
 export const BOOK_EVENT = 'ask://book';
@@ -38,6 +46,8 @@ export interface CommandDone {
   reason?: string;
   /** Show me: the menu the person was pointed to first, by its name. */
   menu?: string;
+  /** A setting: what it was before the step, as `settingsBook.ts` names values. */
+  before?: string | null;
 }
 
 /** How long Do it for me lights a button before running it. */
@@ -69,14 +79,29 @@ export function buttonOf(id: string, label: string): HTMLElement | null {
 
 let spot: HTMLDivElement | null = null;
 
+/**
+ * Where a light goes: in an open dialog, which sits above the page (the
+ * top layer), or on the page; and how far the dialog moves what is fixed in
+ * it, when it makes its own frame (a transform, a filter).
+ */
+function layerOf(element: HTMLElement): { host: HTMLElement; dx: number; dy: number } {
+  const dialog = element.closest<HTMLElement>('dialog[open]');
+  if (!dialog) return { host: document.body, dx: 0, dy: 0 };
+  const style = getComputedStyle(dialog);
+  const framed = style.transform !== 'none' || style.filter !== 'none' || (style.backdropFilter ?? 'none') !== 'none';
+  const box = dialog.getBoundingClientRect();
+  return { host: dialog, dx: framed ? box.left : 0, dy: framed ? box.top : 0 };
+}
+
 /** Lights `element` with `words` beside it. */
 function light(element: HTMLElement, words: string): void {
   unlight();
   const box = element.getBoundingClientRect();
+  const { host, dx, dy } = layerOf(element);
   const ring = document.createElement('div');
   ring.className = 'ask-spot';
-  ring.style.left = `${box.left - 6}px`;
-  ring.style.top = `${box.top - 6}px`;
+  ring.style.left = `${box.left - 6 - dx}px`;
+  ring.style.top = `${box.top - 6 - dy}px`;
   ring.style.width = `${box.width + 12}px`;
   ring.style.height = `${box.height + 12}px`;
   if (words) {
@@ -86,7 +111,7 @@ function light(element: HTMLElement, words: string): void {
     if (box.top > innerHeight - 80) label.dataset.above = 'true';
     ring.append(label);
   }
-  document.body.append(ring);
+  host.append(ring);
   spot = ring;
 }
 
@@ -96,6 +121,19 @@ function unlight(): void {
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+
+/** A setting's row in the open Settings window, by its label (or its group, by the group's title). */
+export function settingRow(label: string): HTMLElement | null {
+  const name = label.trim();
+  const titled = Array.from(document.querySelectorAll<HTMLElement>('.prefs-row-label, .prefs-group-title')).find(
+    (element) => element.textContent?.trim() === name,
+  );
+  if (!titled) return null;
+  return titled.closest<HTMLElement>('.prefs-row') ?? titled.closest<HTMLElement>('.prefs-group') ?? titled;
+}
+
+/** How long a setting changed, or only shown, stays lit. */
+const SETTING_SHOWN_MS = 2600;
 
 /** The menus as the island's book, with Home beside them. */
 export function entriesOf(menus: readonly MenuModel[], homeLabel: string, home: boolean): BookEntry[] {
@@ -111,15 +149,15 @@ export function useAskBridge(menus: readonly MenuModel[], nativeMenu: boolean): 
   const state = useAppState();
   const dispatch = useAppDispatch();
   const services = useServices();
-  const { t, lang } = useI18n();
+  const { t, lang, setLang } = useI18n();
   // The tray menu speaks the app's language (`presence.rs`).
   useEffect(() => {
     void configurePresence({ lang });
   }, [lang]);
   // The newest menus, state and services, for the listeners made once.
-  const now = useRef({ menus, state, dispatch, services, t, nativeMenu });
+  const now = useRef({ menus, state, dispatch, services, t, nativeMenu, lang, setLang });
   useEffect(() => {
-    now.current = { menus, state, dispatch, services, t, nativeMenu };
+    now.current = { menus, state, dispatch, services, t, nativeMenu, lang, setLang };
   });
   /** The Show me step waiting for a click: ends it. */
   const waiting = useRef<((done: CommandDone) => void) | null>(null);
@@ -207,6 +245,74 @@ export function useAskBridge(menus: readonly MenuModel[], nativeMenu: boolean): 
         waiting.current = finish;
       });
 
+    /** Waits for the person's click inside `target`, lit with `words`. */
+    const clickIn = (target: HTMLElement, words: string): Promise<CommandDone> =>
+      new Promise((resolve) => {
+        light(target, words);
+        let timer = 0;
+        const finish = (done: CommandDone) => {
+          window.clearTimeout(timer);
+          document.removeEventListener('click', onClick, true);
+          waiting.current = null;
+          unlight();
+          resolve(done);
+        };
+        const onClick = (event: MouseEvent) => {
+          if (event.target instanceof Node && target.contains(event.target)) window.setTimeout(() => finish({ ran: true }), 300);
+        };
+        document.addEventListener('click', onClick, true);
+        timer = window.setTimeout(() => finish({ ran: false, reason: 'stopped' }), SHOW_WAITS_MS);
+        waiting.current = finish;
+      });
+
+    const setting = async (step: BookStep, mode: 'do' | 'show'): Promise<CommandDone> => {
+      const { dispatch: send, t: say, state: app, lang: language, setLang: changeLang } = now.current;
+      const page = step.setting?.startsWith('page:') ? (step.setting.slice(5) as SectionId) : null;
+      const entry = page ? undefined : settingEntry(step.setting ?? '');
+      if (!entry && !page) return { ran: false, reason: 'missing' };
+      // Settings opens at the setting's page, afresh if it was open at another.
+      if (app.dialog === 'settings') {
+        send({ type: 'DIALOG', dialog: null });
+        await sleep(60);
+      }
+      openSettingsAt(entry?.section ?? page ?? 'general', () => send({ type: 'DIALOG', dialog: 'settings' }));
+      await sleep(350);
+      if (!entry) return { ran: true };
+      const name = say(entry.label);
+      const row = settingRow(name);
+      row?.scrollIntoView({ block: 'center' });
+      await sleep(row ? 120 : 0);
+      const setters: SettingSetters = {
+        setLang: (next) => changeLang(next),
+        setTheme: (theme) => send({ type: 'SET_THEME', theme }),
+        setLook: (look) => send({ type: 'SET_LOOK', look }),
+        theme: app.theme,
+        look: app.look,
+        lang: language === 'en' ? 'en' : 'ar',
+      };
+      const before = await settingNow(entry, setters).catch(() => null);
+      if (mode === 'show') {
+        if (!row) return { ran: false, reason: 'hidden' };
+        return { ...(await clickIn(row, step.label || name)), before };
+      }
+      if (row) light(row, step.label || name);
+      if (step.value === null || step.value === undefined) {
+        await sleep(SETTING_SHOWN_MS);
+        unlight();
+        return { ran: true, before };
+      }
+      await sleep(LIT_MS);
+      if (before === step.value) {
+        await sleep(SETTING_SHOWN_MS - LIT_MS);
+        unlight();
+        return { ran: true, reason: 'same', before };
+      }
+      const changed = await applySetting(entry, step.value, setters).catch(() => false);
+      await sleep(SETTING_SHOWN_MS - LIT_MS);
+      unlight();
+      return changed ? { ran: true, before } : { ran: false, reason: 'disabled', before };
+    };
+
     const stops = [
       onHostEvent<{ request: number }>(BOOK_EVENT, ({ request }) => {
         const { menus: current, t: say } = now.current;
@@ -214,6 +320,7 @@ export function useAskBridge(menus: readonly MenuModel[], nativeMenu: boolean): 
       }),
       onHostEvent<CommandRequest>(COMMAND_EVENT, ({ request, step, mode }) => {
         void (async () => {
+          if (step.id === 'setting') return reply(request, await setting(step, mode).catch((error: unknown) => ({ ran: false, reason: String(error) })));
           if (mode === 'show') return reply(request, await show(step));
           const button = buttonOf(step.id, step.label);
           if (button) {
