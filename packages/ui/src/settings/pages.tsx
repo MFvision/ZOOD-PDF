@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check, RotateCcw } from 'lucide-react';
 import { Icon } from '../components/Icon';
+import { useConfirm } from '../components/ConfirmDialog';
 import { APP_ICON } from '../components/appIcon';
 import {
   configureRing,
@@ -68,8 +69,10 @@ export function GeneralPage() {
   const settings = useSettings();
   const desktop = isTauriHost();
   const windows = desktop && !isApplePlatform();
+  const confirm = useConfirm();
   return (
     <>
+      {confirm.dialog}
       <Group>
         <Choice
           label={t('lang.label')}
@@ -110,7 +113,9 @@ export function GeneralPage() {
           hint={t('prefs.resetAllHint')}
           action={t('prefs.reset')}
           onClick={() => {
-            if (globalThis.confirm?.(t('prefs.resetAllConfirm')) ?? true) resetSettings();
+            void confirm.ask({ title: t('prefs.resetAll'), body: t('prefs.resetAllConfirm'), action: t('prefs.reset'), icon: RotateCcw }).then((yes) => {
+              if (yes) resetSettings();
+            });
           }}
         />
       </Group>
@@ -670,8 +675,10 @@ export function AiPage() {
   const { t } = useI18n();
   const settings = useSettings();
   const [cleared, setCleared] = useState(false);
+  const confirm = useConfirm();
   return (
     <>
+      {confirm.dialog}
       <Group title={t('prefs.aiWhere')}>
         <AiSettingsSection />
       </Group>
@@ -710,7 +717,9 @@ export function AiPage() {
           action={t('prefs.delete')}
           danger
           onClick={() => {
-            void forgetAllChats().then(() => setCleared(true));
+            void confirm.ask({ title: t('prefs.forgetChats'), body: t('prefs.forgetChatsConfirm'), action: t('prefs.delete') }).then((yes) => {
+              if (yes) void forgetAllChats().then(() => setCleared(true));
+            });
           }}
         />
       </Group>
@@ -738,8 +747,9 @@ export function HistoryPage() {
   const services = useServices();
   const settings = useSettings();
   const [done, setDone] = useState(false);
+  const confirm = useConfirm();
   const clearAll = async () => {
-    if (!(globalThis.confirm?.(t('prefs.clearAllConfirm')) ?? true)) return;
+    if (!(await confirm.ask({ title: t('prefs.clearAll'), body: t('prefs.clearAllConfirm'), action: t('prefs.clearAll') }))) return;
     services.clearRecent();
     forgetRecentPath();
     await Promise.all([forgetAllChats(), clearVersions(), clearRecovery()]);
@@ -747,6 +757,7 @@ export function HistoryPage() {
   };
   return (
     <>
+      {confirm.dialog}
       <Group title={t('prefs.recent')}>
         <Toggle label={t('prefs.keepRecent')} hint={t('prefs.keepRecentHint')} checked={settings.keepRecent} onChange={(keepRecent) => set({ keepRecent })} />
       </Group>

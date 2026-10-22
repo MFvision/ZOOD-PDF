@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { Check, Eye, EyeOff, Plus, Trash2, X } from 'lucide-react';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Icon } from '../../components/Icon';
 import { IconButton } from '../../components/IconButton';
 import { useI18n } from '../../i18n/useT';
@@ -81,6 +82,7 @@ export function WalletEditor() {
   const [chosenId, setChosenId] = useState<string | null>(null);
   const [note, setNote] = useState<TKey | null>(null);
   const [fact, setFact] = useState('');
+  const [askForget, setAskForget] = useState(false);
   const wallet = draft ?? saved;
   const where = profileStore().where();
 
@@ -336,8 +338,19 @@ export function WalletEditor() {
       </form>
 
       <div className="tool-actions">
-        <IconButton label={t('wallet.forget')} icon={<Icon of={Trash2} />} showLabel onClick={() => void forget()} />
+        <IconButton label={t('wallet.forget')} icon={<Icon of={Trash2} />} showLabel onClick={() => setAskForget(true)} />
       </div>
+      <ConfirmDialog
+        open={askForget}
+        title={t('wallet.forget')}
+        body={t('wallet.forgetConfirm')}
+        action={t('prefs.delete')}
+        onCancel={() => setAskForget(false)}
+        onConfirm={() => {
+          setAskForget(false);
+          void forget();
+        }}
+      />
     </div>
   );
 }
