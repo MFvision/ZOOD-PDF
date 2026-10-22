@@ -4,9 +4,9 @@
 //! the middle and the ring stays, to click a tool. The idea is
 //! Filee's (github.com/KnifeLemon/Filee, MIT); none of its code is used.
 //!
-//! A watcher sees the system's mouse: a low-level mouse hook on Windows,
-//! and on macOS a look every few milliseconds at the mouse button, the keys
-//! and the system's drag pasteboard (none of which needs a permission). It
+//! A watcher sees the system's mouse: a look every few milliseconds at the
+//! mouse button and the keys, and on macOS the system's drag pasteboard
+//! too (none of which needs a permission). It
 //! notices a drag that started with the key held, from any window. The ring
 //! is invisible until files are dragged over it, so a drag of anything else
 //! shows nothing (Filee's approach). The ring itself is a small transparent window that
@@ -208,7 +208,12 @@ pub fn load_settings<R: Runtime>(app: &AppHandle<R>) -> RingSettings {
 pub fn start<R: Runtime>(app: &AppHandle<R>, start_hidden: bool) {
     let settings = load_settings(app);
     if let Some(path) = settings_path(app) {
-        let _ = LOG.set(path.with_file_name("ring.log"));
+        let log = path.with_file_name("ring.log");
+        // A full log from runs before starts again, so this run's lines show.
+        if std::fs::metadata(&log).is_ok_and(|m| m.len() >= LOG_LIMIT) {
+            let _ = std::fs::remove_file(&log);
+        }
+        let _ = LOG.set(log);
     }
     log(&format!(
         "started; ring {}",
@@ -610,23 +615,21 @@ pub fn launch_agent(exe: &str) -> String {
 
 #[cfg(target_os = "windows")]
 mod windows {
-    use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
+    use std::time::Duration;
 
-    use windows_sys::Win32::Foundation::{LPARAM, LRESULT, POINT, WPARAM};
-    use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
-    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_CONTROL, VK_SHIFT};
+    use windows_sys::Win32::Foundation::POINT;
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
+        GetAsyncKeyState, VK_CONTROL, VK_LBUTTON, VK_RBUTTON, VK_SHIFT,
+    };
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        CallNextHookEx, GetAncestor, GetClassNameW, GetMessageW, SetWindowsHookExW,
-        WindowFromPoint, GA_ROOT, MSG, MSLLHOOKSTRUCT, WH_MOUSE_LL, WM_LBUTTONDOWN, WM_LBUTTONUP,
-        WM_MOUSEMOVE,
+        GetAncestor, GetClassNameW, GetCursorPos, GetSystemMetrics, WindowFromPoint, GA_ROOT,
+        SM_SWAPBUTTON,
     };
 
     use super::{enabled, is_drag, log, send, Gesture};
 
-    static DOWN: AtomicBool = AtomicBool::new(false);
-    static SHOWN: AtomicBool = AtomicBool::new(false);
-    static START_X: AtomicI32 = AtomicI32::new(0);
-    static START_Y: AtomicI32 = AtomicI32::new(0);
+    /// How often the mouse and the keys are looked at.
+    const TICK: Duration = Duration::from_millis(15);
 
     fn class_at(point: POINT) -> String {
         // SAFETY: plain window queries on a point; a buffer of fixed size.
@@ -646,78 +649,74 @@ mod windows {
         }
     }
 
+    fn down(key: u16) -> bool {
+        // SAFETY: a plain key state query.
+        (unsafe { GetAsyncKeyState(i32::from(key)) } as u16 & 0x8000) != 0
+    }
+
     /// Ctrl or Shift, held now.
     fn held() -> bool {
-        // SAFETY: plain key state queries.
-        let down = |key: u16| (unsafe { GetAsyncKeyState(i32::from(key)) } as u16 & 0x8000) != 0;
         down(VK_CONTROL) || down(VK_SHIFT)
     }
 
-    unsafe extern "system" fn hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-        if code >= 0 && lparam != 0 {
-            // SAFETY: for WH_MOUSE_LL, lparam points at an MSLLHOOKSTRUCT.
-            let info = unsafe { &*(lparam as *const MSLLHOOKSTRUCT) };
-            let point = (info.pt.x, info.pt.y);
-            match wparam as u32 {
-                WM_LBUTTONDOWN => {
-                    DOWN.store(true, Ordering::Relaxed);
-                    SHOWN.store(false, Ordering::Relaxed);
-                    START_X.store(point.0, Ordering::Relaxed);
-                    START_Y.store(point.1, Ordering::Relaxed);
-                    if held() {
-                        let class = class_at(info.pt);
-                        log(&format!(
-                            "press with Ctrl or Shift held, over a {class} window"
-                        ));
-                    }
-                }
-                WM_MOUSEMOVE
-                    if DOWN.load(Ordering::Relaxed)
-                        && enabled()
-                        && !SHOWN.load(Ordering::Relaxed) =>
-                {
-                    let control = held();
-                    let start = (
-                        START_X.load(Ordering::Relaxed),
-                        START_Y.load(Ordering::Relaxed),
-                    );
-                    if is_drag(start, point, control) {
-                        SHOWN.store(true, Ordering::Relaxed);
-                        log("drag with Ctrl or Shift: ring placed at the pointer");
-                        send(Gesture::Start {
-                            x: f64::from(point.0),
-                            y: f64::from(point.1),
-                        });
-                    }
-                }
-                WM_LBUTTONUP => {
-                    DOWN.store(false, Ordering::Relaxed);
-                    if SHOWN.swap(false, Ordering::Relaxed) {
-                        send(Gesture::End);
-                    }
-                }
-                _ => {}
-            }
-        }
-        // SAFETY: passes the event on, as every hook must.
-        unsafe { CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam) }
+    /// The button that drags: the left one, or the right one when the
+    /// person swapped them in Settings.
+    fn dragging_button() -> bool {
+        // SAFETY: a plain system setting query.
+        let swapped = unsafe { GetSystemMetrics(SM_SWAPBUTTON) } != 0;
+        down(if swapped { VK_RBUTTON } else { VK_LBUTTON })
     }
 
-    /// The hook lives on a thread of its own, which must pump messages for it.
+    fn pointer() -> Option<POINT> {
+        let mut point = POINT { x: 0, y: 0 };
+        // SAFETY: writes the pointer's place into `point`.
+        (unsafe { GetCursorPos(&mut point) } != 0).then_some(point)
+    }
+
+    /// Watches by looking, as on a Mac: the button, the pointer and the keys
+    /// are read every few milliseconds. A low-level mouse hook did this
+    /// before, but Windows takes such a hook away without a word when one
+    /// call is late (the computer busy, say with the on-device model), and
+    /// the ring then never opened again until the app restarted.
     pub fn watch() {
         std::thread::spawn(|| {
-            // SAFETY: the hook procedure above, for this process; the loop
-            // below keeps it called until the app ends.
-            unsafe {
-                let module = GetModuleHandleW(std::ptr::null());
-                let hook = SetWindowsHookExW(WH_MOUSE_LL, Some(hook), module, 0);
-                if hook.is_null() {
-                    log("the mouse hook could not be set");
-                    return;
+            log("watching the mouse");
+            let mut start: Option<(i32, i32)> = None;
+            let mut shown = false;
+            loop {
+                std::thread::sleep(TICK);
+                let pressed = dragging_button();
+                let Some(point) = pointer() else { continue };
+                let now = (point.x, point.y);
+                match (pressed, start) {
+                    (true, None) => {
+                        start = Some(now);
+                        shown = false;
+                        if held() {
+                            let class = class_at(point);
+                            log(&format!(
+                                "press with Ctrl or Shift held, over a {class} window"
+                            ));
+                        }
+                    }
+                    (true, Some(from)) if !shown && enabled() => {
+                        if is_drag(from, now, held()) {
+                            shown = true;
+                            log("drag with Ctrl or Shift: ring placed at the pointer");
+                            send(Gesture::Start {
+                                x: f64::from(now.0),
+                                y: f64::from(now.1),
+                            });
+                        }
+                    }
+                    (false, Some(_)) => {
+                        start = None;
+                        if std::mem::take(&mut shown) {
+                            send(Gesture::End);
+                        }
+                    }
+                    _ => {}
                 }
-                log("watching the mouse");
-                let mut message: MSG = std::mem::zeroed();
-                while GetMessageW(&mut message, std::ptr::null_mut(), 0, 0) > 0 {}
             }
         });
     }
