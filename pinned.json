@@ -1,0 +1,142 @@
+{
+ "repo": "rhasspy/piper-voices",
+ "revision": "5041a7a49ae5b3a0f30e6837769eb03fdbb231bd",
+ "voices": {
+  "ar_JO-kareem-medium": {
+   "files": [
+    {
+     "file": "ar_JO-kareem-medium.onnx",
+     "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/ar/ar_JO/kareem/medium/ar_JO-kareem-medium.onnx",
+     "bytes": 63201294,
+     "sha256": "9e95cab07b679da603bba17c4dec7ab3111320571964ee95c0379603c086491e"
+    },
+    {
+     "file": "ar_JO-kareem-medium.onnx.json",
+     "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/ar/ar_JO/kareem/medium/ar_JO-kareem-medium.onnx.json",
+     "bytes": 5024,
+     "sha256": "ea6d9b9d9076dbdb6bf5c98c6a141ef154959d2359709b37855727964e7d6c4d"
+    }
+   ],
+   "model_card": "# Model card for kareem (medium)\n\n* Language: ar_JO (Arabic, Jordan)\n* Speakers: 1\n* Quality: medium\n* Samplerate: 22,050Hz\n\n## Dataset\n\n* URL: https://github.com/AliMokhammad/arabicttstrain/\n* License: See URL\n\n## Training\n\nFinetuned from U.S English lessac voice (medium quality).\n"
+  },
+  "ar_JO-kareem-low": {
+   "files": [
+    {
+     "file": "ar_JO-kareem-low.onnx",
+     "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/ar/ar_JO/kareem/low/ar_JO-kareem-low.onnx",
+     "bytes": 63201294,
+     "sha256": "2887e9d68b125965c747e1371fa21e1cef19555ea98d0795a0d5d71188b13890"
+    },
+    {
+     "file": "ar_JO-kareem-low.onnx.json",
+     "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/ar/ar_JO/kareem/low/ar_JO-kareem-low.onnx.json",
+     "bytes": 5022,
+     "sha256": "da328e52896826135508f797c1c77b45b35117e967c71befc377d654f100f328"
+    }
+   ],
+   "model_card": "# Model card for kareem (low)\n\n* Language: ar_JO (Arabic, Jordan)\n* Speakers: 1\n* Quality: low\n* Samplerate: 16,000Hz\n\n## Dataset\n\n* URL: https://github.com/AliMokhammad/arabicttstrain/\n* License: See URL\n\n## Training\n\nFinetuned from U.S English lessac voice (low quality).\n"
+  },
+  "en_US-ljspeech-high": {
+   "files": [
+    {
+     "file": "en_US-ljspeech-high.onnx",
+     "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/en/en_US/ljspeech/high/en_US-ljspeech-high.onnx",
+     "bytes": 114199011,
+     "sha256": "5d4f08ba6a2a48c44592eed3ce56bf85e9de3dd4e20df90541ae68a8310c029a"
+    },
+    {
+     "file": "en_US-ljspeech-high.onnx.json",
+     "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/en/en_US/ljspeech/high/en_US-ljspeech-high.onnx.json",
+     "bytes": 4970,
+     "sha256": "7e1f4634af596d83cca997fb7a931ba80b70f8a316a2655ee69c55365e0ace14"
+    }
+   ],
+   "model_card": "# Model card for ljspeech (high)\n\n* Language: en_US (English, United States)\n* Speakers: 1\n* Quality: high\n* Samplerate: 22,050Hz\n\n## Dataset\n\n* URL: https://keithito.com/LJ-Speech-Dataset/\n* License: public domain\n\n## Training\n\nSee: https://brycebeattie.com/files/tts/\n\nUS English female voice. Single speaker. Trained from scratch for 1000 epochs on medium quality settings using the LJ Speech dataset. I reencoded the recordings to a bit rate of 22500 Hz so it would match other voices released for Piper TTS.\n"
+  },
+  "en_US-ljspeech-medium": {
+   "files": [
+    {
+     "file": "en_US-ljspeech-medium.onnx",
+     "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/en/en_US/ljspeech/medium/en_US-ljspeech-medium.onnx",
+     "bytes": 63531379,
+     "sha256": "6f52a751e2349abe7a76735eb09dc1875298c77ea2342ffd2fef79ff81b87f22"
+    },
+    {
+     "file": "en_US-ljspeech-medium.onnx.json",
+     "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/en/en_US/ljspeech/medium/en_US-ljspeech-medium.onnx.json",
+     "bytes": 4972,
+     "sha256": "141d612cc0a95ed7efc1ca936b845c2364967f2e9217c5dbfcf69fc4d6c65860"
+    }
+   ],
+   "model_card": "# Model card for ljspeech (medium)\n\n* Language: en_US (English, United States)\n* Speakers: 1\n* Quality: medium\n* Samplerate: 22,050Hz\n\n## Dataset\n\n* URL: https://keithito.com/LJ-Speech-Dataset/\n* License: public domain\n\n## Training\n\nSee: https://brycebeattie.com/files/tts/\n\nUS English female voice. Single speaker. Trained from scratch for 1000 epochs on medium quality settings using the LJ Speech dataset. I reencoded the recordings to a bit rate of 22500 Hz so it would match other voices released for Piper TTS.\n"
+  },
+  "en_GB-cori-high": {
+   "files": [
+    {
+     "file": "en_GB-cori-high.onnx",
+     "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/en/en_GB/cori/high/en_GB-cori-high.onnx",
+     "bytes": 114219352,
+     "sha256": "470b4dd634c98f8a4850d7626ffc3dfc90774628eeef6605a6dd8f88f30a5903"
+    },
+    {
+     "file": "en_GB-cori-high.onnx.json",
+     "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/en/en_GB/cori/high/en_GB-cori-high.onnx.json",
+     "bytes": 4963,
+     "sha256": "9e7fb5b5671612c22f3c81cbe46c1ae87b031a4632bcb509e499dad6f1e2adec"
+    }
+   ],
+   "model_card": "# Model card for cori (high)\n\n* Language: en_GB (English, Great Britain)\n* Speakers: 1\n* Quality: high\n* Samplerate: 22,050Hz\n\n## Dataset\n\n* URL: https://librivox.org\n* License: public domain\n\n## Training\n\nSee: https://brycebeattie.com/files/tts/\n\nUK English female voice. Single Speaker. Trained from scratch on high quality settings for 500 epochs. I put together the dataset, which ended up with about 24 hours of recordings. All recordings came from LibriVox.org.\n"
+  },
+  "en_US-hfc_female-medium": {
+   "files": [
+    {
+     "file": "en_US-hfc_female-medium.onnx",
+     "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/en/en_US/hfc_female/medium/en_US-hfc_female-medium.onnx",
+     "bytes": 63201294,
+     "sha256": "914c473788fc1fa8b63ace1cdcdb44588f4ae523d3ab37df1536616835a140b7"
+    },
+    {
+     "file": "en_US-hfc_female-medium.onnx.json",
+     "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/en/en_US/hfc_female/medium/en_US-hfc_female-medium.onnx.json",
+     "bytes": 5033,
+     "sha256": "03f1fa0622b80463283592d97aca9f6e89aec345a5c56b7257723e0093c58b6c"
+    }
+   ],
+   "model_card": "# Model card for hfc_female (medium)\n\n* Language: en_US (English, United States)\n* Speakers: 1\n* Quality: medium\n* Samplerate: 22,050Hz\n\n## Dataset\n\n* URL: https://ast-astrec.nict.go.jp/en/release/hi-fi-captain/\n* License: https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en\n\n## Training\n\nFinetuned from U.S. English lessac voice (medium quality).\n"
+  },
+  "en_US-ryan-high": {
+   "files": [
+    {
+     "file": "en_US-ryan-high.onnx",
+     "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/en/en_US/ryan/high/en_US-ryan-high.onnx",
+     "bytes": 120786792,
+     "sha256": "b3990d7606e183ec8dbfba70a4607074f162de1a0c412e0180d1ff60bb154eca"
+    },
+    {
+     "file": "en_US-ryan-high.onnx.json",
+     "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/en/en_US/ryan/high/en_US-ryan-high.onnx.json",
+     "bytes": 4166,
+     "sha256": "c6d3b98f08315cb4bebf0d49d50fc4ff491b503c64b940cd3d5ca28543b48011"
+    }
+   ],
+   "model_card": "# Model card for ryan (high)\n\n* Language: en_US (English, United States)\n* Speakers: 1\n* Quality: high\n* Samplerate: 22,050Hz\n\n## Dataset\n\n* URL: https://www.kaggle.com/datasets/roholazandie/ryanspeech\n* License: CC BY-NC-SA 4.0\n\n## Training\n\nTrained from scratch.\n"
+  },
+  "en_US-lessac-high": {
+   "files": [
+    {
+     "file": "en_US-lessac-high.onnx",
+     "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/en/en_US/lessac/high/en_US-lessac-high.onnx",
+     "bytes": 113895201,
+     "sha256": "4cabf7c3a638017137f34a1516522032d4fe3f38228a843cc9b764ddcbcd9e09"
+    },
+    {
+     "file": "en_US-lessac-high.onnx.json",
+     "url": "https://huggingface.co/rhasspy/piper-voices/resolve/5041a7a49ae5b3a0f30e6837769eb03fdbb231bd/en/en_US/lessac/high/en_US-lessac-high.onnx.json",
+     "bytes": 4883,
+     "sha256": "db42b97d9859f257bc1561b8ed980e7fb2398402050a74ddd6cbec931a92412f"
+    }
+   ],
+   "model_card": "# Model card for lessac (high)\n\n* Language: en_US (English, United States)\n* Speakers: 1\n* Quality: high\n* Samplerate: 22,050Hz\n\n## Dataset\n\n* URL: https://www.cstr.ed.ac.uk/projects/blizzard/2013/lessac_blizzard2013/\n* License: https://www.cstr.ed.ac.uk/projects/blizzard/2013/lessac_blizzard2013/license.html\n\n## Training\n\nTrained from scratch.\n"
+  }
+ }
+}
