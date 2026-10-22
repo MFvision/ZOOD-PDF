@@ -301,7 +301,14 @@ fn module_roots() -> Vec<PathBuf> {
             roots.push(root.into());
         }
     } else {
-        for root in ["/usr/lib", "/usr/lib64", "/usr/local/lib", "/lib", "/lib64", "/opt"] {
+        for root in [
+            "/usr/lib",
+            "/usr/lib64",
+            "/usr/local/lib",
+            "/lib",
+            "/lib64",
+            "/opt",
+        ] {
             roots.push(root.into());
         }
     }
@@ -462,7 +469,11 @@ pub fn pkcs11_certificates<R: Runtime>(
             "notAfter": warraq_sign::time::iso(cert.not_after()),
         }));
     }
-    debug_log(format!("pkcs11: {} certificate(s) in {}", listed.len(), path.display()));
+    debug_log(format!(
+        "pkcs11: {} certificate(s) in {}",
+        listed.len(),
+        path.display()
+    ));
     serde_json::to_string(&listed).map_err(|e| e.to_string())
 }
 
@@ -790,7 +801,13 @@ mod tests {
         ] {
             assert!(!public_ip(local.parse().unwrap()), "{local}");
         }
-        for public in ["8.8.8.8", "1.1.1.1", "100.128.0.1", "172.32.0.1", "2606:4700::1111"] {
+        for public in [
+            "8.8.8.8",
+            "1.1.1.1",
+            "100.128.0.1",
+            "172.32.0.1",
+            "2606:4700::1111",
+        ] {
             assert!(public_ip(public.parse().unwrap()), "{public}");
         }
         for url in [

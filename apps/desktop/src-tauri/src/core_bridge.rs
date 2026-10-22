@@ -142,10 +142,9 @@ impl CoreBridge {
                 // A panic inside one job (a malformed PDF tripping a bug in
                 // the core) answers that call with an error instead of taking
                 // the core thread, and with it every open document, down.
-                let value = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    job(registry)
-                }))
-                .map_err(|_| "E_CORE: internal error".to_string());
+                let value =
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| job(registry)))
+                        .map_err(|_| "E_CORE: internal error".to_string());
                 let _ = reply.send(value);
             }))
             .map_err(|_| "E_CORE: the core thread is gone".to_string())?;
