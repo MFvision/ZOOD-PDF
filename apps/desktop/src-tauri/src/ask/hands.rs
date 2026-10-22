@@ -72,6 +72,30 @@ pub fn undo() -> Result<(), String> {
     chord('z').map_err(|e| format!("E_ASK: {e}"))
 }
 
+/// One left click at `x`, `y`, in the system's own units (pixels on
+/// Windows, points on a Mac): Do it for me's click inside ZOOD PDF.
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+pub fn click_at(x: f64, y: f64) -> Result<(), String> {
+    use enigo::{Button, Coordinate, Direction, Enigo, Mouse, Settings};
+    if !x.is_finite() || !y.is_finite() {
+        return Err("E_ASK: no place to click".to_string());
+    }
+    let mut mouse = Enigo::new(&Settings::default()).map_err(|e| e.to_string())?;
+    mouse
+        .move_mouse(x.round() as i32, y.round() as i32, Coordinate::Abs)
+        .map_err(|e| format!("E_ASK: {e}"))?;
+    // The app sees the pointer arrive before the button goes down.
+    std::thread::sleep(std::time::Duration::from_millis(60));
+    mouse
+        .button(Button::Left, Direction::Click)
+        .map_err(|e| format!("E_ASK: {e}"))
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+pub fn click_at(_x: f64, _y: f64) -> Result<(), String> {
+    Err("E_ASK: clicking is on Windows and macOS".to_string())
+}
+
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 pub fn paste(_text: &str) -> Result<(), String> {
     Err("E_ASK: pasting is on Windows and macOS".to_string())

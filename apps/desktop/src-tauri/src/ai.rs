@@ -637,9 +637,27 @@ pub fn context_for(request: &GenerateRequest) -> u32 {
 }
 const BATCH: usize = 512;
 
+/// llama.cpp's backend: started once for the whole app and kept, so the
+/// engine thread and Ask ZOOD's quick decider (`decide.rs`) can each hold a
+/// model of their own at the same time.
+pub fn backend() -> Result<&'static LlamaBackend, String> {
+    static BACKEND: OnceLock<LlamaBackend> = OnceLock::new();
+    if let Some(backend) = BACKEND.get() {
+        return Ok(backend);
+    }
+    static STARTING: Mutex<()> = Mutex::new(());
+    let _one_at_a_time = STARTING.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(backend) = BACKEND.get() {
+        return Ok(backend);
+    }
+    let mut backend = LlamaBackend::init().map_err(|e| format!("E_AI: {e}"))?;
+    backend.void_logs();
+    Ok(BACKEND.get_or_init(|| backend))
+}
+
 /// The loaded model, on the engine's own thread.
 pub struct Engine {
-    backend: LlamaBackend,
+    backend: &'static LlamaBackend,
     model: LlamaModel,
     path: PathBuf,
     /// The projector, for a model that sees or hears.
@@ -686,13 +704,12 @@ impl Engine {
     }
 
     fn load_with(path: &Path, gpu_layers: Option<u32>) -> Result<Self, String> {
-        let mut backend = LlamaBackend::init().map_err(|e| format!("E_AI: {e}"))?;
-        backend.void_logs();
+        let backend = backend()?;
         let params = match gpu_layers {
             Some(layers) => LlamaModelParams::default().with_n_gpu_layers(layers),
             None => LlamaModelParams::default(),
         };
-        let model = LlamaModel::load_from_file(&backend, path, &params)
+        let model = LlamaModel::load_from_file(backend, path, &params)
             .map_err(|e| format!("E_AI: cannot load the model: {e}"))?;
         Ok(Self {
             backend,
@@ -816,7 +833,7 @@ impl Engine {
             .with_n_threads(threads)
             .with_n_threads_batch(threads);
         let mut ctx = model
-            .new_context(&self.backend, params)
+            .new_context(self.backend, params)
             .map_err(|e| format!("E_AI: {e}"))?;
 
         // The prompt, in batches, with logits asked of its last token only.

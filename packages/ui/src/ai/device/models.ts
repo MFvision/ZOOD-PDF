@@ -33,6 +33,8 @@ export interface DeviceModel {
   hears?: boolean;
   /** It reads pictures: Ask ZOOD can show it the screen. */
   sees?: boolean;
+  /** It only decides — picks one of a list, writes nothing: Ask ZOOD's quick lane, never a chat model. */
+  decides?: boolean;
   /** Its own licence, where it is not the catalogue's. */
   licence?: string;
 }
@@ -49,7 +51,9 @@ export function modelBytes(model: DeviceModel): number {
  * browser only plain text models (WebAssembly runs no projector).
  */
 export function chatModels(inBrowser: boolean): DeviceModel[] {
-  return DEVICE_MODELS.filter((model) => !model.hears && !(inBrowser && model.projector));
+  return DEVICE_MODELS.filter(
+    (model) => !model.hears && !model.decides && !(inBrowser && model.projector),
+  );
 }
 export const MODEL_LICENCE = catalogue.licence;
 export const MODEL_LICENCE_URL = catalogue.licenceUrl;

@@ -78,7 +78,7 @@ export interface AppState {
   leftPane: { open: boolean; width: number; tab: LeftTab };
   rightPane: { open: boolean; width: number; activeTool: ToolId | null };
   find: { open: boolean; query: string; matches: number[]; cursor: number; searched: boolean };
-  dialog: 'goto' | 'shortcuts' | 'about' | 'settings' | 'tour' | 'versions' | null;
+  dialog: 'goto' | 'shortcuts' | 'about' | 'settings' | 'tour' | 'versions' | 'support' | null;
   /** A file that needs a password to open; `wrong` after a failed attempt. */
   passwordPrompt: { name: string; wrong: boolean } | null;
   /** Consumed by the viewer; the nonce makes repeated requests distinct. */

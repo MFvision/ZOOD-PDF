@@ -71,7 +71,7 @@ const FILM = {
  * a step stops it there; Reduce Motion never starts it (the person steps
  * through by hand).
  */
-function usePhases(count: number, ms: number): { phase: number; pick: (n: number) => void; playing: boolean; replay: () => void } {
+export function usePhases(count: number, ms: number): { phase: number; pick: (n: number) => void; playing: boolean; replay: () => void } {
   const reduced = useReducedMotion();
   const [phase, setPhase] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -96,7 +96,7 @@ function usePhases(count: number, ms: number): { phase: number; pick: (n: number
 }
 
 /** The steps beside a scene: the one playing is lit, and each can be picked. */
-function Steps({ steps, phase, onPick }: { steps: { icon: LucideIcon; text: TKey }[]; phase: number; onPick: (n: number) => void }) {
+export function Steps({ steps, phase, onPick }: { steps: { icon: LucideIcon; text: TKey }[]; phase: number; onPick: (n: number) => void }) {
   const { t } = useI18n();
   return (
     <ol className="tour-steps">
@@ -349,7 +349,7 @@ export function BasicsScene() {
   );
 }
 
-function Replay({ onClick }: { onClick: () => void }) {
+export function Replay({ onClick }: { onClick: () => void }) {
   const { t } = useI18n();
   return (
     <button type="button" className="link-btn tour-link tour-replay" onClick={onClick}>

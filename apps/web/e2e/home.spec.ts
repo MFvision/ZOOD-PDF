@@ -130,15 +130,14 @@ test.describe('the home screen', () => {
     await expect(chat.locator('.ai-turn-user')).toContainText('quiz of five questions');
     await expect(chat).toContainText('Choose a PDF first; the request is kept for it.');
 
-    // Another chip while the tool is open changes the request in place.
-    await card.getByRole('button', { name: 'Explain it simply' }).click();
+    // The AI shows in one place: while its panel is open the docked card steps aside.
+    await expect(card).toHaveCount(0);
     await expect(chat.locator('.ai-turn-user')).toHaveCount(1);
-    await expect(chat.locator('.ai-turn-user')).toContainText('Explain this document simply');
 
     // The file the request is about. The on-device model is not downloaded, so the request waits in the input, and the chat says what is missing.
     await openPdf(page, WORD_EXPORT);
     const input = aiPanel(page).getByLabel('Message');
-    await expect(input).toHaveValue(/Explain this document simply/);
+    await expect(input).toHaveValue(/quiz of five questions/);
     await expect(aiPanel(page)).toContainText('Download the on-device model first, or choose another provider.');
     // With Claude instead: its key, and then the chat's own review before anything goes.
     await aiPanel(page).getByRole('button', { name: 'Model settings', exact: true }).first().click();

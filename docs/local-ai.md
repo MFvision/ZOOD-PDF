@@ -57,6 +57,15 @@ Foundation Models, AVSpeech) is documented with the iOS app.*
   its scroll geometry; as a layer of Warraq's own page in Edit text), and
   reading goes on to the next page.
 
+- **Quick asks** (2026-10-21, desktop only, with Ask ZOOD). A second, much
+  smaller model, Jev-Style 0.8B Decision v3 (Apache-2.0, 529 MB, its own
+  download in Ask ZOOD's setup), does not write: it scores each of the quick
+  lane's options for what the person said and Ask ZOOD acts on the best one
+  (a tool on the selected files, finding a file, tidying a folder, undoing a
+  tidy) with a one-line reply, or offers the two best when under 60% sure.
+  Anything that needs words written goes to the model above. See
+  docs/HANDOVER.md, "Quick asks and tidying".
+
 ## How it is built
 
 | Host | Engine | Model | Where it runs |
@@ -100,6 +109,9 @@ desktop's policy is unchanged, since its host does the downloading.
   the file verification in Rust (`src-tauri/src/ai.rs`).
 - The real model, once by hand on this Mac: `docs/STATUS.md`, "Local-first AI, measured".
 
+- The quick decider, by hand on the 4-core cloud CPU: see "Quick decider,
+  measured" below.
+
 ## Limits, stated plainly
 
 - Answers from a 1.5B model are far weaker than Claude's: it gets the gist of
@@ -117,3 +129,15 @@ desktop's policy is unchanged, since its host does the downloading.
   count, the 8,192-token window, the DPAPI store and Microsoft voices are
   built from the same code and not proven by hand. Nor was the browser's
   engine run with a real model for the chat.
+
+## Quick decider, measured (2026-10-21, 4-core cloud CPU, no GPU)
+
+`decide.rs` with the real Jev-Style 0.8B file over the quick lane's 27 options and 42
+requests (21 English, 21 Saudi Arabic): **37 of 42 picked right**, and no wrong pick
+runs by itself (three are under 60% and asked with two buttons, one waits for Do it, one
+goes on to the larger model). Each decision took about **10 s on this slow CPU** (the
+model's layout reads all 27 options twice, so the prompt is long); the
+publisher measures about 0.4–0.5 s with Metal on a Mac, and a current Windows laptop
+should be several times faster than this machine. Not yet timed on a real Mac or
+Windows PC. Run it again with
+`ZOOD_DECIDER=<gguf> ZOOD_DECIDER_CASES=<json> cargo test --release --lib -- --ignored --exact decide::tests::real_model_picks_the_quick_actions --nocapture`.

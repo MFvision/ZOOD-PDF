@@ -11,6 +11,7 @@ import { isolate } from '../signatures/model';
 import { useAppDispatch } from '../state/AppContext';
 import { openTourAt } from '../tour/openAt';
 import { AskSetup } from './AskSetup';
+import { quickModel } from './quick';
 import { noteAskReady } from './ReadyHint';
 import {
   askAccess,
@@ -23,6 +24,7 @@ import {
   earModels,
   onMac,
   ONE_TAPS,
+  TALK_BACKS,
   oneTapDoes,
   readAskPreferences,
   TAP_KEYS,
@@ -57,6 +59,7 @@ export function AskSettings() {
   const voice = voiceAvailable();
   const earView = useDeviceModel(earModels()[0]?.id ?? null);
   const brainView = useDeviceModel(brain.id);
+  const quickView = useDeviceModel(quickModel()?.id ?? null);
   const aboutId = useId();
   const examplesId = useId();
 
@@ -182,6 +185,22 @@ export function AskSettings() {
           onChange={(glow) => update({ glow })}
         />
       )}
+      <Pick
+        label={t('ask.settings.talkBack')}
+        hint={t('ask.settings.talkBackHint', { tap: tapKey })}
+        value={prefs.talkBack}
+        options={TALK_BACKS.map((one) => ({
+          value: one,
+          label: t(`ask.settings.talkBack.${one}`),
+        }))}
+        onChange={(talkBack) => update({ talkBack })}
+      />
+      <Toggle
+        label={t('ask.settings.doForMe')}
+        hint={t('ask.settings.doForMeHint')}
+        checked={prefs.doForMe}
+        onChange={(doForMe) => update({ doForMe })}
+      />
       {access?.applies && prefs.enabled && (
         <>
           <h4 className="prefs-subhead">{t('ask.access.title')}</h4>
@@ -329,6 +348,13 @@ export function AskSettings() {
         {t('ask.settings.brainModel', { name: shortModelName(brain.name) })}
       </h4>
       <DeviceSection view={brainView} />
+      {quickModel() && (
+        <>
+          <h4 className="prefs-subhead">{t('ask.settings.quickModel')}</h4>
+          <p className="tool-panel-note">{t('ask.settings.quickHint')}</p>
+          <DeviceSection view={quickView} />
+        </>
+      )}
       <p className="tool-panel-note" role="status">
         {status}
       </p>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { Check, Keyboard, Mic, Reply, Send, Sparkles, Square } from 'lucide-react';
+import { Check, FolderOpen, Keyboard, Mic, MousePointerClick, PenLine, Reply, Send, Settings, Share2, Sparkles, Square, Volume2 } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { useReducedMotion } from '../components/useReducedMotion';
 import { machineMemoryGiB } from '../ai/device/useDeviceModel';
@@ -15,6 +15,7 @@ import { askAvailable, askReadiness, onMac, readAskPreferences, tapKeyLabel, voi
 import type { AskReadiness } from '../ask/settings';
 import type { SectionId } from '../settings/SettingsWindow';
 import { isolate } from '../signatures/model';
+import { takeStartPart } from './openAt';
 import { Glow } from './scenes';
 
 /**
@@ -25,17 +26,18 @@ import { Glow } from './scenes';
  * pretend screen glow and the island listen until the next tap (nothing is
  * recorded); a pretend reply box fills with a draft on a double tap. When
  * one tap types instead, a typing box opens on it, and holding the keys
- * shows the island listening. Until Ask ZOOD is set up, its one-button
- * setup is here too.
+ * shows the island listening. Show me, Explain this and Do it for me are
+ * played on a pretend ZOOD window: the pointer flies to each step. Until
+ * Ask ZOOD is set up, its one-button setup is here too.
  */
 
-type Part = 'speak' | 'twice' | 'once' | 'hold';
+type Part = 'speak' | 'twice' | 'once' | 'hold' | 'guide';
 
 /** Shorter than this is not a question, as the host has it. */
 const SHORTEST_HOLD_MS = 400;
 const WRITING_MS = 1100;
 
-const PART_LABEL: Record<Part, TKey> = { speak: 'tour.ask.tabSpeak', twice: 'tour.ask.tabTwice', once: 'tour.ask.tabOnce', hold: 'tour.ask.tabHold' };
+const PART_LABEL: Record<Part, TKey> = { speak: 'tour.ask.tabSpeak', twice: 'tour.ask.tabTwice', once: 'tour.ask.tabOnce', hold: 'tour.ask.tabHold', guide: 'tour.ask.tabGuide' };
 
 export function AskScene({ onPractised, onSettings }: { onPractised: () => void; onSettings: (section: SectionId) => void }) {
   const { t, lang } = useI18n();
@@ -47,11 +49,14 @@ export function AskScene({ onPractised, onSettings }: { onPractised: () => void;
   // One tap listens when it can hear; else, unless switched off, it types.
   const speaks = prefs.taps && voice && prefs.oneTap === 'speak';
   const types = prefs.taps && !speaks && prefs.oneTap !== 'off';
-  const parts: Part[] = [...(speaks ? (['speak'] as const) : []), ...(prefs.taps ? (['twice'] as const) : []), ...(types ? (['once'] as const) : []), ...(voice && !speaks ? (['hold'] as const) : [])];
-  const [part, setPart] = useState<Part>(parts[0] ?? 'twice');
+  const parts: Part[] = [...(speaks ? (['speak'] as const) : []), ...(prefs.taps ? (['twice'] as const) : []), ...(types ? (['once'] as const) : []), ...(voice && !speaks ? (['hold'] as const) : []), 'guide'];
+  const [part, setPart] = useState<Part>(() => {
+    const asked = takeStartPart();
+    return parts.find((one) => one === asked) ?? parts[0] ?? 'twice';
+  });
   const [down, setDown] = useState<ReadonlySet<string>>(new Set());
   // Each try starts its part again: a counter, so the same move twice replays.
-  const [tries, setTries] = useState<Record<Part, number>>({ speak: 0, twice: 0, once: 0, hold: 0 });
+  const [tries, setTries] = useState<Record<Part, number>>({ speak: 0, twice: 0, once: 0, hold: 0, guide: 0 });
   /** The pretend listening after one tap: it ends at the next tap. */
   const [speaking, setSpeaking] = useState<'idle' | 'listening' | 'done'>('idle');
   const listening = useRef(false);
@@ -215,6 +220,7 @@ export function AskScene({ onPractised, onSettings }: { onPractised: () => void;
         )}
         {part === 'twice' && <TwicePractice tap={tap} lit={tapDown} run={tries.twice} onShow={() => tried('twice')} />}
         {part === 'once' && <OncePractice tap={tap} lit={tapDown} run={tries.once} onShow={() => tried('once')} />}
+        {part === 'guide' && <GuidePractice onTried={() => practised.current()} />}
         {part === 'hold' && <HoldPractice shortcut={prefs.shortcut} mac={mac} down={down} holding={holding} held={held} onShow={() => tried('hold')} />}
       </div>
       {ready && (ready.taps || ready.voice) && (
@@ -547,5 +553,167 @@ function Island({ text, busy, listening }: { text: string; busy?: boolean; liste
         </span>
       )}
     </span>
+  );
+}
+
+type GuideDemo = 'show' | 'explain' | 'do';
+
+/** A step of the pretend guide: where on the pretend window, 0..100, and what is said. */
+interface DemoStep {
+  x: number;
+  y: number;
+  say: TKey;
+  /** The pretend button the step is on, for Show me's click. */
+  on?: 'sign' | 'page' | 'settings' | 'dark';
+}
+
+const DEMO: Record<GuideDemo, { ask: TKey; steps: DemoStep[] }> = {
+  show: {
+    ask: 'tour.ask.guide.showAsk',
+    steps: [
+      { x: 47, y: 12, say: 'tour.ask.guide.show1', on: 'sign' },
+      { x: 52, y: 62, say: 'tour.ask.guide.show2', on: 'page' },
+    ],
+  },
+  explain: {
+    ask: 'tour.ask.guide.explainAsk',
+    steps: [
+      { x: 30, y: 12, say: 'tour.ask.guide.explain1' },
+      { x: 52, y: 55, say: 'tour.ask.guide.explain2' },
+      { x: 88, y: 12, say: 'tour.ask.guide.explain3' },
+    ],
+  },
+  do: {
+    ask: 'tour.ask.guide.doAsk',
+    steps: [
+      { x: 88, y: 12, say: 'tour.ask.guide.do1', on: 'settings' },
+      { x: 80, y: 40, say: 'tour.ask.guide.do2', on: 'dark' },
+    ],
+  },
+};
+
+/** How long the pretend pointer stays on a step it says, or clicks itself. */
+const DEMO_STEP_MS = 2200;
+
+/**
+ * Show me, Explain this and Do it for me, on a pretend ZOOD window: the
+ * pointer flies out of the island to each step and says it. In Show me the
+ * person clicks the step themselves; Explain this and Do it for me move on
+ * by themselves, Do it for me pressing the pretend buttons.
+ */
+function GuidePractice({ onTried }: { onTried: () => void }) {
+  const { t } = useI18n();
+  const reduced = useReducedMotion();
+  const [demo, setDemo] = useState<GuideDemo>('show');
+  const [step, setStep] = useState(-1);
+  const [dark, setDark] = useState(false);
+  const [signed, setSigned] = useState(false);
+  const { ask, steps } = DEMO[demo];
+  const done = step >= steps.length;
+  const now = step >= 0 && !done ? steps[step] : null;
+
+  // Explain this and Do it for me move on by themselves.
+  useEffect(() => {
+    if (!now || demo === 'show') return;
+    const timer = window.setTimeout(() => {
+      if (now.on === 'dark') setDark(true);
+      setStep((before) => before + 1);
+    }, reduced ? DEMO_STEP_MS / 2 : DEMO_STEP_MS);
+    return () => window.clearTimeout(timer);
+  }, [now, demo, reduced]);
+
+  // Once a demo has played through, the chapter counts as practised.
+  const tried = useRef(onTried);
+  useEffect(() => {
+    tried.current = onTried;
+  });
+  useEffect(() => {
+    if (done) tried.current();
+  }, [done]);
+
+  const start = (which: GuideDemo) => {
+    setDemo(which);
+    setDark(false);
+    setSigned(false);
+    setStep(0);
+  };
+  const press = (on: DemoStep['on']) => {
+    if (demo !== 'show' || !now || now.on !== on) return;
+    if (on === 'page') setSigned(true);
+    setStep((before) => before + 1);
+  };
+  const at = now ?? { x: 50, y: -8 };
+  return (
+    <div className="tour-split">
+      <div>
+        <p className="tour-note">{t('tour.ask.guideHow')}</p>
+        <div className="tour-choice" role="group" aria-label={t('tour.ask.tabGuide')}>
+          {(['show', 'explain', 'do'] as const).map((one) => (
+            <button key={one} type="button" className="tour-choice-item" aria-pressed={demo === one && step >= 0} onClick={() => start(one)}>
+              {t(`tour.ask.guide.${one}`)}
+            </button>
+          ))}
+        </div>
+        {done ? (
+          <p className="ask-done" role="status">
+            <Icon of={Check} size={14} />
+            {t(demo === 'show' ? 'tour.ask.guide.showDone' : demo === 'do' ? 'tour.ask.guide.doDone' : 'tour.ask.guide.explainDone')}
+          </p>
+        ) : (
+          <p className="tour-note ask-more">
+            <Icon of={demo === 'show' ? MousePointerClick : Volume2} size={13} /> {t(demo === 'show' && now ? 'tour.ask.guide.clickIt' : 'tour.ask.guide.talks')}
+          </p>
+        )}
+        <p className="tour-note ask-more">{t('tour.ask.guide.safe')}</p>
+      </div>
+      <div className={['tour-stage', 'ask-stage', 'guide-stage', dark ? 'is-dark' : ''].filter(Boolean).join(' ')}>
+        <div className="guide-mock" aria-hidden={demo !== 'show'}>
+          <div className="guide-mock-bar">
+            <span className="guide-mock-tool">
+              <Icon of={FolderOpen} size={13} />
+            </span>
+            <button type="button" className={now?.on === 'sign' ? 'guide-mock-tool is-target' : 'guide-mock-tool'} tabIndex={demo === 'show' ? 0 : -1} onClick={() => press('sign')}>
+              <Icon of={PenLine} size={13} />
+              {t('tour.ask.guide.signButton')}
+            </button>
+            <span className="guide-mock-tool">
+              <Icon of={Share2} size={13} />
+            </span>
+            <span className={now?.on === 'settings' ? 'guide-mock-tool is-pressed' : 'guide-mock-tool'}>
+              <Icon of={Settings} size={13} />
+            </span>
+          </div>
+          <button type="button" className="guide-mock-page" tabIndex={demo === 'show' && now?.on === 'page' ? 0 : -1} onClick={() => press('page')}>
+            <i />
+            <i />
+            <i />
+            {signed && <span className="guide-mock-signature">{t('tour.ask.guide.signature')}</span>}
+          </button>
+          {demo === 'do' && step >= 1 && (
+            <span className="guide-mock-menu">
+              <span>{t('tour.ask.guide.darkLabel')}</span>
+              <span className={dark ? 'guide-mock-switch is-on' : 'guide-mock-switch'} />
+            </span>
+          )}
+        </div>
+        {step >= 0 && (
+          <span className="ask-island-mock" role="status">
+            <Icon of={Sparkles} size={13} />
+            <span dir="auto">{t(ask)}</span>
+          </span>
+        )}
+        {now && (
+          <div className={reduced ? 'ask-pointer is-still' : 'ask-pointer'} style={{ left: `${at.x}%`, top: `${at.y}%` }} aria-hidden="true">
+            <span key={step} className="ask-guide-ripple" />
+            <svg className="ask-guide-arrow" viewBox="0 0 28 34" width="22" height="27">
+              <path d="M2 2 L2 27 L8.6 21.2 L13 31.5 L18 29.3 L13.6 19.2 L22.5 19.2 Z" />
+            </svg>
+            <span key={`say-${step}`} className={`ask-guide-label ${at.x > 65 ? 'ask-guide-left' : 'ask-guide-right'} is-below`} dir="auto">
+              {t(now.say)}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
