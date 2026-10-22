@@ -109,6 +109,9 @@ enum Opened {
 pub struct AskState {
     moment: Mutex<Moment>,
     recording: Mutex<Option<(ear::Recording, Opened)>>,
+    /// Held while the microphone opens, which can take seconds: `recording`
+    /// is not, so the island's Hide and Type instead never wait on it.
+    opening: Mutex<()>,
     settings: Mutex<Settings>,
 }
 
@@ -399,10 +402,16 @@ fn pressed<R: Runtime>(app: &AppHandle<R>, opened: Opened) {
         .map(|s| (s.enabled && s.sees, s.enabled && s.taps, s.glow))
         .unwrap_or((false, false, true));
     let (turn, failed) = {
-        let mut recording = state.recording.lock().unwrap_or_else(|e| e.into_inner());
-        if recording.is_some() {
+        let _opening = state.opening.lock().unwrap_or_else(|e| e.into_inner());
+        if state
+            .recording
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .is_some()
+        {
             return; // The keys repeating while held.
         }
+        let before = LISTEN_TURN.load(Ordering::Relaxed);
         // Whatever is in front now gets the keyboard back for typing.
         let front = focus::remember();
         let handle = app.clone();
@@ -410,6 +419,14 @@ fn pressed<R: Runtime>(app: &AppHandle<R>, opened: Opened) {
             let _ = handle.emit_to(LABEL, LEVEL_EVENT, level);
             let _ = handle.emit_to(GLOW_LABEL, LEVEL_EVENT, level);
         });
+        let mut recording = state.recording.lock().unwrap_or_else(|e| e.into_inner());
+        // Hidden, or told to type instead, while the microphone opened.
+        if LISTEN_TURN.load(Ordering::Relaxed) != before {
+            if let Ok(listening) = started {
+                drop(listening.finish());
+            }
+            return;
+        }
         let mut moment = state.moment.lock().unwrap_or_else(|e| e.into_inner());
         *moment = Moment {
             front,
@@ -603,6 +620,8 @@ fn released<R: Runtime>(app: &AppHandle<R>, how: Option<Opened>) {
         return;
     }
     let state = app.state::<AskState>();
+    // A microphone still opening is waited for, so letting go ends it.
+    drop(state.opening.lock().unwrap_or_else(|e| e.into_inner()));
     let recording = {
         let mut recording = state.recording.lock().unwrap_or_else(|e| e.into_inner());
         match (recording.as_ref(), how) {
@@ -857,14 +876,15 @@ pub fn ask_island_aside<R: Runtime>(app: AppHandle<R>, state: State<'_, AskState
 /// had the keyboard, the app before it gets the keyboard back.
 #[tauri::command]
 pub fn ask_hide<R: Runtime>(app: AppHandle<R>, state: State<'_, AskState>) {
-    // Closed while it listened after a tap: the microphone goes too.
+    // Closed while it listened after a tap: the microphone goes too (and
+    // one still opening is closed as it opens).
     let recording = state
         .recording
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .take();
+    LISTEN_TURN.fetch_add(1, Ordering::Relaxed);
     if let Some((listening, _)) = recording {
-        LISTEN_TURN.fetch_add(1, Ordering::Relaxed);
         drop(listening.finish());
     }
     hide_glow(&app);
