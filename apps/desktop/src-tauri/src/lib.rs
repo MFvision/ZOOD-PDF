@@ -690,6 +690,23 @@ pub fn run() {
             {
                 quick::show_editor(app);
             }
+            // Quit must not reach the C++ static destructors: ggml-metal's
+            // device destructor asserts that no model is still loaded, and the
+            // core, decide and AI threads still hold theirs, so Quit (Cmd+Q,
+            // the menu, the tray) aborted with a crash report. exit() runs its
+            // handlers newest first, so one registered now, after those
+            // destructors, runs before them and ends the process. Tauri's own
+            // cleanup and an update's restart still happen before exit().
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Exit = event {
+                extern "C" fn end_now() {
+                    use std::io::Write;
+                    let _ = std::io::stdout().flush();
+                    let _ = std::io::stderr().flush();
+                    unsafe { libc::_exit(0) };
+                }
+                unsafe { libc::atexit(end_now) };
+            }
             let _ = (app, event);
         });
 }
