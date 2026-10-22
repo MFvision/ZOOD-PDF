@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { Clock, FilePlus2, Loader, RefreshCw, ShieldPlus, Trash2 } from 'lucide-react';
 import { Icon } from '../components/Icon';
+import { uiLog } from '../core/host-tauri';
 import { IconButton } from '../components/IconButton';
 import { useI18n, useT } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
@@ -315,7 +316,9 @@ function Validation() {
       refresh();
       dispatch({ type: 'TOAST', key: 'signatures.saveToKeep' });
     } catch (error) {
-      setFailure(error instanceof Error ? error.message : String(error));
+      const message = error instanceof Error ? error.message : String(error);
+      uiLog(`signatures: failed ${message}`);
+      setFailure(message);
     } finally {
       setBusy(null);
     }

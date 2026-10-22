@@ -1,4 +1,5 @@
 import type { TKey, TParams } from '../i18n/messages';
+import { friendlyError, rawMessage } from './friendlyError';
 import { StepError, findStep } from './steps';
 import type { BatchDoc, SequenceStep, StepContext } from './steps';
 
@@ -130,9 +131,8 @@ export async function runBatch(options: RunOptions): Promise<BatchSummary> {
       if (error instanceof StepError) {
         onState(input.key, { state: 'failed', step: at, key: error.key, params: error.params });
       } else {
-        const message = String((error as Error)?.message ?? error).slice(0, 300);
-        const key: TKey = phase === 'read' ? 'batch.error.read' : phase === 'write' ? 'batch.error.write' : 'batch.error.step';
-        onState(input.key, { state: 'failed', step: at, key, message });
+        const key = friendlyError(error, phase, 'batch');
+        onState(input.key, { state: 'failed', step: at, key, message: rawMessage(error) });
       }
       summary.failed += 1;
     }
