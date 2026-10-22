@@ -96,6 +96,18 @@ fn list_file<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
     Ok(dir.join(FILE_NAME))
 }
 
+/// The files whose paths are kept, newest first, that are still there: the
+/// tray's Recent files.
+pub fn known<R: Runtime>(app: &AppHandle<R>) -> Vec<RecentPath> {
+    let Ok(file) = list_file(app) else {
+        return Vec::new();
+    };
+    load(&file)
+        .into_iter()
+        .filter(|entry| Path::new(&entry.path).is_file())
+        .collect()
+}
+
 fn checked_name(name: &str) -> Result<&str, String> {
     if name.is_empty() || name.len() > MAX_NAME {
         return Err("E_ARGS: not a file name".to_string());
@@ -121,7 +133,10 @@ pub fn recent_remember<R: Runtime>(
     let target = list_file(&app)?;
     let mut list = load(&target);
     remember(&mut list, name, &path);
-    store(&target, &list).map_err(|e| format!("E_IO: {}: {e}", target.display()))
+    store(&target, &list).map_err(|e| format!("E_IO: {}: {e}", target.display()))?;
+    // The tray's Recent files (`presence.rs`).
+    crate::presence::refresh_tray(&app);
+    Ok(())
 }
 
 /// The path `name` was last opened from, put back in the file scope so the

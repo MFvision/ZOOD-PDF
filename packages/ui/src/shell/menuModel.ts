@@ -352,6 +352,7 @@ export function useMenuModel(): MenuModel[] {
         // Show me, Explain this and Do it for me, played on a pretend window.
         ...(askAvailable() ? [{ id: 'ask-guide', label: t('help.askGuide'), onSelect: () => openTourAt('ask', () => dispatch({ type: 'DIALOG', dialog: 'tour' }), 'guide') }] : []),
         ...(askAvailable() ? [{ id: 'quick-asks', label: t('help.quickAsks'), onSelect: () => openTourAt('quickask', () => dispatch({ type: 'DIALOG', dialog: 'tour' })) }] : []),
+        ...(isTauriHost() ? [{ id: 'always-ready', label: t('help.reach'), onSelect: () => openTourAt('reach', () => dispatch({ type: 'DIALOG', dialog: 'tour' })) }] : []),
         // The AI's chat about anything and the commands it does: the tour's AI chapter, with its practice.
         { id: 'ai-chat', label: t('help.aiChat'), onSelect: () => openTourAt('ai', () => dispatch({ type: 'DIALOG', dialog: 'tour' })) },
         { id: 'shortcuts', label: t('help.shortcuts'), onSelect: () => dispatch({ type: 'DIALOG', dialog: 'shortcuts' }) },

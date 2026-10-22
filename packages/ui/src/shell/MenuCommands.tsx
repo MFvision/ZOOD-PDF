@@ -17,6 +17,7 @@ function CommandButton({ item }: { item: MenuItemModel }) {
     <button
       type="button"
       className="command-button"
+      data-command={item.id}
       aria-pressed={toggles ? Boolean(item.checked) : undefined}
       disabled={item.disabled}
       title={item.shortcut ? `${item.label} (${item.shortcut})` : undefined}
@@ -55,6 +56,7 @@ export function MenuRibbon({ menus, end }: { menus: MenuModel[]; end: ReactNode 
               type="button"
               role="tab"
               id={`ribbon-tab-${one.id}`}
+              data-menu={one.id}
               aria-selected={one.id === menu.id}
               aria-controls="ribbon-panel"
               tabIndex={one.id === menu.id ? 0 : -1}

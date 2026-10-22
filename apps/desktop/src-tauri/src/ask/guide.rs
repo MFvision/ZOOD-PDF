@@ -44,10 +44,35 @@ static LAST_CLICK: Mutex<Option<(f64, f64)>> = Mutex::new(None);
 
 /// The screen the question was asked on: the monitor's area in the system's
 /// units, and the window the picture is of, when it is not the whole screen.
-fn areas(state: &AskState) -> Option<(eye::Area, Option<eye::Area>)> {
+/// With no picture (the buttons read by name, `controls.rs`), the screen the
+/// pointer was on.
+pub(super) fn areas(state: &AskState) -> Option<(eye::Area, Option<eye::Area>)> {
     let moment = state.moment.lock().ok()?;
-    let screen = moment.screen.as_ref()?;
-    Some((screen.monitor, screen.window))
+    if let Some(screen) = moment.screen.as_ref() {
+        return Some((screen.monitor, screen.window));
+    }
+    let (position, size, scale) = moment.monitor?;
+    Some((system_area(position, size, scale), None))
+}
+
+/// A monitor as Tauri places it, in the system's own units: pixels on
+/// Windows, points on a Mac.
+fn system_area(
+    position: tauri::PhysicalPosition<i32>,
+    size: tauri::PhysicalSize<u32>,
+    scale: f64,
+) -> eye::Area {
+    let unit = if cfg!(target_os = "macos") && scale > 0.0 {
+        scale
+    } else {
+        1.0
+    };
+    eye::Area {
+        x: f64::from(position.x) / unit,
+        y: f64::from(position.y) / unit,
+        width: f64::from(size.width) / unit,
+        height: f64::from(size.height) / unit,
+    }
 }
 
 /// A step the model placed — thousandths of the picture — as 0..1 of the
@@ -149,8 +174,9 @@ pub fn stop_watching() {
     }
 }
 
-/// Do it for me: one left click at the step, in ZOOD PDF only. `resume`
-/// after the person moved the mouse and said to go on.
+/// Do it for me: one left click at the step — in ZOOD PDF, or, for a
+/// `control` read by name (`controls.rs`), on that control in another app.
+/// `resume` after the person moved the mouse and said to go on.
 #[tauri::command]
 pub async fn ask_click<R: Runtime>(
     app: AppHandle<R>,
@@ -158,6 +184,7 @@ pub async fn ask_click<R: Runtime>(
     x: f64,
     y: f64,
     resume: Option<bool>,
+    control: Option<bool>,
 ) -> Result<Clicked, String> {
     if !crate::remote::input::AVAILABLE {
         return Err("E_ASK: clicking is on Windows and macOS".to_string());
@@ -167,12 +194,13 @@ pub async fn ask_click<R: Runtime>(
         .lock()
         .map(|moment| super::focus::is_ours(&moment.front))
         .unwrap_or(false);
-    if !ours {
-        return Err("E_ASK: Ask ZOOD clicks only inside ZOOD PDF".to_string());
-    }
     let (monitor, window) =
         areas(&state).ok_or_else(|| "E_SCREEN: nothing was looked at".to_string())?;
     let (fraction, at) = place(x, y, monitor, window);
+    // Outside ZOOD PDF only on a button read by its name, never on a guess.
+    if !ours && !(control == Some(true) && super::controls::on_a_control(at)) {
+        return Err("E_ASK: Ask ZOOD clicks only inside ZOOD PDF".to_string());
+    }
     let last = LAST_CLICK.lock().map(|last| *last).unwrap_or(None);
     if resume != Some(true) && moved(last, eye::pointer()) {
         return Err("E_MOVED: the mouse was moved".to_string());

@@ -116,6 +116,7 @@ final class IntentsTests: XCTestCase {
         let cases: [(name: String, route: AppRoute, run: () async throws -> Void)] = [
             ("scan", .scan, { _ = try await ScanDocumentIntent().perform() }),
             ("last", .lastDocument, { _ = try await OpenLastDocumentIntent().perform() }),
+            ("ask", .askZood, { _ = try await AskZoodIntent().perform() }),
             ("open", .open(id: id), { _ = try await open.perform() }),
         ]
         for item in cases {
@@ -129,6 +130,6 @@ final class IntentsTests: XCTestCase {
 
     func testTheShortcutsNameEveryIntent() {
         let shortcuts = PDFEditorShortcuts.appShortcuts
-        XCTAssertEqual(shortcuts.count, 5)
+        XCTAssertEqual(shortcuts.count, 6)
     }
 }

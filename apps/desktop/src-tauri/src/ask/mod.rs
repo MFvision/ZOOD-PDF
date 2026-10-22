@@ -28,11 +28,14 @@
 //! the window's words, read by the island.
 
 pub mod access;
+pub mod book;
+pub mod controls;
 pub mod ear;
 pub mod eye;
 pub mod guide;
 pub mod hands;
 pub mod notch;
+pub mod reach;
 pub mod tap;
 pub mod tidy;
 
@@ -493,6 +496,17 @@ fn pressed<R: Runtime>(app: &AppHandle<R>, opened: Opened) {
 /// at, and the island shows — to draft a reply, or, with the keyboard, to
 /// take a typed request.
 fn tapped<R: Runtime>(app: &AppHandle<R>, tap: tap::Tap) {
+    summoned(app, tap, false);
+}
+
+/// Ask ZOOD from the tray icon or the ZOOD bubble (`presence.rs`): as one
+/// tap of the key — listening, or the box to type in when Settings say a
+/// tap types — and the box to type in even when a tap is set to do nothing.
+pub fn summon<R: Runtime>(app: &AppHandle<R>) {
+    summoned(app, tap::Tap::Once, true);
+}
+
+fn summoned<R: Runtime>(app: &AppHandle<R>, tap: tap::Tap, asked: bool) {
     if PAUSED.load(Ordering::Relaxed) {
         return;
     }
@@ -521,7 +535,7 @@ fn tapped<R: Runtime>(app: &AppHandle<R>, tap: tap::Tap) {
         }
         return pressed(app, Opened::Tapped);
     }
-    if tap == tap::Tap::Once && !to_type {
+    if tap == tap::Tap::Once && !to_type && !asked {
         return;
     }
     let typing = tap == tap::Tap::Once;
@@ -856,6 +870,7 @@ pub fn ask_hide<R: Runtime>(app: AppHandle<R>, state: State<'_, AskState>) {
     hide_glow(&app);
     hide_point(&app);
     guide::stop_watching();
+    controls::forget();
     let front = state
         .moment
         .lock()
@@ -917,15 +932,14 @@ pub fn ask_point<R: Runtime>(
     label: String,
     guide: Option<bool>,
 ) -> Result<guide::Clicked, String> {
-    let (place, areas) = state
+    let place = state
         .moment
         .lock()
         .ok()
-        .and_then(|m| {
-            let areas = m.screen.as_ref().map(|s| (s.monitor, s.window));
-            m.monitor.map(|place| (place, areas))
-        })
+        .and_then(|m| m.monitor)
         .ok_or_else(|| "E_ASK: there is no screen to point at".to_string())?;
+    // A picture's area, or the screen itself when the buttons were read by name.
+    let areas = guide::areas(&state);
     // The picture was of a window: the point is placed on its screen.
     let (fx, fy) = match areas {
         Some((monitor, window)) => guide::place(x, y, monitor, window).0,
@@ -1330,8 +1344,14 @@ pub async fn ask_undo<R: Runtime>(
 mod focus {
     #[derive(Clone, Debug, Default)]
     pub struct Front {
-        #[allow(dead_code)]
         handle: isize,
+    }
+
+    impl Front {
+        /// The window (Windows) or the app's process id (Mac) that was in front.
+        pub fn handle(&self) -> isize {
+            self.handle
+        }
     }
 
     #[cfg(target_os = "windows")]

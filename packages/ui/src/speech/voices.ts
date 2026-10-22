@@ -36,11 +36,36 @@ export function describeVoices(voices: readonly SpeechSynthesisVoice[]): VoiceIn
 
 const RANK: Record<VoiceInfo['quality'], number> = { premium: 0, enhanced: 1, standard: 2 };
 
-/** The voices for `lang`, best first: premium, then enhanced, then the rest by name. */
+/**
+ * The regions whose voices read best for the app's people, first first:
+ * Saudi and Modern Standard Arabic, American then British English. A voice
+ * of another region comes after them at the same quality.
+ */
+const HOME_REGIONS: Record<VoiceLang, readonly string[]> = {
+  ar: ['ar-sa', 'ar-001', 'ar'],
+  en: ['en-us', 'en-gb'],
+};
+
+/** Voices whose names say they are robotic or a joke, kept last (a Mac's Eloquence voices, the old MacinTalk ones). */
+const ROBOTIC = /^(?:eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley|fred|ralph|kathy|junior|albert|zarvox|trinoids|whisper|bahh|bells|boing|bubbles|cellos|jester|organ|superstar|wobble|good news|bad news)\b/i;
+
+function regionRank(voice: VoiceInfo, lang: VoiceLang): number {
+  const tag = voice.lang.toLowerCase().replace('_', '-');
+  const at = HOME_REGIONS[lang].indexOf(tag);
+  return at === -1 ? HOME_REGIONS[lang].length : at;
+}
+
+/** The voices for `lang`, best first: premium, then enhanced, then the rest; robotic ones last; the home regions first; then by name. */
 export function voicesFor(voices: readonly VoiceInfo[], lang: VoiceLang): VoiceInfo[] {
   return voices
     .filter((voice) => voice.lang.toLowerCase().startsWith(lang))
-    .sort((a, b) => RANK[a.quality] - RANK[b.quality] || a.name.localeCompare(b.name));
+    .sort(
+      (a, b) =>
+        RANK[a.quality] - RANK[b.quality] ||
+        Number(ROBOTIC.test(a.name)) - Number(ROBOTIC.test(b.name)) ||
+        regionRank(a, lang) - regionRank(b, lang) ||
+        a.name.localeCompare(b.name),
+    );
 }
 
 /**
