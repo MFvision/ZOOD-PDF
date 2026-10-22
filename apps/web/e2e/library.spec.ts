@@ -134,12 +134,12 @@ test.describe('The Library searches across every document that was added', () =>
     // shadda. One search without it finds all three, each named by its kind.
     const hits = await search(library, 'وراق');
     await expect(hits.locator('li').first()).toBeVisible();
-    const named = await hits.locator('.library-hit-name').allInnerTexts();
-    for (const name of ['chrome-notonaskh-justified-3pages.pdf', 'report-ar.docx', 'notes-ar.md']) expect(named).toContain(name);
-    const kinds = (await hits.locator('.library-hit-where').allInnerTexts()).join(' ');
-    expect(kinds).toContain('Word');
-    expect(kinds).toContain('Markdown');
-    expect(kinds).toContain('PDF');
+    // The list can redraw while the readers finish, so read it until it settles.
+    for (const name of ['chrome-notonaskh-justified-3pages.pdf', 'report-ar.docx', 'notes-ar.md']) {
+      await expect.poll(() => hits.locator('.library-hit-name').allInnerTexts()).toContain(name);
+    }
+    const kinds = () => hits.locator('.library-hit-where').allInnerTexts().then((all) => all.join(' '));
+    for (const kind of ['Word', 'Markdown', 'PDF']) await expect.poll(kinds).toContain(kind);
 
     // The readers draw the first page of what has one, and the panel shows
     // it; a note has no page to draw, and shows the tool's own mark instead
