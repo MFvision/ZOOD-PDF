@@ -218,22 +218,22 @@ export const ARTICLES: readonly Article[] = [
   {
     id: 'export',
     category: 'convert',
-    title: { ar: 'تحويل PDF إلى وورد أو إكسل أو باوربوينت', en: 'Turn a PDF into Word, Excel or PowerPoint' },
+    title: { ar: 'تحويل PDF إلى docx أو xlsx أو pptx', en: 'Turn a PDF into docx, xlsx or pptx' },
     summary: { ar: 'صدّر النص والجداول والشرائح، والعربية من اليمين لليسار.', en: 'Export the text, tables and slides, with Arabic right to left.' },
     steps: [
       { ar: 'افتح أداة «تصدير».', en: 'Open the Export tool.' },
-      { ar: 'اختر النوع: Word أو Excel أو PowerPoint أو صور أو نص.', en: 'Choose the kind: Word, Excel, PowerPoint, pictures or text.' },
+      { ar: 'اختر النوع: مستند docx أو جدول xlsx أو شرائح pptx أو صور أو نص.', en: 'Choose the kind: a .docx document, an .xlsx sheet, .pptx slides, pictures or text.' },
       { ar: 'اضغط تصدير واحفظ الملف.', en: 'Press Export and save the file.' },
     ],
-    tips: [{ ar: 'التحويل إلى وورد ينقل النص بفقرات متدفقة، لا الشكل الدقيق للصفحة.', en: 'Word export carries the text as flowing paragraphs, not the exact page layout.' }],
+    tips: [{ ar: 'التحويل إلى docx ينقل النص بفقرات متدفقة، لا الشكل الدقيق للصفحة.', en: 'A docx export carries the text as flowing paragraphs, not the exact page layout.' }],
     keywords: ['export', 'convert', 'word', 'excel', 'powerpoint', 'docx', 'xlsx', 'pptx', 'تصدير', 'تحويل', 'حول', 'وورد', 'اكسل', 'باوربوينت', 'جدول'],
     guide: tool('export', { ar: 'هذه أداة التصدير.', en: 'This is Export.' }),
   },
   {
     id: 'create',
     category: 'convert',
-    title: { ar: 'إنشاء PDF من وورد أو صور', en: 'Make a PDF from Word or pictures' },
-    summary: { ar: 'وورد وإكسل وباوربوينت والصور إلى PDF.', en: 'Word, Excel, PowerPoint and pictures to PDF.' },
+    title: { ar: 'إنشاء PDF من مستند أو صور', en: 'Make a PDF from a document or pictures' },
+    summary: { ar: 'ملفات docx وxlsx وpptx والصور إلى PDF.', en: 'docx, xlsx and pptx files and pictures to PDF.' },
     steps: [
       { ar: 'في الصفحة الرئيسية اضغط «فتح أو إنشاء» ثم «إنشاء PDF…».', en: 'On the home screen, press Open or create, then Create PDF….' },
       { ar: 'اختر الملف أو الصور.', en: 'Pick the file or the pictures.' },
@@ -449,7 +449,7 @@ export const FAQ: readonly { q: Bilingual; a: Bilingual; keywords: string[] }[] 
 
 /** What does not work as well as it should yet, said plainly. */
 export const KNOWN_ISSUES: readonly Bilingual[] = [
-  { ar: 'التحويل إلى وورد ينقل النص بفقرات متدفقة، لا الشكل الدقيق للصفحة.', en: 'Word export carries the text as flowing paragraphs, not the exact page layout.' },
+  { ar: 'التحويل إلى docx ينقل النص بفقرات متدفقة، لا الشكل الدقيق للصفحة.', en: 'A docx export carries the text as flowing paragraphs, not the exact page layout.' },
   { ar: 'الطباعة على ويندوز ترسل الصفحات صورًا عالية الدقة (300 نقطة)، لا نصًّا متجهيًا.', en: 'Printing on Windows sends the pages as sharp pictures (300 dpi), not as vector text.' },
   { ar: 'على ماك، «اسأل ZOOD» لا يعمل خارج التطبيق قبل منح أذونات تسجيل المدخلات وتسهيلات الاستخدام والميكروفون.', en: 'On a Mac, Ask ZOOD does not work outside the app until Input Monitoring, Accessibility and the microphone are allowed.' },
 ];
