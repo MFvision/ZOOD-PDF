@@ -20,8 +20,8 @@ import type { Plugin } from 'vite';
  * window is using the old version.
  */
 
-/** Kept when first used, not when the worker installs (Help & Support's PDF guides too: one is fetched when it is opened). */
-const ON_FIRST_USE = [/^ocr\//, /^assets\/[a-z-]+-(ar|en)-[^/]+\.pdf$/, /^assets\/tesseract-core-/, /^assets\/worker\.min-/, /^licenses\//];
+/** Kept when first used, not when the worker installs (Help & Support's PDF guides and their pictures too: each is fetched when it is shown). */
+const ON_FIRST_USE = [/^ocr\//, /^assets\/[a-z-]+-(ar|en)-[^/]+\.(pdf|jpg|webp)$/, /^assets\/tesseract-core-/, /^assets\/worker\.min-/, /^licenses\//];
 /** Never kept: the worker itself, and the welcome tour's film (8 MB, watched once, played by ranges). */
 const NEVER = [/^sw\.js$/, /\.mp4$/];
 

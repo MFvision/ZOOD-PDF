@@ -246,6 +246,19 @@
   border-radius: 50%;
 }
 
+.support-step-pic {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 640px;
+  block-size: auto;
+  aspect-ratio: 900 / 560;
+  margin-block-start: var(--space-3);
+  background: var(--fill, rgb(0 0 0 / 4%));
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-8);
+  box-shadow: var(--shadow-small);
+}
+
 .support-tips {
   padding: var(--space-4) var(--space-5);
   padding-inline-start: var(--space-8);

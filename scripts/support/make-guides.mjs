@@ -6,7 +6,7 @@
 // Run after changing an article:
 //   node --experimental-strip-types scripts/support/make-guides.mjs
 // Needs Playwright's Chromium (PLAYWRIGHT_BROWSERS_PATH, or CHROMIUM=/path/to/chrome).
-import { mkdirSync, readFileSync, writeFileSync, copyFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, writeFileSync, copyFileSync, rmSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
@@ -19,7 +19,11 @@ const { ARTICLES, CATEGORIES, FAQ, KNOWN_ISSUES } = await import(pathToFileURL(j
 
 const appOut = join(root, 'packages/ui/public/guides');
 const webOut = join(root, 'website/help/guides');
-for (const dir of [appOut, webOut]) {
+const webShots = join(root, 'website/help/shots');
+// Last run's guides go; the pictures in public/guides/shots stay (make-shots.mjs makes those).
+mkdirSync(appOut, { recursive: true });
+for (const name of readdirSync(appOut)) if (name.endsWith('.pdf')) rmSync(join(appOut, name));
+for (const dir of [webOut, webShots]) {
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
 }
@@ -28,6 +32,11 @@ const escape = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').repla
 // The website's own faces (SIL OFL), already cut down to the letters used: small guides.
 const font = (name) => pathToFileURL(join(root, 'website/assets/fonts', name)).href;
 const logo = (lang) => readFileSync(join(root, `website/assets/brand/logo-${lang}.svg`), 'utf8').replace(/<\?xml[^>]*>/, '').replace(/<!--[\s\S]*?-->/g, '');
+// The step pictures, taken from the app by make-shots.mjs.
+const shots = join(root, 'packages/ui/public/guides/shots');
+const shot = (step, lang) => (step.pic && existsSync(join(shots, `${step.pic}-${lang}.jpg`)) ? join(shots, `${step.pic}-${lang}.jpg`) : null);
+const moving = (step, lang) => join(shots, `${step.pic}-${lang}.webp`);
+
 const WORDS = {
   ar: { guide: 'دليل', steps: 'الخطوات', tips: 'نصائح', inApp: 'في التطبيق: افتح مساعدة › المساعدة والدعم، وابحث عن هذا الدليل، ثم اضغط «أرني» أو «نفّذه عني».', name: 'محرر زود PDF', url: 'pdf.zood.sa/help', desktop: 'في تطبيق الكمبيوتر' },
   en: { guide: 'Guide', steps: 'Steps', tips: 'Tips', inApp: 'In the app: open Help › Help & Support, find this guide, then press Show me or Do it for me.', name: 'ZOOD PDF', url: 'pdf.zood.sa/en/help', desktop: 'In the desktop app' },
@@ -53,8 +62,10 @@ h1 { font-size: 26pt; line-height: 1.25; margin: 14mm 0 4mm; font-weight: 700; }
 .summary { font-size: 13pt; line-height: 1.6; color: #3d4f69; margin: 0 0 10mm; }
 h2 { font-size: 11pt; text-transform: uppercase; letter-spacing: .06em; color: #ae8b66; margin: 0 0 4mm; }
 ol { list-style: none; margin: 0; padding: 0; counter-reset: s; }
-li.step { counter-increment: s; display: flex; gap: 5mm; align-items: flex-start; padding: 5mm 6mm; margin-bottom: 4mm; background: #f5f1ed; border-radius: 4mm; font-size: 13pt; line-height: 1.6; break-inside: avoid; }
-li.step::before { content: counter(s); flex: none; display: grid; place-items: center; width: 9mm; height: 9mm; border-radius: 50%; background: #041e42; color: #fff; font-weight: 700; font-size: 12pt; }
+li.step { counter-increment: s; padding: 5mm 6mm; margin-bottom: 4mm; background: #f5f1ed; border-radius: 4mm; font-size: 13pt; line-height: 1.6; break-inside: avoid; }
+li.step .say { display: flex; gap: 5mm; align-items: flex-start; }
+li.step .say::before { content: counter(s); flex: none; display: grid; place-items: center; width: 9mm; height: 9mm; border-radius: 50%; background: #041e42; color: #fff; font-weight: 700; font-size: 12pt; }
+li.step img { display: block; width: 100%; margin-top: 4mm; border-radius: 2.5mm; border: 0.3mm solid #e2d6c8; }
 .tips { margin-top: 8mm; padding: 5mm 6mm; border: 0.4mm solid #e2d6c8; border-radius: 4mm; font-size: 11.5pt; line-height: 1.6; color: #3d4f69; }
 .tips p { margin: 0 0 2mm; }
 .tips p:last-child { margin: 0; }
@@ -68,7 +79,7 @@ footer { position: absolute; bottom: 12mm; inset-inline: 20mm; display: flex; ju
 <h1>${escape(article.title[lang])}${article.desktopOnly ? `<span class="desktop">${escape(w.desktop)}</span>` : ''}</h1>
 <p class="summary">${escape(article.summary[lang])}</p>
 <h2>${escape(w.steps)}</h2>
-<ol>${article.steps.map((step) => `<li class="step"><span>${escape(step[lang])}</span></li>`).join('')}</ol>
+<ol>${article.steps.map((step) => `<li class="step"><div class="say"><span>${escape(step[lang])}</span></div>${shot(step, lang) ? `<img src="data:image/jpeg;base64,${readFileSync(shot(step, lang)).toString('base64')}" alt="">` : ''}</li>`).join('')}</ol>
 ${article.tips ? `<div class="tips"><h2>${escape(w.tips)}</h2>${article.tips.map((tip) => `<p>${escape(tip[lang])}</p>`).join('')}</div>` : ''}
 ${article.guide ? `<p class="inapp">${escape(w.inApp)}</p>` : ''}
 <footer><span><bdi>${escape(w.name)}</bdi> · <bdi dir="ltr">${escape(w.url)}</bdi></span><span>${escape(article.id)}</span></footer>
@@ -86,6 +97,11 @@ for (const article of ARTICLES) {
     const name = `${article.id}-${lang}.pdf`;
     writeFileSync(join(appOut, name), pdf);
     copyFileSync(join(appOut, name), join(webOut, name));
+    for (const step of article.steps) {
+      if (!shot(step, lang)) continue;
+      copyFileSync(shot(step, lang), join(webShots, `${step.pic}-${lang}.jpg`));
+      if (existsSync(moving(step, lang))) copyFileSync(moving(step, lang), join(webShots, `${step.pic}-${lang}.webp`));
+    }
     made += 1;
   }
 }
@@ -135,7 +151,7 @@ function helpPage(lang) {
         (article) => `<article class="help-article" id="${article.id}">
 <h3>${escape(article.title[lang])}${article.desktopOnly ? ` <span class="help-tag">${escape(p.desktop)}</span>` : ''}</h3>
 <p class="help-summary">${escape(article.summary[lang])}</p>
-<ol>${article.steps.map((step) => `<li>${escape(step[lang])}</li>`).join('')}</ol>
+<ol>${article.steps.map((step) => `<li>${escape(step[lang])}${shot(step, lang) ? `<picture>${existsSync(moving(step, lang)) ? `<source srcset="/help/shots/${step.pic}-${lang}.webp" type="image/webp" media="(prefers-reduced-motion: no-preference)">` : ''}<img src="/help/shots/${step.pic}-${lang}.jpg" alt="" loading="lazy" width="1080" height="672"></picture>` : ''}</li>`).join('')}</ol>
 ${article.tips ? `<ul class="help-tips">${article.tips.map((tip) => `<li>${escape(tip[lang])}</li>`).join('')}</ul>` : ''}
 <p class="help-links"><a href="/help/guides/${article.id}-${lang}.pdf" download>${escape(p.pdf)}</a>${article.video ? ` · <a href="${escape(article.video)}" rel="noopener">▶</a>` : ''}</p>
 </article>`,
