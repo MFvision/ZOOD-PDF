@@ -295,6 +295,8 @@ export const SHOTS = {
 
   // Desktop: Ask ZOOD
   'ask-keys': desktopSetting('ai', (s, dialog) => dialog.locator('.prefs-row', { hasText: s.t('ask.settings.keys') }).first()),
+  'ask-doit': desktopSetting('ai', (s, dialog) => dialog.locator('.prefs-row', { hasText: s.t('ask.settings.doForMe') }).first()),
+  'ask-bubble': desktopSetting('ai', (s, dialog) => dialog.locator('.prefs-row', { hasText: s.t('ask.settings.bubble') }).first()),
 
   // Desktop: phone remote
   'remote-menu': {

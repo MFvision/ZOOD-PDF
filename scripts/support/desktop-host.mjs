@@ -34,6 +34,7 @@ export function desktopHost(name, files = [], extra = {}) {
     ring_settings: { ring: true, background: true, scale: 1, shortcut: 'CommandOrControl+Alt+Z', dragKey: 'any' },
     ask_settings: { enabled: true, shortcut: 'CommandOrControl+Shift+Space', sees: true, taps: true, tapKey: 'Control', tapToType: true, tapSpeaks: true, glow: true },
     ask_access: { applies: false, accessibility: true, screen: true, microphone: 'allowed', input: true },
+    presence_settings: { bubble: true, lang: 'ar' },
     quick_job: { tool: null, files },
     ring_take: files,
     ring_phone: false,

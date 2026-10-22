@@ -326,10 +326,12 @@ export const ARTICLES: readonly Article[] = [
     steps: [
       { ar: 'اضغط Ctrl+Shift+Space (أو ⌘⇧Space على ماك) واستمر بالضغط وتكلم.', en: 'Hold Ctrl+Shift+Space (⌘⇧Space on a Mac) and speak.', pic: 'ask-keys' },
       { ar: 'أو اضغط مرة لتكتب طلبك، ومرتين في خانة رد ليكتب الرد.', en: 'Or tap once to type a request, or twice in a reply box and it writes the reply.' },
+      { ar: 'أو انقر أيقونة ZOOD في شريط المهام (شريط القوائم في الماك)، أو فقاعة ZOOD على حافة الشاشة. شغّل الفقاعة من الإعدادات › الذكاء الاصطناعي.', en: 'Or click the ZOOD icon in the tray (the menu bar on a Mac), or the ZOOD bubble on the edge of the screen. Turn the bubble on in Settings › AI.', pic: 'ask-bubble' },
+      { ar: 'قل «سوّها لي»: داخل ZOOD PDF ينفّذ أوامره فورًا ويضيء كل زر يستخدمه، وفي البرامج الأخرى يضغط الأزرار بأسمائها بعد موافقتك. شغّلها أو أوقفها من الإعدادات › الذكاء الاصطناعي.', en: 'Say “do it for me”: inside ZOOD PDF it runs its own commands at once and lights each button it uses; in other apps it presses buttons by their names after you agree. Turn it on or off in Settings › AI.', pic: 'ask-doit' },
       { ar: 'غيّر المفاتيح من الإعدادات › الذكاء الاصطناعي.', en: 'Change the keys in Settings › AI.' },
     ],
     tips: [{ ar: 'على ماك يحتاج إذن «تسجيل المدخلات» و«تسهيلات الاستخدام» والميكروفون.', en: 'On a Mac it needs Input Monitoring, Accessibility and the microphone.' }],
-    keywords: ['ask zood', 'voice', 'keys', 'shortcut', 'assistant', 'اسال زود', 'صوت', 'مفاتيح', 'اختصار', 'مساعد'],
+    keywords: ['ask zood', 'voice', 'keys', 'shortcut', 'assistant', 'bubble', 'tray', 'do it for me', 'اسال زود', 'صوت', 'مفاتيح', 'اختصار', 'مساعد', 'فقاعه', 'نفذها'],
     tour: 'ask',
     desktopOnly: true,
     guide: { steps: [{ say: { ar: 'هذه إعدادات «اسأل ZOOD»: المفاتيح والصوت.', en: 'These are the Ask ZOOD settings: keys and voice.' }, run: 'settings:ai' }] },
