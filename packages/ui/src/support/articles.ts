@@ -456,7 +456,7 @@ export const FAQ: readonly { q: Bilingual; a: Bilingual; keywords: string[] }[] 
 export const KNOWN_ISSUES: readonly Bilingual[] = [
   { ar: 'التحويل إلى docx ينقل النص بفقرات متدفقة، لا الشكل الدقيق للصفحة.', en: 'A docx export carries the text as flowing paragraphs, not the exact page layout.' },
   { ar: 'الطباعة على ويندوز ترسل الصفحات صورًا عالية الدقة (300 نقطة)، لا نصًّا متجهيًا.', en: 'Printing on Windows sends the pages as sharp pictures (300 dpi), not as vector text.' },
-  { ar: 'على ماك، «اسأل ZOOD» لا يعمل خارج التطبيق قبل منح أذونات تسجيل المدخلات وتسهيلات الاستخدام والميكروفون.', en: 'On a Mac, Ask ZOOD does not work outside the app until Input Monitoring, Accessibility and the microphone are allowed.' },
+  { ar: 'على ماك، «اسأل زود» لا يعمل خارج التطبيق قبل منح أذونات تسجيل المدخلات وتسهيلات الاستخدام والميكروفون.', en: 'On a Mac, Ask ZOOD does not work outside the app until Input Monitoring, Accessibility and the microphone are allowed.' },
 ];
 
 export function articleById(id: string): Article | undefined {

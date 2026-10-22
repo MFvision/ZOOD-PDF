@@ -141,7 +141,7 @@ export function useMenuModel(): MenuModel[] {
   // Subscribed so the View menu's Read aloud check follows the bar.
   useReadAloud();
   // A narrow window shows the inspector as a sheet only for a chosen tool
-  // (panes.css): with none, "Tools pane" would change a check and show nothing.
+  // (panes.css): with none, "Tools panel" would change a check and show nothing.
   const noSheet = useInspectorHidden();
   const settings = useSettings();
 
