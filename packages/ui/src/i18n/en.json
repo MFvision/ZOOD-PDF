@@ -3176,5 +3176,7 @@
   "crash.body": "ZOOD PDF hit a mistake while drawing this window. Reload it to carry on; an open file's autosaved copy will be offered back.",
   "crash.reload": "Reload",
   "crash.copy": "Copy details",
-  "crash.copied": "Copied"
+  "crash.copied": "Copied",
+  "signatures.error.module": "ZOOD PDF can only use a token's module from your system's folders or one you choose with “Choose module…”.",
+  "signatures.token.chooseModule": "Choose module…"
 }

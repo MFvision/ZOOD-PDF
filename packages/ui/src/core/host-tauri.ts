@@ -189,6 +189,18 @@ export async function pickFiles(filters: FileFilter[], multiple: boolean): Promi
   return files;
 }
 
+/**
+ * A security token's PKCS#11 module, from the native open panel: its path,
+ * which the panel lets the app use (the host loads only a module the person
+ * chose this way, or one in the system's own folders). `null` when cancelled.
+ */
+export async function pickModulePath(): Promise<string | null> {
+  const picked = await invoke('plugin:dialog|open', {
+    options: { multiple: false, directory: false, filters: [{ name: 'PKCS#11', extensions: ['so', 'dll', 'dylib'] }] },
+  });
+  return typeof picked === 'string' ? picked : null;
+}
+
 /** Several PDFs at once, from the native open panel (Combine files). */
 export function pickPdfFiles(): Promise<PickedFile[]> {
   return pickFiles(PDF_FILTER, true);
