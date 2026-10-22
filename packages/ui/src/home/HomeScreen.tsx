@@ -5,11 +5,12 @@ import { useCloud } from '../cloud/CloudContext';
 import { ContextMenu } from '../components/ContextMenu';
 import { Icon } from '../components/Icon';
 import { useI18n } from '../i18n/useT';
-import { useAppDispatch, useServices } from '../state/AppContext';
+import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { ToolCards } from '../tools/ToolCards';
 import { ToolGallery } from '../tools/ToolGallery';
 import { Popover } from '../components/Popover';
 import { AiCard } from './AiCard';
+import { TodayCard } from '../ask/TodayCard';
 import { RemoteHomeButton } from '../remote/RemoteLayer';
 import { HeroCards } from './HeroCards';
 import { HomeSearch } from './HomeSearch';
@@ -34,6 +35,7 @@ import { useWorkbench } from '../shell/workbench';
 export function HomeScreen() {
   const { t, dir } = useI18n();
   const dispatch = useAppDispatch();
+  const state = useAppState();
   const { requestOpenFile, requestCreateFiles } = useServices();
   const cloud = useCloud();
   const index = useLibraryIndex();
@@ -46,6 +48,11 @@ export function HomeScreen() {
   const starred = useStarred();
   // The Workbench look's plain home: recent files as a table.
   const workbench = useWorkbench();
+
+  // The AI side panel is showing beside the home screen (as Shell.tsx decides).
+  const aiPanel =
+    state.rightPane.open && state.rightPane.activeTool === 'ai' && !(state.view === 'viewer' && state.homeShown);
+  const aiCard = !aiPanel && !settings.hiddenHomeSections.includes('assistant');
 
   const clouds = cloud.providers.length > 0;
   const shown: HomeView = view === 'clouds' && !clouds ? 'home' : view;
@@ -94,6 +101,8 @@ export function HomeScreen() {
             {shown === 'home' && (
               <>
                 <Greeting />
+                {/* Deadlines found in the Library's documents; nothing when there are none. */}
+                <TodayCard index={index} />
                 {/* Settings › Home screen: the sections shown, in the person's order. */}
                 {settings.homeSections
                   .filter((section) => !settings.hiddenHomeSections.includes(section))
@@ -103,7 +112,11 @@ export function HomeScreen() {
                         return (
                           <HeroCards
                             key={section}
-                            onAi={() => question.current?.focus()}
+                            onAi={() => {
+                              if (aiCard) question.current?.focus();
+                              else if (aiPanel) document.querySelector<HTMLTextAreaElement>('.inspector textarea')?.focus();
+                              else dispatch({ type: 'SET_ACTIVE_TOOL', tool: 'ai' });
+                            }}
                             onMore={(card) => setMoreFrom((open) => (open ? null : card))}
                           />
                         );
@@ -144,7 +157,7 @@ export function HomeScreen() {
               <span>{t(clouds ? 'home.privacyCloud' : 'home.privacy')}</span>
             </p>
           </div>
-          {!settings.hiddenHomeSections.includes('assistant') && <AiCard ref={question} />}
+          {aiCard && <AiCard ref={question} />}
           {/* More: every tool, from the card. */}
           <Popover anchor={moreFrom} open={moreFrom !== null} onClose={() => setMoreFrom(null)} label={t('shell.allTools')} className="tool-gallery-popover">
             <ToolGallery

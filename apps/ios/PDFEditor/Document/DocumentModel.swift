@@ -55,6 +55,18 @@ final class DocumentModel: Identifiable, Hashable {
     var isEdited: Bool { edited != nil }
     var isReady: Bool { state == .ready }
 
+    /// What the document's screen has open (`DocumentScreen`), shared by
+    /// the copies of the screen a fold or an unfold makes. The screen holds
+    /// it; this only points at it, so a closed document is let go.
+    @ObservationIgnored private weak var openScreen: DocumentScreen?
+
+    var screen: DocumentScreen {
+        if let openScreen { return openScreen }
+        let made = DocumentScreen()
+        openScreen = made
+        return made
+    }
+
     /// Reads the file, keeping access to a security-scoped URL (one chosen
     /// in Files) while the model lives.
     init(url: URL) throws {
@@ -339,6 +351,7 @@ final class DocumentModel: Identifiable, Hashable {
 
     /// Lets go of the core and of the file.
     func close() {
+        openScreen?.reader.stop()
         core = nil
         if holdsSecurityScope, let url {
             url.stopAccessingSecurityScopedResource()

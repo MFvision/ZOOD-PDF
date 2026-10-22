@@ -128,11 +128,125 @@ size or a mark's text, **with a live preview of the pages**.
   owner chose "website for now". The website videos and the explainer video belong to the
   website thread.
 
+## iPhone Duo (folding iPhone), 2026-10-21
+Apple's folding iPhone (announced 2026-09-09, in shops 2026-10-23): a 5.4" outer screen that
+behaves like any iPhone (compact) and a 7.6" inner screen (about 626 x 890 points) that reports a
+regular size class both ways. The app adapts by size and width, not by device:
+- `Document/DocumentScreen.swift`: everything the document screen has open (the tool, the sheet,
+  read aloud, the AI conversation) lives outside the view, so a fold or unfold, which swaps the
+  Library's phone stack for its split view, keeps it. The view holds it; the model points weakly.
+- `LibraryShell`: below 900 points wide (Duo unfolded, iPad portrait) the split view is a book,
+  the section on one half and the document on the other, split at the fold; an opened document
+  takes the whole screen and the split button brings the Library back.
+- `DocumentView`: a pane under 520 points gets the phone's bars instead of the inspectors. New
+  layout **Two pages** (PDFKit two-up as a book, RTL-aware), offered only where it is wide enough.
+- `.github/workflows/ios-compile.yml` compiles the app and its tests for the simulator on a
+  GitHub Mac on each PR touching `apps/ios` (nothing signed or published).
+- Not used yet: the iOS 27.1 SDK's own fold APIs (`reservedRegions`, `onHingeChange`,
+  `ArrangementView`); they need Xcode 27.1, and the layouts above work without them.
+- Not tried on a real Duo or its simulator.
+
+## Welcome tour and app motion (2026-10-21)
+The owner found the old tour boring and two-coloured and wanted it to train people. Desktop
+and web: `tour/` is now a large sheet with chapters down the side (`chapters.ts`; scenes in
+`scenes.tsx`): language, look and light/dark chosen in it, the website's film
+(`public/film/`, WebM then MP4; the web's service worker never keeps the MP4s), an animated
+"open and edit" window, a right-click demo and a ring **practice area** (Ctrl/Shift or
+Option/Command + drag a sample file, same geometry as the real ring), the real phone-remote
+QR (`RemotePanel`), the AI and read aloud, and a finish list. Desktop shows it once more to
+people who saw the old one (`warraq.tour` version 2). `styles/motion.css` adds press, hover,
+screen/panel/tab entrances, busy sheen and the sidebar mark's sheen; `components/ZoodMark.tsx`
+is the brand mark with a loop. Everything stops under Reduce Motion (system or Settings).
+iOS: six tour screens (a Make it yours screen and a phone-remote screen) with motion,
+**written without an iOS compiler** — run `scripts/ios/build.sh` before TestFlight.
+
 ## After that
 As he chooses, from the study's top ten (sizes there are PdfCraft's formula and run
 high; our desktop jobs took 1–1.5 h of real time each): large-format printing (A0/A1 at true
 scale, tiling), autosave and crash recovery, command search (Ctrl/⌘+K), and measuring. (The Workbench theme and the theme choice on
 desktop and web are done.)
+
+## Ask ZOOD taps (2026-10-21, stacked on PR #8; idea from Sentient OS, AGPL, no code taken)
+- **Double tap** the tap key (right Ctrl; right Command on a Mac; Settings can pick right Alt/Option
+  or right Shift) in any app: `src/ask/tap.rs` reads key states every 12 ms (a modifier alone can't
+  be a global shortcut; a key held with anything else is never a tap). The focused window is
+  captured (`eye::capture_front`), the island reads its words with the app's Tesseract when the
+  model is text-only (`packages/ui/src/ask/read.ts`), drafts with `draft.ts` (writing style from
+  Settings › AI › Ask ZOOD, Library lines from `memory.ts`), and pastes via clipboard + Ctrl/Cmd+V
+  with the clipboard put back (`src/ask/hands.rs`). Never sent. Away from a conversation it shows
+  up to three ideas. Write it again = app's Undo, then a new draft.
+- **One tap** opens the island with the keyboard for a typed request; new action `write` puts text
+  at the cursor (also for spoken requests).
+- **Home › Coming up** (`ask/today.ts`, `TodayCard.tsx`): deadline lines in the Library with a date
+  from 7 days back to 30 ahead (day-first, Arabic/English months, Hijri Umm al-Qura).
+- Tests: `apps/web/e2e/ask-tap.mjs` (real OCR in Chromium). **Not tried on real Windows or a Mac**:
+  the key watcher, window capture, paste and focus hand-back compile for both (checked standalone).
+
+## Teaching the Ask ZOOD keys (2026-10-21)
+The owner: the keys are important and no one knows them. Desktop on Windows/Mac only (where
+Ask ZOOD is): a tour chapter **Ask ZOOD** (`tour/askScene.tsx`) shows the keyboard's bottom row
+with the person's key lit, then three practice tabs that react to the real keys: double tap
+fills a pretend reply box with a draft, one tap opens a typing box, hold shows the island
+listening (nothing recorded). The page reads its own key events with the host's tap logic
+ported line for line (`ask/keys.ts`, same tests as `tap.rs`); while the chapter is open the host
+is paused (`ask_pause`: shortcut unregistered so the page gets it, taps ignored). Tour version 3:
+people who saw version 2 get it once more, opened at this chapter. Help › Ask ZOOD keys and the
+Keyboard shortcuts sheet point to it; Settings › AI › Ask ZOOD has plainer wording and a
+practice button; `ask/ReadyHint.tsx` shows a one-time card the first time Ask ZOOD can answer.
+iOS: nothing (Ask ZOOD is not on iPhone/iPad). **Not tried on real Windows or a Mac** (the pause
+and the page's view of right Ctrl/Command).
+
+## One tap to talk, with the screen glowing (2026-10-21, stacked on PR #18)
+The owner: voice took too many steps (permissions, a download, holding three keys). Like
+Claude's Mac app (Caps Lock once to start, again to stop), **one tap of the Ask key** (right
+Ctrl / right ⌘) now listens until the next tap, or until the person goes quiet
+(`ask/listen.ts`: 1.6 s quiet after speaking, 8 s if nothing is said; host stops at 60 s).
+While it listens a click-through window over the screen glows round its edges in ZOOD bronze
+and gold, swelling with the voice (`ask/Glow.tsx`, `glow.css`, host `show_glow`, label
+`ask-glow`), and the island draws the voice as a moving line with **Done** and **Type instead**.
+Settings › AI › Ask ZOOD › Tap once: Talk / Type a request / Nothing (talk falls back to typing
+until the hearing model is in); a Glow switch. Holding Ctrl/⌘+Shift+Space still works. Double
+tap is unchanged. **One-button setup** (`ask/AskSetup.tsx`, in Settings and the tour chapter):
+downloads the hearing and deciding models together, then asks each missing permission in turn
+(Mac: microphone via a short open of it, Input Monitoring via `IOHIDRequestAccess`,
+Accessibility, Screen Recording; Windows: the microphone privacy switches, read from the
+registry) and tells the host to listen. Input Monitoring matters on a Mac: without it ⌘C made
+with the right ⌘ reads as a tap. Tour version 4 re-shows the Ask chapter, whose first tab is
+now "Tap once: talk" with a pretend glowing screen. **Not tried on real Windows or a Mac.**
+
+## Ask ZOOD talks back, shows, explains and does (2026-10-21)
+The owner's go on the notch/Sentient OS doc (all four now). **Talk back**: answers are said in
+the Read aloud engines (`speech/engines.ts`: Mac AVSpeech through the host incl. Premium
+voices, Windows' own natural voices e.g. Kareem, Web Speech elsewhere), the voice and speed
+chosen in Read aloud (`ask/voice.ts`). Settings › Ask ZOOD › Talk back: When I speak (default)
+/ Always / Never; a tap of the key stops it. **Show me / Explain this / Do it for me**
+(`ask/guide.ts`, island phase `guide`, host `ask/guide.rs`): new decision acts `show`,
+`explain`, `do` (only with a model that sees). ZOOD's pointer (Point.tsx `GuidePointer`,
+class `ask-pointer`) flies out of the island to each step and stays; Show me waits for the
+person's click near the step (`ask_watch_clicks`, mouse button polled, 5 min max) or "I clicked
+it", then `ask_look_again` retakes the picture and the model gives the next step (max 8).
+Explain this asks for up to 6 parts in one look and walks them while speaking. Do it for me
+clicks (`ask_click`, enigo) **only when ZOOD PDF was in front** (`focus::is_ours`); elsewhere it
+points. It asks before a step or goal that sends/deletes/pays/signs (`risky`, EN+AR), and
+stops with `E_MOVED` when the person moved the mouse (Go on resumes). The island moves to the
+bottom (`ask_island_aside`) when a step is under it. Settings switch "Let Ask ZOOD click
+inside ZOOD PDF". Tour v5: Ask chapter tab "Show me and do it" plays all three on a pretend
+window; Help › "Ask ZOOD: Show Me, Explain and Do It" opens it. The quick-actions thread adds
+an `organize` act and a quick decider at the top of `respond` (separate files). **Not tried on
+real Windows or a Mac; coordinates depend on the vision model's accuracy.**
+
+## Help & Support (2026-10-21)
+The owner wants support with no staff, no accounts and no paid servers. F1, Help › Help &
+Support, Settings › Support and a tour chapter (tour version 7) open `support/SupportCenter.tsx`.
+**Ask** searches 24 bilingual guides (`support/articles.ts`) and FAQ. **Show me** and **Do it
+for me** (`support/guide.ts`) find the real controls by their words and point at them or press
+them. Each guide is also a PDF (`scripts/support/make-guides.mjs`, in the app and on the
+website's help pages). **Report a problem** and **Ideas** go through the PHP + MySQL relay
+`website/api/support/`, which runs on his Hostinger plan and files issues in a private
+`MFvision/zood-support` repository. Until it is uploaded, reports go by e-mail. The weekly review
+routine is in `docs/support/weekly-review.md`. **Waiting on him**: upload the relay, create the
+private repository and its token (steps in `website/api/support/README.md`). After that, the
+weekly routine can be switched on. Not tried on real Windows or Mac.
 
 ## Known open problems
 - **iPhone UI tests**: 6 of 55 failing at the last full run, each a test reaching for a
@@ -154,3 +268,27 @@ desktop and web are done.)
 - Xcode's Apple account signs out from time to time; the owner signs back in.
 - Old agent worktrees under `.claude/worktrees/` can be removed once merged; two named
   ones (`frosty-bartik-…`, `wonderful-thompson-…`) belong to the owner's other sessions.
+
+## Quick asks and tidying (2026-10-21; idea from the Pragmatic Coder video on Jev, no code taken)
+The owner: a quick action ("make these smaller", "organize my Downloads") should not need a 3 GB
+model thinking. Ask ZOOD now has a **quick lane**: a small decision model, Jev-Style 0.8B
+Decision v3 (Apache-2.0, a Qwen3.5-0.8B fine-tune, 529 MB Q4_K_M, pinned in `models.json` with
+`"decides": true`), ranks 27 options with a probability each without writing a word
+(`src-tauri/src/decide.rs`: the model's own prompt layout and " yes"/" no" readout, ported from
+its Apache-2.0 Python runtime; its own thread beside the main engine, sharing one llama backend,
+`ai::backend()`). `packages/ui/src/ask/quick.ts` reads the ranking: a tool, *find* or *organize*
+at 0.8 or above is done at once with a one-line reply in the person's language; 0.6–0.8 shows
+the usual confirm card; under 0.6 the island offers the two best guesses as buttons. Writing,
+filling, summarizing, translating, showing and answering go to the larger model as before.
+**Tidying** (`src-tauri/src/ask/tidy.rs`): Downloads, Desktop, Documents or the selected folder
+or files, by kind, by month, renamed by date, or invoices gathered (by name, or a PDF's first
+page). The host makes the plan and keeps it (the page can't name files), the island shows the
+moves, **Tidy now** applies them; only top-level files move, one level down, never through a
+link, nothing deleted or overwritten (" (2)" instead), each move journalled to
+`tidy-undo.json` so **Undo** (button, or "undo") puts every file back and removes the folders it
+made. Folders must be inside the home folder and not the home folder itself. The decider is in
+Ask ZOOD's one-button setup and in Settings › AI › Ask ZOOD › Quick decider; without it asks go
+to the larger model as before. Tour version 6: a **Quick asks** chapter (`tour/quickAskScene.tsx`)
+and Help › Quick asks and tidying. Tests: `quick.test.ts`, `decide.rs` and `tidy.rs` unit tests
+(apply and undo on a real folder), and an ignored real-model test (`real_model_picks_the_quick_actions`,
+see `docs/local-ai.md`). **Not tried on real Windows or a Mac** (the cloud CPU only).

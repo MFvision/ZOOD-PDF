@@ -72,6 +72,14 @@ enum LibraryTool: String, CaseIterable, Identifiable {
 /// The Library: a three-column split view on iPad (sections and tools, the
 /// section, the document), a stack on iPhone with Home at its root. Which
 /// section and which document are on screen come back with the scene.
+///
+/// On a screen with room for two panes but not three — iPhone Duo unfolded
+/// (about 626 by 890 points), an iPad in portrait or in a narrow window — it
+/// is a book: the section on one half and the document on the other, the
+/// fold between them, the sections in a sidebar over the left. A document
+/// opened there takes the whole screen; the split view's button brings the
+/// Library back beside it. Folding the phone moves the same document, with
+/// whatever it had open, onto the outer screen's stack (`DocumentScreen`).
 struct LibraryShell: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.scenePhase) private var scenePhase
@@ -81,6 +89,19 @@ struct LibraryShell: View {
     @SceneStorage("library.section") private var sectionID = LibrarySection.home.rawValue
     @SceneStorage("library.document") private var restoredBookmark: String?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    /// The window's width, for the two-pane book layout (`bookWidth`).
+    @State private var width: CGFloat = 0
+    /// The iPhone's menu: the tab bar, or the classic stack (Settings).
+    @AppStorage(SettingsKey.menuStyle) private var menuStyle: MenuStyle = .tabs
+    /// The screen the app opens on (Settings › Open with).
+    @AppStorage(SettingsKey.startScreen) private var startScreen: StartScreen = .lastPlace
+    @SceneStorage("library.tab") private var tabID = AppTab.home.rawValue
+    /// The tab a document was opened in: it is pushed on that tab's stack.
+    @State private var openedIn: AppTab?
+    @State private var showingCreate = false
+    @State private var pendingCreate: CreateChoice?
+    /// The classic stack's sections, so Open with › My files can start there.
+    @State private var classicPath: [LibrarySection] = []
     @State private var showingSettings = false
     @State private var showingImporter = false
     @State private var showingCombiner = false
@@ -136,14 +157,25 @@ struct LibraryShell: View {
         )
     }
 
+    /// Room for two panes, not three: below this the three columns would
+    /// leave the pages a strip.
+    static let bookBreakpoint: CGFloat = 900
+
+    private var bookWidth: Bool { width > 0 && width < Self.bookBreakpoint }
+
     var body: some View {
         Group {
             if sizeClass == .compact {
-                compact
+                if menuStyle == .tabs {
+                    tabs
+                } else {
+                    compact
+                }
             } else {
                 regular
             }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .overlay {
             if lock.state != .unlocked {
                 LockScreen(lock: lock)
@@ -153,8 +185,13 @@ struct LibraryShell: View {
             SettingsView(library: library)
         }
         .fullScreenCover(isPresented: $showingRemote) {
-            RemoteView()
-                .appEnvironment()
+            // A PDF sent from the computer joins the Library and opens.
+            RemoteView { file in
+                guard let bytes = try? Data(contentsOf: file) else { return }
+                showingRemote = false
+                _ = try? library.adopt(bytes: bytes, name: file.deletingPathExtension().lastPathComponent)
+            }
+            .appEnvironment()
         }
         // Batch: a sequence of steps over many files (Batch/).
         .fullScreenCover(isPresented: $showingBatch) {
@@ -303,6 +340,8 @@ struct LibraryShell: View {
                 content(for: section)
                     .navigationTitle(section.title)
             }
+            // A book: the section takes the half up to the fold.
+            .modifier(BookColumn(width: bookWidth ? width / 2 : nil))
         } detail: {
             if let opened = library.opened {
                 DocumentView(model: opened)
@@ -315,6 +354,24 @@ struct LibraryShell: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
+        .onChange(of: library.opened?.id) {
+            arrangeBook()
+        }
+        .onChange(of: bookWidth, initial: true) { wasBook, isBook in
+            if isBook {
+                arrangeBook()
+            } else if wasBook {
+                columnVisibility = .all
+            }
+        }
+    }
+
+    /// On a book-width screen a document opened takes the whole screen and
+    /// the Library comes back when it is closed. Wider screens keep their
+    /// columns as the person left them.
+    private func arrangeBook() {
+        guard bookWidth else { return }
+        columnVisibility = library.opened != nil ? .detailOnly : .doubleColumn
     }
 
     private func run(_ tool: LibraryTool) {
@@ -339,12 +396,20 @@ struct LibraryShell: View {
     // MARK: - iPhone
 
     private var compact: some View {
-        NavigationStack {
+        NavigationStack(path: $classicPath) {
             SearchHost(library: library) {
                 HomeView(library: library, actions: actions)
             }
             .navigationTitle(Text(verbatim: AppName.isolated))
-            .toolbar { libraryToolbar }
+            .toolbar {
+                libraryToolbar
+                // Classic has no Me tab: Settings sits where people look
+                // for it, at the top, not only at the bottom of Home.
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Settings", systemImage: "gearshape") { showingSettings = true }
+                        .accessibilityIdentifier("library.settings")
+                }
+            }
             .themedToolbar()
             .navigationDestination(item: $library.opened) { model in
                 DocumentView(model: model)
@@ -358,6 +423,124 @@ struct LibraryShell: View {
                     .navigationTitle(section.title)
             }
             .environment(\.zoomNamespace, zoom)
+        }
+    }
+
+    // MARK: - iPhone, tabs
+
+    private var currentTab: AppTab { AppTab(rawValue: tabID) ?? .home }
+
+    /// The tab bar's selection: the create button opens its sheet and
+    /// leaves the tab that was on screen where it is.
+    private var tabSelection: Binding<AppTab> {
+        Binding(
+            get: { currentTab },
+            set: { tab in
+                if tab == .create {
+                    showingCreate = true
+                } else {
+                    tabID = tab.rawValue
+                }
+            }
+        )
+    }
+
+    private var tabs: some View {
+        TabView(selection: tabSelection) {
+            Tab("Home", systemImage: "house", value: AppTab.home) {
+                tabStack(.home) {
+                    SearchHost(library: library) {
+                        HomeView(library: library, actions: actions)
+                    }
+                    .navigationTitle(Text(verbatim: AppName.isolated))
+                    .toolbar { libraryToolbar }
+                }
+            }
+            Tab("My files", systemImage: "folder", value: AppTab.files) {
+                tabStack(.files) {
+                    FilesTab(library: library)
+                        .navigationTitle("My files")
+                }
+            }
+            Tab("Create", systemImage: "plus.circle.fill", value: AppTab.create) {
+                Color.clear
+            }
+            Tab("Tools", systemImage: "square.grid.2x2", value: AppTab.tools) {
+                tabStack(.tools) {
+                    ToolsTab(run: runFromTools, remote: { showingRemote = true })
+                        .navigationTitle("Tools")
+                }
+            }
+            Tab("Me", systemImage: "person.crop.circle", value: AppTab.me) {
+                tabStack(.me) {
+                    MeTab(settings: { showingSettings = true })
+                        .navigationTitle("Me")
+                }
+            }
+        }
+        .sheet(isPresented: $showingCreate, onDismiss: takeCreate) {
+            CreateSheet { pendingCreate = $0 }
+                .appEnvironment()
+        }
+        .onChange(of: library.opened?.id, initial: true) { _, opened in
+            // A document opens on the stack of the tab it was opened from
+            // (a widget's or a search's too: the tab on screen).
+            if opened == nil {
+                openedIn = nil
+            } else if openedIn == nil {
+                openedIn = currentTab
+            }
+        }
+    }
+
+    /// One tab's stack: its root, the document pushed over it with the tab
+    /// bar put away, and the Library's sections. The edge swipe goes back.
+    private func tabStack<Root: View>(_ tab: AppTab, @ViewBuilder root: () -> Root) -> some View {
+        NavigationStack {
+            root()
+                .themedToolbar()
+                .navigationDestination(item: document(in: tab)) { model in
+                    DocumentView(model: model)
+                        .toolbar(.hidden, for: .tabBar)
+                        .zoomed(from: library.zoomSource, in: zoom)
+                        .onDisappear { if library.opened == nil { library.zoomSource = nil } }
+                }
+                .navigationDestination(for: LibrarySection.self) { section in
+                    content(for: section)
+                        .navigationTitle(section.title)
+                }
+                .environment(\.zoomNamespace, zoom)
+        }
+    }
+
+    private func document(in tab: AppTab) -> Binding<DocumentModel?> {
+        Binding(
+            get: { openedIn == tab ? library.opened : nil },
+            set: { model in
+                if model == nil, openedIn == tab {
+                    library.opened = nil
+                }
+            }
+        )
+    }
+
+    private func runFromTools(_ tool: LibraryTool) {
+        if tool == .search {
+            // The search field lives on Home.
+            tabID = AppTab.home.rawValue
+        }
+        run(tool)
+    }
+
+    /// The create sheet's choice, once the sheet has gone.
+    private func takeCreate() {
+        guard let choice = pendingCreate else { return }
+        pendingCreate = nil
+        switch choice {
+        case .scan: actions.scan()
+        case .pictures: actions.create()
+        case .open: actions.open()
+        case .combine: actions.combine()
         }
     }
 
@@ -436,11 +619,28 @@ struct LibraryShell: View {
             return
         }
         #endif
-        if let restoredBookmark, let data = Data(base64Encoded: restoredBookmark) {
-            var stale = false
-            if let url = try? URL(resolvingBookmarkData: data, bookmarkDataIsStale: &stale) {
-                library.open(url: url)
+        switch startScreen {
+        case .lastPlace:
+            if let restoredBookmark, let data = Data(base64Encoded: restoredBookmark) {
+                var stale = false
+                if let url = try? URL(resolvingBookmarkData: data, bookmarkDataIsStale: &stale) {
+                    library.open(url: url)
+                }
             }
+        case .home:
+            tabID = AppTab.home.rawValue
+            sectionID = LibrarySection.home.rawValue
+        case .scanner:
+            tabID = AppTab.home.rawValue
+            library.scanStart = .camera
+            library.scanRequested = true
+        case .files:
+            tabID = AppTab.files.rawValue
+            sectionID = LibrarySection.documents.rawValue
+            classicPath = [.documents]
+        case .remote:
+            tabID = AppTab.home.rawValue
+            showingRemote = true
         }
     }
 }
@@ -520,6 +720,7 @@ struct DocumentGrid: View {
             .padding(.horizontal, Space.x5)
             .padding(.vertical, Space.x4)
         }
+        .refreshable { library.refresh() }
         .themedGround(systemColour: Surface.window)
         .overlay {
             if isEmpty {
@@ -681,6 +882,21 @@ extension View {
             draggable(reference)
         } else {
             self
+        }
+    }
+}
+
+/// The section's column on a book-width screen: half the window, so the
+/// split falls on iPhone Duo's fold. Elsewhere the split view's own widths.
+private struct BookColumn: ViewModifier {
+    let width: CGFloat?
+
+    func body(content: Content) -> some View {
+        if let width {
+            let half = max(width, 280)
+            content.navigationSplitViewColumnWidth(min: 280, ideal: half, max: half)
+        } else {
+            content
         }
     }
 }

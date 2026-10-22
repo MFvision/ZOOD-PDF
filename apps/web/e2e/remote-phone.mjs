@@ -15,15 +15,27 @@ if (!url) {
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
 const phone = { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, locale: 'en-US' };
 const step = (name) => console.log(`phone: ${name}`);
+// SHOTS: a folder to keep pictures of the full-screen moments in.
+const shot = (page, name) => (process.env.SHOTS ? page.screenshot({ path: `${process.env.SHOTS}/${name}.png` }) : undefined);
 
 try {
-  const context = await browser.newContext(phone);
+  // VIDEO (with SHOTS): film the phone's screen too.
+  const context = await browser.newContext(process.env.VIDEO && process.env.SHOTS ? { ...phone, recordVideo: { dir: process.env.SHOTS, size: phone.viewport } } : phone);
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error)));
   page.on('console', (message) => message.type() === 'error' && errors.push(message.text()));
 
   await page.goto(url);
+  // The file the PC gave as the phone joined drops in full screen, to save or put away.
+  const caught = page.getByRole('dialog', { name: 'From the computer' });
+  await expect(caught.getByText('Notes from the PC.txt')).toBeVisible();
+  await expect(caught.getByRole('link', { name: 'Save' })).toHaveAttribute('download', 'Notes from the PC.txt');
+  await page.waitForTimeout(1000);
+  await shot(page, 'catch');
+  await caught.getByRole('button', { name: 'Done' }).tap();
+  await expect(caught).toBeHidden();
+  step('a file from the PC was caught full screen');
   await expect(page.getByText('Page 1 of 3')).toBeVisible();
   await expect(page.getByText('Talk.pdf')).toBeVisible();
   // The key leaves the address bar as soon as it is read.
@@ -50,6 +62,37 @@ try {
   await expect(page.getByText(/Trackpad and keyboard are off/)).toBeVisible();
   await page.getByRole('button', { name: 'Present', exact: true }).tap();
   step('PC control stays off until the PC allows it');
+
+  // Send: what the PC copied is here, a file the PC sent is here, and a file
+  // flicked up lands on the PC's desktop (the test's landing folder).
+  await page.getByRole('button', { name: 'Send', exact: true }).tap();
+  await expect(page.getByText('Hello from the PC')).toBeVisible();
+  await page.getByRole('button', { name: 'Copy', exact: true }).tap();
+  await expect(page.getByRole('button', { name: 'Copied', exact: true })).toBeVisible();
+  await expect(page.getByText('Notes from the PC.txt')).toBeVisible();
+  step('the PC\'s clipboard and a file from the PC');
+
+  await page.locator('.phone-send input[type=file]').setInputFiles({ name: 'Receipt.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 flicked') });
+  // Chosen, it waits on the dark full screen, to be swiped up into the light.
+  const stage = page.getByRole('dialog', { name: 'Flick to the computer' });
+  await expect(stage.getByText('Receipt.pdf')).toBeVisible();
+  await expect(stage.getByText(/Swipe up to send it to/)).toBeVisible();
+  await page.waitForTimeout(500);
+  const at = await stage.locator('.phone-launch-card').boundingBox();
+  await page.mouse.move(at.x + at.width / 2, at.y + at.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(at.x + at.width / 2, at.y + at.height / 2 - 120, { steps: 4 });
+  await shot(page, 'launch');
+  await page.mouse.move(at.x + at.width / 2, at.y + at.height / 2 - 200, { steps: 3 });
+  await page.mouse.up();
+  await page.waitForTimeout(450);
+  await shot(page, 'launched');
+  await expect(stage).toBeHidden();
+  const card = page.locator('.phone-flick').first();
+  await expect(card).toContainText('On the desktop');
+  step('a file flicked up landed on the desktop');
+
+  await page.getByRole('button', { name: 'Present', exact: true }).tap();
 
   // Closed and opened again: the phone is remembered, no code needed.
   await page.reload();

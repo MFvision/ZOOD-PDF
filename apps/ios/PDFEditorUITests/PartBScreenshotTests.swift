@@ -33,10 +33,10 @@ final class PartBScreenshotTests: XCTestCase {
             app.buttons["search.done"].tap()
 
             // Thumbnails beside or under the pages.
-            app.buttons["document.thumbnails.toggle"].tap()
+            ui.viewControl("document.thumbnails.toggle", menuLabel: combo.language == PartBApp.arabic ? "المصغّرات" : "Thumbnails")
             _ = app.buttons["thumbnail.0"].waitForExistence(timeout: 10)
             try ui.screenshot("thumbnails-\(suffix)", in: directory)
-            app.buttons["document.thumbnails.toggle"].tap()
+            ui.viewControl("document.thumbnails.toggle", menuLabel: combo.language == PartBApp.arabic ? "المصغّرات" : "Thumbnails")
 
             // Night mode and reader mode.
             ui.viewControl("document.night.toggle", menuLabel: combo.language == PartBApp.arabic ? "الوضع الليلي" : "Night mode")

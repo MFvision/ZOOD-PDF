@@ -518,6 +518,7 @@ struct ComparePagePicture: View {
     let compare: CompareModel
     let version: CompareModel.Version
     let page: Int
+    @Environment(\.displayScale) private var displayScale
     @State private var image: UIImage?
     @State private var loaded = false
 
@@ -565,7 +566,7 @@ struct ComparePagePicture: View {
                 .frame(width: proxy.size.width, height: proxy.size.height)
                 .task(id: "\(version.rawValue)-\(page)-\(Int(proxy.size.width))") {
                     loaded = false
-                    image = await compare.picture(of: version, page: page, width: proxy.size.width * UIScreen.main.scale)
+                    image = await compare.picture(of: version, page: page, width: proxy.size.width * displayScale)
                     loaded = true
                 }
             }

@@ -76,6 +76,7 @@
       "id": "help",
       "label": "Help",
       "items": [
+        { "id": "support", "label": "Help & Support", "accelerator": "F1", "enabled": true, "separatorBefore": false },
         { "id": "shortcuts", "label": "Keyboard shortcuts", "enabled": true, "separatorBefore": false }
       ]
     }

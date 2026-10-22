@@ -47,7 +47,7 @@ export interface ReadAloudState {
   voiceAr: string | null;
   voiceEn: string | null;
   /** What stopped the reading: no voice for the text, nothing to read, or a browser without speech. */
-  notice: 'unsupported' | 'noVoices' | 'noText' | 'done' | null;
+  notice: 'unsupported' | 'noVoices' | 'noText' | 'noSelection' | 'done' | null;
 }
 
 /** What the reader reads from: the open document, as the shell provides it. */
@@ -237,7 +237,7 @@ export async function start(next: ReadingSource, scope: Scope): Promise<void> {
       const sentences = splitSentences(text ?? '');
       if (sentences.length === 0) {
         stop();
-        set({ notice: 'noText' });
+        set({ notice: 'noSelection' });
         return;
       }
       const fallback = mainLanguage(sentences);

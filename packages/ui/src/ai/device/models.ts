@@ -8,7 +8,15 @@ import catalogue from './models.json';
  * Hugging Face publishes for the file — and is kept on this device. The
  * desktop host reads the same file (`src-tauri/src/ai.rs`).
  */
-export type DeviceModelId = 'qwen2.5-1.5b' | 'qwen2.5-0.5b';
+export type DeviceModelId = string;
+
+/** A model's second file: what lets it read pictures or hear speech (llama.cpp's "mmproj"). */
+export interface ModelPart {
+  file: string;
+  url: string;
+  sha256: string;
+  bytes: number;
+}
 
 export interface DeviceModel {
   id: DeviceModelId;
@@ -20,9 +28,33 @@ export interface DeviceModel {
   bytes: number;
   /** The memory a machine should have to run it comfortably. */
   ramGiB: number;
+  projector?: ModelPart;
+  /** It turns speech into text: Ask ZOOD's ear, never a chat model. */
+  hears?: boolean;
+  /** It reads pictures: Ask ZOOD can show it the screen. */
+  sees?: boolean;
+  /** It only decides — picks one of a list, writes nothing: Ask ZOOD's quick lane, never a chat model. */
+  decides?: boolean;
+  /** Its own licence, where it is not the catalogue's. */
+  licence?: string;
 }
 
 export const DEVICE_MODELS: readonly DeviceModel[] = catalogue.models as DeviceModel[];
+
+/** What a model is to download: its weights and its projector. */
+export function modelBytes(model: DeviceModel): number {
+  return model.bytes + (model.projector?.bytes ?? 0);
+}
+
+/**
+ * The models the AI tool chats with: not the ones that only hear, and in a
+ * browser only plain text models (WebAssembly runs no projector).
+ */
+export function chatModels(inBrowser: boolean): DeviceModel[] {
+  return DEVICE_MODELS.filter(
+    (model) => !model.hears && !model.decides && !(inBrowser && model.projector),
+  );
+}
 export const MODEL_LICENCE = catalogue.licence;
 export const MODEL_LICENCE_URL = catalogue.licenceUrl;
 /** What the web page's `connect-src` allows for that one download: Hugging Face and its CDN. */

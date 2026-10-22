@@ -24,6 +24,8 @@ struct SettingsView: View {
         AppSheet(title: "Settings") {
             Form {
                 interface
+                // Tabs or classic, the screen to open on, the app icon.
+                StartSettingsSection()
                 // The scanner's own settings (part C): the colour mode and
                 // the OCR languages this device supports.
                 ScanSettingsSection()

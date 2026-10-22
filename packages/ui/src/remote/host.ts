@@ -18,6 +18,9 @@ export interface RemoteStatus {
   remembered: { id: string; name: string }[];
   pcControl: boolean;
   pcControlAvailable: boolean;
+  /** The clipboard is shared with the phones (`remote/clip.rs`). */
+  clipboard: boolean;
+  clipboardAvailable: boolean;
 }
 
 export const STATUS_EVENT = 'warraq://remote-status';
@@ -31,6 +34,9 @@ export const startRemote = () => invokeHost('remote_start') as Promise<RemoteSta
 export const stopRemote = () => invokeHost('remote_stop') as Promise<RemoteStatus>;
 export const remoteStatus = () => invokeHost('remote_status') as Promise<RemoteStatus>;
 export const setPcControl = (on: boolean) => invokeHost('remote_pc_control', { on }) as Promise<RemoteStatus>;
+export const setClipboardSharing = (on: boolean) => invokeHost('remote_clipboard', { on }) as Promise<RemoteStatus>;
+/** A file for every connected phone: it shows under "From the computer". */
+export const giveToPhone = (name: string, mime: string, data: string) => invokeHost('remote_give', { name, mime, data }) as Promise<boolean>;
 export const forgetPhone = (device: string) => invokeHost('remote_forget', { device }) as Promise<RemoteStatus>;
 /** The window full screen, for Present mode: the desktop's own window, or a browser's page. */
 export function setFullscreen(on: boolean): Promise<unknown> {

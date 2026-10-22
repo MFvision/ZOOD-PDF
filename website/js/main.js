@@ -146,7 +146,7 @@ export function footer() {
   el.innerHTML = `<div class="footer-in">
     <a class="brand" href="${urlFor(lang)}" aria-label="${escape(t(SITE.name))}"><span class="logo" aria-hidden="true"></span><span class="logo-pdf" aria-hidden="true">PDF</span></a>
     <p>${escape(t(FOOTER.tagline))}</p>
-    <nav aria-label="${escape(t(FOOTER.links[0].label))} · ${escape(t(FOOTER.links[1].label))} · ${escape(t(FOOTER.links[2].label))}"><ul>${links.join('')}</ul></nav>
+    <nav aria-label="${FOOTER.links.map((l) => escape(t(l.label))).join(' · ')}"><ul>${links.join('')}</ul></nav>
     <p>${escape(t(FOOTER.copyright))}</p>
     <p>${escape(t(FOOTER.marks))}</p>
   </div>`;

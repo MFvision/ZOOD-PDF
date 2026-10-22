@@ -5,6 +5,7 @@ import { comboOf, normalizeKeys, shortcutLetter } from './shortcutEcho';
 import { isApplePlatform, useMenuModel } from './menuModel';
 import type { MenuItemModel } from './menuModel';
 import { isEditable } from './typing';
+import { openSupportAt } from '../support/open';
 
 const isZoomInKey = (event: KeyboardEvent) =>
   event.key === '=' || event.key === '+' || event.code === 'Equal' || event.code === 'NumpadAdd';
@@ -60,6 +61,11 @@ export function useKeyboardShortcuts(): void {
       const hasDocument = current.view === 'viewer' && current.document !== null;
       const mod = event.metaKey || event.ctrlKey;
 
+      if (event.key === 'F1' && !mod && !event.altKey && !event.shiftKey) {
+        event.preventDefault();
+        openSupportAt('ask', () => dispatch({ type: 'DIALOG', dialog: 'support' }));
+        return;
+      }
       if (event.key === 'F4' && !mod && !event.altKey) {
         event.preventDefault();
         // A narrow window raises the sheet for a chosen tool only (panes.css).

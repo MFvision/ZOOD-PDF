@@ -55,7 +55,10 @@ export function HomeSidebar({ view, onView, clouds, index }: HomeSidebarProps) {
   return (
     <nav className="home-sidebar glass" aria-label={t('home.nav')}>
       <div className="home-brand">
-        <img src={APP_ICON} alt="" width={40} height={40} />
+        {/* The mark catches the light now and then (styles/motion.css). */}
+        <span className="home-brand-icon">
+          <img src={APP_ICON} alt="" width={40} height={40} />
+        </span>
         <div className="home-brand-text">
           <p className="home-brand-name">
             <bdi>{t('app.name')}</bdi>

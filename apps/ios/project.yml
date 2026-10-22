@@ -183,6 +183,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.warraq.ios
         PRODUCT_NAME: PDFEditor
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Settings › App icon: actool lists these in the built Info.plist
+        # (CFBundleAlternateIcons) for setAlternateIconName.
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-Paper AppIcon-Sky AppIcon-Black AppIcon-Bronze"
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         ENABLE_PREVIEWS: YES

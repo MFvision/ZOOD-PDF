@@ -1,0 +1,86 @@
+/* The card that says, once, that Ask ZOOD is ready and names its keys. */
+.ask-hint {
+  position: fixed;
+  inset-block-end: var(--space-8);
+  inset-inline-end: var(--space-8);
+  z-index: 80;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3) var(--space-4);
+  align-items: center;
+  inline-size: min(360px, calc(100vw - 32px));
+  padding: var(--space-6);
+  color: var(--label);
+  background: var(--background);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--separator));
+  border-radius: var(--radius-16);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 18%);
+}
+
+.ask-hint-icon {
+  display: grid;
+  place-items: center;
+  inline-size: 28px;
+  block-size: 28px;
+  color: #fff;
+  background: linear-gradient(135deg, #d4467e, var(--accent));
+  border-radius: 50%;
+}
+
+.ask-hint-title {
+  margin: 0;
+  font-size: var(--text-title3);
+  font-weight: 700;
+}
+
+.ask-hint-list {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: var(--space-3);
+  padding-inline-start: var(--space-7);
+  margin: 0;
+  font-size: var(--text-body);
+  line-height: 1.5;
+  color: var(--secondary-label);
+}
+
+.ask-hint-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ask-hint {
+    animation: ask-hint-in 420ms var(--spring) backwards;
+  }
+
+  .ask-hint-icon svg {
+    animation: ask-hint-twinkle 2.4s ease-in-out 600ms infinite;
+  }
+}
+
+html[data-reduce-motion="on"] .ask-hint,
+html[data-reduce-motion="on"] .ask-hint-icon svg {
+  animation: none !important;
+}
+
+@keyframes ask-hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+}
+
+@keyframes ask-hint-twinkle {
+  0%,
+  80%,
+  100% {
+    transform: none;
+  }
+
+  88% {
+    transform: rotate(-14deg) scale(1.15);
+  }
+}

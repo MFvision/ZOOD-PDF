@@ -13,9 +13,12 @@ use tauri::{AppHandle, DragDropEvent, Emitter, Manager, Runtime, State, WindowEv
 use tauri_plugin_fs::FsExt;
 
 pub mod ai;
+pub mod arrival;
+pub mod ask;
 pub mod batch;
 pub mod cloud;
 pub mod core_bridge;
+pub mod decide;
 pub mod doc_window;
 pub mod fonts;
 pub mod library;
@@ -343,12 +346,15 @@ pub fn run() {
         // The on-device model: its downloads and its engine thread; and the
         // person's details for filling forms, in the system's credential store.
         .manage(ai::AiState::default())
+        .manage(decide::DecideState::default())
+        .manage(ask::tidy::TidyState::default())
         .manage(neural::NeuralState::default())
         .manage(profile::ProfileState::default())
         .manage(fonts::FontState::default())
         .manage(recent::RecentState::default())
         .manage(updates::UpdateState::default())
         .manage(remote::RemoteState::default())
+        .manage(ask::AskState::default())
         .on_menu_event(|app, event| match event.id().as_ref() {
             ring::TRAY_OPEN => {
                 quick::show_editor(app);
@@ -383,6 +389,7 @@ pub fn run() {
             // only the tray icon and the ring (src/ring.rs).
             let hidden = args.iter().skip(1).any(|a| a == ring::BACKGROUND_FLAG);
             ring::start(app.handle(), hidden);
+            ask::start(app.handle());
             #[cfg(target_os = "macos")]
             if hidden {
                 app.set_activation_policy(tauri::ActivationPolicy::Accessory);
@@ -468,6 +475,8 @@ pub fn run() {
             ai::ai_generate,
             ai::ai_count_tokens,
             ai::ai_cancel,
+            decide::ai_decide,
+            decide::ai_decide_warm,
             profile::profile_get,
             profile::profile_set,
             profile::profile_delete,
@@ -483,6 +492,7 @@ pub fn run() {
             shell_menu::shell_menu_set,
             shell_menu::shell_menu_state,
             ring::ring_pick,
+            ring::ring_phone,
             ring::ring_take,
             ring::ring_done,
             ring::ring_configure,
@@ -492,6 +502,40 @@ pub fn run() {
             remote::remote_status,
             remote::remote_pc_control,
             remote::remote_forget,
+            remote::remote_clipboard,
+            ask::ask_configure,
+            ask::access::ask_access,
+            ask::access::ask_allow,
+            ask::ask_pause,
+            ask::ask_settings,
+            ask::ask_resize,
+            ask::ask_hide,
+            ask::ask_stop,
+            ask::ask_notch,
+            ask::ask_type_instead,
+            ask::ask_point,
+            ask::ask_point_last,
+            ask::ask_guide_end,
+            ask::ask_island_aside,
+            ask::guide::ask_look_again,
+            ask::guide::ask_watch_clicks,
+            ask::guide::ask_click,
+            ask::ask_transcribe,
+            ask::ask_think,
+            ask::ask_moment,
+            ask::ask_run_tool,
+            ask::tidy::ask_tidy_plan,
+            ask::tidy::ask_tidy_apply,
+            ask::tidy::ask_tidy_last,
+            ask::tidy::ask_tidy_undo,
+            ask::ask_open,
+            ask::ask_type,
+            ask::ask_paste,
+            ask::ask_copy,
+            ask::ask_undo,
+            ask::ask_window_png,
+            remote::remote_give,
+            arrival::arrival_last,
             remote::remote_send,
             remote::remote_fullscreen,
             share::share_prepare,

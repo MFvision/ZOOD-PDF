@@ -1015,6 +1015,7 @@ export const FOOTER = {
     { href: 'privacy/', label: { ar: 'الخصوصية', en: 'Privacy' } },
     { href: 'terms/', label: { ar: 'الشروط', en: 'Terms' } },
     { href: 'support/', label: { ar: 'الدعم', en: 'Support' } },
+    { href: 'help/', label: { ar: 'الأدلة', en: 'Guides' } },
   ],
   source: { ar: 'الشيفرة المصدرية (Apache-2.0)', en: 'Source code (Apache-2.0)' },
   copyright: { ar: '© ٢٠٢٦ زود', en: '© 2026 ZOOD' },

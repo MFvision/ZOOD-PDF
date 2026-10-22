@@ -74,6 +74,10 @@ export const PAGES = {
             en: "The open font library: the app asks you once before fetching a missing font from Fontsource, sends only the font's name, and fetches nothing if you say no.",
           },
           {
+            ar: 'الدعم والأفكار: حين تضغط «إرسال» في «الإبلاغ عن مشكلة»، يذهب إلى خدمة الدعم الخاصة بنا ما تراه أمامك قبل الإرسال فقط: ما كتبته، ونسخة التطبيق والنظام، وسجل التطبيق والصورة إن اخترت إرفاقهما. يُحفظ بشكل خاص ولا يراه غير فريق ZOOD. الأفكار والأصوات تظهر للجميع دون أسماء. يُعرَّف التثبيت برقم عشوائي لا يدل على أي شخص.',
+            en: 'Support and ideas: when you press Send in Report a problem, our own support service receives only what you saw before sending: what you wrote, the app and system version, and the app log and picture if you chose to attach them. It is kept private, seen only by the ZOOD team. Ideas and votes are public, without names. Your install is known by a random number that names no one.',
+          },
+          {
             ar: 'Google Drive وOneDrive: حين يتوفران، يُفتح الملف ويُحفظ في حسابك أنت مباشرة، ولا يمر بنا.',
             en: 'Google Drive and OneDrive: when available, files open from and save to your own account directly, never through us.',
           },
@@ -88,8 +92,8 @@ export const PAGES = {
             en: 'No tracking, no ads and no usage data.',
           },
           {
-            ar: 'لا نبيع بيانات ولا نشاركها، فهي لا تصل إلينا أصلًا.',
-            en: 'We do not sell or share data. It never reaches us.',
+            ar: 'لا نبيع بيانات ولا نشاركها. لا يصل إلينا إلا ما ترسله أنت بنفسك، كبلاغ أو فكرة.',
+            en: 'We do not sell or share data. Only what you send us yourself, a report or an idea, ever reaches us.',
           },
         ],
       },
@@ -181,23 +185,23 @@ export const PAGES = {
       { h: { ar: 'المساعدة داخل التطبيق', en: 'Help inside the app' } },
       {
         p: {
-          ar: 'في تطبيق ويندوز وماك افتح «المساعدة والدعم» من قائمة المساعدة أو من الإعدادات، أو قل «مساعدة» لـ«اسأل ZOOD». وفيه:',
-          en: 'In the Windows and Mac app, open Help & Support from the Help menu or from Settings, or say “help” to Ask ZOOD. It has:',
+          ar: 'في تطبيق ويندوز وماك افتح مساعدة › المساعدة والدعم (أو F1)، أو قل «مساعدة» لـ«اسأل ZOOD». وفيه:',
+          en: 'In the Windows and Mac app, open Help › Help & Support (or F1), or say “help” to Ask ZOOD. It has:',
         },
       },
       {
         list: [
           {
-            ar: 'اسأل: يجيبك الذكاء من مقالات المساعدة على جهازك، ثم «أرني» أو «نفّذها عني».',
-            en: 'Ask: the AI answers from the help articles, on your device, then offers Show me or Do it for me.',
+            ar: 'اسأل بكلماتك: يجيبك من الأدلة على جهازك، ثم «أرني» أو «نفّذها عني».',
+            en: 'Ask in your own words: it answers from the guides on your device, then offers Show me or Do it for me.',
           },
           {
-            ar: 'تعلّم: مقالات بالعربية والإنجليزية، كل واحدة منها دليل PDF، مع مقاطع فيديو.',
-            en: 'Learn: articles in Arabic and English, each one also a PDF guide, with videos.',
+            ar: 'أدلة خطوة بخطوة بالعربية والإنجليزية، كل واحد منها ملف PDF أيضًا. وهي هنا كذلك: pdf.zood.sa/help.',
+            en: 'Step-by-step guides in Arabic and English, each one also a PDF. They are here too: pdf.zood.sa/en/help.',
           },
           {
-            ar: 'أبلغ عن مشكلة: ترى ما سيُرفق (السجل، ولقطة الشاشة إن أردت) وتوافق قبل أن يُرسل إلينا بالبريد.',
-            en: 'Report a problem: you see what gets attached (the log, and a screenshot if you want) and agree before it is emailed to us.',
+            ar: 'أبلغ عن مشكلة دون حساب: ترى ما سيُرفق (السجل، ولقطة الشاشة إن أردت) وتوافق قبل أن يُرسل.',
+            en: 'Report a problem with no account: you see what gets attached (the log, and a screenshot if you want) and agree before it is sent.',
           },
         ],
       },

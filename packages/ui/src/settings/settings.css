@@ -848,3 +848,10 @@ html[data-reduce-motion="on"] .prefs-kbd.is-listening {
     min-block-size: 44px;
   }
 }
+
+/* Settings › AI › Ask ZOOD: a heading over each of its two downloads. */
+.prefs-subhead {
+  margin: var(--space-5) var(--space-5) var(--space-2);
+  font-size: var(--text-headline);
+  font-weight: 600;
+}

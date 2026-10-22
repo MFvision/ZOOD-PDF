@@ -174,6 +174,17 @@ FULL = 'M0 0 H1024 V1024 H0 Z'
 icon('square.svg', NAVY, COPPER, FULL, 1024)
 icon('square-dark.svg', NAVY_DARK, COPPER_DARK, FULL, 1024)
 icon('square-tinted.svg', ('#000000',) * 3, GREY, FULL, 1024)
+# The icons a person can pick in Settings › App icon (iOS alternate icons,
+# `AppIconChoice` in apps/ios/PDFEditor/Settings/StartSettings.swift): the
+# same mark and label in ZOOD's other colours.
+PAPER = ('#FBF8F5', '#F5F1ED', '#E9E2DA')
+SKY = ('#BCD4F2', '#A7C6ED', '#8FB3E2')
+INK = ('#11294B', '#041E42', '#021631')
+BLACK = ('#1A1A1A', '#0A0A0A', '#000000')
+icon('alt-paper.svg', PAPER, INK, FULL, 1024)
+icon('alt-sky.svg', SKY, INK, FULL, 1024)
+icon('alt-black.svg', BLACK, GREY, FULL, 1024)
+icon('alt-bronze.svg', COPPER, PAPER, FULL, 1024)
 # The desktop tile is 824 across (100 of margin all round, as macOS icons
 # keep); the mark is the same share of the tile as of the iOS square.
 icon('tile.svg', NAVY, COPPER, squircle(512, 512, 412), 824)

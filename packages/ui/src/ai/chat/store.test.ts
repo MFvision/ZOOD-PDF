@@ -3,7 +3,8 @@ import type { Prompt } from '../providers';
 import { blocksOf, spokenText } from './AnswerText';
 import { memoryKept } from './kept';
 import type { Runner } from './runner';
-import { analyzeNow, approve, ask, conversationOf, discard, newChat, resetChats, setDraft, stop } from './store';
+import { analyzeNow, approve, ask, askGeneral, conversationOf, discard, newChat, noteDone, resetChats, setDraft, stop } from './store';
+import { GENERAL_CHAT } from './across';
 import type { AssistantTurn, Env } from './store';
 
 /**
@@ -234,5 +235,44 @@ describe('an answer on the page', () => {
 
   it('is read aloud without its citations', () => {
     expect(spokenText('The fee is 40 riyals [p. 1].\n- Due in May [pp. 2–3]\n- الرسوم مذكورة [ص ٢]')).toBe('The fee is 40 riyals.\nDue in May.\nالرسوم مذكورة');
+  });
+});
+
+describe('the general chat', () => {
+  it('answers about anything with no document read, knows who and when, and carries the conversation', async () => {
+    const device = runner('device', (_, index) => (index === 0 ? 'Riyadh.' : 'About 7.6 million people.'));
+    // No document is open: reading one would fail.
+    const none: Env['services'] = { ...services(), currentFileBytes: async () => null };
+    const now = new Date(2026, 9, 21, 21, 30);
+    await askGeneral(GENERAL_CHAT, 'What is the capital of Saudi Arabia?', env(device, none), { name: 'Mohammed', now });
+    await askGeneral(GENERAL_CHAT, 'How many people live there?', env(device, none), { name: 'Mohammed', now });
+    expect(conversationOf(GENERAL_CHAT).turns.map((turn) => turn.role)).toEqual(['user', 'assistant', 'user', 'assistant']);
+    expect(assistant(GENERAL_CHAT, 1)).toMatchObject({ text: 'About 7.6 million people.', status: 'done', scope: 'chat', basis: null });
+    const first = device.asked[0]!;
+    expect(first.system).toContain('You are ZOOD');
+    expect(first.user).toContain("The person's name is Mohammed.");
+    expect(first.user).toMatch(/It is now Wednesday,? 21 October 2026, 9:30\s?pm, local time\./);
+    expect(first.user).not.toContain('<page');
+    expect(device.asked[1]!.user).toContain('<conversation>\nPerson: What is the capital of Saudi Arabia?\nAssistant: Riyadh.\n</conversation>');
+    expect(device.asked[1]!.user.endsWith('Request: How many people live there?')).toBe(true);
+  });
+
+  it('off this device, the first message waits for Send', async () => {
+    const claude = runner('claude', () => 'Hello.');
+    const done = askGeneral(GENERAL_CHAT, 'Hi', env(claude));
+    await waitFor(() => conversationOf(GENERAL_CHAT).review !== null);
+    expect(claude.asked).toHaveLength(0);
+    expect(conversationOf(GENERAL_CHAT).review).toMatchObject({ provider: 'claude', pageCount: 0 });
+    approve(GENERAL_CHAT);
+    await done;
+    expect(assistant(GENERAL_CHAT, 0).text).toBe('Hello.');
+  });
+
+  it('a command done in the app is said in the chat, with no model asked', () => {
+    noteDone(GENERAL_CHAT, 'open compress', { key: 'ai.do.tool', params: { name: 'Compress' } });
+    expect(conversationOf(GENERAL_CHAT).turns).toMatchObject([
+      { role: 'user', text: 'open compress' },
+      { role: 'event', note: { key: 'ai.do.tool', params: { name: 'Compress' } } },
+    ]);
   });
 });

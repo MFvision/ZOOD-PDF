@@ -148,6 +148,8 @@ describe('read aloud', () => {
   it('says when there is nothing to read, and when the browser has no speech', async () => {
     await start(source([[line('   ', 10)]]), 'page');
     expect(readAloudState().notice).toBe('noText');
+    await start({ ...source([[line('A.', 10)]]), selection: async () => null }, 'selection');
+    expect(readAloudState().notice).toBe('noSelection');
     vi.stubGlobal('speechSynthesis', undefined);
     resetSpeechEngine();
     await start(source([[line('A.', 10)]]), 'page');

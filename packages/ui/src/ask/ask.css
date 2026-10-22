@@ -1,0 +1,716 @@
+/* Ask ZOOD (Island.tsx, Point.tsx): two transparent windows over the screen. */
+
+html.ask-page,
+html.ask-page body,
+html.ask-point-page,
+html.ask-point-page body {
+  margin: 0;
+  background: transparent !important;
+  overflow: hidden;
+}
+
+html.ask-point-page,
+html.ask-point-page body {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ------------------------------------------------------------- island */
+
+.ask-island {
+  --ask-bronze: #ae8b66;
+  --ask-ink: #f6f1ea;
+  --ask-muted: rgb(246 241 234 / 66%);
+  --ask-ear: 14px;
+
+  position: relative;
+  box-sizing: border-box;
+  margin: 0 calc(var(--ask-ear) + 2px) 18px;
+  padding: 12px 16px 14px;
+  border-radius: 0 0 26px 26px;
+  color: var(--ask-ink);
+
+  /* The notch's own black, so on a Mac the island reads as the notch grown. */
+  background:
+    radial-gradient(120% 140% at 50% 0%, rgb(174 139 102 / 22%), transparent 62%),
+    #000;
+  box-shadow:
+    inset 0 -1px 0 rgb(232 184 120 / 28%),
+    0 14px 34px rgb(0 0 0 / 38%);
+  font-family: var(--font-ui, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 1.45;
+  transform-origin: top center;
+}
+
+/* Below the camera on a Mac with a notch. */
+.ask-island.has-notch {
+  padding-block-start: calc(var(--notch-h) + 6px);
+}
+
+/* Moved to the bottom of the screen, out of the guide's way: a card of its own. */
+.ask-island.is-aside {
+  margin-block-start: 6px;
+  border-radius: 22px;
+}
+
+.ask-island.is-aside::before,
+.ask-island.is-aside::after {
+  display: none;
+}
+
+/* The two small inward curves where the island meets the top edge. */
+.ask-island::before,
+.ask-island::after {
+  position: absolute;
+  inset-block-start: 0;
+  inline-size: var(--ask-ear);
+  block-size: var(--ask-ear);
+  content: '';
+}
+
+.ask-island::before {
+  inset-inline-start: calc(var(--ask-ear) * -1);
+  background: radial-gradient(circle at 0 100%, transparent calc(var(--ask-ear) - 0.5px), #000 var(--ask-ear));
+}
+
+.ask-island::after {
+  inset-inline-end: calc(var(--ask-ear) * -1);
+  background: radial-gradient(circle at 100% 100%, transparent calc(var(--ask-ear) - 0.5px), #000 var(--ask-ear));
+}
+
+:root[dir='rtl'] .ask-island::before {
+  background: radial-gradient(circle at 100% 100%, transparent calc(var(--ask-ear) - 0.5px), #000 var(--ask-ear));
+}
+
+:root[dir='rtl'] .ask-island::after {
+  background: radial-gradient(circle at 0 100%, transparent calc(var(--ask-ear) - 0.5px), #000 var(--ask-ear));
+}
+
+.ask-island[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* It grows out of the notch, or the notch it draws, and goes back in. */
+  html:not([data-reduce-motion='on']) .ask-island {
+    animation: ask-grow 320ms cubic-bezier(0.2, 0.9, 0.2, 1);
+  }
+
+  html:not([data-reduce-motion='on']) .ask-island > * {
+    animation: ask-content-in 240ms 110ms both;
+  }
+
+  html:not([data-reduce-motion='on']) .ask-island.is-leaving {
+    animation: ask-shrink 200ms cubic-bezier(0.4, 0, 1, 1) forwards;
+  }
+
+  html:not([data-reduce-motion='on']) .ask-island.is-leaving > * {
+    animation: ask-content-out 120ms both;
+  }
+}
+
+@keyframes ask-grow {
+  from {
+    clip-path: inset(
+      0 calc(50% - var(--notch-w, 150px) / 2) calc(100% - var(--notch-h, 10px)) round 0 0 12px 12px
+    );
+  }
+
+  to {
+    clip-path: inset(0 calc(var(--ask-ear) * -1) 0 round 0 0 26px 26px);
+  }
+}
+
+@keyframes ask-shrink {
+  from {
+    clip-path: inset(0 calc(var(--ask-ear) * -1) 0 round 0 0 26px 26px);
+  }
+
+  to {
+    clip-path: inset(
+      0 calc(50% - var(--notch-w, 150px) / 2) calc(100% - var(--notch-h, 10px)) round 0 0 12px 12px
+    );
+  }
+}
+
+@keyframes ask-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes ask-content-out {
+  to {
+    opacity: 0;
+  }
+}
+
+.ask-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ask-title {
+  flex: 1;
+  font-weight: 600;
+}
+
+/* The light that breathes with the voice while the keys are held. */
+.ask-orb {
+  --level: 0;
+
+  display: grid;
+  place-items: center;
+  inline-size: 30px;
+  block-size: 30px;
+  border-radius: 50%;
+  color: #1a1714;
+  background: radial-gradient(circle at 35% 30%, #f4e3cc, var(--ask-bronze));
+  box-shadow: 0 0 calc(4px + var(--level) * 22px) calc(var(--level) * 6px) rgb(214 178 135 / 70%);
+  transition: box-shadow 80ms linear;
+}
+
+.ask-orb svg {
+  inline-size: 16px;
+  block-size: 16px;
+}
+
+.ask-listening .ask-orb {
+  animation: ask-breathe 1.6s ease-in-out infinite;
+}
+
+@keyframes ask-breathe {
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+.ask-close {
+  display: grid;
+  place-items: center;
+  inline-size: 26px;
+  block-size: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--ask-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.ask-close:hover {
+  color: var(--ask-ink);
+  background: rgb(255 255 255 / 10%);
+}
+
+.ask-close svg {
+  inline-size: 15px;
+  block-size: 15px;
+}
+
+.ask-words {
+  margin: 8px 0 0;
+  color: var(--ask-muted);
+  font-size: 13px;
+}
+
+.ask-say {
+  margin: 6px 0 0;
+  font-size: 15px;
+}
+
+.ask-detail {
+  margin: 6px 0 0;
+  color: var(--ask-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.ask-inline-icon {
+  inline-size: 15px;
+  block-size: 15px;
+  margin-inline-end: 6px;
+  vertical-align: -2px;
+}
+
+.ask-plan {
+  margin-block-start: 10px;
+  padding-block-start: 10px;
+  border-block-start: 1px solid rgb(255 255 255 / 10%);
+}
+
+.ask-plan > p {
+  margin: 0;
+}
+
+.ask-fields {
+  margin: 8px 0 0;
+  padding-inline-start: 20px;
+  font-size: 13px;
+}
+
+.ask-fields li span {
+  color: var(--ask-muted);
+  margin-inline-end: 8px;
+}
+
+.ask-actions {
+  display: flex;
+  gap: 8px;
+  margin-block-start: 10px;
+}
+
+.ask-do,
+.ask-cancel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ask-do {
+  color: #1a1714;
+  background: linear-gradient(180deg, #e6cfb1, var(--ask-bronze));
+}
+
+.ask-cancel {
+  color: var(--ask-ink);
+  background: rgb(255 255 255 / 10%);
+}
+
+.ask-do svg {
+  inline-size: 15px;
+  block-size: 15px;
+}
+
+.ask-hits {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-hits button {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 2px 8px;
+  inline-size: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 10px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.ask-hits button:hover {
+  background: rgb(255 255 255 / 8%);
+}
+
+.ask-hits svg {
+  grid-row: span 2;
+  inline-size: 18px;
+  block-size: 18px;
+  color: var(--ask-bronze);
+}
+
+.ask-hit-name {
+  font-weight: 600;
+}
+
+.ask-hit-line {
+  overflow: hidden;
+  color: var(--ask-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* A request typed after one tap of the tap key. */
+.ask-type {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-block-start: 10px;
+}
+
+.ask-type textarea {
+  flex: 1;
+  box-sizing: border-box;
+  min-block-size: 44px;
+  max-block-size: 160px;
+  padding: 9px 12px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 14px;
+  color: var(--ask-ink);
+  background: rgb(255 255 255 / 6%);
+  font: inherit;
+  resize: none;
+  outline: none;
+}
+
+.ask-type textarea:focus {
+  border-color: var(--ask-bronze);
+  box-shadow: 0 0 0 3px rgb(174 139 102 / 30%);
+}
+
+.ask-type textarea::placeholder {
+  color: var(--ask-muted);
+}
+
+.ask-send {
+  display: grid;
+  place-items: center;
+  inline-size: 38px;
+  block-size: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #1a1714;
+  background: linear-gradient(180deg, #e6cfb1, var(--ask-bronze));
+  cursor: pointer;
+}
+
+.ask-send:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ask-send svg,
+.ask-cancel svg {
+  inline-size: 15px;
+  block-size: 15px;
+}
+
+/* A longer answer (a summary, a translation) to read, copy or put at the cursor. */
+.ask-text {
+  max-block-size: 260px;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 14px;
+}
+
+/* A double tap away from a conversation: what Ask ZOOD can do here. */
+.ask-idea-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-idea-list button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid rgb(174 139 102 / 45%);
+  border-radius: 999px;
+  color: var(--ask-ink);
+  background: rgb(174 139 102 / 14%);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ask-idea-list button:hover {
+  background: rgb(174 139 102 / 28%);
+}
+
+.ask-idea-list svg {
+  inline-size: 13px;
+  block-size: 13px;
+  color: #e6cfb1;
+}
+
+/* Drafting: the light gathers while the reply is written. */
+.ask-drafting .ask-orb,
+.ask-reading .ask-orb {
+  animation: ask-gather 1.2s ease-in-out infinite;
+}
+
+@keyframes ask-gather {
+  50% {
+    box-shadow: 0 0 22px 6px rgb(214 178 135 / 70%);
+  }
+}
+
+/* ------------------------------------------------------------ pointer */
+
+.ask-point {
+  position: fixed;
+  inline-size: 0;
+  block-size: 0;
+
+  /* Screen places, whatever the language. */
+  direction: ltr;
+  font-family: var(--font-ui, system-ui, sans-serif);
+}
+
+.ask-point-ring,
+.ask-point-dot {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  box-sizing: border-box;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.ask-point-ring {
+  inline-size: 64px;
+  block-size: 64px;
+  border: 3px solid #d6b287;
+  box-shadow: 0 0 18px rgb(214 178 135 / 70%);
+  animation: ask-pulse 1.4s ease-out infinite;
+}
+
+.ask-point-ring-late {
+  animation-delay: 0.7s;
+}
+
+.ask-point-dot {
+  inline-size: 14px;
+  block-size: 14px;
+  background: #ae8b66;
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 90%);
+}
+
+@keyframes ask-pulse {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.6);
+  }
+}
+
+.ask-point-label {
+  position: absolute;
+  inset-inline-start: 0;
+  max-inline-size: 320px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  color: #f6f1ea;
+  background: rgb(24 22 20 / 92%);
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transform: translateX(-50%);
+}
+
+/* ZOOD's pointer (Show me, Explain this, Do it for me): it flies to each step. */
+.ask-pointer {
+  position: fixed;
+  inline-size: 0;
+  block-size: 0;
+  direction: ltr;
+  font-family: var(--font-ui, system-ui, sans-serif);
+  transition:
+    left 0.75s cubic-bezier(0.22, 0.9, 0.24, 1),
+    top 0.75s cubic-bezier(0.22, 0.9, 0.24, 1);
+}
+
+.ask-pointer.is-still {
+  transition: none;
+}
+
+.ask-guide-arrow {
+  position: absolute;
+  inset-block-start: -2px;
+  inset-inline-start: -2px;
+  filter: drop-shadow(0 0 10px rgb(214 178 135 / 85%)) drop-shadow(0 2px 4px rgb(0 0 0 / 40%));
+}
+
+.ask-guide-arrow path {
+  fill: #ae8b66;
+  stroke: #fff;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.ask-guide-ripple {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: 56px;
+  block-size: 56px;
+  box-sizing: border-box;
+  border: 3px solid #d6b287;
+  border-radius: 50%;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  animation: ask-land 1.2s ease-out 0.7s 2;
+}
+
+@keyframes ask-land {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.3);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.5);
+  }
+}
+
+.ask-guide-label {
+  position: absolute;
+  inline-size: max-content;
+  max-inline-size: 300px;
+  padding: 8px 12px;
+  border: 1px solid rgb(214 178 135 / 60%);
+  border-radius: 12px;
+  color: #f6f1ea;
+  background: rgb(24 22 20 / 94%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+  font-size: 14px;
+  line-height: 1.4;
+  animation: ask-label-in 0.25s ease-out 0.6s both;
+}
+
+.ask-guide-right {
+  inset-inline-start: 26px;
+}
+
+.ask-guide-left {
+  inset-inline-end: 10px;
+}
+
+.ask-guide-label.is-below {
+  inset-block-start: 30px;
+}
+
+.ask-guide-label.is-above {
+  inset-block-end: 12px;
+}
+
+@keyframes ask-label-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.ask-pointer.is-still .ask-guide-ripple,
+.ask-pointer.is-still .ask-guide-label {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ask-pointer {
+    transition: none;
+  }
+
+  .ask-guide-ripple,
+  .ask-guide-label {
+    animation: none;
+  }
+}
+
+.ask-point-below {
+  inset-block-start: 44px;
+}
+
+.ask-point-above {
+  inset-block-end: 44px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ask-island,
+  .ask-listening .ask-orb,
+  .ask-drafting .ask-orb,
+  .ask-reading .ask-orb,
+  .ask-point-ring {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------- listening */
+
+/* The voice as a line of bars that runs right to left, newest on the right. */
+.ask-wave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  block-size: 34px;
+  margin: 10px 2px 0;
+}
+
+.ask-wave i {
+  --h: 0;
+
+  flex: none;
+  inline-size: 4px;
+  block-size: calc(4px + var(--h) * 30px);
+  border-radius: 3px;
+  background: linear-gradient(180deg, #f4e3cc, var(--ask-bronze));
+  opacity: calc(0.35 + var(--h) * 0.65);
+  transition:
+    block-size 90ms linear,
+    opacity 90ms linear;
+}
+
+.ask-wave i:last-child {
+  box-shadow: 0 0 10px rgb(232 184 120 / 60%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ask-wave i {
+    transition: none;
+  }
+}
+
+/* A tidy's preview: a few of its moves, "from → to", each on one line. */
+.ask-tidy-moves {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--ask-muted);
+}
+
+.ask-tidy-moves li {
+  display: flex;
+  gap: 6px;
+  min-inline-size: 0;
+  white-space: nowrap;
+}
+
+.ask-tidy-moves bdi {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-inline-size: 0;
+}
+
+.ask-tidy-more {
+  font-style: italic;
+}
+
+.ask-actions button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+[dir='rtl'] .ask-flip {
+  transform: scaleX(-1);
+}

@@ -20,7 +20,9 @@ final class PageThumbnailCache {
         if let image = images[key] { return image }
         guard !inFlight.contains(key), let pdfPage = model.pdf?.page(at: page) else { return nil }
         inFlight.insert(key)
-        let scale = UIScreen.main.scale
+        // The screen the app is on (iPhone Duo has two), not UIScreen.main.
+        let traitScale = UITraitCollection.current.displayScale
+        let scale = traitScale > 0 ? traitScale : 3
         let bounds = pdfPage.bounds(for: .cropBox)
         let rotated = pdfPage.rotation % 180 != 0
         let aspect = rotated ? bounds.width / max(bounds.height, 1) : bounds.height / max(bounds.width, 1)

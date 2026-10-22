@@ -1,0 +1,18 @@
+/* Settings › AI › Ask ZOOD: about you, and messages you wrote. */
+.prefs-textarea {
+  box-sizing: border-box;
+  inline-size: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-6);
+  color: var(--label);
+  background: var(--control-background);
+  font: inherit;
+  font-size: var(--text-body);
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.prefs-subhead + .tool-panel-note {
+  margin-inline: var(--space-5);
+}

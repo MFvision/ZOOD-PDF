@@ -127,6 +127,12 @@ fn scale() -> f64 {
     f64::from(SCALE.load(Ordering::Relaxed)) / 1000.0
 }
 
+/// The files selected in the File Explorer window in front, or in Finder:
+/// what the ring's shortcut opens on, and what Ask ZOOD runs a tool on.
+pub fn selected_files() -> Vec<PathBuf> {
+    shortcut::parse(&shortcut::selected(shortcut::front_window()))
+}
+
 pub fn enabled() -> bool {
     ENABLED.load(Ordering::Relaxed)
 }
@@ -427,6 +433,15 @@ pub fn ring_done<R: Runtime>(app: AppHandle<R>, done: usize, failed: usize) {
     hide(&app);
 }
 
+/// The ring's own place that sends the files to the connected phone.
+const PHONE: &str = "phone";
+
+/// A phone is connected to the remote now: the ring then has "To phone".
+#[tauri::command]
+pub fn ring_phone<R: Runtime>(app: AppHandle<R>) -> bool {
+    crate::remote::has_phone(&app)
+}
+
 /// The tool the files were let go on (`none`: the middle, or off the ring).
 /// `only`: of those files, these (the ones a tool run on the ring could not
 /// open without their password).
@@ -447,6 +462,13 @@ pub fn ring_pick<R: Runtime>(app: AppHandle<R>, tool: String, only: Option<Vec<S
     hide(&app);
     log(&format!("picked {tool} for {} files", files.len()));
     if tool == "none" || files.is_empty() {
+        return;
+    }
+    // To the phone: the files fly off the screen from where they were let go.
+    if tool == PHONE {
+        let from = crate::ask::eye::pointer();
+        let sent = crate::remote::give_paths(&app, &files, Some(from));
+        log(&format!("{sent} of {} files to the phone", files.len()));
         return;
     }
     let tool = match tool.as_str() {
@@ -702,7 +724,7 @@ mod windows {
 }
 
 #[cfg(target_os = "macos")]
-mod macos {
+pub(crate) mod macos {
     use std::time::Duration;
 
     use objc2::rc::{autoreleasepool, Retained};
@@ -718,7 +740,7 @@ mod macos {
     const TICK: Duration = Duration::from_millis(30);
 
     /// The pointer, in points from the top-left of the main screen.
-    pub(super) fn pointer() -> (f64, f64) {
+    pub(crate) fn pointer() -> (f64, f64) {
         // SAFETY: NSEvent's and NSScreen's documented class messages.
         unsafe {
             let at: NSPoint = msg_send![class!(NSEvent), mouseLocation];
@@ -991,20 +1013,20 @@ mod shortcut {
     }
 
     #[cfg(target_os = "windows")]
-    fn front_window() -> isize {
+    pub(super) fn front_window() -> isize {
         // SAFETY: no arguments; returns a handle or null.
         unsafe { windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow() as isize }
     }
 
     #[cfg(not(target_os = "windows"))]
-    fn front_window() -> isize {
+    pub(super) fn front_window() -> isize {
         0
     }
 
     /// The selection of the File Explorer window in front, through the
     /// Shell's own scripting interface.
     #[cfg(target_os = "windows")]
-    fn selected(front: isize) -> String {
+    pub(super) fn selected(front: isize) -> String {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         let script = format!(
@@ -1022,7 +1044,7 @@ mod shortcut {
 
     /// Finder's selection (macOS asks once whether the app may read it).
     #[cfg(target_os = "macos")]
-    fn selected(_front: isize) -> String {
+    pub(super) fn selected(_front: isize) -> String {
         std::process::Command::new("osascript")
             .args([
                 "-e",
@@ -1046,7 +1068,7 @@ mod shortcut {
     }
 
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-    fn selected(_front: isize) -> String {
+    pub(super) fn selected(_front: isize) -> String {
         String::new()
     }
 

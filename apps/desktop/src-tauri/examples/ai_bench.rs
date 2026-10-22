@@ -59,6 +59,7 @@ fn main() {
         grammar: None,
         max_tokens: 200,
         context_tokens: None,
+        media: Vec::new(),
     };
     let done = engine
         .generate(&request, &AtomicBool::new(false), |piece| {

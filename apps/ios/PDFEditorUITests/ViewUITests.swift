@@ -59,12 +59,12 @@ final class ViewUITests: XCTestCase {
         ui.waitForPage(containing: "الفصل الثالث")
 
         // By thumbnail.
-        ui.app.buttons["document.thumbnails.toggle"].tap()
+        ui.viewControl("document.thumbnails.toggle", menuLabel: "Thumbnails")
         let first = ui.app.buttons["thumbnail.0"]
         XCTAssertTrue(first.waitForExistence(timeout: 10))
         first.tap()
         ui.waitForStatus(containing: "Page 1 of 3")
-        ui.app.buttons["document.thumbnails.toggle"].tap()
+        ui.viewControl("document.thumbnails.toggle", menuLabel: "Thumbnails")
 
         // By the outline the core read.
         ui.more("document.outline", label: "Outline")

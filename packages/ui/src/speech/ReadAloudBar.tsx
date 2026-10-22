@@ -21,6 +21,7 @@ const NOTICE: Record<NonNullable<ReturnType<typeof useReadAloud>['notice']>, TKe
   unsupported: 'readAloud.unsupported',
   noVoices: 'readAloud.noVoices',
   noText: 'readAloud.noText',
+  noSelection: 'readAloud.noSelection',
   done: 'readAloud.done',
 };
 

@@ -3,7 +3,9 @@ import type { FormEvent } from 'react';
 import { isTauriHost } from '../core/host-tauri';
 import { Dialog } from '../components/Dialog';
 import { APP_ICON } from '../components/appIcon';
-import { useT } from '../i18n/useT';
+import { useI18n, useT } from '../i18n/useT';
+import { askAvailable, onMac, readAskPreferences, tapKeyLabel, voiceAvailable } from '../ask/settings';
+import { openTourAt } from '../tour/openAt';
 import { UpdateCheck } from '../updates/UpdateBanner';
 import { canUpdate } from '../updates/updates';
 import type { TKey } from '../i18n/messages';
@@ -174,7 +176,42 @@ export function ShortcutsDialog() {
       </table>
       {/* Only a browser keeps that key for itself; the desktop app does not. */}
       {!isTauriHost() && <p className="home-note">{t('shortcuts.browserNote')}</p>}
+      {askAvailable() && <AskShortcutRows onPractise={() => openTourAt('ask', () => dispatch({ type: 'DIALOG', dialog: 'tour' }))} />}
     </Dialog>
+  );
+}
+
+/** Ask ZOOD's keys, which work in every app, as the person set them. */
+function AskShortcutRows({ onPractise }: { onPractise: () => void }) {
+  const { t, lang } = useI18n();
+  const prefs = readAskPreferences();
+  const tap = tapKeyLabel(prefs.tapKey, onMac(), lang === 'ar' ? 'ar' : 'en');
+  const rows = [
+    ...(prefs.taps && prefs.oneTap === 'speak' && voiceAvailable() ? [{ keys: tap, label: t('shortcuts.askSpeak') }] : []),
+    ...(prefs.taps ? [{ keys: `${tap} ×2`, label: t('shortcuts.askTwice') }] : []),
+    ...(prefs.taps && (prefs.oneTap === 'type' || (prefs.oneTap === 'speak' && !voiceAvailable())) ? [{ keys: tap, label: t('shortcuts.askOnce') }] : []),
+    ...(voiceAvailable() ? [{ keys: formatShortcut(prefs.shortcut), label: t('shortcuts.askHold') }] : []),
+  ];
+  if (rows.length === 0) return null;
+  return (
+    <>
+      <h3 className="shortcuts-subhead">{t('shortcuts.askTitle')}</h3>
+      <table className="shortcuts-table">
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.label}>
+              <td>
+                <kbd dir="ltr">{row.keys}</kbd>
+              </td>
+              <td>{row.label}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <button type="button" className="link-btn" onClick={onPractise}>
+        {t('shortcuts.askPractise')}
+      </button>
+    </>
   );
 }
 

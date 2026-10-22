@@ -2,6 +2,7 @@ import type { RequestKind, RequestMap, ResultMap } from './protocol';
 import { decodeFrame, encodeFrame } from './frame';
 import type { CoreStatus, DocumentMetadata, PageSize, ParagraphData, TextLineData } from './types';
 import { parseReplaceResult } from './handlers';
+import { note } from '../support/log';
 
 /**
  * Desktop host adapter: routes the core protocol to the natively linked
@@ -76,6 +77,7 @@ export function onHostEvent<T>(event: string, handle: (payload: T) => void): () 
  * fails the caller.
  */
 export function uiLog(message: string): void {
+  note('info', message);
   if (!isTauriHost()) return;
   invoke('ui_log', { message }).catch(() => undefined);
 }
@@ -356,6 +358,11 @@ export const RING_HOLD_EVENT = 'ring://hold';
 /** The tool the files were let go on, or `none`; `only`, of those files, these paths. */
 export function ringPick(tool: string, only?: readonly string[]): Promise<void> {
   return invoke('ring_pick', { tool, only: only ?? null }).then(() => undefined);
+}
+
+/** A phone is connected to the remote now: the ring offers "To phone". */
+export function ringPhone(): Promise<boolean> {
+  return invoke('ring_phone').then((on) => on === true, () => false);
 }
 
 /** The files let go on the ring, for a tool the ring runs itself; they stay held for `ringPick`. */

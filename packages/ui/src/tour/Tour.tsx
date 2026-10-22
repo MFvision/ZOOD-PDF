@@ -1,72 +1,41 @@
-import { useEffect, useState } from 'react';
-import { BookOpen, Check, Layers, Library, MousePointerClick, Palette, PanelRight, Sparkles } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties, KeyboardEvent } from 'react';
+import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { Dialog } from '../components/Dialog';
 import { Icon } from '../components/Icon';
+import { ZoodMark } from '../components/ZoodMark';
 import { isTauriHost } from '../core/host-tauri';
 import { useI18n } from '../i18n/useT';
-import type { TKey } from '../i18n/messages';
 import { openSettingsAt } from '../settings/SettingsWindow';
 import type { SectionId } from '../settings/SettingsWindow';
-import { isApplePlatform } from '../shell/menuModel';
 import { useAppDispatch, useAppState } from '../state/AppContext';
 import { readJson, writeJson } from '../state/preferences';
+import { askAvailable } from '../ask/settings';
+import { QuickAskScene } from './quickAskScene';
+import { TOUR_VERSION, newSince, tourChapters } from './chapters';
+import { openTourAt, takeStartAt } from './openAt';
+import type { Chapter, ChapterId } from './chapters';
+import { AiScene, BasicsScene, DoneScene, FilmScene, LookScene, QuickScene, RemoteScene, WelcomeScene } from './scenes';
+import type { TourProgress } from './scenes';
+import { AskScene } from './askScene';
+import { SupportScene } from './supportScene';
+import { openSupportAt } from '../support/open';
 import './tour.css';
 
 /**
- * The welcome tour: a few screens on the desktop app's first run saying
- * what the app does and where things are — the side panel, tabs, the looks
- * in Settings, the AI tool and read aloud, asking about every document at
- * once, and the quick tools that work without opening the
- * app (desktop only). Help → Welcome tour, and Settings' quick tools, open
- * it again. Every line is about something the app does today.
+ * The welcome tour: the first impression, the training and the help centre
+ * in one. It opens by itself on the desktop app's first run (and once more
+ * when the tour is new), and again from Help › Welcome tour and Settings'
+ * quick tools. Chapters down the side, each with a scene that moves: choose
+ * the language and the look here and the tour changes with them, watch the
+ * film, see where the tools are, practise the ring on sample files, connect
+ * the phone with the real code, and meet the AI. Every line is about
+ * something the app does today.
  */
 
 const SEEN_KEY = 'warraq.tour';
 
-interface Screen {
-  id: string;
-  icon: LucideIcon;
-  title: TKey;
-  body: TKey;
-  points: TKey[];
-}
-
-export function tourScreens(desktop: boolean, mac: boolean): Screen[] {
-  const screens: Screen[] = [
-    { id: 'welcome', icon: BookOpen, title: 'tour.welcome.title', body: 'tour.welcome.body', points: ['tour.welcome.p1', 'tour.welcome.p2'] },
-    { id: 'tools', icon: PanelRight, title: 'tour.tools.title', body: 'tour.tools.body', points: ['tour.tools.p1', 'tour.tools.p2'] },
-    { id: 'tabs', icon: Layers, title: 'tour.tabs.title', body: 'tour.tabs.body', points: ['tour.tabs.p1', 'tour.tabs.p2'] },
-    {
-      id: 'looks',
-      icon: Palette,
-      title: 'tour.looks.title',
-      body: 'tour.looks.body',
-      points: [mac ? 'tour.looks.p1Mac' : 'tour.looks.p1Other', 'tour.looks.p2'],
-    },
-    { id: 'ai', icon: Sparkles, title: 'tour.ai.title', body: 'tour.ai.body', points: ['tour.ai.p1', 'tour.ai.p2'] },
-    { id: 'across', icon: Library, title: 'tour.across.title', body: 'tour.across.body', points: ['tour.across.p1', 'tour.across.p2'] },
-  ];
-  if (desktop) {
-    screens.push({
-      id: 'quick',
-      icon: MousePointerClick,
-      title: 'tour.quick.title',
-      body: 'tour.quick.body',
-      points: [mac ? 'tour.quick.p1Mac' : 'tour.quick.p1Windows', 'tour.quick.p2', 'tour.quick.p3'],
-    });
-  }
-  return screens;
-}
-
-/** Where the next opening starts: the quick tools' screen from Settings, else the first. */
-let startAt: string | null = null;
-
-/** Opens the tour at one screen (by id). */
-export function openTourAt(id: string, open: () => void): void {
-  startAt = id;
-  open();
-}
+export { openTourAt } from './openAt';
 
 export function WelcomeTour() {
   const { dialog } = useAppState();
@@ -74,88 +43,170 @@ export function WelcomeTour() {
   const { t } = useI18n();
   // Decided once, at start: the host does not change under a running window.
   const [desktop] = useState(isTauriHost);
+  const [ask] = useState(askAvailable);
 
-  // The first run of the desktop app opens it by itself, once.
+  // The desktop app opens it by itself on its first run, and once when the tour is new, at what is new.
   useEffect(() => {
-    if (!desktop || readJson<{ seen?: boolean }>(SEEN_KEY, {}).seen) return;
-    writeJson(SEEN_KEY, { seen: true });
-    dispatch({ type: 'DIALOG', dialog: 'tour' });
-  }, [desktop, dispatch]);
+    const seen = readJson<{ version?: number }>(SEEN_KEY, {}).version ?? 0;
+    if (!desktop || seen >= TOUR_VERSION) return;
+    writeJson(SEEN_KEY, { seen: true, version: TOUR_VERSION });
+    openTourAt(newSince(seen, ask), () => dispatch({ type: 'DIALOG', dialog: 'tour' }));
+  }, [desktop, ask, dispatch]);
 
   const open = dialog === 'tour';
   const close = () => dispatch({ type: 'DIALOG', dialog: null });
   return (
-    <Dialog open={open} title={t('tour.title')} onClose={close}>
-      {open ? <TourScreens desktop={desktop} onClose={close} onSettings={(section) => openSettingsAt(section, () => dispatch({ type: 'DIALOG', dialog: 'settings' }))} /> : null}
+    <Dialog open={open} title={t('tour.title')} onClose={close} className="tour-dialog">
+      {open ? (
+        <TourBook
+          desktop={desktop}
+          ask={ask}
+          onClose={close}
+          onSettings={(section) => openSettingsAt(section, () => dispatch({ type: 'DIALOG', dialog: 'settings' }))}
+          onSupport={() => openSupportAt('ask', () => dispatch({ type: 'DIALOG', dialog: 'support' }))}
+        />
+      ) : null}
     </Dialog>
   );
 }
 
-function TourScreens({ desktop, onClose, onSettings }: { desktop: boolean; onClose: () => void; onSettings: (section: SectionId) => void }) {
-  const { t } = useI18n();
-  const [screens] = useState(() => tourScreens(desktop, isApplePlatform()));
+function TourBook({ desktop, ask, onClose, onSettings, onSupport }: { desktop: boolean; ask: boolean; onClose: () => void; onSettings: (section: SectionId) => void; onSupport: () => void }) {
+  const { t, dir } = useI18n();
+  const [chapters] = useState(() => tourChapters(desktop, ask));
   const [at, setAt] = useState(() => {
-    const wanted = startAt ? screens.findIndex((screen) => screen.id === startAt) : 0;
-    startAt = null;
-    return Math.max(0, wanted);
+    const id = takeStartAt();
+    return Math.max(0, id ? chapters.findIndex((chapter) => chapter.id === id) : 0);
   });
-  const screen = screens[Math.min(at, screens.length - 1)]!;
-  const last = at >= screens.length - 1;
+  // Which way the last move went, so the next chapter comes in from that side.
+  const [heading, setHeading] = useState<1 | -1>(1);
+  const [seen, setSeen] = useState<ReadonlySet<ChapterId>>(() => new Set([chapters[at]!.id]));
+  const [progress, setProgress] = useState<TourProgress>({ film: false, ring: false, ask: false });
+  const stage = useRef<HTMLDivElement>(null);
+
+  const chapter = chapters[Math.min(at, chapters.length - 1)]!;
+  const last = at >= chapters.length - 1;
+
+  const go = (index: number) => {
+    const next = Math.max(0, Math.min(chapters.length - 1, index));
+    if (next === at) return;
+    setHeading(next > at ? 1 : -1);
+    setAt(next);
+    setSeen((before) => new Set(before).add(chapters[next]!.id));
+    stage.current?.scrollTo?.({ top: 0 });
+  };
+
+  // The arrow keys turn the pages, the way the reading direction runs (not inside a field or the film).
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, video, [role="radiogroup"], [role="tablist"]')) return;
+    const forward = dir === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
+    const back = dir === 'rtl' ? 'ArrowRight' : 'ArrowLeft';
+    if (event.key === forward) {
+      event.preventDefault();
+      go(at + 1);
+    } else if (event.key === back) {
+      event.preventDefault();
+      go(at - 1);
+    }
+  };
+
+  const NextArrow = dir === 'rtl' ? ArrowLeft : ArrowRight;
+  // --heading: the side the next chapter comes in from, mirrored for right-to-left.
+  const style = { '--chapter-hue': chapter.hue, '--heading': dir === 'rtl' ? -heading : heading } as CSSProperties;
 
   return (
-    <>
-      <div className="tour" aria-live="polite">
-        <div className="tour-icon" aria-hidden="true">
-          <Icon of={screen.icon} size={30} />
+    <div className="tour" style={style} onKeyDown={onKeyDown}>
+      <nav className="tour-rail" aria-label={t('tour.chapters')}>
+        <div className="tour-rail-brand">
+          <ZoodMark size={34} loop />
+          <span>{t('tour.minutes')}</span>
         </div>
-        <h3 className="tour-title">{t(screen.title)}</h3>
-        <p className="tour-body">{t(screen.body)}</p>
-        <ul className="tour-points">
-          {screen.points.map((point) => (
-            <li key={point}>
-              <Icon of={Check} size={14} />
-              <span>{t(point)}</span>
+        <ol className="tour-rail-list">
+          {chapters.map((one, index) => (
+            <li key={one.id}>
+              <button
+                type="button"
+                className={['tour-rail-item', index === at ? 'is-current' : '', seen.has(one.id) && index !== at ? 'is-seen' : ''].filter(Boolean).join(' ')}
+                aria-current={index === at ? 'step' : undefined}
+                style={{ '--item-hue': one.hue } as CSSProperties}
+                onClick={() => go(index)}
+              >
+                <span className="tour-rail-icon" aria-hidden="true">
+                  {seen.has(one.id) && index !== at ? <Icon of={Check} size={13} /> : one.icon ? <Icon of={one.icon} size={14} /> : <ZoodMark size={15} />}
+                </span>
+                <span className="tour-rail-label">{t(one.label)}</span>
+              </button>
             </li>
           ))}
-        </ul>
-        {screen.id === 'looks' ? (
-          <button type="button" className="tour-link" onClick={() => onSettings('appearance')}>
-            {t('tour.looksSettings')}
-          </button>
-        ) : null}
-        {screen.id === 'quick' ? (
-          <button type="button" className="tour-link" onClick={() => onSettings('quick')}>
-            {t('tour.quickSettings')}
-          </button>
-        ) : null}
-        <div className="tour-dots" role="tablist" aria-label={t('tour.step', { n: at + 1, total: screens.length })}>
-          {screens.map((item, index) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={index === at}
-              aria-label={t('tour.step', { n: index + 1, total: screens.length })}
-              className={index === at ? 'tour-dot is-current' : 'tour-dot'}
-              onClick={() => setAt(index)}
-            />
-          ))}
+        </ol>
+        <p className="tour-rail-note">{t('tour.helpNote')}</p>
+      </nav>
+
+      <section className="tour-page" aria-labelledby="tour-chapter-title">
+        <div className="tour-meter" role="progressbar" aria-valuemin={1} aria-valuemax={chapters.length} aria-valuenow={at + 1} aria-label={t('tour.step', { n: at + 1, total: chapters.length })}>
+          <span style={{ inlineSize: `${((at + 1) / chapters.length) * 100}%` }} />
         </div>
-      </div>
-      <div className="dialog-actions">
-        {at === 0 ? (
-          <button type="button" className="icon-btn icon-btn-labeled" onClick={onClose}>
-            {t('tour.skip')}
+        <div ref={stage} className="tour-scroll" aria-live="polite">
+          <div key={chapter.id} className="tour-chapter">
+            <ChapterHead chapter={chapter} n={at + 1} total={chapters.length} />
+            <Scene chapter={chapter} progress={progress} onProgress={(patch) => setProgress((before) => ({ ...before, ...patch }))} onSettings={onSettings} onSupport={onSupport} />
+          </div>
+        </div>
+        <div className="tour-actions">
+          {at === 0 ? (
+            <button type="button" className="icon-btn icon-btn-labeled" onClick={onClose}>
+              {t('tour.skip')}
+            </button>
+          ) : (
+            <button type="button" className="icon-btn icon-btn-labeled" onClick={() => go(at - 1)}>
+              {t('tour.back')}
+            </button>
+          )}
+          <button type="button" className="icon-btn icon-btn-labeled icon-btn-primary tour-next" onClick={last ? onClose : () => go(at + 1)}>
+            <span>{last ? t('tour.done') : t('tour.next')}</span>
+            {!last && <Icon of={NextArrow} size={15} />}
           </button>
-        ) : (
-          <button type="button" className="icon-btn icon-btn-labeled" onClick={() => setAt(at - 1)}>
-            {t('tour.back')}
-          </button>
-        )}
-        <button type="button" className="icon-btn icon-btn-labeled icon-btn-primary" onClick={last ? onClose : () => setAt(at + 1)}>
-          {last ? t('tour.done') : t('tour.next')}
-        </button>
-      </div>
-    </>
+        </div>
+      </section>
+    </div>
   );
+}
+
+function ChapterHead({ chapter, n, total }: { chapter: Chapter; n: number; total: number }) {
+  const { t } = useI18n();
+  return (
+    <header className="tour-head">
+      <p className="tour-eyebrow">{t('tour.chapterOf', { n, total })}</p>
+      <h3 id="tour-chapter-title" className="tour-title">
+        {t(chapter.title)}
+      </h3>
+      <p className="tour-body">{t(chapter.body)}</p>
+    </header>
+  );
+}
+
+function Scene({ chapter, progress, onProgress, onSettings, onSupport }: { chapter: Chapter; progress: TourProgress; onProgress: (patch: Partial<TourProgress>) => void; onSettings: (section: SectionId) => void; onSupport: () => void }) {
+  switch (chapter.id) {
+    case 'welcome':
+      return <WelcomeScene />;
+    case 'look':
+      return <LookScene onSettings={onSettings} />;
+    case 'film':
+      return <FilmScene onWatched={() => onProgress({ film: true })} />;
+    case 'basics':
+      return <BasicsScene />;
+    case 'quick':
+      return <QuickScene onPractised={() => onProgress({ ring: true })} onSettings={onSettings} />;
+    case 'ask':
+      return <AskScene onPractised={() => onProgress({ ask: true })} onSettings={onSettings} />;
+    case 'quickask':
+      return <QuickAskScene onSettings={onSettings} />;
+    case 'remote':
+      return <RemoteScene />;
+    case 'ai':
+      return <AiScene />;
+    case 'support':
+      return <SupportScene onOpen={onSupport} />;
+    case 'done':
+      return <DoneScene progress={progress} />;
+  }
 }

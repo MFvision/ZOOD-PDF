@@ -201,7 +201,7 @@ final class AIAssistant: Identifiable {
             let context = try await gather(for: question)
             self.context = context
             if context.text.isEmpty {
-                state = .failed(String(localized: "This document has no text to read. Scan & OCR can add some."))
+                state = .failed(String(localized: "No text could be read on these pages, even from their pictures."))
                 return
             }
             let prompt = "<document>\n\(context.text)\n</document>\n\n\(task.request(question: question))"
@@ -224,6 +224,11 @@ final class AIAssistant: Identifiable {
             // Past the budget, reading more pages is only slower.
             if total > AIContextBuilder.budget * 2 { break }
         }
+        // A scan has no text of its own: read it off the pages' pictures,
+        // as read aloud does, instead of asking the person to OCR first.
+        if total == 0 {
+            texts = await recognizedPages()
+        }
         let leading = AIContextBuilder.leading(pageTexts: texts)
         if task.takesQuestion, leading.truncated || texts.count < model.pageCount {
             let retrieved = try await AIContextBuilder.retrieved(query: question, bytes: model.bytes, name: model.name)
@@ -231,6 +236,29 @@ final class AIAssistant: Identifiable {
         }
         return leading
     }
+
+    /// Scanned pages read with the scanner's recognizer, from the first,
+    /// up to `Self.recognizedPageLimit` pages or the context budget.
+    private func recognizedPages() async -> [(page: Int, text: String)] {
+        guard let core = model.engine else { return [] }
+        var texts: [(page: Int, text: String)] = []
+        var total = 0
+        for page in 0..<min(model.pageCount, Self.recognizedPageLimit) {
+            if Task.isCancelled { break }
+            guard let rendered = try? await core.renderPage(page, scale: LibraryIndexer.Limits.renderScale),
+                  let image = LibraryIndexer.Worker.cgImage(from: rendered),
+                  let words = try? await PageOCR.reader.read(image, languages: PageOCR.languages) else { continue }
+            let text = PageOCR.lines(of: words).joined(separator: "\n")
+            texts.append((page, text))
+            total += text.count
+            if total > AIContextBuilder.budget * 2 { break }
+        }
+        return texts
+    }
+
+    /// Recognising a page takes a moment: a summary of a long scan reads its
+    /// opening pages, which is where a summary's material mostly is.
+    static let recognizedPageLimit = 12
 
     func reset() {
         state = .idle

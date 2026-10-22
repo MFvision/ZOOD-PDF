@@ -300,3 +300,8 @@
 .home-remote {
   flex: 0 0 auto;
 }
+
+.remote-give {
+  display: grid;
+  gap: 6px;
+}

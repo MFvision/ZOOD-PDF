@@ -28,6 +28,10 @@ import { useSettings } from '../state/settings';
 import { HistoryEffects } from '../history/HistoryEffects';
 import { VersionsDialog } from '../history/VersionsDialog';
 import { WelcomeTour } from '../tour/Tour';
+import { SupportCenter } from '../support/SupportCenter';
+import { GuideLayer } from '../support/GuideLayer';
+import { startLog } from '../support/log';
+import { AskReadyHint } from '../ask/ReadyHint';
 import { FindBar } from './FindBar';
 import { LeftPane } from './LeftPane';
 import { MarkupBarContext, readMarkupBar, writeMarkupBar } from './markupBar';
@@ -46,6 +50,9 @@ import { TabBar } from './TabBar';
 import { useWorkbench } from './workbench';
 import { WorkbenchBar } from './WorkbenchBar';
 import { QuickBar, WorkbenchRail } from './WorkbenchRail';
+
+// The recent errors a problem report can carry, if the person chooses to: kept in memory only.
+startLog();
 
 /**
  * The window: a unified toolbar over the document, the sidebar at its leading
@@ -246,6 +253,9 @@ export function Shell() {
         <SettingsEffects />
         <VersionsDialog />
         <WelcomeTour />
+        <SupportCenter />
+        <GuideLayer />
+        <AskReadyHint />
         <LinkConfirmDialog />
         <FontLibraryQuestion />
         <CloudSheets />

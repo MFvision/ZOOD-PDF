@@ -136,6 +136,11 @@ included (HTTPS redirect, the same security headers and caching as the
 Caddyfile). In hPanel, point `pdf.zood.sa` at a folder, turn on its free SSL,
 open File Manager there, upload the zip and extract it so `index.html` sits at
 the top. The zip carries the licensed font: keep it private.
+The zip also carries the help pages (`help/`, made by
+`scripts/support/make-guides.mjs`) and the support relay (`api/support/`);
+the relay needs its one-time setup (`api/support/README.md`: database,
+`config.php`, cron) before reports and ideas reach GitHub. Until then the
+app sends reports by e-mail.
 
 **Caddy in Docker** (certificates are automatic):
 
