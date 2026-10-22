@@ -224,6 +224,15 @@ struct DocumentView: View {
                     await model.load()
                 }
             }
+            // Ask ZOOD from the Control Center, a widget or Siri: the
+            // assistant, as the AI button opens it, once the document is ready.
+            .task(id: model.isReady && model.asksZood) {
+                guard model.isReady, model.asksZood else { return }
+                model.asksZood = false
+                guard AIEngines.availability().isAvailable else { return }
+                reader.stop()
+                assistant = AIAssistant(model: model)
+            }
             // What the page holds, read as the editor opens, as the page
             // changes and again after each edit — reflowing a paragraph moves
             // the ones under it, and a picture changed changes the page's list.

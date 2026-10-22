@@ -394,6 +394,19 @@ export const ARTICLES: readonly Article[] = [
     guide: { steps: [{ say: { ar: 'من هنا تغيّر اللغة.', en: 'Change the language here.' }, run: 'settings:general' }] },
   },
   {
+    id: 'tools-list',
+    category: 'start',
+    title: { ar: 'كل الأدوات أو مجموعات في الشريط الجانبي', en: 'All tools or groups in the sidebar' },
+    summary: { ar: 'قائمة طويلة بكل الأدوات، أو ثمانية عناوين بقوائم قصيرة.', en: 'One long list of every tool, or eight headings with short menus.' },
+    steps: [
+      { ar: 'في الصفحة الرئيسية، اضغط الزر الصغير بجانب «الأدوات» في الشريط الجانبي للتبديل.', en: 'On the home screen, press the small button beside Tools in the sidebar to switch.' },
+      { ar: 'أو افتح الإعدادات › الرئيسية › «الأدوات في الشريط الجانبي» واختر «كل الأدوات» أو «مجموعات».', en: 'Or open Settings › Home › Tools in the sidebar and choose All tools or Grouped.' },
+    ],
+    tips: [{ ar: 'يتذكّر التطبيق اختيارك.', en: 'The app remembers your choice.' }],
+    keywords: ['tools', 'sidebar', 'list', 'groups', 'all tools', 'menu', 'ادوات', 'الادوات', 'قائمه', 'مجموعات', 'شريط جانبي'],
+    guide: { steps: [{ say: { ar: 'هذا الزر يبدّل بين كل الأدوات والمجموعات.', en: 'This button switches between all tools and groups.' }, target: { kind: 'css', selector: '.home-nav-heading-switch' } }] },
+  },
+  {
     id: 'default-app',
     category: 'desktop',
     title: { ar: 'جعل ZOOD PDF البرنامج الافتراضي', en: 'Make ZOOD PDF the default for PDFs' },

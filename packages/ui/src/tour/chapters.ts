@@ -1,4 +1,4 @@
-import { Clapperboard, FolderInput, FolderOpen, Hand, Keyboard, LifeBuoy, MousePointerClick, Palette, PartyPopper, Smartphone, Sparkles } from 'lucide-react';
+import { BellRing, Clapperboard, FolderInput, FolderOpen, Hand, Keyboard, LifeBuoy, MousePointerClick, Palette, PartyPopper, Smartphone, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { TKey } from '../i18n/messages';
 
@@ -10,7 +10,7 @@ import type { TKey } from '../i18n/messages';
  * from start to end (Monochrome turns the hues grey).
  */
 
-export type ChapterId = 'welcome' | 'look' | 'film' | 'basics' | 'folders' | 'quick' | 'ask' | 'quickask' | 'remote' | 'ai' | 'support' | 'done';
+export type ChapterId = 'welcome' | 'look' | 'film' | 'basics' | 'folders' | 'quick' | 'ask' | 'quickask' | 'reach' | 'remote' | 'ai' | 'support' | 'done';
 
 export interface Chapter {
   id: ChapterId;
@@ -32,6 +32,7 @@ const ALL: readonly Chapter[] = [
   { id: 'quick', icon: MousePointerClick, label: 'tour.ch.quick', title: 'tour.quick.title', body: 'tour.quick.body', hue: '#e09a1a', desktopOnly: true },
   { id: 'ask', icon: Keyboard, label: 'tour.ch.ask', title: 'tour.ask.title', body: 'tour.ask.body', hue: '#d4467e', desktopOnly: true, askOnly: true },
   { id: 'quickask', icon: FolderInput, label: 'tour.ch.quickask', title: 'tour.quickask.title', body: 'tour.quickask.body', hue: '#1f9bb4', desktopOnly: true, askOnly: true },
+  { id: 'reach', icon: BellRing, label: 'tour.ch.reach', title: 'tour.reach.title', body: 'tour.reach.body', hue: '#c0663a', desktopOnly: true },
   { id: 'remote', icon: Smartphone, label: 'tour.ch.remote', title: 'tour.remote.title', body: 'tour.remote.body', hue: '#2f9e75', desktopOnly: true },
   { id: 'ai', icon: Sparkles, label: 'tour.ch.ai', title: 'tour.ai.title', body: 'tour.ai.body', hue: '#7b61ff' },
   { id: 'support', icon: LifeBuoy, label: 'tour.ch.support', title: 'tour.support.title', body: 'tour.support.body', hue: '#4f8a10' },
@@ -48,12 +49,14 @@ export const TOUR_VERSION = 11;
  * Where a tour seen before opens, by the version it was seen at: Ask ZOOD
  * came in version 3, one tap to talk (with its setup) in version 4,
  * Show me, Explain this and Do it for me in version 5, quick asks with
- * tidying in version 6, Help & Support in version 7, and the AI's chat
- * about anything, with its commands, in version 8. Folders came in version 11
- * (9 and 10 are the reach and phone chapters of builds made beside it).
+ * tidying in version 6, Help & Support in version 7, the AI's chat about
+ * anything, with its commands, in version 8, Always ready (the tray icon,
+ * the bubble, and Do it for me by ZOOD's own commands) in version 9, the
+ * phone app's code in version 10, and Folders in version 11. Folders comes
+ * right after the basics, before every later chapter, on every platform.
  */
-export function newSince(version: number, ask: boolean): ChapterId {
-  if (version >= 10) return 'folders';
+export function newSince(version: number, ask: boolean, _desktop = true): ChapterId {
+  if (version >= 8) return 'folders';
   if (version >= 6) return 'ai';
   if (!ask || version < 2) return 'welcome';
   return version >= 5 ? 'quickask' : 'ask';

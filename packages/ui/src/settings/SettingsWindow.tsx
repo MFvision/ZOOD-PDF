@@ -59,7 +59,7 @@ const SECTIONS: readonly Section[] = [
     words: ['prefs.pageLayout', 'prefs.openZoom', 'prefs.openIn', 'prefs.tabBar', 'prefs.tabPosition', 'prefs.pagePanel', 'prefs.toolsPanel', 'prefs.direction', 'prefs.night'],
     page: () => <ViewingPage />,
   },
-  { id: 'home', icon: House, title: 'prefs.home', words: ['prefs.greeting', 'prefs.userName', 'prefs.homeSections', 'prefs.recentLimit', 'prefs.clearRecent'], page: () => <HomePage /> },
+  { id: 'home', icon: House, title: 'prefs.home', words: ['prefs.greeting', 'prefs.userName', 'prefs.homeSections', 'prefs.sidebarTools', 'prefs.recentLimit', 'prefs.clearRecent'], page: () => <HomePage /> },
   {
     id: 'quick',
     icon: Zap,

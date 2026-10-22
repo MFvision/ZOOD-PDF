@@ -321,10 +321,11 @@ test.describe('the assistant is a chat about the open document', () => {
     await expect(thread(page)).toContainText(/The document is analyzed, all of it \(pages: 95; steps: \d+\)/, { timeout: 120_000 });
     await expect(ai).toContainText('Analyzed: the assistant knows the whole document (pages: 95).');
     const all = (await stubRecord(page)).requests.filter((request) => user(request.messages).includes('Note its main points'));
-    // What was summarized before the stop was not asked for again — only the chunk in hand when Stop came.
+    // What was summarized before the stop was not asked for again — only a chunk in hand when Stop came.
+    // (Stop can land between two chunks, so what finished is read from the record, not assumed.)
     const again = all.slice(stopped.length).map((request) => user(request.messages));
-    for (const done of stopped.slice(0, -1)) expect(again).not.toContain(user(done.messages));
-    const read = pagesRead(all.slice(0, stopped.length - 1).concat(all.slice(stopped.length)));
+    for (const done of stopped.filter((request) => request.done)) expect(again).not.toContain(user(done.messages));
+    const read = pagesRead(all.filter((request) => request.done));
     const pages = await readWithWarraq(LONG);
     for (const [index, text] of pages.entries()) if (text.trim().length > 0) expect(read.get(index + 1)?.join('\n'), `page ${index + 1}`).toBe(text);
   });

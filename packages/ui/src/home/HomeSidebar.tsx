@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { ChevronRight, Clock, Folder, FolderOpen, House, Star, Tag } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { List, ListTree } from 'lucide-react';
 import { APP_ICON } from '../components/appIcon';
 import { cx } from '../components/cx';
 import { Icon } from '../components/Icon';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { useAppDispatch, useAppState } from '../state/AppContext';
+import { updateSettings, useSettings } from '../state/settings';
 import { ContextMenu } from '../components/ContextMenu';
 import { ToolIcon } from '../tools/ToolIcon';
 import { findTool } from '../tools/tools';
@@ -34,13 +36,18 @@ interface HomeSidebarProps {
 /**
  * The home screen's sidebar: the app's mark and name, the places — Home,
  * Recents, Starred, Tags, and Folders (with the cloud drives) — then the
- * tools under eight headings, each opening a short menu of its tools, and at the bottom what the Library's index takes on this device (the
- * only storage the app has; there is no quota to show).
+ * tools, every one in a long list (the default, as Acrobat's All tools) or
+ * under eight headings each opening a short menu of its tools (the button
+ * beside Tools, or Settings › Home, switches), and at the bottom what the
+ * Library's index takes on this device (the only storage the app has; there
+ * is no quota to show).
  */
 export function HomeSidebar({ view, onView, index }: HomeSidebarProps) {
   const { t, lang, dir } = useI18n();
   const { rightPane } = useAppState();
   const dispatch = useAppDispatch();
+  const { sidebarTools } = useSettings();
+  const grouped = sidebarTools === 'grouped';
   const [menu, setMenu] = useState<{ group: ToolGroup; at: { x: number; y: number }; from: HTMLElement } | null>(null);
   const choose = (group: ToolGroup, from: HTMLElement) => {
     const only = group.tools.length === 1 ? group.tools[0] : undefined;
@@ -79,32 +86,68 @@ export function HomeSidebar({ view, onView, index }: HomeSidebarProps) {
           </li>
         ))}
       </ul>
-      <h3 className="home-nav-heading" id="home-sidebar-tools">
-        {t('home.tools')}
-      </h3>
-      <ul className="home-nav home-nav-tools" aria-labelledby="home-sidebar-tools">
-        {TOOL_GROUPS.map((group) => {
-          const lead = findTool(group.tools[0]!)!;
-          const current = rightPane.activeTool !== null && group.tools.includes(rightPane.activeTool);
-          const single = group.tools.length === 1;
-          return (
-            <li key={group.id}>
-              <button
-                type="button"
-                className={cx('home-nav-item', current && 'is-current')}
-                aria-current={current ? 'true' : undefined}
-                aria-haspopup={single ? undefined : 'menu'}
-                aria-expanded={single ? undefined : menu?.group.id === group.id}
-                onClick={(event) => choose(group, event.currentTarget)}
-              >
-                <ToolIcon tool={lead} size="small" />
-                <span>{t(group.label)}</span>
-                {!single && <Icon of={ChevronRight} size={14} mirror />}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="home-nav-heading-row">
+        <h3 className="home-nav-heading" id="home-sidebar-tools">
+          {t('home.tools')}
+        </h3>
+        <button
+          type="button"
+          className="home-nav-heading-switch"
+          aria-label={t(grouped ? 'home.toolsShowAll' : 'home.toolsShowGrouped')}
+          title={t(grouped ? 'home.toolsShowAll' : 'home.toolsShowGrouped')}
+          onClick={() => {
+            setMenu(null);
+            updateSettings({ sidebarTools: grouped ? 'all' : 'grouped' });
+          }}
+        >
+          <Icon of={grouped ? List : ListTree} size={15} />
+        </button>
+      </div>
+      {grouped ? (
+        <ul className="home-nav home-nav-tools" aria-labelledby="home-sidebar-tools">
+          {TOOL_GROUPS.map((group) => {
+            const lead = findTool(group.tools[0]!)!;
+            const current = rightPane.activeTool !== null && group.tools.includes(rightPane.activeTool);
+            const single = group.tools.length === 1;
+            return (
+              <li key={group.id}>
+                <button
+                  type="button"
+                  className={cx('home-nav-item', current && 'is-current')}
+                  aria-current={current ? 'true' : undefined}
+                  aria-haspopup={single ? undefined : 'menu'}
+                  aria-expanded={single ? undefined : menu?.group.id === group.id}
+                  onClick={(event) => choose(group, event.currentTarget)}
+                >
+                  <ToolIcon tool={lead} size="small" />
+                  <span>{t(group.label)}</span>
+                  {!single && <Icon of={ChevronRight} size={14} mirror />}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <ul className="home-nav home-nav-tools" aria-labelledby="home-sidebar-tools">
+          {TOOL_GROUPS.flatMap((group) => group.tools).map((id) => {
+            const tool = findTool(id)!;
+            const current = rightPane.activeTool === id;
+            return (
+              <li key={id}>
+                <button
+                  type="button"
+                  className={cx('home-nav-item', current && 'is-current')}
+                  aria-current={current ? 'true' : undefined}
+                  onClick={() => dispatch({ type: 'SET_ACTIVE_TOOL', tool: id })}
+                >
+                  <ToolIcon tool={tool} size="small" />
+                  <span>{t(tool.labelKey)}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
       <ContextMenu
         at={menu?.at ?? null}
         label={menu ? t('home.groupMenu', { group: t(menu.group.label) }) : ''}

@@ -1,6 +1,31 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Ask ZOOD": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "اسأل زود" } }
+      }
+    },
+    "Opens your last document with ZOOD's on-device assistant, ready for a question.": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "يفتح آخر مستند لك مع مساعد زود على الجهاز، جاهزًا لسؤالك." } }
+      }
+    },
+    "Open a PDF first, then ask ZOOD about it.": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "افتح ملف PDF أولًا، ثم اسأل زود عنه." } }
+      }
+    },
+    "Ask %@": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "اسأل %@" } }
+      }
+    },
+    "Ask %@ about my document": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "اسأل %@ عن مستندي" } }
+      }
+    },
     "%@ is in My documents.": {
       "localizations": {
         "ar": {

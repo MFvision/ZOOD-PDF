@@ -13,7 +13,7 @@ import {
   shellMenuState,
   systemUserName,
 } from '../core/host-tauri';
-import type { RingSettings, ShellMenuState } from '../core/host-tauri';
+import type { RingDragKey, RingSettings, ShellMenuState } from '../core/host-tauri';
 import { AiSettingsSection } from '../ai/AiSettings';
 import { AskSettings } from '../ask/AskSettings';
 import { askAvailable } from '../ask/settings';
@@ -424,6 +424,18 @@ export function HomePage() {
           onChange={(items, hidden) => set({ homeSections: [...items, ...HOME_SECTIONS.filter((one) => !items.includes(one))], hiddenHomeSections: hidden })}
         />
       </Group>
+      <Group title={t('prefs.sidebarTools')}>
+        <Choice
+          label={t('prefs.sidebarTools')}
+          hint={t(settings.sidebarTools === 'all' ? 'prefs.sidebarTools.allHint' : 'prefs.sidebarTools.groupedHint')}
+          value={settings.sidebarTools}
+          options={[
+            { value: 'all', label: t('prefs.sidebarTools.all') },
+            { value: 'grouped', label: t('prefs.sidebarTools.grouped') },
+          ]}
+          onChange={(sidebarTools) => set({ sidebarTools })}
+        />
+      </Group>
       <Group title={t('prefs.recent')}>
         <Choice
           label={t('prefs.recentLimit')}
@@ -452,6 +464,23 @@ export function HomePage() {
 /* --------------------------------------------------------------- Quick tools */
 
 const MENU_TOOLS = QUICK_TOOLS.filter((tool) => tool.takes === 'pdf').map((tool) => tool.id as string);
+
+/** The key's name as this computer's keyboard has it. */
+function dragKeyLabel(key: RingDragKey): TKey {
+  const mac = isApplePlatform();
+  switch (key) {
+    case 'ctrl':
+      return 'prefs.ringDragKey.ctrl';
+    case 'shift':
+      return 'prefs.ringDragKey.shift';
+    case 'alt':
+      return mac ? 'prefs.ringDragKey.option' : 'prefs.ringDragKey.alt';
+    case 'meta':
+      return mac ? 'prefs.ringDragKey.command' : 'prefs.ringDragKey.windows';
+    default:
+      return mac ? 'prefs.ringDragKey.anyMac' : 'prefs.ringDragKey.anyWindows';
+  }
+}
 
 export function QuickPage() {
   const { t, lang } = useI18n();
@@ -562,6 +591,13 @@ export function QuickPage() {
             max={8}
             name={nameOf}
             onChange={(items, hidden) => set({ ringTools: items.filter((id) => !hidden.includes(id)) })}
+          />
+          <Choice<RingDragKey>
+            label={t('prefs.ringDragKey')}
+            hint={t('prefs.ringDragKeyHint')}
+            value={ring.dragKey ?? 'any'}
+            options={(['any', 'ctrl', 'shift', 'alt', 'meta'] as const).map((key) => ({ value: key, label: t(dragKeyLabel(key)) }))}
+            onChange={(dragKey) => changeRing({ dragKey })}
           />
           <Row label={t('prefs.ringShortcut')} hint={t('prefs.ringShortcutHint')}>
             <ShortcutField

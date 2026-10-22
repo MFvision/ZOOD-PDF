@@ -65,7 +65,7 @@ test.describe('the home screen', () => {
   }) => {
     test.setTimeout(300_000);
     await home(page);
-    // The wordmark, the places and the tools under eight headings are in the sidebar; no bell, no avatar.
+    // The wordmark, the places and every tool in one long list are in the sidebar; no bell, no avatar.
     await expect(sidebar(page).locator('.home-brand-name bdi')).toHaveText('ZOOD PDF');
     for (const place of ['Home', 'Recents', 'Starred', 'Tags', 'Folders']) await expect(sidebar(page).getByRole('button', { name: place, exact: true })).toBeVisible();
     // A build with no drive has no cloud control: Folders shows the person's own folders only.
@@ -73,7 +73,14 @@ test.describe('the home screen', () => {
     await expect(page.getByRole('button', { name: 'New folder' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Cloud drives' })).toHaveCount(0);
     await sidebar(page).getByRole('button', { name: 'Home', exact: true }).click();
-    await expect(sidebar(page).getByRole('list', { name: 'Tools' }).getByRole('button')).toHaveText([
+    const tools = sidebar(page).getByRole('list', { name: 'Tools' }).getByRole('button');
+    await expect(tools).toHaveCount(20);
+    await expect(tools.filter({ hasText: 'Prepare form' })).toBeVisible();
+    // The button beside Tools puts them under eight headings, and the choice outlives a reload.
+    await sidebar(page).getByRole('button', { name: 'Show tools in groups' }).click();
+    await page.reload();
+    await expect(page.locator('.home')).toBeVisible();
+    await expect(tools).toHaveText([
       'Edit',
       'Annotate',
       'Organize',
@@ -83,6 +90,8 @@ test.describe('the home screen', () => {
       'Protect',
       'AI Assistant',
     ]);
+    await sidebar(page).getByRole('button', { name: 'Show all tools in one list' }).click();
+    await expect(tools).toHaveCount(20);
     await expect(page.locator('.home-topbar img, .home-topbar [aria-label*="otification"]')).toHaveCount(0);
 
     // The keyboard puts the caret in the field, and a name matches without its case.
