@@ -1,0 +1,362 @@
+/*
+ * Folders (FolderCard.tsx): a folder that leans open on hover and fans its
+ * pages up on a click. Three layers in one button: the coloured back with
+ * its tab, the pages standing inside, and a frosted front. The front is
+ * hinged at its foot, so leaning is a turn about the bottom edge.
+ */
+
+.folders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: var(--space-7) var(--space-6);
+  padding: var(--space-6) 0 var(--space-3);
+  margin: 0;
+  list-style: none;
+}
+
+.folders-group {
+  margin: var(--space-6) 0 0;
+  font-size: var(--text-subheadline, 13px);
+  font-weight: 600;
+  color: var(--secondary-label);
+}
+
+.folders-drive {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.folder {
+  --lean: 0deg;
+  --rise: 0px;
+  --fan: 0;
+  --back-a: #041e42;
+  --back-b: #2b4a7a;
+  --back-c: #ae8b66;
+
+  position: relative;
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 220px;
+  aspect-ratio: 1.32;
+  padding: 0;
+  font: inherit;
+  color: var(--label);
+  text-align: start;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  border-radius: 16px;
+  perspective: 700px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.folder:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+}
+
+/* The back: a soft, flowing fill in the folder's colours, with its tab. */
+.folder-back {
+  position: absolute;
+  inset: 12% 0 0;
+  background:
+    radial-gradient(120% 90% at 18% 0%, color-mix(in srgb, var(--back-c) 85%, transparent), transparent 60%),
+    radial-gradient(90% 120% at 100% 30%, color-mix(in srgb, var(--back-b) 90%, transparent), transparent 70%),
+    repeating-linear-gradient(118deg, transparent 0 14px, rgb(255 255 255 / 9%) 14px 18px, transparent 18px 34px),
+    linear-gradient(160deg, var(--back-b), var(--back-a));
+  border-radius: 6px 16px 16px;
+  box-shadow: 0 10px 24px -14px rgb(0 0 0 / 55%);
+}
+
+.folder-back::before {
+  position: absolute;
+  inset-block-start: -12%;
+  inset-inline-start: 0;
+  inline-size: 42%;
+  block-size: 16%;
+  content: "";
+  background: inherit;
+  background-position: 0 0;
+  border-radius: 10px 14px 0 0;
+  clip-path: polygon(0 0, 78% 0, 100% 100%, 0 100%);
+}
+
+[dir="rtl"] .folder-back {
+  border-radius: 16px 6px 16px 16px;
+}
+
+[dir="rtl"] .folder-back::before {
+  border-radius: 14px 10px 0 0;
+  clip-path: polygon(22% 0, 100% 0, 100% 100%, 0 100%);
+}
+
+/* The pages inside: they stand low, and rise and fan as the folder opens. */
+.folder-pages {
+  position: absolute;
+  inset: 18% 9%;
+}
+
+.folder-page {
+  --spread: calc((var(--at, 1) - 1) * var(--fan));
+
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #fff;
+  border-radius: 7px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 22%);
+  transform:
+    translate(calc(var(--spread) * 22px), calc(var(--rise) * -1 + var(--at, 0) * 5px))
+    rotate(calc(var(--spread) * 7deg));
+  transform-origin: 50% 100%;
+}
+
+.folder-page:nth-child(1) {
+  z-index: 3;
+}
+
+.folder-page:nth-child(2) {
+  z-index: 2;
+  inset-inline: 4%;
+}
+
+.folder-page:nth-child(3) {
+  z-index: 1;
+  inset-inline: 8%;
+}
+
+.folder-page img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.folder-page-lines {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+}
+
+.folder-page-lines i {
+  display: block;
+  block-size: 5px;
+  background: rgb(4 30 66 / 12%);
+  border-radius: 3px;
+}
+
+.folder-page-lines i:nth-child(1) {
+  inline-size: 55%;
+  background: rgb(4 30 66 / 22%);
+}
+
+.folder-page-lines i:nth-child(3) {
+  inline-size: 70%;
+}
+
+/* The front: frosted glass, hinged at its foot. */
+.folder-front {
+  position: absolute;
+  inset: 40% 0 0;
+  z-index: 4;
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 12px 12px 12px 14px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--glass-card, #fff) 62%, transparent), color-mix(in srgb, var(--glass-card, #fff) 90%, transparent));
+  border: 1px solid var(--glass-edge, rgb(255 255 255 / 60%));
+  border-radius: 12px 12px 16px 16px;
+  box-shadow:
+    0 -1px 0 rgb(255 255 255 / 45%) inset,
+    0 14px 26px -16px rgb(0 0 0 / 50%);
+  transform: rotateX(var(--lean));
+  transform-origin: 50% 100%;
+  backdrop-filter: var(--blur-regular);
+}
+
+.folder-text {
+  display: grid;
+  min-inline-size: 0;
+}
+
+.folder-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-detail {
+  overflow: hidden;
+  font-size: var(--text-caption, 11px);
+  color: var(--secondary-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-badge {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 28px;
+  block-size: 28px;
+  color: #fff;
+  background: var(--label);
+  border-radius: 50%;
+}
+
+/* Tones. ZOOD's navy and sand first, then two quieter ones; the drives in their own colours (no marks). */
+.folder[data-tone="sand"] {
+  --back-a: #5b4129;
+  --back-b: #9a7449;
+  --back-c: #e6c9a3;
+}
+
+.folder[data-tone="plum"] {
+  --back-a: #3a1838;
+  --back-b: #8a3d6b;
+  --back-c: #e07a5f;
+}
+
+.folder[data-tone="teal"] {
+  --back-a: #0b3a3c;
+  --back-b: #1f7a73;
+  --back-c: #b9d8c2;
+}
+
+.folder[data-tone="onedrive"] {
+  --back-a: #0a3a8a;
+  --back-b: #1170d6;
+  --back-c: #6cc4f5;
+}
+
+.folder[data-tone="gdrive"] {
+  --back-a: #155a2c;
+  --back-b: #2b8a4a;
+  --back-c: #f5c542;
+}
+
+/* "New folder": no back colour, a dashed edge, and a blank page that drops in on hover. */
+.folder[data-tone="add"] .folder-back {
+  background: var(--quaternary-fill);
+  border: 1.5px dashed var(--separator);
+  box-shadow: none;
+}
+
+.folder[data-tone="add"] .folder-back::before {
+  background: var(--quaternary-fill);
+}
+
+.folder[data-tone="add"] .folder-badge {
+  color: var(--accent-contrast);
+  background: var(--accent);
+}
+
+.folder-page-drop {
+  opacity: 0;
+  transform: translateY(-40%);
+}
+
+/* Hover leans it open; a click (or the open folder) fans the pages out. */
+.folder:hover,
+.folder:focus-visible,
+.folder.is-peek {
+  --lean: -16deg;
+  --rise: 16px;
+  --fan: 0.45;
+}
+
+.folder.is-open {
+  --lean: -30deg;
+  --rise: 34px;
+  --fan: 1;
+}
+
+.folder:hover .folder-page-drop,
+.folder:focus-visible .folder-page-drop,
+.folder.is-peek .folder-page-drop {
+  opacity: 1;
+  transform: translateY(6%);
+}
+
+.folder:active .folder-front {
+  transform: rotateX(var(--lean)) scale(0.98);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .folder-front,
+  .folder-page {
+    transition: transform var(--duration-sheet) var(--spring);
+  }
+
+  .folder-page-drop {
+    transition:
+      opacity var(--duration-regular) var(--ease-out),
+      transform var(--duration-sheet) var(--spring);
+  }
+
+  .folder-page:nth-child(2) {
+    transition-delay: 30ms;
+  }
+
+  .folder-page:nth-child(3) {
+    transition-delay: 60ms;
+  }
+
+  .folders-grid > li,
+  .folders-files > li {
+    animation: motion-rise var(--duration-sheet) var(--ease-out) backwards;
+    animation-delay: calc(var(--at, 0) * 28ms);
+  }
+}
+
+html[data-reduce-motion="on"] .folder {
+  --lean: 0deg !important;
+  --rise: 0px !important;
+  --fan: 0 !important;
+}
+
+html[data-reduce-motion="on"] .folder * {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* An open folder's header: back, the name, the count, search. */
+.folders-open .home-section-header {
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.folders-open h2 {
+  display: inline-flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.folders-open-count {
+  color: var(--secondary-label);
+}
+
+.folders-open .link-btn {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-inline-start: auto;
+}
+
+/* The tour's folders: real cards, smaller, in a row. */
+.tour-folders {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: var(--space-6);
+  inline-size: 100%;
+}
+
+.tour-folders .folder {
+  font-size: 12px;
+}

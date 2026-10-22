@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronRight, Clock, Cloud, House, Star, Tag } from 'lucide-react';
+import { ChevronRight, Clock, Folder, FolderOpen, House, Star, Tag } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { APP_ICON } from '../components/appIcon';
 import { cx } from '../components/cx';
@@ -15,35 +15,32 @@ import type { ToolGroup } from '../tools/groups';
 import { formatBytes } from './useLibraryIndex';
 import type { LibraryIndex } from './useLibraryIndex';
 
-export type HomeView = 'home' | 'recents' | 'starred' | 'tags' | 'clouds';
+export type HomeView = 'home' | 'recents' | 'starred' | 'tags' | 'folders';
 
 const VIEWS: { id: HomeView; label: TKey; icon: LucideIcon }[] = [
   { id: 'home', label: 'home.nav.home', icon: House },
   { id: 'recents', label: 'home.nav.recents', icon: Clock },
   { id: 'starred', label: 'home.nav.starred', icon: Star },
   { id: 'tags', label: 'home.nav.tags', icon: Tag },
-  { id: 'clouds', label: 'home.nav.clouds', icon: Cloud },
+  { id: 'folders', label: 'home.nav.folders', icon: Folder },
 ];
 
 interface HomeSidebarProps {
   view: HomeView;
   onView: (view: HomeView) => void;
-  /** Whether this build has cloud drives: the Clouds entry is there only then. */
-  clouds: boolean;
   index: LibraryIndex;
 }
 
 /**
  * The home screen's sidebar: the app's mark and name, the places — Home,
- * Recents, Starred, Tags, and Clouds when the build has a drive — then the
+ * Recents, Starred, Tags, and Folders (with the cloud drives) — then the
  * tools under eight headings, each opening a short menu of its tools, and at the bottom what the Library's index takes on this device (the
  * only storage the app has; there is no quota to show).
  */
-export function HomeSidebar({ view, onView, clouds, index }: HomeSidebarProps) {
+export function HomeSidebar({ view, onView, index }: HomeSidebarProps) {
   const { t, lang, dir } = useI18n();
   const { rightPane } = useAppState();
   const dispatch = useAppDispatch();
-  const views = clouds ? VIEWS : VIEWS.filter((one) => one.id !== 'clouds');
   const [menu, setMenu] = useState<{ group: ToolGroup; at: { x: number; y: number }; from: HTMLElement } | null>(null);
   const choose = (group: ToolGroup, from: HTMLElement) => {
     const only = group.tools.length === 1 ? group.tools[0] : undefined;
@@ -67,7 +64,7 @@ export function HomeSidebar({ view, onView, clouds, index }: HomeSidebarProps) {
         </div>
       </div>
       <ul className="home-nav">
-        {views.map((one) => (
+        {VIEWS.map((one) => (
           <li key={one.id}>
             <button
               type="button"
@@ -75,7 +72,8 @@ export function HomeSidebar({ view, onView, clouds, index }: HomeSidebarProps) {
               aria-current={view === one.id ? 'page' : undefined}
               onClick={() => onView(one.id)}
             >
-              <Icon of={one.icon} size={17} />
+              {/* Folders shows its folder open while it is the place on screen. */}
+              <Icon of={one.id === 'folders' && view === 'folders' ? FolderOpen : one.icon} size={17} />
               <span>{t(one.label)}</span>
             </button>
           </li>

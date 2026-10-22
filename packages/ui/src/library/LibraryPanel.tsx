@@ -30,7 +30,7 @@ import type { IngestFile, IngestProgress, IngestRun, IngestedFile } from './inge
 import { storedLedger } from './ledger';
 import { LIBRARY_KINDS, coreLibrary, missingLibraryEngine } from './ops';
 import type { IndexedDocument, LibraryStats, SearchHit, TagRule } from './ops';
-import { onLibraryRequest, takeLibraryRequest } from './request';
+import { announceLibraryChanged, onLibraryRequest, takeLibraryRequest } from './request';
 import { addRule, parseTags, removeRule, ruleKey, ruleWords } from './rules';
 import { snippet } from './snippet';
 import {
@@ -109,9 +109,12 @@ export function LibraryPanel() {
   const [query, setQuery] = useState('');
   const [asked, setAsked] = useState('');
   // The home screen's Tags view opens the panel with one tag already chosen.
+  // The Folders view opens it to add a folder, which starts once the index is open.
   const [asked0] = useState(takeLibraryRequest);
-  const [filters, setFilters] = useState<FilterState>(() => (asked0 ? { ...noFilters(), tags: [asked0.tag] } : noFilters()));
-  const [showFilters, setShowFilters] = useState(asked0 !== null);
+  const [filters, setFilters] = useState<FilterState>(() => (asked0 && 'tag' in asked0 ? { ...noFilters(), tags: [asked0.tag] } : noFilters()));
+  const [showFilters, setShowFilters] = useState(asked0 !== null && 'tag' in asked0);
+  const wantsFolder = useRef(asked0 !== null && 'addFolder' in asked0);
+  const [folderAsks, setFolderAsks] = useState(0);
   const starred = useStarred();
   const starOf = (key: string) => starred.some((item) => item.id === starId('library', key));
   const star = (key: string, name: string) => toggleStarred({ id: starId('library', key), name, source: 'library' });
@@ -145,6 +148,11 @@ export function LibraryPanel() {
   useEffect(
     () =>
       onLibraryRequest((request) => {
+        if ('addFolder' in request) {
+          wantsFolder.current = true;
+          setFolderAsks((asks) => asks + 1);
+          return;
+        }
         setFilters({ ...noFilters(), tags: [request.tag] });
         setShowFilters(true);
       }),
@@ -190,11 +198,13 @@ export function LibraryPanel() {
     const saved = await ops.current.save(id);
     await store.current.writeIndex(saved.data);
     setStats(await ops.current.stats(id));
+    announceLibraryChanged();
   }, []);
 
   const rememberMeta = useCallback(async (next: LibraryMeta) => {
     setMeta(next);
     await store.current.writeMeta(next).catch(() => undefined);
+    announceLibraryChanged();
   }, []);
 
   /** Reads a list of files into the index, showing how far it has come. */
@@ -351,6 +361,14 @@ export function LibraryPanel() {
       }
     })();
   };
+
+  // Asked for from the Folders view: the folder picker opens once the index is.
+  useEffect(() => {
+    if (!wantsFolder.current || handle === null) return;
+    wantsFolder.current = false;
+    addFolder();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [folderAsks, handle]);
 
   /** One search, from the box and the filters as they stand. */
   const look = useCallback(
@@ -581,6 +599,7 @@ export function LibraryPanel() {
         const { handle: fresh } = await ops.current.open();
         setHandle(fresh);
         setMeta(emptyMeta());
+        announceLibraryChanged();
         setStats(await ops.current.stats(fresh));
         setRules([]);
         setHits(null);

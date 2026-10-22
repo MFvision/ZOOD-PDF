@@ -353,6 +353,22 @@ export const ARTICLES: readonly Article[] = [
     guide: { steps: [{ say: { ar: 'هذا رمز الاتصال. امسحه بالجوال.', en: 'This is the code. Scan it with your phone.' }, run: 'remote' }] },
   },
   {
+    id: 'folders',
+    category: 'pages',
+    title: { ar: 'مجلداتك في الصفحة الرئيسية', en: 'Your folders on the home screen' },
+    summary: { ar: '«المجلدات» تجمع مجلداتك ومساحاتك السحابية في مكان واحد، وملفاتك تبقى في مكانها.', en: 'Folders keeps your folders, and your cloud drives, in one place. Your files stay where they are.' },
+    steps: [
+      { ar: 'في الشريط الجانبي للصفحة الرئيسية اضغط «المجلدات».', en: 'In the home screen sidebar, click Folders.' },
+      { ar: 'اضغط «مجلد جديد» واختر أحد مجلداتك.', en: 'Click New folder and choose one of your folders.' },
+      { ar: 'اضغط على أي مجلد لترى ملفاته، ثم اضغط على ملف لفتحه.', en: 'Click any folder to see its files, then click a file to open it.' },
+      { ar: 'إذا كان OneDrive أو Google Drive متاحًا في نسختك فستجده تحت «المساحات السحابية»: اضغطه وسجّل الدخول مرة واحدة.', en: 'If your copy has OneDrive or Google Drive, it is under Cloud drives: click it and sign in once.' },
+    ],
+    tips: [{ ar: 'المجلد لا يُنقل ولا يُنسخ: يقرأ التطبيق ملفاته ليبحث فيها فقط.', en: 'Nothing is moved or copied: the app only reads the files so it can search them.' }],
+    keywords: ['folder', 'folders', 'library', 'drive', 'onedrive', 'google drive', 'cloud', 'organize', 'مجلد', 'مجلدات', 'ملفاتي', 'سحابه', 'درايف', 'ون درايف', 'تنظيم'],
+    tour: 'folders',
+    guide: { steps: [{ say: { ar: 'هذه «المجلدات». اضغطها لترى مجلداتك.', en: 'This is Folders. Click it to see your folders.' }, target: { kind: 'label', label: 'home.nav.folders' } }] },
+  },
+  {
     id: 'library',
     category: 'pages',
     title: { ar: 'البحث في كل ملفاتك', en: 'Search across all your files' },
