@@ -1,4 +1,4 @@
-import { Clapperboard, FolderInput, Hand, Keyboard, MousePointerClick, Palette, PartyPopper, Smartphone, Sparkles } from 'lucide-react';
+import { Clapperboard, FolderInput, Hand, Keyboard, LifeBuoy, MousePointerClick, Palette, PartyPopper, Smartphone, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { TKey } from '../i18n/messages';
 
@@ -10,7 +10,7 @@ import type { TKey } from '../i18n/messages';
  * from start to end (Monochrome turns the hues grey).
  */
 
-export type ChapterId = 'welcome' | 'look' | 'film' | 'basics' | 'quick' | 'ask' | 'quickask' | 'remote' | 'ai' | 'done';
+export type ChapterId = 'welcome' | 'look' | 'film' | 'basics' | 'quick' | 'ask' | 'quickask' | 'remote' | 'ai' | 'support' | 'done';
 
 export interface Chapter {
   id: ChapterId;
@@ -33,6 +33,7 @@ const ALL: readonly Chapter[] = [
   { id: 'quickask', icon: FolderInput, label: 'tour.ch.quickask', title: 'tour.quickask.title', body: 'tour.quickask.body', hue: '#1f9bb4', desktopOnly: true, askOnly: true },
   { id: 'remote', icon: Smartphone, label: 'tour.ch.remote', title: 'tour.remote.title', body: 'tour.remote.body', hue: '#2f9e75', desktopOnly: true },
   { id: 'ai', icon: Sparkles, label: 'tour.ch.ai', title: 'tour.ai.title', body: 'tour.ai.body', hue: '#7b61ff' },
+  { id: 'support', icon: LifeBuoy, label: 'tour.ch.support', title: 'tour.support.title', body: 'tour.support.body', hue: '#4f8a10' },
   { id: 'done', icon: PartyPopper, label: 'tour.ch.done', title: 'tour.done.title', body: 'tour.done.body', hue: '#ae8b66' },
 ];
 
@@ -41,14 +42,15 @@ export function tourChapters(desktop: boolean, ask = false): Chapter[] {
 }
 
 /** The tour as it was last seen: a newer tour opens once more on its own, at what is new. */
-export const TOUR_VERSION = 6;
+export const TOUR_VERSION = 7;
 /**
  * Where a tour seen before opens, by the version it was seen at: Ask ZOOD
  * came in version 3, one tap to talk (with its setup) in version 4,
- * Show me, Explain this and Do it for me in version 5, and quick asks
- * with tidying in version 6.
+ * Show me, Explain this and Do it for me in version 5, quick asks with
+ * tidying in version 6, and Help & Support in version 7.
  */
 export function newSince(version: number, ask: boolean): ChapterId {
+  if (version >= 6) return 'support';
   if (!ask || version < 2) return 'welcome';
   return version >= 5 ? 'quickask' : 'ask';
 }

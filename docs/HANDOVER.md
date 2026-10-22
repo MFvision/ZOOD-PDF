@@ -235,6 +235,19 @@ window; Help › "Ask ZOOD: Show Me, Explain and Do It" opens it. The quick-acti
 an `organize` act and a quick decider at the top of `respond` (separate files). **Not tried on
 real Windows or a Mac; coordinates depend on the vision model's accuracy.**
 
+## Help & Support (2026-10-21)
+The owner wants support with no staff, no accounts and no paid servers. F1, Help › Help &
+Support, Settings › Support and a tour chapter (tour version 7) open `support/SupportCenter.tsx`.
+**Ask** searches 24 bilingual guides (`support/articles.ts`) and FAQ. **Show me** and **Do it
+for me** (`support/guide.ts`) find the real controls by their words and point at them or press
+them. Each guide is also a PDF (`scripts/support/make-guides.mjs`, in the app and on the
+website's help pages). **Report a problem** and **Ideas** go through the PHP + MySQL relay
+`website/api/support/`, which runs on his Hostinger plan and files issues in a private
+`MFvision/zood-support` repository. Until it is uploaded, reports go by e-mail. The weekly review
+routine is in `docs/support/weekly-review.md`. **Waiting on him**: upload the relay, create the
+private repository and its token (steps in `website/api/support/README.md`). After that, the
+weekly routine can be switched on. Not tried on real Windows or Mac.
+
 ## Known open problems
 - **iPhone UI tests**: 6 of 55 failing at the last full run, each a test reaching for a
   control below the fold or a duplicate identifier (theme picker ×2, Protect's Remove, form

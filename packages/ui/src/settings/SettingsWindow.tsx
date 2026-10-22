@@ -7,6 +7,7 @@ import {
   House,
   Info,
   Keyboard,
+  LifeBuoy,
   Palette,
   Search,
   Settings2,
@@ -21,7 +22,7 @@ import { Icon } from '../components/Icon';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { useAppDispatch, useAppState } from '../state/AppContext';
-import { AboutPage, AiPage, AppearancePage, CloudPage, FontsPage, GeneralPage, HistoryPage, HomePage, QuickPage, ShortcutsPage, ViewingPage, WalletPage } from './pages';
+import { AboutPage, AiPage, AppearancePage, CloudPage, FontsPage, GeneralPage, HistoryPage, HomePage, QuickPage, ShortcutsPage, SupportPage, ViewingPage, WalletPage } from './pages';
 import './settings.css';
 
 /**
@@ -31,7 +32,7 @@ import './settings.css';
  * the home screen's gear and the tour; `openSettingsAt` opens it at a section.
  */
 
-export type SectionId = 'general' | 'appearance' | 'viewing' | 'home' | 'quick' | 'ai' | 'wallet' | 'history' | 'fonts' | 'cloud' | 'shortcuts' | 'about';
+export type SectionId = 'general' | 'appearance' | 'viewing' | 'home' | 'quick' | 'ai' | 'wallet' | 'history' | 'fonts' | 'cloud' | 'shortcuts' | 'support' | 'about';
 
 interface Section {
   id: SectionId;
@@ -90,6 +91,7 @@ const SECTIONS: readonly Section[] = [
   { id: 'fonts', icon: Type, title: 'prefs.fonts', words: ['fontLibrary.title'], page: () => <FontsPage /> },
   { id: 'cloud', icon: Cloud, title: 'prefs.cloud', words: ['prefs.cloudSoon'], page: () => <CloudPage /> },
   { id: 'shortcuts', icon: Keyboard, title: 'prefs.shortcuts', words: ['shortcuts.title'], page: () => <ShortcutsPage /> },
+  { id: 'support', icon: LifeBuoy, title: 'prefs.support', words: ['help.support', 'help.report', 'help.ideas', 'support.tab.learn'], page: () => <SupportPage /> },
   { id: 'about', icon: Info, title: 'prefs.about', words: ['help.about', 'help.tour'], page: () => <AboutPage /> },
 ];
 

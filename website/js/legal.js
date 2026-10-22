@@ -74,6 +74,10 @@ export const PAGES = {
             en: "The open font library: the app asks you once before fetching a missing font from Fontsource, sends only the font's name, and fetches nothing if you say no.",
           },
           {
+            ar: 'الدعم والأفكار: حين تضغط «إرسال» في «الإبلاغ عن مشكلة»، يذهب إلى خدمة الدعم الخاصة بنا ما تراه أمامك قبل الإرسال فقط: ما كتبته، ونسخة التطبيق والنظام، وسجل التطبيق والصورة إن اخترت إرفاقهما. يُحفظ بشكل خاص ولا يراه غير فريق ZOOD. الأفكار والأصوات تظهر للجميع دون أسماء. يُعرَّف التثبيت برقم عشوائي لا يدل على أي شخص.',
+            en: 'Support and ideas: when you press Send in Report a problem, our own support service receives only what you saw before sending: what you wrote, the app and system version, and the app log and picture if you chose to attach them. It is kept private, seen only by the ZOOD team. Ideas and votes are public, without names. Your install is known by a random number that names no one.',
+          },
+          {
             ar: 'Google Drive وOneDrive: حين يتوفران، يُفتح الملف ويُحفظ في حسابك أنت مباشرة، ولا يمر بنا.',
             en: 'Google Drive and OneDrive: when available, files open from and save to your own account directly, never through us.',
           },
@@ -88,8 +92,8 @@ export const PAGES = {
             en: 'No tracking, no ads and no usage data.',
           },
           {
-            ar: 'لا نبيع بيانات ولا نشاركها، فهي لا تصل إلينا أصلًا.',
-            en: 'We do not sell or share data. It never reaches us.',
+            ar: 'لا نبيع بيانات ولا نشاركها. لا يصل إلينا إلا ما ترسله أنت بنفسك، كبلاغ أو فكرة.',
+            en: 'We do not sell or share data. Only what you send us yourself, a report or an idea, ever reaches us.',
           },
         ],
       },
@@ -176,6 +180,12 @@ export const PAGES = {
         p: {
           ar: 'نردّ على الرسائل بالعربية والإنجليزية. اكتب إلينا على {{email}}، واذكر جهازك ونسخة التطبيق، وأرفق الملف إن أمكن وإن لم يكن فيه بيانات خاصة.',
           en: 'We answer in Arabic and English. Write to {{email}} with your device and app version, and attach the file if you can and it holds nothing private.',
+        },
+      },
+      {
+        p: {
+          ar: 'أدلة خطوة بخطوة في pdf.zood.sa/help. وفي التطبيق: مساعدة › المساعدة والدعم (أو F1)؛ اسأل بكلماتك فيريك الطريق أو ينفّذه عنك، وأبلغ عن مشكلة دون حساب وتابع حالتها حتى تُصلح، وصوّت للأفكار.',
+          en: 'Step-by-step guides are at pdf.zood.sa/en/help. In the app: Help › Help & Support (or F1). Ask in your own words and it shows you the way or does it for you; report a problem with no account and follow it until it is fixed; and vote for ideas.',
         },
       },
       { h: { ar: 'أسئلة شائعة', en: 'Common questions' } },

@@ -1,0 +1,213 @@
+/* The help pages (help/, en/help/), made by scripts/support/make-guides.mjs. */
+@font-face {
+  font-family: Vazirmatn;
+  src: url('/assets/fonts/vazirmatn.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Inter;
+  src: url('/assets/fonts/inter.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  --ink: #09203f;
+  --muted: #4b5d78;
+  --paper: #f5f1ed;
+  --card: #fff;
+  --line: #e4dbd0;
+  --bronze: #9a7550;
+  --navy: #041e42;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #eef2f8;
+    --muted: #a9b6c9;
+    --paper: #041e42;
+    --card: #0b2a55;
+    --line: #1d3d6b;
+    --bronze: #d2b08a;
+  }
+
+  .help-logo img {
+    filter: invert(1) hue-rotate(180deg) brightness(1.4);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Vazirmatn, Inter, system-ui, sans-serif;
+  line-height: 1.7;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+:lang(en) body,
+html:lang(en) body {
+  font-family: Inter, Vazirmatn, system-ui, sans-serif;
+}
+
+a {
+  color: var(--bronze);
+}
+
+.help-bar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+
+.help-bar nav {
+  display: flex;
+  gap: 20px;
+}
+
+.help-bar nav a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.help {
+  max-width: 860px;
+  padding: 32px 16px 80px;
+  margin: 0 auto;
+}
+
+h1 {
+  margin: 16px 0 8px;
+  font-size: clamp(28px, 5vw, 44px);
+  line-height: 1.2;
+}
+
+.help-lead {
+  max-width: 64ch;
+  font-size: 18px;
+  color: var(--muted);
+}
+
+.help-index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 24px 0 8px;
+}
+
+.help-index a {
+  padding: 4px 12px;
+  font-size: 14px;
+  color: var(--ink);
+  text-decoration: none;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.help-group h2 {
+  margin: 48px 0 12px;
+  font-size: 14px;
+  color: var(--bronze);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.help-article {
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  scroll-margin-top: 80px;
+}
+
+.help-article h3 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.help-summary {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.help-article ol {
+  padding-inline-start: 1.4em;
+  margin: 0;
+}
+
+.help-article ol li {
+  margin-bottom: 6px;
+}
+
+.help-tips {
+  padding: 10px 14px 10px 2em;
+  margin: 12px 0 0;
+  font-size: 15px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--bronze) 8%, transparent);
+  border-radius: 10px;
+}
+
+[dir="rtl"] .help-tips {
+  padding: 10px 2em 10px 14px;
+}
+
+.help-links {
+  margin: 12px 0 0;
+  font-size: 15px;
+}
+
+.help-tag {
+  padding: 1px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  vertical-align: middle;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--bronze) 18%, transparent);
+  border-radius: 999px;
+}
+
+.help-faq {
+  padding: 12px 18px;
+  margin-bottom: 8px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.help-faq summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.help-faq p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.help-known {
+  color: var(--muted);
+}
+
+.help-report {
+  padding: 16px 20px;
+  margin-top: 40px;
+  background: var(--card);
+  border-inline-start: 4px solid var(--bronze);
+  border-radius: 12px;
+}

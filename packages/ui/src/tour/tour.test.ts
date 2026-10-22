@@ -5,12 +5,12 @@ import { newSince, tourChapters } from './chapters';
 
 describe('welcome tour', () => {
   it('shows the quick tools and the phone remote only in the desktop app', () => {
-    expect(tourChapters(false).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'ai', 'done']);
-    expect(tourChapters(true).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'quick', 'remote', 'ai', 'done']);
+    expect(tourChapters(false).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'ai', 'support', 'done']);
+    expect(tourChapters(true).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'quick', 'remote', 'ai', 'support', 'done']);
   });
 
   it('teaches Ask ZOOD only where it is in the build', () => {
-    expect(tourChapters(true, true).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'quick', 'ask', 'quickask', 'remote', 'ai', 'done']);
+    expect(tourChapters(true, true).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'quick', 'ask', 'quickask', 'remote', 'ai', 'support', 'done']);
     expect(tourChapters(false, true).map((c) => c.id)).not.toContain('ask');
   });
 
@@ -21,6 +21,8 @@ describe('welcome tour', () => {
     expect(newSince(4, true)).toBe('ask');
     expect(newSince(5, true)).toBe('quickask');
     expect(newSince(2, false)).toBe('welcome');
+    expect(newSince(6, true)).toBe('support');
+    expect(newSince(6, false)).toBe('support');
   });
 
   it('has every chapter in both languages', () => {
