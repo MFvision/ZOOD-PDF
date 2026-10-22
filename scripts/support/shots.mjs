@@ -291,6 +291,8 @@ export const SHOTS = {
   'quick-menu-setting': desktopSetting('quick', (s, dialog) => dialog.locator('.prefs-row', { hasText: s.t('quick.settings.menu') }).first()),
   'quick-ring-setting': desktopSetting('quick', (s, dialog) => dialog.locator('.prefs-row', { hasText: s.t('quick.settings.ring') }).first()),
 
+  'quick-ring-key': desktopSetting('quick', (s, dialog) => dialog.locator('.prefs-row', { hasText: s.t('prefs.ringDragKey') }).first()),
+
   // Desktop: Ask ZOOD
   'ask-keys': desktopSetting('ai', (s, dialog) => dialog.locator('.prefs-row', { hasText: s.t('ask.settings.keys') }).first()),
 

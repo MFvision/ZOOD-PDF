@@ -79,7 +79,7 @@ footer { position: absolute; bottom: 12mm; inset-inline: 20mm; display: flex; ju
 <h1>${escape(article.title[lang])}${article.desktopOnly ? `<span class="desktop">${escape(w.desktop)}</span>` : ''}</h1>
 <p class="summary">${escape(article.summary[lang])}</p>
 <h2>${escape(w.steps)}</h2>
-<ol>${article.steps.map((step) => `<li class="step"><div class="say"><span>${escape(step[lang])}</span></div>${shot(step, lang) ? `<img src="${pathToFileURL(shot(step, lang)).href}" alt="">` : ''}</li>`).join('')}</ol>
+<ol>${article.steps.map((step) => `<li class="step"><div class="say"><span>${escape(step[lang])}</span></div>${shot(step, lang) ? `<img src="data:image/jpeg;base64,${readFileSync(shot(step, lang)).toString('base64')}" alt="">` : ''}</li>`).join('')}</ol>
 ${article.tips ? `<div class="tips"><h2>${escape(w.tips)}</h2>${article.tips.map((tip) => `<p>${escape(tip[lang])}</p>`).join('')}</div>` : ''}
 ${article.guide ? `<p class="inapp">${escape(w.inApp)}</p>` : ''}
 <footer><span><bdi>${escape(w.name)}</bdi> · <bdi dir="ltr">${escape(w.url)}</bdi></span><span>${escape(article.id)}</span></footer>

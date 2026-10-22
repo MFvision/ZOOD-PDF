@@ -247,6 +247,11 @@ website's help pages). **Report a problem** and **Ideas** go through the PHP + M
 routine is in `docs/support/weekly-review.md`. **Waiting on him**: upload the relay, create the
 private repository and its token (steps in `website/api/support/README.md`). After that, the
 weekly routine can be switched on. Not tried on real Windows or Mac.
+**Step pictures (2026-10-22)**: the owner found text-only guides unhelpful, so every guide step
+that names a control now shows a picture of the real app with that control lit up, in Arabic and
+English (63 pictures each), and three steps move (editing a paragraph, organizing pages, the
+ring). They are taken by `scripts/support/make-shots.mjs`; how to retake them is in
+`docs/support/README.md`. Retake the affected pictures whenever a screen in a guide changes.
 
 ## Known open problems
 - **iPhone UI tests**: 6 of 55 failing at the last full run, each a test reaching for a

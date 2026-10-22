@@ -341,9 +341,10 @@ export const ARTICLES: readonly Article[] = [
     summary: { ar: 'زر الفأرة الأيمن أو الدائرة: اضغط، دمج، تحويل مباشرة.', en: 'Right-click or the ring: compress, combine, convert straight away.' },
     steps: [
       { ar: 'حدّد ملفًا أو أكثر في المجلد واضغط بالزر الأيمن، ثم اختر الأداة. تفتح نافذة صغيرة فيها كل الأدوات: اضغط الأداة التي تريدها.', en: 'Select one or more files in a folder, right-click, then choose the tool. A small window with every tool opens: press the one you want.', pic: 'quick-window' },
-      { ar: 'أو اسحب الملفات مع الضغط على Ctrl فتظهر الدائرة عند المؤشر. أفلت الملفات على الأداة فتعمل فورًا، والنتيجة تُحفظ بجانب الأصل.', en: 'Or drag the files with Ctrl held and the ring appears at the pointer. Let go on a tool and it runs straight away; the result is saved beside the original.', pic: 'quick-ring' },
+      { ar: 'أو اسحب الملفات مع الضغط على Ctrl أو Shift فتظهر الدائرة عند المؤشر. أفلت الملفات على الأداة فتعمل فورًا، والنتيجة تُحفظ بجانب الأصل.', en: 'Or drag the files with Ctrl or Shift held and the ring appears at the pointer. Let go on a tool and it runs straight away; the result is saved beside the original.', pic: 'quick-ring' },
       { ar: 'من الإعدادات › الأدوات السريعة: شغّل قائمة الزر الأيمن واختر أدواتها وترتيبها.', en: 'In Settings › Quick tools, turn on the right-click menu and choose its tools and their order.', pic: 'quick-menu-setting' },
       { ar: 'وفي القسم نفسه: شغّل الدائرة أو أوقفها، واختر أدواتها ومفتاح فتحها (Ctrl+Alt+Z).', en: 'In the same place, turn the ring on or off and choose its tools and its key (Ctrl+Alt+Z).', pic: 'quick-ring-setting' },
+      { ar: 'واختر المفتاح الذي تضغطه أثناء السحب لتظهر الدائرة: Ctrl أو Shift أو Alt أو مفتاح ويندوز (على ماك: Option أو Command).', en: 'And choose the key you hold while dragging to bring up the ring: Ctrl, Shift, Alt or the Windows key (Option or Command on a Mac).', pic: 'quick-ring-key' },
     ],
     keywords: ['quick', 'right click', 'ring', 'context menu', 'سريعه', 'زر ايمن', 'الحلقه', 'قائمه', 'دائره'],
     tour: 'quick',

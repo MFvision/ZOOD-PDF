@@ -10,6 +10,7 @@ what will be sent and presses Send.
 | Ask (search the guides, explain them with the device's own AI) | `packages/ui/src/support/` | no |
 | Show me / Do it for me (the pointer finds the real button, step by step) | `support/guide.ts`, `GuideLayer.tsx` | no |
 | 24 guides, FAQ, known limits, in Arabic and English | `support/articles.ts` | no |
+| A picture of the real app for each step (some moving) | `scripts/support/make-shots.mjs`, `shots.mjs` | no |
 | The guides as PDFs (in the app and on the website) | `scripts/support/make-guides.mjs` | no |
 | Report a problem (log + screenshot, only by choice; status comes back) | `support/tickets.ts` + relay | relay, or e-mail |
 | Ideas board (vote with no account) | `support/ideas.ts` + relay | relay |
@@ -49,13 +50,33 @@ holds them to it.
 1. Edit `ARTICLES` in `packages/ui/src/support/articles.ts`. Both languages
    are required, and `support.test.ts` checks that every step's target can be
    found.
-2. Regenerate the PDFs and the website help pages:
+2. Pictures: a step with `pic: 'name'` shows
+   `packages/ui/public/guides/shots/name-<ar|en>.jpg` (and plays
+   `name-<ar|en>.webp` when there is one and the person has not asked for less
+   motion). Each picture has a recipe in `scripts/support/shots.mjs` that drives
+   the real app to that step and says what to light up; the words come from the
+   app's own messages, so one recipe takes both languages. Desktop-only windows
+   (Settings › Quick tools, the ring, the phone remote) run against a stand-in
+   for the native side, `scripts/support/desktop-host.mjs`. Retake them after
+   the screens they show change:
+
+   ```
+   pnpm --filter @warraq/web exec vite build
+   pnpm --filter @warraq/web exec vite build --mode tauri --outDir dist-tauri
+   CHROMIUM=/path/to/chromium node scripts/support/make-shots.mjs [name…]
+   ```
+
+   With no names, every picture is taken again (about 15 minutes). A recipe
+   with `motion` makes a moving picture: it calls `frame()` at each moment, and
+   the still is its first marked moment. `support.test.ts` fails if a step's
+   picture is missing in either language.
+3. Regenerate the PDFs and the website help pages:
 
    ```
    CHROMIUM=/path/to/chromium node --experimental-strip-types scripts/support/make-guides.mjs
    ```
 
-3. To add a video to a guide, set `video` (a YouTube link) on its article. The
+4. To add a video to a guide, set `video` (a YouTube link) on its article. The
    button appears only when a video is set.
 
 ## Tests
@@ -63,6 +84,7 @@ holds them to it.
 - `packages/ui/src/support/support.test.ts`: the guides, the search (Arabic
   and English), the log, the relay client, tickets and ideas.
 - `apps/web/e2e/support.spec.ts`: F1, Show me, Do it for me, a report and its
-  status, the e-mail fallback, voting, the PDF guide, and Arabic RTL.
+  status, the e-mail fallback, voting, the PDF guide, Arabic RTL, and that a
+  guide's step pictures load.
 - `node website/tools/support-relay-check.mjs`: the PHP relay end to end with
   SQLite and a fake GitHub.
