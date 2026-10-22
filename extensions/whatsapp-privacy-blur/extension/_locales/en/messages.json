@@ -1,0 +1,80 @@
+{
+  "extName": {
+    "message": "Privacy Blur for WhatsApp Web"
+  },
+  "extDescription": {
+    "message": "Blur your chat list, your open chat, or both on WhatsApp Web. No network access, no data collection."
+  },
+  "cmdToggle": {
+    "message": "Turn the blur on or off"
+  },
+  "enabled": {
+    "message": "Blur on or off"
+  },
+  "blurOn": {
+    "message": "Blur is on. Click to turn it off"
+  },
+  "blurOff": {
+    "message": "Blur is off. Click to turn it on"
+  },
+  "whatToBlur": {
+    "message": "What to blur"
+  },
+  "mode_contacts": {
+    "message": "Contacts"
+  },
+  "mode_chat": {
+    "message": "Chat"
+  },
+  "mode_both": {
+    "message": "Both"
+  },
+  "strength": {
+    "message": "Blur strength"
+  },
+  "hoverPeek": {
+    "message": "Hover to peek"
+  },
+  "hoverPeekHint": {
+    "message": "Point at a blurred area to read it"
+  },
+  "smooth": {
+    "message": "Smooth reveal"
+  },
+  "smoothHint": {
+    "message": "Fade in and out instead of an instant switch"
+  },
+  "showToolbar": {
+    "message": "Show toolbar on the page"
+  },
+  "showToolbarHint": {
+    "message": "The small floating bar on WhatsApp Web"
+  },
+  "hideToolbar": {
+    "message": "Hide toolbar (turn it back on from the extension button)"
+  },
+  "moveToolbar": {
+    "message": "Drag to move"
+  },
+  "settings": {
+    "message": "Settings"
+  },
+  "collapse": {
+    "message": "Collapse"
+  },
+  "expand": {
+    "message": "Expand"
+  },
+  "resetPosition": {
+    "message": "Reset toolbar position"
+  },
+  "shortcut": {
+    "message": "Keyboard shortcut:"
+  },
+  "shortcutNotSet": {
+    "message": "not set"
+  },
+  "privacyNote": {
+    "message": "This extension has no network access and never reads your chats. Settings stay on this computer."
+  }
+}

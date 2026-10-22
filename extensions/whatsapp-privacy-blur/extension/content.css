@@ -1,0 +1,28 @@
+/*
+ * The blur itself. content.js only sets attributes on <html>; these rules do the rest.
+ * Fail-closed: until content.js has run (or if it never does) both areas stay blurred.
+ *
+ *   #pane-side  the chat list (contacts, names, last messages)
+ *   #main       the open chat: header, messages and the message box
+ */
+
+html:not([data-wpb-off], [data-wpb-mode="chat"]) #pane-side,
+html:not([data-wpb-off], [data-wpb-mode="contacts"]) #main > * {
+  filter: blur(var(--wpb-blur, 6px));
+}
+
+/* Hover to peek: reveal only the area under the mouse. More specific than the rule above, so it wins. */
+html:not([data-wpb-nopeek]) #pane-side:hover,
+html:not([data-wpb-nopeek]) #main:hover > * {
+  filter: none;
+}
+
+/* Typing: keep your own draft readable while the message box has focus. */
+html:not([data-wpb-off]) #main > footer:focus-within {
+  filter: none;
+}
+
+html:not([data-wpb-instant]) #pane-side,
+html:not([data-wpb-instant]) #main > * {
+  transition: filter 0.2s ease;
+}
