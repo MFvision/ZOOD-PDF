@@ -68,7 +68,7 @@ pub fn all_content(pdf: &[u8]) -> String {
 pub fn embedded_fonts(pdf: &[u8]) -> Vec<(String, usize)> {
     let d = Document::load_mem(pdf).unwrap();
     let mut out = Vec::new();
-    for (_, o) in d.objects.iter() {
+    for o in d.objects.values() {
         if let Object::Dictionary(fd) = o {
             if fd.get(b"Type").and_then(|t| t.as_name()).ok() == Some(b"FontDescriptor") {
                 let name = String::from_utf8_lossy(fd.get(b"FontName").unwrap().as_name().unwrap())
@@ -152,7 +152,7 @@ pub fn struct_roles(pdf: &[u8]) -> (Vec<String>, Vec<String>) {
     let d = Document::load_mem(pdf).unwrap();
     let mut roles = Vec::new();
     let mut alts = Vec::new();
-    for (_, o) in d.objects.iter() {
+    for o in d.objects.values() {
         if let Object::Dictionary(e) = o {
             if e.get(b"Type").and_then(|t| t.as_name()).ok() == Some(b"StructElem") {
                 roles.push(

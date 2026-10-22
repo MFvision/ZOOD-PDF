@@ -51,6 +51,9 @@ fn shipped_dependencies_are_permissive() {
         .args([
             "tree",
             "--offline",
+            // CI sets CARGO_TERM_COLOR=always, which wraps the " (*)" marker in ANSI codes.
+            "--color",
+            "never",
             "-e",
             "normal,no-proc-macro",
             "--prefix",
