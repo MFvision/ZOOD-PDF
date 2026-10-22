@@ -717,7 +717,7 @@ function commandWords(command: Command, t: ReturnType<typeof useI18n>['t']): str
 
 /**
  * The AI chapter, in two parts: the chat about anything with the commands
- * it does in the app (first, as Help › AI chat and commands opens it), and
+ * it does in the app (first), and
  * the chat about a document with read aloud.
  */
 export function AiScene() {

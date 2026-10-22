@@ -28,7 +28,7 @@ test('in the page view, the sidebar and Find buttons are pressed exactly while E
   await page.goto('/');
   await openPdf(page, THREE_PAGES);
   for (const [name, command] of [
-    ['Sidebar', 'panel:toggle-sidebar'],
+    ['Pages panel', 'panel:toggle-sidebar'],
     ['Find', 'panel:toggle-search'],
   ] as const) {
     for (let click = 0; click < 2; click += 1) {
@@ -50,9 +50,9 @@ test('in Edit text, the sidebar button shows the pane as it is, and Find opens a
   await button(page, 'Zoom in').click();
   const pane = page.locator('.pane-start');
   for (let click = 0; click < 2; click += 1) {
-    await button(page, 'Sidebar').click();
+    await button(page, 'Pages panel').click();
     const open = await pane.isVisible();
-    await expect(button(page, 'Sidebar'), `click ${click + 1}`).toHaveAttribute('aria-pressed', String(open));
+    await expect(button(page, 'Pages panel'), `click ${click + 1}`).toHaveAttribute('aria-pressed', String(open));
   }
 
   await button(page, 'Find').click();

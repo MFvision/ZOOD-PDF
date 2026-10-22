@@ -100,12 +100,13 @@ test.describe('the general chat', () => {
   });
 });
 
-test('Help › AI chat and commands opens the tour at the chat, and its practice says what a command does without doing it', async ({ page, stayLocal: _ }) => {
+test('the tour’s Chat and commands practice says what a command does without doing it', async ({ page, stayLocal: _ }) => {
   await page.addInitScript(() => localStorage.setItem('warraq.preferences', JSON.stringify({ lang: 'en' })));
   await page.goto('/');
   await page.getByRole('menubar').getByRole('menuitem', { name: 'Help' }).click();
-  await page.getByRole('menuitem', { name: 'AI chat and commands' }).click();
+  await page.getByRole('menuitem', { name: 'Welcome tour' }).click();
   const tour = page.getByRole('dialog', { name: 'Welcome tour' });
+  await tour.getByRole('navigation', { name: 'Chapters' }).getByRole('button', { name: 'AI and read aloud' }).click();
   await expect(tour.getByRole('tab', { name: 'Chat and commands' })).toHaveAttribute('aria-selected', 'true');
   const field = tour.getByLabel('Try a command');
   await field.fill('dark mode');
