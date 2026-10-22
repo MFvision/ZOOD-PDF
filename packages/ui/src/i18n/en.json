@@ -2859,6 +2859,7 @@
   "ask.problem.failed": "That didn't work.",
   "ask.problem.notHeard": "I didn't hear any words. Tap your key and speak.",
   "ask.settings.title": "Ask ZOOD",
+  "ask.bubble": "Ask ZOOD",
   "ask.settings.note": "Ask ZOOD helps in any app. Tap your key once and talk. Tap it twice in a reply box and it writes the reply. Or use Hold to talk: hold its keys while you speak (they are different keys, set below). It runs on this computer only: no account, nothing sent anywhere.",
   "ask.settings.on": "Ask ZOOD",
   "ask.settings.onHint": "Hold {keys} in any app and speak.",

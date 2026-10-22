@@ -185,14 +185,14 @@ export function OrganizePanel() {
         />
         <IconButton
           label={t('edit.undo')}
-          icon={<Icon of={Undo2} />}
+          icon={<Icon of={Undo2} mirror />}
           showLabel
           disabled={!services.canUndo}
           onClick={() => services.viewCommand('undo')}
         />
         <IconButton
           label={t('edit.redo')}
-          icon={<Icon of={Redo2} />}
+          icon={<Icon of={Redo2} mirror />}
           showLabel
           disabled={!services.canRedo}
           onClick={() => services.viewCommand('redo')}
