@@ -50,6 +50,27 @@ export function editFontName(id: EditFontId): string {
   return EDIT_FONTS.find((font) => font.id === id)?.name ?? 'Amiri';
 }
 
+/**
+ * The CSS family the in-place editor previews a face with. The UI's `Cairo`
+ * covers Arabic only (Latin goes to Inter), so the editor uses a full copy of
+ * it; otherwise Latin typed into a Cairo paragraph would preview in Amiri.
+ */
+export function editPreviewFamily(id: EditFontId): string {
+  return id === 'cairo' ? '"ZOOD Edit Cairo"' : editFontName(id);
+}
+
+/**
+ * The editor's whole font stack. A paragraph whose own family is one of the
+ * bundled faces is previewed with the bundled preview family, for the same
+ * reason as above.
+ */
+export function editPreviewStack(primary: EditFontId, own?: string): string {
+  const bundled = EDIT_FONTS.find((font) => font.name.toLowerCase() === own?.toLowerCase());
+  const first = own && !bundled ? `"${own}", ` : '';
+  const main = editPreviewFamily(bundled ? bundled.id : primary);
+  return `${first}${main}, Amiri, "ZOOD Edit Cairo", Inter, serif`;
+}
+
 const cache = new Map<EditFontId, Promise<Uint8Array>>();
 
 /**
