@@ -250,6 +250,24 @@ export const SHOTS = {
   'library-tool': toolCard('library'),
   'library-add': inTool('library', (s) => s.button('library.addFolder', s.pane())),
 
+  // Folders
+  'folders-nav': { run: async (s) => ({ mark: s.page.locator('.home').getByRole('button', { name: s.t('home.nav.folders'), exact: true }).first() }) },
+  'folders-add': {
+    async run(s) {
+      await s.page.locator('.home').getByRole('button', { name: s.t('home.nav.folders'), exact: true }).first().click();
+      return { mark: s.page.locator('button', { hasText: s.t('folders.add') }).first() };
+    },
+  },
+
+  // Tools in the sidebar
+  'tools-switch': { run: async (s) => ({ mark: s.page.locator('.home-nav-heading-switch') }) },
+  'tools-setting': {
+    async run(s) {
+      const dialog = await s.settings('home');
+      return { mark: dialog.locator('.prefs-row', { hasText: s.t('prefs.sidebarTools') }).first() };
+    },
+  },
+
   // Language and look
   'look-language': {
     async run(s) {
@@ -308,6 +326,17 @@ export const SHOTS = {
     async run(s) {
       await (await menu(s, 'menu.tools', 'remote.menu')).click();
       return { mark: s.page.locator('.remote-qr'), pointer: false };
+    },
+  },
+
+  'remote-get-app': {
+    host: desktop,
+    async run(s) {
+      await (await menu(s, 'menu.help', 'help.tour')).click();
+      const tour = s.page.locator('dialog[open]').last();
+      await tour.getByRole('button', { name: s.t('tour.ch.remote'), exact: true }).click();
+      await s.page.waitForTimeout(1200);
+      return { mark: tour.locator('.pf-qr-svg[role="img"]').first(), pointer: false };
     },
   },
 

@@ -365,6 +365,7 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'التحكم من الجوال', en: 'Control it from your phone' },
     summary: { ar: 'اعرض الصفحات وحرّك المؤشر وأرسل الملفات من جوالك.', en: 'Present, move the pointer and send files from your phone.' },
     steps: [
+      { ar: 'أول مرة: ثبّت تطبيق ZOOD PDF على جوالك. في الجولة التعريفية (مساعدة › جولة تعريفية) افتح فصل «التحكم بالجوال» وامسح الرمز بكاميرا الجوال، أو افتح pdf.zood.sa/app.', en: 'The first time, get the ZOOD PDF app on your phone. In the welcome tour (Help › Welcome tour), open the Phone remote chapter and scan the code with the phone camera, or go to pdf.zood.sa/app.', pic: 'remote-get-app' },
       { ar: 'من قائمة أدوات اختر «التحكم من الجوال…»، أو اضغط زره أعلى الشاشة الرئيسية.', en: 'In the Tools menu, choose Phone remote…, or press its button at the top of Home.', pic: 'remote-menu' },
       { ar: 'امسح الرمز بكاميرا الجوال. الجهازان على شبكة الواي فاي نفسها.', en: 'Scan the code with the phone camera. Both must be on the same Wi-Fi.', pic: 'remote-code' },
     ],
@@ -379,8 +380,8 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'مجلداتك في الصفحة الرئيسية', en: 'Your folders on the home screen' },
     summary: { ar: '«المجلدات» تجمع مجلداتك ومساحاتك السحابية في مكان واحد، وملفاتك تبقى في مكانها.', en: 'Folders keeps your folders, and your cloud drives, in one place. Your files stay where they are.' },
     steps: [
-      { ar: 'في الشريط الجانبي للصفحة الرئيسية اضغط «المجلدات».', en: 'In the home screen sidebar, click Folders.' },
-      { ar: 'اضغط «مجلد جديد» واختر أحد مجلداتك.', en: 'Click New folder and choose one of your folders.' },
+      { ar: 'في الشريط الجانبي للصفحة الرئيسية اضغط «المجلدات».', en: 'In the home screen sidebar, click Folders.', pic: 'folders-nav' },
+      { ar: 'اضغط «مجلد جديد» واختر أحد مجلداتك.', en: 'Click New folder and choose one of your folders.', pic: 'folders-add' },
       { ar: 'اضغط على أي مجلد لترى ملفاته، ثم اضغط على ملف لفتحه.', en: 'Click any folder to see its files, then click a file to open it.' },
       { ar: 'إذا كان OneDrive أو Google Drive متاحًا في نسختك فستجده تحت «المساحات السحابية»: اضغطه وسجّل الدخول مرة واحدة.', en: 'If your copy has OneDrive or Google Drive, it is under Cloud drives: click it and sign in once.' },
     ],
@@ -421,8 +422,8 @@ export const ARTICLES: readonly Article[] = [
     title: { ar: 'كل الأدوات أو مجموعات في الشريط الجانبي', en: 'All tools or groups in the sidebar' },
     summary: { ar: 'قائمة طويلة بكل الأدوات، أو ثمانية عناوين بقوائم قصيرة.', en: 'One long list of every tool, or eight headings with short menus.' },
     steps: [
-      { ar: 'في الصفحة الرئيسية، اضغط الزر الصغير بجانب «الأدوات» في الشريط الجانبي للتبديل.', en: 'On the home screen, press the small button beside Tools in the sidebar to switch.' },
-      { ar: 'أو افتح الإعدادات › الرئيسية › «الأدوات في الشريط الجانبي» واختر «كل الأدوات» أو «مجموعات».', en: 'Or open Settings › Home › Tools in the sidebar and choose All tools or Grouped.' },
+      { ar: 'في الصفحة الرئيسية، اضغط الزر الصغير بجانب «الأدوات» في الشريط الجانبي للتبديل.', en: 'On the home screen, press the small button beside Tools in the sidebar to switch.', pic: 'tools-switch' },
+      { ar: 'أو افتح الإعدادات › الرئيسية › «الأدوات في الشريط الجانبي» واختر «كل الأدوات» أو «مجموعات».', en: 'Or open Settings › Home › Tools in the sidebar and choose All tools or Grouped.', pic: 'tools-setting' },
     ],
     tips: [{ ar: 'يتذكّر التطبيق اختيارك.', en: 'The app remembers your choice.' }],
     keywords: ['tools', 'sidebar', 'list', 'groups', 'all tools', 'menu', 'ادوات', 'الادوات', 'قائمه', 'مجموعات', 'شريط جانبي'],
