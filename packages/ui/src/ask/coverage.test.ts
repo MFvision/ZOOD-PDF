@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { BOOK_WORDS, TOOL_WORDS, intentOf, partsOf, stepOf } from './book';
 import type { BookEntry } from './book';
 import { FRESH, PHRASES } from './coverage.cases';
+import { asksAboutWords, asksTheWorld } from './content';
 import { fuzzyOffers, fuzzyPick } from './fuzzy';
 import { SETTINGS_BOOK, settingAsked, settingFirst, settingsPageAsked } from './settingsBook';
 import { translate } from '../i18n/messages';
@@ -50,19 +51,21 @@ const QUESTION = /[?؟]|^(?:what|why|which|who|is|are|does|ما |ماذا|وش |
 function route(words: string, list: BookEntry[]): string {
   const said = intentOf(words);
   const question = !said && QUESTION.test(words.trim());
-  if (!question && !settingFirst(words)) {
+  const about = asksAboutWords(words);
+  if (!question && (about || !settingFirst(words))) {
     const parts = partsOf(words);
     const steps = parts.map((part) => stepOf(part, list));
     if (parts.length && steps.every(Boolean))
       return 'book:' + steps.map((step) => `${step!.id}${step!.page ? `#${step!.page}` : ''}${step!.query ? `?${step!.query}` : ''}`).join('+');
   }
+  if (about) return 'MODEL';
   if (said || !/[?؟]/.test(words)) {
     const asked = settingAsked(words, true);
     if (asked) return `setting:${asked.entry.id}=${asked.value ?? ''}`;
     const page = settingsPageAsked(words);
     if (page !== undefined) return `page:${page ?? 'general'}`;
   }
-  if (!question) {
+  if (!question && !asksTheWorld(words)) {
     const picked = fuzzyPick(words, list);
     if (picked) return picked.kind === 'book' ? `book:${picked.step.id}` : `setting:${picked.ask.entry.id}=${picked.ask.value ?? ''}`;
     const offers = fuzzyOffers(words, list).map((one) => (one.kind === 'book' ? `book:${one.step.id}` : `setting:${one.ask.entry.id}=${one.ask.value ?? ''}`));

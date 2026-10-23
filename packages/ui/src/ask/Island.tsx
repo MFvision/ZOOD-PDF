@@ -79,6 +79,7 @@ import {
 import type { BookEntry, BookStep, Control, Intent } from './book';
 import { settingAsked, settingFirst, settingsPageAsked, settingWords, unknownSetting } from './settingsBook';
 import type { SettingAsk } from './settingsBook';
+import { asksAboutWords, asksTheWorld, asksToReadOut } from './content';
 import { fuzzyOffers, fuzzyPick } from './fuzzy';
 import type { Picked } from './fuzzy';
 import { decisionGrammar, languageOf, readDecision, systemPrompt } from './plan';
@@ -118,6 +119,8 @@ export function isAskWindow(): boolean {
 }
 
 /** Terminals and consoles, by their app names: a line pasted there runs. */
+/** At most this much of an answer is said aloud: the rest stays on the card to read. */
+const SPOKEN_MOST = 2400;
 const TERMINAL = /\b(?:terminal|iterm2?|powershell|pwsh|cmd|command prompt|conhost|windowsterminal|warp|alacritty|kitty|wezterm|ghostty|putty)\b/i;
 
 /** The quick tools' names, as the island says them. */
@@ -621,19 +624,24 @@ function Island() {
       // Inside ZOOD PDF its own commands come first: no picture, no wait.
       // A setting named with its choice, or a page of Settings, before the menus: "keep 20 versions", "AI settings".
       const named = !chosen && !past;
-      if (named && settingFirst(words, true) && (await settingsLane(words, spoken))) return;
+      // Words to write, sum up, read out or judge ("write a reply", "لخص الإيميل") are the model's, never a setting's.
+      const readOut = !moment.ours && asksToReadOut(words);
+      const about = readOut || asksAboutWords(words);
+      const setting = named && !about;
+      if (setting && settingFirst(words, true) && (await settingsLane(words, spoken))) return;
       if (named && moment.ours && (await bookLane(words, spoken))) return;
       // A setting, by its name, from anywhere: Settings opens at it.
-      if (named && (await settingsLane(words, spoken))) return;
+      if (setting && (await settingsLane(words, spoken))) return;
       // Named by its words, not as a phrase: done when one is clearly meant, offered when a few could be.
-      if (named && (await fuzzyLane(words, spoken, moment.ours))) return;
+      if (setting && (await fuzzyLane(words, spoken, moment.ours))) return;
       // "Change the …" that names no setting we know: Settings, said plainly, never a tool guessed instead.
-      if (named && unknownSetting(words)) {
+      if (setting && unknownSetting(words)) {
         uiLog(`ask: no setting matched "${words}"`);
         await settingsLane(words, spoken, true);
         return;
       }
-      if (await quickLane(words, spoken, moment, chosen)) return;
+      // Not a tool either: "extract the dates from this" is not Extract pages.
+      if ((chosen || !about) && (await quickLane(words, spoken, moment, chosen))) return;
       // Another app: its buttons by their names, before any picture is read.
       if (!chosen && !past && !moment.ours && (await controlsLane(words, spoken))) return;
       const wallet = await loadWallet(t('wallet.me')).catch(() => null);
@@ -678,7 +686,10 @@ function Island() {
       };
       if (decision.act === 'show' || decision.act === 'do' || decision.act === 'explain')
         return await guide(decision.act, words, decision, moment.ours, spoken, brain.id);
-      if (shouldTalk(prefs.talkBack, spoken)) void talk(decision.say);
+      // A summary or an answer is said whole, not only its first line; "read this to me" always is.
+      const whole = decision.act === 'answer' && decision.text ? `${decision.say}\n${decision.text}` : decision.say;
+      if (readOut && decision.text) void talk(decision.text.slice(0, SPOKEN_MOST));
+      else if (shouldTalk(prefs.talkBack, spoken)) void talk(whole.slice(0, SPOKEN_MOST));
       if (decision.act === 'write')
         return await place(words, decision.say, decision.text, moment.app, documents.length > 0);
       if (decision.act === 'tool')
@@ -883,6 +894,8 @@ function Island() {
    */
   const fuzzyLane = async (words: string, spoken: boolean, ours: boolean): Promise<boolean> => {
     if (!intentOf(words) && /[?؟]|^(?:what|why|which|who|is|are|does|ما |ماذا|وش |ايش|ليش|لماذا|هل )/i.test(words.trim())) return false;
+    // A question about the world ("how many days until Ramadan", «متى العيد») is the model's.
+    if (asksTheWorld(words)) return false;
     const entries = await bookNow(ours);
     const sure = fuzzyPick(words, entries, true);
     if (sure) {
