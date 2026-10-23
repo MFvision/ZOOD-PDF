@@ -679,16 +679,16 @@ export const PLATFORMS = [
     id: 'windows',
     name: { ar: 'ويندوز', en: 'Windows' },
     status: {
-      ar: 'الإصدار 0.4.6، ويحدّث نفسه. غير موقّع بعد، فقد ينبّهك ويندوز قبل تشغيله أول مرة.',
-      en: 'Version 0.4.6, and it updates itself. Not signed yet, so Windows may warn you the first time it runs.',
+      ar: 'الإصدار 0.4.7، ويحدّث نفسه. غير موقّع بعد، فقد ينبّهك ويندوز قبل تشغيله أول مرة.',
+      en: 'Version 0.4.7, and it updates itself. Not signed yet, so Windows may warn you the first time it runs.',
     },
   },
   {
     id: 'mac',
     name: { ar: 'ماك', en: 'Mac' },
     status: {
-      ar: 'الإصدار 0.4.6، ويحدّث نفسه. إلى أن يُضاف توثيق Apple، اسمح بفتحه مرة من الإعدادات › الخصوصية والأمن.',
-      en: "Version 0.4.6, and it updates itself. Until Apple's notarisation is added, allow it once in System Settings › Privacy & Security.",
+      ar: 'الإصدار 0.4.7، ويحدّث نفسه. إلى أن يُضاف توثيق Apple، اسمح بفتحه مرة من الإعدادات › الخصوصية والأمن.',
+      en: "Version 0.4.7, and it updates itself. Until Apple's notarisation is added, allow it once in System Settings › Privacy & Security.",
     },
   },
   {
@@ -727,12 +727,12 @@ export const DOWNLOADS = [
   {
     id: 'windows',
     label: { ar: 'ويندوز', en: 'Windows' },
-    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.6/ZOOD-PDF-Setup-0.4.6.exe',
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.7/ZOOD-PDF-Setup-0.4.7.exe',
   },
   {
     id: 'mac',
     label: { ar: 'ماك', en: 'Mac' },
-    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.6/ZOOD-PDF-0.4.6-mac.dmg',
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.7/ZOOD-PDF-0.4.7-mac.dmg',
   },
   {
     id: 'ios',
@@ -813,8 +813,8 @@ export const TOOLS = [
   {
     name: { ar: 'اسأل ZOOD', en: 'Ask ZOOD' },
     text: {
-      ar: 'اضغط Ctrl الأيمن مرة وتكلّم في أي تطبيق، ومرتين لمسودة رد بأسلوبك. يعمل على جهازك.',
-      en: 'Tap the right Ctrl key once and talk, in any app, or twice for a reply drafted your way. It runs on your device.',
+      ar: 'اضغط Ctrl الأيمن مرة وتكلّم في أي تطبيق، ومرتين لمسودة رد بأسلوبك. اطلب عرضًا تقديميًا فيصنع ملف pptx. يعمل على جهازك.',
+      en: 'Tap the right Ctrl key once and talk, in any app, or twice for a reply drafted your way. Ask for a presentation and it makes a pptx file. It runs on your device.',
     },
     on: ON.desktop,
   },
