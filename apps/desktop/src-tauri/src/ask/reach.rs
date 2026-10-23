@@ -330,16 +330,28 @@ mod mac {
             .ok_or("E_ACCESS: Accessibility is off for ZOOD PDF, or the app shows no window")?;
         let mut controls = Vec::new();
         let mut seen = 0usize;
+        // A big web page answers element by element: what was found by then is enough.
+        let until = std::time::Instant::now() + std::time::Duration::from_millis(1800);
         // The window's own tree, then the menu bar's top items.
-        walk(window.0, 0, &mut seen, &mut controls);
+        walk(window.0, 0, &mut seen, &mut controls, until);
         if let Some(bar) = attribute(app.0, "AXMenuBar") {
-            walk(bar.0, 28, &mut seen, &mut controls);
+            walk(bar.0, 28, &mut seen, &mut controls, until);
         }
         Ok(controls)
     }
 
-    fn walk(element: CFTypeRef, depth: usize, seen: &mut usize, out: &mut Vec<Raw>) {
-        if depth > 30 || *seen >= MOST_SEEN || out.len() >= MOST {
+    fn walk(
+        element: CFTypeRef,
+        depth: usize,
+        seen: &mut usize,
+        out: &mut Vec<Raw>,
+        until: std::time::Instant,
+    ) {
+        if depth > 30
+            || *seen >= MOST_SEEN
+            || out.len() >= MOST
+            || std::time::Instant::now() >= until
+        {
             return;
         }
         *seen += 1;
@@ -380,6 +392,7 @@ mod mac {
                     depth + 1,
                     seen,
                     out,
+                    until,
                 );
             }
         }

@@ -544,6 +544,7 @@ pub fn run() {
             ask::ask_open,
             ask::ask_type,
             ask::ask_paste,
+            ask::ask_shortcut,
             ask::ask_copy,
             ask::ask_undo,
             ask::ask_window_png,

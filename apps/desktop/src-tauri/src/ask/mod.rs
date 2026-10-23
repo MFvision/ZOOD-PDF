@@ -1251,6 +1251,31 @@ pub async fn ask_paste<R: Runtime>(
     .map_err(|e| format!("E_ASK: {e}"))?
 }
 
+/// Presses an everyday shortcut ("print", "new-tab": `hands::SHORTCUTS`)
+/// in the app that was in front when Ask ZOOD was called: the app's own
+/// command, with no picture of the screen and no button to find.
+#[tauri::command]
+pub async fn ask_shortcut<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AskState>,
+    name: String,
+) -> Result<(), String> {
+    if !crate::remote::input::AVAILABLE {
+        return Err("E_ASK: shortcuts are on Windows and macOS".to_string());
+    }
+    if hands::shortcut_keys(&name).is_none() {
+        return Err(format!("E_ARGS: no shortcut called {name:?}"));
+    }
+    let front = let_go(&app, &state);
+    tauri::async_runtime::spawn_blocking(move || {
+        focus::restore(&front);
+        std::thread::sleep(Duration::from_millis(220));
+        hands::shortcut(&name)
+    })
+    .await
+    .map_err(|e| format!("E_ASK: {e}"))?
+}
+
 /// Runs a quick tool on the files selected when the keys went down: the
 /// same as letting them go on that tool of the ring.
 #[tauri::command]
