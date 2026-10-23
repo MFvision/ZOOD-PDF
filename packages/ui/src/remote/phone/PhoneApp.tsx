@@ -71,9 +71,9 @@ export function PhoneApp() {
     return (
       <main className="phone phone-center">
         <Logo className="phone-brand" />
-        {linkState === 'connecting' && <div className="phone-spinner" aria-hidden="true" />}
+        {(linkState === 'connecting' || linkState === 'waiting') && <div className="phone-spinner" aria-hidden="true" />}
         <p className="phone-message">{ps(linkState)}</p>
-        {(linkState === 'closed' || linkState === 'refused') && (
+        {(linkState === 'closed' || linkState === 'refused' || linkState === 'denied') && (
           <button type="button" className="phone-btn" onClick={() => location.reload()}>
             {ps('tryAgain')}
           </button>

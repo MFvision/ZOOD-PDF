@@ -8,6 +8,7 @@ import { Popover } from '../components/Popover';
 import { useI18n } from '../i18n/useT';
 import { useAppState } from '../state/AppContext';
 import { remoteAvailable } from './host';
+import { PairAsk } from './PairAsk';
 import { PresentMode } from './PresentMode';
 import { RemotePanel } from './RemotePanel';
 import { openRemoteSheet, updateRemote, useRemoteView } from './store';
@@ -25,9 +26,12 @@ export function RemoteLayer() {
   if (!remoteAvailable()) return null;
   // The panel as a window, for the home screen and the menu (the toolbar's button opens it beside itself).
   return (
-    <Dialog open={view.sheetOpen} title={t('remote.title')} className="remote-dialog" onClose={() => updateRemote({ sheetOpen: false })}>
-      {view.sheetOpen && <RemotePanel />}
-    </Dialog>
+    <>
+      <PairAsk />
+      <Dialog open={view.sheetOpen} title={t('remote.title')} className="remote-dialog" onClose={() => updateRemote({ sheetOpen: false })}>
+        {view.sheetOpen && <RemotePanel />}
+      </Dialog>
+    </>
   );
 }
 

@@ -43,7 +43,8 @@ import { openTourAt } from '../tour/Tour';
 import { openSupportAt } from '../support/open';
 import type { SupportTab } from '../support/open';
 import { readTickets } from '../support/tickets';
-import { appVersion, canUpdate, checkForUpdate, installUpdate, useUpdateState } from '../updates/updates';
+import { appVersion, canUpdate, checkForUpdate, useUpdateState } from '../updates/updates';
+import { useInstallUpdate } from '../updates/UpdateBanner';
 import { ActionRow, Choice, Group, OrderedList, Pick, Row, TextSetting, Toggle } from './controls';
 import { LookPreview } from './LookPreview';
 import { ShortcutField } from './ShortcutField';
@@ -1063,6 +1064,7 @@ function UpdatesGroup() {
   const { t } = useI18n();
   const settings = useSettings();
   const update = useUpdateState();
+  const { install, dialog } = useInstallUpdate();
   const status =
     update.phase === 'checking'
       ? t('updates.checking')
@@ -1077,9 +1079,10 @@ function UpdatesGroup() {
               : t('updates.checkHint');
   return (
     <Group title={t('updates.title')} note={t('updates.note')}>
+      {dialog}
       <Toggle label={t('updates.auto')} hint={t('updates.autoHint')} checked={settings.checkUpdates} onChange={(checkUpdates) => set({ checkUpdates })} />
       {update.phase === 'available' ? (
-        <ActionRow label={t('updates.check')} hint={status} action={t('updates.install')} onClick={() => void installUpdate()} />
+        <ActionRow label={t('updates.check')} hint={status} action={t('updates.install')} onClick={install} />
       ) : (
         <ActionRow
           label={t('updates.check')}

@@ -1,7 +1,12 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { Download, Loader } from 'lucide-react';
+import { useConfirm } from '../components/ConfirmDialog';
 import { Icon } from '../components/Icon';
 import { useT } from '../i18n/useT';
+import { hasUnsavedEdits } from '../state/appReducer';
+import { useAppState, useServices } from '../state/AppContext';
+import { reportUnsaved, unsavedEverywhere, unsavedHere } from './unsaved';
 import {
   checkForUpdate,
   dismissUpdate,
@@ -11,12 +16,48 @@ import {
 } from './updates';
 
 /**
+ * "Update now", asking first when documents in any window have unsaved
+ * changes: the update restarts the app, and they would be lost. Render the
+ * returned `dialog` once beside the button.
+ */
+export function useInstallUpdate(): { install: () => void; dialog: ReactNode } {
+  const t = useT();
+  const { ask, dialog } = useConfirm();
+  const install = useCallback(() => {
+    void (async () => {
+      const count = await unsavedEverywhere();
+      if (count > 0) {
+        const go = await ask({
+          title: t('updates.unsavedTitle'),
+          body: t(count === 1 ? 'updates.unsavedOne' : 'updates.unsavedMany', { count }),
+          action: t('updates.installAnyway'),
+          icon: Download,
+        });
+        if (!go) return;
+      }
+      await installUpdate();
+    })();
+  }, [ask, t]);
+  return { install, dialog };
+}
+
+/** Tells the host how many of this window's documents have unsaved changes. */
+function useReportUnsaved(): void {
+  const state = useAppState();
+  const { tabs, activeTab } = useServices();
+  const count = unsavedHere(tabs, activeTab, state.document !== null && hasUnsavedEdits(state));
+  useEffect(() => reportUnsaved(count), [count]);
+}
+
+/**
  * "A new version is ready": shown when a check found one, until the person
  * installs it or says later. Nothing installs without their click.
  */
 export function UpdateBanner() {
   const t = useT();
   const update = useUpdateState();
+  const { install, dialog } = useInstallUpdate();
+  useReportUnsaved();
   useEffect(() => scheduleStartupCheck(), []);
 
   if (update.phase === 'installing') {
@@ -31,9 +72,10 @@ export function UpdateBanner() {
       </div>
     );
   }
-  if (update.phase !== 'available' || !update.info || update.dismissed) return null;
+  if (update.phase !== 'available' || !update.info || update.dismissed) return <>{dialog}</>;
   return (
     <div className="banner update-banner" role="status">
+      {dialog}
       <Icon of={Download} />
       <span>
         <strong>{t('updates.available', { version: update.info.version })}</strong>{' '}
@@ -45,7 +87,7 @@ export function UpdateBanner() {
       <button
         type="button"
         className="icon-btn icon-btn-labeled icon-btn-primary"
-        onClick={() => void installUpdate()}
+        onClick={install}
       >
         {t('updates.install')}
       </button>
@@ -57,6 +99,7 @@ export function UpdateBanner() {
 export function UpdateCheck() {
   const t = useT();
   const update = useUpdateState();
+  const { install, dialog } = useInstallUpdate();
   const busy = update.phase === 'checking' || update.phase === 'installing';
   const said =
     update.phase === 'checking'
@@ -72,11 +115,12 @@ export function UpdateCheck() {
               : null;
   return (
     <div className="about-update">
+      {dialog}
       {update.phase === 'available' ? (
         <button
           type="button"
           className="icon-btn icon-btn-labeled icon-btn-primary"
-          onClick={() => void installUpdate()}
+          onClick={install}
         >
           {t('updates.install')}
         </button>

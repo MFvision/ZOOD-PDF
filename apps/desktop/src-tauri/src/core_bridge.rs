@@ -55,6 +55,9 @@ const HANDLE_HEADER: &str = "x-warraq-handle";
 #[derive(Default)]
 pub struct Registry {
     documents: HashMap<u32, Document>,
+    /// The window that opened each document, by label: when a window closes
+    /// without closing its documents, `close_owned_by` frees them.
+    owners: HashMap<u32, String>,
     next_handle: u32,
 }
 
@@ -66,6 +69,32 @@ impl Registry {
         let handle = self.next_handle;
         self.documents.insert(handle, document);
         Ok(handle)
+    }
+
+    /// `open`, remembering which window the document belongs to.
+    pub fn open_for(
+        &mut self,
+        owner: &str,
+        bytes: Vec<u8>,
+        password: Option<&str>,
+    ) -> Result<u32, String> {
+        let handle = self.open(bytes, password)?;
+        self.owners.insert(handle, owner.to_string());
+        Ok(handle)
+    }
+
+    /// Closes every document `owner` opened; returns how many there were.
+    pub fn close_owned_by(&mut self, owner: &str) -> usize {
+        let handles: Vec<u32> = self
+            .owners
+            .iter()
+            .filter(|(_, label)| label.as_str() == owner)
+            .map(|(handle, _)| *handle)
+            .collect();
+        handles
+            .into_iter()
+            .filter(|handle| self.close(*handle))
+            .count()
     }
 
     pub fn get(&self, handle: u32) -> Result<&Document, String> {
@@ -82,6 +111,7 @@ impl Registry {
 
     /// Dropping the document frees the PDFium and hayro state behind it.
     pub fn close(&mut self, handle: u32) -> bool {
+        self.owners.remove(&handle);
         self.documents.remove(&handle).is_some()
     }
 
@@ -169,6 +199,19 @@ impl CoreBridge {
         job: impl FnOnce(&mut Document) -> Result<T, String> + Send + 'static,
     ) -> Result<T, String> {
         self.call(move |registry| registry.get_mut(handle).and_then(job))?
+    }
+
+    /// A window closed: the documents it left open are freed on the core
+    /// thread, without waiting for it.
+    pub fn window_closed(&self, label: &str) {
+        let label = label.to_string();
+        let jobs = self.jobs.lock().unwrap_or_else(|e| e.into_inner());
+        let _ = jobs.send(Box::new(move |registry| {
+            let freed = registry.close_owned_by(&label);
+            if freed > 0 {
+                debug_log(format!("window {label} closed: freed {freed} document(s)"));
+            }
+        }));
     }
 }
 
@@ -392,7 +435,11 @@ pub(crate) fn password_from(request: &Request<'_>) -> Option<String> {
 /// `Document.open(bytes, password?)`. The PDF arrives as the raw request body
 /// (an `ArrayBuffer` on the JS side), never as a JSON array of numbers.
 #[tauri::command(async)]
-pub fn doc_open(bridge: State<'_, CoreBridge>, request: Request<'_>) -> Result<u32, String> {
+pub fn doc_open(
+    webview: tauri::Webview,
+    bridge: State<'_, CoreBridge>,
+    request: Request<'_>,
+) -> Result<u32, String> {
     let bytes = match request.body() {
         InvokeBody::Raw(bytes) => bytes.clone(),
         InvokeBody::Json(_) => {
@@ -401,7 +448,9 @@ pub fn doc_open(bridge: State<'_, CoreBridge>, request: Request<'_>) -> Result<u
     };
     let password = password_from(&request);
     let size = bytes.len();
-    let handle = bridge.call(move |registry| registry.open(bytes, password.as_deref()))??;
+    let owner = webview.label().to_string();
+    let handle =
+        bridge.call(move |registry| registry.open_for(&owner, bytes, password.as_deref()))??;
     let pages = bridge
         .with_document(handle, |document| Ok(document.page_count()))
         .unwrap_or(0);
@@ -548,6 +597,50 @@ pub fn core_engine(bridge: State<'_, CoreBridge>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A one-page PDF with a correct cross-reference table.
+    fn one_page_pdf() -> Vec<u8> {
+        let objects = [
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] >>",
+        ];
+        let mut pdf = b"%PDF-1.7\n".to_vec();
+        let mut offsets = Vec::new();
+        for (i, body) in objects.iter().enumerate() {
+            offsets.push(pdf.len());
+            pdf.extend_from_slice(format!("{} 0 obj\n{body}\nendobj\n", i + 1).as_bytes());
+        }
+        let xref = pdf.len();
+        pdf.extend_from_slice(
+            format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).as_bytes(),
+        );
+        for offset in offsets {
+            pdf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+        }
+        pdf.extend_from_slice(
+            format!(
+                "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n",
+                objects.len() + 1
+            )
+            .as_bytes(),
+        );
+        pdf
+    }
+
+    #[test]
+    fn a_closed_window_frees_only_its_own_documents() {
+        let mut registry = Registry::default();
+        let mine = registry.open_for("doc-1", one_page_pdf(), None).unwrap();
+        let also_mine = registry.open_for("doc-1", one_page_pdf(), None).unwrap();
+        let main = registry.open_for("main", one_page_pdf(), None).unwrap();
+        assert!(registry.close(also_mine));
+        assert_eq!(registry.close_owned_by("doc-1"), 1);
+        assert!(registry.get(mine).is_err());
+        assert!(registry.get(main).is_ok());
+        assert_eq!(registry.len(), 1);
+        assert_eq!(registry.close_owned_by("doc-1"), 0);
+    }
 
     #[test]
     fn a_frame_round_trips_json_and_blobs() {

@@ -387,6 +387,7 @@ export const ARTICLES: readonly Article[] = [
       { ar: 'أول مرة: ثبّت تطبيق ZOOD PDF على جوالك. في الجولة التعريفية (مساعدة › جولة تعريفية) افتح فصل «التحكم بالجوال» وامسح الرمز بكاميرا الجوال، أو افتح pdf.zood.sa/app.', en: 'The first time, get the ZOOD PDF app on your phone. In the welcome tour (Help › Welcome tour), open the Phone remote chapter and scan the code with the phone camera, or go to pdf.zood.sa/app.', pic: 'remote-get-app' },
       { ar: 'من قائمة أدوات اختر «التحكم من الجوال…»، أو اضغط زره أعلى الشاشة الرئيسية.', en: 'In the Tools menu, choose Phone remote…, or press its button at the top of Home.', pic: 'remote-menu' },
       { ar: 'امسح الرمز بكاميرا الجوال. الجهازان على شبكة الواي فاي نفسها.', en: 'Scan the code with the phone camera. Both must be on the same Wi-Fi.', pic: 'remote-code' },
+      { ar: 'أول مرة يسألك الجهاز «هل تسمح لهذا الجوال؟». اضغط «اسمح» إن كان جوالك. بعدها يتصل الجوال مباشرة.', en: 'The first time, the computer asks “Allow this phone?”. Press Allow if it’s your phone. After that it connects straight away.' },
     ],
     keywords: ['phone', 'remote', 'mobile', 'present', 'qr', 'جوال', 'هاتف', 'تحكم', 'عرض', 'ريموت'],
     tour: 'remote',

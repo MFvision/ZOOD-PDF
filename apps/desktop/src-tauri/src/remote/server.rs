@@ -427,6 +427,25 @@ async fn connect<H: Host>(
             .await;
         return;
     };
+    // A new phone waits until the person allows it on the PC: whoever
+    // photographs the code still cannot pair without them.
+    if let Admitted::New { name, .. } = &admitted {
+        // One phone per code: the next one needs a new code.
+        shared.used_code();
+        let waiting = json!({ "t": "waiting" }).to_string();
+        if sink.send(Message::Text(waiting.into())).await.is_err() {
+            return;
+        }
+        let allowed = tokio::select! {
+            allowed = shared.host.allow_new_phone(name) => allowed,
+            _ = stop.changed() => false,
+        };
+        if !allowed {
+            let denied = json!({ "t": "refused", "why": "denied" }).to_string();
+            let _ = sink.send(Message::Text(denied.into())).await;
+            return;
+        }
+    }
     budget.store(usize::MAX, Ordering::Relaxed);
     drop(unpaired);
 
@@ -440,8 +459,6 @@ async fn connect<H: Host>(
             (device, key, name, None)
         }
         Admitted::New { key: code, name } => {
-            // One phone per code: the next one needs a new code.
-            shared.used_code();
             let device = seal::random_id();
             let key = seal::random_key();
             if let Ok(mut phones) = shared.phones.lock() {
