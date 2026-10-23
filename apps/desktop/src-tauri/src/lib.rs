@@ -355,6 +355,7 @@ pub fn run() {
         .manage(fonts::FontState::default())
         .manage(recent::RecentState::default())
         .manage(updates::UpdateState::default())
+        .manage(updates::UnsavedState::default())
         .manage(remote::RemoteState::default())
         .manage(ask::AskState::default())
         .on_menu_event(|app, event| match event.id().as_ref() {
@@ -490,6 +491,8 @@ pub fn run() {
             recent::recent_forget,
             updates::update_check,
             updates::update_install,
+            updates::unsaved_report,
+            updates::unsaved_total,
             quick::quick_job,
             quick::quick_close,
             quick_open_in_editor,
@@ -553,6 +556,7 @@ pub fn run() {
             arrival::arrival_last,
             remote::remote_send,
             remote::remote_fullscreen,
+            remote::remote_pair_answer,
             share::share_prepare,
             share::share_email,
             speech::speech_engine,
@@ -575,6 +579,9 @@ pub fn run() {
             // ends it: the ring's hidden window must not keep it alive.
             if let WindowEvent::Destroyed = event {
                 let app = window.app_handle();
+                if let Some(bridge) = app.try_state::<core_bridge::CoreBridge>() {
+                    bridge.window_closed(window.label());
+                }
                 let others = app
                     .webview_windows()
                     .keys()

@@ -16,16 +16,19 @@ pub mod seal;
 pub mod server;
 pub mod transfer;
 
+use std::collections::HashMap;
+use std::future::Future;
 use std::net::{IpAddr, Ipv4Addr, UdpSocket};
+use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager, Runtime, State, Wry};
 use tokio::net::TcpListener;
-use tokio::sync::{mpsc, watch};
+use tokio::sync::{mpsc, oneshot, watch};
 
 use devices::Phones;
 use seal::SealKey;
@@ -40,6 +43,23 @@ pub const STATUS_EVENT: &str = "warraq://remote-status";
 
 /// The port tried first, so a phone that saved the page finds it again.
 const PORT: u16 = 47800;
+
+/// A phone that scanned the code asks to pair; the PC asks the person.
+/// Payload: `{ id, name }`. Answered with `remote_pair_answer`.
+pub const PAIR_ASK_EVENT: &str = "warraq://remote-pair-ask";
+
+/// That question is settled (answered, timed out or the phone left), so every
+/// window takes it away. Payload: `{ id }`.
+pub const PAIR_DONE_EVENT: &str = "warraq://remote-pair-done";
+
+/// How long the PC waits for the person to allow a new phone.
+const PAIR_ASK_WAIT: Duration = Duration::from_secs(90);
+
+/// The questions on screen, by id, each with where its answer goes.
+fn pair_asks() -> &'static Mutex<HashMap<String, oneshot::Sender<bool>>> {
+    static ASKS: OnceLock<Mutex<HashMap<String, oneshot::Sender<bool>>>> = OnceLock::new();
+    ASKS.get_or_init(Default::default)
+}
 
 /// How long a QR code pairs a new phone.
 const CODE_LIFE: Duration = Duration::from_secs(5 * 60);
@@ -70,6 +90,9 @@ pub trait Host: Send + Sync + 'static {
     fn landing_folder(&self) -> Option<std::path::PathBuf>;
     /// A flicked file arrived at `path`: the PC shows it coming in.
     fn landed(&self, path: &std::path::Path, mime: &str, picture: Option<&str>);
+    /// A phone that scanned the code on screen wants to pair: true only once
+    /// the person allows it on the PC. A photo of the code is not enough.
+    fn allow_new_phone(&self, name: &str) -> Pin<Box<dyn Future<Output = bool> + Send>>;
 }
 
 impl<R: Runtime> Host for AppHandle<R> {
@@ -90,6 +113,43 @@ impl<R: Runtime> Host for AppHandle<R> {
     fn landed(&self, path: &std::path::Path, mime: &str, picture: Option<&str>) {
         crate::arrival::show(self, path, mime, picture);
     }
+
+    fn allow_new_phone(&self, name: &str) -> Pin<Box<dyn Future<Output = bool> + Send>> {
+        let id = seal::random_id();
+        let (answer, answered) = oneshot::channel();
+        if let Ok(mut asks) = pair_asks().lock() {
+            asks.insert(id.clone(), answer);
+        }
+        let _ = self.emit(
+            PAIR_ASK_EVENT,
+            serde_json::json!({ "id": id, "name": devices::tidy_name(name) }),
+        );
+        if let Some(main) = self.get_webview_window("main") {
+            let _ = main.request_user_attention(Some(tauri::UserAttentionType::Critical));
+        }
+        let app = self.clone();
+        Box::pin(async move {
+            let allowed = matches!(
+                tokio::time::timeout(PAIR_ASK_WAIT, answered).await,
+                Ok(Ok(true))
+            );
+            if let Ok(mut asks) = pair_asks().lock() {
+                asks.remove(&id);
+            }
+            let _ = app.emit(PAIR_DONE_EVENT, serde_json::json!({ "id": id }));
+            allowed
+        })
+    }
+}
+
+/// The person's answer to "Allow this phone?"; false when the question is gone.
+#[tauri::command]
+pub fn remote_pair_answer(id: String, allow: bool) -> bool {
+    pair_asks()
+        .lock()
+        .ok()
+        .and_then(|mut asks| asks.remove(&id))
+        .is_some_and(|answer| answer.send(allow).is_ok())
 }
 
 /// What the server and the commands share while the remote is on.
@@ -738,6 +798,12 @@ mod tests {
                 "mime": mime,
             }));
         }
+
+        /// The person allows every phone but one called "Stranger".
+        fn allow_new_phone(&self, name: &str) -> Pin<Box<dyn Future<Output = bool> + Send>> {
+            let allowed = name != "Stranger";
+            Box::pin(async move { allowed })
+        }
     }
 
     /// The remote on, on this machine only, for a test: what the server
@@ -806,6 +872,15 @@ mod tests {
             .send(Message::Text(hello.to_string().into()))
             .await
             .unwrap();
+        // A new phone is told to wait while the person is asked on the PC
+        // (the test host allows it at once).
+        let Message::Text(waiting) = next(&mut socket).await else {
+            panic!("not told to wait")
+        };
+        assert_eq!(
+            serde_json::from_str::<Value>(waiting.as_str()).unwrap()["t"],
+            "waiting"
+        );
         let session = seal::session_key(&code, &challenge);
         let mut first = Vec::new();
         while first.len() < 2 {
@@ -835,6 +910,50 @@ mod tests {
             ))
             .await
             .unwrap();
+    }
+
+    #[test]
+    fn a_phone_the_person_does_not_allow_is_turned_away() {
+        use futures_util::SinkExt;
+        use tokio_tungstenite::tungstenite::Message;
+        let (shared, url, _told, _stop) = serve(false);
+
+        tauri::async_runtime::block_on(async {
+            let (address, code) = url.split_once("/#k=").unwrap();
+            let code: SealKey =
+                base64::Engine::decode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, code)
+                    .unwrap()
+                    .try_into()
+                    .unwrap();
+            let host = address.trim_start_matches("http://");
+            let stream = tokio::net::TcpStream::connect(host).await.unwrap();
+            let (mut socket, _) = tokio_tungstenite::client_async(format!("ws://{host}/"), stream)
+                .await
+                .unwrap();
+            let Message::Text(challenge) = next(&mut socket).await else {
+                panic!("no challenge")
+            };
+            let challenge: Value = serde_json::from_str(challenge.as_str()).unwrap();
+            let inside = serde_json::json!({ "c": challenge["c"], "name": "Stranger" }).to_string();
+            let hello = serde_json::json!({ "t": "hello", "device": null, "box": seal::to_base64(&seal::seal(&code, inside.as_bytes())) });
+            socket
+                .send(Message::Text(hello.to_string().into()))
+                .await
+                .unwrap();
+            for expected in ["waiting", "refused"] {
+                let Message::Text(said) = next(&mut socket).await else {
+                    panic!("expected {expected}")
+                };
+                let said: Value = serde_json::from_str(said.as_str()).unwrap();
+                assert_eq!(said["t"], expected);
+                if expected == "refused" {
+                    assert_eq!(said["why"], "denied");
+                }
+            }
+        });
+        // Nothing remembered, and the code cannot be tried again.
+        assert!(shared.phones.lock().unwrap().list().is_empty());
+        assert!(shared.code().is_none());
     }
 
     #[test]

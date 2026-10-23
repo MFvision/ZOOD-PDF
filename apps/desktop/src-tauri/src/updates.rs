@@ -11,16 +11,53 @@
 //! `update_check` says what there is, `update_install` installs what the
 //! last check found and restarts into it.
 
+use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::Duration;
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 /// The update the last check found, kept until the person installs it.
 #[derive(Default)]
 pub struct UpdateState(Mutex<Option<Update>>);
+
+/// How many documents each window holds with unsaved changes, by window
+/// label, so "Update now" can warn before the restart closes them all.
+#[derive(Default)]
+pub struct UnsavedState(Mutex<HashMap<String, u32>>);
+
+/// Each window says how many of its documents have unsaved changes whenever
+/// that number changes.
+#[tauri::command]
+pub fn unsaved_report(window: WebviewWindow, state: State<'_, UnsavedState>, count: u32) {
+    if let Ok(mut counts) = state.0.lock() {
+        if count == 0 {
+            counts.remove(window.label());
+        } else {
+            counts.insert(window.label().to_string(), count.min(MAX_TABS_PER_WINDOW));
+        }
+    }
+}
+
+/// Documents with unsaved changes across every open window.
+#[tauri::command]
+pub fn unsaved_total(app: AppHandle, state: State<'_, UnsavedState>) -> u32 {
+    let Ok(mut counts) = state.0.lock() else {
+        return 0;
+    };
+    total_open(&mut counts, |label| app.get_webview_window(label).is_some())
+}
+
+/// A window never reports more documents than it can hold tabs.
+const MAX_TABS_PER_WINDOW: u32 = 64;
+
+/// The sum over windows still open; a closed window's entry is dropped.
+fn total_open(counts: &mut HashMap<String, u32>, open: impl Fn(&str) -> bool) -> u32 {
+    counts.retain(|label, _| open(label));
+    counts.values().fold(0u32, |sum, n| sum.saturating_add(*n))
+}
 
 /// What the interface shows about an update.
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -114,4 +151,21 @@ pub async fn update_install(app: AppHandle, state: State<'_, UpdateState>) -> Re
     // where the macOS Quit fix in lib.rs must still run.
     app.request_restart();
     Ok(())
+}
+
+#[cfg(test)]
+mod unsaved_tests {
+    use super::*;
+
+    #[test]
+    fn counts_only_windows_still_open() {
+        let mut counts = HashMap::from([
+            ("main".to_string(), 2),
+            ("doc-1".to_string(), 1),
+            ("doc-2".to_string(), 3),
+        ]);
+        assert_eq!(total_open(&mut counts, |label| label != "doc-2"), 3);
+        assert!(!counts.contains_key("doc-2"));
+        assert_eq!(total_open(&mut HashMap::new(), |_| true), 0);
+    }
 }

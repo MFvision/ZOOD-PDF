@@ -60,3 +60,31 @@ export function onRemoteStatus(handle: (status: RemoteStatus) => void): () => vo
 export function onPhoneMessage(handle: (peer: number, message: unknown) => void): () => void {
   return onHostEvent<{ peer: number; message: unknown }>(MESSAGE_EVENT, (payload) => handle(payload.peer, payload.message));
 }
+
+export const PAIR_ASK_EVENT = 'warraq://remote-pair-ask';
+export const PAIR_DONE_EVENT = 'warraq://remote-pair-done';
+
+/** A phone that scanned the code, waiting for the person to allow it. */
+export interface PairAsk {
+  id: string;
+  name: string;
+}
+
+export function onPairAsk(handle: (ask: PairAsk) => void): () => void {
+  if (!isTauriHost()) return () => {};
+  return onHostEvent<PairAsk>(PAIR_ASK_EVENT, (ask) => {
+    if (ask && typeof ask.id === 'string') handle({ id: ask.id, name: typeof ask.name === 'string' ? ask.name : '' });
+  });
+}
+
+export function onPairDone(handle: (id: string) => void): () => void {
+  if (!isTauriHost()) return () => {};
+  return onHostEvent<{ id: string }>(PAIR_DONE_EVENT, (done) => {
+    if (done && typeof done.id === 'string') handle(done.id);
+  });
+}
+
+export function answerPairing(id: string, allow: boolean): Promise<unknown> {
+  return invokeHost('remote_pair_answer', { id, allow }).catch(() => false);
+}
+

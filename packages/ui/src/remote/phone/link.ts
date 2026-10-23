@@ -11,7 +11,7 @@ import { bytesToBase64, keyFromText, open, seal, sessionKey } from './seal';
  * address belongs to that PC alone, so its storage is that PC's.
  */
 
-export type LinkState = 'connecting' | 'open' | 'refused' | 'closed' | 'unpaired';
+export type LinkState = 'connecting' | 'waiting' | 'open' | 'refused' | 'denied' | 'closed' | 'unpaired';
 
 const STORE = 'zood.remote.pairing';
 
@@ -107,13 +107,16 @@ export class RemoteLink {
 
     socket.onmessage = (event) => {
       if (typeof event.data === 'string') {
-        const message = JSON.parse(event.data) as { t?: string; c?: string };
+        const message = JSON.parse(event.data) as { t?: string; c?: string; why?: string };
         if (message.t === 'challenge' && typeof message.c === 'string') this.hello(message.c);
+        // A new phone: the person has to allow it on the computer first.
+        else if (message.t === 'waiting') this.set('waiting');
         else if (message.t === 'refused') {
-          // A remembered key the PC forgot, or a code already used: start again from a new code.
+          // A remembered key the PC forgot, a code already used, or the
+          // person said no on the computer: start again from a new code.
           if (!this.code) writePairing(null);
           this.code = null;
-          this.set('refused');
+          this.set(message.why === 'denied' ? 'denied' : 'refused');
           this.stopped = true;
         }
         return;
@@ -142,7 +145,7 @@ export class RemoteLink {
       if (this.socket !== socket) return;
       this.session = null;
       if (this.stopped) {
-        if (this.state !== 'refused') this.set('closed');
+        if (this.state !== 'refused' && this.state !== 'denied') this.set('closed');
         return;
       }
       this.set('connecting');
