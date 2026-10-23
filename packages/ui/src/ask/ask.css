@@ -721,3 +721,65 @@ html.ask-point-page body {
   overflow-y: auto;
   white-space: pre-wrap;
 }
+
+/* "Make me a presentation": its few questions. */
+.ask-deck {
+  display: grid;
+  gap: 10px;
+}
+
+.ask-deck label {
+  display: grid;
+  gap: 4px;
+  color: var(--ask-muted);
+  font-size: 0.85em;
+}
+
+.ask-deck input,
+.ask-deck textarea {
+  box-sizing: border-box;
+  inline-size: 100%;
+  padding: 8px 12px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 12px;
+  color: var(--ask-ink);
+  background: rgb(255 255 255 / 6%);
+  font: inherit;
+  font-size: 1rem;
+  resize: none;
+  outline: none;
+}
+
+.ask-deck input:focus,
+.ask-deck textarea:focus {
+  border-color: var(--ask-bronze);
+  box-shadow: 0 0 0 3px rgb(174 139 102 / 30%);
+}
+
+.ask-deck-choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--ask-muted);
+  font-size: 0.85em;
+}
+
+.ask-deck-choices span {
+  min-inline-size: 64px;
+}
+
+.ask-deck-choices button {
+  padding: 5px 12px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 999px;
+  color: var(--ask-ink);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ask-deck-choices button[aria-pressed='true'] {
+  border-color: var(--ask-bronze);
+  background: rgb(174 139 102 / 25%);
+}

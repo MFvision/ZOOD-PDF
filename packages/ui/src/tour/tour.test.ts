@@ -36,8 +36,9 @@ describe('welcome tour', () => {
     // Never seen, or seen before Ask ZOOD: the whole tour.
     expect(newChapters(0, true, true)).toBeNull();
     expect(newChapters(1, false, false)).toBeNull();
-    expect(newChapters(10, true, true)).toEqual(['folders']);
-    expect(newChapters(9, true, true)).toEqual(['folders', 'remote']);
+    expect(newChapters(11, true, true)).toEqual(['reach']);
+    expect(newChapters(10, true, true)).toEqual(['folders', 'reach']);
+    expect(newChapters(9, true, true)).toEqual(['folders', 'reach', 'remote']);
     expect(newChapters(8, true, true)).toEqual(['folders', 'reach', 'remote']);
     expect(newChapters(6, true, true)).toEqual(['folders', 'reach', 'remote', 'ai', 'support']);
     expect(newChapters(4, true, true)).toEqual(['folders', 'ask', 'quickask', 'reach', 'remote', 'ai', 'support']);

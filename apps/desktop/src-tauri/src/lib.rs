@@ -265,7 +265,7 @@ fn open_url(url: String) -> Result<(), String> {
     Ok(())
 }
 
-fn opener(url: &str) -> std::process::Command {
+pub(crate) fn opener(url: &str) -> std::process::Command {
     #[cfg(target_os = "macos")]
     let (program, before): (&str, &[&str]) = ("/usr/bin/open", &[]);
     #[cfg(target_os = "windows")]
@@ -545,6 +545,7 @@ pub fn run() {
             ask::ask_type,
             ask::ask_paste,
             ask::ask_shortcut,
+            ask::deck::ask_save_deck,
             ask::ask_copy,
             ask::ask_undo,
             ask::ask_window_png,

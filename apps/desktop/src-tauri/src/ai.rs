@@ -1372,4 +1372,26 @@ mod tests {
         let refused = engine.generate(&long, &AtomicBool::new(false), |_| {});
         assert!(refused.unwrap_err().starts_with("E_TOO_LONG"));
     }
+
+    /// The real model on a request saved as JSON (a `GenerateRequest`), its answer printed:
+    /// `WARRAQ_MODEL=model.gguf WARRAQ_REQUEST=request.json cargo test -- --ignored real_request`.
+    /// Used to try Ask ZOOD's presentations (`ask/deck.ts`) on the shipped models.
+    #[test]
+    #[ignore]
+    fn the_real_model_answers_a_real_request() {
+        let (Ok(model), Ok(request)) = (
+            std::env::var("WARRAQ_MODEL"),
+            std::env::var("WARRAQ_REQUEST"),
+        ) else {
+            return;
+        };
+        let engine = Engine::load(&PathBuf::from(model)).unwrap();
+        let request: GenerateRequest =
+            serde_json::from_str(&std::fs::read_to_string(request).unwrap()).unwrap();
+        let started = std::time::Instant::now();
+        let done = engine
+            .generate(&request, &AtomicBool::new(false), |_| {})
+            .unwrap();
+        println!("{} ms\n{}", started.elapsed().as_millis(), done.text);
+    }
 }
