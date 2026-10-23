@@ -345,12 +345,12 @@ export const ARTICLES: readonly Article[] = [
     id: 'ask-presentation',
     category: 'ai',
     title: { ar: 'اطلب عرضًا تقديميًا', en: 'Ask for a presentation' },
-    summary: { ar: 'يكتب زود ملف البوربوينت بنفسه بعد أسئلة قليلة.', en: 'ZOOD writes the PowerPoint file itself after a few questions.' },
+    summary: { ar: 'يكتب زود ملف العرض (pptx) بنفسه بعد أسئلة قليلة.', en: 'ZOOD writes the slides file (pptx) itself after a few questions.' },
     steps: [
       { ar: 'قل أو اكتب لـ«اسأل زود»: «سوّ لي عرض تقديمي عن…».', en: 'Say or type to Ask ZOOD: “make me a presentation about…”.' },
       { ar: 'اكتب الموضوع، ولمن العرض، واختر عدد الشرائح (5 أو 8 أو 12) والشكل (زود أو داكن أو بسيط).', en: 'Fill in the topic and who it is for, then choose the number of slides (5, 8 or 12) and the look (Zood, Dark or Plain).' },
       { ar: 'اضغط «جهّزه». يكتب الذكاء الاصطناعي على جهازك الشرائح، ثم يحفظ زود الملف في المستندات › ZOOD PDF ويفتحه.', en: 'Press Make it. The AI on your computer writes the slides, then ZOOD saves the file in Documents › ZOOD PDF and opens it.' },
-      { ar: 'كل نص في الشرائح قابل للتعديل في بوربوينت أو Keynote.', en: 'Every text on the slides can be edited in PowerPoint or Keynote.' },
+      { ar: 'كل نص في الشرائح قابل للتعديل في أي برنامج عروض يفتح ملفات pptx.', en: 'Every text on the slides can be edited in any slides app that opens pptx files.' },
     ],
     tips: [
       { ar: 'لا يخترع أرقامًا أو تواريخ: يترك [رقم] أو [تاريخ] لتكملها أنت.', en: 'It never makes up numbers or dates: it leaves [number] or [date] for you to fill in.' },
