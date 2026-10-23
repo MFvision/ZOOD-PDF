@@ -69,6 +69,7 @@ import {
   bookEnding,
   bookOptions,
   controlNamed,
+  controlNamedAlone,
   controlOptions,
   intentOf,
   partsOf,
@@ -80,6 +81,8 @@ import type { BookEntry, BookStep, Control, Intent } from './book';
 import { settingAsked, settingFirst, settingsPageAsked, settingWords, unknownSetting } from './settingsBook';
 import type { SettingAsk } from './settingsBook';
 import { asksAboutWords, asksTheWorld, asksToReadOut } from './content';
+import { ASKS_FIRST, keysOf, shortcutAsked } from './shortcuts';
+import type { Shortcut } from './shortcuts';
 import { fuzzyOffers, fuzzyPick } from './fuzzy';
 import type { Picked } from './fuzzy';
 import { decisionGrammar, languageOf, readDecision, systemPrompt } from './plan';
@@ -103,7 +106,7 @@ import {
 import type { QuickKey, TidyPreview } from './quick';
 import type { QuietWatch } from './listen';
 import { readWindow, warmUp } from './read';
-import { chosenBrain, earModels, onMac, readAskPreferences, tapKeyLabel } from './settings';
+import { chosenBrain, earModels, onMac, readAskPreferences, tapKeyLabel, writerFor } from './settings';
 import { isolate } from '../signatures/model';
 import { readStyle } from './style';
 import { shouldTalk, stopSpeaking, talk } from './voice';
@@ -119,6 +122,10 @@ export function isAskWindow(): boolean {
 }
 
 /** Terminals and consoles, by their app names: a line pasted there runs. */
+/** How long a window may take to list its buttons before the picture is used instead. */
+const CONTROLS_WAIT_MS = 2500;
+/** Fewer buttons than this, and the window is asked once more: a browser lists its page late. */
+const FEW_CONTROLS = 8;
 /** At most this much of an answer is said aloud: the rest stays on the card to read. */
 const SPOKEN_MOST = 2400;
 const TERMINAL = /\b(?:terminal|iterm2?|powershell|pwsh|cmd|command prompt|conhost|windowsterminal|warp|alacritty|kitty|wezterm|ghostty|putty)\b/i;
@@ -289,6 +296,8 @@ function Island() {
   const request = useRef<string | null>(null);
   /** The tapped window's words, read once per moment. */
   const windowText = useRef<Promise<string> | null>(null);
+  /** The buttons of the window in front, as read for one request. */
+  const controlsRead = useRef<{ asked: number; at: number; list: Control[] } | null>(null);
   /** Counts the guides begun: a guide whose turn has passed stops. */
   const guideTurn = useRef(0);
   /** What the guide waits for: the person's Next, Go on or Stop, or their click. */
@@ -441,7 +450,8 @@ function Island() {
   /** Double tap: read the window, then draft the reply or suggest. */
   const draft = async () => {
     const prefs = readAskPreferences();
-    const brain = chosenBrain(prefs, await machineMemoryGiB());
+    // A reply is read by someone: written by the best model there is.
+    const brain = await writerFor(chosenBrain(prefs, await machineMemoryGiB()), await machineMemoryGiB());
     asked += 1;
     const id = `ask-${Date.now()}-${asked}`;
     try {
@@ -619,8 +629,7 @@ function Island() {
     const id = `ask-${Date.now()}-${asked}`;
     try {
       const moment = momentOf(await invokeHost('ask_moment'));
-      const screen = moment.screen && Boolean(brain.sees);
-      setPhase({ kind: 'thinking', words, screen });
+      setPhase({ kind: 'thinking', words, screen: moment.screen && Boolean(brain.sees) });
       // Inside ZOOD PDF its own commands come first: no picture, no wait.
       // A setting named with its choice, or a page of Settings, before the menus: "keep 20 versions", "AI settings".
       const named = !chosen && !past;
@@ -628,6 +637,13 @@ function Island() {
       const readOut = !moment.ours && asksToReadOut(words);
       const about = readOut || asksAboutWords(words);
       const setting = named && !about;
+      // Another app's everyday command ("print", «اطبع», "new tab"): its own shortcut, no picture.
+      const shortcut = named && !moment.ours ? shortcutAsked(words) : null;
+      if (shortcut) return await shortcutLane(words, shortcut, spoken);
+      // Another app's button by its name ("archive", "click Insert", «أرشف»), before ZOOD's own settings:
+      // there, "new message" is the app's button, not ZOOD's greeting.
+      if (named && !moment.ours && (await controlsLane(words, spoken, 'bare'))) return;
+      if (named && !moment.ours && (await controlsLane(words, spoken, 'named'))) return;
       if (setting && settingFirst(words, true) && (await settingsLane(words, spoken))) return;
       if (named && moment.ours && (await bookLane(words, spoken))) return;
       // A setting, by its name, from anywhere: Settings opens at it.
@@ -644,8 +660,11 @@ function Island() {
       if ((chosen || !about) && (await quickLane(words, spoken, moment, chosen))) return;
       // Another app: its buttons by their names, before any picture is read.
       if (!chosen && !past && !moment.ours && (await controlsLane(words, spoken))) return;
+      // Words to be read or heard, and Show me or Do it for me, come from the best model there is (`writerFor`).
+      const model = about || intentOf(words) || shouldTalk(prefs.talkBack, spoken) ? await writerFor(brain, await machineMemoryGiB()) : brain;
+      const screen = moment.screen && Boolean(model.sees);
       const wallet = await loadWallet(t('wallet.me')).catch(() => null);
-      const text = await wordsOfWindow(moment, brain);
+      const text = await wordsOfWindow(moment, model);
       const tapped = moment.app !== '' || moment.title !== '' || text !== '';
       const documents = await lookUp(moment.title, `${text}\n${words}`);
       const context: Moment = {
@@ -661,7 +680,7 @@ function Island() {
       const done = (await invokeHost('ask_think', {
         request: {
           id: `${id}-think`,
-          model: brain.id,
+          model: model.id,
           messages: [
             { role: 'system', content: systemPrompt(context) },
             { role: 'user', content: words },
@@ -685,7 +704,7 @@ function Island() {
         text: '',
       };
       if (decision.act === 'show' || decision.act === 'do' || decision.act === 'explain')
-        return await guide(decision.act, words, decision, moment.ours, spoken, brain.id);
+        return await guide(decision.act, words, decision, moment.ours, spoken, model.id);
       // A summary or an answer is said whole, not only its first line; "read this to me" always is.
       const whole = decision.act === 'answer' && decision.text ? `${decision.say}\n${decision.text}` : decision.say;
       if (readOut && decision.text) void talk(decision.text.slice(0, SPOKEN_MOST));
@@ -975,18 +994,67 @@ function Island() {
   };
 
   /**
+   * Another app's everyday command by its own shortcut (`shortcuts.ts`):
+   * pressed in the app that was in front, with Do it for me on; told, as
+   * the keys to press, with it off. Closing a tab asks first.
+   */
+  const shortcutLane = async (words: string, shortcut: Shortcut, spoken: boolean) => {
+    const language = languageOf(words);
+    const mac = /mac/i.test(navigator.platform || navigator.userAgent);
+    const keys = keysOf(shortcut, mac);
+    const name = translate(language, `ask.shortcut.${shortcut}` as TKey);
+    if (!readAskPreferences().doForMe) {
+      sayOnly(words, translate(language, 'ask.shortcut.tell', { name, keys }), spoken);
+      return;
+    }
+    if (ASKS_FIRST.has(shortcut)) {
+      endGuide();
+      const turn = (guideTurn.current += 1);
+      setPhase({ kind: 'guide', mode: 'do', words, say: name, step: 1, of: 1, wait: 'confirm', onlyPoints: false });
+      if ((await waitFor()) === 'stop' || guideTurn.current !== turn) return;
+      endGuide();
+    }
+    await invokeHost('ask_shortcut', { name: shortcut });
+    sayOnly(words, translate(language, 'ask.shortcut.done', { name, keys }), spoken);
+  };
+
+  /**
    * Other apps, by their buttons' names (`ask/controls.rs`): "click Print",
    * "show me where Share is", "اضغط حفظ ثم إرسال". Each part of the request
    * is matched to a button the window lists, and ZOOD's pointer goes there;
    * Do it for me clicks it, after one Do it for the whole request. False
    * when the first part names no button, for the picture to be read instead.
    */
-  const controlsLane = async (words: string, spoken: boolean): Promise<boolean> => {
-    const said = intentOf(words);
+  const controlsLane = async (words: string, spoken: boolean, how: 'bare' | 'named' | 'guess' = 'guess'): Promise<boolean> => {
+    // Bare: a button's name said alone, with no "click" or "show me": only that name, exactly, counts.
+    // Named: "click Insert": the first button by its name only. Guess: the decider may pick it.
+    const bare = how === 'bare';
+    const said = bare ? (intentOf(words) || asksAboutWords(words) ? null : 'do') : intentOf(words);
     if (!said) return false;
     const parts = partsOf(words);
-    if (parts.length === 0) return false;
-    const read = async () => ((await invokeHost('ask_controls').catch(() => null)) as Control[] | null) ?? [];
+    if (parts.length === 0 || (bare && (parts.length > 1 || parts[0]!.split(' ').length > 4))) return false;
+    const read = async () => {
+      // Read once a request: the lanes before the guess ask for the same window's buttons.
+      if (controlsRead.current && controlsRead.current.asked === asked && Date.now() - controlsRead.current.at < 3000)
+        return controlsRead.current.list;
+      const list = await readFresh();
+      controlsRead.current = { asked, at: Date.now(), list };
+      return list;
+    };
+    const readFresh = async () => {
+      // A window that takes too long to list its buttons is looked at instead; a browser that has
+      // only begun to list them (its page comes after its first answer) is asked once more.
+      const once = () =>
+        Promise.race([
+          invokeHost('ask_controls').then((found) => (found as Control[] | null) ?? [], () => [] as Control[]),
+          sleep(CONTROLS_WAIT_MS).then(() => [] as Control[]),
+        ]);
+      const first = await once();
+      if (first.length >= FEW_CONTROLS) return first;
+      await sleep(400);
+      const again = await once();
+      return again.length > first.length ? again : first;
+    };
     const pick = async (part: string, controls: Control[]) => {
       const named = controlNamed(part, controls);
       if (named) return named;
@@ -995,9 +1063,14 @@ function Island() {
     };
     const controls = await read();
     if (controls.length === 0) return false;
-    const first = await pick(parts[0] ?? '', controls);
+    const first =
+      how === 'bare'
+        ? controlNamedAlone(parts[0] ?? '', controls)
+        : how === 'named'
+          ? controlNamed(parts[0] ?? '', controls)
+          : await pick(parts[0] ?? '', controls);
     if (!first) return false;
-    await runControls(said, words, parts, first, read, pick, spoken);
+    await runControls(said, words, parts, first, readFresh, pick, spoken);
     return true;
   };
 

@@ -150,6 +150,26 @@ export function chosenBrain(prefs: AskPreferences, memoryGiB: number | null): De
   );
 }
 
+/**
+ * The model that writes what is read or heard — a reply, a summary, advice,
+ * an answer said aloud: the biggest one downloaded that this computer can
+ * run, when it is bigger than the everyday one, so words never come from a
+ * small model while a better one is there. The everyday model still decides
+ * the quick things; with nothing bigger downloaded it writes too.
+ */
+export async function writerFor(brain: DeviceModel, memoryGiB: number | null): Promise<DeviceModel> {
+  const bigger = DEVICE_MODELS.filter(
+    (model) =>
+      !model.hears &&
+      !model.decides &&
+      model.bytes > brain.bytes &&
+      memoryGiB !== null &&
+      memoryGiB + 0.5 >= model.ramGiB,
+  ).sort((a, b) => b.bytes - a.bytes);
+  for (const model of bigger) if (await modelReady(model)) return model;
+  return brain;
+}
+
 /** Whether every file of a model is downloaded and checked. */
 export async function modelReady(model: DeviceModel): Promise<boolean> {
   try {

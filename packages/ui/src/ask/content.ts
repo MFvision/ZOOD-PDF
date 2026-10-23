@@ -41,10 +41,13 @@ const ARABIC = new RegExp(
   ].join('|'),
 );
 
+/** An app's button named alone: "reply all" presses Reply all, it asks for nothing to be written. */
+const BUTTON_ALONE = /^(?:reply|reply all|reply to all|compose|forward|respond)$/;
+
 /** Whether `words` ask for something done with words (written, summed up, read, judged), not with ZOOD. */
 export function asksAboutWords(words: string): boolean {
   const said = simple(words);
-  if (!said || SETTING.test(said)) return false;
+  if (!said || SETTING.test(said) || BUTTON_ALONE.test(said)) return false;
   return ENGLISH.test(said) || ARABIC.test(said);
 }
 

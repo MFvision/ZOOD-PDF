@@ -33,6 +33,12 @@ pub fn clean(text: &str) -> String {
 /// Presses the system's Ctrl (Command) with `key`, as the person would.
 #[cfg(any(target_os = "windows", target_os = "macos"))]
 fn chord(key: char) -> Result<(), String> {
+    chord_with(key, false)
+}
+
+/// Ctrl (Command), with Shift when `shift`, and `key`.
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+fn chord_with(key: char, shift: bool) -> Result<(), String> {
     use enigo::{Direction, Enigo, Key, Keyboard, Settings};
     let modifier = if cfg!(target_os = "macos") {
         Key::Meta
@@ -40,10 +46,72 @@ fn chord(key: char) -> Result<(), String> {
         Key::Control
     };
     let mut keys = Enigo::new(&Settings::default()).map_err(|e| e.to_string())?;
-    keys.key(modifier, Direction::Press)
-        .and_then(|()| keys.key(Key::Unicode(key), Direction::Click))
-        .and_then(|()| keys.key(modifier, Direction::Release))
-        .map_err(|e| e.to_string())
+    let pressed = keys
+        .key(modifier, Direction::Press)
+        .and_then(|()| {
+            if shift {
+                keys.key(Key::Shift, Direction::Press)
+            } else {
+                Ok(())
+            }
+        })
+        .and_then(|()| keys.key(Key::Unicode(key), Direction::Click));
+    // Let go of both whatever happened, so no key stays held down.
+    if shift {
+        let _ = keys.key(Key::Shift, Direction::Release);
+    }
+    let released = keys.key(modifier, Direction::Release);
+    pressed.and(released).map_err(|e| e.to_string())
+}
+
+/// The everyday shortcuts Ask ZOOD may press in another app, by name: each
+/// is the same in nearly every app on Windows and on a Mac, so "print" is
+/// done by the app's own command, not by finding a button in a picture.
+/// Nothing else can be pressed: the name must be one of these.
+pub const SHORTCUTS: [(&str, char, bool); 17] = [
+    ("print", 'p', false),
+    ("save", 's', false),
+    ("find", 'f', false),
+    ("select-all", 'a', false),
+    ("copy", 'c', false),
+    ("new-tab", 't', false),
+    ("close-tab", 'w', false),
+    ("reopen-tab", 't', true),
+    ("refresh", 'r', false),
+    ("zoom-in", '=', false),
+    ("zoom-out", '-', false),
+    ("undo", 'z', false),
+    (
+        "redo",
+        if cfg!(target_os = "macos") { 'z' } else { 'y' },
+        cfg!(target_os = "macos"),
+    ),
+    ("bold", 'b', false),
+    ("italic", 'i', false),
+    ("underline", 'u', false),
+    ("new-window", 'n', false),
+];
+
+/// The keys of the shortcut called `name`; None for any other name.
+pub fn shortcut_keys(name: &str) -> Option<(char, bool)> {
+    SHORTCUTS
+        .iter()
+        .find(|(one, _, _)| *one == name)
+        .map(|(_, key, shift)| (*key, *shift))
+}
+
+/// Presses the shortcut called `name` (one of `SHORTCUTS`).
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+pub fn shortcut(name: &str) -> Result<(), String> {
+    let (key, shift) =
+        shortcut_keys(name).ok_or_else(|| format!("E_ARGS: no shortcut called {name:?}"))?;
+    chord_with(key, shift).map_err(|e| format!("E_ASK: {e}"))
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+pub fn shortcut(name: &str) -> Result<(), String> {
+    shortcut_keys(name).ok_or_else(|| format!("E_ARGS: no shortcut called {name:?}"))?;
+    Err("E_ASK: shortcuts are on Windows and macOS".to_string())
 }
 
 #[cfg(any(target_os = "windows", target_os = "macos"))]
@@ -119,6 +187,14 @@ mod tests {
             "Hi Sara,\n\nThanks![0m"
         };
         assert_eq!(cleaned, expected);
+    }
+
+    #[test]
+    fn only_the_listed_shortcuts_can_be_pressed() {
+        assert_eq!(shortcut_keys("print"), Some(('p', false)));
+        assert_eq!(shortcut_keys("reopen-tab"), Some(('t', true)));
+        assert_eq!(shortcut_keys("quit"), None);
+        assert_eq!(shortcut_keys(""), None);
     }
 
     #[test]

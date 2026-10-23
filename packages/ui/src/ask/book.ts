@@ -353,8 +353,56 @@ export function controlNamed(part: string, controls: readonly Control[]): Contro
       length = size;
     }
   }
-  return best;
+  // «اضغط أرسل» in an app shown in English: its button by the other language's word.
+  return best ?? controlNamedAlone(part, controls);
 }
+
+/**
+ * The control a button's name said alone names, exactly: "send", "the
+ * archive button", «إرسال». Null for anything more, so a word said for
+ * another reason never presses a button.
+ */
+export function controlNamedAlone(part: string, controls: readonly Control[]): Control | null {
+  const text = normalize(part)
+    .replace(PRESS, '')
+    .replace(/^(?:the|زر)\s+/, '')
+    .replace(/\s+(?:button|زر|key)$/, '')
+    .trim();
+  if (text.length < 2) return null;
+  const names = [text, ...(BUTTON_WORDS[text] ?? [])];
+  for (const name of names) {
+    const found = controls.find((control) => normalize(control.name) === name);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * An app's everyday buttons as said in Arabic, for an app shown in English
+ * (and the other way round): «أرشف» is Archive in Outlook in English.
+ */
+const BUTTON_WORDS: Readonly<Record<string, readonly string[]>> = Object.fromEntries(
+  (
+    [
+      [['ارسل', 'ارسال', 'ارسلها', 'ارسله'], ['send', 'إرسال']],
+      [['رد', 'الرد'], ['reply', 'رد']],
+      [['رد علي الكل', 'رد للكل', 'الرد علي الكل'], ['reply all', 'الرد على الكل', 'رد على الكل']],
+      [['حول', 'اعاده توجيه', 'وجه', 'فوروورد'], ['forward', 'إعادة توجيه', 'تحويل']],
+      [['ارشف', 'ارشفه', 'ارشفها', 'ارشيف'], ['archive', 'أرشفة', 'أرشيف']],
+      [['احذف', 'احذفه', 'احذفها', 'امسح', 'حذف'], ['delete', 'حذف', 'move to trash', 'trash']],
+      [['رساله جديده', 'ايميل جديد', 'بريد جديد'], ['new email', 'new message', 'compose', 'new mail', 'رسالة جديدة', 'بريد إلكتروني جديد']],
+      [['ارفق', 'ارفاق', 'مرفق'], ['attach file', 'attach', 'إرفاق ملف', 'إرفاق']],
+      [['علمه', 'علم'], ['flag', 'وضع علامة']],
+      [['رجوع', 'ارجع'], ['back', 'رجوع', 'للخلف']],
+      [['مشاركه', 'شارك'], ['share', 'مشاركة']],
+      [['send'], ['إرسال']],
+      [['reply'], ['رد']],
+      [['forward'], ['إعادة توجيه']],
+      [['archive'], ['أرشفة']],
+      [['delete'], ['حذف']],
+    ] as const
+  ).flatMap(([said, names]) => said.map((one) => [normalize(one), names.map((name) => normalize(name))])),
+);
 
 /** The controls' names as the decider's options, each name once, at most `most`. */
 export function controlOptions(controls: readonly Control[], most = 60): Record<string, string> {
