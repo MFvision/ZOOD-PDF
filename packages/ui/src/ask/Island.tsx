@@ -11,6 +11,7 @@ import {
   MousePointerClick,
   PenLine,
   Play,
+  Presentation,
   RotateCcw,
   Search,
   Send,
@@ -31,7 +32,7 @@ import { loadWallet } from '../ai/profile/walletState';
 import { targetWords, valueOf } from '../ai/profile/wallet';
 import type { Target, WalletProfile } from '../ai/profile/wallet';
 import { getSharedCoreClient } from '../core/client';
-import { invokeHost, isTauriHost, onHostEvent, uiLog } from '../core/host-tauri';
+import { invokeHost, isTauriHost, onHostEvent, saveDeck, uiLog } from '../core/host-tauri';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { useI18n } from '../i18n/useT';
 import { translate } from '../i18n/messages';
@@ -82,6 +83,8 @@ import { settingAsked, settingFirst, settingsPageAsked, settingWords, unknownSet
 import type { SettingAsk } from './settingsBook';
 import { asksAboutWords, asksTheWorld, asksToReadOut } from './content';
 import { ASKS_FIRST, keysOf, shortcutAsked } from './shortcuts';
+import { DECK_LOOKS, DECK_SIZES, canvasMeasure, deckAsked, deckFile, deckGrammar, deckPrompt, deckRequest, deckTopic, drawBackground, readDeck } from './deck';
+import type { DeckLook } from './deck';
 import type { Shortcut } from './shortcuts';
 import { fuzzyOffers, fuzzyPick } from './fuzzy';
 import type { Picked } from './fuzzy';
@@ -235,6 +238,9 @@ type Phase =
       /** Do it for me was asked outside ZOOD PDF: it only points there. */
       onlyPoints: boolean;
     }
+  /** "Make me a presentation": its few questions, then the slides being written (`deck.ts`). */
+  | { kind: 'deck'; words: string; topic: string; notes: string; size: (typeof DECK_SIZES)[number]; look: DeckLook; working: boolean }
+  | { kind: 'decked'; words: string; say: string }
   | { kind: 'problem'; message: TKey; detail?: string };
 
 /** How long an answer stays once said, and a list or a question waits. */
@@ -406,6 +412,7 @@ function Island() {
                   phase.kind === 'pick' ||
                   phase.kind === 'tidy' ||
                   phase.kind === 'tidied' ||
+                  phase.kind === 'decked' ||
                   phase.kind === 'problem' ||
                   phase.kind === 'ideas'
                 ? WAITS_MS
@@ -640,6 +647,8 @@ function Island() {
       // Another app's everyday command ("print", «اطبع», "new tab"): its own shortcut, no picture.
       const shortcut = named && !moment.ours ? shortcutAsked(words) : null;
       if (shortcut) return await shortcutLane(words, shortcut, spoken);
+      // "Make me a presentation": a few questions, then ZOOD writes the file itself.
+      if (named && deckAsked(words)) return startDeck(words, spoken);
       // Another app's button by its name ("archive", "click Insert", «أرشف»), before ZOOD's own settings:
       // there, "new message" is the app's button, not ZOOD's greeting.
       if (named && !moment.ours && (await controlsLane(words, spoken, 'bare'))) return;
@@ -1402,6 +1411,55 @@ function Island() {
     }
   };
 
+  /** The presentation's questions, with the topic already said filled in. */
+  const startDeck = (words: string, spoken: boolean) => {
+    aloud(translate(languageOf(words), 'ask.deck.ask'), spoken);
+    setPhase({ kind: 'deck', words, topic: deckTopic(words), notes: '', size: 8, look: 'zood', working: false });
+    // The island takes the keyboard, as it does for typing.
+    void invokeHost('ask_type_instead').catch(() => undefined);
+  };
+
+  /** Writes the slides with the best model there is, builds the file, saves and opens it. */
+  const makeDeck = async (asked: Extract<Phase, { kind: 'deck' }>) => {
+    stopSpeaking();
+    setPhase({ ...asked, working: true });
+    const language = languageOf(`${asked.topic} ${asked.notes}`.trim() || asked.words);
+    const id = `ask-deck-${Date.now()}`;
+    try {
+      const prefs = readAskPreferences();
+      const memory = await machineMemoryGiB();
+      const model = await writerFor(chosenBrain(prefs, memory), memory);
+      request.current = id;
+      const done = (await invokeHost('ask_think', {
+        request: {
+          id,
+          model: model.id,
+          messages: [
+            { role: 'system', content: deckPrompt(asked.size, language) },
+            { role: 'user', content: deckRequest(asked.topic, asked.notes) },
+          ],
+          grammar: deckGrammar(asked.size),
+          maxTokens: 300 + asked.size * 180,
+          contextTokens: 8192,
+          screen: false,
+        },
+      })) as { text: string };
+      request.current = null;
+      const deck = readDeck(done.text, asked.size);
+      if (!deck) return setPhase({ kind: 'problem', message: 'ask.deck.failed' });
+      const rtl = language === 'ar';
+      const [cover, page] = await Promise.all([drawBackground(asked.look, 'cover', rtl), drawBackground(asked.look, 'page', rtl)]);
+      const file = deckFile(deck, asked.look, rtl, (kind) => (kind === 'cover' ? cover : page), canvasMeasure());
+      await saveDeck(file, deck.title);
+      const say = translate(language, 'ask.deck.done', { title: deck.title, count: deck.slides.length + 1 });
+      aloud(say, false);
+      setPhase({ kind: 'decked', words: asked.words, say });
+    } catch (error) {
+      request.current = null;
+      setPhase({ kind: 'problem', ...errorKey(error) });
+    }
+  };
+
   const tidyNow = (words: string, preview: TidyPreview) => {
     stopSpeaking();
     setPhase({ kind: 'tidy', words, preview, working: true });
@@ -1455,7 +1513,9 @@ function Island() {
     phase.kind === 'tidy' ||
     phase.kind === 'tidied' ||
     phase.kind === 'thinking' ||
-    phase.kind === 'placed'
+    phase.kind === 'placed' ||
+    phase.kind === 'deck' ||
+    phase.kind === 'decked'
       ? phase.words
       : '';
   const lang = words ? languageOf(words) : null;
@@ -1910,6 +1970,84 @@ function Island() {
               {t('ask.cancel')}
             </button>
           </div>
+        </div>
+      )}
+      {phase.kind === 'deck' && (
+        <form
+          className="ask-plan ask-deck"
+          dir={lang === 'ar' ? 'rtl' : 'ltr'}
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!phase.working && phase.topic.trim()) void makeDeck(phase);
+          }}
+        >
+          <p className="ask-say">
+            <Presentation className="ask-inline-icon" /> {translate(lang ?? 'en', 'ask.deck.ask')}
+          </p>
+          <label>
+            <span>{translate(lang ?? 'en', 'ask.deck.topic')}</span>
+            <input
+              dir="auto"
+              value={phase.topic}
+              disabled={phase.working}
+              autoFocus
+              onChange={(event) => setPhase({ ...phase, topic: event.target.value.slice(0, 200) })}
+            />
+          </label>
+          <label>
+            <span>{translate(lang ?? 'en', 'ask.deck.notes')}</span>
+            <textarea
+              dir="auto"
+              rows={2}
+              value={phase.notes}
+              disabled={phase.working}
+              onChange={(event) => setPhase({ ...phase, notes: event.target.value.slice(0, 600) })}
+            />
+          </label>
+          <div className="ask-deck-choices">
+            <span>{translate(lang ?? 'en', 'ask.deck.size')}</span>
+            {DECK_SIZES.map((size) => (
+              <button
+                key={size}
+                type="button"
+                aria-pressed={phase.size === size}
+                disabled={phase.working}
+                onClick={() => setPhase({ ...phase, size })}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+          <div className="ask-deck-choices">
+            <span>{translate(lang ?? 'en', 'ask.deck.look')}</span>
+            {DECK_LOOKS.map((look) => (
+              <button
+                key={look}
+                type="button"
+                aria-pressed={phase.look === look}
+                disabled={phase.working}
+                onClick={() => setPhase({ ...phase, look })}
+              >
+                {translate(lang ?? 'en', `ask.deck.look.${look}` as TKey)}
+              </button>
+            ))}
+          </div>
+          {phase.working && <p className="ask-detail">{translate(lang ?? 'en', 'ask.deck.working')}</p>}
+          <div className="ask-actions">
+            <button type="submit" className="ask-do" disabled={phase.working || !phase.topic.trim()}>
+              {phase.working ? <Loader className="spin" /> : <Check />} {translate(lang ?? 'en', 'ask.deck.make')}
+            </button>
+            <button type="button" className="ask-cancel" onClick={() => close()}>
+              {t('ask.cancel')}
+            </button>
+          </div>
+        </form>
+      )}
+      {phase.kind === 'decked' && (
+        <div className="ask-plan">
+          <p className="ask-say" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+            {phase.say}
+          </p>
         </div>
       )}
       {phase.kind === 'tidied' && (

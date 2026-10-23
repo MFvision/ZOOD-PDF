@@ -17,6 +17,9 @@ type Schema = {
   properties?: Record<string, Schema>;
   required?: readonly string[];
   items?: Schema;
+  /** How many items an array holds, when it says: both are needed for a bound. */
+  minItems?: number;
+  maxItems?: number;
   enum?: readonly string[];
 };
 
@@ -66,6 +69,15 @@ export function schemaToGrammar(schema: object): string {
       case 'array': {
         if (!node.items) throw new GrammarError('array without items');
         const item = visit(node.items, `${base}-item`);
+        const { minItems: least, maxItems: most } = node;
+        if (least !== undefined && most !== undefined) {
+          if (!Number.isInteger(least) || !Number.isInteger(most) || least < 1 || most < least || most > 100)
+            throw new GrammarError('minItems and maxItems: 1 to 100');
+          return define(
+            `${base}-array`,
+            `"[" ${primitive('space')} ${item} ("," ${primitive('space')} ${item}){${least - 1},${most - 1}} "]" ${primitive('space')}`,
+          );
+        }
         return define(`${base}-array`, `"[" ${primitive('space')} (${item} ("," ${primitive('space')} ${item})*)? "]" ${primitive('space')}`);
       }
       case 'object': {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, MousePointerClick, PanelBottom, Printer, RotateCw, Save, Zap } from 'lucide-react';
+import { Check, Keyboard, MousePointerClick, PanelBottom, Presentation, Printer, RotateCw, Save, Zap } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { ZoodMark } from '../components/ZoodMark';
 import { configureRing, ringSettings } from '../core/host-tauri';
@@ -24,6 +24,8 @@ const STEPS = [
   { icon: Zap, text: 'tour.reach.step2' },
   { icon: Check, text: 'tour.reach.step3' },
   { icon: MousePointerClick, text: 'tour.reach.step4' },
+  { icon: Keyboard, text: 'tour.reach.step5' },
+  { icon: Presentation, text: 'tour.reach.step6' },
 ] as const;
 
 export function ReachScene({ onSettings }: { onSettings: (section: SectionId) => void }) {
@@ -69,6 +71,8 @@ export function ReachScene({ onSettings }: { onSettings: (section: SectionId) =>
               {(phase === 0 || phase === 1) && <p className="reach-island">{t('ask.listening')}</p>}
               {phase === 2 && <p className="reach-island">{t('tour.reach.said3')}</p>}
               {phase === 3 && <p className="reach-island">{t('tour.reach.said4')}</p>}
+              {phase === 4 && <p className="reach-island">{t('tour.reach.said5')}</p>}
+              {phase === 5 && <p className="reach-island">{t('tour.reach.said6')}</p>}
             </div>
             <span className={phase === 1 ? 'reach-bubble is-pressed' : 'reach-bubble'}>
               <ZoodMark size={18} />

@@ -30,6 +30,7 @@
 pub mod access;
 pub mod book;
 pub mod controls;
+pub mod deck;
 pub mod ear;
 pub mod eye;
 pub mod guide;

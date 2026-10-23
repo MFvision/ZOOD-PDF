@@ -1247,3 +1247,11 @@ export function onLibraryWatch(onEvent: (event: LibraryWatchEvent) => void): () 
     if (event?.payload) onEvent(event.payload);
   }) as (payload: never) => void);
 }
+
+/**
+ * Saves a presentation Ask ZOOD built in Documents › ZOOD PDF, never over a
+ * file already there, and opens it (`ask/deck.rs`). Returns the path.
+ */
+export async function saveDeck(bytes: Uint8Array, title: string): Promise<string> {
+  return (await invoke('ask_save_deck', bytes, { headers: { 'x-warraq-name': encodeURIComponent(title) } })) as string;
+}

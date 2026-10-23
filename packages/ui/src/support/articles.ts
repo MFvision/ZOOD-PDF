@@ -342,6 +342,25 @@ export const ARTICLES: readonly Article[] = [
     guide: { steps: [{ say: { ar: 'هذه إعدادات «اسأل زود»: المفاتيح والصوت.', en: 'These are the Ask ZOOD settings: keys and voice.' }, run: 'settings:ai' }] },
   },
   {
+    id: 'ask-presentation',
+    category: 'ai',
+    title: { ar: 'اطلب عرضًا تقديميًا', en: 'Ask for a presentation' },
+    summary: { ar: 'يكتب زود ملف البوربوينت بنفسه بعد أسئلة قليلة.', en: 'ZOOD writes the PowerPoint file itself after a few questions.' },
+    steps: [
+      { ar: 'قل أو اكتب لـ«اسأل زود»: «سوّ لي عرض تقديمي عن…».', en: 'Say or type to Ask ZOOD: “make me a presentation about…”.' },
+      { ar: 'اكتب الموضوع، ولمن العرض، واختر عدد الشرائح (5 أو 8 أو 12) والشكل (زود أو داكن أو بسيط).', en: 'Fill in the topic and who it is for, then choose the number of slides (5, 8 or 12) and the look (Zood, Dark or Plain).' },
+      { ar: 'اضغط «جهّزه». يكتب الذكاء الاصطناعي على جهازك الشرائح، ثم يحفظ زود الملف في المستندات › ZOOD PDF ويفتحه.', en: 'Press Make it. The AI on your computer writes the slides, then ZOOD saves the file in Documents › ZOOD PDF and opens it.' },
+      { ar: 'كل نص في الشرائح قابل للتعديل في بوربوينت أو Keynote.', en: 'Every text on the slides can be edited in PowerPoint or Keynote.' },
+    ],
+    tips: [
+      { ar: 'لا يخترع أرقامًا أو تواريخ: يترك [رقم] أو [تاريخ] لتكملها أنت.', en: 'It never makes up numbers or dates: it leaves [number] or [date] for you to fill in.' },
+      { ar: 'الكتابة على الجهاز قد تأخذ دقيقة أو دقيقتين، وأسرع مع نموذج أكبر.', en: 'Writing on the computer can take a minute or two; a bigger model writes better.' },
+    ],
+    keywords: ['presentation', 'powerpoint', 'slides', 'deck', 'keynote', 'عرض تقديمي', 'بوربوينت', 'شرائح', 'سلايدات'],
+    tour: 'reach',
+    desktopOnly: true,
+  },
+  {
     id: 'quick-tools',
     category: 'desktop',
     title: { ar: 'أدوات سريعة دون فتح التطبيق', en: 'Quick tools without opening the app' },
