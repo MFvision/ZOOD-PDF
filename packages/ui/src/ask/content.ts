@@ -24,7 +24,8 @@ const ENGLISH = new RegExp(
     String.raw`\b(?:write|draft|compose|reply|respond|summar(?:y|ies|i[sz]e\w*)|translate|rewrite|rephrase|reword|paraphrase|proofread|shorten|analy[sz]\w*|tl;?dr)\b`,
     String.raw`\bmake (?:it|this|that|the (?:reply|email|message|text|answer))\b.*\b(?:shorter|longer|formal|friendl\w*|polite\w*|nicer|kinder|clearer|simpler|professional|casual|warmer|firmer)\b`,
     String.raw`\bfix (?:my |the |this )?(?:grammar|spelling|typos?|wording)\b`,
-    String.raw`\b(?:tone|to-?do|todo|action items?|key points|calendar|reminder)\b`,
+    String.raw`\b(?:tone|to-?do|todo|action items?|key points|calendar|reminder|deadlines?)\b`,
+    String.raw`\b(?:extract|pull out|get|list|find)\b.*\b(?:dates?|names|numbers|amounts|phone numbers|emails|addresses|points)\b.*\b(?:from|in) (?:this|it|that|the (?:email|message|text|page))\b`,
     String.raw`\bwhat (?:should|do) i (?:do|say|answer|reply|write)\b`,
     String.raw`\bwhat (?:is|does) (?:this|that|it) (?:email|message|letter|text|say|mean)\b`,
     String.raw`\bwhat do you think\b|\bis (?:this|it) (?:a )?(?:scam|fake|phishing|spam|safe)\b`,
@@ -37,7 +38,7 @@ const ARABIC = new RegExp(
     String.raw`(?:^| )رد (?:عليه|عليها|عليهم|على|ع)(?= |$)`,
     String.raw`صياغه|صياغة|نبره|نبرة|رسمي|بلطف|مهذب|المطلوب مني|مهام|تقويم|موعد`,
     String.raw`(?:^| )(?:وش|ايش|ماذا) (?:اسوي|اسويه|افعل|ارد|اكتب|يقول|يقصد|تقصد|رايك)(?= |$)`,
-    String.raw`احتيال|نصب`,
+    String.raw`احتيال|نصب|المواعيد|التواريخ`,
   ].join('|'),
 );
 

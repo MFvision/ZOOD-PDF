@@ -45,6 +45,12 @@ describe('Ask ZOOD in another app', () => {
     expect(wrong).toEqual([]);
   });
 
+  it('never lets the quick tools take a request about words', () => {
+    // The real decider took these for Extract text and for tidying (cloud CPU, 2026-10-23).
+    for (const words of ['extract the dates from this email', 'make a to-do list from this', 'list the phone numbers in this message', 'طلع المواعيد من الايميل'])
+      expect(asksAboutWords(words), words).toBe(true);
+  });
+
   it('reads the window aloud when asked to', () => {
     for (const words of ['read this to me', 'read it out loud', 'read the email', 'اقرأ لي هذا', 'اقرا الايميل']) expect(outside(words), words).toBe('READ');
   });
