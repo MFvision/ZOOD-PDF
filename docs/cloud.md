@@ -163,6 +163,13 @@ Once a drive is in the build it appears on the home screen under
 **Folders → Cloud drives**, as a folder beside the person's own, and in the
 File menu.
 
+ZOOD's own OneDrive app (registered 2026-10-24, *ZOOD PDF*, any organization and
+personal accounts) has the client ID `4c561684-3bf8-48e7-b4dc-ca1d7c8f9472`; the
+two workflows use it when the repository sets no variable of their own. The
+desktop app comes back to `http://127.0.0.1:<port>/callback`, so that address
+must be in the registration's Manifest (`replyUrlsWithType`, type
+`InstalledClient`) beside `http://localhost/callback` — step 6 above.
+
 ---
 
 ## What leaves the device, and what is kept

@@ -102,9 +102,9 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           # The cloud drives' app IDs (docs/cloud.md), from the repository's
-          # Actions variables: they are public IDs, not secrets. Unset, the
-          # build has no drive and shows no cloud control.
-          WARRAQ_ONEDRIVE_CLIENT_ID: ${{ vars.WARRAQ_ONEDRIVE_CLIENT_ID }}
+          # Actions variables: they are public IDs, not secrets. OneDrive
+          # falls back to ZOOD's own registered app; Google, unset, is absent.
+          WARRAQ_ONEDRIVE_CLIENT_ID: ${{ vars.WARRAQ_ONEDRIVE_CLIENT_ID || '4c561684-3bf8-48e7-b4dc-ca1d7c8f9472' }}
           WARRAQ_ONEDRIVE_TENANT: ${{ vars.WARRAQ_ONEDRIVE_TENANT }}
           WARRAQ_GOOGLE_CLIENT_ID: ${{ vars.WARRAQ_GOOGLE_CLIENT_ID }}
         run: |
