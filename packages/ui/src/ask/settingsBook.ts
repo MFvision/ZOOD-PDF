@@ -360,6 +360,14 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
     desktop: true,
   },
   {
+    id: 'dropZone',
+    section: 'quick',
+    label: 'quick.settings.dropZone',
+    kind: 'toggle',
+    names: ['drop zone', 'drop files on zood', 'sort with zood', 'zood at the top when i drag', 'drag files to sort', 'منطقة الافلات', 'منطقه الافلات', 'رتب مع زود', 'رمي الملفات على زود', 'زود فوق لما اسحب'],
+    desktop: true,
+  },
+  {
     id: 'background',
     section: 'quick',
     label: 'quick.settings.background',
@@ -971,7 +979,8 @@ export async function settingNow(entry: SettingEntry, setters: SettingSetters): 
     case 'reduceMotion':
       return settings[entry.id] === 'on' ? 'on' : 'off';
     case 'ring':
-    case 'background': {
+    case 'background':
+    case 'dropZone': {
       const ring = await ringSettings().catch(() => null);
       return ring ? (ring[entry.id] ? 'on' : 'off') : null;
     }
@@ -1032,6 +1041,7 @@ export async function applySetting(entry: SettingEntry, value: string, setters: 
       return true;
     case 'ring':
     case 'background':
+    case 'dropZone':
     case 'ringSize': {
       const ring = await ringSettings().catch(() => null);
       if (!ring) return false;

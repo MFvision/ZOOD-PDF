@@ -6,11 +6,11 @@ import { newChapters, newSince, tourChapters } from './chapters';
 describe('welcome tour', () => {
   it('shows the quick tools and the phone remote only in the desktop app', () => {
     expect(tourChapters(false).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'folders', 'ai', 'support', 'done']);
-    expect(tourChapters(true).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'folders', 'quick', 'reach', 'remote', 'ai', 'support', 'done']);
+    expect(tourChapters(true).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'folders', 'quick', 'reach', 'sort', 'remote', 'ai', 'support', 'done']);
   });
 
   it('teaches Ask ZOOD only where it is in the build', () => {
-    expect(tourChapters(true, true).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'folders', 'quick', 'ask', 'quickask', 'reach', 'remote', 'ai', 'support', 'done']);
+    expect(tourChapters(true, true).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'folders', 'quick', 'ask', 'quickask', 'reach', 'sort', 'remote', 'ai', 'support', 'done']);
     expect(tourChapters(false, true).map((c) => c.id)).not.toContain('ask');
   });
 
@@ -30,18 +30,22 @@ describe('welcome tour', () => {
     expect(newSince(9, true)).toBe('folders');
     expect(newSince(10, false)).toBe('folders');
     expect(newSince(10, true, false)).toBe('folders');
+    expect(newSince(12, true)).toBe('sort');
+    expect(newSince(12, true, false)).toBe('folders');
   });
 
   it('after an update shows only the chapters that are new here', () => {
     // Never seen, or seen before Ask ZOOD: the whole tour.
     expect(newChapters(0, true, true)).toBeNull();
     expect(newChapters(1, false, false)).toBeNull();
-    expect(newChapters(11, true, true)).toEqual(['reach']);
-    expect(newChapters(10, true, true)).toEqual(['folders', 'reach']);
-    expect(newChapters(9, true, true)).toEqual(['folders', 'reach', 'remote']);
-    expect(newChapters(8, true, true)).toEqual(['folders', 'reach', 'remote']);
-    expect(newChapters(6, true, true)).toEqual(['folders', 'reach', 'remote', 'ai', 'support']);
-    expect(newChapters(4, true, true)).toEqual(['folders', 'ask', 'quickask', 'reach', 'remote', 'ai', 'support']);
+    expect(newChapters(12, true, true)).toEqual(['sort']);
+    expect(newChapters(12, false, false)).toEqual([]);
+    expect(newChapters(11, true, true)).toEqual(['reach', 'sort']);
+    expect(newChapters(10, true, true)).toEqual(['folders', 'reach', 'sort']);
+    expect(newChapters(9, true, true)).toEqual(['folders', 'reach', 'sort', 'remote']);
+    expect(newChapters(8, true, true)).toEqual(['folders', 'reach', 'sort', 'remote']);
+    expect(newChapters(6, true, true)).toEqual(['folders', 'reach', 'sort', 'remote', 'ai', 'support']);
+    expect(newChapters(4, true, true)).toEqual(['folders', 'ask', 'quickask', 'reach', 'sort', 'remote', 'ai', 'support']);
     expect(newChapters(6, false, false)).toEqual(['folders', 'ai', 'support']);
     // On the web a tour seen at 11 has nothing new: it does not open.
     expect(newChapters(11, false, false)).toEqual([]);

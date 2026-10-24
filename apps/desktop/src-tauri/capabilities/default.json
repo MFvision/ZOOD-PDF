@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Main window and the quick tools windows (src/quick.rs), the ring, the phone's files arriving (src/arrival.rs), and Ask ZOOD's island, pointer and glow (src/ask/) and its bubble (src/presence.rs): core APIs, dragging the window by its toolbar (the title bar on macOS), the native open/save dialogs, and file reads/writes limited to paths the user picked in a dialog or dropped on the window (the dialog plugin adds picked paths to the fs scope at runtime; no static fs scope is granted).",
-  "windows": ["main", "doc-*", "quick-*", "ring", "arrival", "ask", "ask-point", "ask-glow", "ask-bubble"],
+  "windows": ["main", "doc-*", "quick-*", "sort-*", "drop-zone", "ring", "arrival", "ask", "ask-point", "ask-glow", "ask-bubble"],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",

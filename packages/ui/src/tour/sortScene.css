@@ -1,0 +1,176 @@
+/* Sort with ZOOD in the tour (sortScene.tsx): a pretend desktop and ZOOD's drop zone, to practise on. */
+
+.sort-stage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.sort-desk {
+  position: relative;
+  inline-size: 100%;
+  min-block-size: 230px;
+  border-radius: 12px;
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--hue) 22%, transparent), transparent 70%),
+    color-mix(in srgb, var(--hue) 6%, var(--window-background));
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+}
+
+.sort-zone {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-inline-size: 70px;
+  padding: 4px 14px 7px;
+  border-radius: 0 0 16px 16px;
+  color: #f6f1ea;
+  background:
+    radial-gradient(120% 140% at 50% 0%, rgb(174 139 102 / 26%), transparent 62%),
+    #000;
+  font-size: 12px;
+  font-weight: 600;
+  transform: translateX(-50%);
+  transition:
+    min-inline-size 220ms ease,
+    padding 220ms ease,
+    box-shadow 220ms ease;
+}
+
+[dir='rtl'] .sort-zone {
+  transform: translateX(50%);
+}
+
+.sort-zone.is-open {
+  min-inline-size: 200px;
+  padding: 8px 18px 12px;
+  border-radius: 0 0 22px 22px;
+}
+
+.sort-zone.is-over {
+  box-shadow:
+    inset 0 -2px 0 rgb(232 184 120 / 75%),
+    0 0 24px rgb(232 184 120 / 45%);
+}
+
+.sort-zone.has-ideas {
+  flex-direction: column;
+  align-items: stretch;
+  min-inline-size: 230px;
+}
+
+.sort-zone-ideas {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  font-weight: 500;
+  list-style: none;
+}
+
+.sort-zone-ideas li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgb(246 241 234 / 8%);
+  animation: sort-idea-in 280ms ease both;
+}
+
+.sort-zone-ideas li:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.sort-zone-ideas li:nth-child(3) {
+  animation-delay: 160ms;
+}
+
+.sort-zone-ideas li:nth-child(4) {
+  animation-delay: 240ms;
+}
+
+.sort-zone-ideas svg {
+  color: #e8b878;
+}
+
+.sort-desk-files {
+  position: absolute;
+  inset-block-end: 14px;
+  inset-inline-start: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 8px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sort-desk-files.is-dragging {
+  inset-block-end: auto;
+  grid-template-columns: auto;
+  gap: 0;
+  opacity: 0.88;
+  pointer-events: none;
+}
+
+.sort-desk-files.is-dragging .sort-desk-file + .sort-desk-file {
+  margin-block-start: -26px;
+  margin-inline-start: 6px;
+}
+
+.sort-desk-file {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  inline-size: 84px;
+  padding: 6px 4px;
+  border-radius: 8px;
+  background: var(--control-background);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+  color: var(--label);
+  font-size: 10.5px;
+  cursor: grab;
+}
+
+.sort-desk-file bdi {
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sort-try {
+  margin: 0;
+  color: var(--secondary-label);
+  font-size: var(--text-footnote);
+  text-align: center;
+}
+
+.sort-again {
+  align-self: center;
+}
+
+@keyframes sort-idea-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sort-zone,
+  .sort-zone-ideas li {
+    transition: none;
+    animation: none;
+  }
+}

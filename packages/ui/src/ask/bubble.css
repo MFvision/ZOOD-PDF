@@ -39,6 +39,14 @@ html.ask-bubble-page body {
   animation: ask-bubble-breathe 1.4s ease-in-out infinite;
 }
 
+/* Files dragged over it: it grows to take them (Sort with ZOOD). */
+.ask-bubble.is-taking {
+  transform: scale(1.12);
+  box-shadow:
+    0 0 0 3px rgb(232 184 120 / 75%),
+    0 0 22px 8px rgb(174 139 102 / 55%);
+}
+
 @keyframes ask-bubble-breathe {
   50% {
     box-shadow:
