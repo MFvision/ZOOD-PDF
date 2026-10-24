@@ -1,6 +1,6 @@
 import type { CloudConfig, ProviderId } from './config';
 import { offeredProviders } from './config';
-import type { Account, Listing, Opened, Saved } from './drive';
+import type { Account, Entry, Listing, Opened, Saved } from './drive';
 import { CloudError } from './errors';
 import { GoogleDrive } from './gdrive';
 import { authorised, unauthorised } from './http';
@@ -13,11 +13,15 @@ import type { HostSignIn, SignedIn } from './signin';
 
 /**
  * One drive as the interface uses it, whichever it is. OneDrive is browsed
- * by folder; with drive.file, Google Drive shows the PDFs the app may open
- * (picked in Google's picker, or saved from the app) in one list.
+ * by folder; with drive.file, Google Drive shows the PDFs and folders the
+ * app may open (picked in Google's picker, or saved from the app).
  */
 export interface CloudDrive {
-  /** Whether `list` walks folders. */
+  /**
+   * Whether the drive is walked from its top, folder by folder, with a place
+   * to save at each (OneDrive). Google Drive's list starts from what the
+   * person picked, and folders picked there open too.
+   */
   readonly folders: boolean;
   account(): Promise<Account>;
   list(folderKey: string | null, next?: string | null): Promise<Listing>;
@@ -26,6 +30,8 @@ export interface CloudDrive {
   /** `expected` null replaces whatever is there now. */
   saveRevision(key: string, bytes: ArrayBuffer, expected: string | null): Promise<Saved>;
   saveNew(folderKey: string | null, name: string, bytes: ArrayBuffer, behavior: 'fail' | 'replace' | 'rename'): Promise<Saved>;
+  /** What Google's picker gave back, as PDFs and folders (Google Drive only). */
+  picked?(ids: readonly string[]): Promise<Entry[]>;
 }
 
 /** Where the service runs: the pieces that differ between a browser and the desktop app. */
@@ -87,8 +93,9 @@ export class CloudService {
     return {
       folders: false,
       account: () => drive.account(),
-      list: (_folder, next) => drive.list(null, next),
-      search: (text, next) => drive.list(text, next),
+      list: (folder, next) => drive.list({ folder }, next),
+      search: (text, next) => drive.list({ text }, next),
+      picked: (ids) => drive.entries(ids),
       open: (key) => drive.open(key),
       saveRevision: (key, bytes, expected) => drive.saveRevision(key, bytes, expected),
       saveNew: (folder, name, bytes) => drive.saveNew(folder, pdfName(name), bytes),

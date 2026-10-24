@@ -301,8 +301,10 @@ test.describe('Google Drive on the desktop', () => {
     expect(asked.origin + asked.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth');
     expect(Object.fromEntries(asked.searchParams)).toMatchObject({
       trigger_onepick: 'true',
+      allow_multiple: 'true',
+      allow_folder_selection: 'true',
       prompt: 'consent',
-      mimetypes: 'application/pdf',
+      mimetypes: 'application/pdf,application/vnd.google-apps.folder',
       scope: 'https://www.googleapis.com/auth/drive.file',
       access_type: 'offline',
       code_challenge_method: 'S256',
@@ -330,6 +332,25 @@ test.describe('Google Drive on the desktop', () => {
 
     // Only the file picked — and what the app saves — is the app's to see.
     expect(await run(page, (cloud) => cloud.list('gdrive', null))).toEqual([{ key: contract, name: 'عقد.pdf', kind: 'pdf' }]);
+  });
+
+  test('several files and a folder are picked at once, and the folder lists what the app may see in it', async ({ page }) => {
+    const google = new FakeGoogle();
+    const contract = google.addFile('عقد.pdf', Buffer.from('%PDF-1.7 the contract'));
+    const invoice = google.addFile('invoice.pdf', Buffer.from('%PDF-1.7 the invoice'));
+    const folder = google.addFolder('زود 2025');
+    const inside = google.addFile('brochure.pdf', Buffer.from('%PDF-1.7 inside'), folder);
+    google.addFile('unseen.pdf', Buffer.from('%PDF-1.7 not picked'), folder);
+    google.pick = ['عقد.pdf', 'invoice.pdf', 'زود 2025', 'brochure.pdf'];
+    const host = new FakeHost(new FakeMicrosoft('http://127.0.0.1'), google);
+    await install(page, host);
+
+    const signedIn = await run(page, (cloud) => cloud.signIn('gdrive', 'open'));
+    expect(signedIn.picked).toEqual([contract, invoice, folder, inside]);
+    expect(await run(page, (cloud, id: string) => cloud.list('gdrive', id), folder)).toEqual([{ key: inside, name: 'brochure.pdf', kind: 'pdf' }]);
+    const everything = (await run(page, (cloud) => cloud.list('gdrive', null))) as { key: string; kind: string }[];
+    expect(everything.map((entry) => entry.key).sort()).toEqual([contract, invoice, folder, inside].sort());
+    expect(everything.find((entry) => entry.key === folder)?.kind).toBe('folder');
   });
 
   test('a file someone else saved meanwhile is a conflict, and nothing is written until the person says so', async ({ page }) => {
