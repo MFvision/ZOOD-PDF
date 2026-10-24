@@ -1,0 +1,250 @@
+test hidden::tests::hidden_layers_follow_the_policy_of_the_groups_that_use_them ... ok
+test hidden::tests::hidden_text_that_would_move_visible_text_is_left_in_place ... ok
+test hidden::tests::the_report_finds_every_kind_the_fixture_carries ... ok
+test hidden::tests::what_the_structure_tree_pointed_at_goes_with_the_annotation ... ok
+test hidden::tests::white_text_is_hidden_only_where_nothing_but_white_is_under_it ... ok
+test images::tests::a_content_stream_shared_by_two_pages_is_not_edited ... ok
+test images::tests::a_deleted_picture_leaves_the_page ... ok
+test images::tests::a_form_drawn_on_two_pages_is_shared_and_not_edited ... ok
+test images::tests::a_form_only_listed_by_another_page_is_not_shared ... ok
+test images::tests::a_form_that_draws_itself_is_not_walked_forever ... ok
+test images::tests::a_hostile_stream_is_listed_without_a_panic ... ok
+test compress::tests::a_300_dpi_scan_comes_down_to_what_150_dpi_needs ... ok
+test images::tests::a_picture_in_a_form_does_not_leave_the_forms_box ... ok
+test images::tests::a_picture_placed_on_a_marked_page_lands_where_it_was_asked ... ok
+test images::tests::a_placed_picture_moves_resizes_turns_crops_and_goes_with_the_expected_transform ... ok
+test images::tests::a_replaced_picture_leaves_the_page ... ok
+test images::tests::a_scans_picture_is_found_where_it_covers_the_page ... ok
+test images::tests::a_turned_photo_is_placed_and_replaced_upright ... ok
+test images::tests::an_existing_picture_is_rewritten_in_its_own_stream_only ... ok
+test forms::detect::tests::never_panics_and_is_bounded ... ok
+test images::tests::inline_images_and_forms_are_found_and_edited_too ... ok
+test images::tests::replacing_in_a_form_without_resources_keeps_the_rest_of_the_form ... ok
+test forms::script::tests::never_panics_on_token_soup ... ok
+test incremental::tests::an_encrypted_file_stays_encrypted_through_an_incremental_save ... ok
+test incremental::tests::detects_the_previous_xref_style_of_both_corpus_layouts ... ok
+test incremental::tests::objects_round_trip_through_our_serializer ... ok
+test incremental::tests::reals_are_written_as_plain_decimals ... ok
+test incremental::tests::saving_without_edits_returns_the_original_unchanged ... ok
+test layers::tests::layers_come_with_their_state_order_and_arabic_names ... ok
+test layers::tests::visibility_is_set_on_a_copy_and_the_file_own_comes_back ... ok
+test lex::tests::a_backslash_at_the_very_end_stays_inside_the_stream ... ok
+test lex::tests::a_length_past_the_end_of_memory_does_not_wrap ... ok
+test incremental::tests::an_incremental_save_keeps_the_original_bytes_as_a_prefix_and_reopens ... ok
+test lex::tests::an_inline_image_is_one_operation_even_when_its_data_spells_ei ... ok
+test lex::tests::an_inline_image_of_impossible_bits_is_not_measured ... ok
+test lex::tests::garbage_is_skipped_without_panicking ... ok
+test lex::tests::operations_carry_their_operands_and_exact_byte_ranges ... ok
+test links::tests::a_link_written_into_the_page_can_be_changed_and_removed ... ok
+test links::tests::a_turned_page_takes_its_link_where_the_reader_drew_it ... ok
+test links::tests::an_address_with_invisible_format_characters_is_refused ... ok
+test links::tests::an_e_mail_address_loses_its_attachments ... ok
+test links::tests::links_to_the_web_and_to_a_page_are_written_and_read_back ... ok
+test links::tests::scripts_and_files_are_not_linked_and_nonsense_is_refused ... ok
+test marked::tests::a_chrome_page_lists_its_spans_with_their_text ... ok
+test marked::tests::a_page_without_marked_content_has_none ... ok
+test marks::tests::a_mark_leaves_the_pages_own_streams_alone_and_comes_off_without_a_trace ... ok
+test marks::tests::a_second_mark_of_a_kind_replaces_the_first_unless_asked_not_to ... ok
+test marks::tests::a_small_tiled_watermark_covers_the_whole_page ... ok
+test marks::tests::a_turned_photo_watermark_is_drawn_upright ... ok
+test marks::tests::an_arabic_header_starts_on_the_right ... ok
+test marks::tests::an_image_watermark_needs_no_font_and_text_without_one_is_refused ... ok
+test marks::tests::bates_numbers_are_padded_and_run_across_the_pages ... ok
+test marks::tests::numbers_come_in_either_digits_and_in_roman ... ok
+test marks::tests::page_numbers_skip_the_first_page_and_count_from_the_start_number ... ok
+test marks::tests::the_upright_frame_puts_a_turned_pages_top_where_the_reader_sees_it ... ok
+test ocr::tests::a_cleaned_scan_takes_the_place_of_the_page_picture_and_the_words_go_level ... ok
+test ocr::tests::a_corrected_reading_replaces_the_layer_and_its_words_are_kept_with_the_page ... ok
+test ocr::tests::a_page_that_is_not_just_a_picture_keeps_what_it_has ... ok
+test ocr::tests::a_page_without_the_layer_has_no_words_to_read_back ... ok
+test ocr::tests::a_picture_that_cannot_be_read_leaves_the_scan_where_it_was ... ok
+test ocr::tests::words_become_invisible_text_that_survives_a_save_and_is_not_written_twice ... ok
+test ops::tests::a_bold_paragraph_in_a_regular_face_is_outlined_in_its_colour ... ok
+test ops::tests::an_embedded_subset_is_named_for_its_family_and_style ... ok
+test ops::tests::append_line_adds_shaped_text_to_a_chrome_page ... ok
+test ops::tests::erase_area_blanks_only_the_runs_inside_the_box ... ok
+test ops::tests::replace_paragraph_reflows_arabic_into_the_box ... ok
+test ops::tests::replace_word_embeds_a_new_subset_font_with_tounicode_and_reopens ... ok
+test ops::tests::stroke_twins_of_fill_colours ... ok
+test outline::tests::a_heading_goes_nowhere_and_only_an_address_or_a_file_goes_outside ... ok
+test outline::tests::the_outline_is_read_with_titles_depths_and_pages ... ok
+test ownfont::tests::only_scripts_that_need_no_shaping_pass ... ok
+test ownfont::tests::words_wrap_at_the_width_and_a_long_word_stands_alone ... ok
+test pages::tests::a_blank_page_takes_its_neighbours_size ... ok
+test pages::tests::a_crop_that_leaves_nothing_is_refused_and_changes_nothing ... ok
+test pages::tests::a_nested_page_tree_is_flattened_with_the_attributes_its_pages_inherited ... ok
+test pages::tests::appending_a_document_brings_its_pages_and_form_fields ... ok
+test pages::tests::combining_files_makes_one_unprotected_file_of_all_their_pages ... ok
+test pages::tests::cropping_cuts_each_margin_from_the_edge_it_is_shown_at_for_every_turn ... ok
+test pages::tests::deleting_keeps_the_rest_in_order_and_never_the_last_page ... ok
+test pages::tests::extracting_cuts_bookmarks_and_links_to_pages_left_behind ... ok
+test pages::tests::extracting_writes_a_file_with_only_the_chosen_pages ... ok
+test pages::tests::inserting_a_file_puts_its_pages_at_the_position_as_an_update ... ok
+test pages::tests::reordering_moves_pages_and_survives_a_save ... ok
+test pages::tests::resizing_puts_each_page_on_the_paper_whole_and_turned_its_way ... ok
+test pages::tests::rotating_a_page_turns_it_and_survives_a_save ... ok
+test pagework::tests::numbers_are_written_short_and_plain ... ok
+test picture::tests::a_black_and_white_picture_is_kept_at_one_bit_a_pixel ... ok
+test picture::tests::a_jpeg_goes_in_as_it_is ... ok
+test picture::tests::a_png_becomes_a_flate_image_with_its_transparency_as_a_mask ... ok
+test picture::tests::a_turned_photo_is_stored_as_it_is_and_said_to_be_turned ... ok
+test picture::tests::anything_else_or_anything_broken_is_refused_not_panicked_on ... ok
+test rebase::tests::a_name_made_up_for_an_annotation_is_not_a_change_but_a_changed_one_is ... ok
+test rebase::tests::a_protected_file_stays_protected_under_its_own_bytes ... ok
+test rebase::tests::a_rewrite_protected_differently_is_left_whole ... ok
+test lex::tests::a_stream_of_too_many_operations_is_refused_not_kept ... ok
+test rebase::tests::a_rewrite_that_changed_nothing_is_the_file_itself ... ok
+test rebase::tests::an_annotation_added_elsewhere_becomes_an_update_of_the_file ... ok
+test redaction::fonts::tests::a_standard_font_without_widths_takes_adobes_and_another_is_unsure ... ok
+test redaction::fonts::tests::an_embedded_cmap_cuts_mixed_length_codes ... ok
+test redaction::fonts::tests::identity_codes_are_two_bytes_with_widths_by_cid ... ok
+test redaction::fonts::tests::simple_widths_come_from_the_widths_array ... ok
+test redaction::pixels::tests::a_soft_mask_is_blanked_too_and_an_unreadable_picture_is_refused ... ok
+test redaction::pixels::tests::one_bit_pixels_are_cleared_bit_by_bit ... ok
+test redaction::pixels::tests::the_pixels_under_a_mark_are_zero_and_the_rest_as_they_were ... ok
+test redaction::tests::a_protected_file_and_a_mark_off_the_document_are_refused ... ok
+test redaction::tests::a_word_under_a_mark_is_cut_and_its_neighbours_keep_their_places ... ok
+test redaction::tests::hostile_content_is_redacted_without_a_panic ... ok
+test redaction::tests::pixels_under_a_mark_are_blanked_and_a_drawing_inside_it_goes ... ok
+test redaction::tests::replacement_text_annotations_and_private_data_go_with_what_they_held ... ok
+test redaction::tests::text_in_a_form_is_cut_from_a_copy_drawn_in_its_place ... ok
+test show::tests::a_word_of_two_directions_carries_its_text_in_reading_order ... ok
+test show::tests::a_word_whose_glyphs_do_not_spell_it_carries_its_text ... ok
+test show::tests::a_word_with_a_moved_mark_carries_its_text_and_latin_reads_as_it_is ... ok
+test show::tests::marked_words_are_wrapped_and_the_rest_is_shown_in_runs ... ok
+test redaction::fonts::tests::a_hostile_w_array_is_read_within_bounds ... ok
+test signature::tests::a_prepared_signature_leaves_exactly_its_contents_out_of_the_byte_range ... ok
+test signature::tests::a_protected_file_keeps_its_protection_and_its_contents_in_the_clear ... ok
+test signature::tests::certification_is_recorded_and_changes_after_it_are_classified ... ok
+test signature::tests::a_file_referring_to_one_big_object_again_and_again_is_walked_once ... ok
+test standards::access::tests::an_untagged_file_fails_and_is_fixed_by_tagging ... ok
+test standards::access::tests::every_check_is_reported_once_in_order ... ok
+test standards::fonts::tests::a_table_added_to_a_font_reads_back ... ok
+test standards::icc::tests::the_bundled_profiles_are_what_they_say ... ok
+test standards::pdfa::tests::a_file_with_fonts_it_does_not_carry_gets_them_embedded ... ok
+test standards::pdfa::tests::an_encrypted_file_comes_out_unencrypted ... ok
+test standards::pdfa::tests::an_ordinary_file_fails_and_says_why ... ok
+test signature::tests::validation_data_that_inflates_without_end_is_not_inflated ... ok
+test standards::pdfa::tests::pdfa_1b_is_written_as_pdf_1_4 ... ok
+test standards::pdfa::tests::pdfa_2u_needs_unicode_for_every_code ... ok
+test standards::pdfa::tests::pdfa_3b_keeps_attachments_and_says_what_they_are ... ok
+test standards::pdfa::tests::scripts_and_hidden_things_are_taken_out ... ok
+test standards::pdfa::tests::the_whole_corpus_converts_at_every_level ... ignored
+test standards::pdfx::tests::a_monitor_profile_is_not_a_press ... ok
+test standards::pdfa::tests::arabic_files_convert_to_pdfa_2b_and_validate ... ok
+test standards::preflight::tests::a_scan_at_200_dpi_is_coarse_for_300_and_fine_for_150 ... ok
+test standards::preflight::tests::a_word_export_has_no_trim_box_and_says_so_for_every_page ... ok
+test standards::preflight::tests::fonts_a_file_does_not_carry_are_errors ... ok
+test standards::scan::tests::a_chrome_page_shows_its_fonts_and_rgb ... ok
+test standards::scan::tests::a_scan_lists_its_image_and_its_resolution ... ok
+test standards::scan::tests::codes_split_by_a_cmap_code_space ... ok
+test standards::scan::tests::untagged_content_is_counted_and_tagged_content_is_not ... ok
+test standards::tagging::scratch_lex::lex ... ignored
+test standards::tagging::tests::a_page_is_tagged_and_the_tree_reads_back_in_order ... ok
+test standards::tagging::tests::operators_are_found_where_the_file_wrote_them ... ok
+test standards::tagging::tests::scripts_are_told_apart ... ok
+test standards::pdfx::tests::an_arabic_invoice_becomes_pdfx_4 ... ok
+test standards::xmp::tests::a_packet_round_trips_what_it_was_given ... ok
+test standards::xmp::tests::dates_convert_both_ways ... ok
+test standards::xmp::tests::the_title_is_changed_in_place_or_added ... ok
+test text_walk::tests::ctm_scales_position_and_font_size_and_q_restores_it ... ok
+test text_walk::tests::final_ctm_reports_an_unbalanced_page_transform_and_inverts_it ... ok
+test text_walk::tests::quote_operators_advance_a_line_before_showing ... ok
+test text_walk::tests::tm_td_and_tstar_place_runs_in_page_space ... ok
+test textless::tests::a_page_drawn_without_its_text_keeps_its_pictures_and_loses_its_words ... ok
+test textless::tests::a_stream_without_text_is_left_alone ... ok
+test textless::tests::invisible_text_is_told_apart_and_the_mode_follows_q_and_q ... ok
+test textless::tests::text_is_cut_and_everything_else_kept_byte_for_byte ... ok
+test textless::tests::text_that_clips_stays_so_what_is_painted_through_it_does ... ok
+test standards::tagging::tests::tagging_again_replaces_the_old_tags ... ok
+test tiff::tests::a_white_is_zero_page_is_drawn_the_right_way_round ... ok
+test tiff::tests::broken_or_looping_files_are_refused_or_cut_short_not_panicked_on ... ok
+test tiff::tests::every_page_of_a_tiff_is_read_grey_and_colour ... ok
+test tiff::tests::lzw_and_deflate_strips_are_read ... ok
+test tiff::tests::packbits_and_the_horizontal_predictor_are_undone ... ok
+test tounicode::tests::parses_bfchar_and_bfrange_forms ... ok
+test images::tests::forms_that_fan_out_are_walked_within_a_budget ... ok
+test images::tests::a_page_too_heavy_to_walk_does_not_stop_the_check ... ok
+
+test result: ok. 276 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 3.18s
+
+[1m[92m     Running[0m unittests src\lib.rs (packages\core\target\release\deps\warraq_text-f195b17c90fbfd33.exe)
+
+running 56 tests
+test bidi::tests::base_direction_detects_ltr_paragraph_with_arabic_words ... ok
+test bidi::tests::latin_run_with_numbers_stays_together_after_arabic_label ... ok
+test bidi::tests::a_line_takes_its_paragraphs_direction_when_it_is_given ... ok
+test bidi::tests::numbers_after_latin_belong_to_the_latin_run_w7 ... ok
+test bidi::tests::percent_after_a_number_stays_with_the_number_w5 ... ok
+test extract::tests::a_dot_under_a_lifted_letter_is_read_below_it ... ok
+test extract::tests::a_letter_kerned_under_its_neighbour_keeps_the_order_it_was_drawn_in ... ok
+test extract::tests::a_mark_on_a_letter_high_in_a_cascade_stays_with_that_letter ... ok
+test extract::tests::a_nastaliq_cascade_does_not_join_the_line_above ... ok
+test extract::tests::a_number_drawn_forwards_inside_a_line_drawn_backwards_reads_as_before ... ok
+test extract::tests::a_run_with_actual_text_reads_as_that_text ... ok
+test extract::tests::a_run_turned_a_quarter_turn_reads_forwards_in_both_directions ... ok
+test extract::tests::a_nastaliq_word_climbing_from_its_baseline_stays_in_its_line ... ok
+test extract::tests::a_space_drawn_over_a_letter_is_not_a_gap ... ok
+test extract::tests::gaps_between_clusters_become_spaces ... ok
+test extract::tests::a_turned_line_places_each_char_on_its_glyph ... ok
+test extract::tests::every_char_of_a_line_knows_where_it_was_drawn ... ok
+test extract::tests::lines_slanting_a_few_degrees_read_along_their_slant ... ok
+test extract::tests::marks_are_attached_to_their_base_and_presentation_forms_folded ... ok
+test extract::tests::raised_text_that_is_not_a_cascade_keeps_its_own_line ... ok
+test extract::tests::skeleton_letters_with_combining_dots_recompose ... ok
+test extract::tests::rotated_lines_stay_apart_from_each_other_and_from_body_text ... ok
+test extract::tests::reconstruct_lines_orders_lines_top_to_bottom_and_returns_logical_text ... ok
+test fontfile::tests::a_font_says_its_family_weight_and_slant ... ok
+test extract::tests::visual_to_logical_round_trips_every_corpus_line ... ok
+test fontfile::tests::the_best_face_is_the_same_family_slant_and_nearest_weight ... ok
+test fontfile::tests::rubbish_and_cut_files_are_no_font_and_no_panic ... ok
+test fontfile::tests::a_font_that_may_not_be_embedded_is_never_the_best_face ... ok
+test glyphshape::tests::a_record_survives_the_round_trip ... ok
+test glyphshape::tests::a_signature_is_scale_and_position_independent ... ok
+test glyphshape::tests::different_shapes_are_far_apart ... ok
+test installed::tests::a_folder_that_is_not_there_is_no_fonts_and_no_error ... ok
+test fontfile::tests::a_collection_gives_up_one_face_as_a_font_of_its_own ... ok
+test glyphshape::tests::the_generated_prototype_table_is_present_and_matches_itself ... ok
+test normalize::tests::characters_in_the_presentation_blocks_that_fold_to_themselves_are_kept ... ok
+test normalize::tests::presentation_forms_fold_to_logical_letters ... ok
+test normalize::tests::search_normalization_unifies_alef_taa_yaa_and_digits ... ok
+test normalize::tests::strip_marks_removes_tashkeel_and_tatweel ... ok
+test paragraph::tests::a_far_away_line_and_a_direction_change_start_new_paragraphs ... ok
+test paragraph::tests::an_indented_line_after_a_full_one_starts_a_paragraph ... ok
+test paragraph::tests::evenly_spaced_paragraphs_part_after_a_short_line_that_ends_a_sentence ... ok
+test installed::tests::a_font_whose_licence_forbids_embedding_is_passed_over ... ok
+test paragraph::tests::justification_stretches_spaces_on_every_line_but_the_last ... ok
+test paragraph::tests::justified_rtl_block_is_one_paragraph_with_both_edges_aligned ... ok
+test paragraph::tests::right_aligned_rtl_paragraph_is_detected_as_start_aligned ... ok
+test paragraph::tests::layout_breaks_at_spaces_and_right_aligns_rtl_lines ... ok
+test paragraph::tests::short_lines_that_do_not_end_a_sentence_stay_together ... ok
+test search::tests::finds_words_regardless_of_tashkeel_alef_and_taa_marbuta ... ok
+test search::tests::highlight_range_maps_back_to_original_bytes ... ok
+test shape::tests::arabic_letters_get_contextual_forms_and_ligatures ... ok
+test shape::tests::a_date_marked_left_to_right_keeps_its_order_and_sign_in_arabic ... ok
+test shape::tests::marks_have_zero_advance_and_are_positioned ... ok
+test shape::tests::shape_line_orders_runs_visually ... ok
+test shape::tests::some_amiri_letters_are_clusters_of_two_glyphs ... ok
+test installed::tests::a_family_is_found_by_name_at_the_nearest_weight ... ok
+test installed::tests::this_pcs_own_fonts_are_found_by_name ... ok
+
+test result: ok. 56 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.95s
+
+[1m[92m   Doc-tests[0m warraq_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+[1m[92m   Doc-tests[0m warraq_pdf
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+[1m[92m   Doc-tests[0m warraq_text
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
