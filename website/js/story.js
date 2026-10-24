@@ -835,6 +835,14 @@ export const TOOLS = [
     on: ON.desktop,
   },
   {
+    name: { ar: 'رتّب مع زود', en: 'Sort with ZOOD' },
+    text: {
+      ar: 'اسحب ملفات مبعثرة إلى أعلى الشاشة وأفلتها على زود، فيقترح دمجها أو فصلها أو تسميتها أو ترتيبها في مجلدات. لا يُحذف شيء، وزر تراجع يعيد كل ملف.',
+      en: 'Drag messy files to the top of the screen and drop them on ZOOD. It suggests merging, splitting, names or folders. Nothing is deleted, and Undo puts every file back.',
+    },
+    on: ON.desktop,
+  },
+  {
     name: { ar: 'المساعدة والدعم', en: 'Help & Support' },
     text: {
       ar: 'مقالات وأدلة PDF، و«أرني» و«نفّذها عني»، والإبلاغ عن مشكلة.',
