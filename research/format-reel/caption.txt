@@ -1,0 +1,16 @@
+Source: https://www.instagram.com/reel/De33pgigKsl/  (@stridejosh.ai, October 24, 2026, 60 s)
+Frames: f_001.jpg ... f_120.jpg = one every 0.5 s (f_N is at t = (N-1)*0.5 s), 720 px wide.
+contact.jpg = one frame every 2 s; wheel.jpg = close-up crops of the radial format wheel (t 0-2 s and 15-19 s).
+
+Caption:
+Comment CONVERT and follow, and I'll send you the free setup guide.
+
+This free app converts 255 file formats right on your PC, and nothing ever gets uploaded.
+
+It's called Filee (open source, MIT). Hold Ctrl, drag a file, and a wheel of formats opens at your cursor. Drop it on one and the new file appears right next to the original. HEIC to JPG, Word to PDF, MP4 to MP3, no Microsoft Office needed. Drop 100 files and it does them all at once.
+
+The catch: video, audio and some rarer formats need a free add-on the first time, and the Mac version is still a preview.
+
+Would you use it? Yes or no below.
+
+#fileconverter #opensource #windows #productivity #pctips
