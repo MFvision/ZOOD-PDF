@@ -127,6 +127,27 @@ jobs:
             apps/desktop/src-tauri/resources/pdfium/libpdfium.dylib
           echo "identity=$IDENTITY" >> "$GITHUB_OUTPUT"
 
+      # Windows code signing, when the repository has the Certum secrets
+      # (docs/updates.md, "Windows signing"): ssign signs in Certum's cloud
+      # (SimplySign) with a code made from the authenticator seed, so no
+      # card, reader or desktop app is needed. Without the secrets the
+      # Windows build stays unsigned, as before.
+      - name: get the Windows signer
+        id: winsign
+        if: matrix.platform == 'windows-x86_64'
+        shell: bash
+        env:
+          CERTUM_EMAIL: ${{ secrets.CERTUM_EMAIL }}
+          CERTUM_OTP: ${{ secrets.CERTUM_OTP }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CERTUM_EMAIL" ] || [ -z "$CERTUM_OTP" ]; then
+            echo "no Certum secrets: the Windows build stays unsigned"
+            exit 0
+          fi
+          cargo install ssign --version 0.1.8 --locked
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
       # The version is given here rather than committed, so a test build
       # never claims a released version. createUpdaterArtifacts makes the
       # signed update files (.sig) beside the installers.
@@ -148,12 +169,34 @@ jobs:
           WARRAQ_GOOGLE_CLIENT_SECRET: ${{ secrets.WARRAQ_GOOGLE_CLIENT_SECRET }}
           # Set only when the Developer ID was imported above.
           MAC_IDENTITY: ${{ steps.macsign.outputs.identity }}
+          # Set only when the Windows signer was installed above. Tauri runs
+          # the sign command on the app, the uninstaller and the installer,
+          # before the update file's .sig is made.
+          WIN_SIGN: ${{ steps.winsign.outputs.enabled }}
+          CERTUM_EMAIL: ${{ secrets.CERTUM_EMAIL }}
+          CERTUM_OTP: ${{ secrets.CERTUM_OTP }}
         run: |
           set -o pipefail
           VERSION="${VERSION#release/}"; VERSION="${VERSION#desktop-v}"
           if [ -n "${MAC_IDENTITY:-}" ]; then export APPLE_SIGNING_IDENTITY="$MAC_IDENTITY"; fi
+          windows=''
+          if [ "${WIN_SIGN:-}" = true ]; then
+            windows=',"windows":{"signCommand":{"cmd":"ssign","args":["%1"]}}'
+          fi
           pnpm --dir apps/desktop exec tauri build \
-            --config "{\"version\":\"$VERSION\",\"bundle\":{\"createUpdaterArtifacts\":true}}" 2>&1 | tee build.log
+            --config "{\"version\":\"$VERSION\",\"bundle\":{\"createUpdaterArtifacts\":true$windows}}" 2>&1 | tee build.log
+
+      - name: check the Windows signature
+        if: matrix.platform == 'windows-x86_64' && steps.winsign.outputs.enabled == 'true'
+        shell: pwsh
+        run: |
+          $bundle = 'apps/desktop/src-tauri/target/release/bundle/nsis'
+          $files = @(Get-ChildItem "$bundle/*-setup.exe") + @(Get-Item 'apps/desktop/src-tauri/target/release/warraq-desktop.exe')
+          foreach ($file in $files) {
+            $sig = Get-AuthenticodeSignature $file.FullName
+            Write-Host "$($file.Name): $($sig.Status) by $($sig.SignerCertificate.Subject)"
+            if ($sig.Status -ne 'Valid') { throw "$($file.Name) is not signed: $($sig.StatusMessage)" }
+          }
 
       - name: check the Mac signature
         if: matrix.platform == 'darwin-aarch64' && steps.macsign.outputs.identity != ''
