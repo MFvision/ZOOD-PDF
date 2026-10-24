@@ -77,6 +77,10 @@ pub enum Gesture {
     /// here: physical pixels on Windows, points from the top-left of the
     /// main screen on macOS.
     Start { x: f64, y: f64 },
+    /// Files are being dragged with no key held (from the file manager on
+    /// Windows); the pointer is here, in the same units: ZOOD's drop zone
+    /// comes down from the top (`sort.rs`).
+    Dragging { x: f64, y: f64 },
     /// The button was let go.
     End,
 }
@@ -95,6 +99,9 @@ pub struct RingSettings {
     /// The key held while dragging that opens the ring (`DragKey`).
     #[serde(default = "default_drag_key", rename = "dragKey")]
     pub drag_key: String,
+    /// Files dragged with no key bring ZOOD's drop zone down from the top (`sort.rs`).
+    #[serde(default = "default_drop_zone", rename = "dropZone")]
+    pub drop_zone: bool,
 }
 
 /// The key that, held while files are dragged, opens the ring. `Any` is
@@ -166,6 +173,10 @@ fn default_shortcut() -> String {
     SHORTCUT.to_string()
 }
 
+fn default_drop_zone() -> bool {
+    true
+}
+
 fn default_drag_key() -> String {
     DragKey::Any.name().to_string()
 }
@@ -178,6 +189,7 @@ impl Default for RingSettings {
             scale: default_scale(),
             shortcut: default_shortcut(),
             drag_key: default_drag_key(),
+            drop_zone: default_drop_zone(),
         }
     }
 }
@@ -289,6 +301,7 @@ pub fn start<R: Runtime>(app: &AppHandle<R>, start_hidden: bool) {
         if settings.ring { "on" } else { "off" }
     ));
     ENABLED.store(settings.ring, Ordering::Relaxed);
+    crate::sort::set_zone(settings.drop_zone);
     DRAG_KEY.store(
         DragKey::from_name(&settings.drag_key).code(),
         Ordering::Relaxed,
@@ -307,8 +320,13 @@ pub fn start<R: Runtime>(app: &AppHandle<R>, start_hidden: bool) {
     std::thread::spawn(move || {
         while let Ok(gesture) = receiver.recv() {
             match gesture {
-                Gesture::Start { x, y } => show(&handle, x, y),
+                Gesture::Start { x, y } => {
+                    crate::sort::hide_zone(&handle);
+                    show(&handle, x, y)
+                }
+                Gesture::Dragging { x, y } => crate::sort::dragging(&handle, x, y),
                 Gesture::End => {
+                    crate::sort::released(&handle);
                     let handle = handle.clone();
                     std::thread::spawn(move || {
                         std::thread::sleep(DROP_GRACE);
@@ -326,6 +344,7 @@ pub fn start<R: Runtime>(app: &AppHandle<R>, start_hidden: bool) {
         if enabled() {
             let _ = ring_window(&handle);
         }
+        crate::sort::prepare(&handle);
     });
     #[cfg(target_os = "windows")]
     windows::watch();
@@ -513,6 +532,8 @@ pub fn ring_done<R: Runtime>(app: AppHandle<R>, done: usize, failed: usize) {
 
 /// The ring's own place that sends the files to the connected phone.
 const PHONE: &str = "phone";
+/// The ring's place that sorts the files with ZOOD.
+const SORT: &str = "sort";
 
 /// A phone is connected to the remote now: the ring then has "To phone".
 #[tauri::command]
@@ -545,6 +566,11 @@ pub fn ring_pick<R: Runtime>(app: AppHandle<R>, tool: String, only: Option<Vec<S
     // To the phone: the files fly off the screen from where they were let go.
     // Read and sent on a thread of its own, so large files do not freeze
     // the windows.
+    // Sort: the files go to a Sort window, which suggests what to do (`sort.rs`).
+    if tool == SORT {
+        crate::sort::open(&app, files);
+        return;
+    }
     if tool == PHONE {
         let from = crate::ask::eye::pointer();
         let app = app.clone();
@@ -575,6 +601,7 @@ pub fn ring_configure<R: Runtime>(
     scale: Option<f64>,
     shortcut: Option<String>,
     drag_key: Option<String>,
+    drop_zone: Option<bool>,
 ) -> Result<RingSettings, String> {
     let before = load_settings(&app);
     let scale = nearest_scale(scale.unwrap_or(before.scale));
@@ -585,6 +612,7 @@ pub fn ring_configure<R: Runtime>(
         scale,
         shortcut: before.shortcut.clone(),
         drag_key: key.name().to_string(),
+        drop_zone: drop_zone.unwrap_or(before.drop_zone),
     };
     if let Some(keys) = shortcut.filter(|keys| *keys != before.shortcut) {
         shortcut::replace(&app, &keys)?;
@@ -596,6 +624,10 @@ pub fn ring_configure<R: Runtime>(
     }
     ENABLED.store(ring, Ordering::Relaxed);
     DRAG_KEY.store(key.code(), Ordering::Relaxed);
+    crate::sort::set_zone(settings.drop_zone);
+    if !settings.drop_zone {
+        crate::sort::hide_zone(&app);
+    }
     BACKGROUND.store(background, Ordering::Relaxed);
     if let Some(path) = settings_path(&app) {
         let bytes = serde_json::to_vec(&settings).map_err(|e| format!("E_IO: {e}"))?;
@@ -709,6 +741,14 @@ mod windows {
     /// How often the mouse and the keys are looked at.
     const TICK: Duration = Duration::from_millis(15);
 
+    /// File Explorer's windows and the desktop: a drag from these may be of files.
+    pub fn holds_files(class: &str) -> bool {
+        matches!(
+            class,
+            "CabinetWClass" | "ExploreWClass" | "Progman" | "WorkerW"
+        )
+    }
+
     fn class_at(point: POINT) -> String {
         // SAFETY: plain window queries on a point; a buffer of fixed size.
         unsafe {
@@ -767,6 +807,10 @@ mod windows {
             log("watching the mouse");
             let mut start: Option<(i32, i32)> = None;
             let mut shown = false;
+            // The press was on File Explorer or the desktop; the drop zone was told.
+            let mut from_files = false;
+            let mut zoned = false;
+            let mut last = (i32::MIN, i32::MIN);
             loop {
                 std::thread::sleep(TICK);
                 let pressed = dragging_button();
@@ -776,16 +820,29 @@ mod windows {
                     (true, None) => {
                         start = Some(now);
                         shown = false;
-                        if held() {
+                        zoned = false;
+                        let held = held();
+                        from_files = false;
+                        if held || crate::sort::zone_on() {
                             let class = class_at(point);
-                            log(&format!("press with the key held, over a {class} window"));
+                            from_files = holds_files(&class);
+                            if held {
+                                log(&format!("press with the key held, over a {class} window"));
+                            }
                         }
                     }
-                    (true, Some(from)) if !shown && enabled() => {
-                        if is_drag(from, now, held()) {
+                    (true, Some(from)) if !shown => {
+                        if enabled() && is_drag(from, now, held()) {
                             shown = true;
                             log("drag with the key held: ring placed at the pointer");
                             send(Gesture::Start {
+                                x: f64::from(now.0),
+                                y: f64::from(now.1),
+                            });
+                        } else if from_files && now != last && is_drag(from, now, true) {
+                            last = now;
+                            zoned = true;
+                            send(Gesture::Dragging {
                                 x: f64::from(now.0),
                                 y: f64::from(now.1),
                             });
@@ -793,7 +850,8 @@ mod windows {
                     }
                     (false, Some(_)) => {
                         start = None;
-                        if std::mem::take(&mut shown) {
+                        let shown = std::mem::take(&mut shown);
+                        if shown | std::mem::take(&mut zoned) {
                             send(Gesture::End);
                         }
                     }
@@ -889,6 +947,8 @@ pub(crate) mod macos {
         std::thread::spawn(|| {
             let mut down: Option<((i32, i32), isize)> = None;
             let mut shown = false;
+            let mut zoned = false;
+            let mut last = (i32::MIN, i32::MIN);
             loop {
                 std::thread::sleep(TICK);
                 autoreleasepool(|_| {
@@ -902,8 +962,9 @@ pub(crate) mod macos {
                         (true, None) => {
                             down = Some((now, change_count(&board)));
                             shown = false;
+                            zoned = false;
                         }
-                        (true, Some((start, count))) if !shown && enabled() => {
+                        (true, Some((start, count))) if !shown => {
                             let wanted = match drag_key() {
                                 DragKey::Any => OPTION_KEY | COMMAND_KEY,
                                 DragKey::Ctrl => CONTROL_KEY,
@@ -912,18 +973,23 @@ pub(crate) mod macos {
                                 DragKey::Meta => COMMAND_KEY,
                             };
                             let key = flags & wanted != 0;
-                            if change_count(&board) != count
-                                && is_drag(start, now, key)
-                                && holds_files(&board)
-                            {
+                            let files = change_count(&board) != count
+                                && is_drag(start, now, true)
+                                && holds_files(&board);
+                            if files && key && enabled() {
                                 shown = true;
                                 log("drag of files with the key held: ring shown");
                                 send(Gesture::Start { x, y });
+                            } else if files && !key && now != last && crate::sort::zone_on() {
+                                last = now;
+                                zoned = true;
+                                send(Gesture::Dragging { x, y });
                             }
                         }
                         (false, Some(_)) => {
                             down = None;
-                            if std::mem::take(&mut shown) {
+                            let shown = std::mem::take(&mut shown);
+                            if shown | std::mem::take(&mut zoned) {
                                 send(Gesture::End);
                             }
                         }
@@ -976,6 +1042,7 @@ mod tests {
                 scale: 1.0,
                 shortcut: SHORTCUT.to_string(),
                 drag_key: "any".to_string(),
+                drop_zone: true,
             }
         );
         // A file from before the size and the shortcut reads with their defaults.
@@ -985,6 +1052,10 @@ mod tests {
         assert_eq!(read.scale, 1.0);
         assert_eq!(read.shortcut, SHORTCUT);
         assert_eq!(read.drag_key, "any");
+        assert!(
+            read.drop_zone,
+            "the drop zone is on for those who had the ring before"
+        );
         assert_eq!(DragKey::from_name("shift"), DragKey::Shift);
         assert_eq!(DragKey::from_name("nonsense"), DragKey::Any);
         assert_eq!(nearest_scale(9.0), 1.2);

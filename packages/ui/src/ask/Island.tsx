@@ -32,7 +32,7 @@ import { loadWallet } from '../ai/profile/walletState';
 import { targetWords, valueOf } from '../ai/profile/wallet';
 import type { Target, WalletProfile } from '../ai/profile/wallet';
 import { getSharedCoreClient } from '../core/client';
-import { invokeHost, isTauriHost, onHostEvent, saveDeck, uiLog } from '../core/host-tauri';
+import { invokeHost, isTauriHost, onHostEvent, saveDeck, sortVoice, uiLog } from '../core/host-tauri';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { useI18n } from '../i18n/useT';
 import { translate } from '../i18n/messages';
@@ -630,6 +630,11 @@ function Island() {
 
   /** A request, spoken or typed: decide, then do or show. */
   const respond = async (words: string, spoken: boolean, chosen?: QuickKey, past = false) => {
+    // A Sort window waiting for an answer (its Speak button, or it is in
+    // front) takes the words: it says what it does itself (`sort/voice.ts`).
+    if (!chosen && !past && (await sortVoice(words))) {
+      return close();
+    }
     const prefs = readAskPreferences();
     const brain = chosenBrain(prefs, await machineMemoryGiB());
     asked += 1;

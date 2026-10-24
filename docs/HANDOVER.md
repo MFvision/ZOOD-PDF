@@ -297,3 +297,34 @@ to the larger model as before. Tour version 6: a **Quick asks** chapter (`tour/q
 and Help › Quick asks and tidying. Tests: `quick.test.ts`, `decide.rs` and `tidy.rs` unit tests
 (apply and undo on a real folder), and an ignored real-model test (`real_model_picks_the_quick_actions`,
 see `docs/local-ai.md`). **Not tried on real Windows or a Mac** (the cloud CPU only).
+
+## Sort with ZOOD: files thrown on ZOOD (2026-10-24; the owner's idea)
+The owner wanted a reason for ZOOD to keep running in the background: gather messy files and
+let ZOOD organise them. While the app runs, a drag of files **with no key held** (from File
+Explorer or the desktop on Windows, any file drag on a Mac) brings **ZOOD's drop zone** down from
+the top middle of the screen, where Ask ZOOD's island lives: a black pill at first, opening into
+"Drop here to sort" when the pointer comes near (`src-tauri/src/sort.rs`, watched by the ring's
+own pollers in `ring.rs`, `Gesture::Dragging`). Files let go there, on the **ZOOD bubble**
+(`presence.rs`), or on the ring's new **Sort** place (two files or more) open a **Sort window**
+(`packages/ui/src/sort/`). The host reads each PDF's first 40 pages of words (`sort_look`); the
+rules (`sort/plan.ts`) suggest **merging** a numbered series (PDFs combined, scans/pictures made
+one PDF; camera photos never), **splitting** a PDF where a new invoice number or "page 1 of"
+starts, **renaming** names that say nothing (IMG_…, scan0001, Document (3)) from the topic, a
+short line of the first page and the date, and **folders** by topic (invoices, bank statements,
+contracts, IDs, travel, medical, CVs, certificates) or else by kind. With the quick decider
+downloaded, it names the topic of documents the rules could not (`sort/ai.ts`, on the device).
+Each suggestion has Do it / Skip; Do all runs them merge → split → rename → folders. **Speak**
+starts Ask ZOOD's one tap; the island hands the words to the Sort window (`sort_voice`), which
+reads them with fixed words in Saudi Arabic and English (`sort/voice.ts`: "merge them but don't
+rename", "كلها", "تراجع") and answers aloud. Safety as tidying: the window names files only by
+their place in the session, moves stay inside the session's folder (one level down) and the home
+folder, nothing is overwritten; merged/split originals go to an **Originals** folder; every move
+and every made file is journalled (`sort-undo-<window>.json`), and **Undo** moves everything back
+and removes only the files the sort made. Settings › Quick tools › "Drop files on ZOOD to sort
+them" (`dropZone` in `quick-tools.json`, on by default, in the settings book). Tour version 13:
+a **Sort with ZOOD** chapter with a drag-and-drop practice (`tour/sortScene.tsx`); Help › Throw
+files on ZOOD to sort them (pictures `sort-*`). Tests: `sort.rs` (zone placement, apply and undo
+on disk, names can't climb), `sort/plan.test.ts`, `sort/voice.test.ts`. **Not tried on real
+Windows or a Mac**: on Windows the zone also comes down for a rubber-band selection dragged to the
+top from Explorer (the watcher cannot tell it from a file drag); it goes away when the button is
+let go.

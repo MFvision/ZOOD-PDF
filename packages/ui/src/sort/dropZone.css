@@ -1,0 +1,103 @@
+/* ZOOD's drop zone (DropZone.tsx): the notch's black, grown down from the top edge like Ask ZOOD's island. */
+
+html.zood-drop-page,
+html.zood-drop-page body {
+  margin: 0;
+  background: transparent !important;
+  overflow: hidden;
+  user-select: none;
+}
+
+.zood-drop {
+  --zone-ink: #f6f1ea;
+  --zone-muted: rgb(246 241 234 / 70%);
+
+  position: fixed;
+  inset: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  box-sizing: border-box;
+  block-size: 100%;
+  padding: 6px 18px 10px;
+  border-radius: 0 0 26px 26px;
+  color: var(--zone-ink);
+  background:
+    radial-gradient(120% 140% at 50% 0%, rgb(174 139 102 / 26%), transparent 62%),
+    #000;
+  box-shadow: inset 0 -1px 0 rgb(232 184 120 / 30%);
+  font-family: var(--font-ui, system-ui, sans-serif);
+  transform-origin: top center;
+  animation: zood-drop-in 260ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.zood-drop-hidden {
+  opacity: 0;
+}
+
+.zood-drop-peek {
+  border-radius: 0 0 22px 22px;
+}
+
+.zood-drop-open,
+.zood-drop-over {
+  padding-inline: 26px;
+  border-radius: 0 0 34px 34px;
+  animation: zood-drop-open 240ms cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+/* Files over it: the zone takes them, glowing bronze from inside. */
+.zood-drop-over {
+  background:
+    radial-gradient(110% 160% at 50% 0%, rgb(232 184 120 / 48%), transparent 70%),
+    #000;
+  box-shadow:
+    inset 0 -2px 0 rgb(232 184 120 / 70%),
+    inset 0 0 0 1px rgb(232 184 120 / 40%);
+}
+
+.zood-drop-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.zood-drop-words {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.zood-drop-words strong {
+  color: var(--zone-ink);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.zood-drop-words span {
+  color: var(--zone-muted);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+@keyframes zood-drop-in {
+  from {
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes zood-drop-open {
+  from {
+    transform: scale(0.82, 0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zood-drop,
+  .zood-drop-open,
+  .zood-drop-over {
+    animation: none;
+  }
+}

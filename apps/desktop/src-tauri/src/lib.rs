@@ -34,6 +34,7 @@ pub mod ring;
 pub mod share;
 pub mod shell_menu;
 pub mod signing;
+pub mod sort;
 pub mod speech;
 pub mod system;
 pub mod updates;
@@ -374,6 +375,7 @@ pub fn run() {
             app.manage(bridge);
 
             app.manage(quick::QuickState::default());
+            app.manage(sort::SortState::default());
             // Finder's "Quick PDF tools" service (src/shell_menu.rs).
             #[cfg(target_os = "macos")]
             {
@@ -504,6 +506,14 @@ pub fn run() {
             ring::ring_done,
             ring::ring_configure,
             ring::ring_settings,
+            sort::sort_job,
+            sort::sort_look,
+            sort::sort_made,
+            sort::sort_apply,
+            sort::sort_undo,
+            sort::sort_close,
+            sort::sort_listen,
+            sort::sort_voice,
             remote::remote_start,
             remote::remote_stop,
             remote::remote_status,
@@ -582,10 +592,9 @@ pub fn run() {
                 if let Some(bridge) = app.try_state::<core_bridge::CoreBridge>() {
                     bridge.window_closed(window.label());
                 }
-                let others = app
-                    .webview_windows()
-                    .keys()
-                    .any(|label| label != window.label() && label != ring::LABEL);
+                let others = app.webview_windows().keys().any(|label| {
+                    label != window.label() && label != ring::LABEL && label != sort::ZONE_LABEL
+                });
                 if !others && !ring::background() {
                     app.exit(0);
                 }
@@ -603,6 +612,15 @@ pub fn run() {
                     _ => None,
                 };
                 ring::on_drag(window, drag, at);
+                return;
+            }
+            // Files let go on ZOOD's drop zone or on the ZOOD bubble: sorted (src/sort.rs).
+            if window.label() == sort::ZONE_LABEL {
+                sort::on_drag(window, drag);
+                return;
+            }
+            if window.label() == presence::BUBBLE_LABEL {
+                presence::on_drag(window, drag);
                 return;
             }
             // Forward OS file drops to the webview, after allowing the dropped

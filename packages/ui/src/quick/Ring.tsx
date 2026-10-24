@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
-import { Smartphone } from 'lucide-react';
+import { Smartphone, Sparkles } from 'lucide-react';
 import '../styles/tokens.css';
 import '../styles/looks.css';
 import '../styles/appearance.css';
@@ -51,6 +51,7 @@ const SHORT: Record<string, TKey> = {
   sign: 'quick.short.sign',
   unlock: 'quick.short.unlock',
   phone: 'quick.short.phone',
+  sort: 'quick.short.sort',
   all: 'quick.short.all',
 };
 
@@ -104,7 +105,9 @@ function RingWindow() {
   const settings = useSettings();
   const tools = useMemo(() => {
     const fitting = ringToolsFor(names, settings.ringTools);
-    return [...fitting.map((tool) => ({ id: tool.id as string, icon: tool.icon })), ...(phone ? [{ id: 'phone', icon: Smartphone }] : []), { id: 'all', icon: ALL_TOOLS_ICON }];
+    // Two files or more: Sort, where ZOOD suggests merging, splitting, folders and names (`sort/`).
+    const sort = names.length >= 2 ? [{ id: 'sort', icon: Sparkles }] : [];
+    return [...fitting.map((tool) => ({ id: tool.id as string, icon: tool.icon })), ...sort, ...(phone ? [{ id: 'phone', icon: Smartphone }] : []), { id: 'all', icon: ALL_TOOLS_ICON }];
   }, [names, settings.ringTools, phone]);
 
   // The look, light or dark, and the icons the main window has chosen.

@@ -22,6 +22,7 @@ import { AskScene } from './askScene';
 import { PhoneScene } from './phoneScene';
 import { SupportScene } from './supportScene';
 import { FoldersScene } from './foldersScene';
+import { SortScene } from './sortScene';
 import { showHomeView } from '../home/homeView';
 import { openSupportAt } from '../support/open';
 import './tour.css';
@@ -288,6 +289,8 @@ function Scene({
       return <QuickAskScene onSettings={onSettings} />;
     case 'reach':
       return <ReachScene onSettings={onSettings} />;
+    case 'sort':
+      return <SortScene onSettings={onSettings} />;
     case 'remote':
       return <PhoneScene />;
     case 'ai':
