@@ -338,11 +338,11 @@ export const SHOTS = {
   // Desktop: Sort with ZOOD
   'sort-zone': {
     host: desktop,
-    window: { width: 400, height: 168, query: '?dropzone', ready: '.drop-zone', transparent: true },
+    window: { width: 400, height: 168, query: '?dropzone', ready: '.zood-drop', transparent: true },
     async run(s) {
       await s.page.evaluate(() => globalThis.__shotEmit('drop://state', { look: 'over' }));
       await s.page.waitForTimeout(700);
-      return { mark: s.page.locator('.drop-zone') };
+      return { mark: s.page.locator('.zood-drop') };
     },
   },
   'sort-window': {

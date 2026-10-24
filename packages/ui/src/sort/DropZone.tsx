@@ -21,18 +21,18 @@ function Zone() {
 
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.add('drop-zone-page');
+    root.classList.add('zood-drop-page');
     return onHostEvent<{ look: Look }>(DROP_ZONE_EVENT, (state) => setLook(state.look));
   }, []);
 
   const open = look === 'open' || look === 'over';
   return (
-    <main className={`drop-zone drop-zone-${look}`} aria-hidden={look === 'hidden'} aria-label={t('sort.zone.label')}>
-      <span className="drop-zone-mark">
+    <main className={`zood-drop zood-drop-${look}`} aria-hidden={look === 'hidden'} aria-label={t('sort.zone.label')}>
+      <span className="zood-drop-mark">
         <ZoodMark size={open ? 40 : 26} loop={look === 'over'} />
       </span>
       {open ? (
-        <span className="drop-zone-words">
+        <span className="zood-drop-words">
           <strong>{look === 'over' ? t('sort.zone.letGo') : t('sort.zone.title')}</strong>
           <span>{t('sort.zone.note')}</span>
         </span>
