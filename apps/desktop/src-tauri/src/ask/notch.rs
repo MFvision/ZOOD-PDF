@@ -23,8 +23,15 @@ pub fn find(position: PhysicalPosition<i32>, size: PhysicalSize<u32>) -> Option<
 
 /// Lets a window of ZOOD's sit over the menu bar and on every Space,
 /// beside full-screen apps too. Nothing to do elsewhere.
+///
+/// Always done on the main thread: callers may be on a thread of their own
+/// (the drop zone is made a few seconds after start), and AppKit stops the
+/// app when a window's level changes anywhere else (0.4.9 crashed so).
 pub fn above_menu_bar<R: Runtime>(window: &WebviewWindow<R>) {
-    system::above_menu_bar(window);
+    let lifted = window.clone();
+    if let Err(e) = window.run_on_main_thread(move || system::above_menu_bar(&lifted)) {
+        eprintln!("warraq: cannot lift a window over the menu bar: {e}");
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -90,8 +97,8 @@ mod system {
         if window.is_null() {
             return;
         }
-        // SAFETY: the NSWindow Tauri made, on the main thread (the callers
-        // run there); NSWindow's documented setters with plain values.
+        // SAFETY: the NSWindow Tauri made, on the main thread (the public
+        // above_menu_bar sends this there); NSWindow's documented setters with plain values.
         unsafe {
             let _: () = msg_send![window, setLevel: OVER_MENU_BAR];
             let _: () = msg_send![window, setCollectionBehavior: EVERYWHERE];
